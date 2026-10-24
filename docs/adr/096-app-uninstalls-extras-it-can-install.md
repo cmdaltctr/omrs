@@ -1,7 +1,7 @@
 # ADR-096: The App Uninstalls the Extras It Can Install
 
 - **Date:** 2026-10-24
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-24; built, browser-checked and merged to v3 at `f1510293`, saved-profile check at `28767219`)
 - **Deciders:** Dr Muhammad Aizat Bin Md Hawari
 - **Related:** [ADR-094](094-app-installs-allowed-extras-into-itself.md) (the app installs allowed extras), [ADR-087](087-settings-live-in-omrg-jsonc.md) (settings in `omrs.jsonc`)
 - **Change:** `openspec/changes/uninstall-integrations-from-the-app/` (design D1 to D7); saved profiles added by `check-saved-profiles-before-uninstall`
