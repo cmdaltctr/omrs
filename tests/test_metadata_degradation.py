@@ -16,6 +16,8 @@ from __future__ import annotations
 import asyncio
 import json
 
+import pytest
+
 from omrs.core.metadata._common import _degradation_flag
 from omrs.core.settings import EffectiveSettings, MetadataBlock
 
@@ -203,6 +205,7 @@ class TestParserFallbackSignalsDegraded:
 class TestLlamaIndexSignalsDegraded:
     """The ImportError and except-Exception branches both set the flag."""
 
+    @pytest.mark.metadata_llm
     def test_import_error_signals_degraded(self, monkeypatch) -> None:
         original_import = __import__
 
@@ -232,6 +235,7 @@ class TestLlamaIndexSignalsDegraded:
 
         assert asyncio.run(_run()) is True
 
+    @pytest.mark.metadata_llm
     def test_pipeline_exception_signals_degraded(self, monkeypatch) -> None:
         """Pipeline runs but ``arun()`` raises — the except branch fires."""
         import sys
@@ -333,6 +337,7 @@ class TestLlamaIndexSignalsDegraded:
 class TestExtractMetadataWithStatusAsync:
     """The wrapper applies the detection rule: LLM-backed mode + fallback tier."""
 
+    @pytest.mark.metadata_llm
     def test_llamaindex_success_raises_no_signal(self, monkeypatch) -> None:
         """Scenario: successful extraction raises no degradation signal."""
 
@@ -353,6 +358,7 @@ class TestExtractMetadataWithStatusAsync:
         assert metadata["category"] == "ai"
         assert degraded is False
 
+    @pytest.mark.metadata_llm
     def test_llamaindex_fallback_signals_degraded(self, monkeypatch) -> None:
         """Scenario: timeout fallback is signalled."""
 
@@ -376,6 +382,7 @@ class TestExtractMetadataWithStatusAsync:
         assert metadata["category"] == "uncategorised"
         assert degraded is True
 
+    @pytest.mark.metadata_llm
     def test_local_mode_fallback_signals_degraded(self, monkeypatch) -> None:
         """Configured mode 'local' also counts as LLM-backed."""
 
@@ -613,6 +620,7 @@ class TestPipelineDegradationAggregation:
 class TestMetadataShapeUnchanged:
     """Scenario: degradation signal does not alter metadata shape."""
 
+    @pytest.mark.metadata_llm
     def test_degraded_extraction_keeps_category_no_extra_key(self, monkeypatch, sample_txt) -> None:
         monkeypatch.setattr("httpx.AsyncClient", _FakeAsyncClient)
 

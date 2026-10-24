@@ -160,6 +160,7 @@ def _assert_untouched(poison: _PoisonStore | None) -> None:
 # ── 3.2 Supplied store reaches every shared prompt provider ──────────────
 
 
+@pytest.mark.metadata_llm
 @pytest.mark.parametrize("provider", sorted(_PROVIDERS))
 def test_supplied_store_labels_reach_prompt(provider, capture, default_store) -> None:
     """All collections of the supplied store reach each provider's prompt."""
@@ -180,6 +181,7 @@ def test_supplied_store_labels_reach_prompt(provider, capture, default_store) ->
     _assert_untouched(default_store)
 
 
+@pytest.mark.metadata_llm
 def test_disjoint_stores_interleaved(capture, default_store) -> None:
     """Concurrent classifications each see only their own store's labels."""
     from omrs.core.metadata.extractor import extract_metadata_with_status_async
@@ -211,6 +213,7 @@ def test_disjoint_stores_interleaved(capture, default_store) -> None:
 # ── 3.3 Standalone seed-only lookup and supplied-store failures ──────────
 
 
+@pytest.mark.metadata_llm
 @pytest.mark.parametrize("provider", sorted(_PROVIDERS))
 def test_standalone_without_store_is_seed_only(provider, capture, default_store, caplog) -> None:
     """No store means seeds only: no default lookup, warning or degradation."""
@@ -225,6 +228,7 @@ def test_standalone_without_store_is_seed_only(provider, capture, default_store,
     _assert_untouched(default_store)
 
 
+@pytest.mark.metadata_llm
 def test_supplied_store_failure_warns_and_uses_seeds(capture, default_store, caplog) -> None:
     """A real failure of the supplied store keeps the warning/seed fallback."""
     store = _BrokenStore()
@@ -239,6 +243,7 @@ def test_supplied_store_failure_warns_and_uses_seeds(capture, default_store, cap
     _assert_untouched(default_store)
 
 
+@pytest.mark.metadata_llm
 def test_collection_failure_keeps_healthy_siblings(capture, default_store) -> None:
     """One unreadable collection is skipped; its siblings still contribute."""
     store = _FakeStore(
@@ -252,6 +257,7 @@ def test_collection_failure_keeps_healthy_siblings(capture, default_store) -> No
     _assert_untouched(default_store)
 
 
+@pytest.mark.metadata_llm
 @pytest.mark.parametrize("provider", sorted(_PROVIDERS))
 def test_retry_budget_and_degradation_with_store(provider, capture, default_store) -> None:
     """Exhausted retries keep the fallback shape, budget and degraded flag."""
@@ -270,6 +276,7 @@ def test_retry_budget_and_degradation_with_store(provider, capture, default_stor
 # ── 3.4 LlamaIndex fallback forwarding ───────────────────────────────────
 
 
+@pytest.mark.metadata_llm
 def test_llamaindex_import_fallback_forwards_store(monkeypatch, capture, default_store) -> None:
     """A missing LLM package falls back to local mode with the same store."""
 
@@ -286,6 +293,7 @@ def test_llamaindex_import_fallback_forwards_store(monkeypatch, capture, default
     _assert_untouched(default_store)
 
 
+@pytest.mark.metadata_llm
 def test_llamaindex_pipeline_fallback_forwards_store(monkeypatch, capture, default_store) -> None:
     """A failing LlamaIndex pipeline falls back to local mode with the same store."""
     monkeypatch.setattr(
@@ -324,6 +332,7 @@ def test_registered_strategies_accept_keyword_only_store() -> None:
     assert inspect.signature(_dispatch_local_extraction).parameters["store"].default is None
 
 
+@pytest.mark.metadata_llm
 def test_custom_strategy_receives_store_through_dispatch(monkeypatch) -> None:
     """The registry dispatch forwards the store keyword to any strategy."""
     from omrs.core.metadata import registry
@@ -383,6 +392,7 @@ def _write_doc(tmp_path, folder: str, marker: str) -> str:
     return str(docs)
 
 
+@pytest.mark.metadata_llm
 @pytest.mark.parametrize("first", ["a", "b"])
 def test_two_engines_interleaved_ingestion_prompts(
     tmp_path, first, capture, default_store, effective_settings

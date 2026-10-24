@@ -763,7 +763,7 @@ class TestListCollections:
             assert "document_count" in c
             assert "chunk_count" in c
 
-    def test_list_collections_scans_multiple_metadata_pages(self, tmp_path):
+    def test_list_collections_scans_multiple_metadata_pages(self, tmp_path, effective_settings):
         """Collection document counts must include all metadata pages.
 
         Task 5.1 rewrite: seeds through the real ingestion path
@@ -775,9 +775,9 @@ class TestListCollections:
 
         from omrs.core.ingestion import ingest_path_async
         from omrs.core.retrieval import list_collections
-        from omrs.core.settings import EffectiveSettings, set_default_effective_settings
+        from omrs.core.settings import set_default_effective_settings
 
-        set_default_effective_settings(EffectiveSettings(chroma_scan_page_size=2))
+        set_default_effective_settings(effective_settings(chroma_scan_page_size=2))
 
         total_chunks = 0
         for name in ("a.txt", "b.txt", "c.txt"):

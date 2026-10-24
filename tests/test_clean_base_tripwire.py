@@ -5,6 +5,10 @@ installed project metadata keeps both packages behind the ``chroma`` extra
 marker, and that the default runtime path (settings → compose → retrieval)
 never loads a Chroma module. The whole module skips when the ``chroma``
 extra IS installed — the chroma-extra CI job runs the complement suite.
+
+The executed-count pin reads the passed count from the fast-suite JUnit report
+named by ``OMRS_TRIPWIRE_JUNIT`` when it is set, as in ``scripts/local_ci.sh``
+and CI. Without it, the module runs the fast suite itself in a subprocess.
 """
 
 from __future__ import annotations
@@ -18,6 +22,7 @@ from importlib.util import find_spec
 from pathlib import Path
 
 import pytest
+from tests._tripwire_report import junit_passed_count
 
 _CHROMA_INSTALLED = find_spec("chromadb") is not None
 
@@ -158,7 +163,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +14 (2026-10-24, check-saved-profiles-before-uninstall):
 # test_web_integration_uninstall_profiles.py (12, no fastapi) and
 # test_web_integration_uninstall_routes.py (2).
-_BASE_EXECUTED = 8058
+# +14 (2026-10-24, speed-up-fast-test-suite): test_settings_factory_defaults.py (3),
+# test_metadata_llm_guard.py (5) and test_tripwire_junit_report.py (6). No fastapi needed.
+_BASE_EXECUTED = 8072
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -350,8 +357,9 @@ _BASE_EXECUTED = 8058
 # `omrs answer` (net +46; 2178 -> 2224). The slow golden-answer case
 # is deselected by the not-slow marker, not skipped.
 # The exact skipped count is no longer pinned (see ``_base_suite_counts``): the
-# inner suite runs in parallel, and a parallel run reports one fewer skip than a
-# serial run. A test that stops running still moves the exact executed count, and
+# count comes from a parallel run (the fast-suite report or the fallback inner
+# run), and a parallel run reports one fewer skip than a serial run. A test that
+# stops running still moves the exact executed count, and
 # the Chroma skip sources are asserted statically below.
 # +2 at modular-ocr-workers-dots-mocr: the real-eq01 detector case and the
 # real dots.mocr patch case run only when OMRS_EQ01_PDF or
@@ -578,27 +586,25 @@ def _pytest_args(*extra: str) -> list[str]:
 
 
 def _base_suite_counts() -> tuple[int, int]:
-    """Run the fast base suite in this environment; return ``(passed, deselected)``.
+    """Return ``(passed, deselected)`` for the fast base suite in this environment.
 
-    The subprocess reuses the running interpreter so the assertion holds for the
-    exact environment under test. It runs in parallel when pytest-xdist is
-    installed (``--dist loadfile`` comes from ``pyproject.toml``), about three
-    times faster than a serial run. A parallel summary line has no deselected
-    count, so that number comes from a separate collection-only run, which takes
-    seconds and gives the same answer in serial and parallel.
+    Two modes give the passed count. When ``OMRS_TRIPWIRE_JUNIT`` names the JUnit
+    report of a fast-suite run in the same environment (``scripts/local_ci.sh``
+    and CI set it), the count comes from that report and the suite does not run
+    again. The report must exist, record no failure or error, and be newer than
+    every ``*.py`` file under ``src/`` and ``tests/``. When the variable is not
+    set, a subprocess runs the suite with the running interpreter, in parallel
+    when pytest-xdist is installed (``--dist loadfile`` comes from
+    ``pyproject.toml``). The deselected count always comes from a separate
+    collection-only run: the report does not hold it, and a parallel summary
+    line has no deselected count. That run takes seconds.
     """
     root = Path(__file__).resolve().parent.parent
-    parallel = ("-n", "auto", "--maxprocesses=8") if find_spec("xdist") is not None else ()
-    run = subprocess.run(
-        _pytest_args(*parallel),
-        cwd=root,
-        capture_output=True,
-        text=True,
-        timeout=1800,
-    )
-    assert run.returncode == 0, f"base suite failed:\n{run.stdout}\n{run.stderr}"
-    summary = re.search(r"(\d+) passed", run.stdout)
-    assert summary, f"unparseable base suite summary:\n{run.stdout[-500:]}"
+    report = os.environ.get("OMRS_TRIPWIRE_JUNIT")
+    if report:
+        passed = junit_passed_count(Path(report), (root / "src", root / "tests"))
+    else:
+        passed = _run_base_suite(root)
 
     collect = subprocess.run(
         _pytest_args("--collect-only"),
@@ -610,7 +616,23 @@ def _base_suite_counts() -> tuple[int, int]:
     assert collect.returncode == 0, f"collection failed:\n{collect.stdout}\n{collect.stderr}"
     collected = re.search(r"tests? collected(?: \((\d+) deselected\))?", collect.stdout)
     assert collected, f"unparseable collection summary:\n{collect.stdout[-500:]}"
-    return int(summary.group(1)), int(collected.group(1) or 0)
+    return passed, int(collected.group(1) or 0)
+
+
+def _run_base_suite(root: Path) -> int:
+    """Run the fast base suite in a subprocess and return its passed count."""
+    parallel = ("-n", "auto", "--maxprocesses=8") if find_spec("xdist") is not None else ()
+    run = subprocess.run(
+        _pytest_args(*parallel),
+        cwd=root,
+        capture_output=True,
+        text=True,
+        timeout=1800,
+    )
+    assert run.returncode == 0, f"base suite failed:\n{run.stdout}\n{run.stderr}"
+    summary = re.search(r"(\d+) passed", run.stdout)
+    assert summary, f"unparseable base suite summary:\n{run.stdout[-500:]}"
+    return int(summary.group(1))
 
 
 def test_base_skip_manifest_is_exact() -> None:

@@ -223,6 +223,7 @@ class TestCustomKeywordRules:
 # ── 9.4 Llamaindex stub test ───────────────────────────────────────────────
 
 
+@pytest.mark.metadata_llm
 class TestLlamaindexStub:
     """Tests for the LlamaIndex metadata extraction — updated from stub to real.
 
@@ -320,6 +321,7 @@ class TestUnknownMode:
 # ── 9.5 Ollama mode tests — hybrid taxonomy, JSON parsing, normalisation ────
 
 
+@pytest.mark.metadata_llm
 class TestOllamaExtraction:
     """Tests for the updated ollama metadata extraction (Stage 1)."""
 
@@ -549,6 +551,7 @@ class TestOllamaExtraction:
         assert len(result["summary"]) <= 303  # 300 + "…"
 
 
+@pytest.mark.metadata_llm
 class TestHybridCategoryTaxonomy:
     """Tests for the hybrid category lookup (ChromaDB + seed categories)."""
 
@@ -838,6 +841,7 @@ class TestLlamaindexExtraction:
         node.metadata = metadata
         return node
 
+    @pytest.mark.metadata_llm
     def test_import_error_falls_back_to_ollama(self, monkeypatch, caplog) -> None:
         """Missing llama-index-llms-ollama → WARNING + ollama fallback."""
         # Simulate ImportError by removing the package from sys.modules
@@ -896,6 +900,7 @@ class TestLlamaindexExtraction:
             if r.levelno == logging.WARNING
         )
 
+    @pytest.mark.metadata_llm
     def test_successful_extraction(self, monkeypatch, caplog) -> None:
         """Real llamaindex pipeline returns aggregated metadata."""
 
@@ -974,6 +979,7 @@ class TestLlamaindexExtraction:
         assert result["keywords"] == []
         assert result["summary"] == ""
 
+    @pytest.mark.metadata_llm
     def test_extraction_failure_falls_back_to_ollama(self, monkeypatch, caplog) -> None:
         """Pipeline raises exception → WARNING + ollama fallback."""
         import sys
@@ -1034,6 +1040,7 @@ class TestLlamaindexExtraction:
             for r in caplog.records
         )
 
+    @pytest.mark.metadata_llm
     def test_double_degradation_llamaindex_and_ollama_both_fail(
         self,
         monkeypatch,
@@ -1088,6 +1095,7 @@ class TestLlamaindexExtraction:
             for r in caplog.records
         )
 
+    @pytest.mark.metadata_llm
     def test_chunk_capping(self, monkeypatch) -> None:
         """Chunk capping limits text passed to the pipeline."""
         # Set small chunk cap
@@ -1389,6 +1397,7 @@ class TestOllamaMarkdownFenceStripping:
         assert result["summary"] == "x"
 
 
+@pytest.mark.metadata_llm
 class TestOllamaRetry:
     """Bounded retry with exponential backoff around the Ollama HTTP call."""
 
@@ -1666,6 +1675,7 @@ def _no_sleep(monkeypatch) -> list[float]:
     return sleeps
 
 
+@pytest.mark.metadata_llm
 class TestStructuredOutputEnforcement:
     """Each backend must constrain generation at the serving layer."""
 
@@ -1756,6 +1766,7 @@ class TestStructuredOutputEnforcement:
         assert result["keywords"] == ["transformer"]
 
 
+@pytest.mark.metadata_llm
 class TestOpenRouterStructuredOutputDowngrade:
     """A rejected schema must degrade to the prompt-only path, not to failure."""
 

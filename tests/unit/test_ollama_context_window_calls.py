@@ -97,6 +97,7 @@ def test_chat_sends_the_configured_window(fake: FakeOllama) -> None:
 # ── Metadata extraction ──────────────────────────────────────────────────
 
 
+@pytest.mark.metadata_llm
 def test_metadata_generate_carries_num_ctx(monkeypatch: pytest.MonkeyPatch) -> None:
     from omrs.core.metadata import extract_metadata_async
 
@@ -109,6 +110,7 @@ def test_metadata_generate_carries_num_ctx(monkeypatch: pytest.MonkeyPatch) -> N
     assert payloads[0]["format"] == "json"
 
 
+@pytest.mark.metadata_llm
 def test_metadata_generate_uses_the_default_window(monkeypatch: pytest.MonkeyPatch) -> None:
     from omrs.core.metadata import extract_metadata_async
 

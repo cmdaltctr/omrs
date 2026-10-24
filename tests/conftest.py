@@ -165,6 +165,45 @@ def _clear_registry_caches() -> None:
         reg._cache.clear()
 
 
+# Metadata strategy names that make no LLM call (speed-up-fast-test-suite D2).
+_NO_LLM_METADATA_STRATEGIES = frozenset({"disabled", "keyword"})
+
+
+@pytest.fixture(autouse=True)
+def _guard_unplanned_metadata_llm(
+    monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest
+) -> None:
+    """Fail a test that dispatches an LLM metadata strategy without the marker.
+
+    LLM strategies fall back without a sign when no server answers, so an
+    unplanned call only shows as a slow test (network retries). The guard
+    wraps the strategy lookup in ``omrs.core.metadata.extractor``, the module
+    that looks the name up, and fails before the strategy runs. A test that
+    means to call an LLM strategy carries ``@pytest.mark.metadata_llm``.
+    """
+    if request.node.get_closest_marker("metadata_llm") is not None:
+        return
+
+    from omrs.core.metadata import extractor
+
+    real_get = extractor._metadata_get
+
+    def _guarded_get(name: str):
+        if name not in _NO_LLM_METADATA_STRATEGIES:
+            pytest.fail(
+                f"Unplanned LLM metadata strategy {name!r} dispatched through "
+                "omrs.core.metadata.extractor. It would wait on a real LLM call. "
+                "Fix: build the settings with the effective_settings factory, "
+                'which sets extraction_mode="disabled" (or pass '
+                'metadata=MetadataBlock(extraction_mode="disabled")). If the '
+                "test means to call the strategy, mark it "
+                "@pytest.mark.metadata_llm and mock the LLM."
+            )
+        return real_get(name)
+
+    monkeypatch.setattr(extractor, "_metadata_get", _guarded_get)
+
+
 # ── EffectiveSettings factory fixture (task 4.1) ─────────────────────
 
 
@@ -179,7 +218,10 @@ def effective_settings():
             assert settings.retrieval.top_k == 20
 
     Builds a frozen :class:`EffectiveSettings` with sensible defaults so
-    later test migrations are one-line changes (task 4.1).
+    later test migrations are one-line changes (task 4.1). The factory
+    pins the empty tokenizer identity, ``metadata.extraction_mode="disabled"``
+    and ``metadata.classify_max_attempts=1``. Dotted and flat overrides win
+    over these defaults; a whole block passed by the caller is kept as given.
     """
     from omrs.core.settings import (
         ChunkingBlock,
@@ -212,8 +254,17 @@ def effective_settings():
     # behaviour is identical on machines with and without the cache; a test
     # that wants the model-token path passes the tokenizer fields
     # explicitly (as test_model_token_markdown_chunking does).
+    #
+    # speed-up-fast-test-suite D1: metadata extraction is off and one
+    # classify attempt is allowed. The class defaults ("llamaindex", 3
+    # attempts) make an ingesting test wait on real LLM retries and then
+    # fall back without a sign. A test that wants a strategy passes it
+    # (``**{"metadata.extraction_mode": "keyword"}`` or a whole
+    # ``metadata=MetadataBlock(...)``) and, for an LLM strategy, carries the
+    # ``metadata_llm`` marker.
     factory_block_defaults: dict[str, dict] = {
         "embedding": {"tokenizer_model": "", "tokenizer_revision": ""},
+        "metadata": {"extraction_mode": "disabled", "classify_max_attempts": 1},
     }
 
     def _factory(**overrides) -> EffectiveSettings:
