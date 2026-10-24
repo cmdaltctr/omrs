@@ -136,7 +136,10 @@ async def test_post_dispatch_timeout_is_a_structured_error(
     batch_dir: Path, effective_settings
 ) -> None:
     """A hanging worker fails the file at the configured request timeout."""
-    settings = _ocr_settings(effective_settings, ocr_worker_request_timeout=1.0)
+    # The per-page allowance (120 s by default) would otherwise set the wait.
+    settings = _ocr_settings(
+        effective_settings, ocr_worker_request_timeout=1.0, ocr_worker_seconds_per_page=0.0
+    )
     client = _client("hang", request_timeout=1.0)
     try:
         result = await _ingest(batch_dir / "scanned_one.pdf", settings, client)
@@ -145,6 +148,8 @@ async def test_post_dispatch_timeout_is_a_structured_error(
     detail = result["file_details"][0]
     assert detail["status"] == "failed"
     assert "timeout" in detail["error"]
+    # The wait is the configured 1 s, not the per-page allowance.
+    assert "within 1.0 seconds" in detail["error"], detail["error"]
     assert client.is_started is False
 
 
