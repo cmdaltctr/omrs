@@ -15,6 +15,13 @@ uv run pytest --cov=omrs      # Coverage
 ./scripts/local_ci.sh         # PR-blocking CI jobs, run locally before pushing
 ```
 
+**New machine setup.** Install these tools once. `local_ci.sh` skips a step and prints `SKIPPED` when its tool is missing, so read the output for that word.
+
+```bash
+brew install uv node actionlint   # actionlint checks .github/workflows/*.yml; CI does not
+npm install -g @fission-ai/openspec   # `openspec validate` step
+```
+
 **Parallel runs (`-n`).** `pyproject.toml` sets `--dist loadfile`, so each test file stays on one worker. Do not pass `--dist load`: tests that rely on logging state set earlier in the same file then fail at random. The tripwire pins the executed and deselected counts, not the skipped count (a parallel run reports one fewer skip than a serial one). When `OMRS_TRIPWIRE_JUNIT` names the fast-suite JUnit report, the tripwire reads the executed count from it and does not run the suite again. It refuses a report with a failure or an error, and a report older than any `*.py` file under `src/` or `tests/`. Without the variable, it runs the suite itself. Run `./scripts/local_ci.sh` (parallel main suite with a report, then the tripwire on that report) before you push. The CI `test` job and the base entry of the `floors` job do the same; the other CI jobs stay serial.
 
 ## Last known good reference point

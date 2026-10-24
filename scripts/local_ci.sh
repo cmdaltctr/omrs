@@ -3,7 +3,7 @@
 # catch failures without spending workflow minutes.
 #
 # Covers: ruff, ruff format, import-linter, OpenSpec strict validation,
-# the OpenAPI contract, the torch-free default-install check, and the
+# the GitHub workflow files (skipped when actionlint is absent), the OpenAPI contract, the torch-free default-install check, and the
 # full fast suite and the clean-base tripwire under the same env vars CI sets, the frontend gates,
 # and the web wheel asset check (skipped when npm is absent).
 #
@@ -37,6 +37,16 @@ uv run --no-sync lint-imports
 
 step "OpenSpec validate --all --strict"
 openspec validate --all --strict
+
+step "GitHub workflows (actionlint)"
+# CI does not lint its own workflow files, so a broken ci.yml shows only after
+# a push. Install with `brew install actionlint` on each new machine.
+if command -v actionlint >/dev/null 2>&1; then
+  actionlint
+  echo "OK: workflow files pass actionlint"
+else
+  echo "SKIPPED: actionlint not found. Install it with: brew install actionlint" >&2
+fi
 
 step "OpenAPI contract"
 uv run --no-sync python -c "import yaml; from openapi_spec_validator import validate; validate(yaml.safe_load(open('src/omrs/transports/api/openapi.yaml')))"
