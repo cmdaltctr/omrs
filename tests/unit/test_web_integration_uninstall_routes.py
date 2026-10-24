@@ -223,11 +223,30 @@ def test_uninstall_answers_202_then_reports_restart_needed(harness: Harness) -> 
         "llama-index-vector-stores-chroma",
     ]
     entry = harness.entries()["chroma"]
-    assert entry["availability"] == "restart-needed"
+    assert entry["availability"] == "restart-needed" and entry["pending_restart"] == "uninstall"
     assert entry["uninstallable"] is False and entry["uninstall_reason"] == "not-installed"
     assert entry["removes"] == [] and entry["keeps"] == []
     again = harness.client.post(url("chroma"), headers=ORIGIN)
     assert again.status_code == 409 and again.json()["reason"] == "not-installed"
+
+
+def test_a_pending_uninstall_survives_a_later_install(
+    harness: Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Azure is the one extra not installed, so it can be installed after the uninstall.
+    monkeypatch.setattr(capabilities, "module_installed", lambda name: not name.startswith("azure"))
+    harness.install_as(body="exit 0")
+    assert harness.entries()["chroma"]["pending_restart"] is None
+    assert harness.client.post(url("chroma"), headers=ORIGIN).status_code == 202
+    assert harness.settle()["state"] == "succeeded"
+    install = harness.client.post("/v1/integrations/azure/install", headers=ORIGIN)
+    assert install.status_code == 202, install.text
+    last = harness.settle()
+    assert last["state"] == "succeeded" and last["extra"] == "azure"
+    entries = harness.entries()
+    assert entries["chroma"]["pending_restart"] == "uninstall"
+    assert entries["azure"]["pending_restart"] == "install"
+    assert entries["hybrid"]["pending_restart"] is None
 
 
 def test_a_failed_check_fails_the_uninstall(harness: Harness) -> None:

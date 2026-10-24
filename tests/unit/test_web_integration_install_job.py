@@ -84,7 +84,7 @@ async def test_success_records_restart_needed(tmp_path: Path) -> None:
     assert snapshot["exit_code"] == 0 and snapshot["reason"] is None
     assert snapshot["started_at"] and snapshot["finished_at"]
     assert snapshot["output"] == ["Installed 1 package"]
-    assert job.restart_needed == {"anthropic"}
+    assert job.restart_needed == {"anthropic": "install"}
 
 
 async def test_argv_is_a_fixed_list_into_the_own_python(tmp_path: Path) -> None:
@@ -111,7 +111,7 @@ async def test_an_uninstall_runs_uv_pip_uninstall_then_the_check(tmp_path: Path)
     assert check == ["pip", "check", "--python", "/env/bin/python"]
     assert snapshot["state"] == "succeeded" and snapshot["action"] == "uninstall"
     assert snapshot["output"] == ["Uninstalled 2 packages"]
-    assert job.restart_needed == {"chroma"}
+    assert job.restart_needed == {"chroma": "uninstall"}
 
 
 async def test_a_failing_check_fails_the_uninstall(tmp_path: Path) -> None:
@@ -121,7 +121,7 @@ async def test_a_failing_check_fails_the_uninstall(tmp_path: Path) -> None:
     await job.wait()
     snapshot = job.snapshot()
     assert snapshot["state"] == "failed" and snapshot["reason"] == "check-failed"
-    assert snapshot["action"] == "uninstall" and job.restart_needed == set()
+    assert snapshot["action"] == "uninstall" and job.restart_needed == {}
 
 
 def test_an_unknown_action_is_refused() -> None:
@@ -167,7 +167,7 @@ async def test_failure_keeps_the_output_and_no_restart(tmp_path: Path) -> None:
     assert snapshot["state"] == "failed"
     assert snapshot["reason"] == "exit-code" and snapshot["exit_code"] == 2
     assert snapshot["output"] == ["resolving", "error: no solution"]
-    assert job.restart_needed == set()
+    assert job.restart_needed == {}
 
 
 async def test_only_the_last_forty_lines_are_kept(tmp_path: Path) -> None:
@@ -183,7 +183,7 @@ async def test_a_slow_install_times_out_and_is_stopped(tmp_path: Path) -> None:
     assert snapshot["state"] == "failed" and snapshot["reason"] == "timed-out"
     assert snapshot["exit_code"] is None
     assert snapshot["output"] == ["started"]
-    assert job.restart_needed == set()
+    assert job.restart_needed == {}
 
 
 async def test_a_program_that_cannot_start_fails_with_start_failed(tmp_path: Path) -> None:
@@ -204,7 +204,7 @@ async def test_a_second_start_while_running_is_refused(tmp_path: Path) -> None:
     gate.write_text("", encoding="utf-8")
     await job.wait()
     assert job.snapshot()["state"] == "succeeded"
-    assert job.restart_needed == {"azure"}
+    assert job.restart_needed == {"azure": "install"}
 
 
 async def test_api_keys_are_not_passed_and_never_shown(
@@ -232,7 +232,7 @@ async def test_a_passing_check_runs_after_the_install(tmp_path: Path) -> None:
     assert argv == ["pip", "check", "--python", "/env/bin/python"]
     assert snapshot["state"] == "succeeded"
     assert snapshot["output"] == ["Installed 1 package", "All compatible"]
-    assert job.restart_needed == {"anthropic"}
+    assert job.restart_needed == {"anthropic": "install"}
 
 
 async def test_a_failing_check_fails_the_install(tmp_path: Path) -> None:
@@ -242,7 +242,7 @@ async def test_a_failing_check_fails_the_install(tmp_path: Path) -> None:
     assert snapshot["state"] == "failed"
     assert snapshot["reason"] == "check-failed" and snapshot["exit_code"] == 1
     assert snapshot["output"][-1].startswith("pandas 3.0.0 requires")
-    assert job.restart_needed == set()
+    assert job.restart_needed == {}
 
 
 async def test_no_check_runs_after_a_failed_install(tmp_path: Path) -> None:

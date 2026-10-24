@@ -16,9 +16,12 @@ After exit code 0 the job runs ``uv pip check --python <this Python>``
 with the same limits, because an install can move a package another one
 needs (ADR-094). A conflict fails the job with ``check-failed``.
 
-After a successful check the extra goes into ``restart_needed``: the
-running process cannot use the changed modules safely until it restarts. The
-state is kept in memory, so a restart shows ``idle`` again.
+After a successful check the extra goes into ``restart_needed`` with its
+action (``install`` or ``uninstall``): the running process cannot use the
+changed modules safely until it restarts. The map, not the last job, is what
+the catalogue reports as ``pending_restart``, so a later job cannot change
+what an earlier entry shows. The state is kept in memory, so a restart shows
+``idle`` again.
 """
 
 from __future__ import annotations
@@ -95,7 +98,7 @@ class InstallJob:
         installed: Returns the installed distributions and what they
             require (tests replace it).
         saved: Returns the values saved in ``omrs.jsonc`` (tests replace it).
-        restart_needed: Extras installed or uninstalled in this launch.
+        restart_needed: Each extra installed or uninstalled in this launch, with its action.
     """
 
     timeout: float = INSTALL_TIMEOUT_SECONDS
@@ -104,7 +107,7 @@ class InstallJob:
     requirements: Callable[[str], list[str]] = extra_requirements
     installed: Callable[[], Installed] = installed_requirements
     saved: Callable[[], Mapping[str, Any]] = saved_settings
-    restart_needed: set[str] = field(default_factory=set)
+    restart_needed: dict[str, str] = field(default_factory=dict)
     _state: str = IDLE
     _action: str | None = None
     _extra: str | None = None
@@ -176,8 +179,8 @@ class InstallJob:
     def _finish(self, state: str, reason: str | None, exit_code: int | None) -> None:
         self._state, self._reason, self._exit_code = state, reason, exit_code
         self._finished_at = _now()
-        if state == SUCCEEDED and self._extra is not None:
-            self.restart_needed.add(self._extra)
+        if state == SUCCEEDED and self._extra is not None and self._action is not None:
+            self.restart_needed[self._extra] = self._action
         logger.info("%s of %s ended: %s %s", self._action, self._extra, state, reason or "")
 
     async def _run(self, argv: list[str], redactor: Callable[[str], str] | None) -> None:

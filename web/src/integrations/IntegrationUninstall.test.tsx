@@ -28,6 +28,7 @@ function installed(id: string, name: string, change: Partial<Integration> = {}):
     removes: [`package-for-${id}`],
     keeps: [],
     lasting_uninstall_command: null,
+    pending_restart: null,
     ...change,
   };
 }

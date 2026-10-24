@@ -39,6 +39,7 @@ const CATALOGUE: Integration[] = [
     removes: [],
     keeps: [],
     lasting_uninstall_command: null,
+    pending_restart: null,
   })),
   {
     id: "magika",
@@ -59,6 +60,7 @@ const CATALOGUE: Integration[] = [
     removes: [],
     keeps: [],
     lasting_uninstall_command: null,
+    pending_restart: null,
   },
 ];
 

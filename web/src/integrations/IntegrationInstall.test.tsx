@@ -27,6 +27,7 @@ function entry(id: string, name: string, change: Partial<Integration> = {}): Int
     removes: [],
     keeps: [],
     lasting_uninstall_command: null,
+    pending_restart: null,
     ...change,
   };
 }

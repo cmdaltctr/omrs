@@ -22,6 +22,7 @@ const ENTRY: Integration = {
   removes: [],
   keeps: [],
   lasting_uninstall_command: null,
+  pending_restart: null,
 };
 
 const RUNNING: IntegrationInstall = {

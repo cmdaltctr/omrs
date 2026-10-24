@@ -25,7 +25,7 @@ from __future__ import annotations
 
 import functools
 import logging
-from collections.abc import Callable, Collection, Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
@@ -258,7 +258,7 @@ def describe_entry(
     item: Integration,
     settings: Any,
     environment: InstallEnvironment,
-    restart_needed: Collection[str] = (),
+    restart_needed: Mapping[str, str] | None = None,
     requirements: Callable[[str], list[str]] = extra_requirements,
     *,
     installed: Installed = installed_requirements,
@@ -271,14 +271,16 @@ def describe_entry(
         item: The catalogue entry.
         settings: The Engine's frozen ``EffectiveSettings``, or ``None``.
         environment: The detected install type and ``uv`` program.
-        restart_needed: Extras the app installed or uninstalled in this launch.
+        restart_needed: Each extra the app installed or uninstalled in this launch,
+            with its action.
         requirements: Returns an extra's requirements.
         installed: Returns the installed distributions and what they require.
         saved: Returns the values saved in ``omrs.jsonc``.
         running: Whether an install or uninstall job runs now.
     """
     extra = item.extra
-    if extra is not None and extra in restart_needed:
+    pending = None if extra is None else (restart_needed or {}).get(extra)
+    if pending is not None:
         availability = RESTART_NEEDED
     else:
         try:
@@ -308,6 +310,7 @@ def describe_entry(
         "install_reason": reason,
         "packages": packages,
         "install_caution": item.caution,
+        "pending_restart": pending,
         **_uninstall_fields(
             extra,
             base,
@@ -324,7 +327,7 @@ def describe_entry(
 def describe_integrations(
     settings: Any | None,
     environment: InstallEnvironment,
-    restart_needed: Collection[str] = (),
+    restart_needed: Mapping[str, str] | None = None,
     requirements: Callable[[str], list[str]] = extra_requirements,
     *,
     installed: Installed = installed_requirements,
@@ -340,7 +343,8 @@ def describe_integrations(
             when they cannot be read (the Magika probe then reports
             ``unknown``).
         environment: The detected install type and ``uv`` program.
-        restart_needed: Extras the app installed or uninstalled in this launch.
+        restart_needed: Each extra the app installed or uninstalled in this launch,
+            with its action.
         requirements: Returns an extra's requirements.
         installed: Returns the installed distributions and what they require.
         saved: Returns the values saved in ``omrs.jsonc``.

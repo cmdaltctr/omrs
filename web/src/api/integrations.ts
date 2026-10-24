@@ -54,6 +54,8 @@ export interface Integration {
   keeps: string[];
   /** The reinstall command without this extra, set only when the uv tool receipt lists it; else null. */
   lasting_uninstall_command: string | null;
+  /** The app action that succeeded for this extra in this launch and waits for a restart; null when nothing waits. */
+  pending_restart: InstallAction | null;
 }
 
 export interface IntegrationList {

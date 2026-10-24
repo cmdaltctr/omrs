@@ -8009,7 +8009,7 @@ components:
     Integration:
       type: object
       additionalProperties: false
-      required: [id, name, purpose, extra, base, install_command, pip_command, availability, installable, install_reason, packages, install_caution, uninstallable, uninstall_reason, uninstall_setting, removes, keeps, lasting_uninstall_command]
+      required: [id, name, purpose, extra, base, install_command, pip_command, availability, installable, install_reason, packages, install_caution, uninstallable, uninstall_reason, uninstall_setting, removes, keeps, lasting_uninstall_command, pending_restart]
       properties:
         id:
           type: string
@@ -8118,6 +8118,15 @@ components:
             source>"` with the home folder written as `~`. A later reinstall
             from the receipt would add the extra back; this command does not,
             and it also drops packages only the extra pulled in. Else null.
+        pending_restart:
+          type: [string, "null"]
+          enum: [install, uninstall, null]
+          description: >
+            The action from the app that succeeded for this extra in this
+            launch and waits for a restart: `install` or `uninstall`. Null
+            when nothing waits. It does not change when a later job runs, so
+            a card shows "Installed, restart to use" or "Removed, restart to
+            apply" from this field, not from the last job.
 
     IntegrationList:
       type: object
