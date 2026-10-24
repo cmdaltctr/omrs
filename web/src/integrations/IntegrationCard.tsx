@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../co
 import type { Integration, IntegrationAvailability, InstallType } from "../api/integrations";
 import { CopyCommand } from "./CopyCommand";
 import { InstallControls, installPhase } from "./InstallControls";
+import { LastingUninstallCommand, UninstallControls, uninstallActive, uninstallPhase } from "./UninstallControls";
 import type { InstallControl } from "./useIntegrationInstall";
 
 const STATUS: Record<IntegrationAvailability, { label: string; variant: "success" | "neutral" | "warning" | "info" }> = {
@@ -12,6 +13,9 @@ const STATUS: Record<IntegrationAvailability, { label: string; variant: "success
   unknown: { label: "Unknown", variant: "warning" },
   "restart-needed": { label: "Installed, restart to use", variant: "info" },
 };
+
+/** An uninstall that succeeded in this launch: the catalogue says restart-needed, but nothing was installed. */
+const REMOVED = { label: "Removed, restart to apply", variant: "info" } as const;
 
 /** A red callout with the entry's install caution. It shows only while the entry is not installed yet. */
 function InstallCaution({ text }: { text: string }) {
@@ -37,11 +41,12 @@ interface IntegrationCardProps {
   control: InstallControl;
 }
 
-/** One catalogue entry: name, status badge with its value as text, purpose, Install action and install command. */
+/** One catalogue entry: name, status badge with its value as text, purpose, Install and Uninstall actions and commands. */
 export function IntegrationCard({ integration, installType, control }: IntegrationCardProps) {
   // An install that succeeded in this launch shows as restart-needed before the catalogue is read again.
   const phase = installPhase(integration, control);
-  const status = STATUS[phase === "restart" ? "restart-needed" : integration.availability];
+  const uninstall = uninstallPhase(integration, control);
+  const status = uninstall === "removed" ? REMOVED : STATUS[phase === "restart" ? "restart-needed" : integration.availability];
   const caution = integration.install_caution !== null && phase !== "restart" && (integration.availability === "not-installed" || integration.availability === "unknown");
   return (
     <Card id={integrationCardId(integration.id)} tabIndex={-1} className="scroll-mt-4">
@@ -61,7 +66,8 @@ export function IntegrationCard({ integration, installType, control }: Integrati
           <p className="text-meta text-muted-foreground">The server could not check this integration.</p>
         )}
         {caution && <InstallCaution text={integration.install_caution ?? ""} />}
-        <InstallControls integration={integration} control={control} />
+        {uninstallActive(uninstall) ? null : <InstallControls integration={integration} control={control} />}
+        <UninstallControls integration={integration} control={control} phase={uninstall} />
         {integration.install_command === null ? (
           <p className="text-meta text-muted-foreground">Always on. Nothing to install.</p>
         ) : (
@@ -77,6 +83,7 @@ export function IntegrationCard({ integration, installType, control }: Integrati
             )}
           </>
         )}
+        <LastingUninstallCommand integration={integration} />
       </CardContent>
     </Card>
   );

@@ -17,13 +17,37 @@ const REFUSALS: Record<string, { message: string; action: RefusalAction }> = {
   "no-requirements": { message: "This integration adds no packages, so there is nothing to install.", action: "check" },
 };
 
-/** The `reason` of a 409 install refusal, or `null` for any other failure. */
-function refusalReason(error: unknown): string | null {
+/** One line and one action for each `reason` of a refused uninstall (409). `in-use` names its setting separately. */
+const UNINSTALL_REFUSALS: Record<string, { message: string; action: RefusalAction }> = {
+  "install-running": { message: "Another install or uninstall is running. Wait for it to finish, then try again.", action: "retry" },
+  "not-uninstallable-here": { message: "This integration cannot be uninstalled from the app.", action: "check" },
+  "not-installed": { message: "This integration is not installed now, so there is nothing to uninstall.", action: "check" },
+  "in-use": { message: "A setting uses this extra. Change that setting before you uninstall it.", action: "check" },
+  "not-uv-tool": { message: "This server was not installed with uv tool, so it cannot uninstall from the app.", action: "check" },
+  "uv-not-found": { message: "The server cannot find uv, so it cannot uninstall from the app.", action: "check" },
+};
+
+/** The line for a setting that still uses the extra, such as `vector_store`. */
+export function inUseMessage(setting: string): string {
+  return `${setting} uses this extra. Change that setting before you uninstall it.`;
+}
+
+/** The body field `key` of a 409 refusal, or `null` for any other failure. */
+function refusalField(error: unknown, key: "reason" | "setting"): string | null {
   if (!(error instanceof ApiError) || error.kind !== "http" || error.status !== 409) return null;
   const body = error.body;
   if (typeof body !== "object" || body === null) return null;
-  const reason = (body as Record<string, unknown>).reason;
-  return typeof reason === "string" ? reason : null;
+  const value = (body as Record<string, unknown>)[key];
+  return typeof value === "string" ? value : null;
+}
+
+function knownRefusal(error: unknown, action: "install" | "uninstall"): { message: string; action: RefusalAction } | undefined {
+  const reason = refusalField(error, "reason");
+  if (reason === null) return undefined;
+  const refusal = (action === "install" ? REFUSALS : UNINSTALL_REFUSALS)[reason];
+  const setting = refusalField(error, "setting");
+  if (refusal !== undefined && reason === "in-use" && setting !== null) return { ...refusal, message: inUseMessage(setting) };
+  return refusal;
 }
 
 interface InstallRefusalProps {
@@ -32,20 +56,21 @@ interface InstallRefusalProps {
   onRetry: () => void;
   /** Reads the catalogue again, so the entry shows what the server can do now. */
   onCheck: () => void;
+  /** Which start was refused. It picks the lines. */
+  action?: "install" | "uninstall";
 }
 
 /**
- * A refused install as one friendly line and one action. A known 409 reason
+ * A refused install or uninstall as one friendly line and one action. A known 409 reason
  * gets its own line; anything else falls back to `describeError`. The raw
  * message goes to the console only.
  */
-export function InstallRefusal({ error, onRetry, onCheck }: InstallRefusalProps) {
+export function InstallRefusal({ error, onRetry, onCheck, action = "install" }: InstallRefusalProps) {
   const known = useMemo(() => {
-    const reason = refusalReason(error);
-    const refusal = reason === null ? undefined : REFUSALS[reason];
+    const refusal = knownRefusal(error, action);
     if (refusal !== undefined) console.error(error instanceof Error ? error.message : String(error), error);
     return refusal;
-  }, [error]);
+  }, [error, action]);
 
   if (known === undefined) return <ErrorNotice error={error} onRetry={onRetry} />;
   return (

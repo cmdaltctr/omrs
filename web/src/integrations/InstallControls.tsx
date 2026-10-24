@@ -1,6 +1,6 @@
 import { Download, LoaderCircle, RotateCcw } from "lucide-react";
 import { useState } from "react";
-import type { Integration, IntegrationInstall } from "../api/integrations";
+import type { InstallAction, Integration, IntegrationInstall } from "../api/integrations";
 import { AlertNotice } from "../components/AlertNotice";
 import { Button } from "../components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
@@ -12,18 +12,29 @@ import type { InstallControl } from "./useIntegrationInstall";
 /** The output block keeps the last lines the server sends, which is at most 40. */
 const OUTPUT_LINES = 40;
 
-const FAILURE: Record<NonNullable<IntegrationInstall["reason"]>, string> = {
-  "exit-code": "The install failed. The last output lines are below.",
-  "check-failed": "The packages were installed, but they clash with packages the server already has. Do not restart yet: run the command below to reinstall cleanly.",
-  "timed-out": "The install stopped after 10 minutes. The last output lines are below.",
-  "start-failed": "The install could not start.",
+type FailureLines = Record<NonNullable<IntegrationInstall["reason"]>, string>;
+
+const FAILURE: Record<InstallAction, FailureLines> = {
+  install: {
+    "exit-code": "The install failed. The last output lines are below.",
+    "check-failed": "The packages were installed, but they clash with packages the server already has. Do not restart yet: run the command below to reinstall cleanly.",
+    "timed-out": "The install stopped after 10 minutes. The last output lines are below.",
+    "start-failed": "The install could not start.",
+  },
+  uninstall: {
+    "exit-code": "The uninstall failed. The last output lines are below.",
+    "check-failed": "The packages were removed, but the packages left behind clash. Do not restart yet: run a command below to reinstall cleanly.",
+    "timed-out": "The uninstall stopped after 10 minutes. The last output lines are below.",
+    "start-failed": "The uninstall could not start.",
+  },
 };
 
 /** The phase of one entry, from the catalogue and the install state of this launch. */
 export function installPhase(integration: Integration, control: InstallControl): "restart" | "running" | "failed" | "ready" | "none" {
   const extra = integration.extra;
   const install = control.install;
-  const mine = extra !== null && install?.extra === extra;
+  // An uninstall job of this extra is not an install; `uninstallPhase` reads it.
+  const mine = extra !== null && install?.extra === extra && install.action !== "uninstall";
   // A local success only lifts an entry the catalogue still calls not installed. After a restart the
   // catalogue says available, and the cached status must not hide that.
   const succeeded = mine && install?.state === "succeeded" && integration.availability === "not-installed";
@@ -73,16 +84,25 @@ function InstallDialog({ integration, open, onCancel, onConfirm }: { integration
   );
 }
 
-function FailedInstall({ integration, install, control }: { integration: Integration; install: IntegrationInstall; control: InstallControl }) {
-  const extra = integration.extra ?? "";
+interface FailedJobProps {
+  integration: Integration;
+  install: IntegrationInstall;
+  action: InstallAction;
+  busy: boolean;
+  /** Sends the same job again. */
+  onRetry: () => void;
+}
+
+/** A failed install or uninstall: one line for its reason, a Retry unless the packages clash, and the last output lines. */
+export function FailedJob({ integration, install, action, busy, onRetry }: FailedJobProps) {
   const output = install.output.slice(-OUTPUT_LINES);
-  // A second install cannot mend a clash; the lasting command rebuilds the environment.
+  // A second run cannot mend a clash; the lasting command rebuilds the environment.
   const retry = install.reason !== "check-failed";
   return (
     <div className="flex min-w-0 flex-col gap-2">
-      <AlertNotice message={FAILURE[install.reason ?? "exit-code"]}>
+      <AlertNotice message={FAILURE[action][install.reason ?? "exit-code"]}>
         {retry ? (
-          <Button type="button" variant="outline" size="sm" disabled={control.busy} onClick={() => control.start(extra)}>
+          <Button type="button" variant="outline" size="sm" disabled={busy} onClick={onRetry}>
             <RotateCcw aria-hidden="true" />
             Retry
           </Button>
@@ -92,7 +112,7 @@ function FailedInstall({ integration, install, control }: { integration: Integra
         <pre
           dir="ltr"
           tabIndex={0}
-          aria-label={`Install output for ${integration.name}`}
+          aria-label={`${action === "install" ? "Install" : "Uninstall"} output for ${integration.name}`}
           className="max-h-64 min-w-0 max-w-full overflow-auto rounded-small border border-border bg-muted px-2 py-1.5 text-code"
         >
           {output.join("\n")}
@@ -133,7 +153,7 @@ export function InstallControls({ integration, control }: { integration: Integra
   if (phase === "failed" && control.install !== undefined) {
     return (
       <>
-        <FailedInstall integration={integration} install={control.install} control={control} />
+        <FailedJob integration={integration} install={control.install} action="install" busy={control.busy} onRetry={() => control.start(extra)} />
         {refusal !== null ? <InstallRefusal error={refusal} onRetry={() => control.start(extra)} onCheck={control.recheck} /> : null}
       </>
     );

@@ -10,6 +10,8 @@ interface CopyCommandProps {
   command: string;
   /** What the command belongs to; part of the button's accessible name. */
   subject: string;
+  /** The start of the button's accessible name, before `subject`. */
+  label?: string;
 }
 
 /**
@@ -17,7 +19,7 @@ interface CopyCommandProps {
  * browser has no clipboard or refuses the write, the command stays
  * selectable and a line says so.
  */
-export function CopyCommand({ command, subject }: CopyCommandProps) {
+export function CopyCommand({ command, subject, label = "Copy install command for" }: CopyCommandProps) {
   const [state, setState] = useState<CopyState>("idle");
 
   useEffect(() => {
@@ -41,7 +43,7 @@ export function CopyCommand({ command, subject }: CopyCommandProps) {
         <code className="min-w-0 flex-1 select-all rounded-small border border-border bg-muted px-2 py-1.5 text-code [overflow-wrap:anywhere]">
           {command}
         </code>
-        <Button type="button" variant="outline" size="sm" aria-label={`Copy install command for ${subject}`} onClick={() => void copy()}>
+        <Button type="button" variant="outline" size="sm" aria-label={`${label} ${subject}`} onClick={() => void copy()}>
           {state === "copied" ? <Check size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
           {state === "copied" ? "Copied" : "Copy"}
         </Button>

@@ -1,48 +1,58 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApi } from "../api/ApiProvider";
-import { installIntegration, type IntegrationInstall, type InstallType } from "../api/integrations";
+import { installIntegration, uninstallIntegration, type IntegrationInstall, type InstallType } from "../api/integrations";
 import { integrationInstallQuery, queryKeys } from "../api/queries";
 
 export interface InstallControl {
-  /** The running or last install of this launch, once read. */
+  /** The running or last install or uninstall job of this launch, once read. */
   install: IntegrationInstall | undefined;
-  /** True while an install runs or a start request is in flight. Every Install button is then disabled. */
+  /** True while a job runs or a start request is in flight. Every Install and Uninstall button is then disabled. */
   busy: boolean;
-  /** The extra whose start request is in flight. */
+  /** The extra whose install start request is in flight. */
   starting: string | null;
   /** Starts an install of `extra`. */
   start: (extra: string) => void;
-  /** The refused start of `extra`, or `null`. */
+  /** The refused install start of `extra`, or `null`. */
   refusal: (extra: string) => unknown;
-  /** Clears a refusal and reads the catalogue again. */
+  /** The extra whose uninstall start request is in flight. */
+  uninstalling: string | null;
+  /** Starts an uninstall of `extra`. */
+  uninstall: (extra: string) => void;
+  /** The refused uninstall start of `extra`, or `null`. */
+  uninstallRefusal: (extra: string) => unknown;
+  /** Clears both refusals and reads the catalogue again. */
   recheck: () => void;
 }
 
 /**
- * The install state and the start action of the Integrations page.
+ * The job state and the start actions of the Integrations page.
  *
  * The status is read once when the page opens, and only when the server is a
- * `uv tool` install, because no other install type can run an install. It is
- * then polled every second only while an install runs (`integrationInstallQuery`).
- * The one read on open finds an install that started before the page loaded.
+ * `uv tool` install, because no other install type can run a job. It is then
+ * polled every second only while a job runs (`integrationInstallQuery`). The
+ * one read on open finds a job that started before the page loaded.
  */
 export function useIntegrationInstall(installType: InstallType | undefined): InstallControl {
   const api = useApi();
   const queryClient = useQueryClient();
   const status = useQuery({ ...integrationInstallQuery(api), enabled: installType === "uv-tool" });
-  const mutation = useMutation({
-    mutationFn: (extra: string) => installIntegration(api, extra),
-    onSuccess: (install) => queryClient.setQueryData(queryKeys.integrationInstall(), install),
-  });
-  const starting = mutation.isPending ? (mutation.variables ?? null) : null;
+  const onSuccess = (install: IntegrationInstall) => queryClient.setQueryData(queryKeys.integrationInstall(), install);
+  const install = useMutation({ mutationFn: (extra: string) => installIntegration(api, extra), onSuccess });
+  const uninstall = useMutation({ mutationFn: (extra: string) => uninstallIntegration(api, extra), onSuccess });
+  const starting = install.isPending ? (install.variables ?? null) : null;
+  const uninstalling = uninstall.isPending ? (uninstall.variables ?? null) : null;
   return {
     install: status.data,
-    busy: status.data?.state === "running" || starting !== null,
+    busy: status.data?.state === "running" || starting !== null || uninstalling !== null,
     starting,
-    start: (extra) => mutation.mutate(extra),
-    refusal: (extra) => (mutation.isError && mutation.variables === extra ? mutation.error : null),
+    start: (extra) => install.mutate(extra),
+    refusal: (extra) => (install.isError && install.variables === extra ? install.error : null),
+    uninstalling,
+    uninstall: (extra) => uninstall.mutate(extra),
+    uninstallRefusal: (extra) => (uninstall.isError && uninstall.variables === extra ? uninstall.error : null),
     recheck: () => {
-      mutation.reset();
+      install.reset();
+      uninstall.reset();
       void queryClient.invalidateQueries({ queryKey: queryKeys.integrations() });
     },
   };
