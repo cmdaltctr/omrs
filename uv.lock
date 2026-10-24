@@ -3786,7 +3786,7 @@ requires-dist = [
     { name = "llama-index-embeddings-ollama", specifier = ">=0.7.0" },
     { name = "llama-index-embeddings-openai-like", specifier = ">=0.3.0" },
     { name = "llama-index-llms-anthropic", marker = "extra == 'anthropic'", specifier = ">=0.11.0" },
-    { name = "llama-index-llms-ollama", specifier = ">=0.9.0" },
+    { name = "llama-index-llms-ollama", specifier = ">=0.9.1" },
     { name = "llama-index-llms-openai-like", specifier = ">=0.7.0" },
     { name = "llama-index-readers-file", specifier = ">=0.5.0" },
     { name = "llama-index-vector-stores-chroma", marker = "extra == 'chroma'", specifier = ">=0.5.0" },

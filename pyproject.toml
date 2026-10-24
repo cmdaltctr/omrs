@@ -44,8 +44,11 @@ dependencies = [
     "watchdog>=5.0.0",
     # Async HTTP client for Ollama metadata extraction (non-blocking)
     "httpx>=0.27.0",
-    # LlamaIndex LLM integration for llamaindex metadata extraction mode
-    "llama-index-llms-ollama>=0.9.0",
+    # LlamaIndex LLM integration for llamaindex metadata extraction mode.
+    # 0.9.1 is the first release whose ``thinking`` field takes a level text
+    # ("low", "medium", "high"); 0.9.0 takes only true or false, so the Chat
+    # reasoning level "low" fails there (CI floors run 40093080026).
+    "llama-index-llms-ollama>=0.9.1",
     # OpenAI-compatible Chat providers (llama.cpp, OpenRouter and the
     # OpenAI-compatible provider). Installed by default so these providers
     # work in Settings without an extra. See ADR-083.
