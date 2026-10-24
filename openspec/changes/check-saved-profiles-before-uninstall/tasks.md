@@ -12,4 +12,6 @@
 
 ## 3. Checks
 
-- [ ] 3.1 Re-pin the tripwire, run `./scripts/local_ci.sh`, the web gates and `openspec validate check-saved-profiles-before-uninstall --strict`. Verify: all pass; record the counts here.
+- [x] 3.1 Re-pin the tripwire, run `./scripts/local_ci.sh`, the web gates and `openspec validate check-saved-profiles-before-uninstall --strict`. Verify: all pass; record the counts here.
+  - 2026-10-24 counts: `./scripts/local_ci.sh` passed. Fast suite 8,051 passed, 152 skipped; tripwire 5 passed (`_BASE_EXECUTED` 8044 → 8058, `_WEB_EXTRA_CASES` 1444 → 1446); ruff clean, import-linter 21 kept, `openspec validate --all --strict` 85/85; web 155 files and 1,924 tests passed, build pass.
+  - The first run failed `test_a_value_from_the_config_file_has_that_source_and_does_not_lock`: it searched the whole reply for the word "saved", and this worktree's path contains it. The test now checks the field sources only; a mutation that reports "saved" as a source still fails it.

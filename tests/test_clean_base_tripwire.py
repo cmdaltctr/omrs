@@ -155,7 +155,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # (+21 net, no fastapi: gated edges and provider roles; 5 cases replaced) and
 # test_web_integration_uninstall_routes.py (1).
 # +16 (2026-10-24, folder guides): four new folders in test_agent_guides.py (4 cases each).
-_BASE_EXECUTED = 8044
+# +14 (2026-10-24, check-saved-profiles-before-uninstall):
+# test_web_integration_uninstall_profiles.py (12, no fastapi) and
+# test_web_integration_uninstall_routes.py (2).
+_BASE_EXECUTED = 8058
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -462,7 +465,8 @@ if not _has_qwen_tokenizer:
 # test_web_integration_uninstall_routes.py (23) and test_web_integration_install_job.py (4) (1443).
 # +1 (2026-10-24, uninstall design follow-up): the pending restart case in
 # test_web_integration_uninstall_routes.py (1444).
-_WEB_EXTRA_CASES = 1444
+# +2 (2026-10-24, check-saved-profiles-before-uninstall): saved-profile route cases (1446).
+_WEB_EXTRA_CASES = 1446
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)

@@ -180,7 +180,10 @@ def test_a_value_from_the_config_file_has_that_source_and_does_not_lock(
         False,
         "http://gpu-box.local:11434",
     )
-    assert "saved" not in json.dumps(result)
+    # No field reports the retired source word. Check the sources only: the folder
+    # paths in the reply follow the checkout name, which can contain "saved".
+    sources = {f["source"] for c in result["connections"] for f in c["fields"]}
+    assert "saved" not in sources
 
 
 def test_ollama_address_locked_while_embeddings_use_ollama(
