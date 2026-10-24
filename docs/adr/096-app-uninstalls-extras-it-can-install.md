@@ -42,24 +42,32 @@ ADR-094 and two more rules.
    The command is the argument list
    `uv pip uninstall --python <server Python> <names>`, then `uv pip check`.
    A clash fails the job with `check-failed`. Success marks the entry
-   `restart-needed`.
+   `restart-needed`, and its `pending_restart` field says `install` or
+   `uninstall` until the server restarts. The page reads that field, so a
+   later job in the same launch cannot change what an earlier card shows.
 2. **Only the extra's own packages (D1).** The names come from the extra's
    requirements in the installed OMRS metadata, never from request text. The
    server keeps every name that a base requirement, another installed extra
-   or any other installed distribution requires. It reads `Requires-Dist`
-   names without markers, so the check can only keep too much. The entry
-   lists both groups as `removes` and `keeps`. When D1 keeps every package,
-   the server refuses with `nothing-to-remove`. This is the case for `torch`
-   today: `lancedb`, a base requirement, names both of its packages under
-   its own extras.
+   or any other installed distribution requires. A requirement behind
+   another package's extra (`extra == "x"`) counts only when an installed
+   package or the receipt asks for that extra, as `pip check` does. Other
+   markers count as true, so the check can only keep too much. A package
+   that only another package of the same uninstall requires goes too, as in
+   pip-autoremove. The entry lists both groups as `removes` and `keeps`.
+   When every package is kept, the server refuses with `nothing-to-remove`.
 3. **Never an extra in use (D2).** A fixed map, next to the catalogue, names
-   the setting that selects each extra: `vector_store` (`chroma`),
+   the backend setting that selects each extra: `vector_store` (`chroma`),
    `retrieval.rerank_backend` (`torch`), `pdf_reader` (`pypdfium2`),
-   `document_backend` (`azure`), `community_algorithm` (`leiden`), and
-   `answer.provider` or `answer.verify_provider` (`anthropic`). `hybrid` is
-   never in use, because the built-in BM25 takes over. The server checks the
-   effective settings and the saved `omrs.jsonc`, because the next start
-   reads the saved value. A match gets 409 `in-use` with the setting.
+   `document_backend` (`azure`) and `community_algorithm` (`leiden`).
+   Provider settings come from the provider registries instead: each
+   provider declares its extra, and the check resolves the answer,
+   verification, metadata and embedding roles as the Providers page does,
+   with `local` and `cloud` resolved. So Anthropic, or a later provider with
+   an extra, blocks its extra, and `ollama` and `openai_compatible` never
+   block. `hybrid` is never in use, because the built-in BM25 takes over.
+   The server checks the effective settings and the saved `omrs.jsonc`,
+   because the next start reads the saved value. A match gets 409 `in-use`
+   with the setting.
 4. **No base entry and no `web`.** A base entry comes with every install, and
    `web` runs the page. Both get `not-uninstallable-here`. Magika has no
    extra, so the route finds it by its id and refuses it the same way.
@@ -67,6 +75,7 @@ ADR-094 and two more rules.
    remove orphan packages. When the receipt lists the extra, the entry gives
    `lasting_uninstall_command`, the `uv tool install --reinstall` command
    without that extra. It drops the extra for good and removes the orphans.
+   The page hides it while a setting uses the extra.
 6. **A test proves each extra is optional (D5).** For each non-base extra, a
    fast test hides its modules, starts the web app, checks that the extra
    reports `not-installed`, and searches a small LanceDB collection.
@@ -86,11 +95,17 @@ ADR-094's decision text does not change. This ADR adds the reverse action.
 ### Negative
 
 - Orphan packages stay until the user runs the lasting command.
-- The in-use map is kept by hand. A new extra needs a map entry; a test fails
-  until it has one.
+- The backend rows of the in-use map are kept by hand. A new extra needs a
+  map entry; a test fails until it has one. Provider rows follow the
+  registries.
+- Saved user profiles and pipelines are not checked yet. A profile that
+  names a removed provider or PDF reader fails when it runs; the app still
+  starts.
 - The reverse map is conservative, so a package that could go can stay. The
-  dialog lists it as kept. For `torch` this keeps every package, so the app
-  cannot remove PyTorch. The lasting reinstall command still can.
+  dialog lists it as kept.
+- `torch` itself stays after a PyTorch uninstall, because it is a dependency
+  of `sentence-transformers`, not a requirement of the extra. The lasting
+  command removes it.
 
 ### Neutral
 
