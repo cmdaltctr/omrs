@@ -1,7 +1,7 @@
 # ADR-095: The Settings Page Writes Every Scalar Setting Except Identity, Storage and Keys
 
 - **Date:** 2026-10-24
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-24; built, browser-checked and merged to v3 at `d6f92c41`)
 - **Deciders:** Dr Muhammad Aizat Bin Md Hawari
 - **Related:** [ADR-087](087-settings-live-in-omrg-jsonc.md) (decision 5 and the document-reading addendum are amended), [ADR-086](086-web-power-menu.md) (the restart dialog), [ADR-037](037-architecture-v2-conformance.md) (settings are frozen at launch)
 - **Change:** `openspec/changes/edit-settings-from-configuration-page/` (design D1 to D5)
