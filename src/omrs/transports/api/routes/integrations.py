@@ -15,6 +15,7 @@ starts no process, and no request text reaches the command.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
@@ -79,6 +80,13 @@ UNINSTALL_REASONS: dict[str, str] = {
 }
 
 
+#: The 409 line when a saved user profile uses the extra.
+PROFILE_IN_USE = (
+    "The profile {title} uses this extra through {setting}. "
+    "Change it in Studio before you uninstall."
+)
+
+
 async def _settings(runtime: WebRuntime) -> Any:
     try:
         return runtime.engine.resolve_settings()
@@ -86,7 +94,17 @@ async def _settings(runtime: WebRuntime) -> Any:
         return None
 
 
-def _catalogue(settings: Any, job: InstallJob) -> tuple[InstallEnvironment, list[dict[str, Any]]]:
+def _profiles(runtime: WebRuntime) -> Callable[[], Any]:
+    """Return the saved-profile catalogue reader: the job's (tests), else the server's."""
+    if runtime.installs.profiles is not None:
+        return runtime.installs.profiles
+    service = runtime.profiles
+    return lambda: None if service is None else service.catalogue
+
+
+def _catalogue(
+    settings: Any, job: InstallJob, profiles: Callable[[], Any]
+) -> tuple[InstallEnvironment, list[dict[str, Any]]]:
     environment = job.detect()
     entries = describe_integrations(
         settings,
@@ -95,13 +113,14 @@ def _catalogue(settings: Any, job: InstallJob) -> tuple[InstallEnvironment, list
         job.requirements,
         installed=job.installed,
         saved=job.saved,
+        profiles=profiles,
         running=job.running,
     )
     return environment, entries
 
 
 def _one(
-    item: Integration, settings: Any, job: InstallJob
+    item: Integration, settings: Any, job: InstallJob, profiles: Callable[[], Any]
 ) -> tuple[InstallEnvironment, dict[str, Any]]:
     environment = job.detect()
     entry = describe_entry(
@@ -112,18 +131,26 @@ def _one(
         job.requirements,
         installed=job.installed,
         saved=job.saved,
+        profiles=profiles,
         running=job.running,
     )
     return environment, entry
 
 
 def _conflict(
-    reason: str, messages: dict[str, str] = REASONS, setting: str | None = None
+    reason: str,
+    messages: dict[str, str] = REASONS,
+    setting: str | None = None,
+    profile: dict[str, str] | None = None,
 ) -> JSONResponse:
     message = messages[reason].format(setting=setting)
+    if profile is not None:
+        message = PROFILE_IN_USE.format(title=profile["title"], setting=setting)
     body: dict[str, Any] = {"status": "error", "message": redact(message), "reason": reason}
     if setting is not None:
         body["setting"] = setting
+    if profile is not None:
+        body["profile"] = profile
     return JSONResponse(body, status_code=409, headers=API_HEADERS)
 
 
@@ -136,7 +163,9 @@ async def list_integrations(_: ReadScope, runtime: RuntimeDep) -> Response:
     """
     async with admitted(runtime):
         settings = await _settings(runtime)
-        environment, entries = await run_in_threadpool(_catalogue, settings, runtime.installs)
+        environment, entries = await run_in_threadpool(
+            _catalogue, settings, runtime.installs, _profiles(runtime)
+        )
     return ok({"install_type": environment.install_type, "integrations": entries})
 
 
@@ -155,7 +184,7 @@ async def install_integration(_: ManageScope, extra: ExtraParam, runtime: Runtim
     job = runtime.installs
     async with admitted(runtime):
         settings = await _settings(runtime)
-        environment, entry = await run_in_threadpool(_one, item, settings, job)
+        environment, entry = await run_in_threadpool(_one, item, settings, job, _profiles(runtime))
     reason = entry["install_reason"] or ("install-running" if job.running else None)
     if reason is not None or environment.uv is None:
         return _conflict(reason or "uv-not-found")
@@ -177,10 +206,15 @@ async def uninstall_integration(_: ManageScope, extra: ExtraParam, runtime: Runt
     job = runtime.installs
     async with admitted(runtime):
         settings = await _settings(runtime)
-        environment, entry = await run_in_threadpool(_one, item, settings, job)
+        environment, entry = await run_in_threadpool(_one, item, settings, job, _profiles(runtime))
     reason = entry["uninstall_reason"] or ("install-running" if job.running else None)
     if reason is not None or item.extra is None or environment.uv is None:
-        return _conflict(reason or "uv-not-found", UNINSTALL_REASONS, entry["uninstall_setting"])
+        return _conflict(
+            reason or "uv-not-found",
+            UNINSTALL_REASONS,
+            entry["uninstall_setting"],
+            entry["uninstall_profile"],
+        )
     redactor = getattr(runtime.engine, "redact", None)
     job.start(item.extra, environment.uv, entry["removes"], action="uninstall", redactor=redactor)
     return ok({"install": job.snapshot()}, 202)

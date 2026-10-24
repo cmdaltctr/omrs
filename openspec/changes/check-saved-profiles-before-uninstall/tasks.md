@@ -2,8 +2,8 @@
 
 ## 1. Server
 
-- [ ] 1.1 Add the profile walk (D1, D2, D4) to `uninstall_plan.py` and a `profiles` reader on `InstallJob` (D5). Verify: unit tests fail first, then pass, for a `pypdfium2` Read document step, a disabled step, a deleted profile, a profile `embed_provider` with an extra (registered test provider), a global setting named first, and no catalogue.
-- [ ] 1.2 Add `uninstall_profile` to the catalogue entry and `profile` to the 409 body, in `openapi.yaml` first (D3). Verify: route tests with a real profile saved through the profile service, and contract conformance.
+- [x] 1.1 Add the profile walk (D1, D2, D4) to `uninstall_plan.py` and a `profiles` reader on `InstallJob` (D5). Verify: unit tests fail first, then pass, for a `pypdfium2` Read document step, a disabled step, a deleted profile, a profile `embed_provider` with an extra (registered test provider), a global setting named first, and no catalogue.
+- [x] 1.2 Add `uninstall_profile` to the catalogue entry and `profile` to the 409 body, in `openapi.yaml` first (D3). Verify: route tests with a real profile saved through the profile service, and contract conformance.
 
 ## 2. Page
 

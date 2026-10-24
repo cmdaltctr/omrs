@@ -56,6 +56,14 @@ export interface Integration {
   lasting_uninstall_command: string | null;
   /** The app action that succeeded for this extra in this launch and waits for a restart; null when nothing waits. */
   pending_restart: InstallAction | null;
+  /** The saved user profile that uses the extra (reason `in-use`), or null when a global setting does or nothing does. */
+  uninstall_profile: IntegrationProfileRef | null;
+}
+
+/** A saved user profile, named on an in-use entry or refusal. */
+export interface IntegrationProfileRef {
+  id: string;
+  title: string;
 }
 
 export interface IntegrationList {

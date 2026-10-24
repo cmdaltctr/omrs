@@ -29,6 +29,7 @@ function installed(id: string, name: string, change: Partial<Integration> = {}):
     keeps: [],
     lasting_uninstall_command: null,
     pending_restart: null,
+    uninstall_profile: null,
     ...change,
   };
 }

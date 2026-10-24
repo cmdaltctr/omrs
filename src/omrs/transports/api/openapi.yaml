@@ -4640,6 +4640,11 @@ components:
             Present on a 409 `in-use` from `uninstallIntegration`: the setting
             that selects the extra, as its `omrs.jsonc` key (for example
             `retrieval.rerank_backend`).
+        profile:
+          $ref: "#/components/schemas/IntegrationProfileRef"
+          description: >
+            Present on a 409 `in-use` from `uninstallIntegration` when a saved
+            user profile uses the extra; `setting` is then the key inside it.
         collections:
           type: array
           description: >
@@ -8009,7 +8014,7 @@ components:
     Integration:
       type: object
       additionalProperties: false
-      required: [id, name, purpose, extra, base, install_command, pip_command, availability, installable, install_reason, packages, install_caution, uninstallable, uninstall_reason, uninstall_setting, removes, keeps, lasting_uninstall_command, pending_restart]
+      required: [id, name, purpose, extra, base, install_command, pip_command, availability, installable, install_reason, packages, install_caution, uninstallable, uninstall_reason, uninstall_setting, removes, keeps, lasting_uninstall_command, pending_restart, uninstall_profile]
       properties:
         id:
           type: string
@@ -8127,6 +8132,26 @@ components:
             when nothing waits. It does not change when a later job runs, so
             a card shows "Installed, restart to use" or "Removed, restart to
             apply" from this field, not from the last job.
+        uninstall_profile:
+          oneOf:
+            - $ref: "#/components/schemas/IntegrationProfileRef"
+            - type: "null"
+          description: >
+            The saved user profile that uses the extra when `uninstall_reason`
+            is `in-use` because of a profile (`uninstall_setting` is then the
+            key inside it: `pdf_reader` on a Read document step, or
+            `embed_provider`). Null when a global setting uses the extra, or
+            when nothing does.
+
+    IntegrationProfileRef:
+      type: object
+      additionalProperties: false
+      required: [id, title]
+      properties:
+        id:
+          type: string
+        title:
+          type: string
 
     IntegrationList:
       type: object

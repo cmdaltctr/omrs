@@ -98,6 +98,8 @@ class InstallJob:
         installed: Returns the installed distributions and what they
             require (tests replace it).
         saved: Returns the values saved in ``omrs.jsonc`` (tests replace it).
+        profiles: Returns the saved-profile catalogue, or ``None``. ``None`` here
+            means the route reads the web server's profile service.
         restart_needed: Each extra installed or uninstalled in this launch, with its action.
     """
 
@@ -107,6 +109,7 @@ class InstallJob:
     requirements: Callable[[str], list[str]] = extra_requirements
     installed: Callable[[], Installed] = installed_requirements
     saved: Callable[[], Mapping[str, Any]] = saved_settings
+    profiles: Callable[[], Any] | None = None
     restart_needed: dict[str, str] = field(default_factory=dict)
     _state: str = IDLE
     _action: str | None = None

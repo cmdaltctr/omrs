@@ -40,13 +40,13 @@ from .install_environment import (
 )
 from .uninstall_plan import Installed as InstalledMap
 from .uninstall_plan import (
-    in_use_setting,
     installed_requirements,
     lasting_uninstall_command,
     packages_to_remove,
     saved_settings,
     uninstall_reason,
 )
+from .uninstall_profiles import in_use
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +58,8 @@ RESTART_NEEDED = "restart-needed"
 #: ``settings`` is the Engine's frozen ``EffectiveSettings``, or ``None``.
 Probe = Callable[[Any], str]
 Installed = Callable[[], InstalledMap]
+#: Returns the saved-profile catalogue, or ``None`` when the server has none.
+Profiles = Callable[[], Any]
 Saved = Callable[[], Mapping[str, Any]]
 
 
@@ -232,16 +234,18 @@ def _uninstall_fields(
     *,
     installed: Installed,
     saved: Saved,
+    profiles: Profiles,
     running: bool,
 ) -> dict[str, Any]:
-    """Return the six uninstall fields of one entry (design D1, D2, D4)."""
+    """Return the seven uninstall fields of one entry (design D1, D2, D4)."""
     removes: list[str] = []
     keeps: list[str] = []
-    setting = None
+    used = None
     if extra is not None and not base and extra not in EXCLUDED_EXTRAS:
         if availability == AVAILABLE:
-            setting = in_use_setting(extra, settings, saved())
+            used = in_use(extra, settings, saved(), profiles())
             removes, keeps = packages_to_remove(extra, installed())
+    setting = None if used is None else used.setting
     reason = uninstall_reason(extra, base, availability, removes, setting, environment, running)
     lasting = None if extra is None else lasting_uninstall_command(environment, extra, base=base)
     return {
@@ -251,6 +255,7 @@ def _uninstall_fields(
         "removes": removes,
         "keeps": keeps,
         "lasting_uninstall_command": lasting,
+        "uninstall_profile": used.profile if reason == "in-use" and used else None,
     }
 
 
@@ -263,6 +268,7 @@ def describe_entry(
     *,
     installed: Installed = installed_requirements,
     saved: Saved = saved_settings,
+    profiles: Profiles = lambda: None,
     running: bool = False,
 ) -> dict[str, Any]:
     """Return one catalogue entry with its availability, install and uninstall fields.
@@ -276,6 +282,7 @@ def describe_entry(
         requirements: Returns an extra's requirements.
         installed: Returns the installed distributions and what they require.
         saved: Returns the values saved in ``omrs.jsonc``.
+        profiles: Returns the saved-profile catalogue, or ``None``.
         running: Whether an install or uninstall job runs now.
     """
     extra = item.extra
@@ -319,6 +326,7 @@ def describe_entry(
             environment,
             installed=installed,
             saved=saved,
+            profiles=profiles,
             running=running,
         ),
     }
@@ -332,6 +340,7 @@ def describe_integrations(
     *,
     installed: Installed = installed_requirements,
     saved: Saved = saved_settings,
+    profiles: Profiles = lambda: None,
     running: bool = False,
 ) -> list[dict[str, Any]]:
     """Return every catalogue entry with its resolved availability.
@@ -348,10 +357,12 @@ def describe_integrations(
         requirements: Returns an extra's requirements.
         installed: Returns the installed distributions and what they require.
         saved: Returns the values saved in ``omrs.jsonc``.
+        profiles: Returns the saved-profile catalogue, or ``None``.
         running: Whether an install or uninstall job runs now.
     """
     once_installed = functools.cache(installed)
     once_saved = functools.cache(saved)
+    once_profiles = functools.cache(profiles)
     return [
         describe_entry(
             item,
@@ -361,6 +372,7 @@ def describe_integrations(
             requirements,
             installed=once_installed,
             saved=once_saved,
+            profiles=once_profiles,
             running=running,
         )
         for item in CATALOGUE

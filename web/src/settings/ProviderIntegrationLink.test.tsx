@@ -38,6 +38,7 @@ const ANTHROPIC_ENTRY: Integration = {
   keeps: [],
   lasting_uninstall_command: null,
   pending_restart: null,
+  uninstall_profile: null,
 };
 
 async function openProviders(connections: Connection[]) {

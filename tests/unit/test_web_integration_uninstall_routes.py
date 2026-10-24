@@ -8,6 +8,7 @@ request can show it started no process. No test removes a package.
 
 from __future__ import annotations
 
+import copy
 import json
 import os
 import shlex
@@ -34,6 +35,7 @@ from tests.unit.test_web_documents_support import (  # noqa: E402
 from tests.unit.test_web_openapi_conformance_support import FAMILIES, ContractChecker  # noqa: E402
 
 import omrs.capabilities as capabilities  # noqa: E402
+from omrs.core.profiles.resolver import ProfileResolver  # noqa: E402
 from omrs.transports.api.install_environment import InstallEnvironment  # noqa: E402
 
 STATUS = "/v1/integrations/install"
@@ -125,8 +127,12 @@ def make(
     monkeypatch.setattr("omrs.core.vectordb.registry.availability", lambda name: "available")
     clients: list[TestClient] = []
 
-    def build(**overrides: Any) -> Harness:
-        engine = make_engine(lance_store(tmp_path), effective_settings(**overrides))
+    def build(*, resolver: bool = False, **overrides: Any) -> Harness:
+        store = lance_store(tmp_path)
+        settings = effective_settings(**overrides)
+        # A profile graph is checked against its built-in profile, which needs a resolver.
+        profiles = ProfileResolver(store=store, server_profile="documents", base=settings)
+        engine = make_engine(store, settings, profile_resolver=profiles if resolver else None)
         app, policy = build_app(tmp_path, engine)
         client = TestClient(app, base_url=BASE)
         clients.append(client)
@@ -380,3 +386,61 @@ def test_uninstall_responses_conform(harness: Harness) -> None:
     check.check(harness.client.post(url("hybrid"), headers={**ORIGIN, **read}), 403)
     assert "uninstallIntegration" in check.operations
     assert "uninstallIntegration" in FAMILIES["integration_install"]
+
+
+# ── Saved user profiles (check-saved-profiles-before-uninstall) ──────────
+
+
+def _profile_reading_with(harness: Harness, reader: str) -> dict[str, Any]:
+    """Create a user profile whose ingest Read document step names *reader*.
+
+    The profile is created over HTTP. Its new ingest revision is saved through
+    the server's workspace store, because this harness starts no run service.
+    """
+    created = harness.client.post(
+        "/v1/profiles", json={"title": "Scans", "source": "documents"}, headers=ORIGIN
+    )
+    assert created.status_code == 201, created.text
+    profile = created.json()["profile"]
+    workspace = harness.client.app.state.runtime.profiles._workspace  # type: ignore[attr-defined]
+    pipeline = workspace.get_pipeline(profile["slots"]["ingest"])
+    graph = copy.deepcopy(workspace.get_revision(pipeline["current_revision_id"])["document"])
+    readers = [node for node in graph["nodes"] if node["operation"] == "read.document"]
+    assert readers, "the documents ingest graph has a Read document step"
+    readers[0].setdefault("params", {})["pdf_reader"] = reader
+    workspace.save_revision(profile["slots"]["ingest"], graph, schema_version=1)
+    return profile
+
+
+@pytest.fixture
+def pypdfium2_installed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make the pypdfium2 reader and its package look installed."""
+    monkeypatch.setattr(capabilities, "pdf_reader_installed", lambda reader: True)
+    monkeypatch.setitem(INSTALLED, "pypdfium2", frozenset())
+
+
+@pytest.mark.usefixtures("pypdfium2_installed")
+def test_a_saved_profile_that_reads_with_the_extra_is_409(make: Make) -> None:
+    harness = make(resolver=True)
+    profile = _profile_reading_with(harness, "pypdfium2")
+    who = {"id": profile["profile_id"], "title": "Scans"}
+    entry = harness.entries()["pdf-pypdfium2"]
+    assert entry["uninstall_reason"] == "in-use" and entry["uninstall_setting"] == "pdf_reader"
+    assert entry["uninstall_profile"] == who
+    response = harness.client.post(url("pdf-pypdfium2"), headers=ORIGIN)
+    assert response.status_code == 409, response.text
+    body = response.json()
+    assert body["reason"] == "in-use" and body["setting"] == "pdf_reader"
+    assert body["profile"] == who and "Scans" in body["message"]
+    assert harness.ran() is None
+    assert harness.entries()["chroma"]["uninstall_profile"] is None
+
+
+@pytest.mark.usefixtures("pypdfium2_installed")
+def test_a_profile_entry_and_its_refusal_conform(make: Make) -> None:
+    harness = make(resolver=True)
+    _profile_reading_with(harness, "pypdfium2")
+    assert harness.entries()["pdf-pypdfium2"]["uninstall_reason"] == "in-use"
+    check = ContractChecker()
+    check.check(harness.client.get("/v1/integrations"), 200)
+    check.check(harness.client.post(url("pdf-pypdfium2"), headers=ORIGIN), 409)
