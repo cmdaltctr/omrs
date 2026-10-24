@@ -19,6 +19,13 @@ cd "$(dirname "$0")/.."
 
 step() { printf '\n== %s ==\n' "$1" >&2; }
 
+# Temporary paths that later steps create. One EXIT trap removes them all,
+# because a second `trap ... EXIT` would replace the first.
+junit=""
+wheel_dir=""
+cleanup() { rm -rf ${junit:+"$junit"} ${wheel_dir:+"$wheel_dir"}; }
+trap cleanup EXIT
+
 step "ruff check (whole repo)"
 uv run --no-sync ruff check .
 
@@ -44,13 +51,15 @@ fi
 echo "OK: default install is torch-free"
 
 # The fast suite runs in parallel when pytest-xdist is installed (about three
-# times faster; --dist loadfile comes from pyproject.toml). The clean-base
-# tripwire runs as its own step: it starts a second copy of the suite inside
-# one test, which a parallel run of the main suite cannot split.
+# times faster; --dist loadfile comes from pyproject.toml). It writes a JUnit
+# report. The clean-base tripwire runs as its own step and reads its executed
+# count from that report through OMRS_TRIPWIRE_JUNIT, so it does not run the
+# suite again.
 parallel=()
 if uv run --no-sync python -c "import xdist" >/dev/null 2>&1; then
   parallel=(-n auto --maxprocesses=8)
 fi
+junit="$(mktemp)"
 
 step "fast suite (CI env${parallel:+, parallel})"
 PDF_READER=pypdf \
@@ -60,7 +69,7 @@ EMBED_MODEL=nomic-embed-text \
 OLLAMA_BASE_URL=http://localhost:11434 \
 METADATA_LLM_PROVIDER=local \
   uv run --no-sync pytest -m "not slow" --tb=short -q ${parallel[@]+"${parallel[@]}"} \
-    --deselect tests/test_clean_base_tripwire.py
+    --deselect tests/test_clean_base_tripwire.py --junitxml="$junit"
 
 step "clean-base tripwire (CI env)"
 PDF_READER=pypdf \
@@ -69,6 +78,7 @@ LOCAL_BACKEND=ollama \
 EMBED_MODEL=nomic-embed-text \
 OLLAMA_BASE_URL=http://localhost:11434 \
 METADATA_LLM_PROVIDER=local \
+OMRS_TRIPWIRE_JUNIT="$junit" \
   uv run --no-sync pytest tests/test_clean_base_tripwire.py --tb=short -q
 
 step "frontend gates and web wheel assets"
@@ -77,7 +87,6 @@ step "frontend gates and web wheel assets"
 if command -v npm >/dev/null 2>&1; then
   (cd web && npm ci && npm run lint && npm run typecheck && npm test && npm run build)
   wheel_dir="$(mktemp -d)"
-  trap 'rm -rf "$wheel_dir"' EXIT
   uv build --wheel --out-dir "$wheel_dir"
   uv run --no-sync python scripts/check_web_wheel.py "$wheel_dir"/*.whl
   echo "OK: wheel contains the web workspace assets"
