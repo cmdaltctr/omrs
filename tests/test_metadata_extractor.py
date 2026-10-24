@@ -822,7 +822,6 @@ class TestSeedCategories:
 # ── 9.6 LlamaIndex mode tests — Stage 2 implementation ──────────────────────
 
 
-@pytest.mark.metadata_llm
 class TestLlamaindexExtraction:
     """Tests for the real LlamaIndex metadata extraction (Stage 2)."""
 
@@ -842,6 +841,7 @@ class TestLlamaindexExtraction:
         node.metadata = metadata
         return node
 
+    @pytest.mark.metadata_llm
     def test_import_error_falls_back_to_ollama(self, monkeypatch, caplog) -> None:
         """Missing llama-index-llms-ollama → WARNING + ollama fallback."""
         # Simulate ImportError by removing the package from sys.modules
@@ -900,6 +900,7 @@ class TestLlamaindexExtraction:
             if r.levelno == logging.WARNING
         )
 
+    @pytest.mark.metadata_llm
     def test_successful_extraction(self, monkeypatch, caplog) -> None:
         """Real llamaindex pipeline returns aggregated metadata."""
 
@@ -978,6 +979,7 @@ class TestLlamaindexExtraction:
         assert result["keywords"] == []
         assert result["summary"] == ""
 
+    @pytest.mark.metadata_llm
     def test_extraction_failure_falls_back_to_ollama(self, monkeypatch, caplog) -> None:
         """Pipeline raises exception → WARNING + ollama fallback."""
         import sys
@@ -1038,6 +1040,7 @@ class TestLlamaindexExtraction:
             for r in caplog.records
         )
 
+    @pytest.mark.metadata_llm
     def test_double_degradation_llamaindex_and_ollama_both_fail(
         self,
         monkeypatch,
@@ -1092,6 +1095,7 @@ class TestLlamaindexExtraction:
             for r in caplog.records
         )
 
+    @pytest.mark.metadata_llm
     def test_chunk_capping(self, monkeypatch) -> None:
         """Chunk capping limits text passed to the pipeline."""
         # Set small chunk cap

@@ -90,3 +90,16 @@ The 12 slowest tests after the change:
 | 2.6 s | `test_bm25_validity_token.py::test_separate_process_recreation_during_build_is_not_cached` |
 
 No test from the old metadata or OCR waits is left in the list. The OCR timeout test now takes 1.1 s (120.1 s before).
+
+## CI (PR #126, run 40132303145)
+
+All 23 jobs passed (Tier 2 is skipped on pull requests). Step times compared with the last `v3` run before this change:
+
+| Job | Step | Last `v3` run | PR #126 |
+|---|---|---|---|
+| `test (ubuntu-latest)` | fast suite | 767 s | 398 s |
+| `test (ubuntu-latest)` | tripwire | 712 s | 20 s |
+| `test (macos-latest)` | fast suite | not measured | 315 s |
+| `test (macos-latest)` | tripwire | not measured | 23 s |
+| `Floor resolution` (base) | fast suite | not measured | 311 s |
+| `Floor resolution` (base) | tripwire | not measured | 19 s |

@@ -34,7 +34,7 @@
 - [x] 5.3 Re-pin `_BASE_EXECUTED` for the new tests from groups 2 to 5, with a dated comment. Verify: the tripwire passes in both modes (variable set and not set).
 - [x] 5.4 Mutation check: mark one fast test `skip`, run the fast suite with a report, then run the tripwire with the report. Verify: the tripwire fails with an executed-count drift. Revert the skip.
 - [x] 5.5 Update `scripts/local_ci.sh`: the fast-suite step writes the report to a `mktemp` path, the tripwire step reads it, and the file is removed on exit. Verify: `./scripts/local_ci.sh` passes, and the tripwire step takes under 30 s.
-- [ ] 5.6 Update `.github/workflows/ci.yml`: the `test` job and the base entry of the `floors` job write the report to `$RUNNER_TEMP` and pass `OMRS_TRIPWIRE_JUNIT` to the tripwire step. Extra entries of `floors` stay as they are. Verify: `actionlint` passes if installed, else review the YAML by hand; the CI run on the pull request is green.
+- [x] 5.6 Update `.github/workflows/ci.yml`: the `test` job and the base entry of the `floors` job write the report to `$RUNNER_TEMP` and pass `OMRS_TRIPWIRE_JUNIT` to the tripwire step. Extra entries of `floors` stay as they are. Verify: `actionlint` passes if installed, else review the YAML by hand; the CI run on the pull request is green.
 - [x] 5.7 Update the tripwire text in `docs/guides/testing.md`, the Quick Reference and "Parallel runs" paragraph in `CLAUDE.md`, and the tripwire docstrings. Verify: no text still says the tripwire step runs a second copy of the suite in CI or in `local_ci.sh` (`git grep -n "second copy\|inner suite"`).
 
 ## 6. Integration
