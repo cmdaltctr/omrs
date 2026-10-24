@@ -25,9 +25,13 @@ _GUIDE_FOLDERS = [
     "src/omrs/core/retrieval",
     "src/omrs/core/ingestion",
     "src/omrs/core/pipelines",
+    "src/omrs/core/providers",
     "src/omrs/transports",
+    "src/omrs/transports/api",
     "src/omrs/integrations",
+    "web",
     "web/src",
+    "web/src/integrations",
     "tests",
 ]
 

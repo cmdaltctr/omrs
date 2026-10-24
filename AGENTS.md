@@ -143,9 +143,13 @@ Each folder below has a short `AGENTS.md` (and a `CLAUDE.md` link to it). Read t
 - [`src/omrs/core/retrieval/`](src/omrs/core/retrieval/AGENTS.md): search and reranker
 - [`src/omrs/core/ingestion/`](src/omrs/core/ingestion/AGENTS.md): indexing
 - [`src/omrs/core/pipelines/`](src/omrs/core/pipelines/AGENTS.md): graph runner
+- [`src/omrs/core/providers/`](src/omrs/core/providers/AGENTS.md): LLM and embedding provider registries
 - [`src/omrs/transports/`](src/omrs/transports/AGENTS.md): MCP, CLI and HTTP API
+- [`src/omrs/transports/api/`](src/omrs/transports/api/AGENTS.md): HTTP API, contract and install jobs
 - [`src/omrs/integrations/`](src/omrs/integrations/AGENTS.md): external services
+- [`web/`](web/AGENTS.md): front-end package, gates and build output
 - [`web/src/`](web/src/AGENTS.md): workspace front end
+- [`web/src/integrations/`](web/src/integrations/AGENTS.md): Integrations page
 - [`tests/`](tests/AGENTS.md): Python test suite
 
 ## Detailed Documentation
