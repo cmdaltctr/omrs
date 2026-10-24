@@ -22,6 +22,7 @@ const UNINSTALL_REFUSALS: Record<string, { message: string; action: RefusalActio
   "install-running": { message: "Another install or uninstall is running. Wait for it to finish, then try again.", action: "retry" },
   "not-uninstallable-here": { message: "This integration cannot be uninstalled from the app.", action: "check" },
   "not-installed": { message: "This integration is not installed now, so there is nothing to uninstall.", action: "check" },
+  "nothing-to-remove": { message: "Other installed packages need every package of this extra, so the app cannot remove it.", action: "check" },
   "in-use": { message: "A setting uses this extra. Change that setting before you uninstall it.", action: "check" },
   "not-uv-tool": { message: "This server was not installed with uv tool, so it cannot uninstall from the app.", action: "check" },
   "uv-not-found": { message: "The server cannot find uv, so it cannot uninstall from the app.", action: "check" },

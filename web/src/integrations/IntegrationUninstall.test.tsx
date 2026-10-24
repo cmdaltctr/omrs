@@ -242,6 +242,33 @@ describe("Uninstall details", () => {
     expect(within(alert).queryByRole("button", { name: "Retry" })).toBeNull();
   });
 
+  it("says nothing can be removed when other packages need every package of the extra, with no Uninstall", async () => {
+    const torch = installed("torch", "PyTorch reranker", {
+      uninstallable: false,
+      uninstall_reason: "nothing-to-remove",
+      removes: [],
+      keeps: ["sentence-transformers", "transformers"],
+    });
+    const { server } = uninstallServer({ catalogue: [torch, CHROMA] });
+    startApp("#/integrations", server);
+    const card_ = await card("PyTorch reranker");
+    expect(card_).toHaveTextContent("Other installed packages need every package of this extra (sentence-transformers, transformers), so the app cannot remove it.");
+    expect(within(card_).queryByRole("button", { name: /^Uninstall/ })).toBeNull();
+  });
+
+  it("explains a nothing-to-remove refusal from the server", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { server } = uninstallServer({
+      post: () => json({ status: "error", message: "Refused <raw> detail", reason: "nothing-to-remove" }, 409),
+    });
+    startApp("#/integrations", server);
+    const { user, dialog } = await pressUninstall("Chroma vector store");
+    await user.click(within(dialog).getByRole("button", { name: "Uninstall" }));
+    const alert = await within(await card("Chroma vector store")).findByRole("alert");
+    expect(alert).toHaveTextContent("Other installed packages need every package of this extra, so the app cannot remove it.");
+    expect(within(alert).getByRole("button", { name: "Check again" })).toBeInTheDocument();
+  });
+
   it("names the setting when the server refuses the uninstall with in-use", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const { server } = uninstallServer({

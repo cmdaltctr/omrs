@@ -9,7 +9,7 @@ import { InstallRefusal } from "./InstallRefusal";
 import { UninstallDialog } from "./UninstallDialog";
 import type { InstallControl } from "./useIntegrationInstall";
 
-export type UninstallPhase = "removed" | "running" | "failed" | "ready" | "in-use" | "none";
+export type UninstallPhase = "removed" | "running" | "failed" | "ready" | "in-use" | "shared" | "none";
 
 /** The uninstall phase of one entry, from the catalogue and the uninstall job of this launch. */
 export function uninstallPhase(integration: Integration, control: InstallControl): UninstallPhase {
@@ -22,6 +22,7 @@ export function uninstallPhase(integration: Integration, control: InstallControl
   if ((mine && job.state === "running") || control.uninstalling === extra) return "running";
   if (mine && job.state === "failed") return "failed";
   if (integration.uninstall_reason === "in-use") return "in-use";
+  if (integration.uninstall_reason === "nothing-to-remove") return "shared";
   // While another job runs the server reports `install-running`; the button then stays, disabled.
   return integration.uninstallable || integration.uninstall_reason === "install-running" ? "ready" : "none";
 }
@@ -62,6 +63,14 @@ export function UninstallControls({ integration, control, phase }: UninstallCont
       <p className="text-meta text-muted-foreground [overflow-wrap:anywhere]">
         {integration.uninstall_setting === null ? "A setting" : <code className="text-code">{integration.uninstall_setting}</code>}
         {" uses this extra. Change that setting before you uninstall it."}
+      </p>
+    );
+  }
+  if (phase === "shared") {
+    // Every package stays because something else needs it, for example PyTorch's packages and lancedb.
+    return (
+      <p className="text-meta text-muted-foreground [overflow-wrap:anywhere]">
+        {`Other installed packages need every package of this extra (${integration.keeps.join(", ")}), so the app cannot remove it.`}
       </p>
     );
   }
