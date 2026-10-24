@@ -16,5 +16,7 @@
 
 ## 4. Checks
 
-- [ ] 4.1 Re-pin the tripwire, then run `./scripts/local_ci.sh` and the web gates, and `openspec validate uninstall-integrations-from-the-app --strict`. Verify: all pass; record the counts here.
+- [x] 4.1 Re-pin the tripwire, then run `./scripts/local_ci.sh` and the web gates, and `openspec validate uninstall-integrations-from-the-app --strict`. Verify: all pass; record the counts here.
+  - 2026-10-24 counts: `./scripts/local_ci.sh` passed. Fast suite 7,999 passed, 152 skipped (parallel, 3 min 50 s). Tripwire 5 passed, with `_BASE_EXECUTED` 7912 → 8006 and `_WEB_EXTRA_CASES` 1409 → 1443. ruff and format clean (1,941 files), import-linter 21 kept, `openspec validate --all --strict` 85/85, OpenAPI contract valid, default install torch-free.
+  - Web gates: `npm run lint` pass, `npm run typecheck` pass, `npm test` 155 files and 1,920 tests passed, `npm run build` pass. `openspec validate uninstall-integrations-from-the-app --strict` valid.
 - [ ] 4.2 Browser check on a scratch `uv tool` install (D6) in Orca: uninstall each non-base extra, restart after each, and check that the app starts and Search answers. Verify: record the results here; the live app on port 8765 is not touched.
