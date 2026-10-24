@@ -21,6 +21,10 @@ import pytest
 
 from omrs.core.settings import EffectiveSettings, MetadataBlock
 
+# Every classification test here dispatches an LLM strategy through a fake
+# httpx client on purpose.
+pytestmark = pytest.mark.metadata_llm
+
 _PROVIDERS = {
     "ollama": {"local_backend": "ollama"},
     "llamacpp": {"local_backend": "llamacpp"},

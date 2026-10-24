@@ -26,7 +26,7 @@ from omrs.core.chunking.markdown import (
     ensure_heading_metadata as _ensure_heading_metadata,
 )
 from omrs.core.ingestion import read_and_chunk_file_async
-from omrs.core.settings import ChunkingBlock, EffectiveSettings
+from omrs.core.settings import ChunkingBlock
 
 # ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -387,11 +387,12 @@ def test_ensure_heading_metadata_copies_header_path_without_overwriting() -> Non
 async def test_heading_prepend_enabled_adds_heading_prefix(
     sample_md: Path,
     monkeypatch: pytest.MonkeyPatch,
+    effective_settings,
 ) -> None:
     """The experimental heading-prepend knob prefixes Markdown node text."""
     nodes = await read_and_chunk_file_async(
         sample_md,
-        settings=EffectiveSettings(chunking=ChunkingBlock(markdown_heading_prepend=True)),
+        settings=effective_settings(chunking=ChunkingBlock(markdown_heading_prepend=True)),
     )
 
     assert nodes

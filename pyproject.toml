@@ -187,6 +187,7 @@ pythonpath = ["."]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
     "chroma: requires the optional chroma extra (uv sync --extra chroma); skipped by design in the base install",
+    "metadata_llm: the test dispatches an LLM metadata strategy on purpose; turns off the conftest guard that fails any other test doing so",
 ]
 
 # ─── Import-linter contracts (Phase 2: config/compose/DI layering) ─────

@@ -53,7 +53,9 @@ class TestListDocuments:
         result = list_documents()
         assert result == []
 
-    def test_list_documents_scans_multiple_metadata_pages(self, tmp_path, monkeypatch) -> None:
+    def test_list_documents_scans_multiple_metadata_pages(
+        self, tmp_path, monkeypatch, effective_settings
+    ) -> None:
         """Document chunk counts must include metadata beyond one scan page.
 
         Task 5.1 rewrite: seeds the store through the real ingestion path
@@ -62,9 +64,9 @@ class TestListDocuments:
         store in the base install and Chroma in the chroma-extra job.
         """
         from omrs.core.ingestion import ingest_path_async, list_documents
-        from omrs.core.settings import EffectiveSettings, set_default_effective_settings
+        from omrs.core.settings import set_default_effective_settings
 
-        set_default_effective_settings(EffectiveSettings(chroma_scan_page_size=2))
+        set_default_effective_settings(effective_settings(chroma_scan_page_size=2))
 
         created: dict[str, int] = {}
         resolved: dict[str, str] = {}

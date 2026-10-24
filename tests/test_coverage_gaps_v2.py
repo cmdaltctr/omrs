@@ -88,10 +88,11 @@ class TestOpenRouterExtraction:
     async def test_cloud_provider_routes_to_openrouter(self, monkeypatch) -> None:
         """metadata_llm_provider=cloud selects the openrouter strategy."""
         from omrs.core.metadata import extractor as ext
+        from omrs.core.metadata import registry
 
         mock = AsyncMock(return_value={"category": "x", "keywords": [], "summary": ""})
         with (
-            patch.dict(ext._metadata_get.__globals__["_cache"], {}, clear=False),
+            patch.dict(registry._cache, {}, clear=False),
             patch(
                 "omrs.core.metadata.openrouter._extract_openrouter_chat_async",
                 mock,

@@ -223,6 +223,7 @@ class TestCustomKeywordRules:
 # ── 9.4 Llamaindex stub test ───────────────────────────────────────────────
 
 
+@pytest.mark.metadata_llm
 class TestLlamaindexStub:
     """Tests for the LlamaIndex metadata extraction — updated from stub to real.
 
@@ -320,6 +321,7 @@ class TestUnknownMode:
 # ── 9.5 Ollama mode tests — hybrid taxonomy, JSON parsing, normalisation ────
 
 
+@pytest.mark.metadata_llm
 class TestOllamaExtraction:
     """Tests for the updated ollama metadata extraction (Stage 1)."""
 
@@ -549,6 +551,7 @@ class TestOllamaExtraction:
         assert len(result["summary"]) <= 303  # 300 + "…"
 
 
+@pytest.mark.metadata_llm
 class TestHybridCategoryTaxonomy:
     """Tests for the hybrid category lookup (ChromaDB + seed categories)."""
 
@@ -819,6 +822,7 @@ class TestSeedCategories:
 # ── 9.6 LlamaIndex mode tests — Stage 2 implementation ──────────────────────
 
 
+@pytest.mark.metadata_llm
 class TestLlamaindexExtraction:
     """Tests for the real LlamaIndex metadata extraction (Stage 2)."""
 
@@ -1389,6 +1393,7 @@ class TestOllamaMarkdownFenceStripping:
         assert result["summary"] == "x"
 
 
+@pytest.mark.metadata_llm
 class TestOllamaRetry:
     """Bounded retry with exponential backoff around the Ollama HTTP call."""
 
@@ -1666,6 +1671,7 @@ def _no_sleep(monkeypatch) -> list[float]:
     return sleeps
 
 
+@pytest.mark.metadata_llm
 class TestStructuredOutputEnforcement:
     """Each backend must constrain generation at the serving layer."""
 
@@ -1756,6 +1762,7 @@ class TestStructuredOutputEnforcement:
         assert result["keywords"] == ["transformer"]
 
 
+@pytest.mark.metadata_llm
 class TestOpenRouterStructuredOutputDowngrade:
     """A rejected schema must degrade to the prompt-only path, not to failure."""
 

@@ -45,7 +45,9 @@ class TestAzureDocumentBranch:
         assert nodes
         assert all(n.metadata.get("content_type") == "document" for n in nodes)
 
-    async def test_azure_failure_degrades_to_local(self, tmp_path: Path) -> None:
+    async def test_azure_failure_degrades_to_local(
+        self, tmp_path: Path, effective_settings
+    ) -> None:
         """An Azure error must not abort ingestion (ADR-024 graceful degradation).
 
         Under the registry dispatch the .md suffix never reaches the azure
@@ -62,11 +64,13 @@ class TestAzureDocumentBranch:
             AsyncMock(side_effect=RuntimeError("azure down")),
         ):
             nodes = await read_and_chunk_file_async(
-                md, settings=EffectiveSettings(document_backend="azure")
+                md, settings=effective_settings(document_backend="azure")
             )
         assert nodes, "must fall back to local reading rather than return nothing"
 
-    async def test_markdown_uses_the_markdown_chunk_size(self, tmp_path: Path) -> None:
+    async def test_markdown_uses_the_markdown_chunk_size(
+        self, tmp_path: Path, effective_settings
+    ) -> None:
         """.md files use markdown_chunk_size, other files use chunk_size."""
         from omrs.core.ingestion.chunker import read_and_chunk_file_async
         from omrs.core.settings import ChunkingBlock
@@ -76,13 +80,13 @@ class TestAzureDocumentBranch:
 
         small = await read_and_chunk_file_async(
             md,
-            settings=EffectiveSettings(
+            settings=effective_settings(
                 chunking=ChunkingBlock(markdown_chunk_size=256, chunk_size=4096, chunk_overlap=16)
             ),
         )
         large = await read_and_chunk_file_async(
             md,
-            settings=EffectiveSettings(
+            settings=effective_settings(
                 chunking=ChunkingBlock(markdown_chunk_size=4096, chunk_size=256, chunk_overlap=16)
             ),
         )

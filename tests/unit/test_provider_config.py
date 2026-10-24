@@ -141,6 +141,7 @@ async def test_llamacpp_chat_retries_on_failure(monkeypatch: pytest.MonkeyPatch)
 
 
 @pytest.mark.asyncio
+@pytest.mark.metadata_llm
 async def test_local_mode_dispatches_to_llamacpp_when_configured(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -160,6 +161,7 @@ async def test_local_mode_dispatches_to_llamacpp_when_configured(
 
 
 @pytest.mark.asyncio
+@pytest.mark.metadata_llm
 async def test_local_mode_dispatches_to_ollama_when_configured(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -179,6 +181,7 @@ async def test_local_mode_dispatches_to_ollama_when_configured(
 
 
 @pytest.mark.asyncio
+@pytest.mark.metadata_llm
 async def test_cloud_mode_dispatches_to_openrouter(
     monkeypatch: pytest.MonkeyPatch, effective_settings
 ) -> None:
@@ -202,6 +205,7 @@ async def test_cloud_mode_dispatches_to_openrouter(
 
 
 @pytest.mark.asyncio
+@pytest.mark.metadata_llm
 async def test_llamaindex_mode_falls_back_to_local_chat_on_import_error(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

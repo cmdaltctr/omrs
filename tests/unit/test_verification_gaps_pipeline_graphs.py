@@ -268,6 +268,7 @@ def capture(monkeypatch: pytest.MonkeyPatch) -> _Capture:
     return fake
 
 
+@pytest.mark.metadata_llm
 @pytest.mark.parametrize("first", ["a", "b"])
 def test_two_engines_graph_ingestion_prompts_hold_only_own_labels(
     monkeypatch: pytest.MonkeyPatch,
