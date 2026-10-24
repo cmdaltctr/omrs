@@ -43,10 +43,9 @@ interface IntegrationCardProps {
 
 /** One catalogue entry: name, status badge with its value as text, purpose, Install and Uninstall actions and commands. */
 export function IntegrationCard({ integration, installType, control }: IntegrationCardProps) {
-  // An install that succeeded in this launch shows as restart-needed before the catalogue is read again.
   const phase = installPhase(integration, control);
   const uninstall = uninstallPhase(integration, control);
-  const status = uninstall === "removed" ? REMOVED : STATUS[phase === "restart" ? "restart-needed" : integration.availability];
+  const status = uninstall === "removed" ? REMOVED : STATUS[integration.availability];
   const caution = integration.install_caution !== null && phase !== "restart" && (integration.availability === "not-installed" || integration.availability === "unknown");
   return (
     <Card id={integrationCardId(integration.id)} tabIndex={-1} className="scroll-mt-4">

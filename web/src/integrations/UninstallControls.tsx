@@ -17,8 +17,8 @@ export function uninstallPhase(integration: Integration, control: InstallControl
   if (extra === null || integration.base) return "none";
   const job = control.install;
   const mine = job?.extra === extra && job.action === "uninstall";
-  // After a restart the catalogue says not installed, and the cached success must not hide that.
-  if (mine && job.state === "succeeded" && integration.availability !== "not-installed") return "removed";
+  // The server keeps the restart state per extra, so a later job cannot change it (design D4).
+  if (integration.pending_restart === "uninstall") return "removed";
   if ((mine && job.state === "running") || control.uninstalling === extra) return "running";
   if (mine && job.state === "failed") return "failed";
   if (integration.uninstall_reason === "in-use") return "in-use";
@@ -32,9 +32,10 @@ export function uninstallActive(phase: UninstallPhase): boolean {
   return phase === "removed" || phase === "running" || phase === "failed";
 }
 
-/** The reinstall command without this extra, when the uv tool receipt lists it. */
+/** The reinstall command without this extra, when the uv tool receipt lists it and no setting uses the extra. */
 export function LastingUninstallCommand({ integration }: { integration: Integration }) {
-  if (integration.lasting_uninstall_command === null) return null;
+  // Running it while a setting uses the extra would break the next start.
+  if (integration.lasting_uninstall_command === null || integration.uninstall_reason === "in-use") return null;
   return (
     <div className="flex min-w-0 flex-col gap-1 border-t border-border pt-3">
       <CopyCommand command={integration.lasting_uninstall_command} subject={integration.name} label="Copy reinstall command without" />

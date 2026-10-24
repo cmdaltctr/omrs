@@ -127,7 +127,7 @@ describe("Uninstall from the Integrations page (spec scenarios)", () => {
     expect(await within(chroma).findByRole("status")).toHaveTextContent("Uninstalling chroma.");
 
     state.install = SUCCEEDED;
-    state.catalogue = [{ ...CHROMA, availability: "restart-needed", uninstallable: false, uninstall_reason: "not-installed", removes: [] }, AZURE, MAGIKA, PDF_INSPECTOR];
+    state.catalogue = [{ ...CHROMA, availability: "restart-needed", uninstallable: false, uninstall_reason: "not-installed", removes: [], pending_restart: "uninstall" }, AZURE, MAGIKA, PDF_INSPECTOR];
     await advance(1100);
     await waitFor(() => expect(within(chroma).getByText("Removed, restart to apply", { selector: "[data-slot=badge]" })).toBeInTheDocument());
     expect(within(chroma).queryByText("Installed, restart to use")).toBeNull();
@@ -166,6 +166,35 @@ describe("Uninstall from the Integrations page (spec scenarios)", () => {
     expect(card_).toHaveTextContent(/so a later reinstall does not add it back/);
     // Chroma is not in the receipt, so it has no lasting command.
     expect(within(await card("Chroma vector store")).queryByRole("button", { name: /^Copy reinstall command/ })).toBeNull();
+  });
+});
+
+describe("Restart state comes from the server (pending_restart)", () => {
+  it("Removed stays removed after another job: Chroma keeps Removed while Azure shows Installed", async () => {
+    const azureInstalled: IntegrationInstall = { ...SUCCEEDED, action: "install", extra: "azure", output: ["Installed 1 package"] };
+    const chroma = { ...CHROMA, availability: "restart-needed" as const, uninstallable: false, uninstall_reason: "not-installed" as const, removes: [], pending_restart: "uninstall" as const };
+    const azure = { ...AZURE, availability: "restart-needed" as const, installable: false, install_reason: "already-installed" as const, pending_restart: "install" as const };
+    const { server } = uninstallServer({ install: azureInstalled, catalogue: [chroma, azure] });
+    startApp("#/integrations", server);
+    const chromaCard = await card("Chroma vector store");
+    await waitFor(() => expect(server.find("GET", "/v1/integrations/install")).toHaveLength(1));
+    expect(within(chromaCard).getByText("Removed, restart to apply", { selector: "[data-slot=badge]" })).toBeInTheDocument();
+    expect(within(chromaCard).getByText("Restart the server to finish the uninstall.")).toBeInTheDocument();
+    expect(within(chromaCard).queryByText("Installed, restart to use")).toBeNull();
+    const azureCard = await card("Azure Document Intelligence");
+    expect(within(azureCard).getByText("Installed, restart to use", { selector: "[data-slot=badge]" })).toBeInTheDocument();
+    expect(within(azureCard).queryByText("Removed, restart to apply")).toBeNull();
+  });
+
+  it("hides the lasting command while a setting uses the extra", async () => {
+    const lasting = `uv tool install --reinstall "omrs[web] @ ${SOURCE}"`;
+    const inUse = { ...CHROMA, uninstallable: false, uninstall_reason: "in-use" as const, uninstall_setting: "vector_store", lasting_uninstall_command: lasting };
+    const { server } = uninstallServer({ catalogue: [inUse, AZURE] });
+    startApp("#/integrations", server);
+    const chroma = await card("Chroma vector store");
+    expect(chroma).toHaveTextContent("vector_store uses this extra.");
+    expect(within(chroma).queryByText(lasting)).toBeNull();
+    expect(within(chroma).queryByRole("button", { name: /^Copy reinstall command/ })).toBeNull();
   });
 });
 

@@ -35,10 +35,8 @@ export function installPhase(integration: Integration, control: InstallControl):
   const install = control.install;
   // An uninstall job of this extra is not an install; `uninstallPhase` reads it.
   const mine = extra !== null && install?.extra === extra && install.action !== "uninstall";
-  // A local success only lifts an entry the catalogue still calls not installed. After a restart the
-  // catalogue says available, and the cached status must not hide that.
-  const succeeded = mine && install?.state === "succeeded" && integration.availability === "not-installed";
-  if (integration.availability === "restart-needed" || succeeded) return "restart";
+  // The server keeps the restart state per extra, so a later job cannot change it (design D4).
+  if (integration.pending_restart === "install") return "restart";
   if ((mine && install?.state === "running") || (extra !== null && control.starting === extra)) return "running";
   if (mine && install?.state === "failed") return "failed";
   return integration.installable && extra !== null ? "ready" : "none";

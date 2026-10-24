@@ -109,7 +109,7 @@ describe("Install from the Integrations page", () => {
     expect(await within(anthropic).findByRole("status")).toHaveTextContent(/Installing/);
 
     state.install = SUCCEEDED;
-    state.catalogue = [{ ...ANTHROPIC, availability: "restart-needed", installable: false, install_reason: "already-installed" }, AZURE, WEB];
+    state.catalogue = [{ ...ANTHROPIC, availability: "restart-needed", installable: false, install_reason: "already-installed", pending_restart: "install" }, AZURE, WEB];
     await advance(1100);
     await waitFor(() => expect(within(anthropic).getByText("Installed, restart to use", { selector: "[data-slot=badge]" })).toBeInTheDocument());
     await user.click(within(anthropic).getByRole("button", { name: "Restart" }));
@@ -178,7 +178,7 @@ describe("Install from the Integrations page", () => {
   });
 
   it("shows Installed, restart to use and Restart for an entry the server reports as restart-needed", async () => {
-    const { server } = installServer({ catalogue: [{ ...ANTHROPIC, availability: "restart-needed", installable: false, install_reason: "already-installed" }, WEB] });
+    const { server } = installServer({ catalogue: [{ ...ANTHROPIC, availability: "restart-needed", installable: false, install_reason: "already-installed", pending_restart: "install" }, WEB] });
     startApp("#/integrations", server);
     const anthropic = await card("Anthropic provider");
     expect(within(anthropic).getByText("Installed, restart to use", { selector: "[data-slot=badge]" })).toBeInTheDocument();
@@ -240,7 +240,7 @@ describe("Install caution and post-install check", () => {
 
   it("hides the caution once the entry is available or waits for a restart", async () => {
     const available = { ...ANTHROPIC, install_caution: CAUTION, availability: "available" as const, installable: false, install_reason: "already-installed" as const };
-    const restart = { ...AZURE, install_caution: CAUTION, availability: "restart-needed" as const, installable: false, install_reason: "already-installed" as const };
+    const restart = { ...AZURE, install_caution: CAUTION, availability: "restart-needed" as const, installable: false, install_reason: "already-installed" as const, pending_restart: "install" as const };
     const { server } = installServer({ catalogue: [available, restart, WEB] });
     startApp("#/integrations", server);
     expect(within(await card("Anthropic provider")).queryByText(CAUTION)).toBeNull();
