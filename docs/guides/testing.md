@@ -19,29 +19,44 @@ uv run pytest tests/test_reranker.py -v
 ### Run in parallel
 
 ```bash
-# Quick feedback. Skips the tripwire, which runs a second full suite inside.
+# Quick feedback. Skips the tripwire (see below).
 uv run pytest -n auto -m "not slow" --deselect tests/test_clean_base_tripwire.py -q
 ```
 
-On a 15-core Mac this takes about 2.5 minutes. The serial run takes about
-7.5 minutes without the tripwire. The project sets `--dist loadfile`, so each
+On a 15-core Mac this takes about 1 minute. The project sets `--dist loadfile`, so each
 test file stays on one worker, in file order. Do not override it with
 `--dist load`: some tests depend on logging state set up by an earlier test in
 the same file, and they fail when xdist splits a file across workers.
 
-The clean-base tripwire (`tests/test_clean_base_tripwire.py`) also runs its inner
-suite in parallel when pytest-xdist is installed. It takes about 2.5 minutes
-instead of 7.5. Its parallel summary line has no "deselected" count, so the
-tripwire reads that count from a collection-only run. It pins the exact passed
-count and the deselected count. It does not pin the skipped count, because a
-parallel run reports one fewer skip than a serial run. The static Chroma file
-checks stay.
+The clean-base tripwire (`tests/test_clean_base_tripwire.py`) pins the exact
+passed count and the deselected count of the fast suite. It gets the passed
+count in one of two ways:
+
+1. **From a report.** Set `OMRS_TRIPWIRE_JUNIT` to the JUnit report of a
+   fast-suite run in the same environment. The tripwire reads the count and
+   does not run the suite again. It takes a few seconds.
+2. **From its own run.** With no variable, the tripwire runs the fast suite in
+   a subprocess, in parallel when pytest-xdist is installed.
+
+The tripwire refuses a report that records a failure or an error, a missing
+report, and a report older than any `*.py` file under `src/` or `tests/`.
+
+```bash
+uv run pytest -n auto -m "not slow" --deselect tests/test_clean_base_tripwire.py -q --junitxml=/tmp/fast.xml
+OMRS_TRIPWIRE_JUNIT=/tmp/fast.xml uv run pytest tests/test_clean_base_tripwire.py -q
+```
+
+The deselected count always comes from a collection-only run, because the
+report does not hold it. The skipped count is not pinned, because a parallel
+run reports one fewer skip than a serial run. The static Chroma file checks
+stay.
 
 Before you push, run `./scripts/local_ci.sh`. It runs the main suite in
-parallel, then the tripwire as its own step, then the frontend gates. CI runs
-the suite serially and stays the source of truth.
+parallel and writes the report. Then it runs the tripwire on that report, then
+the frontend gates. The CI `test` job and the base entry of the `floors` job
+do the same.
 
-The fast suite runs in about 7.5 minutes in series, without the tripwire. It uses mock embeddings and an
+The fast suite also runs in series, without `-n`, but more slowly. It uses mock embeddings and an
 in-memory database, so it needs no Ollama, no llama.cpp, no network, and
 downloads nothing.
 
@@ -129,9 +144,30 @@ is `pdf_inspector`, and `auto` probes for LiteParse. Each reader emits
 different document boundaries, so only `pypdf` keeps tests deterministic. The
 conftest default already sets this.
 
-**Metadata extraction is off in tests.** The conftest default sets
-`extraction_mode="disabled"`. The real default is `llamaindex`, which would make
-every ingestion test call a live LLM and hang on network timeouts.
+**Metadata extraction is off in tests.** The conftest default and the
+`effective_settings` factory both set `extraction_mode="disabled"`. The factory
+also sets `classify_max_attempts=1`. The real default is `llamaindex`. It would
+make every ingestion test call a live LLM, retry, and then fall back without a
+sign, at a cost of about 15 s for each ingest.
+
+To test a strategy, pass it: `effective_settings(**{"metadata.extraction_mode":
+"keyword"})`, or a whole `metadata=MetadataBlock(...)`. The factory keeps a
+whole block as given.
+
+**LLM metadata calls need the `metadata_llm` marker.** An autouse guard in
+`conftest.py` fails any test that dispatches a metadata strategy other than
+`disabled` or `keyword`. The failure names the strategy and happens before any
+network call. Use the marker only for a test that calls an LLM strategy on
+purpose, with the LLM mocked:
+
+```python
+@pytest.mark.metadata_llm
+async def test_ollama_reply_is_parsed(...): ...
+```
+
+Use `pytestmark = pytest.mark.metadata_llm` when most tests in a module need
+it. If the guard fails a test that does not mean to call an LLM, fix its
+settings. Do not add the marker.
 
 **Database state can leak.** The conftest fixture clears collections between
 tests. Build your own client and bypass it, and the cleanup is yours.
