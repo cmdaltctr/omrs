@@ -17,6 +17,7 @@ from omrs.transports.api.install_environment import InstallEnvironment, is_base_
 from omrs.transports.api.integrations_catalogue import CATALOGUE
 from omrs.transports.api.uninstall_plan import (
     IN_USE,
+    Edge,
     in_use_setting,
     installed_requirements,
     lasting_uninstall_command,
@@ -36,6 +37,10 @@ REQUIRES = [
     'alpha-only>=1; extra == "alpha"',
     'shared-lib>=1; extra == "beta"',
     'beta-only>=1; extra == "beta"',
+    'sentence-transformers>=5.0; extra == "torch"',
+    'transformers>=5.0.0; extra == "torch"',
+    'leidenalg>=0.11.0; extra == "community-leiden"',
+    'igraph>=1.0.0; extra == "community-leiden"',
 ]
 
 
@@ -82,12 +87,75 @@ def test_a_package_another_installed_distribution_requires_is_kept() -> None:
     assert removes == ["llama-index-vector-stores-chroma"] and keeps == ["chromadb"]
 
 
-def test_a_package_required_only_by_a_removed_package_is_still_kept() -> None:
-    # Conservative: the requirer is removed too, but its edge still counts.
+def test_packages_of_one_extra_that_only_need_each_other_go_together() -> None:
+    # Revised D1: the requirer is removed in the same uninstall, so its edge no longer counts.
     found = installed("chromadb", llama_index_vector_stores_chroma={"chromadb"})
     assert packages_to_remove("chroma", found, REQUIRES) == (
-        ["llama-index-vector-stores-chroma"],
-        ["chromadb"],
+        ["chromadb", "llama-index-vector-stores-chroma"],
+        [],
+    )
+
+
+def test_leiden_removes_igraph_with_leidenalg() -> None:
+    found = installed("igraph", leidenalg={"igraph"})
+    assert packages_to_remove("community-leiden", found, REQUIRES) == (["leidenalg", "igraph"], [])
+
+
+def test_a_package_outside_the_extra_still_keeps_one_inside() -> None:
+    found = installed("igraph", leidenalg={"igraph"}, other_tool={"igraph"})
+    assert packages_to_remove("community-leiden", found, REQUIRES) == (["leidenalg"], ["igraph"])
+
+
+def test_a_kept_package_keeps_what_it_requires_in_the_same_extra() -> None:
+    # other-tool keeps leidenalg, and leidenalg keeps igraph: the fixed point follows the chain.
+    found = installed("igraph", leidenalg={"igraph"}, other_tool={"leidenalg"})
+    assert packages_to_remove("community-leiden", found, REQUIRES) == ([], ["leidenalg", "igraph"])
+
+
+TORCH = ("sentence-transformers", "transformers")
+LANCEDB_GATED = frozenset(
+    {
+        Edge("sentence-transformers", gate=frozenset({"embeddings"})),
+        Edge("transformers", gate=frozenset({"siglip"})),
+    }
+)
+
+
+def test_a_requirement_behind_an_extra_nobody_asks_for_keeps_nothing() -> None:
+    found = installed(*TORCH)
+    found["lancedb"] = LANCEDB_GATED
+    assert packages_to_remove("torch", found, REQUIRES) == (list(TORCH), [])
+
+
+def test_a_requirement_behind_an_extra_someone_asks_for_keeps_its_package() -> None:
+    found = installed(*TORCH)
+    found["lancedb"] = LANCEDB_GATED
+    found["embedder"] = frozenset({Edge("lancedb", asks=frozenset({"embeddings"}))})
+    assert packages_to_remove("torch", found, REQUIRES) == (
+        ["transformers"],
+        ["sentence-transformers"],
+    )
+
+
+def test_an_asked_extra_found_through_another_asked_extra_counts() -> None:
+    # app asks for mid[x]; mid's x extra asks for lancedb[siglip]; so transformers stays.
+    found = installed(*TORCH)
+    found["lancedb"] = LANCEDB_GATED
+    found["mid"] = frozenset({Edge("lancedb", gate=frozenset({"x"}), asks=frozenset({"siglip"}))})
+    found["app"] = frozenset({Edge("mid", asks=frozenset({"x"}))})
+    assert packages_to_remove("torch", found, REQUIRES) == (
+        ["sentence-transformers"],
+        ["transformers"],
+    )
+
+
+def test_omrs_asking_for_an_extra_of_a_dependency_counts() -> None:
+    found = installed(*TORCH)
+    found["lancedb"] = LANCEDB_GATED
+    lines = [*REQUIRES, "lancedb[embeddings]>=0.20"]
+    assert packages_to_remove("torch", found, lines) == (
+        ["transformers"],
+        ["sentence-transformers"],
     )
 
 
@@ -109,27 +177,57 @@ class FakeDistribution:
         self.requires = requires
 
 
-def test_the_installed_map_reads_names_without_markers() -> None:
+def test_the_installed_map_records_extra_gates_and_asked_extras() -> None:
     found = installed_requirements(
         [
-            FakeDistribution("LanceDB", ["Sentence_Transformers>=2.2.0 ; extra == 'embeddings'"]),
+            FakeDistribution(
+                "LanceDB",
+                [
+                    "Sentence_Transformers>=2.2.0 ; extra == 'embeddings'",
+                    "pylance[Torch,Geo]>=1; python_version >= '3.10'",
+                    "tantivy; extra == 'fts' or extra == 'all'",
+                    "weird; extra != 'x'",
+                ],
+            ),
             FakeDistribution("rank_bm25", None),
             FakeDistribution(None, ["ignored"]),
         ]
     )
-    assert found == {"lancedb": frozenset({"sentence-transformers"}), "rank-bm25": frozenset()}
+    assert found == {
+        "lancedb": frozenset(
+            {
+                Edge("sentence-transformers", gate=frozenset({"embeddings"})),
+                # Other markers count as true; asked extras are normalised.
+                Edge("pylance", asks=frozenset({"torch", "geo"})),
+                Edge("tantivy", gate=frozenset({"fts", "all"})),
+                # A marker the rule cannot read as a plain gate counts as always on.
+                Edge("weird"),
+            }
+        ),
+        "rank-bm25": frozenset(),
+    }
 
 
-def test_a_marker_edge_keeps_the_package() -> None:
-    lines = [*REQUIRES, 'sentence-transformers>=5; extra == "torch"']
+@pytest.mark.parametrize(
+    ("embedder", "result"),
+    [
+        ([], (["sentence-transformers"], [])),
+        (["lancedb[embeddings]>=0.20"], ([], ["sentence-transformers"])),
+    ],
+)
+def test_a_gated_edge_from_real_metadata_counts_only_when_asked_for(
+    embedder: list[str], result: tuple[list[str], list[str]]
+) -> None:
+    # Revised D1: the old rule kept the package whether or not anyone asked for lancedb[embeddings].
     found = installed_requirements(
         [
-            FakeDistribution("omrs", lines),
+            FakeDistribution("omrs", REQUIRES),
             FakeDistribution("lancedb", ["sentence-transformers>=2 ; extra == 'embeddings'"]),
             FakeDistribution("sentence-transformers", []),
+            FakeDistribution("embedder", embedder),
         ]
     )
-    assert packages_to_remove("torch", found, lines) == ([], ["sentence-transformers"])
+    assert packages_to_remove("torch", found, REQUIRES) == result
 
 
 # ── D2: the in-use map ───────────────────────────────────────────────────

@@ -38,6 +38,7 @@ from .install_environment import (
     install_reason,
     is_base_extra,
 )
+from .uninstall_plan import Installed as InstalledMap
 from .uninstall_plan import (
     in_use_setting,
     installed_requirements,
@@ -56,7 +57,7 @@ RESTART_NEEDED = "restart-needed"
 
 #: ``settings`` is the Engine's frozen ``EffectiveSettings``, or ``None``.
 Probe = Callable[[Any], str]
-Installed = Callable[[], Mapping[str, frozenset[str]]]
+Installed = Callable[[], InstalledMap]
 Saved = Callable[[], Mapping[str, Any]]
 
 

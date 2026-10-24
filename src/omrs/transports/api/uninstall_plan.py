@@ -3,10 +3,13 @@
 D1, the packages to remove: the names of the extra's own requirements that
 are installed, without any name that a base requirement of ``omrs`` names,
 that another installed extra lists, or that any other installed distribution
-requires. The reverse map reads each ``Requires-Dist`` name without its
-marker, so a marker never removes an edge. ``omrs`` itself is not a requirer
-here (its extras are handled by the two rules before). A package that only a
-package being removed requires still counts as required, so it is kept.
+requires. A ``Requires-Dist`` line behind its package's own extra
+(``extra == "x"``) counts only when something asks for that extra, as
+``pip check`` reads it; every other marker counts as true, so the check can
+only keep too much. ``omrs`` itself is not a requirer here (its extras are
+handled by the two rules before). Packages of the extra that only need each
+other go together, as pip-autoremove removes them: the result is the largest
+set of the extra's own packages that nothing outside the set requires.
 ``uv pip uninstall`` leaves orphans; the lasting command drops them.
 
 D2, the in-use map: the setting values that select each extra. Both the
@@ -18,9 +21,11 @@ This module only reads metadata and ``omrs.jsonc``; it starts no process.
 
 from __future__ import annotations
 
+import re
+from collections import defaultdict
 from collections.abc import Collection, Iterable, Mapping
 from importlib import metadata
-from typing import Any
+from typing import Any, NamedTuple
 
 from ...config.settings_file import read_settings_file
 from .install_environment import (
@@ -33,8 +38,28 @@ from .install_environment import (
     tool_install_command,
 )
 
-#: Installed distribution name to the names it requires (markers ignored).
-Installed = Mapping[str, frozenset[str]]
+
+class Edge(NamedTuple):
+    """One ``Requires-Dist`` line of an installed distribution.
+
+    Attributes:
+        name: The normalised name it requires.
+        gate: The requiring package's own extras that switch the line on
+            (``extra == "x"``); empty when the line always applies.
+        asks: The extras of *name* the line asks for (``name[a,b]``).
+    """
+
+    name: str
+    gate: frozenset[str] = frozenset()
+    asks: frozenset[str] = frozenset()
+
+
+#: Installed distribution name to its requirement lines. A plain name is an
+#: :class:`Edge` that always applies (test doubles use that short form).
+Installed = Mapping[str, frozenset[Edge] | frozenset[str]]
+
+_ASKS = re.compile(r"^\s*[A-Za-z0-9][A-Za-z0-9._-]*\s*\[(?P<extras>[^\]]*)\]")
+_OR = re.compile(r"\s+or\s+")
 
 #: Extra to the ``(setting key, value)`` pairs that select it, checked in order.
 #: An empty tuple means no setting selects the extra (``hybrid``: the built-in
@@ -50,21 +75,62 @@ IN_USE: dict[str, tuple[tuple[str, str], ...]] = {
 }
 
 
-def installed_requirements(distributions: Iterable[Any] | None = None) -> dict[str, frozenset[str]]:
-    """Return every installed distribution with the names it requires.
+def _extra_name(name: str) -> str:
+    """Normalise an extra name (PEP 685)."""
+    return re.sub(r"[-_.]+", "-", name.strip()).lower()
+
+
+def _gate(marker: str) -> frozenset[str]:
+    """Return the extras that switch a marker on, or an empty set for always on.
+
+    Every ``or`` part must name an ``extra ==`` clause; any other shape
+    (``extra !=``, a part without an extra) counts as always on.
+    """
+    if "extra" not in marker:
+        return frozenset()
+    names: set[str] = set()
+    for part in _OR.split(marker.strip().strip("()")):
+        found = [match["name"] for match in _EXTRA_CLAUSE.finditer(part)]
+        if not found or part.count("extra") != len(found):
+            return frozenset()
+        names.update(_extra_name(name) for name in found)
+    return frozenset(names)
+
+
+def _asks(spec: str) -> frozenset[str]:
+    match = _ASKS.match(spec)
+    if match is None:
+        return frozenset()
+    return frozenset(_extra_name(name) for name in match["extras"].split(",") if name.strip())
+
+
+def _edge(line: str) -> Edge:
+    spec, _, marker = line.partition(";")
+    return Edge(_requirement_name(spec), _gate(marker), _asks(spec))
+
+
+def installed_requirements(
+    distributions: Iterable[Any] | None = None,
+) -> dict[str, frozenset[Edge]]:
+    """Return every installed distribution with its requirement lines.
 
     Args:
         distributions: Distributions to read. Defaults to
             ``importlib.metadata.distributions()``.
     """
-    found: dict[str, set[str]] = {}
+    found: dict[str, set[Edge]] = {}
     for dist in metadata.distributions() if distributions is None else distributions:
         name = dist.metadata["Name"]
         if not name:
             continue
-        names = found.setdefault(_requirement_name(name), set())
-        names.update(_requirement_name(line) for line in dist.requires or [])
-    return {name: frozenset(requires) for name, requires in found.items()}
+        found.setdefault(_requirement_name(name), set()).update(
+            _edge(line) for line in dist.requires or []
+        )
+    return {name: frozenset(edges) for name, edges in found.items()}
+
+
+def _edges(value: Iterable[Edge | str]) -> frozenset[Edge]:
+    return frozenset(item if isinstance(item, Edge) else Edge(item) for item in value)
 
 
 def _omrs_requires() -> list[str]:
@@ -81,19 +147,46 @@ def _extras(lines: list[str]) -> set[str]:
     }
 
 
-def _installed_extra_names(extra: str, lines: list[str], installed: Installed) -> set[str]:
-    """Return the requirement names of every other extra that is installed.
+def _installed_extra_lines(extra: str, lines: list[str], installed: Installed) -> list[str]:
+    """Return the requirement lines of every other extra that is installed.
 
     An extra counts as installed when each requirement without another marker
     is installed. An extra with only conditional lines counts too (conservative).
     """
-    names: set[str] = set()
+    found: list[str] = []
     for other in _extras(lines) - {extra}:
         own = extra_requirements(other, lines)
         plain = [_requirement_name(line) for line in own if ";" not in line]
         if all(name in installed for name in plain):
-            names.update(_requirement_name(line) for line in own)
-    return names
+            found.extend(own)
+    return found
+
+
+def _active(installed: Installed, omrs_lines: list[str]) -> dict[str, set[str]]:
+    """Return each installed distribution with the names its active lines require.
+
+    A gated line is active once something asks for one of its extras. The
+    asked extras start from the active ``omrs`` lines and grow until nothing
+    changes, because an asked extra can switch on a line that asks for more.
+    """
+    graph = {dist: _edges(edges) for dist, edges in installed.items() if dist != "omrs"}
+    asked: defaultdict[str, set[str]] = defaultdict(set)
+    for line in omrs_lines:
+        edge = _edge(line)
+        asked[edge.name] |= edge.asks
+    changed = True
+    while changed:
+        changed = False
+        for dist, edges in graph.items():
+            for edge in edges:
+                live = not edge.gate or bool(edge.gate & asked[dist])
+                if live and not edge.asks <= asked[edge.name]:
+                    asked[edge.name] |= edge.asks
+                    changed = True
+    return {
+        dist: {edge.name for edge in edges if not edge.gate or edge.gate & asked[dist]}
+        for dist, edges in graph.items()
+    }
 
 
 def packages_to_remove(
@@ -111,15 +204,22 @@ def packages_to_remove(
     """
     lines = _omrs_requires() if requires is None else list(requires)
     own = dict.fromkeys(_requirement_name(line) for line in extra_requirements(extra, lines))
-    base = {_requirement_name(line) for line in lines if "extra" not in line.partition(";")[2]}
-    needed = base | _installed_extra_names(extra, lines, installed)
-    removes: list[str] = []
-    keeps: list[str] = []
-    for name in (name for name in own if name in installed):
-        required = any(
-            name in names for dist, names in installed.items() if dist not in {name, "omrs"}
-        )
-        (keeps if required or name in needed else removes).append(name)
+    base_lines = [line for line in lines if "extra" not in line.partition(";")[2]]
+    other_lines = _installed_extra_lines(extra, lines, installed)
+    needed = {_requirement_name(line) for line in base_lines + other_lines}
+    present = [name for name in own if name in installed]
+    active = _active(installed, base_lines + other_lines)
+    # The largest set of the extra's packages that nothing outside it requires.
+    removable = {name for name in present if name not in needed}
+    changed = True
+    while changed:
+        changed = False
+        for name in sorted(removable):
+            if any(name in names for dist, names in active.items() if dist not in removable):
+                removable.discard(name)
+                changed = True
+    removes = [name for name in present if name in removable]
+    keeps = [name for name in present if name not in removable]
     return removes, keeps
 
 

@@ -37,7 +37,7 @@ from typing import Any
 
 from .install_environment import InstallEnvironment, detect_environment, extra_requirements
 from .security import redact
-from .uninstall_plan import installed_requirements, saved_settings
+from .uninstall_plan import Installed, installed_requirements, saved_settings
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ class InstallJob:
     python: str = field(default_factory=lambda: sys.executable)
     detect: Callable[[], InstallEnvironment] = detect_environment
     requirements: Callable[[str], list[str]] = extra_requirements
-    installed: Callable[[], Mapping[str, frozenset[str]]] = installed_requirements
+    installed: Callable[[], Installed] = installed_requirements
     saved: Callable[[], Mapping[str, Any]] = saved_settings
     restart_needed: set[str] = field(default_factory=set)
     _state: str = IDLE
