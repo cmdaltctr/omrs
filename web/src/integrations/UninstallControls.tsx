@@ -2,6 +2,7 @@ import { LoaderCircle, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { Integration } from "../api/integrations";
 import { Button } from "../components/ui/button";
+import { formatRoute } from "../lib/routes";
 import { RestartDialog } from "../settings/RestartDialog";
 import { CopyCommand } from "./CopyCommand";
 import { FailedJob } from "./InstallControls";
@@ -59,6 +60,21 @@ export function UninstallControls({ integration, control, phase }: UninstallCont
   const refusal = error !== null ? <InstallRefusal action="uninstall" error={error} onRetry={() => control.uninstall(extra)} onCheck={control.recheck} /> : null;
 
   if (phase === "none") return null;
+  if (phase === "in-use" && integration.uninstall_profile !== null) {
+    const profile = integration.uninstall_profile;
+    // A saved user profile uses the extra; link to it so the user can change it in Studio.
+    return (
+      <p className="text-meta text-muted-foreground [overflow-wrap:anywhere]">
+        {"The profile "}
+        <a className="underline underline-offset-2 hover:text-foreground" href={formatRoute({ area: "studio", profileId: profile.id, purpose: null })}>
+          {profile.title}
+        </a>
+        {" uses this extra through "}
+        <code className="text-code">{integration.uninstall_setting ?? "a setting"}</code>
+        {". Change it in Studio before you uninstall it."}
+      </p>
+    );
+  }
   if (phase === "in-use") {
     return (
       <p className="text-meta text-muted-foreground [overflow-wrap:anywhere]">

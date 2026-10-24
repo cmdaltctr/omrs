@@ -33,6 +33,22 @@ export function inUseMessage(setting: string): string {
   return `${setting} uses this extra. Change that setting before you uninstall it.`;
 }
 
+/** The line for a saved user profile that still uses the extra. */
+export function profileInUseMessage(title: string, setting: string): string {
+  return `The profile ${title} uses this extra through ${setting}. Change it in Studio before you uninstall it.`;
+}
+
+/** The `profile` title of a 409 refusal body, or `null`. */
+function refusalProfile(error: unknown): string | null {
+  if (!(error instanceof ApiError) || error.kind !== "http" || error.status !== 409) return null;
+  const body = error.body;
+  if (typeof body !== "object" || body === null) return null;
+  const profile = (body as Record<string, unknown>).profile;
+  if (typeof profile !== "object" || profile === null) return null;
+  const title = (profile as Record<string, unknown>).title;
+  return typeof title === "string" ? title : null;
+}
+
 /** The body field `key` of a 409 refusal, or `null` for any other failure. */
 function refusalField(error: unknown, key: "reason" | "setting"): string | null {
   if (!(error instanceof ApiError) || error.kind !== "http" || error.status !== 409) return null;
@@ -47,6 +63,8 @@ function knownRefusal(error: unknown, action: "install" | "uninstall"): { messag
   if (reason === null) return undefined;
   const refusal = (action === "install" ? REFUSALS : UNINSTALL_REFUSALS)[reason];
   const setting = refusalField(error, "setting");
+  const profile = refusalProfile(error);
+  if (refusal !== undefined && reason === "in-use" && setting !== null && profile !== null) return { ...refusal, message: profileInUseMessage(profile, setting) };
   if (refusal !== undefined && reason === "in-use" && setting !== null) return { ...refusal, message: inUseMessage(setting) };
   return refusal;
 }

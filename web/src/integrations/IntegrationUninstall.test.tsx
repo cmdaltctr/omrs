@@ -199,6 +199,41 @@ describe("Restart state comes from the server (pending_restart)", () => {
   });
 });
 
+describe("A saved profile uses the extra", () => {
+  const SCANS = { id: "p-scans", title: "Scans" };
+
+  it("A profile uses pypdfium2: the card names the profile, links to Studio and has no Uninstall", async () => {
+    const lasting = `uv tool install --reinstall "omrs[web] @ ${SOURCE}"`;
+    const reader = installed("pdf-pypdfium2", "PDF reader: pypdfium2", {
+      uninstallable: false,
+      uninstall_reason: "in-use",
+      uninstall_setting: "pdf_reader",
+      uninstall_profile: SCANS,
+      lasting_uninstall_command: lasting,
+    });
+    const { server } = uninstallServer({ catalogue: [reader, CHROMA] });
+    startApp("#/integrations", server);
+    const card_ = await card("PDF reader: pypdfium2");
+    expect(card_).toHaveTextContent("The profile Scans uses this extra through pdf_reader. Change it in Studio before you uninstall it.");
+    expect(within(card_).getByRole("link", { name: "Scans" })).toHaveAttribute("href", "#/studio/p-scans");
+    expect(within(card_).queryByRole("button", { name: /^Uninstall/ })).toBeNull();
+    expect(within(card_).queryByText(lasting)).toBeNull();
+  });
+
+  it("A refused uninstall names the profile", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { server } = uninstallServer({
+      post: () => json({ status: "error", message: "Refused <raw>", reason: "in-use", setting: "pdf_reader", profile: SCANS }, 409),
+    });
+    startApp("#/integrations", server);
+    const { user, dialog } = await pressUninstall("Chroma vector store");
+    await user.click(within(dialog).getByRole("button", { name: "Uninstall" }));
+    const alert = await within(await card("Chroma vector store")).findByRole("alert");
+    expect(alert).toHaveTextContent("The profile Scans uses this extra through pdf_reader. Change it in Studio before you uninstall it.");
+    expect(alert).not.toHaveTextContent("Refused");
+  });
+});
+
 describe("Uninstall details", () => {
   it("never shows Uninstall on a base entry, even when the catalogue calls it uninstallable", async () => {
     const { server } = uninstallServer({ catalogue: [{ ...PDF_INSPECTOR, uninstallable: true, uninstall_reason: null }, CHROMA] });
