@@ -16,10 +16,17 @@ const ENTRY: Integration = {
   packages: ["azure-ai-documentintelligence>=1.0.0"],
   install_caution: null,
   base: false,
+  uninstallable: false,
+  uninstall_reason: "not-installed",
+  uninstall_setting: null,
+  removes: [],
+  keeps: [],
+  lasting_uninstall_command: null,
 };
 
 const RUNNING: IntegrationInstall = {
   state: "running",
+  action: "install",
   extra: "anthropic",
   started_at: "2026-10-24T10:00:00Z",
   finished_at: null,

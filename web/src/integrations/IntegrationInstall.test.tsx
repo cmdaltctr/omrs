@@ -21,16 +21,22 @@ function entry(id: string, name: string, change: Partial<Integration> = {}): Int
     packages: [`package-for-${id}>=1.0`],
     install_caution: null,
     base: false,
+    uninstallable: false,
+    uninstall_reason: "not-installed",
+    uninstall_setting: null,
+    removes: [],
+    keeps: [],
+    lasting_uninstall_command: null,
     ...change,
   };
 }
 
 const ANTHROPIC = entry("anthropic", "Anthropic provider", { packages: ["llama-index-llms-anthropic>=0.11.0"] });
 const AZURE = entry("azure", "Azure Document Intelligence");
-const WEB = entry("web", "Local web workspace", { availability: "available", installable: false, install_reason: "not-installable-here", packages: [] });
+const WEB = entry("web", "Local web workspace", { availability: "available", installable: false, install_reason: "not-installable-here", packages: [], uninstall_reason: "not-uninstallable-here" });
 
-const IDLE: IntegrationInstall = { state: "idle", extra: null, started_at: null, finished_at: null, reason: null, exit_code: null, output: [] };
-const RUNNING: IntegrationInstall = { ...IDLE, state: "running", extra: "anthropic", started_at: "2026-10-24T10:00:00Z", output: ["Resolving"] };
+const IDLE: IntegrationInstall = { state: "idle", action: null, extra: null, started_at: null, finished_at: null, reason: null, exit_code: null, output: [] };
+const RUNNING: IntegrationInstall = { ...IDLE, state: "running", action: "install", extra: "anthropic", started_at: "2026-10-24T10:00:00Z", output: ["Resolving"] };
 const SUCCEEDED: IntegrationInstall = { ...RUNNING, state: "succeeded", finished_at: "2026-10-24T10:00:30Z", exit_code: 0, output: ["Installed 3 packages"] };
 const FAILED: IntegrationInstall = {
   ...RUNNING,

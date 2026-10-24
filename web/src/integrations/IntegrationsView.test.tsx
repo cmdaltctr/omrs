@@ -32,6 +32,13 @@ const CATALOGUE: Integration[] = [
     packages: [],
     install_caution: null,
     base: ["pdf-inspector", "llamacpp", "openrouter"].includes(id),
+    uninstallable: false,
+    uninstall_reason:
+      ["pdf-inspector", "llamacpp", "openrouter", "web"].includes(id) ? ("not-uninstallable-here" as const) : availability === "available" ? ("not-uv-tool" as const) : ("not-installed" as const),
+    uninstall_setting: null,
+    removes: [],
+    keeps: [],
+    lasting_uninstall_command: null,
   })),
   {
     id: "magika",
@@ -46,6 +53,12 @@ const CATALOGUE: Integration[] = [
     packages: [],
     install_caution: null,
     base: true,
+    uninstallable: false,
+    uninstall_reason: "not-uninstallable-here",
+    uninstall_setting: null,
+    removes: [],
+    keeps: [],
+    lasting_uninstall_command: null,
   },
 ];
 

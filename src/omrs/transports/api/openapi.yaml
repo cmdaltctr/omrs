@@ -3120,7 +3120,9 @@ paths:
         with `installable` true can be installed with
         `POST /v1/integrations/{extra}/install`; otherwise `install_reason`
         says why not, and the user runs `install_command` outside the app
-        and restarts the server.
+        and restarts the server. An entry with `uninstallable` true can be
+        removed with `POST /v1/integrations/{extra}/uninstall`; otherwise
+        `uninstall_reason` says why not.
       security:
         - sessionCookie: [read]
         - bearerToken: [read]
@@ -3209,6 +3211,61 @@ paths:
       responses:
         "202":
           description: The install started.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationInstallReply"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /integrations/{extra}/uninstall:
+    post:
+      operationId: uninstallIntegration
+      summary: Uninstall an installed optional extra from the server's own environment
+      description: >
+        Starts `uv pip uninstall --python <server Python> <names>` with the
+        entry's `removes` list: the extra's own requirements from the
+        installed OMRS metadata, without any package that a base
+        requirement, another installed extra or another installed package
+        requires (those are in `keeps`). The argument list is built by the
+        server; no request text reaches it other than the choice of a
+        listed extra. The uninstall uses the install job: one job at a
+        time, 600 s limit, no `*_API_KEY` in the process, 40 redacted
+        output lines. After exit code 0 the job runs `uv pip check`; a
+        conflict fails the job with `check-failed`. The route answers 202
+        with the running state (`action` is `uninstall`); poll
+        `GET /v1/integrations/install`. After success the entry reports
+        `restart-needed` until the server restarts. An extra that is not in
+        the catalogue gets 404. Every refusal of a listed extra gets 409
+        with `reason`: `not-uninstallable-here` (a base entry, `web` or an
+        entry without an extra), `not-installed`, `in-use` (with `setting`,
+        the setting that selects the extra), `not-uv-tool`, `uv-not-found`
+        or `install-running`. Session only: a bearer credential gets 403.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      parameters:
+        - name: extra
+          in: path
+          required: true
+          schema:
+            type: string
+            maxLength: 64
+      responses:
+        "202":
+          description: The uninstall started.
           content:
             application/json:
               schema:
@@ -4572,8 +4629,15 @@ components:
           type: string
           description: >
             Present on the 422 from `setProfileEmbedding`: why the model
-            check failed. Present on the 409 from `installIntegration`: why
-            the extra cannot be installed now.
+            check failed. Present on the 409 from `installIntegration` and
+            `uninstallIntegration`: why the extra cannot be installed or
+            uninstalled now.
+        setting:
+          type: string
+          description: >
+            Present on a 409 `in-use` from `uninstallIntegration`: the setting
+            that selects the extra, as its `omrs.jsonc` key (for example
+            `retrieval.rerank_backend`).
         collections:
           type: array
           description: >
@@ -7943,7 +8007,7 @@ components:
     Integration:
       type: object
       additionalProperties: false
-      required: [id, name, purpose, extra, base, install_command, pip_command, availability, installable, install_reason, packages, install_caution]
+      required: [id, name, purpose, extra, base, install_command, pip_command, availability, installable, install_reason, packages, install_caution, uninstallable, uninstall_reason, uninstall_setting, removes, keeps, lasting_uninstall_command]
       properties:
         id:
           type: string
@@ -8001,6 +8065,54 @@ components:
             extra whose requirements are all base requirements (kept so an old
             `--extra` command still works). A base entry has no install command
             and cannot be installed.
+        uninstallable:
+          type: boolean
+          description: Whether `POST /v1/integrations/{extra}/uninstall` would start an uninstall now.
+        uninstall_reason:
+          type: [string, "null"]
+          enum: [not-uninstallable-here, not-installed, in-use, not-uv-tool, uv-not-found, install-running, null]
+          description: >
+            Why `uninstallable` is false, or null when it is true. The checks
+            run in this order. `not-uninstallable-here`: a base entry, `web`
+            or an entry without an extra. `not-installed`: `availability` is
+            not `available` (not installed, unknown, or an install or
+            uninstall in this launch waits for a restart). `in-use`: a
+            setting selects the extra (see `uninstall_setting`).
+            `not-uv-tool`, `uv-not-found`: as for install.
+            `install-running`: an install or uninstall job runs now.
+        uninstall_setting:
+          type: [string, "null"]
+          description: >
+            The `omrs.jsonc` key of the setting that selects the extra (for
+            example `vector_store`) when `uninstall_reason` is `in-use`, else
+            null. The effective settings and the saved `omrs.jsonc` both count.
+        removes:
+          type: array
+          items:
+            type: string
+          description: >
+            Normalised names of the installed packages an uninstall would
+            remove: the extra's own requirements, without the ones in
+            `keeps`. Empty unless the entry is installed and is not a base
+            entry or `web`.
+        keeps:
+          type: array
+          items:
+            type: string
+          description: >
+            Normalised names of the extra's installed requirements that an
+            uninstall keeps, because a base requirement, another installed
+            extra or another installed package requires them. Empty unless
+            the entry is installed and is not a base entry or `web`.
+        lasting_uninstall_command:
+          type: [string, "null"]
+          description: >
+            Set only on a `uv-tool` install when the receipt lists the extra
+            (and the entry is not a base entry or `web`): `uv tool install
+            --reinstall "omrs[<receipt extras without this one>] @ <receipt
+            source>"` with the home folder written as `~`. A later reinstall
+            from the receipt would add the extra back; this command does not,
+            and it also drops packages only the extra pulled in. Else null.
 
     IntegrationList:
       type: object
@@ -8025,11 +8137,15 @@ components:
     IntegrationInstall:
       type: object
       additionalProperties: false
-      required: [state, extra, started_at, finished_at, reason, exit_code, output]
+      required: [state, action, extra, started_at, finished_at, reason, exit_code, output]
       properties:
         state:
           type: string
           enum: [idle, running, succeeded, failed]
+        action:
+          type: [string, "null"]
+          enum: [install, uninstall, null]
+          description: Whether the running or last job installs or uninstalls its extra; null when idle.
         extra:
           type: [string, "null"]
           description: The extra of the running or last install; null when idle.

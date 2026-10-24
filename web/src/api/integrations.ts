@@ -6,6 +6,8 @@
  * entry with `installable: true` can be installed with
  * `POST /v1/integrations/{extra}/install`; the new packages work after a
  * restart. Every other entry is installed outside the app with its command.
+ * An entry with `uninstallable: true` can be removed with
+ * `POST /v1/integrations/{extra}/uninstall`; that also needs a restart.
  */
 import type { ApiClient, CallOptions } from "./client";
 
@@ -16,6 +18,9 @@ export type InstallType = "uv-tool" | "checkout" | "other";
 
 /** Why `installable` is false, or `null` when it is true. */
 export type InstallReason = "not-installable-here" | "status-unknown" | "not-uv-tool" | "uv-not-found" | "already-installed" | "no-requirements";
+
+/** Why `uninstallable` is false, or `null` when it is true. `in-use` comes with `uninstall_setting`. */
+export type UninstallReason = "not-uninstallable-here" | "not-installed" | "in-use" | "not-uv-tool" | "uv-not-found" | "install-running";
 
 export interface Integration {
   id: string;
@@ -38,6 +43,17 @@ export interface Integration {
   install_caution: string | null;
   /** True when every install already holds this entry; it has no install command. */
   base: boolean;
+  /** True when `POST /v1/integrations/{extra}/uninstall` would start an uninstall now. */
+  uninstallable: boolean;
+  uninstall_reason: UninstallReason | null;
+  /** The `omrs.jsonc` key of the setting that selects the extra, such as `vector_store`, when the reason is `in-use`; else null. */
+  uninstall_setting: string | null;
+  /** The installed packages an uninstall removes. Empty unless the entry is installed and is not base or `web`. */
+  removes: string[];
+  /** The extra's installed packages an uninstall keeps, because something else needs them. */
+  keeps: string[];
+  /** The reinstall command without this extra, set only when the uv tool receipt lists it; else null. */
+  lasting_uninstall_command: string | null;
 }
 
 export interface IntegrationList {
@@ -47,9 +63,14 @@ export interface IntegrationList {
 
 export type InstallState = "idle" | "running" | "succeeded" | "failed";
 
-/** The running or last install of this launch. */
+/** Whether a job adds or removes its extra. */
+export type InstallAction = "install" | "uninstall";
+
+/** The running or last install or uninstall job of this launch. */
 export interface IntegrationInstall {
   state: InstallState;
+  /** Whether the job installs or uninstalls its extra; null when idle. */
+  action: InstallAction | null;
   /** The extra of the running or last install; null when idle. */
   extra: string | null;
   started_at: string | null;
@@ -74,5 +95,11 @@ export async function getIntegrationInstall(api: ApiClient, options: CallOptions
 /** Starts an install of `extra`. The server answers 202 with the running state, or 409 with a `reason`. */
 export async function installIntegration(api: ApiClient, extra: string): Promise<IntegrationInstall> {
   const reply = await api.request<{ install: IntegrationInstall }>("POST", `/v1/integrations/${encodeURIComponent(extra)}/install`);
+  return reply.install;
+}
+
+/** Starts an uninstall of `extra`. The server answers 202 with the running state, or 409 with a `reason` (and a `setting` for `in-use`). */
+export async function uninstallIntegration(api: ApiClient, extra: string): Promise<IntegrationInstall> {
+  const reply = await api.request<{ install: IntegrationInstall }>("POST", `/v1/integrations/${encodeURIComponent(extra)}/uninstall`);
   return reply.install;
 }
