@@ -80,7 +80,7 @@ ADR-094 and two more rules.
    fast test hides its modules, starts the web app, checks that the extra
    reports `not-installed`, and searches a small LanceDB collection.
 
-ADR-094's decision text does not change. This ADR adds the reverse action.
+This ADR does not change any ADR-094 decision. It adds the reverse action.
 
 ## Consequences
 

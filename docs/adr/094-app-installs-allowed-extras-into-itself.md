@@ -1,10 +1,10 @@
 # ADR-094: The App Installs Allowed Extras into Its Own Environment
 
 - **Date:** 2026-10-24
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-24; built, browser-checked and merged to v3: install at `407469f3`, hardening at `e015da16`, torch and base entries at `fa60f810`)
 - **Deciders:** Dr Muhammad Aizat Bin Md Hawari
-- **Related:** [ADR-073](073-make-the-torch-extra-a-normal-choice.md) (the torch extra), [ADR-085](085-web-login-item.md) (web login item), [ADR-086](086-web-power-menu.md) (power menu), [ADR-087](087-settings-live-in-omrg-jsonc.md) (settings in `omrs.jsonc`)
-- **Change:** `openspec/changes/install-integrations-from-the-app/` (design D1 to D4); amended by `harden-integration-installs` (decisions 7 to 9); `torch` allowed on 2026-10-24 (decision 3)
+- **Related:** [ADR-073](073-make-the-torch-extra-a-normal-choice.md) (the torch extra), [ADR-085](085-web-login-item.md) (web login item), [ADR-086](086-web-power-menu.md) (power menu), [ADR-087](087-settings-live-in-omrg-jsonc.md) (settings in `omrs.jsonc`), [ADR-096](096-app-uninstalls-extras-it-can-install.md) (the reverse action)
+- **Change:** `openspec/changes/archive/2026-10-24-install-integrations-from-the-app/` (design D1 to D4). Later changes are in the Amendments table at the end.
 
 ## Context
 
@@ -39,10 +39,11 @@ Three facts shape the decision:
    because the login item has a short `PATH`. A checkout or any other install
    shows a copy command and never installs.
 3. **Only a fixed list of extras.** The list is the catalogue extras, without
-   `web` (present when the page runs). `torch` was excluded at first; since
-   2026-10-24 it is allowed, and its card shows the download size (about
-   170 MB on a Mac, several GB for a GPU build) before the install. No request text reaches the command except the choice of a listed
-   extra. The argument list is built in code and runs with no shell.
+   `web` (present when the page runs) and without base entries (decision 10).
+   `torch` is on the list. Its card shows the download size (about 170 MB on a
+   Mac, several GB for a GPU build) before the install. No request text
+   reaches the command except the choice of a listed extra. The argument list
+   is built in code and runs with no shell.
 4. **One job per server, with limits.** The job lives on `WebRuntime`. One
    install runs at a time. It stops after 600 s. The process gets the server
    environment without any `*_API_KEY` variable. The last 40 output lines are
@@ -68,6 +69,14 @@ Three facts shape the decision:
    the entry is not installed. Anthropic carries the `python-dateutil` line.
    A guard test keeps the extra requirement lines simple (`extra ==` joined
    with `and` only, never naming `omrs`).
+10. **No install for a base entry.** An entry is a base entry when it has no
+    extra, or when every requirement of its extra is already in the base
+    install. Magika, pdf-inspector, llama.cpp and OpenRouter are base entries.
+    The server reports them as `not-installable-here` with no install command,
+    and the card shows "Base default" next to "Installed". The server decides
+    this from the installed package metadata (`is_base_extra`), so a future
+    extra that repeats base packages gets the same treatment with no page
+    change.
 
 ## Consequences
 
@@ -96,7 +105,7 @@ Three facts shape the decision:
 ### Neutral
 
 - No new dependency. The job uses `asyncio.create_subprocess_exec`.
-- Uninstall is out of scope.
+- Uninstall is [ADR-096](096-app-uninstalls-extras-it-can-install.md).
 - The `workspace-integrations` rule that the page never installs is replaced
   by the guarded install action.
 
@@ -106,7 +115,7 @@ Three facts shape the decision:
 |--------|-----------------|
 | `uv tool install --reinstall` with the new extra | It rebuilds OMRS from the receipt's source folder, which can hold uncommitted code and an old web build. Safe only when OMRS installs from a released package. Revisit if OMRS ships to PyPI. |
 | Keep copy commands only | The user asked for an Install button. The old command was also wrong for the usual install. |
-| Install any extra the package declares, including `web` | `web` is present when the page runs. (`torch` was in this row until 2026-10-24; it is now allowed with a size warning.) |
+| Install any extra the package declares, including `web` | `web` is present when the page runs. A base entry is already installed (decision 10). |
 | Forbid downgrades with a constraint file | The Anthropic install needs one and is safe. Every such install would fail. |
 | Import the new modules without a restart | A running process cannot load new modules safely in every case. The restart action already exists. |
 
@@ -115,4 +124,18 @@ Three facts shape the decision:
 - `src/omrs/transports/api/integrations_catalogue.py`: install type, copy commands and `installable`
 - `src/omrs/transports/api/routes/integrations.py`: `POST /v1/integrations/{extra}/install`, `GET /v1/integrations/install`
 - `web/src/integrations/IntegrationCard.tsx`: Install button, confirm dialog, progress and output
-- `openspec/changes/install-integrations-from-the-app/design.md`
+- `openspec/changes/archive/2026-10-24-install-integrations-from-the-app/design.md`
+- `openspec/changes/archive/2026-10-24-harden-integration-installs/` (decisions 7 to 9)
+- [ADR-073](073-make-the-torch-extra-a-normal-choice.md) and [ADR-096](096-app-uninstalls-extras-it-can-install.md)
+
+## Amendments
+
+This record was one decision made in four steps on 2026-10-24. The decisions
+above state the current rule. This table says when each one arrived.
+
+| Step | Change | Commit | Decisions |
+|------|--------|--------|-----------|
+| 1 | `install-integrations-from-the-app` | `407469f3` | 1 to 6. `torch` was excluded at first because of its download size. |
+| 2 | `harden-integration-installs` | `e015da16` | 7 to 9: package check, `unknown` status, install caution. |
+| 3 | PyTorch install and base entries | `fa60f810`, `65e652d7` | 3 changed: `torch` is allowed with a size warning. 10 added. |
+| 4 | [ADR-096](096-app-uninstalls-extras-it-can-install.md) | `f1510293` | None changed. It adds the reverse action. |
