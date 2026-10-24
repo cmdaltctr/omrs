@@ -25,7 +25,10 @@
 - [x] 5.2 Provider settings (D2 revised): derive provider rows from the LLM and embedding registries through the same role rules as the Providers page, checked on the effective settings and on them with the saved `omrs.jsonc` laid over. Verify: tests fail first, then pass, for `answer.provider`, `answer.verify_provider` through `cloud`, a provider-named `metadata.extraction_mode`, a saved-only value, a base provider that never blocks, and a registered test provider with an extra.
 - [x] 5.3 `pending_restart` (D4 revised): the job keeps a map from extra to action; each entry and the OpenAPI contract and TypeScript types gain `pending_restart`. Verify: route test for uninstall A, then install B; contract conformance.
 - [x] 5.4 Page: read `pending_restart` for the badge and restart line, and hide the lasting command while the reason is `in-use`. Verify: Vitest cases for both scenarios fail first, then pass; the old job-guess branch is removed.
-- [ ] 5.5 Update the guide and ADR-096, re-pin the tripwire, run local CI, the web gates and `openspec validate --strict`. Verify: all pass; record the counts here.
+- [x] 5.5 Update the guide and ADR-096, re-pin the tripwire, run local CI, the web gates and `openspec validate --strict`. Verify: all pass; record the counts here.
+  - 2026-10-24 counts: `./scripts/local_ci.sh` fast suite 8,021 passed, 152 skipped (parallel, 3 min 38 s); ruff clean (1,941 files), import-linter 21 kept, `openspec validate --all --strict` 85/85, OpenAPI contract valid, default install torch-free. Tripwire 5 passed after the re-pin: `_BASE_EXECUTED` 8006 → 8028 (+22: plan file +21 net, routes +1), `_WEB_EXTRA_CASES` 1443 → 1444.
+  - The first tripwire run failed on `test_a_slow_install_times_out_and_is_stopped` (from the install change): its 0.3 s limit can end before the fake `uv` prints under parallel load. The limit is now 2 s; the script still sleeps 30 s.
+  - Web gates: lint pass, typecheck pass, `npm test` 155 files and 1,922 tests passed, build pass. `openspec validate uninstall-integrations-from-the-app --strict` valid.
 
 ## 4. Checks (continued)
 

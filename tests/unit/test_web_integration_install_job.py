@@ -178,7 +178,9 @@ async def test_only_the_last_forty_lines_are_kept(tmp_path: Path) -> None:
 
 
 async def test_a_slow_install_times_out_and_is_stopped(tmp_path: Path) -> None:
-    job = _job(timeout=0.3)
+    # 2 s, not less: under a parallel suite the shell can take longer than 0.3 s to print
+    # "started", and the timeout then kills it first. The script still sleeps 30 s.
+    job = _job(timeout=2.0)
     snapshot = await _run(job, fake_uv(tmp_path, "echo started\nsleep 30\necho never"))
     assert snapshot["state"] == "failed" and snapshot["reason"] == "timed-out"
     assert snapshot["exit_code"] is None

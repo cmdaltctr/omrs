@@ -151,7 +151,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +94 (2026-10-24, uninstall-integrations-from-the-app): test_web_integration_uninstall_plan.py
 # (60, no fastapi), test_web_extras_modularity.py (7), test_web_integration_uninstall_routes.py
 # (23) and test_web_integration_install_job.py (4) (see _WEB_EXTRA_CASES below).
-_BASE_EXECUTED = 8006
+# +22 (2026-10-24, uninstall design follow-up): test_web_integration_uninstall_plan.py
+# (+21 net, no fastapi: gated edges and provider roles; 5 cases replaced) and
+# test_web_integration_uninstall_routes.py (1).
+_BASE_EXECUTED = 8028
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -456,7 +459,9 @@ if not _has_qwen_tokenizer:
 # +1 (2026-10-24, PyTorch size caution): test_web_integration_install_routes.py (1409).
 # +34 (2026-10-24, uninstall-integrations-from-the-app): test_web_extras_modularity.py (7),
 # test_web_integration_uninstall_routes.py (23) and test_web_integration_install_job.py (4) (1443).
-_WEB_EXTRA_CASES = 1443
+# +1 (2026-10-24, uninstall design follow-up): the pending restart case in
+# test_web_integration_uninstall_routes.py (1444).
+_WEB_EXTRA_CASES = 1444
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)
