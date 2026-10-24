@@ -12,9 +12,15 @@ other go together, as pip-autoremove removes them: the result is the largest
 set of the extra's own packages that nothing outside the set requires.
 ``uv pip uninstall`` leaves orphans; the lasting command drops them.
 
-D2, the in-use map: the setting values that select each extra. Both the
-frozen ``EffectiveSettings`` and the saved ``omrs.jsonc`` count, because the
-next launch reads the saved value.
+D2, the in-use check: a fixed map gives the backend setting values that
+select each extra. Provider settings follow the provider registries instead:
+each role (answers, the claim judge, metadata, embeddings) resolves to a
+provider as the Providers page resolves it, with ``local`` and ``cloud``
+read through ``local_backend`` and ``cloud_backend``, and the provider's
+registry entry names its extra. The role switches (``answer.enabled``,
+``verify_claims``) do not count, because a saved choice can be turned on
+later. The frozen ``EffectiveSettings`` count, and so do the saved
+``omrs.jsonc`` values laid over them, because the next launch reads them.
 
 This module only reads metadata and ``omrs.jsonc``; it starts no process.
 """
@@ -23,11 +29,13 @@ from __future__ import annotations
 
 import re
 from collections import defaultdict
-from collections.abc import Collection, Iterable, Mapping
+from collections.abc import Callable, Collection, Iterable, Mapping
 from importlib import metadata
 from typing import Any, NamedTuple
 
 from ...config.settings_file import read_settings_file
+from ...core.providers.embeddings import registry as embedding_registry
+from ...core.providers.llm import registry as llm_registry
 from .install_environment import (
     _EXTRA_CLAUSE,
     EXCLUDED_EXTRAS,
@@ -70,7 +78,8 @@ IN_USE: dict[str, tuple[tuple[str, str], ...]] = {
     "pdf-pypdfium2": (("pdf_reader", "pypdfium2"),),
     "azure": (("document_backend", "azure"),),
     "community-leiden": (("community_algorithm", "leiden"),),
-    "anthropic": (("answer.provider", "anthropic"), ("answer.verify_provider", "anthropic")),
+    # Provider settings come from the provider registries (see in_use_setting).
+    "anthropic": (),
     "hybrid": (),
 }
 
@@ -234,22 +243,78 @@ def _value(settings: Any, path: str) -> Any:
     return settings
 
 
-def _selects(value: Any, wanted: str) -> bool:
-    return isinstance(value, str) and value.strip().lower() == wanted
+Read = Callable[[str], str | None]
+#: A setting key, the provider it names, and the registry that knows its extra.
+Role = tuple[str, str | None, Callable[[str], str | None]]
+
+#: ``local`` and ``cloud`` stand for the provider these settings name.
+_ALIASES = {"local": "local_backend", "cloud": "cloud_backend"}
+#: Metadata extraction modes that pick a provider through ``metadata_llm_provider``.
+_METADATA_ALIASES = frozenset({"llamaindex", "local"})
+#: Metadata extraction modes that call no model.
+_NO_MODEL = frozenset({"keyword", "disabled", ""})
+
+
+def _reader(settings: Any, saved: Mapping[str, Any]) -> Read:
+    """Return a lookup of a dotted key: *saved* first, then *settings*."""
+
+    def read(path: str) -> str | None:
+        value = saved[path] if path in saved else None
+        if value is None and settings is not None:
+            value = _value(settings, path)
+        return value.strip().lower() if isinstance(value, str) else None
+
+    return read
+
+
+def _through(read: Read, alias: str, llm: Callable[[str], str | None]) -> Role:
+    key = _ALIASES[alias]
+    return key, read(key), llm
+
+
+def _provider_roles(read: Read) -> list[Role]:
+    """Return the provider each role names, as the Providers page resolves it."""
+    llm, embed = llm_registry.extra_for, embedding_registry.extra_for
+    roles: list[Role] = [("answer.provider", read("answer.provider"), llm)]
+    verify = read("answer.verify_provider") or "cloud"
+    roles.append(
+        _through(read, verify, llm)
+        if verify in _ALIASES
+        else ("answer.verify_provider", verify, llm)
+    )
+    mode = read("metadata.extraction_mode") or ""
+    if mode in _METADATA_ALIASES:
+        provider = read("metadata_llm_provider")
+        roles.append(_through(read, "cloud" if provider == "cloud" else "local", llm))
+    elif mode not in _NO_MODEL:
+        roles.append(("metadata.extraction_mode", mode, llm))
+    embedder = read("embed_provider") or "local"
+    if embedder in _ALIASES:
+        key, provider, _ = _through(read, embedder, llm)
+        roles.append((key, provider, embed))
+    else:
+        roles.append(("embed_provider", embedder, embed))
+    return roles
 
 
 def in_use_setting(extra: str, settings: Any, saved: Mapping[str, Any]) -> str | None:
     """Return the setting key that selects *extra*, or ``None`` (D2).
+
+    The effective settings are checked first, then the saved values laid over
+    them. A backend row of :data:`IN_USE` comes before the provider roles.
 
     Args:
         extra: The extra name.
         settings: The frozen ``EffectiveSettings``, or ``None``.
         saved: The values saved in ``omrs.jsonc``, by dotted key.
     """
-    for path, wanted in IN_USE.get(extra, ()):
-        effective = None if settings is None else _value(settings, path)
-        if _selects(effective, wanted) or _selects(saved.get(path), wanted):
-            return path
+    for read in (_reader(settings, {}), _reader(settings, saved)):
+        for path, wanted in IN_USE.get(extra, ()):
+            if read(path) == wanted:
+                return path
+        for key, provider, extra_of in _provider_roles(read):
+            if provider and extra_of(provider) == extra:
+                return key
     return None
 
 

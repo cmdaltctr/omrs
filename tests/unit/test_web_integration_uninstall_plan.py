@@ -302,6 +302,105 @@ def test_the_default_verify_provider_is_not_anthropic() -> None:
     assert check_setting("cloud_backend", "anthropic")[1] is not None
 
 
+# ── D2 revised: provider settings follow the provider registries ─────────
+
+from omrs.core.providers.embeddings import registry as embedding_registry  # noqa: E402
+from omrs.core.providers.llm import registry as llm_registry  # noqa: E402
+
+
+@pytest.fixture
+def fancy(monkeypatch: pytest.MonkeyPatch) -> str:
+    """Register a provider ``fancy`` that needs the extra ``fancy-extra`` in both registries."""
+    for registry in (llm_registry, embedding_registry):
+        monkeypatch.setitem(registry._PROVIDER_EXTRAS, "fancy", "fancy-extra")
+    return "fancy-extra"
+
+
+def test_the_registries_name_each_provider_extra() -> None:
+    assert llm_registry.extra_for("anthropic") == "anthropic"
+    assert llm_registry.extra_for("openai_compatible") is None
+    assert llm_registry.extra_for("ollama") is None
+    assert embedding_registry.extra_for("ollama") is None
+
+
+@pytest.mark.parametrize(
+    ("values", "setting"),
+    [
+        ({"answer": {"provider": "fancy"}}, "answer.provider"),
+        ({"answer": {"verify_provider": "fancy"}}, "answer.verify_provider"),
+        ({"cloud_backend": "fancy"}, "cloud_backend"),  # verify_provider ``cloud`` (default)
+        (
+            {
+                "answer": {"verify_provider": "local"},
+                "local_backend": "fancy",
+                "embed_provider": "ollama",
+            },
+            "local_backend",
+        ),
+        ({"metadata": {"extraction_mode": "fancy"}}, "metadata.extraction_mode"),
+        ({"embed_provider": "fancy"}, "embed_provider"),
+    ],
+)
+def test_a_registered_provider_with_an_extra_blocks_it(
+    fancy: str, values: dict[str, Any], setting: str
+) -> None:
+    assert in_use_setting(fancy, EffectiveSettings.model_validate(values), {}) == setting
+
+
+def test_the_role_switches_do_not_hide_a_provider(fancy: str) -> None:
+    # A saved choice can be switched on later, so answering being off does not matter.
+    values = {"answer": {"enabled": False, "verify_claims": False, "provider": "fancy"}}
+    assert in_use_setting(fancy, EffectiveSettings.model_validate(values), {}) == "answer.provider"
+
+
+def test_a_saved_backend_counts_through_the_alias(fancy: str) -> None:
+    assert in_use_setting(fancy, EffectiveSettings(), {"cloud_backend": "fancy"}) == "cloud_backend"
+    saved = {"answer.verify_provider": "local", "local_backend": "fancy"}
+    assert in_use_setting(fancy, None, saved) == "local_backend"
+
+
+def test_metadata_alias_modes_resolve_through_metadata_llm_provider(fancy: str) -> None:
+    values = {
+        "metadata": {"extraction_mode": "llamaindex"},
+        "metadata_llm_provider": "cloud",
+        "cloud_backend": "fancy",
+        "answer": {"verify_provider": "local"},
+    }
+    assert in_use_setting(fancy, EffectiveSettings.model_validate(values), {}) == "cloud_backend"
+
+
+@pytest.mark.parametrize("mode", ["keyword", "disabled"])
+def test_metadata_modes_that_call_no_model_never_block(fancy: str, mode: str) -> None:
+    # ``cloud`` would name fancy, but these modes call no model, and the judge reads ``local``.
+    values = {
+        "metadata": {"extraction_mode": mode},
+        "metadata_llm_provider": "cloud",
+        "cloud_backend": "fancy",
+        "answer": {"verify_provider": "local"},
+    }
+    assert in_use_setting(fancy, EffectiveSettings.model_validate(values), {}) is None
+
+
+def test_anthropic_as_the_metadata_provider_blocks_it() -> None:
+    values = {"metadata": {"extraction_mode": "anthropic"}}
+    got = in_use_setting("anthropic", EffectiveSettings.model_validate(values), {})
+    assert got == "metadata.extraction_mode"
+
+
+@pytest.mark.parametrize("provider", ["openai_compatible", "ollama"])
+def test_a_base_provider_never_blocks_an_extra(provider: str) -> None:
+    settings = EffectiveSettings.model_validate({"answer": {"provider": provider}})
+    for item in CATALOGUE:
+        if item.extra is not None:
+            assert in_use_setting(item.extra, settings, {}) in (None, *_backend_keys()), item.extra
+
+
+def _backend_keys() -> tuple[str, ...]:
+    # The default local and cloud backends name base providers (llamacpp, openrouter),
+    # whose extras are base entries the app never uninstalls.
+    return ("local_backend", "cloud_backend")
+
+
 def test_saved_settings_read_the_isolated_config_folder(monkeypatch: pytest.MonkeyPatch) -> None:
     import os
 

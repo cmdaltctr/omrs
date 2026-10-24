@@ -71,6 +71,14 @@ def available() -> list[str]:
     return sorted(_registry)
 
 
+def extra_for(name: str) -> str | None:
+    """Return the ``pyproject.toml`` extra that provider *name* needs, or ``None``.
+
+    ``None`` means the base install ships the provider, or the name is unknown.
+    """
+    return _PROVIDER_EXTRAS.get(name)
+
+
 # ── Built-in provider registrations ────────────────────────────────────
 register("ollama", "omrs.core.providers.embeddings.ollama:build")
 register("llamacpp", "omrs.core.providers.embeddings.llamacpp:build")
