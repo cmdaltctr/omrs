@@ -154,7 +154,8 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +22 (2026-10-24, uninstall design follow-up): test_web_integration_uninstall_plan.py
 # (+21 net, no fastapi: gated edges and provider roles; 5 cases replaced) and
 # test_web_integration_uninstall_routes.py (1).
-_BASE_EXECUTED = 8028
+# +16 (2026-10-24, folder guides): four new folders in test_agent_guides.py (4 cases each).
+_BASE_EXECUTED = 8044
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
