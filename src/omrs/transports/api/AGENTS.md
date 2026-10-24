@@ -15,7 +15,7 @@ The local HTTP API for `omrs web`. `openapi.yaml` is its OpenAPI 3.1 contract. R
 6. Use the one `InstallJob` on `WebRuntime`. Keep its guards: one job at a time, 600 s limit, no `*_API_KEY` variable, the last 40 redacted lines, and an argument list with no shell.
 7. Take package names from the installed metadata. No request text reaches a command.
 8. D1 (`uninstall_plan.py`): remove only the extra's own packages that nothing else installed needs. A requirement behind another package's extra counts only when something asks for that extra.
-9. D2: `IN_USE` maps backend settings to extras. Provider settings come from `extra_for()` in the provider registries.
+9. D2: `IN_USE` maps backend settings to extras. Provider settings come from `extra_for()` in the provider registries. Saved user profiles are walked in `uninstall_profiles.py` (Read document `pdf_reader`, profile `embed_provider`). A new node parameter that names an extra must extend `PROFILE_READER_OPERATIONS` and that walk.
 10. A new non-base extra needs an `IN_USE` entry, or `test_every_non_base_catalogue_extra_has_an_in_use_entry` fails. Use `()` when no setting selects it.
 11. Add the extra's modules to `HIDDEN_MODULES` in `tests/unit/test_web_extras_modularity.py`. No test enforces this.
 

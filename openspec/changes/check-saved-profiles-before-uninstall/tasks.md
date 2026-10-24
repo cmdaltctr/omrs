@@ -8,7 +8,7 @@
 ## 2. Page
 
 - [x] 2.1 Load `omrs-design`. Show the profile line with its Studio link, and name the profile in a refused uninstall (D6). Verify: Vitest cases from the `workspace-integrations` scenarios fail first, then pass.
-- [ ] 2.2 Update `docs/guides/web-workspace.md`, ADR-096 (close the known gap) and the `transports/api` folder guide. Verify: docs and guide tests pass.
+- [x] 2.2 Update `docs/guides/web-workspace.md`, ADR-096 (close the known gap) and the `transports/api` folder guide. Verify: docs and guide tests pass.
 
 ## 3. Checks
 

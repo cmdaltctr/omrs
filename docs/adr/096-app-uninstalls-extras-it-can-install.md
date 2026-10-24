@@ -4,7 +4,7 @@
 - **Status:** Proposed
 - **Deciders:** Dr Muhammad Aizat Bin Md Hawari
 - **Related:** [ADR-094](094-app-installs-allowed-extras-into-itself.md) (the app installs allowed extras), [ADR-087](087-settings-live-in-omrg-jsonc.md) (settings in `omrs.jsonc`)
-- **Change:** `openspec/changes/uninstall-integrations-from-the-app/` (design D1 to D7)
+- **Change:** `openspec/changes/uninstall-integrations-from-the-app/` (design D1 to D7); saved profiles added by `check-saved-profiles-before-uninstall`
 
 ## Context
 
@@ -98,9 +98,11 @@ ADR-094's decision text does not change. This ADR adds the reverse action.
 - The backend rows of the in-use map are kept by hand. A new extra needs a
   map entry; a test fails until it has one. Provider rows follow the
   registries.
-- Saved user profiles and pipelines are not checked yet. A profile that
-  names a removed provider or PDF reader fails when it runs; the app still
-  starts.
+- Saved user profiles were not checked at first. The change
+  `check-saved-profiles-before-uninstall` (2026-10-24) closed this gap: the
+  check also reads every user profile that is not deleted (an enabled Read
+  document step's `pdf_reader`, and the profile `embed_provider`), and the
+  card names the profile.
 - The reverse map is conservative, so a package that could go can stay. The
   dialog lists it as kept.
 - `torch` itself stays after a PyTorch uninstall, because it is a dependency
