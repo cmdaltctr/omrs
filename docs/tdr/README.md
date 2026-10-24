@@ -63,6 +63,7 @@ architecture), see the [ADR index](../adr/).
 | 035 | [Built-in profiles skipped the model check on the MCP endpoint, so route every bind through the profile service](035-built-in-profiles-skipped-the-model-check-on-the-mcp-endpoint.md) | Proposed | 2026-10-18 |
 | 036 | [Ollama failures became an "Empty Response" answer, so carry seam errors past refine](036-ollama-failures-became-an-empty-response-answer-so-carry-seam-errors-past-refine.md) | Proposed | 2026-10-18 |
 | 037 | [OpenRouter answers used the legacy completions endpoint, so reasoning leaked into the answer](037-openrouter-answers-used-the-legacy-completions-endpoint-so-reasoning-leaked-into-the-answer.md) | Accepted | 2026-10-23 |
+| 038 | [The Ollama floor took only true or false for thinking, so raise it to 0.9.1](038-the-ollama-floor-took-only-true-or-false-for-thinking-so-raise-it-to-0-9-1.md) | Accepted | 2026-10-24 |
 
 ## Status values
 
