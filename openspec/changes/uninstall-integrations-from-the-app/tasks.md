@@ -2,7 +2,7 @@
 
 ## 1. Modularity first
 
-- [ ] 1.1 Add the modularity test (design D5) for `chroma`, `hybrid`, `pdf-pypdfium2`, `community-leiden`, `azure`, `anthropic` and `torch`. Verify: it passes on the current code, or each failure is fixed in this group with a test; record any extra that needed a fix.
+- [x] 1.1 Add the modularity test (design D5) for `chroma`, `hybrid`, `pdf-pypdfium2`, `community-leiden`, `azure`, `anthropic` and `torch`. Verify: it passes on the current code, or each failure is fixed in this group with a test; record any extra that needed a fix.
 
 ## 2. Server
 
