@@ -6,8 +6,8 @@
 
 ## 2. Server
 
-- [ ] 2.1 Add the packages-to-remove rule (D1) and the in-use map (D2) in `install_environment.py`, with a test that every non-base catalogue extra has a map entry. Verify: unit tests fail first, then pass, including a shared package kept and each in-use row.
-- [ ] 2.2 Add the uninstall action to the install job and `POST /v1/integrations/{extra}/uninstall` (D3, D4), with the catalogue fields and the OpenAPI contract. Verify: route tests for success then `restart-needed`, `in-use` 409, base and `web` 409, unknown 404, bearer 403, a running job 409, a failed check, and contract conformance.
+- [x] 2.1 Add the packages-to-remove rule (D1) and the in-use map (D2) in `install_environment.py`, with a test that every non-base catalogue extra has a map entry. Verify: unit tests fail first, then pass, including a shared package kept and each in-use row.
+- [x] 2.2 Add the uninstall action to the install job and `POST /v1/integrations/{extra}/uninstall` (D3, D4), with the catalogue fields and the OpenAPI contract. Verify: route tests for success then `restart-needed`, `in-use` 409, base and `web` 409, unknown 404, bearer 403, a running job 409, a failed check, and contract conformance.
 
 ## 3. Page
 

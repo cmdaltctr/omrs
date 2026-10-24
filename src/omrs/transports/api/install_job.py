@@ -1,9 +1,10 @@
-"""The single install job that adds an allowed extra to this server (design D1, D3).
+"""The single job that adds or removes an allowed extra on this server (design D1, D3).
 
-One :class:`InstallJob` lives on ``WebRuntime``, so one install runs per
-server at a time. The job runs
-``uv pip install --python <this Python> <requirements>`` as an argument
-list with no shell and no stdin. The requirements come from the installed
+One :class:`InstallJob` lives on ``WebRuntime``, so one install or uninstall
+runs per server at a time. The job runs
+``uv pip install --python <this Python> <requirements>`` or
+``uv pip uninstall --python <this Python> <names>`` (its ``action``) as an
+argument list with no shell and no stdin. The names come from the installed
 package metadata; no request text reaches the argument list.
 
 The process gets the server environment without any ``*_API_KEY``
@@ -13,10 +14,10 @@ the process after :data:`INSTALL_TIMEOUT_SECONDS`.
 
 After exit code 0 the job runs ``uv pip check --python <this Python>``
 with the same limits, because an install can move a package another one
-needs (ADR-094). A conflict fails the install with ``check-failed``.
+needs (ADR-094). A conflict fails the job with ``check-failed``.
 
 After a successful check the extra goes into ``restart_needed``: the
-running process cannot use the new modules safely until it restarts. The
+running process cannot use the changed modules safely until it restarts. The
 state is kept in memory, so a restart shows ``idle`` again.
 """
 
@@ -29,13 +30,14 @@ import os
 import signal
 import sys
 from collections import deque
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
 from .install_environment import InstallEnvironment, detect_environment, extra_requirements
 from .security import redact
+from .uninstall_plan import installed_requirements, saved_settings
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +50,9 @@ IDLE = "idle"
 RUNNING = "running"
 SUCCEEDED = "succeeded"
 FAILED = "failed"
+
+#: The two job actions; each is also the ``uv pip`` subcommand.
+ACTIONS: frozenset[str] = frozenset({"install", "uninstall"})
 
 
 class InstallRunning(RuntimeError):
@@ -87,15 +92,21 @@ class InstallJob:
         python: The Python whose environment receives the packages.
         detect: Returns the install type and ``uv`` path (tests replace it).
         requirements: Returns an extra's requirements (tests replace it).
-        restart_needed: Extras installed in this launch.
+        installed: Returns the installed distributions and what they
+            require (tests replace it).
+        saved: Returns the values saved in ``omrs.jsonc`` (tests replace it).
+        restart_needed: Extras installed or uninstalled in this launch.
     """
 
     timeout: float = INSTALL_TIMEOUT_SECONDS
     python: str = field(default_factory=lambda: sys.executable)
     detect: Callable[[], InstallEnvironment] = detect_environment
     requirements: Callable[[str], list[str]] = extra_requirements
+    installed: Callable[[], Mapping[str, frozenset[str]]] = installed_requirements
+    saved: Callable[[], Mapping[str, Any]] = saved_settings
     restart_needed: set[str] = field(default_factory=set)
     _state: str = IDLE
+    _action: str | None = None
     _extra: str | None = None
     _started_at: str | None = None
     _finished_at: str | None = None
@@ -114,6 +125,7 @@ class InstallJob:
         """Return the state in the ``IntegrationInstall`` shape."""
         return {
             "state": self._state,
+            "action": self._action,
             "extra": self._extra,
             "started_at": self._started_at,
             "finished_at": self._finished_at,
@@ -128,30 +140,36 @@ class InstallJob:
         uv: str,
         packages: list[str],
         *,
+        action: str = "install",
         redactor: Callable[[str], str] | None = None,
     ) -> None:
-        """Start installing *packages* for *extra*. Call it on the event loop.
+        """Install or uninstall *packages* for *extra*. Call it on the event loop.
 
         Args:
             extra: The allowed extra, already checked by the caller.
             uv: Path of the ``uv`` program.
-            packages: The extra's requirements from the package metadata.
+            packages: The extra's requirements (install) or the names to
+                remove (uninstall), from the package metadata.
+            action: ``install`` or ``uninstall``.
             redactor: ``Engine.redact``; removes provider credential values.
 
         Raises:
-            InstallRunning: Another install runs.
+            InstallRunning: Another job runs.
+            ValueError: *action* is not ``install`` or ``uninstall``.
         """
+        if action not in ACTIONS:
+            raise ValueError(f"Unknown job action {action!r}.")
         if self.running:
-            raise InstallRunning(f"The {self._extra} install is running.")
-        self._state, self._extra = RUNNING, extra
+            raise InstallRunning(f"The {self._extra} {self._action} is running.")
+        self._state, self._action, self._extra = RUNNING, action, extra
         self._started_at, self._finished_at = _now(), None
         self._reason, self._exit_code = None, None
         self._output.clear()
-        argv = [uv, "pip", "install", "--python", self.python, *packages]
+        argv = [uv, "pip", action, "--python", self.python, *packages]
         self._task = asyncio.get_running_loop().create_task(self._run(argv, redactor))
 
     async def wait(self) -> None:
-        """Wait until the current install ends. Returns at once when idle."""
+        """Wait until the current job ends. Returns at once when idle."""
         if self._task is not None:
             await asyncio.shield(self._task)
 
@@ -160,7 +178,7 @@ class InstallJob:
         self._finished_at = _now()
         if state == SUCCEEDED and self._extra is not None:
             self.restart_needed.add(self._extra)
-        logger.info("Install of %s ended: %s %s", self._extra, state, reason or "")
+        logger.info("%s of %s ended: %s %s", self._action, self._extra, state, reason or "")
 
     async def _run(self, argv: list[str], redactor: Callable[[str], str] | None) -> None:
         env, secrets = _child_environment()
@@ -179,7 +197,7 @@ class InstallJob:
             self._finish(FAILED, "timed-out", None)
             return
         except OSError:
-            logger.warning("Could not start the install of %s.", self._extra)
+            logger.warning("Could not start the %s of %s.", self._action, self._extra)
             self._finish(FAILED, "start-failed", None)
             return
         except asyncio.CancelledError:
@@ -192,7 +210,11 @@ class InstallJob:
     async def _steps(
         self, install: list[str], check: list[str], env: dict[str, str], clean: Callable[[str], str]
     ) -> tuple[str | None, int]:
-        """Run the install, then the check; return the failure reason (or ``None``) and the code."""
+        """Run the install or uninstall, then the check.
+
+        Returns:
+            The failure reason (or ``None``) and the last exit code.
+        """
         code = await self._exec(install, env, clean)
         if code != 0:
             return "exit-code", code

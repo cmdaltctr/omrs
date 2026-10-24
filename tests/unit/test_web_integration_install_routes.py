@@ -306,6 +306,7 @@ def test_install_responses_conform(harness: Harness) -> None:
     check.check(harness.client.get("/v1/integrations"), 200)
     check.check(harness.client.post("/v1/integrations/no-such/install", headers=ORIGIN), 404)
     check.check(harness.client.post("/v1/integrations/web/install", headers=ORIGIN), 409)
+    check.check(harness.client.post("/v1/integrations/web/uninstall", headers=ORIGIN), 409)
     check.check(harness.client.post(ANTHROPIC, headers=ORIGIN), 202)
     harness.settle()
     check.check(harness.client.get(STATUS), 200)

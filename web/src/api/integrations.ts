@@ -20,7 +20,7 @@ export type InstallType = "uv-tool" | "checkout" | "other";
 export type InstallReason = "not-installable-here" | "status-unknown" | "not-uv-tool" | "uv-not-found" | "already-installed" | "no-requirements";
 
 /** Why `uninstallable` is false, or `null` when it is true. `in-use` comes with `uninstall_setting`. */
-export type UninstallReason = "not-uninstallable-here" | "not-installed" | "in-use" | "not-uv-tool" | "uv-not-found" | "install-running";
+export type UninstallReason = "not-uninstallable-here" | "not-installed" | "nothing-to-remove" | "in-use" | "not-uv-tool" | "uv-not-found" | "install-running";
 
 export interface Integration {
   id: string;

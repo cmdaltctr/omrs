@@ -125,7 +125,9 @@ FAMILIES: dict[str, frozenset[str]] = {
     ),
     "templates": frozenset({"listPipelineTemplates"}),
     "integrations": frozenset({"listIntegrations"}),
-    "integration_install": frozenset({"getIntegrationInstall", "installIntegration"}),
+    "integration_install": frozenset(
+        {"getIntegrationInstall", "installIntegration", "uninstallIntegration"}
+    ),
     "connections": frozenset(
         {
             "getConnections",

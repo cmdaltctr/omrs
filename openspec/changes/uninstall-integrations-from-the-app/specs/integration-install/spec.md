@@ -19,6 +19,11 @@
 - **WHEN** an extra lists a package that another installed package requires
 - **THEN** the server MUST NOT remove that package, and the response MUST list it as kept
 
+#### Scenario: Every package kept
+
+- **WHEN** another installed package requires every package of an installed extra, as lancedb does for the `torch` packages
+- **THEN** the server MUST return 409 with the reason `nothing-to-remove`, MUST list the packages as kept, and MUST start no process
+
 #### Scenario: Base entry and web refused
 
 - **WHEN** a request asks to uninstall `web`, `magika`, `pdf-inspector`, `llamacpp` or `openrouter`

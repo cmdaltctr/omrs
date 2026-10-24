@@ -5,11 +5,12 @@ server can use, its install type, and whether the app can install each
 extra. It reads the runtime probes and the install receipt only.
 
 ``POST /v1/integrations/{extra}/install`` starts the one install job for an
-allowed extra, and ``GET /v1/integrations/install`` reads its state. Both
-need the browser session with the ``manage`` scope; a bearer credential
-never passes. The path value only selects a catalogue entry: an unknown
-value gets 404 and starts no process, and no request text reaches the
-install command.
+allowed extra, ``POST /v1/integrations/{extra}/uninstall`` starts the same
+job to remove an installed, unused extra (``uninstall-integrations-from-the-app``),
+and ``GET /v1/integrations/install`` reads its state. All three need the
+browser session with the ``manage`` scope; a bearer credential never passes.
+The path value only selects a catalogue entry: an unknown value gets 404 and
+starts no process, and no request text reaches the command.
 """
 
 from __future__ import annotations
@@ -25,7 +26,7 @@ from ..engine_access import ReadScope, RuntimeDep, admitted, require_session
 from ..errors import API_HEADERS, error_response
 from ..install_environment import InstallEnvironment
 from ..install_job import InstallJob
-from ..integrations_catalogue import Integration, describe_entry, describe_integrations
+from ..integrations_catalogue import CATALOGUE, Integration, describe_entry, describe_integrations
 from ..integrations_catalogue import find_integration as find_extra
 from ..lifespan import WebRuntime
 from ..security import Principal, redact
@@ -55,6 +56,28 @@ REASONS: dict[str, str] = {
     "install-running": "Another install is running. Wait until it finishes, then try again.",
 }
 
+#: Plain-English message for each uninstall 409 reason. ``in-use`` names the setting.
+UNINSTALL_REASONS: dict[str, str] = {
+    "not-uninstallable-here": (
+        "The app does not remove this extra. It is part of every install or runs this page."
+    ),
+    "not-installed": (
+        "This extra is not installed in the running server, or it changed in this launch. "
+        "Restart the server first."
+    ),
+    "nothing-to-remove": (
+        "Other installed packages need every package of this extra, so there is nothing to "
+        "remove. Use the reinstall command on the entry, if it shows one."
+    ),
+    "in-use": "A setting still uses this extra. Change {setting} first.",
+    "not-uv-tool": (
+        "This server does not run as a uv tool install, so the app cannot remove from it. "
+        "Use the command on the entry, then restart the server."
+    ),
+    "uv-not-found": "The uv program was not found. Use the command on the entry instead.",
+    "install-running": "Another install is running. Wait until it finishes, then try again.",
+}
+
 
 async def _settings(runtime: WebRuntime) -> Any:
     try:
@@ -65,7 +88,15 @@ async def _settings(runtime: WebRuntime) -> Any:
 
 def _catalogue(settings: Any, job: InstallJob) -> tuple[InstallEnvironment, list[dict[str, Any]]]:
     environment = job.detect()
-    entries = describe_integrations(settings, environment, job.restart_needed, job.requirements)
+    entries = describe_integrations(
+        settings,
+        environment,
+        job.restart_needed,
+        job.requirements,
+        installed=job.installed,
+        saved=job.saved,
+        running=job.running,
+    )
     return environment, entries
 
 
@@ -73,12 +104,26 @@ def _one(
     item: Integration, settings: Any, job: InstallJob
 ) -> tuple[InstallEnvironment, dict[str, Any]]:
     environment = job.detect()
-    entry = describe_entry(item, settings, environment, job.restart_needed, job.requirements)
+    entry = describe_entry(
+        item,
+        settings,
+        environment,
+        job.restart_needed,
+        job.requirements,
+        installed=job.installed,
+        saved=job.saved,
+        running=job.running,
+    )
     return environment, entry
 
 
-def _conflict(reason: str) -> JSONResponse:
-    body = {"status": "error", "message": redact(REASONS[reason]), "reason": reason}
+def _conflict(
+    reason: str, messages: dict[str, str] = REASONS, setting: str | None = None
+) -> JSONResponse:
+    message = messages[reason].format(setting=setting)
+    body: dict[str, Any] = {"status": "error", "message": redact(message), "reason": reason}
+    if setting is not None:
+        body["setting"] = setting
     return JSONResponse(body, status_code=409, headers=API_HEADERS)
 
 
@@ -116,4 +161,26 @@ async def install_integration(_: ManageScope, extra: ExtraParam, runtime: Runtim
         return _conflict(reason or "uv-not-found")
     redactor = getattr(runtime.engine, "redact", None)
     job.start(item.extra, environment.uv, entry["packages"], redactor=redactor)
+    return ok({"install": job.snapshot()}, 202)
+
+
+@router.post("/integrations/{extra}/uninstall", operation_id="uninstallIntegration")
+async def uninstall_integration(_: ManageScope, extra: ExtraParam, runtime: RuntimeDep) -> Response:
+    """Start removing an installed, unused extra from this server's own environment.
+
+    An always-on entry without an extra (Magika) is found by its id, so it
+    gets 409 ``not-uninstallable-here`` instead of 404.
+    """
+    item = find_extra(extra) or next((entry for entry in CATALOGUE if entry.id == extra), None)
+    if item is None:
+        return error_response(404, UNKNOWN_EXTRA)
+    job = runtime.installs
+    async with admitted(runtime):
+        settings = await _settings(runtime)
+        environment, entry = await run_in_threadpool(_one, item, settings, job)
+    reason = entry["uninstall_reason"] or ("install-running" if job.running else None)
+    if reason is not None or item.extra is None or environment.uv is None:
+        return _conflict(reason or "uv-not-found", UNINSTALL_REASONS, entry["uninstall_setting"])
+    redactor = getattr(runtime.engine, "redact", None)
+    job.start(item.extra, environment.uv, entry["removes"], action="uninstall", redactor=redactor)
     return ok({"install": job.snapshot()}, 202)

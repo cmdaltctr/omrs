@@ -187,7 +187,20 @@ def copy_command(environment: InstallEnvironment, extra: str) -> str:
     extras = list(environment.receipt_extras)
     if extra not in extras:
         extras.append(extra)
-    requirement = f"omrs[{','.join(extras)}]"
+    return tool_install_command(environment, extras)
+
+
+def tool_install_command(environment: InstallEnvironment, extras: Iterable[str]) -> str:
+    """Return ``uv tool install --reinstall`` for *extras* from the receipt source.
+
+    No extras gives ``omrs`` without brackets. The home folder stays ``~``.
+
+    Args:
+        environment: The detected ``uv tool`` install.
+        extras: The extras the reinstalled tool keeps.
+    """
+    names = list(extras)
+    requirement = f"omrs[{','.join(names)}]" if names else "omrs"
     if environment.receipt_source:
         requirement += f" @ {environment.receipt_source}"
     flags = "--reinstall --editable" if environment.receipt_editable else "--reinstall"

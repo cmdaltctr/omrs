@@ -24,6 +24,7 @@ from omrs.transports.api.install_job import (  # noqa: E402
 from omrs.transports.api.lifespan import WebRuntime  # noqa: E402
 
 PACKAGES = ["llama-index-llms-anthropic>=0.11.0"]
+REMOVES = ["chromadb", "llama-index-vector-stores-chroma"]
 KEY = "sk-test-0123456789abcdefghij"  # gitleaks:allow
 
 
@@ -64,6 +65,7 @@ def test_the_job_is_a_runtime_field_and_starts_idle() -> None:
     snapshot = job.snapshot()
     assert snapshot == {
         "state": "idle",
+        "action": None,
         "extra": None,
         "started_at": None,
         "finished_at": None,
@@ -86,9 +88,57 @@ async def test_success_records_restart_needed(tmp_path: Path) -> None:
 
 
 async def test_argv_is_a_fixed_list_into_the_own_python(tmp_path: Path) -> None:
-    await _run(_job(), fake_uv(tmp_path, "exit 0"))
+    snapshot = await _run(_job(), fake_uv(tmp_path, "exit 0"))
     argv = (tmp_path / "argv.txt").read_text(encoding="utf-8").splitlines()
     assert argv == ["pip", "install", "--python", "/env/bin/python", *PACKAGES]
+    assert snapshot["action"] == "install"
+
+
+async def test_an_uninstall_runs_uv_pip_uninstall_then_the_check(tmp_path: Path) -> None:
+    job = _job()
+    job.start(
+        "chroma",
+        fake_uv(tmp_path, "echo Uninstalled 2 packages\nexit 0"),
+        REMOVES,
+        action="uninstall",
+    )
+    assert job.snapshot()["action"] == "uninstall"
+    await job.wait()
+    snapshot = job.snapshot()
+    argv = (tmp_path / "argv.txt").read_text(encoding="utf-8").splitlines()
+    assert argv == ["pip", "uninstall", "--python", "/env/bin/python", *REMOVES]
+    check = (tmp_path / "check-argv.txt").read_text(encoding="utf-8").splitlines()
+    assert check == ["pip", "check", "--python", "/env/bin/python"]
+    assert snapshot["state"] == "succeeded" and snapshot["action"] == "uninstall"
+    assert snapshot["output"] == ["Uninstalled 2 packages"]
+    assert job.restart_needed == {"chroma"}
+
+
+async def test_a_failing_check_fails_the_uninstall(tmp_path: Path) -> None:
+    job = _job()
+    uv = fake_uv(tmp_path, "exit 0", "echo 'x 1.0 requires chromadb'\nexit 1")
+    job.start("chroma", uv, REMOVES, action="uninstall")
+    await job.wait()
+    snapshot = job.snapshot()
+    assert snapshot["state"] == "failed" and snapshot["reason"] == "check-failed"
+    assert snapshot["action"] == "uninstall" and job.restart_needed == set()
+
+
+def test_an_unknown_action_is_refused() -> None:
+    with pytest.raises(ValueError):
+        _job().start("chroma", "/bin/false", REMOVES, action="upgrade")
+
+
+async def test_a_running_install_refuses_an_uninstall(tmp_path: Path) -> None:
+    gate = tmp_path / "gate"
+    body = f"while [ ! -f {shlex.quote(str(gate))} ]; do sleep 0.02; done\nexit 0"
+    job = _job()
+    job.start("azure", fake_uv(tmp_path, body), ["azure-ai-documentintelligence>=1.0.0"])
+    with pytest.raises(InstallRunning):
+        job.start("chroma", "/bin/false", REMOVES, action="uninstall")
+    assert job.snapshot()["action"] == "install"
+    gate.write_text("", encoding="utf-8")
+    await job.wait()
 
 
 async def test_the_process_gets_no_shell_and_no_stdin(

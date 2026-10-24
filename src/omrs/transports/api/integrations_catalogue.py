@@ -11,24 +11,40 @@ Each entry also says whether the app can install its extra
 (``installable`` and ``install_reason``), the requirements it would add
 (``packages``) and the copy command for this install type
 (``install_command``, design D4). An extra installed by the app in this
-launch reports ``restart-needed``. Nothing here installs a package: the
-install job lives in ``install_job.py``.
+launch reports ``restart-needed``.
+
+Each entry also says whether the app can uninstall its extra
+(``uninstallable``, ``uninstall_reason``, ``uninstall_setting``), the
+installed packages an uninstall removes and keeps (``removes``, ``keeps``)
+and the lasting reinstall command without it. The rules live in
+``uninstall_plan.py``. Nothing here installs or removes a package: the
+job lives in ``install_job.py``.
 """
 
 from __future__ import annotations
 
+import functools
 import logging
-from collections.abc import Callable, Collection
+from collections.abc import Callable, Collection, Mapping
 from dataclasses import dataclass
 from typing import Any
 
 from ... import capabilities
 from .install_environment import (
+    EXCLUDED_EXTRAS,
     InstallEnvironment,
     copy_command,
     extra_requirements,
     install_reason,
     is_base_extra,
+)
+from .uninstall_plan import (
+    in_use_setting,
+    installed_requirements,
+    lasting_uninstall_command,
+    packages_to_remove,
+    saved_settings,
+    uninstall_reason,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,6 +56,8 @@ RESTART_NEEDED = "restart-needed"
 
 #: ``settings`` is the Engine's frozen ``EffectiveSettings``, or ``None``.
 Probe = Callable[[Any], str]
+Installed = Callable[[], Mapping[str, frozenset[str]]]
+Saved = Callable[[], Mapping[str, Any]]
 
 
 def _modules(*names: str) -> Probe:
@@ -204,21 +222,59 @@ def find_integration(extra: str) -> Integration | None:
     return next((item for item in CATALOGUE if item.extra and item.extra == extra), None)
 
 
+def _uninstall_fields(
+    extra: str | None,
+    base: bool,
+    availability: str,
+    settings: Any,
+    environment: InstallEnvironment,
+    *,
+    installed: Installed,
+    saved: Saved,
+    running: bool,
+) -> dict[str, Any]:
+    """Return the six uninstall fields of one entry (design D1, D2, D4)."""
+    removes: list[str] = []
+    keeps: list[str] = []
+    setting = None
+    if extra is not None and not base and extra not in EXCLUDED_EXTRAS:
+        if availability == AVAILABLE:
+            setting = in_use_setting(extra, settings, saved())
+            removes, keeps = packages_to_remove(extra, installed())
+    reason = uninstall_reason(extra, base, availability, removes, setting, environment, running)
+    lasting = None if extra is None else lasting_uninstall_command(environment, extra, base=base)
+    return {
+        "uninstallable": reason is None,
+        "uninstall_reason": reason,
+        "uninstall_setting": setting if reason == "in-use" else None,
+        "removes": removes,
+        "keeps": keeps,
+        "lasting_uninstall_command": lasting,
+    }
+
+
 def describe_entry(
     item: Integration,
     settings: Any,
     environment: InstallEnvironment,
     restart_needed: Collection[str] = (),
     requirements: Callable[[str], list[str]] = extra_requirements,
+    *,
+    installed: Installed = installed_requirements,
+    saved: Saved = saved_settings,
+    running: bool = False,
 ) -> dict[str, Any]:
-    """Return one catalogue entry with its availability and install fields.
+    """Return one catalogue entry with its availability, install and uninstall fields.
 
     Args:
         item: The catalogue entry.
         settings: The Engine's frozen ``EffectiveSettings``, or ``None``.
         environment: The detected install type and ``uv`` program.
-        restart_needed: Extras the app installed in this launch.
+        restart_needed: Extras the app installed or uninstalled in this launch.
         requirements: Returns an extra's requirements.
+        installed: Returns the installed distributions and what they require.
+        saved: Returns the values saved in ``omrs.jsonc``.
+        running: Whether an install or uninstall job runs now.
     """
     extra = item.extra
     if extra is not None and extra in restart_needed:
@@ -251,6 +307,16 @@ def describe_entry(
         "install_reason": reason,
         "packages": packages,
         "install_caution": item.caution,
+        **_uninstall_fields(
+            extra,
+            base,
+            availability,
+            settings,
+            environment,
+            installed=installed,
+            saved=saved,
+            running=running,
+        ),
     }
 
 
@@ -259,18 +325,38 @@ def describe_integrations(
     environment: InstallEnvironment,
     restart_needed: Collection[str] = (),
     requirements: Callable[[str], list[str]] = extra_requirements,
+    *,
+    installed: Installed = installed_requirements,
+    saved: Saved = saved_settings,
+    running: bool = False,
 ) -> list[dict[str, Any]]:
     """Return every catalogue entry with its resolved availability.
+
+    The installed package map and ``omrs.jsonc`` are read at most once.
 
     Args:
         settings: The Engine's frozen ``EffectiveSettings``, or ``None``
             when they cannot be read (the Magika probe then reports
             ``unknown``).
         environment: The detected install type and ``uv`` program.
-        restart_needed: Extras the app installed in this launch.
+        restart_needed: Extras the app installed or uninstalled in this launch.
         requirements: Returns an extra's requirements.
+        installed: Returns the installed distributions and what they require.
+        saved: Returns the values saved in ``omrs.jsonc``.
+        running: Whether an install or uninstall job runs now.
     """
+    once_installed = functools.cache(installed)
+    once_saved = functools.cache(saved)
     return [
-        describe_entry(item, settings, environment, restart_needed, requirements)
+        describe_entry(
+            item,
+            settings,
+            environment,
+            restart_needed,
+            requirements,
+            installed=once_installed,
+            saved=once_saved,
+            running=running,
+        )
         for item in CATALOGUE
     ]

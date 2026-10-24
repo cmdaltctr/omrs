@@ -3250,7 +3250,9 @@ paths:
         `restart-needed` until the server restarts. An extra that is not in
         the catalogue gets 404. Every refusal of a listed extra gets 409
         with `reason`: `not-uninstallable-here` (a base entry, `web` or an
-        entry without an extra), `not-installed`, `in-use` (with `setting`,
+        entry without an extra, such as `magika`, which is found by its id),
+        `not-installed`, `nothing-to-remove` (every package of the extra is
+        kept), `in-use` (with `setting`,
         the setting that selects the extra), `not-uv-tool`, `uv-not-found`
         or `install-running`. Session only: a bearer credential gets 403.
       security:
@@ -8070,14 +8072,17 @@ components:
           description: Whether `POST /v1/integrations/{extra}/uninstall` would start an uninstall now.
         uninstall_reason:
           type: [string, "null"]
-          enum: [not-uninstallable-here, not-installed, in-use, not-uv-tool, uv-not-found, install-running, null]
+          enum: [not-uninstallable-here, not-installed, nothing-to-remove, in-use, not-uv-tool, uv-not-found, install-running, null]
           description: >
             Why `uninstallable` is false, or null when it is true. The checks
             run in this order. `not-uninstallable-here`: a base entry, `web`
             or an entry without an extra. `not-installed`: `availability` is
             not `available` (not installed, unknown, or an install or
-            uninstall in this launch waits for a restart). `in-use`: a
-            setting selects the extra (see `uninstall_setting`).
+            uninstall in this launch waits for a restart).
+            `nothing-to-remove`: every installed package of the extra is in
+            `keeps`, because something else requires it (for example
+            `torch`, whose packages lancedb lists under its own extras).
+            `in-use`: a setting selects the extra (see `uninstall_setting`).
             `not-uv-tool`, `uv-not-found`: as for install.
             `install-running`: an install or uninstall job runs now.
         uninstall_setting:
