@@ -313,13 +313,14 @@ The server can serve MCP at `/mcp`. It is off by default. Turn it on with `PUT /
 
 ## Integrations, provider settings and the server log
 
-`GET /v1/integrations`, `GET /v1/logs` and `GET /v1/logs/stream` show the state of the running server. They change no setting and install no package. `POST /v1/integrations/{extra}/install` installs one allowed extra (ADR-094). The provider and Chat routes below can change settings. Each change needs the browser session.
+`GET /v1/integrations`, `GET /v1/logs` and `GET /v1/logs/stream` show the state of the running server. They change no setting and install no package. `POST /v1/integrations/{extra}/install` installs one allowed extra (ADR-094). `POST /v1/integrations/{extra}/uninstall` removes one installed extra (ADR-096). The provider and Chat routes below can change settings. Each change needs the browser session.
 
 | Route | Scope | What it does |
 |---|---|---|
-| `GET /v1/integrations` | `read` | One entry for each installable extra and for Magika. `availability` is `available`, `not-installed` or `unknown` (a probe failed) or `restart-needed` (an install from the app succeeded in this launch). `install_type` is `uv-tool`, `checkout` or `other`. Each entry has `base` (every install already holds it: no extra, or an extra whose requirements are all base requirements; such an entry has no command and cannot be installed), `installable`, `install_reason`, `packages`, `install_caution` and copy-ready `install_command` and `pip_command` values. `install_command` matches the install type: the lasting `uv tool install --reinstall "omrs[<extras>] @ <source>"` for a `uv tool` install, `uv sync --extra <extra>` for a checkout, else `pip install "omrs[<extra>]"`. |
+| `GET /v1/integrations` | `read` | One entry for each installable extra and for Magika. `availability` is `available`, `not-installed` or `unknown` (a probe failed) or `restart-needed` (an install or uninstall from the app succeeded in this launch). `install_type` is `uv-tool`, `checkout` or `other`. Each entry has `base` (every install already holds it: no extra, or an extra whose requirements are all base requirements; such an entry has no command and cannot be installed), `installable`, `install_reason`, `packages`, `install_caution` and copy-ready `install_command` and `pip_command` values. `install_command` matches the install type: the lasting `uv tool install --reinstall "omrs[<extras>] @ <source>"` for a `uv tool` install, `uv sync --extra <extra>` for a checkout, else `pip install "omrs[<extra>]"`. Each entry also has `uninstallable`, `uninstall_reason`, `uninstall_setting` (the setting that uses the extra, for `in-use`), `removes`, `keeps` and `lasting_uninstall_command` (the reinstall command without the extra, only when the `uv tool` receipt lists it). |
 | `POST /v1/integrations/{extra}/install` | `manage` | Session only. Runs `uv pip install --python <server Python> <requirements>` with the requirements the installed package declares for the extra. Only for a `uv tool` install with `uv` found, never for `web`. Then runs `uv pip check` on the same Python; a clash fails the install with `check-failed`. One install at a time, stopped after 600 s. Returns 202, 404 for an unknown extra and 409 with `reason` for a refused one (`status-unknown` when the probe failed). |
-| `GET /v1/integrations/install` | `manage` | Session only. State of the running or last install: `idle`, `running`, `succeeded` or `failed`, with the extra, times, `reason` and the last 40 redacted output lines. A restart returns `idle`. |
+| `POST /v1/integrations/{extra}/uninstall` | `manage` | Session only. Runs `uv pip uninstall --python <server Python> <names>` with the entry's `removes` list, then `uv pip check`. Only for an installed entry that is not a base entry or `web`, on a `uv tool` install with `uv` found. Uses the install job: one job at a time, stopped after 600 s. Returns 202, 404 for an unknown extra and 409 with `reason` for a refused one: `not-uninstallable-here` (also for Magika), `not-installed`, `nothing-to-remove` (other packages need every package of the extra), `in-use` (with `setting`), `not-uv-tool`, `uv-not-found` or `install-running`. |
+| `GET /v1/integrations/install` | `manage` | Session only. State of the running or last job: `idle`, `running`, `succeeded` or `failed`, with `action` (`install` or `uninstall`), the extra, times, `reason` and the last 40 redacted output lines. A restart returns `idle`. |
 | `GET /v1/connections` | `read` | `config_dir`, `user_config_dir` (the user config folder, with `~` for home), `keychain` (`available` or `unavailable`) and one entry for each registered LLM provider. Each entry has `fields[]` (`id`, `label`, `kind`, `value` for addresses, `source` (`env`, `dotenv`, `config-file`, `keychain`, `key-file`, `default` or `none`), `locked`, `lock_reason`, `required` (false for a key the provider can run without), `set`, `last4`, `state`), `read_only[]`, `roles`, `installed` and `install_hint`. A key is never returned. `last4` is set only when the key has 16 or more characters. |
 | `PUT /v1/connections/{provider}` | `manage` | Body `{fields: {<id>: url or null}}`. Saves or clears addresses. Returns 400 for a bad address, 404 for an unknown provider or field, and 409 for a locked field (from the environment, `.env` or `omrs.jsonc`). |
 | `PUT /v1/connections/{provider}/key` | `credentials` | Body `{api_key}`, 8 to 512 printable characters with no spaces. Saves the key to the system keychain. Returns 409 when the key comes from the environment, `.env` or `omrs.jsonc`, or when no keychain exists. A key file does not cause a 409. |
@@ -601,7 +602,7 @@ Every area has its own address. Back and forward move between them. An address t
 | Knowledge Base | `#/knowledge-base/<collection>` | Rename the project title with the pencil. See the database that holds the project (logo and name in the header, name in the project list and in the Sources table). List sources, upload and ingest files, ingest from an approved folder, search, preview and confirm a deletion or a profile change. The upload panel shows the server's per-file limit and refuses a larger file before it is sent. Change the limit in Settings › Workspace. |
 | Studio | `#/studio`, `#/studio/<profile-id>`, `#/studio/<profile-id>/<purpose>` | Open a gallery of profiles. Duplicate a profile, start an empty one, rename it or delete it. Open the Ingest, Search or Answer pipeline of a profile. Add operations, connect ports, save a revision, validate, run and cancel. |
 | Experiments | `#/experiments`, `#/experiments/runs/<run-id>` | Create experiment folders and sub-experiments, issue a bound credential, register and open the notebook editor, and read pipeline runs. A preview that is cut offers Open full output, which shows the redacted value as text and downloads it. |
-| Integrations | `#/integrations` | See which optional parts are installed. When the server is a `uv tool` install and finds `uv`, press Install on an entry, confirm the packages, then restart the server to use them. Read a red "Before you install" note first: it names a package version the install can change, or, for PyTorch, the download size. An entry marked "Base default" comes with every install, so do not install it again. After the install the server checks every package; if they clash, run the entry's command instead of restarting. Otherwise copy the command, run it in a terminal and restart the server. For a `uv tool` install, the copied command keeps the extra after a later reinstall. |
+| Integrations | `#/integrations` | See which optional parts are installed. When the server is a `uv tool` install and finds `uv`, press Install on an entry, confirm the packages, then restart the server to use them. Read a red "Before you install" note first: it names a package version the install can change, or, for PyTorch, the download size. An entry marked "Base default" comes with every install, so do not install it again. After the install the server checks every package; if they clash, run the entry's command instead of restarting. Otherwise copy the command, run it in a terminal and restart the server. For a `uv tool` install, the copied command keeps the extra after a later reinstall. To remove an installed extra, press Uninstall (see [Uninstall an integration](#uninstall-an-integration)). |
 | Settings | `#/settings`, `#/settings/<section>` | Nine sections: Appearance, Providers, Chat, MCP, Server log, Runtime, Workspace, Document reading and Configuration. Set provider addresses and keys and test them, choose the Chat model, read the server log, copy the MCP client configuration, manage MCP access over HTTP, set the per-file upload limit, choose the PDF reader and the OCR settings for the next launch, and read and change every setting. |
 
 The screenshots show a local server with small Markdown sources. The run output screenshot shows a search result passage that is longer than the 4 KiB preview.
@@ -620,6 +621,39 @@ The screenshots show a local server with small Markdown sources. The run output 
 ![Studio canvas of a profile](images/web-workspace/studio-canvas-light-1280.png)
 
 On a phone, the areas use one column. Two examples at 390 px: [Home](images/web-workspace/home-light-390.png) and the [Studio canvas](images/web-workspace/studio-canvas-light-390.png).
+
+### Uninstall an integration
+
+The Integrations page can remove an optional extra from a `uv tool` install (ADR-096). Base entries and the `web` entry show no Uninstall button.
+
+1. Open Integrations.
+2. Find the installed entry.
+3. Press Uninstall.
+4. Read the dialog. It lists the packages that the server removes.
+5. Read the kept packages, if the dialog shows them. The server keeps a package when the base install, another installed extra or another installed package needs it.
+6. Press Uninstall in the dialog.
+7. Wait for "Removed, restart to apply".
+8. Press Restart.
+
+If the check after the uninstall finds a clash, do not restart. Run the entry's lasting command, or reinstall OMRS with `uv tool install --reinstall`.
+
+**An extra in use.** The server refuses an extra that a setting selects, and the card names that setting. For example, the Chroma card says that `vector_store` uses it. Change the setting in Settings, restart the server, then uninstall. The server reads the effective settings and the saved `omrs.jsonc`, because the next start reads the saved value.
+
+| Extra | Setting that blocks the uninstall |
+|---|---|
+| `chroma` | `vector_store` is `chroma` |
+| `torch` | `retrieval.rerank_backend` is `torch` |
+| `pdf-pypdfium2` | `pdf_reader` is `pypdfium2` |
+| `azure` | `document_backend` is `azure` |
+| `community-leiden` | `community_algorithm` is `leiden` |
+| `anthropic` | `answer.provider` or `answer.verify_provider` is `anthropic` |
+| `hybrid` | None. The built-in BM25 search takes over. |
+
+**Nothing to remove.** Sometimes other installed packages need every package of an extra. The card then lists those packages and shows no Uninstall button. PyTorch is an example today, because LanceDB names its packages. To remove such an extra, run the lasting reinstall command if the card shows one.
+
+**Leftover packages.** Uninstall removes only the extra's own packages. Packages that only those packages pulled in stay installed. They do no harm. To remove them, run the lasting reinstall command.
+
+**The lasting command.** The `uv tool` receipt records the extras of the install, for example `omrs[web,hybrid]`. A later `uv tool install --reinstall` from the receipt adds a removed extra back. When the receipt lists the extra, the card shows the reinstall command without it, for example `uv tool install --reinstall "omrs[web] @ <source>"`. Copy it, run it in a terminal and restart the server. It removes the extra for good and drops the leftover packages.
 
 ### Navigation foot
 

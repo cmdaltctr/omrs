@@ -12,7 +12,7 @@
 ## 3. Page
 
 - [x] 3.1 Load `omrs-design`. Add Uninstall, its dialog (removed and kept lists), progress, "Removed, restart to apply", the in-use line and the lasting command. Verify: Vitest cases from the `workspace-integrations` scenarios fail first, then pass.
-- [ ] 3.2 Update `docs/guides/web-workspace.md` and write the ADR (load `s-adr`). Verify: docs tests pass.
+- [x] 3.2 Update `docs/guides/web-workspace.md` and write the ADR (load `s-adr`). Verify: docs tests pass.
 
 ## 4. Checks
 
