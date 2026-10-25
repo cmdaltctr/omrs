@@ -21,14 +21,13 @@ assertions fail on stale sparse results, which is the defect under fix.
 
 from __future__ import annotations
 
-import subprocess
-import sys
 import textwrap
 from pathlib import Path
 from typing import Any
 
 import lancedb
 import pytest
+from tests._lance_child import run_lance_child
 
 from omrs.core.retrieval.sparse import BM25SparseRetriever
 from omrs.core.vectordb.identity import EmbeddingIdentity
@@ -439,14 +438,8 @@ _WRITER_SCRIPT = textwrap.dedent(
 
 def _run_writer_subprocess(uri: str, collection: str, phase: str, *extra: str) -> None:
     """Run one writer phase in a separate process against the shared database."""
-    completed = subprocess.run(
-        [sys.executable, "-c", _WRITER_SCRIPT, uri, collection, phase, *extra],
-        capture_output=True,
-        text=True,
-        timeout=120,
-    )
-    assert completed.returncode == 0, (
-        f"Writer subprocess phase {phase!r} failed:\n{completed.stderr}"
+    run_lance_child(
+        _WRITER_SCRIPT, uri, collection, phase, *extra, label=f"Writer subprocess phase {phase!r}"
     )
 
 

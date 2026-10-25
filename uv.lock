@@ -3797,7 +3797,7 @@ requires-dist = [
     { name = "onnxruntime", specifier = ">=1.20.0" },
     { name = "pdf-inspector", specifier = ">=1.17.0" },
     { name = "pdf-inspector", marker = "extra == 'pdf-inspector'", specifier = ">=1.17.0" },
-    { name = "pyarrow", specifier = ">=25" },
+    { name = "pyarrow", specifier = ">=25.0.1" },
     { name = "pydantic-settings", specifier = ">=2.14.1" },
     { name = "pylance", specifier = ">=10" },
     { name = "pypdf", specifier = ">=6.16.1" },

@@ -31,7 +31,10 @@ dependencies = [
     # update_schema_metadata is the verified 10.x API surface and the
     # floors job installs with --resolution lowest-direct.
     "pylance>=10",
-    "pyarrow>=25",
+    # 25.0.1 bundles a fixed mimalloc. 25.0.0 crashes (SIGSEGV) when a
+    # thread that first imported pyarrow exits and another thread then
+    # allocates (apache/arrow GH-50471, reproduced locally; TDR-040).
+    "pyarrow>=25.0.1",
     "llama-index-readers-file>=0.5.0",
     "llama-index-embeddings-ollama>=0.7.0",
     "python-dotenv>=1.0.0",
