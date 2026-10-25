@@ -170,7 +170,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # test_experiments_guide_links.py (9), test_experiment_run_record_lib.py (4) and
 # one new contract in test_contract_coverage.py. No fastapi needed. The 13 schema
 # parity cases need jsonschema, which mcp installs.
-_BASE_EXECUTED = 8377
+# +5 (2026-10-25, LanceDB exit crash, TDR-040): test_lance_child_helper.py (5).
+# No fastapi needed.
+_BASE_EXECUTED = 8382
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
