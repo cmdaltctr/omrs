@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "30",
+  "title": "Reader fallback chain",
+  "date": "2026-09-13",
+  "category": "ingestion",
+  "size": null,
+  "status": "PASS",
+  "superseded_by": null,
+  "finding": "Validates the tiered fallback chain pdf-inspector → liteparse → pypdf against a script-local mirror of the historical pypdf-only guard (928f030) on 5 docs (2 IA GlyphLessFont scans, 1 WinAnsi, Kerr control, healthy control). liteparse tier rescues all 3 silent-empty docs; median-of-3 retries 0.05–0.20 s vs pypdf 0.31–11.5 s (~56× on the 136-page scan), omits textless pages (121/136), preserves every routing decision, never fires on healthy files. Second pdf-inspector failure mechanism recorded (IA GlyphLessFont). Evidence for ADR-066; shipped",
+  "migration": {
+    "from_status": "PASS (4/4 gates)",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}

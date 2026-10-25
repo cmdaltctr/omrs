@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "8a",
+  "title": "Query embedding cache full-size evaluation",
+  "date": "2026-05-29",
+  "category": "runtime",
+  "size": null,
+  "status": "PASS",
+  "superseded_by": null,
+  "finding": "Full-size traces confirm 76% warm speedup, 87% agent-loop speedup, no cold-query penalty, and cache hits on both retrieval branches",
+  "migration": {
+    "from_status": "PASS",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}

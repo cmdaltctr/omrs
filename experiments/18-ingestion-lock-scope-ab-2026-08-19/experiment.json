@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "18",
+  "title": "Ingestion lock-scope baseline and conditional A/B",
+  "date": "2026-08-19",
+  "category": "runtime",
+  "size": "Standard",
+  "status": "PASS",
+  "superseded_by": null,
+  "finding": "Stage 3B measurement gate (design D12). Phase A: H1–H5 all PASS (bounded units, RSS ≤2× per 4× files, failure safety, swap, unchanged skip). Timing: single-stream lock wait ≈0 (sequential by construction); 2-stream contended with real Ollama embeddings is fully serialised — contender lock wait 95.6% of wall, speedup 1.002. Phase B A/B (3 interleaved reps/arm): narrow lock retained — real-embed contended throughput +34.7% (5.49 → 7.40 docs/s), lock wait 96.7% → 0.0%, H6/H7 pass, correctness re-run green; TDR-013",
+  "migration": {
+    "from_status": "PASS",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "17",
+  "title": "Reranker MPS vs ONNX CPU latency",
+  "date": "2026-08-11",
+  "category": "runtime",
+  "size": null,
+  "status": "FAIL",
+  "superseded_by": null,
+  "finding": "H1–H4 PASS: MPS is 4.5× faster than ONNX CPU (54.9ms vs 245.3ms P50), cold start 2.9×, RSS 1.54×. H5 FAIL: ONNX int8 and torch fp32 produce different rankings on 2/5 queries (near-tied documents). 17B==17C rankings match — device change is clean; divergence is backend precision (int8 vs fp32). Keep ONNX CPU as default; torch backend retains automatic MPS for opt-in. ADR-043 records the verdict",
+  "migration": {
+    "from_status": "FAIL",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}

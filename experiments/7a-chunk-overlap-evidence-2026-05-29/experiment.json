@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "7a",
+  "title": "Chunk overlap sensitivity on Qasper",
+  "date": "2026-05-29",
+  "category": "retrieval",
+  "size": null,
+  "status": "INCONCLUSIVE",
+  "superseded_by": null,
+  "finding": "Qasper is a stress case: overlap 64 beats 100 at rerank-on `top_k=5`; keep global default 100 but document corpus-specific override guidance",
+  "migration": {
+    "from_status": "INCONCLUSIVE",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}

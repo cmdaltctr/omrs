@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "42",
+  "title": "Clef-flash confirmation",
+  "date": "2026-10-08",
+  "category": "ingestion",
+  "size": "Standard",
+  "status": "FAIL",
+  "superseded_by": null,
+  "finding": "Confirmatory test of Experiment 38 candidate J (Clef-flash, llama.cpp Q8_0, wording W1) at a threshold frozen on Experiment 38, on 68 new documents that the shipped chain rescues with LiteParse (amendment A8); labels by Gemini 3.8 Flash with the Experiment 33 procedure (A7). Clef-flash catches 56/76 junk pages but flags 11/358 healthy pages (3.1%), misses 6 of 19 junk-layer documents (G1) and sends 6 usable documents to OCR (G2); margin over the word check +0.092, McNemar p 0.180. Word check: 49/76 junk, 1/358 healthy, G2 and G3 pass, G1 misses `rs37` only. Readable-language judge work stops (D10); standard text-quality methods untested (see report, Methods against standard practice).",
+  "migration": {
+    "from_status": "FAIL",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}

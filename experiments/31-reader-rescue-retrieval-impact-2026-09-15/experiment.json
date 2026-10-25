@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "31",
+  "title": "Reader rescue retrieval impact",
+  "date": "2026-09-15",
+  "category": "ingestion",
+  "size": null,
+  "status": "PASS",
+  "superseded_by": null,
+  "finding": "Three paired cells (pdf-inspector-only sanity, production LiteParse-first chain, pypdf-only guard mirror at 928f030) on 8 held-out natural silent-empty PDFs (6 IA GlyphLessFont, 2 ACL WinAnsi-no-/ToUnicode) + 11 healthy distractors, 24 poppler-labelled queries, frozen text-span matching, `documents` profile, local Ollama embeddings, OCR off, preflight 14/14. Both rescues retrieve gold evidence (Recall@10: B 0.583, C 0.792 vs A 0.000 by construction), but the chain is materially worse than the pypdf guard: paired hit@10 Δ −0.208, bootstrap 95% CI [−0.375, −0.083]. Four of five disagreements are parser-stage losses on the Type B ACL papers (LiteParse renders WinAnsi text at 0.18–0.39 8-gram overlap — rescued by character count, unreadable in content); one is a retrieval miss on fully recovered Type A evidence. Extraction speed still favours the chain ~7× (3.9 s vs 28.7 s median). Production unchanged; a fallback-order change needs a separate proposal",
+  "migration": {
+    "from_status": "PASS (decisive; negative for the candidate)",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}

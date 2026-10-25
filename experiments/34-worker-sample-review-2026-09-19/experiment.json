@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "34",
+  "title": "Worker sample review",
+  "date": "2026-09-19",
+  "category": "review",
+  "size": null,
+  "status": "PASS",
+  "superseded_by": null,
+  "finding": "Operator review of the PaddleOCR-VL worker (protocol 1.1, CPU) against `pdf_inspector`, `liteparse` and a dots.mocr probe on `bd03` p1–p2 (control) and `io06` p28, p53 (old book), plus `eq01` p11 (equations). Control guard passes: no damage on clean pages. `io06/28`: text readers `empty`, worker readable with one invented-text defect. Text readers not LLM-ready on equations; both OCR engines give correct LaTeX. dots.mocr named best on 5/5 pages. `io04`/`tl03` not reviewed. Task 2.3 proceeds for `io06`-class pages",
+  "migration": {
+    "from_status": "PASS (scoped to 4 pages)",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}

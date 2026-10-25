@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "29",
+  "title": "PDF routing repeat study",
+  "date": "2026-09-13",
+  "category": "ingestion",
+  "size": "Standard",
+  "status": "PASS",
+  "superseded_by": null,
+  "finding": "`repeat-pdf-routing-study`. Preregistered repeat on an approved 17-doc collection (3 dev + 14 held-out, independent pypdf page labels, freeze commit before scoring). Candidate (post-`9bf4810`, 0.5/0.10) false-routes nothing held-out; the book stays fast-pathed while both pinned baseline arms still route it (30.5 h projected). Dev recall: Kerr routes. Sloman label corrected to needs_ocr=false post-review — it is a pdf-inspector extraction failure, not a scan (pypdf reads 2,944 chars/page); its dev route under the candidate was a false route on corrupted evidence, removed by the exp-30 reader chain",
+  "migration": {
+    "from_status": "PASS (recall gate not_evaluable by construction; dev_003 label amended)",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}

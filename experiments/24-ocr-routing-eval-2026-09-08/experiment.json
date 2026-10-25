@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "24",
+  "title": "OCR routing evaluation",
+  "date": "2026-09-08",
+  "category": "ingestion",
+  "size": "Standard",
+  "status": "PASS",
+  "superseded_by": null,
+  "finding": "`improve-rag-input-quality-5` task 5.1. Run 1 FAILED on the structure-marker gate — the original fixtures were 605-byte blank PDFs with nothing to OCR (commit `a7d7cd2`, honest negative). Task 1.1 repair replaced them with rasterised pages from a CC0 paper (Dashnow et al. 2014, attribution + sha256 in the fixtures manifest, commit `786055e`); gates unchanged. Run 2: all five gates PASS — 0 failures, 3/3 fast-path byte-identity, worker 156.9 s/page ≤ 180 (13% margin), routing 2.26 ms ≤ 50, headings recovered on both routed pages, ground-truth word recall 93.1%/94.3%. Full worker Markdown committed in `output/ablation.json`",
+  "migration": {
+    "from_status": "PASS (run 2)",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}

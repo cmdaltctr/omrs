@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "19",
+  "title": "LanceDB production-lifecycle qualification",
+  "date": "2026-08-21",
+  "category": "runtime",
+  "size": "Standard",
+  "status": "PASS",
+  "superseded_by": null,
+  "finding": "LanceDB passed 14/14 production-lifecycle gates on run 2.",
+  "migration": {
+    "from_status": "results.md: ## Verdict **PASS** (run2, 14/14 gates)",
+    "source": "results.md",
+    "date": "2026-10-25"
+  }
+}

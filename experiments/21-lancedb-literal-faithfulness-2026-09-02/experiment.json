@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "21",
+  "title": "LanceDB engine literal-faithfulness inventory",
+  "date": "2026-09-02",
+  "category": "runtime",
+  "size": null,
+  "status": "PASS",
+  "superseded_by": null,
+  "finding": "`accept-lancedb-filter-policy-exception` evidence. On lancedb 0.37.1, the engine's literal builder mis-serialises exactly the two known value classes (apostrophe runs collapse `''` to one apostrophe; backslash-before-apostrophe emits `\\'` undoubled) and no others. `translate_where` refuses both classes, accepts all 27 ordinary values with zero false refusals, and live-table equality filters match only their own row (28/28 pass). Supports ADR-058 (LanceDB filter policy exception)",
+  "migration": {
+    "from_status": "PASS",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}

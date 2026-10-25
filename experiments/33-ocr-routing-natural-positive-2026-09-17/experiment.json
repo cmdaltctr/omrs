@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "33",
+  "title": "OCR routing natural-positive study",
+  "date": "2026-09-17",
+  "category": "ingestion",
+  "size": "Standard",
+  "status": "FAIL",
+  "superseded_by": null,
+  "finding": "First measurement of OCR-routing recall on natural positives: 40 open-licence PDFs, 1,123 pages, operator-verified page labels (18 needs_ocr, 22 usable). Shipped gate catches 10/18 (recall 0.556, Wilson [0.337, 0.754]) and wrongly routes 1/22 (`mx08`, image_based classification). The `full-page-ocr-evidence` candidate (PR #95) catches 11/18 (0.611) for 49 extra OCR pages and no new false alarm. Three causes: pdf-inspector samples 8 pages (fixed by the candidate, `tl02`); its page test misses scanned pages carrying a header line or junk OCR text (`mx02`, `mx07`, `tl07`, `tl08`) and the ADR-066 rescue zeroes evidence after recovering junk (`rf06` 0.236, `rf07` 0.469 fast-path recall); and the gate never looks at equations (`bd04`). Operator review recorded a second construct — structure and understanding needs (equations, figures, columns, tables, non-Latin scripts) — kept as `understanding_label`",
+  "migration": {
+    "from_status": "FAIL (Stage A)",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}
