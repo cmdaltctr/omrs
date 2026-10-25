@@ -21,15 +21,13 @@ assertions fail on stale sparse results, which is the defect under fix.
 
 from __future__ import annotations
 
-import os
-import subprocess
-import sys
 import textwrap
 from pathlib import Path
 from typing import Any
 
 import lancedb
 import pytest
+from tests._lance_child import run_lance_child
 
 from omrs.core.retrieval.sparse import BM25SparseRetriever
 from omrs.core.vectordb.identity import EmbeddingIdentity
@@ -434,33 +432,14 @@ _WRITER_SCRIPT = textwrap.dedent(
                 raise SystemExit("recreation never reached the target version")
     else:
         raise SystemExit(f"unknown phase: {phase}")
-    print("writer phase finished", flush=True)
-    # lancedb < 0.40 leaves its Tokio worker threads running into
-    # interpreter shutdown, where one can crash the process (SIGSEGV or
-    # SIGABRT) after a successful write (lancedb PR #4175, TDR-040).
-    # The write has committed, so skip interpreter finalisation.
-    import os
-    sys.stderr.flush()
-    os._exit(0)
     """
 )
 
 
 def _run_writer_subprocess(uri: str, collection: str, phase: str, *extra: str) -> None:
     """Run one writer phase in a separate process against the shared database."""
-    completed = subprocess.run(
-        [sys.executable, "-c", _WRITER_SCRIPT, uri, collection, phase, *extra],
-        capture_output=True,
-        text=True,
-        timeout=120,
-        # The writer has crashed with SIGSEGV on the floors CI jobs and left
-        # stderr empty. faulthandler prints each thread's Python stack first.
-        env={**os.environ, "PYTHONFAULTHANDLER": "1"},
-    )
-    # stdout holds "writer phase finished" when the crash came after the write.
-    assert completed.returncode == 0, (
-        f"Writer subprocess phase {phase!r} failed:\n"
-        f"stdout: {completed.stdout!r}\nstderr:\n{completed.stderr}"
+    run_lance_child(
+        _WRITER_SCRIPT, uri, collection, phase, *extra, label=f"Writer subprocess phase {phase!r}"
     )
 
 

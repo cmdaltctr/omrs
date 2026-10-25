@@ -11,8 +11,6 @@ store's per-call table reopen.
 
 from __future__ import annotations
 
-import subprocess
-import sys
 import textwrap
 from pathlib import Path
 from typing import Any
@@ -20,6 +18,7 @@ from typing import Any
 import lancedb
 import pyarrow as pa
 import pytest
+from tests._lance_child import run_lance_child
 
 from omrs.core.vectordb.identity import EmbeddingIdentity
 from omrs.core.vectordb.lancedb.epoch import (
@@ -276,13 +275,7 @@ def test_long_lived_reader_observes_subprocess_rebuild_epoch(tmp_path: Path) -> 
     _upsert(reader, "docs", [("a", "alpha", "a.txt")])
     epoch_before, _ = _epoch_and_version(reader, "docs")
 
-    completed = subprocess.run(
-        [sys.executable, "-c", _REBUILDER_SCRIPT, uri, "docs"],
-        capture_output=True,
-        text=True,
-        timeout=120,
-    )
-    assert completed.returncode == 0, f"Rebuilder subprocess failed:\n{completed.stderr}"
+    run_lance_child(_REBUILDER_SCRIPT, uri, "docs", label="Rebuilder subprocess")
 
     epoch_after, _ = _epoch_and_version(reader, "docs")
     assert epoch_after != epoch_before

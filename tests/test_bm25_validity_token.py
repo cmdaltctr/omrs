@@ -19,13 +19,12 @@ not reach, on top of the durable-token seam stage 2 added:
 from __future__ import annotations
 
 import logging
-import subprocess
-import sys
 import textwrap
 from pathlib import Path
 from typing import Any
 
 import pytest
+from tests._lance_child import run_lance_child
 
 from omrs.core.retrieval.sparse import (
     _LOCAL_TOKEN_PREFIX,
@@ -312,14 +311,8 @@ _WRITER_SCRIPT = textwrap.dedent(
 
 def _run_writer(uri: str, collection: str, phase: str) -> None:
     """Run one writer phase in a separate process against the shared database."""
-    completed = subprocess.run(
-        [sys.executable, "-c", _WRITER_SCRIPT, uri, collection, phase],
-        capture_output=True,
-        text=True,
-        timeout=120,
-    )
-    assert completed.returncode == 0, (
-        f"Writer subprocess phase {phase!r} failed:\n{completed.stderr}"
+    run_lance_child(
+        _WRITER_SCRIPT, uri, collection, phase, label=f"Writer subprocess phase {phase!r}"
     )
 
 
