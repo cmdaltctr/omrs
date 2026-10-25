@@ -434,6 +434,7 @@ _WRITER_SCRIPT = textwrap.dedent(
                 raise SystemExit("recreation never reached the target version")
     else:
         raise SystemExit(f"unknown phase: {phase}")
+    print("writer phase finished", flush=True)
     """
 )
 
@@ -449,8 +450,10 @@ def _run_writer_subprocess(uri: str, collection: str, phase: str, *extra: str) -
         # stderr empty. faulthandler prints each thread's Python stack first.
         env={**os.environ, "PYTHONFAULTHANDLER": "1"},
     )
+    # stdout holds "writer phase finished" when the crash came after the write.
     assert completed.returncode == 0, (
-        f"Writer subprocess phase {phase!r} failed:\n{completed.stderr}"
+        f"Writer subprocess phase {phase!r} failed:\n"
+        f"stdout: {completed.stdout!r}\nstderr:\n{completed.stderr}"
     )
 
 
