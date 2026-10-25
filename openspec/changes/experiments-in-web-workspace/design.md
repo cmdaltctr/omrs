@@ -98,6 +98,44 @@ All routes are under `/v1`, return JSON with the existing `ok()` and `error_resp
 | `PUT /notebooks/{notebook_id}/entries` | read session | Add one entry `{project_id, folder}` |
 | `DELETE /notebooks/{notebook_id}/entries/{project_id}/{folder}` | read session | Remove one entry |
 
+Response shapes (the web client and the routes both follow these; field names are fixed):
+
+```text
+Project      { project_id, name, root, added_at, available: bool, experiment_count: int|null }
+Finding      { severity: "error"|"warning"|"info", code, folder: str|null, message }
+Experiment   { folder, number, title, date, category: str|null, size: str|null, status,
+               superseded_by: str|null, finding, refs: {adrs, changes, tasks}|null,
+               migrated: bool, findings: [Finding] }
+Reserved     { number, reason, ref }
+FileEntry    { name, size, viewable: bool }
+
+GET  /experiment-projects                 -> { projects: [Project] }
+POST /experiment-projects                 -> 201 { project: Project }
+DELETE /experiment-projects/{id}          -> { removed: true }
+GET  .../{id}/experiments                 -> { project: Project, experiments: [Experiment],
+                                               reserved: [Reserved], findings: [Finding] }
+                                             (findings = project-level, folder null)
+GET  .../{id}/experiments/{folder}        -> { project: Project, experiment: Experiment,
+                                               files: [FileEntry], output: [str]|null }
+GET  .../{folder}/files/{name}            -> { name, text, truncated: bool, size }
+POST .../{id}/experiments                 -> 201 { folder, index: "written"|"no-markers"|"no-readme" }
+
+Notebook     { notebook_id, name, kind: "project"|"user", project_id: str|null,
+               entry_count: int, created_at: str|null }
+Entry        { project_id, project_name, folder, added_at, missing: bool,
+               experiment: Experiment|null }
+
+GET  /notebooks                           -> { notebooks: [Notebook] }   (project notebooks first)
+POST /notebooks {name}                    -> 201 { notebook: Notebook }
+PATCH /notebooks/{id} {name}              -> { notebook: Notebook }
+DELETE /notebooks/{id}                    -> { removed: true }
+GET  /notebooks/{id}                      -> { notebook: Notebook, entries: [Entry] }
+PUT  /notebooks/{id}/entries {project_id, folder} -> { entry: Entry }
+DELETE /notebooks/{id}/entries/{project_id}/{folder} -> { removed: true }
+```
+
+A project notebook's id is `project:<project_id>`. It cannot be renamed, deleted or edited (400). Errors use the existing error envelope: 400 validation, 403 scope, 404 unknown project, folder, notebook or file, 409 duplicate project path or notebook name.
+
 Notebook writes use the read session scope, as chat folders do: they change only the user's own grouping. Adding a project and creating an experiment use `manage`, because they read or write files outside the workspace.
 
 `folder` path segments must match a folder that the scan found. A name with `/`, `..` or a leading dot is refused before any file access.
