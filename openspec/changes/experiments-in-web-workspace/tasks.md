@@ -43,6 +43,6 @@
 
 - [x] 6.1 Update `_BASE_EXECUTED` in `tests/test_clean_base_tripwire.py`. Compare collected test IDs with the base. Verify: the tripwire passes.
 - [x] 6.2 Run `./scripts/local_ci.sh`. Verify: every step passes, or each `SKIPPED` step is named.
-- [ ] 6.3 Run a browser check at 1280 px and 390 px on a scratch `omrs web` server with a scratch config and workspace. Add this repository as a project, open the library, one experiment's Protocol and Report tabs, create a notebook, add an experiment, and create a Quick experiment in a scratch project. Verify: no sideways scroll at 390 px, and record the results in `openspec/changes/experiments-in-web-workspace/browser-check.md`.
+- [x] 6.3 Run a browser check at 1280 px and 390 px on a scratch `omrs web` server with a scratch config and workspace. Add this repository as a project, open the library, one experiment's Protocol and Report tabs, create a notebook, add an experiment, and create a Quick experiment in a scratch project. Verify: no sideways scroll at 390 px, and record the results in `openspec/changes/experiments-in-web-workspace/browser-check.md`.
 - [x] 6.4 Run `openspec validate experiments-in-web-workspace --strict` and `openspec validate --all --strict`. Verify: both pass.
 - [x] 6.5 Search the added lines of `git diff` against the base branch for the maintainer login, home-folder paths and email addresses. Verify: no hit, or each hit is explained.
