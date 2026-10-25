@@ -65,7 +65,7 @@ architecture), see the [ADR index](../adr/).
 | 037 | [OpenRouter answers used the legacy completions endpoint, so reasoning leaked into the answer](037-openrouter-answers-used-the-legacy-completions-endpoint-so-reasoning-leaked-into-the-answer.md) | Accepted | 2026-10-23 |
 | 038 | [The Ollama floor took only true or false for thinking, so raise it to 0.9.1](038-the-ollama-floor-took-only-true-or-false-for-thinking-so-raise-it-to-0-9-1.md) | Accepted | 2026-10-24 |
 | 039 | [Tests waited on LLM servers that were not running, and the tripwire ran the suite twice](039-tests-waited-on-llm-servers-that-were-not-running-and-the-tripwire-ran-the-suite-twice.md) | Accepted | 2026-10-25 |
-| 040 | [pyarrow 25.0.0 crashes when threads start and stop, so raise the floor to 25.0.1](040-pyarrow-25-0-0-crashes-when-threads-start-and-stop-so-raise-the-floor-to-25-0-1.md) | Accepted | 2026-10-25 |
+| 040 | [LanceDB writer processes crashed at interpreter exit on the floor jobs](040-lancedb-writer-processes-crashed-at-interpreter-exit-on-the-floor-jobs.md) | Accepted | 2026-10-25 |
 
 ## Status values
 
