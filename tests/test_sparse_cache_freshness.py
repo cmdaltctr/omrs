@@ -21,6 +21,7 @@ assertions fail on stale sparse results, which is the defect under fix.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 import textwrap
@@ -444,6 +445,9 @@ def _run_writer_subprocess(uri: str, collection: str, phase: str, *extra: str) -
         capture_output=True,
         text=True,
         timeout=120,
+        # The writer has crashed with SIGSEGV on the floors CI jobs and left
+        # stderr empty. faulthandler prints each thread's Python stack first.
+        env={**os.environ, "PYTHONFAULTHANDLER": "1"},
     )
     assert completed.returncode == 0, (
         f"Writer subprocess phase {phase!r} failed:\n{completed.stderr}"
