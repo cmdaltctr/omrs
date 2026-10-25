@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import date
 from pathlib import Path
 from typing import Any
@@ -66,6 +67,50 @@ def test_a_project_without_a_readme_reports_it(web: Any, tmp_path: Path) -> None
     project_id = add_project(client, root)["project_id"]
     assert _post(client, project_id, size="Quick").json()["index"] == "no-readme"
     assert not (root / "experiments" / "EXP_README.md").exists()
+
+
+def _assert_index_failed(response: Any, root: Path) -> None:
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["index"] == "failed"
+    assert "omrs experiments index --write" in body["message"]
+    assert str(root) not in body["message"]
+    assert (root / "experiments" / _folder() / "experiment.json").is_file()
+
+
+def test_a_readme_that_is_not_utf8_reports_failed(web: Any, tmp_path: Path) -> None:
+    client = web[0]
+    root = make_project(tmp_path)
+    project_id = add_project(client, root)["project_id"]
+    readme = root / "experiments" / "EXP_README.md"
+    readme.write_bytes(b"# Experiments\n\xff\xfe\n")
+    _assert_index_failed(_post(client, project_id), root)
+    assert readme.read_bytes() == b"# Experiments\n\xff\xfe\n"
+
+
+@pytest.mark.skipif(not hasattr(os, "geteuid") or os.geteuid() == 0, reason="root reads any file")
+def test_an_unreadable_readme_reports_failed(web: Any, tmp_path: Path) -> None:
+    client = web[0]
+    root = make_project(tmp_path)
+    project_id = add_project(client, root)["project_id"]
+    readme = root / "experiments" / "EXP_README.md"
+    readme.chmod(0o000)
+    try:
+        _assert_index_failed(_post(client, project_id), root)
+    finally:
+        readme.chmod(0o644)
+
+
+def test_a_readme_that_cannot_be_replaced_reports_failed(web: Any, tmp_path: Path) -> None:
+    client = web[0]
+    root = make_project(tmp_path)
+    project_id = add_project(client, root)["project_id"]
+    readme = root / "experiments" / "EXP_README.md"
+    before = readme.read_bytes()
+    # A folder in place of the temporary file makes the atomic write fail.
+    (root / "experiments" / ".EXP_README.md.tmp").mkdir()
+    _assert_index_failed(_post(client, project_id), root)
+    assert readme.read_bytes() == before
 
 
 def test_a_follow_up_takes_the_next_letter(web: Any, tmp_path: Path) -> None:

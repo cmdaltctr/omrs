@@ -95,11 +95,13 @@ export interface NewExperiment {
   follow_up?: string;
 }
 
-export type IndexOutcome = "written" | "no-markers" | "no-readme";
+export type IndexOutcome = "written" | "no-markers" | "no-readme" | "failed";
 
 export interface CreatedExperiment {
   folder: string;
   index: IndexOutcome;
+  /** Only with `failed`: the folder exists, but the index was not updated. Names the command that fixes it. */
+  message?: string;
 }
 
 export interface Notebook {
@@ -167,7 +169,7 @@ export async function createLibraryExperiment(api: ApiClient, projectId: string,
   const followUp = follow_up?.trim() ?? "";
   const request = followUp === "" ? rest : { ...rest, follow_up: followUp };
   const body = await api.request<CreatedExperiment>("POST", `${projectPath(projectId)}/experiments`, { body: request, signal: options.signal });
-  return { folder: body.folder, index: body.index };
+  return body.message === undefined ? { folder: body.folder, index: body.index } : { folder: body.folder, index: body.index, message: body.message };
 }
 
 /** Project notebooks first, then user notebooks. */

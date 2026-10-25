@@ -98,6 +98,13 @@ describe("experiment library API client", () => {
     const follow = setup({ status: "ok", folder: "12.1-ocr-2026-10-25", index: "no-markers" }, 201);
     await createLibraryExperiment(follow.api, "p1", { slug: "ocr", title: "OCR", category: "ingestion", size: "Quick", follow_up: " 12 " });
     expect(JSON.parse(String(follow.fetchImpl.mock.calls[0]![1]?.body))).toMatchObject({ follow_up: "12" });
+
+    const failed = setup({ status: "ok", folder: "52-ocr-2026-10-25", index: "failed", message: "Run `omrs experiments index --write`." }, 201);
+    expect(await createLibraryExperiment(failed.api, "p1", { slug: "ocr", title: "OCR", category: "ingestion", size: "Quick" })).toEqual({
+      folder: "52-ocr-2026-10-25",
+      index: "failed",
+      message: "Run `omrs experiments index --write`.",
+    });
   });
 
   it("lists, creates, renames and deletes notebooks; a project notebook id is encoded", async () => {

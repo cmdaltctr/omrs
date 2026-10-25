@@ -8552,11 +8552,18 @@ components:
         folder: {type: string}
         index:
           type: string
-          enum: [written, no-markers, no-readme]
+          enum: [written, no-markers, no-readme, failed]
           description: >
             `written` when the index in `EXP_README.md` was rewritten,
-            `no-markers` when the file has no usable index markers, and
-            `no-readme` when the project has no `EXP_README.md`.
+            `no-markers` when the file has no usable index markers,
+            `no-readme` when the project has no `EXP_README.md`, and
+            `failed` when the folder was created but `EXP_README.md` could not
+            be read, is not valid UTF-8, or could not be replaced.
+        message:
+          type: string
+          description: >
+            Only with `failed`. A plain line that says the index was not updated
+            and names `omrs experiments index --write` as the fix.
 
     Notebook:
       type: object

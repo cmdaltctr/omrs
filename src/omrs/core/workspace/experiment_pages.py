@@ -24,7 +24,12 @@ from pathlib import Path
 from typing import Any
 
 from omrs.core.experiment_records.check import Finding, check_experiments
-from omrs.core.experiment_records.index import README_FILE, IndexFileError, write_index
+from omrs.core.experiment_records.index import (
+    README_FILE,
+    IndexFileError,
+    IndexMarkerError,
+    write_index,
+)
 from omrs.core.experiment_records.record import Category, RecordError, Size
 from omrs.core.experiment_records.reserved import load_reservations
 from omrs.core.experiment_records.scaffold import ScaffoldError, create_experiment
@@ -38,6 +43,11 @@ from omrs.core.experiment_records.scan import (
 VIEWABLE_SUFFIXES = frozenset({".md", ".json", ".jsonl", ".txt", ".csv", ".yaml", ".yml", ".py"})
 #: Most bytes of one file that the workspace returns (1 MiB).
 MAX_FILE_BYTES = 1024 * 1024
+#: The plain message when a new folder exists but the index was not updated.
+INDEX_FAILED_MESSAGE = (
+    f"The experiment folder was created, but the index in {README_FILE} was not updated. "
+    "Run `omrs experiments index --write` to update it."
+)
 _MAX_NAME = 255
 
 
@@ -334,7 +344,8 @@ def new_experiment(
 
     Returns:
         ``{folder, index}`` where ``index`` is ``written``, ``no-markers`` or
-        ``no-readme``.
+        ``no-readme``. When the index cannot be read or written, ``index`` is
+        ``failed`` and ``message`` says how to fix it. The folder exists then.
 
     Raises:
         ExperimentRefusedError: The creator refused. Nothing was written.
@@ -357,6 +368,9 @@ def new_experiment(
         return {"folder": folder.name, "index": "no-readme"}
     try:
         write_index(readme, scan_experiments(experiments), load_reservations(experiments))
-    except IndexFileError:
+    except IndexMarkerError:
         return {"folder": folder.name, "index": "no-markers"}
+    except (IndexFileError, OSError):
+        # IndexFileError here means the file is not valid UTF-8.
+        return {"folder": folder.name, "index": "failed", "message": INDEX_FAILED_MESSAGE}
     return {"folder": folder.name, "index": "written"}

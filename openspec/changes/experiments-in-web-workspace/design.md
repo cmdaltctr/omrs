@@ -118,7 +118,8 @@ GET  .../{id}/experiments                 -> { project: Project, experiments: [E
 GET  .../{id}/experiments/{folder}        -> { project: Project, experiment: Experiment,
                                                files: [FileEntry], output: [str]|null }
 GET  .../{folder}/files/{name}            -> { name, text, truncated: bool, size }
-POST .../{id}/experiments                 -> 201 { folder, index: "written"|"no-markers"|"no-readme" }
+POST .../{id}/experiments                 -> 201 { folder, index: "written"|"no-markers"|"no-readme"|"failed",
+                                               message?: str }   (message only with "failed")
 
 Notebook     { notebook_id, name, kind: "project"|"user", project_id: str|null,
                entry_count: int, created_at: str|null }
@@ -150,7 +151,7 @@ Markdown is rendered with `react-markdown` and `remark-gfm`, with no raw-HTML pl
 
 ### D7. Creating an experiment
 
-`POST .../experiments` takes `{slug, title, category, size, follow_up?}`. It calls the `experiment-format-v1` folder creator with today's date, then rewrites the index in the project's `EXP_README.md` when both markers exist. The response returns the new folder name and `index: "written" | "no-markers" | "no-readme"`. A refusal from the creator (folder exists, bad slug) returns 400 with its message and writes nothing.
+`POST .../experiments` takes `{slug, title, category, size, follow_up?}`. It calls the `experiment-format-v1` folder creator with today's date, then rewrites the index in the project's `EXP_README.md` when both markers exist. The response returns the new folder name and `index: "written" | "no-markers" | "no-readme" | "failed"`. `failed` means the folder exists but `EXP_README.md` could not be read, is not valid UTF-8, or could not be replaced. Then the response also has a plain `message` that names `omrs experiments index --write` as the fix. The rewrite replaces the file atomically, so a failure never leaves a half-written file. A refusal from the creator (folder exists, bad slug) returns 400 with its message and writes nothing.
 
 ### D8. Web screens
 

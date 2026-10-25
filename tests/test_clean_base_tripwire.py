@@ -172,7 +172,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # parity cases need jsonschema, which mcp installs.
 # +146 (2026-10-25, experiments-in-web-workspace): test_workspace_experiment_*.py (39, no
 # fastapi) and test_web_experiment_*.py plus test_web_notebooks.py (107, need fastapi).
-_BASE_EXECUTED = 8523
+# +3 (2026-10-25, verification fixes): index-failure cases in test_web_experiment_create.py
+# (need fastapi; one skips as root).
+_BASE_EXECUTED = 8526
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -485,7 +487,8 @@ if not _has_qwen_tokenizer:
 # test_web_experiment_files.py (26), test_web_notebooks.py (20),
 # test_web_experiment_create.py (10), test_web_experiment_library_hardening.py (27)
 # and the conformance case (1) (1553). Three permission cases skip as root.
-_WEB_EXTRA_CASES = 1553
+# +3 (2026-10-25, verification fixes): index-failure cases in test_web_experiment_create.py (1556).
+_WEB_EXTRA_CASES = 1556
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)

@@ -20,7 +20,7 @@
 - [x] 3.3 Write route tests for the experiment list and one experiment: records, findings, reserved numbers, top-level files with `viewable`, `output/` names, an unavailable project, an unknown folder (404). Then implement. Verify: the tests fail first, then pass.
 - [x] 3.4 Write route tests for file text (design D6): allowed suffixes, refused suffix, `..`, `/`, a leading dot, a link pointing out of the folder, the 1 MiB cut with `truncated: true`, and a JSON response type. Then implement. Verify: the tests fail first, then pass.
 - [x] 3.5 Write route tests for notebooks: list (project and user kinds), create, duplicate name refused, rename, delete, add and remove entries, a missing entry shown with `missing: true`. Then implement. Verify: the tests fail first, then pass.
-- [x] 3.6 Write route tests for creating an experiment: manage session only, success with `index: "written"`, `no-markers`, `no-readme`, refusal when the folder exists, a bad slug. Use a temporary project. Then implement. Verify: the tests fail first, then pass.
+- [x] 3.6 Write route tests for creating an experiment: manage session only, success with `index: "written"`, `no-markers`, `no-readme`, `failed` (README not valid UTF-8, unreadable or not replaceable), refusal when the folder exists, a bad slug. Use a temporary project. Then implement. Verify: the tests fail first, then pass.
 - [x] 3.7 Add every new route to `transports/api/openapi.yaml` and list them in `src/omrs/transports/api/README.md`. Verify: `tests/test_openapi_conformance.py` passes.
 
 ## 4. Web client and screens (design D8)

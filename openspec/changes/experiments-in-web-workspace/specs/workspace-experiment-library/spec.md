@@ -90,13 +90,19 @@ The workspace SHALL present every project as a notebook of its experiments. The 
 
 ### Requirement: A new experiment is created from the library
 
-A browser session with the `manage` scope SHALL create an experiment in a project from a slug, a title, a category, a size and an optional follow-up number. The folder SHALL be created by the experiment record folder creator with today's date. When the project's `EXP_README.md` has both index markers, the index SHALL then be rewritten. The response SHALL name the new folder and say whether the index was written, the file had no markers, or there was no file. A refusal SHALL write nothing.
+A browser session with the `manage` scope SHALL create an experiment in a project from a slug, a title, a category, a size and an optional follow-up number. The folder SHALL be created by the experiment record folder creator with today's date. When the project's `EXP_README.md` has both index markers, the index SHALL then be rewritten. The response SHALL name the new folder and say whether the index was written, the file had no markers, or there was no file. When the folder was created but `EXP_README.md` could not be read or written, or is not valid UTF-8, the request SHALL still succeed. The response SHALL then report the index as `failed` with a plain message that names `omrs experiments index --write`. A refusal SHALL write nothing.
 
 #### Scenario: Create a Standard experiment
 
 - **WHEN** the user creates a Standard experiment `ocr-text-quality` in category `ingestion`
 - **THEN** a new folder with status `PLANNED` appears in the library
 - **AND** the project's index lists it
+
+#### Scenario: The index cannot be updated
+
+- **WHEN** the user creates an experiment and the project's `EXP_README.md` is not valid UTF-8 or cannot be read or replaced
+- **THEN** the request succeeds and the new folder exists
+- **AND** the response reports the index as `failed` with a message that names `omrs experiments index --write`
 
 #### Scenario: Folder exists
 

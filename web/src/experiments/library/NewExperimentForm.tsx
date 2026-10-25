@@ -100,7 +100,7 @@ export function NewExperimentForm({ projects, initialProject, onCancel }: NewExp
             >
               {created.folder}
             </a>
-            . {indexOutcome(created.index)}
+            . {created.message ?? indexOutcome(created.index)}
           </p>
         ) : null}
       </form>

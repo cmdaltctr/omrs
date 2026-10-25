@@ -55,6 +55,17 @@ describe("new experiment", () => {
     expect(await within(form).findByRole("status")).toHaveTextContent("The project has no EXP_README.md, so no index is written.");
   });
 
+  it("says when the folder is created but the index is not updated", async () => {
+    const { user, form } = await openForm();
+    await user.type(within(form).getByLabelText("Slug"), "bad-readme");
+    await user.type(within(form).getByLabelText("Title"), "Bad readme");
+    await user.click(within(form).getByRole("button", { name: "Create experiment" }));
+    const status = await within(form).findByRole("status");
+    expect(status).toHaveTextContent("Created 4-bad-readme-2026-10-25. The experiment folder was created, but the index in EXP_README.md was not updated.");
+    expect(status).toHaveTextContent("omrs experiments index --write");
+    expect(within(form).queryByRole("alert")).toBeNull();
+  });
+
   it("checks the slug, title and follow-up number before it sends anything", async () => {
     const { user, server, form } = await openForm();
     await user.type(within(form).getByLabelText("Slug"), "Bad Slug");

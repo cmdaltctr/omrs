@@ -185,6 +185,10 @@ export function libraryHandlers(state: LibraryState): Record<string, Handler> {
       const folder = `${number}-${slug}-2026-10-25`;
       if (slug === "taken") return refuse(`The folder ${folder} already exists.`);
       state.experiments[id!] = [...list, experiment(folder, "PLANNED", { title: String(body.title), category: String(body.category), size: String(body.size) })];
+      if (slug === "bad-readme") {
+        const message = "The experiment folder was created, but the index in EXP_README.md was not updated. Run `omrs experiments index --write` to update it.";
+        return json({ status: "ok", folder, index: "failed", message }, 201);
+      }
       return json({ status: "ok", folder, index: id === "p2" ? "no-readme" : "written" }, 201);
     },
     "GET /v1/experiment-projects/:id/experiments/:folder": (_body, call) => {

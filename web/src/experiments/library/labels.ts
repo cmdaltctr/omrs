@@ -70,6 +70,7 @@ const INDEX_OUTCOMES: Record<IndexOutcome, string> = {
   written: "The index in EXP_README.md is updated.",
   "no-markers": "EXP_README.md has no index markers, so the index is not changed.",
   "no-readme": "The project has no EXP_README.md, so no index is written.",
+  failed: "The index in EXP_README.md is not updated. Run `omrs experiments index --write`.",
 };
 
 export function indexOutcome(index: IndexOutcome): string {
