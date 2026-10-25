@@ -45,8 +45,8 @@ We raised the pyarrow floor to 25.0.1. The writer crash still happened with pyar
 
 ## Decision
 
-1. **The test writer skips interpreter finalisation.** After its write commits and it prints `writer phase finished`, the writer script flushes stderr and calls `os._exit(0)`. A writer that fails before the line still exits non-zero, and the test still fails.
-2. **The writer runs with `PYTHONFAULTHANDLER=1`, and the assertion shows stdout and stderr.** A later crash then shows whether it happened before or after the write, and on which thread.
+1. **Test child processes that write to LanceDB skip interpreter finalisation.** One helper, `tests/_lance_child.py` (`run_lance_child`), runs them. It appends a step to the child script: print `lance child finished`, flush stderr and call `os._exit(0)`. The step runs only when the script body has finished, so a child that fails earlier still exits non-zero and the test still fails. Three tests use it: `test_sparse_cache_freshness.py`, `test_lance_dataset_epoch.py` and `test_bm25_validity_token.py`. All three write from a child process. The epoch test had the same crash on 2026-10-19 (run 39231091643, PR #120, the change that made the floor jobs run tests in parallel). A re-run passed, and it was taken for a one-off. `tests/test_lance_child_helper.py` checks the helper. One case runs a child that crashes in an `atexit` handler: it fails without the helper and passes with it.
+2. **The helper runs each child with `PYTHONFAULTHANDLER=1`, and its assertion shows stdout and stderr.** A later crash then shows whether it happened before or after the work, and on which thread.
 3. **The pyarrow floor is 25.0.1**, because 25.0.0 has a reproduced crash:
 
    ```toml
@@ -77,7 +77,7 @@ We raised the pyarrow floor to 25.0.1. The writer crash still happened with pyar
 ### Negative
 
 - Production processes still use lancedb 0.37.1. A short CLI run such as `omrs ingest` can crash at exit after a successful write until the lancedb upgrade lands. The write is not lost, but the exit code is wrong.
-- The test no longer covers interpreter shutdown of a writer process.
+- The tests no longer cover interpreter shutdown of a LanceDB child process.
 
 ### Neutral
 
@@ -102,7 +102,7 @@ We raised the pyarrow floor to 25.0.1. The writer crash still happened with pyar
 
 ## Revisit Triggers
 
-- The lancedb 0.40 upgrade lands. Then remove the `os._exit(0)` workaround from the test writer and check that the floor jobs stay green.
+- The lancedb 0.40 upgrade lands. Then remove the `os._exit(0)` step from `tests/_lance_child.py` and check that the floor jobs stay green.
 - A writer crash happens before the `writer phase finished` line.
 - ADR-042's floor policy changes.
 
@@ -112,7 +112,8 @@ We raised the pyarrow floor to 25.0.1. The writer crash still happened with pyar
 - lance issue #4152 (Tokio task wakes during shutdown; `os._exit(0)` workaround)
 - apache/arrow GH-50471 and GH-50428 (pyarrow 25.0.0 mimalloc crash; fixed in 25.0.1)
 - CI runs: 40220165990, 40222466315, 40222490235, 40224676581, 40227051654, 40228699510
-- `tests/test_sparse_cache_freshness.py` (`_WRITER_SCRIPT`, `_run_writer_subprocess`)
+- `tests/_lance_child.py` (`run_lance_child`) and `tests/test_lance_child_helper.py`
+- `tests/test_sparse_cache_freshness.py`, `tests/test_lance_dataset_epoch.py`, `tests/test_bm25_validity_token.py`
 - `src/omrs/core/vectordb/lancedb/literal.py` (`_is_faithful_literal`)
 - ADR-042 (dependency floors), ADR-046 (LanceDB backend)
 - TDR-038 (a floor raise for `llama-index-llms-ollama`)
