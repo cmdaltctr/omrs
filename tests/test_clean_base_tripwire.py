@@ -165,7 +165,12 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # test_web_integration_uninstall_routes.py (2).
 # +14 (2026-10-24, speed-up-fast-test-suite): test_settings_factory_defaults.py (3),
 # test_metadata_llm_guard.py (5) and test_tripwire_junit_report.py (6). No fastapi needed.
-_BASE_EXECUTED = 8072
+# +305 (2026-10-25, experiment-format-v1): test_experiment_records_*.py (258),
+# test_cli_experiments.py (19), test_experiment_skill_drift.py (14),
+# test_experiments_guide_links.py (9), test_experiment_run_record_lib.py (4) and
+# one new contract in test_contract_coverage.py. No fastapi needed. The 13 schema
+# parity cases need jsonschema, which mcp installs.
+_BASE_EXECUTED = 8377
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
