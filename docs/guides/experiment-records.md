@@ -228,3 +228,49 @@ Each finding has a stable code. Some codes are less severe on a converted record
 | `index-missing` | warning | `EXP_README.md` does not exist. | Create it with both index markers. |
 | `index-markers` | error | `EXP_README.md` does not have both index markers. | Add the missing marker line. |
 | `index-stale` | error | The index table differs from the generated table. | Run `uv run --no-sync omrs experiments index --write`. |
+
+## Experiments in the web workspace
+
+The web workspace (`omrs web`) shows the experiments of each project you add. It reads the files on disk on each request. It stores only your project list and your notebooks, in the workspace database.
+
+The Experiments area has five sections:
+
+| Section | Shows |
+|---|---|
+| Library | The experiments of one project or of all projects, as cards with status, finding and checker counts. |
+| Notebooks | One notebook for each project, plus notebooks that you make. |
+| Sandboxes | Experiment contexts for notebook runs (`--experiment-root`). |
+| Code editor | The marimo notebook editor plugin. |
+| Runs | Pipeline runs. |
+
+### Add a project
+
+1. Open **Experiments**, then **Library**.
+2. Select **Add project**.
+3. Type the absolute path of a folder that holds an `experiments` folder.
+4. Type a name, then select **Add**.
+
+The server refuses a folder without an `experiments` folder. It also refuses an `experiments` link that points outside the project. Removing a project removes it from the list and from your notebooks. It does not change any file.
+
+### Read an experiment
+
+Select a card to open the experiment page. The tabs show the protocol, the plan, the report and the checker findings. An older folder without `report.md` shows `results.md` in the Report tab.
+
+The app opens only text files at the top level of the experiment folder: `.md`, `.json`, `.jsonl`, `.txt`, `.csv`, `.yaml`, `.yml` and `.py`. It shows the first 1 MiB of a larger file. It lists other files, such as HTML review pages, but does not open them, because they can hold scripts. Open those files from your file manager.
+
+### Group experiments in a notebook
+
+1. Open **Notebooks**.
+2. Type a name, then select **Create**.
+3. Open an experiment, then select **Add to notebook**.
+
+A notebook can hold experiments from more than one project. When a folder is renamed or removed on disk, its entry shows as missing. Remove it from the notebook yourself.
+
+### Create an experiment from the app
+
+1. Open **Library** and select one project.
+2. Select **New experiment**.
+3. Type the slug, title, category and size. For a follow-up, type the number it follows.
+4. Select **Create**.
+
+The app runs the same folder creator as `omrs experiments new`. It then rewrites the index table in `EXP_README.md` when the file has both index markers.

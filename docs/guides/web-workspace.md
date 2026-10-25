@@ -163,10 +163,12 @@ These scopes are session only. A bearer credential cannot hold them:
 |---|---|
 | `files` | Roots, uploads, ingestion jobs and codebase-map jobs. |
 | `credentials` | Issue, list and revoke bearer credentials. |
-| `manage` | Deletion, profile change, workspace cleanup, experiment folders and registration, connection tests and the server log. |
+| `manage` | Deletion, profile change, workspace cleanup, experiment folders and registration, experiment projects and new experiments, connection tests and the server log. |
 | `plugins` | Notebook plugin registration, recheck and editor launch. |
 
 A credential that you issue with `experiment_context` is bound to that experiment. It runs graphs only in that experiment and cannot read or change the live library. See [Notebooks](notebooks.md).
+
+The Experiments area has the sections Library, Notebooks, Sandboxes, Code editor and Runs. Sandboxes holds the experiment contexts above. Code editor holds the marimo plugin. Library and Notebooks show the research experiments of the projects you add. See [Experiments in the web workspace](experiment-records.md#experiments-in-the-web-workspace).
 
 ### Request checks
 

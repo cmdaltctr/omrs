@@ -38,7 +38,7 @@ Navigation has seven items in this order: Home, Chat, Knowledge Base, Studio, Ex
 | Top bar | Muted surface, 1px bottom border, elevation shadow. Shows the brand, an engine status pill (collection count, or "offline"), the theme `Select` (System, Light, Dark), and an icon-only button beside it that shows sun or moon for the theme in effect and switches Light and Dark in one click. Its accessible name names the target theme. |
 | Inspector | The global toggle and empty panel are gone. Detail regions open inside Chat, Studio, and Experiments on selection. |
 | Skip link, main focus | Keep the existing skip link. Focus moves to the view `h1` after navigation. |
-| Routes | Typed hash routes from `lib/routes.ts` (design D9): `#/home`, `#/knowledge-base[/<collection>]`, `#/chat[/<collection>]`, `#/studio[/<profile-id>[/<purpose>]]` (purpose is `ingest`, `search` or `answer`), `#/experiments`, `#/experiments/runs/<run-id>`, `#/integrations`, `#/settings`. Segments are URI-encoded. An unknown hash opens Home and is rewritten to `#/home`; earlier routes are not redirected. |
+| Routes | Typed hash routes from `lib/routes.ts` (design D9): `#/home`, `#/knowledge-base[/<collection>]`, `#/chat[/<collection>]`, `#/studio[/<profile-id>[/<purpose>]]` (purpose is `ingest`, `search` or `answer`), `#/experiments`, `#/experiments/runs/<run-id>`, `#/experiments/library/<project>/<folder>`, `#/experiments/notebooks/<notebook-id>`, `#/integrations`, `#/settings`. Segments are URI-encoded. An unknown hash opens Home and is rewritten to `#/home`; earlier routes are not redirected. |
 | Narrow screens | Below `md`, the navigation becomes one row of the seven area icons with short labels under the top bar (owner decision; no menu button). Targets are at least 44px. No horizontal page scroll. |
 
 Read the presentation spec and `web/src/App.tsx` before you change route names.
@@ -94,9 +94,17 @@ React Flow nodes and edges read the semantic tokens. Node kind badges use the hu
 
 ## Experiments
 
-Folder groups, each listing its sub-experiments. An empty folder still shows with an empty indication. Provide forms to create a main folder and a sub-experiment with declared factors. A rejected path shows a validation message next to the field.
+Five section chips in this order: Library (default), Notebooks, Sandboxes, Code editor, Runs.
 
-Keep the notebook panels intact: tool registration, trust notice, one-time credentials, and editor launch with a stop action. The one-time credential is shown once, so keep the copy action and the warning visible. Do not log or screenshot secrets.
+Library lists research experiments from the projects the user adds. A project picker starts with "All projects". Filters for status and category and a text search sit above the cards. One card per experiment: number, title, status badge, category, date, finding, and a count of checker errors and warnings. Status badges: `PASS` success, `FAIL` error, `INCONCLUSIVE` and `ACTIVE` warning, `PLANNED` and `MEASURED` info, `SUPERSEDED` muted. At 390 px show one card per row.
+
+The experiment page (`#/experiments/library/<project>/<folder>`) has a record header, tabs Protocol, Plan, Report, Files and Checks, and an "Add to notebook" menu. Render Markdown with no raw HTML. List files the app does not open (HTML review pages, images, PDFs) with their size and say they are not opened in the app.
+
+Notebooks lists project notebooks first, then user notebooks. A notebook page (`#/experiments/notebooks/<id>`) shows entry cards. A missing entry shows as missing with a remove action.
+
+Sandboxes holds the experiment contexts: folder groups, each listing its sub-experiments. An empty folder still shows with an empty indication. Provide forms to create a main folder and a sub-experiment with declared factors. A rejected path shows a validation message next to the field.
+
+Code editor keeps the marimo notebook panels intact: tool registration, trust notice, one-time credentials, and editor launch with a stop action. The one-time credential is shown once, so keep the copy action and the warning visible. Do not log or screenshot secrets.
 
 A Runs section holds the run list, status filter, refresh, and run detail with evidence. Two sections keep this long view manageable. Use the existing filters.
 
