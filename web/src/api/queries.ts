@@ -7,6 +7,7 @@ import { MutationCache, QueryCache, QueryClient, queryOptions } from "@tanstack/
 import { ApiError, type ApiClient } from "./client";
 import { listEmbeddingProviders } from "./embedding";
 import { getChunk, getJob, getSession, listCollections, listDocuments, listRoots } from "./documents";
+import { getExperimentFile, getNotebook, getProjectExperiment, listExperimentProjects, listNotebooks, listProjectExperiments } from "./experimentLibrary";
 import { listExperiments } from "./experiments";
 import { getIntegrationInstall, listIntegrations, type IntegrationInstall } from "./integrations";
 import { getPipeline, getRevision, listOperations, PipelineIssuesError, validatePipeline, type GraphDocument, type NodeControls } from "./pipelines";
@@ -52,6 +53,12 @@ export const queryKeys = {
   runEvents: (id: string) => ["runs", id, "events"] as const,
   runArtefact: (id: string, name: string) => ["runs", id, "artefacts", name] as const,
   experiments: () => ["experiments"] as const,
+  experimentProjects: () => ["experiment-projects"] as const,
+  projectExperiments: (projectId: string) => ["experiment-projects", projectId, "experiments"] as const,
+  projectExperiment: (projectId: string, folder: string) => ["experiment-projects", projectId, "experiments", folder] as const,
+  experimentFile: (projectId: string, folder: string, name: string) => ["experiment-projects", projectId, "experiments", folder, "files", name] as const,
+  notebooks: () => ["notebooks"] as const,
+  notebook: (id: string) => ["notebooks", id] as const,
   plugins: () => ["plugins"] as const,
   roots: () => ["roots"] as const,
   session: () => ["session"] as const,
@@ -158,6 +165,27 @@ export const runArtefactQuery = (api: ApiClient, runId: string, name: string) =>
 
 export const experimentsQuery = (api: ApiClient) =>
   queryOptions({ queryKey: queryKeys.experiments(), queryFn: ({ signal }) => listExperiments(api, { signal }) });
+
+/** The experiment projects, with whether each folder is still there. */
+export const experimentProjectsQuery = (api: ApiClient) =>
+  queryOptions({ queryKey: queryKeys.experimentProjects(), queryFn: ({ signal }) => listExperimentProjects(api, { signal }) });
+
+/** One project's experiments, read from its folder on each request. */
+export const projectExperimentsQuery = (api: ApiClient, projectId: string) =>
+  queryOptions({ queryKey: queryKeys.projectExperiments(projectId), queryFn: ({ signal }) => listProjectExperiments(api, projectId, { signal }) });
+
+export const projectExperimentQuery = (api: ApiClient, projectId: string, folder: string) =>
+  queryOptions({ queryKey: queryKeys.projectExperiment(projectId, folder), queryFn: ({ signal }) => getProjectExperiment(api, projectId, folder, { signal }), retry: false });
+
+export const experimentFileQuery = (api: ApiClient, projectId: string, folder: string, name: string) =>
+  queryOptions({ queryKey: queryKeys.experimentFile(projectId, folder, name), queryFn: ({ signal }) => getExperimentFile(api, projectId, folder, name, { signal }) });
+
+/** Project notebooks first, then the user's own. */
+export const notebooksQuery = (api: ApiClient) =>
+  queryOptions({ queryKey: queryKeys.notebooks(), queryFn: ({ signal }) => listNotebooks(api, { signal }) });
+
+export const notebookQuery = (api: ApiClient, id: string) =>
+  queryOptions({ queryKey: queryKeys.notebook(id), queryFn: ({ signal }) => getNotebook(api, id, { signal }), retry: false });
 
 export const pluginsQuery = (api: ApiClient) =>
   queryOptions({ queryKey: queryKeys.plugins(), queryFn: ({ signal }) => listPlugins(api, { signal }) });

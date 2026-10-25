@@ -17,7 +17,7 @@ export function renderArea(route: Route) {
     case "chat":
       return <ChatView />;
     case "experiments":
-      return <ExperimentsView runId={route.runId} />;
+      return <ExperimentsView route={route} />;
     case "integrations":
       return <IntegrationsView entry={route.entry} />;
     case "settings":

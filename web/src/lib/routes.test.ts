@@ -15,6 +15,8 @@ const ROUTES: { route: Route; hash: string }[] = [
   { route: { area: "studio", profileId: "papers-search", purpose: "answer" }, hash: "#/studio/papers-search/answer" },
   { route: { area: "experiments", runId: null }, hash: "#/experiments" },
   { route: { area: "experiments", runId: "run_9" }, hash: "#/experiments/runs/run_9" },
+  { route: { area: "experiments", projectId: "p1", folder: "12-ocr-2026-10-25" }, hash: "#/experiments/library/p1/12-ocr-2026-10-25" },
+  { route: { area: "experiments", notebookId: "n1" }, hash: "#/experiments/notebooks/n1" },
   { route: { area: "integrations", entry: null }, hash: "#/integrations" },
   { route: { area: "integrations", entry: "anthropic" }, hash: "#/integrations/anthropic" },
   { route: { area: "settings", section: null }, hash: "#/settings" },
@@ -47,6 +49,16 @@ describe("routes", () => {
     expect(formatRoute(profile)).toBe("#/studio/a%20b%2Fc/search");
     expect(parseRoute(formatRoute(profile))).toEqual(profile);
     expect(parseRoute(formatRoute({ area: "experiments", runId: "a/b" }))).toEqual({ area: "experiments", runId: "a/b" });
+  });
+
+  it("encodes the project, folder and notebook segments of experiment pages", () => {
+    const page: Route = { area: "experiments", projectId: "a b/c", folder: "x/y" };
+    expect(formatRoute(page)).toBe("#/experiments/library/a%20b%2Fc/x%2Fy");
+    expect(parseRoute(formatRoute(page))).toEqual(page);
+    const notebook: Route = { area: "experiments", notebookId: "project:p1" };
+    expect(formatRoute(notebook)).toBe("#/experiments/notebooks/project%3Ap1");
+    expect(parseRoute(formatRoute(notebook))).toEqual(notebook);
+    expect(parseRoute("#/experiments/notebooks/project:p1")).toEqual(notebook);
   });
 
   it("knows the three purposes and the nine Settings sections", () => {
@@ -84,6 +96,17 @@ describe("routes", () => {
     "#/home/extra",
     "#/experiments/runs",
     "#/experiments/other/x",
+    "#/experiments/library",
+    "#/experiments/library/p1",
+    "#/experiments/library/p1/",
+    "#/experiments/library//f",
+    "#/experiments/library/p1/f/extra",
+    "#/experiments/library/p1/%E0%A4%A",
+    "#/experiments/notebooks",
+    "#/experiments/notebooks/n1/extra",
+    "#/experiments/runs/r1/extra",
+    "#/chat/a/b/c/d",
+    "#/studio/p/search/x/y",
     "#/studio/papers-search/rerank",
     "#/studio/papers-search/Search",
     "#/studio/papers-search/search/extra",
