@@ -278,6 +278,7 @@ def test_lifespan_builds_one_engine_and_closes_it(tmp_path: Path) -> None:
         assert len(engines) == 1
         assert client.get("/v1/health").status_code == 200
         assert not engines[0].closed
+        assert app.state.runtime.experiment_library is not None
     assert len(engines) == 1
     assert engines[0].closed
 

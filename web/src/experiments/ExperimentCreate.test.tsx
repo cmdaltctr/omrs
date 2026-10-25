@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { json } from "../test/fakeDocumentsServer";
 import { entry } from "./test/experimentsServer";
-import { openExperiments } from "./test/openExperiments";
+import { openSandboxes } from "./test/openExperiments";
 
 async function chooseFolder(user: ReturnType<typeof userEvent.setup>, name: string) {
   await user.click(await screen.findByRole("combobox", { name: "Folder" }));
@@ -12,7 +12,7 @@ async function chooseFolder(user: ReturnType<typeof userEvent.setup>, name: stri
 
 describe("creating a folder", () => {
   it("creates a main folder below the approved root and lists it", async () => {
-    const { server, user } = openExperiments();
+    const { server, user } = await openSandboxes();
     const form = await screen.findByRole("form", { name: "Create a folder" });
     await user.type(within(form).getByLabelText("Folder name"), "hybrid-search");
     await user.click(within(form).getByRole("button", { name: "Create folder" }));
@@ -24,7 +24,7 @@ describe("creating a folder", () => {
   });
 
   it("names the root and sends it when the server approves more than one", async () => {
-    const { server, user } = openExperiments({ roots: ["/srv/exp", "/srv/other"] });
+    const { server, user } = await openSandboxes({ roots: ["/srv/exp", "/srv/other"] });
     const form = await screen.findByRole("form", { name: "Create a folder" });
     await user.click(within(form).getByRole("combobox", { name: "Experiment root" }));
     await user.click(await screen.findByRole("option", { name: "/srv/other" }));
@@ -35,7 +35,7 @@ describe("creating a folder", () => {
   });
 
   it("shows a friendly line beside the field for a refused path and creates nothing", async () => {
-    const { server, user } = openExperiments();
+    const { server, user } = await openSandboxes();
     const form = await screen.findByRole("form", { name: "Create a folder" });
     const field = within(form).getByLabelText("Folder name");
     await user.type(field, "../escape");
@@ -50,7 +50,7 @@ describe("creating a folder", () => {
   });
 
   it("says the folder exists when the server answers 409 exists", async () => {
-    const { user } = openExperiments({ dirs: ["hybrid-search"] });
+    const { user } = await openSandboxes({ dirs: ["hybrid-search"] });
     const form = await screen.findByRole("form", { name: "Create a folder" });
     await user.type(within(form).getByLabelText("Folder name"), "hybrid-search");
     await user.click(within(form).getByRole("button", { name: "Create folder" }));
@@ -66,7 +66,7 @@ describe("creating a folder", () => {
     ["root_unknown", /not approved/],
     ["root_required", /Choose a root/],
   ])("maps the refusal code %s to its own line", async (code, line) => {
-    const { user } = openExperiments({}, { "POST /v1/experiment-folders": () => json({ status: "error", code, message: "RAW" }, 400) });
+    const { user } = await openSandboxes({}, { "POST /v1/experiment-folders": () => json({ status: "error", code, message: "RAW" }, 400) });
     const form = await screen.findByRole("form", { name: "Create a folder" });
     await user.type(within(form).getByLabelText("Folder name"), "x");
     await user.click(within(form).getByRole("button", { name: "Create folder" }));
@@ -77,7 +77,7 @@ describe("creating a folder", () => {
 
 describe("creating a sub-experiment", () => {
   it("creates its folder, then registers a context with the declared factors", async () => {
-    const { server, user } = openExperiments({ dirs: ["hybrid-search"] });
+    const { server, user } = await openSandboxes({ dirs: ["hybrid-search"] });
     const form = await screen.findByRole("form", { name: "Create a sub-experiment" });
     await chooseFolder(user, "hybrid-search");
     await user.type(within(form).getByLabelText("Name"), "run-1");
@@ -99,7 +99,7 @@ describe("creating a sub-experiment", () => {
   });
 
   it("sends only the permitted actions that are ticked", async () => {
-    const { server, user } = openExperiments({ dirs: ["f"] });
+    const { server, user } = await openSandboxes({ dirs: ["f"] });
     const form = await screen.findByRole("form", { name: "Create a sub-experiment" });
     await chooseFolder(user, "f");
     await user.type(within(form).getByLabelText("Name"), "a");
@@ -110,7 +110,7 @@ describe("creating a sub-experiment", () => {
   });
 
   it("registers in the folder that already exists after an earlier half-finished attempt", async () => {
-    const { server, user } = openExperiments({ dirs: ["f", "f/run-1"] });
+    const { server, user } = await openSandboxes({ dirs: ["f", "f/run-1"] });
     const form = await screen.findByRole("form", { name: "Create a sub-experiment" });
     await chooseFolder(user, "f");
     await user.type(within(form).getByLabelText("Name"), "run-1");
@@ -120,7 +120,7 @@ describe("creating a sub-experiment", () => {
   });
 
   it("asks for a folder first when none exists, and disables the button", async () => {
-    const { server } = openExperiments();
+    const { server } = await openSandboxes();
     const form = await screen.findByRole("form", { name: "Create a sub-experiment" });
     expect(within(form).getByText(/Create a folder first/)).toBeInTheDocument();
     expect(within(form).getByRole("button", { name: "Create sub-experiment" })).toBeDisabled();
@@ -128,7 +128,7 @@ describe("creating a sub-experiment", () => {
   });
 
   it("refuses more than eight factors before any request", async () => {
-    const { server, user } = openExperiments({ dirs: ["f"] });
+    const { server, user } = await openSandboxes({ dirs: ["f"] });
     const form = await screen.findByRole("form", { name: "Create a sub-experiment" });
     await chooseFolder(user, "f");
     await user.type(within(form).getByLabelText("Name"), "a");
@@ -140,7 +140,7 @@ describe("creating a sub-experiment", () => {
   });
 
   it("keeps a context listed after a refusal of the registration", async () => {
-    const { user } = openExperiments(
+    const { user } = await openSandboxes(
       { dirs: ["f"], entries: [entry("exp_1", "a", "active", "f/a")] },
       { "POST /v1/experiments": () => json({ status: "error", code: "overlaps_context", message: "RAW overlap" }, 400) },
     );

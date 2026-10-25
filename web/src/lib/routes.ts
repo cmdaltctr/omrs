@@ -18,9 +18,18 @@ export type Route =
   | { area: "knowledge-base"; collection: string | null }
   | { area: "chat"; collection: string | null; chatId: string | null }
   | { area: "studio"; profileId: string | null; purpose: Purpose | null }
-  | { area: "experiments"; runId: string | null }
+  | ExperimentsRoute
   | { area: "integrations"; entry: string | null }
   | { area: "settings"; section: SettingsSection | null };
+
+/**
+ * The Experiments area: the section view (`runId` null), a run, a library
+ * experiment page or a notebook page.
+ */
+export type ExperimentsRoute =
+  | { area: "experiments"; runId: string | null }
+  | { area: "experiments"; projectId: string; folder: string }
+  | { area: "experiments"; notebookId: string };
 
 export type RouteArea = Route["area"];
 
@@ -39,8 +48,10 @@ function decode(segment: string): string | null {
 export function parseRoute(hash: string): Route {
   if (!hash.startsWith("#/")) return HOME;
   const parts = hash.slice(2).split("/");
-  const [area, first, second, ...rest] = parts;
+  const [area, first, second, third, ...rest] = parts;
   if (rest.length > 0) return HOME;
+  // Only a library experiment page (`#/experiments/library/<project>/<folder>`) has a fourth segment.
+  if (third !== undefined && !(area === "experiments" && first === "library")) return HOME;
 
   switch (area) {
     case "home":
@@ -77,15 +88,28 @@ export function parseRoute(hash: string): Route {
       if (second === undefined) return { area, profileId, purpose: null };
       return isPurpose(second) ? { area, profileId, purpose: second } : HOME;
     }
-    case "experiments": {
-      if (first === undefined) return { area, runId: null };
-      if (first !== "runs" || second === undefined) return HOME;
-      const runId = decode(second);
-      return runId === null ? HOME : { area, runId };
-    }
+    case "experiments":
+      return parseExperiments(first, second, third);
     default:
       return HOME;
   }
+}
+
+function parseExperiments(first: string | undefined, second: string | undefined, third: string | undefined): Route {
+  if (first === undefined) return { area: "experiments", runId: null };
+  const id = second === undefined ? null : decode(second);
+  if (id === null) return HOME;
+  if (first === "runs" && third === undefined) return { area: "experiments", runId: id };
+  if (first === "notebooks" && third === undefined) return { area: "experiments", notebookId: id };
+  if (first !== "library" || third === undefined) return HOME;
+  const folder = decode(third);
+  return folder === null ? HOME : { area: "experiments", projectId: id, folder };
+}
+
+function formatExperiments(route: ExperimentsRoute): string {
+  if ("notebookId" in route) return `#/experiments/notebooks/${encodeURIComponent(route.notebookId)}`;
+  if ("folder" in route) return `#/experiments/library/${encodeURIComponent(route.projectId)}/${encodeURIComponent(route.folder)}`;
+  return route.runId === null ? "#/experiments" : `#/experiments/runs/${encodeURIComponent(route.runId)}`;
 }
 
 function isPurpose(value: string): value is Purpose {
@@ -118,6 +142,6 @@ export function formatRoute(route: Route): string {
       if (route.profileId === null) return "#/studio";
       return withSegment(withSegment("#/studio", route.profileId), route.purpose);
     case "experiments":
-      return route.runId === null ? "#/experiments" : `#/experiments/runs/${encodeURIComponent(route.runId)}`;
+      return formatExperiments(route);
   }
 }

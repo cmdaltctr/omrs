@@ -18,7 +18,7 @@ const STATES: PluginState[] = [
 
 async function openNotebooks(initial: Partial<ServerState> = {}, extra: Record<string, Handler> = {}) {
   const opened = openExperiments({ dirs: ["f"], entries: [entry("exp_1", "chunks", "active", "f/chunks")], plugins: [MARIMO], ...initial }, extra);
-  await opened.user.click(await screen.findByRole("button", { name: "Notebooks" }));
+  await opened.user.click(await screen.findByRole("button", { name: "Code editor" }));
   return opened;
 }
 

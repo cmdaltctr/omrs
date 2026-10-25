@@ -34,6 +34,7 @@ from .routes.connections import router as connections_router
 from .routes.document_reading import router as document_reading_router
 from .routes.documents import router as documents_router
 from .routes.embedding import router as embedding_router
+from .routes.experiment_library import router as experiment_library_router
 from .routes.experiments import router as experiments_router
 from .routes.foundation import router as foundation_router
 from .routes.graphs import router as graphs_router
@@ -44,6 +45,7 @@ from .routes.judge_settings import router as judge_settings_router
 from .routes.llamacpp_server import router as llamacpp_server_router
 from .routes.logs import router as logs_router
 from .routes.mcp import router as mcp_router
+from .routes.notebooks import router as notebooks_router
 from .routes.plugins import router as plugins_router
 from .routes.power import router as power_router
 from .routes.profiles import router as profiles_router
@@ -73,6 +75,8 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     embedding_router,
     runs_router,
     experiments_router,
+    experiment_library_router,
+    notebooks_router,
     templates_router,
     plugins_router,
     mcp_router,

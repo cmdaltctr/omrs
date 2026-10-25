@@ -19,7 +19,7 @@ The web workspace will show and create experiments in a later change. It needs a
 - Status has seven values: `PLANNED`, `ACTIVE`, `PASS`, `FAIL`, `INCONCLUSIVE`, `MEASURED`, `SUPERSEDED`. `SUPERSEDED` needs `superseded_by`.
 - New folder names keep the current style `<number>-<slug>-<YYYY-MM-DD>`. The folder name is the experiment identity. The number is a label and can repeat in old folders.
 - `experiments/reserved.json` lists numbers that are reserved but have no folder yet. The folder creator does not use a reserved number.
-- Each run appends one line to `output/run-records.jsonl` with its start time, git commit, dirty-tree flag and the SHA-256 of `plan.json`. The checker uses it to find a plan that changed after a run.
+- A runner written for format v1 calls a helper at each start, including `--resume`. The helper appends one line to `output/run-records.jsonl` with the start time, git commit, dirty-tree flag, the SHA-256 of `plan.json` and the command. Runners in converted folders do not call it. The checker uses it to find a plan that changed after a run.
 - The index table in `EXP_README.md` is generated from the `experiment.json` files, between two marker lines. The rest of the file stays as written.
 - A new CLI group: `omrs experiments check`, `omrs experiments index` and `omrs experiments new`.
 - One-time move of the existing folders: back up the tracked files (done on 2026-10-25, recorded in `DATA/omrs/DATA_LOCATIONS.md`), add `experiment.json` to each folder, seed `reserved.json`, and put the index table between markers. No existing file inside an experiment folder changes. The move script stays in this change folder and does not ship.

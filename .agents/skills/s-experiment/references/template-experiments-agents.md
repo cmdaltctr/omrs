@@ -68,8 +68,9 @@ Unknown keys are an error. Status lives only in `experiment.json`. Do not write 
 ## While it runs
 
 - `plan.json` is frozen after the first run. No tool writes to it. Record a change as a new entry in its `amendments` list.
-- Each run appends one line to `output/run-records.jsonl` with the start time, git commit, dirty-tree flag and plan SHA-256. Call the helper in `_lib/run_record.py` at the start of each run.
+- Each run appends one line to `output/run-records.jsonl` with the start time, git commit, dirty-tree flag, plan SHA-256 and the command. Call the helper in `_lib/run_record.py` at the start of each run.
 - Never change an earlier line in `output/run-records.jsonl`.
+- Converted folders (with a `migration` note) can have no run records. Do not add them after the fact.
 - Write only inside the experiment folder. Never touch production data or `.env`.
 - Never edit `output/` by hand. Regenerate it with the scripts.
 - Use `_lib/stats.py` for statistics. Do not write new statistics code.

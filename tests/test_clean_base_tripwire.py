@@ -170,9 +170,13 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # test_experiments_guide_links.py (9), test_experiment_run_record_lib.py (4) and
 # one new contract in test_contract_coverage.py. No fastapi needed. The 13 schema
 # parity cases need jsonschema, which mcp installs.
+# +146 (2026-10-25, experiments-in-web-workspace): test_workspace_experiment_*.py (39, no
+# fastapi) and test_web_experiment_*.py plus test_web_notebooks.py (107, need fastapi).
+# +3 (2026-10-25, verification fixes): index-failure cases in test_web_experiment_create.py
+# (need fastapi; one skips as root).
 # +5 (2026-10-25, LanceDB exit crash, TDR-040): test_lance_child_helper.py (5).
 # No fastapi needed.
-_BASE_EXECUTED = 8382
+_BASE_EXECUTED = 8531
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -481,7 +485,12 @@ if not _has_qwen_tokenizer:
 # +1 (2026-10-24, uninstall design follow-up): the pending restart case in
 # test_web_integration_uninstall_routes.py (1444).
 # +2 (2026-10-24, check-saved-profiles-before-uninstall): saved-profile route cases (1446).
-_WEB_EXTRA_CASES = 1446
+# +107 (2026-10-25, experiments-in-web-workspace): test_web_experiment_library.py (23),
+# test_web_experiment_files.py (26), test_web_notebooks.py (20),
+# test_web_experiment_create.py (10), test_web_experiment_library_hardening.py (27)
+# and the conformance case (1) (1553). Three permission cases skip as root.
+# +3 (2026-10-25, verification fixes): index-failure cases in test_web_experiment_create.py (1556).
+_WEB_EXTRA_CASES = 1556
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)

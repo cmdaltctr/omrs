@@ -104,7 +104,7 @@ Natural sort: split the number into the whole part, the letter, and the dotted p
 
 ### D8. Run records as JSON Lines in `output/`
 
-`output/run-records.jsonl` gets one line per run start. JSON Lines is append-only, so resume runs never rewrite history. The file sits in the gitignored `output/`, next to the data it describes, and is copied with it to `DATA/omrs` under gotcha 15. `experiments/_lib/run_record.py` reads git facts with `git rev-parse HEAD` and `git status --porcelain`, then calls the core append function.
+`output/run-records.jsonl` gets one line per run start. A runner written for format v1 calls the helper at each start, including `--resume`. Runners in converted folders do not call it, because their files are frozen records, so those folders can have no run records. JSON Lines is append-only, so resume runs never rewrite history. The file sits in the gitignored `output/`, next to the data it describes, and is copied with it to `DATA/omrs` under gotcha 15. `experiments/_lib/run_record.py` reads git facts with `git rev-parse HEAD` and `git status --porcelain`, then calls the core append function.
 
 ### D9. Templates ship in the package; the skill keeps a byte copy
 

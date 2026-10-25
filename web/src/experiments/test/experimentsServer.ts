@@ -4,6 +4,7 @@ import type { ExperimentEntry, FolderNode, FolderRoot } from "../../api/experime
 import type { EditorInfo, PluginState } from "../../api/plugins";
 import type { RunDetailRecord, RunEventRecord, RunResultRecord } from "../../api/runs";
 import { documentsServer, json, type Handler } from "../../test/fakeDocumentsServer";
+import { emptyLibrary, libraryHandlers, type LibraryState } from "./libraryServer";
 import { runRouter } from "./runRouter";
 
 export const TRUST =
@@ -60,6 +61,8 @@ export interface ServerState {
   runs: RunDetailRecord[];
   results: Record<string, RunResultRecord>;
   events: Record<string, RunEventRecord[]>;
+  /** The experiment library: projects, their folders and notebooks. Empty unless a test passes one. */
+  library: LibraryState;
 }
 
 /** The directory tree the server lists: every directory, with registered workspaces as leaves. */
@@ -88,10 +91,11 @@ function folders(state: ServerState): FolderRoot[] {
   return state.roots.map((root, index) => ({ root, tree: index === 0 ? buildTree(root, state) : [] }));
 }
 
-/** In-memory stand-in for the experiment, folder, credential, plugin and run routes. */
+/** In-memory stand-in for the experiment, folder, credential, plugin, run and library routes. */
 export function experimentsServer(initial: Partial<ServerState> = {}, extra: Record<string, Handler> = {}) {
-  const state: ServerState = { roots: ["/srv/exp"], dirs: [], entries: [], plugins: [], editors: [], runs: [], results: {}, events: {}, ...initial };
+  const state: ServerState = { roots: ["/srv/exp"], dirs: [], entries: [], plugins: [], editors: [], runs: [], results: {}, events: {}, library: emptyLibrary(), ...initial };
   const handlers: Record<string, Handler> = {
+    ...libraryHandlers(state.library),
     "GET /v1/experiments": () => ({ status: "ok", roots: state.roots, folders: folders(state), experiments: state.entries, trust_notice: TRUST }),
     "POST /v1/experiment-folders": (body) => {
       const path = String(body.path);

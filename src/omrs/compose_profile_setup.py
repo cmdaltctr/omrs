@@ -181,6 +181,21 @@ def build_chat_repository(workspace: Path) -> Any:
     return SqliteChatRepository(WorkspaceLayout(workspace).records)
 
 
+def build_experiment_library(workspace: Path) -> Any:
+    """Build the experiment project and notebook store over the workspace folder.
+
+    The workspace database must already be open through ``build_profile_service``,
+    which runs the migrations (experiments-in-web-workspace D3).
+
+    Args:
+        workspace: The workspace folder (``omrs web --workspace``).
+    """
+    from .core.workspace import WorkspaceLayout
+    from .integrations.workspace_sqlite.experiment_library import SqliteExperimentLibrary
+
+    return SqliteExperimentLibrary(WorkspaceLayout(workspace).records)
+
+
 def _engine_host_identity(engine: Any) -> Callable[[], EmbeddingIdentity] | None:
     """Return the Engine's own server default model, so checks match its writes.
 
