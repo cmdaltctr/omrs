@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 from typing import Any
 
@@ -132,6 +133,15 @@ def test_a_duplicate_notebook_name_is_refused(web: Any) -> None:
     assert len(client.get("/v1/notebooks").json()["notebooks"]) == 1
 
 
+def _tree_digest(experiments: Path) -> list[tuple[str, str]]:
+    """Return ``(relative path, SHA-256)`` for every file below *experiments*, sorted."""
+    return sorted(
+        (path.relative_to(experiments).as_posix(), hashlib.sha256(path.read_bytes()).hexdigest())
+        for path in experiments.rglob("*")
+        if path.is_file()
+    )
+
+
 def test_rename_and_delete_a_user_notebook(web: Any, tmp_path: Path) -> None:
     client = web[0]
     root = make_project(tmp_path)
@@ -141,10 +151,13 @@ def test_rename_and_delete_a_user_notebook(web: Any, tmp_path: Path) -> None:
     renamed = client.patch(f"/v1/notebooks/{notebook}", json={"name": "Paper 2"}, headers=ORIGIN)
     assert renamed.json()["notebook"]["name"] == "Paper 2"
     assert renamed.json()["notebook"]["entry_count"] == 1
+    before = _tree_digest(root / "experiments")
     deleted = client.delete(f"/v1/notebooks/{notebook}", headers=ORIGIN)
     assert deleted.json() == {"status": "ok", "removed": True}
     assert client.get(f"/v1/notebooks/{notebook}").status_code == 404
-    assert (root / "experiments" / FIRST / "experiment.json").is_file()
+    # Deleting a notebook changes no experiment file.
+    assert before, "the project has no files to compare"
+    assert _tree_digest(root / "experiments") == before
 
 
 def test_rename_to_a_taken_name_is_409(web: Any) -> None:
