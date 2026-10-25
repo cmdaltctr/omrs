@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "23",
+  "title": "OCR routing gate calibration",
+  "date": "2026-09-07",
+  "category": "ingestion",
+  "size": "Quick",
+  "status": "MEASURED",
+  "superseded_by": null,
+  "finding": "`improve-rag-input-quality-5` task 1.7. Calibration-set sweep of `OCR_FALLBACK_MIN_CONFIDENCE` × `OCR_FALLBACK_PAGE_FRACTION`: 40/48 cells zero-error; only degenerate `page_fraction=0.0` misroutes clean text (routes everything); scanned PDF carried at every grid point. Selected gate 0.5/0.5 (middle of admissible region; set cannot discriminate within it — stated as limitation)",
+  "migration": {
+    "from_status": "COMPLETE",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}

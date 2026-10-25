@@ -1,0 +1,27 @@
+{
+  "experiment_id": "<number>-<slug>-<YYYY-MM-DD>",
+  "protocol_version": 1,
+  "question": "<one sentence: the question>",
+  "decision": "<one sentence: the decision that depends on the answer>",
+  "hypotheses": [
+    {
+      "id": "H1",
+      "role": "primary",
+      "statement": "<change> makes <primary metric> better than <baseline> by at least <amount>",
+      "null": "the difference is smaller than <amount>, or goes the other way"
+    }
+  ],
+  "decision_rule": "If H1 holds and <guardrail> does not get worse by more than <amount>, then <action>. Otherwise <other action>.",
+  "stats": "medium",
+  "seed": 0,
+  "baseline": "baseline",
+  "candidate": "candidate",
+  "metrics": [
+    {"name": "<primary metric>", "binary": false, "primary": true}
+  ],
+  "gates": [
+    {"id": "G1", "metric": "<primary metric>", "value": "difference", "op": ">=", "threshold": 0.0}
+  ],
+  "frozen": [],
+  "amendments": []
+}

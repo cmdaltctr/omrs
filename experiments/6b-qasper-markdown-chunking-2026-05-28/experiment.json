@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "6b",
+  "title": "Evidence-level Markdown chunking on Qasper",
+  "date": "2026-05-28",
+  "category": "retrieval",
+  "size": null,
+  "status": "FAIL",
+  "superseded_by": null,
+  "finding": "Heading-aware Markdown chunker lowered Evidence Recall@5 by 5.66 points (reranker off) and 1.89 points (reranker on).",
+  "migration": {
+    "from_status": "results.md: **Status**: COMPLETE (real negative result)",
+    "source": "results.md",
+    "date": "2026-10-25"
+  }
+}

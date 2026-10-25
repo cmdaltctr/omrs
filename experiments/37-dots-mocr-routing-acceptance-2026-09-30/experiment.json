@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "37",
+  "title": "dots.mocr routing acceptance",
+  "date": "2026-09-30",
+  "category": "ingestion",
+  "size": "Standard",
+  "status": "PASS",
+  "superseded_by": null,
+  "finding": "Acceptance check for `modular-ocr-workers-dots-mocr` (tasks 7.1–7.3). G1: maths-font detector flags 0 of 64 control pages labelled no_maths (amendment A1); D-pos precision 0.890, recall 1.000. G2: dots.mocr 0 KaTeX errors in 1,893 formulas. G3: 41 operator noise verdicts, no invented text. Script recall median dots.mocr 0.889 vs PaddleOCR-VL (CPU) 0.610. Findings: dots.mocr drops a rotated table (`tl03` p8); detector misses renamed Minion Math and Word + MathType; PaddleOCR-VL times out on 34/257 pages; dots.mocr peak 22.2 GiB",
+  "migration": {
+    "from_status": "PASS",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}

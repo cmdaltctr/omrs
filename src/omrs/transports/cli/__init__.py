@@ -3,7 +3,7 @@
 This package contains the Typer application and one module per command
 group: ``ingest.py``, ``search.py``, ``list.py``, ``watch.py``,
 ``delete.py``, ``benchmark.py``, ``profile.py``, ``config.py``,
-``install_login_watcher.py``, and ``web.py``.
+``experiments.py``, ``install_login_watcher.py``, and ``web.py``.
 
 All output goes to stderr (gotcha #5 — stdout is the MCP protocol channel
 when the server starts with no subcommand).
@@ -199,9 +199,10 @@ def callback(
     ),
 ) -> None:
     """Run with no arguments to start the MCP stdio server."""
-    if ctx.invoked_subcommand not in ("web", None):
+    if ctx.invoked_subcommand not in ("web", "experiments", None):
         # ``omrs web`` and bare ``omrs`` (MCP over stdio) each own one
         # Engine and must not install the legacy process default.
+        # ``omrs experiments`` reads only files and needs no Engine.
         _initialise_runtime()
     if ctx.invoked_subcommand is None:
         from ..mcp import main as mcp_main
@@ -228,6 +229,7 @@ from . import (  # noqa: E402,F401
     benchmark,
     config,
     delete,
+    experiments,
     ingest,
     install_login_watcher,
     list,

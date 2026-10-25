@@ -105,6 +105,7 @@ development of OMRG — Opinionated Modular RAG.
 | [094](./094-app-installs-allowed-extras-into-itself.md) | The App Installs Allowed Extras into Its Own Environment | 2026-10-24 | Accepted |
 | [095](./095-page-writes-every-scalar-setting.md) | The Settings Page Writes Every Scalar Setting Except Identity, Storage and Keys | 2026-10-24 | Accepted |
 | [096](./096-app-uninstalls-extras-it-can-install.md) | The App Uninstalls the Extras It Can Install | 2026-10-24 | Accepted |
+| [097](./097-experiment-records-versioned-format.md) | Experiment Records Use a Versioned Format Shipped in omrs | 2026-10-25 | Accepted |
 
 ## Convention
 

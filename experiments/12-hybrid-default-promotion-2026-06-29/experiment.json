@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "12",
+  "title": "Hybrid default promotion",
+  "date": "2026-06-29",
+  "category": "retrieval",
+  "size": null,
+  "status": "SUPERSEDED",
+  "superseded_by": "10b-reranker-pool-size-corrected-2026-06-29",
+  "finding": "The planned campaign is subsumed by the Stage 6.1 D17 factorial (harden-pipeline): the shared reranker-off dense/hybrid controls answer the hybrid-lift question on the same corpus with paired CIs. Change archived 2026-08-22",
+  "migration": {
+    "from_status": "SUPERSEDED by D17",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}

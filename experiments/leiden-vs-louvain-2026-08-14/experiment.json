@@ -1,0 +1,23 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "",
+  "title": "Leiden versus Louvain community detection",
+  "date": "2026-08-14",
+  "category": "graph",
+  "size": "Quick",
+  "status": "MEASURED",
+  "superseded_by": null,
+  "finding": "Both algorithms found the same 8 communities on both test graphs; Louvain was slightly faster.",
+  "refs": {
+    "adrs": [
+      "ADR-044"
+    ],
+    "changes": [],
+    "tasks": []
+  },
+  "migration": {
+    "from_status": "ADR-044 section Experiment (no status recorded; a comparison without a gate)",
+    "source": "ADR-044 section Experiment (no status recorded; a comparison without a gate)",
+    "date": "2026-10-25"
+  }
+}

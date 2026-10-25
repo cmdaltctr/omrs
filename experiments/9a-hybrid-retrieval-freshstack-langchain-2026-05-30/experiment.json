@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "9a",
+  "title": "Hybrid retrieval on FreshStack LangChain",
+  "date": "2026-05-30",
+  "category": "retrieval",
+  "size": null,
+  "status": "FAIL",
+  "superseded_by": null,
+  "finding": "Hybrid helps at first retrieval (+4.6pp Coverage@20) but reranker bottleneck (max_fetch=50) erases the advantage; keep HYBRID_ENABLED=false default",
+  "migration": {
+    "from_status": "FAIL",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "format": "omrs-experiment-reservations/1",
+  "reservations": [
+    {
+      "number": "35",
+      "reason": "Local profile baselines: 35A documents profile on a frozen FinanceBench subset, 35B codebase profile on a frozen RepoProbe subset (draft, no folder yet)",
+      "ref": "openspec/changes/experiment-35-full-document-rag-benchmark"
+    },
+    {
+      "number": "40",
+      "reason": "Page versus document OCR routing on mixed PDFs, on the dots.mocr system",
+      "ref": "NiftyPM task AIE-101"
+    },
+    {
+      "number": "41",
+      "reason": "MLX OCR backends (folder exists only on its feature branch)",
+      "ref": "branch feat/experiment-41-mlx-ocr-backends"
+    }
+  ]
+}

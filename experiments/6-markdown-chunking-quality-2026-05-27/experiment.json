@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "6",
+  "title": "Markdown-aware chunking quality",
+  "date": "2026-05-27",
+  "category": "retrieval",
+  "size": null,
+  "status": "INCONCLUSIVE",
+  "superseded_by": null,
+  "finding": "Non-regression confirmed; heading-lift not measurable because baseline saturated at 100% Hit@1; chunk-size failure was a token/character unit mismatch",
+  "migration": {
+    "from_status": "PARTIAL",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}

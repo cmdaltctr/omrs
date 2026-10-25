@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "20",
+  "title": "Citation faithfulness",
+  "date": "2026-09-02",
+  "category": "generation",
+  "size": null,
+  "status": "PASS",
+  "superseded_by": null,
+  "finding": "`add-grounded-answer-synthesis-3` task 7.2 / security F4 follow-up. All gates pass: GLM-5.3 judge recall 1.0, false rejection 0.0, P95 3.33 s, unparseable 0, cross-model agreement 1.0 (DeepSeek V4 Flash 0731). Lexical gap 0.383 (lexical 0.617 vs judge 1.0 at the same false-rejection budget). Amendment 5: judge switched from local qwen3:4b (262K context exhausted 43 GB) to cloud (Z.AI GLM-5.3 + OpenRouter DeepSeek). Decision: propose claim-verification stage behind `ANSWER__VERIFY_CLAIMS=true`; F4 mitigated",
+  "migration": {
+    "from_status": "PASS",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}

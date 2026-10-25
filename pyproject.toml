@@ -394,6 +394,50 @@ forbidden_modules = [
 ]
 unmatched_ignore_imports_alerting = "error"
 
+# Research experiment records read and write files under a given folder only.
+# Git facts for run records come from the caller (experiment-format-v1, D1).
+[[tool.importlinter.contracts]]
+name = "experiment-records-stay-pure"
+type = "forbidden"
+source_modules = ["omrs.core.experiment_records"]
+forbidden_modules = [
+    "omrs.compose",
+    "omrs.compose_answer",
+    "omrs.compose_connections",
+    "omrs.compose_embedding",
+    "omrs.compose_engine",
+    "omrs.compose_experiments",
+    "omrs.compose_llamacpp",
+    "omrs.compose_pipeline_runs",
+    "omrs.compose_pipelines",
+    "omrs.compose_profile_embedding",
+    "omrs.compose_profile_setup",
+    "omrs.compose_profiles",
+    "omrs.compose_providers",
+    "omrs.compose_settings",
+    "omrs.compose_templates",
+    "omrs.engine",
+    "omrs.engine_answer",
+    "omrs.engine_embedders",
+    "omrs.engine_lifecycle",
+    "omrs.engine_profiles",
+    "omrs.engine_providers",
+    "omrs.transports",
+    "omrs.core.experiments",
+    "omrs.core.vectordb",
+    "omrs.core.workspace",
+    "subprocess",
+    "socket",
+    "sqlite3",
+    "lancedb",
+    "fastapi",
+    "starlette",
+    "uvicorn",
+    "typer",
+    "click",
+]
+unmatched_ignore_imports_alerting = "error"
+
 # The plugin host validates manifests and decides launches; it never starts
 # a process or opens a socket itself (design D10, task 8.1). The owned-process
 # adapter is omrs.integrations.process_launcher, injected by composition.

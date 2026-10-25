@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "38",
+  "title": "Rescue-quality signal",
+  "date": "2026-09-30",
+  "category": "ingestion",
+  "size": "Standard",
+  "status": "FAIL",
+  "superseded_by": null,
+  "finding": "A3 rerun at leave-one-document-out thresholds: no candidate passes G1 to G3. Hosted Jev (wording chosen per document) catches 56/89 junk, routes no usable document, flags 12/565 healthy pages against an 11-page ceiling. Jev AUC 0.878 to 0.922; Julia 1 stays near 0.5 across three wordings and two input lengths. A (word check) catches 37/89 but routes usable `rf05`. Cascade word check then Jev: 50/89, 28% of pages sent, fails G2 on `rf04`. No production change",
+  "migration": {
+    "from_status": "FAIL",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}

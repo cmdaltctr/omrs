@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "15",
+  "title": "gte-reranker-modernbert-base A/B comparison",
+  "date": "2026-07-31",
+  "category": "retrieval",
+  "size": null,
+  "status": "INCONCLUSIVE",
+  "superseded_by": null,
+  "finding": "gte did not beat the rerank-off baseline; both rerankers degraded technical retrieval (30-query subset).",
+  "migration": {
+    "from_status": "results.md: **Status:** INCONCLUSIVE (small sample + reduced candidate pool; see caveats)",
+    "source": "results.md",
+    "date": "2026-10-25"
+  }
+}

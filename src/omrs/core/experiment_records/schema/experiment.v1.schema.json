@@ -1,0 +1,253 @@
+{
+  "$defs": {
+    "Category": {
+      "description": "The area of the system an experiment tests.",
+      "enum": [
+        "retrieval",
+        "ingestion",
+        "runtime",
+        "generation",
+        "graph",
+        "review"
+      ],
+      "title": "Category",
+      "type": "string"
+    },
+    "MigrationNote": {
+      "additionalProperties": false,
+      "description": "How a converted record was made, so the conversion can be checked and reversed.",
+      "properties": {
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "from_status": {
+          "pattern": "^[^\\r\\n]*$",
+          "title": "From Status",
+          "type": "string"
+        },
+        "source": {
+          "minLength": 1,
+          "pattern": "^[^\\r\\n]*$",
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "from_status",
+        "source",
+        "date"
+      ],
+      "title": "MigrationNote",
+      "type": "object"
+    },
+    "Refs": {
+      "additionalProperties": false,
+      "description": "Links to decision records, OpenSpec changes and tasks, without free text.",
+      "properties": {
+        "adrs": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Adrs",
+          "type": "array"
+        },
+        "changes": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Changes",
+          "type": "array"
+        },
+        "tasks": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Tasks",
+          "type": "array"
+        }
+      },
+      "title": "Refs",
+      "type": "object"
+    },
+    "Size": {
+      "description": "How much planning an experiment carries. The size decides the files it needs.",
+      "enum": [
+        "Quick",
+        "Standard",
+        "Confirmatory"
+      ],
+      "title": "Size",
+      "type": "string"
+    },
+    "Status": {
+      "description": "The seven experiment status values.",
+      "enum": [
+        "PLANNED",
+        "ACTIVE",
+        "PASS",
+        "FAIL",
+        "INCONCLUSIVE",
+        "MEASURED",
+        "SUPERSEDED"
+      ],
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "else": {
+        "properties": {
+          "superseded_by": {
+            "type": "null"
+          }
+        }
+      },
+      "if": {
+        "properties": {
+          "status": {
+            "const": "SUPERSEDED"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "superseded_by": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "superseded_by"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "migration": {
+            "type": "null"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "size": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "size"
+        ]
+      }
+    }
+  ],
+  "description": "One experiment's record, stored as ``experiment.json`` in its folder.",
+  "properties": {
+    "category": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Category"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "date": {
+      "format": "date",
+      "title": "Date",
+      "type": "string"
+    },
+    "finding": {
+      "pattern": "^[^\\r\\n]*$",
+      "title": "Finding",
+      "type": "string"
+    },
+    "format": {
+      "const": "omrs-experiment/1",
+      "title": "Format",
+      "type": "string"
+    },
+    "migration": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MigrationNote"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "number": {
+      "pattern": "^(?:[0-9]+(?:[a-z]|\\.[0-9]+)?)?$",
+      "title": "Number",
+      "type": "string"
+    },
+    "refs": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Refs"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "size": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Size"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "status": {
+      "$ref": "#/$defs/Status"
+    },
+    "superseded_by": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Superseded By"
+    },
+    "title": {
+      "minLength": 1,
+      "pattern": "^[^\\r\\n]*$",
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "format",
+    "number",
+    "title",
+    "date",
+    "status",
+    "finding"
+  ],
+  "title": "omrs experiment record",
+  "type": "object"
+}

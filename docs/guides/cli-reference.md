@@ -19,6 +19,9 @@ The `omrs` command doubles as an MCP server and a CLI tool. With no arguments it
 | `omrs benchmark`             | Benchmark embedding throughput without vector-store writes                       |
 | `omrs config init`           | Write a commented starter `omrs.jsonc` in the user config folder                 |
 | `omrs config show`           | Print every setting with its value and source, and the problems in `omrs.jsonc`  |
+| `omrs experiments check`     | Report problems in the experiment folders; writes no file                        |
+| `omrs experiments index`     | Compare or write the generated index in `experiments/EXP_README.md`              |
+| `omrs experiments new <slug>` | Create an experiment folder from the packaged templates                         |
 | `omrs web`                   | Start the local web workspace (needs the `web` extra)                            |
 | `omrs web install`           | Keep the web app running as a macOS login item and start it                      |
 | `omrs web uninstall`         | Stop the login item and remove its LaunchAgent file                              |
@@ -35,7 +38,7 @@ The `omrs` command doubles as an MCP server and a CLI tool. With no arguments it
 | Flag                 | Applies to                                               | Description                                                          |
 | -------------------- | -------------------------------------------------------- | -------------------------------------------------------------------- |
 | `--collection`, `-c` | `ingest`, `search`, `list`, `watch`, `delete`, `answer`, `set-profile` | Collection name in the selected vector store (default `"documents"`) |
-| `--json`             | `ingest`, `search`, `list`, `list-collections`, `delete`, `answer`, `set-profile` | Output results as JSON (written to stderr like all CLI output; stdout stays the MCP protocol channel) |
+| `--json`             | `ingest`, `search`, `list`, `list-collections`, `delete`, `answer`, `set-profile`, `experiments check` | Output results as JSON (written to stderr like all CLI output; stdout stays the MCP protocol channel) |
 | `--chunk-size`       | `ingest`                                                 | Override chunk size (characters)                                     |
 | `--chunk-overlap`    | `ingest`                                                 | Override chunk overlap (characters)                                  |
 | `--report`, `-r`     | `ingest`                                                 | Write ingestion report to a file                                     |
@@ -385,6 +388,48 @@ Each line reads `key = value  (source)`. The source is one of `env` (the process
 Below the list, a `Problems in` section names each key in `omrs.jsonc` that was ignored: a file that cannot be read, a value that breaks its rule, an unknown key, or a retired name with its replacement. The section never repeats a value. It also says when a `keychain://` reference found no key.
 
 A `keychain://` reference makes the command read the system keychain. macOS may ask you to allow access. A file with no such reference never opens the keychain.
+
+### experiments check, index, new
+
+```bash
+omrs experiments check                      # report problems; exit 1 on an error
+omrs experiments check --strict --json      # exit 1 on a warning too; JSON findings
+omrs experiments index                      # print the index; exit 1 when EXP_README.md is out of date
+omrs experiments index --write              # replace the marked block in EXP_README.md
+omrs experiments new ocr-text-quality --title "OCR text quality" --category ingestion --size Standard
+omrs experiments new retry --title "OCR retry" --category ingestion --size Quick --follow-up 38
+```
+
+These commands work on research experiment folders in format `omrs-experiment/1`. Each folder holds an `experiment.json` record. See [Experiment records](experiment-records.md). The commands read and write files only. They do not start the engine or open a vector store. Every command takes an optional directory argument. The default is `./experiments`. All output goes to stderr, including `--json` output.
+
+`check` reads every experiment folder and writes no file. Each finding has a severity (`error`, `warning` or `info`), a stable code, the folder and a message. It reads only the top level of each `output/` folder, and the file `output/run-records.jsonl`.
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--strict` | off | Exit with code 1 on a warning too. |
+| `--json` | off | Print the findings as a JSON list of `{severity, code, folder, message}` objects. |
+
+`index` renders the index from the records and `reserved.json`. The block sits between the lines `<!-- omrs:experiment-index:start -->` and `<!-- omrs:experiment-index:end -->` in `EXP_README.md`. Text outside the markers does not change.
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--write` | off | Replace the marked block. Without it, the command prints the block and compares it with the file. |
+
+`new SLUG` creates `<number>-<slug>-<YYYY-MM-DD>` with an `experiment.json` record at status `PLANNED` and the template files for the size. A Quick experiment gets `report.md`. A Standard or Confirmatory experiment gets `protocol.md`, `plan.json` and `report.md`. The number is the next free whole number. Numbers in `reserved.json` are skipped. The command never changes an existing file or folder. It prints the path of the new folder.
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--title` | required | One-line title for the record and the index. |
+| `--category` | required | `retrieval`, `ingestion`, `runtime`, `generation`, `graph` or `review`. |
+| `--size` | required | `Quick`, `Standard` or `Confirmatory`. |
+| `--follow-up N` | none | Take the next free letter of experiment `N`, for example `38a`, then `38b`. |
+| `--date` | today | Planning date, written `YYYY-MM-DD`. |
+
+| Exit code | When |
+| --- | --- |
+| 0 | `check`: no error (and no warning with `--strict`). `index`: the file is up to date, or `--write` succeeded. `new`: the folder was created. |
+| 1 | `check`: an error was found (or a warning with `--strict`). `index`: the file is out of date, `EXP_README.md` is missing, or a marker is missing; with a missing marker, `--write` writes nothing. `new`: a bad slug, title or date, an unknown follow-up number, or the folder name exists. |
+| 2 | An unknown option value, for example a category that is not in the list. |
 
 ### web
 

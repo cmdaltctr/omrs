@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "26",
+  "title": "Query-instruction ablation",
+  "date": "2026-09-08",
+  "category": "retrieval",
+  "size": "Standard",
+  "status": "FAIL",
+  "superseded_by": null,
+  "finding": "`improve-rag-input-quality-5` task 5.3. Raw vs instructed queries interleaved on the frozen exp 22 index (instruction excluded from index identity, task 4.8). Paired R@5 lift **−0.0246** against a frozen +0.0300; identifier-heavy R@10 0.2563 < 0.2583. Latency gate failed for BOTH arms on a slow provider day — the raw arm was the slower at p95 5,543 ms vs 3,543 ms — so it did not discriminate and carries no evidence against the instruction. Raw arm reproduced exp 22's R@5 to six decimals, pinning the delta on the instruction. `EMBEDDING__QUERY_INSTRUCTION` stays empty; text NOT retuned",
+  "migration": {
+    "from_status": "FAIL (negative result)",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}

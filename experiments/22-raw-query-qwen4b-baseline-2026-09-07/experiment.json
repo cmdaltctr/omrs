@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "22",
+  "title": "Raw-query Qwen3-Embedding-4B baseline",
+  "date": "2026-09-07",
+  "category": "retrieval",
+  "size": "Standard",
+  "status": "MEASURED",
+  "superseded_by": null,
+  "finding": "`improve-rag-input-quality-5` task 1.5. Stage 1 retrieval baseline, 10,024 FreshStack parents → 32,631 chunks in LanceDB, cloud embeddings, 223 queries, rerank off. Hybrid leads dense on every headline metric except R@1 (12.1% vs 12.9%); R@5 25.6% vs 22.7%; hybrid p95 1,984 ms. Not comparable with 9a (model/dims/store/granularity all differ). Index and corpus preserved outside git (`DATA_LOCATIONS.md`); `gate_noise_analysis.py` derived the task 1.6 noise tolerances",
+  "migration": {
+    "from_status": "COMPLETE (measurement)",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}

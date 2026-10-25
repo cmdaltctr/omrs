@@ -158,6 +158,7 @@ Each folder below has a short `AGENTS.md` (and a `CLAUDE.md` link to it). Read t
 - [`web/src/`](web/src/AGENTS.md): workspace front end
 - [`web/src/integrations/`](web/src/integrations/AGENTS.md): Integrations page
 - [`tests/`](tests/AGENTS.md): Python test suite
+- [`experiments/`](experiments/AGENTS.md): experiment folders, `experiment.json` records and the index
 
 ## Detailed Documentation
 
@@ -171,6 +172,7 @@ Each folder below has a short `AGENTS.md` (and a `CLAUDE.md` link to it). Read t
 | CLI reference                 | [`docs/guides/cli-reference.md`](docs/guides/cli-reference.md)             |
 | Configuration                 | [`docs/guides/configuration.md`](docs/guides/configuration.md)             |
 | Testing                       | [`docs/guides/testing.md`](docs/guides/testing.md)                         |
+| Experiment records            | [`docs/guides/experiment-records.md`](docs/guides/experiment-records.md)   |
 | ADRs (27 decisions)           | [`docs/adr/`](docs/adr/)                                                   |
 | Config vars                   | `.env.example`, `omrs config init` (starter `omrs.jsonc`) + defaults in `config/` |
 | OpenSpec specs                | `openspec/specs/` + `openspec/changes/`                                    |

@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "36",
+  "title": "Reader-output normalisation",
+  "date": "2026-09-25",
+  "category": "ingestion",
+  "size": null,
+  "status": "PASS",
+  "superseded_by": null,
+  "finding": "Normaliser version 2 removes reader markup from all five engines' output (Experiment 34 raw pages, 5 engines × 43 pages) and loses no visible character on any of 215 pages. Version 1 dropped image blocks with their text (protocol A2). Evidence for ADR-070 and TDR-028; shipped in `normalise-reader-markdown` (identity schema 6)",
+  "migration": {
+    "from_status": "PASS",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}

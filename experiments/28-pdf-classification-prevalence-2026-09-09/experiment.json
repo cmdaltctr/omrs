@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "28",
+  "title": "PDF classification prevalence",
+  "date": "2026-09-09",
+  "category": "ingestion",
+  "size": "Standard",
+  "status": "FAIL",
+  "superseded_by": null,
+  "finding": "`improve-rag-input-quality-5` task 5.5. Preregistered prevalence study (s-research template; deviations declared) over 79 de-duplicated real PDFs from the operator's Zotero library, 2,744 pages, zero parse failures, zero cost. Safety gate FAIL: one 991-page `mixed` document with 1,127 chars/page and only 10/991 pages flagged routed on the unconditional type rule — 29.3 wasted OCR hours, 1,375× slowdown on an 80-second corpus. Benefit gate FAIL: needs-OCR 2/79 = 2.5%, Wilson CI [0.7%, 8.8%] — unresolved at this n, NOT absent. Calibrated thresholds vindicated (caught doc_067, `text_based` at confidence 1.0 extracting zero characters); the unconditional `mixed` rule is the defect. `OCR_FALLBACK_ENABLED` stays `false`, thresholds stay at the 0.0 sentinels",
+  "migration": {
+    "from_status": "FAIL (negative result)",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}

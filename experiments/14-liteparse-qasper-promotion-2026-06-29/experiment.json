@@ -1,0 +1,16 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "14",
+  "title": "LiteParse Qasper promotion",
+  "date": "2026-06-29",
+  "category": "ingestion",
+  "size": "Standard",
+  "status": "ACTIVE",
+  "superseded_by": null,
+  "finding": "The 2026-06-29 planned harness is superseded by the rebuilt D19 harness (commit `205ec0e`, harden-pipeline Stage 4) with pinned fixture PDFs (`fixtures/doc1_climate.pdf`, `fixtures/doc2_quantum.pdf`, blob-identical to canonical fixtures) — see its [protocol.md](./14-liteparse-qasper-promotion-2026-06-29/protocol.md). Extended 2026-08-23 (user-ratified) to a three-parser A/B/C — pypdf, liteparse, pdf-inspector × rerank {off,on}, 6 cells — see the protocol's v2.1 extension section. Cells not yet run",
+  "migration": {
+    "from_status": "REBUILT — Stage 6 pending",
+    "source": "EXP_README.md",
+    "date": "2026-10-25"
+  }
+}
