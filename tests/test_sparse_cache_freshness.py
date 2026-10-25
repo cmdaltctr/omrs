@@ -435,6 +435,13 @@ _WRITER_SCRIPT = textwrap.dedent(
     else:
         raise SystemExit(f"unknown phase: {phase}")
     print("writer phase finished", flush=True)
+    # lancedb < 0.40 leaves its Tokio worker threads running into
+    # interpreter shutdown, where one can crash the process (SIGSEGV or
+    # SIGABRT) after a successful write (lancedb PR #4175, TDR-040).
+    # The write has committed, so skip interpreter finalisation.
+    import os
+    sys.stderr.flush()
+    os._exit(0)
     """
 )
 
