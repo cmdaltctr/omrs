@@ -31,10 +31,9 @@ dependencies = [
     # update_schema_metadata is the verified 10.x API surface and the
     # floors job installs with --resolution lowest-direct.
     "pylance>=10",
-    # 25.0.1 bundles a fixed mimalloc. 25.0.0 can crash (SIGSEGV) when a
+    # 25.0.1 bundles a fixed mimalloc. 25.0.0 crashes (SIGSEGV) when a
     # thread that first imported pyarrow exits and another thread then
-    # allocates (apache/arrow GH-50471); LanceDB writers hit it on the
-    # floors CI jobs (run 40222490235, TDR-040).
+    # allocates (apache/arrow GH-50471, reproduced locally; TDR-040).
     "pyarrow>=25.0.1",
     "llama-index-readers-file>=0.5.0",
     "llama-index-embeddings-ollama>=0.7.0",
