@@ -76,6 +76,9 @@ def test_upgrade_from_version_one_only_adds_tables_and_keeps_records(tmp_path: P
         "chat_folders",
         "chats",
         "chat_turns",
+        "experiment_projects",
+        "notebooks",
+        "notebook_entries",
     }
     assert before <= _tables(path)
     for name, columns in columns_before.items():

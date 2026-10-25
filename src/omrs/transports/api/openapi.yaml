@@ -2644,6 +2644,479 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
+  # ── Experiment library: projects, experiments and files (session only) ──
+  /experiment-projects:
+    get:
+      operationId: listExperimentProjects
+      summary: List experiment projects
+      description: >
+        Lists the stored projects, oldest first. Each project path is checked
+        again: `available` is false and `experiment_count` is null when the
+        folder or its `experiments` directory is gone.
+      security:
+        - sessionCookie: [read]
+      x-omrs-scopes: [read]
+      responses:
+        "200":
+          description: The projects.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperimentProjectList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+    post:
+      operationId: addExperimentProject
+      summary: Add an experiment project
+      description: >
+        The path must be absolute, exist, be a folder and hold an
+        `experiments` directory that does not resolve outside the folder. The
+        resolved path is stored. A refused path stores nothing (400). A second
+        project with the same resolved path is a conflict (409). A bearer
+        credential never adds a project.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExperimentProjectRequest"
+      responses:
+        "201":
+          description: Project added.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperimentProjectEnvelope"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /experiment-projects/{project_id}:
+    delete:
+      operationId: removeExperimentProject
+      summary: Remove an experiment project
+      description: >
+        Removes the project from the list and its entries from user notebooks.
+        No file on disk changes.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      parameters:
+        - $ref: "#/components/parameters/ExperimentProjectId"
+      responses:
+        "200":
+          description: Project removed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperimentLibraryRemoved"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /experiment-projects/{project_id}/experiments:
+    get:
+      operationId: listProjectExperiments
+      summary: List the experiments of a project
+      description: >
+        Scans the `experiments` directory on each request. Lists every folder
+        with a valid record, its checker findings, the reserved numbers and
+        the project-level findings. A folder without a valid record is not
+        listed; its findings join the project-level findings with their folder
+        name. An unavailable project lists nothing.
+      security:
+        - sessionCookie: [read]
+      x-omrs-scopes: [read]
+      parameters:
+        - $ref: "#/components/parameters/ExperimentProjectId"
+      responses:
+        "200":
+          description: The experiments of the project.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectExperimentList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+    post:
+      operationId: createProjectExperiment
+      summary: Create an experiment in a project
+      description: >
+        Creates `<number>-<slug>-<today>` with the experiment record folder
+        creator, at status `PLANNED`, then rewrites the index in the project's
+        `EXP_README.md` when the file has both index markers. A refusal from
+        the creator (the folder exists, a bad slug, an unknown follow-up
+        number) returns 400 with its message and writes nothing.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      parameters:
+        - $ref: "#/components/parameters/ExperimentProjectId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProjectExperimentRequest"
+      responses:
+        "201":
+          description: Experiment created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectExperimentCreated"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /experiment-projects/{project_id}/experiments/{folder}:
+    get:
+      operationId: getProjectExperiment
+      summary: Read one experiment
+      description: >
+        Returns the record and findings of one listed experiment, its
+        top-level files (without names that start with a dot) and the names
+        directly inside `output/`. `output` is null when the folder has no
+        `output/`. A folder name with a path separator, `..` or a leading dot
+        is refused (400) before any file access.
+      security:
+        - sessionCookie: [read]
+      x-omrs-scopes: [read]
+      parameters:
+        - $ref: "#/components/parameters/ExperimentProjectId"
+        - $ref: "#/components/parameters/ExperimentFolder"
+      responses:
+        "200":
+          description: The experiment.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectExperimentDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /experiment-projects/{project_id}/experiments/{folder}/files/{name}:
+    get:
+      operationId: readExperimentFile
+      summary: Read the text of one experiment file
+      description: >
+        Serves only a file directly inside the experiment folder whose suffix
+        is `.md`, `.json`, `.jsonl`, `.txt`, `.csv`, `.yaml`, `.yml` or `.py`.
+        A name with a path separator, `..` or a leading dot, another suffix,
+        or a file that resolves outside the folder is refused (400). The text
+        is decoded as UTF-8 with replacement characters. A file over 1 MiB
+        returns its first 1 MiB with `truncated: true`. The answer is always
+        JSON, never the raw file.
+      security:
+        - sessionCookie: [read]
+      x-omrs-scopes: [read]
+      parameters:
+        - $ref: "#/components/parameters/ExperimentProjectId"
+        - $ref: "#/components/parameters/ExperimentFolder"
+        - $ref: "#/components/parameters/ExperimentFileName"
+      responses:
+        "200":
+          description: The file text.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperimentFileText"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  # ── Experiment notebooks (session only) ─────────────────────────────
+  /notebooks:
+    get:
+      operationId: listNotebooks
+      summary: List project and user notebooks
+      description: >
+        Every project is a notebook with the id `project:<project_id>` and
+        `kind: project`. Project notebooks come first, then user notebooks.
+      security:
+        - sessionCookie: [read]
+      x-omrs-scopes: [read]
+      responses:
+        "200":
+          description: The notebooks.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotebookList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+    post:
+      operationId: createNotebook
+      summary: Create a user notebook
+      description: The name must be unique among user notebooks (409 otherwise).
+      security:
+        - sessionCookie: [read]
+      x-omrs-scopes: [read]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotebookRequest"
+      responses:
+        "201":
+          description: Notebook created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotebookEnvelope"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /notebooks/{notebook_id}:
+    get:
+      operationId: getNotebook
+      summary: Read a notebook and its entries
+      description: >
+        A project notebook lists every experiment of the project. A user
+        notebook lists its entries; an entry whose folder is no longer
+        detected has `missing: true` and `experiment: null`, and stays until
+        the user removes it.
+      security:
+        - sessionCookie: [read]
+      x-omrs-scopes: [read]
+      parameters:
+        - $ref: "#/components/parameters/NotebookId"
+      responses:
+        "200":
+          description: The notebook and its entries.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotebookDetail"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+    patch:
+      operationId: renameNotebook
+      summary: Rename a user notebook
+      description: A project notebook cannot be renamed (400). A taken name is a conflict (409).
+      security:
+        - sessionCookie: [read]
+      x-omrs-scopes: [read]
+      parameters:
+        - $ref: "#/components/parameters/NotebookId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotebookRequest"
+      responses:
+        "200":
+          description: Notebook renamed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotebookEnvelope"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+    delete:
+      operationId: deleteNotebook
+      summary: Delete a user notebook
+      description: >
+        Deletes the notebook and its entries. No experiment file changes. A
+        project notebook cannot be deleted (400).
+      security:
+        - sessionCookie: [read]
+      x-omrs-scopes: [read]
+      parameters:
+        - $ref: "#/components/parameters/NotebookId"
+      responses:
+        "200":
+          description: Notebook deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperimentLibraryRemoved"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /notebooks/{notebook_id}/entries:
+    put:
+      operationId: addNotebookEntry
+      summary: Add an experiment to a user notebook
+      description: >
+        The folder must be an experiment that the project lists (404
+        otherwise). Adding the same entry again keeps one entry. A project
+        notebook cannot be changed (400).
+      security:
+        - sessionCookie: [read]
+      x-omrs-scopes: [read]
+      parameters:
+        - $ref: "#/components/parameters/NotebookId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotebookEntryRequest"
+      responses:
+        "200":
+          description: The entry.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotebookEntryEnvelope"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+  /notebooks/{notebook_id}/entries/{project_id}/{folder}:
+    delete:
+      operationId: removeNotebookEntry
+      summary: Remove an experiment from a user notebook
+      description: Also removes an entry whose folder is missing. A project notebook cannot be changed (400).
+      security:
+        - sessionCookie: [read]
+      x-omrs-scopes: [read]
+      parameters:
+        - $ref: "#/components/parameters/NotebookId"
+        - $ref: "#/components/parameters/ExperimentProjectId"
+        - $ref: "#/components/parameters/ExperimentFolder"
+      responses:
+        "200":
+          description: Entry removed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperimentLibraryRemoved"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
   # ── Notebook plugins (session only) ─────────────────────────────────
   /plugins:
     get:
@@ -4471,6 +4944,36 @@ components:
       schema:
         type: string
       description: Plugin id from the manifest.
+    ExperimentProjectId:
+      name: project_id
+      in: path
+      required: true
+      description: The id of an experiment project.
+      schema:
+        type: string
+    ExperimentFolder:
+      name: folder
+      in: path
+      required: true
+      description: >
+        An experiment folder name that the project scan lists. A name with a
+        path separator, `..` or a leading dot is refused.
+      schema:
+        type: string
+    ExperimentFileName:
+      name: name
+      in: path
+      required: true
+      description: A top-level file name inside the experiment folder.
+      schema:
+        type: string
+    NotebookId:
+      name: notebook_id
+      in: path
+      required: true
+      description: A user notebook id, or `project:<project_id>` for a project notebook.
+      schema:
+        type: string
     LaunchId:
       name: launch_id
       in: path
@@ -7830,6 +8333,315 @@ components:
           enum: [ok]
         experiment:
           $ref: "#/components/schemas/ExperimentRecord"
+
+    # ── Experiment library ──────────────────────────────────────────────
+    ExperimentProject:
+      type: object
+      additionalProperties: false
+      required: [project_id, name, root, added_at, available, experiment_count]
+      properties:
+        project_id: {type: string}
+        name: {type: string}
+        root:
+          type: string
+          description: The resolved project folder.
+        added_at: {type: string}
+        available:
+          type: boolean
+          description: False when the folder or its `experiments` directory is gone.
+        experiment_count:
+          type: [integer, "null"]
+          minimum: 0
+          description: Folders with a valid record; null when the project is unavailable.
+
+    ExperimentFinding:
+      type: object
+      additionalProperties: false
+      required: [severity, code, folder, message]
+      properties:
+        severity: {type: string, enum: [error, warning, info]}
+        code: {type: string}
+        folder:
+          type: [string, "null"]
+          description: The experiment folder, or null for a directory-level finding.
+        message: {type: string}
+
+    LibraryExperiment:
+      type: object
+      additionalProperties: false
+      required:
+        - folder
+        - number
+        - title
+        - date
+        - category
+        - size
+        - status
+        - superseded_by
+        - finding
+        - refs
+        - migrated
+        - findings
+      properties:
+        folder: {type: string}
+        number:
+          type: string
+          description: Empty for an unnumbered experiment.
+        title: {type: string}
+        date: {type: string, format: date}
+        category:
+          type: [string, "null"]
+          enum: [retrieval, ingestion, runtime, generation, graph, review, null]
+        size:
+          type: [string, "null"]
+          enum: [Quick, Standard, Confirmatory, null]
+        status:
+          type: string
+          enum: [PLANNED, ACTIVE, PASS, FAIL, INCONCLUSIVE, MEASURED, SUPERSEDED]
+        superseded_by: {type: [string, "null"]}
+        finding: {type: string}
+        refs:
+          type: [object, "null"]
+          additionalProperties: false
+          required: [adrs, changes, tasks]
+          properties:
+            adrs: {type: array, items: {type: string}}
+            changes: {type: array, items: {type: string}}
+            tasks: {type: array, items: {type: string}}
+        migrated:
+          type: boolean
+          description: True when the record carries a migration note.
+        findings:
+          type: array
+          items: {$ref: "#/components/schemas/ExperimentFinding"}
+
+    ExperimentReservation:
+      type: object
+      additionalProperties: false
+      required: [number, reason, ref]
+      properties:
+        number: {type: string}
+        reason: {type: string}
+        ref: {type: string}
+
+    ExperimentFileEntry:
+      type: object
+      additionalProperties: false
+      required: [name, size, viewable]
+      properties:
+        name: {type: string}
+        size: {type: integer, minimum: 0}
+        viewable:
+          type: boolean
+          description: True when `readExperimentFile` serves the text of the file.
+
+    ExperimentProjectRequest:
+      type: object
+      additionalProperties: false
+      required: [path, name]
+      properties:
+        path: {type: string, minLength: 1, maxLength: 4096}
+        name: {type: string, minLength: 1, maxLength: 100}
+
+    ExperimentProjectList:
+      type: object
+      additionalProperties: false
+      required: [status, projects]
+      properties:
+        status: {type: string, enum: [ok]}
+        projects:
+          type: array
+          items: {$ref: "#/components/schemas/ExperimentProject"}
+
+    ExperimentProjectEnvelope:
+      type: object
+      additionalProperties: false
+      required: [status, project]
+      properties:
+        status: {type: string, enum: [ok]}
+        project: {$ref: "#/components/schemas/ExperimentProject"}
+
+    ExperimentLibraryRemoved:
+      type: object
+      additionalProperties: false
+      required: [status, removed]
+      properties:
+        status: {type: string, enum: [ok]}
+        removed: {type: boolean, enum: [true]}
+
+    ProjectExperimentList:
+      type: object
+      additionalProperties: false
+      required: [status, project, experiments, reserved, findings]
+      properties:
+        status: {type: string, enum: [ok]}
+        project: {$ref: "#/components/schemas/ExperimentProject"}
+        experiments:
+          type: array
+          items: {$ref: "#/components/schemas/LibraryExperiment"}
+        reserved:
+          type: array
+          items: {$ref: "#/components/schemas/ExperimentReservation"}
+        findings:
+          type: array
+          description: >
+            Directory-level findings (folder null), and the findings of folders
+            that are not listed because their record is missing or invalid.
+          items: {$ref: "#/components/schemas/ExperimentFinding"}
+
+    ProjectExperimentDetail:
+      type: object
+      additionalProperties: false
+      required: [status, project, experiment, files, output]
+      properties:
+        status: {type: string, enum: [ok]}
+        project: {$ref: "#/components/schemas/ExperimentProject"}
+        experiment: {$ref: "#/components/schemas/LibraryExperiment"}
+        files:
+          type: array
+          items: {$ref: "#/components/schemas/ExperimentFileEntry"}
+        output:
+          type: [array, "null"]
+          description: The names directly inside `output/`, or null when there is no `output/`.
+          items: {type: string}
+
+    ExperimentFileText:
+      type: object
+      additionalProperties: false
+      required: [status, name, text, truncated, size]
+      properties:
+        status: {type: string, enum: [ok]}
+        name: {type: string}
+        text: {type: string}
+        truncated:
+          type: boolean
+          description: True when the file is over 1 MiB and only its first 1 MiB is returned.
+        size:
+          type: integer
+          minimum: 0
+          description: The full file size in bytes.
+
+    ProjectExperimentRequest:
+      type: object
+      additionalProperties: false
+      required: [slug, title, category, size]
+      properties:
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Lower-case letters and digits joined by single hyphens.
+        title: {type: string, minLength: 1, maxLength: 200}
+        category:
+          type: string
+          enum: [retrieval, ingestion, runtime, generation, graph, review]
+        size:
+          type: string
+          enum: [Quick, Standard, Confirmatory]
+        follow_up:
+          type: [string, "null"]
+          maxLength: 16
+          description: A plain experiment number. The new folder takes its next free letter.
+
+    ProjectExperimentCreated:
+      type: object
+      additionalProperties: false
+      required: [status, folder, index]
+      properties:
+        status: {type: string, enum: [ok]}
+        folder: {type: string}
+        index:
+          type: string
+          enum: [written, no-markers, no-readme]
+          description: >
+            `written` when the index in `EXP_README.md` was rewritten,
+            `no-markers` when the file has no usable index markers, and
+            `no-readme` when the project has no `EXP_README.md`.
+
+    Notebook:
+      type: object
+      additionalProperties: false
+      required: [notebook_id, name, kind, project_id, entry_count, created_at]
+      properties:
+        notebook_id:
+          type: string
+          description: A user notebook id, or `project:<project_id>` for a project notebook.
+        name: {type: string}
+        kind: {type: string, enum: [project, user]}
+        project_id: {type: [string, "null"]}
+        entry_count: {type: integer, minimum: 0}
+        created_at:
+          type: [string, "null"]
+          description: Null for a project notebook.
+
+    NotebookEntry:
+      type: object
+      additionalProperties: false
+      required: [project_id, project_name, folder, added_at, missing, experiment]
+      properties:
+        project_id: {type: string}
+        project_name: {type: string}
+        folder: {type: string}
+        added_at: {type: string}
+        missing:
+          type: boolean
+          description: True when the project no longer lists the folder.
+        experiment:
+          oneOf:
+            - $ref: "#/components/schemas/LibraryExperiment"
+            - type: "null"
+
+    NotebookRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 100}
+
+    NotebookEntryRequest:
+      type: object
+      additionalProperties: false
+      required: [project_id, folder]
+      properties:
+        project_id: {type: string, minLength: 1, maxLength: 128}
+        folder: {type: string, minLength: 1, maxLength: 255}
+
+    NotebookList:
+      type: object
+      additionalProperties: false
+      required: [status, notebooks]
+      properties:
+        status: {type: string, enum: [ok]}
+        notebooks:
+          type: array
+          items: {$ref: "#/components/schemas/Notebook"}
+
+    NotebookEnvelope:
+      type: object
+      additionalProperties: false
+      required: [status, notebook]
+      properties:
+        status: {type: string, enum: [ok]}
+        notebook: {$ref: "#/components/schemas/Notebook"}
+
+    NotebookDetail:
+      type: object
+      additionalProperties: false
+      required: [status, notebook, entries]
+      properties:
+        status: {type: string, enum: [ok]}
+        notebook: {$ref: "#/components/schemas/Notebook"}
+        entries:
+          type: array
+          items: {$ref: "#/components/schemas/NotebookEntry"}
+
+    NotebookEntryEnvelope:
+      type: object
+      additionalProperties: false
+      required: [status, entry]
+      properties:
+        status: {type: string, enum: [ok]}
+        entry: {$ref: "#/components/schemas/NotebookEntry"}
 
     # ── Notebook plugins ────────────────────────────────────────────────
     PluginState:

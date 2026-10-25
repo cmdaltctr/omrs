@@ -198,6 +198,34 @@ SCHEMA_MIGRATIONS: tuple[Migration, ...] = (
             )""",
         ),
     ),
+    (
+        7,
+        (
+            # Experiment projects and user notebooks (experiments-in-web-workspace D2).
+            # Removing a project or a notebook removes its entries through the
+            # foreign keys. The experiment folders on disk are never touched.
+            """CREATE TABLE experiment_projects (
+                project_id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                root TEXT NOT NULL UNIQUE,
+                added_at TEXT NOT NULL
+            )""",
+            """CREATE TABLE notebooks (
+                notebook_id TEXT PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                created_at TEXT NOT NULL
+            )""",
+            """CREATE TABLE notebook_entries (
+                notebook_id TEXT NOT NULL REFERENCES notebooks(notebook_id) ON DELETE CASCADE,
+                project_id TEXT NOT NULL
+                    REFERENCES experiment_projects(project_id) ON DELETE CASCADE,
+                folder TEXT NOT NULL,
+                added_at TEXT NOT NULL,
+                PRIMARY KEY (notebook_id, project_id, folder)
+            )""",
+            "CREATE INDEX notebook_entries_by_project ON notebook_entries (project_id)",
+        ),
+    ),
 )
 
 

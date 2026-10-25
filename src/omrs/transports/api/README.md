@@ -89,7 +89,7 @@ only `sessionCookie`, the operation is session only.
 | `run` | yes | Submit, cancel and retry graph runs |
 | `files` | no | Roots, uploads, ingestion and codebase-map jobs |
 | `credentials` | no | Issue, list and revoke bearer credentials |
-| `manage` | no | Deletion, profile change, workspace cleanup, experiment folders and registration, connection tests and the server log |
+| `manage` | no | Deletion, profile change, workspace cleanup, experiment folders and registration, experiment projects and new experiments, connection tests and the server log |
 | `plugins` | no | Plugin registration, recheck, removal, and editor open and stop |
 
 `GET /v1/session` returns the credential kind, its scopes and the
@@ -228,6 +228,34 @@ runs of its context. Live-library routes give 403.
 The editor access token appears once, in the body of the open response. The
 editor URL never holds it. The workspace opens the editor in a separate
 browser tab and never embeds it. Startup registers and launches nothing.
+
+## Experiment library and notebooks
+
+Every route needs the browser session. A bearer credential gets 403.
+
+| Method | Path | Scope | Use |
+| --- | --- | --- | --- |
+| GET | `/v1/experiment-projects` | `read` | Projects, each checked again, with `available` and `experiment_count` |
+| POST | `/v1/experiment-projects` | `manage` | Add a folder that holds an `experiments` directory. 400 when refused, 409 for a path already added |
+| DELETE | `/v1/experiment-projects/{project_id}` | `manage` | Remove a project and its notebook entries. Files stay |
+| GET | `/v1/experiment-projects/{project_id}/experiments` | `read` | Experiments with findings, reserved numbers and project-level findings |
+| POST | `/v1/experiment-projects/{project_id}/experiments` | `manage` | Create an experiment folder, then rewrite the `EXP_README.md` index when it has markers |
+| GET | `/v1/experiment-projects/{project_id}/experiments/{folder}` | `read` | One experiment, its top-level files and the names in `output/` |
+| GET | `/v1/experiment-projects/{project_id}/experiments/{folder}/files/{name}` | `read` | Text of one top-level text file as JSON, at most 1 MiB |
+| GET | `/v1/notebooks` | `read` | Project notebooks (`project:<project_id>`), then user notebooks |
+| POST | `/v1/notebooks` | `read` | Create a user notebook. 409 for a name already used |
+| GET | `/v1/notebooks/{notebook_id}` | `read` | A notebook and its entries. A folder that is gone shows `missing: true` |
+| PATCH | `/v1/notebooks/{notebook_id}` | `read` | Rename a user notebook |
+| DELETE | `/v1/notebooks/{notebook_id}` | `read` | Delete a user notebook and its entries |
+| PUT | `/v1/notebooks/{notebook_id}/entries` | `read` | Add one experiment to a user notebook |
+| DELETE | `/v1/notebooks/{notebook_id}/entries/{project_id}/{folder}` | `read` | Remove one entry |
+
+The server scans the `experiments` directory on each request. The workspace
+database keeps only projects, user notebooks and their entries. A project
+notebook cannot be renamed, deleted or changed (400). The file route serves
+only `.md`, `.json`, `.jsonl`, `.txt`, `.csv`, `.yaml`, `.yml` and `.py` files
+directly inside the experiment folder. It refuses a name with a path
+separator, `..` or a leading dot, and a file that resolves outside the folder.
 
 ## Contract checks
 

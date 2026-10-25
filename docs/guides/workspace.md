@@ -47,6 +47,9 @@ The file `workspace.db` has these tables:
 | `chat_folders` | Folders for stored chats. One level. Deleting a folder deletes its chats. |
 | `chats` | Stored chats: title, folder and times. Deleting a chat deletes its turns. |
 | `chat_turns` | The turns of each chat: collection, question and the finished answer as JSON, with the evidence text. |
+| `experiment_projects` | Experiment projects: id, name, the resolved project folder and the time it was added. Removing a project removes its notebook entries. The folders on disk do not change. |
+| `notebooks` | User notebooks of experiments: id, unique name and creation time. Deleting a notebook deletes its entries. |
+| `notebook_entries` | The experiments in each user notebook, as a project id and a folder name. |
 
 A layout change does not create a revision. A semantic graph change creates a new revision. Database triggers stop all updates and deletes of revisions.
 

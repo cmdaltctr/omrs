@@ -140,6 +140,9 @@ def test_table_names_and_backup_name_match_the_database(tmp_path: Path) -> None:
         "chat_folders",
         "chats",
         "chat_turns",
+        "experiment_projects",
+        "notebooks",
+        "notebook_entries",
     }
     assert tables <= set(_spans())
     schema = (REPO / "src/omrs/integrations/workspace_sqlite/schema.py").read_text("utf-8")

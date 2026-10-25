@@ -174,6 +174,24 @@ FAMILIES: dict[str, frozenset[str]] = {
             "stopPluginEditor",
         }
     ),
+    "experiment_library": frozenset(
+        {
+            "listExperimentProjects",
+            "addExperimentProject",
+            "removeExperimentProject",
+            "listProjectExperiments",
+            "createProjectExperiment",
+            "getProjectExperiment",
+            "readExperimentFile",
+            "listNotebooks",
+            "createNotebook",
+            "getNotebook",
+            "renameNotebook",
+            "deleteNotebook",
+            "addNotebookEntry",
+            "removeNotebookEntry",
+        }
+    ),
 }
 
 
