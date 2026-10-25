@@ -75,7 +75,8 @@ Inside an experiments directory, a direct subfolder SHALL be an experiment folde
 #### Scenario: Large output folder
 
 - **WHEN** an experiment's `output/` folder holds many gigabytes in nested folders
-- **THEN** a check reads only the names at the top level of `output/`
+- **THEN** the scanner and the checker read no file below the top level of `output/`
+- **AND** the only file they read in `output/` is `run-records.jsonl`
 
 ### Requirement: The checker reports problems without changing files
 
@@ -170,11 +171,11 @@ The folder creator SHALL make a new folder named `<number>-<slug>-<YYYY-MM-DD>` 
 
 ### Requirement: Runs append a run record
 
-An experiment run SHALL append one JSON line to `output/run-records.jsonl` when it starts. The line SHALL declare `omrs-run-record/1` and hold the start time in UTC, the git commit, whether the working tree had uncommitted changes, the SHA-256 of `plan.json` (empty when there is no plan) and the command. Earlier lines SHALL NOT be changed.
+The run-record helper `experiments/_lib/run_record.py` SHALL append one JSON line to `output/run-records.jsonl` each time it is called. The line SHALL declare `omrs-run-record/1` and hold the start time in UTC, the git commit, whether the working tree had uncommitted changes, the SHA-256 of `plan.json` (empty when there is no plan) and the command. Earlier lines SHALL NOT be changed. A runner written for format v1 SHALL call the helper at each start, including a start with `--resume`. Runners in converted folders SHALL NOT be required to call the helper, because their files are frozen records.
 
 #### Scenario: Second run of the same experiment
 
-- **WHEN** an experiment that already has one run record starts again
+- **WHEN** the helper is called for an experiment that already has one run record
 - **THEN** the file has two lines and the first line is unchanged
 
 ### Requirement: The experiments folder guide stands alone
