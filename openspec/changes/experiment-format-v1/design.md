@@ -94,7 +94,7 @@ Natural sort: split the number into the whole part, the letter, and the dotted p
 
 ### D6. Index table between markers, written without column padding
 
-`index.py` replaces only the lines between `<!-- omrs:experiment-index:start -->` and `<!-- omrs:experiment-index:end -->`. Cells are not padded, so a new row changes one line and diffs stay small. `|` in a cell becomes `\|`, and line breaks are refused by the record model. The "Standalone Benchmarks" and "Cross-References" tables stay hand-written.
+`index.py` replaces only the lines between `<!-- omrs:experiment-index:start -->` and `<!-- omrs:experiment-index:end -->`. Cells are not padded, so a new row changes one line and diffs stay small. `|` in a cell becomes `\|`, and line breaks are refused by the record model. After the experiment table, the block holds a `### Reserved numbers` table (`#`, `Reason`, `Reference`) built from `reserved.json`. Today the index has a hand-written row for experiment 35, which has no folder. Without this table, that row would disappear. The heading and table are left out when nothing is reserved. The "Standalone Benchmarks" and "Cross-References" tables stay hand-written.
 
 ### D7. Reserved numbers in a tracked file
 
@@ -139,7 +139,7 @@ Status mapping (original text kept in `migration.from_status`):
 | `REBUILT…` | `ACTIVE` | Work is still open |
 | no index row | the status line in `report.md` or `results.md`, else `INCONCLUSIVE` | Listed in the move report for review |
 
-`SUPERSEDED` rows need `superseded_by`. The script reads the folder named in the row text. When it cannot find one, it stops and lists the row. It never guesses.
+`SUPERSEDED` rows need `superseded_by`. The script takes the target from a fixed table in the script, each entry backed by text in the folders. Today two rows say "SUPERSEDED D17", and the D17 factorial runs in `10b-reranker-pool-size-corrected-2026-06-29` (its `protocol.md` line 1). When a `SUPERSEDED` row has no entry, the script stops and lists the row. It never guesses.
 
 Category and size: the script infers category from the folder title with a fixed keyword table, and leaves it empty when no keyword matches. Size is `Standard` when the folder has `protocol.md` and `plan.json`, `Quick` when it has neither, and empty otherwise. Every inferred value is listed in the move report.
 

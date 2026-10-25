@@ -44,7 +44,7 @@ An experiment status SHALL be one of `PLANNED`, `ACTIVE`, `PASS`, `FAIL`, `INCON
 
 ### Requirement: Category and size may be empty only on converted records
 
-A record SHALL have a category and a size, unless it carries a migration note. A migration note SHALL keep the original status text, the file it came from and the date of conversion, so that the conversion can be checked and reversed.
+A record SHALL have a category and a size, unless it carries a migration note. A migration note SHALL keep the original status text, the file it came from and the date of conversion. Together with the move report in the change folder, it lets each conversion be checked.
 
 #### Scenario: New record without a category
 
@@ -110,7 +110,12 @@ The CLI check SHALL exit with a non-zero code when any error is found, and also 
 
 ### Requirement: The index table is generated from the records
 
-The index table in `EXP_README.md` SHALL be generated from the `experiment.json` files and placed between the lines `<!-- omrs:experiment-index:start -->` and `<!-- omrs:experiment-index:end -->`. Generation SHALL change only the lines between the markers. The table SHALL list every experiment with its number, a link to its folder, its date, its status and its finding, ordered by number and then by folder name, with unnumbered experiments last. Generation SHALL be deterministic. Writing SHALL refuse a file without both markers.
+The index table in `EXP_README.md` SHALL be generated from the `experiment.json` files and placed between the lines `<!-- omrs:experiment-index:start -->` and `<!-- omrs:experiment-index:end -->`. Generation SHALL change only the lines between the markers. The table SHALL list every experiment with its number, a link to its folder, its date, its status and its finding, ordered by number and then by folder name, with unnumbered experiments last. After the experiment table, the block SHALL list the reserved numbers with their reason and reference, so that a planned experiment without a folder stays visible. Generation SHALL be deterministic. Writing SHALL refuse a file without both markers.
+
+#### Scenario: Reserved number in the index
+
+- **WHEN** `reserved.json` reserves number 35
+- **THEN** the generated block lists 35 with its reason and reference below the experiment table
 
 #### Scenario: Text outside the markers is kept
 
@@ -139,7 +144,7 @@ The index table in `EXP_README.md` SHALL be generated from the `experiment.json`
 
 ### Requirement: New experiment folders are created from templates
 
-The folder creator SHALL make a new folder named `<number>-<slug>-<YYYY-MM-DD>` with an `experiment.json` record at status `PLANNED` and the template files for the chosen size. The slug SHALL be lower-case letters, digits and single hyphens. The number SHALL be the next whole number above every folder number and reserved number, unless a follow-up of an existing number is requested, which SHALL take the next free letter (`38a`, then `38b`). The creator SHALL NOT overwrite or change any existing file or folder, and SHALL refuse a folder name that already exists.
+The folder creator SHALL make a new folder named `<number>-<slug>-<YYYY-MM-DD>` with an `experiment.json` record at status `PLANNED` and the template files for the chosen size. The slug SHALL be lower-case letters, digits and single hyphens. The number SHALL be the lowest whole number above the highest folder number that is not reserved, unless a follow-up of an existing number is requested, which SHALL take the next free letter (`38a`, then `38b`). The creator SHALL NOT overwrite or change any existing file or folder, and SHALL refuse a folder name that already exists.
 
 #### Scenario: Standard experiment
 
