@@ -4,7 +4,7 @@
 - **Status:** Accepted
 - **Deciders:** Maintainer
 - **Related:** `openspec/specs/experiment-validity-gates/` (run identity and manifests), `openspec/specs/workspace-experiments/` (sandbox experiment contexts)
-- **Change:** `openspec/changes/experiment-format-v1/` (design D1 to D11)
+- **Change:** `openspec/changes/archive/2026-10-25-experiment-format-v1/` (design D1 to D11)
 
 ## Context
 

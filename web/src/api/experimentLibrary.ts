@@ -2,7 +2,7 @@
  * Typed client for the experiment library routes: projects, their experiment
  * folders and files, and notebooks.
  *
- * Shapes follow design D5 of `openspec/changes/experiments-in-web-workspace`
+ * Shapes follow design D5 of `openspec/changes/archive/2026-10-25-experiments-in-web-workspace`
  * and `src/omrs/transports/api/routes/experiment_library.py`. Every path
  * segment is percent-encoded, so a project notebook id such as `project:p1`
  * stays one segment.

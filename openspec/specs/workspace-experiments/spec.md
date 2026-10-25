@@ -1,13 +1,13 @@
 # workspace-experiments Specification
 
 ## Purpose
-Experiments as the research area: named experiment folders holding sub-experiments, marimo notebook loading through plugin approval, and the pipeline runs list.
+Experiments as the research area: the Library and Notebooks sections for research experiments, named sandbox folders holding experiment contexts, marimo notebook loading through plugin approval in the Code editor section, and the pipeline runs list.
 
 ## Requirements
 
 ### Requirement: Experiment contexts group under named folders
 
-The Experiments view SHALL group experiment contexts under their parent directories below the approved experiment roots, showing named main folders that each list their sub-experiments. A main folder with no contexts SHALL still be listed. When no root is approved, the view SHALL say so and name the `--experiment-root` server flag.
+The Experiments view SHALL have a Sandboxes section that groups experiment contexts under their parent directories below the approved experiment roots, showing named main folders that each list their sub-experiments. A main folder with no contexts SHALL still be listed. When no root is approved, the section SHALL say so and name the `--experiment-root` server flag.
 
 #### Scenario: Grouped listing
 
@@ -40,7 +40,7 @@ The user SHALL create a main folder by name, which creates a directory below an 
 
 ### Requirement: Marimo loads through plugin approval
 
-The Experiments view SHALL keep the notebook tool registration, trust notice, one-time credentials and editor launch panels. Opening a notebook editor for an experiment workspace SHALL launch the registered marimo tool, and stopping it SHALL end the launch.
+The Experiments view SHALL have a Code editor section that keeps the notebook tool registration, trust notice, one-time credentials and editor launch panels. Opening a notebook editor for an experiment workspace SHALL launch the registered marimo tool, and stopping it SHALL end the launch.
 
 #### Scenario: Open the marimo editor
 
@@ -60,3 +60,17 @@ The Experiments view SHALL include the pipeline runs list with its status filter
 
 - **WHEN** the user reloads the page at `#/experiments/runs/<run-id>`
 - **THEN** the detail for that run MUST be shown
+
+### Requirement: Experiments sections
+
+The Experiments view SHALL offer the sections Library, Notebooks, Sandboxes, Code editor and Runs, and SHALL open on Library. The library experiment page SHALL have the address `#/experiments/library/<project-id>/<folder>`, and a notebook page SHALL have the address `#/experiments/notebooks/<notebook-id>`, so that a reload shows the same page.
+
+#### Scenario: Default section
+
+- **WHEN** the user opens `#/experiments`
+- **THEN** the Library section is shown
+
+#### Scenario: Reload an experiment page
+
+- **WHEN** the user reloads `#/experiments/library/<project-id>/<folder>`
+- **THEN** that experiment page is shown
