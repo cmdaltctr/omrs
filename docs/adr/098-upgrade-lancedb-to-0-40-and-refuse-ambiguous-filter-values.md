@@ -1,10 +1,10 @@
 # ADR-098: Upgrade lancedb to 0.40 and Refuse Ambiguous Filter Values
 
 - **Date:** 2026-10-25
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-26; built and merged to v3 at PR #130)
 - **Deciders:** Maintainer
 - **Related:** [ADR-042](042-dependency-floor-integrity.md) (dependency floors), [ADR-046](046-lancedb-vector-store-backend.md) (LanceDB backend), [ADR-058](058-lancedb-filter-policy-exception.md) (filter policy exception), TDR-040 (writer crash at interpreter exit)
-- **Change:** `openspec/changes/upgrade-lancedb-0-40/` (design D1 to D6, evidence in `probes.md`)
+- **Change:** `openspec/changes/archive/2026-10-26-upgrade-lancedb-0-40/` (design D1 to D6, evidence in `probes.md`)
 
 ## Context
 
@@ -76,7 +76,7 @@ OMRS cannot store a datetime or a Decimal metadata value: the adapter accepts on
 - lancedb PR #3775, naive `lit(datetime)` as UTC wall clock: https://github.com/lancedb/lancedb/pull/3775
 - lancedb PR #4449, Decimal exponent parsing (after 0.40.0): https://github.com/lancedb/lancedb/pull/4449
 - lance issue #4152, shutdown crash in the pylance runtime (open): https://github.com/lance-format/lance/issues/4152
-- `openspec/changes/upgrade-lancedb-0-40/probes.md` (P1 to P7)
+- `openspec/changes/archive/2026-10-26-upgrade-lancedb-0-40/probes.md` (P1 to P7)
 - `src/omrs/core/vectordb/lancedb/literal.py`, `src/omrs/core/vectordb/lancedb/filter.py`
 - `tests/_lance_child.py`, `tests/test_lance_child_helper.py`, `tests/test_lance_filter_security.py`, `tests/test_lance_filter_value_classes.py`, `tests/test_lancedb_native_fts_contract.py`
 - `docs/tdr/040-lancedb-writer-processes-crashed-at-interpreter-exit-on-the-floor-jobs.md`

@@ -40,7 +40,7 @@ Write every test in this group before any change to `src/` or `uv.lock`. Run eac
 - [x] 5.2 Remove `import os as _os` and `_os._exit(0)` from the epilogue in `tests/_lance_child.py`. Keep the marker print, the stderr flush and `PYTHONFAULTHANDLER=1`. Update the module docstring: lancedb 0.40.0 and later shut the runtime down at exit, and the child runs normal shutdown, so a crash at exit fails the test. Verify: the tests from 5.1 pass, and the other helper tests still pass or are updated to the new rule with a reason in the diff.
 - [x] 5.3 Add a test that runs a short LanceDB write (create a table under `tmp_path`, add one row, call `to_lance().update_schema_metadata`) in a child through `run_lance_child` 20 times. Verify: all 20 runs exit 0 locally on lancedb 0.40.0.
 - [x] 5.4 Run the three writer tests 40 times in a loop with `-n auto`: `test_sparse_cache_freshness.py`, `test_lance_dataset_epoch.py` and `test_bm25_validity_token.py`. Verify: 40 of 40 runs pass. Record the result in `openspec/changes/upgrade-lancedb-0-40/probes.md`.
-- [ ] 5.5 Add a dated note under Revisit Triggers in `docs/tdr/040-lancedb-writer-processes-crashed-at-interpreter-exit-on-the-floor-jobs.md`: the upgrade landed, the epilogue is removed, and the CI result from task 7.3. Verify: the note names the pull request and the three run IDs.
+- [x] 5.5 Add a dated note under Revisit Triggers in `docs/tdr/040-lancedb-writer-processes-crashed-at-interpreter-exit-on-the-floor-jobs.md`: the upgrade landed, the epilogue is removed, and the CI result from task 7.3. Verify: the note names the pull request and the three run IDs.
 
 ## 6. Decision record
 
@@ -50,9 +50,9 @@ Write every test in this group before any change to `src/` or `uv.lock`. Run eac
 ## 7. Integration
 
 - [x] 7.1 Re-pin the tripwire (design D6). Collect the branch test IDs with `uv run --no-sync pytest -m "not slow" --collect-only -q > <scratch>/ids-branch.txt`. Diff them against `ids-v3.txt` from task 1.2. Change `_BASE_EXECUTED` in `tests/test_clean_base_tripwire.py` by added minus removed IDs, with a dated comment that names each file and its count (each line under 100 characters). Verify: the tripwire passes with `OMRS_TRIPWIRE_JUNIT` set and without it.
-- [ ] 7.2 Run `./scripts/local_ci.sh`. Verify: every step passes, and no step prints `SKIPPED`.
-- [ ] 7.3 Push the branch and open the pull request against `v3`. Run the full CI three times on the same head commit (the first run plus two re-runs of all jobs). Verify: each of the three attempts is fully green, with all ten floor jobs. Do not re-run only failed jobs. If a writer child crashes in any attempt, follow the D4 fallback and stop the merge.
+- [x] 7.2 Run `./scripts/local_ci.sh`. Verify: every step passes, and no step prints `SKIPPED`.
+- [x] 7.3 Push the branch and open the pull request against `v3`. Run the full CI three times on the same head commit (the first run plus two re-runs of all jobs). Verify: each of the three attempts is fully green, with all ten floor jobs. Do not re-run only failed jobs. If a writer child crashes in any attempt, follow the D4 fallback and stop the merge.
 - [x] 7.4 Search the docs for stale version text: `git grep -n "0\.37\.1\|lancedb>=0\.37\|lancedb 0\.37" -- docs AGENTS.md CLAUDE.md README.md src tests openspec/specs`. Verify: every hit is in an accepted ADR or TDR (a dated record), in this change, or names 0.40.0 as well.
 - [x] 7.5 Run `openspec validate upgrade-lancedb-0-40 --strict` and `openspec validate --all --strict`. Verify: both pass.
-- [ ] 7.6 After the merge, set ADR-098 to Accepted, with the merge date, in the ADR and in `docs/adr/ADR_README.md`. Verify: both say Accepted.
-- [ ] 7.7 After the merge, reinstall the live app with the lock as constraints (design Migration Plan step 3). Verify: the tool environment reports lancedb 0.40.0, pylance 10.0.0 and pyarrow 25.0.1, and `omrs web status` shows the new version running.
+- [x] 7.6 After the merge, set ADR-098 to Accepted, with the merge date, in the ADR and in `docs/adr/ADR_README.md`. Verify: both say Accepted.
+- [ ] 7.7 After the merge, reinstall the live app with the lock as constraints (design Migration Plan step 3). Verify: the tool environment reports lancedb 0.40.0, pylance 10.0.0 and pyarrow 25.0.1, and `omrs web status` shows the new version running. Owner: the coordinator, after the merge (dispatch brief). Not done in this branch.
