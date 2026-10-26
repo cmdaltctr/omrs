@@ -166,7 +166,8 @@ The notebook SHALL be `analysis.marimo.py` directly inside the experiment folder
 #### Scenario: Conversion tool is missing
 
 - **WHEN** the editor's conversion fails because jupytext is not in marimo's tool environment
-- **THEN** the server refuses with 409 reason `converter_missing` and a message that names the install command to run outside OMRS
+- **THEN** the server refuses with 409 reason `converter_missing` and a message that says to install marimo with jupytext from the marimo card on the Integrations page, and names the copy command for a terminal
+- **AND** the page shows a link to the marimo card
 - **AND** no file is left in the experiment folder
 
 #### Scenario: The notebook is a link

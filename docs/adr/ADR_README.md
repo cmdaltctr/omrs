@@ -109,6 +109,7 @@ development of OMRG — Opinionated Modular RAG.
 | [098](./098-upgrade-lancedb-to-0-40-and-refuse-ambiguous-filter-values.md) | Upgrade lancedb to 0.40 and Refuse Ambiguous Filter Values | 2026-10-25 | Accepted (2026-10-26; built and merged to v3 at PR #130) |
 | [099](./099-library-experiments-open-in-marimo-with-the-project-environment.md) | Library Experiments Open in marimo with the Project Environment | 2026-10-25 | Accepted (2026-10-26; built and merged to v3 at PR #131) |
 | [100](./100-experiment-library-reads-project-folders-and-keeps-choices-in-the-workspace-database.md) | Experiment Library Reads Project Folders and Keeps Choices in the Workspace Database | 2026-10-25 | Accepted (2026-10-25; built and merged v3 PR #128; recorded 2026-10-26) |
+| [101](./101-app-installs-marimo-as-a-separate-uv-tool.md) | The App Installs marimo as a Separate uv Tool | 2026-10-26 | Accepted (2026-10-26; built and merged to v3 at PR #132) |
 
 ## Convention
 

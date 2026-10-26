@@ -1,11 +1,11 @@
 # ADR-101: The App Installs marimo as a Separate uv Tool
 
 - **Date:** 2026-10-26
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-26; built and merged to v3 at PR #132, merge commit `759f63da`. Evidence: `browser-check.md` and `live-check.md` in the archived change folder.)
 - **Deciders:** Maintainer
 - **Amends:** [ADR-075](075-omrg-owned-pipeline-runner-local-web-packaging-and-external-tool-plugins.md) decision 4.3 (OMRS never installs or upgrades the tool), [ADR-099](099-library-experiments-open-in-marimo-with-the-project-environment.md) decision 4 (jupytext installed outside OMRS)
 - **Related:** [ADR-094](094-app-installs-allowed-extras-into-itself.md) (the install job), [ADR-096](096-app-uninstalls-extras-it-can-install.md) (uninstall), [ADR-085](085-web-login-item.md) (login item)
-- **Change:** `openspec/changes/install-marimo-from-integrations/` (design D1 to D11)
+- **Change:** `openspec/changes/archive/2026-10-26-install-marimo-from-integrations/` (design D1 to D11)
 
 ## Context
 
@@ -71,7 +71,7 @@ This ADR does not change the rest of ADR-075 decision 4 or ADR-099. marimo is st
 
 ## References
 
-- `openspec/changes/install-marimo-from-integrations/design.md` (evidence for uv and marimo behaviour, checked with Context7 and `uv 0.12.18 --help`)
+- `openspec/changes/archive/2026-10-26-install-marimo-from-integrations/design.md` (evidence for uv and marimo behaviour, checked with Context7 and `uv 0.12.18 --help`)
 - `src/omrs/transports/api/tool_environment.py` (fixed commands, detection, receipt check, caution)
 - `src/omrs/transports/api/routes/integration_tools.py` (`installTool`, `uninstallTool`, the `tools` list)
 - `src/omrs/transports/api/install_job.py` (`start_tool`), `install_environment.py` (`find_uv`), `routes/integrations.py`, `routes/plugins.py`, `routes/experiment_editor.py`, `lifespan.py`
