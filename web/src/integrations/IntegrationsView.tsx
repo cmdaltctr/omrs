@@ -8,6 +8,7 @@ import { MasonryColumns } from "../components/MasonryColumns";
 import { PageHeader } from "../components/PageHeader";
 import { areaById } from "../lib/views";
 import { IntegrationCard, integrationCardId } from "./IntegrationCard";
+import { ToolCard } from "./ToolCard";
 import { useIntegrationInstall } from "./useIntegrationInstall";
 
 /** True when the server can install an entry from this page. */
@@ -37,7 +38,7 @@ function useFocusEntry(entry: string | null, loaded: boolean) {
 export function IntegrationsView({ entry = null }: { entry?: string | null }) {
   const query = useQuery(integrationsQuery(useApi()));
   const list = query.data;
-  const control = useIntegrationInstall(list?.install_type);
+  const control = useIntegrationInstall(list);
   useFocusEntry(entry, list !== undefined);
 
   return (
@@ -50,7 +51,7 @@ export function IntegrationsView({ entry = null }: { entry?: string | null }) {
             ? null
             : canInstall(list)
               ? " Install adds the packages to the server. A restart makes them available."
-              : " This server cannot install from the app. To add an integration, run its command in a terminal outside the app, then restart the server."}
+              : " This server cannot install extras from the app. To add an extra, run its command in a terminal outside the app, then restart the server."}
         </p>
       </div>
       {list === undefined ? (
@@ -62,17 +63,36 @@ export function IntegrationsView({ entry = null }: { entry?: string | null }) {
           </p>
         )
       ) : (
-        // Masonry, not a grid: a card with an install message is tall, and a
-        // grid row would leave a gap beside the short cards next to it.
-        <div role="list" aria-label="Integrations">
-          <MasonryColumns>
-            {list.integrations.map((integration) => (
-              <div key={integration.id} role="listitem" className="min-w-0">
-                <IntegrationCard integration={integration} installType={list.install_type} control={control} />
+        <>
+          {/* Masonry, not a grid: a card with an install message is tall, and a
+              grid row would leave a gap beside the short cards next to it. */}
+          <div role="list" aria-label="Integrations">
+            <MasonryColumns>
+              {list.integrations.map((integration) => (
+                <div key={integration.id} role="listitem" className="min-w-0">
+                  <IntegrationCard integration={integration} installType={list.install_type} control={control} />
+                </div>
+              ))}
+            </MasonryColumns>
+          </div>
+          {list.tools.length > 0 ? (
+            // A tool goes into its own uv tool environment, apart from the server's extras (ADR-101).
+            <section aria-labelledby="integrations-tools" className="mt-6 flex flex-col gap-3">
+              <h2 id="integrations-tools" className="text-section-title font-semibold">
+                External tools
+              </h2>
+              <div role="list" aria-label="External tools">
+                <MasonryColumns>
+                  {list.tools.map((tool) => (
+                    <div key={tool.id} role="listitem" className="min-w-0">
+                      <ToolCard tool={tool} control={control} />
+                    </div>
+                  ))}
+                </MasonryColumns>
               </div>
-            ))}
-          </MasonryColumns>
-        </div>
+            </section>
+          ) : null}
+        </>
       )}
     </section>
   );

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../api/client";
-import { EDITOR_REFUSALS, editorRefusalLine, refusalLaunchId } from "./refusal";
+import { EDITOR_REFUSALS, editorRefusalLine, refusalLaunchId, refusalLinksToMarimoCard } from "./refusal";
 
 function refused(reason: string | undefined, message = "RAW server text", extra: Record<string, unknown> = {}, status = 409): ApiError {
   const body = { status: "error", message, ...(reason === undefined ? {} : { reason }), ...extra };
@@ -17,7 +17,11 @@ const FIXED = [
   "conversion_failed",
   "no_free_port",
   "launch_failed",
+  "tool_install_running",
 ] as const;
+
+const CONVERTER_MISSING =
+  'marimo needs jupytext to convert analysis.py. Install marimo with jupytext from the marimo card on the Integrations page, or run `uv tool install "marimo>=0.25.1,<0.26.0" --with jupytext` in a terminal, then open again.';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -42,8 +46,22 @@ describe("editor refusal lines", () => {
   });
 
   it.each(["python_mismatch", "converter_missing"])("shows the server line for %s, because it names versions or a command", (reason) => {
-    const message = reason === "python_mismatch" ? "The project .venv uses Python 3.12 and marimo runs on Python 3.14." : 'Run `uv tool install "marimo>=0.25.1,<0.26" --with jupytext` outside OMRS.';
+    const message = reason === "python_mismatch" ? "The project .venv uses Python 3.12 and marimo runs on Python 3.14." : CONVERTER_MISSING;
     expect(editorRefusalLine(refused(reason, message))).toBe(message);
+  });
+
+  it("asks the user to wait while marimo is installed or removed", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect(editorRefusalLine(refused("tool_install_running"))).toBe("marimo is being installed or removed on the Integrations page. Wait until that job ends, then open again.");
+  });
+
+  it.each([
+    ["converter_missing", true],
+    ["tool_install_running", true],
+    ["python_mismatch", false],
+    ["editor_unavailable", false],
+  ])("links the refusal %s to the marimo card: %s", (reason, links) => {
+    expect(refusalLinksToMarimoCard(refused(reason))).toBe(links);
   });
 
   it("keeps the generic friendly line for a server failure", () => {

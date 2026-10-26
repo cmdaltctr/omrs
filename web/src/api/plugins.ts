@@ -42,6 +42,8 @@ export interface PluginList {
   trust_notice: string;
   /** Absolute paths of the manifests that the installed application ships. */
   shipped_manifests: string[];
+  /** The executable the server found for each external tool, by plugin id: `{ marimo: "<absolute path>" }`, or `{}`. */
+  detected_executables: { marimo?: string };
 }
 
 /** How the server sends an editor token: once, in the response body. */

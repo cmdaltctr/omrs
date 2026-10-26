@@ -66,7 +66,7 @@ const CATALOGUE: Integration[] = [
   },
 ];
 
-const serve = (handler: () => unknown = () => ({ status: "ok", install_type: "checkout", integrations: CATALOGUE })) =>
+const serve = (handler: () => unknown = () => ({ status: "ok", install_type: "checkout", integrations: CATALOGUE, tools: [] })) =>
   documentsServer({ "GET /v1/integrations": handler });
 
 const card = async (name: string) => {
@@ -104,6 +104,15 @@ describe("Integrations", () => {
     expect(await badge("PDF reader: pdf-inspector")).toHaveTextContent("Installed");
     expect(await badge("Chroma vector store")).toHaveTextContent("Not installed");
     expect(await badge("llama.cpp provider")).toHaveTextContent("Unknown");
+  });
+
+  it("shows every Not installed badge in the error colour, as Installed shows in green", async () => {
+    startApp("#/integrations", serve());
+    for (const name of ["Chroma vector store", "Azure Document Intelligence", "PyTorch reranker"]) {
+      const notInstalled = within(await card(name)).getByText("Not installed", { selector: "[data-slot=badge]" });
+      expect(notInstalled).toHaveClass("border-status-error", "text-status-error-label");
+    }
+    expect(within(await card("Hybrid search")).getByText("Installed", { selector: "[data-slot=badge]" })).toHaveClass("text-status-success-label");
   });
 
   it("marks every base install entry with Base default next to its status, and no other entry", async () => {
@@ -177,7 +186,7 @@ describe("Integrations", () => {
     let fail = true;
     startApp(
       "#/integrations",
-      serve(() => (fail ? json({ status: "error", message: "Probe <html>exploded" }, 500) : { status: "ok", install_type: "checkout", integrations: CATALOGUE })),
+      serve(() => (fail ? json({ status: "error", message: "Probe <html>exploded" }, 500) : { status: "ok", install_type: "checkout", integrations: CATALOGUE, tools: [] })),
     );
     const alert = await screen.findByRole("alert");
     expect(alert).not.toHaveTextContent("exploded");

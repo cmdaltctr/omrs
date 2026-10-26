@@ -199,6 +199,28 @@ describe("open an experiment in marimo", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
+  it.each([
+    ["converter_missing", /^marimo needs jupytext to convert analysis\.py\./],
+    ["tool_install_running", /^marimo is being installed or removed on the Integrations page\./],
+  ])("links the refusal %s to the marimo card", async (reason, line) => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const message = reason === "converter_missing" ? "marimo needs jupytext to convert analysis.py. Install marimo with jupytext from the marimo card." : "RAW server text";
+    const { user } = openPage({}, { [`POST ${EDITOR_PATH}`]: () => json({ status: "error", reason, message }, 409) });
+    await waitFor(async () => expect(await trigger()).toBeEnabled());
+    await consentAndOpen(user);
+    const alert = await screen.findByRole("alert");
+    expect(alert.querySelector("p")!.textContent).toMatch(line);
+    expect(within(alert).getByRole("link", { name: "Open the marimo card" })).toHaveAttribute("href", "#/integrations/marimo");
+  });
+
+  it("gives other refusals no marimo card link", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const { user } = openPage({}, { [`POST ${EDITOR_PATH}`]: () => json({ status: "error", reason: "no_free_port", message: "RAW" }, 409) });
+    await waitFor(async () => expect(await trigger()).toBeEnabled());
+    await consentAndOpen(user);
+    expect(within(await screen.findByRole("alert")).queryByRole("link")).toBeNull();
+  });
+
   it("shows the running editor when the server says one already runs", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const editors: EditorInfo[] = [];

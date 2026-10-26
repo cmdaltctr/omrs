@@ -5,6 +5,7 @@ import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { ConfirmAction } from "./ConfirmAction";
+import { MARIMO_CARD } from "./library/refusal";
 import { pluginStatusLabel, pluginStatusVariant, WITHOUT_PLUGIN } from "./labels";
 import { useRecheckPlugin, useUnregisterPlugin } from "./mutations";
 import { Panel } from "./Panel";
@@ -21,7 +22,7 @@ interface PluginPanelProps {
   onRetry: () => void;
 }
 
-/** Notebook plugin states with register, recheck and unregister. OMRS never installs or updates a plugin. */
+/** Notebook plugin states with register, recheck and unregister. The marimo card on the Integrations page installs marimo; registration stays here. */
 export function PluginPanel({ list, loadError, loading, onRetry }: PluginPanelProps) {
   const recheck = useRecheckPlugin();
   const unregister = useUnregisterPlugin();
@@ -30,7 +31,14 @@ export function PluginPanel({ list, loadError, loading, onRetry }: PluginPanelPr
   return (
     <Panel title="Plugins" description="A plugin is a notebook tool that you approve. It runs only when you open an editor.">
       {loadError !== null ? <ErrorNotice error={loadError} onRetry={onRetry} /> : null}
-      {list ? <p className="text-meta [overflow-wrap:anywhere]">{list.install_hint}</p> : null}
+      {list ? (
+        <p className="text-meta [overflow-wrap:anywhere]">
+          {list.install_hint}{" "}
+          <a href={MARIMO_CARD} className="text-primary-label underline underline-offset-4">
+            Open the marimo card
+          </a>
+        </p>
+      ) : null}
       {rows.length === 0 ? (
         <p className="text-meta text-muted-foreground">
           {loading ? "Loading plugins." : `No plugin is registered. ${WITHOUT_PLUGIN}`}
@@ -81,7 +89,7 @@ export function PluginPanel({ list, loadError, loading, onRetry }: PluginPanelPr
         </Table>
       )}
       {recheck.isError ? <ErrorNotice error={recheck.error} /> : null}
-      <PluginRegisterForm shippedManifest={list?.shipped_manifests[0] ?? null} />
+      <PluginRegisterForm shippedManifest={list?.shipped_manifests[0] ?? null} detectedExecutable={list?.detected_executables.marimo ?? null} />
     </Panel>
   );
 }

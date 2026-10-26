@@ -40,12 +40,13 @@ const OPENED: EditorOpened = {
 describe("plugins client", () => {
   it("lists plugin states, running editors, the install hint and the trust notice", async () => {
     const server = documentsServer({
-      "GET /v1/plugins": () => ({ status: "ok", plugins: [STATE], editors: [], install_hint: "Install outside OMRS.", trust_notice: "Trust text.", shipped_manifests: [] }),
+      "GET /v1/plugins": () => ({ status: "ok", plugins: [STATE], editors: [], install_hint: "Install marimo from the marimo card on the Integrations page.", trust_notice: "Trust text.", shipped_manifests: [], detected_executables: { marimo: "/home/u/.local/bin/marimo" } }),
     });
     const api = createApiClient(server.fetchImpl);
     const list = await listPlugins(api);
     expect(list.plugins[0]!.status).toBe("compatible");
-    expect(list.install_hint).toBe("Install outside OMRS.");
+    expect(list.install_hint).toBe("Install marimo from the marimo card on the Integrations page.");
+    expect(list.detected_executables).toEqual({ marimo: "/home/u/.local/bin/marimo" });
   });
 
   it("registers only with explicit approval", async () => {

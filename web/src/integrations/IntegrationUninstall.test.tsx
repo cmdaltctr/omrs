@@ -58,7 +58,7 @@ const MAGIKA: Integration = {
 };
 const PDF_INSPECTOR: Integration = { ...installed("pdf-inspector", "PDF reader: pdf-inspector"), base: true, install_command: null, uninstallable: false, uninstall_reason: "not-uninstallable-here", removes: [] };
 
-const IDLE: IntegrationInstall = { state: "idle", action: null, extra: null, started_at: null, finished_at: null, reason: null, exit_code: null, output: [] };
+const IDLE: IntegrationInstall = { state: "idle", action: null, extra: null, tool: null, started_at: null, finished_at: null, reason: null, exit_code: null, output: [] };
 const RUNNING: IntegrationInstall = { ...IDLE, state: "running", action: "uninstall", extra: "chroma", started_at: "2026-10-24T10:00:00Z", output: ["Uninstalling"] };
 const SUCCEEDED: IntegrationInstall = { ...RUNNING, state: "succeeded", finished_at: "2026-10-24T10:00:10Z", exit_code: 0, output: ["Uninstalled 2 packages"] };
 const FAILED: IntegrationInstall = { ...RUNNING, state: "failed", finished_at: "2026-10-24T10:00:10Z", reason: "exit-code", exit_code: 1, output: ["error: cannot remove chromadb"] };
@@ -67,7 +67,7 @@ const FAILED: IntegrationInstall = { ...RUNNING, state: "failed", finished_at: "
 function uninstallServer(options: { install?: IntegrationInstall; catalogue?: Integration[]; post?: Handler } = {}) {
   const state = { install: options.install ?? IDLE, catalogue: options.catalogue ?? [CHROMA, AZURE, MAGIKA, PDF_INSPECTOR] };
   const server = documentsServer({
-    "GET /v1/integrations": () => ({ status: "ok", install_type: "uv-tool", integrations: state.catalogue }),
+    "GET /v1/integrations": () => ({ status: "ok", install_type: "uv-tool", integrations: state.catalogue, tools: [] }),
     "GET /v1/integrations/install": () => ({ status: "ok", install: state.install }),
     "POST /v1/integrations/:extra/install": (_body, call) => {
       state.install = { ...RUNNING, action: "install", extra: call.path.split("/")[3] ?? null };

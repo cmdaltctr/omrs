@@ -186,7 +186,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +19 (2026-10-25, upgrade-lancedb-0-40, by test-ID diff): test_lance_filter_value_classes.py
 # (17), test_lance_child_helper.py (+2: 3 new, 1 replaced) and test_lance_filter_security.py
 # (0: 7 new, 7 Decimal/NaN/naive-datetime cases removed). No fastapi needed.
-_BASE_EXECUTED = 8705
+# +76 (2026-10-26, install-marimo-from-integrations, by test-ID diff, none removed):
+# test_web_tool_environment.py (29, no fastapi); 47 need fastapi (see _WEB_EXTRA_CASES).
+# +1 (2026-10-26, PR #132 review): the unreadable-receipt case in test_web_tool_environment.py.
+_BASE_EXECUTED = 8782
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -504,7 +507,10 @@ if not _has_qwen_tokenizer:
 # test_notebooks_guide.py (4) (1585).
 # +3 (2026-10-26, verify fixes): test_web_experiment_editor_reasons.py (2) and one case in
 # test_web_experiment_editor.py (1) (1588).
-_WEB_EXTRA_CASES = 1588
+# +47 (2026-10-26, install-marimo-from-integrations): test_web_integration_tools.py (26),
+# test_web_install_job_tool.py (9), test_web_plugins_tool_executable.py (7),
+# test_notebooks_guide.py (3) and test_web_experiment_editor_tool_job.py (2) (1635).
+_WEB_EXTRA_CASES = 1635
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)

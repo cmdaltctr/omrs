@@ -40,6 +40,7 @@ from .routes.experiments import router as experiments_router
 from .routes.foundation import router as foundation_router
 from .routes.graphs import router as graphs_router
 from .routes.inspection import router as inspect_router
+from .routes.integration_tools import router as integration_tools_router
 from .routes.integrations import router as integrations_router
 from .routes.jobs import router as jobs_router
 from .routes.judge_settings import router as judge_settings_router
@@ -83,6 +84,7 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     plugins_router,
     mcp_router,
     integrations_router,
+    integration_tools_router,
     connections_router,
     llamacpp_server_router,
     logs_router,

@@ -1,5 +1,9 @@
 import { ApiError } from "../../api/client";
 import { describeSaveError } from "../../lib/errors";
+import { formatRoute } from "../../lib/routes";
+
+/** The marimo card on the Integrations page, where marimo is installed with jupytext (ADR-101). */
+export const MARIMO_CARD = formatRoute({ area: "integrations", entry: "marimo" });
 
 /**
  * One line for a refused library request. A 400 or 409 shows the server's
@@ -22,7 +26,11 @@ export const EDITOR_REFUSALS = {
   conversion_failed: "marimo could not convert analysis.py. Check the script, then try again.",
   no_free_port: "Ports 2719 to 2721 are busy. Stop another editor, then try again.",
   launch_failed: "marimo did not start. Recheck it in Experiments, Code editor, then try again.",
+  tool_install_running: "marimo is being installed or removed on the Integrations page. Wait until that job ends, then open again.",
 } as const;
+
+/** Refusals that the marimo card can fix or that come from its job. */
+const MARIMO_CARD_REASONS = new Set(["converter_missing", "tool_install_running"]);
 
 function refusalBody(error: unknown): { reason?: unknown; launch_id?: unknown } | null {
   if (!(error instanceof ApiError) || error.kind !== "http" || error.status !== 409) return null;
@@ -50,4 +58,10 @@ export function refusalLaunchId(error: unknown): string | null {
   const body = refusalBody(error);
   if (body?.reason !== "editor_running") return null;
   return typeof body.launch_id === "string" ? body.launch_id : null;
+}
+
+/** True when a refused "Open in marimo" points at the marimo card: jupytext is missing, or the card's job runs. */
+export function refusalLinksToMarimoCard(error: unknown): boolean {
+  const reason = refusalBody(error)?.reason;
+  return typeof reason === "string" && MARIMO_CARD_REASONS.has(reason);
 }

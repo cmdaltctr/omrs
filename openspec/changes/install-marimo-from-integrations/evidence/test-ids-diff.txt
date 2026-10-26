@@ -1,0 +1,83 @@
+5620a5621
+> tests/unit/test_notebooks_guide.py::test_guides_say_the_app_never_registers_and_upgrade_keeps_the_range
+5621a5623,5624
+> tests/unit/test_notebooks_guide.py::test_install_section_puts_the_card_first_and_the_command_second[guide]
+> tests/unit/test_notebooks_guide.py::test_install_section_puts_the_card_first_and_the_command_second[readme]
+7207a7211,7212
+> tests/unit/test_web_experiment_editor_tool_job.py::test_an_extras_job_does_not_block_open_in_marimo
+> tests/unit/test_web_experiment_editor_tool_job.py::test_open_in_marimo_is_refused_while_a_marimo_job_runs
+7430a7436,7444
+> tests/unit/test_web_install_job_tool.py::test_a_non_zero_exit_fails_without_the_check
+> tests/unit/test_web_install_job_tool.py::test_a_tool_job_and_an_extras_job_never_run_together
+> tests/unit/test_web_install_job_tool.py::test_a_tool_job_runs_the_argv_with_no_shell_and_stdin_closed
+> tests/unit/test_web_install_job_tool.py::test_an_extras_snapshot_has_tool_null
+> tests/unit/test_web_install_job_tool.py::test_no_uv_pip_check_runs_and_no_restart_is_needed
+> tests/unit/test_web_install_job_tool.py::test_output_keeps_the_last_forty_lines
+> tests/unit/test_web_install_job_tool.py::test_the_check_function_decides_after_exit_zero
+> tests/unit/test_web_install_job_tool.py::test_the_child_environment_has_no_api_key_and_output_is_redacted
+> tests/unit/test_web_install_job_tool.py::test_the_time_limit_ends_with_timed_out
+7506a7521,7546
+> tests/unit/test_web_integration_tools.py::test_a_bearer_credential_is_refused_and_starts_nothing
+> tests/unit/test_web_integration_tools.py::test_a_card_receipt_can_be_uninstalled
+> tests/unit/test_web_integration_tools.py::test_a_registered_marimo_reports_its_plugin_status
+> tests/unit/test_web_integration_tools.py::test_an_existing_marimo_gets_a_caution[needs-jupytext-0.25.1]
+> tests/unit/test_web_integration_tools.py::test_an_existing_marimo_gets_a_caution[outside-range-0.27.0]
+> tests/unit/test_web_integration_tools.py::test_an_unknown_tool_gets_404_and_starts_nothing
+> tests/unit/test_web_integration_tools.py::test_an_unreadable_tool_environment_is_status_unknown
+> tests/unit/test_web_integration_tools.py::test_every_reason_has_a_plain_line
+> tests/unit/test_web_integration_tools.py::test_install_fails_when_jupytext_is_still_missing
+> tests/unit/test_web_integration_tools.py::test_install_is_refused_while_a_chroma_install_runs
+> tests/unit/test_web_integration_tools.py::test_install_is_refused_while_a_marimo_editor_runs
+> tests/unit/test_web_integration_tools.py::test_install_is_refused_while_another_tool_job_runs
+> tests/unit/test_web_integration_tools.py::test_install_refusals_start_nothing[ready-fields0-already-installed]
+> tests/unit/test_web_integration_tools.py::test_install_refusals_start_nothing[unknown-fields1-status-unknown]
+> tests/unit/test_web_integration_tools.py::test_install_refusals_start_nothing[unknown-fields2-uv-not-found]
+> tests/unit/test_web_integration_tools.py::test_install_starts_the_fixed_command_and_checks_ready
+> tests/unit/test_web_integration_tools.py::test_no_uv_gives_unknown_without_buttons
+> tests/unit/test_web_integration_tools.py::test_not_installed_offers_install_and_the_copy_command
+> tests/unit/test_web_integration_tools.py::test_ready_shows_version_and_path_and_no_install
+> tests/unit/test_web_integration_tools.py::test_the_extras_list_is_unchanged
+> tests/unit/test_web_integration_tools.py::test_tool_responses_conform
+> tests/unit/test_web_integration_tools.py::test_uninstall_is_refused_while_a_marimo_editor_runs
+> tests/unit/test_web_integration_tools.py::test_uninstall_refusals_start_nothing[not-installed-fields0-not-installed]
+> tests/unit/test_web_integration_tools.py::test_uninstall_refusals_start_nothing[ready-fields1-not-installed-by-app]
+> tests/unit/test_web_integration_tools.py::test_uninstall_refusals_start_nothing[unknown-fields2-uv-not-found]
+> tests/unit/test_web_integration_tools.py::test_uninstall_runs_for_the_card_receipt_and_checks_it_is_gone
+8028a8069,8075
+> tests/unit/test_web_plugins_tool_executable.py::test_an_extras_job_does_not_block_the_code_editor
+> tests/unit/test_web_plugins_tool_executable.py::test_another_file_in_that_folder_is_refused_and_recorded_nowhere
+> tests/unit/test_web_plugins_tool_executable.py::test_the_code_editor_refuses_while_a_marimo_job_runs
+> tests/unit/test_web_plugins_tool_executable.py::test_the_found_executable_registers_although_its_folder_is_not_on_path
+> tests/unit/test_web_plugins_tool_executable.py::test_the_install_hint_names_the_marimo_card_before_the_command
+> tests/unit/test_web_plugins_tool_executable.py::test_the_plugin_list_gives_nothing_when_marimo_is_not_installed
+> tests/unit/test_web_plugins_tool_executable.py::test_the_plugin_list_gives_the_found_executable
+8354a8402,8430
+> tests/unit/test_web_tool_environment.py::test_a_failed_uv_tool_dir_is_unknown
+> tests/unit/test_web_tool_environment.py::test_a_receipt_without_entrypoint_gives_no_executable
+> tests/unit/test_web_tool_environment.py::test_a_runner_error_or_timeout_is_unknown[fail0]
+> tests/unit/test_web_tool_environment.py::test_a_runner_error_or_timeout_is_unknown[fail1]
+> tests/unit/test_web_tool_environment.py::test_a_third_requirement_does_not_match
+> tests/unit/test_web_tool_environment.py::test_a_version_above_the_range_is_outside_range
+> tests/unit/test_web_tool_environment.py::test_an_entrypoint_outside_the_uv_bin_folder_gives_no_executable
+> tests/unit/test_web_tool_environment.py::test_an_unreadable_receipt_does_not_match
+> tests/unit/test_web_tool_environment.py::test_clause_order_does_not_matter
+> tests/unit/test_web_tool_environment.py::test_copy_commands_quote_the_requirement
+> tests/unit/test_web_tool_environment.py::test_detection_reports_whether_the_card_installed_it
+> tests/unit/test_web_tool_environment.py::test_install_and_uninstall_argument_lists_are_fixed
+> tests/unit/test_web_tool_environment.py::test_marimo_and_jupytext_without_the_range_do_not_match
+> tests/unit/test_web_tool_environment.py::test_marimo_with_jupytext_is_ready_with_version_and_executable
+> tests/unit/test_web_tool_environment.py::test_marimo_without_a_specifier_does_not_match
+> tests/unit/test_web_tool_environment.py::test_marimo_without_jupytext_needs_jupytext
+> tests/unit/test_web_tool_environment.py::test_no_caution_otherwise[not-installed]
+> tests/unit/test_web_tool_environment.py::test_no_caution_otherwise[ready]
+> tests/unit/test_web_tool_environment.py::test_no_caution_otherwise[unknown]
+> tests/unit/test_web_tool_environment.py::test_no_receipt_is_not_installed
+> tests/unit/test_web_tool_environment.py::test_no_uv_is_unknown_with_uv_not_found
+> tests/unit/test_web_tool_environment.py::test_the_card_receipt_matches
+> tests/unit/test_web_tool_environment.py::test_the_caution_names_the_installed_version[needs-jupytext-0.25.1]
+> tests/unit/test_web_tool_environment.py::test_the_caution_names_the_installed_version[outside-range-0.27.0]
+> tests/unit/test_web_tool_environment.py::test_the_default_runner_passes_uv_folders_and_drops_api_keys
+> tests/unit/test_web_tool_environment.py::test_the_library_hint_equals_the_card_command
+> tests/unit/test_web_tool_environment.py::test_the_requirement_comes_from_the_shipped_manifest
+> tests/unit/test_web_tool_environment.py::test_the_suite_never_lets_a_default_detector_find_the_real_uv
+> tests/unit/test_web_tool_environment.py::test_uv_tool_dir_runs_once_per_detector_with_a_ten_second_limit

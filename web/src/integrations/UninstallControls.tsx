@@ -113,7 +113,7 @@ export function UninstallControls({ integration, control, phase }: UninstallCont
   if (phase === "failed" && control.install !== undefined) {
     return (
       <>
-        <FailedJob integration={integration} install={control.install} action="uninstall" busy={control.busy} onRetry={() => control.uninstall(extra)} />
+        <FailedJob name={integration.name} install={control.install} action="uninstall" busy={control.busy} onRetry={() => control.uninstall(extra)} />
         {refusal}
       </>
     );

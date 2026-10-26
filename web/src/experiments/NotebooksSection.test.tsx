@@ -24,6 +24,9 @@ async function openNotebooks(initial: Partial<ServerState> = {}, extra: Record<s
 }
 
 const panel = (name: string) => screen.findByRole("region", { name });
+// `find` matches a path prefix, and the recheck route starts with /v1/plugins too.
+const registerCalls = (server: { calls: Array<{ method: string; path: string; body: unknown }> }) =>
+  server.calls.filter((call) => call.method === "POST" && call.path === "/v1/plugins");
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -39,6 +42,13 @@ describe("notebook plugins", () => {
     expect(within(screen.getByRole("region", { name: "Trust notice" })).getByText(TRUST)).toBeInTheDocument();
   });
 
+  it("links the install hint to the marimo card on the Integrations page", async () => {
+    await openNotebooks({ plugins: [] });
+    const plugins = await panel("Plugins");
+    const link = await within(plugins).findByRole("link", { name: "Open the marimo card" });
+    expect(link).toHaveAttribute("href", "#/integrations/marimo");
+  });
+
   it("registers only after the approval box is ticked", async () => {
     const { server, user } = await openNotebooks({ plugins: [] });
     const form = await screen.findByRole("form", { name: "Register a plugin" });
@@ -47,11 +57,11 @@ describe("notebook plugins", () => {
     const button = within(form).getByRole("button", { name: "Register plugin" });
     expect(button).toBeDisabled();
     await user.click(button);
-    expect(server.find("POST", "/v1/plugins")).toHaveLength(0);
+    expect(registerCalls(server)).toHaveLength(0);
     await user.click(within(form).getByRole("checkbox", { name: /I approve this manifest and executable/ }));
     await user.click(button);
-    await waitFor(() => expect(server.find("POST", "/v1/plugins")).toHaveLength(1));
-    expect(server.find("POST", "/v1/plugins")[0]!.body).toEqual({
+    await waitFor(() => expect(registerCalls(server)).toHaveLength(1));
+    expect(registerCalls(server)[0]!.body).toEqual({
       manifest_path: "/opt/omrs/plugins/marimo/manifest.json",
       executable_path: "/home/u/.local/bin/marimo",
       approved: true,
@@ -94,6 +104,7 @@ describe("notebook plugins", () => {
     await openNotebooks({ plugins: [] });
     const editor = await panel("Notebook editor");
     expect(await within(editor).findByText(INSTALL_HINT)).toBeInTheDocument();
+    expect(within(editor).getByRole("link", { name: "Open the marimo card" })).toHaveAttribute("href", "#/integrations/marimo");
     expect(within(editor).getByText(WITHOUT_PLUGIN)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /install|update/i })).toBeNull();
     expect(within(editor).queryByRole("button", { name: "Open notebook editor" })).toBeNull();
@@ -223,6 +234,7 @@ describe("notebook editor", () => {
 
 describe("plugin registration form", () => {
   const SHIPPED = "/site/omrs/core/plugins/shipped/marimo/manifest.json";
+  const DETECTED = "/home/u/.local/bin/marimo";
 
   it("fills the manifest path from the shipped manifest", async () => {
     await openNotebooks({ plugins: [], shippedManifests: [SHIPPED, "/other/manifest.json"] });
@@ -237,6 +249,32 @@ describe("plugin registration form", () => {
     expect(within(form).getByLabelText("Manifest path")).toHaveValue("");
     await user.type(within(form).getByLabelText("Manifest path"), "/m.json");
     expect(within(form).getByLabelText("Manifest path")).toHaveValue("/m.json");
+  });
+
+  it("fills the executable path from the marimo the server found, until the user types", async () => {
+    const { user } = await openNotebooks({ plugins: [], shippedManifests: [SHIPPED], detectedExecutables: { marimo: DETECTED } });
+    const form = await screen.findByRole("form", { name: "Register a plugin" });
+    const field = within(form).getByLabelText("Executable path");
+    await waitFor(() => expect(field).toHaveValue(DETECTED));
+    expect(within(form).getByLabelText("Manifest path")).toHaveValue(SHIPPED);
+    await user.clear(field);
+    await user.type(field, "/mine/marimo");
+    expect(field).toHaveValue("/mine/marimo");
+  });
+
+  it("rechecks once after a registration and shows the checked state", async () => {
+    const unchecked: PluginState = { ...MARIMO, status: "unchecked", launchable: false, message: "Recheck to probe the executable." };
+    const { server, user } = await openNotebooks(
+      { plugins: [], shippedManifests: [SHIPPED], detectedExecutables: { marimo: DETECTED } },
+      { "POST /v1/plugins": () => json({ status: "ok", plugin: unchecked, trust_notice: TRUST }, 201) },
+    );
+    const form = await screen.findByRole("form", { name: "Register a plugin" });
+    await waitFor(() => expect(within(form).getByLabelText("Executable path")).toHaveValue(DETECTED));
+    await user.click(within(form).getByRole("checkbox", { name: /I approve this manifest and executable/ }));
+    await user.click(within(form).getByRole("button", { name: "Register plugin" }));
+    expect(await within(form).findByRole("status")).toHaveTextContent("Registered marimo: Compatible. marimo 0.25.2 is compatible");
+    expect(registerCalls(server)[0]!.body).toEqual({ manifest_path: SHIPPED, executable_path: DETECTED, approved: true });
+    expect(server.find("POST", "/v1/plugins/marimo/recheck")).toHaveLength(1);
   });
 
   it("lets the user replace the filled path", async () => {

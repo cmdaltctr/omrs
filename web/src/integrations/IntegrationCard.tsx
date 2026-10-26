@@ -7,9 +7,9 @@ import { InstallControls, installPhase } from "./InstallControls";
 import { LastingUninstallCommand, UninstallControls, uninstallActive, uninstallPhase } from "./UninstallControls";
 import type { InstallControl } from "./useIntegrationInstall";
 
-const STATUS: Record<IntegrationAvailability, { label: string; variant: "success" | "neutral" | "warning" | "info" }> = {
+const STATUS: Record<IntegrationAvailability, { label: string; variant: "success" | "error" | "warning" | "info" }> = {
   available: { label: "Installed", variant: "success" },
-  "not-installed": { label: "Not installed", variant: "neutral" },
+  "not-installed": { label: "Not installed", variant: "error" },
   unknown: { label: "Unknown", variant: "warning" },
   "restart-needed": { label: "Installed, restart to use", variant: "info" },
 };
@@ -18,7 +18,7 @@ const STATUS: Record<IntegrationAvailability, { label: string; variant: "success
 const REMOVED = { label: "Removed, restart to apply", variant: "info" } as const;
 
 /** A red callout with the entry's install caution. It shows only while the entry is not installed yet. */
-function InstallCaution({ text }: { text: string }) {
+export function InstallCaution({ text }: { text: string }) {
   return (
     <div data-slot="install-caution" className="flex min-w-0 gap-2 rounded-panel border border-status-error bg-status-error/10 px-3 py-2">
       <TriangleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-status-error-label" />

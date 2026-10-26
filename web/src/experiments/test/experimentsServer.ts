@@ -10,7 +10,8 @@ import { runRouter } from "./runRouter";
 
 export const TRUST =
   "Notebook Python runs with your user account's filesystem and network permissions. A dependency environment is not an operating-system sandbox. Open only notebooks you trust.";
-export const INSTALL_HINT = "Install the notebook editor outside OMRS, for example `uv tool install marimo`. OMRS never installs or updates it.";
+export const INSTALL_HINT =
+  'Install marimo from the marimo card on the Integrations page, or run `uv tool install "marimo>=0.25.1,<0.26.0" --with jupytext` in a terminal. Then register its manifest and executable here and run a compatibility check.';
 export const EDITOR_TOKEN = "editor-secret-7f3a";
 export const CREDENTIAL_TOKEN = "bearer-secret-91c2";
 
@@ -80,6 +81,8 @@ export interface ServerState {
   editors: EditorInfo[];
   /** `shipped_manifests` of `GET /v1/plugins`. */
   shippedManifests: string[];
+  /** `detected_executables` of `GET /v1/plugins`. */
+  detectedExecutables: { marimo?: string };
   runs: RunDetailRecord[];
   results: Record<string, RunResultRecord>;
   events: Record<string, RunEventRecord[]>;
@@ -115,7 +118,7 @@ function folders(state: ServerState): FolderRoot[] {
 
 /** In-memory stand-in for the experiment, folder, credential, plugin, run and library routes. */
 export function experimentsServer(initial: Partial<ServerState> = {}, extra: Record<string, Handler> = {}) {
-  const state: ServerState = { roots: ["/srv/exp"], dirs: [], entries: [], plugins: [], editors: [], shippedManifests: [], runs: [], results: {}, events: {}, library: emptyLibrary(), ...initial };
+  const state: ServerState = { roots: ["/srv/exp"], dirs: [], entries: [], plugins: [], editors: [], shippedManifests: [], detectedExecutables: {}, runs: [], results: {}, events: {}, library: emptyLibrary(), ...initial };
   const handlers: Record<string, Handler> = {
     ...libraryHandlers(state.library),
     "GET /v1/experiments": () => ({ status: "ok", roots: state.roots, folders: folders(state), experiments: state.entries, trust_notice: TRUST }),
@@ -145,6 +148,7 @@ export function experimentsServer(initial: Partial<ServerState> = {}, extra: Rec
       install_hint: INSTALL_HINT,
       trust_notice: TRUST,
       shipped_manifests: state.shippedManifests,
+      detected_executables: state.detectedExecutables,
     }),
     "POST /v1/plugins": () => {
       const added: PluginState = { ...MARIMO, name: "new", display_name: "New editor", status: "unchecked", launchable: false, message: "Recheck to probe the executable." };

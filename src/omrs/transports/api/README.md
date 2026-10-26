@@ -213,11 +213,11 @@ A run record exists only for a run you submit with `POST /v1/runs`.
 | GET | `/v1/experiments` | `manage` | Approved roots and the experiment contexts of this launch |
 | GET | `/v1/experiments/{context_id}` | `manage` | One context with its backend and index identity |
 | DELETE | `/v1/experiments/{context_id}` | `manage` | Revoke a context. New runs in it are refused |
-| GET | `/v1/plugins` | `plugins` | Plugin states, running editors (with `project_id` and `folder` for Library editors), `shipped_manifests`, install hint and trust notice. Runs no process |
-| POST | `/v1/plugins` | `plugins` | Register a manifest and an executable. Needs `approved: true` |
+| GET | `/v1/plugins` | `plugins` | Plugin states, running editors (with `project_id` and `folder` for Library editors), `shipped_manifests`, `detected_executables` (the marimo path that the marimo card found, or `{}`), install hint and trust notice. Starts no editor; the first call of a launch may run `uv tool dir` |
+| POST | `/v1/plugins` | `plugins` | Register a manifest and an executable. Needs `approved: true`. The exact path in `detected_executables` passes also when its folder is not on the server's `PATH` |
 | POST | `/v1/plugins/{name}/recheck` | `plugins` | Probe the registered executable (`--version`, `edit --help`) |
 | DELETE | `/v1/plugins/{name}` | `plugins` | Remove a registration. 409 while its editor runs |
-| POST | `/v1/plugins/{name}/editors` | `plugins` | Recheck, then open a notebook in a separate local editor. Needs `consent: true` |
+| POST | `/v1/plugins/{name}/editors` | `plugins` | Recheck, then open a notebook in a separate local editor. Needs `consent: true`. 409 `tool_install_running` while a marimo install or uninstall runs |
 | DELETE | `/v1/plugin-editors/{launch_id}` | `plugins` | Stop an owned editor. Notebook files stay |
 
 A bearer credential issued with `experiment_context` is bound to that
@@ -228,6 +228,27 @@ runs of its context. Live-library routes give 403.
 The editor access token appears once, in the body of the open response. The
 editor URL never holds it. The workspace opens the editor in a separate
 browser tab and never embeds it. Startup registers and launches nothing.
+
+## marimo tool (ADR-101)
+
+marimo is an external tool, not an extra. The card installs it into its own
+`uv tool` environment, never into the server's Python, so no restart is
+needed. `GET /v1/integrations` lists it under `tools`. Both routes need the
+browser session with the `manage` scope; a bearer credential gets 403. Both
+answer 202 with the job state; read it with `GET /v1/integrations/install`
+(`tool` is `marimo`).
+
+| Method | Path | Scope | Body | 409 reasons |
+| --- | --- | --- | --- | --- |
+| POST | `/v1/integrations/tools/marimo/install` | `manage` | none | `already-installed`, `status-unknown`, `uv-not-found`, `install-running`, `editor-running` |
+| POST | `/v1/integrations/tools/marimo/uninstall` | `manage` | none | `not-installed`, `not-installed-by-app`, `status-unknown`, `uv-not-found`, `install-running`, `editor-running` |
+
+Install runs `uv tool install "marimo>=<minimum>,<<below>" --with jupytext`
+with the range of the shipped manifest. Uninstall runs `uv tool uninstall
+marimo`, and only when the uv receipt holds exactly what the card installs.
+Any other tool name gets 404. The install does not register the editor. The
+Library route `openExperimentEditor` also refuses with
+`tool_install_running` while that job runs.
 
 ## Experiment library and notebooks
 

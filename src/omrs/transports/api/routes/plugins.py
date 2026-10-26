@@ -7,8 +7,10 @@ never registers, probes, opens or stops anything.
   manifest must be an approved file: the shipped marimo manifest or a
   file below ``<workspace>/plugins/``. The executable must sit in a
   directory of the server's ``PATH`` at launch or below
-  ``<workspace>/plugins/``, and its file name must be the manifest's
-  executable name. Registration runs no process.
+  ``<workspace>/plugins/``, or be the exact path that the marimo card
+  found in its ``uv tool`` environment (ADR-101, D5), and its file name
+  must be the manifest's executable name. Registration starts no editor
+  and runs no probe; the first call of a launch may run ``uv tool dir``.
 * A recheck runs only the manifest probe recipe.
 * Opening an editor needs ``consent: true``, an active experiment
   context and a notebook path relative to that context's workspace. The
@@ -23,8 +25,10 @@ never registers, probes, opens or stops anything.
   gets the connection file path in ``OMRS_CONNECTION_FILE``. The response
   never holds this credential. Stop, a failed open and application
   shutdown revoke it; removing the launch directory deletes both files.
-* OMRS installs and updates nothing. Stop, update outside OMRS, recheck,
-  then open again.
+* The marimo card on the Integrations page may install marimo into its own
+  ``uv tool`` environment (ADR-101). It never registers it. While that job
+  runs, a marimo editor does not open (409 ``tool_install_running``).
+  Stop, update, recheck, then open again.
 """
 
 from __future__ import annotations
@@ -36,7 +40,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
 
 from ....core.experiments import ExperimentAdmissionError
@@ -48,12 +52,16 @@ from ....core.plugins import (
     parse_manifest,
 )
 from ....core.plugins.editor import EditorConnection
+from ....core.workspace.experiment_editor import JUPYTEXT_HINT
 from ..engine_access import RuntimeDep
-from ..errors import error_response
+from ..errors import API_HEADERS, error_response
 from ..lifespan import PluginHost
 from ..security import AccessPolicy, Principal, require_scope
+from ..tool_environment import TOOL
+from .experiment_editor import EDITOR_REASONS
 from .experiments import TRUST_NOTICE, refusal
 from .graphs import ok
+from .integration_tools import tool_job_running
 
 router = APIRouter(prefix="/v1")
 
@@ -63,10 +71,12 @@ PluginsScope = Annotated[Principal, Depends(require_scope("plugins"))]
 EDITOR_CREDENTIAL_SCOPES: frozenset[str] = frozenset({"graph", "read", "run"})
 
 INSTALL_HINT = (
-    "Install the notebook editor outside OMRS (for example `uv tool install marimo`), "
-    "then register its manifest and executable here and run a compatibility check. "
-    "OMRS never installs or updates it."
+    "Install marimo from the marimo card on the Integrations page, or run "
+    f"`{JUPYTEXT_HINT}` in a terminal. "
+    "Then register its manifest and executable here and run a compatibility check."
 )
+#: The 409 line when a marimo install or uninstall job runs (D6).
+TOOL_JOB_RUNNING = EDITOR_REASONS["tool_install_running"]
 
 
 class RegisterPluginBody(BaseModel):
@@ -139,14 +149,21 @@ def _manifest_problem(host: PluginHost, raw: str) -> str | None:
     )
 
 
-def _executable_problem(host: PluginHost, raw: str, expected: str) -> tuple[int, str] | None:
-    """Return ``(status, message)`` when *raw* is not an approved executable."""
+def _executable_problem(
+    host: PluginHost, raw: str, expected: str, found: str | None = None
+) -> tuple[int, str] | None:
+    """Return ``(status, message)`` when *raw* is not an approved executable.
+
+    *found* is the marimo executable that the marimo card found; that exact
+    path passes the location check, and no other file in its folder does.
+    """
     path = Path(raw)
     if not path.is_absolute() or ".." in path.parts:
         return 400, "Give the executable as an absolute path without '..' parts."
     parent = _real(path.parent)
     dirs = [_real(item) for item in host.executable_dirs]
-    if parent not in dirs and not parent.is_relative_to(_real(host.manifest_dir)):
+    exact = found is not None and raw == found
+    if not exact and parent not in dirs and not parent.is_relative_to(_real(host.manifest_dir)):
         return 403, (
             "This executable is not in an approved location: use one on the server's PATH "
             f"or below {host.manifest_dir}."
@@ -161,14 +178,20 @@ def _executable_problem(host: PluginHost, raw: str, expected: str) -> tuple[int,
 
 @router.get("/plugins", operation_id="listPlugins")
 async def list_plugins(_: PluginsScope, runtime: RuntimeDep) -> Response:
-    """List plugin states and running editors. Runs no process."""
+    """List plugin states and running editors. Starts no editor and runs no probe.
+
+    The first call of a launch may run ``uv tool dir`` through the tool
+    detector, to fill ``detected_executables``.
+    """
     host = _host(runtime)
     states = await run_in_threadpool(host.registry.list_states)
+    found = await run_in_threadpool(host.detected_executable)
     return ok(
         {
             "plugins": [_state(state) for state in states],
             "editors": [_editor(host, session) for session in host.editors.sessions()],
             "shipped_manifests": [str(path) for path in host.manifests],
+            "detected_executables": {TOOL: found} if found else {},
             "install_hint": INSTALL_HINT,
             "trust_notice": TRUST_NOTICE,
         }
@@ -179,7 +202,11 @@ async def list_plugins(_: PluginsScope, runtime: RuntimeDep) -> Response:
 async def register_plugin(
     _: PluginsScope, body: RegisterPluginBody, runtime: RuntimeDep
 ) -> Response:
-    """Record an approved manifest and executable. Runs no process."""
+    """Record an approved manifest and executable.
+
+    Starts no editor and runs no probe. The first call of a launch may run
+    ``uv tool dir`` through the tool detector, to find the marimo executable.
+    """
     host = _host(runtime)
     if not body.approved:
         return error_response(
@@ -194,7 +221,8 @@ async def register_plugin(
         return error_response(400, str(exc), error_type="validation")
     except OSError:
         return error_response(400, "The manifest file cannot be read.", error_type="validation")
-    refused = _executable_problem(host, body.executable_path, manifest.executable_name)
+    found = await run_in_threadpool(host.detected_executable)
+    refused = _executable_problem(host, body.executable_path, manifest.executable_name, found)
     if refused is not None:
         return error_response(refused[0], refused[1])
     try:
@@ -261,6 +289,17 @@ def _editor_connection(policy: AccessPolicy, context_id: str) -> tuple[EditorCon
     return EditorConnection(api_url, context_id, issued.token), issued.id
 
 
+def _uses_marimo(host: PluginHost, name: str) -> bool:
+    """Return whether plugin *name* runs marimo: the shipped id, or a manifest naming it."""
+    if name == TOOL:
+        return True
+    try:
+        manifest = host.registry.state(name).manifest
+    except KeyError:
+        return False
+    return manifest is not None and manifest.tool_name == TOOL
+
+
 def _end_editor(host: PluginHost, launch_id: str) -> None:
     """Forget a stopped editor and revoke its notebook credential."""
     host.editor_contexts.pop(launch_id, None)
@@ -295,6 +334,13 @@ async def open_plugin_editor(
         context = runtime.experiments.registry.require_active(body.experiment_context)
     except ExperimentAdmissionError as exc:
         return refusal(exc, 400)
+    if tool_job_running(runtime) and _uses_marimo(host, name):  # before any credential (D6)
+        body_409 = {
+            "status": "error",
+            "message": TOOL_JOB_RUNNING,
+            "reason": "tool_install_running",
+        }
+        return JSONResponse(body_409, status_code=409, headers=API_HEADERS)
     notebook = _notebook_path(context.workspace, body.notebook)
     if isinstance(notebook, tuple):
         return error_response(notebook[0], notebook[1])

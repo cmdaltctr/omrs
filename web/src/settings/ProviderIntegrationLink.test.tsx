@@ -46,7 +46,7 @@ async function openProviders(connections: Connection[]) {
     "#/settings/providers",
     settingsServer({
       "GET /v1/connections": () => ({ ...CONNECTIONS, connections }),
-      "GET /v1/integrations": () => ({ status: "ok", install_type: "checkout", integrations: [ANTHROPIC_ENTRY] }),
+      "GET /v1/integrations": () => ({ status: "ok", install_type: "checkout", integrations: [ANTHROPIC_ENTRY], tools: [] }),
     }),
   );
   await screen.findByRole("heading", { level: 3, name: "Ollama" });

@@ -2,6 +2,7 @@ import type { ExperimentRecord } from "../api/experiments";
 import type { PluginList } from "../api/plugins";
 import { Badge } from "../components/ui/badge";
 import { EditorList } from "./EditorList";
+import { MARIMO_CARD } from "./library/refusal";
 import { OpenEditorForm } from "./OpenEditorForm";
 import { pluginStatusLabel, pluginStatusVariant, WITHOUT_PLUGIN } from "./labels";
 import { Panel } from "./Panel";
@@ -15,8 +16,8 @@ interface NotebookPanelProps {
 
 /**
  * Opens a registered notebook editor in a separate browser tab. Without a
- * compatible plugin, it shows the server's message and how to install the
- * editor outside OMRS. It never installs or updates anything.
+ * compatible plugin, it shows the server's message and links to the marimo
+ * card on the Integrations page. It never installs or updates anything.
  */
 export function NotebookPanel({ list, loading, active, names }: NotebookPanelProps) {
   const launchable = (list?.plugins ?? []).filter((plugin) => plugin.launchable && plugin.status === "compatible");
@@ -40,7 +41,14 @@ export function NotebookPanel({ list, loading, active, names }: NotebookPanelPro
       ) : null}
       {launchable.length === 0 && !loading ? (
         <>
-          {list?.install_hint ? <p className="text-meta [overflow-wrap:anywhere]">{list.install_hint}</p> : null}
+          {list?.install_hint ? (
+            <p className="text-meta [overflow-wrap:anywhere]">
+              {list.install_hint}{" "}
+              <a href={MARIMO_CARD} className="text-primary-label underline underline-offset-4">
+                Open the marimo card
+              </a>
+            </p>
+          ) : null}
           <p className="text-meta text-muted-foreground">{WITHOUT_PLUGIN}</p>
         </>
       ) : null}

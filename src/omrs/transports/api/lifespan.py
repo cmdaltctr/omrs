@@ -45,6 +45,7 @@ from .install_job import InstallJob
 from .live_settings import initial_upload_limit
 from .provider_state import build_engine, load_providers
 from .settings_launch import prepare_settings
+from .tool_environment import ToolDetector
 from .uploads import DEFAULT_MAX_UPLOAD_BYTES, UploadStore
 
 logger = logging.getLogger(__name__)
@@ -121,6 +122,10 @@ class PluginHost:
             editor that the Library opened (open-experiment-in-marimo D7).
         editor_cleanups: Launch id to the call that revokes the editor's
             notebook credential. Stop and shutdown run it.
+        detected_executable: Returns the marimo executable that the marimo
+            card found in its ``uv tool`` environment, or ``None``.
+            Registration accepts that exact path (ADR-101, D5). The runtime
+            wires it to its tool detector at startup.
     """
 
     repository: Any
@@ -132,6 +137,7 @@ class PluginHost:
     editor_contexts: dict[str, str] = field(default_factory=dict)
     editor_experiments: dict[str, tuple[str, str]] = field(default_factory=dict)
     editor_cleanups: dict[str, Callable[[], object]] = field(default_factory=dict)
+    detected_executable: Callable[[], str | None] = field(default=lambda: None)
 
 
 class RunServiceHook(Protocol):
@@ -212,6 +218,7 @@ class WebRuntime:
     uploads: UploadStore
     admission: Admission = field(default_factory=Admission)
     installs: InstallJob = field(default_factory=InstallJob)
+    tools: ToolDetector = field(default_factory=ToolDetector)
     run_service: RunServiceHook | None = None
     loop: asyncio.AbstractEventLoop | None = None
     experiments: Any | None = None
@@ -381,6 +388,8 @@ async def _owned_runtime(
     try:
         runtime.experiments = (config.experiments_factory or default_experiments_factory)(config)
         runtime.plugins = (config.plugins_factory or default_plugins_factory)(config)
+        if runtime.plugins is not None:
+            runtime.plugins.detected_executable = lambda: runtime.tools.detect().executable
         runtime.profiles = await _start_profiles(config, runtime.engine)
         runtime.chats = _build_chats(config)
         runtime.experiment_library = _build_experiment_library(config)

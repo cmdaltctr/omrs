@@ -61,6 +61,20 @@ class _UnitNormMockEmbedding(MockEmbedding):
 # ── Session-scoped patches ─────────────────────────────────────────────────
 
 
+@pytest.fixture(autouse=True)
+def _no_real_uv_tool_detection(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep the marimo card detection away from the real ``uv`` and ``~/.local``.
+
+    A web runtime's default ``ToolDetector`` looks up ``find_uv`` when it runs.
+    Here ``uv`` is not found, so the card reports ``unknown`` and ``uv tool dir``
+    never runs. A test that checks detection injects its own ``find``
+    and ``runner`` (install-marimo-from-integrations, ADR-101).
+    """
+    from omrs.transports.api import tool_environment
+
+    monkeypatch.setattr(tool_environment, "find_uv", lambda: None)
+
+
 # Shared by `_isolate_env` (which exports them as env vars) and
 # `_install_default_effective_settings` (which puts them in the injected
 # settings). Defined once so the two fixtures cannot drift apart.

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { documentsServer, json } from "../test/fakeDocumentsServer";
 import { ApiError, createApiClient } from "./client";
-import { getIntegrationInstall, installIntegration, listIntegrations, type Integration, type IntegrationInstall } from "./integrations";
+import { getIntegrationInstall, installIntegration, installTool, listIntegrations, uninstallTool, type Integration, type IntegrationInstall } from "./integrations";
 
 const ENTRY: Integration = {
   id: "azure",
@@ -30,6 +30,7 @@ const RUNNING: IntegrationInstall = {
   state: "running",
   action: "install",
   extra: "anthropic",
+  tool: null,
   started_at: "2026-10-24T10:00:00Z",
   finished_at: null,
   reason: null,
@@ -39,9 +40,9 @@ const RUNNING: IntegrationInstall = {
 
 describe("listIntegrations", () => {
   it("returns the install type and the integrations array from the envelope", async () => {
-    const server = documentsServer({ "GET /v1/integrations": () => ({ status: "ok", install_type: "checkout", integrations: [ENTRY] }) });
+    const server = documentsServer({ "GET /v1/integrations": () => ({ status: "ok", install_type: "checkout", integrations: [ENTRY], tools: [] }) });
     const result = await listIntegrations(createApiClient(server.fetchImpl));
-    expect(result).toEqual({ install_type: "checkout", integrations: [ENTRY] });
+    expect(result).toEqual({ install_type: "checkout", integrations: [ENTRY], tools: [] });
     expect(server.calls[0]).toMatchObject({ method: "GET", path: "/v1/integrations" });
   });
 
@@ -73,5 +74,22 @@ describe("installIntegration", () => {
     const error = await installIntegration(createApiClient(server.fetchImpl), "anthropic").catch((caught: unknown) => caught);
     expect(error).toBeInstanceOf(ApiError);
     expect((error as ApiError).status).toBe(409);
+  });
+});
+
+describe("installTool and uninstallTool", () => {
+  const TOOL_RUNNING: IntegrationInstall = { ...RUNNING, extra: null, tool: "marimo" };
+
+  it("posts to the tool's install route and returns the running state", async () => {
+    const server = documentsServer({ "POST /v1/integrations/tools/marimo/install": () => json({ status: "ok", install: TOOL_RUNNING }, 202) });
+    expect(await installTool(createApiClient(server.fetchImpl), "marimo")).toEqual(TOOL_RUNNING);
+    expect(server.find("POST", "/v1/integrations/tools/marimo/install")).toHaveLength(1);
+  });
+
+  it("posts to the tool's uninstall route and returns the running state", async () => {
+    const removing: IntegrationInstall = { ...TOOL_RUNNING, action: "uninstall" };
+    const server = documentsServer({ "POST /v1/integrations/tools/marimo/uninstall": () => json({ status: "ok", install: removing }, 202) });
+    expect(await uninstallTool(createApiClient(server.fetchImpl), "marimo")).toEqual(removing);
+    expect(server.find("POST", "/v1/integrations/tools/marimo/uninstall")).toHaveLength(1);
   });
 });
