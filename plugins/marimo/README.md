@@ -44,24 +44,32 @@ Each run writes a checkpoint below `output/runs/`. See [Notebooks](../../docs/gu
 
 OMRS reads the shipped manifest, probes the executable that you register, and starts and stops the editor.
 
-OMRS never installs, upgrades or replaces marimo. It never runs `uvx`, `uv tool install` or `pip`.
-You install and update marimo outside OMRS.
+The marimo card on the Integrations page can install and uninstall marimo. It runs a uv command only when you press its button.
+marimo goes into its own uv tool environment, apart from the OMRS environment and the OMRS lock file.
+The app never registers marimo on its own, and it has no upgrade button.
 
-## Install marimo outside OMRS
+## Install marimo
 
-1. Install marimo in its own tool environment:
-
-   ```bash
-   uv tool install marimo
-   ```
-
-2. Find the path of the executable:
+1. Open **Integrations**. The marimo card is in the group **External tools**.
+2. Press **Install** and confirm the command. The card runs it without a shell. The server needs no restart:
 
    ```bash
-   command -v marimo
+   uv tool install "marimo>=0.25.1,<0.26.0" --with jupytext
    ```
 
-3. Keep this path. You give it to OMRS when you register the plugin.
+   The version range comes from the shipped manifest. jupytext lets the Library convert `analysis.py`.
+3. Follow the link on the card to Experiments, Code editor, and register marimo there. The install does not register it.
+
+In a terminal, run the same command instead. Then find the path of the executable:
+
+```bash
+command -v marimo
+```
+
+Keep this path. You give it to OMRS when you register the plugin.
+
+The card refuses Install and Uninstall while a marimo editor that OMRS started runs.
+While a card install or uninstall runs, OMRS refuses to open a marimo editor (`tool_install_running`).
 
 ## Register the plugin
 
@@ -70,8 +78,11 @@ It can read and write your files and use your network. A separate tool environme
 
 1. Read the shipped manifest. `GET /v1/plugins` gives its absolute path in `shipped_manifests`.
 2. Register the manifest and the absolute executable path. Give your explicit approval.
-   The registration form in the workspace fills in the manifest path.
-3. Run a compatibility check (recheck).
+   The registration form in the workspace fills in the manifest path and the executable path that the marimo card found.
+   The executable must be in a `PATH` directory, below `<workspace>/plugins/`, or at the exact path that the card found.
+   The found path is accepted also when its folder is not on the server `PATH`, for example with the login item.
+   No other file in that folder is accepted.
+3. Run a compatibility check (recheck). After a successful registration, the form runs it once for you.
 
 OMRS stores the SHA-256 of the manifest and the identity of the executable (path, size, modification time, SHA-256).
 If you edit the manifest, OMRS disables the plugin until you register it again.
@@ -146,10 +157,11 @@ The launch directory has mode `0o700`. OMRS removes it when the editor stops. It
 
 The experiment page in the Library can open `analysis.marimo.py` with the kernel in the project `.venv`.
 That launch has full access: the kernel runs as you, with the project packages. It needs the manifest
-capability `project_environment`. To convert `analysis.py`, marimo also needs jupytext in its tool environment:
+capability `project_environment`. To convert `analysis.py`, marimo also needs jupytext in its tool environment.
+An install from the marimo card adds it. In a terminal, run:
 
 ```bash
-uv tool install "marimo>=0.25.1,<0.26" --with jupytext
+uv tool install "marimo>=0.25.1,<0.26.0" --with jupytext
 ```
 
 Read [Full access from the Library](../../docs/guides/notebooks.md#full-access-from-the-library) before you use it.
@@ -174,14 +186,15 @@ Your notebook files stay as they are. OMRS removes only the private launch direc
 ## Update marimo
 
 1. Stop the editor in the workspace.
-2. Update marimo outside OMRS:
+2. Update marimo in a terminal:
 
    ```bash
    uv tool upgrade marimo
    ```
 
+   uv keeps the version range of the install. After an install from the card or with the command above, the upgrade stays in the tested range.
    If you installed an exact version (for example `uv tool install marimo==0.25.1`), `uv tool upgrade` does not change it.
-   Use `uv tool install marimo@latest` instead.
+   To change it, run the install command again.
 
 3. Run a recheck in the workspace. OMRS shows `unchecked` until you do, because the executable changed.
 4. If the recheck passes, start the editor again.
@@ -192,4 +205,6 @@ Your notebook files stay as they are. OMRS removes only the private launch direc
 
 1. Stop the editor.
 2. Remove or move the registered manifest file. A registration without its approved manifest stays disabled.
-3. Uninstall marimo outside OMRS if you no longer need it.
+3. If you no longer need marimo, press **Uninstall** on the marimo card. It runs `uv tool uninstall marimo`.
+   The card offers Uninstall only when the uv receipt holds exactly what the card installs: marimo with the manifest range, and jupytext.
+   For any other marimo, the card shows the command `uv tool uninstall marimo`. Copy it and run it in a terminal.

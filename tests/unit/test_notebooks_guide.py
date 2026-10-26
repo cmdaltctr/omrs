@@ -44,6 +44,7 @@ from omrs.transports.api.app import create_app  # noqa: E402
 from omrs.transports.api.lifespan import DEFAULT_PLUGIN_PORTS, WebConfig  # noqa: E402
 from omrs.transports.api.runs_wiring import run_service_factory  # noqa: E402
 from omrs.transports.api.security import AccessPolicy  # noqa: E402
+from omrs.transports.api.tool_environment import ToolDetector  # noqa: E402
 
 GUIDE = GUIDES / "notebooks.md"
 PLUGIN = REPO / "plugins" / "marimo"
@@ -97,6 +98,8 @@ def test_workspace_serves_documents_and_graphs_without_a_plugin(
     app, policy = _app(tmp_path, make_engine(store, effective_settings()))
     with TestClient(app, base_url=BASE) as client:
         login(client, policy)
+        # The marimo card's `uv tool dir` lookup is a separate, tested process.
+        client.app.state.runtime.tools = ToolDetector(find=lambda: None)  # type: ignore[attr-defined]
         plugins = client.get("/v1/plugins")
         recheck = client.post("/v1/plugins/marimo/recheck", headers=ORIGIN)
         collections = client.get("/v1/collections")
@@ -108,7 +111,7 @@ def test_workspace_serves_documents_and_graphs_without_a_plugin(
     body = plugins.json()
     assert plugins.status_code == 200
     assert body["plugins"] == [] and body["editors"] == []
-    assert "uv tool install marimo" in body["install_hint"]
+    assert JUPYTEXT_HINT in body["install_hint"]
     assert body["trust_notice"]
     assert recheck.status_code == 404
     assert recheck.json() == {"status": "error", "message": "Unknown plugin."}
@@ -207,16 +210,55 @@ def test_cited_ports_variables_and_range_match_the_code() -> None:
     assert f"`{expected}`" in text
 
 
+def _install_command() -> str:
+    """The card's install command, built from the shipped manifest range."""
+    tested = json.loads(MANIFEST.read_text(encoding="utf-8"))["tool"]["tested_versions"]
+    return f'uv tool install "marimo>={tested["minimum"]},<{tested["below"]}" --with jupytext'
+
+
 def test_cited_commands_match_the_plugin_and_the_cli() -> None:
     text = _text()
     readme = (PLUGIN / "README.md").read_text(encoding="utf-8")
-    for command in ("uv tool install marimo", "uv tool upgrade marimo", "command -v marimo"):
+    install = _install_command()
+    assert install == JUPYTEXT_HINT
+    for command in (install, "uv tool upgrade marimo", "uv tool uninstall marimo"):
         assert command in text and command in readme
+    assert "command -v marimo" in text and "command -v marimo" in readme
     manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     probe = manifest["recipes"]["probe"]
     assert f"marimo {' '.join(probe['version_args'])}" in text
     assert f"marimo {' '.join(probe['help_args'])}" in text
     assert "omrs web --experiment-root" in text
+
+
+def _section(text: str, heading: str) -> str:
+    assert heading in text, f"no section {heading!r}"
+    return text.split(heading, 1)[1].split("\n## ", 1)[0]
+
+
+@pytest.mark.parametrize("document", [GUIDE, PLUGIN / "README.md"], ids=["guide", "readme"])
+def test_install_section_puts_the_card_first_and_the_command_second(document: Path) -> None:
+    """The card step comes first; the terminal command and its path lookup follow."""
+    text = document.read_text(encoding="utf-8")
+    section = _section(text, "\n## Install marimo\n")
+    card = section.find("marimo card")
+    command = section.find(_install_command())
+    lookup = section.find("command -v marimo")
+    assert -1 < card < command < lookup, (card, command, lookup)
+    assert "**External tools**" in section and "**Install**" in section
+    assert "Integrations" in section and "Code editor" in section
+    for retired in ("never installs, upgrades or replaces marimo", "never runs `uvx`"):
+        assert retired not in text
+    assert "## Install marimo outside OMRS" not in text
+
+
+def test_guides_say_the_app_never_registers_and_upgrade_keeps_the_range() -> None:
+    for text in (_text(), (PLUGIN / "README.md").read_text(encoding="utf-8")):
+        assert "never registers marimo on its own" in text
+        assert "uv keeps the version range of the install" in text
+        assert "found" in _section(text, "## Register")
+    assert "`detected_executables`" in _text()
+    assert "`tool_install_running`" in _text() and "`editor-running`" in _text()
 
 
 def test_guide_is_linked_from_the_web_guide_and_the_plugin_readme() -> None:

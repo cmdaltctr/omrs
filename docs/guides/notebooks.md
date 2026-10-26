@@ -1,6 +1,6 @@
 # Notebooks
 
-OMRS can open a marimo notebook editor next to the web workspace. The editor is an optional external tool. You install and update it outside OMRS. This guide tells you how to trust, install, register, open, stop and update it, and how to use the starter notebook.
+OMRS can open a marimo notebook editor next to the web workspace. The editor is an optional external tool. It has its own uv tool environment, apart from the OMRS environment. You can install it from the marimo card on the Integrations page, or in a terminal. This guide tells you how to trust, install, register, open, stop and update it, and how to use the starter notebook.
 
 The web workspace works without a notebook plugin. Home, Chat, Knowledge Base, Studio, Integrations and Settings do not need marimo.
 
@@ -35,14 +35,35 @@ Read this section before you register the plugin or open a notebook.
 
 The workspace shows a trust notice when you register a plugin, list plugins, register an experiment or open an editor.
 
-## Install marimo outside OMRS
+## Install marimo
 
-OMRS never installs, upgrades or replaces marimo. It never runs `uvx`, `uv tool install` or `pip`.
+marimo goes into its own uv tool environment. It never goes into the OMRS environment or the OMRS lock file. The install also adds jupytext, because the Library needs jupytext to convert `analysis.py`.
 
-1. Install marimo in its own tool environment:
+### Install from the marimo card
+
+1. Open **Integrations**. The marimo card is in the group **External tools**.
+2. Press **Install**. The dialog shows the command. Confirm it.
+3. Wait until the job ends. The server needs no restart.
+4. Follow the link on the card to **Experiments**, **Code editor**. Register marimo there. See [Register and check the plugin](#register-and-check-the-plugin).
+
+The card runs this one command, without a shell:
+
+```bash
+uv tool install "marimo>=0.25.1,<0.26.0" --with jupytext
+```
+
+The version range comes from the shipped manifest. No text from the request goes into the command. The job reports success only when marimo is in the tested range and jupytext is present.
+
+The card shows one of these states: installed, needs jupytext, outside the tested range, not installed, or unknown. It also shows the version and the path of the executable. If marimo is outside the range or has no jupytext, Install replaces it. The card first shows a caution that names the installed version.
+
+### Install from a terminal
+
+Use a terminal when the card shows unknown, or when you prefer to type the command.
+
+1. Run the same command:
 
    ```bash
-   uv tool install marimo
+   uv tool install "marimo>=0.25.1,<0.26.0" --with jupytext
    ```
 
 2. Find the path of the executable:
@@ -52,6 +73,17 @@ OMRS never installs, upgrades or replaces marimo. It never runs `uvx`, `uv tool 
    ```
 
 3. Keep this path. You give it to OMRS when you register the plugin.
+
+### What the app runs
+
+The app runs a uv command only when you press a button on the marimo card. The server also runs `uv tool dir` and `uv tool dir --bin` once per launch to find marimo.
+
+- **Install** runs `uv tool install "marimo>=0.25.1,<0.26.0" --with jupytext`.
+- **Uninstall** runs `uv tool uninstall marimo`. The card offers it only when the uv receipt of the marimo tool holds exactly what the card installs: marimo with the manifest range, and jupytext. For any other marimo, the card shows the command `uv tool uninstall marimo` for you to copy and run in a terminal.
+
+The app never registers marimo on its own. Registration stays your own trust decision. The app has no upgrade button.
+
+The card refuses Install and Uninstall with `editor-running` while a marimo editor that OMRS started runs. Stop the editor first.
 
 ## Prepare an experiment workspace
 
@@ -73,15 +105,15 @@ To end an experiment, revoke it with `DELETE /v1/experiments/{context_id}`. A ru
 Plugin routes are session only. A bearer credential cannot use them.
 
 1. Read `GET /v1/plugins`. The field `shipped_manifests` gives the path of the shipped manifest. Read that file.
-2. Register it with `POST /v1/plugins`. The registration form in **Code editor** fills in the manifest path for you.
+2. Register it with `POST /v1/plugins`. The registration form in **Code editor** fills in the manifest path and the executable path that the marimo card found. Tick the approval box and press **Register**.
 
    ```json
-   {"manifest_path": "<path from shipped_manifests>", "executable_path": "<path from command -v marimo>", "approved": true}
+   {"manifest_path": "<path from shipped_manifests>", "executable_path": "<path from detected_executables, or from command -v marimo>", "approved": true}
    ```
 
-   The manifest must be the shipped file or a file below `<workspace>/plugins/`. The executable must be in a `PATH` directory or below `<workspace>/plugins/`.
+   The manifest must be the shipped file or a file below `<workspace>/plugins/`. The executable must be in a `PATH` directory, below `<workspace>/plugins/`, or at the exact path that the marimo card found. `GET /v1/plugins` gives that found path in `detected_executables`. The found path is accepted also when its folder is not on the `PATH` of the server. An example is the login item, whose `PATH` does not hold `~/.local/bin`. No other file in that folder is accepted.
 
-3. Run a compatibility check with `POST /v1/plugins/{name}/recheck`. The check runs only `marimo --version` and `marimo edit --help`, without a shell.
+3. Run a compatibility check with `POST /v1/plugins/{name}/recheck`. After a successful registration, the form runs this check once for you. The check runs only `marimo --version` and `marimo edit --help`, without a shell.
 4. Read the state with `GET /v1/plugins`. The plugin stays disabled when the version is outside the tested range, or when the help text does not list a required launch option. The message names the problem.
 
 Before you register a plugin, `GET /v1/plugins` returns an empty list and an install hint. A recheck of an unknown plugin returns 404. Nothing else in the workspace changes.
@@ -112,18 +144,20 @@ The connection file holds the API address, the experiment context id and the pat
 
 OMRS owns only the editor processes that it starts. Your notebook files stay where they are.
 
+While an install or uninstall from the marimo card runs, OMRS refuses to open a marimo editor, with the reason `tool_install_running`. This applies to the Code editor and to the Library. Wait until the job ends, then open again.
+
 ## Stop, update, recheck, start
 
 Use this procedure to update marimo. OMRS has no update button.
 
 1. **Stop.** Stop the editor in the workspace (`DELETE /v1/plugin-editors/{launch_id}`), or stop `omrs web`. OMRS sends SIGTERM to the editor process group, waits for a limited time, then sends SIGKILL. It removes only the private launch directory, with the connection file and the API token file. It revokes the API credential of that editor.
-2. **Update.** Update marimo outside OMRS:
+2. **Update.** Update marimo in a terminal:
 
    ```bash
    uv tool upgrade marimo
    ```
 
-   If you installed an exact version, use `uv tool install marimo@latest` instead.
+   uv keeps the version range of the install. After an install from the card or with the command in [Install marimo](#install-marimo), the upgrade stays in the tested range. If you installed an exact version (`marimo==<version>`), the upgrade keeps that version. To change it, run the install command again.
 
 3. **Recheck.** Run `POST /v1/plugins/{name}/recheck`. OMRS shows `unchecked` until you do. It probes the updated executable. It does not change the OMRS lock file.
 4. **Start.** If the recheck passes, open the notebook again.
@@ -224,13 +258,13 @@ This repository already has them.
 
 When `analysis.marimo.py` does not exist, OMRS converts `analysis.py` with `marimo convert`. When `analysis.py` does not exist, OMRS writes an empty starter notebook. OMRS never overwrites an existing `analysis.marimo.py`.
 
-marimo needs jupytext to convert the percent format of `analysis.py`. Without it, OMRS refuses with `converter_missing`. Install marimo with jupytext in its tool environment:
+marimo needs jupytext to convert the percent format of `analysis.py`. Without it, OMRS refuses with `converter_missing`. Press **Install** on the marimo card on the Integrations page. The card installs marimo with jupytext. In a terminal, run this command instead:
 
 ```bash
-uv tool install "marimo>=0.25.1,<0.26" --with jupytext
+uv tool install "marimo>=0.25.1,<0.26.0" --with jupytext
 ```
 
-Then run a recheck. If the install changed the executable, OMRS shows `unchecked` until you do. OMRS never installs jupytext.
+Then run a recheck. If the install changed the executable, OMRS shows `unchecked` until you do.
 
 ### Get a fresh conversion
 

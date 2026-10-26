@@ -62,7 +62,8 @@ def test_shipped_manifest_is_valid_and_complete() -> None:
 
 def test_readme_documents_external_install_and_lifecycle() -> None:
     text = (PLUGIN_DIR / "README.md").read_text()
-    for phrase in ("uv tool install marimo", "outside OMRS", "Stop", "recheck", "0o600"):
+    install = 'uv tool install "marimo>=0.25.1,<0.26.0" --with jupytext'
+    for phrase in (install, "marimo card", "own uv tool environment", "Stop", "recheck", "0o600"):
         assert phrase in text
     assert "—" not in text  # house style: no em dashes
 

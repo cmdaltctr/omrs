@@ -72,7 +72,13 @@ This ADR does not change the rest of ADR-075 decision 4 or ADR-099. marimo is st
 ## References
 
 - `openspec/changes/install-marimo-from-integrations/design.md` (evidence for uv and marimo behaviour, checked with Context7 and `uv 0.12.18 --help`)
-- `src/omrs/transports/api/install_job.py`, `install_environment.py`, `routes/integrations.py`, `routes/plugins.py`, `routes/experiment_editor.py`, `lifespan.py`
+- `src/omrs/transports/api/tool_environment.py` (fixed commands, detection, receipt check, caution)
+- `src/omrs/transports/api/routes/integration_tools.py` (`installTool`, `uninstallTool`, the `tools` list)
+- `src/omrs/transports/api/install_job.py` (`start_tool`), `install_environment.py` (`find_uv`), `routes/integrations.py`, `routes/plugins.py`, `routes/experiment_editor.py`, `lifespan.py`
+- `src/omrs/transports/api/openapi.yaml` (`ExternalTool`, `PluginList.detected_executables`, reason `tool_install_running`)
+- `src/omrs/core/workspace/experiment_editor.py` (`JUPYTEXT_HINT`) and `src/omrs/core/plugins/registration.py`
+- `web/src/integrations/ToolCard.tsx`, `web/src/experiments/PluginRegisterForm.tsx`
+- Tests: `tests/unit/test_web_tool_environment.py`, `test_web_install_job_tool.py`, `test_web_integration_tools.py`, `test_web_plugins_tool_executable.py`, `test_web_experiment_editor_tool_job.py`, `web/src/integrations/ToolCard.test.tsx`
 - `src/omrs/core/plugins/shipped/marimo/manifest.json` and `src/omrs/core/plugins/versions.py`
 - `src/omrs/transports/cli/_web_login_item.py` (`LAUNCH_PATH`)
 - [Notebooks guide](../guides/notebooks.md)
