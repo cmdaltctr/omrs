@@ -5,6 +5,7 @@
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApi } from "./ApiProvider";
+import { openExperimentEditor } from "./experimentEditor";
 import {
   addExperimentProject,
   addNotebookEntry,
@@ -90,5 +91,20 @@ export function useRemoveNotebookEntry() {
   return useMutation({
     mutationFn: (input: { notebookId: string; projectId: string; folder: string }) => removeNotebookEntry(api, input.notebookId, input.projectId, input.folder),
     onSuccess: refresh,
+  });
+}
+
+/**
+ * Opens the experiment in marimo. The response holds the editor token, so the
+ * mutation cache keeps nothing (`gcTime: 0`). A refusal can name an editor
+ * that already runs, so the plugin list refreshes either way.
+ */
+export function useOpenExperimentEditor() {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    gcTime: 0,
+    mutationFn: (input: { projectId: string; folder: string }) => openExperimentEditor(api, input.projectId, input.folder),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: queryKeys.plugins() }),
   });
 }

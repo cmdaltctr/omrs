@@ -213,7 +213,7 @@ A run record exists only for a run you submit with `POST /v1/runs`.
 | GET | `/v1/experiments` | `manage` | Approved roots and the experiment contexts of this launch |
 | GET | `/v1/experiments/{context_id}` | `manage` | One context with its backend and index identity |
 | DELETE | `/v1/experiments/{context_id}` | `manage` | Revoke a context. New runs in it are refused |
-| GET | `/v1/plugins` | `plugins` | Plugin states, running editors, install hint and trust notice. Runs no process |
+| GET | `/v1/plugins` | `plugins` | Plugin states, running editors (with `project_id` and `folder` for Library editors), `shipped_manifests`, install hint and trust notice. Runs no process |
 | POST | `/v1/plugins` | `plugins` | Register a manifest and an executable. Needs `approved: true` |
 | POST | `/v1/plugins/{name}/recheck` | `plugins` | Probe the registered executable (`--version`, `edit --help`) |
 | DELETE | `/v1/plugins/{name}` | `plugins` | Remove a registration. 409 while its editor runs |
@@ -242,6 +242,7 @@ Every route needs the browser session. A bearer credential gets 403.
 | POST | `/v1/experiment-projects/{project_id}/experiments` | `manage` | Create an experiment folder, then rewrite the `EXP_README.md` index when it has markers |
 | GET | `/v1/experiment-projects/{project_id}/experiments/{folder}` | `read` | One experiment, its top-level files and the names in `output/` |
 | GET | `/v1/experiment-projects/{project_id}/experiments/{folder}/files/{name}` | `read` | Text of one top-level text file as JSON, at most 1 MiB |
+| POST | `/v1/experiment-projects/{project_id}/experiments/{folder}/editor` | `manage` | Body `{"consent": true}` on every call. Open `analysis.marimo.py` in marimo, with the kernel in `<project root>/.venv`. Converts `analysis.py` once, never overwrites. 409 `reason`: `editor_unavailable`, `editor_unsupported`, `no_project_environment`, `python_mismatch`, `project_config_runs_on_open`, `notebook_not_regular`, `editor_running` (with `launch_id`), `converter_missing`, `conversion_failed`, `no_free_port`, `launch_failed` |
 | GET | `/v1/notebooks` | `read` | Project notebooks (`project:<project_id>`), then user notebooks |
 | POST | `/v1/notebooks` | `read` | Create a user notebook. 409 for a name already used |
 | GET | `/v1/notebooks/{notebook_id}` | `read` | A notebook and its entries. A folder that is gone shows `missing: true` |

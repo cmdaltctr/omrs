@@ -2888,6 +2888,64 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
+  /experiment-projects/{project_id}/experiments/{folder}/editor:
+    post:
+      operationId: openExperimentEditor
+      summary: Open a Library experiment in marimo after consent
+      description: >
+        Needs the browser session with the `manage` scope and
+        `consent: true` on every call. A bearer credential never launches.
+        The notebook is `analysis.marimo.py` directly in the experiment
+        folder, a git-ignored derived file. When it does not exist, the
+        server converts `analysis.py` with the registered marimo conversion
+        recipe, or copies a packaged empty notebook when the folder has no
+        `analysis.py`. It never overwrites, renames or edits an existing
+        file. The kernel runs in `<project root>/.venv` with the user's full
+        file and network access; the server installs nothing and does not
+        load the project's `.env`. No cell runs on open. The editor binds to
+        loopback; the response carries its access token once
+        (`token_delivery.token`), never in a URL or a log. The request
+        names no path, flag or argument. A 409 carries a `reason`.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      parameters:
+        - $ref: "#/components/parameters/ExperimentProjectId"
+        - $ref: "#/components/parameters/ExperimentFolder"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExperimentEditorRequest"
+      responses:
+        "201":
+          description: Editor started.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperimentEditorOpened"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: >
+            The editor cannot open this experiment now. `reason` says why;
+            `launch_id` names the running editor for `editor_running`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperimentEditorRefused"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
   # ── Experiment notebooks (session only) ─────────────────────────────
   /notebooks:
     get:
@@ -8678,7 +8736,8 @@ components:
     EditorInfo:
       type: object
       additionalProperties: false
-      required: [launch_id, plugin, notebook, experiment_context, url_without_token]
+      required:
+        [launch_id, plugin, notebook, experiment_context, project_id, folder, url_without_token]
       properties:
         launch_id:
           type: string
@@ -8688,6 +8747,12 @@ components:
           type: string
         experiment_context:
           type: [string, "null"]
+        project_id:
+          type: [string, "null"]
+          description: Library project id when the Library opened this editor, else null.
+        folder:
+          type: [string, "null"]
+          description: Library experiment folder when the Library opened this editor, else null.
         url_without_token:
           type: string
           description: Loopback editor URL. It never holds the access token.
@@ -8695,7 +8760,7 @@ components:
     PluginList:
       type: object
       additionalProperties: false
-      required: [status, plugins, editors, install_hint, trust_notice]
+      required: [status, plugins, editors, shipped_manifests, install_hint, trust_notice]
       properties:
         status:
           type: string
@@ -8708,6 +8773,13 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/EditorInfo"
+        shipped_manifests:
+          type: array
+          description: >
+            Absolute paths of the manifests that the installed application
+            ships. The register form fills in the first one.
+          items:
+            type: string
         install_hint:
           type: string
         trust_notice:
@@ -8784,6 +8856,8 @@ components:
         - plugin
         - notebook
         - experiment_context
+        - project_id
+        - folder
         - url_without_token
         - token_delivery
         - trust_notice
@@ -8798,6 +8872,10 @@ components:
         notebook:
           type: string
         experiment_context:
+          type: [string, "null"]
+        project_id:
+          type: [string, "null"]
+        folder:
           type: [string, "null"]
         url_without_token:
           type: string
@@ -8814,6 +8892,124 @@ components:
               type: string
         trust_notice:
           type: string
+
+    ExperimentEditorRequest:
+      type: object
+      additionalProperties: false
+      required: [consent]
+      properties:
+        consent:
+          type: boolean
+          description: >
+            Must be true on every call. The notebook runs in the project's
+            Python environment with your full file and network access.
+
+    ExperimentEditorOpened:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - launch_id
+        - plugin
+        - project_id
+        - folder
+        - notebook
+        - notebook_state
+        - source_newer
+        - environment
+        - url_without_token
+        - token_delivery
+        - trust_notice
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        launch_id:
+          type: string
+        plugin:
+          type: string
+        project_id:
+          type: string
+        folder:
+          type: string
+        notebook:
+          type: string
+          enum: [analysis.marimo.py]
+          description: The notebook file name inside the experiment folder.
+        notebook_state:
+          type: string
+          enum: [converted, created, existing]
+          description: >
+            `converted` from `analysis.py`, `created` from the packaged empty
+            notebook, or `existing` (opened as it is).
+        source_newer:
+          type: boolean
+          description: True when `analysis.py` is newer than the notebook.
+        environment:
+          type: object
+          additionalProperties: false
+          required: [kind, python, marimo_in_project, shadowed]
+          properties:
+            kind:
+              type: string
+              enum: [project]
+            python:
+              type: [string, "null"]
+              description: Python major.minor of the project `.venv`, or null when unread.
+            marimo_in_project:
+              type: boolean
+            shadowed:
+              type: array
+              maxItems: 20
+              description: >
+                Distributions that marimo's own environment holds with a
+                different version. The kernel imports marimo's copies first.
+              items:
+                type: string
+        url_without_token:
+          type: string
+          description: Loopback editor URL. It never holds the access token.
+        token_delivery:
+          type: object
+          additionalProperties: false
+          required: [method, token]
+          description: The editor access token, shown only in this response.
+          properties:
+            method:
+              type: string
+              enum: [response_body_once]
+            token:
+              type: string
+        trust_notice:
+          type: string
+
+    ExperimentEditorRefused:
+      type: object
+      additionalProperties: false
+      required: [status, message, reason]
+      properties:
+        status:
+          type: string
+          enum: [error]
+        message:
+          type: string
+        reason:
+          type: string
+          enum:
+            - editor_unavailable
+            - editor_unsupported
+            - no_project_environment
+            - python_mismatch
+            - project_config_runs_on_open
+            - notebook_not_regular
+            - editor_running
+            - converter_missing
+            - conversion_failed
+            - no_free_port
+            - launch_failed
+        launch_id:
+          type: string
+          description: The running editor, present only with `editor_running`.
 
     EditorStopped:
       type: object

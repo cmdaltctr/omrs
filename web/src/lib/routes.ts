@@ -24,10 +24,12 @@ export type Route =
 
 /**
  * The Experiments area: the section view (`runId` null), a run, a library
- * experiment page or a notebook page.
+ * experiment page, a notebook page, or the section view opened on the Code
+ * editor section (`#/experiments/code-editor`), which other pages link to.
  */
 export type ExperimentsRoute =
   | { area: "experiments"; runId: string | null }
+  | { area: "experiments"; section: "code-editor" }
   | { area: "experiments"; projectId: string; folder: string }
   | { area: "experiments"; notebookId: string };
 
@@ -97,6 +99,7 @@ export function parseRoute(hash: string): Route {
 
 function parseExperiments(first: string | undefined, second: string | undefined, third: string | undefined): Route {
   if (first === undefined) return { area: "experiments", runId: null };
+  if (first === "code-editor") return second === undefined ? { area: "experiments", section: first } : HOME;
   const id = second === undefined ? null : decode(second);
   if (id === null) return HOME;
   if (first === "runs" && third === undefined) return { area: "experiments", runId: id };
@@ -109,6 +112,7 @@ function parseExperiments(first: string | undefined, second: string | undefined,
 function formatExperiments(route: ExperimentsRoute): string {
   if ("notebookId" in route) return `#/experiments/notebooks/${encodeURIComponent(route.notebookId)}`;
   if ("folder" in route) return `#/experiments/library/${encodeURIComponent(route.projectId)}/${encodeURIComponent(route.folder)}`;
+  if ("section" in route) return `#/experiments/${route.section}`;
   return route.runId === null ? "#/experiments" : `#/experiments/runs/${encodeURIComponent(route.runId)}`;
 }
 

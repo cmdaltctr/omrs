@@ -47,6 +47,9 @@ experiments/**/*.pdf
 
 # Experiment analysis notebooks (derived from analysis.py via jupytext)
 experiments/**/analysis.ipynb
+# marimo notebook from the Library and its session cache (ADR-099)
+experiments/**/analysis.marimo.py
+experiments/**/__marimo__/
 
 # Experiment Notes
 /experiments/notes/

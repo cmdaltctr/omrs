@@ -223,6 +223,17 @@ class PluginRegistry:
 
     # --- probing ------------------------------------------------------
 
+    def run_command(self, argv: Sequence[str], *, timeout: float) -> ProbeOutput:
+        """Run ``argv`` through the injected runner, without a shell.
+
+        The caller builds ``argv`` from a validated manifest recipe.
+
+        Raises:
+            OSError: If the executable cannot start.
+            TimeoutError: If it does not finish within ``timeout`` seconds.
+        """
+        return self._runner.run(argv, timeout=timeout)
+
     def _probe(self, manifest: PluginManifest, exe: str) -> tuple[str | None, str | None]:
         output, problem = self._run(exe, manifest.probe.version_args)
         if problem:

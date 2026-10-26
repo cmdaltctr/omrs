@@ -211,6 +211,7 @@ Experiment analysis scripts use [Jupytext](https://jupytext.readthedocs.io/) per
 | ---------------- | ----------------------------------------- | --------------- |
 | `analysis.py`    | Source of truth — Jupytext percent format | Yes             |
 | `analysis.ipynb` | Derived notebook for interactive use      | No (gitignored) |
+| `analysis.marimo.py` | Derived marimo notebook that the Library opens (marimo also adds `__marimo__/`) | No (gitignored) |
 
 ### Conventions
 

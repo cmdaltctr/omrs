@@ -22,6 +22,21 @@ FAKE_HELP = (
     "  -p, --port INTEGER\n  --host TEXT\n  --headless\n  --token / --no-token\n"
     "  --token-password-file TEXT\n  --skip-update-check\n  --no-sandbox\n"
 )
+#: A marker file with this name beside the fake makes ``convert`` fail.
+CONVERT_FAILS_MARKER = "convert-fails-jupytext"
+#: marimo 0.25.1's message when jupytext is missing (seen on a real install).
+JUPYTEXT_ERROR = "Error: Converting py:percent format requires jupytext"
+#: The notebook the fake ``convert`` writes to its ``-o`` path.
+FAKE_CONVERTED = (
+    "import marimo\n\n"
+    '__generated_with = "0.25.1"\n'
+    "app = marimo.App()\n\n\n"
+    "@app.cell\n"
+    "def _():\n"
+    "    return\n\n\n"
+    'if __name__ == "__main__":\n'
+    "    app.run()\n"
+)
 
 _FAKE_EDITOR = r'''#!{python}
 """Fake marimo-like editor. Behaviour switches are files next to this script."""
@@ -36,6 +51,12 @@ if args == ["--version"]:
     sys.exit(0)
 if args[:2] == ["edit", "--help"]:
     print({help!r})
+    sys.exit(0)
+if len(args) == 4 and args[0] == "convert" and args[2] == "-o":
+    if (HERE / "{convert_fails}").exists():
+        print({jupytext_error!r}, file=sys.stderr)
+        sys.exit(1)
+    Path(args[3]).write_text({converted!r})
     sys.exit(0)
 if not args or args[0] != "edit":
     sys.exit(2)
@@ -91,7 +112,15 @@ def make_fake_editor(directory: Path, name: str = "marimo") -> Path:
     """Write the fake editor executable into ``directory`` and return its path."""
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / name
-    path.write_text(_FAKE_EDITOR.format(python=sys.executable, help=FAKE_HELP))
+    path.write_text(
+        _FAKE_EDITOR.format(
+            python=sys.executable,
+            help=FAKE_HELP,
+            convert_fails=CONVERT_FAILS_MARKER,
+            jupytext_error=JUPYTEXT_ERROR,
+            converted=FAKE_CONVERTED,
+        )
+    )
     path.chmod(0o755)
     return path
 

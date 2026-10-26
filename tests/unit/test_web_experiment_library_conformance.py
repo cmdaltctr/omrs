@@ -54,6 +54,8 @@ def test_experiment_library_responses_conform_to_the_contract(
         body = {"slug": "new-run", "title": "New run", "category": "graph", "size": "Quick"}
         check.check(client.post(base, json=body, headers=ORIGIN), 201)
         check.check(client.post(base, json={**body, "slug": "Bad"}, headers=ORIGIN), 400)
+        editor = f"{base}/{SECOND}/editor"  # marimo is not registered here
+        check.check(client.post(editor, json={"consent": True}, headers=ORIGIN), 409)
 
         notebook = check.check(
             client.post("/v1/notebooks", json={"name": "Paper 1"}, headers=ORIGIN), 201

@@ -10,7 +10,9 @@ composition injects a probe runner and a process launcher from
 from __future__ import annotations
 
 from omrs.core.plugins.editor import (
+    ConvertResult,
     EditorSession,
+    KernelEnvironment,
     LaunchPlan,
     NotebookEditorSupervisor,
     PluginConsentError,
@@ -19,8 +21,12 @@ from omrs.core.plugins.editor import (
     build_launch_plan,
 )
 from omrs.core.plugins.manifest import (
+    CONVERT_SUBSTITUTIONS,
+    HOST_CONFIG_CAPABILITIES,
+    PROJECT_ENVIRONMENT,
     REQUIRED_LAUNCH_CAPABILITIES,
     SUBSTITUTIONS,
+    ConvertRecipe,
     ManifestError,
     PluginManifest,
     parse_manifest,
@@ -43,14 +49,20 @@ from omrs.core.plugins.registration import (
 
 __all__ = [
     "COMPATIBLE",
+    "CONVERT_SUBSTITUTIONS",
+    "HOST_CONFIG_CAPABILITIES",
     "INCOMPATIBLE",
     "NEEDS_APPROVAL",
+    "PROJECT_ENVIRONMENT",
     "REQUIRED_LAUNCH_CAPABILITIES",
     "SUBSTITUTIONS",
     "UNAVAILABLE",
     "UNCHECKED",
+    "ConvertRecipe",
+    "ConvertResult",
     "EditorSession",
     "ExecutableIdentity",
+    "KernelEnvironment",
     "LaunchPlan",
     "ManifestError",
     "NotebookEditorSupervisor",
