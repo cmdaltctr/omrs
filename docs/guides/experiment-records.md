@@ -152,6 +152,31 @@ The helper reads the git commit and the dirty flag. It then calls the append fun
 
 `output/` is not in git. Copy it, with its run records, to the local data store before you remove a worktree. The repository `AGENTS.md` names the data store and the copy procedure.
 
+## Edit log: `edits.jsonl`
+
+The web app appends one line to `edits.jsonl` in the experiment folder each time it saves `protocol.md` or the report file. Git tracks the file. The app never changes or removes an earlier line. It does not log edits made outside the app: git records those.
+
+| Field | Meaning |
+| --- | --- |
+| `format` | `omrs-edit-record/1` |
+| `file` | The file name, for example `protocol.md` |
+| `edited_at` | The time of the save in UTC, with seconds |
+| `before_sha256`, `after_sha256` | The SHA-256 of the file bytes before and after the save |
+| `before_size`, `after_size` | The size of the file in bytes before and after the save |
+| `status` | The record status at the time of the save |
+| `converted` | `true` when the record has a `migration` note |
+| `tool` | The tool that saved the file, for example `omrs web 3.4.0` |
+
+A line holds no user name, login or path. A line with a key that the format does not define does not load.
+
+To match a line against git:
+
+1. Find a commit that changed the file: `git log --oneline -- <folder>/<file>`.
+2. Print the SHA-256 of the file in that commit: `git show <commit>:<folder>/<file> | shasum -a 256`.
+3. Compare the result with `before_sha256` or `after_sha256`.
+
+Git's own object id is a different hash, so do not compare the log with it.
+
 ## The index table
 
 The index table in `experiments/EXP_README.md` is generated from the `experiment.json` files. It is between two marker lines:
@@ -222,6 +247,7 @@ Each finding has a stable code. Some codes are less severe on a converted record
 | `category-missing` | info | A converted record has no `category`. | Add `category` when you know it. |
 | `files-missing` | warning; info if converted | A file that the size needs is missing. | Add the file, or correct `size`. |
 | `run-records-invalid` | warning | `output/run-records.jsonl` has a line that does not load. | Find the bad line. Do not change the other lines. |
+| `edit-log-invalid` | warning | A line of `edits.jsonl` does not load, or the file is a link or not a regular file. The message names the line. | Find the bad line in the git history of `edits.jsonl`. Do not change the other lines. |
 | `plan-changed` | warning | A run record has a `plan_sha256` that differs from the current `plan.json`. | Record the change as an amendment. Rerun if the plan change affects the result. |
 | `reserved-invalid` | error | `reserved.json` does not load. | Fix the named entry. |
 | `reserved-has-folder` | info | A reserved number now has a folder. | Remove the entry from `reserved.json`. |

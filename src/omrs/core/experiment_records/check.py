@@ -17,6 +17,8 @@ Codes:
   header names another status.
 - ``plan-changed`` (warning): ``plan.json`` changed after a recorded run.
 - ``run-records-invalid`` (warning): ``output/run-records.jsonl`` cannot be read.
+- ``edit-log-invalid`` (warning): a line of ``edits.jsonl`` does not load, or the
+  file is a link or not a regular file.
 - ``files-missing`` (warning, info on converted records): a file the size needs is missing.
 - ``size-missing``, ``category-missing`` (info): a converted record leaves the field empty.
 - ``index-stale``, ``index-markers`` (error), ``index-missing`` (warning): ``EXP_README.md``.
@@ -33,6 +35,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from .edit_log import edit_log_problems
 from .index import README_FILE, IndexMarkerError, index_is_current
 from .record import RecordError, Size
 from .reserved import RESERVED_FILE, Reservation, load_reservations
@@ -191,6 +194,13 @@ def _run_rules(folder: ExperimentFolder) -> Iterator[Finding]:
         )
 
 
+def _edit_log_rules(folder: ExperimentFolder) -> Iterator[Finding]:
+    for message in edit_log_problems(folder.path):
+        yield Finding(
+            severity="warning", code="edit-log-invalid", folder=folder.name, message=message
+        )
+
+
 def _shared_numbers(folders: Sequence[ExperimentFolder]) -> dict[str, list[Finding]]:
     groups: dict[str, list[ExperimentFolder]] = defaultdict(list)
     for folder in folders:
@@ -298,6 +308,7 @@ def check_experiments(root: Path) -> tuple[Finding, ...]:
         findings.extend(_name_rules(folder))
         findings.extend(_content_rules(folder, experiments))
         findings.extend(_run_rules(folder))
+        findings.extend(_edit_log_rules(folder))
         findings.extend(shared.get(folder.name, ()))
         findings.extend(reserved.get(folder.name, ()))
     return tuple(findings)

@@ -353,6 +353,7 @@ def test_check_leaves_every_file_unchanged(root: Path) -> None:
     nested.mkdir(parents=True)
     (nested / "data.bin").write_bytes(b"\1" * 64)
     make(root, "3-bare-2026-05-12")
+    (folder / "edits.jsonl").write_text("not json\n", encoding="utf-8")
     _reserve(root, "35")
     (root / "EXP_README.md").write_text(f"# E\n{INDEX_START}\nold\n{INDEX_END}\n", encoding="utf-8")
     before = _tree_hashes(root)
@@ -382,3 +383,44 @@ def test_superseding_target_must_not_be_the_folder_itself(root: Path) -> None:
     findings = run(root)
     assert codes(findings, name) == {"superseded-target-missing": "error"}
     assert "its own folder" in findings[0].message
+
+
+def _edit_line(file: str = "report.md") -> str:
+    return json.dumps(
+        {
+            "format": "omrs-edit-record/1",
+            "file": file,
+            "edited_at": "2026-10-26T14:05:00Z",
+            "before_sha256": "a" * 64,
+            "after_sha256": "b" * 64,
+            "before_size": 5,
+            "after_size": 6,
+            "status": "PASS",
+            "converted": False,
+            "tool": "omrs web 3.4.0",
+        }
+    )
+
+
+def test_broken_edit_log_line_is_a_warning_that_names_the_line(root: Path) -> None:
+    folder = make(root, _GOOD, _record(_GOOD), "report.md")
+    good = _edit_line()
+    (folder / "edits.jsonl").write_text(f"{good}\n{good}\n{{broken\n", encoding="utf-8")
+    findings = run(root)
+    assert codes(findings, _GOOD) == {"edit-log-invalid": "warning"}
+    (finding,) = findings
+    assert "line 3" in finding.message
+
+
+def test_edit_log_link_is_a_warning(root: Path, tmp_path: Path) -> None:
+    folder = make(root, _GOOD, _record(_GOOD), "report.md")
+    target = tmp_path / "elsewhere.jsonl"
+    target.write_text(_edit_line() + "\n", encoding="utf-8")
+    (folder / "edits.jsonl").symlink_to(target)
+    assert codes(run(root), _GOOD) == {"edit-log-invalid": "warning"}
+
+
+def test_valid_edit_log_gives_no_finding(root: Path) -> None:
+    folder = make(root, _GOOD, _record(_GOOD), "report.md")
+    (folder / "edits.jsonl").write_text(_edit_line() + "\n", encoding="utf-8")
+    assert run(root) == ()

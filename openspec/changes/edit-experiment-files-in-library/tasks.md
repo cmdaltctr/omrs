@@ -4,19 +4,19 @@ Each code task is test-first: write the test, run it, confirm that it fails on t
 
 ## 1. Baseline
 
-- [ ] 1.1 Save the fast-suite test IDs before any change: `mkdir -p openspec/changes/edit-experiment-files-in-library/evidence`, then `uv run --no-sync pytest -m "not slow" --collect-only -q > openspec/changes/edit-experiment-files-in-library/evidence/test-ids-before.txt`. Verify: the file exists and its last line gives the collected count.
+- [x] 1.1 Save the fast-suite test IDs before any change: `mkdir -p openspec/changes/edit-experiment-files-in-library/evidence`, then `uv run --no-sync pytest -m "not slow" --collect-only -q > openspec/changes/edit-experiment-files-in-library/evidence/test-ids-before.txt`. Verify: the file exists and its last line gives the collected count. Keep this file out of git (a test ID holds a fake AWS key that gitleaks flags); commit only the diff of task 8.1.
 
 ## 2. Edit log in the records package (design D3, D10)
 
-- [ ] 2.1 Write `tests/unit/test_experiment_records_edit_log.py`: a valid line loads; an unknown key fails and names the key; an unknown `format` fails and names the version; `file` with a path separator fails; `edited_at` without UTC fails; append creates the file, a second append keeps the first line byte-identical; append adds a newline first when the file does not end with one; append refuses a link; `last_edit(folder, name)` returns the newest line for that name and ignores lines for other names; a broken line is reported by `read_edits` with its line number. Verify: the tests fail (module missing).
-- [ ] 2.2 Add `src/omrs/core/experiment_records/edit_log.py` (model `EditRecord` with `extra="forbid"`, `frozen=True`; `EDIT_LOG_FILE = "edits.jsonl"`; `append_edit`, `read_edits`, `last_edit`) and export the public names in `experiment_records/__init__.py`. Verify: 2.1 passes, and `uv run --no-sync lint-imports` passes (contract `experiment-records-stay-pure`).
-- [ ] 2.3 Add `edits.jsonl` to `tests/unit/test_experiment_derived_files_ignored.py` as a path that git does NOT ignore (spec scenario "Edit log is tracked by git"). Verify: the test passes, and fails when `experiments/**/edits.jsonl` is added to `.gitignore` in a scratch copy.
+- [x] 2.1 Write `tests/unit/test_experiment_records_edit_log.py`: a valid line loads; an unknown key fails and names the key; an unknown `format` fails and names the version; `file` with a path separator fails; `edited_at` without UTC fails; append creates the file, a second append keeps the first line byte-identical; append adds a newline first when the file does not end with one; append refuses a link; `last_edit(folder, name)` returns the newest line for that name and ignores lines for other names; a broken line is reported by `read_edits` with its line number. Verify: the tests fail (module missing).
+- [x] 2.2 Add `src/omrs/core/experiment_records/edit_log.py` (model `EditRecord` with `extra="forbid"`, `frozen=True`; `EDIT_LOG_FILE = "edits.jsonl"`; `append_edit`, `read_edits`, `last_edit`) and export the public names in `experiment_records/__init__.py`. Verify: 2.1 passes, and `uv run --no-sync lint-imports` passes (contract `experiment-records-stay-pure`).
+- [x] 2.3 Add `edits.jsonl` to `tests/unit/test_experiment_derived_files_ignored.py` as a path that git does NOT ignore (spec scenario "Edit log is tracked by git"). Verify: the test passes, and fails when `experiments/**/edits.jsonl` is added to `.gitignore` in a scratch copy.
 
 ## 3. Checker code (design D7)
 
-- [ ] 3.1 Add tests to `tests/unit/test_experiment_records_check.py`: a broken line 3 gives `edit-log-invalid` (warning) that names line 3; an `edits.jsonl` link gives `edit-log-invalid`; a valid log gives no finding; the check still writes no file. Verify: the new tests fail.
-- [ ] 3.2 Add the `edit-log-invalid` rule and its line in the module docstring of `src/omrs/core/experiment_records/check.py`. Verify: 3.1 passes, and `uv run --no-sync omrs experiments check` on the repository `experiments/` reports no new finding.
-- [ ] 3.3 Add the `edit-log-invalid` row to the "Checker codes" table and a new section "Edit log: `edits.jsonl`" (fields table, how to match a line against git with `git show <commit>:<path> | shasum -a 256`) in `docs/guides/experiment-records.md`. Verify: the code in the table matches the code in `check.py`.
+- [x] 3.1 Add tests to `tests/unit/test_experiment_records_check.py`: a broken line 3 gives `edit-log-invalid` (warning) that names line 3; an `edits.jsonl` link gives `edit-log-invalid`; a valid log gives no finding; the check still writes no file. Verify: the new tests fail.
+- [x] 3.2 Add the `edit-log-invalid` rule and its line in the module docstring of `src/omrs/core/experiment_records/check.py`. Verify: 3.1 passes, and `uv run --no-sync omrs experiments check` on the repository `experiments/` reports no new finding.
+- [x] 3.3 Add the `edit-log-invalid` row to the "Checker codes" table and a new section "Edit log: `edits.jsonl`" (fields table, how to match a line against git with `git show <commit>:<path> | shasum -a 256`) in `docs/guides/experiment-records.md`. Verify: the code in the table matches the code in `check.py`.
 
 ## 4. Save flow in core (design D1, D4, D5, D10)
 
