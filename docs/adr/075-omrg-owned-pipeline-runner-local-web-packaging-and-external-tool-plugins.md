@@ -53,6 +53,7 @@ Constraints:
 
 1. OMRG defines a minimal external-tool manifest: schema and plugin versions, capability identifiers, tested tool-version range, executable reference, and structured argument templates.
 2. The marimo manifest, documentation, and starter notebook are distributed separately from the base wheel. The manifest contains no shell commands, import hooks, credentials, or install actions.
+   - *Amended by [ADR-099](099-library-experiments-open-in-marimo-with-the-project-environment.md) (2026-10-26):* the manifest now ships inside the wheel as package data (`omrs/core/plugins/shipped/marimo/manifest.json`), so the installed app can find it. The README and the starter notebook stay outside the wheel.
 3. Operators install and update marimo outside OMRG, for example in an isolated `uv tool` environment. OMRG probes the registered executable. It never runs `uvx`, installs packages, or upgrades tools.
 4. Neither marimo nor uv becomes an OMRG runtime dependency or enters the lock file. No graph or domain code imports marimo or uv. A generic process adapter owns process creation and cleanup.
 5. Registering and enabling a plugin is an explicit trust decision.

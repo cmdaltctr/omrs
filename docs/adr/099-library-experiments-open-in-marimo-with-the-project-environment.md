@@ -1,10 +1,10 @@
 # ADR-099: Library Experiments Open in marimo with the Project Environment
 
 - **Date:** 2026-10-25
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-26; built and merged to v3 at PR #131; evidence: `openspec/changes/archive/2026-10-26-open-experiment-in-marimo/browser-check.md` and `live-launch.md`)
 - **Deciders:** Maintainer
 - **Related:** [ADR-075](075-omrg-owned-pipeline-runner-local-web-packaging-and-external-tool-plugins.md) (external-tool plugins; this ADR amends decision 4.2 for the manifest only), [ADR-097](097-experiment-records-versioned-format.md) (experiment records)
-- **Change:** `openspec/changes/open-experiment-in-marimo/` (design D1 to D9)
+- **Change:** `openspec/changes/archive/2026-10-26-open-experiment-in-marimo/` (design D1 to D10)
 
 ## Context
 
@@ -67,7 +67,7 @@ The user chose full access: the kernel runs in the project's own environment, be
 
 ## References
 
-- `openspec/changes/open-experiment-in-marimo/design.md` (evidence with file and line references for marimo 0.25.1)
+- `openspec/changes/archive/2026-10-26-open-experiment-in-marimo/design.md` (evidence with file and line references for marimo 0.25.1)
 - `src/omrs/core/plugins/` (`manifest.py`, `editor.py`, `kernel_config.py`, `conversion.py`, `shipped.py`)
 - `src/omrs/core/plugins/shipped/marimo/manifest.json` and `empty_notebook.py.template`
 - `src/omrs/core/workspace/experiment_editor.py` and `src/omrs/transports/api/routes/experiment_editor.py`

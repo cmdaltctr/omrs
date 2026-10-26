@@ -1,7 +1,7 @@
 /**
  * Typed client for opening a Library experiment in marimo.
  *
- * Shapes follow design D5 of `openspec/changes/open-experiment-in-marimo` and
+ * Shapes follow design D5 of `openspec/changes/archive/2026-10-26-open-experiment-in-marimo` and
  * `src/omrs/transports/api/routes/experiment_editor.py`. The request names no
  * path, flag or argument: the server finds the notebook from the project and
  * folder. The token arrives once in the response body and never in a URL.
