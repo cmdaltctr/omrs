@@ -135,6 +135,7 @@ export function EditableFilePanel({ title, projectId, experiment, name, fileName
       if (!(link instanceof HTMLAnchorElement)) return;
       event.preventDefault();
       const href = link.getAttribute("href")!;
+      if (href === window.location.hash) return; // the page is already open
       confirmDiscard(() => {
         window.location.hash = href;
       });

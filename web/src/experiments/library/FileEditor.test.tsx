@@ -108,6 +108,36 @@ describe("file editor", () => {
     expect(await screen.findByText(/"seeds": 3/)).toBeInTheDocument();
   });
 
+  it("does not ask when the selected tab is clicked, and still asks on a real switch", async () => {
+    const { user } = openPage();
+    await user.type(await startEditing(user), " Draft.");
+    await user.click(tab("Protocol"));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(editor()).toHaveValue(`${PROTOCOL} Draft.`);
+
+    await user.click(tab("Plan"));
+    expect(await screen.findByRole("dialog", { name: "Discard your changes to protocol.md?" })).toBeInTheDocument();
+  });
+
+  it("does not ask for a link to the page already open, and still asks on a real switch", async () => {
+    const { user } = openPage();
+    await user.type(await startEditing(user), " Draft.");
+    const link = document.createElement("a");
+    link.href = window.location.hash;
+    link.textContent = "This page";
+    document.body.appendChild(link);
+    try {
+      await user.click(link);
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(editor()).toHaveValue(`${PROTOCOL} Draft.`);
+
+      await user.click(tab("Plan"));
+      expect(await screen.findByRole("dialog", { name: "Discard your changes to protocol.md?" })).toBeInTheDocument();
+    } finally {
+      link.remove();
+    }
+  });
+
   it("asks before an in-app link discards changes", async () => {
     const { user } = openPage();
     await user.type(await startEditing(user), " Draft.");

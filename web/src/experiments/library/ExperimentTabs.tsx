@@ -76,7 +76,7 @@ export function ExperimentTabs({ detail }: { detail: ExperimentDetail }) {
     <div className="flex flex-col gap-4">
       <div role="group" aria-label="Experiment tabs" className="flex flex-wrap gap-2">
         {TABS.map(({ id, label: text }) => (
-          <Button key={id} variant="chip" size="sm" aria-pressed={tab === id} onClick={() => confirmDiscard(() => setTab(id))}>
+          <Button key={id} variant="chip" size="sm" aria-pressed={tab === id} onClick={() => id !== tab && confirmDiscard(() => setTab(id))}>
             {text}
             {id === "checks" && experiment.findings.length > 0 ? ` (${experiment.findings.length})` : ""}
           </Button>
@@ -172,7 +172,7 @@ export function ExperimentTabs({ detail }: { detail: ExperimentDetail }) {
         onDiscard={() => {
           const action = pending;
           setPending(null);
-          setDirty(false);
+          // The panel clears the dirty flag itself, on Cancel or when it unmounts.
           action?.();
         }}
       />

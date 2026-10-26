@@ -174,7 +174,7 @@ The line in `experiments/AGENTS.md` (and its three byte copies or near copies) b
 ## Risks / Trade-offs
 
 - [A finished record now changes after the fact] → The warning names the status. The edit log records the time, the status and both hashes. Git keeps the old text. ADR-102 records the decision.
-- [A terminal edit lands between the last hash check and the rename] → The window is microseconds under a lock. The next save from any open editor then gets 409, and git shows both changes.
+- [A terminal edit lands between the last hash check and the rename] → The window is microseconds under a lock. The next save from any open editor then gets 409. If the terminal edit was committed before the save, git history keeps both versions. An uncommitted terminal edit in this window is overwritten, and git does not keep it.
 - [The edit log can be edited by hand] → It is a trail, not a proof. Git history of `edits.jsonl` shows any change to an earlier line. The checker reports lines that do not load.
 - [A save that is not committed is lost from history on a reset] → The app never commits. The guide says to commit `protocol.md`, the report and `edits.jsonl` together.
 - [Hand edits are not logged] → Stated in the rule and the guide. Git records them. A CLI command to log a hand edit is an open question.

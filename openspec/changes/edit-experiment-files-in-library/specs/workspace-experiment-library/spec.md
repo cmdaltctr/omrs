@@ -84,7 +84,7 @@ The server SHALL write the new text to a temporary file in the same folder and t
 
 ### Requirement: Each save from the app is logged and shown
 
-Each save that changes a file SHALL append one edit record to `edits.jsonl` in the experiment folder after the file is replaced. When the append fails, the server SHALL restore the old text and answer with an error that says the file was not saved. The tab SHALL show "Last edited" with the date and time of the last logged edit of its file. `experiment.json` SHALL NOT change.
+Each save that changes a file SHALL append one edit record to `edits.jsonl` in the experiment folder after the file is replaced. When the append fails, the server SHALL restore the old text and answer with an error that says the file was not saved. When the restore also fails, the server SHALL answer with an error that says the file was saved but the edit was not recorded. The tab SHALL show "Last edited" with the date and time of the last logged edit of its file. `experiment.json` SHALL NOT change.
 
 #### Scenario: Last edited line
 
@@ -97,6 +97,13 @@ Each save that changes a file SHALL append one edit record to `edits.jsonl` in t
 - **WHEN** the edit log append fails after the file was replaced
 - **THEN** the file holds its old text again
 - **AND** the page says the file was not saved
+
+#### Scenario: Log and restore both fail
+
+- **WHEN** the edit log append fails after the file was replaced
+- **AND** the old text cannot be put back
+- **THEN** the file keeps the new text and `edits.jsonl` has no line for the save
+- **AND** the page says the file was saved but the edit was not recorded in `edits.jsonl`
 
 #### Scenario: Log is a link
 
