@@ -108,6 +108,7 @@ development of OMRG — Opinionated Modular RAG.
 | [097](./097-experiment-records-versioned-format.md) | Experiment Records Use a Versioned Format Shipped in omrs | 2026-10-25 | Accepted |
 | [098](./098-upgrade-lancedb-to-0-40-and-refuse-ambiguous-filter-values.md) | Upgrade lancedb to 0.40 and Refuse Ambiguous Filter Values | 2026-10-25 | Accepted (2026-10-26; built and merged to v3 at PR #130) |
 | [099](./099-library-experiments-open-in-marimo-with-the-project-environment.md) | Library Experiments Open in marimo with the Project Environment | 2026-10-25 | Accepted (2026-10-26; built and merged to v3 at PR #131) |
+| [100](./100-experiment-library-reads-project-folders-and-keeps-choices-in-the-workspace-database.md) | Experiment Library Reads Project Folders and Keeps Choices in the Workspace Database | 2026-10-25 | Accepted (2026-10-25; built and merged v3 PR #128; recorded 2026-10-26) |
 
 ## Convention
 

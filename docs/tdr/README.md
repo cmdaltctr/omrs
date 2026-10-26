@@ -66,6 +66,7 @@ architecture), see the [ADR index](../adr/).
 | 038 | [The Ollama floor took only true or false for thinking, so raise it to 0.9.1](038-the-ollama-floor-took-only-true-or-false-for-thinking-so-raise-it-to-0-9-1.md) | Accepted | 2026-10-24 |
 | 039 | [Tests waited on LLM servers that were not running, and the tripwire ran the suite twice](039-tests-waited-on-llm-servers-that-were-not-running-and-the-tripwire-ran-the-suite-twice.md) | Accepted | 2026-10-25 |
 | 040 | [LanceDB writer processes crashed at interpreter exit on the floor jobs](040-lancedb-writer-processes-crashed-at-interpreter-exit-on-the-floor-jobs.md) | Accepted | 2026-10-25 |
+| 041 | [uv tool install ignores uv.lock, so the live app drifted from the lock](041-uv-tool-install-ignores-uv-lock-so-the-live-app-drifted-from-the-lock.md) | Accepted | 2026-10-26 |
 
 ## Status values
 

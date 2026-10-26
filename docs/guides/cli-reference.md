@@ -529,11 +529,14 @@ The login item is a copy of your `omrs` that launchd starts. A stop signal does 
 1. **Install `omrs` outside the checkout.** The login item runs the absolute path of the executable. A path inside a `.venv` of a source checkout stops working when you delete the checkout or its worktree. `install` shows a warning for such a path, and asks you to confirm or to pass `--yes`. Build the web front end first (`cd web && npm run build`), because the wheel ships the built files. Then install a copy from the checkout that holds the version you want. Run this from the checkout folder:
 
     ```bash
-    uv tool install "omrs[web] @ file://$PWD"
+    uv export --frozen --extra web --no-hashes --no-emit-project --no-header -o /tmp/omrs-constraints.txt
+    uv tool install -c /tmp/omrs-constraints.txt "omrs[web] @ file://$PWD"
     omrs --version
     ```
 
-    Do not use editable mode (`-e`): it keeps running the source files of the checkout. To update the copy later, run the same command with `--reinstall`, then `omrs web restart`.
+    `uv tool install` does not read `uv.lock`. Without `-c` it takes the newest release in each declared range, which no test has run (TDR-041). Name the same extras in `uv export` (one `--extra` each) and in the brackets.
+
+    Do not use editable mode (`-e`): it keeps running the source files of the checkout. To update the copy later, run the same two commands with `--reinstall` added to `uv tool install`, then `omrs web restart`.
 
     Name every extra you use in the brackets. A reinstall builds the environment again from that list, so it drops an extra that the Integrations page installed (ADR-094). Each Integrations entry shows the lasting command with your current extras plus its own, for example:
 
