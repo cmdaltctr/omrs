@@ -1,5 +1,6 @@
 import { vi } from "vitest";
 import type { FetchLike } from "../../api/client";
+import type { ExperimentEditorOpened } from "../../api/experimentEditor";
 import type { ExperimentEntry, FolderNode, FolderRoot } from "../../api/experiments";
 import type { EditorInfo, PluginState } from "../../api/plugins";
 import type { RunDetailRecord, RunEventRecord, RunResultRecord } from "../../api/runs";
@@ -51,6 +52,25 @@ export const MARIMO: PluginState = {
   tool: "marimo",
 };
 
+/** The 201 body of `POST /v1/experiment-projects/p1/experiments/<folder>/editor`. */
+export function libraryEditorOpened(overrides: Partial<ExperimentEditorOpened> = {}): ExperimentEditorOpened {
+  return {
+    status: "ok",
+    launch_id: "launch_2",
+    plugin: "marimo",
+    project_id: "p1",
+    folder: "1-reranker-threshold-2026-05-12",
+    notebook: "analysis.marimo.py",
+    notebook_state: "converted",
+    source_newer: false,
+    environment: { kind: "project", python: "3.14", marimo_in_project: false, shadowed: [] },
+    url_without_token: "http://127.0.0.1:2719/",
+    token_delivery: { method: "response_body_once", token: EDITOR_TOKEN },
+    trust_notice: TRUST,
+    ...overrides,
+  };
+}
+
 export interface ServerState {
   roots: string[];
   /** Directories that exist below the first root, as relative paths such as `hybrid-search`. */
@@ -58,6 +78,8 @@ export interface ServerState {
   entries: ExperimentEntry[];
   plugins: PluginState[];
   editors: EditorInfo[];
+  /** `shipped_manifests` of `GET /v1/plugins`. */
+  shippedManifests: string[];
   runs: RunDetailRecord[];
   results: Record<string, RunResultRecord>;
   events: Record<string, RunEventRecord[]>;
@@ -93,7 +115,7 @@ function folders(state: ServerState): FolderRoot[] {
 
 /** In-memory stand-in for the experiment, folder, credential, plugin, run and library routes. */
 export function experimentsServer(initial: Partial<ServerState> = {}, extra: Record<string, Handler> = {}) {
-  const state: ServerState = { roots: ["/srv/exp"], dirs: [], entries: [], plugins: [], editors: [], runs: [], results: {}, events: {}, library: emptyLibrary(), ...initial };
+  const state: ServerState = { roots: ["/srv/exp"], dirs: [], entries: [], plugins: [], editors: [], shippedManifests: [], runs: [], results: {}, events: {}, library: emptyLibrary(), ...initial };
   const handlers: Record<string, Handler> = {
     ...libraryHandlers(state.library),
     "GET /v1/experiments": () => ({ status: "ok", roots: state.roots, folders: folders(state), experiments: state.entries, trust_notice: TRUST }),
@@ -116,7 +138,14 @@ export function experimentsServer(initial: Partial<ServerState> = {}, extra: Rec
     },
     "POST /v1/credentials": (body) =>
       json({ status: "ok", id: "cred_1", token: CREDENTIAL_TOKEN, scopes: body.scopes, label: body.label, experiment_context: body.experiment_context }, 201),
-    "GET /v1/plugins": () => ({ status: "ok", plugins: state.plugins, editors: state.editors, install_hint: INSTALL_HINT, trust_notice: TRUST }),
+    "GET /v1/plugins": () => ({
+      status: "ok",
+      plugins: state.plugins,
+      editors: state.editors,
+      install_hint: INSTALL_HINT,
+      trust_notice: TRUST,
+      shipped_manifests: state.shippedManifests,
+    }),
     "POST /v1/plugins": () => {
       const added: PluginState = { ...MARIMO, name: "new", display_name: "New editor", status: "unchecked", launchable: false, message: "Recheck to probe the executable." };
       state.plugins = [...state.plugins, added];
@@ -129,13 +158,31 @@ export function experimentsServer(initial: Partial<ServerState> = {}, extra: Rec
         notebook: `/srv/exp/chunks/${String(body.notebook)}`,
         experiment_context: String(body.experiment_context),
         url_without_token: "http://127.0.0.1:2719/",
+        project_id: null,
+        folder: null,
       };
       state.editors = [...state.editors, editor];
       return json({ status: "ok", ...editor, token_delivery: { method: "response_body_once", token: EDITOR_TOKEN }, trust_notice: TRUST }, 201);
     },
-    "DELETE /v1/plugin-editors/launch_1": () => {
-      state.editors = state.editors.filter((e) => e.launch_id !== "launch_1");
-      return { status: "ok", launch_id: "launch_1", stopped: true };
+    "DELETE /v1/plugin-editors/:id": (_body, call) => {
+      const id = decodeURIComponent(call.path.split("/").at(-1)!);
+      state.editors = state.editors.filter((e) => e.launch_id !== id);
+      return { status: "ok", launch_id: id, stopped: true };
+    },
+    "POST /v1/experiment-projects/:id/experiments/:folder/editor": (_body, call) => {
+      const [, , projectId, , folder] = call.path.split("/").slice(1).map(decodeURIComponent);
+      const opened = libraryEditorOpened({ project_id: projectId!, folder: folder! });
+      const editor: EditorInfo = {
+        launch_id: opened.launch_id,
+        plugin: opened.plugin,
+        notebook: `/work/${projectId}/experiments/${folder}/analysis.marimo.py`,
+        experiment_context: null,
+        url_without_token: opened.url_without_token,
+        project_id: opened.project_id,
+        folder: opened.folder,
+      };
+      state.editors = [...state.editors, editor];
+      return json(opened, 201);
     },
     "POST /v1/plugins/marimo/recheck": () => ({ status: "ok", plugin: { ...MARIMO, message: "marimo 0.25.2 is compatible" } }),
     "DELETE /v1/plugins/old": () => {

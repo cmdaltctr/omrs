@@ -1,7 +1,11 @@
 # marimo notebook plugin for OMRS
 
-This folder holds an optional plugin manifest for the marimo notebook editor.
+This folder holds the guide and the starter notebook for the optional marimo notebook editor plugin.
 The folder is not part of the OMRS wheel. OMRS does not depend on marimo.
+
+The plugin manifest is package data at `src/omrs/core/plugins/shipped/marimo/manifest.json`.
+It ships in the OMRS wheel, so an installed application finds it. Before version 0.3.0 of the manifest,
+the file was plugins/marimo/manifest.json in this folder (the old path).
 
 ## Status
 
@@ -38,7 +42,7 @@ Each run writes a checkpoint below `output/runs/`. See [Notebooks](../../docs/gu
 
 ## What OMRS does and does not do
 
-OMRS reads this manifest, probes the executable that you register, and starts and stops the editor.
+OMRS reads the shipped manifest, probes the executable that you register, and starts and stops the editor.
 
 OMRS never installs, upgrades or replaces marimo. It never runs `uvx`, `uv tool install` or `pip`.
 You install and update marimo outside OMRS.
@@ -64,13 +68,17 @@ You install and update marimo outside OMRS.
 Registration is a trust decision. A notebook runs Python with your user permissions.
 It can read and write your files and use your network. A separate tool environment does not contain it.
 
-1. Read `manifest.json`.
+1. Read the shipped manifest. `GET /v1/plugins` gives its absolute path in `shipped_manifests`.
 2. Register the manifest and the absolute executable path. Give your explicit approval.
+   The registration form in the workspace fills in the manifest path.
 3. Run a compatibility check (recheck).
 
 OMRS stores the SHA-256 of the manifest and the identity of the executable (path, size, modification time, SHA-256).
 If you edit the manifest, OMRS disables the plugin until you register it again.
 If the executable changes, OMRS disables the plugin until a recheck passes.
+
+Register again after an upgrade. A registration made with the old manifest path, or with an earlier
+manifest version, stays disabled after you upgrade OMRS. Do steps 1 to 3 again with the shipped manifest.
 
 ## What the compatibility check runs
 
@@ -134,6 +142,18 @@ The launch directory has mode `0o700`. OMRS removes it when the editor stops. It
 - The editor gets only a small set of environment variables (for example `PATH`, `HOME`, `LANG`).
   OMRS provider keys are not passed to it.
 
+## Library launch with full access
+
+The experiment page in the Library can open `analysis.marimo.py` with the kernel in the project `.venv`.
+That launch has full access: the kernel runs as you, with the project packages. It needs the manifest
+capability `project_environment`. To convert `analysis.py`, marimo also needs jupytext in its tool environment:
+
+```bash
+uv tool install "marimo>=0.25.1,<0.26" --with jupytext
+```
+
+Read [Full access from the Library](../../docs/guides/notebooks.md#full-access-from-the-library) before you use it.
+
 ## Ports
 
 OMRS tries its permitted ports in order. If another program uses a port, OMRS uses the next permitted port.
@@ -165,7 +185,7 @@ Your notebook files stay as they are. OMRS removes only the private launch direc
 
 3. Run a recheck in the workspace. OMRS shows `unchecked` until you do, because the executable changed.
 4. If the recheck passes, start the editor again.
-5. If the version is outside the tested range, keep the earlier version, or update this manifest after you qualify the new version.
+5. If the version is outside the tested range, keep the earlier version, or update the manifest after you qualify the new version.
    Then register the edited manifest again.
 
 ## Remove the plugin

@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PluginState } from "../api/plugins";
 import { json, type Handler } from "../test/fakeDocumentsServer";
 import { CREDENTIAL_TOKEN, EDITOR_TOKEN, entry, INSTALL_HINT, MARIMO, TRUST, type ServerState } from "./test/experimentsServer";
+import { defaultLibrary, RERANKER } from "./test/libraryServer";
 import { openExperiments } from "./test/openExperiments";
 
 const WITHOUT_PLUGIN = "The workspace works without the plugin.";
@@ -185,7 +186,7 @@ describe("notebook editor", () => {
   });
 
   it("lists running editors and stops one after confirmation", async () => {
-    const running = { launch_id: "launch_1", plugin: "marimo", notebook: "/srv/exp/chunks/starter.py", experiment_context: "exp_1", url_without_token: "http://127.0.0.1:2719/" };
+    const running = { launch_id: "launch_1", plugin: "marimo", notebook: "/srv/exp/chunks/starter.py", experiment_context: "exp_1", url_without_token: "http://127.0.0.1:2719/", project_id: null, folder: null };
     const { server, user } = await openNotebooks({ editors: [running] });
     const list = await screen.findByRole("list", { name: "Running editors" });
     expect(await within(list).findByText("/srv/exp/chunks/starter.py")).toBeInTheDocument();
@@ -195,6 +196,57 @@ describe("notebook editor", () => {
     await user.click(within(list).getByRole("button", { name: "Confirm stop" }));
     await waitFor(() => expect(server.find("DELETE", "/v1/plugin-editors/launch_1")).toHaveLength(1));
     await waitFor(() => expect(screen.queryByRole("list", { name: "Running editors" })).toBeNull());
+  });
+
+  it("lists an editor that the Library opened with its project and folder, and stops it", async () => {
+    const library = defaultLibrary();
+    const running = {
+      launch_id: "launch_5",
+      plugin: "marimo",
+      notebook: `/work/p1/experiments/${RERANKER}/analysis.marimo.py`,
+      experiment_context: null,
+      url_without_token: "http://127.0.0.1:2720/",
+      project_id: "p1",
+      folder: RERANKER,
+    };
+    const { server, user } = await openNotebooks({ library, editors: [running] });
+    const list = await screen.findByRole("list", { name: "Running editors" });
+    const item = within(list).getByText(running.notebook).closest("li")!;
+    expect(await within(item).findByText(/project OMRS/)).toBeInTheDocument();
+    expect(within(item).getByText(RERANKER)).toBeInTheDocument();
+    expect(item.textContent).not.toContain("context none");
+    await user.click(within(item).getByRole("button", { name: "Stop editor launch_5" }));
+    await user.click(within(item).getByRole("button", { name: "Confirm stop" }));
+    await waitFor(() => expect(server.find("DELETE", "/v1/plugin-editors/launch_5")).toHaveLength(1));
+  });
+});
+
+describe("plugin registration form", () => {
+  const SHIPPED = "/site/omrs/core/plugins/shipped/marimo/manifest.json";
+
+  it("fills the manifest path from the shipped manifest", async () => {
+    await openNotebooks({ plugins: [], shippedManifests: [SHIPPED, "/other/manifest.json"] });
+    const form = await screen.findByRole("form", { name: "Register a plugin" });
+    await waitFor(() => expect(within(form).getByLabelText("Manifest path")).toHaveValue(SHIPPED));
+  });
+
+  it("keeps the field empty when the server ships no manifest, and keeps what the user typed", async () => {
+    const { user } = await openNotebooks({ plugins: [] });
+    const form = await screen.findByRole("form", { name: "Register a plugin" });
+    await screen.findAllByText(INSTALL_HINT);
+    expect(within(form).getByLabelText("Manifest path")).toHaveValue("");
+    await user.type(within(form).getByLabelText("Manifest path"), "/m.json");
+    expect(within(form).getByLabelText("Manifest path")).toHaveValue("/m.json");
+  });
+
+  it("lets the user replace the filled path", async () => {
+    const { user } = await openNotebooks({ plugins: [], shippedManifests: [SHIPPED] });
+    const field = within(await screen.findByRole("form", { name: "Register a plugin" })).getByLabelText("Manifest path");
+    await waitFor(() => expect(field).toHaveValue(SHIPPED));
+    await user.clear(field);
+    expect(field).toHaveValue("");
+    await user.type(field, "/mine.json");
+    expect(field).toHaveValue("/mine.json");
   });
 });
 

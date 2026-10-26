@@ -367,7 +367,7 @@ def test_list_runs_filters_by_pipeline_and_status(
 def test_plugin_registration_round_trip(repo: SqliteWorkspaceRepository) -> None:
     created = repo.register_plugin(
         "marimo",
-        manifest_ref="plugins/marimo/manifest.json",
+        manifest_ref="src/omrs/core/plugins/shipped/marimo/manifest.json",
         executable_ref="/opt/bin/marimo",
         manifest_hash="abc",
     )

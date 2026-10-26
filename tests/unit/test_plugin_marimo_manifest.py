@@ -6,6 +6,9 @@ installed, and these tests install nothing.
 
 from __future__ import annotations
 
+import ast
+import importlib.resources
+import json
 import shutil
 import subprocess
 import tomllib
@@ -16,18 +19,21 @@ import pytest
 from tests.unit.test_process_launcher_support import make_fake_editor
 
 from omrs.core.plugins import (
+    PROJECT_ENVIRONMENT,
     REQUIRED_LAUNCH_CAPABILITIES,
     NotebookEditorSupervisor,
     PluginLaunchError,
     PluginRegistry,
     parse_manifest,
 )
+from omrs.core.plugins.shipped import empty_notebook_text, shipped_manifests
 from omrs.integrations.process_launcher import OwnedProcessLauncher, SubprocessProbeRunner
 from omrs.integrations.workspace_sqlite import SqliteWorkspaceRepository
 
 ROOT = Path(__file__).resolve().parents[2]
-PLUGIN_DIR = ROOT / "plugins" / "marimo"
-MANIFEST = PLUGIN_DIR / "manifest.json"
+PLUGIN_DIR = ROOT / "plugins" / "marimo"  # README and starter notebook (source only)
+SHIPPED_DIR = ROOT / "src" / "omrs" / "core" / "plugins" / "shipped" / "marimo"
+MANIFEST = SHIPPED_DIR / "manifest.json"
 
 # Flags confirmed in the marimo CLI reference (docs.marimo.io/cli, via Context7).
 CONFIRMED_EDIT_FLAGS = {
@@ -77,18 +83,78 @@ def test_plugin_payload_lives_outside_the_package() -> None:
 
 
 @pytest.mark.slow
-def test_built_wheel_excludes_plugins(tmp_path: Path) -> None:
+def test_built_wheel_ships_the_manifest_but_no_plugins_folder(tmp_path: Path) -> None:
     uv = shutil.which("uv")
     if uv is None:
-        pytest.skip("uv is not available to build a wheel")
+        pytest.skip("uv is not available to build the wheel")
     subprocess.run(  # noqa: S603
         [uv, "build", "--wheel", "--offline", "-o", str(tmp_path)],
         cwd=ROOT, check=True, capture_output=True, timeout=600,
     )  # fmt: skip
     (wheel,) = tmp_path.glob("*.whl")
     names = zipfile.ZipFile(wheel).namelist()
-    assert any(name.startswith("omrs/") for name in names)
-    assert not any("plugins/marimo" in name or name.startswith("plugins/") for name in names)
+    assert "omrs/core/plugins/shipped/marimo/manifest.json" in names
+    assert "omrs/core/plugins/shipped/marimo/empty_notebook.py.template" in names
+    assert not any(name.startswith("plugins/") for name in names)
+
+
+def test_shipped_manifests_returns_the_packaged_file() -> None:
+    paths = shipped_manifests()
+    assert len(paths) == 1
+    (path,) = paths
+    assert isinstance(path, Path) and path.is_file()
+    package = Path(str(importlib.resources.files("omrs")))
+    assert path.resolve().is_relative_to(package.resolve())
+    assert path.resolve() == MANIFEST.resolve()
+    assert parse_manifest(path.read_bytes()).plugin_id == "marimo"
+
+
+def test_shipped_manifest_is_a_package_resource() -> None:
+    resource = importlib.resources.files("omrs.core.plugins") / "shipped" / "marimo"
+    assert (resource / "manifest.json").is_file()
+    assert (resource / "empty_notebook.py.template").is_file()
+    assert not (ROOT / "plugins" / "marimo" / "manifest.json").exists()
+
+
+def test_shipped_manifests_skips_a_resource_that_is_not_on_disk(monkeypatch, caplog) -> None:
+    import omrs.core.plugins.shipped as shipped
+
+    class ZipEntry:
+        def __truediv__(self, _: str) -> ZipEntry:
+            return self
+
+        def is_file(self) -> bool:
+            return True
+
+    monkeypatch.setattr(shipped, "files", lambda _: ZipEntry())
+    with caplog.at_level("WARNING", logger=shipped.__name__):
+        assert shipped.shipped_manifests() == ()
+    assert len(caplog.records) == 1
+
+
+def test_shipped_manifest_declares_project_environment_and_conversion() -> None:
+    manifest = parse_manifest(MANIFEST.read_bytes())
+    assert manifest.plugin_version == "0.3.0"
+    capability = manifest.capabilities[PROJECT_ENVIRONMENT]
+    assert capability.config == "venv.path" and capability.value is None
+    assert manifest.convert is not None
+    assert manifest.convert.args == ("convert", "{source_path}", "-o", "{output_path}")
+    raw = json.loads(MANIFEST.read_text())
+    assert raw["capabilities"][PROJECT_ENVIRONMENT] == {"config": "venv.path"}
+
+
+def test_empty_notebook_template_is_a_marimo_notebook() -> None:
+    text = empty_notebook_text()
+    tree = ast.parse(text)
+    calls = [
+        node for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "App" and getattr(node.func.value, "id", "") == "marimo"
+    ]  # fmt: skip
+    assert calls, "the template must create marimo.App"
+    assert '__generated_with = "0.25.1"' in text
+    assert "Path(__file__).resolve().parent" in text and "experiment.json" in text
+    assert "{" not in text and "}" not in text  # nothing left to substitute
 
 
 @pytest.fixture

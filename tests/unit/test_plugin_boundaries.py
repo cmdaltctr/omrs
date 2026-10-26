@@ -48,7 +48,8 @@ def violations(names: set[str], forbidden: tuple[str, ...]) -> list[str]:
 
 def test_core_plugins_exist() -> None:
     assert {p.name for p in CORE_PLUGINS} >= {
-        "__init__.py", "manifest.py", "registration.py", "editor.py",
+        "__init__.py", "manifest.py", "registration.py", "editor.py", "versions.py",
+        "kernel_config.py", "conversion.py", "shipped.py",
     }  # fmt: skip
 
 

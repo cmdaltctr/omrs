@@ -212,6 +212,19 @@ def _folder(experiments: Path, name: str) -> tuple[ExperimentFolder, Path]:
     return match, match.path.resolve(strict=True)
 
 
+def experiment_folder(experiments: Path, name: str) -> Path:
+    """Return the resolved path of a listed experiment folder, directly inside *experiments*.
+
+    Raises:
+        ExperimentRefusedError: The name is not a plain folder name.
+        ExperimentNotFoundError: The project lists no experiment folder with this name.
+    """
+    path = _folder(experiments, name)[1]
+    if path.parent != experiments.resolve():
+        raise ExperimentNotFoundError(name)  # a link that leaves the experiments directory
+    return path
+
+
 def _served(target: Path, base: Path) -> bool:
     """Return True when a resolved *target* is a text file the workspace serves (D6).
 

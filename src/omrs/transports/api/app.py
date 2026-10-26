@@ -34,6 +34,7 @@ from .routes.connections import router as connections_router
 from .routes.document_reading import router as document_reading_router
 from .routes.documents import router as documents_router
 from .routes.embedding import router as embedding_router
+from .routes.experiment_editor import router as experiment_editor_router
 from .routes.experiment_library import router as experiment_library_router
 from .routes.experiments import router as experiments_router
 from .routes.foundation import router as foundation_router
@@ -76,6 +77,7 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     runs_router,
     experiments_router,
     experiment_library_router,
+    experiment_editor_router,
     notebooks_router,
     templates_router,
     plugins_router,

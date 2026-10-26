@@ -30,6 +30,9 @@ export interface EditorInfo {
   notebook: string;
   experiment_context: string | null;
   url_without_token: string;
+  /** The Library project and experiment folder of an editor that the Library opened; null otherwise. */
+  project_id: string | null;
+  folder: string | null;
 }
 
 export interface PluginList {
@@ -37,11 +40,19 @@ export interface PluginList {
   editors: EditorInfo[];
   install_hint: string;
   trust_notice: string;
+  /** Absolute paths of the manifests that the installed application ships. */
+  shipped_manifests: string[];
+}
+
+/** How the server sends an editor token: once, in the response body. */
+export interface TokenDelivery {
+  method: "response_body_once";
+  token: string;
 }
 
 export interface EditorOpened extends EditorInfo {
   status: "ok";
-  token_delivery: { method: "response_body_once"; token: string };
+  token_delivery: TokenDelivery;
   trust_notice: string;
 }
 
@@ -94,7 +105,7 @@ const LOOPBACK_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
  * The address to open in a new tab. Only a loopback `http` URL with no query
  * or fragment is accepted, so the token can never travel in the address.
  */
-export function editorTabUrl(editor: EditorInfo): string {
+export function editorTabUrl(editor: Pick<EditorInfo, "url_without_token">): string {
   let url: URL;
   try {
     url = new URL(editor.url_without_token);
@@ -111,7 +122,7 @@ export function editorTabUrl(editor: EditorInfo): string {
 }
 
 /** The editor access token, accepted only from the response-body-once delivery method. */
-export function editorToken(opened: EditorOpened): string {
+export function editorToken(opened: { token_delivery: TokenDelivery }): string {
   const delivery = opened.token_delivery as { method?: unknown; token?: unknown } | undefined;
   if (delivery?.method !== "response_body_once" || typeof delivery.token !== "string" || delivery.token === "") {
     throw new ClientRefusal("The server used a token delivery method that this page does not support.");

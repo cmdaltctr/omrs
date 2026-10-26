@@ -277,3 +277,13 @@ def test_manifest_without_help_probe_skips_flag_check(repo, files) -> None:
     reg.register(manifest, exe, approved=True)
     assert reg.recheck("fakeedit").launchable
     assert runner.calls == [(str(exe), "--version")]
+
+
+def test_run_command_passes_argv_and_timeout_to_the_runner(repo) -> None:
+    runner = FakeRunner(version="converted")
+    output = registry(repo, runner).run_command(["/bin/tool", "convert", "a", "-o", "b"], timeout=3)
+    assert runner.calls == [("/bin/tool", "convert", "a", "-o", "b")]
+    assert output.returncode == 0 and output.stdout == "converted"
+    runner.raises = TimeoutError("slow")
+    with pytest.raises(TimeoutError):
+        registry(repo, runner).run_command(["/bin/tool"], timeout=1)

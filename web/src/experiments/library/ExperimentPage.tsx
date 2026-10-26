@@ -13,6 +13,7 @@ import { formatRoute } from "../../lib/routes";
 import { AddToNotebook } from "./AddToNotebook";
 import { StatusBadge } from "./ExperimentCard";
 import { ExperimentTabs } from "./ExperimentTabs";
+import { MarimoEditorStatus, OpenInMarimoButton, useMarimoLauncher } from "./OpenInMarimo";
 
 const BACK = formatRoute({ area: "experiments", runId: null });
 
@@ -67,11 +68,12 @@ function RecordFields({ projectId, projectName, experiment }: { projectId: strin
 
 /**
  * One experiment at `#/experiments/library/<project>/<folder>`: the record,
- * its files in tabs, its checker findings and the "Add to notebook" menu. A
- * folder the server does not find shows a way back.
+ * its files in tabs, its checker findings, "Open in marimo" and the "Add to
+ * notebook" menu. A folder the server does not find shows a way back.
  */
 export function ExperimentPage({ projectId, folder }: { projectId: string; folder: string }) {
   const detail = useQuery(projectExperimentQuery(useApi(), projectId, folder));
+  const marimo = useMarimoLauncher(projectId, folder);
   const missing = detail.error instanceof ApiError && detail.error.status === 404;
   const experiment = detail.data?.experiment;
   const title = experiment ? `${experiment.number}. ${experiment.title}` : folder;
@@ -87,7 +89,8 @@ export function ExperimentPage({ projectId, folder }: { projectId: string; folde
         title={title}
         summary={detail.data ? `Experiment in ${detail.data.project.name}` : undefined}
         actions={
-          <div className="flex flex-wrap items-start gap-2">
+          <div className="flex w-full flex-wrap items-start gap-2 sm:w-auto">
+            {detail.data ? <OpenInMarimoButton launcher={marimo} /> : null}
             {detail.data ? <AddToNotebook projectId={projectId} folder={folder} /> : null}
             {back}
           </div>
@@ -103,6 +106,7 @@ export function ExperimentPage({ projectId, folder }: { projectId: string; folde
       {detail.data ? (
         <>
           <RecordFields projectId={projectId} projectName={detail.data.project.name} experiment={detail.data.experiment} />
+          <MarimoEditorStatus launcher={marimo} />
           <ExperimentTabs detail={detail.data} />
         </>
       ) : null}

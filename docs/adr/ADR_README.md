@@ -107,6 +107,7 @@ development of OMRG — Opinionated Modular RAG.
 | [096](./096-app-uninstalls-extras-it-can-install.md) | The App Uninstalls the Extras It Can Install | 2026-10-24 | Accepted |
 | [097](./097-experiment-records-versioned-format.md) | Experiment Records Use a Versioned Format Shipped in omrs | 2026-10-25 | Accepted |
 | [098](./098-upgrade-lancedb-to-0-40-and-refuse-ambiguous-filter-values.md) | Upgrade lancedb to 0.40 and Refuse Ambiguous Filter Values | 2026-10-25 | Accepted (2026-10-26; built and merged to v3 at PR #130) |
+| [099](./099-library-experiments-open-in-marimo-with-the-project-environment.md) | Library Experiments Open in marimo with the Project Environment | 2026-10-25 | Accepted (2026-10-26; built and merged to v3 at PR #131) |
 
 ## Convention
 

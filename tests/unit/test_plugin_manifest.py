@@ -9,7 +9,11 @@ from typing import Any
 import pytest
 
 from omrs.core.plugins.manifest import (
+    CONVERT_SUBSTITUTIONS,
+    HOST_CONFIG_CAPABILITIES,
+    PROJECT_ENVIRONMENT,
     REQUIRED_LAUNCH_CAPABILITIES,
+    ConvertRecipe,
     ManifestError,
     parse_manifest,
     parse_version,
@@ -251,3 +255,76 @@ def test_numeric_config_values_render() -> None:
     config = parse_manifest(encode(data)).launch.config_file
     assert config is not None and "limit = 3" in config.render_toml()
     assert config.lookup("missing.key") == (False, None)
+
+
+# --- conversion recipe and host-filled capability (design D2, D4, D9) ---------
+
+CONVERT = ["recipes", "convert_script"]
+CONVERT_ARGS = ["convert", "{source_path}", "-o", "{output_path}"]
+
+
+def test_manifest_without_convert_recipe_has_none() -> None:
+    assert parse_manifest(encode(valid_manifest())).convert is None
+
+
+def test_convert_recipe_parses() -> None:
+    manifest = parse_manifest(encode(_mutate(CONVERT, {"args": CONVERT_ARGS})))
+    assert manifest.convert == ConvertRecipe(tuple(CONVERT_ARGS))
+    assert CONVERT_SUBSTITUTIONS == {"source_path", "output_path"}
+
+
+@pytest.mark.parametrize(
+    ("args", "fragment"),
+    [
+        (["convert", "{source_path}", "-o", "out.py"], "must use {output_path}"),
+        (["convert", "in.py", "-o", "{output_path}"], "must use {source_path}"),
+        ([*CONVERT_ARGS, "--port", "{port}"], "unknown substitution {port}"),
+        ([*CONVERT_ARGS, "{token_file}"], "unknown substitution {token_file}"),
+        ([*CONVERT_ARGS, "{host}"], "unknown substitution {host}"),
+        ([*CONVERT_ARGS, "{notebook_path}"], "unknown substitution {notebook_path}"),
+        ([*CONVERT_ARGS, "install"], "installer"),
+        ([*CONVERT_ARGS, "--upgrade"], "installer"),
+        ([*CONVERT_ARGS, "-m"], "installer"),
+        ("convert {source_path} -o {output_path}", "not a shell string"),
+        ([*CONVERT_ARGS, "$(id)"], "shell syntax"),
+    ],
+)  # fmt: skip
+def test_convert_recipe_refuses_other_substitutions(args: Any, fragment: str) -> None:
+    assert fragment in problems_for(_mutate(CONVERT, {"args": args}))
+
+
+def test_convert_recipe_is_a_closed_object() -> None:
+    data = _mutate(CONVERT, {"args": CONVERT_ARGS, "shell": True})
+    assert "unsupported key 'shell'" in problems_for(data)
+    assert "convert_script must be an object" in problems_for(_mutate(CONVERT, ["convert"]))
+
+
+@pytest.mark.parametrize("name", ["source_path", "output_path"])
+def test_launch_recipe_refuses_convert_substitutions(name: str) -> None:
+    args = [*valid_manifest()["recipes"]["launch_notebook"]["args"], f"{{{name}}}"]
+    assert f"unknown substitution {{{name}}}" in problems_for(_mutate(LAUNCH, args))
+
+
+def test_project_environment_config_without_value_parses() -> None:
+    data = _mutate(["capabilities", PROJECT_ENVIRONMENT], {"config": "venv.path"})
+    manifest = parse_manifest(encode(data))
+    capability = manifest.capabilities[PROJECT_ENVIRONMENT]
+    assert capability.config == "venv.path" and capability.value is None
+    assert PROJECT_ENVIRONMENT in HOST_CONFIG_CAPABILITIES
+
+
+def test_project_environment_config_must_be_a_table_key() -> None:
+    data = _mutate(["capabilities", PROJECT_ENVIRONMENT], {"config": "venv"})
+    assert "must name a 'table.key'" in problems_for(data)
+
+
+def test_other_config_capability_without_value_still_fails() -> None:
+    data = _mutate(["capabilities", "lazy_reactivity"], {"config": "runtime.on_cell_change"})
+    assert "must be set to None" in problems_for(data)
+    data = _mutate(["capabilities", "lazy_reactivity"], {"config": "venv.path"})
+    assert "must be set to None" in problems_for(data)
+
+
+def test_project_environment_with_value_follows_the_config_rule() -> None:
+    data = _mutate(["capabilities", PROJECT_ENVIRONMENT], {"config": "venv.path", "value": "x"})
+    assert "must be set to 'x'" in problems_for(data)
