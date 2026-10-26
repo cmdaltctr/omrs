@@ -81,7 +81,7 @@ export function PluginPanel({ list, loadError, loading, onRetry }: PluginPanelPr
         </Table>
       )}
       {recheck.isError ? <ErrorNotice error={recheck.error} /> : null}
-      <PluginRegisterForm />
+      <PluginRegisterForm shippedManifest={list?.shipped_manifests[0] ?? null} />
     </Panel>
   );
 }

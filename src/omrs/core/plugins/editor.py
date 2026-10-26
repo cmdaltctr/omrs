@@ -26,7 +26,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
-from omrs.core.plugins.manifest import PluginManifest, substitute
+from omrs.core.plugins.conversion import ConvertResult, output_tail
+from omrs.core.plugins.kernel_config import KernelEnvironment, render_kernel_config
+from omrs.core.plugins.manifest import PROJECT_ENVIRONMENT, PluginManifest, substitute
 from omrs.core.plugins.registration import PluginRegistry
 
 LOOPBACK_HOST = "127.0.0.1"
@@ -44,7 +46,16 @@ class PluginConsentError(PermissionError):
 
 
 class PluginLaunchError(RuntimeError):
-    """A launch was refused or failed. The message says what to do."""
+    """A launch was refused or failed. The message says what to do.
+
+    Attributes:
+        reason: Machine-readable cause: ``editor_unavailable``,
+            ``editor_unsupported``, ``no_free_port`` or ``launch_failed``.
+    """
+
+    def __init__(self, message: str, reason: str = "launch_failed") -> None:
+        super().__init__(message)
+        self.reason = reason
 
 
 class ProcessLauncher(Protocol):
@@ -139,14 +150,18 @@ def build_launch_plan(
     launch_dir: Path,
     token: str,
     connection: EditorConnection | None = None,
+    kernel_environment: KernelEnvironment | None = None,
 ) -> LaunchPlan:
     """Render the manifest's ``launch_notebook`` recipe.
 
     With ``connection``, add the connection file, the API token file and
-    the ``OMRS_CONNECTION_FILE`` variable (see the module docstring).
+    the ``OMRS_CONNECTION_FILE`` variable (see the module docstring). With
+    ``kernel_environment``, the config file also names the project
+    environment (see :func:`render_kernel_config`); the argv stays the same.
 
     Raises:
-        ValueError: If ``host`` is not the loopback address.
+        ValueError: If ``host`` is not the loopback address, or the
+            environment path cannot be written to the config file.
     """
     if host != LOOPBACK_HOST:
         raise ValueError(f"editor launches bind to loopback {LOOPBACK_HOST} only, not {host}")
@@ -158,8 +173,12 @@ def build_launch_plan(
     }
     files = {TOKEN_FILE_NAME: token}
     config = manifest.launch.config_file
-    if config is not None:
+    if config is not None and kernel_environment is not None:
+        files[config.name] = render_kernel_config(config, kernel_environment)
+    elif config is not None:
         files[config.name] = config.render_toml()
+    elif kernel_environment is not None:
+        raise ValueError("the manifest has no config file for the project environment")
     environment: dict[str, str] = {}
     if connection is not None:
         details = {
@@ -208,6 +227,7 @@ class NotebookEditorSupervisor:
         *,
         consent: bool,
         connection: EditorConnection | None = None,
+        kernel_environment: KernelEnvironment | None = None,
     ) -> EditorSession:
         """Recheck the plugin, then launch it on a free permitted port.
 
@@ -216,11 +236,14 @@ class NotebookEditorSupervisor:
             notebook: Notebook file to open.
             consent: The user's consent for this launch.
             connection: Optional OMRS API connection for the notebook.
+            kernel_environment: Optional project environment for the kernel.
 
         Raises:
+            KeyError: If ``name`` is not registered.
             PluginConsentError: If ``consent`` is false.
-            PluginLaunchError: If the plugin is not launchable, the notebook
-                is missing, or no permitted port is free.
+            PluginLaunchError: If the plugin is not launchable, cannot use a
+                project environment, the notebook is missing, or no permitted
+                port is free. ``reason`` names the cause.
         """
         if not consent:
             raise PluginConsentError(
@@ -231,16 +254,61 @@ class NotebookEditorSupervisor:
             raise PluginLaunchError(f"notebook not found: {path}")
         state = self._registry.recheck(name)
         if not state.launchable or state.manifest is None:
-            raise PluginLaunchError(f"{name} cannot start: {state.message}")
+            raise PluginLaunchError(f"{name} cannot start: {state.message}", "editor_unavailable")
+        if kernel_environment is not None:
+            _check_kernel_support(name, state.manifest, kernel_environment)
         for port in self._ports:
-            session = self._try_port(name, state.manifest, state.executable, path, port, connection)
+            session = self._try_port(
+                name, state.manifest, state.executable, path, port, connection, kernel_environment
+            )
             if session is not None:
                 return session
         tried = ", ".join(str(port) for port in self._ports)
         raise PluginLaunchError(
             f"no permitted port is free ({tried}). OMRS does not stop other programs; "
-            f"close the program that uses the port or permit another port."
+            f"close the program that uses the port or permit another port.",
+            "no_free_port",
         )
+
+    def convert(
+        self, name: str, source: Path, output: Path, *, timeout: float = 120.0
+    ) -> ConvertResult:
+        """Run the manifest's ``convert_script`` recipe once, without a shell.
+
+        Uses the stored compatibility state (no probe); a changed executable
+        is not launchable until rechecked.
+
+        Args:
+            name: Registered plugin name.
+            source: File to convert (``{source_path}``).
+            output: File the tool writes (``{output_path}``).
+            timeout: Seconds the conversion may take.
+
+        Returns:
+            The exit status and the output tail. A tool that cannot start or
+            does not finish gives ``returncode`` ``-1``.
+
+        Raises:
+            PluginLaunchError: ``editor_unavailable`` when the plugin is
+                unknown or not launchable, ``editor_unsupported`` when the
+                manifest has no conversion recipe.
+        """
+        try:
+            state = self._registry.state(name)
+        except KeyError:
+            raise PluginLaunchError(f"{name} is not registered", "editor_unavailable") from None
+        if not state.launchable or state.manifest is None:
+            raise PluginLaunchError(f"{name} cannot convert: {state.message}", "editor_unavailable")
+        recipe = state.manifest.convert
+        if recipe is None:
+            raise PluginLaunchError(f"{name} has no conversion recipe", "editor_unsupported")
+        values = {"source_path": str(source), "output_path": str(output)}
+        argv = (state.executable, *substitute(recipe.args, values))
+        try:
+            result = self._registry.run_command(argv, timeout=timeout)
+        except (OSError, TimeoutError) as exc:
+            return ConvertResult(-1, str(exc))
+        return ConvertResult(result.returncode, output_tail(result.stdout, result.stderr))
 
     def _try_port(
         self,
@@ -250,6 +318,7 @@ class NotebookEditorSupervisor:
         notebook: Path,
         port: int,
         connection: EditorConnection | None,
+        kernel_environment: KernelEnvironment | None,
     ) -> EditorSession | None:
         if not self._launcher.port_available(LOOPBACK_HOST, port):
             return None
@@ -264,6 +333,7 @@ class NotebookEditorSupervisor:
             launch_dir=workdir,
             token=token,
             connection=connection,
+            kernel_environment=kernel_environment,
         )
         secret_values = (token,) if connection is None else (token, connection.token)
         try:
@@ -309,3 +379,17 @@ class NotebookEditorSupervisor:
             ids = list(self._sessions)
             self._sessions.clear()
         return [self._launcher.stop(launch_id) for launch_id in ids]
+
+
+def _check_kernel_support(name: str, manifest: PluginManifest, kernel: KernelEnvironment) -> None:
+    config = manifest.launch.config_file
+    if PROJECT_ENVIRONMENT not in manifest.capabilities or config is None:
+        raise PluginLaunchError(
+            f"{name}'s manifest cannot run a notebook in a project environment; "
+            f"register a manifest with the {PROJECT_ENVIRONMENT} capability",
+            "editor_unsupported",
+        )
+    try:
+        render_kernel_config(config, kernel)  # refuse before any launch folder exists
+    except ValueError as exc:
+        raise PluginLaunchError(f"{name} cannot use this environment: {exc}") from exc

@@ -108,11 +108,14 @@ def _state(state: Any) -> dict[str, Any]:
 
 
 def _editor(host: PluginHost, session: Any) -> dict[str, Any]:
+    project_id, folder = host.editor_experiments.get(session.launch_id, (None, None))
     return {
         "launch_id": session.launch_id,
         "plugin": session.plugin,
         "notebook": str(session.notebook),
         "experiment_context": host.editor_contexts.get(session.launch_id),
+        "project_id": project_id,
+        "folder": folder,
         "url_without_token": f"http://{session.host}:{session.port}/",
     }
 
@@ -165,6 +168,7 @@ async def list_plugins(_: PluginsScope, runtime: RuntimeDep) -> Response:
         {
             "plugins": [_state(state) for state in states],
             "editors": [_editor(host, session) for session in host.editors.sessions()],
+            "shipped_manifests": [str(path) for path in host.manifests],
             "install_hint": INSTALL_HINT,
             "trust_notice": TRUST_NOTICE,
         }
@@ -260,6 +264,7 @@ def _editor_connection(policy: AccessPolicy, context_id: str) -> tuple[EditorCon
 def _end_editor(host: PluginHost, launch_id: str) -> None:
     """Forget a stopped editor and revoke its notebook credential."""
     host.editor_contexts.pop(launch_id, None)
+    host.editor_experiments.pop(launch_id, None)
     cleanup = host.editor_cleanups.pop(launch_id, None)
     if cleanup is not None:
         cleanup()

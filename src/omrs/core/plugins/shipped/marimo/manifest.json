@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "plugin_id": "marimo",
-  "plugin_version": "0.2.0",
+  "plugin_version": "0.3.0",
   "display_name": "marimo notebook editor",
   "description": "Opens a marimo notebook in a separate local browser tab. Install and update marimo outside OMRS. Qualified against marimo 0.25.1 (task 8.4).",
   "tool": {
@@ -19,7 +19,8 @@
     "update_check_disabled": {"argument": "--skip-update-check"},
     "auto_install_disabled": {"argument": "--no-sandbox"},
     "startup_execution_disabled": {"config": "runtime.auto_instantiate", "value": false},
-    "lazy_reactivity": {"config": "runtime.on_cell_change", "value": "lazy"}
+    "lazy_reactivity": {"config": "runtime.on_cell_change", "value": "lazy"},
+    "project_environment": {"config": "venv.path"}
   },
   "recipes": {
     "probe": {
@@ -49,6 +50,9 @@
           }
         }
       }
+    },
+    "convert_script": {
+      "args": ["convert", "{source_path}", "-o", "{output_path}"]
     }
   }
 }

@@ -225,6 +225,20 @@ Research found no reason that reuse is unsafe. The supervisor already binds loop
 
 `plugin_version` 0.2.0 to 0.3.0. Add the capability `project_environment` (D2) and the optional recipe `recipes.convert_script.args` with the new substitutions `{source_path}` and `{output_path}`, which only that recipe may use. `schema_version` stays 1: the shipped manifest and its parser ship together now, and the parser keeps refusing unknown keys. The README's "update" steps say that a new OMRS version can need a new registration.
 
+### D10. Decisions made during the build
+
+These follow best practice where the design was silent. They do not change D1 to D9.
+
+1. **Unknown plugin.** `NotebookEditorSupervisor.open` still raises `KeyError` for an unknown plugin, so `POST /v1/plugins/{name}/editors` keeps its 404. The Library route maps `KeyError` to 409 `editor_unavailable`.
+2. **Sibling modules.** `core/plugins/kernel_config.py` renders the `[venv]` and `dotenv` tables, `conversion.py` holds `ConvertResult`, and `versions.py` holds the version helpers. This keeps `editor.py` and `manifest.py` under the 400-line target and the 500-line ceiling.
+3. **Two editors for one experiment.** A second open while an editor for the same project and folder runs is refused with 409 `editor_running` and the running `launch_id`. One lock serialises Library opens, so two requests cannot convert one notebook twice.
+4. **Conversion log.** The tail of a failed conversion is logged once at warning level, after the provider-key and token redaction. The response holds only the plain line.
+5. **`analysis.py` as a link.** It counts as absent, so the server writes the packaged empty notebook (`created`) and never converts the link target.
+6. **Unreadable `pyproject.toml`.** A file that cannot be read is refused like one that is not TOML (`project_config_runs_on_open`).
+7. **Code editor link.** The web app adds the route `#/experiments/code-editor`, so the disabled-state hint can link to that section.
+8. **Server text in refusals.** The page shows a fixed line per reason. For `python_mismatch` and `converter_missing` it shows the server line, because that line names the versions or the install command.
+9. **Live check without jupytext.** marimo's tool environment on the build machine has no jupytext, and OMRS installs nothing. The live check (task 10.4) records the `converter_missing` refusal and opens a folder without `analysis.py`. Conversion itself is checked with the fake executable only.
+
 ## Risks / Trade-offs
 
 - [The kernel imports marimo's copies of shared packages first (`PYTHONPATH` injection), so experiment code can see a different `starlette` or `anyio` than the project pins.] → The response and the page list the shadowed names. The guide explains it and says how a project can avoid it (marimo in the project's dev dependencies, where its policy allows).

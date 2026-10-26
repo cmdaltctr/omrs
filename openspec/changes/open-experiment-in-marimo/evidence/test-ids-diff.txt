@@ -1,0 +1,176 @@
+4404a4405,4408
+> tests/unit/test_experiment_derived_files_ignored.py::test_analysis_source_is_not_ignored
+> tests/unit/test_experiment_derived_files_ignored.py::test_derived_file_is_ignored[__marimo__/session/x.json]
+> tests/unit/test_experiment_derived_files_ignored.py::test_derived_file_is_ignored[analysis.ipynb]
+> tests/unit/test_experiment_derived_files_ignored.py::test_derived_file_is_ignored[analysis.marimo.py]
+5589a5594
+> tests/unit/test_notebooks_guide.py::test_changed_guides_have_no_em_dash
+5592a5598,5599
+> tests/unit/test_notebooks_guide.py::test_experiment_records_guide_links_to_the_full_access_section
+> tests/unit/test_notebooks_guide.py::test_full_access_section_states_the_rules_of_a_library_launch
+5593a5601
+> tests/unit/test_notebooks_guide.py::test_guide_names_the_shipped_manifest_and_new_registration
+5947a5956
+> tests/unit/test_plugin_boundaries.py::test_core_plugins_start_no_processes[conversion.py]
+5948a5958
+> tests/unit/test_plugin_boundaries.py::test_core_plugins_start_no_processes[kernel_config.py]
+5950a5961,5962
+> tests/unit/test_plugin_boundaries.py::test_core_plugins_start_no_processes[shipped.py]
+> tests/unit/test_plugin_boundaries.py::test_core_plugins_start_no_processes[versions.py]
+5951a5964
+> tests/unit/test_plugin_boundaries.py::test_files_stay_below_the_size_ceiling[conversion.py]
+5952a5966
+> tests/unit/test_plugin_boundaries.py::test_files_stay_below_the_size_ceiling[kernel_config.py]
+5955a5970,5971
+> tests/unit/test_plugin_boundaries.py::test_files_stay_below_the_size_ceiling[shipped.py]
+> tests/unit/test_plugin_boundaries.py::test_files_stay_below_the_size_ceiling[versions.py]
+5962a5979,5983
+> tests/unit/test_plugin_editor.py::test_convert_default_timeout_and_failure_tail
+> tests/unit/test_plugin_editor.py::test_convert_refusals
+> tests/unit/test_plugin_editor.py::test_convert_reports_start_errors[error0]
+> tests/unit/test_plugin_editor.py::test_convert_reports_start_errors[error1]
+> tests/unit/test_plugin_editor.py::test_convert_runs_recipe_with_both_substitutions
+5963a5985,5998
+> tests/unit/test_plugin_editor.py::test_kernel_environment_keeps_argv_unchanged
+> tests/unit/test_plugin_editor.py::test_kernel_environment_renders_venv_and_dotenv
+> tests/unit/test_plugin_editor.py::test_kernel_path_is_escaped_as_toml[back\\slash]
+> tests/unit/test_plugin_editor.py::test_kernel_path_is_escaped_as_toml[emoji-\U0001f600]
+> tests/unit/test_plugin_editor.py::test_kernel_path_is_escaped_as_toml[quote".venv]
+> tests/unit/test_plugin_editor.py::test_kernel_path_is_escaped_as_toml[space and \xfcn\xef]
+> tests/unit/test_plugin_editor.py::test_kernel_path_is_escaped_as_toml[x'y]
+> tests/unit/test_plugin_editor.py::test_kernel_path_must_be_absolute
+> tests/unit/test_plugin_editor.py::test_kernel_path_with_control_character_is_refused[cr\r]
+> tests/unit/test_plugin_editor.py::test_kernel_path_with_control_character_is_refused[del\x7f]
+> tests/unit/test_plugin_editor.py::test_kernel_path_with_control_character_is_refused[new\nline]
+> tests/unit/test_plugin_editor.py::test_kernel_path_with_control_character_is_refused[nul\x00]
+> tests/unit/test_plugin_editor.py::test_kernel_path_with_control_character_is_refused[tab\there]
+> tests/unit/test_plugin_editor.py::test_launch_error_reasons
+5966a6002,6004
+> tests/unit/test_plugin_editor.py::test_open_with_kernel_environment_needs_the_capability
+> tests/unit/test_plugin_editor.py::test_open_with_kernel_environment_passes_plan
+> tests/unit/test_plugin_editor.py::test_open_without_kernel_environment_keeps_old_config
+5971a6010
+> tests/unit/test_plugin_editor.py::test_without_kernel_environment_config_is_byte_identical
+5972a6012,6024
+> tests/unit/test_plugin_manifest.py::test_convert_recipe_is_a_closed_object
+> tests/unit/test_plugin_manifest.py::test_convert_recipe_parses
+> tests/unit/test_plugin_manifest.py::test_convert_recipe_refuses_other_substitutions[args0-must use {output_path}]
+> tests/unit/test_plugin_manifest.py::test_convert_recipe_refuses_other_substitutions[args1-must use {source_path}]
+> tests/unit/test_plugin_manifest.py::test_convert_recipe_refuses_other_substitutions[args10-shell syntax]
+> tests/unit/test_plugin_manifest.py::test_convert_recipe_refuses_other_substitutions[args2-unknown substitution {port}]
+> tests/unit/test_plugin_manifest.py::test_convert_recipe_refuses_other_substitutions[args3-unknown substitution {token_file}]
+> tests/unit/test_plugin_manifest.py::test_convert_recipe_refuses_other_substitutions[args4-unknown substitution {host}]
+> tests/unit/test_plugin_manifest.py::test_convert_recipe_refuses_other_substitutions[args5-unknown substitution {notebook_path}]
+> tests/unit/test_plugin_manifest.py::test_convert_recipe_refuses_other_substitutions[args6-installer]
+> tests/unit/test_plugin_manifest.py::test_convert_recipe_refuses_other_substitutions[args7-installer]
+> tests/unit/test_plugin_manifest.py::test_convert_recipe_refuses_other_substitutions[args8-installer]
+> tests/unit/test_plugin_manifest.py::test_convert_recipe_refuses_other_substitutions[convert {source_path} -o {output_path}-not a shell string]
+5974a6027,6029
+> tests/unit/test_plugin_manifest.py::test_launch_recipe_refuses_convert_substitutions[output_path]
+> tests/unit/test_plugin_manifest.py::test_launch_recipe_refuses_convert_substitutions[source_path]
+> tests/unit/test_plugin_manifest.py::test_manifest_without_convert_recipe_has_none
+5977a6033
+> tests/unit/test_plugin_manifest.py::test_other_config_capability_without_value_still_fails
+5982a6039,6041
+> tests/unit/test_plugin_manifest.py::test_project_environment_config_must_be_a_table_key
+> tests/unit/test_plugin_manifest.py::test_project_environment_config_without_value_parses
+> tests/unit/test_plugin_manifest.py::test_project_environment_with_value_follows_the_config_rule
+6030a6090
+> tests/unit/test_plugin_marimo_manifest.py::test_empty_notebook_template_is_a_marimo_notebook
+6034a6095,6096
+> tests/unit/test_plugin_marimo_manifest.py::test_shipped_manifest_declares_project_environment_and_conversion
+> tests/unit/test_plugin_marimo_manifest.py::test_shipped_manifest_is_a_package_resource
+6035a6098,6099
+> tests/unit/test_plugin_marimo_manifest.py::test_shipped_manifests_returns_the_packaged_file
+> tests/unit/test_plugin_marimo_manifest.py::test_shipped_manifests_skips_a_resource_that_is_not_on_disk
+6057a6122
+> tests/unit/test_plugin_registration.py::test_run_command_passes_argv_and_timeout_to_the_runner
+6082a6148,6149
+> tests/unit/test_process_launcher_editor.py::test_convert_runs_the_fake_through_the_probe_runner
+> tests/unit/test_process_launcher_editor.py::test_kernel_environment_reaches_the_editor_config
+7118a7186,7210
+> tests/unit/test_web_experiment_editor.py::test_a_bearer_credential_cannot_launch
+> tests/unit/test_web_experiment_editor.py::test_a_body_other_than_consent_is_a_validation_error[{'consent': 'yes'}]
+> tests/unit/test_web_experiment_editor.py::test_a_body_other_than_consent_is_a_validation_error[{'consent': True, 'notebook': 'x.py'}]
+> tests/unit/test_web_experiment_editor.py::test_a_body_other_than_consent_is_a_validation_error[{}]
+> tests/unit/test_web_experiment_editor.py::test_a_different_python_without_marimo_is_python_mismatch
+> tests/unit/test_web_experiment_editor.py::test_a_folder_name_with_a_path_escape_is_refused[.hidden]
+> tests/unit/test_web_experiment_editor.py::test_a_folder_name_with_a_path_escape_is_refused[%2E%2E]
+> tests/unit/test_web_experiment_editor.py::test_a_folder_name_with_a_path_escape_is_refused[a%5Cb]
+> tests/unit/test_web_experiment_editor.py::test_a_launch_failure_is_launch_failed
+> tests/unit/test_web_experiment_editor.py::test_a_linked_notebook_is_refused
+> tests/unit/test_web_experiment_editor.py::test_a_manifest_without_the_convert_recipe_is_unsupported_only_when_needed
+> tests/unit/test_web_experiment_editor.py::test_a_manifest_without_the_project_capability_is_editor_unsupported
+> tests/unit/test_web_experiment_editor.py::test_a_project_that_runs_cells_on_open_is_refused
+> tests/unit/test_web_experiment_editor.py::test_a_project_without_a_venv_is_refused
+> tests/unit/test_web_experiment_editor.py::test_another_conversion_failure_is_conversion_failed
+> tests/unit/test_web_experiment_editor.py::test_busy_ports_are_no_free_port
+> tests/unit/test_web_experiment_editor.py::test_consent_false_is_refused_and_reads_nothing
+> tests/unit/test_web_experiment_editor.py::test_marimo_not_registered_is_editor_unavailable
+> tests/unit/test_web_experiment_editor.py::test_missing_jupytext_is_converter_missing_and_leaves_no_file
+> tests/unit/test_web_experiment_editor.py::test_open_converts_once_returns_the_token_once_and_logs_no_token
+> tests/unit/test_web_experiment_editor.py::test_open_responses_conform_to_the_contract
+> tests/unit/test_web_experiment_editor.py::test_open_without_analysis_creates_the_packaged_notebook
+> tests/unit/test_web_experiment_editor.py::test_the_kernel_gets_the_project_venv_and_no_dotenv
+> tests/unit/test_web_experiment_editor.py::test_the_plugin_list_names_the_shipped_manifest
+> tests/unit/test_web_experiment_editor.py::test_unknown_project_unlisted_folder_and_removed_project_are_404
+8427a8520,8578
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_conversion_creates_the_notebook_exclusively
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_conversion_writes_the_notebook_through_a_private_folder
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_converter_error_still_removes_the_private_folder
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_existing_notebook_is_opened_unchanged
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_existing_notebook_reports_a_newer_source
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_existing_notebook_without_source_is_not_stale
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_failed_write_removes_the_partial_notebook
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_folder_without_source_gets_the_template
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_jupytext_word_with_success_code_is_not_a_failure
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_link_that_appears_during_conversion_is_refused
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_missing_jupytext_is_refused_and_leaves_no_file
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_needs_conversion_is_false_for_a_source_link
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_needs_conversion_is_false_with_a_notebook
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_needs_conversion_is_false_without_source
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_needs_conversion_with_source_and_no_notebook
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_notebook_exists_is_false_when_absent
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_notebook_exists_is_true_for_a_regular_file
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_notebook_folder_is_refused
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_notebook_link_is_refused
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_notebook_that_appears_during_conversion_is_kept
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_other_conversion_failure_is_refused_and_leaves_no_file
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_prepare_refuses_a_notebook_link_and_converts_nothing
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_real_converted_experiment_only_gains_the_notebook
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_success_code_without_output_file_is_refused
+> tests/unit/test_workspace_experiment_editor_notebook.py::test_template_keeps_a_notebook_that_appeared_first
+> tests/unit/test_workspace_experiment_editor.py::test_auto_instantiate_false_is_accepted
+> tests/unit/test_workspace_experiment_editor.py::test_check_is_skipped_for_a_relative_shebang
+> tests/unit/test_workspace_experiment_editor.py::test_check_is_skipped_when_executable_has_no_shebang
+> tests/unit/test_workspace_experiment_editor.py::test_check_is_skipped_when_executable_is_missing
+> tests/unit/test_workspace_experiment_editor.py::test_check_is_skipped_when_executable_is_text_without_shebang
+> tests/unit/test_workspace_experiment_editor.py::test_check_is_skipped_when_project_config_cannot_be_opened
+> tests/unit/test_workspace_experiment_editor.py::test_check_is_skipped_when_project_config_is_not_text
+> tests/unit/test_workspace_experiment_editor.py::test_check_is_skipped_when_project_version_is_unreadable
+> tests/unit/test_workspace_experiment_editor.py::test_check_is_skipped_when_tool_config_is_missing
+> tests/unit/test_workspace_experiment_editor.py::test_config_lines_without_a_value_are_ignored
+> tests/unit/test_workspace_experiment_editor.py::test_dangling_venv_link_is_refused
+> tests/unit/test_workspace_experiment_editor.py::test_executable_link_is_followed_to_its_tool_environment
+> tests/unit/test_workspace_experiment_editor.py::test_invalid_toml_is_refused
+> tests/unit/test_workspace_experiment_editor.py::test_marimo_table_of_the_wrong_type_is_accepted
+> tests/unit/test_workspace_experiment_editor.py::test_matching_environment_returns_the_details
+> tests/unit/test_workspace_experiment_editor.py::test_missing_venv_is_refused_with_uv_sync_hint
+> tests/unit/test_workspace_experiment_editor.py::test_nearer_safe_pyproject_hides_a_farther_one
+> tests/unit/test_workspace_experiment_editor.py::test_nearest_pyproject_with_auto_instantiate_is_refused
+> tests/unit/test_workspace_experiment_editor.py::test_no_mismatch_check_when_marimo_is_in_the_project
+> tests/unit/test_workspace_experiment_editor.py::test_no_pyproject_is_accepted
+> tests/unit/test_workspace_experiment_editor.py::test_non_distribution_entries_are_ignored
+> tests/unit/test_workspace_experiment_editor.py::test_pyproject_in_the_experiment_folder_wins
+> tests/unit/test_workspace_experiment_editor.py::test_pyproject_without_marimo_settings_is_accepted
+> tests/unit/test_workspace_experiment_editor.py::test_python_mismatch_names_both_versions
+> tests/unit/test_workspace_experiment_editor.py::test_shadowed_names_are_capped_at_twenty
+> tests/unit/test_workspace_experiment_editor.py::test_shadowed_names_are_normalised
+> tests/unit/test_workspace_experiment_editor.py::test_shadowed_names_differ_in_version_and_are_sorted
+> tests/unit/test_workspace_experiment_editor.py::test_unreadable_pyproject_is_refused
+> tests/unit/test_workspace_experiment_editor.py::test_unreadable_site_packages_lists_nothing
+> tests/unit/test_workspace_experiment_editor.py::test_venv_link_is_resolved
+> tests/unit/test_workspace_experiment_editor.py::test_venv_that_is_a_file_is_refused
+> tests/unit/test_workspace_experiment_editor.py::test_venv_without_bin_python_is_refused
+> tests/unit/test_workspace_experiment_editor.py::test_venv_without_pyvenv_cfg_is_refused
+> tests/unit/test_workspace_experiment_editor.py::test_version_key_from_standard_venv_is_read

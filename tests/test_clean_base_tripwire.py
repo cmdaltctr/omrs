@@ -176,7 +176,11 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # (need fastapi; one skips as root).
 # +5 (2026-10-25, LanceDB exit crash, TDR-040): test_lance_child_helper.py (5).
 # No fastapi needed.
-_BASE_EXECUTED = 8531
+# +151 (2026-10-26, open-experiment-in-marimo): test_plugin_*.py (57),
+# test_workspace_experiment_editor*.py (59), test_process_launcher_editor.py (2),
+# test_experiment_derived_files_ignored.py (4); no fastapi. test_web_experiment_editor.py
+# (25) and test_notebooks_guide.py (4) need fastapi.
+_BASE_EXECUTED = 8682
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -490,7 +494,9 @@ if not _has_qwen_tokenizer:
 # test_web_experiment_create.py (10), test_web_experiment_library_hardening.py (27)
 # and the conformance case (1) (1553). Three permission cases skip as root.
 # +3 (2026-10-25, verification fixes): index-failure cases in test_web_experiment_create.py (1556).
-_WEB_EXTRA_CASES = 1556
+# +29 (2026-10-26, open-experiment-in-marimo): test_web_experiment_editor.py (25) and
+# test_notebooks_guide.py (4) (1585).
+_WEB_EXTRA_CASES = 1585
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)

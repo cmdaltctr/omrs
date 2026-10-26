@@ -33,19 +33,27 @@ type SectionId = (typeof SECTIONS)[number]["id"];
  * pipeline runs. A run, experiment or notebook in the route opens its page;
  * otherwise one chip-switched section shows. The view stays mounted while the
  * route changes inside Experiments, so the section and the library filters
- * are kept when the user comes back from a page.
+ * are kept when the user comes back from a page. `#/experiments/code-editor`
+ * opens the Code editor section.
  */
 export function ExperimentsView({ route }: { route: ExperimentsRoute }) {
   const api = useApi();
   const experiments = useQuery(experimentsQuery(api));
   const plugins = useQuery(pluginsQuery(api));
-  const [section, setSection] = useState<SectionId>("library");
+  const linked = "section" in route ? route.section : null;
+  const [section, setSection] = useState<SectionId>(linked ?? "library");
+  // A link to a section switches to it, also when the view is already mounted.
+  const [lastLinked, setLastLinked] = useState(linked);
+  if (linked !== lastLinked) {
+    setLastLinked(linked);
+    if (linked !== null) setSection(linked);
+  }
   const [filters, setFilters] = useState<LibraryFilters>(NO_FILTERS);
   const trustNotice = experiments.data?.trust_notice ?? plugins.data?.trust_notice ?? null;
 
   if ("notebookId" in route) return <NotebookPage key={route.notebookId} notebookId={route.notebookId} />;
   if ("folder" in route) return <ExperimentPage key={`${route.projectId}/${route.folder}`} projectId={route.projectId} folder={route.folder} />;
-  if (route.runId !== null) return <RunPage runId={route.runId} />;
+  if ("runId" in route && route.runId !== null) return <RunPage runId={route.runId} />;
 
   return (
     <section className="flex flex-col gap-4">

@@ -258,6 +258,18 @@ Select a card to open the experiment page. The tabs show the protocol, the plan,
 
 The app opens only text files at the top level of the experiment folder: `.md`, `.json`, `.jsonl`, `.txt`, `.csv`, `.yaml`, `.yml` and `.py`. It shows the first 1 MiB of a larger file. It lists other files, such as HTML review pages, but does not open them, because they can hold scripts. Open those files from your file manager.
 
+### Open an experiment in marimo
+
+The experiment page can open the analysis of the experiment in the marimo notebook editor. The notebook runs with your full access, in the `.venv` of the project.
+
+1. Register marimo in **Code editor** first.
+2. Open the experiment page, then select **Open in marimo**.
+3. Read the dialog and tick the box.
+4. Select **Open in marimo** in the dialog. The editor opens in a new browser tab.
+5. Paste the access token from the page into the marimo sign-in page.
+
+OMRS converts `analysis.py` to `analysis.marimo.py` in the experiment folder. It does not change a tracked file. Add `experiments/**/analysis.marimo.py` and `experiments/**/__marimo__/` to the `.gitignore` of the project. Read [Full access from the Library](notebooks.md#full-access-from-the-library) before you open a notebook.
+
 ### Group experiments in a notebook
 
 1. Open **Notebooks**.

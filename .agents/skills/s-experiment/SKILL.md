@@ -14,7 +14,7 @@ This skill runs experiments in a fixed, simple way. Every experiment answers one
 3. Pick the smallest size that answers the question (see "Sizes"). Keep to its script limit. Ask the user before you add more.
 4. Do not change `plan.json` after the first run. Record any change as an amendment in its `amendments` list. No tool writes to `plan.json`.
 5. Status lives only in `experiment.json`. Never write a status into `plan.json`, `protocol.md` or `report.md`.
-6. In a finished or converted experiment, change only `experiment.json`. Never edit its other files.
+6. In a finished or converted experiment, change only `experiment.json`. Never edit its other files. A tool may add the git-ignored derived files `analysis.ipynb`, `analysis.marimo.py` and `__marimo__/`. Never commit them.
 7. Write only inside the experiment folder. Never touch production data or `.env`.
 8. Every number in a report names the `output/` file it came from.
 9. Reports open with the Answer box. Write in plain British English, with sentences of 20 words or fewer. Explain each term in the sentence where it first appears.

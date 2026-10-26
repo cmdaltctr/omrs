@@ -84,7 +84,7 @@ Unknown keys are an error. Status lives only in `experiment.json`. Do not write 
 
 ## Keep the record and the index current
 
-- In a finished or converted experiment, change only `experiment.json`. Never edit its other files.
+- In a finished or converted experiment, change only `experiment.json`. Never edit its other files. A tool may add the git-ignored derived files `analysis.ipynb`, `analysis.marimo.py` and `__marimo__/`. Never commit them.
 - Update `status` and `finding` in `experiment.json` at each step.
 - Rebuild the index table with `uv run --no-sync omrs experiments index --write`. Do not edit the rows between the index markers by hand.
 - Check the folder with `uv run --no-sync omrs experiments check`. Fix every error before you commit.

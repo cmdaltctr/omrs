@@ -17,6 +17,7 @@ const ROUTES: { route: Route; hash: string }[] = [
   { route: { area: "experiments", runId: "run_9" }, hash: "#/experiments/runs/run_9" },
   { route: { area: "experiments", projectId: "p1", folder: "12-ocr-2026-10-25" }, hash: "#/experiments/library/p1/12-ocr-2026-10-25" },
   { route: { area: "experiments", notebookId: "n1" }, hash: "#/experiments/notebooks/n1" },
+  { route: { area: "experiments", section: "code-editor" }, hash: "#/experiments/code-editor" },
   { route: { area: "integrations", entry: null }, hash: "#/integrations" },
   { route: { area: "integrations", entry: "anthropic" }, hash: "#/integrations/anthropic" },
   { route: { area: "settings", section: null }, hash: "#/settings" },

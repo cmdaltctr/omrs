@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import os
+import tomllib
 from pathlib import Path
 
 import pytest
 from tests.unit.test_plugin_marimo_manifest import MANIFEST
 from tests.unit.test_process_launcher_support import (
+    CONVERT_FAILS_MARKER,
+    FAKE_CONVERTED,
+    JUPYTEXT_ERROR,
     alive,
     file_digest,
     free_port,
@@ -17,7 +21,12 @@ from tests.unit.test_process_launcher_support import (
     wait_gone,
 )
 
-from omrs.core.plugins import NotebookEditorSupervisor, PluginLaunchError, PluginRegistry
+from omrs.core.plugins import (
+    KernelEnvironment,
+    NotebookEditorSupervisor,
+    PluginLaunchError,
+    PluginRegistry,
+)
 from omrs.integrations.process_launcher import OwnedProcessLauncher, SubprocessProbeRunner
 from omrs.integrations.workspace_sqlite import SqliteWorkspaceRepository
 
@@ -93,3 +102,33 @@ def test_only_busy_ports_fail_clearly(parts) -> None:
             supervisor(registry, launcher, [busy]).open("marimo", notebook, consent=True)
         assert alive(other.pid)
     assert launcher.owned_ids() == []
+
+
+def test_kernel_environment_reaches_the_editor_config(parts, tmp_path: Path) -> None:
+    registry, launcher, exe, notebook = parts
+    venv = tmp_path / 'project "x"' / ".venv"
+    sup = supervisor(registry, launcher, [free_port()])
+    session = sup.open("marimo", notebook, consent=True, kernel_environment=KernelEnvironment(venv))
+    record = read_record(exe.parent)
+    config = tomllib.loads(record["config"])
+    assert config["venv"] == {"path": str(venv), "writable": False}
+    assert config["runtime"]["dotenv"] == [] and config["runtime"]["auto_instantiate"] is False
+    assert str(venv) not in " ".join(record["argv"])
+    sup.stop(session.launch_id)
+    assert wait_gone(record["pid"])
+
+
+def test_convert_runs_the_fake_through_the_probe_runner(parts, tmp_path: Path) -> None:
+    registry, launcher, exe, _ = parts
+    registry.recheck("marimo")
+    source, output = tmp_path / "analysis.py", tmp_path / "private" / "analysis.marimo.py"
+    source.write_text("# %%\nprint(1)\n")
+    output.parent.mkdir()
+    sup = supervisor(registry, launcher, [free_port()])
+    result = sup.convert("marimo", source, output, timeout=30.0)
+    assert result.returncode == 0 and output.read_text() == FAKE_CONVERTED
+    (exe.parent / CONVERT_FAILS_MARKER).write_text("")
+    output.unlink()
+    failed = sup.convert("marimo", source, output, timeout=30.0)
+    assert failed.returncode == 1 and JUPYTEXT_ERROR in failed.output_tail
+    assert not output.exists() and launcher.owned_ids() == []

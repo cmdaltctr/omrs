@@ -19,13 +19,27 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
+# Re-exported: the version helpers lived here before the split.
+from omrs.core.plugins.versions import Version as Version
+from omrs.core.plugins.versions import VersionRange as VersionRange
+from omrs.core.plugins.versions import format_version as format_version
+from omrs.core.plugins.versions import pad_version as _pad
+from omrs.core.plugins.versions import parse_version as parse_version
+
 SCHEMA_VERSION = 1
 MAX_MANIFEST_BYTES = 64 * 1024
 MAX_ARGS = 32
 MAX_ARG_LENGTH = 256
 
 RECIPE_NAMES: frozenset[str] = frozenset({"probe", "launch_notebook"})
+OPTIONAL_RECIPE_NAMES: frozenset[str] = frozenset({"convert_script"})
 SUBSTITUTIONS: frozenset[str] = frozenset({"notebook_path", "host", "port", "token_file"})
+#: The only substitutions of ``convert_script``; the host sets both paths.
+CONVERT_SUBSTITUTIONS: frozenset[str] = frozenset({"source_path", "output_path"})
+#: A capability whose config value the host fills in at launch time.
+PROJECT_ENVIRONMENT = "project_environment"
+#: Capabilities that may name a ``config`` key without a ``value``.
+HOST_CONFIG_CAPABILITIES: frozenset[str] = frozenset({PROJECT_ENVIRONMENT})
 
 # The host refuses a launch unless the manifest declares all of these and the
 # installed tool confirms the declared flags (see registration.py).
@@ -45,7 +59,6 @@ CAPABILITY_SUBSTITUTIONS: Mapping[str, str] = {
 _ID_RE = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 _KEY_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
 _FILE_RE = re.compile(r"^\.?[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
-_VERSION_RE = re.compile(r"(\d+)\.(\d+)(?:\.(\d+))?(?:\.(\d+))?")
 _PLACEHOLDER_RE = re.compile(r"\{([^{}]*)\}")
 _SHELL_CHARS = frozenset(";&|$`<>()!*?~\"'\\\n\r\t ")
 _CREDENTIAL_WORDS = ("password", "passwd", "secret", "token", "api_key", "apikey", "credential")
@@ -74,6 +87,7 @@ _TOOL_KEYS = frozenset({"name", "executable", "tested_versions"})
 _RANGE_KEYS = frozenset({"minimum", "below"})
 _PROBE_KEYS = frozenset({"version_args", "help_args"})
 _LAUNCH_KEYS = frozenset({"args", "config_file"})
+_CONVERT_KEYS = frozenset({"args"})
 _CONFIG_KEYS = frozenset({"name", "values"})
 _CAPABILITY_KEYS = frozenset({"argument", "config", "value"})
 
@@ -84,38 +98,6 @@ class ManifestError(ValueError):
     def __init__(self, problems: Sequence[str]) -> None:
         self.problems = tuple(problems)
         super().__init__("invalid plugin manifest: " + "; ".join(self.problems))
-
-
-Version = tuple[int, ...]
-
-
-def parse_version(text: str) -> Version | None:
-    """Return the first dotted version number in ``text``, or ``None``."""
-    match = _VERSION_RE.search(text)
-    if match is None:
-        return None
-    return tuple(int(part) for part in match.groups() if part is not None)
-
-
-def format_version(version: Version) -> str:
-    """Return ``version`` as a dotted string."""
-    return ".".join(str(part) for part in version)
-
-
-@dataclass(frozen=True)
-class VersionRange:
-    """Tested tool versions: ``minimum`` inclusive, ``below`` exclusive."""
-
-    minimum: Version
-    below: Version
-
-    def contains(self, version: Version) -> bool:
-        """Return whether ``version`` is inside the tested range."""
-        return _pad(self.minimum) <= _pad(version) < _pad(self.below)
-
-    def describe(self) -> str:
-        """Return the range as text for messages."""
-        return f">={format_version(self.minimum)},<{format_version(self.below)}"
 
 
 @dataclass(frozen=True)
@@ -171,6 +153,13 @@ class LaunchRecipe:
 
 
 @dataclass(frozen=True)
+class ConvertRecipe:
+    """Argument templates for ``convert_script`` (source and output path only)."""
+
+    args: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class PluginManifest:
     """A validated external-tool manifest and the SHA-256 of its bytes."""
 
@@ -187,6 +176,7 @@ class PluginManifest:
     sha256: str
     description: str = ""
     missing_capabilities: tuple[str, ...] = field(default=())
+    convert: ConvertRecipe | None = None
 
 
 def parse_manifest(raw: bytes) -> PluginManifest:
@@ -241,11 +231,14 @@ def _build(data: Any, sha256: str, problems: list[str]) -> PluginManifest | None
     tool = _section(data, "tool", "manifest", problems)
     tool_name = _text(tool, "name", "tool", problems)
     recipes = _section(data, "recipes", "manifest", problems)
-    _closed(recipes, RECIPE_NAMES, "recipes", problems, noun="recipe")
+    _closed(recipes, RECIPE_NAMES | OPTIONAL_RECIPE_NAMES, "recipes", problems, noun="recipe")
     for name in sorted(RECIPE_NAMES - set(recipes)):
         problems.append(f"recipes.{name} is required")
     probe = _probe(_section(recipes, "probe", "recipes", problems, required=False), problems)
     launch = _launch(_section(recipes, "launch_notebook", "recipes", problems, False), problems)
+    convert = None
+    if "convert_script" in recipes:
+        convert = _convert(_section(recipes, "convert_script", "recipes", problems), problems)
     tested = _range(tool, problems)
     executable = _executable(tool, problems)
     capabilities = _capabilities(data.get("capabilities", {}), launch, problems)
@@ -267,6 +260,7 @@ def _build(data: Any, sha256: str, problems: list[str]) -> PluginManifest | None
         missing_capabilities=tuple(
             name for name in REQUIRED_LAUNCH_CAPABILITIES if name not in capabilities
         ),
+        convert=convert,
     )
 
 
@@ -313,6 +307,16 @@ def _launch(raw: Mapping[str, Any], problems: list[str]) -> LaunchRecipe:
     if "config_file" in raw:
         config = _config_file(raw["config_file"], problems)
     return LaunchRecipe(args, config)
+
+
+def _convert(raw: Mapping[str, Any], problems: list[str]) -> ConvertRecipe:
+    where = "recipes.convert_script.args"
+    _closed(raw, _CONVERT_KEYS, "recipes.convert_script", problems)
+    args = _args(raw.get("args"), where, CONVERT_SUBSTITUTIONS, problems)
+    for name in sorted(CONVERT_SUBSTITUTIONS):
+        if not any(f"{{{name}}}" in arg for arg in args):
+            problems.append(f"{where} must use {{{name}}}")
+    return ConvertRecipe(args)
 
 
 def _config_file(raw: Any, problems: list[str]) -> ConfigFile | None:
@@ -365,6 +369,9 @@ def _capabilities(raw: Any, launch: LaunchRecipe, problems: list[str]) -> dict[s
             problems.append(f"{where} needs exactly one of 'argument' or 'config'")
         elif cap.argument is not None and cap.argument not in launch.args:
             problems.append(f"{where}: argument {cap.argument!r} is not in the launch recipe")
+        elif name in HOST_CONFIG_CAPABILITIES and "value" not in spec:
+            if not isinstance(cap.config, str) or not _is_table_key(cap.config):
+                problems.append(f"{where}: config must name a 'table.key' the host fills in")
         elif cap.config is not None:
             config = launch.config_file
             found, value = config.lookup(cap.config) if config else (False, None)
@@ -416,6 +423,11 @@ def _check_arg(where: str, arg: str, allowed: Any, problems: list[str]) -> None:
             problems.append(f"{where}: manifests must not carry credentials")
 
 
+def _is_table_key(dotted: str) -> bool:
+    table, dot, key = dotted.partition(".")
+    return bool(dot) and bool(_KEY_RE.match(table)) and bool(_KEY_RE.match(key))
+
+
 def _is_secret_flag(arg: str) -> bool:
     lowered = arg.lower()
     return lowered.startswith("-") and any(w in lowered for w in ("password", "secret", "api"))
@@ -459,10 +471,6 @@ def _no_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
             raise ValueError(f"duplicate key {key!r}")
         result[key] = value
     return result
-
-
-def _pad(version: Version) -> Version:
-    return tuple(version) + (0,) * (4 - len(version))
 
 
 def _toml_scalar(value: Any) -> str:

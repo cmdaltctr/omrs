@@ -33,6 +33,7 @@ from typing import Any, Protocol
 from fastapi import FastAPI, HTTPException, Request
 
 from ...core.ingestion.settings import DEFAULT_INGEST_EXTENSIONS
+from ...core.plugins.shipped import shipped_manifests
 from ...core.workspace import WorkspaceLayout
 from ...integrations.workspace_sqlite.schema import make_private_dirs
 
@@ -50,10 +51,8 @@ logger = logging.getLogger(__name__)
 
 #: Built frontend assets inside the installed package.
 PACKAGED_STATIC_DIR = Path(__file__).resolve().parent / "static"
-#: The marimo manifest shipped beside the source tree (not in the wheel).
-SHIPPED_PLUGIN_MANIFESTS: tuple[Path, ...] = (
-    Path(__file__).resolve().parents[4] / "plugins" / "marimo" / "manifest.json",
-)
+#: Manifests shipped as package data (real files only), approved for registration.
+SHIPPED_PLUGIN_MANIFESTS: tuple[Path, ...] = shipped_manifests()
 #: Loopback ports a notebook editor may use, tried in order.
 DEFAULT_PLUGIN_PORTS: tuple[int, ...] = (2719, 2720, 2721)
 
@@ -118,6 +117,8 @@ class PluginHost:
         executable_dirs: Directories an executable may come from: the
             server's ``PATH`` at launch and ``<workspace>/plugins``.
         editor_contexts: Launch id to experiment context id.
+        editor_experiments: Launch id to ``(project_id, folder)`` for an
+            editor that the Library opened (open-experiment-in-marimo D7).
         editor_cleanups: Launch id to the call that revokes the editor's
             notebook credential. Stop and shutdown run it.
     """
@@ -129,6 +130,7 @@ class PluginHost:
     manifest_dir: Path
     executable_dirs: tuple[Path, ...]
     editor_contexts: dict[str, str] = field(default_factory=dict)
+    editor_experiments: dict[str, tuple[str, str]] = field(default_factory=dict)
     editor_cleanups: dict[str, Callable[[], object]] = field(default_factory=dict)
 
 
@@ -270,7 +272,7 @@ def default_plugins_factory(config: WebConfig) -> PluginHost:
         repository,
         registry,
         editors,
-        manifests=tuple(path for path in SHIPPED_PLUGIN_MANIFESTS if path.is_file()),
+        manifests=SHIPPED_PLUGIN_MANIFESTS,
         manifest_dir=plugin_dir,
         executable_dirs=(*path_dirs, plugin_dir),
     )
@@ -321,6 +323,7 @@ def _revoke_editor_credentials(plugins: PluginHost) -> None:
         except Exception:
             logger.exception("Revoking a notebook editor credential failed during web shutdown.")
     plugins.editor_contexts.clear()
+    plugins.editor_experiments.clear()
 
 
 def build_lifespan(

@@ -31,6 +31,8 @@ const OPENED: EditorOpened = {
   notebook: "/srv/exp/chunks/starter.py",
   experiment_context: "exp_1",
   url_without_token: "http://127.0.0.1:2719/",
+  project_id: null,
+  folder: null,
   token_delivery: { method: "response_body_once", token: "editor-secret" },
   trust_notice: "Trust text.",
 };
@@ -38,7 +40,7 @@ const OPENED: EditorOpened = {
 describe("plugins client", () => {
   it("lists plugin states, running editors, the install hint and the trust notice", async () => {
     const server = documentsServer({
-      "GET /v1/plugins": () => ({ status: "ok", plugins: [STATE], editors: [], install_hint: "Install outside OMRS.", trust_notice: "Trust text." }),
+      "GET /v1/plugins": () => ({ status: "ok", plugins: [STATE], editors: [], install_hint: "Install outside OMRS.", trust_notice: "Trust text.", shipped_manifests: [] }),
     });
     const api = createApiClient(server.fetchImpl);
     const list = await listPlugins(api);

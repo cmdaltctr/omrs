@@ -6,10 +6,15 @@ import { Check, TextField } from "./fields";
 import { pluginStatusLabel } from "./labels";
 import { useRegisterPlugin } from "./mutations";
 
-/** Registers an approved manifest and executable. Registration runs no process and installs nothing. */
-export function PluginRegisterForm() {
+/**
+ * Registers an approved manifest and executable. Registration runs no process
+ * and installs nothing. Until the user types, the manifest path holds the
+ * manifest that the installed application ships, when the server names one.
+ */
+export function PluginRegisterForm({ shippedManifest = null }: { shippedManifest?: string | null }) {
   const register = useRegisterPlugin();
-  const [manifestPath, setManifestPath] = useState("");
+  const [typedManifest, setManifestPath] = useState<string | null>(null);
+  const manifestPath = typedManifest ?? shippedManifest ?? "";
   const [executablePath, setExecutablePath] = useState("");
   const [approved, setApproved] = useState(false);
   const [done, setDone] = useState<string | null>(null);

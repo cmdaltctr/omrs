@@ -12,15 +12,15 @@ Related guides:
 
 ## What is in the plugin
 
-The plugin is the folder `plugins/marimo/`:
+The plugin has these files:
 
 | File | Contents |
 |---|---|
-| `plugins/marimo/manifest.json` | Plugin identity, tested marimo versions, capabilities, and the fixed probe and launch arguments. |
+| `src/omrs/core/plugins/shipped/marimo/manifest.json` | Plugin identity, tested marimo versions, capabilities, and the fixed probe, launch and conversion arguments. |
 | `plugins/marimo/README.md` | Install, register, recheck, launch, stop and update steps for marimo. |
 | `plugins/marimo/starter_notebook.py` | A starter notebook that runs graphs through the OMRS API. |
 
-The folder is not in the OMRS wheel. OMRS does not depend on marimo, and marimo is not in the OMRS lock file. The manifest is data. It contains no shell commands, no Python hooks, no credentials and no install steps.
+The manifest is package data in the OMRS wheel, so an installed application finds it. `GET /v1/plugins` gives its absolute path in `shipped_manifests`. The README and the starter notebook stay in the folder `plugins/marimo/`. That folder is not in the OMRS wheel. OMRS does not depend on marimo, and marimo is not in the OMRS lock file. The manifest is data. It contains no shell commands, no Python hooks, no credentials and no install steps.
 
 ## Trust model
 
@@ -72,11 +72,11 @@ To end an experiment, revoke it with `DELETE /v1/experiments/{context_id}`. A ru
 
 Plugin routes are session only. A bearer credential cannot use them.
 
-1. Read `plugins/marimo/manifest.json`.
-2. Register it with `POST /v1/plugins`:
+1. Read `GET /v1/plugins`. The field `shipped_manifests` gives the path of the shipped manifest. Read that file.
+2. Register it with `POST /v1/plugins`. The registration form in **Code editor** fills in the manifest path for you.
 
    ```json
-   {"manifest_path": "<checkout>/plugins/marimo/manifest.json", "executable_path": "<path from command -v marimo>", "approved": true}
+   {"manifest_path": "<path from shipped_manifests>", "executable_path": "<path from command -v marimo>", "approved": true}
    ```
 
    The manifest must be the shipped file or a file below `<workspace>/plugins/`. The executable must be in a `PATH` directory or below `<workspace>/plugins/`.
@@ -85,6 +85,8 @@ Plugin routes are session only. A bearer credential cannot use them.
 4. Read the state with `GET /v1/plugins`. The plugin stays disabled when the version is outside the tested range, or when the help text does not list a required launch option. The message names the problem.
 
 Before you register a plugin, `GET /v1/plugins` returns an empty list and an install hint. A recheck of an unknown plugin returns 404. Nothing else in the workspace changes.
+
+**Register again after an upgrade.** Manifest version 0.3.0 moved the manifest into the package. The old file was plugins/marimo/manifest.json in the checkout. A registration made with the old file shows that its manifest is missing or changed, and the plugin stays disabled. Do steps 1 to 3 again with the shipped manifest. Each OMRS version that changes the manifest also needs a new registration.
 
 ## Open a notebook
 
@@ -170,6 +172,75 @@ If `OMRS_CONNECTION_FILE` is not set, the notebook reads three environment varia
 Each run records the graph revision, the effective settings, the backend and index identity, the inputs and the outputs. The notebook writes a checkpoint below `output/runs/` in the notebook directory. It writes a temporary file first, then renames it, so a failed write keeps the earlier checkpoint.
 
 The notebook never stores or prints the token.
+
+## Full access from the Library
+
+The experiment page in **Library** has the button **Open in marimo**. It opens the analysis of that experiment in marimo, with the packages of the project. This launch has full access. It does not use an experiment workspace or an experiment credential. The route is `POST /v1/experiment-projects/{project_id}/experiments/{folder}/editor`. It needs a browser session with the `manage` scope and the body `{"consent": true}`.
+
+### What full access means
+
+The notebook kernel runs as you, with the Python packages of the project. Code in a cell can:
+
+- read and write any file that you can read and write,
+- use the network,
+- read the project `.env` file if the code opens it,
+- change the project `.venv` if you install a package from the marimo package panel.
+
+OMRS does not sandbox the kernel. An `Engine` that a cell builds on the live library writes to the same store as the running app. Use stores that are local to the experiment folder.
+
+The dialog shows this text. You must tick the box before the editor opens:
+
+> This opens `analysis.marimo.py` in marimo in a new tab. The notebook runs in this project's Python environment with your full file and network access, like any program you start. OMRS does not sandbox it. Cells do not run until you run them. OMRS adds `analysis.marimo.py` and marimo adds `__marimo__/` in the experiment folder. Add both to your `.gitignore`.
+
+### The project environment
+
+- **Only `<project root>/.venv`.** The kernel runs in that folder. It must hold `pyvenv.cfg` and `bin/python` (the POSIX layout). The folder can be a link. Conda, Poetry environments outside the project and `UV_PROJECT_ENVIRONMENT` are not supported. Without a usable `.venv`, OMRS refuses with `no_project_environment`. Run `uv sync` (or `python -m venv .venv`) in the project folder, then open again.
+- **Same Python version.** When the project `.venv` has no marimo, its Python major.minor must be the same as the marimo tool environment. OMRS reads both versions from `pyvenv.cfg` files. It finds the marimo tool environment from the `#!` line of the registered executable. A difference gives the refusal `python_mismatch`, with both versions named. When OMRS cannot read a file, it skips the check and marimo reports the problem in the editor.
+- **No automatic install.** OMRS writes `writable = false` for the environment in the private `.marimo.toml`. marimo then installs nothing by itself. A package install from the package panel is your own action.
+
+### Shadowed packages
+
+When the project `.venv` has no marimo, marimo puts its own tool packages on the `PYTHONPATH` of the kernel. These copies come first. If a package is in both environments with different versions, the kernel imports the marimo copy. OMRS lists the names of these packages (at most 20) as a warning on the page. To prevent this, add marimo to the dev dependencies of the project, if your project policy permits it. marimo then uses the copy in the project `.venv`.
+
+### The `.env` file and startup execution
+
+- **`.env` is not loaded.** The private `.marimo.toml` sets `runtime.dotenv` to an empty list (`dotenv = []`). So provider keys in the project `.env` do not go into the kernel environment. If the project sets its own `runtime.dotenv` in its `pyproject.toml`, the project setting wins.
+- **No cell runs when the notebook opens.** The private `.marimo.toml` sets `auto_instantiate = false`. A `pyproject.toml` can turn startup execution back on with `[tool.marimo.runtime]`. Before the launch, OMRS reads the nearest `pyproject.toml` above the experiment folder. If it sets `auto_instantiate = true`, or if it is not valid TOML, OMRS refuses with `project_config_runs_on_open`.
+
+### Derived files and git
+
+OMRS writes the notebook as `analysis.marimo.py` in the experiment folder, beside `analysis.py`. marimo writes its session cache below `__marimo__/` in the same folder. Both are derived files. `analysis.py` stays the source of truth. OMRS does not change a tracked file and does not edit the `.gitignore` of a project.
+
+Add these two patterns to the `.gitignore` of the project:
+
+```text
+experiments/**/analysis.marimo.py
+experiments/**/__marimo__/
+```
+
+This repository already has them.
+
+### Conversion and jupytext
+
+When `analysis.marimo.py` does not exist, OMRS converts `analysis.py` with `marimo convert`. When `analysis.py` does not exist, OMRS writes an empty starter notebook. OMRS never overwrites an existing `analysis.marimo.py`.
+
+marimo needs jupytext to convert the percent format of `analysis.py`. Without it, OMRS refuses with `converter_missing`. Install marimo with jupytext in its tool environment:
+
+```bash
+uv tool install "marimo>=0.25.1,<0.26" --with jupytext
+```
+
+Then run a recheck. If the install changed the executable, OMRS shows `unchecked` until you do. OMRS never installs jupytext.
+
+### Get a fresh conversion
+
+When `analysis.py` is newer than `analysis.marimo.py`, the page shows: "analysis.py changed after this notebook was made. Delete analysis.marimo.py to make a new copy."
+
+1. Stop the editor.
+2. Delete `analysis.marimo.py` in the experiment folder.
+3. Select **Open in marimo** again. OMRS converts `analysis.py` again.
+
+Your edits in the old notebook are lost when you delete it. Copy the cells that you need into `analysis.py` first.
 
 ## What task 8.4 confirmed
 

@@ -68,9 +68,11 @@ The user chose full access: the kernel runs in the project's own environment, be
 ## References
 
 - `openspec/changes/open-experiment-in-marimo/design.md` (evidence with file and line references for marimo 0.25.1)
-- `src/omrs/core/plugins/` (manifest, launch plan, supervisor, shipped manifest)
+- `src/omrs/core/plugins/` (`manifest.py`, `editor.py`, `kernel_config.py`, `conversion.py`, `shipped.py`)
+- `src/omrs/core/plugins/shipped/marimo/manifest.json` and `empty_notebook.py.template`
 - `src/omrs/core/workspace/experiment_editor.py` and `src/omrs/transports/api/routes/experiment_editor.py`
 - `experiments/AGENTS.md` and `src/omrs/core/experiment_records/templates/experiments-agents.md`
 - [Notebooks guide](../guides/notebooks.md), section "Full access from the Library"
+- `tests/unit/test_web_experiment_editor.py`, `tests/unit/test_workspace_experiment_editor.py` and `tests/unit/test_plugin_editor.py`
 - marimo documentation, "Using custom virtual environments": <https://docs.marimo.io/guides/editor_features/home>
 - uv CLI reference, `uv run --with` and `--no-sync`: <https://docs.astral.sh/uv/reference/cli>

@@ -38,6 +38,7 @@ from tests.unit.test_web_guides_support import (  # noqa: E402
     undeclared_routes,
 )
 
+from omrs.core.workspace.experiment_editor import JUPYTEXT_HINT  # noqa: E402
 from omrs.integrations import process_launcher  # noqa: E402
 from omrs.transports.api.app import create_app  # noqa: E402
 from omrs.transports.api.lifespan import DEFAULT_PLUGIN_PORTS, WebConfig  # noqa: E402
@@ -46,6 +47,17 @@ from omrs.transports.api.security import AccessPolicy  # noqa: E402
 
 GUIDE = GUIDES / "notebooks.md"
 PLUGIN = REPO / "plugins" / "marimo"
+# The manifest ships inside the package (ADR-099); the README and starter stay in PLUGIN.
+MANIFEST = REPO / "src" / "omrs" / "core" / "plugins" / "shipped" / "marimo" / "manifest.json"
+RECORDS_GUIDE = GUIDES / "experiment-records.md"
+FULL_ACCESS = "## Full access from the Library"
+CONSENT_TEXT = (
+    "This opens `analysis.marimo.py` in marimo in a new tab. The notebook runs in this "
+    "project's Python environment with your full file and network access, like any "
+    "program you start. OMRS does not sandbox it. Cells do not run until you run them. "
+    "OMRS adds `analysis.marimo.py` and marimo adds `__marimo__/` in the experiment "
+    "folder. Add both to your `.gitignore`."
+)
 _SENTENCE = re.compile(r"[^.!?\n]+[.!?]?")
 _EMBED = re.compile(r"\bembed(?:s|ded)?\b", re.I)
 _EDITOR = re.compile(r"\b(?:editor|notebook|marimo)\b", re.I)
@@ -190,7 +202,7 @@ def test_cited_ports_variables_and_range_match_the_code() -> None:
     assert "omrs_connection.json" in text and "omrs_connection.json" in notebook
     assert "gap" not in text.lower()
     assert "chmod 600" in notebook and 'output" / "runs"' in notebook
-    tested = json.loads((PLUGIN / "manifest.json").read_text(encoding="utf-8"))["tool"]
+    tested = json.loads(MANIFEST.read_text(encoding="utf-8"))["tool"]
     expected = f">={tested['tested_versions']['minimum']},<{tested['tested_versions']['below']}"
     assert f"`{expected}`" in text
 
@@ -200,7 +212,7 @@ def test_cited_commands_match_the_plugin_and_the_cli() -> None:
     readme = (PLUGIN / "README.md").read_text(encoding="utf-8")
     for command in ("uv tool install marimo", "uv tool upgrade marimo", "command -v marimo"):
         assert command in text and command in readme
-    manifest = json.loads((PLUGIN / "manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
     probe = manifest["recipes"]["probe"]
     assert f"marimo {' '.join(probe['version_args'])}" in text
     assert f"marimo {' '.join(probe['help_args'])}" in text
@@ -211,3 +223,49 @@ def test_guide_is_linked_from_the_web_guide_and_the_plugin_readme() -> None:
     assert links_to(GUIDES / "web-workspace.md", "notebooks.md")
     assert links_to(PLUGIN / "README.md", "notebooks.md")
     assert links_to(REPO / "README.md", "notebooks.md")
+
+
+# ── Full access from the Library (ADR-099) ─────────────────────────────
+
+
+def _full_access_section() -> str:
+    text = _text()
+    assert FULL_ACCESS in text, f"the guide has no section {FULL_ACCESS!r}"
+    return text.split(FULL_ACCESS, 1)[1].split("\n## ", 1)[0]
+
+
+def test_guide_names_the_shipped_manifest_and_new_registration() -> None:
+    text = _text()
+    assert "`src/omrs/core/plugins/shipped/marimo/manifest.json`" in text
+    assert "`shipped_manifests`" in text
+    assert "register" in text and "after an upgrade" in text
+
+
+def test_full_access_section_states_the_rules_of_a_library_launch() -> None:
+    section = " ".join(_full_access_section().split())
+    for phrase in (
+        CONSENT_TEXT,
+        JUPYTEXT_HINT,
+        "experiments/**/analysis.marimo.py",
+        "experiments/**/__marimo__/",
+        "dotenv = []",
+        "runtime.dotenv",
+        "`python_mismatch`",
+        "`project_config_runs_on_open`",
+        "package panel",
+        "PYTHONPATH",
+        "analysis.py changed after this notebook was made",
+    ):
+        assert phrase in section, f"the section does not say {phrase!r}"
+
+
+def test_changed_guides_have_no_em_dash() -> None:
+    for path in (GUIDE, RECORDS_GUIDE, PLUGIN / "README.md"):
+        assert "\u2014" not in path.read_text(encoding="utf-8"), path.name
+
+
+def test_experiment_records_guide_links_to_the_full_access_section() -> None:
+    text = RECORDS_GUIDE.read_text(encoding="utf-8")
+    assert "### Open an experiment in marimo" in text
+    assert "(notebooks.md#full-access-from-the-library)" in text
+    assert broken_links(RECORDS_GUIDE) == []

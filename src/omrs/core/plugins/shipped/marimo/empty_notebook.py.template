@@ -1,0 +1,33 @@
+import marimo
+
+__generated_with = "0.25.1"
+app = marimo.App(width="medium")
+
+with app.setup:
+    import json
+    from pathlib import Path
+
+    import marimo as mo
+
+
+@app.cell
+def _():
+    mo.md(r"""
+    # Analysis
+
+    OMRS made this notebook because the experiment folder has no `analysis.py`.
+    It is a derived file: do not commit it. Cells run only when you run them.
+    """)
+    return
+
+
+@app.cell
+def _():
+    EXP = Path(__file__).resolve().parent
+    experiment = json.loads((EXP / "experiment.json").read_text(encoding="utf-8"))
+    experiment
+    return EXP, experiment
+
+
+if __name__ == "__main__":
+    app.run()
