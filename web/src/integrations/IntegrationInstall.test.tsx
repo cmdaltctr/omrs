@@ -37,7 +37,7 @@ const ANTHROPIC = entry("anthropic", "Anthropic provider", { packages: ["llama-i
 const AZURE = entry("azure", "Azure Document Intelligence");
 const WEB = entry("web", "Local web workspace", { availability: "available", installable: false, install_reason: "not-installable-here", packages: [], uninstall_reason: "not-uninstallable-here" });
 
-const IDLE: IntegrationInstall = { state: "idle", action: null, extra: null, started_at: null, finished_at: null, reason: null, exit_code: null, output: [] };
+const IDLE: IntegrationInstall = { state: "idle", action: null, extra: null, tool: null, started_at: null, finished_at: null, reason: null, exit_code: null, output: [] };
 const RUNNING: IntegrationInstall = { ...IDLE, state: "running", action: "install", extra: "anthropic", started_at: "2026-10-24T10:00:00Z", output: ["Resolving"] };
 const SUCCEEDED: IntegrationInstall = { ...RUNNING, state: "succeeded", finished_at: "2026-10-24T10:00:30Z", exit_code: 0, output: ["Installed 3 packages"] };
 const FAILED: IntegrationInstall = {
@@ -53,7 +53,7 @@ const FAILED: IntegrationInstall = {
 function installServer(options: { install?: IntegrationInstall; catalogue?: Integration[]; post?: Handler } = {}) {
   const state = { install: options.install ?? IDLE, catalogue: options.catalogue ?? [ANTHROPIC, AZURE, WEB] };
   const server = documentsServer({
-    "GET /v1/integrations": () => ({ status: "ok", install_type: "uv-tool", integrations: state.catalogue }),
+    "GET /v1/integrations": () => ({ status: "ok", install_type: "uv-tool", integrations: state.catalogue, tools: [] }),
     "GET /v1/integrations/install": () => ({ status: "ok", install: state.install }),
     "POST /v1/integrations/:extra/install":
       options.post ??
@@ -300,7 +300,7 @@ describe("Install status polling", () => {
 
   it("sends no status request when the server cannot install", async () => {
     const server = documentsServer({
-      "GET /v1/integrations": () => ({ status: "ok", install_type: "checkout", integrations: [{ ...ANTHROPIC, installable: false, install_reason: "not-uv-tool" }] }),
+      "GET /v1/integrations": () => ({ status: "ok", install_type: "checkout", integrations: [{ ...ANTHROPIC, installable: false, install_reason: "not-uv-tool" }], tools: [] }),
     });
     startApp("#/integrations", server);
     await card("Anthropic provider");

@@ -12,7 +12,7 @@ import type { InstallControl } from "./useIntegrationInstall";
 /** The output block keeps the last lines the server sends, which is at most 40. */
 const OUTPUT_LINES = 40;
 
-type FailureLines = Record<NonNullable<IntegrationInstall["reason"]>, string>;
+export type FailureLines = Record<NonNullable<IntegrationInstall["reason"]>, string>;
 
 const FAILURE: Record<InstallAction, FailureLines> = {
   install: {
@@ -83,22 +83,25 @@ function InstallDialog({ integration, open, onCancel, onConfirm }: { integration
 }
 
 interface FailedJobProps {
-  integration: Integration;
+  /** The card's name, for the output block's accessible name. */
+  name: string;
   install: IntegrationInstall;
   action: InstallAction;
   busy: boolean;
   /** Sends the same job again. */
   onRetry: () => void;
+  /** The line for each failure reason; the extras lines unless a card passes its own. */
+  lines?: FailureLines;
 }
 
 /** A failed install or uninstall: one line for its reason, a Retry unless the packages clash, and the last output lines. */
-export function FailedJob({ integration, install, action, busy, onRetry }: FailedJobProps) {
+export function FailedJob({ name, install, action, busy, onRetry, lines = FAILURE[action] }: FailedJobProps) {
   const output = install.output.slice(-OUTPUT_LINES);
   // A second run cannot mend a clash; the lasting command rebuilds the environment.
   const retry = install.reason !== "check-failed";
   return (
     <div className="flex min-w-0 flex-col gap-2">
-      <AlertNotice message={FAILURE[action][install.reason ?? "exit-code"]}>
+      <AlertNotice message={lines[install.reason ?? "exit-code"]}>
         {retry ? (
           <Button type="button" variant="outline" size="sm" disabled={busy} onClick={onRetry}>
             <RotateCcw aria-hidden="true" />
@@ -110,7 +113,7 @@ export function FailedJob({ integration, install, action, busy, onRetry }: Faile
         <pre
           dir="ltr"
           tabIndex={0}
-          aria-label={`${action === "install" ? "Install" : "Uninstall"} output for ${integration.name}`}
+          aria-label={`${action === "install" ? "Install" : "Uninstall"} output for ${name}`}
           className="max-h-64 min-w-0 max-w-full overflow-auto rounded-small border border-border bg-muted px-2 py-1.5 text-code"
         >
           {output.join("\n")}
@@ -151,7 +154,7 @@ export function InstallControls({ integration, control }: { integration: Integra
   if (phase === "failed" && control.install !== undefined) {
     return (
       <>
-        <FailedJob integration={integration} install={control.install} action="install" busy={control.busy} onRetry={() => control.start(extra)} />
+        <FailedJob name={integration.name} install={control.install} action="install" busy={control.busy} onRetry={() => control.start(extra)} />
         {refusal !== null ? <InstallRefusal error={refusal} onRetry={() => control.start(extra)} onCheck={control.recheck} /> : null}
       </>
     );

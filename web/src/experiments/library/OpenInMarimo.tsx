@@ -18,7 +18,7 @@ import { STOP_WARNING } from "../EditorList";
 import { Check } from "../fields";
 import { useStopEditor } from "../mutations";
 import { OneTimeSecret } from "../OneTimeSecret";
-import { editorRefusalLine } from "./refusal";
+import { editorRefusalLine, MARIMO_CARD, refusalLinksToMarimoCard } from "./refusal";
 
 const CODE_EDITOR = formatRoute({ area: "experiments", section: "code-editor" });
 
@@ -50,6 +50,8 @@ export function useMarimoLauncher(projectId: string, folder: string) {
   const [consent, setConsent] = useState(false);
   const [opened, setOpened] = useState<Opened | null>(null);
   const [refusal, setRefusal] = useState<string | null>(null);
+  // A refusal the marimo card can fix (jupytext missing) or that its job causes gets a link to the card.
+  const [cardLink, setCardLink] = useState(false);
   const marimo = plugins.data?.plugins.find((plugin) => plugin.name === "marimo");
   const launchable = marimo !== undefined && marimo.launchable && marimo.status === "compatible";
   const running = plugins.data?.editors.find((editor) => editor.project_id === projectId && editor.folder === folder) ?? null;
@@ -72,6 +74,7 @@ export function useMarimoLauncher(projectId: string, folder: string) {
       setOpened({ launchId: response.launch_id, url, token, notebookState, sourceNewer, shadowed: environment.shadowed });
     } catch (failure) {
       setRefusal(failure instanceof ClientRefusal ? failure.message : editorRefusalLine(failure));
+      setCardLink(refusalLinksToMarimoCard(failure));
     } finally {
       setConsent(false);
       setDialogOpen(false);
@@ -84,6 +87,7 @@ export function useMarimoLauncher(projectId: string, folder: string) {
     running,
     opened,
     refusal,
+    cardLink,
     dialogOpen,
     consent,
     busy: open.isPending,
@@ -248,6 +252,11 @@ export function MarimoEditorStatus({ launcher }: { launcher: MarimoLauncher }) {
       ) : null}
       {launcher.refusal !== null ? (
         <AlertNotice message={launcher.refusal}>
+          {launcher.cardLink ? (
+            <a href={MARIMO_CARD} className="text-ui text-primary-label underline underline-offset-4">
+              Open the marimo card
+            </a>
+          ) : null}
           <Button variant="outline" disabled={!launcher.launchable} onClick={launcher.showDialog}>
             Try again
           </Button>

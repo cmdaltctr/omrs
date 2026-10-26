@@ -8,8 +8,12 @@
  * restart. Every other entry is installed outside the app with its command.
  * An entry with `uninstallable: true` can be removed with
  * `POST /v1/integrations/{extra}/uninstall`; that also needs a restart.
+ * The `tools` list holds external tools apart from the extras (today only
+ * marimo, ADR-101). A tool goes into its own `uv tool` environment through
+ * `POST /v1/integrations/tools/{tool}/install`, so it needs no restart.
  */
 import type { ApiClient, CallOptions } from "./client";
+import type { PluginStatus } from "./plugins";
 
 export type IntegrationAvailability = "available" | "not-installed" | "unknown" | "restart-needed";
 
@@ -69,6 +73,48 @@ export interface IntegrationProfileRef {
 export interface IntegrationList {
   install_type: InstallType;
   integrations: Integration[];
+  /** External tools apart from the extras. Today only marimo. */
+  tools: ExternalTool[];
+}
+
+/** The state of an external tool's `uv tool` environment. It does not depend on the server's install type. */
+export type ToolAvailability = "ready" | "needs-jupytext" | "outside-range" | "not-installed" | "unknown";
+
+/** Why a tool's `installable` is false, or `null` when it is true. */
+export type ToolInstallReason = "uv-not-found" | "status-unknown" | "already-installed" | "install-running" | "editor-running";
+
+/** Why a tool's `uninstallable` is false, or `null` when it is true. `not-installed-by-app`: the card did not install it. */
+export type ToolUninstallReason = "uv-not-found" | "status-unknown" | "not-installed" | "not-installed-by-app" | "install-running" | "editor-running";
+
+/** An external tool that the Integrations page can install into its own `uv tool` environment (ADR-101). */
+export interface ExternalTool {
+  id: "marimo";
+  name: string;
+  /** One line about what the tool adds. */
+  purpose: string;
+  availability: ToolAvailability;
+  /** The installed version, or null. */
+  version: string | null;
+  /** Whether jupytext is in the tool environment. */
+  jupytext: boolean;
+  /** Absolute path of the executable from the uv receipt, or null. */
+  executable: string | null;
+  /** The requirement the card installs, such as `marimo>=0.25.1,<0.26.0`. */
+  requirement: string;
+  /** The copy-ready install command for a terminal. */
+  install_command: string;
+  /** The copy-ready uninstall command for a terminal. */
+  uninstall_command: string;
+  /** True when `POST /v1/integrations/tools/{tool}/install` would start an install now. */
+  installable: boolean;
+  install_reason: ToolInstallReason | null;
+  /** Set for `needs-jupytext` and `outside-range`: Install replaces the tool environment. Null otherwise. */
+  install_caution: string | null;
+  /** True when `POST /v1/integrations/tools/{tool}/uninstall` would start an uninstall now. */
+  uninstallable: boolean;
+  uninstall_reason: ToolUninstallReason | null;
+  /** The state of the plugin registration for this tool, or null when it is not registered. */
+  plugin_status: PluginStatus | null;
 }
 
 export type InstallState = "idle" | "running" | "succeeded" | "failed";
@@ -81,8 +127,10 @@ export interface IntegrationInstall {
   state: InstallState;
   /** Whether the job installs or uninstalls its extra; null when idle. */
   action: InstallAction | null;
-  /** The extra of the running or last install; null when idle. */
+  /** The extra of the running or last install; null when idle or for a tool job. */
   extra: string | null;
+  /** The external tool of the running or last job; null when idle or for an extras job. */
+  tool: ExternalTool["id"] | null;
   started_at: string | null;
   finished_at: string | null;
   /** Why the install failed; null unless `state` is `failed`. `check-failed`: installed, but `uv pip check` found a clash. */
@@ -93,8 +141,8 @@ export interface IntegrationInstall {
 }
 
 export async function listIntegrations(api: ApiClient, options: CallOptions = {}): Promise<IntegrationList> {
-  const reply = await api.request<{ install_type: InstallType; integrations: Integration[] }>("GET", "/v1/integrations", { signal: options.signal });
-  return { install_type: reply.install_type, integrations: reply.integrations };
+  const reply = await api.request<{ install_type: InstallType; integrations: Integration[]; tools: ExternalTool[] }>("GET", "/v1/integrations", { signal: options.signal });
+  return { install_type: reply.install_type, integrations: reply.integrations, tools: reply.tools };
 }
 
 export async function getIntegrationInstall(api: ApiClient, options: CallOptions = {}): Promise<IntegrationInstall> {
@@ -111,5 +159,17 @@ export async function installIntegration(api: ApiClient, extra: string): Promise
 /** Starts an uninstall of `extra`. The server answers 202 with the running state, or 409 with a `reason` (and a `setting` for `in-use`). */
 export async function uninstallIntegration(api: ApiClient, extra: string): Promise<IntegrationInstall> {
   const reply = await api.request<{ install: IntegrationInstall }>("POST", `/v1/integrations/${encodeURIComponent(extra)}/uninstall`);
+  return reply.install;
+}
+
+/** Starts an install of the external `tool`. The server answers 202 with the running state, or 409 with a `reason`. */
+export async function installTool(api: ApiClient, tool: string): Promise<IntegrationInstall> {
+  const reply = await api.request<{ install: IntegrationInstall }>("POST", `/v1/integrations/tools/${encodeURIComponent(tool)}/install`);
+  return reply.install;
+}
+
+/** Starts an uninstall of the external `tool`. The server answers 202 with the running state, or 409 with a `reason`. */
+export async function uninstallTool(api: ApiClient, tool: string): Promise<IntegrationInstall> {
+  const reply = await api.request<{ install: IntegrationInstall }>("POST", `/v1/integrations/tools/${encodeURIComponent(tool)}/uninstall`);
   return reply.install;
 }

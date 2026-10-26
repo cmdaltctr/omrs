@@ -1,6 +1,6 @@
 # web/src/integrations (Integrations page)
 
-The page that lists optional integrations and installs or uninstalls an extra.
+The page that lists optional integrations and installs or uninstalls an extra. It also installs marimo, an external tool, into its own `uv tool` environment.
 
 ## What belongs here
 
@@ -8,6 +8,7 @@ The page that lists optional integrations and installs or uninstalls an extra.
 - `InstallControls.tsx`, `UninstallControls.tsx` and `UninstallDialog.tsx`: the actions of one card.
 - `InstallRefusal.tsx`: the line for a refused start (409).
 - `useIntegrationInstall.ts`: the job state and the start actions. The API client is `../api/integrations.ts`.
+- `ToolCard.tsx`, `ToolInstallControls.tsx`, `ToolUninstallControls.tsx` and `ToolDialogs.tsx`: the marimo card in the "External tools" group.
 
 ## Rules
 
@@ -20,9 +21,19 @@ The page that lists optional integrations and installs or uninstalls an extra.
 7. Run `npm run typecheck` to find a fixture without the field. When a script adds the field, check that no fixture gets the key twice.
 8. Keep each component under about 200 lines. Split a larger one by action, as the install and uninstall controls are split.
 
+## marimo card (ADR-101)
+
+1. Extras and tools share one job (a tool job has `tool: "marimo"`, `extra: null`). Match a job by `tool` as well as `extra`, so no card reacts to the other kind. `busy` covers both kinds.
+2. A tool has no restart state. marimo goes into its own `uv tool` environment, not into the server's Python.
+3. Keep the Install and Uninstall buttons, disabled, while the reason is `install-running` or `editor-running`.
+4. Show Uninstall only for a receipt that the card installed. For `not-installed-by-app`, show `uninstall_command` as a copy command.
+5. Install does not register marimo. After an install, link to Experiments, Code editor (`#/experiments/code-editor`) to register or recheck it.
+6. The card id is `integration-marimo`, so `#/integrations/marimo` focuses it. Add a new `ExternalTool` field to every fixture typed `ExternalTool`.
+
 ## Links
 
 - [Root AGENTS.md](../../../AGENTS.md)
 - [Front-end source guide](../AGENTS.md)
 - [HTTP transport guide](../../../src/omrs/transports/api/AGENTS.md)
 - [ADR-096: uninstall from the app](../../../docs/adr/096-app-uninstalls-extras-it-can-install.md)
+- [ADR-101: the app installs marimo as a separate uv tool](../../../docs/adr/101-app-installs-marimo-as-a-separate-uv-tool.md)

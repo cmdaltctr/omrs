@@ -66,7 +66,7 @@ const CATALOGUE: Integration[] = [
   },
 ];
 
-const serve = (handler: () => unknown = () => ({ status: "ok", install_type: "checkout", integrations: CATALOGUE })) =>
+const serve = (handler: () => unknown = () => ({ status: "ok", install_type: "checkout", integrations: CATALOGUE, tools: [] })) =>
   documentsServer({ "GET /v1/integrations": handler });
 
 const card = async (name: string) => {
@@ -186,7 +186,7 @@ describe("Integrations", () => {
     let fail = true;
     startApp(
       "#/integrations",
-      serve(() => (fail ? json({ status: "error", message: "Probe <html>exploded" }, 500) : { status: "ok", install_type: "checkout", integrations: CATALOGUE })),
+      serve(() => (fail ? json({ status: "error", message: "Probe <html>exploded" }, 500) : { status: "ok", install_type: "checkout", integrations: CATALOGUE, tools: [] })),
     );
     const alert = await screen.findByRole("alert");
     expect(alert).not.toHaveTextContent("exploded");

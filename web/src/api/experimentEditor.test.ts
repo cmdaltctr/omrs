@@ -40,7 +40,7 @@ describe("experiment editor client", () => {
   it("reads the shipped manifests and the Library fields of running editors", async () => {
     const editor = { launch_id: "l1", plugin: "marimo", notebook: "/w/p1/experiments/x/analysis.marimo.py", experiment_context: null, url_without_token: "http://127.0.0.1:2719/", project_id: "p1", folder: "x" };
     const server = documentsServer({
-      "GET /v1/plugins": () => ({ status: "ok", plugins: [], editors: [editor], install_hint: "h", trust_notice: "t", shipped_manifests: ["/site/omrs/core/plugins/shipped/marimo/manifest.json"] }),
+      "GET /v1/plugins": () => ({ status: "ok", plugins: [], editors: [editor], install_hint: "h", trust_notice: "t", shipped_manifests: ["/site/omrs/core/plugins/shipped/marimo/manifest.json"], detected_executables: {} }),
     });
     const list = await listPlugins(createApiClient(server.fetchImpl));
     expect(list.shipped_manifests).toEqual(["/site/omrs/core/plugins/shipped/marimo/manifest.json"]);

@@ -6,6 +6,9 @@ import { Button } from "../components/ui/button";
 
 type RefusalAction = "retry" | "check";
 
+/** A marimo editor that this server started blocks a marimo install or uninstall (ADR-101). */
+export const EDITOR_RUNNING = "A marimo editor that OMRS started is running. Stop it in Experiments, Code editor, then try again.";
+
 /** One line and one action for each `reason` of a refused install (409). */
 const REFUSALS: Record<string, { message: string; action: RefusalAction }> = {
   "install-running": { message: "Another install is running. Wait for it to finish, then try again.", action: "retry" },
@@ -15,6 +18,7 @@ const REFUSALS: Record<string, { message: string; action: RefusalAction }> = {
   "uv-not-found": { message: "The server cannot find uv, so it cannot install from the app. Run the command instead.", action: "check" },
   "already-installed": { message: "This integration is already installed. Restart the server to use it.", action: "check" },
   "no-requirements": { message: "This integration adds no packages, so there is nothing to install.", action: "check" },
+  "editor-running": { message: EDITOR_RUNNING, action: "check" },
 };
 
 /** One line and one action for each `reason` of a refused uninstall (409). `in-use` names its setting separately. */
@@ -26,6 +30,11 @@ const UNINSTALL_REFUSALS: Record<string, { message: string; action: RefusalActio
   "in-use": { message: "A setting uses this extra. Change that setting before you uninstall it.", action: "check" },
   "not-uv-tool": { message: "This server was not installed with uv tool, so it cannot uninstall from the app.", action: "check" },
   "uv-not-found": { message: "The server cannot find uv, so it cannot uninstall from the app.", action: "check" },
+  "editor-running": { message: EDITOR_RUNNING, action: "check" },
+  "not-installed-by-app": {
+    message: "This marimo was not installed from this card, so the app does not remove it. Use the command on the card in a terminal.",
+    action: "check",
+  },
 };
 
 /** The line for a setting that still uses the extra, such as `vector_store`. */
