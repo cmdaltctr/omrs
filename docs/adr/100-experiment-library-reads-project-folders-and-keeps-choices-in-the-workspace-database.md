@@ -55,6 +55,10 @@ follow a repository protocol plus a SQLite class.
    is JSON, never a raw file, so the browser never renders it as HTML. HTML
    review pages, images and PDFs are listed with their size and are not
    opened. Markdown is rendered with no raw-HTML plugin.
+   - *Amended by [ADR-102](102-library-edits-protocol-and-report-with-an-edit-log.md) (2026-10-26):* the app can now also save
+     `protocol.md` and the report file of a listed experiment, with a
+     revision check and an atomic write. Each save adds one line to
+     `edits.jsonl`. It writes no other file.
 6. **Project notebooks are not stored.** The API shows each project as a
    notebook with `kind: "project"` and id `project:<project_id>`. It cannot
    be renamed, deleted or edited. User notebooks have `kind: "user"`.

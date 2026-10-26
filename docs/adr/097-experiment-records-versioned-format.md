@@ -91,6 +91,10 @@ needs a stable format first.
 
 - Old protocols, plans and reports keep their content. Old `plan.json`
   files can still carry a `status` key; the record value wins.
+  - *Amended by [ADR-102](102-library-edits-protocol-and-report-with-an-edit-log.md) (2026-10-26):* `protocol.md` and the report file
+    (`report.md`, or `results.md` without `report.md`) may now change in a
+    finished or converted experiment. Git keeps the old text, and each save
+    from the app adds one line to `edits.jsonl`. Plans stay frozen.
 - Run records sit in the gitignored `output/` folder and are preserved with
   it before a worktree is removed.
 - The format does not prove that a plan was committed before its run. That

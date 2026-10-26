@@ -1,10 +1,10 @@
 # ADR-102: The Library Edits Protocols and Reports, and Logs Each Save in edits.jsonl
 
 - **Date:** 2026-10-26
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-26; built and merged to v3 at PR #133, merge commit `0cb2d32d`. Evidence: `browser-check.md` and `evidence/test-ids-diff.txt` in the archived change folder.)
 - **Deciders:** Maintainer
 - **Related:** [ADR-097](097-experiment-records-versioned-format.md) (experiment record format; this ADR amends its rule that old protocols and reports keep their content), [ADR-099](099-library-experiments-open-in-marimo-with-the-project-environment.md) (decision 1 holds the current rule text), [ADR-100](100-experiment-library-reads-project-folders-and-keeps-choices-in-the-workspace-database.md) (decision 5: the Library reads files only), [ADR-087](087-settings-live-in-omrg-jsonc.md) (decision 5: revision check and atomic write)
-- **Change:** `openspec/changes/edit-experiment-files-in-library/` (design D1 to D10)
+- **Change:** `openspec/changes/archive/2026-10-26-edit-experiment-files-in-library/` (design D1 to D10)
 
 ## Context
 
@@ -73,7 +73,7 @@ This ADR amends ADR-097 (neutral consequence on old protocols and reports), ADR-
 
 ## References
 
-- `openspec/changes/edit-experiment-files-in-library/design.md` (evidence and decisions D1 to D10)
+- `openspec/changes/archive/2026-10-26-edit-experiment-files-in-library/design.md` (evidence and decisions D1 to D10)
 - `src/omrs/core/experiment_records/edit_log.py` and `src/omrs/core/workspace/experiment_file_edits.py` (planned)
 - `src/omrs/transports/api/routes/experiment_library.py` and `openapi.yaml` (`writeExperimentFile`)
 - `web/src/experiments/library/ExperimentTabs.tsx`, `FileView.tsx`, `FileEditor.tsx`

@@ -93,7 +93,8 @@ The checker SHALL read an experiments directory and report findings with a sever
 - a run record whose plan SHA-256 differs from the current `plan.json` (warning);
 - files missing for the declared size: `report.md` for Quick; `protocol.md`, `plan.json` and `report.md` for Standard and Confirmatory (warning, or information for converted records);
 - an index table that differs from the generated table (error);
-- a reserved number that now has a folder (information).
+- a reserved number that now has a folder (information);
+- an `edits.jsonl` line that does not load, or an `edits.jsonl` that is a link or not a regular file (warning).
 
 The CLI check SHALL exit with a non-zero code when any error is found, and also on warnings when strict mode is requested.
 
@@ -111,6 +112,11 @@ The CLI check SHALL exit with a non-zero code when any error is found, and also 
 
 - **WHEN** the checker runs on an experiments directory
 - **THEN** no file in that directory is created, changed or deleted
+
+#### Scenario: Broken edit log line
+
+- **WHEN** line 3 of an experiment's `edits.jsonl` is not valid JSON
+- **THEN** the checker reports the warning `edit-log-invalid` that names line 3
 
 ### Requirement: The index table is generated from the records
 
@@ -183,7 +189,7 @@ The run-record helper `experiments/_lib/run_record.py` SHALL append one JSON lin
 
 ### Requirement: The experiments folder guide stands alone
 
-`experiments/AGENTS.md` SHALL state the rules for experiment folders in the repository, including the record file, the seven status values, naming, reserved numbers, run records and the commands to check and index. It SHALL state that a finished or converted experiment changes only `experiment.json`, and that a tool may add only the git-ignored derived files `analysis.ipynb`, `analysis.marimo.py` and `__marimo__/` to it. It SHALL NOT link to files outside the repository. `experiments/CLAUDE.md` SHALL be a link to it.
+`experiments/AGENTS.md` SHALL state the rules for experiment folders in the repository, including the record file, the seven status values, naming, reserved numbers, run records, the edit log and the commands to check and index. It SHALL state that a finished or converted experiment changes only `experiment.json`, `protocol.md` and its report file (`report.md`, or `results.md` in a folder without `report.md`), that the web app appends a line to `edits.jsonl` for each save and no tool changes an earlier line, and that a tool may add only the git-ignored derived files `analysis.ipynb`, `analysis.marimo.py` and `__marimo__/` to it. It SHALL NOT link to files outside the repository. `experiments/CLAUDE.md` SHALL be a link to it.
 
 #### Scenario: Guide links stay inside the repository
 
@@ -194,6 +200,11 @@ The run-record helper `experiments/_lib/run_record.py` SHALL append one JSON lin
 
 - **WHEN** `git check-ignore` runs in this repository for `analysis.marimo.py` and `__marimo__/session/x.json` inside an experiment folder
 - **THEN** git reports both paths as ignored
+
+#### Scenario: Edit log is tracked by git
+
+- **WHEN** `git check-ignore` runs in this repository for `edits.jsonl` inside an experiment folder
+- **THEN** git reports the path as not ignored
 
 ### Requirement: The repository skill templates match the package templates
 
@@ -208,3 +219,28 @@ The repository copy of the experiment skill SHALL carry template files that are 
 
 - **WHEN** a file in the repository skill copy contains a home-folder path
 - **THEN** a test fails and names the file
+
+### Requirement: Edits from the app are logged in an edit log
+
+The edit log `edits.jsonl` in an experiment folder SHALL be an append-only file that git tracks. Each line SHALL declare `omrs-edit-record/1` and hold the file name, the UTC time of the save, the SHA-256 and size of the file before and after, the record status at the time, whether the record is converted, and the tool. A line SHALL reject keys that the format does not define, and SHALL hold no user name, login or folder path. Writers SHALL only append. Readers SHALL refuse a line with an unknown format version and name the version.
+
+#### Scenario: First edit
+
+- **WHEN** the app saves `protocol.md` in a folder without `edits.jsonl`
+- **THEN** `edits.jsonl` exists with one line for `protocol.md`
+- **AND** its `after_sha256` equals the SHA-256 of the saved file
+
+#### Scenario: Second edit
+
+- **WHEN** the app saves a file in a folder whose `edits.jsonl` has one line
+- **THEN** the file has two lines and the first line is unchanged
+
+#### Scenario: Unknown key
+
+- **WHEN** a line in `edits.jsonl` holds a key that format version 1 does not define
+- **THEN** reading that line fails with a message that names the key
+
+#### Scenario: Record file unchanged
+
+- **WHEN** the app logs an edit
+- **THEN** `experiment.json` in that folder is byte-identical to before
