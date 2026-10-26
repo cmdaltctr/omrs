@@ -106,6 +106,15 @@ describe("Integrations", () => {
     expect(await badge("llama.cpp provider")).toHaveTextContent("Unknown");
   });
 
+  it("shows every Not installed badge in the error colour, as Installed shows in green", async () => {
+    startApp("#/integrations", serve());
+    for (const name of ["Chroma vector store", "Azure Document Intelligence", "PyTorch reranker"]) {
+      const notInstalled = within(await card(name)).getByText("Not installed", { selector: "[data-slot=badge]" });
+      expect(notInstalled).toHaveClass("border-status-error", "text-status-error-label");
+    }
+    expect(within(await card("Hybrid search")).getByText("Installed", { selector: "[data-slot=badge]" })).toHaveClass("text-status-success-label");
+  });
+
   it("marks every base install entry with Base default next to its status, and no other entry", async () => {
     startApp("#/integrations", serve());
     const magika = await card("Magika file detection");

@@ -7,9 +7,9 @@ import { InstallControls, installPhase } from "./InstallControls";
 import { LastingUninstallCommand, UninstallControls, uninstallActive, uninstallPhase } from "./UninstallControls";
 import type { InstallControl } from "./useIntegrationInstall";
 
-const STATUS: Record<IntegrationAvailability, { label: string; variant: "success" | "neutral" | "warning" | "info" }> = {
+const STATUS: Record<IntegrationAvailability, { label: string; variant: "success" | "error" | "warning" | "info" }> = {
   available: { label: "Installed", variant: "success" },
-  "not-installed": { label: "Not installed", variant: "neutral" },
+  "not-installed": { label: "Not installed", variant: "error" },
   unknown: { label: "Unknown", variant: "warning" },
   "restart-needed": { label: "Installed, restart to use", variant: "info" },
 };

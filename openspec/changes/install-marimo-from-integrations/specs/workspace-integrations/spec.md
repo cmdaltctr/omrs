@@ -17,6 +17,11 @@ The card SHALL show the installed marimo version and the absolute executable pat
 - **WHEN** no `uv tool` environment named `marimo` exists and `uv` is found
 - **THEN** the marimo card MUST show "Not installed", the copy command and an Install button
 
+#### Scenario: Not installed shows in red
+
+- **WHEN** an extra or the marimo tool is not installed
+- **THEN** its card MUST show the "Not installed" badge in the error (red) colour, as the "Installed" badge shows in green
+
 #### Scenario: marimo without jupytext
 
 - **WHEN** the marimo tool environment holds marimo 0.25.1 and no jupytext
