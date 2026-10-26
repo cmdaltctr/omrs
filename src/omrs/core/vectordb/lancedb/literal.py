@@ -7,13 +7,18 @@ treated as untrusted: every fragment is checked against a closed form
 per value type, and string fragments are re-decoded with the standard
 SQL literal grammar and compared to the original value.
 
-This is not theoretical: on lancedb 0.37.1, ``lit("''").to_sql()`` is
-``''''`` — the engine parses it as ONE apostrophe, so an unverified
+This is not theoretical: on lancedb 0.37.1 and 0.40.0, ``lit("''").to_sql()``
+is ``''''`` — the engine parses it as ONE apostrophe, so an unverified
 filter on a double-apostrophe value silently matches the WRONG row —
 and a backslash directly before an apostrophe emits ``\'`` undoubled,
 which is unfaithful under every decode convention.  Values the engine
 cannot serialise faithfully are refused with an actionable
 ``ValueError`` rather than emitted.
+
+Three value classes are refused before ``lit`` runs (ADR-098), because
+their comparison changed between lancedb 0.37.1 and 0.40.0 or differs
+between the dense and sparse filter paths: a ``Decimal``, a float NaN
+and a ``datetime`` without a time zone.
 
 This module is the sole sanctioned exception to the parameterised-query
 invariant (ADR-058), scoped to the LanceDB filter adapter.
@@ -27,7 +32,48 @@ from decimal import Decimal
 
 from lancedb.expr import lit
 
-__all__ = ["_is_faithful_literal", "_literal_sql"]
+__all__ = ["_check_value_class", "_is_faithful_literal", "_literal_sql"]
+
+
+def _is_naive_datetime(value: object) -> bool:
+    """Return True when *value* is a ``datetime`` with no UTC offset."""
+    return isinstance(value, datetime) and value.utcoffset() is None
+
+
+def _check_value_class(value: object) -> None:
+    """Refuse a filter value whose comparison is ambiguous (ADR-098).
+
+    lancedb 0.40.0 reads a naive datetime as UTC where 0.37.1 read it as
+    local time, casts a float column to a decimal type for a ``Decimal``,
+    and says ``NaN = NaN`` where the in-memory sparse filter says it is
+    false.  Each case changes the matched rows without an error, so the
+    value is refused with the accepted alternative named.
+
+    Args:
+        value: One comparison operand, or one membership-list item.
+
+    Raises:
+        ValueError: When *value* is a ``Decimal``, a float NaN or a
+            ``datetime`` without a time zone.
+    """
+    if isinstance(value, Decimal):
+        raise ValueError(
+            "metadata_filter value is a Decimal. LanceDB compares a Decimal "
+            "with a decimal cast of the stored field, which changes the "
+            "matched rows. Pass an int or a float instead."
+        )
+    if isinstance(value, float) and value != value:
+        raise ValueError(
+            "metadata_filter value is a float NaN. The dense and sparse "
+            "filters compare NaN differently. Remove the NaN clause."
+        )
+    if _is_naive_datetime(value):
+        raise ValueError(
+            "metadata_filter value is a naive datetime (it has no time zone), "
+            "so the matched rows would depend on the lancedb version and the "
+            "host clock. Pass a datetime with a time zone, for example "
+            "datetime(2026, 9, 2, 14, 30, tzinfo=UTC)."
+        )
 
 
 def _decode_single_quoted_literal(fragment: str) -> str | None:
@@ -67,7 +113,12 @@ def _decode_single_quoted_literal(fragment: str) -> str | None:
 _BOOL_FORMS = frozenset({"true", "false"})
 _INT_FORM = re.compile(r"-?\d+")
 _NUMERIC_FORM = re.compile(r"-?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?")
-_FLOAT_SPECIAL_FORMS = frozenset({"inf", "-inf", "NaN"})
+# lancedb 0.40.0 writes an infinity as the engine's typed cast.  Only
+# this exact text is accepted for each infinity (ADR-098).
+_INF_FORMS = {
+    float("inf"): "arrow_cast('inf', 'Float64')",
+    float("-inf"): "arrow_cast('-inf', 'Float64')",
+}
 _BYTES_FORM = re.compile(r"X'([0-9a-fA-F]*)'")
 # The CAST target type is CAPTURED (not discarded): a date value in a
 # TIMESTAMP cast — or a datetime in a DATE cast — is a different SQL
@@ -103,22 +154,19 @@ def _is_faithful_literal(value: object, sql: str) -> bool:
         match = _INT_FORM.fullmatch(sql)
         return match is not None and int(sql) == value
     if isinstance(value, float):
-        # float: special values (inf, -inf, NaN) matched by name;
-        # ordinary floats compared by numeric equality so that
-        # equivalent representations (1e10 vs 10000000000.0) pass.
+        # float: NaN is a refused class; an infinity must be the exact
+        # Float64 cast of the same infinity; ordinary floats compared by
+        # numeric equality so that equivalent representations (1e10 vs
+        # 10000000000.0) pass.
         if value != value:  # NaN
-            return sql == "NaN"
-        if value == float("inf"):
-            return sql == "inf"
-        if value == float("-inf"):
-            return sql == "-inf"
+            return False
+        if value in _INF_FORMS:
+            return sql == _INF_FORMS[value]
         match = _NUMERIC_FORM.fullmatch(sql)
         return match is not None and float(sql) == value
     if isinstance(value, Decimal):
-        # Decimal: the fragment must parse to the same Decimal using
-        # exact arithmetic (not float coercion, which loses precision).
-        match = _NUMERIC_FORM.fullmatch(sql)
-        return match is not None and Decimal(sql) == value
+        # Decimal: a refused class (ADR-098), whatever the fragment.
+        return False
     if isinstance(value, str):
         decoded = _decode_single_quoted_literal(sql)
         return decoded is not None and decoded == value
@@ -131,9 +179,9 @@ def _is_faithful_literal(value: object, sql: str) -> bool:
         # is a different SQL value class even when the inner string
         # round-trips), the fragment must match the CAST form at all,
         # and the inner string must parse to the same calendar date or
-        # instant.  For naive datetimes the engine converts local time
-        # to UTC, so the comparison round-trips through the same
-        # conversion.
+        # instant.  A naive datetime is a refused class (ADR-098).
+        if _is_naive_datetime(value):
+            return False
         match = _CAST_FORM.fullmatch(sql)
         if match is None:
             return False
@@ -164,31 +212,22 @@ def _date_matches(value: date, inner: str) -> bool:
 def _datetime_matches(value: datetime, inner: str) -> bool:
     """Check whether a CAST(... AS TIMESTAMP) inner string matches *value*.
 
-    The engine converts naive datetimes from local time to UTC before
-    serialising.  This function replicates that conversion for the
-    comparison so a faithful serialisation is recognised.
+    The engine serialises an aware datetime as its UTC wall clock.  A
+    naive datetime never reaches this check (ADR-098).
 
     Args:
-        value: The original ``datetime`` value (naive or aware).
+        value: The original aware ``datetime`` value.
         inner: The timestamp string inside the CAST, e.g.
             ``2026-09-02 14:30:45``.
 
     Returns:
-        True when *inner* represents the same instant as *value* after
-        accounting for the engine's local-to-UTC conversion.
+        True when *inner* represents the same UTC instant as *value*.
     """
     try:
         parsed = datetime.fromisoformat(inner)
     except ValueError:
         return False
-    if value.tzinfo is not None:
-        # Aware datetime: the engine serialises the UTC equivalent.
-        expected_utc = value.astimezone(UTC).replace(tzinfo=None)
-    else:
-        # Naive datetime: the engine converts from local time to UTC.
-        local = value.replace(tzinfo=None)
-        expected_utc = local.astimezone().astimezone(UTC).replace(tzinfo=None)
-    return parsed == expected_utc
+    return parsed == value.astimezone(UTC).replace(tzinfo=None)
 
 
 def _literal_sql(value: object) -> str:
@@ -204,7 +243,7 @@ def _literal_sql(value: object) -> str:
 
     Args:
         value: A scalar supported by ``lit`` (bool/int/float/str/bytes/
-            date/datetime/Decimal).
+            date/aware datetime).
 
     Returns:
         The verified, engine-quoted SQL literal.
@@ -212,10 +251,13 @@ def _literal_sql(value: object) -> str:
     Raises:
         TypeError: When ``lit`` rejects the value's type — the trust
             boundary that keeps structured values from reaching SQL.
-        ValueError: When the engine's serialisation fails the closed-
-            form or round-trip check.  The filter is refused rather
-            than emitted with an unfaithful literal.
+        ValueError: When the value is a refused class
+            (:func:`_check_value_class`), or when the engine's
+            serialisation fails the closed-form or round-trip check.
+            The filter is refused rather than emitted with an
+            unfaithful literal.
     """
+    _check_value_class(value)
     sql = lit(value).to_sql()
     if not _is_faithful_literal(value, sql):
         raise ValueError(

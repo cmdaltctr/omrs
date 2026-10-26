@@ -12,8 +12,8 @@ quoting.  Field names are validated against a conservative identifier
 grammar and then backtick-quoted, and the operator vocabulary is a
 fixed internal set, so neither half of any comparison is built by
 interpolating client input.  A full expression tree per leaf is not
-possible in the locked version: ``lancedb.expr`` (0.37.1) has no struct
-field access (``col("metadata.tag")`` is one quoted identifier naming a
+possible in the locked version: ``lancedb.expr`` (verified on 0.37.1
+and 0.40.0) has no struct field access (``col("metadata.tag")`` is one quoted identifier naming a
 column, verified live), the adapter stores user metadata inside an
 Arrow ``metadata`` struct whose ``metadata.<field>`` paths ``col()``
 cannot express, and LanceDB offers no bind-parameter API — ``where()``
@@ -23,7 +23,7 @@ Fail-closed verification (security finding F1): the engine's unparser
 is treated as untrusted.  Every serialised fragment is checked against
 a closed form per value type, and string fragments are re-decoded with
 the standard SQL literal grammar and compared to the original value.
-This is not theoretical: on lancedb 0.37.1, ``lit("''").to_sql()`` is
+This is not theoretical: on lancedb 0.37.1 and 0.40.0, ``lit("''").to_sql()`` is
 ``''''`` — the engine parses it as ONE apostrophe, so an unverified
 filter on a double-apostrophe value silently matches the WRONG row —
 and a backslash directly before an apostrophe emits ``\'`` undoubled,
@@ -57,7 +57,7 @@ from __future__ import annotations
 import re
 from collections.abc import Iterable
 
-from .literal import _literal_sql
+from .literal import _check_value_class, _literal_sql
 
 __all__ = ["translate_where"]
 
@@ -178,7 +178,9 @@ def _leaf(
 
     Raises:
         ValueError: When ``$in``/``$nin`` receives a non-list value or a
-            list longer than :data:`_MAX_IN_LIST_LENGTH`.
+            list longer than :data:`_MAX_IN_LIST_LENGTH`, or when a value
+            is a refused class (a Decimal, a float NaN or a naive
+            datetime).
     """
     counter.charge()
     # Validate the field name before the absent-field fold so that
@@ -196,6 +198,10 @@ def _leaf(
                 f"{op} list exceeds the maximum of {_MAX_IN_LIST_LENGTH} entries "
                 f"(got {len(value)})."
             )
+    # Refuse an ambiguous value class (ADR-098) before the fold too, so
+    # the outcome does not depend on the table's schema.
+    for item in value if op in ("$in", "$nin") else (value,):
+        _check_value_class(item)
     if known_fields is not None and field not in known_fields:
         # ChromaDB parity: the planner would reject the reference
         # ("Field ... not found in struct"), so fold it to the

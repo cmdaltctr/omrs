@@ -1131,7 +1131,7 @@ def test_sparse_backend_auto_selects_native_when_supported(monkeypatch) -> None:
     """If native sparse support is detected, auto selects native.
 
     The lancedb registry entry carries the real native-FTS probe; on
-    the locked runtime (lancedb 0.37.1) it reports availability.
+    the locked runtime (lancedb 0.40.0) it reports availability.
     """
     import omrs.compose as compose
     from omrs.config import Settings

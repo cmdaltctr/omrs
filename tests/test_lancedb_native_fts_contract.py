@@ -2,7 +2,7 @@
 
 Pre-implementation feasibility pins (task 0.1,
 ``implement-native-sparse-backend-strategy``): these tests exercise the
-RAW ``lancedb`` 0.37.1 / ``pylance`` 10.0.0 API surface against real
+RAW ``lancedb`` 0.40.0 / ``pylance`` 10.0.0 API surface against real
 temporary stores under ``tmp_path`` so a dependency bump that changes
 the native-FTS behaviour this change builds on fails loudly here —
 before any adapter code depends on it.
@@ -118,7 +118,7 @@ def _fts_index_stats(table) -> tuple[int, int] | None:
 
 def test_locked_lancedb_versions() -> None:
     """The pins below are only valid for the locked dependency pair."""
-    assert _locked_version("lancedb") == "0.37.1"
+    assert _locked_version("lancedb") == "0.40.0"
     assert _locked_version("pylance") == "10.0.0"
 
 

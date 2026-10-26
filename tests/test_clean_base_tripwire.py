@@ -183,7 +183,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +1 (2026-10-26, live-check fix): the no-dotenv-file case in test_plugin_editor.py.
 # +3 (2026-10-26, verify fixes): test_web_experiment_editor_reasons.py (2) and one
 # failed-launch case in test_web_experiment_editor.py (1); all need fastapi.
-_BASE_EXECUTED = 8686
+# +19 (2026-10-25, upgrade-lancedb-0-40, by test-ID diff): test_lance_filter_value_classes.py
+# (17), test_lance_child_helper.py (+2: 3 new, 1 replaced) and test_lance_filter_security.py
+# (0: 7 new, 7 Decimal/NaN/naive-datetime cases removed). No fastapi needed.
+_BASE_EXECUTED = 8705
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

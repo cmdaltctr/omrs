@@ -106,6 +106,8 @@ We raised the pyarrow floor to 25.0.1. The writer crash still happened with pyar
 - A writer crash happens before the `writer phase finished` line.
 - ADR-042's floor policy changes.
 
+**Note (2026-10-26): the first trigger fired.** PR #130 (OpenSpec change `upgrade-lancedb-0-40`, ADR-098) raised the floor to `lancedb>=0.40` and locked 0.40.0. It removed the `os._exit(0)` step from `tests/_lance_child.py`. The marker and `PYTHONFAULTHANDLER=1` stay. CI run 40248055639 passed three full attempts on head `526ff1e3`. All ten floor jobs were green in each attempt, so the D4 fallback was not needed. No writer child crashed at exit.
+
 ## References
 
 - lancedb PR #4175 (shut down the shared Tokio runtime on interpreter exit; first released in lancedb 0.40.0)

@@ -17,7 +17,8 @@ lives in the table's durable Arrow schema metadata, written through
 pylance's ``update_schema_metadata`` (read-merge-write); that seam
 and the identity guards live in :mod:`.meta`.  Schema metadata
 is the durable key-value bag that survives reconnection and adapter
-writes (verified against lancedb 0.37.1 / pylance 10.0.0).
+writes (verified against lancedb 0.37.1 and 0.40.0 with pylance
+10.0.0).
 
 One of the few modules that imports ``lancedb`` directly (with ``filter.py``
 and ``fts.py``); all pipeline code goes through the ABC.
@@ -125,8 +126,9 @@ class LanceVectorStore(
     def _open_table(self, name: str) -> Any:
         """Return the raw LanceDB table, or ``None`` if absent.
 
-        Opens directly: lancedb (>= 0.37) maps a missing table to a
-        ``ValueError`` carrying the standardised "was not found" phrase,
+        Opens directly: lancedb maps a missing table to a ``ValueError``
+        carrying the standardised "was not found" phrase (since 0.37;
+        the 0.40.0 SDK checks the same phrase in ``drop_table``),
         so no name listing is needed on this per-page hot path.  Any
         other ``ValueError`` (corrupt or incomplete ``.lance`` data)
         re-raises instead of silently reading as absent.

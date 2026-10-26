@@ -5,8 +5,8 @@ execution (``implement-native-sparse-backend-strategy``, tasks
 2.1-2.4) so ``store.py`` stays inside the 500-line ceiling — the
 ``rows``/``filter``/``meta`` seam precedent.
 
-Lifecycle contract (feasibility-verified on lancedb 0.37.1 /
-pylance 10.0.0; see the change's ``feasibility-notes.md`` and the
+Lifecycle contract (feasibility-verified on lancedb 0.37.1 and
+0.40.0 with pylance 10.0.0; see the change's ``feasibility-notes.md`` and the
 raw-API pins in ``tests/test_lancedb_native_fts_contract.py``):
 
 - **Creation** is additive and explicitly triggered on first native
