@@ -11,19 +11,24 @@ scan the folders again on each request.
 * ``GET`` and ``POST /v1/experiment-projects``; ``DELETE .../{project_id}``.
 * ``GET`` and ``POST /v1/experiment-projects/{project_id}/experiments``.
 * ``GET .../experiments/{folder}`` and ``GET .../experiments/{folder}/files/{name}``.
+* ``PUT .../experiments/{folder}/files/{name}`` saves ``protocol.md`` or the report
+  (edit-experiment-files-in-library D4 and D6). It needs ``manage``.
 """
 
 from __future__ import annotations
 
+import threading
 from datetime import date
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import Response
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
 
+from .... import __version__
 from ....core.experiment_records.record import Category, Size
+from ....core.workspace import experiment_file_edits as edits
 from ....core.workspace import experiment_notebooks as notebooks
 from ....core.workspace import experiment_pages as pages
 from ....core.workspace.experiment_library import (
@@ -33,7 +38,7 @@ from ....core.workspace.experiment_library import (
 )
 from ....integrations.workspace_sqlite.experiment_library import DuplicateError
 from ..engine_access import RuntimeDep, admitted, require_session
-from ..errors import error_response
+from ..errors import API_HEADERS, error_response
 from ..security import Principal
 from .graphs import ok
 
@@ -43,6 +48,22 @@ ReadSession = Annotated[Principal, Depends(require_session("read"))]
 ManageSession = Annotated[Principal, Depends(require_session("manage"))]
 
 _UNKNOWN = "That project, experiment or file does not exist."
+
+#: Plain line for each 409 reason of ``writeExperimentFile``.
+EDIT_REASONS: dict[str, str] = {
+    "changed_on_disk": (
+        "This file changed on disk after you opened it. "
+        "Copy your text, select Reload, then add your changes again."
+    ),
+    "edit_log_unusable": (
+        "edits.jsonl in this experiment folder is a link or not a regular file, "
+        "so the app cannot record the edit. Replace it with a regular file."
+    ),
+}
+
+# One lock per (project id, folder), so two saves to one folder never interleave.
+_EDIT_LOCKS: dict[tuple[str, str], threading.Lock] = {}
+_EDIT_LOCKS_GUARD = threading.Lock()
 
 
 class ProjectBody(BaseModel):
@@ -64,6 +85,15 @@ class NewExperimentBody(BaseModel):
     category: Category
     size: Size
     follow_up: str | None = Field(default=None, max_length=16)
+
+
+class FileWriteBody(BaseModel):
+    """Body of ``PUT .../files/{name}`` (schema ``ExperimentFileWrite``)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    text: str
+    base_revision: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 
 def get_library(runtime: RuntimeDep) -> Any:
@@ -124,6 +154,29 @@ def _file(library: Any, project_id: str, folder: str, name: str) -> dict[str, An
     pages.check_name(folder, "folder name")
     project = library.get_project(project_id)
     return pages.read_file(notebooks.experiments_of(project), folder, name)
+
+
+def _edit_lock(project_id: str, folder: str) -> threading.Lock:
+    with _EDIT_LOCKS_GUARD:
+        return _EDIT_LOCKS.setdefault((project_id, folder), threading.Lock())
+
+
+def _save(library: Any, project_id: str, folder: str, name: str, body: FileWriteBody) -> Any:
+    # Refuse a bad name before the store or the disk is read (design D1).
+    pages.check_name(name, "file name")
+    pages.check_name(folder, "folder name")
+    if name not in edits.EDITABLE_NAMES:
+        raise pages.ExperimentRefusedError("The workspace edits only protocol.md and the report.")
+    project = library.get_project(project_id)
+    with _edit_lock(project_id, folder):
+        return edits.save_file(
+            notebooks.experiments_of(project),
+            folder,
+            name,
+            body.text,
+            body.base_revision,
+            f"omrs web {__version__}",  # core cannot import the version (design D10)
+        )
 
 
 def _create(library: Any, project_id: str, body: NewExperimentBody) -> dict[str, Any]:
@@ -242,3 +295,30 @@ async def read_file(
         return unknown(runtime)
     except pages.ExperimentRefusedError as exc:
         return invalid(runtime, exc)
+
+
+@router.put(
+    "/experiment-projects/{project_id}/experiments/{folder}/files/{name}",
+    operation_id="writeExperimentFile",
+)
+async def write_file(
+    _: ManageSession,
+    project_id: str,
+    folder: str,
+    name: str,
+    body: FileWriteBody,
+    runtime: RuntimeDep,
+    library: LibraryDep,
+) -> Response:
+    """Save ``protocol.md`` or the report, then log the save in ``edits.jsonl`` (D4)."""
+    try:
+        return ok(await call(runtime, _save, library, project_id, folder, name, body))
+    except (KeyError, pages.ExperimentNotFoundError):
+        return unknown(runtime)
+    except pages.ExperimentRefusedError as exc:
+        return invalid(runtime, exc)
+    except edits.ExperimentEditConflictError as exc:
+        payload = {"status": "error", "message": EDIT_REASONS[exc.reason], "reason": exc.reason}
+        return JSONResponse(payload, status_code=409, headers=API_HEADERS)
+    except edits.ExperimentEditFailedError as exc:
+        return error_response(500, str(exc), redactor=runtime.engine.redact)

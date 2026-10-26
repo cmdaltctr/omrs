@@ -48,7 +48,13 @@ def test_experiment_library_responses_conform_to_the_contract(
         check.check(client.get(f"{base}/{FIRST}"), 200)
         check.check(client.get(f"{base}/{SECOND}"), 200)
         check.check(client.get(f"{base}/.hidden"), 400)
-        check.check(client.get(f"{base}/{FIRST}/files/protocol.md"), 200)
+        protocol = f"{base}/{FIRST}/files/protocol.md"
+        revision = check.check(client.get(protocol), 200)["revision"]
+        save = {"text": "# Protocol\n\nChanged.\n", "base_revision": revision}
+        check.check(client.put(protocol, json=save, headers=ORIGIN), 200)
+        check.check(client.put(protocol, json=save, headers=ORIGIN), 409)
+        plan = f"{base}/{FIRST}/files/plan.json"
+        check.check(client.put(plan, json=save, headers=ORIGIN), 400)
         check.check(client.get(f"{base}/{FIRST}/files/review.html"), 400)
         check.check(client.get(f"{base}/{FIRST}/files/absent.md"), 404)
         body = {"slug": "new-run", "title": "New run", "category": "graph", "size": "Quick"}
