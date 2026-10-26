@@ -51,13 +51,14 @@
 > tests/unit/test_web_plugins_tool_executable.py::test_the_install_hint_names_the_marimo_card_before_the_command
 > tests/unit/test_web_plugins_tool_executable.py::test_the_plugin_list_gives_nothing_when_marimo_is_not_installed
 > tests/unit/test_web_plugins_tool_executable.py::test_the_plugin_list_gives_the_found_executable
-8354a8402,8429
+8354a8402,8430
 > tests/unit/test_web_tool_environment.py::test_a_failed_uv_tool_dir_is_unknown
 > tests/unit/test_web_tool_environment.py::test_a_receipt_without_entrypoint_gives_no_executable
 > tests/unit/test_web_tool_environment.py::test_a_runner_error_or_timeout_is_unknown[fail0]
 > tests/unit/test_web_tool_environment.py::test_a_runner_error_or_timeout_is_unknown[fail1]
 > tests/unit/test_web_tool_environment.py::test_a_third_requirement_does_not_match
 > tests/unit/test_web_tool_environment.py::test_a_version_above_the_range_is_outside_range
+> tests/unit/test_web_tool_environment.py::test_an_entrypoint_outside_the_uv_bin_folder_gives_no_executable
 > tests/unit/test_web_tool_environment.py::test_an_unreadable_receipt_does_not_match
 > tests/unit/test_web_tool_environment.py::test_clause_order_does_not_matter
 > tests/unit/test_web_tool_environment.py::test_copy_commands_quote_the_requirement

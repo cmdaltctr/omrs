@@ -57,7 +57,7 @@ A new module `transports/api/tool_environment.py` finds the marimo tool:
 
 1. Find `uv` with the existing `find_uv` (PATH, then `~/.local/bin`, then `~/.cargo/bin`). No `uv` gives `unknown` with `uv-not-found`.
 2. Run `uv tool dir` and `uv tool dir --bin` once per launch, with a 10 s limit, through an injected runner. The default runner passes the server environment without `*_API_KEY` variables, as the install job does. The plugin `SubprocessProbeRunner` keeps only an allow-list (`PATH`, `HOME` and a few more), so it would drop `UV_TOOL_DIR` and detection would read another folder than the install writes. Cache both answers. The folders depend only on the environment, which does not change in a launch. A failure gives `unknown`.
-3. Read `<tools>/marimo/uv-receipt.toml`. No file gives `not-installed`. The `marimo` requirement's `specifier` and the other requirement names give the "installed by the card" test (D7). The marimo entrypoint's `install-path` gives the executable.
+3. Read `<tools>/marimo/uv-receipt.toml`. No file gives `not-installed`. The `marimo` requirement's `specifier` and the other requirement names give the "installed by the card" test (D7). The marimo entrypoint's `install-path` gives the executable, but only when it sits directly in the folder that `uv tool dir --bin` reported. Registration trusts that exact path off `PATH` (D5), so a receipt that points anywhere else gives no executable.
 4. Read the installed versions from the tool environment's package metadata (`importlib.metadata.distributions(path=[<site-packages>])` over `<tools>/marimo/lib/python*/site-packages`). This gives the marimo version and whether jupytext is present. It runs no process.
 5. Compare the version with `VersionRange.contains` from the manifest. The result is `ready`, `needs-jupytext`, `outside-range` or `not-installed`.
 
@@ -95,6 +95,7 @@ So the cost of the second step is made small instead. After success the card sho
 - Install and uninstall refuse with `editor-running` while any editor of the `marimo` plugin that this server started is running (`host.editors.sessions()`). Replacing the tool environment under a running kernel can break it, and an uninstall would delete the files it runs from.
 - Opening a marimo editor refuses with `tool_install_running` while the job runs with `tool="marimo"`. Both the Code editor route (`openPluginEditor`) and the Library route (`openExperimentEditor`) check it before they issue a credential.
 - An extras job does not block an editor open. It does not touch marimo.
+- A short window stays open: a Library open that passed the `tool_install_running` check can still run `marimo convert` (not an editor session yet) when an install starts. The window is the length of one conversion, the user started both actions, and a failed conversion leaves no file (`converter_missing` or `conversion_failed`). It is accepted.
 
 ### D7. Uninstall is in scope, for the card's own install only
 

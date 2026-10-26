@@ -176,6 +176,18 @@ def test_a_receipt_without_entrypoint_gives_no_executable(tmp_path: Path) -> Non
     assert status.executable is None
 
 
+def test_an_entrypoint_outside_the_uv_bin_folder_gives_no_executable(tmp_path: Path) -> None:
+    elsewhere = tmp_path / "elsewhere" / "marimo"
+    receipt = (
+        '[tool]\nrequirements = [{ name = "marimo" }]\nentrypoints = [\n'
+        f'    {{ name = "marimo", install-path = "{elsewhere}", from = "marimo" }},\n]\n'
+    )
+    tools, bin_dir = _tool(tmp_path, receipt=receipt)
+    status = _detector(FakeRunner(tools, bin_dir)).detect()
+    assert status.availability == "ready"
+    assert status.executable is None
+
+
 def test_the_default_runner_passes_uv_folders_and_drops_api_keys(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

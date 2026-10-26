@@ -3212,8 +3212,11 @@ paths:
         An explicit trust decision (`approved: true`). The manifest must be
         the shipped marimo manifest or a file below `<workspace>/plugins/`.
         The executable must sit in a directory of the server's `PATH` or
-        below `<workspace>/plugins/`, and its file name must be the
-        manifest's executable name. Registration runs no process; run a
+        below `<workspace>/plugins/`, or be the exact path in
+        `detected_executables`, also when its folder is not on `PATH` (no
+        other file in that folder passes). Its file name must be the
+        manifest's executable name. Registration starts no editor and runs
+        no probe; the first call of a launch may run `uv tool dir`. Run a
         recheck before an editor opens.
       security:
         - sessionCookie: [plugins]

@@ -118,12 +118,20 @@ def installed_by_card(receipt: Path, tested: VersionRange) -> bool:
     return found[CONVERTER].get("specifier") in (None, "")
 
 
-def _entrypoint(tool: dict[str, object]) -> str | None:
+def _entrypoint(tool: dict[str, object], bin_dir: Path) -> str | None:
+    """Return the marimo ``install-path`` when it sits directly in uv's bin folder.
+
+    Registration trusts this exact path off ``PATH`` (D5), so a receipt that
+    points anywhere else gives no executable.
+    """
     items = tool.get("entrypoints")
     for item in items if isinstance(items, list) else []:
         if isinstance(item, dict) and item.get("name") == TOOL:
             path = item.get("install-path")
-            return path if isinstance(path, str) and os.path.isabs(path) else None
+            if not isinstance(path, str) or not os.path.isabs(path):
+                return None
+            parent = os.path.realpath(os.path.dirname(path))
+            return path if parent == os.path.realpath(bin_dir) else None
     return None
 
 
@@ -263,6 +271,6 @@ class ToolDetector:
             uv=uv,
             version=version,
             jupytext=jupytext,
-            executable=_entrypoint(_receipt(receipt)),
+            executable=_entrypoint(_receipt(receipt), folders[1]),
             installed_by_card=installed_by_card(receipt, tested),
         )

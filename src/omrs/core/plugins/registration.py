@@ -5,7 +5,8 @@ the executable reference, and it runs nothing. A probe runs only the
 manifest's ``probe`` recipe through an injected runner, so this package
 never imports ``subprocess``. A changed manifest needs a new registration.
 A changed executable (size, modification time or content) needs a recheck.
-OMRS never installs, upgrades or replaces the tool.
+Registration never installs, upgrades or replaces the tool. Only the marimo
+card on the Integrations page may install marimo (ADR-101).
 """
 
 from __future__ import annotations

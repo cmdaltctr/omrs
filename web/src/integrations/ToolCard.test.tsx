@@ -248,11 +248,18 @@ describe("install marimo", () => {
 });
 
 describe("one job at a time", () => {
-  it("disables the marimo Install button while an extras job runs", async () => {
-    toolServer({ tool: { ...MARIMO, installable: false, install_reason: "install-running" }, install: EXTRA_RUNNING });
+  it("disables the marimo Install button while an extras job runs, from the job alone", async () => {
+    // The tool entry still says installable, so only the page's busy state can disable the button.
+    toolServer({ tool: MARIMO, install: EXTRA_RUNNING });
     const card = await toolCard();
     await waitFor(() => expect(within(card).getByRole("button", { name: "Install marimo" })).toBeDisabled());
     expect(within(card).queryByRole("status")).toBeNull();
+  });
+
+  it("disables the marimo Uninstall button while an extras job runs, from the job alone", async () => {
+    toolServer({ tool: OWN_READY, install: EXTRA_RUNNING });
+    const card = await toolCard();
+    await waitFor(() => expect(within(card).getByRole("button", { name: "Uninstall marimo" })).toBeDisabled());
   });
 
   it("disables every extras Install button while the marimo job runs", async () => {

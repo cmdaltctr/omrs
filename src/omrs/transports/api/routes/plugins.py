@@ -9,7 +9,8 @@ never registers, probes, opens or stops anything.
   directory of the server's ``PATH`` at launch or below
   ``<workspace>/plugins/``, or be the exact path that the marimo card
   found in its ``uv tool`` environment (ADR-101, D5), and its file name
-  must be the manifest's executable name. Registration runs no process.
+  must be the manifest's executable name. Registration starts no editor
+  and runs no probe; the first call of a launch may run ``uv tool dir``.
 * A recheck runs only the manifest probe recipe.
 * Opening an editor needs ``consent: true``, an active experiment
   context and a notebook path relative to that context's workspace. The
@@ -201,7 +202,11 @@ async def list_plugins(_: PluginsScope, runtime: RuntimeDep) -> Response:
 async def register_plugin(
     _: PluginsScope, body: RegisterPluginBody, runtime: RuntimeDep
 ) -> Response:
-    """Record an approved manifest and executable. Runs no process."""
+    """Record an approved manifest and executable.
+
+    Starts no editor and runs no probe. The first call of a launch may run
+    ``uv tool dir`` through the tool detector, to find the marimo executable.
+    """
     host = _host(runtime)
     if not body.approved:
         return error_response(

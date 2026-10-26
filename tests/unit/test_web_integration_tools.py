@@ -192,6 +192,7 @@ def test_the_extras_list_is_unchanged(harness: Harness) -> None:
 
 def test_a_bearer_credential_is_refused_and_starts_nothing(harness: Harness) -> None:
     harness.client.cookies.clear()
+    # A bearer can hold only graph, read and run (BEARER_SCOPES), never manage.
     header = bearer(harness.policy, "read", "graph", "run")
     for path in (INSTALL, UNINSTALL):
         assert harness.client.post(path, headers={**ORIGIN, **header}).status_code == 403
