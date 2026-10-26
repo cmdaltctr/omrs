@@ -249,8 +249,8 @@ class PluginRegistry:
         if not tested.contains(parsed):
             return version, (
                 f"{manifest.tool_name} {version} is outside the tested range {tested.describe()}. "
-                f"Install a supported version outside OMRS, or update the plugin manifest, "
-                f"then recheck."
+                f"{_install_line(manifest, 'a supported version')}, or update the plugin "
+                f"manifest, then recheck."
             )
         if manifest.missing_capabilities:
             missing = ", ".join(manifest.missing_capabilities)
@@ -305,8 +305,18 @@ def _same_identity(saved: Any, current: ExecutableIdentity) -> bool:
     return isinstance(saved, Mapping) and dict(saved) == current.to_dict()
 
 
+def _install_line(manifest: PluginManifest, what: str) -> str:
+    """Say where to install *what*: the marimo card for marimo (ADR-101), else outside OMRS."""
+    if manifest.tool_name == "marimo":
+        return (
+            f"Install {what} from the marimo card on the Integrations page, "
+            f"or with uv in a terminal"
+        )
+    return f"Install {what} of {manifest.tool_name} outside OMRS"
+
+
 def _unavailable(manifest: PluginManifest, reason: str) -> str:
     return (
-        f"{reason}. Install or update {manifest.tool_name} outside OMRS, "
+        f"{reason}. {_install_line(manifest, manifest.tool_name)}, "
         f"then register its executable path again or recheck."
     )

@@ -22,6 +22,12 @@ changed modules safely until it restarts. The map, not the last job, is what
 the catalogue reports as ``pending_restart``, so a later job cannot change
 what an earlier entry shows. The state is kept in memory, so a restart shows
 ``idle`` again.
+
+The same job also runs the marimo tool action (:meth:`InstallJob.start_tool`,
+ADR-101): a fixed ``uv tool install`` or ``uv tool uninstall`` argument list,
+with the same guards. After exit code 0 it runs the caller's check function in
+a thread instead of ``uv pip check``, and it sets no ``restart_needed``,
+because the server's own environment did not change.
 """
 
 from __future__ import annotations
@@ -33,7 +39,7 @@ import os
 import signal
 import sys
 from collections import deque
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
@@ -56,6 +62,10 @@ FAILED = "failed"
 
 #: The two job actions; each is also the ``uv pip`` subcommand.
 ACTIONS: frozenset[str] = frozenset({"install", "uninstall"})
+
+
+#: The step after exit code 0; returns 0 when the job succeeds.
+_After = Callable[[dict[str, str], Callable[[str], str]], Awaitable[int]]
 
 
 class InstallRunning(RuntimeError):
@@ -114,6 +124,7 @@ class InstallJob:
     _state: str = IDLE
     _action: str | None = None
     _extra: str | None = None
+    _tool: str | None = None
     _started_at: str | None = None
     _finished_at: str | None = None
     _reason: str | None = None
@@ -133,6 +144,7 @@ class InstallJob:
             "state": self._state,
             "action": self._action,
             "extra": self._extra,
+            "tool": self._tool,
             "started_at": self._started_at,
             "finished_at": self._finished_at,
             "reason": self._reason,
@@ -163,16 +175,54 @@ class InstallJob:
             InstallRunning: Another job runs.
             ValueError: *action* is not ``install`` or ``uninstall``.
         """
+        self._begin(action, extra, None)
+        argv = [uv, "pip", action, "--python", self.python, *packages]
+        check = [uv, "pip", "check", "--python", self.python]
+
+        async def after(env: dict[str, str], clean: Callable[[str], str]) -> int:
+            return await self._exec(check, env, clean)
+
+        self._task = asyncio.get_running_loop().create_task(self._run(argv, redactor, after))
+
+    def start_tool(
+        self,
+        tool: str,
+        argv: list[str],
+        check: Callable[[], bool],
+        *,
+        action: str = "install",
+        redactor: Callable[[str], str] | None = None,
+    ) -> None:
+        """Run a fixed ``uv tool`` argument list for *tool*. Call it on the event loop.
+
+        Args:
+            tool: The external tool, already checked by the caller.
+            argv: The fixed argument list built by ``tool_environment``.
+            check: Runs in a thread after exit code 0; ``True`` means success.
+            action: ``install`` or ``uninstall``.
+            redactor: ``Engine.redact``; removes provider credential values.
+
+        Raises:
+            InstallRunning: Another job runs.
+            ValueError: *action* is not ``install`` or ``uninstall``.
+        """
+        self._begin(action, None, tool)
+
+        async def after(env: dict[str, str], clean: Callable[[str], str]) -> int:
+            return 0 if await asyncio.to_thread(check) else 1
+
+        self._task = asyncio.get_running_loop().create_task(self._run(list(argv), redactor, after))
+
+    def _begin(self, action: str, extra: str | None, tool: str | None) -> None:
+        """Check that no job runs, then reset the state for a new job."""
         if action not in ACTIONS:
             raise ValueError(f"Unknown job action {action!r}.")
         if self.running:
-            raise InstallRunning(f"The {self._extra} {self._action} is running.")
-        self._state, self._action, self._extra = RUNNING, action, extra
+            raise InstallRunning(f"The {self._extra or self._tool} {self._action} is running.")
+        self._state, self._action, self._extra, self._tool = RUNNING, action, extra, tool
         self._started_at, self._finished_at = _now(), None
         self._reason, self._exit_code = None, None
         self._output.clear()
-        argv = [uv, "pip", action, "--python", self.python, *packages]
-        self._task = asyncio.get_running_loop().create_task(self._run(argv, redactor))
 
     async def wait(self) -> None:
         """Wait until the current job ends. Returns at once when idle."""
@@ -184,18 +234,20 @@ class InstallJob:
         self._finished_at = _now()
         if state == SUCCEEDED and self._extra is not None and self._action is not None:
             self.restart_needed[self._extra] = self._action
-        logger.info("%s of %s ended: %s %s", self._action, self._extra, state, reason or "")
+        target = self._extra or self._tool
+        logger.info("%s of %s ended: %s %s", self._action, target, state, reason or "")
 
-    async def _run(self, argv: list[str], redactor: Callable[[str], str] | None) -> None:
+    async def _run(
+        self, argv: list[str], redactor: Callable[[str], str] | None, after: _After
+    ) -> None:
         env, secrets = _child_environment()
 
         def clean(text: str) -> str:
             return redact(redactor(text) if redactor else text, secrets)
 
-        check = [argv[0], "pip", "check", "--python", self.python]
         try:
             reason, code = await asyncio.wait_for(
-                self._steps(argv, check, env, clean), self.timeout
+                self._steps(argv, after, env, clean), self.timeout
             )
         except TimeoutError:
             # Before OSError: TimeoutError is one of its subclasses.
@@ -203,7 +255,7 @@ class InstallJob:
             self._finish(FAILED, "timed-out", None)
             return
         except OSError:
-            logger.warning("Could not start the %s of %s.", self._action, self._extra)
+            logger.warning("Could not start the %s of %s.", self._action, self._extra or self._tool)
             self._finish(FAILED, "start-failed", None)
             return
         except asyncio.CancelledError:
@@ -214,18 +266,21 @@ class InstallJob:
         self._finish(SUCCEEDED if reason is None else FAILED, reason, code)
 
     async def _steps(
-        self, install: list[str], check: list[str], env: dict[str, str], clean: Callable[[str], str]
+        self, install: list[str], after: _After, env: dict[str, str], clean: Callable[[str], str]
     ) -> tuple[str | None, int]:
         """Run the install or uninstall, then the check.
 
         Returns:
-            The failure reason (or ``None``) and the last exit code.
+            The failure reason (or ``None``) and the last exit code. A tool
+            check that fails keeps the install's exit code 0.
         """
         code = await self._exec(install, env, clean)
         if code != 0:
             return "exit-code", code
-        code = await self._exec(check, env, clean)
-        return (None if code == 0 else "check-failed"), code
+        checked = await after(env, clean)
+        if self._tool is not None:
+            return (None if checked == 0 else "check-failed"), code
+        return (None if checked == 0 else "check-failed"), checked
 
     async def _exec(self, argv: list[str], env: dict[str, str], clean: Callable[[str], str]) -> int:
         """Run one argument list, keep its redacted output lines and return the exit code."""

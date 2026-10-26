@@ -67,6 +67,7 @@ def test_the_job_is_a_runtime_field_and_starts_idle() -> None:
         "state": "idle",
         "action": None,
         "extra": None,
+        "tool": None,
         "started_at": None,
         "finished_at": None,
         "reason": None,

@@ -33,8 +33,9 @@ from typing import Any
 NOTEBOOK_NAME = "analysis.marimo.py"
 #: The tracked analysis script that the notebook is converted from.
 SOURCE_NAME = "analysis.py"
-#: The command that adds jupytext to marimo's tool environment (design D4).
-JUPYTEXT_HINT = 'uv tool install "marimo>=0.25.1,<0.26" --with jupytext'
+#: The terminal command that installs marimo with jupytext (design D4). It equals the
+#: marimo card's copy command (ADR-101); a test pins that.
+JUPYTEXT_HINT = 'uv tool install "marimo>=0.25.1,<0.26.0" --with jupytext'
 #: Most shadowed distribution names that a check returns.
 MAX_SHADOWED = 20
 
@@ -64,8 +65,10 @@ _NOT_REGULAR_MESSAGE = (
     f"{NOTEBOOK_NAME} is a link or not a regular file. "
     "Remove it or replace it with a regular file, then open again."
 )
-_CONVERTER_MISSING_MESSAGE = (
-    f"marimo needs jupytext to convert {SOURCE_NAME}. Run `{JUPYTEXT_HINT}`, then open again."
+CONVERTER_MISSING_MESSAGE = (
+    f"marimo needs jupytext to convert {SOURCE_NAME}. Install marimo with jupytext from the "
+    f"marimo card on the Integrations page, or run `{JUPYTEXT_HINT}` in a terminal, "
+    "then open again."
 )
 _CONVERSION_FAILED_MESSAGE = f"marimo could not convert {SOURCE_NAME}."
 
@@ -282,7 +285,7 @@ def _convert(source: Path, convert: Converter, scratch_parent: Path) -> bytes:
     finally:
         shutil.rmtree(private, ignore_errors=True)
     if returncode != 0 and "jupytext" in tail.lower():
-        raise EditorRefusal("converter_missing", _CONVERTER_MISSING_MESSAGE, output_tail=tail)
+        raise EditorRefusal("converter_missing", CONVERTER_MISSING_MESSAGE, output_tail=tail)
     raise EditorRefusal("conversion_failed", _CONVERSION_FAILED_MESSAGE, output_tail=tail)
 
 

@@ -40,6 +40,7 @@ from ..security import Principal, redact
 from .experiment_library import LibraryDep, call, invalid, unknown
 from .experiments import TRUST_NOTICE
 from .graphs import ok
+from .integration_tools import tool_job_running
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/v1")
@@ -67,15 +68,16 @@ EDITOR_REASONS: dict[str, str] = {
     ),
     "notebook_not_regular": "analysis.marimo.py is a link or not a regular file. Remove it.",
     "editor_running": "marimo already runs for this experiment. Use it, or stop it first.",
-    "converter_missing": (
-        "marimo needs jupytext to convert analysis.py. Run "
-        '`uv tool install "marimo>=0.25.1,<0.26" --with jupytext`, then open again.'
-    ),
+    "converter_missing": editor.CONVERTER_MISSING_MESSAGE,
     "conversion_failed": "marimo could not convert analysis.py.",
     "no_free_port": (
         "Ports 2719 to 2721 are busy. Close the program that uses them, then open again."
     ),
     "launch_failed": "marimo did not start. Check the plugin in Experiments, Code editor.",
+    "tool_install_running": (
+        "marimo is being installed or removed on the Integrations page. "
+        "Wait until that job ends, then open again."
+    ),
 }
 
 # One Library launch at a time, so two opens cannot convert or launch one notebook twice.
@@ -142,6 +144,8 @@ def _open(runtime: Any, library: Any, project_id: str, folder: str) -> dict[str,
     path = pages.experiment_folder(notebooks.experiments_of(project), folder)
     if host is None:
         raise _Refused("editor_unavailable")
+    if tool_job_running(runtime):  # before any credential, file or process (D6)
+        raise _Refused("tool_install_running")
     state = _manifest(host)
     try:
         # Checks run in the order of the design D5 table.

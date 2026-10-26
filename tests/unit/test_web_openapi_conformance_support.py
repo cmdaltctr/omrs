@@ -128,6 +128,7 @@ FAMILIES: dict[str, frozenset[str]] = {
     "integration_install": frozenset(
         {"getIntegrationInstall", "installIntegration", "uninstallIntegration"}
     ),
+    "integration_tools": frozenset({"installTool", "uninstallTool"}),
     "connections": frozenset(
         {
             "getConnections",

@@ -119,7 +119,7 @@ def test_list_starts_with_no_plugin_and_explains_installation(setup: Any) -> Non
     client, *_ = setup
     body = client.get("/v1/plugins").json()
     assert body["plugins"] == [] and body["editors"] == []
-    assert "outside OMRS" in body["install_hint"]
+    assert "marimo card on the Integrations page" in body["install_hint"]
     assert "filesystem" in body["trust_notice"]
 
 

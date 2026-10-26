@@ -32,6 +32,7 @@ from ..integrations_catalogue import find_integration as find_extra
 from ..lifespan import WebRuntime
 from ..security import Principal, redact
 from .graphs import ok
+from .integration_tools import tool_entries
 
 router = APIRouter(prefix="/v1")
 
@@ -166,7 +167,8 @@ async def list_integrations(_: ReadScope, runtime: RuntimeDep) -> Response:
         environment, entries = await run_in_threadpool(
             _catalogue, settings, runtime.installs, _profiles(runtime)
         )
-    return ok({"install_type": environment.install_type, "integrations": entries})
+        tools = await run_in_threadpool(tool_entries, runtime)
+    return ok({"install_type": environment.install_type, "integrations": entries, "tools": tools})
 
 
 @router.get("/integrations/install", operation_id="getIntegrationInstall")

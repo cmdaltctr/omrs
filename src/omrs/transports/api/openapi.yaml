@@ -3180,7 +3180,11 @@ paths:
     get:
       operationId: listPlugins
       summary: List plugin registrations and running editors
-      description: Runs no process. With no registration, `install_hint` says what to do.
+      description: >
+        Starts no editor and runs no probe. The first call of a launch may
+        ask uv for its tool folders (`uv tool dir`, 10 s limit) to fill
+        `detected_executables`. With no registration, `install_hint` says
+        what to do.
       security:
         - sessionCookie: [plugins]
       x-omrs-scopes: [plugins]
@@ -3653,7 +3657,9 @@ paths:
         says why not, and the user runs `install_command` outside the app
         and restarts the server. An entry with `uninstallable` true can be
         removed with `POST /v1/integrations/{extra}/uninstall`; otherwise
-        `uninstall_reason` says why not.
+        `uninstall_reason` says why not. `tools` lists the external tools
+        apart from the extras: today only marimo, which lives in its own
+        `uv tool` environment outside OMRS (ADR-101).
       security:
         - sessionCookie: [read]
         - bearerToken: [read]
@@ -3796,6 +3802,100 @@ paths:
           schema:
             type: string
             maxLength: 64
+      responses:
+        "202":
+          description: The uninstall started.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationInstallReply"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /integrations/tools/{tool}/install:
+    post:
+      operationId: installTool
+      summary: Install an external tool into its own uv tool environment
+      description: >
+        Only `marimo` is a known tool (ADR-101). Starts `uv tool install
+        "marimo>=<minimum>,<<below>" --with jupytext`, with the range from
+        the shipped marimo manifest. The argument list is built by the
+        server; no request text reaches it. marimo goes into its own `uv
+        tool` environment, never into the server's Python, so no restart is
+        needed and any server install type may run it. The install uses the
+        one install job: one job at a time, 600 s limit, no `*_API_KEY` in
+        the process, 40 redacted output lines. After exit code 0 the server
+        reads the tool environment again; the job succeeds only when the
+        tool is `ready`, else it fails with `check-failed`. The install does
+        not register the editor. The route answers 202 with the running state
+        (`tool` is `marimo`); poll `GET /v1/integrations/install`. An unknown
+        tool gets 404. Every refusal gets 409 with `reason`:
+        `already-installed`, `status-unknown`, `uv-not-found`,
+        `install-running` or `editor-running` (a marimo editor that this
+        server started runs). A refusal starts no process. Session only: a
+        bearer credential gets 403.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      parameters:
+        - $ref: "#/components/parameters/ExternalToolId"
+      responses:
+        "202":
+          description: The install started.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IntegrationInstallReply"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /integrations/tools/{tool}/uninstall:
+    post:
+      operationId: uninstallTool
+      summary: Uninstall the external tool that its card installed
+      description: >
+        Only `marimo` is a known tool (ADR-101). Starts `uv tool uninstall
+        marimo` through the one install job, with the same limits as
+        `installTool`. It runs only when the tool's `uv` receipt holds
+        exactly what the card installs: marimo with the shipped manifest
+        range, and jupytext. After exit code 0 the server reads the tool
+        environment again; the job succeeds only when the tool is
+        `not-installed`, else it fails with `check-failed`. A marimo
+        registration stays and then reports `unavailable`. An unknown tool
+        gets 404. Every refusal gets 409 with `reason`: `not-installed`,
+        `not-installed-by-app` (the receipt holds other requirements),
+        `status-unknown`, `uv-not-found`, `install-running` or
+        `editor-running`. A refusal starts no process. Session only: a
+        bearer credential gets 403.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      parameters:
+        - $ref: "#/components/parameters/ExternalToolId"
       responses:
         "202":
           description: The uninstall started.
@@ -5002,6 +5102,16 @@ components:
       schema:
         type: string
       description: Plugin id from the manifest.
+    ExternalToolId:
+      name: tool
+      in: path
+      required: true
+      schema:
+        type: string
+        maxLength: 64
+      description: >
+        The external tool. Only `marimo` is known; any other value gets 404
+        and starts nothing.
     ExperimentProjectId:
       name: project_id
       in: path
@@ -5194,7 +5304,11 @@ components:
             Present on the 422 from `setProfileEmbedding`: why the model
             check failed. Present on the 409 from `installIntegration` and
             `uninstallIntegration`: why the extra cannot be installed or
-            uninstalled now.
+            uninstalled now. Present on the 409 from `installTool` and
+            `uninstallTool`: why the tool cannot be installed or uninstalled
+            now. Present on a 409 `tool_install_running` from
+            `openPluginEditor`: a marimo install or uninstall from the
+            Integrations page runs.
         setting:
           type: string
           description: >
@@ -8760,7 +8874,7 @@ components:
     PluginList:
       type: object
       additionalProperties: false
-      required: [status, plugins, editors, shipped_manifests, install_hint, trust_notice]
+      required: [status, plugins, editors, shipped_manifests, detected_executables, install_hint, trust_notice]
       properties:
         status:
           type: string
@@ -8780,6 +8894,19 @@ components:
             ships. The register form fills in the first one.
           items:
             type: string
+        detected_executables:
+          type: object
+          additionalProperties: false
+          properties:
+            marimo:
+              type: string
+              description: Absolute path of the marimo executable.
+          description: >
+            The executable that the server found for each external tool, by
+            plugin id: `{"marimo": "<absolute path>"}` when the marimo `uv
+            tool` environment holds an executable, else `{}`. Registration
+            accepts this exact path also when its folder is not on the
+            server's `PATH` (ADR-101). The register form fills it in.
         install_hint:
           type: string
         trust_notice:
@@ -9007,6 +9134,7 @@ components:
             - conversion_failed
             - no_free_port
             - launch_failed
+            - tool_install_running
         launch_id:
           type: string
           description: The running editor, present only with `editor_running`.
@@ -9171,7 +9299,7 @@ components:
     IntegrationList:
       type: object
       additionalProperties: false
-      required: [status, install_type, integrations]
+      required: [status, install_type, integrations, tools]
       properties:
         status:
           type: string
@@ -9187,11 +9315,89 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Integration"
+        tools:
+          type: array
+          description: External tools apart from the extras. Today only marimo.
+          items:
+            $ref: "#/components/schemas/ExternalTool"
+
+    ExternalTool:
+      type: object
+      additionalProperties: false
+      required: [id, name, purpose, availability, version, jupytext, executable, requirement, install_command, uninstall_command, installable, install_reason, install_caution, uninstallable, uninstall_reason, plugin_status]
+      properties:
+        id:
+          type: string
+          enum: [marimo]
+        name:
+          type: string
+        purpose:
+          type: string
+          description: One-line description.
+        availability:
+          type: string
+          enum: [ready, needs-jupytext, outside-range, not-installed, unknown]
+          description: >
+            `ready`: the `uv tool` environment named `marimo` holds a marimo
+            inside the shipped manifest range, and jupytext.
+            `needs-jupytext`: marimo is in range and jupytext is missing.
+            `outside-range`: the marimo version is outside the range.
+            `not-installed`: no `uv tool` environment named `marimo` exists.
+            `unknown`: the server found no `uv`, or could not read the tool
+            environment. The state does not depend on the server's install type.
+        version:
+          type: [string, "null"]
+          description: The installed marimo version, or null.
+        jupytext:
+          type: boolean
+          description: Whether jupytext is in the marimo tool environment.
+        executable:
+          type: [string, "null"]
+          description: Absolute path of the marimo executable from the uv receipt, or null.
+        requirement:
+          type: string
+          description: The requirement the card installs, for example `marimo>=0.25.1,<0.26.0`.
+        install_command:
+          type: string
+          description: >
+            Copy-ready `uv tool install "<requirement>" --with jupytext` for a
+            terminal.
+        uninstall_command:
+          type: string
+          description: Copy-ready `uv tool uninstall marimo` for a terminal.
+        installable:
+          type: boolean
+          description: Whether `POST /v1/integrations/tools/marimo/install` would start an install now.
+        install_reason:
+          type: [string, "null"]
+          enum: [uv-not-found, status-unknown, already-installed, install-running, editor-running, null]
+          description: Why `installable` is false, or null when it is true. The checks run in this order.
+        install_caution:
+          type: [string, "null"]
+          description: >
+            Set for `needs-jupytext` and `outside-range`: says that Install
+            replaces the marimo tool environment and names the installed
+            version. Null otherwise.
+        uninstallable:
+          type: boolean
+          description: Whether `POST /v1/integrations/tools/marimo/uninstall` would start an uninstall now.
+        uninstall_reason:
+          type: [string, "null"]
+          enum: [uv-not-found, status-unknown, not-installed, not-installed-by-app, install-running, editor-running, null]
+          description: >
+            Why `uninstallable` is false, or null when it is true. The checks
+            run in this order. `not-installed-by-app`: the uv receipt holds
+            requirements other than marimo with the manifest range and
+            jupytext, so the card did not install it; use `uninstall_command`.
+        plugin_status:
+          type: [string, "null"]
+          enum: [unchecked, compatible, incompatible, unavailable, needs_approval, null]
+          description: The state of the marimo plugin registration, or null when marimo is not registered.
 
     IntegrationInstall:
       type: object
       additionalProperties: false
-      required: [state, action, extra, started_at, finished_at, reason, exit_code, output]
+      required: [state, action, extra, tool, started_at, finished_at, reason, exit_code, output]
       properties:
         state:
           type: string
@@ -9199,10 +9405,14 @@ components:
         action:
           type: [string, "null"]
           enum: [install, uninstall, null]
-          description: Whether the running or last job installs or uninstalls its extra; null when idle.
+          description: Whether the running or last job installs or uninstalls its extra or tool; null when idle.
         extra:
           type: [string, "null"]
-          description: The extra of the running or last install; null when idle.
+          description: The extra of the running or last install; null when idle or for a tool job.
+        tool:
+          type: [string, "null"]
+          enum: [marimo, null]
+          description: The external tool of the running or last job; null when idle or for an extras job.
         started_at:
           type: [string, "null"]
           format: date-time
@@ -9215,7 +9425,10 @@ components:
           description: >
             Why the install failed; null unless `state` is `failed`.
             `check-failed` means `uv pip install` succeeded but `uv pip check`
-            then found a conflict; `exit_code` is the check's code.
+            then found a conflict; `exit_code` is the check's code. For a tool
+            job, `check-failed` means `uv` exited with code 0 but the tool
+            environment was then not `ready` (install) or not gone
+            (uninstall).
         exit_code:
           type: [integer, "null"]
         output:
