@@ -280,9 +280,27 @@ The server refuses a folder without an `experiments` folder. It also refuses an 
 
 ### Read an experiment
 
-Select a card to open the experiment page. The tabs show the protocol, the plan, the report and the checker findings. An older folder without `report.md` shows `results.md` in the Report tab.
+Select a card to open the experiment page. The tabs show the protocol, the plan, the report and the checker findings. An older folder without `report.md` shows `results.md` in the Report tab. You can edit the Protocol and Report tabs (see the next section). The other tabs are for reading only.
 
 The app opens only text files at the top level of the experiment folder: `.md`, `.json`, `.jsonl`, `.txt`, `.csv`, `.yaml`, `.yml` and `.py`. It shows the first 1 MiB of a larger file. It lists other files, such as HTML review pages, but does not open them, because they can hold scripts. Open those files from your file manager.
+
+### Edit a protocol or report from the app
+
+The app can edit `protocol.md` and the report file (`report.md`, or `results.md` in an older folder without `report.md`) of any experiment. It edits only a file that exists, up to 1 MiB of UTF-8 text. It never edits `plan.json`, the scripts or `experiment.json`.
+
+1. Open the experiment page.
+2. Select the **Protocol** tab or the **Report** tab.
+3. Select **Edit**.
+4. Read the warning. A finished or converted experiment shows one, because its protocol and report are part of the record.
+5. Change the text.
+6. Select **Save**. The page shows "Saved." and "Last edited" with the date and time.
+7. Commit the edited file and `edits.jsonl` together, and say why in the commit message.
+
+Select **Cancel** to stop without a save. When you have changes, the page asks before it discards them.
+
+Each save adds one line to `edits.jsonl` in the experiment folder (see [Edit log](#edit-log-editsjsonl)). The app does not log edits made outside the app, for example in a text editor or by an agent. Git records those. The app never runs git and never commits.
+
+When the file changed on disk after you opened the editor, the save is refused and your text stays in the editor. Copy your text, select **Reload**, then add your changes again.
 
 ### Open an experiment in marimo
 

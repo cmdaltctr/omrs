@@ -110,7 +110,7 @@ The route `PUT .../files/{name}` takes `{"text": "...", "base_revision": "<sha25
 
 If step 6 fails, the server restores the old bytes with the same atomic write, but only when the file still has the new hash. It then returns 500 with "The file was not saved, because the app could not record the edit in edits.jsonl." If the restore fails too, it returns 500 with "The file was saved, but the edit was not recorded in edits.jsonl. Run git diff on the file to see the change." Both messages name no path.
 
-The lock is a `threading.Lock` per (project id, folder) held on the web runtime. It stops two browser tabs from interleaving. It cannot stop a terminal edit between step 5's check and the rename; that window is a few microseconds and is accepted (see Risks).
+The lock is a `threading.Lock` per (project id, folder), kept in the route module like the editor route's `_LAUNCH_LOCK` (one server process owns the workspace). It stops two browser tabs from interleaving. It cannot stop a terminal edit between step 5's check and the rename; that window is a few microseconds and is accepted (see Risks).
 
 Alternatives:
 

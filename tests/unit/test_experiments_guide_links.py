@@ -101,3 +101,14 @@ def test_a_link_that_leaves_the_repository_is_reported(target: str) -> None:
 def test_links_inside_code_are_not_read() -> None:
     markdown = "See `[x](https://example.org)`.\n\n```\n[y](/abs)\n```\n[ok](EXP_README.md)\n"
     assert link_targets(markdown) == ["EXP_README.md"]
+
+
+def test_guide_states_the_edit_rule() -> None:
+    """The finished-record rule names the editable files and the edit log (ADR-102)."""
+    text = _GUIDE.read_text(encoding="utf-8")
+    assert (
+        "change only `experiment.json`, `protocol.md` and the report file "
+        "(`report.md`, or `results.md` in an older folder without `report.md`)" in text
+    )
+    assert "Never change or remove a line in `edits.jsonl`." in text
+    assert "change only `experiment.json`. Never edit" not in text

@@ -14,7 +14,7 @@ This skill runs experiments in a fixed, simple way. Every experiment answers one
 3. Pick the smallest size that answers the question (see "Sizes"). Keep to its script limit. Ask the user before you add more.
 4. Do not change `plan.json` after the first run. Record any change as an amendment in its `amendments` list. No tool writes to `plan.json`.
 5. Status lives only in `experiment.json`. Never write a status into `plan.json`, `protocol.md` or `report.md`.
-6. In a finished or converted experiment, change only `experiment.json`. Never edit its other files. A tool may add the git-ignored derived files `analysis.ipynb`, `analysis.marimo.py` and `__marimo__/`. Never commit them.
+6. In a finished or converted experiment, change only `experiment.json`, `protocol.md` and the report file (`report.md`, or `results.md` in an older folder without `report.md`). Never edit its other files. Say what changed and why in the commit message. The web app appends one line to `edits.jsonl` in the experiment folder for each save of `protocol.md` or the report. Never change or remove a line in `edits.jsonl`. A tool may add the git-ignored derived files `analysis.ipynb`, `analysis.marimo.py` and `__marimo__/`. Never commit them.
 7. Write only inside the experiment folder. Never touch production data or `.env`.
 8. Every number in a report names the `output/` file it came from.
 9. Reports open with the Answer box. Write in plain British English, with sentences of 20 words or fewer. Explain each term in the sentence where it first appears.
@@ -146,6 +146,7 @@ Put pure scoring logic in a small module with a `test_*.py` beside it.
 2. Each run start appends one line to `output/run-records.jsonl`, through the helper in `experiments/_lib/run_record.py`. The line holds the UTC start time, git commit, dirty-tree flag, `plan.json` SHA-256 and the command. Earlier lines never change.
 3. Run the commands from the plan. If the run stops, re-run with `--resume`. A resume also appends a run record.
 4. The checker warns when a run record's plan SHA-256 differs from the current `plan.json`. That means the plan changed after a run. Record it as an amendment.
+5. A save of `protocol.md` or the report from the web app appends one line to `edits.jsonl` in the experiment folder. Git tracks it. Commit it with the edited file. The checker warns (`edit-log-invalid`) when a line does not load.
 
 ### Step 5: Summarise
 
