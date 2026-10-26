@@ -15,6 +15,7 @@ import {
   removeExperimentProject,
   removeNotebookEntry,
   renameNotebook,
+  writeExperimentFile,
   type NewExperiment,
 } from "./experimentLibrary";
 import { queryKeys } from "./queries";
@@ -51,6 +52,21 @@ export function useCreateLibraryExperiment() {
   return useMutation({
     mutationFn: (input: { projectId: string; experiment: NewExperiment }) => createLibraryExperiment(api, input.projectId, input.experiment),
     onSuccess: refresh,
+  });
+}
+
+/** Saves protocol.md or the report, then refreshes that file and the experiment page. */
+export function useSaveExperimentFile() {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { projectId: string; folder: string; name: string; text: string; baseRevision: string }) =>
+      writeExperimentFile(api, input.projectId, input.folder, input.name, { text: input.text, base_revision: input.baseRevision }),
+    onSuccess: (_saved, input) =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.experimentFile(input.projectId, input.folder, input.name) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.projectExperiment(input.projectId, input.folder), exact: true }),
+      ]),
   });
 }
 

@@ -2887,6 +2887,63 @@ paths:
           $ref: "#/components/responses/InternalError"
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
+    put:
+      operationId: writeExperimentFile
+      summary: Save the protocol or the report of one experiment
+      description: >
+        Needs the browser session with the `manage` scope. A bearer
+        credential never saves. Only `protocol.md`, `report.md`, and
+        `results.md` in a folder without `report.md`, can be saved, and only
+        when the file exists as a regular file directly in the experiment
+        folder, is at most 1 MiB, is valid UTF-8 and holds no NUL character
+        (400 otherwise). The body
+        carries the `revision` that the read returned; another revision on
+        disk gives 409 `changed_on_disk` and writes nothing. The new text
+        replaces the file in one rename and keeps CRLF line endings and a
+        byte order mark of the old file. Each save that changes the file
+        appends one line to `edits.jsonl` in the experiment folder. When
+        `edits.jsonl` is a link or not a regular file, the answer is 409
+        `edit_log_unusable` and nothing is written. The server never runs git.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      parameters:
+        - $ref: "#/components/parameters/ExperimentProjectId"
+        - $ref: "#/components/parameters/ExperimentFolder"
+        - $ref: "#/components/parameters/ExperimentFileName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExperimentFileWrite"
+      responses:
+        "200":
+          description: Saved, or nothing to save (`changed` is false).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperimentFileSaved"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: >
+            The file was not saved because of the state on disk. `reason`
+            says why. Nothing was written.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExperimentFileRefused"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
 
   /experiment-projects/{project_id}/experiments/{folder}/editor:
     post:
@@ -8683,7 +8740,7 @@ components:
     ExperimentFileText:
       type: object
       additionalProperties: false
-      required: [status, name, text, truncated, size]
+      required: [status, name, text, truncated, size, revision, editable, last_edited]
       properties:
         status: {type: string, enum: [ok]}
         name: {type: string}
@@ -8695,6 +8752,84 @@ components:
           type: integer
           minimum: 0
           description: The full file size in bytes.
+        revision:
+          type: [string, "null"]
+          pattern: "^[0-9a-f]{64}$"
+          description: The SHA-256 of the file bytes, or null when the text is cut.
+        editable:
+          type: boolean
+          description: True when `writeExperimentFile` can save this file.
+        last_edited:
+          description: The newest save of this file logged in `edits.jsonl`, or null.
+          oneOf:
+            - $ref: "#/components/schemas/ExperimentEdit"
+            - type: "null"
+
+    ExperimentEdit:
+      type: object
+      additionalProperties: false
+      required: [edited_at, status, converted]
+      properties:
+        edited_at:
+          type: string
+          format: date-time
+          description: The UTC time of the save.
+        status:
+          type: string
+          enum: [PLANNED, ACTIVE, PASS, FAIL, INCONCLUSIVE, MEASURED, SUPERSEDED]
+          description: The record status at the time of the save.
+        converted:
+          type: boolean
+          description: True when the record had a migration note at the time of the save.
+
+    ExperimentFileWrite:
+      type: object
+      additionalProperties: false
+      required: [text, base_revision]
+      properties:
+        text:
+          type: string
+          description: The new text. At most 1 MiB in UTF-8, with no NUL character.
+        base_revision:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          description: The `revision` that the read returned when the editor opened.
+
+    ExperimentFileSaved:
+      type: object
+      additionalProperties: false
+      required: [status, name, revision, size, changed, last_edited]
+      properties:
+        status: {type: string, enum: [ok]}
+        name: {type: string}
+        revision:
+          type: string
+          pattern: "^[0-9a-f]{64}$"
+          description: The SHA-256 of the file bytes after the request.
+        size:
+          type: integer
+          minimum: 0
+        changed:
+          type: boolean
+          description: False when the text equals the file. Then nothing was written.
+        last_edited:
+          oneOf:
+            - $ref: "#/components/schemas/ExperimentEdit"
+            - type: "null"
+
+    ExperimentFileRefused:
+      type: object
+      additionalProperties: false
+      required: [status, message, reason]
+      properties:
+        status:
+          type: string
+          enum: [error]
+        message:
+          type: string
+        reason:
+          type: string
+          enum: [changed_on_disk, edit_log_unusable]
 
     ProjectExperimentRequest:
       type: object

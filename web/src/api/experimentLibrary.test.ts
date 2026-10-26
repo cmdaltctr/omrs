@@ -7,6 +7,7 @@ import {
   createNotebook,
   deleteNotebook,
   getExperimentFile,
+  writeExperimentFile,
   getNotebook,
   getProjectExperiment,
   listExperimentProjects,
@@ -81,8 +82,10 @@ describe("experiment library API client", () => {
     expect((await getProjectExperiment(one.api, "p1", "a b")).output).toBeNull();
     expect(one.fetchImpl.mock.calls[0]![0]).toBe("/v1/experiment-projects/p1/experiments/a%20b");
 
-    const file = setup({ status: "ok", name: "report.md", text: "# R", truncated: false, size: 3 });
-    expect(await getExperimentFile(file.api, "p1", "f", "report.md")).toEqual({ name: "report.md", text: "# R", truncated: false, size: 3 });
+    const edit = { edited_at: "2026-10-26T14:05:00Z", status: "PASS", converted: true };
+    const read = { name: "report.md", text: "# R", truncated: false, size: 3, revision: "a".repeat(64), editable: true, last_edited: edit };
+    const file = setup({ status: "ok", ...read });
+    expect(await getExperimentFile(file.api, "p1", "f", "report.md")).toEqual(read);
     expect(file.fetchImpl.mock.calls[0]![0]).toBe("/v1/experiment-projects/p1/experiments/f/files/report.md");
   });
 
@@ -142,5 +145,15 @@ describe("experiment library API client", () => {
     await removeNotebookEntry(removed.api, "n1", "p1", "a b");
     expect(removed.fetchImpl.mock.calls[0]![0]).toBe("/v1/notebooks/n1/entries/p1/a%20b");
     expect(removed.fetchImpl.mock.calls[0]![1]?.method).toBe("DELETE");
+  });
+
+  it("saves a file with the revision it was based on", async () => {
+    const answer = { name: "protocol.md", revision: "b".repeat(64), size: 4, changed: true, last_edited: { edited_at: "2026-10-26T14:05:00Z", status: "PLANNED", converted: false } };
+    const { api, fetchImpl } = setup({ status: "ok", ...answer });
+    expect(await writeExperimentFile(api, "p1", "a b", "protocol.md", { text: "new\n", base_revision: "a".repeat(64) })).toEqual(answer);
+    const [path, init] = fetchImpl.mock.calls[0]!;
+    expect(path).toBe("/v1/experiment-projects/p1/experiments/a%20b/files/protocol.md");
+    expect(init?.method).toBe("PUT");
+    expect(JSON.parse(String(init?.body))).toEqual({ text: "new\n", base_revision: "a".repeat(64) });
   });
 });

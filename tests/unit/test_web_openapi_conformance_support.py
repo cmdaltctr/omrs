@@ -184,6 +184,7 @@ FAMILIES: dict[str, frozenset[str]] = {
             "createProjectExperiment",
             "getProjectExperiment",
             "readExperimentFile",
+            "writeExperimentFile",
             "openExperimentEditor",
             "listNotebooks",
             "createNotebook",

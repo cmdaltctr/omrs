@@ -57,6 +57,8 @@ Unknown keys are an error. Status lives only in `experiment.json`. Do not write 
 | Standard | `experiment.json`, `protocol.md`, `plan.json`, `report.md` |
 | Confirmatory | The Standard set. Commit `protocol.md` and `plan.json` before the first run. |
 
+A folder gains `edits.jsonl` after the first save from the web app. Git tracks it. Commit it with the edited file.
+
 ## Make an experiment
 
 - Create the folder with `uv run --no-sync omrs experiments new <slug> --title "<title>" --category <category> --size <size>`.
@@ -84,7 +86,8 @@ Unknown keys are an error. Status lives only in `experiment.json`. Do not write 
 
 ## Keep the record and the index current
 
-- In a finished or converted experiment, change only `experiment.json`. Never edit its other files. A tool may add the git-ignored derived files `analysis.ipynb`, `analysis.marimo.py` and `__marimo__/`. Never commit them.
+- In a finished or converted experiment, change only `experiment.json`, `protocol.md` and the report file (`report.md`, or `results.md` in an older folder without `report.md`). Never edit its other files. Say what changed and why in the commit message.
+- The web app appends one line to `edits.jsonl` in the experiment folder for each save of `protocol.md` or the report. Never change or remove a line in `edits.jsonl`. A tool may add the git-ignored derived files `analysis.ipynb`, `analysis.marimo.py` and `__marimo__/`. Never commit them.
 - Update `status` and `finding` in `experiment.json` at each step.
 - Rebuild the index table with `uv run --no-sync omrs experiments index --write`. Do not edit the rows between the index markers by hand.
 - Check the folder with `uv run --no-sync omrs experiments check`. Fix every error before you commit.

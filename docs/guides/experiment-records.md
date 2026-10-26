@@ -152,6 +152,31 @@ The helper reads the git commit and the dirty flag. It then calls the append fun
 
 `output/` is not in git. Copy it, with its run records, to the local data store before you remove a worktree. The repository `AGENTS.md` names the data store and the copy procedure.
 
+## Edit log: `edits.jsonl`
+
+The web app appends one line to `edits.jsonl` in the experiment folder each time it saves `protocol.md` or the report file. Git tracks the file. The app never changes or removes an earlier line. It does not log edits made outside the app: git records those.
+
+| Field | Meaning |
+| --- | --- |
+| `format` | `omrs-edit-record/1` |
+| `file` | The file name, for example `protocol.md` |
+| `edited_at` | The time of the save in UTC, with seconds |
+| `before_sha256`, `after_sha256` | The SHA-256 of the file bytes before and after the save |
+| `before_size`, `after_size` | The size of the file in bytes before and after the save |
+| `status` | The record status at the time of the save |
+| `converted` | `true` when the record has a `migration` note |
+| `tool` | The tool that saved the file, for example `omrs web 3.4.0` |
+
+A line holds no user name, login or path. A line with a key that the format does not define does not load.
+
+To match a line against git:
+
+1. Find a commit that changed the file: `git log --oneline -- <folder>/<file>`.
+2. Print the SHA-256 of the file in that commit: `git show <commit>:<folder>/<file> | shasum -a 256`.
+3. Compare the result with `before_sha256` or `after_sha256`.
+
+Git's own object id is a different hash, so do not compare the log with it.
+
 ## The index table
 
 The index table in `experiments/EXP_README.md` is generated from the `experiment.json` files. It is between two marker lines:
@@ -222,6 +247,7 @@ Each finding has a stable code. Some codes are less severe on a converted record
 | `category-missing` | info | A converted record has no `category`. | Add `category` when you know it. |
 | `files-missing` | warning; info if converted | A file that the size needs is missing. | Add the file, or correct `size`. |
 | `run-records-invalid` | warning | `output/run-records.jsonl` has a line that does not load. | Find the bad line. Do not change the other lines. |
+| `edit-log-invalid` | warning | A line of `edits.jsonl` does not load, or the file is a link or not a regular file. The message names the line. | Find the bad line in the git history of `edits.jsonl`. Do not change the other lines. |
 | `plan-changed` | warning | A run record has a `plan_sha256` that differs from the current `plan.json`. | Record the change as an amendment. Rerun if the plan change affects the result. |
 | `reserved-invalid` | error | `reserved.json` does not load. | Fix the named entry. |
 | `reserved-has-folder` | info | A reserved number now has a folder. | Remove the entry from `reserved.json`. |
@@ -254,9 +280,27 @@ The server refuses a folder without an `experiments` folder. It also refuses an 
 
 ### Read an experiment
 
-Select a card to open the experiment page. The tabs show the protocol, the plan, the report and the checker findings. An older folder without `report.md` shows `results.md` in the Report tab.
+Select a card to open the experiment page. The tabs show the protocol, the plan, the report and the checker findings. An older folder without `report.md` shows `results.md` in the Report tab. You can edit the Protocol and Report tabs (see the next section). The other tabs are for reading only.
 
 The app opens only text files at the top level of the experiment folder: `.md`, `.json`, `.jsonl`, `.txt`, `.csv`, `.yaml`, `.yml` and `.py`. It shows the first 1 MiB of a larger file. It lists other files, such as HTML review pages, but does not open them, because they can hold scripts. Open those files from your file manager.
+
+### Edit a protocol or report from the app
+
+The app can edit `protocol.md` and the report file (`report.md`, or `results.md` in an older folder without `report.md`) of any experiment. It edits only a file that exists, up to 1 MiB of UTF-8 text with no NUL character. It never edits `plan.json`, the scripts or `experiment.json`.
+
+1. Open the experiment page.
+2. Select the **Protocol** tab or the **Report** tab.
+3. Select **Edit**.
+4. Read the warning. A finished or converted experiment shows one, because its protocol and report are part of the record.
+5. Change the text.
+6. Select **Save**. The page shows "Saved." and "Last edited" with the date and time.
+7. Commit the edited file and `edits.jsonl` together, and say why in the commit message.
+
+Select **Cancel** to stop without a save. When you have changes, the page asks before it discards them.
+
+Each save adds one line to `edits.jsonl` in the experiment folder (see [Edit log](#edit-log-editsjsonl)). The app does not log edits made outside the app, for example in a text editor or by an agent. Git records those. The app never runs git and never commits.
+
+When the file changed on disk after you opened the editor, the save is refused and your text stays in the editor. Copy your text, select **Reload**, then add your changes again.
 
 ### Open an experiment in marimo
 

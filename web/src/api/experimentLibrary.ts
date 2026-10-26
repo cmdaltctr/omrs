@@ -79,12 +79,36 @@ export interface ExperimentDetail {
   output: string[] | null;
 }
 
+/** One save of a file from the app, from `edits.jsonl`. */
+export interface ExperimentEdit {
+  /** UTC time of the save. */
+  edited_at: string;
+  /** The record status at the time of the save. */
+  status: string;
+  /** True when the record was converted from the old layout. */
+  converted: boolean;
+}
+
 export interface ExperimentFile {
   name: string;
   text: string;
   /** True when the file is over 1 MiB and `text` holds only its first 1 MiB. */
   truncated: boolean;
   size: number;
+  /** SHA-256 of the file, or null when the text is cut. A save sends it back. */
+  revision: string | null;
+  /** True when the app can save this file: an existing protocol.md or report. */
+  editable: boolean;
+  last_edited: ExperimentEdit | null;
+}
+
+export interface ExperimentFileSaved {
+  name: string;
+  revision: string;
+  size: number;
+  /** False when the text equals the file. Then nothing was written. */
+  changed: boolean;
+  last_edited: ExperimentEdit | null;
 }
 
 export interface NewExperiment {
@@ -160,7 +184,31 @@ export async function getProjectExperiment(api: ApiClient, projectId: string, fo
 /** The text of one top-level file. The server refuses names outside the folder and suffixes it does not serve. */
 export async function getExperimentFile(api: ApiClient, projectId: string, folder: string, name: string, options: CallOptions = {}): Promise<ExperimentFile> {
   const body = await api.request<ExperimentFile>("GET", `${experimentPath(projectId, folder)}/files/${segment(name)}`, { signal: options.signal });
-  return { name: body.name, text: body.text, truncated: body.truncated, size: body.size };
+  return {
+    name: body.name,
+    text: body.text,
+    truncated: body.truncated,
+    size: body.size,
+    revision: body.revision,
+    editable: body.editable,
+    last_edited: body.last_edited,
+  };
+}
+
+/**
+ * Saves protocol.md or the report. A 409 with `reason: changed_on_disk` means
+ * the file changed after `base_revision` was read; nothing was written.
+ */
+export async function writeExperimentFile(
+  api: ApiClient,
+  projectId: string,
+  folder: string,
+  name: string,
+  input: { text: string; base_revision: string },
+  options: CallOptions = {},
+): Promise<ExperimentFileSaved> {
+  const body = await api.request<ExperimentFileSaved>("PUT", `${experimentPath(projectId, folder)}/files/${segment(name)}`, { body: input, signal: options.signal });
+  return { name: body.name, revision: body.revision, size: body.size, changed: body.changed, last_edited: body.last_edited };
 }
 
 /** Creates an experiment folder with today's date. A blank follow-up number is left out. */

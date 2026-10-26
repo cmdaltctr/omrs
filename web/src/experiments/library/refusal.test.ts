@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../api/client";
-import { EDITOR_REFUSALS, editorRefusalLine, refusalLaunchId, refusalLinksToMarimoCard } from "./refusal";
+import { EDITOR_REFUSALS, editorRefusalLine, refusalLaunchId, refusalLinksToMarimoCard, SAVE_REFUSALS, saveRefusalLine, saveRefusalReason } from "./refusal";
 
 function refused(reason: string | undefined, message = "RAW server text", extra: Record<string, unknown> = {}, status = 409): ApiError {
   const body = { status: "error", message, ...(reason === undefined ? {} : { reason }), ...extra };
@@ -73,5 +73,40 @@ describe("editor refusal lines", () => {
     expect(refusalLaunchId(refused("editor_running", "m", { launch_id: "launch_9" }))).toBe("launch_9");
     expect(refusalLaunchId(refused("no_free_port", "m", { launch_id: "launch_9" }))).toBeNull();
     expect(refusalLaunchId(new Error("x"))).toBeNull();
+  });
+});
+
+describe("save refusal lines", () => {
+  it.each(["changed_on_disk", "edit_log_unusable"] as const)("maps %s to its own plain line and logs the server text", (reason) => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const error = refused(reason);
+    expect(saveRefusalReason(error)).toBe(reason);
+    expect(saveRefusalLine(error)).toBe(SAVE_REFUSALS[reason]);
+    expect(log).toHaveBeenCalled();
+  });
+
+  it("says the changed file must be reloaded", () => {
+    expect(SAVE_REFUSALS.changed_on_disk).toBe("This file changed on disk after you opened it. Copy your text, select Reload, then add your changes again.");
+  });
+
+  it("shows the server's plain line for a refused file or text (400)", () => {
+    const error = refused(undefined, "The text is larger than 1 MiB.", {}, 400);
+    expect(saveRefusalReason(error)).toBeNull();
+    expect(saveRefusalLine(error)).toBe("The text is larger than 1 MiB.");
+  });
+
+  it.each([
+    "The file was not saved.",
+    "The file was not saved, because the app could not record the edit in edits.jsonl.",
+    "The file was saved, but the edit was not recorded in edits.jsonl. Run git diff on the file to see the change.",
+  ])("shows the known 500 line %s", (message) => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    expect(saveRefusalLine(refused(undefined, message, {}, 500))).toBe(message);
+  });
+
+  it("keeps the generic line for any other server failure", () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const line = saveRefusalLine(refused(undefined, "RAW Traceback", {}, 500));
+    expect(line).toBe("The local server could not complete that request.");
   });
 });

@@ -15,6 +15,7 @@ most :data:`MAX_FILE_BYTES` bytes are returned. An experiment folder or an
 
 from __future__ import annotations
 
+import hashlib
 import os
 import stat
 from collections import defaultdict
@@ -315,7 +316,12 @@ def read_regular_file(base: Path, name: str, limit: int = MAX_FILE_BYTES) -> tup
 
 
 def read_file(experiments: Path, name: str, file_name: str) -> dict[str, Any]:
-    """Return ``{name, text, truncated, size}`` for one top-level text file (design D6).
+    """Return one top-level text file (design D6).
+
+    The answer is ``{name, text, truncated, size, revision, editable,
+    last_edited}``. ``revision`` is the SHA-256 of the file, or None when the
+    text is cut. ``editable`` and ``last_edited`` come from
+    :mod:`omrs.core.workspace.experiment_file_edits`.
 
     Raises:
         ExperimentRefusedError: The folder or file name is not allowed, the
@@ -335,11 +341,18 @@ def read_file(experiments: Path, name: str, file_name: str) -> dict[str, Any]:
     if not _served(target, base):
         raise ExperimentRefusedError("The file links to a file the workspace does not open.")
     data, size = read_regular_file(base, target.name)
+    # Imported here: experiment_file_edits builds on this module.
+    from .experiment_file_edits import is_editable, last_edited_view
+
+    truncated = len(data) > MAX_FILE_BYTES
     return {
         "name": file_name,
         "text": data[:MAX_FILE_BYTES].decode("utf-8", errors="replace"),
-        "truncated": len(data) > MAX_FILE_BYTES,
+        "truncated": truncated,
         "size": size,
+        "revision": None if truncated else hashlib.sha256(data).hexdigest(),
+        "editable": is_editable(base, file_name, data, size),
+        "last_edited": last_edited_view(base, file_name),
     }
 
 

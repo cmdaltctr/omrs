@@ -262,7 +262,8 @@ Every route needs the browser session. A bearer credential gets 403.
 | GET | `/v1/experiment-projects/{project_id}/experiments` | `read` | Experiments with findings, reserved numbers and project-level findings |
 | POST | `/v1/experiment-projects/{project_id}/experiments` | `manage` | Create an experiment folder, then rewrite the `EXP_README.md` index when it has markers |
 | GET | `/v1/experiment-projects/{project_id}/experiments/{folder}` | `read` | One experiment, its top-level files and the names in `output/` |
-| GET | `/v1/experiment-projects/{project_id}/experiments/{folder}/files/{name}` | `read` | Text of one top-level text file as JSON, at most 1 MiB |
+| GET | `/v1/experiment-projects/{project_id}/experiments/{folder}/files/{name}` | `read` | Text of one top-level text file as JSON, at most 1 MiB, with `revision`, `editable` and `last_edited` |
+| PUT | `/v1/experiment-projects/{project_id}/experiments/{folder}/files/{name}` | `manage` | Body `{"text", "base_revision"}`. Save an existing `protocol.md`, `report.md`, or `results.md` without `report.md`, then append one line to `edits.jsonl`. 400 for any other file. 409 `reason`: `changed_on_disk`, `edit_log_unusable`. Never runs git |
 | POST | `/v1/experiment-projects/{project_id}/experiments/{folder}/editor` | `manage` | Body `{"consent": true}` on every call. Open `analysis.marimo.py` in marimo, with the kernel in `<project root>/.venv`. Converts `analysis.py` once, never overwrites. 409 `reason`: `editor_unavailable`, `editor_unsupported`, `no_project_environment`, `python_mismatch`, `project_config_runs_on_open`, `notebook_not_regular`, `editor_running` (with `launch_id`), `converter_missing`, `conversion_failed`, `no_free_port`, `launch_failed` |
 | GET | `/v1/notebooks` | `read` | Project notebooks (`project:<project_id>`), then user notebooks |
 | POST | `/v1/notebooks` | `read` | Create a user notebook. 409 for a name already used |

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 from pathlib import Path
 from typing import Any
@@ -59,6 +61,9 @@ def test_allowed_suffixes_return_json_text(web: Any, name: str, text: str) -> No
         "text": text,
         "truncated": False,
         "size": len(text),
+        "revision": hashlib.sha256(text.encode("utf-8")).hexdigest(),
+        "editable": False,
+        "last_edited": None,
     }
 
 
@@ -141,3 +146,58 @@ def test_the_opener_reads_at_most_the_limit_plus_one_byte(tmp_path: Path) -> Non
     (tmp_path / "big.txt").write_bytes(b"a" * (MIB + 50))
     data, size = pages.read_regular_file(tmp_path, "big.txt")
     assert (len(data), size) == (MIB + 1, MIB + 50)
+
+
+def test_protocol_and_report_are_editable_with_a_revision(web: Any) -> None:
+    for name in ("protocol.md", "report.md"):
+        body = _get(web, name).json()
+        data = (web[1] / name).read_bytes()
+        assert body["editable"] is True
+        assert body["revision"] == hashlib.sha256(data).hexdigest()
+        assert body["last_edited"] is None
+
+
+def test_results_is_editable_only_without_report(web: Any) -> None:
+    (web[1] / "results.md").write_text("# Results\n", encoding="utf-8")
+    assert _get(web, "results.md").json()["editable"] is False
+    (web[1] / "report.md").unlink()
+    assert _get(web, "results.md").json()["editable"] is True
+
+
+def test_plan_is_not_editable(web: Any) -> None:
+    assert _get(web, "plan.json").json()["editable"] is False
+
+
+def test_a_cut_file_has_no_revision_and_is_not_editable(web: Any) -> None:
+    (web[1] / "report.md").write_bytes(b"a" * (MIB + 1))
+    body = _get(web, "report.md").json()
+    assert (body["revision"], body["editable"]) == (None, False)
+
+
+def test_a_linked_report_is_not_editable(web: Any) -> None:
+    (web[1] / "notes.md").write_text("# Notes\n", encoding="utf-8")
+    (web[1] / "report.md").unlink()
+    (web[1] / "report.md").symlink_to(web[1] / "notes.md")
+    assert _get(web, "report.md").json()["editable"] is False
+
+
+def test_last_edited_comes_from_the_edit_log(web: Any) -> None:
+    line = {
+        "format": "omrs-edit-record/1",
+        "file": "report.md",
+        "edited_at": "2026-10-26T14:05:00Z",
+        "before_sha256": "a" * 64,
+        "after_sha256": "b" * 64,
+        "before_size": 1,
+        "after_size": 2,
+        "status": "PASS",
+        "converted": True,
+        "tool": "omrs web 0.0.0",
+    }
+    (web[1] / "edits.jsonl").write_text(json.dumps(line) + "\n", encoding="utf-8")
+    assert _get(web, "report.md").json()["last_edited"] == {
+        "edited_at": "2026-10-26T14:05:00Z",
+        "status": "PASS",
+        "converted": True,
+    }
+    assert _get(web, "protocol.md").json()["last_edited"] is None

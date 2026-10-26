@@ -60,7 +60,12 @@ def test_derived_file_is_ignored(relative: str) -> None:
     assert _git_ignored([path]) == {path}, f"git does not ignore {path}"
 
 
-def test_analysis_source_is_not_ignored() -> None:
-    """Guard against an ignore rule so wide that it hides the tracked source."""
-    path = f"experiments/{_experiment_folder()}/analysis.py"
-    assert _git_ignored([path]) == set()
+@pytest.mark.parametrize("name", ["analysis.py", "edits.jsonl"])
+def test_tracked_file_is_not_ignored(name: str) -> None:
+    """Guard against an ignore rule so wide that it hides a tracked file.
+
+    ``edits.jsonl`` is the edit log (edit-experiment-files-in-library, D2). Git
+    must track it, or the audit trail leaves the history.
+    """
+    path = f"experiments/{_experiment_folder()}/{name}"
+    assert _git_ignored([path]) == set(), f"git ignores {path}"

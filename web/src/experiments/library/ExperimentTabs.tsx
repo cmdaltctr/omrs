@@ -3,6 +3,7 @@ import type { ExperimentDetail } from "../../api/experimentLibrary";
 import { Button } from "../../components/ui/button";
 import { CardInset } from "../../components/ui/card";
 import { Panel } from "../Panel";
+import { DiscardDialog, EditableFilePanel } from "./FileEditor";
 import { FileView } from "./FileView";
 import { formatSize } from "./labels";
 import { FindingLine } from "./ProjectDetails";
@@ -22,7 +23,11 @@ function pick(names: ReadonlySet<string>, candidates: readonly string[]): string
   return candidates.find((name) => names.has(name)) ?? null;
 }
 
-/** Protocol, Plan, Report, Files and Checks of one experiment. A relative link in a file switches the tab. */
+/**
+ * Protocol, Plan, Report, Files and Checks of one experiment. A relative link
+ * in a file switches the tab. Protocol and Report can be edited; a tab switch
+ * with unsaved text asks first.
+ */
 export function ExperimentTabs({ detail }: { detail: ExperimentDetail }) {
   const { project, experiment, files, output } = detail;
   const viewable = useMemo(() => new Set(files.filter((file) => file.viewable).map((file) => file.name)), [files]);
@@ -37,6 +42,16 @@ export function ExperimentTabs({ detail }: { detail: ExperimentDetail }) {
   );
   const [tab, setTab] = useState<TabId>(tabFiles.protocol !== null ? "protocol" : "report");
   const [selected, setSelected] = useState<string | null>(null);
+  const [dirty, setDirty] = useState(false);
+  const [pending, setPending] = useState<(() => void) | null>(null);
+
+  const confirmDiscard = useCallback(
+    (action: () => void) => {
+      if (dirty) setPending(() => action);
+      else action();
+    },
+    [dirty],
+  );
 
   const openFile = useCallback(
     (name: string) => {
@@ -54,18 +69,34 @@ export function ExperimentTabs({ detail }: { detail: ExperimentDetail }) {
     <FileView key={name} projectId={project.project_id} folder={experiment.folder} name={name} fileNames={viewable} onOpenFile={openFile} />
   );
   const label = TABS.find((item) => item.id === tab)!.label;
+  const title = tab === "report" && tabFiles.report === "results.md" ? "Report (results.md)" : label;
+  const edited = tab === "protocol" || tab === "report" ? tabFiles[tab] : null;
 
   return (
     <div className="flex flex-col gap-4">
       <div role="group" aria-label="Experiment tabs" className="flex flex-wrap gap-2">
         {TABS.map(({ id, label: text }) => (
-          <Button key={id} variant="chip" size="sm" aria-pressed={tab === id} onClick={() => setTab(id)}>
+          <Button key={id} variant="chip" size="sm" aria-pressed={tab === id} onClick={() => id !== tab && confirmDiscard(() => setTab(id))}>
             {text}
             {id === "checks" && experiment.findings.length > 0 ? ` (${experiment.findings.length})` : ""}
           </Button>
         ))}
       </div>
-      <Panel title={tab === "report" && tabFiles.report === "results.md" ? "Report (results.md)" : label}>
+      {edited !== null ? (
+        <EditableFilePanel
+          key={edited}
+          title={title}
+          projectId={project.project_id}
+          experiment={experiment}
+          name={edited}
+          fileNames={viewable}
+          onOpenFile={openFile}
+          onDirtyChange={setDirty}
+          confirmDiscard={confirmDiscard}
+        />
+      ) : null}
+      {edited !== null ? null : (
+      <Panel title={title}>
         {tab === "protocol" || tab === "plan" || tab === "report" ? (
           tabFiles[tab] !== null ? (
             view(tabFiles[tab]!)
@@ -134,6 +165,17 @@ export function ExperimentTabs({ detail }: { detail: ExperimentDetail }) {
           )
         ) : null}
       </Panel>
+      )}
+      <DiscardDialog
+        name={pending === null ? null : edited}
+        onKeep={() => setPending(null)}
+        onDiscard={() => {
+          const action = pending;
+          setPending(null);
+          // The panel clears the dirty flag itself, on Cancel or when it unmounts.
+          action?.();
+        }}
+      />
     </div>
   );
 }

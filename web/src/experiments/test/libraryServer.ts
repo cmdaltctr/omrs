@@ -1,4 +1,4 @@
-import type { Experiment, FileEntry, Finding, Notebook, NotebookEntry, Project, Reserved } from "../../api/experimentLibrary";
+import type { Experiment, ExperimentEdit, FileEntry, Finding, Notebook, NotebookEntry, Project, Reserved } from "../../api/experimentLibrary";
 import { json, type Call, type Handler } from "../../test/fakeDocumentsServer";
 
 /** The library as fixture data. Keys of `files`, `texts` and `output` are `<project>/<folder>[/<name>]`. */
@@ -10,6 +10,10 @@ export interface LibraryState {
   files: Record<string, FileEntry[]>;
   texts: Record<string, string>;
   output: Record<string, string[] | null>;
+  /** Newest app save of a file, by `<project>/<folder>/<name>`. */
+  lastEdited?: Record<string, ExperimentEdit>;
+  /** File keys the server reports as not editable although the name allows it. */
+  uneditable?: string[];
   /** User notebooks only; project notebooks come from `projects`. */
   notebooks: Notebook[];
   entries: Record<string, { project_id: string; folder: string; added_at: string }[]>;
@@ -121,6 +125,16 @@ export function defaultLibrary(): LibraryState {
   };
 }
 
+/** The time the fake server stamps on every save. */
+export const SAVED_AT = "2026-10-26T14:05:00Z";
+
+/** A stand-in for the SHA-256 revision: any change to the text changes it. */
+export function fakeRevision(text: string): string {
+  let hash = 5381;
+  for (const char of text) hash = ((hash * 33) ^ char.charCodeAt(0)) >>> 0;
+  return `rev-${hash.toString(16)}-${text.length}`;
+}
+
 function segments(call: Call): string[] {
   return call.path.split("?")[0]!.split("/").slice(2).map(decodeURIComponent);
 }
@@ -143,6 +157,12 @@ export function libraryHandlers(state: LibraryState): Record<string, Handler> {
   const entryOf = (raw: { project_id: string; folder: string; added_at: string }): NotebookEntry => {
     const found = findExperiment(raw.project_id, raw.folder) ?? null;
     return { ...raw, project_name: findProject(raw.project_id)?.name ?? raw.project_id, missing: found === null, experiment: found };
+  };
+  const editable = (id: string, folder: string, name: string): boolean => {
+    const key = `${id}/${folder}`;
+    if ((state.uneditable ?? []).includes(`${key}/${name}`)) return false;
+    if (name === "protocol.md" || name === "report.md") return true;
+    return name === "results.md" && state.texts[`${key}/report.md`] === undefined;
   };
   const notebookOf = (id: string): Notebook | null => {
     if (id.startsWith("project:")) {
@@ -203,7 +223,36 @@ export function libraryHandlers(state: LibraryState): Record<string, Handler> {
       const [, id, , folder, , name] = segments(call);
       const text = state.texts[`${id}/${folder}/${name}`];
       if (text === undefined) return refuse("Unknown file.", 404);
-      return { status: "ok", name, text, truncated: name === "report.md" && text.includes("CUT"), size: text.length };
+      const truncated = name === "report.md" && text.includes("CUT");
+      const key = `${id}/${folder}/${name}`;
+      return {
+        status: "ok",
+        name,
+        text,
+        truncated,
+        size: text.length,
+        revision: truncated ? null : fakeRevision(text),
+        editable: !truncated && editable(id!, folder!, name!),
+        last_edited: state.lastEdited?.[key] ?? null,
+      };
+    },
+    "PUT /v1/experiment-projects/:id/experiments/:folder/files/:name": (body, call) => {
+      const [, id, , folder, , name] = segments(call);
+      const key = `${id}/${folder}/${name}`;
+      const text = state.texts[key];
+      const found = findExperiment(id!, folder!);
+      if (text === undefined || !found || !editable(id!, folder!, name!)) return refuse("The workspace edits only an existing protocol.md or report file.");
+      if (body.base_revision !== fakeRevision(text)) {
+        return json({ status: "error", message: "RAW changed on disk", reason: "changed_on_disk" }, 409);
+      }
+      const next = String(body.text);
+      if (next === text) {
+        return { status: "ok", name, revision: fakeRevision(text), size: text.length, changed: false, last_edited: state.lastEdited?.[key] ?? null };
+      }
+      state.texts[key] = next;
+      const edit: ExperimentEdit = { edited_at: SAVED_AT, status: found.status, converted: found.migrated };
+      state.lastEdited = { ...state.lastEdited, [key]: edit };
+      return { status: "ok", name, revision: fakeRevision(next), size: next.length, changed: true, last_edited: edit };
     },
     "GET /v1/notebooks": () => ({ status: "ok", notebooks: [...state.projects.map(projectNotebook), ...state.notebooks.map((item) => notebookOf(item.notebook_id)!)] }),
     "POST /v1/notebooks": (body) => {

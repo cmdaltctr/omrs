@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import { Input } from "./input";
 import { Label } from "./label";
+import { Textarea } from "./textarea";
 import {
   Select,
   SelectContent,
@@ -23,6 +24,29 @@ beforeAll(() => {
     unobserve() {}
     disconnect() {}
   };
+});
+
+describe("Textarea", () => {
+  it("binds the label and uses the field tokens, with 20 rows by default", () => {
+    render(
+      <>
+        <Label htmlFor="text">Protocol text</Label>
+        <Textarea id="text" />
+      </>,
+    );
+    const field = screen.getByLabelText("Protocol text");
+    expect(field.tagName).toBe("TEXTAREA");
+    expect(field).toHaveAttribute("rows", "20");
+    expect(field).toHaveClass("w-full", "rounded-control", "border-border", "bg-card", "text-foreground");
+    expect(field).not.toHaveClass("font-mono");
+  });
+
+  it("uses monospace text on request and marks an invalid field", () => {
+    render(<Textarea aria-label="Code" mono rows={4} aria-invalid="true" />);
+    const field = screen.getByLabelText("Code");
+    expect(field).toHaveClass("font-mono", "text-code", "aria-invalid:border-destructive");
+    expect(field).toHaveAttribute("rows", "4");
+  });
 });
 
 describe("Label and Input", () => {

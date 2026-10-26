@@ -109,6 +109,24 @@ describe("experiment page", () => {
     expect(screen.getAllByRole("link", { name: "Back to Experiments" })[0]).toHaveAttribute("href", "#/experiments");
   });
 
+  it("offers Edit on the Protocol and Report tabs, never on the Plan tab", async () => {
+    const { user } = openPage();
+    expect(await screen.findByRole("button", { name: "Edit protocol.md" })).toBeInTheDocument();
+    await user.click(tab("Plan"));
+    expect(await screen.findByText(/"seeds": 3/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Edit/ })).toBeNull();
+    await user.click(tab("Report"));
+    expect(await screen.findByRole("button", { name: "Edit report.md" })).toBeInTheDocument();
+  });
+
+  it("shows no Edit button for a file the server marks not editable", async () => {
+    const library = defaultLibrary();
+    library.uneditable = [`p1/${RERANKER}/protocol.md`];
+    openExperiments({ library }, {}, `#/experiments/library/p1/${RERANKER}`);
+    expect(await screen.findByRole("heading", { name: "Hypothesis" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Edit/ })).toBeNull();
+  });
+
   it("shows one friendly line when a file cannot be read", async () => {
     openPage(RERANKER, {
       [`GET /v1/experiment-projects/p1/experiments/${RERANKER}/files/protocol.md`]: () => json({ status: "error", message: "RAW read error" }, 500),
