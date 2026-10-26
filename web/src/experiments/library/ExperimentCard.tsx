@@ -1,7 +1,9 @@
+import { ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Experiment } from "../../api/experimentLibrary";
 import { Badge } from "../../components/ui/badge";
-import { Card, CardDescription, CardHeader, CardTitle } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "../../components/ui/card";
 import { formatRoute } from "../../lib/routes";
 import { findingCounts, plural, statusVariant } from "./labels";
 
@@ -19,10 +21,11 @@ interface ExperimentCardProps {
   actions?: ReactNode;
 }
 
-/** One experiment: status, category, number, title, date, finding and checker counts. The title opens its page. */
+/** One experiment: status, category, number, title, date, finding and checker counts. The title and the Open button open its page. */
 export function ExperimentCard({ projectId, experiment, projectName, actions }: ExperimentCardProps) {
   const { errors, warnings } = findingCounts(experiment.findings);
   const meta = [`Experiment ${experiment.number}`, experiment.date, projectName].filter(Boolean).join(" · ");
+  const href = formatRoute({ area: "experiments", projectId, folder: experiment.folder });
   return (
     <Card role="group" aria-label={`Experiment ${experiment.folder}`} className="h-full">
       <CardHeader className="gap-2">
@@ -32,7 +35,7 @@ export function ExperimentCard({ projectId, experiment, projectName, actions }: 
         </div>
         <CardTitle className="break-words">
           <a
-            href={formatRoute({ area: "experiments", projectId, folder: experiment.folder })}
+            href={href}
             className="text-foreground underline-offset-4 hover:underline"
           >
             {experiment.title}
@@ -47,7 +50,15 @@ export function ExperimentCard({ projectId, experiment, projectName, actions }: 
           {warnings > 0 ? <Badge variant="warning">{plural(warnings, "warning")}</Badge> : null}
         </div>
       ) : null}
-      {actions}
+      <CardFooter className="mt-auto flex-wrap items-start">
+        <Button asChild variant="outline" size="sm">
+          <a href={href} aria-label={`Open ${experiment.title}`}>
+            Open
+            <ArrowRight aria-hidden="true" />
+          </a>
+        </Button>
+        {actions}
+      </CardFooter>
     </Card>
   );
 }

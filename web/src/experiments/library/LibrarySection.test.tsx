@@ -35,6 +35,13 @@ describe("experiment library", () => {
     expect(within(card(OVERLAP)).getByText("FAIL")).toBeInTheDocument();
     expect(within(card(OVERLAP)).queryByRole("group", { name: "Checker findings" })).toBeNull();
     expect(screen.getByText("Showing 4 experiments of 4.")).toBeInTheDocument();
+    // The title link stays; every card also has an Open button to the same page.
+    for (const item of cards()) {
+      const title = within(item).getByRole("heading").textContent ?? "";
+      const open = within(item).getByRole("link", { name: `Open ${title}` });
+      expect(open).toHaveTextContent("Open");
+      expect(open).toHaveAttribute("href", within(item).getByRole("link", { name: title }).getAttribute("href"));
+    }
     // The project whose folder is gone is named, and its experiments are not asked for.
     expect(screen.getByText("Unavailable")).toBeInTheDocument();
     expect(server.find("GET", "/v1/experiment-projects/p3")).toHaveLength(0);
@@ -146,7 +153,7 @@ describe("experiment library", () => {
     const { user } = openLibrary();
     await screen.findByRole("list", { name: "Experiments" });
     await choose(user, "Status", "FAIL");
-    await user.click(within(card(OVERLAP)).getByRole("link"));
+    await user.click(within(card(OVERLAP)).getByRole("link", { name: "Open Title of chunk overlap" }));
     expect(await screen.findByRole("heading", { level: 1, name: "2. Title of chunk overlap" })).toBeInTheDocument();
     await user.click(screen.getByRole("link", { name: "Back to Experiments" }));
     await screen.findByRole("list", { name: "Experiments" });
