@@ -176,7 +176,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # (need fastapi; one skips as root).
 # +5 (2026-10-25, LanceDB exit crash, TDR-040): test_lance_child_helper.py (5).
 # No fastapi needed.
-_BASE_EXECUTED = 8531
+# +19 (2026-10-25, upgrade-lancedb-0-40, by test-ID diff): test_lance_filter_value_classes.py
+# (17), test_lance_child_helper.py (+2: 3 new, 1 replaced) and test_lance_filter_security.py
+# (0: 7 new, 7 Decimal/NaN/naive-datetime cases removed). No fastapi needed.
+_BASE_EXECUTED = 8550
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

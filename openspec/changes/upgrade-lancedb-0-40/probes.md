@@ -110,3 +110,12 @@ A table created, appended to and given schema metadata by lancedb 0.40.0 (data s
 | lancedb v0.40.0 runs its own tests with `pylance==9.0.0` | `python/pyproject.toml` line 66 at tag v0.40.0 |
 | lancedb 0.40.0 requires `pydantic>=2.7.4,<3`; no pylance requirement outside extras | PyPI `requires_dist` |
 | Chroma accepts only `str`, `int`, `float` (and lists of them) as `where` values | `chromadb/api/types.py`, `validate_where`, tag 1.5.9 |
+
+## P8. Writer tests after the upgrade (task 5.4)
+
+On 2026-10-25, on macOS with lancedb 0.40.0, pylance 10.0.0 and pyarrow 25.0.1, and with the `os._exit(0)` epilogue removed from `tests/_lance_child.py`:
+
+- `uv run --no-sync pytest -n auto -q tests/test_sparse_cache_freshness.py tests/test_lance_dataset_epoch.py tests/test_bm25_validity_token.py` ran 40 times in a loop. 40 of 40 runs passed.
+- `tests/test_lance_child_helper.py::test_a_lance_write_child_exits_cleanly_twenty_times` passed: 20 write children each exited 0 through normal shutdown.
+
+macOS did not reproduce the crash on 0.37.1 either (TDR-040), so this result is a regression guard. The proof is the three CI attempts in task 7.3.

@@ -162,3 +162,15 @@ Collect the fast-suite test IDs on v3 at `ed212f67` and on the feature branch (`
    Name every extra that the app uses in both commands. Then check the versions in the tool environment: lancedb 0.40.0, pylance 10.0.0, pyarrow 25.0.1.
 4. Rollback: revert the merge commit and run `uv sync`. P7 shows that lancedb 0.37.1 reads and appends to tables written by 0.40.0. The test helper returns to the `os._exit(0)` epilogue with the revert.
 5. After the merge, set ADR-098 to Accepted and update its row in `docs/adr/ADR_README.md`.
+
+## Implementation notes (2026-10-25)
+
+Decisions made during the build, by best practice:
+
+1. Task 1.2 collected the v3 test IDs on this branch before any change, not in the v3 worktree. The branch differed from `ed212f67` only in the change folder, ADR-098 and its index row, so the IDs are the same. This keeps every command inside the feature worktree.
+2. The refusal tests (tasks 2.2 to 2.4) and the engine tests (2.6 and 2.7) are in a new file, `tests/test_lance_filter_value_classes.py`. Tasks 2.1 and 2.5 are in `tests/test_lance_filter_security.py`, as the tasks say. Each refusal test also covers a `$nin` item on a schema-absent field, because the spec names `$nin` lists.
+3. The value-class check is `_check_value_class` in `literal.py`. `filter.py` calls it for the scalar operand and for each membership item, after the membership checks and before the absent-field fold. `_literal_sql` calls it again, so no path reaches `lit` with a refused class.
+4. A naive datetime is a `datetime` whose `utcoffset()` is `None`. This covers a `tzinfo` that returns no offset.
+5. `test_swapped_cast_target_type_refused` and one case in `test_literal_faithfulness_closed_branches` used a naive datetime. They now use an aware datetime, so they still test the cast check and not the new class check.
+6. The 20-run child test (task 5.3) is one test with a loop, so it adds one test ID.
+7. Task 7.7 (reinstall the live app) belongs to the coordinator, as the dispatch brief says. It stays open in this change.

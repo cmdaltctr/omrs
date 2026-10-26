@@ -78,5 +78,5 @@ OMRS cannot store a datetime or a Decimal metadata value: the adapter accepts on
 - lance issue #4152, shutdown crash in the pylance runtime (open): https://github.com/lance-format/lance/issues/4152
 - `openspec/changes/upgrade-lancedb-0-40/probes.md` (P1 to P7)
 - `src/omrs/core/vectordb/lancedb/literal.py`, `src/omrs/core/vectordb/lancedb/filter.py`
-- `tests/_lance_child.py`, `tests/test_lance_child_helper.py`, `tests/test_lance_filter_security.py`, `tests/test_lancedb_native_fts_contract.py`
+- `tests/_lance_child.py`, `tests/test_lance_child_helper.py`, `tests/test_lance_filter_security.py`, `tests/test_lance_filter_value_classes.py`, `tests/test_lancedb_native_fts_contract.py`
 - `docs/tdr/040-lancedb-writer-processes-crashed-at-interpreter-exit-on-the-floor-jobs.md`
