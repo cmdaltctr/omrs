@@ -51,7 +51,7 @@ export function ExperimentCard({ projectId, experiment, projectName, actions }: 
         </div>
       ) : null}
       <CardFooter className="mt-auto flex-wrap items-start">
-        <Button asChild variant="outline" size="sm">
+        <Button asChild size="sm">
           <a href={href} aria-label={`Open ${experiment.title}`}>
             Open
             <ArrowRight aria-hidden="true" />

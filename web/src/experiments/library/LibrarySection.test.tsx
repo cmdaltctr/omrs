@@ -40,6 +40,7 @@ describe("experiment library", () => {
       const title = within(item).getByRole("heading").textContent ?? "";
       const open = within(item).getByRole("link", { name: `Open ${title}` });
       expect(open).toHaveTextContent("Open");
+      expect(open).toHaveClass("bg-primary-tint", "text-primary-label");
       expect(open).toHaveAttribute("href", within(item).getByRole("link", { name: title }).getAttribute("href"));
     }
     // The project whose folder is gone is named, and its experiments are not asked for.
