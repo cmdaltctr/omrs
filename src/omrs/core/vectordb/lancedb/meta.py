@@ -6,10 +6,10 @@ pylance's ``update_schema_metadata`` (read-merge-write).  The Python
 SDK exposes neither ``update_config`` nor a post-hoc table-level
 ``replace_schema_metadata``; schema metadata is the durable
 key-value bag that survives reconnection and adapter writes
-(verified against lancedb 0.37.1 / pylance 10.0.0).  This module is
-the LanceDB counterpart of the ChromaDB ``identity.py`` seam,
-reusing its pure helpers so the legacy-stamp-then-reject rule stays
-identical across backends.
+(verified against lancedb 0.37.1 and 0.40.0 with pylance 10.0.0).
+This module is the LanceDB counterpart of the ChromaDB ``identity.py``
+seam, reusing its pure helpers so the legacy-stamp-then-reject rule
+stays identical across backends.
 
 The concrete store supplies ``_identity``, ``_pending_metadata``,
 ``_open_table`` and ``_get_connection``; this module owns the
@@ -417,9 +417,10 @@ class LanceTableMetadataMixin:
         the first write carries None for it — reachable only for nodes
         without a SOURCE relationship, which the pipeline never produces.
         A Null-typed column then rejects every later typed write
-        (``cannot cast field 'doc_id' from Utf8 to Null``), and LanceDB
-        0.37 offers no in-place repair: ``alter_columns`` refuses the
-        Null→Utf8 cast and the SDK has no ``add_column``. Following
+        (``cannot cast field 'doc_id' from Utf8 to Null``). TDR-012 found
+        no in-place repair on LanceDB 0.37: ``alter_columns`` refused the
+        Null→Utf8 cast. The SDK has no ``add_column`` on 0.37.1 or
+        0.40.0. Following
         :meth:`evolve_metadata_fields`, the table is rebuilt with the
         column re-typed as string. A Null-typed column holds only nulls,
         so the re-type is lossless. The schema metadata bag (identity

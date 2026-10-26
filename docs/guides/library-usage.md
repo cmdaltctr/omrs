@@ -77,6 +77,20 @@ dict with score, text and metadata. Optional arguments: `rerank`,
 hits = engine.search("how does caching work?", top_k=10)
 ```
 
+`metadata_filter` is a ChromaDB-compatible `where` clause, for example
+`{"category": "AI"}`. On LanceDB, a filter value can be a `str`, an `int`,
+a finite or infinite `float`, a `bool`, a `date`, or a `datetime` with a
+time zone. These values raise `ValueError`:
+
+| Value | Alternative |
+|---|---|
+| Naive `datetime` (no `tzinfo`) | Give a time zone, e.g. `datetime(2026, 9, 2, 14, 30, tzinfo=UTC)` |
+| `Decimal` | Use an `int` or a `float` |
+| `float("nan")` | None. Remove the clause |
+
+MCP and HTTP filters come from JSON, so only Python callers can send these
+values.
+
 **`answer` (async)** — answer a question from retrieved evidence with
 verifiable citations. Returns a dict with the answer text, cited sources
 and diagnostics:

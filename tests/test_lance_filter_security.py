@@ -355,7 +355,7 @@ def test_serialised_length_bound_named_in_error() -> None:
 # ── Layer 4: fail-closed literal-form verification ────────────────────
 #
 # The locked engine's literal builder mis-serialises at least two value
-# classes (verified on lancedb 0.37.1):
+# classes (verified on lancedb 0.37.1 and 0.40.0):
 #
 # * Runs of apostrophes collapse — ``lit("''").to_sql()`` is ``''''``,
 #   which the engine parses as ONE apostrophe, so an equality filter on
@@ -518,18 +518,14 @@ class _MismatchedLit:
         # int: emit value + 1
         if isinstance(v, int):
             return str(v + 1)
-        # float: emit a different but valid float
+        # float: emit a different but valid float; an infinity gets the
+        # engine's Float64 cast of the other infinity.
         if isinstance(v, float):
-            if v != v:  # NaN
-                return "0.0"
             if v == float("inf"):
-                return "0.0"
+                return "arrow_cast('-inf', 'Float64')"
             if v == float("-inf"):
-                return "0.0"
+                return "arrow_cast('inf', 'Float64')"
             return repr(v + 1.0)
-        # Decimal: emit a different but valid decimal
-        if isinstance(v, Decimal):
-            return str(v + Decimal("1"))
         # date: emit the next day
         if isinstance(v, date) and not isinstance(v, datetime):
             from datetime import timedelta
@@ -541,16 +537,7 @@ class _MismatchedLit:
         if isinstance(v, datetime):
             from datetime import timedelta
 
-            shifted = v + timedelta(days=1)
-            # Mimic the engine's UTC conversion for naive datetimes.
-            # Use the timezone offset that applies at the shifted date,
-            # not the current date, so the conversion matches the
-            # engine's behaviour for that calendar date.
-            if v.tzinfo is None:
-                local_aware = shifted.astimezone()
-                utc = local_aware.astimezone(UTC)
-            else:
-                utc = shifted.astimezone(UTC)
+            utc = (v + timedelta(days=1)).astimezone(UTC)
             ts = utc.replace(tzinfo=None).isoformat(sep=" ")
             return f"CAST('{ts}' AS TIMESTAMP)"
         # str: emit a different but valid quoted string
@@ -575,17 +562,10 @@ class _MismatchedLit:
         (0.0, "float zero"),
         (float("inf"), "float inf"),
         (float("-inf"), "float -inf"),
-        (float("nan"), "float nan"),
-        (Decimal("0"), "Decimal zero"),
-        (Decimal("3.14"), "Decimal positive"),
-        (Decimal("-7.5"), "Decimal negative"),
         (b"hello", "bytes hello"),
         (b"", "bytes empty"),
         (date(2026, 9, 2), "date"),
         (date(1970, 1, 1), "date epoch"),
-        (datetime(2026, 9, 2, 15, 30, 45), "datetime naive"),
-        (datetime(2026, 1, 15, 12, 0, 0), "datetime winter"),
-        (datetime(2026, 9, 2, 15, 30, 45, 123456), "datetime microsecond"),
         (datetime(2026, 9, 2, 14, 30, 45, tzinfo=UTC), "datetime aware"),
     ],
 )
@@ -624,17 +604,11 @@ def test_faithful_scalar_accepted(monkeypatch: pytest.MonkeyPatch) -> None:
         0.0,
         float("inf"),
         float("-inf"),
-        Decimal("0"),
-        Decimal("3.14"),
-        Decimal("-7.5"),
         b"hello",
         b"",
         b"\x00\x01\x02",
         date(2026, 9, 2),
         date(1970, 1, 1),
-        datetime(2026, 9, 2, 15, 30, 45),
-        datetime(2026, 1, 15, 12, 0, 0),
-        datetime(2026, 9, 2, 15, 30, 45, 123456),
         datetime(2026, 9, 2, 14, 30, 45, tzinfo=UTC),
     ]
     for v in values:
@@ -658,8 +632,8 @@ class _SwappedCastLit:
     """A ``lit`` that emits the WRONG CAST target type for date values.
 
     The inner string is exactly what the engine would serialise (the
-    naive-datetime UTC conversion is replicated); only the target type
-    is swapped, so a verifier that discards the target type accepts the
+    UTC wall clock of an aware datetime); only the target type is
+    swapped, so a verifier that discards the target type accepts the
     fragment.
     """
 
@@ -669,10 +643,7 @@ class _SwappedCastLit:
     def to_sql(self) -> str:
         v = self._value
         if isinstance(v, datetime):
-            if v.tzinfo is None:
-                utc = v.replace(tzinfo=None).astimezone().astimezone(UTC).replace(tzinfo=None)
-            else:
-                utc = v.astimezone(UTC).replace(tzinfo=None)
+            utc = v.astimezone(UTC).replace(tzinfo=None)
             return f"CAST('{utc.isoformat(sep=' ')}' AS DATE)"
         if isinstance(v, date):
             return f"CAST('{v.isoformat()}' AS TIMESTAMP)"
@@ -693,7 +664,7 @@ def test_swapped_cast_target_type_refused(monkeypatch: pytest.MonkeyPatch) -> No
     with pytest.raises(ValueError, match="literal"):
         translate_where({"tag": date(2026, 9, 2)})
     with pytest.raises(ValueError, match="literal"):
-        translate_where({"tag": datetime(2026, 9, 2, 15, 30, 45)})
+        translate_where({"tag": datetime(2026, 9, 2, 15, 30, 45, tzinfo=UTC)})
 
 
 def test_cast_target_type_must_match_value_type() -> None:
@@ -725,7 +696,7 @@ def test_literal_faithfulness_closed_branches() -> None:
     # Unparseable CAST inner strings are refused for both target types.
     assert not _is_faithful_literal(date(2026, 9, 2), "CAST('not-a-date' AS DATE)")
     assert not _is_faithful_literal(
-        datetime(2026, 9, 2, 15, 30, 45), "CAST('garbage' AS TIMESTAMP)"
+        datetime(2026, 9, 2, 15, 30, 45, tzinfo=UTC), "CAST('garbage' AS TIMESTAMP)"
     )
     # Aware datetimes compare through their UTC equivalent: an aware
     # value never takes the engine's naive local-to-UTC conversion path.
@@ -735,3 +706,52 @@ def test_literal_faithfulness_closed_branches() -> None:
     # Unsupported scalar types are refused rather than trusted.
     assert not _is_faithful_literal(None, "NULL")
     assert not _is_faithful_literal([1], "(1)")
+
+
+# ── Layer 8: value classes after lancedb 0.40 (ADR-098) ────────────────
+#
+# lancedb 0.40.0 writes an infinite float as the engine's typed cast
+# ``arrow_cast('inf', 'Float64')``.  Only that exact text is accepted for
+# each infinity.  Decimal, NaN and naive datetime values are refused
+# whatever fragment the engine emits for them.
+
+_INF = float("inf")
+_MINUS_INF = float("-inf")
+
+
+@pytest.mark.parametrize(
+    ("value", "sql"),
+    [
+        (_INF, "inf"),
+        (_MINUS_INF, "-inf"),
+        (_INF, "arrow_cast('-inf', 'Float64')"),
+        (_MINUS_INF, "arrow_cast('inf', 'Float64')"),
+        (_INF, "arrow_cast('inf', 'Float32')"),
+        (_MINUS_INF, "arrow_cast('-inf', 'Float32')"),
+    ],
+    ids=["bare-inf", "bare-minus-inf", "other-inf", "other-minus-inf", "f32-inf", "f32-minus-inf"],
+)
+def test_special_float_needs_its_own_float64_cast(value: float, sql: str) -> None:
+    """An infinity is faithful only as the Float64 cast of the same infinity."""
+    from omrs.core.vectordb.lancedb.literal import _is_faithful_literal
+
+    assert not _is_faithful_literal(value, sql)
+    assert _is_faithful_literal(_INF, "arrow_cast('inf', 'Float64')")
+    assert _is_faithful_literal(_MINUS_INF, "arrow_cast('-inf', 'Float64')")
+
+
+def test_refused_classes_are_unfaithful() -> None:
+    """Decimal, NaN and naive datetime fail the check in every known form."""
+    from omrs.core.vectordb.lancedb.literal import _is_faithful_literal
+
+    # Decimal: the 0.37.1 form and the 0.40.0 form.
+    assert not _is_faithful_literal(Decimal("3.14"), "3.14")
+    assert not _is_faithful_literal(Decimal("3.14"), "arrow_cast('3.14', 'Decimal128(3, 2)')")
+    # NaN: the 0.37.1 form and the 0.40.0 form.
+    assert not _is_faithful_literal(float("nan"), "NaN")
+    assert not _is_faithful_literal(float("nan"), "arrow_cast('NaN', 'Float64')")
+    # Naive datetime: its wall clock and its local-time-to-UTC form.
+    naive = datetime(2026, 9, 2, 15, 30, 45)
+    local_utc = naive.astimezone().astimezone(UTC).replace(tzinfo=None)
+    assert not _is_faithful_literal(naive, "CAST('2026-09-02 15:30:45' AS TIMESTAMP)")
+    assert not _is_faithful_literal(naive, f"CAST('{local_utc.isoformat(sep=' ')}' AS TIMESTAMP)")

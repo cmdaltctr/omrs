@@ -16,15 +16,17 @@ dependencies = [
     # chromadb 1.x. See ADR-042.
     "llama-index>=0.14.5",
     # Second vector-store backend (ADR-046, add-lancedb-vectordb-backend).
-    # lancedb>=0.37 pins the lancedb.expr type-safe filter builder (PR
-    # #3150); the adapter's own floor (>=0.21.1) does not guarantee it.
-    # Resolved tree pulls lancedb/pylance/pyarrow/tantivy only — no
+    # lancedb>=0.40: 0.40.0 is the first release that shuts its Tokio
+    # runtime down at interpreter exit (PR #4175, TDR-040, ADR-098), so
+    # a writer process exits 0 after a good write. The lancedb.expr
+    # type-safe filter builder arrived in 0.37 (PR #3150); the adapter's
+    # own floor (>=0.21.1) does not guarantee either. Resolved tree pulls lancedb/pylance/pyarrow/tantivy only — no
     # PyTorch, so the ONNX-only boundary holds. pyarrow is declared
     # directly (the store builds upsert rows with it) and floored at
     # the locked major: its frequent major bumps carry no semantic
     # signal, so floor == lock keeps the floors CI honest.
     "llama-index-vector-stores-lancedb>=0.5.0",
-    "lancedb>=0.37",
+    "lancedb>=0.40",
     # Declared directly (ADR-046): lance_meta.py calls pylance's
     # update_schema_metadata for durable table metadata, but the
     # adapter pulls pylance with no version constraint. Floor == lock:
