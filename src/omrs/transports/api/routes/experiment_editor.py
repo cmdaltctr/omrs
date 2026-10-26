@@ -144,11 +144,12 @@ def _open(runtime: Any, library: Any, project_id: str, folder: str) -> dict[str,
         raise _Refused("editor_unavailable")
     state = _manifest(host)
     try:
-        if editor.needs_conversion(path) and state.manifest.convert is None:
-            raise _Refused("editor_unsupported")
+        # Checks run in the order of the design D5 table.
         environment = editor.check_project_environment(root, Path(state.executable))
         editor.check_runs_on_open(path)
         editor.notebook_exists(path)
+        if editor.needs_conversion(path) and state.manifest.convert is None:
+            raise _Refused("editor_unsupported")
     except editor.EditorRefusal as exc:
         raise _Refused(exc.reason, exc.message) from None
     running = _running(host, project_id, folder)
@@ -175,8 +176,10 @@ def _open(runtime: Any, library: Any, project_id: str, folder: str) -> dict[str,
             kernel_environment=KernelEnvironment(environment.venv),
         )
     except KeyError:  # the registration went away after the check
+        _discard_new(prepared)
         raise _Refused("editor_unavailable") from None
     except PluginLaunchError as exc:
+        _discard_new(prepared)
         reason = exc.reason if exc.reason in EDITOR_REASONS else "launch_failed"
         message = str(exc) if reason == "editor_unavailable" else None
         raise _Refused(reason, message) from None
@@ -199,6 +202,16 @@ def _open(runtime: Any, library: Any, project_id: str, folder: str) -> dict[str,
         "token_delivery": {"method": "response_body_once", "token": session.token},
         "trust_notice": TRUST_NOTICE,
     }
+
+
+def _discard_new(prepared: editor.PreparedNotebook) -> None:
+    """Remove a notebook this request made when the launch then fails.
+
+    A refused launch leaves the experiment folder as it was. An existing
+    notebook is the user's file and is never removed.
+    """
+    if prepared.state != "existing":
+        prepared.path.unlink(missing_ok=True)
 
 
 def _locked_open(runtime: Any, library: Any, project_id: str, folder: str) -> dict[str, Any]:

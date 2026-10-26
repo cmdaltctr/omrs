@@ -236,8 +236,26 @@ def test_busy_ports_are_no_free_port(
         held.listen()
         port = held.getsockname()[1]
         with editor_app(tmp_path, effective_settings(), monkeypatch, ports=(port,)) as env:
+            (env.folder / "analysis.py").write_text(ANALYSIS)
+            before = tree_digest(env.folder)
             _refused(env.open(), "no_free_port")
             assert env.host.editors.sessions() == []
+            assert tree_digest(env.folder) == before  # the new notebook is removed again
+
+
+def test_a_failed_launch_keeps_an_existing_notebook(
+    tmp_path: Path, effective_settings: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with editor_app(tmp_path, effective_settings(), monkeypatch) as env:
+        (env.folder / "analysis.marimo.py").write_text("import marimo\napp = marimo.App()\n")
+
+        def fail(*_: Any, **__: Any) -> Any:
+            raise PluginLaunchError("marimo failed to start", reason="launch_failed")
+
+        monkeypatch.setattr(env.host.editors, "open", fail)
+        before = tree_digest(env.folder)
+        _refused(env.open(), "launch_failed")
+        assert tree_digest(env.folder) == before
 
 
 def test_a_launch_failure_is_launch_failed(
@@ -249,8 +267,10 @@ def test_a_launch_failure_is_launch_failed(
             raise PluginLaunchError("marimo failed to start", reason="launch_failed")
 
         monkeypatch.setattr(env.host.editors, "open", fail)
+        before = tree_digest(env.folder)
         _refused(env.open(), "launch_failed")
         assert env.host.editor_experiments == {}
+        assert tree_digest(env.folder) == before  # the created notebook is removed again
 
 
 # ── Success ──────────────────────────────────────────────────────────────

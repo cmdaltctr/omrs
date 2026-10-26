@@ -230,7 +230,7 @@ Research found no reason that reuse is unsafe. The supervisor already binds loop
 These follow best practice where the design was silent. They do not change D1 to D9.
 
 1. **Unknown plugin.** `NotebookEditorSupervisor.open` still raises `KeyError` for an unknown plugin, so `POST /v1/plugins/{name}/editors` keeps its 404. The Library route maps `KeyError` to 409 `editor_unavailable`.
-2. **Sibling modules.** `core/plugins/kernel_config.py` renders the `[venv]` and `dotenv` tables, `conversion.py` holds `ConvertResult`, and `versions.py` holds the version helpers. This keeps `editor.py` and `manifest.py` under the 400-line target and the 500-line ceiling.
+2. **Sibling modules.** `core/plugins/kernel_config.py` renders the `[venv]` and `dotenv` tables, `conversion.py` holds `ConvertResult`, and `versions.py` holds the version helpers. This keeps `editor.py` at 400 lines and `manifest.py` (481 lines) under the 500-line ceiling.
 3. **Two editors for one experiment.** A second open while an editor for the same project and folder runs is refused with 409 `editor_running` and the running `launch_id`. One lock serialises Library opens, so two requests cannot convert one notebook twice.
 4. **Conversion log.** The tail of a failed conversion is logged once at warning level, after the provider-key and token redaction. The response holds only the plain line.
 5. **`analysis.py` as a link.** It counts as absent, so the server writes the packaged empty notebook (`created`) and never converts the link target.
@@ -239,7 +239,9 @@ These follow best practice where the design was silent. They do not change D1 to
 8. **Server text in refusals.** The page shows a fixed line per reason. For `python_mismatch` and `converter_missing` it shows the server line, because that line names the versions or the install command.
 9. **No `.env` through an empty file, not `[]`.** The live check found that marimo 0.25.1 ignores `dotenv = []` in the user layer (D2 evidence 6, correction). A launch with a kernel environment writes an empty private file `omrs-no-dotenv.env` in the launch folder, and `runtime.dotenv` names only that file. The live check confirms the project `.env` is not loaded (`live-launch.md`).
 10. **Stop clears a stale refusal.** After an `editor_running` refusal, Stop on either card also clears that line, so the page does not say "already open" for an editor that has stopped (`browser-check.md`, check 11).
-11. **Live check without jupytext.** marimo's tool environment on the build machine has no jupytext, and OMRS installs nothing. The live check (task 10.4) records the `converter_missing` refusal and opens a folder without `analysis.py`. Conversion itself is checked with the fake executable only.
+11. **A failed launch removes the notebook it made.** The notebook is written just before the launch, but the port check and the start happen inside the launch. When the launch is refused (`no_free_port`, `launch_failed`, `editor_unavailable`), the route removes a notebook that this request converted or created, so the folder is as it was. An existing notebook is never removed. Found by the verify pass.
+12. **Manual-only scenarios.** Three scenarios need a real marimo and stay out of the fast suite: "Experiment code imports a project package", "Project environment unchanged" and "Normal open" (no cell runs). `live-launch.md` checks 4, 6 and 10 record them. The fast suite covers their configuration side: the `[venv]` path, `writable = false`, `auto_instantiate = false` and the empty dotenv file.
+13. **Live check without jupytext.** marimo's tool environment on the build machine has no jupytext, and OMRS installs nothing. The live check (task 10.4) records the `converter_missing` refusal and opens a folder without `analysis.py`. Conversion itself is checked with the fake executable only.
 
 ## Risks / Trade-offs
 

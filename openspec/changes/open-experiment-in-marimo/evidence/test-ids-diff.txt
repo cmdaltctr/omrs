@@ -89,12 +89,15 @@
 6082a6149,6150
 > tests/unit/test_process_launcher_editor.py::test_convert_runs_the_fake_through_the_probe_runner
 > tests/unit/test_process_launcher_editor.py::test_kernel_environment_reaches_the_editor_config
-7118a7187,7211
+7118a7187,7214
+> tests/unit/test_web_experiment_editor_reasons.py::test_every_core_refusal_reason_has_a_route_message
+> tests/unit/test_web_experiment_editor_reasons.py::test_route_messages_cover_exactly_the_contract_reasons
 > tests/unit/test_web_experiment_editor.py::test_a_bearer_credential_cannot_launch
 > tests/unit/test_web_experiment_editor.py::test_a_body_other_than_consent_is_a_validation_error[{'consent': 'yes'}]
 > tests/unit/test_web_experiment_editor.py::test_a_body_other_than_consent_is_a_validation_error[{'consent': True, 'notebook': 'x.py'}]
 > tests/unit/test_web_experiment_editor.py::test_a_body_other_than_consent_is_a_validation_error[{}]
 > tests/unit/test_web_experiment_editor.py::test_a_different_python_without_marimo_is_python_mismatch
+> tests/unit/test_web_experiment_editor.py::test_a_failed_launch_keeps_an_existing_notebook
 > tests/unit/test_web_experiment_editor.py::test_a_folder_name_with_a_path_escape_is_refused[.hidden]
 > tests/unit/test_web_experiment_editor.py::test_a_folder_name_with_a_path_escape_is_refused[%2E%2E]
 > tests/unit/test_web_experiment_editor.py::test_a_folder_name_with_a_path_escape_is_refused[a%5Cb]
@@ -115,7 +118,7 @@
 > tests/unit/test_web_experiment_editor.py::test_the_kernel_gets_the_project_venv_and_no_dotenv
 > tests/unit/test_web_experiment_editor.py::test_the_plugin_list_names_the_shipped_manifest
 > tests/unit/test_web_experiment_editor.py::test_unknown_project_unlisted_folder_and_removed_project_are_404
-8427a8521,8579
+8427a8524,8582
 > tests/unit/test_workspace_experiment_editor_notebook.py::test_conversion_creates_the_notebook_exclusively
 > tests/unit/test_workspace_experiment_editor_notebook.py::test_conversion_writes_the_notebook_through_a_private_folder
 > tests/unit/test_workspace_experiment_editor_notebook.py::test_converter_error_still_removes_the_private_folder
