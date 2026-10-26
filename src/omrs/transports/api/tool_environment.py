@@ -250,7 +250,11 @@ class ToolDetector:
             return ToolStatus(UNKNOWN, problem="status-unknown", uv=uv)
         environment = folders[0] / TOOL
         receipt = environment / RECEIPT_NAME
-        if not receipt.is_file():
+        try:
+            present = receipt.is_file()
+        except OSError:
+            return ToolStatus(UNKNOWN, problem="status-unknown", uv=uv)
+        if not present:
             return ToolStatus(NOT_INSTALLED, uv=uv)
         tested = self.tested()
         try:

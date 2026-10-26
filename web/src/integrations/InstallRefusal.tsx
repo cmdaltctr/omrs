@@ -5,6 +5,7 @@ import { ErrorNotice } from "../components/ErrorNotice";
 import { Button } from "../components/ui/button";
 
 type RefusalAction = "retry" | "check";
+type RefusalKind = "install" | "tool-install" | "uninstall";
 
 /** A marimo editor that this server started blocks a marimo install or uninstall (ADR-101). */
 export const EDITOR_RUNNING = "A marimo editor that OMRS started is running. Stop it in Experiments, Code editor, then try again.";
@@ -19,6 +20,12 @@ const REFUSALS: Record<string, { message: string; action: RefusalAction }> = {
   "already-installed": { message: "This integration is already installed. Restart the server to use it.", action: "check" },
   "no-requirements": { message: "This integration adds no packages, so there is nothing to install.", action: "check" },
   "editor-running": { message: EDITOR_RUNNING, action: "check" },
+};
+
+/** The lines of a refused tool install. A tool lives in its own uv tool environment, so it needs no restart. */
+const TOOL_REFUSALS: Record<string, { message: string; action: RefusalAction }> = {
+  ...REFUSALS,
+  "already-installed": { message: "This tool is already installed. It needs no restart.", action: "check" },
 };
 
 /** One line and one action for each `reason` of a refused uninstall (409). `in-use` names its setting separately. */
@@ -67,10 +74,12 @@ function refusalField(error: unknown, key: "reason" | "setting"): string | null 
   return typeof value === "string" ? value : null;
 }
 
-function knownRefusal(error: unknown, action: "install" | "uninstall"): { message: string; action: RefusalAction } | undefined {
+const REFUSAL_LINES = { install: REFUSALS, "tool-install": TOOL_REFUSALS, uninstall: UNINSTALL_REFUSALS };
+
+function knownRefusal(error: unknown, action: RefusalKind): { message: string; action: RefusalAction } | undefined {
   const reason = refusalField(error, "reason");
   if (reason === null) return undefined;
-  const refusal = (action === "install" ? REFUSALS : UNINSTALL_REFUSALS)[reason];
+  const refusal = REFUSAL_LINES[action][reason];
   const setting = refusalField(error, "setting");
   const profile = refusalProfile(error);
   if (refusal !== undefined && reason === "in-use" && setting !== null && profile !== null) return { ...refusal, message: profileInUseMessage(profile, setting) };
@@ -85,7 +94,7 @@ interface InstallRefusalProps {
   /** Reads the catalogue again, so the entry shows what the server can do now. */
   onCheck: () => void;
   /** Which start was refused. It picks the lines. */
-  action?: "install" | "uninstall";
+  action?: RefusalKind;
 }
 
 /**

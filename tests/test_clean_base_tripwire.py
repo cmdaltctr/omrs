@@ -188,7 +188,8 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # (0: 7 new, 7 Decimal/NaN/naive-datetime cases removed). No fastapi needed.
 # +76 (2026-10-26, install-marimo-from-integrations, by test-ID diff, none removed):
 # test_web_tool_environment.py (29, no fastapi); 47 need fastapi (see _WEB_EXTRA_CASES).
-_BASE_EXECUTED = 8781
+# +1 (2026-10-26, PR #132 review): the unreadable-receipt case in test_web_tool_environment.py.
+_BASE_EXECUTED = 8782
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

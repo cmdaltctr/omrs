@@ -150,6 +150,22 @@ def test_a_runner_error_or_timeout_is_unknown(tmp_path: Path, fail: BaseExceptio
     assert status.problem == "status-unknown"
 
 
+def test_an_unreadable_receipt_is_unknown(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Python 3.12 raises PermissionError from is_file(); 3.14 returns False, so force it.
+    tools, bin_dir = _tool(tmp_path)
+    real = Path.is_file
+
+    def deny(self: Path, *args: object, **kwargs: object) -> bool:
+        if self.name == te.RECEIPT_NAME:
+            raise PermissionError(13, "Permission denied", str(self))
+        return real(self, *args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(Path, "is_file", deny)
+    status = _detector(FakeRunner(tools, bin_dir)).detect()
+    assert status.availability == "unknown"
+    assert status.problem == "status-unknown"
+
+
 def test_a_failed_uv_tool_dir_is_unknown(tmp_path: Path) -> None:
     runner = FakeRunner(tmp_path, tmp_path)
     runner.code = 2

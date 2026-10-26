@@ -50,7 +50,7 @@ export function ToolInstallControls({ tool, control, phase }: { tool: ExternalTo
   const [confirming, setConfirming] = useState(false);
   const error = control.toolRefusal(tool.id);
   const start = () => control.startTool(tool.id);
-  const refusal = error !== null ? <InstallRefusal error={error} onRetry={start} onCheck={control.recheck} /> : null;
+  const refusal = error !== null ? <InstallRefusal error={error} onRetry={start} onCheck={control.recheck} action="tool-install" /> : null;
 
   if (phase === "none") return null;
   if (phase === "running") return <ToolProgress text={`Installing ${tool.name}. This can take a few minutes.`} />;

@@ -245,6 +245,17 @@ describe("install marimo", () => {
     expect(await within(card).findByRole("alert")).toHaveTextContent("A marimo editor that OMRS started is running. Stop it in Experiments, Code editor, then try again.");
     expect(document.body.textContent).not.toContain("RAW");
   });
+
+  it("does not tell the user to restart for an already-installed tool", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    toolServer({ post: () => json({ status: "error", message: "RAW", reason: "already-installed" }, 409) });
+    const { user, dialog } = await pressInstall();
+    await user.click(within(dialog).getByRole("button", { name: "Install" }));
+    const card = await toolCard();
+    const alert = await within(card).findByRole("alert");
+    expect(alert).toHaveTextContent("This tool is already installed. It needs no restart.");
+    expect(alert).not.toHaveTextContent("Restart the server");
+  });
 });
 
 describe("one job at a time", () => {
