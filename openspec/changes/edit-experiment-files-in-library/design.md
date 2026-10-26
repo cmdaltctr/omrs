@@ -38,7 +38,7 @@ See `proposal.md` for the reason. The facts below shape the design. Each one was
 
 The server accepts a save only for `protocol.md`, `report.md` and `results.md`. `results.md` is editable only when the folder has no `report.md`, so the Edit button appears exactly where the Report tab shows the file. The name is checked against this list before any file access. The request path carries no other path part. The project must be an added Library project and the folder a listed experiment folder, through the same checks that `read_file` uses (`check_name`, `_folder`, `_served`).
 
-A file is editable when all of these hold: the name is allowed for this folder; the file exists as a regular file directly in the folder (not a link); it is at most 1 MiB; it decodes as strict UTF-8.
+A file is editable when all of these hold: the name is allowed for this folder; the file exists as a regular file directly in the folder (not a link); it is at most 1 MiB; it decodes as strict UTF-8; it holds no NUL character, because a save refuses NUL (D5). One repository file holds a NUL on purpose (`21-lancedb-literal-faithfulness-2026-09-02/results.md`); the browser check found it.
 
 Alternatives:
 

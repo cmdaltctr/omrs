@@ -2,7 +2,7 @@
 
 ### Requirement: The protocol and the report can be edited from the experiment page
 
-The experiment page SHALL let a browser session with the `manage` scope edit `protocol.md`, `report.md`, and `results.md` when the folder has no `report.md`. The server SHALL refuse every other name before any file access. It SHALL save only a file that exists as a regular file directly in a listed experiment folder of an added project, is at most 1 MiB and is valid UTF-8. The Plan tab SHALL offer no edit. A bearer credential SHALL NOT save.
+The experiment page SHALL let a browser session with the `manage` scope edit `protocol.md`, `report.md`, and `results.md` when the folder has no `report.md`. The server SHALL refuse every other name before any file access. It SHALL save only a file that exists as a regular file directly in a listed experiment folder of an added project, is at most 1 MiB, is valid UTF-8 and holds no NUL character. The Plan tab SHALL offer no edit. A bearer credential SHALL NOT save.
 
 #### Scenario: Edit a protocol
 

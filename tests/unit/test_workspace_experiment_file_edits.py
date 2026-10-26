@@ -131,6 +131,8 @@ def test_large_or_non_utf8_file_is_not_editable(folder: Path) -> None:
     assert not edits.is_editable(folder, "report.md", b"a" * (MIB + 1), MIB + 1)
     assert not edits.is_editable(folder, "report.md", b"ok \xff", 4)
     assert not edits.is_editable(folder, "plan.json", b"{}", 2)
+    # A NUL can never be saved back (D5), so a file that holds one is not offered.
+    assert not edits.is_editable(folder, "report.md", b"nul \x00 here", 11)
 
 
 def test_non_utf8_file_is_refused_on_save(experiments: Path, folder: Path) -> None:

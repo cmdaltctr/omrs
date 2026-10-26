@@ -286,7 +286,7 @@ The app opens only text files at the top level of the experiment folder: `.md`, 
 
 ### Edit a protocol or report from the app
 
-The app can edit `protocol.md` and the report file (`report.md`, or `results.md` in an older folder without `report.md`) of any experiment. It edits only a file that exists, up to 1 MiB of UTF-8 text. It never edits `plan.json`, the scripts or `experiment.json`.
+The app can edit `protocol.md` and the report file (`report.md`, or `results.md` in an older folder without `report.md`) of any experiment. It edits only a file that exists, up to 1 MiB of UTF-8 text with no NUL character. It never edits `plan.json`, the scripts or `experiment.json`.
 
 1. Open the experiment page.
 2. Select the **Protocol** tab or the **Report** tab.

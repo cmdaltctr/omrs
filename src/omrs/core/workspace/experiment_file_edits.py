@@ -3,7 +3,8 @@
 The web workspace edits three fixed names only: ``protocol.md``, ``report.md``,
 and ``results.md`` when the folder has no ``report.md`` (design D1). A file is
 editable when it exists as a regular file directly in a listed experiment
-folder, is at most :data:`MAX_FILE_BYTES` and decodes as strict UTF-8.
+folder, is at most :data:`MAX_FILE_BYTES`, decodes as strict UTF-8 and holds
+no NUL character.
 
 A save carries the SHA-256 revision that the editor loaded (design D4). The
 new bytes go to a temporary file in the same folder, which then replaces the
@@ -84,8 +85,8 @@ def is_editable(base: Path, name: str, data: bytes, size: int) -> bool:
     """Return True when the file *name* with the read *data* and full *size* is editable."""
     if name not in editable_names(base) or (base / name).is_symlink():
         return False
-    if size > MAX_FILE_BYTES or len(data) > MAX_FILE_BYTES:
-        return False
+    if size > MAX_FILE_BYTES or len(data) > MAX_FILE_BYTES or b"\x00" in data:
+        return False  # a NUL cannot be saved back (D5)
     try:
         data.decode("utf-8")
     except UnicodeDecodeError:

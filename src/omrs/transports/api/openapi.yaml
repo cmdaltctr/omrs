@@ -2895,7 +2895,8 @@ paths:
         credential never saves. Only `protocol.md`, `report.md`, and
         `results.md` in a folder without `report.md`, can be saved, and only
         when the file exists as a regular file directly in the experiment
-        folder, is at most 1 MiB and is valid UTF-8 (400 otherwise). The body
+        folder, is at most 1 MiB, is valid UTF-8 and holds no NUL character
+        (400 otherwise). The body
         carries the `revision` that the read returned; another revision on
         disk gives 409 `changed_on_disk` and writes nothing. The new text
         replaces the file in one rename and keeps CRLF line endings and a
