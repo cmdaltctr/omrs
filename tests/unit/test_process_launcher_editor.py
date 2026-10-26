@@ -112,7 +112,9 @@ def test_kernel_environment_reaches_the_editor_config(parts, tmp_path: Path) -> 
     record = read_record(exe.parent)
     config = tomllib.loads(record["config"])
     assert config["venv"] == {"path": str(venv), "writable": False}
-    assert config["runtime"]["dotenv"] == [] and config["runtime"]["auto_instantiate"] is False
+    (dotenv,) = config["runtime"]["dotenv"]
+    assert Path(dotenv).parent == Path(record["cwd"])
+    assert Path(dotenv).read_text() == "" and config["runtime"]["auto_instantiate"] is False
     assert str(venv) not in " ".join(record["argv"])
     sup.stop(session.launch_id)
     assert wait_gone(record["pid"])

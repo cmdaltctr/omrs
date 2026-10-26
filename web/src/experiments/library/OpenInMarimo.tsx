@@ -95,7 +95,11 @@ export function useMarimoLauncher(projectId: string, folder: string) {
     },
     confirm: () => void confirm(),
     hideToken: () => setOpened((current) => (current === null ? null : { ...current, token: null })),
-    clearOpened: () => setOpened(null),
+    // After Stop, neither the opened card nor an "already open" line is true any more.
+    clearOpened: () => {
+      setOpened(null);
+      setRefusal(null);
+    },
   };
 }
 
@@ -210,7 +214,7 @@ function OpenedCard({ opened, onHide, onStopped }: { opened: Opened; onHide: () 
   );
 }
 
-function RunningCard({ editor }: { editor: EditorInfo }) {
+function RunningCard({ editor, onStopped }: { editor: EditorInfo; onStopped: () => void }) {
   let url: string | null = null;
   try {
     url = editorTabUrl(editor);
@@ -223,7 +227,7 @@ function RunningCard({ editor }: { editor: EditorInfo }) {
       <EditorAddress url={editor.url_without_token} />
       {url !== null ? <TabLink url={url}>Open the editor tab</TabLink> : null}
       <p className="text-meta text-muted-foreground">The token was shown once when the editor opened. Stop the editor and open it again to get a new token.</p>
-      <StopEditor launchId={editor.launch_id} />
+      <StopEditor launchId={editor.launch_id} onStopped={onStopped} />
     </>
   );
 }
@@ -255,7 +259,7 @@ export function MarimoEditorStatus({ launcher }: { launcher: MarimoLauncher }) {
             {opened !== null ? (
               <OpenedCard opened={opened} onHide={launcher.hideToken} onStopped={launcher.clearOpened} />
             ) : running !== null ? (
-              <RunningCard editor={running} />
+              <RunningCard editor={running} onStopped={launcher.clearOpened} />
             ) : null}
           </Card>
         </section>

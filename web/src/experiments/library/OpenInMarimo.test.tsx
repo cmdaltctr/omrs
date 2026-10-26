@@ -214,4 +214,24 @@ describe("open an experiment in marimo", () => {
     const card = await screen.findByRole("region", { name: "marimo editor" });
     expect(within(card).getByRole("heading", { name: "marimo is running for this experiment" })).toBeInTheDocument();
   });
+
+  it("clears the editor_running line when that editor is stopped", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const editors: EditorInfo[] = [];
+    const { server, user } = openPage({ editors }, {
+      [`POST ${EDITOR_PATH}`]: () => {
+        editors.push(libraryEditor());
+        return json({ status: "error", reason: "editor_running", message: "RAW running", launch_id: "launch_2" }, 409);
+      },
+    });
+    await waitFor(async () => expect(await trigger()).toBeEnabled());
+    await consentAndOpen(user);
+    await screen.findByRole("alert");
+    const card = await screen.findByRole("region", { name: "marimo editor" });
+    await user.click(within(card).getByRole("button", { name: "Stop editor launch_2" }));
+    editors.length = 0;
+    await user.click(within(card).getByRole("button", { name: "Confirm stop" }));
+    await waitFor(() => expect(server.find("DELETE", "/v1/plugin-editors/launch_2")).toHaveLength(1));
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+  });
 });

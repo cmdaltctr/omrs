@@ -204,7 +204,7 @@ When the project `.venv` has no marimo, marimo puts its own tool packages on the
 
 ### The `.env` file and startup execution
 
-- **`.env` is not loaded.** The private `.marimo.toml` sets `runtime.dotenv` to an empty list (`dotenv = []`). So provider keys in the project `.env` do not go into the kernel environment. If the project sets its own `runtime.dotenv` in its `pyproject.toml`, the project setting wins.
+- **`.env` is not loaded.** The private `.marimo.toml` sets `runtime.dotenv` to one empty private file in the launch folder. So provider keys in the project `.env` do not go into the kernel environment. An empty list (`dotenv = []`) does not work: marimo 0.25.1 ignores it and loads the project `.env`. If the project sets its own `runtime.dotenv` in its `pyproject.toml`, the project setting wins.
 - **No cell runs when the notebook opens.** The private `.marimo.toml` sets `auto_instantiate = false`. A `pyproject.toml` can turn startup execution back on with `[tool.marimo.runtime]`. Before the launch, OMRS reads the nearest `pyproject.toml` above the experiment folder. If it sets `auto_instantiate = true`, or if it is not valid TOML, OMRS refuses with `project_config_runs_on_open`.
 
 ### Derived files and git

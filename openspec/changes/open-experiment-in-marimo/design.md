@@ -67,7 +67,7 @@ path = "<project root>/.venv"   # absolute, resolved by OMRS
 writable = false
 
 [runtime]
-dotenv = []                     # merged with the manifest's runtime table
+dotenv = ["<launch folder>/omrs-no-dotenv.env"]  # one empty private file; merged with the manifest's runtime table
 ```
 
 The argv does not change. It is the manifest recipe, which already has `--no-sandbox`.
@@ -79,7 +79,7 @@ Evidence from marimo 0.25.1 (installed package, read without running it; docs at
 3. In edit mode a configured `venv.path` makes marimo start the kernel as `<venv python> -m marimo._ipc.launch_kernel` (`marimo/_session/session.py:128-161`, `marimo/_session/managers/ipc.py:332-410`). A relative path resolves against the notebook file (`marimo/_session/_venv.py:57-91`), so OMRS writes an absolute path.
 4. With `writable = false` marimo installs nothing. When the venv has no marimo, marimo puts its own tool site-packages on the kernel's `PYTHONPATH`, and refuses to start when the venv's Python major.minor differs from marimo's (`ipc.py:376-398`, `_venv.py:160-183`).
 5. `--sandbox` ignores `[venv]` (`ipc.py:333-337`), so the existing `--no-sandbox` argument stays required.
-6. marimo loads the project's `.env` by default when no layer sets `runtime.dotenv` (`marimo/_config/manager.py:255-289`). `dotenv = []` in the user layer stops that, so provider keys from the project's `.env` do not enter the kernel's environment without the notebook asking for them. A project that sets `runtime.dotenv` in its own `pyproject.toml` keeps its choice.
+6. marimo loads the project's `.env` by default when no layer sets `runtime.dotenv` (`marimo/_config/manager.py:255-289`). A `dotenv` list in the user layer stops that, so provider keys from the project's `.env` do not enter the kernel's environment without the notebook asking for them. A project that sets `runtime.dotenv` in its own `pyproject.toml` keeps its choice. **Correction from the live launch check (task 10.4):** marimo 0.25.1 drops an empty user-layer list (`_drop_hollow_dotenv`, `marimo/_config/manager.py:670-679`, because marimo 0.18 and earlier saved masked empty lists to disk), so `dotenv = []` still loaded the project `.env`. OMRS therefore names one empty private file, `omrs-no-dotenv.env`, in the launch folder. A non-empty list survives that filter and outranks the project default.
 
 The manifest declares the support as an optional capability, so a future manifest for a marimo without `[venv]` can leave it out:
 
@@ -200,7 +200,7 @@ Alternatives: hatch `force-include` of `plugins/marimo/manifest.json` (two locat
 
 The supervisor stays the one launcher. Changes:
 
-- `build_launch_plan(..., kernel_environment: KernelEnvironment | None = None)`. With a value, the rendered `.marimo.toml` gains the `[venv]` table and `runtime.dotenv = []`. Paths are written as TOML basic strings with escaping; a path with a control character is refused before rendering.
+- `build_launch_plan(..., kernel_environment: KernelEnvironment | None = None)`. With a value, the rendered `.marimo.toml` gains the `[venv]` table and `runtime.dotenv` naming one empty private file in the launch folder (see D2 evidence 6). Paths are written as TOML basic strings with escaping; a path with a control character is refused before rendering.
 - `NotebookEditorSupervisor.open(..., kernel_environment=...)` passes it through, and refuses the launch with `PluginLaunchError` when the manifest lacks `project_environment`.
 - `NotebookEditorSupervisor.convert(name, source, output_dir, timeout)` runs the `convert_script` recipe through the registry's probe runner. `core/plugins` still starts no process itself (import-linter contract `plugin-host-starts-no-processes`).
 - `PluginHost` gains `editor_experiments: dict[str, tuple[str, str]]` (launch id to project id and folder). Stop and shutdown clear it with `editor_contexts`.
@@ -237,7 +237,9 @@ These follow best practice where the design was silent. They do not change D1 to
 6. **Unreadable `pyproject.toml`.** A file that cannot be read is refused like one that is not TOML (`project_config_runs_on_open`).
 7. **Code editor link.** The web app adds the route `#/experiments/code-editor`, so the disabled-state hint can link to that section.
 8. **Server text in refusals.** The page shows a fixed line per reason. For `python_mismatch` and `converter_missing` it shows the server line, because that line names the versions or the install command.
-9. **Live check without jupytext.** marimo's tool environment on the build machine has no jupytext, and OMRS installs nothing. The live check (task 10.4) records the `converter_missing` refusal and opens a folder without `analysis.py`. Conversion itself is checked with the fake executable only.
+9. **No `.env` through an empty file, not `[]`.** The live check found that marimo 0.25.1 ignores `dotenv = []` in the user layer (D2 evidence 6, correction). A launch with a kernel environment writes an empty private file `omrs-no-dotenv.env` in the launch folder, and `runtime.dotenv` names only that file. The live check confirms the project `.env` is not loaded (`live-launch.md`).
+10. **Stop clears a stale refusal.** After an `editor_running` refusal, Stop on either card also clears that line, so the page does not say "already open" for an editor that has stopped (`browser-check.md`, check 11).
+11. **Live check without jupytext.** marimo's tool environment on the build machine has no jupytext, and OMRS installs nothing. The live check (task 10.4) records the `converter_missing` refusal and opens a folder without `analysis.py`. Conversion itself is checked with the fake executable only.
 
 ## Risks / Trade-offs
 

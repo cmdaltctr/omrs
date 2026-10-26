@@ -49,9 +49,10 @@
 > tests/unit/test_plugin_editor.py::test_open_with_kernel_environment_needs_the_capability
 > tests/unit/test_plugin_editor.py::test_open_with_kernel_environment_passes_plan
 > tests/unit/test_plugin_editor.py::test_open_without_kernel_environment_keeps_old_config
-5971a6010
+5971a6010,6011
 > tests/unit/test_plugin_editor.py::test_without_kernel_environment_config_is_byte_identical
-5972a6012,6024
+> tests/unit/test_plugin_editor.py::test_without_kernel_environment_no_dotenv_file_is_written
+5972a6013,6025
 > tests/unit/test_plugin_manifest.py::test_convert_recipe_is_a_closed_object
 > tests/unit/test_plugin_manifest.py::test_convert_recipe_parses
 > tests/unit/test_plugin_manifest.py::test_convert_recipe_refuses_other_substitutions[args0-must use {output_path}]
@@ -65,30 +66,30 @@
 > tests/unit/test_plugin_manifest.py::test_convert_recipe_refuses_other_substitutions[args7-installer]
 > tests/unit/test_plugin_manifest.py::test_convert_recipe_refuses_other_substitutions[args8-installer]
 > tests/unit/test_plugin_manifest.py::test_convert_recipe_refuses_other_substitutions[convert {source_path} -o {output_path}-not a shell string]
-5974a6027,6029
+5974a6028,6030
 > tests/unit/test_plugin_manifest.py::test_launch_recipe_refuses_convert_substitutions[output_path]
 > tests/unit/test_plugin_manifest.py::test_launch_recipe_refuses_convert_substitutions[source_path]
 > tests/unit/test_plugin_manifest.py::test_manifest_without_convert_recipe_has_none
-5977a6033
+5977a6034
 > tests/unit/test_plugin_manifest.py::test_other_config_capability_without_value_still_fails
-5982a6039,6041
+5982a6040,6042
 > tests/unit/test_plugin_manifest.py::test_project_environment_config_must_be_a_table_key
 > tests/unit/test_plugin_manifest.py::test_project_environment_config_without_value_parses
 > tests/unit/test_plugin_manifest.py::test_project_environment_with_value_follows_the_config_rule
-6030a6090
+6030a6091
 > tests/unit/test_plugin_marimo_manifest.py::test_empty_notebook_template_is_a_marimo_notebook
-6034a6095,6096
+6034a6096,6097
 > tests/unit/test_plugin_marimo_manifest.py::test_shipped_manifest_declares_project_environment_and_conversion
 > tests/unit/test_plugin_marimo_manifest.py::test_shipped_manifest_is_a_package_resource
-6035a6098,6099
+6035a6099,6100
 > tests/unit/test_plugin_marimo_manifest.py::test_shipped_manifests_returns_the_packaged_file
 > tests/unit/test_plugin_marimo_manifest.py::test_shipped_manifests_skips_a_resource_that_is_not_on_disk
-6057a6122
+6057a6123
 > tests/unit/test_plugin_registration.py::test_run_command_passes_argv_and_timeout_to_the_runner
-6082a6148,6149
+6082a6149,6150
 > tests/unit/test_process_launcher_editor.py::test_convert_runs_the_fake_through_the_probe_runner
 > tests/unit/test_process_launcher_editor.py::test_kernel_environment_reaches_the_editor_config
-7118a7186,7210
+7118a7187,7211
 > tests/unit/test_web_experiment_editor.py::test_a_bearer_credential_cannot_launch
 > tests/unit/test_web_experiment_editor.py::test_a_body_other_than_consent_is_a_validation_error[{'consent': 'yes'}]
 > tests/unit/test_web_experiment_editor.py::test_a_body_other_than_consent_is_a_validation_error[{'consent': True, 'notebook': 'x.py'}]
@@ -114,7 +115,7 @@
 > tests/unit/test_web_experiment_editor.py::test_the_kernel_gets_the_project_venv_and_no_dotenv
 > tests/unit/test_web_experiment_editor.py::test_the_plugin_list_names_the_shipped_manifest
 > tests/unit/test_web_experiment_editor.py::test_unknown_project_unlisted_folder_and_removed_project_are_404
-8427a8520,8578
+8427a8521,8579
 > tests/unit/test_workspace_experiment_editor_notebook.py::test_conversion_creates_the_notebook_exclusively
 > tests/unit/test_workspace_experiment_editor_notebook.py::test_conversion_writes_the_notebook_through_a_private_folder
 > tests/unit/test_workspace_experiment_editor_notebook.py::test_converter_error_still_removes_the_private_folder

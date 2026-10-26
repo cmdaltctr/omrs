@@ -23,6 +23,7 @@ from omrs.core.plugins import (
     build_launch_plan,
     parse_manifest,
 )
+from omrs.core.plugins.editor import NO_DOTENV_FILE_NAME
 from omrs.integrations.workspace_sqlite import SqliteWorkspaceRepository
 
 
@@ -225,10 +226,18 @@ def test_kernel_environment_renders_venv_and_dotenv(tmp_path: Path) -> None:
     plan = plan_for(project_manifest(), tmp_path, KernelEnvironment(VENV))
     config = tomllib.loads(plan.files[".fakeedit.toml"])
     assert config["venv"] == {"path": str(VENV), "writable": False}
+    # marimo 0.25.1 drops an empty user-layer `dotenv` list (`_drop_hollow_dotenv`) and
+    # then loads the project .env, so the list names an empty private file instead.
     assert config["runtime"] == {
-        "auto_instantiate": False, "on_cell_change": "lazy", "dotenv": [],
+        "auto_instantiate": False, "on_cell_change": "lazy",
+        "dotenv": [str(tmp_path / NO_DOTENV_FILE_NAME)],
     }  # fmt: skip
+    assert plan.files[NO_DOTENV_FILE_NAME] == ""
     assert plan.files[".fakeedit.toml"].count("[runtime]") == 1
+
+
+def test_without_kernel_environment_no_dotenv_file_is_written(tmp_path: Path) -> None:
+    assert NO_DOTENV_FILE_NAME not in plan_for(project_manifest(), tmp_path).files
 
 
 def test_kernel_environment_keeps_argv_unchanged(tmp_path: Path) -> None:
@@ -302,7 +311,10 @@ def test_open_with_kernel_environment_passes_plan(project_setup) -> None:
     sup = supervisor(registry, launcher)
     sup.open("fakeedit", notebook, consent=True, kernel_environment=KernelEnvironment(VENV))
     config = tomllib.loads(launcher.started[0]["files"][".fakeedit.toml"])
-    assert config["venv"]["path"] == str(VENV) and config["runtime"]["dotenv"] == []
+    assert config["venv"]["path"] == str(VENV)
+    (dotenv,) = config["runtime"]["dotenv"]
+    assert dotenv.endswith(NO_DOTENV_FILE_NAME)
+    assert launcher.started[0]["files"][NO_DOTENV_FILE_NAME] == ""
 
 
 def test_open_with_kernel_environment_needs_the_capability(setup) -> None:

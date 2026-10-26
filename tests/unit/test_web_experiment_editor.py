@@ -309,7 +309,8 @@ def test_the_kernel_gets_the_project_venv_and_no_dotenv(
         assert env.open().status_code == 201
         record = json.loads((env.exe.parent / "record.json").read_text())
         assert f'path = "{(env.root / ".venv").resolve()}"' in record["config"]
-        assert "writable = false" in record["config"] and "dotenv = []" in record["config"]
+        assert "writable = false" in record["config"]
+        assert 'dotenv = ["' in record["config"] and "dotenv = []" not in record["config"]
         assert "OMRS_CONNECTION_FILE" not in record["env"]
         assert record["argv"][1] == str((env.folder / "analysis.marimo.py").resolve())
 

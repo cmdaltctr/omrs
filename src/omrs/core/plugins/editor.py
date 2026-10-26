@@ -37,6 +37,8 @@ TOKEN_FILE_NAME = "access-token"  # noqa: S105 - a file name, not a secret
 CONNECTION_FILE_NAME = "omrs_connection.json"
 #: Private file that holds the experiment-bound API bearer credential.
 API_TOKEN_FILE_NAME = "omrs-api-token"  # noqa: S105 - a file name, not a secret
+#: Empty private file that a project-environment launch names as its only dotenv file.
+NO_DOTENV_FILE_NAME = "omrs-no-dotenv.env"
 #: The one per-launch variable; its value is the connection file path.
 CONNECTION_ENV = "OMRS_CONNECTION_FILE"
 
@@ -174,7 +176,9 @@ def build_launch_plan(
     files = {TOKEN_FILE_NAME: token}
     config = manifest.launch.config_file
     if config is not None and kernel_environment is not None:
-        files[config.name] = render_kernel_config(config, kernel_environment)
+        no_dotenv = launch_dir / NO_DOTENV_FILE_NAME
+        files[config.name] = render_kernel_config(config, kernel_environment, no_dotenv)
+        files[NO_DOTENV_FILE_NAME] = ""
     elif config is not None:
         files[config.name] = config.render_toml()
     elif kernel_environment is not None:
@@ -390,6 +394,7 @@ def _check_kernel_support(name: str, manifest: PluginManifest, kernel: KernelEnv
             "editor_unsupported",
         )
     try:
-        render_kernel_config(config, kernel)  # refuse before any launch folder exists
+        # Refuse before any launch folder exists; the dotenv path here is a placeholder.
+        render_kernel_config(config, kernel, Path("/") / NO_DOTENV_FILE_NAME)
     except ValueError as exc:
         raise PluginLaunchError(f"{name} cannot use this environment: {exc}") from exc

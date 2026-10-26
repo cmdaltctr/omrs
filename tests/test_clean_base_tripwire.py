@@ -180,7 +180,8 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # test_workspace_experiment_editor*.py (59), test_process_launcher_editor.py (2),
 # test_experiment_derived_files_ignored.py (4); no fastapi. test_web_experiment_editor.py
 # (25) and test_notebooks_guide.py (4) need fastapi.
-_BASE_EXECUTED = 8682
+# +1 (2026-10-26, live-check fix): the no-dotenv-file case in test_plugin_editor.py.
+_BASE_EXECUTED = 8683
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
