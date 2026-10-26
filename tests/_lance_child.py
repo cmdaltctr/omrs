@@ -1,12 +1,12 @@
-"""Run a short-lived Python child that writes to LanceDB (TDR-040).
+"""Run a short-lived Python child that writes to LanceDB (TDR-040, ADR-098).
 
-lancedb < 0.40 leaves its Tokio worker threads running into interpreter
-shutdown, where one can crash the process (SIGSEGV or SIGABRT) after a
-successful write (lancedb PR #4175). Tests that write from a child process
-use :func:`run_lance_child`. It ends the child with a marker line and
-``os._exit(0)`` once the script body has finished, so a committed write is
-not reported as a failure. A child that fails earlier still exits non-zero.
-The leading underscore keeps pytest from collecting this file.
+lancedb 0.40.0 and later shut their runtime down at interpreter exit (lancedb
+PR #4175). Older releases left worker threads running into shutdown, where one
+could crash the process after a successful write. The child now runs normal
+interpreter shutdown, so a crash at exit fails the test. The script body ends
+with a marker line on stdout, which shows whether the body finished before a
+crash. ``PYTHONFAULTHANDLER=1`` makes a native crash print each thread's
+Python stack. The leading underscore keeps pytest from collecting this file.
 """
 
 from __future__ import annotations
@@ -18,12 +18,11 @@ import sys
 FINISHED_MARKER = "lance child finished"
 
 # Appended to every child script. It runs only when the body has finished.
+# Interpreter shutdown follows it as normal.
 _EPILOGUE = f"""
-import os as _os
 import sys as _sys
 print({FINISHED_MARKER!r}, flush=True)
 _sys.stderr.flush()
-_os._exit(0)
 """
 
 
