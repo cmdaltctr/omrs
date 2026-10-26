@@ -65,3 +65,43 @@ export function refusalLinksToMarimoCard(error: unknown): boolean {
   const reason = refusalBody(error)?.reason;
   return typeof reason === "string" && MARIMO_CARD_REASONS.has(reason);
 }
+
+/** The page's own line for each 409 reason of a refused save of protocol.md or the report. */
+export const SAVE_REFUSALS = {
+  changed_on_disk: "This file changed on disk after you opened it. Copy your text, select Reload, then add your changes again.",
+  edit_log_unusable: "edits.jsonl in this experiment folder is a link or not a regular file, so the app cannot record the edit. Replace it with a regular file.",
+} as const;
+
+/** The plain 500 lines of a failed save. Each one says whether the file changed, so the page shows it as it is. */
+const SAVE_FAILURES = new Set([
+  "The file was not saved.",
+  "The file was not saved, because the app could not record the edit in edits.jsonl.",
+  "The file was saved, but the edit was not recorded in edits.jsonl. Run git diff on the file to see the change.",
+]);
+
+/** The 409 reason of a refused save, or null for any other failure. */
+export function saveRefusalReason(error: unknown): keyof typeof SAVE_REFUSALS | null {
+  const reason = refusalBody(error)?.reason;
+  return typeof reason === "string" && Object.hasOwn(SAVE_REFUSALS, reason) ? (reason as keyof typeof SAVE_REFUSALS) : null;
+}
+
+/**
+ * One line for a failed save. A 409 reason shows the page's own line. A 500
+ * shows the server line only when it is one of the known plain lines, which
+ * say whether the file was saved. Every other failure goes through `refusalLine`.
+ */
+export function saveRefusalLine(error: unknown): string {
+  const reason = saveRefusalReason(error);
+  if (reason !== null) {
+    console.error(error instanceof Error ? error.message : String(error), error);
+    return SAVE_REFUSALS[reason];
+  }
+  if (error instanceof ApiError && error.kind === "http" && error.status === 500) {
+    const message = typeof error.body === "object" && error.body !== null ? (error.body as { message?: unknown }).message : undefined;
+    if (typeof message === "string" && SAVE_FAILURES.has(message)) {
+      console.error(message, error);
+      return message;
+    }
+  }
+  return refusalLine(error);
+}
