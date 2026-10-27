@@ -33,7 +33,6 @@ The adapter uses only counts from the OCR lists, never indices. Page numbers com
 
 **Non-Goals:**
 
-- Heading context across page breaks (see Risks).
 - Removal of running headers and footers that the whole-document call removes.
 - Page numbers for documents the OCR worker reads as a whole PDF.
 - A separate experiment. The pipeline sweep measures the effect.
@@ -124,7 +123,19 @@ The question was whether the whole-document Markdown joins elements across page 
 
 So per-page output splits nothing that was joined. What changes is chunking: the Markdown splitter works per document, so a chunk can no longer hold the end of page N and the start of page N+1, and chunk overlap does not cross a page break. A paragraph that runs over a break becomes two chunks, one per page, each with the correct page. The chunk count rises a little. `markdown_min_chunk_fraction` is 0 by default, so short page-end chunks are kept.
 
-### D9. Docs and decision record
+### D11. Heading context carries across page breaks (decided 2026-10-27)
+
+The Markdown chunkers build `header_path` per document, from an empty heading stack. With one document per page, the first chunks of a page lose the section heading opened on an earlier page (67 of 72 page breaks on Experiment 3's 4 PDFs). `header_path` is part of the embedded text, so this would change retrieval.
+
+Decision: when the chunker receives several documents from one source with page provenance, it processes them in page order and starts each page with the heading stack left open at the end of the previous page. A heading on the new page closes open headings of the same or a deeper level, as it does within one document. Chunks before the first heading on a page get the inherited `header_path`. The stack never crosses into another source.
+
+Both chunking paths do this: the legacy Markdown path (LlamaIndex `MarkdownNodeParser`, `core/chunking/markdown.py`) and the model-token path (`core/chunking/model_token.py`). One shared helper computes the open stack at the end of a page, so the two paths cannot disagree.
+
+Result to check: for a PDF whose page text joined in order equals the whole-document text, every chunk's `header_path` equals the path the whole-document chunking gives at that position.
+
+Alternatives: prepend the open heading lines to each page text in the adapter. Rejected, because it changes the stored page text and the page character counts. Accept the loss. Rejected by the owner.
+
+
 
 - `docs/guides/configuration.md`: the matrix row for `pdf_inspector` becomes `Yes: one document per page; the whole-document fallback and worker-read documents have no page` (the guard test reads only the leading `Yes`).
 - `docs/guides/ingestion.md`: the reader table and the paragraph under it say that `pdf_inspector` emits one document per page, and name the fallbacks without pages.
@@ -136,7 +147,7 @@ No separate experiment. The pipeline sweep, Part A (change `pipeline-sweep-llama
 
 ## Risks / Trade-offs
 
-- [Heading context stops at each page] The Markdown splitter builds `header_path` per document, from an empty heading stack. On Experiment 3's 4 PDFs, 67 of 72 page breaks start under a heading opened on an earlier page, so the first chunks of those pages lose `header_path`. `header_path` is part of the embedded text. → Measure in the sweep. If Experiment 3 drops below Hit@1 17/17, choose one follow-up: (1) carry the last heading path of page N onto the first chunks of page N+1 in the chunker; (2) prepend the open heading lines to each page text in the adapter; (3) accept the loss and record it.
+- [Heading carry-over is wrong for out-of-order or missing pages] → Pages are sorted by `page` before chunking. A missing page (for example a worker-read or failed page) ends the inherited stack for that source, so a wrong heading is never carried over a gap. Tests cover both cases.
 - [Running headers stay in page text] The whole-document call removes repeated running headers and footers; the per-page call does not. Example: "S. Popat, L. Starkey *Computers & Education 128 (2019) 365–376*" now starts several pages of the Popat paper. Heading levels can also differ (the Van Der Weel paper has `# Methods` per page and `## Methods` whole). → Measure in the sweep. A later change can drop lines that repeat at the top or bottom of most pages.
 - [Worker-read documents have no page] A PDF that the document unit sends to the worker loses page numbers. → FinanceBench 10-K filings are text PDFs and stay on the fast path. The benchmark's step 1 page check finds any exception.
 - [One-time rebuild] Every PDF source reprocesses on its next ingest, in every collection, including the live `~/.omrs` app. Until then, old PDF chunks stay searchable without pages. → The release note and the ADR say so. Re-ingest the PDF folders after upgrade.

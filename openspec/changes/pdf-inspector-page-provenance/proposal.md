@@ -20,7 +20,9 @@ pdf-inspector 1.17.0 already has a per-page call, `extract_pages_markdown`. The 
 - The index identity of every PDF source gains the reader output revision. Each PDF source therefore reprocesses once on its next ingest. Non-PDF sources keep their identity. **BREAKING** for stored indexes: PDF chunks built by the old reader are replaced on the next ingest, with new chunk boundaries at page breaks.
 - Docs: the page-provenance matrix in `docs/guides/configuration.md`, the PDF reader section of `docs/guides/ingestion.md`, and a new ADR that amends ADR-050, ADR-066 and ADR-069.
 
-Out of scope: a separate experiment, cross-page heading context, removal of repeated running headers, page numbers for worker-read documents, and any edit to the `pipeline-sweep-llamacpp` or `experiment-35-full-document-rag-benchmark` changes. The retrieval effect is measured inside the pipeline sweep (Part A), which runs after this change merges.
+In scope as well (decided 2026-10-27): the chunker carries the open heading path across page breaks of one source, so per-page documents keep the heading context that whole-document output had (design D11).
+
+Out of scope: a separate experiment, removal of repeated running headers, page numbers for worker-read documents, and any edit to the `pipeline-sweep-llamacpp` or `experiment-35-full-document-rag-benchmark` changes. The retrieval effect is measured inside the pipeline sweep (Part A), which runs after this change merges.
 
 ## Capabilities
 

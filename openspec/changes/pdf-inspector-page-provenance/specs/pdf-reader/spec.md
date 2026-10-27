@@ -24,6 +24,20 @@ The `pdf_inspector` reader SHALL emit one document for each page that has non-wh
 - **THEN** the reader SHALL emit one document with empty text and no `page` or `page_label`
 - **AND** that document SHALL carry the classification so OCR routing can read it
 
+### Requirement: Heading context carries across the pages of one source
+
+When one source yields several page documents, the chunker SHALL start each page with the heading path left open at the end of the previous page, in page order. A heading on the new page SHALL close open headings of the same or a deeper level. The stack SHALL NOT cross into another source or across a missing page.
+
+#### Scenario: Section continues onto the next page
+
+- **WHEN** page 3 ends inside section `Methods > Data` and page 4 starts with body text
+- **THEN** the first chunk of page 4 has the header path `Methods > Data`
+
+#### Scenario: Matches whole-document chunking
+
+- **WHEN** a PDF's page texts joined in order equal its whole-document text
+- **THEN** every chunk's header path equals the path whole-document chunking gives at that position
+
 ### Requirement: pdf_inspector page numbers are physical and 1-based
 
 Each page document SHALL carry `page`, the physical page number counted from 1, as an integer, and `page_label`, the same number as a string. pdf-inspector numbers pages from 0 in its per-page result, so the reader SHALL add 1.

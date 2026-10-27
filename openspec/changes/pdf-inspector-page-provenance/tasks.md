@@ -47,6 +47,13 @@
 - [ ] 6.3 Update `docs/guides/ingestion.md`: the reader table row and the paragraph under it say `pdf_inspector` emits one document per page with `page` and `page_label`, the whole-document fallback and worker-read documents carry no page, and a chunk never crosses a page break. Add one line on the one-time rebuild of PDF sources. Verify: `grep -n "one document per PDF" docs/guides/ingestion.md` returns nothing, and `uv run --no-sync pytest tests/test_docs_references.py -q` passes.
 - [ ] 6.4 Check `docs/guides/configuration.md`, `docs/guides/mcp-tools.md` and `docs/guides/architecture.md` for text that says `pdf_inspector` has no page. Fix each hit. Verify: `grep -rn -i "pdf_inspector" docs/guides | grep -i -E "no page|one document per (file|pdf)"` returns nothing.
 
+## 6a. Heading context across pages (design D11)
+
+- [ ] 6a.1 Write tests first for the shared helper: a page that ends inside `# A` / `## B` passes `A > B` (in the existing `header_path` format) to the next page; a `## C` on the next page closes `B` and keeps `A`; a `# D` closes both; pages from two sources never share a stack; out-of-order pages are sorted first; a gap in page numbers ends the inherited stack. Verify: the tests fail before the helper exists.
+- [ ] 6a.2 Implement the helper in `src/omrs/core/chunking/` (new module, under 500 lines, Google docstrings). Verify: 6a.1 tests pass.
+- [ ] 6a.3 Write tests first for both chunking paths (legacy Markdown and model-token): a 3-page PDF whose sections cross pages gives, for every chunk, the same `header_path` as chunking the joined whole-document text. Then wire the helper into `core/chunking/markdown.py` and `core/chunking/model_token.py`. Verify: the tests fail first, then pass; a mutation that drops the inherited stack makes them fail.
+- [ ] 6a.4 Check that a single-document source (any other reader, any non-PDF file) chunks exactly as before. Verify: the existing chunking and identity tests pass unchanged.
+
 ## 7. Decision record
 
 - [ ] 7.1 Write `docs/adr/<next>-pdf-inspector-emits-page-documents.md` (next free number, 104 on 27 October 2026; status Proposed). Record design D1 (with the call-count measurements), D4, D5, D7 (with rejected options), D8 (page-break measurements) and the two risks on headings and running headers. Name ADR-050, ADR-066 and ADR-069 as amended. Add the row to `docs/adr/ADR_README.md`. Verify: `uv run --no-sync pytest tests/test_docs_references.py -q` passes.
@@ -61,7 +68,7 @@
 
 ## Workflow follow-up
 
-- Open the PR against `v3` with `gh pr create --base v3`. Name the one-time rebuild of PDF sources and the two risks (heading context, running headers) in the body.
+- Open the PR against `v3` with `gh pr create --base v3`. Name the one-time rebuild of PDF sources, the heading carry-over and the running-header risk in the body.
 - After merge, re-ingest the PDF folders of the live `~/.omrs` app (Critical Gotcha 17 and the live-reinstall memory apply).
-- The pipeline sweep, Part A, measures retrieval with per-page output. If Experiment 3 drops below Hit@1 17/17, open a follow-up change for the heading-context options in design.md.
+- The pipeline sweep, Part A, measures retrieval with per-page output and heading carry-over.
 - Archive with `openspec-archive-change`. It merges the deltas into `openspec/specs/pdf-reader/` and `openspec/specs/async-ingestion/`.
