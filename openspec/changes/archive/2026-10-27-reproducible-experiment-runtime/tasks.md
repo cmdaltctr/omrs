@@ -46,7 +46,7 @@ Read `web/DESIGN.md` and load the `omrs-design` skill before this group.
 ## 7. Carry-forward list (design D7)
 
 - [x] 7.1 Write `openspec/changes/reproducible-experiment-runtime/carry-forward.md`: one row per experiment folder with its number, title, status, the local runtime and models it used (from `plan.json`, the protocol or the report), and what a `publication` re-run needs (GGUF file available, data still in `DATA/omrs`, hosted references). Leave a "Carry forward?" column empty for the user. Verify: the row count equals the folder count from `uv run --no-sync omrs experiments check`, and each runtime entry names the file it came from.
-- [ ] 7.2 Ask the user to fill the "Carry forward?" column. Verify: the user's choices are recorded in the file. No re-run starts in this change.
+- [x] 7.2 Ask the user to fill the "Carry forward?" column. Verify: the user's choices are recorded in the file. No re-run starts in this change.
 
 ## 8. Integration checks
 
@@ -60,4 +60,4 @@ Read `web/DESIGN.md` and load the `omrs-design` skill before this group.
 - [x] 9.1 Set ADR-103 to Accepted with the PR number, and update its index row. Verify: the status and the index row agree.
 - [x] 9.2 Reinstall the live app with locked constraints (after the user agrees): build the web bundle, back up `~/.omrs/workspace/workspace.db` to a dated `.bak`, export the constraints, run `uv tool install --reinstall -c <constraints> "omrs[web,hybrid] @ <v3 checkout>"`, then `omrs web restart`. Verify: 0 differences against the export, `/v1/health` answers, and the live library shows `Optimisation` on an old experiment. Create no experiment in the live app as part of the check.
 - [x] 9.3 Outside the repository: add the rule to the personal skill `~/.agents/skills/s-experiment/SKILL.md` and its `references/template-plan.json` in its general wording (it is not a byte copy). Verify: `grep -n "llama.cpp" ~/.agents/skills/s-experiment/SKILL.md` shows the rule, and the file contains no home-folder path.
-- [ ] 9.4 Archive with `openspec-archive-change`, which merges the deltas into `openspec/specs/experiment-records/`, `experiment-validity-gates/` and `workspace-experiment-library/`. Verify: `openspec validate --all --strict` passes after the archive.
+- [x] 9.4 Archive with `openspec-archive-change`, which merges the deltas into `openspec/specs/experiment-records/`, `experiment-validity-gates/` and `workspace-experiment-library/`. Verify: `openspec validate --all --strict` passes after the archive.
