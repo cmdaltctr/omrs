@@ -1,7 +1,7 @@
 # ADR-066: Tiered Reader Fallback — pdf-inspector → liteparse → pypdf
 
 - **Date:** 2026-09-13
-- **Status:** Accepted (evidence: Experiment 30, all four gates PASS)
+- **Status:** Accepted (evidence: Experiment 30, all four gates PASS). Amended by ADR-104 (2026-10-27): the fallback tiers keep one document per recovered page instead of one joined document.
 - **Deciders:** Dr Muhammad Aizat Bin Md Hawari
 - **Change:** implemented and shipped (`src/omrg/integrations/pdf/pdf_inspector.py` carries the chain)
 - **Related:** [ADR-050](050-configure-pdf-inspector-as-default-reader.md) (pdf-inspector default), [ADR-020](020-use-liteparse-as-pdf-reader.md) (liteparse adapter), [ADR-065](065-ocr-fallback-gate-promoted-to-packaged-default.md) (routing default), TDR-024 (both failure mechanisms)

@@ -201,7 +201,7 @@ environment variable. Accepted values:
 
 | Value           | Description                                                         | Install                      |
 | --------------- | ------------------------------------------------------------------- | ---------------------------- |
-| `pdf_inspector` | Default. Rust markdown extractor. Emits one document per PDF.       | Base dependency              |
+| `pdf_inspector` | Default. Rust markdown extractor. Emits one document per page.      | Base dependency              |
 | `pypdf`         | Always available via `llama-index-readers-file`. Terminal fallback. | Base (transitive)            |
 | `liteparse`     | Column-aware reading order + bounding-box metadata.                 | Base dependency              |
 | `pypdfium2`     | Same PDFium engine as LiteParse, no bbox. Fallback tier.            | `[pdf-pypdfium2]` extra      |
@@ -214,9 +214,32 @@ configuration after Experiment 14
 registered name to override the default. A configured reader that is not
 importable logs an error and falls back to pypdf.
 
-`pdf_inspector` emits one document per PDF, where pypdf and LiteParse emit
-per-page documents. Markdown chunking then splits that single document, so
-source-document boundaries change with this reader.
+`pdf_inspector` emits one document for each page that has text, in page
+order. Each document carries `page` (integer, from 1) and `page_label` (the
+same number as a string), the format that LiteParse and pypdfium2 use. Every
+page document also carries the whole-PDF evidence keys (`pdf_type`,
+`pdf_confidence`, `page_count`, `pages_needing_ocr`). Markdown chunking splits
+each page document on its own, so a chunk never crosses a page break and chunk
+overlap stays inside one page. The chunker carries the open heading path from
+one page to the next page of the same PDF, so the first chunks of a page keep
+the section heading that an earlier page opened.
+
+Two cases give one document without `page` or `page_label`:
+
+- The per-page call fails, or gives no text while the whole-document Markdown
+  has text. The adapter then emits the whole-document Markdown and logs a
+  warning.
+- The OCR worker reads the whole PDF under the `document` routing unit. The
+  worker returns one text for the file.
+
+When the extraction-fallback chain recovers the text, it also keeps one
+document per page. LiteParse pages keep their own numbers. pypdf pages get the
+physical page number from their position, not the PDF's own label.
+
+PDF sources indexed before page documents rebuild once on their next ingest,
+because the reader output revision is part of the index identity. Re-ingest
+each PDF folder after the upgrade. Until then, the old chunks stay searchable
+without a page.
 
 LiteParse captures bounding-box metadata (`page`, `column`,
 `section_bbox`, `bbox_schema_version`) on every emitted Document for
@@ -338,6 +361,10 @@ enabled and disabled.
 The whole PDF goes to the worker, not individual pages. There is no
 page-level stitching between the two readers — **under the default
 `document` unit**. The opt-in `page` unit below changes exactly that.
+The worker returns one text for the whole PDF, so a worker-read document
+carries no `page` or `page_label`. On the fast path and the degraded path,
+the routing seam keeps the page documents and stamps the OCR diagnostics on
+each one.
 
 ### Maths pages and engine selection
 
@@ -371,8 +398,9 @@ Setting `OCR_ROUTING_UNIT=page` routes per page instead of per file
 Every page is scanned; flagged non-maths pages run through pdf-inspector's local
 OCR (PP-OCRv6 Small on ONNX Runtime, CPU, no PyTorch) at roughly 0.75 s
 median per page; pages the local tier cannot read escalate to the
-worker in **one** request with any directly routed maths pages. The result
-merges back into one document in page order.
+worker in **one** request with any directly routed maths pages. The seam
+emits one document for each page that has text, in page order, with `page`
+and `page_label`. This includes pages that local OCR or the worker read.
 
 A page escalates when the local attempt returns empty or
 whitespace-only text, reports confidence below
@@ -383,8 +411,8 @@ Unreported confidence escalates too. There is deliberately no script or
 typography pre-check: the failure classes announce themselves after the
 attempt, and no measured signal predicts them beforehand.
 
-The emitted document carries four scalar counts that sum to
-`page_count`:
+Every emitted page document carries the same four scalar counts for the
+whole PDF. They sum to `page_count`:
 
 | Key | Meaning |
 |---|---|

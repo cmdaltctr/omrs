@@ -1,7 +1,7 @@
 # ADR-069: Page-Level OCR Routing with a Local Tier, and the PDFium Runtime
 
 **Date:** 2026-09-18
-**Status:** Accepted (PR #96 merged to `v3`, 2026-09-28)
+**Status:** Accepted (PR #96 merged to `v3`, 2026-09-28). Amended by ADR-104 (2026-10-27): decision 4 now emits one document per page, not one merged document per file.
 **Deciders:** Dr Muhammad Aizat Bin Md Hawari
 **Change:** `openspec/changes/page-level-ocr-routing/` (tasks 3–6)
 **Related:** [ADR-050](050-configure-pdf-inspector-as-default-reader.md) (pdf-inspector default), [ADR-065](065-ocr-fallback-gate-promoted-to-packaged-default.md) (document-unit gate), [ADR-066](066-tiered-reader-fallback-chain.md) (reader chain, kept), TDR-026 (false-alarm risk that motivated the unit)
