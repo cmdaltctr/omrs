@@ -24,6 +24,7 @@ from .record import (
     RECORD_FILE,
     Category,
     ExperimentRecord,
+    Purpose,
     Refs,
     Size,
     Status,
@@ -108,6 +109,7 @@ def create_experiment(
     size: Size,
     day: Date,
     follow_up: str | None = None,
+    purpose: Purpose = Purpose.OPTIMISATION,
 ) -> Path:
     """Create a new experiment folder with its record and template files.
 
@@ -120,6 +122,9 @@ def create_experiment(
         day: The planning date, used in the folder name and the record.
         follow_up: A plain experiment number. When given, the new folder
             takes that number's next free letter.
+        purpose: Why the experiment runs. It is always written into the
+            new record, so a new record never relies on the missing-field
+            default.
 
     Returns:
         The new folder path.
@@ -153,6 +158,7 @@ def create_experiment(
             status=Status.PLANNED,
             superseded_by=None,
             finding="",
+            purpose=purpose,
             refs=Refs(),
         )
     except ValidationError as exc:

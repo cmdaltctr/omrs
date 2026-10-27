@@ -89,6 +89,15 @@ class Size(StrEnum):
     CONFIRMATORY = "Confirmatory"
 
 
+class Purpose(StrEnum):
+    """Why an experiment runs. A record without the field counts as ``OPTIMISATION``."""
+
+    OPTIMISATION = "optimisation"
+    """The result tunes this project and is not cited outside it."""
+    PUBLICATION = "publication"
+    """The result may be cited in a paper."""
+
+
 _FROZEN = ConfigDict(extra="forbid", frozen=True)
 
 
@@ -154,8 +163,14 @@ class ExperimentRecord(BaseModel):
     status: Status
     superseded_by: str | None = Field(default=None, pattern=FOLDER_REF_PATTERN)
     finding: str = Field(pattern=ONE_LINE_PATTERN)
+    purpose: Purpose | None = None
     refs: Refs | None = None
     migration: MigrationNote | None = None
+
+    @property
+    def effective_purpose(self) -> Purpose:
+        """The purpose, with a missing field read as ``OPTIMISATION`` (design D2)."""
+        return self.purpose or Purpose.OPTIMISATION
 
     @model_validator(mode="after")
     def _cross_field_rules(self) -> ExperimentRecord:
@@ -268,10 +283,12 @@ def load_record(path: Path) -> ExperimentRecord:
 def dump_record(record: ExperimentRecord) -> str:
     """Return the record as JSON text in field order, with a final newline.
 
-    ``refs`` and ``migration`` are left out when they are not set. Every
-    other key is written, so the file shows each field.
+    ``purpose``, ``refs`` and ``migration`` are left out when they are not
+    set, so a record written before ``purpose`` existed keeps its bytes.
+    Every other key is written, so the file shows each field.
     """
-    exclude = {name for name in ("refs", "migration") if getattr(record, name) is None}
+    optional = ("purpose", "refs", "migration")
+    exclude = {name for name in optional if getattr(record, name) is None}
     data = record.model_dump(mode="json", exclude=exclude)
     return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
 

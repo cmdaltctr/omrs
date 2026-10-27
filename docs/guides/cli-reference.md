@@ -398,6 +398,7 @@ omrs experiments index                      # print the index; exit 1 when EXP_R
 omrs experiments index --write              # replace the marked block in EXP_README.md
 omrs experiments new ocr-text-quality --title "OCR text quality" --category ingestion --size Standard
 omrs experiments new retry --title "OCR retry" --category ingestion --size Quick --follow-up 38
+omrs experiments new rescue-rerun --title "Rescue rerun" --category ingestion --size Confirmatory --purpose publication --follow-up 38
 ```
 
 These commands work on research experiment folders in format `omrs-experiment/1`. Each folder holds an `experiment.json` record. See [Experiment records](experiment-records.md). The commands read and write files only. They do not start the engine or open a vector store. Every command takes an optional directory argument. The default is `./experiments`. All output goes to stderr, including `--json` output.
@@ -424,6 +425,7 @@ These commands work on research experiment folders in format `omrs-experiment/1`
 | `--size` | required | `Quick`, `Standard` or `Confirmatory`. |
 | `--follow-up N` | none | Take the next free letter of experiment `N`, for example `38a`, then `38b`. |
 | `--date` | today | Planning date, written `YYYY-MM-DD`. |
+| `--purpose` | `optimisation` | `optimisation` or `publication`. The command writes the value into the record. Use `publication` only for a result that a paper can cite. |
 
 | Exit code | When |
 | --- | --- |
