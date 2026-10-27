@@ -17,7 +17,7 @@ Experiment 35 SHALL evaluate OMRS on all 150 questions of the FinanceBench open 
 
 ### Requirement: BioASQ subset and fallback are decided before scoring
 
-If BioASQ does not fit the time budget, the protocol SHALL subset it by question type and freeze the subset before scoring. NFCorpus SHALL replace BioASQ only when BioASQ cannot be used, SHALL report retrieval metrics only, and SHALL be used only after its academic-use terms are checked.
+If BioASQ does not fit the time budget, the protocol SHALL either move it to other hardware or use every gold passage plus a seeded random sample of the other abstracts, frozen and reported before scoring. NFCorpus SHALL replace BioASQ only when BioASQ cannot be used, SHALL report retrieval metrics only, and SHALL be used only after its academic-use terms are checked.
 
 #### Scenario: The fallback is used without a terms check
 - **WHEN** NFCorpus runs and the protocol records no check of its academic-use terms

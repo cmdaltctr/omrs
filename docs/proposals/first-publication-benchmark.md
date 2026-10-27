@@ -1,24 +1,25 @@
 # First publication: a reproducible local RAG benchmark of OMRS
 
-Draft 1, 27 October 2026. Plan only. Nothing here is built or run yet.
+Draft 2, 27 October 2026 (draft 1 plus fixes from a review against the code and the data cards). Plan only. Nothing here is built or run yet.
 
 This is the first paper of the fellowship programme. The manṭiq work in `v4` (authority-aware retrieval and reasoning gates) comes after it. This paper does not wait for that work.
 
 Related records:
 
 - `openspec/changes/archive/2026-10-27-reproducible-experiment-runtime/carry-forward.md`: which past experiments go forward.
-- `openspec/changes/experiment-35-full-document-rag-benchmark/`: the existing Experiment 35 plan (0 of 42 tasks done). This proposal updates it.
+- `openspec/changes/pipeline-sweep-llamacpp/`: Step 1.
+- `openspec/changes/experiment-35-full-document-rag-benchmark/`: Step 2, updated to match this proposal on 27 October 2026.
 - ADR-103: local models in experiments run through llama.cpp with a public GGUF file.
 
 ## Summary
 
-OMRS is a local-first, modular RAG framework. The paper reports one Confirmatory benchmark of the full pipeline on three public datasets from three domains: finance, software and biomedicine. Every local model runs through llama.cpp with a pinned GGUF file and build, so another group can repeat the run on another machine. The paper also reports which pipeline choices help, using ablations: we switch one component on or off and measure the change.
+OMRS is a local-first, modular RAG framework. The paper reports one Confirmatory benchmark of the full pipeline on three public datasets from three domains: finance, software and biomedicine. Every local language and embedding model runs through llama.cpp with a pinned GGUF file and build, so another group can repeat the run on another machine. The ONNX reranker and the OCR engines keep their own runtimes, recorded in the runtime manifest (ADR-103). The paper also reports which pipeline choices help, using ablations: we switch one component on or off and measure the change.
 
 The claim is modest and testable: on these public benchmarks, with these pinned models, OMRS reaches these scores, and these choices change them by these amounts.
 
 ## Why now
 
-- Past experiments (1 to 43) were optimisation runs. Many used Ollama, small question sets (for example 17 queries) or remain unfinished. They cannot be cited as they are.
+- Past experiments (1 to 42) were optimisation runs. Many used Ollama, small question sets (for example 17 queries) or remain unfinished. They cannot be cited as they are.
 - ADR-103 now gives a reproducible runtime and a `publication` purpose that the checker enforces.
 - A systems paper with honest, pinned results is achievable in this fellowship period. It also gives the manṭiq papers a tested base to build on.
 
@@ -26,15 +27,13 @@ The claim is modest and testable: on these public benchmarks, with these pinned 
 
 ### Step 1: pipeline sweep (optimisation, Standard)
 
-One end-to-end run on llama.cpp only, on a small fixed set, before the main run. It checks each stage after the move off Ollama:
+A trial run on llama.cpp only, before the main run. One llama.cpp router serves every model, so the existing live-server check covers them in one call. Three parts:
 
-1. Ingest PDFs and text (reader, OCR routing, normalisation).
-2. Chunk, embed, and write to LanceDB.
-3. Search: dense, hybrid, and hybrid with the reranker.
-4. Answer, with and without claim checking.
-5. Write run records with the found runtime (live-server check).
+- **Part A, every stage works.** On Experiment 3's 6 documents, its 17 questions and 5 FinanceBench PDFs: ingest (reader, OCR routing, normalisation, metadata extraction), chunk, embed with 4B, write to LanceDB, search (dense, hybrid, each with and without the reranker), answer with and without claim checking, and write run records with the found runtime. A repeat of retrieval must give identical rankings.
+- **Part B, how long the real run takes.** Time 0.6B, 4B and 8B embedding on 200 FreshStack documents, 200 BioASQ abstracts and the 5 PDFs. Time metadata extraction per chunk. Extrapolate to the full corpora. This decides local or rented hardware.
+- **Part C, whether fast mode is safe.** Embed the same slices with 4B in exact mode (one slot) and fast mode (8 slots, concurrent requests). Fast mode is allowed in Step 2 only when every vector pair has cosine at least 0.9999 and no top-10 ranking changes.
 
-Base: Experiment 3 (end-to-end smoke test). Exit rule: every stage runs without error, and the scores are close to the earlier Ollama numbers where those exist. Any failure is fixed before Step 2.
+Exit rule: every stage runs without error, the scores stay close to the earlier Ollama numbers where those exist, and repeated retrieval is identical. Any failure is fixed before Step 2.
 
 ### Step 2: Experiment 35 as a `publication` experiment (Confirmatory)
 
@@ -54,7 +53,7 @@ Gap: no open medical dataset has real PDFs with page-level gold evidence. Financ
 
 | Arm | What changes | Past evidence it carries forward |
 |---|---|---|
-| Baseline | `documents` profile defaults, with Qwen3-Embedding-4B (local GGUF) | Experiment 3; Experiment 22 used 4B through OpenRouter |
+| Baseline | `documents` profile defaults (dense search, reranker on, top_k 10), with Qwen3-Embedding-4B (local GGUF) | Experiment 3; Experiment 22 used 4B through OpenRouter |
 | Embedding size | 0.6B in place of the 4B baseline | Experiments 2 and 22 |
 | Embedding size, upper | 8B in place of the 4B baseline | Experiment 2 (0.6B and 8B tied on an easy 17-query set) |
 | Reranker | Off against on | Experiments 10b and 15 (the reranker hurt technical retrieval) |
@@ -69,7 +68,7 @@ Primary (gold labels, no judge):
 - Recall@10, MRR@10, nDCG@10.
 - Hit@page (FinanceBench only): a retrieved chunk comes from the gold page of the gold document.
 
-Secondary (LLM judge): Ragas 0.4.3, with faithfulness, answer relevancy, context precision and context recall. Ragas never replaces the primary metrics.
+Secondary (LLM judge): Ragas 0.4.3, with faithfulness, answer relevancy, context precision and context recall. Ragas never replaces the primary metrics. Metrics that need a reference answer run only on FinanceBench and BioASQ; FreshStack has gold documents but is checked for reference answers at freeze.
 
 - Pin the Ragas version, the judge model and its settings, temperature 0.
 - Run the judge through llama.cpp when possible, so it can be repeated.
@@ -79,10 +78,12 @@ Latency: median (p50) and 95th percentile (p95) per query, without warm-up.
 
 #### Repetitions
 
-Each arm runs 3 times.
+Each arm builds its index once and runs 3 times on it.
 
-- Retrieval with a fixed index and a deterministic embedder gives the same result each run. Run 1 is scored. Runs 2 and 3 must match it exactly. This is the determinism check, and the paper reports it.
-- The 3 runs measure the stages that can change between runs: the generated answer, the Ragas judge, index-build order and latency. Report the run-to-run standard deviation for these.
+- Retrieval with a fixed index gives the same result each run. Run 1 is scored. Runs 2 and 3 must match it exactly. This is the determinism check, and the paper reports it.
+- Rebuild check: for each dataset, rebuild the 4B baseline index once in a fresh process and compare its retrieval with run 1.
+- The 3 runs measure the stages that can change between runs: the generated answer, the Ragas judge and latency. Report the run-to-run standard deviation for these.
+- Embedding uses exact or fast mode, as Step 1 Part C decides. The plan states the mode and its tolerance.
 - Statistical tests compare arms question by question. Average the 3 runs for each question first.
 
 #### Statistics (basic set)
@@ -96,7 +97,7 @@ For each dataset and arm:
    - McNemar's exact test for hit or miss.
 4. Holm correction across the arms of one dataset.
 5. Wins, losses and ties per question, as a plain effect size.
-6. The minimum detectable effect, stated before the run. About 4 points at 150 to 223 questions, and about 2 points at 707.
+6. The minimum detectable effect, stated before the run. An estimate from Experiment 25's FreshStack spread gives about 4 points at 150 to 223 questions and about 2 points at 707. Recompute it per dataset before freeze.
 
 All of these exist in `.agents/skills/s-experiment/references/stats.py` and `experiments/_lib/stats.py`. Plain nDCG@10 and hit@page are new.
 
@@ -112,10 +113,11 @@ Embedding model: Qwen3-Embedding-4B is the baseline, from the public `Qwen/Qwen3
 - The evidence that 0.6B matches 8B (Experiment 2, ADR-009) comes from 17 queries on 6 documents. Both models scored 100% Hit@1, so that test could not separate them.
 - No experiment yet compares 0.6B and 4B under the same conditions. Experiment 22 (4B) and Experiment 9a (0.6B) differ in model, width, store and chunking.
 - No experiment compares 4B with 8B. An 8B arm on all three datasets measures that gap, so the three sizes are compared on equal terms. The paper claims only what this arm shows.
-- Task 1.4 of Experiment 35 still times local 4B on the measurement Mac. If local 4B does not fit the time budget, OpenRouter `qwen/qwen3-embedding-4b` becomes the reference arm, named as hosted (ADR-103).
+- Step 1 Part B times 0.6B, 4B and 8B on the measurement Mac. If local 4B does not fit the time budget on the Mac or on rented hardware, OpenRouter `qwen/qwen3-embedding-4b` becomes the reference arm, named as hosted (ADR-103).
 
+Other runtime rules:
 
-- All local models through llama.cpp. Pin the repository, file, SHA-256, build and server arguments in the `runtime` block of `plan.json`.
+- All local language and embedding models through llama.cpp, with every server argument written out (Step 1 Part C). Pin the repository, file, SHA-256, build and server arguments in the `runtime` block of `plan.json`.
 - The live-server check runs before the first score of each run.
 - Hosted models only as named reference arms.
 
@@ -171,20 +173,18 @@ The journal's own author guide covers ORCID, CRediT, the funding wording, confli
 |---|---|
 | A small difference between llama.cpp back ends (Metal, CUDA, CPU) | The plan states a tolerance per metric (ADR-103) |
 | The Ragas judge disagrees with people | Report hand-check agreement. Keep Ragas secondary. |
-| Index building on 40K abstracts takes too long on the Mac | Time the pipeline sweep first. Subset BioASQ by question type if needed, and freeze the subset before scoring. |
+| Index building on 40K abstracts takes too long on the Mac | Time it in Step 1 first. Then use rented hardware, or every gold passage plus a seeded sample of the other abstracts, stated in the report. A smaller question set does not help: the corpus is the cost, and the split has no question-type field. |
+| FinanceBench chunks carry no page number | The default reader `pdf_inspector` records no pages. Pin a reader that does, or the hit@page rule cannot be scored. Step 1 checks it. |
+| Metadata extraction costs more than embedding | The default calls the language model per chunk. Step 1 times it; Step 2 chooses one mode for all arms. |
 | The reranker result changes on llama.cpp | Report it as found. A negative result is still a result. |
 | The journal deal does not cover the article type | Ask the library before writing. Research Article is the fallback. |
 
 ## Next steps
 
-1. Propose the pipeline sweep as an OpenSpec change (optimisation, Standard).
-2. Update `experiment-35-full-document-rag-benchmark` with `/opsx:update`:
-   - `publication` purpose and BioASQ;
-   - the ablation arms and the 3-run policy;
-   - the statistics set and the data-sharing split;
-   - RepoProbe moved out.
+1. Done: `pipeline-sweep-llamacpp` proposed.
+2. Done: `experiment-35-full-document-rag-benchmark` updated (publication, BioASQ, the arms, the run policy, the statistics, the data-sharing split, RepoProbe moved out).
 3. Ask the Napier library to confirm the article type and the deal.
-4. Run Step 1, then freeze the Step 2 protocol and plan before the first measured run.
+4. Run Step 1. Then resolve the open questions of Experiment 35 (answer and judge models, PDF reader, metadata extraction, local or rented hardware) and freeze the Step 2 protocol and plan before the first measured run.
 
 ## Sources checked on 27 October 2026
 
@@ -197,6 +197,6 @@ The journal's own author guide covers ORCID, CRediT, the funding wording, confli
 - Smucker, Allan and Carterette 2007, CIKM, doi:10.1145/1321440.1321528.
 - RAGPerf, arXiv 2603.10765.
 - BERGEN, arXiv 2407.01102. Its DOI did not resolve in CrossRef, so check it before citing.
-- Hugging Face cards: `enelpol/rag-mini-bioasq`, `BeIR/nfcorpus`, `patronus-ai/financebench`, `freshstack/corpus-oct-2024`.
+- Hugging Face cards: `enelpol/rag-mini-bioasq`, `BeIR/nfcorpus`, `PatronusAI/financebench`, `freshstack/corpus-oct-2024`.
 - Taylor & Francis: <https://editorresources.taylorandfrancis.com/welcome-to-tf/policies-guidelines/streamlining-how-we-describe-research-outputs/>.
 - Edinburgh Napier: <https://libguides.napier.ac.uk/c.php?g=685910&p=5352291>, the linked open access policy pages, and Open Access Policy v3.0.

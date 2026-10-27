@@ -59,7 +59,8 @@ Alternatives: Experiment 3 alone. Rejected, because its PDFs are short academic 
 - One `llama serve` router with one preset per model. Embedding presets: `--embeddings --pooling last --ctx-size 8192 --ubatch-size 8192`, as in the guide example. Chat preset: `--ctx-size 16384` (the OMRS `llamacpp_context_window` default). The plan records each preset as `server_args`. Answer and claim-check requests use temperature 0.
 - The router listens on `127.0.0.1` on a scratch port that the live app and the live Llama app do not use (for example 18080). Both `llamacpp_embed_url` and `llamacpp_chat_url` point at it.
 - The run sets `embed_provider=llamacpp`, `local_backend=llamacpp`, metadata language model `local`, `verify_provider=local`, and the LanceDB store inside `output/`. Settings go in a scratch `OMRS_CONFIG_DIR` inside `output/`. Nothing reads or writes `~/.config/omrs` or `~/.omrs`.
-- `PDF_READER` stays at its default (`auto`). The run records which reader ran for each file.
+- `PDF_READER` stays at its production default, `pdf_inspector` (`defaults.yaml`). That reader declares no page provenance, so the run also reads the 5 FinanceBench PDFs once with `pypdfium2`, which records pages. The run records which reader ran for each file and whether each chunk has a page number. This answers Experiment 35's reader question.
+- Metadata extraction stays at its default (`llamaindex`, one language-model call set per chunk). The run records its time per chunk, so Experiment 35 can choose its mode with a measured cost.
 
 Alternatives: `Qwen3-4B` at Q4_K_M for speed. Rejected by Gotcha 16. The Experiment 3 language model `qwen3:0.6b`. Rejected, because Experiment 35 needs a usable answer model and a 0.6B judge says little.
 
@@ -95,7 +96,8 @@ The plan states these before the first run:
 | Stages | Every stage and every search and answer mode has zero errors |
 | 0.6B dense, 17 questions | Hit@1 at least 16/17 and MRR at least 0.94 (Experiment 2: 17/17, 1.000) |
 | 8B dense, 17 questions | Same bounds (Experiment 2: 17/17, 1.000) |
-| 4B hybrid with reranker, 17 questions | Hit@1 at least 16/17 (Experiment 3: 17/17, dense with reranker, `top_k=3`) |
+| 4B dense with reranker (the `documents` profile), 17 questions | Hit@1 at least 16/17 (Experiment 3: 17/17, dense with reranker, `top_k=3`) |
+| 4B hybrid, with and without reranker, 17 questions | Reported only |
 | 4B dense, 17 questions | Reported only. No earlier 4B number exists on this set |
 | FinanceBench | Reported only (Hit@page, Recall@10). No earlier number exists |
 | Determinism | Every repeated ranking identical |
@@ -112,7 +114,7 @@ Verdict: `PASS` when every row passes. `FAIL` otherwise, with the failing stage 
   - FinanceBench: the 5 PDFs of D1, read once in Part A. Part B embeds their saved chunks, so reader time is not mixed into the rate.
   - The protocol records the hash of each ID list.
 - For each model (0.6B, 4B, 8B): start the server, run the live-server check, embed one warm-up batch (not timed), then chunk and embed each slice through the OMRS ingestion path with the `documents` profile settings. Record wall time, input tokens (from the server's `usage.prompt_tokens`) and the server's peak resident memory (sampled every 0.5 s). Stop the server before the next model. One model runs at a time.
-- Extrapolation: estimated time = corpus tokens / tokens per second measured on that corpus's slice. The Qwen3 embedding models share one tokeniser, so each corpus is counted once:
+- Extrapolation: estimated time = corpus tokens / tokens per second measured on that corpus's slice. Metadata extraction time per chunk, measured in Part A, is extrapolated the same way and reported in its own column. The Qwen3 embedding models share one tokeniser, so each corpus is counted once:
   - FreshStack (10,024 documents) and BioASQ (40.2K abstracts): chunk every document and count tokens with the server's `/tokenize` endpoint. No embedding.
   - FinanceBench: tokens per page from the 5 Part A PDFs, times the total page count of all PDFs the 150 open questions cite (page count from pypdf).
 - The report gives one table: model by corpus, estimated hours, and the peak memory. It names the output file of each number.

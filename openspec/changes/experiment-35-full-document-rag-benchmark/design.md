@@ -67,7 +67,9 @@ Experiment 35 becomes that experiment.
 
 - 707 questions over 40.2K PubMed abstracts, with gold passage IDs and reference answers. A hit is a retrieved chunk whose passage ID is a gold passage ID.
 - Licence CC BY 2.5.
-- If indexing 40.2K abstracts does not fit the time budget, subset by question type and freeze the subset before scoring (proposal risk table).
+- The test split has no question-type field (columns: `question`, `answer`, `id`, `relevant_passage_ids`; checked 27 October 2026). The 40.2K-abstract corpus is the cost, and the question count does not change it. So a smaller question set does not save index time. If indexing does not fit the time budget, run BioASQ on rented hardware (open question 2), or shrink the corpus to every gold passage plus a seeded random sample of the rest. A shrunk corpus makes retrieval easier, so the report must state it and its size.
+- Before freeze, check that every `relevant_passage_ids` value exists in the corpus. Report the count of missing IDs, and drop a question only when none of its gold passages exists.
+- The licence on the Hugging Face card is CC BY 2.5. The abstracts come from PubMed, and BioASQ's own terms need registration. Publish IDs and scores only.
 - Fallback: NFCorpus (`BeIR/nfcorpus`), retrieval scores only, no Ragas. Use it only when BioASQ cannot be used. Check its academic-use terms first.
 
 ### RepoProbe moved out
@@ -198,9 +200,11 @@ Ragas goes in a separate `uv` dependency group (for example `eval`), not in a pu
 
 1. Which answer model and which Ragas judge model, and can the judge run through llama.cpp?
 2. What wall-time, memory and paid-provider budget applies, and does the run go local or to rented cloud hardware?
-3. Does BioASQ fit in full, or is a question-type subset needed?
+3. Does BioASQ fit in full, or is a corpus sample needed (D2)?
 4. Does FreshStack carry reference answers that Ragas context recall can use?
 5. Does the token-aware chunking arm change any chunk on BioASQ?
+6. Which PDF reader runs FinanceBench? The production default `PDF_READER: pdf_inspector` declares no page provenance (`integrations/pdf/registry.py`), so its chunks carry no page number and the hit@page rule cannot be scored. Pin a reader that records pages (`liteparse`, `pypdfium2` or `pypdf`) and state the departure from the default, or prove that the default chain records pages.
+7. Which metadata extraction mode runs? The default `metadata.extraction_mode: llamaindex` calls the language model for every chunk during ingestion. On about 50K documents and several index builds this may cost more than embedding. Choose `disabled` or `keyword` for all arms, or time it in the pipeline sweep and keep it. The mode is the same in every arm.
 
 Resolved on 2026-10-27 by the publication proposal: datasets and sizes, the baseline and arms, metrics, repetitions, statistics, and RepoProbe moved out.
 
@@ -210,5 +214,5 @@ Resolved on 2026-10-27 by the publication proposal: datasets and sizes, the base
 |---|---|
 | Small differences between llama.cpp back ends | `tolerance[]` per primary metric (ADR-103) |
 | The Ragas judge disagrees with people | Report hand-check agreement; Ragas stays secondary |
-| Indexing 40K abstracts takes too long | Time first; subset BioASQ by question type before scoring |
+| Indexing 40K abstracts takes too long | Time first (pipeline sweep Part B); rented hardware, or a stated corpus sample, before scoring |
 | The reranker result changes on llama.cpp embeddings | Report it as found; a negative result is still a result |
