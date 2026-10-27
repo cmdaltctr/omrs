@@ -61,7 +61,7 @@ This ADR withdraws ADR-074 decision 3 (MLX 8-bit as an accepted fallback). ADR-0
 - A wrong build or a replaced model file stops the run before any score is written.
 - The run record shows which build and which file hashes produced each result.
 - The purpose tells a reader which results can go into a paper.
-- All 49 existing records stay valid with no edit.
+- All existing records stay valid with no edit.
 
 ### Negative
 
@@ -83,7 +83,7 @@ This ADR withdraws ADR-074 decision 3 (MLX 8-bit as an accepted fallback). ADR-0
 |--------|-----------------|
 | **Ollama with a pinned version and the MLX switch turned off** | The engine choice stays hidden from the plan. Ollama's own Q4_K_M files cannot be downloaded outside Ollama, so another group cannot get the exact weights. |
 | **oMLX (or MLX 8-bit) as an allowed fallback** | It runs only on Apple silicon. A Mac-only fallback breaks the reason for the rule. Its speed numbers are kept above as evidence. |
-| **A format 2 for `experiment.json`** | Every one of the 49 existing records would need a rewrite, which this change must not do. An optional key in format 1 leaves them valid. |
+| **A format 2 for `experiment.json`** | Every existing record would need a rewrite, which this change must not do. An optional key in format 1 leaves them valid. |
 | **A minimum build instead of an exact build** | A later build can change output. The exact build plus a plan amendment and the tolerance keeps each change visible. |
 | **Enforce the runtime rule for every experiment** | Quick experiments have no `plan.json`, old records have no purpose, and an optimisation result is not cited outside the project. |
 
