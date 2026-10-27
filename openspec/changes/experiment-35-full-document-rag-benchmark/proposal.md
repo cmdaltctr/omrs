@@ -1,66 +1,55 @@
-# Experiment 35: Local OMRS Profile Baselines
+# Experiment 35: Reproducible Local RAG Benchmark of OMRS
 
-> Status: DRAFT. Run the two local baselines only after the subset identities, model identities, scoring rules, and local resource budget are frozen.
+> Status: DRAFT. Purpose `publication`, size Confirmatory. Commit `protocol.md` and `plan.json` before the first measured run.
 
 ## Why
 
-OMRS needs one full evaluation of each main profile before larger cloud benchmarks or comparisons with other frameworks.
+OMRS needs one benchmark of the full pipeline that a paper can cite. Past experiments (1 to 43) were optimisation runs. Many used Ollama, small question sets or remain unfinished, so they cannot be cited as they are.
 
-The first baseline should stay small enough to run on the operator's Mac. The document and codebase runs should execute separately, not concurrently. This proves the evaluation harness, exposes bottlenecks, and establishes a reproducible local baseline before cloud deployment.
+ADR-103 now gives a reproducible runtime: every local model runs through llama.cpp with a public GGUF file and a pinned build. It also adds the `publication` purpose, which the experiment checker enforces.
+
+This change turns Experiment 35 into the benchmark for the first fellowship paper (`docs/proposals/first-publication-benchmark.md`). The claim is modest and testable: on these public benchmarks, with these pinned models, OMRS reaches these scores, and these pipeline choices change them by these amounts.
 
 ## What Changes
 
-- Split Experiment 35 into two sequential local baselines:
-  - **35A — Documents:** a small frozen FinanceBench subset through the current `documents` profile.
-  - **35B — Codebase:** the current `codebase` profile in two parts. **35B-1** scores answers on a small frozen RepoProbe subset. **35B-2** measures retrieval on a labelled code retrieval set. RepoProbe has no retrieval labels, so it cannot give Recall@K.
-- Run 35A and 35B one at a time on the Mac.
-- Keep retrieval metrics as the primary quality evidence.
-- Add lightweight experiment observability with structured per-stage JSONL traces.
-- Record reader/OCR path, chunking, embedding, retrieval, reranking, answer generation, latency, token use, errors, and degradation where applicable.
-- Add RAGAS as an optional evaluation-only layer for answer/context quality where the benchmark supports it. RAGAS goes in a separate `uv` dependency group, not in a published extra. The candidate version is 0.4.3. Freeze the version, the metric set and the judge before measured scoring.
-- Keep RAGAS and observability tooling out of the base OMRS runtime dependency path.
-- Stop local scale-up when the agreed Mac resource/runtime budget is exceeded. Larger runs move to a later cloud proposal.
-- Keep LlamaIndex, Haystack, and other framework comparisons out of Experiment 35.
-- Do not change production defaults from this experiment.
+- Make Experiment 35 a `publication` experiment of size Confirmatory. `plan.json` holds a pinned `runtime` block (ADR-103). A live-server check runs before the first score of each run.
+- Use three public datasets from three domains:
+  - FinanceBench open sample: all 150 questions, real PDFs, hit at gold document and gold page.
+  - FreshStack LangChain slice: all 223 queries, a new index, chunks mapped to parent documents.
+  - BioASQ (`enelpol/rag-mini-bioasq`, test split): 707 questions, 40.2K PubMed abstracts. Fallback: NFCorpus, retrieval scores only.
+- Run five arms on the same questions. The baseline is the `documents` profile with Qwen3-Embedding-4B (local GGUF). Each ablation changes one component: embedding 0.6B, embedding 8B, reranker off, token-aware chunking off.
+- Run each arm 3 times. Retrieval must give the same result each run (determinism check). The 3 runs measure answer, judge and latency variation.
+- Report gold-label retrieval metrics as primary: Recall@10, MRR@10, nDCG@10, and hit@page for FinanceBench. Report Ragas 0.4.3 as secondary only.
+- Use a fixed statistics set: confidence intervals, paired differences from the baseline, paired tests, Holm correction, wins/losses/ties, and a minimum detectable effect stated before the run.
+- Add the publication rules that change the experiment: a shareable example set, a split between shareable and restricted outputs, licence-aware release, Zenodo archives, and removal of personal identifiers.
+- Run locally or on rented cloud hardware. Decide after the embedding timing. Both options use the same GGUF files, the same build and the ADR-103 tolerance.
+- Move RepoProbe (old 35B-1) to a later paper. It has no retrieval labels and needs an LLM judge for every score.
+- Keep: no production default changes, Ragas and observability tooling outside the base install, per-stage JSONL traces, no framework comparisons.
 
-## Local Benchmark Choice
+## Dependency
 
-### 35A — Documents
+The pipeline sweep (`openspec/changes/pipeline-sweep-llamacpp/`, optimisation, Standard) runs first. It checks every stage on llama.cpp after the move off Ollama. Experiment 35 freezes its protocol only after the sweep passes its exit rule.
 
-Use a small frozen **FinanceBench** subset. The initial target is 30–50 questions across multiple source PDFs, with a mix of prose, numerical, and table-backed evidence.
+## Datasets and licences
 
-FinanceBench labels evidence by document and page. A retrieved chunk is a hit when it comes from the gold document and the gold page. `evidence_page_num` is zero-indexed, so the harness converts it once and tests the conversion.
+| Dataset | Domain | Questions | Corpus | Gold labels | Licence |
+|---|---|---|---|---|---|
+| FinanceBench (open sample) | Finance, real PDFs | 150 | 10-K and similar filings | Gold document and page | CC BY-NC 4.0 |
+| FreshStack, LangChain slice | Software | 223 | 10,024 documents | Gold documents | CC BY-SA 4.0 |
+| BioASQ (`enelpol/rag-mini-bioasq`, test split) | Biomedicine | 707 | 40.2K PubMed abstracts | Gold passages and reference answers | CC BY 2.5 |
+| NFCorpus (fallback for BioASQ) | Biomedicine | (check) | (check) | Graded relevance | Check the academic-use terms first |
 
-### 35B — Codebase
+Publish scores, question IDs and rebuild scripts. Do not publish corpus text. Task 1.3 rechecks each licence at the frozen revision.
 
-**Status of this split: confirmed by the user on 2026-10-23.**
-
-RepoProbe (`Tencent-Hunyuan/RepoProbe`) gives each question a reference answer and a weighted checklist that an LLM judge scores. It gives no gold files or chunks. So 35B has two parts:
-
-- **35B-1 — Answers.** Use a small frozen **RepoProbe** subset. The initial target is two pinned repositories with approximately 10–20 questions total. Freeze the repositories, commit SHAs and question IDs before measured execution. Score answers with the RepoProbe checklist scorer. RepoProbe was built for agents that explore a repository with tools. OMRS retrieves once and then answers. Report the result as "single-shot RAG on RepoProbe", never as a comparison with the agent results in the RepoProbe paper. The judge needs a hosted model, so this part needs a paid-provider budget. If that budget is not approved, drop 35B-1 first.
-- **35B-2 — Retrieval.** Use a labelled code retrieval set for Recall@K and MRR. Use the FreshStack LangChain slice (all 223 queries), which Experiments 9a and 22 already used. Build a new index through the frozen `codebase` profile, because Experiment 22's settings differ from the profile. Report Experiment 22 beside it as a reference. Add a secondary cell with local `qwen3-embedding:0.6b` to show the cost of the smaller model. The reference embedding model is chosen after a timing slice on the 64 GB M5 Pro.
-
-Other options considered: answers only (35B-1 alone, with no retrieval metric), or remove 35B from Experiment 35.
-
-### Dataset licences (checked at source on 2026-10-23)
-
-| Dataset | Licence | Source checked | Effect on this experiment |
-|---|---|---|---|
-| FinanceBench (open-source sample, 150 questions) | CC BY-NC 4.0 | Hugging Face dataset tag `PatronusAI/financebench`. The GitHub repository `patronus-ai/financebench` has no licence file. | Non-commercial use only. Use it for research evaluation. Do not commit the data or PDFs to this repository; keep them under the gitignored experiment folder or `DATA/`. |
-| RepoProbe questions and checklists | CC BY 4.0 (data); Apache-2.0 (code) | `dataset/LICENSE` and the README of `Tencent-Hunyuan/RepoProbe` | Reuse allowed with attribution. The 50 upstream repositories keep their own licences and are not redistributed. |
-| FreshStack corpus and queries (Oct 2024) | CC BY-SA 4.0 | Hugging Face card data of `freshstack/corpus-oct-2024` and `freshstack/queries-oct-2024` | Reuse allowed with attribution. Any redistributed derivative uses the same licence. |
-
-Task 1.3 records the exact revisions and hashes and rechecks these licences at freeze.
-
-The subset sizes may be reduced during protocol freeze if the Mac resource budget requires it. They must not be changed after measured scoring starts.
+No open medical dataset has real PDFs with page-level gold evidence. FinanceBench is the PDF arm.
 
 ## Capabilities
 
 ### New Capabilities
 
-- `document-rag-evaluation`: defines the local FinanceBench document-profile evaluation contract.
-- `codebase-rag-evaluation`: defines the local codebase-profile evaluation contract: RepoProbe answers (35B-1) and labelled code retrieval (35B-2).
-- `evaluation-observability`: defines shared benchmark tracing, RAGAS isolation, and reproducibility requirements.
+- `document-rag-evaluation`: the benchmark contract for FinanceBench and BioASQ (datasets, arms, primary metrics, the page hit rule, frozen identities).
+- `codebase-rag-evaluation`: the benchmark contract for FreshStack retrieval (new index, parent-document mapping, Experiment 22 as a reference only). RepoProbe answer scoring is no longer part of it.
+- `evaluation-observability`: shared runtime pinning, traces, repetitions, statistics, Ragas isolation and the data-sharing rules.
 
 ### Modified Capabilities
 
@@ -68,7 +57,8 @@ The subset sizes may be reduced during protocol freeze if the Mac resource budge
 
 ## Impact
 
-- Experiment/evaluation artefacts only.
+- Experiment and evaluation artefacts only. New code lives in `experiments/35-*/` and `experiments/_lib/`.
+- `experiments/_lib/retrieval_metrics.py` gains plain nDCG@10 and hit@page. Existing metric definitions do not change.
 - No production API or packaged default changes.
-- Optional evaluation dependencies must remain outside the base install.
-- The local baselines become the reference point for the later cloud-scale benchmark and later framework comparisons.
+- Ragas goes in a separate `uv` dependency group, outside the base install and every published extra.
+- The reservation text for number 35 in `experiments/reserved.json` describes the old two-baseline plan. Update it when the folder is created (task 3.1).
