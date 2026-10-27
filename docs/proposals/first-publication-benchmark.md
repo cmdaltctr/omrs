@@ -58,8 +58,15 @@ Gap: no open medical dataset has real PDFs with page-level gold evidence. Financ
 | Embedding size, upper | 8B in place of the 4B baseline | Experiment 2 (0.6B and 8B tied on an easy 17-query set) |
 | Reranker | Off against on | Experiments 10b and 15 (the reranker hurt technical retrieval) |
 | Chunking | Token-aware chunking off against on | Experiment 25 |
+| Hybrid search | Hybrid (BM25 and dense) in place of dense; reuses the baseline index | Experiment 22 (hybrid raised FreshStack Recall@5 from 22.7% to 25.6%) |
 
-Each ablation changes one component against the baseline. All arms run on the same questions.
+Each ablation changes one component against the baseline. All arms run on the same questions. Everything else is held fixed across arms and datasets: the PDF reader (the production default, `pdf_inspector`), the answer model, the judge, the metadata extraction mode and the machine.
+
+Fixed choices (decided 27 October 2026):
+
+- Answer model: `Qwen/Qwen3-4B-GGUF` Q8_0 through llama.cpp. If Step 1 shows it is too slow, `deepseek/deepseek-v4.1-flash-1017` through OpenRouter for every arm. A judge never scores its own family, so that fallback also changes the main judge to `google/gemini-3.8-flash` (temperature 0, fixed seed).
+- Metadata extraction: off in every arm. Step 1 still times it.
+- Hardware: start on the Mac. If embedding all arms would take more than about 48 hours, embed on a rented GPU.
 
 #### Metrics
 
@@ -70,9 +77,10 @@ Primary (gold labels, no judge):
 
 Secondary (LLM judge): Ragas 0.4.3, with faithfulness, answer relevancy, context precision and context recall. Ragas never replaces the primary metrics. Metrics that need a reference answer run only on FinanceBench and BioASQ; FreshStack has gold documents but is checked for reference answers at freeze.
 
-- Pin the Ragas version, the judge model and its settings, temperature 0.
-- Run the judge through llama.cpp when possible, so it can be repeated.
-- Check about 50 judged items by hand and report the agreement.
+- Main judge: `deepseek/deepseek-v4.1-flash-1017` through OpenRouter, temperature 0, fixed seed, one pinned upstream provider. Cheap enough to judge all 3 runs of every arm.
+- Cross-check judge: `openai/gpt-6.1-terra` through OpenRouter, on the 50 hand-checked items.
+- Check about 50 judged items by hand. Report agreement between the main judge, the cross-check judge and the hand check. No earlier experiment tested this DeepSeek version as a judge, so this check is its evidence.
+- Pin the Ragas version and every judge setting, and record tokens per call.
 
 Latency: median (p50) and 95th percentile (p95) per query, without warm-up.
 
@@ -174,7 +182,7 @@ The journal's own author guide covers ORCID, CRediT, the funding wording, confli
 | A small difference between llama.cpp back ends (Metal, CUDA, CPU) | The plan states a tolerance per metric (ADR-103) |
 | The Ragas judge disagrees with people | Report hand-check agreement. Keep Ragas secondary. |
 | Index building on 40K abstracts takes too long on the Mac | Time it in Step 1 first. Then use rented hardware, or every gold passage plus a seeded sample of the other abstracts, stated in the report. A smaller question set does not help: the corpus is the cost, and the split has no question-type field. |
-| FinanceBench chunks carry no page number | The default reader `pdf_inspector` records no pages. Pin a reader that does, or the hit@page rule cannot be scored. Step 1 checks it. |
+| FinanceBench chunks carry no page number | The default reader `pdf_inspector` records no pages today. The change `pdf-inspector-page-provenance` makes it emit one document per page. Every dataset and arm then uses the same default reader, so the reader is never a hidden variable. Step 1 checks that every PDF chunk has a page number. |
 | Metadata extraction costs more than embedding | The default calls the language model per chunk. Step 1 times it; Step 2 chooses one mode for all arms. |
 | The reranker result changes on llama.cpp | Report it as found. A negative result is still a result. |
 | The journal deal does not cover the article type | Ask the library before writing. Research Article is the fallback. |
@@ -184,7 +192,8 @@ The journal's own author guide covers ORCID, CRediT, the funding wording, confli
 1. Done: `pipeline-sweep-llamacpp` proposed.
 2. Done: `experiment-35-full-document-rag-benchmark` updated (publication, BioASQ, the arms, the run policy, the statistics, the data-sharing split, RepoProbe moved out).
 3. Ask the Napier library to confirm the article type and the deal.
-4. Run Step 1. Then resolve the open questions of Experiment 35 (answer and judge models, PDF reader, metadata extraction, local or rented hardware) and freeze the Step 2 protocol and plan before the first measured run.
+4. Merge `pdf-inspector-page-provenance` (page numbers from the default reader).
+5. Run Step 1. Then confirm the answer model and the hardware from its timings and freeze the Step 2 protocol and plan before the first measured run.
 
 ## Sources checked on 27 October 2026
 

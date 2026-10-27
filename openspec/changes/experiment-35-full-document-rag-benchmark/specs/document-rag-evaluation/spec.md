@@ -25,7 +25,7 @@ If BioASQ does not fit the time budget, the protocol SHALL either move it to oth
 
 ### Requirement: Arms change one component against one baseline
 
-The baseline SHALL be the `documents` profile defaults with local Qwen3-Embedding-4B. Each ablation arm SHALL change one component: embedding 0.6B, embedding 8B, reranker off, or token-aware chunking off. All arms SHALL run on the same questions of each dataset.
+The baseline SHALL be the `documents` profile defaults with local Qwen3-Embedding-4B. Each ablation arm SHALL change one component: embedding 0.6B, embedding 8B, reranker off, token-aware chunking off, or hybrid search. All arms SHALL run on the same questions of each dataset.
 
 #### Scenario: An arm changes two settings
 - **WHEN** an arm differs from the baseline in more than one component

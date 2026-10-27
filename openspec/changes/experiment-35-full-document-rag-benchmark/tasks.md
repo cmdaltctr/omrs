@@ -44,8 +44,8 @@
 
 ## 5. Run
 
-- [ ] 5.1 Run the five arms (or fewer, where 1.9 marks a cell not applicable) on FinanceBench, 3 runs each. Verify: one run record per run, each with a passed live-server check.
-- [ ] 5.2 Run the arms on FreshStack, 3 runs each, with a new index per arm. Verify: as 5.1, and each run indexes the frozen corpus hash.
+- [ ] 5.1 Run the six arms (or fewer, where 1.9 marks a cell not applicable) on FinanceBench, 3 runs each. Verify: one run record per run, each with a passed live-server check.
+- [ ] 5.2 Run the arms on FreshStack, 3 runs each, with a new index per embedding or chunking arm (the reranker and hybrid arms reuse the baseline index). Verify: as 5.1, and each run indexes the frozen corpus hash.
 - [ ] 5.3 Run the arms on BioASQ (or the frozen subset or fallback), 3 runs each. Verify: as 5.1.
 - [ ] 5.4 Run the determinism check for every arm, and the rebuild check (4B baseline index rebuilt once per dataset in a fresh process). Verify: the output states match or mismatch per arm and dataset, and for each rebuild.
 - [ ] 5.5 Run Ragas on each arm where the dataset supports each metric. Verify: unsupported metrics show "not measured".

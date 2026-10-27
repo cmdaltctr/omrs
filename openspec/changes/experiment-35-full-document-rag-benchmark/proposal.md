@@ -17,7 +17,7 @@ This change turns Experiment 35 into the benchmark for the first fellowship pape
   - FinanceBench open sample: all 150 questions, real PDFs, hit at gold document and gold page.
   - FreshStack LangChain slice: all 223 queries, a new index, chunks mapped to parent documents.
   - BioASQ (`enelpol/rag-mini-bioasq`, test split): 707 questions, 40.2K PubMed abstracts. Fallback: NFCorpus, retrieval scores only.
-- Run five arms on the same questions. The baseline is the `documents` profile with Qwen3-Embedding-4B (local GGUF). Each ablation changes one component: embedding 0.6B, embedding 8B, reranker off, token-aware chunking off.
+- Run six arms on the same questions. The baseline is the `documents` profile with Qwen3-Embedding-4B (local GGUF). Each ablation changes one component: embedding 0.6B, embedding 8B, reranker off, token-aware chunking off, hybrid search. Answers come from Qwen3-4B (local GGUF), with `deepseek/deepseek-v4.1-flash-1017` as the stated fallback. Metadata extraction is off in every arm.
 - Run each arm 3 times. Retrieval must give the same result each run (determinism check). The 3 runs measure answer, judge and latency variation.
 - Report gold-label retrieval metrics as primary: Recall@10, MRR@10, nDCG@10, and hit@page for FinanceBench. Report Ragas 0.4.3 as secondary only.
 - Use a fixed statistics set: confidence intervals, paired differences from the baseline, paired tests, Holm correction, wins/losses/ties, and a minimum detectable effect stated before the run.

@@ -87,6 +87,7 @@ All arms run on the same questions. Each ablation changes one component against 
 | Embedding 8B | 8B in place of 4B | Experiment 2 (0.6B and 8B tied on an easy 17-query set) |
 | Reranker off | Reranker off against the baseline's on | Experiments 10b and 15 (the reranker hurt technical retrieval) |
 | Token-aware chunking off | Model-token Markdown chunking (ADR-063) off against on | Experiment 25 |
+| Hybrid search | Hybrid (BM25 and dense, RRF fusion) in place of dense, reranker on as in the baseline. Reuses the baseline index, so no new embedding | Experiment 22 (hybrid raised FreshStack Recall@5 from 22.7% to 25.6%) |
 
 Notes:
 
@@ -95,7 +96,9 @@ Notes:
 - The `documents` profile sets `rerank_enabled: true`, so the reranker arm turns it off.
 - Token-aware chunking is on when `EMBEDDING__TOKENIZER_MODEL` and its revision resolve (ADR-063). The off arm leaves them unset, so the legacy Markdown path runs. Before freeze, check which documents of each dataset route through the Markdown splitter. If the arm changes no chunk on a dataset, record the cell as "not applicable" and do not run it. BioASQ abstracts are short and may be such a case.
 - Each arm uses the arm's own embedding model for the tokenizer. The Qwen3 embedding family shares one tokenizer.
-- Answers come from one pinned answer model for all arms, through llama.cpp. The freeze names it.
+- Answers come from one pinned answer model for all arms (decided 2026-10-27): `Qwen/Qwen3-4B-GGUF` Q8_0 through llama.cpp, temperature 0, fixed seed, thinking setting pinned.
+- Fallback: if the pipeline sweep shows that Qwen3-4B answers would not fit the time budget, the answer model becomes `deepseek/deepseek-v4.1-flash-1017` through OpenRouter, a named hosted arm, for every arm. The freeze records which model and why.
+- A judge never scores answers from its own model family. If the fallback is used, the main judge `deepseek/deepseek-v4.1-flash-1017` cannot stay. It becomes `google/gemini-3.8-flash` through OpenRouter (decided 2026-10-27), with temperature 0, a fixed seed and one pinned upstream provider. GPT-6.1 Terra stays the cross-check. No earlier experiment tested Gemini 3.8 Flash as a judge (Experiments 33 and 42 used it to transcribe pages), so the hand check is its evidence too.
 
 ## D4. Metrics
 
@@ -108,7 +111,10 @@ Notes:
 ### Secondary (LLM judge)
 
 - Ragas 0.4.3: faithfulness, answer relevancy, context precision, context recall.
-- Pin the Ragas version, the judge model and its settings, temperature 0. Run the judge through llama.cpp when possible.
+- Main judge (decided 2026-10-27): `deepseek/deepseek-v4.1-flash-1017` through OpenRouter, a hosted reference arm (ADR-103). The date in the ID pins the version. Temperature 0 and a fixed seed, both supported. Pin the OpenRouter upstream provider so one host serves every call. Different family from the answer model.
+- Cross-check judge: `openai/gpt-6.1-terra` through OpenRouter on the 50 hand-checked items. It takes a fixed seed but no temperature setting. A third family. Report agreement between the main judge, the cross-check judge and the hand check.
+- No earlier experiment tested `deepseek-v4.1-flash-1017` as a judge (Experiment 20 used `deepseek-v4-flash-0731`). The hand check and the cross-check are therefore the evidence that the judge is fit for use.
+- Record per call: model ID, upstream provider, temperature, seed, reasoning setting, prompt and completion tokens. Record the Ragas version and the run dates.
 - A metric that needs a reference answer runs only where the dataset has one (FinanceBench, BioASQ). Check FreshStack at freeze. Otherwise report "not measured".
 - Check about 50 judged items by hand. Define the agreement measure in the protocol before the check. Report the agreement.
 - Ragas never replaces a primary metric. When a Ragas score improves and a primary metric worsens, report both.
@@ -153,7 +159,7 @@ One table per dataset:
 - Task 1.4 times local 0.6B, 4B and 8B embedding on a fixed slice of each corpus. It records wall time, tokens and peak memory, and extrapolates to each full corpus. The timing is a planning measurement, not a scored run.
 - The change `pipeline-sweep-llamacpp` plans the same timing. If its numbers exist for the measurement machine and the pinned files, Experiment 35 reuses them and records the source.
 - Fallback: if local 4B does not fit the time budget, the reference arm becomes OpenRouter `qwen/qwen3-embedding-4b`, named as hosted (ADR-103).
-- The run may be local (the 64 GB M5 Pro MacBook Pro) or on rented cloud hardware. The operator decides after the timing. Either way: the same GGUF files, the same build, and the D1 tolerance. Run all arms of one dataset on the same machine and back end, so the paired comparisons stay fair.
+- The run may be local (the 64 GB M5 Pro MacBook Pro) or on rented cloud hardware. Rule (decided 2026-10-27): start on the Mac. If the extrapolated embedding time for all arms exceeds about 48 hours on the Mac, embed on a rented GPU; answers and judging stay where they are. Either way: the same GGUF files, the same build, and the D1 tolerance. Run all arms of one dataset on the same machine and back end, so the paired comparisons stay fair.
 - Record the hardware (chip or GPU, memory, back end) in every run record.
 
 ## D8. Observability
@@ -198,13 +204,13 @@ Ragas goes in a separate `uv` dependency group (for example `eval`), not in a pu
 
 ## Open questions (resolve at freeze)
 
-1. Which answer model and which Ragas judge model, and can the judge run through llama.cpp?
-2. What wall-time, memory and paid-provider budget applies, and does the run go local or to rented cloud hardware?
+1. Which answer model? Judges resolved 2026-10-27 (D4 Secondary).
+2. What wall-time, memory and paid-provider budget applies? The local-or-rented rule is in D7.
 3. Does BioASQ fit in full, or is a corpus sample needed (D2)?
 4. Does FreshStack carry reference answers that Ragas context recall can use?
 5. Does the token-aware chunking arm change any chunk on BioASQ?
-6. Which PDF reader runs FinanceBench? The production default `PDF_READER: pdf_inspector` declares no page provenance (`integrations/pdf/registry.py`), so its chunks carry no page number and the hit@page rule cannot be scored. Pin a reader that records pages (`liteparse`, `pypdfium2` or `pypdf`) and state the departure from the default, or prove that the default chain records pages.
-7. Which metadata extraction mode runs? The default `metadata.extraction_mode: llamaindex` calls the language model for every chunk during ingestion. On about 50K documents and several index builds this may cost more than embedding. Choose `disabled` or `keyword` for all arms, or time it in the pipeline sweep and keep it. The mode is the same in every arm.
+6. Resolved 2026-10-27: every PDF runs through the production default reader, `pdf_inspector`, with its production fallback chain. No dataset or arm uses a different reader, so the reader is never a hidden variable. The change `pdf-inspector-page-provenance` gives pdf-inspector page numbers and must merge before the pipeline sweep. The run records the reader per file.
+7. Resolved 2026-10-27: metadata extraction is `disabled` in every arm. The default `llamaindex` mode calls the language model for every chunk, costs more than it gives here, and its generated text enters the embedded text, so it would add variation between runs. The pipeline sweep still times it, and the report gives that cost.
 
 Resolved on 2026-10-27 by the publication proposal: datasets and sizes, the baseline and arms, metrics, repetitions, statistics, and RepoProbe moved out.
 
