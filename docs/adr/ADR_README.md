@@ -111,7 +111,7 @@ development of OMRG — Opinionated Modular RAG.
 | [100](./100-experiment-library-reads-project-folders-and-keeps-choices-in-the-workspace-database.md) | Experiment Library Reads Project Folders and Keeps Choices in the Workspace Database | 2026-10-25 | Accepted (2026-10-25; built and merged v3 PR #128; recorded 2026-10-26) |
 | [101](./101-app-installs-marimo-as-a-separate-uv-tool.md) | The App Installs marimo as a Separate uv Tool | 2026-10-26 | Accepted (2026-10-26; built and merged to v3 at PR #132) |
 | [102](./102-library-edits-protocol-and-report-with-an-edit-log.md) | The Library Edits Protocols and Reports, and Logs Each Save in edits.jsonl | 2026-10-26 | Accepted (2026-10-26; built and merged to v3 at PR #133) |
-| [103](./103-experiments-run-local-models-through-llama-cpp-gguf.md) | Experiments Run Local Models Through llama.cpp GGUF | 2026-10-27 | Proposed |
+| [103](./103-experiments-run-local-models-through-llama-cpp-gguf.md) | Experiments Run Local Models Through llama.cpp GGUF | 2026-10-27 | Accepted (2026-10-27; built and merged to v3 at PR #135) |
 
 ## Convention
 

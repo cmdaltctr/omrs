@@ -1,7 +1,7 @@
 # ADR-103: Experiments Run Local Models Through llama.cpp GGUF
 
 - **Date:** 2026-10-27
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-27; built and merged to v3 at PR #135, merge commit `97dbcdb6`. Evidence: `browser-check.md`, `evidence/live-check.txt` and `evidence/test-ids-diff.txt` in the archived change folder.)
 - **Deciders:** Maintainer
 - **Related:** [ADR-074](074-run-local-decision-models-through-llama-cpp-q8-0-gguf.md) (this ADR withdraws its decision 3, the MLX 8-bit fallback), [ADR-097](097-experiment-records-versioned-format.md) (experiment record format; this ADR adds an optional key to format 1), [ADR-024](024-dual-deployment-modes.md) (local-first, cloud opt-in)
 - **Change:** `openspec/changes/reproducible-experiment-runtime/` (design D1 to D7)
