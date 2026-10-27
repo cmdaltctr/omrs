@@ -9,7 +9,8 @@ checks, chunking arguments, and protected replacement cannot drift apart:
 2. :func:`build_ingestion_context` - the operation-wide index-shaping
    inputs, resolved once.
 3. :func:`prepare_source` - canonical identity, content hash, declared
-   reader text format, index identity, and source version.
+   reader text format, PDF reader output revision, index identity, and
+   source version.
 4. :func:`check_source_state` - the pre-lineage compatibility guard, then
    the complete-current-version reuse check.
 5. :func:`chunk_source` - read, normalise, enrich, and split.
@@ -29,7 +30,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, NamedTuple
 
-from .backends.orchestrator import resolve_declared_text_format
+from .backends.orchestrator import resolve_declared_text_format, resolve_pdf_reader_revision
 from .chunker import read_and_chunk_file_async
 from .hashing import sha256_file
 from .ocr_identity import resolved_routing_payload, route_fingerprints
@@ -218,12 +219,16 @@ async def prepare_source(
     canonical_file_path = canonical_source_path(file_path)
     content_hash = await asyncio.to_thread(sha256_file, file_path)
     text_format = text_format_resolver(file_path, settings=context.settings)
+    # Reader output revision (change pdf-inspector-page-provenance, D7):
+    # ``None`` for sources no PDF reader reads, so their identity is unchanged.
+    pdf_reader_revision = resolve_pdf_reader_revision(file_path, settings=context.settings)
     index_identity = build_index_identity(
         context.settings,
         content_type=content_type,
         chunk_size=context.chunk_size,
         chunk_overlap=context.chunk_overlap,
         text_format=text_format,
+        pdf_reader_revision=pdf_reader_revision,
         embed_model=context.embed_model,
         ocr_routing=context.ocr_routing,
         ocr_worker_fingerprint=context.ocr_worker_fingerprint,

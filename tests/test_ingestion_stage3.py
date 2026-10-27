@@ -541,3 +541,47 @@ async def test_reader_normalisation_identity_reprocesses_then_skips(
     assert second["chunks_removed"] == first["chunks_created"]
     assert third["files_skipped_unchanged"] == 1
     assert third["files_indexed"] == 0
+
+
+@pytest.mark.asyncio
+async def test_pdf_reader_revision_reprocesses_pdf_sources_only(
+    tmp_path: Path,
+    stage3_store,
+    effective_settings,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A PDF indexed before the reader revision existed reprocesses once; Markdown skips.
+
+    Change pdf-inspector-page-provenance, design D7: the first run patches
+    the revision resolver to return ``None``, which is the identity of an
+    index built before this change.
+    """
+    import shutil
+
+    from omrs.core.ingestion import sources
+
+    corpus = tmp_path / "corpus"
+    corpus.mkdir()
+    shutil.copy(Path(__file__).parent / "fixtures" / "smoke_text.pdf", corpus / "smoke.pdf")
+    (corpus / "notes.md").write_text("# Notes\n\n" + "markdown body text " * 60, encoding="utf-8")
+    settings = effective_settings(pdf_reader="pypdf")
+
+    async def ingest() -> dict:
+        return await ingest_path_async(
+            str(corpus), collection_name=_COLLECTION, effective_settings=settings
+        )
+
+    with monkeypatch.context() as patch:
+        patch.setattr(sources, "resolve_pdf_reader_revision", lambda *a, **k: None, raising=False)
+        first = await ingest()
+    second = await ingest()
+    third = await ingest()
+
+    assert first["status"] == second["status"] == third["status"] == "ok"
+    assert first["files_indexed"] == 2
+    statuses = {d["file"]: d["status"] for d in second["file_details"]}
+    assert statuses == {"smoke.pdf": "indexed", "notes.md": "skipped_unchanged"}
+    assert second["files_indexed"] == 1
+    assert second["files_skipped_unchanged"] == 1
+    assert third["files_indexed"] == 0
+    assert third["files_skipped_unchanged"] == 2
