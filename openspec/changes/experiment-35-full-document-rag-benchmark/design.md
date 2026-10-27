@@ -119,9 +119,11 @@ Notes:
 ## D5. Repetitions
 
 - Each arm runs 3 times.
-- Each run rebuilds the index and repeats retrieval. With a fixed corpus and a deterministic embedder, runs 2 and 3 must match run 1 exactly. This is the determinism check, and the report states its result.
+- Each arm builds its index once. Runs 2 and 3 repeat retrieval, answers, the Ragas judge and timing on that index. With a fixed index, runs 2 and 3 must retrieve exactly what run 1 retrieved. This is the determinism check, and the report states its result.
+- Rebuild check: for each dataset, rebuild the 4B baseline index once in a fresh process and compare the retrieved lists with run 1. This shows whether index building is repeatable. A full rebuild for every run of every arm would cost many hours and add nothing to the statistics, because retrieval on a fixed index does not vary.
+- Embedding mode: exact or fast, as the pipeline sweep's Part C decides. The plan states the mode and its tolerance.
 - Run 1 gives the scored retrieval result. A mismatch is a finding: record it, report the run-to-run difference, and do not swap in another run.
-- The 3 runs measure the stages that can change: the generated answer, the Ragas judge, index-build order and latency. Report the run-to-run standard deviation for each.
+- The 3 runs measure the stages that can change: the generated answer, the Ragas judge and latency. The rebuild check covers index building. Report the run-to-run standard deviation for each.
 - Tests compare arms question by question. Average the 3 runs for each question first.
 
 ## D6. Statistics (basic set)

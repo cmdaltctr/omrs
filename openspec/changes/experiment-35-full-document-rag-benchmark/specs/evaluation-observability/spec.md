@@ -25,7 +25,7 @@ Experiment 35 SHALL have purpose `publication` and size Confirmatory. Its `proto
 
 ### Requirement: Each arm runs three times with a determinism check
 
-Each arm SHALL run 3 times. Run 1 SHALL give the scored retrieval result, and runs 2 and 3 SHALL be compared with it. The report SHALL state the result of the determinism check and the run-to-run standard deviation of answers, judge scores and latency.
+Each arm SHALL build its index once and run 3 times on it. Run 1 SHALL give the scored retrieval result, and runs 2 and 3 SHALL be compared with it. For each dataset, the 4B baseline index SHALL be rebuilt once in a fresh process and its retrieval compared with run 1. The report SHALL state the result of the determinism check and the run-to-run standard deviation of answers, judge scores and latency.
 
 #### Scenario: Retrieval differs between runs
 - **WHEN** run 2 or run 3 retrieves a different ranked list from run 1 for any question

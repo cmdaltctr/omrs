@@ -28,6 +28,8 @@
 
 ## 4. Part B timing (design D6)
 
+- [ ] 4.0 Write tests first for Part C's comparison (design D6a): identical vectors give cosine 1.0 and no ranking change; a changed vector below 0.9999 fails the rule and names the chunk; a swapped top-10 pair fails the rule and names the question; a plan model without `parallel` fails the preset check. Then write the comparison and preset check. Verify: the tests fail before the code exists, then pass.
+
 - [ ] 4.1 Write tests first for the extrapolation: tokens divided by tokens per second gives hours; the FinanceBench estimate uses tokens per page times total pages; a missing count raises an error that names the corpus. Verify: the tests fail before the code exists.
 - [ ] 4.2 Write the timing runner: one model loaded at a time in the router, live-server check with a plan block for that model, one run record per model, one warm-up batch, then the three slices of D6 (FreshStack, BioASQ, FinanceBench chunks). Record wall time, `usage.prompt_tokens` and peak resident memory sampled every 0.5 s. Verify: a 5-document dry run writes one row per model and slice.
 - [ ] 4.3 Write the token count step for FreshStack and BioASQ (chunk, then `/tokenize`, no embedding) and the FinanceBench page count. Verify: the FreshStack count covers 10,024 documents and the BioASQ count covers every passage in the test split corpus.
@@ -38,6 +40,7 @@
 - [ ] 5.2 Run the determinism repeat and the comparison arms. Verify: their output files exist and name the index they read.
 - [ ] 5.3 Run Part B for 0.6B, 4B and 8B, one at a time. Verify: three run-record lines, one per model, and nine timing rows (three models by three slices).
 - [ ] 5.4 Run the token counts and the extrapolation. Verify: one estimate per model and corpus.
+- [ ] 5.5 Run Part C (design D6a): 4B exact mode, then fast mode, on the Part B slices. Verify: one output row per vector pair, the lowest and median cosine, the top-10 ranking comparison and both speeds are written to `output/`.
 
 ## 6. Report
 

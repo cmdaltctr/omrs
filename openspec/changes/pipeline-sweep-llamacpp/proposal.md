@@ -18,6 +18,8 @@ Experiment 35 must also choose: run locally on the measurement Mac, or rent clou
   4. Answer each question, without and with claim checking.
   5. Write one run record per run, with the runtime that the live-server check found.
 - **Part B, embedding timing.** Embed a fixed slice of each benchmark corpus (200 FreshStack documents, 200 BioASQ abstracts, the 5 FinanceBench PDFs of Part A) with Qwen3-Embedding 0.6B, 4B and 8B GGUF on the measurement Mac. Record wall time, tokens and peak memory. Extrapolate to the three Experiment 35 corpora: the FinanceBench PDFs, FreshStack (10,024 documents) and BioASQ (40.2K abstracts).
+- **Part C, fast mode against exact mode.** Embed the same slices twice with the 4B model: exact mode (`--parallel 1`, one request at a time) and fast mode (`--parallel 8 --kv-unified`, 8 requests at a time). Compare every vector pair (lowest cosine) and the retrieval rankings. If the drift is within the stated tolerance, Experiment 35 may use fast mode and states the tolerance in its plan. Record the speed gain.
+- Pin every llama.cpp server argument in full, including the values that default to auto, and switch off the settings that change results: speculative decoding (`--spec-type none`) and the chat prompt cache.
 - Small fixed set: Experiment 3's 6 documents and the 17 questions in Experiment 2's `ground-truth.json`, plus 5 FinanceBench PDFs with their open-sample questions.
 - Exit rule: every stage runs without error; Hit@1 and MRR on the 17 questions stay close to the earlier Ollama numbers; one repeat of retrieval gives identical results.
 - Serve the embedding and chat models from one llama.cpp router (`llama serve`), so the existing live-server check covers both in one call.

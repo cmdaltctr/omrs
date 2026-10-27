@@ -119,6 +119,38 @@ Verdict: `PASS` when every row passes. `FAIL` otherwise, with the failing stage 
 
 The sweep does not decide local or cloud. Experiment 35 compares these estimates with its Mac budget (its task 1.7).
 
+### D6a. Part C: fast mode against exact mode, and the pinned presets
+
+Speed settings in llama.cpp can change the output a little. Batching several inputs together (`--parallel`, `--kv-unified`, concurrent requests) makes vectors depend on which inputs share a batch (llama.cpp issue #6950). Speculative decoding and the prompt cache can change generated text. The research note of 27 October 2026 found these in build 11671 (`common/arg.cpp`, `tools/server/README.md`).
+
+Presets (every value written out, so no default can change silently):
+
+| Model | Preset |
+| --- | --- |
+| Embedding, exact | `embeddings pooling=last embd-normalize=2 ctx-size=8192 batch-size=8192 ubatch-size=8192 parallel=1 kv-unified=false flash-attn=on n-gpu-layers=all fit=off cache-type-k=f16 cache-type-v=f16` |
+| Embedding, fast | As exact, but `parallel=8 kv-unified=true`, and the client sends 8 requests at a time |
+| Chat (Qwen3-4B) | `ctx-size=16384 parallel=1 flash-attn=on n-gpu-layers=all fit=off cache-type-k=f16 cache-type-v=f16 spec-type=none cache-prompt=false cache-reuse=0`; requests at temperature 0 with a fixed seed; the thinking setting pinned through `chat-template-kwargs` |
+
+Notes from the research:
+
+- Without `--parallel`, build 11671 uses 4 slots with a shared cache. So `parallel=1` is written out.
+- `--fit on` (the default) can move layers to the CPU when memory is short. `fit=off` with `n-gpu-layers=all` keeps every layer on the GPU.
+- `ubatch-size` must hold the longest chunk, or one input is split across batches.
+- `--mlock` and `--no-mmap` no longer exist in this build. `--load-mode` replaces them.
+- Open issue #30323 reports embedding mode about 1.55 times slower with Qwen3-Embedding. The sweep records the measured rate either way.
+
+Part C method:
+
+1. Use the 4B model and the three Part B slices.
+2. Run exact mode, then fast mode, in fresh router starts. Sort inputs by chunk ID in both.
+3. Compare each vector pair. Report the lowest and the median cosine similarity.
+4. Build a dense index from each run's vectors for the 17-question set and the FinanceBench questions. Compare the rankings and nDCG@10.
+5. Record the speed of each mode.
+
+Rule, stated before the run: fast mode is allowed for Experiment 35 when the lowest cosine is at least 0.9999 and no ranking in the top 10 changes. Otherwise Experiment 35 uses exact mode. The report gives the speed gain and the measured drift either way.
+
+The plan also records a `/props` snapshot, the start-up lines for `n_ctx_seq` and `flash_attn`, and that no `LLAMA_ARG_*` environment variable is set. It records the client settings: inputs per request, concurrency and input order.
+
 ### D7. Overlap with Experiment 35 task 1.4
 
 Yes, they overlap. Experiment 35 task 1.4 (as read on 27 October 2026) plans: "Time local Qwen3-Embedding 0.6B, 4B and 8B (GGUF, same quantisation) on a fixed slice of each corpus. Record wall time, tokens and peak memory, and extrapolate to each full corpus. Reuse the `pipeline-sweep-llamacpp` timing when it exists for the same machine and files."

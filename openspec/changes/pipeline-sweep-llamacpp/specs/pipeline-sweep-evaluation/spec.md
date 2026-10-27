@@ -96,6 +96,25 @@ The report SHALL estimate the embedding wall time of each model on the FinanceBe
 - **THEN** it shows one estimated wall time per model and corpus
 - **AND** it names the output file that each count and rate came from
 
+### Requirement: The sweep SHALL compare fast mode with exact mode
+
+The sweep SHALL embed the same slices with the 4B model in exact mode (one slot, one request at a time) and in fast mode (several slots and concurrent requests). It SHALL report the lowest cosine between vector pairs, any top-10 ranking change and the speed of each mode. Fast mode SHALL be allowed for Experiment 35 only when the lowest cosine is at least 0.9999 and no top-10 ranking changes.
+
+#### Scenario: Fast mode drifts too far
+
+- **WHEN** a vector pair has cosine below 0.9999, or a top-10 ranking changes
+- **THEN** the report recommends exact mode for Experiment 35
+- **AND** it gives the measured drift and the speed gain
+
+### Requirement: The sweep SHALL pin every server argument
+
+The plan SHALL write out every llama.cpp server argument that can change speed or output, including values that default to auto. The chat preset SHALL turn off speculative decoding and the prompt cache. The run SHALL record a `/props` snapshot and that no `LLAMA_ARG_*` environment variable is set.
+
+#### Scenario: Default parallel slots
+
+- **WHEN** the plan does not name `parallel` for a model
+- **THEN** the plan does not pass the protocol check, because build 11671 defaults to 4 slots
+
 ### Requirement: Production behaviour SHALL stay unchanged by the sweep
 
 The sweep SHALL NOT change production defaults, profiles, the live app or its data. It SHALL write only inside its experiment folder and scratch locations it names.
