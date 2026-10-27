@@ -86,7 +86,8 @@ def test_publication_of_standard_size_is_an_error(root: Path) -> None:
     assert finding.code == "publication-not-confirmatory"
     assert finding.severity == "error"
     assert finding.folder == _NAME
-    assert _NAME in finding.message
+    # The CLI prints the folder before the message, so the message must not repeat it.
+    assert not finding.message.startswith(_NAME)
     assert "Confirmatory" in finding.message
 
 
@@ -95,7 +96,8 @@ def test_publication_without_runtime_block_is_an_error(root: Path) -> None:
     (finding,) = _publication(root)
     assert finding.code == "publication-runtime-missing"
     assert finding.severity == "error"
-    assert _NAME in finding.message
+    assert finding.folder == _NAME
+    assert not finding.message.startswith(_NAME)
     assert "runtime" in finding.message
 
 
@@ -105,7 +107,8 @@ def test_publication_with_unreadable_plan_is_an_error(root: Path, plan_text: str
     (finding,) = _publication(root)
     assert finding.code == "publication-plan-unreadable"
     assert finding.severity == "error"
-    assert _NAME in finding.message
+    assert finding.folder == _NAME
+    assert not finding.message.startswith(_NAME)
     assert "plan.json" in finding.message
 
 
@@ -116,7 +119,8 @@ def test_publication_with_invalid_runtime_block_is_an_error(root: Path) -> None:
     (finding,) = _publication(root)
     assert finding.code == "publication-runtime-invalid"
     assert finding.severity == "error"
-    assert _NAME in finding.message
+    assert finding.folder == _NAME
+    assert not finding.message.startswith(_NAME)
     assert "llama.cpp" in finding.message
 
 

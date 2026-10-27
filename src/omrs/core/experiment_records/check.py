@@ -217,7 +217,7 @@ def _publication_rules(folder: ExperimentFolder) -> Iterator[Finding]:
             severity="error",
             code="publication-not-confirmatory",
             folder=name,
-            message=f"{name}: a publication experiment must be Confirmatory, "
+            message=f"a publication experiment must be Confirmatory, "
             f"so its protocol and plan are committed before the first run; its size is {size}",
         )
     try:
@@ -231,7 +231,7 @@ def _publication_rules(folder: ExperimentFolder) -> Iterator[Finding]:
             severity="error",
             code="publication-plan-unreadable",
             folder=name,
-            message=f"{name}: a publication experiment needs a readable {PLAN_FILE} with a "
+            message=f"a publication experiment needs a readable {PLAN_FILE} with a "
             f"{RUNTIME_KEY} block that pins its local models; {problem}",
         )
         return
@@ -240,7 +240,7 @@ def _publication_rules(folder: ExperimentFolder) -> Iterator[Finding]:
             severity="error",
             code="publication-runtime-missing",
             folder=name,
-            message=f"{name}: a publication experiment needs a {RUNTIME_KEY} block in "
+            message=f"a publication experiment needs a {RUNTIME_KEY} block in "
             f"{PLAN_FILE} that pins each local model to a llama.cpp GGUF file and build",
         )
         return
@@ -251,7 +251,7 @@ def _publication_rules(folder: ExperimentFolder) -> Iterator[Finding]:
             severity="error",
             code="publication-runtime-invalid",
             folder=name,
-            message=f"{name}: the {RUNTIME_KEY} block in {PLAN_FILE} breaks the local-runtime "
+            message=f"the {RUNTIME_KEY} block in {PLAN_FILE} breaks the local-runtime "
             f"rule of a publication experiment: {exc}",
         )
 
