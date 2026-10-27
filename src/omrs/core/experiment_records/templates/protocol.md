@@ -61,3 +61,17 @@ Run every command from the repository root.
   - Pass: <action>
   - Fail: <action>
   - Unclear (interval crosses the threshold): <action>
+
+## 7. Runtime
+
+- **Purpose**: <optimisation | publication> (the `purpose` in `experiment.json`)
+- **Runtime under test**: <no | yes: the runtimes compared>
+- **Local models**: run each one through llama.cpp with a public GGUF file. Do not use Ollama or MLX.
+
+| Role | Repository | File | SHA-256 | llama.cpp build | Server arguments |
+| --- | --- | --- | --- | --- | --- |
+| <embedding, language or decision> | <Hugging Face repository> | <file name>.gguf | <64 hex characters> | <build number> | <arguments that change output> |
+
+- **Hosted references**: <none, or provider and model id of each reference arm>
+- **Tolerance**: <largest change in each primary metric or per-item score that still counts as the same result>
+- **Live check**: the runner calls `verify_llamacpp_runtime` before the first score. A mismatch stops the run.

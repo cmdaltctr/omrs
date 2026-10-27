@@ -1,9 +1,9 @@
 # ADR-074: Run Local Decision Models Through llama.cpp Q8_0 GGUF
 
 **Date:** 2026-10-08
-**Status:** Proposed
+**Status:** Proposed. Amended by ADR-103 (2026-10-27): decision 3 is withdrawn.
 **Deciders:** Dr Muhammad Aizat Bin Md Hawari
-**Related:** [ADR-024](024-dual-deployment-modes.md) (local-first, cloud opt-in), [ADR-073](073-make-the-torch-extra-a-normal-choice.md) (optional `torch` extra)
+**Related:** [ADR-024](024-dual-deployment-modes.md) (local-first, cloud opt-in), [ADR-073](073-make-the-torch-extra-a-normal-choice.md) (optional `torch` extra), [ADR-103](103-experiments-run-local-models-through-llama-cpp-gguf.md) (amends decision 3)
 **Evidence:** `experiments/38-rescue-quality-signal-2026-09-30/report.md` (section "Clef-flash (Cloudflare): every run, hosted and local")
 
 ## Context
@@ -42,7 +42,7 @@ The experiment verdict is FAIL. No candidate passed gates G1, G2 and G3. This AD
 
 1. Run local decision models through `llama-server` (llama.cpp) with an 8-bit GGUF. For Clef-flash, use `ggml-org/Clef-Flash-GGUF` Q8_0.
 2. Use llama.cpp build b11510 or later. It must include the Metal fix from PR #30100. Check the build number, because `llama update` can lag behind the main release.
-3. MLX 8-bit is an accepted fallback. Use it where llama.cpp is not available.
+3. ~~MLX 8-bit is an accepted fallback. Use it where llama.cpp is not available.~~ **Withdrawn.** Amended by ADR-103 (2026-10-27): MLX runs only on Apple silicon, so a result from it cannot be reproduced on other platforms. Use llama.cpp. Run MLX only in an experiment whose variable under test is the runtime.
 4. Do not use a 4-bit build (MLX 4-bit, GGUF Q4_K_M or similar) until its scores match a reference on the full page set. A check on a few documents is not sufficient.
 5. Send one request at a time to a local server. Measure speed one request at a time, with nothing else on the GPU.
 6. Bind the local server to `127.0.0.1`. Page text stays on the machine.
@@ -80,7 +80,7 @@ This ADR does **not** adopt Clef-flash as the rescue-quality gate in production.
 | **Hosted Clef-flash (Cloudflare Workers AI)** | Page text leaves the machine. The API returns no model version. The free daily limit stopped hosted Clef 27B at 13 of 40 documents. Allowed only as an opt-in reference, not as the default. |
 | **Hosted Jev (TypeSafe)** | Page text, including personal records, leaves the machine. Closed weights, and `jev-latest` is an alias that can change model. Kept as a reference arm only. |
 | **OpenJev 27B, local MLX 4-bit** | Licence is CC BY-NC 4.0, so no production use. 6.2 to 7.5 s a page. Kept as a reference arm only. |
-| **MLX 8-bit as the primary runtime** | Gives the same gate outcome, but is further from hosted on all three wordings, slower (1.13 s a page) and larger (10.7 GB). Kept as the fallback. |
+| **MLX 8-bit as the primary runtime** | Gives the same gate outcome, but is further from hosted on all three wordings, slower (1.13 s a page) and larger (10.7 GB). Kept as the fallback until ADR-103 (2026-10-27) withdrew the fallback. |
 | **MLX 4-bit** | Differs from hosted on 96 to 177 pages per wording and sends a usable document to OCR. Fails G2 on every wording. |
 | **llama.cpp Q4_K_M** | Checked on 94 mostly-junk pages only, and missed the 0.10 mark there. Not allowed until a full-set check passes. |
 

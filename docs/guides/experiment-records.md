@@ -65,6 +65,7 @@ Each experiment folder has one `experiment.json`. It holds the facts that change
 | `status` | Yes | One of the seven status values below. |
 | `superseded_by` | Only with `SUPERSEDED` | The folder name of the newer experiment. Otherwise `null` or absent. |
 | `finding` | Yes | One line. It can be empty while the experiment is `PLANNED`. |
+| `purpose` | No | `optimisation` or `publication`. A record without it counts as `optimisation`. See [Local models and the experiment purpose](#local-models-and-the-experiment-purpose). |
 | `refs` | No | Lists of ADRs (`adrs`), OpenSpec changes (`changes`) and tasks (`tasks`). |
 | `migration` | No | Set only on folders converted from the old layout. |
 
@@ -106,6 +107,88 @@ The status is in `experiment.json` only. Do not write a status into `plan.json`,
 
 `plan.json` is frozen after the first run. No tool writes to it. The run identity in `experiments/_lib/checkpoint_validity.py` includes the SHA-256 of `plan.json`, so a change to the file stops a resume. Record a change to the plan as a new entry in its `amendments` list, and say why.
 
+## Local models and the experiment purpose
+
+Every experiment has a purpose. `optimisation` means the result tunes this project and is not cited outside it. `publication` means the result may be cited in a paper, so another group must be able to reproduce it on other hardware. A record without `purpose` counts as `optimisation`. ADR-103 records the rule.
+
+Every new experiment runs each local language, embedding and decision model through llama.cpp with a public GGUF file. Do not use Ollama, MLX or oMLX for experiment evidence. A hosted model can run as a reference arm. For a `publication` experiment, `omrs experiments check` enforces the rule. For an `optimisation` experiment, the rule is a guide rule only.
+
+To plan and run an experiment with local models:
+
+1. Choose the purpose: `optimisation` or `publication`.
+2. For `publication`, choose the size `Confirmatory`.
+3. Run `uv run --no-sync omrs experiments new <slug> --title "<title>" --category <category> --size <size> --purpose <purpose>`.
+4. Download each GGUF file from its Hugging Face repository.
+5. Get the SHA-256 of each file with `shasum -a 256 <file>`.
+6. Get the llama.cpp build number from `GET /props` (`build_info`, for example `b11671-ba3c05f71`).
+7. Add a `runtime` block to `plan.json` (see the example below).
+8. Add one `models` entry for each local model.
+9. Add one `references` entry for each hosted model.
+10. Add one `tolerance` entry for each primary metric or per-item score.
+11. Commit `protocol.md` and `plan.json` before the first run.
+12. Start `llama-server` on `127.0.0.1` with the file and arguments in the plan.
+13. In the runner, call `verify_llamacpp_runtime(block, base_url=<server address>)` before the first score.
+14. Call `record_run_start(HERE, runtime=found.as_run_record())`.
+
+```json
+"runtime": {
+  "runtime_under_test": false,
+  "models": [
+    {
+      "role": "embedding",
+      "repository": "Qwen/Qwen3-Embedding-0.6B-GGUF",
+      "file": "Qwen3-Embedding-0.6B-Q8_0.gguf",
+      "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+      "runtime": "llama.cpp",
+      "build": 11671,
+      "server_args": {"pooling": "last", "ubatch-size": 8192, "ctx-size": 8192}
+    }
+  ],
+  "references": [{"role": "reference", "provider": "cloudflare", "model": "clef-flash"}],
+  "tolerance": [
+    {"metric": "recall_at_10", "max_abs_change": 0.01},
+    {"item_score": "noul", "max_abs_change": 0.10}
+  ]
+}
+```
+
+| Field | Rule |
+| --- | --- |
+| `runtime_under_test` | `true` only when the runtime is the variable under test. |
+| `models[].role` | What the model does, for example `embedding`, `language` or `decision`. |
+| `models[].repository` | The Hugging Face repository of the GGUF file. A community file is allowed. |
+| `models[].file` | The file name, with no folder. |
+| `models[].sha256` | The SHA-256 of the file: 64 lower-case hex characters. |
+| `models[].runtime` | `llama.cpp`. Another runtime is allowed only with `runtime_under_test` set to `true`. |
+| `models[].build` | The exact llama.cpp build number, not a minimum. |
+| `models[].version` | The runtime version. Required for a runtime other than `llama.cpp`. |
+| `models[].server_args` | Each server argument that can change output, for example pooling or context size. |
+| `references[]` | `role`, `provider` and `model` for each hosted model. |
+| `tolerance[]` | `metric` or `item_score`, with `max_abs_change`: the largest change that still counts as the same result. At least one entry. |
+
+The runner code looks like this:
+
+```python
+from _lib.llamacpp_runtime import verify_llamacpp_runtime
+from _lib.run_record import record_run_start
+from omrs.core.experiment_records.runtime_block import load_runtime_block
+
+block = load_runtime_block(plan)
+found = verify_llamacpp_runtime(block, base_url="http://127.0.0.1:8080")
+record_run_start(HERE, runtime=found.as_run_record())
+```
+
+`verify_llamacpp_runtime` reads the build from `/props`. It reads each model path from `/v1/models` in router mode, or from `/props` with one model. It hashes each file and compares the results with the plan. It talks only to a loopback address. A difference raises `PreflightError` before any score is written, and the message names the expected and the found value. The run record then holds `runtime`: the build and one `{file, sha256}` for each model.
+
+To run on another llama.cpp build:
+
+1. Add an entry to `amendments` in `plan.json` that names the new build.
+2. Change `build` in the `runtime` block.
+3. Run again.
+4. Compare the result with the earlier result against the tolerance.
+
+A past experiment keeps its record. To use its result in a paper, create a `publication` follow-up with `--follow-up <number>`, for example `38a`, and run it again.
+
 ## Reserved numbers: `reserved.json`
 
 `experiments/reserved.json` lists numbers that are reserved but have no folder yet. Git tracks the file, so a reservation in one worktree reaches the other worktrees on merge.
@@ -141,6 +224,7 @@ Each run appends one line to `output/run-records.jsonl` when it starts. A resume
 | `git_dirty` | `true` when the working tree had uncommitted changes |
 | `plan_sha256` | The SHA-256 of `plan.json`, or an empty string when there is no plan |
 | `command` | The command that started the run |
+| `runtime` | Optional. The llama.cpp `build` and one `{file, sha256}` for each model, from the live-server check |
 
 To add run records to a runner:
 
@@ -200,7 +284,7 @@ All commands write their output to stderr. `DIR` is the experiments directory. T
 | --- | --- |
 | `omrs experiments check [DIR] [--strict] [--json]` | Reads the directory and reports findings. It does not write a file. |
 | `omrs experiments index [DIR] [--write]` | Without `--write`, prints the table. With `--write`, replaces the marked block. |
-| `omrs experiments new SLUG --title T --category C --size S [--follow-up N] [--date D] [DIR]` | Creates a folder and prints its path. |
+| `omrs experiments new SLUG --title T --category C --size S [--purpose P] [--follow-up N] [--date D] [DIR]` | Creates a folder and prints its path. |
 
 ### Check the experiments
 
@@ -220,14 +304,14 @@ The command exits with code 1 when it finds an error. With `--strict`, it also e
 
 ### Create an experiment
 
-1. Choose a slug, a title, a category and a size.
-2. Run `uv run --no-sync omrs experiments new <slug> --title "<title>" --category <category> --size <size>`.
+1. Choose a slug, a title, a category, a size and a purpose.
+2. Run `uv run --no-sync omrs experiments new <slug> --title "<title>" --category <category> --size <size> --purpose <purpose>`.
 3. Read the folder path that the command prints.
 4. Fill in the plan files in that folder.
 
 The command takes the next whole number above every folder number and every reserved number. For a follow-up, add `--follow-up <number>`. The command then takes the next free letter, for example `38a` and then `38b`.
 
-The command writes `experiment.json` with status `PLANNED` and the template files for the size. It does not overwrite a file. It refuses a folder name that exists, and then writes nothing.
+The command writes `experiment.json` with status `PLANNED`, the purpose (`optimisation` when `--purpose` is absent) and the template files for the size. It does not overwrite a file. It refuses a folder name that exists, and then writes nothing.
 
 ## Checker codes
 
@@ -249,6 +333,10 @@ Each finding has a stable code. Some codes are less severe on a converted record
 | `run-records-invalid` | warning | `output/run-records.jsonl` has a line that does not load. | Find the bad line. Do not change the other lines. |
 | `edit-log-invalid` | warning | A line of `edits.jsonl` does not load, or the file is a link or not a regular file. The message names the line. | Find the bad line in the git history of `edits.jsonl`. Do not change the other lines. |
 | `plan-changed` | warning | A run record has a `plan_sha256` that differs from the current `plan.json`. | Record the change as an amendment. Rerun if the plan change affects the result. |
+| `publication-not-confirmatory` | error | A `publication` record has a size other than `Confirmatory`. | Set `size` to `Confirmatory`, or set `purpose` to `optimisation`. |
+| `publication-plan-unreadable` | error | A `publication` record has no `plan.json`, or the file does not load. | Write a valid `plan.json`. |
+| `publication-runtime-missing` | error | The `plan.json` of a `publication` record has no `runtime` block. | Add the `runtime` block. |
+| `publication-runtime-invalid` | error | The `runtime` block of a `publication` record does not load. The message names the field. The template values (build `0`, a SHA-256 of 64 zeros) also fail. | Fix the named field. Pin the real file and build. |
 | `reserved-invalid` | error | `reserved.json` does not load. | Fix the named entry. |
 | `reserved-has-folder` | info | A reserved number now has a folder. | Remove the entry from `reserved.json`. |
 | `index-missing` | warning | `EXP_README.md` does not exist. | Create it with both index markers. |
@@ -326,7 +414,7 @@ A notebook can hold experiments from more than one project. When a folder is ren
 
 1. Open **Library** and select one project.
 2. Select **New experiment**.
-3. Type the slug, title, category and size. For a follow-up, type the number it follows.
+3. Type the slug, title, category and size. Choose the purpose. **Publication** sets the size to Confirmatory. For a follow-up, type the number it follows.
 4. Select **Create**.
 
 The app runs the same folder creator as `omrs experiments new`. It then rewrites the index table in `EXP_README.md` when the file has both index markers.
