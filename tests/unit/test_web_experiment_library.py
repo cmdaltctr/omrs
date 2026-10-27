@@ -155,6 +155,7 @@ def test_list_experiments_with_records_findings_and_reserved(web: Any, tmp_path:
         "date": "2026-01-01",
         "category": "retrieval",
         "size": "Standard",
+        "purpose": "optimisation",
         "status": "PLANNED",
         "superseded_by": None,
         "finding": "",

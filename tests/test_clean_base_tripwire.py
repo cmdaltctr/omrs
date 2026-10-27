@@ -191,7 +191,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +1 (2026-10-26, PR #132 review): the unreadable-receipt case in test_web_tool_environment.py.
 # +70 (2026-10-26, edit-experiment-files-in-library, by test-ID diff): 71 new, 1 renamed
 # in test_experiment_derived_files_ignored.py; 20 need fastapi (see _WEB_EXTRA_CASES).
-_BASE_EXECUTED = 8852
+# +84 (2026-10-27, reproducible-experiment-runtime, by test-ID diff, none removed):
+# purpose, runtime block, publication check, llama.cpp check, run-record runtime (79);
+# 5 need fastapi (see _WEB_EXTRA_CASES).
+_BASE_EXECUTED = 8936
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -514,7 +517,8 @@ if not _has_qwen_tokenizer:
 # test_notebooks_guide.py (3) and test_web_experiment_editor_tool_job.py (2) (1635).
 # +20 (2026-10-26, edit-experiment-files-in-library): test_web_experiment_file_write.py (14)
 # and test_web_experiment_files.py (6) (1655).
-_WEB_EXTRA_CASES = 1655
+# +5 (2026-10-27, reproducible-experiment-runtime): test_web_experiment_library_purpose.py (1660).
+_WEB_EXTRA_CASES = 1660
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)

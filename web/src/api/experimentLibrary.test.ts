@@ -42,6 +42,7 @@ const EXPERIMENT: Experiment = {
   date: "2026-01-01",
   category: "retrieval",
   size: "Standard",
+  purpose: "optimisation",
   status: "PASS",
   superseded_by: null,
   finding: "It worked.",
@@ -101,6 +102,10 @@ describe("experiment library API client", () => {
     const follow = setup({ status: "ok", folder: "12.1-ocr-2026-10-25", index: "no-markers" }, 201);
     await createLibraryExperiment(follow.api, "p1", { slug: "ocr", title: "OCR", category: "ingestion", size: "Quick", follow_up: " 12 " });
     expect(JSON.parse(String(follow.fetchImpl.mock.calls[0]![1]?.body))).toMatchObject({ follow_up: "12" });
+
+    const paper = setup({ status: "ok", folder: "53-ocr-2026-10-25", index: "written" }, 201);
+    await createLibraryExperiment(paper.api, "p1", { slug: "ocr", title: "OCR", category: "ingestion", size: "Confirmatory", purpose: "publication" });
+    expect(JSON.parse(String(paper.fetchImpl.mock.calls[0]![1]?.body))).toMatchObject({ size: "Confirmatory", purpose: "publication" });
 
     const failed = setup({ status: "ok", folder: "52-ocr-2026-10-25", index: "failed", message: "Run `omrs experiments index --write`." }, 201);
     expect(await createLibraryExperiment(failed.api, "p1", { slug: "ocr", title: "OCR", category: "ingestion", size: "Quick" })).toEqual({

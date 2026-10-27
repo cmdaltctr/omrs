@@ -26,7 +26,7 @@ from ...core.experiment_records.index import (
     render_index,
     write_index,
 )
-from ...core.experiment_records.record import Category, RecordError, Size
+from ...core.experiment_records.record import Category, Purpose, RecordError, Size
 from ...core.experiment_records.reserved import load_reservations
 from ...core.experiment_records.scaffold import ScaffoldError, create_experiment
 from ...core.experiment_records.scan import scan_experiments
@@ -145,6 +145,10 @@ def new(
     day: Annotated[
         str | None, typer.Option("--date", help="Planning date, YYYY-MM-DD. Defaults to today.")
     ] = None,
+    purpose: Annotated[
+        Purpose,
+        typer.Option("--purpose", help="optimisation tunes this project; publication may be cited"),
+    ] = Purpose.OPTIMISATION,
 ) -> None:
     """Create an experiment folder with its record and template files, then print its path."""
     planned = _parse_date(day)
@@ -157,6 +161,7 @@ def new(
             size=size,
             day=planned,
             follow_up=follow_up,
+            purpose=purpose,
         )
     except (ScaffoldError, RecordError, OSError) as exc:
         _fail(str(exc))

@@ -23,5 +23,25 @@
     {"id": "G1", "metric": "<primary metric>", "value": "difference", "op": ">=", "threshold": 0.0}
   ],
   "frozen": [],
+  "runtime": {
+    "runtime_under_test": false,
+    "models": [
+      {
+        "role": "<embedding, language or decision>",
+        "repository": "<Hugging Face repository>",
+        "file": "<file name>.gguf",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+        "runtime": "llama.cpp",
+        "build": 0,
+        "server_args": {}
+      }
+    ],
+    "references": [
+      {"role": "reference", "provider": "<provider>", "model": "<model id>"}
+    ],
+    "tolerance": [
+      {"metric": "<primary metric>", "max_abs_change": 0.0}
+    ]
+  },
   "amendments": []
 }

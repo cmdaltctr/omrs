@@ -5,7 +5,7 @@ import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "../../components/ui/card";
 import { formatRoute } from "../../lib/routes";
-import { findingCounts, plural, statusVariant } from "./labels";
+import { findingCounts, plural, purposeLabel, statusVariant } from "./labels";
 
 /** The record status as a badge: the colour follows design D8, the text is the status. */
 export function StatusBadge({ status }: { status: string }) {
@@ -32,6 +32,7 @@ export function ExperimentCard({ projectId, experiment, projectName, actions }: 
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={experiment.status} />
           {experiment.category !== null ? <Badge variant="hue">{experiment.category}</Badge> : null}
+          <Badge variant="neutral">{purposeLabel(experiment.purpose)}</Badge>
         </div>
         <CardTitle className="break-words">
           <a

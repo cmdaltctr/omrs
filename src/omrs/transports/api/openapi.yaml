@@ -8608,6 +8608,7 @@ components:
         - date
         - category
         - size
+        - purpose
         - status
         - superseded_by
         - finding
@@ -8627,6 +8628,10 @@ components:
         size:
           type: [string, "null"]
           enum: [Quick, Standard, Confirmatory, null]
+        purpose:
+          type: string
+          enum: [optimisation, publication]
+          description: Always present. A record without the field reads as `optimisation`.
         status:
           type: string
           enum: [PLANNED, ACTIVE, PASS, FAIL, INCONCLUSIVE, MEASURED, SUPERSEDED]
@@ -8852,6 +8857,14 @@ components:
           type: [string, "null"]
           maxLength: 16
           description: A plain experiment number. The new folder takes its next free letter.
+        purpose:
+          type: string
+          enum: [optimisation, publication]
+          default: optimisation
+          description: >
+            Why the experiment runs. Left out, the experiment is `optimisation`.
+            Another value is refused with a 400 that names both allowed values,
+            and no folder is written.
 
     ProjectExperimentCreated:
       type: object

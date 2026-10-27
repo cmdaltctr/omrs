@@ -35,6 +35,9 @@ export interface ExperimentRefs {
   tasks: string[];
 }
 
+/** Why the experiment runs: tuning the project, or evidence for a paper. */
+export type ExperimentPurpose = "optimisation" | "publication";
+
 export interface Experiment {
   folder: string;
   number: string;
@@ -42,6 +45,8 @@ export interface Experiment {
   date: string;
   category: string | null;
   size: string | null;
+  /** Always present: a record without the field reads as `optimisation`. */
+  purpose: ExperimentPurpose;
   status: string;
   superseded_by: string | null;
   finding: string;
@@ -116,6 +121,8 @@ export interface NewExperiment {
   title: string;
   category: string;
   size: string;
+  /** Left out, the server creates an `optimisation` experiment. */
+  purpose?: ExperimentPurpose;
   follow_up?: string;
 }
 

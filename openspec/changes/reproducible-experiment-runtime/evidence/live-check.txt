@@ -1,0 +1,21 @@
+Live-server check, task 3.4 (reproducible-experiment-runtime)
+Date: 2026-10-27T19:10:48Z
+Server: http://127.0.0.1:9931 (Llama app, router mode). Requests: GET /props and GET /v1/models only.
+Checker: experiments/_lib/llamacpp_runtime.py verify_llamacpp_runtime
+Scratch plans (outside the repository): plan-11671.json and plan-11510.json in the session scratch folder.
+Planned model: Qwen/Qwen3-Embedding-0.6B-GGUF, file Qwen3-Embedding-0.6B-Q8_0.gguf,
+  sha256 06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439
+Server /props build_info: b11671-ba3c05f71
+Model path from /v1/models: ~/.cache/huggingface/hub/models--Qwen--Qwen3-Embedding-0.6B-GGUF/snapshots/370f27d7550e0def9b39c1f16d3fbaa13aa67728/Qwen3-Embedding-0.6B-Q8_0.gguf
+
+Command: uv run --no-sync python live_check.py <plan> <worktree>
+
+== plan build 11671
+PASSED: {"build": 11671, "models": [{"file": "Qwen3-Embedding-0.6B-Q8_0.gguf", "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439"}]}
+exit 0
+== plan build 11510
+STOPPED: PreflightError: llama.cpp build differs from the plan for Qwen3-Embedding-0.6B-Q8_0.gguf: the plan records build 11510, the server reports build 11671
+exit 1
+
+Result: build 11671 passes and returns the run-record runtime value.
+Build 11510 stops with PreflightError, and the message names 11510 and 11671.

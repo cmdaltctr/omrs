@@ -42,6 +42,15 @@
       "title": "MigrationNote",
       "type": "object"
     },
+    "Purpose": {
+      "description": "Why an experiment runs. A record without the field counts as ``OPTIMISATION``.",
+      "enum": [
+        "optimisation",
+        "publication"
+      ],
+      "title": "Purpose",
+      "type": "string"
+    },
     "Refs": {
       "additionalProperties": false,
       "description": "Links to decision records, OpenSpec changes and tasks, without free text.",
@@ -194,6 +203,17 @@
       "pattern": "^(?:[0-9]+(?:[a-z]|\\.[0-9]+)?)?$",
       "title": "Number",
       "type": "string"
+    },
+    "purpose": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Purpose"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "refs": {
       "anyOf": [

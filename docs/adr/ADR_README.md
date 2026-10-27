@@ -84,7 +84,7 @@ development of OMRG — Opinionated Modular RAG.
 | [071](./071-ocr-routing-natural-positive-findings.md) | OCR Routing on Natural Documents: Findings and Decisions | 2026-09-29 | Accepted |
 | [072](./072-modular-ocr-engines-dots-mocr-primary-and-maths-routing.md) | Modular OCR Engines, dots.mocr as Primary Engine, and Maths-Page Routing | 2026-10-06 | Proposed |
 | [073](./073-make-the-torch-extra-a-normal-choice.md) | Make the Optional `torch` Extra a Normal Choice | 2026-10-08 | Accepted |
-| [074](./074-run-local-decision-models-through-llama-cpp-q8-0-gguf.md) | Run Local Decision Models Through llama.cpp Q8_0 GGUF | 2026-10-08 | Proposed |
+| [074](./074-run-local-decision-models-through-llama-cpp-q8-0-gguf.md) | Run Local Decision Models Through llama.cpp Q8_0 GGUF | 2026-10-08 | Proposed (Amended by ADR-103 (2026-10-27): decision 3, MLX 8-bit fallback, withdrawn) |
 | [075](./075-omrg-owned-pipeline-runner-local-web-packaging-and-external-tool-plugins.md) | OMRG-Owned Pipeline Runner, Local Web Packaging, and External-Tool Plugins | 2026-10-13 | Accepted |
 | [076](./076-serve-mcp-from-the-web-server-with-a-lifespan-provided-engine.md) | Serve MCP from the Web Server with a Lifespan-Provided Engine | 2026-10-14 | Accepted |
 | [077](./077-web-workspace-client-foundation.md) | Web Workspace Client Foundation | 2026-10-15 | Accepted |
@@ -111,6 +111,7 @@ development of OMRG — Opinionated Modular RAG.
 | [100](./100-experiment-library-reads-project-folders-and-keeps-choices-in-the-workspace-database.md) | Experiment Library Reads Project Folders and Keeps Choices in the Workspace Database | 2026-10-25 | Accepted (2026-10-25; built and merged v3 PR #128; recorded 2026-10-26) |
 | [101](./101-app-installs-marimo-as-a-separate-uv-tool.md) | The App Installs marimo as a Separate uv Tool | 2026-10-26 | Accepted (2026-10-26; built and merged to v3 at PR #132) |
 | [102](./102-library-edits-protocol-and-report-with-an-edit-log.md) | The Library Edits Protocols and Reports, and Logs Each Save in edits.jsonl | 2026-10-26 | Accepted (2026-10-26; built and merged to v3 at PR #133) |
+| [103](./103-experiments-run-local-models-through-llama-cpp-gguf.md) | Experiments Run Local Models Through llama.cpp GGUF | 2026-10-27 | Proposed |
 
 ## Convention
 

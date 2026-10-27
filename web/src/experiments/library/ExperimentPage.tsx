@@ -13,6 +13,7 @@ import { formatRoute } from "../../lib/routes";
 import { AddToNotebook } from "./AddToNotebook";
 import { StatusBadge } from "./ExperimentCard";
 import { ExperimentTabs } from "./ExperimentTabs";
+import { purposeLabel } from "./labels";
 import { MarimoEditorStatus, OpenInMarimoButton, useMarimoLauncher } from "./OpenInMarimo";
 
 const BACK = formatRoute({ area: "experiments", runId: null });
@@ -26,6 +27,7 @@ function RecordFields({ projectId, projectName, experiment }: { projectId: strin
         <StatusBadge status={experiment.status} />
         {experiment.category !== null ? <Badge variant="hue">{experiment.category}</Badge> : null}
         {experiment.size !== null ? <Badge variant="neutral">{experiment.size}</Badge> : null}
+        <Badge variant="neutral">{purposeLabel(experiment.purpose)}</Badge>
         {experiment.migrated ? <Badge variant="neutral">Converted record</Badge> : null}
       </div>
       <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-ui sm:grid-cols-[max-content_minmax(0,1fr)]">

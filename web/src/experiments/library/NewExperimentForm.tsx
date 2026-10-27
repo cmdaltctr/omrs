@@ -1,12 +1,12 @@
 import { FilePlus } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import type { CreatedExperiment, Project } from "../../api/experimentLibrary";
+import type { CreatedExperiment, ExperimentPurpose, Project } from "../../api/experimentLibrary";
 import { useCreateLibraryExperiment } from "../../api/experimentLibraryMutations";
 import { Button } from "../../components/ui/button";
 import { formatRoute } from "../../lib/routes";
 import { SelectField, TextField } from "../fields";
 import { Panel } from "../Panel";
-import { CATEGORIES, indexOutcome, SIZES } from "./labels";
+import { CATEGORIES, indexOutcome, PURPOSES, purposeLabel, SIZES } from "./labels";
 import { refusalLine } from "./refusal";
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -29,6 +29,7 @@ export function NewExperimentForm({ projects, initialProject, onCancel }: NewExp
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<string>(CATEGORIES[0]);
   const [size, setSize] = useState<string>("Standard");
+  const [purpose, setPurpose] = useState<ExperimentPurpose>("optimisation");
   const [followUp, setFollowUp] = useState("");
   const [problems, setProblems] = useState<{ slug?: string; title?: string; followUp?: string; form?: string }>({});
   const [created, setCreated] = useState<(CreatedExperiment & { projectId: string }) | null>(null);
@@ -44,7 +45,7 @@ export function NewExperimentForm({ projects, initialProject, onCancel }: NewExp
     setProblems(found);
     if (project === undefined || Object.keys(found).length > 0) return;
     try {
-      const experiment = { slug: slug.trim(), title: title.trim(), category, size, follow_up: followUp };
+      const experiment = { slug: slug.trim(), title: title.trim(), category, size, purpose, follow_up: followUp };
       const done = await create.mutateAsync({ projectId: project.project_id, experiment });
       setCreated({ ...done, projectId: project.project_id });
       setSlug("");
@@ -53,6 +54,13 @@ export function NewExperimentForm({ projects, initialProject, onCancel }: NewExp
     } catch (failure) {
       setProblems({ form: refusalLine(failure) });
     }
+  }
+
+  function choosePurpose(value: string) {
+    const next = value === "publication" ? "publication" : "optimisation";
+    setPurpose(next);
+    // Paper evidence needs the confirmatory plan (reproducible-experiment-runtime).
+    if (next === "publication") setSize("Confirmatory");
   }
 
   return (
@@ -64,6 +72,10 @@ export function NewExperimentForm({ projects, initialProject, onCancel }: NewExp
         <div className="flex flex-wrap gap-3">
           <TextField label="Slug" dir="ltr" value={slug} placeholder="ocr-text-quality" error={problems.slug} onChange={setSlug} />
           <TextField label="Title" value={title} maxLength={200} error={problems.title} onChange={setTitle} />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <SelectField label="Purpose" value={purpose} onChange={choosePurpose} options={PURPOSES.map((value) => ({ value, label: purposeLabel(value) }))} />
+          {purpose === "publication" ? <p className="text-meta text-muted-foreground">A publication plan needs a pinned llama.cpp runtime.</p> : null}
         </div>
         <div className="flex flex-wrap gap-3">
           <SelectField label="Category" value={category} onChange={setCategory} options={CATEGORIES.map((value) => ({ value, label: value }))} />

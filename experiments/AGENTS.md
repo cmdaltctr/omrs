@@ -32,6 +32,7 @@ Each folder has one `experiment.json`. It holds the facts that change after plan
 | `status` | One of the seven values below |
 | `superseded_by` | The folder that replaces this one, only with `SUPERSEDED`; else `null` |
 | `finding` | The answer in one line |
+| `purpose` | `optimisation` or `publication`. A record without it counts as `optimisation` |
 | `refs` | Optional lists: `adrs`, `changes`, `tasks` |
 | `migration` | Set only on folders converted from the old layout |
 
@@ -59,9 +60,31 @@ Unknown keys are an error. Status lives only in `experiment.json`. Do not write 
 
 A folder gains `edits.jsonl` after the first save from the web app. Git tracks it. Commit it with the edited file.
 
+## Purpose
+
+| Purpose | Meaning |
+| --- | --- |
+| `optimisation` | The result tunes this project. It is not cited outside it. |
+| `publication` | The result may be cited in a paper. Another group must be able to reproduce it. |
+
+- A `publication` experiment must be Confirmatory. Its `plan.json` must hold a `runtime` block. The checker reports an error when either is missing.
+- Never change a past experiment to `publication`. Create a new `publication` follow-up that runs it again, for example `38a`.
+
+## Local models
+
+- Run every local language, embedding and decision model through llama.cpp (`llama-server`) with a public GGUF file.
+- Do not use Ollama, MLX or oMLX for experiment evidence.
+- A hosted model may run as a reference arm. Name its provider and model id in the plan.
+- Pin each local model in the `runtime` block of `plan.json`: role, repository, file, SHA-256, `runtime` (`llama.cpp`), build and the server arguments that change output.
+- State a tolerance: the largest change in each primary metric or per-item score that still counts as the same result.
+- Exception: when the runtime is the variable under test, set `runtime_under_test` to `true`. Each arm then records its runtime, `version` and the SHA-256 of each weights file.
+- Before the first score, call `verify_llamacpp_runtime` from `_lib/llamacpp_runtime.py`. A wrong build or file hash stops the run.
+- A run on another build needs a plan amendment first.
+
 ## Make an experiment
 
-- Create the folder with `uv run --no-sync omrs experiments new <slug> --title "<title>" --category <category> --size <size>`.
+- Create the folder with `uv run --no-sync omrs experiments new <slug> --title "<title>" --category <category> --size <size> --purpose <purpose>`.
+- Without `--purpose`, the record gets `optimisation`.
 - Add `--follow-up <number>` for a follow-up of an earlier experiment.
 - The command takes the next free number. It skips every number in `reserved.json`.
 - To reserve a number without a folder, add `{"number", "reason", "ref"}` to the `reservations` list in `reserved.json`.
@@ -70,7 +93,7 @@ A folder gains `edits.jsonl` after the first save from the web app. Git tracks i
 ## While it runs
 
 - `plan.json` is frozen after the first run. No tool writes to it. Record a change as a new entry in its `amendments` list.
-- Each run appends one line to `output/run-records.jsonl` with the start time, git commit, dirty-tree flag, plan SHA-256 and the command. Call the helper in `_lib/run_record.py` at the start of each run.
+- Each run appends one line to `output/run-records.jsonl` with the start time, git commit, dirty-tree flag, plan SHA-256 and the command. Call the helper in `_lib/run_record.py` at the start of each run. With local models, pass `runtime=found.as_run_record()` from the live check.
 - Never change an earlier line in `output/run-records.jsonl`.
 - Converted folders (with a `migration` note) can have no run records. Do not add them after the fact.
 - Write only inside the experiment folder. Never touch production data or `.env`.

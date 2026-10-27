@@ -20,6 +20,8 @@ This skill runs experiments in a fixed, simple way. Every experiment answers one
 9. Reports open with the Answer box. Write in plain British English, with sentences of 20 words or fewer. Explain each term in the sentence where it first appears.
 10. Keep negative and unclear results. Report them honestly.
 11. Only `experiments/` has `AGENTS.md` and `CLAUDE.md`. Never add them to an experiment folder.
+12. Run every local language, embedding and decision model through llama.cpp with a public GGUF file. Do not use Ollama, MLX or oMLX for experiment evidence. A hosted model may run as a named reference arm. The only exception is an experiment whose variable under test is the runtime (`runtime_under_test: true`). See ADR-103.
+13. Every experiment has a purpose: `optimisation` (tunes this project) or `publication` (may be cited in a paper). A `publication` experiment is Confirmatory and its `plan.json` holds a `runtime` block. Never change a past experiment to `publication`. Create a `publication` follow-up that runs it again.
 
 ## Before you start
 
@@ -35,7 +37,7 @@ Use these when `omrs` is installed (`uv run --no-sync omrs --help` works). All o
 
 | Command | Use |
 | --- | --- |
-| `uv run --no-sync omrs experiments new <slug> --title "<title>" --category <category> --size <size>` | Create a folder, `experiment.json` at `PLANNED`, and the template files for the size |
+| `uv run --no-sync omrs experiments new <slug> --title "<title>" --category <category> --size <size> [--purpose {optimisation,publication}]` | Create a folder, `experiment.json` at `PLANNED`, and the template files for the size |
 | `... new <slug> ... --follow-up <number>` | Create a follow-up: `38a`, then `38b` |
 | `uv run --no-sync omrs experiments check` | Read-only check. Exit 1 on errors. Add `--strict` to fail on warnings too |
 | `uv run --no-sync omrs experiments index --write` | Rebuild the index table in `EXP_README.md` between its markers |
@@ -97,6 +99,7 @@ If none fits, ask the user. Do not invent a category.
 | `status` | One of the seven values below |
 | `superseded_by` | Folder name of the newer experiment, only with `SUPERSEDED`; else `null` |
 | `finding` | The answer in one line, no line break |
+| `purpose` | Optional: `optimisation` or `publication`. Absent means `optimisation` |
 | `refs` | Optional: `{"adrs": [], "changes": [], "tasks": []}` |
 | `migration` | Only on converted folders. Never add it to a new record |
 
@@ -126,7 +129,7 @@ Agree four things with the user. Keep each to one line.
 
 1. Run `omrs experiments new` (or copy the templates by hand). Check that `experiment.json` says `PLANNED`.
 2. Quick: fill the plan half of `report.md`.
-3. Standard and Confirmatory: fill all six sections of `protocol.md`. Fill `plan.json`: `question`, `decision`, `hypotheses`, `decision_rule`, `stats`, `metrics`, `gates` and `frozen`. The `frozen` list records each fixed value, with its input SHA-256 and the git commit. `plan.json` has no `status` key.
+3. Standard and Confirmatory: fill all seven sections of `protocol.md`. Fill `plan.json`: `question`, `decision`, `hypotheses`, `decision_rule`, `stats`, `metrics`, `gates`, `frozen` and `runtime`. The `runtime` block pins each local model (role, repository, file, SHA-256, `llama.cpp` build, server arguments), names each hosted reference and states a tolerance. The `frozen` list records each fixed value, with its input SHA-256 and the git commit. `plan.json` has no `status` key.
 4. Confirmatory: commit `protocol.md` and `plan.json` before the first run. That commit is the preregistration.
 
 ### Step 3: Write the scripts
@@ -144,9 +147,10 @@ Put pure scoring logic in a small module with a `test_*.py` beside it.
 
 1. Set `status` to `ACTIVE` in `experiment.json`.
 2. Each run start appends one line to `output/run-records.jsonl`, through the helper in `experiments/_lib/run_record.py`. The line holds the UTC start time, git commit, dirty-tree flag, `plan.json` SHA-256 and the command. Earlier lines never change.
-3. Run the commands from the plan. If the run stops, re-run with `--resume`. A resume also appends a run record.
-4. The checker warns when a run record's plan SHA-256 differs from the current `plan.json`. That means the plan changed after a run. Record it as an amendment.
-5. A save of `protocol.md` or the report from the web app appends one line to `edits.jsonl` in the experiment folder. Git tracks it. Commit it with the edited file. The checker warns (`edit-log-invalid`) when a line does not load.
+3. With local models, call `verify_llamacpp_runtime(block, base_url=<server address>)` from `experiments/_lib/llamacpp_runtime.py` before the first score. It raises `PreflightError` when the build or a file SHA-256 differs from the plan. Pass `runtime=found.as_run_record()` to `record_run_start`.
+4. Run the commands from the plan. If the run stops, re-run with `--resume`. A resume also appends a run record.
+5. The checker warns when a run record's plan SHA-256 differs from the current `plan.json`. That means the plan changed after a run. Record it as an amendment.
+6. A save of `protocol.md` or the report from the web app appends one line to `edits.jsonl` in the experiment folder. Git tracks it. Commit it with the edited file. The checker warns (`edit-log-invalid`) when a line does not load.
 
 ### Step 5: Summarise
 
@@ -184,7 +188,7 @@ The six `template-*` files are byte-for-byte copies of the templates in `src/omr
 
 | File | Package template | Use |
 | --- | --- | --- |
-| `references/template-protocol.md` | `protocol.md` | Six-section plan for Standard and Confirmatory |
+| `references/template-protocol.md` | `protocol.md` | Seven-section plan for Standard and Confirmatory |
 | `references/template-plan.json` | `plan.json` | Frozen machine-readable plan (no `status`) |
 | `references/template-report.md` | `report.md` | Report with the Answer box |
 | `references/template-report-quick.md` | `report-quick.md` | Quick experiment: plan and report in one file |

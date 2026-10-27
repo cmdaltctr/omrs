@@ -1,5 +1,5 @@
 /** Badge colours, counts, filters and wording for the experiment library. Copy is British English. */
-import type { Experiment, Finding, IndexOutcome } from "../../api/experimentLibrary";
+import type { Experiment, ExperimentPurpose, Finding, IndexOutcome } from "../../api/experimentLibrary";
 
 /** The seven record statuses, in the order the status filter lists them. */
 export const STATUSES = ["PLANNED", "ACTIVE", "PASS", "FAIL", "INCONCLUSIVE", "MEASURED", "SUPERSEDED"] as const;
@@ -7,6 +7,16 @@ export const STATUSES = ["PLANNED", "ACTIVE", "PASS", "FAIL", "INCONCLUSIVE", "M
 export const CATEGORIES = ["retrieval", "ingestion", "runtime", "generation", "graph", "review"] as const;
 
 export const SIZES = ["Quick", "Standard", "Confirmatory"] as const;
+
+/** The two purposes, in the order the New experiment form lists them. */
+export const PURPOSES = ["optimisation", "publication"] as const satisfies readonly ExperimentPurpose[];
+
+const PURPOSE_LABELS: Record<ExperimentPurpose, string> = { optimisation: "Optimisation", publication: "Publication" };
+
+/** A missing or unknown purpose reads as Optimisation, as the server reads an old record. */
+export function purposeLabel(purpose: string | null | undefined): string {
+  return purpose === "publication" ? PURPOSE_LABELS.publication : PURPOSE_LABELS.optimisation;
+}
 
 export type StatusVariant = "success" | "error" | "warning" | "info" | "neutral";
 
