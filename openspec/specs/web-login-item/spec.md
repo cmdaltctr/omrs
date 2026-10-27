@@ -64,7 +64,7 @@ The login item SHALL run an `omrs` executable path that the command resolved to 
 
 ### Requirement: The login item keeps the app running
 
-The agent SHALL start at load, SHALL restart the app after a crash or kill, and SHALL NOT restart it after an exit with status 0. The agent SHALL also start the app again after a stop signal, because the signal ends the process and launchd treats that as a crash. `omrs web uninstall` and the Turn off action (see "Power control from the page") stop the app. Uninstall removes the agent for good. Turn off unloads the agent and keeps the plist, so the app starts again at the next login or when `omrs web start` runs. The agent SHALL wait at least 60 seconds between starts. The agent SHALL write standard output and standard error to `~/Library/Logs/omrs/com.omrs.web.out.log` and `com.omrs.web.err.log`. The agent SHALL give the app a fixed `PATH` that includes `/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin` and `/bin`.
+The agent SHALL start at load, SHALL restart the app after a crash or kill, and SHALL NOT restart it after an exit with status 0. The agent SHALL also start the app again after a stop signal, because the signal ends the process and launchd treats that as a crash.
 
 #### Scenario: Crash restarts
 
@@ -82,21 +82,29 @@ The agent SHALL start at load, SHALL restart the app after a crash or kill, and 
 - **WHEN** the app exits with status 0
 - **THEN** launchd MUST NOT start it again
 
+### Requirement: Turn off and uninstall stop the app, and restarts are spaced out
+
+`omrs web uninstall` and the Turn off action (see "Power control from the page") stop the app. Uninstall removes the agent for good. Turn off unloads the agent and keeps the plist, so the app starts again at the next login or when `omrs web start` runs. The agent SHALL wait at least 60 seconds between starts.
+
 #### Scenario: Turn off keeps the plist
 
 - **WHEN** the Turn off action has unloaded the agent
 - **THEN** launchd MUST NOT start the app again in this login session
 - **AND** the plist file MUST still exist, so the agent loads at the next login
 
+### Requirement: The agent sets the log files and a fixed PATH
+
+The agent SHALL write standard output and standard error to `~/Library/Logs/omrs/com.omrs.web.out.log` and `com.omrs.web.err.log`. The agent SHALL give the app a fixed `PATH` that includes `/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin` and `/bin`.
+
+#### Scenario: Logs and PATH set by the agent
+
+- **WHEN** the agent starts the app
+- **THEN** standard output and standard error MUST go to `~/Library/Logs/omrs/com.omrs.web.out.log` and `com.omrs.web.err.log`
+- **AND** the app's `PATH` MUST include `/opt/homebrew/bin`, `/usr/local/bin`, `/usr/bin` and `/bin`
+
 ### Requirement: The login item reads omrs.jsonc and an optional ~/.omrs/.env
 
-The agent SHALL run with the working folder `~/.omrs`. The app SHALL read `omrs.jsonc` from the user config folder, and SHALL also read `~/.omrs/.env` when that file exists. `install` SHALL create `~/.omrs` when it is missing. The plan SHALL name the `omrs.jsonc` path as the settings file and SHALL say that `~/.omrs/.env` is optional and overrides it. When the folder where `install` runs has a `.env`, the plan SHALL tell the user that the login item does not read it, and SHALL suggest `omrs config init`. The command SHALL NOT read, copy or move any `.env` file.
-
-#### Scenario: Settings file named in the plan
-
-- **WHEN** the user runs `omrs web install --dry-run` in a checkout that has a `.env`
-- **THEN** the plan MUST name `~/.config/omrs/omrs.jsonc` as the settings file, MUST say that the checkout `.env` is not read, and MUST suggest `omrs config init`
-- **AND** no `.env` file MUST be created or changed
+The agent SHALL run with the working folder `~/.omrs`. The app SHALL read `omrs.jsonc` from the user config folder, and SHALL also read `~/.omrs/.env` when that file exists. `install` SHALL create `~/.omrs` when it is missing.
 
 #### Scenario: Settings reach the app
 
@@ -107,6 +115,16 @@ The agent SHALL run with the working folder `~/.omrs`. The app SHALL read `omrs.
 
 - **WHEN** `omrs.jsonc` sets `embed_model` and `~/.omrs/.env` sets `EMBED_MODEL` to another model
 - **THEN** the running app MUST use the `.env` model, and Settings MUST report the source `dotenv`
+
+### Requirement: The install plan names the settings file and leaves .env files alone
+
+The plan SHALL name the `omrs.jsonc` path as the settings file and SHALL say that `~/.omrs/.env` is optional and overrides it. When the folder where `install` runs has a `.env`, the plan SHALL tell the user that the login item does not read it, and SHALL suggest `omrs config init`. The command SHALL NOT read, copy or move any `.env` file.
+
+#### Scenario: Settings file named in the plan
+
+- **WHEN** the user runs `omrs web install --dry-run` in a checkout that has a `.env`
+- **THEN** the plan MUST name `~/.config/omrs/omrs.jsonc` as the settings file, MUST say that the checkout `.env` is not read, and MUST suggest `omrs config init`
+- **AND** no `.env` file MUST be created or changed
 
 ### Requirement: Web login item status
 
@@ -129,7 +147,7 @@ The agent SHALL run with the working folder `~/.omrs`. The app SHALL read `omrs.
 
 ### Requirement: Web login item restart
 
-`omrs web restart` SHALL send `SIGTERM` to the app, so it shuts down cleanly. It SHALL wait until the old process has ended, for up to 15 seconds. It SHALL then wait up to 5 seconds for launchd to start a new process. Only if none starts SHALL the command start one with `launchctl kickstart`, and it SHALL NOT use the `-k` option. It SHALL then wait until the app answers `GET /v1/health` or 60 seconds pass, and it SHALL exit 0 only when the app answers. When no login item is installed it SHALL say so and exit non-zero.
+`omrs web restart` SHALL send `SIGTERM` to the app, so it shuts down cleanly. It SHALL wait until the old process has ended, for up to 15 seconds. It SHALL then wait up to 5 seconds for launchd to start a new process. Only if none starts SHALL the command start one with `launchctl kickstart`, and it SHALL NOT use the `-k` option. It SHALL then wait until the app answers `GET /v1/health` or 60 seconds pass, and it SHALL exit 0 only when the app answers.
 
 #### Scenario: Restart shuts down cleanly
 
@@ -165,6 +183,15 @@ The agent SHALL run with the working folder `~/.omrs`. The app SHALL read `omrs.
 - **AND** an open tab MUST sign in again with the workspace sign-in secret, with no user action
 - **AND** `omrs web open` MUST still give a sign-in link
 
+### Requirement: Restart without a login item fails
+
+When no login item is installed it SHALL say so and exit non-zero.
+
+#### Scenario: No login item installed
+
+- **WHEN** no login item is installed and the user runs `omrs web restart`
+- **THEN** the command MUST say so and MUST exit non-zero
+
 ### Requirement: Web login item removal
 
 `omrs web uninstall` SHALL unload the agent and delete its plist. It SHALL keep the workspace folder, the logs and the user's data. It SHALL ask for confirmation unless `--yes` is given, and it SHALL succeed with a message when nothing is installed.
@@ -182,7 +209,7 @@ The agent SHALL run with the working folder `~/.omrs`. The app SHALL read `omrs.
 
 ### Requirement: Open the app with a fresh sign-in link
 
-`omrs web open` SHALL read the sign-in link that the running login-item server wrote, check that the server answers `GET /v1/health` on that address, and open the link in the default browser. It SHALL print the address without the secret. With `--print` it SHALL print the full link to standard error instead of opening a browser. When the file is missing or the server does not answer, the command SHALL say that the login item is not running, name `omrs web status`, and exit non-zero. It SHALL NOT start a server.
+`omrs web open` SHALL read the sign-in link that the running login-item server wrote, check that the server answers `GET /v1/health` on that address, and open the link in the default browser. It SHALL print the address without the secret. With `--print` it SHALL print the full link to standard error instead of opening a browser.
 
 #### Scenario: Open signs in
 
@@ -195,15 +222,19 @@ The agent SHALL run with the working folder `~/.omrs`. The app SHALL read `omrs.
 - **WHEN** the user runs `omrs web open --print`
 - **THEN** the full one-time link MUST be printed to standard error and no browser MUST open
 
-#### Scenario: Old link file after a crash
-
-- **WHEN** the link file exists but nothing answers on its port
-- **THEN** the command MUST say the login item is not running, MUST NOT open a browser, and MUST exit non-zero
-
 #### Scenario: Link used twice
 
 - **WHEN** the user runs `omrs web open` twice
 - **THEN** each run MUST sign in, because the server issues a new link after each sign-in
+
+### Requirement: Open reports a login item that is not running
+
+When the file is missing or the server does not answer, the command SHALL say that the login item is not running, name `omrs web status`, and exit non-zero. It SHALL NOT start a server.
+
+#### Scenario: Old link file after a crash
+
+- **WHEN** the link file exists but nothing answers on its port
+- **THEN** the command MUST say the login item is not running, MUST NOT open a browser, and MUST exit non-zero
 
 #### Scenario: Server not running
 
@@ -216,10 +247,6 @@ The app SHALL offer `GET /v1/server/power` and `POST /v1/server/power`. Both rou
 
 `GET /v1/server/power` SHALL answer `{"status": "ok", "managed": true}` when the running app is the login item and `{"status": "ok", "managed": false}` otherwise.
 
-`POST /v1/server/power` SHALL take the body `{"action": "restart"}` or `{"action": "off"}`. A body with any other action SHALL receive 422. A body that is not that shape (a missing or extra field) SHALL receive 400, as every other route does. Neither SHALL signal any process. When the app is not the login item, the route SHALL answer 409 and change nothing. When a run, an ingestion or a map call is in progress, the route SHALL answer 409 and change nothing. In every other case the route SHALL answer 202 and SHALL then act after the response has been sent.
-
-The `restart` action SHALL ask launchd to send `SIGTERM` to the app, so launchd starts it again. The `off` action SHALL ask launchd to unload the agent. After `off` the app SHALL stay stopped until the next login or until `omrs web start` runs. The plist file SHALL stay in place.
-
 #### Scenario: A bearer credential is refused
 
 - **WHEN** a request with a bearer credential posts to `/v1/server/power`
@@ -231,11 +258,33 @@ The `restart` action SHALL ask launchd to send `SIGTERM` to the app, so launchd 
 - **THEN** the answer MUST be `{"status": "ok", "managed": false}`
 - **AND** a `POST` with either action MUST answer 409 and MUST NOT signal any process
 
+### Requirement: The power route accepts only the restart and off actions
+
+`POST /v1/server/power` SHALL take the body `{"action": "restart"}` or `{"action": "off"}`. A body with any other action SHALL receive 422. A body that is not that shape (a missing or extra field) SHALL receive 400, as every other route does. Neither SHALL signal any process.
+
+#### Scenario: Unknown action
+
+- **WHEN** the session posts `{"action": "sleep"}`
+- **THEN** the route MUST answer 422 and MUST NOT signal any process
+
+#### Scenario: Malformed body
+
+- **WHEN** the session posts `{"verb": "off"}` or `{"action": "off", "force": true}`
+- **THEN** the route MUST answer 400 and MUST NOT signal any process
+
+### Requirement: The power route acts only for an idle login item
+
+When the app is not the login item, the route SHALL answer 409 and change nothing. When a run, an ingestion or a map call is in progress, the route SHALL answer 409 and change nothing. In every other case the route SHALL answer 202 and SHALL then act after the response has been sent.
+
 #### Scenario: Work in progress blocks the action
 
 - **WHEN** an ingestion is running and the session posts `{"action": "off"}`
 - **THEN** the route MUST answer 409 with a one-line reason
 - **AND** the app MUST keep running
+
+### Requirement: Restart and off ask launchd to act
+
+The `restart` action SHALL ask launchd to send `SIGTERM` to the app, so launchd starts it again. The `off` action SHALL ask launchd to unload the agent. After `off` the app SHALL stay stopped until the next login or until `omrs web start` runs. The plist file SHALL stay in place.
 
 #### Scenario: Restart
 
@@ -251,16 +300,6 @@ The `restart` action SHALL ask launchd to send `SIGTERM` to the app, so launchd 
 - **THEN** the route MUST answer 202
 - **AND** the app MUST end and MUST NOT start again until the next login or `omrs web start`
 - **AND** the plist file MUST still exist
-
-#### Scenario: Unknown action
-
-- **WHEN** the session posts `{"action": "sleep"}`
-- **THEN** the route MUST answer 422 and MUST NOT signal any process
-
-#### Scenario: Malformed body
-
-- **WHEN** the session posts `{"verb": "off"}` or `{"action": "off", "force": true}`
-- **THEN** the route MUST answer 400 and MUST NOT signal any process
 
 ### Requirement: Start the login item
 

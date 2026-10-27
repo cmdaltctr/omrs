@@ -40,17 +40,25 @@ The user SHALL create a main folder by name, which creates a directory below an 
 
 ### Requirement: Marimo loads through plugin approval
 
-The Experiments view SHALL have a Code editor section that keeps the notebook tool registration, trust notice, one-time credentials and editor launch panels. Opening a notebook editor for an experiment workspace SHALL launch the registered marimo tool, and stopping it SHALL end the launch. The registration form SHALL fill in the manifest path that the installed application ships. The running editors list SHALL also show editors that the Library opened, with their project and experiment folder, and SHALL stop them the same way.
+The Experiments view SHALL have a Code editor section that keeps the notebook tool registration, trust notice, one-time credentials and editor launch panels. Opening a notebook editor for an experiment workspace SHALL launch the registered marimo tool, and stopping it SHALL end the launch.
 
 #### Scenario: Open the marimo editor
 
 - **WHEN** marimo is registered and the user opens the editor for an experiment workspace
 - **THEN** an editor launch MUST start and its status MUST be shown with a stop action
 
+### Requirement: The registration form fills in the shipped manifest path
+
+The registration form SHALL fill in the manifest path that the installed application ships.
+
 #### Scenario: Register from an installed application
 
 - **WHEN** the user opens the registration form in an installed application
 - **THEN** the manifest path field holds the shipped manifest path
+
+### Requirement: The running editors list includes Library editors
+
+The running editors list SHALL also show editors that the Library opened, with their project and experiment folder, and SHALL stop them the same way.
 
 #### Scenario: Library editor in the list
 

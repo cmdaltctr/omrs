@@ -40,9 +40,18 @@ The repository SHALL commit a deterministic synthetic corpus under
 facts and stable source identifiers. Every corpus sentence SHALL be written for
 this test and SHALL NOT contain scraped or third-party content.
 
-The repository SHALL commit between 10 and 15 golden queries. Each query SHALL
-map to one or more known correct source documents. The corpus, queries, and
-source mappings SHALL be reviewable without running an embedding model.
+#### Scenario: Corpus content changes
+
+- **WHEN** a document, query, or source mapping changes
+- **THEN** the committed corpus or query identity changes
+- **AND** the existing baseline MUST NOT be accepted without a new measurement
+
+### Requirement: Golden queries map to reviewable known sources
+
+The repository SHALL commit between 10 and 15 golden queries. Each query
+SHALL map to one or more known correct source documents. The corpus,
+queries, and source mappings SHALL be reviewable without running an
+embedding model.
 
 #### Scenario: Golden data is inspected before execution
 
@@ -51,25 +60,12 @@ source mappings SHALL be reviewable without running an embedding model.
 - **AND** each expected source contains one distinct planted fact that answers
   the query
 
-#### Scenario: Corpus content changes
-
-- **WHEN** a document, query, or source mapping changes
-- **THEN** the committed corpus or query identity changes
-- **AND** the existing baseline MUST NOT be accepted without a new measurement
-
 ### Requirement: Tier 1 blocks pull requests with deterministic retrieval
 
 Tier 1 SHALL run for every pull request with stable fake embeddings and no
 Ollama service. It SHALL exercise production score conversion, reciprocal rank
 fusion, threshold transformation, and ranking logic against the golden source
 mappings.
-
-Tier 1 tests SHALL carry the `slow` marker. Continuous integration SHALL invoke
-them through a targeted command, so the existing `pytest -m "not slow"` path
-remains unchanged.
-
-Tier 1 documentation MUST state that fake embeddings cannot detect embedding
-model quality or production chunk-text effects.
 
 #### Scenario: Pull request changes ranking logic
 
@@ -85,6 +81,14 @@ model quality or production chunk-text effects.
 - **WHEN** Tier 1 runs
 - **THEN** the gate completes without a skip or network attempt
 
+### Requirement: Tier 1 runs outside the fast suite and states its limits
+
+Tier 1 tests SHALL carry the `slow` marker. Continuous integration SHALL
+invoke them through a targeted command, so the existing `pytest -m "not
+slow"` path remains unchanged. Tier 1 documentation MUST state that fake
+embeddings cannot detect embedding model quality or production chunk-text
+effects.
+
 #### Scenario: The ordinary fast suite runs
 
 - **WHEN** pytest selects `not slow`
@@ -97,14 +101,22 @@ Tier 2 SHALL ingest the committed corpus and run the golden queries with real
 Ollama embeddings. The CI configuration SHALL pin one embedding model tag and
 the baseline SHALL record that same tag.
 
-Tier 2 SHALL run nightly and through `workflow_dispatch`. Its Recall@10 and MRR
-floors SHALL each sit between 0.02 and 0.03 below their measured baseline. This
-margin accounts for floating point variation and borderline rank changes across
-CPU architectures.
+Tier 2 SHALL run nightly and through `workflow_dispatch`.
 
-Tier 2 MUST fail when either metric falls below its floor. Ollama absence,
-model-tag mismatch, fixture mismatch, or an invalid baseline MUST produce a
-failure rather than a skip.
+#### Scenario: Manual verification is requested
+
+- **WHEN** a maintainer dispatches the CI workflow manually
+- **THEN** Tier 2 runs with the same model tag, fixtures, metrics, and floors as
+  the nightly job
+
+### Requirement: Tier 2 fails below floors set just under the baseline
+
+Its Recall@10 and MRR floors SHALL each sit between 0.02 and 0.03 below
+their measured baseline. This margin accounts for floating point variation
+and borderline rank changes across CPU architectures. Tier 2 MUST fail when
+either metric falls below its floor. Ollama absence, model-tag mismatch,
+fixture mismatch, or an invalid baseline MUST produce a failure rather than
+a skip.
 
 #### Scenario: Nightly quality remains above both floors
 
@@ -120,12 +132,6 @@ failure rather than a skip.
 - **THEN** it is set 0.02 to 0.03 below the recorded measured value
 - **AND** the cross-machine evidence and selected margin are recorded in the
   implementation TDR
-
-#### Scenario: Manual verification is requested
-
-- **WHEN** a maintainer dispatches the CI workflow manually
-- **THEN** Tier 2 runs with the same model tag, fixtures, metrics, and floors as
-  the nightly job
 
 ### Requirement: Baseline evidence is committed and failure output is diagnostic
 

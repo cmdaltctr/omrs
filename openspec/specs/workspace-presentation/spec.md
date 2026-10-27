@@ -21,12 +21,16 @@ The app navigation SHALL offer exactly Home, Chat, Knowledge Base, Studio, Exper
 
 ### Requirement: The URL is the only source of location
 
-The current area, project, profile, purpose, run and Settings section SHALL be read from the URL hash only, using these routes: `#/home`, `#/knowledge-base`, `#/knowledge-base/<collection>`, `#/chat`, `#/chat/<collection>`, `#/studio`, `#/studio/<profile-id>`, `#/studio/<profile-id>/<purpose>` (purpose `ingest`, `search` or `answer`), `#/experiments`, `#/experiments/runs/<run-id>`, `#/integrations`, `#/settings` and `#/settings/<section>`, with each segment URI-encoded. A hash that matches no route SHALL show Home and rewrite the address bar to `#/home`. Back and forward SHALL restore the previous location. A route naming a collection, profile or run that the server does not return SHALL show a not-found state with a link back to its picker. Browser storage SHALL hold only the theme preference, the last-used collection as a default for `#/chat` and `#/knowledge-base`, and unsaved canvas drafts; stored values that fail validation SHALL be ignored and removed.
+The current area, project, profile, purpose, run and Settings section SHALL be read from the URL hash only, using these routes: `#/home`, `#/knowledge-base`, `#/knowledge-base/<collection>`, `#/chat`, `#/chat/<collection>`, `#/studio`, `#/studio/<profile-id>`, `#/studio/<profile-id>/<purpose>` (purpose `ingest`, `search` or `answer`), `#/experiments`, `#/experiments/runs/<run-id>`, `#/integrations`, `#/settings` and `#/settings/<section>`, with each segment URI-encoded.
 
 #### Scenario: Reload keeps the location
 
 - **WHEN** the user reloads the page at `#/knowledge-base/research%20notes`
 - **THEN** the Knowledge Base for the collection `research notes` MUST be shown
+
+### Requirement: Unknown routes fall back to Home and history restores the location
+
+A hash that matches no route SHALL show Home and rewrite the address bar to `#/home`. Back and forward SHALL restore the previous location.
 
 #### Scenario: Unknown route
 
@@ -43,20 +47,28 @@ The current area, project, profile, purpose, run and Settings section SHALL be r
 - **WHEN** the user goes from `#/home` to `#/chat/papers` and presses Back
 - **THEN** Home MUST be shown
 
+#### Scenario: Unknown Settings section
+
+- **WHEN** the app opens at `#/settings/keys`
+- **THEN** Home MUST be shown and the address bar MUST read `#/home`
+
+### Requirement: A route to a missing item shows a not-found state
+
+A route naming a collection, profile or run that the server does not return SHALL show a not-found state with a link back to its picker.
+
 #### Scenario: Unknown collection in the route
 
 - **WHEN** the app opens at `#/chat/missing` and the server lists no collection named `missing`
 - **THEN** the view MUST show a not-found state with a link to `#/chat`
 
+### Requirement: Browser storage holds only validated preferences and drafts
+
+Browser storage SHALL hold only the theme preference, the last-used collection as a default for `#/chat` and `#/knowledge-base`, and unsaved canvas drafts; stored values that fail validation SHALL be ignored and removed.
+
 #### Scenario: Stored value with an old shape
 
 - **WHEN** browser storage holds a preferences value that fails validation
 - **THEN** the app MUST use the default theme, MUST remove the stored value, and MUST NOT show an error
-
-#### Scenario: Unknown Settings section
-
-- **WHEN** the app opens at `#/settings/keys`
-- **THEN** Home MUST be shown and the address bar MUST read `#/home`
 
 ### Requirement: Workspace data stays consistent across views
 
@@ -74,12 +86,16 @@ Data read from the server SHALL be shared between views through one cache, so a 
 
 ### Requirement: API failures render as friendly messages with one action
 
-Every view SHALL convert transport and HTTP failures into a single short message naming what failed plus one action, chosen from the failure kind and status: an unreachable server offers Retry; a refused session explains how to open the workspace again; a missing resource links back to its picker; an oversized upload names the limit. Parser output, status dumps and stack text MUST NOT appear in the UI; the raw message SHALL go to the browser console only. Under the Vite dev server, `/v1` requests SHALL proxy to the local web transport.
+Every view SHALL convert transport and HTTP failures into a single short message naming what failed plus one action, chosen from the failure kind and status: an unreachable server offers Retry; a refused session explains how to open the workspace again; a missing resource links back to its picker; an oversized upload names the limit. Parser output, status dumps and stack text MUST NOT appear in the UI; the raw message SHALL go to the browser console only.
 
 #### Scenario: Friendly failure
 
 - **WHEN** a listing request fails because the server is down
 - **THEN** the view MUST show a short message with a Retry action and MUST NOT show the parser error text
+
+### Requirement: The Vite dev server proxies API requests
+
+Under the Vite dev server, `/v1` requests SHALL proxy to the local web transport.
 
 #### Scenario: Dev proxy
 
@@ -170,19 +186,21 @@ On the Studio canvas sub-page (`#/studio/<profile-id>` or `#/studio/<profile-id>
 
 The side navigation SHALL end with a foot of four icon controls in this order: a theme button, a Settings link, a power control and a GitHub link. The foot SHALL have no language control, because the interface is English only. Every control SHALL have an accessible name. The existing top bar theme controls SHALL stay unchanged.
 
-The theme button SHALL show the theme in effect and SHALL switch between Light and Dark in one click. Its accessible name SHALL state the theme it switches to. It SHALL write the stored theme preference, and the Settings theme select SHALL show the same value.
-
-The Settings link SHALL open the Settings view.
-
-The power control SHALL show a light that follows `GET /v1/health`: green while the app answers and grey when it does not. Pressing it SHALL open a panel. The panel SHALL say "Running" with the running version while the app answers, and "Not answering" when it does not. The panel SHALL offer a Turn off button and a Restart button. Each button SHALL open a confirmation dialog that names the action. The Restart dialog SHALL say that the page signs in again by itself once the app is back, and SHALL name `omrs web open` for the case where it does not. After Turn off the dialog SHALL name `omrs web start`. After Restart it SHALL name `omrs web open`. The buttons SHALL be disabled when `GET /v1/server/power` answers `managed: false` or does not answer. The panel SHALL then show the commands `omrs web restart` and `omrs web open`, and one line that says why the buttons are disabled. When the server answers 409 because work is in progress, the panel SHALL show that reason in one line and SHALL keep the app running. The state SHALL NOT rely on colour alone.
-
-The GitHub link SHALL point to https://github.com/cmdaltctr/omrs, SHALL open in a new tab and SHALL carry a `rel` value with `noopener` and `noreferrer`.
-
 #### Scenario: Four controls in order
 
 - **WHEN** the navigation renders
 - **THEN** the foot MUST hold exactly four controls, in this order: theme button, Settings link, power control, GitHub link
 - **AND** the foot MUST hold no language control
+
+#### Scenario: Collapsed navigation
+
+- **WHEN** the navigation shows as its icon column
+- **THEN** the four controls MUST render as icons in one column
+- **AND** below the `md` breakpoint the four controls MUST stay reachable
+
+### Requirement: The theme button switches the theme in one click
+
+The theme button SHALL show the theme in effect and SHALL switch between Light and Dark in one click. Its accessible name SHALL state the theme it switches to. It SHALL write the stored theme preference, and the Settings theme select SHALL show the same value.
 
 #### Scenario: Theme in one click, light to dark
 
@@ -196,10 +214,18 @@ The GitHub link SHALL point to https://github.com/cmdaltctr/omrs, SHALL open in 
 - **THEN** the app MUST render the light theme, the stored preference MUST be `light`, and the Settings theme select MUST read Light
 - **AND** the button's accessible name MUST state that it switches to the dark theme
 
+### Requirement: The Settings link opens Settings
+
+The Settings link SHALL open the Settings view.
+
 #### Scenario: Settings link
 
 - **WHEN** the user presses the Settings control
 - **THEN** the address bar MUST read `#/settings`
+
+### Requirement: The power control shows whether the app answers
+
+The power control SHALL show a light that follows `GET /v1/health`: green while the app answers and grey when it does not. Pressing it SHALL open a panel. The panel SHALL say "Running" with the running version while the app answers, and "Not answering" when it does not. The state SHALL NOT rely on colour alone.
 
 #### Scenario: Power light follows health
 
@@ -207,6 +233,10 @@ The GitHub link SHALL point to https://github.com/cmdaltctr/omrs, SHALL open in 
 - **THEN** the power icon MUST be green and its panel MUST say "Running" with the running version
 - **AND** when `GET /v1/health` does not answer, the power icon MUST be grey and its panel MUST say "Not answering"
 - **AND** the panel text MUST state the state, so the state does not rely on colour alone
+
+### Requirement: The power panel confirms Turn off and Restart
+
+The panel SHALL offer a Turn off button and a Restart button. Each button SHALL open a confirmation dialog that names the action. The Restart dialog SHALL say that the page signs in again by itself once the app is back, and SHALL name `omrs web open` for the case where it does not. After Turn off the dialog SHALL name `omrs web start`. After Restart it SHALL name `omrs web open`.
 
 #### Scenario: Turn off asks first
 
@@ -220,6 +250,10 @@ The GitHub link SHALL point to https://github.com/cmdaltctr/omrs, SHALL open in 
 - **THEN** a confirmation dialog MUST open and MUST NOT call `POST /v1/server/power` until the user confirms
 - **AND** after confirmation the page MUST post `{"action": "restart"}` and MUST then say that the page signs in again by itself and name `omrs web open`
 
+### Requirement: The power panel explains when it cannot act
+
+The buttons SHALL be disabled when `GET /v1/server/power` answers `managed: false` or does not answer. The panel SHALL then show the commands `omrs web restart` and `omrs web open`, and one line that says why the buttons are disabled. When the server answers 409 because work is in progress, the panel SHALL show that reason in one line and SHALL keep the app running.
+
 #### Scenario: Power panel names the commands
 
 - **WHEN** the user opens the power panel and `GET /v1/server/power` answers `managed: false`
@@ -231,14 +265,12 @@ The GitHub link SHALL point to https://github.com/cmdaltctr/omrs, SHALL open in 
 - **WHEN** the user confirms an action and the server answers 409
 - **THEN** the panel MUST show the reason in one line and MUST NOT report the app as off or restarting
 
+### Requirement: The GitHub link opens the repository in a new tab
+
+The GitHub link SHALL point to https://github.com/cmdaltctr/omrs, SHALL open in a new tab and SHALL carry a `rel` value with `noopener` and `noreferrer`.
+
 #### Scenario: GitHub link
 
 - **WHEN** the navigation renders
 - **THEN** the GitHub link MUST point to https://github.com/cmdaltctr/omrs
 - **AND** the link MUST open in a new tab and MUST carry a `rel` value with `noopener` and `noreferrer`
-
-#### Scenario: Collapsed navigation
-
-- **WHEN** the navigation shows as its icon column
-- **THEN** the four controls MUST render as icons in one column
-- **AND** below the `md` breakpoint the four controls MUST stay reachable

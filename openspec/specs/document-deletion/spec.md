@@ -11,9 +11,7 @@ The system SHALL provide a
 collection_name: str = "documents") -> dict` function that applies the same
 canonical path resolution and deterministic `source_id` derivation as
 production ingestion, then deletes all chunks whose `source_id` matches. The
-function SHALL be idempotent: calling it for a source with no indexed chunks
-SHALL return success with `chunks_removed: 0`. The existing general metadata
-deletion operation MAY delete a source directly with a `source_id` filter.
+existing general metadata deletion operation MAY delete a source directly with a `source_id` filter.
 
 #### Scenario: Delete existing file chunks
 
@@ -22,16 +20,21 @@ deletion operation MAY delete a source directly with a `source_id` filter.
 - **AND** all 12 chunks for that `source_id` SHALL be removed from the `"research"` collection
 - **AND** the result SHALL include `"chunks_removed": 12` and `"status": "ok"`
 
+#### Scenario: Delete from non-existent collection
+
+- **WHEN** `remove_document("/path/to/file.pdf", collection_name="nonexistent")` is called
+- **THEN** the result SHALL include `"status": "error"` and a descriptive message
+
+### Requirement: Removing a source with no indexed chunks succeeds
+
+The function SHALL be idempotent: calling it for a source with no indexed
+chunks SHALL return success with `chunks_removed: 0`.
+
 #### Scenario: Delete non-existent file chunks
 
 - **WHEN** `remove_document("/path/to/unknown.pdf")` is called
 - **THEN** the result SHALL include `"chunks_removed": 0` and `"status": "ok"`
 - **AND** no error SHALL be raised
-
-#### Scenario: Delete from non-existent collection
-
-- **WHEN** `remove_document("/path/to/file.pdf", collection_name="nonexistent")` is called
-- **THEN** the result SHALL include `"status": "error"` and a descriptive message
 
 ### Requirement: Delete chunks by metadata filter
 
@@ -151,13 +154,6 @@ When replacing a source version, the selection of rows to delete SHALL be
 scoped to that source's `source_id` at the store level. The implementation
 SHALL NOT read the whole collection to find them.
 
-The correctness guarantee is unchanged — only rows belonging to this
-`source_id` and not to the current replacement attempt are deleted — but the
-work performed SHALL be proportional to the source's own row count, not to the
-collection's. The previous implementation iterated every row in the collection
-for every replaced file, inside the global write lock, making re-ingestion
-cost O(files × collection size) and blocking concurrent ingestion.
-
 #### Scenario: Selection reads only the source's rows
 
 - **GIVEN** a collection containing many sources
@@ -165,6 +161,23 @@ cost O(files × collection size) and blocking concurrent ingestion.
 - **THEN** the number of rows read to select stale rows SHALL be proportional
   to that source's row count
 - **AND** SHALL NOT be proportional to the collection's total row count
+
+#### Scenario: Backends differing on missing-key inequality stay correct
+
+- **GIVEN** a store whose filter semantics treat a missing metadata key
+  differently under inequality
+- **WHEN** stale selection runs
+- **THEN** the attempt comparison SHALL be performed such that rows lacking
+  the attempt key are not silently included or excluded by backend semantics
+
+### Requirement: Stale-version cleanup work is proportional to the source's own rows
+
+The correctness guarantee is unchanged — only rows belonging to this
+`source_id` and not to the current replacement attempt are deleted — but the
+work performed SHALL be proportional to the source's own row count, not to the
+collection's. The previous implementation iterated every row in the collection
+for every replaced file, inside the global write lock, making re-ingestion
+cost O(files × collection size) and blocking concurrent ingestion.
 
 #### Scenario: Only stale rows of this source are deleted
 
@@ -174,14 +187,6 @@ cost O(files × collection size) and blocking concurrent ingestion.
 - **THEN** exactly the previous attempt's rows SHALL be deleted
 - **AND** no row of any other source SHALL be deleted, including a
   byte-identical file at another path
-
-#### Scenario: Backends differing on missing-key inequality stay correct
-
-- **GIVEN** a store whose filter semantics treat a missing metadata key
-  differently under inequality
-- **WHEN** stale selection runs
-- **THEN** the attempt comparison SHALL be performed such that rows lacking
-  the attempt key are not silently included or excluded by backend semantics
 
 #### Scenario: Cleanup cost is observable
 

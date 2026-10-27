@@ -7,7 +7,16 @@ The Tailwind v4 + shadcn-style component stack for the web workspace: build wiri
 
 ### Requirement: Status labels meet WCAG AA
 
-`web/src/styles/tokens.css` SHALL define `--status-error-label`, `--status-warning-label`, `--status-success-label` and `--status-info-label` as 60% of the status colour mixed with 40% of `--text-primary`, declared once so both themes follow `--text-primary`. The bridge SHALL expose them as `text-status-*-label`, and badges SHALL use them for text. Each label SHALL have a contrast ratio of at least 4.5:1 on its status colour at 10% opacity over the canvas, elevated and muted surfaces, in light and dark themes.
+`web/src/styles/tokens.css` SHALL define `--status-error-label`, `--status-warning-label`, `--status-success-label` and `--status-info-label` as 60% of the status colour mixed with 40% of `--text-primary`, declared once so both themes follow `--text-primary`. The bridge SHALL expose them as `text-status-*-label`, and badges SHALL use them for text.
+
+#### Scenario: Badges read the label tokens
+
+- **WHEN** a status badge renders its text
+- **THEN** the text MUST use the `text-status-*-label` utility that the bridge exposes for that status
+
+### Requirement: Each status label has AA contrast on its tint
+
+Each label SHALL have a contrast ratio of at least 4.5:1 on its status colour at 10% opacity over the canvas, elevated and muted surfaces, in light and dark themes.
 
 #### Scenario: A palette change lowers a label contrast
 
@@ -81,26 +90,30 @@ The web build SHALL compile Tailwind CSS v4 through `@tailwindcss/vite` and SHAL
 
 ### Requirement: Only two stylesheets exist, loaded through one layered entry
 
-`web/src/styles/tokens.css` and `web/src/styles/app.css` SHALL be the only stylesheets in `web/src`. `app.css` SHALL declare the cascade layers `theme, base, vendor, components, utilities` in that order, SHALL load Tailwind's theme, preflight and utilities into their layers, and SHALL import third-party stylesheets into the `vendor` layer. Overrides that must target a third-party library's own class names SHALL live in `app.css` under the `components` layer. Only `main.tsx` SHALL import CSS (`tokens.css`, then `app.css`); components SHALL NOT import stylesheets.
+`web/src/styles/tokens.css` and `web/src/styles/app.css` SHALL be the only stylesheets in `web/src`. `app.css` SHALL declare the cascade layers `theme, base, vendor, components, utilities` in that order, SHALL load Tailwind's theme, preflight and utilities into their layers, and SHALL import third-party stylesheets into the `vendor` layer.
 
 #### Scenario: A utility beats a vendor rule
 
 - **WHEN** an element carries a Tailwind utility and also matches a vendor rule for the same property, including a rule with higher specificity
 - **THEN** the utility MUST win
 
-#### Scenario: A component imports a stylesheet
-
-- **WHEN** a component file contains a `.css` import
-- **THEN** the cascade test MUST fail, because the rule would sit outside every layer and override utilities
-
 #### Scenario: Another stylesheet is added
 
 - **WHEN** a `.css` file other than `tokens.css` and `app.css` exists under `web/src`
 - **THEN** the cascade test MUST fail
 
+### Requirement: Only the entry file imports CSS
+
+Overrides that must target a third-party library's own class names SHALL live in `app.css` under the `components` layer. Only `main.tsx` SHALL import CSS (`tokens.css`, then `app.css`); components SHALL NOT import stylesheets.
+
+#### Scenario: A component imports a stylesheet
+
+- **WHEN** a component file contains a `.css` import
+- **THEN** the cascade test MUST fail, because the rule would sit outside every layer and override utilities
+
 ### Requirement: The accordion primitive keeps the Radix accessibility contract
 
-`web/src/components/ui/` SHALL provide an accordion primitive that allows several sections open at once. It SHALL keep the Radix behaviour: each header is a button with `aria-expanded` and `aria-controls`, Enter and Space toggle a section, the arrow keys, Home and End move focus between headers, and closed content is hidden from assistive technology. It SHALL let a header show a leading icon that is hidden from assistive technology, so the title stays the accessible name. It SHALL use the shared semantic tokens, show a visible focus ring and carry the open state as text or an icon that changes with the state.
+`web/src/components/ui/` SHALL provide an accordion primitive that allows several sections open at once. It SHALL keep the Radix behaviour: each header is a button with `aria-expanded` and `aria-controls`, Enter and Space toggle a section, the arrow keys, Home and End move focus between headers, and closed content is hidden from assistive technology.
 
 #### Scenario: Header state
 
@@ -116,6 +129,10 @@ The web build SHALL compile Tailwind CSS v4 through `@tailwindcss/vite` and SHAL
 
 - **WHEN** a section is closed
 - **THEN** its content MUST NOT be reachable by Tab or exposed to a screen reader
+
+### Requirement: The accordion header shows an icon, focus and open state
+
+The accordion primitive SHALL let a header show a leading icon that is hidden from assistive technology, so the title stays the accessible name. The accordion primitive SHALL use the shared semantic tokens, show a visible focus ring and carry the open state as text or an icon that changes with the state.
 
 #### Scenario: Header icon does not change the name
 

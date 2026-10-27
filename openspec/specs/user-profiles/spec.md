@@ -22,7 +22,7 @@ Let users make their own profiles in the web workspace. A user profile owns thre
 
 ### Requirement: Reading a built-in profile returns its standard graphs
 
-`GET /v1/profiles/{profile_id}` SHALL return the same fields as a list item. For a built-in profile it SHALL also return `standard_graphs` with the keys `ingest`, `search` and `answer`. Each value SHALL be the graph document that `POST /v1/profiles` with that built-in as `source` copies into the matching pipeline. The graphs SHALL be shaped by that built-in's own settings, not only by the host settings. For a user profile `standard_graphs` SHALL be `null`. List items SHALL NOT carry `standard_graphs`.
+`GET /v1/profiles/{profile_id}` SHALL return the same fields as a list item. For a built-in profile it SHALL also return `standard_graphs` with the keys `ingest`, `search` and `answer`. Each value SHALL be the graph document that `POST /v1/profiles` with that built-in as `source` copies into the matching pipeline. The graphs SHALL be shaped by that built-in's own settings, not only by the host settings.
 
 #### Scenario: Read codebase
 
@@ -34,6 +34,10 @@ Let users make their own profiles in the web workspace. A user profile owns thre
 
 - **WHEN** a client reads `GET /v1/profiles/documents` and then duplicates `documents`
 - **THEN** each graph in `standard_graphs` MUST equal revision 1 of the matching pipeline of the duplicate
+
+### Requirement: Only a built-in profile read carries standard graphs
+
+For a user profile `standard_graphs` SHALL be `null`. List items SHALL NOT carry `standard_graphs`.
 
 #### Scenario: Read a user profile
 
@@ -131,13 +135,7 @@ A user profile SHALL have an id, a title, a description, a base profile (`docume
 
 ### Requirement: Readiness checks each pipeline against its purpose
 
-A user profile SHALL be ready only when each pipeline has a saved revision, passes the draft graph check, and matches its purpose contract. Ingest: input `path`, output `summary`, exactly one enabled write step. Search: input `query`, output `results`, no enabled write step. Answer: input `query`, output `answer`, no enabled write step. Each failure SHALL add one plain-English line to `not_ready_reasons`. The line SHALL name the pipeline, and the step when one step causes it, and SHALL say what to fix. An issue code SHALL NOT be the whole line.
-
-#### Scenario: Search pipeline lacks its output
-
-- **WHEN** the Search pipeline of a profile has no graph output named `results`
-- **THEN** the profile MUST show `ready: false`
-- **AND** one reason MUST say that the Search pipeline needs an output named `results`
+A user profile SHALL be ready only when each pipeline has a saved revision, passes the draft graph check, and matches its purpose contract. Ingest: input `path`, output `summary`, exactly one enabled write step. Search: input `query`, output `results`, no enabled write step. Answer: input `query`, output `answer`, no enabled write step.
 
 #### Scenario: Write step in the Answer pipeline
 
@@ -149,6 +147,16 @@ A user profile SHALL be ready only when each pipeline has a saved revision, pass
 - **WHEN** the Ingest pipeline contains two enabled steps that write to a collection
 - **THEN** the profile MUST show `ready: false`
 - **AND** one reason MUST say that the Ingest pipeline needs exactly one write step
+
+### Requirement: Each readiness failure gives a plain-English reason
+
+Each failure SHALL add one plain-English line to `not_ready_reasons`. The line SHALL name the pipeline, and the step when one step causes it, and SHALL say what to fix. An issue code SHALL NOT be the whole line.
+
+#### Scenario: Search pipeline lacks its output
+
+- **WHEN** the Search pipeline of a profile has no graph output named `results`
+- **THEN** the profile MUST show `ready: false`
+- **AND** one reason MUST say that the Search pipeline needs an output named `results`
 
 ### Requirement: Only a ready profile can be bound to a collection
 
@@ -192,13 +200,17 @@ A search on a collection that uses a user profile SHALL run that profile's curre
 
 ### Requirement: Answers on a user-profile collection run its Answer pipeline
 
-An answer on a collection that uses a user profile SHALL run that profile's current Answer revision within the request. It SHALL return the same result shape as a built-in answer, including status, citations, evidence and verification. The server answer model SHALL write the answer, because MCP client sampling and pre-fetched rows cannot pass into a pipeline run. A direct Engine call that supplies a client completion or pre-fetched rows for a user-profile collection SHALL fail with a plain message that says so.
+An answer on a collection that uses a user profile SHALL run that profile's current Answer revision within the request. It SHALL return the same result shape as a built-in answer, including status, citations, evidence and verification.
 
 #### Scenario: Chat follows the profile
 
 - **WHEN** a user asks a question in Chat about collection `notes` that uses `my-notes`
 - **THEN** the answer MUST come from the Answer pipeline of `my-notes`
 - **AND** the Chat view MUST show its citations and verification status as for a built-in profile
+
+### Requirement: The server answer model writes answers for a user-profile collection
+
+The server answer model SHALL write the answer, because MCP client sampling and pre-fetched rows cannot pass into a pipeline run. A direct Engine call that supplies a client completion or pre-fetched rows for a user-profile collection SHALL fail with a plain message that says so.
 
 #### Scenario: Client completion requested
 
@@ -212,7 +224,7 @@ An answer on a collection that uses a user profile SHALL run that profile's curr
 
 ### Requirement: User profiles work in every process that reads the workspace
 
-The stdio MCP server, the CLI and the watcher SHALL resolve user profiles from the default workspace database (`~/.omrs/workspace/workspace.db`, the default folder of `omrs web`) when that file exists. They SHALL open it read-only and SHALL NOT create, migrate or write it. A search, answer or ingestion on a collection that uses a user profile SHALL then run that profile's pipelines, as in the web server. When the file does not exist, they SHALL refuse a collection that uses a user profile with an error that names the profile, names the path that was read, and tells the user to start `omrs web` once with the default workspace or to change the collection's profile to `documents` or `codebase`. Binding a user profile to a collection SHALL stay in the web server and its MCP endpoint.
+The stdio MCP server, the CLI and the watcher SHALL resolve user profiles from the default workspace database (`~/.omrs/workspace/workspace.db`, the default folder of `omrs web`) when that file exists. They SHALL open it read-only and SHALL NOT create, migrate or write it. A search, answer or ingestion on a collection that uses a user profile SHALL then run that profile's pipelines, as in the web server.
 
 #### Scenario: Stdio MCP search on a user profile
 
@@ -230,17 +242,25 @@ The stdio MCP server, the CLI and the watcher SHALL resolve user profiles from t
 - **WHEN** the watcher sees a new file for collection `notes`, which uses `my-notes`
 - **THEN** the file MUST be ingested through the Ingest pipeline of `my-notes`
 
+#### Scenario: Older workspace schema
+
+- **WHEN** the default workspace database exists with a schema version older than 3
+- **THEN** the process MUST treat it as a workspace with no user profiles
+- **AND** it MUST NOT migrate the file
+
+### Requirement: A process without the workspace database refuses a user-profile collection
+
+When the file does not exist, they SHALL refuse a collection that uses a user profile with an error that names the profile, names the path that was read, and tells the user to start `omrs web` once with the default workspace or to change the collection's profile to `documents` or `codebase`.
+
 #### Scenario: No workspace database
 
 - **WHEN** the default workspace database does not exist and the CLI, the watcher or the stdio MCP server handles collection `notes`, which is tagged `my-notes`
 - **THEN** it MUST fail with an error that names `my-notes` and the path `~/.omrs/workspace/workspace.db`
 - **AND** the error MUST tell the user to start `omrs web` once or to change the collection to `documents` or `codebase`
 
-#### Scenario: Older workspace schema
+### Requirement: Only the web server binds a user profile to a collection
 
-- **WHEN** the default workspace database exists with a schema version older than 3
-- **THEN** the process MUST treat it as a workspace with no user profiles
-- **AND** it MUST NOT migrate the file
+Binding a user profile to a collection SHALL stay in the web server and its MCP endpoint.
 
 #### Scenario: Bind from the CLI
 
@@ -285,13 +305,22 @@ Saving a revision of a pipeline that belongs to a profile in use SHALL return `a
 
 ### Requirement: Saved Studio pipelines become user profiles on upgrade
 
-On the first start after upgrade, each saved Studio pipeline that belongs to no profile SHALL become a user profile. A workspace job pipeline, whose layout holds the key `omrs_task`, SHALL be skipped. The profile title SHALL be the pipeline's `layout.title` when it is not empty after trimming, else the pipeline title. The base profile SHALL be the `graph.profile` of the current revision when it is `documents` or `codebase`, else `documents`. The pipeline SHALL fill the slot whose contract its current revision matches first (Ingest, Search, Answer). The other slots SHALL get the standard graphs of the base profile. A pipeline with no saved revision, or a graph that matches no contract, SHALL go in the Search slot, and the profile SHALL be not ready. When the current revision names another operational profile than the base, the upgrade SHALL save one new revision that names the base profile, and SHALL keep the earlier revisions and their runs.
+On the first start after upgrade, each saved Studio pipeline that belongs to no profile SHALL become a user profile. A workspace job pipeline, whose layout holds the key `omrs_task`, SHALL be skipped.
 
-#### Scenario: A saved search pipeline
+#### Scenario: Workspace job pipeline
 
-- **WHEN** the workspace holds a saved pipeline "Docs search" whose graph has input `query` and output `results`
-- **THEN** after upgrade a user profile titled "Docs search" MUST exist with that pipeline as its Search pipeline
-- **AND** its run records MUST still point at that pipeline
+- **WHEN** the workspace holds the pipeline "Workspace job: ingest" whose layout holds `omrs_task`
+- **THEN** after upgrade no user profile MUST exist for it
+- **AND** its runs MUST stay unchanged
+
+#### Scenario: Upgrade runs once
+
+- **WHEN** the server starts a second time after upgrade
+- **THEN** no new profile MUST appear
+
+### Requirement: An upgraded profile takes its title and base profile from the pipeline
+
+The profile title SHALL be the pipeline's `layout.title` when it is not empty after trimming, else the pipeline title. The base profile SHALL be the `graph.profile` of the current revision when it is `documents` or `codebase`, else `documents`.
 
 #### Scenario: Canvas title wins
 
@@ -304,27 +333,30 @@ On the first start after upgrade, each saved Studio pipeline that belongs to no 
 - **THEN** after upgrade its user profile MUST have base profile `codebase`
 - **AND** its other two pipelines MUST hold the standard `codebase` graphs
 
-#### Scenario: Graph with no operational profile
+### Requirement: An upgraded pipeline fills the slot whose contract it matches
 
-- **WHEN** a saved Search pipeline's current graph names no operational profile
-- **THEN** after upgrade its user profile MUST have base profile `documents`
-- **AND** the Search pipeline MUST have one new current revision that names `documents`, with the earlier revision kept
+The pipeline SHALL fill the slot whose contract its current revision matches first (Ingest, Search, Answer). The other slots SHALL get the standard graphs of the base profile. A pipeline with no saved revision, or a graph that matches no contract, SHALL go in the Search slot, and the profile SHALL be not ready.
 
-#### Scenario: Workspace job pipeline
+#### Scenario: A saved search pipeline
 
-- **WHEN** the workspace holds the pipeline "Workspace job: ingest" whose layout holds `omrs_task`
-- **THEN** after upgrade no user profile MUST exist for it
-- **AND** its runs MUST stay unchanged
+- **WHEN** the workspace holds a saved pipeline "Docs search" whose graph has input `query` and output `results`
+- **THEN** after upgrade a user profile titled "Docs search" MUST exist with that pipeline as its Search pipeline
+- **AND** its run records MUST still point at that pipeline
 
 #### Scenario: A graph that matches no contract
 
 - **WHEN** a saved pipeline has no graph inputs
 - **THEN** after upgrade its profile MUST show `ready: false` with a reason for the Search pipeline
 
-#### Scenario: Upgrade runs once
+### Requirement: The upgrade points the current revision at the base profile
 
-- **WHEN** the server starts a second time after upgrade
-- **THEN** no new profile MUST appear
+When the current revision names another operational profile than the base, the upgrade SHALL save one new revision that names the base profile, and SHALL keep the earlier revisions and their runs.
+
+#### Scenario: Graph with no operational profile
+
+- **WHEN** a saved Search pipeline's current graph names no operational profile
+- **THEN** after upgrade its user profile MUST have base profile `documents`
+- **AND** the Search pipeline MUST have one new current revision that names `documents`, with the earlier revision kept
 
 ### Requirement: Standalone pipelines are no longer created
 

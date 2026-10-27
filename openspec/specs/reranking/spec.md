@@ -1,6 +1,12 @@
 ## Purpose
 
 Define optional cross-encoder reranking, score filtering, model loading, and runtime configuration for improving retrieval result precision.
+
+**PyTorch.** The constraint is on the **base install and the default retrieval path**,
+not on the existence of PyTorch code in the repository. The former is what
+keeps this a lightweight local tool. The latter was never the goal, and
+enforcing it as though it were has excluded otherwise-suitable components
+from unrelated decisions.
 ## Requirements
 ### Requirement: Reranker candidate pool is configurable
 
@@ -31,10 +37,7 @@ initial vector search results to improve retrieval precision. When reranking
 is enabled and hybrid retrieval is also enabled, the reranker SHALL receive
 the fused dense+sparse candidate list. When reranking is enabled and hybrid
 retrieval is disabled, the reranker SHALL receive the dense-only candidate
-list. The fetch pool size SHALL be governed by `RETRIEVAL__RERANK_MAX_FETCH` and
-`RETRIEVAL__RERANK_FETCH_MULTIPLIER` regardless of whether hybrid retrieval is active.
-The tokenizer `max_length` SHALL default to 2048 tokens to balance
-context window utilisation with latency.
+list.
 
 #### Scenario: Rerank over dense-only candidates
 
@@ -65,6 +68,19 @@ context window utilisation with latency.
 - **THEN** the system SHALL fall back to fused (un-reranked) results trimmed to `top_k`
 - **THEN** the system SHALL emit a warning log without crashing
 
+### Requirement: The reranker fetch pool and tokenizer length use their settings
+
+The fetch pool size SHALL be governed by `RETRIEVAL__RERANK_MAX_FETCH` and
+`RETRIEVAL__RERANK_FETCH_MULTIPLIER` regardless of whether hybrid retrieval is active.
+The tokenizer `max_length` SHALL default to 2048 tokens to balance
+context window utilisation with latency.
+
+#### Scenario: Fetch pool and tokenizer length follow their settings
+
+- **WHEN** reranking is enabled, with or without hybrid retrieval
+- **THEN** the fetch pool size SHALL be governed by `RETRIEVAL__RERANK_MAX_FETCH` and `RETRIEVAL__RERANK_FETCH_MULTIPLIER`
+- **AND** the tokenizer `max_length` SHALL default to 2048 tokens
+
 ### Requirement: ONNX inference via pure onnxruntime
 
 The reranker SHALL use `onnxruntime.InferenceSession` for ONNX inference
@@ -75,11 +91,6 @@ sole backend from v5 onward and would reintroduce the dependency this
 requirement exists to prevent. Pre-exported ONNX models are downloaded
 from HuggingFace Hub.
 
-The tokeniser's maximum sequence length SHALL be capped at the model's own
-limit. Where the tokeniser does not report that limit, the configured
-default SHALL apply. Exceeding the model's position-embedding size causes
-an ONNX broadcast error at inference time.
-
 #### Scenario: ONNX model loads successfully
 
 - **GIVEN** the reranker model ID is `cross-encoder/ms-marco-MiniLM-L-6-v2`
@@ -87,6 +98,28 @@ an ONNX broadcast error at inference time.
 - **THEN** the system SHALL load the model via `onnxruntime.InferenceSession`
 - **AND** the tokenizer SHALL be loaded via the `tokenizers` package
 - **AND** no `sentence_transformers`, `torch`, `optimum`, or `transformers` import SHALL occur
+
+#### Scenario: platform-aware ONNX variant selection
+
+- **GIVEN** the reranker is running on macOS ARM
+- **WHEN** the reranker downloads the ONNX model
+- **THEN** for the default model `cross-encoder/ms-marco-MiniLM-L-6-v2` on ARM64, it SHALL prefer `onnx/model_qint8_arm64.onnx` (~23 MB quantised variant)
+- **AND** fall back to `onnx/model.onnx` if the ARM variant is unavailable
+- **AND** for ModernBERT-based models (e.g. `Alibaba-NLP/gte-reranker-modernbert-base`), it SHALL prefer `onnx/model_quantized.onnx` (int8) with a fallback chain through `model_int8.onnx` → `model_fp16.onnx` → `model.onnx`
+
+#### Scenario: module docstring reflects correct model
+
+- **GIVEN** `reranker.py` is loaded
+- **WHEN** the module docstring is read
+- **THEN** it SHALL reference `cross-encoder/ms-marco-MiniLM-L-6-v2` as the default
+- **AND** it SHALL NOT reference `Xenova/ms-marco-MiniLM-L-6-v2`
+
+### Requirement: The tokeniser length is capped at the model's own limit
+
+The tokeniser's maximum sequence length SHALL be capped at the model's own
+limit. Where the tokeniser does not report that limit, the configured
+default SHALL apply. Exceeding the model's position-embedding size causes
+an ONNX broadcast error at inference time.
 
 #### Scenario: max sequence length capped at the model's own limit
 
@@ -109,21 +142,6 @@ an ONNX broadcast error at inference time.
 - **WHEN** the reranker initialises
 - **THEN** the effective maximum SHALL be 512
 - **AND** the configured default maximum SHALL NOT apply
-
-#### Scenario: platform-aware ONNX variant selection
-
-- **GIVEN** the reranker is running on macOS ARM
-- **WHEN** the reranker downloads the ONNX model
-- **THEN** for the default model `cross-encoder/ms-marco-MiniLM-L-6-v2` on ARM64, it SHALL prefer `onnx/model_qint8_arm64.onnx` (~23 MB quantised variant)
-- **AND** fall back to `onnx/model.onnx` if the ARM variant is unavailable
-- **AND** for ModernBERT-based models (e.g. `Alibaba-NLP/gte-reranker-modernbert-base`), it SHALL prefer `onnx/model_quantized.onnx` (int8) with a fallback chain through `model_int8.onnx` → `model_fp16.onnx` → `model.onnx`
-
-#### Scenario: module docstring reflects correct model
-
-- **GIVEN** `reranker.py` is loaded
-- **WHEN** the module docstring is read
-- **THEN** it SHALL reference `cross-encoder/ms-marco-MiniLM-L-6-v2` as the default
-- **AND** it SHALL NOT reference `Xenova/ms-marco-MiniLM-L-6-v2`
 
 ### Requirement: similarity threshold filtering
 
@@ -152,22 +170,11 @@ low-confidence results.
 
 The system SHALL support the following environment variables for reranker configuration, with sensible defaults:
 
-| Variable                                 | Default                                | Description                                                                                                           |
-| ---------------------------------------- | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `RETRIEVAL__RERANK_BACKEND`              | `onnx`                                 | Reranker inference backend (`onnx` or `torch`)                                                                        |
-| `RETRIEVAL__RERANK_MODEL`                | `cross-encoder/ms-marco-MiniLM-L-6-v2` | HuggingFace model ID for reranker                                                                                     |
-| `RETRIEVAL__RERANK_ENABLED`              | `false`                                | Global default rerank behaviour for omitted rerank requests                                                           |
-| `RETRIEVAL__RERANK_ENABLED_FOR_SEMANTIC` | `true`                                 | Policy knob allowing omitted rerank requests to enable reranking for semantic workloads below the technical threshold |
-| `RETRIEVAL__HARD_TECHNICAL_THRESHOLD`    | `0.3`                                  | Identifier-heavy workload fraction at or above which semantic policy reranking SHALL NOT be enabled                   |
-| `RETRIEVAL__SIMILARITY_THRESHOLD`        | `0.0`                                  | Default minimum score to include a result                                                                             |
-| `RETRIEVAL__RERANK_FETCH_MULTIPLIER`     | `3`                                    | Multiplier applied to `top_k` when reranking is enabled                                                               |
-| `RETRIEVAL__RERANK_MAX_FETCH`            | `100`                                  | Lower bound on the rerank candidate pool size                                                                         |
-
-In addition to the global `RETRIEVAL__RERANK_ENABLED` default, the effective rerank enablement for an omitted rerank request SHALL be resolvable per operation from the target collection's profile (e.g. `documents` enables, `codebase` disables). Profile-resolved enablement SHALL take precedence over the global default for that operation. Explicit per-request rerank flags SHALL continue to bypass both profile and semantic policy.
-
-`RETRIEVAL__RERANK_BACKEND` selects the inference engine only. It SHALL NOT
-affect whether reranking happens, which model is used, or how candidates
-are pooled — those remain governed by the other variables in this table.
+| Variable | Default | Description |
+| --- | --- | --- |
+| `RETRIEVAL__RERANK_BACKEND` | `onnx` | Reranker inference backend (`onnx` or `torch`) |
+| `RETRIEVAL__RERANK_MODEL` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | HuggingFace model ID for reranker |
+| `RETRIEVAL__SIMILARITY_THRESHOLD` | `0.0` | Default minimum score to include a result |
 
 #### Scenario: env vars set defaults
 
@@ -175,12 +182,42 @@ are pooled — those remain governed by the other variables in this table.
 - **WHEN** `search_documents` is called with no explicit threshold
 - **THEN** results with `score < 0.25` SHALL be filtered out
 
-#### Scenario: backend selection is orthogonal to enablement
+### Requirement: Semantic rerank policy variables are configurable
 
-- **GIVEN** `RETRIEVAL__RERANK_BACKEND=torch` and `RETRIEVAL__RERANK_ENABLED=false`
-- **WHEN** `search_documents` is called with no explicit rerank flag against a collection whose profile disables reranking
-- **THEN** no reranking SHALL occur
-- **AND** no torch backend model SHALL be loaded
+The system SHALL also support these semantic rerank policy variables, with sensible defaults:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `RETRIEVAL__RERANK_ENABLED_FOR_SEMANTIC` | `true` | Policy knob allowing omitted rerank requests to enable reranking for semantic workloads below the technical threshold |
+| `RETRIEVAL__HARD_TECHNICAL_THRESHOLD` | `0.3` | Identifier-heavy workload fraction at or above which semantic policy reranking SHALL NOT be enabled |
+
+#### Scenario: semantic policy env vars are exposed
+
+- **GIVEN** `RETRIEVAL__RERANK_ENABLED_FOR_SEMANTIC=true` and `RETRIEVAL__HARD_TECHNICAL_THRESHOLD=0.3` are set
+- **WHEN** the effective rerank policy resolver is called for an omitted rerank request
+- **THEN** the resolver SHALL consider those values when deciding whether policy reranking is allowed
+
+### Requirement: The rerank switch and candidate pool variables are configurable
+
+The system SHALL also support these rerank switch and candidate pool variables, with sensible defaults:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `RETRIEVAL__RERANK_ENABLED` | `false` | Global default rerank behaviour for omitted rerank requests |
+| `RETRIEVAL__RERANK_FETCH_MULTIPLIER` | `3` | Multiplier applied to `top_k` when reranking is enabled |
+| `RETRIEVAL__RERANK_MAX_FETCH` | `100` | Lower bound on the rerank candidate pool size |
+
+#### Scenario: rerank pool sizing env vars apply
+
+- **GIVEN** `RETRIEVAL__RERANK_FETCH_MULTIPLIER=4` and `RETRIEVAL__RERANK_MAX_FETCH=20` are set
+- **WHEN** `search_documents` is called with `rerank=True` and `top_k=3`
+- **THEN** the reranker SHALL receive `max(20, 3 * 4) = 20` candidates
+
+### Scenario: env vars set defaults
+
+- **GIVEN** `RETRIEVAL__SIMILARITY_THRESHOLD=0.25` is set in `.env`
+- **WHEN** `search_documents` is called with no explicit threshold
+- **THEN** results with `score < 0.25` SHALL be filtered out
 
 #### Scenario: rerank pool sizing env vars apply
 
@@ -193,6 +230,10 @@ are pooled — those remain governed by the other variables in this table.
 - **GIVEN** `RETRIEVAL__RERANK_ENABLED_FOR_SEMANTIC=true` and `RETRIEVAL__HARD_TECHNICAL_THRESHOLD=0.3` are set
 - **WHEN** the effective rerank policy resolver is called for an omitted rerank request
 - **THEN** the resolver SHALL consider those values when deciding whether policy reranking is allowed
+
+### Requirement: The collection profile decides rerank enablement for an omitted request
+
+In addition to the global `RETRIEVAL__RERANK_ENABLED` default, the effective rerank enablement for an omitted rerank request SHALL be resolvable per operation from the target collection's profile (e.g. `documents` enables, `codebase` disables). Profile-resolved enablement SHALL take precedence over the global default for that operation. Explicit per-request rerank flags SHALL continue to bypass both profile and semantic policy.
 
 #### Scenario: explicit rerank bypasses semantic policy env vars
 
@@ -210,15 +251,46 @@ are pooled — those remain governed by the other variables in this table.
 - **AND** a query against a `codebase`-profile collection in the same process
   SHALL resolve to reranking disabled
 
+### Requirement: The rerank backend setting selects only the inference engine
+
+`RETRIEVAL__RERANK_BACKEND` selects the inference engine only. It SHALL NOT
+affect whether reranking happens, which model is used, or how candidates
+are pooled — those remain governed by the other variables in this table.
+
+#### Scenario: backend selection is orthogonal to enablement
+
+- **GIVEN** `RETRIEVAL__RERANK_BACKEND=torch` and `RETRIEVAL__RERANK_ENABLED=false`
+- **WHEN** `search_documents` is called with no explicit rerank flag against a collection whose profile disables reranking
+- **THEN** no reranking SHALL occur
+- **AND** no torch backend model SHALL be loaded
+
 ### Requirement: reranker as singleton with recovery
 
 The reranker model SHALL be loaded once per process and reused across calls
 to avoid repeated model loading overhead. The reranker SHALL be constructed
 in `compose.py` (the composition root) as an injected dependency, with
 process-wide model caching preserving the load-once behaviour of the former
-`__new__` singleton. The reranker SHALL receive its settings (model ID,
+`__new__` singleton.
+
+#### Scenario: repeated calls reuse model
+- **GIVEN** the reranker has been constructed and its model loaded once
+- **WHEN** `search_documents` is called with `rerank=True` multiple times
+- **THEN** the model SHALL NOT be re-loaded on subsequent calls
+
+### Requirement: The reranker receives its settings by injection
+
+The reranker SHALL receive its settings (model ID,
 enabled flag) via injection and SHALL NOT call `load_dotenv()` independently
-of the settings resolver. The reranker SHALL recover from transient failures
+of the settings resolver.
+
+#### Scenario: settings arrive by injection
+- **WHEN** the reranker is constructed
+- **THEN** it SHALL receive its settings (model ID, enabled flag) via injection
+- **AND** it SHALL NOT call `load_dotenv()` independently of the settings resolver
+
+### Requirement: The reranker recovers from transient failures
+
+The reranker SHALL recover from transient failures
 rather than permanently disabling itself.
 
 When no reranker is injected, `core/retrieval/pipeline.py::search` constructs a
@@ -226,31 +298,32 @@ fresh instance through the retrieval registry; both paths are intentional, and
 the process-wide model cache makes the fresh construction cheap (no reload).
 This is why the consecutive-failure counter is module-level, not instance state.
 
-The reranker SHALL distinguish a transient failure from a persistent one by
-tracking consecutive failures with the same error signature. Below the
-escalation threshold, a failure SHALL log at WARNING as today. At or above
-the threshold, the failure SHALL log at ERROR instead, so a persistently
-broken provider stops being indistinguishable from an occasional transient
-hiccup in the logs. The escalation SHALL NOT change the fallback behaviour —
-retrieval SHALL still return un-reranked results and SHALL NOT raise.
-
-The test reset hook (`CrossEncoderReranker._instance = None`) SHALL either be
-preserved in an equivalent form (e.g. a cache-reset function) or be
-deliberately retired with every affected test updated; it SHALL NOT be
-silently dropped. The consecutive-failure counter SHALL reset alongside the
-model cache so tests remain isolated.
-
-#### Scenario: repeated calls reuse model
-- **GIVEN** the reranker has been constructed and its model loaded once
-- **WHEN** `search_documents` is called with `rerank=True` multiple times
-- **THEN** the model SHALL NOT be re-loaded on subsequent calls
-
 #### Scenario: retry after transient failure
 - **GIVEN** the reranker model failed to load due to a transient error
   (e.g., network timeout downloading model weights)
 - **WHEN** `search_documents` is called again with `rerank=True`
 - **THEN** the system SHALL attempt to load the model again
 - **AND** if the retry succeeds, results SHALL be reranked normally
+
+### Requirement: The reranker tracks consecutive failures by error signature
+
+The reranker SHALL distinguish a transient failure from a persistent one by
+tracking consecutive failures with the same error signature.
+
+#### Scenario: a successful call resets the consecutive-failure counter
+- **GIVEN** the reranker has failed one or more consecutive times
+- **WHEN** a subsequent call succeeds
+- **THEN** the consecutive-failure counter SHALL reset to zero
+- **AND** the next failure (if any) SHALL log at WARNING, not ERROR
+
+### Requirement: Persistent reranker failures log at ERROR and still fall back
+
+Below the
+escalation threshold, a failure SHALL log at WARNING as today. At or above
+the threshold, the failure SHALL log at ERROR instead, so a persistently
+broken provider stops being indistinguishable from an occasional transient
+hiccup in the logs. The escalation SHALL NOT change the fallback behaviour —
+retrieval SHALL still return un-reranked results and SHALL NOT raise.
 
 #### Scenario: persistent failure still falls back gracefully
 - **GIVEN** the reranker model is permanently unavailable (e.g., invalid
@@ -269,11 +342,13 @@ model cache so tests remain isolated.
 - **THEN** the system SHALL log at ERROR level instead of WARNING
 - **AND** SHALL still fall back to un-reranked results without raising
 
-#### Scenario: a successful call resets the consecutive-failure counter
-- **GIVEN** the reranker has failed one or more consecutive times
-- **WHEN** a subsequent call succeeds
-- **THEN** the consecutive-failure counter SHALL reset to zero
-- **AND** the next failure (if any) SHALL log at WARNING, not ERROR
+### Requirement: The reranker test reset hook keeps tests isolated
+
+The test reset hook (`CrossEncoderReranker._instance = None`) SHALL either be
+preserved in an equivalent form (e.g. a cache-reset function) or be
+deliberately retired with every affected test updated; it SHALL NOT be
+silently dropped. The consecutive-failure counter SHALL reset alongside the
+model cache so tests remain isolated.
 
 #### Scenario: test isolation preserved
 - **GIVEN** a test suite that resets reranker state between cases
@@ -324,18 +399,6 @@ The `sentence-transformers`, `optimum`, `transformers`, and `torch`
 packages SHALL NOT be base runtime dependencies. No `torch` import SHALL
 occur at runtime under the default configuration.
 
-PyTorch SHALL remain reachable through an explicitly named optional extra,
-so operators who want a PyTorch reranker can opt into that weight
-deliberately. Installing the extra SHALL NOT change default behaviour: the
-default backend stays ONNX, and an install that never requests the extra
-SHALL never resolve `torch`.
-
-The constraint is on the **base install and the default retrieval path**,
-not on the existence of PyTorch code in the repository. The former is what
-keeps this a lightweight local tool. The latter was never the goal, and
-enforcing it as though it were has excluded otherwise-suitable components
-from unrelated decisions.
-
 #### Scenario: dependency audit
 
 - **GIVEN** the project's `pyproject.toml`
@@ -344,13 +407,6 @@ from unrelated decisions.
 - **AND** only `onnxruntime`, `tokenizers`, and `huggingface-hub` SHALL be
   used for default-backend reranker inference and model management
 
-#### Scenario: torch confined to an optional extra
-
-- **GIVEN** the project's `pyproject.toml`
-- **WHEN** the optional dependency groups are inspected
-- **THEN** `sentence-transformers` SHALL appear in exactly one named extra
-- **AND** that extra SHALL NOT be included in any default install path
-
 #### Scenario: runtime tripwire on the default path
 
 - **GIVEN** a base install with no optional extras
@@ -358,6 +414,21 @@ from unrelated decisions.
 - **WHEN** the package is imported and a search is run with `rerank=True` in a clean subprocess
 - **THEN** `torch` SHALL NOT appear in the set of loaded modules
 - **AND** the ONNX backend SHALL perform the re-scoring
+
+### Requirement: PyTorch stays reachable through an optional extra
+
+PyTorch SHALL remain reachable through an explicitly named optional extra,
+so operators who want a PyTorch reranker can opt into that weight
+deliberately. Installing the extra SHALL NOT change default behaviour: the
+default backend stays ONNX, and an install that never requests the extra
+SHALL never resolve `torch`.
+
+#### Scenario: torch confined to an optional extra
+
+- **GIVEN** the project's `pyproject.toml`
+- **WHEN** the optional dependency groups are inspected
+- **THEN** `sentence-transformers` SHALL appear in exactly one named extra
+- **AND** that extra SHALL NOT be included in any default install path
 
 #### Scenario: installing the extra does not change defaults
 

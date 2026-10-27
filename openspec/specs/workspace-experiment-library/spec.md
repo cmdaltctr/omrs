@@ -7,7 +7,7 @@ The experiment library in the web workspace: projects added from the browser, a 
 
 ### Requirement: Experiment projects are added from the web workspace
 
-The web workspace SHALL let a browser session with the `manage` scope add an experiment project by giving an absolute folder path and a name. The server SHALL accept the path only when it is an existing directory that contains an `experiments` directory inside it, and when no stored project has the same resolved path. The project list SHALL persist in the workspace database across restarts. Removing a project SHALL remove it from the list and from user notebooks, and SHALL NOT change any file on disk. A bearer credential SHALL NOT add or remove a project.
+The web workspace SHALL let a browser session with the `manage` scope add an experiment project by giving an absolute folder path and a name. The server SHALL accept the path only when it is an existing directory that contains an `experiments` directory inside it, and when no stored project has the same resolved path.
 
 #### Scenario: Add a valid project
 
@@ -25,6 +25,10 @@ The web workspace SHALL let a browser session with the `manage` scope add an exp
 
 - **WHEN** the `experiments` entry is a link to a directory outside the project folder
 - **THEN** the request fails and nothing is stored
+
+### Requirement: Stored experiment projects persist and are removed without touching disk
+
+The project list SHALL persist in the workspace database across restarts. Removing a project SHALL remove it from the list and from user notebooks, and SHALL NOT change any file on disk. A bearer credential SHALL NOT add or remove a project.
 
 #### Scenario: Project folder removed from disk
 
@@ -48,7 +52,7 @@ For a project, the workspace SHALL list every detected experiment with its folde
 
 ### Requirement: The experiment page shows its files safely
 
-The experiment page SHALL show the record, the checker findings for that experiment, the top-level files of the folder and the top-level names in `output/`. It SHALL show the text of a top-level file whose suffix is `.md`, `.json`, `.jsonl`, `.txt`, `.csv`, `.yaml`, `.yml` or `.py`, and SHALL render Markdown without raw HTML. The server SHALL refuse a file name with a path separator, `..` or a leading dot, a file outside the experiment folder after links are resolved, and any other suffix. A file over 1 MiB SHALL return its first 1 MiB and say that it was cut. Other files, such as HTML review pages, SHALL be listed with their size as not viewable.
+The experiment page SHALL show the record, the checker findings for that experiment, the top-level files of the folder and the top-level names in `output/`. It SHALL show the text of a top-level file whose suffix is `.md`, `.json`, `.jsonl`, `.txt`, `.csv`, `.yaml`, `.yml` or `.py`, and SHALL render Markdown without raw HTML. Other files, such as HTML review pages, SHALL be listed with their size as not viewable.
 
 #### Scenario: Read a protocol
 
@@ -61,15 +65,19 @@ The experiment page SHALL show the record, the checker findings for that experim
 - **THEN** the file list shows `review.html` as not viewable
 - **AND** the server refuses a request for its text
 
-#### Scenario: Path escape
-
-- **WHEN** a client asks for the file `../../secret.txt`
-- **THEN** the server refuses the request and reads no file
-
 #### Scenario: Older folder without a report
 
 - **WHEN** an experiment has `results.md` and no `report.md`
 - **THEN** the Report tab shows `results.md`
+
+### Requirement: The server refuses unsafe experiment file reads
+
+The server SHALL refuse a file name with a path separator, `..` or a leading dot, a file outside the experiment folder after links are resolved, and any other suffix. A file over 1 MiB SHALL return its first 1 MiB and say that it was cut.
+
+#### Scenario: Path escape
+
+- **WHEN** a client asks for the file `../../secret.txt`
+- **THEN** the server refuses the request and reads no file
 
 ### Requirement: Notebooks group experiments
 
@@ -93,7 +101,7 @@ The workspace SHALL present every project as a notebook of its experiments. The 
 
 ### Requirement: A new experiment is created from the library
 
-A browser session with the `manage` scope SHALL create an experiment in a project from a slug, a title, a category, a size and an optional follow-up number. The folder SHALL be created by the experiment record folder creator with today's date. When the project's `EXP_README.md` has both index markers, the index SHALL then be rewritten. The response SHALL name the new folder and say whether the index was written, the file had no markers, or there was no file. When the folder was created but `EXP_README.md` could not be read or written, or is not valid UTF-8, the request SHALL still succeed. The response SHALL then report the index as `failed` with a plain message that names `omrs experiments index --write`. A refusal SHALL write nothing.
+A browser session with the `manage` scope SHALL create an experiment in a project from a slug, a title, a category, a size and an optional follow-up number. The folder SHALL be created by the experiment record folder creator with today's date. When the project's `EXP_README.md` has both index markers, the index SHALL then be rewritten.
 
 #### Scenario: Create a Standard experiment
 
@@ -101,11 +109,19 @@ A browser session with the `manage` scope SHALL create an experiment in a projec
 - **THEN** a new folder with status `PLANNED` appears in the library
 - **AND** the project's index lists it
 
+### Requirement: Experiment creation reports the index outcome
+
+The response SHALL name the new folder and say whether the index was written, the file had no markers, or there was no file. When the folder was created but `EXP_README.md` could not be read or written, or is not valid UTF-8, the request SHALL still succeed. The response SHALL then report the index as `failed` with a plain message that names `omrs experiments index --write`.
+
 #### Scenario: The index cannot be updated
 
 - **WHEN** the user creates an experiment and the project's `EXP_README.md` is not valid UTF-8 or cannot be read or replaced
 - **THEN** the request succeeds and the new folder exists
 - **AND** the response reports the index as `failed` with a message that names `omrs experiments index --write`
+
+### Requirement: A refused experiment creation writes nothing
+
+A refusal SHALL write nothing.
 
 #### Scenario: Folder exists
 
@@ -114,13 +130,7 @@ A browser session with the `manage` scope SHALL create an experiment in a projec
 
 ### Requirement: An experiment opens in marimo from its page
 
-The experiment page SHALL offer an "Open in marimo" action. The server SHALL launch the editor only for a browser session with the `manage` scope and only when the request carries `consent: true`. A bearer credential SHALL NOT launch an editor. The project SHALL be an added Library project that is still available, and the folder SHALL be a listed experiment folder of that project. The request SHALL NOT name a file path, a flag or an argument. The editor SHALL bind to the loopback address, SHALL open in a separate browser tab, and SHALL return its access token once in the response body and never in a URL or a log.
-
-#### Scenario: Open a converted experiment
-
-- **WHEN** a session with the `manage` scope sends consent for a listed experiment and marimo is registered and launchable
-- **THEN** an editor starts on a loopback port from 2719 to 2721
-- **AND** the response holds the editor address without the token and the token once
+The experiment page SHALL offer an "Open in marimo" action. The server SHALL launch the editor only for a browser session with the `manage` scope and only when the request carries `consent: true`. A bearer credential SHALL NOT launch an editor.
 
 #### Scenario: Consent is missing
 
@@ -133,6 +143,10 @@ The experiment page SHALL offer an "Open in marimo" action. The server SHALL lau
 - **WHEN** a bearer credential sends the request
 - **THEN** the server refuses it and no process starts
 
+### Requirement: A marimo launch names only a listed experiment folder
+
+The project SHALL be an added Library project that is still available, and the folder SHALL be a listed experiment folder of that project. The request SHALL NOT name a file path, a flag or an argument.
+
 #### Scenario: Folder name with a path escape
 
 - **WHEN** the folder in the address is `..` or holds a path separator
@@ -143,20 +157,25 @@ The experiment page SHALL offer an "Open in marimo" action. The server SHALL lau
 - **WHEN** the folder is not a listed experiment of the project
 - **THEN** the server returns 404 and no process starts
 
+### Requirement: The marimo editor stays on loopback and returns its token once
+
+The editor SHALL bind to the loopback address, SHALL open in a separate browser tab, and SHALL return its access token once in the response body and never in a URL or a log.
+
+#### Scenario: Open a converted experiment
+
+- **WHEN** a session with the `manage` scope sends consent for a listed experiment and marimo is registered and launchable
+- **THEN** an editor starts on a loopback port from 2719 to 2721
+- **AND** the response holds the editor address without the token and the token once
+
 ### Requirement: The Library notebook is a derived file in the experiment folder
 
-The notebook SHALL be `analysis.marimo.py` directly inside the experiment folder, for every status. When it does not exist, the server SHALL make it from `analysis.py` through the registered editor's conversion recipe, or from a packaged empty notebook when the folder has no `analysis.py`. The server SHALL write the notebook with an exclusive create and SHALL NOT overwrite, rename or edit any existing file in the folder. An existing notebook SHALL be opened as it is. The response SHALL say whether the notebook was converted, created or already existed, and whether `analysis.py` is newer than the notebook.
+The notebook SHALL be `analysis.marimo.py` directly inside the experiment folder, for every status. When it does not exist, the server SHALL make it from `analysis.py` through the registered editor's conversion recipe, or from a packaged empty notebook when the folder has no `analysis.py`.
 
 #### Scenario: First open converts analysis.py
 
 - **WHEN** a finished, converted experiment has `analysis.py` and no `analysis.marimo.py`
 - **THEN** `analysis.marimo.py` exists after the open and the response says `converted`
 - **AND** every file that existed in the folder before the open is byte-identical after it
-
-#### Scenario: Second open keeps the user's edits
-
-- **WHEN** `analysis.marimo.py` already exists
-- **THEN** the server opens it without changing it and the response says `existing`
 
 #### Scenario: No analysis script
 
@@ -170,6 +189,15 @@ The notebook SHALL be `analysis.marimo.py` directly inside the experiment folder
 - **AND** the page shows a link to the marimo card
 - **AND** no file is left in the experiment folder
 
+### Requirement: The Library notebook is written without changing other files
+
+The server SHALL write the notebook with an exclusive create and SHALL NOT overwrite, rename or edit any existing file in the folder. An existing notebook SHALL be opened as it is. The response SHALL say whether the notebook was converted, created or already existed, and whether `analysis.py` is newer than the notebook.
+
+#### Scenario: Second open keeps the user's edits
+
+- **WHEN** `analysis.marimo.py` already exists
+- **THEN** the server opens it without changing it and the response says `existing`
+
 #### Scenario: The notebook is a link
 
 - **WHEN** `analysis.marimo.py` is a symbolic link or not a regular file
@@ -177,12 +205,21 @@ The notebook SHALL be `analysis.marimo.py` directly inside the experiment folder
 
 ### Requirement: The Library notebook kernel runs in the project environment
 
-The notebook kernel SHALL run in the project's `<project root>/.venv` with the user's full file and network access, so that experiment code can import the project's packages. The server SHALL keep the registered editor executable as the editor server and SHALL install nothing into the project environment. It SHALL NOT load the project's `.env` into the kernel on its own. When the project has no usable `.venv`, or when the project environment has no marimo and its Python major and minor version differs from the editor's, the server SHALL refuse with a message that says what to do. The response SHALL list packages that the editor's environment shadows with a different version.
+The notebook kernel SHALL run in the project's `<project root>/.venv` with the user's full file and network access, so that experiment code can import the project's packages. The server SHALL keep the registered editor executable as the editor server and SHALL install nothing into the project environment. It SHALL NOT load the project's `.env` into the kernel on its own.
 
 #### Scenario: Experiment code imports a project package
 
 - **WHEN** the kernel of a Library notebook runs `import omrs` in this repository
 - **THEN** the import succeeds from the project environment
+
+#### Scenario: Project environment unchanged
+
+- **WHEN** a Library notebook opens and is stopped
+- **THEN** the set of installed distributions in the project `.venv` is the same as before
+
+### Requirement: The server refuses an unusable project environment
+
+When the project has no usable `.venv`, or when the project environment has no marimo and its Python major and minor version differs from the editor's, the server SHALL refuse with a message that says what to do. The response SHALL list packages that the editor's environment shadows with a different version.
 
 #### Scenario: Project without a virtual environment
 
@@ -193,11 +230,6 @@ The notebook kernel SHALL run in the project's `<project root>/.venv` with the u
 
 - **WHEN** the project `.venv` uses Python 3.12, has no marimo, and marimo runs on Python 3.14
 - **THEN** the server refuses with 409 reason `python_mismatch` and names both versions
-
-#### Scenario: Project environment unchanged
-
-- **WHEN** a Library notebook opens and is stopped
-- **THEN** the set of installed distributions in the project `.venv` is the same as before
 
 ### Requirement: Opening a Library notebook runs no cell
 
@@ -215,7 +247,7 @@ No cell SHALL run when a Library notebook opens. The server SHALL refuse to laun
 
 ### Requirement: The experiment page shows the editor state
 
-The experiment page SHALL disable "Open in marimo" with a hint that links to the Code editor section when no launchable marimo is registered. Before each launch it SHALL show a consent dialog that says the notebook runs in the project's environment with the user's full file and network access, and that names the files the open adds to the folder. While the launch runs it SHALL show a busy state. After a launch it SHALL show the editor address, the one-time token, a link to open the tab again, the notebook state and a Stop action. After a reload it SHALL show a running editor for the experiment with Stop and without the token. A refused launch SHALL show one plain line and one action. The page SHALL work at 1280 px and 390 px wide.
+The experiment page SHALL disable "Open in marimo" with a hint that links to the Code editor section when no launchable marimo is registered. Before each launch it SHALL show a consent dialog that says the notebook runs in the project's environment with the user's full file and network access, and that names the files the open adds to the folder.
 
 #### Scenario: marimo not registered
 
@@ -226,6 +258,10 @@ The experiment page SHALL disable "Open in marimo" with a hint that links to the
 
 - **WHEN** the user opens marimo, stops it, and opens it again
 - **THEN** the consent dialog shows again with its checkbox cleared
+
+### Requirement: The experiment page shows launch progress and the running editor
+
+While the launch runs it SHALL show a busy state. After a launch it SHALL show the editor address, the one-time token, a link to open the tab again, the notebook state and a Stop action. After a reload it SHALL show a running editor for the experiment with Stop and without the token. A refused launch SHALL show one plain line and one action. The page SHALL work at 1280 px and 390 px wide.
 
 #### Scenario: Editor already running
 
@@ -316,13 +352,7 @@ The server SHALL write the new text to a temporary file in the same folder and t
 
 ### Requirement: Each save from the app is logged and shown
 
-Each save that changes a file SHALL append one edit record to `edits.jsonl` in the experiment folder after the file is replaced. When the append fails, the server SHALL restore the old text and answer with an error that says the file was not saved. When the restore also fails, the server SHALL answer with an error that says the file was saved but the edit was not recorded. The tab SHALL show "Last edited" with the date and time of the last logged edit of its file. `experiment.json` SHALL NOT change.
-
-#### Scenario: Last edited line
-
-- **WHEN** the user saves `report.md`
-- **THEN** `edits.jsonl` gains one line for `report.md`
-- **AND** the Report tab shows "Last edited" with the time of that save
+Each save that changes a file SHALL append one edit record to `edits.jsonl` in the experiment folder after the file is replaced. When the append fails, the server SHALL restore the old text and answer with an error that says the file was not saved. When the restore also fails, the server SHALL answer with an error that says the file was saved but the edit was not recorded.
 
 #### Scenario: Log cannot be written
 
@@ -341,6 +371,16 @@ Each save that changes a file SHALL append one edit record to `edits.jsonl` in t
 
 - **WHEN** `edits.jsonl` is a link
 - **THEN** the server answers 409 with the reason `edit_log_unusable` and writes nothing
+
+### Requirement: The file tab shows its last logged edit
+
+The tab SHALL show "Last edited" with the date and time of the last logged edit of its file. `experiment.json` SHALL NOT change.
+
+#### Scenario: Last edited line
+
+- **WHEN** the user saves `report.md`
+- **THEN** `edits.jsonl` gains one line for `report.md`
+- **AND** the Report tab shows "Last edited" with the time of that save
 
 ### Requirement: The editor warns on a finished or converted experiment and guards unsaved text
 

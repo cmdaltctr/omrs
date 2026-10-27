@@ -24,7 +24,7 @@ The canvas SHALL let users add registered nodes, create/remove compatible connec
 - **AND** the admitted graph SHALL be an immutable validated revision
 
 ### Requirement: Node controls show effective behaviour
-Node controls SHALL derive from operation schemas and show effective values, inherited defaults, and allowed overrides. Each pipeline SHALL inherit settings from its profile's base profile, and a step setting SHALL override the inherited value. Reranker and hybrid controls SHALL support inherit/on/off where applicable. Disabling a node in the graph (bypass) SHALL remain a separate mechanism from an operation control such as the reranker `enabled` control. Each control SHALL use a plain label and SHALL state where its value comes from. The canvas SHALL run the draft check by itself when a pipeline opens and after each change to the graph document, after a short pause, and SHALL show the effective values that the check returns without run inputs. An effective value SHALL show only while the draft matches the graph that was checked or validated. Technical identifiers SHALL sit in a collapsed Details area. Choice options SHALL show readable labels where one exists, and the saved value SHALL not change.
+Node controls SHALL derive from operation schemas and show effective values, inherited defaults, and allowed overrides. Each pipeline SHALL inherit settings from its profile's base profile, and a step setting SHALL override the inherited value. Reranker and hybrid controls SHALL support inherit/on/off where applicable. Disabling a node in the graph (bypass) SHALL remain a separate mechanism from an operation control such as the reranker `enabled` control.
 
 #### Scenario: Reranker is disabled with a click
 - **WHEN** a user sets the reranker node's `enabled` control to off and submits a new run
@@ -52,16 +52,22 @@ Node controls SHALL derive from operation schemas and show effective values, inh
 - **THEN** that step SHALL use 20
 - **AND** every other inherited setting SHALL keep its `documents` value
 
-#### Scenario: Values show without Validate
-- **WHEN** a user opens a Search pipeline whose base profile sets `retrieval.top_k` to 10, and has not pressed Validate
-- **THEN** after the draft check returns, the Prepare query card SHALL show "Number of results: 10 (from profile)"
-- **AND** Step settings for that step SHALL show "Value in use: 10 (from profile)"
+### Requirement: Each control names its value source in plain words
+Each control SHALL use a plain label and SHALL state where its value comes from.
 
 #### Scenario: Settings use plain labels and name their source
 - **WHEN** a user opens Step settings for a Prepare query step after a check reported `retrieval.top_k` as 10 from the profile
 - **THEN** the control SHALL be labelled "Number of results"
 - **AND** the value note SHALL read "Value in use: 10 (from profile)"
 - **AND** the setting path `retrieval.top_k` SHALL not show outside the Details area
+
+### Requirement: The canvas checks the draft by itself
+The canvas SHALL run the draft check by itself when a pipeline opens and after each change to the graph document, after a short pause, and SHALL show the effective values that the check returns without run inputs. An effective value SHALL show only while the draft matches the graph that was checked or validated.
+
+#### Scenario: Values show without Validate
+- **WHEN** a user opens a Search pipeline whose base profile sets `retrieval.top_k` to 10, and has not pressed Validate
+- **THEN** after the draft check returns, the Prepare query card SHALL show "Number of results: 10 (from profile)"
+- **AND** Step settings for that step SHALL show "Value in use: 10 (from profile)"
 
 #### Scenario: An edit starts a new check
 - **WHEN** a check reported effective values and the user then changes the draft graph
@@ -79,11 +85,17 @@ Node controls SHALL derive from operation schemas and show effective values, inh
 - **THEN** the cards and Step settings SHALL show the values that the check returned for the other steps
 - **AND** the issue list and the issue badges SHALL change only when the user selects Validate
 
+### Requirement: Technical identifiers sit in a Details area
+Technical identifiers SHALL sit in a collapsed Details area.
+
 #### Scenario: Technical identifiers are in Details
 - **WHEN** a user opens Step settings for a step
 - **THEN** the heading SHALL be the step name
 - **AND** a collapsed Details area SHALL hold the node id, the operation id and version, the full description, each setting path, the port types and the issue codes
 - **AND** issue messages SHALL stay visible outside the Details area
+
+### Requirement: Choice options show readable labels
+Choice options SHALL show readable labels where one exists, and the saved value SHALL not change.
 
 #### Scenario: A choice option has a readable label
 - **WHEN** a user opens the fallback chunking control of a Read document step
@@ -231,7 +243,7 @@ The Embed chunks step card SHALL show a read-only line with the model that the s
 - **AND** the rest of the canvas SHALL keep working
 
 ### Requirement: Step cards open their settings
-Each step card SHALL show that it opens its settings. The card SHALL show a settings button and a hover state, and SHALL show the shared focus outline when it has keyboard focus. The card SHALL have the accessible name "<step name> step". Selecting the card with a click, Enter or Space SHALL open Step settings for that step. The settings button SHALL have the accessible name "Settings for <step name>", and a click, Enter or Space on it SHALL open the card settings panel for that step. Using the settings button SHALL NOT start a drag.
+Each step card SHALL show that it opens its settings. The card SHALL show a settings button and a hover state, and SHALL show the shared focus outline when it has keyboard focus. The card SHALL have the accessible name "<step name> step". Selecting the card with a click, Enter or Space SHALL open Step settings for that step.
 
 #### Scenario: A user clicks a step card
 - **WHEN** a user clicks the Discover sources card
@@ -246,13 +258,16 @@ Each step card SHALL show that it opens its settings. The card SHALL show a sett
 - **WHEN** a screen reader reaches the Discover sources card
 - **THEN** it SHALL announce the name "Discover sources step"
 
+### Requirement: The settings button opens the card settings panel
+The settings button SHALL have the accessible name "Settings for <step name>", and a click, Enter or Space on it SHALL open the card settings panel for that step. Using the settings button SHALL NOT start a drag.
+
 #### Scenario: The settings button opens the card panel
 - **WHEN** a user clicks the settings button on the Prepare query card
 - **THEN** the card settings panel for Prepare query SHALL open next to the card
 - **AND** the button SHALL report `aria-expanded` true
 
 ### Requirement: The canvas explains how to edit it
-The canvas page SHALL show this intro as one visible line with a little vertical padding, above the pipeline tabs: "Build your own profile. Click a step to change it in Step settings. Drag from one port to another to connect steps, or use Connect ports." Each pipeline tab SHALL also have an info button with an "i" icon and no chevron. A click on the button SHALL open a popover that holds the description of that pipeline and, for a built-in profile, the read-only note. The popover SHALL close on Escape, on a click elsewhere and on a second click on the button. The intro line SHALL show once and SHALL not repeat inside any popover. The intro line and the info buttons SHALL show for an empty graph and for a graph with steps. They SHALL not cover any step.
+The canvas page SHALL show this intro as one visible line with a little vertical padding, above the pipeline tabs: "Build your own profile. Click a step to change it in Step settings. Drag from one port to another to connect steps, or use Connect ports." Each pipeline tab SHALL also have an info button with an "i" icon and no chevron.
 
 #### Scenario: The graph is empty
 - **WHEN** a user opens a pipeline with no steps
@@ -260,6 +275,17 @@ The canvas page SHALL show this intro as one visible line with a little vertical
 - **AND** an info button SHALL show on each pipeline tab
 - **AND** no popover SHALL hold the intro line
 - **AND** the empty state SHALL read "The graph is empty. Add a step from Operations to start."
+
+### Requirement: The info button opens a popover with the pipeline description
+A click on the button SHALL open a popover that holds the description of that pipeline and, for a built-in profile, the read-only note. The popover SHALL close on Escape, on a click elsewhere and on a second click on the button.
+
+#### Scenario: The info button opens and closes the popover
+- **WHEN** a user clicks the info button on a pipeline tab
+- **THEN** a popover SHALL open that holds the description of that pipeline
+- **AND** the popover SHALL close on Escape, on a click elsewhere and on a second click on the button
+
+### Requirement: The intro line shows once and covers no step
+The intro line SHALL show once and SHALL not repeat inside any popover. The intro line and the info buttons SHALL show for an empty graph and for a graph with steps. They SHALL not cover any step.
 
 #### Scenario: The graph has steps
 - **WHEN** a user opens a pipeline with steps
@@ -323,11 +349,14 @@ The one-line summary on a step card SHALL be a button. A click or Enter or Space
 - **AND** Step settings SHALL not change
 
 ### Requirement: Step settings sit in a mini card that expands in place
-A step card SHALL show its settings inside a mini card nested in the card: the main settings with their values, the Embed chunks model line, or "No settings". When the step has more editable settings than the card shows, the mini card SHALL end with a button "+N more settings", where N is the number left over. A click or Enter or Space on that button SHALL show the other settings, with their values and sources, inside the mini card, and the button SHALL then read "Show fewer settings". Using the button SHALL not select the card, open Step settings or start a drag. A step with no more settings SHALL show no such button.
+A step card SHALL show its settings inside a mini card nested in the card: the main settings with their values, the Embed chunks model line, or "No settings". When the step has more editable settings than the card shows, the mini card SHALL end with a button "+N more settings", where N is the number left over.
 
 #### Scenario: A step has more settings
 - **WHEN** the Prepare query card shows three settings and has two more
 - **THEN** the mini card SHALL end with a button "+2 more settings" that reports `aria-expanded` false
+
+### Requirement: The more-settings button expands the mini card in place
+A click or Enter or Space on that button SHALL show the other settings, with their values and sources, inside the mini card, and the button SHALL then read "Show fewer settings". Using the button SHALL not select the card, open Step settings or start a drag. A step with no more settings SHALL show no such button.
 
 #### Scenario: The user expands the settings
 - **WHEN** the user clicks "+2 more settings"
@@ -344,13 +373,16 @@ A step card SHALL show its settings inside a mini card nested in the card: the m
 - **THEN** the mini card SHALL show no "more settings" button
 
 ### Requirement: The canvas header slides up to give the canvas more room
-The canvas header SHALL have a toggle button with a panel-top icon, at the right end of the title row. Its name SHALL be "Hide header" while the header is shown and "Show header" while it is hidden. A click on "Hide header" SHALL slide the intro line and the pipeline tabs up. The title row SHALL stay in place: the profile name, its badges, the profile ID, "Duplicate to edit", "All profiles" and the toggle. The hidden intro line and tabs SHALL not take focus, and the toggle SHALL keep focus. A click on "Show header" SHALL slide them down again. Notices SHALL stay visible while the header is hidden. The header SHALL start shown on every visit, and the canvas SHALL fill the room that the hidden part leaves. With reduced motion, the header SHALL change without a slide.
+The canvas header SHALL have a toggle button with a panel-top icon, at the right end of the title row. Its name SHALL be "Hide header" while the header is shown and "Show header" while it is hidden. A click on "Hide header" SHALL slide the intro line and the pipeline tabs up. The title row SHALL stay in place: the profile name, its badges, the profile ID, "Duplicate to edit", "All profiles" and the toggle.
 
 #### Scenario: The user hides the header
 - **WHEN** the user clicks "Hide header"
 - **THEN** the intro line and the pipeline tabs SHALL be hidden and SHALL not take focus
 - **AND** the title row, "Duplicate to edit" and "All profiles" SHALL stay visible
 - **AND** the toggle SHALL read "Show header" and SHALL keep focus
+
+### Requirement: The hidden header parts take no focus and come back on request
+The hidden intro line and tabs SHALL not take focus, and the toggle SHALL keep focus. A click on "Show header" SHALL slide them down again. Notices SHALL stay visible while the header is hidden.
 
 #### Scenario: The user shows the header again
 - **WHEN** the user clicks "Show header"
@@ -361,12 +393,15 @@ The canvas header SHALL have a toggle button with a panel-top icon, at the right
 - **WHEN** the header is hidden and a notice appears, for example a refused connection
 - **THEN** the notice SHALL show
 
+### Requirement: The header starts shown and respects reduced motion
+The header SHALL start shown on every visit, and the canvas SHALL fill the room that the hidden part leaves. With reduced motion, the header SHALL change without a slide.
+
 #### Scenario: A new visit
 - **WHEN** the user opens the canvas again
 - **THEN** the header SHALL be shown
 
 ### Requirement: The card settings panel edits a step in place
-The card settings panel SHALL show the same controls as Step settings for that step: the bypass switch when the operation has one, and one control for each editable setting, with the same labels, value notes and checks. A change in the panel SHALL change the draft exactly as the same change in Step settings does. The panel SHALL end with a button "Open in Step settings" that selects the step and opens Step settings. The panel SHALL close on Escape, on a click outside it and on a second click on the settings button, and Escape SHALL return focus to the settings button. Typing or clicking in the panel SHALL NOT select, drag or remove the step. On a read-only graph every control in the panel SHALL be disabled. The Embed chunks panel SHALL show the model line and "Open in Step settings", and SHALL NOT offer a model control.
+The card settings panel SHALL show the same controls as Step settings for that step: the bypass switch when the operation has one, and one control for each editable setting, with the same labels, value notes and checks. A change in the panel SHALL change the draft exactly as the same change in Step settings does.
 
 #### Scenario: A number is set from the card
 - **WHEN** a user opens the card settings panel of Prepare query, chooses "Set value" for "Number of results" and types 20
@@ -378,14 +413,23 @@ The card settings panel SHALL show the same controls as Step settings for that s
 - **THEN** the step SHALL be disabled in the draft
 - **AND** the card SHALL show the Bypassed badge
 
-#### Scenario: Backspace in a field keeps the step
-- **WHEN** a user presses Backspace in a text field of the card settings panel
-- **THEN** the step SHALL stay in the graph
+### Requirement: The card settings panel leads to Step settings and closes on request
+The panel SHALL end with a button "Open in Step settings" that selects the step and opens Step settings. The panel SHALL close on Escape, on a click outside it and on a second click on the settings button, and Escape SHALL return focus to the settings button.
 
 #### Scenario: The panel leads to Step settings
 - **WHEN** a user selects "Open in Step settings" in the card settings panel of Split into chunks
 - **THEN** Split into chunks SHALL be selected
 - **AND** Step settings SHALL open and show Split into chunks
+
+### Requirement: Typing in the card settings panel leaves the step alone
+Typing or clicking in the panel SHALL NOT select, drag or remove the step.
+
+#### Scenario: Backspace in a field keeps the step
+- **WHEN** a user presses Backspace in a text field of the card settings panel
+- **THEN** the step SHALL stay in the graph
+
+### Requirement: Read-only and Embed chunks panels offer no edits
+On a read-only graph every control in the panel SHALL be disabled. The Embed chunks panel SHALL show the model line and "Open in Step settings", and SHALL NOT offer a model control.
 
 #### Scenario: A built-in profile shows values only
 - **WHEN** a user opens the card settings panel of a step on a built-in profile

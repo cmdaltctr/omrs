@@ -7,7 +7,7 @@ Remove markup noise from text that PDF readers and OCR engines emit, before the 
 
 ### Requirement: Reader output from PDF sources SHALL be normalised before chunking
 
-When normalisation is enabled, the ingestion pipeline SHALL normalise the text of every document read from a PDF source before chunking. This covers every PDF reader, OCR tier and cloud document backend. Normalisation SHALL be deterministic: the same input text SHALL always give the same output text. It SHALL NOT call a language model or any network service.
+When normalisation is enabled, the ingestion pipeline SHALL normalise the text of every document read from a PDF source before chunking. This covers every PDF reader, OCR tier and cloud document backend.
 
 Text from authored files (`.md`, `.txt`, `.html` and other non-PDF document sources) and from code and config files SHALL pass through unchanged.
 
@@ -23,6 +23,10 @@ Text from authored files (`.md`, `.txt`, `.html` and other non-PDF document sour
 - **GIVEN** normalisation is enabled
 - **WHEN** a `.md` file containing `<div align="center"><img src="logo.png"></div>` is ingested
 - **THEN** the stored chunk text SHALL contain that markup unchanged
+
+### Requirement: Normalisation SHALL be deterministic and local
+
+Normalisation SHALL be deterministic: the same input text SHALL always give the same output text. It SHALL NOT call a language model or any network service.
 
 #### Scenario: Normalisation is deterministic
 
@@ -76,7 +80,7 @@ Normalisation SHALL remove the tags of every `<div>` block and keep the block's 
 
 ### Requirement: Links, tables, code and maths SHALL be preserved
 
-Normalisation SHALL keep the structure of Markdown links and bare URLs. It SHALL decode HTML entities in link text and link destinations, as in the rest of the text. It SHALL keep `<table>` blocks as HTML tables. Inside a table it SHALL keep only the `table`, `thead`, `tbody`, `tr`, `td` and `th` tags and their `colspan` and `rowspan` attributes, and SHALL remove every other attribute. It SHALL decode HTML entities outside tables, code and maths. It SHALL NOT change fenced code blocks or inline code spans. It SHALL NOT change LaTeX maths: `$…$` within one line, `$$…$$`, and `\begin{…}…\end{…}` with matching environment names.
+Normalisation SHALL keep the structure of Markdown links and bare URLs. It SHALL decode HTML entities in link text and link destinations, as in the rest of the text. It SHALL keep `<table>` blocks as HTML tables.
 
 #### Scenario: Link is untouched
 
@@ -87,6 +91,10 @@ Normalisation SHALL keep the structure of Markdown links and bare URLs. It SHALL
 
 - **WHEN** the reader emits `[docs](https://example.test/?a=1&amp;b=2)`
 - **THEN** the normalised text SHALL be `[docs](https://example.test/?a=1&b=2)`
+
+### Requirement: Tables SHALL keep only structural markup, and code and maths SHALL stay unchanged
+
+Inside a table it SHALL keep only the `table`, `thead`, `tbody`, `tr`, `td` and `th` tags and their `colspan` and `rowspan` attributes, and SHALL remove every other attribute. It SHALL decode HTML entities outside tables, code and maths. It SHALL NOT change fenced code blocks or inline code spans. It SHALL NOT change LaTeX maths: `$…$` within one line, `$$…$$`, and `\begin{…}…\end{…}` with matching environment names.
 
 #### Scenario: Table keeps structure and loses presentation
 

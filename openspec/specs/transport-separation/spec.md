@@ -14,11 +14,6 @@ file SHALL contain RAG algorithms, graph scheduling, or domain mutation
 policy. Core SHALL not import a transport or receive transport-specific
 objects.
 
-Where a transport is split across modules, its package entry point SHALL own
-the shared server/application and register every handler. Existing package
-handler re-exports SHALL remain compatible. Importing handlers for decorator
-side effects alone SHALL not remove their existing importable names.
-
 #### Scenario: CLI split by command group
 
 - **WHEN** the CLI is inspected after the move
@@ -27,29 +22,11 @@ side effects alone SHALL not remove their existing importable names.
 - **AND** existing `omrs` subcommands MUST retain their behaviour
 - **AND** the explicit web command MUST live in its own thin module
 
-#### Scenario: MCP split by tool
-
-- **WHEN** `transports/mcp/` is inspected
-- **THEN** it MUST retain separate modules per tool group
-- **AND** `__init__.py` MUST own the server instance and import every tool
-  module
-
 #### Scenario: MCP server entry unchanged
 
 - **WHEN** `omrs` is run with no arguments
 - **THEN** the MCP server MUST start with its existing tool signatures
 - **AND** the web workspace or notebook editor MUST not start implicitly
-
-#### Scenario: Tool set stays complete after a transport split
-
-- **WHEN** the running MCP server is asked to list its tools
-- **THEN** every existing tool MUST still be present
-- **AND** each MUST keep its name, parameters, defaults, and annotations
-
-#### Scenario: Handlers stay importable from the package root
-
-- **WHEN** an existing handler is imported from its transport package root
-- **THEN** the import MUST succeed and yield the registered callable
 
 #### Scenario: Core stays transport-agnostic
 
@@ -65,18 +42,36 @@ side effects alone SHALL not remove their existing importable names.
 - **AND** those handlers MUST delegate graph and document operations to shared
   services
 
+### Requirement: A split transport registers every handler from its package entry point
+
+Where a transport is split across modules, its package entry point SHALL own
+the shared server/application and register every handler. Existing package
+handler re-exports SHALL remain compatible. Importing handlers for decorator
+side effects alone SHALL not remove their existing importable names.
+
+#### Scenario: MCP split by tool
+
+- **WHEN** `transports/mcp/` is inspected
+- **THEN** it MUST retain separate modules per tool group
+- **AND** `__init__.py` MUST own the server instance and import every tool
+  module
+
+#### Scenario: Tool set stays complete after a transport split
+
+- **WHEN** the running MCP server is asked to list its tools
+- **THEN** every existing tool MUST still be present
+- **AND** each MUST keep its name, parameters, defaults, and annotations
+
+#### Scenario: Handlers stay importable from the package root
+
+- **WHEN** an existing handler is imported from its transport package root
+- **THEN** the import MUST succeed and yield the registered callable
+
 ### Requirement: Uniform MCP error contract
 
 Every MCP tool handler SHALL catch its failures and return an error payload
 carrying `{"status": "error", "message": "..."}`, and SHALL NOT raise from a
 tool handler (AGENTS.md gotcha #1), including `ingest_documents`.
-
-The error payload SHALL be carried in the handler's own declared return type,
-not coerced into a dictionary. A handler returning a mapping returns the error
-mapping directly. A handler returning a list returns a single-element list
-containing it. A handler returning a string returns its JSON encoding. What is
-uniform is that a failure is caught, reported with that status and message, and
-never raised — not the outer container.
 
 #### Scenario: ingest_documents failure returns dict
 
@@ -84,6 +79,15 @@ never raised — not the outer container.
   ingestion
 - **THEN** the handler MUST catch the failure and return an error dict
 - **AND** MUST NOT propagate an exception to the MCP runtime
+
+### Requirement: The MCP error payload keeps the handler's declared return type
+
+The error payload SHALL be carried in the handler's own declared return type,
+not coerced into a dictionary. A handler returning a mapping returns the error
+mapping directly. A handler returning a list returns a single-element list
+containing it. A handler returning a string returns its JSON encoding. What is
+uniform is that a failure is caught, reported with that status and message, and
+never raised — not the outer container.
 
 #### Scenario: A list-returning handler reports an error
 
@@ -109,7 +113,7 @@ never raised — not the outer container.
 
 ### Requirement: FastMCP lifespan and context forward-compatibility
 
-`transports/mcp/` SHALL build the MCP server through a factory that takes a lifespan and registers every tool on the new server. The lifespan SHALL yield a context holding the Engine and the path policy for that transport, and every tool handler SHALL read them from its request context (`ctx: Context`). Tool handlers SHALL NOT read the process-default store, settings, reranker or profile resolver. The stdio entry point SHALL build its Engine through `compose.build_engine()` before the transport starts, so startup stays fail-fast, and its lifespan SHALL close that Engine when it exits.
+`transports/mcp/` SHALL build the MCP server through a factory that takes a lifespan and registers every tool on the new server. The lifespan SHALL yield a context holding the Engine and the path policy for that transport, and every tool handler SHALL read them from its request context (`ctx: Context`).
 
 #### Scenario: Lifespan slot preserved
 
@@ -120,6 +124,10 @@ never raised — not the outer container.
 
 - **WHEN** tool handler signatures are inspected
 - **THEN** each handler MUST take `ctx: Context` and MUST obtain the Engine from it
+
+### Requirement: MCP tool handlers use the lifespan Engine instead of process defaults
+
+Tool handlers SHALL NOT read the process-default store, settings, reranker or profile resolver. The stdio entry point SHALL build its Engine through `compose.build_engine()` before the transport starts, so startup stays fail-fast, and its lifespan SHALL close that Engine when it exits.
 
 #### Scenario: No process defaults
 

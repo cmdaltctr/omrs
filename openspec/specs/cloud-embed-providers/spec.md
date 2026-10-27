@@ -10,7 +10,7 @@ depends on a cloud provider being configured.
 ## Requirements
 ### Requirement: Config-based provider registry
 
-The system SHALL maintain a provider registry dict in `config.py` that defines all embedding and LLM providers. Each registry entry SHALL specify: module path, class name, required env vars (mapped to constructor params), optional env vars, static constructor params, and the optional dependency group name. A single `_build_provider(registry, provider_name)` function SHALL resolve env vars, perform a dynamic import, instantiate the class, and return the instance. Adding a new provider SHALL require only a new dict entry — no if/elif changes in consuming modules.
+The system SHALL maintain a provider registry dict in `config.py` that defines all embedding and LLM providers. A single `_build_provider(registry, provider_name)` function SHALL resolve env vars, perform a dynamic import, instantiate the class, and return the instance. Adding a new provider SHALL require only a new dict entry — no if/elif changes in consuming modules.
 
 #### Scenario: Registry lookup for known provider
 
@@ -25,6 +25,10 @@ The system SHALL maintain a provider registry dict in `config.py` that defines a
 - **THEN** the system SHALL log a WARNING
 - **THEN** the system SHALL fall back to `ollama`
 
+### Requirement: Registry entries describe how to build each provider
+
+Each registry entry SHALL specify: module path, class name, required env vars (mapped to constructor params), optional env vars, static constructor params, and the optional dependency group name.
+
 #### Scenario: Missing required env var for provider
 
 - **WHEN** `EMBED_PROVIDER=openrouter`
@@ -33,18 +37,7 @@ The system SHALL maintain a provider registry dict in `config.py` that defines a
 
 ### Requirement: OpenRouter embedding provider
 
-The system SHALL support `EMBED_PROVIDER=openrouter` for cloud embeddings via OpenRouter's OpenAI-compatible API. The system SHALL use `OpenAILikeEmbedding` from `llama-index-embeddings-openai-like` with `api_base` set to `https://openrouter.ai/api/v1`, `api_key` set from `OPENROUTER_API_KEY`, and `model_name` set from `OPENROUTER_EMBED_MODEL`. `OpenAILikeEmbedding` SHALL forward the model identifier unchanged, because OpenRouter serves embeddings under provider-prefixed, non-OpenAI IDs (for example `qwen/qwen3-embedding-4b`) that `OpenAIEmbedding`'s fixed model enum rejects at construction. The system SHALL require `llama-index-embeddings-openai-like` to be installed (same package as llamacpp backend).
-
-#### Scenario: OpenRouter embeddings configured
-
-- **WHEN** `EMBED_PROVIDER=openrouter`
-- **AND** `OPENROUTER_API_KEY=sk-or-v1-...`
-- **AND** `OPENROUTER_EMBED_MODEL=nvidia/nv-embed-v1`
-- **AND** `llama-index-embeddings-openai-like` is installed
-- **THEN** `compose.build_embed_model(settings)` SHALL return an `OpenAILikeEmbedding` instance
-- **THEN** embedding requests SHALL be sent to `https://openrouter.ai/api/v1/embeddings`
-- **THEN** the `api_key` SHALL be set to the value of `OPENROUTER_API_KEY`
-- **THEN** the `model_name` SHALL equal `OPENROUTER_EMBED_MODEL` unchanged
+The system SHALL support `EMBED_PROVIDER=openrouter` for cloud embeddings via OpenRouter's OpenAI-compatible API. The system SHALL use `OpenAILikeEmbedding` from `llama-index-embeddings-openai-like` with `api_base` set to `https://openrouter.ai/api/v1`, `api_key` set from `OPENROUTER_API_KEY`, and `model_name` set from `OPENROUTER_EMBED_MODEL`. The system SHALL require `llama-index-embeddings-openai-like` to be installed (same package as llamacpp backend).
 
 #### Scenario: OpenRouter embeddings but optional deps not installed
 
@@ -57,6 +50,21 @@ The system SHALL support `EMBED_PROVIDER=openrouter` for cloud embeddings via Op
 - **WHEN** `EMBED_PROVIDER=openrouter`
 - **AND** `OPENROUTER_API_KEY` is not set
 - **THEN** the system SHALL raise a `ValueError` with a message naming `OPENROUTER_API_KEY` as required
+
+### Requirement: OpenRouter model identifiers pass through unchanged
+
+`OpenAILikeEmbedding` SHALL forward the model identifier unchanged, because OpenRouter serves embeddings under provider-prefixed, non-OpenAI IDs (for example `qwen/qwen3-embedding-4b`) that `OpenAIEmbedding`'s fixed model enum rejects at construction.
+
+#### Scenario: OpenRouter embeddings configured
+
+- **WHEN** `EMBED_PROVIDER=openrouter`
+- **AND** `OPENROUTER_API_KEY=sk-or-v1-...`
+- **AND** `OPENROUTER_EMBED_MODEL=nvidia/nv-embed-v1`
+- **AND** `llama-index-embeddings-openai-like` is installed
+- **THEN** `compose.build_embed_model(settings)` SHALL return an `OpenAILikeEmbedding` instance
+- **THEN** embedding requests SHALL be sent to `https://openrouter.ai/api/v1/embeddings`
+- **THEN** the `api_key` SHALL be set to the value of `OPENROUTER_API_KEY`
+- **THEN** the `model_name` SHALL equal `OPENROUTER_EMBED_MODEL` unchanged
 
 ### Requirement: OpenRouter LLM provider for metadata extraction
 

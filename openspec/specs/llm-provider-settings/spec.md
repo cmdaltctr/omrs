@@ -36,22 +36,26 @@ Lets the user set language model (LLM) provider addresses, API keys and the Chat
 
 ### Requirement: The registry lists the OpenAI-compatible and Anthropic Chat providers
 
-The LLM provider registry SHALL hold two Chat providers in addition to `ollama`, `llamacpp` and `openrouter`, each as one provider module, one `register()` line and one connection descriptor. `openai_compatible` (display name "OpenAI-compatible") SHALL serve the answers role only. It SHALL have an editable address field (`OPENAI_COMPATIBLE_BASE_URL`, default `https://api.openai.com/v1`) and an optional secret field (`OPENAI_COMPATIBLE_API_KEY`). `anthropic` (display name "Anthropic") SHALL serve the answers role only. It SHALL have one required secret field (`ANTHROPIC_API_KEY`) and the fixed address `https://api.anthropic.com`. Neither provider SHALL appear in the embeddings or metadata roles.
+The LLM provider registry SHALL hold two Chat providers in addition to `ollama`, `llamacpp` and `openrouter`, each as one provider module, one `register()` line and one connection descriptor. `openai_compatible` (display name "OpenAI-compatible") SHALL serve the answers role only. It SHALL have an editable address field (`OPENAI_COMPATIBLE_BASE_URL`, default `https://api.openai.com/v1`) and an optional secret field (`OPENAI_COMPATIBLE_API_KEY`).
 
 #### Scenario: OpenAI-compatible entry
 
 - **WHEN** the response holds the `openai_compatible` entry
 - **THEN** the entry MUST list the roles as answers only, an editable address with the default `https://api.openai.com/v1`, and a secret field that is marked optional
 
-#### Scenario: Anthropic entry
-
-- **WHEN** the response holds the `anthropic` entry
-- **THEN** the entry MUST list the roles as answers only, one secret field that is marked required, and no editable address
-
 #### Scenario: Remote or loopback address
 
 - **WHEN** the user saves the `openai_compatible` address `http://localhost:1234/v1` and later saves `https://api.together.xyz/v1`
 - **THEN** the server MUST accept both, the second entry MUST be treated as not on this machine, and the card MUST state that text leaves this machine
+
+### Requirement: The Anthropic provider serves answers with a fixed address
+
+`anthropic` (display name "Anthropic") SHALL serve the answers role only. It SHALL have one required secret field (`ANTHROPIC_API_KEY`) and the fixed address `https://api.anthropic.com`. Neither provider SHALL appear in the embeddings or metadata roles.
+
+#### Scenario: Anthropic entry
+
+- **WHEN** the response holds the `anthropic` entry
+- **THEN** the entry MUST list the roles as answers only, one secret field that is marked required, and no editable address
 
 ### Requirement: An optional key does not block Chat
 
@@ -131,12 +135,7 @@ The rules for keychain storage, the environment lock, redaction, the last four c
 
 ### Requirement: Each provider value has one source
 
-Each editable address and the Chat choice SHALL come from the first of these sources, highest first: the process environment (`env`), the `.env` file (`dotenv`), `omrs.jsonc` (`config-file`), the default (`default`). An API key SHALL come from the first of: the environment (`env`), `.env` (`dotenv`), a reference in `omrs.jsonc` (`config-file` for `env://`, `key-file` for `file://`, `keychain` for `keychain://`), the key file `secrets/<provider>.key` (`key-file`), else none (`none`). A value from `env` or `dotenv` SHALL lock its field: a write SHALL return 409 naming the variable and where it is set, and SHALL change nothing. A value from any other source SHALL NOT lock its field. The source `saved` SHALL NOT exist.
-
-#### Scenario: Environment wins and locks
-
-- **WHEN** `.env` sets `LLAMACPP_CHAT_URL` and the user saves another llama.cpp chat address
-- **THEN** the server MUST return 409, the address in use MUST stay the `.env` value, and the field MUST report the source `dotenv`
+Each editable address and the Chat choice SHALL come from the first of these sources, highest first: the process environment (`env`), the `.env` file (`dotenv`), `omrs.jsonc` (`config-file`), the default (`default`). The source `saved` SHALL NOT exist.
 
 #### Scenario: Saved value used
 
@@ -148,19 +147,27 @@ Each editable address and the Chat choice SHALL come from the first of these sou
 - **WHEN** the user clears the Ollama address
 - **THEN** `omrs.jsonc` MUST no longer hold `ollama_base_url` and the Ollama entry MUST report the default address with the source `default`
 
+### Requirement: An API key has its own source order
+
+An API key SHALL come from the first of: the environment (`env`), `.env` (`dotenv`), a reference in `omrs.jsonc` (`config-file` for `env://`, `key-file` for `file://`, `keychain` for `keychain://`), the key file `secrets/<provider>.key` (`key-file`), else none (`none`).
+
 #### Scenario: Key from the environment
 
 - **WHEN** `OPENROUTER_API_KEY` is set in the environment
 - **THEN** the OpenRouter key field MUST report the source `env` and locked, and a save or delete of the key MUST return 409
 
+### Requirement: Environment values lock their field
+
+A value from `env` or `dotenv` SHALL lock its field: a write SHALL return 409 naming the variable and where it is set, and SHALL change nothing. A value from any other source SHALL NOT lock its field.
+
+#### Scenario: Environment wins and locks
+
+- **WHEN** `.env` sets `LLAMACPP_CHAT_URL` and the user saves another llama.cpp chat address
+- **THEN** the server MUST return 409, the address in use MUST stay the `.env` value, and the field MUST report the source `dotenv`
+
 ### Requirement: API keys live only in the system keychain
 
-`PUT` and `DELETE /v1/connections/{provider}/key` (browser session, `credentials` scope) SHALL save a key to or remove it from the system keychain under the service `omrs` with the provider name as user name. A save SHALL also write `keychain://<provider>` as the provider's key reference in `omrs.jsonc`. A delete SHALL remove the keychain entry and that reference. The server SHALL use only a recommended backend (macOS Keychain, Windows Credential Locker, Secret Service). It SHALL NOT write a key to `.env`, the workspace database or any file.
-
-#### Scenario: Key saved in the keychain
-
-- **WHEN** a keychain is available and the user saves an OpenRouter key
-- **THEN** the keychain MUST hold the key under the service `omrs` and the user name `openrouter`, `omrs.jsonc` MUST hold `keychain://openrouter`, and no file in the workspace, the config folder or the working directory MUST contain the key
+`PUT` and `DELETE /v1/connections/{provider}/key` (browser session, `credentials` scope) SHALL save a key to or remove it from the system keychain under the service `omrs` with the provider name as user name. A save SHALL also write `keychain://<provider>` as the provider's key reference in `omrs.jsonc`. A delete SHALL remove the keychain entry and that reference.
 
 #### Scenario: Key replaces a file reference
 
@@ -176,6 +183,15 @@ Each editable address and the Chat choice SHALL come from the first of these sou
 
 - **WHEN** a request to save or delete a key carries a bearer credential instead of the browser session
 - **THEN** the server MUST refuse it and MUST change nothing
+
+### Requirement: Keys are never written to a file
+
+The server SHALL use only a recommended backend (macOS Keychain, Windows Credential Locker, Secret Service). It SHALL NOT write a key to `.env`, the workspace database or any file.
+
+#### Scenario: Key saved in the keychain
+
+- **WHEN** a keychain is available and the user saves an OpenRouter key
+- **THEN** the keychain MUST hold the key under the service `omrs` and the user name `openrouter`, `omrs.jsonc` MUST hold `keychain://openrouter`, and no file in the workspace, the config folder or the working directory MUST contain the key
 
 ### Requirement: No keychain means no saved key
 
@@ -378,7 +394,7 @@ A `file://` reference SHALL resolve, after symlinks are followed, to a path insi
 
 ### Requirement: Key files follow safety rules
 
-`secrets/<provider>.key` SHALL hold one key for the provider whose registry name is the file name. The server SHALL read at most 4 KiB and SHALL strip surrounding whitespace. The server SHALL refuse a symlink that resolves outside the user config folder and SHALL refuse a path that is not a regular file. When a key file has a mode looser than 0600, or the `secrets/` folder has a mode looser than 0700, the server SHALL still read the key and SHALL log one warning with the path and the mode, and SHALL NOT log the content. The permission check SHALL be skipped on Windows. A key file SHALL apply to secret fields only.
+`secrets/<provider>.key` SHALL hold one key for the provider whose registry name is the file name. The server SHALL read at most 4 KiB and SHALL strip surrounding whitespace. A key file SHALL apply to secret fields only.
 
 #### Scenario: Key file read
 
@@ -390,6 +406,15 @@ A `file://` reference SHALL resolve, after symlinks are followed, to a path insi
 - **WHEN** a key file holds more than 4 KiB
 - **THEN** the server MUST NOT use it and MUST log one warning that names the path
 
+#### Scenario: Unknown file name
+
+- **WHEN** `secrets/` holds a file whose name is not a registered provider
+- **THEN** the server MUST ignore it
+
+### Requirement: The server refuses unsafe key file paths
+
+The server SHALL refuse a symlink that resolves outside the user config folder and SHALL refuse a path that is not a regular file.
+
 #### Scenario: Symlink out of the folder
 
 - **WHEN** `secrets/openrouter.key` is a symlink to a file outside the user config folder
@@ -400,15 +425,14 @@ A `file://` reference SHALL resolve, after symlinks are followed, to a path insi
 - **WHEN** `secrets/openrouter.key` is a folder or a device
 - **THEN** the server MUST refuse it
 
+### Requirement: Loose key file permissions give a warning
+
+When a key file has a mode looser than 0600, or the `secrets/` folder has a mode looser than 0700, the server SHALL still read the key and SHALL log one warning with the path and the mode, and SHALL NOT log the content. The permission check SHALL be skipped on Windows.
+
 #### Scenario: Loose permissions
 
 - **WHEN** a key file has mode 0644 on macOS or Linux
 - **THEN** the server MUST use the key, and MUST log one warning that holds the path and the mode and no part of the key
-
-#### Scenario: Unknown file name
-
-- **WHEN** `secrets/` holds a file whose name is not a registered provider
-- **THEN** the server MUST ignore it
 
 ### Requirement: Keys from the user config folder are redacted
 
@@ -449,7 +473,7 @@ The test suite SHALL set `OMRS_CONFIG_DIR` to a temporary folder before any sett
 
 ### Requirement: Ollama context window is a setting
 
-The server SHALL have a setting `ollama_context_window`, an integer number of tokens. The default SHALL be 16,384. The allowed range SHALL be 2,048 to 262,144. The value SHALL come from the first source that holds one, highest first: environment `OLLAMA_CONTEXT_WINDOW` and `.env`, key `ollama_context_window` in `omrs.jsonc`, a value saved in the web workspace, the default. A value from the environment, `.env` or `omrs.jsonc` SHALL lock the field. A value outside the range SHALL be rejected with a message that names the rule and not the value. The setting SHALL NOT apply to embedding models.
+The server SHALL have a setting `ollama_context_window`, an integer number of tokens. The default SHALL be 16,384. The allowed range SHALL be 2,048 to 262,144. A value outside the range SHALL be rejected with a message that names the rule and not the value. The setting SHALL NOT apply to embedding models.
 
 #### Scenario: Default
 
@@ -466,6 +490,15 @@ The server SHALL have a setting `ollama_context_window`, an integer number of to
 - **WHEN** the user saves 2,048 and then 262,144
 - **THEN** the server MUST accept both
 
+#### Scenario: Invalid file value
+
+- **WHEN** `omrs.jsonc` holds `ollama_context_window` of 100
+- **THEN** the server MUST ignore the value, MUST log one warning that names the field and not the value, and MUST use the next source
+
+### Requirement: The Ollama context window follows the source order
+
+The value SHALL come from the first source that holds one, highest first: environment `OLLAMA_CONTEXT_WINDOW` and `.env`, key `ollama_context_window` in `omrs.jsonc`, a value saved in the web workspace, the default. A value from the environment, `.env` or `omrs.jsonc` SHALL lock the field.
+
 #### Scenario: Environment locks the field
 
 - **WHEN** `OLLAMA_CONTEXT_WINDOW=8192` is in the environment and the user saves another value
@@ -480,11 +513,6 @@ The server SHALL have a setting `ollama_context_window`, an integer number of to
 
 - **WHEN** no environment or file value exists and the user saves 32,768
 - **THEN** the effective value MUST be 32,768 and the source MUST be `saved`
-
-#### Scenario: Invalid file value
-
-- **WHEN** `omrs.jsonc` holds `ollama_context_window` of 100
-- **THEN** the server MUST ignore the value, MUST log one warning that names the field and not the value, and MUST use the next source
 
 ### Requirement: The Ollama context window is sent on every Ollama call
 
@@ -574,17 +602,21 @@ The `config/` package SHALL read the user config folder, and the composition roo
 
 ### Requirement: The judge status says whether the judge is ready
 
-`GET /v1/settings/judge` (read scope) SHALL return the judge provider as set (a registry name, or the alias `cloud` or `local`), the registry provider that the alias resolves to, the judge model, their source (`env`, `dotenv`, `config-file` or `default`), whether the choice is locked and why, whether answering is enabled, and whether the judge is ready. When the judge is not ready, the route SHALL give a reason from a fixed set: `disabled`, `unknown-provider`, `not-installed`, `not-configured` (a required value, such as a key, is missing) and `no-model` (the judge model in force is empty). The server SHALL NOT contact a provider for this route. The route SHALL NOT report whether claim checks are turned on, because a profile decides that per collection.
-
-#### Scenario: Default judge has no model
-
-- **WHEN** no source sets `answer.verify_provider` or `answer.verify_model`
-- **THEN** `GET /v1/settings/judge` MUST report the provider `cloud`, the resolved provider `openrouter`, the model `""`, the source `default`, ready false and the reason `no-model`
+`GET /v1/settings/judge` (read scope) SHALL return the judge provider as set (a registry name, or the alias `cloud` or `local`), the registry provider that the alias resolves to, the judge model, their source (`env`, `dotenv`, `config-file` or `default`), whether the choice is locked and why, whether answering is enabled, and whether the judge is ready.
 
 #### Scenario: Ready judge
 
 - **WHEN** `omrs.jsonc` sets `answer.verify_provider` to `openrouter` and `answer.verify_model` to `openai/gpt-5-mini`, and an OpenRouter key is set
 - **THEN** `GET /v1/settings/judge` MUST report that choice with the source `config-file` and ready true
+
+### Requirement: The judge status gives a reason and contacts no provider
+
+When the judge is not ready, the route SHALL give a reason from a fixed set: `disabled`, `unknown-provider`, `not-installed`, `not-configured` (a required value, such as a key, is missing) and `no-model` (the judge model in force is empty). The server SHALL NOT contact a provider for this route. The route SHALL NOT report whether claim checks are turned on, because a profile decides that per collection.
+
+#### Scenario: Default judge has no model
+
+- **WHEN** no source sets `answer.verify_provider` or `answer.verify_model`
+- **THEN** `GET /v1/settings/judge` MUST report the provider `cloud`, the resolved provider `openrouter`, the model `""`, the source `default`, ready false and the reason `no-model`
 
 #### Scenario: No provider request
 
@@ -593,7 +625,7 @@ The `config/` package SHALL read the user config folder, and the composition roo
 
 ### Requirement: The judge choice sets the web server's claim-verification judge
 
-`PUT /v1/settings/judge` (browser session, `manage` scope) SHALL save a registered provider name and a model name of 1 to 200 characters with no control characters, or clear both. The route SHALL write `answer.verify_provider` and `answer.verify_model` to `omrs.jsonc` as one unit, with the revision check. A body that sends only one of the two SHALL return 400 and save nothing. A save SHALL NOT write an alias (`cloud` or `local`). The saved choice SHALL be the judge of the web server from the next answer, with no restart, for every collection whose profile turns claim checks on and does not set its own judge. The route SHALL return 409 and change nothing when `ANSWER__VERIFY_PROVIDER` or `ANSWER__VERIFY_MODEL` comes from the environment or `.env`; either variable SHALL lock both fields.
+`PUT /v1/settings/judge` (browser session, `manage` scope) SHALL save a registered provider name and a model name of 1 to 200 characters with no control characters, or clear both. The route SHALL write `answer.verify_provider` and `answer.verify_model` to `omrs.jsonc` as one unit, with the revision check. A body that sends only one of the two SHALL return 400 and save nothing. A save SHALL NOT write an alias (`cloud` or `local`).
 
 #### Scenario: Save a judge
 
@@ -615,29 +647,45 @@ The `config/` package SHALL read the user config folder, and the composition roo
 - **WHEN** `omrs.jsonc` holds a judge choice and the user sends an empty body
 - **THEN** the server MUST remove both keys, and `GET /v1/settings/judge` MUST report the source `default`
 
-#### Scenario: Locked by the environment
+### Requirement: A saved judge applies from the next answer
 
-- **WHEN** `.env` sets `ANSWER__VERIFY_MODEL` and the user saves another judge
-- **THEN** the server MUST return 409 naming `ANSWER__VERIFY_MODEL`, and the judge MUST NOT change
+The saved choice SHALL be the judge of the web server from the next answer, with no restart, for every collection whose profile turns claim checks on and does not set its own judge.
 
 #### Scenario: A call that started keeps its judge
 
 - **WHEN** an answer with claim checks is running and the user saves a new judge
 - **THEN** the running answer MUST finish with the old judge, and the next answer MUST use the new one
 
+### Requirement: Environment values lock the judge choice
+
+The route SHALL return 409 and change nothing when `ANSWER__VERIFY_PROVIDER` or `ANSWER__VERIFY_MODEL` comes from the environment or `.env`; either variable SHALL lock both fields.
+
+#### Scenario: Locked by the environment
+
+- **WHEN** `.env` sets `ANSWER__VERIFY_MODEL` and the user saves another judge
+- **THEN** the server MUST return 409 naming `ANSWER__VERIFY_MODEL`, and the judge MUST NOT change
+
 ### Requirement: Settings > Chat sets the reasoning level
 
-The Chat form SHALL show a Reasoning control under the model name. The judge form SHALL show its own Reasoning control. When the user opens the form or changes the provider or model, the page SHALL call `GET /v1/settings/chat/reasoning-levels`. When the levels are known, the control SHALL be a dropdown with "Provider default" first, then the supported levels. "Provider default" SHALL show the model's default level when the catalogue gives one. When the levels are not known, the control SHALL be a text box. When the provider ignores the level, the page SHALL say so under the control. Save SHALL write the level with the provider and model in one write. The read-only view SHALL show the saved level, or "Provider default".
+The Chat form SHALL show a Reasoning control under the model name. The judge form SHALL show its own Reasoning control. When the user opens the form or changes the provider or model, the page SHALL call `GET /v1/settings/chat/reasoning-levels`. When the levels are known, the control SHALL be a dropdown with "Provider default" first, then the supported levels. "Provider default" SHALL show the model's default level when the catalogue gives one.
 
 #### Scenario: OpenRouter model with a catalogue entry
 
 - **WHEN** the user edits Chat with provider `openrouter` and model `z-ai/glm-5.3-flash`
 - **THEN** the Reasoning dropdown MUST list "Provider default (max)", `max`, `high` and `low`, and MUST NOT list `none`
 
+### Requirement: The Reasoning control falls back to a text box
+
+When the levels are not known, the control SHALL be a text box. When the provider ignores the level, the page SHALL say so under the control.
+
 #### Scenario: Provider without a catalogue
 
 - **WHEN** the user edits Chat with provider `openai_compatible`
 - **THEN** the Reasoning control MUST be a text box
+
+### Requirement: The reasoning level is saved and shown
+
+Save SHALL write the level with the provider and model in one write. The read-only view SHALL show the saved level, or "Provider default".
 
 #### Scenario: Saved level shown
 

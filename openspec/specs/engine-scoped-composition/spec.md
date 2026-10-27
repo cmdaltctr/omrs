@@ -13,10 +13,8 @@ The system SHALL provide an engine object constructed from explicit
 `EffectiveSettings`, owning its vector store, embedder, reranker, profile
 resolver, and injected graph-operation catalogue for its own lifetime.
 Environment resolution SHALL use a factory that delegates to the composition
-root. Optional answer completion SHALL be resolved lazily when answering is
-used, including through a graph. Constructing an engine SHALL NOT mutate
-process-global state. Runs SHALL borrow composed resources rather than
-constructing or closing their own providers.
+root. Constructing an engine SHALL NOT mutate
+process-global state.
 
 #### Scenario: Construction from explicit settings
 
@@ -44,6 +42,19 @@ constructing or closing their own providers.
 - **THEN** construction SHALL fail with an error naming the offending setting
 - **AND** the engine SHALL NOT be left partially initialised
 
+#### Scenario: Explicit Engine lacks named-profile support
+
+- **WHEN** a graph requests a named profile that an explicitly constructed
+  Engine cannot resolve through its supplied dependencies
+- **THEN** validation SHALL fail with an actionable capability message
+- **AND** it SHALL NOT silently resolve environment or configuration files
+
+### Requirement: Answering and runs reuse the engine's composition
+
+Optional answer completion SHALL be resolved lazily when answering is used,
+including through a graph. Runs SHALL borrow composed resources rather than
+constructing or closing their own providers.
+
 #### Scenario: Graph adapters use injected composition
 
 - **WHEN** a graph operation requires storage, embedding, OCR, or completion
@@ -63,13 +74,6 @@ constructing or closing their own providers.
 
 - **WHEN** a graph performs retrieval without generation
 - **THEN** optional answering and judge providers SHALL remain unconstructed
-
-#### Scenario: Explicit Engine lacks named-profile support
-
-- **WHEN** a graph requests a named profile that an explicitly constructed
-  Engine cannot resolve through its supplied dependencies
-- **THEN** validation SHALL fail with an actionable capability message
-- **AND** it SHALL NOT silently resolve environment or configuration files
 
 ### Requirement: Engines are isolated from one another
 
@@ -202,7 +206,16 @@ Graph cancellation SHALL not set or clear a process-global shutdown flag for unr
 
 ### Requirement: The engine answers with a client completion or resolved rows
 
-`Engine.answer` SHALL accept an optional client completion (a completion function, a source label of `client_mrtr` or `client_legacy`, and a round cap) and optional pre-resolved retrieval rows. A client completion SHALL replace only the answer model: claim verification SHALL stay with the engine's own verifier. The result SHALL report the client completion's source label, and synthesis SHALL run no more rounds than its cap. When rows are given, the engine SHALL NOT retrieve again. Without either argument, the result SHALL equal the result before this change.
+`Engine.answer` SHALL accept an optional client completion (a completion function, a source label of `client_mrtr` or `client_legacy`, and a round cap) and optional pre-resolved retrieval rows. Without either argument, the result SHALL equal the result before this change.
+
+#### Scenario: Default unchanged
+
+- **WHEN** `answer` runs with neither argument
+- **THEN** the result MUST equal the result before this change for the same input and models
+
+### Requirement: A client completion replaces only the answer model
+
+A client completion SHALL replace only the answer model: claim verification SHALL stay with the engine's own verifier. The result SHALL report the client completion's source label, and synthesis SHALL run no more rounds than its cap.
 
 #### Scenario: Client model, server verifier
 
@@ -214,15 +227,14 @@ Graph cancellation SHALL not set or clear a process-global shutdown flag for unr
 - **WHEN** the answer block allows 8 rounds and the client completion's cap is 4
 - **THEN** synthesis MUST run at most 4 rounds
 
+### Requirement: Given retrieval rows are not fetched again
+
+When rows are given, the engine SHALL NOT retrieve again.
+
 #### Scenario: Resolved rows
 
 - **WHEN** `answer` runs with rows
 - **THEN** the engine MUST NOT run a retrieval
-
-#### Scenario: Default unchanged
-
-- **WHEN** `answer` runs with neither argument
-- **THEN** the result MUST equal the result before this change for the same input and models
 
 ### Requirement: The engine redacts its configured credentials
 

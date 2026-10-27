@@ -10,14 +10,6 @@ The system SHALL read a `PDF_READER` environment variable at config-load
 time into the frozen `Settings.pdf_reader` field. Accepted values SHALL be
 `auto`, `pdf_inspector`, `liteparse`, `pypdfium2`, and `pypdf`. Any other
 value SHALL log a warning naming the offending value and fall back to
-`auto`. The composition root SHALL resolve `auto` to a concrete backend
-name exactly once at startup and bake the result into the injected
-`EffectiveSettings.pdf_reader`; no module-level resolved constant exists.
-
-The resolved value SHALL be the host default reader. A pipeline's Read
-document step MAY select another registered concrete reader for that step
-only. A step selection SHALL NOT change the environment, the frozen
-`Settings.pdf_reader` field or the resolved host default, and SHALL NOT be
 `auto`.
 
 #### Scenario: Explicit pdf-inspector selection via env var
@@ -35,11 +27,25 @@ only. A step selection SHALL NOT change the environment, the frozen
 - **WHEN** `PDF_READER=fastparser` (an unsupported value) is set
 - **THEN** the system SHALL log a warning naming the offending value and the fallback, and SHALL resolve as if `PDF_READER=auto` had been set
 
+### Requirement: The composition root resolves auto once at startup
+
+The composition root SHALL resolve `auto` to a concrete backend
+name exactly once at startup and bake the result into the injected
+`EffectiveSettings.pdf_reader`; no module-level resolved constant exists.
+
 #### Scenario: Resolution happens once at the composition root
 
 - **WHEN** the server or CLI entry point starts
 - **THEN** `compose.resolve_pdf_reader` SHALL run once over the frozen settings
 - **AND** every operation below the entry point SHALL read the concrete name from its injected settings, with no repeated probing
+
+### Requirement: A pipeline step may select its own concrete PDF reader
+
+The resolved value SHALL be the host default reader. A pipeline's Read
+document step MAY select another registered concrete reader for that step
+only. A step selection SHALL NOT change the environment, the frozen
+`Settings.pdf_reader` field or the resolved host default, and SHALL NOT be
+`auto`.
 
 #### Scenario: Step selection leaves the host default unchanged
 
@@ -63,12 +69,6 @@ entirely (AGPL-3 incompatibility). If no optional backend is installed, the
 system SHALL fall back to `pypdf` (always available via
 `llama-index-readers-file`).
 
-The composition root resolves `auto` once at startup and injects the concrete
-name. Callers that bypass the composition root (direct library use, tests)
-SHALL receive the same preference order from the reader factory's local
-resolution, so the selected backend is identical on both paths for the same
-installed packages.
-
 #### Scenario: LiteParse installed and selected by auto
 
 - **WHEN** the configured reader is `auto` and the `liteparse` package is importable
@@ -89,6 +89,14 @@ installed packages.
 - **WHEN** the configured reader is `liteparse` but `liteparse` is not importable
 - **THEN** the system SHALL log an error naming the missing package and SHALL fall back to `pypdf` rather than raising
 
+### Requirement: Direct factory callers get the same auto preference order
+
+The composition root resolves `auto` once at startup and injects the concrete
+name. Callers that bypass the composition root (direct library use, tests)
+SHALL receive the same preference order from the reader factory's local
+resolution, so the selected backend is identical on both paths for the same
+installed packages.
+
 #### Scenario: Factory-local auto resolution matches composition-root order
 
 - **WHEN** the reader factory resolves `auto` for a caller that bypassed the composition root, `liteparse` is not importable, and `pypdfium2` is importable
@@ -104,15 +112,7 @@ and convert it into a structured file detail through
 `core/ingestion/loader.py:make_file_detail`:
 `{"file": "<filename>", "status": "failed", "chunks": 0, "error":
 "<human-readable detail>"}`. Reader adapters themselves SHALL NOT be
-required to catch their parser's exceptions. No exception SHALL propagate
-out of `ingest_path_async` or any MCP tool handler, per the project's
-"Never raise from MCP tool handlers" gotcha (AGENTS.md).
-
-#### Scenario: Corrupt PDF raises inside adapter
-
-- **WHEN** a `.pdf` file is structurally corrupt and the underlying parser raises an exception
-- **THEN** the ingestion pipeline SHALL catch the exception, log it with the filename, and append a structured error detail with `status="failed"` and a descriptive message
-- **AND** the exception SHALL NOT propagate to the `ingest_documents` caller
+required to catch their parser's exceptions.
 
 #### Scenario: LiteParse native crash
 
@@ -126,15 +126,21 @@ out of `ingest_path_async` or any MCP tool handler, per the project's
 - **THEN** the dictionary SHALL contain exactly the keys `file` (str), `status` (literal `"failed"`), `chunks` (int `0`), and `error` (str with human-readable detail)
 - **AND** the dictionary SHALL be appendable to the `file_details` list in `ingest_path_async` without further transformation
 
+### Requirement: No reader exception escapes ingestion or an MCP tool handler
+
+No exception SHALL propagate
+out of `ingest_path_async` or any MCP tool handler, per the project's
+"Never raise from MCP tool handlers" gotcha (AGENTS.md).
+
+#### Scenario: Corrupt PDF raises inside adapter
+
+- **WHEN** a `.pdf` file is structurally corrupt and the underlying parser raises an exception
+- **THEN** the ingestion pipeline SHALL catch the exception, log it with the filename, and append a structured error detail with `status="failed"` and a descriptive message
+- **AND** the exception SHALL NOT propagate to the `ingest_documents` caller
+
 ### Requirement: LiteParse adapter SHALL capture bounding-box metadata on emitted Documents
 
-When the LiteParse adapter is in use, every emitted `Document` object SHALL carry a `metadata` dictionary containing spatial information extracted by LiteParse. The metadata SHALL include the keys `pdf_reader="liteparse"`, `page=<int>` (1-indexed), `column=<"left"|"right"|"single"|"multi_column">`, `section_bbox=<[x0, y0, x1, y1]>` (page-coordinate space), and `bbox_schema_version=1`. A page the adapter joins column by column SHALL carry `column="multi_column"`, so the label names the order the text is in. Retrieval-side consumption of these fields is out of scope for this change.
-
-#### Scenario: Two-column academic PDF
-- **WHEN** a two-column academic PDF is ingested via the LiteParse adapter
-- **THEN** each emitted Document for a page joined column by column SHALL have `metadata["column"]` set to `"multi_column"`
-- **AND** a two-column page the classifier does not recognise SHALL keep `"left"` or `"right"`
-- **AND** `metadata["page"]` SHALL reflect the 1-indexed source page number
+When the LiteParse adapter is in use, every emitted `Document` object SHALL carry a `metadata` dictionary containing spatial information extracted by LiteParse. The metadata SHALL include the keys `pdf_reader="liteparse"`, `page=<int>` (1-indexed), `column=<"left"|"right"|"single"|"multi_column">`, `section_bbox=<[x0, y0, x1, y1]>` (page-coordinate space), and `bbox_schema_version=1`. Retrieval-side consumption of these fields is out of scope for this change.
 
 #### Scenario: Single-column PDF
 - **WHEN** a single-column PDF is ingested via the LiteParse adapter
@@ -145,21 +151,24 @@ When the LiteParse adapter is in use, every emitted `Document` object SHALL carr
 - **THEN** emitted Documents SHALL NOT carry `section_bbox`, `column`, or `bbox_schema_version` keys (these are LiteParse-specific)
 - **AND** `metadata["pdf_reader"]` SHALL be set to the backend name (`"pypdf"` or `"pypdfium2"`) for diagnostics
 
+### Requirement: Pages joined column by column are labelled multi_column
+
+A page the adapter joins column by column SHALL carry `column="multi_column"`, so the label names the order the text is in.
+
+#### Scenario: Two-column academic PDF
+- **WHEN** a two-column academic PDF is ingested via the LiteParse adapter
+- **THEN** each emitted Document for a page joined column by column SHALL have `metadata["column"]` set to `"multi_column"`
+- **AND** a two-column page the classifier does not recognise SHALL keep `"left"` or `"right"`
+- **AND** `metadata["page"]` SHALL reflect the 1-indexed source page number
+
 ### Requirement: Reader factory SHALL be extensible without modifying ingestion code
 
 New reader adapters SHALL be addable by creating a single module in
 `src/omrs/integrations/pdf/` and registering it with one
 `registry.register()` call. The shared contract is the duck-typed
 `load_data(file) -> list[Document]` method — there is no separate protocol
-module. The ingestion call sites SHALL NOT require modification when a new
-reader is added; only the accepted values in `config/` and the registry
-registration SHALL change. The factory receives the reader name from its
+module. The factory receives the reader name from its
 caller: `get_pdf_reader(reader)`.
-
-#### Scenario: Adding a new adapter
-
-- **WHEN** a developer creates `src/omrs/integrations/pdf/spdf.py` with a `load_data` method and adds `"spdf"` to the accepted values in `config/` plus one `register("spdf", "...")` call in the registry
-- **THEN** no other source file SHALL require modification to make `PDF_READER=spdf` functional
 
 #### Scenario: Factory returns adapter, not reader instance
 
@@ -170,6 +179,17 @@ caller: `get_pdf_reader(reader)`.
 
 - **WHEN** the `auto` backend resolution runs after the relocation
 - **THEN** backend preference order, graceful fallback, and `PDF_READER` env var handling SHALL be identical to the pre-refactor factory (ADR-020 amended for location only)
+
+### Requirement: Adding a reader leaves the ingestion call sites unchanged
+
+The ingestion call sites SHALL NOT require modification when a new
+reader is added; only the accepted values in `config/` and the registry
+registration SHALL change.
+
+#### Scenario: Adding a new adapter
+
+- **WHEN** a developer creates `src/omrs/integrations/pdf/spdf.py` with a `load_data` method and adds `"spdf"` to the accepted values in `config/` plus one `register("spdf", "...")` call in the registry
+- **THEN** no other source file SHALL require modification to make `PDF_READER=spdf` functional
 
 ### Requirement: LiteParse SHALL be a core dependency
 
@@ -268,13 +288,7 @@ produced.
 
 ### Requirement: pdf-inspector SHALL route OCR-required PDFs to an isolated document-understanding worker
 
-When the configured PDF path uses `pdf_inspector`, the system SHALL use the existing `pdf-inspector` result as both the fast extraction result and the evidence for deciding whether OCR/document understanding is required. Text-based PDFs with acceptable extraction quality SHALL keep the `pdf-inspector` Markdown. When an OCR route is available and OCR is enabled, scanned and image-based PDFs SHALL route unconditionally. Other types, including mixed PDFs, SHALL route only when a positive configured threshold condition is met, or when the maths-page condition is met. A confidence below the minimum or an OCR-page proportion at or above the configured fraction SHALL select OCR. A zero threshold SHALL disable its condition.
-
-Every dispatch SHALL use the primary OCR route (dots.mocr by default), and the fallback route (PaddleOCR-VL by default) when the primary is unavailable before dispatch.
-
-Layout complexity alone SHALL NOT require OCR. A text-based multi-column or table-heavy PDF that `pdf-inspector` extracts acceptably SHALL remain on the fast path, unless it has maths pages.
-
-With the `document` routing unit (the default), the system SHALL route the whole PDF to the worker when the OCR condition is met and SHALL NOT merge page fragments from two PDF engines. With the `page` routing unit, routing SHALL follow the page-level OCR routing requirement instead.
+When the configured PDF path uses `pdf_inspector`, the system SHALL use the existing `pdf-inspector` result as both the fast extraction result and the evidence for deciding whether OCR/document understanding is required. Text-based PDFs with acceptable extraction quality SHALL keep the `pdf-inspector` Markdown.
 
 #### Scenario: Clean text-based PDF stays on pdf-inspector without starting the parsing worker
 
@@ -286,13 +300,9 @@ With the `document` routing unit (the default), the system SHALL route the whole
 - **AND** no OCR parse request SHALL be dispatched
 - **AND** the long-lived worker and its model SHALL NOT be started
 
-#### Scenario: Complex text layout does not imply OCR
+### Requirement: Scanned PDFs always route to OCR and other PDFs route by threshold
 
-- **GIVEN** a text-based PDF containing multiple columns or tables and no maths pages
-- **AND** `pdf-inspector` extracts the layout with acceptable quality
-- **WHEN** the PDF is ingested
-- **THEN** the PDF SHALL remain on the `pdf-inspector` path
-- **AND** layout complexity alone SHALL NOT start or invoke the OCR worker
+When an OCR route is available and OCR is enabled, scanned and image-based PDFs SHALL route unconditionally. Other types, including mixed PDFs, SHALL route only when a positive configured threshold condition is met, or when the maths-page condition is met. A confidence below the minimum or an OCR-page proportion at or above the configured fraction SHALL select OCR. A zero threshold SHALL disable its condition.
 
 #### Scenario: Scanned or image-based PDF uses the OCR worker
 
@@ -301,6 +311,44 @@ With the `document` routing unit (the default), the system SHALL route the whole
 - **WHEN** the PDF is ingested
 - **THEN** the whole PDF SHALL be parsed by the primary OCR route
 - **AND** the worker result SHALL replace the partial `pdf-inspector` extraction as the downstream document text
+
+#### Scenario: Mixed PDF with zero thresholds stays on the fast path
+
+- **GIVEN** OCR is enabled and a PDF is classified as mixed
+- **AND** both routing thresholds are zero
+- **AND** the PDF has no maths pages
+- **WHEN** the PDF is ingested
+- **THEN** no OCR parse request SHALL be dispatched
+- **AND** the existing extracted Markdown and page diagnostics SHALL be preserved
+
+### Requirement: OCR dispatch uses the primary route before the fallback route
+
+Every dispatch SHALL use the primary OCR route (dots.mocr by default), and the fallback route (PaddleOCR-VL by default) when the primary is unavailable before dispatch.
+
+#### Scenario: OCR required but the worker is unavailable
+
+- **GIVEN** `pdf-inspector` reports that OCR is required
+- **AND** both OCR routes are absent, unprovisioned, incompatible, or unusable before dispatch
+- **WHEN** the PDF is ingested
+- **THEN** the system SHALL retain the available `pdf-inspector` Markdown rather than fabricate missing content
+- **AND** the document/file result SHALL report that OCR was required but unavailable
+- **AND** ingestion SHALL remain within the existing per-file degradation boundary
+
+### Requirement: Layout complexity alone does not route a PDF to OCR
+
+Layout complexity alone SHALL NOT require OCR. A text-based multi-column or table-heavy PDF that `pdf-inspector` extracts acceptably SHALL remain on the fast path, unless it has maths pages.
+
+#### Scenario: Complex text layout does not imply OCR
+
+- **GIVEN** a text-based PDF containing multiple columns or tables and no maths pages
+- **AND** `pdf-inspector` extracts the layout with acceptable quality
+- **WHEN** the PDF is ingested
+- **THEN** the PDF SHALL remain on the `pdf-inspector` path
+- **AND** layout complexity alone SHALL NOT start or invoke the OCR worker
+
+### Requirement: The document routing unit sends the whole PDF to the worker
+
+With the `document` routing unit (the default), the system SHALL route the whole PDF to the worker when the OCR condition is met and SHALL NOT merge page fragments from two PDF engines. With the `page` routing unit, routing SHALL follow the page-level OCR routing requirement instead.
 
 #### Scenario: Mixed PDF with material OCR requirement uses the worker
 
@@ -312,33 +360,9 @@ With the `document` routing unit (the default), the system SHALL route the whole
 - **THEN** the whole PDF SHALL be parsed by the primary OCR route
 - **AND** the system SHALL NOT stitch independently parsed page fragments from the two engines
 
-#### Scenario: Mixed PDF with zero thresholds stays on the fast path
-
-- **GIVEN** OCR is enabled and a PDF is classified as mixed
-- **AND** both routing thresholds are zero
-- **AND** the PDF has no maths pages
-- **WHEN** the PDF is ingested
-- **THEN** no OCR parse request SHALL be dispatched
-- **AND** the existing extracted Markdown and page diagnostics SHALL be preserved
-
-#### Scenario: OCR required but the worker is unavailable
-
-- **GIVEN** `pdf-inspector` reports that OCR is required
-- **AND** both OCR routes are absent, unprovisioned, incompatible, or unusable before dispatch
-- **WHEN** the PDF is ingested
-- **THEN** the system SHALL retain the available `pdf-inspector` Markdown rather than fabricate missing content
-- **AND** the document/file result SHALL report that OCR was required but unavailable
-- **AND** ingestion SHALL remain within the existing per-file degradation boundary
-
 ### Requirement: The PaddleOCR-VL fallback SHALL run in an isolated worker environment
 
 The fallback-route OCR engine SHALL be PaddleOCR-VL, and the primary-route engine SHALL be dots.mocr. PaddleOCR-VL SHALL use the supported PaddleOCR-VL document pipeline, including layout/region processing, reading-order handling, recognition, and result assembly. It SHALL NOT treat the VLM checkpoint as a bare whole-page string OCR call when the pipeline can preserve document structure.
-
-Every OCR engine SHALL run as a local subprocess in a separate environment provisioned from its own engine-owned lockfile. Each engine project SHALL declare Python `>=3.11,<3.14` and SHALL own all of its model-runtime packages: PaddleOCR, PaddleX and PaddlePaddle for PaddleOCR-VL; PyTorch and transformers for dots.mocr; and any accelerator packages.
-
-OMRS's main package metadata, root lockfile, and main runtime environment SHALL NOT include any engine's model-runtime packages. OMRS runtime modules SHALL NOT import them. The OMRS side SHALL communicate with every engine only through the subprocess protocol.
-
-Every engine SHALL emit structured Markdown suitable for the same downstream Markdown chunking path used by `pdf-inspector` output.
 
 #### Scenario: Worker result preserves structured document elements
 
@@ -347,12 +371,9 @@ Every engine SHALL emit structured Markdown suitable for the same downstream Mar
 - **THEN** the emitted text SHALL be Markdown
 - **AND** structural elements available from the parser SHALL be represented in that Markdown rather than flattened into an undifferentiated text stream
 
-#### Scenario: Main OMRS environment remains Paddle-free
+### Requirement: Every OCR engine runs from its own locked environment
 
-- **GIVEN** OMRS is installed from its main package metadata and root lockfile
-- **WHEN** the package starts and processes content without any engine environment
-- **THEN** no PaddleOCR, PaddleX, PaddlePaddle, PyTorch or transformers package SHALL be required or imported
-- **AND** the server SHALL remain usable for every existing non-OCR path
+Every OCR engine SHALL run as a local subprocess in a separate environment provisioned from its own engine-owned lockfile. Each engine project SHALL declare Python `>=3.11,<3.14` and SHALL own all of its model-runtime packages: PaddleOCR, PaddleX and PaddlePaddle for PaddleOCR-VL; PyTorch and transformers for dots.mocr; and any accelerator packages.
 
 #### Scenario: Worker is provisioned from its own lockfile
 
@@ -369,15 +390,51 @@ Every engine SHALL emit structured Markdown suitable for the same downstream Mar
 - **AND** a small OCR fixture SHALL return schema-valid structured Markdown
 - **AND** the test SHALL NOT require the engine's packages in OMRS's main environment
 
+### Requirement: The main OMRS environment holds no OCR engine packages
+
+OMRS's main package metadata, root lockfile, and main runtime environment SHALL NOT include any engine's model-runtime packages. OMRS runtime modules SHALL NOT import them. The OMRS side SHALL communicate with every engine only through the subprocess protocol.
+
+#### Scenario: Main OMRS environment remains Paddle-free
+
+- **GIVEN** OMRS is installed from its main package metadata and root lockfile
+- **WHEN** the package starts and processes content without any engine environment
+- **THEN** no PaddleOCR, PaddleX, PaddlePaddle, PyTorch or transformers package SHALL be required or imported
+- **AND** the server SHALL remain usable for every existing non-OCR path
+
+### Requirement: Every OCR engine emits structured Markdown
+
+Every engine SHALL emit structured Markdown suitable for the same downstream Markdown chunking path used by `pdf-inspector` output.
+
+#### Scenario: Engine output suits the Markdown chunking path
+
+- **WHEN** any OCR engine emits a parse result
+- **THEN** the result SHALL be structured Markdown suitable for the same downstream Markdown chunking path used by `pdf-inspector` output
+
 ### Requirement: The OCR worker SHALL use a versioned JSON Lines protocol
 
 OMRS SHALL send UTF-8 requests as one complete JSON object per line on the worker's standard input. The worker SHALL return one complete JSON object per line on standard output. Every request and response SHALL include a request identifier and protocol version. Every accepted parse request SHALL receive one terminal success or error response with the same request identifier while the worker remains healthy.
 
+#### Scenario: Parse request and response remain correlated
+
+- **GIVEN** the routing gate selects OCR and the worker capability is compatible
+- **WHEN** OMRS writes a parse request line to the worker
+- **THEN** the worker SHALL return one terminal JSON response line with the same request identifier
+- **AND** the response SHALL declare the negotiated protocol and output-schema identities
+
+### Requirement: Worker standard output carries protocol messages only
+
 Standard output SHALL contain protocol messages only. Worker diagnostics and operational logs SHALL use standard error so they cannot corrupt protocol framing. OMRS SHALL drain standard error independently from standard output.
 
-The capability probe SHALL report worker availability, protocol version, relevant package names and exact versions, pipeline identity and revision, model identity and revision, and output-schema identity and version. It SHALL use metadata and static worker declarations without initialising Paddle, importing model code, loading model weights, or leaving the long-lived parsing worker running. Missing files, an unusable environment, malformed probe output, or an incompatible protocol SHALL produce a stable unavailable fingerprint before parse dispatch.
+#### Scenario: Worker logging does not contaminate protocol output
 
-A successful parse response SHALL contain structured Markdown and metadata that conform to the reported output schema.
+- **GIVEN** the worker emits a diagnostic while handling a request
+- **WHEN** OMRS reads the worker streams
+- **THEN** the diagnostic SHALL be read from standard error
+- **AND** standard output SHALL remain parseable as JSON Lines protocol messages only
+
+### Requirement: The capability probe reports the worker fingerprint without loading the model
+
+The capability probe SHALL report worker availability, protocol version, relevant package names and exact versions, pipeline identity and revision, model identity and revision, and output-schema identity and version. It SHALL use metadata and static worker declarations without initialising Paddle, importing model code, loading model weights, or leaving the long-lived parsing worker running.
 
 #### Scenario: Capability probe returns the worker fingerprint without loading the model
 
@@ -387,19 +444,9 @@ A successful parse response SHALL contain structured Markdown and metadata that 
 - **AND** it SHALL NOT initialise Paddle or import model code
 - **AND** it SHALL NOT leave a long-lived parsing worker running
 
-#### Scenario: Parse request and response remain correlated
+### Requirement: An unusable or incompatible worker is unavailable before dispatch
 
-- **GIVEN** the routing gate selects OCR and the worker capability is compatible
-- **WHEN** OMRS writes a parse request line to the worker
-- **THEN** the worker SHALL return one terminal JSON response line with the same request identifier
-- **AND** the response SHALL declare the negotiated protocol and output-schema identities
-
-#### Scenario: Worker logging does not contaminate protocol output
-
-- **GIVEN** the worker emits a diagnostic while handling a request
-- **WHEN** OMRS reads the worker streams
-- **THEN** the diagnostic SHALL be read from standard error
-- **AND** standard output SHALL remain parseable as JSON Lines protocol messages only
+Missing files, an unusable environment, malformed probe output, or an incompatible protocol SHALL produce a stable unavailable fingerprint before parse dispatch.
 
 #### Scenario: Incompatible worker is unavailable before dispatch
 
@@ -408,11 +455,18 @@ A successful parse response SHALL contain structured Markdown and metadata that 
 - **THEN** OMRS SHALL NOT dispatch the PDF to that worker
 - **AND** the unavailable-worker degradation behaviour SHALL apply
 
+### Requirement: A successful parse response conforms to the reported output schema
+
+A successful parse response SHALL contain structured Markdown and metadata that conform to the reported output schema.
+
+#### Scenario: Successful parse response follows the reported schema
+
+- **WHEN** the worker returns a successful parse response
+- **THEN** the response SHALL contain structured Markdown and metadata that conform to the output schema the capability probe reported
+
 ### Requirement: The OCR parsing worker SHALL be lazy and long-lived
 
 The long-lived parsing subprocess and its model SHALL start only when the first OCR parse request is dispatched. A healthy subprocess SHALL be reused for later OCR requests owned by the same engine. The client SHALL permit one request in flight at a time. The owning engine SHALL close the subprocess during orderly shutdown.
-
-A timed-out, crashed, or protocol-invalid subprocess SHALL be discarded. The failed request SHALL NOT be replayed automatically. A later OCR request SHALL start a fresh subprocess when the capability remains available, but the failed file SHALL retain its structured per-file error result.
 
 #### Scenario: First OCR dispatch starts the worker
 
@@ -435,6 +489,10 @@ A timed-out, crashed, or protocol-invalid subprocess SHALL be discarded. The fai
 - **WHEN** the owner shuts down normally
 - **THEN** it SHALL close the worker's input and terminate the subprocess within a bounded period
 
+### Requirement: A failed parsing worker is replaced and its request is not replayed
+
+A timed-out, crashed, or protocol-invalid subprocess SHALL be discarded. The failed request SHALL NOT be replayed automatically. A later OCR request SHALL start a fresh subprocess when the capability remains available, but the failed file SHALL retain its structured per-file error result.
+
 #### Scenario: Later request replaces a failed worker
 
 - **GIVEN** a parsing worker timed out or crashed during an earlier request
@@ -446,8 +504,6 @@ A timed-out, crashed, or protocol-invalid subprocess SHALL be discarded. The fai
 
 Parse dispatch occurs when OMRS has written and flushed the complete JSON Lines request. If the worker times out, crashes, closes its output, violates the protocol, or returns a structured error after that point, OMRS SHALL return a structured error for that file. It SHALL NOT report the partial `pdf-inspector` result as a successful or degraded extraction for the failed attempt.
 
-The failed source version SHALL NOT be marked current. The existing failure-safe replacement boundary SHALL preserve any prior current version. Other files in the same ingestion batch SHALL continue within the existing per-file error boundary.
-
 #### Scenario: Worker times out after parse dispatch
 
 - **GIVEN** OMRS has written and flushed a complete parse request
@@ -455,6 +511,10 @@ The failed source version SHALL NOT be marked current. The existing failure-safe
 - **THEN** that file SHALL receive a structured timeout error
 - **AND** its source version SHALL NOT be marked current
 - **AND** subsequent files in the batch SHALL continue
+
+### Requirement: A failed OCR attempt does not replace the current source version
+
+The failed source version SHALL NOT be marked current. The existing failure-safe replacement boundary SHALL preserve any prior current version. Other files in the same ingestion batch SHALL continue within the existing per-file error boundary.
 
 #### Scenario: Worker crashes after parse dispatch
 
@@ -487,16 +547,9 @@ The change SHALL NOT require a new canonical document class or a second chunking
 
 ### Requirement: Source index identity SHALL include the resolved OCR worker fingerprint
 
-The existing source index identity SHALL include the OCR routing configuration, the sorted unconditional routing type set, and a deterministic worker fingerprint for each OCR route: primary and fallback. Each fingerprint SHALL include worker availability, protocol version, package names and exact versions, pipeline identity and revision, model identity and revision, and output-schema identity and version. It SHALL exclude transient process details such as process identifiers. An unavailable or unconfigured route SHALL contribute a stable unavailable fingerprint rather than an omitted field.
+The existing source index identity SHALL include the OCR routing configuration, the sorted unconditional routing type set, and a deterministic worker fingerprint for each OCR route: primary and fallback.
 
-The fingerprints SHALL be recorded for every source through the existing index-identity mechanism. A change to any fingerprint field SHALL invalidate the prior identity so byte-identical sources are re-ingested. The initial payload extension used schema 4. The routing-policy amendment used schema 5 so existing identities cannot silently omit the unconditional routing set. The two-route amendment SHALL advance the schema by one from the schema current when it lands.
-
-#### Scenario: Provisioning an unavailable worker triggers re-ingestion
-
-- **GIVEN** a source was indexed while a route's fingerprint recorded unavailable
-- **WHEN** that route's engine is provisioned and its capability probe succeeds
-- **THEN** the source index identity SHALL change
-- **AND** a byte-identical source SHALL be re-ingested rather than reported `skipped_unchanged`
+The fingerprints SHALL be recorded for every source through the existing index-identity mechanism. A change to any fingerprint field SHALL invalidate the prior identity so byte-identical sources are re-ingested.
 
 #### Scenario: Worker contract or model change triggers re-ingestion
 
@@ -511,19 +564,31 @@ The fingerprints SHALL be recorded for every source through the existing index-i
 - **WHEN** the source is ingested again
 - **THEN** the worker fingerprints SHALL NOT alone prevent the existing `skipped_unchanged` result
 
+### Requirement: Each OCR route fingerprint lists the worker identity fields
+
+Each fingerprint SHALL include worker availability, protocol version, package names and exact versions, pipeline identity and revision, model identity and revision, and output-schema identity and version. It SHALL exclude transient process details such as process identifiers. An unavailable or unconfigured route SHALL contribute a stable unavailable fingerprint rather than an omitted field.
+
+#### Scenario: Provisioning an unavailable worker triggers re-ingestion
+
+- **GIVEN** a source was indexed while a route's fingerprint recorded unavailable
+- **WHEN** that route's engine is provisioned and its capability probe succeeds
+- **THEN** the source index identity SHALL change
+- **AND** a byte-identical source SHALL be re-ingested rather than reported `skipped_unchanged`
+
+### Requirement: The identity schema advances with each payload amendment
+
+The initial payload extension used schema 4. The routing-policy amendment used schema 5 so existing identities cannot silently omit the unconditional routing set. The two-route amendment SHALL advance the schema by one from the schema current when it lands.
+
+#### Scenario: The two-route amendment advances the schema by one
+
+- **WHEN** the two-route amendment lands
+- **THEN** the source index identity schema SHALL advance by one from the schema current when it lands
+
 ### Requirement: The OCR routing gate SHALL be calibrated evidence expressed as injected configuration
 
 The threshold that selects the OCR fallback SHALL be a calibrated value carried in injected configuration, not a constant in the routing module. It SHALL follow the shape the existing PDF knobs already use: top-level fields on the effective settings beside `pdf_reader` and `liteparse_ocr_enabled`, resolved once at the composition root and passed downstream.
 
-The gate SHALL be calibrated on a committed fixture set disjoint from the fixtures used to evaluate whether the OCR fallback improves retrieval. Calibration SHALL report routing behaviour — text-based PDFs the gate would route to OCR, and OCR-required PDFs it would leave on the fast path — and SHALL NOT be the same run that measures downstream retrieval quality.
-
-The packaged default SHALL be the promoted pair validated by the repeat routing study
-(`29-pdf-routing-repeat-2026-09-13`): routing enabled, `0.5` minimum
-confidence, `0.10` flagged-page fraction. The enable flag and both
-thresholds SHALL ship together — enabling routing while leaving
-thresholds at the `0.0` sentinels is the bare-enable configuration the
-study showed silently misses threshold-flagged documents, and packaged
-defaults SHALL NOT present it. `config/` SHALL NOT probe the worker, and no module SHALL read a settings singleton to obtain the gate.
+`config/` SHALL NOT probe the worker, and no module SHALL read a settings singleton to obtain the gate.
 
 #### Scenario: Routing threshold is read from injected settings
 
@@ -531,12 +596,26 @@ defaults SHALL NOT present it. `config/` SHALL NOT probe the worker, and no modu
 - **THEN** it SHALL read the gate from the injected effective settings
 - **AND** the routing module SHALL NOT contain a hardcoded threshold constant
 
+### Requirement: The routing gate is calibrated on fixtures disjoint from evaluation
+
+The gate SHALL be calibrated on a committed fixture set disjoint from the fixtures used to evaluate whether the OCR fallback improves retrieval. Calibration SHALL report routing behaviour — text-based PDFs the gate would route to OCR, and OCR-required PDFs it would leave on the fast path — and SHALL NOT be the same run that measures downstream retrieval quality.
+
 #### Scenario: Calibration and evaluation fixtures are disjoint
 
 - **GIVEN** the committed PDF calibration fixtures and the committed PDF evaluation fixtures
 - **WHEN** the OCR routing gate is calibrated
 - **THEN** calibration SHALL use only the calibration fixtures
 - **AND** the evaluation fixtures SHALL remain unused until the Stage 5 ablation
+
+### Requirement: Packaged routing defaults ship the promoted gate
+
+The packaged default SHALL be the promoted pair validated by the repeat routing study
+(`29-pdf-routing-repeat-2026-09-13`): routing enabled, `0.5` minimum
+confidence, `0.10` flagged-page fraction. The enable flag and both
+thresholds SHALL ship together — enabling routing while leaving
+thresholds at the `0.0` sentinels is the bare-enable configuration the
+study showed silently misses threshold-flagged documents, and packaged
+defaults SHALL NOT present it.
 
 #### Scenario: Packaged default routes OCR-required PDFs
 
@@ -555,16 +634,25 @@ defaults SHALL NOT present it. `config/` SHALL NOT probe the worker, and no modu
 
 ### Requirement: pdf-inspector silent-empty extraction SHALL recover via a plain-text retry
 
-When the pdf-inspector reader classifies a PDF as `text_based` while its own Markdown extraction is empty and the page count is greater than zero, the adapter SHALL retry the file with the registered `liteparse` reader in extraction-only mode (OCR disabled regardless of operator settings), joining the per-page text into one document for the whole file, so a readable text layer is not silently discarded. The rescue tier SHALL receive concrete OCR and worker settings so it does not require default effective settings. When liteparse is unavailable or its retry yields no text, the adapter SHALL retry with the registered `pypdf` reader, preserving the same one-document contract.
+When the pdf-inspector reader classifies a PDF as `text_based` while its own Markdown extraction is empty and the page count is greater than zero, the adapter SHALL retry the file with the registered `liteparse` reader in extraction-only mode (OCR disabled regardless of operator settings), joining the per-page text into one document for the whole file, so a readable text layer is not silently discarded.
 
-A successful retry SHALL correct the routing evidence it emits: the scalar `pages_needing_ocr` SHALL be set to zero, because the pages were flagged only by the failed extraction, and the pre-fallback flagged count SHALL be preserved under an additive diagnostic key. A retry chain that yields no text from either tier SHALL leave the original pdf-inspector result unchanged so the OCR routing gate still sees the flagged evidence. Diagnostics SHALL be additive, and `extraction_fallback_backend` SHALL name the tier that produced the text (`liteparse` or `pypdf`); diagnostics SHALL NOT claim the OCR worker or any other backend produced it.
+#### Scenario: Normal extraction is untouched
 
-#### Scenario: Contradiction triggers the retry
-
-- **GIVEN** pdf-inspector returns `pdf_type=text_based`, non-zero `page_count`, and empty Markdown
+- **GIVEN** pdf-inspector returns non-empty Markdown for a `text_based` PDF
 - **WHEN** the adapter emits its document
-- **THEN** the document text SHALL be the joined liteparse per-page extraction
-- **AND** the document SHALL carry an additive diagnostic naming liteparse as the fallback backend
+- **THEN** no retry SHALL occur
+- **AND** the metadata SHALL carry no fallback diagnostics
+
+#### Scenario: Scanned classifications are untouched
+
+- **GIVEN** pdf-inspector classifies a PDF as `scanned`, `image_based`, or another non-`text_based` type
+- **WHEN** the adapter emits its document
+- **THEN** no retry SHALL occur regardless of extraction emptiness
+- **AND** the OCR routing decision SHALL be unchanged
+
+### Requirement: The rescue retry needs no default settings and falls back to pypdf
+
+The rescue tier SHALL receive concrete OCR and worker settings so it does not require default effective settings. When liteparse is unavailable or its retry yields no text, the adapter SHALL retry with the registered `pypdf` reader, preserving the same one-document contract.
 
 #### Scenario: Bare direct adapter use stays on liteparse
 
@@ -580,6 +668,10 @@ A successful retry SHALL correct the routing evidence it emits: the scalar `page
 - **THEN** the retry SHALL proceed with the registered pypdf reader
 - **AND** the diagnostic SHALL name pypdf as the fallback backend when it produces the text
 
+### Requirement: A rescue corrects the routing evidence only when it recovers text
+
+A successful retry SHALL correct the routing evidence it emits: the scalar `pages_needing_ocr` SHALL be set to zero, because the pages were flagged only by the failed extraction, and the pre-fallback flagged count SHALL be preserved under an additive diagnostic key. A retry chain that yields no text from either tier SHALL leave the original pdf-inspector result unchanged so the OCR routing gate still sees the flagged evidence.
+
 #### Scenario: Recovered text corrects the routing evidence
 
 - **GIVEN** a fallback tier recovers text from a file pdf-inspector flagged page-by-page
@@ -594,19 +686,16 @@ A successful retry SHALL correct the routing evidence it emits: the scalar `page
 - **THEN** the emitted result SHALL be the unchanged pdf-inspector result with its original flagged count
 - **AND** the OCR routing decision SHALL be unchanged from a run without the guard
 
-#### Scenario: Normal extraction is untouched
+### Requirement: Rescue diagnostics name the tier that produced the text
 
-- **GIVEN** pdf-inspector returns non-empty Markdown for a `text_based` PDF
+Diagnostics SHALL be additive, and `extraction_fallback_backend` SHALL name the tier that produced the text (`liteparse` or `pypdf`); diagnostics SHALL NOT claim the OCR worker or any other backend produced it.
+
+#### Scenario: Contradiction triggers the retry
+
+- **GIVEN** pdf-inspector returns `pdf_type=text_based`, non-zero `page_count`, and empty Markdown
 - **WHEN** the adapter emits its document
-- **THEN** no retry SHALL occur
-- **AND** the metadata SHALL carry no fallback diagnostics
-
-#### Scenario: Scanned classifications are untouched
-
-- **GIVEN** pdf-inspector classifies a PDF as `scanned`, `image_based`, or another non-`text_based` type
-- **WHEN** the adapter emits its document
-- **THEN** no retry SHALL occur regardless of extraction emptiness
-- **AND** the OCR routing decision SHALL be unchanged
+- **THEN** the document text SHALL be the joined liteparse per-page extraction
+- **AND** the document SHALL carry an additive diagnostic naming liteparse as the fallback backend
 
 ### Requirement: pdf-inspector OCR evidence SHALL cover every page of text_based PDFs longer than the detection sample
 
@@ -641,11 +730,7 @@ pdf-inspector detects OCR need from a bounded page sample (8 pages). When `proce
 
 ### Requirement: LiteParse adapter SHALL emit multi-column pages in reading order
 
-The LiteParse adapter SHALL classify each page's layout from its own text items before joining them into text. A page classified `multi_column` SHALL be joined column by column: every item of the first column in vertical order, then every item of the next column. A page not classified `multi_column` SHALL keep the order the library returned, so single-column pages, tables and layouts the classifier does not recognise are unchanged, and SHALL keep the `column` label the adapter emits today.
-
-Classification SHALL depend only on the geometry of the page's own text items and SHALL NOT read the document, the file name or any setting. It SHALL require a vertical gutter: a band of the page's horizontal extent that the page's own non-full-width items leave essentially uncovered, whose centre lies in the middle third of that extent, with text on both sides of comparable quantity, each side spanning most of the page's vertical text extent. A page that fails any of those conditions SHALL keep the library order and SHALL NOT be labelled `multi_column`.
-
-Reordering SHALL NOT add, drop or alter any item. Together with the line join below, the only change to a page's characters SHALL be whitespace.
+The LiteParse adapter SHALL classify each page's layout from its own text items before joining them into text. A page classified `multi_column` SHALL be joined column by column: every item of the first column in vertical order, then every item of the next column.
 
 #### Scenario: Two-column body page is emitted column by column
 
@@ -653,11 +738,19 @@ Reordering SHALL NOT add, drop or alter any item. Together with the line join be
 - **WHEN** the adapter emits its Document
 - **THEN** the text SHALL contain every item of the left column, in vertical order, before any item of the right column
 
+### Requirement: Pages not classified multi_column keep the library order
+
+A page not classified `multi_column` SHALL keep the order the library returned, so single-column pages, tables and layouts the classifier does not recognise are unchanged, and SHALL keep the `column` label the adapter emits today.
+
 #### Scenario: Single-column page keeps the library order
 
 - **GIVEN** a page whose items leave no qualifying gutter
 - **WHEN** the adapter emits its Document
 - **THEN** the text SHALL be the items joined in the order LiteParse returned them
+
+### Requirement: Column classification requires a qualifying gutter in the page geometry
+
+Column classification SHALL require a vertical gutter: a band of the page's horizontal extent that the page's own non-full-width items leave essentially uncovered, whose centre lies in the middle third of that extent, with text on both sides of comparable quantity, each side spanning most of the page's vertical text extent. A page that fails any of those conditions SHALL keep the library order and SHALL NOT be labelled `multi_column`.
 
 #### Scenario: A table is not reordered
 
@@ -665,6 +758,20 @@ Reordering SHALL NOT add, drop or alter any item. Together with the line join be
 - **WHEN** the adapter emits its Document
 - **THEN** the item order SHALL be unchanged
 - **AND** the page SHALL NOT be labelled `multi_column`
+
+### Requirement: Column classification reads only the page geometry
+
+Classification SHALL depend only on the geometry of the page's own text items and SHALL NOT read the document, the file name or any setting.
+
+#### Scenario: Same geometry, same classification
+
+- **GIVEN** two pages whose text items have the same geometry, from different documents with different file names
+- **WHEN** each page is classified
+- **THEN** both pages SHALL receive the same classification
+
+### Requirement: Reordering changes only whitespace
+
+Reordering SHALL NOT add, drop or alter any item. Together with the line join below, the only change to a page's characters SHALL be whitespace.
 
 #### Scenario: Reordering preserves content
 
@@ -674,7 +781,7 @@ Reordering SHALL NOT add, drop or alter any item. Together with the line join be
 
 ### Requirement: LiteParse adapter SHALL join the items of one visual line
 
-The adapter SHALL join consecutive items that sit on one visual line, left to right, into one line of text. Two items share a line when their vertical ranges overlap by at least half the shorter item's height and the second starts at or to the right of the first. Items on one line SHALL be joined by a single space, or by no space when the horizontal gap is under one tenth of the shorter height (a kerning split). A gap wider than the taller item's height SHALL start a new line, so a sidebar and the body beside it are never joined. Every other item boundary SHALL be a line break. The join SHALL NOT change item order or item text.
+The adapter SHALL join consecutive items that sit on one visual line, left to right, into one line of text. Two items share a line when their vertical ranges overlap by at least half the shorter item's height and the second starts at or to the right of the first. Items on one line SHALL be joined by a single space, or by no space when the horizontal gap is under one tenth of the shorter height (a kerning split).
 
 #### Scenario: Words drawn separately form one line
 
@@ -682,23 +789,27 @@ The adapter SHALL join consecutive items that sit on one visual line, left to ri
 - **WHEN** the adapter emits its Document
 - **THEN** the title SHALL be one line, its words separated by single spaces
 
-#### Scenario: A column gap breaks the line
-
-- **GIVEN** two items at the same height separated by more than one text height
-- **WHEN** the adapter emits its Document
-- **THEN** they SHALL be on separate lines
-
 #### Scenario: A kerning split rejoins without a space
 
 - **GIVEN** two pieces of one word with no gap between them
 - **WHEN** the adapter emits its Document
 - **THEN** they SHALL be joined with no space
 
+### Requirement: A wide gap or any other item boundary breaks the line
+
+A gap wider than the taller item's height SHALL start a new line, so a sidebar and the body beside it are never joined. Every other item boundary SHALL be a line break. The join SHALL NOT change item order or item text.
+
+#### Scenario: A column gap breaks the line
+
+- **GIVEN** two items at the same height separated by more than one text height
+- **WHEN** the adapter emits its Document
+- **THEN** they SHALL be on separate lines
+
 ### Requirement: Unit-scoped metadata keys SHALL enter the index identity only under their unit
 
-A metadata key that only one routing unit can emit SHALL contribute to `embedding_text.excluded_keys` in the source index identity only when that unit is active. The page-source counts are such keys: the `document` unit never puts them on a Document, so their presence in the centrally owned exclusion set cannot change a `document`-unit install's embedded text, and including them in its identity would reprocess every existing corpus for a key it can never emit.
+A metadata key that only one routing unit can emit SHALL contribute to `embedding_text.excluded_keys` in the source index identity only when that unit is active.
 
-This mirrors the routing unit's own treatment, which enters the identity only when it is not `document`. The keys SHALL remain in the one centrally owned exclusion set; a second list held by the PDF reader would exclude them from embedding text while moving no identity at all, on any unit.
+This mirrors the routing unit's own treatment, which enters the identity only when it is not `document`.
 
 #### Scenario: A document-unit install keeps the identity it had
 
@@ -713,36 +824,29 @@ This mirrors the routing unit's own treatment, which enters the identity only wh
 - **WHEN** its index identity is computed
 - **THEN** the page-source counts SHALL contribute to `embedding_text.excluded_keys`
 
+### Requirement: The page-source counts are keys only the page unit emits
+
+The page-source counts SHALL be treated as keys that only one routing unit can emit: the `document` unit never puts them on a Document, so their presence in the centrally owned exclusion set cannot change a `document`-unit install's embedded text, and including them in its identity would reprocess every existing corpus for a key it can never emit.
+
 #### Scenario: Subtracted keys are never emitted on the document path
 
 - **GIVEN** the `document` routing unit
 - **WHEN** a PDF is ingested
 - **THEN** the emitted metadata SHALL carry none of the page-source counts
 
+### Requirement: The page-source counts stay in the central exclusion set
+
+The page-source counts SHALL remain in the one centrally owned exclusion set; a second list held by the PDF reader would exclude them from embedding text while moving no identity at all, on any unit.
+
+#### Scenario: The PDF reader holds no second exclusion list
+
+- **WHEN** embedding text is built on either routing unit
+- **THEN** the page-source counts SHALL be excluded through the centrally owned exclusion set
+- **AND** the PDF reader SHALL hold no second list of them
+
 ### Requirement: Page-level OCR routing SHALL OCR only pages that need it
 
-When `OCR_ROUTING_UNIT=page` and OCR is enabled, the pdf-inspector path SHALL decide OCR need per page from a scan of every page. Pages that do not need OCR SHALL keep native pdf-inspector Markdown. Pages that need OCR SHALL be processed by the local OCR tier. A page SHALL escalate to the OCR routes only when the local tier returns no text or only whitespace, reports no confidence or a confidence below the configured minimum, or recommends hosted OCR. Escalated pages SHALL go in one page-listed request to the primary OCR route, or to the fallback route when the primary is unavailable before dispatch. The OCR routes SHALL receive only escalated pages. The emitted document SHALL join pages in page order and SHALL carry scalar counts of native, local-OCR, worker and unresolved pages, which SHALL sum to the page count. The default routing unit SHALL remain `document`.
-
-The four existing OCR diagnostics SHALL remain scalars and SHALL keep their document-unit meaning. `ocr_required` SHALL be true when at least one page was flagged. `ocr_used` SHALL be true when OCR produced the text of at least one page, by either tier. `pages_needing_ocr` SHALL remain the count of flagged pages. `ocr_backend` SHALL name the one backend that produced all of the document's text, and SHALL be `mixed` when more than one produced text, so that it never names a backend that produced only part of a document.
-
-#### Scenario: Page-source counts sum to the page count
-
-- **GIVEN** the `page` routing unit and any ingested PDF
-- **WHEN** the adapter emits its document
-- **THEN** the native, local-OCR, worker and unresolved page counts SHALL sum to `page_count`
-
-#### Scenario: A document read by two backends reports mixed
-
-- **GIVEN** the `page` routing unit and a PDF whose text comes partly from native extraction and partly from OCR
-- **WHEN** the adapter emits its document
-- **THEN** `ocr_backend` SHALL be `mixed`
-- **AND** it SHALL NOT name either contributing backend alone
-
-#### Scenario: The document unit emits no page-source counts
-
-- **GIVEN** no routing unit is configured
-- **WHEN** a PDF is ingested
-- **THEN** the emitted metadata SHALL NOT carry the native, local-OCR, worker or unresolved page counts
+When `OCR_ROUTING_UNIT=page` and OCR is enabled, the pdf-inspector path SHALL decide OCR need per page from a scan of every page. Pages that do not need OCR SHALL keep native pdf-inspector Markdown. Pages that need OCR SHALL be processed by the local OCR tier. The default routing unit SHALL remain `document`.
 
 #### Scenario: Only flagged pages are OCRed
 
@@ -750,6 +854,23 @@ The four existing OCR diagnostics SHALL remain scalars and SHALL keep their docu
 - **WHEN** the PDF is ingested
 - **THEN** the 17 other pages SHALL keep native Markdown
 - **AND** only the 3 flagged pages SHALL be processed by the local OCR tier
+
+#### Scenario: Missing local OCR runtime degrades to native text
+
+- **GIVEN** the `page` routing unit and no usable PDFium library or ONNX Runtime
+- **WHEN** a PDF with flagged pages is ingested
+- **THEN** flagged pages SHALL keep native text and be counted as unresolved
+- **AND** a warning SHALL name the missing runtime once per operation
+
+#### Scenario: Document unit is unchanged
+
+- **GIVEN** no routing unit is configured
+- **WHEN** a PDF is ingested
+- **THEN** routing SHALL follow the whole-PDF behaviour of the `document` unit
+
+### Requirement: Only unreadable local OCR pages escalate to the OCR routes
+
+A page SHALL escalate to the OCR routes only when the local tier returns no text or only whitespace, reports no confidence or a confidence below the configured minimum, or recommends hosted OCR. Escalated pages SHALL go in one page-listed request to the primary OCR route, or to the fallback route when the primary is unavailable before dispatch. The OCR routes SHALL receive only escalated pages.
 
 #### Scenario: A page the local tier cannot read escalates
 
@@ -775,24 +896,47 @@ The four existing OCR diagnostics SHALL remain scalars and SHALL keep their docu
 - **THEN** the page SHALL keep its local OCR text, or native text when local OCR produced none
 - **AND** the page SHALL be counted as unresolved without failing the file
 
-#### Scenario: Missing local OCR runtime degrades to native text
+### Requirement: A page-routed document counts the source of every page
 
-- **GIVEN** the `page` routing unit and no usable PDFium library or ONNX Runtime
-- **WHEN** a PDF with flagged pages is ingested
-- **THEN** flagged pages SHALL keep native text and be counted as unresolved
-- **AND** a warning SHALL name the missing runtime once per operation
+The emitted document SHALL join pages in page order and SHALL carry scalar counts of native, local-OCR, worker and unresolved pages, which SHALL sum to the page count.
 
-#### Scenario: Document unit is unchanged
+#### Scenario: Page-source counts sum to the page count
+
+- **GIVEN** the `page` routing unit and any ingested PDF
+- **WHEN** the adapter emits its document
+- **THEN** the native, local-OCR, worker and unresolved page counts SHALL sum to `page_count`
+
+#### Scenario: The document unit emits no page-source counts
 
 - **GIVEN** no routing unit is configured
 - **WHEN** a PDF is ingested
-- **THEN** routing SHALL follow the whole-PDF behaviour of the `document` unit
+- **THEN** the emitted metadata SHALL NOT carry the native, local-OCR, worker or unresolved page counts
+
+### Requirement: The scalar OCR diagnostics keep their document-unit meaning
+
+The four existing OCR diagnostics SHALL remain scalars and SHALL keep their document-unit meaning. `ocr_required` SHALL be true when at least one page was flagged. `ocr_used` SHALL be true when OCR produced the text of at least one page, by either tier. `pages_needing_ocr` SHALL remain the count of flagged pages.
+
+#### Scenario: Page routing keeps the scalar OCR diagnostics
+
+- **GIVEN** the `page` routing unit and a PDF with at least one flagged page
+- **WHEN** OCR produces the text of at least one page
+- **THEN** `ocr_required` and `ocr_used` SHALL be true
+- **AND** `pages_needing_ocr` SHALL be the count of flagged pages
+
+### Requirement: ocr_backend names a single backend or mixed
+
+`ocr_backend` SHALL name the one backend that produced all of the document's text, and SHALL be `mixed` when more than one produced text, so that it never names a backend that produced only part of a document.
+
+#### Scenario: A document read by two backends reports mixed
+
+- **GIVEN** the `page` routing unit and a PDF whose text comes partly from native extraction and partly from OCR
+- **WHEN** the adapter emits its document
+- **THEN** `ocr_backend` SHALL be `mixed`
+- **AND** it SHALL NOT name either contributing backend alone
 
 ### Requirement: Local OCR tier SHALL escalate pages below a default confidence of 0.9
 
 When `OCR_ROUTING_UNIT=page` and the operator has not set `OCR_LOCAL_MIN_CONFIDENCE`, a page the local OCR tier reads SHALL escalate to the worker when its reported confidence is below 0.9. The tier SHALL keep a page whose confidence is 0.9 or higher, unless the page is empty, has no reported confidence, or carries the engine's hosted recommendation. A value the operator sets SHALL replace the default without change to the rule.
-
-The page-unit index identity SHALL change when the effective cut changes, so that sources read under a different cut are re-indexed. The default `document` routing unit has no local tier, and its index identity SHALL NOT change.
 
 #### Scenario: Page below the default cut escalates
 
@@ -811,6 +955,10 @@ The page-unit index identity SHALL change when the effective cut changes, so tha
 - **GIVEN** `OCR_LOCAL_MIN_CONFIDENCE=0.7`
 - **WHEN** the local tier reads a page with text and confidence 0.75
 - **THEN** the page SHALL keep its local text
+
+### Requirement: Changing the local cut re-indexes page-unit sources only
+
+The page-unit index identity SHALL change when the effective cut changes, so that sources read under a different cut are re-indexed. The default `document` routing unit has no local tier, and its index identity SHALL NOT change.
 
 #### Scenario: Page unit re-indexes when the default changes
 

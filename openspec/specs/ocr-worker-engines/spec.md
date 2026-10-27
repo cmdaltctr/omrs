@@ -10,10 +10,6 @@ Let OMRS run more than one isolated OCR engine through one shared worker core an
 
 Every OCR engine SHALL run as a separate local subprocess in its own environment, provisioned from its own lockfile. Every engine SHALL speak the same versioned JSON Lines protocol, served by one shared worker core. The core SHALL own request framing, validation, the capability command, page-subset selection and error mapping. An engine SHALL supply only its model-specific parsing and its identity declarations: packages, pipeline, and model with revisions.
 
-Each environment SHALL contain exactly one registered engine. A worker environment that registers zero engines or more than one engine SHALL report itself unavailable through the capability probe and SHALL NOT accept parse requests.
-
-The host's protocol copy and the worker core's protocol copy SHALL stay byte-identical.
-
 #### Scenario: Two engines speak the same protocol
 
 - **GIVEN** the `paddleocr-vl` and `dots-mocr` engines are both provisioned
@@ -21,12 +17,20 @@ The host's protocol copy and the worker core's protocol copy SHALL stay byte-ide
 - **THEN** both SHALL report the same protocol version and output-schema identity
 - **AND** each SHALL report its own package, pipeline and model identities
 
+### Requirement: Each worker environment registers exactly one engine
+
+Each environment SHALL contain exactly one registered engine. A worker environment that registers zero engines or more than one engine SHALL report itself unavailable through the capability probe and SHALL NOT accept parse requests.
+
 #### Scenario: An environment with two engines is unavailable
 
 - **GIVEN** a worker environment that registers two engines
 - **WHEN** the host probes it
 - **THEN** the probe SHALL return the stable unavailable fingerprint
 - **AND** no parse request SHALL be dispatched to it
+
+### Requirement: The host and worker protocol copies stay identical
+
+The host's protocol copy and the worker core's protocol copy SHALL stay byte-identical.
 
 #### Scenario: Protocol copies stay identical
 
@@ -53,17 +57,17 @@ The host SHALL resolve an engine from its name and the configured workers direct
 
 ### Requirement: Engine routes SHALL be injected configuration
 
-The host SHALL read two routes from the injected effective settings: a primary-route engine name and a fallback-route engine name. It SHALL also read the workers directory. The primary engine SHALL be `dots-mocr` and the fallback engine SHALL be `paddleocr-vl`. An empty fallback name SHALL mean no fallback. An empty workers directory SHALL make every route unavailable. The existing explicit worker command and environment directory SHALL stay valid and SHALL override the primary route only.
+The host SHALL read two routes from the injected effective settings: a primary-route engine name and a fallback-route engine name. It SHALL also read the workers directory. The primary engine SHALL be `dots-mocr` and the fallback engine SHALL be `paddleocr-vl`. An empty fallback name SHALL mean no fallback. An empty workers directory SHALL make every route unavailable.
 
-Each route SHALL own one lazy, long-lived client. A route's subprocess SHALL start only on that route's first dispatch. Routes that resolve to the same engine SHALL share one client.
+#### Scenario: Default routes
 
-The request timeout SHALL grow with the number of pages in the request, and SHALL never be below the configured per-request timeout.
+- **WHEN** the host reads the routes from the injected effective settings
+- **THEN** the primary engine SHALL be `dots-mocr`
+- **AND** the fallback engine SHALL be `paddleocr-vl`
 
-#### Scenario: The fallback does not start while the primary serves
+### Requirement: The explicit worker command overrides the primary route only
 
-- **GIVEN** both routes are available
-- **WHEN** a batch dispatches OCR requests
-- **THEN** only the primary-route subprocess SHALL start
+The existing explicit worker command and environment directory SHALL stay valid and SHALL override the primary route only.
 
 #### Scenario: The explicit command overrides the primary route
 
@@ -71,6 +75,20 @@ The request timeout SHALL grow with the number of pages in the request, and SHAL
 - **WHEN** the primary route resolves
 - **THEN** it SHALL use the explicit command
 - **AND** the fallback route SHALL still resolve from the workers directory
+
+### Requirement: Each route owns one lazy client
+
+Each route SHALL own one lazy, long-lived client. A route's subprocess SHALL start only on that route's first dispatch. Routes that resolve to the same engine SHALL share one client.
+
+#### Scenario: The fallback does not start while the primary serves
+
+- **GIVEN** both routes are available
+- **WHEN** a batch dispatches OCR requests
+- **THEN** only the primary-route subprocess SHALL start
+
+### Requirement: The request timeout grows with the page count
+
+The request timeout SHALL grow with the number of pages in the request, and SHALL never be below the configured per-request timeout.
 
 #### Scenario: A long request gets a longer timeout
 
@@ -81,8 +99,6 @@ The request timeout SHALL grow with the number of pages in the request, and SHAL
 ### Requirement: Every OCR dispatch SHALL use the primary route, then the fallback route
 
 Every OCR dispatch SHALL go to the primary route. This covers whole PDFs that the OCR gate selects, scanned and image-based PDFs, pages escalated from the local OCR tier, and maths pages. If the primary route is unavailable before dispatch, the same request SHALL go to the fallback route. If both routes are unavailable, the existing degraded behaviour for an unavailable worker SHALL apply.
-
-A worker failure after dispatch SHALL remain a structured per-file error. It SHALL NOT trigger a retry on the other route.
 
 #### Scenario: A scanned PDF goes to the primary engine
 
@@ -96,6 +112,10 @@ A worker failure after dispatch SHALL remain a structured per-file error. It SHA
 - **GIVEN** a scanned PDF, an unavailable primary route and an available fallback route
 - **WHEN** the PDF is ingested
 - **THEN** the whole PDF SHALL be parsed by the fallback route
+
+### Requirement: A worker failure after dispatch is not retried on the other route
+
+A worker failure after dispatch SHALL remain a structured per-file error. It SHALL NOT trigger a retry on the other route.
 
 #### Scenario: Post-dispatch failure does not retry on the fallback
 
@@ -124,9 +144,15 @@ A worker failure after dispatch SHALL remain a structured per-file error. It SHA
 
 One provisioning command SHALL provision one named engine from that engine's lockfile only. It SHALL NOT change the OMRS main environment. An engine's packages, including PyTorch for `dots-mocr`, SHALL NOT enter the OMRS package metadata, the root lockfile, or any OMRS runtime import.
 
-An engine whose model licence adds terms beyond its code licence SHALL require explicit operator acceptance at provisioning. `dots-mocr` SHALL NOT provision without that acceptance. The engine folder SHALL record the terms that affect OMRS.
+#### Scenario: Main environment stays free of engine packages
 
-Model weights SHALL be fetched at provisioning, at a pinned model revision. A parse SHALL NOT download model files.
+- **GIVEN** OMRS is installed from its main package metadata and root lockfile
+- **WHEN** it starts and ingests a PDF
+- **THEN** no Paddle or PyTorch package SHALL be required or imported by OMRS
+
+### Requirement: An engine with extra model licence terms needs operator acceptance
+
+An engine whose model licence adds terms beyond its code licence SHALL require explicit operator acceptance at provisioning. `dots-mocr` SHALL NOT provision without that acceptance. The engine folder SHALL record the terms that affect OMRS.
 
 #### Scenario: dots-mocr refuses to provision without licence acceptance
 
@@ -134,11 +160,9 @@ Model weights SHALL be fetched at provisioning, at a pinned model revision. A pa
 - **THEN** provisioning SHALL stop before installing anything
 - **AND** it SHALL name the licence file and the flag
 
-#### Scenario: Main environment stays free of engine packages
+### Requirement: Model weights are fetched at provisioning
 
-- **GIVEN** OMRS is installed from its main package metadata and root lockfile
-- **WHEN** it starts and ingests a PDF
-- **THEN** no Paddle or PyTorch package SHALL be required or imported by OMRS
+Model weights SHALL be fetched at provisioning, at a pinned model revision. A parse SHALL NOT download model files.
 
 #### Scenario: Parse runs offline
 
@@ -150,8 +174,6 @@ Model weights SHALL be fetched at provisioning, at a pinned model revision. A pa
 
 The `dots-mocr` engine SHALL convert the model's layout output to Markdown per page. Formulas SHALL be emitted as LaTeX display blocks with exactly one pair of `$$` delimiters. Tables SHALL be emitted as HTML tables. Title and section headers SHALL be emitted as Markdown headings. Page headers and page footers SHALL be omitted. Pictures SHALL carry no text.
 
-A page whose output reaches the configured token limit, or whose layout output cannot be parsed, SHALL return empty Markdown for that page, and the engine SHALL log the reason on standard error. It SHALL NOT return truncated or unparsed output as Markdown. The protocol version SHALL NOT change for this.
-
 #### Scenario: A display equation has one pair of delimiters
 
 - **WHEN** the model returns a formula already wrapped in `$$`
@@ -161,6 +183,10 @@ A page whose output reaches the configured token limit, or whose layout output c
 
 - **WHEN** the model labels a region as a page header or page footer
 - **THEN** that region's text SHALL NOT appear in the emitted Markdown
+
+### Requirement: A truncated or unparsable page returns empty Markdown
+
+A page whose output reaches the configured token limit, or whose layout output cannot be parsed, SHALL return empty Markdown for that page, and the engine SHALL log the reason on standard error. It SHALL NOT return truncated or unparsed output as Markdown. The protocol version SHALL NOT change for this.
 
 #### Scenario: A truncated page is not usable text
 

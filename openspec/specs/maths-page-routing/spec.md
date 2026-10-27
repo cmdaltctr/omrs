@@ -10,17 +10,6 @@ Send born-digital maths pages, whose equations the text readers cannot extract f
 
 When maths routing is enabled, the pdf-inspector path SHALL flag a page as a maths page when the page uses a font from the maths-font list. It SHALL flag the page whether or not that font carries a Unicode map, because a Unicode map restores characters but not equation structure. Font names SHALL be matched after any subset prefix. Fonts used through nested form objects on the page SHALL count.
 
-The maths-font list SHALL be closed and versioned. It SHALL contain these families:
-
-- Computer Modern maths: CMMI, CMMIB, CMSY, CMBSY and CMEX, at any design size;
-- Latin Modern maths: the LMMathItalic, LMMathSymbols and LMMathExtension Type 1 families, and Latin Modern Math;
-- AMS and Euler symbol fonts: MSAM, MSBM, EUFM, EUSM and EUEX, at any design size;
-- OpenType maths fonts: Cambria Math, STIX Math, STIX Two Math, XITS Math, the TeX Gyre maths fonts, Libertinus Math, Asana Math and Fira Math.
-
-A change to the list SHALL change the detector version.
-
-Detection SHALL be deterministic. It SHALL read font resources only. It SHALL NOT render pages, run OCR, or call a language model or network service. A PDF whose font resources cannot be read SHALL flag no pages and SHALL NOT fail the file.
-
 #### Scenario: A LaTeX maths page without a Unicode map is flagged
 
 - **GIVEN** a born-digital page that uses CMMI10 and CMEX10 with no Unicode map
@@ -33,17 +22,35 @@ Detection SHALL be deterministic. It SHALL read font resources only. It SHALL NO
 - **WHEN** the page is inspected
 - **THEN** the page SHALL be flagged as a maths page
 
-#### Scenario: A Word equation page is flagged
+### Requirement: The maths-font list is closed and versioned
 
-- **GIVEN** a born-digital page that uses Cambria Math
-- **WHEN** the page is inspected
-- **THEN** the page SHALL be flagged as a maths page
+The maths-font list SHALL be closed and versioned. It SHALL contain these TeX families:
+
+- Computer Modern maths: CMMI, CMMIB, CMSY, CMBSY and CMEX, at any design size;
+- Latin Modern maths: the LMMathItalic, LMMathSymbols and LMMathExtension Type 1 families, and Latin Modern Math;
+- AMS and Euler symbol fonts: MSAM, MSBM, EUFM, EUSM and EUEX, at any design size.
+
+A change to the list SHALL change the detector version.
 
 #### Scenario: Prose-only pages are not flagged
 
 - **GIVEN** a born-digital page that uses only CMR or Times text fonts
 - **WHEN** the page is inspected
 - **THEN** the page SHALL NOT be flagged
+
+### Requirement: The maths-font list contains the OpenType maths fonts
+
+The maths-font list SHALL also contain these OpenType maths fonts: Cambria Math, STIX Math, STIX Two Math, XITS Math, the TeX Gyre maths fonts, Libertinus Math, Asana Math and Fira Math.
+
+#### Scenario: A Word equation page is flagged
+
+- **GIVEN** a born-digital page that uses Cambria Math
+- **WHEN** the page is inspected
+- **THEN** the page SHALL be flagged as a maths page
+
+### Requirement: Maths detection reads font resources only
+
+Detection SHALL be deterministic. It SHALL read font resources only. It SHALL NOT render pages, run OCR, or call a language model or network service. A PDF whose font resources cannot be read SHALL flag no pages and SHALL NOT fail the file.
 
 #### Scenario: Unreadable font resources flag nothing
 
@@ -54,11 +61,7 @@ Detection SHALL be deterministic. It SHALL read font resources only. It SHALL NO
 
 ### Requirement: Maths pages SHALL route to the OCR routes
 
-Under the `page` routing unit, flagged maths pages SHALL skip the local OCR tier. They SHALL go to the primary route in one page-listed request. A page flagged both as a maths page and as needing OCR SHALL be sent once, in that request. If the primary route is unavailable before dispatch, the flagged pages SHALL go to the fallback route in one request. If both routes are unavailable, the pages SHALL keep native text and SHALL count as unresolved. A page for which the engine returns empty Markdown SHALL keep native text and SHALL count as unresolved.
-
-Under the `document` routing unit, a PDF SHALL go whole to the OCR routes when the flagged-page fraction is at or above the configured maths page fraction. This condition SHALL be in addition to the existing OCR gate. A fraction of `0.0` SHALL disable it. The default fraction SHALL be `0.10`. The document unit SHALL NOT merge pages from two engines.
-
-When maths routing is disabled, routing SHALL behave as it did before this capability.
+Under the `page` routing unit, flagged maths pages SHALL skip the local OCR tier. They SHALL go to the primary route in one page-listed request. A page flagged both as a maths page and as needing OCR SHALL be sent once, in that request.
 
 #### Scenario: Only maths pages go to the primary engine
 
@@ -68,6 +71,10 @@ When maths routing is disabled, routing SHALL behave as it did before this capab
 - **THEN** exactly those 4 pages SHALL be sent to the primary route in one request
 - **AND** the other 8 pages SHALL keep native Markdown
 - **AND** the local OCR tier SHALL NOT process the 4 maths pages
+
+### Requirement: Maths pages fall back when the primary route is missing
+
+If the primary route is unavailable before dispatch, the flagged pages SHALL go to the fallback route in one request. If both routes are unavailable, the pages SHALL keep native text and SHALL count as unresolved. A page for which the engine returns empty Markdown SHALL keep native text and SHALL count as unresolved.
 
 #### Scenario: A missing primary engine falls back
 
@@ -82,6 +89,10 @@ When maths routing is disabled, routing SHALL behave as it did before this capab
 - **THEN** the 4 pages SHALL keep native text
 - **AND** they SHALL count as unresolved without failing the file
 
+### Requirement: The document unit sends a maths-heavy PDF whole to the OCR routes
+
+Under the `document` routing unit, a PDF SHALL go whole to the OCR routes when the flagged-page fraction is at or above the configured maths page fraction. This condition SHALL be in addition to the existing OCR gate. A fraction of `0.0` SHALL disable it. The default fraction SHALL be `0.10`. The document unit SHALL NOT merge pages from two engines.
+
 #### Scenario: Document unit sends a maths paper whole to the primary engine
 
 - **GIVEN** the `document` routing unit, the default maths page fraction, and a 14-page PDF with 9 flagged pages
@@ -94,6 +105,10 @@ When maths routing is disabled, routing SHALL behave as it did before this capab
 - **GIVEN** the `document` routing unit, the default maths page fraction, and a 40-page PDF with 1 flagged page that the OCR gate does not select
 - **WHEN** the PDF is ingested
 - **THEN** no parse request SHALL be dispatched
+
+### Requirement: Disabled maths routing keeps the old routing
+
+When maths routing is disabled, routing SHALL behave as it did before this capability.
 
 #### Scenario: Disabled maths routing changes nothing
 

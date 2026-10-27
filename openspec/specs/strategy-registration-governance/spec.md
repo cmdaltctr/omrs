@@ -6,8 +6,6 @@ Define when configurable implementations require registry dispatch and distingui
 ### Requirement: Registry eligibility is explicit
 An implementation family SHALL use a registry when configuration selects by name between two or more interchangeable implementations that satisfy one shared contract. A single external capability adapter, availability probe, or ordered fallback factory SHALL not require registration solely because it lives under `integrations/`.
 
-Whether an implementation is `native` SHALL describe dependency availability only. It SHALL NOT decide registry eligibility. Native and optional implementations in the same configured strategy family SHALL use the same registry contract.
-
 #### Scenario: Multiple interchangeable algorithms exist
 - **WHEN** configuration selects between Louvain and Leiden using one community partition contract
 - **THEN** both implementations SHALL be exposed through the community strategy registry
@@ -16,6 +14,9 @@ Whether an implementation is `native` SHALL describe dependency availability onl
 - **WHEN** an integration provides one optional external capability without a configured interchangeable implementation
 - **THEN** it SHALL remain a direct integration or factory
 - **AND** the audit SHALL record why registry dispatch is not applicable
+
+### Requirement: Native status describes dependency availability only
+Whether an implementation is `native` SHALL describe dependency availability only. It SHALL NOT decide registry eligibility. Native and optional implementations in the same configured strategy family SHALL use the same registry contract.
 
 #### Scenario: A native implementation belongs to a configured family
 - **WHEN** a base-install implementation and optional implementations are selected by the same configuration field
@@ -32,8 +33,6 @@ Registered strategy consumers SHALL resolve configured names through the relevan
 
 ### Requirement: Existing modules receive a registration audit
 The change SHALL audit every Python module recursively under `src/omrs/integrations/`, plus current factories and name-dispatched implementation families elsewhere. The audit SHALL include package facades, Azure, Magika, every PDF module, sparse retrieval backends, metadata extraction, embedding providers, LLM providers, chunking, reranking, and community detection. No integration module SHALL remain unclassified.
-
-For each module, the audit SHALL record whether it is native or optional, whether configuration selects it by name, its shared contract if any, its fallback owner, and its disposition as registry strategy, capability integration, factory, facade, or direct implementation.
 
 #### Scenario: Audit finds an unregistered strategy family
 - **WHEN** multiple interchangeable implementations are selected by a configuration name without registry dispatch
@@ -58,6 +57,13 @@ For each module, the audit SHALL record whether it is native or optional, whethe
 - **WHEN** the audit evaluates the configured PDF implementations and their `auto` factory
 - **THEN** it SHALL distinguish automatic capability resolution from concrete backend selection
 - **AND** it SHALL state whether the concrete native and optional readers require registry dispatch behind the existing factory API
+
+### Requirement: The audit records each module's disposition
+For each module, the audit SHALL record whether it is native or optional, whether configuration selects it by name, its shared contract if any, its fallback owner, and its disposition as registry strategy, capability integration, factory, facade, or direct implementation.
+
+#### Scenario: An audited module has a complete record
+- **WHEN** the audit records a module
+- **THEN** it SHALL record whether the module is native or optional, whether configuration selects it by name, its shared contract if any, its fallback owner, and its disposition
 
 ### Requirement: Registry inventory is testable
 The audit SHALL produce a maintained inventory that names every integration module and implementation family, its native or optional status, its classification, its selection mechanism, and its registry, factory, facade, or adapter location. Contract tests SHALL cover registered names that are also documented configuration values and SHALL detect unclassified integration modules.

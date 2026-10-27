@@ -22,7 +22,7 @@ The project SHALL be named OMRS, short for "Opinionated Modular RAG System". Liv
 
 ### Requirement: Runtime identifiers use the omrs prefix
 
-Every identifier the project creates on a user's machine or sends to a client SHALL use `omrs`. The identifiers are:
+Every identifier the project creates on a user's machine or sends to a client SHALL use `omrs`. The package and configuration identifiers are:
 
 | Identifier | Value |
 | --- | --- |
@@ -32,25 +32,51 @@ Every identifier the project creates on a user's machine or sends to a client SH
 | Environment variable prefix | `OMRS_` |
 | Settings file | `omrs.jsonc` |
 | Config folder | `$OMRS_CONFIG_DIR`, else `$XDG_CONFIG_HOME/omrs`, else `~/.config/omrs` |
-| Data folder | `~/.omrs` |
-| Secret reference path | `file://~/.config/omrs/secrets/<name>.key` |
-| macOS keychain service | `omrs` |
-| launchd labels | `com.omrs.web`, `com.omrs.watch.<id>` |
-| Log folder | `~/Library/Logs/omrs` |
-| Session cookie and token prefixes | `omrs_session`, `omrs_bs_`, `omrs_ss_`, `omrs_bt_` |
-| OpenAPI extension keys | `x-omrs-scopes`, `x-omrs-scope-catalogue` |
-| Browser storage key prefix | `omrs-` |
-| LanceDB dataset epoch key | `omrs_dataset_epoch` |
-| Workspace job layout key | `omrs_task` |
-| Large-data folder (owner's machine) | `~/Development/DATA/omrs` |
-
-No identifier SHALL be created or read under an `omrg` name. No compatibility alias, startup check or migration command SHALL be provided: the old names stop working.
 
 #### Scenario: A new install creates only omrs identifiers
 
 - **GIVEN** a machine with no previous install
 - **WHEN** a user runs the web server, saves a setting, stores a key in the keychain and installs the login item
 - **THEN** every folder, file, keychain entry and launchd label created SHALL use the `omrs` names in the table
+
+### Requirement: Machine folders and service labels use the omrs prefix
+
+These identifiers on the user's machine SHALL also use `omrs`:
+
+| Identifier | Value |
+| --- | --- |
+| Data folder | `~/.omrs` |
+| Secret reference path | `file://~/.config/omrs/secrets/<name>.key` |
+| macOS keychain service | `omrs` |
+| launchd labels | `com.omrs.web`, `com.omrs.watch.<id>` |
+| Log folder | `~/Library/Logs/omrs` |
+| Large-data folder (owner's machine) | `~/Development/DATA/omrs` |
+
+#### Scenario: The login item uses the omrs label
+
+- **WHEN** a user installs the login item
+- **THEN** its launchd label SHALL be `com.omrs.web`
+
+### Requirement: Session, protocol and storage keys use the omrs prefix
+
+These identifiers sent to a client or stored by the project SHALL also use `omrs`:
+
+| Identifier | Value |
+| --- | --- |
+| Session cookie and token prefixes | `omrs_session`, `omrs_bs_`, `omrs_ss_`, `omrs_bt_` |
+| OpenAPI extension keys | `x-omrs-scopes`, `x-omrs-scope-catalogue` |
+| Browser storage key prefix | `omrs-` |
+| LanceDB dataset epoch key | `omrs_dataset_epoch` |
+| Workspace job layout key | `omrs_task` |
+
+#### Scenario: The session cookie uses the omrs name
+
+- **WHEN** the web server starts a browser session
+- **THEN** the session cookie SHALL be named `omrs_session`
+
+### Requirement: The old omrg names are not created or read
+
+No identifier SHALL be created or read under an `omrg` name. No compatibility alias, startup check or migration command SHALL be provided: the old names stop working.
 
 #### Scenario: The old environment prefix is not read
 
@@ -81,13 +107,17 @@ A LanceDB collection written before the rename SHALL open with its vectors, meta
 
 ### Requirement: Live files do not use the old identity
 
-A guard test SHALL fail when a live file contains the old identity. Live files are the source, tests, scripts, web sources and live documentation. The guard SHALL exempt: ADRs, TDRs, archived OpenSpec changes, run experiment records (numbered `experiments/` folders and OpenSpec changes of run experiments), `CHANGELOG.md`, the change that performs the rename, and the specs that require the old names to be absent. Each exemption SHALL be a named entry in the guard with a reason. Unrun experiments SHALL use the new name.
+A guard test SHALL fail when a live file contains the old identity. Live files are the source, tests, scripts, web sources and live documentation. Unrun experiments SHALL use the new name.
 
 #### Scenario: A stray old name fails the guard
 
 - **WHEN** a live source file contains the string `omrg`
 - **AND** the file is not on the exemption list
 - **THEN** the guard test SHALL fail and name the file and line
+
+### Requirement: The guard exempts historical records by name
+
+The guard SHALL exempt: ADRs, TDRs, archived OpenSpec changes, run experiment records (numbered `experiments/` folders and OpenSpec changes of run experiments), `CHANGELOG.md`, the change that performs the rename, and the specs that require the old names to be absent. Each exemption SHALL be a named entry in the guard with a reason.
 
 #### Scenario: Historical records are exempt
 

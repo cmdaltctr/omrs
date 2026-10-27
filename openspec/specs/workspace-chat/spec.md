@@ -7,22 +7,12 @@ A chat view that answers each question from a selected knowledge base, with cita
 
 ### Requirement: The user chats with a selected knowledge base
 
-The Chat view SHALL present a history list, a transcript column with the composer docked at its bottom edge, and a knowledge base panel listing collections with their counts. On wide screens the history list SHALL sit to the left of the transcript and the knowledge base panel to its right. On narrow screens the knowledge base panel SHALL sit above the transcript, and a History button SHALL open the history list. The selected collection SHALL be the collection segment of the `#/chat/<collection>` or `#/chat/<collection>/<chat-id>` route; selecting another collection SHALL rewrite the route and keep the open chat. Opening `#/chat` without a collection SHALL select the last-used collection when the server still lists it, and otherwise SHALL ask the user to choose one. Sending a message SHALL append the user message and call `answerCollection` on the selected collection with the message text, then append the assistant turn. The view SHALL state that each question answers on its own.
-
-#### Scenario: Ask a question
-
-- **WHEN** a knowledge base is selected and the user sends a question
-- **THEN** the transcript MUST show the user message followed by the assistant answer for that question
+The Chat view SHALL present a history list, a transcript column with the composer docked at its bottom edge, and a knowledge base panel listing collections with their counts. On wide screens the history list SHALL sit to the left of the transcript and the knowledge base panel to its right. On narrow screens the knowledge base panel SHALL sit above the transcript, and a History button SHALL open the history list.
 
 #### Scenario: Composer stays docked
 
 - **WHEN** the transcript is shorter than the screen, or long enough to scroll
 - **THEN** the composer MUST stay at the bottom edge of the view, and on a narrow screen the knowledge base panel MUST appear above the transcript
-
-#### Scenario: Switch knowledge base mid-conversation
-
-- **WHEN** the user selects a different collection after two turns
-- **THEN** the next turn MUST query the newly selected collection, the route MUST name it, and the transcript MUST keep earlier turns
 
 #### Scenario: History list placement
 
@@ -30,24 +20,46 @@ The Chat view SHALL present a history list, a transcript column with the compose
 - **THEN** the history list MUST sit to the left of the transcript
 - **AND** at a width of 390 px a History button MUST open the list and the page MUST NOT scroll sideways
 
+### Requirement: The chat route selects the knowledge base
+
+The selected collection SHALL be the collection segment of the `#/chat/<collection>` or `#/chat/<collection>/<chat-id>` route; selecting another collection SHALL rewrite the route and keep the open chat. Opening `#/chat` without a collection SHALL select the last-used collection when the server still lists it, and otherwise SHALL ask the user to choose one.
+
+#### Scenario: Switch knowledge base mid-conversation
+
+- **WHEN** the user selects a different collection after two turns
+- **THEN** the next turn MUST query the newly selected collection, the route MUST name it, and the transcript MUST keep earlier turns
+
+### Requirement: Sending a message answers from the selected knowledge base
+
+Sending a message SHALL append the user message and call `answerCollection` on the selected collection with the message text, then append the assistant turn. The view SHALL state that each question answers on its own.
+
+#### Scenario: Ask a question
+
+- **WHEN** a knowledge base is selected and the user sends a question
+- **THEN** the transcript MUST show the user message followed by the assistant answer for that question
+
 ### Requirement: Assistant turns cite their evidence
 
-Each assistant turn SHALL render the answer's verification status as text with its status colour, the citations as chips, and the evidence rows in a collapsible section. A `[n]` marker in the answer text SHALL be a button only when `n` is the ordinal of a returned citation; any other marker SHALL stay plain text. Pressing a citation chip or a marker button SHALL open a citation popover next to it (see "A citation popover shows the evidence and its metadata"). Opening an evidence row, or the full chunk from the popover, SHALL show the chunk in the chunk viewer.
+Each assistant turn SHALL render the answer's verification status as text with its status colour, the citations as chips, and the evidence rows in a collapsible section. A `[n]` marker in the answer text SHALL be a button only when `n` is the ordinal of a returned citation; any other marker SHALL stay plain text.
 
 #### Scenario: Answer with citations
 
 - **WHEN** an answer returns two citations and verified status
 - **THEN** the turn MUST show the status as text, two citation chips, and an evidence section listing both rows
 
-#### Scenario: Open a citation
-
-- **WHEN** the user opens a citation chip and then chooses to open the full chunk
-- **THEN** the chunk viewer MUST show that chunk's text and source
-
 #### Scenario: Marker in the answer text
 
 - **WHEN** the answer text contains `[1]` and `[7]` and only ordinal 1 is a returned citation
 - **THEN** `[1]` MUST be a button that opens the popover for citation 1 and `[7]` MUST stay plain text
+
+### Requirement: Citations open a popover and the chunk viewer
+
+Pressing a citation chip or a marker button SHALL open a citation popover next to it (see "A citation popover shows the evidence and its metadata"). Opening an evidence row, or the full chunk from the popover, SHALL show the chunk in the chunk viewer.
+
+#### Scenario: Open a citation
+
+- **WHEN** the user opens a citation chip and then chooses to open the full chunk
+- **THEN** the chunk viewer MUST show that chunk's text and source
 
 ### Requirement: Answer failures stay friendly
 
@@ -69,17 +81,25 @@ The Chat view SHALL offer a New chat action that shows a new, empty chat. The pr
 
 ### Requirement: A citation popover shows the evidence and its metadata
 
-The citation popover SHALL show the citation ordinal, the source name, the score with its kind when present, and the evidence text sent to the model. It SHALL show a Lineage section with the source id, the source version, the chunk position ("Chunk i of n"), the page label when present, and every chunk id the citation spans when it covers more than one chunk. It SHALL show a Metadata section that lists every other stored metadata key of the chunk with its value, read from the stored index. Long values SHALL be cut, with an action to show the full value. The popover SHALL offer an action to open the full chunk in the chunk viewer. Escape, a click outside it, or a second press SHALL close the popover and return focus to its button. When the chunk is no longer stored, the popover SHALL keep the evidence text and SHALL state that the stored chunk is not available, without an error page. The chunk viewer SHALL show the same Lineage and Metadata sections.
+The citation popover SHALL show the citation ordinal, the source name, the score with its kind when present, and the evidence text sent to the model. It SHALL show a Lineage section with the source id, the source version, the chunk position ("Chunk i of n"), the page label when present, and every chunk id the citation spans when it covers more than one chunk. It SHALL show a Metadata section that lists every other stored metadata key of the chunk with its value, read from the stored index.
 
 #### Scenario: Popover content
 
 - **WHEN** the user presses citation chip `[2]` of an answer whose citation 2 spans two chunks of `paper.pdf`
 - **THEN** the popover MUST show the source `paper.pdf`, the evidence text, the chunk position, both chunk ids and the stored metadata keys with their values
 
+### Requirement: The citation popover cuts long values and closes cleanly
+
+Long values SHALL be cut, with an action to show the full value. The popover SHALL offer an action to open the full chunk in the chunk viewer. Escape, a click outside it, or a second press SHALL close the popover and return focus to its button.
+
 #### Scenario: Close the popover
 
 - **WHEN** the popover is open and the user presses Escape
 - **THEN** the popover MUST close and focus MUST return to the chip
+
+### Requirement: The citation popover handles a chunk that is no longer stored
+
+When the chunk is no longer stored, the popover SHALL keep the evidence text and SHALL state that the stored chunk is not available, without an error page. The chunk viewer SHALL show the same Lineage and Metadata sections.
 
 #### Scenario: Source deleted after the chat was saved
 
@@ -88,17 +108,25 @@ The citation popover SHALL show the citation ordinal, the source name, the score
 
 ### Requirement: Chats are stored in the workspace
 
-Each chat SHALL be stored in the workspace database with its turns. A turn SHALL keep the question, the collection it was sent to and the answer result. A turn SHALL be stored when a usable answer arrives. A failed call, or an answer with an error status, SHALL NOT be stored; a Retry that then succeeds SHALL store the turn. Opening a stored chat SHALL show its saved turns in order and MUST NOT call `answerCollection` for them. A chat title SHALL come from the first question, cut to 60 characters. Chats SHALL survive a page reload and a server restart. Only the browser session of `omrs web` SHALL read, change or delete chats; a bearer token MUST be refused.
+Each chat SHALL be stored in the workspace database with its turns. A turn SHALL keep the question, the collection it was sent to and the answer result. A turn SHALL be stored when a usable answer arrives. A failed call, or an answer with an error status, SHALL NOT be stored; a Retry that then succeeds SHALL store the turn.
+
+#### Scenario: Failed answer is not stored
+
+- **WHEN** an answer returns an error status and the user reloads the page without a Retry
+- **THEN** the history MUST NOT contain that question
+
+### Requirement: Stored chats reopen without a new answer call
+
+Opening a stored chat SHALL show its saved turns in order and MUST NOT call `answerCollection` for them. A chat title SHALL come from the first question, cut to 60 characters. Chats SHALL survive a page reload and a server restart.
 
 #### Scenario: Reload keeps the chat
 
 - **WHEN** the user asks two questions, then reloads the page and opens the chat from the history list
 - **THEN** the transcript MUST show both questions with their saved answers and no answer call MUST be made
 
-#### Scenario: Failed answer is not stored
+### Requirement: Only the omrs web browser session reaches chats
 
-- **WHEN** an answer returns an error status and the user reloads the page without a Retry
-- **THEN** the history MUST NOT contain that question
+Only the browser session of `omrs web` SHALL read, change or delete chats; a bearer token MUST be refused.
 
 #### Scenario: Bearer token is refused
 
@@ -276,29 +304,33 @@ When an assistant turn carries reasoning text, the turn SHALL show a "Reasoning"
 
 ### Requirement: The question box shows tokens and cost of the latest answer
 
-The question box SHALL show one line of small muted text at its top right. The line SHALL give the tokens and cost of the latest answer in the open chat, for example `1,240 in · 380 out · 210 reasoning · $0.0012`. It SHALL omit a figure that is `null`. When the remaining credit is available, the line SHALL end with it, for example `· $2.81 left`. The line SHALL show nothing when the latest answer has no `usage`. Hovering or focusing the line SHALL show the full figures, including the number of model calls.
+The question box SHALL show one line of small muted text at its top right. The line SHALL give the tokens and cost of the latest answer in the open chat, for example `1,240 in · 380 out · 210 reasoning · $0.0012`. It SHALL omit a figure that is `null`. The line SHALL show nothing when the latest answer has no `usage`.
 
 #### Scenario: Latest answer with usage
 
 - **WHEN** the latest answer carries `usage` with 1240 input tokens, 380 output tokens, 210 reasoning tokens and a cost of 0.0012
 - **THEN** the line MUST read `1,240 in · 380 out · 210 reasoning · $0.0012`
 
-#### Scenario: Remaining credit known
-
-- **WHEN** `GET /v1/usage/credit` returns `remaining_usd` 2.81
-- **THEN** the line MUST end with `· $2.81 left`
-
 #### Scenario: Cost unknown
 
 - **WHEN** the latest answer has `cost_usd` null
 - **THEN** the line MUST show the tokens and MUST NOT show a dollar figure
 
-#### Scenario: Credit is read after an answer, not on every render
-
-- **WHEN** a new answer finishes
-- **THEN** Chat MUST request `GET /v1/usage/credit` once, and MUST NOT request it while the user types
-
 #### Scenario: Phone width
 
 - **WHEN** the page is 390 px wide
 - **THEN** the line MUST stay on one row above the question box, cut with an ellipsis if needed, and the page MUST NOT scroll sideways
+
+### Requirement: The usage line shows remaining credit and full figures
+
+When the remaining credit is available, the line SHALL end with it, for example `· $2.81 left`. Hovering or focusing the line SHALL show the full figures, including the number of model calls.
+
+#### Scenario: Remaining credit known
+
+- **WHEN** `GET /v1/usage/credit` returns `remaining_usd` 2.81
+- **THEN** the line MUST end with `· $2.81 left`
+
+#### Scenario: Credit is read after an answer, not on every render
+
+- **WHEN** a new answer finishes
+- **THEN** Chat MUST request `GET /v1/usage/credit` once, and MUST NOT request it while the user types
