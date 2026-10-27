@@ -147,6 +147,11 @@ def _counts(metadata: dict) -> dict:
     }
 
 
+def _joined(docs: list) -> str:
+    """Join the emitted page documents' text in order (one document per page since D5)."""
+    return "\n\n".join(doc.text for doc in docs)
+
+
 # ── Task 4.5c: the merge reaches the emitted document ─────────────────────
 
 
@@ -181,7 +186,7 @@ def test_only_flagged_pages_are_ocred(monkeypatch, tmp_path, effective_settings)
     # produced the text).
     assert meta["ocr_backend"] == "mixed"
     assert meta["pages_needing_ocr"] == 1
-    text = docs[0].text
+    text = _joined(docs)
     assert text.index("native 9") < text.index("LOCAL ten") < text.index("native 11")
 
 
@@ -209,7 +214,7 @@ def test_a_document_read_wholly_by_local_ocr_names_the_local_tier(
         "ocr_pages_unresolved": 0,
     }
     assert meta["ocr_backend"] == OCR_BACKEND_LOCAL_OCR
-    assert docs[0].text == "LOCAL one\n\nLOCAL two"
+    assert _joined(docs) == "LOCAL one\n\nLOCAL two"
 
 
 def test_no_flagged_pages_never_touches_ocr_or_worker(monkeypatch, tmp_path, effective_settings):
@@ -237,7 +242,7 @@ def test_no_flagged_pages_never_touches_ocr_or_worker(monkeypatch, tmp_path, eff
     assert meta["ocr_used"] is False
     assert meta["ocr_backend"] == OCR_BACKEND_FAST_PATH
     assert meta["pages_needing_ocr"] == 0
-    assert docs[0].text == "native 1\n\nnative 2\n\nnative 3\n\nnative 4"
+    assert _joined(docs) == "native 1\n\nnative 2\n\nnative 3\n\nnative 4"
 
 
 # ── Task 4.4: escalation in one request ───────────────────────────────────
@@ -276,7 +281,7 @@ def test_unreadable_pages_escalate_alone_in_one_request(monkeypatch, tmp_path, e
     assert sum(_counts(meta).values()) == meta["page_count"]
     assert meta["ocr_backend"] == "mixed"
     assert meta["ocr_used"] is True
-    text = docs[0].text
+    text = _joined(docs)
     assert text.index("native 4") < text.index("WORKER five") < text.index("native 6")
     assert text.index("native 6") < text.index("WORKER seven") < text.index("native 8")
 
@@ -305,7 +310,7 @@ def test_worker_response_without_pages_markdown_degrades_to_unresolved(
         "ocr_pages_unresolved": 1,
     }
     # The best available text is kept; no marker is inserted.
-    assert "flawed three" in docs[0].text
+    assert "flawed three" in _joined(docs)
     assert "unavailable" in caplog.text or "attribute" in caplog.text
 
 
@@ -330,7 +335,7 @@ def test_worker_empty_entry_for_a_page_keeps_best_text_unresolved(
         "ocr_pages_worker": 0,
         "ocr_pages_unresolved": 1,
     }
-    assert "flawed two" in docs[0].text
+    assert "flawed two" in _joined(docs)
 
 
 # ── Task 4.6: degradation ─────────────────────────────────────────────────
@@ -359,7 +364,7 @@ def test_missing_worker_keeps_local_text_and_counts_unresolved(
         "ocr_pages_worker": 0,
         "ocr_pages_unresolved": 1,
     }
-    assert "flawed four" in docs[0].text
+    assert "flawed four" in _joined(docs)
     # The kept page text came from local OCR, so the diagnostics name it.
     assert meta["ocr_used"] is True
     assert meta["ocr_backend"] == "mixed"
@@ -381,7 +386,7 @@ def test_missing_worker_with_blank_local_text_keeps_native_text(
     ).load_data(tmp_path / "doc.pdf")
 
     meta = docs[0].metadata
-    assert "native 4" in docs[0].text
+    assert "native 4" in _joined(docs)
     assert meta["ocr_pages_unresolved"] == 1
     assert meta["ocr_used"] is False
     assert meta["ocr_backend"] == OCR_BACKEND_FAST_PATH
@@ -415,7 +420,7 @@ def test_protocol_1_0_worker_never_receives_a_page_request(
         "ocr_pages_worker": 0,
         "ocr_pages_unresolved": 1,
     }
-    assert "flawed four" in docs[0].text
+    assert "flawed four" in _joined(docs)
     assert "1.0" in caplog.text and "1.1" in caplog.text
 
 
@@ -481,7 +486,7 @@ def test_rescued_text_survives_when_page_routing_produces_none(
         inner, effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page"), worker
     ).load_data(tmp_path / "doc.pdf")
 
-    assert docs[0].text == "RESCUED"
+    assert _joined(docs) == "RESCUED"
     meta = docs[0].metadata
     assert _counts(meta) == {
         "ocr_pages_native": 2,
@@ -515,4 +520,114 @@ def test_document_unit_keeps_whole_pdf_behaviour(monkeypatch, tmp_path, effectiv
     assert "ocr_pages_worker" not in meta
     assert "ocr_pages_unresolved" not in meta
     assert meta["ocr_backend"] == "paddleocr_vl"
-    assert docs[0].text == "WORKER one"
+    assert _joined(docs) == "WORKER one"
+
+
+# ── Page documents (change pdf-inspector-page-provenance, design D5) ──────
+
+
+class _FakePagesInner:
+    """Inner reader returning page documents, as the adapter's rescue does."""
+
+    def __init__(self, texts: list[str], metadata: dict) -> None:
+        self._documents = [
+            Document(
+                text=text,
+                metadata={**metadata, "page": index + 1, "page_label": str(index + 1)},
+            )
+            for index, text in enumerate(texts)
+        ]
+
+    def load_data(self, file, *args, **kwargs) -> list:
+        return self._documents
+
+
+def _local_and_worker_read(monkeypatch, tmp_path, effective_settings) -> list:
+    """5 pages: page 2 has no text, page 3 is read locally, page 4 by the worker."""
+    scan = [
+        _scan_page(0, "native 1", False),
+        _scan_page(1, "", False),
+        _scan_page(2, "", True),
+        _scan_page(3, "", True),
+        _scan_page(4, "native 5", False),
+    ]
+    engine = _EngineCalls(
+        scan,
+        ocr_pages_by_call=[[_ocr_page(3, "LOCAL three", 0.9), _ocr_page(4, "flawed four", 0.3)]],
+    )
+    _stub_engine(monkeypatch, engine)
+    inner = _FakeInner(text="whole", metadata=_inner_metadata(5, flagged=2))
+    worker = _FakeWorker(pages_markdown=["WORKER four"])
+
+    docs = _page_reader(
+        inner, effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page"), worker
+    ).load_data(tmp_path / "doc.pdf")
+    assert worker.calls[0]["pages"] == [4]
+    return docs
+
+
+class TestPageUnitEmitsPageDocuments:
+    """Task 4.2: one document per page with text, each with its page number."""
+
+    def test_ocr_pages_keep_their_numbers(self, monkeypatch, tmp_path, effective_settings):
+        """Spec scenario "OCR pages keep their page numbers"."""
+        docs = _local_and_worker_read(monkeypatch, tmp_path, effective_settings)
+
+        by_page = {doc.metadata["page"]: doc for doc in docs}
+        assert by_page[3].text == "LOCAL three"
+        assert by_page[4].text == "WORKER four"
+        assert by_page[3].metadata["page_label"] == "3"
+        assert by_page[4].metadata["page_label"] == "4"
+
+    def test_page_without_text_emits_no_document(self, monkeypatch, tmp_path, effective_settings):
+        """A page no tier produced text for emits nothing; the rest stay in order."""
+        docs = _local_and_worker_read(monkeypatch, tmp_path, effective_settings)
+
+        assert [doc.metadata["page"] for doc in docs] == [1, 3, 4, 5]
+        assert [doc.text for doc in docs] == ["native 1", "LOCAL three", "WORKER four", "native 5"]
+
+    def test_counts_sum_to_page_count_on_every_document(
+        self, monkeypatch, tmp_path, effective_settings
+    ):
+        """Spec scenario "Page-source counts sum to the page count"."""
+        docs = _local_and_worker_read(monkeypatch, tmp_path, effective_settings)
+
+        assert len(docs) == 4
+        for doc in docs:
+            # Page 2 is native with no text: counted native, emitted as nothing.
+            assert _counts(doc.metadata) == {
+                "ocr_pages_native": 3,
+                "ocr_pages_local": 1,
+                "ocr_pages_worker": 1,
+                "ocr_pages_unresolved": 0,
+            }
+            assert sum(_counts(doc.metadata).values()) == doc.metadata["page_count"] == 5
+            assert doc.metadata["ocr_backend"] == "mixed"
+            assert doc.metadata["ocr_used"] is True
+
+    def test_last_resort_rescue_returns_the_inner_page_documents(
+        self, monkeypatch, tmp_path, effective_settings
+    ):
+        """The rescued page documents survive with all-native counts and their pages."""
+        scan = [_scan_page(i, "", False) for i in range(3)]
+        _stub_engine(monkeypatch, _EngineCalls(scan, ocr_pages_by_call=[]))
+        inner = _FakePagesInner(
+            ["RESCUED one", "RESCUED two"], _inner_metadata(3, pdf_type="text_based")
+        )
+
+        docs = _page_reader(
+            inner,
+            effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page"),
+            _FakeWorker(),
+        ).load_data(tmp_path / "doc.pdf")
+
+        assert [doc.text for doc in docs] == ["RESCUED one", "RESCUED two"]
+        assert [doc.metadata["page"] for doc in docs] == [1, 2]
+        for doc in docs:
+            assert _counts(doc.metadata) == {
+                "ocr_pages_native": 3,
+                "ocr_pages_local": 0,
+                "ocr_pages_worker": 0,
+                "ocr_pages_unresolved": 0,
+            }
+            assert doc.metadata["ocr_backend"] == OCR_BACKEND_FAST_PATH

@@ -158,7 +158,7 @@ def test_baseline_degraded_behaviour_pinned() -> None:
 
 
 def test_adapter_metadata_contract_on_text_pdf(fixtures_dir, caplog) -> None:
-    """The adapter maps exactly the current seven metadata keys on a text PDF."""
+    """The adapter maps the seven evidence keys plus ``page`` and ``page_label`` on a text PDF."""
     from omrs.integrations.pdf.pdf_inspector import PdfInspectorReader
 
     pdf = fixtures_dir / "pdf_baseline" / "evaluation" / "eval_clean_text.pdf"
@@ -175,7 +175,11 @@ def test_adapter_metadata_contract_on_text_pdf(fixtures_dir, caplog) -> None:
         "pages_needing_ocr",
         "file_path",
         "file_name",
+        "page",
+        "page_label",
     }
+    assert doc.metadata["page"] == 1
+    assert doc.metadata["page_label"] == "1"
     assert doc.metadata["pdf_reader"] == "pdf_inspector"
     assert doc.metadata["pdf_type"] == "text_based"
     assert doc.metadata["pdf_confidence"] == pytest.approx(1.0)

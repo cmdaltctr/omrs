@@ -473,7 +473,8 @@ def test_liteparse_rescue_takes_the_fast_path_at_promoted_thresholds(
         assert isinstance(reader, OcrRoutedPdfInspector)
         docs = reader.load_data(file=Path("/fake/sloman.pdf"))
         meta = docs[0].metadata
-        assert docs[0].get_content() == "liteparse rescue\n\n" * 2 + "liteparse rescue"
+        # One document per recovered page (change pdf-inspector-page-provenance, D4).
+        assert [doc.get_content() for doc in docs] == ["liteparse rescue"] * 3
         assert meta["ocr_required"] is False
         assert meta["ocr_used"] is False
         assert meta["ocr_backend"] == OCR_BACKEND_FAST_PATH
@@ -607,3 +608,125 @@ def test_page_unit_counts_never_reach_embedding_text() -> None:
     for key in _COUNT_KEYS.values():
         assert key not in embedded
     assert "page one" in embedded
+
+
+# ── Document unit keeps page documents (change pdf-inspector-page-provenance, D5) ──
+
+
+class _PagesInner:
+    """Inner reader standing in for the adapter: one document per page."""
+
+    def __init__(self, texts: list[str], evidence: dict) -> None:
+        from llama_index.core import Document
+
+        self._documents = [
+            Document(
+                text=text,
+                metadata={**evidence, "page": index + 1, "page_label": str(index + 1)},
+            )
+            for index, text in enumerate(texts)
+        ]
+
+    def load_data(self, file, *args, **kwargs) -> list:
+        return self._documents
+
+
+class _WholePdfWorker:
+    """In-process worker answering a whole-PDF request with one Markdown text."""
+
+    def __init__(self) -> None:
+        from types import SimpleNamespace
+
+        self.fingerprint = SimpleNamespace(
+            available=True, protocol_version="1.1", backend_id="paddleocr_vl"
+        )
+        self.calls: list[dict] = []
+
+    def parse(self, pdf_path: str, *, pages=None, timeout=None):
+        from omrs.integrations.ocr_worker.protocol import make_success
+
+        self.calls.append({"path": pdf_path, "pages": pages})
+        return make_success("req", "# Worker whole PDF", ocr_backend="paddleocr-vl", page_count=3)
+
+
+def _page_evidence(pdf_type: str = "text_based", flagged: int = 0) -> dict:
+    return {
+        "pdf_reader": "pdf_inspector",
+        "pdf_type": pdf_type,
+        "pdf_confidence": 1.0,
+        "page_count": 3,
+        "pages_needing_ocr": flagged,
+        "file_path": "/fake/doc.pdf",
+        "file_name": "doc.pdf",
+    }
+
+
+def _document_unit(inner, settings, client=None) -> OcrRoutedPdfInspector:
+    return OcrRoutedPdfInspector(inner, settings=settings, ocr_client=client)
+
+
+class TestDocumentUnitKeepsPages:
+    """Task 4.1: the document unit stamps every page document (design D5)."""
+
+    def test_fast_path_returns_every_page_stamped(self, effective_settings) -> None:
+        """Spec scenario "Fast path keeps the pages"."""
+        inner = _PagesInner(["one", "two", "three"], _page_evidence())
+        settings = effective_settings(pdf_reader="pdf_inspector", ocr_fallback_enabled=True)
+
+        docs = _document_unit(inner, settings).load_data(file=Path("/fake/doc.pdf"))
+
+        assert [doc.metadata["page"] for doc in docs] == [1, 2, 3]
+        assert [doc.text for doc in docs] == ["one", "two", "three"]
+        for doc in docs:
+            assert doc.metadata["ocr_required"] is False
+            assert doc.metadata["ocr_used"] is False
+            assert doc.metadata["ocr_backend"] == OCR_BACKEND_FAST_PATH
+
+    def test_degraded_path_returns_native_pages_stamped(self, effective_settings) -> None:
+        """Spec scenario "Degraded path keeps the pages"."""
+        inner = _PagesInner(["one", "", "three"], _page_evidence("mixed", flagged=3))
+        settings = effective_settings(pdf_reader="pdf_inspector", ocr_fallback_enabled=True)
+
+        docs = _document_unit(inner, settings).load_data(file=Path("/fake/doc.pdf"))
+
+        assert [doc.metadata["page"] for doc in docs] == [1, 2, 3]
+        for doc in docs:
+            assert doc.metadata["ocr_required"] is True
+            assert doc.metadata["ocr_used"] is False
+            assert doc.metadata["ocr_backend"] == OCR_BACKEND_FAST_PATH
+
+    def test_maths_count_on_every_page(self, effective_settings, monkeypatch) -> None:
+        """The maths count joins every page document, not only the first."""
+        from omrs.integrations.pdf import maths_routing
+
+        monkeypatch.setattr(maths_routing, "maths_font_pages", lambda file: frozenset({2}))
+        inner = _PagesInner(["one", "two", "three"], _page_evidence())
+        settings = effective_settings(
+            pdf_reader="pdf_inspector",
+            ocr_fallback_enabled=True,
+            ocr_maths_routing_enabled=True,
+            ocr_maths_page_fraction=0.0,
+        )
+
+        docs = _document_unit(inner, settings).load_data(file=Path("/fake/doc.pdf"))
+
+        assert len(docs) == 3
+        assert [doc.metadata["pages_maths_font"] for doc in docs] == [1, 1, 1]
+
+    def test_worker_path_returns_one_document_without_page(self, effective_settings) -> None:
+        """Spec scenario "Worker path emits one document without a page"."""
+        inner = _PagesInner(["", "", ""], _page_evidence("scanned", flagged=3))
+        settings = effective_settings(pdf_reader="pdf_inspector", ocr_fallback_enabled=True)
+        worker = _WholePdfWorker()
+
+        docs = _document_unit(inner, settings, worker).load_data(file=Path("/fake/doc.pdf"))
+
+        assert len(worker.calls) == 1
+        assert worker.calls[0]["pages"] is None
+        assert len(docs) == 1
+        meta = docs[0].metadata
+        assert docs[0].text == "# Worker whole PDF"
+        assert "page" not in meta
+        assert "page_label" not in meta
+        assert meta["page_count"] == 3
+        assert meta["ocr_used"] is True

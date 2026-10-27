@@ -137,7 +137,10 @@ def _scan(monkeypatch: pytest.MonkeyPatch, page_count: int, needs_ocr: set[int])
 
 def _read(settings: Any, routes: OcrRoutes, metadata: dict, tmp_path) -> Document:
     reader = OcrRoutedPdfInspector(_Inner(metadata), settings=settings, ocr_client=routes)
-    return reader.load_data(tmp_path / "doc.pdf")[0]
+    docs = reader.load_data(tmp_path / "doc.pdf")
+    # The page unit emits one document per page (change pdf-inspector-page-provenance);
+    # join the page texts so the routing assertions read one string.
+    return Document(text="\n\n".join(doc.text for doc in docs), metadata=docs[0].metadata)
 
 
 def _counts(meta: dict) -> dict:

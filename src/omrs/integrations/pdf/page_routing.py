@@ -4,7 +4,8 @@
 module holds that unit's logic, so the document unit's seam in
 ``ocr_routing.py`` stays the shape it has always been: per-page evidence
 from a full scan, the local OCR tier with its post-check escalation
-(tasks 4.2 and 4.2a), and the merge back into one document.
+(tasks 4.2 and 4.2a), the counts and backend of the merge, and one
+document per page with text (change pdf-inspector-page-provenance, D5).
 
 Page numbering is the trap here. pdf-inspector numbers
 ``extract_pages_markdown`` pages from **0** and ``process_pdf_with_ocr``
@@ -40,6 +41,10 @@ OCR_BACKEND_FAST_PATH = "pdf_inspector"
 OCR_BACKEND_LOCAL_OCR = "pdf_inspector_ocr"
 OCR_BACKEND_WORKER_PATH = "paddleocr_vl"
 OCR_BACKEND_MIXED = "mixed"
+
+#: Page keys a page document carries. A document whose text spans the
+#: whole PDF (the worker's response) must carry neither.
+PAGE_KEYS = ("page", "page_label")
 
 #: Page source -> the backend that produced it. ``unresolved`` names none.
 _SOURCE_BACKENDS = {
@@ -401,3 +406,31 @@ def merge_pages(pages: list[PageResult], *, page_count: int) -> MergedDocument:
         backend = OCR_BACKEND_FAST_PATH
     ocr_used = bool(backends - {OCR_BACKEND_FAST_PATH})
     return MergedDocument(text=text, counts=counts, ocr_backend=backend, ocr_used=ocr_used)
+
+
+def page_documents(pages: list[PageResult], metadata: dict[str, Any]) -> list:
+    """Return one document per routed page with text, in page order.
+
+    Change pdf-inspector-page-provenance, design D5: the page unit keeps
+    each page's number, whichever tier read it, so search can name the
+    page. A page with no text from any tier emits no document. Every
+    document carries the same whole-PDF *metadata* (the counts and the
+    diagnostics), plus its own ``page`` and ``page_label``.
+
+    Args:
+        pages: One result per page, in any order.
+        metadata: The whole-PDF metadata every page document carries.
+
+    Returns:
+        The page documents, possibly empty.
+    """
+    from llama_index.core import Document
+
+    base = {key: value for key, value in metadata.items() if key not in PAGE_KEYS}
+    return [
+        Document(
+            text=result.text, metadata={**base, "page": result.page, "page_label": str(result.page)}
+        )
+        for result in sorted(pages, key=lambda result: result.page)
+        if result.text.strip()
+    ]

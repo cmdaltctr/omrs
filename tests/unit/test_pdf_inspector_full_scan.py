@@ -6,12 +6,19 @@ a full page scan (``extract_pages_markdown``), or image-only pages outside
 the sample never reach the routing gate (Experiment 33 boundary probe,
 TDR-026).
 
+Since change pdf-inspector-page-provenance (design D1) the adapter calls
+``extract_pages_markdown`` once for every PDF, for the page text. The
+full-scan count still feeds ``pages_needing_ocr`` only for ``text_based``
+PDFs longer than the sample; every other file keeps the ``process_pdf``
+count, also when the per-page result flags more pages.
+
 The package is stubbed in ``sys.modules``; nothing parses a real PDF.
 """
 
 from __future__ import annotations
 
 import sys
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -38,7 +45,10 @@ def _stub(
     if full_scan_error is not None:
         stub.extract_pages_markdown.side_effect = full_scan_error
     else:
-        stub.extract_pages_markdown.return_value.pages_needing_ocr = full_scan or []
+        scan = stub.extract_pages_markdown.return_value
+        scan.pages_needing_ocr = full_scan or []
+        # One page (0-based, like the library) holding the body text.
+        scan.pages = [SimpleNamespace(page=0, markdown=markdown, needs_ocr=False, ocr_reason=None)]
     monkeypatch.setitem(sys.modules, "pdf_inspector", stub)
     return stub
 
@@ -57,6 +67,7 @@ def test_full_scan_counts_pages_the_sample_missed(monkeypatch, tmp_path):
 
     document = _read(tmp_path)
 
+    stub.process_pdf.assert_called_once()
     stub.extract_pages_markdown.assert_called_once()
     assert document.metadata["pages_needing_ocr"] == 3
     # Classification and extraction are the library's, unchanged.
@@ -66,24 +77,33 @@ def test_full_scan_counts_pages_the_sample_missed(monkeypatch, tmp_path):
 
 
 @pytest.mark.parametrize("page_count", [1, 8])
-def test_short_text_pdf_gets_no_full_scan(monkeypatch, tmp_path, page_count):
-    """Eight pages or fewer are fully covered by the detection sample."""
+def test_short_text_pdf_keeps_the_sampled_count(monkeypatch, tmp_path, page_count):
+    """Eight pages or fewer are fully covered by the detection sample.
+
+    The one per-page call (for the page text) is the only scan, and its
+    higher flagged count does not replace the ``process_pdf`` count.
+    """
     stub = _stub(monkeypatch, page_count=page_count, sampled=[], full_scan=[0])
 
     document = _read(tmp_path)
 
-    stub.extract_pages_markdown.assert_not_called()
+    stub.extract_pages_markdown.assert_called_once()
     assert document.metadata["pages_needing_ocr"] == 0
 
 
 @pytest.mark.parametrize("pdf_type", ["scanned", "image_based", "mixed"])
-def test_non_text_classifications_get_no_full_scan(monkeypatch, tmp_path, pdf_type):
-    """Scanned and image PDFs route anyway; mixed results are already complete."""
+def test_non_text_classifications_keep_the_sampled_count(monkeypatch, tmp_path, pdf_type):
+    """Scanned and image PDFs route anyway; mixed results are already complete.
+
+    Spec scenario "Short or already complete results get no extra scan":
+    the per-page result flags more pages (3) than ``process_pdf`` (2), and
+    the count stays 2.
+    """
     stub = _stub(monkeypatch, pdf_type=pdf_type, sampled=[4, 9], full_scan=[1, 4, 9])
 
     document = _read(tmp_path)
 
-    stub.extract_pages_markdown.assert_not_called()
+    stub.extract_pages_markdown.assert_called_once()
     assert document.metadata["pages_needing_ocr"] == 2
 
 
