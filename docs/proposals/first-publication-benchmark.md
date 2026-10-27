@@ -54,8 +54,8 @@ Gap: no open medical dataset has real PDFs with page-level gold evidence. Financ
 
 | Arm | What changes | Past evidence it carries forward |
 |---|---|---|
-| Baseline | `documents` profile defaults, pinned models | Experiment 3 |
-| Embedding size | Qwen3-Embedding 0.6B against 4B | Experiments 2 and 22 |
+| Baseline | `documents` profile defaults, with Qwen3-Embedding-4B (local GGUF) | Experiment 3; Experiment 22 used 4B through OpenRouter |
+| Embedding size | 0.6B in place of the 4B baseline | Experiments 2 and 22 |
 | Reranker | Off against on | Experiments 10b and 15 (the reranker hurt technical retrieval) |
 | Chunking | Token-aware chunking off against on | Experiment 25 |
 
@@ -105,6 +105,14 @@ One table for each dataset:
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 
 #### Runtime and models
+
+Embedding model: Qwen3-Embedding-4B is the baseline, from the public `Qwen/Qwen3-Embedding-4B-GGUF` file. The 0.6B model is the ablation arm. Reasons:
+
+- The evidence that 0.6B matches 8B (Experiment 2, ADR-009) comes from 17 queries on 6 documents. Both models scored 100% Hit@1, so that test could not separate them.
+- No experiment yet compares 0.6B and 4B under the same conditions. Experiment 22 (4B) and Experiment 9a (0.6B) differ in model, width, store and chunking.
+- No experiment compares 4B with 8B. The paper does not claim that 4B matches 8B.
+- Task 1.4 of Experiment 35 still times local 4B on the measurement Mac. If local 4B does not fit the time budget, OpenRouter `qwen/qwen3-embedding-4b` becomes the reference arm, named as hosted (ADR-103).
+
 
 - All local models through llama.cpp. Pin the repository, file, SHA-256, build and server arguments in the `runtime` block of `plan.json`.
 - The live-server check runs before the first score of each run.
