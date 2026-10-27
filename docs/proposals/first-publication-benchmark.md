@@ -56,7 +56,7 @@ Gap: no open medical dataset has real PDFs with page-level gold evidence. Financ
 |---|---|---|
 | Baseline | `documents` profile defaults, with Qwen3-Embedding-4B (local GGUF) | Experiment 3; Experiment 22 used 4B through OpenRouter |
 | Embedding size | 0.6B in place of the 4B baseline | Experiments 2 and 22 |
-| Embedding size, upper | 8B in place of the 4B baseline, on FreshStack only | Experiment 2 (0.6B and 8B tied on an easy 17-query set) |
+| Embedding size, upper | 8B in place of the 4B baseline | Experiment 2 (0.6B and 8B tied on an easy 17-query set) |
 | Reranker | Off against on | Experiments 10b and 15 (the reranker hurt technical retrieval) |
 | Chunking | Token-aware chunking off against on | Experiment 25 |
 
@@ -111,7 +111,7 @@ Embedding model: Qwen3-Embedding-4B is the baseline, from the public `Qwen/Qwen3
 
 - The evidence that 0.6B matches 8B (Experiment 2, ADR-009) comes from 17 queries on 6 documents. Both models scored 100% Hit@1, so that test could not separate them.
 - No experiment yet compares 0.6B and 4B under the same conditions. Experiment 22 (4B) and Experiment 9a (0.6B) differ in model, width, store and chunking.
-- No experiment compares 4B with 8B. An 8B arm on FreshStack measures that gap. The paper claims only what this arm shows.
+- No experiment compares 4B with 8B. An 8B arm on all three datasets measures that gap, so the three sizes are compared on equal terms. The paper claims only what this arm shows.
 - Task 1.4 of Experiment 35 still times local 4B on the measurement Mac. If local 4B does not fit the time budget, OpenRouter `qwen/qwen3-embedding-4b` becomes the reference arm, named as hosted (ADR-103).
 
 
