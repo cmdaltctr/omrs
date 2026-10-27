@@ -178,7 +178,7 @@ found = verify_llamacpp_runtime(block, base_url="http://127.0.0.1:8080")
 record_run_start(HERE, runtime=found.as_run_record())
 ```
 
-`verify_llamacpp_runtime` reads the build from `/props`. It reads each model path from `/v1/models` in router mode, or from `/props` with one model. It hashes each file and compares the results with the plan. It talks only to a loopback address. A difference raises `PreflightError` before any score is written, and the message names the expected and the found value. The run record then holds `runtime`: the build and one `{file, sha256}` for each model.
+`verify_llamacpp_runtime` reads the build from `/props`. It reads each model path from `/v1/models` in router mode, or from `/props` with one model. It hashes each file and compares the results with the plan. It talks only to a loopback address. A difference raises `PreflightError` before any score is written, and the message names the expected and the found value. The run record then holds `runtime`: the build and one `{file, sha256}` for each model. In a runtime comparison, the check does not inspect the arms on another runtime. The run record lists them under `unchecked` with their planned runtime, version, file and SHA-256. Check those arms with their own step before scoring.
 
 To run on another llama.cpp build:
 
@@ -224,7 +224,7 @@ Each run appends one line to `output/run-records.jsonl` when it starts. A resume
 | `git_dirty` | `true` when the working tree had uncommitted changes |
 | `plan_sha256` | The SHA-256 of `plan.json`, or an empty string when there is no plan |
 | `command` | The command that started the run |
-| `runtime` | Optional. The llama.cpp `build` and one `{file, sha256}` for each model, from the live-server check |
+| `runtime` | Optional. The llama.cpp `build` and one `{file, sha256}` for each model, from the live-server check. `unchecked` lists the planned arms on another runtime, when there are any |
 
 To add run records to a runner:
 

@@ -96,3 +96,27 @@ def test_invalid_runtime_in_a_line_names_the_line(tmp_path: Path) -> None:
     (tmp_path / "output" / RUN_RECORDS_FILE).write_text(json.dumps(bad) + "\n", encoding="utf-8")
     with pytest.raises(RecordError, match="line 1.*runtime"):
         read_run_records(tmp_path)
+
+
+def test_line_with_unchecked_arm_round_trips(tmp_path: Path) -> None:
+    runtime = {
+        **_RUNTIME,
+        "unchecked": [
+            {
+                "role": "decision",
+                "runtime": "mlx",
+                "version": "0.29.1",
+                "file": "model.safetensors",
+                "sha256": "1" * 64,
+            }
+        ],
+    }
+    written = append_run_record(
+        tmp_path, git_commit=_COMMIT, git_dirty=False, command="x", now=_NOW, runtime=runtime
+    )
+    (line,) = _lines(tmp_path)
+    assert line["runtime"] == runtime
+    (read,) = read_run_records(tmp_path)
+    assert read == written
+    assert read.runtime is not None
+    assert read.runtime.unchecked[0].runtime == "mlx"

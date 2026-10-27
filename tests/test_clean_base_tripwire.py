@@ -191,10 +191,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +1 (2026-10-26, PR #132 review): the unreadable-receipt case in test_web_tool_environment.py.
 # +70 (2026-10-26, edit-experiment-files-in-library, by test-ID diff): 71 new, 1 renamed
 # in test_experiment_derived_files_ignored.py; 20 need fastapi (see _WEB_EXTRA_CASES).
-# +82 (2026-10-27, reproducible-experiment-runtime, by test-ID diff, none removed):
-# purpose, runtime block, publication check, llama.cpp check, run-record runtime (77);
+# +84 (2026-10-27, reproducible-experiment-runtime, by test-ID diff, none removed):
+# purpose, runtime block, publication check, llama.cpp check, run-record runtime (79);
 # 5 need fastapi (see _WEB_EXTRA_CASES).
-_BASE_EXECUTED = 8934
+_BASE_EXECUTED = 8936
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

@@ -48,6 +48,21 @@ class RunModel(BaseModel):
     sha256: str = Field(pattern=_SHA256)
 
 
+class RunUncheckedArm(BaseModel):
+    """One arm of a runtime comparison that the llama.cpp check did not inspect.
+
+    The values are the planned ones, so the run record still names the arm.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    role: str = Field(min_length=1)
+    runtime: str = Field(min_length=1)
+    version: str | None = None
+    file: str = Field(min_length=1)
+    sha256: str = Field(pattern=_SHA256)
+
+
 class RunRuntime(BaseModel):
     """The llama.cpp build and model files a run found before it scored."""
 
@@ -55,6 +70,7 @@ class RunRuntime(BaseModel):
 
     build: int = Field(ge=0, strict=True)
     models: tuple[RunModel, ...]
+    unchecked: tuple[RunUncheckedArm, ...] = ()
 
 
 class RunRecord(BaseModel):
@@ -136,7 +152,12 @@ def append_run_record(
     )
     output = folder / OUTPUT_DIR
     output.mkdir(exist_ok=True)
-    exclude = {"runtime"} if record.runtime is None else set()
+    # Leave out empty optional keys, so a line keeps the shape older readers know.
+    exclude: dict[str, Any] = {}
+    if record.runtime is None:
+        exclude["runtime"] = True
+    elif not record.runtime.unchecked:
+        exclude["runtime"] = {"unchecked"}
     line = json.dumps(record.model_dump(mode="json", exclude=exclude), ensure_ascii=False) + "\n"
     with (output / RUN_RECORDS_FILE).open("a", encoding="utf-8") as handle:
         handle.write(line)

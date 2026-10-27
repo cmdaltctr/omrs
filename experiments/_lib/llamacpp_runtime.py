@@ -19,8 +19,9 @@ SHA-256 and compares build and hashes with the plan. A difference raises
 
 The server must be on this machine (ADR-074 decision 6), so the model files
 can be hashed. Hashes are not cached, because a cache could hide a replaced
-file. Only ``llama.cpp`` entries are checked. Hosted references and the
-other arms of a runtime comparison are skipped.
+file. Only ``llama.cpp`` entries are checked. Hosted references are skipped.
+The other arms of a runtime comparison are not inspected, but the run record
+names them under ``unchecked`` with their planned values.
 """
 
 from __future__ import annotations
@@ -43,7 +44,7 @@ try:
 except ImportError:  # imported as top-level ``_lib`` from an experiment folder
     from _lib.preflight import PreflightError  # type: ignore[no-redef]
 
-__all__ = ["FoundModel", "FoundRuntime", "verify_llamacpp_runtime"]
+__all__ = ["FoundModel", "FoundRuntime", "UncheckedArm", "verify_llamacpp_runtime"]
 
 _BUILD_INFO = re.compile(r"^b(?P<number>[0-9]+)(?:-|$)")
 _MODEL_FLAGS = ("--model", "-m")
@@ -58,6 +59,16 @@ class FoundModel(TypedDict):
     sha256: str
 
 
+class UncheckedArm(TypedDict):
+    """One planned arm on another runtime that this check does not inspect."""
+
+    role: str
+    runtime: str
+    version: str | None
+    file: str
+    sha256: str
+
+
 @dataclass(frozen=True)
 class FoundRuntime:
     """What the live server runs, as found by :func:`verify_llamacpp_runtime`.
@@ -65,17 +76,24 @@ class FoundRuntime:
     Attributes:
         build: The llama.cpp build number from ``/props``.
         models: One entry per checked plan model, in plan order.
+        unchecked: The planned arms on another runtime, in plan order. The
+            check cannot inspect them, so the run record names them as
+            planned instead of dropping them.
     """
 
     build: int
     models: list[FoundModel] = field(default_factory=list)
+    unchecked: list[UncheckedArm] = field(default_factory=list)
 
     def as_run_record(self) -> dict[str, Any]:
         """Return the value for the optional ``runtime`` key of a run record."""
-        return {
+        record: dict[str, Any] = {
             "build": self.build,
             "models": [{"file": m["file"], "sha256": m["sha256"]} for m in self.models],
         }
+        if self.unchecked:
+            record["unchecked"] = [dict(arm) for arm in self.unchecked]
+        return record
 
 
 def _require_loopback(base_url: str) -> str:
@@ -202,4 +220,15 @@ def verify_llamacpp_runtime(block: RuntimeBlock, *, base_url: str) -> FoundRunti
                 f"the plan records {model.sha256}, the file has {digest}"
             )
         found.append({"file": model.file, "sha256": digest})
-    return FoundRuntime(build=build, models=found)
+    unchecked: list[UncheckedArm] = [
+        {
+            "role": model.role,
+            "runtime": model.runtime,
+            "version": model.version,
+            "file": model.file,
+            "sha256": model.sha256,
+        }
+        for model in block.models
+        if model.runtime != LLAMA_CPP
+    ]
+    return FoundRuntime(build=build, models=found, unchecked=unchecked)

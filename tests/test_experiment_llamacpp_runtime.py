@@ -224,6 +224,26 @@ def test_runtime_under_test_arm_and_references_are_skipped(
     )
     found = verify_llamacpp_runtime(block, base_url=url)
     assert [m["file"] for m in found.models] == [_FILE]
+    # The skipped arm stays in the run record as planned and not checked.
+    assert found.as_run_record()["unchecked"] == [
+        {
+            "role": "decision",
+            "runtime": "mlx",
+            "version": "0.29.1",
+            "file": "model.safetensors",
+            "sha256": "1" * 64,
+        }
+    ]
+
+
+def test_run_record_has_no_unchecked_key_when_every_arm_is_checked(
+    fake: tuple[_Fake, str], tmp_path: Path
+) -> None:
+    state, url = fake
+    path = _weights(tmp_path)
+    _router(state, path)
+    found = verify_llamacpp_runtime(_block(_sha(path)), base_url=url)
+    assert "unchecked" not in found.as_run_record()
 
 
 @pytest.mark.parametrize(
