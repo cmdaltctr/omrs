@@ -23,6 +23,16 @@ Codes:
 - ``size-missing``, ``category-missing`` (info): a converted record leaves the field empty.
 - ``index-stale``, ``index-markers`` (error), ``index-missing`` (warning): ``EXP_README.md``.
 - ``reserved-invalid`` (error), ``reserved-has-folder`` (info): ``reserved.json``.
+- ``publication-not-confirmatory`` (error): a ``publication`` experiment is not Confirmatory.
+- ``publication-plan-unreadable`` (error): a ``publication`` experiment has no readable
+  ``plan.json`` object.
+- ``publication-runtime-missing`` (error): the ``plan.json`` of a ``publication``
+  experiment has no ``runtime`` block.
+- ``publication-runtime-invalid`` (error): that ``runtime`` block breaks a rule of
+  ``runtime_block.py``, for example a local model that does not run through llama.cpp.
+
+The ``publication-*`` rules skip ``optimisation`` records and records without
+a purpose (reproducible-experiment-runtime, design D3).
 """
 
 from __future__ import annotations
@@ -37,9 +47,10 @@ from pydantic import BaseModel, ConfigDict
 
 from .edit_log import edit_log_problems
 from .index import README_FILE, IndexMarkerError, index_is_current
-from .record import RecordError, Size
+from .record import Purpose, RecordError, Size, read_json
 from .reserved import RESERVED_FILE, Reservation, load_reservations
-from .run_record import RUN_RECORDS_FILE, plan_sha256, read_run_records
+from .run_record import PLAN_FILE, RUN_RECORDS_FILE, plan_sha256, read_run_records
+from .runtime_block import RUNTIME_KEY, load_runtime_block
 from .scan import ExperimentFolder, scan_experiments
 
 Severity = Literal["error", "warning", "info"]
@@ -194,6 +205,57 @@ def _run_rules(folder: ExperimentFolder) -> Iterator[Finding]:
         )
 
 
+def _publication_rules(folder: ExperimentFolder) -> Iterator[Finding]:
+    record = folder.record
+    assert record is not None  # noqa: S101 - callers pass loaded folders only
+    if record.effective_purpose is not Purpose.PUBLICATION:
+        return
+    name = folder.name
+    if record.size is not Size.CONFIRMATORY:
+        size = record.size.value if record.size is not None else "not set"
+        yield Finding(
+            severity="error",
+            code="publication-not-confirmatory",
+            folder=name,
+            message=f"{name}: a publication experiment must be Confirmatory, "
+            f"so its protocol and plan are committed before the first run; its size is {size}",
+        )
+    try:
+        plan = read_json(folder.path / PLAN_FILE)
+    except RecordError as exc:
+        plan, problem = None, str(exc)
+    else:
+        problem = f"{PLAN_FILE} does not hold a JSON object"
+    if not isinstance(plan, dict):
+        yield Finding(
+            severity="error",
+            code="publication-plan-unreadable",
+            folder=name,
+            message=f"{name}: a publication experiment needs a readable {PLAN_FILE} with a "
+            f"{RUNTIME_KEY} block that pins its local models; {problem}",
+        )
+        return
+    if RUNTIME_KEY not in plan:
+        yield Finding(
+            severity="error",
+            code="publication-runtime-missing",
+            folder=name,
+            message=f"{name}: a publication experiment needs a {RUNTIME_KEY} block in "
+            f"{PLAN_FILE} that pins each local model to a llama.cpp GGUF file and build",
+        )
+        return
+    try:
+        load_runtime_block(plan)
+    except RecordError as exc:
+        yield Finding(
+            severity="error",
+            code="publication-runtime-invalid",
+            folder=name,
+            message=f"{name}: the {RUNTIME_KEY} block in {PLAN_FILE} breaks the local-runtime "
+            f"rule of a publication experiment: {exc}",
+        )
+
+
 def _edit_log_rules(folder: ExperimentFolder) -> Iterator[Finding]:
     for message in edit_log_problems(folder.path):
         yield Finding(
@@ -308,6 +370,7 @@ def check_experiments(root: Path) -> tuple[Finding, ...]:
         findings.extend(_name_rules(folder))
         findings.extend(_content_rules(folder, experiments))
         findings.extend(_run_rules(folder))
+        findings.extend(_publication_rules(folder))
         findings.extend(_edit_log_rules(folder))
         findings.extend(shared.get(folder.name, ()))
         findings.extend(reserved.get(folder.name, ()))

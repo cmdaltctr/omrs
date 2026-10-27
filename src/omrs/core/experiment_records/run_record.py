@@ -2,9 +2,12 @@
 
 Each run start appends one JSON line with the start time in UTC, the git
 commit, whether the working tree had uncommitted changes, the SHA-256 of
-``plan.json`` and the command. JSON Lines is append-only, so a resumed run
-never rewrites history. The checker compares the recorded plan hash with
-the current ``plan.json`` to find a plan that changed after a run.
+``plan.json`` and the command. A run that checked a llama.cpp server also
+stores an optional ``runtime`` key: the build and the ``{file, sha256}`` of
+each model it found (reproducible-experiment-runtime, D5). JSON Lines is
+append-only, so a resumed run never rewrites history. The checker compares
+the recorded plan hash with the current ``plan.json`` to find a plan that
+changed after a run.
 
 This module never calls git. The caller passes the git facts
 (``experiments/_lib/run_record.py`` reads them).
@@ -14,9 +17,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
@@ -32,6 +36,27 @@ RUN_RECORDS_FILE = "run-records.jsonl"
 PLAN_FILE = "plan.json"
 
 
+_SHA256 = r"^[0-9a-f]{64}$"
+
+
+class RunModel(BaseModel):
+    """One model file a run found on the llama.cpp server."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    file: str = Field(min_length=1)
+    sha256: str = Field(pattern=_SHA256)
+
+
+class RunRuntime(BaseModel):
+    """The llama.cpp build and model files a run found before it scored."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    build: int = Field(ge=0, strict=True)
+    models: tuple[RunModel, ...]
+
+
 class RunRecord(BaseModel):
     """One run start."""
 
@@ -43,6 +68,7 @@ class RunRecord(BaseModel):
     git_dirty: bool
     plan_sha256: str = Field(pattern=r"^(?:[0-9a-f]{64})?$")
     command: str = Field(min_length=1)
+    runtime: RunRuntime | None = None
 
     @field_validator("started_at")
     @classmethod
@@ -68,6 +94,7 @@ def append_run_record(
     git_dirty: bool,
     command: str,
     now: datetime | None = None,
+    runtime: Mapping[str, Any] | None = None,
 ) -> RunRecord:
     """Append one run record line to ``output/run-records.jsonl``.
 
@@ -79,6 +106,8 @@ def append_run_record(
         git_dirty: True when the working tree had uncommitted changes.
         command: The command that started the run.
         now: The start time. It must carry a time zone. Defaults to the current time.
+        runtime: The build and ``{file, sha256}`` list that the live-server
+            check found. Left out of the line when None.
 
     Returns:
         The record that was written.
@@ -90,6 +119,12 @@ def append_run_record(
         now = datetime.now(UTC)
     if now.tzinfo is None or now.utcoffset() is None:
         raise ValueError("the start time must carry a time zone")
+    found = None
+    if runtime is not None:
+        try:
+            found = RunRuntime.model_validate(runtime)
+        except ValidationError as exc:
+            raise ValueError(f"runtime: {describe_validation_error(exc)}") from None
     record = RunRecord(
         format=RUN_RECORD_FORMAT,
         started_at=now.astimezone(UTC),
@@ -97,10 +132,12 @@ def append_run_record(
         git_dirty=git_dirty,
         plan_sha256=plan_sha256(folder),
         command=command,
+        runtime=found,
     )
     output = folder / OUTPUT_DIR
     output.mkdir(exist_ok=True)
-    line = json.dumps(record.model_dump(mode="json"), ensure_ascii=False) + "\n"
+    exclude = {"runtime"} if record.runtime is None else set()
+    line = json.dumps(record.model_dump(mode="json", exclude=exclude), ensure_ascii=False) + "\n"
     with (output / RUN_RECORDS_FILE).open("a", encoding="utf-8") as handle:
         handle.write(line)
     return record
