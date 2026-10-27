@@ -8,9 +8,23 @@ original ``ingestion.py`` monolith as part of Phase 1.
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
+from llama_index.core.node_parser import MarkdownNodeParser
+from llama_index.core.schema import MetadataMode
+
+from .page_headings import (
+    HeadingStack,
+    format_header_path,
+    inherited_heading_stacks,
+    push_heading,
+)
+
 logger = logging.getLogger(__name__)
+
+# The heading rule of LlamaIndex ``MarkdownNodeParser.get_nodes_from_node``.
+_PARSER_HEADING = re.compile(r"^(#+)\s(.*)")
 
 
 def ensure_heading_metadata(nodes: list) -> None:
@@ -97,3 +111,85 @@ def drop_small_markdown_chunks(
     if dropped:
         logger.info("Dropped %d Markdown chunk(s) below min-size floor", dropped)
     return kept
+
+
+def parse_markdown_sections(documents: list) -> list:
+    """Split Markdown documents into heading sections with ``MarkdownNodeParser``.
+
+    A source read as page documents keeps the heading context of earlier
+    pages (design D11): a section that continues onto the next page gets
+    the ``header_path`` that whole-document parsing gives it. Documents
+    without page provenance parse exactly as before.
+
+    Args:
+        documents: LlamaIndex documents containing Markdown.
+
+    Returns:
+        One node per heading section, in document order.
+    """
+    nodes = MarkdownNodeParser().get_nodes_from_documents(documents)
+    stacks = inherited_heading_stacks(documents, _parser_headings)
+    for document, open_stack in zip(documents, stacks, strict=True):
+        if not open_stack:
+            continue
+        sections = [node for node in nodes if node.ref_doc_id == document.doc_id]
+        text = document.get_content(metadata_mode=MetadataMode.NONE)
+        _apply_inherited_paths(sections, _parser_headings(text), open_stack)
+    return nodes
+
+
+def _parser_headings(text: str) -> list[tuple[int, str]]:
+    """Return the headings ``MarkdownNodeParser`` finds, as ``(level, title)``.
+
+    This mirrors the parser: lines split on ``\\n``, a line starting with
+    a code fence toggles code mode, and no heading counts inside code.
+    """
+    headings: list[tuple[int, str]] = []
+    code_block = False
+    for line in text.split("\n"):
+        if line.lstrip().startswith("```"):
+            code_block = not code_block
+            continue
+        match = None if code_block else _PARSER_HEADING.match(line)
+        if match:
+            headings.append((len(match.group(1)), match.group(2)))
+    return headings
+
+
+def _apply_inherited_paths(
+    sections: list,
+    headings: list[tuple[int, str]],
+    open_stack: HeadingStack,
+) -> None:
+    """Rewrite the ``header_path`` of one page's sections from an open stack.
+
+    The parser gives each heading section the path of the headings above
+    it, and emits one section per heading plus one for any text before the
+    first heading. The page's sections are matched to its headings in that
+    order.
+
+    Args:
+        sections: The page's sections, in order.
+        headings: The page's headings from :func:`_parser_headings`.
+        open_stack: The headings left open by the previous page.
+    """
+    if len(sections) == len(headings) + 1:
+        sections[0].metadata["header_path"] = _parent_path(open_stack)
+        sections = sections[1:]
+    elif len(sections) != len(headings):
+        logger.warning(
+            "Markdown page sections (%d) do not match its headings (%d); "
+            "keeping per-page header paths",
+            len(sections),
+            len(headings),
+        )
+        return
+    stack = open_stack
+    for section, (level, title) in zip(sections, headings, strict=True):
+        stack = push_heading(stack, level, title)
+        section.metadata["header_path"] = _parent_path(stack)
+
+
+def _parent_path(stack: HeadingStack) -> str:
+    """Return the parser-format path of the headings above the innermost one."""
+    return format_header_path(title for _level, title in stack[:-1]) or "/"

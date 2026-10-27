@@ -9,8 +9,11 @@ contract expected by LlamaIndex's ``SimpleDirectoryReader``.
 Each entry carries its declared metadata (spec pdf-reader: "Readers declare
 their emitted text format"): ``text_format`` (what the reader emits —
 downstream consumers route on it instead of inferring format from the
-source extension) and ``page_provenance`` (whether the reader can observe
-page boundaries). Inspect them with :func:`describe`.
+source extension), ``page_provenance`` (whether the reader can observe
+page boundaries) and ``output_revision`` (an integer that rises when a
+reader change alters the documents it emits for the same file; the index
+identity of PDF sources hashes it, change pdf-inspector-page-provenance).
+Inspect them with :func:`describe`.
 
 Importing this module does NOT import any adapter or optional dependency.
 """
@@ -30,6 +33,7 @@ _registry: dict[str, str] = {}
 _probe_modules: dict[str, str] = {}
 _text_formats: dict[str, TextFormat] = {}
 _page_provenance: dict[str, bool] = {}
+_output_revisions: dict[str, int] = {}
 _cache: dict[str, type[Any]] = {}
 
 
@@ -40,6 +44,7 @@ def register(
     *,
     text_format: TextFormat,
     page_provenance: bool,
+    output_revision: int = 1,
 ) -> None:
     """Register a concrete PDF reader class and its dependency probe.
 
@@ -53,6 +58,9 @@ def register(
             a new reader must never default silently.
         page_provenance: Whether the reader can observe page boundaries
             (emits ``page_label``); machine-discoverable capability.
+        output_revision: Revision of the documents the reader emits. Raise
+            it when a reader change alters the output for the same file, so
+            PDF sources reprocess once on their next ingest.
 
     Raises:
         ValueError: If ``text_format`` is not ``"plain"`` or
@@ -67,6 +75,7 @@ def register(
     _probe_modules[name] = probe_module or import_path.split(":", maxsplit=1)[0]
     _text_formats[name] = text_format
     _page_provenance[name] = page_provenance
+    _output_revisions[name] = output_revision
 
 
 def describe(name: str) -> dict[str, Any]:
@@ -74,8 +83,8 @@ def describe(name: str) -> dict[str, Any]:
 
     Mirrors the document-backend registry pattern
     (``core/ingestion/backends/registry.py``): the descriptor carries the
-    declared ``text_format`` and ``page_provenance`` capability alongside
-    the import string and dependency probe.
+    declared ``text_format``, ``page_provenance`` capability and
+    ``output_revision`` alongside the import string and dependency probe.
 
     Raises:
         KeyError: If *name* is not registered (lists available names).
@@ -87,6 +96,7 @@ def describe(name: str) -> dict[str, Any]:
         "probe_module": _probe_modules[name],
         "text_format": _text_formats[name],
         "page_provenance": _page_provenance[name],
+        "output_revision": _output_revisions[name],
     }
 
 
@@ -171,5 +181,9 @@ register(
     "omrs.integrations.pdf.pdf_inspector:PdfInspectorReader",
     "pdf_inspector",
     text_format="markdown",
-    page_provenance=False,
+    # Revision 2: one document per page with ``page`` and ``page_label``
+    # (change pdf-inspector-page-provenance); revision 1 emitted one
+    # whole-document Markdown document.
+    page_provenance=True,
+    output_revision=2,
 )

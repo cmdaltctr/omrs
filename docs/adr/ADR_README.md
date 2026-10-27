@@ -60,7 +60,7 @@ development of OMRG — Opinionated Modular RAG.
 | [047](./047-semantic-vector-store-swappability.md)               | Semantic Vector-Store Swappability                                                           | 2026-08-18 | Accepted |
 | [048](./048-bounded-failure-safe-ingestion.md)                   | Bounded and Failure-Safe Ingestion                                                           | 2026-08-19 | Accepted |
 | [049](./0049-lancedb-default-and-chroma-isolation.md)           | LanceDB Default and Chroma Isolation                                                         | 2026-08-21 | Accepted |
-| [050](./050-configure-pdf-inspector-as-default-reader.md)       | Configure pdf-inspector as the Default PDF Reader                                            | 2026-08-24 | Accepted |
+| [050](./050-configure-pdf-inspector-as-default-reader.md)       | Configure pdf-inspector as the Default PDF Reader                                            | 2026-08-24 | Accepted. Amended by ADR-104 (2026-10-27) |
 | [051](./051-fail-closed-embedding-write-contract.md)          | Fail-Closed Embedding Write Contract                                                         | 2026-08-28 | Proposed |
 | [052](./052-stable-source-chunk-lineage.md)                   | Stable Source and Chunk Lineage                                                              | 2026-08-28 | Accepted |
 | [053](./053-embedding-norm-guard.md)                          | Embedding Norm Guard                                                                         | 2026-08-28 | Accepted |
@@ -76,10 +76,10 @@ development of OMRG — Opinionated Modular RAG.
 | [063](./063-model-token-aware-markdown-chunking.md)          | Model-Token-Aware Markdown Chunking                                                          | 2026-09-07 | Proposed |
 | [064](./064-input-quality-promotion-decisions.md)            | Input-Quality Promotion Evidence and OCR Default Decision                                    | 2026-09-09 | Accepted — items 1–2 superseded by ADR-065 |
 | [065](./065-ocr-fallback-gate-promoted-to-packaged-default.md) | OCR Fallback Gate Promoted to Packaged Default                                             | 2026-09-13 | Accepted |
-| [066](./066-tiered-reader-fallback-chain.md)                 | Tiered Reader Fallback — pdf-inspector → liteparse → pypdf                                  | 2026-09-13 | Accepted |
+| [066](./066-tiered-reader-fallback-chain.md)                 | Tiered Reader Fallback — pdf-inspector → liteparse → pypdf                                  | 2026-09-13 | Accepted. Amended by ADR-104 (2026-10-27) |
 | [067](./067-self-contained-reader-fallback-settings.md)     | Self-Contained Reader Fallback Settings                                                     | 2026-09-13 | Accepted |
 | [068](./068-pin-magika-content-detection.md)                | Pin Magika Content Detection                                                                | 2026-09-16 | Accepted |
-| [069](./069-page-level-ocr-routing-and-the-pdfium-runtime.md) | Page-Level OCR Routing with a Local Tier, and the PDFium Runtime                            | 2026-09-18 | Accepted |
+| [069](./069-page-level-ocr-routing-and-the-pdfium-runtime.md) | Page-Level OCR Routing with a Local Tier, and the PDFium Runtime                            | 2026-09-18 | Accepted. Amended by ADR-104 (2026-10-27) |
 | [070](./070-normalise-reader-output-before-chunking.md) | Normalise Reader Output Before Chunking — Remove Markup, Never Content | 2026-09-25 | Accepted |
 | [071](./071-ocr-routing-natural-positive-findings.md) | OCR Routing on Natural Documents: Findings and Decisions | 2026-09-29 | Accepted |
 | [072](./072-modular-ocr-engines-dots-mocr-primary-and-maths-routing.md) | Modular OCR Engines, dots.mocr as Primary Engine, and Maths-Page Routing | 2026-10-06 | Proposed |
@@ -112,6 +112,7 @@ development of OMRG — Opinionated Modular RAG.
 | [101](./101-app-installs-marimo-as-a-separate-uv-tool.md) | The App Installs marimo as a Separate uv Tool | 2026-10-26 | Accepted (2026-10-26; built and merged to v3 at PR #132) |
 | [102](./102-library-edits-protocol-and-report-with-an-edit-log.md) | The Library Edits Protocols and Reports, and Logs Each Save in edits.jsonl | 2026-10-26 | Accepted (2026-10-26; built and merged to v3 at PR #133) |
 | [103](./103-experiments-run-local-models-through-llama-cpp-gguf.md) | Experiments Run Local Models Through llama.cpp GGUF | 2026-10-27 | Accepted (2026-10-27; built and merged to v3 at PR #135) |
+| [104](./104-pdf-inspector-emits-page-documents.md) | pdf-inspector Emits Page Documents | 2026-10-27 | Proposed |
 
 ## Convention
 

@@ -68,6 +68,15 @@ class BackendRead(NamedTuple):
     text_format: str
 
 
+def _reads_with_pdf_reader(meta: dict[str, Any], file_path: Path) -> bool:
+    """Return whether the configured PDF reader reads *file_path* under *meta*.
+
+    The ``local`` chain declares no static format (``None``) and hands
+    ``.pdf`` files to the PDF reader; every other backend or suffix does not.
+    """
+    return meta["text_format"] is None and file_path.suffix.lower() == ".pdf"
+
+
 def _declared_text_format(
     meta: dict[str, Any],
     file_path: Path,
@@ -83,7 +92,7 @@ def _declared_text_format(
     declared = meta["text_format"]
     if declared is not None:
         return declared
-    if file_path.suffix.lower() == ".pdf":
+    if _reads_with_pdf_reader(meta, file_path):
         from omrs.integrations.pdf.factory import declared_text_format
 
         return declared_text_format(settings.pdf_reader)
@@ -102,6 +111,27 @@ def resolve_declared_text_format(file_path: Path, *, settings: EffectiveSettings
     """
     _, meta = _select(file_path, settings.document_backend)
     return _declared_text_format(meta, file_path, settings)
+
+
+def resolve_pdf_reader_revision(file_path: Path, *, settings: EffectiveSettings) -> int | None:
+    """Resolve the output revision of the PDF reader that reads *file_path*, pre-read.
+
+    Change pdf-inspector-page-provenance, design D7: the ingestion pipeline
+    puts this value in ``source_index_identity``, so a reader whose output
+    changes reprocesses PDF sources once. It applies the same suffix gate
+    and backend test as :func:`resolve_declared_text_format`.
+
+    Returns:
+        The resolved PDF reader's declared ``output_revision`` when that
+        reader reads the file, else ``None`` (non-PDF sources and PDFs that
+        another backend reads keep their identity unchanged).
+    """
+    _, meta = _select(file_path, settings.document_backend)
+    if not _reads_with_pdf_reader(meta, file_path):
+        return None
+    from omrs.integrations.pdf.factory import declared_output_revision
+
+    return declared_output_revision(settings.pdf_reader)
 
 
 def _select(file_path: Path, name: str) -> tuple[str, dict[str, Any]]:

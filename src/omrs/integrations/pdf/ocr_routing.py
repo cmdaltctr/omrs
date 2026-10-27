@@ -11,6 +11,10 @@ Two pieces live here:
   adapter already produced (``pdf_type``, ``pdf_confidence``, the
   scalar ``pages_needing_ocr`` count), decides fast path versus worker
   dispatch, and routes the WHOLE PDF — no page stitching (task 2.4).
+  The fast and degraded paths keep the adapter's page documents; the
+  worker path returns one document without page keys, because the
+  worker's Markdown spans the whole PDF (change
+  pdf-inspector-page-provenance, design D5).
   Clean text-based PDFs, including multi-column and table-heavy
   layouts, never dispatch (task 2.5): layout complexity is not a gate
   input.
@@ -44,6 +48,7 @@ from .maths_routing import stamp_maths_count as _stamp_maths
 from .ocr_policy import OCR_UNCONDITIONAL_TYPES
 from .page_routing import (
     OCR_BACKEND_LOCAL_OCR,
+    PAGE_KEYS,
     PAGE_SOURCE_LOCAL,
     PAGE_SOURCE_NATIVE,
     PAGE_SOURCE_UNRESOLVED,
@@ -52,6 +57,7 @@ from .page_routing import (
     PageResult,
     local_ocr,
     merge_pages,
+    page_documents,
     page_evidence,
 )
 
@@ -131,12 +137,13 @@ class OcrRoutedPdfInspector:
             **kwargs: Forwarded to the wrapped reader.
 
         Returns:
-            The pdf-inspector documents (fast or degraded path) or a
-            document built from the worker's structured Markdown
-            (worker path), always carrying the four OCR diagnostics.
-            Under the ``page`` routing unit, one document whose pages
-            were read by the highest tier that produced text for them,
-            carrying the four page-source counts.
+            The pdf-inspector page documents (fast or degraded path), each
+            stamped, or one document built from the worker's structured
+            Markdown with no page keys (worker path), always carrying the
+            four OCR diagnostics. Under the ``page`` routing unit, one
+            document per page with text, each read by the highest tier
+            that produced text for it and carrying the four page-source
+            counts.
 
         Raises:
             OcrPostDispatchError: On any worker failure after the
@@ -148,11 +155,13 @@ class OcrRoutedPdfInspector:
         if not documents:
             return documents
         if getattr(self._settings, "ocr_routing_unit", "document") == "page":
-            return self._page_unit_documents(file, documents[0])
+            return self._page_unit_documents(file, documents)
+        # Every page document carries the same whole-PDF evidence (D5).
         evidence = documents[0].metadata
         page_count = int(evidence.get("page_count", 0))
         maths_pages = detect_maths_pages(file, self._settings)
-        _stamp_maths(evidence, maths_pages)
+        for document in documents:
+            _stamp_maths(document.metadata, maths_pages)
         required = ocr_required_by_gate(
             pdf_type=str(evidence.get("pdf_type", "")),
             pdf_confidence=float(evidence.get("pdf_confidence", 1.0)),
@@ -161,22 +170,24 @@ class OcrRoutedPdfInspector:
             settings=self._settings,
         ) or maths_condition(maths_pages, page_count, self._settings)
         if not required:
-            _stamp_ocr_diagnostics(
-                evidence,
-                ocr_required=False,
-                ocr_used=False,
-                ocr_backend=OCR_BACKEND_FAST_PATH,
-            )
+            for document in documents:
+                _stamp_ocr_diagnostics(
+                    document.metadata,
+                    ocr_required=False,
+                    ocr_used=False,
+                    ocr_backend=OCR_BACKEND_FAST_PATH,
+                )
             return documents
 
         client = self._routes.select()
         if client is None:
-            _stamp_ocr_diagnostics(
-                evidence,
-                ocr_required=True,
-                ocr_used=False,
-                ocr_backend=OCR_BACKEND_FAST_PATH,
-            )
+            for document in documents:
+                _stamp_ocr_diagnostics(
+                    document.metadata,
+                    ocr_required=True,
+                    ocr_used=False,
+                    ocr_backend=OCR_BACKEND_FAST_PATH,
+                )
             pdf_type = evidence.get("pdf_type", "")
             logger.warning(
                 "OCR required for %s (pdf_type=%s, %s page(s) flagged) but the "
@@ -201,10 +212,14 @@ class OcrRoutedPdfInspector:
     def _worker_document(
         self, evidence: dict[str, Any], result: ParseSuccess, backend: str
     ) -> list:
-        """Build the worker-path document, preserving provenance metadata."""
+        """Build the worker-path document, preserving provenance metadata.
+
+        The worker's Markdown spans the whole PDF, so the document carries
+        no ``page`` or ``page_label`` (D5): a page number would be a guess.
+        """
         from llama_index.core import Document
 
-        merged = dict(evidence)
+        merged = {key: value for key, value in evidence.items() if key not in PAGE_KEYS}
         _stamp_ocr_diagnostics(
             merged,
             ocr_required=True,
@@ -215,27 +230,29 @@ class OcrRoutedPdfInspector:
 
     # ── The page routing unit (tasks 4.4, 4.5c, 4.6) ──────────────────
 
-    def _page_unit_documents(self, file: Path, inner_document: Any) -> list:
-        """Read one PDF page by page and merge the tiers into one document.
+    def _page_unit_documents(self, file: Path, inner_documents: list) -> list:
+        """Read one PDF page by page and emit one document per page.
 
-        The full scan is the only evidence (task 4.1): every flagged page
-        is OCRed locally (task 4.2), the pages the post-check rejects go
-        to the worker in ONE request (task 4.4), and the merge joins the
-        pages back in order (task 4.5c). Degradation never fails the file
-        (task 4.6): a missing local runtime keeps native text, a missing
-        or unattributable worker keeps the best available text, and both
-        count the affected pages unresolved. Only a worker failure AFTER
-        a complete request was flushed raises, exactly as the document
-        unit's post-dispatch boundary does.
+        The full scan is the only evidence (task 4.1): every flagged page is OCRed locally
+        (task 4.2), the pages the post-check rejects go to the worker in ONE request (task
+        4.4), and the merge computes the counts and the backend (task 4.5c). Each page with
+        text becomes its own document with its ``page`` (change
+        pdf-inspector-page-provenance). Degradation never fails the file (task 4.6): a
+        missing local runtime keeps native text, a missing or unattributable worker keeps
+        the best available text, and both count the affected pages unresolved. Only a worker
+        failure AFTER a complete request was flushed raises, exactly as the document unit's
+        post-dispatch boundary does.
 
         Args:
             file: Path to the PDF file.
-            inner_document: The wrapped reader's document; its metadata
-                is the base the counts and diagnostics join.
+            inner_documents: The wrapped reader's documents; the first
+                one's metadata is the base the counts and diagnostics join.
 
         Returns:
-            A one-document list carrying the merged text, the four
-            page-source counts and the OCR diagnostics.
+            One document per page with text, in page order, each carrying
+            the four page-source counts and the OCR diagnostics. When no
+            page has text, the wrapped reader's rescued documents, or one
+            empty document.
 
         Raises:
             OcrPostDispatchError: On a worker failure after dispatch.
@@ -244,6 +261,7 @@ class OcrRoutedPdfInspector:
         """
         from llama_index.core import Document
 
+        inner_document = inner_documents[0]
         evidence = page_evidence(file)
         page_count = len(evidence)
         flagged = {entry.page for entry in evidence if entry.needs_ocr}
@@ -317,7 +335,7 @@ class OcrRoutedPdfInspector:
                 )
 
         merged = merge_pages(results, page_count=page_count)
-        metadata = dict(inner_document.metadata)
+        metadata = {k: v for k, v in inner_document.metadata.items() if k not in PAGE_KEYS}
         metadata["page_count"] = page_count
         # The complete scan is the page unit's authority on the count.
         metadata["pages_needing_ocr"] = len(flagged)
@@ -330,7 +348,8 @@ class OcrRoutedPdfInspector:
         metadata.update(merged.counts)
         _stamp_maths(metadata, maths_pages)
 
-        if not merged.text and inner_document.text:
+        rescued = [doc for doc in inner_documents if doc.text]
+        if not merged.text and rescued:
             # ADR-066 rescue of last resort: the scan produced no text on
             # any page, yet the wrapped reader recovered the document
             # through the fallback chain. That rescued text is the record;
@@ -351,8 +370,15 @@ class OcrRoutedPdfInspector:
                 ocr_used=False,
                 ocr_backend=OCR_BACKEND_FAST_PATH,
             )
-            return [Document(text=inner_document.text, metadata=metadata)]
-        return [Document(text=merged.text, metadata=metadata)]
+            # Each rescued page keeps its own page keys.
+            pages = [
+                {k: doc.metadata[k] for k in PAGE_KEYS if k in doc.metadata} for doc in rescued
+            ]
+            return [
+                Document(text=doc.text, metadata={**metadata, **page})
+                for doc, page in zip(rescued, pages, strict=True)
+            ]
+        return page_documents(results, metadata) or [Document(text="", metadata=metadata)]
 
     def _escalated_worker_text(
         self, file: Path, pages: list[int]

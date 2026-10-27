@@ -61,6 +61,27 @@ def declared_text_format(reader: str) -> str:
     return _describe_reader(resolve_reader_name(reader))["text_format"]
 
 
+def declared_output_revision(reader: str) -> int:
+    """Return the declared output revision for a possibly-``auto`` selector.
+
+    The index identity of a PDF source hashes this value, so a reader whose
+    output changes reprocesses PDF sources once (change
+    pdf-inspector-page-provenance, design D7).
+
+    Args:
+        reader: Reader name from the injected settings — a concrete name or
+            ``auto``.
+
+    Returns:
+        The integer output revision declared by the resolved reader.
+
+    Raises:
+        KeyError: If the resolved name is not registered (lists available
+            names).
+    """
+    return _describe_reader(resolve_reader_name(reader))["output_revision"]
+
+
 def get_pdf_reader(reader: str) -> Any:
     """Return the PDF reader adapter for *reader*.
 

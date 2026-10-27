@@ -837,7 +837,7 @@ the registry must stay in agreement (a guard test enforces this).
 
 | Reader | Declared text format | Page provenance |
 | --- | --- | --- |
-| `pdf_inspector` | `markdown` | No — one document per file; `page_count` in metadata instead |
+| `pdf_inspector` | `markdown` | Yes: one document per page; the whole-document fallback and worker-read documents have no page |
 | `liteparse` | `plain` | Yes — string `page_label` alongside the integer `page` |
 | `pypdf` | `plain` | Yes |
 | `pypdfium2` | `plain` | Yes |
@@ -1081,6 +1081,7 @@ These settings are part of the index identity:
 | What | Why it counts |
 | --- | --- |
 | `PDF_READER`, as the **resolved** reader | It decides which reader produced the text. The resolved name is recorded, so `auto` counts as the reader it resolved to, and an uninstalled choice counts as `pypdf` |
+| The output revision of the resolved PDF reader (PDF sources only) | A reader declares a new revision when its output changes, so each PDF source reprocesses once. `pdf_inspector` declares 2 since it emits page documents; the other readers declare 1. Non-PDF sources do not carry it |
 | `EMBEDDING__TOKENIZER_MODEL` and `EMBEDDING__TOKENIZER_REVISION` | They set the Markdown token budget, so chunk boundaries move |
 | The **resolved** Markdown splitter | Model-token-aware or legacy fallback. The resolved value is recorded, not the configured one, so a corpus chunked under the fallback does not stay "matching" forever once the tokenizer becomes loadable |
 | `OCR_FALLBACK_ENABLED`, `OCR_FALLBACK_MIN_CONFIDENCE`, `OCR_FALLBACK_PAGE_FRACTION` | They decide which reader produced the text |

@@ -44,12 +44,16 @@ def _identity_with(settings: Any, text_format: str, block: dict | None) -> str:
     ctx = build_ingestion_context(
         settings, embed_model=LlamaIndexSettings.embed_model, graph_shape=block
     )
+    from omrs.integrations.pdf.factory import declared_output_revision
+
     return build_index_identity(
         settings,
         content_type=None,
         chunk_size=ctx.chunk_size,
         chunk_overlap=ctx.chunk_overlap,
         text_format=text_format,
+        # The sources are PDFs, so the identity carries the reader revision (D7).
+        pdf_reader_revision=declared_output_revision(settings.pdf_reader),
         embed_model=ctx.embed_model,
         ocr_routing=ctx.ocr_routing,
         ocr_worker_fingerprint=ctx.ocr_worker_fingerprint,
@@ -125,3 +129,42 @@ async def test_reader_change_reprocesses_and_stores_the_step_identity(
     )
     assert {r["metadata"]["source_index_identity"] for r in rows} == {expected}
     assert await run(pdf_reader="pdf_inspector") == ["skipped_unchanged"]
+
+
+@pytest.mark.asyncio
+async def test_identify_carries_the_step_reader_revision(
+    pdf_root: Path, effective_settings: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A Read document step with ``pdf_reader=pypdf`` puts revision 1 in the identity.
+
+    Change pdf-inspector-page-provenance, design D7: the identify step gets
+    the step reader's output revision, not the host default's.
+    """
+    import json
+
+    from omrs.core.ingestion import source_state
+    from omrs.core.vectordb import get_default_store
+
+    payloads: list[dict] = []
+
+    class _Recorder:
+        def dumps(self, payload: Any, **kwargs: Any) -> str:
+            payloads.append(payload)
+            return json.dumps(payload, **kwargs)
+
+    host = offline_settings(effective_settings).model_copy(update={"pdf_reader": "pdf_inspector"})
+    catalogue = build_catalogue()
+    snapshot = admit(canonical_graph("pdf_revision"), host, pdf_root, catalogue)
+    shape = IngestionShape("e" * 64, standard=False, pdf_reader="pypdf")
+    run_resources = resources(
+        snapshot, catalogue, get_default_store(), **{INGESTION_SHAPE_RESOURCE: shape}
+    )
+    unit = SourceUnit(0, pdf_root / "smoke_text.pdf", "smoke_text.pdf", None)
+    monkeypatch.setattr(source_state, "json", _Recorder())
+
+    await invoke(snapshot, catalogue, run_resources, "identify", {"sources": (unit,)})
+
+    parsers = [p["parser"] for p in payloads if "parser" in p]
+    assert parsers, "the identify step built no index identity"
+    assert parsers[-1]["pdf_reader"] == "pypdf"
+    assert parsers[-1]["pdf_reader_output_revision"] == 1

@@ -31,7 +31,8 @@ When one source yields several page documents, the chunker SHALL start each page
 #### Scenario: Section continues onto the next page
 
 - **WHEN** page 3 ends inside section `Methods > Data` and page 4 starts with body text
-- **THEN** the first chunk of page 4 has the header path `Methods > Data`
+- **THEN** the first chunk of page 4 has the same header path that whole-document chunking gives at that position
+- **AND** on the model-token path that path is `/Methods/Data/`, and on the legacy Markdown path it is `/Methods/`, because LlamaIndex lists only the parent headings of a section there
 
 #### Scenario: Matches whole-document chunking
 

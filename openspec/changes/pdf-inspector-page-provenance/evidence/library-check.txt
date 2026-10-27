@@ -1,0 +1,3 @@
+pdf-inspector 1.17.0
+pages 2 first page field 0 all [0, 1]
+pages_needing_ocr [2]

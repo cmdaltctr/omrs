@@ -1,7 +1,7 @@
 # ADR-050: Configure pdf-inspector as the Default PDF Reader
 
 - **Date:** 2026-08-24
-- **Status:** Accepted
+- **Status:** Accepted. Amended by ADR-104 (2026-10-27): pdf-inspector now emits one document per page, not whole-document markdown.
 - **Deciders:** Dr Muhammad Aizat Bin Md Hawari
 
 ## Context

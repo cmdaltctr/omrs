@@ -132,6 +132,7 @@ def build_index_identity(
     chunk_size: int,
     chunk_overlap: int,
     text_format: str | None = None,
+    pdf_reader_revision: int | None = None,
     embed_model: Any = None,
     ocr_routing: dict[str, Any] | None = None,
     ocr_worker_fingerprint: Any = None,
@@ -146,6 +147,8 @@ def build_index_identity(
     because reprocessing is safer than reusing stale chunks or vectors.
     ``graph_shape`` is the versioned block of a non-standard ingestion graph
     (``graph_fingerprint``); ``None`` keeps the standard digest unchanged.
+    ``pdf_reader_revision`` adds ``parser.pdf_reader_output_revision`` only
+    when not ``None`` (PDF sources), so other sources keep their digest.
     """
     configured_provider, configured_model = _configured_embedding(settings)
     routing = ocr_routing_payload(settings) if ocr_routing is None else ocr_routing
@@ -232,6 +235,8 @@ def build_index_identity(
             "openrouter_llm_model": settings.openrouter_llm_model,
         },
     }
+    if pdf_reader_revision is not None:
+        payload["parser"]["pdf_reader_output_revision"] = pdf_reader_revision
     if graph_shape is not None:
         payload["graph_shape"] = dict(graph_shape)
     canonical = json.dumps(

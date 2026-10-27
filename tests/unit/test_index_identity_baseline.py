@@ -260,3 +260,77 @@ def test_normaliser_version_and_toggle_change_identity_for_every_source(
     assert identity(disabled) != original
     monkeypatch.setattr(source_state, "NORMALISER_VERSION", source_state.NORMALISER_VERSION + 1)
     assert identity(settings) != original
+
+
+# ── PDF reader output revision (change pdf-inspector-page-provenance, D7) ──
+
+#: Digest of a ``.md`` source under the baseline settings and the pinned
+#: embedder below, computed on 27 October 2026 with the ``v3`` source
+#: before the reader output revision existed. A non-PDF source must keep
+#: it, so no Markdown or code collection reprocesses.
+_MD_DIGEST_BEFORE_REVISION = "3a06f8a5a08edd836547be189e99f2b9e3b5a7ba3f9c1147fae1253b5c5d0302"
+
+
+def _source_identity(
+    monkeypatch: pytest.MonkeyPatch, file_name: str, *, pdf_reader: str = "auto"
+) -> tuple[dict, str]:
+    """Build one source's identity through the pre-read resolvers; return payload and digest."""
+    from pathlib import Path
+    from types import SimpleNamespace
+
+    from omrs.core.ingestion.backends import orchestrator
+
+    settings = EffectiveSettings(
+        metadata=MetadataBlock(extraction_mode="disabled"),
+        embedding=EmbeddingBlock(tokenizer_model="", tokenizer_revision=""),
+        pdf_reader=pdf_reader,
+    )
+    path = Path(file_name)
+    recorder = _RecordingJSON()
+    monkeypatch.setattr(source_state, "json", recorder)
+    identity = source_state.build_index_identity(
+        settings,
+        content_type="text/markdown",
+        chunk_size=512,
+        chunk_overlap=100,
+        text_format=orchestrator.resolve_declared_text_format(path, settings=settings),
+        pdf_reader_revision=orchestrator.resolve_pdf_reader_revision(path, settings=settings),
+        # An explicit embedder: the process-wide one differs under the test
+        # conftest, and the pinned digest must not depend on it.
+        embed_model=SimpleNamespace(model_name="pinned-embedder"),
+    )
+    return recorder.payloads[-1], identity
+
+
+@pytest.mark.parametrize(("reader", "revision"), [("pdf_inspector", 2), ("pypdf", 1)])
+def test_pdf_source_carries_its_reader_revision(
+    monkeypatch: pytest.MonkeyPatch, reader: str, revision: int
+) -> None:
+    """Spec: the PDF reader output revision is part of a PDF source's identity."""
+    payload, _ = _source_identity(monkeypatch, "report.pdf", pdf_reader=reader)
+
+    assert payload["parser"]["pdf_reader_output_revision"] == revision
+    assert set(payload["parser"]) == EXPECTED_PARSER_KEYS | {"pdf_reader_output_revision"}
+    assert payload["schema"] == 6
+
+
+def test_markdown_source_identity_is_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Spec scenario "Non-PDF sources keep their identity"."""
+    payload, identity = _source_identity(monkeypatch, "notes.md")
+
+    assert "pdf_reader_output_revision" not in payload["parser"]
+    assert identity == _MD_DIGEST_BEFORE_REVISION
+
+
+def test_revision_change_changes_the_pdf_digest(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Spec scenario "A reader output change reprocesses PDF sources"."""
+    from omrs.integrations.pdf import registry
+
+    _, before = _source_identity(monkeypatch, "report.pdf", pdf_reader="pdf_inspector")
+    _, markdown_before = _source_identity(monkeypatch, "notes.md", pdf_reader="pdf_inspector")
+    monkeypatch.setitem(registry._output_revisions, "pdf_inspector", 3)
+    _, after = _source_identity(monkeypatch, "report.pdf", pdf_reader="pdf_inspector")
+    _, markdown_after = _source_identity(monkeypatch, "notes.md", pdf_reader="pdf_inspector")
+
+    assert before != after
+    assert markdown_before == markdown_after

@@ -40,7 +40,14 @@ def _orchestrator():
 def _drop_temp_pdf_entries(name: str) -> None:
     """Remove temporary PDF-registry entries from every backing dict."""
     registry = _pdf_registry()
-    for attr in ("_registry", "_probe_modules", "_text_formats", "_page_provenance", "_cache"):
+    for attr in (
+        "_registry",
+        "_probe_modules",
+        "_text_formats",
+        "_page_provenance",
+        "_output_revisions",
+        "_cache",
+    ):
         mapping = getattr(registry, attr, None)
         if isinstance(mapping, dict):
             mapping.pop(name, None)
@@ -86,7 +93,7 @@ class TestPdfReaderDeclarations:
     @pytest.mark.parametrize(
         ("reader", "page_provenance"),
         [
-            ("pdf_inspector", False),
+            ("pdf_inspector", True),
             ("liteparse", True),
             ("pypdf", True),
             ("pypdfium2", True),
@@ -99,9 +106,36 @@ class TestPdfReaderDeclarations:
     def test_describe_mirrors_document_backend_pattern(self) -> None:
         """Task 4.1 — describe() exposes the declared reader metadata."""
         meta = _pdf_registry().describe("pypdf")
-        assert set(meta) == {"import_path", "probe_module", "text_format", "page_provenance"}
+        assert set(meta) == {
+            "import_path",
+            "probe_module",
+            "text_format",
+            "page_provenance",
+            "output_revision",
+        }
         assert meta["import_path"] == "omrs.integrations.pdf.pypdf:PyPDFReader"
         assert meta["probe_module"] == "pypdf"
+
+    @pytest.mark.parametrize(
+        ("reader", "revision"),
+        [
+            ("pdf_inspector", 2),
+            ("liteparse", 1),
+            ("pypdf", 1),
+            ("pypdfium2", 1),
+        ],
+    )
+    def test_declared_output_revision(self, reader: str, revision: int) -> None:
+        """Spec scenario "Declared revisions" (change pdf-inspector-page-provenance)."""
+        assert _pdf_registry().describe(reader)["output_revision"] == revision
+
+    def test_declared_output_revision_resolves_auto(self, monkeypatch) -> None:
+        """``declared_output_revision`` resolves ``auto`` before it reads the registry."""
+        from omrs.integrations.pdf import factory
+
+        monkeypatch.setattr(factory, "_resolve_auto", lambda: "pypdf")
+        assert factory.declared_output_revision("auto") == 1
+        assert factory.declared_output_revision("pdf_inspector") == 2
 
     def test_describe_unknown_lists_names(self) -> None:
         """An unknown name raises KeyError listing every registered reader."""
@@ -170,6 +204,7 @@ class TestRegistrationRequiresDeclaration:
             assert meta["text_format"] == "markdown"
             assert meta["page_provenance"] is False
             assert meta["probe_module"] == "omrs.integrations.pdf.pypdf"
+            assert meta["output_revision"] == 1
         finally:
             _drop_temp_pdf_entries("temp_markdown_reader")
 

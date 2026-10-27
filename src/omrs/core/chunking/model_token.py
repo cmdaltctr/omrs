@@ -10,6 +10,7 @@ from typing import Any
 from llama_index.core.schema import MetadataMode, TextNode
 
 from ...integrations.tokenizer import load_tokenizer
+from .page_headings import inherited_heading_stacks
 
 logger = logging.getLogger(__name__)
 
@@ -102,11 +103,15 @@ def split_markdown_documents(
 
     tokenizer = resolution.tokenizer
     nodes: list[TextNode] = []
-    for document in documents:
+    inherited = inherited_heading_stacks(documents, _heading_levels)
+    for document, open_stack in zip(documents, inherited, strict=True):
         source_text = document.get_content(metadata_mode=MetadataMode.NONE)
         if not source_text.strip():
             continue
-        headings = _heading_positions(source_text)
+        # Headings left open by the previous page sit before offset 0, so
+        # every chunk of this page starts inside them (design D11).
+        headings = [(-1, level, title) for level, title in open_stack]
+        headings += _heading_positions(source_text)
         splitter = _markdown_splitter(
             MarkdownSplitter,
             tokenizer,
@@ -372,6 +377,11 @@ def _heading_positions(text: str) -> list[tuple[int, int, str]]:
                 positions.append((offset, len(match.group(1)), title))
         offset += len(raw_line)
     return positions
+
+
+def _heading_levels(text: str) -> list[tuple[int, str]]:
+    """Return the ``(level, title)`` of each ATX heading in ``text``."""
+    return [(level, title) for _offset, level, title in _heading_positions(text)]
 
 
 def _fence_state(fence: tuple[str, int] | None, line: str) -> tuple[str, int] | None:
