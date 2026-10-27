@@ -11,13 +11,14 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from llama_index.core.node_parser import MarkdownNodeParser, SentenceSplitter
+from llama_index.core.node_parser import SentenceSplitter
 
 from ..settings import resolve_effective_settings
 from .markdown import (
     apply_heading_prepend,
     drop_small_markdown_chunks,
     ensure_heading_metadata,
+    parse_markdown_sections,
 )
 from .model_token import (
     MarkdownChunkingResolution,
@@ -61,8 +62,7 @@ def _split_documents_sync(
         chunk_overlap=chunk_overlap,
     )
     if is_markdown:
-        md_parser = MarkdownNodeParser()
-        heading_nodes = md_parser.get_nodes_from_documents(documents)
+        heading_nodes = parse_markdown_sections(documents)
         return splitter.get_nodes_from_documents(heading_nodes)
     return splitter.get_nodes_from_documents(documents)
 
