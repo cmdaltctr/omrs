@@ -1,0 +1,19 @@
+# Task 8.1: pdf_inspector reader on real PDFs, v3 (before) against this branch (after), 2026-10-28
+# 4 PDFs from Experiment 3 corpus, first 10 by SHA-256 from Experiment 42 corpus. Files named by SHA-256 prefix only.
+# pdf-inspector 1.17.0. chars = total text of all documents.
+file (SHA-256 prefix) | pdf_type before/after | pages_needing_ocr before/after | docs before/after | page range after | chars before/after | fallback before/after | equal
+468d38e58d | text_based/text_based | 0/0 | 1/19 | 1-19 | 42342/42325 | None/None | yes
+b6a0d4e8de | text_based/text_based | 0/0 | 1/36 | 1-36 | 106333/106222 | None/None | yes
+102bb623ea | text_based/text_based | 0/0 | 1/12 | 1-12 | 58466/59102 | None/None | yes
+61f72c681e | text_based/text_based | 0/0 | 1/9 | 1-9 | 44575/45248 | None/None | yes
+006de370d0 | text_based/text_based | 0/0 | 1/16 | 1-16 | 59763/60538 | None/None | yes
+02fa47d3a5 | text_based/text_based | 0/0 | 1/5 | 1-5 | 11596/11821 | None/None | yes
+034b66c1f0 | text_based/text_based | 0/0 | 1/16 | 1-16 | 43795/44780 | None/None | yes
+043e684754 | text_based/text_based | 0/0 | 1/8 | 1-8 | 16249/16235 | liteparse/liteparse | yes
+0535518404 | text_based/text_based | 0/0 | 1/26 | 1-26 | 49622/49487 | None/None | yes
+0550ef1383 | mixed/mixed | 1/1 | 1/1 | no page | 0/0 | None/None | yes
+072fdf5b2c | text_based/text_based | 0/0 | 1/9 | 1-9 | 29141/29118 | None/None | yes
+0c1161d20b | text_based/text_based | 0/0 | 1/8 | 1-8 | 20892/21490 | None/None | yes
+0f70139fd2 | text_based/text_based | 0/0 | 1/9 | 1-9 | 26561/26505 | None/None | yes
+10e50add40 | text_based/text_based | 0/0 | 1/8 | 1-8 | 33489/33688 | None/None | yes
+files 14, mismatches 0

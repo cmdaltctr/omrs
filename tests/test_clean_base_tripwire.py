@@ -194,7 +194,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +84 (2026-10-27, reproducible-experiment-runtime, by test-ID diff, none removed):
 # purpose, runtime block, publication check, llama.cpp check, run-record runtime (79);
 # 5 need fastapi (see _WEB_EXTRA_CASES).
-_BASE_EXECUTED = 8936
+# +56 (2026-10-28, pdf-inspector-page-provenance, by test-ID diff): 64 new, 8 replaced
+# (5 renamed full-scan cases, 3 old no-page pins). No fastapi needed.
+_BASE_EXECUTED = 8992
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

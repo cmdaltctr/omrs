@@ -1,0 +1,88 @@
+1256a1257,1258
+> tests/test_ingestion_stage3.py::test_pdf_reader_revision_reprocesses_pdf_sources_only[chroma]
+> tests/test_ingestion_stage3.py::test_pdf_reader_revision_reprocesses_pdf_sources_only[lancedb]
+2304a2307,2310
+> tests/test_ocr_routing_seam.py::TestDocumentUnitKeepsPages::test_fast_path_returns_every_page_stamped
+> tests/test_ocr_routing_seam.py::TestDocumentUnitKeepsPages::test_degraded_path_returns_native_pages_stamped
+> tests/test_ocr_routing_seam.py::TestDocumentUnitKeepsPages::test_maths_count_on_every_page
+> tests/test_ocr_routing_seam.py::TestDocumentUnitKeepsPages::test_worker_path_returns_one_document_without_page
+2598a2605,2611
+> tests/test_page_heading_chunking.py::test_legacy_page_chunks_match_whole_document_paths
+> tests/test_page_heading_chunking.py::test_legacy_first_chunk_of_next_page_keeps_open_section
+> tests/test_page_heading_chunking.py::test_legacy_gap_in_pages_ends_inherited_path
+> tests/test_page_heading_chunking.py::test_model_token_page_chunks_match_whole_document_paths
+> tests/test_page_heading_chunking.py::test_model_token_first_chunk_of_next_page_keeps_open_section
+> tests/test_page_heading_chunking.py::test_model_token_heading_prepend_uses_inherited_path
+> tests/test_page_heading_chunking.py::test_model_token_two_sources_never_share_a_stack
+2602,2603c2615,2617
+< tests/test_page_provenance.py::TestPdfInspectorReportsNoPage::test_page_label_absent_not_fabricated
+< tests/test_page_provenance.py::TestPdfInspectorReportsNoPage::test_still_reports_page_count
+---
+> tests/test_page_provenance.py::TestPdfInspectorEmitsPages::test_smoke_pdf_gives_page_one
+> tests/test_page_provenance.py::TestPdfInspectorEmitsPages::test_per_page_failure_reports_no_page
+> tests/test_page_provenance.py::TestPdfInspectorEmitsPages::test_mixed_pdf_text_page_is_page_one
+2605a2620,2621
+> tests/test_page_provenance.py::TestPdfInspectorPagesEndToEnd::test_two_page_pdf_chunks_and_search_keep_pages
+> tests/test_page_provenance.py::TestNormalisationRunsPerPage::test_underline_tags_go_and_the_page_stays
+2789c2805
+< tests/test_reader_text_format.py::TestPdfReaderDeclarations::test_declared_page_provenance[pdf_inspector-False]
+---
+> tests/test_reader_text_format.py::TestPdfReaderDeclarations::test_declared_page_provenance[pdf_inspector-True]
+2793a2810,2814
+> tests/test_reader_text_format.py::TestPdfReaderDeclarations::test_declared_output_revision[pdf_inspector-2]
+> tests/test_reader_text_format.py::TestPdfReaderDeclarations::test_declared_output_revision[liteparse-1]
+> tests/test_reader_text_format.py::TestPdfReaderDeclarations::test_declared_output_revision[pypdf-1]
+> tests/test_reader_text_format.py::TestPdfReaderDeclarations::test_declared_output_revision[pypdfium2-1]
+> tests/test_reader_text_format.py::TestPdfReaderDeclarations::test_declared_output_revision_resolves_auto
+4882a4904,4907
+> tests/unit/test_index_identity_baseline.py::test_pdf_source_carries_its_reader_revision[pdf_inspector-2]
+> tests/unit/test_index_identity_baseline.py::test_pdf_source_carries_its_reader_revision[pypdf-1]
+> tests/unit/test_index_identity_baseline.py::test_markdown_source_identity_is_unchanged
+> tests/unit/test_index_identity_baseline.py::test_revision_change_changes_the_pdf_digest
+4941a4967
+> tests/unit/test_ingestion_graph_pdf_identity.py::test_identify_carries_the_step_reader_revision
+5763a5790,5800
+> tests/unit/test_page_heading_context.py::test_open_section_passes_to_next_page
+> tests/unit/test_page_heading_context.py::test_same_level_heading_closes_only_that_level
+> tests/unit/test_page_heading_context.py::test_shallower_heading_closes_all_deeper_levels
+> tests/unit/test_page_heading_context.py::test_push_heading_pops_same_or_deeper_levels
+> tests/unit/test_page_heading_context.py::test_two_sources_never_share_a_stack
+> tests/unit/test_page_heading_context.py::test_out_of_order_pages_are_sorted_first
+> tests/unit/test_page_heading_context.py::test_gap_in_page_numbers_ends_the_inherited_stack
+> tests/unit/test_page_heading_context.py::test_stack_carries_through_a_page_with_no_headings
+> tests/unit/test_page_heading_context.py::test_documents_without_page_or_source_take_no_part
+> tests/unit/test_page_heading_context.py::test_single_document_source_inherits_nothing
+> tests/unit/test_page_heading_context.py::test_format_header_path_of_empty_stack_is_empty
+5788a5826,5829
+> tests/unit/test_page_unit_seam.py::TestPageUnitEmitsPageDocuments::test_ocr_pages_keep_their_numbers
+> tests/unit/test_page_unit_seam.py::TestPageUnitEmitsPageDocuments::test_page_without_text_emits_no_document
+> tests/unit/test_page_unit_seam.py::TestPageUnitEmitsPageDocuments::test_counts_sum_to_page_count_on_every_document
+> tests/unit/test_page_unit_seam.py::TestPageUnitEmitsPageDocuments::test_last_resort_rescue_returns_the_inner_page_documents
+5797,5801c5838,5842
+< tests/unit/test_pdf_inspector_full_scan.py::test_short_text_pdf_gets_no_full_scan[1]
+< tests/unit/test_pdf_inspector_full_scan.py::test_short_text_pdf_gets_no_full_scan[8]
+< tests/unit/test_pdf_inspector_full_scan.py::test_non_text_classifications_get_no_full_scan[scanned]
+< tests/unit/test_pdf_inspector_full_scan.py::test_non_text_classifications_get_no_full_scan[image_based]
+< tests/unit/test_pdf_inspector_full_scan.py::test_non_text_classifications_get_no_full_scan[mixed]
+---
+> tests/unit/test_pdf_inspector_full_scan.py::test_short_text_pdf_keeps_the_sampled_count[1]
+> tests/unit/test_pdf_inspector_full_scan.py::test_short_text_pdf_keeps_the_sampled_count[8]
+> tests/unit/test_pdf_inspector_full_scan.py::test_non_text_classifications_keep_the_sampled_count[scanned]
+> tests/unit/test_pdf_inspector_full_scan.py::test_non_text_classifications_keep_the_sampled_count[image_based]
+> tests/unit/test_pdf_inspector_full_scan.py::test_non_text_classifications_keep_the_sampled_count[mixed]
+5821a5863,5877
+> tests/unit/test_pdf_inspector_reader.py::TestPageDocuments::test_three_pages_give_three_documents_in_order
+> tests/unit/test_pdf_inspector_reader.py::TestPageDocuments::test_pages_are_one_based_ints_with_string_labels
+> tests/unit/test_pdf_inspector_reader.py::TestPageDocuments::test_page_without_text_emits_no_document[]
+> tests/unit/test_pdf_inspector_reader.py::TestPageDocuments::test_page_without_text_emits_no_document[  \n\t ]
+> tests/unit/test_pdf_inspector_reader.py::TestPageDocuments::test_every_page_carries_the_same_whole_pdf_evidence
+> tests/unit/test_pdf_inspector_reader.py::TestPageDocuments::test_each_library_call_runs_once
+> tests/unit/test_pdf_inspector_reader.py::TestWholeDocumentFallback::test_per_page_failure_emits_whole_markdown_without_page
+> tests/unit/test_pdf_inspector_reader.py::TestWholeDocumentFallback::test_per_page_without_text_emits_whole_markdown_without_page
+> tests/unit/test_pdf_inspector_reader.py::TestWholeDocumentFallback::test_nothing_has_text_emits_one_empty_document
+> tests/unit/test_pdf_inspector_reader.py::TestWholeDocumentFallback::test_page_count_mismatch_warns_and_numbers_from_library
+> tests/unit/test_pdf_inspector_reader.py::TestRescueKeepsPages::test_liteparse_pages_keep_their_numbers
+> tests/unit/test_pdf_inspector_reader.py::TestRescueKeepsPages::test_pypdf_pages_are_numbered_by_position
+> tests/unit/test_pdf_inspector_reader.py::TestRescueKeepsPages::test_every_recovered_page_carries_evidence_and_diagnostics[liteparse]
+> tests/unit/test_pdf_inspector_reader.py::TestRescueKeepsPages::test_every_recovered_page_carries_evidence_and_diagnostics[pypdf]
+> tests/unit/test_pdf_inspector_reader.py::TestRescueKeepsPages::test_chain_that_recovers_nothing_emits_one_empty_document
