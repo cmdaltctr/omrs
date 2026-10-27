@@ -114,8 +114,6 @@ The watcher SHALL reject files larger than a configurable maximum size (default 
 
 The watcher SHALL compute a SHA-256 hash of each file before ingesting and store it in an in-memory cache. If a file event fires for a file whose content hash matches the cached hash, the watcher SHALL skip ingestion. The cache SHALL be ephemeral (lost on watcher restart — no persistent storage). On ingestion failure, the hash SHALL NOT be updated in the cache, so the next `modified` event for that file triggers a fresh attempt.
 
-When file hashing fails with an `OSError` (e.g., permission denied), the watcher SHALL log a WARNING and SHALL clean up the stale timer entry for that file path. The hash cache SHALL be bounded — when it exceeds a configurable maximum number of entries (default 50 000), the least-recently-inserted entry SHALL be evicted.
-
 #### Scenario: Skips unchanged content
 - **WHEN** a `modified` event fires for a file whose content has not actually changed
 - **THEN** the watcher SHALL skip ingestion and log a debug message
@@ -123,6 +121,10 @@ When file hashing fails with an `OSError` (e.g., permission denied), the watcher
 #### Scenario: Ingests genuinely changed content
 - **WHEN** a `modified` event fires for a file whose content has genuinely changed (different hash)
 - **THEN** the watcher SHALL proceed with ingestion and update the cached hash
+
+### Requirement: Hashing errors clean up and the hash cache is bounded
+
+When file hashing fails with an `OSError` (e.g., permission denied), the watcher SHALL log a WARNING and SHALL clean up the stale timer entry for that file path. The hash cache SHALL be bounded — when it exceeds a configurable maximum number of entries (default 50 000), the least-recently-inserted entry SHALL be evicted.
 
 #### Scenario: OSError during hashing cleans up timer
 - **WHEN** file hashing raises `OSError` (e.g., permission denied)
@@ -137,15 +139,17 @@ When file hashing fails with an `OSError` (e.g., permission denied), the watcher
 
 ### Requirement: Ingestion via `ingest_path_async()`
 
-When the watcher determines that a file needs ingestion, it SHALL call `ingest_path_async()` with the single file path as the argument, the routed collection name, and the collection's effective settings resolved from the composition root's profile resolver (no workers override, no progress callback). Before ingesting, the watcher SHALL validate that the resolved file path lies within the watched directory root. If the resolved path falls outside the watch root (e.g., via a symlink to an external directory), the watcher SHALL log a WARNING and skip ingestion.
-
-The `ingest_path_async()` function SHALL include an `error_type` field in all error return dicts (`"file"` for path/extension errors, `"connection"` for embedding connectivity failures, `"embedding"` for non-connection embedding failures). When all files fail during processing, the return dict SHALL include both `error_type` and `message` fields describing the failure.
+When the watcher determines that a file needs ingestion, it SHALL call `ingest_path_async()` with the single file path as the argument, the routed collection name, and the collection's effective settings resolved from the composition root's profile resolver (no workers override, no progress callback).
 
 #### Scenario: Single-file ingestion on event
 - **WHEN** the watcher decides to ingest a file
 - **THEN** the watcher SHALL validate the resolved path is within the watch root
 - **THEN** the watcher SHALL call `ingest_path_async()` with that file's path
 - **THEN** the watcher SHALL log the outcome (success with chunk count, or failure) to stderr at INFO level
+
+### Requirement: The watcher ingests only files inside the watch root
+
+Before ingesting, the watcher SHALL validate that the resolved file path lies within the watched directory root. If the resolved path falls outside the watch root (e.g., via a symlink to an external directory), the watcher SHALL log a WARNING and skip ingestion.
 
 #### Scenario: Symlink traversal blocked
 - **WHEN** a file event fires for a symlink that points to a file outside the watched directory root
@@ -157,21 +161,18 @@ The `ingest_path_async()` function SHALL include an `error_type` field in all er
 - **WHEN** a file event fires for a resolved path that is within the watched directory root
 - **THEN** the watcher SHALL proceed with ingestion normally
 
+### Requirement: Ingestion error results name the error type
+
+The `ingest_path_async()` function SHALL include an `error_type` field in all error return dicts (`"file"` for path/extension errors, `"connection"` for embedding connectivity failures, `"embedding"` for non-connection embedding failures). When all files fail during processing, the return dict SHALL include both `error_type` and `message` fields describing the failure.
+
+#### Scenario: Error result carries an error type
+- **WHEN** `ingest_path_async()` returns an error dict
+- **THEN** the dict SHALL include an `error_type` field
+- **THEN** when all files fail during processing, the dict SHALL include both `error_type` and `message` fields
+
 ### Requirement: Graceful shutdown
 
-The watcher SHALL handle SIGINT (Ctrl+C) with a watcher-owned shutdown sequence. It SHALL NOT rely on `_shutdown_requested` as its primary shutdown mechanism (because `ingest_path_async()` unconditionally clears it). The shutdown sequence SHALL be: (1) cancel all pending `threading.Timer` callbacks to prevent new `ingest_path_async()` calls, (2) wait for any in-flight `ingest_path_async()` to complete naturally, with a **maximum wait of 30 seconds** — if ingestion has not completed, log a WARNING with the number of callbacks that remain in flight and stop waiting, (3) set `_shutdown_requested` as belt-and-suspenders for those callbacks, (4) stop the watchdog `Observer`, and (5) let the command return with status 0. The current daemon-timer implementation cannot synchronously cancel an in-flight async pipeline; a callback still running after the deadline may be abandoned when the process exits.
-
-#### Scenario: Ctrl+C stops the watcher
-- **WHEN** the user presses Ctrl+C while the watcher is running and no ingestion is in progress
-- **THEN** the watcher SHALL cancel all pending debounce timers
-- **THEN** the watcher SHALL stop the observer
-- **THEN** the watcher SHALL log a shutdown message to stderr and exit with status 0
-
-#### Scenario: Ctrl+C during in-flight ingestion
-- **WHEN** the user presses Ctrl+C while an `ingest_path_async()` call is in progress
-- **THEN** the watcher SHALL allow the in-flight ingestion to complete before stopping the observer, up to a 30-second maximum
-- **THEN** the watcher SHALL NOT start new ingestions (all pending timers cancelled)
-- **THEN** the watcher SHALL exit with status 0 after the in-flight ingestion finishes
+The watcher SHALL handle SIGINT (Ctrl+C) with a watcher-owned shutdown sequence. It SHALL NOT rely on `_shutdown_requested` as its primary shutdown mechanism (because `ingest_path_async()` unconditionally clears it). The current daemon-timer implementation cannot synchronously cancel an in-flight async pipeline; a callback still running after the deadline may be abandoned when the process exits.
 
 #### Scenario: Ctrl+C during hung ingestion
 - **WHEN** the user presses Ctrl+C while an `ingest_path_async()` call is in progress and the ingestion does not complete within 30 seconds
@@ -179,27 +180,55 @@ The watcher SHALL handle SIGINT (Ctrl+C) with a watcher-owned shutdown sequence.
 - **THEN** the watcher SHALL stop waiting, set the shutdown flag, stop the observer, and let the command return with status 0
 - **AND** the still-running daemon callback MAY be abandoned when the process exits
 
+### Requirement: Shutdown cancels pending timers and waits at most 30 seconds
+
+The shutdown sequence SHALL first (1) cancel all pending `threading.Timer` callbacks to prevent new `ingest_path_async()` calls, and (2) wait for any in-flight `ingest_path_async()` to complete naturally, with a **maximum wait of 30 seconds** — if ingestion has not completed, log a WARNING with the number of callbacks that remain in flight and stop waiting.
+
+#### Scenario: Ctrl+C during in-flight ingestion
+- **WHEN** the user presses Ctrl+C while an `ingest_path_async()` call is in progress
+- **THEN** the watcher SHALL allow the in-flight ingestion to complete before stopping the observer, up to a 30-second maximum
+- **THEN** the watcher SHALL NOT start new ingestions (all pending timers cancelled)
+- **THEN** the watcher SHALL exit with status 0 after the in-flight ingestion finishes
+
 #### Scenario: Ctrl+C during debounce window
 - **WHEN** the user presses Ctrl+C while a debounce timer is pending for a file
 - **THEN** the watcher SHALL cancel the pending timer
 - **THEN** the watcher SHALL NOT ingest the file
 - **THEN** the watcher SHALL stop the observer and exit
 
+### Requirement: Shutdown stops the observer and returns status 0
+
+After the wait, the shutdown sequence SHALL (3) set `_shutdown_requested` as belt-and-suspenders for those callbacks, (4) stop the watchdog `Observer`, and (5) let the command return with status 0.
+
+#### Scenario: Ctrl+C stops the watcher
+- **WHEN** the user presses Ctrl+C while the watcher is running and no ingestion is in progress
+- **THEN** the watcher SHALL cancel all pending debounce timers
+- **THEN** the watcher SHALL stop the observer
+- **THEN** the watcher SHALL log a shutdown message to stderr and exit with status 0
+
 ### Requirement: Logging
 
 The watcher SHALL log significant events to stderr at appropriate log levels:
 - INFO: ingestion start, success with chunk count, shutdown, successful deletion with chunk count (e.g. `"Auto-removed paper.pdf — 8 chunk(s) deleted"`)
-- WARNING: ingestion failure (except `FileNotFoundError` — see below), unexpected file system errors, path traversal blocked, file size limit exceeded, OSError during hashing, shutdown timeout with abandoned ingestions, failed deletion attempt (e.g. vector-store error, collection not found)
-- CRITICAL: N consecutive `ConnectionError` failures (default 5), as reported by `ingest_path_async()` via `error_type: "connection"`. Failures with `error_type: "file"` or `error_type: "embedding"` SHALL NOT increment the consecutive-`ConnectionError` counter.
 - DEBUG: skipped files (unsupported extension, unchanged hash), debounce timer resets, file-not-found-during-debounce, cancelled pending timers or cleared hash cache entries due to deletion
 
 #### Scenario: Watch logs to stderr
 - **WHEN** a file is successfully ingested
 - **THEN** the watcher SHALL output an INFO-level log like `Auto-ingested <filename> — <N> chunk(s)`
 
+### Requirement: The watcher logs failures and blocked events at WARNING level
+
+The watcher SHALL log significant events to stderr at appropriate log levels:
+- WARNING: ingestion failure (except `FileNotFoundError` — see below), unexpected file system errors, path traversal blocked, file size limit exceeded, OSError during hashing, shutdown timeout with abandoned ingestions, failed deletion attempt (e.g. vector-store error, collection not found)
+
 #### Scenario: Logs ingestion failure
 - **WHEN** `ingest_path_async()` fails with an error (e.g. corrupt PDF, vector-store issue)
 - **THEN** the watcher SHALL log a WARNING-level message with the filename and error details
+
+### Requirement: The watcher logs repeated connection failures at CRITICAL level
+
+The watcher SHALL log significant events to stderr at appropriate log levels:
+- CRITICAL: N consecutive `ConnectionError` failures (default 5), as reported by `ingest_path_async()` via `error_type: "connection"`. Failures with `error_type: "file"` or `error_type: "embedding"` SHALL NOT increment the consecutive-`ConnectionError` counter.
 
 #### Scenario: Embedding failure does not trigger ConnectionError alert
 - **WHEN** `ingest_path_async()` returns `error_type: "embedding"` (non-connection failure)
@@ -208,12 +237,22 @@ The watcher SHALL log significant events to stderr at appropriate log levels:
 
 ### Requirement: Ingestion failure handling
 
-When `ingest_path_async()` fails for a file, the watcher SHALL NOT update the cached hash, so the next `modified` event for that file triggers a fresh attempt. The watcher SHALL track consecutive failures using a thread-safe counter protected by a `threading.Lock`. If the last 5 consecutive failures are all `ConnectionError` (as indicated by `error_type: "connection"` from `ingest_path_async()`), the watcher SHALL log a CRITICAL-level message recommending the user check Ollama and restart the watcher. Failures with other `error_type` values SHALL NOT count toward the `ConnectionError` threshold. Autonomous retry loops SHALL NOT be implemented in v1.
+When `ingest_path_async()` fails for a file, the watcher SHALL NOT update the cached hash, so the next `modified` event for that file triggers a fresh attempt. Autonomous retry loops SHALL NOT be implemented in v1.
 
 #### Scenario: File ingestion failure keeps hash unchanged
 - **WHEN** `ingest_path_async()` fails for a file (e.g. corrupt PDF)
 - **THEN** the watcher SHALL NOT update the file's cached hash
 - **THEN** a subsequent `modified` event for the same file SHALL trigger a fresh ingestion attempt
+
+#### Scenario: File deleted during debounce window
+- **WHEN** a file event triggers a debounce timer, but the file is deleted before the timer fires
+- **THEN** the watcher SHALL catch the resulting `FileNotFoundError` from `ingest_path_async()`
+- **THEN** the watcher SHALL log a DEBUG-level message (not WARNING — it's a normal race condition)
+- **THEN** the watcher SHALL remove the file's entry from the hash cache and pending timer tracking
+
+### Requirement: Consecutive connection failures raise a critical alert
+
+The watcher SHALL track consecutive failures using a thread-safe counter protected by a `threading.Lock`. If the last 5 consecutive failures are all `ConnectionError` (as indicated by `error_type: "connection"` from `ingest_path_async()`), the watcher SHALL log a CRITICAL-level message recommending the user check Ollama and restart the watcher. Failures with other `error_type` values SHALL NOT count toward the `ConnectionError` threshold.
 
 #### Scenario: Consecutive ConnectionError triggers critical alert
 - **WHEN** the watcher experiences 5 consecutive failures with `error_type: "connection"`
@@ -225,12 +264,6 @@ When `ingest_path_async()` fails for a file, the watcher SHALL NOT update the ca
 - **AND** the next ingestion fails with `error_type: "embedding"` (not `"connection"`)
 - **THEN** the watcher SHALL log a WARNING (not CRITICAL) for the embedding failure
 - **THEN** the consecutive-`ConnectionError` counter SHALL be reset to 0
-
-#### Scenario: File deleted during debounce window
-- **WHEN** a file event triggers a debounce timer, but the file is deleted before the timer fires
-- **THEN** the watcher SHALL catch the resulting `FileNotFoundError` from `ingest_path_async()`
-- **THEN** the watcher SHALL log a DEBUG-level message (not WARNING — it's a normal race condition)
-- **THEN** the watcher SHALL remove the file's entry from the hash cache and pending timer tracking
 
 ### Requirement: Ingestion throttling
 

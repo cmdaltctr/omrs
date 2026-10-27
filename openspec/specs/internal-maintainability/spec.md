@@ -43,21 +43,12 @@ Tests SHALL not rely on a hardcoded shared ChromaDB persist path when an isolate
 Documentation that cites a source file path SHALL cite a path that exists.
 Every `src/omrs/**/*.py` path referenced in `docs/guides/`,
 `tests/TEST_README.md`, the root `AGENTS.md` or a folder guidance file SHALL
-resolve to a file on disk. A short citation that starts at a top-level
-package folder (`core/`, `transports/`, `integrations/`, `config/` or
-`daemon/`) and omits `src/omrs/` SHALL resolve below `src/omrs/` in the same
-way. Records under `docs/adr/` are EXCLUDED: an ADR legitimately cites paths
+resolve to a file on disk. Records under `docs/adr/` are EXCLUDED: an ADR legitimately cites paths
 that were correct when the decision was taken and have since moved.
 
 #### Scenario: A guide cites a path deleted by a refactor
 
 - **WHEN** a guide references `src/omrs/config.py` after the v2 split moved it to `src/omrs/config/__init__.py`
-- **THEN** the documentation reference check SHALL fail
-- **THEN** the failure SHALL name the citing file, its line, and the unresolved path
-
-#### Scenario: A guide cites a moved file without the package prefix
-
-- **WHEN** a guide references `core/vectordb/lancedb.py` after the file moved to `core/vectordb/lancedb/store.py`
 - **THEN** the documentation reference check SHALL fail
 - **THEN** the failure SHALL name the citing file, its line, and the unresolved path
 
@@ -71,6 +62,19 @@ that were correct when the decision was taken and have since moved.
 - **WHEN** `docs/adr/026-provider-registry-and-openrouter.md` references `src/omrs/metadata_extractor.py`, a v1 module deleted in v2.0.0
 - **THEN** the check SHALL NOT fail
 - **THEN** the ADR SHALL remain unmodified, its accuracy carried by a dated forward note instead
+
+### Requirement: Short source citations resolve below the package folder
+
+A short citation that starts at a top-level
+package folder (`core/`, `transports/`, `integrations/`, `config/` or
+`daemon/`) and omits `src/omrs/` SHALL resolve below `src/omrs/` in the same
+way.
+
+#### Scenario: A guide cites a moved file without the package prefix
+
+- **WHEN** a guide references `core/vectordb/lancedb.py` after the file moved to `core/vectordb/lancedb/store.py`
+- **THEN** the documentation reference check SHALL fail
+- **THEN** the failure SHALL name the citing file, its line, and the unresolved path
 
 ### Requirement: Documented provider names match the live registries
 

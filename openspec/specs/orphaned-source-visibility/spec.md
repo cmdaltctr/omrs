@@ -12,11 +12,6 @@ Every listed document row SHALL include an `orphaned` field. The field SHALL be
 current machine. It SHALL be `false` when that absolute path exists. It SHALL be
 `null` when the row has no usable absolute path.
 
-The `null` state MUST cover legacy rows with basename-only `file_name` values,
-rows whose display source is `"unknown"`, and any path syntax that is not
-absolute on the current machine. The system MUST NOT infer a filesystem state
-from `source_id` or another metadata field.
-
 #### Scenario: Absolute source path is missing
 
 - **GIVEN** a listed row carries an absolute source path
@@ -30,6 +25,13 @@ from `source_id` or another metadata field.
 - **AND** that path exists on the current machine
 - **WHEN** documents are listed
 - **THEN** the row MUST contain `"orphaned": false`
+
+### Requirement: Orphan status is null without a usable absolute path
+
+The `null` state MUST cover legacy rows with basename-only `file_name` values,
+rows whose display source is `"unknown"`, and any path syntax that is not
+absolute on the current machine. The system MUST NOT infer a filesystem state
+from `source_id` or another metadata field.
 
 #### Scenario: Legacy row has only a basename
 

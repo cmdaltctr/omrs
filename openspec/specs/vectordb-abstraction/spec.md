@@ -66,10 +66,26 @@ behaviour rather than hidden implementation detail.
 ### Requirement: ChromaDB as first implementation
 
 The system SHALL provide the Chroma backend in the `core/vectordb/chroma/`
-folder, with `core/vectordb/chroma/store.py` implementing the
-`VectorStore` ABC, absorbing all logic from `chroma_utils.py` and the
-ChromaDB-specific collection management formerly in the ingestion writer.
-`chroma_utils.py` SHALL cease to exist as a top-level module.
+folder, with `core/vectordb/chroma/store.py` implementing the `VectorStore`
+ABC, absorbing all logic from `chroma_utils.py` and the ChromaDB-specific
+collection management formerly in the ingestion writer. `chroma_utils.py`
+SHALL cease to exist as a top-level module.
+
+#### Scenario: Existing collections keep working
+
+- **WHEN** the server starts against an existing flat `chroma_persist_dir`
+  (default `./chroma_db`) containing collections
+- **THEN** all previously indexed collections MUST be readable and queryable
+  with no data migration
+
+#### Scenario: Existing tests pass against the implementation
+
+- **WHEN** `uv run pytest -m "not slow" --cov=omrs` runs
+- **THEN** all pre-existing tests MUST pass against the ChromaDB-backed
+  implementation with no assertion changes beyond injected-settings plumbing
+
+### Requirement: Only the Chroma backend modules use the chromadb client
+
 Modules in `core/vectordb/chroma/` SHALL be the **only** modules in the
 package that import `chromadb` or construct a ChromaDB client; every other
 consumer, including the codebase map, SHALL go through the `VectorStore`
@@ -87,19 +103,6 @@ interface.
 - **THEN** it MUST call `VectorStore` methods on an injected store
 - **AND** it MUST NOT create its own ChromaDB client or persist directory
   handle
-
-#### Scenario: Existing collections keep working
-
-- **WHEN** the server starts against an existing flat `chroma_persist_dir`
-  (default `./chroma_db`) containing collections
-- **THEN** all previously indexed collections MUST be readable and queryable
-  with no data migration
-
-#### Scenario: Existing tests pass against the implementation
-
-- **WHEN** `uv run pytest -m "not slow" --cov=omrs` runs
-- **THEN** all pre-existing tests MUST pass against the ChromaDB-backed
-  implementation with no assertion changes beyond injected-settings plumbing
 
 ### Requirement: Store selection via configuration
 
@@ -218,21 +221,30 @@ The vector-store abstraction SHALL provide or permit a stable process-local iden
 
 ### Requirement: Embedding-provider swappability scope is explicit
 
-Embedding-provider selection SHALL be **engine scoped**. Each engine owns its
-embedding provider and model, and two engines in one process MAY use different
-providers or models simultaneously. The vector-store abstraction SHALL
-document this scope accurately and MUST NOT imply guarantees the runtime does
-not implement.
+Embedding-provider selection SHALL be **engine scoped**.
 
 This supersedes the previous process-scoped model, which existed because the
-underlying library exposes one process-global embed model and the composition
-root assigned it at startup (ADR-047 decision 7). With composition owned by
-the engine, that global is no longer the mechanism by which an operation's
-embedder is selected.
+underlying library exposes one process-global embed model and the
+composition root assigned it at startup (ADR-047 decision 7). With
+composition owned by the engine, that global is no longer the mechanism by
+which an operation's embedder is selected.
 
 #### Scenario: Different deployment provider
 - **WHEN** a process starts with a different registered embedding provider
 - **THEN** the composition root MAY construct the new provider and stores SHALL operate through the same contract
+
+#### Scenario: Mismatched embedding identity is still rejected
+- **WHEN** an engine operates on a collection stamped with a different
+  embedding identity
+- **THEN** the existing embedding-identity guard SHALL reject the operation
+- **AND** engine scoping SHALL NOT weaken that guard
+
+### Requirement: Each engine owns its embedding provider and model
+
+Each engine owns its embedding provider and model, and two engines in one
+process MAY use different providers or models simultaneously. The
+vector-store abstraction SHALL document this scope accurately and MUST NOT
+imply guarantees the runtime does not implement.
 
 #### Scenario: Concurrent per-collection provider request
 - **WHEN** two engines in one process are configured with different embedding
@@ -241,31 +253,37 @@ embedder is selected.
 - **AND** the previously documented unsupported boundary SHALL no longer
   apply, with documentation and tests updated to match
 
-#### Scenario: Mismatched embedding identity is still rejected
-- **WHEN** an engine operates on a collection stamped with a different
-  embedding identity
-- **THEN** the existing embedding-identity guard SHALL reject the operation
-- **AND** engine scoping SHALL NOT weaken that guard
-
 ### Requirement: Stores expose a durable collection data version
 
 Every registered vector store SHALL expose the data-version capability for a
 collection, returning either an opaque durable token or explicit
-unavailability. A returned token SHALL change when the collection's rows or
-dataset identity change, including overwrite-based schema evolution and
-recreation, and SHALL be observable by any process reading the same underlying
-data. A numeric version whose history can restart is not sufficient alone.
-
-For LanceDB, the token SHALL combine an OMRS-owned random dataset epoch stored
-in current table schema metadata with `table.version`. Ordinary row mutations
-SHALL preserve the epoch. Table creation, recreation and every overwrite-based
-rebuild SHALL replace it. Version-history timestamps and row counts SHALL NOT
-be used as substitutes.
+unavailability.
 
 This is distinct from the existing process-local generation counter, which
 remains the mechanism for same-process invalidation. A store whose backend
 offers no durable version SHALL say so explicitly rather than returning the
 process-local counter under a durable name.
+
+#### Scenario: Absent collection
+
+- **WHEN** the durable version of a collection that does not exist is
+  requested
+- **THEN** the store SHALL report absence rather than raising
+
+#### Scenario: Unsupported backends are explicit
+
+- **GIVEN** a store whose backend exposes no durable version
+- **WHEN** the durable version is requested
+- **THEN** the store SHALL report the capability as unavailable
+- **AND** callers SHALL fall back to the process-local counter with the
+  reduced guarantee stated in their own contract
+
+### Requirement: The durable version changes with the data and is visible to every process
+
+A returned token SHALL change when the collection's rows or dataset identity
+change, including overwrite-based schema evolution and recreation, and SHALL
+be observable by any process reading the same underlying data. A numeric
+version whose history can restart is not sufficient alone.
 
 #### Scenario: Version advances after a write
 
@@ -282,6 +300,20 @@ process-local counter under a durable name.
 - **THEN** B SHALL observe a different durable version without any
   inter-process signalling
 - **AND** B's process-local generation counter MAY remain unchanged
+
+#### Scenario: Version is stable without mutation
+
+- **GIVEN** a collection with no mutation between two reads
+- **WHEN** the durable version is read twice
+- **THEN** both reads SHALL return the same value
+
+### Requirement: The LanceDB data version combines a dataset epoch with the table version
+
+For LanceDB, the token SHALL combine an OMRS-owned random dataset epoch
+stored in current table schema metadata with `table.version`. Ordinary row
+mutations SHALL preserve the epoch. Table creation, recreation and every
+overwrite-based rebuild SHALL replace it. Version-history timestamps and row
+counts SHALL NOT be used as substitutes.
 
 #### Scenario: Overwrite and recreation cannot collide
 
@@ -309,32 +341,12 @@ process-local counter under a durable name.
 - **AND** readers MUST treat the change from local fallback to durable token as
   cache invalidation
 
-#### Scenario: Version is stable without mutation
-
-- **GIVEN** a collection with no mutation between two reads
-- **WHEN** the durable version is read twice
-- **THEN** both reads SHALL return the same value
-
-#### Scenario: Absent collection
-
-- **WHEN** the durable version of a collection that does not exist is
-  requested
-- **THEN** the store SHALL report absence rather than raising
-
 #### Scenario: Long-lived readers observe recreation
 
 - **GIVEN** process A holds an open Lance store and has observed token T
 - **WHEN** process B rebuilds or recreates that collection with a new epoch
 - **THEN** A's next data-version read MUST observe a token different from T
 - **AND** A MUST NOT require a process restart
-
-#### Scenario: Unsupported backends are explicit
-
-- **GIVEN** a store whose backend exposes no durable version
-- **WHEN** the durable version is requested
-- **THEN** the store SHALL report the capability as unavailable
-- **AND** callers SHALL fall back to the process-local counter with the
-  reduced guarantee stated in their own contract
 
 ### Requirement: Stores provide bounded filtered row reads
 

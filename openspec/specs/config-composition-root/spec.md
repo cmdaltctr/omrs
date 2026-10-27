@@ -9,6 +9,14 @@ construction and provider-selection errors, and hands every operation a
 frozen effective-settings object. No layer below the composition root
 reads configuration on its own.
 
+**Provider-selection errors.** Raising on an unknown provider selection matches the existing `VECTOR_STORE`
+unknown-value contract (`vectordb-abstraction`, ADR-034) and closes the gap
+left by ADR-029: an unrecognised provider selection is a misconfiguration a
+user should see immediately, not a warning buried in a log stream the MCP
+transport makes invisible. `PDF_READER`'s
+unknown-value handling is unchanged — it is governed by the `pdf-reader`
+capability.
+
 ## Requirements
 
 ### Requirement: Three-layer configuration architecture
@@ -17,13 +25,7 @@ The system SHALL separate configuration into three layers: a typed settings
 resolver (`config.py`), a composition root (`compose.py`), and dependency
 injection in every other module. `config.py` SHALL contain only settings
 data, parsing, and validation — zero object construction (no `_build_*()`
-methods) and zero runtime capability probing. `config.py` SHALL NOT import
-from any `core/` module other than the pure-data subpackage `settings`
-models, and SHALL remain at or below approximately 150 lines. `compose.py`
-SHALL be the only module that instantiates provider and pipeline objects and
-the only module that resolves capability probes. All other modules SHALL
-receive their dependencies and their settings as parameters and SHALL NOT
-import concrete provider classes or a settings singleton.
+methods) and zero runtime capability probing.
 
 #### Scenario: config.py is construction-free
 
@@ -31,6 +33,12 @@ import concrete provider classes or a settings singleton.
 - **THEN** it MUST NOT contain any provider or pipeline object construction
 - **AND** it MUST expose a validated, immutable resolved `Settings` object via
   `get_settings()` with no module-level instantiation
+
+### Requirement: config.py stays free of business logic and within its size target
+
+`config.py` SHALL NOT import from any `core/` module other than the
+pure-data subpackage `settings` models, and SHALL remain at or below
+approximately 150 lines.
 
 #### Scenario: config.py is business-logic-free
 
@@ -43,6 +51,14 @@ import concrete provider classes or a settings singleton.
 
 - **WHEN** `src/omrs/config/__init__.py` is measured
 - **THEN** it MUST be at or below approximately 150 lines
+
+### Requirement: Only compose.py constructs providers and pipelines
+
+`compose.py` SHALL be the only module that instantiates provider and
+pipeline objects and the only module that resolves capability probes. All
+other modules SHALL receive their dependencies and their settings as
+parameters and SHALL NOT import concrete provider classes or a settings
+singleton.
 
 #### Scenario: compose.py is the single construction site
 
@@ -69,15 +85,7 @@ The system SHALL resolve the effective `Settings` by layering sources in a
 documented precedence order: subpackage model defaults (lowest),
 `config/defaults.yaml`, the selected YAML profile bundle when present,
 `omrs.jsonc` in the user config folder, `.env`, the process environment, then
-explicit per-operation options (highest). `config/defaults.yaml` and profile
-bundles SHALL be expressed as nested mappings keyed by subpackage block
-(`chunking:`, `retrieval:`, `metadata:`) plus top-level cross-cutting keys, and
-SHALL be deep-merged rather than flattened. `omrs.jsonc` SHALL use the same
-nesting and SHALL be deep-merged in the same way. The YAML files SHALL contain
-no secrets, provider keys, or machine-specific absolute paths. YAML files SHALL
-be loaded via `importlib.resources` so they resolve correctly in both
-development (repository root) and installed (site-packages) contexts, and SHALL
-be declared as package data in `pyproject.toml`. The resolver SHALL record the
+explicit per-operation options (highest). The resolver SHALL record the
 source of each value so the transports can report it.
 
 #### Scenario: Environment overrides YAML
@@ -98,6 +106,14 @@ source of each value so the transports can report it.
   `RETRIEVAL__TOP_K=12`
 - **THEN** the resolved value MUST be 12 with the source `dotenv`
 
+### Requirement: Configuration files use nested blocks and deep-merge
+
+`config/defaults.yaml` and profile bundles SHALL be expressed as nested
+mappings keyed by subpackage block (`chunking:`, `retrieval:`, `metadata:`)
+plus top-level cross-cutting keys, and SHALL be deep-merged rather than
+flattened. `omrs.jsonc` SHALL use the same nesting and SHALL be deep-merged
+in the same way.
+
 #### Scenario: Nested YAML is deep-merged
 
 - **WHEN** `config/defaults.yaml` declares `retrieval.top_k` and the selected
@@ -109,6 +125,14 @@ source of each value so the transports can report it.
 
 - **WHEN** `omrs.jsonc` declares only `retrieval.top_k`
 - **THEN** every other `retrieval` value MUST come from the lower sources
+
+### Requirement: YAML defaults hold no secrets and ship as package data
+
+The YAML files SHALL contain no secrets, provider keys, or machine-specific
+absolute paths. YAML files SHALL be loaded via `importlib.resources` so they
+resolve correctly in both development (repository root) and installed
+(site-packages) contexts, and SHALL be declared as package data in
+`pyproject.toml`.
 
 #### Scenario: YAML contains no secrets
 
@@ -127,23 +151,13 @@ source of each value so the transports can report it.
 Each subpackage (chunking, retrieval, metadata) SHALL declare a
 `settings.py` containing a Pydantic model of its configuration knobs and
 defaults. These models SHALL be pure data and SHALL NOT import from
-`config.py`, `compose.py`, or any other `core/` module. The root `Settings`
-model SHALL compose these models as **nested fields** (`chunking:`,
-`retrieval:`, `metadata:`) rather than by multiple inheritance, and SHALL
-declare `env_nested_delimiter` so each nested field is addressable from the
-environment.
+`config.py`, `compose.py`, or any other `core/` module.
 
 #### Scenario: No upward imports
 
 - **WHEN** the import-linter CI check runs
 - **THEN** it MUST fail if any subpackage `settings.py` imports from
   `config.py`, `compose.py`, or a sibling `core/` module
-
-#### Scenario: Root settings composes by nesting
-
-- **WHEN** the root `Settings` model is inspected
-- **THEN** `chunking`, `retrieval`, and `metadata` MUST be nested model fields
-- **AND** the class MUST NOT inherit from the subpackage settings models
 
 #### Scenario: Defaults live near their code
 
@@ -153,22 +167,25 @@ environment.
 
 ---
 
+### Requirement: Root settings nest the subpackage models
+
+The root `Settings` model SHALL compose these models as **nested fields**
+(`chunking:`, `retrieval:`, `metadata:`) rather than by multiple
+inheritance, and SHALL declare `env_nested_delimiter` so each nested field
+is addressable from the environment.
+
+#### Scenario: Root settings composes by nesting
+
+- **WHEN** the root `Settings` model is inspected
+- **THEN** `chunking`, `retrieval`, and `metadata` MUST be nested model fields
+- **AND** the class MUST NOT inherit from the subpackage settings models
+
 ### Requirement: Shared registry contract
 
 Every strategy folder SHALL implement its `registry.py` as a lazy registry
 and SHALL be the **only** dispatch mechanism used by production code for that
 concern. This applies to `chunking/`, `retrieval/`, `metadata/`,
-`providers/embeddings/`, and `providers/llm/`. Each `registry.py` SHALL map
-strategy names to lazy `"module:attr"` import strings, resolved and cached on
-first `get()`, and SHALL expose `register(name, import_path)`, `get(name)`,
-and `available()` as its public API. The underlying mapping SHALL be private.
-Registration at module level SHALL record import strings, not live objects,
-so importing a registry does not eagerly import strategy modules.
-
-#### Scenario: Lazy resolution
-
-- **WHEN** a registry module is imported
-- **THEN** no strategy module MUST be imported as a side effect
+`providers/embeddings/`, and `providers/llm/`.
 
 #### Scenario: Registries are the production dispatch path
 
@@ -177,6 +194,28 @@ so importing a registry does not eagerly import strategy modules.
 - **THEN** it MUST resolve the strategy through `registry.get(name)`
 - **AND** it MUST NOT use eager top-level imports of concrete strategy modules
   or an if/elif chain over strategy names
+
+#### Scenario: Adding a strategy touches one file
+
+- **WHEN** a new strategy is added
+- **THEN** it MUST require only a new strategy file plus one `register()`
+  line in that folder's `registry.py`, with no other file modified
+
+---
+
+### Requirement: Registries resolve lazy import strings
+
+Each `registry.py` SHALL map strategy names to lazy `"module:attr"` import
+strings, resolved and cached on first `get()`, and SHALL expose
+`register(name, import_path)`, `get(name)`, and `available()` as its public
+API. The underlying mapping SHALL be private. Registration at module level
+SHALL record import strings, not live objects, so importing a registry does
+not eagerly import strategy modules.
+
+#### Scenario: Lazy resolution
+
+- **WHEN** a registry module is imported
+- **THEN** no strategy module MUST be imported as a side effect
 
 #### Scenario: Registration goes through the helper
 
@@ -196,24 +235,45 @@ so importing a registry does not eagerly import strategy modules.
 - **THEN** it MUST raise an `ImportError` naming the strategy and the missing
   dependency context, without breaking other strategies
 
-#### Scenario: Adding a strategy touches one file
-
-- **WHEN** a new strategy is added
-- **THEN** it MUST require only a new strategy file plus one `register()`
-  line in that folder's `registry.py`, with no other file modified
-
----
-
 ### Requirement: Structured environment variable interface
 
 Environment variables for subpackage settings SHALL be addressed through the
 nested delimiter (`CHUNKING__*`, `INGESTION__*`, `RETRIEVAL__*`, `METADATA__*`).
+This is a **breaking change** to the
+configuration surface: the pre-v2 flat subpackage names SHALL NOT be accepted
+as aliases.
+
+#### Scenario: Nested env var applies
+
+- **WHEN** `RETRIEVAL__TOP_K=20` is set
+- **THEN** the resolved settings MUST report `retrieval.top_k == 20`
+
+#### Scenario: Ingestion concurrency is addressed under its own prefix
+
+- **WHEN** `INGESTION__EMBED_CONCURRENCY=4` is set
+- **THEN** the resolved settings MUST report `ingestion.embed_concurrency == 4`
+- **AND** `CHUNKING__EMBED_CONCURRENCY` MUST be rejected as an unknown field
+
+#### Scenario: Documentation matches the surface
+
+- **WHEN** `.env.example` and the configuration guide are read
+- **THEN** every documented variable name MUST match the name the resolver
+  actually accepts
+
+### Requirement: Cross-cutting settings keep flat names
+
 Cross-cutting settings that are not owned by a subpackage (for example
 `EMBED_MODEL`, `CHROMA_PERSIST_DIR`, `COLLECTION_NAME`, `VECTOR_STORE`,
 `PDF_READER`, `DOCUMENT_BACKEND`, `RAG_PROFILE`, and provider credentials)
-SHALL keep their existing flat names. This is a **breaking change** to the
-configuration surface: the pre-v2 flat subpackage names SHALL NOT be accepted
-as aliases.
+SHALL keep their existing flat names.
+
+#### Scenario: Cross-cutting names unchanged
+
+- **WHEN** `EMBED_MODEL`, `CHROMA_PERSIST_DIR`, or `RAG_PROFILE` is set
+- **THEN** the resolved settings MUST reflect the value under the same name as
+  before v2.0.0
+
+### Requirement: Unrecognised configuration is not silently discarded
 
 Unrecognised configuration MUST NOT be silently discarded. Two guards SHALL
 enforce this, with distinct scopes:
@@ -221,24 +281,7 @@ enforce this, with distinct scopes:
 1. Each subpackage settings model SHALL reject unknown fields
    (`extra="forbid"`), so any unexpected key under a nested prefix — including
    a typo or a name nobody enumerated — fails at settings resolution naming the
-   offending field. The root settings model SHALL remain permissive, because it
-   legitimately coexists with unrelated process environment entries.
-2. Startup SHALL additionally fail with an actionable error when a known
-   pre-v2 flat subpackage name is present in the environment, naming its nested
-   replacement. This guard is required because a bare flat name never reaches a
-   subpackage model and therefore cannot be caught by guard 1.
-
-#### Scenario: Nested env var applies
-
-- **WHEN** `RETRIEVAL__TOP_K=20` is set
-- **THEN** the resolved settings MUST report `retrieval.top_k == 20`
-
-#### Scenario: Legacy flat name is rejected loudly
-
-- **WHEN** the pre-v2 `TOP_K=20` is set and `RETRIEVAL__TOP_K` is not
-- **THEN** startup MUST fail with an error naming `RETRIEVAL__TOP_K` as the
-  replacement
-- **AND** the legacy value MUST NOT be silently applied or silently ignored
+   offending field.
 
 #### Scenario: Unknown nested key is rejected loudly
 
@@ -249,6 +292,11 @@ enforce this, with distinct scopes:
 - **AND** the value MUST NOT be silently discarded, even though the name is
   absent from the known-legacy enumeration
 
+### Requirement: The root settings model stays permissive
+
+The root settings model SHALL remain permissive, because it
+legitimately coexists with unrelated process environment entries.
+
 #### Scenario: Unrelated process environment entries are tolerated
 
 - **WHEN** the process environment contains variables unrelated to this
@@ -256,58 +304,29 @@ enforce this, with distinct scopes:
 - **THEN** settings resolution MUST succeed
 - **AND** the root settings model MUST NOT reject them
 
-#### Scenario: Ingestion concurrency is addressed under its own prefix
+### Requirement: Startup rejects known pre-v2 flat names
 
-- **WHEN** `INGESTION__EMBED_CONCURRENCY=4` is set
-- **THEN** the resolved settings MUST report `ingestion.embed_concurrency == 4`
-- **AND** `CHUNKING__EMBED_CONCURRENCY` MUST be rejected as an unknown field
+2. Startup SHALL additionally fail with an actionable error when a known
+   pre-v2 flat subpackage name is present in the environment, naming its nested
+   replacement. This guard is required because a bare flat name never reaches a
+   subpackage model and therefore cannot be caught by guard 1.
 
-#### Scenario: Cross-cutting names unchanged
+#### Scenario: Legacy flat name is rejected loudly
 
-- **WHEN** `EMBED_MODEL`, `CHROMA_PERSIST_DIR`, or `RAG_PROFILE` is set
-- **THEN** the resolved settings MUST reflect the value under the same name as
-  before v2.0.0
-
-#### Scenario: Documentation matches the surface
-
-- **WHEN** `.env.example` and the configuration guide are read
-- **THEN** every documented variable name MUST match the name the resolver
-  actually accepts
+- **WHEN** the pre-v2 `TOP_K=20` is set and `RETRIEVAL__TOP_K` is not
+- **THEN** startup MUST fail with an error naming `RETRIEVAL__TOP_K` as the
+  replacement
+- **AND** the legacy value MUST NOT be silently applied or silently ignored
 
 ### Requirement: Composition root fails fast on construction and provider-selection errors
 
 `compose.py::ensure_runtime_setup` SHALL raise instead of logging a warning
-and continuing when `build_embed_model` or `build_vector_store` fails. A
-process that reports successful startup MUST have a working embed model and
-a registered default vector store — leaving either unset and continuing
-turns a construction failure into a confusing downstream error (or silent
-misbehaviour) instead of a clear startup failure.
+and continuing when `build_embed_model` or `build_vector_store` fails.
 
 Entry points call `ensure_runtime_setup()` explicitly during startup, so
 this failure surfaces when the startup path runs, not at import time.
 Importing `compose.py` has no runtime side effects. A traceback plus a
 non-zero exit is loud, which is the point.
-
-`config/__init__.py`'s provider-selection validation SHALL raise
-`ValueError` — which pydantic surfaces as a `ValidationError` subclassing
-`ValueError` when raised inside a model validator — naming the offending
-value and the accepted values, instead of
-logging a warning and clamping to a default, for: `EMBED_PROVIDER`,
-`METADATA_LLM_PROVIDER`, `LOCAL_BACKEND`, `CLOUD_BACKEND`,
-`RETRIEVAL__HYBRID_SPARSE_BACKEND`, and an unrecognised `DOCUMENT_BACKEND`
-value. This matches the existing `VECTOR_STORE` unknown-value contract
-(`vectordb-abstraction`, ADR-034) and closes the gap left by ADR-029: an
-unrecognised provider selection is a misconfiguration a user should see
-immediately, not a warning buried in a log stream the MCP transport makes
-invisible.
-
-This requirement does NOT apply to the two settings that degrade
-deliberately by design: `DOCUMENT_BACKEND=azure` with missing Azure
-credentials SHALL still fall back to local processing (required by the
-cloud-opt-in-with-local-fallback hard boundary), and an unrecognised
-`RAG_PROFILE` SHALL still fall back to `documents` (required by the profile
-system's own degrade-gracefully design). `PDF_READER`'s unknown-value
-handling is unchanged — it is governed by the `pdf-reader` capability.
 
 #### Scenario: Embed model construction failure fails startup
 
@@ -316,12 +335,29 @@ handling is unchanged — it is governed by the `pdf-reader` capability.
 - **THEN** the exception SHALL propagate and startup SHALL fail
 - **THEN** no warning-and-continue path SHALL leave `LlamaIndexSettings.embed_model` unset while reporting success
 
+### Requirement: A started process has a working embed model and vector store
+
+A process that reports successful startup MUST have a working embed model
+and a registered default vector store — leaving either unset and continuing
+turns a construction failure into a confusing downstream error (or silent
+misbehaviour) instead of a clear startup failure.
+
 #### Scenario: Vector store construction failure fails startup
 
 - **GIVEN** `build_vector_store` raises `ImportError` or `ValueError`
 - **WHEN** `ensure_runtime_setup` runs
 - **THEN** the exception SHALL propagate and startup SHALL fail
 - **THEN** no warning-and-continue path SHALL leave the default vector store unregistered while reporting success
+
+### Requirement: Provider-selection settings reject unknown values
+
+`config/__init__.py`'s provider-selection validation SHALL raise
+`ValueError` — which pydantic surfaces as a `ValidationError` subclassing
+`ValueError` when raised inside a model validator — naming the offending
+value and the accepted values, instead of logging a warning and clamping to
+a default, for: `EMBED_PROVIDER`, `METADATA_LLM_PROVIDER`, `LOCAL_BACKEND`,
+`CLOUD_BACKEND`, `RETRIEVAL__HYBRID_SPARSE_BACKEND`, and an unrecognised
+`DOCUMENT_BACKEND` value.
 
 #### Scenario: Provider validation runs before dependent validation
 
@@ -367,6 +403,15 @@ handling is unchanged — it is governed by the `pdf-reader` capability.
 - **WHEN** `DOCUMENT_BACKEND` is set to a value other than `local` or `azure`
 - **THEN** settings resolution SHALL raise `ValueError` naming the offending value
 - **THEN** the system SHALL NOT fall back to `local`
+
+### Requirement: Two provider settings still degrade by design
+
+The provider-selection rejection does NOT apply to the two
+settings that degrade deliberately by design: `DOCUMENT_BACKEND=azure` with
+missing Azure credentials SHALL still fall back to local processing
+(required by the cloud-opt-in-with-local-fallback hard boundary), and an
+unrecognised `RAG_PROFILE` SHALL still fall back to `documents` (required by
+the profile system's own degrade-gracefully design).
 
 #### Scenario: DOCUMENT_BACKEND=azure with missing credentials still degrades to local
 

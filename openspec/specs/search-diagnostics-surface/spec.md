@@ -97,25 +97,6 @@ Durations SHALL be reported in seconds as a single `timings` mapping of stage
 name to duration, attached to each returned result so the field set survives
 fusion and reranking exactly as the existing per-row diagnostics do.
 
-A stage that did not run SHALL be absent from the mapping. Absence means the
-stage did not execute; it MUST NOT be reported as a zero duration, because
-zero is a legitimate measurement for a stage that ran and was fast. This
-follows the reporting rule the ingest norm band already uses: report what ran,
-not what did not.
-
-A stage that executes more than once during one query SHALL report the sum of
-its executions. The reported value is the total time the query spent in that
-stage, so no execution is discarded. The mapping SHALL NOT report the duration
-of only the most recent execution.
-
-Because the mapping is attached to result rows, a query that returns no rows
-SHALL report no timings. This is a known boundary of row-attached diagnostics,
-not a defect.
-
-Timing SHALL be measurement only. Enabling diagnostics SHALL NOT change which
-candidates are retrieved, their scores, their order, or the final result
-count.
-
 #### Scenario: Hybrid query reports both retrieval branches
 
 - **WHEN** a caller runs a hybrid search with diagnostics enabled
@@ -123,18 +104,6 @@ count.
 - **AND** the mapping contains a duration for query embedding, dense search,
   sparse search, and fusion
 - **AND** every reported duration is a non-negative number of seconds
-
-#### Scenario: Dense-only query omits the sparse stage
-
-- **WHEN** a caller runs a non-hybrid search with diagnostics enabled
-- **THEN** the `timings` mapping contains no sparse-search entry
-- **AND** it contains no fusion entry
-- **AND** the absent entries are omitted rather than reported as zero
-
-#### Scenario: Non-reranked query omits the rerank stage
-
-- **WHEN** a search resolves to no reranking and diagnostics are enabled
-- **THEN** the `timings` mapping contains no rerank entry
 
 #### Scenario: Reranked query reports the rerank stage
 
@@ -149,6 +118,46 @@ count.
 - **AND** an embedding duration MUST still be reported, because the stage ran
   and served from cache
 
+#### Scenario: Diagnostics disabled omits timing entirely
+
+- **WHEN** a caller runs a search without enabling diagnostics
+- **THEN** no result carries a `timings` field
+- **AND** the result shape is unchanged from the pre-timing default shape
+
+#### Scenario: Transports surface timing without a transport change
+
+- **WHEN** a caller enables diagnostics through MCP or the CLI
+- **THEN** the `timings` field reaches the caller through the existing
+  passthrough
+- **AND** no transport defines, renames, or computes any timing field
+
+### Requirement: A stage that did not run is absent from the timings
+
+A stage that did not run SHALL be absent from the mapping. Absence means the
+stage did not execute; it MUST NOT be reported as a zero duration, because
+zero is a legitimate measurement for a stage that ran and was fast. This
+follows the reporting rule the ingest norm band already uses: report what ran,
+not what did not.
+
+#### Scenario: Dense-only query omits the sparse stage
+
+- **WHEN** a caller runs a non-hybrid search with diagnostics enabled
+- **THEN** the `timings` mapping contains no sparse-search entry
+- **AND** it contains no fusion entry
+- **AND** the absent entries are omitted rather than reported as zero
+
+#### Scenario: Non-reranked query omits the rerank stage
+
+- **WHEN** a search resolves to no reranking and diagnostics are enabled
+- **THEN** the `timings` mapping contains no rerank entry
+
+### Requirement: A repeated stage reports the sum of its executions
+
+A stage that executes more than once during one query SHALL report the sum of
+its executions. The reported value is the total time the query spent in that
+stage, so no execution is discarded. The mapping SHALL NOT report the duration
+of only the most recent execution.
+
 #### Scenario: Retrieval stages repeat after a failed rerank
 
 - **GIVEN** a hybrid search whose reranker fails and whose similarity
@@ -158,17 +167,23 @@ count.
   executions
 - **AND** the rerank duration MUST be reported, because the reranker ran
 
+### Requirement: A query with no results reports no timings
+
+Because the mapping is attached to result rows, a query that returns no rows
+SHALL report no timings. This is a known boundary of row-attached diagnostics,
+not a defect.
+
 #### Scenario: A query returning no results reports no timings
 
 - **WHEN** a search with diagnostics enabled returns an empty result list
 - **THEN** no timing mapping is returned, because the mapping travels on
   result rows
 
-#### Scenario: Diagnostics disabled omits timing entirely
+### Requirement: Timing does not change retrieval
 
-- **WHEN** a caller runs a search without enabling diagnostics
-- **THEN** no result carries a `timings` field
-- **AND** the result shape is unchanged from the pre-timing default shape
+Timing SHALL be measurement only. Enabling diagnostics SHALL NOT change which
+candidates are retrieved, their scores, their order, or the final result
+count.
 
 #### Scenario: Timing does not alter retrieval outcomes
 
@@ -176,11 +191,3 @@ count.
 - **WHEN** the query runs once with diagnostics enabled and once without
 - **THEN** both runs return the same result identities in the same order
 - **AND** both runs return the same scores
-
-#### Scenario: Transports surface timing without a transport change
-
-- **WHEN** a caller enables diagnostics through MCP or the CLI
-- **THEN** the `timings` field reaches the caller through the existing
-  passthrough
-- **AND** no transport defines, renames, or computes any timing field
-

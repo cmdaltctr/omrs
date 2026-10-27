@@ -6,13 +6,6 @@ chunk carries the metadata needed to resolve its neighbours and decide
 contiguity. This is what lets retrieval assemble context from the store
 alone, with no document store or re-parse of the source.
 
-## Requirements
-### Requirement: Chunk neighbours are resolvable from persisted metadata
-
-The system SHALL provide neighbour, span and ordered-set lookup for stored
-chunks using only metadata already persisted by ingestion — `source_id`,
-`source_chunk_index` and `source_chunk_count` — and the vector store's bounded filtered row-read contract.
-
 This is the project's equivalent of a document store's
 `PREVIOUS`/`NEXT` node relationships. It is deliberately not a document
 store: a second store would have to be kept consistent with the vector store
@@ -20,6 +13,13 @@ across every failure path in `replacement.py`, which is the drift risk that
 was rejected when change detection was designed. Persisted lineage is strictly
 more capable for this purpose, because a relationship can only be walked
 whereas lineage metadata can be queried directly.
+
+## Requirements
+### Requirement: Chunk neighbours are resolvable from persisted metadata
+
+The system SHALL provide neighbour, span and ordered-set lookup for stored
+chunks using only metadata already persisted by ingestion — `source_id`,
+`source_chunk_index` and `source_chunk_count` — and the vector store's bounded filtered row-read contract.
 
 #### Scenario: Neighbours of a chunk
 

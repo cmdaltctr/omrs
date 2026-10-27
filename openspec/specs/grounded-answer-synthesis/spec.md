@@ -57,7 +57,18 @@ alongside the answer.
 Citations SHALL be constructed by the system from retrieved chunk lineage.
 The system SHALL NOT depend on the model to emit correct identifiers.
 
-The citation wire format is normative:
+#### Scenario: Model-invented identifiers are not trusted
+
+- **GIVEN** a model response referring to a source number outside the supplied
+  range
+- **WHEN** the result is assembled
+- **THEN** the system SHALL NOT fabricate a citation for it
+- **AND** the returned citation list SHALL contain only chunks actually
+  supplied as context
+
+### Requirement: Prompt sources and answer citations use bracket ordinals
+
+The citation wire format is normative and SHALL follow these rules:
 
 - Supplied sources are numbered from 1 in the order they are placed in
   the prompt, and each prompt source is labelled with its ordinal in a
@@ -65,30 +76,23 @@ The citation wire format is normative:
 - The model cites a source by emitting a bracket group of one or more
   comma-separated ordinals (`[1]`, `[2, 4]`); whitespace inside the
   brackets is tolerated.
+
+#### Scenario: Sources are labelled in prompt order
+
+- **GIVEN** three supplied sources
+- **WHEN** the prompt is built
+- **THEN** they SHALL be labelled `[1]`, `[2]` and `[3]` in the order they are placed in the prompt
+- **AND** an answer bracket group `[2, 4]` SHALL be read as citing ordinals 2 and 4
+
+### Requirement: Invalid citation groups and ordinals cite nothing
+
+The citation wire format SHALL also follow these rules:
+
 - A bracket group containing anything non-numeric cites nothing: the
   whole group is dropped, so an answer mixing valid and invalid
   citations is grounded only in its valid ordinals.
-- An ordinal string longer than nine digits SHALL be rejected with an
-  actionable error (attributed to generation, with evidence retained)
-  before integer conversion.
 - Ordinals outside the supplied range (`< 1` or `> ` the number of
   supplied sources) are discarded, never resolved and never fabricated.
-- Valid ordinals are deduplicated and reported in ascending order.
-- Ordinal `N` maps to the `N`-th supplied evidence row, and the citation
-  entry carries that row's `chunk_id` (re-fetchable as exactly one
-  stored chunk), every constituent `chunk_id` of a merged assembly row,
-  and its lineage fields (`source_id`, `source_version`, `source`,
-  `source_chunk_index`).
-- A non-empty answer from which no valid ordinal survives has status
-  `generation_unverified` (never `ok`), and the supplied evidence is
-  still returned.
-
-#### Scenario: A citation resolves to exactly one stored chunk
-
-- **GIVEN** an answer citing source N
-- **WHEN** the `chunk_id` the system associated with source N is used as a
-  metadata filter
-- **THEN** exactly the corresponding stored chunk SHALL be retrieved
 
 #### Scenario: Malformed and out-of-range citation groups cite nothing
 
@@ -100,6 +104,36 @@ The citation wire format is normative:
 - **AND** no citation, identifier, or lineage SHALL be fabricated for the
   malformed or out-of-range entries
 
+### Requirement: Long ordinals are rejected and valid ordinals are ordered
+
+The citation wire format SHALL also follow these rules:
+
+- An ordinal string longer than nine digits SHALL be rejected with an
+  actionable error (attributed to generation, with evidence retained)
+  before integer conversion.
+- Valid ordinals are deduplicated and reported in ascending order.
+
+#### Scenario: An over-long ordinal is rejected
+
+- **GIVEN** a model answer that cites a ten-digit ordinal
+- **WHEN** the result is assembled
+- **THEN** the result SHALL carry an actionable error attributed to generation
+- **AND** the supplied evidence SHALL be retained
+
+#### Scenario: Valid ordinals are deduplicated and sorted
+
+- **GIVEN** a model answer that cites `[3]`, `[1, 3]` and `[2]` and supplies at least three sources
+- **WHEN** the result is assembled
+- **THEN** the cited ordinals SHALL be reported once each, as 1, 2 and 3
+
+### Requirement: An answer without a valid ordinal is unverified
+
+The citation wire format SHALL also follow this rule:
+
+- A non-empty answer from which no valid ordinal survives has status
+  `generation_unverified` (never `ok`), and the supplied evidence is
+  still returned.
+
 #### Scenario: A substantive answer needs a valid citation
 
 - **GIVEN** the model returns a non-empty answer with no valid supplied source
@@ -109,14 +143,22 @@ The citation wire format is normative:
 - **AND** MUST NOT be represented as a grounded answer
 - **AND** the supplied evidence MUST still be returned
 
-#### Scenario: Model-invented identifiers are not trusted
+### Requirement: An ordinal maps to its evidence row and lineage
 
-- **GIVEN** a model response referring to a source number outside the supplied
-  range
-- **WHEN** the result is assembled
-- **THEN** the system SHALL NOT fabricate a citation for it
-- **AND** the returned citation list SHALL contain only chunks actually
-  supplied as context
+The citation wire format SHALL also follow this rule:
+
+- Ordinal `N` maps to the `N`-th supplied evidence row, and the citation
+  entry carries that row's `chunk_id` (re-fetchable as exactly one
+  stored chunk), every constituent `chunk_id` of a merged assembly row,
+  and its lineage fields (`source_id`, `source_version`, `source`,
+  `source_chunk_index`).
+
+#### Scenario: A citation resolves to exactly one stored chunk
+
+- **GIVEN** an answer citing source N
+- **WHEN** the `chunk_id` the system associated with source N is used as a
+  metadata filter
+- **THEN** exactly the corresponding stored chunk SHALL be retrieved
 
 #### Scenario: Merged context reports every constituent
 
@@ -171,14 +213,35 @@ retrieval problem from a generation problem without reading logs.
 Every answering result SHALL carry the same top-level fields with
 closed value sets, so consumers can branch on shape rather than probe
 for keys. The fields are: `status`, `query`, `answer`, `citations`,
-`evidence`, `failure_stage`, `error`, and `completion_source`. The
+`evidence`, `failure_stage`, `error`, and `completion_source`.
+
+#### Scenario: The result shape is identical across statuses
+
+- **WHEN** any answering result is returned, on any status
+- **THEN** it SHALL carry the eight top-level fields, with the closed
+  value sets in the next requirement
+- **AND** a consumer SHALL be able to branch on `status` without
+  probing for keys
+
+### Requirement: Status, failure stage and completion source take closed values
+
+The
 `status` value SHALL be one of `ok`, `no_evidence`,
 `generation_unverified`, or `error`; `failure_stage`, when set, SHALL
 be `retrieval` or `generation` and is `null` when no stage-attributed
 failure occurred; `completion_source` SHALL be one of `none`,
 `client_mrtr`, `client_legacy`, or `server`.
 
-Per status:
+#### Scenario: Values stay inside the closed sets
+
+- **WHEN** any answering result is returned
+- **THEN** `status` SHALL be one of `ok`, `no_evidence`, `generation_unverified` or `error`
+- **AND** `completion_source` SHALL be one of `none`, `client_mrtr`, `client_legacy` or `server`
+- **AND** `failure_stage` SHALL be `retrieval`, `generation` or `null`
+
+### Requirement: The ok and no_evidence statuses fill fixed fields
+
+The `ok` and `no_evidence` statuses SHALL mean:
 
 - `ok`: a grounded answer. `answer` is the model text, `citations` is
   non-empty and built from supplied evidence, `evidence` is every chunk
@@ -186,9 +249,30 @@ Per status:
 - `no_evidence`: retrieval returned nothing above threshold. `answer`
   is `null`, `citations` and `evidence` are empty, `failure_stage` and
   `error` are `null`, and no language-model call was made.
+
+#### Scenario: Nothing above threshold
+
+- **WHEN** retrieval returns nothing above threshold
+- **THEN** the status SHALL be `no_evidence`, `answer` SHALL be `null`, and `citations` and `evidence` SHALL be empty
+- **AND** no language-model call SHALL be made
+
+### Requirement: The generation_unverified status fills fixed fields
+
+The `generation_unverified` status SHALL mean:
+
 - `generation_unverified`: a non-empty answer with no valid supplied
   ordinal. `answer` and `evidence` are returned, `citations` is empty,
   and `failure_stage` and `error` are `null`.
+
+#### Scenario: Unverified answer fields
+
+- **WHEN** a result has status `generation_unverified`
+- **THEN** `answer` and `evidence` SHALL be returned, `citations` SHALL be empty, and `failure_stage` and `error` SHALL be `null`
+
+### Requirement: The error status names the failure and its stage
+
+The `error` status SHALL mean:
+
 - `error`: `answer` is `null`, `citations` is empty, and `error` names
   the failure actionably. `evidence` is the retrieved chunks when
   retrieval succeeded (generation-stage failures retain the evidence)
@@ -196,17 +280,17 @@ Per status:
   or is `null` for failures outside both stages (for example the
   capability being disabled or no provider being configured).
 
+#### Scenario: Generation fails after retrieval succeeded
+
+- **WHEN** generation fails after retrieval succeeded
+- **THEN** the status SHALL be `error`, `answer` SHALL be `null` and `citations` SHALL be empty
+- **AND** `evidence` SHALL hold the retrieved chunks and `failure_stage` SHALL be `generation`
+
+### Requirement: Diagnostics appear exactly when requested
+
 A `diagnostics` field (with `retrieval_ms`, `generation_ms`, and
 `completion_calls`) SHALL be present exactly when diagnostics were
 requested, on every status.
-
-#### Scenario: The result shape is identical across statuses
-
-- **WHEN** any answering result is returned, on any status
-- **THEN** it SHALL carry the eight top-level fields with the closed
-  value sets above
-- **AND** a consumer SHALL be able to branch on `status` without
-  probing for keys
 
 #### Scenario: Diagnostics are present exactly when requested
 
@@ -250,13 +334,7 @@ Where the calling MCP client advertises model-request capability AND
 the server is configured to prefer the client model
 (`answer.prefer_client_sampling`), the tool SHALL prefer the current
 protocol's multi-round-trip request mechanism and SHALL report the
-selected completion source. Client sampling is opt-in: a capable client
-without the preference set SHALL be served by the configured
-server-side model, and preference wins over capability in neither
-direction — both must hold for a client source to be selected. The tool
-SHALL NOT use deprecated server-initiated sampling on a modern session.
-A negotiated legacy session MAY use the older path as a labelled
-compatibility mode, and only when legacy sampling is explicitly allowed.
+selected completion source.
 
 #### Scenario: Modern client sampling uses MRTR
 
@@ -269,14 +347,20 @@ compatibility mode, and only when legacy sampling is explicitly allowed.
 - **AND** no server-side language-model call SHALL be made
 - **AND** deprecated `ctx.session.create_message()` SHALL NOT be called
 
-#### Scenario: Legacy sampling is explicitly negotiated
+#### Scenario: Neither available
 
-- **GIVEN** an older negotiated MCP session that supports the legacy sampling
-  back-channel
-- **WHEN** compatibility sampling is selected
-- **THEN** the result SHALL identify the legacy completion source
-- **AND** the legacy API SHALL never be attempted merely because modern MRTR
-  is unavailable
+- **GIVEN** a client without an applicable model-request path and no configured
+  server model
+- **WHEN** the answering tool runs
+- **THEN** an actionable error naming both options SHALL be returned
+- **AND** the tool SHALL NOT raise
+
+### Requirement: Client sampling is opt-in
+
+Client sampling is opt-in: a capable client
+without the preference set SHALL be served by the configured
+server-side model, and preference wins over capability in neither
+direction — both must hold for a client source to be selected.
 
 #### Scenario: Falls back to the configured server model
 
@@ -286,13 +370,21 @@ compatibility mode, and only when legacy sampling is explicitly allowed.
   if available
 - **AND** the result SHALL report which source was used
 
-#### Scenario: Neither available
+### Requirement: Legacy sampling is a labelled compatibility mode
 
-- **GIVEN** a client without an applicable model-request path and no configured
-  server model
-- **WHEN** the answering tool runs
-- **THEN** an actionable error naming both options SHALL be returned
-- **AND** the tool SHALL NOT raise
+The tool
+SHALL NOT use deprecated server-initiated sampling on a modern session.
+A negotiated legacy session MAY use the older path as a labelled
+compatibility mode, and only when legacy sampling is explicitly allowed.
+
+#### Scenario: Legacy sampling is explicitly negotiated
+
+- **GIVEN** an older negotiated MCP session that supports the legacy sampling
+  back-channel
+- **WHEN** compatibility sampling is selected
+- **THEN** the result SHALL identify the legacy completion source
+- **AND** the legacy API SHALL never be attempted merely because modern MRTR
+  is unavailable
 
 ### Requirement: The cost of answering is disclosed
 
@@ -622,27 +714,13 @@ When claim verification is enabled and the answer is grounded, but no cited pros
 
 ### Requirement: Answering can report its stage
 
-The answering operation SHALL accept an optional stage callback. It SHALL call the callback once for each stage it enters, in this order: `searching`, `writing`, `citing`, `verifying`. A stage SHALL be reported when its work starts. A stage whose work does not run SHALL NOT be reported. `verifying` SHALL be reported only when claim verification is on, the answer is grounded and a judge model is available. With no callback, the operation and its result SHALL be unchanged. The result SHALL be the same with or without a callback.
+The answering operation SHALL accept an optional stage callback. It SHALL call the callback once for each stage it enters, in this order: `searching`, `writing`, `citing`, `verifying`. A stage SHALL be reported when its work starts. A stage whose work does not run SHALL NOT be reported.
 
 #### Scenario: Full answer with verification
 
 - **GIVEN** retrieval returns evidence, a model is available, claim verification is on and a judge model is set
 - **WHEN** the answering operation runs with a stage callback
 - **THEN** the callback MUST receive `searching`, `writing`, `citing` and `verifying` in that order, each once
-
-#### Scenario: Verification is off
-
-- **GIVEN** claim verification is off
-- **WHEN** the operation runs with a stage callback
-- **THEN** the callback MUST receive `searching`, `writing` and `citing`
-- **AND** it MUST NOT receive `verifying`
-
-#### Scenario: No judge model
-
-- **GIVEN** claim verification is on and no judge model is set
-- **WHEN** the operation runs with a stage callback
-- **THEN** the callback MUST NOT receive `verifying`
-- **AND** the result MUST report `verification_skipped` as before
 
 #### Scenario: No evidence
 
@@ -663,6 +741,28 @@ The answering operation SHALL accept an optional stage callback. It SHALL call t
 - **WHEN** the operation returns the generation failure result
 - **THEN** the callback MUST NOT have received `citing` or `verifying`
 
+### Requirement: Verifying is reported only when claim verification runs
+
+`verifying` SHALL be reported only when claim verification is on, the answer is grounded and a judge model is available.
+
+#### Scenario: Verification is off
+
+- **GIVEN** claim verification is off
+- **WHEN** the operation runs with a stage callback
+- **THEN** the callback MUST receive `searching`, `writing` and `citing`
+- **AND** it MUST NOT receive `verifying`
+
+#### Scenario: No judge model
+
+- **GIVEN** claim verification is on and no judge model is set
+- **WHEN** the operation runs with a stage callback
+- **THEN** the callback MUST NOT receive `verifying`
+- **AND** the result MUST report `verification_skipped` as before
+
+### Requirement: The stage callback does not change the result
+
+With no callback, the operation and its result SHALL be unchanged. The result SHALL be the same with or without a callback.
+
 #### Scenario: A failing callback never fails the answer
 
 - **WHEN** the stage callback raises an error
@@ -671,13 +771,23 @@ The answering operation SHALL accept an optional stage callback. It SHALL call t
 
 ### Requirement: User-profile pipelines report the same stages
 
-When a collection follows a user profile, the answering operation SHALL report stages with the same four names, the same order and the same rule: a stage is reported when its work starts. `searching` SHALL be reported when the first step of the Answer graph starts. `writing`, `citing` and `verifying` SHALL be reported only when a step does that work. A step that is bypassed, skipped, returns early or has an unknown operation SHALL report nothing. A stage SHALL NOT be reported twice in a row or after a later stage.
+When a collection follows a user profile, the answering operation SHALL report stages with the same four names, the same order and the same rule: a stage is reported when its work starts. `searching` SHALL be reported when the first step of the Answer graph starts.
 
 #### Scenario: Default Answer graph
 
 - **GIVEN** the default Answer graph with claim verification on and a judge model set
 - **WHEN** the operation runs with a stage callback
 - **THEN** the callback MUST receive `searching`, `writing`, `citing` and `verifying` in that order, each once
+
+#### Scenario: Both paths agree
+
+- **GIVEN** the same question, collection content and settings
+- **WHEN** it is answered through a built-in profile and through a user profile with the default Answer graph
+- **THEN** both callbacks MUST receive the same stage list
+
+### Requirement: Graph steps report a stage only when they do its work
+
+`writing`, `citing` and `verifying` SHALL be reported only when a step does that work. A step that is bypassed, skipped, returns early or has an unknown operation SHALL report nothing. A stage SHALL NOT be reported twice in a row or after a later stage.
 
 #### Scenario: Verification is off in the settings
 
@@ -709,12 +819,6 @@ When a collection follows a user profile, the answering operation SHALL report s
 - **GIVEN** a graph that runs a dense step, a sparse step and a rerank step
 - **WHEN** the operation runs with a stage callback
 - **THEN** the callback MUST receive `searching` once
-
-#### Scenario: Both paths agree
-
-- **GIVEN** the same question, collection content and settings
-- **WHEN** it is answered through a built-in profile and through a user profile with the default Answer graph
-- **THEN** both callbacks MUST receive the same stage list
 
 ### Requirement: The model call stays whole-reply
 

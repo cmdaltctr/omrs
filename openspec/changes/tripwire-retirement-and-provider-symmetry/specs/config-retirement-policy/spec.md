@@ -54,21 +54,19 @@ retirement list. Such an entry SHALL be retained for one major version after the
 release that retired it, and MAY then be deleted; deleting it degrades the
 message but preserves the failure.
 
-A retired **flat** name (no block prefix, such as `TOP_K`) is not detectable by
-settings validation — an unrecognised flat name is silently discarded. The
-retirement list is the only mechanism that detects it. Such an entry SHALL be
-retained for as long as an upgrade path exists from a version that read it, and
-SHALL NOT be deleted merely because a major version has elapsed.
-
-The lifetime SHALL be expressed as this rule. It SHALL NOT be expressed as a
-hardcoded version number, so that a release which retires a name cannot also be
-the release that expires it.
-
 #### Scenario: Nested entry reaches the end of its major version
 
 - **WHEN** a nested name has been on the retirement list for a full major version
 - **THEN** it MAY be deleted
 - **AND** setting that name still fails startup, via block validation
+
+### Requirement: A retired flat name stays listed while an upgrade path exists
+
+A retired **flat** name (no block prefix, such as `TOP_K`) is not detectable by
+settings validation — an unrecognised flat name is silently discarded. The
+retirement list is the only mechanism that detects it. Such an entry SHALL be
+retained for as long as an upgrade path exists from a version that read it, and
+SHALL NOT be deleted merely because a major version has elapsed.
 
 #### Scenario: Flat entry reaches the end of its major version
 
@@ -76,6 +74,12 @@ the release that expires it.
 - **AND** an upgrade path still exists from a version that read it
 - **THEN** it SHALL be retained
 - **AND** deleting it would cause that name to be silently ignored
+
+### Requirement: The retirement lifetime is stated as a rule
+
+The lifetime SHALL be expressed as this rule. It SHALL NOT be expressed as a
+hardcoded version number, so that a release which retires a name cannot also be
+the release that expires it.
 
 #### Scenario: A release retires a name
 
@@ -88,6 +92,15 @@ No operator-facing document SHALL instruct the reader to assign a value to a
 retired configuration variable. Operator-facing documents are those an operator
 copies from or follows to configure a deployment: the environment example file,
 the project README, and the user guides.
+
+#### Scenario: A historical record names a retired variable
+
+- **WHEN** a changelog, architecture decision record, technical decision record,
+  or archived planning document names a retired variable
+- **THEN** the enforcing check passes, because those records describe the past
+  and are not operator instructions
+
+### Requirement: An automatic check allows explaining a retired variable but not setting it
 
 Naming a retired variable in order to explain its replacement is permitted and
 expected; documentation SHALL be free to teach the migration.
@@ -107,10 +120,3 @@ instruction to set a variable from a mention of it.
 - **WHEN** an operator-facing document names a retired variable in prose to
   describe what replaced it
 - **THEN** the enforcing check passes
-
-#### Scenario: A historical record names a retired variable
-
-- **WHEN** a changelog, architecture decision record, technical decision record,
-  or archived planning document names a retired variable
-- **THEN** the enforcing check passes, because those records describe the past
-  and are not operator instructions

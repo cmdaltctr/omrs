@@ -10,12 +10,6 @@ without producing uncapped oversized chunks.
 
 When a model-matched embedding tokenizer is configured, the system SHALL chunk Markdown text using the Rust-backed `semantic-text-splitter` Markdown splitter with the tokenizer as its size calculator. The splitter SHALL prefer the largest meaningful Markdown structures that fit the configured `CHUNKING__MARKDOWN_CHUNK_SIZE` budget, including headings/sections, paragraphs, tables, lists, and sentences, before recursively splitting at smaller boundaries.
 
-Text counts as Markdown when the source file has extension `.md`, **or** when the reader that produced it declares its emitted text format as `markdown`. The token budget SHALL be measured in the configured embedding tokenizer's units rather than a generic tokenizer or character approximation.
-
-When no model-matched tokenizer is configured or the tokenizer cannot be resolved, the system SHALL preserve the existing MarkdownNodeParser/SentenceSplitter behaviour and SHALL NOT claim model-token-aware sizing.
-
-Text from readers declaring `plain` SHALL retain the existing non-Markdown splitter behaviour and global `CHUNKING__CHUNK_SIZE` default.
-
 #### Scenario: Markdown headings remain intact when sections fit
 
 - **GIVEN** a Markdown document with multiple heading-bounded sections, each within `CHUNKING__MARKDOWN_CHUNK_SIZE` under the configured embedding tokenizer
@@ -30,12 +24,16 @@ Text from readers declaring `plain` SHALL retain the existing non-Markdown split
 - **THEN** that section SHALL be split into more than one chunk at progressively smaller meaningful boundaries
 - **AND** every produced chunk SHALL remain within the configured tokenizer budget
 
-#### Scenario: Non-Markdown files are unchanged
+#### Scenario: Markdown without headings still chunks
 
-- **GIVEN** a `.txt` file, or a `.pdf` read by a reader declaring `plain`
-- **WHEN** the file is ingested
-- **THEN** chunking SHALL use the existing non-Markdown behaviour
-- **AND** no heading metadata SHALL be fabricated
+- **GIVEN** Markdown text with no headings but with paragraphs, lists, or other supported Markdown structure
+- **WHEN** the file is ingested through the model-token-aware path
+- **THEN** the splitter SHALL still produce non-empty chunks
+- **AND** SHALL use the best available structural boundaries within the configured token cap
+
+### Requirement: Reader Markdown counts as Markdown and the budget uses tokenizer units
+
+Text counts as Markdown when the source file has extension `.md`, **or** when the reader that produced it declares its emitted text format as `markdown`. The token budget SHALL be measured in the configured embedding tokenizer's units rather than a generic tokenizer or character approximation.
 
 #### Scenario: Markdown-format reader output uses the structure-aware path
 
@@ -45,12 +43,17 @@ Text from readers declaring `plain` SHALL retain the existing non-Markdown split
 - **THEN** the Rust-backed Markdown splitter SHALL process the emitted Markdown
 - **AND** `CHUNKING__MARKDOWN_CHUNK_SIZE` SHALL be enforced in that tokenizer's units
 
-#### Scenario: Markdown without headings still chunks
+#### Scenario: Reader-produced Markdown honours the recovery knobs
 
-- **GIVEN** Markdown text with no headings but with paragraphs, lists, or other supported Markdown structure
-- **WHEN** the file is ingested through the model-token-aware path
-- **THEN** the splitter SHALL still produce non-empty chunks
-- **AND** SHALL use the best available structural boundaries within the configured token cap
+- **GIVEN** reader-produced Markdown text
+- **WHEN** the file is ingested
+- **THEN** `ensure_heading_metadata`, `apply_heading_prepend` and
+  `drop_small_markdown_chunks` SHALL apply with the same configured behaviour
+  they have for `.md` files
+
+### Requirement: Without a model tokenizer Markdown keeps the existing path
+
+When no model-matched tokenizer is configured or the tokenizer cannot be resolved, the system SHALL preserve the existing MarkdownNodeParser/SentenceSplitter behaviour and SHALL NOT claim model-token-aware sizing.
 
 #### Scenario: Missing tokenizer preserves the existing path
 
@@ -68,19 +71,20 @@ Text from readers declaring `plain` SHALL retain the existing non-Markdown split
 - **THEN** the emitted chunks SHALL carry `header_path`
 - **THEN** the `CHUNKING__MARKDOWN_CHUNK_SIZE` budget SHALL apply
 
-#### Scenario: Reader-produced Markdown honours the recovery knobs
+### Requirement: Plain reader text keeps the non-Markdown splitter
 
-- **GIVEN** reader-produced Markdown text
+Text from readers declaring `plain` SHALL retain the existing non-Markdown splitter behaviour and global `CHUNKING__CHUNK_SIZE` default.
+
+#### Scenario: Non-Markdown files are unchanged
+
+- **GIVEN** a `.txt` file, or a `.pdf` read by a reader declaring `plain`
 - **WHEN** the file is ingested
-- **THEN** `ensure_heading_metadata`, `apply_heading_prepend` and
-  `drop_small_markdown_chunks` SHALL apply with the same configured behaviour
-  they have for `.md` files
+- **THEN** chunking SHALL use the existing non-Markdown behaviour
+- **AND** no heading metadata SHALL be fabricated
 
 ### Requirement: Markdown files support configurable Markdown-only recovery knobs
 
 The Markdown branch SHALL support a Markdown-only chunk-size override, optional heading-path prepend, optional small-chunk filtering, and defensive heading metadata propagation. Heading prepend and small-chunk filtering SHALL remain opt-in. Defensive heading metadata propagation SHALL be idempotent.
-
-When the model-token-aware Markdown path is active, small-chunk filtering SHALL use the configured embedding tokenizer's actual token count. It SHALL NOT use the four-characters-per-token approximation. The approximation MAY remain only on the legacy fallback path until that path is retired separately.
 
 #### Scenario: Markdown branch can use a different chunk size from non-Markdown files
 
@@ -103,6 +107,10 @@ When the model-token-aware Markdown path is active, small-chunk filtering SHALL 
 - **WHEN** the chunk text is finalised for embedding
 - **THEN** the heading path SHALL be prepended once
 - **AND** repeated processing SHALL NOT prepend the same prefix twice
+
+### Requirement: Small-chunk filtering counts exact model tokens
+
+When the model-token-aware Markdown path is active, small-chunk filtering SHALL use the configured embedding tokenizer's actual token count. It SHALL NOT use the four-characters-per-token approximation. The approximation MAY remain only on the legacy fallback path until that path is retired separately.
 
 #### Scenario: Small Markdown chunks can be filtered with exact model tokens
 
@@ -244,26 +252,27 @@ The system SHALL NOT infer a Hugging Face repository by substring-matching an in
 
 The replacement splitter SHALL derive heading ancestry from the source Markdown itself. It SHALL locate each emitted chunk in the source text using the splitter's chunk-offset API, resolve the heading chain enclosing that offset, and write the result to `header_path` before the recovery hooks run.
 
-Heading derivation SHALL NOT depend on `ensure_heading_metadata`. That helper copies heading metadata that a parent node already carries; the Rust splitter emits text without a parent node, so on this path there is nothing for it to copy. The helper SHALL remain in the pipeline as the idempotent guard it already is.
-
-The configured `CHUNKING__CHUNK_OVERLAP` SHALL be passed to the splitter as its own overlap, measured in the same tokenizer units as the capacity. Because the splitter requires the overlap to be strictly less than the capacity, the system SHALL reject a configuration whose overlap is greater than or equal to `CHUNKING__MARKDOWN_CHUNK_SIZE` at the composition boundary, naming both settings.
-
-The token cap SHALL govern the chunk text as finalised for embedding, which includes any prepended heading path. When heading prepend is enabled, the splitter SHALL be given a capacity reduced by the token length of the prefix that will be prepended, so a prepended chunk cannot exceed the configured budget.
-
-Reserving that prefix SHALL NOT change the requested overlap. When the reduced capacity cannot hold `CHUNKING__CHUNK_OVERLAP`, the system SHALL fail for that source with a diagnostic naming `CHUNKING__MARKDOWN_CHUNK_SIZE`, `CHUNKING__CHUNK_OVERLAP`, and `CHUNKING__MARKDOWN_HEADING_PREPEND`. Silently clamping the overlap to the reduced capacity is forbidden, because the emitted chunking would then differ from the configured contract with no signal.
-
-The system SHALL verify each chunk against the cap as finalised, and SHALL never emit a chunk above it. A chunk that cannot be reduced below the cap SHALL fail for that source through the existing per-file failure path, so the batch continues and the report names the source.
-
-Heading ancestry SHALL be derived from document structure only. A `#` line inside a fenced code block, opened by either backticks or tildes, is code and SHALL NOT join the heading chain. Each ancestry entry SHALL retain its heading level, so an incoming heading removes every entry at its own level or deeper: a skipped level makes two headings of the same level siblings, never parent and child.
-
-The cap SHALL NOT be defined over the complete LlamaIndex embedding payload. Retained metadata keys are added to that payload after chunking and are not known when the splitter runs. Their worst-case token overhead SHALL be measured and reported as experiment evidence instead of budgeted.
-
 #### Scenario: Heading path is derived on the model-token-aware path
 
 - **GIVEN** Markdown with nested headings and a model-matched tokenizer configured
 - **WHEN** the Rust-backed Markdown splitter emits chunks
 - **THEN** each chunk SHALL carry the `header_path` of the heading chain enclosing its position in the source Markdown
 - **AND** the path SHALL be derived from the source text rather than copied from a parent node
+
+### Requirement: Heading derivation does not rely on the heading metadata helper
+
+Heading derivation SHALL NOT depend on `ensure_heading_metadata`. That helper copies heading metadata that a parent node already carries; the Rust splitter emits text without a parent node, so on this path there is nothing for it to copy. The helper SHALL remain in the pipeline as the idempotent guard it already is.
+
+#### Scenario: Heading derivation does not use the metadata helper
+
+- **GIVEN** the model-token-aware Markdown path is active
+- **WHEN** the splitter derives heading ancestry
+- **THEN** heading derivation SHALL NOT depend on `ensure_heading_metadata`
+- **AND** the helper SHALL remain in the pipeline as the idempotent guard it already is
+
+### Requirement: The Markdown splitter uses the configured overlap
+
+The configured `CHUNKING__CHUNK_OVERLAP` SHALL be passed to the splitter as its own overlap, measured in the same tokenizer units as the capacity. Because the splitter requires the overlap to be strictly less than the capacity, the system SHALL reject a configuration whose overlap is greater than or equal to `CHUNKING__MARKDOWN_CHUNK_SIZE` at the composition boundary, naming both settings.
 
 #### Scenario: Configured overlap is applied in tokenizer units
 
@@ -279,6 +288,10 @@ The cap SHALL NOT be defined over the complete LlamaIndex embedding payload. Ret
 - **THEN** the system SHALL fail at the composition boundary naming both settings
 - **AND** it SHALL NOT surface the splitter's own error part-way through an ingestion batch
 
+### Requirement: The token cap covers a prepended heading path
+
+The token cap SHALL govern the chunk text as finalised for embedding, which includes any prepended heading path. When heading prepend is enabled, the splitter SHALL be given a capacity reduced by the token length of the prefix that will be prepended, so a prepended chunk cannot exceed the configured budget.
+
 #### Scenario: Heading prepend stays within the token cap
 
 - **GIVEN** heading prepend is enabled
@@ -286,6 +299,10 @@ The cap SHALL NOT be defined over the complete LlamaIndex embedding payload. Ret
 - **WHEN** the section is chunked and its heading path is prepended
 - **THEN** the finalised chunk text SHALL still be within `CHUNKING__MARKDOWN_CHUNK_SIZE` tokenizer units
 - **AND** the reserved prefix budget SHALL come from the splitter capacity rather than from a post-hoc truncation
+
+### Requirement: A reserved heading prefix never reduces the overlap
+
+Reserving that prefix SHALL NOT change the requested overlap. When the reduced capacity cannot hold `CHUNKING__CHUNK_OVERLAP`, the system SHALL fail for that source with a diagnostic naming `CHUNKING__MARKDOWN_CHUNK_SIZE`, `CHUNKING__CHUNK_OVERLAP`, and `CHUNKING__MARKDOWN_HEADING_PREPEND`. Silently clamping the overlap to the reduced capacity is forbidden, because the emitted chunking would then differ from the configured contract with no signal.
 
 #### Scenario: A reserved heading prefix never silently reduces the overlap
 
@@ -295,6 +312,10 @@ The cap SHALL NOT be defined over the complete LlamaIndex embedding payload. Ret
 - **THEN** the system SHALL fail for that source naming `CHUNKING__MARKDOWN_CHUNK_SIZE`, `CHUNKING__CHUNK_OVERLAP`, and `CHUNKING__MARKDOWN_HEADING_PREPEND`
 - **AND** it SHALL NOT emit chunks whose actual overlap is below the configured value
 
+### Requirement: No chunk above the token cap is emitted
+
+The system SHALL verify each chunk against the cap as finalised, and SHALL never emit a chunk above it. A chunk that cannot be reduced below the cap SHALL fail for that source through the existing per-file failure path, so the batch continues and the report names the source.
+
 #### Scenario: A chunk that cannot be reduced fails instead of exceeding the cap
 
 - **GIVEN** heading prepend is enabled
@@ -302,6 +323,10 @@ The cap SHALL NOT be defined over the complete LlamaIndex embedding payload. Ret
 - **WHEN** the chunk is finalised
 - **THEN** the system SHALL fail for that source naming `CHUNKING__MARKDOWN_CHUNK_SIZE`
 - **AND** it SHALL NOT emit a chunk above the configured token cap
+
+### Requirement: Heading ancestry follows document structure only
+
+Heading ancestry SHALL be derived from document structure only. A `#` line inside a fenced code block, opened by either backticks or tildes, is code and SHALL NOT join the heading chain. Each ancestry entry SHALL retain its heading level, so an incoming heading removes every entry at its own level or deeper: a skipped level makes two headings of the same level siblings, never parent and child.
 
 #### Scenario: Fenced code headings do not change heading ancestry
 
@@ -317,6 +342,10 @@ The cap SHALL NOT be defined over the complete LlamaIndex embedding payload. Ret
 - **WHEN** the content under each level-three heading is chunked
 - **THEN** the two sections SHALL receive sibling `header_path` values under the level-one heading
 - **AND** the second section SHALL NOT be nested under the first
+
+### Requirement: The token cap covers chunk text, not the embedding payload
+
+The cap SHALL NOT be defined over the complete LlamaIndex embedding payload. Retained metadata keys are added to that payload after chunking and are not known when the splitter runs. Their worst-case token overhead SHALL be measured and reported as experiment evidence instead of budgeted.
 
 #### Scenario: Metadata overhead is measured, not budgeted
 

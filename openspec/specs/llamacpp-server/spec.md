@@ -31,22 +31,12 @@ Lets `omrs web` start, stop and restart one `llama-server` for Chat. Covers owne
 
 ### Requirement: Server settings and sources
 
-The server SHALL have the settings `llamacpp_server_binary` (env `LLAMACPP_SERVER_BINARY`), `llamacpp_server_model` (env `LLAMACPP_SERVER_MODEL`) and `llamacpp_context_window` (env `LLAMACPP_CONTEXT_WINDOW`, default 16,384, range 2,048 to 262,144) and `llamacpp_idle_sleep_seconds` (env `LLAMACPP_IDLE_SLEEP_SECONDS`, default 300, range 0 to 86,400, 0 turns sleep off). Each SHALL be settable in `omrs.jsonc` under the same key name and in the llama.cpp card. A card save SHALL write `omrs.jsonc`. The source order of the provider settings SHALL apply: the environment and `.env` (both lock), then `omrs.jsonc` (does not lock), then the default. A changed value SHALL apply at the next start of the owned server. The port SHALL come from `llamacpp_chat_url`.
+The server SHALL have the settings `llamacpp_server_binary` (env `LLAMACPP_SERVER_BINARY`), `llamacpp_server_model` (env `LLAMACPP_SERVER_MODEL`) and `llamacpp_context_window` (env `LLAMACPP_CONTEXT_WINDOW`, default 16,384, range 2,048 to 262,144) and `llamacpp_idle_sleep_seconds` (env `LLAMACPP_IDLE_SLEEP_SECONDS`, default 300, range 0 to 86,400, 0 turns sleep off). Each SHALL be settable in `omrs.jsonc` under the same key name and in the llama.cpp card.
 
 #### Scenario: Config file sets all three
 
 - **WHEN** `omrs.jsonc` holds the three keys
 - **THEN** `GET /v1/llamacpp/server` MUST report each with source `config-file` and `locked` false
-
-#### Scenario: Saved from the GUI
-
-- **WHEN** no environment value exists and the user saves the three values
-- **THEN** `omrs.jsonc` MUST hold them and the sources MUST be `config-file`
-
-#### Scenario: Environment wins
-
-- **WHEN** `LLAMACPP_CONTEXT_WINDOW=8192` is in the environment and the user saves another value
-- **THEN** the server MUST return 409 and name the variable
 
 #### Scenario: Context window range
 
@@ -58,9 +48,23 @@ The server SHALL have the settings `llamacpp_server_binary` (env `LLAMACPP_SERVE
 - **WHEN** the user saves `~/.llama-app/llama` as the program
 - **THEN** the server MUST return 400 with the program rule message, which starts "The program must be the absolute path of an executable file named llama-server", MUST NOT change the file, and the card MUST show that message in place of a generic error
 
+### Requirement: Saved server settings follow the provider source order
+
+A card save SHALL write `omrs.jsonc`. The source order of the provider settings SHALL apply: the environment and `.env` (both lock), then `omrs.jsonc` (does not lock), then the default. A changed value SHALL apply at the next start of the owned server. The port SHALL come from `llamacpp_chat_url`.
+
+#### Scenario: Saved from the GUI
+
+- **WHEN** no environment value exists and the user saves the three values
+- **THEN** `omrs.jsonc` MUST hold them and the sources MUST be `config-file`
+
+#### Scenario: Environment wins
+
+- **WHEN** `LLAMACPP_CONTEXT_WINDOW=8192` is in the environment and the user saves another value
+- **THEN** the server MUST return 409 and name the variable
+
 ### Requirement: The program must be a file named llama-server
 
-The program path SHALL be an absolute path to a regular file that is executable and whose file name is exactly `llama-server`. The server SHALL check this at save and before every launch. A path that fails SHALL be refused with 400 at save, or with state `failed` and reason `binary-invalid` at launch. The check SHALL follow a symlink to its target file. The file name SHALL be exactly `llama-server` both for the path as given and for the target after links are resolved (`llama-server.exe` on Windows).
+The program path SHALL be an absolute path to a regular file that is executable and whose file name is exactly `llama-server`. The server SHALL check this at save and before every launch. A path that fails SHALL be refused with 400 at save, or with state `failed` and reason `binary-invalid` at launch.
 
 #### Scenario: Valid program
 
@@ -86,6 +90,15 @@ The program path SHALL be an absolute path to a regular file that is executable 
 
 - **WHEN** the saved file is replaced by a directory and the user presses Start
 - **THEN** the state MUST be `failed` with reason `binary-invalid` and no process MUST start
+
+### Requirement: The program check follows symlinks
+
+The check SHALL follow a symlink to its target file. The file name SHALL be exactly `llama-server` both for the path as given and for the target after links are resolved (`llama-server.exe` on Windows).
+
+#### Scenario: Symlink to a file with another name
+
+- **WHEN** the path is a symlink named `llama-server` whose target file has another name
+- **THEN** the server MUST refuse it
 
 ### Requirement: The model must be a gguf file or a Hugging Face id
 
@@ -185,7 +198,16 @@ Every server route SHALL need the browser session. Changing the program path or 
 
 ### Requirement: Lifecycle states and fixed reasons
 
-The server state SHALL be one of `stopped`, `starting`, `running` and `failed`. A `failed` state SHALL carry one reason from `binary-invalid`, `model-invalid`, `not-loopback`, `port-in-use`, `exited`, `timeout` and `not-configured`. Start SHALL move to `starting`, then poll `GET /health` on the owned port until it returns 200, then move to `running`. The wait SHALL end after 180 seconds with reason `timeout`. An exit of the process while `starting` or `running` SHALL give `failed` with reason `exited`. Missing program or model SHALL give `not-configured`.
+The server state SHALL be one of `stopped`, `starting`, `running` and `failed`. A `failed` state SHALL carry one reason from `binary-invalid`, `model-invalid`, `not-loopback`, `port-in-use`, `exited`, `timeout` and `not-configured`.
+
+#### Scenario: Reasons are fixed
+
+- **WHEN** the process writes any text to its output
+- **THEN** the reason in the status MUST be one of the seven fixed values and MUST NOT hold that text
+
+### Requirement: Start moves to running or to a failed state
+
+Start SHALL move to `starting`, then poll `GET /health` on the owned port until it returns 200, then move to `running`. The wait SHALL end after 180 seconds with reason `timeout`. An exit of the process while `starting` or `running` SHALL give `failed` with reason `exited`. Missing program or model SHALL give `not-configured`.
 
 #### Scenario: Healthy start
 
@@ -211,11 +233,6 @@ The server state SHALL be one of `stopped`, `starting`, `running` and `failed`. 
 
 - **WHEN** no program or no model is set and the user presses Start
 - **THEN** the state MUST be `failed` with reason `not-configured` and no process MUST start
-
-#### Scenario: Reasons are fixed
-
-- **WHEN** the process writes any text to its output
-- **THEN** the reason in the status MUST be one of the seven fixed values and MUST NOT hold that text
 
 ### Requirement: Stop and restart
 

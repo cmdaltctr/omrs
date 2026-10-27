@@ -13,13 +13,15 @@ quality work depends on these meanings being stable.
 
 Every `VectorStore` implementation SHALL convert its native vector-distance or vector-score output at the adapter boundary into a canonical dense retrieval score consumed by core retrieval. Core retrieval SHALL NOT assume ChromaDB L2 distance semantics or apply a hard-coded native-distance transform to every backend.
 
-The store-neutral dense result SHALL expose at least `id`, `document`, `metadata`, `score`, and `score_kind`. `score_kind` SHALL identify the semantic contract of the score rather than the backend implementation name.
-
 #### Scenario: Chroma and Lance use the same core path
 - **GIVEN** identical precomputed embeddings and documents are loaded into ChromaDB and LanceDB
 - **WHEN** the same query vector is issued
 - **THEN** both adapters SHALL return higher-is-better canonical scores
 - **AND** core retrieval SHALL not branch on the selected vector-store name to interpret those scores
+
+### Requirement: Dense results carry a score and its kind
+
+The store-neutral dense result SHALL expose at least `id`, `document`, `metadata`, `score`, and `score_kind`. `score_kind` SHALL identify the semantic contract of the score rather than the backend implementation name.
 
 #### Scenario: Unsupported native score semantics
 - **GIVEN** a future vector-store backend cannot map its native ranking output to the required canonical score contract
@@ -30,13 +32,21 @@ The store-neutral dense result SHALL expose at least `id`, `document`, `metadata
 
 The repository SHALL maintain deterministic cross-store fixtures with known vector geometry. Each registered production vector store SHALL be tested for expected neighbour ordering, monotonicity, documented range and threshold behaviour.
 
-The current `dense_similarity_v1` contract SHALL NOT require exact numeric equality between backends unless their native L2 distance scaling is independently proven identical. Cross-store parity is defined by the documented bounded range, higher-is-better direction, exact-match maximum, and monotonic ordering invariants.
-
 #### Scenario: Known nearest neighbour
 - **GIVEN** a fixture with one exact vector match and progressively more distant vectors
 - **WHEN** each registered vector-store backend is queried
 - **THEN** the exact match MUST rank first
 - **AND** canonical scores MUST decrease monotonically with fixture distance according to the declared score contract
+
+### Requirement: Cross-store parity uses invariants, not exact equality
+
+The current `dense_similarity_v1` contract SHALL NOT require exact numeric equality between backends unless their native L2 distance scaling is independently proven identical. Cross-store parity is defined by the documented bounded range, higher-is-better direction, exact-match maximum, and monotonic ordering invariants.
+
+#### Scenario: Backends are compared by invariants
+- **GIVEN** two registered vector-store backends whose native L2 distance scaling is not independently proven identical
+- **WHEN** their `dense_similarity_v1` scores for the same fixture are compared
+- **THEN** the contract MUST NOT require exact numeric equality between them
+- **AND** parity MUST be judged by the documented bounded range, higher-is-better direction, exact-match maximum, and monotonic ordering invariants
 
 ### Requirement: Score kinds are not compared across incompatible scales
 

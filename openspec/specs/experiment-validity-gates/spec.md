@@ -27,13 +27,7 @@ Every calibration experiment that can influence a production default or ADR SHAL
 
 ### Requirement: Runtime manifests record effective execution
 
-Every measured experiment SHALL emit a secret-free runtime manifest describing what actually executed, not only requested configuration. The manifest SHALL include repository/dependency provenance, corpus/query/qrel/index identity, effective embedding provider/model, vector-store backend/mode/score kind, sparse backend/cache namespace, reranker backend/model/device/execution provider/variant when observable, effective chunker/document reader including fallback state, and effective retrieval knobs relevant to the cell.
-
-#### Scenario: Torch requested but CPU/MPS device differs
-- **GIVEN** a cell manipulates the reranker execution device
-- **WHEN** preflight observes the effective device
-- **THEN** the manifest MUST record the effective device
-- **AND** the cell MUST abort if it does not equal the declared treatment
+Every measured experiment SHALL emit a secret-free runtime manifest describing what actually executed, not only requested configuration.
 
 #### Scenario: ONNX provider fallback
 - **GIVEN** a performance cell declares CoreML as the manipulated execution provider
@@ -44,6 +38,16 @@ Every measured experiment SHALL emit a secret-free runtime manifest describing w
 #### Scenario: Secret-bearing configuration
 - **WHEN** a runtime manifest is serialised
 - **THEN** API keys, tokens and credential material MUST NOT be present
+
+### Requirement: The runtime manifest lists the effective components of each cell
+
+The manifest SHALL include repository/dependency provenance, corpus/query/qrel/index identity, effective embedding provider/model, vector-store backend/mode/score kind, sparse backend/cache namespace, reranker backend/model/device/execution provider/variant when observable, effective chunker/document reader including fallback state, and effective retrieval knobs relevant to the cell.
+
+#### Scenario: Torch requested but CPU/MPS device differs
+- **GIVEN** a cell manipulates the reranker execution device
+- **WHEN** preflight observes the effective device
+- **THEN** the manifest MUST record the effective device
+- **AND** the cell MUST abort if it does not equal the declared treatment
 
 ### Requirement: Manipulated variables must be observed, not assumed
 
@@ -132,7 +136,21 @@ Resuming an experiment SHALL validate its corpus, observation identifiers, plan,
 
 ### Requirement: Paid rebuilds require current estimates and approval
 
-An experiment rebuild SHALL preserve existing indexes and require an offline estimate of the actual prepared embedding requests. The estimate SHALL cover the declared corpus and effective configuration, report token counts and an explicit pricing basis, and distinguish estimated cost from billing. Paid execution SHALL require operator approval tied to that estimate, destination and spending limit. Missing, invalid or stale estimates SHALL block spending. A frozen acceptance threshold SHALL evaluate the measured result only; exceeding it SHALL NOT invalidate an otherwise valid estimate or block an approved build. A force option SHALL NOT bypass the estimate, approval or destination checks.
+An experiment rebuild SHALL preserve existing indexes and require an offline estimate of the actual prepared embedding requests. The estimate SHALL cover the declared corpus and effective configuration, report token counts and an explicit pricing basis, and distinguish estimated cost from billing. Paid execution SHALL require operator approval tied to that estimate, destination and spending limit.
+
+#### Scenario: Offline accounting encounters a fallback
+- **WHEN** preparation cannot reproduce the declared tokenizer or request-text contract
+- **THEN** the estimate SHALL be invalid
+- **AND** it SHALL NOT authorise a paid build
+
+#### Scenario: A rebuild is approved
+- **WHEN** a valid estimate and explicit approval match the requested build
+- **THEN** the builder SHALL use a separate approved output location
+- **AND** it SHALL leave the preserved historical index unchanged
+
+### Requirement: Missing or stale estimates block paid rebuilds
+
+Missing, invalid or stale estimates SHALL block spending. A force option SHALL NOT bypass the estimate, approval or destination checks.
 
 #### Scenario: A forced rebuild has no approved estimate
 - **WHEN** the operator requests a forced rebuild without a valid approved estimate
@@ -143,21 +161,15 @@ An experiment rebuild SHALL preserve existing indexes and require an offline est
 - **WHEN** corpus, tokenizer, embedding configuration, request preparation or destination differs from the approved estimate
 - **THEN** the builder SHALL refuse to use that approval
 
-#### Scenario: Offline accounting encounters a fallback
-- **WHEN** preparation cannot reproduce the declared tokenizer or request-text contract
-- **THEN** the estimate SHALL be invalid
-- **AND** it SHALL NOT authorise a paid build
+### Requirement: A frozen acceptance threshold judges only the measured result
+
+A frozen acceptance threshold SHALL evaluate the measured result only; exceeding it SHALL NOT invalidate an otherwise valid estimate or block an approved build.
 
 #### Scenario: The estimate exceeds a frozen acceptance threshold
 - **WHEN** a valid estimate exceeds the pre-registered token-increase threshold
 - **THEN** the builder SHALL display the estimated token increase and approximate cost and request spending approval
 - **AND** it SHALL permit the build when valid approval matches the estimate, destination and spending limit
 - **AND** the frozen threshold SHALL remain unchanged for evaluating the measured experiment result
-
-#### Scenario: A rebuild is approved
-- **WHEN** a valid estimate and explicit approval match the requested build
-- **THEN** the builder SHALL use a separate approved output location
-- **AND** it SHALL leave the preserved historical index unchanged
 
 ### Requirement: Reports distinguish measurements from explanations and decisions
 
@@ -185,7 +197,7 @@ Reports SHALL distinguish measured results, projections, exploratory interpretat
 
 ### Requirement: PDF routing evaluations use approved cohorts and independent labels
 
-A PDF routing evaluation SHALL record the operator-approved inclusion rule and selected documents before measurement. Ground-truth labels SHALL include an independent assessment of relevant page content, distinct from the classifier's output and aggregate character counts. Ambiguous cases SHALL be recorded explicitly. The protocol SHALL define how missing pages and whole-document routing are judged. Documents used to develop a candidate SHALL NOT count as independent held-out validation of that candidate.
+A PDF routing evaluation SHALL record the operator-approved inclusion rule and selected documents before measurement. Ground-truth labels SHALL include an independent assessment of relevant page content, distinct from the classifier's output and aggregate character counts. Ambiguous cases SHALL be recorded explicitly. The protocol SHALL define how missing pages and whole-document routing are judged.
 
 #### Scenario: The operator selects papers and a long book
 - **WHEN** the approved collection includes selected papers and a book as a stress case
@@ -196,6 +208,10 @@ A PDF routing evaluation SHALL record the operator-approved inclusion rule and s
 - **WHEN** aggregate character counts are high but relevant pages lack usable text
 - **THEN** the evaluation SHALL retain the independently assessed missing-page evidence
 - **AND** it SHALL apply the agreed routing judgement rather than infer correctness from the aggregate alone
+
+### Requirement: Development documents are not held-out validation
+
+Documents used to develop a candidate SHALL NOT count as independent held-out validation of that candidate.
 
 #### Scenario: A known failure motivates a new rule
 - **WHEN** a candidate was designed after examining a document

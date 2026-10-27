@@ -43,12 +43,6 @@ binary, thresholds). It SHALL live in a pure-data module with no imports from
 `search()` and `ingest_path_async()` SHALL accept an `EffectiveSettings`
 parameter and SHALL pass it down to every module they call. Modules under
 `core/` and `integrations/` SHALL NOT import a process-wide settings object.
-The producer SHALL remain the collection profile resolver or composition
-boundary. Documented legacy entry-boundary resolution SHALL occur only when
-explicit settings are omitted; lower helpers SHALL receive the resolved value.
-Codebase-map generation, detection, communities, document thresholds, and
-cache helpers SHALL use supplied settings rather than independently reading
-defaults.
 
 #### Scenario: No global settings read in core
 - **WHEN** production core/integrations are checked for resolved configuration-singleton imports
@@ -77,6 +71,24 @@ defaults.
 - **AND** it SHALL not fall back because a global settings getter failed
 - **AND** detected content type SHALL retain its existing index-identity role
 
+### Requirement: Settings are produced at the resolver or composition boundary
+
+The producer SHALL remain the collection profile resolver or composition
+boundary. Documented legacy entry-boundary resolution SHALL occur only when
+explicit settings are omitted; lower helpers SHALL receive the resolved
+value.
+
+#### Scenario: Legacy MCP supplies its context
+- **WHEN** the existing MCP codebase tool is called with its unchanged parameters
+- **THEN** its boundary SHALL supply composed settings/store to core
+- **AND** its signature, annotations, path validation, and error shape SHALL remain compatible
+
+### Requirement: Codebase and document helpers use supplied settings
+
+Codebase-map generation, detection, communities, document thresholds, and
+cache helpers SHALL use supplied settings rather than independently reading
+defaults.
+
 #### Scenario: Two codebase contexts choose different cache directories
 - **WHEN** callers supply settings with distinct cache locations
 - **THEN** each map/cache operation SHALL use the supplied location
@@ -87,11 +99,6 @@ defaults.
 - **THEN** both document-graph calls SHALL receive the supplied similarity threshold
 - **AND** an omitted argument SHALL not cause a leaf default lookup
 
-#### Scenario: Legacy MCP supplies its context
-- **WHEN** the existing MCP codebase tool is called with its unchanged parameters
-- **THEN** its boundary SHALL supply composed settings/store to core
-- **AND** its signature, annotations, path validation, and error shape SHALL remain compatible
-
 ### Requirement: No settings singleton outside the composition root
 
 The resolved `Settings` singleton SHALL NOT be instantiated at module import
@@ -100,13 +107,6 @@ module-level `settings` object.
 
 `get_settings()` SHALL remain the environment-and-file resolution path, and
 its production call sites SHALL remain limited to the composition root.
-`Engine.from_environment()` SHALL delegate to that root rather than calling
-`get_settings()` itself. An engine constructed from caller-supplied settings
-SHALL NOT call it at all.
-
-This preserves the existing sole-caller rule while adding an explicit Engine
-factory over it; direct Engine construction accepts already-resolved
-`EffectiveSettings` and never reads config.
 
 #### Scenario: Import does not resolve settings
 
@@ -120,6 +120,14 @@ factory over it; direct Engine construction accepts already-resolved
 - **WHEN** the codebase is searched for `get_settings()`
 - **THEN** the composition root MUST remain the sole production call site
 - **AND** no module under `core/` or `integrations/` MUST call it
+
+### Requirement: Engines reach get_settings() only through the composition root
+
+`Engine.from_environment()` SHALL delegate to that root rather than calling
+`get_settings()` itself. An engine constructed from caller-supplied settings
+SHALL NOT call it at all. This preserves the existing sole-caller rule while
+adding an explicit Engine factory over it; direct Engine construction
+accepts already-resolved `EffectiveSettings` and never reads config.
 
 #### Scenario: Explicit settings bypass resolution entirely
 

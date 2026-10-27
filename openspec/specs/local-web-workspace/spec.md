@@ -130,7 +130,7 @@ Web startup SHALL construct its runtime through composition without installing a
 
 ### Requirement: The web server listens on a stable port
 
-`omrs web` SHALL choose its port in this order: the `--port` option, then `web_port` in `omrs.jsonc`, then 8765. `--port 0` SHALL pick a free port for that launch. When the chosen port is taken, the command SHALL exit with an error that names the port and tells the user to pass `--port <n>`. `PUT /v1/settings/web-port` with `{ port }` (browser session only, 1024 to 65535, or `null` to clear) SHALL write `web_port` to `omrs.jsonc` for later launches and SHALL NOT rebind the running server. `GET /v1/settings/web-port` (read scope) SHALL return the file port, the bound port and whether they differ. The login item SHALL read the same value.
+`omrs web` SHALL choose its port in this order: the `--port` option, then `web_port` in `omrs.jsonc`, then 8765. `--port 0` SHALL pick a free port for that launch. When the chosen port is taken, the command SHALL exit with an error that names the port and tells the user to pass `--port <n>`.
 
 #### Scenario: Default port
 
@@ -142,16 +142,6 @@ Web startup SHALL construct its runtime through composition without installing a
 - **WHEN** port 8765 is in use and no other port is given
 - **THEN** the command MUST exit with a message naming 8765 and the `--port` option
 
-#### Scenario: Saved port applies next launch
-
-- **WHEN** the browser session saves port 9100 and the server restarts without `--port`
-- **THEN** `omrs.jsonc` MUST hold `"web_port": 9100`, the server MUST listen on 9100, and the running server MUST NOT have moved before the restart
-
-#### Scenario: Port edited by hand
-
-- **WHEN** the user sets `web_port` to 9200 in `omrs.jsonc` while the server runs on 8765
-- **THEN** `GET /v1/settings/web-port` MUST report that the ports differ, and the next launch MUST listen on 9200
-
 #### Scenario: Option wins
 
 - **WHEN** `omrs.jsonc` sets a port and `--port 9200` is given
@@ -161,6 +151,20 @@ Web startup SHALL construct its runtime through composition without installing a
 
 - **WHEN** `web_port` holds a value outside 1024 to 65535
 - **THEN** the launch MUST ignore it, use 8765, and list the problem in Settings
+
+### Requirement: Settings saves the web port for later launches
+
+`PUT /v1/settings/web-port` with `{ port }` (browser session only, 1024 to 65535, or `null` to clear) SHALL write `web_port` to `omrs.jsonc` for later launches and SHALL NOT rebind the running server. `GET /v1/settings/web-port` (read scope) SHALL return the file port, the bound port and whether they differ. The login item SHALL read the same value.
+
+#### Scenario: Saved port applies next launch
+
+- **WHEN** the browser session saves port 9100 and the server restarts without `--port`
+- **THEN** `omrs.jsonc` MUST hold `"web_port": 9100`, the server MUST listen on 9100, and the running server MUST NOT have moved before the restart
+
+#### Scenario: Port edited by hand
+
+- **WHEN** the user sets `web_port` to 9200 in `omrs.jsonc` while the server runs on 8765
+- **THEN** `GET /v1/settings/web-port` MUST report that the ports differ, and the next launch MUST listen on 9200
 
 ### Requirement: The workspace opens truncated run output
 
@@ -188,17 +192,21 @@ Every preview in the run detail that the server or the browser cut SHALL say tha
 
 ### Requirement: The upload limit is set in Settings
 
-The per-file upload limit SHALL be the `web_max_upload_mib` value of `omrs.jsonc`, in whole MiB from 1 to 2048. With no value the limit SHALL be 50 MiB. `GET /v1/settings/upload-limit` (read scope) SHALL return the limit in force, its source, the file value or `null`, the default, and the allowed range. `PUT /v1/settings/upload-limit` SHALL need a browser session, SHALL take `max_mib` (an integer in range, or `null` to clear the file value), SHALL write it to `omrs.jsonc` before it changes the running server, and SHALL apply it to new uploads at once, with no restart. A hand edit of the file SHALL also apply to new uploads at once. An upload that has already started SHALL keep the limit it started with. Settings › Workspace SHALL show the limit in force and its source, SHALL let the user edit it or return to the default, and SHALL state that the change applies to new uploads straight away.
-
-#### Scenario: Raise the limit
-
-- **WHEN** the user saves 200 MiB in Settings and then uploads a 120 MiB file
-- **THEN** the server MUST accept the file without a restart, `omrs.jsonc` MUST hold `"web_max_upload_mib": 200`, and the value MUST still apply after a restart
+The per-file upload limit SHALL be the `web_max_upload_mib` value of `omrs.jsonc`, in whole MiB from 1 to 2048. With no value the limit SHALL be 50 MiB. `GET /v1/settings/upload-limit` (read scope) SHALL return the limit in force, its source, the file value or `null`, the default, and the allowed range.
 
 #### Scenario: Return to the default
 
 - **WHEN** the user clears the value
 - **THEN** `omrs.jsonc` MUST no longer hold `web_max_upload_mib`, the limit in force MUST be 50 MiB, and Settings MUST say that the default applies
+
+### Requirement: Saving the upload limit applies it to new uploads at once
+
+`PUT /v1/settings/upload-limit` SHALL need a browser session, SHALL take `max_mib` (an integer in range, or `null` to clear the file value), SHALL write it to `omrs.jsonc` before it changes the running server, and SHALL apply it to new uploads at once, with no restart. A hand edit of the file SHALL also apply to new uploads at once. An upload that has already started SHALL keep the limit it started with.
+
+#### Scenario: Raise the limit
+
+- **WHEN** the user saves 200 MiB in Settings and then uploads a 120 MiB file
+- **THEN** the server MUST accept the file without a restart, `omrs.jsonc` MUST hold `"web_max_upload_mib": 200`, and the value MUST still apply after a restart
 
 #### Scenario: Value out of range
 
@@ -215,9 +223,18 @@ The per-file upload limit SHALL be the `web_max_upload_mib` value of `omrs.jsonc
 - **WHEN** the limit is lowered while a file upload is in progress
 - **THEN** that upload MUST finish against the limit it started with, and the next upload MUST use the new limit
 
+### Requirement: Settings shows and edits the upload limit
+
+Settings › Workspace SHALL show the limit in force and its source, SHALL let the user edit it or return to the default, and SHALL state that the change applies to new uploads straight away.
+
+#### Scenario: Settings shows the limit in force
+
+- **WHEN** the user opens Settings › Workspace
+- **THEN** it MUST show the limit in force and its source, MUST let the user edit it or return to the default, and MUST state that the change applies to new uploads straight away
+
 ### Requirement: A launch option sets the upload limit without the web workspace
 
-`omrs web` SHALL accept `--max-upload-mib <n>` and SHALL read `WEB_MAX_UPLOAD_MIB` from the environment or `.env` when the flag is absent, so the limit can be set when the web workspace cannot be used. The order SHALL be the flag, then the environment variable, then `web_max_upload_mib` in `omrs.jsonc`, then 50 MiB. Both launch forms SHALL take a whole number from 1 to 2048; any other value SHALL stop the launch with exit code 2 and a message that names the option and the range. While a launch option sets the limit, `GET /v1/settings/upload-limit` SHALL report `source: "launch"`, `PUT` SHALL answer 409 and change nothing, and Settings SHALL show the limit as set at launch with no edit control. `.env.example` and the CLI reference SHALL document both.
+`omrs web` SHALL accept `--max-upload-mib <n>` and SHALL read `WEB_MAX_UPLOAD_MIB` from the environment or `.env` when the flag is absent, so the limit can be set when the web workspace cannot be used. The order SHALL be the flag, then the environment variable, then `web_max_upload_mib` in `omrs.jsonc`, then 50 MiB.
 
 #### Scenario: Environment variable in .env
 
@@ -229,20 +246,28 @@ The per-file upload limit SHALL be the `web_max_upload_mib` value of `omrs.jsonc
 - **WHEN** `omrs.jsonc` sets 200 MiB, the environment sets 300, and `omrs web --max-upload-mib 400` starts
 - **THEN** the limit in force MUST be 400 MiB
 
+#### Scenario: No launch option
+
+- **WHEN** neither the flag nor the environment variable is set
+- **THEN** the file value MUST apply, else 50 MiB, and the response MUST report `source: "config-file"` or `source: "default"`
+
+### Requirement: A launch value for the upload limit must be in range
+
+Both launch forms SHALL take a whole number from 1 to 2048; any other value SHALL stop the launch with exit code 2 and a message that names the option and the range.
+
 #### Scenario: Invalid launch value
 
 - **WHEN** `WEB_MAX_UPLOAD_MIB` is `0`, `5000` or `big`
 - **THEN** `omrs web` MUST exit with code 2 before it binds a port and MUST name `WEB_MAX_UPLOAD_MIB` and the range 1 to 2048
 
+### Requirement: Settings cannot change an upload limit set at launch
+
+While a launch option sets the limit, `GET /v1/settings/upload-limit` SHALL report `source: "launch"`, `PUT` SHALL answer 409 and change nothing, and Settings SHALL show the limit as set at launch with no edit control. `.env.example` and the CLI reference SHALL document both.
+
 #### Scenario: Settings while a launch option is set
 
 - **WHEN** a launch option sets the limit and a browser session sends `PUT /v1/settings/upload-limit`
 - **THEN** the server MUST answer 409, MUST keep the file and the running limit, and Settings MUST say the limit was set at launch and how to change it
-
-#### Scenario: No launch option
-
-- **WHEN** neither the flag nor the environment variable is set
-- **THEN** the file value MUST apply, else 50 MiB, and the response MUST report `source: "config-file"` or `source: "default"`
 
 ### Requirement: The workspace enforces the server's upload limit
 
@@ -390,12 +415,29 @@ The "New profile" list SHALL offer the ready profiles from `GET /v1/profiles` in
 - **AND** the status line SHALL still show the stored profile badge
 
 ### Requirement: Collections have an editable display name
-A collection SHALL have an optional display name stored in its metadata. `GET /v1/collections` SHALL return it as `display_name`, or `null` when none is set. `PATCH /v1/collections/{collection}/display-name` SHALL set it and SHALL return `{collection, display_name}`. It SHALL require a browser session with the `manage` scope, the same guard as the profile change. It SHALL return 404 for an unknown collection and SHALL NOT create one. The server SHALL trim the value and SHALL clear the display name when the trimmed value is empty. It SHALL reject, with status 400, a value longer than 80 Unicode code points or one that contains a control character. The collection name, the stored vectors, retrieval, ingestion and MCP tools SHALL be unaffected.
+A collection SHALL have an optional display name stored in its metadata. `GET /v1/collections` SHALL return it as `display_name`, or `null` when none is set. `PATCH /v1/collections/{collection}/display-name` SHALL set it and SHALL return `{collection, display_name}`. It SHALL require a browser session with the `manage` scope, the same guard as the profile change. It SHALL return 404 for an unknown collection and SHALL NOT create one.
 
 #### Scenario: Display name is set
 - **WHEN** a client sends `{"display_name": "  Project docs "}` for collection `documents`
 - **THEN** the response SHALL be `{"collection": "documents", "display_name": "Project docs"}`
 - **AND** the collection list SHALL return the same value
+
+#### Scenario: Bearer credential
+- **WHEN** a bearer token or notebook credential sends the PATCH request
+- **THEN** the server SHALL reject it with status 403 before any write
+
+#### Scenario: Unknown collection
+- **WHEN** a client sends the PATCH request for a collection that does not exist
+- **THEN** the server SHALL return 404
+- **AND** no collection SHALL be created
+
+#### Scenario: Metadata cannot be read
+- **WHEN** reading a collection's metadata fails during the collection list
+- **THEN** that item SHALL carry `display_name: null` and `profile: null`
+- **AND** the list SHALL still succeed
+
+### Requirement: The server trims and checks a display name
+The server SHALL trim the value and SHALL clear the display name when the trimmed value is empty. It SHALL reject, with status 400, a value longer than 80 Unicode code points or one that contains a control character.
 
 #### Scenario: Display name is cleared
 - **WHEN** a client sends an empty or whitespace-only value
@@ -412,26 +454,15 @@ A collection SHALL have an optional display name stored in its metadata. `GET /v
 - **THEN** the server SHALL reject the request with status 400
 - **AND** the stored value SHALL stay unchanged
 
+### Requirement: A display name changes only the label
+The collection name, the stored vectors, retrieval, ingestion and MCP tools SHALL be unaffected.
+
 #### Scenario: Retrieval keeps working under the collection name
 - **WHEN** a display name is set on `documents`
 - **THEN** a search or ingest call that passes `collection="documents"` SHALL behave as before
 
-#### Scenario: Bearer credential
-- **WHEN** a bearer token or notebook credential sends the PATCH request
-- **THEN** the server SHALL reject it with status 403 before any write
-
-#### Scenario: Unknown collection
-- **WHEN** a client sends the PATCH request for a collection that does not exist
-- **THEN** the server SHALL return 404
-- **AND** no collection SHALL be created
-
-#### Scenario: Metadata cannot be read
-- **WHEN** reading a collection's metadata fails during the collection list
-- **THEN** that item SHALL carry `display_name: null` and `profile: null`
-- **AND** the list SHALL still succeed
-
 ### Requirement: The workspace shows the display name and the collection name
-The Home card, the project chips in the Knowledge Base and in Chat, and the project header SHALL show the display name when set and the collection name otherwise. The project header SHALL always show the collection name in small grey text under the title, and each Home card SHALL show it in the same style under the document and chunk counts. Places where the name is an identifier SHALL keep the collection name: "Sources in <name>", the Chat input and the delete dialog. The header SHALL offer a pencil button that edits the display name in place. Enter SHALL save, Escape SHALL cancel, and an empty value SHALL clear the display name.
+The Home card, the project chips in the Knowledge Base and in Chat, and the project header SHALL show the display name when set and the collection name otherwise. The project header SHALL always show the collection name in small grey text under the title, and each Home card SHALL show it in the same style under the document and chunk counts.
 
 #### Scenario: Display name is set
 - **WHEN** collection `documents` has display name `Project docs`
@@ -443,15 +474,21 @@ The Home card, the project chips in the Knowledge Base and in Chat, and the proj
 - **THEN** its card SHALL read `Project docs`, then the counts, then `Collection name: documents`
 - **AND** a card with no display name SHALL still show `Collection name: <name>`
 
+#### Scenario: No display name
+- **WHEN** a collection has no display name
+- **THEN** the title SHALL read the collection name
+- **AND** the grey line SHALL still show `Collection name: <name>`
+
+### Requirement: Identifier places keep the collection name
+Places where the name is an identifier SHALL keep the collection name: "Sources in <name>", the Chat input and the delete dialog.
+
 #### Scenario: Identifiers keep the collection name
 - **WHEN** collection `documents` has display name `Project docs`
 - **THEN** the Sources heading SHALL read `Sources in documents`
 - **AND** the Chat input SHALL read `Ask documents a question`
 
-#### Scenario: No display name
-- **WHEN** a collection has no display name
-- **THEN** the title SHALL read the collection name
-- **AND** the grey line SHALL still show `Collection name: <name>`
+### Requirement: The project header edits the display name in place
+The header SHALL offer a pencil button that edits the display name in place. Enter SHALL save, Escape SHALL cancel, and an empty value SHALL clear the display name.
 
 #### Scenario: User edits the name
 - **WHEN** the user clicks the pencil, types a new name and presses Enter
@@ -473,13 +510,22 @@ The Home card, the project chips in the Knowledge Base and in Chat, and the proj
 
 ### Requirement: A login-item server hands over a renewed private sign-in link
 
-When started with `--login-item`, the server SHALL write its one-time sign-in link to `<workspace>/launch-link`, as one line, in a file that only the current user can read (mode 0600), and SHALL NOT print the link to standard output, standard error or any log. After the link is used, or after the failed-attempt limit disables it, the server SHALL create a new link with a new secret and replace the file's content atomically. Each link SHALL work once. The server SHALL remove the file during its shutdown, before the process ends, also when a stop signal ends the process. A login-item server SHALL NOT write access-log lines. Browser sessions SHALL stay in server memory and SHALL end when the server stops. A page that the server served SHALL then sign in again with the workspace sign-in secret, as "The page carries a persistent workspace sign-in secret" states.
+When started with `--login-item`, the server SHALL write its one-time sign-in link to `<workspace>/launch-link`, as one line, in a file that only the current user can read (mode 0600), and SHALL NOT print the link to standard output, standard error or any log.
 
 #### Scenario: Link file is private
 
 - **WHEN** a login-item server starts
 - **THEN** `<workspace>/launch-link` MUST exist with mode 0600 and MUST hold a link for the bound port
 - **AND** the link MUST NOT appear in standard output, standard error or the log buffer
+
+#### Scenario: Foreground launch is unchanged
+
+- **WHEN** the user runs `omrs web` without `--login-item`
+- **THEN** the server MUST print the one-time link to the terminal, MUST write no `launch-link` file, and MUST accept that link once, as before
+
+### Requirement: The sign-in link renews after each use
+
+After the link is used, or after the failed-attempt limit disables it, the server SHALL create a new link with a new secret and replace the file's content atomically. Each link SHALL work once.
 
 #### Scenario: Link renews after sign-in
 
@@ -498,27 +544,18 @@ When started with `--login-item`, the server SHALL write its one-time sign-in li
 - **WHEN** the server cannot write the renewed link, and a later sign-in attempt arrives
 - **THEN** the server MUST write the current link to the file again, and the earlier sign-in MUST NOT fail
 
+### Requirement: Shutdown removes the link file and ends browser sessions
+
+The server SHALL remove the file during its shutdown, before the process ends, also when a stop signal ends the process. A login-item server SHALL NOT write access-log lines. Browser sessions SHALL stay in server memory and SHALL end when the server stops. A page that the server served SHALL then sign in again with the workspace sign-in secret, as "The page carries a persistent workspace sign-in secret" states.
+
 #### Scenario: Clean shutdown removes the file
 
 - **WHEN** the server receives SIGTERM
 - **THEN** `<workspace>/launch-link` MUST NOT exist once the process has ended
 
-#### Scenario: Foreground launch is unchanged
-
-- **WHEN** the user runs `omrs web` without `--login-item`
-- **THEN** the server MUST print the one-time link to the terminal, MUST write no `launch-link` file, and MUST accept that link once, as before
-
 ### Requirement: The page carries a persistent workspace sign-in secret
 
-The server SHALL keep one sign-in secret in `<workspace>/.auth-token`. It SHALL create the file on its first start with a new random secret of at least 256 bits, in a file that only the current user can read (mode 0600), and SHALL create a missing workspace folder with mode 0700. Every later start with the same workspace SHALL read and use the same secret. A file with a mode looser than 0600 SHALL get a warning, and the server SHALL set the mode to 0600 when the current user owns the file. A file that holds no valid secret SHALL get a warning and SHALL be replaced. Neither case SHALL stop the server.
-
-The server SHALL put the secret into the application page that it serves only when the `Host` header is one of its own loopback names with the bound port, any `Origin` header is the server's own origin or an origin approved with `--allow-origin`, and the fetch metadata shows a same-origin request or a navigation. Any other request SHALL get the page without the secret, or the `Host` refusal. A page that carries the secret SHALL be sent with `Cache-Control: no-store`.
-
-`POST /v1/session` SHALL accept the secret in its `bootstrap` field, with the same `Origin` check, and SHALL set the same session cookie as for the one-time link. A sign-in with the secret SHALL NOT use, renew or disable the one-time link. Wrong values SHALL count toward the failure limit of the one-time link and SHALL NOT disable the secret.
-
-The page SHALL sign in with the secret on load when the address has no one-time link, or when that link is refused. When an API request gets 401, the page SHALL sign in with the secret once and SHALL send the request once more. Requests that get 401 at the same time SHALL share one sign-in.
-
-The secret SHALL NOT appear in a log line, an API response body, an error message, a URL or the terminal.
+The server SHALL keep one sign-in secret in `<workspace>/.auth-token`. It SHALL create the file on its first start with a new random secret of at least 256 bits, in a file that only the current user can read (mode 0600), and SHALL create a missing workspace folder with mode 0700. Every later start with the same workspace SHALL read and use the same secret.
 
 #### Scenario: First start creates a private secret
 
@@ -531,17 +568,19 @@ The secret SHALL NOT appear in a log line, an API response body, an error messag
 - **WHEN** two servers start one after the other with the same workspace
 - **THEN** both MUST put the same secret into their page
 
+### Requirement: A sign-in secret file with a loose mode or no valid secret is repaired
+
+A file with a mode looser than 0600 SHALL get a warning, and the server SHALL set the mode to 0600 when the current user owns the file. A file that holds no valid secret SHALL get a warning and SHALL be replaced. Neither case SHALL stop the server.
+
 #### Scenario: A loose mode is tightened
 
 - **WHEN** `.auth-token` has mode 0644 at start
 - **THEN** the server MUST log a warning that names mode 0600 and MUST NOT log the secret
 - **AND** the file MUST then have mode 0600 and MUST hold the same secret
 
-#### Scenario: An open tab survives a restart
+### Requirement: Only a same-origin page request gets the sign-in secret
 
-- **WHEN** a page signed in, the server restarts with the same workspace, and the page sends its next API request with the old cookie
-- **THEN** the request MUST get 401, the page MUST sign in with the secret it holds, and the repeated request MUST succeed
-- **AND** no one-time link MUST be needed
+The server SHALL put the secret into the application page that it serves only when the `Host` header is one of its own loopback names with the bound port, any `Origin` header is the server's own origin or an origin approved with `--allow-origin`, and the fetch metadata shows a same-origin request or a navigation. Any other request SHALL get the page without the secret, or the `Host` refusal. A page that carries the secret SHALL be sent with `Cache-Control: no-store`.
 
 #### Scenario: A foreign Host never gets the secret
 
@@ -558,6 +597,10 @@ The secret SHALL NOT appear in a log line, an API response body, an error messag
 - **WHEN** the server starts with an approved origin and that origin loads the page and posts the secret
 - **THEN** the page MUST hold the secret and the server MUST set the session cookie
 
+### Requirement: The session route accepts the sign-in secret
+
+`POST /v1/session` SHALL accept the secret in its `bootstrap` field, with the same `Origin` check, and SHALL set the same session cookie as for the one-time link. A sign-in with the secret SHALL NOT use, renew or disable the one-time link. Wrong values SHALL count toward the failure limit of the one-time link and SHALL NOT disable the secret.
+
 #### Scenario: Sign-in with the secret leaves the link unused
 
 - **WHEN** a login-item server signs a page in with the secret
@@ -568,14 +611,33 @@ The secret SHALL NOT appear in a log line, an API response body, an error messag
 - **WHEN** more than 20 wrong values have been posted
 - **THEN** the one-time link MUST be refused and the secret MUST still sign in
 
+### Requirement: The page signs in again with the secret
+
+The page SHALL sign in with the secret on load when the address has no one-time link, or when that link is refused. When an API request gets 401, the page SHALL sign in with the secret once and SHALL send the request once more. Requests that get 401 at the same time SHALL share one sign-in.
+
+#### Scenario: An open tab survives a restart
+
+- **WHEN** a page signed in, the server restarts with the same workspace, and the page sends its next API request with the old cookie
+- **THEN** the request MUST get 401, the page MUST sign in with the secret it holds, and the repeated request MUST succeed
+- **AND** no one-time link MUST be needed
+
 #### Scenario: One retry only
 
 - **WHEN** an API request gets 401 and the sign-in with the secret is refused
 - **THEN** the page MUST report the 401 and MUST NOT send the request again
 
+### Requirement: The sign-in secret is never shown
+
+The secret SHALL NOT appear in a log line, an API response body, an error message, a URL or the terminal.
+
+#### Scenario: The secret stays out of logs and responses
+
+- **WHEN** the server runs with a sign-in secret
+- **THEN** the secret MUST NOT appear in a log line, an API response body, an error message, a URL or the terminal
+
 ### Requirement: The answer route can stream its stage
 
-The app SHALL offer `POST /v1/collections/{collection}/answer/stream`. It SHALL take the body of `POST /v1/collections/{collection}/answer`, SHALL need the `read` scope, and SHALL follow the same authentication, Host and Origin rules. A valid request SHALL get `text/event-stream` with `stage` frames, then exactly one `result` frame, then the end. The route SHALL open the stream only when the first stage or the result is ready. A request that fails before the stream opens SHALL get an ordinary HTTP error. A request the Engine rejects as invalid SHALL get the same 400 response as the blocking route.
+The app SHALL offer `POST /v1/collections/{collection}/answer/stream`. It SHALL take the body of `POST /v1/collections/{collection}/answer`, SHALL need the `read` scope, and SHALL follow the same authentication, Host and Origin rules. A valid request SHALL get `text/event-stream` with `stage` frames, then exactly one `result` frame, then the end.
 
 #### Scenario: Stages then result
 
@@ -599,6 +661,10 @@ The app SHALL offer `POST /v1/collections/{collection}/answer/stream`. It SHALL 
 - **WHEN** a request has no credential, or a session cookie with a foreign Origin, or a bearer credential without the `read` scope
 - **THEN** the route MUST answer 401 or 403 before it admits any work
 - **AND** a bearer credential with the `read` scope MUST be accepted
+
+### Requirement: The stream opens only when it has a frame to send
+
+The route SHALL open the stream only when the first stage or the result is ready. A request that fails before the stream opens SHALL get an ordinary HTTP error. A request the Engine rejects as invalid SHALL get the same 400 response as the blocking route.
 
 #### Scenario: Bad body
 
@@ -638,7 +704,7 @@ A `stage` frame SHALL hold only a stage name, a sequence number that starts at 1
 
 ### Requirement: A stream follows its client
 
-The streaming answer SHALL hold runtime admission from before the first byte until the answer ends or is cancelled. When the client leaves before the `result` frame, the server SHALL cancel the answer and SHALL release admission. The route SHALL watch the client itself, so that a client that leaves while no frame is due is noticed whatever ASGI spec version the server reports. A cancelled answer SHALL write nothing. Each stream SHALL have its own frames. A stream SHALL keep no state after it ends.
+The streaming answer SHALL hold runtime admission from before the first byte until the answer ends or is cancelled. When the client leaves before the `result` frame, the server SHALL cancel the answer and SHALL release admission. The route SHALL watch the client itself, so that a client that leaves while no frame is due is noticed whatever ASGI spec version the server reports.
 
 #### Scenario: Browser tab closes mid-answer
 
@@ -652,12 +718,6 @@ The streaming answer SHALL hold runtime admission from before the first byte unt
 - **THEN** the server MUST cancel the answer within a few seconds
 - **AND** it MUST NOT wait for the next frame to notice
 
-#### Scenario: Two answers at once
-
-- **WHEN** two clients start streams at the same time
-- **THEN** each stream MUST hold only the stages of its own answer
-- **AND** each MUST end with its own `result` frame
-
 #### Scenario: Shutdown while a stream runs
 
 - **WHEN** graceful shutdown begins during a stream
@@ -668,3 +728,13 @@ The streaming answer SHALL hold runtime admission from before the first byte unt
 
 - **WHEN** the Engine raises an error other than a validation error during the stream
 - **THEN** the stream MUST end with a `result` frame in the same error shape the blocking route returns for that case
+
+### Requirement: Each stream is separate and keeps no state
+
+A cancelled answer SHALL write nothing. Each stream SHALL have its own frames. A stream SHALL keep no state after it ends.
+
+#### Scenario: Two answers at once
+
+- **WHEN** two clients start streams at the same time
+- **THEN** each stream MUST hold only the stages of its own answer
+- **AND** each MUST end with its own `result` frame

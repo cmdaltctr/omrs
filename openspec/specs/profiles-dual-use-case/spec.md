@@ -6,20 +6,7 @@ Define named profile bundles that bind retrieval, reranker, chunking, and taxono
 
 The system SHALL provide three version-controlled YAML profile bundles under
 `config/profiles/`: `documents.yaml` (document grounding), `codebase.yaml`
-(codebase context), and `hybrid.yaml` (per-collection policy). Operational
-bundles SHALL express their overrides as **nested blocks** keyed by subpackage
-(`retrieval:`, `chunking:`, `metadata:`) using the same field names as the
-subpackage Pydantic models, and SHALL be validated against those models.
-Flat, environment-variable-style keys SHALL NOT be accepted. Bundles SHALL
-contain no credentials.
-
-#### Scenario: Bundles use the nested schema
-
-- **WHEN** any file under `config/profiles/` is loaded
-- **THEN** its retrieval, chunking, and metadata overrides MUST appear as
-  nested mappings under `retrieval:`, `chunking:`, and `metadata:`
-- **AND** a bundle using flat SCREAMING_SNAKE keys MUST be rejected with a
-  validation error naming the offending key
+(codebase context), and `hybrid.yaml` (per-collection policy).
 
 #### Scenario: Documents profile values
 
@@ -39,6 +26,23 @@ contain no credentials.
 - **THEN** it MUST declare only `default_profile`
 - **AND** it MUST NOT declare `retrieval:`, `chunking:`, `ingestion:`, or
   `metadata:` blocks
+
+### Requirement: Profile bundles use the nested settings schema
+
+Operational
+bundles SHALL express their overrides as **nested blocks** keyed by subpackage
+(`retrieval:`, `chunking:`, `metadata:`) using the same field names as the
+subpackage Pydantic models, and SHALL be validated against those models.
+Flat, environment-variable-style keys SHALL NOT be accepted. Bundles SHALL
+contain no credentials.
+
+#### Scenario: Bundles use the nested schema
+
+- **WHEN** any file under `config/profiles/` is loaded
+- **THEN** its retrieval, chunking, and metadata overrides MUST appear as
+  nested mappings under `retrieval:`, `chunking:`, and `metadata:`
+- **AND** a bundle using flat SCREAMING_SNAKE keys MUST be rejected with a
+  validation error naming the offending key
 
 #### Scenario: Malformed hybrid selector fails at construction, not first use
 
@@ -64,31 +68,29 @@ default `documents`). A collection SHALL be able to declare its profile via
 ChromaDB collection metadata (`metadata={"profile": "<name>"}`). A
 collection with no profile tag SHALL inherit the server-wide default.
 
-When `RAG_PROFILE=hybrid`, the `hybrid` profile is a mode selector, not an
-operational profile with concrete retrieval settings. The `hybrid.yaml`
-bundle SHALL declare a `default_profile` key (valid values: `documents` or
-`codebase`; default `documents`). An untagged collection under
-`RAG_PROFILE=hybrid` SHALL resolve to the `default_profile` named in
-`hybrid.yaml`, not to `hybrid` itself. A collection whose metadata tag is
-literally `hybrid` SHALL be rejected with a clear error directing the user
-to tag the collection with `documents` or `codebase` instead.
-
-A collection tag SHALL also be able to name a user profile from the workspace. Such a
-collection SHALL resolve to the settings of the user profile's base profile,
-reported under the user profile's id. `RAG_PROFILE` and `hybrid.yaml`
-`default_profile` SHALL accept built-in profiles only. The web server SHALL
-resolve user profiles from its own workspace. The stdio MCP server, the CLI
-and the watcher SHALL resolve them from the default workspace database, opened
-read-only, when that file exists. A process that finds no workspace database
-SHALL refuse a collection tagged with a name that is not built-in, with an
-error that names the profile, the path it read and the fix.
-
 #### Scenario: Existing collections unaffected
 
 - **WHEN** the server starts against pre-refactor collections with no
   profile metadata
 - **THEN** they MUST resolve to the server-wide default profile with no data
   migration
+
+#### Scenario: Invalid collection profile tag rejected
+
+- **WHEN** `ProfileResolver.resolve()` encounters a collection whose
+  metadata tag names a non-existent profile
+- **THEN** it MUST raise a clear error naming the invalid tag and listing
+  available profiles (`documents`, `codebase`, and each ready user profile
+  when a workspace is present)
+
+### Requirement: Hybrid mode resolves untagged collections to its default profile
+
+When `RAG_PROFILE=hybrid`, the `hybrid` profile is a mode selector, not an
+operational profile with concrete retrieval settings. The `hybrid.yaml`
+bundle SHALL declare a `default_profile` key (valid values: `documents` or
+`codebase`; default `documents`). An untagged collection under
+`RAG_PROFILE=hybrid` SHALL resolve to the `default_profile` named in
+`hybrid.yaml`, not to `hybrid` itself.
 
 #### Scenario: Hybrid mode per-collection resolution
 
@@ -104,19 +106,24 @@ error that names the profile, the path it read and the fix.
 - **THEN** the collection MUST resolve to the `documents` profile
 - **AND** MUST NOT attempt to resolve `hybrid` as an operational profile
 
-#### Scenario: Invalid collection profile tag rejected
+### Requirement: A collection tagged as hybrid is rejected
 
-- **WHEN** `ProfileResolver.resolve()` encounters a collection whose
-  metadata tag names a non-existent profile
-- **THEN** it MUST raise a clear error naming the invalid tag and listing
-  available profiles (`documents`, `codebase`, and each ready user profile
-  when a workspace is present)
+A collection whose metadata tag is
+literally `hybrid` SHALL be rejected with a clear error directing the user
+to tag the collection with `documents` or `codebase` instead.
 
 #### Scenario: Collection tagged as hybrid rejected
 
 - **WHEN** a collection's metadata tag is literally `hybrid`
 - **THEN** the resolver MUST reject it with an error directing the user to
   tag the collection with `documents` or `codebase`
+
+### Requirement: A collection tag can name a user profile
+
+A collection tag SHALL also be able to name a user profile from the workspace. Such a
+collection SHALL resolve to the settings of the user profile's base profile,
+reported under the user profile's id. `RAG_PROFILE` and `hybrid.yaml`
+`default_profile` SHALL accept built-in profiles only.
 
 #### Scenario: Collection tagged with a user profile
 
@@ -130,6 +137,15 @@ error that names the profile, the path it read and the fix.
 - **WHEN** a collection is tagged with a user profile that was deleted
 - **THEN** resolution MUST fail with an error that says the profile was
   deleted and tells the user to choose another profile
+
+### Requirement: Each process resolves user profiles from a workspace
+
+The web server SHALL
+resolve user profiles from its own workspace. The stdio MCP server, the CLI
+and the watcher SHALL resolve them from the default workspace database, opened
+read-only, when that file exists. A process that finds no workspace database
+SHALL refuse a collection tagged with a name that is not built-in, with an
+error that names the profile, the path it read and the fix.
 
 #### Scenario: User profile found in the default workspace
 
@@ -156,14 +172,7 @@ error that names the profile, the path it read and the fix.
 The system SHALL resolve settings in two tiers. Tier 1 components (embedder,
 chunking and reader registries, vector store handle, reranker model) SHALL
 be constructed once at startup in `compose.py` and shared across
-collections. Tier 2 levers (reranker on/off, `top_k`, hybrid/RRF, chunking
-fallback for ambiguous types, metadata taxonomy mode) SHALL be resolved per
-operation by a `ProfileResolver` that returns a frozen `EffectiveSettings`,
-which SHALL be passed as a parameter to `search()` and `ingest_path_async()`
-and propagated to every module they call. Core operations SHALL NOT read
-global state for any lever, Tier 1 or Tier 2. The `ProfileResolver` SHALL
-receive the server-wide default profile name by injection and SHALL NOT read
-it from a settings singleton.
+collections.
 
 #### Scenario: Per-query reranker decision
 
@@ -173,18 +182,21 @@ it from a settings singleton.
 - **AND** the decision to apply it MUST differ per query according to each
   collection's resolved profile (Tier 2)
 
+### Requirement: Tier 2 levers are resolved per operation and passed down
+
+Tier 2 levers (reranker on/off, `top_k`, hybrid/RRF, chunking
+fallback for ambiguous types, metadata taxonomy mode) SHALL be resolved per
+operation by a `ProfileResolver` that returns a frozen `EffectiveSettings`,
+which SHALL be passed as a parameter to `search()` and `ingest_path_async()`
+and propagated to every module they call. Core operations SHALL NOT read
+global state for any lever, Tier 1 or Tier 2.
+
 #### Scenario: Resolver falls back to server default
 
 - **WHEN** `ProfileResolver.resolve()` is called for a collection with no
   profile tag
 - **THEN** it MUST return the server-wide default profile's effective
   settings
-
-#### Scenario: Resolver takes its default by injection
-
-- **WHEN** `ProfileResolver` is constructed
-- **THEN** the server-wide default profile name MUST be supplied by the caller
-- **AND** `core/profiles/resolver.py` MUST NOT import a settings singleton
 
 #### Scenario: Resolved settings reach the leaves
 
@@ -194,6 +206,18 @@ it from a settings singleton.
   policy, reranker, metadata extractor, vector store — MUST read its knobs from
   that instance
 - **AND** none MUST consult a process-wide settings object
+
+### Requirement: The profile resolver receives its default by injection
+
+The `ProfileResolver` SHALL
+receive the server-wide default profile name by injection and SHALL NOT read
+it from a settings singleton.
+
+#### Scenario: Resolver takes its default by injection
+
+- **WHEN** `ProfileResolver` is constructed
+- **THEN** the server-wide default profile name MUST be supplied by the caller
+- **AND** `core/profiles/resolver.py` MUST NOT import a settings singleton
 
 ### Requirement: Content-type dispatch precedence over profiles
 

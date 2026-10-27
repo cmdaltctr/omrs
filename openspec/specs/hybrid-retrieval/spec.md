@@ -42,7 +42,7 @@ The system SHALL fuse dense and sparse rankings using the Reciprocal Rank Fusion
 - **THEN** RRF SHALL use `k = 80` instead of the default
 
 ### Requirement: Sparse backend defaults to BM25 for v1
-At startup, the system SHALL select the sparse retrieval backend based on the `RETRIEVAL__HYBRID_SPARSE_BACKEND` env var, which SHALL accept `auto`, `native`, or `bm25`. **The default for v1 SHALL be `bm25`.** When `RETRIEVAL__HYBRID_SPARSE_BACKEND=auto`, the system SHALL run capability detection against the **selected vector store** (through its registry capability metadata and a native full-text-search probe) and select `native` or `bm25` accordingly — not against any specific vendor runtime version. When `RETRIEVAL__HYBRID_SPARSE_BACKEND=native` is set explicitly but the selected store cannot issue native sparse queries, the system SHALL log a WARNING and fall back to `bm25` rather than crashing.
+**The default for v1 SHALL be `bm25`.** When `RETRIEVAL__HYBRID_SPARSE_BACKEND=auto`, the system SHALL run capability detection against the **selected vector store** (through its registry capability metadata and a native full-text-search probe) and select `native` or `bm25` accordingly — not against any specific vendor runtime version.
 
 #### Scenario: v1 default is bm25
 - **GIVEN** `RETRIEVAL__HYBRID_SPARSE_BACKEND` is unset
@@ -64,6 +64,9 @@ At startup, the system SHALL select the sparse retrieval backend based on the `R
 - **THEN** the system SHALL build or reuse an in-memory BM25 index over the active collection
 - **THEN** sparse rankings SHALL come from the BM25 index
 
+### Requirement: The sparse backend is chosen at startup from one setting
+At startup, the system SHALL select the sparse retrieval backend based on the `RETRIEVAL__HYBRID_SPARSE_BACKEND` env var, which SHALL accept `auto`, `native`, or `bm25`. When `RETRIEVAL__HYBRID_SPARSE_BACKEND=native` is set explicitly but the selected store cannot issue native sparse queries, the system SHALL log a WARNING and fall back to `bm25` rather than crashing.
+
 #### Scenario: Explicit native override falls back gracefully
 - **GIVEN** `RETRIEVAL__HYBRID_SPARSE_BACKEND=native` is set
 - **AND** the selected vector store does not support native sparse queries
@@ -79,20 +82,6 @@ At startup, the system SHALL select the sparse retrieval backend based on the `R
 ### Requirement: BM25 fallback index is scoped by store and collection and invalidates on every mutation
 
 The in-memory BM25 index SHALL be cached by a process-local store identity token plus collection name. Two distinct vector-store instances containing the same collection name MUST NOT share cached rows or term statistics.
-
-Cache validity SHALL be decided by the collection's **durable data version**
-where the store exposes one, so that a mutation performed by another process
-invalidates the cache. Where the store exposes no durable version, the
-process-local generation counter SHALL be used and the reduced guarantee
-(same-process mutations only) SHALL be logged once per collection.
-
-The store SHALL continue to own its collection generation counter and SHALL increment it exactly once for every successful mutation that can change sparse-visible rows. The sparse retriever SHALL compare the current tagged validity token against the cached one on every hybrid query and lazily rebuild only the affected store/collection namespace when it changes.
-
-A BM25 rebuild SHALL read the validity token before fetching rows and again
-before publishing the cache. It SHALL publish only when both durable tokens are
-equal, or when both tagged local-fallback tokens are equal. If they differ, the
-unstable build SHALL be discarded and retried within a bounded policy rather
-than cached.
 
 The default sparse backend remains BM25. Experiment 19 pre-registered the
 comparison against native FTS and recorded native failing the latency gate at
@@ -114,12 +103,6 @@ switching away from it.
 - **THEN** B MUST build/use an index from B's rows
 - **AND** no row originating only from A may appear due to cache reuse
 
-#### Scenario: Mutation advances generation exactly once
-- **GIVEN** a store/collection generation value `g`
-- **WHEN** a successful write, precomputed upsert, filtered delete, or collection delete mutates sparse-visible state
-- **THEN** the store generation SHALL become `g+1`
-- **AND** orchestration code SHALL NOT apply a second generation bump for the same mutation
-
 #### Scenario: Repeat queries reuse the BM25 cache
 - **GIVEN** a collection with chunks indexed
 - **AND** the BM25 fallback path is active
@@ -127,19 +110,13 @@ switching away from it.
 - **THEN** the BM25 index SHALL be built once for that store/collection namespace
 - **THEN** the second query SHALL reuse the cached index
 
-#### Scenario: Ingest invalidates the cache
-- **GIVEN** a hybrid query has just built and cached the BM25 index
-- **WHEN** new chunks are ingested into the same collection
-- **AND** another hybrid query runs against that collection
-- **THEN** the BM25 index SHALL be rebuilt before the query is served
-- **THEN** the rebuilt index SHALL include the newly ingested chunks
+### Requirement: BM25 cache validity follows the durable data version
 
-#### Scenario: Deletion invalidates the cache
-- **GIVEN** a hybrid query has just built and cached the BM25 index
-- **WHEN** chunks are deleted from the same collection (via document removal, metadata-filtered removal, or collection removal)
-- **AND** another hybrid query runs against that collection
-- **THEN** the BM25 index SHALL be rebuilt before the query is served
-- **THEN** the rebuilt index SHALL not contain the deleted chunks
+Cache validity SHALL be decided by the collection's **durable data version**
+where the store exposes one, so that a mutation performed by another process
+invalidates the cache. Where the store exposes no durable version, the
+process-local generation counter SHALL be used and the reduced guarantee
+(same-process mutations only) SHALL be logged once per collection.
 
 #### Scenario: A write from another process invalidates the cache
 
@@ -149,15 +126,6 @@ switching away from it.
 - **WHEN** the server process serves the next hybrid query
 - **THEN** the BM25 index SHALL be rebuilt before the query is served
 - **THEN** the rebuilt index SHALL include the newly ingested chunks
-
-#### Scenario: Mutation during a BM25 build is not cached
-
-- **GIVEN** a BM25 rebuild has read its starting validity token
-- **WHEN** another process mutates or recreates the collection before the
-  rebuild is published
-- **THEN** the ending validity token MUST differ
-- **AND** the partial or stale build MUST NOT be installed in the cache
-- **AND** retry behaviour MUST be bounded
 
 #### Scenario: Durable capability transition invalidates fallback cache
 
@@ -176,8 +144,49 @@ switching away from it.
 - **AND** a warning naming the reduced guarantee SHALL be logged once per
   collection per process
 
+### Requirement: Every mutation advances the store generation and triggers a lazy rebuild
+
+The store SHALL continue to own its collection generation counter and SHALL increment it exactly once for every successful mutation that can change sparse-visible rows. The sparse retriever SHALL compare the current tagged validity token against the cached one on every hybrid query and lazily rebuild only the affected store/collection namespace when it changes.
+
+#### Scenario: Mutation advances generation exactly once
+- **GIVEN** a store/collection generation value `g`
+- **WHEN** a successful write, precomputed upsert, filtered delete, or collection delete mutates sparse-visible state
+- **THEN** the store generation SHALL become `g+1`
+- **AND** orchestration code SHALL NOT apply a second generation bump for the same mutation
+
+#### Scenario: Ingest invalidates the cache
+- **GIVEN** a hybrid query has just built and cached the BM25 index
+- **WHEN** new chunks are ingested into the same collection
+- **AND** another hybrid query runs against that collection
+- **THEN** the BM25 index SHALL be rebuilt before the query is served
+- **THEN** the rebuilt index SHALL include the newly ingested chunks
+
+#### Scenario: Deletion invalidates the cache
+- **GIVEN** a hybrid query has just built and cached the BM25 index
+- **WHEN** chunks are deleted from the same collection (via document removal, metadata-filtered removal, or collection removal)
+- **AND** another hybrid query runs against that collection
+- **THEN** the BM25 index SHALL be rebuilt before the query is served
+- **THEN** the rebuilt index SHALL not contain the deleted chunks
+
+### Requirement: A BM25 rebuild publishes only a stable build
+
+A BM25 rebuild SHALL read the validity token before fetching rows and again
+before publishing the cache. It SHALL publish only when both durable tokens are
+equal, or when both tagged local-fallback tokens are equal. If they differ, the
+unstable build SHALL be discarded and retried within a bounded policy rather
+than cached.
+
+#### Scenario: Mutation during a BM25 build is not cached
+
+- **GIVEN** a BM25 rebuild has read its starting validity token
+- **WHEN** another process mutates or recreates the collection before the
+  rebuild is published
+- **THEN** the ending validity token MUST differ
+- **AND** the partial or stale build MUST NOT be installed in the cache
+- **AND** retry behaviour MUST be bounded
+
 ### Requirement: Mixed-coverage collections trigger a one-shot warning
-When the native sparse path is active and the system detects that some chunks in the active collection lack sparse coverage (on LanceDB, lack full-text-search index coverage; on a sparse-vector store, lack sparse vectors), the system SHALL emit a one-shot WARNING log on the first hybrid query against that collection within the process lifetime. The warning SHALL identify the collection and SHALL include a remediation hint advising re-ingestion or index creation for full hybrid coverage. Subsequent hybrid queries against the same collection within the same process SHALL NOT re-emit the warning. The BM25 path is unaffected because it always indexes every chunk it sees.
+When the native sparse path is active and the system detects that some chunks in the active collection lack sparse coverage (on LanceDB, lack full-text-search index coverage; on a sparse-vector store, lack sparse vectors), the system SHALL emit a one-shot WARNING log on the first hybrid query against that collection within the process lifetime. The warning SHALL identify the collection and SHALL include a remediation hint advising re-ingestion or index creation for full hybrid coverage.
 
 #### Scenario: First hybrid query on a partially-covered collection
 - **GIVEN** the native sparse path is active
@@ -185,6 +194,9 @@ When the native sparse path is active and the system detects that some chunks in
 - **WHEN** the first hybrid query against that collection runs in the process
 - **THEN** the system SHALL emit a WARNING-level log naming the collection
 - **THEN** the warning SHALL include a remediation hint to re-ingest or create the index
+
+### Requirement: The mixed-coverage warning is not repeated
+Subsequent hybrid queries against the same collection within the same process SHALL NOT re-emit the warning. The BM25 path is unaffected because it always indexes every chunk it sees.
 
 #### Scenario: Subsequent queries on the same collection do not re-warn
 - **GIVEN** a previous hybrid query has already emitted the mixed-coverage warning
@@ -366,21 +378,24 @@ The system SHALL retain BM25 fallback when native sparse capability is absent or
 - **AND** the existing one-shot remediation warning SHALL remain in effect
 
 ### Requirement: Native FTS lifecycle is specified and durable
-The native sparse implementation on LanceDB SHALL define its full-text-search index lifecycle explicitly: additive initial creation on the stored `text` column, refresh after writes and source replacements, delete and stale-node handling, freshness diagnostics distinct from indexed/unindexed coverage, and failure diagnostics that route to BM25 fallback. After a write, replacement, or deletion, the index SHALL be treated as stale until refresh completes. A native query SHALL NOT return stale index results as successful: it SHALL establish freshness or warn and fall back to BM25. The process-local store generation counter SHALL NOT be used as durable FTS-index maintenance; it SHALL remain a cache-invalidation mechanism for the in-memory BM25 index.
+The native sparse implementation on LanceDB SHALL define its full-text-search index lifecycle explicitly: additive initial creation on the stored `text` column, refresh after writes and source replacements, delete and stale-node handling, freshness diagnostics distinct from indexed/unindexed coverage, and failure diagnostics that route to BM25 fallback.
 
 #### Scenario: FTS index is created additively
 - **WHEN** native sparse is first used on a collection without an FTS index
 - **THEN** index creation SHALL be additive and explicitly triggered
 - **AND** the collection SHALL remain queryable throughout
 
+#### Scenario: Partial FTS coverage is distinguishable
+- **WHEN** a collection contains both indexed and unindexed rows
+- **THEN** diagnostics SHALL distinguish indexed from unindexed coverage
+- **AND** unindexed rows SHALL remain eligible in dense rankings
+
+### Requirement: Native queries never serve a stale FTS index
+After a write, replacement, or deletion, the index SHALL be treated as stale until refresh completes. A native query SHALL NOT return stale index results as successful: it SHALL establish freshness or warn and fall back to BM25. The process-local store generation counter SHALL NOT be used as durable FTS-index maintenance; it SHALL remain a cache-invalidation mechanism for the in-memory BM25 index.
+
 #### Scenario: Mutations make freshness explicit
 - **WHEN** chunks are written, a source is replaced, or rows are deleted after an FTS index exists
 - **THEN** the FTS index SHALL be considered stale until refresh completes
 - **AND** a native query SHALL either establish a fresh state that covers new rows and excludes stale or deleted rows, or warn and fall back to BM25
 - **AND** diagnostics SHALL report the resulting fresh, stale, or fallback state
-
-#### Scenario: Partial FTS coverage is distinguishable
-- **WHEN** a collection contains both indexed and unindexed rows
-- **THEN** diagnostics SHALL distinguish indexed from unindexed coverage
-- **AND** unindexed rows SHALL remain eligible in dense rankings
 

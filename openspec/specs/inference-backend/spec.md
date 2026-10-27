@@ -6,11 +6,7 @@ Define how OMRS selects between inference backends (Ollama and llama.cpp) for em
 ## Requirements
 ### Requirement: Inference backend selection
 
-The system SHALL select the embedding provider via the `EMBED_PROVIDER` environment variable. The accepted values SHALL be `local` (the default), `cloud`, `ollama`, `llamacpp`, and `openrouter`. The system SHALL validate the provider value at settings-resolution time and raise a startup error naming the offending value and the accepted set on an unrecognised value — this mirrors the existing `VECTOR_STORE` unknown-value contract (`vectordb-abstraction`, ADR-034); an unrecognised provider is a misconfiguration, not a condition to silently paper over. The system SHALL maintain a provider registry in `core/providers/` that maps each provider name to its module, class, required env vars, and optional dependency group, following the shared registry contract (lazy `"module:attr"` import strings resolved on first `get()`). Provider objects SHALL be constructed exclusively in `compose.py` (the composition root), which resolves the registry entry against the validated `Settings` and instantiates the provider; `config.py` SHALL NOT construct provider objects.
-
-The provider-selection validation SHALL run before any validation that consumes a resolved provider (such as the `EMBED_MODEL`-required check), so that an unrecognised `EMBED_PROVIDER` reports the provider error rather than a downstream consequence of it.
-
-The deprecated `INFERENCE_BACKEND` env var SHALL still be accepted: when `EMBED_PROVIDER` is not set but `INFERENCE_BACKEND` is, the system SHALL map the value and log a deprecation warning.
+The system SHALL select the embedding provider via the `EMBED_PROVIDER` environment variable. The accepted values SHALL be `local` (the default), `cloud`, `ollama`, `llamacpp`, and `openrouter`.
 
 #### Scenario: Default provider is local
 
@@ -42,11 +38,19 @@ The deprecated `INFERENCE_BACKEND` env var SHALL still be accepted: when `EMBED_
 - **AND** `llama-index-embeddings-openai-like` is not installed
 - **THEN** the system SHALL raise an `ImportError` instructing the user to run `uv sync --extra llamacpp`
 
+### Requirement: An unrecognised embedding provider fails startup
+
+The system SHALL validate the provider value at settings-resolution time and raise a startup error naming the offending value and the accepted set on an unrecognised value — this mirrors the existing `VECTOR_STORE` unknown-value contract (`vectordb-abstraction`, ADR-034); an unrecognised provider is a misconfiguration, not a condition to silently paper over.
+
 #### Scenario: Unknown provider value
 
 - **WHEN** `EMBED_PROVIDER` is set to a value other than `local`, `cloud`, `ollama`, `llamacpp`, or `openrouter`
 - **THEN** the system SHALL raise a startup error naming the offending value and the accepted values
 - **THEN** the system SHALL NOT fall back to `local` or any other default
+
+### Requirement: Provider validation runs before dependent checks
+
+The provider-selection validation SHALL run before any validation that consumes a resolved provider (such as the `EMBED_MODEL`-required check), so that an unrecognised `EMBED_PROVIDER` reports the provider error rather than a downstream consequence of it.
 
 #### Scenario: Unknown provider value reports the provider error, not a downstream one
 
@@ -55,12 +59,9 @@ The deprecated `INFERENCE_BACKEND` env var SHALL still be accepted: when `EMBED_
 - **THEN** the raised error SHALL name `EMBED_PROVIDER` as the offending setting
 - **THEN** the error SHALL NOT report a missing `EMBED_MODEL` as the primary cause
 
-#### Scenario: Legacy INFERENCE_BACKEND mapping
+### Requirement: Providers are listed in a registry under core/providers
 
-- **WHEN** `INFERENCE_BACKEND=llamacpp` is set
-- **AND** `EMBED_PROVIDER` is not set
-- **THEN** the system SHALL set `EMBED_PROVIDER=llamacpp`
-- **THEN** the system SHALL log a deprecation WARNING advising migration to `EMBED_PROVIDER`
+The system SHALL maintain a provider registry in `core/providers/` that maps each provider name to its module, class, required env vars, and optional dependency group, following the shared registry contract (lazy `"module:attr"` import strings resolved on first `get()`).
 
 #### Scenario: Registry relocated to core/providers
 
@@ -68,6 +69,27 @@ The deprecated `INFERENCE_BACKEND` env var SHALL still be accepted: when `EMBED_
 - **THEN** it MUST live under `core/providers/` (embeddings and LLM sub-registries)
 - **AND** `config.py` MUST NOT contain the registry or any provider construction logic
 - **AND** provider behaviour (classes used, env vars read, fallback rules) MUST be identical to the pre-refactor registry, except that unknown-value handling now fails startup instead of falling back (see "Scenario: Unknown provider value")
+
+### Requirement: Only the composition root constructs provider objects
+
+Provider objects SHALL be constructed exclusively in `compose.py` (the composition root), which resolves the registry entry against the validated `Settings` and instantiates the provider; `config.py` SHALL NOT construct provider objects.
+
+#### Scenario: Provider objects are built in the composition root
+
+- **WHEN** the system builds the embedding provider
+- **THEN** `compose.py` SHALL resolve the registry entry against the validated `Settings` and instantiate the provider
+- **AND** `config.py` SHALL NOT construct provider objects
+
+### Requirement: The deprecated INFERENCE_BACKEND variable is still accepted
+
+The deprecated `INFERENCE_BACKEND` env var SHALL still be accepted: when `EMBED_PROVIDER` is not set but `INFERENCE_BACKEND` is, the system SHALL map the value and log a deprecation warning.
+
+#### Scenario: Legacy INFERENCE_BACKEND mapping
+
+- **WHEN** `INFERENCE_BACKEND=llamacpp` is set
+- **AND** `EMBED_PROVIDER` is not set
+- **THEN** the system SHALL set `EMBED_PROVIDER=llamacpp`
+- **THEN** the system SHALL log a deprecation WARNING advising migration to `EMBED_PROVIDER`
 
 ### Requirement: llamacpp embedding configuration
 
@@ -111,7 +133,7 @@ When `INFERENCE_BACKEND=llamacpp` and `METADATA__EXTRACTION_MODE` is `ollama` or
 
 ### Requirement: Split embedding and metadata LLM provider selection
 
-The system SHALL use two independent env vars for provider selection: `EMBED_PROVIDER` (controls embedding model) and `METADATA_LLM_PROVIDER` (controls metadata extraction LLM). `METADATA_LLM_PROVIDER` SHALL accept `local` and `cloud`, and SHALL default to `local` (safe, local, free) to avoid surprising cloud API costs when a user sets `EMBED_PROVIDER` to a cloud provider without explicitly opting into a cloud LLM for metadata. An unrecognised `METADATA_LLM_PROVIDER` value SHALL raise a startup error naming the offending value and the accepted set, rather than falling back. The system SHALL support backward compatibility by mapping the deprecated `INFERENCE_BACKEND` env var to `EMBED_PROVIDER` with a deprecation warning.
+The system SHALL use two independent env vars for provider selection: `EMBED_PROVIDER` (controls embedding model) and `METADATA_LLM_PROVIDER` (controls metadata extraction LLM). `METADATA_LLM_PROVIDER` SHALL accept `local` and `cloud`, and SHALL default to `local` (safe, local, free) to avoid surprising cloud API costs when a user sets `EMBED_PROVIDER` to a cloud provider without explicitly opting into a cloud LLM for metadata.
 
 #### Scenario: Both providers set independently
 
@@ -127,11 +149,19 @@ The system SHALL use two independent env vars for provider selection: `EMBED_PRO
 - **THEN** metadata extraction LLM SHALL default to `local`
 - **THEN** no paid cloud LLM calls SHALL be made without explicit opt-in
 
+### Requirement: An unrecognised metadata LLM provider fails startup
+
+An unrecognised `METADATA_LLM_PROVIDER` value SHALL raise a startup error naming the offending value and the accepted set, rather than falling back.
+
 #### Scenario: Unknown metadata LLM provider value
 
 - **WHEN** `METADATA_LLM_PROVIDER` is set to a value other than `local` or `cloud`
 - **THEN** the system SHALL raise a startup error naming the offending value and the accepted values
 - **THEN** the system SHALL NOT fall back to `local`
+
+### Requirement: Legacy INFERENCE_BACKEND maps to EMBED_PROVIDER with a warning
+
+The system SHALL support backward compatibility by mapping the deprecated `INFERENCE_BACKEND` env var to `EMBED_PROVIDER` with a deprecation warning.
 
 #### Scenario: Legacy INFERENCE_BACKEND still works
 

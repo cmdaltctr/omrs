@@ -75,26 +75,14 @@ internal and free to change without a major version.
 ### Requirement: Package identity is `omrs`
 
 The distribution name, import name, and only supported console command SHALL
-be `omrs`. The previous `omrg` and `rag_mcp` import paths, the `omrg` and
-`rag-mcp` distribution names, and the `omrg` and `rag-mcp` console commands
-SHALL be absent. No compatibility shim, console-script alias, or automatic
-fallback SHALL be provided.
-
-This is a breaking change. Existing stored vector data remains compatible.
-A legacy `com.rag-mcp.watch.` watcher is migrated only when its user
-explicitly reruns `omrs install-login-watcher` and confirms replacement or
-supplies `--force`.
+be `omrs`. Existing stored vector data remains compatible. A legacy
+`com.rag-mcp.watch.` watcher is migrated only when its user explicitly reruns
+`omrs install-login-watcher` and confirms replacement or supplies `--force`.
 
 #### Scenario: The new import path works
 
 - **WHEN** a consumer imports `omrs`
 - **THEN** the import SHALL succeed
-
-#### Scenario: The old import path is gone
-
-- **WHEN** a consumer imports `omrg` or `rag_mcp`
-- **THEN** the import SHALL fail with a standard `ModuleNotFoundError`
-- **AND** no shim module SHALL exist to soften it
 
 #### Scenario: Entry points follow the package
 
@@ -103,12 +91,6 @@ supplies `--force`.
   resolves into the `omrs` package
 - **AND** the distribution SHALL NOT install an `omrg` or `rag-mcp` console
   command
-
-#### Scenario: The legacy command fails rather than falling back
-
-- **WHEN** a user invokes `omrg` or `rag-mcp` after upgrading
-- **THEN** OMRS SHALL NOT provide a compatibility command or redirect
-- **AND** the invocation SHALL fail rather than starting an OMRS transport
 
 #### Scenario: Installed watchers survive the command rename
 
@@ -129,6 +111,25 @@ supplies `--force`.
 - **WHEN** it is opened after the rename
 - **THEN** its vectors, metadata and lineage SHALL be readable unchanged
 - **AND** no re-ingest SHALL be required by the rename itself
+
+### Requirement: The previous package names and commands are removed without a shim
+
+The previous `omrg` and `rag_mcp` import paths, the `omrg` and `rag-mcp`
+distribution names, and the `omrg` and `rag-mcp` console commands SHALL be
+absent. No compatibility shim, console-script alias, or automatic fallback
+SHALL be provided. This is a breaking change.
+
+#### Scenario: The old import path is gone
+
+- **WHEN** a consumer imports `omrg` or `rag_mcp`
+- **THEN** the import SHALL fail with a standard `ModuleNotFoundError`
+- **AND** no shim module SHALL exist to soften it
+
+#### Scenario: The legacy command fails rather than falling back
+
+- **WHEN** a user invokes `omrg` or `rag-mcp` after upgrading
+- **THEN** OMRS SHALL NOT provide a compatibility command or redirect
+- **AND** the invocation SHALL fail rather than starting an OMRS transport
 
 ### Requirement: The reported version cannot drift
 

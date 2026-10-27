@@ -10,20 +10,12 @@ Metadata extraction SHALL remain in `core/metadata/`, with registered
 keyword, Ollama, LlamaIndex, llama.cpp, and OpenRouter implementations and
 shared prompt/taxonomy helpers. Dispatch SHALL use
 `core/metadata/registry.py` without name-specific branching or module-level
-imports of concrete backends. Existing positional text, filename, and
-settings arguments SHALL remain valid; built-in strategies SHALL also accept
-the documented optional keyword-only store context. Supplied context SHALL
-reach shared classification and fallback paths.
+imports of concrete backends.
 
 #### Scenario: Backend split is faithful
 - **WHEN** the metadata subpackage is inspected
 - **THEN** each supported implementation SHALL remain in its owning backend module
 - **AND** OpenRouter SHALL retain its existing registered implementation
-
-#### Scenario: Behaviour preservation
-- **WHEN** an existing metadata mode runs with the same intended settings/store
-- **THEN** output shape, retry policy, parsing, and degradation behaviour SHALL remain unchanged
-- **AND** accidental cross-store category lookup SHALL be corrected
 
 #### Scenario: Backend resolved through the registry
 - **WHEN** the extractor selects a backend
@@ -33,6 +25,18 @@ reach shared classification and fallback paths.
 #### Scenario: Disabled sentinel honoured
 - **WHEN** metadata extraction is disabled
 - **THEN** it SHALL return without category lookup or backend resolution
+
+### Requirement: Metadata strategies accept the optional store context
+
+Existing positional text, filename, and
+settings arguments SHALL remain valid; built-in strategies SHALL also accept
+the documented optional keyword-only store context. Supplied context SHALL
+reach shared classification and fallback paths.
+
+#### Scenario: Behaviour preservation
+- **WHEN** an existing metadata mode runs with the same intended settings/store
+- **THEN** output shape, retry policy, parsing, and degradation behaviour SHALL remain unchanged
+- **AND** accidental cross-store category lookup SHALL be corrected
 
 #### Scenario: Extraction results unchanged
 - **WHEN** the selected backend succeeds with the same supplied category context
@@ -50,20 +54,28 @@ subpackage exposing `ingest_path_async()` as the standard public entry point,
 and SHALL provide the existing chunking strategies from `core/chunking/`.
 Asynchronous graph ingestion SHALL use reusable internal source preparation,
 reading, normalisation, enrichment, splitting, embedding, and protected
-replacement stages from those same packages. Chunking dispatch SHALL resolve
-strategies through `core/chunking/registry.py` without module-level imports of
-concrete strategies. Both structured and unstructured document branches SHALL
-invoke the selected registered document strategy, rather than private
-implementation helpers. Reading, metadata attachment, reader declarations, and
-degradation reporting SHALL retain their existing owners and semantics. Graph
-execution SHALL NOT introduce a separate ingestion algorithm or a synchronous
-mutation entry point.
+replacement stages from those same packages.
 
 #### Scenario: Content-type dispatch preserved
 
 - **WHEN** a file with a known content type (e.g. `.py`, `.md`, `.yaml`) is
   ingested through the standard operation or a graph
 - **THEN** the shared chunker MUST preserve its content-type precedence
+
+#### Scenario: Protected replacement is reused
+
+- **WHEN** a graph writes an indexed source
+- **THEN** the graph MUST use the same source/embedding validation and
+  replacement operation as standard ingestion
+- **AND** write, verification, and stale cleanup MUST stay together
+
+### Requirement: Chunking dispatch resolves registered strategies
+
+Chunking dispatch SHALL resolve
+strategies through `core/chunking/registry.py` without module-level imports of
+concrete strategies. Both structured and unstructured document branches SHALL
+invoke the selected registered document strategy, rather than private
+implementation helpers.
 
 #### Scenario: Strategy resolved through the registry
 
@@ -81,25 +93,25 @@ mutation entry point.
 - **THEN** it MUST reuse the existing registered strategies
 - **AND** it MUST NOT add a net-new chunking algorithm merely for the canvas
 
+#### Scenario: Registered replacement reaches production dispatch
+
+- **WHEN** the sentence registry resolves a sentinel replacement
+- **THEN** structured and unstructured standard/graph document dispatch MUST invoke it
+- **AND** the regression MUST fail if either branch returns to a private splitter
+
+### Requirement: Ingestion keeps existing owners and entry points
+
+Reading, metadata attachment, reader declarations, and
+degradation reporting SHALL retain their existing owners and semantics. Graph
+execution SHALL NOT introduce a separate ingestion algorithm or a synchronous
+mutation entry point.
+
 #### Scenario: Async ingestion entry point preserved
 
 - **WHEN** an existing caller invokes ingestion
 - **THEN** `ingest_path_async` MUST remain available with its injected
   `EffectiveSettings` parameter and existing behaviour
 - **AND** new graph ingestion MUST be asynchronous and receive frozen settings
-
-#### Scenario: Protected replacement is reused
-
-- **WHEN** a graph writes an indexed source
-- **THEN** the graph MUST use the same source/embedding validation and
-  replacement operation as standard ingestion
-- **AND** write, verification, and stale cleanup MUST stay together
-
-#### Scenario: Registered replacement reaches production dispatch
-
-- **WHEN** the sentence registry resolves a sentinel replacement
-- **THEN** structured and unstructured standard/graph document dispatch MUST invoke it
-- **AND** the regression MUST fail if either branch returns to a private splitter
 
 #### Scenario: Reader-produced Markdown remains intact
 

@@ -20,7 +20,15 @@ The system SHALL allow MCP clients to pass an optional `metadata_filter` paramet
 - **THEN** successful result dictionaries SHALL keep their existing fields
 
 ### Requirement: MCP search error envelope
-The system SHALL catch retrieval errors inside the MCP `search_documents` handler and return an explicit error response instead of raising raw exceptions from the handler. The handler's declared return type SHALL remain `list[dict]` on every path, including failures. On a caught exception, the handler SHALL return a one-element list whose sole entry is an error dict with the exact keys `status`, `error_type`, and `message`, where `error_type` is one of `"validation"`, `"retrieval"`, or `"internal"`.
+The system SHALL catch retrieval errors inside the MCP `search_documents` handler and return an explicit error response instead of raising raw exceptions from the handler. The handler's declared return type SHALL remain `list[dict]` on every path, including failures.
+
+#### Scenario: Successful response shape is unchanged
+- **WHEN** `search_documents` succeeds
+- **THEN** the returned list SHALL contain zero or more result dicts with the existing field set (`score`, `source`, `page_label`, `text`, `metadata`, `reranked`)
+- **THEN** no result dict SHALL contain a `status` key
+
+### Requirement: A caught search error returns a one-element error list
+On a caught exception, the handler SHALL return a one-element list whose sole entry is an error dict with the exact keys `status`, `error_type`, and `message`, where `error_type` is one of `"validation"`, `"retrieval"`, or `"internal"`.
 
 #### Scenario: Invalid metadata filter
 - **WHEN** `search_documents` receives a metadata filter rejected by ChromaDB
@@ -32,8 +40,3 @@ The system SHALL catch retrieval errors inside the MCP `search_documents` handle
 - **WHEN** the underlying ChromaDB query raises during retrieval
 - **THEN** the handler SHALL return a one-element list containing `status: "error"`, `error_type: "retrieval"`, and a human-readable `message`
 - **THEN** the handler SHALL NOT raise the underlying exception
-
-#### Scenario: Successful response shape is unchanged
-- **WHEN** `search_documents` succeeds
-- **THEN** the returned list SHALL contain zero or more result dicts with the existing field set (`score`, `source`, `page_label`, `text`, `metadata`, `reranked`)
-- **THEN** no result dict SHALL contain a `status` key

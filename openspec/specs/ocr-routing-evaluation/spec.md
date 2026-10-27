@@ -9,8 +9,6 @@ Measure OCR routing and OCR worker quality on real corpus documents, so that fix
 
 The isolated OCR worker's output quality on the corpus SHALL be established by operator review of a bounded sample before any follow-up fix work is planned against it. The sample SHALL be frozen in a committed manifest before the run, SHALL not exceed 50 pages, and SHALL include the named problem documents (early-modern typography, multi-column with images, two-column and table pages) plus at least one clean control document. The corpus and its labels SHALL be read-only for the run.
 
-The run SHALL drive the worker through its protocol with a per-document soft timeout and a wall-clock cap, checkpointing per document so an interruption resumes without re-running completed documents. The review surface SHALL present the original page image beside the worker's extracted Markdown for every sampled page, and SHALL persist the operator's per-page checklist verdicts to a committed JSON file. The verdicts, not automatic scores, are the experiment's result.
-
 #### Scenario: The sample is frozen before any worker page runs
 
 - **GIVEN** the Experiment 33 corpus and labels in their worktree
@@ -19,12 +17,9 @@ The run SHALL drive the worker through its protocol with a per-document soft tim
 - **AND** it SHALL be committed before the worker run starts
 - **AND** the corpus and labels SHALL not be modified
 
-#### Scenario: The operator reviews original against extraction
+### Requirement: The worker sample run resumes after an interruption
 
-- **WHEN** the worker run completes for the sampled pages
-- **THEN** a review page SHALL show each page's original image and the worker's Markdown side by side
-- **AND** a per-page checklist SHALL record text accuracy, column order, heading structure, table readability, readiness for an LLM, and a free-text note
-- **AND** the saved verdicts SHALL be committed unchanged as the experiment's result
+The run SHALL drive the worker through its protocol with a per-document soft timeout and a wall-clock cap, checkpointing per document so an interruption resumes without re-running completed documents.
 
 #### Scenario: An interrupted run resumes cleanly
 
@@ -33,6 +28,17 @@ The run SHALL drive the worker through its protocol with a per-document soft tim
 - **THEN** completed documents SHALL not be re-run
 - **AND** the restarted run SHALL keep the per-document soft timeout
 - **AND** the restarted run SHALL get a new wall-clock cap, because the cap limits one run attempt and not the whole evaluation
+
+### Requirement: The review surface records the operator's per-page verdicts
+
+The review surface SHALL present the original page image beside the worker's extracted Markdown for every sampled page, and SHALL persist the operator's per-page checklist verdicts to a committed JSON file. The verdicts, not automatic scores, are the experiment's result.
+
+#### Scenario: The operator reviews original against extraction
+
+- **WHEN** the worker run completes for the sampled pages
+- **THEN** a review page SHALL show each page's original image and the worker's Markdown side by side
+- **AND** a per-page checklist SHALL record text accuracy, column order, heading structure, table readability, readiness for an LLM, and a free-text note
+- **AND** the saved verdicts SHALL be committed unchanged as the experiment's result
 
 ### Requirement: OCR routing evaluation includes natural positives and negatives
 

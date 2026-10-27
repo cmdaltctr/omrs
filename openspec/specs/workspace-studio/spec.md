@@ -7,7 +7,7 @@ Studio as the home of pipelines: a gallery of templates, profile presets and sav
 
 ### Requirement: The canvas sub-page gives the graph the full width
 
-Opening a profile SHALL open the `#/studio/<profile-id>` or `#/studio/<profile-id>/<purpose>` sub-page. From the `lg` breakpoint up, the flow surface SHALL fill the whole main area from the top bar to the bottom of the window, with no page padding, and one panel SHALL float over its right side. The panel SHALL hold every other control of the sub-page (see "The canvas panel groups the controls in icon accordion sections"). A slim bar above the surface SHALL show the profile header as the page heading (see "The canvas page shows the profile and its three pipelines"), the "All profiles" link and the notices. Selecting a step SHALL open that step's settings in the panel. Adding a box from the catalogue SHALL add the operation step; removing a step SHALL remove it with its connections. Below the `lg` breakpoint the panel SHALL stack under the flow surface instead of floating.
+Opening a profile SHALL open the `#/studio/<profile-id>` or `#/studio/<profile-id>/<purpose>` sub-page. From the `lg` breakpoint up, the flow surface SHALL fill the whole main area from the top bar to the bottom of the window, with no page padding, and one panel SHALL float over its right side. Below the `lg` breakpoint the panel SHALL stack under the flow surface instead of floating.
 
 #### Scenario: Canvas fills the main area
 
@@ -21,6 +21,15 @@ Opening a profile SHALL open the `#/studio/<profile-id>` or `#/studio/<profile-i
 - **THEN** the panel MUST sit over the right side of the flow surface with the floating-surface shadow
 - **AND** the flow surface MUST keep its full width under the panel
 
+#### Scenario: Narrow window
+
+- **WHEN** the window is narrower than 1024 px
+- **THEN** the panel MUST stack below the flow surface, MUST NOT offer the icon rail, and every control MUST stay reachable
+
+### Requirement: One panel and a slim bar hold the canvas controls
+
+The panel SHALL hold every other control of the sub-page (see "The canvas panel groups the controls in icon accordion sections"). A slim bar above the surface SHALL show the profile header as the page heading (see "The canvas page shows the profile and its three pipelines"), the "All profiles" link and the notices.
+
 #### Scenario: Palette on the right
 
 - **WHEN** the user opens a pipeline in the canvas sub-page
@@ -32,24 +41,23 @@ Opening a profile SHALL open the `#/studio/<profile-id>` or `#/studio/<profile-i
 - **THEN** the pipeline settings, operation catalogue, step outline, connection menu, revision and run controls and step settings MUST all be inside one right-hand panel
 - **AND** no other card MUST render outside that panel
 
-#### Scenario: Node settings on selection
-
-- **WHEN** the user selects a step on the canvas
-- **THEN** the step's parameters MUST open in the panel without leaving the sub-page
-
 #### Scenario: Empty graph
 
 - **WHEN** the pipeline has no steps
 - **THEN** the main area MUST show the empty-graph message and the operation catalogue MUST be available in the panel
 
-#### Scenario: Narrow window
+### Requirement: Steps are selected, added and removed on the canvas
 
-- **WHEN** the window is narrower than 1024 px
-- **THEN** the panel MUST stack below the flow surface, MUST NOT offer the icon rail, and every control MUST stay reachable
+Selecting a step SHALL open that step's settings in the panel. Adding a box from the catalogue SHALL add the operation step; removing a step SHALL remove it with its connections.
+
+#### Scenario: Node settings on selection
+
+- **WHEN** the user selects a step on the canvas
+- **THEN** the step's parameters MUST open in the panel without leaving the sub-page
 
 ### Requirement: The canvas panel groups the controls in icon accordion sections
 
-The canvas panel SHALL be one card with these accordion sections in this order: Pipeline settings (Base profile, Collection, Hybrid retrieval on the Search and Answer pipelines, and pipeline-wide settings), Operations, Steps and connections, Connect ports, Revision and run, Step settings. Pipeline settings SHALL show the base profile as read-only text and SHALL NOT offer a title or a profile choice. Each section SHALL have its own icon, shown before its title in the section header. Each section header SHALL be a button that shows whether the section is open. Several sections MAY be open at the same time. When the sub-page loads, Pipeline settings SHALL be open, and Step settings SHALL also be open if the restored draft already has a selected step. After load, selecting a step SHALL open Step settings, and starting a run from the panel SHALL open Revision and run. A run record that already exists when the sub-page loads SHALL NOT open Revision and run. Each section's content SHALL be a region named by its section title, and section headers SHALL sit one level below the page heading. Opening or closing a section SHALL NOT change the draft, the selection or the run identity.
+The canvas panel SHALL be one card with these accordion sections in this order: Pipeline settings (Base profile, Collection, Hybrid retrieval on the Search and Answer pipelines, and pipeline-wide settings), Operations, Steps and connections, Connect ports, Revision and run, Step settings. Pipeline settings SHALL show the base profile as read-only text and SHALL NOT offer a title or a profile choice.
 
 #### Scenario: Pipeline settings sit above Operations
 
@@ -61,31 +69,20 @@ The canvas panel SHALL be one card with these accordion sections in this order: 
 - **WHEN** the user opens Pipeline settings on a pipeline whose graph names the base profile `documents`
 - **THEN** the section MUST show the text "Base profile: documents" and no title field and no profile list
 
-#### Scenario: Every section has an icon
-
-- **WHEN** the panel is expanded
-- **THEN** each of the six section headers MUST show an icon, and no two sections MUST share the same icon
-
-#### Scenario: Default open state
-
-- **WHEN** the canvas sub-page loads with no selected step
-- **THEN** Pipeline settings MUST be open and the other sections MUST be closed
-
-#### Scenario: Restored selection
-
-- **WHEN** the canvas sub-page loads a draft that has a selected step
-- **THEN** Pipeline settings and Step settings MUST be open and the other sections MUST be closed
-
 #### Scenario: Sections use the word step
 
 - **WHEN** the panel is expanded
 - **THEN** the section titles MUST read "Pipeline settings", "Operations", "Steps and connections", "Connect ports", "Revision and run" and "Step settings", in this order
 - **AND** no section title MUST contain the word "node"
 
-#### Scenario: Earlier run does not open its section
+### Requirement: Panel sections have icons and toggle without changing the work
 
-- **WHEN** the canvas sub-page loads a pipeline whose latest run finished before the visit
-- **THEN** Revision and run MUST be closed
+Each section SHALL have its own icon, shown before its title in the section header. Each section header SHALL be a button that shows whether the section is open. Several sections MAY be open at the same time. Each section's content SHALL be a region named by its section title, and section headers SHALL sit one level below the page heading. Opening or closing a section SHALL NOT change the draft, the selection or the run identity.
+
+#### Scenario: Every section has an icon
+
+- **WHEN** the panel is expanded
+- **THEN** each of the six section headers MUST show an icon, and no two sections MUST share the same icon
 
 #### Scenario: Regions and headings
 
@@ -98,16 +95,6 @@ The canvas panel SHALL be one card with these accordion sections in this order: 
 - **WHEN** the user opens Pipeline settings while Operations is open
 - **THEN** both sections MUST stay open
 
-#### Scenario: Selection opens node settings
-
-- **WHEN** the user selects a step while Step settings is closed
-- **THEN** Step settings MUST open and show that step's parameters
-
-#### Scenario: Run opens its section
-
-- **WHEN** the user starts a run while Revision and run is closed
-- **THEN** Revision and run MUST open and show the run progress
-
 #### Scenario: Closing keeps work
 
 - **WHEN** the user closes Pipeline settings after editing the collection
@@ -118,9 +105,38 @@ The canvas panel SHALL be one card with these accordion sections in this order: 
 - **WHEN** a keyboard user moves focus to a section header and presses Enter or Space
 - **THEN** the section MUST toggle and its content MUST be reachable by Tab when open
 
+### Requirement: Panel sections open on load, on selection and on a run
+
+When the sub-page loads, Pipeline settings SHALL be open, and Step settings SHALL also be open if the restored draft already has a selected step. After load, selecting a step SHALL open Step settings, and starting a run from the panel SHALL open Revision and run. A run record that already exists when the sub-page loads SHALL NOT open Revision and run.
+
+#### Scenario: Default open state
+
+- **WHEN** the canvas sub-page loads with no selected step
+- **THEN** Pipeline settings MUST be open and the other sections MUST be closed
+
+#### Scenario: Restored selection
+
+- **WHEN** the canvas sub-page loads a draft that has a selected step
+- **THEN** Pipeline settings and Step settings MUST be open and the other sections MUST be closed
+
+#### Scenario: Earlier run does not open its section
+
+- **WHEN** the canvas sub-page loads a pipeline whose latest run finished before the visit
+- **THEN** Revision and run MUST be closed
+
+#### Scenario: Selection opens node settings
+
+- **WHEN** the user selects a step while Step settings is closed
+- **THEN** Step settings MUST open and show that step's parameters
+
+#### Scenario: Run opens its section
+
+- **WHEN** the user starts a run while Revision and run is closed
+- **THEN** Revision and run MUST open and show the run progress
+
 ### Requirement: The canvas panel collapses to an icon rail
 
-From the `lg` breakpoint up, the panel header SHALL have a button that collapses the panel to a narrow floating rail on the right side of the canvas. The rail SHALL hold one icon button per section, in the same order and with the same icons as the section headers, plus a button that expands the panel. Each rail button SHALL show a tooltip with its section title. Its accessible name SHALL be the section title, followed by ", open" when that section is open. A rail button whose section is open SHALL have a filled rounded highlight. Pressing a rail button SHALL expand the panel, open that section and move focus to that section's header; it SHALL NOT close a section. Collapsing SHALL move focus to the expand button, and expanding with the expand button SHALL move focus to the collapse button. Collapsing and expanding SHALL NOT change which sections are open, the draft, the selection or the run identity. The panel SHALL start expanded. Below the `lg` breakpoint the panel SHALL show its sections whatever the collapsed state is.
+From the `lg` breakpoint up, the panel header SHALL have a button that collapses the panel to a narrow floating rail on the right side of the canvas. The rail SHALL hold one icon button per section, in the same order and with the same icons as the section headers, plus a button that expands the panel. The panel SHALL start expanded. Below the `lg` breakpoint the panel SHALL show its sections whatever the collapsed state is.
 
 #### Scenario: Collapse to the rail
 
@@ -129,10 +145,14 @@ From the `lg` breakpoint up, the panel header SHALL have a button that collapses
 - **AND** the flow surface MUST stay at full width
 - **AND** focus MUST move to the expand button
 
-#### Scenario: Rail button opens its section
+#### Scenario: Collapsed state on a narrow window
 
-- **WHEN** the panel is collapsed and the user presses the Connect ports rail button
-- **THEN** the panel MUST expand and the Connect ports section MUST be open
+- **WHEN** the user collapses the panel and the window then narrows below 1024 px
+- **THEN** the stacked panel MUST show its sections and no rail
+
+### Requirement: Rail buttons name and highlight their sections
+
+Each rail button SHALL show a tooltip with its section title. Its accessible name SHALL be the section title, followed by ", open" when that section is open. A rail button whose section is open SHALL have a filled rounded highlight.
 
 #### Scenario: Open sections are highlighted on the rail
 
@@ -147,20 +167,24 @@ From the `lg` breakpoint up, the panel header SHALL have a button that collapses
 - **AND** the Step settings rail button MUST show the highlight and have the accessible name "Step settings, open"
 - **AND** pressing it MUST expand the panel with that step's parameters
 
-#### Scenario: State survives a round trip
+### Requirement: Rail buttons expand the panel without losing its state
 
-- **WHEN** the user opens Pipeline settings, collapses the panel and expands it again
-- **THEN** Pipeline settings MUST still be open and the draft MUST be unchanged
+Pressing a rail button SHALL expand the panel, open that section and move focus to that section's header; it SHALL NOT close a section. Collapsing SHALL move focus to the expand button, and expanding with the expand button SHALL move focus to the collapse button. Collapsing and expanding SHALL NOT change which sections are open, the draft, the selection or the run identity.
+
+#### Scenario: Rail button opens its section
+
+- **WHEN** the panel is collapsed and the user presses the Connect ports rail button
+- **THEN** the panel MUST expand and the Connect ports section MUST be open
 
 #### Scenario: Rail button on an open section
 
 - **WHEN** Operations is open, the panel is collapsed and the user presses the Operations rail button
 - **THEN** the panel MUST expand and Operations MUST stay open
 
-#### Scenario: Collapsed state on a narrow window
+#### Scenario: State survives a round trip
 
-- **WHEN** the user collapses the panel and the window then narrows below 1024 px
-- **THEN** the stacked panel MUST show its sections and no rail
+- **WHEN** the user opens Pipeline settings, collapses the panel and expands it again
+- **THEN** Pipeline settings MUST still be open and the draft MUST be unchanged
 
 #### Scenario: Keyboard use of the rail
 
@@ -423,12 +447,16 @@ When the open pipeline belongs to a profile that one or more collections use, "S
 
 ### Requirement: The canvas arranges the pipeline horizontally or vertically
 
-The canvas SHALL show a toolbar at its top left. The toolbar SHALL hold a button that switches the arrangement between horizontal (steps flow left to right) and vertical (steps flow top to bottom). The button SHALL name the arrangement it will apply. Applying an arrangement SHALL place each step in a layer by its connections, move the step positions, turn the connection points to match (left and right for horizontal, top and bottom for vertical), and fit the view to the graph. The arrangement SHALL be part of the presentation layout and SHALL be stored by the Save layout action like any position change. It MUST NOT create a revision or change the execution graph. A layout saved before this change SHALL open as horizontal. On a built-in profile's read-only canvas the button SHALL change the view for the visit only.
+The canvas SHALL show a toolbar at its top left. The toolbar SHALL hold a button that switches the arrangement between horizontal (steps flow left to right) and vertical (steps flow top to bottom). The button SHALL name the arrangement it will apply. Applying an arrangement SHALL place each step in a layer by its connections, move the step positions, turn the connection points to match (left and right for horizontal, top and bottom for vertical), and fit the view to the graph.
 
 #### Scenario: Arrange vertically
 
 - **WHEN** the user presses the arrange button on a horizontal three-step pipeline
 - **THEN** the steps MUST sit in one column in connection order and the connection points MUST be at the top and bottom of each step
+
+### Requirement: The arrangement is stored with the presentation layout
+
+The arrangement SHALL be part of the presentation layout and SHALL be stored by the Save layout action like any position change. It MUST NOT create a revision or change the execution graph. A layout saved before this change SHALL open as horizontal. On a built-in profile's read-only canvas the button SHALL change the view for the visit only.
 
 #### Scenario: No new revision
 
@@ -443,12 +471,16 @@ The canvas SHALL show a toolbar at its top left. The toolbar SHALL hold a button
 
 ### Requirement: The canvas has a full screen mode
 
-The toolbar SHALL hold a full screen button. Full screen SHALL hide the navigation, the top bar, the profile header and the notices, and SHALL show the canvas, the toolbar, the canvas panel and an "X" button over the whole window. Entering full screen SHALL move focus to the "X" button. The "X" button and the Escape key SHALL leave full screen; Escape SHALL be ignored while focus is in a text field. Leaving SHALL restore the page as it was, with the same selection and viewport, and SHALL return focus to the full screen button. Full screen SHALL end when the user leaves the canvas sub-page.
+The toolbar SHALL hold a full screen button. Full screen SHALL hide the navigation, the top bar, the profile header and the notices, and SHALL show the canvas, the toolbar, the canvas panel and an "X" button over the whole window. Entering full screen SHALL move focus to the "X" button.
 
 #### Scenario: Enter and leave full screen
 
 - **WHEN** the user presses the full screen button and then the "X" button
 - **THEN** only the canvas, its toolbar and its panel MUST be visible while in full screen, and the normal page MUST return after the "X" with the same step selected
+
+### Requirement: Leaving full screen restores the page
+
+The "X" button and the Escape key SHALL leave full screen; Escape SHALL be ignored while focus is in a text field. Leaving SHALL restore the page as it was, with the same selection and viewport, and SHALL return focus to the full screen button. Full screen SHALL end when the user leaves the canvas sub-page.
 
 #### Scenario: Escape leaves full screen
 
@@ -457,7 +489,16 @@ The toolbar SHALL hold a full screen button. Full screen SHALL hide the navigati
 
 ### Requirement: Pipeline settings switch hybrid retrieval
 
-On the Search and Answer pipelines, Pipeline settings SHALL show a "Hybrid retrieval" switch with the line "Adds keyword (sparse) search and merges it with vector search." The switch SHALL be on when the graph holds an enabled Sparse retrieval step, and off otherwise. Turning the switch on SHALL add a Sparse retrieval step and a Reciprocal rank fusion step with the connections of the canonical hybrid template: Prepare query to Sparse retrieval, Dense retrieval to fusion, Sparse retrieval to fusion, and fusion to every step that Dense retrieval fed before. Turning it off SHALL remove those two steps and connect Dense retrieval to every step that fusion fed. The switch SHALL keep the settings and positions of every other step, and SHALL change only the draft, so the user saves the change as a revision. The switch SHALL be disabled with a reason when the graph is read-only, when Sparse retrieval or Reciprocal rank fusion is unavailable on the host, or when the retrieval steps do not match the shape that the switch knows. The Ingest pipeline SHALL NOT show the switch.
+On the Search and Answer pipelines, Pipeline settings SHALL show a "Hybrid retrieval" switch with the line "Adds keyword (sparse) search and merges it with vector search." The switch SHALL be on when the graph holds an enabled Sparse retrieval step, and off otherwise. The Ingest pipeline SHALL NOT show the switch.
+
+#### Scenario: The switch reads the saved shape
+
+- **WHEN** a user opens an Answer pipeline whose saved graph holds an enabled Sparse retrieval step
+- **THEN** the "Hybrid retrieval" switch MUST show on
+
+### Requirement: Turning hybrid retrieval on or off rewires the retrieval steps
+
+Turning the switch on SHALL add a Sparse retrieval step and a Reciprocal rank fusion step with the connections of the canonical hybrid template: Prepare query to Sparse retrieval, Dense retrieval to fusion, Sparse retrieval to fusion, and fusion to every step that Dense retrieval fed before. Turning it off SHALL remove those two steps and connect Dense retrieval to every step that fusion fed.
 
 #### Scenario: Hybrid is turned on
 
@@ -472,6 +513,10 @@ On the Search and Answer pipelines, Pipeline settings SHALL show a "Hybrid retri
 - **WHEN** the user turns "Hybrid retrieval" off on a pipeline that the switch turned on
 - **THEN** the draft MUST equal the graph before the switch was turned on, apart from the layout of the removed steps
 
+### Requirement: The hybrid switch changes only the draft
+
+The switch SHALL keep the settings and positions of every other step, and SHALL change only the draft, so the user saves the change as a revision.
+
 #### Scenario: Step settings survive the switch
 
 - **WHEN** Prepare query holds `top_k: 20` and Dense retrieval holds `collection: papers`, and the user turns hybrid on
@@ -479,10 +524,9 @@ On the Search and Answer pipelines, Pipeline settings SHALL show a "Hybrid retri
 - **AND** Sparse retrieval MUST hold `collection: papers`
 - **AND** every step that was on the canvas before MUST keep its position
 
-#### Scenario: The switch reads the saved shape
+### Requirement: The hybrid switch is disabled when it cannot apply
 
-- **WHEN** a user opens an Answer pipeline whose saved graph holds an enabled Sparse retrieval step
-- **THEN** the "Hybrid retrieval" switch MUST show on
+The switch SHALL be disabled with a reason when the graph is read-only, when Sparse retrieval or Reciprocal rank fusion is unavailable on the host, or when the retrieval steps do not match the shape that the switch knows.
 
 #### Scenario: A custom shape is left alone
 
@@ -503,7 +547,7 @@ On the Search and Answer pipelines, Pipeline settings SHALL show a "Hybrid retri
 
 ### Requirement: Pipeline settings show pipeline-wide settings
 
-Pipeline settings SHALL list each pipeline-wide override that the graph holds, with its plain label, its value and a Remove button. Remove SHALL delete the override from the draft. On the Search and Answer pipelines, Pipeline settings SHALL also show a "Rerank candidate factor" control with Inherit and Set value. Set value SHALL take a whole number of at least 1 and SHALL write the pipeline-wide override `retrieval.rerank_fetch_multiplier`. Inherit SHALL remove that override. The setting path SHALL show only in a collapsed Details area. On a read-only graph the list and the control SHALL be disabled.
+Pipeline settings SHALL list each pipeline-wide override that the graph holds, with its plain label, its value and a Remove button. Remove SHALL delete the override from the draft. The setting path SHALL show only in a collapsed Details area. On a read-only graph the list and the control SHALL be disabled.
 
 #### Scenario: An override from the API is visible
 
@@ -515,6 +559,10 @@ Pipeline settings SHALL list each pipeline-wide override that the graph holds, w
 - **WHEN** the user selects Remove on "Number of results: 25"
 - **THEN** the draft MUST hold no `retrieval.top_k` override
 - **AND** the step cards MUST stop showing "(from pipeline settings)" for that setting after the next check
+
+### Requirement: Pipeline settings set the rerank candidate factor
+
+On the Search and Answer pipelines, Pipeline settings SHALL also show a "Rerank candidate factor" control with Inherit and Set value. Set value SHALL take a whole number of at least 1 and SHALL write the pipeline-wide override `retrieval.rerank_fetch_multiplier`. Inherit SHALL remove that override.
 
 #### Scenario: The rerank candidate factor is set
 

@@ -6,7 +6,7 @@ Connect independently managed local notebook editors to OMRS without adding thei
 ## Requirements
 
 ### Requirement: Notebook integration is separately managed
-Notebook editors SHALL be optional external-tool plugins with versioned manifests and explicitly registered executables. Their installation and updates SHALL remain outside OMRS's dependency environment: an editor SHALL never enter the OMRS environment or lock file. The workspace SHALL NOT install or update an editor on its own. It MAY install marimo into marimo's own `uv tool` environment when the user presses Install on the marimo card of the Integrations page, with the fixed requirement that the shipped marimo manifest qualifies. An install SHALL NOT register the editor.
+Notebook editors SHALL be optional external-tool plugins with versioned manifests and explicitly registered executables. Their installation and updates SHALL remain outside OMRS's dependency environment: an editor SHALL never enter the OMRS environment or lock file.
 
 #### Scenario: marimo is absent
 - **WHEN** the user opens Experiments without a registered marimo installation
@@ -16,6 +16,10 @@ Notebook editors SHALL be optional external-tool plugins with versioned manifest
 #### Scenario: Editor is updated independently
 - **WHEN** the operator updates the external editor and requests a compatibility recheck
 - **THEN** the host SHALL probe the updated executable without changing OMRS's dependency lock
+
+### Requirement: The workspace installs marimo only when the user asks
+
+The workspace SHALL NOT install or update an editor on its own. It MAY install marimo into marimo's own `uv tool` environment when the user presses Install on the marimo card of the Integrations page, with the fixed requirement that the shipped marimo manifest qualifies. An install SHALL NOT register the editor.
 
 #### Scenario: Install does not register
 - **WHEN** an install of marimo from the Integrations page succeeds and no marimo registration exists
@@ -129,7 +133,7 @@ An editor launch SHALL be able to run its notebook kernel in a given project vir
 - **THEN** the launch is refused and no process starts
 
 ### Requirement: Registration accepts the executable that the marimo card found
-Registration SHALL accept, in addition to the executables already approved, the exact absolute executable path that the server found for the marimo `uv tool` environment, also when its folder is not on the server's `PATH`. It SHALL accept no other path in that folder. `GET /v1/plugins` SHALL give that path for the marimo plugin, or nothing when marimo is not installed. The registration form SHALL fill in the shipped manifest path and this executable path until the user types. The user SHALL still tick the approval box. After a successful registration, the page SHALL run the compatibility check once.
+Registration SHALL accept, in addition to the executables already approved, the exact absolute executable path that the server found for the marimo `uv tool` environment, also when its folder is not on the server's `PATH`. It SHALL accept no other path in that folder. `GET /v1/plugins` SHALL give that path for the marimo plugin, or nothing when marimo is not installed.
 
 #### Scenario: Login item without the tool folder on PATH
 - **WHEN** the server's `PATH` does not hold `~/.local/bin`, the marimo card found `~/.local/bin/marimo`, and the user registers that path with approval
@@ -138,6 +142,10 @@ Registration SHALL accept, in addition to the executables already approved, the 
 #### Scenario: Another executable in the same folder
 - **WHEN** the user registers another file in the folder of the found marimo executable, and that folder is not on the server's `PATH`
 - **THEN** the server SHALL refuse with 403 and record nothing
+
+### Requirement: The registration form is prefilled and checked once
+
+The registration form SHALL fill in the shipped manifest path and this executable path until the user types. The user SHALL still tick the approval box. After a successful registration, the page SHALL run the compatibility check once.
 
 #### Scenario: Register and check
 - **WHEN** the user ticks approval and registers the filled-in paths

@@ -26,7 +26,16 @@ The `omrs web` server SHALL serve the same MCP tools as the stdio server over st
 
 ### Requirement: The on/off state persists and changes only from the browser session
 
-`GET /v1/mcp` (read scope) SHALL return `{ enabled, source, url, token }`, where `url` is the full `/mcp` address on the bound host and port and `token` describes the MCP token without its value (`{ exists, created_at }`). `PUT /v1/mcp` with `{ enabled }` SHALL require the browser session, SHALL write `mcp_http_enabled` to `omrs.jsonc`, SHALL take effect without a restart, and SHALL return the new state. The file value SHALL apply on every later launch, and a hand edit of it SHALL apply without a restart.
+`GET /v1/mcp` (read scope) SHALL return `{ enabled, source, url, token }`, where `url` is the full `/mcp` address on the bound host and port and `token` describes the MCP token without its value (`{ exists, created_at }`). `PUT /v1/mcp` with `{ enabled }` SHALL require the browser session, SHALL write `mcp_http_enabled` to `omrs.jsonc`, SHALL take effect without a restart, and SHALL return the new state.
+
+#### Scenario: Bearer credential cannot toggle
+
+- **WHEN** a bearer credential, including the MCP token, calls `PUT /v1/mcp`
+- **THEN** the server MUST refuse it and the file MUST NOT change
+
+### Requirement: The saved on/off value applies on every launch
+
+The file value SHALL apply on every later launch, and a hand edit of it SHALL apply without a restart.
 
 #### Scenario: Enable survives a restart
 
@@ -38,14 +47,9 @@ The `omrs web` server SHALL serve the same MCP tools as the stdio server over st
 - **WHEN** the server serves `/mcp` and the user sets `mcp_http_enabled` to `false` in `omrs.jsonc`
 - **THEN** the next request to `/mcp` MUST receive 404
 
-#### Scenario: Bearer credential cannot toggle
-
-- **WHEN** a bearer credential, including the MCP token, calls `PUT /v1/mcp`
-- **THEN** the server MUST refuse it and the file MUST NOT change
-
 ### Requirement: MCP clients authenticate with a durable, hashed token
 
-One MCP token SHALL exist at most. `POST /v1/mcp/token` (browser session) SHALL create a random token or replace the existing one, SHALL store only its SHA-256 hash and creation time in the workspace database, and SHALL return the token value in that response only. `DELETE /v1/mcp/token` (browser session) SHALL revoke it. Requests to `/mcp` SHALL carry `Authorization: Bearer <token>`; a missing, wrong or revoked token SHALL receive 401 before any MCP processing. The token SHALL grant only the `mcp` scope, and no `/v1` route SHALL accept it. The token value SHALL NOT appear in logs, error responses or `GET /v1/mcp`.
+One MCP token SHALL exist at most. `POST /v1/mcp/token` (browser session) SHALL create a random token or replace the existing one, SHALL store only its SHA-256 hash and creation time in the workspace database, and SHALL return the token value in that response only. `DELETE /v1/mcp/token` (browser session) SHALL revoke it.
 
 #### Scenario: Shown once
 
@@ -61,6 +65,10 @@ One MCP token SHALL exist at most. `POST /v1/mcp/token` (browser session) SHALL 
 
 - **WHEN** the server restarts
 - **THEN** the existing token MUST still authenticate `/mcp`
+
+### Requirement: The MCP token reaches only the MCP endpoint
+
+Requests to `/mcp` SHALL carry `Authorization: Bearer <token>`; a missing, wrong or revoked token SHALL receive 401 before any MCP processing. The token SHALL grant only the `mcp` scope, and no `/v1` route SHALL accept it. The token value SHALL NOT appear in logs, error responses or `GET /v1/mcp`.
 
 #### Scenario: Token cannot reach the REST API
 

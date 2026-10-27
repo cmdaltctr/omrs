@@ -10,10 +10,7 @@ The system SHALL expose `ingest_path_async(path, ...)` in `omrs.ingestion`
 as the primary ingestion function. The function SHALL be declared `async def`
 and SHALL return the same result dictionary shape as the existing
 `ingest_path()` (`files_indexed`, `chunks_created`, `file_details`, plus the
-optional `error_type` / `message` fields). When ingesting Markdown files
-(`.md` extension), ingestion SHALL route the chunking step to a heading-aware
-node parser; for all other file types, ingestion SHALL use the existing
-default splitter.
+optional `error_type` / `message` fields).
 
 #### Scenario: Async ingest produces same result shape as sync ingest
 
@@ -23,6 +20,22 @@ default splitter.
   dict
 - **THEN** the `file_details` entries SHALL contain `file`, `status`, `chunks`
   fields, and `error` only when `status == "failed"`
+
+#### Scenario: Async ingest reports embedding connection failures
+
+- **WHEN** `await ingest_path_async("/path")` is called and Ollama is
+  unreachable
+- **THEN** the returned dict SHALL include `error_type: "connection"` and a
+  human-readable `message`
+- **THEN** the dict SHALL NOT raise — the async function SHALL never
+  propagate the connection error as an exception
+
+### Requirement: Markdown files use a heading-aware parser
+
+When ingesting Markdown files
+(`.md` extension), ingestion SHALL route the chunking step to a heading-aware
+node parser; for all other file types, ingestion SHALL use the existing
+default splitter.
 
 #### Scenario: Markdown file is routed to heading-aware parser
 
@@ -35,15 +48,6 @@ default splitter.
 - **WHEN** `await ingest_path_async("/docs/report.pdf")` is called
 - **THEN** the chunking step for that file SHALL use the existing default splitter
 - **THEN** the resulting chunk count SHALL match the previous default behaviour for the same file
-
-#### Scenario: Async ingest reports embedding connection failures
-
-- **WHEN** `await ingest_path_async("/path")` is called and Ollama is
-  unreachable
-- **THEN** the returned dict SHALL include `error_type: "connection"` and a
-  human-readable `message`
-- **THEN** the dict SHALL NOT raise — the async function SHALL never
-  propagate the connection error as an exception
 
 ### Requirement: Event loop responsiveness during ingest
 
@@ -246,9 +250,7 @@ implementation.
 
 ### Requirement: Ingestion result reports metadata degradation
 
-The async ingestion result dict SHALL report when metadata extraction degraded from the configured LLM-backed mode to a fallback tier for one or more files. The result SHALL carry a top-level `metadata_degraded` integer counting the files whose metadata was produced by a fallback. Each affected entry in `file_details` SHALL carry a marker (`metadata_degraded: true`) so the caller can identify which files were affected. Files whose metadata extraction succeeded in the configured mode SHALL NOT set the marker, and SHALL NOT be counted.
-
-These fields SHALL be additive: all existing result keys (`status`, `files_indexed`, `chunks_created`, `chunks_removed`, `collection`, `file_details`, and any `warnings`) and all existing `file_details` keys (`file`, `status`, `chunks`) SHALL retain their current names and types. The `metadata_degraded` count SHALL be present on every ingestion result dict (including error responses) and SHALL be `0` when no file degraded.
+The async ingestion result dict SHALL report when metadata extraction degraded from the configured LLM-backed mode to a fallback tier for one or more files. The result SHALL carry a top-level `metadata_degraded` integer counting the files whose metadata was produced by a fallback.
 
 #### Scenario: No degradation reports zero
 
@@ -256,11 +258,19 @@ These fields SHALL be additive: all existing result keys (`status`, `files_index
 - **THEN** the result dict SHALL contain `metadata_degraded` equal to `0`
 - **THEN** no `file_details` entry SHALL carry a `metadata_degraded` marker
 
+### Requirement: Degraded files carry a marker in the file details
+
+Each affected entry in `file_details` SHALL carry a marker (`metadata_degraded: true`) so the caller can identify which files were affected. Files whose metadata extraction succeeded in the configured mode SHALL NOT set the marker, and SHALL NOT be counted.
+
 #### Scenario: One file degrades
 
 - **WHEN** ingestion runs over three files and one file's metadata extraction falls back to keyword mode
 - **THEN** the result dict SHALL contain `metadata_degraded` equal to `1`
 - **THEN** exactly the affected `file_details` entry SHALL carry `metadata_degraded: true`
+
+### Requirement: Metadata degradation fields are additive and always present
+
+These fields SHALL be additive: all existing result keys (`status`, `files_indexed`, `chunks_created`, `chunks_removed`, `collection`, `file_details`, and any `warnings`) and all existing `file_details` keys (`file`, `status`, `chunks`) SHALL retain their current names and types. The `metadata_degraded` count SHALL be present on every ingestion result dict (including error responses) and SHALL be `0` when no file degraded.
 
 #### Scenario: Existing result keys are unchanged
 
@@ -277,8 +287,6 @@ These fields SHALL be additive: all existing result keys (`status`, `files_index
 
 The ingestion pipeline SHALL persist a source-content identity and an index-shaping identity for each stored source version. A file MAY be skipped as unchanged only when its content identity and every index-shaping input that affects stored chunks/vectors match the existing indexed version.
 
-Index-shaping identity SHALL cover at least effective embedding provider/model, parser/document backend where relevant, and chunking configuration/strategy that affects emitted text boundaries. A content-only hash SHALL NOT cause stale vectors/chunks to be reused after these values change. Files with different, missing, or mixed identities and files with no existing chunks SHALL be ingested normally. Binary files SHALL retain the existing `status: "skipped"` behaviour and SHALL NOT participate in change detection.
-
 #### Scenario: Same bytes and same index identity
 - **GIVEN** a previously indexed file whose content and index-shaping identity are unchanged
 - **WHEN** the same path is ingested again
@@ -290,11 +298,28 @@ Index-shaping identity SHALL cover at least effective embedding provider/model, 
 - **THEN** the file SHALL NOT be re-chunked or re-embedded
 - **THEN** the collection's chunk count for that file SHALL remain unchanged
 
-#### Scenario: File with no stored chunks is ingested
-- **WHEN** an eligible non-binary file has no existing chunks in the target collection (never ingested, or its previous ingest produced zero chunks)
-- **AND** `ingest_path_async` is called on its path
-- **THEN** the file SHALL be ingested normally
-- **AND** the file SHALL NOT be classified as `skipped_unchanged`
+#### Scenario: Modified file is re-ingested
+- **WHEN** a previously ingested file is modified on disk
+- **AND** `ingest_path_async` is called on the same path and collection
+- **THEN** the file's previous chunks SHALL be deleted
+- **THEN** the file SHALL be re-chunked and re-embedded
+- **THEN** the stored source and index identities for the file SHALL be updated
+
+#### Scenario: Mixed directory skips only unchanged files
+- **WHEN** a directory contains three previously ingested eligible non-binary files and exactly one has been modified
+- **AND** `ingest_path_async` is called on the directory
+- **THEN** only the modified file SHALL be re-ingested
+- **THEN** the two unchanged files SHALL be skipped
+
+#### Scenario: Hash-read failure does not abort sibling files
+- **WHEN** `sha256_file` raises `FileNotFoundError` or `OSError` for one file in a multi-file ingestion
+- **THEN** that file SHALL be reported in `file_details` with `status: "failed"` and `chunks: 0`
+- **THEN** its existing chunks SHALL remain untouched
+- **AND** ingestion SHALL continue for the sibling files
+
+### Requirement: Index-shaping identity covers model, parser and chunking inputs
+
+Index-shaping identity SHALL cover at least effective embedding provider/model, parser/document backend where relevant, and chunking configuration/strategy that affects emitted text boundaries. A content-only hash SHALL NOT cause stale vectors/chunks to be reused after these values change.
 
 #### Scenario: Same bytes but embedding model changes
 - **GIVEN** the source bytes are unchanged
@@ -308,12 +333,15 @@ Index-shaping identity SHALL cover at least effective embedding provider/model, 
 - **WHEN** ingestion runs
 - **THEN** the file MUST be reprocessed
 
-#### Scenario: Modified file is re-ingested
-- **WHEN** a previously ingested file is modified on disk
-- **AND** `ingest_path_async` is called on the same path and collection
-- **THEN** the file's previous chunks SHALL be deleted
-- **THEN** the file SHALL be re-chunked and re-embedded
-- **THEN** the stored source and index identities for the file SHALL be updated
+### Requirement: Files without a matching stored identity are ingested normally
+
+Files with different, missing, or mixed identities and files with no existing chunks SHALL be ingested normally.
+
+#### Scenario: File with no stored chunks is ingested
+- **WHEN** an eligible non-binary file has no existing chunks in the target collection (never ingested, or its previous ingest produced zero chunks)
+- **AND** `ingest_path_async` is called on its path
+- **THEN** the file SHALL be ingested normally
+- **AND** the file SHALL NOT be classified as `skipped_unchanged`
 
 #### Scenario: Legacy chunks without a stored hash are re-ingested once
 - **WHEN** `ingest_path_async` runs against a collection persisted before content hashing existed (chunks carry no content-hash metadata)
@@ -321,23 +349,15 @@ Index-shaping identity SHALL cover at least effective embedding provider/model, 
 - **THEN** the re-ingested chunks SHALL carry `source_content_hash`
 - **AND** a subsequent call with no file or index-shaping changes SHALL skip all eligible non-binary files
 
-#### Scenario: Mixed directory skips only unchanged files
-- **WHEN** a directory contains three previously ingested eligible non-binary files and exactly one has been modified
-- **AND** `ingest_path_async` is called on the directory
-- **THEN** only the modified file SHALL be re-ingested
-- **THEN** the two unchanged files SHALL be skipped
-
 #### Scenario: Mixed or missing chunk hashes force re-ingestion
 - **WHEN** a file's existing chunks contain mixed hashes or a missing `source_content_hash`
 - **AND** `ingest_path_async` is called with that file unmodified
 - **THEN** the file SHALL be re-ingested
 - **THEN** every replacement chunk SHALL carry the current hash
 
-#### Scenario: Hash-read failure does not abort sibling files
-- **WHEN** `sha256_file` raises `FileNotFoundError` or `OSError` for one file in a multi-file ingestion
-- **THEN** that file SHALL be reported in `file_details` with `status: "failed"` and `chunks: 0`
-- **THEN** its existing chunks SHALL remain untouched
-- **AND** ingestion SHALL continue for the sibling files
+### Requirement: Binary files stay outside change detection
+
+Binary files SHALL retain the existing `status: "skipped"` behaviour and SHALL NOT participate in change detection.
 
 #### Scenario: Binary files retain the existing skip behaviour
 - **WHEN** a discovered supported-extension file is detected as binary
@@ -374,15 +394,7 @@ The ingestion result dict SHALL report skipped files additively. The result
 SHALL carry a top-level `files_skipped_unchanged` integer counting eligible
 non-binary files skipped by change detection. The key SHALL be present with
 an integer value on every result dict, error returns included, and SHALL be
-`0` when no file was skipped. Each file skipped by change
-detection SHALL appear in `file_details` with `status: "skipped_unchanged"`
-and `chunks: 0`. This status is distinct from the existing `"skipped"` status
-for unsupported-extension and binary files. All existing result keys
-(`status`, `files_indexed`, `chunks_created`, `chunks_removed`, `collection`,
-`file_details`, `metadata_degraded`, `warnings`) and all existing
-`file_details` keys SHALL retain their current names and types. Skipped files
-SHALL NOT be counted in `files_indexed`, and their chunks SHALL NOT be counted
-in `chunks_removed`.
+`0` when no file was skipped.
 
 #### Scenario: Fully unchanged directory reports all files skipped
 
@@ -392,6 +404,23 @@ in `chunks_removed`.
   the number of eligible non-binary files
 - **THEN** `files_indexed` SHALL be `0` and `chunks_created` SHALL be `0`
 - **THEN** the result `status` SHALL be `"ok"`
+
+#### Scenario: Error results carry the skip counter
+
+- **WHEN** `ingest_path_async` returns an error result dict
+- **THEN** the dict SHALL include `files_skipped_unchanged` as an integer
+- **AND** the value SHALL be `0` unless eligible files were skipped before
+  the error
+
+### Requirement: Files skipped as unchanged carry their own status
+
+Each file skipped by change
+detection SHALL appear in `file_details` with `status: "skipped_unchanged"`
+and `chunks: 0`. This status is distinct from the existing `"skipped"` status
+for unsupported-extension and binary files.
+Skipped files
+SHALL NOT be counted in `files_indexed`, and their chunks SHALL NOT be counted
+in `chunks_removed`.
 
 #### Scenario: Partially changed directory reports mixed counts
 
@@ -403,6 +432,13 @@ in `chunks_removed`.
 - **THEN** exactly two `file_details` entries SHALL have
   `status: "skipped_unchanged"`
 
+### Requirement: Skip reporting keeps the existing result keys
+
+All existing result keys
+(`status`, `files_indexed`, `chunks_created`, `chunks_removed`, `collection`,
+`file_details`, `metadata_degraded`, `warnings`) and all existing
+`file_details` keys SHALL retain their current names and types.
+
 #### Scenario: Existing result keys are unchanged
 
 - **WHEN** any ingestion completes with change detection active
@@ -410,13 +446,6 @@ in `chunks_removed`.
   existing types
 - **THEN** `files_skipped_unchanged` SHALL be present and SHALL be `0` when
   no file was skipped
-
-#### Scenario: Error results carry the skip counter
-
-- **WHEN** `ingest_path_async` returns an error result dict
-- **THEN** the dict SHALL include `files_skipped_unchanged` as an integer
-- **AND** the value SHALL be `0` unless eligible files were skipped before
-  the error
 
 ### Requirement: Change detection can be disabled per call
 
@@ -453,7 +482,7 @@ alter desired vectors without altering file content.
 
 ### Requirement: Replacement preserves the last durable searchable version on failure
 
-Updating an already-indexed source SHALL NOT delete the last durable searchable version merely because a later parse, chunk, embedding or store-write step fails. New-version rows SHALL become durable and be verified before stale-version rows are removed, or another store-neutral mechanism SHALL provide the same safety property. Removal of stale rows SHALL succeed for a source of any row count; where a store caps the number of IDs one delete call accepts, the removal SHALL issue multiple delete calls, each within that cap.
+Updating an already-indexed source SHALL NOT delete the last durable searchable version merely because a later parse, chunk, embedding or store-write step fails. New-version rows SHALL become durable and be verified before stale-version rows are removed, or another store-neutral mechanism SHALL provide the same safety property.
 
 #### Scenario: Parse failure during update
 - **GIVEN** version A of a source is indexed and searchable
@@ -476,6 +505,10 @@ Updating an already-indexed source SHALL NOT delete the last durable searchable 
 - **WHEN** version B is written and verified successfully
 - **THEN** stale version A rows SHALL be removed
 - **AND** public retrieval SHALL resolve the source to version B without persistent duplicates
+
+### Requirement: Stale-row removal works for any source size
+
+Removal of stale rows SHALL succeed for a source of any row count; where a store caps the number of IDs one delete call accepts, the removal SHALL issue multiple delete calls, each within that cap.
 
 #### Scenario: Successful replacement with more rows than one delete call accepts
 - **GIVEN** version A is indexed with more than 100 chunk rows
@@ -505,20 +538,21 @@ The correctness implementation SHALL not claim that `embed_concurrency` provides
 
 The index-shaping identity SHALL cover every input this change adds that can alter emitted chunk text or stored vectors. The identity SHALL include the configured embedding-tokenizer identity and revision, the **resolved** active Markdown splitter (model-token-aware or legacy fallback), the OCR routing configuration including the sorted unconditional routing types, and the **resolved** OCR fallback capability.
 
-Resolved values SHALL be recorded, not only configured values. A configured tokenizer that cannot be loaded runs the legacy splitter, and a configured OCR gate without an installed OCR stack runs the fast path alone; recording only the configuration would leave both degraded results indistinguishable from the intended ones.
+#### Scenario: OCR routing configuration change forces reprocessing
 
-These inputs SHALL enter the existing `source_index_identity` payload and its failure-safe replacement path. A second identity mechanism SHALL NOT be introduced. The initial shape used schema 4. The routing-policy amendment SHALL advance it to schema 5. This conservative identity change applies to all sources, including those with OCR disabled.
-
-Inclusion SHALL follow the existing conservative rule for parser and chunking selectors: an input is hashed whether or not a given file type uses it, because unnecessary reprocessing is safer than reusing stale chunks.
-
-The optional query-only embedding instruction SHALL NOT participate in this identity.
-
-#### Scenario: Tokenizer identity change forces reprocessing
-
-- **GIVEN** a previously indexed, byte-identical Markdown source
-- **WHEN** the configured embedding-tokenizer identity or revision changes and ingestion runs again
+- **GIVEN** a previously indexed, byte-identical PDF
+- **WHEN** the calibrated OCR routing configuration changes and ingestion runs again
 - **THEN** the source SHALL NOT be reported as `skipped_unchanged`
-- **AND** it SHALL be re-chunked, re-embedded, and replaced through the existing failure-safe replacement path
+
+#### Scenario: Unchanged input-quality inputs still skip
+
+- **GIVEN** a previously indexed, byte-identical source
+- **WHEN** ingestion runs again with the tokenizer identity, resolved splitter, OCR routing configuration, and resolved OCR capability all unchanged
+- **THEN** the source SHALL be reported as `skipped_unchanged`
+
+### Requirement: The index identity records resolved values
+
+Resolved values SHALL be recorded, not only configured values. A configured tokenizer that cannot be loaded runs the legacy splitter, and a configured OCR gate without an installed OCR stack runs the fast path alone; recording only the configuration would leave both degraded results indistinguishable from the intended ones.
 
 #### Scenario: Degraded chunking recovers when the tokenizer becomes resolvable
 
@@ -535,11 +569,22 @@ The optional query-only embedding instruction SHALL NOT participate in this iden
 - **AND** the source SHALL NOT be reported as `skipped_unchanged`
 - **AND** it SHALL be re-extracted through the routing seam rather than remaining permanently on its degraded chunks
 
-#### Scenario: OCR routing configuration change forces reprocessing
+### Requirement: Input-quality inputs use the existing identity payload
 
-- **GIVEN** a previously indexed, byte-identical PDF
-- **WHEN** the calibrated OCR routing configuration changes and ingestion runs again
+These inputs SHALL enter the existing `source_index_identity` payload and its failure-safe replacement path. A second identity mechanism SHALL NOT be introduced. The initial shape used schema 4. The routing-policy amendment SHALL advance it to schema 5. This conservative identity change applies to all sources, including those with OCR disabled.
+
+#### Scenario: Tokenizer identity change forces reprocessing
+
+- **GIVEN** a previously indexed, byte-identical Markdown source
+- **WHEN** the configured embedding-tokenizer identity or revision changes and ingestion runs again
 - **THEN** the source SHALL NOT be reported as `skipped_unchanged`
+- **AND** it SHALL be re-chunked, re-embedded, and replaced through the existing failure-safe replacement path
+
+### Requirement: Identity inclusion is conservative and excludes the query instruction
+
+Inclusion SHALL follow the existing conservative rule for parser and chunking selectors: an input is hashed whether or not a given file type uses it, because unnecessary reprocessing is safer than reusing stale chunks.
+
+The optional query-only embedding instruction SHALL NOT participate in this identity.
 
 #### Scenario: Query instruction change alone does not force reprocessing
 
@@ -547,12 +592,6 @@ The optional query-only embedding instruction SHALL NOT participate in this iden
 - **WHEN** only the embedding query instruction changes and ingestion runs again
 - **THEN** the stored index identity SHALL be unchanged
 - **AND** the source SHALL be reported as `skipped_unchanged`
-
-#### Scenario: Unchanged input-quality inputs still skip
-
-- **GIVEN** a previously indexed, byte-identical source
-- **WHEN** ingestion runs again with the tokenizer identity, resolved splitter, OCR routing configuration, and resolved OCR capability all unchanged
-- **THEN** the source SHALL be reported as `skipped_unchanged`
 
 ### Requirement: Reader-output normalisation SHALL participate in the complete index identity
 

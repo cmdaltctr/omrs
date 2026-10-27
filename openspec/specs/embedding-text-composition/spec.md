@@ -14,16 +14,18 @@ contract rather than a by-product of which reader ran. Exactly one module
 SHALL own the set of metadata keys excluded from embedding text, and it SHALL
 apply that set to every node on every ingest path.
 
+#### Scenario: Exclusion is applied on every path
+
+- **WHEN** nodes are produced by the code, config, structured-backend, or
+  document chunking path
+- **THEN** the same exclusion set MUST be applied to all of them
+
+### Requirement: Excluded keys carry no retrievable meaning
+
 Keys SHALL be excluded when they are machine identity, parser telemetry, or
 filesystem bookkeeping — values that are constant within a document and carry
 no retrievable meaning. Keys SHALL be retained when they carry topical signal
 a query could plausibly match.
-
-The OCR diagnostics this change adds — `ocr_required`, `ocr_used`,
-`ocr_backend`, and `pages_needing_ocr` — are parser telemetry by that test:
-each is constant across every chunk of a document and none carries signal a
-user query could match. They SHALL join the same centrally owned exclusion set
-rather than a second list held by the PDF reader.
 
 #### Scenario: Parser telemetry never reaches the embedding model
 
@@ -31,14 +33,6 @@ rather than a second list held by the PDF reader.
 - **THEN** the text passed to the embedding model MUST NOT contain
   `pdf_reader`, `pdf_type`, `pdf_confidence`, `page_count`, `page`,
   `page_label`, `column`, `section_bbox`, or `bbox_schema_version`
-- **AND** the chunk's own text MUST be present unchanged
-
-#### Scenario: OCR diagnostics never reach the embedding model
-
-- **WHEN** a PDF is ingested through either the `pdf-inspector` fast path or
-  the OCR fallback
-- **THEN** the text passed to the embedding model MUST NOT contain
-  `ocr_required`, `ocr_used`, `ocr_backend`, or `pages_needing_ocr`
 - **AND** the chunk's own text MUST be present unchanged
 
 #### Scenario: Filesystem bookkeeping never reaches the embedding model
@@ -56,11 +50,21 @@ rather than a second list held by the PDF reader.
 - **THEN** those values MUST remain in the embedding text
 - **AND** `header_path`, when present, MUST remain in the embedding text
 
-#### Scenario: Exclusion is applied on every path
+### Requirement: OCR diagnostics join the central exclusion set
 
-- **WHEN** nodes are produced by the code, config, structured-backend, or
-  document chunking path
-- **THEN** the same exclusion set MUST be applied to all of them
+The OCR diagnostics this change adds — `ocr_required`, `ocr_used`,
+`ocr_backend`, and `pages_needing_ocr` — are parser telemetry by that test:
+each is constant across every chunk of a document and none carries signal a
+user query could match. They SHALL join the same centrally owned exclusion set
+rather than a second list held by the PDF reader.
+
+#### Scenario: OCR diagnostics never reach the embedding model
+
+- **WHEN** a PDF is ingested through either the `pdf-inspector` fast path or
+  the OCR fallback
+- **THEN** the text passed to the embedding model MUST NOT contain
+  `ocr_required`, `ocr_used`, `ocr_backend`, or `pages_needing_ocr`
+- **AND** the chunk's own text MUST be present unchanged
 
 ### Requirement: The exclusion set participates in index identity
 

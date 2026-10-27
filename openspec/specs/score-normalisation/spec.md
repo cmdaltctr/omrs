@@ -3,23 +3,21 @@
 Define how similarity scores are computed and normalised so that
 `similarity_threshold` behaves consistently across all retrieval paths
 and reranking states.
+
+**Failed reranking.** Applying the scaling to un-reranked cosine scores makes filtering roughly
+30× too permissive, admitting noise the caller's `similarity_threshold` was
+meant to exclude. Because a reranker failure is already silent by design
+(retrieval still returns results), this compounds an invisible failure with
+an invisible loss of filtering — the same silent-degradation class this
+capability exists to prevent.
 ## Requirements
 ### Requirement: non-reranked vector scores use a single conversion formula
 
 The system SHALL convert ChromaDB L2 distances to similarity scores on
 every non-reranked retrieval path using the formula
-`score = 1.0 / (1.0 + distance)`. The metadata-filtered direct-ChromaDB
-path and the unfiltered path SHALL produce equal pre-threshold scores
-(within a numerical tolerance of `1e-6`) for the same `(query, chunk)`
-pair. Reranker scores are out of scope for this requirement and continue
+`score = 1.0 / (1.0 + distance)`. Reranker scores are out of scope for this requirement and continue
 to use the sigmoid-normalised cross-encoder scale with the calibrated
 ÷30 threshold scaling.
-
-#### Scenario: Same chunk yields equal score on both paths
-- **GIVEN** a chunk indexed with category metadata
-- **WHEN** an unfiltered search and a metadata-filtered search both return that chunk
-- **THEN** the pre-threshold `score` field SHALL be equal within `1e-6`
-- **THEN** both `score` values SHALL equal `1.0 / (1.0 + distance)` for the underlying ChromaDB L2 distance
 
 #### Scenario: Equivalent filtered and unfiltered threshold behaviour
 - **GIVEN** documents have been indexed with category metadata
@@ -31,6 +29,19 @@ to use the sigmoid-normalised cross-encoder scale with the calibrated
 - **WHEN** `rerank=True` is set on either retrieval path
 - **THEN** the calibrated ÷30 threshold scaling SHALL still apply
 - **THEN** the score conversion in this requirement SHALL NOT alter reranker output
+
+### Requirement: Filtered and unfiltered paths give equal pre-threshold scores
+
+The metadata-filtered direct-ChromaDB
+path and the unfiltered path SHALL produce equal pre-threshold scores
+(within a numerical tolerance of `1e-6`) for the same `(query, chunk)`
+pair.
+
+#### Scenario: Same chunk yields equal score on both paths
+- **GIVEN** a chunk indexed with category metadata
+- **WHEN** an unfiltered search and a metadata-filtered search both return that chunk
+- **THEN** the pre-threshold `score` field SHALL be equal within `1e-6`
+- **THEN** both `score` values SHALL equal `1.0 / (1.0 + distance)` for the underlying ChromaDB L2 distance
 
 ### Requirement: sigmoid score normalisation for reranker
 
@@ -77,17 +88,7 @@ regardless of whether reranking is active.
 The calibrated ÷30 threshold scaling exists because cross-encoder sigmoid
 scores occupy a much lower range than cosine similarity. It SHALL therefore
 be applied only when the returned scores are actually reranker scores — that
-is, when reranking was requested **and succeeded**. When reranking was
-requested but did not apply (the reranker failed to load, or inference
-failed, and results carry `reranked: false`), the scores are unchanged cosine
-similarities and the threshold SHALL be applied unscaled.
-
-Applying the scaling to un-reranked cosine scores makes filtering roughly
-30× too permissive, admitting noise the caller's `similarity_threshold` was
-meant to exclude. Because a reranker failure is already silent by design
-(retrieval still returns results), this compounds an invisible failure with
-an invisible loss of filtering — the same silent-degradation class this
-capability exists to prevent.
+is, when reranking was requested **and succeeded**.
 
 The scaling **factor** itself is unchanged and remains empirically calibrated;
 only the condition under which it is applied changes.
@@ -99,6 +100,18 @@ only the condition under which it is applied changes.
 - **THEN** the effective threshold applied to reranker scores SHALL be the
   ÷30-scaled value
 
+#### Scenario: Reranking not requested does not scale the threshold
+
+- **WHEN** a search runs with `rerank=False` and `similarity_threshold=0.3`
+- **THEN** the effective threshold SHALL be the unscaled `0.3`
+
+### Requirement: Failed reranking leaves the threshold unscaled
+
+When reranking was
+requested but did not apply (the reranker failed to load, or inference
+failed, and results carry `reranked: false`), the scores are unchanged cosine
+similarities and the threshold SHALL be applied unscaled.
+
 #### Scenario: Failed reranking does not scale the threshold
 
 - **GIVEN** the reranker fails to load or its inference raises
@@ -106,9 +119,3 @@ only the condition under which it is applied changes.
 - **THEN** the returned results SHALL carry `reranked: false`
 - **THEN** the effective threshold SHALL be the unscaled `0.3`, because the
   scores being filtered are cosine similarities, not reranker scores
-
-#### Scenario: Reranking not requested does not scale the threshold
-
-- **WHEN** a search runs with `rerank=False` and `similarity_threshold=0.3`
-- **THEN** the effective threshold SHALL be the unscaled `0.3`
-

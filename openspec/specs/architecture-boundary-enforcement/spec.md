@@ -84,12 +84,7 @@ import-linter contract SHALL enforce the direction.
 ### Requirement: Full-package import boundary coverage
 
 The import-linter contract set SHALL cover every package under
-`src/omrs/`. The business-layer contract SHALL include
-`core.ingestion`, `core.retrieval`, `core.metadata`, `core.chunking`,
-`core.vectordb`, `core.profiles`, `core.codebase`, `core.documents`,
-`core.community`, `core.answer`, `core.pipelines`, `core.workspace`,
-`core.plugins`, `core.experiments`, and `daemon`, forbidding concrete provider and transport dependencies under
-the existing sanctioned exceptions. New packages SHALL not be omitted from
+`src/omrs/`. New packages SHALL not be omitted from
 coverage.
 
 #### Scenario: Every package is a contract source
@@ -100,6 +95,15 @@ coverage.
   applicable contract
 - **AND** new graph/workspace packages MUST not depend on FastAPI, notebook
   runtimes, or transport modules
+
+### Requirement: The business-layer contract covers the core packages
+
+The business-layer contract SHALL include
+`core.ingestion`, `core.retrieval`, `core.metadata`, `core.chunking`,
+`core.vectordb`, `core.profiles`, `core.codebase`, `core.documents`,
+`core.community`, `core.answer`, `core.pipelines`, `core.workspace`,
+`core.plugins`, `core.experiments`, and `daemon`, forbidding concrete provider and transport dependencies under
+the existing sanctioned exceptions.
 
 #### Scenario: Transport import from core fails
 

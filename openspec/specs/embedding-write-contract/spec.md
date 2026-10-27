@@ -14,15 +14,7 @@ The system SHALL use one production-core validator before every
 validator SHALL inspect the complete batch, and validation SHALL complete
 before **any backend SDK or persistent-store mutation** — collection
 creation, schema derivation, row conversion, and the SDK write itself
-included. Adapter code SHALL invoke the shared validation immediately
-before its backend SDK mutation as the enforcement point. The validator
-SHALL receive the collection name, embedding provider/model diagnostic,
-and stable node or row identifiers. The number of identifiers SHALL
-exactly equal the number of vectors. `write_nodes` SHALL use the identity of
-the embedder that produced the batch: the identity that the caller supplies
-for the write, or the store's composed embedding identity when the caller
-supplies none. A direct `upsert_precomputed` caller SHALL supply the
-provider/model diagnostic explicitly. Both `write_nodes`-produced embeddings
+included. Both `write_nodes`-produced embeddings
 and valid precomputed vectors SHALL pass through the same rule.
 
 #### Scenario: Valid batch reaches a vector store
@@ -33,6 +25,17 @@ and valid precomputed vectors SHALL pass through the same rule.
 - **THEN** the validator MUST permit the write
 - **AND** the selected adapter MAY persist the complete batch
 
+#### Scenario: Empty embedding batch is rejected
+
+- **GIVEN** a write path prepares a batch with no embeddings or no nodes
+- **WHEN** the batch is submitted
+- **THEN** the write MUST fail with the shared diagnostic before any mutation
+
+### Requirement: Adapters run the shared validation before their SDK mutation
+
+Adapter code SHALL invoke the shared validation immediately
+before its backend SDK mutation as the enforcement point.
+
 #### Scenario: Rejected batch does not reach a backend SDK mutation
 
 - **GIVEN** a batch has at least one structural vector error
@@ -41,11 +44,12 @@ and valid precomputed vectors SHALL pass through the same rule.
 - **AND** no row from that batch MUST persist
 - **AND** the collection generation MUST NOT advance because of that batch
 
-#### Scenario: Empty embedding batch is rejected
+### Requirement: The validator receives the write context and matching identifiers
 
-- **GIVEN** a write path prepares a batch with no embeddings or no nodes
-- **WHEN** the batch is submitted
-- **THEN** the write MUST fail with the shared diagnostic before any mutation
+The validator
+SHALL receive the collection name, embedding provider/model diagnostic,
+and stable node or row identifiers. The number of identifiers SHALL
+exactly equal the number of vectors.
 
 #### Scenario: Identifier/vector cardinality mismatch is rejected
 
@@ -53,6 +57,14 @@ and valid precomputed vectors SHALL pass through the same rule.
 - **WHEN** the batch is submitted
 - **THEN** the write MUST fail with the shared diagnostic naming the mismatch
 - **AND** no partial write MUST occur
+
+### Requirement: The validation diagnostic names the embedder that produced the batch
+
+`write_nodes` SHALL use the identity of
+the embedder that produced the batch: the identity that the caller supplies
+for the write, or the store's composed embedding identity when the caller
+supplies none. A direct `upsert_precomputed` caller SHALL supply the
+provider/model diagnostic explicitly.
 
 #### Scenario: Direct precomputed write supplies its diagnostic
 
@@ -224,7 +236,7 @@ When a caller supplies an embedding identity to `write_nodes`, the store SHALL c
 
 ### Requirement: The model stamp is checked before embedding and before shape validation
 
-A `VectorStore.write_nodes` call SHALL compare the active embedding identity with the stamp of an existing collection before it embeds any node and before it validates any vector shape. A mismatch SHALL raise the identity-mismatch error that names the stamped model and the active model. The check SHALL be read-only: it SHALL NOT create a collection, stamp a legacy collection, install a dataset epoch or advance the collection generation. A collection with no stamp, a collection that does not exist, and a store with no active identity SHALL pass the check. The write SHALL still stamp a legacy collection after the vectors pass validation, as today. Both ChromaDB and LanceDB SHALL apply this rule.
+A `VectorStore.write_nodes` call SHALL compare the active embedding identity with the stamp of an existing collection before it embeds any node and before it validates any vector shape. A mismatch SHALL raise the identity-mismatch error that names the stamped model and the active model. Both ChromaDB and LanceDB SHALL apply this rule.
 
 #### Scenario: A model of another vector size meets a stamped collection
 
@@ -243,6 +255,10 @@ A `VectorStore.write_nodes` call SHALL compare the active embedding identity wit
 - **WHEN** `write_nodes` receives nodes
 - **THEN** the write MUST fail with the identity-mismatch error that names A and B
 - **AND** the embedder MUST NOT be called
+
+### Requirement: The early stamp check is read-only and passes unstamped collections
+
+The check SHALL be read-only: it SHALL NOT create a collection, stamp a legacy collection, install a dataset epoch or advance the collection generation. A collection with no stamp, a collection that does not exist, and a store with no active identity SHALL pass the check. The write SHALL still stamp a legacy collection after the vectors pass validation, as today.
 
 #### Scenario: A legacy collection without a stamp is still stamped after the write
 
