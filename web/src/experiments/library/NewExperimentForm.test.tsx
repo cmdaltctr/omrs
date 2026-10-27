@@ -34,6 +34,7 @@ describe("new experiment", () => {
       title: "OCR text quality",
       category: "ingestion",
       size: "Standard",
+      purpose: "optimisation",
     });
     const status = await within(form).findByRole("status");
     expect(status).toHaveTextContent("Created 4-ocr-text-quality-2026-10-25. The index in EXP_README.md is updated.");
@@ -41,6 +42,27 @@ describe("new experiment", () => {
     const created = await screen.findByRole("group", { name: "Experiment 4-ocr-text-quality-2026-10-25" });
     expect(within(created).getByText("PLANNED")).toBeInTheDocument();
     expect(within(form).getByLabelText("Slug")).toHaveValue("");
+  });
+
+  it("asks for the purpose with Optimisation first, and Publication sets the size to Confirmatory", async () => {
+    const { user, server, form } = await openForm();
+    const purpose = within(form).getByRole("combobox", { name: "Purpose" });
+    expect(purpose).toHaveTextContent("Optimisation");
+    await user.click(purpose);
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["Optimisation", "Publication"]);
+    await user.click(screen.getByRole("option", { name: "Optimisation" }));
+    expect(within(form).queryByText(/pinned llama\.cpp runtime/)).toBeNull();
+
+    await choose(user, "Purpose", "Publication", form);
+    expect(within(form).getByRole("combobox", { name: "Size" })).toHaveTextContent("Confirmatory");
+    expect(within(form).getByText("A publication plan needs a pinned llama.cpp runtime.")).toBeInTheDocument();
+    await user.type(within(form).getByLabelText("Slug"), "paper-evidence");
+    await user.type(within(form).getByLabelText("Title"), "Paper evidence");
+    await user.click(within(form).getByRole("button", { name: "Create experiment" }));
+    await waitFor(() => expect(server.find("POST", "/v1/experiment-projects/p1/experiments")).toHaveLength(1));
+    expect(server.find("POST", "/v1/experiment-projects/p1/experiments")[0]!.body).toMatchObject({ size: "Confirmatory", purpose: "publication" });
+    const created = await screen.findByRole("group", { name: "Experiment 4-paper-evidence-2026-10-25" });
+    expect(within(created).getByText("Publication")).toBeInTheDocument();
   });
 
   it("sends the size and follow-up number, and says when the project has no EXP_README.md", async () => {

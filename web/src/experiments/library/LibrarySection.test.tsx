@@ -33,6 +33,8 @@ describe("experiment library", () => {
     expect(within(reranker).getByRole("link", { name: "Title of reranker threshold" })).toHaveAttribute("href", `#/experiments/library/p1/${RERANKER}`);
     expect(within(card(OCR)).getByText("Experiment 1 · 2026-07-01 · Paper")).toBeInTheDocument();
     expect(within(card(OVERLAP)).getByText("FAIL")).toBeInTheDocument();
+    expect(within(reranker).getByText("Optimisation")).toBeInTheDocument();
+    expect(within(card(OCR)).getByText("Publication")).toBeInTheDocument();
     expect(within(card(OVERLAP)).queryByRole("group", { name: "Checker findings" })).toBeNull();
     expect(screen.getByText("Showing 4 experiments of 4.")).toBeInTheDocument();
     // The title link stays; every card also has an Open button to the same page.

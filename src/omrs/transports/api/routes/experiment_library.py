@@ -27,7 +27,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
 
 from .... import __version__
-from ....core.experiment_records.record import Category, Size
+from ....core.experiment_records.record import Category, Purpose, Size
 from ....core.workspace import experiment_file_edits as edits
 from ....core.workspace import experiment_notebooks as notebooks
 from ....core.workspace import experiment_pages as pages
@@ -85,6 +85,8 @@ class NewExperimentBody(BaseModel):
     category: Category
     size: Size
     follow_up: str | None = Field(default=None, max_length=16)
+    # An unknown value fails validation, whose message names both allowed values.
+    purpose: Purpose = Purpose.OPTIMISATION
 
 
 class FileWriteBody(BaseModel):
@@ -189,6 +191,7 @@ def _create(library: Any, project_id: str, body: NewExperimentBody) -> dict[str,
         size=body.size,
         day=date.today(),
         follow_up=body.follow_up,
+        purpose=body.purpose,
     )
 
 

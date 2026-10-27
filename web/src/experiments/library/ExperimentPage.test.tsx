@@ -17,6 +17,7 @@ describe("experiment page", () => {
     expect(screen.getByText("Experiment in OMRS")).toBeInTheDocument();
     expect(screen.getByText("PASS")).toBeInTheDocument();
     expect(screen.getByText("Standard")).toBeInTheDocument();
+    expect(screen.getByText("Optimisation")).toBeInTheDocument();
     expect(screen.getByText("ADR-018")).toBeInTheDocument();
     expect(tab("Protocol")).toHaveAttribute("aria-pressed", "true");
     expect(await screen.findByRole("heading", { name: "Hypothesis" })).toBeInTheDocument();

@@ -31,7 +31,7 @@ from omrs.core.experiment_records.index import (
     IndexMarkerError,
     write_index,
 )
-from omrs.core.experiment_records.record import Category, RecordError, Size
+from omrs.core.experiment_records.record import Category, Purpose, RecordError, Size
 from omrs.core.experiment_records.reserved import load_reservations
 from omrs.core.experiment_records.scaffold import ScaffoldError, create_experiment
 from omrs.core.experiment_records.scan import (
@@ -106,6 +106,7 @@ def experiment_view(folder: ExperimentFolder, findings: Iterable[Finding]) -> di
         "date": record.date.isoformat(),
         "category": record.category.value if record.category else None,
         "size": record.size.value if record.size else None,
+        "purpose": record.effective_purpose.value,
         "status": record.status.value,
         "superseded_by": record.superseded_by,
         "finding": record.finding,
@@ -365,6 +366,7 @@ def new_experiment(
     size: Size,
     day: Date,
     follow_up: str | None = None,
+    purpose: Purpose = Purpose.OPTIMISATION,
 ) -> dict[str, Any]:
     """Create an experiment folder, then rewrite the index when it has markers (design D7).
 
@@ -385,6 +387,7 @@ def new_experiment(
             size=size,
             day=day,
             follow_up=follow_up,
+            purpose=purpose,
         )
     except (ScaffoldError, RecordError) as exc:
         message = str(exc).replace(f" in {experiments}", "").replace(str(experiments), "folder")

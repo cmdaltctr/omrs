@@ -32,6 +32,7 @@ export function experiment(folder: string, status: string, overrides: Partial<Ex
     date: rest.slice(-3).join("-"),
     category: "retrieval",
     size: "Standard",
+    purpose: "optimisation",
     status,
     superseded_by: null,
     finding: `Finding of ${folder}.`,
@@ -84,7 +85,7 @@ export function defaultLibrary(): LibraryState {
         experiment(OVERLAP, "FAIL", { category: "ingestion" }),
         experiment(OLD_GRAPH, "SUPERSEDED", { category: "graph", superseded_by: omrs }),
       ],
-      p2: [experiment(OCR, "PLANNED", { category: "ingestion", size: "Quick" })],
+      p2: [experiment(OCR, "PLANNED", { category: "ingestion", size: "Quick", purpose: "publication" })],
     },
     reserved: { p1: [{ number: "4", reason: "Planned rerun of experiment 2.", ref: "openspec/changes/x" }], p2: [] },
     projectFindings: {
@@ -204,7 +205,7 @@ export function libraryHandlers(state: LibraryState): Record<string, Handler> {
       const number = body.follow_up ? `${String(body.follow_up)}.1` : String(list.length + 1);
       const folder = `${number}-${slug}-2026-10-25`;
       if (slug === "taken") return refuse(`The folder ${folder} already exists.`);
-      state.experiments[id!] = [...list, experiment(folder, "PLANNED", { title: String(body.title), category: String(body.category), size: String(body.size) })];
+      state.experiments[id!] = [...list, experiment(folder, "PLANNED", { title: String(body.title), category: String(body.category), size: String(body.size), purpose: body.purpose === "publication" ? "publication" : "optimisation" })];
       if (slug === "bad-readme") {
         const message = "The experiment folder was created, but the index in EXP_README.md was not updated. Run `omrs experiments index --write` to update it.";
         return json({ status: "ok", folder, index: "failed", message }, 201);

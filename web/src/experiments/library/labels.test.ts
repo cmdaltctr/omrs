@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { experiment } from "../test/libraryServer";
-import { findingCounts, formatSize, matches, NO_FILTERS, statusVariant, STATUSES } from "./labels";
+import { findingCounts, formatSize, matches, NO_FILTERS, purposeLabel, PURPOSES, statusVariant, STATUSES } from "./labels";
 
 describe("library labels", () => {
   it("maps each status to the badge colour of design D8, and an unknown one to neutral", () => {
@@ -31,6 +31,11 @@ describe("library labels", () => {
     expect(matches(item, { ...NO_FILTERS, search: "ocr TEXT" })).toBe(true);
     expect(matches(item, { ...NO_FILTERS, search: "tables" })).toBe(true);
     expect(matches(item, { ...NO_FILTERS, search: "2026-10" })).toBe(false);
+  });
+
+  it("names the purposes, Optimisation first, and reads a missing purpose as Optimisation", () => {
+    expect(PURPOSES.map(purposeLabel)).toEqual(["Optimisation", "Publication"]);
+    expect(purposeLabel(undefined)).toBe("Optimisation");
   });
 
   it("formats sizes", () => {
