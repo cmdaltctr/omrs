@@ -1,7 +1,7 @@
 # ADR-104: pdf-inspector Emits Page Documents
 
 - **Date:** 2026-10-27
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-28; built and merged to v3 at PR #136, merge commit `e33b84cb`. Evidence: `evidence/real-pdf-check.txt`, `evidence/mutation-page-offset.txt` and `evidence/test-ids-diff.txt` in the archived change folder.)
 - **Deciders:** Dr Muhammad Aizat Bin Md Hawari
 - **Amends:** [ADR-050](050-configure-pdf-inspector-as-default-reader.md) (its "whole-document markdown" consequence), [ADR-066](066-tiered-reader-fallback-chain.md) (decision 2, one joined fallback document), [ADR-069](069-page-level-ocr-routing-and-the-pdfium-runtime.md) (decision 4, one merged document per file)
 - **Related:** [ADR-070](070-normalise-reader-output-before-chunking.md) (normalisation runs per document, unchanged), [ADR-055](055-embedding-text-is-a-declared-contract.md) (embedding text contract), TDR-024 (silent-empty fonts), TDR-026 (full-scan OCR count)
