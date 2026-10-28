@@ -12,6 +12,7 @@ rule, never a value.
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -148,6 +149,33 @@ def document_reading_problem(key: str, value: Any) -> str | None:
         return None if ok and re.fullmatch(ENGINE_NAME_PATTERN, value) else ENGINE_NAME_RULE
     accepted = PDF_READER_NAMES if key == "pdf_reader" else ACCEPTED[key]
     return None if value in accepted else f"The value must be one of: {', '.join(accepted)}."
+
+
+WORKERS_FOLDER_RULE = (
+    "The folder must be a full path to an existing folder that holds an engines folder."
+)
+
+
+def workers_folder_problem(key: str, value: Any) -> str | None:
+    """Return the rule that an ``ocr_workers_dir`` *value* breaks, or ``None``.
+
+    ``~`` is expanded first. The folder must be absolute, exist and hold
+    ``engines/``. ``None`` and blank text pass: they remove the key. Other
+    keys pass. The rule never holds *value*.
+    """
+    if key != "ocr_workers_dir" or value is None:
+        return None
+    if not isinstance(value, str):
+        return WORKERS_FOLDER_RULE
+    if not value.strip():
+        return None
+    try:
+        # "~name" with an unknown user raises RuntimeError; a bad path, OSError.
+        folder = Path(value.strip()).expanduser()
+        ok = folder.is_absolute() and (folder / "engines").is_dir()
+    except (RuntimeError, OSError):
+        return WORKERS_FOLDER_RULE
+    return None if ok else WORKERS_FOLDER_RULE
 
 
 def address_problem(value: str) -> str | None:

@@ -82,6 +82,19 @@ ALLOWED_LEVERS: Mapping[str, LeverSpec] = {
     )
 }
 
+# The OCR keys the Read document step sets (design D4 of
+# integrations-show-runtime-components). A graph-wide override stays host-owned.
+_READ_STEP_OCR_KEYS = (
+    "ocr_fallback_enabled",
+    "ocr_fallback_min_confidence",
+    "ocr_fallback_page_fraction",
+    "ocr_routing_unit",
+    "ocr_engine_primary",
+    "ocr_engine_fallback",
+    "ocr_maths_routing_enabled",
+    "ocr_maths_page_fraction",
+)
+
 # Host-owned settings: matched by exact path, block prefix or name fragment.
 _HOST_OWNED_EXACT = frozenset(
     {
@@ -95,6 +108,7 @@ _HOST_OWNED_EXACT = frozenset(
         "chroma_persist_dir",
         "collection_name",
         "pdf_reader",
+        *_READ_STEP_OCR_KEYS,
         "rag_profile",
         "profile_name",
         "retrieval.rerank_model",
@@ -109,6 +123,7 @@ _HOST_OWNED_HINTS = {
         " To read PDF files differently in one pipeline, set the reader on the "
         "Read document step instead."
     ),
+    **dict.fromkeys(_READ_STEP_OCR_KEYS, " Set it on the Read document step."),
     "embed_model": " Set the model on the profile's Embed step.",
     "embed_provider": " Set the model on the profile's Embed step.",
 }

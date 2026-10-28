@@ -113,6 +113,7 @@ development of OMRG — Opinionated Modular RAG.
 | [102](./102-library-edits-protocol-and-report-with-an-edit-log.md) | The Library Edits Protocols and Reports, and Logs Each Save in edits.jsonl | 2026-10-26 | Accepted (2026-10-26; built and merged to v3 at PR #133) |
 | [103](./103-experiments-run-local-models-through-llama-cpp-gguf.md) | Experiments Run Local Models Through llama.cpp GGUF | 2026-10-27 | Accepted (2026-10-27; built and merged to v3 at PR #135) |
 | [104](./104-pdf-inspector-emits-page-documents.md) | pdf-inspector Emits Page Documents | 2026-10-27 | Accepted (2026-10-28; built and merged to v3 at PR #136) |
+| [105](./105-pipeline-steps-own-their-ocr-settings.md) | Pipeline Steps Own Their OCR Settings | 2026-10-28 | Proposed (amends design D5 of add-pdf-reader-step-setting) |
 
 ## Convention
 

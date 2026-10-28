@@ -26,7 +26,6 @@ EMBEDDING = (
     "The embedding model is part of every collection. Change it in omrs.jsonc and re-ingest."
 )
 STORAGE = "Existing collections stay where they are. Change it in omrs.jsonc and restart."
-WORKERS = "The worker folder is set when the OCR workers are installed."
 KEYS = "Keys are set on the provider cards as references."
 BY_HAND = "Edit this in omrs.jsonc."
 
@@ -77,7 +76,6 @@ def test_a_scalar_engine_setting_is_allowed(key: str) -> None:
         ("chroma_persist_dir", STORAGE),
         ("chroma_mode", STORAGE),
         ("collection_name", STORAGE),
-        ("ocr_workers_dir", WORKERS),
         ("openrouter_api_key", KEYS),
         ("azure_doc_intelligence_key", KEYS),
         ("ingestion.ingest_extensions", BY_HAND),

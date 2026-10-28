@@ -11,7 +11,7 @@ without work, so the commit can report the same per-source outcome as
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, TypeVar
 
@@ -19,6 +19,7 @@ from ..pipelines import NodeContext, PipelineCancelledError
 from ..settings import EffectiveSettings
 from .backends.orchestrator import BackendRead
 from .commit import PreparedSource
+from .graph_adapters_catalogue import READ_OPTION_KEYS
 from .sources import SourceIdentity, SourceUnit
 
 #: Engine resource names used by the ingestion adapters.
@@ -139,15 +140,35 @@ def optional(context: NodeContext, name: str) -> Any:
     return context.resources.get(name)
 
 
-def with_pdf_reader(settings: EffectiveSettings, reader: str | None) -> EffectiveSettings:
-    """Return *settings* that read PDF files with *reader*.
+def with_read_options(settings: EffectiveSettings, params: Any) -> EffectiveSettings:
+    """Return *settings* with every set read option of a Read document node.
 
-    ``None`` inherits the host reader, so *settings* is returned unchanged.
-    The copy leaves the frozen host settings alone. The read and identify
-    adapters both use this helper, so the read and the stored identity name
-    the same reader.
+    The read options are ``pdf_reader`` and the OCR keys (``READ_OPTION_KEYS``).
+    ``None`` inherits the host value. Without a set option, *settings* is
+    returned unchanged. The copy leaves the frozen host settings alone. The
+    read and identify adapters both use this helper, so the read and the
+    stored identity use the same options.
+
+    Args:
+        settings: The node settings.
+        params: The node's ``ReadParams``, or a mapping of option to value
+            (the ``IngestionShape`` options of the identify step).
     """
-    return settings if reader is None else settings.model_copy(update={"pdf_reader": reader})
+    values = params if isinstance(params, Mapping) else dict(params)
+    update = {k: v for k, v in values.items() if k in READ_OPTION_KEYS and v is not None}
+    return settings.model_copy(update=update) if update else settings
+
+
+def node_ocr(context: NodeContext, settings: EffectiveSettings) -> Any:
+    """Return the OCR routes of a node with *settings*, or ``None``.
+
+    The ``ocr`` resource is the Engine's OCR client pool: it gives the routes
+    of the node's effective engines (design D5). A resource without
+    ``routes`` (an injected client or route pair) is used as it is.
+    """
+    ocr = optional(context, OCR_RESOURCE)
+    routes = getattr(ocr, "routes", None)
+    return routes(settings) if callable(routes) else ocr
 
 
 def target_collection(context: NodeContext, params: Any) -> str:

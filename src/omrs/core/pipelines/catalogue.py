@@ -192,11 +192,14 @@ class HostOptionSet:
 
     Attributes:
         inherited: Value a node inherits when its parameter is ``None``.
-        unavailable: Choice to the reason the host cannot run it.
+        unavailable: Choice to the reason the host cannot run it. Each reason
+            holds the fix (for example the command that installs the choice).
+        remedy: What the user can do instead, appended to each refusal.
     """
 
     inherited: str | None = None
     unavailable: Mapping[str, str] = field(default_factory=dict)
+    remedy: str = "Install the package and restart OMRS, or choose another value or Inherit."
 
 
 @dataclass(frozen=True)

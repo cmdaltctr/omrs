@@ -478,10 +478,9 @@ branching on engine names. See the
 `capabilities.build_ocr_routes` constructs an `OcrRoutes` pair from
 injected settings. `OCR_ENGINE_PRIMARY=dots-mocr` and
 `OCR_ENGINE_FALLBACK=paddleocr-vl` are the defaults. `OCR_WORKERS_DIR`
-locates the engine projects. An explicit `OCR_WORKER_COMMAND` overrides
-only the primary, with `OCR_WORKER_ENV_DIR` as its working directory.
-Operators migrating to named routes must clear that override after
-re-provisioning. See [migration](ingestion.md#provision-the-engines).
+locates the engine projects. Both routes resolve from the folder and the
+engine name only; the explicit `OCR_WORKER_COMMAND` override was removed
+(ADR-105). See [migration](ingestion.md#provision-the-engines).
 
 Before each worker dispatch, `OcrRoutes.select()` chooses an available
 primary, otherwise the fallback. If neither is available, the existing
@@ -551,7 +550,7 @@ peers stays an integration.
 Every Python module under `src/omrs/integrations/`, classified. A contract
 test fails when a module is missing from this table.
 
-<!-- integration-inventory:start count=37 -->
+<!-- integration-inventory:start count=39 -->
 
 | Module                                   | Availability                                                   | Selector                                                            | Shared contract                               | Fallback owner                                                                    | Disposition                                                         |
 | ---------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
@@ -563,8 +562,10 @@ test fails when a module is missing from this table.
 | `omrs.integrations.ocr_worker.client` | Native                                                         | `OCR_FALLBACK_ENABLED` and resolved route command                  | JSON Lines request/response client            | `integrations/pdf/ocr_routing.py` before dispatch                                 | Subprocess capability adapter; injected into core                   |
 | `omrs.integrations.ocr_worker.fingerprint` | Native                                                      | Resolved route command with `--capabilities`                       | Frozen `OcrWorkerFingerprint`                 | Stable unavailable fingerprint                                                     | Capability probe; invalid probes have one stable identity           |
 | `omrs.integrations.ocr_worker.managed` | Native                                                         | `OCR_FALLBACK_ENABLED` and resolved route command                  | Owner-scoped `ManagedOcrClient` lifecycle     | `capabilities.build_ocr_routes` unavailable path                                   | Composition-boundary wrapper; injected into core                    |
+| `omrs.integrations.ocr_worker.manifest` | Native | Engine `pyproject.toml` `[tool.omrs-ocr]` | Parsed manifest, licence gate and not-provisioned reason | Minimal TOML reader before Python 3.11 | Standard-library helper; `ocr-workers/provision.py` loads it by file path |
+| `omrs.integrations.ocr_worker.pool` | Native | Resolved route commands of each node and of the host | `OcrClientPool`: one lazy `ManagedOcrClient` per command, `routes(settings)` | Unavailable route when a command does not resolve | Engine-owned; one pool-wide lock serialises parsing (ADR-105) |
 | `omrs.integrations.ocr_worker.protocol` | Native                                                       | None                                                                | Versioned JSON Lines envelopes                 | None                                                                              | Wire-protocol twin (1.1: optional request `pages`, response `pages_markdown`); tests keep its independent copy compatible      |
-| `omrs.integrations.ocr_worker.routes` | Native | `OCR_WORKERS_DIR`, `OCR_ENGINE_PRIMARY`, `OCR_ENGINE_FALLBACK`, `OCR_WORKER_COMMAND` | `OcrRoutes` (primary, fallback) and `select()` | Unknown or unprovisioned engine → stable unavailable fingerprint | Resolves engines by folder name; fallback only before dispatch; per-page timeout scaling |
+| `omrs.integrations.ocr_worker.routes` | Native | `OCR_WORKERS_DIR`, `OCR_ENGINE_PRIMARY`, `OCR_ENGINE_FALLBACK` | `OcrRoutes` (primary, fallback) and `select()` | Unknown or unprovisioned engine → stable unavailable fingerprint | Resolves engines by folder name; fallback only before dispatch; per-page timeout scaling |
 | `omrs.integrations.ocr_worker.validation` | Native                                                    | None                                                                | Protocol violation codes and payload checks    | None                                                                              | Split from `protocol.py` at the 500-line ceiling; byte-identical twin in `ocr-workers/core/` |
 | `omrs.integrations.pdf`               | Native                                                         | None                                                                | `get_pdf_reader(reader)`                      | None                                                                              | Public facade exposing the factory                                  |
 | `omrs.integrations.pdf.factory`       | Native                                                         | `PDF_READER=auto`                                                   | Reader instance with `load_data`              | Factory itself (LiteParse → pypdfium2 → pypdf probe, for direct `auto` callers)   | Registry-backed factory; `auto` stays ordered capability resolution |

@@ -478,8 +478,6 @@ change.
 | `OCR_WORKERS_DIR`             | empty   | Absolute path to `ocr-workers`; empty disables folder-based routes. |
 | `OCR_ENGINE_PRIMARY`          | `dots-mocr` | Engine selected first for every worker request. |
 | `OCR_ENGINE_FALLBACK`         | `paddleocr-vl` | Engine used when the primary is unavailable before dispatch; empty disables fallback. |
-| `OCR_WORKER_COMMAND`          | empty   | Explicit command overriding the primary only; empty uses named routes. |
-| `OCR_WORKER_ENV_DIR`          | empty   | Working directory for the explicit command. |
 | `OCR_WORKER_REQUEST_TIMEOUT`  | `300.0` | Minimum parse-response timeout in seconds. |
 | `OCR_WORKER_SECONDS_PER_PAGE` | `120.0` | Timeout allowance per requested page in seconds. |
 | `OCR_MATHS_ROUTING_ENABLED`   | `true`  | Detect maths fonts and route affected pages. |
@@ -544,27 +542,25 @@ Set the route configuration in `.env`:
 OCR_WORKERS_DIR=/absolute/path/to/ocr-workers
 OCR_ENGINE_PRIMARY=dots-mocr
 OCR_ENGINE_FALLBACK=paddleocr-vl
-OCR_WORKER_COMMAND=
-OCR_WORKER_ENV_DIR=
 ```
 
 Each engine starts from `engines/<engine>/` using its `.venv` interpreter
 and `python -m omrs_ocr_worker_core`. An empty `OCR_WORKERS_DIR` makes
-folder-based routes unavailable. An explicit command can still supply
-the primary route.
+every route unavailable.
+
+The web app can set the folder: Integrations › OCR engines shows each
+engine, whether it is provisioned, and the provision command. A Read
+document step of a user profile can choose its own OCR engines and
+routing; each step value enters the source identity, so a changed value
+reprocesses the source on the next ingest (ADR-105).
 
 **Migration from the single worker:**
 
 1. Preserve existing model caches before removing an old worker directory.
 2. Provision the required engines under the new layout.
 3. Set `OCR_WORKERS_DIR` to the absolute `ocr-workers` path.
-4. Clear `OCR_WORKER_COMMAND` and `OCR_WORKER_ENV_DIR` to use named routes.
-5. Check the startup log for the selected routes and their availability.
-
-A retained `OCR_WORKER_COMMAND` overrides the primary engine setting.
-For the moved Paddle engine, use its `.venv/bin/python` executable with
-`-m omrs_ocr_worker_core` and set `OCR_WORKER_ENV_DIR` to the engine
-project directory. The fallback still resolves from `OCR_WORKERS_DIR`.
+4. Remove `OCR_WORKER_COMMAND` and `OCR_WORKER_ENV_DIR`. Start-up refuses either one.
+5. Check the startup line `OCR routes: …` for each engine and whether it is provisioned.
 
 Each engine uses `<engine folder>/.model-cache/` by default. Set
 `OMRS_OCR_MODEL_CACHE` consistently during provisioning and execution to
@@ -625,7 +621,7 @@ in the fingerprint.
 If a PDF needs OCR but no usable worker exists **before dispatch**,
 ingestion keeps `pdf-inspector`'s partial Markdown, marks the result
 degraded through the OCR metadata, logs an actionable warning naming
-`OCR_WORKERS_DIR` or the explicit `OCR_WORKER_COMMAND`, and continues
+`OCR_WORKERS_DIR`, and continues
 the batch. Nothing is fabricated and no other file fails.
 
 If the worker fails **after** a complete request was written and

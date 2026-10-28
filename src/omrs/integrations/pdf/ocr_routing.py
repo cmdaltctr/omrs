@@ -193,7 +193,7 @@ class OcrRoutedPdfInspector:
                 "OCR required for %s (pdf_type=%s, %s page(s) flagged) but the "
                 "OCR routes are unavailable — keeping the partial "
                 "pdf-inspector extraction. Provision an engine and set "
-                "OCR_WORKERS_DIR (or OCR_WORKER_COMMAND) to enable document "
+                "OCR_WORKERS_DIR to enable document "
                 "understanding.",
                 getattr(file, "name", file),
                 pdf_type,
@@ -409,7 +409,7 @@ class OcrRoutedPdfInspector:
             logger.warning(
                 "%d escalated page(s) in %s have no OCR route; keeping the "
                 "best available text and counting them unresolved. Provision an "
-                "engine and set OCR_WORKERS_DIR (or OCR_WORKER_COMMAND) to enable it.",
+                "engine and set OCR_WORKERS_DIR to enable it.",
                 len(pages),
                 name,
             )

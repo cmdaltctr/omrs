@@ -163,11 +163,9 @@ class Settings(StorageValidationMixin, OcrRouteSettingsMixin, ProviderSourceMixi
     ocr_local_model_directory: str = ""
 
     # ── OCR worker operation (task 2.6b) ──────────────────────────
-    # How to reach a worker, not which PDFs deserve it. A non-empty
-    # command overrides the primary route only; the route fields live in
-    # OcrRouteSettingsMixin (config/ocr_routes.py). No path is hardcoded.
-    ocr_worker_command: str = ""
-    ocr_worker_env_dir: str = ""
+    # How to reach a worker, not which PDFs deserve it. Routes resolve from
+    # the fields in OcrRouteSettingsMixin (config/ocr_routes.py) alone; the
+    # old explicit command was removed (config/legacy.py). No path is hardcoded.
     ocr_worker_request_timeout: float = Field(default=300.0, gt=0)
 
     # ── Codebase map ──────────────────────────────────────────────

@@ -1,7 +1,6 @@
 """Tests for the primary and fallback OCR routes (tasks 4.1 to 4.4).
 
-Covers the six route settings, command resolution, the explicit-command
-override of the primary route, the shared client for an identical
+Covers the route settings, command resolution, the shared client for an identical
 fallback, ``OcrRoutes.select()``, the page-scaled request timeout and
 the composition wiring. Engines are fake folders with an executable
 ``.venv/bin/python`` that runs the stub worker; nothing real starts.
@@ -32,7 +31,6 @@ from omrs.integrations.ocr_worker.routes import (
     request_timeout,
     reset_route_log,
     resolve_engine_command,
-    resolve_route_command,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -172,38 +170,6 @@ def test_unresolvable_engine_has_no_command(tmp_path: Path, engine: str, workers
     assert resolve_engine_command(engine, root).command == ()
 
 
-def test_explicit_command_overrides_the_primary_route_only(
-    effective_settings: Any, tmp_path: Path
-) -> None:
-    """Spec: "The explicit command overrides the primary route".
-
-    The fallback route still resolves from the workers directory.
-    """
-    make_engine(tmp_path, "paddleocr-vl", "paddleocr_vl")
-    settings = settings_for(
-        effective_settings,
-        ocr_worker_command="/opt/legacy/python -m omrs_ocr_worker",
-        ocr_worker_env_dir=" /opt/legacy ",
-        ocr_workers_dir=str(tmp_path),
-    )
-    primary = resolve_route_command("dots-mocr", settings, primary=True)
-    fallback = resolve_route_command("paddleocr-vl", settings, primary=False)
-    assert primary == RouteCommand(
-        command=("/opt/legacy/python", "-m", "omrs_ocr_worker"), cwd="/opt/legacy"
-    )
-    assert fallback.command[0] == str(
-        tmp_path / "engines" / "paddleocr-vl" / ".venv" / "bin" / "python"
-    )
-
-
-def test_explicit_command_without_env_dir_has_no_cwd(effective_settings: Any) -> None:
-    """``OCR_WORKER_ENV_DIR`` stays optional with an explicit command."""
-    settings = settings_for(effective_settings, ocr_worker_command="worker --flag")
-    assert resolve_route_command("x", settings, primary=True) == RouteCommand(
-        command=("worker", "--flag"), cwd=None
-    )
-
-
 # ── Route clients and selection (tasks 4.2, 4.4) ───────────────────────────
 
 
@@ -304,22 +270,6 @@ def test_disabled_ocr_probes_nothing(effective_settings: Any, tmp_path: Path) ->
     settings = effective_settings(ocr_fallback_enabled=False, ocr_workers_dir=str(tmp_path))
     routes = build_route_clients(settings, probe=forbidden_probe)
     assert routes.select() is None
-
-
-def test_explicit_command_keeps_working_through_composition(
-    effective_settings: Any,
-) -> None:
-    """``OCR_WORKER_COMMAND`` alone still yields an available primary route."""
-    settings = settings_for(
-        effective_settings, ocr_worker_command=f"{sys.executable} {STUB_WORKER}"
-    )
-    routes = build_ocr_routes(settings)
-    try:
-        assert routes.fingerprint.available is True
-        assert routes.select() is routes.primary
-        assert routes.fallback_fingerprint.available is False  # no OCR_WORKERS_DIR
-    finally:
-        routes.close()
 
 
 def test_start_up_log_names_both_engines_once(

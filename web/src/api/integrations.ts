@@ -62,6 +62,34 @@ export interface Integration {
   pending_restart: InstallAction | null;
   /** The saved user profile that uses the extra (reason `in-use`), or null when a global setting does or nothing does. */
   uninstall_profile: IntegrationProfileRef | null;
+  /** Only llama.cpp and OpenRouter: whether a server answers or a key reference is set. */
+  readiness?: IntegrationReadiness;
+}
+
+/** One readiness line: "Ready", "Not running at <address>" or "No key set". */
+export interface IntegrationReadiness {
+  ready: boolean;
+  line: string;
+}
+
+export type RuntimeStatus = "ready" | "missing" | "not-configured" | "not-running" | "unknown";
+
+/** One OCR engine, model file or local server that a setting depends on. Probes only read. */
+export interface RuntimeItem {
+  name: string;
+  purpose: string;
+  status: RuntimeStatus;
+  reason: string | null;
+  /** A copy command that fixes the item, or null. */
+  fix: string | null;
+  /** The settings in force at launch that need the item. */
+  used_by: string[];
+}
+
+export interface RuntimeComponents {
+  ocr_engines: RuntimeItem[];
+  model_files: RuntimeItem[];
+  local_servers: RuntimeItem[];
 }
 
 /** A saved user profile, named on an in-use entry or refusal. */
@@ -75,6 +103,8 @@ export interface IntegrationList {
   integrations: Integration[];
   /** External tools apart from the extras. Today only marimo. */
   tools: ExternalTool[];
+  /** OCR engines, model files and local servers. Older fixtures may leave it out. */
+  runtime?: RuntimeComponents;
 }
 
 /** The state of an external tool's `uv tool` environment. It does not depend on the server's install type. */
@@ -141,8 +171,9 @@ export interface IntegrationInstall {
 }
 
 export async function listIntegrations(api: ApiClient, options: CallOptions = {}): Promise<IntegrationList> {
-  const reply = await api.request<{ install_type: InstallType; integrations: Integration[]; tools: ExternalTool[] }>("GET", "/v1/integrations", { signal: options.signal });
-  return { install_type: reply.install_type, integrations: reply.integrations, tools: reply.tools };
+  const reply = await api.request<IntegrationList>("GET", "/v1/integrations", { signal: options.signal });
+  const list: IntegrationList = { install_type: reply.install_type, integrations: reply.integrations, tools: reply.tools };
+  return reply.runtime === undefined ? list : { ...list, runtime: reply.runtime };
 }
 
 export async function getIntegrationInstall(api: ApiClient, options: CallOptions = {}): Promise<IntegrationInstall> {

@@ -14,6 +14,7 @@ subprocess code itself; the composition boundary constructs it via
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import threading
 from collections.abc import Sequence
@@ -59,6 +60,7 @@ class ManagedOcrClient:
         cwd: str | None = None,
         env: dict[str, str] | None = None,
         on_stderr_line: Any = None,
+        dispatch_lock: Any = None,
     ) -> None:
         """Hold the resolved fingerprint and worker command; start nothing.
 
@@ -73,6 +75,9 @@ class ManagedOcrClient:
                 environment, if any.
             on_stderr_line: Optional callback for drained worker
                 diagnostics, forwarded through OMRS logging.
+            dispatch_lock: Optional lock held around each dispatch. The
+                OCR client pool shares one lock between its clients, so at
+                most one worker parses at a time (design D5).
         """
         self.fingerprint = fingerprint
         self._command = list(command)
@@ -84,6 +89,7 @@ class ManagedOcrClient:
         self._lock = threading.Lock()
         self._closed = False
         self._process_generations = 0
+        self._dispatch_lock = dispatch_lock or contextlib.nullcontext()
 
     # ── Observability ───────────────────────────────────────────────
 
@@ -148,13 +154,14 @@ class ManagedOcrClient:
                 "worker_unavailable",
                 "the OCR worker fingerprint is unavailable; dispatch refused",
             )
-        client = self._ensure_client()
-        try:
-            return client.parse(pdf_path, pages=pages, timeout=timeout)
-        except OcrWorkerError as exc:
-            if exc.code in _FATAL_OCR_WORKER_CODES:
-                self._drop_client(client)
-            raise
+        with self._dispatch_lock:
+            client = self._ensure_client()
+            try:
+                return client.parse(pdf_path, pages=pages, timeout=timeout)
+            except OcrWorkerError as exc:
+                if exc.code in _FATAL_OCR_WORKER_CODES:
+                    self._drop_client(client)
+                raise
 
     # ── Owner lifecycle ─────────────────────────────────────────────
 

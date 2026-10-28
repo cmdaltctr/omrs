@@ -14,9 +14,16 @@ Canonical order (one source unit per pass after ``source.discover``)::
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, WithJsonSchema
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    WithJsonSchema,
+)
 
 from ...integrations.pdf import registry as pdf_registry
 from ..pipelines import (
@@ -32,6 +39,7 @@ from ..pipelines import (
     Provenance,
     parse_definition,
 )
+from ..settings import OCR_ROUTING_UNITS
 
 _SOURCE = frozenset({Provenance.SOURCE})
 _RAW_PATH = PortType(PortKind.SOURCES)
@@ -94,18 +102,63 @@ PdfReaderName = Annotated[
 ]
 
 
+def _reading_rule(key: str) -> BeforeValidator:
+    """Return a validator that applies the Settings > Document reading rule of *key*."""
+
+    def check(value: Any) -> Any:
+        # Lazy: ``config`` imports the ``core`` settings models.
+        from ...config.rules import document_reading_problem
+
+        problem = document_reading_problem(key, value)
+        if problem is not None:
+            raise ValueError(problem)
+        return value
+
+    return BeforeValidator(check)
+
+
+#: An OCR routing unit. The schema carries the names as an ``enum``.
+RoutingUnit = Annotated[str, WithJsonSchema({"type": "string", "enum": list(OCR_ROUTING_UNITS)})]
+
+#: The OCR keys of ``ReadParams``: the document-reading keys other than ``pdf_reader``.
+READ_OCR_KEYS: tuple[str, ...] = (
+    "ocr_fallback_enabled",
+    "ocr_fallback_min_confidence",
+    "ocr_fallback_page_fraction",
+    "ocr_routing_unit",
+    "ocr_engine_primary",
+    "ocr_engine_fallback",
+    "ocr_maths_routing_enabled",
+    "ocr_maths_page_fraction",
+)
+
+#: Every read option a node applies to its settings copy (``with_read_options``).
+READ_OPTION_KEYS: tuple[str, ...] = ("pdf_reader", *READ_OCR_KEYS)
+
+
 class ReadParams(BaseModel):
     """Node overrides for ``read.document`` (``None`` inherits).
 
     Code and configuration sources are split by their registered strategy
     in this node, before any document read (content type has precedence).
 
+    The read options (``pdf_reader`` and the OCR keys) are not levers: the
+    host default and a graph-wide override stay host-owned. Each set OCR
+    value passes the same rule as Settings > Document reading.
+
     Attributes:
         strategy_fallback: ``chunking.strategy_fallback`` lever.
         code_chunk_lines: ``chunking.code_chunk_lines`` lever.
         pdf_reader: Registered concrete PDF reader for this step. ``None``
-            inherits the host reader. Not a lever: the host default and a
-            graph-wide override stay host-owned.
+            inherits the host reader.
+        ocr_fallback_enabled: Whether OCR-required PDFs go to an OCR engine.
+        ocr_fallback_min_confidence: Text confidence below which a PDF needs OCR.
+        ocr_fallback_page_fraction: Fraction of weak pages that sends a PDF to OCR.
+        ocr_routing_unit: ``document`` or ``page``.
+        ocr_engine_primary: Engine folder name of the primary route.
+        ocr_engine_fallback: Engine folder name of the fallback route.
+        ocr_maths_routing_enabled: Whether maths pages go to the OCR engine.
+        ocr_maths_page_fraction: Fraction of maths pages that sends a PDF to OCR.
     """
 
     model_config = _FROZEN
@@ -113,6 +166,22 @@ class ReadParams(BaseModel):
     strategy_fallback: Literal["markdown", "code", "sentence"] | None = None
     code_chunk_lines: int | None = Field(default=None, ge=1)
     pdf_reader: PdfReaderName | None = None
+    ocr_fallback_enabled: Annotated[bool | None, _reading_rule("ocr_fallback_enabled")] = None
+    ocr_fallback_min_confidence: Annotated[
+        float | None, _reading_rule("ocr_fallback_min_confidence")
+    ] = None
+    ocr_fallback_page_fraction: Annotated[
+        float | None, _reading_rule("ocr_fallback_page_fraction")
+    ] = None
+    ocr_routing_unit: Annotated[RoutingUnit | None, _reading_rule("ocr_routing_unit")] = None
+    ocr_engine_primary: Annotated[str | None, _reading_rule("ocr_engine_primary")] = None
+    ocr_engine_fallback: Annotated[str | None, _reading_rule("ocr_engine_fallback")] = None
+    ocr_maths_routing_enabled: Annotated[
+        bool | None, _reading_rule("ocr_maths_routing_enabled")
+    ] = None
+    ocr_maths_page_fraction: Annotated[float | None, _reading_rule("ocr_maths_page_fraction")] = (
+        None
+    )
 
 
 class EnrichParams(BaseModel):
@@ -196,7 +265,11 @@ READ = OperationDescriptor(
         "strategy_fallback": "chunking.strategy_fallback",
         "code_chunk_lines": "chunking.code_chunk_lines",
     },
-    option_params={"pdf_reader": "pdf_reader"},
+    option_params={
+        "pdf_reader": "pdf_reader",
+        "ocr_engine_primary": "ocr_engine_primary",
+        "ocr_engine_fallback": "ocr_engine_fallback",
+    },
     index_shaping=True,
 )
 

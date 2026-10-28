@@ -11,8 +11,9 @@ shared worker core (``python -m omrs_ocr_worker_core``) from the engine
 folder. The host never branches on engine names, so a new engine is a
 new folder plus a route setting.
 
-For the primary route only, an explicit ``OCR_WORKER_COMMAND`` (with
-``OCR_WORKER_ENV_DIR``) wins, which keeps existing installs working.
+Both routes resolve only from the workers folder and an engine name, so a
+pipeline step's chosen engine always applies (integrations-show-runtime-components,
+design D7, removed the explicit ``OCR_WORKER_COMMAND`` override).
 """
 
 from __future__ import annotations
@@ -20,7 +21,6 @@ from __future__ import annotations
 import logging
 import os
 import re
-import shlex
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -98,20 +98,8 @@ def resolve_engine_command(engine: str, workers_dir: str) -> RouteCommand:
     return RouteCommand(command=(str(python), "-m", WORKER_CORE_MODULE), cwd=str(engine_dir))
 
 
-def resolve_route_command(engine: str, settings: Any, *, primary: bool) -> RouteCommand:
-    """Resolve one route's command from injected settings.
-
-    For the primary route, a non-empty ``ocr_worker_command`` overrides the
-    engine name. The fallback route always resolves from the workers
-    directory.
-    """
-    if primary:
-        raw_command = getattr(settings, "ocr_worker_command", "")
-        explicit = shlex.split(raw_command) if isinstance(raw_command, str) else []
-        if explicit:
-            raw_env_dir = getattr(settings, "ocr_worker_env_dir", "")
-            env_dir = raw_env_dir.strip() if isinstance(raw_env_dir, str) else ""
-            return RouteCommand(command=tuple(explicit), cwd=env_dir or None)
+def resolve_route_command(engine: str, settings: Any) -> RouteCommand:
+    """Resolve one route's command from the injected workers folder."""
     workers_dir = getattr(settings, "ocr_workers_dir", "")
     return resolve_engine_command(engine, workers_dir if isinstance(workers_dir, str) else "")
 
@@ -215,20 +203,18 @@ def build_route_clients(
     enabled = bool(getattr(settings, "ocr_fallback_enabled", False))
     primary_name = str(getattr(settings, "ocr_engine_primary", "") or "")
     fallback_name = str(getattr(settings, "ocr_engine_fallback", "") or "")
-    primary_route = resolve_route_command(primary_name, settings, primary=True)
+    primary_route = resolve_route_command(primary_name, settings)
     primary = _client(primary_route, settings, probe=probe, enabled=enabled)
     fallback = None
     if fallback_name.strip():
-        fallback_route = resolve_route_command(fallback_name, settings, primary=False)
+        fallback_route = resolve_route_command(fallback_name, settings)
         if fallback_route == primary_route:
             fallback = primary
         else:
             fallback = _client(fallback_route, settings, probe=probe, enabled=enabled)
     routes = OcrRoutes(primary=primary, fallback=fallback)
     if enabled:
-        raw_command = getattr(settings, "ocr_worker_command", "")
-        explicit = isinstance(raw_command, str) and bool(raw_command.strip())
-        _log_routes_once(primary_name, fallback_name, routes, explicit=explicit)
+        _log_routes_once(primary_name, fallback_name, routes)
     return routes
 
 
@@ -250,17 +236,40 @@ def _client(
     )
 
 
-def _log_routes_once(
-    primary_name: str, fallback_name: str, routes: OcrRoutes, *, explicit: bool
-) -> None:
+def _log_routes_once(primary_name: str, fallback_name: str, routes: OcrRoutes) -> None:
     """Log the resolved primary and fallback engines once per process."""
-    primary_label = "explicit OCR_WORKER_COMMAND" if explicit else (primary_name or "-")
+    primary_label = primary_name or "-"
     summary = (
         f"OCR routes: primary={primary_label} "
         f"[{'available' if routes.fingerprint.available else 'unavailable'}], "
         f"fallback={fallback_name or '-'} "
         f"[{'available' if routes.fallback_fingerprint.available else 'unavailable'}]"
     )
+    if summary in _logged_summaries:
+        return
+    _logged_summaries.add(summary)
+    logger.info(summary)
+
+
+def log_route_plan(settings: Any) -> None:
+    """Log the primary and fallback engines once, from the engine folders alone.
+
+    The Engine-owned pool starts a worker on first use, so this start-up line
+    starts no process and probes nothing: an engine is ``provisioned`` when its
+    interpreter exists. Nothing is logged while OCR fallback is off.
+    """
+    if not getattr(settings, "ocr_fallback_enabled", False):
+        return
+    words = []
+    for role, key in (("primary", "ocr_engine_primary"), ("fallback", "ocr_engine_fallback")):
+        name = str(getattr(settings, key, "") or "").strip()
+        state = (
+            "provisioned" if resolve_route_command(name, settings).command else "not provisioned"
+        )
+        words.append(f"{role}={name or '-'} [{state}]")
+    summary = "OCR routes: " + ", ".join(words)
+    if not str(getattr(settings, "ocr_workers_dir", "") or "").strip():
+        summary += " (OCR workers folder not set)"
     if summary in _logged_summaries:
         return
     _logged_summaries.add(summary)

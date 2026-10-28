@@ -1,0 +1,4 @@
+Fast-suite test IDs (pytest -m "not slow" --collect-only), 2026-10-28.
+Before (v3 ac098537): 9140. After: 9225. Added: 92 (test-ids-added.txt). Removed: 7 (test-ids-removed.txt).
+Net +85; tripwire _BASE_EXECUTED 8992 -> 9077. Full lists are kept out of git: one existing
+redaction test ID holds a fake key that the secret scanner flags.

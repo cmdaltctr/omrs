@@ -187,7 +187,7 @@ def test_unavailable_client_keeps_partial_markdown_and_degrades(effective_settin
     assert meta["pages_needing_ocr"] == 1
     # The partial (empty) pdf-inspector markdown is kept as-is.
     assert docs[0].get_content() == ""
-    assert "OCR_WORKER_COMMAND" in caplog.text
+    assert "OCR_WORKERS_DIR" in caplog.text
     assert "unavailable" in caplog.text
 
 

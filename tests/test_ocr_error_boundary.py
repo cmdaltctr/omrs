@@ -223,7 +223,7 @@ async def test_unavailable_worker_degrades_and_batch_continues(
     assert by_name["good.txt"]["status"] == "indexed"
     assert by_name["scanned_one.pdf"]["status"] == "failed"
     assert "No chunks were produced" in by_name["scanned_one.pdf"]["error"]
-    assert "OCR_WORKER_COMMAND" in caplog.text
+    assert "OCR_WORKERS_DIR" in caplog.text
     assert "unavailable" in caplog.text
 
 

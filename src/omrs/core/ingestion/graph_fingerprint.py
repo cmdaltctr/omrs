@@ -26,7 +26,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import cache
 from typing import Any
 
@@ -40,6 +40,7 @@ from ..pipelines import (
 from .graph_adapters_catalogue import (
     INGESTION_DESCRIPTORS,
     READ,
+    READ_OPTION_KEYS,
     canonical_ingestion_definition,
 )
 
@@ -63,17 +64,35 @@ class IngestionShape:
             node's ancestor slice selects. ``None`` when the node inherits
             the host reader. The fingerprint already covers it; the identify
             step reads it to build the same identity as the read.
+        read_options: The OCR options that the same Read document node sets
+            (design D4 of integrations-show-runtime-components). Only set
+            keys are present, so a node that inherits everything has none.
     """
 
     fingerprint: str
     standard: bool
     pdf_reader: str | None = None
+    read_options: Mapping[str, Any] = field(default_factory=dict)
+
+    def step_options(self) -> dict[str, Any]:
+        """Return every read option the Read document node sets (``pdf_reader`` included)."""
+        options = dict(self.read_options)
+        if self.pdf_reader is not None:
+            options["pdf_reader"] = self.pdf_reader
+        return options
 
     def identity_block(self) -> dict[str, Any] | None:
-        """Return the ``graph_shape`` identity block, or ``None`` when standard."""
+        """Return the ``graph_shape`` identity block, or ``None`` when standard.
+
+        The block names the set OCR options; it has no ``read_options`` key
+        when the node inherits every OCR option.
+        """
         if self.standard:
             return None
-        return {"schema": SHAPE_SCHEMA, "fingerprint": self.fingerprint}
+        block: dict[str, Any] = {"schema": SHAPE_SCHEMA, "fingerprint": self.fingerprint}
+        if self.read_options:
+            block["read_options"] = dict(sorted(self.read_options.items()))
+        return block
 
 
 def _digest(value: Any) -> str:
@@ -161,11 +180,11 @@ class _Slice:
                         pending.append(feed[0])
         return seen
 
-    def step_reader(self) -> str | None:
-        """Return the reader of the one Read document node in the commit slice.
+    def step_options(self) -> dict[str, Any]:
+        """Return the set read options of the one Read document node in the commit slice.
 
-        Without a commit node, the only Read document node counts. ``None``
-        when the node inherits, or when no single read node applies.
+        Without a commit node, the only Read document node counts. Empty when
+        the node inherits every option, or when no single read node applies.
         """
         commits = self.commit_nodes()
         scope = self._ancestors(commits[0]) if commits else set(self.nodes)
@@ -177,10 +196,10 @@ class _Slice:
             and self.descriptors[node.id].operation_id == READ.operation_id
         ]
         if len(readers) != 1:
-            return None
+            return {}
         descriptor = self.descriptors[readers[0].id]
         params = descriptor.parameters.model_validate(readers[0].params).model_dump(mode="json")
-        return params.get("pdf_reader")
+        return {k: params[k] for k in READ_OPTION_KEYS if params.get(k) is not None}
 
     def fingerprint(self) -> str:
         commits = self.commit_nodes()
@@ -233,10 +252,12 @@ def _shape(
 ) -> IngestionShape:
     ingestion_slice = _Slice(graph, lookup, versions)
     fingerprint = ingestion_slice.fingerprint()
+    options = ingestion_slice.step_options()
     return IngestionShape(
         fingerprint,
         standard=fingerprint == _standard_fingerprint(),
-        pdf_reader=ingestion_slice.step_reader(),
+        pdf_reader=options.pop("pdf_reader", None),
+        read_options=options,
     )
 
 

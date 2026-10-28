@@ -59,6 +59,12 @@ export function IntegrationCard({ integration, installType, control }: Integrati
           </div>
         </div>
         <CardDescription>{integration.purpose}</CardDescription>
+        {integration.readiness !== undefined ? (
+          // A module check alone never says "Ready": the server checks the address or the key reference.
+          <p className={integration.readiness.ready ? "text-meta text-status-success-label" : "text-meta text-muted-foreground"}>
+            {integration.readiness.line}
+          </p>
+        ) : null}
       </CardHeader>
       <CardContent>
         {integration.availability === "unknown" && (

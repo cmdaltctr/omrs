@@ -21,7 +21,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
-from ...config.rules import FILE_ONLY, document_reading_problem
+from ...config.rules import FILE_ONLY, document_reading_problem, workers_folder_problem
 from ...config.settings_file import check_setting
 from ...config.settings_file_write import read_only_reason
 from ..settings_view import LOCKING_SOURCES, env_lock_reason, source_word
@@ -45,6 +45,7 @@ def value_rule(key: str, value: Any) -> str | None:
     if value is None:
         return None
     rule = document_reading_problem(key, value)  # blank text is refused for these keys
+    rule = rule if rule is not None else workers_folder_problem(key, value)
     return rule if rule is not None else check_setting(key, value)[1]
 
 

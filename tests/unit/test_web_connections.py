@@ -183,13 +183,25 @@ def test_opening_connections_sends_no_provider_request(
 ) -> None:
     client, _ = setup
     configure(openrouter_api_key=SECRET)
+    real = connection_probe.httpx.AsyncClient
+    sent: list[Any] = []
 
-    def forbidden(*args: Any, **kwargs: Any) -> None:
-        raise AssertionError("a provider request was sent without a Test action")
+    def record(request: Any) -> Any:
+        sent.append(request)
+        return connection_probe.httpx.Response(503)
 
-    monkeypatch.setattr(connection_probe.httpx, "AsyncClient", forbidden)
+    def recording(*args: Any, **kwargs: Any) -> Any:
+        return real(*args, **{**kwargs, "transport": connection_probe.httpx.MockTransport(record)})
+
+    monkeypatch.setattr(connection_probe.httpx, "AsyncClient", recording)
     assert client.get("/v1/connections").status_code == 200
+    assert sent == []
+    # integrations-show-runtime-components: the Integrations page may send one
+    # keyless health request to each local server, and nothing else.
     assert client.get("/v1/integrations").status_code == 200
+    assert {request.url.path for request in sent} <= {"/health", "/api/version"}
+    assert all("openrouter" not in request.url.host for request in sent)
+    assert all("authorization" not in request.headers for request in sent)
 
 
 # ── POST /v1/connections/{provider}/test ─────────────────────────────────

@@ -69,18 +69,18 @@ from .graph_adapters_values import (
     BINARY,
     EMBEDDER_RESOURCE,
     EMBEDDING_IDENTITY_RESOURCE,
-    OCR_RESOURCE,
     PENDING,
     STORE_RESOURCE,
     UNCHANGED,
     SourceWork,
+    node_ocr,
     optional,
     required,
     run_protected,
     single_unit,
     stop_if_cancelled,
     target_collection,
-    with_pdf_reader,
+    with_read_options,
     work_value,
 )
 from .graph_fingerprint import INGESTION_SHAPE_RESOURCE, IngestionShape
@@ -167,11 +167,14 @@ async def identify_adapter(
         raise TypeError(f"Resource {INGESTION_SHAPE_RESOURCE!r} must be an IngestionShape.")
     if unit.content_type and unit.content_type.startswith("binary"):
         return _out("sources", SourceWork(unit, collection, status=BINARY))
+    settings = with_read_options(context.settings, shape.step_options())
+    # A route lookup can probe a new worker with a blocking subprocess call.
+    ocr_client = await asyncio.to_thread(node_ocr, context, settings)
     ingestion = await asyncio.to_thread(
         build_ingestion_context,
-        with_pdf_reader(context.settings, shape.pdf_reader),
+        settings,
         embed_model=embedder,
-        ocr_client=optional(context, OCR_RESOURCE),
+        ocr_client=ocr_client,
         graph_shape=shape.identity_block(),
     )
     identity = await prepare_source(
@@ -199,7 +202,7 @@ async def read_adapter(
     if not work.pending:
         return _out("documents", work)
     unit = work.unit
-    settings = with_pdf_reader(context.settings, getattr(params, "pdf_reader", None))
+    settings = with_read_options(context.settings, params)
     specialised = await chunk_specialised_source(
         unit.file_path,
         content_type=unit.content_type,
@@ -212,9 +215,8 @@ async def read_adapter(
         strategy = getattr(specialised, "chunk_strategy_effective", None)
         work = replace(work, nodes=specialised, specialised=True, effective_strategy=strategy)
         return _out("documents", work, specialised=True)
-    backend_read = await read_document(
-        unit.file_path, settings=settings, ocr_client=optional(context, OCR_RESOURCE)
-    )
+    ocr_client = await asyncio.to_thread(node_ocr, context, settings)
+    backend_read = await read_document(unit.file_path, settings=settings, ocr_client=ocr_client)
     return _out(
         "documents",
         replace(work, backend_read=backend_read),

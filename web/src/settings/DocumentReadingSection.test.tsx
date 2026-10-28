@@ -128,9 +128,9 @@ describe("Document reading", () => {
     await waitFor(() => expect(server.find("PUT", "/v1/settings/document-reading").map((call) => call.body)).toEqual([{ values: { ocr_engine_primary: "paddleocr-vl" }, revision: "r1" }]));
   });
 
-  it("says when OCR_WORKER_COMMAND replaces the primary engine", async () => {
-    await openSection({ "GET /v1/settings/document-reading": () => readingState({}, { ocr: { ...readingState().ocr, worker_command_set: true } }) });
-    expect(row("Primary engine")).toHaveTextContent("OCR_WORKER_COMMAND is set, so it replaces the primary engine.");
+  it("never says that a worker command replaces the primary engine, because the setting is gone", async () => {
+    await openSection({ "GET /v1/settings/document-reading": () => readingState({}, { ocr: { ...readingState().ocr, worker_command_set: true } as never }) });
+    expect(row("Primary engine")).not.toHaveTextContent("OCR_WORKER_COMMAND");
     expect(row("Fallback engine")).not.toHaveTextContent("OCR_WORKER_COMMAND");
   });
 

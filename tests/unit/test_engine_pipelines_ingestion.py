@@ -71,6 +71,34 @@ class FakeRoutes:
         self.closed += 1
 
 
+class FakePool:
+    """OCR client pool double that records route requests and closing."""
+
+    built: list[FakePool] = []
+
+    def __init__(self, *, probe: Any) -> None:
+        self.closed = 0
+        self.routed: list[Any] = []
+        FakePool.built.append(self)
+
+    def routes(self, settings: Any) -> FakeRoutes:
+        self.routed.append(settings)
+        return FakeRoutes(settings)
+
+    def close(self) -> None:
+        self.closed += 1
+
+
+@pytest.fixture
+def fake_pool(monkeypatch: pytest.MonkeyPatch) -> list[FakePool]:
+    """Replace the Engine's OCR client pool; return the list of built pools."""
+    from omrs.integrations.ocr_worker import pool
+
+    FakePool.built = []
+    monkeypatch.setattr(pool, "OcrClientPool", FakePool)
+    return FakePool.built
+
+
 @pytest.fixture
 def fake_ocr(monkeypatch: pytest.MonkeyPatch) -> list[FakeRoutes]:
     """Replace the OCR route builder; return the list of built clients."""
@@ -88,25 +116,28 @@ def _ocr_engine(tmp_path: Path, effective_settings: Any) -> Engine:
     return _engine(tmp_path, settings)
 
 
-async def test_graph_runs_borrow_one_engine_owned_ocr_client(
+async def test_graph_runs_borrow_the_engine_owned_ocr_pool(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     effective_settings: Any,
-    fake_ocr: list[FakeRoutes],
+    fake_pool: list[FakePool],
 ) -> None:
-    """Runs never build or close an OCR client; the Engine builds one and owns it."""
+    """Runs never build or close OCR clients; the Engine builds one pool and owns it.
+
+    Change integrations-show-runtime-components, design D5: the plan adds no
+    OCR resource; each read node asks the Engine's pool for its routes.
+    """
     pin_detection(monkeypatch)
     root = copy_sources(tmp_path)
     engine = _ocr_engine(tmp_path, effective_settings)
     snapshot = engine.validate_pipeline(
         canonical_ingestion_definition("ocr"), inputs={"path": str(root)}
     )
-    assert fake_ocr == [], "validation must not build an OCR client"
     from omrs.compose_pipeline_runs import plan_run
 
     plan = plan_run(snapshot, engine._pipelines.catalogue(), engine._graph_host(None))
-    again = plan_run(snapshot, engine._pipelines.catalogue(), engine._graph_host(None))
-    assert plan.resources["ocr"] is again.resources["ocr"] is fake_ocr[0]
+    assert "ocr" not in plan.resources
+    assert engine._graph_host(None).resources["ocr"] is engine._graph_host(None).resources["ocr"]
     assert plan.units is not None
 
     for _ in range(2):
@@ -114,30 +145,29 @@ async def test_graph_runs_borrow_one_engine_owned_ocr_client(
             canonical_ingestion_definition("ocr"), inputs={"path": str(root)}
         )
         assert result.status is RunStatus.SUCCEEDED, result.error
-    assert len(fake_ocr) == 1, "two runs must share one Engine-owned client"
-    assert fake_ocr[0].closed == 0, "a run must not close the Engine's client"
+    assert len(fake_pool) == 1, "two runs must share one Engine-owned pool"
+    assert fake_pool[0].routed, "the read and identify nodes ask the pool for routes"
+    assert fake_pool[0].closed == 0, "a run must not close the Engine's pool"
     engine.close()
-    assert fake_ocr[0].closed == 1
+    assert fake_pool[0].closed == 1
 
 
-async def test_engine_ingest_keeps_its_operation_owned_ocr_client(
+async def test_engine_ingest_takes_its_routes_from_the_engine_pool(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     effective_settings: Any,
-    fake_ocr: list[FakeRoutes],
+    fake_pool: list[FakePool],
 ) -> None:
-    """``Engine.ingest`` without an Engine client still builds and closes its own."""
+    """``Engine.ingest`` without a composed client borrows routes from the same pool."""
     pin_detection(monkeypatch)
     root = copy_sources(tmp_path)
     engine = _ocr_engine(tmp_path, effective_settings)
     await engine.run_pipeline(canonical_ingestion_definition("graph"), inputs={"path": str(root)})
-    shared = fake_ocr[0]
     await engine.ingest(str(root), collection_name="standard")
-    assert len(fake_ocr) == 2 and fake_ocr[1] is not shared
-    assert fake_ocr[1].closed == 1, "the ingest operation closes the client it built"
-    assert shared.closed == 0
+    assert len(fake_pool) == 1, "the host routes and the graph nodes share one pool"
+    assert fake_pool[0].closed == 0, "the ingest operation must not close the Engine's pool"
     engine.close()
-    assert shared.closed == 1 and fake_ocr[1].closed == 1
+    assert fake_pool[0].closed == 1
 
 
 def test_injected_ocr_client_is_borrowed_and_never_rebuilt(

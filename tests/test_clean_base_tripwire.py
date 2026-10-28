@@ -196,7 +196,11 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # 5 need fastapi (see _WEB_EXTRA_CASES).
 # +56 (2026-10-28, pdf-inspector-page-provenance, by test-ID diff): 64 new, 8 replaced
 # (5 renamed full-scan cases, 3 old no-page pins). No fastapi needed.
-_BASE_EXECUTED = 8992
+# +85 (2026-10-28, integrations-show-runtime-components, by test-ID diff): 92 new,
+# 7 removed (2 single-OCR-client pins, 1 read-only pin, 3 explicit worker-command
+# cases and 1 renamed body case, design D7). 6 need fastapi (see _WEB_EXTRA_CASES).
+# +3 (2026-10-28, PR #137 review): ~user folder, unreadable engines folder, loop thread.
+_BASE_EXECUTED = 9080
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -520,7 +524,8 @@ if not _has_qwen_tokenizer:
 # +20 (2026-10-26, edit-experiment-files-in-library): test_web_experiment_file_write.py (14)
 # and test_web_experiment_files.py (6) (1655).
 # +5 (2026-10-27, reproducible-experiment-runtime): test_web_experiment_library_purpose.py (1660).
-_WEB_EXTRA_CASES = 1660
+# +6 (2026-10-28, integrations-show-runtime-components): test_web_integrations_runtime.py.
+_WEB_EXTRA_CASES = 1666
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)

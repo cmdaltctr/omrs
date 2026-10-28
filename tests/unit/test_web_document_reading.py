@@ -36,10 +36,7 @@ from omrs.transports.api.security import AccessPolicy  # noqa: E402
 
 URL = "/v1/settings/document-reading"
 OPTIONS = {"pypdf": None, "pypdfium2": "The package 'pypdfium2' is not installed."}
-VARIABLES = tuple(key.upper() for key in DOCUMENT_READING_KEYS) + (
-    "OCR_WORKERS_DIR",
-    "OCR_WORKER_COMMAND",
-)
+VARIABLES = tuple(key.upper() for key in DOCUMENT_READING_KEYS) + ("OCR_WORKERS_DIR",)
 SUBMITTED = "zz-submitted-zz"
 
 

@@ -26,10 +26,7 @@ from omrs.transports.api.document_reading import (
 )
 from omrs.transports.api.restart_snapshot import capture
 
-VARIABLES = tuple(key.upper() for key in DOCUMENT_READING_KEYS) + (
-    "OCR_WORKERS_DIR",
-    "OCR_WORKER_COMMAND",
-)
+VARIABLES = tuple(key.upper() for key in DOCUMENT_READING_KEYS) + ("OCR_WORKERS_DIR",)
 DEFAULTS = {
     "pdf_reader": "pdf_inspector",
     "ocr_fallback_enabled": True,
@@ -239,23 +236,22 @@ def test_a_missing_state_uses_the_launch_settings_and_nothing_is_pending(
 def test_the_ocr_block_without_a_workers_folder(harness: Harness) -> None:
     harness.launch()
     ocr = harness.body()["ocr"]
-    assert ocr["workers_dir"] is None and ocr["worker_command_set"] is False
+    assert ocr["workers_dir"] is None and "worker_command_set" not in ocr
     assert [engine["name"] for engine in ocr["engines"]] == ["dots-mocr", "paddleocr-vl"]
     assert {engine["available"] for engine in ocr["engines"]} == {False}
 
 
-def test_the_ocr_block_lists_saved_engines_and_the_worker_command(
+def test_the_ocr_block_lists_saved_engines_without_a_worker_command(
     harness: Harness, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("OCR_WORKERS_DIR", str(tmp_path / "workers"))
-    monkeypatch.setenv("OCR_WORKER_COMMAND", "python -m my_worker")
     harness.write('{ "ocr_engine_fallback": "my-engine" }')
     harness.launch()
     harness.write('{ "ocr_engine_fallback": "other-engine" }')
     ocr = harness.body()["ocr"]
     assert ocr["workers_dir"] == "~/workers"
-    assert ocr["worker_command_set"] is True
+    assert "worker_command_set" not in ocr
     names = [engine["name"] for engine in ocr["engines"]]
     assert names == ["dots-mocr", "my-engine", "other-engine"]
 

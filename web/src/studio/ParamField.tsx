@@ -3,6 +3,7 @@ import type { JsonValue } from "../api/pipelines";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { EngineSelect, isEngineField } from "./EngineSelect";
 import { optionLabel } from "./labels";
 import { checkValue, type ParamField as Field } from "./schema";
 
@@ -188,6 +189,7 @@ export function ParamField(props: ParamFieldProps) {
   } else if (field.kind === "integer" || field.kind === "number") control = <NumberInput {...props} name={name} />;
   else if (field.kind === "enum") control = <EnumSelect {...props} />;
   else if (field.kind === "json") control = <JsonInput {...props} name={name} />;
+  else if (isEngineField(field)) control = <EngineSelect {...props} />;
   else if (field.kind === "string") {
     control = (
       <Input

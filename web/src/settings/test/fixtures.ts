@@ -164,7 +164,6 @@ export const DOCUMENT_READING: DocumentReadingState = {
   pdf_reader_in_use: "pdf_inspector",
   ocr: {
     workers_dir: "~/ocr-workers",
-    worker_command_set: false,
     engines: [
       { name: "dots-mocr", available: true, reason: null },
       { name: "paddleocr-vl", available: false, reason: "Not provisioned. Run python3 ocr-workers/provision.py paddleocr-vl." },

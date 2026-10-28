@@ -3719,7 +3719,9 @@ paths:
         removed with `POST /v1/integrations/{extra}/uninstall`; otherwise
         `uninstall_reason` says why not. `tools` lists the external tools
         apart from the extras: today only marimo, which lives in its own
-        `uv tool` environment outside OMRS (ADR-101).
+        `uv tool` environment outside OMRS (ADR-101). `runtime` lists the
+        OCR engines, model files and local servers that settings depend on,
+        each with its status, reason and fix command.
       security:
         - sessionCookie: [read]
         - bearerToken: [read]
@@ -4925,9 +4927,8 @@ paths:
         the lock state, whether a restart is pending and the code default. Every
         key applies at the next launch only, and every key is part of the index
         identity. `pdf_readers` lists `auto` first, then each registered reader
-        with its availability. `ocr` lists the OCR workers folder, whether
-        `OCR_WORKER_COMMAND` replaces the primary engine, and each known engine
-        with its availability now. The route reads the file and probes packages
+        with its availability. `ocr` lists the OCR workers folder and each known
+        engine with its availability now. The route reads the file and probes packages
         and folders; it writes nothing.
       security:
         - sessionCookie: [read]
@@ -9436,6 +9437,75 @@ components:
             key inside it: `pdf_reader` on a Read document step, or
             `embed_provider`). Null when a global setting uses the extra, or
             when nothing does.
+        readiness:
+          $ref: "#/components/schemas/IntegrationReadiness"
+
+    IntegrationReadiness:
+      type: object
+      additionalProperties: false
+      required: [ready, line]
+      description: >
+        Only the llama.cpp and OpenRouter entries carry this field. llama.cpp is
+        ready when the llama.cpp addresses that settings use answer (every
+        llama.cpp address when no setting uses one). OpenRouter is ready when
+        a key reference is set; the server does not resolve the key.
+      properties:
+        ready:
+          type: boolean
+        line:
+          type: string
+          description: '"Ready", "Not running at <address>" or "No key set".'
+
+    RuntimeComponents:
+      type: object
+      additionalProperties: false
+      required: [ocr_engines, model_files, local_servers]
+      description: >
+        Parts that a setting depends on but that no extra installs. Every
+        probe only reads: none downloads, installs, starts or writes
+        anything. Server probes use a 1 second timeout and run together.
+      properties:
+        ocr_engines:
+          type: array
+          description: Every engine folder, the engines in force and the local OCR tier.
+          items:
+            $ref: "#/components/schemas/RuntimeItem"
+        model_files:
+          type: array
+          description: The chunking tokenizer, the reranker model and the local OCR model.
+          items:
+            $ref: "#/components/schemas/RuntimeItem"
+        local_servers:
+          type: array
+          description: Ollama and the llama.cpp embedding and chat servers.
+          items:
+            $ref: "#/components/schemas/RuntimeItem"
+
+    RuntimeItem:
+      type: object
+      additionalProperties: false
+      required: [name, purpose, status, reason, fix, used_by]
+      properties:
+        name:
+          type: string
+        purpose:
+          type: string
+          description: One-line description.
+        status:
+          type: string
+          enum: [ready, missing, not-configured, not-running, unknown]
+          description: A probe that fails gives `unknown`; no probe text is returned.
+        reason:
+          type: [string, "null"]
+          description: Why the item is not ready. Addresses carry no credentials.
+        fix:
+          type: [string, "null"]
+          description: A copy command that fixes the item, or null.
+        used_by:
+          type: array
+          description: The settings in force at launch that need the item.
+          items:
+            type: string
 
     IntegrationProfileRef:
       type: object
@@ -9450,11 +9520,13 @@ components:
     IntegrationList:
       type: object
       additionalProperties: false
-      required: [status, install_type, integrations, tools]
+      required: [status, install_type, integrations, tools, runtime]
       properties:
         status:
           type: string
           enum: [ok]
+        runtime:
+          $ref: "#/components/schemas/RuntimeComponents"
         install_type:
           type: string
           enum: [uv-tool, checkout, other]
@@ -10437,16 +10509,11 @@ components:
         ocr:
           type: object
           additionalProperties: false
-          required: [workers_dir, worker_command_set, engines]
+          required: [workers_dir, engines]
           properties:
             workers_dir:
               type: [string, "null"]
               description: Launch `ocr_workers_dir` with the home folder as `~`, or null when unset.
-            worker_command_set:
-              type: boolean
-              description: >
-                True when the launch `ocr_worker_command` is not empty, so it
-                replaces the primary engine.
             engines:
               type: array
               description: >
@@ -10534,7 +10601,9 @@ components:
           description: >
             Null when available. Otherwise "OCR_WORKERS_DIR is not set, so no
             OCR engine can run.", "The name is not a folder name." or "Not
-            provisioned. Run python3 ocr-workers/provision.py <name>."
+            provisioned. Run python3 ocr-workers/provision.py <name>." An engine
+            whose manifest needs licence acceptance names its licence file and
+            adds `--accept-model-licence` to the command.
 
     DocumentReadingUpdate:
       type: object

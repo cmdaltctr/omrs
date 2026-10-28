@@ -57,7 +57,7 @@ def test_missing_reader_is_listed_and_the_step_stays_available(
     reasons = entry["unavailable_options"]["pdf_reader"]
     assert list(reasons) == ["pypdfium2"]
     assert "pypdfium2" in reasons["pypdfium2"]
-    assert entry["inherited_values"] == {"pdf_reader": "pypdf"}
+    assert entry["inherited_values"]["pdf_reader"] == "pypdf"
 
 
 def test_other_operations_report_empty_option_maps(
