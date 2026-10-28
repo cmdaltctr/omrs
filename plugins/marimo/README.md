@@ -50,7 +50,7 @@ The app never registers marimo on its own, and it has no upgrade button.
 
 ## Install marimo
 
-1. Open **Integrations**. The marimo card is in the group **External tools**.
+1. Open **Integrations** and press the **Tools** chip. The marimo card is in that section.
 2. Press **Install** and confirm the command. The card runs it without a shell. The server needs no restart:
 
    ```bash

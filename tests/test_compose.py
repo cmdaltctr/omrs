@@ -175,7 +175,9 @@ def test_build_embed_model_llamacpp_two_tier() -> None:
     """EMBED_PROVIDER=local + LOCAL_BACKEND=llamacpp resolves llamacpp."""
     pytest.importorskip("llama_index.embeddings.openai_like")
     settings = _settings(local_backend="llamacpp", llamacpp_embed_model="t.gguf")
-    with patch("llama_index.embeddings.openai_like.OpenAILikeEmbedding") as mock_cls:
+    # The builder constructs its own OpenAILikeEmbedding subclass, which keeps line breaks.
+    with patch("omrs.core.providers.embeddings.llamacpp._verbatim_embedding_class") as factory:
+        mock_cls = factory.return_value
         build_embed_model(settings)
         mock_cls.assert_called_once()
         kwargs = mock_cls.call_args.kwargs
