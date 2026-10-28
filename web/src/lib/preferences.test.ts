@@ -7,9 +7,9 @@ afterEach(() => {
 });
 
 describe("preferences", () => {
-  it("defaults to the system theme and no last collection", () => {
-    expect(readPreferences()).toEqual({ theme: "system", lastCollection: null });
-    expect(DEFAULT_PREFERENCES).toEqual({ theme: "system", lastCollection: null });
+  it("defaults to the dark theme and no last collection", () => {
+    expect(readPreferences()).toEqual({ theme: "dark", lastCollection: null });
+    expect(DEFAULT_PREFERENCES).toEqual({ theme: "dark", lastCollection: null });
   });
 
   it("stores only theme and lastCollection under one key", () => {
@@ -41,5 +41,20 @@ describe("preferences", () => {
     expect(document.documentElement.dataset.theme).toBe("dark");
     applyTheme("system");
     expect(document.documentElement.dataset.theme).toBeUndefined();
+  });
+
+  it("updates the theme-color meta with the theme", () => {
+    const meta = document.createElement("meta");
+    meta.name = "theme-color";
+    meta.setAttribute("media", "(prefers-color-scheme: light)");
+    document.head.append(meta);
+    try {
+      applyTheme("dark");
+      expect(meta.content).toBe("#120f0e");
+      applyTheme("system");
+      expect(meta.content).toBe("#fdfcfa");
+    } finally {
+      meta.remove();
+    }
   });
 });

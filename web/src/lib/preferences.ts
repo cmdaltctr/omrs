@@ -1,3 +1,4 @@
+import { applyThemeColor } from "./documentHead";
 import { readStored, writeStored } from "./storage";
 
 /**
@@ -14,7 +15,7 @@ export interface Preferences {
   lastCollection: string | null;
 }
 
-export const DEFAULT_PREFERENCES: Preferences = { theme: "system", lastCollection: null };
+export const DEFAULT_PREFERENCES: Preferences = { theme: "dark", lastCollection: null };
 
 function isTheme(value: unknown): value is ThemePreference {
   return typeof value === "string" && (THEMES as readonly string[]).includes(value);
@@ -42,4 +43,5 @@ export function applyTheme(theme: ThemePreference): void {
   const root = document.documentElement;
   if (theme === "system") delete root.dataset.theme;
   else root.dataset.theme = theme;
+  applyThemeColor(document, theme);
 }
