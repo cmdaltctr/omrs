@@ -116,3 +116,14 @@ def test_an_environment_value_stays_locked(
     assert refusal is not None
     assert refusal[0] == 409
     assert "OCR_WORKERS_DIR" in refusal[1]
+
+
+def test_an_unknown_user_folder_is_refused_not_a_crash(config: Path) -> None:
+    # Path.expanduser() raises RuntimeError for "~name" with an unknown user.
+    change = {"ocr_workers_dir": "~nosuchuser-omrs/workers"}
+    with pytest.raises(SettingsFileRefused):
+        write_settings(change, revision=None, directory=config)
+
+    refusal = update_refusal(change, Settings())
+    assert refusal is not None and refusal[0] == 400
+    assert _text(config) == ORIGINAL

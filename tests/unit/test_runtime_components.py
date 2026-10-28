@@ -301,3 +301,19 @@ def test_a_failing_http_client_gives_unknown_servers(
 
     assert {item.status for item in items.values()} == {"unknown"}
     assert all("secret-detail" not in (item.reason or "") for item in items.values())
+
+
+def test_an_unreadable_engines_folder_keeps_the_engines_in_force(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, effective_settings: Any
+) -> None:
+    (tmp_path / "engines").mkdir()
+
+    def denied(self: Path) -> Any:
+        raise PermissionError("denied")
+
+    monkeypatch.setattr(Path, "iterdir", denied)
+    settings = effective_settings(ocr_workers_dir=str(tmp_path), ocr_engine_primary="dots-mocr")
+
+    names = [item.name for item in rc.ocr_engine_items(settings)]
+
+    assert "dots-mocr" in names

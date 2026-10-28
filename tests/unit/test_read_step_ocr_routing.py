@@ -11,6 +11,7 @@ The pdf-inspector reader and the OCR clients are in-process fakes.
 
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -51,8 +52,11 @@ class _Pool:
 
     def __init__(self) -> None:
         self.clients = {name: _Client(name) for name in ("dots-mocr", "paddleocr-vl")}
+        self.threads: list[int] = []
 
     def routes(self, settings: Any) -> OcrRoutes:
+        # The real pool may probe a worker with a blocking subprocess call.
+        self.threads.append(threading.get_ident())
         return OcrRoutes(primary=self.clients[settings.ocr_engine_primary])
 
 
@@ -127,6 +131,16 @@ async def test_step_engine_receives_the_request(
     assert doc.text == "OCR by paddleocr-vl"
     assert pool.clients["paddleocr-vl"].calls == 1
     assert pool.clients["dots-mocr"].calls == 0
+
+
+@pytest.mark.asyncio
+async def test_route_lookup_runs_off_the_event_loop(
+    tmp_path: Path, effective_settings: Any, pool: _Pool
+) -> None:
+    """A route lookup can start a worker probe, so it must not block the loop."""
+    await _read(tmp_path, effective_settings, pool, ocr_engine_primary="paddleocr-vl")
+    assert pool.threads
+    assert threading.get_ident() not in pool.threads
 
 
 @pytest.mark.asyncio

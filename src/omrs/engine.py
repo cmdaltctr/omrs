@@ -14,6 +14,7 @@ factory and then installs it as the process default.
 
 from __future__ import annotations
 
+import asyncio
 import collections
 import logging
 from typing import TYPE_CHECKING, Any
@@ -194,7 +195,7 @@ class Engine(EngineProviders):
             store=self._store,
             embed_model=embed_model,
             embedding_identity=identity,
-            ocr_client=host_ocr(self, effective),
+            ocr_client=await asyncio.to_thread(host_ocr, self, effective),
         )
 
     def search(

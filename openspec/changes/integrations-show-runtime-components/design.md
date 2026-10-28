@@ -66,7 +66,7 @@ Replace the single graph OCR resource with an `OcrClientPool` that the Engine ow
 
 - One lazy `ManagedOcrClient` per resolved `RouteCommand`. Two nodes that use the same engine share it. The host routes use the same pool, so a node that inherits the host engine shares the host client.
 - `pool.routes(settings) -> OcrRoutes` builds the primary and fallback pair for a node's effective settings.
-- One pool-wide `threading.Lock` around each parse dispatch. Two engines then never parse at the same time. A second engine can still stay loaded while idle. The existing idle shutdown of `ManagedOcrClient` releases its memory.
+- One pool-wide `threading.Lock` around each parse dispatch. Two engines then never parse at the same time. A second engine stays loaded while it waits: a started worker has no idle exit and stops only when the Engine closes or the worker fails.
 
 The pool lives in `integrations/ocr_worker/`. Composition builds it, and `core/` sees only the `ocr` resource port, so the import contracts do not change. `plan_run` stops using "the first node that wants OCR", and each read node asks the pool for its routes.
 
@@ -84,7 +84,7 @@ A leftover value must not pass in silence. Add both names to `config/legacy.py` 
 
 ## Risks / Trade-offs
 
-- [Two engines loaded at once, about 37 GiB on a 48 GB Mac] → D5 serialises parsing. The configuration guide gets a note: a pipeline that mixes engines needs memory for both, unless idle shutdown runs between them.
+- [Two engines loaded at once, about 37 GiB on a 48 GB Mac] → D5 serialises parsing. The configuration guide gets a note: a pipeline that mixes engines needs memory for both until the server stops.
 - [A slow probe delays the Integrations page] → 1 s timeout, all probes in parallel, and a 2 s whole-response bound in the spec.
 - [The workers folder points into a worktree that is later removed] → the probe then reports `missing` for every engine, and the page shows the fix. The guide recommends the integration worktree (`omrs-v3`) or a stable checkout.
 - [A changed step OCR setting reprocesses the whole collection on the next ingest] → this is intended (identity). Studio shows the existing "this change reindexes" notice for index-shaping parameters.

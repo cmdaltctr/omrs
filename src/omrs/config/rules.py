@@ -169,8 +169,12 @@ def workers_folder_problem(key: str, value: Any) -> str | None:
         return WORKERS_FOLDER_RULE
     if not value.strip():
         return None
-    folder = Path(value.strip()).expanduser()
-    ok = folder.is_absolute() and (folder / "engines").is_dir()
+    try:
+        # "~name" with an unknown user raises RuntimeError; a bad path, OSError.
+        folder = Path(value.strip()).expanduser()
+        ok = folder.is_absolute() and (folder / "engines").is_dir()
+    except (RuntimeError, OSError):
+        return WORKERS_FOLDER_RULE
     return None if ok else WORKERS_FOLDER_RULE
 
 

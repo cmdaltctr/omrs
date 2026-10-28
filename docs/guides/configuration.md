@@ -904,8 +904,8 @@ Built-in profiles always use the server settings. See
 **Memory with mixed engines.** One worker runs per engine, and only one
 engine parses at a time. A pipeline whose steps use dots.mocr and
 PaddleOCR-VL can still keep both workers loaded, about 37 GiB in the
-worst case, until idle shutdown stops the waiting one. Use one engine per
-pipeline on machines with less memory.
+worst case, until the server stops. A worker has no idle exit. Use one
+engine per pipeline on machines with less memory.
 
 **Migration:** re-provision the required engines and set
 `OCR_WORKERS_DIR`. `OCR_WORKER_COMMAND` and `OCR_WORKER_ENV_DIR` were

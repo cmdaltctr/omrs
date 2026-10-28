@@ -129,13 +129,17 @@ def _engine_names(root: str, settings: Any) -> list[str]:
         str(getattr(settings, key, "")).strip()
         for key in ("ocr_engine_primary", "ocr_engine_fallback")
     }
-    engines = Path(root).expanduser() / "engines"
-    if root and engines.is_dir():
-        names |= {
-            item.name
-            for item in engines.iterdir()
-            if item.is_dir() and _ENGINE_NAME_RE.fullmatch(item.name)
-        }
+    try:
+        engines = Path(root).expanduser() / "engines"
+        if root and engines.is_dir():
+            names |= {
+                item.name
+                for item in engines.iterdir()
+                if item.is_dir() and _ENGINE_NAME_RE.fullmatch(item.name)
+            }
+    except (RuntimeError, OSError):
+        # The engines in force are still listed; their guarded probes report.
+        logger.warning("The OCR engines folder could not be listed.", exc_info=True)
     return sorted(name for name in names if name)
 
 

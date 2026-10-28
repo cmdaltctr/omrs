@@ -168,11 +168,13 @@ async def identify_adapter(
     if unit.content_type and unit.content_type.startswith("binary"):
         return _out("sources", SourceWork(unit, collection, status=BINARY))
     settings = with_read_options(context.settings, shape.step_options())
+    # A route lookup can probe a new worker with a blocking subprocess call.
+    ocr_client = await asyncio.to_thread(node_ocr, context, settings)
     ingestion = await asyncio.to_thread(
         build_ingestion_context,
         settings,
         embed_model=embedder,
-        ocr_client=node_ocr(context, settings),
+        ocr_client=ocr_client,
         graph_shape=shape.identity_block(),
     )
     identity = await prepare_source(
@@ -213,9 +215,8 @@ async def read_adapter(
         strategy = getattr(specialised, "chunk_strategy_effective", None)
         work = replace(work, nodes=specialised, specialised=True, effective_strategy=strategy)
         return _out("documents", work, specialised=True)
-    backend_read = await read_document(
-        unit.file_path, settings=settings, ocr_client=node_ocr(context, settings)
-    )
+    ocr_client = await asyncio.to_thread(node_ocr, context, settings)
+    backend_read = await read_document(unit.file_path, settings=settings, ocr_client=ocr_client)
     return _out(
         "documents",
         replace(work, backend_read=backend_read),

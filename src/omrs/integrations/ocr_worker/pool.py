@@ -7,7 +7,8 @@ engine shares the host client. A worker starts only on its first dispatch.
 
 One pool-wide lock is held around each parse dispatch. Two engines then
 never parse at the same time, so they never hold peak memory together. An
-idle engine can stay loaded; the idle shutdown of its client releases it.
+idle engine stays loaded: a worker has no idle exit and stops only when
+the pool closes or the worker fails.
 
 The Engine owns the pool and closes it in ``Engine.close()``. ``core/``
 sees only the ``ocr`` resource: it calls :meth:`OcrClientPool.routes` with
