@@ -4,6 +4,7 @@ import { Badge } from "../components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardInset, CardTitle } from "../components/ui/card";
 import { MasonryColumns } from "../components/MasonryColumns";
 import { CopyCommand } from "./CopyCommand";
+import { needsAttention, RUNTIME_FIELDS, SECTION_LABELS, type RuntimeSection } from "./sections";
 import { WorkersFolderField } from "./WorkersFolderField";
 
 const LABELS: Record<RuntimeStatus, string> = {
@@ -17,7 +18,7 @@ const LABELS: Record<RuntimeStatus, string> = {
 /** Ready is green. A row that a setting in force needs and that is not ready is red; any other row stays plain. */
 function variant(item: RuntimeItem): "success" | "error" | "neutral" {
   if (item.status === "ready") return "success";
-  return item.used_by.length > 0 ? "error" : "neutral";
+  return needsAttention(item) ? "error" : "neutral";
 }
 
 /** One part as its own card, like an integration card: name and badge, purpose, then reason, users and fix in mini cards. */
@@ -26,10 +27,7 @@ function RuntimeCard({ item }: { item: RuntimeItem }) {
     <Card role="listitem" className="min-w-0">
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-2">
-          {/* An h3 tag with level 4: the card sits under its group heading. */}
-          <CardTitle aria-level={4} className="min-w-0 [overflow-wrap:anywhere]">
-            {item.name}
-          </CardTitle>
+          <CardTitle className="min-w-0 [overflow-wrap:anywhere]">{item.name}</CardTitle>
           <Badge variant={variant(item)}>{LABELS[item.status]}</Badge>
         </div>
         <CardDescription>{item.purpose}</CardDescription>
@@ -61,68 +59,63 @@ function RuntimeCard({ item }: { item: RuntimeItem }) {
   );
 }
 
-interface GroupProps {
-  id: string;
-  title: string;
-  summary: string;
-  items: RuntimeItem[];
-  /** An extra card placed first in the group's columns. */
-  lead?: ReactNode;
+const SUMMARIES: Record<RuntimeSection, string> = {
+  "ocr-engines": "Engines that read PDF pages without a usable text layer.",
+  "model-files": "Model files read from the local cache.",
+  "local-servers": "Servers at the configured addresses.",
+};
+
+/** These parts are not pip extras. Said once under each runtime section heading. */
+const CHECKED = "The server checks these parts when the page loads and changes nothing.";
+
+function WorkersFolderCard() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Where the engines live</CardTitle>
+        <CardDescription>The folder that holds the engines. The server checks it when you save.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <WorkersFolderField />
+      </CardContent>
+    </Card>
+  );
 }
 
-/** A group heading over masonry columns of cards, as in the integration and tool lists. */
-function Group({ id, title, summary, items, lead }: GroupProps) {
+/**
+ * One runtime section: OCR engines, model files or local servers. A heading
+ * and summary over masonry columns of cards, one card per part. The page only
+ * shows them; each fix is a copy command.
+ */
+export function RuntimeGroup({ section, runtime }: { section: RuntimeSection; runtime: RuntimeComponents }) {
+  const title = SECTION_LABELS[section];
+  const items: RuntimeItem[] = runtime[RUNTIME_FIELDS[section]];
+  const lead: ReactNode = section === "ocr-engines" ? <WorkersFolderCard /> : null;
+  const id = `integrations-${section}`;
   return (
-    <section role="region" aria-labelledby={id} className="flex flex-col gap-2">
-      <h3 id={id} className="text-subsection-title font-semibold">
-        {title}
-      </h3>
-      <p className="text-meta text-muted-foreground">{summary}</p>
-      {items.length === 0 && lead === undefined ? (
+    <section role="region" aria-labelledby={id} className="flex flex-col gap-3">
+      <div>
+        <h2 id={id} className="text-section-title font-semibold">
+          {title}
+        </h2>
+        <p className="text-meta text-muted-foreground">{`${SUMMARIES[section]} ${CHECKED}`}</p>
+      </div>
+      {items.length === 0 && lead === null ? (
         <p className="text-meta text-muted-foreground">Nothing to show in this group.</p>
       ) : (
         <div role="list" aria-label={title}>
           <MasonryColumns>
-            {lead !== undefined ? <div key="lead" role="listitem" className="min-w-0">
+            {lead !== null ? (
+              <div key="lead" role="listitem" className="min-w-0">
                 {lead}
-              </div> : null}
+              </div>
+            ) : null}
             {items.map((item) => (
               <RuntimeCard key={item.name} item={item} />
             ))}
           </MasonryColumns>
         </div>
       )}
-    </section>
-  );
-}
-
-/** OCR engines, model files and local servers that settings depend on. The page only shows them; each fix is a copy command. */
-export function RuntimeGroups({ runtime }: { runtime: RuntimeComponents }) {
-  return (
-    <section aria-labelledby="integrations-runtime" className="mt-6 flex flex-col gap-4">
-      <h2 id="integrations-runtime" className="text-section-title font-semibold">
-        Runtime components
-      </h2>
-      <p className="text-meta text-muted-foreground">These parts are not pip extras. The server checks them when the page loads and changes nothing.</p>
-      <Group
-        id="runtime-ocr-engines"
-        title="OCR engines"
-        summary="Engines that read PDF pages without a usable text layer."
-        items={runtime.ocr_engines}
-        lead={
-          <Card>
-            <CardHeader>
-              <CardTitle aria-level={4}>Where the engines live</CardTitle>
-              <CardDescription>The folder that holds the engines. The server checks it when you save.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <WorkersFolderField />
-            </CardContent>
-          </Card>
-        }
-      />
-      <Group id="runtime-model-files" title="Model files" summary="Model files read from the local cache." items={runtime.model_files} />
-      <Group id="runtime-local-servers" title="Local servers" summary="Servers at the configured addresses." items={runtime.local_servers} />
     </section>
   );
 }

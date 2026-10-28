@@ -21,7 +21,7 @@ The app navigation SHALL offer exactly Home, Chat, Knowledge Base, Studio, Exper
 
 ### Requirement: The URL is the only source of location
 
-The current area, project, profile, purpose, run and Settings section SHALL be read from the URL hash only, using these routes: `#/home`, `#/knowledge-base`, `#/knowledge-base/<collection>`, `#/chat`, `#/chat/<collection>`, `#/studio`, `#/studio/<profile-id>`, `#/studio/<profile-id>/<purpose>` (purpose `ingest`, `search` or `answer`), `#/experiments`, `#/experiments/runs/<run-id>`, `#/integrations`, `#/settings` and `#/settings/<section>`, with each segment URI-encoded.
+The current area, project, profile, purpose, run and Settings section SHALL be read from the URL hash only, using these routes: `#/home`, `#/knowledge-base`, `#/knowledge-base/<collection>`, `#/chat`, `#/chat/<collection>`, `#/studio`, `#/studio/<profile-id>`, `#/studio/<profile-id>/<purpose>` (purpose `ingest`, `search` or `answer`), `#/experiments`, `#/experiments/runs/<run-id>`, `#/integrations`, `#/integrations/<name>`, `#/settings` and `#/settings/<section>`, with each segment URI-encoded.
 
 #### Scenario: Reload keeps the location
 
@@ -236,7 +236,7 @@ The power control SHALL show a light that follows `GET /v1/health`: green while 
 
 ### Requirement: The power panel confirms Turn off and Restart
 
-The panel SHALL offer a Turn off button and a Restart button. Each button SHALL open a confirmation dialog that names the action. The Restart dialog SHALL say that the page signs in again by itself once the app is back, and SHALL name `omrs web open` for the case where it does not. After Turn off the dialog SHALL name `omrs web start`. After Restart it SHALL name `omrs web open`.
+The panel SHALL offer a Turn off button and a Restart button. Each button SHALL open a confirmation dialog that names the action. The Restart dialog SHALL say that the page reloads by itself once the app is back, and SHALL name `omrs web open` for the case where it does not. After Turn off the dialog SHALL name `omrs web start`. After Restart it SHALL name `omrs web open`.
 
 #### Scenario: Turn off asks first
 

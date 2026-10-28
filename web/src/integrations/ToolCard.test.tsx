@@ -95,15 +95,24 @@ function toolServer(options: Options = {}) {
     },
     "GET /v1/server/power": () => ({ managed: true }),
   });
-  startApp("#/integrations", server);
+  startApp("#/integrations/tools", server);
   return { server, state };
 }
 
+/** Opens an Integrations section through the address, as a chip does. */
+const openSection = (section: string) =>
+  act(() => {
+    if (window.location.hash !== `#/integrations/${section}`) window.location.hash = `#/integrations/${section}`;
+  });
 const toolCard = async () => {
+  await openSection("tools");
   const list = await screen.findByRole("list", { name: "External tools" });
   return within(list).getByRole("listitem");
 };
-const extraCard = async () => within(await screen.findByRole("list", { name: "Integrations" })).getByRole("listitem");
+const extraCard = async () => {
+  await openSection("extras");
+  return within(await screen.findByRole("list", { name: "Integrations" })).getByRole("listitem");
+};
 const badge = (card: HTMLElement, text: string) => within(card).getByText(text, { selector: "[data-slot=badge]" });
 const advance = (ms: number) => act(async () => void (await vi.advanceTimersByTimeAsync(ms)));
 const posts = (server: ReturnType<typeof documentsServer>) => server.calls.filter((call) => call.method === "POST");
@@ -125,11 +134,10 @@ async function pressInstall() {
 }
 
 describe("the marimo card", () => {
-  it("sits in an External tools group below the extras, with a red Not installed badge and the copy command", async () => {
+  it("sits in the Tools section, apart from the extras, with a red Not installed badge and the copy command", async () => {
     toolServer();
-    const heading = await screen.findByRole("heading", { level: 2, name: "External tools" });
-    const extras = await screen.findByRole("list", { name: "Integrations" });
-    expect(extras.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 2, name: "Tools" })).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Integrations" })).not.toBeInTheDocument();
     const card = await toolCard();
     expect(within(card).getByRole("heading", { name: "marimo" })).toBeInTheDocument();
     expect(card).toHaveTextContent(MARIMO.purpose);
@@ -182,7 +190,7 @@ describe("the marimo card", () => {
       "GET /v1/integrations/install": () => ({ status: "ok", install: IDLE }),
     });
     startApp("#/integrations/marimo", server);
-    const card = await toolCard();
+    const card = within(await screen.findByRole("list", { name: "External tools" })).getByRole("listitem");
     await waitFor(() => expect(within(card).getByRole("heading", { name: "marimo" }).closest("[tabindex='-1']")).toHaveFocus());
   });
 });
@@ -213,11 +221,12 @@ describe("install marimo", () => {
     state.install = TOOL_SUCCEEDED;
     state.tool = OWN_READY;
     await advance(1100);
-    await waitFor(() => expect(badge(card, "Installed")).toBeInTheDocument());
-    const link = within(card).getByRole("link", { name: "Code editor" });
+    const done = await toolCard();
+    await waitFor(() => expect(badge(done, "Installed")).toBeInTheDocument());
+    const link = within(done).getByRole("link", { name: "Code editor" });
     expect(link).toHaveAttribute("href", "#/experiments/code-editor");
     expect(link.closest("p")).toHaveTextContent("Register marimo in Experiments, Code editor.");
-    expect(card).not.toHaveTextContent(/restart/i);
+    expect(done).not.toHaveTextContent(/restart/i);
   });
 
   it("says Recheck marimo in Code editor after an install when marimo is registered", async () => {

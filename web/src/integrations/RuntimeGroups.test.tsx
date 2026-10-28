@@ -1,7 +1,7 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Integration, RuntimeComponents, RuntimeItem } from "../api/integrations";
+import type { ExternalTool, Integration, RuntimeComponents, RuntimeItem } from "../api/integrations";
 import { documentsServer, json } from "../test/fakeDocumentsServer";
 import { startApp } from "../test/startApp";
 
@@ -97,7 +97,7 @@ afterEach(() => vi.restoreAllMocks());
 
 describe("Runtime groups", () => {
   it("shows a used, missing engine in red with its reason and copy command", async () => {
-    startApp("#/integrations", serve());
+    startApp("#/integrations/ocr-engines", serve());
     const dots = await row("OCR engines", "dots-mocr");
     const badge = within(dots).getByText("Missing", { selector: "[data-slot=badge]" });
     expect(badge).toHaveClass("text-status-error-label");
@@ -108,14 +108,14 @@ describe("Runtime groups", () => {
   });
 
   it("shows an unused server that is not running without red", async () => {
-    startApp("#/integrations", serve());
+    startApp("#/integrations/local-servers", serve());
     const llama = await row("Local servers", "llama.cpp chat server");
     const badge = within(llama).getByText("Not running", { selector: "[data-slot=badge]" });
     expect(badge).not.toHaveClass("text-status-error-label");
   });
 
   it("lays each group out like the integration cards: one card per part, in masonry columns", async () => {
-    startApp("#/integrations", serve());
+    startApp("#/integrations/ocr-engines", serve());
     const engines = await group("OCR engines");
     // The group is a heading and a card area, not a card that holds cards.
     expect(engines).not.toHaveAttribute("data-slot", "card");
@@ -132,7 +132,7 @@ describe("Runtime groups", () => {
   });
 
   it("says when a group is empty", async () => {
-    startApp("#/integrations", serve());
+    startApp("#/integrations/model-files", serve());
     expect(await group("Model files")).toHaveTextContent("Nothing to show in this group.");
   });
 });
@@ -142,7 +142,7 @@ describe("OCR workers folder", () => {
     const user = userEvent.setup();
     const sent: unknown[] = [];
     startApp(
-      "#/integrations",
+      "#/integrations/ocr-engines",
       serve(RUNTIME, {
         "PUT /v1/settings/configuration": (body) => {
           sent.push(body);
@@ -163,7 +163,7 @@ describe("OCR workers folder", () => {
   it("shows the server's reason when it refuses the folder", async () => {
     const user = userEvent.setup();
     startApp(
-      "#/integrations",
+      "#/integrations/ocr-engines",
       serve(RUNTIME, {
         "PUT /v1/settings/configuration": () =>
           json({ status: "error", message: "ocr_workers_dir: The folder must be a full path to an existing folder that holds an engines folder." }, 400),
@@ -178,7 +178,7 @@ describe("OCR workers folder", () => {
 
   it("keeps an environment value read-only and names the variable", async () => {
     startApp(
-      "#/integrations",
+      "#/integrations/ocr-engines",
       serve(RUNTIME, { "GET /v1/settings/configuration": () => configuration(workersRow("env", "~/workers")) }),
     );
     const engines = await group("OCR engines");
@@ -197,5 +197,84 @@ describe("Provider readiness", () => {
     expect(llama).toHaveTextContent("Base default");
     expect(llama).not.toHaveTextContent(/^Ready$/);
     expect(openrouter).toHaveTextContent("No key set");
+  });
+});
+
+const MARIMO: ExternalTool = {
+  id: "marimo",
+  name: "marimo",
+  purpose: "Notebook editor.",
+  availability: "ready",
+  version: "0.25.1",
+  jupytext: true,
+  executable: "/home/u/.local/bin/marimo",
+  requirement: "marimo>=0.25.1,<0.26.0",
+  install_command: "uv tool install marimo",
+  uninstall_command: "uv tool uninstall marimo",
+  installable: false,
+  install_reason: "already-installed",
+  install_caution: null,
+  uninstallable: false,
+  uninstall_reason: "not-installed-by-app",
+  plugin_status: null,
+};
+
+const withTools = () =>
+  documentsServer({
+    "GET /v1/integrations": () => ({ status: "ok", install_type: "checkout", integrations: CATALOGUE, tools: [MARIMO], runtime: RUNTIME }),
+    "GET /v1/settings/configuration": () => configuration(),
+  });
+
+const sections = async () => screen.findByRole("group", { name: "Sections" });
+const chip = async (name: RegExp) => within(await sections()).getByRole("button", { name });
+
+describe("Integrations sections", () => {
+  it("offers one chip per section, in order, and opens on Extras", async () => {
+    startApp("#/integrations", withTools());
+    const names = within(await sections())
+      .getAllByRole("button")
+      .map((button) => button.textContent);
+    expect(names.map((name) => name?.replace(/\d+$/, ""))).toEqual(["Extras", "Tools", "OCR engines", "Model files", "Local servers"]);
+    expect(await chip(/^Extras/)).toHaveAttribute("aria-pressed", "true");
+    expect(await screen.findByRole("list", { name: "Integrations" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "OCR engines" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "External tools" })).not.toBeInTheDocument();
+  });
+
+  it("shows one section at a time and names it in the address", async () => {
+    const user = userEvent.setup();
+    startApp("#/integrations", withTools());
+    await user.click(await chip(/^Local servers/));
+    expect(window.location.hash).toBe("#/integrations/local-servers");
+    expect(await group("Local servers")).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Integrations" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "OCR engines" })).not.toBeInTheDocument();
+    expect(await chip(/^Local servers/)).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("counts the parts a setting in force needs that are not ready on the section chip", async () => {
+    startApp("#/integrations", withTools());
+    await screen.findByRole("list", { name: "Integrations" });
+    expect(await chip(/^OCR engines/)).toHaveAccessibleName("OCR engines, 1 needs attention");
+    expect(await chip(/^Local servers/)).toHaveAccessibleName("Local servers");
+  });
+
+  it("opens the section of a linked entry: an extra on Extras, the marimo card on Tools", async () => {
+    startApp("#/integrations/marimo", withTools());
+    expect(await screen.findByRole("list", { name: "External tools" })).toBeInTheDocument();
+    await waitFor(() => expect(document.activeElement?.closest("[role=listitem]")).toHaveTextContent("marimo"));
+    expect(await chip(/^Tools/)).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("opens Extras for an extra's link and for an unknown name", async () => {
+    startApp("#/integrations/openrouter", withTools());
+    expect(await chip(/^Extras/)).toHaveAttribute("aria-pressed", "true");
+    expect(await screen.findByRole("list", { name: "Integrations" })).toBeInTheDocument();
+  });
+
+  it("leaves out the Tools chip when the server lists no tools", async () => {
+    startApp("#/integrations", serve());
+    await sections();
+    expect(within(await sections()).queryByRole("button", { name: /^Tools/ })).not.toBeInTheDocument();
   });
 });

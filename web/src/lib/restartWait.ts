@@ -23,7 +23,10 @@ const realClock: RestartClock = {
  * a poll has failed, or after `ASSUME_BACK_MS`. Returns false after
  * `GIVE_UP_MS` without an answer.
  */
-export async function waitForRestart(answers: () => Promise<boolean>, clock: RestartClock = realClock): Promise<boolean> {
+export async function waitForRestart(
+  answers: () => Promise<boolean>,
+  clock: RestartClock = realClock,
+): Promise<boolean> {
   const start = clock.now();
   let stopped = false;
   while (clock.now() - start < GIVE_UP_MS) {
@@ -47,7 +50,11 @@ export function useReloadAfterRestart(api: ApiClient, accepted: boolean): void {
   useEffect(() => {
     if (!accepted || started.current) return;
     started.current = true;
-    const answers = () => getHealth(api).then(() => true, () => false);
+    const answers = () =>
+      getHealth(api).then(
+        () => true,
+        () => false,
+      );
     void waitForRestart(answers).then((back) => {
       if (back) page.reload();
     });

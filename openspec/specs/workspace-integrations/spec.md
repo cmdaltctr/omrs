@@ -5,6 +5,34 @@ An Integrations page listing the installable integration extras with live availa
 
 ## Requirements
 
+### Requirement: The Integrations page shows one section at a time
+
+The Integrations page SHALL show section chips for Extras, Tools, OCR engines, Model files and Local servers, in that order, and SHALL show one section at a time. The address SHALL name the section as `#/integrations/<section>` (`extras`, `tools`, `ocr-engines`, `model-files`, `local-servers`); `#/integrations` SHALL show Extras. The Tools chip SHALL appear only when the server lists a tool.
+
+#### Scenario: Open a section
+
+- **WHEN** the user presses the Local servers chip
+- **THEN** the address MUST be `#/integrations/local-servers`
+- **AND** the page MUST show only the Local servers section
+
+### Requirement: A link to an entry opens its section
+
+Any other `#/integrations/<name>` segment SHALL name an entry. A tool's id SHALL open Tools, any other name SHALL open Extras, and the page SHALL focus that entry's card.
+
+#### Scenario: Link to an entry
+
+- **WHEN** the user opens `#/integrations/marimo`
+- **THEN** the Tools section MUST show and the marimo card MUST have focus
+
+### Requirement: A runtime section chip counts the parts that need attention
+
+A runtime section chip SHALL show how many of its parts a setting in force needs and are not ready. Its accessible name SHALL then say "<n> needs attention".
+
+#### Scenario: Count on a chip
+
+- **WHEN** dots-mocr is the primary engine and is not provisioned
+- **THEN** the OCR engines chip MUST show 1 and its accessible name MUST be "OCR engines, 1 needs attention"
+
 ### Requirement: The Integrations page lists every installable integration
 
 The Integrations view SHALL list one entry for each installable pip extra the project declares (chroma, hybrid, pdf-pypdfium2, pdf-inspector, community-leiden, azure, llamacpp, openrouter, torch, web) and for the always-on magika integration. Each entry SHALL show its name, a one-line purpose, its availability status as text with a badge, and its install command.
@@ -158,7 +186,7 @@ When the server refuses an uninstall because a saved user profile uses the extra
 
 ### Requirement: The Integrations page has a marimo card
 
-The Integrations page SHALL show a marimo card in an "External tools" group, below the extras. The card SHALL use the same layout as an extra's card: name, one-line purpose, a status badge with text, and the actions. Its state SHALL come from `GET /v1/integrations`, which SHALL list marimo in a `tools` list, apart from the extras.
+The Integrations page SHALL show a marimo card in the Tools section, apart from the extras. The card SHALL use the same layout as an extra's card: name, one-line purpose, a status badge with text, and the actions. Its state SHALL come from `GET /v1/integrations`, which SHALL list marimo in a `tools` list, apart from the extras.
 
 #### Scenario: Not installed shows in red
 
@@ -283,7 +311,7 @@ The server SHALL refuse with 409 and a `reason`: `not-installed` when no marimo 
 
 ### Requirement: The page shows runtime components in three groups
 
-Below the integration cards, the Integrations page SHALL show the groups "OCR engines", "Model files" and "Local servers". Each row SHALL show the name, purpose, status text with a badge, and the settings that use it. A row SHALL show its reason and its copy command only when the server sends them (not `null`). A row that is not `ready` and that a setting in force uses SHALL show its status in red.
+The Integrations page SHALL show the runtime components in three sections: "OCR engines", "Model files" and "Local servers". Each row SHALL show the name, purpose, status text with a badge, and the settings that use it. A row SHALL show its reason and its copy command only when the server sends them (not `null`). A row that is not `ready` and that a setting in force uses SHALL show its status in red.
 
 #### Scenario: Engine not provisioned
 
@@ -298,7 +326,7 @@ Below the integration cards, the Integrations page SHALL show the groups "OCR en
 #### Scenario: Phone width
 
 - **WHEN** the page is 390 px wide
-- **THEN** the three groups, their reasons and their copy commands MUST fit without sideways page scroll
+- **THEN** the section chips, each section, its reasons and its copy commands MUST fit without sideways page scroll
 
 ### Requirement: The OCR engines group sets the workers folder
 

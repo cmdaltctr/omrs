@@ -176,7 +176,11 @@ describe("Integrations", () => {
     await screen.findByRole("list", { name: "Integrations" });
     const labels = screen.getAllByRole("button").map((button) => button.getAttribute("aria-label") ?? button.textContent ?? "");
     const main = document.querySelector("main") as HTMLElement;
-    const own = within(main).getAllByRole("button").map((button) => button.getAttribute("aria-label") ?? "");
+    const chips = within(within(main).getByRole("group", { name: "Sections" })).getAllByRole("button");
+    const own = within(main)
+      .getAllByRole("button")
+      .filter((button) => !chips.includes(button))
+      .map((button) => button.getAttribute("aria-label") ?? "");
     expect(own.every((label) => label.startsWith("Copy "))).toBe(true);
     expect(labels.some((label) => /^(install|run|download|update)\b/i.test(label))).toBe(false);
   });

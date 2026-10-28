@@ -4,12 +4,13 @@ The page that lists optional integrations and installs or uninstalls an extra. I
 
 ## What belongs here
 
-- `IntegrationsView.tsx` (the page) and `IntegrationCard.tsx` (one entry).
+- `IntegrationsView.tsx` (the page and its section chips) and `IntegrationCard.tsx` (one entry).
+- `sections.ts`: the section ids, which section a `#/integrations/<name>` address opens, and the red count on a runtime chip.
 - `InstallControls.tsx`, `UninstallControls.tsx` and `UninstallDialog.tsx`: the actions of one card.
 - `InstallRefusal.tsx`: the line for a refused start (409).
 - `useIntegrationInstall.ts`: the job state and the start actions. The API client is `../api/integrations.ts`.
-- `RuntimeGroups.tsx`: the OCR engines, model files and local servers groups from `runtime`. `WorkersFolderField.tsx` writes `ocr_workers_dir` through the settings write route. The page only shows these parts; each fix is a copy command.
-- `ToolCard.tsx`, `ToolInstallControls.tsx`, `ToolUninstallControls.tsx` and `ToolDialogs.tsx`: the marimo card in the "External tools" group.
+- `RuntimeGroups.tsx`: one runtime section (OCR engines, model files or local servers) from `runtime`. `WorkersFolderField.tsx` writes `ocr_workers_dir` through the settings write route. The page only shows these parts; each fix is a copy command.
+- `ToolCard.tsx`, `ToolInstallControls.tsx`, `ToolUninstallControls.tsx` and `ToolDialogs.tsx`: the marimo card in the Tools section.
 
 ## Rules
 
