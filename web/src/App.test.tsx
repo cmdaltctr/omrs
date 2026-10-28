@@ -133,9 +133,9 @@ describe("engine status pill", () => {
 });
 
 describe("theme controls", () => {
-  it("follows the system theme by default", () => {
+  it("uses the dark theme by default", () => {
     start();
-    expect(document.documentElement.dataset.theme).toBeUndefined();
+    expect(document.documentElement.dataset.theme).toBe("dark");
   });
 
   it("keeps the theme select out of the top bar", () => {
@@ -145,6 +145,7 @@ describe("theme controls", () => {
 
   it("switches between light and dark with one click and names the target", async () => {
     const user = userEvent.setup();
+    window.localStorage.setItem(PREFERENCES_KEY, JSON.stringify({ theme: "light", lastCollection: null }));
     start();
     await user.click(within(screen.getByText("Local workspace").closest("header")!).getByRole("button", { name: "Switch to dark theme" }));
     expect(document.documentElement.dataset.theme).toBe("dark");
@@ -165,7 +166,7 @@ describe("theme controls", () => {
   it("falls back to defaults and removes a stored value that fails validation", () => {
     window.localStorage.setItem(PREFERENCES_KEY, JSON.stringify({ theme: "neon" }));
     start();
-    expect(document.documentElement.dataset.theme).toBeUndefined();
+    expect(document.documentElement.dataset.theme).toBe("dark");
     expect(window.localStorage.getItem(PREFERENCES_KEY)).toBeNull();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -178,8 +179,8 @@ describe("theme controls", () => {
     vi.spyOn(Storage.prototype, "setItem").mockImplementation(denied);
     const user = userEvent.setup();
     start();
-    await user.click(within(screen.getByText("Local workspace").closest("header")!).getByRole("button", { name: "Switch to dark theme" }));
-    expect(document.documentElement.dataset.theme).toBe("dark");
+    await user.click(within(screen.getByText("Local workspace").closest("header")!).getByRole("button", { name: "Switch to light theme" }));
+    expect(document.documentElement.dataset.theme).toBe("light");
   });
 });
 

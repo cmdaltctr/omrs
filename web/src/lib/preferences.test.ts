@@ -7,9 +7,9 @@ afterEach(() => {
 });
 
 describe("preferences", () => {
-  it("defaults to the system theme and no last collection", () => {
-    expect(readPreferences()).toEqual({ theme: "system", lastCollection: null });
-    expect(DEFAULT_PREFERENCES).toEqual({ theme: "system", lastCollection: null });
+  it("defaults to the dark theme and no last collection", () => {
+    expect(readPreferences()).toEqual({ theme: "dark", lastCollection: null });
+    expect(DEFAULT_PREFERENCES).toEqual({ theme: "dark", lastCollection: null });
   });
 
   it("stores only theme and lastCollection under one key", () => {

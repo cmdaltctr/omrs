@@ -36,7 +36,7 @@ describe("navigation foot", () => {
     start();
     const items = controls();
     expect(items.map((control) => control.tagName)).toEqual(["BUTTON", "A", "BUTTON", "A"]);
-    expect(items[0]).toHaveAccessibleName("Switch to dark theme");
+    expect(items[0]).toHaveAccessibleName("Switch to light theme");
     expect(items[1]).toHaveAccessibleName("Settings");
     expect(items[2]).toHaveAccessibleName(/^Server status/);
     expect(items[3]).toHaveAccessibleName("OMRS on GitHub");
@@ -59,6 +59,7 @@ describe("navigation foot", () => {
 
   it("switches light to dark in one click, stores it and names the next switch", async () => {
     const user = userEvent.setup();
+    window.localStorage.setItem(PREFERENCES_KEY, JSON.stringify({ theme: "light", lastCollection: null }));
     start();
     await user.click(within(foot()).getByRole("button", { name: "Switch to dark theme" }));
     expect(document.documentElement.dataset.theme).toBe("dark");

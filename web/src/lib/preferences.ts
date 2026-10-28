@@ -15,7 +15,7 @@ export interface Preferences {
   lastCollection: string | null;
 }
 
-export const DEFAULT_PREFERENCES: Preferences = { theme: "system", lastCollection: null };
+export const DEFAULT_PREFERENCES: Preferences = { theme: "dark", lastCollection: null };
 
 function isTheme(value: unknown): value is ThemePreference {
   return typeof value === "string" && (THEMES as readonly string[]).includes(value);

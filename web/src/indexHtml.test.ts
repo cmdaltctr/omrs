@@ -32,8 +32,8 @@ describe("index.html head", () => {
     expect(meta("robots")).toEqual(["noindex, nofollow"]);
   });
 
-  it("lists the default light scheme first", () => {
-    expect(meta("color-scheme")).toEqual(["light dark"]);
+  it("lists the default dark scheme first", () => {
+    expect(meta("color-scheme")).toEqual(["dark light"]);
   });
 
   it("has a theme colour for each colour scheme", () => {
