@@ -1,7 +1,8 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { documentsServer, json, type Handler } from "../test/fakeDocumentsServer";
+import { page } from "../lib/restartWait";
 import { renderWithProviders } from "../test/providers";
 import { TooltipProvider } from "./ui/tooltip";
 import { PowerMenu } from "./PowerMenu";
@@ -54,7 +55,7 @@ describe("PowerMenu", () => {
     const { user, server, panel } = await openPanel({ ...MANAGED, "POST /v1/server/power": ACCEPTED("restart") });
     await user.click(await ready(panel, "Restart"));
     const dialog = await screen.findByRole("dialog", { name: "Restart OMRS?" });
-    expect(dialog).toHaveTextContent(/signs in again by itself/i);
+    expect(dialog).toHaveTextContent(/reloads by itself/i);
     expect(dialog).not.toHaveTextContent(/signed out/i);
     expect(within(dialog).getByText("omrs web open")).toBeInTheDocument();
     expect(server.find("POST", "/v1/server/power")).toHaveLength(0);
@@ -63,8 +64,20 @@ describe("PowerMenu", () => {
     await waitFor(() => expect(server.find("POST", "/v1/server/power")).toHaveLength(1));
     expect(server.find("POST", "/v1/server/power")[0]?.body).toEqual({ action: "restart" });
     const done = await screen.findByText(/^Restarting\./);
-    expect(done.parentElement).toHaveTextContent(/signs in again by itself/i);
+    expect(done.parentElement).toHaveTextContent(/reloads by itself/i);
     expect(screen.getAllByText("omrs web open").length).toBeGreaterThan(0);
+  });
+
+  it("reloads the page once the restarted server answers again", async () => {
+    const reload = vi.spyOn(page, "reload").mockImplementation(() => undefined);
+    let polls = 0;
+    const health: Handler = () => (++polls === 2 ? json({ detail: "down" }, 503) : { status: "ok", ready: true, version: "2.3.4" });
+    const { user, panel } = await openPanel({ ...MANAGED, "GET /v1/health": health, "POST /v1/server/power": ACCEPTED("restart") });
+    await user.click(await ready(panel, "Restart"));
+    const dialog = await screen.findByRole("dialog", { name: "Restart OMRS?" });
+    polls = 0;
+    await user.click(within(dialog).getByRole("button", { name: "Restart" }));
+    await waitFor(() => expect(reload).toHaveBeenCalledOnce(), { timeout: 4_000 });
   });
 
   it("posts nothing when the dialog is cancelled", async () => {
