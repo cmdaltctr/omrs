@@ -33,7 +33,7 @@ The baseline SHALL be the `documents` profile defaults with local Qwen3-Embeddin
 
 #### Scenario: Token-aware chunking silently falls back
 
-- **WHEN** an arm other than token-aware chunking off resolves to the legacy splitter because the tokenizer is not cached
+- **WHEN** an arm other than token-aware chunking off resolves to `legacy_fallback` because the tokenizer is unavailable for any reason (blank model or revision, not cached, or fails to load)
 - **THEN** the run SHALL stop before embedding and name the tokenizer model and revision
 
 #### Scenario: The chunking arm changes no chunk

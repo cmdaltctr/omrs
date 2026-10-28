@@ -50,7 +50,7 @@ One sweep run SHALL ingest the fixed set (reader, OCR routing, normalisation), c
 
 #### Scenario: Token-aware chunking falls back to the legacy splitter
 
-- **WHEN** the configured tokenizer is not cached and chunking resolves to the legacy splitter
+- **WHEN** the tokenizer is unavailable for any reason (blank model or revision, not cached, or fails to load) and chunking resolves to `legacy_fallback`
 - **THEN** the run stops before the first document is embedded
 - **AND** the output names the tokenizer model and revision
 
