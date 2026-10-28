@@ -542,7 +542,6 @@ These keys stay read-only. The row shows the reason and no Edit:
 |---|---|
 | `embed_provider`, `embed_model`, `local_backend`, `cloud_backend`, `llamacpp_embed_url`, `llamacpp_embed_model`, `openrouter_embed_model`, every `embedding.*` key | The embedding model is part of every collection. Change it in omrs.jsonc and re-ingest. |
 | `vector_store`, `lancedb_uri`, `chroma_persist_dir`, `chroma_mode`, `collection_name` | Existing collections stay where they are. Change it in omrs.jsonc and restart. |
-| `ocr_workers_dir` | The worker folder is set when the OCR workers are installed. |
 | Every key field (`*_api_key`, `*_key`) | Keys are set on the provider cards as references. |
 | `ingestion.ingest_extensions`, `metadata.keyword_rules` | Edit this in omrs.jsonc. |
 
@@ -859,8 +858,6 @@ Engine routes and operation:
 | `OCR_WORKERS_DIR` | empty | Absolute path to `ocr-workers`. Empty disables folder-based routes |
 | `OCR_ENGINE_PRIMARY` | `dots-mocr` | Engine selected for every worker request |
 | `OCR_ENGINE_FALLBACK` | `paddleocr-vl` | Engine selected when the primary is unavailable before dispatch. Empty disables this route |
-| `OCR_WORKER_COMMAND` | empty | Explicit command overriding the primary route only. Empty uses the engine settings |
-| `OCR_WORKER_ENV_DIR` | empty | Working directory for the explicit command |
 | `OCR_WORKER_REQUEST_TIMEOUT` | `300.0` | Minimum timeout in seconds for one parse response |
 | `OCR_WORKER_SECONDS_PER_PAGE` | `120.0` | Per-page timeout allowance in seconds |
 | `OCR_MATHS_ROUTING_ENABLED` | `true` | Detect maths fonts on the pdf-inspector path and route affected pages |
@@ -890,11 +887,30 @@ through Metal Performance Shaders (MPS). One-page smoke tests showed only
 `OCR_ENGINE_PRIMARY=paddleocr-vl` on machines with limited memory.
 PyTorch and Paddle packages stay outside the OMRS environment.
 
-**Migration:** re-provision the required engines, set `OCR_WORKERS_DIR`,
-and clear `OCR_WORKER_COMMAND` to use named routes. An existing explicit
-command continues to override the primary, even when
-`OCR_ENGINE_PRIMARY=dots-mocr`. Update its executable, module and working
-directory if retaining that override. See
+**Set the workers folder in the web app.** Open Integrations › OCR
+engines and edit "OCR workers folder". The server checks that the
+folder is a full path and holds an `engines` folder before it writes
+`ocr_workers_dir` to `omrs.jsonc`. The value applies at the next launch.
+Use a checkout that stays, such as the integration worktree, not a
+feature worktree that you remove later. When `OCR_WORKERS_DIR` comes from
+the environment or `.env`, the field is read-only.
+
+**OCR settings on a pipeline step.** A Read document step of a user
+profile can set each of the eight OCR settings above (not the worker
+command, folder or timeouts). An empty value uses the server setting.
+Built-in profiles always use the server settings. See
+[ADR-105](../adr/105-pipeline-steps-own-their-ocr-settings.md).
+
+**Memory with mixed engines.** One worker runs per engine, and only one
+engine parses at a time. A pipeline whose steps use dots.mocr and
+PaddleOCR-VL can still keep both workers loaded, about 37 GiB in the
+worst case, until idle shutdown stops the waiting one. Use one engine per
+pipeline on machines with less memory.
+
+**Migration:** re-provision the required engines and set
+`OCR_WORKERS_DIR`. `OCR_WORKER_COMMAND` and `OCR_WORKER_ENV_DIR` were
+removed (ADR-105): start-up refuses either one and names the
+replacement. See
 [provisioning and migration](ingestion.md#provision-the-engines).
 
 `OMRS_OCR_MODEL_CACHE` is a process-level variable read by the worker core.

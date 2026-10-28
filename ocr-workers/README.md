@@ -48,8 +48,9 @@ OMRS reads two route settings:
 | `OCR_ENGINE_PRIMARY`  | `dots-mocr`    | Engine for every OCR dispatch.           |
 | `OCR_ENGINE_FALLBACK` | `paddleocr-vl` | Engine when the primary is unavailable before dispatch. Empty means no fallback. |
 
-A non-empty `OCR_WORKER_COMMAND` (with `OCR_WORKER_ENV_DIR`) overrides the
-primary route only. The fallback route still resolves from `OCR_WORKERS_DIR`.
+Both routes resolve from `OCR_WORKERS_DIR` and the engine name only.
+`OCR_WORKER_COMMAND` and `OCR_WORKER_ENV_DIR` were removed; start-up refuses
+either variable.
 
 ## Provisioning
 

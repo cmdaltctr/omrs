@@ -463,7 +463,6 @@ These rules also apply:
 
 - A key set in the environment or `.env` is read-only. The row names the variable to remove.
 - An engine that is not provisioned shows the reason. You can still choose it, for example before you provision it.
-- When `OCR_WORKER_COMMAND` is set, the Primary engine row says that the command replaces the primary engine.
 - When `auto` or a missing reader resolves to another reader, the PDF reader row shows the reader in use.
 - A Read document step in a pipeline can choose its own reader.
 
@@ -532,7 +531,6 @@ A read-only row keeps its value as text with a lock icon, also in edit mode. Hov
 | --- | --- |
 | Embedding identity: `embed_provider`, `embed_model`, `local_backend`, `cloud_backend`, `llamacpp_embed_url`, `llamacpp_embed_model`, `openrouter_embed_model` and every `embedding.*` key | "The embedding model is part of every collection. Change it in omrs.jsonc and re-ingest." |
 | Storage: `vector_store`, `lancedb_uri`, `chroma_persist_dir`, `chroma_mode` and `collection_name` | "Existing collections stay where they are. Change it in omrs.jsonc and restart." |
-| `ocr_workers_dir` | "The worker folder is set when the OCR workers are installed." |
 | Every key field | "Keys are set on the provider cards as references." |
 | `ingestion.ingest_extensions` and `metadata.keyword_rules` | "Edit this in omrs.jsonc." |
 | A setting set in the environment or `.env` | "Remove <ENV_NAME> from the environment or .env to edit it here." |
