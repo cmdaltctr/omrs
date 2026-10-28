@@ -1,3 +1,4 @@
+import { applyThemeColor } from "./documentHead";
 import { readStored, writeStored } from "./storage";
 
 /**
@@ -42,4 +43,5 @@ export function applyTheme(theme: ThemePreference): void {
   const root = document.documentElement;
   if (theme === "system") delete root.dataset.theme;
   else root.dataset.theme = theme;
+  applyThemeColor(document, theme);
 }

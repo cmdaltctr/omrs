@@ -42,4 +42,19 @@ describe("preferences", () => {
     applyTheme("system");
     expect(document.documentElement.dataset.theme).toBeUndefined();
   });
+
+  it("updates the theme-color meta with the theme", () => {
+    const meta = document.createElement("meta");
+    meta.name = "theme-color";
+    meta.setAttribute("media", "(prefers-color-scheme: light)");
+    document.head.append(meta);
+    try {
+      applyTheme("dark");
+      expect(meta.content).toBe("#120f0e");
+      applyTheme("system");
+      expect(meta.content).toBe("#fdfcfa");
+    } finally {
+      meta.remove();
+    }
+  });
 });
