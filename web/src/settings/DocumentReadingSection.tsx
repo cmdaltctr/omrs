@@ -18,10 +18,9 @@ interface RestartRequest {
   plural: boolean;
 }
 
-/** The lines a row shows under its value: the reader the engine resolved, and the worker command that replaces the primary engine. */
+/** The lines a row shows under its value: the reader the engine resolved. */
 function rowNotes(setting: DocumentReadingSetting, state: DocumentReadingState): string[] {
   if (setting.key === "pdf_reader" && state.pdf_reader_in_use !== null && state.pdf_reader_in_use !== setting.value) return [`In use: ${state.pdf_reader_in_use}`];
-  if (setting.key === "ocr_engine_primary" && state.ocr.worker_command_set) return ["OCR_WORKER_COMMAND is set, so it replaces the primary engine."];
   return [];
 }
 

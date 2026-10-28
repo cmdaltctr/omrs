@@ -122,6 +122,11 @@ def build_engine(
     # consequence visible at construction (spec: guard configuration
     # is explicit) on both construction routes.
     _log_norm_guard_state(settings)
+    # Workers start on first use (the Engine's OCR pool), so the start-up line
+    # comes from the engine folders alone.
+    from .integrations.ocr_worker.routes import log_route_plan
+
+    log_route_plan(settings)
     if environment_based:
         # Fail closed on recognised legacy Chroma data when no explicit
         # backend was selected (task 4, design D6) — before any store
@@ -176,12 +181,9 @@ def build_engine(
     except Exception:
         reranker = None
 
-    # Owner-scoped OCR routes (task 2.6a, design D3 of
-    # modular-ocr-workers-dots-mocr): each route is resolved (probed)
-    # once here at the composition boundary when the operator enabled
-    # OCR, and owned by the engine — its close() releases the
-    # subprocesses. No process starts until a route's first dispatch.
-    from .capabilities import build_ocr_routes
+    # OCR: the Engine owns an OCR client pool (design D5 of
+    # integrations-show-runtime-components). The host routes and every graph
+    # node take their routes from it; no worker starts before its first dispatch.
     from .core.providers.embeddings import registry as embed_registry
     from .core.vectordb.identity import embedding_identity_from_settings
     from .engine import Engine
@@ -204,7 +206,6 @@ def build_engine(
         ),
         answer_llm_factory=_build_answer_llm,
         verify_llm_factory=lambda block, snap: _build_verify_llm(snap, block),
-        ocr_client=build_ocr_routes(settings),
         redaction=build_redaction(settings),
     )
 

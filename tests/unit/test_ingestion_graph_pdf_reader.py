@@ -71,7 +71,7 @@ def test_auto_message_tells_the_user_what_to_do() -> None:
 
 def test_read_document_declares_the_reader_as_an_option_parameter() -> None:
     """The host reports reader availability for this parameter."""
-    assert _read_descriptor().option_params == {"pdf_reader": "pdf_reader"}
+    assert _read_descriptor().option_params["pdf_reader"] == "pdf_reader"
 
 
 # ── Adapter behaviour ────────────────────────────────────────────────────

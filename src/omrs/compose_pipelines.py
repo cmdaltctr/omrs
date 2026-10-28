@@ -11,8 +11,8 @@ The Engine delegates graph validation and execution to
 * It resolves profiles through the Engine's own resolver. Without one, the Engine
   uses its own settings and cannot load a named profile.
 * It enforces the ``answer()`` request limits on answering graphs.
-* It plans each admitted run (``compose_pipeline_runs``): the unit split, the
-  ingestion shape and the OCR client. The Engine owns the client; a run borrows it.
+* It plans each admitted run (``compose_pipeline_runs``): the unit split and the
+  ingestion shape. The Engine owns the OCR client pool; a run borrows it.
 * It leases the Engine's resources to runs. Graphs that only read run at
   the same time. Graphs with an enabled write step (``SOURCE_COMMIT``) are
   serialised on one Engine with one ``asyncio.Lock``.
@@ -150,15 +150,11 @@ class GraphHost:
         host: Host facts for preflight.
         profiles: Profile resolution for admission.
         resources: Engine-owned resources by name, borrowed by runs.
-        ocr_factory: Returns the Engine-owned OCR client for node settings
-            when the Engine was composed without one. The Engine builds the
-            client once, on first use, and closes it in ``Engine.close()``.
     """
 
     host: HostContext
     profiles: ProfileSource
     resources: Mapping[str, Any] = field(default_factory=dict)
-    ocr_factory: Callable[[Any], Any] | None = None
 
 
 def build_graph_host(
@@ -167,7 +163,6 @@ def build_graph_host(
     resources: Mapping[str, Any],
     resolver: Any,
     collection: str | None = None,
-    ocr_factory: Callable[[Any], Any] | None = None,
 ) -> GraphHost:
     """Describe the Engine's composition to preflight, admission and the runner.
 
@@ -177,7 +172,6 @@ def build_graph_host(
             and their capabilities report a reason.
         resolver: The Engine's profile resolver, or ``None``.
         collection: Default collection; ``None`` uses the settings value.
-        ocr_factory: The Engine's lazy OCR client accessor, if any.
     """
     from .core.pipelines import HostContext, ResolverProfileSource
 
@@ -195,7 +189,7 @@ def build_graph_host(
     )
     profiles = FixedProfileSource(settings) if resolver is None else ResolverProfileSource(resolver)
     present = {name: value for name, value in resources.items() if value is not None}
-    return GraphHost(host, profiles, present, ocr_factory=ocr_factory)
+    return GraphHost(host, profiles, present)
 
 
 def pipeline_templates(engine: Any, collection: str | None = None) -> tuple[Any, ...]:
@@ -384,21 +378,21 @@ class EnginePipelines:
             parsed, catalogue, host=graph_host.host, profiles=graph_host.profiles, inputs=inputs
         )
 
-    def ocr_client(self, settings: Any) -> Any:
-        """Return the Engine-owned OCR client; build it once, on first use.
+    def ocr_pool(self) -> Any:
+        """Return the Engine-owned OCR client pool; build it once, on first use.
 
-        The client is built the same way ``ingest_path_async`` builds one
-        (``build_ocr_routes``), from the settings of the first node that
-        enables the OCR fallback. Later runs borrow the same client.
+        Every graph node and the host routes share it (design D5 of
+        integrations-show-runtime-components). Building it starts no worker.
         """
         if self._ocr is None:
-            from .capabilities import build_ocr_routes
+            from .capabilities import probe_ocr_worker
+            from .integrations.ocr_worker.pool import OcrClientPool
 
-            self._ocr = build_ocr_routes(settings)
+            self._ocr = OcrClientPool(probe=probe_ocr_worker)
         return self._ocr
 
     def release(self) -> None:
-        """Drop cached judges and the catalogue; close the lazy OCR client (failures are logged)."""
+        """Drop cached judges and the catalogue; close the OCR pool (failures are logged)."""
         self._judges.clear()
         self._catalogue = None
         client, self._ocr = self._ocr, None

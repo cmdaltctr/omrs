@@ -67,8 +67,6 @@ export interface DocumentReadingState {
   ocr: {
     /** Launch `ocr_workers_dir` with `~` for the home folder, or `null` when unset. */
     workers_dir: string | null;
-    /** `OCR_WORKER_COMMAND` is set at launch, so it replaces the primary engine. */
-    worker_command_set: boolean;
     /** Sorted by name. */
     engines: OcrEngineOption[];
   };

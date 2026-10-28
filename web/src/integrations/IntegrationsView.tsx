@@ -8,6 +8,7 @@ import { MasonryColumns } from "../components/MasonryColumns";
 import { PageHeader } from "../components/PageHeader";
 import { areaById } from "../lib/views";
 import { IntegrationCard, integrationCardId } from "./IntegrationCard";
+import { RuntimeGroups } from "./RuntimeGroups";
 import { ToolCard } from "./ToolCard";
 import { useIntegrationInstall } from "./useIntegrationInstall";
 
@@ -92,6 +93,7 @@ export function IntegrationsView({ entry = null }: { entry?: string | null }) {
               </div>
             </section>
           ) : null}
+          {list.runtime !== undefined ? <RuntimeGroups runtime={list.runtime} /> : null}
         </>
       )}
     </section>

@@ -36,13 +36,19 @@ from typing import Any
 
 from .jsonc_edit import JsoncEditError, remove_value, set_value
 from .provider_sources import PROVIDER_FIELDS
-from .rules import INTERNAL_FIELDS, SECRET_FIELDS, document_reading_problem
+from .rules import (
+    INTERNAL_FIELDS,
+    SECRET_FIELDS,
+    document_reading_problem,
+    workers_folder_problem,
+)
 from .setting_shapes import is_scalar
 from .settings_file import ABSENT, check_setting, setting_paths
 from .user_config import (
     CONFIG_FILE,
     REFERENCE_RULE,
     SECRETS_DIR,
+    display_path,
     parse_jsonc,
     reference_problem,
     user_config_dir,
@@ -75,7 +81,6 @@ READ_ONLY_KEYS: Mapping[str, str] = {
     "chroma_persist_dir": _STORAGE,
     "chroma_mode": _STORAGE,
     "collection_name": _STORAGE,
-    "ocr_workers_dir": "The worker folder is set when the OCR workers are installed.",
     "ingestion.ingest_extensions": EDIT_BY_HAND,
     "metadata.keyword_rules": EDIT_BY_HAND,
 }
@@ -171,8 +176,13 @@ def _plan(changes: Mapping[str, Any], secrets: Path) -> dict[str, Any]:
         reading_rule = document_reading_problem(key, value)  # blank text is refused here
         if reading_rule is not None:
             raise SettingsFileRefused(f"{key}: {reading_rule}")
+        folder_rule = workers_folder_problem(key, value)
+        if folder_rule is not None:
+            raise SettingsFileRefused(f"{key}: {folder_rule}")
         if value is None or (isinstance(value, str) and not value.strip()):
             plan[key] = None
+        elif key == "ocr_workers_dir":
+            plan[key] = display_path(Path(value.strip()).expanduser())
         elif key in SECRET_FIELDS:
             rule = (
                 REFERENCE_RULE if not isinstance(value, str) else reference_problem(value, secrets)

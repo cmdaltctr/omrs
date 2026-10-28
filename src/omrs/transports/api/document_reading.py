@@ -127,7 +127,6 @@ def _ocr(launch: Settings, rows: list[dict[str, Any]]) -> dict[str, Any]:
     ]
     return {
         "workers_dir": display_path(workers_dir) if workers_dir else None,
-        "worker_command_set": bool(launch.ocr_worker_command.strip()),
         "engines": capabilities.ocr_engine_options(workers_dir, names),
     }
 

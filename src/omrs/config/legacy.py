@@ -116,6 +116,21 @@ _NEVER_SHIPPED_ALIASES: dict[str, str] = {
 }
 
 
+# ── Removed settings (no replacement of the same shape) ──────────────
+#
+# integrations-show-runtime-components D7: the explicit worker command
+# overrode the primary engine, so a pipeline step's engine could be
+# replaced without a sign. Routes now resolve from the workers folder
+# and an engine name only. Pydantic-settings would discard a leftover
+# value in silence, so the tripwire names the replacement.
+#
+# Lifetime: as FLAT above — retained while an upgrade path exists.
+_REMOVED_ENV_VARS: dict[str, str] = {
+    "OCR_WORKER_COMMAND": "OCR_WORKERS_DIR with OCR_ENGINE_PRIMARY",
+    "OCR_WORKER_ENV_DIR": "OCR_WORKERS_DIR with OCR_ENGINE_PRIMARY",
+}
+
+
 def check_legacy_env_vars(env: dict[str, str] | None = None) -> None:
     """Raise if the environment carries retired configuration names.
 
@@ -132,7 +147,8 @@ def check_legacy_env_vars(env: dict[str, str] | None = None) -> None:
     source = os.environ if env is None else env
     found = [(old, new) for old, new in _RETIRED_ENV_VARS.items() if old in source]
     aliases = sorted((old, new) for old, new in _NEVER_SHIPPED_ALIASES.items() if old in source)
-    if not found and not aliases:
+    removed = sorted((old, new) for old, new in _REMOVED_ENV_VARS.items() if old in source)
+    if not found and not aliases and not removed:
         return
     flat = sorted((old, new) for old, new in found if "__" not in old)
     nested = sorted((old, new) for old, new in found if "__" in old)
@@ -159,6 +175,13 @@ def check_legacy_env_vars(env: dict[str, str] | None = None) -> None:
             "these: the nested delimiter binds only to nested blocks, so "
             "they match nothing and are discarded in silence:\n"
             f"{alias_lines}"
+        )
+    if removed:
+        removed_lines = "\n".join(f"  {old}  ->  {new}" for old, new in removed)
+        sections.append(
+            "Removed OCR worker settings. Routes now resolve from the OCR "
+            "workers folder and an engine name; remove these and set:\n"
+            f"{removed_lines}"
         )
     body = "\n".join(sections)
     raise ValueError(

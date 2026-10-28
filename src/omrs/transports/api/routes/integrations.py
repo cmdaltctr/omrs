@@ -15,6 +15,7 @@ starts no process, and no request text reaches the command.
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from typing import Annotated, Any
 
@@ -30,6 +31,8 @@ from ..install_job import InstallJob
 from ..integrations_catalogue import CATALOGUE, Integration, describe_entry, describe_integrations
 from ..integrations_catalogue import find_integration as find_extra
 from ..lifespan import WebRuntime
+from ..runtime_components import RuntimeItem, model_file_items, ocr_engine_items
+from ..runtime_servers import llamacpp_readiness, local_server_items, openrouter_readiness
 from ..security import Principal, redact
 from .graphs import ok
 from .integration_tools import tool_entries
@@ -155,20 +158,67 @@ def _conflict(
     return JSONResponse(body, status_code=409, headers=API_HEADERS)
 
 
+def _local_files(settings: Any) -> tuple[list[RuntimeItem], list[RuntimeItem]]:
+    return ocr_engine_items(settings), model_file_items(settings)
+
+
+async def _runtime_block(settings: Any) -> tuple[dict[str, Any], list[RuntimeItem]]:
+    """Return the ``runtime`` block and the server items (integrations-show-runtime-components).
+
+    The file probes run off the event loop while the server probes wait on
+    the network, so the block takes about one server timeout.
+    """
+    if settings is None:
+        return {"ocr_engines": [], "model_files": [], "local_servers": []}, []
+    files, servers = await asyncio.gather(
+        run_in_threadpool(_local_files, settings), local_server_items(settings)
+    )
+    engines, models = files
+    block = {
+        "ocr_engines": [item.to_json() for item in engines],
+        "model_files": [item.to_json() for item in models],
+        "local_servers": [item.to_json() for item in servers],
+    }
+    return block, servers
+
+
+def _add_readiness(
+    entries: list[dict[str, Any]], servers: list[RuntimeItem], settings: Any
+) -> None:
+    """Add the readiness line to the llama.cpp and OpenRouter cards (design D2)."""
+    if settings is None:
+        return
+    for entry in entries:
+        if entry["id"] == "llamacpp":
+            entry["readiness"] = llamacpp_readiness(servers, settings)
+        elif entry["id"] == "openrouter":
+            entry["readiness"] = openrouter_readiness(settings)
+
+
 @router.get("/integrations", operation_id="listIntegrations")
 async def list_integrations(_: ReadScope, runtime: RuntimeDep) -> Response:
     """List every installable integration with its availability in this launch.
 
     The probes may import optional packages, so they run off the event
     loop. A probe that fails gives the ``unknown`` state for that entry.
+    The ``runtime`` block lists OCR engines, model files and local servers.
     """
     async with admitted(runtime):
         settings = await _settings(runtime)
-        environment, entries = await run_in_threadpool(
-            _catalogue, settings, runtime.installs, _profiles(runtime)
+        (environment, entries), (block, servers) = await asyncio.gather(
+            run_in_threadpool(_catalogue, settings, runtime.installs, _profiles(runtime)),
+            _runtime_block(settings),
         )
         tools = await run_in_threadpool(tool_entries, runtime)
-    return ok({"install_type": environment.install_type, "integrations": entries, "tools": tools})
+    _add_readiness(entries, servers, settings)
+    return ok(
+        {
+            "install_type": environment.install_type,
+            "integrations": entries,
+            "tools": tools,
+            "runtime": block,
+        }
+    )
 
 
 @router.get("/integrations/install", operation_id="getIntegrationInstall")

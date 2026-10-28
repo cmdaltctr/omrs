@@ -10,6 +10,7 @@ Nothing here is public: the Engine is the only caller.
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterator, Mapping
 from typing import TYPE_CHECKING, Any
 
 from .compose_pipelines import build_graph_host
@@ -73,6 +74,18 @@ def release_resources(engine: Engine) -> None:
     engine._ocr_client = None
 
 
+def host_ocr(engine: Engine, settings: Any) -> Any:
+    """Return the OCR routes of a standard ingest with *settings*.
+
+    A composed client wins. Otherwise the routes come from the Engine's OCR
+    client pool, so the host routes and a graph node with the same engine
+    share one client (design D5 of integrations-show-runtime-components).
+    """
+    if engine._ocr_client is not None:
+        return engine._ocr_client
+    return engine._pipelines.ocr_pool().routes(settings)
+
+
 def resolve_bound(engine: Engine, collection: str) -> tuple[Any, Any]:
     """Resolve the settings and the profile binding of a collection with one tag read.
 
@@ -111,7 +124,9 @@ def graph_host(engine: Engine, collection: str | None) -> Any:
         "embedder": embedder,
         "embedding_identity": choice or engine._embedders.host_identity,
         "reranker": engine._reranker,
-        "ocr": engine._ocr_client,
+        "ocr": engine._ocr_client
+        if engine._ocr_client is not None
+        else engine._pipelines.ocr_pool(),
         "answer_llm": recording_answer_llm(answer_llm, settings.answer.provider.strip()),
         "verify_llm": recording_judge(
             engine._pipelines.judge(generation.verify_llm_factory), judge_provider_of(settings)
@@ -130,9 +145,68 @@ def graph_host(engine: Engine, collection: str | None) -> Any:
         resources=resources,
         resolver=engine._resolver(),
         collection=collection,
-        ocr_factory=engine._pipelines.ocr_client,
     )
-    return replace(graph, host=replace(graph.host, options={"pdf_reader": readers}))
+    options = {"pdf_reader": readers, **engine_option_sets(settings)}
+    return replace(graph, host=replace(graph.host, options=options))
+
+
+class EngineReasons(Mapping[str, str]):
+    """Unprovisioned OCR engines and why, probed under the host workers folder.
+
+    Iteration lists the engine folders and the host engine names that cannot
+    run. A lookup also probes any other name, so admission refuses a node
+    that names an engine with no folder at all.
+    """
+
+    def __init__(self, workers_dir: str, names: list[str]) -> None:
+        """Probe the listed engines now.
+
+        Args:
+            workers_dir: The host ``ocr_workers_dir``.
+            names: The host engine names, listed even without a folder.
+        """
+        from .capabilities import ocr_engine_options
+
+        self._workers_dir = workers_dir
+        self._listed = {
+            o["name"]: o["reason"] for o in ocr_engine_options(workers_dir, names) if o["reason"]
+        }
+
+    def __getitem__(self, name: str) -> str:
+        """Return why engine *name* cannot run; ``KeyError`` when it can."""
+        from .capabilities import ocr_engine_options
+
+        if name in self._listed:
+            return self._listed[name]
+        found = [o for o in ocr_engine_options(self._workers_dir, [name]) if o["name"] == name]
+        if not found or found[0]["reason"] is None:
+            raise KeyError(name)
+        return found[0]["reason"]
+
+    def __iter__(self) -> Iterator[str]:
+        """Iterate over the listed engines that cannot run."""
+        return iter(self._listed)
+
+    def __len__(self) -> int:
+        """Return the number of listed engines that cannot run."""
+        return len(self._listed)
+
+
+def engine_option_sets(settings: Any) -> dict[str, Any]:
+    """Return the host option sets of the two OCR engine settings (design D4).
+
+    The probe runs now, so an engine provisioned after start-up is usable
+    without a restart.
+    """
+    from .core.pipelines import HostOptionSet
+
+    primary, fallback = settings.ocr_engine_primary, settings.ocr_engine_fallback
+    reasons = EngineReasons(settings.ocr_workers_dir, [primary, fallback])
+    remedy = "Choose another engine or Inherit."
+    return {
+        "ocr_engine_primary": HostOptionSet(primary or None, reasons, remedy),
+        "ocr_engine_fallback": HostOptionSet(fallback or None, reasons, remedy),
+    }
 
 
 def install_as_process_default(engine: Engine) -> None:

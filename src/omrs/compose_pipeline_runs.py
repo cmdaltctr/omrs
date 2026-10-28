@@ -1,8 +1,9 @@
 """Per-run planning and result provenance for graph runs on one Engine.
 
 :func:`plan_run` derives the run-scoped resources of an admitted snapshot:
-the ingestion shape, the per-source unit split and the OCR client. Every
-resource is borrowed from the Engine; a run builds and closes nothing.
+the ingestion shape and the per-source unit split. Every resource is
+borrowed from the Engine, the OCR client pool included; a run builds and
+closes nothing.
 :func:`with_provenance` adds node summaries and admitted node controls to
 the result, so a finished run explains each node without its events.
 
@@ -26,7 +27,7 @@ class RunPlan:
     """Run-scoped additions an admitted snapshot needs.
 
     Attributes:
-        resources: Resources derived from this run (ingestion shape, OCR).
+        resources: Resources derived from this run (ingestion shape).
             Every value is borrowed: the run closes nothing.
         units: Per-source unit split for an ingestion graph.
     """
@@ -41,10 +42,10 @@ def plan_run(snapshot: AdmissionSnapshot, catalogue: Any, graph_host: GraphHost)
     An ingestion graph (one with registered ingestion operations) gets:
 
     * its ingestion shape as resource ``ingestion_shape``, computed once;
-    * the per-source unit split on its ``source.discover`` node;
-    * resource ``ocr``: the Engine's composed client, else the Engine's
-      lazily built client when a node's settings enable the OCR fallback.
-      The run borrows it; only ``Engine.close()`` closes it.
+    * the per-source unit split on its ``source.discover`` node.
+
+    Each Read document node asks the Engine's ``ocr`` resource (the OCR
+    client pool) for the routes of its own settings (design D5).
     """
     from .core.ingestion.graph_adapters import (
         DISCOVER,
@@ -62,9 +63,6 @@ def plan_run(snapshot: AdmissionSnapshot, catalogue: Any, graph_host: GraphHost)
     discover = [node.node_id for node in nodes if node.operation == DISCOVER.operation_id]
     if len(discover) == 1:
         plan.units = dataclasses.replace(ingestion_unit_split(), node=discover[0])
-    wants_ocr = next((n.settings for n in nodes if n.settings.ocr_fallback_enabled), None)
-    if "ocr" not in graph_host.resources and wants_ocr is not None and graph_host.ocr_factory:
-        plan.resources["ocr"] = graph_host.ocr_factory(wants_ocr)
     return plan
 
 

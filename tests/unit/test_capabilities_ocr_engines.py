@@ -83,3 +83,20 @@ def test_a_home_relative_folder_is_expanded(
 def test_a_missing_engines_folder_lists_only_the_names(tmp_path: Path) -> None:
     options = ocr_engine_options(str(tmp_path / "nowhere"), ["dots-mocr"])
     assert [(o["name"], o["available"]) for o in options] == [("dots-mocr", False)]
+
+
+@POSIX_ONLY
+def test_a_licence_engine_names_the_licence_flag(tmp_path: Path) -> None:
+    folder = tmp_path / "engines" / "dots-mocr"
+    folder.mkdir(parents=True)
+    (folder / "pyproject.toml").write_text(
+        '[tool.omrs-ocr]\nrequires-acceptance = true\nlicence-file = "LICENCE-NOTES.md"\n',
+        encoding="utf-8",
+    )
+
+    [option] = ocr_engine_options(str(tmp_path), [])
+
+    assert option["reason"] == (
+        "Not provisioned. Read LICENCE-NOTES.md in the engine folder, then run "
+        "python3 ocr-workers/provision.py dots-mocr --accept-model-licence."
+    )

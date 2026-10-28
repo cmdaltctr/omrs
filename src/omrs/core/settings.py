@@ -331,13 +331,9 @@ class EffectiveSettings(BaseModel):
 
     # ── OCR worker operation (design D2.1) ────────────────────────
     # Operational settings, deliberately separate from the calibrated
-    # routing gate above (task 2.6b): command, environment location
-    # and request timeout describe HOW to reach the worker, while the
-    # gate describes WHICH PDFs deserve it. An empty command means the
-    # worker is unavailable — a stable fingerprint, never a hardcoded
-    # machine-specific path.
-    ocr_worker_command: str = ""
-    ocr_worker_env_dir: str = ""
+    # routing gate above (task 2.6b): the request timeout describes HOW
+    # to reach the worker, while the gate describes WHICH PDFs deserve it.
+    # Routes resolve from the workers folder and engine names only.
     ocr_worker_request_timeout: float = Field(default=300.0, gt=0)
 
     # ── OCR engine routes and maths routing (modular-ocr-workers-dots-mocr) ──

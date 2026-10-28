@@ -250,8 +250,7 @@ class _Checker:
             self.add(
                 IssueCode.OPTION_UNAVAILABLE,
                 f"Setting '{param}' selects '{value}', which this host cannot use: "
-                f"{option_set.unavailable[value]} Install the package and restart OMRS, "
-                "or choose another value or Inherit.",
+                f"{option_set.unavailable[value]} {option_set.remedy}",
                 node_id=node_id,
             )
 

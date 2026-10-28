@@ -467,6 +467,7 @@ def ocr_engine_options(workers_dir: str, names: Iterable[str]) -> list[dict[str,
         ``{"name", "available", "reason"}`` per engine. ``reason`` is ``None``
         when the engine can run.
     """
+    from .integrations.ocr_worker.manifest import not_provisioned_reason
     from .integrations.ocr_worker.routes import _ENGINE_NAME_RE, resolve_engine_command
 
     root = workers_dir.strip()
@@ -487,6 +488,6 @@ def ocr_engine_options(workers_dir: str, names: Iterable[str]) -> list[dict[str,
         elif resolve_engine_command(name, root).command:
             reason = None
         else:
-            reason = f"Not provisioned. Run python3 ocr-workers/provision.py {name}."
+            reason = not_provisioned_reason(engines / name, name)
         options.append({"name": name, "available": reason is None, "reason": reason})
     return options

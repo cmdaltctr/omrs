@@ -34,6 +34,7 @@ installed.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import os
 import re
 import shutil
@@ -48,6 +49,11 @@ SUPPORTED_RANGE_TEXT = ">=3.11,<3.14"
 
 WORKERS_DIR = Path(__file__).resolve().parent
 ENGINES_DIR = WORKERS_DIR / "engines"
+
+#: The shared ``[tool.omrs-ocr]`` reader (also used by the Integrations probe).
+MANIFEST_HELPER = (
+    WORKERS_DIR.parent / "src" / "omrs" / "integrations" / "ocr_worker" / "manifest.py"
+)
 
 #: The console script an engine may ship to fetch weights and patch them.
 FETCH_SCRIPT = "omrs-ocr-fetch"
@@ -134,58 +140,24 @@ def engine_dir(name: str) -> Path:
     return folder
 
 
-def engine_manifest(folder: Path) -> dict[str, Any]:
-    """Return the engine's parsed ``pyproject.toml``.
+def _load_manifest_helper() -> Any:
+    """Load the shared manifest reader from the checkout by its file path.
 
-    ``tomllib`` exists from Python 3.11. The operator may run this script
-    with an older system ``python3``, so a minimal reader covers the
-    few flat tables provisioning needs.
+    The operator runs this script without OMRS installed, so it cannot
+    import the package. The helper is standard-library only.
     """
-    text = (folder / "pyproject.toml").read_text(encoding="utf-8")
-    try:
-        import tomllib
-    except ModuleNotFoundError:
-        return _minimal_toml(text)
-    return tomllib.loads(text)
+    spec = importlib.util.spec_from_file_location("omrs_ocr_manifest", MANIFEST_HELPER)
+    if spec is None or spec.loader is None:  # pragma: no cover - file ships with the checkout
+        raise ImportError(f"cannot load {MANIFEST_HELPER}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
-_TABLE_RE = re.compile(r"^\[([^\[\]]+)\]\s*$")
-_PAIR_RE = re.compile(r'^("?)([A-Za-z0-9_.-]+)\1\s*=\s*(.+?)\s*$')
-
-
-def _minimal_toml(text: str) -> dict[str, Any]:
-    """Read flat ``key = "string" | true | false`` pairs, grouped by table.
-
-    Only what provisioning reads: ``[tool.omrs-ocr]`` and
-    ``[project.scripts]``. Arrays and inline tables are skipped.
-    """
-    data: dict[str, Any] = {}
-    table: dict[str, Any] = data
-    for raw in text.splitlines():
-        line = raw.split(" #", 1)[0].strip()
-        if not line or line.startswith("#"):
-            continue
-        header = _TABLE_RE.match(line)
-        if header:
-            table = data
-            for part in (p.strip().strip('"') for p in header.group(1).split(".")):
-                table = table.setdefault(part, {})
-            continue
-        pair = _PAIR_RE.match(line)
-        if not pair:
-            continue
-        value = pair.group(3)
-        if value in ("true", "false"):
-            table[pair.group(2)] = value == "true"
-        elif len(value) >= 2 and value[0] == value[-1] == '"':
-            table[pair.group(2)] = value[1:-1]
-    return data
-
-
-def licence_gate(manifest: dict[str, Any]) -> tuple[bool, str | None]:
-    """Return ``(requires acceptance, licence file)`` from ``[tool.omrs-ocr]``."""
-    config = manifest.get("tool", {}).get("omrs-ocr", {})
-    return bool(config.get("requires-acceptance", False)), config.get("licence-file")
+_manifest = _load_manifest_helper()
+engine_manifest = _manifest.engine_manifest
+_minimal_toml = _manifest.minimal_toml
+licence_gate = _manifest.licence_gate
 
 
 def has_fetch_script(manifest: dict[str, Any]) -> bool:

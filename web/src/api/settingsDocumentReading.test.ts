@@ -3,7 +3,7 @@ import { createApiClient } from "./client";
 import { DOCUMENT_READING_KEYS, getDocumentReadingSettings, saveDocumentReadingSettings } from "./settingsDocumentReading";
 import { documentsServer } from "../test/fakeDocumentsServer";
 
-const STATE = { status: "ok", revision: "r1", settings: [], pdf_readers: [], pdf_reader_in_use: "pypdf", ocr: { workers_dir: null, worker_command_set: false, engines: [] } };
+const STATE = { status: "ok", revision: "r1", settings: [], pdf_readers: [], pdf_reader_in_use: "pypdf", ocr: { workers_dir: null, engines: [] } };
 
 function setup(handlers: Parameters<typeof documentsServer>[0]) {
   const server = documentsServer(handlers);
