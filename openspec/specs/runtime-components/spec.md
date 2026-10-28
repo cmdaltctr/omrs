@@ -37,11 +37,11 @@ A runtime probe SHALL NOT download a file, install a package, start a process or
 
 ### Requirement: OCR engine items follow the route rules
 
-The OCR engine list SHALL hold every valid folder under `<ocr_workers_dir>/engines/`, the engines in force and the local OCR tier. An engine SHALL be `ready` only when the parsing route resolver finds its interpreter. Without a workers folder, a worker engine SHALL be `not-configured`. An engine that is not provisioned SHALL be `missing`, with its provision command as the fix.
+The OCR engine list SHALL hold every valid folder under `<ocr_workers_dir>/engines/`, the engines in force and the local OCR tier. An engine SHALL be `ready` only when the parsing route resolver finds its interpreter. Without a workers folder, a worker engine SHALL be `not-configured`. An engine folder without `.venv` SHALL be `missing`, with its provision command as the fix.
 
 #### Scenario: Workers folder not set
 
-- **WHEN** `ocr_workers_dir` is empty and `ocr_engine_primary` is `dots-mocr`
+- **WHEN** `ocr_workers_dir` is empty, `ocr_fallback_enabled` is true and `ocr_engine_primary` is `dots-mocr`
 - **THEN** the `dots-mocr` item MUST be `not-configured` and its `used_by` MUST hold `ocr_engine_primary`
 
 #### Scenario: Engine needs a licence
@@ -61,9 +61,19 @@ The OCR engine list SHALL hold every valid folder under `<ocr_workers_dir>/engin
 - **WHEN** `<ocr_workers_dir>/engines/paddleocr-vl/.venv/bin/python` exists
 - **THEN** the `paddleocr-vl` item MUST be `ready`
 
+#### Scenario: Engine name without a folder
+
+- **WHEN** `ocr_engine_primary` names an engine that has no folder under `<ocr_workers_dir>/engines/`
+- **THEN** the item MUST be `missing` with no fix command
+
+#### Scenario: OCR fallback off
+
+- **WHEN** `ocr_fallback_enabled` is false
+- **THEN** every engine item MUST have an empty `used_by`
+
 ### Requirement: Model file items check the local cache only
 
-The model file list SHALL hold the chunking tokenizer at its pinned revision, the reranker model and the local OCR tier model. An item SHALL be `ready` when it loads from the local cache without the network, and `missing` otherwise. A `missing` item SHALL give a fix command that fetches the file at the pinned revision.
+The model file list SHALL hold the chunking tokenizer at its pinned revision, the reranker model and the local OCR tier model. An item SHALL be `ready` when it loads from the local cache without the network, and `missing` otherwise. A `missing` item SHALL give a fix command that fetches the file at the pinned revision. When the tokenizer model or revision is blank, the tokenizer item SHALL be `not-configured`, because Markdown chunking then uses the legacy splitter on purpose.
 
 #### Scenario: Tokenizer missing
 
@@ -73,7 +83,7 @@ The model file list SHALL hold the chunking tokenizer at its pinned revision, th
 
 ### Requirement: Local server items probe the configured address
 
-The local server list SHALL hold Ollama at `ollama_base_url` and llama.cpp at `llamacpp_embed_url` and `llamacpp_chat_url`. An item SHALL be `ready` when its health request succeeds, and `not-running` when it fails. An item that no setting in force uses SHALL still be listed, with an empty `used_by`. The response SHALL show an address with the home folder as `~` and SHALL NOT show credentials in an address.
+The local server list SHALL hold Ollama at `ollama_base_url` and llama.cpp at `llamacpp_embed_url` and `llamacpp_chat_url`. An item SHALL be `ready` when its health request succeeds, and `not-running` when it fails. An item that no setting in force uses SHALL still be listed, with an empty `used_by`. The response SHALL NOT show a user name or password from an address.
 
 #### Scenario: Ollama running and used
 

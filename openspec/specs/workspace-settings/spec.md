@@ -629,5 +629,5 @@ The only provider request outside a test or a model list SHALL be the local serv
 #### Scenario: Integrations page probes only local servers
 
 - **WHEN** the user opens the Integrations page
-- **THEN** the server MAY send one health request without a key to each configured Ollama and llama.cpp address
+- **THEN** the server MUST send one health request without a key to each configured Ollama and llama.cpp address
 - **AND** the server MUST NOT send a model-list or key-check request to any provider

@@ -283,7 +283,7 @@ The server SHALL refuse with 409 and a `reason`: `not-installed` when no marimo 
 
 ### Requirement: The page shows runtime components in three groups
 
-Below the integration cards, the Integrations page SHALL show the groups "OCR engines", "Model files" and "Local servers". Each row SHALL show the name, purpose, status text with a badge, reason, the settings that use it and its copy command. A row that is not `ready` and that a setting in force uses SHALL show its status in red.
+Below the integration cards, the Integrations page SHALL show the groups "OCR engines", "Model files" and "Local servers". Each row SHALL show the name, purpose, status text with a badge, and the settings that use it. A row SHALL show its reason and its copy command only when the server sends them (not `null`). A row that is not `ready` and that a setting in force uses SHALL show its status in red.
 
 #### Scenario: Engine not provisioned
 
@@ -317,7 +317,7 @@ The OCR engines group SHALL show the OCR workers folder in force and a field to 
 
 ### Requirement: Provider cards report readiness
 
-The llama.cpp and OpenRouter cards SHALL keep the "Base default" badge. Each SHALL also show one readiness line. For llama.cpp, the line SHALL be "Ready" when the configured llama.cpp addresses that settings use answer, and "Not running at <address>" otherwise. For OpenRouter, the line SHALL be "Ready" when a key reference for OpenRouter is set, and "No key set" otherwise. A card SHALL NOT show "Ready" from a module check alone.
+The llama.cpp and OpenRouter cards SHALL keep the "Base default" badge. Each SHALL also show one readiness line. For llama.cpp, the line SHALL be "Ready" when the configured llama.cpp addresses that settings use answer, and "Not running at <address>" otherwise. For OpenRouter, the line SHALL be "Ready" when an OpenRouter key is set from any source, and "No key set" otherwise. A card SHALL NOT show "Ready" from a module check alone.
 
 #### Scenario: llama.cpp not running
 
@@ -327,5 +327,5 @@ The llama.cpp and OpenRouter cards SHALL keep the "Base default" badge. Each SHA
 
 #### Scenario: OpenRouter without a key
 
-- **WHEN** no OpenRouter key reference is set
+- **WHEN** no OpenRouter key is set from any source
 - **THEN** the OpenRouter card MUST show "No key set"
