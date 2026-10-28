@@ -40,7 +40,7 @@ export function WorkersFolderField() {
   }
 
   return (
-    <div className="mb-3 flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1.5">
       <SettingRow
         label={LABEL}
         value={typeof row.value === "string" ? row.value : ""}

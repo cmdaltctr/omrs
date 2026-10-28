@@ -114,6 +114,23 @@ describe("Runtime groups", () => {
     expect(badge).not.toHaveClass("text-status-error-label");
   });
 
+  it("lays each group out like the integration cards: one card per part, in masonry columns", async () => {
+    startApp("#/integrations", serve());
+    const engines = await group("OCR engines");
+    // The group is a heading and a card area, not a card that holds cards.
+    expect(engines).not.toHaveAttribute("data-slot", "card");
+    expect(engines.closest("[data-slot=card]")).toBeNull();
+    const masonry = within(engines).getByTestId("masonry");
+    for (const name of ["dots-mocr", "paddleocr-vl"]) {
+      const card = await row("OCR engines", name);
+      expect(card.querySelector("[data-slot=card]") ?? card).toHaveAttribute("data-slot", "card");
+      expect(masonry).toContainElement(card);
+    }
+    // The workers folder sits in a card of its own in the same columns.
+    const folder = await within(engines).findByText("OCR workers folder");
+    expect(masonry).toContainElement(folder.closest("[data-slot=card]") as HTMLElement);
+  });
+
   it("says when a group is empty", async () => {
     startApp("#/integrations", serve());
     expect(await group("Model files")).toHaveTextContent("Nothing to show in this group.");
