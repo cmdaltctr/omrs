@@ -31,6 +31,11 @@ The baseline SHALL be the `documents` profile defaults with local Qwen3-Embeddin
 - **WHEN** an arm differs from the baseline in more than one component
 - **THEN** it SHALL NOT be reported as an ablation of either component
 
+#### Scenario: Token-aware chunking silently falls back
+
+- **WHEN** an arm other than token-aware chunking off resolves to the legacy splitter because the tokenizer is not cached
+- **THEN** the run SHALL stop before embedding and name the tokenizer model and revision
+
 #### Scenario: The chunking arm changes no chunk
 - **WHEN** token-aware chunking off gives the same chunks as the baseline on a dataset
 - **THEN** that cell SHALL be reported as not applicable and SHALL NOT be run

@@ -15,14 +15,15 @@
 - [ ] 2.2 Copy the 6 files of Experiment 3 `corpus/` and Experiment 2 `ground-truth.json` into the new folder. Verify: `shasum -a 256` of each copy equals its source.
 - [ ] 2.3 Download the FinanceBench open sample into `output/`. Apply the D1 selection rule and record the 5 PDFs, their SHA-256, page counts and question IDs. Verify: the 5 files are gitignored (`git check-ignore`), and each has 200 pages or fewer.
 - [ ] 2.3a Download the `enelpol/rag-mini-bioasq` test-split corpus at a pinned revision into `~/Development/DATA/omrs/`, and record the revision and SHA-256. Locate the FreshStack corpus and record its ID-list hash. Verify: the BioASQ corpus loads about 40.2K passages, and FreshStack 10,024 documents.
+- [x] 2.4a Cache `tokenizer.json` of `Qwen/Qwen3-Embedding-4B` at the pinned `embedding.tokenizer_revision` (`5cf2132a`), the tokenizer of token-aware chunking. Verify: SHA-256 equals the Hub hash, and `load_tokenizer` loads it offline. Done 2026-10-28: hash recorded in `~/Development/DATA/omrs/benchmarks/GGUF_MANIFEST.json`.
 - [ ] 2.4 Download the four GGUF files (D2) and record their SHA-256. Read the build from `GET /props` of the installed `llama serve`. Verify: the build is b11510 or later.
 - [ ] 2.5 Write `protocol.md` (question, null, decision rule, the fixed set with hashes, the exit table of D5) and `plan.json` with the full `runtime` block: four models, no hosted reference, and tolerances for `hit_at_1` and `mrr`. Verify: `uv run --no-sync omrs experiments check` reports no error for the folder.
 - [ ] 2.6 Commit `protocol.md` and `plan.json` before the first run. Verify: `git log -1 -- <folder>/plan.json` shows the commit.
 
 ## 3. Part A runner (design D4)
 
-- [ ] 3.1 Write tests first for the runner's pure parts in the experiment folder: the input-hash check stops on a changed file and names both hashes; the FinanceBench page conversion maps `evidence_page_num` 0 to page 1; the determinism comparison reports the question, mode and both rankings on a difference. Verify: the tests fail before the code exists.
-- [ ] 3.2 Write the Part A runner: hash check, live-server check of the router, `record_run_start` with `found.as_run_record()`, ingest, three search modes, answers with claim checking off and on, and one JSONL file per step in `output/`. Use a scratch `OMRS_CONFIG_DIR` inside `output/`. Verify: 3.1 tests pass, and `--limit 1` runs one document and one question with no error.
+- [ ] 3.1 Write tests first for the runner's pure parts in the experiment folder: the input-hash check stops on a changed file and names both hashes; the FinanceBench page conversion maps `evidence_page_num` 0 to page 1; the determinism comparison reports the question, mode and both rankings on a difference; the chunking guard stops when `resolve_markdown_chunking` gives `legacy_fallback` and names the tokenizer model and revision. Verify: the tests fail before the code exists.
+- [ ] 3.2 Write the Part A runner: hash check, chunking guard (stop unless the splitter resolves to `model_token_aware`), live-server check of the router, `record_run_start` with `found.as_run_record()`, ingest, three search modes, answers with claim checking off and on, and one JSONL file per step in `output/`. Use a scratch `OMRS_CONFIG_DIR` inside `output/`. Verify: 3.1 tests pass, and `--limit 1` runs one document and one question with no error.
 - [ ] 3.3 Write the determinism repeat as a separate process on the same index. Verify: run twice on the `--limit 1` index gives identical output.
 - [ ] 3.4 Write the comparison-arm step: dense index of the 6 Experiment 3 documents with 0.6B and 8B, 17 questions, reranker off. Verify: `--limit 1` writes one row per model.
 
@@ -32,7 +33,7 @@
 
 - [ ] 4.1 Write tests first for the extrapolation: tokens divided by tokens per second gives hours; the FinanceBench estimate uses tokens per page times total pages; a missing count raises an error that names the corpus. Verify: the tests fail before the code exists.
 - [ ] 4.2 Write the timing runner: one model loaded at a time in the router, live-server check with a plan block for that model, one run record per model, one warm-up batch, then the three slices of D6 (FreshStack, BioASQ, FinanceBench chunks). Record wall time, `usage.prompt_tokens` and peak resident memory sampled every 0.5 s. Verify: a 5-document dry run writes one row per model and slice.
-- [ ] 4.3 Write the token count step for FreshStack and BioASQ (chunk, then `/tokenize`, no embedding) and the FinanceBench page count. Verify: the FreshStack count covers 10,024 documents and the BioASQ count covers every passage in the test split corpus.
+- [ ] 4.3 Write the token count step for FreshStack and BioASQ (chunk with the 3.1 chunking guard, then `/tokenize`, no embedding) and the FinanceBench page count. Verify: the FreshStack count covers 10,024 documents and the BioASQ count covers every passage in the test split corpus.
 
 ## 5. Run (heavy: tell the user before each server starts)
 

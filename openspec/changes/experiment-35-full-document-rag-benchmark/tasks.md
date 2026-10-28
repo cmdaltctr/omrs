@@ -12,7 +12,7 @@
 - [ ] 1.6 Export the FreshStack LangChain slice with `prepare_freshstack.py` (seed 20260530). Record the corpus and qrels hashes. Verify: 223 queries and about 10,024 parent documents load.
 - [ ] 1.7 Download BioASQ `enelpol/rag-mini-bioasq` (test split). Record the revision and hashes. If 1.4 shows it does not fit, define a question-type subset. Verify: 707 questions (or the frozen subset) load with gold passage IDs.
 - [ ] 1.8 If BioASQ cannot be used, check the NFCorpus academic-use terms before use. Verify: the protocol records the terms check, or records that the fallback is not used.
-- [ ] 1.9 For each dataset, check which documents route through the Markdown splitter. Mark the chunking arm "not applicable" where it changes no chunk. Verify: the protocol lists the chunking arm state per dataset.
+- [ ] 1.9 For each dataset, check which documents route through the Markdown splitter. Mark the chunking arm "not applicable" where it changes no chunk. Reuse the trial run's chunking guard: every arm except token-aware chunking off stops unless the splitter resolves to `model_token_aware`. Verify: the protocol lists the chunking arm state per dataset, and the guard test fails on an uncached tokenizer.
 - [ ] 1.10 Choose the answer model and the Ragas judge model, through llama.cpp when possible. Record the agreement measure for the 50-item hand check. Verify: the protocol names both models and the agreement measure.
 - [ ] 1.11 Define the wall-time, memory and paid-provider budget. Verify: the protocol states each limit with a number.
 

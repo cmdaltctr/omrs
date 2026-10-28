@@ -48,6 +48,12 @@ One sweep run SHALL ingest the fixed set (reader, OCR routing, normalisation), c
 - **THEN** the output records the stage, the item and the error message
 - **AND** the sweep verdict is `FAIL`
 
+#### Scenario: Token-aware chunking falls back to the legacy splitter
+
+- **WHEN** the configured tokenizer is not cached and chunking resolves to the legacy splitter
+- **THEN** the run stops before the first document is embedded
+- **AND** the output names the tokenizer model and revision
+
 ### Requirement: The sweep SHALL compare scores with earlier Ollama numbers where they exist
 
 The report SHALL give Hit@1 and MRR on the 17 questions for dense search beside the Experiment 2 Ollama numbers, and Hit@1 with the reranker beside Experiment 3. The plan SHALL state the allowed difference before the first run. For a stage or set with no earlier comparable number, the report SHALL say that no comparison exists.
