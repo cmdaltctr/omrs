@@ -1,6 +1,7 @@
 import type { ExternalTool, ToolAvailability } from "../api/integrations";
 import { Badge } from "../components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "../components/ui/card";
+import { CardTitleRow } from "./CardTitleRow";
 import { formatRoute } from "../lib/routes";
 import { CopyCommand } from "./CopyCommand";
 import { InstallCaution, integrationCardId } from "./IntegrationCard";
@@ -79,10 +80,9 @@ export function ToolCard({ tool, control }: { tool: ExternalTool; control: Insta
   return (
     <Card id={integrationCardId(tool.id)} tabIndex={-1} className="scroll-mt-4">
       <CardHeader>
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <CardTitle className="min-w-0 break-words">{tool.name}</CardTitle>
+        <CardTitleRow title={tool.name}>
           <Badge variant={status.variant}>{status.label}</Badge>
-        </div>
+        </CardTitleRow>
         <CardDescription>{tool.purpose}</CardDescription>
       </CardHeader>
       <CardContent>

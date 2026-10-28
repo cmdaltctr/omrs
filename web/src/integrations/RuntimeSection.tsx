@@ -1,10 +1,11 @@
-import type { ReactNode } from "react";
 import type { RuntimeComponents, RuntimeItem, RuntimeStatus } from "../api/integrations";
 import { Badge } from "../components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardInset, CardTitle } from "../components/ui/card";
+import { CardTitleRow } from "./CardTitleRow";
 import { MasonryColumns } from "../components/MasonryColumns";
 import { CopyCommand } from "./CopyCommand";
-import { needsAttention, RUNTIME_FIELDS, SECTION_LABELS, type RuntimeSection } from "./sections";
+import { needsAttention, RUNTIME_FIELDS, SECTION_LABELS, type RuntimeSection as Section } from "./sections";
+import { SectionFrame } from "./SectionFrame";
 import { WorkersFolderField } from "./WorkersFolderField";
 
 const LABELS: Record<RuntimeStatus, string> = {
@@ -26,10 +27,9 @@ function RuntimeCard({ item }: { item: RuntimeItem }) {
   return (
     <Card role="listitem" className="min-w-0">
       <CardHeader>
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <CardTitle className="min-w-0 [overflow-wrap:anywhere]">{item.name}</CardTitle>
+        <CardTitleRow title={item.name}>
           <Badge variant={variant(item)}>{LABELS[item.status]}</Badge>
-        </div>
+        </CardTitleRow>
         <CardDescription>{item.purpose}</CardDescription>
       </CardHeader>
       <CardContent>
@@ -59,7 +59,7 @@ function RuntimeCard({ item }: { item: RuntimeItem }) {
   );
 }
 
-const SUMMARIES: Record<RuntimeSection, string> = {
+const SUMMARIES: Record<Section, string> = {
   "ocr-engines": "Engines that read PDF pages without a usable text layer.",
   "model-files": "Model files read from the local cache.",
   "local-servers": "Servers at the configured addresses.",
@@ -68,9 +68,14 @@ const SUMMARIES: Record<RuntimeSection, string> = {
 /** These parts are not pip extras. Said once under each runtime section heading. */
 const CHECKED = "The server checks these parts when the page loads and changes nothing.";
 
+/**
+ * The workers folder is a setting for the whole section, not one of its
+ * parts, so it sits above the part cards. In the masonry, a tall settings card
+ * pushed the engines out of their order.
+ */
 function WorkersFolderCard() {
   return (
-    <Card>
+    <Card className="max-w-xl">
       <CardHeader>
         <CardTitle>Where the engines live</CardTitle>
         <CardDescription>The folder that holds the engines. The server checks it when you save.</CardDescription>
@@ -87,35 +92,23 @@ function WorkersFolderCard() {
  * and summary over masonry columns of cards, one card per part. The page only
  * shows them; each fix is a copy command.
  */
-export function RuntimeGroup({ section, runtime }: { section: RuntimeSection; runtime: RuntimeComponents }) {
+export function RuntimeSection({ section, runtime }: { section: Section; runtime: RuntimeComponents }) {
   const title = SECTION_LABELS[section];
   const items: RuntimeItem[] = runtime[RUNTIME_FIELDS[section]];
-  const lead: ReactNode = section === "ocr-engines" ? <WorkersFolderCard /> : null;
-  const id = `integrations-${section}`;
   return (
-    <section role="region" aria-labelledby={id} className="flex flex-col gap-3">
-      <div>
-        <h2 id={id} className="text-section-title font-semibold">
-          {title}
-        </h2>
-        <p className="text-meta text-muted-foreground">{`${SUMMARIES[section]} ${CHECKED}`}</p>
-      </div>
-      {items.length === 0 && lead === null ? (
+    <SectionFrame id={`integrations-${section}`} title={title} lines={[`${SUMMARIES[section]} ${CHECKED}`]}>
+      {section === "ocr-engines" ? <WorkersFolderCard /> : null}
+      {items.length === 0 ? (
         <p className="text-meta text-muted-foreground">Nothing to show in this group.</p>
       ) : (
         <div role="list" aria-label={title}>
           <MasonryColumns>
-            {lead !== null ? (
-              <div key="lead" role="listitem" className="min-w-0">
-                {lead}
-              </div>
-            ) : null}
             {items.map((item) => (
               <RuntimeCard key={item.name} item={item} />
             ))}
           </MasonryColumns>
         </div>
       )}
-    </section>
+    </SectionFrame>
   );
 }

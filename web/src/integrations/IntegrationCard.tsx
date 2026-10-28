@@ -1,6 +1,7 @@
 import { TriangleAlert } from "lucide-react";
 import { Badge } from "../components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "../components/ui/card";
+import { CardTitleRow } from "./CardTitleRow";
 import type { Integration, IntegrationAvailability, InstallType } from "../api/integrations";
 import { CopyCommand } from "./CopyCommand";
 import { InstallControls, installPhase } from "./InstallControls";
@@ -50,14 +51,11 @@ export function IntegrationCard({ integration, installType, control }: Integrati
   return (
     <Card id={integrationCardId(integration.id)} tabIndex={-1} className="scroll-mt-4">
       <CardHeader>
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <CardTitle className="min-w-0 break-words">{integration.name}</CardTitle>
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Badge variant={status.variant}>{status.label}</Badge>
-            {/* Every install already holds a base entry, so nobody installs it twice. */}
-            {integration.base ? <Badge variant="neutral">Base default</Badge> : null}
-          </div>
-        </div>
+        <CardTitleRow title={integration.name}>
+          <Badge variant={status.variant}>{status.label}</Badge>
+          {/* Every install already holds a base entry, so nobody installs it twice. */}
+          {integration.base ? <Badge variant="neutral">Base default</Badge> : null}
+        </CardTitleRow>
         <CardDescription>{integration.purpose}</CardDescription>
         {integration.readiness !== undefined ? (
           // A module check alone never says "Ready": the server checks the address or the key reference.

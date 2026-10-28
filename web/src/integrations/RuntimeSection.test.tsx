@@ -126,9 +126,26 @@ describe("Runtime groups", () => {
       expect(card.querySelector("[data-slot=card]") ?? card).toHaveAttribute("data-slot", "card");
       expect(masonry).toContainElement(card);
     }
-    // The workers folder sits in a card of its own in the same columns.
-    const folder = await within(engines).findByText("OCR workers folder");
-    expect(masonry).toContainElement(folder.closest("[data-slot=card]") as HTMLElement);
+  });
+
+  it("sets the workers folder in its own card above the engines, so the engines keep their order", async () => {
+    startApp("#/integrations/ocr-engines", serve());
+    const engines = await group("OCR engines");
+    const masonry = within(engines).getByTestId("masonry");
+    const folder = (await within(engines).findByText("OCR workers folder")).closest("[data-slot=card]") as HTMLElement;
+    expect(folder).not.toBeNull();
+    expect(masonry).not.toContainElement(folder);
+    expect(folder.compareDocumentPosition(masonry) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const parts = within(masonry).getAllByRole("listitem");
+    expect(parts.map((part) => within(part).getByRole("heading").textContent)).toEqual(["dots-mocr", "paddleocr-vl"]);
+  });
+
+  it("keeps the status badge beside the title, so a long title wraps instead of the badge", async () => {
+    startApp("#/integrations/ocr-engines", serve());
+    const dots = await row("OCR engines", "dots-mocr");
+    const titleRow = within(dots).getByRole("heading", { name: "dots-mocr" }).parentElement as HTMLElement;
+    expect(titleRow).toHaveAttribute("data-slot", "card-title-row");
+    expect(within(titleRow).getByText("Missing", { selector: "[data-slot=badge]" })).toBeInTheDocument();
   });
 
   it("says when a group is empty", async () => {
