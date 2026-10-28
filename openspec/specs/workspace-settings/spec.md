@@ -102,7 +102,7 @@ Each provider card SHALL offer a Test action that calls `POST /v1/connections/{p
 
 ### Requirement: A connection test sends one bounded request and returns a fixed reason
 
-The server SHALL send one model-list or key-check request for each address with a 5-second timeout, and return whether the provider was reachable and a reason from a fixed set (`refused`, `timeout`, `unauthorised`, `http-<status>`, `not-configured`). The server SHALL NOT return response bodies or exception text, SHALL NOT log a typed key, and SHALL NOT contact any provider unless a test or a model list is requested.
+The server SHALL send one model-list or key-check request for each address with a 5-second timeout, and return whether the provider was reachable and a reason from a fixed set (`refused`, `timeout`, `unauthorised`, `http-<status>`, `not-configured`). The server SHALL NOT return response bodies or exception text, SHALL NOT log a typed key, and SHALL NOT send a model-list or key-check request to any provider unless a test or a model list is requested.
 
 #### Scenario: Local provider down
 
@@ -113,6 +113,7 @@ The server SHALL send one model-list or key-check request for each address with 
 
 - **WHEN** the user opens Providers or Chat and presses no Test or List models action
 - **THEN** the server MUST NOT send any request to OpenRouter
+
 
 ### Requirement: The server log streams redacted lines
 
@@ -488,20 +489,6 @@ A key set in the environment or `.env` SHALL be read-only and SHALL show "Remove
 - **WHEN** `OCR_ROUTING_UNIT=page` is set in `.env`
 - **THEN** the routing unit row MUST offer no Edit and MUST show "Remove OCR_ROUTING_UNIT from the environment or .env to edit it here."
 
-### Requirement: Document reading marks readers and engines that are not ready
-
-The PDF reader choice SHALL mark each reader that is not installed and SHALL NOT let the user choose it. The engine choices SHALL list the engines the server reports and SHALL mark each engine that is not provisioned, with the reason. When `OCR_WORKER_COMMAND` is set, the section SHALL say that it replaces the primary engine.
-
-#### Scenario: Reader not installed
-
-- **WHEN** the server reports `pypdfium2` as not installed
-- **THEN** the PDF reader choice MUST show `pypdfium2` as not available with the reason and MUST NOT allow it to be selected
-
-#### Scenario: Worker command overrides the primary engine
-
-- **WHEN** `OCR_WORKER_COMMAND` is set
-- **THEN** the primary engine row MUST say that `OCR_WORKER_COMMAND` replaces the primary engine
-
 ### Requirement: Document reading saves to omrs.jsonc for the next launch
 
 A save in the Document reading section SHALL write the changed keys into `omrs.jsonc` with the file revision the page last read. A save SHALL NOT change the value in force. After a save that leaves a key waiting for a restart, the page SHALL offer the restart dialog and SHALL repeat the index identity note. "Use default" on a row SHALL remove the key from the file. A refused save SHALL show the server message and SHALL leave the row unchanged.
@@ -523,12 +510,13 @@ A save in the Document reading section SHALL write the changed keys into `omrs.j
 
 ### Requirement: Document reading routes
 
-`GET /v1/settings/document-reading` SHALL need the read scope. It SHALL return the file `revision`, one entry for each of the nine keys in a fixed order (with the value in force, the saved value, the source, whether it is locked, the lock reason, whether a restart is pending, and the default), every PDF reader with its availability, the reader in use, and the OCR workers folder, whether `OCR_WORKER_COMMAND` is set, and each known engine with its availability.
+`GET /v1/settings/document-reading` SHALL need the read scope. It SHALL return the file `revision`, one entry for each of the nine keys in a fixed order (with the value in force, the saved value, the source, whether it is locked, the lock reason, whether a restart is pending, and the default), every PDF reader with its availability, the reader in use, the OCR workers folder, and each known engine with its availability.
 
 #### Scenario: Read the section
 
 - **WHEN** a session with the read scope sends `GET /v1/settings/document-reading`
 - **THEN** the answer MUST be 200 and MUST hold nine `settings` entries, `pdf_readers` starting with `auto`, and `ocr.engines`
+- **AND** `ocr` MUST NOT hold `worker_command_set`
 
 ### Requirement: The document reading save writes all values or none
 
@@ -619,3 +607,27 @@ The block SHALL state that the judge runs only for collections whose profile tur
 - **WHEN** the selected judge provider is cloud
 - **THEN** the block MUST state that claims and cited passages are sent off this machine
 - **AND** the block MUST state that the judge runs only for collections whose profile turns on "Check claims", and that a profile that sets its own judge overrides this choice
+
+### Requirement: Document reading marks readers and engines that cannot run
+
+The PDF reader choice SHALL mark each reader that is not installed and SHALL NOT let the user choose it. The engine choices SHALL list the engines the server reports and SHALL mark each engine that is not provisioned, with the reason.
+
+#### Scenario: Reader not installed
+
+- **WHEN** the server reports `pypdfium2` as not installed
+- **THEN** the PDF reader choice MUST show `pypdfium2` as not available with the reason and MUST NOT allow it to be selected
+
+#### Scenario: Engine not provisioned
+
+- **WHEN** the server reports `dots-mocr` as not provisioned
+- **THEN** the engine choices MUST mark `dots-mocr` as not available and MUST show the reason with its provision command
+
+### Requirement: The Integrations page probes only local servers
+
+The only provider request outside a test or a model list SHALL be the local server health probe of `GET /v1/integrations` (spec `runtime-components`). It SHALL send one request without a key to each configured Ollama and llama.cpp address, with a timeout of 1 second or less. The server SHALL NOT contact a cloud provider for it.
+
+#### Scenario: Integrations page probes only local servers
+
+- **WHEN** the user opens the Integrations page
+- **THEN** the server MAY send one health request without a key to each configured Ollama and llama.cpp address
+- **AND** the server MUST NOT send a model-list or key-check request to any provider
