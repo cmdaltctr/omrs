@@ -17,6 +17,7 @@ OCR settings are also server-wide only. A user profile can choose its PDF reader
 - **BREAKING (spec):** the Read document step of a user-profile pipeline gets the eight OCR document-reading settings: OCR fallback on or off, both confidence and page-fraction thresholds, the routing unit, primary and fallback engine, and maths routing with its page fraction. An empty value uses the server setting. This replaces the rule that a step "SHALL NOT add an OCR route … or change an OCR setting".
 - A step OCR setting enters the source's index identity, as the step reader does. A changed step OCR setting therefore reprocesses the source on the next ingest.
 - Built-in profiles (`documents`, `codebase`) are unchanged. They keep using Settings › Document reading.
+- **BREAKING:** `OCR_WORKER_COMMAND` and `OCR_WORKER_ENV_DIR` are removed. They predate engine folders and override the primary engine, so a step's chosen engine could be replaced without warning. Start-up refuses either variable and names `OCR_WORKERS_DIR` with `OCR_ENGINE_PRIMARY`. Settings › Document reading drops the "worker command set" note. No index identity changes.
 
 ## Capabilities
 
@@ -28,6 +29,7 @@ OCR settings are also server-wide only. A user profile can choose its PDF reader
 
 - `workspace-integrations`: the page shows the three runtime groups, sets the OCR workers folder, and shows provider readiness on the llama.cpp and OpenRouter cards.
 - `settings-file`: `ocr_workers_dir` leaves the read-only list. A new requirement checks the folder before it is saved.
+- `workspace-settings`: the "no provider request" rule allows the keyless local server health probe of the Integrations page. Model-list and key-check requests still need a Test or List models action.
 - `pipeline-graphs`: the Read document step takes the OCR settings, OCR routing follows the step's settings, and the index identity records them.
 
 ## Impact

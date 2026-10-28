@@ -1,0 +1,7 @@
+Task 4.4 mutation check, 2026-10-28.
+Mutation: IngestionShape.step_options() returned {} instead of dict(self.read_options),
+so the identify step built the identity without the step OCR settings.
+Result: FAILED tests/unit/test_read_step_ocr_identity.py::test_identify_builds_the_identity_with_the_step_ocr_settings
+(1 failed, 7 passed). File restored afterwards.
+Note: removing read_options from identity_block alone is not caught, because the graph
+fingerprint already hashes every node parameter. The task wording was corrected to this mutation.

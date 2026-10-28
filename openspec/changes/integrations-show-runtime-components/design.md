@@ -76,6 +76,12 @@ Alternative considered: one OCR resource per node. Rejected, because two nodes w
 
 Write ADR-105, "Pipeline steps own their OCR settings". It amends design D5 of `add-pdf-reader-step-setting`. Experiment 35 needs no change: it uses built-in profile settings through its own scratch configuration.
 
+### D7. Remove the explicit OCR worker command
+
+`OCR_WORKER_COMMAND` (with `OCR_WORKER_ENV_DIR`) predates engine folders. It overrides the primary route, so a Read document step that names `paddleocr-vl` could still get the command's engine, with no sign. Nobody sets it: the live config and environment hold neither variable, and Experiment 37 unset it before running. Remove both settings, the override branch in `routes.py`, `worker_command_set` on the Document reading route and page, and the docs mentions.
+
+A leftover value must not pass in silence. Add both names to `config/legacy.py` in a new "removed" group, with its own message, because they are not renames. Start-up then names `OCR_WORKERS_DIR` and `OCR_ENGINE_PRIMARY` as the replacement. The command decided only how a worker starts, never what it read, so no index identity changes. Experiment folders 24, 31, 33, 37 and 42 already ran; their scripts and outputs stay as historical records.
+
 ## Risks / Trade-offs
 
 - [Two engines loaded at once, about 37 GiB on a 48 GB Mac] → D5 serialises parsing. The configuration guide gets a note: a pipeline that mixes engines needs memory for both, unless idle shutdown runs between them.

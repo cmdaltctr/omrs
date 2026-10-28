@@ -1,0 +1,72 @@
+{
+  "390": {
+    "groups": [
+      {
+        "title": "OCR engines",
+        "rows": [
+          "dots-mocr | Not set up | red=true",
+          "paddleocr-vl | Not set up | red=true",
+          "local OCR tier | Missing | red=false"
+        ]
+      },
+      {
+        "title": "Model files",
+        "rows": [
+          "Chunking tokenizer | Ready | red=false",
+          "Reranker model | Ready | red=false",
+          "Local OCR model | Missing | red=false"
+        ]
+      },
+      {
+        "title": "Local servers",
+        "rows": [
+          "Ollama | Ready | red=false",
+          "llama.cpp embedding server | Not running | red=false",
+          "llama.cpp chat server | Not running | red=false"
+        ]
+      }
+    ],
+    "cards": [
+      "Not running at http://localhost:8080/v1",
+      "No key set"
+    ],
+    "scrollWidth": 390,
+    "clientWidth": 390,
+    "notAccepted": false
+  },
+  "1280": {
+    "groups": [
+      {
+        "title": "OCR engines",
+        "rows": [
+          "dots-mocr | Not set up | red=true",
+          "paddleocr-vl | Not set up | red=true",
+          "local OCR tier | Missing | red=false"
+        ]
+      },
+      {
+        "title": "Model files",
+        "rows": [
+          "Chunking tokenizer | Ready | red=false",
+          "Reranker model | Ready | red=false",
+          "Local OCR model | Missing | red=false"
+        ]
+      },
+      {
+        "title": "Local servers",
+        "rows": [
+          "Ollama | Ready | red=false",
+          "llama.cpp embedding server | Not running | red=false",
+          "llama.cpp chat server | Not running | red=false"
+        ]
+      }
+    ],
+    "cards": [
+      "No key set",
+      "Not running at http://localhost:8080/v1"
+    ],
+    "scrollWidth": 1280,
+    "clientWidth": 1280,
+    "notAccepted": false
+  }
+}

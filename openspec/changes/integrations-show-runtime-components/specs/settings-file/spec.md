@@ -39,3 +39,17 @@ Before it writes `ocr_workers_dir`, the server SHALL expand `~` and check that t
 
 - **WHEN** a request writes `ocr_workers_dir` with an empty value
 - **THEN** the key MUST be removed from `omrs.jsonc`
+
+### Requirement: The OCR worker command settings are removed
+
+The server SHALL NOT read `OCR_WORKER_COMMAND` or `OCR_WORKER_ENV_DIR`. An OCR route SHALL resolve only from `ocr_workers_dir` and an engine name. When the process environment or `.env` still sets either variable, start-up SHALL fail with a message that names the variable and its replacement: `OCR_WORKERS_DIR` with `OCR_ENGINE_PRIMARY`. The removal SHALL NOT change any index identity.
+
+#### Scenario: Old variable still set
+
+- **WHEN** `.env` sets `OCR_WORKER_COMMAND`
+- **THEN** start-up MUST fail, and the message MUST name `OCR_WORKER_COMMAND`, `OCR_WORKERS_DIR` and `OCR_ENGINE_PRIMARY`
+
+#### Scenario: A step engine always applies
+
+- **WHEN** a Read document node sets `ocr_engine_primary` to `paddleocr-vl`
+- **THEN** OCR-required sources of that node MUST go to the `paddleocr-vl` worker, whatever else the host sets
