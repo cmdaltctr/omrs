@@ -98,4 +98,5 @@ CONNECTION = ConnectionDescriptor(
     test_targets=_test_targets,
     models_target=lambda s: ConnectionTarget(join_url(s.llamacpp_chat_url, "/models")),
     parse_models=lambda payload: models_from(payload, "data", "id"),
+    model_source="huggingface-gguf",
 )
