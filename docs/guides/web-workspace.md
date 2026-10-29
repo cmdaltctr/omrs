@@ -328,15 +328,15 @@ The server can serve MCP at `/mcp`. It is off by default. Turn it on with `PUT /
 | `PUT /v1/connections/{provider}/key` | `credentials` | Body `{api_key}`, 8 to 512 printable characters with no spaces. Saves the key to the system keychain. Returns 409 when the key comes from the environment, `.env` or `omrs.jsonc`, or when no keychain exists. A key file does not cause a 409. |
 | `DELETE /v1/connections/{provider}/key` | `credentials` | Removes the key from the system keychain. |
 | `POST /v1/connections/{provider}/test` | `manage` | Optional body `{fields: {<id>: value}}`. Tests typed values and saves nothing. Returns `{reachable, reason}` after one request with a 5-second timeout. `reason` is `refused`, `timeout`, `unauthorised`, `http-<status>` or `not-configured`. No response body or error text is returned. |
-| `GET /v1/llamacpp/server` | `read` | `{state, reason, running_with, saved}`. `state` is `stopped`, `starting`, `running` or `failed`. `reason` is one of `binary-invalid`, `model-invalid`, `not-loopback`, `port-in-use`, `exited`, `timeout`, `not-configured`. `saved` holds `binary`, `model` and `context_window`, each with `source` and `locked`. No output of the server is returned. |
-| `PUT /v1/llamacpp/server` | `manage`; `credentials` when the body sets `binary` or `model` | Saves the program path, model, context window and idle sleep. Returns 400 for a rule failure and 409 for a locked field. |
-| `POST /v1/llamacpp/server/start` | `manage` | Starts the server that omrs owns. Waits for `GET /health` up to 180 seconds. |
+| `GET /v1/llamacpp/server` | `read` | `{state, reason, running_with, saved, chat_model, shared_with_classification}`. `state` is `stopped`, `starting`, `running` or `failed`. `reason` is one of `binary-invalid`, `model-invalid`, `not-loopback`, `port-in-use`, `exited`, `timeout`, `not-configured`. `saved` holds `binary`, `chat_server`, `context_window` and `idle_sleep`, each with `source` and `locked`. `chat_model` holds the Chat choice in force (`provider`, `model`, `usable`). No output of the server is returned. |
+| `PUT /v1/llamacpp/server` | `manage`; `credentials` when the body sets `binary` or `chat_server` | Saves the program path, the Chat server choice (`external` or `managed`), the context window and the idle sleep. Returns 400 for a rule failure or a body that holds `model`, and 409 for a locked field. A change to `external` while the owned server runs returns 409 with the reason `server-running`. |
+| `POST /v1/llamacpp/server/start` | `manage` | Starts the server that OMRS owns, with the Chat model. Waits for `GET /health` up to 180 seconds. Returns 409 with the reason `external-server` when the choice is `external`. |
 | `POST /v1/llamacpp/server/stop` | `manage` | SIGTERM to the owned process group, 10 seconds, then SIGKILL. |
-| `POST /v1/llamacpp/server/restart` | `manage` | Stop, then start with the saved values. |
+| `POST /v1/llamacpp/server/restart` | `manage` | Stop, then start with the saved values. Returns 409 with the reason `external-server` when the choice is `external`. |
 | `POST /v1/connections/{provider}/models` | `manage` | Optional body `{fields: {<id>: value}}`. Returns `{reachable, reason, models[], truncated}`. Reads at most 8 MiB and returns at most 1,000 names. |
-| `GET /v1/settings/chat` | `read` | `{provider, model, source, locked, lock_reason, enabled, ready, reason}`. |
-| `PUT /v1/settings/chat` | `manage` | Body `{provider, model}`, or `null` to clear. Saves the Chat model. Returns 400 for a bad choice and 409 when the choice is locked. |
-| `POST /v1/settings/chat/test` | `manage` | Optional body `{provider, model}`. Sends one short prompt and returns `{ok, reason, elapsed_ms}`. No model text is returned. |
+| `GET /v1/settings/chat` | `read` | `{provider, model, source, locked, lock_reason, enabled, ready, reason}`. `reason` `no-model` means that the provider is llama.cpp and the model is empty. |
+| `PUT /v1/settings/chat` | `manage`; `credentials` for a llama.cpp choice while the Chat server choice is `managed` | Body `{provider, model}`, or `null` to clear. Saves the Chat model. Returns 400 for a bad choice and 409 when the choice is locked. While the Chat server choice is `managed`, a llama.cpp model must be a `.gguf` file or a Hugging Face id (400 otherwise). |
+| `POST /v1/settings/chat/test` | `manage` | Optional body `{provider, model}`. Sends one short prompt and returns `{ok, reason, elapsed_ms}`. No model text is returned. For llama.cpp with the choice `external`, it reads the model list first. `model-not-listed` means that the server does not list the model, and no prompt was sent. |
 | `GET /v1/logs?after=<seq>` | `manage` | The buffered log records after a sequence. |
 | `GET /v1/logs/stream` | `manage` | The same records as server-sent events, with replay after `Last-Event-ID` or `?after=`. The stream ends with `server.closing`. |
 
@@ -344,7 +344,22 @@ Key routes need the `credentials` scope and the browser session. A bearer creden
 
 ### Provider settings
 
-Settings > Providers shows one card for each registered LLM provider. Today these are Ollama, llama.cpp, OpenRouter, OpenAI-compatible and Anthropic. The last two serve Chat answers only. A new provider in the registry gets a card with no web change. Editable fields are the Ollama address, the llama.cpp chat address, the OpenRouter key, the OpenAI-compatible address and key, and the Anthropic key. The OpenAI-compatible key is optional, because LM Studio and vLLM need none. Chat is ready without it. The Anthropic key is required. Without it Chat reports `not-configured`. A card whose package is missing shows its install command, for example `uv sync --extra anthropic`. The OpenAI-compatible address can be on this machine or remote. The key goes only to that address, and the card states that text leaves this machine when the address is not on this machine. Embedding addresses and embedding models are shown but cannot be edited here.
+Settings > Providers shows one card for each registered LLM provider. Today these are Ollama, llama.cpp, OpenRouter, OpenAI-compatible and Anthropic. The last two serve Chat answers only. A new provider in the registry gets a card with no web change. Editable fields are the Ollama address, the llama.cpp Chat address and Classification address, the OpenRouter key, the OpenAI-compatible address and key, and the Anthropic key. The OpenAI-compatible key is optional, because LM Studio and vLLM need none. Chat is ready without it. The Anthropic key is required. Without it Chat reports `not-configured`. A card whose package is missing shows its install command, for example `uv sync --extra anthropic`. The OpenAI-compatible address can be on this machine or remote. The key goes only to that address, and the card states that text leaves this machine when the address is not on this machine. Embedding addresses and embedding models are shown but cannot be edited here.
+
+The llama.cpp card groups its values in three blocks, in this order (ADR-108). The other cards show one block with no titles.
+
+1. **Embeddings.** The embedding address and the embedding model, read-only.
+2. **Classification (metadata).** The Classification address, which you can edit, and "Text model (classification)", read-only. Metadata extraction uses the Text model (`llamacpp_chat_model`). Chat never uses it. Change the Text model in Settings > Configuration or in `omrs.jsonc`. It is part of the index identity, so it applies after a restart.
+3. **Chat.** The Chat address, which you can edit, the Chat model line and the choice "Who runs the Chat server". See [Local llama.cpp server](#local-llamacpp-server).
+
+While no source sets the Classification address, the block shows the Chat address with the source `default` and the line "Uses the Chat address until you set one." A change of the Chat address then moves classification too. Edit opens with the address in use, so one Save keeps classification where it is.
+
+The Chat model line is read-only:
+
+- With Chat on llama.cpp, the block shows the row "Chat model" with the model name.
+- With Chat on another provider, the block shows one line, for example "Chat uses OpenRouter (deepseek/deepseek-v4-flash-0731)".
+
+Both end with the link "Change in Settings > Chat". The card offers no edit for the Chat model. Settings > Chat is its only home.
 
 Each value comes from one source. The server uses the first source it finds:
 
@@ -384,7 +399,45 @@ Saved addresses and saved keys apply to `omrs web` and its MCP endpoint only. Th
 
 ### Local llama.cpp server
 
-The llama.cpp card has a Local server panel. It shows the state, the program path, the model, the context window, the idle sleep (default 300 seconds; 0 turns it off), and the buttons Start, Stop and Restart. The panel says: "omrs starts and stops only this server. It never touches a server you started yourself." After a save the server keeps running and the panel says "Restart to apply" when the saved values differ. The program path and model need a browser session with the `credentials` scope. The window and the buttons need `manage`. A bearer token never works. The server output goes to `llamacpp-server.log` in the workspace folder and is not shown. The Ollama card has a "Context window (tokens)" number field. Guardrails and limits: [Configuration](configuration.md#local-llamacpp-server).
+The Chat block of the llama.cpp card has the choice "Who runs the Chat server". It has two options:
+
+- "The Llama app or another server you run" (`external`, the default). OMRS starts nothing.
+- "OMRS's own llama-server" (`managed`). The block shows the Local server panel.
+
+The choice shows its source. A save writes `llamacpp_chat_server` to `omrs.jsonc` and needs a browser session with the `credentials` scope. Without that scope, or when `LLAMACPP_CHAT_SERVER` is in the environment or `.env`, the choice is read-only and says why. A locked choice names the variable and where it is set.
+
+To change to "The Llama app or another server you run" while OMRS's own server runs:
+
+1. Press Stop in the Local server panel.
+2. Wait for the state `stopped`.
+3. Select "The Llama app or another server you run".
+
+If the server still runs, the block shows one line that says to stop the server first. The choice stays `managed`.
+
+The block shows a callout for the selected option. With "The Llama app or another server you run", it says:
+
+> Context size: set ctx-size for this model in the Llama app's models.user.ini, then relaunch the Llama app. The relaunch pauses embeddings and anything else on that port. OMRS does not edit this file or restart the app.
+
+That block has no context window row. With "OMRS's own llama-server", it says:
+
+> OMRS's own server needs a program named exactly llama-server. The Llama app's own llama program does not qualify. Install one with Homebrew: brew install llama.cpp. Then set the program path, for example /opt/homebrew/bin/llama-server.
+
+The Local server panel shows only with "OMRS's own llama-server". It shows the state as text and a badge, the reason when the state is `failed`, the program path, the context window, the idle sleep (default 300 seconds; 0 turns it off), the Chat model as a read-only row, and the buttons Start, Stop and Restart. The panel has no Model row. Its Chat model row links to Settings > Chat, because the server loads the Chat model. While the program path is not set or fails the program rule, the panel shows the "OMRS's own server" callout again above the program path row.
+
+The panel says: "omrs starts and stops only this server. It never touches a server you started yourself." It also says that the embedding server is not managed. When Start fails because a value is missing, the panel names it:
+
+- No program path: "Set the program path first."
+- A program path, but Chat is not on llama.cpp or has no model: "Choose llama.cpp and a Chat model in Settings > Chat first."
+
+After a save the server keeps running. The panel says "Restart to apply" when the saved values or the Chat model differ from the running process. A Chat model save in Settings > Chat counts too.
+
+When the choice is "OMRS's own llama-server" and classification uses the Chat address, the Classification block and the Local server panel both show this warning:
+
+> Classification goes to OMRS's own Chat server, which loads only the Chat model. The Text model is not used. Set a Classification address, for example the Llama app, to keep them apart.
+
+The warning does not stop you. One model for both roles can suit a small machine. Set a Classification address that differs from the Chat address to remove the warning.
+
+The program path and the Chat server choice need a browser session with the `credentials` scope. While the choice is "OMRS's own llama-server", a llama.cpp Chat save in Settings > Chat or Settings > Configuration needs `credentials` too, and the model must be a `.gguf` file or a Hugging Face id. The window, the idle sleep and the buttons need `manage`. A bearer token never works. The server output goes to `llamacpp-server.log` in the workspace folder and is not shown. The Ollama card has a "Context window (tokens)" number field. Guardrails and limits: [Configuration](configuration.md#local-llamacpp-server).
 
 #### Get a model
 
@@ -410,10 +463,10 @@ To get a model for Ollama:
 
 Only one download runs at a time. The panel polls the server once each second while a download runs.
 
-**Next step for llama.cpp.** The next step depends on who runs the llama.cpp server.
+**Next step for llama.cpp.** The next step depends on the saved choice "Who runs the Chat server", not on the server state.
 
-- omrs runs the server (state Running or Starting). Select "Use this model". The panel saves the model in the Model row of the Local server panel. Then select "Restart server to load it". "Use this model" needs a session with the `credentials` scope. Without it the button stays off and the panel shows "A credentials session is needed to change this."
-- You run the server (any other state), for example the Llama desktop app. omrs does not control it. The panel shows the folder of the file and does not offer "Use this model". The Llama app lists new models only when it starts. Quit and reopen the app, then select "Refresh models". The panel reads the model list of the server again and says whether the server lists the model.
+- "OMRS's own llama-server" (`managed`). Select "Use this model". The panel saves the model as the Chat model: the provider llama.cpp and the downloaded value, through `PUT /v1/settings/chat`. Then the panel offers Restart. The button shows in every server state. Restart stays disabled until the server runs; when the server is stopped, press Start in the Local server panel. "Use this model" needs a session with the `credentials` scope. Without it the button stays off and the panel shows "A credentials session is needed to change this."
+- "The Llama app or another server you run" (`external`), for example the Llama desktop app. OMRS does not control it. The panel shows the folder of the file and does not offer "Use this model". The Llama app lists new models only when it starts. Quit and reopen the app, then select "Refresh models". The panel reads the model list of the server again and says whether the server lists the model. To use the model for Chat, choose it in Settings > Chat.
 
 **What each reason means.** A failed download shows one line.
 
@@ -434,7 +487,7 @@ After a cancel the panel says "The download stopped." and nothing more.
 
 - llama.cpp files go to the Hugging Face hub cache. The folder is `HF_HUB_CACHE` when set, else `HF_HOME/hub` when `HF_HOME` is set, else `~/.cache/huggingface/hub`. The panel shows the folder in use. A server that reads another cache folder does not see the file. Point that server at the folder the panel shows.
 - Ollama keeps pulled models in its own store. omrs does not write there.
-- The model value that "Use this model" saves is `org/name:LABEL`. The managed server loads it with `-hf` from the same cache.
+- The model value that "Use this model" saves as the Chat model is `org/name:LABEL`. The managed server loads it with `-hf` from the same cache.
 
 ### Chat model
 
@@ -444,7 +497,7 @@ To set the Chat model and its reasoning level:
 
 1. Open Settings > Chat.
 2. In the "Answer model" card, press Edit.
-3. Select the provider. A provider that cannot answer yet stays in the list, disabled, with its reason, for example "Anthropic (not installed)".
+3. Select the provider. A provider that cannot answer yet stays in the list, disabled, with its reason, for example "Anthropic (not installed)". A change of provider empties the model field, so a name from another provider is not saved by accident. Save stays disabled until you type or pick a model, and the field shows "Choose a model for this provider."
 4. Read the lines under the select. Each line gives the fix for one provider that is not ready: a link to its entry on the Integrations page when it is not installed, or a link to the provider card under Settings > Providers for a missing key. A provider card under Settings > Providers that is not installed shows "Not installed" with the same Integrations link. All providers ready shows no lines.
 5. Type the model name, or press List models and pick one.
 6. Set Reasoning. When the provider catalogue knows the model, Reasoning is a dropdown: "Provider default" first, then the levels the model accepts. "Provider default (max)" names the default level when the catalogue gives one. Otherwise Reasoning is a text box. Leave it empty for the provider default.
@@ -453,6 +506,20 @@ To set the Chat model and its reasoning level:
 The card then shows `Reasoning: low`, or `Reasoning: Provider default` when no level is saved. A note under the control says when the provider ignores the level. `ANSWER__REASONING` in the environment or `.env` locks the level: the control is read-only and names the variable. The judge card has its own Reasoning control, stored as `answer.verify_reasoning` and locked by `ANSWER__VERIFY_REASONING`.
 
 The page reads the levels from `GET /v1/settings/chat/reasoning-levels?provider=<provider>&model=<model>` when the form opens and when the provider or model changes.
+
+**Chat on llama.cpp.** llama.cpp has no Chat model setting of its own. The Text model on the llama.cpp card serves classification only.
+
+- An empty llama.cpp Chat model is refused. Chat is not ready, with the reason `no-model`, and an answer fails with "Choose a Chat model". No request reaches a llama.cpp server.
+- While "Who runs the Chat server" is "OMRS's own llama-server", the model must be an absolute `.gguf` path or a Hugging Face id such as `Qwen/Qwen3-4B-GGUF:Q4_K_M`, and a save needs the `credentials` scope. A name such as `qwen3:4b` gets 400.
+
+**Test result `model-not-listed`.** With "The Llama app or another server you run", Test reads the model list of the server at the Chat address before it sends a prompt. `model-not-listed` means that the server lists models and the model name is not one of them. Test then sends no prompt. A server that loads one model answers every name with that model, so without this check a wrong name would pass with no sign. A common cause is a name kept from another provider, such as the Ollama default `qwen3:4b`. To fix it:
+
+1. Press List models.
+2. Pick a name from the list.
+3. Press Test again.
+4. Press Save.
+
+The same result comes from a server started with one `.gguf` file when you typed a Hugging Face id. Pick the name that List models shows. With "OMRS's own llama-server", Test skips the list check, because that server loads the Chat model.
 
 The server keeps the last 1,000 log records in memory and writes no log file. The filter that removes provider keys and credentials runs before a record is stored.
 
@@ -464,11 +531,13 @@ Settings > Chat has two cards: "Answer model" and "Claim check judge". The judge
 
 The judge model is empty by default. The default provider, OpenRouter, has no default model. The card then shows "Not set" and says: "Claim checks are skipped until you set a judge model."
 
+A llama.cpp judge needs its own judge model. With an empty judge model, the claim check is skipped with the reason "Choose a judge model in Settings > Chat." The answer keeps its status and citations. The judge never uses the Text model of the llama.cpp card.
+
 To set the judge:
 
 1. Open Settings > Chat.
 2. In the "Claim check judge" card, press Edit.
-3. Select the provider.
+3. Select the provider. A change of provider empties the model field.
 4. Type the model name, or press List models and pick one.
 5. Optional: press Test to check the choice. Test saves nothing.
 6. Press Save. Save stays disabled while the model name is empty.
@@ -710,6 +779,21 @@ If the check after the uninstall finds a clash, do not restart. Run the entry's 
 **The lasting command.** The `uv tool` receipt records the extras of the install, for example `omrs[web,hybrid]`. A later `uv tool install --reinstall` from the receipt adds a removed extra back. When the receipt lists the extra, the card shows the reinstall command without it, for example `uv tool install --reinstall "omrs[web] @ <source>"`. Copy it, run it in a terminal and restart the server. It removes the extra for good and drops the leftover packages. The card hides this command while a setting uses the extra, because the next start would fail.
 
 **Restart state.** After an install or uninstall, the card shows "Installed, restart to use" or "Removed, restart to apply" until the server restarts. The server keeps this state for each extra, so a later install or uninstall does not change an earlier card.
+
+### Local servers on the Integrations page
+
+The Local servers section lists each local model server at the address that the settings give. Each item is ready when its health request succeeds, and not running when it fails. Each item names the settings that use it. An item that no setting uses still shows, with no users. The list never shows a user name or password from an address.
+
+| Item | Address | Shown |
+|---|---|---|
+| Ollama | `ollama_base_url` | Always |
+| llama.cpp embedding server | `llamacpp_embed_url` | Always |
+| llama.cpp chat server | `llamacpp_chat_url` | Always |
+| llama.cpp classification server | `llamacpp_classify_url` | Only when the classification address differs from the Chat address |
+
+When the classification server item shows, it carries the metadata user (`metadata_llm_provider`), and the chat server item no longer lists that user. When the two addresses are equal, the list has no classification item, and the chat server item keeps both users (ADR-108).
+
+The llama.cpp entry checks the classification address too. When metadata extraction uses llama.cpp and only the classification server is down, the entry says "Not running at" with the classification address.
 
 ### Navigation foot
 
