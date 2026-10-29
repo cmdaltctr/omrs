@@ -41,7 +41,7 @@ A normal pull request now starts 12 jobs (11 run, Tier 2 shows as skipped). A pu
 
 ### Negative
 
-- A code change that breaks the floors of an optional extra, with no change to a dependency file, shows only on the push after merge. The fix lands in a follow-up pull request. Floors matter to users who install without the lockfile, and a release ships only from `main`.
+- A code change that breaks the floors of an optional extra, with no change to a dependency file, shows only on the push after merge. The fix lands in a follow-up pull request. Floors matter to users who install without the lockfile. `release.yml` runs on every push to `main` and does not wait for CI. Every push to `v3` runs every extra, so do not merge `v3` into `main` while a `v3` floor entry is red.
 - No nightly floor check runs yet. GitHub runs `schedule` only from the workflow file on the default branch, and the `ci.yml` on `main` has no `schedule` trigger. The nightly run starts when this workflow reaches `main`, and then it checks `main`, not `v3`. Pushes to `v3` run every extra in the meantime. The Maintainer accepted this gap.
 - Python 3.13 loses its Leiden run. abi3 wheels make a break there unlikely.
 

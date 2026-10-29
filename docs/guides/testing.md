@@ -86,7 +86,7 @@ All jobs live in `.github/workflows/ci.yml`. Each job checks something that no o
 | `Lint (Ruff)` | Ruff check and format. Pyright is advisory. | Push, pull request, manual run |
 | `Coverage (Codecov)` | The fast suite with most extras, in parallel, and the coverage upload. It fails when a test skips for a missing chroma extra, so it runs every Chroma-gated case. | Push, pull request, manual run |
 
-GitHub runs the nightly schedule and the manual run only from the workflow file on `main`. They start when this workflow reaches `main`.
+The nightly schedule runs from the workflow file on `main`. A manual run targets the branch that you select. The Run workflow button appears when this workflow file exists on `main`.
 
 ---
 
