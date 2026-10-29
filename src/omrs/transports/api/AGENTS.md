@@ -24,6 +24,13 @@ The local HTTP API for `omrs web`. `openapi.yaml` is its OpenAPI 3.1 contract. R
 12. Build the marimo argument lists only in `tool_environment.py`, from the shipped manifest range. Run them through the same `InstallJob` (`start_tool`) with the same guards. A tool job runs the check function, not `uv pip check`, and sets no `restart_needed`.
 13. Offer Uninstall only for a card-shaped receipt (marimo with the manifest range, jupytext, nothing else); else `not-installed-by-app`. Never register marimo from the install route (D4).
 
+## Model download job (ADR-106)
+
+17. Guard the five `/v1/model-downloads` routes with `require_session("manage")`. A bearer credential never gets `manage`. Search needs `manage` too, because each call makes the server contact an outside host.
+18. Use the one `ModelDownloadJob` on `WebRuntime` (`model_download_job.py`). Keep its guards: one job at a time, no subprocess, no shell, and an adapter table keyed by `ModelSourceKind` with no branch on a provider name. Blocking adapters run in `asyncio.to_thread`. `shutdown_runtime()` cancels the job and waits up to 5 seconds.
+19. Give a failed job one of the fixed reasons only: `not-found`, `gated`, `network`, `stalled`, `ollama-unreachable`, `failed`. The 409 reasons are `busy`, `no-space` and `gated`. No status, response or log line above debug level holds exception text or the `HF_TOKEN` value. Run log text through `security.redact`.
+20. Check every name with `core/providers/model_sources.py` before any request or file path. The client sends no file name. Search and file-list calls contact the host only when the route runs, never at start-up.
+
 ## Size and tests
 
 14. Keep each file under 500 lines (`tests/test_file_size_ceiling.py`). Put new logic in a sibling module, as `uninstall_plan.py` sits next to `integrations_catalogue.py`.
@@ -38,3 +45,4 @@ The local HTTP API for `omrs web`. `openapi.yaml` is its OpenAPI 3.1 contract. R
 - [ADR-094: install from the app](../../../../docs/adr/094-app-installs-allowed-extras-into-itself.md)
 - [ADR-096: uninstall from the app](../../../../docs/adr/096-app-uninstalls-extras-it-can-install.md)
 - [ADR-101: marimo as a separate uv tool](../../../../docs/adr/101-app-installs-marimo-as-a-separate-uv-tool.md)
+- [ADR-106: model search and download](../../../../docs/adr/106-app-searches-and-downloads-local-models.md)

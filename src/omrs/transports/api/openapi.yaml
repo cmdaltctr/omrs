@@ -102,7 +102,8 @@ x-omrs-scope-catalogue:
     description: >
       Preview-bound destructive actions (deletion, profile change, cleanup),
       experiment context approval and revocation, experiment folder
-      creation, provider connection tests and the server log.
+      creation, provider connection tests, model search and download, and
+      the server log.
 
 paths:
   # ── Health and session (public bootstrap) ───────────────────────────
@@ -4437,6 +4438,244 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
+  # ── Model search and download (llama.cpp cache and Ollama) ──────────
+  /model-downloads/search:
+    get:
+      operationId: searchModels
+      summary: Search the model host for models that a provider can download
+      description: >
+        Sends one search request to the model host of the provider's model source and
+        returns the matches. `provider` must declare a `model_source` in
+        `GET /v1/connections` (`llamacpp` or `ollama`); any other provider, known or not,
+        gets 400. `q` is 1 to 100 characters with no control character, else 400 and no
+        outside request. For `llamacpp` the host is Hugging Face and the route returns at
+        most 20 repos that hold GGUF files, sorted by downloads, highest first. For
+        `ollama` the results hold first the built-in Ollama library names that contain
+        `q` (fixed data in the code, in list order), then the same Hugging Face matches
+        with the id written `hf.co/{org}/{repo}`. The server reads no ollama.com page.
+        When Hugging Face does not answer within 10 seconds or answers in a shape the
+        server does not know, the route answers 200 with `reason` `network` and no
+        Hugging Face results; an Ollama search still returns its built-in names. The
+        server contacts the host only when this route runs, never at start-up. The route
+        needs `manage`, not `read`, because each call makes the server contact an outside
+        host. Session only: a bearer credential gets 403.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      parameters:
+        - name: provider
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 64
+            pattern: "^[a-z][a-z0-9_-]{0,63}$"
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 100
+            pattern: "^[^\\x00-\\x1f\\x7f]+$"
+      responses:
+        "200":
+          description: The matches, or an empty list with a reason.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelSearchReply"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /model-downloads/files:
+    get:
+      operationId: listModelFiles
+      summary: List the GGUF files of one repo, grouped by quantisation
+      description: >
+        Reads the repo at its current commit and returns that commit as `revision`
+        (40 hexadecimal characters), so that a download gets the same files. Each entry
+        in `entries` is one quantisation label with its file names (repo paths) and the
+        sum of their sizes in bytes. The parts of one split model (`-00001-of-00002`)
+        form one entry. Projector files (`mmproj`) and files with no known label are left
+        out. `recommended` marks the label to preselect (`Q4_K_M`, else the smallest at
+        4 bits or more) and `closest_to_full` marks `Q8_0`. `repo` has the form
+        `org/name`. For an `ollama` search result written `hf.co/{org}/{repo}`, send
+        `{org}/{repo}`. `gated` tells whether the repo needs `HF_TOKEN` for a download.
+        A repo that does not exist or holds no GGUF file gets 404 with `reason`
+        `not-found`. When Hugging Face does not answer within 10 seconds, the route
+        answers 200 with `reason` `network`, `revision` null and no entries. A
+        provider without a model source, known or not, gets 400. Session only: a
+        bearer credential gets 403.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      parameters:
+        - name: provider
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 64
+            pattern: "^[a-z][a-z0-9_-]{0,63}$"
+        - name: repo
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 200
+            pattern: "^[A-Za-z0-9._-]{1,96}/[A-Za-z0-9._-]{1,96}$"
+      responses:
+        "200":
+          description: The entries, or an empty list with a reason.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelFileList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /model-downloads:
+    post:
+      operationId: startModelDownload
+      summary: Start the one model download
+      description: >
+        Starts a download and answers 202 with the status (`running`, or `failed` when the
+        job ended before the answer, for example `network` when Hugging Face was not
+        reachable for the checks). At most one download runs at a time and the state is
+        kept in memory, so a restart shows `idle`. The body names the model in one of
+        three ways. For `llamacpp`: `repo`, `revision` (from `listModelFiles`) and
+        `label`; the server lists the files at that revision and takes those of the label,
+        and no file name comes from the request. For `ollama` with a Hugging Face file:
+        `repo` and `label`; the server pulls `hf.co/{repo}:{label}` and ignores
+        `revision`. For `ollama` with a library name: `name` alone (`name`, `name:tag`,
+        `namespace/name:tag` or `hf.co/org/name:tag`). Any other mix gets 400, as does a
+        value that breaks the name rules, a provider without a model source, known or
+        not, and a `name` for `llamacpp`. A repo, revision or label with no GGUF files
+        gets 404 with `reason` `not-found`. Every refusal of a valid request gets 409
+        with `reason`: `busy` (a download runs; it keeps running), `no-space` (the
+        files still to download need more than the free space of the cache disk minus
+        1 GiB; the message gives both sizes; `llamacpp` only) or `gated` (the repo is gated
+        and `HF_TOKEN` is not set in the environment of `omrs web`; `llamacpp` only). The
+        route never stores, returns or logs the token and never changes a setting. The
+        files go to the Hugging Face hub cache that the managed llama.cpp server reads,
+        or to Ollama at the address in use. Session only: a bearer credential gets 403.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartModelDownloadRequest"
+      responses:
+        "202":
+          description: The download started.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelDownloadStatus"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/ModelDownloadConflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /model-downloads/current:
+    get:
+      operationId: getModelDownload
+      summary: Read the state of the running or last model download
+      description: >
+        Returns `idle` when no download ran in this launch, else the state of the running
+        or last download with its bytes done and, when known, its bytes in total. Poll
+        this route while `state` is `running`. `reason` is set only when `state` is
+        `failed`. `model_value` is set only when `state` is `succeeded`: the value to
+        save as the model (`org/name:LABEL` for `llamacpp`, the pulled name for
+        `ollama`). A job that gets no byte for 60 seconds ends as `failed` with `reason`
+        `stalled`. The body holds no raw output, stack trace or token. The state is kept
+        in memory, so a restart returns `idle`. Session only: a bearer credential gets
+        403.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      responses:
+        "200":
+          description: The download state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelDownloadStatus"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+    delete:
+      operationId: cancelModelDownload
+      summary: Cancel the running model download
+      description: >
+        Stops the running download, waits up to 5 seconds for the transfer to end and
+        answers 200 with the status (`cancelled`; still `running` if the transfer did not
+        end in time, so keep polling). The partial file stays in the cache, so a later
+        download of the same file continues from it. With no running download the route
+        answers 409 with the plain error envelope and a message, and changes nothing.
+        Session only: a bearer credential gets 403.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      responses:
+        "200":
+          description: The status after the cancel.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelDownloadStatus"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
   # ── Chat model choice ───────────────────────────────────────────────
   /settings/chat:
     get:
@@ -5266,12 +5505,22 @@ components:
         expired confirmation (preview again), a reserved job pipeline, a
         run in the wrong state, a profile that collections use, a pipeline
         of a deleted profile, a save that would make a profile in use not
-        ready, or a power action while the app is not the login item or work
-        is running.
+        ready, a power action while the app is not the login item or work
+        is running, or a cancel while no model download runs.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+    ModelDownloadConflict:
+      description: >
+        `startModelDownload` refused a valid request. `reason` is `busy` (a
+        download runs), `no-space` (not enough free space on the cache disk)
+        or `gated` (the repo is gated and `HF_TOKEN` is not set). Nothing
+        started. The message is plain English.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ModelDownloadRefused"
     PayloadTooLarge:
       description: The file is larger than the upload limit.
       content:
@@ -5369,7 +5618,10 @@ components:
             `uninstallTool`: why the tool cannot be installed or uninstalled
             now. Present on a 409 `tool_install_running` from
             `openPluginEditor`: a marimo install or uninstall from the
-            Integrations page runs.
+            Integrations page runs. Present on the 404 `not-found` from
+            `listModelFiles` and `startModelDownload`: the repo, revision or
+            label holds no GGUF file. The 409 from `startModelDownload` uses
+            `ModelDownloadRefused`, which fixes the reasons.
         setting:
           type: string
           description: >
@@ -9755,7 +10007,18 @@ components:
       type: object
       additionalProperties: false
       required:
-        [provider, display_name, locality, installed, install_hint, extra, fields, read_only, roles]
+        [
+          provider,
+          display_name,
+          locality,
+          installed,
+          install_hint,
+          extra,
+          model_source,
+          fields,
+          read_only,
+          roles,
+        ]
       properties:
         provider:
           type: string
@@ -9773,6 +10036,15 @@ components:
           description: >
             The `pyproject.toml` extra that supplies the provider, or null when the base
             install has it. The install command is `uv sync --extra <extra>`.
+        model_source:
+          type: [string, "null"]
+          enum: [huggingface-gguf, ollama-pull, null]
+          description: >
+            Where the provider gets downloadable models, or null when it offers no
+            search and download. `huggingface-gguf` is the llama.cpp provider and
+            `ollama-pull` is the Ollama provider. A card shows its Get a model panel
+            only when this is not null. The model routes under `/v1/model-downloads`
+            refuse a provider where this is null.
         fields:
           type: array
           items:
@@ -10315,6 +10587,234 @@ components:
           description: >
             The `revision` last read. A file that changed since gives 409 with
             "omrs.jsonc changed on disk. Reload to see the new values." and nothing is written.
+
+    # ── Model search and download ───────────────────────────────────────
+    ModelSearchResult:
+      type: object
+      additionalProperties: false
+      required: [id, source, downloads, likes, gated, last_modified]
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: >
+            A Hugging Face repo id `org/name`, a built-in Ollama library name such as
+            `qwen3`, or, in an `ollama` search, a Hugging Face repo written
+            `hf.co/{org}/{repo}`.
+        source:
+          type: string
+          enum: [huggingface, ollama-library]
+        downloads:
+          type: [integer, "null"]
+          minimum: 0
+          description: The download count of a Hugging Face repo; null for an Ollama library name.
+        likes:
+          type: [integer, "null"]
+          minimum: 0
+          description: The like count of a Hugging Face repo; null for an Ollama library name.
+        gated:
+          type: boolean
+          description: >
+            Whether the Hugging Face repo is gated, so that a download needs `HF_TOKEN`.
+            False for an Ollama library name.
+        last_modified:
+          type: [string, "null"]
+          format: date-time
+          description: The last change of a Hugging Face repo; null for an Ollama library name.
+
+    ModelSearchReply:
+      type: object
+      additionalProperties: false
+      required: [status, provider, results, reason]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        provider:
+          type: string
+          description: The provider of the search.
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModelSearchResult"
+          description: >
+            For `llamacpp` at most 20 Hugging Face repos, by downloads, highest first. For
+            `ollama` the matching built-in names first, then the Hugging Face repos.
+        reason:
+          type: [string, "null"]
+          enum: [network, null]
+          description: >
+            `network` when Hugging Face did not answer within 10 seconds or answered in an
+            unknown shape; null otherwise.
+
+    ModelFileEntry:
+      type: object
+      additionalProperties: false
+      required: [label, files, size_bytes, recommended, closest_to_full]
+      properties:
+        label:
+          type: string
+          description: The quantisation label, for example `Q4_K_M` or `UD-Q4_K_XL`.
+        files:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          description: The repo paths of the files of this label. A split model has one per part.
+        size_bytes:
+          type: integer
+          minimum: 0
+          description: The sum of the sizes of the files.
+        recommended:
+          type: boolean
+          description: True for the label to preselect. At most one entry has it.
+        closest_to_full:
+          type: boolean
+          description: True for `Q8_0`, the label closest to full quality.
+
+    ModelFileList:
+      type: object
+      additionalProperties: false
+      required: [status, repo, revision, gated, entries, reason]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        repo:
+          type: string
+        revision:
+          type: [string, "null"]
+          pattern: "^[0-9a-f]{40}$"
+          description: >
+            The commit of the repo that the entries come from. A download sends it back.
+            Null when `reason` is `network`.
+        gated:
+          type: boolean
+          description: >
+            Whether the repo is gated, so that a download needs `HF_TOKEN`. False when
+            `reason` is `network`.
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModelFileEntry"
+          description: One entry for each quantisation label, in the order of the repo listing.
+        reason:
+          type: [string, "null"]
+          enum: [network, null]
+          description: >
+            `network` when Hugging Face did not answer within 10 seconds or answered in an
+            unknown shape; null otherwise.
+
+    StartModelDownloadRequest:
+      type: object
+      additionalProperties: false
+      required: [provider]
+      properties:
+        provider:
+          type: string
+          maxLength: 64
+          pattern: "^[a-z][a-z0-9_-]{0,63}$"
+          description: A provider with a `model_source`.
+        repo:
+          type: [string, "null"]
+          maxLength: 200
+          pattern: "^[A-Za-z0-9._-]{1,96}/[A-Za-z0-9._-]{1,96}$"
+          description: >
+            A Hugging Face repo `org/name`. Required for `llamacpp`. For `ollama` it goes
+            with `label`, and `name` is then left out.
+        revision:
+          type: [string, "null"]
+          minLength: 40
+          maxLength: 40
+          pattern: "^[0-9a-f]{40}$"
+          description: >
+            The `revision` from `listModelFiles`. Required for `llamacpp`. `ollama` ignores it.
+        label:
+          type: [string, "null"]
+          maxLength: 64
+          pattern: "^[A-Za-z0-9_][A-Za-z0-9_-]{0,63}$"
+          description: A quantisation label from `listModelFiles`. Goes with `repo`.
+        name:
+          type: [string, "null"]
+          maxLength: 200
+          description: >
+            An Ollama model name: `name`, `name:tag`, `namespace/name:tag` or
+            `hf.co/org/name:tag`, no space, no `;` and no leading `-`. Only for `ollama`,
+            and then `repo` and `label` are left out.
+
+    ModelDownloadStatus:
+      type: object
+      additionalProperties: false
+      required:
+        [status, state, provider, model, model_value, bytes_done, bytes_total, reason, cache_folder]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        state:
+          type: string
+          enum: [idle, running, succeeded, failed, cancelled]
+        provider:
+          type: [string, "null"]
+          description: The provider of the running or last download; null when idle.
+        model:
+          type: [string, "null"]
+          description: >
+            What the job downloads, for display: `org/name:LABEL` for `llamacpp`, the pull
+            name for `ollama`. Null when idle.
+        model_value:
+          type: [string, "null"]
+          description: >
+            The value to save as the model. Set only when `state` is `succeeded`. For
+            `llamacpp` it is `org/name:LABEL`, or the absolute path of the first file when
+            the installed llama.cpp does not read the Hugging Face cache (design D4). For
+            `ollama` it is the pulled name.
+        bytes_done:
+          type: integer
+          minimum: 0
+          description: Bytes received so far. 0 when idle.
+        bytes_total:
+          type: [integer, "null"]
+          minimum: 0
+          description: >
+            Bytes in total when known. An Ollama pull knows it after the first layer
+            reports its size; null until then, and when idle.
+        reason:
+          type: [string, "null"]
+          enum:
+            - busy
+            - no-space
+            - gated
+            - not-found
+            - network
+            - stalled
+            - ollama-unreachable
+            - failed
+            - null
+          description: >
+            One fixed reason when `state` is `failed`; null otherwise. Never text from a
+            library.
+        cache_folder:
+          type: [string, "null"]
+          description: >
+            For `llamacpp`, the folder that holds the files, written with `~` for the home
+            folder. Null for `ollama` and when idle.
+
+    ModelDownloadRefused:
+      type: object
+      additionalProperties: false
+      required: [status, message, reason]
+      properties:
+        status:
+          type: string
+          enum: [error]
+        message:
+          type: string
+          description: A plain-English line. `no-space` names the size needed and the free size.
+        reason:
+          type: string
+          enum: [busy, no-space, gated]
 
     # ── Server log ──────────────────────────────────────────────────────
     LogRecord:

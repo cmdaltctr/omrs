@@ -47,6 +47,7 @@ from .routes.judge_settings import router as judge_settings_router
 from .routes.llamacpp_server import router as llamacpp_server_router
 from .routes.logs import router as logs_router
 from .routes.mcp import router as mcp_router
+from .routes.model_downloads import router as model_downloads_router
 from .routes.notebooks import router as notebooks_router
 from .routes.plugins import router as plugins_router
 from .routes.power import router as power_router
@@ -87,6 +88,7 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     integration_tools_router,
     connections_router,
     llamacpp_server_router,
+    model_downloads_router,
     logs_router,
     power_router,
 )

@@ -626,6 +626,22 @@ Limits. The program path is editable in the GUI by choice. The guardrails limit 
 
 Tests set `OMRS_CONFIG_DIR` to a temporary folder, so they never read your real folder.
 
+### Get a model (search and download)
+
+The llama.cpp and Ollama cards in Settings > Providers can search for a model and download it. These variables and rules apply. See [Web workspace](web-workspace.md).
+
+| Variable | Use |
+|---|---|
+| `HF_TOKEN` | Needed to download from a gated Hugging Face repo. Set it in the environment of `omrs web` and restart the server. The server never saves, returns or logs it. Without it, a gated repo gives the reason `gated`. |
+| `HF_HUB_CACHE` | Folder that receives the llama.cpp files. It wins over `HF_HOME`. |
+| `HF_HOME` | Hugging Face home. The files go to `HF_HOME/hub` when `HF_HUB_CACHE` is not set. The default is `~/.cache/huggingface/hub`. |
+
+1. The server contacts `huggingface.co` only when you search, open a file list or start a download. It sends no request at start-up.
+2. Before a llama.cpp download the server checks the disk. It needs the size still to download plus 1 GiB spare. If the free space is smaller, the start gives the reason `no-space` and names both sizes. A file already in the cache counts as 0 bytes.
+3. A managed `llama-server` reads the same cache. An external server that reads another folder does not see the file. Point that server at the folder the panel shows.
+4. A download that gets no byte for 60 seconds ends with the reason `stalled`. A cancelled download leaves its partial file in the cache, and a later download of the same file continues from it.
+5. An Ollama download is a pull request to the Ollama address in use. Ollama keeps its own files. The space check does not run for it.
+
 ### Chunking — `CHUNKING__*`
 
 | Field | Default | What it does |

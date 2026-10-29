@@ -45,6 +45,7 @@ notebook plugin.
 | `grants.py`, `uploads.py` | Approved roots and managed uploads |
 | `routes/` | Route groups, one module each. They validate, delegate and format only |
 | `integrations_catalogue.py` | The integration catalogue and its availability probes (`GET /v1/integrations`) |
+| `model_download_job.py` | the one model download job: byte progress, cancel, 60 s stall watch (`POST /v1/model-downloads`) |
 | `connection_probe.py` | The one model-list request of a provider test (`POST /v1/connections/{provider}/test`) |
 | `log_buffer.py` | The in-memory server log (last 1,000 records, redacted); `omrs web` attaches it |
 | `runs_wiring.py` | Builds the workspace run service for graph runs and document jobs |
@@ -89,7 +90,7 @@ only `sessionCookie`, the operation is session only.
 | `run` | yes | Submit, cancel and retry graph runs |
 | `files` | no | Roots, uploads, ingestion and codebase-map jobs |
 | `credentials` | no | Issue, list and revoke bearer credentials |
-| `manage` | no | Deletion, profile change, workspace cleanup, experiment folders and registration, experiment projects and new experiments, connection tests and the server log |
+| `manage` | no | Deletion, profile change, workspace cleanup, experiment folders and registration, experiment projects and new experiments, connection tests, model search and download, and the server log |
 | `plugins` | no | Plugin registration, recheck, removal, and editor open and stop |
 
 `GET /v1/session` returns the credential kind, its scopes and the
@@ -249,6 +250,42 @@ marimo`, and only when the uv receipt holds exactly what the card installs.
 Any other tool name gets 404. The install does not register the editor. The
 Library route `openExperimentEditor` also refuses with
 `tool_install_running` while that job runs.
+
+## Model search and download (ADR-106)
+
+The llama.cpp and Ollama cards offer a Get a model panel. A provider takes
+part only when its registry entry declares a `model_source`
+(`GET /v1/connections` shows it). A provider without one gets 400 on every
+route below. All five routes need the browser session with the `manage`
+scope; a bearer credential gets 403. Search needs `manage` because each call
+makes the server contact an outside host. The server contacts `huggingface.co`
+only when one of these routes runs, never at start-up.
+
+| Method | Path | Result | Refusals |
+| --- | --- | --- | --- |
+| GET | `/v1/model-downloads/search?provider=&q=` | up to 20 GGUF repos by downloads; for Ollama the built-in names come first | 400 bad query or provider; 200 with `reason` `network` |
+| GET | `/v1/model-downloads/files?provider=&repo=` | GGUF files of the repo by quantisation, with the pinned `revision` | 400 bad repo; 404 `not-found` |
+| POST | `/v1/model-downloads` | 202 with the job status | 400; 404 `not-found`; 409 `busy`, `no-space`, `gated` |
+| GET | `/v1/model-downloads/current` | the status: `idle`, `running`, `succeeded`, `failed` or `cancelled` | none |
+| DELETE | `/v1/model-downloads/current` | the status after the cancel | 409 when no download runs |
+
+Rules:
+
+1. One download runs at a time. `ModelDownloadJob` lives on `WebRuntime`,
+   starts no subprocess and keeps its state in memory. Shutdown cancels it.
+2. Every name is checked with `core/providers/model_sources.py` before any
+   request or file path. The client sends no file name. For llama.cpp the
+   route lists the files at the given `revision` and takes those of the label.
+3. A failed job has one fixed `reason`: `not-found`, `gated`, `network`,
+   `stalled`, `ollama-unreachable` or `failed`. A job that gets no byte for
+   60 seconds ends as `stalled`. No response or log line holds exception text
+   or the `HF_TOKEN` value.
+4. Before a llama.cpp download the route compares the bytes still to download
+   with the free space of the cache disk plus 1 GiB. A gated repo needs
+   `HF_TOKEN` in the environment of `omrs web`.
+5. The files go to the Hugging Face hub cache (`HF_HUB_CACHE`, else
+   `HF_HOME/hub`). An Ollama pull goes to the Ollama address in use. No route
+   changes a setting.
 
 ## Experiment library and notebooks
 

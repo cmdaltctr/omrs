@@ -107,9 +107,17 @@ def test_entry_shape_and_config_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: P
         "installed",
         "install_hint",
         "extra",
+        "model_source",
         "fields",
         "read_only",
         "roles",
+    }
+    assert {name: e["model_source"] for name, e in entries.items()} == {
+        "ollama": "ollama-pull",
+        "llamacpp": "huggingface-gguf",
+        "openrouter": None,
+        "openai_compatible": None,
+        "anthropic": None,
     }
     assert [(e["display_name"], e["locality"]) for e in entries.values()] == [
         ("Ollama", "local"),
