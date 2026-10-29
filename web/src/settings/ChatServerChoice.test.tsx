@@ -69,7 +69,7 @@ describe("Who runs the Chat server", () => {
   });
 
   it("shows the OMRS server callout above the program path again when the program fails the rule", async () => {
-    const failed = choiceStatus("managed", { state: "failed", reason: "binary-invalid" }, { binary: { value: "/Users/u/.llama-app/llama", source: "config-file" } });
+    const failed = choiceStatus("managed", { state: "failed", reason: "binary-invalid" }, { binary: { value: "/opt/llama-app/llama", source: "config-file" } });
     await open({ "GET /v1/llamacpp/server": () => failed });
     const panel = await within(chat()).findByRole("group", { name: "Local server" });
     expect(within(panel).getByText(MANAGED)).toBeInTheDocument();
