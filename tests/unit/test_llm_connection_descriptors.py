@@ -57,6 +57,12 @@ def test_only_llamacpp_has_no_default_answer_model() -> None:
     assert ConnectionDescriptor.__dataclass_fields__["default_answer_model"].default is True
 
 
+def test_only_llamacpp_checks_the_model_list_in_the_chat_test() -> None:
+    flags = {name: d.test_checks_model_list for name, d in registry.describe_all().items()}
+    assert flags == {name: name == "llamacpp" for name in PROVIDERS}
+    assert ConnectionDescriptor.__dataclass_fields__["test_checks_model_list"].default is False
+
+
 def test_a_descriptor_has_no_model_source_by_default() -> None:
     descriptor = registry.describe_all()["openrouter"]
     assert ConnectionDescriptor.__dataclass_fields__["model_source"].default is None

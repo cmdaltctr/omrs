@@ -128,4 +128,5 @@ CONNECTION = ConnectionDescriptor(
     parse_models=lambda payload: models_from(payload, "data", "id"),
     model_source="huggingface-gguf",
     default_answer_model=False,
+    test_checks_model_list=True,
 )

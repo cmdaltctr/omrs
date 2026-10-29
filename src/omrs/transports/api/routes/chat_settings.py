@@ -32,6 +32,7 @@ from ....compose_providers import provider_settings as _provider_settings
 from ....config.settings_file_write import SettingsFileError
 from ....core.answer.settings import REASONING_LEVEL_PATTERN
 from ....core.providers.llm import registry as llm_registry
+from ..connection_probe import list_models
 from ..engine_access import ReadScope, RuntimeDep, admitted
 from ..errors import error_response
 from ..lifespan import WebRuntime
@@ -312,6 +313,27 @@ def reason_for(exc: BaseException) -> str:
     return "failed"
 
 
+async def _listed_reason(candidate: Any, provider: str, model: str) -> str | None:
+    """Return why the server's model list refuses *model*, or ``None`` (ADR-108 D7).
+
+    Only a provider whose descriptor sets ``test_checks_model_list`` is read, and
+    only while the llama.cpp Chat server is one the user runs: OMRS's own server
+    loads the Chat model by rule. A list that cannot be read gives its own reason.
+    """
+    descriptor = llm_registry.describe(provider)
+    if descriptor is None or not descriptor.test_checks_model_list:
+        return None
+    if getattr(candidate, "llamacpp_chat_server", "external") == "managed":
+        return None
+    target = descriptor.models_target(candidate)
+    listed = await list_models(target.urls, target.headers, descriptor.parse_models)
+    if not listed["reachable"]:
+        return str(listed["reason"])
+    if listed["truncated"] or model in listed["models"]:
+        return None
+    return "model-not-listed"
+
+
 async def _run_test(settings: Any, provider: str, model: str) -> dict[str, Any]:
     started = time.monotonic()
 
@@ -330,6 +352,8 @@ async def _run_test(settings: Any, provider: str, model: str) -> dict[str, Any]:
     )
     if (reason := _not_ready_reason(candidate, provider, model)) is not None:
         return result(False, "not-configured" if reason == "unknown-provider" else reason)
+    if (reason := await _listed_reason(candidate, provider, model)) is not None:
+        return result(False, reason)
     try:
         async with asyncio.timeout(TEST_TIMEOUT_SECONDS):
             build = await run_in_threadpool(llm_registry.get, provider)

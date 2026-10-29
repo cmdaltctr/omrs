@@ -311,7 +311,8 @@ def run_test(client: TestClient, body: Any = None) -> Any:
     return client.post("/v1/settings/chat/test", **kwargs)
 
 
-def test_model_replies(setup: Any, fake_llm: Any) -> None:
+def test_model_replies(setup: Any, fake_llm: Any, configure: Any) -> None:
+    configure(llamacpp_chat_server="managed")  # no model list read before the prompt
     built = fake_llm(REPLY)
     response = run_test(setup, {"provider": "llamacpp", "model": "cand"})
     body = response.json()

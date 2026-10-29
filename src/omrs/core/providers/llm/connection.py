@@ -127,6 +127,8 @@ class ConnectionDescriptor:
             own that an empty judge model may use. ``False`` (llama.cpp, whose
             only model setting is the Text model for classification) means an
             empty Chat or judge model is refused, never filled in (ADR-108 D3).
+        test_checks_model_list: Whether the Chat test reads ``models_target``
+            first and refuses a model the server does not list (ADR-108 D7).
     """
 
     display_name: str
@@ -142,6 +144,7 @@ class ConnectionDescriptor:
     credit: ProviderLookup | None = None
     model_source: ModelSourceKind | None = None
     default_answer_model: bool = True
+    test_checks_model_list: bool = False
 
 
 def join_url(base: str, path: str) -> tuple[str, ...]:
