@@ -22,18 +22,20 @@ const realClock: RestartClock = {
  * answers 202 before it restarts, and the old process can answer for a few
  * seconds, so a server counts as back only after a poll has failed and a later
  * poll succeeds. Returns false at `GIVE_UP_MS`, also when no poll ever failed:
- * then nothing shows that a new launch answers.
+ * then nothing shows that a new launch answers. Also returns false, without
+ * another sleep, once `current` says a later wait replaced this one.
  */
 export async function waitForRestart(
   answers: (signal: AbortSignal) => Promise<boolean>,
   clock: RestartClock = realClock,
+  current: () => boolean = () => true,
 ): Promise<boolean> {
   const start = clock.now();
   let stopped = false;
   while (clock.now() - start < GIVE_UP_MS) {
     const up = await answers(AbortSignal.timeout(POLL_TIMEOUT_MS));
     // A late answer after the window does not count.
-    if (clock.now() - start >= GIVE_UP_MS) return false;
+    if (!current() || clock.now() - start >= GIVE_UP_MS) return false;
     if (up && stopped) return true;
     if (!up) stopped = true;
     await clock.sleep(POLL_MS);
@@ -44,8 +46,16 @@ export async function waitForRestart(
 /** Reloads the page. A separate object so tests can watch it; jsdom cannot reload. */
 export const page = { reload: () => window.location.reload() };
 
-/** Only the wait for the latest accepted restart may reload the page. */
+/** Only the wait for the latest accepted restart may reload the page or keep polling. */
 let latest = 0;
+
+/**
+ * Ends every running wait after its current poll. Tests call it after each
+ * test, so no wait polls on after its page is gone.
+ */
+export function stopRestartWaits(): void {
+  latest++;
+}
 
 /**
  * Reloads the page once the server is back after an accepted restart, so the
@@ -63,7 +73,7 @@ export function useReloadAfterRestart(api: ApiClient, accepted: number | null): 
         () => true,
         () => false,
       );
-    void waitForRestart(answers).then((back) => {
+    void waitForRestart(answers, realClock, () => id === latest).then((back) => {
       if (back && id === latest) page.reload();
     });
   }, [api, accepted]);
