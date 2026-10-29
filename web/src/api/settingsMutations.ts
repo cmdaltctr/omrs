@@ -100,6 +100,8 @@ function useRefreshProviders() {
       queryClient.invalidateQueries({ queryKey: queryKeys.connections() }),
       queryClient.invalidateQueries({ queryKey: queryKeys.chatSettings() }),
       queryClient.invalidateQueries({ queryKey: queryKeys.judgeSettings() }),
+      // An address save can flip `shared_with_classification` in the llama.cpp server status.
+      queryClient.invalidateQueries({ queryKey: llamacppServerKey }),
     ]);
   };
 }

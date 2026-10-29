@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { MCP_OFF, settingsServer } from "../settings/test/fixtures";
 import { ApiProvider, useApi } from "./ApiProvider";
+import { llamacppServerKey } from "./llamacppServerHooks";
 import { createQueryClient, queryKeys, uploadLimitQuery } from "./queries";
 import {
   useRemoveProviderKey,
@@ -113,6 +114,14 @@ describe("settings mutations", () => {
     act(() => result.current.mutate({ provider: "openrouter", model: "openai/gpt-5-mini" }));
     await waitFor(() => expect(queryClient.getQueryState(queryKeys.judgeSettings())?.isInvalidated).toBe(true));
     expect(server.find("PUT", "/v1/settings/judge")).toHaveLength(1);
+  });
+
+  it("refreshes the llama.cpp server status after an address save, because it can flip the shared-address warning", async () => {
+    const { wrapper, queryClient } = setup({ "PUT /v1/connections/llamacpp": () => ({ status: "ok" }) });
+    await queryClient.prefetchQuery({ queryKey: llamacppServerKey, queryFn: () => ({}) });
+    const { result } = renderHook(() => useSaveProviderFields("llamacpp"), { wrapper });
+    act(() => result.current.mutate({ classify_url: "http://127.0.0.1:9931/v1" }));
+    await waitFor(() => expect(queryClient.getQueryState(llamacppServerKey)?.isInvalidated).toBe(true));
   });
 
   it("refreshes the judge status after a provider write, because a key can make the judge ready", async () => {
