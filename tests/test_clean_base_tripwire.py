@@ -551,9 +551,9 @@ if not _has_qwen_tokenizer:
 # and test_web_model_downloads.py (82).
 # +1 (2026-10-29, review issues): test_web_model_downloads.py (83).
 # +1 (2026-10-29, Xet stall fix): test_model_download_job.py (37).
-# +23 (2026-10-29, separate-local-chat-and-classification): web chat settings (4), chat
-# test model list (3), configuration save (10), connections (4), llama.cpp server (2).
-_WEB_EXTRA_CASES = 1809
+# +19 (2026-10-29, separate-local-chat-and-classification, measured by the floor job,
+# which ran 4 of the 23 new route cases without fastapi).
+_WEB_EXTRA_CASES = 1805
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)
