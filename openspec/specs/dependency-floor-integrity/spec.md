@@ -6,7 +6,9 @@ Guarantees that the lower version bounds declared in `pyproject.toml` describe
 a dependency set that actually installs and passes the test suite, so a
 consumer resolving without the lockfile gets a working package rather than an
 untested combination.
+
 ## Requirements
+
 ### Requirement: Declared floors form an installable, tested contract
 
 The lowest versions permitted by `[project.dependencies]` and
@@ -36,7 +38,41 @@ build.
   project calls
 - **THEN** the floor job MUST fail on the test that exercises that API
 
----
+### Requirement: Floor entries run on the events that can break them
+
+The base install SHALL be checked at its floors on every push and pull
+request. Each optional extra that adds packages beyond the base SHALL be
+checked at its floors on every push to an integration branch, on the nightly
+and manual runs, and on every pull request that changes `pyproject.toml`,
+`uv.lock` or the CI workflow file. The `torch` extra SHALL NOT enter the floor
+matrix; it keeps its own job.
+
+#### Scenario: Pull request without dependency changes
+
+- **WHEN** a pull request changes none of `pyproject.toml`, `uv.lock` and the
+  CI workflow file, compared with the merge base of its base and head commits
+- **THEN** the base floor entry MUST run
+- **AND** the optional-extra floor entries MUST NOT run
+
+#### Scenario: Pull request with dependency changes
+
+- **WHEN** a pull request changes `pyproject.toml`, `uv.lock` or the CI
+  workflow file, compared with the merge base of its base and head commits
+- **THEN** the base floor entry and one floor entry for each optional extra
+  that adds packages beyond the base, except `torch`, MUST run
+
+#### Scenario: Push, nightly and manual runs check every extra
+
+- **WHEN** CI runs because of a push to an integration branch, the nightly
+  schedule, or a manual dispatch
+- **THEN** the base floor entry and one floor entry for each optional extra
+  that adds packages beyond the base, except `torch`, MUST run
+
+#### Scenario: An empty extra has no floor entry
+
+- **WHEN** an optional extra declares no packages, or only packages the base
+  already declares at the same floor
+- **THEN** the floor matrix MUST NOT hold an entry for it
 
 ### Requirement: ChromaDB minimum excludes the collection-listing regression
 
@@ -129,7 +165,9 @@ capture the evidence for each raise.
 
 The built base package and a fresh base installation SHALL exclude both Chroma
 distributions. The optional `chroma` group SHALL retain supported floors and run
-in a separate complete CI job.
+in a separate complete CI job. That job is the coverage job: it installs the
+`chroma` extra from the lockfile, runs the full fast suite, and fails when any
+test skips with the "chroma extra not installed" reason.
 
 #### Scenario: Built base wheel excludes Chroma
 
@@ -143,10 +181,17 @@ in a separate complete CI job.
 - **THEN** both Chroma distributions MUST be absent from import metadata and installed-distribution inventory
 - **AND** the full LanceDB-default fast suite and base import-lint contracts MUST pass
 
+#### Scenario: Chroma cases run in the coverage job
+
+- **WHEN** the coverage job runs with the `chroma` extra installed
+- **THEN** no test MUST skip with the "chroma extra not installed" reason
+- **AND** a skip with that reason MUST fail the job and name the reason
+
 #### Scenario: Chroma extra resolves at floors
 
 - **WHEN** the `chroma` group is resolved at lowest direct versions
-- **THEN** every Chroma-skipped base case MUST run in the extra job
+- **THEN** every Chroma-skipped base case MUST run in the `chroma` floor entry
+- **AND** a skip with the "chroma extra not installed" reason MUST fail that entry
 - **AND** contract, local, hybrid and cloud suites MUST pass
 - **AND** floor drift checks MUST cover both packages
 
@@ -174,4 +219,3 @@ universal-lock/all-extras findings SHALL be observed and recorded separately.
 - **WHEN** policy cannot waive the optional universal-lock finding
 - **THEN** this change MUST NOT claim release clearance
 - **AND** Chroma support MUST be separately locked/distributed or removed temporarily before release
-

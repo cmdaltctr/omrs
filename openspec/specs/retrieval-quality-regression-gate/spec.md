@@ -164,7 +164,8 @@ nightly and manually dispatched job.
 
 Both jobs SHALL set `continue-on-error` to false and SHALL NOT suppress command
 failures. Scheduled execution SHALL NOT cause unrelated existing CI jobs to run
-unless their existing trigger contract already requires it.
+unless their own trigger contract requires it, as the floor jobs' contract
+does.
 
 #### Scenario: A quality assertion fails
 
@@ -176,8 +177,10 @@ unless their existing trigger contract already requires it.
 
 - **WHEN** the CI workflow starts from its nightly schedule
 - **THEN** Tier 2 runs
-- **AND** unrelated fast, floors, optional-backend, lint, and coverage jobs do
-  not run solely because of that schedule
+- **AND** the floor resolution job runs with the base entry and every
+  optional-extra entry
+- **AND** unrelated fast, optional-backend, lint, and coverage jobs do not run
+  solely because of that schedule
 
 ### Requirement: The gate states its detection boundary
 
