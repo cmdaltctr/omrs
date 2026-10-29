@@ -233,12 +233,15 @@ def test_timeout(
 ) -> None:
     client, _ = setup
     configure(ollama_base_url=fake.url)
-    fake.responses["/api/tags"] = (200, 1.5)
+    # The server answers long after the probe gives up. A 3 s bound still
+    # proves the probe did not wait for it, and leaves room for a slow CI
+    # runner (a 1.5 s answer with a 1.4 s bound failed on macOS at 1.65 s).
+    fake.responses["/api/tags"] = (200, 5.0)
     monkeypatch.setattr(connection_probe, "TEST_TIMEOUT_SECONDS", 0.2)
     started = time.monotonic()
     body = run_test(client, "ollama").json()
     assert body == {"status": "ok", "reachable": False, "reason": "timeout"}
-    assert time.monotonic() - started < 1.4
+    assert time.monotonic() - started < 3.0
 
 
 def test_the_timeout_is_five_seconds() -> None:
