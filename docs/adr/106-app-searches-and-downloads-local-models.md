@@ -1,7 +1,7 @@
 # ADR-106: The App Searches and Downloads Local Models
 
 - **Date:** 2026-10-29
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-29; built on `feat/add-model-search-and-download`, browser and live checks passed)
 - **Deciders:** Maintainer
 - **Related:** [ADR-084](084-context-windows-and-an-owned-llama-server.md) (the managed llama.cpp server and its child environment), [ADR-103](103-experiments-run-local-models-through-llama-cpp-gguf.md) (local models are llama.cpp GGUF)
 - **Change:** `openspec/changes/add-model-search-and-download/`

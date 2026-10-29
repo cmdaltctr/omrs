@@ -68,7 +68,7 @@ Each code task starts with a failing test. Confirm that the test fails on the cu
   - Relaunch check of 1.1b: after the relaunch, confirm that the Llama app lists `unsloth/SmolLM2-135M-Instruct-GGUF:Q2_K`, then tick 1.1b and remove that test model from `~/.cache/huggingface/hub`.
   - Ollama: pull `smollm2:135m`, which is not installed (`qwen3:0.6b` already is), and confirm that it is in the model list. Remove it after the check.
   - Record the results in the change folder.
-- [ ] 8.5 Ask the user to review ADR-106. After approval, set its status to Accepted and update `docs/adr/ADR_README.md`.
+- [x] 8.5 Ask the user to review ADR-106. After approval, set its status to Accepted and update `docs/adr/ADR_README.md`.
 
 ## Workflow follow-up
 
