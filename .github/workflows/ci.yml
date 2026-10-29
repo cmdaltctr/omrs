@@ -373,7 +373,8 @@ jobs:
           echo "OK: base install uses Louvain without importing Leiden packages"
 
   # Optional Leiden must install and pass its focused graph contracts on
-  # every supported CPython version. Both packages use abi3 wheels.
+  # the lowest and the highest supported CPython versions. Both packages use
+  # abi3 wheels, so one binary serves every version from the lowest up.
   community-leiden-extra:
     if: github.event_name != 'schedule'
     name: Leiden extra (Python ${{ matrix.python }})
@@ -383,7 +384,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.11", "3.12", "3.13", "3.14"]
+        python: ["3.11", "3.14"]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
