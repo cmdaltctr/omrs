@@ -43,7 +43,9 @@ dependencies = [
     # Reranker (cross-encoder via pure ONNX Runtime — no PyTorch)
     "onnxruntime>=1.20.0",
     "tokenizers>=0.20",
-    "huggingface-hub>=1.0.0",
+    # 1.23 is the first release with the Xet session abort and the
+    # update_transfer progress route that model downloads use (ADR-106).
+    "huggingface-hub>=1.23.0",
     "typer>=0.25.1",
     # File watcher (cross-platform: FSEvents / inotify / ReadDirectoryChangesW)
     "watchdog>=5.0.0",
