@@ -202,7 +202,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +3 (2026-10-28, PR #137 review): ~user folder, unreadable engines folder, loop thread.
 # +3 (2026-10-28, llama.cpp embedder keeps line breaks, by test-ID diff, none removed):
 # test_llamacpp_embed_keeps_newlines.py. No fastapi needed.
-_BASE_EXECUTED = 9083
+# +2 (2026-10-29, startup log names the active backend's model, by test-ID diff,
+# none removed): test_compose.py. No fastapi needed.
+_BASE_EXECUTED = 9085
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

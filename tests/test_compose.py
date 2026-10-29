@@ -206,6 +206,27 @@ def test_runtime_summary_reads_resolved_settings_once() -> None:
     mock_settings.assert_called_once()
 
 
+@pytest.mark.parametrize(
+    ("overrides", "expected"),
+    [
+        ({"embed_provider": "local", "local_backend": "llamacpp"}, "served-embed"),
+        ({"embed_provider": "cloud", "cloud_backend": "openrouter"}, "cloud-embed"),
+    ],
+)
+def test_runtime_summary_names_the_model_of_the_active_backend(
+    overrides: dict, expected: str
+) -> None:
+    """The startup log names the model actually used, not the Ollama field."""
+    settings = _settings(
+        embed_model="ollama-embed",
+        llamacpp_embed_model="served-embed",
+        openrouter_embed_model="cloud-embed",
+        **overrides,
+    )
+    with patch("omrs.compose.get_settings", return_value=settings):
+        assert runtime_summary()[0] == expected
+
+
 # ── build_reranker ──────────────────────────────────────────────────────────
 
 
