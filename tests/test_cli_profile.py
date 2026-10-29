@@ -46,6 +46,24 @@ def _patched(apply_result: dict | None = None):
     )
 
 
+def _json_from_stderr(result, capfd: pytest.CaptureFixture[str]) -> dict:
+    """Parse the JSON on the runner's stderr, or fail with where the output went.
+
+    CI once saw exit 0 with an empty stderr under xdist (PR #142). The failure
+    message keeps every captured stream, so the next occurrence names the leak.
+    """
+    try:
+        return json.loads(result.stderr)
+    except json.JSONDecodeError:
+        leaked = capfd.readouterr()
+        pytest.fail(
+            "--json wrote no JSON to the runner's stderr\n"
+            f"exit_code={result.exit_code!r} exception={result.exception!r}\n"
+            f"runner stdout={result.stdout!r}\nrunner stderr={result.stderr!r}\n"
+            f"process stdout={leaked.out!r}\nprocess stderr={leaked.err!r}"
+        )
+
+
 class TestValidation:
     """An unknown profile is rejected before anything is read."""
 
@@ -82,13 +100,15 @@ class TestUserProfileIsRefused:
 class TestPreviewAndConfirm:
     """The safety contract must be shown before any change is applied."""
 
-    def test_json_without_yes_prints_the_contract_only(self) -> None:
+    def test_json_without_yes_prints_the_contract_only(
+        self, capfd: pytest.CaptureFixture[str]
+    ) -> None:
         """--json alone previews: it must NOT apply the change."""
         c, a, r = _patched()
         with c, a as apply_mock, r:
             result = runner.invoke(app, ["set-profile", "-c", "docs", "-p", "codebase", "--json"])
         assert result.exit_code == 0
-        payload = json.loads(result.stderr)
+        payload = _json_from_stderr(result, capfd)
         assert result.stdout.strip() == "", "--json output must not write to stdout"
         assert payload["new_profile"] == "codebase"
         apply_mock.assert_not_called()
