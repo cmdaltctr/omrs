@@ -25,11 +25,11 @@
 
 ## 5. Experiment 35 plan
 
-- [ ] 5.1 Use `openspec-update-change` on `experiment-35-full-document-rag-benchmark`: its Hit@page rule reads `page_labels` with `page_label` as fallback, and its tasks gain a scorer unit test with a merged two-page row (gold on the second page counts as a hit). Validate that change strictly.
+- [x] 5.1 Use `openspec-update-change` on `experiment-35-full-document-rag-benchmark`: its Hit@page rule reads `page_labels` with `page_label` as fallback, and its tasks gain a scorer unit test with a merged two-page row (gold on the second page counts as a hit). Validate that change strictly.
 
 ## 6. Verification
 
-- [ ] 6.1 Re-pin the clean-base tripwire by test-ID diff against `v3`.
-- [ ] 6.2 Update `docs/guides/` where search results or citations list their fields (grep `chunk_ids`).
-- [ ] 6.3 Run `./scripts/local_ci.sh` and `openspec validate --all --strict`; both pass.
+- [x] 6.1 Re-pin the clean-base tripwire by test-ID diff against `v3`.
+- [x] 6.2 Update `docs/guides/` where search results or citations list their fields (grep `chunk_ids`).
+- [x] 6.3 Run `./scripts/local_ci.sh` and `openspec validate --all --strict`; both pass.
 - [ ] 6.4 Live check on a scratch server: search a PDF collection for text that spans a page break and see "Pages n–m" in the Knowledge Base and in a chat citation, at 1280 px and 390 px.

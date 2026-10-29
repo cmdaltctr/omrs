@@ -18,7 +18,7 @@
 
 ## 2. Build the shared harness (test-first)
 
-- [ ] 2.1 Write a failing test for plain nDCG@10 and hit@page in `experiments/_lib/retrieval_metrics.py`, with known lists. Then add the functions without changing existing definitions. Verify: the new tests fail before the change and pass after it; existing metric tests still pass.
+- [ ] 2.1 Write a failing test for plain nDCG@10 and hit@page in `experiments/_lib/retrieval_metrics.py`, with known lists, including a merged row with `page_labels` `["5", "6"]` and gold page 6, which counts as a hit. hit@page reads `page_labels`, with `page_label` as the fallback. Then add the functions without changing existing definitions. Verify: the new tests fail before the change and pass after it; existing metric tests still pass.
 - [ ] 2.2 Write a failing unit test for the FinanceBench page conversion on a known page. Then add one conversion function. Verify: the test fails without the conversion and passes with it.
 - [ ] 2.3 Write a failing test for the FreshStack parent mapping (three chunks of one parent count once). Then reuse the Experiment 22 mapping code. Verify: the test passes and Recall@10 counts the parent at its first rank.
 - [ ] 2.4 Write a failing test for the BioASQ passage hit rule. Then add the rule. Verify: a gold passage ID in the top 10 counts as a hit.
