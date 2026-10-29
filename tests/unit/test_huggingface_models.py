@@ -345,6 +345,21 @@ class TestListRepoFiles:
             ("BF16/m-BF16-00002-of-00002.gguf", 20),
         )
 
+    def test_reads_the_tree_at_a_given_revision(self) -> None:
+        older = "a" * 40
+        seen: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen.append(str(request.url))
+            if str(request.url) == INFO_URL:
+                return _ok({"id": REPO, "sha": SHA, "gated": "auto"})
+            return _ok([{"type": "file", "path": "m-Q4_K_M.gguf", "size": 1}])
+
+        result = list_repo_files(REPO, revision=older, client=_client(handler))
+
+        assert seen[-1] == f"https://huggingface.co/api/models/{REPO}/tree/{older}?recursive=true"
+        assert (result.revision, result.gated) == (older, True)
+
     def test_follows_the_tree_link_header_to_the_last_page(self) -> None:
         # The tree endpoint pages its entries and names the next page in a Link header.
         page2 = f"https://huggingface.co/api/models/{REPO}/tree/{SHA}?recursive=true&cursor=abc"

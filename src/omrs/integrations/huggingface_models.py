@@ -229,14 +229,18 @@ def search_models(query: str, *, client: httpx.Client | None = None) -> list[Rep
     return [_summary(item) for item in payload]
 
 
-def list_repo_files(repo: str, *, client: httpx.Client | None = None) -> RepoFiles:
-    """List the ``.gguf`` files of *repo* at its current revision.
+def list_repo_files(
+    repo: str, *, revision: str | None = None, client: httpx.Client | None = None
+) -> RepoFiles:
+    """List the ``.gguf`` files of *repo* at *revision*, or at its current one.
 
     Two reads: the model (for the revision hash and the gated flag), then the
     recursive file tree at that hash. Sizes come from the tree.
 
     Args:
         repo: A repository id, ``org/name``. The route has already checked it.
+        revision: A 40-character commit hash to read the tree at, or ``None``
+            for the current revision. The route has already checked it.
         client: An ``httpx`` client, for tests.
 
     Returns:
@@ -252,7 +256,7 @@ def list_repo_files(repo: str, *, client: httpx.Client | None = None) -> RepoFil
         info = _get_json(c, f"{_API}/{path}?expand[]=sha&expand[]=gated")
         if not isinstance(info, dict) or not isinstance(info.get("sha"), str):
             raise ModelHostError("network")
-        sha: str = info["sha"]
+        sha: str = revision or info["sha"]
         tree = _get_tree(c, f"{_API}/{path}/tree/{quote(sha, safe='')}?recursive=true")
         files = tuple(_gguf_entries(tree))
         if not files:

@@ -43,6 +43,15 @@ describe("Get a model panel on the provider cards", () => {
     expect(await within(panel("llama.cpp")).findByRole("progressbar", { name: "Download progress" })).toHaveAttribute("aria-valuenow", "25");
   });
 
+  it("shows an error when Cancel fails", async () => {
+    const { user, panel } = await open({
+      "GET /v1/model-downloads/current": () => downloadStatus({ state: "running", provider: "llamacpp", model: "unsloth/Qwen3-4B-GGUF:Q4_K_M", bytes_done: 1, bytes_total: 4 }),
+      "DELETE /v1/model-downloads/current": () => json({ status: "error", message: "No model download running." }, 409),
+    });
+    await user.click(await within(panel("llama.cpp")).findByRole("button", { name: "Cancel" }));
+    expect(await within(panel("llama.cpp")).findByRole("alert")).toBeInTheDocument();
+  });
+
   it("pulls an Ollama library name by name alone", async () => {
     const posts: unknown[] = [];
     const { user, panel } = await open({

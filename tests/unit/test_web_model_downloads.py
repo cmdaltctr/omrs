@@ -60,6 +60,7 @@ class Net:
         self.cache = cache
         self.searches: list[str] = []
         self.listings: list[str] = []
+        self.listed_revisions: list[str | None] = []
         self.sizes: list[dict[str, Any]] = []
         self.downloads: list[dict[str, Any]] = []
         self.pulls: list[tuple[str, str]] = []
@@ -89,8 +90,9 @@ class Net:
             raise self.search_error
         return self.hits
 
-    def list_repo_files(self, repo: str, **_: Any) -> hf.RepoFiles:
+    def list_repo_files(self, repo: str, *, revision: str | None = None, **_: Any) -> hf.RepoFiles:
         self.listings.append(repo)
+        self.listed_revisions.append(revision)
         if self.list_error:
             raise self.list_error
         return self.repo_files
@@ -496,11 +498,19 @@ def test_an_unreachable_host_during_the_checks_gives_202_with_a_failed_job(
     assert harness.net.downloads == []
 
 
-def test_an_unknown_label_a_stale_revision_or_a_missing_repo_gives_404(harness: Harness) -> None:
+def test_the_start_lists_the_files_at_the_revision_the_user_saw(harness: Harness) -> None:
+    # The repo may have a newer commit by now; the start still uses the listed revision.
+    older = "b" * 40
+    harness.net.repo_files = hf.RepoFiles("unsloth/Qwen3-4B-GGUF", older, False, FILES)
+    response = harness.start(**harness.llama(revision=older))
+    assert response.status_code == 202
+    assert harness.net.listed_revisions == [older]
+    assert harness.net.sizes[0]["revision"] == older
+
+
+def test_an_unknown_label_or_a_missing_repo_gives_404(harness: Harness) -> None:
     unknown = harness.start(**harness.llama(label="Q2_K"))
     assert unknown.status_code == 404 and unknown.json()["reason"] == "not-found"
-    stale = harness.start(**harness.llama(revision="b" * 40))
-    assert stale.status_code == 404 and stale.json()["reason"] == "not-found"
     harness.net.list_error = hf.ModelHostError("not-found")
     missing = harness.start(**harness.llama())
     assert missing.status_code == 404 and missing.json()["reason"] == "not-found"

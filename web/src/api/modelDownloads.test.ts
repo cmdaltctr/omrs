@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { FILES, IDLE, REVISION, searchReply, searchResult } from "../settings/test/downloadFixtures";
 import { documentsServer } from "../test/fakeDocumentsServer";
 import { createApiClient } from "./client";
-import { cancelModelDownload, getModelDownload, listModelFiles, searchModels, startModelDownload } from "./modelDownloads";
+import { QueryClient } from "@tanstack/react-query";
+import { cancelModelDownload, getModelDownload, listModelFiles, providerModelsQuery, searchModels, startModelDownload } from "./modelDownloads";
 
 function setup(handlers: Parameters<typeof documentsServer>[0]) {
   const server = documentsServer(handlers);
@@ -32,6 +33,13 @@ describe("model download API", () => {
       { provider: "ollama", name: "qwen3" },
       { provider: "llamacpp", repo: "a/b", revision: REVISION, label: "Q4_K_M" },
     ]);
+  });
+
+  it("passes the abort signal to the provider model list read", async () => {
+    const { api, server } = setup({ "POST /v1/connections/ollama/models": () => ({ status: "ok", reachable: true, reason: null, models: [], truncated: false }) });
+    await new QueryClient().fetchQuery(providerModelsQuery(api, "ollama"));
+    const init = server.fetchImpl.mock.calls[0]?.[1];
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
   });
 
   it("reads and cancels the current download", async () => {

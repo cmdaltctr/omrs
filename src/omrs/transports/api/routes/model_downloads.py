@@ -18,6 +18,7 @@ path or process. The routes change no setting and return or log no token.
 
 from __future__ import annotations
 
+import functools
 import logging
 import os
 import shutil
@@ -70,7 +71,6 @@ REASONS: dict[str, str] = {
     ),
 }
 _NOT_FOUND = "The repo, revision or quantisation was not found, or it holds no GGUF file."
-_STALE = "The repo changed since the list was read. Open the file list again."
 _NOT_A_SOURCE = "This provider has no model source, so the app cannot search or download for it."
 
 #: Built-in library names that a search puts first, by source kind.
@@ -267,14 +267,14 @@ async def _plan_gguf(
         revision=revision,
     )
     try:
-        found = await run_in_threadpool(hf_models.list_repo_files, repo)
+        found = await run_in_threadpool(
+            functools.partial(hf_models.list_repo_files, repo, revision=revision)
+        )
     except hf_models.ModelHostError as exc:
         return _failed_check(runtime, base, exc)
     entry = next((e for e in rules.group_gguf_files(found.files) if e.label == label), None)
     if entry is None:
         return _not_found()
-    if found.revision != revision:
-        return _not_found(_STALE)
     token = os.environ.get("HF_TOKEN") or None
     if found.gated and token is None:
         return _refused("gated")

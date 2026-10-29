@@ -131,4 +131,4 @@ export const modelFilesQuery = (api: ApiClient, provider: string, repo: string) 
 
 /** The model names a provider lists now. Contacts the provider, so callers enable it on purpose. */
 export const providerModelsQuery = (api: ApiClient, provider: string) =>
-  queryOptions({ queryKey: modelDownloadKeys.providerModels(provider), queryFn: () => listProviderModels(api, provider) });
+  queryOptions({ queryKey: modelDownloadKeys.providerModels(provider), queryFn: ({ signal }) => listProviderModels(api, provider, {}, { signal }) });

@@ -60,7 +60,7 @@ export function ModelFileList({ provider, repo, source, disabled, onStart }: Mod
       </legend>
       {list.gated ? <p className="text-meta text-muted-foreground">This model needs a Hugging Face access token (HF_TOKEN) to download.</p> : null}
       {list.entries.map((entry) => (
-        <EntryRow key={entry.label} entry={entry} group={`quant-${repo}`} checked={entry.label === label} onPick={() => setPicked(entry.label)} />
+        <EntryRow key={entry.label} entry={entry} group={`quant-${provider}-${repo}`} checked={entry.label === label} onPick={() => setPicked(entry.label)} />
       ))}
       <div>
         <Button type="button" size="sm" disabled={disabled || label === undefined} onClick={start}>

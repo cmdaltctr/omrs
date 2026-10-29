@@ -21,6 +21,11 @@ describe("ModelFileList", () => {
     expect(screen.getByRole("radio", { name: /Q8_0.*4\.2 GiB/ })).not.toBeChecked();
   });
 
+  it("names its radio group after the provider, so two cards with one repo do not share it", async () => {
+    setup();
+    expect(await screen.findByRole("radio", { name: /Q4_K_M/ })).toHaveAttribute("name", "quant-llamacpp-unsloth/Qwen3-4B-GGUF");
+  });
+
   it("marks Q8_0 as closest to full quality", async () => {
     setup();
     const q8 = await screen.findByRole("radio", { name: /Q8_0/ });

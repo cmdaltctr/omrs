@@ -60,6 +60,7 @@ export function ModelDownloadPanel({ provider, source }: { provider: string; sou
       {start.isError && refusal !== null ? <AlertNotice message={REASON_SENTENCES[refusal]} /> : null}
       {start.isError && refusal === null ? <ErrorNotice error={start.error} onRetry={() => start.reset()} /> : null}
       {status.isError ? <ErrorNotice error={status.error} onRetry={() => void status.refetch()} /> : null}
+      {cancel.isError ? <ErrorNotice error={cancel.error} onRetry={() => cancel.reset()} /> : null}
       {mine !== null ? <ModelDownloadProgress status={mine} cancelling={cancel.isPending} onCancel={() => cancel.mutate()} /> : null}
       {mine !== null ? <ModelDownloadDone status={mine} /> : null}
     </div>
