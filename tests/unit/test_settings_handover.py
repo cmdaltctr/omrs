@@ -97,7 +97,6 @@ def test_every_row_kind_lands_under_its_file_key(rows: WorkspaceSettings, folder
     rows.set(provider_key("llamacpp", "chat_url"), "http://localhost:8099/v1")
     rows.set(provider_key("openai_compatible", "base_url"), "https://example.test/v1")
     rows.set(provider_key("llamacpp", "server_binary"), "/opt/bin/llama-server")
-    rows.set(provider_key("llamacpp", "server_model"), "model.gguf")
     rows.set(provider_key("llamacpp", "context_window"), "8192")
     rows.set(provider_key("llamacpp", "idle_sleep"), "60")
     handover(rows, folder)
@@ -113,11 +112,20 @@ def test_every_row_kind_lands_under_its_file_key(rows: WorkspaceSettings, folder
         "llamacpp_chat_url": "http://localhost:8099/v1",
         "openai_compatible_base_url": "https://example.test/v1",
         "llamacpp_server_binary": "/opt/bin/llama-server",
-        "llamacpp_server_model": "model.gguf",
         "llamacpp_context_window": 8192,
         "llamacpp_idle_sleep_seconds": 60,
     }
     assert count_rows(rows) == 0
+
+
+def test_an_old_server_model_row_writes_no_key(rows: WorkspaceSettings, folder: Path) -> None:
+    """OMRS's server loads the Chat model now, so the old row is not handed over (ADR-108 D5)."""
+    rows.set(provider_key("llamacpp", "server_model"), "model.gguf")
+    rows.set_web_port(9100)
+    handover(rows, folder)
+    text = (folder / "omrs.jsonc").read_text(encoding="utf-8")
+    assert "llamacpp_server_model" not in text and "model.gguf" not in text
+    assert read_settings_file(folder).values["web_port"] == 9100
 
 
 def test_a_saved_off_switch_moves_as_false(rows: WorkspaceSettings, folder: Path) -> None:

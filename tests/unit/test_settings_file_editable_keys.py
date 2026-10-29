@@ -110,7 +110,12 @@ def test_allowed_keys_are_every_other_setting_and_the_file_only_keys() -> None:
 
 def test_the_card_keys_other_than_keys_stay_allowed() -> None:
     cards = {key for key in PROVIDER_FIELDS if key not in SECRET_FIELDS}
-    assert cards <= set(ALLOWED_KEYS)
+    assert cards - {"llamacpp_chat_server"} <= set(ALLOWED_KEYS)
+
+
+def test_the_chat_server_choice_is_set_on_the_llamacpp_card_only() -> None:
+    assert "llamacpp_chat_server" not in ALLOWED_KEYS
+    assert read_only_reason("llamacpp_chat_server") == "Set this on the llama.cpp card."
 
 
 def test_a_provider_key_reference_is_still_written(folder: Path) -> None:

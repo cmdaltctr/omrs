@@ -54,7 +54,9 @@ def build_answer_llm(settings: Settings | None = None) -> Any:
 
     Raises:
         ValueError: When ``answer.provider`` names no registered
-            provider (fail-fast; also surfaced at startup).
+            provider (fail-fast; also surfaced at startup), or when
+            ``answer.model`` is empty and the provider has no model of its
+            own to use instead (llama.cpp, ADR-108 D3). Nothing is built.
         ImportError: When the provider requires credentials or other
             configuration that is absent — configuration errors are
             deliberately loud, unlike missing optional extras.
@@ -74,6 +76,8 @@ def build_answer_llm(settings: Settings | None = None) -> Any:
             f"ANSWER__PROVIDER={settings.answer.provider!r} is not a registered "
             f"LLM provider. Available: {', '.join(llm_registry.available())}."
         )
+    if not settings.answer.model.strip() and not _has_default_model(name):
+        raise ValueError("Choose a Chat model in Settings > Chat.")
     try:
         build = llm_registry.get(name)
         return build(
@@ -93,6 +97,14 @@ def build_answer_llm(settings: Settings | None = None) -> Any:
         # A retrieval-only deployment remains usable; the answering
         # tools return the actionable error.
         return None
+
+
+def _has_default_model(name: str) -> bool:
+    """Return whether provider *name* has its own model for an empty answer model (ADR-108 D3)."""
+    from .core.providers.llm import registry as llm_registry
+
+    descriptor = llm_registry.describe(name)
+    return descriptor is None or descriptor.default_answer_model
 
 
 def resolve_verify_provider(settings: Settings, raw_provider: str | None) -> str:
@@ -236,6 +248,8 @@ def build_verify_llm(
             f"registered LLM provider (aliases: cloud, local). Available: "
             f"{', '.join(llm_registry.available())}."
         )
+    if not verify_model and not _has_default_model(name):
+        raise ValueError("Choose a judge model in Settings > Chat.")
     try:
         build = llm_registry.get(name)
         return build(

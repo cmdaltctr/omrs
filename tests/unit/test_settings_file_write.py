@@ -69,7 +69,7 @@ def test_the_card_keys_stay_allowed_and_key_fields_are_not() -> None:
         "llamacpp_context_window",
         "llamacpp_idle_sleep_seconds",
         "llamacpp_server_binary",
-        "llamacpp_server_model",
+        "llamacpp_classify_url",
         "answer.provider",
         "answer.model",
         "answer.verify_provider",

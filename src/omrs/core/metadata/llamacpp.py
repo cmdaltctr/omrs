@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ..settings import resolve_effective_settings
+from ..settings import classification_url, resolve_effective_settings
 from ._common import (
     _get_classify_max_attempts,
     _resolve_classify_timeout,
@@ -82,7 +82,7 @@ async def _extract_llamacpp_chat_async(
         # remains the fallback for servers that ignore the field.
         "response_format": {"type": "json_object"},
     }
-    url = f"{resolved.llamacpp_chat_url}/chat/completions"
+    url = f"{classification_url(resolved)}/chat/completions"
 
     max_attempts = _get_classify_max_attempts(resolved)
     timeout_s = _resolve_classify_timeout(resolved, "llamacpp")

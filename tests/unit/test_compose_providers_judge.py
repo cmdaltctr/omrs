@@ -68,3 +68,21 @@ def test_a_judge_model_the_file_dropped_goes_back_to_empty(tmp_path: Path) -> No
     assert (applied.answer.verify_provider, applied.answer.verify_model) == ("cloud", "")
     assert "answer.verify_model" not in applied.setting_sources
     assert "answer.verify_model" not in applied.__dict__  # no stray dotted attribute
+
+
+def test_a_llamacpp_judge_without_a_model_is_skipped_with_the_reason() -> None:
+    """The claim check is skipped and names the missing judge model (ADR-108 D3)."""
+    from tests.unit.test_connection_summary import make_settings
+
+    from omrs import compose
+    from omrs.engine_answer import build_verifier
+
+    settings = make_settings(verify_claims=True, verify_provider="llamacpp", verify_model="")
+    effective = compose.settings_to_effective(settings)
+
+    def factory(block: object) -> object:
+        return compose.build_verify_llm(settings, answer_block=block)
+
+    seam, reason = build_verifier(effective, factory, str)
+    assert seam is None
+    assert reason is not None and "Choose a judge model in Settings > Chat." in reason

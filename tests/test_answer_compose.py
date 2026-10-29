@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import importlib.util
 import inspect
+from typing import Any
 
 import pytest
 
@@ -121,3 +122,21 @@ def test_live_missing_extra_returns_none(monkeypatch: pytest.MonkeyPatch) -> Non
     _enable_llamacpp(monkeypatch)
 
     assert compose.build_answer_llm() is None
+
+
+def test_an_empty_llamacpp_chat_model_is_refused_and_builds_nothing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """llama.cpp has no Chat model setting of its own, so no model means no Chat (ADR-108)."""
+    import llama_index.llms.openai_like as module
+    from tests.unit.test_connection_summary import make_settings
+
+    from omrs.core.answer.settings import AnswerSettings
+
+    built: list[Any] = []
+    monkeypatch.setattr(module, "OpenAILike", lambda **kwargs: built.append(kwargs))
+    settings = make_settings(answer=AnswerSettings(enabled=True, provider="llamacpp", model=""))
+
+    with pytest.raises(ValueError, match=r"Choose a Chat model in Settings > Chat\."):
+        compose.build_answer_llm(settings)
+    assert built == []

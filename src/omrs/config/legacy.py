@@ -125,9 +125,15 @@ _NEVER_SHIPPED_ALIASES: dict[str, str] = {
 # value in silence, so the tripwire names the replacement.
 #
 # Lifetime: as FLAT above — retained while an upgrade path exists.
+#
+# ADR-108 D5: OMRS's own llama.cpp server loads the Chat model, so its
+# separate model setting could only drift from it.
 _REMOVED_ENV_VARS: dict[str, str] = {
     "OCR_WORKER_COMMAND": "OCR_WORKERS_DIR with OCR_ENGINE_PRIMARY",
     "OCR_WORKER_ENV_DIR": "OCR_WORKERS_DIR with OCR_ENGINE_PRIMARY",
+    "LLAMACPP_SERVER_MODEL": (
+        "ANSWER__PROVIDER=llamacpp with ANSWER__MODEL, and LLAMACPP_CHAT_SERVER=managed"
+    ),
 }
 
 
@@ -179,8 +185,9 @@ def check_legacy_env_vars(env: dict[str, str] | None = None) -> None:
     if removed:
         removed_lines = "\n".join(f"  {old}  ->  {new}" for old, new in removed)
         sections.append(
-            "Removed OCR worker settings. Routes now resolve from the OCR "
-            "workers folder and an engine name; remove these and set:\n"
+            "Removed settings. OCR routes resolve from the OCR workers folder and "
+            "an engine name; OMRS's llama.cpp server loads the Chat model. Remove "
+            "these and set:\n"
             f"{removed_lines}"
         )
     body = "\n".join(sections)

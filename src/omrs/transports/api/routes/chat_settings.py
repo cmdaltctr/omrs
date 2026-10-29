@@ -35,6 +35,7 @@ from ....core.providers.llm import registry as llm_registry
 from ..engine_access import ReadScope, RuntimeDep, admitted
 from ..errors import error_response
 from ..lifespan import WebRuntime
+from ..llamacpp_chat_rule import chat_choice_refusal
 from ..provider_state import EngineRefused
 from ..settings_store import refusal_response
 from .chat_reasoning import CHAT_LEVEL, level_changes, level_lock_response, level_view
@@ -138,7 +139,11 @@ def _not_ready_reason(settings: Any, provider: str, model: str) -> str | None:
         and not str(getattr(settings, field.settings_field, "")).strip()
         for field in descriptor.fields
     )
-    if keys_missing or not model.strip() or not descriptor.test_targets(settings).urls:
+    if keys_missing:
+        return "not-configured"
+    if not model.strip():
+        return "no-model"
+    if not descriptor.test_targets(settings).urls:
         return "not-configured"
     return None
 
@@ -213,7 +218,7 @@ async def get_chat_settings(_: ReadScope, runtime: RuntimeDep) -> Response:
 
 @router.put("/settings/chat", operation_id="setChatSettings")
 async def set_chat_settings(
-    _: ManageScope,
+    principal: ManageScope,
     runtime: RuntimeDep,
     body: Annotated[ChatSaveBody | None, Body()] = None,
 ) -> Response:
@@ -224,8 +229,9 @@ async def set_chat_settings(
     `reasoning`, or no body, clears the choice and its level. The Engine uses
     the choice from the next answer. 400 for an unknown provider, a bad model
     name or a bad level; 409 when the environment sets what the body writes,
-    the file changed since `revision`, or the Engine refuses it. The answer
-    carries the new `revision`.
+    the file changed since `revision`, or the Engine refuses it. While OMRS runs
+    the llama.cpp Chat server, a llama.cpp choice needs `credentials` (403) and a
+    model that passes the model rule (400). The answer carries the new `revision`.
     """
     body = body or ChatSaveBody()
     choice = None
@@ -252,6 +258,10 @@ async def set_chat_settings(
             and (locked := level_lock_response(settings, CHAT_LEVEL)) is not None
         ):
             return locked
+        if choice is not None and (
+            refusal := chat_choice_refusal(settings.llamacpp_chat_server, *choice, principal.scopes)
+        ):
+            return error_response(*refusal)
         changes: dict[str, str | None] = {}
         if writes_choice:
             provider, model = choice if choice is not None else (None, None)

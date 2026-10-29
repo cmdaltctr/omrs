@@ -31,6 +31,8 @@ VARIABLES = (
     "LOCAL_BACKEND",
     "COMMUNITY_SEED",
     "LLAMACPP_CHAT_URL",
+    "LLAMACPP_CLASSIFY_URL",
+    "LLAMACPP_CHAT_SERVER",
     "OLLAMA_BASE_URL",
     "RAG_PROFILE",
     "ANSWER__MODEL",
@@ -172,6 +174,84 @@ def test_dotenv_wins_over_the_file_for_a_provider_field(folder: Path, tmp_path: 
     assert source_of(settings, "llamacpp_chat_url") == "dotenv"
     assert "llamacpp_chat_url" in settings.provider_explicit
     assert "llamacpp_chat_url" not in settings.config_file_fields
+
+
+def test_classification_address_defaults_to_blank(tmp_path: Path) -> None:
+    settings = build(tmp_path)
+    assert settings.llamacpp_classify_url == ""
+    assert source_of(settings, "llamacpp_classify_url") == "default"
+
+
+def test_classification_address_from_the_environment_sets_and_locks_it(
+    monkeypatch: pytest.MonkeyPatch, folder: Path, tmp_path: Path
+) -> None:
+    write_config(folder, '{ "llamacpp_classify_url": "http://from-file:1/v1" }')
+    monkeypatch.setenv("LLAMACPP_CLASSIFY_URL", "http://127.0.0.1:9931/v1")
+    settings = build(tmp_path)
+    assert settings.llamacpp_classify_url == "http://127.0.0.1:9931/v1"
+    assert source_of(settings, "llamacpp_classify_url") == "env"
+    assert "llamacpp_classify_url" in settings.provider_explicit
+
+
+def test_classification_address_from_the_file_does_not_lock(folder: Path, tmp_path: Path) -> None:
+    write_config(folder, '{ "llamacpp_classify_url": "http://127.0.0.1:9931/v1" }')
+    settings = build(tmp_path)
+    assert settings.llamacpp_classify_url == "http://127.0.0.1:9931/v1"
+    assert source_of(settings, "llamacpp_classify_url") == "config-file"
+    assert "llamacpp_classify_url" not in settings.provider_explicit
+
+
+def test_a_file_url_for_the_classification_address_is_ignored_and_listed(
+    folder: Path, tmp_path: Path
+) -> None:
+    write_config(folder, '{ "llamacpp_classify_url": "file:///etc/passwd" }')
+    parsed = read_settings_file()
+    assert [(p.kind, p.key) for p in parsed.problems] == [(KIND_INVALID, "llamacpp_classify_url")]
+    assert build(tmp_path).llamacpp_classify_url == ""
+
+
+def test_chat_server_choice_defaults_to_external(tmp_path: Path) -> None:
+    from omrs.config.rules import ACCEPTED
+
+    assert ACCEPTED["llamacpp_chat_server"] == ("external", "managed")
+    assert build(tmp_path).llamacpp_chat_server == "external"
+
+
+def test_an_unknown_chat_server_choice_is_ignored_and_names_both_values(
+    folder: Path, tmp_path: Path
+) -> None:
+    write_config(folder, '{ "llamacpp_chat_server": "router" }')
+    (problem,) = read_settings_file().problems
+    assert (problem.kind, problem.key) == (KIND_INVALID, "llamacpp_chat_server")
+    assert "external" in problem.message and "managed" in problem.message
+    assert "router" not in problem.message
+    assert build(tmp_path).llamacpp_chat_server == "external"
+
+
+def test_chat_server_choice_from_the_environment_locks_it(
+    monkeypatch: pytest.MonkeyPatch, folder: Path, tmp_path: Path
+) -> None:
+    write_config(folder, '{ "llamacpp_chat_server": "external" }')
+    monkeypatch.setenv("LLAMACPP_CHAT_SERVER", "managed")
+    settings = build(tmp_path)
+    assert settings.llamacpp_chat_server == "managed"
+    assert source_of(settings, "llamacpp_chat_server") == "env"
+    assert "llamacpp_chat_server" in settings.provider_explicit
+
+
+def test_the_old_server_model_key_is_ignored_and_names_the_chat_model(
+    folder: Path, tmp_path: Path
+) -> None:
+    write_config(folder, '{ "llamacpp_server_model": "Qwen/Qwen3-4B-GGUF:Q4_K_M" }')
+    (problem,) = read_settings_file().problems
+    assert (problem.kind, problem.key, problem.replacement) == (
+        KIND_RETIRED,
+        "llamacpp_server_model",
+        "answer.model",
+    )
+    assert "answer.model" in problem.message
+    settings = build(tmp_path)
+    assert settings.answer.model != "Qwen/Qwen3-4B-GGUF:Q4_K_M"  # never read as the Chat model
 
 
 def test_chat_choice_comes_from_the_file(folder: Path, tmp_path: Path) -> None:

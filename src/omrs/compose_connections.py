@@ -149,6 +149,8 @@ def _plain_field(
         "set": bool(value),
         "last4": None,
         "state": None,
+        "group": spec.group,
+        "follows": spec.follows,
     }
 
 
@@ -190,6 +192,8 @@ def _secret_field(
         "set": bool(key),
         "last4": key[-4:] if len(key) >= _LAST4_MIN_LENGTH else None,
         "state": state,
+        "group": spec.group,
+        "follows": spec.follows,
     }
 
 
@@ -201,12 +205,19 @@ def _fields(
     profiles_ollama: bool = False,
 ) -> list[dict[str, Any]]:
     locks = locked_fields(settings, settings.provider_explicit, profiles_ollama=profiles_ollama)
-    return [
+    entries = [
         _secret_field(spec, provider, settings, values, locks)
         if spec.kind == "secret"
         else _plain_field(spec, settings, values, locks)
         for spec in descriptor.fields
     ]
+    by_id = {entry["id"]: entry for entry in entries}
+    for entry in entries:
+        followed = by_id.get(entry["follows"] or "")
+        if followed is not None and not str(entry["value"] or "").strip():
+            # A blank field uses the value it follows (ADR-108 D2): show that value.
+            entry["value"], entry["source"] = followed["value"], "default"
+    return entries
 
 
 def build_connection_summary(
@@ -255,7 +266,7 @@ def build_connection_summary(
                 "model_source": descriptor.model_source,
                 "fields": _fields(provider, descriptor, settings, values, profiles_ollama),
                 "read_only": [
-                    {"label": row.label, "value": row.value}
+                    {"label": row.label, "value": row.value, "group": row.group}
                     for row in descriptor.read_only(settings)
                 ],
                 "roles": [role for role, name in by_role.items() if name == provider],

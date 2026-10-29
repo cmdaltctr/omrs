@@ -26,7 +26,11 @@ from omrs.core.providers.llm.connection import (
     ConnectionField,
     ConnectionTarget,
 )
-from omrs.core.settings import PROVIDER_SECRET_FIELDS, provider_secret_values
+from omrs.core.settings import (
+    PROVIDER_ADDRESS_FIELDS,
+    PROVIDER_SECRET_FIELDS,
+    provider_secret_values,
+)
 from omrs.core.vectordb.identity import RedactionSecrets
 
 ANT_KEY = "sk-ant-api03-AAAA1111BBBB2222CCCC3333"  # gitleaks:allow
@@ -265,6 +269,14 @@ def test_provider_fields_match_the_descriptors() -> None:
         if f.kind == "secret"
     }
     assert set(PROVIDER_SECRET_FIELDS) == secrets
+    addresses = {
+        f.settings_field
+        for d in registry.describe_all().values()
+        for f in d.fields
+        if f.kind == "url"
+    }
+    assert set(PROVIDER_ADDRESS_FIELDS) == addresses
+    assert "llamacpp_classify_url" in PROVIDER_ADDRESS_FIELDS
 
 
 @pytest.mark.parametrize(("field", "variable"), list(NEW_FIELDS.items()))
@@ -344,7 +356,9 @@ def test_summary_entries() -> None:
     assert [(f["id"], f["kind"], f["required"]) for f in ant["fields"]] == [
         ("api_key", "secret", True)
     ]
-    assert ant["read_only"] == [{"label": "Address", "value": "https://api.anthropic.com"}]
+    assert ant["read_only"] == [
+        {"label": "Address", "value": "https://api.anthropic.com", "group": None}
+    ]
     assert oai["fields"][0]["value"] == "https://api.openai.com/v1"
     assert oai["fields"][0]["source"] == "default"
     assert result["openai_compatible"]["locality"] == "cloud"

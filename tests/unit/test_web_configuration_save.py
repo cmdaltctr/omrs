@@ -150,6 +150,15 @@ def test_a_key_the_page_may_not_write_is_refused(
     assert text(harness) == before
 
 
+def test_the_chat_server_choice_is_refused_on_this_page(
+    harness: Harness, client: TestClient
+) -> None:
+    harness.launch()
+    response = put(client, {"llamacpp_chat_server": "managed"})
+    refused(response, 400, "llamacpp_chat_server is not a setting that can be changed here.")
+    assert text(harness) == ""
+
+
 def test_a_read_only_key_is_refused_before_a_lock(
     harness: Harness, client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -366,3 +375,47 @@ def test_responses_conform_to_the_contract(
     client.cookies.clear()
     check.check(put(client, {"retrieval.top_k": 20}, headers=bearer(harness.policy, "read")), 403)
     assert check.operations >= FAMILIES["configuration_save"]
+
+
+# ── OMRS's own llama.cpp server loads the Chat model (ADR-108 D5, D11) ───
+
+HF_ID = "Qwen/Qwen3-4B-GGUF:Q4_K_M"
+
+
+def test_a_llamacpp_chat_choice_needs_credentials_while_managed(
+    harness: Harness, client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from omrs.transports.api import security
+
+    harness.write('{ "llamacpp_chat_server": "managed" }')
+    before = text(harness)
+    harness.launch()
+    monkeypatch.setattr(security, "SESSION_SCOPES", security.SESSION_SCOPES - {"credentials"})
+    changes = {"answer.provider": "llamacpp", "answer.model": HF_ID}
+    message = refused(put(client, changes, file_revision(harness.folder)), 403)
+    assert "credentials" in message
+    assert text(harness) == before
+
+
+def test_a_llamacpp_chat_model_must_pass_the_model_rule_while_managed(
+    harness: Harness, client: TestClient
+) -> None:
+    harness.write('{ "llamacpp_chat_server": "managed", "answer": { "provider": "llamacpp" } }')
+    before = text(harness)
+    harness.launch()
+    response = put(client, {"answer.model": "qwen3:4b"}, file_revision(harness.folder))
+    message = refused(response, 400)
+    assert "gguf" in message and "qwen3:4b" not in message
+    assert text(harness) == before
+
+
+def test_an_external_server_takes_any_llamacpp_name_with_manage_only(
+    harness: Harness, client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from omrs.transports.api import security
+
+    harness.launch()
+    monkeypatch.setattr(security, "SESSION_SCOPES", security.SESSION_SCOPES - {"credentials"})
+    response = put(client, {"answer.provider": "llamacpp", "answer.model": "my-model"})
+    assert response.status_code == 200, response.text
+    assert data(harness)["answer"] == {"provider": "llamacpp", "model": "my-model"}

@@ -13,6 +13,8 @@ import-linter contract extended in task 10.2).
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict, Field
 
 #: Valid ``OCR_ROUTING_UNIT`` values; ``page`` is opt-in.
@@ -23,11 +25,27 @@ OCR_ROUTING_UNITS = ("document", "page")
 #: the LLM provider connection descriptors (a test checks this). Everything
 #: that handles provider values by name reads these tuples, so a provider with
 #: a new field adds its name here and nowhere else.
-PROVIDER_ADDRESS_FIELDS = ("ollama_base_url", "llamacpp_chat_url", "openai_compatible_base_url")
+PROVIDER_ADDRESS_FIELDS = (
+    "ollama_base_url",
+    "llamacpp_chat_url",
+    "llamacpp_classify_url",
+    "openai_compatible_base_url",
+)
 PROVIDER_SECRET_FIELDS = ("openrouter_api_key", "openai_compatible_api_key", "anthropic_api_key")
 #: Whole-number editable fields that live in ``EffectiveSettings``: the Ollama
 #: context window (chat and metadata calls only, never embeddings).
 PROVIDER_INT_FIELDS = ("ollama_context_window",)
+
+
+def classification_url(settings: Any) -> str:
+    """Return the llama.cpp classification address: ``llamacpp_classify_url``, else Chat's.
+
+    A blank classification address follows ``llamacpp_chat_url``, so an install
+    that set only the Chat address keeps working (ADR-108 D2). Both
+    classification paths, the llama.cpp card and the runtime list call this.
+    """
+    own = (getattr(settings, "llamacpp_classify_url", "") or "").strip()
+    return own or settings.llamacpp_chat_url
 
 
 class ChunkingBlock(BaseModel):
@@ -296,6 +314,8 @@ class EffectiveSettings(BaseModel):
     llamacpp_embed_model: str = ""
     llamacpp_chat_url: str = "http://localhost:8081/v1"
     llamacpp_chat_model: str = ""
+    #: Classification address; blank follows ``llamacpp_chat_url`` (ADR-108).
+    llamacpp_classify_url: str = ""
     openrouter_api_key: str = ""
     openai_compatible_base_url: str = "https://api.openai.com/v1"
     openai_compatible_api_key: str = ""

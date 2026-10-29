@@ -156,6 +156,51 @@ def test_connections_response_shape(setup: Any, configure: Any) -> None:
     assert body["keychain"] == "unavailable"
 
 
+def _llamacpp(client: TestClient) -> dict[str, Any]:
+    body = client.get("/v1/connections").json()
+    return next(c for c in body["connections"] if c["provider"] == "llamacpp")
+
+
+def test_the_llamacpp_card_has_three_blocks(setup: Any, configure: Any) -> None:
+    """ADR-108 D8: fields and read-only rows carry their card block."""
+    client, _ = setup
+    configure()
+    entry = _llamacpp(client)
+    fields = {f["id"]: (f["group"], f["follows"]) for f in entry["fields"]}
+    assert fields == {"chat_url": ("answers", None), "classify_url": ("metadata", "chat_url")}
+    assert [(r["label"], r["group"]) for r in entry["read_only"]] == [
+        ("Embedding address", "embeddings"),
+        ("Embedding model", "embeddings"),
+        ("Text model (classification)", "metadata"),
+    ]
+    others = [c for c in client.get("/v1/connections").json()["connections"] if c is not entry]
+    for other in others:
+        if other["provider"] == "llamacpp":
+            continue
+        assert {f["group"] for f in other["fields"]} <= {None}
+        assert {f["follows"] for f in other["fields"]} <= {None}
+        assert {r["group"] for r in other["read_only"]} <= {None}
+
+
+def test_a_following_classification_address_shows_the_chat_address(
+    setup: Any, configure: Any
+) -> None:
+    client, _ = setup
+    configure(llamacpp_chat_url="http://127.0.0.1:9931/v1")
+    field = next(f for f in _llamacpp(client)["fields"] if f["id"] == "classify_url")
+    assert (field["value"], field["source"], field["set"]) == (
+        "http://127.0.0.1:9931/v1",
+        "default",
+        False,
+    )
+    configure(
+        llamacpp_chat_url="http://127.0.0.1:8081/v1",
+        llamacpp_classify_url="http://127.0.0.1:9931/v1",
+    )
+    field = next(f for f in _llamacpp(client)["fields"] if f["id"] == "classify_url")
+    assert (field["value"], field["set"]) == ("http://127.0.0.1:9931/v1", True)
+
+
 def test_no_key_value_in_any_response(setup: Any, configure: Any, fake: FakeProvider) -> None:
     client, policy = setup
     configure(openrouter_api_key=SECRET)

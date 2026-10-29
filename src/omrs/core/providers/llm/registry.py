@@ -84,6 +84,11 @@ def describe_all() -> dict[str, ConnectionDescriptor]:
     return described
 
 
+def describe(name: str) -> ConnectionDescriptor | None:
+    """Return provider *name*'s connection descriptor, or ``None`` when absent or unknown."""
+    return _module_attr(name, "CONNECTION")  # type: ignore[no-any-return]
+
+
 def _module_attr(name: str, attr: str) -> Any:
     """Return *attr* of provider *name*'s module, or ``None`` when absent or unknown."""
     import_path = _registry.get(name)

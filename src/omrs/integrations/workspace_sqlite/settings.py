@@ -35,6 +35,9 @@ SETTING_KEYS: frozenset[str] = frozenset(
 #: managed llama.cpp server's program, model and window, and the save time. A secret-looking
 #: field such as ``api_key`` is never allowed. A test in ``tests/`` checks this
 #: list against the descriptors, because integrations may not import ``core``.
+#: The list is frozen at ADR-087, when the table stopped taking settings: later
+#: fields are never stored, and ``server_model`` (retired by ADR-108) stays only
+#: so an old table can still be read and handed over.
 PROVIDER_FIELD_IDS: frozenset[str] = frozenset(
     {
         "base_url",

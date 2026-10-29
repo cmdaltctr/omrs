@@ -83,7 +83,11 @@ READ_ONLY_KEYS: Mapping[str, str] = {
     "collection_name": _STORAGE,
     "ingestion.ingest_extensions": EDIT_BY_HAND,
     "metadata.keyword_rules": EDIT_BY_HAND,
+    "llamacpp_chat_server": "Set this on the llama.cpp card.",
 }
+#: Read-only on the Settings page, but written by a provider card route through
+#: :func:`write_settings`, which checks its own scope rule (ADR-108 D11).
+CARD_ONLY_KEYS: tuple[str, ...] = ("llamacpp_chat_server",)
 
 
 def read_only_reason(key: str) -> str | None:
@@ -111,9 +115,9 @@ ALLOWED_KEYS: tuple[str, ...] = tuple(
     key for key in setting_paths() if read_only_reason(key) is None
 )
 #: What :func:`write_settings` takes: :data:`ALLOWED_KEYS` plus the provider key
-#: fields, which the Providers cards write as references only.
+#: fields, which the Providers cards write as references only, and the card-only keys.
 _WRITABLE: frozenset[str] = frozenset(
-    {*ALLOWED_KEYS, *(key for key in PROVIDER_FIELDS if key in SECRET_FIELDS)}
+    {*ALLOWED_KEYS, *(key for key in PROVIDER_FIELDS if key in SECRET_FIELDS), *CARD_ONLY_KEYS}
 )
 
 CONFLICT_CHANGED = "omrs.jsonc changed on disk. Reload to see the new values."

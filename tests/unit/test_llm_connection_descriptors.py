@@ -51,6 +51,12 @@ def test_only_llamacpp_and_ollama_declare_a_model_source() -> None:
     }
 
 
+def test_only_llamacpp_has_no_default_answer_model() -> None:
+    flags = {name: d.default_answer_model for name, d in registry.describe_all().items()}
+    assert flags == {name: name != "llamacpp" for name in PROVIDERS}
+    assert ConnectionDescriptor.__dataclass_fields__["default_answer_model"].default is True
+
+
 def test_a_descriptor_has_no_model_source_by_default() -> None:
     descriptor = registry.describe_all()["openrouter"]
     assert ConnectionDescriptor.__dataclass_fields__["model_source"].default is None
