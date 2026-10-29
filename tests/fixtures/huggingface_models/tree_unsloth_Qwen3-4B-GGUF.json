@@ -1,0 +1,194 @@
+[
+ {
+  "type": "file",
+  "oid": "fcdf20804baf765e2c6fdc11fd3ac4e59cca2d64",
+  "size": 3083,
+  "path": ".gitattributes"
+ },
+ {
+  "type": "file",
+  "oid": "be108be93011a0fd031af3b36cabf7faadf43d84",
+  "size": 8051285536,
+  "path": "Qwen3-4B-BF16.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "83ad2d36502c819a77db424481b9e659e9303354",
+  "size": 2381344032,
+  "path": "Qwen3-4B-IQ4_NL.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "184c910e55a8cc8f6c144d315195ef22e410ad5e",
+  "size": 2270752032,
+  "path": "Qwen3-4B-IQ4_XS.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "42d8e1b86865f22fbd56df81c2540fddafcfcc9b",
+  "size": 1669500192,
+  "path": "Qwen3-4B-Q2_K.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "42d8e1b86865f22fbd56df81c2540fddafcfcc9b",
+  "size": 1669500192,
+  "path": "Qwen3-4B-Q2_K_L.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "493512b87241fde2ed70bd85443d52433d56a320",
+  "size": 2075618592,
+  "path": "Qwen3-4B-Q3_K_M.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "ff53a685e56262dc29a22e5c51bc03aceae71d80",
+  "size": 1886997792,
+  "path": "Qwen3-4B-Q3_K_S.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "bfa27cabb52b74e682d26c64eb3b6926c545ccde",
+  "size": 2375773472,
+  "path": "Qwen3-4B-Q4_0.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "c08ce49060360b5c614d95d49f00239cebde3c30",
+  "size": 2596629792,
+  "path": "Qwen3-4B-Q4_1.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "da126f98bdac03e2660abb8279ff0dd0cd73ff61",
+  "size": 2497281312,
+  "path": "Qwen3-4B-Q4_K_M.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "10fbb3e7a05571efea0dcb3001ca37fb467ca719",
+  "size": 2383310112,
+  "path": "Qwen3-4B-Q4_K_S.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "1b9dc56c422ab59003cfea54b1cd6270081088b5",
+  "size": 2889514272,
+  "path": "Qwen3-4B-Q5_K_M.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "be15de9aa5e24a08119a285fb74e7ebd5f936de9",
+  "size": 2823712032,
+  "path": "Qwen3-4B-Q5_K_S.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "5ad8f40b045c04db0cb45cbda9ff5549a18be29c",
+  "size": 3306261792,
+  "path": "Qwen3-4B-Q6_K.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "e66864d4b6ac3443bf68e017e4b5864837d9692f",
+  "size": 4280405792,
+  "path": "Qwen3-4B-Q8_0.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "06aa5830d9ad3990ecd7d27e46765af0ce387173",
+  "size": 1143484192,
+  "path": "Qwen3-4B-UD-IQ1_M.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "53daba5f57abbf44f84942fb815b0bfaf16a4834",
+  "size": 1083150112,
+  "path": "Qwen3-4B-UD-IQ1_S.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "5dc187f9dc5b00a967ada93904008b3ae9417123",
+  "size": 1532931872,
+  "path": "Qwen3-4B-UD-IQ2_M.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "03901a4b390972d85181c12bdc0bf398a78e7726",
+  "size": 1255345952,
+  "path": "Qwen3-4B-UD-IQ2_XXS.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "0f15325de86bbce01cf84ad57bafcba043ed41d9",
+  "size": 1674376992,
+  "path": "Qwen3-4B-UD-IQ3_XXS.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "db2e88e1598d2c02b8ebf370d974a7fd948ec7b3",
+  "size": 1695724832,
+  "path": "Qwen3-4B-UD-Q2_K_XL.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "f7f4fb1dad034291e240e3c57da14c213c8ef049",
+  "size": 2131692832,
+  "path": "Qwen3-4B-UD-Q3_K_XL.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "b431e6f2684c76315da44c4e0b62f16dab55e26a",
+  "size": 2546341152,
+  "path": "Qwen3-4B-UD-Q4_K_XL.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "dd05962979cd866a5bbec134c5fce350809233bc",
+  "size": 2905253152,
+  "path": "Qwen3-4B-UD-Q5_K_XL.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "52c16b12d219e64852a9820f2c45c8976c9b4ae1",
+  "size": 3658223392,
+  "path": "Qwen3-4B-UD-Q6_K_XL.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "59b8152d2cde8df4c1bf1735d55893a46e383af2",
+  "size": 5056700192,
+  "path": "Qwen3-4B-UD-Q8_K_XL.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "67414d48b292e331fff635b7e64d2efd31681959",
+  "size": 19797,
+  "path": "README.md"
+ },
+ {
+  "type": "file",
+  "oid": "fb75e27293471d40ec9444454638fafa1ccdbe56",
+  "size": 752,
+  "path": "config.json"
+ },
+ {
+  "type": "file",
+  "oid": "202ab1f287cf1830220321872d4a6322b1e59038",
+  "size": 3842218,
+  "path": "imatrix_unsloth.dat"
+ },
+ {
+  "type": "file",
+  "oid": "a0e209876aecd6785194f4d10c84e25eb3e524ff",
+  "size": 178,
+  "path": "params"
+ },
+ {
+  "type": "file",
+  "oid": "26f6656fa874146ef0a595217be7dcb1aa2eca71",
+  "size": 1482,
+  "path": "template"
+ }
+]

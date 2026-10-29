@@ -1,0 +1,42 @@
+[
+ {
+  "_id": "69a52438a50ce97141e4a0eb",
+  "id": "unsloth/Qwen3.5-4B-GGUF",
+  "gated": false,
+  "lastModified": "2026-03-02T14:08:17.000Z",
+  "likes": 523,
+  "downloads": 1278241
+ },
+ {
+  "_id": "68187b5488dd6c8bce222ee6",
+  "id": "Qwen/Qwen3-4B-GGUF",
+  "gated": false,
+  "lastModified": "2025-05-21T06:32:23.000Z",
+  "likes": 212,
+  "downloads": 653047
+ },
+ {
+  "_id": "690423e7a57d06b1ed4704e4",
+  "id": "Qwen/Qwen3-VL-4B-Instruct-GGUF",
+  "gated": false,
+  "lastModified": "2025-11-01T02:28:10.000Z",
+  "likes": 79,
+  "downloads": 588107
+ },
+ {
+  "_id": "6a80ab2d946968d5f2596452",
+  "id": "empero-ai/Qwen3.8-4B-Distill-GGUF",
+  "gated": false,
+  "lastModified": "2026-08-16T01:00:50.000Z",
+  "likes": 190,
+  "downloads": 576852
+ },
+ {
+  "_id": "680f345d402806501d9a5216",
+  "id": "unsloth/Qwen3-4B-GGUF",
+  "gated": false,
+  "lastModified": "2025-06-08T08:08:49.000Z",
+  "likes": 252,
+  "downloads": 527528
+ }
+]
