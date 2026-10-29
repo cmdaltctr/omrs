@@ -3,9 +3,15 @@
  * is read once and then every second while it runs. A start or a cancel puts
  * the status the server returned into the cache, so the panel shows it at once.
  */
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { useApi } from "../api/ApiProvider";
 import { cancelModelDownload, modelDownloadKeys, modelDownloadQuery, modelFilesQuery, modelSearchQuery, providerModelsQuery, startModelDownload, type ModelDownloadStatus, type StartModelDownload } from "../api/modelDownloads";
+
+/** An older status read still open would answer after this write and stop the polling, so it is cancelled first. */
+async function putStatus(queryClient: QueryClient, status: ModelDownloadStatus) {
+  await queryClient.cancelQueries({ queryKey: modelDownloadKeys.current() });
+  queryClient.setQueryData(modelDownloadKeys.current(), status);
+}
 
 export function useModelDownload() {
   return useQuery(modelDownloadQuery(useApi()));
@@ -16,7 +22,7 @@ export function useStartModelDownload() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (request: StartModelDownload) => startModelDownload(api, request),
-    onSuccess: (status: ModelDownloadStatus) => queryClient.setQueryData(modelDownloadKeys.current(), status),
+    onSuccess: (status: ModelDownloadStatus) => putStatus(queryClient, status),
   });
 }
 
@@ -25,7 +31,7 @@ export function useCancelModelDownload() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => cancelModelDownload(api),
-    onSuccess: (status: ModelDownloadStatus) => queryClient.setQueryData(modelDownloadKeys.current(), status),
+    onSuccess: (status: ModelDownloadStatus) => putStatus(queryClient, status),
   });
 }
 

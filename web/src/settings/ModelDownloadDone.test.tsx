@@ -47,6 +47,14 @@ describe("llama.cpp download finished, server run by omrs", () => {
     expect(puts).toEqual([{ model: "unsloth/Qwen3-4B-GGUF:Q4_K_M", revision: "r1" }]);
     await user.click(await within(panel()).findByRole("button", { name: "Restart server to load it" }));
     expect(restarts).toHaveLength(1);
+    await waitFor(() => expect(within(panel()).queryByText("Saved. The server loads the new model after a restart.")).toBeNull());
+  });
+
+  it("shows the read error, not the own-server note, when the server status cannot be read", async () => {
+    const { panel } = await open({ ...WITH_CREDENTIALS, "GET /v1/model-downloads/current": () => LLAMA_DONE, "GET /v1/llamacpp/server": () => json({ status: "error", message: "Broken." }, 500) });
+    expect(await within(panel()).findByRole("alert")).toBeInTheDocument();
+    expect(within(panel()).queryByRole("button", { name: "Refresh models" })).toBeNull();
+    expect(within(panel()).queryByText(/Llama app/)).toBeNull();
   });
 
   it("also offers Use this model while the server is starting", async () => {
@@ -121,6 +129,35 @@ describe("llama.cpp download finished, server not run by omrs", () => {
 });
 
 describe("Ollama download finished", () => {
+  it("uses Ollama words when Ollama does not list the model yet, and reads the list again on Refresh models", async () => {
+    let listed = false;
+    const { server, user, panel } = await open(
+      {
+        "GET /v1/model-downloads/current": () => downloadStatus({ state: "succeeded", provider: "ollama", model: "qwen3", model_value: "qwen3", bytes_done: 5, bytes_total: 5 }),
+        "POST /v1/connections/ollama/models": () => ({ status: "ok", reachable: true, reason: null, models: listed ? ["qwen3:latest"] : [], truncated: false }),
+      },
+      "Ollama",
+    );
+    expect(await within(panel()).findByText(/Ollama does not list it yet/)).toBeInTheDocument();
+    expect(within(panel()).queryByText(/Llama app|Your server/)).toBeNull();
+    listed = true;
+    await user.click(within(panel()).getByRole("button", { name: "Refresh models" }));
+    expect(await within(panel()).findByText("Ollama lists qwen3.")).toBeInTheDocument();
+    expect(server.exact("POST", "/v1/connections/ollama/models")).toHaveLength(2);
+  });
+
+  it("uses Ollama words when Ollama does not answer", async () => {
+    const { panel } = await open(
+      {
+        "GET /v1/model-downloads/current": () => downloadStatus({ state: "succeeded", provider: "ollama", model: "qwen3", model_value: "qwen3", bytes_done: 5, bytes_total: 5 }),
+        "POST /v1/connections/ollama/models": () => ({ status: "ok", reachable: false, reason: "refused", models: [], truncated: false }),
+      },
+      "Ollama",
+    );
+    expect(await within(panel()).findByText(/Ollama did not answer/)).toBeInTheDocument();
+    expect(within(panel()).queryByText(/chat address|Your server/)).toBeNull();
+  });
+
   it("reads the Ollama model list again and says Ollama lists the model", async () => {
     const { server, panel } = await open(
       {

@@ -39,6 +39,9 @@ SPACE_MARGIN_BYTES = 1024**3
 
 _API = f"https://{HOST}/api/models"
 _SEARCH_FIELDS = "&expand[]=downloads&expand[]=likes&expand[]=gated&expand[]=lastModified"
+#: The tree endpoint pages its entries (1,000 a page). Twenty pages cover any
+#: GGUF repo; more means a loop or an unexpected repo, so the read stops.
+MAX_TREE_PAGES = 20
 
 
 class ModelHostError(Exception):
@@ -89,10 +92,12 @@ class RepoFiles:
     files: tuple[tuple[str, int], ...]
 
 
-def _fetch(client: httpx.Client, url: str) -> tuple[int, bytes]:
-    """Return the status and the body (2xx only) of a ``GET`` to *url*.
+def _fetch(client: httpx.Client, url: str) -> tuple[int, bytes, str | None]:
+    """Return the status, the body (2xx only) and the next-page URL of a ``GET``.
 
     Follows a redirect only when the target is on the same host over HTTPS.
+    The next-page URL comes from a ``Link: <...>; rel="next"`` header, or is
+    ``None``.
 
     Raises:
         ModelHostError: ``network`` for a transport error, an oversize body,
@@ -114,7 +119,7 @@ def _fetch(client: httpx.Client, url: str) -> tuple[int, bytes]:
                         raise ModelHostError("network")
                     continue
                 if not 200 <= response.status_code < 300:
-                    return response.status_code, b""
+                    return response.status_code, b"", None
                 chunks: list[bytes] = []
                 size = 0
                 for chunk in response.iter_bytes():
@@ -122,7 +127,8 @@ def _fetch(client: httpx.Client, url: str) -> tuple[int, bytes]:
                     if size > BODY_LIMIT:
                         raise ModelHostError("network")
                     chunks.append(chunk)
-                return response.status_code, b"".join(chunks)
+                following = response.links.get("next", {}).get("url")
+                return response.status_code, b"".join(chunks), following
         except ModelHostError:
             raise
         except Exception:  # noqa: BLE001 - the text may hold the URL; report only the reason
@@ -130,22 +136,50 @@ def _fetch(client: httpx.Client, url: str) -> tuple[int, bytes]:
     raise ModelHostError("network")
 
 
-def _get_json(client: httpx.Client, url: str) -> Any:
-    """Return the decoded JSON body of *url*.
+def _get_json_page(client: httpx.Client, url: str) -> tuple[Any, str | None]:
+    """Return the decoded JSON body of *url* and the next-page URL.
 
     Raises:
         ModelHostError: ``not-found`` for a 404, else ``network`` for any
             other failure, including a body that is not JSON.
     """
-    status, body = _fetch(client, url)
+    status, body, following = _fetch(client, url)
     if status == 404:
         raise ModelHostError("not-found")
     if not 200 <= status < 300:
         raise ModelHostError("network")
     try:
-        return json.loads(body)
+        return json.loads(body), following
     except ValueError:
         raise ModelHostError("network") from None
+
+
+def _get_json(client: httpx.Client, url: str) -> Any:
+    """Return the decoded JSON body of *url* (see ``_get_json_page``)."""
+    return _get_json_page(client, url)[0]
+
+
+def _get_tree(client: httpx.Client, url: str) -> list[Any]:
+    """Return every entry of a paged tree listing, following ``Link`` headers.
+
+    Raises:
+        ModelHostError: ``network`` for a page that is not a list, a next
+            page on another host or not over HTTPS, or more than
+            ``MAX_TREE_PAGES`` pages.
+    """
+    entries: list[Any] = []
+    following: str | None = url
+    for _ in range(MAX_TREE_PAGES):
+        page, following = _get_json_page(client, following)
+        if not isinstance(page, list):
+            raise ModelHostError("network")
+        entries.extend(page)
+        if following is None:
+            return entries
+        target = httpx.URL(following)
+        if target.scheme != "https" or target.host != HOST:
+            raise ModelHostError("network")
+    raise ModelHostError("network")
 
 
 def _count(value: object) -> int:
@@ -219,9 +253,7 @@ def list_repo_files(repo: str, *, client: httpx.Client | None = None) -> RepoFil
         if not isinstance(info, dict) or not isinstance(info.get("sha"), str):
             raise ModelHostError("network")
         sha: str = info["sha"]
-        tree = _get_json(c, f"{_API}/{path}/tree/{quote(sha, safe='')}?recursive=true")
-        if not isinstance(tree, list):
-            raise ModelHostError("network")
+        tree = _get_tree(c, f"{_API}/{path}/tree/{quote(sha, safe='')}?recursive=true")
         files = tuple(_gguf_entries(tree))
         if not files:
             raise ModelHostError("not-found")

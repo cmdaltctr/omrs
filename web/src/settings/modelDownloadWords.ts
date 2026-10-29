@@ -62,6 +62,21 @@ export const NEED_RESTART_LINE = "Saved. The server loads the new model after a 
 export const EXTERNAL_SERVER_NOTE =
   "Your own llama.cpp server must load this model. The Llama app lists new models only when it starts, so quit and reopen it, then press Refresh models.";
 
-export const NOT_LISTED_LINE = "Your server does not list it yet. Quit and reopen the Llama app, then press Refresh models again.";
+/** The sentences of the model-list line, for one provider. */
+export interface ListWords {
+  holder: string;
+  notListed: string;
+  noAnswer: string;
+}
 
-export const NO_ANSWER_LINE = "Your server did not answer at the chat address. Check that it runs, then press Refresh models.";
+export const LLAMACPP_LIST_WORDS: ListWords = {
+  holder: "Your server",
+  notListed: "Your server does not list it yet. Quit and reopen the Llama app, then press Refresh models again.",
+  noAnswer: "Your server did not answer at the chat address. Check that it runs, then press Refresh models.",
+};
+
+export const OLLAMA_LIST_WORDS: ListWords = {
+  holder: "Ollama",
+  notListed: "Ollama does not list it yet. Wait a moment, then press Refresh models.",
+  noAnswer: "Ollama did not answer at its address. Check that Ollama runs, then press Refresh models.",
+};

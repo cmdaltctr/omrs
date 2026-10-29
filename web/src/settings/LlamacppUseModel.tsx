@@ -35,7 +35,7 @@ export function LlamacppUseModel({ modelValue, server }: { modelValue: string; s
           <p role="status" className="text-ui">
             {NEED_RESTART_LINE}
           </p>
-          <Button type="button" size="sm" variant="outline" disabled={server.state !== "running" || restart.isPending} onClick={() => restart.mutate()}>
+          <Button type="button" size="sm" variant="outline" disabled={server.state !== "running" || restart.isPending} onClick={() => restart.mutate(undefined, { onSuccess: () => save.reset() })}>
             Restart server to load it
           </Button>
         </div>

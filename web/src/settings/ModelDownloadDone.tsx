@@ -4,10 +4,21 @@ import { CardInset } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { LlamacppUseModel } from "./LlamacppUseModel";
 import { ModelListLine } from "./ModelListLine";
-import { EXTERNAL_SERVER_NOTE } from "./modelDownloadWords";
+import { ErrorNotice } from "../components/ErrorNotice";
+import { EXTERNAL_SERVER_NOTE, LLAMACPP_LIST_WORDS, OLLAMA_LIST_WORDS } from "./modelDownloadWords";
 import { useProviderModels } from "./useModelDownload";
 
 const CODE = "text-code font-mono [overflow-wrap:anywhere]";
+
+function RefreshModels({ models }: { models: ReturnType<typeof useProviderModels> }) {
+  return (
+    <div>
+      <Button type="button" size="sm" variant="outline" disabled={models.isFetching} onClick={() => void models.refetch()}>
+        Refresh models
+      </Button>
+    </div>
+  );
+}
 
 function Downloaded({ status }: { status: ModelDownloadStatus }) {
   return (
@@ -27,7 +38,8 @@ function OllamaDone({ status, value }: { status: ModelDownloadStatus; value: str
   return (
     <>
       <Downloaded status={status} />
-      <ModelListLine query={models} holder="Ollama" value={value} />
+      <ModelListLine query={models} words={OLLAMA_LIST_WORDS} value={value} />
+      <RefreshModels models={models} />
     </>
   );
 }
@@ -48,12 +60,8 @@ function ExternalServerDone({ status, value }: { status: ModelDownloadStatus; va
         </p>
       ) : null}
       <p className="text-ui">{EXTERNAL_SERVER_NOTE}</p>
-      <div>
-        <Button type="button" size="sm" variant="outline" disabled={models.isFetching} onClick={() => void models.refetch()}>
-          Refresh models
-        </Button>
-      </div>
-      <ModelListLine query={models} holder="Your server" value={value} />
+      <RefreshModels models={models} />
+      <ModelListLine query={models} words={LLAMACPP_LIST_WORDS} value={value} />
     </>
   );
 }
@@ -63,6 +71,14 @@ function LlamacppDone({ status, value }: { status: ModelDownloadStatus; value: s
   const server = query.data;
   // Until the server state is read, the line alone shows. Then the choice cannot flip under the person's cursor.
   if (query.isPending) return <Downloaded status={status} />;
+  // A failed read says nothing about who runs the server, so show the error, not the own-server steps.
+  if (query.isError)
+    return (
+      <>
+        <Downloaded status={status} />
+        <ErrorNotice error={query.error} onRetry={() => void query.refetch()} />
+      </>
+    );
   // Only a server that omrs runs takes a saved model. Any other state is treated as the user's own server.
   if (server === undefined || (server.state !== "running" && server.state !== "starting")) return <ExternalServerDone status={status} value={value} />;
   return (

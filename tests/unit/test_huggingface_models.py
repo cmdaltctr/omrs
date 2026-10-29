@@ -18,6 +18,7 @@ import pytest
 
 from omrs.integrations import huggingface_models as hf
 from omrs.integrations.huggingface_models import (
+    MAX_TREE_PAGES,
     ModelHostError,
     RepoFiles,
     hub_cache_folder,
@@ -343,6 +344,65 @@ class TestListRepoFiles:
             ("BF16/m-BF16-00001-of-00002.gguf", 10),
             ("BF16/m-BF16-00002-of-00002.gguf", 20),
         )
+
+    def test_follows_the_tree_link_header_to_the_last_page(self) -> None:
+        # The tree endpoint pages its entries and names the next page in a Link header.
+        page2 = f"https://huggingface.co/api/models/{REPO}/tree/{SHA}?recursive=true&cursor=abc"
+        seen: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            url = str(request.url)
+            seen.append(url)
+            if url == INFO_URL:
+                return _ok({"id": REPO, "sha": SHA})
+            if url == TREE_URL:
+                link = {"Link": f'<{page2}>; rel="next"'}
+                entry = {"type": "file", "path": "m-Q4_K_M.gguf", "size": 1}
+                return httpx.Response(200, json=[entry], headers=link)
+            if url == page2:
+                return _ok([{"type": "file", "path": "m-Q8_0.gguf", "size": 2}])
+            return httpx.Response(404, json={})
+
+        result = list_repo_files(REPO, client=_client(handler))
+
+        assert seen == [INFO_URL, TREE_URL, page2]
+        assert result.files == (("m-Q4_K_M.gguf", 1), ("m-Q8_0.gguf", 2))
+
+    def test_a_next_page_on_another_host_is_network(self) -> None:
+        hosts: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            hosts.append(request.url.host)
+            if str(request.url) == INFO_URL:
+                return _ok({"id": REPO, "sha": SHA})
+            link = {"Link": '<https://evil.example/next>; rel="next"'}
+            entry = {"type": "file", "path": "m-Q4_K_M.gguf", "size": 1}
+            return httpx.Response(200, json=[entry], headers=link)
+
+        with pytest.raises(ModelHostError) as caught:
+            list_repo_files(REPO, client=_client(handler))
+
+        assert caught.value.reason == "network"
+        assert hosts == ["huggingface.co", "huggingface.co"]
+
+    def test_endless_tree_pages_stop_with_network(self) -> None:
+        calls: list[str] = []
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            calls.append(str(request.url))
+            if len(calls) > 50:
+                raise AssertionError("the tree read did not stop")
+            if str(request.url) == INFO_URL:
+                return _ok({"id": REPO, "sha": SHA})
+            link = {"Link": f'<{TREE_URL}&cursor=again>; rel="next"'}
+            entry = {"type": "file", "path": "m-Q4_K_M.gguf", "size": 1}
+            return httpx.Response(200, json=[entry], headers=link)
+
+        with pytest.raises(ModelHostError) as caught:
+            list_repo_files(REPO, client=_client(handler))
+
+        assert caught.value.reason == "network"
+        assert len(calls) == 1 + MAX_TREE_PAGES
 
     def test_model_404_is_not_found(self) -> None:
         with pytest.raises(ModelHostError) as caught:

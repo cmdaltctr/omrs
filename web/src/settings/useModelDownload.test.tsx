@@ -56,6 +56,30 @@ describe("useModelDownload", () => {
     await waitFor(() => expect(queryClient.getQueryData(["model-downloads", "current"])).toMatchObject({ state: "running" }));
   });
 
+  it("keeps the running status when an older status read answers after the start", async () => {
+    let release: () => void = () => {};
+    let count = 0;
+    const { queryClient, wrapper } = setup({
+      "GET /v1/model-downloads/current": async () => {
+        count += 1;
+        if (count === 2) await new Promise<void>((resolve) => (release = resolve));
+        return count === 2 ? downloadStatus({}) : downloadStatus({ state: "running", provider: "ollama", model: "qwen3" });
+      },
+      "POST /v1/model-downloads": () => downloadStatus({ state: "running", provider: "ollama", model: "qwen3" }),
+    });
+    const { result } = renderHook(() => ({ read: useModelDownload(), start: useStartModelDownload() }), { wrapper });
+    await waitFor(() => expect(result.current.read.data).toBeDefined());
+    // A second read (for example on window focus) is still open when the start answers.
+    void queryClient.refetchQueries({ queryKey: ["model-downloads", "current"] });
+    await waitFor(() => expect(count).toBe(2));
+    await act(async () => {
+      await result.current.start.mutateAsync({ provider: "ollama", name: "qwen3" });
+    });
+    release();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(queryClient.getQueryData(["model-downloads", "current"])).toMatchObject({ state: "running" });
+  });
+
   it("puts the status a cancel returned into the cache", async () => {
     const { queryClient, wrapper } = setup({ "DELETE /v1/model-downloads/current": () => downloadStatus({ state: "cancelled", provider: "ollama" }) });
     const { result } = renderHook(() => useCancelModelDownload(), { wrapper });
