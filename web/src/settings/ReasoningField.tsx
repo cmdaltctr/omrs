@@ -69,8 +69,11 @@ export function ReasoningLine({ settings }: { settings: ReasoningSetting }) {
 export function ReasoningField({ provider, model, value, onChange, state, savedProvider }: ReasoningFieldProps) {
   const api = useApi();
   const id = useId();
-  const levels = useQuery({ ...reasoningLevelsQuery(api, provider, model), enabled: provider !== "" && model !== "" && !state.locked, placeholderData: keepPreviousData });
-  const known = levels.data?.known === true ? levels.data : null;
+  const enabled = provider !== "" && model !== "" && !state.locked;
+  const levels = useQuery({ ...reasoningLevelsQuery(api, provider, model), enabled, placeholderData: keepPreviousData });
+  // With no model (a provider change empties it) the kept data belongs to another choice, so it is not shown.
+  const data = enabled ? levels.data : undefined;
+  const known = data?.known === true ? data : null;
 
   let control;
   if (state.locked) {
@@ -103,7 +106,7 @@ export function ReasoningField({ provider, model, value, onChange, state, savedP
       {control}
       {state.locked ? <p className={SOURCE}>{state.lockReason ?? "Read-only here."}</p> : null}
       {!state.locked && known === null ? <p className={SOURCE}>Type a level the model accepts, such as low or high. Leave it empty for the provider default.</p> : null}
-      {(levels.data?.ignored ?? (state.ignored && provider === savedProvider)) ? <p className={SOURCE}>This provider ignores the reasoning level. The model uses its own setting.</p> : null}
+      {(data?.ignored ?? (state.ignored && provider === savedProvider)) ? <p className={SOURCE}>This provider ignores the reasoning level. The model uses its own setting.</p> : null}
     </div>
   );
 }

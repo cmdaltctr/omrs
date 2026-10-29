@@ -8,7 +8,7 @@ export const ROLE_NAMES: Record<ConnectionRole, string> = {
 };
 
 const HTTP_REASON = /^http-(\d{3})$/;
-const KNOWN_REASONS = ["refused", "timeout", "unauthorised", "not-configured", "not-installed", "empty-reply", "failed"];
+const KNOWN_REASONS = ["refused", "timeout", "unauthorised", "not-configured", "not-installed", "no-model", "model-not-listed", "empty-reply", "failed"];
 
 /** The fixed reasons the server may return. Anything else is not shown as raw text. */
 export function isKnownReason(reason: string): boolean {
@@ -28,6 +28,10 @@ export function reasonSentence(reason: string): string {
       return "No address or key is configured, so nothing was sent.";
     case "not-installed":
       return "The package for this provider is not installed.";
+    case "no-model":
+      return "No model was chosen, so nothing was sent.";
+    case "model-not-listed":
+      return "The server you run does not list this model. Use List models to pick a name.";
     case "empty-reply":
       return "The model answered with no text.";
   }
@@ -46,6 +50,8 @@ export function chatReasonSentence(reason: string | null): string {
       return "The package for the chosen provider is not installed.";
     case "not-configured":
       return "Chat has no model connected.";
+    case "no-model":
+      return "Chat has no model chosen.";
     default:
       return "Chat is not ready.";
   }

@@ -39,11 +39,13 @@ export function ChatModelForm({ initial, reasoning, connections, save, label, cl
   const api = useApi();
   const providerId = useId();
   const modelId = useId();
+  const hintId = useId();
   const [provider, setProvider] = useState(initial.provider);
   const [model, setModel] = useState(initial.model);
   const [level, setLevel] = useState(reasoning.value);
   const choice = { provider, model: model.trim() };
   const ready = provider !== "" && choice.model !== "";
+  const needsModel = provider !== "" && choice.model === "";
   const selected = connections.find((connection) => connection.provider === provider);
 
   const list = useMutation({ mutationFn: () => listProviderModels(api, provider), gcTime: 0 });
@@ -55,6 +57,8 @@ export function ChatModelForm({ initial, reasoning, connections, save, label, cl
 
   function changeProvider(next: string) {
     setProvider(next);
+    // A name from another provider is not carried over, so Ollama's `qwen3:4b` is never saved for llama.cpp.
+    setModel("");
     list.reset();
     test.reset();
   }
@@ -88,7 +92,21 @@ export function ChatModelForm({ initial, reasoning, connections, save, label, cl
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={modelId}>Model name</Label>
-        <Input id={modelId} dir="ltr" autoComplete="off" spellCheck={false} className="max-w-md" value={model} onChange={(event) => setModel(event.target.value)} />
+        <Input
+          id={modelId}
+          dir="ltr"
+          autoComplete="off"
+          spellCheck={false}
+          className="max-w-md"
+          value={model}
+          aria-describedby={needsModel ? hintId : undefined}
+          onChange={(event) => setModel(event.target.value)}
+        />
+        {needsModel ? (
+          <p id={hintId} className="text-meta text-muted-foreground">
+            Choose a model for this provider.
+          </p>
+        ) : null}
         <p className="text-meta text-muted-foreground">Type the model name exactly as the provider spells it, or use List models.</p>
       </div>
       <ReasoningField provider={provider} model={choice.model} value={level} onChange={setLevel} state={reasoning} savedProvider={initial.provider} />
