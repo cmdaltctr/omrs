@@ -80,9 +80,12 @@ def build_embed_model(settings: Settings | None = None) -> Any:
 
 def runtime_summary() -> tuple[str, int, int]:
     """Return resolved embedding settings for startup logging."""
+    from .core.vectordb.identity import embedding_identity_from_settings
+
     settings = get_settings()
     return (
-        settings.embed_model,
+        # ``embed_model`` is the Ollama field; name the active backend's model.
+        embedding_identity_from_settings(settings).model,
         settings.ingestion.embed_batch_size,
         settings.ingestion.embed_concurrency,
     )
