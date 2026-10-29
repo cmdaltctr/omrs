@@ -6006,6 +6006,15 @@ components:
             resolves to exactly one stored chunk, so citations remain
             verifiable after merging. Optional by contract: absent means
             the row is a single chunk.
+        page_labels:
+          type: array
+          items:
+            type: string
+          description: >
+            The page label of every constituent chunk of a merged row, in
+            chunk order, each label once. Present only on merged rows whose
+            chunks carry page labels; ``page_label`` stays the first chunk's
+            page.
         # ── Diagnostics-only fields (present when diagnostics=true) ──────
         id:
           type: string
@@ -6297,6 +6306,13 @@ components:
           description: >
             Every constituent chunk id when context assembly merged
             rows; a single-element list otherwise.
+        page_labels:
+          type: array
+          items:
+            type: string
+          description: >
+            Every page the cited evidence spans, in chunk order, each once.
+            Present only when the evidence row is a merged row with page labels.
         source_id:
           type:
             - string
@@ -6352,6 +6368,13 @@ components:
           type: array
           items:
             type: string
+        page_labels:
+          type: array
+          items:
+            type: string
+          description: >
+            Every page this evidence row spans, in chunk order, each once.
+            Present only on merged rows with page labels.
         source_id:
           type:
             - string

@@ -44,6 +44,11 @@ logger = logging.getLogger(__name__)
 # were not merged keep the plain ``chunk_id`` key and gain nothing.
 MERGED_CHUNK_IDS_KEY = "chunk_ids"
 
+# Public additive key carried by merged rows whose constituents have page
+# labels: every page the row spans, in chunk order, each once.
+# ``page_label`` stays the lowest-index constituent's page.
+MERGED_PAGE_LABELS_KEY = "page_labels"
+
 # Assembly-internal marker keys.  They are attached to every row produced
 # by :func:`assemble` so diagnostics can report what the stage did, and
 # they are stripped from public results by
@@ -210,6 +215,21 @@ def _best_scored(rows: Sequence[Mapping[str, Any]]) -> Mapping[str, Any] | None:
     return best
 
 
+def _page_labels(rows: Sequence[Mapping[str, Any]]) -> list[str]:
+    """Return each constituent's page label in chunk order, each once.
+
+    Labels are strings (roman numerals, "A-3"), so they keep chunk order
+    and are never sorted.  The row value wins over metadata, the same
+    order ``_mark_expanded`` uses.
+    """
+    labels: list[str] = []
+    for row in rows:
+        label = row.get("page_label") or (row.get("metadata") or {}).get("page_label")
+        if label is not None and str(label) not in labels:
+            labels.append(str(label))
+    return labels
+
+
 def _merge_unit(rows: Sequence[Mapping[str, Any]], budget: int) -> dict[str, Any]:
     """Merge one contiguous run of rows into a single result row.
 
@@ -238,6 +258,9 @@ def _merge_unit(rows: Sequence[Mapping[str, Any]], budget: int) -> dict[str, Any
     chunk_ids = [chunk_id for chunk_id in chunk_ids if chunk_id is not None]
     if chunk_ids:
         merged[MERGED_CHUNK_IDS_KEY] = chunk_ids
+    page_labels = _page_labels(rows)
+    if len(rows) > 1 and page_labels:
+        merged[MERGED_PAGE_LABELS_KEY] = page_labels
     merged["_assembly_merged"] = len(rows) > 1
     merged["_assembly_chunk_count"] = len(rows)
     merged["_assembly_expanded"] = all(bool(row.get("_assembly_expanded")) for row in rows)

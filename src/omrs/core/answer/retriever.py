@@ -1,45 +1,26 @@
-"""``BaseRetriever`` adapter over :func:`omrs.core.retrieval.search`.
+"""Answer-side adapter over :func:`omrs.core.retrieval.search`.
 
-Wraps the existing ``search()`` path (profile-resolved levers, hybrid
-fusion, reranking, context assembly) as a LlamaIndex ``BaseRetriever``
-so the response synthesiser composes with the project's own retrieval —
-answering has no retrieval code of its own (design D3).  Lineage fields
-(``chunk_id``, ``source_id``, ``source_version``, ``source``,
-``source_chunk_index``, ``score``, ``score_kind``) ride through node
-metadata so citations stay verifiable downstream.
+Runs the existing ``search()`` path (profile-resolved levers, hybrid
+fusion, reranking, context assembly) for the answer pipeline, so
+answering has no retrieval code of its own (design D3, ADR-057).  The
+raw rows carry lineage; the pipeline builds evidence and citations from
+them (``evidence.py``, ``citations.py``).
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from llama_index.core import QueryBundle
-from llama_index.core.retrievers import BaseRetriever
-from llama_index.core.schema import NodeWithScore, TextNode
-
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-#: Search-row lineage fields copied verbatim into node metadata.
-_LINEAGE_FIELDS = (
-    "chunk_id",
-    "chunk_ids",
-    "source_id",
-    "source_version",
-    "source",
-    "source_chunk_index",
-    "score",
-    "score_kind",
-)
 
-
-class SearchRetriever(BaseRetriever):
-    """Adapter that presents ``search()`` results as scored nodes.
+class SearchRetriever:
+    """Adapter that runs ``search()`` with the answer's retrieval arguments.
 
     Constructed with the retrieval arguments ``answer()`` accepts and
     queried with ``retrieve(query)``.  The raw search rows are kept on
-    :attr:`rows` so the pipeline can build its evidence list from the
-    authoritative row dicts rather than re-parsing node metadata.
+    :attr:`rows`; the pipeline builds its evidence list from them.
     """
 
     def __init__(
@@ -98,10 +79,9 @@ class SearchRetriever(BaseRetriever):
         self._embedding_identity = embedding_identity
         # Raw search rows from the last retrieve() call.
         self.rows: list[dict] = []
-        super().__init__(callback_manager=None)
 
-    def _retrieve(self, query_bundle: QueryBundle) -> list[NodeWithScore]:
-        """Run ``search()`` and convert rows to scored nodes with lineage."""
+    def retrieve(self, query: str) -> list[dict]:
+        """Run ``search()``, keep the rows on :attr:`rows` and return them."""
         if self._search_fn is None:
             from ..retrieval.pipeline import search as _search
         else:
@@ -110,7 +90,7 @@ class SearchRetriever(BaseRetriever):
         identity = self._embedding_identity
         identity_kwargs = {"embedding_identity": identity} if identity else {}
         self.rows = _search(
-            query_bundle.query_str,
+            query,
             top_k=self._top_k,
             similarity_threshold=self._similarity_threshold,
             rerank=self._rerank,
@@ -125,20 +105,4 @@ class SearchRetriever(BaseRetriever):
             query_cache=self._query_cache,
             **identity_kwargs,
         )
-        return [_row_to_node(row) for row in self.rows]
-
-
-def _row_to_node(row: dict) -> NodeWithScore:
-    """Convert one search result row to a ``NodeWithScore``.
-
-    The node text is the chunk text; lineage fields are copied into
-    node metadata.  The score is coerced to float when present so the
-    synthesiser's ranking sees a numeric value.
-    """
-    metadata: dict[str, Any] = {}
-    for field in _LINEAGE_FIELDS:
-        if row.get(field) is not None:
-            metadata[field] = row[field]
-    node = TextNode(text=row.get("text") or "", metadata=metadata)
-    score = row.get("score")
-    return NodeWithScore(node=node, score=float(score) if score is not None else None)
+        return self.rows

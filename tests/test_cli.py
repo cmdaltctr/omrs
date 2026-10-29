@@ -393,6 +393,24 @@ class TestSearchCLI:
         assert "Page" in output
         assert "3" in output
 
+    def test_search_table_shows_page_range_for_merged_row(self) -> None:
+        """A merged row spanning pages shows its range, first to last."""
+        payload = [
+            {
+                "score": 0.9,
+                "source": "paged.pdf",
+                "page_label": "5",
+                "page_labels": ["5", "6"],
+                "text": "a merged row across a page break",
+                "reranked": False,
+            },
+        ]
+        with patch("omrs.core.retrieval.search", return_value=payload):
+            result = runner.invoke(app, ["search", "paged query"])
+
+        assert result.exit_code == 0
+        assert "5–6" in _strip_ansi(result.output)
+
     def test_search_help(self) -> None:
         """--help lists all options."""
         result = runner.invoke(app, ["search", "--help"])
