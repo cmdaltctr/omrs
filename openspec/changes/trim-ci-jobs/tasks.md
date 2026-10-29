@@ -26,15 +26,15 @@ Work in the sibling worktree `omrs-feat-trim-ci-jobs` on branch `feat/trim-ci-jo
 ## 4. Parallel Coverage (D5)
 
 - [ ] 4.1 Before changing CI, record the Codecov project total for the current `v3` tip (serial run) and its commit. Record them in the pull request description.
-- [ ] 4.2 Add `-n auto --maxprocesses=8` to the Coverage test step, and verify `actionlint` passes.
-- [ ] 4.3 Run the Coverage command locally once in a scratch venv with the same extras as the job (`UV_PROJECT_ENVIRONMENT` in the scratchpad, `uv sync --frozen` with the job's extras). Verify it passes, writes `coverage.xml` and `junit.xml`, and that the chroma-skip check from 1.3 exits 0 on that report. Warn the user before this run and wait for a go; it uses all cores for a few minutes.
+- [x] 4.2 Add `-n auto --maxprocesses=8` to the Coverage test step, and verify `actionlint` passes.
+- [x] 4.3 Run the Coverage command locally once in a scratch venv with the same extras as the job (`UV_PROJECT_ENVIRONMENT` in the scratchpad, `uv sync --frozen` with the job's extras). Verify it passes, writes `coverage.xml` and `junit.xml`, and that the chroma-skip check from 1.3 exits 0 on that report. Warn the user before this run and wait for a go; it uses all cores for a few minutes.
 - [ ] 4.4 On the pull request, read Codecov's base and head project totals. Verify the head total is within 0.1 percentage points of the base total, and record both values and the Coverage job time in the pull request description. If the gap is larger, revert 4.2, and change design D5, the 4.5 doc edit and ADR-107 to record that Coverage stays serial and why.
-- [ ] 4.5 Update the "Parallel runs" paragraph in `AGENTS.md` to say Coverage runs in parallel too, and verify `uv run pytest tests/test_docs_references.py -q` passes.
+- [x] 4.5 Update the "Parallel runs" paragraph in `AGENTS.md` to say Coverage runs in parallel too, and verify `uv run pytest tests/test_docs_references.py -q` passes.
 
 ## 5. Decision record and guides (D6)
 
-- [ ] 5.1 Write ADR-107 "CI keeps one job per distinct check" with status Proposed, covering D1 to D5, the new-extra rule and the D3 trade-off. Check first that no other change has taken 107; take the next free number if one has. Add its row to `docs/adr/ADR_README.md`. Verify `uv run pytest tests/test_docs_references.py -q` passes.
-- [ ] 5.2 Add the "What CI runs" section to `docs/guides/testing.md` (each job, what only it checks, when it runs), and verify each job name in the section matches a `name:` in `ci.yml`.
+- [x] 5.1 Write ADR-107 "CI keeps one job per distinct check" with status Proposed, covering D1 to D5, the new-extra rule and the D3 trade-off. Check first that no other change has taken 107; take the next free number if one has. Add its row to `docs/adr/ADR_README.md`. Verify `uv run pytest tests/test_docs_references.py -q` passes.
+- [x] 5.2 Add the "What CI runs" section to `docs/guides/testing.md` (each job, what only it checks, when it runs), and verify each job name in the section matches a `name:` in `ci.yml`.
 
 ## 6. Integration checks
 

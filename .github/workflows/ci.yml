@@ -582,7 +582,9 @@ jobs:
           METADATA_LLM_PROVIDER: local
         # This job deliberately installs optional extras to maximise coverage;
         # the exact clean-base skip manifest is asserted in the base jobs.
-        run: uv run --no-sync pytest -m "not slow" --ignore=tests/test_clean_base_tripwire.py --cov=omrs --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
+        # pytest-cov combines the worker data under xdist, and --dist loadfile
+        # comes from pyproject.toml (ADR-107).
+        run: uv run --no-sync pytest -m "not slow" -n auto --maxprocesses=8 --ignore=tests/test_clean_base_tripwire.py --cov=omrs --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
 
       # This job installs the chroma extra, so every Chroma-gated case must
       # run here. The report keeps every skip reason under xdist, including
