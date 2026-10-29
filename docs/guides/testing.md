@@ -68,6 +68,26 @@ uv run lint-imports
 
 That verifies the module boundaries. It must pass before you commit.
 
+### What CI runs
+
+All jobs live in `.github/workflows/ci.yml`. Each job checks something that no other job checks on the same event (ADR-107).
+
+| Job | What only this job checks | When it runs |
+|-----|---------------------------|--------------|
+| `test (ubuntu-latest)`, `test (macos-latest)` | The fast suite on the base install with the `web` extra, the clean-base tripwire, the torch-free install, import-linter, the OpenAPI contract. The macOS entry also runs the slow suite with LiteParse. | Push, pull request, manual run |
+| `Retrieval quality (Tier 1)` | The deterministic retrieval-quality gate. | Push, pull request |
+| `Retrieval quality (Tier 2)` | The retrieval-quality gate with a real Ollama model. | Nightly schedule, manual run |
+| `Floor matrix scope` | Decides which `Floor resolution` entries run. | Every event |
+| `Floor resolution` (base entry) | The fast suite, the clean-base tripwire and the Leiden-free check at the lowest declared versions of the base install. | Every event |
+| `Floor resolution (<extra>)` | The fast suite at the lowest declared versions of one optional extra. The `chroma` entry fails when a test skips for a missing chroma extra. | Push, nightly, manual run, and a pull request that changes `pyproject.toml`, `uv.lock` or `ci.yml` |
+| `Leiden extra (Python 3.11)`, `Leiden extra (Python 3.14)` | The community strategy contracts with the `community-leiden` extra. | Push, pull request, manual run |
+| `Torch backend tests` | The torch backend and the cross-backend contract tests. | Push, pull request, manual run |
+| `Frontend (web)` | The frontend lint, typecheck, unit tests and build. | Push, pull request, manual run |
+| `Lint (Ruff)` | Ruff check and format. Pyright is advisory. | Push, pull request, manual run |
+| `Coverage (Codecov)` | The fast suite with most extras, in parallel, and the coverage upload. It fails when a test skips for a missing chroma extra, so it runs every Chroma-gated case. | Push, pull request, manual run |
+
+GitHub runs the nightly schedule and the manual run only from the workflow file on `main`. They start when this workflow reaches `main`.
+
 ---
 
 ## The one thing to know: inject, don't patch
