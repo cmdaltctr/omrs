@@ -317,3 +317,53 @@ def test_an_unreadable_engines_folder_keeps_the_engines_in_force(
     names = [item.name for item in rc.ocr_engine_items(settings)]
 
     assert "dots-mocr" in names
+
+
+# ── The classification address is its own item (ADR-108 D12) ────────────
+
+
+def _llama_local(effective_settings: Any, **extra: Any) -> Any:
+    return effective_settings(
+        embed_provider="cloud",
+        metadata_llm_provider="local",
+        local_backend="llamacpp",
+        llamacpp_chat_url=f"{_closed_address()}/v1",
+        **extra,
+    )
+
+
+def test_a_separate_classification_address_is_a_third_item(effective_settings: Any) -> None:
+    classify = f"{_closed_address()}/v1"
+    items = _servers(_llama_local(effective_settings, llamacpp_classify_url=classify))
+
+    item = items[rs.LLAMACPP_CLASSIFY_NAME]
+    assert "metadata_llm_provider" in item.used_by
+    assert "metadata_llm_provider" not in items[rs.LLAMACPP_CHAT_NAME].used_by
+    assert classify in (item.reason or "")
+
+
+def test_an_equal_classification_address_adds_no_item(effective_settings: Any) -> None:
+    items = _servers(_llama_local(effective_settings))
+
+    assert rs.LLAMACPP_CLASSIFY_NAME not in items
+    assert "metadata_llm_provider" in items[rs.LLAMACPP_CHAT_NAME].used_by
+
+
+def test_readiness_names_the_classification_address_when_only_it_is_down(
+    stub: str, effective_settings: Any
+) -> None:
+    classify = f"{_closed_address()}/v1"
+    settings = effective_settings(
+        embed_provider="cloud",
+        metadata_llm_provider="local",
+        local_backend="llamacpp",
+        llamacpp_embed_url=f"{stub}/v1",
+        llamacpp_chat_url=f"{stub}/v1",
+        llamacpp_classify_url=classify,
+    )
+    items = asyncio.run(rs.local_server_items(settings))
+
+    assert rs.llamacpp_readiness(items, settings) == {
+        "ready": False,
+        "line": f"Not running at {classify}",
+    }

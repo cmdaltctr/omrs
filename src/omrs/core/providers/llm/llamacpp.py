@@ -87,6 +87,7 @@ def _test_targets(settings: Any) -> ConnectionTarget:
     urls = (
         *join_url(settings.llamacpp_embed_url, "/models"),
         *join_url(settings.llamacpp_chat_url, "/models"),
+        *join_url(classification_url(settings), "/models"),
     )
     return ConnectionTarget(tuple(dict.fromkeys(urls)))
 

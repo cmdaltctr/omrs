@@ -112,6 +112,25 @@ def test_test_targets_follow_the_design() -> None:
     assert SECRET not in repr(openrouter)
 
 
+def test_the_llamacpp_test_holds_the_classification_address_once() -> None:
+    targets = registry.describe_all()["llamacpp"].test_targets
+    separate = make_settings(
+        llamacpp_embed_url="http://llama.test:8080/v1",
+        llamacpp_chat_url="http://llama.test:8081/v1",
+        llamacpp_classify_url="http://llama.test:9931/v1",
+    )
+    assert targets(separate).urls == (
+        "http://llama.test:8080/v1/models",
+        "http://llama.test:8081/v1/models",
+        "http://llama.test:9931/v1/models",
+    )
+    following = make_settings(
+        llamacpp_embed_url="http://llama.test:8080/v1",
+        llamacpp_chat_url="http://llama.test:8081/v1",
+    )
+    assert len(targets(following).urls) == 2
+
+
 def test_openrouter_without_a_key_has_no_target() -> None:
     target = registry.describe_all()["openrouter"].test_targets(
         make_settings(openrouter_api_key="")
