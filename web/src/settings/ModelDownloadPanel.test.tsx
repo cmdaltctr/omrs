@@ -70,6 +70,26 @@ describe("Get a model panel on the provider cards", () => {
     expect(await within(panel("llama.cpp")).findByRole("alert")).toBeInTheDocument();
   });
 
+  it("pulls a typed Ollama name with a tag", async () => {
+    const posts: unknown[] = [];
+    const { user, panel } = await open({
+      "GET /v1/model-downloads/search": () => searchReply("ollama", []),
+      "POST /v1/model-downloads": (body: unknown) => (posts.push(body), downloadStatus({ state: "running", provider: "ollama", model: "smollm2:135m" })),
+    });
+    await user.type(within(panel("Ollama")).getByRole("textbox", { name: "Search for a model" }), "smollm2:135m");
+    await user.click(await within(panel("Ollama")).findByRole("button", { name: /smollm2:135m/ }));
+    expect(within(panel("Ollama")).getByText("Ollama pulls this tag.")).toBeInTheDocument();
+    await user.click(within(panel("Ollama")).getByRole("button", { name: "Download" }));
+    expect(posts).toEqual([{ provider: "ollama", name: "smollm2:135m" }]);
+  });
+
+  it("offers no typed name on the llama.cpp card", async () => {
+    const { user, panel } = await open({ "GET /v1/model-downloads/search": () => searchReply("llamacpp", []) });
+    await user.type(within(panel("llama.cpp")).getByRole("textbox", { name: "Search for a model" }), "smollm2:135m");
+    expect(await within(panel("llama.cpp")).findByText("No model matches that search.")).toBeInTheDocument();
+    expect(within(panel("llama.cpp")).queryByText("Typed name")).toBeNull();
+  });
+
   it("pulls an Ollama library name by name alone", async () => {
     const posts: unknown[] = [];
     const { user, panel } = await open({

@@ -8,10 +8,10 @@ import { searchReply, searchResult } from "./test/downloadFixtures";
 
 const SEARCH = "GET /v1/model-downloads/search";
 
-function setup(reply = searchReply("llamacpp", [searchResult({ id: "unsloth/Qwen3-4B-GGUF" })]), provider = "llamacpp") {
+function setup(reply = searchReply("llamacpp", [searchResult({ id: "unsloth/Qwen3-4B-GGUF" })]), provider = "llamacpp", typedName = false) {
   const server = documentsServer({ [SEARCH]: () => reply });
   const onChoose = vi.fn();
-  renderWithProviders(<ModelSearchField provider={provider} selectedId={null} onChoose={onChoose} />, { fetchImpl: server.fetchImpl });
+  renderWithProviders(<ModelSearchField provider={provider} selectedId={null} onChoose={onChoose} typedName={typedName} />, { fetchImpl: server.fetchImpl });
   const searches = () => server.exact("GET", "/v1/model-downloads/search");
   return { server, searches, onChoose, user: userEvent.setup(), input: () => screen.getByRole("textbox", { name: "Search for a model" }) };
 }
@@ -53,6 +53,35 @@ describe("ModelSearchField", () => {
     const item = await screen.findByRole("listitem");
     expect(item).toHaveTextContent("qwen3");
     expect(item).toHaveTextContent("Ollama library");
+  });
+
+  it("offers a typed Ollama name with a tag first, even when the search finds nothing", async () => {
+    const { user, input, onChoose } = setup(searchReply("ollama", []), "ollama", true);
+    await user.type(input(), "smollm2:135m");
+    const item = await screen.findByRole("listitem");
+    expect(item).toHaveTextContent("smollm2:135m");
+    expect(item).toHaveTextContent("Typed name");
+    expect(screen.queryByText("No model matches that search.")).toBeNull();
+    await user.click(within(item).getByRole("button", { name: /smollm2:135m/ }));
+    expect(onChoose).toHaveBeenCalledWith(expect.objectContaining({ id: "smollm2:135m", source: "ollama-library" }));
+  });
+
+  it("offers no typed name when the text breaks the Ollama name rule or already is a result", async () => {
+    const { user, input } = setup(searchReply("ollama", [searchResult({ id: "qwen3", source: "ollama-library", downloads: null, likes: null, last_modified: null })]), "ollama", true);
+    await user.type(input(), "qwen3");
+    await screen.findByRole("listitem");
+    expect(screen.queryByText("Typed name")).toBeNull();
+    await user.clear(input());
+    await user.type(input(), "a b;");
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(screen.queryByText("Typed name")).toBeNull();
+  });
+
+  it("offers no typed name on a card whose source does not pull by name", async () => {
+    const { user, input } = setup(searchReply("llamacpp", []));
+    await user.type(input(), "smollm2:135m");
+    expect(await screen.findByText("No model matches that search.")).toBeInTheDocument();
+    expect(screen.queryByText("Typed name")).toBeNull();
   });
 
   it("hands the chosen result to the panel", async () => {

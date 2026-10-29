@@ -403,6 +403,7 @@ To get a model for Ollama:
 
 1. Open the Ollama card and search in the same way. The list shows Ollama library names first, then Hugging Face repos.
 2. Choose a library name, for example `qwen3`, and select Download. Ollama pulls the `latest` tag of a name that has no tag.
+   To pull a name that the list does not show, type the full name, for example `smollm2:135m`. The panel shows it first with the badge "Typed name".
 3. Choose a Hugging Face repo to see its files. Choose a file and select Download. Ollama pulls `hf.co/org/name:LABEL`.
 4. Ollama does not tell the size before the pull starts. The panel shows "Size known after the pull starts" until the size arrives.
 5. When the pull ends, the panel reads the Ollama model list again and says whether Ollama lists the model.

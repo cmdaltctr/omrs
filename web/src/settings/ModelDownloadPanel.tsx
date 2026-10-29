@@ -45,14 +45,14 @@ export function ModelDownloadPanel({ provider, source }: { provider: string; sou
         Get a model
       </h4>
       <p className="text-meta text-muted-foreground">{INTRO[source]}</p>
-      <ModelSearchField provider={provider} selectedId={chosen?.id ?? null} onChoose={setChosen} />
+      <ModelSearchField provider={provider} selectedId={chosen?.id ?? null} onChoose={setChosen} typedName={source === "ollama-pull"} />
       {chosen !== null && repo !== null ? <ModelFileList key={repo} provider={provider} repo={repo} source={source} disabled={running || start.isPending} onStart={begin} /> : null}
       {chosen !== null && repo === null ? (
         <div className="flex flex-wrap items-center gap-2">
           <code dir="ltr" className="text-code font-mono [overflow-wrap:anywhere]">
             {chosen.id}
           </code>
-          <span className="text-meta text-muted-foreground">Ollama pulls the latest tag of this name.</span>
+          <span className="text-meta text-muted-foreground">{chosen.id.includes(":") ? "Ollama pulls this tag." : "Ollama pulls the latest tag of this name."}</span>
           <Button type="button" size="sm" disabled={running || start.isPending} onClick={() => begin({ provider, name: chosen.id })}>
             Download
           </Button>
