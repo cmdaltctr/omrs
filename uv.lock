@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.14'",
@@ -3776,7 +3776,7 @@ requires-dist = [
     { name = "docx2txt", specifier = ">=0.9" },
     { name = "fastapi", marker = "extra == 'web'", specifier = ">=0.143.0" },
     { name = "httpx", specifier = ">=0.27.0" },
-    { name = "huggingface-hub", specifier = ">=1.0.0" },
+    { name = "huggingface-hub", specifier = ">=1.23.0" },
     { name = "igraph", marker = "extra == 'community-leiden'", specifier = ">=1.0.0" },
     { name = "keyring", marker = "extra == 'web'", specifier = ">=25.6" },
     { name = "lancedb", specifier = ">=0.40" },

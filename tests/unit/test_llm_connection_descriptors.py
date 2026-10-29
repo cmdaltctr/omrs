@@ -40,6 +40,23 @@ def test_describe_all_lists_the_built_in_providers_in_registration_order() -> No
     assert [d.locality for d in described.values()] == ["local", "local", "cloud", "cloud", "cloud"]
 
 
+def test_only_llamacpp_and_ollama_declare_a_model_source() -> None:
+    sources = {name: d.model_source for name, d in registry.describe_all().items()}
+    assert sources == {
+        "ollama": "ollama-pull",
+        "llamacpp": "huggingface-gguf",
+        "openrouter": None,
+        "openai_compatible": None,
+        "anthropic": None,
+    }
+
+
+def test_a_descriptor_has_no_model_source_by_default() -> None:
+    descriptor = registry.describe_all()["openrouter"]
+    assert ConnectionDescriptor.__dataclass_fields__["model_source"].default is None
+    assert descriptor.model_source is None
+
+
 def test_fields_name_the_setting_and_environment_variable() -> None:
     fields = {name: {f.id: f for f in d.fields} for name, d in registry.describe_all().items()}
     assert fields["ollama"]["base_url"] == ConnectionField(

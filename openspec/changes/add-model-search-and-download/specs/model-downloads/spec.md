@@ -128,7 +128,7 @@ The web server SHALL run at most one model download at a time. `POST /v1/model-d
 
 ### Requirement: The user can cancel a download
 
-`DELETE /v1/model-downloads/current` SHALL stop a running job and set the state `cancelled`. The partial file SHALL stay in the cache, so a later download of the same file continues from it. A cancel with no running job SHALL return 409.
+`DELETE /v1/model-downloads/current` SHALL stop a running job and set the state `cancelled`. A cancelled llama.cpp download SHALL leave no partial file in the cache, so a later download of the same file starts again. A cancelled Ollama pull SHALL leave its partial layers to Ollama, so a later pull of the same name continues from them. A cancel with no running job SHALL return 409.
 
 #### Scenario: Cancel
 

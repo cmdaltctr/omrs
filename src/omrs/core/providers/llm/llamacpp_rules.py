@@ -53,7 +53,7 @@ _LOOPBACK = frozenset({"127.0.0.1", "localhost", "::1"})
 #: Always passed to the child, when set.
 BASE_ENVIRONMENT = ("PATH", "HOME", "LANG", "TMPDIR")
 #: Passed only for a Hugging Face model, and only when already set.
-HUGGING_FACE_ENVIRONMENT = ("LLAMA_CACHE", "HF_HOME", "HF_TOKEN")
+HUGGING_FACE_ENVIRONMENT = ("LLAMA_CACHE", "HF_HOME", "HF_HUB_CACHE", "HF_TOKEN")
 
 ModelKind = Literal["file", "hf"]
 

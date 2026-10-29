@@ -151,6 +151,15 @@ FAMILIES: dict[str, frozenset[str]] = {
             "restartLlamacppServer",
         }
     ),
+    "model_downloads": frozenset(
+        {
+            "searchModels",
+            "listModelFiles",
+            "startModelDownload",
+            "getModelDownload",
+            "cancelModelDownload",
+        }
+    ),
     "logs": frozenset({"getLogs", "streamLogs"}),
     "power": frozenset({"getServerPower", "requestServerPower"}),
     "configuration": frozenset({"getSettingsConfiguration"}),

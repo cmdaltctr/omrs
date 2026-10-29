@@ -168,6 +168,15 @@ Providers are resolved through flat, per-domain lazy registries. Each registry m
 
 Provider construction (instantiating the LlamaIndex client) lives in `compose.py` (`build_embed_model`), enforced by `import-linter`. The registries only resolve names to callables; they do not construct. Metadata extraction resolves LLMs through its own dispatch in `core/metadata/extractor.py`, not through the composition root.
 
+Each LLM provider module also declares a `CONNECTION` descriptor (`ConnectionDescriptor` in `core/providers/llm/connection.py`) for its Providers card. The optional field `model_source` says whether the app can search for and download a model for that provider. The default is `None`: the card shows no Get a model panel and the download routes refuse the provider with 400.
+
+| `model_source` | Provider | What the app does |
+| --- | --- | --- |
+| `huggingface-gguf` | `llamacpp` | Searches Hugging Face for GGUF repos, lists the files by quantisation label, and downloads them into the Hugging Face cache. |
+| `ollama-pull` | `ollama` | Lists built-in Ollama names and Hugging Face GGUF repos, and runs an Ollama pull. |
+
+The pure rules (name checks, label parser, built-in Ollama names) live in `core/providers/model_sources.py`. The download job picks its adapter from a table keyed by the source kind, not by provider name.
+
 <!-- registry-names:embeddings -->
 Registered embedding providers: `ollama`, `llamacpp`, `openrouter`.
 <!-- /registry-names:embeddings -->
@@ -184,6 +193,7 @@ Registered LLM providers: `ollama`, `llamacpp`, `openrouter`, `openai_compatible
 4. Add env vars to `.env.example`.
 5. Add the name to the `<!-- registry-names -->` block above.
 6. Add tests in `tests/test_registry_contract.py` and `tests/unit/test_provider_config.py`.
+7. If the provider can download models, set `model_source` on its `CONNECTION` descriptor to `huggingface-gguf` or `ollama-pull`. Leave it unset for any other provider. A third source kind needs a new adapter and a registry for the job, not a name check. See ADR-106.
 
 No changes to `core/ingestion/`, `core/retrieval/`, or `transports/` are needed — they consume providers through the registries and the composition root.
 

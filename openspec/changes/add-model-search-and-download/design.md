@@ -59,17 +59,21 @@ Search and file list send fixed `GET` requests with `httpx`: a 10-second timeout
 - Search: `GET https://huggingface.co/api/models?search=<q>&filter=gguf&sort=downloads&direction=-1&limit=20&expand[]=downloads&expand[]=likes&expand[]=gated&expand[]=lastModified`.
 - File list: `GET /api/models/{repo}?expand[]=sha&expand[]=gated`, then `GET /api/models/{repo}/tree/{sha}?recursive=true`. The `sha` pins the revision for the download.
 
-The download calls `hf_hub_download(repo_id, filename, revision=sha, tqdm_class=...)` for each file of the set, in a worker thread. This gives the cache layout that llama.cpp reads, resume of `.incomplete` files, and the Xet transfer path, without our own code.
+The download calls `hf_hub_download(repo_id, filename, revision=sha, tqdm_class=...)` for each file of the set, in a worker thread. This gives the cache layout that llama.cpp reads and the Xet transfer path, without our own code. It gives no resume: `huggingface_hub` 1.27 writes each file to a temporary name and deletes it on any failure (task 1.2).
 
 *Alternative:* `HfApi.list_models()` for the reads. Rejected: it has no per-call timeout or body limit, and it sends a stored token by default.
 
-*Alternative:* our own `httpx` download into the cache. Rejected: it would copy the cache layout, resume and Xet logic of the library.
+*Alternative:* our own `httpx` download into the cache. Rejected: it would copy the cache layout and Xet logic of the library.
 
 ### D4. Where the llama.cpp files go and how the server uses them
 
 The download writes to the default Hugging Face hub cache (`HF_HUB_CACHE`, else `HF_HOME/hub`, else `~/.cache/huggingface/hub`). The model value is `org/name:LABEL`, and the existing `-hf` path loads it from the cache. Add `HF_HUB_CACHE` to `HUGGING_FACE_ENVIRONMENT` in `llamacpp_rules.py`, so the child reads the same folder that the download wrote when the user moved the cache. This stays inside the existing requirement (only cache and token variables, only for an `-hf` model).
 
 Task 1.1 checks this on the installed build: download a small GGUF with `hf_hub_download`, then start `llama-server -hf <id>` with the network blocked. **Fallback** if the build does not reuse the cache: the job returns the absolute snapshot path of the main file, and Use this model saves that path (`-m`). The `.gguf` path rule accepts it, so the specs do not change.
+
+**Result of task 1.1 (2026-10-29).** The machine has no separate `llama-server` program. The Llama app ships one program, `~/.llama-app/llama` (version 0.7.0-dev, build 11941, commit 19ff817fb). Its `serve` command is the llama.cpp server. A copy named `llama-server` does not start the server, because the program does not select a command from its own name. The check used `llama serve -hf unsloth/SmolLM2-135M-Instruct-GGUF:Q2_K --offline` with `HF_HUB_CACHE` set to a scratch cache that `hf_hub_download` had filled, and with `HF_ENDPOINT` and `MODEL_ENDPOINT` set to a closed local port. The server loaded the model from that cache and answered `/health` with `ok`. `~/.cache/llama.cpp` stayed absent. So build 11941 reads the Hugging Face cache layout and follows `HF_HUB_CACHE`. The fallback does not apply.
+
+**Result of task 1.1b (2026-10-29).** Llama app 0.46.1 was running on port 9931. `hf_hub_download` put `unsloth/SmolLM2-135M-Instruct-GGUF` Q2_K in `~/.cache/huggingface/hub`. After 45 seconds, `GET /v1/models` on port 9931 still listed the same 8 models, and `models.ini` kept its time stamp of 2026-10-28. So the running app does not pick up a new cached file. It lists the cache when it launches (the header of `models.ini` says so). The panel text must tell the user to relaunch the Llama app. The live check (task 8.4) confirmed it: after a relaunch the app rewrote `models.ini` and listed the new file.
 
 **An external server.** When the Chat server is not one that omrs runs (the managed server state is not `running` or `starting`), the panel offers no Use this model. It shows the cache folder of the file, says that the user's server must load the model, and gives a Refresh models button that refetches `POST /v1/connections/llamacpp/models`. For the Llama app, the model value in that list is `org/name:LABEL`, the same as the managed form, so the existing role pickers can select it. omrs does not edit `models.ini`, does not restart the app, and sends no signal to it.
 
@@ -83,11 +87,13 @@ The picker preselects `Q4_K_M` when it exists, else the smallest label at 4 bits
 
 ### D6. Ollama search and pull
 
-The search for Ollama returns the built-in names that contain the query, then the Hugging Face GGUF repos written as `hf.co/{org}/{repo}`. Choosing an `hf.co/` entry opens the same file list, and the pull name becomes `hf.co/{org}/{repo}:{LABEL}`. A typed name that passes the Ollama name rule is also accepted.
+The search for Ollama returns the built-in names that contain the query, then the Hugging Face GGUF repos written as `hf.co/{org}/{repo}`. Choosing an `hf.co/` entry opens the same file list, and the pull name becomes `hf.co/{org}/{repo}:{LABEL}`. A typed name that passes the Ollama name rule is also accepted. The panel shows it first, with the badge "Typed name" (added after the live check found the panel offered no way to type one).
 
 The built-in list is fixed data in `model_sources.py`, about 12 names (for example `qwen3`, `qwen3-embedding`, `gemma3`, `llama3.2`, `mistral`, `phi4`, `nomic-embed-text`, `mxbai-embed-large`, `bge-m3`, `granite-embedding`). A tagless name pulls `:latest`.
 
 The pull sends `POST {ollama_base_url}/api/pull` with `{"model": name, "stream": true}` and reads JSON lines. Progress is the sum of `completed` over the `total` of each layer digest. The status `success` ends the job. An `error` line fails it with `failed`. A refused connection fails it with `ollama-unreachable`.
+
+**Result of task 1.3 (2026-10-29, Ollama 0.40.13).** A streamed pull of `smollm2:135m` (270 MB) was closed by the client at 21.4 MB. Ten seconds later a second pull of the same name started. Its first progress line gave 21.4 MB done, and it ended with `success` after 37 seconds. So closing the stream stops the pull, and a second pull resumes from the partial layer. Ollama gives the partial file its full size at once, so the file size does not show progress. The test model was removed after the check.
 
 *Alternative:* scrape `ollama.com/search` and `/library/<name>/tags`. Rejected: HTML scraping breaks without warning, and it adds a third host.
 
@@ -97,12 +103,23 @@ The pull sends `POST {ollama_base_url}/api/pull` with `{"model": name, "stream":
 
 - **One at a time.** `start()` refuses with `busy` while a job runs. Installs and downloads may run at the same time; they share nothing.
 - **Progress.** The Hugging Face download passes a `tqdm` subclass as `tqdm_class`. Its `update()` adds bytes to the job counter. The Ollama pull updates the counter from each line. Status reads take a snapshot under a lock.
-- **Cancel.** A cancel sets an event. The `tqdm` subclass raises a private `DownloadCancelled` from `update()`, which stops `hf_hub_download` and leaves the `.incomplete` file for a later resume. The Ollama pull closes the stream, and Ollama keeps its partial layers.
-- **Stall.** A watchdog task checks the time of the last byte every 5 seconds. After 60 seconds without a byte it cancels the job with the reason `stalled`.
+- **Cancel.** A cancel sets an event. On the plain HTTP path, the `tqdm` subclass raises a private `DownloadCancelled` from `update()`, which stops `hf_hub_download`. On the Xet path, `hf_xet` ignores an exception from the progress callback. So a watcher thread waits on the event and calls `huggingface_hub.utils._xet.abort_xet_session()`, which stops the transfer at once. That function is private: a test pins that it exists, so an upgrade that removes it fails CI. The library deletes the partial file, so a later download starts again. The Ollama pull closes the stream, and Ollama keeps its partial layers.
+- **Stall.** A watchdog task checks the time of the last progress report every 5 seconds. After 60 seconds without one it cancels the job with the reason `stalled`. On Xet the network bytes count as a report (see the live-check finding below), so a slow assembly step is not a stall.
 - **Shutdown.** `shutdown_runtime()` cancels a running job and waits up to 5 seconds.
 - **Errors.** Library and HTTP errors map to the fixed reasons: 401 or 403 on a gated repo to `gated`, 404 to `not-found`, a connection or read error to `network`. No exception text reaches a response or the log at a level above `debug`, and `security.redact` runs on anything logged.
 
 Task 1.2 checks, before the build, that the `tqdm_class` gets byte updates for a Xet-stored file and for a plain LFS file on `huggingface_hub` 1.27. **Fallback:** poll the size of the `.incomplete` blob every second for progress, and keep cancel through the same event checked between files.
+
+**Result of task 1.2 (2026-10-29, `huggingface_hub` 1.27.0, `hf_xet` 1.6.0).** Every small GGUF repo checked (`unsloth`, `bartowski`, `QuantFactory`, `TheBloke`, `Qwen`) stores its files on Xet, so no plain LFS GGUF file was found. The plain HTTP path was checked with `HF_HUB_DISABLE_XET=1` instead. The file was `unsloth/SmolLM2-135M-Instruct-GGUF` `Q2_K` (88 MB) and `Q8_0` (145 MB).
+
+- **Progress.** The `tqdm_class` gets byte updates on both paths: about every 10 MB on HTTP, and in larger steps (one of 36 MB) on Xet. The size-polling fallback does not apply.
+- **Live-check finding (task 8.4, 2026-10-29).** The stall check stopped a healthy download of `Qwen/Qwen3-1.7B-GGUF` `Q8_0` (1.8 GB) at 841 MB. On Xet, `update()` reports the file assembly, which came once at 261 MiB and then not for 60 seconds while bytes still arrived. A check on `TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF` `Q2_K` (483 MB) gave 5 `update()` calls with gaps up to 33.5 seconds, and 521 `update_transfer()` calls (the network bytes) with gaps up to 1.5 seconds. `huggingface_hub` sends the network bytes to a `tqdm_class` that has `update_transfer`. The progress class now has it. Progress is the larger of the assembled bytes and the network bytes, capped at the file size, and each report sends only the new bytes. So the bar moves about every second, and the stall check sees the network. The browser check (task 7.7) found the same cause from the other side: on Xet the bar stayed at 0 B until the end. A test pins that the library still sends the network bytes to `update_transfer`.
+- **Cancel on HTTP.** An exception raised from `update()` stopped the download at 20 MB.
+- **Cancel on Xet.** An exception raised from `update()` was printed and ignored, and the download finished. `abort_xet_session()` called from another thread stopped it at once with a `RuntimeError`. The next download in the same process worked.
+- **Partial file.** On both paths no `.incomplete` file stayed after the stop. The next download fetched all bytes again. The spec now says so.
+- **Dry run.** `hf_hub_download(..., dry_run=True)` gave `will_download=True` and the file size before the download, and `will_download=False` after it.
+
+The user chose the private abort and no resume on 2026-10-29. The rejected options were a child process killed on cancel (breaks the no-subprocess rule) and a process-wide switch that turns Xet off.
 
 ### D8. Free space and the gated check
 
@@ -135,7 +152,9 @@ After a llama.cpp success, when omrs runs the Chat server, the panel shows Use t
 ## Risks / Trade-offs
 
 - [llama.cpp may stop reusing the Hugging Face cache in a later build] → Task 1.1 checks the build in use; the D4 fallback saves an absolute `.gguf` path, which the current rules accept.
-- [`tqdm_class` may get no byte updates on the Xet path] → Task 1.2 checks it first; the D7 fallback polls the `.incomplete` file size.
+- [`tqdm_class` may get no byte updates on the Xet path] → Task 1.2 found that updates arrive on both paths.
+- [`abort_xet_session()` is private and can change in a later `huggingface_hub`] → A test pins that it exists. Without it, a Xet download stops only at its end; the HTTP path still stops at once.
+- [A cancelled download starts again from zero] → The library deletes partial files. The panel shows the size before Download, so the user can choose a smaller file.
 - [Hugging Face changes the search response] → The adapter reads only `id`, `downloads`, `likes`, `gated`, `lastModified`; an unexpected shape gives an empty list and the reason `network`, never a crash. A contract test pins a saved response.
 - [A cancelled Hugging Face download may finish the current chunk before it stops] → The spec allows 5 seconds; the cancel event is checked on every `update()` call.
 - [Search results include low-quality or unsafe repos] → Sorting by downloads and showing the author keeps known publishers on top. GGUF files hold weights and metadata, not code. The download runs no file it gets.

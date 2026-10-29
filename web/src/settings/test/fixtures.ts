@@ -2,6 +2,7 @@ import type { LlamacppServerStatus, ServerField } from "../../api/llamacppServer
 import type { ChatSettings, Connection, ConnectionList, JudgeSettings, LogRecord, McpState, ProviderField, WebPortState } from "../../api/settings";
 import { DOCUMENT_READING_KEYS, type DocumentReadingKey, type DocumentReadingSetting, type DocumentReadingState } from "../../api/settingsDocumentReading";
 import { documentsServer, type Handler } from "../../test/fakeDocumentsServer";
+import { IDLE } from "./downloadFixtures";
 
 /** Fixtures built from the `openapi.yaml` schemas for the Settings routes. */
 export const CONFIG_DIR = "/srv/omrs project";
@@ -52,6 +53,7 @@ export const OLLAMA: Connection = {
   locality: "local",
   installed: true,
   install_hint: null,
+  model_source: "ollama-pull",
   fields: [urlField("base_url", "Address", "http://127.0.0.1:11434")],
   read_only: [{ label: "Answer model", value: "qwen3" }],
   roles: ["answers", "metadata"],
@@ -63,6 +65,7 @@ export const LLAMACPP: Connection = {
   locality: "local",
   installed: true,
   install_hint: null,
+  model_source: "huggingface-gguf",
   fields: [urlField("chat_url", "Chat address", "http://127.0.0.1:8082/v1")],
   read_only: [
     { label: "Embedding address", value: "http://127.0.0.1:8081/v1" },
@@ -77,6 +80,7 @@ export const OPENROUTER: Connection = {
   locality: "cloud",
   installed: true,
   install_hint: null,
+  model_source: null,
   fields: [
     { id: "api_key", label: "API key", kind: "secret", source: "keychain", ...NO_KEY, set: true, last4: "wxyz" },
   ],
@@ -194,6 +198,7 @@ export function settingsServer(handlers: Record<string, Handler> = {}) {
     }),
     "GET /v1/connections": () => CONNECTIONS,
     "GET /v1/llamacpp/server": () => SERVER_STOPPED,
+    "GET /v1/model-downloads/current": () => IDLE,
     "GET /v1/settings/chat": () => CHAT_READY,
     "GET /v1/settings/judge": () => JUDGE_DEFAULT,
     "GET /v1/logs": () => ({ status: "ok", records: [], last_seq: 0 }),

@@ -30,8 +30,9 @@ _UV_LOCK = _REPO_ROOT / "uv.lock"
 # the locked version.
 _DRIFT_EXEMPT: dict[str, str] = {
     # ADR-040: 1.0 was the only relevant break (requests→httpx, removed
-    # legacy params); all 1.x minors are compatible.
-    "huggingface-hub": "ADR-040: 1.0 was the only relevant break; all 1.x compatible",
+    # legacy params). ADR-106: model downloads need 1.23 (Xet session
+    # abort and update_transfer progress); later 1.x minors are compatible.
+    "huggingface-hub": "ADR-106: 1.23 adds the Xet abort and progress route; later 1.x compatible",
     # Existing ONNX reranker and Stage 3 chunking APIs support the retained
     # >=0.20 floor; the locked version is 0.22.2.
     "tokenizers": "existing reranker/chunking API supports >=0.20; lower floor retained",

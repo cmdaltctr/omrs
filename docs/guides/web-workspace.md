@@ -386,6 +386,56 @@ Saved addresses and saved keys apply to `omrs web` and its MCP endpoint only. Th
 
 The llama.cpp card has a Local server panel. It shows the state, the program path, the model, the context window, the idle sleep (default 300 seconds; 0 turns it off), and the buttons Start, Stop and Restart. The panel says: "omrs starts and stops only this server. It never touches a server you started yourself." After a save the server keeps running and the panel says "Restart to apply" when the saved values differ. The program path and model need a browser session with the `credentials` scope. The window and the buttons need `manage`. A bearer token never works. The server output goes to `llamacpp-server.log` in the workspace folder and is not shown. The Ollama card has a "Context window (tokens)" number field. Guardrails and limits: [Configuration](configuration.md#local-llamacpp-server).
 
+#### Get a model
+
+The llama.cpp card and the Ollama card each have a "Get a model" panel. The panel searches for a model and downloads it. It needs a browser session with the `manage` scope. A bearer token never works. The panel shows only on a card whose provider has a model source. The OpenRouter card has no panel.
+
+To get a model for llama.cpp:
+
+1. Open Settings > Providers and find the llama.cpp card.
+2. Type at least 2 characters in "Search for a model". The search starts 400 ms after you stop typing.
+3. Choose a repo from the list. A "Gated" badge means the repo needs a Hugging Face access token.
+4. Choose a file in the list. The panel preselects `Q4_K_M`. `Q8_0` is marked "closest to full quality".
+5. Select Download. The panel shows a bar and the bytes received. Select Cancel to stop.
+6. When the download ends, follow the next step in the panel (see below).
+
+To get a model for Ollama:
+
+1. Open the Ollama card and search in the same way. The list shows Ollama library names first, then Hugging Face repos.
+2. Choose a library name, for example `qwen3`, and select Download. Ollama pulls the `latest` tag of a name that has no tag.
+   To pull a name that the list does not show, type the full name, for example `smollm2:135m`. The panel shows it first with the badge "Typed name".
+3. Choose a Hugging Face repo to see its files. Choose a file and select Download. Ollama pulls `hf.co/org/name:LABEL`.
+4. Ollama does not tell the size before the pull starts. The panel shows "Size known after the pull starts" until the size arrives.
+5. When the pull ends, the panel reads the Ollama model list again and says whether Ollama lists the model.
+
+Only one download runs at a time. The panel polls the server once each second while a download runs.
+
+**Next step for llama.cpp.** The next step depends on who runs the llama.cpp server.
+
+- omrs runs the server (state Running or Starting). Select "Use this model". The panel saves the model in the Model row of the Local server panel. Then select "Restart server to load it". "Use this model" needs a session with the `credentials` scope. Without it the button stays off and the panel shows "A credentials session is needed to change this."
+- You run the server (any other state), for example the Llama desktop app. omrs does not control it. The panel shows the folder of the file and does not offer "Use this model". The Llama app lists new models only when it starts. Quit and reopen the app, then select "Refresh models". The panel reads the model list of the server again and says whether the server lists the model.
+
+**What each reason means.** A failed download shows one line.
+
+| Reason | What the line says | What to do |
+|---|---|---|
+| `busy` | Another download is running. | Wait for it, or select Cancel. |
+| `no-space` | The disk has too little free space. | Free space or choose a smaller file. |
+| `gated` | The model needs a Hugging Face access token. | Set `HF_TOKEN`, restart `omrs web`, and try again. |
+| `not-found` | Hugging Face has no such model, or no GGUF file in it. | Search again. |
+| `network` | The model host did not answer. | Check the connection and try again. |
+| `stalled` | No data arrived for 60 seconds. | Try again. A partial file is not resumed. |
+| `ollama-unreachable` | Ollama did not answer at its address. | Start Ollama and try again. |
+| `failed` | The download failed for another reason. | Read the server log in Settings, then try again. |
+
+After a cancel the panel says "The download stopped." and nothing more.
+
+**Where files go.**
+
+- llama.cpp files go to the Hugging Face hub cache. The folder is `HF_HUB_CACHE` when set, else `HF_HOME/hub` when `HF_HOME` is set, else `~/.cache/huggingface/hub`. The panel shows the folder in use. A server that reads another cache folder does not see the file. Point that server at the folder the panel shows.
+- Ollama keeps pulled models in its own store. omrs does not write there.
+- The model value that "Use this model" saves is `org/name:LABEL`. The managed server loads it with `-hf` from the same cache.
+
 ### Chat model
 
 Settings > Chat sets the provider and model that Chat uses. The same choice answers MCP clients of this web server that cannot supply their own model. Metadata extraction keeps its own model. The choice locks when `ANSWER__PROVIDER` or `ANSWER__MODEL` is set in the environment or `.env`. A cloud provider sends questions and retrieved passages off this machine. The Chat section says so. List models and Test run only when you press them. When no model is ready, Chat shows one line with a link to Settings > Chat and disables Send.

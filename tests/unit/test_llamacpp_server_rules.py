@@ -252,6 +252,7 @@ FULL = {
     "TMPDIR": "/tmp",
     "LLAMA_CACHE": "/cache",
     "HF_HOME": "/hf",
+    "HF_HUB_CACHE": "/hf-hub",
     "HF_TOKEN": HF_TOKEN,
     "OPENROUTER_API_KEY": FAKE_KEY,
     "OPENAI_API_KEY": FAKE_KEY,
@@ -275,8 +276,24 @@ def test_a_file_model_gets_only_the_four_base_variables() -> None:
 
 def test_a_hugging_face_model_also_gets_the_cache_and_token_variables_that_are_set() -> None:
     env = rules.child_environment(FULL, "hf")
-    assert set(env) == {"PATH", "HOME", "LANG", "TMPDIR", "LLAMA_CACHE", "HF_HOME", "HF_TOKEN"}
+    assert set(env) == {
+        "PATH",
+        "HOME",
+        "LANG",
+        "TMPDIR",
+        "LLAMA_CACHE",
+        "HF_HOME",
+        "HF_HUB_CACHE",
+        "HF_TOKEN",
+    }
     assert env["HF_TOKEN"] == HF_TOKEN
+    assert env["HF_HUB_CACHE"] == "/hf-hub"
+
+
+def test_the_download_folder_variable_reaches_a_hugging_face_model_and_not_a_file_model() -> None:
+    environ = {"PATH": "/usr/bin", "HF_HUB_CACHE": "/moved/hub"}
+    assert rules.child_environment(environ, "hf")["HF_HUB_CACHE"] == "/moved/hub"
+    assert "HF_HUB_CACHE" not in rules.child_environment(environ, "file")
 
 
 def test_a_hugging_face_variable_that_is_not_set_is_not_invented() -> None:

@@ -43,6 +43,7 @@ from .admission import AdmissionClosed as AdmissionClosed
 from .grants import RootGrants
 from .install_job import InstallJob
 from .live_settings import initial_upload_limit
+from .model_download_job import ModelDownloadJob
 from .provider_state import build_engine, load_providers
 from .settings_launch import prepare_settings
 from .tool_environment import ToolDetector
@@ -204,6 +205,10 @@ class WorkspaceLock:
             self._fd = None
 
 
+#: Seconds shutdown waits for a running model download to stop.
+MODEL_DOWNLOAD_STOP_SECONDS = 5.0
+
+
 @dataclass
 class WebRuntime:
     """Resources owned by one running web server.
@@ -218,6 +223,7 @@ class WebRuntime:
     uploads: UploadStore
     admission: Admission = field(default_factory=Admission)
     installs: InstallJob = field(default_factory=InstallJob)
+    model_downloads: ModelDownloadJob = field(default_factory=ModelDownloadJob)
     tools: ToolDetector = field(default_factory=ToolDetector)
     run_service: RunServiceHook | None = None
     loop: asyncio.AbstractEventLoop | None = None
@@ -297,6 +303,10 @@ async def shutdown_runtime(runtime: WebRuntime) -> None:
         return
     runtime._shut_down = True
     runtime.admission.close()
+    try:
+        await runtime.model_downloads.stop(timeout=MODEL_DOWNLOAD_STOP_SECONDS)
+    except Exception:
+        logger.exception("Stopping the model download failed during web shutdown.")
     if runtime.run_service is not None:
         try:
             await runtime.run_service.shutdown()

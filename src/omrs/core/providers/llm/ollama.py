@@ -125,4 +125,5 @@ CONNECTION = ConnectionDescriptor(
     test_targets=_tags,
     models_target=_tags,
     parse_models=lambda payload: models_from(payload, "models", "name"),
+    model_source="ollama-pull",
 )

@@ -15,6 +15,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from omrs.core.providers.model_sources import ModelSourceKind
+
 
 @dataclass(frozen=True)
 class ConnectionField:
@@ -107,6 +109,10 @@ class ConnectionDescriptor:
         credit: Optional read of the key's spending limit. Its parser returns
             ``{"limit_usd", "remaining_usd"}`` or ``None``. ``None`` here
             means the provider publishes no credit figure.
+        model_source: Where the app can search for and download a model for this
+            provider: ``huggingface-gguf`` (llama.cpp) or ``ollama-pull``
+            (Ollama). ``None`` means the provider has no source, so its card shows
+            no Get a model panel and the download routes refuse it.
     """
 
     display_name: str
@@ -120,6 +126,7 @@ class ConnectionDescriptor:
     parse_models: Callable[[object], list[str]]
     reasoning_levels: ProviderLookup | None = None
     credit: ProviderLookup | None = None
+    model_source: ModelSourceKind | None = None
 
 
 def join_url(base: str, path: str) -> tuple[str, ...]:

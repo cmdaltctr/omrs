@@ -3,6 +3,7 @@ import type { Connection, ProviderField } from "../api/settings";
 import { Badge } from "../components/ui/badge";
 import { Card, CardHeader, CardInset, CardTitle } from "../components/ui/card";
 import { isLoopback, ROLE_NAMES } from "./connectionWords";
+import { ModelDownloadPanel } from "./ModelDownloadPanel";
 import { IntegrationLink } from "./IntegrationLink";
 import { PROVIDER_EXTRAS } from "./providerExtras";
 import { ProviderKeyField } from "./ProviderKeyField";
@@ -111,6 +112,11 @@ export function ProviderCard({ connection, keychain, configDir }: ProviderCardPr
       {ProviderExtra !== undefined && (
         <div data-slot="provider-extra" className="min-w-0 border-t border-border pt-3">
           <ProviderExtra />
+        </div>
+      )}
+      {connection.model_source != null && (
+        <div data-slot="model-download" className="min-w-0 border-t border-border pt-3">
+          <ModelDownloadPanel provider={connection.provider} source={connection.model_source} />
         </div>
       )}
     </Card>

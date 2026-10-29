@@ -21,7 +21,7 @@ const ROWS: FieldRow[] = [
   { key: "idle_sleep", inputType: "number", needsCredentials: false },
 ];
 
-const NEEDS_CREDENTIALS = "A credentials session is needed to change this.";
+export const NEEDS_CREDENTIALS = "A credentials session is needed to change this.";
 
 /** Why a row cannot be edited, or `null`. A locked field gives the server's reason. */
 function readOnlyReason(field: ServerField, row: FieldRow, hasCredentials: boolean): string | null {
