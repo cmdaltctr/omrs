@@ -116,16 +116,35 @@ class TestCalls:
         assert seen == [40, 2, 8]
         assert all(type(n) is int for n in seen)
 
-    def test_xet_network_bytes_are_a_sign_of_life_and_count_no_bytes(
+    def test_xet_network_bytes_count_as_progress_once(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         # Xet reports file assembly in large steps, often more than 60 s apart, but
-        # reports network bytes about every second through update_transfer.
+        # reports network bytes about every second through update_transfer. Progress
+        # is the larger of the two, so no byte counts twice.
         def fake(**kwargs: Any) -> str:
             bar = kwargs["tqdm_class"](total=100, unit="B")
             bar.update_transfer(30)
             bar.set_transfer_postfix_str("8 MB/s", refresh=False)
             bar.update_transfer(0)
+            bar.update(20)
+            bar.update(80)
+            return "/p"
+
+        _install(monkeypatch, fake)
+        seen: list[int] = []
+
+        _call(["a.gguf"], on_bytes=seen.append)
+
+        assert seen == [30, 0, 70]
+        assert sum(seen) == 100
+
+    def test_network_bytes_stop_at_the_file_size(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # Network bytes can pass the file size (less deduplication than expected).
+        def fake(**kwargs: Any) -> str:
+            bar = kwargs["tqdm_class"](total=100, unit="B")
+            bar.update_transfer(90)
+            bar.update_transfer(40)
             bar.update(100)
             return "/p"
 
@@ -134,7 +153,8 @@ class TestCalls:
 
         _call(["a.gguf"], on_bytes=seen.append)
 
-        assert seen == [0, 100]
+        assert sum(seen) == 100
+        assert seen[-1] == 0
 
     def test_the_hub_routes_xet_network_bytes_to_update_transfer(
         self, monkeypatch: pytest.MonkeyPatch
@@ -165,7 +185,7 @@ class TestCalls:
 
         _call(["a.gguf"], on_bytes=seen.append)
 
-        assert seen == [0]
+        assert seen == [25]
 
 
 class TestCancel:

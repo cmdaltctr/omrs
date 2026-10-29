@@ -41,7 +41,7 @@ export function ModelDownloadProgress({ status, onCancel, cancelling }: ModelDow
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={percent ?? undefined}
-        className="h-2 w-full overflow-hidden rounded-small border border-border bg-background/60"
+        className="h-2 w-full overflow-hidden rounded-small border border-border-hover bg-border"
       >
         <div className="h-full bg-primary-tint-active transition-[width] duration-300 motion-reduce:transition-none" style={{ width: `${percent ?? 0}%` }} />
       </div>

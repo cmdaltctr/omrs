@@ -216,7 +216,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # (no fastapi) and a start at the listed revision (needs fastapi).
 # +3 (2026-10-29, Xet stall fix, by test-ID diff, none removed): download_files (2,
 # no fastapi) and model_download_job (1, needs fastapi).
-_BASE_EXECUTED = 9443
+# +1 (2026-10-29, Xet progress from network bytes, by test-ID diff, 1 renamed):
+# download_files network cap case. No fastapi needed.
+_BASE_EXECUTED = 9444
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

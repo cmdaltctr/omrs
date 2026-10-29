@@ -32,7 +32,9 @@ export function ModelDownloadPanel({ provider, source }: { provider: string; sou
   const current = status.data;
   const running = current?.state === "running";
   // The job is one for the whole server. This card shows it only when it belongs to this provider.
-  const mine = current !== undefined && current.provider === provider ? current : null;
+  const owned = current !== undefined && current.provider === provider ? current : null;
+  // A cancel from before this page loaded says nothing new, so only this page's own cancel shows its line.
+  const mine = owned?.state === "cancelled" && !cancel.isSuccess ? null : owned;
   const repo = chosen === null ? null : repoOf(chosen);
   const begin = (request: StartModelDownload) => start.mutate(request);
   const refusal = start.error instanceof ApiError ? reasonFromBody(start.error.body) : null;

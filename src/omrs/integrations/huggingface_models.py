@@ -418,8 +418,8 @@ def download_files(
         repo: A repository id, ``org/name``.
         revision: The pinned commit hash from :func:`list_repo_files`.
         filenames: The files of the chosen set, in download order.
-        on_bytes: Called with the bytes of each progress step, or with 0 when
-            Xet network bytes arrive between two steps (a sign of life).
+        on_bytes: Called with the new bytes of each progress report, or with 0
+            when a report brings no new byte (a sign of life for the stall check).
         cancel: Set to stop the download. It is also checked between files.
         token: The token from the environment of ``omrs web``, or ``None``.
             ``None`` turns the library's stored-token lookup off.
@@ -436,26 +436,37 @@ def download_files(
     from huggingface_hub.utils import tqdm as hub_tqdm
 
     class _Progress(hub_tqdm):  # type: ignore[misc, valid-type]
+        # Progress is max(assembled bytes, Xet network bytes), capped at the file
+        # size. Xet assembles in steps often over 60 s apart but sends network
+        # bytes every second; only new bytes are sent, so none counts twice.
         def __init__(self, *args: Any, **kwargs: Any) -> None:
             kwargs["disable"] = True
             super().__init__(*args, **kwargs)
+            self._assembled = 0
+            self._network = 0
+            self._sent = 0
+
+        def _report(self) -> None:
+            reached = max(self._assembled, self._network)
+            if self.total:
+                reached = min(reached, int(self.total))
+            on_bytes(max(reached - self._sent, 0))
+            self._sent = max(reached, self._sent)
 
         def update(self, n: float | None = 1) -> Any:
             if cancel.is_set():
                 raise DownloadCancelled
             if not n:
                 return None
-            on_bytes(int(n))
+            self._assembled += int(n)
+            self._report()
             return super().update(n)
 
-        # Xet reports the file assembly in large steps, often more than 60 s apart,
-        # and the network bytes about every second. A class with this method gets
-        # those network bytes. on_bytes(0) tells the job that bytes still arrive
-        # (the stall check), without counting them twice. hf_xet ignores an
-        # exception from here, so cancel stays with the watcher thread.
+        # hf_xet ignores an exception from here, so cancel stays with the watcher.
         def update_transfer(self, n: float | None) -> None:
             if n:
-                on_bytes(0)
+                self._network += int(n)
+                self._report()
 
         def set_transfer_postfix_str(self, *args: Any, **kwargs: Any) -> None:
             return None

@@ -1,3 +1,4 @@
+import type { DownloadState } from "../api/modelDownloads";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
@@ -41,6 +42,23 @@ describe("Get a model panel on the provider cards", () => {
     await user.click(await within(panel("llama.cpp")).findByRole("button", { name: "Download" }));
     expect(posts).toEqual([{ provider: "llamacpp", repo: "unsloth/Qwen3-4B-GGUF", revision: REVISION, label: "Q4_K_M" }]);
     expect(await within(panel("llama.cpp")).findByRole("progressbar", { name: "Download progress" })).toHaveAttribute("aria-valuenow", "25");
+  });
+
+  it("does not show an old cancelled job after the page loads", async () => {
+    const { panel } = await open({ "GET /v1/model-downloads/current": () => downloadStatus({ state: "cancelled", provider: "llamacpp", model: "unsloth/Qwen3-4B-GGUF:Q4_K_M" }) });
+    await within(panel("llama.cpp")).findByRole("textbox", { name: "Search for a model" });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(within(panel("llama.cpp")).queryByText("The download stopped.")).toBeNull();
+  });
+
+  it("says the download stopped after the person presses Cancel", async () => {
+    let state: DownloadState = "running";
+    const { user, panel } = await open({
+      "GET /v1/model-downloads/current": () => downloadStatus({ state, provider: "llamacpp", model: "unsloth/Qwen3-4B-GGUF:Q4_K_M", bytes_done: 1, bytes_total: 4 }),
+      "DELETE /v1/model-downloads/current": () => ((state = "cancelled"), downloadStatus({ state: "cancelled", provider: "llamacpp", model: "unsloth/Qwen3-4B-GGUF:Q4_K_M" })),
+    });
+    await user.click(await within(panel("llama.cpp")).findByRole("button", { name: "Cancel" }));
+    expect(await within(panel("llama.cpp")).findByText("The download stopped.")).toBeInTheDocument();
   });
 
   it("shows an error when Cancel fails", async () => {
