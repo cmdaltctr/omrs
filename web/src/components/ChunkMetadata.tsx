@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ChunkView } from "../api/documents";
-import { chunkPosition } from "../lib/labels";
+import { chunkPosition, pageText } from "../lib/labels";
 import { Button } from "./ui/button";
 
 /** Stored keys that the Lineage section already shows. */
@@ -24,6 +24,8 @@ interface ChunkMetadataProps {
   chunk: ChunkView;
   /** Every chunk a merged citation spans. Shown only when it is more than one. */
   chunkIds?: string[];
+  /** Every page a merged citation spans. Shown as a range when it is more than one. */
+  pageLabels?: string[];
   /** False hides the Metadata section, for a chunk whose stored metadata could not be read. */
   showMetadata?: boolean;
 }
@@ -36,12 +38,14 @@ interface ChunkMetadataProps {
 export function ChunkMetadata({
   chunk,
   chunkIds,
+  pageLabels,
   showMetadata = true,
 }: ChunkMetadataProps) {
   const keys = Object.keys(chunk.metadata)
     .filter((key) => !LINEAGE_KEYS.has(key))
     .sort();
-  const position = `${chunkPosition(chunk.source_chunk_index, chunk.source_chunk_count)}${chunk.page_label !== null ? `, Page ${chunk.page_label}` : ""}`;
+  const page = pageText(chunk.page_label, pageLabels);
+  const position = `${chunkPosition(chunk.source_chunk_index, chunk.source_chunk_count)}${page !== null ? `, ${page}` : ""}`;
   return (
     <>
       <section aria-label="Lineage" className="flex flex-col gap-1">

@@ -51,9 +51,9 @@ decision:
    validation.
 
 2. **There is no second retrieval path (design D3).**
-   `core/answer/retriever.py` adapts `search()` to LlamaIndex's
-   `BaseRetriever`, converting result dicts to `NodeWithScore` with
-   lineage preserved in node metadata. Profile resolution, hybrid
+   `core/answer/retriever.py` runs `search()` with the answer's retrieval
+   arguments and keeps the raw result rows, which carry lineage
+   (amended 2026-10-29, see below). Profile resolution, hybrid
    fusion, reranking, and context assembly run exactly as they do for a
    plain search. Synthesis drift would require someone to add a second
    retrieval path, which review rejects.
@@ -147,6 +147,19 @@ MCP callers who knowingly choose generation with its completion cost.
 | Always use the server model, ignore client sampling | Wastes the client's model, adds latency, and blocks headless deployments with no provider configured. |
 | Allow `create_message` on modern sessions | Deprecated API on a protocol that replaces it; the MRTR resolver chain covers the same need, bounded. |
 | Answer from parametric memory when retrieval is empty | The exact ungrounded failure the capability prevents, plus a wasted completion call. |
+
+## Amendment (2026-10-29, add-merged-result-page-labels)
+
+Decision 2 said the retriever converts result dicts to `NodeWithScore`
+with lineage in node metadata. The pipeline never read those nodes: it
+builds evidence from the raw rows (`retriever.rows`), and synthesis gets
+its nodes from `evidence._labelled_nodes`. The change
+`add-merged-result-page-labels` removed the unused conversion
+(`_LINEAGE_FIELDS`, `_row_to_node`) and the `BaseRetriever` base.
+`SearchRetriever.retrieve(query)` now returns the search rows. The rule
+"there is no second retrieval path" is unchanged. Lineage is unchanged:
+it comes from stored chunk metadata on each search row, through evidence
+rows into citations.
 
 ## References
 

@@ -96,17 +96,18 @@ def build_citations(evidence: list[dict], ordinals: list[int]) -> list[dict]:
         chunk_ids = list(row.get("chunk_ids") or [])
         if row.get("chunk_id") is not None and row["chunk_id"] not in chunk_ids:
             chunk_ids.insert(0, row["chunk_id"])
-        citations.append(
-            {
-                "ordinal": ordinal,
-                "chunk_id": row.get("chunk_id"),
-                "chunk_ids": chunk_ids,
-                "source_id": row.get("source_id"),
-                "source_version": row.get("source_version"),
-                "source": row.get("source"),
-                "source_chunk_index": row.get("source_chunk_index"),
-                "score": row.get("score"),
-                "score_kind": row.get("score_kind"),
-            }
-        )
+        citation = {
+            "ordinal": ordinal,
+            "chunk_id": row.get("chunk_id"),
+            "chunk_ids": chunk_ids,
+            "source_id": row.get("source_id"),
+            "source_version": row.get("source_version"),
+            "source": row.get("source"),
+            "source_chunk_index": row.get("source_chunk_index"),
+            "score": row.get("score"),
+            "score_kind": row.get("score_kind"),
+        }
+        if row.get("page_labels"):
+            citation["page_labels"] = list(row["page_labels"])
+        citations.append(citation)
     return citations

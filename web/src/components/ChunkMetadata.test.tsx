@@ -31,6 +31,12 @@ function chunk(overrides: Partial<ChunkView> = {}): ChunkView {
 }
 
 describe("ChunkMetadata", () => {
+  it("shows the page range of a citation that spans pages", () => {
+    render(<ChunkMetadata chunk={chunk()} pageLabels={["4", "5"]} />);
+    const lineage = screen.getByRole("region", { name: "Lineage" });
+    expect(within(lineage).getByText(/Chunk 2 of 5, Pages 4–5/)).toBeInTheDocument();
+  });
+
   it("shows the lineage of the chunk", () => {
     render(<ChunkMetadata chunk={chunk()} />);
     const lineage = screen.getByRole("region", { name: "Lineage" });

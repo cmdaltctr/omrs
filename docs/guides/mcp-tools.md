@@ -111,6 +111,11 @@ constituent index. Its `score` is the best constituent score. Use any listed
 `chunk_id` as a citation; each resolves to exactly one stored chunk. Unmerged
 rows keep the plain `chunk_id` key and gain nothing.
 
+A merged row from a paged document also carries a `page_labels` array. It
+lists the page label of every constituent chunk in chunk order, each label
+once. Its `page_label` stays the page of the lowest-index constituent. A
+merged row without page labels, and an unmerged row, carry no `page_labels`.
+
 **Neighbour expansion is opt-in.** Set `expand_window` above zero to add each
 retrieved chunk's neighbours to its context. Expansion is bounded by the
 window. Expanded neighbours merge into the retrieved chunk under the merging
@@ -216,7 +221,8 @@ fields.
 
 Citations and evidence rows carry `ordinal`, `chunk_id`, `chunk_ids`,
 `source_id`, `source_version`, `source`, `source_chunk_index`, `score`, and
-`score_kind`. Evidence rows also carry `text`.
+`score_kind`. Evidence rows also carry `text`. Citations and evidence rows
+of a merged row with page labels also carry its `page_labels`.
 
 ### Completion source
 

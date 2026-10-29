@@ -88,6 +88,15 @@ The citation popover SHALL show the citation ordinal, the source name, the score
 - **WHEN** the user presses citation chip `[2]` of an answer whose citation 2 spans two chunks of `paper.pdf`
 - **THEN** the popover MUST show the source `paper.pdf`, the evidence text, the chunk position, both chunk ids and the stored metadata keys with their values
 
+### Requirement: A citation popover shows the page range of a citation that spans pages
+
+When a citation carries `page_labels` with more than one label, the Lineage section SHALL show the range from the first to the last label ("Pages 5–6") instead of the single page label.
+
+#### Scenario: A citation that spans pages
+
+- **WHEN** the user presses a citation chip whose citation carries `page_labels` `["5", "6"]`
+- **THEN** the Lineage section MUST show "Pages 5–6"
+
 ### Requirement: The citation popover cuts long values and closes cleanly
 
 Long values SHALL be cut, with an action to show the full value. The popover SHALL offer an action to open the full chunk in the chunk viewer. Escape, a click outside it, or a second press SHALL close the popover and return focus to its button.

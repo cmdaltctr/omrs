@@ -147,7 +147,11 @@ def search(
         source = _sanitise_display_name(r.get("source", "unknown"))
         text = r.get("text", "")[:100].replace("\n", " ")
         if show_pages:
-            page = str(r.get("page_label") or "")
+            # A merged row spanning pages shows first–last (design D5).
+            labels = r.get("page_labels") or []
+            page = (
+                f"{labels[0]}–{labels[-1]}" if len(labels) > 1 else str(r.get("page_label") or "")
+            )
             table.add_row(score, source, page, text)
         else:
             table.add_row(score, source, text)

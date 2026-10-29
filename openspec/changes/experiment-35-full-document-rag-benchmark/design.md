@@ -53,7 +53,7 @@ Experiment 35 becomes that experiment.
 
 - All 150 questions. Ingest the real source PDFs through the full document path: reader, OCR routing, Markdown interface, chunking, embedding, LanceDB.
 - A run that starts from pre-extracted text does not count as the primary result. It may be reported as a diagnostic.
-- Hit rule: a retrieved chunk is a hit when its source is the gold `evidence_doc_name` and its page is the gold page. `evidence_page_num` is zero-indexed. One function converts it to the page numbering that OMRS stores, with a unit test on a known page. A chunk that spans pages is a hit when any of its pages is the gold page. A question with several evidence entries is a hit at K when any gold page is hit within the top K.
+- Hit rule: a retrieved chunk is a hit when its source is the gold `evidence_doc_name` and its page is the gold page. `evidence_page_num` is zero-indexed. One function converts it to the page numbering that OMRS stores, with a unit test on a known page. A chunk that spans pages is a hit when any of its pages is the gold page. A result row's pages are its `page_labels` (a merged row lists every page it spans, from `add-merged-result-page-labels`), with `page_label` as the fallback for a row without them. A question with several evidence entries is a hit at K when any gold page is hit within the top K.
 - Licence CC BY-NC 4.0. Keep the PDFs and derived text out of git and out of any CC BY release.
 
 ### FreshStack, LangChain slice

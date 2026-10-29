@@ -11,9 +11,9 @@ from __future__ import annotations
 
 from llama_index.core.schema import NodeWithScore, TextNode
 
-#: Lineage fields carried on every evidence row.  Same lineage as
-#: ``retriever._LINEAGE_FIELDS`` minus ``chunk_ids``, which each row
-#: carries normalised (representative chunk first) via the logic below.
+#: Lineage fields carried on every evidence row.  ``chunk_ids`` is not
+#: listed: each row carries it normalised (representative chunk first)
+#: via the logic below.
 _EVIDENCE_FIELDS = (
     "chunk_id",
     "source_id",
@@ -42,6 +42,10 @@ def _evidence_rows(rows: list[dict]) -> list[dict]:
         if row.get("chunk_id") is not None and row["chunk_id"] not in chunk_ids:
             chunk_ids.insert(0, row["chunk_id"])
         entry["chunk_ids"] = chunk_ids
+        if row.get("page_labels"):
+            # Its own key, not in _EVIDENCE_FIELDS: those reach node
+            # metadata, and the model input must not change.
+            entry["page_labels"] = list(row["page_labels"])
         entry["text"] = row.get("text") or ""
         evidence.append(entry)
     return evidence

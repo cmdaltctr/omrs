@@ -206,7 +206,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # none removed): test_compose.py. No fastapi needed.
 # +4 (2026-10-29, --json output stays JSON only, by test-ID diff, none removed):
 # test_cli_json_output_clean.py. No fastapi needed.
-_BASE_EXECUTED = 9089
+# +10 (2026-10-29, page labels of merged results, by test-ID diff, none removed):
+# test_merged_page_labels.py (9) and test_cli.py (1). No fastapi needed.
+_BASE_EXECUTED = 9099
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

@@ -1,7 +1,7 @@
 import type { DocumentInfo, SearchHit } from "../api/documents";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
-import { availabilityLabel, chunkPosition, formatScore, scoreKindLabel } from "../lib/labels";
+import { availabilityLabel, chunkPosition, formatScore, pageText, scoreKindLabel } from "../lib/labels";
 
 interface ResultListProps {
   hits: SearchHit[];
@@ -25,6 +25,7 @@ export function ResultList({ hits, sources, onShowChunk }: ResultListProps) {
     <ol aria-label="Search results" className="flex flex-col gap-2">
       {hits.map((hit, index) => {
         const orphaned = availability(hit, sources);
+        const page = pageText(hit.page_label, hit.page_labels);
         return (
           <li key={hit.chunk_id ?? `row-${index}`} className="flex flex-col gap-2 rounded-panel border border-border bg-card p-3">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-meta text-muted-foreground">
@@ -36,7 +37,7 @@ export function ResultList({ hits, sources, onShowChunk }: ResultListProps) {
               </span>
               {hit.reranked ? <Badge variant="info">Reranked</Badge> : null}
               <span>{chunkPosition(hit.source_chunk_index, hit.source_chunk_count)}</span>
-              {hit.page_label ? <span>Page {hit.page_label}</span> : null}
+              {page !== null ? <span>{page}</span> : null}
             </div>
             <div className="flex flex-wrap items-center gap-2 text-meta">
               <span dir="ltr" className="min-w-0 break-all font-mono text-code">
