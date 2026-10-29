@@ -19,10 +19,13 @@ import os
 import re
 import subprocess
 import sys
+from typing import Any
 
+import click
 import typer
 from rich.console import Console
 from rich.logging import RichHandler
+from typer.core import TyperGroup
 
 # The composition root is initialised from ``callback`` after Click has
 # handled help and version flags.
@@ -30,8 +33,26 @@ from ... import compose
 
 _JSON_HELP = "Output results as JSON."
 _runtime_details_enabled = False
+_JSON_META = "omrs.json_output"
+
+
+class _JsonAwareGroup(TyperGroup):
+    """Records whether the subcommand got ``--json`` before the callback runs.
+
+    ``--json`` output goes to stderr, so a log line there breaks the JSON.
+    Click resolves the subcommand before it runs the group callback, but it
+    keeps the subcommand's arguments in a local variable; this keeps the
+    answer in ``ctx.meta`` for the callback.
+    """
+
+    def resolve_command(self, ctx: click.Context, args: list[str]) -> Any:
+        name, command, rest = super().resolve_command(ctx, args)
+        ctx.meta[_JSON_META] = "--json" in rest
+        return name, command, rest
+
 
 app = typer.Typer(
+    cls=_JsonAwareGroup,
     name="omrs",
     help=(
         "OMRS — Opinionated Modular RAG System: document ingestion and semantic "
@@ -199,6 +220,13 @@ def callback(
     ),
 ) -> None:
     """Run with no arguments to start the MCP stdio server."""
+    if ctx.meta.get(_JSON_META):
+        # No log line may reach stderr ahead of the JSON. The previous level
+        # comes back when the command ends, so one invocation changes nothing
+        # for the next one.
+        previous = logging.root.manager.disable
+        logging.disable(logging.CRITICAL)
+        ctx.call_on_close(lambda: logging.disable(previous))
     if ctx.invoked_subcommand not in ("web", "experiments", None):
         # ``omrs web`` and bare ``omrs`` (MCP over stdio) each own one
         # Engine and must not install the legacy process default.
