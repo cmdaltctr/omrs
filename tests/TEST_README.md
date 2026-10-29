@@ -65,8 +65,11 @@ during the `make-ingest-path-async` OpenSpec change.
 | `test_cli.py` | 93 | CLI validation, formatting, edge cases, delete subcommand |
 | `test_metadata_extractor.py` | 40 | Keyword, disabled, custom rules, ollama (JSON parsing, normalisation, hybrid taxonomy), llamaindex (pipeline, fallback, aggregation), unknown mode fallback |
 | `test_ingestion.py` | 20 | Path validation, empty dir, list empty, collection routing, metadata attachment, delete functions, upsert |
-| `test_retrieval.py` | 17 | Empty store, threshold, rerank flag, threshold scaling, collection search, metadata filter, list collections |
-| `test_mcp_tools.py` | 19 | Tool discovery, ingest, search, list, list_collections, collection params, backward compat, delete_documents |
+| `test_retrieval.py` | 13 | Empty store, threshold, collection search, metadata filter, list collections, score consistency |
+| `test_retrieval_rerank.py` | 17 | Rerank flag, threshold scaling, failure fallback, rerank_reason, threshold after rerank |
+| `test_mcp_tools.py` | 34 | Entry point and logging isolation, delete_documents, metadata filters, error envelopes, redaction, package exports |
+| `test_mcp_tools_search.py` | 19 | Tool discovery, profiles, ingest, search, list, validation, default collection |
+| `test_mcp_tools_collections.py` | 4 | Collection parameter on ingest, search and list; list_collections |
 | `test_signal_handling.py` | 13 | SIGINT, shutdown flag, lock recheck |
 | `test_ingestion_parallel.py` | 21 | Concurrent ingestion, all-or-nothing semantics |
 | `test_async_ingest_responsiveness.py` | — | Responsiveness contract: search returns within 500 ms while ingest is in flight |
@@ -175,7 +178,7 @@ error paths assert on the dict, not on a raised exception.
 
 **Tool parameters are backward-compatible.** All MCP tool parameters
 are optional with defaults. New parameters added to existing tools
-must remain optional. Tests under `test_mcp_tools.py::TestBackwardCompat`
+must remain optional. The default-collection tests in `test_mcp_tools_search.py`
 enforce this.
 
 **The `÷30` reranker threshold scaling is empirically calibrated.**

@@ -23,7 +23,14 @@ step() { printf '\n== %s ==\n' "$1" >&2; }
 # because a second `trap ... EXIT` would replace the first.
 junit=""
 wheel_dir=""
-cleanup() { rm -rf ${junit:+"$junit"} ${wheel_dir:+"$wheel_dir"}; }
+web_log=""
+web_pid=""
+cleanup() {
+  # Stop the background frontend job (its whole process group) when an
+  # earlier step fails, so no npm or vitest process stays behind.
+  if [ -n "$web_pid" ]; then kill -- -"$web_pid" 2>/dev/null || true; fi
+  rm -rf ${junit:+"$junit"} ${wheel_dir:+"$wheel_dir"} ${web_log:+"$web_log"}
+}
 trap cleanup EXIT
 
 step "ruff check (whole repo)"
@@ -60,14 +67,41 @@ if printf '%s\n' "$packages" | grep -qiE '^(torch|transformers)([[:space:]]|$)';
 fi
 echo "OK: default install is torch-free"
 
+# The frontend gates and the web wheel check share nothing with the Python
+# suite, so they run in the background while it runs. Their output is held in
+# a log and printed after the tripwire, so the two outputs do not mix. The
+# tests never read the built assets: they serve from temporary folders.
+step "frontend gates and web wheel assets (started in the background)"
+# CI runs the frontend job; the release workflow runs the wheel check.
+# The wheel goes to a temporary directory, so dist/ stays untouched.
+if command -v npm >/dev/null 2>&1; then
+  web_log="$(mktemp)"
+  wheel_dir="$(mktemp -d)"
+  set -m # own process group, so cleanup can stop npm and its children
+  (
+    set -e
+    (cd web && npm ci && npm run lint && npm run typecheck && npm test && npm run build)
+    uv build --wheel --out-dir "$wheel_dir"
+    uv run --no-sync python scripts/check_web_wheel.py "$wheel_dir"/*.whl
+    echo "OK: wheel contains the web workspace assets"
+  ) >"$web_log" 2>&1 &
+  web_pid=$!
+  set +m
+  echo "running (output follows the tripwire)"
+else
+  echo "SKIPPED: npm not found. Install Node 22 or later to run the frontend gates and the web wheel check." >&2
+fi
+
 # The fast suite runs in parallel when pytest-xdist is installed (about three
 # times faster; --dist loadfile comes from pyproject.toml). It writes a JUnit
 # report. The clean-base tripwire runs as its own step and reads its executed
 # count from that report through OMRS_TRIPWIRE_JUNIT, so it does not run the
 # suite again.
+# OMRS_CI_WORKERS caps the workers (default 8, as in CI). A machine with
+# more cores can raise it, for example OMRS_CI_WORKERS=16.
 parallel=()
 if uv run --no-sync python -c "import xdist" >/dev/null 2>&1; then
-  parallel=(-n auto --maxprocesses=8)
+  parallel=(-n auto --maxprocesses="${OMRS_CI_WORKERS:-8}")
 fi
 junit="$(mktemp)"
 
@@ -92,16 +126,17 @@ OMRS_TRIPWIRE_JUNIT="$junit" \
   uv run --no-sync pytest tests/test_clean_base_tripwire.py --tb=short -q
 
 step "frontend gates and web wheel assets"
-# CI runs the frontend job; the release workflow runs the wheel check.
-# The wheel goes to a temporary directory, so dist/ stays untouched.
-if command -v npm >/dev/null 2>&1; then
-  (cd web && npm ci && npm run lint && npm run typecheck && npm test && npm run build)
-  wheel_dir="$(mktemp -d)"
-  uv build --wheel --out-dir "$wheel_dir"
-  uv run --no-sync python scripts/check_web_wheel.py "$wheel_dir"/*.whl
-  echo "OK: wheel contains the web workspace assets"
+if [ -n "$web_pid" ]; then
+  web_status=0
+  wait "$web_pid" || web_status=$?
+  web_pid=""
+  cat "$web_log"
+  if [ "$web_status" -ne 0 ]; then
+    echo "FAIL: frontend gates or web wheel check (exit $web_status)" >&2
+    exit "$web_status"
+  fi
 else
-  echo "SKIPPED: npm not found. Install Node 22 or later to run the frontend gates and the web wheel check." >&2
+  echo "SKIPPED: npm not found (see the step above)." >&2
 fi
 
 step "pyright (advisory — CI runs it non-blocking)"

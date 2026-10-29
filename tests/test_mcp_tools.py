@@ -1,18 +1,14 @@
 """Integration tests for MCP tool routing via in-memory ClientSession.
 
-Tests cover:
-- Tool discovery (list_tools)
-- ingest_documents tool
-- search_documents tool
-- list_indexed_documents tool
-- Parameter validation
+Tests cover the entry point and its logging isolation, delete_documents,
+metadata filters, error envelopes, credential redaction and the package
+exports. Discovery, ingest, search and collection cases live in
+``test_mcp_tools_search.py`` and ``test_mcp_tools_collections.py``.
 """
 
 from __future__ import annotations
 
-import inspect
 import io
-import json
 import logging
 from collections.abc import Iterator
 from pathlib import Path
@@ -20,9 +16,8 @@ from typing import Any
 from unittest.mock import MagicMock, PropertyMock, patch
 
 import pytest
-from mcp.types import TextContent
 
-from conftest import connected_client
+from conftest import connected_client, extract_tool_result
 
 # ── Logging isolation ──────────────────────────────────────────────────────
 
@@ -150,456 +145,6 @@ def _root_logging_leak_guard() -> Iterator[None]:
         )
 
 
-# ── Tool discovery ─────────────────────────────────────────────────────────
-
-
-async def test_list_tools_discovers_all_nine(mcp_server) -> None:
-    """The server must expose all expected tools."""
-    async with connected_client(mcp_server) as client:
-        result = await client.list_tools()
-        tool_names = {t.name for t in result.tools}
-        assert tool_names == {
-            "ingest_documents",
-            "search_documents",
-            "answer_documents",
-            "list_indexed_documents",
-            "list_collections",
-            "delete_documents",
-            "get_codebase_map",
-            "change_collection_profile",
-            "list_profiles",
-        }
-
-
-async def test_search_documents_annotations_remain_read_only(mcp_server) -> None:
-    """Diagnostics do not change the search tool's safety annotations."""
-    async with connected_client(mcp_server) as client:
-        result = await client.list_tools()
-
-    tool = next(item for item in result.tools if item.name == "search_documents")
-    assert tool.annotations is not None
-    annotations = tool.annotations.model_dump(by_alias=True)
-    assert annotations["readOnlyHint"] is True
-    assert annotations["destructiveHint"] is False
-
-
-# ── list_profiles ──────────────────────────────────────────────────────────
-
-
-async def test_list_profiles_carries_read_only_annotations(mcp_server) -> None:
-    """The profile list changes nothing, so it is marked read-only."""
-    async with connected_client(mcp_server) as client:
-        result = await client.list_tools()
-
-    tool = next(item for item in result.tools if item.name == "list_profiles")
-    assert tool.annotations is not None
-    annotations = tool.annotations.model_dump(by_alias=True)
-    assert annotations["readOnlyHint"] is True
-    assert annotations["destructiveHint"] is False
-
-
-async def test_list_profiles_returns_the_built_ins_without_a_catalogue(mcp_server) -> None:
-    """A process with no workspace catalogue lists the built-in profiles only."""
-    async with connected_client(mcp_server) as client:
-        result = await client.call_tool("list_profiles", {})
-
-    items = _extract_result(result)
-    assert [item["profile_id"] for item in items] == ["documents", "codebase"]
-    for item in items:
-        assert item["kind"] == "builtin" and item["ready"] is True
-        assert item["not_ready_reasons"] == []
-        assert item["slots"] == {"ingest": None, "search": None, "answer": None}
-        assert item["used_by"] == []
-
-
-async def test_list_profiles_adds_the_user_profiles_of_the_catalogue(
-    tmp_path: Path, effective_settings: Any
-) -> None:
-    """With a catalogue the list holds the built-ins, then each user profile."""
-    from tests.unit.test_mcp_stdio_profiles_support import PROFILE, engine_builder, make_env
-
-    env = make_env(tmp_path / "seed", effective_settings)
-    env.service.create_profile("Empty", source=None)
-    engine = engine_builder(effective_settings(), [], "documents")(env.catalogue)
-    from conftest import build_mcp_server
-
-    async with connected_client(build_mcp_server(engine)) as client:
-        items = _extract_result(await client.call_tool("list_profiles", {}))
-
-    assert [item["profile_id"] for item in items] == ["documents", "codebase", PROFILE, "empty"]
-    mine, empty = items[2], items[3]
-    assert mine["kind"] == "user" and mine["base_profile"] == "documents"
-    assert mine["ready"] is True and set(mine["slots"]) == {"ingest", "search", "answer"}
-    assert empty["ready"] is False and len(empty["not_ready_reasons"]) == 3
-
-
-# ── ingest_documents ───────────────────────────────────────────────────────
-
-
-async def test_ingest_documents_with_fixtures_dir(mcp_server, fixtures_dir: Path) -> None:
-    """Ingesting the test fixtures directory must succeed."""
-    async with connected_client(mcp_server) as client:
-        result = await client.call_tool("ingest_documents", {"path": str(fixtures_dir)})
-        data = _extract_result(result)
-        assert data["status"] == "ok"
-        assert data["files_indexed"] > 0
-
-
-async def test_ingest_documents_returns_lazy_setup_error(mcp_server) -> None:
-    """Lazy profile-resolver construction errors return an MCP error result."""
-    with patch.object(
-        mcp_server.test_context.engine,
-        "resolve_settings",
-        side_effect=ImportError("missing optional dependency"),
-    ):
-        async with connected_client(mcp_server) as client:
-            result = await client.call_tool("ingest_documents", {"path": "ignored.txt"})
-
-    data = _extract_result(result)
-    assert data == {"status": "error", "message": "ImportError: missing optional dependency"}
-
-
-# ── search_documents ───────────────────────────────────────────────────────
-
-
-async def test_search_after_ingest_returns_results(mcp_server, fixtures_dir: Path) -> None:
-    """After ingesting fixtures, search must return results with correct shape."""
-    async with connected_client(mcp_server) as client:
-        # First, ingest
-        await client.call_tool("ingest_documents", {"path": str(fixtures_dir)})
-        # Then search
-        result = await client.call_tool("search_documents", {"query": "capital of France"})
-        data = _extract_result(result)
-        assert isinstance(data, list)
-        assert len(data) > 0
-        # Check shape of first result
-        first = data[0]
-        assert "score" in first
-        assert "source" in first
-        assert "text" in first
-        assert "reranked" in first
-
-
-async def test_search_documents_handler_is_async_and_preserves_shape(
-    mcp_server,
-) -> None:
-    """MCP search handler is async and returns the same list-of-dicts shape."""
-    import omrs.transports.mcp as server
-
-    expected = [
-        {
-            "score": 0.9,
-            "source": "fixture.txt",
-            "page_label": None,
-            "text": "fixture text",
-            "reranked": False,
-        }
-    ]
-
-    assert inspect.iscoroutinefunction(server.search_documents)
-
-    with patch.object(
-        mcp_server.test_context.engine, "search", return_value=expected
-    ) as mock_search:
-        async with connected_client(mcp_server) as client:
-            result = await client.call_tool(
-                "search_documents",
-                {
-                    "query": "fixture",
-                    "top_k": 3,
-                    "similarity_threshold": 0.25,
-                    "rerank": True,
-                    "collection": "mcp_shape_coll",
-                },
-            )
-
-    data = _extract_result(result)
-    assert data == expected
-    mock_search.assert_called_once_with(
-        "fixture",
-        top_k=3,
-        similarity_threshold=0.25,
-        rerank=True,
-        hybrid=None,
-        expand_window=0,
-        collection_name="mcp_shape_coll",
-        metadata_filter=None,
-        include_diagnostics=False,
-    )
-
-
-async def test_search_documents_defaults_follow_policy_resolver(mcp_server) -> None:
-    """Omitted values reach the Engine as None, so it resolves them from the profile (D14)."""
-    expected = [
-        {
-            "score": 0.9,
-            "source": "fixture.txt",
-            "page_label": None,
-            "text": "fixture text",
-            "reranked": False,
-        }
-    ]
-
-    with patch.object(
-        mcp_server.test_context.engine, "search", return_value=expected
-    ) as mock_search:
-        async with connected_client(mcp_server) as client:
-            result = await client.call_tool(
-                "search_documents",
-                {"query": "fixture"},
-            )
-
-    data = _extract_result(result)
-    assert data == expected
-    mock_search.assert_called_once_with(
-        "fixture",
-        top_k=None,
-        similarity_threshold=None,
-        rerank=None,
-        hybrid=None,
-        expand_window=0,
-        collection_name="documents",
-        metadata_filter=None,
-        include_diagnostics=False,
-    )
-
-
-@pytest.mark.parametrize(
-    ("arguments", "expected_flag"),
-    [
-        ({"diagnostics": True}, True),
-        ({"diagnostics": False}, False),
-        ({}, False),
-    ],
-    ids=["enabled", "explicitly-disabled", "omitted"],
-)
-async def test_search_documents_diagnostics_passthrough(
-    mcp_server,
-    arguments: dict,
-    expected_flag: bool,
-) -> None:
-    """MCP diagnostics map directly to core retrieval and preserve its output."""
-    observed: list[bool] = []
-
-    def _search(*args, **kwargs):
-        observed.append(kwargs["include_diagnostics"])
-        item = {
-            "score": 0.9,
-            "source": "fixture.txt",
-            "text": "fixture text",
-            "reranked": False,
-        }
-        if kwargs["include_diagnostics"]:
-            item.update({"dense_rank": 1, "fused_rank": 1, "sparse_backend": "bm25"})
-        return [item]
-
-    with patch.object(mcp_server.test_context.engine, "search", side_effect=_search):
-        async with connected_client(mcp_server) as client:
-            result = await client.call_tool(
-                "search_documents",
-                {"query": "fixture", **arguments},
-            )
-
-    data = _extract_result(result)
-    assert observed == [expected_flag]
-    assert ("dense_rank" in data[0]) is expected_flag
-    assert ("fused_rank" in data[0]) is expected_flag
-    assert ("sparse_backend" in data[0]) is expected_flag
-
-
-# ── list_indexed_documents ─────────────────────────────────────────────────
-
-
-async def test_list_after_ingest_returns_nonempty(mcp_server, fixtures_dir: Path) -> None:
-    """After ingesting, list_indexed_documents must return non-empty."""
-    async with connected_client(mcp_server) as client:
-        await client.call_tool("ingest_documents", {"path": str(fixtures_dir)})
-        result = await client.call_tool("list_indexed_documents", {})
-        data = _extract_result(result)
-        assert isinstance(data, list)
-        assert len(data) > 0
-        # Check shape
-        first = data[0]
-        assert "source" in first
-        assert "chunks" in first
-
-
-async def test_list_passes_through_orphaned_values(mcp_server) -> None:
-    """MCP listing preserves orphaned values and every existing row key."""
-    rows = [
-        {"source": "gone.txt", "source_id": "gone", "chunks": 1, "orphaned": True},
-        {"source": "present.txt", "source_id": "present", "chunks": 2, "orphaned": False},
-        {"source": "legacy.txt", "source_id": None, "chunks": 3, "orphaned": None},
-    ]
-
-    with patch("omrs.transports.mcp.list._list_documents", return_value=rows):
-        async with connected_client(mcp_server) as client:
-            result = await client.call_tool("list_indexed_documents", {})
-
-    assert _extract_result(result) == rows
-
-
-# ── Parameter validation ───────────────────────────────────────────────────
-
-
-async def test_search_without_query_returns_error(mcp_server) -> None:
-    """Calling search_documents without query must return an error."""
-    async with connected_client(mcp_server) as client:
-        # MCPServer wraps pydantic validation errors as is_error=True
-        result = await client.call_tool("search_documents", {})
-        assert result.is_error is True
-        # Verify the error mentions the missing field
-        error_text = result.content[0].text
-        assert "query" in error_text.lower()
-        assert "required" in error_text.lower()
-
-
-# ── Helpers ────────────────────────────────────────────────────────────────
-
-
-def _extract_result(result):
-    """Extract the data payload from an MCPServer CallToolResult.
-
-    Handles both structured_content (v2) and TextContent (older fallback)
-    response formats.
-    """
-    # Check for structured content first (v2: structured_content)
-    if hasattr(result, "structured_content") and result.structured_content:
-        return result.structured_content.get("result", result.structured_content)
-
-    # Fallback: parse TextContent
-    if result.content and isinstance(result.content[0], TextContent):
-        return json.loads(result.content[0].text)
-
-    # Last resort: return raw
-    return result
-
-
-# ── 9.14 Collection parameter tests ─────────────────────────────────────────
-
-
-async def test_ingest_with_collection_parameter(
-    mcp_server,
-    fixtures_dir: Path,
-) -> None:
-    """ingest_documents with collection param must store in named collection."""
-    async with connected_client(mcp_server) as client:
-        result = await client.call_tool(
-            "ingest_documents",
-            {"path": str(fixtures_dir), "collection": "mcp_test_coll"},
-        )
-        data = _extract_result(result)
-        # Should succeed and use the named collection
-        assert "files_indexed" in data
-        assert data.get("collection") == "mcp_test_coll"
-
-
-async def test_search_with_collection_parameter(
-    mcp_server,
-    fixtures_dir: Path,
-) -> None:
-    """search_documents with collection param must search named collection."""
-    async with connected_client(mcp_server) as client:
-        # First ingest into a named collection
-        await client.call_tool(
-            "ingest_documents",
-            {"path": str(fixtures_dir), "collection": "mcp_search_coll"},
-        )
-        # Then search that collection
-        result = await client.call_tool(
-            "search_documents",
-            {"query": "sample", "collection": "mcp_search_coll"},
-        )
-        data = _extract_result(result)
-        assert isinstance(data, list)
-
-
-async def test_list_with_collection_parameter(
-    mcp_server,
-    fixtures_dir: Path,
-) -> None:
-    """list_indexed_documents with collection param must list named collection."""
-    async with connected_client(mcp_server) as client:
-        await client.call_tool(
-            "ingest_documents",
-            {"path": str(fixtures_dir), "collection": "mcp_list_coll"},
-        )
-        result = await client.call_tool(
-            "list_indexed_documents",
-            {"collection": "mcp_list_coll"},
-        )
-        data = _extract_result(result)
-        assert isinstance(data, list)
-        assert len(data) >= 1
-
-
-async def test_list_collections_tool(
-    mcp_server,
-    fixtures_dir: Path,
-) -> None:
-    """list_collections tool must return available collections."""
-    async with connected_client(mcp_server) as client:
-        # Ingest into two different collections
-        await client.call_tool(
-            "ingest_documents",
-            {"path": str(fixtures_dir), "collection": "coll_a"},
-        )
-        await client.call_tool(
-            "ingest_documents",
-            {"path": str(fixtures_dir), "collection": "coll_b"},
-        )
-
-        result = await client.call_tool("list_collections", {})
-        data = _extract_result(result)
-        assert isinstance(data, list)
-
-        # Must include both collections
-        names = {c.get("name") for c in data}
-        assert "coll_a" in names
-        assert "coll_b" in names
-
-
-# ── 9.15 Backward compatibility tests ──────────────────────────────────────
-
-
-async def test_ingest_without_collection_defaults_to_documents(
-    mcp_server,
-    fixtures_dir: Path,
-) -> None:
-    """ingest_documents without collection must use 'documents' collection."""
-    async with connected_client(mcp_server) as client:
-        result = await client.call_tool(
-            "ingest_documents",
-            {"path": str(fixtures_dir)},
-        )
-        data = _extract_result(result)
-        # Should work without specifying collection
-        assert "status" in data
-
-
-async def test_search_without_collection_defaults_to_documents(
-    mcp_server,
-) -> None:
-    """search_documents without collection must work with default."""
-    async with connected_client(mcp_server) as client:
-        result = await client.call_tool(
-            "search_documents",
-            {"query": "anything"},
-        )
-        data = _extract_result(result)
-        assert isinstance(data, list)
-
-
-async def test_list_without_collection_defaults_to_documents(
-    mcp_server,
-) -> None:
-    """list_indexed_documents without collection must work with default."""
-    async with connected_client(mcp_server) as client:
-        result = await client.call_tool("list_indexed_documents", {})
-        data = _extract_result(result)
-        assert isinstance(data, list)
-
-
 # ── delete_documents MCP tool tests ──────────────────────────────────────────
 
 
@@ -614,7 +159,7 @@ async def test_delete_documents_by_path(
             "ingest_documents",
             {"path": str(fixtures_dir)},
         )
-        ingest_data = _extract_result(ingest_result)
+        ingest_data = extract_tool_result(ingest_result)
         assert ingest_data["status"] == "ok"
 
         # Delete by path of one file
@@ -623,7 +168,7 @@ async def test_delete_documents_by_path(
             "delete_documents",
             {"path": str(sample_file)},
         )
-        data = _extract_result(result)
+        data = extract_tool_result(result)
         assert data["status"] == "ok"
         assert data["mode"] == "path"
         assert "chunks_removed" in data
@@ -647,7 +192,7 @@ async def test_delete_documents_dry_run(
             "delete_documents",
             {"path": str(sample_file), "dry_run": True},
         )
-        data = _extract_result(result)
+        data = extract_tool_result(result)
         assert data.get("dry_run") is True
         assert "would_delete" in data
 
@@ -669,7 +214,7 @@ async def test_delete_documents_drop_collection(
             "delete_documents",
             {"collection": "mcp_drop_coll"},
         )
-        data = _extract_result(result)
+        data = extract_tool_result(result)
         assert data["status"] == "ok"
         assert data["mode"] == "collection"
 
@@ -690,7 +235,7 @@ async def test_delete_documents_collection_dry_run(
             "delete_documents",
             {"collection": "mcp_preview_coll", "dry_run": True},
         )
-        data = _extract_result(result)
+        data = extract_tool_result(result)
         assert data.get("dry_run") is True
         assert data.get("mode") == "collection"
         assert data.get("would_delete", 0) >= 1
@@ -713,7 +258,7 @@ async def test_delete_documents_by_metadata_filter(
             "delete_documents",
             {"metadata_filter": {"category": "nonexistent"}},
         )
-        data = _extract_result(result)
+        data = extract_tool_result(result)
         # Should succeed with 0 removed (filter matches nothing)
         assert data["status"] == "ok"
         assert data.get("chunks_removed", 0) == 0
@@ -731,7 +276,7 @@ async def test_delete_documents_empty_metadata_filter_error(
             "delete_documents",
             {"metadata_filter": {}},
         )
-        data = _extract_result(result)
+        data = extract_tool_result(result)
         assert data["status"] == "error"
         assert "metadata_filter must be a non-empty dict" in data["message"]
 
@@ -756,7 +301,7 @@ async def test_delete_documents_metadata_dry_run_with_match(
                 "dry_run": True,
             },
         )
-        data = _extract_result(result)
+        data = extract_tool_result(result)
         assert data["status"] == "ok"
         assert data["dry_run"] is True
         assert data["mode"] == "metadata"
@@ -776,7 +321,7 @@ async def test_delete_documents_metadata_dry_run_nonexistent_coll(
                 "collection": "coll_does_not_exist",
             },
         )
-        data = _extract_result(result)
+        data = extract_tool_result(result)
         assert data["status"] == "ok"
         assert data["dry_run"] is True
         assert data["mode"] == "metadata"
@@ -792,7 +337,7 @@ async def test_delete_documents_collection_dry_run_nonexistent_coll(
             "delete_documents",
             {"collection": "coll_does_not_exist", "dry_run": True},
         )
-        data = _extract_result(result)
+        data = extract_tool_result(result)
         assert data["status"] == "ok"
         assert data["dry_run"] is True
         assert data["mode"] == "collection"
@@ -813,7 +358,7 @@ async def test_delete_documents_path_dry_run_nonexistent_coll(
                 "collection": "coll_does_not_exist",
             },
         )
-        data = _extract_result(result)
+        data = extract_tool_result(result)
         assert data["status"] == "ok"
         assert data["dry_run"] is True
         assert data["mode"] == "path"
@@ -967,7 +512,7 @@ async def test_search_documents_metadata_filter_passed_through(
                 },
             )
 
-    data = _extract_result(result)
+    data = extract_tool_result(result)
     assert data == expected
     # The filter must reach retrieval.search untouched.
     _, kwargs = mock_search.call_args
@@ -1011,7 +556,7 @@ async def test_search_documents_returns_filter_matches(
                 "metadata_filter": {"category": "philosophy"},
             },
         )
-        data = _extract_result(result)
+        data = extract_tool_result(result)
         assert data == []
 
         # Unfiltered: should return at least one result.
@@ -1019,7 +564,7 @@ async def test_search_documents_returns_filter_matches(
             "search_documents",
             {"query": "attention", "collection": "mcp_filter"},
         )
-        open_data = _extract_result(result_open)
+        open_data = extract_tool_result(result_open)
         assert isinstance(open_data, list)
         assert len(open_data) > 0
 
@@ -1049,7 +594,7 @@ async def test_search_documents_expand_window_passthrough(
                 {"query": "fixture", "expand_window": 2},
             )
 
-    data = _extract_result(result)
+    data = extract_tool_result(result)
     assert data == expected
     _, kwargs = mock_search.call_args
     assert kwargs["expand_window"] == 2
@@ -1070,7 +615,7 @@ async def test_search_documents_unfiltered_unchanged(mcp_server) -> None:
                 {"query": "anything"},
             )
 
-    data = _extract_result(result)
+    data = extract_tool_result(result)
     assert data == []
     _, kwargs = mock_search.call_args
     assert kwargs["metadata_filter"] is None
@@ -1098,7 +643,7 @@ async def test_search_documents_validation_error_envelope(
                 },
             )
 
-    data = _extract_result(result)
+    data = extract_tool_result(result)
     assert isinstance(data, list)
     assert len(data) == 1
     err = data[0]
@@ -1131,7 +676,7 @@ async def test_search_documents_retrieval_error_envelope(
                 {"query": "anything"},
             )
 
-    data = _extract_result(result)
+    data = extract_tool_result(result)
     assert isinstance(data, list)
     assert len(data) == 1
     err = data[0]
@@ -1155,7 +700,7 @@ async def test_search_documents_internal_error_envelope(
                 {"query": "anything"},
             )
 
-    data = _extract_result(result)
+    data = extract_tool_result(result)
     assert isinstance(data, list)
     assert len(data) == 1
     err = data[0]
@@ -1191,7 +736,7 @@ async def test_search_documents_success_has_no_status_key(
                 {"query": "anything"},
             )
 
-    data = _extract_result(result)
+    data = extract_tool_result(result)
     assert data == expected
     for entry in data:
         assert "status" not in entry
@@ -1277,7 +822,7 @@ async def test_ingest_error_envelope_redacts_cloud_key(caplog, form: str) -> Non
     leaked = _CLOUD_KEY if form == "full" else _CLOUD_KEY[:12]
     result = await _ingest_failure_result(f"401 Unauthorized: api_key={leaked} rejected")
 
-    data = _extract_result(result)
+    data = extract_tool_result(result)
     assert data["status"] == "error"
     _assert_no_key_material(str(data), _CLOUD_KEY)
     log_text = _mcp_error_log_text(caplog)
@@ -1296,7 +841,7 @@ async def test_ingest_error_envelope_redacts_tenant_and_database(caplog) -> None
         "at https://api.trychroma.com"
     )
 
-    data = _extract_result(result)
+    data = extract_tool_result(result)
     assert data["status"] == "error"
     _assert_no_key_material(str(data), tenant)
     _assert_no_key_material(str(data), database)
@@ -1315,7 +860,7 @@ async def test_ingest_error_envelope_redacts_openrouter_key(caplog, form: str) -
         f"OpenAI error 401: invalid api_key={leaked}", provider_keys=(key,)
     )
 
-    data = _extract_result(result)
+    data = extract_tool_result(result)
     assert data["status"] == "error"
     _assert_no_key_material(str(data), key)
     log_text = _mcp_error_log_text(caplog)
