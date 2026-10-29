@@ -348,7 +348,7 @@ After the user saves a setting that applies only after a restart, the page SHALL
 
 - **WHEN** the restart was accepted and the server has stopped answering and then answers again
 - **THEN** the page MUST reload once, so it shows what the new launch reads
-- **AND** the page MUST NOT reload when the restart was refused
+- **AND** the page MUST NOT reload when the restart was refused, when the server never stopped answering, or after 90 seconds
 
 #### Scenario: Foreground server
 

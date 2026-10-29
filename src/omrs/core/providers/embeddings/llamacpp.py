@@ -20,11 +20,14 @@ if TYPE_CHECKING:
 
 
 @cache
-def _verbatim_embedding_class() -> type:
-    """Return an ``OpenAILikeEmbedding`` subclass that keeps line breaks."""
-    from llama_index.embeddings.openai_like import OpenAILikeEmbedding
+def _verbatim_embedding_class(base: type) -> type:
+    """Return a subclass of *base* (``OpenAILikeEmbedding``) that keeps line breaks.
 
-    class VerbatimOpenAILikeEmbedding(OpenAILikeEmbedding):
+    Cached by base class, so the import in :func:`build` still runs on every
+    call and still raises when the package is missing.
+    """
+
+    class VerbatimOpenAILikeEmbedding(base):  # type: ignore[valid-type,misc]
         """Posts each input to ``/embeddings`` as it is, with the parent's retries."""
 
         def _embed(self, texts: list[str]) -> list[list[float]]:
@@ -83,14 +86,14 @@ def build(settings: Settings, *, model: str | None = None) -> Any:
         ImportError: If ``llama-index-embeddings-openai-like`` is absent.
     """
     try:
-        embedding_class = _verbatim_embedding_class()
+        from llama_index.embeddings.openai_like import OpenAILikeEmbedding
     except ImportError:
         raise ImportError(
             "Provider 'llamacpp' requires llama-index-embeddings-openai-like. "
             "Install it with: uv sync --extra llamacpp"
         ) from None
 
-    return embedding_class(
+    return _verbatim_embedding_class(OpenAILikeEmbedding)(
         model_name=model or settings.llamacpp_embed_model,
         api_base=settings.llamacpp_embed_url,
         api_key="no-key",

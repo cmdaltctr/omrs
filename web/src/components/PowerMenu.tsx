@@ -87,7 +87,7 @@ export function PowerMenu() {
   const health = useQuery({ ...healthQuery(api), refetchInterval: quiet ? false : HEALTH_POLL_MS });
   const power = useQuery(powerQuery(api));
   const act = useMutation({ mutationFn: (action: PowerAction) => postPower(api, action) });
-  useReloadAfterRestart(api, done === "restart");
+  useReloadAfterRestart(api, done === "restart" ? act.submittedAt : null);
 
   useEffect(() => {
     if (!quiet) return;

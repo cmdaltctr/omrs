@@ -30,12 +30,16 @@ function isSection(value: string): value is IntegrationSection {
   return (INTEGRATION_SECTIONS as readonly string[]).includes(value);
 }
 
-/** The sections this server has content for. Tools and the runtime sections need the server to list them. */
+/**
+ * The sections this server has content for. Until the list loads, only
+ * Extras is known; Tools and the runtime sections need the server to list them.
+ */
 export function sectionsFor(list: IntegrationList | undefined): IntegrationSection[] {
   return INTEGRATION_SECTIONS.filter((section) => {
     if (section === "extras") return true;
-    if (section === "tools") return list === undefined || list.tools.length > 0;
-    return list === undefined || list.runtime !== undefined;
+    if (list === undefined) return false;
+    if (section === "tools") return list.tools.length > 0;
+    return list.runtime !== undefined;
   });
 }
 
@@ -47,8 +51,9 @@ export function sectionsFor(list: IntegrationList | undefined): IntegrationSecti
  */
 export function sectionFor(segment: string | null, list: IntegrationList | undefined): IntegrationSection {
   if (segment === null) return "extras";
-  if (isSection(segment)) return segment;
-  return list?.tools.some((tool) => tool.id === segment) ? "tools" : "extras";
+  if (!isSection(segment)) return list?.tools.some((tool) => tool.id === segment) ? "tools" : "extras";
+  // A section this server does not report opens Extras once the list is in.
+  return list === undefined || sectionsFor(list).includes(segment) ? segment : "extras";
 }
 
 /** A part that a setting in force needs and that is not ready. These show in red. */

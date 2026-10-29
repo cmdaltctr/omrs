@@ -248,7 +248,7 @@ The panel SHALL offer a Turn off button and a Restart button. Each button SHALL 
 
 - **WHEN** `GET /v1/server/power` answers `managed: true` and the user presses Restart
 - **THEN** a confirmation dialog MUST open and MUST NOT call `POST /v1/server/power` until the user confirms
-- **AND** after confirmation the page MUST post `{"action": "restart"}` and MUST then say that the page signs in again by itself and name `omrs web open`
+- **AND** after confirmation the page MUST post `{"action": "restart"}` and MUST then say that the page reloads by itself and name `omrs web open`
 
 ### Requirement: The power panel explains when it cannot act
 

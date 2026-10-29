@@ -13,8 +13,8 @@ function canInstall(list: IntegrationList): boolean {
   );
 }
 
-/** The note under the Extras and Tools headings: what availability means and how an install takes effect. */
-export function availabilityNote(list: IntegrationList): string {
+/** The note under the Extras heading: what availability means and how an install takes effect. */
+function availabilityNote(list: IntegrationList): string {
   const lead = "Availability reflects the running launch of the server.";
   return canInstall(list)
     ? `${lead} Install adds the packages to the server. A restart makes them available.`

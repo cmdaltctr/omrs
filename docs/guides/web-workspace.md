@@ -674,7 +674,7 @@ The side navigation ends with four icon buttons. In the collapsed navigation the
 
 Each button opens a confirmation dialog first. Nothing happens until you confirm.
 
-- **Restart.** The app shuts down and launchd starts it again. The page says that it reloads by itself when OMRS is back, and names `omrs web open` in case it does not. The page polls the server, waits until the old process has stopped answering and a new one answers, and then reloads. It gives up after 90 seconds.
+- **Restart.** The app shuts down and launchd starts it again. The page says that it reloads by itself when OMRS is back, and names `omrs web open` in case it does not. The page polls the server, waits until the old process has stopped answering and a new one answers, and then reloads. It gives up after 90 seconds, and it does not reload when it never saw the old process stop.
 - **Turn off.** The app shuts down and stays off. The plist stays in place, so the app starts again at the next login. The page then shows "Turned off. Run `omrs web start` in a terminal to turn it on."
 
 Both actions end your browser session, because sessions live in server memory. When the app answers again, the page signs in again by itself with the workspace sign-in secret. If the port changed, the open tab cannot follow it. Run `omrs web open` in a terminal.

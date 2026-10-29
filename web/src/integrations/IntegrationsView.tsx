@@ -69,9 +69,7 @@ export function IntegrationsView({ entry = null }: { entry?: string | null }) {
         <ToolsSection list={list} control={control} />
       ) : isRuntimeSection(section) && list.runtime !== undefined ? (
         <RuntimeSection section={section} runtime={list.runtime} />
-      ) : (
-        <p className="text-meta text-muted-foreground">This server does not report this section.</p>
-      )}
+      ) : null}
     </div>
   );
 }

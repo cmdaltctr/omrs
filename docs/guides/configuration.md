@@ -651,6 +651,12 @@ splitter regardless of the fallback.
 
 ### Embedding — `EMBEDDING__*`
 
+**llama.cpp embeddings keep line breaks.** The llama.cpp embedder sends each chunk unchanged. Before this change it replaced every line break with a space, as the LlamaIndex OpenAI helpers do. Ollama always kept line breaks. With the same model file, the two forms give different vectors for a multi-line chunk.
+
+- A collection built with Ollama works with llama.cpp with no rebuild.
+- A search question is one line, so a search of a collection built by the older llama.cpp embedder gives the same results.
+- New files added to such a collection use the new form, so the collection then holds both forms. Re-ingest the collection to keep one form.
+
 Unit-norm guard for embedding vectors (see [ADR-053](../adr/053-embedding-norm-guard.md)). Dense
 ranking treats L2 distance as cosine similarity; that is only rank-equivalent when vectors are
 unit-normalised. The guard enforces the contract: fail-closed at ingest (a bad vector aborts the

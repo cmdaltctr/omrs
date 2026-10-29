@@ -43,7 +43,7 @@ export function RestartDialog({ change, plural = false, note, onLater }: Restart
   const managed = power.data?.managed === true;
   const terminal = power.data?.managed === false || power.isError;
   const busy = restart.error instanceof ApiError && restart.error.status === 409;
-  useReloadAfterRestart(api, restart.isSuccess);
+  useReloadAfterRestart(api, restart.isSuccess ? restart.submittedAt : null);
 
   function later() {
     restart.reset();

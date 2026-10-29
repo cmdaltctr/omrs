@@ -243,11 +243,12 @@ const withTools = () =>
   });
 
 const sections = async () => screen.findByRole("group", { name: "Sections" });
-const chip = async (name: RegExp) => within(await sections()).getByRole("button", { name });
+const chip = async (name: RegExp) => within(await sections()).findByRole("button", { name });
 
 describe("Integrations sections", () => {
   it("offers one chip per section, in order, and opens on Extras", async () => {
     startApp("#/integrations", withTools());
+    await chip(/^Tools/);
     const names = within(await sections())
       .getAllByRole("button")
       .map((button) => button.textContent);
@@ -291,7 +292,39 @@ describe("Integrations sections", () => {
 
   it("leaves out the Tools chip when the server lists no tools", async () => {
     startApp("#/integrations", serve());
-    await sections();
+    await screen.findByRole("list", { name: "Integrations" });
     expect(within(await sections()).queryByRole("button", { name: /^Tools/ })).not.toBeInTheDocument();
+    expect(within(await sections()).getByRole("button", { name: /^OCR engines/ })).toBeInTheDocument();
+  });
+
+  it("shows only Extras until the server lists the sections", async () => {
+    let release: () => void = () => undefined;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    const server = documentsServer({
+      "GET /v1/integrations": async () => {
+        await held;
+        return { status: "ok", install_type: "checkout", integrations: CATALOGUE, tools: [MARIMO], runtime: RUNTIME };
+      },
+      "GET /v1/settings/configuration": () => configuration(),
+    });
+    startApp("#/integrations", server);
+    await screen.findByText("Loading integrations.");
+    const names = within(await sections()).getAllByRole("button").map((button) => button.textContent);
+    expect(names).toEqual(["Extras"]);
+    release();
+    expect(await chip(/^Tools/)).toBeInTheDocument();
+  });
+
+  it("opens Extras for a section the server does not report", async () => {
+    startApp("#/integrations/tools", serve());
+    expect(await screen.findByRole("list", { name: "Integrations" })).toBeInTheDocument();
+    expect(await chip(/^Extras/)).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("tells the Tools section that a tool needs no server restart", async () => {
+    startApp("#/integrations/tools", withTools());
+    const tools = await screen.findByRole("region", { name: "Tools" });
+    expect(within(tools).getByRole("note")).toHaveTextContent(/needs no restart/);
+    expect(within(tools).getByRole("note")).not.toHaveTextContent(/restart the server/);
   });
 });
