@@ -45,9 +45,9 @@ describe("llama.cpp server hooks", () => {
     const { wrapper, queryClient, server } = setup({ "PUT /v1/llamacpp/server": () => ({ ...serverStatus({}), revision: "r2" }) });
     rememberRevision(queryClient, { revision: "r1" });
     const { result } = renderHook(() => useSaveLlamacppServer(), { wrapper });
-    act(() => result.current.mutate({ model: "a/b" }));
+    act(() => result.current.mutate({ chat_server: "managed" }));
     await waitFor(() => expect(currentRevision(queryClient)).toBe("r2"));
-    expect(server.find("PUT", "/v1/llamacpp/server")[0]?.body).toEqual({ model: "a/b", revision: "r1" });
+    expect(server.find("PUT", "/v1/llamacpp/server")[0]?.body).toEqual({ chat_server: "managed", revision: "r1" });
   });
 
   it("polls while the server is starting and stops when it runs", async () => {

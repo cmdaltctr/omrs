@@ -8,6 +8,8 @@ interface ProviderValueFieldProps {
   field: ProviderField;
   /** The folder whose `.env` the server read; named when `.env` sets the value. */
   configDir: string;
+  /** A line under the row, such as the follow line of an address that uses another field's value. */
+  note?: string | null;
   /** The text being typed, or `null` when the input closes. The card uses it for Test. */
   onTyped: (text: string | null) => void;
 }
@@ -22,11 +24,11 @@ function rangeMessage(field: ProviderField): string {
  * A value from the environment or `.env` is read-only; every other source can
  * be edited, and "Use default" removes the value from `omrs.jsonc`.
  */
-export function ProviderValueField({ provider, field, configDir, onTyped }: ProviderValueFieldProps) {
+export function ProviderValueField({ provider, field, configDir, note = null, onTyped }: ProviderValueFieldProps) {
   const save = useSaveProviderFields(provider);
   const isNumber = field.kind === "int";
 
-  return (
+  const row = (
     <SettingRow
       label={field.label}
       value={String(field.value ?? "")}
@@ -44,5 +46,12 @@ export function ProviderValueField({ provider, field, configDir, onTyped }: Prov
       onClear={(done) => save.mutate({ [field.id]: null }, { onSuccess: done })}
       onRetry={() => save.reset()}
     />
+  );
+  if (note === null) return row;
+  return (
+    <>
+      {row}
+      <p className="text-meta text-muted-foreground">{note}</p>
+    </>
   );
 }

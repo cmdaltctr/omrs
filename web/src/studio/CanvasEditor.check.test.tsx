@@ -213,8 +213,8 @@ describe("the Embed chunks card names the embedding model", () => {
     install_hint: null,
     fields: [],
     read_only: [
-      { label: "Embedding model", value: "nomic-embed-text" },
-      { label: "Chat model", value: "qwen3" },
+      { label: "Embedding model", value: "nomic-embed-text", group: null },
+      { label: "Chat model", value: "qwen3", group: null },
     ],
     roles,
   });

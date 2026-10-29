@@ -5,7 +5,7 @@ import { useSaveLlamacppServer } from "../api/llamacppServerHooks";
 import { sessionQuery } from "../api/queries";
 import { SettingRow } from "./SettingRow";
 
-type Key = "binary" | "model" | "context_window" | "idle_sleep";
+type Key = "binary" | "context_window" | "idle_sleep";
 
 interface FieldRow {
   key: Key;
@@ -16,7 +16,6 @@ interface FieldRow {
 
 const ROWS: FieldRow[] = [
   { key: "binary", inputType: "text", needsCredentials: true },
-  { key: "model", inputType: "text", needsCredentials: true },
   { key: "context_window", inputType: "number", needsCredentials: false },
   { key: "idle_sleep", inputType: "number", needsCredentials: false },
 ];
@@ -29,7 +28,7 @@ function readOnlyReason(field: ServerField, row: FieldRow, hasCredentials: boole
   return row.needsCredentials && !hasCredentials ? NEEDS_CREDENTIALS : null;
 }
 
-/** The program path, model, context window and idle sleep of the managed server, each a setting row saved on its own. */
+/** The program path, context window and idle sleep of the managed server, each a setting row saved on its own. */
 export function LlamacppServerFields({ saved }: { saved: Record<Key, ServerField> }) {
   const save = useSaveLlamacppServer();
   const session = useQuery(sessionQuery(useApi()));
