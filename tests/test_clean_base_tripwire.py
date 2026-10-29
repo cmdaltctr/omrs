@@ -208,7 +208,11 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # test_cli_json_output_clean.py. No fastapi needed.
 # +10 (2026-10-29, page labels of merged results, by test-ID diff, none removed):
 # test_merged_page_labels.py (9) and test_cli.py (1). No fastapi needed.
-_BASE_EXECUTED = 9099
+# +339 (2026-10-29, add-model-search-and-download, by test-ID diff, none removed):
+# model_sources (100), huggingface models, downloads and download_files (93),
+# ollama_pull (25), descriptors and llamacpp rules (3), model_download_job (36)
+# and web_model_downloads (82). The last 118 need fastapi (see _WEB_EXTRA_CASES).
+_BASE_EXECUTED = 9438
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -533,7 +537,9 @@ if not _has_qwen_tokenizer:
 # and test_web_experiment_files.py (6) (1655).
 # +5 (2026-10-27, reproducible-experiment-runtime): test_web_experiment_library_purpose.py (1660).
 # +6 (2026-10-28, integrations-show-runtime-components): test_web_integrations_runtime.py.
-_WEB_EXTRA_CASES = 1666
+# +118 (2026-10-29, add-model-search-and-download): test_model_download_job.py (36)
+# and test_web_model_downloads.py (82).
+_WEB_EXTRA_CASES = 1784
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)
