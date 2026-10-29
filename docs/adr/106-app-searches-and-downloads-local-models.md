@@ -1,10 +1,10 @@
 # ADR-106: The App Searches and Downloads Local Models
 
 - **Date:** 2026-10-29
-- **Status:** Accepted (2026-10-29; built on `feat/add-model-search-and-download`, browser and live checks passed)
+- **Status:** Accepted (2026-10-29; merged to v3 at PR #148, merge commit `8c8b6f6c`; browser and live checks passed)
 - **Deciders:** Maintainer
 - **Related:** [ADR-084](084-context-windows-and-an-owned-llama-server.md) (the managed llama.cpp server and its child environment), [ADR-103](103-experiments-run-local-models-through-llama-cpp-gguf.md) (local models are llama.cpp GGUF)
-- **Change:** `openspec/changes/add-model-search-and-download/`
+- **Change:** `openspec/changes/archive/2026-10-29-add-model-search-and-download/`
 
 ## Context
 
@@ -72,4 +72,4 @@ Facts that shape the decision:
 - `src/omrs/core/providers/model_sources.py`, `src/omrs/integrations/huggingface_models.py`, `src/omrs/integrations/ollama_pull.py`
 - `src/omrs/transports/api/model_download_job.py`, `src/omrs/transports/api/routes/model_downloads.py`
 - `web/src/settings/ModelDownloadPanel.tsx`
-- `openspec/changes/add-model-search-and-download/design.md` (D1 to D10 and the check results)
+- `openspec/changes/archive/2026-10-29-add-model-search-and-download/design.md` (D1 to D10 and the check results)
