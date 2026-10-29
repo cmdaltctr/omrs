@@ -51,9 +51,10 @@ def test_only_llamacpp_and_ollama_declare_a_model_source() -> None:
     }
 
 
-def test_only_llamacpp_has_no_default_answer_model() -> None:
+def test_only_the_local_providers_have_no_default_answer_model() -> None:
+    """Their only model setting classifies documents (ADR-108 D3, D14)."""
     flags = {name: d.default_answer_model for name, d in registry.describe_all().items()}
-    assert flags == {name: name != "llamacpp" for name in PROVIDERS}
+    assert flags == {name: name not in ("llamacpp", "ollama") for name in PROVIDERS}
     assert ConnectionDescriptor.__dataclass_fields__["default_answer_model"].default is True
 
 

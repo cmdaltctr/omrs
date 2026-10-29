@@ -140,3 +140,14 @@ def test_an_empty_llamacpp_chat_model_is_refused_and_builds_nothing(
     with pytest.raises(ValueError, match=r"Choose a Chat model in Settings > Chat\."):
         compose.build_answer_llm(settings)
     assert built == []
+
+
+def test_an_empty_ollama_chat_model_is_refused() -> None:
+    """Ollama's only model setting classifies documents, so it never answers Chat (D14)."""
+    from tests.unit.test_connection_summary import make_settings
+
+    from omrs.core.answer.settings import AnswerSettings
+
+    settings = make_settings(answer=AnswerSettings(enabled=True, provider="ollama", model=""))
+    with pytest.raises(ValueError, match=r"Choose a Chat model in Settings > Chat\."):
+        compose.build_answer_llm(settings)

@@ -966,3 +966,16 @@ def test_an_empty_openrouter_judge_model_keeps_its_default(monkeypatch: pytest.M
     block = AnswerBlock(verify_claims=True, verify_provider="openrouter", verify_model="")
     compose.build_verify_llm(make_settings(openrouter_api_key="sk-or-fake"), answer_block=block)
     assert built[0]["model"] == "or-chat"
+
+
+def test_an_empty_ollama_judge_model_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An Ollama judge never borrows the classification model (ADR-108 D14)."""
+    import llama_index.llms.ollama as module
+    from tests.unit.test_connection_summary import make_settings
+
+    built: list[Any] = []
+    monkeypatch.setattr(module, "Ollama", lambda **kwargs: built.append(kwargs))
+    block = AnswerBlock(verify_claims=True, verify_provider="ollama", verify_model="")
+    with pytest.raises(ValueError, match=r"Choose a judge model in Settings > Chat\."):
+        compose.build_verify_llm(make_settings(), answer_block=block)
+    assert built == []

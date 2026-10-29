@@ -1158,6 +1158,8 @@ Classification and llama.cpp Chat each get their own address. The server that OM
 | Chat on llama.cpp with a model, server run by you | No change. The default Chat server choice is `external`. | Nothing. |
 | Chat on llama.cpp with a blank `answer.model` | Chat refuses with "Choose a Chat model". `GET /v1/settings/chat` gives the reason `no-model`. Before, the server answered with the model it had loaded. | Choose a Chat model in Settings > Chat. |
 | llama.cpp claim check judge with a blank `answer.verify_model` | The claim check is skipped with "Choose a judge model in Settings > Chat." Before, the judge used the Text model. | Choose a judge model in Settings > Chat. |
+| Ollama claim check judge with a blank `answer.verify_model` | The claim check is skipped with "Choose a judge model in Settings > Chat." Before, the judge used `metadata.ollama_classify_model`. | Choose a judge model in Settings > Chat. |
+| Chat on Ollama with a blank `answer.model` | Chat refuses with "Choose a Chat model" and sends nothing. Before, Chat sent a request with no model name. | Choose a Chat model in Settings > Chat. |
 | `llamacpp_server_model` in `omrs.jsonc` | Ignored and listed in the problem list, with the replacement `answer.model`. The old value never becomes the Chat model. The Local server panel hides until you choose `managed`. | Follow the steps below. |
 | `LLAMACPP_SERVER_MODEL` in the environment or `.env` | Start-up fails. The message names the replacement: `ANSWER__PROVIDER=llamacpp` and `ANSWER__MODEL`, with `LLAMACPP_CHAT_SERVER=managed`. | Remove the variable. Set the replacement, or follow the steps below. |
 

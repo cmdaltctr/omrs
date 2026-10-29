@@ -139,7 +139,7 @@ When the Chat server choice is `managed`, the Chat model SHALL be one of: an abs
 
 ### Requirement: Scopes for server control
 
-Every server route SHALL need the browser session. Changing the program path or the Chat server choice SHALL need the `credentials` scope. While the choice is `managed`, every route that writes a llama.cpp Chat choice SHALL need the `credentials` scope. The context window, the idle sleep, start, stop and restart SHALL need `manage`. `GET /v1/llamacpp/server` SHALL need `read`. A bearer token SHALL NOT pass any route that writes or controls.
+Every server route SHALL need the browser session. Changing the program path or the Chat server choice SHALL need the `credentials` scope, on every route that can write it, including `PUT /v1/settings/configuration`. A program path written there SHALL also pass the program rule. While the choice is `managed`, every route that writes a llama.cpp Chat choice SHALL need the `credentials` scope. The context window, the idle sleep, start, stop and restart SHALL need `manage`. `GET /v1/llamacpp/server` SHALL need `read`. A bearer token SHALL NOT pass any route that writes or controls.
 
 #### Scenario: Bearer token refused
 
@@ -155,6 +155,13 @@ Every server route SHALL need the browser session. Changing the program path or 
 
 - **WHEN** the choice is `managed` and a browser session with `manage` but not `credentials` sends `PUT /v1/settings/configuration` with `answer.model` while the Chat provider is `llamacpp`
 - **THEN** the server MUST return 403 and save nothing
+
+#### Scenario: The Configuration page cannot skip the program rule
+
+- **WHEN** a browser session with `manage` but not `credentials` sends `PUT /v1/settings/configuration` with `llamacpp_server_binary`
+- **THEN** the server MUST return 403 and save nothing
+- **AND WHEN** a session with `credentials` sends a path that is not an executable file named `llama-server`
+- **THEN** the server MUST return 400, name the rule and save nothing
 
 #### Scenario: Chat server choice needs credentials
 

@@ -23,7 +23,7 @@ See proposal.md for the motivation. The current state that shapes the approach, 
 
 **Non-Goals:**
 
-- No change to embeddings, Ollama, OpenRouter, the OpenAI-compatible or Anthropic providers, or the ADR-084 program rule.
+- No change to embeddings, OpenRouter, the OpenAI-compatible or Anthropic providers, or the ADR-084 program rule. Ollama changes only in D14.
 - No edit of the Llama app's files and no signal to the app.
 - No model list or editing of the Text model on the card. It stays read-only there. The Configuration page already writes it, with a restart, because it is part of the index identity.
 - No managed server for classification. OMRS's server serves the Chat model only.
@@ -171,6 +171,14 @@ Each 409 reason gets a plain line in a message map in `routes/llamacpp_server.py
 
 `docs/adr/108-local-chat-and-classification-stay-apart.md` records D1 to D9 and D11 with the status Proposed. It amends ADR-084 decision 4 (the four settings: the model setting goes, the Chat server choice comes in) and ADR-106 decision 4 (the saved choice, not the server state, decides who runs the Chat server, and Use this model saves the Chat model). Short "Amended by ADR-108" lines go on both. ADR-084 decision 5 (the program rule, the model rule and the `credentials` scope) stays as it is and now covers the Chat model while the choice is `managed`.
 
+### D14. The Ollama judge never falls back to the classification model
+
+Added at the user's request on 2026-10-29. The Ollama descriptor sets `default_answer_model=False`, like llama.cpp. Its only model setting is `metadata.ollama_classify_model`, which classifies documents. So an empty Ollama judge model skips the claim check with "Choose a judge model in Settings > Chat.", and an empty Ollama Chat model refuses with "Choose a Chat model in Settings > Chat." No other Ollama behaviour changes.
+
+### D15. The Configuration page keeps the program rule
+
+Added at the user's request on 2026-10-29. `PUT /v1/settings/configuration` with `llamacpp_server_binary` needs the `credentials` scope (403) and a value that passes `llamacpp_rules.check_binary` (400 with the program rule). Clearing the value (`null`) needs `credentials` too. The check lives beside the Chat choice rule in `transports/api/llamacpp_chat_rule.py`.
+
 ## Risks / Trade-offs
 
 - [Changing the Chat address moves classification while it follows] → The follow line on the field (D2), the upgrade note, and Edit opens with the current address.
@@ -180,7 +188,7 @@ Each 409 reason gets a plain line in a message map in `routes/llamacpp_server.py
 - [The Llama app router with `--models-max 1` reloads a model when Chat and classification use different models on 9931] → The point of the change is to move Chat to another server. The guide says so.
 - [The model-list check fails a single-model server started with `-m <path>` when the user typed a Hugging Face id] → That is the honest result: Chat would get the loaded model, not the typed one. The sentence says to pick the name with List models.
 - [A shared address under `managed` makes the Text model unused] → D6 warning in two places.
-- [The Configuration page already writes `llamacpp_server_binary` with `manage` only, which skips the ADR-084 `credentials` rule. The program rule still runs at every launch.] → Out of scope. Likelihood 2, impact 2: below 5, so it is a proposed issue, not a fix here.
+- [The Configuration page wrote `llamacpp_server_binary` with `manage` only, which skipped the ADR-084 `credentials` rule.] → Fixed in D15 at the user's request (2026-10-29), although it scores 4.
 
 ## Migration Plan
 
@@ -198,6 +206,6 @@ The guide gets an "Upgrade notes" entry with these rows. The release commit uses
 
 ## Open Questions
 
-- The release type. Removing `LLAMACPP_SERVER_MODEL` can stop start-up, which is breaking in the strict sense. The project released the `OCR_WORKER_COMMAND` removal as `feat:`. The plan follows that precedent; the maintainer can choose `feat!:` at commit time without a change to the plan.
+- Resolved 2026-10-29: the release type is `feat:` (minor), as the user chose.
 - Whether the live `~/.config/omrs/omrs.jsonc` holds `llamacpp_server_model`. Agents do not read that folder. The answer changes only the user's own upgrade steps.
-- The Ollama judge has the same kind of fallback: an empty `answer.verify_model` uses `metadata.ollama_classify_model`. It is out of scope (non-goal: no Ollama change). Proposed issue: likelihood 2 (claim checks are off by default and the default judge is cloud), impact 4 (a small classification model judges claims with no sign), score 8.
+- Resolved 2026-10-29: the Ollama judge fallback is fixed in this change (D14).
