@@ -59,9 +59,9 @@ Each code task starts with a failing test. Confirm that the test fails on the cu
 
 ## 8. Integration checks
 
-- [ ] 8.1 Count the new fast tests with `uv run pytest --collect-only -q`, compare the test IDs with the last pin, and update `tests/test_clean_base_tripwire.py`, including `_BASE_EXECUTED` and `_WEB_EXTRA_CASES` for tests that need fastapi.
-- [ ] 8.2 Run `./scripts/local_ci.sh`. Confirm that no step prints `SKIPPED` and that every step passes.
-- [ ] 8.3 Run `openspec validate add-model-search-and-download --strict` and `openspec validate --all --strict`. Confirm both pass.
+- [x] 8.1 Count the new fast tests with `uv run pytest --collect-only -q`, compare the test IDs with the last pin, and update `tests/test_clean_base_tripwire.py`, including `_BASE_EXECUTED` and `_WEB_EXTRA_CASES` for tests that need fastapi.
+- [x] 8.2 Run `./scripts/local_ci.sh`. Confirm that no step prints `SKIPPED` and that every step passes.
+- [x] 8.3 Run `openspec validate add-model-search-and-download --strict` and `openspec validate --all --strict`. Confirm both pass.
 - [ ] 8.4 Run the live checks after a warning to the user, on a scratch server and port (Orca preview steps):
   - External server (the user's setup): download `Qwen/Qwen3-1.7B-GGUF:Q8_0`, which is not in the cache yet. Let the Llama app list it (relaunch only with approval), press Refresh models, and confirm that the model is in the llama.cpp list.
   - Managed server: on a scratch port, press Use this model and Restart with that model, and confirm `running` without a new download. The machine has no program named `llama-server` (task 1.1); ask the user before installing one, for example with `brew install llama.cpp`.
