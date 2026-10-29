@@ -15,7 +15,7 @@ before the implementation exists:
 
 Backend coverage mirrors ``tests/test_vectordb_contract.py``: the chroma
 parameters skip when the optional extra is absent (they run in the
-chroma-extra CI job) and lancedb always runs on an isolated tmp-path
+Coverage CI job) and lancedb always runs on an isolated tmp-path
 database. The suite stays out of the ``slow`` mark, matching the
 existing contract suite.
 
@@ -64,7 +64,7 @@ def store(request: pytest.FixtureRequest, tmp_path) -> VectorStore:
         # only these parametrised cases are Chroma-gated, not the file.
         pytest.importorskip(
             "chromadb",
-            reason="chromadb unavailable; chroma adapter cases run in the chroma-extra CI job",
+            reason="chromadb unavailable; chroma adapter cases run in the Coverage CI job",
         )
         return _store_class("chroma")()
     return LanceVectorStore(uri=str(tmp_path / "lancedb"))

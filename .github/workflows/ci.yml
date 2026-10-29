@@ -241,8 +241,6 @@ jobs:
           - pdf-pypdfium2
           - community-leiden
           - azure
-          - llamacpp
-          - openrouter
           - anthropic
           - chroma
           - web
@@ -286,10 +284,27 @@ jobs:
         # The exact skip/count manifest is a clean-base assertion. Optional
         # extras intentionally activate additional tests, so those matrix
         # entries exercise the suite without the base-only tripwire module.
-        # The base entry deselects the tripwire here and writes a JUnit report.
-        # The tripwire then runs as its own step and reads its executed count
-        # from that report, so it does not run the suite again.
-        run: uv run --no-sync pytest -m "not slow" --tb=short -q -n auto --maxprocesses=8 ${{ matrix.extra && '--ignore=tests/test_clean_base_tripwire.py' || format('--deselect tests/test_clean_base_tripwire.py --junitxml={0}/fast-junit.xml', runner.temp) }}
+        # The base entry deselects the tripwire here. Every entry writes a
+        # JUnit report. The base entry's tripwire then runs as its own step and
+        # reads its executed count from that report, so it does not run the
+        # suite again. The chroma entry's skip check reads the same report.
+        run: uv run --no-sync pytest -m "not slow" --tb=short -q -n auto --maxprocesses=8 ${{ matrix.extra && '--ignore=tests/test_clean_base_tripwire.py' || '--deselect tests/test_clean_base_tripwire.py' }} --junitxml=${{ runner.temp }}/fast-junit.xml
+
+      # The report keeps every skip reason under xdist, including module-level
+      # importorskip skips, so the check reads it and not the console output.
+      - name: Assert no test skipped for a missing chroma extra
+        if: ${{ !cancelled() && matrix.extra == 'chroma' }}
+        run: |
+          report="${{ runner.temp }}/fast-junit.xml"
+          if [ ! -f "$report" ]; then
+            echo "::error::$report is missing, so the chroma skip check cannot run"
+            exit 1
+          fi
+          if grep -q 'chroma extra not installed' "$report"; then
+            echo "::error::Tests skipped with the chroma-extra reason even though the extra is installed"
+            grep -o 'message="[^"]*chroma extra not installed[^"]*"' "$report" | sort | uniq -c
+            exit 1
+          fi
 
       - name: Run clean-base tripwire at floors
         if: matrix.extra == ''
@@ -526,6 +541,24 @@ jobs:
         # the exact clean-base skip manifest is asserted in the base jobs.
         run: uv run --no-sync pytest -m "not slow" --ignore=tests/test_clean_base_tripwire.py --cov=omrs --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
 
+      # This job installs the chroma extra, so every Chroma-gated case must
+      # run here. The report keeps every skip reason under xdist, including
+      # module-level importorskip skips, so the check reads it and not the
+      # console output.
+      - name: Assert no test skipped for a missing chroma extra
+        if: ${{ !cancelled() }}
+        run: |
+          report=junit.xml
+          if [ ! -f "$report" ]; then
+            echo "::error::$report is missing, so the chroma skip check cannot run"
+            exit 1
+          fi
+          if grep -q 'chroma extra not installed' "$report"; then
+            echo "::error::Tests skipped with the chroma-extra reason even though the extra is installed"
+            grep -o 'message="[^"]*chroma extra not installed[^"]*"' "$report" | sort | uniq -c
+            exit 1
+          fi
+
       - name: Upload coverage to Codecov
         # Pinned to SHA for security — codecov/codecov-action@v7.0.0
         uses: codecov/codecov-action@e53489f4d376d79066609109e7a95a29eb3740b1
@@ -540,55 +573,3 @@ jobs:
         uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-
-  # ── Chroma-extra CI job (task 5.6, make-lancedb-default-and-isolate-chromadb) ──
-  # chromadb moved out of the base install into the optional `chroma` extra
-  # (CVE-2026-45829 quarantine). Without this dedicated job, every
-  # chroma-skipped base case (contract parameters, cloud, legacy-seeding and
-  # hybrid adapter tests) would never run. Installs the extra plus hybrid
-  # (BM25 paths), runs the fast suite, records the Chroma adapter coverage
-  # slice, and inverts the skip assertion: nothing may skip with the
-  # "chroma extra not installed" reason.
-  chroma-extra:
-    if: github.event_name != 'schedule'
-    name: Chroma extra tests
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      # Pinned to SHA for security — actions/checkout@v7.0.0
-      # fetch-depth 0: the exp-29 pinned-baseline tests read historical
-      # commits via `git show <rev>:<path>`; a shallow checkout lacks them.
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-
-      - name: Set up Python
-        # Pinned to SHA for security — actions/setup-python@v6.3.0
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
-        with:
-          python-version: "3.12"
-
-      - name: Install uv
-        # Pinned to SHA for security — astral-sh/setup-uv@v8.2.0
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39
-
-      - name: Install dependencies with the chroma extra
-        run: uv sync --frozen --extra chroma --extra hybrid
-
-      - name: Run tests (fast) with chroma present, assert no chroma skips
-        env:
-          PDF_READER: pypdf
-          EMBED_PROVIDER: local
-          LOCAL_BACKEND: ollama
-          EMBED_MODEL: nomic-embed-text
-          OLLAMA_BASE_URL: http://localhost:11434
-          METADATA_LLM_PROVIDER: local
-        run: |
-          set -euo pipefail
-          uv run --no-sync pytest -m "not slow" --tb=short -q -rs --cov=omrs.core.vectordb.chroma --cov-branch --cov-report=term-missing 2>&1 | tee pytest_chroma_extra.log
-          if grep -q "chroma extra not installed" pytest_chroma_extra.log; then
-            echo "::error::Tests skipped with the chroma-extra reason even though the extra is installed"
-            exit 1
-          fi

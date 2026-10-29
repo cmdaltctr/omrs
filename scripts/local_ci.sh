@@ -9,7 +9,7 @@
 #
 # Deliberately excluded (not replicable without mutating the venv):
 #   - floors matrix (uv sync --resolution lowest-direct per extra)
-#   - extras matrices (community-leiden, torch, chroma installs)
+#   - extras jobs (community-leiden, torch) and the Coverage job's chroma check
 #   - retrieval-quality tiers and the macOS-only slow suite
 # If a change touches dependency floors or an optional extra, let CI
 # carry those jobs — or replicate with a throwaway venv.

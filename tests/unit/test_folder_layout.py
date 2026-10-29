@@ -199,7 +199,7 @@ def test_lancedb_folder_does_not_shadow_the_sdk() -> None:
 def test_chroma_paged_import_does_not_load_chromadb() -> None:
     """Importing ``chroma/paged.py`` must not load the optional SDK.
 
-    A subprocess is needed because the chroma-extra job may already hold
+    A subprocess is needed because the Coverage CI job may already hold
     ``chromadb`` in ``sys.modules``.
     """
     program = (

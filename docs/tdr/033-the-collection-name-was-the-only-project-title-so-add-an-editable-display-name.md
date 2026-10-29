@@ -108,3 +108,7 @@ backend and would break every caller that passes the old name.
 - `web/src/knowledge-base/DisplayNameEditor.tsx`, `web/src/lib/collectionTitle.ts`, `web/src/components/CollectionPicker.tsx`, `web/src/home/HomeView.tsx`
 - `docs/guides/web-workspace.md` ("Display name and collection name")
 - `openspec/changes/add-collection-display-name/`
+
+## Addendum (2026-10-29): The Coverage job runs the Chroma round trip
+
+Change `trim-ci-jobs` (ADR-107) removed the separate chroma-extra CI job. The `Coverage (Codecov)` job installs the `chroma` extra and runs the full fast suite, so the Chroma half of the round trip now runs there. That job fails when a test skips with the "chroma extra not installed" reason. Where this record names the chroma-extra CI job, read the Coverage job.

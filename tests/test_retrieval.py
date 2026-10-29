@@ -769,7 +769,7 @@ class TestListCollections:
         Task 5.1 rewrite: seeds through the real ingestion path
         (store-agnostic) instead of a direct ChromaDB client, so the
         pagination contract runs against the default tmp-path LanceDB
-        store in the base install and on Chroma in the chroma-extra job.
+        store in the base install and on Chroma in the Coverage CI job.
         """
         from asyncio import run as asyncio_run
 

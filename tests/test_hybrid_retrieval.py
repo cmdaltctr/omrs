@@ -13,7 +13,7 @@ import logging
 # ── Optional-chroma guard (task 5.1) ────────────────────────────────────
 # These pipeline tests drive the hybrid paths through the ChromaDB adapter
 # (EphemeralClient + fake collections). They skip by design in the base
-# install and run in the chroma-extra CI job; the BM25 core tests above and
+# install and run in the Coverage CI job; the BM25 core tests above and
 # below run against the tmp-path LanceDB default store in both installs.
 from importlib.util import find_spec as _find_spec
 from unittest.mock import MagicMock
@@ -23,7 +23,7 @@ import pytest
 _CHROMA_EXTRA = _find_spec("chromadb") is not None
 requires_chroma = pytest.mark.skipif(
     not _CHROMA_EXTRA,
-    reason="chroma extra not installed (uv sync --extra chroma); runs in the chroma-extra CI job",
+    reason="chroma extra not installed (uv sync --extra chroma); runs in the Coverage CI job",
 )
 
 

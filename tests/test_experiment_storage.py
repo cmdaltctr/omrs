@@ -29,7 +29,7 @@ from pathlib import Path
 import pytest
 
 # Chroma-only suite (task 5.1): skips by design in the base install and
-# runs in the chroma-extra CI job.
+# runs in the Coverage CI job.
 pytest.importorskip("chromadb", reason="chroma extra not installed (uv sync --extra chroma)")
 import chromadb
 import pytest

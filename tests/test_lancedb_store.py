@@ -35,9 +35,9 @@ def test_bm25_cache_isolated_between_chroma_and_lance(tmp_path: Path) -> None:
     """Equal collection/generation values cannot cross backend instances."""
     # Task 5.1: the Chroma half of this cross-backend test needs the
     # optional chroma extra; it skips by design in the base install and
-    # runs in the chroma-extra CI job.
+    # runs in the Coverage CI job.
     pytest.importorskip(
-        "chromadb", reason="chroma extra not installed; runs in the chroma-extra CI job"
+        "chromadb", reason="chroma extra not installed; runs in the Coverage CI job"
     )
     from omrs.core.vectordb.chroma.store import ChromaVectorStore
 
