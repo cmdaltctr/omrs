@@ -342,7 +342,13 @@ After the user saves a setting that applies only after a restart, the page SHALL
 #### Scenario: Restart now
 
 - **WHEN** the user presses "Restart now"
-- **THEN** the page MUST send the power menu restart request and MUST say that the page signs in again by itself, and MUST name `omrs web open` for a restart that moves the app to a new port
+- **THEN** the page MUST send the power menu restart request and MUST say that the page reloads by itself, and MUST name `omrs web open` for a restart that moves the app to a new port
+
+#### Scenario: Reload when the app is back
+
+- **WHEN** the restart was accepted and the server has stopped answering and then answers again
+- **THEN** the page MUST reload once, so it shows what the new launch reads
+- **AND** the page MUST NOT reload when the restart was refused, when the server never stopped answering, or after 90 seconds
 
 #### Scenario: Foreground server
 

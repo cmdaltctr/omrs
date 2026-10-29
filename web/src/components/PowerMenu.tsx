@@ -5,6 +5,7 @@ import { useApi } from "../api/ApiProvider";
 import { ApiError } from "../api/client";
 import { postPower, type PowerAction } from "../api/power";
 import { healthQuery, powerQuery } from "../api/queries";
+import { useReloadAfterRestart } from "../lib/restartWait";
 import { useReturnFocus } from "../studio/useReturnFocus";
 import { CopyButton } from "../settings/CopyButton";
 import { AlertNotice } from "./AlertNotice";
@@ -34,9 +35,9 @@ const COPY: Record<PowerAction, { label: string; title: string; ask: string; com
   restart: {
     label: "Restart",
     title: "Restart OMRS?",
-    ask: "OMRS restarts. This page signs in again by itself when it is back. If it does not, run",
+    ask: "OMRS restarts. This page reloads by itself when it is back. If it does not, run",
     command: "omrs web open",
-    done: "Restarting. This page signs in again by itself when OMRS is back. If it does not, run",
+    done: "Restarting. This page reloads by itself when OMRS is back. If it does not, run",
     next: "in a terminal.",
   },
 };
@@ -86,6 +87,7 @@ export function PowerMenu() {
   const health = useQuery({ ...healthQuery(api), refetchInterval: quiet ? false : HEALTH_POLL_MS });
   const power = useQuery(powerQuery(api));
   const act = useMutation({ mutationFn: (action: PowerAction) => postPower(api, action) });
+  useReloadAfterRestart(api, done === "restart" ? act.submittedAt : null);
 
   useEffect(() => {
     if (!quiet) return;

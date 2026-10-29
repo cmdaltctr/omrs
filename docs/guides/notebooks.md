@@ -41,7 +41,7 @@ marimo goes into its own uv tool environment. It never goes into the OMRS enviro
 
 ### Install from the marimo card
 
-1. Open **Integrations**. The marimo card is in the group **External tools**.
+1. Open **Integrations** and press the **Tools** chip. The marimo card is in that section.
 2. Press **Install**. The dialog shows the command. Confirm it.
 3. Wait until the job ends. The server needs no restart.
 4. Follow the link on the card to **Experiments**, **Code editor**. Register marimo there. See [Register and check the plugin](#register-and-check-the-plugin).

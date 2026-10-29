@@ -245,7 +245,7 @@ def test_install_section_puts_the_card_first_and_the_command_second(document: Pa
     command = section.find(_install_command())
     lookup = section.find("command -v marimo")
     assert -1 < card < command < lookup, (card, command, lookup)
-    assert "**External tools**" in section and "**Install**" in section
+    assert "**Tools**" in section and "**Install**" in section
     assert "Integrations" in section and "Code editor" in section
     for retired in ("never installs, upgrades or replaces marimo", "never runs `uvx`"):
         assert retired not in text

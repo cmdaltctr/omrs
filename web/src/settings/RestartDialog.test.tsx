@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { documentsServer, json, type Handler } from "../test/fakeDocumentsServer";
 import { renderWithProviders } from "../test/providers";
+import { page } from "../lib/restartWait";
 import { RestartDialog } from "./RestartDialog";
 
 const MANAGED: Record<string, Handler> = { "GET /v1/server/power": () => ({ managed: true }) };
@@ -35,7 +36,7 @@ describe("RestartDialog", () => {
     expect(await screen.findByRole("dialog")).toHaveTextContent("Two settings apply after a restart.");
   });
 
-  it("posts the restart, says the page signs in again by itself and names omrs web open", async () => {
+  it("posts the restart, says the page reloads by itself and names omrs web open", async () => {
     const { user, server } = open({ ...MANAGED, "POST /v1/server/power": ACCEPTED });
     const dialog = await screen.findByRole("dialog");
     const button = within(dialog).getByRole("button", { name: "Restart now" });
@@ -44,9 +45,65 @@ describe("RestartDialog", () => {
     await user.click(button);
     await waitFor(() => expect(server.find("POST", "/v1/server/power")).toHaveLength(1));
     expect(server.find("POST", "/v1/server/power")[0]?.body).toEqual({ action: "restart" });
-    expect(await within(dialog).findByText(/^Restarting\./)).toHaveTextContent(/signs in again by itself/);
+    expect(await within(dialog).findByText(/^Restarting\./)).toHaveTextContent(/reloads by itself/);
     expect(within(dialog).getByText("omrs web open")).toBeInTheDocument();
     expect(within(dialog).queryByRole("button", { name: "Restart now" })).not.toBeInTheDocument();
+  });
+
+  it("reloads the page once the restarted server answers again", async () => {
+    const reload = vi.spyOn(page, "reload").mockImplementation(() => undefined);
+    let polls = 0;
+    const health: Handler = () => (++polls === 2 ? json({ detail: "down" }, 503) : { status: "ok", ready: true, version: "2.2.0" });
+    const { user } = open({ ...MANAGED, "POST /v1/server/power": ACCEPTED, "GET /v1/health": health });
+    const dialog = await screen.findByRole("dialog");
+    const button = within(dialog).getByRole("button", { name: "Restart now" });
+    await waitFor(() => expect(button).toBeEnabled());
+    expect(reload).not.toHaveBeenCalled();
+    await user.click(button);
+    await waitFor(() => expect(reload).toHaveBeenCalledOnce(), { timeout: 4_000 });
+    expect(polls).toBeGreaterThanOrEqual(3);
+  });
+
+  it("starts a new wait for a second restart from the same dialog", async () => {
+    const reload = vi.spyOn(page, "reload").mockImplementation(() => undefined);
+    let up = true;
+    const health: Handler = () => (up ? { status: "ok", ready: true, version: "2.2.0" } : json({ detail: "down" }, 503));
+    const server = documentsServer({ ...MANAGED, "POST /v1/server/power": ACCEPTED, "GET /v1/health": health });
+    const onLater = vi.fn();
+    const user = userEvent.setup();
+    const view = renderWithProviders(<RestartDialog change="Port 9100" onLater={onLater} />, { fetchImpl: server.fetchImpl });
+    const press = async () => {
+      const dialog = await screen.findByRole("dialog");
+      const button = within(dialog).getByRole("button", { name: "Restart now" });
+      await waitFor(() => expect(button).toBeEnabled());
+      await user.click(button);
+      await within(dialog).findByText(/^Restarting\./);
+      return dialog;
+    };
+    // The first restart never shows the server stopping, so it never reloads.
+    const dialog = await press();
+    await user.click(within(dialog).getAllByRole("button", { name: "Close" }).find((button) => button.textContent === "Close") as HTMLElement);
+    view.rerender(<RestartDialog change={null} onLater={onLater} />);
+    view.rerender(<RestartDialog change="Port 9101" onLater={onLater} />);
+    up = false;
+    await press();
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    up = true;
+    await waitFor(() => expect(reload).toHaveBeenCalledOnce(), { timeout: 4_000 });
+    expect(server.find("POST", "/v1/server/power")).toHaveLength(2);
+  });
+
+  it("does not reload when the restart is refused", async () => {
+    const reload = vi.spyOn(page, "reload").mockImplementation(() => undefined);
+    const { user, server } = open({ ...MANAGED, "POST /v1/server/power": () => json({ status: "error", message: "An ingestion is running." }, 409) });
+    const dialog = await screen.findByRole("dialog");
+    const button = within(dialog).getByRole("button", { name: "Restart now" });
+    await waitFor(() => expect(button).toBeEnabled());
+    await user.click(button);
+    await within(dialog).findByRole("alert");
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    expect(server.find("GET", "/v1/health")).toHaveLength(0);
+    expect(reload).not.toHaveBeenCalled();
   });
 
   it("shows the command and no Restart now when the server runs in a terminal", async () => {

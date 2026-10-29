@@ -7,6 +7,7 @@ import { AlertNotice } from "../components/AlertNotice";
 import { ErrorNotice } from "../components/ErrorNotice";
 import { Button } from "../components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../components/ui/dialog";
+import { useReloadAfterRestart } from "../lib/restartWait";
 import { useReturnFocus } from "../studio/useReturnFocus";
 
 /** Starts the server again in a terminal. A server run by hand has no login item to restart. */
@@ -42,6 +43,7 @@ export function RestartDialog({ change, plural = false, note, onLater }: Restart
   const managed = power.data?.managed === true;
   const terminal = power.data?.managed === false || power.isError;
   const busy = restart.error instanceof ApiError && restart.error.status === 409;
+  useReloadAfterRestart(api, restart.isSuccess ? restart.submittedAt : null);
 
   function later() {
     restart.reset();
@@ -58,7 +60,7 @@ export function RestartDialog({ change, plural = false, note, onLater }: Restart
         {note ? <p className="text-ui">{note}</p> : null}
         {restart.isSuccess ? (
           <p className="text-ui">
-            {"Restarting. This page signs in again by itself when OMRS is back. If the port changed, run "}
+            {"Restarting. This page reloads by itself when OMRS is back. If the port changed, run "}
             <Command>omrs web open</Command>
             {" in a terminal."}
           </p>
