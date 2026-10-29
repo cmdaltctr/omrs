@@ -9,6 +9,7 @@
  * the response that creates it.
  */
 import type { ApiClient, CallOptions } from "./client";
+import type { ModelSource } from "./modelDownloads";
 
 /** Options of a Settings write. `revision` is the stamp of `omrs.jsonc` last read; a file changed on disk since gives 409. */
 export interface SaveOptions extends CallOptions {
@@ -68,6 +69,8 @@ export interface Connection {
   install_hint: string | null;
   /** The `pyproject.toml` extra that supplies the provider, or `null` for the base install. */
   extra?: string | null;
+  /** Where the provider gets downloadable models from, or `null` when it has no model source. */
+  model_source?: ModelSource | null;
   fields: ProviderField[];
   read_only: ReadOnlyValue[];
   roles: ConnectionRole[];

@@ -250,7 +250,7 @@ describe("Providers", () => {
     const ollama = card("Ollama");
     expect(within(ollama).getByText("http://127.0.0.1:11434")).toBeInTheDocument();
     expect(within(ollama).getByText("default")).toBeInTheDocument();
-    expect(within(ollama).queryByRole("textbox")).toBeNull();
+    expect(within(ollama).queryByRole("textbox", { name: "Address" })).toBeNull();
     expect(within(ollama).getByRole("button", { name: "Edit Address" })).toBeInTheDocument();
   });
 
@@ -261,7 +261,7 @@ describe("Providers", () => {
     expect(within(ollama).getByText("Set in the environment. Change it there.")).toBeInTheDocument();
     expect(ollama).toHaveTextContent("OLLAMA_BASE_URL");
     expect(within(ollama).getByText("http://env-host:11434")).toBeInTheDocument();
-    expect(within(ollama).queryByRole("textbox")).toBeNull();
+    expect(within(ollama).queryByRole("textbox", { name: "Address" })).toBeNull();
     expect(within(ollama).queryByRole("button", { name: /^Edit/ })).toBeNull();
   });
 
@@ -306,7 +306,7 @@ describe("Providers", () => {
     await user.click(within(ollama).getByRole("button", { name: "Save" }));
     expect(await within(ollama).findByText("Saved in settings (omrs.jsonc)")).toBeInTheDocument();
     expect(within(ollama).getByText("http://gpu-box.local:11434")).toBeInTheDocument();
-    expect(within(ollama).queryByRole("textbox")).toBeNull();
+    expect(within(ollama).queryByRole("textbox", { name: "Address" })).toBeNull();
     expect(server.find("PUT", "/v1/connections/ollama")[0]?.body).toEqual({ fields: { base_url: "http://gpu-box.local:11434" }, revision: "r1" });
   });
 
