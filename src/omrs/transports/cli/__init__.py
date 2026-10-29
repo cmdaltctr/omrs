@@ -19,6 +19,7 @@ import os
 import re
 import subprocess
 import sys
+from collections.abc import Callable
 from typing import Any
 
 import click
@@ -34,6 +35,49 @@ from ... import compose
 _JSON_HELP = "Output results as JSON."
 _runtime_details_enabled = False
 _JSON_META = "omrs.json_output"
+
+
+class _DropRecords(logging.Filter):
+    """Drops every record that reaches the handler it is attached to."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        return False
+
+
+def _prints_to_terminal(handler: logging.Handler) -> bool:
+    """True for a handler that writes to the terminal (RichHandler, a stderr or stdout stream)."""
+    if isinstance(handler, RichHandler):
+        return True
+    stream = getattr(handler, "stream", None)
+    return isinstance(handler, logging.StreamHandler) and stream in (
+        sys.stderr,
+        sys.stdout,
+        sys.__stderr__,
+        sys.__stdout__,
+    )
+
+
+def _mute_terminal_logging() -> Callable[[], None]:
+    """Stop log lines reaching the terminal; return the function that undoes it.
+
+    ``--json`` output goes to stderr, so a log line there breaks the JSON.
+    Records still reach every other handler (a log file, pytest's capture),
+    so warnings are kept. Python's last-resort handler, which prints a warning
+    when no handler is set, is replaced for the same time.
+    """
+    muted = [h for h in logging.getLogger().handlers if _prints_to_terminal(h)]
+    drop = _DropRecords()
+    for handler in muted:
+        handler.addFilter(drop)
+    last_resort = logging.lastResort
+    logging.lastResort = logging.NullHandler()
+
+    def restore() -> None:
+        for handler in muted:
+            handler.removeFilter(drop)
+        logging.lastResort = last_resort
+
+    return restore
 
 
 class _JsonAwareGroup(TyperGroup):
@@ -221,12 +265,7 @@ def callback(
 ) -> None:
     """Run with no arguments to start the MCP stdio server."""
     if ctx.meta.get(_JSON_META):
-        # No log line may reach stderr ahead of the JSON. The previous level
-        # comes back when the command ends, so one invocation changes nothing
-        # for the next one.
-        previous = logging.root.manager.disable
-        logging.disable(logging.CRITICAL)
-        ctx.call_on_close(lambda: logging.disable(previous))
+        ctx.call_on_close(_mute_terminal_logging())
     if ctx.invoked_subcommand not in ("web", "experiments", None):
         # ``omrs web`` and bare ``omrs`` (MCP over stdio) each own one
         # Engine and must not install the legacy process default.

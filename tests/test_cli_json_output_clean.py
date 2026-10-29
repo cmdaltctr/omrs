@@ -49,11 +49,24 @@ def test_set_profile_json_is_parseable_after_cli_logging_setup() -> None:
 
 @pytest.mark.usefixtures("cli_logging")
 def test_json_mode_restores_logging_when_the_command_ends() -> None:
-    before = logging.root.manager.disable
+    root = logging.getLogger()
+    before = [list(handler.filters) for handler in root.handlers]
+    last_resort = logging.lastResort
     c, a, r = _patched()
     with c, a, r:
         runner.invoke(app, ["set-profile", "-c", "docs", "-p", "codebase", "--json"])
-    assert logging.root.manager.disable == before
+    assert [list(handler.filters) for handler in root.handlers] == before
+    assert logging.lastResort is last_resort
+
+
+@pytest.mark.usefixtures("cli_logging")
+def test_json_mode_keeps_log_records_for_other_handlers(caplog: pytest.LogCaptureFixture) -> None:
+    """Only terminal output is muted: the runtime summary still reaches a non-terminal handler."""
+    c, a, r = _patched()
+    with c, a, r, caplog.at_level(logging.INFO, logger="omrs.transports.cli"):
+        result = runner.invoke(app, ["set-profile", "-c", "docs", "-p", "codebase", "--json"])
+    assert json.loads(result.stderr)["new_profile"] == "codebase"
+    assert any("Embedding model" in record.getMessage() for record in caplog.records)
 
 
 @pytest.mark.usefixtures("cli_logging")
