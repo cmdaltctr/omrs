@@ -14,7 +14,7 @@ Fast tests (`-m "not slow"`) need no Ollama and no disk I/O. Slow tests carry th
 4. Reranker tests call `reset_model_cache()`. Restore any logging handler or level that a test changes.
 5. A new fast test changes `_BASE_EXECUTED` in `test_clean_base_tripwire.py`. A new slow test changes `_BASE_DESELECTED`. Update the count with a dated comment.
 6. Parallel runs use `--dist loadfile`. Do not pass `--dist load`.
-7. Chroma tests skip without the `chroma` extra. CI runs them in the chroma-extra job.
+7. Chroma tests skip without the `chroma` extra. CI runs them in the Coverage job, which fails when one skips for a missing chroma extra.
 
 ## Links
 

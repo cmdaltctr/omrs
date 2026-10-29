@@ -53,7 +53,7 @@ def store(request: pytest.FixtureRequest, tmp_path: Path) -> VectorStore:
     if request.param == "chroma":
         pytest.importorskip(
             "chromadb",
-            reason="chroma extra not installed; runs in the chroma-extra CI job",
+            reason="chroma extra not installed; runs in the Coverage CI job",
         )
         return _store_class("chroma")()
     return LanceVectorStore(uri=str(tmp_path / "lancedb"))

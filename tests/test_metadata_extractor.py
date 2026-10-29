@@ -592,7 +592,7 @@ class TestHybridCategoryTaxonomy:
         """
         pytest.importorskip(
             "chromadb",
-            reason="chroma extra not installed; runs in the chroma-extra CI job",
+            reason="chroma extra not installed; runs in the Coverage CI job",
         )
         import chromadb
 
@@ -1256,7 +1256,7 @@ class TestCoverageGaps:
         """Categories beyond the first metadata scan page must be discovered."""
         pytest.importorskip(
             "chromadb",
-            reason="chroma extra not installed; runs in the chroma-extra CI job",
+            reason="chroma extra not installed; runs in the Coverage CI job",
         )
         import chromadb
 

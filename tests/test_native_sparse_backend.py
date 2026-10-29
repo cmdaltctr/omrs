@@ -124,7 +124,7 @@ def test_chroma_store_keeps_explicit_unsupported_response() -> None:
     honest failure is exactly what this store must produce.
     """
     pytest.importorskip(
-        "chromadb", reason="chroma extra not installed; runs in the chroma-extra CI job"
+        "chromadb", reason="chroma extra not installed; runs in the Coverage CI job"
     )
     from omrs.core.vectordb.chroma.store import ChromaVectorStore
 

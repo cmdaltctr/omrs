@@ -4,7 +4,7 @@ Proves the base environment contains neither Chroma distribution, that the
 installed project metadata keeps both packages behind the ``chroma`` extra
 marker, and that the default runtime path (settings → compose → retrieval)
 never loads a Chroma module. The whole module skips when the ``chroma``
-extra IS installed — the chroma-extra CI job runs the complement suite.
+extra IS installed — the Coverage CI job runs the complement suite.
 
 The executed-count pin reads the passed count from the fast-suite JUnit report
 named by ``OMRS_TRIPWIRE_JUNIT`` when it is set, as in ``scripts/local_ci.sh``
@@ -698,7 +698,7 @@ def test_base_skip_manifest_is_exact() -> None:
     """The clean-base suite pins its executed and deselected counts and Chroma guards.
 
     Task 5.2: the only sanctioned base skips are the named Chroma-gated
-    files, and every one of those cases must run in the chroma-extra CI
+    files, and every one of those cases must run in the Coverage CI
     job (which fails if anything skips with the ``chroma extra not
     installed`` reason). The exact executed count catches a test that stops
     running, and the deselected count catches a test that gains or loses the
@@ -714,7 +714,7 @@ def test_base_skip_manifest_is_exact() -> None:
     assert deselected == _BASE_DESELECTED, f"base deselected count drifted: {deselected}"
 
     # Static guard check: every declared chroma-gated file must carry its
-    # Chroma guard, and no other test file may name the chroma-extra skip
+    # Chroma guard, and no other test file may name the Chroma skip
     # reason (a mis-scoped guard would leak that string elsewhere).
     tests_dir = Path(__file__).parent
     guarded: set[str] = set()

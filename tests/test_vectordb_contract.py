@@ -31,7 +31,7 @@ from omrs.core.vectordb.lancedb.store import LanceVectorStore
 # Task 5.1: the ChromaDB adapter import is lazy so this shared contract
 # module collects (and runs every LanceDB parameter) in the base install
 # without the optional chroma extra. The chroma parameters skip by design
-# with a named reason and run in the chroma-extra CI job.
+# with a named reason and run in the Coverage CI job.
 _CHROMA_EXTRA = find_spec("chromadb") is not None
 _PRECOMPUTED_IDENTITY = EmbeddingIdentity(provider="test", model="mock")
 
@@ -59,7 +59,7 @@ def store(request: pytest.FixtureRequest, tmp_path: Path) -> VectorStore:
     if request.param == "chroma":
         pytest.importorskip(
             "chromadb",
-            reason="chroma extra not installed; runs in the chroma-extra CI job",
+            reason="chroma extra not installed; runs in the Coverage CI job",
         )
         return _store_class("chroma")()
     return LanceVectorStore(uri=str(tmp_path / "lancedb"))
@@ -80,8 +80,7 @@ class TestABCCompliance:
         """Every ABC method must have a concrete implementation."""
         if backend == "chroma" and not _CHROMA_EXTRA:
             pytest.skip(
-                "chroma extra not installed (uv sync --extra chroma); "
-                "runs in the chroma-extra CI job"
+                "chroma extra not installed (uv sync --extra chroma); runs in the Coverage CI job"
             )
         abstract_methods = {
             "create_collection",
@@ -245,7 +244,7 @@ class TestNativeMetricAssumptions:
 
     def test_chroma_rejects_explicit_non_l2_collection(self) -> None:
         if not _CHROMA_EXTRA:
-            pytest.skip("chroma extra not installed; runs in the chroma-extra CI job")
+            pytest.skip("chroma extra not installed; runs in the Coverage CI job")
         store = _store_class("chroma")()
         collection = store._get_client().get_or_create_collection(
             "unsupported_cosine_metric",

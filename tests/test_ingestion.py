@@ -61,7 +61,7 @@ class TestListDocuments:
         Task 5.1 rewrite: seeds the store through the real ingestion path
         (store-agnostic) instead of a direct ChromaDB client, so the
         pagination contract runs against the default tmp-path LanceDB
-        store in the base install and Chroma in the chroma-extra job.
+        store in the base install and Chroma in the Coverage CI job.
         """
         from omrs.core.ingestion import ingest_path_async, list_documents
         from omrs.core.settings import set_default_effective_settings
@@ -195,7 +195,7 @@ class TestMetadataAttachment:
 
         # Verify category metadata through the store ABC (task 5.1 rewrite:
         # store-agnostic, runs on the default tmp-path LanceDB store in the
-        # base install and on Chroma in the chroma-extra job).
+        # base install and on Chroma in the Coverage CI job).
         from omrs.core.vectordb import get_default_store
 
         categorised = get_default_store().count_where("test_metadata", {"category": "AI"})

@@ -16,7 +16,7 @@ from __future__ import annotations
 import sys
 
 # Chroma-path delegation tests (task 5.1): skipped in the base install,
-# run in the chroma-extra CI job.
+# run in the Coverage CI job.
 from importlib.util import find_spec as _find_spec
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -35,7 +35,7 @@ from omrs.core.providers.common import get_embed_endpoint
 
 requires_chroma = pytest.mark.skipif(
     _find_spec("chromadb") is None,
-    reason="chroma extra not installed (uv sync --extra chroma); runs in the chroma-extra CI job",
+    reason="chroma extra not installed (uv sync --extra chroma); runs in the Coverage CI job",
 )
 
 

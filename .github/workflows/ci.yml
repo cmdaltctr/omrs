@@ -220,14 +220,64 @@ jobs:
   # from a comment into a tested contract. Without it they rot again on
   # the next upgrade cycle. See raise-dependency-floors OpenSpec change.
   #
-  # Matrix covers the base install plus every non-torch extra, because
-  # `uv sync` does not install optional dependencies unless an extra is
-  # selected — without the matrix the floors in [project.optional-dependencies]
-  # would never be exercised at their lower bounds. The torch extra is
-  # excluded here because it has its own dedicated job below (ADR-038) and
+  # Matrix covers the base install plus every non-torch extra that adds
+  # packages beyond the base, because `uv sync` does not install optional
+  # dependencies unless an extra is selected — without the matrix the floors
+  # in [project.optional-dependencies] would never be exercised at their lower
+  # bounds. An extra that adds nothing beyond the base (llamacpp, openrouter,
+  # pdf-inspector) gets no entry. The torch extra
+  # is excluded here because it has its own dedicated job below (ADR-038) and
   # must never enter the default install path.
+  #
+  # The floors-scope job decides the matrix (ADR-107). A pull request that
+  # changes none of pyproject.toml, uv.lock and this file runs the base entry
+  # only. Every other event runs the base entry and every extra.
+  floors-scope:
+    name: Floor matrix scope
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      extras: ${{ steps.scope.outputs.extras }}
+    steps:
+      # Pinned to SHA for security — actions/checkout@v7.0.0
+      # fetch-depth 0: the three-dot diff needs the merge base of the
+      # pull request's base and head commits.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Choose the floor entries
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        # The three-dot diff compares the head with the merge base, so commits
+        # that land on the base branch after the fork do not count. Any git
+        # error keeps the full list: a broken check runs more floors, not fewer.
+        run: |
+          full='["","hybrid","pdf-pypdfium2","community-leiden","azure","anthropic","chroma","web"]'
+          extras="$full"
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            if [ -z "$BASE_SHA" ] || [ -z "$HEAD_SHA" ]; then
+              echo "::warning::the pull request SHAs are empty, so every floor entry runs"
+            elif changed="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"; then
+              # A here-string, not a pipe: under pipefail, grep -q can end a
+              # long pipe early and make the test fail the wrong way.
+              if ! grep -qxE 'pyproject\.toml|uv\.lock|\.github/workflows/ci\.yml' <<<"$changed"; then
+                extras='[""]'
+              fi
+            else
+              echo "::warning::git diff failed, so every floor entry runs"
+            fi
+          fi
+          echo "Floor entries: $extras"
+          echo "extras=$extras" >> "$GITHUB_OUTPUT"
+
   floors:
-    if: github.event_name != 'schedule'
+    needs: floors-scope
     name: Floor resolution${{ matrix.extra && format(' ({0})', matrix.extra) || '' }}
     runs-on: ubuntu-latest
     permissions:
@@ -235,17 +285,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        extra:
-          - "" # base install, no extras
-          - hybrid
-          - pdf-pypdfium2
-          - community-leiden
-          - azure
-          - llamacpp
-          - openrouter
-          - anthropic
-          - chroma
-          - web
+        extra: ${{ fromJSON(needs.floors-scope.outputs.extras) }}
     steps:
       # Pinned to SHA for security — actions/checkout@v7.0.0
       # fetch-depth 0: the exp-29 pinned-baseline tests read historical
@@ -286,10 +326,27 @@ jobs:
         # The exact skip/count manifest is a clean-base assertion. Optional
         # extras intentionally activate additional tests, so those matrix
         # entries exercise the suite without the base-only tripwire module.
-        # The base entry deselects the tripwire here and writes a JUnit report.
-        # The tripwire then runs as its own step and reads its executed count
-        # from that report, so it does not run the suite again.
-        run: uv run --no-sync pytest -m "not slow" --tb=short -q -n auto --maxprocesses=8 ${{ matrix.extra && '--ignore=tests/test_clean_base_tripwire.py' || format('--deselect tests/test_clean_base_tripwire.py --junitxml={0}/fast-junit.xml', runner.temp) }}
+        # The base entry deselects the tripwire here. Every entry writes a
+        # JUnit report. The base entry's tripwire then runs as its own step and
+        # reads its executed count from that report, so it does not run the
+        # suite again. The chroma entry's skip check reads the same report.
+        run: uv run --no-sync pytest -m "not slow" --tb=short -q -n auto --maxprocesses=8 ${{ matrix.extra && '--ignore=tests/test_clean_base_tripwire.py' || '--deselect tests/test_clean_base_tripwire.py' }} --junitxml=${{ runner.temp }}/fast-junit.xml
+
+      # The report keeps every skip reason under xdist, including module-level
+      # importorskip skips, so the check reads it and not the console output.
+      - name: Assert no test skipped for a missing chroma extra
+        if: ${{ !cancelled() && matrix.extra == 'chroma' }}
+        run: |
+          report="${{ runner.temp }}/fast-junit.xml"
+          if [ ! -f "$report" ]; then
+            echo "::error::$report is missing, so the chroma skip check cannot run"
+            exit 1
+          fi
+          if grep -q 'chroma extra not installed' "$report"; then
+            echo "::error::Tests skipped with the chroma-extra reason even though the extra is installed"
+            grep -o 'message="[^"]*chroma extra not installed[^"]*"' "$report" | sort | uniq -c
+            exit 1
+          fi
 
       - name: Run clean-base tripwire at floors
         if: matrix.extra == ''
@@ -316,7 +373,8 @@ jobs:
           echo "OK: base install uses Louvain without importing Leiden packages"
 
   # Optional Leiden must install and pass its focused graph contracts on
-  # every supported CPython version. Both packages use abi3 wheels.
+  # the lowest and the highest supported CPython versions. Both packages use
+  # abi3 wheels, so one binary serves every version from the lowest up.
   community-leiden-extra:
     if: github.event_name != 'schedule'
     name: Leiden extra (Python ${{ matrix.python }})
@@ -326,7 +384,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ["3.11", "3.12", "3.13", "3.14"]
+        python: ["3.11", "3.14"]
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
         with:
@@ -524,7 +582,27 @@ jobs:
           METADATA_LLM_PROVIDER: local
         # This job deliberately installs optional extras to maximise coverage;
         # the exact clean-base skip manifest is asserted in the base jobs.
-        run: uv run --no-sync pytest -m "not slow" --ignore=tests/test_clean_base_tripwire.py --cov=omrs --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
+        # pytest-cov combines the worker data under xdist, and --dist loadfile
+        # comes from pyproject.toml (ADR-107).
+        run: uv run --no-sync pytest -m "not slow" -n auto --maxprocesses=8 --ignore=tests/test_clean_base_tripwire.py --cov=omrs --cov-branch --cov-report=xml --junitxml=junit.xml -o junit_family=legacy
+
+      # This job installs the chroma extra, so every Chroma-gated case must
+      # run here. The report keeps every skip reason under xdist, including
+      # module-level importorskip skips, so the check reads it and not the
+      # console output.
+      - name: Assert no test skipped for a missing chroma extra
+        if: ${{ !cancelled() }}
+        run: |
+          report=junit.xml
+          if [ ! -f "$report" ]; then
+            echo "::error::$report is missing, so the chroma skip check cannot run"
+            exit 1
+          fi
+          if grep -q 'chroma extra not installed' "$report"; then
+            echo "::error::Tests skipped with the chroma-extra reason even though the extra is installed"
+            grep -o 'message="[^"]*chroma extra not installed[^"]*"' "$report" | sort | uniq -c
+            exit 1
+          fi
 
       - name: Upload coverage to Codecov
         # Pinned to SHA for security — codecov/codecov-action@v7.0.0
@@ -540,55 +618,3 @@ jobs:
         uses: codecov/test-results-action@0fa95f0e1eeaafde2c782583b36b28ad0d8c77d3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-
-  # ── Chroma-extra CI job (task 5.6, make-lancedb-default-and-isolate-chromadb) ──
-  # chromadb moved out of the base install into the optional `chroma` extra
-  # (CVE-2026-45829 quarantine). Without this dedicated job, every
-  # chroma-skipped base case (contract parameters, cloud, legacy-seeding and
-  # hybrid adapter tests) would never run. Installs the extra plus hybrid
-  # (BM25 paths), runs the fast suite, records the Chroma adapter coverage
-  # slice, and inverts the skip assertion: nothing may skip with the
-  # "chroma extra not installed" reason.
-  chroma-extra:
-    if: github.event_name != 'schedule'
-    name: Chroma extra tests
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      # Pinned to SHA for security — actions/checkout@v7.0.0
-      # fetch-depth 0: the exp-29 pinned-baseline tests read historical
-      # commits via `git show <rev>:<path>`; a shallow checkout lacks them.
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
-        with:
-          persist-credentials: false
-          fetch-depth: 0
-
-      - name: Set up Python
-        # Pinned to SHA for security — actions/setup-python@v6.3.0
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
-        with:
-          python-version: "3.12"
-
-      - name: Install uv
-        # Pinned to SHA for security — astral-sh/setup-uv@v8.2.0
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39
-
-      - name: Install dependencies with the chroma extra
-        run: uv sync --frozen --extra chroma --extra hybrid
-
-      - name: Run tests (fast) with chroma present, assert no chroma skips
-        env:
-          PDF_READER: pypdf
-          EMBED_PROVIDER: local
-          LOCAL_BACKEND: ollama
-          EMBED_MODEL: nomic-embed-text
-          OLLAMA_BASE_URL: http://localhost:11434
-          METADATA_LLM_PROVIDER: local
-        run: |
-          set -euo pipefail
-          uv run --no-sync pytest -m "not slow" --tb=short -q -rs --cov=omrs.core.vectordb.chroma --cov-branch --cov-report=term-missing 2>&1 | tee pytest_chroma_extra.log
-          if grep -q "chroma extra not installed" pytest_chroma_extra.log; then
-            echo "::error::Tests skipped with the chroma-extra reason even though the extra is installed"
-            exit 1
-          fi

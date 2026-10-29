@@ -18,7 +18,7 @@ The store contract and one folder per backend.
 2. Keep each backend `__init__.py` free of imports. There is no re-export shim.
 3. Add a backend with one folder and one `register()` call in `registry.py`. Use `module:attr` strings.
 4. A new SDK import site needs an exact `ignore_imports` entry in `pyproject.toml`.
-5. Every backend passes `tests/test_vectordb_contract.py`. Chroma tests skip without the extra. CI runs them in the chroma-extra job.
+5. Every backend passes `tests/test_vectordb_contract.py`. Chroma tests skip without the extra. CI runs them in the Coverage job, which fails when one skips for a missing chroma extra.
 6. Keep each file under 500 lines.
 
 ## Links
