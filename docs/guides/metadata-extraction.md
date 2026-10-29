@@ -50,7 +50,7 @@ ollama pull qwen3:0.6b
 
 This tiny 0.6B model is purpose-built for fast classification and receives a bounded file prefix rather than the complete document.
 
-> **Other sub-providers:** When `LOCAL_BACKEND=llamacpp`, this mode routes to llama.cpp's `/v1/chat/completions` endpoint using `LLAMACPP_CHAT_URL` and `LLAMACPP_CHAT_MODEL`. When `METADATA_LLM_PROVIDER=cloud` and `CLOUD_BACKEND=openrouter`, it routes to OpenRouter's chat API using `OPENROUTER_API_KEY` and `OPENROUTER_LLM_MODEL`. See [Providers](providers.md) for setup.
+> **Other sub-providers:** When `LOCAL_BACKEND=llamacpp`, this mode routes to llama.cpp's `/v1/chat/completions` endpoint at the classification address, with `LLAMACPP_CHAT_MODEL` (the Text model). The classification address is `LLAMACPP_CLASSIFY_URL`, or `LLAMACPP_CHAT_URL` when no source sets it (`classification_url()` in `core/providers/llm/llamacpp.py`). The `llamaindex` mode builds `OpenAILike` with the same address and model. Neither mode uses the Chat model (`ANSWER__MODEL`). When `METADATA_LLM_PROVIDER=cloud` and `CLOUD_BACKEND=openrouter`, it routes to OpenRouter's chat API using `OPENROUTER_API_KEY` and `OPENROUTER_LLM_MODEL`. See [Providers](providers.md) for setup.
 
 Rich metadata output example:
 

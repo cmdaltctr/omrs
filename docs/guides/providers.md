@@ -31,12 +31,16 @@ The LlamaIndex OpenAI-like packages are in the base install. The `llamacpp` and 
 
 ### llama.cpp (default local backend)
 
-| Env var                | Default                              | Purpose                         |
-| ---------------------- | ------------------------------------ | ------------------------------- |
-| `LLAMACPP_EMBED_MODEL` | _(required)_                         | GGUF filename for embeddings    |
-| `LLAMACPP_EMBED_URL`   | `http://localhost:8080/v1`           | llama-server embedding endpoint |
-| `LLAMACPP_CHAT_MODEL`  | _(required for local metadata mode)_ | GGUF filename for metadata LLM  |
-| `LLAMACPP_CHAT_URL`    | `http://localhost:8081/v1`           | llama-server chat endpoint      |
+| Env var                 | Default                              | Purpose                         |
+| ----------------------- | ------------------------------------ | ------------------------------- |
+| `LLAMACPP_EMBED_MODEL`  | _(required)_                         | GGUF filename for embeddings    |
+| `LLAMACPP_EMBED_URL`    | `http://localhost:8080/v1`           | llama-server embedding endpoint |
+| `LLAMACPP_CHAT_MODEL`   | _(required for local metadata mode)_ | Text model (classification): the model for metadata extraction. Chat never uses it |
+| `LLAMACPP_CLASSIFY_URL` | unset: uses `LLAMACPP_CHAT_URL`      | llama-server address for classification |
+| `LLAMACPP_CHAT_URL`     | `http://localhost:8081/v1`           | llama-server address for Chat, and for classification while `LLAMACPP_CLASSIFY_URL` is unset |
+| `LLAMACPP_CHAT_SERVER`  | `external`                           | Who runs the Chat server: `external` (the Llama app or another server you run) or `managed` (the `llama-server` that `omrs web` starts) |
+
+Chat on llama.cpp uses the Chat model, `ANSWER__MODEL` with `ANSWER__PROVIDER=llamacpp` (Settings > Chat in `omrs web`). It never falls back to `LLAMACPP_CHAT_MODEL`. An empty Chat model is refused with "Choose a Chat model". See [llama.cpp Chat and classification](configuration.md#llamacpp-chat-and-classification).
 
 ```bash
 # No extra needed: the OpenAI-like packages are in the base install
@@ -46,7 +50,7 @@ llama-server -hf Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0 --port 8080 --embeddings
 llama-server -hf Qwen/Qwen3-0.6B-GGUF:Q8_0 --port 8081
 ```
 
-**Managed server or your own.** You can start `llama-server` yourself, as above. `omrs web` can also start, stop and restart one chat server for you (Settings > Providers > llama.cpp > Local server). omrs manages only the server it started. It never touches a server you started yourself. It does not manage the embedding server. By default omrs passes `--sleep-idle-seconds 300`, so its server frees the model after five idle minutes, as Ollama does. See [Local llama.cpp server](configuration.md#local-llamacpp-server) for the settings and guardrails.
+**Managed server or your own.** You can start `llama-server` yourself, as above. This is the default, `LLAMACPP_CHAT_SERVER=external`. With `LLAMACPP_CHAT_SERVER=managed` (or "OMRS's own llama-server" on the llama.cpp card), `omrs web` can start, stop and restart one chat server for you (Settings > Providers > llama.cpp > Local server). That server loads the Chat model from Settings > Chat. It has no model setting of its own. omrs manages only the server it started. It never touches a server you started yourself. It does not manage the embedding server. By default omrs passes `--sleep-idle-seconds 300`, so its server frees the model after five idle minutes, as Ollama does. See [Local llama.cpp server](configuration.md#local-llamacpp-server) for the settings and guardrails.
 
 ```bash
 # .env
@@ -176,6 +180,15 @@ Each LLM provider module also declares a `CONNECTION` descriptor (`ConnectionDes
 | `ollama-pull` | `ollama` | Lists built-in Ollama names and Hugging Face GGUF repos, and runs an Ollama pull. |
 
 The pure rules (name checks, label parser, built-in Ollama names) live in `core/providers/model_sources.py`. The download job picks its adapter from a table keyed by the source kind, not by provider name.
+
+Two more descriptor flags say how an answer role uses the provider (ADR-108). The routes and the composition root read the flags. They never test the provider name.
+
+| Flag | Default | llama.cpp | What it does |
+| --- | --- | --- | --- |
+| `default_answer_model` | `True` | `False` | Whether the provider has a model setting of its own that an empty judge model may use. With `False`, an empty judge model or Chat model is refused, never filled with the Text model. The claim check is skipped with "Choose a judge model in Settings > Chat." Chat refuses with "Choose a Chat model in Settings > Chat.", and `GET /v1/settings/chat` gives the reason `no-model`. OpenRouter and Ollama keep `True` and their documented defaults. |
+| `test_checks_model_list` | `False` | `True` | With `True` and the Chat server choice `external`, the Chat test reads the provider's model list (`{LLAMACPP_CHAT_URL}/models`) first. A model that the list does not hold gives the reason `model-not-listed`, and no prompt is sent. A list that cannot be read gives the usual reasons (`refused`, `timeout`, `http-NNN`). With `managed`, the test skips the list, because OMRS's own server loads the Chat model. |
+
+The card layout comes from the descriptor too. `ConnectionField` and `ReadOnlyValue` have an optional `group`: `embeddings` (title "Embeddings"), `metadata` ("Classification (metadata)") or `answers` ("Chat"). The card shows the fields without a group first, then each group under its title, in that order. Only llama.cpp sets a group, so the other cards show one block with no titles. `ConnectionField` also has an optional `follows`: the id of the field whose value applies while this field is not set. The llama.cpp Classification address (`classify_url`) follows the Chat address (`chat_url`). `GET /v1/connections` then reports the Chat address as its value, with the source `default`.
 
 <!-- registry-names:embeddings -->
 Registered embedding providers: `ollama`, `llamacpp`, `openrouter`.
