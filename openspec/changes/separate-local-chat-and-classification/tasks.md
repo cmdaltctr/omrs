@@ -64,7 +64,7 @@ Each code task starts with a failing test. Confirm that the test fails on the cu
 
 ## 8. Integration checks
 
-- [ ] 8.1 Count the new fast tests with `uv run pytest --collect-only -q`, compare the test IDs with the last pin, and update `tests/test_clean_base_tripwire.py`, including `_BASE_EXECUTED` and `_WEB_EXTRA_CASES` for tests that need fastapi.
+- [x] 8.1 Count the new fast tests with `uv run pytest --collect-only -q`, compare the test IDs with the last pin, and update `tests/test_clean_base_tripwire.py`, including `_BASE_EXECUTED` and `_WEB_EXTRA_CASES` for tests that need fastapi.
 - [ ] 8.2 Run the scoped open-code-review before local CI (OCR guard: `~/.agents/docs/ocr-guard.md`). Review only the changed source files under `src/omrs/` and `web/src/` (exclude tests, docs, fixtures, `openapi.yaml`, `tasks.md`) with `ocr review --audience agent --concurrency 2 --from v3 --to HEAD --output <scratch>/ocr_out.txt --exclude '<patterns>' -b '<context>'`; preview the file list first with `--preview`. Stop and narrow the scope on a timeout or 429. Score each finding (likelihood x impact). Fix findings at 5 or more test first, with a mutation check, and commit the fixes. List findings below 5 as proposed issues in the report. Record the session id and the finding list in `review.md` in the change folder.
 - [ ] 8.3 Run `./scripts/local_ci.sh`. Confirm that no step prints `SKIPPED` and that every step passes, including `tests/test_file_size_ceiling.py`.
 - [ ] 8.4 Run `openspec validate separate-local-chat-and-classification --strict` and `openspec validate --all --strict`. Confirm both pass.
