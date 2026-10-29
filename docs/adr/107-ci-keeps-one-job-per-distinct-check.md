@@ -65,7 +65,8 @@ A normal pull request now starts 12 jobs (11 run, Tier 2 shows as skipped). A pu
 - `actionlint` passes on `ci.yml`.
 - The skip check exits 1 on a report from a base install of four Chroma-gated files (65 skips), and 0 on a report from an install with `chroma` and `hybrid`.
 - The scope script printed the expected list for each event: pull request with and without a change to each of the three files, a base branch that gained a `pyproject.toml` change after the fork (`[""]`), push, schedule, dispatch, a git error and empty SHAs.
-- First pull request run: see the pull request for this change.
+- First pull request run (PR #146, run 40886570069): 19 jobs, all green, 14.2 min wall time against 26.5 min for the 23-job run 40874653858.
+- Coverage, serial against parallel: Codecov had processed no `v3` commit since 2026-10-19, so it gave no base total. A local run on the same commit with the Coverage job's extras gave the same result both ways: 28,771 of 29,795 lines and 6,995 of 7,592 branches (95.66 %). Serial took 8 min 14 s, parallel 1 min 54 s. The Maintainer accepted this as the evidence for decision 5. The parallel CI run reported 94.76 % (Linux).
 - Base-only row in GitHub: checked on the first ordinary pull request after merge (to be recorded here).
 
 ## References
