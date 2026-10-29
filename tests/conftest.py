@@ -651,6 +651,28 @@ async def connected_client(mcp_server):
         yield client
 
 
+def extract_tool_result(result):
+    """Extract the data payload from an MCPServer CallToolResult.
+
+    Handles both structured_content (v2) and TextContent (older fallback)
+    response formats.
+    """
+    import json
+
+    from mcp.types import TextContent
+
+    if hasattr(result, "structured_content") and result.structured_content:
+        return result.structured_content.get("result", result.structured_content)
+    if result.content and isinstance(result.content[0], TextContent):
+        return json.loads(result.content[0].text)
+    return result
+
+
+async def ingest_fixture_docs(client, fixtures_dir: Path) -> None:
+    """Ingest the test fixtures through an MCP client."""
+    await client.call_tool("ingest_documents", {"path": str(fixtures_dir)})
+
+
 # ── Fixture file paths ─────────────────────────────────────────────────────
 
 
