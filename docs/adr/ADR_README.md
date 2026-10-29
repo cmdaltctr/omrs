@@ -114,7 +114,7 @@ development of OMRG — Opinionated Modular RAG.
 | [103](./103-experiments-run-local-models-through-llama-cpp-gguf.md) | Experiments Run Local Models Through llama.cpp GGUF | 2026-10-27 | Accepted (2026-10-27; built and merged to v3 at PR #135) |
 | [104](./104-pdf-inspector-emits-page-documents.md) | pdf-inspector Emits Page Documents | 2026-10-27 | Accepted (2026-10-28; built and merged to v3 at PR #136) |
 | [105](./105-pipeline-steps-own-their-ocr-settings.md) | Pipeline Steps Own Their OCR Settings | 2026-10-28 | Accepted (2026-10-28; built and merged to v3 at PR #137) |
-| [107](./107-ci-keeps-one-job-per-distinct-check.md) | CI Keeps One Job per Distinct Check | 2026-10-29 | Proposed |
+| [107](./107-ci-keeps-one-job-per-distinct-check.md) | CI Keeps One Job per Distinct Check | 2026-10-29 | Accepted (2026-10-29; built and merged to v3 at PR #146) |
 
 ## Convention
 

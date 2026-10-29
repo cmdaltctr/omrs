@@ -1,11 +1,11 @@
 # ADR-107: CI Keeps One Job per Distinct Check
 
 - **Date:** 2026-10-29
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-29; built and merged to v3 at PR #146, merge commit `5fb02556`; base-only floor row confirmed at PR #147)
 - **Deciders:** Maintainer
 - **Amends:** [ADR-042](042-dependency-floor-integrity.md) (which floor entries run on which events)
 - **Related:** [TDR-033](../tdr/033-the-collection-name-was-the-only-project-title-so-add-an-editable-display-name.md) (Chroma round trip), [TDR-038](../tdr/038-the-ollama-floor-took-only-true-or-false-for-thinking-so-raise-it-to-0-9-1.md) and [TDR-040](../tdr/040-lancedb-writer-processes-crashed-at-interpreter-exit-on-the-floor-jobs.md) (floor incidents)
-- **Change:** `openspec/changes/trim-ci-jobs/`
+- **Change:** `openspec/changes/archive/2026-10-29-trim-ci-jobs/`
 
 ## Context
 
@@ -67,7 +67,7 @@ A normal pull request now starts 12 jobs (11 run, Tier 2 shows as skipped). A pu
 - The scope script printed the expected list for each event: pull request with and without a change to each of the three files, a base branch that gained a `pyproject.toml` change after the fork (`[""]`), push, schedule, dispatch, a git error and empty SHAs.
 - First pull request run (PR #146, run 40886570069): 19 jobs, all green, 14.2 min wall time against 26.5 min for the 23-job run 40874653858.
 - Coverage, serial against parallel: Codecov had processed no `v3` commit since 2026-10-19, so it gave no base total. A local run on the same commit with the Coverage job's extras gave the same result both ways: 28,771 of 29,795 lines and 6,995 of 7,592 branches (95.66 %). Serial took 8 min 14 s, parallel 1 min 54 s. The Maintainer accepted this as the evidence for decision 5. The parallel CI run reported 94.76 % (Linux).
-- Base-only row in GitHub: checked on the first ordinary pull request after merge (to be recorded here).
+- Base-only row in GitHub: confirmed on PR #147, the first ordinary pull request after merge (no change to `pyproject.toml`, `uv.lock` or `ci.yml`). `Floor matrix scope` ran and only the base `Floor resolution` entry ran. About 12 jobs ran, all green, and Codecov processed the upload and passed its project and patch checks. Wall time was about 14.5 min, set by the Coverage job.
 
 ## References
 
