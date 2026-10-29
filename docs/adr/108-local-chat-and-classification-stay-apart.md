@@ -124,7 +124,15 @@ ADR-084 decision 5 (the program rule, the model rule and the `credentials` scope
 
 ## Verification
 
-To be filled after the build, the review and the live checks (tasks 8.2, 8.5 and 8.7 of the change).
+Checked on 2026-10-29 on branch `feat/separate-local-chat-and-classification`.
+
+1. **Tests.** Each guard has a test that failed before the code change. A mutation check broke each guard once, and a test failed each time. Local CI passed: 9,511 Python tests, 2,237 Vitest tests, tripwire 5 of 5, strict validation of 90 items. No step printed `SKIPPED`.
+2. **Review.** An open-code-review of 44 source files gave 6 findings. One scored 5 or more: the shared-address warning stayed stale after a Classification address save (score 12). It is fixed, test first. The other five are proposed issues in `review.md`.
+3. **Live checks.** Classification reached the Llama app on 9931. OMRS's own Homebrew `llama-server` on a scratch port loaded the Chat model and answered Chat, and it got no classification request. The Chat test gave `model-not-listed` for `qwen3:4b` against the Llama app.
+4. **Browser check.** Screenshots at 1280 px and 390 px show the three blocks, both callouts, the OpenRouter line and the shared-address warning. Nothing scrolls sideways at 390 px. See TDR-042 for how the check ran without Chrome.
+5. **Two additions, at the maintainer's request.** An empty Ollama Chat or judge model is refused too, so `metadata.ollama_classify_model` never answers or judges (design D14). The Configuration page now asks for the `credentials` scope and the program rule for `llamacpp_server_binary` (design D15).
+6. **Build findings.** `classification_url` lives in `core/settings.py`, because `core/metadata` may not import `core/providers`. The workspace table's field list stays frozen at ADR-087, so the handover skips the new fields. The `omrs.jsonc` writer has one card-only key, `llamacpp_chat_server`, that only the llama.cpp card route may write.
+7. **Release.** `feat:` (minor), as the maintainer chose.
 
 ## References
 
