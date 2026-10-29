@@ -73,7 +73,7 @@ Each code task starts with a failing test. Confirm that the test fails on the cu
   - The Chat test of `qwen3:4b` against the Llama app gives `model-not-listed`.
   - Record the results in `live-checks.md` in the change folder.
 - [x] 8.6 Write a TDR (load the `s-tdr` skill; next free number after TDR-041 in `docs/tdr/`) for each technical finding or workaround found during the build, review or live checks, for example a llama.cpp single-model server ignoring the request model name, or a migration trap. Add its row to `docs/tdr/README.md`. If nothing qualifies, record "No TDR needed" with the reason in the report. Verify the docs reference tests pass (`uv run pytest tests/test_docs_references.py -q`).
-- [ ] 8.7 Update ADR-108 with what the build, review and live checks found (its Verification section). Ask the user to review ADR-108 and any TDR from 8.6. After approval, set ADR-108 to Accepted and update `docs/adr/ADR_README.md`.
+- [x] 8.7 Update ADR-108 with what the build, review and live checks found (its Verification section). Ask the user to review ADR-108 and any TDR from 8.6. After approval, set ADR-108 to Accepted and update `docs/adr/ADR_README.md`.
 
 ## Workflow follow-up
 

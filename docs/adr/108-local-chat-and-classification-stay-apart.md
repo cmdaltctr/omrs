@@ -1,7 +1,7 @@
 # ADR-108: Local Chat and Classification Stay Apart
 
 - **Date:** 2026-10-29
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-29)
 - **Deciders:** Maintainer
 - **Amends:** [ADR-084](084-context-windows-and-an-owned-llama-server.md) (decision 4, the server settings: the model setting goes and the Chat server choice comes in), [ADR-106](106-app-searches-and-downloads-local-models.md) (decision 4, who runs the Chat server and what Use this model saves)
 - **Related:** [ADR-083](083-llm-provider-settings-in-the-web-workspace.md) (provider addresses apply live), [ADR-087](087-settings-live-in-omrg-jsonc.md) (source order), [ADR-095](095-page-writes-every-scalar-setting.md) (the Configuration page writes scalar settings), [ADR-059](059-claim-verification-stage.md) (the claim check judge)
