@@ -272,3 +272,18 @@ dependency of the "Like" package. The `openai` row's dependent list gains
 `.github/workflows/ci.yml` already exercises the `llamacpp` and
 `openrouter` extras at their lower bounds, so the new floor is covered by
 the existing `floors` job with no new matrix entry.
+
+## Update (2026-10-29, trim-ci-jobs)
+
+The `llamacpp` and `openrouter` floor entries are gone. ADR-083 moved their
+packages into the base install, so both extras are now empty and install
+nothing beyond the base entry. `pdf-inspector` also has no entry: it repeats
+a base dependency at the same floor.
+
+The extra floor entries no longer run on every pull request. A
+`floors-scope` job decides the matrix. A pull request that changes none of
+`pyproject.toml`, `uv.lock` and `.github/workflows/ci.yml` runs the base
+entry only. Pushes to an integration branch, the nightly schedule, manual
+runs and any other pull request run the base entry and every extra. The
+base entry, with its clean-base tripwire, still runs on every pull request.
+See ADR-107.

@@ -9,12 +9,13 @@ suite against them. A floor that resolves but fails the suite SHALL fail the
 build.
 
 The base install SHALL be checked at its floors on every push and every pull
-request. Each optional extra that declares at least one package SHALL be
+request. Each optional extra that adds at least one package beyond the base
+install SHALL be
 checked at its floors on every push to an integration branch, on the nightly
 scheduled run, on a manual run, and on every pull request that changes
 `pyproject.toml`, `uv.lock` or the CI workflow file. An extra that declares no
-packages installs nothing beyond the base, so it SHALL NOT have its own floor
-entry. The `torch` extra keeps its own dedicated job and SHALL NOT enter the
+packages, or only packages the base already declares at the same floor,
+installs nothing beyond the base, so it SHALL NOT have its own floor entry. The `torch` extra keeps its own dedicated job and SHALL NOT enter the
 floor matrix.
 
 #### Scenario: Floor resolution is exercised in CI
@@ -37,18 +38,19 @@ floor matrix.
 - **WHEN** a pull request changes `pyproject.toml`, `uv.lock` or the CI
   workflow file, compared with the merge base of its base and head commits
 - **THEN** the base floor entry and one floor entry for each optional extra
-  that declares packages, except `torch`, MUST run
+  that adds packages beyond the base, except `torch`, MUST run
 
 #### Scenario: Push, nightly and manual runs check every extra
 
 - **WHEN** CI runs because of a push to an integration branch, the nightly
   schedule, or a manual dispatch
 - **THEN** the base floor entry and one floor entry for each optional extra
-  that declares packages, except `torch`, MUST run
+  that adds packages beyond the base, except `torch`, MUST run
 
 #### Scenario: An empty extra has no floor entry
 
-- **WHEN** an optional extra declares no packages
+- **WHEN** an optional extra declares no packages, or only packages the base
+  already declares at the same floor
 - **THEN** the floor matrix MUST NOT hold an entry for it
 
 #### Scenario: An unsatisfiable floor set fails the build

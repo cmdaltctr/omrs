@@ -13,11 +13,11 @@ Work in the sibling worktree `omrs-feat-trim-ci-jobs` on branch `feat/trim-ci-jo
 
 ## 2. Scope the floors matrix (D3)
 
-- [ ] 2.1 Add the `floors-scope` job with the rule table and the three-dot diff from design D3. Pass the pull-request SHAs through `env:`, not inline in the script. Make `floors` use `needs: floors-scope` and the generated matrix, and remove its `if:` line. Verify `actionlint` passes.
-- [ ] 2.2 Check the scope script locally before pushing: run its shell body with the event variables set for each row of the D3 table (pull request with and without a `pyproject.toml` change, a pull request whose base branch gained a `pyproject.toml` change after the fork, push, schedule, dispatch, and a forced git error), and verify each prints the expected JSON list. The base-gained case must print `[""]`.
+- [x] 2.1 Add the `floors-scope` job with the rule table and the three-dot diff from design D3. Pass the pull-request SHAs through `env:`, not inline in the script. Make `floors` use `needs: floors-scope` and the generated matrix, and remove its `if:` line. Verify `actionlint` passes.
+- [x] 2.2 Check the scope script locally before pushing: run its shell body with the event variables set for each row of the D3 table (pull request with and without a `pyproject.toml` change, a pull request whose base branch gained a `pyproject.toml` change after the fork, push, schedule, dispatch, and a forced git error), and verify each prints the expected JSON list. The base-gained case must print `[""]`.
 - [ ] 2.3 After the pull request opens, verify in the GitHub run that `Floor matrix scope` printed the full list (the pull request changes `ci.yml`) and that 8 `Floor resolution` entries ran, with no `llamacpp` or `openrouter` entry. A throwaway pull request into `v3` cannot show the base-only row before the merge, because its diff against `v3` also holds the `ci.yml` change. The Workflow follow-up checks that row.
-- [ ] 2.4 Update `AGENTS.md` gotcha 13 with when the extra floor entries run, add the ADR-042 addendum (design D6), and verify `uv run pytest tests/test_docs_references.py -q` passes.
-- [ ] 2.5 Confirm the delta for `retrieval-quality-regression-gate` in this change matches the new floors `if:`: the floors job runs on the schedule, and every other job keeps its current schedule behaviour. Verify `openspec validate trim-ci-jobs --strict` passes.
+- [x] 2.4 Update `AGENTS.md` gotcha 13 with when the extra floor entries run, add the ADR-042 addendum (design D6), and verify `uv run pytest tests/test_docs_references.py -q` passes.
+- [x] 2.5 Confirm the delta for `retrieval-quality-regression-gate` in this change matches the new floors `if:`: the floors job runs on the schedule, and every other job keeps its current schedule behaviour. Verify `openspec validate trim-ci-jobs --strict` passes.
 
 ## 3. Leiden on two Python versions (D4)
 

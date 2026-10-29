@@ -220,14 +220,64 @@ jobs:
   # from a comment into a tested contract. Without it they rot again on
   # the next upgrade cycle. See raise-dependency-floors OpenSpec change.
   #
-  # Matrix covers the base install plus every non-torch extra, because
-  # `uv sync` does not install optional dependencies unless an extra is
-  # selected — without the matrix the floors in [project.optional-dependencies]
-  # would never be exercised at their lower bounds. The torch extra is
-  # excluded here because it has its own dedicated job below (ADR-038) and
+  # Matrix covers the base install plus every non-torch extra that adds
+  # packages beyond the base, because `uv sync` does not install optional
+  # dependencies unless an extra is selected — without the matrix the floors
+  # in [project.optional-dependencies] would never be exercised at their lower
+  # bounds. An extra that adds nothing beyond the base (llamacpp, openrouter,
+  # pdf-inspector) gets no entry. The torch extra
+  # is excluded here because it has its own dedicated job below (ADR-038) and
   # must never enter the default install path.
+  #
+  # The floors-scope job decides the matrix (ADR-107). A pull request that
+  # changes none of pyproject.toml, uv.lock and this file runs the base entry
+  # only. Every other event runs the base entry and every extra.
+  floors-scope:
+    name: Floor matrix scope
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      extras: ${{ steps.scope.outputs.extras }}
+    steps:
+      # Pinned to SHA for security — actions/checkout@v7.0.0
+      # fetch-depth 0: the three-dot diff needs the merge base of the
+      # pull request's base and head commits.
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Choose the floor entries
+        id: scope
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        # The three-dot diff compares the head with the merge base, so commits
+        # that land on the base branch after the fork do not count. Any git
+        # error keeps the full list: a broken check runs more floors, not fewer.
+        run: |
+          full='["","hybrid","pdf-pypdfium2","community-leiden","azure","anthropic","chroma","web"]'
+          extras="$full"
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            if [ -z "$BASE_SHA" ] || [ -z "$HEAD_SHA" ]; then
+              echo "::warning::the pull request SHAs are empty, so every floor entry runs"
+            elif changed="$(git diff --name-only "$BASE_SHA...$HEAD_SHA")"; then
+              # A here-string, not a pipe: under pipefail, grep -q can end a
+              # long pipe early and make the test fail the wrong way.
+              if ! grep -qxE 'pyproject\.toml|uv\.lock|\.github/workflows/ci\.yml' <<<"$changed"; then
+                extras='[""]'
+              fi
+            else
+              echo "::warning::git diff failed, so every floor entry runs"
+            fi
+          fi
+          echo "Floor entries: $extras"
+          echo "extras=$extras" >> "$GITHUB_OUTPUT"
+
   floors:
-    if: github.event_name != 'schedule'
+    needs: floors-scope
     name: Floor resolution${{ matrix.extra && format(' ({0})', matrix.extra) || '' }}
     runs-on: ubuntu-latest
     permissions:
@@ -235,15 +285,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        extra:
-          - "" # base install, no extras
-          - hybrid
-          - pdf-pypdfium2
-          - community-leiden
-          - azure
-          - anthropic
-          - chroma
-          - web
+        extra: ${{ fromJSON(needs.floors-scope.outputs.extras) }}
     steps:
       # Pinned to SHA for security — actions/checkout@v7.0.0
       # fetch-depth 0: the exp-29 pinned-baseline tests read historical
