@@ -25,6 +25,12 @@ describe("ModelDownloadProgress", () => {
     expect(screen.getByRole("progressbar", { name: "Download progress" })).not.toHaveAttribute("aria-valuenow");
   });
 
+  it("says the file is already in the cache when nothing is left to download", () => {
+    render(<ModelDownloadProgress status={downloadStatus({ state: "running", provider: "llamacpp", model: "a/b:Q2_K", bytes_done: 0, bytes_total: 0 })} onCancel={vi.fn()} cancelling={false} />);
+    expect(screen.getByText("Already in the cache. Checking the file.")).toBeInTheDocument();
+    expect(screen.queryByText("0 B of 0 B")).toBeNull();
+  });
+
   it("calls Cancel, and disables it while the cancel is sent", async () => {
     const onCancel = vi.fn();
     const status = downloadStatus({ state: "running", provider: "ollama", model: "qwen3" });

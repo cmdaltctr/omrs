@@ -1,7 +1,7 @@
 import { AlertNotice } from "../components/AlertNotice";
 import { Button } from "../components/ui/button";
 import type { ModelDownloadStatus } from "../api/modelDownloads";
-import { bytesLine, CANCELLED_LINE, percentDone, REASON_SENTENCES, SIZE_UNKNOWN_LINE } from "./modelDownloadWords";
+import { ALREADY_CACHED_LINE, bytesLine, CANCELLED_LINE, percentDone, REASON_SENTENCES, SIZE_UNKNOWN_LINE } from "./modelDownloadWords";
 
 interface ModelDownloadProgressProps {
   status: ModelDownloadStatus;
@@ -46,7 +46,7 @@ export function ModelDownloadProgress({ status, onCancel, cancelling }: ModelDow
         <div className="h-full bg-primary-tint-active transition-[width] duration-300 motion-reduce:transition-none" style={{ width: `${percent ?? 0}%` }} />
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-meta text-muted-foreground">{status.bytes_total === null ? SIZE_UNKNOWN_LINE : bytesLine(status.bytes_done, status.bytes_total)}</p>
+        <p className="text-meta text-muted-foreground">{status.bytes_total === null ? SIZE_UNKNOWN_LINE : status.bytes_total === 0 ? ALREADY_CACHED_LINE : bytesLine(status.bytes_done, status.bytes_total)}</p>
         <Button type="button" size="sm" variant="outline" disabled={cancelling} onClick={onCancel}>
           Cancel
         </Button>

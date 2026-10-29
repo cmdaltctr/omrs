@@ -17,6 +17,9 @@ export const CANCELLED_LINE = "The download stopped.";
 
 export const SIZE_UNKNOWN_LINE = "Size known after the pull starts";
 
+/** A llama.cpp download whose files are all in the cache already has 0 bytes left. */
+export const ALREADY_CACHED_LINE = "Already in the cache. Checking the file.";
+
 export const SEARCH_HINT = "Type at least 2 characters to search.";
 
 const UNITS = ["B", "KiB", "MiB", "GiB", "TiB"];
