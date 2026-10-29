@@ -419,3 +419,42 @@ def test_an_external_server_takes_any_llamacpp_name_with_manage_only(
     response = put(client, {"answer.provider": "llamacpp", "answer.model": "my-model"})
     assert response.status_code == 200, response.text
     assert data(harness)["answer"] == {"provider": "llamacpp", "model": "my-model"}
+
+
+# ── The program path keeps its rule here too (ADR-108 D15) ───────────────
+
+
+@pytest.mark.parametrize("value", ["/opt/homebrew/bin/llama-server", None])
+def test_the_program_path_needs_credentials(
+    harness: Harness, client: TestClient, monkeypatch: pytest.MonkeyPatch, value: Any
+) -> None:
+    from omrs.transports.api import security
+
+    harness.write('{ "retrieval": { "top_k": 7 } }')
+    before = text(harness)
+    harness.launch()
+    monkeypatch.setattr(security, "SESSION_SCOPES", security.SESSION_SCOPES - {"credentials"})
+    changes = {"llamacpp_server_binary": value}
+    message = refused(put(client, changes, file_revision(harness.folder)), 403)
+    assert "credentials" in message
+    assert text(harness) == before
+
+
+@pytest.mark.parametrize("bad", ["/bin/sh", "relative/llama-server", "/no/such/llama-server"])
+def test_a_program_path_that_breaks_the_rule_is_400(
+    harness: Harness, client: TestClient, bad: str
+) -> None:
+    harness.launch()
+    message = refused(put(client, {"llamacpp_server_binary": bad}), 400)
+    assert "llama-server" in message and bad not in message
+    assert text(harness) == ""
+
+
+def test_a_real_program_path_saves(harness: Harness, client: TestClient, tmp_path: Any) -> None:
+    from tests.unit.llamacpp_fake import install_fake
+
+    program = install_fake(tmp_path / "bin")
+    harness.launch()
+    response = put(client, {"llamacpp_server_binary": str(program.path)})
+    assert response.status_code == 200, response.text
+    assert data(harness)["llamacpp_server_binary"] == str(program.path)

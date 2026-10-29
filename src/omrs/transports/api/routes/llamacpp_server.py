@@ -25,6 +25,7 @@ from ....config.settings_file_write import SettingsFileError
 from ....core.providers.llm import llamacpp_rules as rules
 from ..engine_access import ReadScope, RuntimeDep, admitted
 from ..errors import API_HEADERS, error_response
+from ..llamacpp_chat_rule import BINARY_RULE
 from ..llamacpp_server import LaunchConfig, LlamacppServer, ServerStatus
 from ..provider_state import EngineRefused, validate_int
 from ..security import redact
@@ -36,10 +37,6 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/v1")
 
-BINARY_RULE = (
-    "The program must be the absolute path of an executable file named llama-server "
-    "(llama-server.exe on Windows)."
-)
 CHOICE_RULE = "The Chat server choice must be external or managed."
 CREDENTIALS_RULE = "Changing the program or the Chat server choice needs the credentials scope."
 MODEL_RETIRED = "Set the Chat model in Settings > Chat."

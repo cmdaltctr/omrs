@@ -305,7 +305,7 @@ browser session; a bearer credential gets 403. A bearer credential with
 | GET | `/v1/settings/chat` | `read` | `reason` adds `no-model`: the provider is llama.cpp and the Chat model is empty | none |
 | PUT | `/v1/settings/chat` | `manage`; `credentials` for a llama.cpp choice while the choice is `managed` | No change | 400 when the model fails the model rule while `managed`; 403 without `credentials` while `managed` |
 | POST | `/v1/settings/chat/test` | `manage` | `reason` adds `no-model` and `model-not-listed` | none |
-| PUT | `/v1/settings/configuration` | `manage`; `credentials` for a llama.cpp Chat choice while the choice is `managed` | No change | 400 for `llamacpp_chat_server` ("Set this on the llama.cpp card.") or a model that fails the model rule while `managed`; 403 without `credentials` while `managed` |
+| PUT | `/v1/settings/configuration` | `manage`; `credentials` for `llamacpp_server_binary`, and for a llama.cpp Chat choice while the choice is `managed` | No change | 400 for `llamacpp_chat_server` ("Set this on the llama.cpp card."), a program path that fails the program rule, or a model that fails the model rule while `managed`; 403 without `credentials` for the program path, or for a llama.cpp Chat choice while `managed` |
 
 Rules:
 

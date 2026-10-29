@@ -44,7 +44,7 @@ from ..configuration_update import update_refusal
 from ..engine_access import ReadScope, admitted, require_session
 from ..errors import error_response
 from ..live_settings import apply_file_settings
-from ..llamacpp_chat_rule import chat_choice_refusal
+from ..llamacpp_chat_rule import chat_choice_refusal, program_refusal
 from ..provider_state import EngineRefused
 from ..restart_snapshot import capture, pending
 from ..security import Principal
@@ -205,6 +205,7 @@ def _launch(state: ConfigurationState | None) -> Settings:
 
 
 _CHAT_KEYS = frozenset({"answer.provider", "answer.model"})
+_PROGRAM_KEY = "llamacpp_server_binary"
 
 
 def _live(state: ConfigurationState | None) -> Settings:
@@ -256,7 +257,8 @@ async def set_configuration(
     """Save one or more settings to ``omrs.jsonc``, all or none, and return the list.
 
     While OMRS runs the llama.cpp Chat server, a change that makes the Chat choice
-    ``llamacpp`` needs ``credentials`` and the model rule (ADR-108 D11).
+    ``llamacpp`` needs ``credentials`` and the model rule (ADR-108 D11). A change of
+    the program path needs ``credentials`` and the program rule (ADR-108 D15).
     """
     state = getattr(request.app.state, "configuration", None)
     overrides = state.overrides if state is not None else {}
@@ -266,6 +268,8 @@ async def set_configuration(
         logger.exception("The launch settings could not be resolved.")
         return error_response(500, READ_FAILED)
     refusal = await run_in_threadpool(update_refusal, body.changes, launch, overrides)
+    if refusal is None and _PROGRAM_KEY in body.changes:
+        refusal = program_refusal(body.changes[_PROGRAM_KEY], principal.scopes)
     if refusal is None and _CHAT_KEYS & set(body.changes):
         live = await run_in_threadpool(_live, state)
         provider, model = _chat_after(live, body.changes)

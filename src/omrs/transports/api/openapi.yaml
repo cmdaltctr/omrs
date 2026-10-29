@@ -5138,7 +5138,9 @@ paths:
         that makes the Chat choice `llamacpp` (by `answer.provider` or `answer.model`) needs the
         `credentials` scope (403 otherwise) and a model that is an existing `.gguf` file or a
         Hugging Face id (400 otherwise). `llamacpp_chat_server` is read-only here (400, "Set
-        this on the llama.cpp card.").
+        this on the llama.cpp card."). A change of `llamacpp_server_binary`, a clear included,
+        needs the `credentials` scope (403 otherwise), and a new path must be an executable file
+        named `llama-server` (400 otherwise).
       security:
         - sessionCookie: [manage]
       x-omrs-scopes: [manage]
