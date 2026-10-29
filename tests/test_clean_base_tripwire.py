@@ -204,7 +204,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # test_llamacpp_embed_keeps_newlines.py. No fastapi needed.
 # +2 (2026-10-29, startup log names the active backend's model, by test-ID diff,
 # none removed): test_compose.py. No fastapi needed.
-_BASE_EXECUTED = 9085
+# +4 (2026-10-29, --json output stays JSON only, by test-ID diff, none removed):
+# test_cli_json_output_clean.py. No fastapi needed.
+_BASE_EXECUTED = 9089
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

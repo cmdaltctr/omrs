@@ -38,7 +38,7 @@ The `omrs` command doubles as an MCP server and a CLI tool. With no arguments it
 | Flag                 | Applies to                                               | Description                                                          |
 | -------------------- | -------------------------------------------------------- | -------------------------------------------------------------------- |
 | `--collection`, `-c` | `ingest`, `search`, `list`, `watch`, `delete`, `answer`, `set-profile` | Collection name in the selected vector store (default `"documents"`) |
-| `--json`             | `ingest`, `search`, `list`, `list-collections`, `delete`, `answer`, `set-profile`, `experiments check` | Output results as JSON (written to stderr like all CLI output; stdout stays the MCP protocol channel) |
+| `--json`             | `ingest`, `search`, `list`, `list-collections`, `delete`, `answer`, `set-profile`, `experiments check` | Output results as JSON (written to stderr like all CLI output; stdout stays the MCP protocol channel). Log lines are off while the command runs, so stderr holds the JSON only |
 | `--chunk-size`       | `ingest`                                                 | Override chunk size (characters)                                     |
 | `--chunk-overlap`    | `ingest`                                                 | Override chunk overlap (characters)                                  |
 | `--report`, `-r`     | `ingest`                                                 | Write ingestion report to a file                                     |
