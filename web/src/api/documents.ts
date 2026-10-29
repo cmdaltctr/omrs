@@ -95,12 +95,14 @@ export interface SearchHit {
   source_chunk_index: number | null;
   source_chunk_count: number | null;
   chunk_ids?: string[];
+  page_labels?: string[];
 }
 
 export interface Citation {
   ordinal: number;
   chunk_id: string | null;
   chunk_ids: string[];
+  page_labels?: string[];
   source_id: string | null;
   source_version: string | null;
   source: string | null;

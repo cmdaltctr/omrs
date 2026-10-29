@@ -17,7 +17,7 @@ function cite(ordinal: number, chunkIds: string[], source = "/srv/docs/paper.pdf
 
 const RESULT: AnswerResult = {
   status: "ok", query: "q", answer: "Lineage matters [1] and merges [2], not [7].",
-  citations: [cite(1, ["c-1"]), cite(2, ["c-2", "c-3"])],
+  citations: [cite(1, ["c-1"]), { ...cite(2, ["c-2", "c-3"]), page_labels: ["5", "6"] }],
   evidence: [{ ...cite(1, ["c-1"]), text: "Evidence one" }, { ...cite(2, ["c-2", "c-3"]), text: "Evidence two" }],
   failure_stage: null, error: null, completion_source: "server",
 } as AnswerResult;
@@ -84,6 +84,13 @@ describe("citation popover", () => {
     await user.click(details(2));
     const lineage = await screen.findByRole("region", { name: "Lineage" });
     expect(within(lineage).getByText("c-2, c-3")).toBeInTheDocument();
+  });
+
+  it("shows the page range of a citation that spans pages", async () => {
+    const { user } = setup();
+    await user.click(details(2));
+    const lineage = await screen.findByRole("region", { name: "Lineage" });
+    await waitFor(() => expect(within(lineage).getByText(/Pages 5–6/)).toBeInTheDocument());
   });
 
   it("turns a [n] marker into a button only when it matches a citation", async () => {

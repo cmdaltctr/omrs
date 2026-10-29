@@ -21,7 +21,7 @@
 ## 4. Display
 
 - [x] 4.1 CLI: `transports/cli/search.py` shows "5–6" in the page column for a row with two or more `page_labels`. Add a test.
-- [ ] 4.2 Web: add `page_labels?: string[]` to the result and citation types in `web/src/api/documents.ts`; show "Pages 5–6" in `knowledge-base/ResultList.tsx` and in the citation popover Lineage section (`ChunkMetadata.tsx` / `CitationPopover.tsx`). Write the tests first, including the `workspace-chat` scenario.
+- [x] 4.2 Web: add `page_labels?: string[]` to the result and citation types in `web/src/api/documents.ts`; show "Pages 5–6" in `knowledge-base/ResultList.tsx` and in the citation popover Lineage section (`ChunkMetadata.tsx` / `CitationPopover.tsx`). Write the tests first, including the `workspace-chat` scenario.
 
 ## 5. Experiment 35 plan
 

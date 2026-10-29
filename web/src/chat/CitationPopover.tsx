@@ -88,7 +88,7 @@ function PopoverBody({ citation, evidence, collection, view, onOpenChunk }: Popo
       {score !== null ? <p className="text-muted-foreground">{score}</p> : null}
       {view === "text" && evidence !== undefined ? <p className="whitespace-pre-wrap break-words">{evidence.text}</p> : null}
       {view === "details" ? (
-        <ChunkMetadata chunk={stored ?? fromCitation(citation)} chunkIds={citation.chunk_ids} showMetadata={stored !== undefined} />
+        <ChunkMetadata chunk={stored ?? fromCitation(citation)} chunkIds={citation.chunk_ids} pageLabels={citation.page_labels} showMetadata={stored !== undefined} />
       ) : null}
       {unavailable ? <p className="text-muted-foreground">The stored chunk is not available.</p> : null}
       {failed ? <ErrorNotice error={query.error} onRetry={() => void query.refetch()} /> : null}

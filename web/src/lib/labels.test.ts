@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { availabilityLabel, chunkPosition, formatScore, plural, scoreKindLabel } from "./labels";
+import { availabilityLabel, chunkPosition, formatScore, pageText, plural, scoreKindLabel } from "./labels";
 
 describe("labels", () => {
+  it("names one page, or the first and last page a merged row spans", () => {
+    expect(pageText("5", ["5", "6"])).toBe("Pages 5–6");
+    expect(pageText("5", ["5", "6", "7"])).toBe("Pages 5–7");
+    expect(pageText("12", ["12"])).toBe("Page 12");
+    expect(pageText("3")).toBe("Page 3");
+    expect(pageText(null)).toBeNull();
+  });
+
   it("names the score kind and keeps the raw identifier", () => {
     expect(scoreKindLabel("rrf_v1")).toBe("Reciprocal rank fusion (rrf_v1)");
     expect(scoreKindLabel("new_kind_v9")).toBe("Unknown score kind (new_kind_v9)");

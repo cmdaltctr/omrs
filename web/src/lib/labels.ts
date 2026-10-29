@@ -30,6 +30,12 @@ export function plural(count: number, one: string, many = `${one}s`): string {
 }
 
 /** "Chunk 3 of 4" from a zero-based index; null parts are left out. */
+/** "Page 5", or "Pages 5–6" for a merged row that spans pages (first to last label). */
+export function pageText(pageLabel: string | null | undefined, pageLabels?: string[]): string | null {
+  if (pageLabels !== undefined && pageLabels.length > 1) return `Pages ${pageLabels[0]}–${pageLabels[pageLabels.length - 1]}`;
+  return pageLabel ? `Page ${pageLabel}` : null;
+}
+
 export function chunkPosition(index: number | null, count: number | null): string {
   if (index === null) return "Position unknown";
   return count === null ? `Chunk ${index + 1}` : `Chunk ${index + 1} of ${count}`;

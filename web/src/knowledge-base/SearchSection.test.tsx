@@ -30,7 +30,7 @@ async function setup(handlers: Record<string, Handler> = {}) {
     "#/knowledge-base/documents",
     documentsServer({
       "POST /v1/collections/documents/search": () => [
-        hit({}),
+        hit({ page_label: "5", page_labels: ["5", "6"] }),
         hit({ score: 0.016, score_kind: "rrf_v1", reranked: true, source: "/srv/docs/gone.md", source_id: "sid-gone", chunk_id: "g-1", text: "<b>not markup</b>" }),
         hit({ score: undefined, score_kind: undefined, source: "relative/unknown.md", source_id: null, chunk_id: null, text: "Legacy row" }),
       ],
@@ -110,6 +110,13 @@ describe("search results", () => {
     expect(items[1]?.querySelector("b")).toBeNull();
     expect(items[2]).toHaveTextContent("Not ranked: neighbour context");
     expect(items[2]).toHaveTextContent("Unknown on this machine");
+  });
+
+  it("shows the page range of a merged row that spans pages", async () => {
+    const { user } = await setup();
+    const results = await search(user);
+    const first = within(results).getAllByRole("listitem")[0]!;
+    expect(within(first).getByText("Pages 5–6")).toBeInTheDocument();
   });
 
   it("opens the stored chunk in the chunk viewer", async () => {
