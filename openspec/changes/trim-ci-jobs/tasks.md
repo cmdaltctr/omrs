@@ -41,7 +41,7 @@ Work in the sibling worktree `omrs-feat-trim-ci-jobs` on branch `feat/trim-ci-jo
 - [x] 6.1 Run `./scripts/local_ci.sh` and `openspec validate trim-ci-jobs --strict`, and verify both pass with no `SKIPPED` step except ones the machine cannot run.
 - [x] 6.2 Search the staged diff for personal identifiers (`git diff --cached | grep -nE "aizat|/Users/|@praxis"`), and verify nothing matches. Write the ADR `Deciders` line as `Maintainer`, as recent ADRs and TDRs do.
 - [x] 6.3 Open one pull request into `v3` and watch CI until every check ends. Verify the run lists 19 jobs (the dependency-change count in the proposal, because this pull request changes `ci.yml`), and record the job count and total time against the 23-job run before this change (run 40874653858).
-- [ ] 6.4 Read the CodeRabbit comments, fix the valid ones, reply to each, and resolve every thread. Do not merge; wait for the user.
+- [x] 6.4 Read the CodeRabbit comments, fix the valid ones, reply to each, and resolve every thread. Do not merge; wait for the user.
 
 ## Workflow follow-up
 
