@@ -16,7 +16,7 @@ function meta(name: string): string[] {
 describe("index.html head", () => {
   it("names OMRS in capitals in the title", () => {
     const title = /<title>\s*([^<]*?)\s*<\/title>/.exec(indexHtml)?.[1];
-    expect(title).toBe("OMRS workspace");
+    expect(title).toBe("OMRS Workspace");
     expect(title).not.toMatch(/omrs/);
   });
 
