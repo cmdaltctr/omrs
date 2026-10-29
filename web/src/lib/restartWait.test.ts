@@ -38,6 +38,19 @@ describe("waitForRestart", () => {
     expect(time.now()).toBeGreaterThanOrEqual(GIVE_UP_MS);
   });
 
+  it("stops without another sleep once the wait is no longer current", async () => {
+    let current = true;
+    let sleeps = 0;
+    const time = clock();
+    const check = async () => {
+      current = false;
+      return false;
+    };
+    const counted = { ...time, sleep: async (ms: number) => void (sleeps++, time.advance(ms)) };
+    expect(await waitForRestart(check, counted, () => current)).toBe(false);
+    expect(sleeps).toBe(0);
+  });
+
   it("gives up when no server answers in time", async () => {
     const time = clock();
     expect(await waitForRestart(answers(false), time)).toBe(false);
