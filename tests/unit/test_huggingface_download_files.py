@@ -116,6 +116,57 @@ class TestCalls:
         assert seen == [40, 2, 8]
         assert all(type(n) is int for n in seen)
 
+    def test_xet_network_bytes_are_a_sign_of_life_and_count_no_bytes(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Xet reports file assembly in large steps, often more than 60 s apart, but
+        # reports network bytes about every second through update_transfer.
+        def fake(**kwargs: Any) -> str:
+            bar = kwargs["tqdm_class"](total=100, unit="B")
+            bar.update_transfer(30)
+            bar.set_transfer_postfix_str("8 MB/s", refresh=False)
+            bar.update_transfer(0)
+            bar.update(100)
+            return "/p"
+
+        _install(monkeypatch, fake)
+        seen: list[int] = []
+
+        _call(["a.gguf"], on_bytes=seen.append)
+
+        assert seen == [0, 100]
+
+    def test_the_hub_routes_xet_network_bytes_to_update_transfer(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # Pins the huggingface_hub behaviour the stall fix relies on: a tqdm class
+        # with update_transfer gets the network bytes of a Xet download.
+        from types import SimpleNamespace
+
+        from huggingface_hub.utils._xet_progress_reporting import XetDownloadProgressReporter
+
+        seen: list[int] = []
+
+        def fake(**kwargs: Any) -> str:
+            with XetDownloadProgressReporter(
+                reconstruction_desc="r", total=100, log_level=30, tqdm_class=kwargs["tqdm_class"]
+            ) as reporter:
+                report = SimpleNamespace(
+                    total_bytes_completed=0,
+                    total_transfer_bytes_completed=25,
+                    total_bytes=100,
+                    total_bytes_completion_rate=None,
+                    total_transfer_bytes_completion_rate=None,
+                )
+                reporter.update_progress(report)
+            return "/p"
+
+        _install(monkeypatch, fake)
+
+        _call(["a.gguf"], on_bytes=seen.append)
+
+        assert seen == [0]
+
 
 class TestCancel:
     def test_cancel_during_update_raises_download_cancelled(

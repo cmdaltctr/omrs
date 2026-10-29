@@ -362,6 +362,33 @@ async def test_sixty_seconds_without_a_byte_fails_the_job_as_stalled() -> None:
     assert fake.calls[0][1].is_set()
 
 
+async def test_a_sign_of_life_with_no_bytes_resets_the_stall_clock() -> None:
+    # The Hugging Face adapter sends add(0) for Xet network bytes (ADR-106).
+    fake = Fake()
+    clock = Clock()
+    holder: dict[str, Progress] = {}
+
+    def adapter(req: DownloadRequest, progress: Progress, cancel: threading.Event) -> None:
+        holder["progress"] = progress
+        fake(req, progress, cancel)
+
+    job = ModelDownloadJob(
+        adapters={"huggingface-gguf": adapter, "ollama-pull": adapter},
+        clock=clock,
+        watch_interval=0.005,
+    )
+    job.start(request())
+    await until(fake.started.is_set)
+    clock.now += 50.0
+    holder["progress"].add(0)
+    clock.now += 50.0
+    await asyncio.sleep(0.05)
+    assert job.snapshot()["state"] == "running"
+    assert job.snapshot()["bytes_done"] == 0
+    fake.release.set()
+    assert (await settle(job))["state"] == "succeeded"
+
+
 async def test_a_byte_resets_the_stall_clock() -> None:
     fake = Fake()
     clock = Clock()

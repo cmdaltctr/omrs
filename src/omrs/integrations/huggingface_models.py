@@ -418,7 +418,8 @@ def download_files(
         repo: A repository id, ``org/name``.
         revision: The pinned commit hash from :func:`list_repo_files`.
         filenames: The files of the chosen set, in download order.
-        on_bytes: Called with the bytes of each progress step.
+        on_bytes: Called with the bytes of each progress step, or with 0 when
+            Xet network bytes arrive between two steps (a sign of life).
         cancel: Set to stop the download. It is also checked between files.
         token: The token from the environment of ``omrs web``, or ``None``.
             ``None`` turns the library's stored-token lookup off.
@@ -446,6 +447,18 @@ def download_files(
                 return None
             on_bytes(int(n))
             return super().update(n)
+
+        # Xet reports the file assembly in large steps, often more than 60 s apart,
+        # and the network bytes about every second. A class with this method gets
+        # those network bytes. on_bytes(0) tells the job that bytes still arrive
+        # (the stall check), without counting them twice. hf_xet ignores an
+        # exception from here, so cancel stays with the watcher thread.
+        def update_transfer(self, n: float | None) -> None:
+            if n:
+                on_bytes(0)
+
+        def set_transfer_postfix_str(self, *args: Any, **kwargs: Any) -> None:
+            return None
 
     done = threading.Event()
     watcher = threading.Thread(target=_watch_for_cancel, args=(cancel, done), daemon=True)
