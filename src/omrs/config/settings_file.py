@@ -170,10 +170,16 @@ def setting_paths(*, file_only: bool = True) -> tuple[str, ...]:
     return (*paths, *FILE_ONLY) if file_only else tuple(paths)
 
 
+#: Removed file keys whose replacement has another shape (ADR-108 D5).
+_REMOVED_FILE_KEYS = {"LLAMACPP_SERVER_MODEL": "answer.model"}
+
+
 def _replacement(env_name: str) -> str | None:
     """Return the file key that replaced the retired environment name, if any."""
     from .legacy import _NEVER_SHIPPED_ALIASES, _RETIRED_ENV_VARS
 
+    if env_name in _REMOVED_FILE_KEYS:
+        return _REMOVED_FILE_KEYS[env_name]
     new = _RETIRED_ENV_VARS.get(env_name) or _NEVER_SHIPPED_ALIASES.get(env_name)
     return None if new is None else new.lower().replace("__", ".")
 

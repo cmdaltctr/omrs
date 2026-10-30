@@ -436,7 +436,7 @@ def test_an_optional_key_does_not_block_chat() -> None:
 @pytest.mark.usefixtures("installed")
 def test_openai_compatible_needs_an_address_and_a_model() -> None:
     assert reason(make_settings(), "openai_compatible") is None  # the default address is set
-    assert reason(make_settings(), "openai_compatible", " ") == "not-configured"
+    assert reason(make_settings(), "openai_compatible", " ") == "no-model"
     blank = make_settings(openai_compatible_base_url=" ")
     assert reason(blank, "openai_compatible") == "not-configured"
 
@@ -445,7 +445,7 @@ def test_openai_compatible_needs_an_address_and_a_model() -> None:
 def test_a_required_key_blocks_chat() -> None:
     assert reason(make_settings(), "anthropic") == "not-configured"
     assert reason(make_settings(anthropic_api_key=ANT_KEY), "anthropic") is None
-    assert reason(make_settings(anthropic_api_key=ANT_KEY), "anthropic", "") == "not-configured"
+    assert reason(make_settings(anthropic_api_key=ANT_KEY), "anthropic", "") == "no-model"
 
 
 def test_a_missing_package_is_not_installed(monkeypatch: pytest.MonkeyPatch) -> None:

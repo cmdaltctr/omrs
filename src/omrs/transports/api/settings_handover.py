@@ -44,6 +44,7 @@ from ...integrations.workspace_sqlite.settings import (
     CHAT_PROVIDER,
     KEY_SAVED_AT,
     MCP_HTTP_ENABLED,
+    PROVIDER_FIELD_IDS,
     UPLOAD_LIMIT_MIB,
     WEB_PORT,
     WorkspaceSettings,
@@ -98,10 +99,14 @@ def _plan() -> list[_Row]:
             if spec.kind == "secret":
                 secret_field = spec.settings_field
                 continue
+            if spec.id not in PROVIDER_FIELD_IDS:
+                continue  # added after the table stopped taking settings (ADR-087)
             kind = _INT if spec.kind == "int" else _TEXT
             rows.append(_Row(provider_key(provider, spec.id), spec.settings_field, kind))
         rows.append(_Row(provider_key(provider, KEY_SAVED_AT), secret_field, _KEY, provider))
     for spec in LLAMACPP_SERVER_FIELDS:
+        if spec.id not in PROVIDER_FIELD_IDS:
+            continue  # the Chat server choice was never stored in the table
         kind = _INT if spec.kind == "int" else _TEXT
         rows.append(_Row(provider_key("llamacpp", spec.id), spec.settings_field, kind))
     return rows

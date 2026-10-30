@@ -136,7 +136,7 @@ def test_entry_shape_and_config_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: P
     assert read_only["llamacpp"] == {
         "Embedding address": "http://llama.test:8080/v1",
         "Embedding model": "embed-gguf",
-        "Chat model": "chat-gguf",
+        "Text model (classification)": "chat-gguf",
     }
     assert read_only["openrouter"]["Address"] == OPENROUTER_BASE_URL
 
@@ -157,6 +157,8 @@ def test_url_field_shape_and_default_source(monkeypatch: pytest.MonkeyPatch) -> 
         "set": True,
         "last4": None,
         "state": None,
+        "group": None,
+        "follows": None,
     }
     assert field(entries["llamacpp"], "chat_url")["value"] == "http://llama.test:8081/v1"
 

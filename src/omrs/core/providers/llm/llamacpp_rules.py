@@ -64,7 +64,11 @@ LLAMACPP_SERVER_FIELDS: tuple[ConnectionField, ...] = (
         "server_binary", "Program path", "text", "llamacpp_server_binary", "LLAMACPP_SERVER_BINARY"
     ),
     ConnectionField(
-        "server_model", "Model", "text", "llamacpp_server_model", "LLAMACPP_SERVER_MODEL"
+        "chat_server",
+        "Who runs the Chat server",
+        "choice",
+        "llamacpp_chat_server",
+        "LLAMACPP_CHAT_SERVER",
     ),
     ConnectionField(
         "context_window",

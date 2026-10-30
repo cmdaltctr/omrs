@@ -36,13 +36,17 @@ FIELDS = {
 
 TEXT_FIELDS = {
     "llamacpp_server_binary": "LLAMACPP_SERVER_BINARY",
-    "llamacpp_server_model": "LLAMACPP_SERVER_MODEL",
 }
 
 
 @pytest.fixture(autouse=True)
 def folder(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
-    for variable in (*FIELDS.values(), *TEXT_FIELDS.values(), "LLAMACPP_IDLE_SLEEP_SECONDS"):
+    for variable in (
+        *FIELDS.values(),
+        *TEXT_FIELDS.values(),
+        "LLAMACPP_IDLE_SLEEP_SECONDS",
+        "LLAMACPP_CHAT_SERVER",
+    ):
         monkeypatch.delenv(variable, raising=False)
     root = tmp_path / "omrs-config"
     root.mkdir(mode=0o700)
@@ -360,10 +364,10 @@ def test_server_text_fields_take_the_config_file_and_do_not_lock(
 
 
 def test_a_saved_server_value_applies_unless_locked(tmp_path: Path) -> None:
-    saved = ProviderValues(values={"llamacpp_server_model": "org/name:Q8_0"})
-    assert apply_provider_values(build(tmp_path), saved).llamacpp_server_model == "org/name:Q8_0"
-    locked = build(tmp_path, "LLAMACPP_SERVER_MODEL=/env/m.gguf\n")
-    assert apply_provider_values(locked, saved).llamacpp_server_model == "/env/m.gguf"
+    saved = ProviderValues(values={"llamacpp_chat_server": "managed"})
+    assert apply_provider_values(build(tmp_path), saved).llamacpp_chat_server == "managed"
+    locked = build(tmp_path, "LLAMACPP_CHAT_SERVER=external\n")
+    assert apply_provider_values(locked, saved).llamacpp_chat_server == "external"
 
 
 def test_server_values_never_reach_effective_settings(tmp_path: Path) -> None:

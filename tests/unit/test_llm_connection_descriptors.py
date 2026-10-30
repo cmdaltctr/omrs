@@ -51,6 +51,19 @@ def test_only_llamacpp_and_ollama_declare_a_model_source() -> None:
     }
 
 
+def test_only_the_local_providers_have_no_default_answer_model() -> None:
+    """Their only model setting classifies documents (ADR-108 D3, D14)."""
+    flags = {name: d.default_answer_model for name, d in registry.describe_all().items()}
+    assert flags == {name: name not in ("llamacpp", "ollama") for name in PROVIDERS}
+    assert ConnectionDescriptor.__dataclass_fields__["default_answer_model"].default is True
+
+
+def test_only_llamacpp_checks_the_model_list_in_the_chat_test() -> None:
+    flags = {name: d.test_checks_model_list for name, d in registry.describe_all().items()}
+    assert flags == {name: name == "llamacpp" for name in PROVIDERS}
+    assert ConnectionDescriptor.__dataclass_fields__["test_checks_model_list"].default is False
+
+
 def test_a_descriptor_has_no_model_source_by_default() -> None:
     descriptor = registry.describe_all()["openrouter"]
     assert ConnectionDescriptor.__dataclass_fields__["model_source"].default is None
@@ -97,6 +110,25 @@ def test_test_targets_follow_the_design() -> None:
     assert openrouter.urls == ("https://openrouter.ai/api/v1/key",)
     assert openrouter.headers == {"Authorization": f"Bearer {SECRET}"}
     assert SECRET not in repr(openrouter)
+
+
+def test_the_llamacpp_test_holds_the_classification_address_once() -> None:
+    targets = registry.describe_all()["llamacpp"].test_targets
+    separate = make_settings(
+        llamacpp_embed_url="http://llama.test:8080/v1",
+        llamacpp_chat_url="http://llama.test:8081/v1",
+        llamacpp_classify_url="http://llama.test:9931/v1",
+    )
+    assert targets(separate).urls == (
+        "http://llama.test:8080/v1/models",
+        "http://llama.test:8081/v1/models",
+        "http://llama.test:9931/v1/models",
+    )
+    following = make_settings(
+        llamacpp_embed_url="http://llama.test:8080/v1",
+        llamacpp_chat_url="http://llama.test:8081/v1",
+    )
+    assert len(targets(following).urls) == 2
 
 
 def test_openrouter_without_a_key_has_no_target() -> None:

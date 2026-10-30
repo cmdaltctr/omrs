@@ -32,9 +32,11 @@ from ....compose_providers import provider_settings as _provider_settings
 from ....config.settings_file_write import SettingsFileError
 from ....core.answer.settings import REASONING_LEVEL_PATTERN
 from ....core.providers.llm import registry as llm_registry
+from ..connection_probe import list_models
 from ..engine_access import ReadScope, RuntimeDep, admitted
 from ..errors import error_response
 from ..lifespan import WebRuntime
+from ..llamacpp_chat_rule import chat_choice_refusal
 from ..provider_state import EngineRefused
 from ..settings_store import refusal_response
 from .chat_reasoning import CHAT_LEVEL, level_changes, level_lock_response, level_view
@@ -138,7 +140,11 @@ def _not_ready_reason(settings: Any, provider: str, model: str) -> str | None:
         and not str(getattr(settings, field.settings_field, "")).strip()
         for field in descriptor.fields
     )
-    if keys_missing or not model.strip() or not descriptor.test_targets(settings).urls:
+    if keys_missing:
+        return "not-configured"
+    if not model.strip():
+        return "no-model"
+    if not descriptor.test_targets(settings).urls:
         return "not-configured"
     return None
 
@@ -213,7 +219,7 @@ async def get_chat_settings(_: ReadScope, runtime: RuntimeDep) -> Response:
 
 @router.put("/settings/chat", operation_id="setChatSettings")
 async def set_chat_settings(
-    _: ManageScope,
+    principal: ManageScope,
     runtime: RuntimeDep,
     body: Annotated[ChatSaveBody | None, Body()] = None,
 ) -> Response:
@@ -224,8 +230,9 @@ async def set_chat_settings(
     `reasoning`, or no body, clears the choice and its level. The Engine uses
     the choice from the next answer. 400 for an unknown provider, a bad model
     name or a bad level; 409 when the environment sets what the body writes,
-    the file changed since `revision`, or the Engine refuses it. The answer
-    carries the new `revision`.
+    the file changed since `revision`, or the Engine refuses it. While OMRS runs
+    the llama.cpp Chat server, a llama.cpp choice needs `credentials` (403) and a
+    model that passes the model rule (400). The answer carries the new `revision`.
     """
     body = body or ChatSaveBody()
     choice = None
@@ -252,6 +259,10 @@ async def set_chat_settings(
             and (locked := level_lock_response(settings, CHAT_LEVEL)) is not None
         ):
             return locked
+        if choice is not None and (
+            refusal := chat_choice_refusal(settings.llamacpp_chat_server, *choice, principal.scopes)
+        ):
+            return error_response(*refusal)
         changes: dict[str, str | None] = {}
         if writes_choice:
             provider, model = choice if choice is not None else (None, None)
@@ -302,6 +313,27 @@ def reason_for(exc: BaseException) -> str:
     return "failed"
 
 
+async def _listed_reason(candidate: Any, provider: str, model: str) -> str | None:
+    """Return why the server's model list refuses *model*, or ``None`` (ADR-108 D7).
+
+    Only a provider whose descriptor sets ``test_checks_model_list`` is read, and
+    only while the llama.cpp Chat server is one the user runs: OMRS's own server
+    loads the Chat model by rule. A list that cannot be read gives its own reason.
+    """
+    descriptor = llm_registry.describe(provider)
+    if descriptor is None or not descriptor.test_checks_model_list:
+        return None
+    if getattr(candidate, "llamacpp_chat_server", "external") == "managed":
+        return None
+    target = descriptor.models_target(candidate)
+    listed = await list_models(target.urls, target.headers, descriptor.parse_models)
+    if not listed["reachable"]:
+        return str(listed["reason"])
+    if listed["truncated"] or model in listed["models"]:
+        return None
+    return "model-not-listed"
+
+
 async def _run_test(settings: Any, provider: str, model: str) -> dict[str, Any]:
     started = time.monotonic()
 
@@ -320,6 +352,8 @@ async def _run_test(settings: Any, provider: str, model: str) -> dict[str, Any]:
     )
     if (reason := _not_ready_reason(candidate, provider, model)) is not None:
         return result(False, "not-configured" if reason == "unknown-provider" else reason)
+    if (reason := await _listed_reason(candidate, provider, model)) is not None:
+        return result(False, reason)
     try:
         async with asyncio.timeout(TEST_TIMEOUT_SECONDS):
             build = await run_in_threadpool(llm_registry.get, provider)

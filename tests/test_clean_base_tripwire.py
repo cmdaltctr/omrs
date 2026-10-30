@@ -218,7 +218,11 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # no fastapi) and model_download_job (1, needs fastapi).
 # +1 (2026-10-29, Xet progress from network bytes, by test-ID diff, 1 renamed):
 # download_files network cap case. No fastapi needed.
-_BASE_EXECUTED = 9444
+# +71 (2026-10-29, separate-local-chat-and-classification, by test-ID diff, 85 added,
+# 14 removed or replaced): roles, view, settings file, resolver, retired server model,
+# judge, runtime list and descriptors (48, no fastapi); chat settings, chat test list,
+# configuration save, connections and llama.cpp server routes (23, need fastapi).
+_BASE_EXECUTED = 9515
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -547,7 +551,9 @@ if not _has_qwen_tokenizer:
 # and test_web_model_downloads.py (82).
 # +1 (2026-10-29, review issues): test_web_model_downloads.py (83).
 # +1 (2026-10-29, Xet stall fix): test_model_download_job.py (37).
-_WEB_EXTRA_CASES = 1786
+# +19 (2026-10-29, separate-local-chat-and-classification, measured by the floor job,
+# which ran 4 of the 23 new route cases without fastapi).
+_WEB_EXTRA_CASES = 1805
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)

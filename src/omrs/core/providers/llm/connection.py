@@ -17,6 +17,10 @@ from typing import Any, Literal
 
 from omrs.core.providers.model_sources import ModelSourceKind
 
+#: The block of a provider card that shows a value (ADR-108 D8). ``None`` puts it
+#: above the blocks. Only the llama.cpp card sets a group.
+CardGroup = Literal["embeddings", "metadata", "answers"]
+
 
 @dataclass(frozen=True)
 class ConnectionField:
@@ -27,8 +31,8 @@ class ConnectionField:
         label: Short label for the card.
         kind: ``url`` for an address, ``secret`` for an API key, ``int`` for a
             whole number (``minimum`` and ``maximum`` bound it). ``text`` is
-            free text; only the managed llama.cpp server uses it, outside any
-            provider descriptor.
+            free text and ``choice`` one of a fixed set of names; only the
+            managed llama.cpp server uses them, outside any provider descriptor.
         settings_field: Name of the ``Settings`` field that holds the value.
         env_var: Environment variable that sets the value.
         minimum: Smallest allowed value of an ``int`` field.
@@ -36,24 +40,30 @@ class ConnectionField:
         required: Whether Chat needs a value here to be ready. A secret
             field that is not required (a local server needs no key) does
             not block Chat while empty.
+        group: The card block that shows the field, or ``None``.
+        follows: The id of the field whose value applies while this one is
+            blank, for example ``chat_url`` for the classification address.
     """
 
     id: str
     label: str
-    kind: Literal["url", "secret", "int", "text"]
+    kind: Literal["url", "secret", "int", "text", "choice"]
     settings_field: str
     env_var: str
     required: bool = True
     minimum: int | None = None
     maximum: int | None = None
+    group: CardGroup | None = None
+    follows: str | None = None
 
 
 @dataclass(frozen=True)
 class ReadOnlyValue:
-    """A labelled value the card shows but the user cannot edit here."""
+    """A labelled value the card shows but the user cannot edit here, and its card block."""
 
     label: str
     value: str
+    group: CardGroup | None = None
 
 
 @dataclass(frozen=True)
@@ -113,6 +123,12 @@ class ConnectionDescriptor:
             provider: ``huggingface-gguf`` (llama.cpp) or ``ollama-pull``
             (Ollama). ``None`` means the provider has no source, so its card shows
             no Get a model panel and the download routes refuse it.
+        default_answer_model: Whether the provider has a model setting of its
+            own that an empty judge model may use. ``False`` (llama.cpp, whose
+            only model setting is the Text model for classification) means an
+            empty Chat or judge model is refused, never filled in (ADR-108 D3).
+        test_checks_model_list: Whether the Chat test reads ``models_target``
+            first and refuses a model the server does not list (ADR-108 D7).
     """
 
     display_name: str
@@ -127,6 +143,8 @@ class ConnectionDescriptor:
     reasoning_levels: ProviderLookup | None = None
     credit: ProviderLookup | None = None
     model_source: ModelSourceKind | None = None
+    default_answer_model: bool = True
+    test_checks_model_list: bool = False
 
 
 def join_url(base: str, path: str) -> tuple[str, ...]:

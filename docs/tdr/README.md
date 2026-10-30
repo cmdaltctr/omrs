@@ -67,6 +67,7 @@ architecture), see the [ADR index](../adr/).
 | 039 | [Tests waited on LLM servers that were not running, and the tripwire ran the suite twice](039-tests-waited-on-llm-servers-that-were-not-running-and-the-tripwire-ran-the-suite-twice.md) | Accepted | 2026-10-25 |
 | 040 | [LanceDB writer processes crashed at interpreter exit on the floor jobs](040-lancedb-writer-processes-crashed-at-interpreter-exit-on-the-floor-jobs.md) | Accepted | 2026-10-25 |
 | 041 | [uv tool install ignores uv.lock, so the live app drifted from the lock](041-uv-tool-install-ignores-uv-lock-so-the-live-app-drifted-from-the-lock.md) | Accepted | 2026-10-26 |
+| 042 | [Browser check at fixed widths without Chrome](042-browser-check-at-fixed-widths-without-chrome.md) | Proposed | 2026-10-29 |
 
 ## Status values
 

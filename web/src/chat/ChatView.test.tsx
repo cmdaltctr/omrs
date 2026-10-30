@@ -367,6 +367,13 @@ describe("Chat model status", () => {
     expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
   });
 
+  it("says Chat has no model chosen for the reason no-model", async () => {
+    setup({ "GET /v1/settings/chat": () => ({ ...NOT_READY, provider: "llamacpp", model: "", reason: "no-model" }) });
+    const notice = await screen.findByRole("alert");
+    expect(notice).toHaveTextContent("Chat has no model chosen.");
+    expect(within(notice).getByRole("link", { name: "Connect a model" })).toHaveAttribute("href", "#/settings/chat");
+  });
+
   it("says answering is turned off for the reason disabled, with no server text", async () => {
     setup({ "GET /v1/settings/chat": () => ({ ...NOT_READY, enabled: false, reason: "disabled", detail: "ANSWER__ENABLED=false in /srv/.env" }) });
     const notice = await screen.findByRole("alert");

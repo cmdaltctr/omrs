@@ -151,5 +151,11 @@ def test_stored_field_ids_match_the_provider_descriptors() -> None:
     from omrs.core.providers.llm.llamacpp_rules import LLAMACPP_SERVER_FIELDS
 
     managed_server_ids = {f.id for f in LLAMACPP_SERVER_FIELDS}  # not a provider descriptor
-    assert PROVIDER_FIELD_IDS == url_ids | managed_server_ids | {KEY_SAVED_AT}
+    # The table stopped taking settings at ADR-087, so the list is frozen: fields added
+    # since then were never stored, and the retired server model may still be in an
+    # old table (ADR-108 D5).
+    never_stored = {"classify_url", "chat_server"}
+    assert PROVIDER_FIELD_IDS == (
+        url_ids | managed_server_ids | {KEY_SAVED_AT} | {"server_model"}
+    ) - (never_stored)
     assert not secret_ids & PROVIDER_FIELD_IDS

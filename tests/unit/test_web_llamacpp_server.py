@@ -29,6 +29,7 @@ from tests.unit.test_web_openapi_conformance_support import (  # noqa: E402
     ContractChecker,
 )
 
+from omrs.core.answer.settings import AnswerSettings  # noqa: E402
 from omrs.transports.api import security  # noqa: E402
 from omrs.transports.api.llamacpp_server import LlamacppServer  # noqa: E402
 
@@ -58,7 +59,7 @@ class Rig:
         return self.client.post(f"{URL}/{action}", headers=ORIGIN)
 
     def save_all(self, **extra: Any) -> None:
-        body = {"binary": str(self.program.path), "model": str(self.model), "context_window": 4096}
+        body = {"binary": str(self.program.path), "context_window": 4096}
         response = self.put({**body, **extra})
         assert response.status_code == 200, response.text
 
@@ -79,6 +80,11 @@ def rig(harness: Any, tmp_path: Path):
         model.write_bytes(b"GGUF")
         port = free_port()
         overrides.setdefault("llamacpp_chat_url", f"http://127.0.0.1:{port}/v1")
+        # OMRS runs the Chat server and loads the Chat model (ADR-108 D5).
+        overrides.setdefault("llamacpp_chat_server", "managed")
+        overrides.setdefault(
+            "answer", AnswerSettings(enabled=True, provider="llamacpp", model=str(model))
+        )
         with harness(**overrides) as h:
             manager = LlamacppServer(
                 tmp_path / "ws" / "llamacpp-server.log",
@@ -113,7 +119,7 @@ def test_the_default_status(rig: Any) -> None:
             False,
         )
         saved = body["saved"]
-        assert set(saved) == {"binary", "model", "context_window", "idle_sleep"}
+        assert set(saved) == {"binary", "chat_server", "context_window", "idle_sleep"}
         assert (saved["binary"]["value"], saved["binary"]["source"]) == ("", "default")
         window = saved["context_window"]
         assert (window["value"], window["source"], window["locked"]) == (16384, "default", False)
@@ -139,21 +145,18 @@ def test_save_all_three_then_read_them_with_source_config_file(rig: Any) -> None
         assert '"llamacpp_context_window": 4096' in text
         saved = r.get()["saved"]
         assert saved["binary"]["value"] == str(r.program.path)
-        assert saved["model"]["value"] == str(r.model)
         assert saved["context_window"]["value"] == 4096
-        assert {saved[k]["source"] for k in ("binary", "model", "context_window")} == {
-            "config-file"
-        }
+        assert {saved[k]["source"] for k in ("binary", "context_window")} == {"config-file"}
 
 
 def test_a_null_clears_a_saved_value(rig: Any) -> None:
     with rig() as r:
         r.save_all()
-        assert r.put({"model": None}).status_code == 200
+        assert r.put({"binary": None}).status_code == 200
         saved = r.get()["saved"]
-        assert (saved["model"]["value"], saved["model"]["source"]) == ("", "default")
-        assert saved["binary"]["source"] == "config-file"
-        assert "llamacpp_server_model" not in r.h.file_text()
+        assert (saved["binary"]["value"], saved["binary"]["source"]) == ("", "default")
+        assert saved["context_window"]["source"] == "config-file"
+        assert "llamacpp_server_binary" not in r.h.file_text()
 
 
 @pytest.mark.parametrize(
@@ -170,28 +173,10 @@ def test_a_bad_program_is_400_and_saves_nothing(rig: Any, bad: str) -> None:
         assert r.get()["saved"]["binary"]["source"] == "default"
 
 
-@pytest.mark.parametrize(
-    "bad", ["--api-key", "-m", "a b", "zz-marker/", "../zz-marker", "/no/such/model.gguf", ""]
-)
-def test_a_bad_model_is_400_and_saves_nothing(rig: Any, bad: str) -> None:
-    with rig() as r:
-        response = r.put({"model": bad})
-        assert response.status_code == 400
-        assert "gguf" in response.json()["message"]
-        assert bad == "" or bad not in response.json()["message"]
-        assert r.get()["saved"]["model"]["source"] == "default"
-
-
 def test_an_oversize_value_is_400(rig: Any) -> None:
     with rig() as r:
         assert r.put({"model": "x" * 3000}).status_code == 400
         assert r.put({"binary": "/" + "x" * 3000}).status_code == 400
-
-
-def test_hugging_face_ids_are_saved(rig: Any) -> None:
-    with rig() as r:
-        assert r.put({"model": "Qwen/Qwen3-0.6B-GGUF:Q8_0"}).status_code == 200
-        assert r.get()["saved"]["model"]["value"] == "Qwen/Qwen3-0.6B-GGUF:Q8_0"
 
 
 @pytest.mark.parametrize("bad", [1000, 2047, 262145, "abc", 16384.5, True])
@@ -223,7 +208,7 @@ def test_an_empty_body_is_400(rig: Any) -> None:
     ("field", "variable", "body"),
     [
         ("llamacpp_server_binary", "LLAMACPP_SERVER_BINARY", {"binary": "{program}"}),
-        ("llamacpp_server_model", "LLAMACPP_SERVER_MODEL", {"model": "{model}"}),
+        ("llamacpp_chat_server", "LLAMACPP_CHAT_SERVER", {"chat_server": "managed"}),
         ("llamacpp_context_window", "LLAMACPP_CONTEXT_WINDOW", {"context_window": 4096}),
     ],
 )
@@ -238,7 +223,7 @@ def test_an_environment_value_locks_the_field_and_names_the_variable(
         response = r.put(sent)
         assert response.status_code == 409
         assert variable in response.json()["message"]
-        key = {"binary": "binary", "model": "model", "context_window": "context_window"}
+        key = {"binary": "binary", "chat_server": "chat_server", "context_window": "context_window"}
         entry = r.get()["saved"][key[next(iter(body))]]
         assert (entry["locked"], entry["source"]) == (True, "env")
 
@@ -297,16 +282,16 @@ def test_a_bearer_token_never_writes_or_controls(
         assert response.status_code == 403
 
 
-def test_changing_the_program_or_model_needs_the_credentials_scope(
+def test_changing_the_program_or_the_chat_server_needs_the_credentials_scope(
     rig: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     with rig() as r:
         monkeypatch.setattr(security, "SESSION_SCOPES", security.SESSION_SCOPES - {"credentials"})
-        assert r.put({"model": str(r.model)}).status_code == 403
+        assert r.put({"chat_server": "managed"}).status_code == 403
         assert r.put({"binary": str(r.program.path)}).status_code == 403
-        assert r.put({"context_window": 8192, "model": str(r.model)}).status_code == 403
+        assert r.put({"context_window": 8192, "chat_server": "external"}).status_code == 403
         saved = r.get()["saved"]
-        assert (saved["binary"]["source"], saved["model"]["source"]) == ("default", "default")
+        assert (saved["binary"]["source"], saved["chat_server"]["source"]) == ("default", "default")
         assert saved["context_window"]["source"] == "default"
         assert r.put({"context_window": 8192}).status_code == 200
         assert r.post("stop").status_code == 200

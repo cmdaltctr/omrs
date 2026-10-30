@@ -149,6 +149,37 @@ describe("Chat section", () => {
     expect(server.find("PUT", "/v1/settings/chat")).toHaveLength(0);
   });
 
+  it("empties the model name when the provider changes, keeps Save disabled and asks for a model", async () => {
+    const { user, server } = await openChat({ "GET /v1/settings/chat": () => CHAT_READY });
+    await edit(user);
+    expect(within(section()).queryByText("Choose a model for this provider.")).toBeNull();
+    await pick(user, "Chat provider and model", "llama.cpp");
+    const model = within(section()).getByRole("textbox", { name: "Model name" });
+    expect(model).toHaveValue("");
+    expect(within(section()).getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(within(section()).getByText("Choose a model for this provider.")).toBeInTheDocument();
+    await user.type(model, "{Enter}");
+    expect(server.find("PUT", "/v1/settings/chat")).toHaveLength(0);
+    await user.type(model, "Qwen/Qwen3-4B-GGUF:Q4_K_M");
+    expect(within(section()).getByRole("button", { name: "Save" })).toBeEnabled();
+    expect(within(section()).queryByText("Choose a model for this provider.")).toBeNull();
+  });
+
+  it.each([
+    ["model-not-listed", "The server you run does not list this model. Use List models to pick a name."],
+    ["no-model", "No model was chosen, so nothing was sent."],
+  ] as const)("shows a plain sentence for the Test reason %s", async (reason, sentence) => {
+    const { user } = await openChat({
+      "GET /v1/settings/chat": () => CHAT_READY,
+      "POST /v1/settings/chat/test": () => ({ status: "ok", ok: false, reason, elapsed_ms: 12 }),
+    });
+    await edit(user);
+    await user.click(within(section()).getByRole("button", { name: "Test" }));
+    const result = await within(section()).findByRole("status");
+    expect(within(result).getByText(reason)).toHaveAttribute("data-slot", "badge");
+    expect(result).toHaveTextContent(sentence);
+  });
+
   it("saves a typed model name, closes the form and shows the choice and source the server returns", async () => {
     let state: ChatSettings = UNSET;
     const { user, server } = await openChat({
@@ -305,6 +336,16 @@ describe("Claim check judge", () => {
     expect(within(judge()).getByRole("button", { name: "Save" })).toBeDisabled();
     await user.type(within(judge()).getByRole("textbox", { name: "Model name" }), "   {Enter}");
     expect(server.find("PUT", "/v1/settings/judge")).toHaveLength(0);
+  });
+
+  it("empties the judge model when the provider changes and keeps Save disabled", async () => {
+    const { user } = await openJudge({ "GET /v1/settings/judge": () => JUDGE_SAVED });
+    await user.click(within(judge()).getByRole("button", { name: "Edit claim check judge" }));
+    expect(within(judge()).getByRole("textbox", { name: "Model name" })).toHaveValue("openai/gpt-5-mini");
+    await pickInJudge(user, "Judge provider and model", "Ollama");
+    expect(within(judge()).getByRole("textbox", { name: "Model name" })).toHaveValue("");
+    expect(within(judge()).getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(within(judge()).getByText("Choose a model for this provider.")).toBeInTheDocument();
   });
 
   it("fills the judge model from List models, saves nothing until Save, then saves both as one unit", async () => {

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { json } from "../test/fakeDocumentsServer";
 import { startApp } from "../test/startApp";
 import { downloadStatus } from "./test/downloadFixtures";
-import { serverStatus, settingsServer } from "./test/fixtures";
+import { CHAT_READY, choiceStatus, serverStatus, settingsServer } from "./test/fixtures";
 
 const WITH_CREDENTIALS = { "GET /v1/session": () => ({ status: "ok", kind: "session", scopes: ["credentials", "files", "graph", "read", "run"], workspace: "/home/u/.omrs/workspace" }) };
 
@@ -17,37 +17,58 @@ const LLAMA_DONE = downloadStatus({
   bytes_total: 10,
   cache_folder: "~/.cache/huggingface/hub",
 });
-const OLD_MODEL = { model: { value: "old/model:Q2_K", source: "config-file" as const } };
-const RUNNING = serverStatus({ state: "running", pid_running: true, running_with: { context_window: 16384, model_kind: "hf" } }, OLD_MODEL);
+const CHAT_OLD = { ...CHAT_READY, provider: "llamacpp", model: "old/model:Q2_K" };
+const MANAGED_RUNNING = choiceStatus("managed", { state: "running", pid_running: true, running_with: { context_window: 16384, model_kind: "hf" }, chat_model: { provider: "llamacpp", model: "old/model:Q2_K", usable: true } });
+const MANAGED_STOPPED = choiceStatus("managed", { chat_model: { provider: "llamacpp", model: "old/model:Q2_K", usable: true } });
 
 async function open(handlers = {}, provider = "llama.cpp") {
-  const server = settingsServer(handlers);
+  const server = settingsServer({ "GET /v1/settings/chat": () => CHAT_OLD, ...handlers });
   startApp("#/settings/providers", server);
   await screen.findByRole("heading", { level: 3, name: provider });
   const panel = () => within(screen.getByRole("region", { name: provider })).getByRole("group", { name: "Get a model" });
   return { server, user: userEvent.setup(), panel };
 }
 
-describe("llama.cpp download finished, server run by omrs", () => {
-  it("saves the model value with Use this model, then offers the existing Restart", async () => {
-    const puts: unknown[] = [];
-    let status = RUNNING;
+describe("llama.cpp download finished, OMRS runs the Chat server", () => {
+  it("saves the model value as the llama.cpp Chat model with Use this model, then offers Restart", async () => {
+    let chat = CHAT_OLD;
+    let status = MANAGED_RUNNING;
     const restarts: number[] = [];
+    const { user, panel, server } = await open({
+      ...WITH_CREDENTIALS,
+      "GET /v1/model-downloads/current": () => LLAMA_DONE,
+      "GET /v1/settings/chat": () => chat,
+      "GET /v1/llamacpp/server": () => status,
+      "PUT /v1/settings/chat": (body: { model: string }) => {
+        chat = { ...CHAT_OLD, model: body.model };
+        status = { ...MANAGED_RUNNING, pending_restart: true, chat_model: { provider: "llamacpp", model: body.model, usable: true } };
+        return { status: "ok", revision: "r2" };
+      },
+      "POST /v1/llamacpp/server/restart": () => (restarts.push(1), MANAGED_RUNNING),
+    });
+    await user.click(await within(panel()).findByRole("button", { name: "Use this model" }));
+    await waitFor(() => expect(server.find("PUT", "/v1/settings/chat")).toHaveLength(1));
+    expect(server.find("PUT", "/v1/settings/chat")[0]?.body).toEqual({ provider: "llamacpp", model: "unsloth/Qwen3-4B-GGUF:Q4_K_M", revision: "r1" });
+    expect(server.find("PUT", "/v1/llamacpp/server")).toHaveLength(0);
+    expect(await within(panel()).findByText("Saved as the Chat model. The server loads it after a restart.")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("group", { name: "Local server" })).toHaveTextContent("Restart to apply"));
+    await user.click(within(panel()).getByRole("button", { name: "Restart server to load it" }));
+    expect(restarts).toHaveLength(1);
+    await waitFor(() => expect(within(panel()).queryByText("Saved as the Chat model. The server loads it after a restart.")).toBeNull());
+  });
+
+  it("offers Use this model while the server is stopped and keeps Restart disabled", async () => {
     const { user, panel } = await open({
       ...WITH_CREDENTIALS,
       "GET /v1/model-downloads/current": () => LLAMA_DONE,
-      "GET /v1/llamacpp/server": () => status,
-      "PUT /v1/llamacpp/server": (body: unknown) => {
-        puts.push(body);
-        return (status = serverStatus({ ...RUNNING, pending_restart: true }, { model: { value: "unsloth/Qwen3-4B-GGUF:Q4_K_M", source: "config-file" } }));
-      },
-      "POST /v1/llamacpp/server/restart": () => (restarts.push(1), RUNNING),
+      "GET /v1/llamacpp/server": () => MANAGED_STOPPED,
+      "PUT /v1/settings/chat": () => ({ status: "ok", revision: "r2" }),
     });
-    await user.click(await within(panel()).findByRole("button", { name: "Use this model" }));
-    expect(puts).toEqual([{ model: "unsloth/Qwen3-4B-GGUF:Q4_K_M", revision: "r1" }]);
-    await user.click(await within(panel()).findByRole("button", { name: "Restart server to load it" }));
-    expect(restarts).toHaveLength(1);
-    await waitFor(() => expect(within(panel()).queryByText("Saved. The server loads the new model after a restart.")).toBeNull());
+    const button = await within(panel()).findByRole("button", { name: "Use this model" });
+    await waitFor(() => expect(button).toBeEnabled());
+    expect(within(panel()).queryByRole("button", { name: "Refresh models" })).toBeNull();
+    await user.click(button);
+    expect(await within(panel()).findByRole("button", { name: "Restart server to load it" })).toBeDisabled();
   });
 
   it("shows the read error, not the own-server note, when the server status cannot be read", async () => {
@@ -57,37 +78,31 @@ describe("llama.cpp download finished, server run by omrs", () => {
     expect(within(panel()).queryByText(/Llama app/)).toBeNull();
   });
 
-  it("also offers Use this model while the server is starting", async () => {
-    const { panel } = await open({ ...WITH_CREDENTIALS, "GET /v1/model-downloads/current": () => LLAMA_DONE, "GET /v1/llamacpp/server": () => serverStatus({ state: "starting", pid_running: true }, OLD_MODEL) });
-    const button = await within(panel()).findByRole("button", { name: "Use this model" });
-    await waitFor(() => expect(button).toBeEnabled());
-  });
-
-  it("shows the credentials refusal, sends nothing and keeps the old model when the session lacks credentials", async () => {
-    const { server, panel } = await open({ "GET /v1/model-downloads/current": () => LLAMA_DONE, "GET /v1/llamacpp/server": () => RUNNING });
+  it("shows the credentials refusal, sends nothing and keeps the old Chat model when the session lacks credentials", async () => {
+    const { server, panel } = await open({ "GET /v1/model-downloads/current": () => LLAMA_DONE, "GET /v1/llamacpp/server": () => MANAGED_RUNNING });
     const button = await within(panel()).findByRole("button", { name: "Use this model" });
     expect(await within(panel()).findByText("A credentials session is needed to change this.")).toBeInTheDocument();
     expect(button).toBeDisabled();
-    expect(server.find("PUT", "/v1/llamacpp/server")).toHaveLength(0);
-    expect(screen.getByText("old/model:Q2_K")).toBeInTheDocument();
+    expect(server.find("PUT", "/v1/settings/chat")).toHaveLength(0);
+    expect(screen.getAllByText("old/model:Q2_K").length).toBeGreaterThan(0);
   });
 
-  it("shows one friendly line and keeps the old model when the server refuses the save", async () => {
+  it("shows one friendly line and keeps the old Chat model when the server refuses the save", async () => {
     const { user, panel } = await open({
       ...WITH_CREDENTIALS,
       "GET /v1/model-downloads/current": () => LLAMA_DONE,
-      "GET /v1/llamacpp/server": () => RUNNING,
-      "PUT /v1/llamacpp/server": () => json({ status: "error", message: "Needs credentials." }, 403),
+      "GET /v1/llamacpp/server": () => MANAGED_RUNNING,
+      "PUT /v1/settings/chat": () => json({ status: "error", message: "Needs credentials." }, 403),
     });
     await user.click(await within(panel()).findByRole("button", { name: "Use this model" }));
     expect(await within(panel()).findByRole("alert")).toBeInTheDocument();
-    expect(screen.getByText("old/model:Q2_K")).toBeInTheDocument();
+    expect(screen.getAllByText("old/model:Q2_K").length).toBeGreaterThan(0);
   });
 });
 
-describe("llama.cpp download finished, server not run by omrs", () => {
-  async function external() {
-    return open({ ...WITH_CREDENTIALS, "GET /v1/model-downloads/current": () => LLAMA_DONE, "GET /v1/llamacpp/server": () => serverStatus({ state: "stopped" }) });
+describe("llama.cpp download finished, the user runs the Chat server", () => {
+  async function external(state: "stopped" | "running" = "stopped") {
+    return open({ ...WITH_CREDENTIALS, "GET /v1/model-downloads/current": () => LLAMA_DONE, "GET /v1/llamacpp/server": () => serverStatus({ state }) });
   }
 
   it("names the cache folder and the Llama app note, and offers no Use this model", async () => {
@@ -96,6 +111,12 @@ describe("llama.cpp download finished, server not run by omrs", () => {
     expect(within(panel()).getByText(/The Llama app lists new models only when it starts, so quit and reopen it, then press Refresh models\./)).toBeInTheDocument();
     expect(within(panel()).queryByRole("button", { name: "Use this model" })).toBeNull();
     expect(within(panel()).getByRole("button", { name: "Refresh models" })).toBeInTheDocument();
+  });
+
+  it("follows the saved choice, not the server state, so a running server still gets the cache folder steps", async () => {
+    const { panel } = await external("running");
+    expect(await within(panel()).findByRole("button", { name: "Refresh models" })).toBeInTheDocument();
+    expect(within(panel()).queryByRole("button", { name: "Use this model" })).toBeNull();
   });
 
   it("reads the llama.cpp model list again on Refresh models and says whether the server lists the model", async () => {

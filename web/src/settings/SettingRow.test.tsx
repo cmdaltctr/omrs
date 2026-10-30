@@ -102,9 +102,9 @@ describe("SettingRow", () => {
   });
 
   it.each(["env", "dotenv"])("offers no Edit when the source is %s and names the variable", (source) => {
-    row({ source, detail: "LLAMACPP_SERVER_MODEL" });
+    row({ source, detail: "LLAMACPP_SERVER_BINARY" });
     expect(screen.queryByRole("button", { name: /^Edit/ })).not.toBeInTheDocument();
-    expect(screen.getByText(/LLAMACPP_SERVER_MODEL/)).toBeInTheDocument();
+    expect(screen.getByText(/LLAMACPP_SERVER_BINARY/)).toBeInTheDocument();
   });
 
   it("is read-only and says why when a reason is given", () => {

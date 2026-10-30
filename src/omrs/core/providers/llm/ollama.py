@@ -126,4 +126,6 @@ CONNECTION = ConnectionDescriptor(
     models_target=_tags,
     parse_models=lambda payload: models_from(payload, "models", "name"),
     model_source="ollama-pull",
+    # Its only model setting classifies documents, so it never answers or judges (ADR-108 D14).
+    default_answer_model=False,
 )

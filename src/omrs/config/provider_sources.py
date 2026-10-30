@@ -21,7 +21,7 @@ from pydantic_settings import PydanticBaseSettingsSource
 
 from ..core.settings import PROVIDER_ADDRESS_FIELDS, PROVIDER_SECRET_FIELDS
 from .provenance import SOURCE_ORDER, leaf_paths, merge_layers, split_environment
-from .rules import FILE_ONLY, SECRET_FIELDS, provider_of
+from .rules import ACCEPTED, FILE_ONLY, SECRET_FIELDS, _validate_provider_value, provider_of
 from .settings_file import SettingsFile, UserConfigSource, read_settings_file, setting_blocks
 from .user_config import INT_KEY_BOUNDS, SECRETS_DIR
 
@@ -30,8 +30,9 @@ if TYPE_CHECKING:
 
 #: Whole-number editable fields (the context windows), each with its range.
 PROVIDER_INT_FIELDS: tuple[str, ...] = tuple(INT_KEY_BOUNDS)
-#: Settings of the llama.cpp server that ``omrs web`` manages (program, model).
-PROVIDER_SERVER_FIELDS: tuple[str, ...] = ("llamacpp_server_binary", "llamacpp_server_model")
+#: Settings of the llama.cpp server that ``omrs web`` manages: the program and
+#: who runs the Chat server (ADR-108). The server loads the Chat model.
+PROVIDER_SERVER_FIELDS: tuple[str, ...] = ("llamacpp_server_binary", "llamacpp_chat_server")
 
 #: Editable provider fields, as ``Settings`` paths. ``answer.*`` live in the
 #: nested answer block: the Chat choice, the claim check judge choice and the
@@ -140,9 +141,13 @@ class ProviderSourceMixin(BaseModel):
     #: Idle seconds before the managed llama.cpp server frees its model
     #: (``--sleep-idle-seconds``). 0 turns sleep off.
     llamacpp_idle_sleep_seconds: int = Field(300, ge=0, le=86400)
-    #: Program and model of the managed llama.cpp server (empty means not set).
+    #: Program of the managed llama.cpp server (empty means not set).
     llamacpp_server_binary: str = ""
-    llamacpp_server_model: str = ""
+    #: Classification address; blank follows ``llamacpp_chat_url`` (ADR-108).
+    llamacpp_classify_url: str = ""
+    #: Who runs the llama.cpp Chat server: ``external`` (the Llama app or another
+    #: server you run) or ``managed`` (OMRS's own ``llama-server``).
+    llamacpp_chat_server: str = "external"
 
     #: Fields ``omrs.jsonc`` set (an ``env://`` key reference counts).
     config_file_fields: frozenset[str] = frozenset()
@@ -159,6 +164,13 @@ class ProviderSourceMixin(BaseModel):
     setting_sources: dict[str, str] = {}
     #: The user config folder in use, as a full path.
     user_config_dir: str = ""
+
+    @model_validator(mode="after")
+    def _check_chat_server(self) -> Settings:
+        _validate_provider_value(
+            self, "llamacpp_chat_server", ACCEPTED["llamacpp_chat_server"], "LLAMACPP_CHAT_SERVER"
+        )
+        return self  # type: ignore[return-value]
 
     @model_validator(mode="after")
     def _record_provider_sources(self) -> Settings:

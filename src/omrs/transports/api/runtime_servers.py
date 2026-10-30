@@ -16,6 +16,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 
+from ...core.settings import classification_url
 from .runtime_components import NOT_RUNNING, READY, UNCHECKED, UNKNOWN, RuntimeItem
 
 logger = logging.getLogger(__name__)
@@ -25,11 +26,13 @@ PROBE_TIMEOUT = 1.0
 OLLAMA_NAME = "Ollama"
 LLAMACPP_EMBED_NAME = "llama.cpp embedding server"
 LLAMACPP_CHAT_NAME = "llama.cpp chat server"
+LLAMACPP_CLASSIFY_NAME = "llama.cpp classification server"
 
 _PURPOSES = {
     OLLAMA_NAME: "Local embedding and chat models served by Ollama.",
     LLAMACPP_EMBED_NAME: "Local embedding model served by llama.cpp.",
     LLAMACPP_CHAT_NAME: "Local chat model served by llama.cpp.",
+    LLAMACPP_CLASSIFY_NAME: "Local classification model served by llama.cpp.",
 }
 
 
@@ -78,8 +81,12 @@ def _servers(settings: Any) -> list[tuple[str, str, str, tuple[str, ...]]]:
     llama = [key for key, backend in users.items() if backend == "llamacpp"]
     embed = tuple(key for key in llama if key == "embed_provider")
     chat = tuple(key for key in llama if key != "embed_provider")
+    classify_url = classification_url(settings)
+    separate = _bare(classify_url) != _bare(settings.llamacpp_chat_url)
+    if separate:  # the metadata user moves to its own item (ADR-108 D12)
+        chat = tuple(key for key in chat if key != "metadata_llm_provider")
     ollama_url = settings.ollama_base_url.strip().rstrip("/")
-    return [
+    servers = [
         (OLLAMA_NAME, ollama_url, f"{ollama_url}/api/version", ollama),
         (
             LLAMACPP_EMBED_NAME,
@@ -94,6 +101,14 @@ def _servers(settings: Any) -> list[tuple[str, str, str, tuple[str, ...]]]:
             chat,
         ),
     ]
+    if separate:
+        classify = tuple(key for key in llama if key == "metadata_llm_provider")
+        servers.append((LLAMACPP_CLASSIFY_NAME, classify_url, _health_url(classify_url), classify))
+    return servers
+
+
+def _bare(address: str) -> str:
+    return address.strip().rstrip("/")
 
 
 async def _probe(
@@ -115,7 +130,7 @@ async def _probe(
 
 
 async def local_server_items(settings: Any) -> list[RuntimeItem]:
-    """Probe Ollama and both llama.cpp addresses at the same time.
+    """Probe Ollama and the llama.cpp addresses at the same time.
 
     A failure outside one request (the client itself) gives ``unknown`` for
     every server, never an error response.
@@ -134,7 +149,7 @@ async def local_server_items(settings: Any) -> list[RuntimeItem]:
 
 # ── Provider readiness on two catalogue cards (design D2) ────────────────
 
-LLAMACPP_NAMES = (LLAMACPP_EMBED_NAME, LLAMACPP_CHAT_NAME)
+LLAMACPP_NAMES = (LLAMACPP_EMBED_NAME, LLAMACPP_CHAT_NAME, LLAMACPP_CLASSIFY_NAME)
 
 
 def llamacpp_readiness(items: list[RuntimeItem], settings: Any) -> dict[str, Any]:
@@ -146,6 +161,7 @@ def llamacpp_readiness(items: list[RuntimeItem], settings: Any) -> dict[str, Any
     addresses = {
         LLAMACPP_EMBED_NAME: settings.llamacpp_embed_url,
         LLAMACPP_CHAT_NAME: settings.llamacpp_chat_url,
+        LLAMACPP_CLASSIFY_NAME: classification_url(settings),
     }
     servers = [item for item in items if item.name in LLAMACPP_NAMES]
     relevant = [item for item in servers if item.used_by] or servers

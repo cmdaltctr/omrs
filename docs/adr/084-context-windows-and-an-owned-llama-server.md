@@ -5,6 +5,7 @@
 - **Deciders:** Dr Muhammad Aizat Bin Md Hawari
 - **Related:** [ADR-083](083-llm-provider-settings-in-the-web-workspace.md) (provider settings, sources and locks), TDR-036 (Ollama failures became an "Empty Response" answer)
 - **Change:** `openspec/changes/add-llm-provider-settings/` (design D11 and D12, task groups 17 and 18)
+- **Amended by:** [ADR-108](108-local-chat-and-classification-stay-apart.md) (decision 4: the model setting is retired and the Chat server choice is added)
 
 ## Context
 
@@ -20,6 +21,7 @@ Without a decision, Ollama keeps reserving the model maximum, and a llama.cpp wi
 2. **Embedding models are excluded.** An embedding window can change how text is cut, and so the vectors. ADR-083 decision 4 keeps embeddings fixed.
 3. **omrg owns at most one `llama-server`** (D12). `omrg web` starts it for Chat, keeps the process handle, and stops, restarts and reports only that process. It never looks up a process by name or port and never signals one it did not start. A server the user started stays safe. If the port is busy at start, the state is `failed` with `port-in-use`.
 4. **Four settings, in `omrg.jsonc` and the GUI.** The program path, the model (`.gguf` file or Hugging Face id), the context window (`llamacpp_context_window`, same range and default), the idle sleep (`llamacpp_idle_sleep_seconds`, default 300 seconds, 0 turns it off) and the port, which comes from `llamacpp_chat_url`. The user chose GUI editing of the program path and model on 2026-10-18, against the recommendation to keep them in `omrg.jsonc` only.
+   - *Amended by [ADR-108](108-local-chat-and-classification-stay-apart.md) (2026-10-29):* the model setting `llamacpp_server_model` is retired. The new setting `llamacpp_chat_server` (`external` or `managed`) says who runs the Chat server. With `managed`, the owned server loads the Chat model (`answer.model` with the provider `llamacpp`), which Settings > Chat sets. Decision 5 does not change. Its model rule and `credentials` scope now cover the Chat model while the choice is `managed`.
 5. **Guardrails on what can run.**
    - The program is an absolute path to an executable regular file named exactly `llama-server`, both as given and after links are resolved. It is checked at save and before every launch.
    - The model is an existing `.gguf` file or `org/name[:tag]`, and never starts with `-`.

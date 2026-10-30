@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { Connection, ConnectionList, ProviderField } from "../api/settings";
 import { json } from "../test/fakeDocumentsServer";
 import { startApp } from "../test/startApp";
-import { CONFIG_DIR, CONNECTIONS, LLAMACPP, OLLAMA, OPENROUTER, settingsServer, urlField } from "./test/fixtures";
+import { CONFIG_DIR, CONNECTIONS, LLAMACPP, OLLAMA, OPENROUTER, SERVER_MANAGED, settingsServer, urlField } from "./test/fixtures";
 
 const KEY = "sk-or-secret-1234567890-wxyz"; // gitleaks:allow
 
@@ -102,7 +102,7 @@ function card(name: string) {
 
 describe("Providers", () => {
   it("puts each field, the key and the read-only values of a card in their own mini card", async () => {
-    await openProviders();
+    await openProviders({ "GET /v1/llamacpp/server": () => SERVER_MANAGED });
     const inset = (element: HTMLElement) => element.closest("[data-slot='card-inset']");
     const ollama = card("Ollama");
     expect(inset(within(ollama).getByText("Address"))).not.toBeNull();
@@ -111,7 +111,7 @@ describe("Providers", () => {
     const openrouter = card("OpenRouter");
     expect(inset(within(openrouter).getByText(/Key set/))).not.toBeNull();
     const llamacpp = card("llama.cpp");
-    const server = await within(llamacpp).findByRole("heading", { level: 4, name: "Local server" });
+    const server = await within(llamacpp).findByRole("heading", { level: 5, name: "Local server" });
     const serverRows = server.closest("[data-slot='provider-extra']")!.querySelectorAll("[data-slot='card-inset']");
     expect(serverRows.length).toBeGreaterThan(1);
   });
@@ -123,14 +123,14 @@ describe("Providers", () => {
     expect(within(card("OpenRouter")).getByText("Cloud")).toHaveAttribute("data-slot", "badge");
     expect(within(card("Ollama")).getByText("Answers")).toBeInTheDocument();
     expect(within(card("Ollama")).queryByText("Embeddings")).toBeNull();
-    expect(within(card("llama.cpp")).getByText("Embeddings")).toBeInTheDocument();
+    expect(within(card("llama.cpp")).getAllByText("Embeddings").some((element) => element.getAttribute("data-slot") === "badge")).toBe(true);
   });
 
   it("keeps a card with an extra panel in one column, with the panel under the fields", async () => {
-    await openProviders();
+    await openProviders({ "GET /v1/llamacpp/server": () => SERVER_MANAGED });
     const llamacpp = card("llama.cpp");
     expect(llamacpp.className).not.toMatch(/col-span/);
-    const panel = await within(llamacpp).findByRole("heading", { level: 4, name: "Local server" });
+    const panel = await within(llamacpp).findByRole("heading", { level: 5, name: "Local server" });
     const extra = panel.closest("[data-slot='provider-extra']") as HTMLElement;
     expect(extra).not.toBeNull();
     expect(extra.className).not.toMatch(/border-l/);

@@ -4302,18 +4302,19 @@ paths:
           $ref: "#/components/responses/ServiceUnavailable"
     put:
       operationId: saveLlamacppServer
-      summary: Save the program, the model and the context window
+      summary: Save the program, the Chat server choice, the context window and the idle sleep
       description: >
-        Body keys `binary`, `model`, `context_window` and `idle_sleep`, all optional; a key
+        Body keys `binary`, `chat_server`, `context_window` and `idle_sleep`, all optional; a key
         that is absent stays as it is and `null` clears the saved value. No other
-        key is accepted. The program must be an absolute path to an executable
+        key is accepted; a body with `model` gets 400 with "Set the Chat model in Settings >
+        Chat." The program must be an absolute path to an executable
         file named exactly `llama-server`, both as given and after links are
-        resolved. The model must be an absolute path to an existing `.gguf`
-        file or a Hugging Face id `org/name[:tag]`, and never starts with `-`.
-        The context window is a whole number from 2,048 to 262,144. The idle
+        resolved. `chat_server` is `external` or `managed`. A change to `external` while the
+        owned server is starting or running gives 409 with the reason `server-running`, and the
+        server keeps running. The context window is a whole number from 2,048 to 262,144. The idle
         sleep is a whole number of seconds from 0 to 86,400; 0 sends no
         `--sleep-idle-seconds` flag. 400 names
-        the rule and never the value. Changing the program or the model needs
+        the rule and never the value. Changing the program or the Chat server choice needs
         the `credentials` scope of the browser session; 403 otherwise. 409 for
         a field set by the environment or `.env`, or when `omrs.jsonc` changed since the
         `revision` in the body. The values are written to `omrs.jsonc`. A running server
@@ -4343,7 +4344,7 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
-          $ref: "#/components/responses/Conflict"
+          $ref: "#/components/responses/LlamacppServerConflict"
         "500":
           $ref: "#/components/responses/InternalError"
         "503":
@@ -4354,15 +4355,17 @@ paths:
       operationId: startLlamacppServer
       summary: Start the llama.cpp server with the saved values
       description: >
-        Checks the program, the model and the chat address again, then starts
-        one process with a fixed argument list (`-m` or `-hf`, `--host
+        Checks the Chat server choice, the program, the Chat model and the chat address again,
+        then starts one process with a fixed argument list (`-m` or `-hf`, `--host
         127.0.0.1`, `--port`, `-c`). The port is the port of
         `llamacpp_chat_url`, which must be a loopback `http` URL. Returns at
         once with state `starting`; the state moves to `running` when
-        `/health` returns 200. A refusal is state `failed` with one fixed
-        reason (`not-configured`, `binary-invalid`, `model-invalid`,
-        `not-loopback` or `port-in-use`). A server that is already starting or
-        running is left alone. A server omrs did not start is never touched.
+        `/health` returns 200. The model is the Chat model in force (`answer.model` with the
+        provider `llamacpp`). With the Chat server choice `external` the route gives 409 with the
+        reason `external-server` and starts nothing. A refusal is state `failed` with one fixed
+        reason (`not-configured` when the Chat provider is not `llamacpp` or the model is empty,
+        `binary-invalid`, `model-invalid`, `not-loopback` or `port-in-use`). A server that is
+        already starting or running is left alone. A server omrs did not start is never touched.
       security:
         - sessionCookie: [manage]
       x-omrs-scopes: [manage]
@@ -4379,6 +4382,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/LlamacppServerConflict"
         "500":
           $ref: "#/components/responses/InternalError"
         "503":
@@ -4416,7 +4421,9 @@ paths:
     post:
       operationId: restartLlamacppServer
       summary: Stop the owned llama.cpp server and start it with the saved values
-      description: Stop, then start, as the two routes above do.
+      description: >
+        Stop, then start, as the two routes above do. With the Chat server choice `external`
+        the route gives 409 with the reason `external-server` and stops and starts nothing.
       security:
         - sessionCookie: [manage]
       x-omrs-scopes: [manage]
@@ -4433,6 +4440,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/LlamacppServerConflict"
         "500":
           $ref: "#/components/responses/InternalError"
         "503":
@@ -4726,7 +4735,10 @@ paths:
         level outside `^[A-Za-z0-9_-]{1,32}$`, and 409 when the environment or `.env` sets
         the choice (for a body that writes it) or `ANSWER__REASONING` sets the level (for a
         body that sends `reasoning`), `omrs.jsonc` changed since `revision`, or the Engine
-        refuses it. Browser session only.
+        refuses it. While the llama.cpp Chat server choice is `managed`, a body that chooses
+        `llamacpp` needs the `credentials` scope (403 otherwise) and a model that is an existing
+        `.gguf` file or a Hugging Face id (400 otherwise), because OMRS's own server loads it.
+        Browser session only.
       security:
         - sessionCookie: [manage]
       x-omrs-scopes: [manage]
@@ -5122,7 +5134,13 @@ paths:
         `mcp_http_enabled` apply at once; any other saved key shows
         `restart_pending` true and the source `config-file`, and `value` keeps
         the launch value. No message holds a submitted value. Session only: a
-        bearer credential gets 403.
+        bearer credential gets 403. While the llama.cpp Chat server choice is `managed`, a write
+        that makes the Chat choice `llamacpp` (by `answer.provider` or `answer.model`) needs the
+        `credentials` scope (403 otherwise) and a model that is an existing `.gguf` file or a
+        Hugging Face id (400 otherwise). `llamacpp_chat_server` is read-only here (400, "Set
+        this on the llama.cpp card."). A change of `llamacpp_server_binary`, a clear included,
+        needs the `credentials` scope (403 otherwise), and a new path must be an executable file
+        named `llama-server` (400 otherwise).
       security:
         - sessionCookie: [manage]
       x-omrs-scopes: [manage]
@@ -5511,6 +5529,16 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
+    LlamacppServerConflict:
+      description: >
+        The llama.cpp server route refused the request. `reason` `external-server` means the
+        Chat server choice is `external`; `server-running` means a change to `external` while
+        the owned server runs. A save refused for a locked field or a stale `revision` has no
+        `reason`.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/LlamacppServerRefused"
     ModelDownloadConflict:
       description: >
         `startModelDownload` refused a valid request. `reason` is `busy` (a
@@ -9951,7 +9979,8 @@ components:
     ProviderField:
       type: object
       additionalProperties: false
-      required: [id, label, kind, required, min, max, value, source, locked, lock_reason, set, last4, state]
+      required:
+        [id, label, kind, required, min, max, value, source, locked, lock_reason, set, last4, state, group, follows]
       properties:
         id:
           type: string
@@ -9960,6 +9989,19 @@ components:
         kind:
           type: string
           enum: [url, secret, int]
+        group:
+          type: [string, "null"]
+          enum: [embeddings, metadata, answers, null]
+          description: >
+            The card block that shows the field: `embeddings` (Embeddings), `metadata`
+            (Classification (metadata)) or `answers` (Chat). Null puts the field above the
+            blocks. Only the llama.cpp card sets a group.
+        follows:
+          type: [string, "null"]
+          description: >
+            The id of the field whose value applies while this field is not set, for example
+            `chat_url` for the llama.cpp Classification address. `value` then holds that
+            field's value and `source` is `default`. Null when the field follows nothing.
         min:
           type: [integer, "null"]
           description: Smallest allowed value of an `int` field; null for other kinds.
@@ -9996,12 +10038,16 @@ components:
     ProviderReadOnlyValue:
       type: object
       additionalProperties: false
-      required: [label, value]
+      required: [label, value, group]
       properties:
         label:
           type: string
         value:
           type: string
+        group:
+          type: [string, "null"]
+          enum: [embeddings, metadata, answers, null]
+          description: The card block that shows the value, as `ProviderField.group`.
 
     Connection:
       type: object
@@ -10187,7 +10233,10 @@ components:
           type: boolean
         reason:
           type: [string, "null"]
-          enum: [disabled, unknown-provider, not-installed, not-configured, null]
+          enum: [disabled, unknown-provider, not-installed, not-configured, no-model, null]
+          description: >
+            Why Chat is not ready. `no-model` means the provider has no model setting of its own
+            (llama.cpp) and `model` is empty: choose a Chat model.
         reasoning:
           type: string
           description: The saved reasoning level. `""` means the provider default.
@@ -10367,7 +10416,11 @@ components:
           type: boolean
         reason:
           type: [string, "null"]
-          pattern: "^(refused|timeout|unauthorised|not-installed|not-configured|empty-reply|failed|http-[0-9]{3})$"
+          pattern: "^(refused|timeout|unauthorised|not-installed|not-configured|no-model|model-not-listed|empty-reply|failed|http-[0-9]{3})$"
+          description: >
+            `no-model`: the provider needs a model and none was given. `model-not-listed`: the
+            llama.cpp server you run lists its models and the model is not one of them, so no
+            prompt was sent.
         elapsed_ms:
           type: integer
           minimum: 0
@@ -10483,10 +10536,13 @@ components:
           type: string
         kind:
           type: string
-          enum: [text, int]
+          enum: [text, int, choice]
+          description: "`choice` is the Chat server choice: `external` or `managed`."
         value:
           type: [string, integer]
-          description: The program path or model (empty when not set), or the context window.
+          description: >
+            The program path (empty when not set), the Chat server choice, the context window or
+            the idle sleep.
         min:
           type: [integer, "null"]
         max:
@@ -10503,7 +10559,19 @@ components:
       type: object
       additionalProperties: false
       required:
-        [status, revision, state, reason, exit_code, pid_running, running_with, pending_restart, saved]
+        [
+          status,
+          revision,
+          state,
+          reason,
+          exit_code,
+          pid_running,
+          running_with,
+          pending_restart,
+          saved,
+          chat_model,
+          shared_with_classification,
+        ]
       properties:
         status:
           type: string
@@ -10549,20 +10617,64 @@ components:
           description: What the live process was started with, or null when none is owned.
         pending_restart:
           type: boolean
-          description: The saved program, model, window or idle sleep differ from the live process.
+          description: >
+            The saved program, window or idle sleep, or the Chat model in force, differ from the
+            live process.
         saved:
           type: object
           additionalProperties: false
-          required: [binary, model, context_window, idle_sleep]
+          required: [binary, chat_server, context_window, idle_sleep]
           properties:
             binary:
               $ref: "#/components/schemas/LlamacppServerField"
-            model:
+            chat_server:
               $ref: "#/components/schemas/LlamacppServerField"
             context_window:
               $ref: "#/components/schemas/LlamacppServerField"
             idle_sleep:
               $ref: "#/components/schemas/LlamacppServerField"
+        chat_model:
+          type: object
+          additionalProperties: false
+          required: [provider, model, usable]
+          description: >
+            The Chat choice in force (`answer.provider`, `answer.model`). OMRS's own server loads
+            this model while the Chat server choice is `managed`.
+          properties:
+            provider:
+              type: string
+            model:
+              type: string
+            usable:
+              type: boolean
+              description: >
+                True when the provider is `llamacpp` and the model is an existing `.gguf` file or
+                a Hugging Face id.
+        shared_with_classification:
+          type: boolean
+          description: >
+            True when the choice is `managed` and classification uses the Chat address, so the
+            owned server answers classification with the Chat model.
+
+    LlamacppServerRefused:
+      type: object
+      additionalProperties: false
+      required: [status, message]
+      properties:
+        status:
+          type: string
+          enum: [error]
+        message:
+          type: string
+          description: A plain-English line.
+        reason:
+          type: string
+          enum: [external-server, server-running]
+          description: >
+            `external-server`: the Chat server choice is `external`, so OMRS starts nothing.
+            `server-running`: a change to `external` while the owned server is starting or
+            running; stop it first. Absent on a save refused for a locked field or a stale
+            `revision`.
 
     SaveLlamacppServerRequest:
       type: object
@@ -10575,6 +10687,18 @@ components:
         model:
           type: [string, "null"]
           maxLength: 2048
+          deprecated: true
+          description: >
+            Retired. A body that holds `model` gets 400 with "Set the Chat model in Settings >
+            Chat." OMRS's own server loads the Chat model.
+        chat_server:
+          type: [string, "null"]
+          enum: [external, managed, null]
+          maxLength: 16
+          description: >
+            Who runs the Chat server: `external` (the Llama app or another server you run) or
+            `managed` (OMRS's own llama-server). `null` clears the saved value, so `external`
+            applies.
         context_window:
           type: [integer, number, string, "null"]
           description: A whole number from 2,048 to 262,144 (or a string of digits).

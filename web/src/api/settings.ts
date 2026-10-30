@@ -27,6 +27,14 @@ export interface Health {
 export const CONNECTION_ROLES = ["embeddings", "answers", "metadata", "verification"] as const;
 export type ConnectionRole = (typeof CONNECTION_ROLES)[number];
 
+/**
+ * The block of a provider card that shows a field or a read-only value:
+ * `embeddings` (Embeddings), `metadata` (Classification (metadata)) or
+ * `answers` (Chat). Only the llama.cpp card sets one; `null` puts the value
+ * above the blocks.
+ */
+export type ProviderGroup = "embeddings" | "metadata" | "answers";
+
 /** Where a value comes from. `env` and `dotenv` lock it. A key also comes from `config-file`, `keychain`, `key-file` or `none`. */
 export type FieldSource = "env" | "dotenv" | "config-file" | "keychain" | "key-file" | "default" | "none";
 
@@ -34,6 +42,13 @@ export interface ProviderField {
   id: string;
   label: string;
   kind: "url" | "secret" | "int";
+  group: ProviderGroup | null;
+  /**
+   * The id of the field whose value applies while this one is not set, such as
+   * `chat_url` for the llama.cpp Classification address. `value` then holds that
+   * field's value and `source` is `default`. `null` when it follows nothing.
+   */
+  follows: string | null;
   /** Smallest allowed value of an `int` field; `null` for other kinds. */
   min: number | null;
   /** Largest allowed value of an `int` field; `null` for other kinds. */
@@ -57,6 +72,7 @@ export interface ProviderField {
 export interface ReadOnlyValue {
   label: string;
   value: string;
+  group: ProviderGroup | null;
 }
 
 export interface Connection {
@@ -138,7 +154,11 @@ export interface ChatSettings extends ReasoningSetting {
   lock_reason: string | null;
   enabled: boolean;
   ready: boolean;
-  /** `disabled`, `unknown-provider`, `not-installed` or `not-configured` when not ready. */
+  /**
+   * `disabled`, `unknown-provider`, `not-installed`, `not-configured` or
+   * `no-model` when not ready. `no-model`: the provider has no model setting of
+   * its own (llama.cpp) and `model` is empty.
+   */
   reason: string | null;
 }
 
@@ -184,7 +204,11 @@ export interface JudgeSettings extends ReasoningSetting {
 export interface ChatTestResult {
   status: "ok";
   ok: boolean;
-  /** `null` when ok; otherwise a fixed reason such as `timeout` or `empty-reply`. */
+  /**
+   * `null` when ok; otherwise a fixed reason such as `timeout`, `empty-reply`,
+   * `no-model` or `model-not-listed` (the llama.cpp server you run does not list
+   * the model, so no prompt was sent).
+   */
   reason: string | null;
   elapsed_ms: number;
 }

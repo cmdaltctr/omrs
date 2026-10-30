@@ -224,6 +224,23 @@ def test_a_bad_address_is_400_and_saves_nothing(harness: Any, bad: str) -> None:
         assert h.file_text() == ""
 
 
+def test_save_the_llamacpp_classification_address(harness: Any) -> None:
+    with harness() as h:
+        response = h.put("llamacpp", {"classify_url": "http://127.0.0.1:9931/v1"})
+        assert response.status_code == 200, response.text
+        field = h.field("llamacpp", "classify_url")
+        assert (field["value"], field["source"]) == ("http://127.0.0.1:9931/v1", "config-file")
+        assert '"llamacpp_classify_url": "http://127.0.0.1:9931/v1"' in h.file_text()
+
+
+def test_a_file_url_for_the_classification_address_is_400(harness: Any) -> None:
+    with harness() as h:
+        response = h.put("llamacpp", {"classify_url": "file:///etc/passwd"})
+        assert response.status_code == 400
+        assert "passwd" not in response.text
+        assert h.file_text() == ""
+
+
 def test_unknown_provider_and_field_are_404(harness: Any) -> None:
     with harness() as h:
         assert h.put("mystery", {"base_url": NEW_URL}).status_code == 404

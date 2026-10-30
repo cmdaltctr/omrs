@@ -60,7 +60,7 @@ export function isListed(models: string[], value: string): boolean {
   return models.includes(value) || models.includes(`${value}:latest`);
 }
 
-export const NEED_RESTART_LINE = "Saved. The server loads the new model after a restart.";
+export const NEED_RESTART_LINE = "Saved as the Chat model. The server loads it after a restart.";
 
 export const EXTERNAL_SERVER_NOTE =
   "Your own llama.cpp server must load this model. The Llama app lists new models only when it starts, so quit and reopen it, then press Refresh models.";

@@ -941,3 +941,41 @@ def test_build_verify_llm_local_alias_resolves_backend(
 
     assert calls["name"] == Settings().local_backend, "the local alias resolves to local_backend"
     assert calls["answer_model"] == "judge-m"
+
+
+def test_an_empty_llamacpp_judge_model_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A llama.cpp judge never borrows the Text model (classification) (ADR-108 D3)."""
+    import llama_index.llms.openai_like as module
+    from tests.unit.test_connection_summary import make_settings
+
+    built: list[Any] = []
+    monkeypatch.setattr(module, "OpenAILike", lambda **kwargs: built.append(kwargs))
+    block = AnswerBlock(verify_claims=True, verify_provider="llamacpp", verify_model="")
+    with pytest.raises(ValueError, match=r"Choose a judge model in Settings > Chat\."):
+        compose.build_verify_llm(make_settings(), answer_block=block)
+    assert built == []
+
+
+def test_an_empty_openrouter_judge_model_keeps_its_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    """OpenRouter keeps its documented default for an empty judge model."""
+    import llama_index.llms.openai_like as module
+    from tests.unit.test_connection_summary import make_settings
+
+    built: list[dict[str, Any]] = []
+    monkeypatch.setattr(module, "OpenAILike", lambda **kwargs: built.append(kwargs))
+    block = AnswerBlock(verify_claims=True, verify_provider="openrouter", verify_model="")
+    compose.build_verify_llm(make_settings(openrouter_api_key="sk-or-fake"), answer_block=block)
+    assert built[0]["model"] == "or-chat"
+
+
+def test_an_empty_ollama_judge_model_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An Ollama judge never borrows the classification model (ADR-108 D14)."""
+    import llama_index.llms.ollama as module
+    from tests.unit.test_connection_summary import make_settings
+
+    built: list[Any] = []
+    monkeypatch.setattr(module, "Ollama", lambda **kwargs: built.append(kwargs))
+    block = AnswerBlock(verify_claims=True, verify_provider="ollama", verify_model="")
+    with pytest.raises(ValueError, match=r"Choose a judge model in Settings > Chat\."):
+        compose.build_verify_llm(make_settings(), answer_block=block)
+    assert built == []

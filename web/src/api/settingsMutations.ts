@@ -5,6 +5,7 @@
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApi } from "./ApiProvider";
+import { llamacppServerKey } from "./llamacppServerHooks";
 import { queryKeys } from "./queries";
 import { currentRevision, settingsWritten } from "./settingsRevision";
 import {
@@ -99,6 +100,8 @@ function useRefreshProviders() {
       queryClient.invalidateQueries({ queryKey: queryKeys.connections() }),
       queryClient.invalidateQueries({ queryKey: queryKeys.chatSettings() }),
       queryClient.invalidateQueries({ queryKey: queryKeys.judgeSettings() }),
+      // An address save can flip `shared_with_classification` in the llama.cpp server status.
+      queryClient.invalidateQueries({ queryKey: llamacppServerKey }),
     ]);
   };
 }
@@ -142,6 +145,8 @@ export function useSetChatSettings() {
     mutationFn: (choice: ChatChoice | null) => setChatSettings(api, choice, options()),
     onSuccess: (response) => {
       remember(response);
+      // The llama.cpp server status holds the Chat model in force and whether a restart applies it.
+      void queryClient.invalidateQueries({ queryKey: llamacppServerKey });
       return queryClient.invalidateQueries({ queryKey: queryKeys.chatSettings() });
     },
   });
