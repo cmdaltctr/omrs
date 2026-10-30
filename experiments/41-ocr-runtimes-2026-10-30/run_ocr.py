@@ -194,8 +194,13 @@ def verify_gguf(plan: dict[str, Any], arm: str, base_url: str, command: str) -> 
     from omrs.core.experiment_records.record import RecordError
     from omrs.core.experiment_records.runtime_block import load_runtime_block
 
+    # The frozen plan carries a free-text "note" on each tolerance; the schema forbids extra keys.
+    runtime = {**plan["runtime"]}
+    runtime["tolerance"] = [
+        {k: v for k, v in t.items() if k != "note"} for t in runtime.get("tolerance", [])
+    ]
     try:
-        block = load_runtime_block(plan)
+        block = load_runtime_block({**plan, "runtime": runtime})
     except RecordError as exc:
         raise SystemExit(f"cannot run a GGUF arm: {exc}") from None
     mine = [m for m in block.models if m.role.startswith(arm + " ")]

@@ -5,7 +5,7 @@
   "date": "2026-10-30",
   "category": "runtime",
   "size": "Standard",
-  "status": "PLANNED",
+  "status": "ACTIVE",
   "superseded_by": null,
   "finding": "Not answered yet. Plan only. Question: can a llama.cpp GGUF arm replace the shipped OCR backend for dots.mocr or PaddleOCR-VL without losing quality? MLX arms are comparison arms only.",
   "purpose": "optimisation",
