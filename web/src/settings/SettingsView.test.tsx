@@ -101,10 +101,9 @@ describe("Appearance", () => {
     window.localStorage.setItem(PREFERENCES_KEY, JSON.stringify({ theme: "dark", lastCollection: null }));
     const { user } = await openSettings();
     const appearance = screen.getByRole("region", { name: "Appearance" });
-    const select = within(appearance).getByRole("combobox", { name: "Theme" });
-    expect(select).toHaveTextContent("Dark");
-    await user.click(select);
-    await user.click(await screen.findByRole("option", { name: "Light" }));
+    const modes = within(appearance).getByRole("group", { name: "Theme mode" });
+    expect(within(modes).getByRole("button", { name: "Dark" })).toHaveAttribute("aria-pressed", "true");
+    await user.click(within(modes).getByRole("button", { name: "Light" }));
     expect(document.documentElement.dataset.theme).toBe("light");
     const stored = JSON.parse(window.localStorage.getItem(PREFERENCES_KEY) ?? "{}") as { theme?: string };
     expect(stored.theme).toBe("light");

@@ -11,10 +11,15 @@ export function themeColorFor(scheme: "light" | "dark"): string {
  * Sets every theme-color meta. index.html carries one meta per colour scheme,
  * selected by a prefers-color-scheme media query, so the `system` theme follows
  * the operating system without a listener. A chosen theme sets both metas.
+ * `canvas` holds the canvas colour of the chosen light and dark themes.
  */
-export function applyThemeColor(doc: Pick<Document, "querySelectorAll">, theme: ThemePreference): void {
+export function applyThemeColor(
+  doc: Pick<Document, "querySelectorAll">,
+  theme: ThemePreference,
+  canvas: Record<"light" | "dark", string> = THEME_COLOURS,
+): void {
   for (const meta of doc.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
     const scheme = meta.getAttribute("media")?.includes("dark") ? "dark" : "light";
-    meta.content = themeColorFor(theme === "system" ? scheme : theme);
+    meta.content = canvas[theme === "system" ? scheme : theme];
   }
 }

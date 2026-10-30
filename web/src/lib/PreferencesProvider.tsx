@@ -1,10 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { applyTheme, readPreferences, updatePreferences, type Preferences, type ThemePreference } from "./preferences";
+import { applyAppearance, applyTheme, readPreferences, updatePreferences, type Preferences, type ThemePreference } from "./preferences";
 
 interface PreferencesState {
   preferences: Preferences;
   setTheme: (theme: ThemePreference) => void;
   setLastCollection: (name: string | null) => void;
+  /** Saves any appearance change: light or dark theme, fonts, text size. */
+  setAppearance: (change: Partial<Pick<Preferences, "lightTheme" | "darkTheme" | "uiFont" | "codeFont" | "textSize">>) => void;
 }
 
 const PreferencesContext = createContext<PreferencesState | null>(null);
@@ -13,6 +15,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   const [preferences, setPreferences] = useState<Preferences>(readPreferences);
 
   useEffect(() => applyTheme(preferences.theme), [preferences.theme]);
+  useEffect(() => applyAppearance(preferences), [preferences]);
 
   const change = useCallback((next: Partial<Preferences>) => setPreferences(updatePreferences(next)), []);
   const value = useMemo<PreferencesState>(
@@ -20,6 +23,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
       preferences,
       setTheme: (theme) => change({ theme }),
       setLastCollection: (lastCollection) => change({ lastCollection }),
+      setAppearance: (appearance) => change(appearance),
     }),
     [preferences, change],
   );
