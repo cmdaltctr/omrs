@@ -17,16 +17,17 @@
 
 ## 3. Conversions, pins and freeze
 
-- [ ] 3.1 Convert dots.mocr to GGUF bf16 plus bf16 mmproj at llama.cpp build 11941 (kept as the D3 diagnostic). Verify: the file loads and the smoke pages give output (OI-2), or the failure is recorded as a finding (arm D4 stops).
-- [ ] 3.1a Cross-check D4 against `lodrick-the-lafted/dots.mocr-gguf` Q8_0 with the same bf16 mmproj on the smoke pages (OI-9). Verify: outputs match, or the difference is recorded and resolved before the D4 run.
-- [ ] 3.2 Quantise dots.mocr to Q8_0. Verify: SHA-256 recorded.
-- [ ] 3.3 Download the official PaddleOCR-VL-1.6 GGUF (kept as the P3 diagnostic). Verify: 16-bit tensor type confirmed from the header (OI-3); SHA-256 recorded.
-- [ ] 3.4 Quantise the official PaddleOCR-VL-1.6 GGUF to Q8_0 with `llama-quantize`. Verify: SHA-256 recorded.
-- [ ] 3.5 Download the MLX 8-bit builds in `mlx_pins` (OI-4). Leave the 16-bit diagnostic builds until a diagnostic triggers. Verify: revision and SHA-256 match the pins; each build loads in `mlx-vlm`.
-- [ ] 3.6 Add the `runtime` block to `plan.json` with the real SHA-256 values and the pinned server flags (`-c`, `--image-min-tokens`, `--image-max-tokens`, `--temp 0`, `--mmproj`; P arms use `max_new_tokens` 4096, D arms 8192). Record any changed mmproj as a pinned file with its own SHA-256. Verify: `omrs experiments check` passes the block.
-- [ ] 3.7 Close OI-1, OI-2, OI-5, OI-6 and OI-7 (OI-11 is closed). Verify: each item answered in `plan.json`.
-- [ ] 3.8 Run the parity check on the smoke pages (`eq01` p2 and p3) for each 8-bit arm: image token grids against the baseline (D arms: at most one patch row or column of difference; P arms: the same per layout block). Verify: grids match, or the arm stops and a finding is recorded; a build that ignores `--image-min-tokens` or `--image-max-tokens` stops that arm (OI-10); the tolerance is not loosened.
-- [ ] 3.9 Freeze `plan.json` after the runtime block and pins (3.6), the closed items (3.7) and the parity check (3.8), before the first run. Verify: SHA-256 recorded in this file; a later setting change is a dated amendment.
+- [x] 3.1 Convert dots.mocr to GGUF bf16 plus bf16 mmproj at llama.cpp build 11941 (kept as the D3 diagnostic). Verify: the file loads and the smoke pages give output (OI-2), or the failure is recorded as a finding (arm D4 stops).
+- [x] 3.1a Cross-check D4 against `lodrick-the-lafted/dots.mocr-gguf` Q8_0 with the same bf16 mmproj on the smoke pages (OI-9). Verify: outputs match, or the difference is recorded and resolved before the D4 run.
+- [x] 3.2 Quantise dots.mocr to Q8_0. Verify: SHA-256 recorded.
+- [x] 3.3 Download the official PaddleOCR-VL-1.6 GGUF (kept as the P3 diagnostic). Verify: 16-bit tensor type confirmed from the header (OI-3); SHA-256 recorded.
+- [x] 3.4 Quantise the official PaddleOCR-VL-1.6 GGUF to Q8_0 with `llama-quantize`. Verify: SHA-256 recorded.
+- [x] 3.5 Download the MLX 8-bit builds in `mlx_pins` (OI-4). Leave the 16-bit diagnostic builds until a diagnostic triggers. Verify: revision and SHA-256 match the pins; each build loads in `mlx-vlm`.
+- [x] 3.6 Add the `runtime` block to `plan.json` with the real SHA-256 values and the pinned server flags (`-c`, `--image-min-tokens`, `--image-max-tokens`, `--temp 0`, `--mmproj`; P arms use `max_new_tokens` 4096, D arms 8192). Record any changed mmproj as a pinned file with its own SHA-256. Verify: `omrs experiments check` passes the block.
+- [x] 3.7 Close OI-1, OI-2, OI-5, OI-6 and OI-7 (OI-11 is closed). Verify: each item answered in `plan.json`.
+- [x] 3.8 Run the parity check on the smoke pages (`eq01` p2 and p3) for each 8-bit arm: image token grids against the baseline (D arms: at most one patch row or column of difference; P arms: the same per layout block). Verify: grids match, or the arm stops and a finding is recorded; a build that ignores `--image-min-tokens` or `--image-max-tokens` stops that arm (OI-10); the tolerance is not loosened.
+- [x] 3.9 Freeze `plan.json` after the runtime block and pins (3.6), the closed items (3.7) and the parity check (3.8), before the first run. Verify: SHA-256 recorded in this file; a later setting change is a dated amendment.
+  Frozen 2026-10-30. SHA-256 `8bef273844c21bb182ca32cbc3376f0a317175898abd5b65019702d3302ccd66` (rule in `plan.json` `freeze.sha256_of`).
 
 ## 4. Build the runners
 

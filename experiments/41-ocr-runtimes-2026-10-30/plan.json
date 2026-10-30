@@ -614,7 +614,17 @@
       "P_arms": "PaddleOCRVL.predict() accepts temperature and max_new_tokens (paddlex pipeline.py lines 784-788). Pass temperature 0 and max_new_tokens 4096, the P0 value (token_cap_rule)."
     },
     "mmproj_metadata_change": "If an mmproj file must change anyway, save the changed file as a pinned file with its own SHA-256 in the runtime block. Never edit a pinned file in place.",
-    "build_11941_flag_finding": "--image-min-tokens and --image-max-tokens have no effect on the dots_ocr and paddleocr projectors in build 11941. The mmproj metadata sets the limits. See OI-10."
+    "build_11941_flag_finding": "--image-min-tokens and --image-max-tokens have no effect on the dots_ocr and paddleocr projectors in build 11941. The mmproj metadata sets the limits. See OI-10.",
+    "measured_2026_10_30": {
+      "date": "2026-10-30",
+      "method": "Real servers on loopback (llama-server b11941 for D4 and P4; mlx_vlm.server for D2 and P2). Image tokens from /v1/chat/completions/input_tokens and usage.prompt_tokens; grids from the server debug log (llama.cpp) or the offline processor (MLX). No scoring.",
+      "source": "output/report_trackA.json, output/report_trackE.json, output/trackE/tables_trackE.md",
+      "D4": "PASS. eq01:2 and eq01:3 give grid 158x122 and 4,819 image tokens, equal to D0.",
+      "D2": "PASS. Both pages give 5,035 prompt tokens (4,819 image tokens), equal to D0 and D4.",
+      "P4": "36 of 39 blocks equal P0. Three differ on eq01:3 by 2 patches of 14 px, which is one merged 28 px cell: j7 display_formula 566x26 (6x114 to 6x112, 171 to 168 tokens); j11 and j17 formula_number 25x21 (24x28 to 22x28, 168 to 154 tokens). Cause: llama.cpp rounds at 28 px steps and PaddleX rounds differently at .5 and for edges under 28 px (output/report_trackD.json).",
+      "P2": "All 39 blocks equal P0 with the unmodified preprocessor_config.json (max_pixels 4,064,256). The cap only affects full-page images, which the P arms never send. No config copy is pinned.",
+      "reading_of_rule": "The tolerance 'at most one patch row or one patch column' is read in merged 28 px cells, the unit both resizers step in (operator decision DR-5, 2026-10-30). This is a reading of the unit, not a loosening: the tolerance stays one cell. Under the 14 px reading no rounding rule could pass, because every difference is a multiple of 2 patches."
+    }
   },
   "token_cap_rule": {
     "D_arms": {
@@ -720,7 +730,7 @@
     "status": "SET (operator, 2026-10-06). Applied to every new arm against its own baseline. Not changed for the GGUF arms.",
     "set_by": "operator (Dr Muhammad Aizat Bin Md Hawari)",
     "date": "2026-10-06",
-    "frozen_sha256": null,
+    "frozen_sha256": "8bef273844c21bb182ca32cbc3376f0a317175898abd5b65019702d3302ccd66",
     "freeze_note": "freeze after the runtime block, the pins and the parity check are recorded (tasks.md 3.6, 3.8) and before the first run; record the SHA-256 in tasks.md 3.9",
     "pass_rule": "C1 to C5 all hold for an arm. C6 and C7 inform only. Only a GGUF arm can lead to an engine decision.",
     "C1": {
@@ -753,7 +763,8 @@
     "C7": {
       "rule": "peak memory below 22.2 GiB for D arms (F5); P arms: report only",
       "role": "information only"
-    }
+    },
+    "C1_note": "P0's 40.2 s is the Exp 37 figure (40.17 s over 197 pages; pages flagged includes_start are left out). The median over all 221 OK pages is 38.68 s. The gate keeps the Exp 37 rule and the report gives both (output/report_trackC.json)."
   },
   "reported_not_gated": [
     "p90 and max s/page; engine hours",
@@ -781,7 +792,9 @@
       "budget_note": "19 h covers the 18.8 h worst case with no speed-up. Set by the assistant on 2026-10-30 after the operator agreed the approvals without naming a figure."
     },
     "approved_by": "operator",
-    "approved_date": "2026-10-30"
+    "approved_date": "2026-10-30",
+    "katex_install": true,
+    "katex_install_detail": "npm install --prefix tools/katex katex@0.16.22 (gitignored). Approved by the operator on 2026-10-30."
   },
   "run_rules": {
     "one_arm_at_a_time": true,
@@ -820,6 +833,13 @@
       "date": "2026-10-30",
       "by": "operator",
       "decision": "8-bit arms only for both runtimes (MLX 8-bit, GGUF Q8_0). 16-bit arms run only as a conditional diagnostic when an 8-bit arm fails C3, C4 or C5."
+    },
+    {
+      "id": "DR-5",
+      "status": "DECIDED",
+      "date": "2026-10-30",
+      "by": "operator",
+      "decision": "(1) OI-10: continue D4 and P4; the image-token flags are recorded no-ops and the limits are pinned through the mmproj SHA-256 values. (2) P4 parity is read in merged 28 px cells. (3) No pinned preprocessor_config copy for P2. (4) KaTeX 0.16.22 install approved. (5) Server flags -np 1 and -c 24576 (D arms) and 8192 (P arms) approved as in the runtime block."
     }
   ],
   "open_items": [
@@ -1019,5 +1039,11 @@
         "note": "a page counts as the same result only within this change. Information only."
       }
     ]
+  },
+  "freeze": {
+    "date": "2026-10-30",
+    "sha256": "8bef273844c21bb182ca32cbc3376f0a317175898abd5b65019702d3302ccd66",
+    "sha256_of": "json.dumps(plan with gates.frozen_sha256 and freeze removed or null, sort_keys=True, separators=(',',':'))",
+    "covers": "runtime block and pins (3.6), closed items (3.7), parity check (3.8). After this, plan.json changes only through the amendments list."
   }
 }
