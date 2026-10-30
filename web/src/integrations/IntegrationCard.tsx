@@ -1,9 +1,8 @@
 import { TriangleAlert } from "lucide-react";
 import { Badge } from "../components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader } from "../components/ui/card";
-import { CardTitleRow } from "./CardTitleRow";
 import type { Integration, IntegrationAvailability, InstallType } from "../api/integrations";
 import { CopyCommand } from "./CopyCommand";
+import { EntryRow } from "./EntryList";
 import { InstallControls, installPhase } from "./InstallControls";
 import { LastingUninstallCommand, UninstallControls, uninstallActive, uninstallPhase } from "./UninstallControls";
 import type { InstallControl } from "./useIntegrationInstall";
@@ -42,52 +41,54 @@ interface IntegrationCardProps {
   control: InstallControl;
 }
 
-/** One catalogue entry: name, status badge with its value as text, purpose, Install and Uninstall actions and commands. */
+/** One catalogue entry as a row: name, status badge with its value as text, purpose, then Install and Uninstall actions and commands. */
 export function IntegrationCard({ integration, installType, control }: IntegrationCardProps) {
   const phase = installPhase(integration, control);
   const uninstall = uninstallPhase(integration, control);
   const status = uninstall === "removed" ? REMOVED : STATUS[integration.availability];
   const caution = integration.install_caution !== null && phase !== "restart" && (integration.availability === "not-installed" || integration.availability === "unknown");
   return (
-    <Card id={integrationCardId(integration.id)} tabIndex={-1} className="scroll-mt-4">
-      <CardHeader>
-        <CardTitleRow title={integration.name}>
+    <EntryRow
+      id={integrationCardId(integration.id)}
+      title={integration.name}
+      badges={
+        <>
           <Badge variant={status.variant}>{status.label}</Badge>
           {/* Every install already holds a base entry, so nobody installs it twice. */}
           {integration.base ? <Badge variant="neutral">Base default</Badge> : null}
-        </CardTitleRow>
-        <CardDescription>{integration.purpose}</CardDescription>
-        {integration.readiness !== undefined ? (
-          // A module check alone never says "Ready": the server checks the address or the key reference.
-          <p className={integration.readiness.ready ? "text-meta text-status-success-label" : "text-meta text-muted-foreground"}>
-            {integration.readiness.line}
-          </p>
-        ) : null}
-      </CardHeader>
-      <CardContent>
-        {integration.availability === "unknown" && (
-          <p className="text-meta text-muted-foreground">The server could not check this integration.</p>
-        )}
-        {caution && <InstallCaution text={integration.install_caution ?? ""} />}
-        {uninstallActive(uninstall) ? null : <InstallControls integration={integration} control={control} />}
-        <UninstallControls integration={integration} control={control} phase={uninstall} />
-        {integration.install_command === null ? (
-          <p className="text-meta text-muted-foreground">Always on. Nothing to install.</p>
-        ) : (
-          <>
-            <CopyCommand command={integration.install_command} subject={integration.name} />
-            {installType === "uv-tool" && (
-              <p className="text-meta text-muted-foreground">This command keeps the extra after a later reinstall.</p>
-            )}
-            {integration.pip_command !== null && (
-              <p className="text-meta text-muted-foreground">
-                With pip: <code className="text-code [overflow-wrap:anywhere]">{integration.pip_command}</code>
-              </p>
-            )}
-          </>
-        )}
-        <LastingUninstallCommand integration={integration} />
-      </CardContent>
-    </Card>
+        </>
+      }
+      purpose={integration.purpose}
+      details={
+        <>
+          {integration.readiness !== undefined ? (
+            // A module check alone never says "Ready": the server checks the address or the key reference.
+            <p className={integration.readiness.ready ? "text-meta text-status-success-label" : "text-meta text-muted-foreground"}>{integration.readiness.line}</p>
+          ) : null}
+          {integration.availability === "unknown" && <p className="text-meta text-muted-foreground">The server could not check this integration.</p>}
+          {caution && <InstallCaution text={integration.install_caution ?? ""} />}
+        </>
+      }
+      actions={
+        <>
+          {uninstallActive(uninstall) ? null : <InstallControls integration={integration} control={control} />}
+          <UninstallControls integration={integration} control={control} phase={uninstall} />
+          {integration.install_command === null ? (
+            <p className="text-meta text-muted-foreground">Always on. Nothing to install.</p>
+          ) : (
+            <>
+              <CopyCommand command={integration.install_command} subject={integration.name} />
+              {installType === "uv-tool" && <p className="text-meta text-muted-foreground">This command keeps the extra after a later reinstall.</p>}
+              {integration.pip_command !== null && (
+                <p className="text-meta text-muted-foreground">
+                  With pip: <code className="text-code [overflow-wrap:anywhere]">{integration.pip_command}</code>
+                </p>
+              )}
+            </>
+          )}
+          <LastingUninstallCommand integration={integration} />
+        </>
+      }
+    />
   );
 }

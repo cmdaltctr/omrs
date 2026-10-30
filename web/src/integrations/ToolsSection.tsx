@@ -1,5 +1,5 @@
 import type { IntegrationList } from "../api/integrations";
-import { MasonryColumns } from "../components/MasonryColumns";
+import { EntryList } from "./EntryList";
 import { SectionFrame } from "./SectionFrame";
 import { ToolCard } from "./ToolCard";
 import type { InstallControl } from "./useIntegrationInstall";
@@ -15,15 +15,11 @@ export function ToolsSection({ list, control }: { list: IntegrationList; control
         "A tool installs into its own environment, so the server needs no restart. Each card says what to do next.",
       ]}
     >
-      <div role="list" aria-label="External tools">
-        <MasonryColumns>
-          {list.tools.map((tool) => (
-            <div key={tool.id} role="listitem" className="min-w-0">
-              <ToolCard tool={tool} control={control} />
-            </div>
-          ))}
-        </MasonryColumns>
-      </div>
+      <EntryList label="External tools">
+        {list.tools.map((tool) => (
+          <ToolCard key={tool.id} tool={tool} control={control} />
+        ))}
+      </EntryList>
     </SectionFrame>
   );
 }

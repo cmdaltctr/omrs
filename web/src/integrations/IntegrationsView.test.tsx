@@ -91,11 +91,17 @@ describe("Integrations", () => {
     expect(screen.getByRole("heading", { level: 1, name: "Integrations" })).toBeInTheDocument();
   });
 
-  it("places the cards in masonry columns, so a tall card leaves no gap beside short ones", async () => {
+  it("lists the extras as rows in one full-width card, with actions in the right column, and no masonry", async () => {
     startApp("#/integrations", serve());
     const list = await screen.findByRole("list", { name: "Integrations" });
-    expect(within(list).getByTestId("masonry")).toBeInTheDocument();
-    for (const item of within(list).getAllByRole("listitem")) expect(item.closest("[data-testid='masonry-column']")).not.toBeNull();
+    expect(screen.queryByTestId("masonry")).toBeNull();
+    const card = list.closest("[data-slot=card]") as HTMLElement;
+    expect(card).not.toBeNull();
+    for (const item of within(list).getAllByRole("listitem")) {
+      expect(item).toHaveAttribute("data-slot", "entry-row");
+      expect(item.querySelector("[data-slot=card]")).toBeNull();
+      expect(item.className).toMatch(/@3xl:grid-cols-2/);
+    }
   });
 
   it("states installed, absent and unknown availability in text", async () => {

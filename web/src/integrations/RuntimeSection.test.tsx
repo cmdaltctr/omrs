@@ -114,29 +114,28 @@ describe("Runtime groups", () => {
     expect(badge).not.toHaveClass("text-status-error-label");
   });
 
-  it("lays each group out like the integration cards: one card per part, in masonry columns", async () => {
+  it("lays each group out like the extras: one card with a row per part, and no masonry", async () => {
     startApp("#/integrations/ocr-engines", serve());
     const engines = await group("OCR engines");
-    // The group is a heading and a card area, not a card that holds cards.
-    expect(engines).not.toHaveAttribute("data-slot", "card");
     expect(engines.closest("[data-slot=card]")).toBeNull();
-    const masonry = within(engines).getByTestId("masonry");
+    expect(within(engines).queryByTestId("masonry")).toBeNull();
+    const list = within(engines).getByRole("list", { name: "OCR engines" });
     for (const name of ["dots-mocr", "paddleocr-vl"]) {
-      const card = await row("OCR engines", name);
-      expect(card.querySelector("[data-slot=card]") ?? card).toHaveAttribute("data-slot", "card");
-      expect(masonry).toContainElement(card);
+      const part = await row("OCR engines", name);
+      expect(part).toHaveAttribute("data-slot", "entry-row");
+      expect(list).toContainElement(part);
     }
   });
 
   it("sets the workers folder in its own card above the engines, so the engines keep their order", async () => {
     startApp("#/integrations/ocr-engines", serve());
     const engines = await group("OCR engines");
-    const masonry = within(engines).getByTestId("masonry");
+    const list = within(engines).getByRole("list", { name: "OCR engines" });
     const folder = (await within(engines).findByText("OCR workers folder")).closest("[data-slot=card]") as HTMLElement;
     expect(folder).not.toBeNull();
-    expect(masonry).not.toContainElement(folder);
-    expect(folder.compareDocumentPosition(masonry) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    const parts = within(masonry).getAllByRole("listitem");
+    expect(list).not.toContainElement(folder);
+    expect(folder.compareDocumentPosition(list) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const parts = within(list).getAllByRole("listitem");
     expect(parts.map((part) => within(part).getByRole("heading").textContent)).toEqual(["dots-mocr", "paddleocr-vl"]);
   });
 
