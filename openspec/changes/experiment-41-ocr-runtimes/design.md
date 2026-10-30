@@ -7,7 +7,7 @@ See proposal.md (Why). Current state that shapes the approach:
 - **Baseline exists.** Experiment 37 holds per-page Markdown, per-page state and `summary.json` for dots.mocr (PyTorch MPS) and PaddleOCR-VL (CPU) on 257 pages. These gitignored files sit in the `omrs-v3` worktree.
 - **Two baseline limits.** The engines ran at the same time in Experiment 37, so baseline timings carry shared load. MLX conversions are not byte copies of the PyTorch weights.
 - **Published builds exist for every arm (checked 2026-10-30).** dots.mocr: mlx-community MLX bf16 and 8-bit; community GGUF bf16 and Q8_0 with mmproj, some made with the llama.cpp converter. `dots-studio/dots.mocr` and `rednote-hilab/dots.mocr` hold the same commit and weights. PaddleOCR-VL 1.6: official GGUF (one 16-bit file plus mmproj); OpenGryd MLX 16-bit and 8-bit. Commit `16656b7` said otherwise and was wrong.
-- **Sources chosen.** D3 and D4 use our own conversion of the pinned dots.mocr revision, with a community bf16 file as a cross-check (OI-9). P4 quantises the official P3 file. The MLX arms use the published builds at pinned revisions.
+- **Sources chosen.** D3 and D4 use our own conversion of the pinned dots.mocr revision, with the `lodrick-the-lafted` Q8_0 file as a cross-check (OI-9). P4 quantises the official P3 file. The MLX arms use the published builds at pinned revisions.
 - **No OMRS engine folder for either runtime.** The `OcrEngine` contract and `OcrRoutes` know neither GGUF nor MLX. The experiment cannot use the host path.
 - **Licence.** The dots.mocr agreement covers derivative works. A GGUF conversion and an MLX conversion are both derivatives.
 

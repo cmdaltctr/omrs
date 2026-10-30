@@ -38,8 +38,9 @@ A llama.cpp GGUF arm that passes gates C1 to C5 MAY lead to a follow-up change f
 When an 8-bit arm fails gate C3, C4 or C5, the evaluation SHALL run the 16-bit arm of the same runtime and engine on the pages of the failed gate, and score that gate only.
 
 #### Scenario: The 16-bit diagnostic passes the failed gate
-- **WHEN** the 16-bit diagnostic passes the gate that its 8-bit arm failed
-- **THEN** the report SHALL attribute the failure to the 8-bit quantisation
+- **WHEN** the 16-bit diagnostic meets the failed gate's own tolerance applied to the baseline arm's value on the same pages
+- **THEN** the report SHALL attribute the failure to the 8-bit quantisation and SHALL state that the attribution is approximate
+- **AND** the diagnostic SHALL be descriptive only
 - **AND** the 8-bit arm SHALL keep its failed verdict
 
 #### Scenario: No 8-bit arm fails a quality gate

@@ -23,9 +23,10 @@
 - [ ] 3.3 Download the official PaddleOCR-VL-1.6 GGUF (kept as the P3 diagnostic). Verify: 16-bit tensor type confirmed from the header (OI-3); SHA-256 recorded.
 - [ ] 3.4 Quantise the official PaddleOCR-VL-1.6 GGUF to Q8_0 with `llama-quantize`. Verify: SHA-256 recorded.
 - [ ] 3.5 Download the MLX 8-bit builds in `mlx_pins` (OI-4). Leave the 16-bit diagnostic builds until a diagnostic triggers. Verify: revision and SHA-256 match the pins; each build loads in `mlx-vlm`.
-- [ ] 3.6 Add the `runtime` block to `plan.json` with the real SHA-256 values and the pinned server flags (`-c`, `--image-max-tokens`, `--temp 0`, `--mmproj`). Record any changed mmproj as a pinned file with its own SHA-256. Verify: `omrs experiments check` passes the block.
-- [ ] 3.7 Close OI-1, OI-2, OI-5, OI-6, OI-7 and OI-11. Verify: each item answered in `plan.json`.
-- [ ] 3.8 Freeze `plan.json` after the runtime block and pins (3.6) and the closed items (3.7), before the first run. Verify: SHA-256 recorded in this file; a later setting change is a dated amendment.
+- [ ] 3.6 Add the `runtime` block to `plan.json` with the real SHA-256 values and the pinned server flags (`-c`, `--image-min-tokens`, `--image-max-tokens`, `--temp 0`, `--mmproj`; P arms use `max_new_tokens` 4096, D arms 8192). Record any changed mmproj as a pinned file with its own SHA-256. Verify: `omrs experiments check` passes the block.
+- [ ] 3.7 Close OI-1, OI-2, OI-5, OI-6 and OI-7 (OI-11 is closed). Verify: each item answered in `plan.json`.
+- [ ] 3.8 Run the parity check on the smoke pages (`eq01` p2 and p3) for each 8-bit arm: image token grids against the baseline (D arms: at most one patch row or column of difference; P arms: the same per layout block). Verify: grids match, or the arm stops and a finding is recorded; a build that ignores `--image-min-tokens` or `--image-max-tokens` stops that arm (OI-10); the tolerance is not loosened.
+- [ ] 3.9 Freeze `plan.json` after the runtime block and pins (3.6), the closed items (3.7) and the parity check (3.8), before the first run. Verify: SHA-256 recorded in this file; a later setting change is a dated amendment.
 
 ## 4. Build the runners
 
@@ -34,7 +35,7 @@
 
 ## 5. Run
 
-- [ ] 5.1 Run the two-page smoke test (`eq01` p2 and p3) for each new arm. Verify: non-empty output; image token count within 5 percent of the baseline (stop the arm and fix the setting if not); compare with the scratch figures. Cover OI-10 (conversion at build 11941; mmproj speed on Metal).
+- [ ] 5.1 Run the two-page smoke test (`eq01` p2 and p3) for each new arm. Verify: non-empty output; compare with the scratch figures. Cover OI-10 (conversion at build 11941; mmproj speed on Metal).
 - [ ] 5.2 Run each new arm alone through `E-maths`, `E-scan` and `E-script`. Verify: state file shows 257 pages; no other GPU job ran.
 - [ ] 5.3 If a measured speed-up is at least 1.5 times and below 3 times, run `T-control` for that baseline. Verify: timings recorded apart from the Experiment 37 figures, or a note that no comparison fell in the band.
 
