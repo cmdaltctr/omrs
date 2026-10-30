@@ -766,18 +766,21 @@
     "conditional 16-bit diagnostic result, when triggered"
   ],
   "approvals": {
-    "install_tooling": false,
+    "install_tooling": true,
     "install_detail": "mlx-vlm into a gitignored experiment environment, plus llama.cpp convert_hf_to_gguf.py at build 11941 with Python gguf and transformers. llama-quantize ships with the llama.cpp build. The approval must cover both.",
-    "model_downloads": false,
+    "model_downloads": true,
     "model_downloads_detail": "about 9.3 GB up front into OMRS_OCR_MODEL_CACHE (mlx/ and gguf/ subfolders): dots.mocr MLX 8-bit 4.4 GB; PaddleOCR-VL MLX 8-bit 1.1 GB; official PaddleOCR-VL GGUF plus mmproj 1.8 GB; lodrick-the-lafted Q8_0 1.9 GB (cross-check). Only if a diagnostic triggers: dots.mocr MLX bf16 6.1 GB, PaddleOCR-VL MLX 16-bit 1.8 GB. Conversions add about 8.5 GB. The approval covers the conditional downloads.",
-    "licence_check": false,
-    "licence_check_detail": "DR-2 extended on 2026-10-30. See open_decisions.",
+    "licence_check": true,
+    "licence_check_detail": "DR-2 accepted by the operator on 2026-10-30. See open_decisions.",
     "ocr_run_budget": {
-      "approved": false,
-      "runtime_budget_h": null,
+      "approved": true,
+      "runtime_budget_h": 19,
       "per_request_timeout_s": 300,
-      "estimate_h": "roughly 2 to 8 h for the 4 scored arms, including conversion and model load, if both engines speed up as the scratch figures suggest. Basis: Experiment 37 dots.mocr took 3.31 h at baseline speed, so two dots.mocr arms with no speed-up take about 6.6 h. PaddleOCR-VL: P0 took 6.06 h; the scratch MLX test gave 6.6 s and 9.4 s per page (two pages only), about 0.5 to 0.7 h for 257 pages. Worst case with no speed-up on any arm: about 6.6 h for the two dots.mocr arms plus up to 6.1 h for each of the two P arms, roughly 18.8 h or more. Diagnostics are extra (about 20 to 60 minutes each). The operator sets runtime_budget_h."
-    }
+      "estimate_h": "roughly 2 to 8 h for the 4 scored arms, including conversion and model load, if both engines speed up as the scratch figures suggest. Basis: Experiment 37 dots.mocr took 3.31 h at baseline speed, so two dots.mocr arms with no speed-up take about 6.6 h. PaddleOCR-VL: P0 took 6.06 h; the scratch MLX test gave 6.6 s and 9.4 s per page (two pages only), about 0.5 to 0.7 h for 257 pages. Worst case with no speed-up on any arm: about 6.6 h for the two dots.mocr arms plus up to 6.1 h for each of the two P arms, roughly 18.8 h or more. Diagnostics are extra (about 20 to 60 minutes each). The operator sets runtime_budget_h.",
+      "budget_note": "19 h covers the 18.8 h worst case with no speed-up. Set by the assistant on 2026-10-30 after the operator agreed the approvals without naming a figure."
+    },
+    "approved_by": "operator",
+    "approved_date": "2026-10-30"
   },
   "run_rules": {
     "one_arm_at_a_time": true,
@@ -797,9 +800,11 @@
     },
     {
       "id": "DR-2",
-      "status": "DECIDED, EXTENDED 2026-10-30 (proposal; operator decides)",
+      "status": "DECIDED",
       "decision_2026_10_06": "The 2026-10-04 acceptance covers mlx-community/dots.mocr-bf16 only; the original terms govern.",
-      "proposal_2026_10_30": "Extend the licence check to our own GGUF conversion of dots.mocr (a derivative work under clause 3.3), mlx-community/dots.mocr-8bit, mlx-community/dots.mocr-bf16 (diagnostic only), and lodrick-the-lafted/dots.mocr-gguf (cross-check only). The 8-bit card names dots-studio/dots.mocr; the 2026-10-30 check shows it is the same commit and weights as the pinned rednote-hilab revision. The operator confirms before any download. Approval stays false."
+      "date_extended": "2026-10-30",
+      "by": "operator",
+      "decision_2026_10_30": "Extend the licence check to our own GGUF conversion of dots.mocr (a derivative work under clause 3.3), mlx-community/dots.mocr-8bit, mlx-community/dots.mocr-bf16 (diagnostic only), and lodrick-the-lafted/dots.mocr-gguf (cross-check only). The 8-bit card names dots-studio/dots.mocr; the 2026-10-30 check shows it is the same commit and weights as the pinned rednote-hilab revision. Accepted by the operator on 2026-10-30."
     },
     {
       "id": "DR-3",

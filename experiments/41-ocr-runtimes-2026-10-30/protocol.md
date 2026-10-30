@@ -296,7 +296,7 @@ The estimate covers the 4 scored 8-bit arms, with conversion and model load. The
 
 ## Approvals and licence
 
-`approvals` in `plan.json` holds four gates. All stay `false`.
+`approvals` in `plan.json` holds four gates. The operator approved all four on 2026-10-30, with DR-2 accepted and a run budget of 19 h.
 
 1. **Install.** `mlx-vlm` and the llama.cpp conversion tools. The approval covers both.
 2. **Downloads.** About 9.3 GB up front: dots.mocr MLX 8-bit 4.4 GB; PaddleOCR-VL MLX 8-bit 1.1 GB; official PaddleOCR-VL GGUF and mmproj 1.8 GB; `lodrick-the-lafted` Q8_0 1.9 GB (cross-check). Only if a diagnostic triggers: dots.mocr MLX bf16 6.1 GB, PaddleOCR-VL MLX 16-bit 1.8 GB. The dots.mocr source weights are already in the shared model cache. Conversions add about 8.5 GB. The target is `OMRS_OCR_MODEL_CACHE`.

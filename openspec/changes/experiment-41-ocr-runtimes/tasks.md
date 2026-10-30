@@ -6,14 +6,14 @@
 - [x] 1.2 Write `protocol.md` and `plan.json` in `experiments/41-ocr-runtimes-2026-10-30/`. Verify: page lists copied from Experiment 37 with SHA-256 `09f13055`; all four approvals `false`; gates set on 2026-10-06 and carried forward.
 - [x] 1.3 Check the Hub facts behind the arms (every GGUF and MLX build for both models, base weights identity, file hashes). Verify: each fact is recorded in `protocol.md` section "Facts checked on 2026-10-30".
 - [x] 1.4 Operator decides DR-4 (precision list). Verify: `open_decisions` records it with its date (2026-10-30).
-- [ ] 1.4a Operator confirms DR-2 (licence scope). Verify: `open_decisions` records it with its date.
+- [x] 1.4a Operator confirms DR-2 (licence scope). Verify: `open_decisions` records it with its date.
 
 ## 2. Approvals (operator, one by one)
 
-- [ ] 2.1 Approve installing `mlx-vlm` and the llama.cpp conversion tools. Verify: `approvals.install_tooling` is `true`.
-- [ ] 2.2 Approve the model downloads. Verify: `approvals.model_downloads` is `true`; target is `OMRS_OCR_MODEL_CACHE`.
-- [ ] 2.3 Approve the licence scope (DR-2). Verify: `approvals.licence_check` is `true` and the decision is dated.
-- [ ] 2.4 Approve the OCR run budget. Verify: `runtime_budget_h` filled and `approved` is `true`.
+- [x] 2.1 Approve installing `mlx-vlm` and the llama.cpp conversion tools. Verify: `approvals.install_tooling` is `true`.
+- [x] 2.2 Approve the model downloads. Verify: `approvals.model_downloads` is `true`; target is `OMRS_OCR_MODEL_CACHE`.
+- [x] 2.3 Approve the licence scope (DR-2). Verify: `approvals.licence_check` is `true` and the decision is dated.
+- [x] 2.4 Approve the OCR run budget. Verify: `runtime_budget_h` filled and `approved` is `true`.
 
 ## 3. Conversions, pins and freeze
 
