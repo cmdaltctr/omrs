@@ -33,7 +33,7 @@
       "engine": "dots-mocr",
       "backend": "mlx-bf16",
       "role": "comparison (MLX, no decision)",
-      "weights": "mlx-community/dots.mocr-bf16",
+      "weights": "mlx-community/dots.mocr-bf16 at 90fe26b4ffe84d415beec352281c9994d4b6f000",
       "base": "rednote-hilab/dots.mocr",
       "source": "new run"
     },
@@ -41,22 +41,23 @@
       "engine": "dots-mocr",
       "backend": "mlx-8bit",
       "role": "comparison (MLX, no decision)",
-      "weights": "mlx-community/dots.mocr-8bit",
-      "base": "rednote-hilab/dots.mocr",
+      "weights": "mlx-community/dots.mocr-8bit at 6d9e750ba44cf99e3c608cfdf47e59df209dce13",
+      "base": "dots-studio/dots.mocr on the card; same commit and weight hashes as rednote-hilab/dots.mocr e539fbb5 (checked 2026-10-30)",
       "source": "new run"
     },
     "D3": {
       "engine": "dots-mocr",
       "backend": "llama.cpp-gguf-bf16",
       "role": "runtime (decides)",
-      "weights": "own conversion of rednote-hilab/dots.mocr at e539fbb52280393adc081b289ec597430a0f9031",
-      "source": "new run"
+      "weights": "own conversion of rednote-hilab/dots.mocr at e539fbb52280393adc081b289ec597430a0f9031 (operator choice 2026-10-30)",
+      "source": "new run",
+      "cross_check": "lodrick-the-lafted/dots.mocr-gguf at 180dcd991cd6813d916fbcaecc3fe699eab874cb, dotsmocr-1.8b-bf16.gguf + mmproj-dotsmocr-bf16.gguf, smoke pages only (OI-9)"
     },
     "D4": {
       "engine": "dots-mocr",
       "backend": "llama.cpp-gguf-q8_0",
       "role": "runtime (decides)",
-      "weights": "own conversion of rednote-hilab/dots.mocr at e539fbb52280393adc081b289ec597430a0f9031",
+      "weights": "D3 conversion, quantised to Q8_0 with llama-quantize at build 11941",
       "source": "new run"
     },
     "P0": {
@@ -69,28 +70,28 @@
       "engine": "paddleocr-vl",
       "backend": "mlx-bf16 (vl_rec_backend=mlx-vlm-server)",
       "role": "comparison (MLX, no decision)",
-      "weights": "own conversion of PaddlePaddle/PaddleOCR-VL-1.6 (no published 1.6 bf16 MLX repository found on 2026-10-30)",
+      "weights": "OpenGryd/PaddleOCR-VL-1.6-MLX-16bit at 966b8ea5bf8a1374baef93722b0f542c1e033d55, model.safetensors sha256 f72e51bc81f035c3e50d1351cff78393f3906577c659e3bde6b653ede29f8af9 (Apache-2.0, base PaddlePaddle/PaddleOCR-VL-1.6)",
       "source": "new run"
     },
     "P2": {
       "engine": "paddleocr-vl",
       "backend": "mlx-8bit (vl_rec_backend=mlx-vlm-server)",
       "role": "comparison (MLX, no decision)",
-      "weights": "own conversion of PaddlePaddle/PaddleOCR-VL-1.6 (mlx-community/PaddleOCR-VL-8bit is built on ERNIE-4.5-0.3B, not on 1.6)",
+      "weights": "OpenGryd/PaddleOCR-VL-1.6-MLX-8bit at dba7c66b4614170eeb132bff0abe4b6dd836a504, model.safetensors sha256 3abce24b6c447cce0e56ae9fd7464d507c4b288080bdc92526a07668c3a0a0e7 (Apache-2.0, base PaddlePaddle/PaddleOCR-VL-1.6)",
       "source": "new run"
     },
     "P3": {
       "engine": "paddleocr-vl",
       "backend": "llama.cpp-gguf-16bit",
       "role": "runtime (decides)",
-      "weights": "PaddlePaddle/PaddleOCR-VL-1.6-GGUF, file PaddleOCR-VL-1.6-GGUF.gguf (the repository has no 8-bit file)",
+      "weights": "PaddlePaddle/PaddleOCR-VL-1.6-GGUF at 511b09642bb324401f15f97cc23bc67e8f0a291d, file PaddleOCR-VL-1.6-GGUF.gguf (official, Apache-2.0)",
       "source": "new run"
     },
     "P4": {
       "engine": "paddleocr-vl",
       "backend": "llama.cpp-gguf-q8_0",
       "role": "runtime (decides)",
-      "weights": "own conversion of PaddlePaddle/PaddleOCR-VL-1.6 (Apache-2.0)",
+      "weights": "P3 file quantised to Q8_0 with llama-quantize at build 11941; official mmproj kept",
       "source": "new run"
     }
   },
@@ -169,7 +170,7 @@
         "revision": "e539fbb52280393adc081b289ec597430a0f9031",
         "file": "to name at conversion",
         "sha256": "to record at conversion",
-        "conversion": "llama.cpp convert_hf_to_gguf.py at build 11941, outtype bf16, plus mmproj",
+        "conversion": "llama.cpp convert_hf_to_gguf.py at build 11941, outtype bf16, plus mmproj. Cross-check against lodrick-the-lafted/dots.mocr-gguf bf16 (OI-9).",
         "server_args": {
           "to_confirm_at_smoke": [
             "--temp 0",
@@ -185,7 +186,7 @@
         "revision": "e539fbb52280393adc081b289ec597430a0f9031",
         "file": "to name at conversion",
         "sha256": "to record at conversion",
-        "conversion": "as D3, then quantise to Q8_0 at build 11941",
+        "conversion": "D3 file, then llama-quantize Q8_0 at build 11941",
         "server_args": {
           "to_confirm_at_smoke": [
             "--temp 0",
@@ -198,9 +199,13 @@
         "arm": "P3",
         "role": "PaddleOCR-VL-1.6 GGUF (official)",
         "repository": "PaddlePaddle/PaddleOCR-VL-1.6-GGUF",
-        "revision": "to record at download",
+        "revision": "511b09642bb324401f15f97cc23bc67e8f0a291d",
         "file": "PaddleOCR-VL-1.6-GGUF.gguf (935,769,056 bytes) and PaddleOCR-VL-1.6-GGUF-mmproj.gguf (881,770,560 bytes)",
-        "sha256": "to record at download",
+        "sha256": {
+          "PaddleOCR-VL-1.6-GGUF.gguf": "f3ae46ec885050acf4b3d31944431e1fd90d50664fb09126af4a3c050ba14ee8",
+          "PaddleOCR-VL-1.6-GGUF-mmproj.gguf": "204d757d7610d9b3faab10d506d69e5b244e32bf765e2bab2d0167e65e0a058a",
+          "source": "Hugging Face LFS metadata, 2026-10-30; confirm on download"
+        },
         "precision_check": "name has no quant label; 0.9B weights at 2 bytes each fit the size, so 16-bit is likely. Read the tensor type from the GGUF header at download.",
         "server_args": {
           "to_confirm_at_smoke": [
@@ -212,28 +217,47 @@
       {
         "arm": "P4",
         "role": "PaddleOCR-VL-1.6 Q8_0 GGUF",
-        "repository": "own conversion of PaddlePaddle/PaddleOCR-VL-1.6 (Apache-2.0)",
-        "revision": "to record at conversion",
+        "repository": "P3 file (PaddlePaddle/PaddleOCR-VL-1.6-GGUF at 511b0964)",
+        "revision": "511b09642bb324401f15f97cc23bc67e8f0a291d",
         "file": "to name at conversion",
         "sha256": "to record at conversion",
-        "conversion": "llama.cpp build 11941, then Q8_0",
+        "conversion": "llama-quantize Q8_0 at build 11941; mmproj is the official P3 mmproj",
         "server_args": {
           "to_confirm_at_smoke": [
             "--temp 0",
-            "--mmproj <mmproj file>"
+            "--mmproj PaddleOCR-VL-1.6-GGUF-mmproj.gguf"
           ]
         }
       }
     ],
     "open_item": "The repository README names PaddleOCR-VL-1.6.gguf. The repository holds PaddleOCR-VL-1.6-GGUF.gguf. Use the repository name and record it."
   },
-  "dots_mocr_gguf_support": {
-    "status": "OPEN",
-    "evidence": [
-      "llama.cpp build 11941 binary contains the strings 'dotsocr' and 'dotsocr.cpp' (the dots.ocr path). It contains no 'dots.mocr' string (checked 2026-10-30).",
-      "The operator's brief says llama.cpp merged dots.ocr support by PR 17575 on 2026-04-09. dots.mocr support is only requested (discussion 23947)."
+  "model_availability_2026_10_30": {
+    "correction": "Commit 16656b7 said dots.mocr had no GGUF and llama.cpp support was unconfirmed, and that PaddleOCR-VL 1.6 had no MLX weights. Both were wrong. This section replaces dots_mocr_gguf_support.",
+    "dots_mocr_identity": "dots-studio/dots.mocr and rednote-hilab/dots.mocr both report commit e539fbb5 with identical shard SHA-256 (d8f4bc753402..., 0101b36fe662...). Same weights.",
+    "dots_mocr_gguf_community": [
+      "lodrick-the-lafted/dots.mocr-gguf (180dcd99): bf16, Q8_0, Q5_K_M, mmproj bf16 and Q8_0",
+      "prithivMLmods/dots.mocr-GGUF: BF16, F16, Q3-Q8_0, mmproj bf16/f16/Q8_0",
+      "richardyoung/dots.mocr-GGUF: Q8_0, Q4_K_M, mmproj F16",
+      "anujkosambi/dots.mocr-Q8_0-GGUF: Q8_0, mmproj Q8_0 (gguf-my-repo)",
+      "enginil, SandLogicTechnologies, polymer: IQ quants below 8-bit, out of scope"
     ],
-    "plan": "Attempt the conversion. Record the failure as a finding if conversion or load fails. A failure stops that arm only (D3 or D4). Third-party dots.mocr GGUF files on the Hub are not used: their provenance and licence are not checked."
+    "dots_mocr_gguf_official": "none from rednote-hilab or ggml-org",
+    "llamacpp_support": "gguf-my-repo builds and shipped mmproj files show the llama.cpp converter accepts dots.mocr (dots OCR support, PR 17575). Load and output at build 11941: OI-2.",
+    "paddleocr_vl_1_6_mlx": [
+      "OpenGryd 16-bit and 8-bit (used)",
+      "translate-studio 6-bit and 8-bit",
+      "jmbarrancoidener 8-bit",
+      "mlx-community 4-bit and 5-bit (out of scope)"
+    ],
+    "paddleocr_vl_1_6_gguf_q8_0_community": [
+      "mradermacher",
+      "cstr",
+      "SanjeevSOLANKI",
+      "nopesadly",
+      "tieubaoca"
+    ],
+    "choice": "D3/D4 own conversion (operator, 2026-10-30) with lodrick-the-lafted bf16 cross-check; P4 quantises the official P3 file so P3 and P4 share one source."
   },
   "tolerance": [
     {
@@ -660,13 +684,13 @@
     "recall per writing system beside Experiment 33 local-tier",
     "GGUF vs MLX at matching precision (D3 vs D1, D4 vs D2, P3 vs P1, P4 vs P2)",
     "load time per arm, apart from page time",
-    "conversion and load outcome for each GGUF arm (a failure is a finding)"
+    "conversion, load and cross-check outcome for each GGUF arm (a failure is a finding)"
   ],
   "approvals": {
     "install_tooling": false,
-    "install_detail": "mlx-vlm into a gitignored experiment environment, plus llama.cpp conversion tooling (Python gguf and transformers). The approval must cover both.",
+    "install_detail": "mlx-vlm into a gitignored experiment environment, plus llama.cpp convert_hf_to_gguf.py at build 11941 with Python gguf and transformers. llama-quantize ships with the llama.cpp build. The approval must cover both.",
     "model_downloads": false,
-    "model_downloads_detail": "about 1.8 GB PaddleOCR-VL official weights, about 6 GB dots.mocr bf16 source, about 0.9 GB PaddleOCR-VL GGUF plus mmproj, and the MLX conversions, into OMRS_OCR_MODEL_CACHE (mlx/ and gguf/ subfolders)",
+    "model_downloads_detail": "about 21 GB into OMRS_OCR_MODEL_CACHE (mlx/ and gguf/ subfolders): dots.mocr MLX bf16 6.1 GB and 8-bit 4.4 GB; PaddleOCR-VL MLX 16-bit 1.8 GB and 8-bit 1.1 GB; official PaddleOCR-VL GGUF plus mmproj 1.8 GB; lodrick-the-lafted bf16 plus mmproj 6.1 GB (cross-check). dots.mocr source weights are already in the shared cache. Conversions add about 9 GB.",
     "licence_check": false,
     "licence_check_detail": "DR-2 extended on 2026-10-30. See open_decisions.",
     "ocr_run_budget": {
@@ -696,7 +720,7 @@
       "id": "DR-2",
       "status": "DECIDED, EXTENDED 2026-10-30 (proposal; operator decides)",
       "decision_2026_10_06": "The 2026-10-04 acceptance covers mlx-community/dots.mocr-bf16 only; the original terms govern.",
-      "proposal_2026_10_30": "Extend the licence check to our own GGUF conversion of dots.mocr (a derivative work under clause 3.3) and to mlx-community/dots.mocr-8bit. Re-check 2026-10-30 shows its base as rednote-hilab/dots.mocr, not dots-studio/dots.mocr as the 2026-10-06 note said. The operator confirms both before any download. Approval stays false."
+      "proposal_2026_10_30": "Extend the licence check to our own GGUF conversion of dots.mocr (a derivative work under clause 3.3), mlx-community/dots.mocr-8bit, and lodrick-the-lafted/dots.mocr-gguf (cross-check only). The 8-bit card names dots-studio/dots.mocr; the 2026-10-30 check shows it is the same commit and weights as the pinned rednote-hilab revision. The operator confirms before any download. Approval stays false."
     },
     {
       "id": "DR-3",
@@ -707,18 +731,22 @@
     },
     {
       "id": "DR-4",
-      "status": "OPEN",
-      "decision": "Operator to confirm the GGUF and MLX precision list above, and whether the 8-bit MLX arms stay in scope (the 2026-10-06 plan excluded quantised conversions)."
+      "status": "DECIDED",
+      "date": "2026-10-30",
+      "by": "operator",
+      "decision": "bf16 and 8-bit arms for both runtimes (MLX bf16 and 8-bit; GGUF 16-bit and Q8_0)."
     }
   ],
   "open_items": [
     "OI-1 layout.py (dots-mocr engine) imports no PyTorch. Check before reuse. Path: ocr-workers/engines/dots-mocr/src (v3 worktree).",
-    "OI-2 llama.cpp build 11941 converts dots.mocr. Not established: see dots_mocr_gguf_support.",
+    "OI-2 The llama.cpp converter accepts dots.mocr (see model_availability_2026_10_30). Confirm build 11941 loads our conversion and gives non-empty output on the smoke pages.",
     "OI-3 PaddleOCR-VL GGUF precision: the official file has no quant label. Read the tensor type from the header at download.",
-    "OI-4 PaddleOCR-VL 1.6 MLX bf16 and 8-bit: no published 1.6 repository on mlx-community (bf16 and 8-bit cards use ERNIE-4.5-0.3B). Own conversion with mlx-vlm needs checking: confirm mlx-vlm converts PaddleOCR-VL 1.6 at all.",
+    "OI-4 Confirm the installed mlx-vlm loads the OpenGryd PaddleOCR-VL 1.6 builds and that PaddleOCR's mlx-vlm-server backend accepts them.",
     "OI-5 A4 (now P1) script reuses the engine's page-subset code (TDR-027) without editing the engine folder.",
     "OI-6 Memory sampling for llama-server (client plus server) reuses the Exp 37 sampler; confirm it covers a second process.",
-    "OI-7 Source files for D0 and P0 sit in ../omrs-v3 (gitignored). This worktree does not hold them. Read them from there. Do not copy them without a hash check."
+    "OI-7 Source files for D0 and P0 sit in ../omrs-v3 (gitignored). This worktree does not hold them. Read them from there. Do not copy them without a hash check.",
+    "OI-8 The install approval covers the llama.cpp conversion tools as well as mlx-vlm.",
+    "OI-9 Cross-check: D3 output on the smoke pages matches lodrick-the-lafted bf16 output. A difference is reported and investigated before the D3 run."
   ],
   "amendments": [],
   "system_identity": {
@@ -728,5 +756,30 @@
     "katex": "0.16.22",
     "note": "filled at run time"
   },
-  "follow_up": "A passing GGUF arm for an engine: OpenSpec change for a llama.cpp path in ocr-workers/engines/. A passing MLX arm only: report and stop, because MLX cannot decide a runtime. Not part of this change."
+  "follow_up": "A passing GGUF arm for an engine: OpenSpec change for a llama.cpp path in ocr-workers/engines/. A passing MLX arm only: report and stop, because MLX cannot decide a runtime. Not part of this change.",
+  "mlx_pins": {
+    "note": "Comparison arms only. Revisions and file hashes from Hugging Face metadata, 2026-10-30. Confirm on download.",
+    "D1": {
+      "repository": "mlx-community/dots.mocr-bf16",
+      "revision": "90fe26b4ffe84d415beec352281c9994d4b6f000",
+      "size_gb": 6.08
+    },
+    "D2": {
+      "repository": "mlx-community/dots.mocr-8bit",
+      "revision": "6d9e750ba44cf99e3c608cfdf47e59df209dce13",
+      "size_gb": 4.41
+    },
+    "P1": {
+      "repository": "OpenGryd/PaddleOCR-VL-1.6-MLX-16bit",
+      "revision": "966b8ea5bf8a1374baef93722b0f542c1e033d55",
+      "sha256": "f72e51bc81f035c3e50d1351cff78393f3906577c659e3bde6b653ede29f8af9",
+      "size_gb": 1.81
+    },
+    "P2": {
+      "repository": "OpenGryd/PaddleOCR-VL-1.6-MLX-8bit",
+      "revision": "dba7c66b4614170eeb132bff0abe4b6dd836a504",
+      "sha256": "3abce24b6c447cce0e56ae9fd7464d507c4b288080bdc92526a07668c3a0a0e7",
+      "size_gb": 1.09
+    }
+  }
 }

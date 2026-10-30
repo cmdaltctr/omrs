@@ -6,8 +6,8 @@ See proposal.md (Why). Current state that shapes the approach:
 
 - **Baseline exists.** Experiment 37 holds per-page Markdown, per-page state and `summary.json` for dots.mocr (PyTorch MPS) and PaddleOCR-VL (CPU) on 257 pages. These gitignored files sit in the `omrs-v3` worktree.
 - **Two baseline limits.** The engines ran at the same time in Experiment 37, so baseline timings carry shared load. MLX conversions are not byte copies of the PyTorch weights.
-- **llama.cpp build 11941.** The local binary contains `dotsocr` strings and no `dots.mocr` string. Official dots.mocr GGUF support is not established. The PaddleOCR-VL 1.6 GGUF repository has one main file and no 8-bit file.
-- **No published MLX PaddleOCR-VL 1.6 weights.** The mlx-community PaddleOCR-VL repositories checked on 2026-10-30 use ERNIE-4.5-0.3B as their base.
+- **Published builds exist for every arm (checked 2026-10-30).** dots.mocr: mlx-community MLX bf16 and 8-bit; community GGUF bf16 and Q8_0 with mmproj, some made with the llama.cpp converter. `dots-studio/dots.mocr` and `rednote-hilab/dots.mocr` hold the same commit and weights. PaddleOCR-VL 1.6: official GGUF (one 16-bit file plus mmproj); OpenGryd MLX 16-bit and 8-bit. Commit `16656b7` said otherwise and was wrong.
+- **Sources chosen.** D3 and D4 use our own conversion of the pinned dots.mocr revision, with a community bf16 file as a cross-check (OI-9). P4 quantises the official P3 file. The MLX arms use the published builds at pinned revisions.
 - **No OMRS engine folder for either runtime.** The `OcrEngine` contract and `OcrRoutes` know neither GGUF nor MLX. The experiment cannot use the host path.
 - **Licence.** The dots.mocr agreement covers derivative works. A GGUF conversion and an MLX conversion are both derivatives.
 
@@ -62,15 +62,15 @@ Per arm, the operator reviews the 10 lowest-similarity pages, every page the noi
 
 ## Risks / Trade-offs
 
-- [dots.mocr may not convert or load in llama.cpp build 11941] → Record the failure as a finding. It stops that arm only. The MLX arms still run.
+- [Our dots.mocr conversion may not load or may differ from community builds at build 11941] → Smoke test and cross-check first (OI-2, OI-9). A failure stops that arm only and is a finding.
 - [Baseline timings include shared load] → dots.mocr speed uses the 20 pages that ran alone. PaddleOCR-VL speed uses all pages, with the bias stated. Re-time a baseline only when a speed-up lands between 1.5 and 3 times (DR-1).
-- [Own conversions differ from the source weights] → Record each revision and SHA-256. Report differences as findings.
-- [The licence tag on a conversion hides clauses] → DR-2 covers our GGUF conversion and the MLX 8-bit conversion. The operator decides before any download.
+- [Conversions differ from the source weights] → Record each revision and SHA-256. Report differences as findings.
+- [The licence tag on a conversion hides clauses] → DR-2 covers our GGUF conversion, the MLX 8-bit conversion and the cross-check GGUF. The operator decides before any download.
 - [The install approval may not cover conversion tools] → Open item OI-8. The approval covers `mlx-vlm` and the llama.cpp conversion tools.
 - [A long run blocks the machine] → Run detached, checkpoint per page and resume after a stop.
 
 ## Open Questions
 
 - DR-2 extended on 2026-10-30 (operator decides before download).
-- DR-4 (open): precision list, including the quantised arms the 2026-10-06 plan excluded.
-- OI-1 to OI-8 (see `protocol.md`).
+- DR-4 decided on 2026-10-30: bf16 and 8-bit arms for both runtimes.
+- OI-1 to OI-9 (see `protocol.md`).

@@ -4,8 +4,9 @@
 
 - [x] 1.1 Create the worktree `omrs-feat-experiment-41-ocr-runtimes` from `v3`. Verify: `git rev-parse --show-toplevel` and `git branch --show-current` match.
 - [x] 1.2 Write `protocol.md` and `plan.json` in `experiments/41-ocr-runtimes-2026-10-30/`. Verify: page lists copied from Experiment 37 with SHA-256 `09f13055`; all four approvals `false`; gates set on 2026-10-06 and carried forward.
-- [x] 1.3 Check the Hub and llama.cpp facts behind the arms (PaddleOCR-VL GGUF files, MLX repository bases, dots.ocr strings in build 11941). Verify: each fact is recorded in `protocol.md` section "Facts checked on 2026-10-30".
-- [ ] 1.4 Operator confirms DR-2 (licence scope) and DR-4 (precision list). Verify: `open_decisions` records each decision with its date.
+- [x] 1.3 Check the Hub facts behind the arms (every GGUF and MLX build for both models, base weights identity, file hashes). Verify: each fact is recorded in `protocol.md` section "Facts checked on 2026-10-30".
+- [x] 1.4 Operator decides DR-4 (precision list). Verify: `open_decisions` records it with its date (2026-10-30).
+- [ ] 1.4a Operator confirms DR-2 (licence scope). Verify: `open_decisions` records it with its date.
 - [ ] 1.5 Freeze `plan.json` (SHA-256 recorded) before the first run. Verify: hash recorded in this file.
 
 ## 2. Approvals (operator, one by one)
@@ -17,11 +18,12 @@
 
 ## 3. Conversions and pins
 
-- [ ] 3.1 Convert dots.mocr to GGUF bf16 at llama.cpp build 11941. Verify: conversion succeeds, or the failure is recorded as a finding (arms D3 and D4 stop).
+- [ ] 3.1 Convert dots.mocr to GGUF bf16 plus mmproj at llama.cpp build 11941. Verify: the file loads and the smoke pages give output (OI-2), or the failure is recorded as a finding (arms D3 and D4 stop).
+- [ ] 3.1a Cross-check D3 against `lodrick-the-lafted/dots.mocr-gguf` bf16 on the smoke pages (OI-9). Verify: outputs match, or the difference is recorded and resolved before the D3 run.
 - [ ] 3.2 Quantise dots.mocr to Q8_0. Verify: SHA-256 recorded.
 - [ ] 3.3 Download the official PaddleOCR-VL-1.6 GGUF. Verify: tensor type read from the header (OI-3); SHA-256 recorded.
-- [ ] 3.4 Convert PaddleOCR-VL-1.6 to GGUF Q8_0. Verify: SHA-256 recorded.
-- [ ] 3.5 Convert PaddleOCR-VL-1.6 to MLX bf16 and 8-bit with `mlx-vlm` (OI-4). Verify: each conversion loads.
+- [ ] 3.4 Quantise the official PaddleOCR-VL-1.6 GGUF to Q8_0 with `llama-quantize`. Verify: SHA-256 recorded.
+- [ ] 3.5 Download the MLX builds in `mlx_pins` (OI-4). Verify: revision and SHA-256 match the pins; each build loads in `mlx-vlm`.
 - [ ] 3.6 Add the `runtime` block to `plan.json` with the real SHA-256 values. Verify: `omrs experiments check` passes the block.
 - [ ] 3.7 Close OI-1, OI-2, OI-5, OI-6 and OI-7. Verify: each item answered in `plan.json`.
 

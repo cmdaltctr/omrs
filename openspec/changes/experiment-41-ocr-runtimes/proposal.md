@@ -12,12 +12,12 @@ OMRS needs a measured answer on the same 257 pages: can a llama.cpp GGUF arm, or
 
 - Add Experiment 41 under `experiments/41-ocr-runtimes-2026-10-30/` with a protocol, a plan and, after operator approval, runs.
 - Compare five arms per engine on the Experiment 37 page lists (E-maths 40, E-scan 28, E-script 189):
-  - dots.mocr: PyTorch MPS (shipped, reused); MLX bf16 and 8-bit (comparison); llama.cpp GGUF bf16 and Q8_0 from our own conversion (decides).
-  - PaddleOCR-VL: CPU (shipped, reused); MLX bf16 and 8-bit from our own conversion (comparison); llama.cpp GGUF 16-bit from the official repository and Q8_0 from our own conversion (decides).
+  - dots.mocr: PyTorch MPS (shipped, reused); MLX bf16 and 8-bit (comparison); llama.cpp GGUF bf16 and Q8_0 from our own conversion of the pinned revision, cross-checked against a community GGUF (decides).
+  - PaddleOCR-VL: CPU (shipped, reused); MLX 16-bit and 8-bit from `OpenGryd` (comparison); llama.cpp GGUF 16-bit from the official repository and Q8_0 quantised from it (decides).
 - Gates C1 to C5 decide. C6 and C7 inform. The operator set these gates on 2026-10-06.
 - Only a llama.cpp arm that passes can lead to a follow-up OpenSpec change for an engine.
 - Hold four approvals in `plan.json`, all `false`: install, downloads, licence check and OCR run budget.
-- Extend the licence check (DR-2) to our own GGUF conversion of dots.mocr and to the MLX 8-bit conversion.
+- Extend the licence check (DR-2) to our own GGUF conversion of dots.mocr, the MLX 8-bit conversion and the cross-check GGUF.
 - Change no engine folder, route, default or dependency.
 
 ## Capabilities
