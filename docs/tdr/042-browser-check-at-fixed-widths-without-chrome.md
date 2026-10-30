@@ -1,7 +1,7 @@
 # TDR-042: Browser check at fixed widths without Chrome
 
 - **Date:** 2026-10-29
-- **Status:** Proposed
+- **Status:** Accepted (2026-10-30)
 - **Deciders:** Maintainer
 - **Tags:** web | browser-check | testing | macOS
 
