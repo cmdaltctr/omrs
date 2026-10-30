@@ -1,4 +1,4 @@
-import { CardInset } from "../components/ui/card";
+import { SettingBox } from "./SettingBox";
 import { formatRoute } from "../lib/routes";
 import { CHAT_LINK_TEXT } from "./chatServerWords";
 
@@ -16,7 +16,7 @@ export function ChatSettingsLink() {
 /** The Chat model as a read-only row. Settings > Chat sets it, so the row links there and offers no Edit. */
 export function ChatModelRow({ model }: { model: string }) {
   return (
-    <CardInset>
+    <SettingBox>
       <p className="text-meta text-muted-foreground">
         Chat model <span>(Read-only)</span>
       </p>
@@ -30,6 +30,6 @@ export function ChatModelRow({ model }: { model: string }) {
       <div>
         <ChatSettingsLink />
       </div>
-    </CardInset>
+    </SettingBox>
   );
 }

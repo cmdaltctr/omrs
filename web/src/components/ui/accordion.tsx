@@ -22,6 +22,7 @@ interface AccordionTriggerProps extends ComponentProps<typeof AccordionPrimitive
 
 // The header is an h2 because the page heading is the h1. Radix defaults to h3.
 // The focus ring comes from the global :focus-visible rule in app.css.
+// An open section shows its title, icon and chevron in the accent colour.
 function AccordionTrigger({ className, children, icon: Icon, ...props }: AccordionTriggerProps) {
   return (
     <AccordionPrimitive.Header asChild>
@@ -29,7 +30,7 @@ function AccordionTrigger({ className, children, icon: Icon, ...props }: Accordi
         <AccordionPrimitive.Trigger
           data-slot="accordion-trigger"
           className={cn(
-            "group flex min-h-11 flex-1 items-center gap-2 px-3 py-2 text-start text-ui font-semibold transition-colors duration-150 hover:bg-interactive-hover",
+            "group flex min-h-11 flex-1 items-center gap-2 px-3 py-2 text-start text-ui font-semibold transition-colors duration-150 hover:bg-interactive-hover data-[state=open]:text-primary-label",
             className,
           )}
           {...props}

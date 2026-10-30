@@ -43,12 +43,26 @@ function savingServer(start: DocumentReadingState) {
 }
 
 describe("Document reading", () => {
-  it("puts each reading setting in its own mini card", async () => {
-    await openSection();
+  it("shows each reading setting as a compact row, with no mini card", async () => {
+    const { section } = await openSection();
     for (const name of ["PDF reader", "OCR fallback", "Lowest text confidence"]) {
-      expect(row(name).closest("[data-slot='card-inset']")).not.toBeNull();
+      expect(row(name)).toHaveAttribute("data-slot", "setting-row");
     }
-    expect(row("PDF reader").closest("[data-slot='card-inset']")).not.toBe(row("OCR fallback").closest("[data-slot='card-inset']"));
+    expect(section.querySelector("[data-slot='card-inset']")).toBeNull();
+  });
+
+  it("groups the OCR settings into When to use OCR, Maths pages and Engines, with the engines folder under Engines", async () => {
+    const { section } = await openSection();
+    const ocr = within(section).getByRole("region", { name: "OCR" });
+    const block = (name: string) => within(ocr).getByRole("group", { name });
+    const names = (name: string) => within(block(name)).getAllByRole("group").map((group) => group.getAttribute("aria-label"));
+    expect(names("When to use OCR")).toEqual(["OCR fallback", "Lowest text confidence", "OCR page fraction", "OCR routing unit"]);
+    expect(names("Maths pages")).toEqual(["Maths routing", "Maths page fraction"]);
+    expect(names("Engines")).toEqual(["Primary engine", "Fallback engine"]);
+    expect(block("Engines")).toHaveTextContent(/OCR engines folder|OCR_WORKERS_DIR/);
+    const [left, right] = Array.from(ocr.querySelector("[data-slot='reading-columns']")!.children) as HTMLElement[];
+    expect(within(left!).getByRole("group", { name: "When to use OCR" })).toBeInTheDocument();
+    expect(within(right!).getByRole("group", { name: "Engines" })).toBeInTheDocument();
   });
 
   it("opens from its address with its chip selected, straight before Configuration", async () => {

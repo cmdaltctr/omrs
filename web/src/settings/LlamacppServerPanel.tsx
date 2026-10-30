@@ -1,17 +1,20 @@
 import { ErrorNotice } from "../components/ErrorNotice";
 import { Button } from "../components/ui/button";
-import { CardInset } from "../components/ui/card";
+import { SettingBox } from "./SettingBox";
 import type { LlamacppServerStatus } from "../api/llamacppServer";
 import { useRestartLlamacppServer, useStartLlamacppServer, useStopLlamacppServer } from "../api/llamacppServerHooks";
 import { ChatModelRow } from "./ChatModelRow";
 import { CALLOUTS } from "./chatServerWords";
 import { LlamacppServerFields } from "./LlamacppServerFields";
+import { PanelDisclosure } from "./PanelDisclosure";
 import { CONFLICT_SENTENCES, conflictReason, SHARED_ADDRESS_WARNING, statusLine } from "./llamacppServerWords";
 import { ServerCallout } from "./ServerCallout";
 
 /**
  * The "Local server" block of the llama.cpp card, shown while OMRS runs the
  * Chat server: settings, the Chat model it loads, state and Start, Stop and Restart.
+ * It starts closed with the state on its toggle row, and opens by itself while
+ * the program is missing or the server failed.
  */
 export function LlamacppServerPanel({ status }: { status: LlamacppServerStatus }) {
   const start = useStartLlamacppServer();
@@ -28,16 +31,19 @@ export function LlamacppServerPanel({ status }: { status: LlamacppServerStatus }
   const chatModel = status.chat_model.provider === "llamacpp" ? status.chat_model.model : "";
 
   return (
-    <div role="group" aria-labelledby="llamacpp-server-title" className="flex flex-col gap-2">
-      <h5 id="llamacpp-server-title" className="text-ui font-semibold">
-        Local server
-      </h5>
+    <PanelDisclosure
+      titleId="llamacpp-server-title"
+      title="Local server"
+      level={5}
+      summary={statusLine(status)}
+      attention={needsProgram || status.state === "failed" || failure !== undefined}
+    >
       <p className="text-meta text-muted-foreground">omrs starts and stops only this server. It never touches a server you started yourself.</p>
       {status.shared_with_classification ? <ServerCallout tone="warning" text={SHARED_ADDRESS_WARNING} /> : null}
       {needsProgram ? <ServerCallout text={CALLOUTS.managed} /> : null}
       <LlamacppServerFields saved={status.saved} />
       <ChatModelRow model={chatModel} />
-      <CardInset>
+      <SettingBox>
         <div role="status" className="text-ui">
           {statusLine(status)}
         </div>
@@ -54,13 +60,13 @@ export function LlamacppServerPanel({ status }: { status: LlamacppServerStatus }
             Restart
           </Button>
         </div>
-      </CardInset>
+      </SettingBox>
       {conflict !== null ? (
         <p role="alert" className="text-ui text-status-error-label">
           {CONFLICT_SENTENCES[conflict]}
         </p>
       ) : null}
       {failure !== undefined && conflict === null ? <ErrorNotice error={failure.error} onRetry={() => failure.reset()} /> : null}
-    </div>
+    </PanelDisclosure>
   );
 }

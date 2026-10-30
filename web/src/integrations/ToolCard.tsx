@@ -1,9 +1,8 @@
 import type { ExternalTool, ToolAvailability } from "../api/integrations";
 import { Badge } from "../components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader } from "../components/ui/card";
-import { CardTitleRow } from "./CardTitleRow";
 import { formatRoute } from "../lib/routes";
 import { CopyCommand } from "./CopyCommand";
+import { EntryRow } from "./EntryList";
 import { InstallCaution, integrationCardId } from "./IntegrationCard";
 import { ToolInstallControls, toolInstallPhase } from "./ToolInstallControls";
 import { ToolUninstallControls, toolUninstallPhase } from "./ToolUninstallControls";
@@ -78,27 +77,31 @@ export function ToolCard({ tool, control }: { tool: ExternalTool; control: Insta
   const justInstalled = job?.tool === tool.id && job.action === "install" && job.state === "succeeded";
   const status = STATUS[tool.availability];
   return (
-    <Card id={integrationCardId(tool.id)} tabIndex={-1} className="scroll-mt-4">
-      <CardHeader>
-        <CardTitleRow title={tool.name}>
-          <Badge variant={status.variant}>{status.label}</Badge>
-        </CardTitleRow>
-        <CardDescription>{tool.purpose}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <ToolDetails tool={tool} />
-        <NextStep tool={tool} justInstalled={justInstalled} />
-        {tool.install_caution !== null && install !== "running" && !uninstallActive && <InstallCaution text={tool.install_caution} />}
-        {uninstallActive ? null : <ToolInstallControls tool={tool} control={control} phase={install} />}
-        {installActive ? null : <ToolUninstallControls tool={tool} control={control} phase={uninstall} />}
-        <CopyCommand command={tool.install_command} subject={tool.name} />
-        {tool.uninstall_reason === "not-installed-by-app" && (
-          <div className="flex min-w-0 flex-col gap-1 border-t border-border pt-3">
-            <CopyCommand command={tool.uninstall_command} subject={tool.name} label="Copy uninstall command for" />
-            <p className="text-meta text-muted-foreground">{`This ${tool.name} was not installed from this card, so the app does not remove it. To remove it, run this command in a terminal.`}</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <EntryRow
+      id={integrationCardId(tool.id)}
+      title={tool.name}
+      badges={<Badge variant={status.variant}>{status.label}</Badge>}
+      purpose={tool.purpose}
+      details={
+        <>
+          <ToolDetails tool={tool} />
+          <NextStep tool={tool} justInstalled={justInstalled} />
+          {tool.install_caution !== null && install !== "running" && !uninstallActive && <InstallCaution text={tool.install_caution} />}
+        </>
+      }
+      actions={
+        <>
+          {uninstallActive ? null : <ToolInstallControls tool={tool} control={control} phase={install} />}
+          {installActive ? null : <ToolUninstallControls tool={tool} control={control} phase={uninstall} />}
+          <CopyCommand command={tool.install_command} subject={tool.name} />
+          {tool.uninstall_reason === "not-installed-by-app" && (
+            <div className="flex min-w-0 flex-col gap-1 border-t border-border pt-3">
+              <CopyCommand command={tool.uninstall_command} subject={tool.name} label="Copy uninstall command for" />
+              <p className="text-meta text-muted-foreground">{`This ${tool.name} was not installed from this card, so the app does not remove it. To remove it, run this command in a terminal.`}</p>
+            </div>
+          )}
+        </>
+      }
+    />
   );
 }

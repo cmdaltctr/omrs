@@ -28,9 +28,10 @@ export function ProviderValueField({ provider, field, configDir, note = null, on
   const save = useSaveProviderFields(provider);
   const isNumber = field.kind === "int";
 
-  const row = (
+  return (
     <SettingRow
       label={field.label}
+      note={note}
       value={String(field.value ?? "")}
       source={field.source}
       detail={field.source === "dotenv" ? `${configDir}/.env` : null}
@@ -46,12 +47,5 @@ export function ProviderValueField({ provider, field, configDir, note = null, on
       onClear={(done) => save.mutate({ [field.id]: null }, { onSuccess: done })}
       onRetry={() => save.reset()}
     />
-  );
-  if (note === null) return row;
-  return (
-    <>
-      {row}
-      <p className="text-meta text-muted-foreground">{note}</p>
-    </>
   );
 }

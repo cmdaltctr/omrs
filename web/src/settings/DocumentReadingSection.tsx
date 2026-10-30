@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useApi } from "../api/ApiProvider";
 import { documentReadingQuery } from "../api/queries";
 import type { DocumentReadingKey, DocumentReadingSetting, DocumentReadingState } from "../api/settingsDocumentReading";
@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle } from "../components/ui/card";
 import { READING_ROWS, readingChoices } from "./documentReadingWords";
 import { ReadingSettingRow } from "./ReadingSettingRow";
 import { RestartDialog } from "./RestartDialog";
+import { DenseSettingRows } from "./SettingBox";
 
 export const IDENTITY_NOTE = "These settings are part of the index identity. After a restart, the next ingest can read existing files again.";
 
@@ -32,25 +33,76 @@ function restartFor(state: DocumentReadingState, key: DocumentReadingKey): Resta
   return { change: "Document reading settings", plural: true };
 }
 
-function ReadingCard({ title, state, keys, onSaved }: { title: string; state: DocumentReadingState; keys: (key: DocumentReadingKey) => boolean; onSaved: (state: DocumentReadingState, key: DocumentReadingKey) => void }) {
+/** The OCR blocks in their columns: when to use OCR and maths pages left, engines right. */
+const OCR_BLOCKS: { title: string; keys: readonly DocumentReadingKey[] }[][] = [
+  [
+    { title: "When to use OCR", keys: ["ocr_fallback_enabled", "ocr_fallback_min_confidence", "ocr_fallback_page_fraction", "ocr_routing_unit"] },
+    { title: "Maths pages", keys: ["ocr_maths_routing_enabled", "ocr_maths_page_fraction"] },
+  ],
+  [{ title: "Engines", keys: ["ocr_engine_primary", "ocr_engine_fallback"] }],
+];
+
+type Saved = (state: DocumentReadingState, key: DocumentReadingKey) => void;
+
+function ReadingRows({ state, keys, onSaved }: { state: DocumentReadingState; keys: readonly DocumentReadingKey[]; onSaved: Saved }) {
+  return state.settings
+    .filter((setting) => keys.includes(setting.key))
+    .sort((a, b) => keys.indexOf(a.key) - keys.indexOf(b.key))
+    .map((setting) => (
+      <ReadingSettingRow
+        key={setting.key}
+        setting={setting}
+        words={READING_ROWS[setting.key]}
+        choices={readingChoices(READING_ROWS[setting.key].kind, state)}
+        notes={rowNotes(setting, state)}
+        onSaved={(next) => onSaved(next, setting.key)}
+      />
+    ));
+}
+
+/** Where the OCR engines live, or why none can run. */
+function WorkersFolder({ dir }: { dir: string | null }) {
+  if (dir === null) return <p className="pt-2 text-meta text-muted-foreground">OCR_WORKERS_DIR is not set, so no OCR engine can run.</p>;
   return (
-    <Card>
+    <p className="pt-2 text-meta text-muted-foreground">
+      {"OCR engines folder: "}
+      <code dir="ltr" className="text-code font-mono [overflow-wrap:anywhere]">
+        {dir}
+      </code>
+    </p>
+  );
+}
+
+function OcrBlock({ title, children }: { title: string; children: ReactNode }) {
+  const id = `reading-${title.toLowerCase().replaceAll(" ", "-")}`;
+  return (
+    <div role="group" aria-labelledby={id} className="flex min-w-0 flex-col">
+      <h4 id={id} className="pb-1 text-ui font-semibold">
+        {title}
+      </h4>
+      {children}
+    </div>
+  );
+}
+
+/** The OCR card: titled blocks, in two columns from 768 px of card width. */
+function OcrCard({ state, onSaved }: { state: DocumentReadingState; onSaved: Saved }) {
+  return (
+    <Card role="region" aria-labelledby="reading-ocr" className="@container">
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
+        <CardTitle id="reading-ocr">OCR</CardTitle>
       </CardHeader>
-      <div className="flex flex-col gap-5">
-        {state.settings
-          .filter((setting) => keys(setting.key))
-          .map((setting) => (
-            <ReadingSettingRow
-              key={setting.key}
-              setting={setting}
-              words={READING_ROWS[setting.key]}
-              choices={readingChoices(READING_ROWS[setting.key].kind, state)}
-              notes={rowNotes(setting, state)}
-              onSaved={(next) => onSaved(next, setting.key)}
-            />
-          ))}
+      <div data-slot="reading-columns" className="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 @3xl:grid-cols-2">
+        {OCR_BLOCKS.map((column, index) => (
+          <div key={index} className="flex min-w-0 flex-col gap-4">
+            {column.map(({ title, keys }) => (
+              <OcrBlock key={title} title={title}>
+                <ReadingRows state={state} keys={keys} onSaved={onSaved} />
+                {title === "Engines" ? <WorkersFolder dir={state.ocr.workers_dir} /> : null}
+              </OcrBlock>
+            ))}
+          </div>
+        ))}
       </div>
     </Card>
   );
@@ -83,18 +135,17 @@ export function DocumentReadingSection() {
         )
       ) : (
         <>
-          <ReadingCard title="PDF reading" state={state} keys={(key) => PDF_KEYS.includes(key)} onSaved={saved} />
-          <ReadingCard title="OCR" state={state} keys={(key) => !PDF_KEYS.includes(key)} onSaved={saved} />
-          {state.ocr.workers_dir === null ? (
-            <p className="text-meta text-muted-foreground">OCR_WORKERS_DIR is not set, so no OCR engine can run.</p>
-          ) : (
-            <p className="text-meta text-muted-foreground">
-              {"OCR engines folder: "}
-              <code dir="ltr" className="text-code font-mono [overflow-wrap:anywhere]">
-                {state.ocr.workers_dir}
-              </code>
-            </p>
-          )}
+          <DenseSettingRows>
+            <Card role="region" aria-labelledby="reading-pdf">
+              <CardHeader>
+                <CardTitle id="reading-pdf">PDF reading</CardTitle>
+              </CardHeader>
+              <div className="flex min-w-0 flex-col">
+                <ReadingRows state={state} keys={PDF_KEYS} onSaved={saved} />
+              </div>
+            </Card>
+            <OcrCard state={state} onSaved={saved} />
+          </DenseSettingRows>
         </>
       )}
       <RestartDialog change={restart?.change ?? null} plural={restart?.plural} note={IDENTITY_NOTE} onLater={() => setRestart(null)} />

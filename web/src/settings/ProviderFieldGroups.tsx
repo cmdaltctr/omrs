@@ -1,5 +1,5 @@
 import type { Connection, ProviderField, ProviderGroup, ReadOnlyValue } from "../api/settings";
-import { CardInset } from "../components/ui/card";
+import { SettingBox } from "./SettingBox";
 import { PROVIDER_EXTRAS } from "./providerExtras";
 import { ProviderKeyField } from "./ProviderKeyField";
 import { ProviderValueField } from "./ProviderValueField";
@@ -20,6 +20,8 @@ interface ProviderFieldGroupsProps {
   configDir: string;
   /** Called with the text typed in a field, or `null` when its input closes. The card uses it for Test. */
   onTyped: (id: string, text: string | null) => void;
+  /** The parts to show: `null` is the values with no group. All parts show when it is not given. */
+  parts?: readonly (ProviderGroup | null)[];
 }
 
 /** The line under a field that uses another field's value while no source sets it. */
@@ -31,7 +33,7 @@ function followLine(field: ProviderField, fields: ProviderField[]): string | nul
 
 function ReadOnlyValues({ values }: { values: ReadOnlyValue[] }) {
   return (
-    <CardInset>
+    <SettingBox>
       <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 text-ui">
         {values.map((entry) => (
           <div key={entry.label} className="col-span-2 grid grid-cols-subgrid">
@@ -46,7 +48,7 @@ function ReadOnlyValues({ values }: { values: ReadOnlyValue[] }) {
           </div>
         ))}
       </dl>
-    </CardInset>
+    </SettingBox>
   );
 }
 
@@ -56,7 +58,7 @@ function ReadOnlyValues({ values }: { values: ReadOnlyValue[] }) {
  * under its title, with the provider's extra panels for that block at its end.
  * A card whose values have no group shows no block titles.
  */
-export function ProviderFieldGroups({ connection, keychain, configDir, onTyped }: ProviderFieldGroupsProps) {
+export function ProviderFieldGroups({ connection, keychain, configDir, onTyped, parts }: ProviderFieldGroupsProps) {
   const extras = PROVIDER_EXTRAS[connection.provider] ?? [];
 
   const part = (group: ProviderGroup | null) => {
@@ -83,11 +85,13 @@ export function ProviderFieldGroups({ connection, keychain, configDir, onTyped }
     );
   };
 
+  const shows = (group: ProviderGroup | null) => parts === undefined || parts.includes(group);
+
   return (
     <>
-      {part(null)}
+      {shows(null) ? part(null) : null}
       {GROUPS.map(({ id, title }) => {
-        const body = part(id);
+        const body = shows(id) ? part(id) : null;
         if (body === null) return null;
         const headingId = `provider-${connection.provider}-${id}`;
         return (

@@ -146,6 +146,12 @@
     outline-offset: 2px;
   }
 
+  /* Text fields match :focus-visible even after a click, so the offset ring
+     would show while typing. They show an accent border instead (Input, Textarea). */
+  :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="button"], [type="submit"], [type="reset"], [type="file"], [type="color"]), textarea, [contenteditable="true"]):focus-visible {
+    outline: none;
+  }
+
   [hidden] {
     display: none !important;
   }

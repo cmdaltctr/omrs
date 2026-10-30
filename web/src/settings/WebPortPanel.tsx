@@ -5,7 +5,6 @@ import { webPortQuery } from "../api/queries";
 import type { WebPortState } from "../api/settings";
 import { useSetWebPort } from "../api/settingsMutations";
 import { ErrorNotice } from "../components/ErrorNotice";
-import { Card, CardHeader, CardTitle } from "../components/ui/card";
 import { RestartDialog } from "./RestartDialog";
 import { SettingRow } from "./SettingRow";
 import { wholeNumberIn } from "./validation";
@@ -15,7 +14,7 @@ const MAX_PORT = 65535;
 const DEFAULT_PORT = 8765;
 const PORT_ERROR = `Enter a whole number from ${MIN_PORT} to ${MAX_PORT}.`;
 
-/** The port saved for later launches. The running server never rebinds, so a saved port that differs from the bound one waits for a restart. */
+/** The Web port block of the HTTP card: the port saved for later launches. The running server never rebinds, so a saved port that differs from the bound one waits for a restart. */
 export function WebPortPanel() {
   const query = useQuery(webPortQuery(useApi()));
   const save = useSetWebPort();
@@ -28,10 +27,10 @@ export function WebPortPanel() {
   }
 
   return (
-    <Card role="region" aria-labelledby="mcp-port-title">
-      <CardHeader>
-        <CardTitle id="mcp-port-title">Web port</CardTitle>
-      </CardHeader>
+    <div role="group" aria-labelledby="mcp-port-title" className="flex min-w-0 flex-col gap-2 border-t border-border pt-3">
+      <h4 id="mcp-port-title" className="text-ui font-semibold">
+        Web port
+      </h4>
       {state === undefined ? (
         query.isError ? (
           <ErrorNotice error={query.error} onRetry={() => void query.refetch()} />
@@ -65,6 +64,6 @@ export function WebPortPanel() {
         </>
       )}
       <RestartDialog change={restart} onLater={() => setRestart(null)} />
-    </Card>
+    </div>
   );
 }

@@ -3,11 +3,11 @@ import type { DocumentReadingSetting, DocumentReadingState } from "../api/settin
 import { useSaveDocumentReading } from "../api/settingsMutations";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
-import { CardInset } from "../components/ui/card";
 import { sourceText } from "./connectionWords";
 import { draftText, draftValue, fractionError, readingText, type ReadingChoice, type ReadingRowWords } from "./documentReadingWords";
 import { ReadingControl } from "./ReadingControl";
 import { SaveErrorNotice } from "./SaveErrorNotice";
+import { SettingBox, useDenseRows } from "./SettingBox";
 
 const CODE = "text-code font-mono [overflow-wrap:anywhere]";
 const META = "text-meta text-muted-foreground";
@@ -69,31 +69,37 @@ export function ReadingSettingRow({ setting, words, choices, notes, onSaved }: R
     send(draftValue(kind, draft));
   }
 
-  return (
-    <CardInset role="group" aria-label={label}>
-      <p className={META}>{label}</p>
-      {draft === null ? (
+  const dense = useDenseRows();
+  const value = (
+    <code dir="ltr" className={CODE}>
+      {readingText(setting.value)}
+    </code>
+  );
+  const sourceLine = (
+    <>
+      {sourceText(setting.source)}
+      {" · Default: "}
+      <span dir="ltr">{readingText(setting.default)}</span>
+    </>
+  );
+  const editButton = (variant: "ghost" | "outline") => (
+    <Button type="button" variant={variant} size="sm" aria-label={`Edit ${label}`} onClick={() => setDraft(start)}>
+      Edit
+    </Button>
+  );
+  const pending = setting.restart_pending ? (
+    <div className="flex flex-wrap items-center gap-2">
+      <p className="text-ui">
+        {"Saved for the next launch: "}
         <code dir="ltr" className={CODE}>
-          {readingText(setting.value)}
+          {readingText(setting.saved)}
         </code>
-      ) : null}
-      <p className={META}>{words.help}</p>
-      <p className={META}>
-        {sourceText(setting.source)}
-        {" · Default: "}
-        <span dir="ltr">{readingText(setting.default)}</span>
       </p>
-      {setting.restart_pending ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="text-ui">
-            {"Saved for the next launch: "}
-            <code dir="ltr" className={CODE}>
-              {readingText(setting.saved)}
-            </code>
-          </p>
-          <Badge variant="warning">Restart to apply</Badge>
-        </div>
-      ) : null}
+      <Badge variant="warning">Restart to apply</Badge>
+    </div>
+  ) : null;
+  const extras = (
+    <>
       {draft === null && kind === "engine" && nextReason !== null ? <p className={META}>{`${String(next)}: ${nextReason}`}</p> : null}
       {notes.map((note) => (
         <p key={note} className="text-ui">
@@ -101,13 +107,40 @@ export function ReadingSettingRow({ setting, words, choices, notes, onSaved }: R
         </p>
       ))}
       {setting.locked ? <p className={META}>{setting.lock_reason ?? "Read-only here."}</p> : null}
-      {draft === null && !setting.locked ? (
-        <div>
-          <Button type="button" variant="outline" size="sm" aria-label={`Edit ${label}`} onClick={() => setDraft(start)}>
-            Edit
-          </Button>
+    </>
+  );
+
+  return (
+    <SettingBox role="group" aria-label={label}>
+      {dense && draft === null ? (
+        // A compact row: label, value with source and default, help, then Edit on the right.
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <p className={META}>{label}</p>
+            <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+              {value}
+              <span aria-hidden="true" className={META}>
+                ·
+              </span>
+              <span className={META}>{sourceLine}</span>
+            </div>
+            <p className={META}>{words.help}</p>
+            {pending}
+            {extras}
+          </div>
+          {!setting.locked ? editButton("ghost") : null}
         </div>
-      ) : null}
+      ) : (
+        <>
+          <p className={META}>{label}</p>
+          {draft === null ? value : null}
+          <p className={META}>{words.help}</p>
+          <p className={META}>{sourceLine}</p>
+          {pending}
+          {extras}
+          {draft === null && !setting.locked ? <div>{editButton("outline")}</div> : null}
+        </>
+      )}
       {draft !== null ? (
         <form onSubmit={submit} noValidate className="flex flex-col gap-1.5">
           <ReadingControl id={id} label={label} kind={kind} draft={draft} choices={choices} refusal={refusal} onChange={change} />
@@ -127,6 +160,6 @@ export function ReadingSettingRow({ setting, words, choices, notes, onSaved }: R
         </form>
       ) : null}
       {save.isError ? <SaveErrorNotice error={save.error} onRetry={() => save.reset()} /> : null}
-    </CardInset>
+    </SettingBox>
   );
 }

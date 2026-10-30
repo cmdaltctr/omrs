@@ -75,7 +75,7 @@ describe("navigation foot", () => {
     expect(document.documentElement.dataset.theme).toBe("light");
     expect(storedTheme()).toBe("light");
     await user.click(within(foot()).getByRole("link", { name: "Settings" }));
-    expect(screen.getByRole("combobox", { name: "Theme" })).toHaveTextContent("Light");
+    expect(within(screen.getByRole("group", { name: "Theme mode" })).getByRole("button", { name: "Light" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("links to the Settings route and marks it current there", () => {

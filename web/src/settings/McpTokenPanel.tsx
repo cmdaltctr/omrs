@@ -6,7 +6,6 @@ import { mcpQuery } from "../api/queries";
 import { useRevokeMcpToken, useRotateMcpToken } from "../api/settingsMutations";
 import { ErrorNotice } from "../components/ErrorNotice";
 import { Button } from "../components/ui/button";
-import { Card, CardHeader, CardTitle } from "../components/ui/card";
 import { CopyButton } from "./CopyButton";
 
 function when(iso: string | null): string {
@@ -16,7 +15,7 @@ function when(iso: string | null): string {
 }
 
 /**
- * Create, rotate and revoke the MCP token. A new token lives in this
+ * The MCP token block of the HTTP card: create, rotate and revoke the token. A new token lives in this
  * component's state only: it is never cached or stored, so leaving the
  * section drops it and the server cannot show it again.
  */
@@ -49,11 +48,11 @@ export function McpTokenPanel() {
   }
 
   return (
-    <Card role="region" aria-labelledby="mcp-token-title">
-      <CardHeader>
-        <CardTitle id="mcp-token-title">MCP token</CardTitle>
-        <p className="text-meta text-muted-foreground">The token works on the MCP address only. The server keeps a digest, so it cannot show the token again.</p>
-      </CardHeader>
+    <div role="group" aria-labelledby="mcp-token-title" className="flex min-w-0 flex-col gap-2 border-t border-border pt-3">
+      <h4 id="mcp-token-title" className="text-ui font-semibold">
+        MCP token
+      </h4>
+      <p className="text-meta text-muted-foreground">The token works on the MCP address only. The server keeps a digest, so it cannot show the token again.</p>
       {query.data === undefined ? (
         query.isError ? (
           <ErrorNotice error={query.error} onRetry={() => void query.refetch()} />
@@ -100,6 +99,6 @@ export function McpTokenPanel() {
           {revokedNote}
         </p>
       ) : null}
-    </Card>
+    </div>
   );
 }

@@ -8,6 +8,7 @@ import { ModelDownloadDone } from "./ModelDownloadDone";
 import { ModelDownloadProgress } from "./ModelDownloadProgress";
 import { ModelFileList } from "./ModelFileList";
 import { ModelSearchField } from "./ModelSearchField";
+import { PanelDisclosure } from "./PanelDisclosure";
 import { reasonFromBody, REASON_SENTENCES } from "./modelDownloadWords";
 import { useCancelModelDownload, useModelDownload, useStartModelDownload } from "./useModelDownload";
 
@@ -22,7 +23,7 @@ function repoOf(result: ModelSearchResult): string | null {
   return result.id.replace(/^hf\.co\//, "");
 }
 
-/** The "Get a model" block of a provider card: search, pick a file, download, then the next step. */
+/** The "Get a model" block of a provider card: search, pick a file, download, then the next step. It starts closed and opens by itself while this provider's download runs. */
 export function ModelDownloadPanel({ provider, source }: { provider: string; source: ModelSource }) {
   const titleId = `get-model-${provider}`;
   const status = useModelDownload();
@@ -40,10 +41,13 @@ export function ModelDownloadPanel({ provider, source }: { provider: string; sou
   const refusal = start.error instanceof ApiError ? reasonFromBody(start.error.body) : null;
 
   return (
-    <div role="group" aria-labelledby={titleId} className="flex min-w-0 flex-col gap-2">
-      <h4 id={titleId} className="text-ui font-semibold">
-        Get a model
-      </h4>
+    <PanelDisclosure
+      titleId={titleId}
+      title="Get a model"
+      level={4}
+      summary={mine?.state === "running" ? "Downloading" : null}
+      attention={mine?.state === "running" || start.isError}
+    >
       <p className="text-meta text-muted-foreground">{INTRO[source]}</p>
       <ModelSearchField provider={provider} selectedId={chosen?.id ?? null} onChoose={setChosen} typedName={source === "ollama-pull"} />
       {chosen !== null && repo !== null ? <ModelFileList key={repo} provider={provider} repo={repo} source={source} disabled={running || start.isPending} onStart={begin} /> : null}
@@ -65,6 +69,6 @@ export function ModelDownloadPanel({ provider, source }: { provider: string; sou
       {cancel.isError ? <ErrorNotice error={cancel.error} onRetry={() => cancel.reset()} /> : null}
       {mine !== null ? <ModelDownloadProgress status={mine} cancelling={cancel.isPending} onCancel={() => cancel.mutate()} /> : null}
       {mine !== null ? <ModelDownloadDone status={mine} /> : null}
-    </div>
+    </PanelDisclosure>
   );
 }

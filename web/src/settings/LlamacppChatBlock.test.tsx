@@ -23,7 +23,7 @@ describe("The Chat block of the llama.cpp card", () => {
 
   it("shows the Chat model as a read-only row with the link and no Edit when Chat uses llama.cpp", async () => {
     const block = await chatBlock(() => chatOn("llamacpp", "Qwen/Qwen3-4B-GGUF:Q4_K_M"));
-    const row = (await within(block).findByText("Chat model")).closest("[data-slot='card-inset']") as HTMLElement;
+    const row = (await within(block).findByText("Chat model")).closest("[data-slot='setting-row']") as HTMLElement;
     expect(within(row).getByText("Qwen/Qwen3-4B-GGUF:Q4_K_M")).toBeInTheDocument();
     expect(within(row).getByRole("link", { name: "Change in Settings > Chat" })).toHaveAttribute("href", "#/settings/chat");
     expect(within(block).queryByRole("button", { name: /Edit Chat model/ })).toBeNull();
@@ -33,7 +33,7 @@ describe("The Chat block of the llama.cpp card", () => {
 
   it("shows Not set for an empty llama.cpp Chat model", async () => {
     const block = await chatBlock(() => chatOn("llamacpp", ""));
-    const row = (await within(block).findByText("Chat model")).closest("[data-slot='card-inset']") as HTMLElement;
+    const row = (await within(block).findByText("Chat model")).closest("[data-slot='setting-row']") as HTMLElement;
     expect(within(row).getByText("Not set")).toBeInTheDocument();
   });
 

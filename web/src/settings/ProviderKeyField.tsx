@@ -28,7 +28,7 @@ export function ProviderKeyField({ provider, field, keychain, onTyped }: Provide
   const error = save.isError ? save.error : remove.isError ? remove.error : null;
 
   return (
-    <div className="flex flex-col gap-1.5">
+    <>
       {stateLine !== undefined ? <p className="text-meta text-muted-foreground">{stateLine}</p> : null}
       <KeySettingRow
         label={field.label}
@@ -50,6 +50,6 @@ export function ProviderKeyField({ provider, field, keychain, onTyped }: Provide
           remove.reset();
         }}
       />
-    </div>
+    </>
   );
 }

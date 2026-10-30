@@ -33,7 +33,7 @@ After the change is archived, these files move under `openspec/changes/archive/`
 
 Tinted primary buttons use `--accent-tint`, `--accent-tint-hover`, `--accent-tint-active`, and `--accent-tint-border`. Strengths are 10% / 16% / 22% on light and 16% / 22% / 30% on dark.
 
-Theme selection: the system preference applies unless the root element carries `data-theme="light"` or `data-theme="dark"`. Dark values appear twice in `tokens.css` (media query and `data-theme`). When you add a token, define it in all three places.
+Theme selection: the system preference applies unless the root element carries `data-theme="light"` or `data-theme="dark"`. Dark values appear twice in `tokens.css` (media query and `data-theme`). When you add a token, define it in all three places. A chosen light or dark theme overrides the colour tokens from a generated `<style id="omrs-theme">` that repeats the same selectors after `tokens.css` (`applyAppearance` in `web/src/lib/preferences.ts`). A token a theme must change also goes into `themeTokens` in `web/src/lib/themes/catalogue.ts`. Fonts and text size override `--font-sans`, `--font-mono` and the root font size on the root element.
 
 ### Bridge caution
 
@@ -111,7 +111,7 @@ Layout uses logical properties only (`margin-inline`, `padding-block`, `inset-in
 - Primary action: tinted fill, saturated tint border, `--accent-label` text.
 - Selection (navigation, chips): neutral `--selection` fill with normal text. Never the accent. A chip marks selection and stays visually separate from the primary action.
 - Hover applies to interactive items only. Hover and pressed overlays sit on the base surface, so fields keep their fill.
-- Focus: `outline: 2px solid var(--focus-ring)` with `outline-offset: 2px` on `:focus-visible`. OpenChamber uses a 3px ring. OMRS keeps the outline token. shadcn defaults use `ring-*` classes. Change generated components to the outline.
+- Focus: `outline: 2px solid var(--focus-ring)` with `outline-offset: 2px` on `:focus-visible`. Text fields (`Input`, `Textarea`, `contenteditable`) are the exception: browsers match `:focus-visible` on them even after a click, so they drop the outline and show a 2px accent edge instead (`focus-visible:border-ring` plus an inset 1px `--focus-ring` shadow). Checkboxes, radios and file pickers keep the outline. The rule is in `web/src/styles/app.css`. OpenChamber uses a 3px ring. OMRS keeps the outline token. shadcn defaults use `ring-*` classes. Change generated components to the outline.
 - Disabled: keep the label visible and the state recognisable. Use `aria-disabled` or `disabled`, and say why when it is not obvious.
 - Transitions: 150ms ease (`--transition-fast`) on background, border, colour, and opacity. Animate only opacity and transform in ongoing motion. Respect `prefers-reduced-motion`. Do not change layout on hover.
 - Status colour always pairs with text or an icon.

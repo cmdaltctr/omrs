@@ -56,9 +56,10 @@ describe("every Settings tab uses cards", () => {
     }
   });
 
-  it("puts the theme choice in a mini card", async () => {
+  it("puts the theme choice and the text settings in cards", async () => {
     const section = await openTab("appearance", "Appearance");
-    expect(within(section).getByRole("combobox").closest(INSET)).not.toBeNull();
+    expect(within(section).getByRole("group", { name: "Theme mode" }).closest(CARD)).not.toBeNull();
+    expect(within(section).getByRole("heading", { name: "Text" }).closest(CARD)).not.toBeNull();
   });
 
   it("each setting row is in a table inside a block card", async () => {

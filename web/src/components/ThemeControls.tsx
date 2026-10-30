@@ -4,7 +4,6 @@ import { usePreferences } from "../lib/PreferencesProvider";
 import { THEMES, type ThemePreference } from "../lib/preferences";
 import { NavTooltip } from "./NavTooltip";
 import { Button } from "./ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 const LABELS: Record<ThemePreference, string> = { system: "System", light: "Light", dark: "Dark" };
 const DARK_QUERY = "(prefers-color-scheme: dark)";
@@ -30,22 +29,17 @@ export function useEffectiveTheme(): "light" | "dark" {
   return preferences.theme;
 }
 
-/** The Select with System, Light and Dark. Settings shows it. */
-export function ThemeSelect() {
+/** System, Light and Dark as three chips. Settings > Appearance shows it. */
+export function ThemeModeChips() {
   const { preferences, setTheme } = usePreferences();
   return (
-    <Select value={preferences.theme} onValueChange={(value) => setTheme(value as ThemePreference)}>
-      <SelectTrigger aria-label="Theme" className="w-28">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent>
-        {THEMES.map((theme) => (
-          <SelectItem key={theme} value={theme}>
-            {LABELS[theme]}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <div role="group" aria-label="Theme mode" className="flex flex-wrap gap-2">
+      {THEMES.map((theme) => (
+        <Button key={theme} variant="chip" size="sm" aria-pressed={preferences.theme === theme} onClick={() => setTheme(theme)}>
+          {LABELS[theme]}
+        </Button>
+      ))}
+    </div>
   );
 }
 
