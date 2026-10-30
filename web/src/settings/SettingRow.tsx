@@ -1,10 +1,10 @@
 import { useId, useState, type FormEvent } from "react";
-import { CardInset } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { isEnvironmentSource, sourceText } from "./connectionWords";
 import { SaveErrorNotice } from "./SaveErrorNotice";
+import { SettingBox, useDenseRows } from "./SettingBox";
 import { SettingControl } from "./SettingControl";
 
 const CODE = "text-code font-mono [overflow-wrap:anywhere]";
@@ -22,6 +22,8 @@ export interface SettingRowProps {
   max?: number | null;
   /** Makes the row read-only and says why, for example a missing session scope. */
   readOnlyReason?: string | null;
+  /** A line under the value, such as the follow line of an address that uses another field's value. */
+  note?: string | null;
   pending: boolean;
   error: unknown;
   /** Called with the typed text; the row closes its input when `done` runs. */
@@ -42,7 +44,7 @@ export interface SettingRowProps {
  * `.env` has no Edit; the source words say where to change it.
  */
 export function SettingRow(props: SettingRowProps) {
-  const { label, value, source, detail, inputType = "text", min = null, max = null, readOnlyReason, pending, error } = props;
+  const { label, value, source, detail, inputType = "text", min = null, max = null, readOnlyReason, note, pending, error } = props;
   const { onSave, onClear, onRetry, onTyped, validate } = props;
   const id = useId();
   const [typed, setTyped] = useState<string | null>(null);
@@ -60,6 +62,20 @@ export function SettingRow(props: SettingRowProps) {
   };
   const locked = isEnvironmentSource(source) || (readOnlyReason ?? null) !== null;
   const dirty = typed !== null && typed !== value && typed.trim() !== "";
+  const dense = useDenseRows();
+  const shown =
+    value === "" ? (
+      <p className="text-ui">Not set</p>
+    ) : (
+      <code dir="ltr" className={CODE}>
+        {value}
+      </code>
+    );
+  const editButton = (variant: "ghost" | "outline") => (
+    <Button type="button" variant={variant} size="sm" aria-label={`Edit ${label}`} onClick={() => setTyped(value)}>
+      Edit
+    </Button>
+  );
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -70,7 +86,7 @@ export function SettingRow(props: SettingRowProps) {
   }
 
   return (
-    <CardInset>
+    <SettingBox>
       {editing ? (
         <form onSubmit={submit} noValidate className="flex flex-col gap-1.5">
           <Label htmlFor={id}>{label}</Label>
@@ -95,29 +111,35 @@ export function SettingRow(props: SettingRowProps) {
             ) : null}
           </div>
         </form>
+      ) : dense ? (
+        // A compact row: label, then value and source on one line, Edit on the right.
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <p className={SOURCE}>{label}</p>
+            <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
+              {shown}
+              <span aria-hidden="true" className={SOURCE}>
+                ·
+              </span>
+              <span className={SOURCE}>{sourceText(source, detail)}</span>
+            </div>
+            {readOnlyReason ? <p className={SOURCE}>{readOnlyReason}</p> : null}
+            {note ? <p className={SOURCE}>{note}</p> : null}
+          </div>
+          {!locked ? editButton("ghost") : null}
+        </div>
       ) : (
         <>
           <p className={SOURCE}>{label}</p>
-          {value === "" ? (
-            <p className="text-ui">Not set</p>
-          ) : (
-            <code dir="ltr" className={CODE}>
-              {value}
-            </code>
-          )}
+          {shown}
           <p className={SOURCE}>{sourceText(source, detail)}</p>
           {readOnlyReason ? <p className={SOURCE}>{readOnlyReason}</p> : null}
-          {!locked ? (
-            <div>
-              <Button type="button" variant="outline" size="sm" aria-label={`Edit ${label}`} onClick={() => setTyped(value)}>
-                Edit
-              </Button>
-            </div>
-          ) : null}
+          {note ? <p className={SOURCE}>{note}</p> : null}
+          {!locked ? <div>{editButton("outline")}</div> : null}
         </>
       )}
       {error ? <SaveErrorNotice error={error} onRetry={onRetry} /> : null}
-    </CardInset>
+    </SettingBox>
   );
 }
 
@@ -173,10 +195,34 @@ export function KeySettingRow(props: KeySettingRowProps) {
 
   const summary = `Key set${last4 !== null ? ` · ending ${last4}` : ""} · ${sourceText(source, detail)}`;
   const noKeychain = !set && keychain === "unavailable";
+  const dense = useDenseRows();
+  const variant = dense ? "ghost" : "outline";
+  const actions =
+    set && typed === null && !isEnvironmentSource(source) ? (
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="button" variant={variant} size="sm" aria-label={`Replace ${label}`} onClick={() => setTyped("")}>
+          Replace
+        </Button>
+        {source === "keychain" ? (
+          <Button type="button" variant={variant} size="sm" aria-label={`Remove ${label}`} disabled={pending} onClick={onRemove}>
+            Remove
+          </Button>
+        ) : null}
+      </div>
+    ) : null;
 
   return (
-    <CardInset>
-      {set ? <p className="text-ui">{summary}</p> : null}
+    <SettingBox>
+      {set && dense ? (
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <p className={SOURCE}>{label}</p>
+            <p className="text-ui">{summary}</p>
+          </div>
+          {actions}
+        </div>
+      ) : null}
+      {set && !dense ? <p className="text-ui">{summary}</p> : null}
       {noKeychain ? (
         <>
           <p className={SOURCE}>{label}</p>
@@ -210,19 +256,8 @@ export function KeySettingRow(props: KeySettingRowProps) {
           </div>
         </form>
       ) : null}
-      {set && typed === null && !isEnvironmentSource(source) ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" variant="outline" size="sm" aria-label={`Replace ${label}`} onClick={() => setTyped("")}>
-            Replace
-          </Button>
-          {source === "keychain" ? (
-            <Button type="button" variant="outline" size="sm" aria-label={`Remove ${label}`} disabled={pending} onClick={onRemove}>
-              Remove
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
+      {dense ? null : actions}
       {error ? <SaveErrorNotice error={error} onRetry={onRetry} /> : null}
-    </CardInset>
+    </SettingBox>
   );
 }

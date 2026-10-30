@@ -4,7 +4,7 @@ import { useApi } from "../api/ApiProvider";
 import type { ChatServerChoice as Choice, LlamacppServerStatus } from "../api/llamacppServer";
 import { useSaveLlamacppServer } from "../api/llamacppServerHooks";
 import { sessionQuery } from "../api/queries";
-import { CardInset } from "../components/ui/card";
+import { SettingBox } from "./SettingBox";
 import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { CALLOUTS, CHAT_SERVER_LABEL, CHOICE_NAMES } from "./chatServerWords";
@@ -36,7 +36,7 @@ export function ChatServerChoice({ status }: { status: LlamacppServerStatus }) {
   const conflict = save.isError ? conflictReason(save.error) : null;
 
   return (
-    <CardInset>
+    <SettingBox>
       <Label htmlFor={id}>{CHAT_SERVER_LABEL}</Label>
       <Select value={value} disabled={field.locked || !hasCredentials || save.isPending} onValueChange={(next) => save.mutate({ chat_server: next as Choice })}>
         <SelectTrigger id={id} className="max-w-xs">
@@ -52,13 +52,18 @@ export function ChatServerChoice({ status }: { status: LlamacppServerStatus }) {
       </Select>
       <p className={META}>{sourceText(field.source)}</p>
       {reason !== null ? <p className={META}>{reason}</p> : null}
-      <ServerCallout text={CALLOUTS[value]} />
+      <details>
+        <summary className="w-fit cursor-pointer text-meta text-primary-label underline-offset-4 hover:underline">What this choice means</summary>
+        <div className="pt-1.5">
+          <ServerCallout text={CALLOUTS[value]} />
+        </div>
+      </details>
       {conflict !== null ? (
         <p role="alert" className="text-ui text-status-error-label">
           {CONFLICT_SENTENCES[conflict]}
         </p>
       ) : null}
       {save.isError && conflict === null ? <SaveErrorNotice error={save.error} onRetry={() => save.reset()} /> : null}
-    </CardInset>
+    </SettingBox>
   );
 }

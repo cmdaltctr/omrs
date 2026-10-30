@@ -1,4 +1,4 @@
-import { act, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import type { Connection, ConnectionList, ProviderField } from "../api/settings";
@@ -18,61 +18,8 @@ function openrouter(change: Partial<ProviderField>): Connection {
 
 const NO_KEY: Partial<ProviderField> = { set: false, last4: null, source: "none" };
 
-/**
- * Fakes layout sizes: the masonry area is *width* pixels wide and each card has
- * the height given for its title. Returns a function that sets new heights and
- * one that restores the real method.
- */
-function fakeSizes(width: number, heights: Record<string, number> = {}) {
-  const original = HTMLElement.prototype.getBoundingClientRect;
-  let current = heights;
-  HTMLElement.prototype.getBoundingClientRect = function (this: HTMLElement) {
-    let w = 0;
-    let h = 0;
-    if (this.dataset.testid === "masonry") w = width;
-    if (this.dataset.masonryItem !== undefined) h = current[this.querySelector("h3")?.textContent ?? ""] ?? 0;
-    return { width: w, height: h, top: 0, left: 0, right: w, bottom: h, x: 0, y: 0, toJSON: () => ({}) } as DOMRect;
-  };
-  return {
-    setHeights: (next: Record<string, number>) => {
-      current = next;
-    },
-    restore: () => {
-      HTMLElement.prototype.getBoundingClientRect = original;
-    },
-  };
-}
-
-/** Replaces the no-op ResizeObserver stub with one whose callbacks the test can fire. */
-function fakeResizeObserver() {
-  const original = globalThis.ResizeObserver;
-  const callbacks = new Set<() => void>();
-  const observed = new Set<Element>();
-  globalThis.ResizeObserver = class {
-    private readonly callback: () => void;
-    constructor(callback: () => void) {
-      this.callback = callback;
-      callbacks.add(callback);
-    }
-    observe(target: Element) {
-      observed.add(target);
-    }
-    unobserve(target: Element) {
-      observed.delete(target);
-    }
-    disconnect() {
-      callbacks.delete(this.callback);
-      observed.clear();
-    }
-  } as unknown as typeof ResizeObserver;
-  return {
-    observed,
-    fire: () => callbacks.forEach((callback) => callback()),
-    restore: () => {
-      globalThis.ResizeObserver = original;
-    },
-  };
-}
+/** OMRS runs the Chat server and its program path is set, so nothing needs attention. */
+const SERVER_READY = { ...SERVER_MANAGED, saved: { ...SERVER_MANAGED.saved, binary: { ...SERVER_MANAGED.saved.binary, value: "/opt/llama/llama-server" } } };
 
 const FIVE = () =>
   list(
@@ -82,12 +29,6 @@ const FIVE = () =>
     { ...OPENROUTER, provider: "openai_compatible", display_name: "OpenAI-compatible" },
     { ...OPENROUTER, provider: "anthropic", display_name: "Anthropic" },
   );
-
-const TALL_LLAMA = { Ollama: 400, "llama.cpp": 1000, OpenRouter: 380, "OpenAI-compatible": 450, Anthropic: 370 };
-
-function names(column: HTMLElement) {
-  return within(column).getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent);
-}
 
 async function openProviders(handlers = {}) {
   const server = settingsServer(handlers);
@@ -101,19 +42,17 @@ function card(name: string) {
 }
 
 describe("Providers", () => {
-  it("puts each field, the key and the read-only values of a card in their own mini card", async () => {
-    await openProviders({ "GET /v1/llamacpp/server": () => SERVER_MANAGED });
-    const inset = (element: HTMLElement) => element.closest("[data-slot='card-inset']");
+  it("shows each setting of a provider card as a compact row, with no mini card", async () => {
+    await openProviders({ "GET /v1/llamacpp/server": () => SERVER_READY });
+    const row = (element: HTMLElement) => element.closest("[data-slot='setting-row']");
     const ollama = card("Ollama");
-    expect(inset(within(ollama).getByText("Address"))).not.toBeNull();
-    expect(inset(within(ollama).getByText("qwen3"))).not.toBeNull();
-    expect(inset(within(ollama).getByText("Address"))).not.toBe(inset(within(ollama).getByText("qwen3")));
-    const openrouter = card("OpenRouter");
-    expect(inset(within(openrouter).getByText(/Key set/))).not.toBeNull();
-    const llamacpp = card("llama.cpp");
-    const server = await within(llamacpp).findByRole("heading", { level: 5, name: "Local server" });
-    const serverRows = server.closest("[data-slot='provider-extra']")!.querySelectorAll("[data-slot='card-inset']");
-    expect(serverRows.length).toBeGreaterThan(1);
+    expect(row(within(ollama).getByText("Address"))).not.toBeNull();
+    expect(row(within(ollama).getByText("qwen3"))).not.toBeNull();
+    expect(row(within(ollama).getByText("Address"))).not.toBe(row(within(ollama).getByText("qwen3")));
+    expect(row(within(card("OpenRouter")).getByText(/Key set/))).not.toBeNull();
+    const server = await within(card("llama.cpp")).findByRole("heading", { level: 5, name: "Local server" });
+    expect(server.closest("details")!.querySelectorAll("[data-slot='setting-row']").length).toBeGreaterThan(1);
+    for (const region of screen.getAllByRole("region")) expect(region.querySelector("[data-slot='card-inset']")).toBeNull();
   });
 
   it("lists a card per server entry with Local and Cloud badges in text and the roles", async () => {
@@ -126,101 +65,46 @@ describe("Providers", () => {
     expect(within(card("llama.cpp")).getAllByText("Embeddings").some((element) => element.getAttribute("data-slot") === "badge")).toBe(true);
   });
 
-  it("keeps a card with an extra panel in one column, with the panel under the fields", async () => {
-    await openProviders({ "GET /v1/llamacpp/server": () => SERVER_MANAGED });
+  it("puts local providers full width above a grid of cloud cards", async () => {
+    await openProviders({ "GET /v1/connections": FIVE });
+    const local = screen.getByRole("group", { name: "On this machine" });
+    const cloud = screen.getByRole("group", { name: "Cloud" });
+    expect(within(local).getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent)).toEqual(["Ollama", "llama.cpp"]);
+    const grid = cloud.querySelector("[data-slot='cloud-grid']") as HTMLElement;
+    expect(within(grid).getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent)).toEqual(["OpenRouter", "OpenAI-compatible", "Anthropic"]);
+    expect(local.compareDocumentPosition(cloud) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByTestId("masonry")).toBeNull();
+  });
+
+  it("splits a local card into two columns: addresses and models left, Chat and Get a model right", async () => {
+    await openProviders({ "GET /v1/llamacpp/server": () => SERVER_READY });
     const llamacpp = card("llama.cpp");
-    expect(llamacpp.className).not.toMatch(/col-span/);
-    const panel = await within(llamacpp).findByRole("heading", { level: 5, name: "Local server" });
-    const extra = panel.closest("[data-slot='provider-extra']") as HTMLElement;
-    expect(extra).not.toBeNull();
-    expect(extra.className).not.toMatch(/border-l/);
-    expect(extra.parentElement?.className ?? "").not.toMatch(/grid-cols-2/);
-    expect(within(extra).queryByRole("button", { name: "Test" })).toBeNull();
+    const [left, right] = Array.from(llamacpp.querySelector("[data-slot='provider-columns']")!.children) as HTMLElement[];
+    expect(within(left!).getByRole("heading", { level: 4, name: "Embeddings" })).toBeInTheDocument();
+    expect(within(left!).getByRole("heading", { level: 4, name: "Classification (metadata)" })).toBeInTheDocument();
+    expect(within(right!).getByRole("heading", { level: 4, name: "Chat" })).toBeInTheDocument();
+    expect(within(right!).getByRole("heading", { level: 4, name: "Get a model" })).toBeInTheDocument();
+    expect(within(llamacpp).getAllByRole("button", { name: "Test" })).toHaveLength(1);
+    expect(llamacpp.querySelector("[data-slot='provider-columns'] button[aria-label='Test']")).toBeNull();
+    expect(card("OpenRouter").querySelector("[data-slot='provider-columns']")).toBeNull();
   });
 
-  it("fits as many 300 px columns as the area allows, up to three", async () => {
-    const sizes = fakeSizes(700);
-    try {
-      await openProviders();
-      await waitFor(() => expect(screen.getAllByTestId("masonry-column")).toHaveLength(2));
-      const columns = screen.getAllByTestId("masonry-column");
-      expect(names(columns[0]!)).toEqual(["Ollama", "OpenRouter"]);
-      expect(names(columns[1]!)).toEqual(["llama.cpp"]);
-    } finally {
-      sizes.restore();
-    }
+  it("starts the Local server and Get a model panels closed, with the server state on the toggle row", async () => {
+    const { user } = await openProviders({ "GET /v1/llamacpp/server": () => SERVER_READY });
+    const llamacpp = card("llama.cpp");
+    const server = (await within(llamacpp).findByRole("heading", { level: 5, name: "Local server" })).closest("details")!;
+    const model = within(llamacpp).getByRole("heading", { level: 4, name: "Get a model" }).closest("details")!;
+    expect(server.open).toBe(false);
+    expect(model.open).toBe(false);
+    expect(server.querySelector("summary")).toHaveTextContent("Stopped");
+    await user.click(server.querySelector("summary")!);
+    expect(server.open).toBe(true);
   });
 
-  it("puts each card in the shortest column, so a short card does not sit under a tall one", async () => {
-    const sizes = fakeSizes(1000, TALL_LLAMA);
-    try {
-      await openProviders({ "GET /v1/connections": FIVE });
-      // Dealt in turn, Anthropic would sit under the 1000 px llama.cpp card.
-      await waitFor(() => expect(names(screen.getAllByTestId("masonry-column")[0]!)).toEqual(["Ollama", "Anthropic"]));
-      const columns = screen.getAllByTestId("masonry-column");
-      expect(columns).toHaveLength(3);
-      expect(names(columns[1]!)).toEqual(["llama.cpp"]);
-      expect(names(columns[2]!)).toEqual(["OpenRouter", "OpenAI-compatible"]);
-    } finally {
-      sizes.restore();
-    }
-  });
-
-  it("does not move a card while focus is inside the cards, and places them again when focus leaves", async () => {
-    const sizes = fakeSizes(1000, TALL_LLAMA);
-    const resizes = fakeResizeObserver();
-    try {
-      const { user } = await openProviders({ "GET /v1/connections": FIVE });
-      await waitFor(() => expect(names(screen.getAllByTestId("masonry-column")[0]!)).toEqual(["Ollama", "Anthropic"]));
-      // Ollama grows while the user edits it; Anthropic would now fit better under OpenRouter.
-      await user.click(within(card("Ollama")).getAllByRole("button", { name: /edit/i })[0]!);
-      const field = within(card("Ollama")).getAllByRole("textbox")[0]!;
-      act(() => field.focus());
-      sizes.setHeights({ ...TALL_LLAMA, Ollama: 900 });
-      await act(async () => {
-        resizes.fire();
-        await new Promise((resolve) => requestAnimationFrame(resolve));
-      });
-      expect(names(screen.getAllByTestId("masonry-column")[0]!)).toEqual(["Ollama", "Anthropic"]);
-      act(() => field.blur());
-      await waitFor(() => expect(names(screen.getAllByTestId("masonry-column")[0]!)).toEqual(["Ollama"]));
-    } finally {
-      resizes.restore();
-      sizes.restore();
-    }
-  });
-
-  it("keeps watching a card's size after it moves to another column", async () => {
-    const sizes = fakeSizes(1000, TALL_LLAMA);
-    const resizes = fakeResizeObserver();
-    try {
-      await openProviders({ "GET /v1/connections": FIVE });
-      await waitFor(() => expect(names(screen.getAllByTestId("masonry-column")[0]!)).toEqual(["Ollama", "Anthropic"]));
-      // Ollama grows (a panel finished loading) with three columns still in place: Anthropic
-      // moves to the OpenRouter column, so React gives it a new element.
-      sizes.setHeights({ ...TALL_LLAMA, Ollama: 900 });
-      await act(async () => {
-        resizes.fire();
-        await new Promise((resolve) => requestAnimationFrame(resolve));
-      });
-      await waitFor(() => expect(names(screen.getAllByTestId("masonry-column")[0]!)).toEqual(["Ollama"]));
-      const items = Array.from(document.querySelectorAll("[data-masonry-item]"));
-      expect(items).toHaveLength(5);
-      for (const item of items) expect(resizes.observed.has(item)).toBe(true);
-    } finally {
-      resizes.restore();
-      sizes.restore();
-    }
-  });
-
-  it("stacks every card in one column on a phone", async () => {
-    const sizes = fakeSizes(358);
-    try {
-      await openProviders();
-      expect(screen.getAllByTestId("masonry-column")).toHaveLength(1);
-    } finally {
-      sizes.restore();
-    }
+  it("opens the Local server panel by itself while the program path is missing", async () => {
+    await openProviders({ "GET /v1/llamacpp/server": () => SERVER_MANAGED });
+    const server = await within(card("llama.cpp")).findByRole("heading", { level: 5, name: "Local server" });
+    expect(server.closest("details")!.open).toBe(true);
   });
 
   it("shows read-only values as read-only and a link to Integrations, not a command, when not installed", async () => {

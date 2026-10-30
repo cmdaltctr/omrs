@@ -47,8 +47,26 @@ async function openMcp(handlers: Record<string, Handler> = mcpRoutes()) {
 }
 
 function panel(name: string) {
-  return screen.getByRole("region", { name });
+  return screen.getByRole("group", { name });
 }
+
+describe("MCP layout", () => {
+  it("shows two full-width cards: stdio, then HTTP with its token and port beside the client configuration", async () => {
+    await openMcp();
+    const section = screen.getByRole("region", { name: "MCP" });
+    const cards = within(section).getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent);
+    expect(cards).toEqual(["Stdio client", "MCP over HTTP"]);
+    const http = await screen.findByRole("region", { name: "MCP over HTTP" });
+    const [left, right] = Array.from(http.querySelector("[data-slot='mcp-columns']")!.children) as HTMLElement[];
+    expect(within(left!).getByRole("group", { name: "MCP token" })).toBeInTheDocument();
+    expect(within(left!).getByRole("group", { name: "Web port" })).toBeInTheDocument();
+    expect(within(right!).getByRole("button", { name: "Copy HTTP configuration" })).toBeInTheDocument();
+    const stdio = screen.getByRole("region", { name: "Stdio client" });
+    expect(stdio.querySelector("[data-slot='mcp-columns']")).not.toBeNull();
+    expect(section.querySelector("[data-slot='card-inset']")).toBeNull();
+    expect(within(http).getByText("URL").closest("[data-slot='setting-row']")).not.toBeNull();
+  });
+});
 
 describe("MCP stdio configuration", () => {
   it("shows a configuration that runs uv with config_dir and copies it", async () => {
@@ -98,10 +116,12 @@ describe("MCP over HTTP switch", () => {
   it("shows where the on/off state comes from, in words", async () => {
     const { user } = await openMcp();
     const http = await screen.findByRole("region", { name: "MCP over HTTP" });
-    expect(await within(http).findByText("default")).toBeInTheDocument();
+    const endpoint = () => within(http).getByText("Endpoint").closest("[data-slot='setting-row']") as HTMLElement;
+    expect(await within(http).findByText("Endpoint")).toBeInTheDocument();
+    expect(within(endpoint()).getByText("default")).toBeInTheDocument();
     await user.click(await screen.findByRole("switch", { name: "MCP over HTTP" }));
     expect(await screen.findByRole("switch", { name: "MCP over HTTP", checked: true })).toBeInTheDocument();
-    expect(within(http).getByText("Saved in settings (omrs.jsonc)")).toBeInTheDocument();
+    expect(within(endpoint()).getByText("Saved in settings (omrs.jsonc)")).toBeInTheDocument();
   });
 
   it.each([
@@ -152,7 +172,7 @@ describe("MCP over HTTP switch", () => {
 describe("MCP token", () => {
   it("says no token exists and offers Create", async () => {
     await openMcp();
-    const token = await screen.findByRole("region", { name: "MCP token" });
+    const token = await screen.findByRole("group", { name: "MCP token" });
     expect(await within(token).findByText("No token exists.")).toBeInTheDocument();
     expect(within(token).getByRole("button", { name: "Create token" })).toBeInTheDocument();
     expect(within(token).queryByRole("button", { name: "Revoke token" })).toBeNull();
@@ -160,7 +180,7 @@ describe("MCP token", () => {
 
   it("shows a new token once with a copy action", async () => {
     const { user } = await openMcp();
-    const token = await screen.findByRole("region", { name: "MCP token" });
+    const token = await screen.findByRole("group", { name: "MCP token" });
     await user.click(await within(token).findByRole("button", { name: "Create token" }));
     expect(await within(token).findByText(TOKEN)).toBeInTheDocument();
     expect(within(token).getByText(/shown once/i)).toBeInTheDocument();
@@ -171,12 +191,12 @@ describe("MCP token", () => {
 
   it("does not show the token after the user leaves and reopens the MCP section", async () => {
     const { user } = await openMcp();
-    const token = await screen.findByRole("region", { name: "MCP token" });
+    const token = await screen.findByRole("group", { name: "MCP token" });
     await user.click(await within(token).findByRole("button", { name: "Create token" }));
     await within(token).findByText(TOKEN);
     await user.click(screen.getByRole("button", { name: "Runtime" }));
     await user.click(screen.getByRole("button", { name: "MCP" }));
-    const reopened = await screen.findByRole("region", { name: "MCP token" });
+    const reopened = await screen.findByRole("group", { name: "MCP token" });
     expect(await within(reopened).findByText(/A token exists/)).toBeInTheDocument();
     expect(document.body.textContent).not.toContain(TOKEN);
     expect(window.localStorage.length === 0 || !JSON.stringify({ ...window.localStorage }).includes(TOKEN)).toBe(true);
@@ -185,7 +205,7 @@ describe("MCP token", () => {
 
   it("states that rotation breaks existing clients, and rotates", async () => {
     const { user, server } = await openMcp(mcpRoutes({ ...MCP_ON, token: { exists: true, created_at: "2026-10-01T08:00:00Z" } }));
-    const token = await screen.findByRole("region", { name: "MCP token" });
+    const token = await screen.findByRole("group", { name: "MCP token" });
     expect(await within(token).findByText(/A token exists, created/)).toBeInTheDocument();
     expect(within(token).getByText(/Rotating the token stops every client that holds the old one/i)).toBeInTheDocument();
     await user.click(within(token).getByRole("button", { name: "Rotate token" }));
@@ -195,7 +215,7 @@ describe("MCP token", () => {
 
   it("revokes the token and says so", async () => {
     const { user, server } = await openMcp(mcpRoutes({ ...MCP_ON, token: { exists: true, created_at: "2026-10-01T08:00:00Z" } }));
-    const token = await screen.findByRole("region", { name: "MCP token" });
+    const token = await screen.findByRole("group", { name: "MCP token" });
     await user.click(await within(token).findByRole("button", { name: "Revoke token" }));
     expect(await within(token).findByText("No token exists.")).toBeInTheDocument();
     expect(within(token).getByText("The token was revoked. Clients that hold it lose access at their next request.")).toBeInTheDocument();
@@ -204,7 +224,7 @@ describe("MCP token", () => {
 
   it("hides a shown token once it is revoked", async () => {
     const { user } = await openMcp();
-    const token = await screen.findByRole("region", { name: "MCP token" });
+    const token = await screen.findByRole("group", { name: "MCP token" });
     await user.click(await within(token).findByRole("button", { name: "Create token" }));
     await within(token).findByText(TOKEN);
     await user.click(within(token).getByRole("button", { name: "Revoke token" }));
@@ -214,7 +234,7 @@ describe("MCP token", () => {
 
   it("shows a friendly line when creating fails", async () => {
     const { user } = await openMcp({ ...mcpRoutes(), "POST /v1/mcp/token": () => json({ status: "error", message: "Traceback" }, 500) });
-    const token = await screen.findByRole("region", { name: "MCP token" });
+    const token = await screen.findByRole("group", { name: "MCP token" });
     await user.click(await within(token).findByRole("button", { name: "Create token" }));
     expect(await within(token).findByRole("alert")).toHaveTextContent(/could not complete/i);
     expect(document.body.textContent).not.toContain("Traceback");

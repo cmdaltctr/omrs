@@ -58,7 +58,7 @@ describe("Local server block on the llama.cpp card", () => {
     const { panel } = await open();
     expect(within(panel()).queryByRole("button", { name: "Edit Model" })).toBeNull();
     expect(within(panel()).queryByText("Model")).toBeNull();
-    const row = within(panel()).getByText("Chat model").closest("[data-slot='card-inset']") as HTMLElement;
+    const row = within(panel()).getByText("Chat model").closest("[data-slot='setting-row']") as HTMLElement;
     expect(within(row).getByText("Qwen/Qwen3-4B-GGUF:Q4_K_M")).toBeInTheDocument();
     expect(within(row).getByRole("link", { name: "Change in Settings > Chat" })).toHaveAttribute("href", "#/settings/chat");
     expect(within(row).queryByRole("button")).toBeNull();
@@ -66,7 +66,7 @@ describe("Local server block on the llama.cpp card", () => {
 
   it("shows Not set in the Chat model row while Chat uses another provider", async () => {
     const { panel } = await open({ "GET /v1/llamacpp/server": () => serverStatus({ chat_model: { provider: "openrouter", model: "deepseek/deepseek-v4-flash-0731", usable: false } }) });
-    const row = within(panel()).getByText("Chat model").closest("[data-slot='card-inset']") as HTMLElement;
+    const row = within(panel()).getByText("Chat model").closest("[data-slot='setting-row']") as HTMLElement;
     expect(within(row).getByText("Not set")).toBeInTheDocument();
     expect(row).not.toHaveTextContent("deepseek");
   });
@@ -184,7 +184,7 @@ describe("Local server block on the llama.cpp card", () => {
     const { panel } = await open({ "GET /v1/session": () => ({ status: "ok", kind: "session", scopes: ["files", "graph", "read", "run"], workspace: null }) });
     await waitFor(() => expect(within(panel()).queryByRole("button", { name: "Edit Program path" })).toBeNull());
     expect(within(panel()).getAllByText(/credentials session is needed/i)).toHaveLength(1);
-    expect(within(within(panel()).getByText("Chat model").closest("[data-slot='card-inset']") as HTMLElement).queryByRole("button")).toBeNull();
+    expect(within(within(panel()).getByText("Chat model").closest("[data-slot='setting-row']") as HTMLElement).queryByRole("button")).toBeNull();
     expect(within(panel()).getByRole("button", { name: "Edit Context window (tokens)" })).toBeInTheDocument();
     expect(within(panel()).getByRole("button", { name: "Edit Idle sleep (seconds)" })).toBeInTheDocument();
   });

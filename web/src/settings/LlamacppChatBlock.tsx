@@ -3,7 +3,7 @@ import { useApi } from "../api/ApiProvider";
 import { useLlamacppServer } from "../api/llamacppServerHooks";
 import { chatSettingsQuery, connectionsQuery } from "../api/queries";
 import { ErrorNotice } from "../components/ErrorNotice";
-import { CardInset } from "../components/ui/card";
+import { SettingBox } from "./SettingBox";
 import { ChatModelRow, ChatSettingsLink } from "./ChatModelRow";
 import { ChatServerChoice } from "./ChatServerChoice";
 import { chatUsesLine } from "./chatServerWords";
@@ -23,12 +23,12 @@ function ChatModelLine() {
   if (settings.provider === "llamacpp") return <ChatModelRow model={settings.model ?? ""} />;
   const name = providers.data?.connections.find((connection) => connection.provider === settings.provider)?.display_name ?? settings.provider ?? "Not chosen";
   return (
-    <CardInset>
+    <SettingBox>
       <p className="text-ui">{chatUsesLine(name, settings.model ?? "")}</p>
       <div>
         <ChatSettingsLink />
       </div>
-    </CardInset>
+    </SettingBox>
   );
 }
 

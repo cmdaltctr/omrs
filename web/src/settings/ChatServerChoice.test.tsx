@@ -35,7 +35,7 @@ describe("Who runs the Chat server", () => {
   it("offers the two choices, with the user's own server as the default and its source", async () => {
     const { user } = await open(WITH_CREDENTIALS);
     expect(choice()).toHaveTextContent("The Llama app or another server you run");
-    expect(choice().closest("[data-slot='card-inset']")).toHaveTextContent("default");
+    expect(choice().closest("[data-slot='setting-row']")).toHaveTextContent("default");
     await waitFor(() => expect(choice()).toBeEnabled());
     await user.click(choice());
     expect(await screen.findByRole("option", { name: "The Llama app or another server you run" })).toBeInTheDocument();
@@ -91,13 +91,13 @@ describe("Who runs the Chat server", () => {
     await user.click(await screen.findByRole("option", { name: "OMRS's own llama-server" }));
     expect(puts).toEqual([{ chat_server: "managed", revision: "r1" }]);
     expect(await within(chat()).findByRole("group", { name: "Local server" })).toBeInTheDocument();
-    expect(choice().closest("[data-slot='card-inset']")).toHaveTextContent("Saved in settings (omrs.jsonc)");
+    expect(choice().closest("[data-slot='setting-row']")).toHaveTextContent("Saved in settings (omrs.jsonc)");
   });
 
   it("makes a locked choice read-only and names the variable and .env", async () => {
     const locked = serverChoiceLocked();
     await open({ ...WITH_CREDENTIALS, "GET /v1/llamacpp/server": () => locked });
-    const row = choice().closest("[data-slot='card-inset']") as HTMLElement;
+    const row = choice().closest("[data-slot='setting-row']") as HTMLElement;
     expect(choice()).toBeDisabled();
     expect(row).toHaveTextContent("Set in .env. Change it there.");
     expect(row).toHaveTextContent("LLAMACPP_CHAT_SERVER");
@@ -105,7 +105,7 @@ describe("Who runs the Chat server", () => {
 
   it("makes the choice read-only and says why when the session lacks the credentials scope", async () => {
     const { server } = await open();
-    const row = choice().closest("[data-slot='card-inset']") as HTMLElement;
+    const row = choice().closest("[data-slot='setting-row']") as HTMLElement;
     await waitFor(() => expect(row).toHaveTextContent("A credentials session is needed to change this."));
     expect(choice()).toBeDisabled();
     expect(server.find("PUT", "/v1/llamacpp/server")).toHaveLength(0);
