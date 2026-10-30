@@ -613,7 +613,8 @@
       "D_arms": "run_ocr.py sets temperature 0 and max_tokens 8192 on the chat request.",
       "P_arms": "PaddleOCRVL.predict() accepts temperature and max_new_tokens (paddlex pipeline.py lines 784-788). Pass temperature 0 and max_new_tokens 4096, the P0 value (token_cap_rule)."
     },
-    "mmproj_metadata_change": "If an mmproj file must change anyway, save the changed file as a pinned file with its own SHA-256 in the runtime block. Never edit a pinned file in place."
+    "mmproj_metadata_change": "If an mmproj file must change anyway, save the changed file as a pinned file with its own SHA-256 in the runtime block. Never edit a pinned file in place.",
+    "build_11941_flag_finding": "--image-min-tokens and --image-max-tokens have no effect on the dots_ocr and paddleocr projectors in build 11941. The mmproj metadata sets the limits. See OI-10."
   },
   "token_cap_rule": {
     "D_arms": {
@@ -823,15 +824,15 @@
   ],
   "open_items": [
     "OI-1 CLOSED 2026-10-30: layout.py in ocr-workers/engines/dots-mocr/src/omrs_ocr_dots_mocr imports only json, re and typing (lines 20-24, plus __future__ annotations). The package __init__.py imports nothing else. It needs no PyTorch.",
-    "OI-2 The llama.cpp converter accepts dots.mocr (see model_availability_2026_10_30). Confirm build 11941 loads our conversion and gives non-empty output on the smoke pages.",
+    "OI-2 The llama.cpp converter accepts dots.mocr (see model_availability_2026_10_30). Confirm build 11941 loads our conversion and gives non-empty output on the smoke pages. CLOSED 2026-10-30: build 11941 loads our bf16 and Q8_0 conversions and gives non-empty output on eq01:2 and eq01:3 (output/report_trackA.json).",
     "OI-3 CLOSED 2026-10-30: official PaddleOCR-VL GGUF is 16-bit (466,654,208 parameters x 2 bytes = 933.3 MB; file 935,769,056 bytes; Hub header metadata). Re-read at download.",
-    "OI-4 Confirm the installed mlx-vlm loads the OpenGryd PaddleOCR-VL 1.6 builds and that PaddleOCR's mlx-vlm-server backend accepts them.",
-    "OI-5 P2 (PaddleOCR-VL MLX) script reuses the engine's page-subset code (TDR-027) without editing the engine folder.",
-    "OI-6 Memory sampling for llama-server (client plus server) reuses the Exp 37 sampler; confirm it covers a second process.",
-    "OI-7 Source files for D0 and P0 sit in ../omrs-v3 (gitignored). This worktree does not hold them. Read them from there. Do not copy them without a hash check.",
+    "OI-4 Confirm the installed mlx-vlm loads the OpenGryd PaddleOCR-VL 1.6 builds and that PaddleOCR's mlx-vlm-server backend accepts them. CLOSED 2026-10-30: mlx-vlm 0.7.11 loads both 8-bit builds, and mlx_vlm.server answers the PaddleX mlx-vlm-server calls (output/report_trackB.json).",
+    "OI-5 P2 (PaddleOCR-VL MLX) script reuses the engine's page-subset code (TDR-027) without editing the engine folder. CLOSED 2026-10-30: run_ocr.py drives the engine's own ENGINE.parse(pdf, [page]) and injects the server-backed pipeline. The engine folder is unchanged (output/report_trackC.json).",
+    "OI-6 Memory sampling for llama-server (client plus server) reuses the Exp 37 sampler; confirm it covers a second process. CLOSED 2026-10-30: the Exp 37 sampler reads only child processes. run_ocr.py takes explicit pids (client plus the server found with lsof on its port) and sums the peaks.",
+    "OI-7 Source files for D0 and P0 sit in ../omrs-v3 (gitignored). This worktree does not hold them. Read them from there. Do not copy them without a hash check. CLOSED 2026-10-30: baseline hashes checked before use. score_recall.py ee09cea5, check_katex.mjs 3db2a9cf, maths_labels.json 324ef438, noise_verdicts.json 3f3a3cd2. 12 of 14 corpus PDFs are broken symlinks into the old llamaindex-rag-mcp-v3 folder. run_ocr.py maps them to the same-hash copies under omrs-v3.",
     "OI-8 The install approval covers the llama.cpp conversion tools as well as mlx-vlm.",
-    "OI-9 Cross-check: D4 output on the smoke pages matches lodrick-the-lafted Q8_0 output with the same bf16 mmproj. A difference is reported and investigated before the D4 run.",
-    "OI-10 Suspected risks. (a) The conversion at llama.cpp build 11941 may fail or load wrongly: PR 17575 covers dots.ocr, and the lodrick-the-lafted GGUF suggests dots.mocr works on some build, but that is not shown for build 11941. (b) A bf16 mmproj may run slowly on Metal. The smoke tests catch both. A failure is a finding and stops that arm only. (c) Build 11941 may ignore --image-min-tokens or --image-max-tokens. The parity check catches this. The arm then stops and a finding is recorded. The tolerance is not loosened.",
+    "OI-9 Cross-check: D4 output on the smoke pages matches lodrick-the-lafted Q8_0 output with the same bf16 mmproj. A difference is reported and investigated before the D4 run. CLOSED 2026-10-30: D4 and the lodrick-the-lafted Q8_0 file give exactly equal text on both smoke pages. All 339 tensors have the same names, types and bytes (output/report_trackA.json).",
+    "OI-10 Suspected risks. (a) The conversion at llama.cpp build 11941 may fail or load wrongly: PR 17575 covers dots.ocr, and the lodrick-the-lafted GGUF suggests dots.mocr works on some build, but that is not shown for build 11941. (b) A bf16 mmproj may run slowly on Metal. The smoke tests catch both. A failure is a finding and stops that arm only. (c) Build 11941 may ignore --image-min-tokens or --image-max-tokens. The parity check catches this. The arm then stops and a finding is recorded. The tolerance is not loosened. FINDING 2026-10-30 (operator decision: continue D4 and P4): (c) is true. Build 11941 accepts --image-min-tokens and --image-max-tokens but never reads them for the dots_ocr and paddleocr projectors (tools/mtmd/clip.cpp, DOTS_OCR and PADDLEOCR cases in load_hparams). The pixel limits come from the mmproj metadata, which already holds the pinned values: dots mmproj 3,136 and 11,289,600; PaddleOCR mmproj 112,896 and 1,003,520. The flags stay in the runtime block as recorded no-ops. The limits are pinned through the mmproj SHA-256 values (63f415f9 and 204d757d). The load log prints '(custom value)' even though the flag has no effect.",
     "OI-11 CLOSED: P0 effective pipeline version is v1.6 by the PaddleOCR default (paddleocr/_pipelines/paddleocr_vl.py line 26). Experiment 37 used paddleocr 3.7.0 and paddlex 3.7.2. P0 cap is 4096 per block request and its block limits are 112,896 and 1,003,520 pixels (token_cap_rule, preprocessing_parity)."
   ],
   "amendments": [],
