@@ -32,8 +32,8 @@ Check `web/package.json` and `web/src/components/ui/` before you rely on any of 
 | Colours, typography, spacing, corners, borders, interaction states, contrast | [Visual foundations](references/foundations.md) |
 | Buttons, badges, fields, dialogs, nav rows, icons, shadcn CLI use | [Component guidance](references/components.md), plus foundations |
 | What a specific view contains and how it is laid out | [Screen guidance](references/screens.md) |
-| Layout of a group of cards (grid or masonry) | [Screen guidance](references/screens.md), section Card groups |
-| Parts inside a card (settings, fields, lists): mini cards | [Screen guidance](references/screens.md), section Mini cards inside cards |
+| Layout of a group of cards (grid, full-width split card, disclosure panel, masonry) | [Screen guidance](references/screens.md), section Card groups |
+| Parts inside a card (settings, fields, lists): compact rows or mini cards | [Screen guidance](references/screens.md), section Mini cards inside cards |
 | Visible text, error and empty states, accessibility, right-to-left safety | [Copy and accessibility](references/copy-and-accessibility.md) |
 | Any rendered UI change | [Verification](references/verification.md) before you start and before you report |
 
@@ -50,6 +50,14 @@ Paths in the references are relative to the repository root. The references hold
 5. Behaviour stays unchanged unless a spec says otherwise. Keep save behaviour, API calls and destructive confirmations. Routes and stored UI state follow the redesign's design D9 and D12: the URL is the only source of location, and there are no redirects or migrations for earlier routes or keys.
 6. Keep every file under 500 lines. Split by responsibility.
 7. If the spec, design, and tasks disagree, report the conflict with numbered options. Do not pick one silently.
+
+## Layout rules
+
+1. A settings page with many settings uses `DenseSettingRows` (compact rows). Other cards use `CardInset` mini cards.
+2. A card too tall for one column goes full width and splits into two columns with container queries (`@container`, `@3xl:grid-cols-2`). It does not go into masonry.
+3. A heavy, rarely used panel goes behind `PanelDisclosure`.
+4. Masonry (`MasonryColumns`) stays only on Knowledge Base > Add. A list of many entries (Integrations) is one full-width card with a row per entry (`web/src/integrations/EntryList.tsx`): name, badges and purpose left, actions and commands right from 768 px of card width.
+5. A visually hidden radio (`sr-only`) inside a scroll box needs `relative` on the scroll box. Without it the radio sits outside the box and stretches the page height (`web/src/settings/ThemeList.tsx`).
 
 ## Workflow
 
