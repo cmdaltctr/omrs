@@ -289,7 +289,7 @@ The estimate covers the 4 scored 8-bit arms, with conversion and model load. The
 - Roughly 2 to 8 hours of machine time in total, if both engines speed up as the scratch figures suggest.
 - Basis, dots.mocr: Experiment 37 took 3.31 h at baseline speed. Two dots.mocr arms with no speed-up take about 6.6 h.
 - Basis, PaddleOCR-VL: P0 took 6.06 h. The scratch MLX test (2026-10-05) gave 6.6 s and 9.4 s per page, which is about 0.5 to 0.7 h for 257 pages. That test covered two pages only.
-- Worst case, with no speed-up on any arm: about 6.6 h for the two dots.mocr arms plus up to 6.1 h for each P arm, roughly 12.7 h or more.
+- Worst case, with no speed-up on any arm: about 6.6 h for the two dots.mocr arms plus up to 6.1 h for each of the two P arms (12.2 h), roughly 18.8 h or more.
 - Each triggered 16-bit diagnostic adds about 20 to 60 minutes. Diagnostics are extra.
 - The GGUF arms and the MLX arms are timed separately.
 - No cap is set in this plan.

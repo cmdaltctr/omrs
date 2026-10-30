@@ -776,7 +776,7 @@
       "approved": false,
       "runtime_budget_h": null,
       "per_request_timeout_s": 300,
-      "estimate_h": "roughly 2 to 8 h for the 4 scored arms, including conversion and model load, if both engines speed up as the scratch figures suggest. Basis: Experiment 37 dots.mocr took 3.31 h at baseline speed, so two dots.mocr arms with no speed-up take about 6.6 h. PaddleOCR-VL: P0 took 6.06 h; the scratch MLX test gave 6.6 s and 9.4 s per page (two pages only), about 0.5 to 0.7 h for 257 pages. Worst case with no speed-up on any arm: about 12.7 h or more. Diagnostics are extra (about 20 to 60 minutes each). The operator sets runtime_budget_h."
+      "estimate_h": "roughly 2 to 8 h for the 4 scored arms, including conversion and model load, if both engines speed up as the scratch figures suggest. Basis: Experiment 37 dots.mocr took 3.31 h at baseline speed, so two dots.mocr arms with no speed-up take about 6.6 h. PaddleOCR-VL: P0 took 6.06 h; the scratch MLX test gave 6.6 s and 9.4 s per page (two pages only), about 0.5 to 0.7 h for 257 pages. Worst case with no speed-up on any arm: about 6.6 h for the two dots.mocr arms plus up to 6.1 h for each of the two P arms, roughly 18.8 h or more. Diagnostics are extra (about 20 to 60 minutes each). The operator sets runtime_budget_h."
     }
   },
   "run_rules": {
