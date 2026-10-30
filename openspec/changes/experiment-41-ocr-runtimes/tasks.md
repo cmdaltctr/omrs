@@ -18,12 +18,12 @@
 
 ## 3. Conversions and pins
 
-- [ ] 3.1 Convert dots.mocr to GGUF bf16 plus mmproj at llama.cpp build 11941. Verify: the file loads and the smoke pages give output (OI-2), or the failure is recorded as a finding (arms D3 and D4 stop).
-- [ ] 3.1a Cross-check D3 against `lodrick-the-lafted/dots.mocr-gguf` bf16 on the smoke pages (OI-9). Verify: outputs match, or the difference is recorded and resolved before the D3 run.
+- [ ] 3.1 Convert dots.mocr to GGUF bf16 plus bf16 mmproj at llama.cpp build 11941 (kept as the D3 diagnostic). Verify: the file loads and the smoke pages give output (OI-2), or the failure is recorded as a finding (arm D4 stops).
+- [ ] 3.1a Cross-check D4 against `lodrick-the-lafted/dots.mocr-gguf` Q8_0 with the same bf16 mmproj on the smoke pages (OI-9). Verify: outputs match, or the difference is recorded and resolved before the D4 run.
 - [ ] 3.2 Quantise dots.mocr to Q8_0. Verify: SHA-256 recorded.
-- [ ] 3.3 Download the official PaddleOCR-VL-1.6 GGUF. Verify: tensor type read from the header (OI-3); SHA-256 recorded.
+- [ ] 3.3 Download the official PaddleOCR-VL-1.6 GGUF (kept as the P3 diagnostic). Verify: 16-bit tensor type confirmed from the header (OI-3); SHA-256 recorded.
 - [ ] 3.4 Quantise the official PaddleOCR-VL-1.6 GGUF to Q8_0 with `llama-quantize`. Verify: SHA-256 recorded.
-- [ ] 3.5 Download the MLX builds in `mlx_pins` (OI-4). Verify: revision and SHA-256 match the pins; each build loads in `mlx-vlm`.
+- [ ] 3.5 Download the MLX 8-bit builds in `mlx_pins` (OI-4). Leave the 16-bit diagnostic builds until a diagnostic triggers. Verify: revision and SHA-256 match the pins; each build loads in `mlx-vlm`.
 - [ ] 3.6 Add the `runtime` block to `plan.json` with the real SHA-256 values. Verify: `omrs experiments check` passes the block.
 - [ ] 3.7 Close OI-1, OI-2, OI-5, OI-6 and OI-7. Verify: each item answered in `plan.json`.
 
@@ -43,6 +43,7 @@
 - [ ] 6.1 Score KaTeX, recall and similarity for every arm. Verify: output files exist for each arm.
 - [ ] 6.2 Build the review page for each arm (10 lowest-similarity pages, every screened page, 5 random pages, seed 41). Verify: the checks in `references/review-page-pattern.md` pass.
 - [ ] 6.3 Operator reviews and records the verdicts. Verify: the SHA-256 of the verdict file is recorded.
+- [ ] 6.4 For each 8-bit arm that fails C3, C4 or C5, run its 16-bit diagnostic on the failed gate's pages and score that gate only. Verify: `output/` holds a diagnostic result per triggered arm, or `summary.json` records that none triggered.
 
 ## 7. Close out
 

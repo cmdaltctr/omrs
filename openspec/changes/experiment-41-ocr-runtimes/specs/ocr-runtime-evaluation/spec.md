@@ -33,6 +33,20 @@ A llama.cpp GGUF arm that passes gates C1 to C5 MAY lead to a follow-up change f
 - **THEN** the report SHALL name a follow-up OpenSpec change for that engine as the next step
 - **AND** no engine, route or default SHALL change in this change
 
+### Requirement: A quality failure of an 8-bit arm SHALL trigger a 16-bit diagnostic that does not change the verdict
+
+When an 8-bit arm fails gate C3, C4 or C5, the evaluation SHALL run the 16-bit arm of the same runtime and engine on the pages of the failed gate, and score that gate only.
+
+#### Scenario: The 16-bit diagnostic passes the failed gate
+- **WHEN** the 16-bit diagnostic passes the gate that its 8-bit arm failed
+- **THEN** the report SHALL attribute the failure to the 8-bit quantisation
+- **AND** the 8-bit arm SHALL keep its failed verdict
+
+#### Scenario: No 8-bit arm fails a quality gate
+- **WHEN** every 8-bit arm passes C3, C4 and C5
+- **THEN** no 16-bit diagnostic SHALL run
+- **AND** no 16-bit MLX build SHALL be downloaded
+
 ### Requirement: llama.cpp arms SHALL pin their runtime and weights
 
 Each llama.cpp arm SHALL record its build, the SHA-256 of each weights file and its server arguments that change output. The `runtime` block of `plan.json` SHALL hold these values before the first score.

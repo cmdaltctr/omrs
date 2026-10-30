@@ -11,9 +11,10 @@ OMRS needs a measured answer on the same 257 pages: can a llama.cpp GGUF arm, or
 ## What Changes
 
 - Add Experiment 41 under `experiments/41-ocr-runtimes-2026-10-30/` with a protocol, a plan and, after operator approval, runs.
-- Compare five arms per engine on the Experiment 37 page lists (E-maths 40, E-scan 28, E-script 189):
-  - dots.mocr: PyTorch MPS (shipped, reused); MLX bf16 and 8-bit (comparison); llama.cpp GGUF bf16 and Q8_0 from our own conversion of the pinned revision, cross-checked against a community GGUF (decides).
-  - PaddleOCR-VL: CPU (shipped, reused); MLX 16-bit and 8-bit from `OpenGryd` (comparison); llama.cpp GGUF 16-bit from the official repository and Q8_0 quantised from it (decides).
+- Compare three arms per engine, plus two conditional 16-bit diagnostic arms on the Experiment 37 page lists (E-maths 40, E-scan 28, E-script 189):
+  - dots.mocr: PyTorch MPS (shipped, reused); MLX 8-bit (comparison); llama.cpp GGUF Q8_0 from our own conversion of the pinned revision, cross-checked against a community Q8_0 GGUF (decides).
+  - PaddleOCR-VL: CPU (shipped, reused); MLX 8-bit from `OpenGryd` (comparison); llama.cpp GGUF Q8_0 quantised from the official 16-bit file (decides).
+  - Diagnostic: when an 8-bit arm fails C3, C4 or C5, its 16-bit counterpart on the same runtime runs on the failed gate's pages. It explains the failure and never changes the verdict.
 - Gates C1 to C5 decide. C6 and C7 inform. The operator set these gates on 2026-10-06.
 - Only a llama.cpp arm that passes can lead to a follow-up OpenSpec change for an engine.
 - Hold four approvals in `plan.json`, all `false`: install, downloads, licence check and OCR run budget.
