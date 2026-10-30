@@ -896,5 +896,127 @@
     "reused_by_path": [
       "score_recall.py and check_katex.mjs from ../omrs-v3/experiments/37-dots-mocr-routing-acceptance-2026-09-30/ (do not copy)"
     ]
+  },
+  "runtime": {
+    "runtime_under_test": true,
+    "models": [
+      {
+        "role": "D4 dots.mocr Q8_0 (decides)",
+        "repository": "own conversion of rednote-hilab/dots.mocr at e539fbb52280393adc081b289ec597430a0f9031",
+        "file": "dots-mocr-Q8_0.gguf",
+        "sha256": "6017b1844a77837010649939fe2e934af17728fc89243f88b10bde4afa04d6be",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {
+          "--temp": 0,
+          "--image-min-tokens": 4,
+          "--image-max-tokens": 14400,
+          "-c": 24576,
+          "-np": 1,
+          "--mmproj": "dots-mocr-mmproj-bf16.gguf"
+        }
+      },
+      {
+        "role": "D4 mmproj",
+        "repository": "own conversion of rednote-hilab/dots.mocr at e539fbb52280393adc081b289ec597430a0f9031",
+        "file": "dots-mocr-mmproj-bf16.gguf",
+        "sha256": "63f415f961da981d0ee101cfdbf7a7bcc81ace4c4aa780a6e2823c0cd780761f",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {}
+      },
+      {
+        "role": "D3 dots.mocr bf16 (diagnostic)",
+        "repository": "own conversion of rednote-hilab/dots.mocr at e539fbb52280393adc081b289ec597430a0f9031",
+        "file": "dots-mocr-bf16.gguf",
+        "sha256": "573fe5feaa8bceee9dd6cf94999c00173af714b671e02bb34152a7fa4460f85e",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {
+          "--temp": 0,
+          "--image-min-tokens": 4,
+          "--image-max-tokens": 14400,
+          "-c": 24576,
+          "-np": 1,
+          "--mmproj": "dots-mocr-mmproj-bf16.gguf"
+        }
+      },
+      {
+        "role": "D3 mmproj",
+        "repository": "own conversion of rednote-hilab/dots.mocr at e539fbb52280393adc081b289ec597430a0f9031",
+        "file": "dots-mocr-mmproj-bf16.gguf",
+        "sha256": "63f415f961da981d0ee101cfdbf7a7bcc81ace4c4aa780a6e2823c0cd780761f",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {}
+      },
+      {
+        "role": "P4 PaddleOCR-VL-1.6 Q8_0 (decides)",
+        "repository": "llama-quantize Q8_0 of PaddlePaddle/PaddleOCR-VL-1.6-GGUF at 511b09642bb324401f15f97cc23bc67e8f0a291d",
+        "file": "PaddleOCR-VL-1.6-Q8_0.gguf",
+        "sha256": "2bda93a416339f2d9f06accae505600544a9e72cc159d0cd1af4c0f679866e1c",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {
+          "--temp": 0,
+          "--image-min-tokens": 144,
+          "--image-max-tokens": 1280,
+          "-c": 8192,
+          "-np": 1,
+          "--mmproj": "PaddleOCR-VL-1.6-GGUF-mmproj.gguf"
+        }
+      },
+      {
+        "role": "P4 mmproj",
+        "repository": "PaddlePaddle/PaddleOCR-VL-1.6-GGUF at 511b09642bb324401f15f97cc23bc67e8f0a291d",
+        "file": "PaddleOCR-VL-1.6-GGUF-mmproj.gguf",
+        "sha256": "204d757d7610d9b3faab10d506d69e5b244e32bf765e2bab2d0167e65e0a058a",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {}
+      },
+      {
+        "role": "P3 PaddleOCR-VL-1.6 16-bit (diagnostic)",
+        "repository": "PaddlePaddle/PaddleOCR-VL-1.6-GGUF at 511b09642bb324401f15f97cc23bc67e8f0a291d",
+        "file": "PaddleOCR-VL-1.6-GGUF.gguf",
+        "sha256": "f3ae46ec885050acf4b3d31944431e1fd90d50664fb09126af4a3c050ba14ee8",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {
+          "--temp": 0,
+          "--image-min-tokens": 144,
+          "--image-max-tokens": 1280,
+          "-c": 8192,
+          "-np": 1,
+          "--mmproj": "PaddleOCR-VL-1.6-GGUF-mmproj.gguf"
+        }
+      },
+      {
+        "role": "P3 mmproj",
+        "repository": "PaddlePaddle/PaddleOCR-VL-1.6-GGUF at 511b09642bb324401f15f97cc23bc67e8f0a291d",
+        "file": "PaddleOCR-VL-1.6-GGUF-mmproj.gguf",
+        "sha256": "204d757d7610d9b3faab10d506d69e5b244e32bf765e2bab2d0167e65e0a058a",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {}
+      }
+    ],
+    "tolerance": [
+      {
+        "metric": "katex_error_rate",
+        "max_abs_change": 0.01,
+        "note": "same rule as gate C3"
+      },
+      {
+        "metric": "script_recall_median",
+        "max_abs_change": 0.05,
+        "note": "same rule as gate C4"
+      },
+      {
+        "item_score": "per-page token Dice against the baseline arm",
+        "max_abs_change": 0.1,
+        "note": "a page counts as the same result only within this change. Information only."
+      }
+    ]
   }
 }
