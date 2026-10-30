@@ -1,4 +1,4 @@
-import { PanelRightClose, PanelRightOpen } from "lucide-react";
+import { ChevronsDownUp, ChevronsUpDown, PanelRightClose, PanelRightOpen } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../components/ui/accordion";
 import { Button } from "../components/ui/button";
@@ -22,7 +22,7 @@ const add = (open: string[], id: SectionId) => (open.includes(id) ? open : [...o
 
 /**
  * The one floating panel of the canvas: six accordion sections in a card that
- * collapses to an icon rail. From the `lg` breakpoint the layer floats over
+ * collapses to an icon rail. A header button opens or closes every section. From the `lg` breakpoint the layer floats over
  * the flow surface; below it the card stacks under the surface and shows its
  * sections whatever the collapsed state is. Collapse is CSS only, so closed
  * content stays mounted state-wise and no effect resets it. Mount with the
@@ -35,6 +35,7 @@ export function CanvasPanel({ selectedNode, runStarts, sections, fullScreen = fa
   const [seenRuns, setSeenRuns] = useState(runStarts);
   const [seenSettingsOpens, setSeenSettingsOpens] = useState(settingsOpens);
   const layer = useRef<HTMLElement>(null);
+  const allOpen = SECTIONS.every((section) => open.includes(section.id));
   const focusTarget = useRef<string | null>(null);
 
   // Compared during render, never in an effect, so a restored selection or an
@@ -91,7 +92,17 @@ export function CanvasPanel({ selectedNode, runStarts, sections, fullScreen = fa
           collapsed && "lg:hidden",
         )}
       >
-        <div className="hidden justify-end border-b border-border p-1.5 lg:flex">
+        <div className="flex justify-end gap-1 border-b border-border p-1.5">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon-sm" aria-label={allOpen ? "Collapse all sections" : "Expand all sections"} onClick={() => setOpen(allOpen ? [] : SECTIONS.map((section) => section.id))}>
+                  {allOpen ? <ChevronsDownUp aria-hidden="true" /> : <ChevronsUpDown aria-hidden="true" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">{allOpen ? "Collapse all sections" : "Expand all sections"}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <Button variant="ghost" size="icon-sm" aria-label="Collapse panel" data-focus="collapse" className="hidden lg:inline-flex" onClick={collapse}>
             <PanelRightClose aria-hidden="true" />
           </Button>
@@ -127,7 +138,7 @@ export function CanvasPanel({ selectedNode, runStarts, sections, fullScreen = fa
                       variant="ghost"
                       size="icon-sm"
                       aria-label={isOpen ? `${section.title}, open` : section.title}
-                      className={cn("rounded-control", isOpen && "bg-selection")}
+                      className={cn("rounded-control", isOpen && "bg-selection text-primary-label")}
                       onClick={() => expand(section.id)}
                     >
                       <Icon aria-hidden="true" />

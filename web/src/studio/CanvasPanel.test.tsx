@@ -103,6 +103,41 @@ describe("CanvasPanel sections", () => {
   });
 });
 
+describe("CanvasPanel open state and expand all", () => {
+  it("shows an open section's title and icon in the accent colour, and a closed one plain", () => {
+    render(<Harness />);
+    expect(header("Pipeline settings").className).toMatch(/data-\[state=open\]:text-primary-label/);
+    expect(header("Pipeline settings")).toHaveAttribute("data-state", "open");
+    expect(header("Operations")).toHaveAttribute("data-state", "closed");
+  });
+
+  it("opens every section, then closes every section, from one button beside Collapse panel", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const bar = screen.getByRole("button", { name: "Collapse panel" }).parentElement as HTMLElement;
+    await user.click(within(bar).getByRole("button", { name: "Expand all sections" }));
+    for (const section of SECTIONS) expect(header(section.title)).toHaveAttribute("aria-expanded", "true");
+    await user.click(within(bar).getByRole("button", { name: "Collapse all sections" }));
+    for (const section of SECTIONS) expect(header(section.title)).toHaveAttribute("aria-expanded", "false");
+    expect(within(bar).getByRole("button", { name: "Expand all sections" })).toBeInTheDocument();
+  });
+
+  it("offers Collapse all only once every section is open", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    for (const section of SECTIONS.filter((item) => item.id !== "pipeline-settings")) await user.click(header(section.title));
+    expect(screen.getByRole("button", { name: "Collapse all sections" })).toBeInTheDocument();
+  });
+
+  it("shows open sections on the rail in the accent colour", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    await user.click(screen.getByRole("button", { name: "Collapse panel" }));
+    expect(railButton("Pipeline settings, open").className).toMatch(/text-primary-label/);
+    expect(railButton("Operations").className).not.toMatch(/text-primary-label/);
+  });
+});
+
 describe("CanvasPanel rail", () => {
   it("collapses to six rail buttons and an expand button, and moves focus to the expand button", async () => {
     const user = userEvent.setup();

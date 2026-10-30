@@ -78,3 +78,21 @@ describe("global rules", () => {
     expect(appCss).toMatch(/body\s*\{[^}]*background:\s*var\(--surface-canvas\)/);
   });
 });
+
+describe("text field focus", () => {
+  // Browsers match :focus-visible on a text field even after a click, so the
+  // offset ring would show while typing. Text fields show an accent border instead.
+  it("takes text fields out of the offset focus ring", () => {
+    const rule = /:is\(input:not\([^\n]*, textarea, [^\n]*\):focus-visible \{\s*outline: none;/.exec(appCss);
+    expect(rule).not.toBeNull();
+    expect(rule?.[0]).toMatch(/input:not\(/);
+    for (const kind of ["checkbox", "radio", "range", "button", "submit", "reset", "file", "color"]) expect(rule?.[0]).toContain(`[type="${kind}"]`);
+  });
+
+  it("gives the field primitives an accent border and inner line on focus", () => {
+    for (const file of ["../components/ui/input.tsx", "../components/ui/textarea.tsx"]) {
+      expect(sources[file]).toMatch(/focus-visible:border-ring/);
+      expect(sources[file]).toMatch(/focus-visible:shadow-\[inset_0_0_0_1px_var\(--focus-ring\)\]/);
+    }
+  });
+});
