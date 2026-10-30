@@ -64,7 +64,7 @@ Per arm, the operator reviews the 10 lowest-similarity pages, every page the noi
 
 - [An 8-bit failure cannot show whether quantisation or the runtime caused it] → The conditional 16-bit diagnostic runs on the failed gate's pages. It never changes a verdict.
 - [Our dots.mocr conversion may not load or may differ from community builds at build 11941] → Smoke test and cross-check first (OI-2, OI-9). A failure stops that arm only and is a finding.
-- [Baseline timings include shared load] → dots.mocr speed uses the 20 pages that ran alone. PaddleOCR-VL speed uses all pages, with the bias stated. Re-time a baseline only when a speed-up lands between 1.5 and 3 times (DR-1).
+- [Baseline timings include shared load] → dots.mocr speed uses the 20 pages that ran alone (D0 56.62 s comes from 19 timed pages of one run, with no variance estimate). PaddleOCR-VL speed uses the 221 pages where P0 finished OK, with the all-257 figure beside it and the bias stated. Re-time a baseline only when a speed-up lands between 1.5 and 3 times (DR-1).
 - [Conversions differ from the source weights] → Record each revision and SHA-256. Report differences as findings.
 - [The licence tag on a conversion hides clauses] → DR-2 covers our GGUF conversion, the MLX 8-bit conversion and the cross-check GGUF. The operator decides before any download.
 - [The install approval may not cover conversion tools] → Open item OI-8. The approval covers `mlx-vlm` and the llama.cpp conversion tools.
@@ -74,4 +74,4 @@ Per arm, the operator reviews the 10 lowest-similarity pages, every page the noi
 
 - DR-2 extended on 2026-10-30 (operator decides before download).
 - DR-4 decided on 2026-10-30: 8-bit arms only, with a conditional 16-bit diagnostic on a quality-gate failure.
-- OI-1 to OI-9 (see `protocol.md`).
+- OI-1 to OI-11 (see `protocol.md`).

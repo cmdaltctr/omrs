@@ -29,21 +29,23 @@ The operator decided on 2026-10-30 (option 1) that a runtime decision needs a ll
 
 ## Hypothesis, null and decision rule
 
-**H1 (primary).** At least one llama.cpp GGUF arm of an engine meets gates C1 to C5 against that engine's shipped backend.
+**H1 (primary).** At least one of the two scored llama.cpp GGUF arms (D4 for dots.mocr, P4 for PaddleOCR-VL) meets gates C1 to C5 against its engine's shipped backend.
 
-**Null.** For each engine, no llama.cpp GGUF arm meets all of C1 to C5 against the shipped backend.
+**Null.** Neither D4 nor P4 meets all of C1 to C5 against the shipped backend of its engine.
 
 **Decision rule.**
 
-1. If a GGUF arm of dots.mocr passes, open a follow-up OpenSpec change for a llama.cpp path for dots.mocr. Use the passing arm with the better C4 and C5 results.
-2. If a GGUF arm of PaddleOCR-VL passes, do the same for PaddleOCR-VL.
-3. If no GGUF arm of an engine passes, that engine keeps its shipped backend.
+Each engine has one scored GGUF arm: D4 for dots.mocr, P4 for PaddleOCR-VL. Only these two arms decide.
+
+1. If D4 passes, open a follow-up OpenSpec change for a llama.cpp path for dots.mocr.
+2. If P4 passes, open a follow-up OpenSpec change for a llama.cpp path for PaddleOCR-VL.
+3. If the GGUF arm of an engine fails, that engine keeps its shipped backend.
 4. An MLX arm never leads to an engine decision.
-5. If an MLX arm passes and no GGUF arm passes, the report says so and stops.
+5. If an MLX arm passes and the GGUF arm of its engine fails, the report says so and stops.
 
 ## Arms
 
-Each engine has one shipped arm and two new 8-bit arms (DR-4, 2026-10-30). Each new arm is compared with its engine's shipped arm. Two 16-bit arms per engine are diagnostics. They run only when an 8-bit arm fails a quality gate (see "Conditional 16-bit diagnostic").
+Each engine has one shipped arm and two scored 8-bit arms (DR-4, 2026-10-30): one MLX and one GGUF. Each new arm is compared with its engine's shipped arm. Two 16-bit arms per engine are diagnostics. They run only when an 8-bit arm fails a quality gate (see "Conditional 16-bit diagnostic").
 
 The vision encoder (mmproj file) stays 16-bit in every GGUF arm. Only the language model is quantised. The MLX 8-bit builds quantise as their publishers chose. The report records the difference.
 
@@ -70,7 +72,7 @@ The vision encoder (mmproj file) stays 16-bit in every GGUF arm. Only the langua
 ### Comparisons
 
 - **Gated.** Each 8-bit arm against its engine's shipped arm: D2 and D4 against D0; P2 and P4 against P0.
-- **Matched runtime (reported).** GGUF Q8_0 against MLX 8-bit: D4 against D2, P4 against P2.
+- **Matched runtime (reported).** GGUF Q8_0 against MLX 8-bit: D4 against D2, P4 against P2. The pair is not precision-matched. Q8_0 quantises linear tensors in blocks of 32 elements with a symmetric scale, and the mmproj stays 16-bit. MLX 8-bit uses affine quantisation with group size 64 (`config.json` of `mlx-community/dots.mocr-8bit` at `6d9e750b`: bits 8, group_size 64, mode affine; read through the Hugging Face API on 2026-10-30). In that build the vision tower is not quantised: `model.safetensors.index.json` lists no `.scales` entry for its 304 vision tensors. The OpenGryd 8-bit build of PaddleOCR-VL uses the same settings and has 84 scale tensors among its 503 vision-named tensors, so part of its vision stack is quantised. The comparison is reported only.
 - **Diagnostic (reported, only when triggered).** 16-bit against 8-bit on the same runtime: D1 against D2, D3 against D4, P1 against P2, P3 against P4.
 
 ### Conditional 16-bit diagnostic
@@ -83,9 +85,13 @@ An 8-bit arm differs from its baseline in two ways: the runtime and the weight p
    - C3: the 68 pages of `E-maths` and `E-scan`.
    - C4: 40 `E-script` pages, sampled with seed 41.
    - C5: the pages of the failed arm's review list.
-4. **Reading.** The 16-bit arm passes the failed gate on those pages: the 8-bit quantisation caused the failure. It fails too: the runtime caused it.
-5. **Limits.** The diagnostic never changes the verdict of the 8-bit arm. It cannot make that arm pass. A 16-bit pass supports, at most, a separate follow-up experiment on the 16-bit arm with all 257 pages.
-6. **Cost.** Nothing when no 8-bit arm fails. Otherwise one more download (D1 6.1 GB, P1 1.8 GB) or none (D3 and P3 already exist locally), and about 20 to 60 minutes per triggered arm.
+4. **Pass rule.** The threshold is the baseline arm's value on the same pages, with no tolerance:
+   - C3: the baseline KaTeX error rate on the 68 pages.
+   - C4: the baseline median recall on the same 40 seeded pages.
+   - C5: the operator reviews the diagnostic output on the same review pages.
+5. **Reading.** The 16-bit arm reaches the baseline value: the 8-bit quantisation caused the failure. It does not: the runtime caused it. The reading is approximate. Every GGUF arm keeps a 16-bit mmproj, and MLX 8-bit quantises different tensors. The diagnostic cannot isolate one factor.
+6. **Limits.** The diagnostic is descriptive only. It never changes the verdict of the 8-bit arm. It cannot make that arm pass. A 16-bit pass supports, at most, a separate follow-up experiment on the 16-bit arm with all 257 pages.
+7. **Cost.** Nothing when no 8-bit arm fails. Otherwise one more download (D1 6.1 GB, P1 1.8 GB) or none (D3 and P3 already exist locally), and about 20 to 60 minutes per triggered arm.
 
 ## Facts checked on 2026-10-30
 
@@ -131,7 +137,15 @@ The GGUF arms run through llama.cpp build 11941 (commit `19ff817fb`), as ADR-103
 - Each run writes a run record through `experiments/_lib/run_record.py`.
 - The server runs on loopback only.
 - `runtime_under_test` is `true` for the GGUF arms. Each GGUF arm records its build and the SHA-256 of each weights file.
-- The server arguments that change output are the greedy setting (`--temp 0`), the mmproj file and the token cap (8192). The exact flags are confirmed at the smoke test.
+- The server flags that change output are pinned in the `runtime` block before the plan freeze: `-c`, `--image-max-tokens`, `--temp 0` and `--mmproj` (see "Preprocessing parity"). A setting changed after the freeze is a dated amendment.
+
+### PaddleOCR-VL wiring
+
+- **P4** uses PaddleOCR `PaddleOCRVL(pipeline_version="v1.6", vl_rec_backend="llama-cpp-server", vl_rec_server_url=<loopback llama-server>)`, per the official `PaddlePaddle/PaddleOCR-VL-1.6-GGUF` README at `511b0964`.
+- **P2** uses `PaddleOCRVL(pipeline_version="v1.6", vl_rec_backend="mlx-vlm-server", vl_rec_server_url=<loopback mlx-vlm server>)`.
+- `pipeline_version` is pinned to `v1.6` on every P arm.
+- P0 passes no `pipeline_version` (`ocr-workers/engines/paddleocr-vl/src/omrs_ocr_paddleocr_vl/engine.py`, line 90: `PaddleOCRVL(device="cpu", use_ocr_for_image_block=True, format_block_content=True)`). The locked paddleocr 3.7.0 defaults to `v1.6` (`paddleocr/_pipelines/paddleocr_vl.py`, line 26), and the Experiment 37 fingerprint reads `1.6`. Confirm that P0's effective version equals `v1.6` (OI-11).
+- The layout model is PP-DocLayoutV3, the model shipped with the v1.6 pipeline (`paddlex/configs/pipelines/PaddleOCR-VL-1.6.yaml`). It is the same model in every P arm. Only the VL recognition step changes.
 
 The MLX arms run through `mlx-vlm`. They are not in the `runtime` block, because the block allows llama.cpp only, unless `runtime_under_test` is set.
 
@@ -148,10 +162,50 @@ The MLX arms run through `mlx-vlm`. They are not in the `runtime` block, because
 | Dependent | Invented text | operator verdict on the review list |
 | Dependent | Similarity | token Dice coefficient against the baseline arm, per page |
 | Controlled | Pages | the same 257 pages as Experiment 37 |
-| Controlled | Prompt, render size, token cap, decoding | the dots.mocr engine constants (`prompt_layout_all_en`, 200 DPI with the engine's long-side rule, 8192 tokens, greedy); the PaddleOCR-VL engine settings |
+| Controlled | Prompt, render size, token cap, decoding | the dots.mocr engine constants (`prompt_layout_all_en`, 200 DPI with the engine's long-side rule, 8192 tokens, greedy); the PaddleOCR-VL engine settings. See "Preprocessing parity" and "Token cap rule" |
 | Controlled | Post-processing | the dots.mocr `layout.py` (header and footer dropped, one `$$` pair per display formula) on every dots.mocr arm |
 | Controlled | Request timeout | 300 s per page |
 | Controlled | Machine load | one arm at a time, with no other GPU job |
+
+### Preprocessing parity
+
+The runtime must be the only variable. Each runtime resizes the page image in its own way. The smoke test checks the image token count before any full run.
+
+**Baseline, dots.mocr (D0).**
+
+- Render: pypdfium2 at 200 DPI. The scale rises so the long side is at least 1600 px: `scale = max(200/72, 1600/max(page size in points))`. Source: `ocr-workers/engines/dots-mocr/src/omrs_ocr_dots_mocr/engine.py`, lines 40-41 (`RENDER_DPI`, `MIN_LONG_SIDE_PX`) and line 126.
+- Resize: `qwen_vl_utils.process_vision_info` (line 143), then the HF processor (line 144). The engine passes no `min_pixels` or `max_pixels` to `process_vision_info`. The `qwen_vl_utils` limits are 4 and 16384 image tokens (`vision_process.py`, lines 26-27, in the engine environment).
+- Processor limits: `preprocessor_config.json` in the model folder sets `min_pixels` 3136, `max_pixels` 11,289,600, `patch_size` 14 and `merge_size` 2. One image token covers 28 x 28 = 784 px.
+- Baseline token count: pass the rendered image through the HF processor. Take the product of `image_grid_thw` divided by 4. No model run is needed.
+
+**Baseline, PaddleOCR-VL (P0).** The PaddleX pipeline resizes each layout block before recognition. The default `max_pixels` is 1,003,520 (`paddlex/inference/pipelines/paddleocr_vl/pipeline.py`, lines 665-666, paddleocr 3.7.0). Every P arm runs the same pipeline code, so blocks reach the backend already resized. The backend must not resize them again.
+
+**llama.cpp.** It resizes through the mmproj metadata key `clip.vision.image_max_pixels` and through the server flag `--image-max-tokens`. The official PaddleOCR-VL-1.6 mmproj default is 1,003,520 pixels (README of `PaddlePaddle/PaddleOCR-VL-1.6-GGUF` at `511b0964`). For the dots.mocr mmproj of our own conversion, read the value from the file metadata and record it.
+
+**MLX.** `mlx-vlm` resizes through its own processor, set by the processor config of the pinned build.
+
+**Rule.** The smoke test (`eq01` p2 and p3) logs the image token count for each arm and page. For a P arm the count is the sum over layout blocks. The count must match the baseline within 5 percent per page. This tolerance is a proposal. The operator may change it before the plan freeze. If a count does not match, stop that arm and fix the setting before the full run.
+
+**Pinned llama-server flags.**
+
+| Flag | Value |
+| --- | --- |
+| `-c` | the largest image token count plus the prompt tokens plus 8192; the value goes in the `runtime` block |
+| `--image-max-tokens` | set so the count matches the baseline; the value goes in the `runtime` block |
+| `--temp` | `0` |
+| `--mmproj` | the mmproj file of the arm |
+
+**Pinned client settings.** `temperature` 0 and `max_tokens` 8192. For D arms, `run_ocr.py` sets both on the chat request. For P arms, `PaddleOCRVL.predict()` accepts `temperature`, `max_new_tokens` and `max_pixels` (`pipeline.py`, lines 784-788). Pass `temperature` 0 and `max_new_tokens` 8192.
+
+**mmproj metadata change.** If a metadata key changes, save the changed file as a pinned file with its own SHA-256 in the `runtime` block. Never edit a pinned file in place.
+
+### Token cap rule
+
+A page hits the cap when `completion_tokens >= 8192`. That page yields an empty result. MLX uses its generated token count for the same test.
+
+- Baseline rule for dots.mocr: `engine.py` line 111 passes `hit_token_cap=new_tokens >= MAX_NEW_TOKENS` (`MAX_NEW_TOKENS = 8192`, line 42). `layout.py`, lines 114-115, returns `""` with reason `token_cap`.
+- P arms: the PaddleOCR engine source has no cap rule of its own. Each P arm applies the same test to every block request. A page with a capped block counts as empty, so all arms are scored alike.
+- The P0 cap is unverified. PaddleX sets `max_new_tokens` to 4096 when the pipeline passes a keyword dictionary without it (`pipeline.py`, lines 504-505). The native default is 8192 (`doc_vlm/predictor.py` line 232; `constants.py` line 35). See OI-11.
 
 Not changed: engine folders, routes, settings defaults, the maths detector, and the pinned PyTorch dots.mocr revision `e539fbb52280393adc081b289ec597430a0f9031`.
 
@@ -161,13 +215,15 @@ The operator set these gates on 2026-10-06. They apply to every new arm against 
 
 | ID | Rule | Role |
 | --- | --- | --- |
-| C1 | Speed. A D arm: median s/page at most 0.5 times D0, on the 20 Experiment 37 pages that ran alone (D0 56.62 s, eq01 p2 excluded as model load). A P arm: median s/page at most 0.5 times P0 over all 257 pages (P0 40.2 s, shared-load bias stated). | decides |
+| C1 | Speed. A D arm: median s/page at most 0.5 times D0, on the 20 Experiment 37 pages that ran alone (D0 56.62 s, eq01 p2 excluded as model load). A P arm: median s/page at most 0.5 times P0 (40.2 s, the P0 median over its 221 OK pages), with the P-arm median computed on the same 221 pages. The report gives the all-257 median beside it. | decides |
 | C2 | The arm has 0 timeouts at 300 s (P0 had 34 of 257). | decides |
 | C3 | KaTeX error rate at most 0.01 over `E-maths` and `E-scan`. Changed from 0.05 on 2026-10-06. | decides |
 | C4 | Median `E-script` recall at least the baseline median minus 0.05 (D0 0.8889, P0 0.6095). | decides |
 | C5 | The operator finds no invented text on the review list (Experiment 37 G3 rule). | decides |
 | C6 | Median Dice similarity to the baseline at least 0.90. | information only |
 | C7 | Peak memory below 22.2 GiB for D arms (F5). | information only |
+
+**C1 populations.** D0's 56.62 s comes from 19 alone-timed pages of one run and has no variance estimate. This limit applies to the D-arm speed comparison. The thresholds do not change.
 
 **Pass rule.** C1 to C5 all hold for an arm. C6 and C7 inform the decision only.
 
@@ -181,21 +237,22 @@ The operator set these gates on 2026-10-06. They apply to every new arm against 
 4. Download the 8-bit pins in `gguf_pins` and `mlx_pins`, and the cross-check file. Record each revision and SHA-256. Do not download the diagnostic MLX 16-bit builds yet.
 5. Convert dots.mocr to GGUF bf16 plus a bf16 mmproj at build 11941. Keep the bf16 file as the D3 diagnostic. Quantise the language model to Q8_0 (D4). Quantise the official PaddleOCR-VL GGUF to Q8_0 (P4); keep the official file as the P3 diagnostic. Record each SHA-256. A failed conversion stops that arm and is a finding.
 6. Run the D4 smoke pages on the `lodrick-the-lafted` Q8_0 file with our bf16 mmproj too, and compare with D4 (OI-9).
-7. Add the `runtime` block with the real hashes. Run `verify_llamacpp_runtime` on each GGUF arm.
-8. Run a two-page smoke test (`eq01` p2 and p3) for each 8-bit arm. Compare with the scratch figures. Stop an arm whose output is empty.
-9. Run each 8-bit arm alone, through `E-maths`, `E-scan` and `E-script`. Use the checkpoint and resume rules in `run_rules`.
-10. If a speed-up is at least 1.5 times and below 3 times, run `T-control` for that baseline (20 pages alone, seed 41).
-11. Score KaTeX, recall and similarity for every 8-bit arm. List every formula that changed against the baseline.
-12. Build the review page for each 8-bit arm: the 10 lowest-similarity pages, every page the noise screen flags, and 5 random pages (seed 41; DR-3). Follow `references/review-page-pattern.md`.
-13. Operator reviews. Apply the gates.
-14. For each 8-bit arm that fails C3, C4 or C5, run its 16-bit diagnostic on the pages of the failed gate. Download the MLX 16-bit build first if needed (model download approval covers it). Score the failed gate only.
-15. Write `report.md`, `output/summary.json` and the verdict.
+7. Add the `runtime` block with the real hashes and the pinned server flags. Run `verify_llamacpp_runtime` on each GGUF arm. Close the open items that need no OCR run (OI-1, OI-2, OI-5, OI-6, OI-7, OI-11).
+8. Freeze `plan.json` and record its SHA-256 in `tasks.md` (task 3.8). The freeze comes after the `runtime` block and the pins (task 3.6). A setting changed later is a dated amendment.
+9. Run a two-page smoke test (`eq01` p2 and p3) for each 8-bit arm. Log the image token count per arm and check it against the baseline (see "Preprocessing parity"). Compare with the scratch figures. Stop an arm whose output is empty or whose token count does not match.
+10. Run each 8-bit arm alone, through `E-maths`, `E-scan` and `E-script`. Use the checkpoint and resume rules in `run_rules`.
+11. If a speed-up is at least 1.5 times and below 3 times, run `T-control` for that baseline (20 pages alone, seed 41).
+12. Score KaTeX, recall and similarity for every 8-bit arm. List every formula that changed against the baseline.
+13. Build the review page for each 8-bit arm: the 10 lowest-similarity pages, every page the noise screen flags, and 5 random pages (seed 41; DR-3). Follow `references/review-page-pattern.md`.
+14. Operator reviews. Apply the gates.
+15. For each 8-bit arm that fails C3, C4 or C5, run its 16-bit diagnostic on the pages of the failed gate. Download the MLX 16-bit build first if needed (model download approval covers it). Score the failed gate only.
+16. Write `report.md`, `output/summary.json` and the verdict.
 
 ## Interpretation rules
 
 - A GGUF arm that passes C1 to C5 supports a follow-up OpenSpec change for that engine. It changes no default by itself.
 - An MLX arm that passes supports a report only. It does not support a runtime change.
-- A GGUF arm that fails at conversion or load is a finding. The engine keeps its shipped backend unless another GGUF arm passes.
+- A GGUF arm that fails at conversion or load is a finding. The engine keeps its shipped backend.
 - A 16-bit diagnostic result explains a failure. It never turns a failed 8-bit arm into a pass.
 - A speed gain that disappears under `T-control` is a baseline artefact.
 - Formula differences are findings. The report lists them even when every gate passes.
@@ -203,10 +260,11 @@ The operator set these gates on 2026-10-06. They apply to every new arm against 
 
 ## Runtime budget (estimate)
 
-The estimate covers the 4 new 8-bit arms, with conversion and model load. The operator sets `runtime_budget_h` in `plan.json`.
+The estimate covers the 4 scored 8-bit arms, with conversion and model load. The operator sets `runtime_budget_h` in `plan.json`.
 
-- Roughly 1.5 to 3.5 hours of machine time in total.
-- Each triggered 16-bit diagnostic adds about 20 to 60 minutes.
+- Roughly 2 to 7 hours of machine time in total.
+- Basis: Experiment 37 dots.mocr took 3.31 h at baseline speed. Two dots.mocr arms with no speed-up take about 6.6 h.
+- Each triggered 16-bit diagnostic adds about 20 to 60 minutes. Diagnostics are extra.
 - The GGUF arms and the MLX arms are timed separately.
 - No cap is set in this plan.
 
@@ -231,14 +289,19 @@ The estimate covers the 4 new 8-bit arms, with conversion and model load. The op
 | `protocol.md`, `plan.json` | this plan |
 | `experiment.json` | the record (status, finding) |
 | `output/` (gitignored) | per-arm Markdown, state files and run records |
+| `run_ocr.py` | one runner with `--backend {mlx,llamacpp}`; status inside it (`--status`) |
+| `summarise.py` | per-arm gate values into `output/summary.json` |
+| `analysis.py` | similarity scoring |
 | `output/summary.json` | per-arm gate values (committed) |
 | `report.md` | verdict, arm table, formula list, the operator's review |
+
+The Standard size allows 3 scripts, so the folder holds `run_ocr.py`, `summarise.py` and `analysis.py` only. Reuse `score_recall.py` and `check_katex.mjs` from Experiment 37 by path (`../omrs-v3/experiments/37-dots-mocr-routing-acceptance-2026-09-30/`). Do not copy them.
 
 ## Open items
 
 These items stay open until the operator or a run closes them. Each one is also in `plan.json` (`open_items`).
 
-- **OI-1.** Confirm that the dots-mocr `layout.py` imports no PyTorch before reuse.
+- **OI-1 (closed 2026-10-30).** `layout.py` in `ocr-workers/engines/dots-mocr/src/omrs_ocr_dots_mocr/` imports only `json`, `re` and `typing` (lines 20-24). The package `__init__.py` imports nothing else. It needs no PyTorch.
 - **OI-2.** The llama.cpp converter accepts dots.mocr (fact 2). Confirm that build 11941 loads our conversion and gives non-empty output on the smoke pages.
 - **OI-3 (closed 2026-10-30).** The official PaddleOCR-VL GGUF is 16-bit. The Hub header metadata gives architecture `paddleocr` and 466,654,208 parameters. At 2 bytes each that is 933.3 MB, against a file size of 935,769,056 bytes. Confirm the tensor type again at download.
 - **OI-4.** Confirm that the installed `mlx-vlm` loads the OpenGryd PaddleOCR-VL 1.6 builds and that PaddleOCR's `mlx-vlm-server` backend accepts them.
@@ -247,6 +310,8 @@ These items stay open until the operator or a run closes them. Each one is also 
 - **OI-7.** The Experiment 37 source files sit in `../omrs-v3`. Check their hashes before use.
 - **OI-8.** The install approval must cover the llama.cpp conversion tools (Python `gguf` and `transformers`), not only `mlx-vlm`.
 - **OI-9.** Cross-check: D4 output on the smoke pages matches the `lodrick-the-lafted` Q8_0 output, with the same bf16 mmproj. A difference is reported and investigated before the D4 run.
+- **OI-10.** Suspected risks for dots.mocr. (a) The conversion at llama.cpp build 11941 may fail or load wrongly. PR 17575 covers dots.ocr, and the `lodrick-the-lafted` GGUF suggests that dots.mocr works on some build. Build 11941 is not shown. (b) A bf16 mmproj may run slowly on Metal. The smoke tests catch both. A failure is a finding and stops that arm only.
+- **OI-11.** Confirm that P0's effective PaddleOCR-VL pipeline version equals `v1.6` (see "PaddleOCR-VL wiring"). Read the P0 token cap and block resize settings from the Experiment 37 run record. A difference is fixed in the plan before the freeze.
 
 ## Decisions for the operator
 

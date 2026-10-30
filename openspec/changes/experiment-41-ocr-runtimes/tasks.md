@@ -1,13 +1,12 @@
 # Tasks
 
-## 1. Plan and freeze
+## 1. Plan
 
 - [x] 1.1 Create the worktree `omrs-feat-experiment-41-ocr-runtimes` from `v3`. Verify: `git rev-parse --show-toplevel` and `git branch --show-current` match.
 - [x] 1.2 Write `protocol.md` and `plan.json` in `experiments/41-ocr-runtimes-2026-10-30/`. Verify: page lists copied from Experiment 37 with SHA-256 `09f13055`; all four approvals `false`; gates set on 2026-10-06 and carried forward.
 - [x] 1.3 Check the Hub facts behind the arms (every GGUF and MLX build for both models, base weights identity, file hashes). Verify: each fact is recorded in `protocol.md` section "Facts checked on 2026-10-30".
 - [x] 1.4 Operator decides DR-4 (precision list). Verify: `open_decisions` records it with its date (2026-10-30).
 - [ ] 1.4a Operator confirms DR-2 (licence scope). Verify: `open_decisions` records it with its date.
-- [ ] 1.5 Freeze `plan.json` (SHA-256 recorded) before the first run. Verify: hash recorded in this file.
 
 ## 2. Approvals (operator, one by one)
 
@@ -16,7 +15,7 @@
 - [ ] 2.3 Approve the licence scope (DR-2). Verify: `approvals.licence_check` is `true` and the decision is dated.
 - [ ] 2.4 Approve the OCR run budget. Verify: `runtime_budget_h` filled and `approved` is `true`.
 
-## 3. Conversions and pins
+## 3. Conversions, pins and freeze
 
 - [ ] 3.1 Convert dots.mocr to GGUF bf16 plus bf16 mmproj at llama.cpp build 11941 (kept as the D3 diagnostic). Verify: the file loads and the smoke pages give output (OI-2), or the failure is recorded as a finding (arm D4 stops).
 - [ ] 3.1a Cross-check D4 against `lodrick-the-lafted/dots.mocr-gguf` Q8_0 with the same bf16 mmproj on the smoke pages (OI-9). Verify: outputs match, or the difference is recorded and resolved before the D4 run.
@@ -24,17 +23,18 @@
 - [ ] 3.3 Download the official PaddleOCR-VL-1.6 GGUF (kept as the P3 diagnostic). Verify: 16-bit tensor type confirmed from the header (OI-3); SHA-256 recorded.
 - [ ] 3.4 Quantise the official PaddleOCR-VL-1.6 GGUF to Q8_0 with `llama-quantize`. Verify: SHA-256 recorded.
 - [ ] 3.5 Download the MLX 8-bit builds in `mlx_pins` (OI-4). Leave the 16-bit diagnostic builds until a diagnostic triggers. Verify: revision and SHA-256 match the pins; each build loads in `mlx-vlm`.
-- [ ] 3.6 Add the `runtime` block to `plan.json` with the real SHA-256 values. Verify: `omrs experiments check` passes the block.
-- [ ] 3.7 Close OI-1, OI-2, OI-5, OI-6 and OI-7. Verify: each item answered in `plan.json`.
+- [ ] 3.6 Add the `runtime` block to `plan.json` with the real SHA-256 values and the pinned server flags (`-c`, `--image-max-tokens`, `--temp 0`, `--mmproj`). Record any changed mmproj as a pinned file with its own SHA-256. Verify: `omrs experiments check` passes the block.
+- [ ] 3.7 Close OI-1, OI-2, OI-5, OI-6, OI-7 and OI-11. Verify: each item answered in `plan.json`.
+- [ ] 3.8 Freeze `plan.json` after the runtime block and pins (3.6) and the closed items (3.7), before the first run. Verify: SHA-256 recorded in this file; a later setting change is a dated amendment.
 
 ## 4. Build the runners
 
-- [ ] 4.1 Write the runners for the llama.cpp arms and for the MLX arms, the status helpers and `similarity.py`. Verify: `uv run ruff check` and `ruff format --check` pass; a dry run lists 257 pages.
+- [ ] 4.1 Write `run_ocr.py` (`--backend {mlx,llamacpp}`, status inside it with `--status`), `summarise.py` and `analysis.py` (similarity scoring). Reuse `score_recall.py` and `check_katex.mjs` from Experiment 37 by path; do not copy them. Verify: 3 scripts at most (Standard limit); `uv run ruff check` and `ruff format --check` pass; a dry run lists 257 pages.
 - [ ] 4.2 Call `verify_llamacpp_runtime` before the first score, and write run records. Verify: a wrong build or hash stops the run in a test.
 
 ## 5. Run
 
-- [ ] 5.1 Run the two-page smoke test (`eq01` p2 and p3) for each new arm. Verify: non-empty output; compare with the scratch figures.
+- [ ] 5.1 Run the two-page smoke test (`eq01` p2 and p3) for each new arm. Verify: non-empty output; image token count within 5 percent of the baseline (stop the arm and fix the setting if not); compare with the scratch figures. Cover OI-10 (conversion at build 11941; mmproj speed on Metal).
 - [ ] 5.2 Run each new arm alone through `E-maths`, `E-scan` and `E-script`. Verify: state file shows 257 pages; no other GPU job ran.
 - [ ] 5.3 If a measured speed-up is at least 1.5 times and below 3 times, run `T-control` for that baseline. Verify: timings recorded apart from the Experiment 37 figures, or a note that no comparison fell in the band.
 

@@ -7,15 +7,15 @@
     {
       "id": "H1",
       "role": "primary",
-      "statement": "At least one llama.cpp GGUF arm of an engine meets gates C1 to C5 against that engine's shipped backend.",
-      "null": "For each engine, no llama.cpp GGUF arm meets all of C1 to C5 against the shipped backend."
+      "statement": "At least one of the two scored llama.cpp GGUF arms (D4 for dots.mocr, P4 for PaddleOCR-VL) meets gates C1 to C5 against its engine's shipped backend.",
+      "null": "Neither D4 nor P4 meets all of C1 to C5 against the shipped backend of its engine."
     }
   ],
-  "decision_rule": "For each engine with a passing GGUF arm, open a follow-up OpenSpec change for a llama.cpp path, using the passing arm with the better C4 and C5 results. For an engine with no passing GGUF arm, keep the shipped backend. MLX arms never lead to an engine decision. If an MLX arm passes and no GGUF arm does, report that and stop.",
+  "decision_rule": "Each engine has one scored GGUF arm: D4 for dots.mocr, P4 for PaddleOCR-VL. If that arm passes C1 to C5, open a follow-up OpenSpec change for a llama.cpp path for that arm. If it fails, the engine keeps its shipped backend. MLX arms never lead to an engine decision. If an MLX arm passes and the GGUF arm of its engine does not, report that and stop.",
   "stats": "medium",
   "seed": 41,
   "baseline": "shipped backends: dots.mocr on PyTorch MPS (D0), PaddleOCR-VL on CPU (P0)",
-  "candidate": "GGUF arms D3, D4, P3, P4 (decide); MLX arms D1, D2, P1, P2 (comparison only)",
+  "candidate": "Scored GGUF arms D4 and P4 (decide); scored MLX 8-bit arms D2 and P2 (comparison only). D1, D3, P1 and P3 are conditional 16-bit diagnostics that never change a verdict.",
   "purpose": "optimisation",
   "purpose_note": "Not citable outside this project. Changing to publication needs a new Confirmatory follow-up.",
   "change_ref": "openspec/changes/experiment-41-ocr-runtimes",
@@ -65,7 +65,8 @@
       "engine": "paddleocr-vl",
       "backend": "cpu",
       "role": "baseline (shipped)",
-      "source": "reuse ../omrs-v3/experiments/37-dots-mocr-routing-acceptance-2026-09-30/output/paddleocr-vl"
+      "source": "reuse ../omrs-v3/experiments/37-dots-mocr-routing-acceptance-2026-09-30/output/paddleocr-vl",
+      "pipeline_version": "Not passed. ocr-workers/engines/paddleocr-vl/src/omrs_ocr_paddleocr_vl/engine.py line 90 calls PaddleOCRVL(device=\"cpu\", use_ocr_for_image_block=True, format_block_content=True). The locked paddleocr 3.7.0 defaults pipeline_version to v1.6 (paddleocr/_pipelines/paddleocr_vl.py line 26, read in ~/.omrs/ocr-workers). The Experiment 37 fingerprint reads PaddleOCR-VL 1.6. Confirm against the Experiment 37 run (OI-11)."
     },
     "P1": {
       "engine": "paddleocr-vl",
@@ -73,14 +74,16 @@
       "role": "conditional 16-bit diagnostic (runs only when the matching 8-bit arm fails C3, C4 or C5; never changes a verdict)",
       "weights": "OpenGryd/PaddleOCR-VL-1.6-MLX-16bit at 966b8ea5bf8a1374baef93722b0f542c1e033d55, model.safetensors sha256 f72e51bc81f035c3e50d1351cff78393f3906577c659e3bde6b653ede29f8af9 (Apache-2.0, base PaddlePaddle/PaddleOCR-VL-1.6)",
       "source": "conditional",
-      "diagnostic_for": "P2"
+      "diagnostic_for": "P2",
+      "wiring": "PaddleOCRVL(pipeline_version=\"v1.6\", vl_rec_backend=\"mlx-vlm-server\", vl_rec_server_url=<loopback mlx-vlm server>)"
     },
     "P2": {
       "engine": "paddleocr-vl",
       "backend": "mlx-8bit (vl_rec_backend=mlx-vlm-server)",
       "role": "comparison (MLX, no decision)",
       "weights": "OpenGryd/PaddleOCR-VL-1.6-MLX-8bit at dba7c66b4614170eeb132bff0abe4b6dd836a504, model.safetensors sha256 3abce24b6c447cce0e56ae9fd7464d507c4b288080bdc92526a07668c3a0a0e7 (Apache-2.0, base PaddlePaddle/PaddleOCR-VL-1.6)",
-      "source": "new run"
+      "source": "new run",
+      "wiring": "PaddleOCRVL(pipeline_version=\"v1.6\", vl_rec_backend=\"mlx-vlm-server\", vl_rec_server_url=<loopback mlx-vlm server>)"
     },
     "P3": {
       "engine": "paddleocr-vl",
@@ -88,14 +91,16 @@
       "role": "conditional 16-bit diagnostic (runs only when the matching 8-bit arm fails C3, C4 or C5; never changes a verdict)",
       "weights": "PaddlePaddle/PaddleOCR-VL-1.6-GGUF at 511b09642bb324401f15f97cc23bc67e8f0a291d, file PaddleOCR-VL-1.6-GGUF.gguf, unquantised (16-bit, OI-3)",
       "source": "conditional",
-      "diagnostic_for": "P4"
+      "diagnostic_for": "P4",
+      "wiring": "PaddleOCRVL(pipeline_version=\"v1.6\", vl_rec_backend=\"llama-cpp-server\", vl_rec_server_url=<loopback llama-server>)"
     },
     "P4": {
       "engine": "paddleocr-vl",
       "backend": "llama.cpp-gguf-q8_0",
       "role": "runtime (decides)",
       "weights": "official PaddleOCR-VL-1.6-GGUF.gguf at 511b0964 quantised to Q8_0 with llama-quantize at build 11941; official 16-bit mmproj",
-      "source": "new run"
+      "source": "new run",
+      "wiring": "PaddleOCRVL(pipeline_version=\"v1.6\", vl_rec_backend=\"llama-cpp-server\", vl_rec_server_url=<loopback llama-server>), as in the official PaddlePaddle/PaddleOCR-VL-1.6-GGUF README at 511b0964"
     }
   },
   "comparisons": {
@@ -148,7 +153,8 @@
     "decides": [
       "D4",
       "P4"
-    ]
+    ],
+    "matched_runtime_caveat": "D4 against D2 is not precision-matched. GGUF Q8_0 quantises linear tensors in blocks of 32 elements with a symmetric scale, and the mmproj stays 16-bit. MLX 8-bit uses affine quantisation with group size 64 (config.json of mlx-community/dots.mocr-8bit at 6d9e750b: bits 8, group_size 64, mode affine; read via the HF API on 2026-10-30). In that build the vision tower is not quantised: model.safetensors.index.json lists no .scales entry for its 304 vision tensors. OpenGryd/PaddleOCR-VL-1.6-MLX-8bit at dba7c66b uses the same settings and has 84 scale tensors among its 503 vision-named tensors, so part of its vision stack is quantised. The comparison is reported only."
   },
   "gguf_pins": {
     "status": "planned. The runtime block is added to plan.json, with real SHA-256 values, before the first score. The checker refuses the all-zero placeholder, so no placeholder hash sits in a runtime block now.",
@@ -167,11 +173,14 @@
         "sha256": "to record at conversion",
         "conversion": "llama.cpp convert_hf_to_gguf.py at build 11941, outtype bf16, plus bf16 mmproj",
         "server_args": {
-          "to_confirm_at_smoke": [
+          "flags": [
             "--temp 0",
             "--mmproj <mmproj file>",
-            "-n 8192"
-          ]
+            "-c <sized for image tokens + prompt + 8192>",
+            "--image-max-tokens <set at the parity check>"
+          ],
+          "client": "temperature 0, max_tokens 8192",
+          "note": "values recorded in the runtime block before the plan freeze; see preprocessing_parity"
         }
       },
       {
@@ -183,11 +192,14 @@
         "sha256": "to record at conversion",
         "conversion": "D3 file, language model quantised with llama-quantize Q8_0 at build 11941; bf16 mmproj kept. Cross-check against lodrick-the-lafted Q8_0 (OI-9).",
         "server_args": {
-          "to_confirm_at_smoke": [
+          "flags": [
             "--temp 0",
             "--mmproj <mmproj file>",
-            "-n 8192"
-          ]
+            "-c <sized for image tokens + prompt + 8192>",
+            "--image-max-tokens <set at the parity check>"
+          ],
+          "client": "temperature 0, max_tokens 8192",
+          "note": "values recorded in the runtime block before the plan freeze; see preprocessing_parity"
         }
       },
       {
@@ -203,10 +215,14 @@
         },
         "precision_check": "OI-3 closed: 466,654,208 parameters x 2 bytes = 933.3 MB; file 935,769,056 bytes; architecture paddleocr (Hub header metadata, 2026-10-30). Re-read at download.",
         "server_args": {
-          "to_confirm_at_smoke": [
+          "flags": [
             "--temp 0",
-            "--mmproj PaddleOCR-VL-1.6-GGUF-mmproj.gguf"
-          ]
+            "--mmproj PaddleOCR-VL-1.6-GGUF-mmproj.gguf",
+            "-c <sized for image tokens + prompt + 8192>",
+            "--image-max-tokens <set at the parity check>"
+          ],
+          "client": "PaddleOCRVL.predict(temperature=0, max_new_tokens=8192)",
+          "note": "values recorded in the runtime block before the plan freeze; see preprocessing_parity"
         }
       },
       {
@@ -218,10 +234,14 @@
         "sha256": "to record at conversion",
         "conversion": "llama-quantize Q8_0 at build 11941; mmproj is the official P3 mmproj",
         "server_args": {
-          "to_confirm_at_smoke": [
+          "flags": [
             "--temp 0",
-            "--mmproj PaddleOCR-VL-1.6-GGUF-mmproj.gguf"
-          ]
+            "--mmproj PaddleOCR-VL-1.6-GGUF-mmproj.gguf",
+            "-c <sized for image tokens + prompt + 8192>",
+            "--image-max-tokens <set at the parity check>"
+          ],
+          "client": "PaddleOCRVL.predict(temperature=0, max_new_tokens=8192)",
+          "note": "values recorded in the runtime block before the plan freeze; see preprocessing_parity"
         }
       }
     ],
@@ -551,6 +571,42 @@
     "katex_version": "0.16.22",
     "corpus_check": "all 18 sources.json documents resolved and SHA-256 matched in the v3 worktree, 2026-10-06"
   },
+  "preprocessing_parity": {
+    "why": "The runtime must be the only variable. Each runtime resizes the page image in its own way, so the image token count per page is checked before any full run.",
+    "baseline_dots_mocr": {
+      "render": "pypdfium2 at 200 DPI. The scale is raised so the long side is at least 1600 px: scale = max(200/72, 1600/max(page size in points)). Source: ocr-workers/engines/dots-mocr/src/omrs_ocr_dots_mocr/engine.py lines 40-41 (RENDER_DPI, MIN_LONG_SIDE_PX) and line 126.",
+      "resize": "qwen_vl_utils.process_vision_info (engine.py line 143), then the HF processor (engine.py line 144). The engine passes no min_pixels or max_pixels to process_vision_info. qwen_vl_utils sets IMAGE_MIN_TOKEN_NUM 4 and IMAGE_MAX_TOKEN_NUM 16384 (qwen_vl_utils/vision_process.py lines 26-27, installed in the engine environment). The processor file preprocessor_config.json in the model folder sets min_pixels 3136, max_pixels 11,289,600, patch_size 14 and merge_size 2. One image token covers 28 x 28 = 784 px.",
+      "baseline_token_count": "Computed without a model run: pass the rendered image through the HF processor and take the product of image_grid_thw divided by merge_size squared (4)."
+    },
+    "baseline_paddleocr_vl": "The PaddleX pipeline resizes each layout block before recognition. The default max_pixels is 1,003,520 (paddlex/inference/pipelines/paddleocr_vl/pipeline.py lines 665-666, paddleocr 3.7.0 in ~/.omrs/ocr-workers). Every P arm runs the same pipeline code, so blocks arrive at the backend already resized. The backend must not resize them again.",
+    "llama_cpp": "llama.cpp resizes through the mmproj metadata key clip.vision.image_max_pixels and through the server flag --image-max-tokens. The official PaddleOCR-VL-1.6 mmproj default is 1,003,520 pixels (PaddlePaddle/PaddleOCR-VL-1.6-GGUF README at 511b0964). For the dots.mocr mmproj of our own conversion, read the value from the file metadata and record it.",
+    "mlx": "mlx-vlm resizes through its own processor, set by the processor config of the pinned build.",
+    "rule": "The smoke test (eq01 p2 and p3) logs the image token count per page for each arm: for D arms the count per page, for P arms the sum over layout blocks. The count must match the baseline within 5 percent per page (proposed tolerance; the operator may change it before the plan freeze). If it does not, stop that arm and fix the setting before the full run.",
+    "pinned_server_flags": {
+      "-c": "sized for the largest image token count plus the prompt tokens plus 8192. The value is recorded in the runtime block.",
+      "--image-max-tokens": "set so the image token count matches the baseline. The value is recorded in the runtime block.",
+      "--temp": "0",
+      "--mmproj": "the mmproj file of the arm"
+    },
+    "pinned_client_settings": {
+      "temperature": 0,
+      "max_tokens": 8192,
+      "note": "D arms: our run_ocr.py sets both on the chat request. P arms: PaddleOCRVL.predict() accepts temperature, max_new_tokens and max_pixels (paddlex pipeline.py lines 784-788); pass temperature 0 and max_new_tokens 8192."
+    },
+    "mmproj_metadata_change": "If an mmproj metadata key is changed (for example clip.vision.image_max_pixels), save the changed file as a pinned file with its own SHA-256 in the runtime block. Never edit a pinned file in place."
+  },
+  "token_cap_rule": {
+    "rule": "A page hits the cap when completion_tokens >= 8192. That page yields an empty result. MLX uses its generated token count for the same test.",
+    "baseline_source": "ocr-workers/engines/dots-mocr/src/omrs_ocr_dots_mocr/engine.py line 111 passes hit_token_cap=new_tokens >= MAX_NEW_TOKENS (MAX_NEW_TOKENS = 8192, line 42). layout.py lines 114-115: page_markdown returns \"\" with reason token_cap.",
+    "p_arms": "The PaddleOCR engine source has no cap rule of its own. The P arms apply the same test to every block request and count a page with a capped block as empty, so all arms are scored alike. The P0 cap is unverified: paddlex sets max_new_tokens to 4096 when the pipeline passes a keyword dictionary without one (pipeline.py lines 504-505), and the native default is 8192 (doc_vlm/predictor.py line 232, constants.py line 35). Confirm in OI-11."
+  },
+  "paddleocr_vl_wiring": {
+    "P4": "PaddleOCRVL(pipeline_version=\"v1.6\", vl_rec_backend=\"llama-cpp-server\", vl_rec_server_url=<loopback llama-server>), per the official PaddlePaddle/PaddleOCR-VL-1.6-GGUF README at 511b0964.",
+    "P2": "PaddleOCRVL(pipeline_version=\"v1.6\", vl_rec_backend=\"mlx-vlm-server\", vl_rec_server_url=<loopback mlx-vlm server>).",
+    "pipeline_version": "Pinned to v1.6 on every P arm.",
+    "layout_model": "PP-DocLayoutV3, the layout model shipped with the v1.6 pipeline (paddlex/configs/pipelines/PaddleOCR-VL-1.6.yaml). It is the same model in every P arm. Only the VL recognition step changes.",
+    "p0_check": "OI-11"
+  },
   "baseline_exp37": {
     "source": "experiments/37-dots-mocr-routing-acceptance-2026-09-30/output/summary.json",
     "A1": {
@@ -638,11 +694,12 @@
     "set_by": "operator (Dr Muhammad Aizat Bin Md Hawari)",
     "date": "2026-10-06",
     "frozen_sha256": null,
-    "freeze_note": "freeze before the first run; record the SHA-256 in tasks.md 1.4",
+    "freeze_note": "freeze after the runtime block and pins are recorded (tasks.md 3.8) and before the first run; record the SHA-256 in tasks.md 3.8",
     "pass_rule": "C1 to C5 all hold for an arm. C6 and C7 inform only. Only a GGUF arm can lead to an engine decision.",
     "C1": {
-      "rule": "D-arm median s/page <= 0.5 x D0 on the 20 Exp 37 pages that ran alone (D0 56.62 s, 19 timed pages, eq01:2 excluded as model load); P-arm median s/page <= 0.5 x P0 over all 257 pages (P0 40.2 s, shared-load bias stated)",
-      "role": "decides"
+      "rule": "D-arm median s/page <= 0.5 x D0 on the 20 Exp 37 pages that ran alone (D0 56.62 s, 19 timed pages, eq01:2 excluded as model load); P-arm median s/page <= 0.5 x P0 (40.2 s, the P0 median over its 221 OK pages), with the P-arm median computed on the same 221 pages where P0 finished OK",
+      "role": "decides",
+      "populations": "P-arm: the gated median uses the 221 pages where P0 finished OK. The report gives the all-257 median of the P arm beside it. D-arm: D0 56.62 s comes from 19 alone-timed pages of one run and has no variance estimate. This limit applies to the D-arm speed comparison. The thresholds are unchanged."
     },
     "C2": {
       "rule": "the arm has 0 timeouts at 300 s (P0: 34 of 257)",
@@ -693,7 +750,7 @@
       "approved": false,
       "runtime_budget_h": null,
       "per_request_timeout_s": 300,
-      "estimate_h": "roughly 1.5 to 3.5 h for the 4 new 8-bit arms, including conversion and model load; each triggered 16-bit diagnostic adds about 20 to 60 minutes. The operator sets runtime_budget_h."
+      "estimate_h": "roughly 2 to 7 h for the 4 scored arms, including conversion and model load. Basis: Experiment 37 dots.mocr took 3.31 h at baseline speed, so two dots.mocr arms with no speed-up take about 6.6 h. Diagnostics are extra (about 20 to 60 minutes each). The operator sets runtime_budget_h."
     }
   },
   "run_rules": {
@@ -734,7 +791,7 @@
     }
   ],
   "open_items": [
-    "OI-1 layout.py (dots-mocr engine) imports no PyTorch. Check before reuse. Path: ocr-workers/engines/dots-mocr/src (v3 worktree).",
+    "OI-1 CLOSED 2026-10-30: layout.py in ocr-workers/engines/dots-mocr/src/omrs_ocr_dots_mocr imports only json, re and typing (lines 20-24, plus __future__ annotations). The package __init__.py imports nothing else. It needs no PyTorch.",
     "OI-2 The llama.cpp converter accepts dots.mocr (see model_availability_2026_10_30). Confirm build 11941 loads our conversion and gives non-empty output on the smoke pages.",
     "OI-3 CLOSED 2026-10-30: official PaddleOCR-VL GGUF is 16-bit (466,654,208 parameters x 2 bytes = 933.3 MB; file 935,769,056 bytes; Hub header metadata). Re-read at download.",
     "OI-4 Confirm the installed mlx-vlm loads the OpenGryd PaddleOCR-VL 1.6 builds and that PaddleOCR's mlx-vlm-server backend accepts them.",
@@ -742,7 +799,9 @@
     "OI-6 Memory sampling for llama-server (client plus server) reuses the Exp 37 sampler; confirm it covers a second process.",
     "OI-7 Source files for D0 and P0 sit in ../omrs-v3 (gitignored). This worktree does not hold them. Read them from there. Do not copy them without a hash check.",
     "OI-8 The install approval covers the llama.cpp conversion tools as well as mlx-vlm.",
-    "OI-9 Cross-check: D4 output on the smoke pages matches lodrick-the-lafted Q8_0 output with the same bf16 mmproj. A difference is reported and investigated before the D4 run."
+    "OI-9 Cross-check: D4 output on the smoke pages matches lodrick-the-lafted Q8_0 output with the same bf16 mmproj. A difference is reported and investigated before the D4 run.",
+    "OI-10 Suspected risks for dots.mocr. (a) The conversion at llama.cpp build 11941 may fail or load wrongly: PR 17575 covers dots.ocr, and the lodrick-the-lafted GGUF suggests dots.mocr works on some build, but that is not shown for build 11941. (b) A bf16 mmproj may run slowly on Metal. The smoke tests catch both. A failure is a finding and stops that arm only.",
+    "OI-11 Confirm that the effective PaddleOCR-VL pipeline version of P0 equals v1.6 (P0 passes no pipeline_version; the locked paddleocr 3.7.0 defaults to v1.6; Experiment 37 fingerprint reads 1.6), and read the P0 token cap and block resize settings from the Experiment 37 run record (paddlex sets max_new_tokens 4096 in one code path). A difference is fixed in the plan before the freeze."
   ],
   "amendments": [],
   "system_identity": {
@@ -790,8 +849,21 @@
       "C5": "the pages of the failed arm's review list"
     },
     "scored": "the failed gate only, on those pages",
-    "reading": "16-bit passes the failed gate: 8-bit quantisation caused the failure. 16-bit fails too: the runtime caused it.",
-    "limits": "Never changes the verdict of the 8-bit arm. A 16-bit pass supports at most a separate follow-up experiment on all 257 pages.",
-    "cost": "none when no 8-bit arm fails; otherwise D1 6.1 GB or P1 1.8 GB download (D3 and P3 exist locally) and about 20 to 60 minutes per triggered arm"
+    "reading": "16-bit reaches the baseline value on the failed gate's pages: 8-bit quantisation caused the failure. 16-bit does not: the runtime caused it. The reading is approximate. Every GGUF arm keeps a 16-bit mmproj, while MLX 8-bit quantises different tensors (the language model; for dots.mocr 8-bit the vision tower is not quantised), so the diagnostic cannot isolate one factor.",
+    "limits": "Descriptive only. Never changes the verdict of the 8-bit arm. A 16-bit pass supports at most a separate follow-up experiment on all 257 pages.",
+    "cost": "none when no 8-bit arm fails; otherwise D1 6.1 GB or P1 1.8 GB download (D3 and P3 exist locally) and about 20 to 60 minutes per triggered arm",
+    "pass_rule": "The diagnostic threshold is the baseline arm's value on the same pages. C3: the baseline KaTeX error rate on the 68 pages of E-maths and E-scan. C4: the baseline median recall on the same 40 seeded E-script pages. C5: the operator reviews the diagnostic output on the same review pages. No tolerance is subtracted."
+  },
+  "scripts": {
+    "limit": 3,
+    "size": "Standard",
+    "files": [
+      "run_ocr.py (--backend {mlx,llamacpp}; status inside it with --status)",
+      "summarise.py",
+      "analysis.py (similarity scoring)"
+    ],
+    "reused_by_path": [
+      "score_recall.py and check_katex.mjs from ../omrs-v3/experiments/37-dots-mocr-routing-acceptance-2026-09-30/ (do not copy)"
+    ]
   }
 }
