@@ -12,8 +12,8 @@
 - **Question**: Can a llama.cpp GGUF arm replace the shipped OCR backend for dots.mocr or PaddleOCR-VL without losing quality?
 - **Answer**: No. D4 (dots.mocr GGUF Q8_0) keeps the quality of the shipped backend but is not faster than it. The gate asks for 2 times, the gate pages showed 1.29 times, and a re-timing of the shipped backend alone (T-control) shows about 1.0 times. P4 (PaddleOCR-VL GGUF Q8_0) is 12 times faster but its output holds invented text on 10 of 25 review pages, which fails gate C5.
 - **Decision by the gates**: Both engines fail. MLX arms cannot lead to a decision.
-- **Operator decision after the experiment (2026-10-31)**: Move dots.mocr to llama.cpp anyway, for reasons the gates do not measure: no PyTorch, one runtime for all local models, and lower memory (17.3 GiB against 22.2). Speed is not a reason, because the T-control shows none. PaddleOCR-VL keeps its shipped backend. See "Decision after the experiment".
-- **How sure**: Sure about D4 (it fails the speed gate, and the T-control shows its speed-up was mostly a slow baseline). Fairly sure about P4 (the 16-bit file fails in the same way, so the fault is in the model and not in the 8-bit step). The C5 review was done by an AI, not by the operator (Limits, item 1).
+- **Operator decision after the experiment (2026-10-31)**: The gates give no runtime decision, so both shipped backends stay. The operator asked for a separate proposal to move dots.mocr to llama.cpp, for reasons the gates do not measure: no PyTorch, one runtime for all local models, and lower memory (17.3 GiB against 22.2). Speed is not a reason, because the T-control shows none. That proposal needs its own evidence. See "Decision after the experiment".
+- **How sure**: Sure about D4 (it fails the speed gate, and the T-control shows its speed-up was mostly a slow baseline). Fairly sure about P4 (the 16-bit file fails in the same way, so the 8-bit step is not the main cause; the arms also differ in runtime, image format and quantisation, so this cannot separate model from runtime). The C5 review was done by an AI, not by the operator (Limits, item 1).
 - **Next step**: A new OpenSpec change adds a llama.cpp backend for dots.mocr. A separate experiment may look at PaddleOCR-VL's invented text on Bengali and Arabic pages.
 
 ## What we tested
@@ -144,7 +144,7 @@ P4 hit the 4,096-token output limit on 35 blocks across 29 pages, and P2 on 58 b
 
 1. **D4 is the same model as the shipped backend, at about the same speed.** Its text matches D0 on the median page (Dice 1.00) and it passes C3 and C4. It fails C1: 43.97 s against a limit of 28.31 s, a 1.29 times speed-up on the gate pages. The all-page medians (20.13 s against D0's 37.0 s) looked better, but the T-control shows that came from the old baseline running under load. Timed alone, the shipped backend is as fast as D4.
 2. **P4 is much faster partly because it gives up early on hard pages.** The shipped P0 ran to the 300 second limit on many pages and failed on 36. P4 stops at its 4,096-token cap, after a median of 13.55 s on those pages, and still writes out what it has. That is why it passes C1 by a wide margin and why it finishes 255 pages against P0's 221. The text it writes on capped pages may be a loop, and the review did not check every capped page.
-3. **The invented text is a PaddleOCR-VL problem and not a runtime problem.** P4 and P3 flag the same 8 pages on the script check, and the shipped P0 flags 6 of the same pages. The 16-bit file (P3) is no better than the 8-bit file (P4). The MLX builds (P2, P1) are no better. A different runtime or precision does not fix it.
+3. **Every PaddleOCR-VL arm tested writes invented text.** P4 and P3 flag the same 8 pages on the script check, and the shipped P0 flags 6 of the same pages. The 16-bit file (P3) is no better than the 8-bit file (P4). The MLX builds (P2, P1) are no better. None of the runtimes or precisions tested fixes it. The protocol's reading of a failing 16-bit arm is approximate: the arms differ in runtime, image format and quantisation, so these counts do not show whether the model or the runtime causes it.
 4. **P4 is not worse than what ships today.** The control puts P0 at 15 of 25 invented, against P4's 10. C5 compares each arm with a rule of "no invented text", not with the baseline, so P4 still fails.
 
 ## Limits
@@ -165,17 +165,17 @@ P4 hit the 4,096-token output limit on 35 blocks across 29 pages, and P2 on 58 b
 This experiment changes no default. The operator decision below starts a separate change.
 
 - **dots.mocr:** a llama.cpp path is a safe quality match, uses less memory (17.3 GiB against 22.2) and needs no PyTorch, but it is not faster than the shipped backend once that is timed alone. Any move rests on those reasons and not on speed.
-- **PaddleOCR-VL:** a llama.cpp path is 12 times faster but the model puts text from the wrong writing system on Bengali and Arabic pages, and it already does so today. A runtime change cannot fix it. A separate experiment should ask whether the engine should handle those scripts at all, or whether a page-level check should catch them.
+- **PaddleOCR-VL:** a llama.cpp path is 12 times faster but the model puts text from the wrong writing system on Bengali and Arabic pages, and the shipped backend does so too. No runtime or precision tested here fixes it. A separate experiment should ask whether the engine should handle those scripts at all, or whether a page-level check should catch them.
 - **MLX:** D2 passes every gate, but MLX cannot decide a runtime, and the project rules list MLX as not allowed (ADR-103).
 
 ## Decision after the experiment
 
 The operator reviewed the results on 2026-10-31 and decided:
 
-1. **Move dots.mocr to a llama.cpp backend.** The reasons are no PyTorch, one runtime for all local models (llama.cpp already serves the decision models), and lower memory. The gate verdict stays FAIL. This decision overrides it on purpose, and does not claim the speed gate passed.
+1. **Propose a llama.cpp backend for dots.mocr.** The gates give no runtime decision for dots.mocr (spec `ocr-runtime-evaluation`): D4 fails, and the passing MLX arm cannot decide. The shipped backend stays. The operator's reasons for a proposal are no PyTorch, one runtime for all local models (llama.cpp already serves the decision models), and lower memory. The proposal is OpenSpec change `dots-mocr-llamacpp-backend`. It needs its own evidence: a real-document check through the app's OCR path, which this experiment does not supply. It does not claim the speed gate passed.
 2. **Use our own conversion, not the community file.** Our Q8_0 language model matches `lodrick-the-lafted/dots.mocr-gguf` tensor for tensor (OI-9), but that repo can change. We keep a pinned private copy of our files on Hugging Face: `dots-mocr-Q8_0.gguf` (SHA-256 `6017b184…`) and `dots-mocr-mmproj-bf16.gguf` (SHA-256 `63f415f9…`).
 3. **Licence.** dots.mocr is MIT plus a licence agreement that allows commercial use and redistribution. It adds use rules (no illegal content, consent for sensitive personal data, permission for bulk digitising of copyrighted works). Clause 4.4 limits use of the dots.mocr name. A private copy keeps clear of that.
-4. **Keep the PyTorch backend until the llama.cpp backend works on real documents.** Then remove it, and write the ADR at that point.
+4. **Keep the PyTorch backend until that proposal's real-document check passes and the operator confirms.** Only then remove it and write the ADR.
 5. **PaddleOCR-VL stays as it is**, as the fallback.
 
 ## Artefacts

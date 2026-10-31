@@ -2,7 +2,7 @@
 
 - **ID**: `41-ocr-runtimes-2026-10-30`
 - **Date planned**: 2026-10-30
-- **Status**: PLANNED. No install, download or OCR run has started.
+- **Record**: [`experiment.json`](experiment.json) holds the status.
 - **Replaces the plan**: `41-mlx-ocr-backends-2026-10-06`, which exists only on branch `feat/experiment-41-mlx-ocr-backends`. Its page lists, gates and open decisions carry forward. Its scope does not.
 - **Relation**: OpenSpec change `experiment-41-ocr-runtimes`; Experiment 37 findings F4 and F5; ADR-074 and ADR-103 (llama.cpp GGUF for local models)
 - **Plan**: [`plan.json`](plan.json) (arms, page lists, gates, approvals, open decisions and items)
@@ -202,6 +202,7 @@ For the dots.mocr mmproj of our own conversion, read the default `clip.vision.im
 - P arms: apply the same test per layout block. The baseline grid for a block comes from the P0 resize rule on the same crop. No model run is needed.
 - If a grid differs by more, stop that arm and fix the setting before the freeze.
 - If build 11941 ignores `--image-min-tokens` or `--image-max-tokens`, stop that arm and record a finding (OI-10). Do not loosen the tolerance.
+  - Note 2026-10-31: build 11941 does ignore both flags for these projectors (OI-10). Before the freeze, the operator decided on 2026-10-30 to continue D4 and P4, with the limits pinned through the mmproj SHA-256 (DR-5 in `plan.json`). DR-5 supersedes this stop rule for D4 and P4. The rule text above is kept as written.
 
 **Pinned llama-server flags.**
 
@@ -261,7 +262,7 @@ The operator set these gates on 2026-10-06. They apply to every new arm against 
 5. Convert dots.mocr to GGUF bf16 plus a bf16 mmproj at build 11941. Keep the bf16 file as the D3 diagnostic. Quantise the language model to Q8_0 (D4). Quantise the official PaddleOCR-VL GGUF to Q8_0 (P4); keep the official file as the P3 diagnostic. Record each SHA-256. A failed conversion stops that arm and is a finding.
 6. Run the D4 smoke pages on the `lodrick-the-lafted` Q8_0 file with our bf16 mmproj too, and compare with D4 (OI-9).
 7. Add the `runtime` block with the real hashes and the pinned server flags. Run `verify_llamacpp_runtime` on each GGUF arm. Close the open items that need no OCR run (OI-1, OI-2, OI-5, OI-6, OI-7).
-8. Run the parity check on the smoke pages (`eq01` p2 and p3) for each 8-bit arm (see "Preprocessing parity"). Compare the image token grids with the baseline. Fix a flag and update the `runtime` block if a grid differs. Stop an arm whose build ignores `--image-min-tokens` or `--image-max-tokens` (OI-10).
+8. Run the parity check on the smoke pages (`eq01` p2 and p3) for each 8-bit arm (see "Preprocessing parity"). Compare the image token grids with the baseline. Fix a flag and update the `runtime` block if a grid differs. Stop an arm whose build ignores `--image-min-tokens` or `--image-max-tokens` (OI-10). (Superseded for D4 and P4 by DR-5, 2026-10-30; see the note under "Preprocessing parity".)
 9. Freeze `plan.json` and record its SHA-256 in `tasks.md` (task 3.9). The freeze comes after the `runtime` block and the pins (task 3.6) and the parity check (task 3.8). A setting changed later is a dated amendment.
 10. Run a two-page smoke test (`eq01` p2 and p3) for each 8-bit arm. Compare with the scratch figures. Stop an arm whose output is empty.
 11. Run each 8-bit arm alone, through `E-maths`, `E-scan` and `E-script`. Use the checkpoint and resume rules in `run_rules`.

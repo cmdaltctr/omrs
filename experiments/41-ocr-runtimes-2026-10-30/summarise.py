@@ -15,7 +15,8 @@ because its engine mode also reads fixed Experiment 37 paths. KaTeX 0.16.22 must
 installed where Node finds it: ``npm install --prefix tools/katex katex@0.16.22`` in this
 folder (``tools/`` is gitignored).
 
-C5 reads ``review_verdicts.json`` in this folder, written after the operator review:
+C5 reads ``review_verdicts.json`` in this folder, written after the C5 review (its
+``reviewer`` field names who reviewed; the plan names the operator):
 ``{"verdicts": {"<arm>": {"<page>": {"verdict": "clean" | "invented"}}}}``. It is null until
 that file exists. Interpreter: any Python 3.11 or later.
 """
@@ -268,7 +269,12 @@ def gates_for(arm: dict[str, Any], base: dict[str, Any], dots: bool, root: str) 
     c4_ready = sum(p["run"] == "E-script" for p in pages.values()) == 189
     gib = round(arm["peak_bytes"] / GIB, 1)
     verdicts = run_ocr.EXP_DIR / "review_verdicts.json"
-    reviewed = read_json(verdicts)["verdicts"].get(arm["arm"]) if verdicts.is_file() else None
+    record = read_json(verdicts) if verdicts.is_file() else {}
+    reviewed = record.get("verdicts", {}).get(arm["arm"])
+    selection = OUT / "review_selection.json"
+    wanted = set(read_json(selection)[arm["arm"]]["pages"]) if selection.is_file() else None
+    # C5 stays open until every page on the arm's review list has a verdict.
+    complete_review = reviewed is not None and wanted is not None and set(reviewed) == wanted
     similarity = OUT / f"similarity_{arm['arm']}_vs_{base['arm']}.json"
     dice = read_json(similarity)["dice"]["median"] if similarity.is_file() else None
     return {
@@ -301,15 +307,17 @@ def gates_for(arm: dict[str, Any], base: dict[str, Any], dots: bool, root: str) 
         "C5": {
             "role": "decides",
             "rule": "operator finds no invented text on the review list",
+            "reviewer": record.get("reviewer"),
+            "review_list_pages": None if wanted is None else len(wanted),
             "measured": None
             if reviewed is None
             else {
                 "reviewed": len(reviewed),
                 "invented": sorted(k for k, v in reviewed.items() if v["verdict"] == "invented"),
             },
-            "pass": None
-            if reviewed is None
-            else all(v["verdict"] == "clean" for v in reviewed.values()),
+            "pass": all(v["verdict"] == "clean" for v in reviewed.values())
+            if complete_review
+            else None,
             "source": [f"{root}/review_verdicts.json"] if reviewed is not None else [],
         },
         "C6": {
@@ -470,6 +478,10 @@ def main() -> int:
         base = views["D0" if dots else "P0"]
         gates = gates_for(view, base, dots, root)
         main_gates = [gates[g]["pass"] for g in ("C1", "C2", "C3", "C4", "C5")]
+        if name not in ("D4", "P4"):  # MLX arms compare only; they never decide (plan.json)
+            for gate in gates.values():
+                if gate["role"] == "decides":
+                    gate["role"] = "comparison only"
         arms[name] = {
             "engine": run_ocr.ARMS[name][0],
             "backend": run_ocr.ARMS[name][1],

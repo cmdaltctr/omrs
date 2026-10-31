@@ -1,6 +1,6 @@
 {
  "experiment_id": "41-ocr-runtimes-2026-10-30",
- "generated_utc": "2026-10-31T13:07:36Z",
+ "generated_utc": "2026-10-31T13:26:57Z",
  "plan_sha256": "05cbb5059fd25f86913e835b80bf0464dd723cf419ebabd12f3aa981497612ba",
  "inputs_sha256": {
   "../33-ocr-routing-natural-positive-2026-09-17/build_labels.py": "4d9faa5437ee02d3de256a0fea156f9b02942e1798e2784a4f022497ac1ba2fa",
@@ -71,7 +71,7 @@
    "pages_run": 257,
    "gates": {
     "C1": {
-     "role": "decides",
+     "role": "comparison only",
      "rule": "median s/page <= 0.5 x baseline median on the same pages",
      "population": "20 pages that ran alone, eq01:2 excluded",
      "population_pages": 19,
@@ -87,7 +87,7 @@
      ]
     },
     "C2": {
-     "role": "decides",
+     "role": "comparison only",
      "rule": "0 timeouts at 300 s",
      "measured": 0,
      "pages_run": 257,
@@ -97,7 +97,7 @@
      ]
     },
     "C3": {
-     "role": "decides",
+     "role": "comparison only",
      "rule": "KaTeX error rate <= 0.01 over E-maths + E-scan",
      "measured": 0.0,
      "formulas": 1893,
@@ -107,7 +107,7 @@
      ]
     },
     "C4": {
-     "role": "decides",
+     "role": "comparison only",
      "rule": "median E-script recall >= baseline median - 0.05 (no output scores 0)",
      "measured": 0.8889,
      "baseline": 0.8889,
@@ -119,8 +119,10 @@
      ]
     },
     "C5": {
-     "role": "decides",
+     "role": "comparison only",
      "rule": "operator finds no invented text on the review list",
+     "reviewer": "Claude (AI), four parallel Sonnet reviewers, on the operator instruction of 2026-10-31. Not the operator review the plan names for C5. Cross-checked by script: foreign-script character counts and repeated-phrase counts.",
+     "review_list_pages": 17,
      "measured": {
       "reviewed": 17,
       "invented": []
@@ -349,6 +351,8 @@
     "C5": {
      "role": "decides",
      "rule": "operator finds no invented text on the review list",
+     "reviewer": "Claude (AI), four parallel Sonnet reviewers, on the operator instruction of 2026-10-31. Not the operator review the plan names for C5. Cross-checked by script: foreign-script character counts and repeated-phrase counts.",
+     "review_list_pages": 17,
      "measured": {
       "reviewed": 17,
       "invented": [
@@ -533,7 +537,7 @@
    "pages_run": 257,
    "gates": {
     "C1": {
-     "role": "decides",
+     "role": "comparison only",
      "rule": "median s/page <= 0.5 x baseline median on the same pages",
      "population": "pages where P0 finished ok",
      "population_pages": 221,
@@ -549,7 +553,7 @@
      ]
     },
     "C2": {
-     "role": "decides",
+     "role": "comparison only",
      "rule": "0 timeouts at 300 s",
      "measured": 0,
      "pages_run": 257,
@@ -559,7 +563,7 @@
      ]
     },
     "C3": {
-     "role": "decides",
+     "role": "comparison only",
      "rule": "KaTeX error rate <= 0.01 over E-maths + E-scan",
      "measured": 0.0034,
      "formulas": 1753,
@@ -569,7 +573,7 @@
      ]
     },
     "C4": {
-     "role": "decides",
+     "role": "comparison only",
      "rule": "median E-script recall >= baseline median - 0.05 (no output scores 0)",
      "measured": 0.6034,
      "baseline": 0.6095,
@@ -581,8 +585,10 @@
      ]
     },
     "C5": {
-     "role": "decides",
+     "role": "comparison only",
      "rule": "operator finds no invented text on the review list",
+     "reviewer": "Claude (AI), four parallel Sonnet reviewers, on the operator instruction of 2026-10-31. Not the operator review the plan names for C5. Cross-checked by script: foreign-script character counts and repeated-phrase counts.",
+     "review_list_pages": 26,
      "measured": {
       "reviewed": 26,
       "invented": [
@@ -828,6 +834,8 @@
     "C5": {
      "role": "decides",
      "rule": "operator finds no invented text on the review list",
+     "reviewer": "Claude (AI), four parallel Sonnet reviewers, on the operator instruction of 2026-10-31. Not the operator review the plan names for C5. Cross-checked by script: foreign-script character counts and repeated-phrase counts.",
+     "review_list_pages": 25,
      "measured": {
       "reviewed": 25,
       "invented": [

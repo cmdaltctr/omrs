@@ -156,8 +156,8 @@ def compare(arm: str, baseline: str) -> dict[str, Any]:
             missing, added = missing + sum(gone.values()), added + sum(extra.values())
             if gone or extra:
                 lost[key] = {
-                    "missing": [f[:200] for f in gone.elements()],
-                    "added": [f[:200] for f in extra.elements()],
+                    "missing": list(gone.elements()),
+                    "added": list(extra.elements()),
                 }
     values = list(scores.values())
     ranked = sorted(scores.items(), key=lambda item: (item[1], item[0]))
