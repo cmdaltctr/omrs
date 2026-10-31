@@ -2,9 +2,9 @@
 
 ## 1. Pins and the private model copy
 
-- [ ] 1.1 Upload `dots-mocr-Q8_0.gguf` and `dots-mocr-mmproj-bf16.gguf` to the private Hugging Face repository `cmdaltctr/omrs-ocr-gguf-converted`. Add a model card that names the source (`rednote-hilab/dots.mocr` at `e539fbb5`), the converter (llama.cpp build 11941), both SHA-256 values and the licence terms. The card must not use the dots.mocr name as a product name (clause 4.4), and must contain no personal paths.
+- [x] 1.1 Upload `dots-mocr-Q8_0.gguf` and `dots-mocr-mmproj-bf16.gguf` to the private Hugging Face repository `cmdaltctr/omrs-ocr-gguf-converted`. Add a model card that names the source (`rednote-hilab/dots.mocr` at `e539fbb5`), the converter (llama.cpp build 11941), both SHA-256 values and the licence terms. The card must not use the dots.mocr name as a product name (clause 4.4), and must contain no personal paths.
   - Needs the operator's `hf auth login` first.
-  - Deferred by the operator on 2026-10-31: the upload happens later, so this task stays unticked. Until it is done, the engine's pinned model revision is a placeholder that makes the fetch step refuse to run (task 2.3).
+  - Done 2026-10-31. Repository private; commit `64803a1fa579b1e95be9c352ada2b808d5e708ff`, pinned in `pins.py`. A fresh download of each file at that commit matched `6017b184…` and `63f415f9…`, and the card holds no personal paths.
   - Verify: the Hub API reports the repository as private; a fresh download of each file matches `6017b184…` and `63f415f9…`; `grep -E "/Users/|aizat"` on the card finds nothing.
 - [x] 1.2 Record the SHA-256 values of `llama-b11941-bin-macos-arm64.tar.gz` and `llama-b11941-bin-ubuntu-x64.tar.gz` from the `ggml-org/llama.cpp` release `b11941`.
   - Recorded on 2026-10-31 (the GitHub release digests; a downloaded copy of each archive gave the same value):

@@ -13,11 +13,10 @@ from dataclasses import dataclass
 #: The private Hugging Face repository that holds our own conversion (D4).
 MODEL_REPO = "cmdaltctr/omrs-ocr-gguf-converted"
 
-#: The commit of :data:`MODEL_REPO` to download. It is a placeholder until
-#: the operator uploads the files (task 1.1) and writes the commit here.
+#: The commit of :data:`MODEL_REPO` to download (task 1.1, uploaded 2026-10-31).
 #: The fetch step refuses to run while this value is the placeholder.
 MODEL_REVISION_PLACEHOLDER = "pending-upload-task-1.1"
-MODEL_REVISION = MODEL_REVISION_PLACEHOLDER
+MODEL_REVISION = "64803a1fa579b1e95be9c352ada2b808d5e708ff"
 
 #: The upstream model the conversion comes from (recorded in LICENCE-NOTES.md).
 SOURCE_MODEL = "rednote-hilab/dots.mocr"
