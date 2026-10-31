@@ -58,4 +58,5 @@
 - [x] 7.3 If a llama.cpp arm passes for an engine, propose a follow-up OpenSpec change for that engine. Verify: next step named in the report; no engine, route or default changed here.
   No llama.cpp arm passed (D4 fails C1 and C5, P4 fails C5), so no follow-up change is proposed. The report names a separate experiment on PaddleOCR-VL's wrong-script text as the next step.
 - [x] 7.4 Run `openspec validate --all --strict`. Verify: all pass.
-- [ ] 7.5 Archive this change after verification. Verify: the operator confirms before any push.
+- [x] 7.5 Archive this change after verification. Verify: the operator confirms before any push.
+  Verified 2026-10-31: `openspec validate --all --strict` (90 of 90), `omrs experiments check` (0 errors), `report.md` numbers checked against `output/summary.json`. The operator asked for the remaining steps to run on the recommendation. Nothing is pushed.

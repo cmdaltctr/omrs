@@ -63,6 +63,25 @@ The review list for C5 holds the 10 pages least like the baseline, every page a 
 
 Baselines: D0 median 56.62 s on the 19 comparison pages (speed), recall 0.8889; P0 median 40.17 s on the 221 pages it finished, recall 0.6095. Over all 257 pages the medians were D4 20.13 s, D2 13.42 s, P4 3.36 s and P2 2.83 s.
 
+**Speed limit on every speed comparison above:** the D0 and P0 timings come from Experiment 37, which ran under shared load. The new arms ran alone. This favours the new arms. For the D arms the comparison uses the 19 baseline pages that ran alone.
+
+**Memory method (C7):** peak memory is the sum of the peak physical footprint (`ri_lifetime_max_phys_footprint`) of the client process and of the server process.
+
+**Recall, both views.** C4 counts a page with no text as 0.0 (all pages). The view over pages with text only gives D4 0.8905 against D0 0.8889, D2 0.8906, P4 0.6303, P2 0.6034 and P0 0.6571. On this second view P0 is 0.027 above P4, which is inside the 0.05 tolerance.
+
+### Formulas that differ from the baseline
+
+The lists are in `output/similarity_<arm>_vs_<baseline>.json`, key `formulas`. They are given here even though no gate depends on them.
+
+| Arm | Baseline formulas | Missing from the arm | Added by the arm | Pages with a difference |
+| --- | ---: | ---: | ---: | ---: |
+| D4 | 1,893 | 21 | 23 | 6 (eq01:5, eq01:12, mp01:4, mp01:11, mp05:13, io04:42) |
+| D2 | 1,893 | 22 | 22 | 6 |
+| P4 | 1,794 | 356 | 271 | 45 (largest: mp01:22, eq01:4, mp01:4, mp03:2, eq01:3) |
+| P2 | 1,794 | 318 | 261 | 45 |
+
+The D arms differ from D0 on a handful of formulas, mostly one-to-one rewrites on eq01:5 (12 formulas). The P arms differ from P0 on about one formula in five. Nearly all the formulas the P arms wrote still render (C3 error rate 0.0035 for P4 and 0.0034 for P2).
+
 Run counts: D4 and D2 gave text on 253 pages and were empty on 4 (rf06:11, rf06:42, rf06:60, rf07:4). The baseline D0 is also empty on those 4. P4 and P2 gave text on 255 pages and failed on the same 2 pages as P0 (io06:53, io06:65, "empty Markdown"). The shipped P0 failed on 36 pages.
 
 ### C5 and the 16-bit diagnostics
@@ -136,4 +155,5 @@ Nothing changes. dots.mocr and PaddleOCR-VL keep their shipped backends and no d
 - [protocol.md](protocol.md), [plan.json](plan.json), [experiment.json](experiment.json)
 - Scripts: [run_ocr.py](run_ocr.py), [summarise.py](summarise.py), [analysis.py](analysis.py)
 - C5 verdicts: [review_verdicts.json](review_verdicts.json) (SHA-256 `7e68db96dedaf78dbc916309b38a2b039f3368e7da8a83fa2cda0f764dbae3b0`) and [review_verdicts_diagnostic.json](review_verdicts_diagnostic.json) (SHA-256 `f75e9457f616e610fd169786328271ad656e1cd98341f93009e9b21a035e7ead`)
+- Baseline source files (Experiment 37, `experiments/37-dots-mocr-routing-acceptance-2026-09-30/output/`): `ocr_state_dots-mocr.json`, `ocr_state_paddleocr-vl.json`, `katex_dots-mocr.json`, `katex_paddleocr-vl.json`, `recall_dots-mocr.json`, `recall_paddleocr-vl.json`. The page lists are copied from Experiment 37 (SHA-256 `09f13055…`).
 - Data (local, not committed): `output/summary.json` (committed), `output/<arm>/` page text, `output/ocr_state_<arm>.json`, `output/katex_<arm>.json`, `output/recall_<arm>.json`, `output/similarity_<arm>_vs_<baseline>.json`, `output/review_<arm>.html`, `output/review_selection.json`
