@@ -23,7 +23,7 @@
   - Verify: the test fails before the folder exists and passes after.
 - [x] 2.2 Copy the prompt, the render settings and `layout.py` into the new package (design D6). Add a test that the copies match the PyTorch engine byte for byte.
   - Verify: the test passes, and fails when one character of either copy changes.
-- [ ] 2.3 Write the fetch step (design D3, D4). It downloads the model, the projector and the llama.cpp archive at their pins, checks each SHA-256, writes through a `.tmp` file and a rename, and unpacks the archive into `<engine cache>/llama.cpp/`.
+- [x] 2.3 Write the fetch step (design D3, D4). It downloads the model, the projector and the llama.cpp archive at their pins, checks each SHA-256, writes through a `.tmp` file and a rename, and unpacks the archive into `<engine cache>/llama.cpp/`.
   - Verify with tests written first:
     - a hash mismatch stops with the file name and leaves no partial file;
     - a missing token gives an error that names `hf auth login` and `HF_TOKEN`.
