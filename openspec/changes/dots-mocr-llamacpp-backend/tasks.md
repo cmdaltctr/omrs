@@ -15,13 +15,13 @@
 
 ## 2. The new engine (`ocr-workers/engines/dots-mocr-llamacpp`)
 
-- [ ] 2.1 Write a failing test: the `dots-mocr-llamacpp` lockfile holds no `torch`, `torchvision`, `transformers` or `accelerate`. Then create the folder with:
+- [x] 2.1 Write a failing test: the `dots-mocr-llamacpp` lockfile holds no `torch`, `torchvision`, `transformers` or `accelerate`. Then create the folder with:
   - `pyproject.toml` (worker core, `pypdfium2`, `pillow`, `huggingface-hub`) and the `dots-mocr-llamacpp` entry point;
   - `requires-acceptance`;
   - a `LICENCE-NOTES.md` copied from the PyTorch engine, plus the provenance of the GGUF files;
   - `uv.lock`.
   - Verify: the test fails before the folder exists and passes after.
-- [ ] 2.2 Copy the prompt, the render settings and `layout.py` into the new package (design D6). Add a test that the copies match the PyTorch engine byte for byte.
+- [x] 2.2 Copy the prompt, the render settings and `layout.py` into the new package (design D6). Add a test that the copies match the PyTorch engine byte for byte.
   - Verify: the test passes, and fails when one character of either copy changes.
 - [ ] 2.3 Write the fetch step (design D3, D4). It downloads the model, the projector and the llama.cpp archive at their pins, checks each SHA-256, writes through a `.tmp` file and a rename, and unpacks the archive into `<engine cache>/llama.cpp/`.
   - Verify with tests written first:
