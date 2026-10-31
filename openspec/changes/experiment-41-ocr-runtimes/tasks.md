@@ -48,12 +48,14 @@
 - [x] 6.2 Build the review page for each arm (10 lowest-similarity pages, every screened page, 5 random pages, seed 41). Verify: the checks in `references/review-page-pattern.md` pass.
 - [x] 6.3 Operator reviews and records the verdicts. Verify: the SHA-256 of the verdict file is recorded.
   Done 2026-10-31 by Claude (four parallel Sonnet reviewers, cross-checked by a foreign-script and repeated-phrase count), on the operator's instruction and acceptance ("just accept AI spot check"). The plan names the operator as the C5 reviewer, so `report.md` states that this is an AI review. `plan.json` is not amended. `review_verdicts.json` SHA-256 `7e68db96dedaf78dbc916309b38a2b039f3368e7da8a83fa2cda0f764dbae3b0`.
-- [ ] 6.4 For each 8-bit arm that fails C3, C4 or C5, run its 16-bit diagnostic on the failed gate's pages and score that gate only. Verify: `output/` holds a diagnostic result per triggered arm, or `summary.json` records that none triggered.
+- [x] 6.4 For each 8-bit arm that fails C3, C4 or C5, run its 16-bit diagnostic on the failed gate's pages and score that gate only. Verify: `output/` holds a diagnostic result per triggered arm, or `summary.json` records that none triggered.
+  Triggered by C5 for D4, P4 and P2. D3, P3 and P1 ran on the review lists of D4, P4 and P2 (2026-10-31). `summary.json` `diagnostics` holds the result: D3 1 of 17 pages invented, P3 12 of 25, P1 15 of 26. None passes, so none changes a verdict. D0 and P0 were also reviewed on the same pages as a control (0 of 17 and 15 of 25). Verdicts: `review_verdicts_diagnostic.json` SHA-256 `f75e9457f616e610fd169786328271ad656e1cd98341f93009e9b21a035e7ead`. Reviewer: Claude, as for 6.3.
 
 ## 7. Close out
 
-- [ ] 7.1 Write `output/summary.json` and `report.md`. Verify: every number in the report traces to `summary.json`.
-- [ ] 7.2 Set `status` and `finding` in `experiment.json`. Verify: `omrs experiments check` passes.
-- [ ] 7.3 If a llama.cpp arm passes for an engine, propose a follow-up OpenSpec change for that engine. Verify: next step named in the report; no engine, route or default changed here.
-- [ ] 7.4 Run `openspec validate --all --strict`. Verify: all pass.
+- [x] 7.1 Write `output/summary.json` and `report.md`. Verify: every number in the report traces to `summary.json`.
+- [x] 7.2 Set `status` and `finding` in `experiment.json`. Verify: `omrs experiments check` passes.
+- [x] 7.3 If a llama.cpp arm passes for an engine, propose a follow-up OpenSpec change for that engine. Verify: next step named in the report; no engine, route or default changed here.
+  No llama.cpp arm passed (D4 fails C1 and C5, P4 fails C5), so no follow-up change is proposed. The report names a separate experiment on PaddleOCR-VL's wrong-script text as the next step.
+- [x] 7.4 Run `openspec validate --all --strict`. Verify: all pass.
 - [ ] 7.5 Archive this change after verification. Verify: the operator confirms before any push.

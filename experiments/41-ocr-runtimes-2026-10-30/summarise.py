@@ -41,7 +41,6 @@ import run_ocr  # noqa: E402 - same folder; shared paths
 OUT, EXP37 = run_ocr.OUT, run_ocr.EXP37
 EXP33_REAL = EXP37.parent / "33-ocr-routing-natural-positive-2026-09-17"
 RUNS = ("E-maths", "E-scan", "E-script")
-NEW_ARMS = sorted(run_ocr.ARMS)
 EIGHT_BIT = ("D2", "D4", "P2", "P4")
 KATEX_VERSION = "0.16.22"
 GIB = 2**30
@@ -370,13 +369,52 @@ def reported(arm: dict[str, Any], base: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def diagnostics(root: str) -> dict[str, Any]:
+    """Return the C5 result of each 16-bit diagnostic and of the baselines on the same pages.
+
+    The diagnostics run on the review list of the 8-bit arm that failed C5. They never change a
+    verdict (plan.json, ``conditional_diagnostic``).
+    """
+    path = run_ocr.EXP_DIR / "review_verdicts_diagnostic.json"
+    if not path.is_file():
+        return {}
+    verdicts = read_json(path)["verdicts"]
+    source = [f"{root}/review_verdicts_diagnostic.json"]
+
+    def entry(arm: str, review_list: str) -> dict[str, Any]:
+        found = verdicts[arm]
+        invented = sorted(k for k, v in found.items() if v["verdict"] == "invented")
+        return {
+            "review_list_of": review_list,
+            "reviewed": len(found),
+            "invented": invented,
+            "pass": not invented,
+            "source": source,
+        }
+
+    return {
+        "role": "diagnostic only; never changes a verdict",
+        "diagnostic_arms": {
+            arm: entry(arm, list_of)
+            for arm, list_of in (("D3", "D4"), ("P3", "P4"), ("P1", "P2"))
+            if arm in verdicts
+        },
+        "baselines_on_same_pages": {
+            arm: entry(arm, list_of)
+            for arm, list_of in (("D0", "D4"), ("P0", "P4"))
+            if arm in verdicts
+        },
+    }
+
+
 def main() -> int:
     """Build ``output/summary.json``."""
     plan = run_ocr.load_plan()
     root = "experiments/41-ocr-runtimes-2026-10-30"
     views = {b: baseline_view(b) for b in run_ocr.BASELINES}
     arms: dict[str, Any] = {}
-    for name in NEW_ARMS:
+    # The 16-bit diagnostics run on the review list only, so they have no gates of their own.
+    for name in EIGHT_BIT:
         if not run_ocr.state_path(name).is_file():
             continue
         view = arm_view(name)
@@ -434,6 +472,7 @@ def main() -> int:
         },
         "arms": arms,
         "matched_runtime": pairs,
+        "diagnostics": diagnostics(root),
         "decision": {
             a: arms[a]["all_decide_gates_pass"] if a in arms else None for a in ("D4", "P4")
         },

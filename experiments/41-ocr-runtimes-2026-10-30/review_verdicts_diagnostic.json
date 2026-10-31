@@ -1,0 +1,565 @@
+{
+ "reviewer": "Claude (AI), Sonnet reviewers, on the operator instruction of 2026-10-31. 16-bit diagnostics D3, P3, P1 run on the review list of the 8-bit arm that failed C5 (D4, P4, P2). D0 and P0 are the Experiment 37 baselines reviewed on the D4 and P4 lists as a control (added by the AI reviewer, not required by the plan).",
+ "verdicts": {
+  "D3": {
+   "io01:41": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Devanagari page; items 10-14 in the output match the visible lines in order, item 14 is cut off after 'शिशु', nothing extra seen."
+   },
+   "io02:12": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Arabic newspaper page; headings, Palestine/Chechnya/Morocco passages and the numbers 1994, 100, 97, 500, 141 are all on the page; only small misreadings (e.g. كنائب for كتائب), no foreign text or loops; Arabic reading is limited."
+   },
+   "io03:3": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Dense old Arabic/Urdu-style newspaper page; output is full of misread letters but the passages (Mecca call-up, Qadian al-Fazl article, Hijaz proclamation, price/number blocks, 1335) all trace to the page, no bleed-through or repetition loop found; script reading is limited."
+   },
+   "io03:4": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Old Arabic newspaper (Al-Qibla p.4); telegram headings, Sinai article, ship cargo table and Ottoman-future article all appear on the page, misreadings only; checked start, middle and end, Arabic reading is limited."
+   },
+   "io04:49": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "English Dickens advertisement; output text matches the page, including 'CHARLES DICKENS.' caption and the faint 'd1198' mark near it."
+   },
+   "io06:65": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Page is a mostly blank scan with right-margin word fragments (pi-, m-, ir., fi-, er, is, ...); output fragments match them, image is tiny so some fragments could not be checked individually."
+   },
+   "io07:10": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Bengali poem 'প্রিয় সখা' with page number ( ৫ ) and stanzas 1-4; output follows the page stanza by stanza with only small character misreadings, Bengali reading is limited."
+   },
+   "mp01:10": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Maths page 10 (Lemma 11 proof); text and LaTeX match the page from the start through the middle to the final 'gadget edges' line, header omitted only."
+   },
+   "mp01:22": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Maths page 22 (end of proof, Appendix C, Lemma 12 proof); output matches the page, diagram and header omitted, only minor misreadings such as 'at p'' for 'as p''."
+   },
+   "rf06:27": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Spanish receipt with handwriting; printed text (9A CLASE UNA PESETA, Parte inferior..., A.0.796.444*, PROVINCIAS) matches, handwritten lines are rough misreadings of what is on the page; handwriting reading is limited."
+   },
+   "rf06:29": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Spanish receipt; printed text and 'Sevilla 17 de Agosto de 1911', 'Recibí por la parte superior', PAGOS, ZIMBRA/DEL (TIMBRE DEL) are on the page; 'día de mañana 1º del 1º de junio' is a misread of the handwritten matrícula line; handwriting reading is limited."
+   },
+   "rf06:49": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Cursive Spanish grammar-exam page; output follows the page line by line with many misreadings (e.g. 'Lema auxiliar', 'leno') but I found no text without a source; cursive reading is limited."
+   },
+   "rf06:50": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "First line has a repetition loop of a made-up word: 'que es un signo mental que es un esmero y es un esmero mental y es un esmero y el otro es la vocación'; the page has one short phrase there ('signo natural')."
+   },
+   "rf06:57": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Spanish receipt; 'Recibí la parte superior', A.0.427.504, 'A. León y Palacios', 'Sevilla 13 de Agosto de 1912' and PROVINCIAS are on the page, 'Matrícula Cruz y González' is a misread of the name; handwriting reading is limited."
+   },
+   "rf07:13": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Output file is empty (0 bytes) for a handwritten 1865 petition page; nothing invented, all text omitted."
+   },
+   "rf07:47": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "University of Seville exam certificate; printed text (Facultad de Derecho, grading rules, 'Observadas todas...', 'Celestino Albarran y Marquez', 'mediano', Sevilla 3 de Junio de 1867) matches the page, including the odd 'z de la de SUSPENSO' fragment."
+   },
+   "rf07:49": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Output is 'Parte inferior que se ha de unir al expediente.' and 'N. 15,556', both printed on the page; handwriting omitted."
+   }
+  },
+  "P3": {
+   "io01:38": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Tamil letters inside a Devanagari page, e.g. 'आने வாலா शिशु' and 'ईभर का வர्दान', which are not on the image."
+   },
+   "io01:6": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "A Bengali character in a Devanagari page: 'दिनचয়ों' (page reads 'दिनचर्या'); the rest of the Hindi text matches the page."
+   },
+   "io03:1": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Page has plain undiacritised Arabic, but output contains a fully vowelled garbage line 'وَالْمَسْتِوْرِ اليَدِھْ، فَالْكَلَامِ الْعَالَمِ الْمَتْوَرِ' repeated about 36 times; it appears once nowhere on the page."
+   },
+   "io03:2": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Output ends in a repetition loop of vowelled text 'فَخَتَدَى أَحْمَهِهَ الْبِيَّانَ،' repeated about 55 times; the page has no such text and no vowel marks."
+   },
+   "io06:16": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Latin index page; all lines (Graduum computatio..., Gradib. in singulis..., Legales duo gradus... fol. 24) are on the page; only long-s misreadings."
+   },
+   "io06:28": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Latin text from 'trucius ille' to 'Cum autem quo quisque gradu alteri' matches the page throughout, including the chapter 4 heading."
+   },
+   "io06:30": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Latin text matches the page from 'plures quidem' to 'Nec fratris appellatione'; only minor character misreadings."
+   },
+   "io06:45": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Three Cyrillic letters appear in 'Iure Ciили' (page: 'Iure Ciuili'), a script not on the page; the rest of the Latin is on the page, so this is borderline (a script-substitution misreading)."
+   },
+   "io06:46": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Latin text matches the page paragraph by paragraph; only small misreadings such as 'Ciçili'."
+   },
+   "io06:62": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Latin text matches the page from 'Priusquam autem' to 'Alias, tenere, vt in c.'; misreadings only."
+   },
+   "io06:63": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Latin text matches the page from 'contractio matrimonio' to 'leuaffet E iij'; only misreadings such as 'contração'."
+   },
+   "io06:68": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Latin text including the four-line verse matches the page down to the catchword 'Quinto,'."
+   },
+   "io07:13": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Bengali verse; line structure and wording follow the page line by line to the last line, but I cannot read Bengali reliably (headers and verse numbers look misread, e.g. '20', '38' for 13, 14)."
+   },
+   "io07:16": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Bengali verse; output follows the page line by line with the same number of lines and an ending that matches, but I cannot read Bengali reliably."
+   },
+   "io07:18": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Output opens with a Tamil paragraph 'அடிமூச்சு இதில், கெகா மாமரர் கண்டனே ...' that is not on the Bengali page, plus Tamil 'முழখ' inside the Bengali text."
+   },
+   "io07:25": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "CJK heading '## 向零西' is not on the page (header is 'নিষ্ফল তরু' and page number 25); the Bengali body otherwise follows the verse."
+   },
+   "io07:31": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Output opens with a Tamil garbage line 'கெ கோபதாரா ஹூஹ்டே பாஷாஷஷ ...' and a stray Arabic mark '·پ'; neither is on the page."
+   },
+   "io07:42": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Heading '### うっ' (Japanese hiragana) is not on the page (the verse number is 19); Bengali verse body otherwise follows the page."
+   },
+   "io07:43": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Bengali poem; every stanza in the output has a matching stanza on the page in the same order, with no foreign script, but I cannot read Bengali reliably."
+   },
+   "io07:58": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Output opens with a Telugu paragraph 'హా! అమాత్ర జీవితం అక్షరాంధ్ర-తిమిరే ...' that is not on the page, which is Bengali prose and verse."
+   },
+   "io07:6": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Output has Greek garbage 'ΣΦΕΒΙ887', 'ΑΟΙΚΙ ΒΙΣΜΟΝ ΠΩΓΙΜΑ...' and a loop 'ΗΣΗΣΗΣΗΣ...' of about 4000 characters; the page is a Bengali title page with no Greek."
+   },
+   "io07:8": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Thai line 'นกำหนด 1 ครั้ง 1 ที่มี 1 ข้อ 1 หรือ 1 ข้อ 1 หรือ 1' and stray 'etc. etc. c' are not on the Bengali page."
+   },
+   "mp01:10": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Lemma 11 text, the five construction steps and the canonical-path paragraph all match the page; only a garbled step 5 tail ('so that we a') and omissions."
+   },
+   "mp01:22": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Proof text, the 'C Omitted proofs from Section 5' heading, Lemma 12 proof and the figure labels all match the page."
+   },
+   "rf07:4": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Heading and table headers match the page; the output has fewer '18 a 18' rows than the 16 on the page (omission only) and a stray '1' from a truncated '18'."
+   }
+  },
+  "P1": {
+   "io01:20": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Output ends with CJK characters '意的，是，是，' that are not on the Devanagari page."
+   },
+   "io01:6": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Output holds a CJK line '意的' in the middle of the Hindi text; no CJK is on the page."
+   },
+   "io03:1": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Arabic newspaper front page; I cannot read the dense script reliably, but the output is Arabic only, follows the page structure (masthead, price box, date, columns, poem), has no loops or foreign scripts."
+   },
+   "io03:2": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Line 11 repeats 'المدن' hundreds of times (repetition loop), and stray Tibetan/Tamil characters appear (e.g. 'دمག་', 'المளில்')."
+   },
+   "io04:16": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "About 300 lines of '\\text{图1-1-N} \\\\' (CJK figure labels, looping) with no source on the English page; the rest of the English text is correct."
+   },
+   "io06:16": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Latin index page; all text matches the page, only small long-s misreadings."
+   },
+   "io06:28": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "All Latin text is on the page; 'P_{ad} = 40.' comes from the drop cap and 'obf. 40' in the margin note, and one line is repeated in part."
+   },
+   "io06:30": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Output starts with CJK '意的' and a replacement-character glyph, neither on the page (page top reads 'plures quidem, effe poffunt')."
+   },
+   "io06:45": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Latin text matches the page; only small misreadings."
+   },
+   "io06:46": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Latin text matches the page; only small misreadings."
+   },
+   "io06:62": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Latin text matches the page; ends mid-page (omission only)."
+   },
+   "io06:63": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Latin text matches the page; small misreadings (e.g. 'contração' for 'contracto') only."
+   },
+   "io06:68": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Output holds a CJK line '意的' between the verse lines; no CJK is on the page."
+   },
+   "io07:13": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Line 29 starts with Arabic-script 'شرجننير به یاتونال' where the page has Bengali 'স্বজনী রে যে যাতনা'; no Arabic is on the page (rest is Bengali with misreadings, verse numbers misread as 20 and 38)."
+   },
+   "io07:18": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "First paragraph is Devanagari gibberish ('अमृश्य इतिव्य, केवम मयमर...') and line 3 has Tamil 'முழு' on a Bengali-only page."
+   },
+   "io07:28": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Output is a Tibetan heading and Tibetan lines ('ཞིང་འབྲུག་པར་བཞིན་དུ་ཡོད', 'ནི་ནི་ཝེན'); the page is Bengali verse and the verse text is not output."
+   },
+   "io07:31": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Second paragraph is Telugu ('పరిస్పోతమై ఉండానే మోడామ...') on a Bengali page."
+   },
+   "io07:4": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Output has Tibetan '## ཚིག་གསུམ།', a Telugu heading block, and Devanagari paragraph ('सामान्य ! आपनागर...') for Bengali text."
+   },
+   "io07:43": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Output has the heading '### f(x)=1' and '## ( )'; no such formula is on the page (header is 'বিদায়'). Bengali body otherwise follows the page."
+   },
+   "io07:44": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Bengali verse; I can only partly read it, but output is Bengali only and each stanza matches the page in order, with no foreign script, loops or bleed-through."
+   },
+   "io07:58": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Output is a Tibetan line with a repeated 'ཡོངས་ཀྱི་' loop and a Tamil repeated-phrase paragraph ('அவை வெளிப்படையான விசைகளையும் விட வேண்டும்'); the page is Bengali."
+   },
+   "io07:6": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Title is a Tibetan mantra-like repetition ('ཤཱཀྱ་མུ་སྭཱཧཱ། ... སརྦ་ཨ་མུ་སྭཱཧཱ།' looping) and the Bengali body is rendered as Devanagari text, plus Latin 'COOCH BEHAR/20FEB1887' misreadings of the stamp."
+   },
+   "mp01:10": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "LaTeX of the Lemma 11 proof matches the page; only a doubled 'matching' and a truncated item 5 ('ìng f (k^{\\prime})\\]') from the page's own text."
+   },
+   "mp01:22": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Maths text matches the page; only small LaTeX garbling such as 'k}}},' for k'."
+   },
+   "rf07:4": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Printed table header 'ESTUDIOS DE SEGUNDA ENSEÑANZA' and column names are on the page; 'a' ('á') rows '18 a 18' match, fewer rows than on the page (omission only)."
+   },
+   "rf07:9": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Handwritten Spanish page; output has stray non-Latin text: Arabic 'در', Tamil 'ரு', Devanagari 'न' (e.g. 'sesenta y در la matinaleza', 'niscribiéndரு न las'), none on the page."
+   }
+  },
+  "D0": {
+   "io01:41": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Hindi items 10-15 match the page line by line, including the final item 15; the output stops at 14 mid-sentence then resumes with 15, no extra text."
+   },
+   "io02:12": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Arabic news page; all sections (Palestine, Algeria/Chad, Chechnya, Morocco figures) are on the page, but two single stray characters appear inside words (Thai 'ส' in 'الأสوعية', Cyrillic 'Л' in 'Лيبيا'), which I treated as character misreadings, not invented text; I could not verify every Arabic word."
+   },
+   "io03:3": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Dense old Arabic print; headings, Turkish-government article, quoted verse column and the numeric table all trace to the page, no loops or foreign scripts, but I cannot read every word reliably."
+   },
+   "io03:4": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Dense old Arabic newspaper page; telegram headings, Sinai article, Nirak steamship table and Ottoman-future article are all on the page, no repetition loop (repeated dateline '8 Rabi al-Awwal' appears many times on the page too); word-level check limited."
+   },
+   "io04:49": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "English Dickens advertisement; all text, including the faint 'd1198' mark near the portrait, is on the page."
+   },
+   "io06:65": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Only the right-margin word fragments (pim-, er, is, ma-, ur, on-, ti, un-) which match the page; nothing else."
+   },
+   "io07:10": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Bengali poem 'Priya Sakha' stanzas 1-4 and page number match the page, no extra lines."
+   },
+   "mp01:10": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "LaTeX/Markdown of Lemma 11 and its proof matches the page text to the last line; no invented content."
+   },
+   "mp01:22": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Proof text, section C heading and Lemma 12 proof match the page (figure omitted); no invented content."
+   },
+   "rf06:27": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Spanish stamped-paper receipt; printed text and handwriting words (Antonia Cruz y Gonzalez, Recibi la parte superior, PROVINCIAS) are on the page, handwriting reading is approximate."
+   },
+   "rf06:29": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Spanish receipt; printed lines, Sevilla 17 de Agosto de 1911, PAGOS/TIMBRE DEL fragments are on the page, garbled handwriting lines are misreadings of text present."
+   },
+   "rf06:49": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Cursive Spanish grammar lesson; every paragraph (Aprobada, Seccion 1a, Seccion 2a, Contestacion) maps to a handwritten line on the page with misreadings only, no extra text."
+   },
+   "rf06:50": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Cursive Spanish text ending 'Sevilla 3 de Junio de 1912. Antonia Cruz y Gonzalez'; all paragraphs correspond to handwritten lines on the page, with misreadings only."
+   },
+   "rf06:57": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Spanish receipt (44 CLASE 25 PESETAS, A.0.427.504, Sevilla 13 de Agosto de 1912, A. Leon y Palacios) all on the page; name reading 'Matricula' for Antonia is a misreading."
+   },
+   "rf07:13": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Cursive 1865 petition to the Rector; text is garbled but each fragment (Sor. Rector, Badajoz, matricula, 29 de Diciembre de 1865, facultad de derecho) has a source on the page; the date appears twice in the output and the closing 'S.o. C.o. A.o.' is a garbled signature."
+   },
+   "rf07:47": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Printed form text and handwritten fields (Celestino Albarran y Marquez, numero 11, mediano, Sevilla 3 de Junio de 1867) all match the page."
+   },
+   "rf07:49": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Two lines only ('Parte inferior que se ha de unir al expediente.' and the number N. 13,556, page reads 15,556), both on the page."
+   }
+  },
+  "P0": {
+   "io01:38": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Hindi (Devanagari) page; output is Bengali script (229 Bengali letters) e.g. 'আনে ভালা শিশু ইঞ্চার', plus a '<<ccr:...>>' token."
+   },
+   "io01:6": {
+    "verdict": "invented",
+    "confidence": "low",
+    "note": "Devanagari text matches the page, but one Bengali character appears in 'दिनचয়ों' (script not on page); otherwise clean."
+   },
+   "io03:1": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Arabic page; output has a Tibetan character in 'أرأيཉائم' and re-emits the 'اللهم لهم لقدكات البلاد العربية...' paragraph twice (lines 107 and 109-113) though it appears once."
+   },
+   "io03:2": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Arabic page; output contains stray Tibetan 'ག', Telugu 'ద' 'ి' and Hiragana 'め' characters, none on the page; Arabic body otherwise derives from the page."
+   },
+   "io06:16": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Latin index page; all words (Graduum, Ius Canonicum, Legales etc.) are on the page; one U+FFFD is a misread."
+   },
+   "io06:28": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Latin text matches page lines from 'plures quidem' to 'Necfratris appellatione'."
+   },
+   "io06:30": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Latin text matches page from 'trucius ille' to 'Cum autem quo quifque gradu alteri'; 'Cap. 4' heading present."
+   },
+   "io06:45": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Latin text matches page, Cap. 7 and both regulae present; only small misreadings."
+   },
+   "io06:46": {
+    "verdict": "invented",
+    "confidence": "low",
+    "note": "Latin page; output has a single CJK character in 'quo故gadu' (misread of a letter pair), otherwise all text on page."
+   },
+   "io06:62": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Latin text matches page; 'Quaestio 2' etc. present, only OCR misspellings."
+   },
+   "io06:63": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Latin text matches page lines from 'contracto matrimonio' to 'Quaestio 4'; only misreadings."
+   },
+   "io06:68": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "Latin text and the four verses match the page; only misreadings."
+   },
+   "io07:13": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Bengali page; output has Devanagari transliteration of the poem and an English sentence 'Revenue by yuan per capita of the 100 kg of water, which is 100 kg per day.' not on the page."
+   },
+   "io07:16": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Bengali page; output is almost entirely Devanagari script (423 letters) e.g. 'फेन तारेरे देनाधिलि', not on the page."
+   },
+   "io07:18": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Bengali page; output is Devanagari plus Tamil characters (e.g. 'ஆजि') and is not Bengali script on the page."
+   },
+   "io07:25": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Bengali poem page; output heading '## 向零变西邪' is CJK text not on the page."
+   },
+   "io07:31": {
+    "verdict": "invented",
+    "confidence": "low",
+    "note": "Bengali page; output has one Arabic letter 'پ' in '·پরিশেষে' (script not on page), otherwise Bengali text derives from the page."
+   },
+   "io07:42": {
+    "verdict": "invented",
+    "confidence": "low",
+    "note": "Bengali page; output heading '### うる' is Hiragana (page shows the number 19), rest of Bengali matches the poem."
+   },
+   "io07:43": {
+    "verdict": "clean",
+    "confidence": "low",
+    "note": "Bengali poem; lines match the page line by line as far as I can read Bengali, no foreign script or loops."
+   },
+   "io07:58": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Bengali page; output is mostly Devanagari transliteration (551 Devanagari letters) with a few Tamil/Bengali, not the script on the page."
+   },
+   "io07:6": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Bengali page; output has a Telugu letter in 'নিষেషল' and a '(একটি)' after the title that is not on the page."
+   },
+   "io07:8": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Bengali page; output includes garbage Latin line 'ettar ettra cattifafat,' in place of a Bengali verse line."
+   },
+   "mp01:10": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "English maths page; text and LaTeX match the page, only the last lines of item 5 are cut or repeated as a formula."
+   },
+   "mp01:22": {
+    "verdict": "clean",
+    "confidence": "high",
+    "note": "English maths page; text, LaTeX and the figure labels match the page."
+   },
+   "rf07:4": {
+    "verdict": "invented",
+    "confidence": "high",
+    "note": "Spanish form page with 17 rows of '18 á 18'; output table has 27 such rows, a repetition loop of the row."
+   }
+  }
+ }
+}

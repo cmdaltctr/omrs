@@ -5,13 +5,15 @@
   "date": "2026-10-30",
   "category": "runtime",
   "size": "Standard",
-  "status": "ACTIVE",
+  "status": "FAIL",
   "superseded_by": null,
-  "finding": "Not answered yet. Plan only. Question: can a llama.cpp GGUF arm replace the shipped OCR backend for dots.mocr or PaddleOCR-VL without losing quality? MLX arms are comparison arms only.",
+  "finding": "No llama.cpp arm passes. D4 (dots.mocr GGUF Q8_0) matches the shipped backend but is only 1.29 times faster (needs 2 times). P4 (PaddleOCR-VL GGUF Q8_0) is 12 times faster but has invented text on 10 of 25 review pages, as does the shipped backend on 15 of the same 25. The 16-bit diagnostics fail the same way, so the cause is the model and not the runtime. Both engines keep their shipped backend.",
   "purpose": "optimisation",
   "refs": {
     "adrs": [],
-    "changes": ["experiment-41-ocr-runtimes"],
+    "changes": [
+      "experiment-41-ocr-runtimes"
+    ],
     "tasks": []
   }
 }
