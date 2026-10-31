@@ -45,7 +45,7 @@
     - a changed model file returns a parse error that names the file;
     - the fingerprint fields match D7;
     - no module imports `torch`.
-- [ ] 2.6 Write `smoke_test.py` for the engine, on the pattern of the PyTorch engine's: plan only by default, `--provision` to run, an offline parse of `eq01` p2 and p3 with the network blocked, and capability JSON, timings and peak memory written to `smoke_evidence/`.
+- [x] 2.6 Write `smoke_test.py` for the engine, on the pattern of the PyTorch engine's: plan only by default, `--provision` to run, an offline parse of `eq01` p2 and p3 with the network blocked, and capability JSON, timings and peak memory written to `smoke_evidence/`.
   - Verify: a plan-only run lists the steps and touches nothing.
 - [ ] 2.7 Update the tripwire pin by test ID for the new tests. Run the new engine tests and the OCR route tests.
   - Verify: `uv run pytest -n auto -m "not slow" --deselect tests/test_clean_base_tripwire.py -q` passes, then the tripwire passes on that report.
