@@ -1,0 +1,19 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "41",
+  "title": "OCR runtimes: GGUF vs MLX",
+  "date": "2026-10-30",
+  "category": "runtime",
+  "size": "Standard",
+  "status": "FAIL",
+  "superseded_by": null,
+  "finding": "No llama.cpp arm passes. D4 (dots.mocr GGUF Q8_0) matches the shipped backend but is not faster (1.29 times on the gate pages, about 1.0 times when the shipped backend is re-timed alone; needs 2 times). P4 (PaddleOCR-VL GGUF Q8_0) is 12 times faster but has invented text on 10 of 25 review pages, as does the shipped backend on 15 of the same 25. The 16-bit diagnostics fail the same way, so the 8-bit step is not the main cause. Both shipped backends stay. The operator asked for a separate proposal to move dots.mocr to llama.cpp for no PyTorch, one runtime and lower memory, not for speed.",
+  "purpose": "optimisation",
+  "refs": {
+    "adrs": [],
+    "changes": [
+      "experiment-41-ocr-runtimes"
+    ],
+    "tasks": []
+  }
+}

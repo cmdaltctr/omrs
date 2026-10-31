@@ -1,0 +1,6 @@
+# Experiment 41 local artefacts. Environments, tool checkouts, model files and
+# run output stay local. Only output/summary.json is committed.
+.venv-*/
+tools/
+output/*
+!output/summary.json

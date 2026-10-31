@@ -73,7 +73,8 @@ A folder gains `edits.jsonl` after the first save from the web app. Git tracks i
 ## Local models
 
 - Run every local language, embedding and decision model through llama.cpp (`llama-server`) with a public GGUF file.
-- Do not use Ollama, MLX or oMLX for experiment evidence.
+- Do not use Ollama, MLX or oMLX for experiment evidence. Exception: Experiment 41, OCR engines only (next line).
+- Exception (Experiment 41, OCR engines only): MLX may run as a comparison arm. Only a llama.cpp arm can support a runtime decision. See ADR-103 and Gotcha 16.
 - A hosted model may run as a reference arm. Name its provider and model id in the plan.
 - Pin each local model in the `runtime` block of `plan.json`: role, repository, file, SHA-256, `runtime` (`llama.cpp`), build and the server arguments that change output.
 - State a tolerance: the largest change in each primary metric or per-item score that still counts as the same result.
