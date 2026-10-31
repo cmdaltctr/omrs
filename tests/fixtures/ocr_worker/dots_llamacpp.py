@@ -41,3 +41,17 @@ def engine_modules(
 
     with isolated_worker_modules():
         yield load
+
+
+FAKE_SERVER = Path(__file__).with_name("fake_llama_server.py")
+
+
+def make_fake_binary(folder: Path) -> Path:
+    """Copy the fake ``llama-server`` into *folder* behind a Python shebang."""
+    import stat
+    import sys
+
+    binary = folder / "llama-server"
+    binary.write_text(f"#!{sys.executable}\n" + FAKE_SERVER.read_text(encoding="utf-8"))
+    binary.chmod(binary.stat().st_mode | stat.S_IXUSR)
+    return binary
