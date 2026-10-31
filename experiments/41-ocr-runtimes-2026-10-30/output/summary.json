@@ -1,6 +1,6 @@
 {
  "experiment_id": "41-ocr-runtimes-2026-10-30",
- "generated_utc": "2026-10-31T11:09:31Z",
+ "generated_utc": "2026-10-31T13:07:36Z",
  "plan_sha256": "05cbb5059fd25f86913e835b80bf0464dd723cf419ebabd12f3aa981497612ba",
  "inputs_sha256": {
   "../33-ocr-routing-natural-positive-2026-09-17/build_labels.py": "4d9faa5437ee02d3de256a0fea156f9b02942e1798e2784a4f022497ac1ba2fa",
@@ -1145,6 +1145,97 @@
     ]
    }
   }
+ },
+ "t_control": {
+  "role": "information; never changes a verdict (protocol step 12)",
+  "pages": [
+   "mp05:13",
+   "io04:49",
+   "io01:13",
+   "io01:17",
+   "io01:24",
+   "io01:26",
+   "io01:39",
+   "io02:2",
+   "io02:3",
+   "io07:28",
+   "io07:34",
+   "io07:56",
+   "io07:63",
+   "rf06:29",
+   "rf06:46",
+   "rf06:50",
+   "rf06:86",
+   "rf07:6",
+   "rf07:47",
+   "rf07:49"
+  ],
+  "median_s": {
+   "D0_old_exp37": 31.07,
+   "T-D0_retimed_alone": 25.34,
+   "D4": 30.7,
+   "D2": 13.47
+  },
+  "mean_s": {
+   "D0_old_exp37": 38.24,
+   "T-D0_retimed_alone": 29.53,
+   "D4": 30.24,
+   "D2": 14.85
+  },
+  "speedup_over_retimed_D0": {
+   "D4": {
+    "by_median": 0.83,
+    "by_mean": 0.98,
+    "pages_faster_than_D0": 12
+   },
+   "D2": {
+    "by_median": 1.88,
+    "by_mean": 1.99,
+    "pages_faster_than_D0": 20
+   }
+  },
+  "old_D0_over_retimed_D0": 1.23,
+  "load_average_at_start": [
+   2.869140625,
+   3.06103515625,
+   4.1298828125
+  ],
+  "load_average_at_end": [
+   1.64794921875,
+   1.75439453125,
+   2.7734375
+  ],
+  "busiest_at_start": [
+   "156.7 python",
+   "53.8 python",
+   "48.2 WindowServer",
+   "22.4 claude",
+   "9.8 Orca Helper"
+  ],
+  "fingerprint": {
+   "model": [
+    "rednote-hilab/dots.mocr",
+    "e539fbb52280393adc081b289ec597430a0f9031"
+   ],
+   "pipeline": [
+    "dots-mocr-layout",
+    "prompt_layout_all_en+omrs-mps-1+layout-1"
+   ],
+   "packages": {
+    "accelerate": "1.15.0",
+    "omrs-ocr-dots-mocr": "0.1.0",
+    "omrs-ocr-worker-core": "0.1.0",
+    "pillow": "12.3.0",
+    "pypdfium2": "5.13.0",
+    "qwen-vl-utils": "0.0.14",
+    "torch": "2.14.0",
+    "torchvision": "0.29.0",
+    "transformers": "4.57.6"
+   }
+  },
+  "source": [
+   "experiments/41-ocr-runtimes-2026-10-30/output/ocr_state_T-D0.json"
+  ]
  },
  "decision": {
   "D4": false,

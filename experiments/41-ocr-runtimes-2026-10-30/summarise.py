@@ -445,7 +445,11 @@ def t_control(root: str, views: dict[str, Any]) -> dict[str, Any]:
         "old_D0_over_retimed_D0": round(median["D0_old_exp37"] / median["T-D0_retimed_alone"], 2),
         "load_average_at_start": run["load_average_at_start"],
         "load_average_at_end": run["load_average_at_end"],
-        "busiest_at_start": run["busiest_at_start"],
+        # Program names only: the full paths hold the operator's home folder.
+        "busiest_at_start": [
+            f"{line.split(None, 1)[0]} {Path(line.split(None, 1)[1]).name}"
+            for line in run["busiest_at_start"]
+        ],
         "fingerprint": run["fingerprint"],
         "source": [f"{root}/output/ocr_state_T-D0.json"],
     }
