@@ -11,9 +11,10 @@
 
 - **Question**: Can a llama.cpp GGUF arm replace the shipped OCR backend for dots.mocr or PaddleOCR-VL without losing quality?
 - **Answer**: No. D4 (dots.mocr GGUF Q8_0) keeps the quality of the shipped backend but is not faster than it. The gate asks for 2 times, the gate pages showed 1.29 times, and a re-timing of the shipped backend alone (T-control) shows about 1.0 times. P4 (PaddleOCR-VL GGUF Q8_0) is 12 times faster but its output holds invented text on 10 of 25 review pages, which fails gate C5.
-- **Decision**: Both engines keep their shipped backend. No follow-up change for a llama.cpp path. MLX arms cannot lead to a decision.
+- **Decision by the gates**: Both engines fail. MLX arms cannot lead to a decision.
+- **Operator decision after the experiment (2026-10-31)**: Move dots.mocr to llama.cpp anyway, for reasons the gates do not measure: no PyTorch, one runtime for all local models, and lower memory (17.3 GiB against 22.2). Speed is not a reason, because the T-control shows none. PaddleOCR-VL keeps its shipped backend. See "Decision after the experiment".
 - **How sure**: Sure about D4 (it fails the speed gate, and the T-control shows its speed-up was mostly a slow baseline). Fairly sure about P4 (the 16-bit file fails in the same way, so the fault is in the model and not in the 8-bit step). The C5 review was done by an AI, not by the operator (Limits, item 1).
-- **Next step**: Decide whether to run a separate experiment on PaddleOCR-VL's invented text on Bengali and Arabic pages (see "What it means for you").
+- **Next step**: A new OpenSpec change adds a llama.cpp backend for dots.mocr. A separate experiment may look at PaddleOCR-VL's invented text on Bengali and Arabic pages.
 
 ## What we tested
 
@@ -161,11 +162,21 @@ P4 hit the 4,096-token output limit on 35 blocks across 29 pages, and P2 on 58 b
 
 ## What it means for you
 
-Nothing changes. dots.mocr and PaddleOCR-VL keep their shipped backends and no default moves.
+This experiment changes no default. The operator decision below starts a separate change.
 
-- **dots.mocr:** a llama.cpp path is a safe quality match, uses less memory (17.3 GiB against 22.2) and needs no PyTorch, but it is not faster than the shipped backend once that is timed alone. Any move would rest on those reasons and not on speed.
+- **dots.mocr:** a llama.cpp path is a safe quality match, uses less memory (17.3 GiB against 22.2) and needs no PyTorch, but it is not faster than the shipped backend once that is timed alone. Any move rests on those reasons and not on speed.
 - **PaddleOCR-VL:** a llama.cpp path is 12 times faster but the model puts text from the wrong writing system on Bengali and Arabic pages, and it already does so today. A runtime change cannot fix it. A separate experiment should ask whether the engine should handle those scripts at all, or whether a page-level check should catch them.
 - **MLX:** D2 passes every gate, but MLX cannot decide a runtime, and the project rules list MLX as not allowed (ADR-103).
+
+## Decision after the experiment
+
+The operator reviewed the results on 2026-10-31 and decided:
+
+1. **Move dots.mocr to a llama.cpp backend.** The reasons are no PyTorch, one runtime for all local models (llama.cpp already serves the decision models), and lower memory. The gate verdict stays FAIL. This decision overrides it on purpose, and does not claim the speed gate passed.
+2. **Use our own conversion, not the community file.** Our Q8_0 language model matches `lodrick-the-lafted/dots.mocr-gguf` tensor for tensor (OI-9), but that repo can change. We keep a pinned private copy of our files on Hugging Face: `dots-mocr-Q8_0.gguf` (SHA-256 `6017b184…`) and `dots-mocr-mmproj-bf16.gguf` (SHA-256 `63f415f9…`).
+3. **Licence.** dots.mocr is MIT plus a licence agreement that allows commercial use and redistribution. It adds use rules (no illegal content, consent for sensitive personal data, permission for bulk digitising of copyrighted works). Clause 4.4 limits use of the dots.mocr name. A private copy keeps clear of that.
+4. **Keep the PyTorch backend until the llama.cpp backend works on real documents.** Then remove it, and write the ADR at that point.
+5. **PaddleOCR-VL stays as it is**, as the fallback.
 
 ## Artefacts
 
