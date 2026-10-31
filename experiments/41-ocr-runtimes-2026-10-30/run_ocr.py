@@ -433,6 +433,107 @@ def run_pages(args: argparse.Namespace, plan: dict[str, Any], pages: dict[str, s
     return 0
 
 
+def tcontrol_pages(lists: dict[str, list[str]]) -> dict[str, str]:
+    """Return the warm-up page and 20 seeded pages for the D0 re-timing (protocol step 12).
+
+    The 20 pages are drawn with seed 41 from the pages that D0 and D4 both finished, leaving out
+    the 19 pages that already ran alone in Experiment 37 and the warm-up page.
+    """
+    import random
+
+    state = json.loads((EXP37 / "output/ocr_state_dots-mocr.json").read_text(encoding="utf-8"))
+    base = {
+        k: v for r in state["engines"]["dots-mocr"]["runs"].values() for k, v in r["pages"].items()
+    }
+    arm = json.loads(state_path("D4").read_text(encoding="utf-8"))["pages"]
+    alone = list(base)[:20]
+    every = {key: name for name, keys in lists.items() for key in keys}
+    pool = [
+        k
+        for k in every
+        if k not in alone and base[k]["status"] == "ok" and arm.get(k, {}).get("status") == "ok"
+    ]
+    chosen = set(random.Random(41).sample(pool, 20))  # noqa: S311 - a seeded sample, not security
+    return {SMOKE[0]: every[SMOKE[0]]} | {k: every[k] for k in every if k in chosen}
+
+
+def run_tcontrol(args: argparse.Namespace, plan: dict[str, Any]) -> int:
+    """Re-time the shipped dots.mocr (PyTorch on the Mac GPU) alone, on the T-control pages."""
+    name, path = "T-D0", OUT / "ocr_state_T-D0.json"
+    pages = tcontrol_pages(page_lists(plan))
+    if args.dry_run:
+        print(f"{name}: {len(pages)} pages (1 warm-up + 20): {list(pages)}")
+        return 0
+    if path.is_file() and not args.resume:
+        print(f"{path.name} exists: pass --resume to continue", file=sys.stderr)
+        return 1
+    os.environ.update({"HF_HUB_OFFLINE": "1", "TRANSFORMERS_OFFLINE": "1"})
+    from omrs.capabilities import build_ocr_routes
+    from omrs.config import Settings
+    from omrs.integrations.ocr_worker.routes import request_timeout
+
+    settings = Settings(
+        ocr_fallback_enabled=True,
+        ocr_workers_dir=args.workers_dir,
+        ocr_engine_primary="dots-mocr",
+        ocr_engine_fallback="",
+    )
+    routes = build_ocr_routes(settings)
+    client = routes.select()
+    if client is None or client is not routes.primary:
+        print("shipped dots-mocr route unavailable: check --workers-dir", file=sys.stderr)
+        return 1
+    fp = routes.fingerprint
+    paths = corpus(list(pages))
+    state: dict[str, Any] = json.loads(path.read_text("utf-8")) if path.is_file() else {"pages": {}}
+    state.update(
+        arm=name,
+        fingerprint={
+            "model": [fp.model_identity, fp.model_revision],
+            "pipeline": [fp.pipeline_identity, fp.pipeline_revision],
+            "packages": dict(fp.packages),
+        },
+        load_average_at_start=os.getloadavg(),
+        busiest_at_start=sh("/bin/ps", "-Ao", "pcpu,comm", "-r").splitlines()[1:6],
+    )
+
+    def save() -> None:
+        state["heartbeat_utc"] = utc()
+        write_atomic(path, json.dumps(state, indent=1, ensure_ascii=False) + "\n")
+
+    first = True
+    try:
+        for key, run in pages.items():
+            doc, page = key.split(":")
+            out = OUT / name / doc / f"p{int(page):03d}.md"
+            if key in state["pages"] and out.is_file():
+                continue
+            started = time.perf_counter()
+            result = client.parse(
+                str(paths[doc]), pages=[int(page)], timeout=request_timeout(settings, 1)
+            )
+            text = (result.pages_markdown or (result.markdown,))[0]
+            write_atomic(out, text)
+            seconds = round(time.perf_counter() - started, 2)
+            state["pages"][key] = {
+                "status": "ok" if text.strip() else "empty",
+                "chars": len(text),
+                "run": run,
+                "seconds": seconds,
+                "includes_start": first,
+                "load_average": os.getloadavg(),
+                "utc": utc(),
+            }
+            first = False
+            save()
+            print(f"[{name}] {key} {seconds} s", flush=True)
+    finally:
+        state["load_average_at_end"] = os.getloadavg()
+        save()
+        routes.close()
+    return 0
+
+
 def print_status(arm: str | None) -> int:
     """Print the progress of one arm, or of every arm that has a state file."""
     names = [arm] if arm else [a for a in ARMS if state_path(a).is_file()]
@@ -463,6 +564,8 @@ def parse_args() -> argparse.Namespace:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("--arm", choices=sorted(ARMS))
+    parser.add_argument("--tcontrol", action="store_true", help="re-time the shipped D0, alone")
+    parser.add_argument("--workers-dir", default=str(Path.home() / ".omrs/ocr-workers"))
     parser.add_argument("--backend", choices=("mlx", "llamacpp"))
     parser.add_argument("--pages", default="all")
     parser.add_argument("--base-url", help="loopback server address (no default)")
@@ -481,6 +584,8 @@ def main() -> int:
     args = parse_args()
     if args.status:
         return print_status(args.arm)
+    if args.tcontrol:
+        return run_tcontrol(args, load_plan())
     if not args.arm or args.backend not in (None, ARMS[args.arm][1]):
         print("--arm is required and --backend must match the arm", file=sys.stderr)
         return 1

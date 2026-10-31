@@ -407,6 +407,50 @@ def diagnostics(root: str) -> dict[str, Any]:
     }
 
 
+def t_control(root: str, views: dict[str, Any]) -> dict[str, Any]:
+    """Compare the shipped dots.mocr, re-timed alone (``T-D0``), with the old D0, D4 and D2."""
+    path = OUT / "ocr_state_T-D0.json"
+    if not path.is_file():
+        return {}
+    run = read_json(path)
+    keys = [k for k, p in run["pages"].items() if not p["includes_start"]]
+    old = views["D0"]["pages"]
+
+    def seconds(pages: dict[str, Any]) -> list[float]:
+        return [pages[k]["seconds"] for k in keys]
+
+    series = {
+        "D0_old_exp37": old,
+        "T-D0_retimed_alone": run["pages"],
+        "D4": arm_view("D4")["pages"],
+        "D2": arm_view("D2")["pages"],
+    }
+    median = {n: round(statistics.median(seconds(p)), 2) for n, p in series.items()}
+    mean = {n: round(statistics.mean(seconds(p)), 2) for n, p in series.items()}
+    return {
+        "role": "information; never changes a verdict (protocol step 12)",
+        "pages": keys,
+        "median_s": median,
+        "mean_s": mean,
+        "speedup_over_retimed_D0": {
+            a: {
+                "by_median": round(median["T-D0_retimed_alone"] / median[a], 2),
+                "by_mean": round(mean["T-D0_retimed_alone"] / mean[a], 2),
+                "pages_faster_than_D0": sum(
+                    series[a][k]["seconds"] < run["pages"][k]["seconds"] for k in keys
+                ),
+            }
+            for a in ("D4", "D2")
+        },
+        "old_D0_over_retimed_D0": round(median["D0_old_exp37"] / median["T-D0_retimed_alone"], 2),
+        "load_average_at_start": run["load_average_at_start"],
+        "load_average_at_end": run["load_average_at_end"],
+        "busiest_at_start": run["busiest_at_start"],
+        "fingerprint": run["fingerprint"],
+        "source": [f"{root}/output/ocr_state_T-D0.json"],
+    }
+
+
 def main() -> int:
     """Build ``output/summary.json``."""
     plan = run_ocr.load_plan()
@@ -473,6 +517,7 @@ def main() -> int:
         "arms": arms,
         "matched_runtime": pairs,
         "diagnostics": diagnostics(root),
+        "t_control": t_control(root, views),
         "decision": {
             a: arms[a]["all_decide_gates_pass"] if a in arms else None for a in ("D4", "P4")
         },

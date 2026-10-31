@@ -7,7 +7,7 @@
   "size": "Standard",
   "status": "FAIL",
   "superseded_by": null,
-  "finding": "No llama.cpp arm passes. D4 (dots.mocr GGUF Q8_0) matches the shipped backend but is only 1.29 times faster (needs 2 times). P4 (PaddleOCR-VL GGUF Q8_0) is 12 times faster but has invented text on 10 of 25 review pages, as does the shipped backend on 15 of the same 25. The 16-bit diagnostics fail the same way, so the cause is the model and not the runtime. Both engines keep their shipped backend.",
+  "finding": "No llama.cpp arm passes. D4 (dots.mocr GGUF Q8_0) matches the shipped backend but is not faster (1.29 times on the gate pages, about 1.0 times when the shipped backend is re-timed alone; needs 2 times). P4 (PaddleOCR-VL GGUF Q8_0) is 12 times faster but has invented text on 10 of 25 review pages, as does the shipped backend on 15 of the same 25. The 16-bit diagnostics fail the same way, so the cause is the model and not the runtime. Both engines keep their shipped backend.",
   "purpose": "optimisation",
   "refs": {
     "adrs": [],

@@ -40,7 +40,7 @@
 - [x] 5.2 Run each new arm alone through `E-maths`, `E-scan` and `E-script`. Verify: state file shows 257 pages; no other GPU job ran.
   Run 2026-10-31, one arm at a time (D4, D2, P4, P2), 257 pages each, 0 timeouts. Only the idle live app (port 9931, embedding model loaded) ran beside them.
 - [x] 5.3 If a measured speed-up is at least 1.5 times and below 3 times, run `T-control` for that baseline. Verify: timings recorded apart from the Experiment 37 figures, or a note that no comparison fell in the band.
-  Not run, by operator-approved recommendation (2026-10-31). Only D2 (2.5 times) fell in the band. D2 is a comparison arm, and D4 fails C1 whatever the D0 re-timing says (it would need a D0 median of 88 s or more). Recorded in `report.md`.
+  Run 2026-10-31 after the operator asked for it. Only D2 (2.5 times) fell in the band. T-control re-timed the shipped dots.mocr alone on 20 seeded pages: median 25.34 s against 31.07 s in Experiment 37, and D4 at 30.70 s. Result in `output/summary.json` (`t_control`) and `report.md`. It does not change a verdict.
 
 ## 6. Score and review
 
