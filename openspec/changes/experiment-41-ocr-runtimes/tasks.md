@@ -31,19 +31,20 @@
 
 ## 4. Build the runners
 
-- [ ] 4.1 Write `run_ocr.py` (`--backend {mlx,llamacpp}`, status inside it with `--status`), `summarise.py` and `analysis.py` (similarity scoring). Reuse `score_recall.py` and `check_katex.mjs` from Experiment 37 by path; do not copy them. Verify: 3 scripts at most (Standard limit); `uv run ruff check` and `ruff format --check` pass; a dry run lists 257 pages.
-- [ ] 4.2 Call `verify_llamacpp_runtime` before the first score, and write run records. Verify: a wrong build or hash stops the run in a test.
+- [x] 4.1 Write `run_ocr.py` (`--backend {mlx,llamacpp}`, status inside it with `--status`), `summarise.py` and `analysis.py` (similarity scoring). Reuse `score_recall.py` and `check_katex.mjs` from Experiment 37 by path; do not copy them. Verify: 3 scripts at most (Standard limit); `uv run ruff check` and `ruff format --check` pass; a dry run lists 257 pages.
+- [x] 4.2 Call `verify_llamacpp_runtime` before the first score, and write run records. Verify: a wrong build or hash stops the run in a test.
 
 ## 5. Run
 
-- [ ] 5.1 Run the two-page smoke test (`eq01` p2 and p3) for each new arm. Verify: non-empty output; compare with the scratch figures. Cover OI-10 (conversion at build 11941; mmproj speed on Metal).
-- [ ] 5.2 Run each new arm alone through `E-maths`, `E-scan` and `E-script`. Verify: state file shows 257 pages; no other GPU job ran.
+- [x] 5.1 Run the two-page smoke test (`eq01` p2 and p3) for each new arm. Verify: non-empty output; compare with the scratch figures. Cover OI-10 (conversion at build 11941; mmproj speed on Metal).
+- [x] 5.2 Run each new arm alone through `E-maths`, `E-scan` and `E-script`. Verify: state file shows 257 pages; no other GPU job ran.
+  Run 2026-10-31, one arm at a time (D4, D2, P4, P2), 257 pages each, 0 timeouts. Only the idle live app (port 9931, embedding model loaded) ran beside them.
 - [ ] 5.3 If a measured speed-up is at least 1.5 times and below 3 times, run `T-control` for that baseline. Verify: timings recorded apart from the Experiment 37 figures, or a note that no comparison fell in the band.
 
 ## 6. Score and review
 
-- [ ] 6.1 Score KaTeX, recall and similarity for every arm. Verify: output files exist for each arm.
-- [ ] 6.2 Build the review page for each arm (10 lowest-similarity pages, every screened page, 5 random pages, seed 41). Verify: the checks in `references/review-page-pattern.md` pass.
+- [x] 6.1 Score KaTeX, recall and similarity for every arm. Verify: output files exist for each arm.
+- [x] 6.2 Build the review page for each arm (10 lowest-similarity pages, every screened page, 5 random pages, seed 41). Verify: the checks in `references/review-page-pattern.md` pass.
 - [ ] 6.3 Operator reviews and records the verdicts. Verify: the SHA-256 of the verdict file is recorded.
 - [ ] 6.4 For each 8-bit arm that fails C3, C4 or C5, run its 16-bit diagnostic on the failed gate's pages and score that gate only. Verify: `output/` holds a diagnostic result per triggered arm, or `summary.json` records that none triggered.
 
