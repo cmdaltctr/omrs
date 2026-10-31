@@ -108,8 +108,13 @@ def page_lists(plan: dict[str, Any]) -> dict[str, list[str]]:
 def select_pages(lists: dict[str, list[str]], spec: str) -> dict[str, str]:
     """Return ``{page key: list name}`` in run order for ``all``, ``smoke`` or a list name."""
     every = {key: name for name, keys in lists.items() for key in keys}
+    if spec.startswith("review:"):
+        # A 16-bit diagnostic runs on the review list of the 8-bit arm that failed (plan.json).
+        selection = json.loads((OUT / "review_selection.json").read_text(encoding="utf-8"))
+        wanted = selection[spec.removeprefix("review:")]["pages"]
+        return {k: v for k, v in every.items() if k in wanted}
     if spec not in ("all", "smoke", *lists):
-        raise SystemExit(f"--pages must be all, smoke or one of {', '.join(lists)}")
+        raise SystemExit(f"--pages must be all, smoke, review:<ARM> or one of {', '.join(lists)}")
     return {
         k: v for k, v in every.items() if spec in ("all", v) or (spec == "smoke" and k in SMOKE)
     }

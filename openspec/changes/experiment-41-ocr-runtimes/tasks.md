@@ -39,13 +39,15 @@
 - [x] 5.1 Run the two-page smoke test (`eq01` p2 and p3) for each new arm. Verify: non-empty output; compare with the scratch figures. Cover OI-10 (conversion at build 11941; mmproj speed on Metal).
 - [x] 5.2 Run each new arm alone through `E-maths`, `E-scan` and `E-script`. Verify: state file shows 257 pages; no other GPU job ran.
   Run 2026-10-31, one arm at a time (D4, D2, P4, P2), 257 pages each, 0 timeouts. Only the idle live app (port 9931, embedding model loaded) ran beside them.
-- [ ] 5.3 If a measured speed-up is at least 1.5 times and below 3 times, run `T-control` for that baseline. Verify: timings recorded apart from the Experiment 37 figures, or a note that no comparison fell in the band.
+- [x] 5.3 If a measured speed-up is at least 1.5 times and below 3 times, run `T-control` for that baseline. Verify: timings recorded apart from the Experiment 37 figures, or a note that no comparison fell in the band.
+  Not run, by operator-approved recommendation (2026-10-31). Only D2 (2.5 times) fell in the band. D2 is a comparison arm, and D4 fails C1 whatever the D0 re-timing says (it would need a D0 median of 88 s or more). Recorded in `report.md`.
 
 ## 6. Score and review
 
 - [x] 6.1 Score KaTeX, recall and similarity for every arm. Verify: output files exist for each arm.
 - [x] 6.2 Build the review page for each arm (10 lowest-similarity pages, every screened page, 5 random pages, seed 41). Verify: the checks in `references/review-page-pattern.md` pass.
-- [ ] 6.3 Operator reviews and records the verdicts. Verify: the SHA-256 of the verdict file is recorded.
+- [x] 6.3 Operator reviews and records the verdicts. Verify: the SHA-256 of the verdict file is recorded.
+  Done 2026-10-31 by Claude (four parallel Sonnet reviewers, cross-checked by a foreign-script and repeated-phrase count), on the operator's instruction and acceptance ("just accept AI spot check"). The plan names the operator as the C5 reviewer, so `report.md` states that this is an AI review. `plan.json` is not amended. `review_verdicts.json` SHA-256 `7e68db96dedaf78dbc916309b38a2b039f3368e7da8a83fa2cda0f764dbae3b0`.
 - [ ] 6.4 For each 8-bit arm that fails C3, C4 or C5, run its 16-bit diagnostic on the failed gate's pages and score that gate only. Verify: `output/` holds a diagnostic result per triggered arm, or `summary.json` records that none triggered.
 
 ## 7. Close out
