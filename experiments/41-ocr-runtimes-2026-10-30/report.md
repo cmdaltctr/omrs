@@ -139,8 +139,9 @@ P4 hit the 4,096-token output limit on 35 blocks across 29 pages, and P2 on 58 b
 5. **The 19 pages in the D speed comparison are a small sample.** The all-page medians point the same way.
 6. **The image-token flags have no effect on build 11941.** It ignores `--image-min-tokens` and `--image-max-tokens` for these two projectors. The limits come from the pinned mmproj files (plan.json, OI-10 and DR-5).
 7. **Warnings from the PDF library (pypdf) may shift the noise-screen counts slightly against Experiment 37.** This was not measured.
-8. **The live app and the embedding model were idle in the background** during the runs. The runs were otherwise alone on the GPU.
-9. **Two pages are blank on the page** (io06:78 for D, io06:53 and io06:65 for P). They are excluded from review because they hold no text.
+8. **The live app and the embedding model were idle in the background** during the runs. The scored runs were otherwise alone on the GPU (they ran overnight, one arm at a time).
+9. **Three D4 pages were timed while the operator was using the Mac.** The first D4 start on 2026-10-30 was paused, and `--resume` kept eq01:2, eq01:3 and eq01:4 (41.0 s, 55.6 s and 59.1 s). eq01:2 is excluded from the speed gate. eq01:3 and eq01:4 are in the 19-page comparison. Dropping both gives a D4 median of 43.97 s against a D0 median of 56.31 s (1.28 times), so D4 still fails C1. Every other D4, D2, P4 and P2 page was timed overnight.
+10. **Two pages are blank on the page** (io06:78 for D, io06:53 and io06:65 for P). They are excluded from review because they hold no text.
 
 ## What it means for you
 
