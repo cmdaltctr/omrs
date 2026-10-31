@@ -34,7 +34,7 @@
     - a stale server from a killed worker is stopped, and an unrelated pid is left alone;
     - a health timeout returns a parse error that names the log;
     - a wrong build is refused.
-- [ ] 2.5 Write the engine:
+- [x] 2.5 Write the engine:
   - `parse` with the D5 request;
   - empty Markdown for a capped or unparsable page;
   - the SHA-256 check of the model files before the server starts;

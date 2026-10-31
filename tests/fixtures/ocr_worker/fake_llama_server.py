@@ -27,6 +27,10 @@ inherits from the test:
     straight away, as a server does when its port is taken.
 ``FAKE_LLAMA_CONTENT`` and ``FAKE_LLAMA_TOKENS``
     The completion text and the ``completion_tokens`` usage value.
+``FAKE_LLAMA_STATUS``
+    When set, every chat request answers with this HTTP status and an error body.
+``FAKE_LLAMA_BAD_JSON``
+    When set, every chat request answers 200 with a body that is not JSON.
 ``FAKE_LLAMA_SPAM_BYTES``
     Bytes to write to standard error at start, to fill the log.
 """
@@ -91,6 +95,16 @@ def main() -> int:
             if requests:
                 with open(requests, "a", encoding="utf-8") as handle:
                     handle.write(body.decode() + "\n")
+            if os.environ.get("FAKE_LLAMA_STATUS"):
+                self._send(int(os.environ["FAKE_LLAMA_STATUS"]), {"error": {"message": "boom"}})
+                return
+            if os.environ.get("FAKE_LLAMA_BAD_JSON"):
+                data = b"this is not json"
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+                return
             self._send(
                 200,
                 {

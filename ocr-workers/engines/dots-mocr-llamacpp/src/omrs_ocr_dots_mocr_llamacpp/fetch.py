@@ -19,7 +19,6 @@ step twice downloads nothing the second time.
 
 from __future__ import annotations
 
-import hashlib
 import os
 import shutil
 import sys
@@ -28,6 +27,7 @@ import urllib.request
 from pathlib import Path
 
 from . import pins
+from .files import sha256_of
 from .paths import cache_dir, llama_dir, models_dir
 
 #: Marker inside the unpacked release: the SHA-256 of the archive it came from.
@@ -39,15 +39,6 @@ _LOGIN_HINT = "Run `hf auth login` or set the HF_TOKEN environment variable, the
 
 class FetchError(Exception):
     """A download or hash check failed; the message names the file."""
-
-
-def sha256_of(path: Path) -> str:
-    """Return the SHA-256 hex digest of a file, read in chunks."""
-    digest = hashlib.sha256()
-    with path.open("rb") as handle:
-        while chunk := handle.read(_CHUNK):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 # ── Seams (tests replace these) ────────────────────────────────────────────
