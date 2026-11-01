@@ -1,0 +1,241 @@
+{
+  "experiment_id": "43-pipeline-sweep-llamacpp-2026-11-01",
+  "protocol_version": 1,
+  "question": "Does every OMRS pipeline stage run without error with every local model on llama.cpp GGUF files, and at what embedding rate do 0.6B, 4B and 8B run on the measurement Mac?",
+  "decision": "Experiment 35 freezes its protocol only when every stage passes and retrieval stays at the stated bounds; Part B timing feeds its local-or-cloud decision and task 1.4 reuse.",
+  "hypotheses": [
+    {
+      "id": "H1",
+      "role": "primary",
+      "statement": "every stage runs with zero errors, and Hit@1 on the 17 questions stays within one question of the earlier Ollama results (at least 16/17)",
+      "null": "a stage errors, or Hit@1 or MRR falls below the D5 bounds"
+    }
+  ],
+  "decision_rule": "PASS when every D5 exit row passes. FAIL otherwise, with the failing stage named. A failure is fixed, in a separate change if it touches src/, before Experiment 35 freezes its plan.",
+  "stats": "basic",
+  "seed": 20261101,
+  "baseline": "Ollama runs of Experiments 2 (dense, reranker off) and 3 (dense with reranker)",
+  "candidate": "the same pipeline on llama.cpp GGUF files through one llama serve router",
+  "metrics": [
+    {
+      "name": "hit_at_1",
+      "binary": true,
+      "primary": true
+    },
+    {
+      "name": "mrr",
+      "binary": false,
+      "primary": true
+    },
+    {
+      "name": "hit_at_page",
+      "binary": true,
+      "primary": false
+    }
+  ],
+  "gates": [
+    {
+      "id": "G1",
+      "metric": "stage_errors",
+      "value": "count",
+      "op": "<=",
+      "threshold": 0
+    },
+    {
+      "id": "G2",
+      "metric": "hit_at_1_17q",
+      "value": "rate",
+      "op": ">=",
+      "threshold": 0.941
+    },
+    {
+      "id": "G3",
+      "metric": "determinism_mismatches",
+      "value": "count",
+      "op": "<=",
+      "threshold": 0
+    }
+  ],
+  "frozen": [
+    {
+      "name": "corpus/Ghazali-Mustasfa.pdf",
+      "sha256": "468d38e58d1d7c1ee2d4a1d6df73176b0118c13db320c10cebfd24e661ee5a87"
+    },
+    {
+      "name": "corpus/Kalai et al. - 2025 - Why Language Models Hallucinate.pdf",
+      "sha256": "b6a0d4e8de1b3add1044cbf00c59c92e0ca76c7deef5c944d76cb0f16db28950"
+    },
+    {
+      "name": "corpus/Popat and Starkey - 2019 - Learning to code or coding to learn A systematic review.pdf",
+      "sha256": "102bb623ea261ac510422c5018f6b1f811d0a964c15ef0edc28c48d647ac695b"
+    },
+    {
+      "name": "corpus/Van Der Weel and Van Der Meer - 2024 - Handwriting but not typewriting leads to widespread brain connectivity a high-density EEG study wit.pdf",
+      "sha256": "61f72c681ee0e49ff31bfab1f3438b6a12a4d0cdaf8874a741847034bd8efe1f"
+    },
+    {
+      "name": "corpus/grep-ai-README.md",
+      "sha256": "ee28309ae7c9a87051eb2ea0c59e50da979285b728ed3dc46fdb6b4d0ba7c682"
+    },
+    {
+      "name": "corpus/paper-search-mcp-cf-README.md",
+      "sha256": "1e114274f85d652cdd6d43e017a177991d6e81d6b2b44fdb02acb3d6ea1fad1e"
+    },
+    {
+      "name": "ground-truth.json",
+      "sha256": "4e8d3b8b4719ae48734cbd739e6a7352c62cb52524e439bc5d46e59181cb9021"
+    },
+    {
+      "name": "financebench/AMD_2022_10K.pdf",
+      "sha256": "a3bd74088fae0ad4aa03d04998a1f4c64fd0b3c693841601b0ac49b46cf5c1f4",
+      "pages": 121,
+      "questions": 7
+    },
+    {
+      "name": "financebench/BOEING_2022_10K.pdf",
+      "sha256": "09285ff7ee737d3302977104aa05cc53c9dfb0161f3461a89b583dc38b9f2ab6",
+      "pages": 190,
+      "questions": 7
+    },
+    {
+      "name": "financebench/AMCOR_2023_10K.pdf",
+      "sha256": "84d7a0291a12f4e68352750dccda3754c78eefdf06e0b5462046357a1ed53332",
+      "pages": 156,
+      "questions": 4
+    },
+    {
+      "name": "financebench/ULTABEAUTY_2023Q4_EARNINGS.pdf",
+      "sha256": "c7df6210a627042e231c9579982648a43f3ff8b630b4020540330c2a85e0d781",
+      "pages": 9,
+      "questions": 4
+    },
+    {
+      "name": "financebench/3M_2023Q2_10Q.pdf",
+      "sha256": "3e66115793459f42185feeeab4e7f07dd27ab6dd465d0694ce415e861029cf93",
+      "pages": 92,
+      "questions": 3
+    },
+    {
+      "name": "bioasq/text-corpus test parquet",
+      "sha256": "8ac2d54f2fe5de176f452eb88987b0452c79b60b818769dab2c38f313f72d211",
+      "revision": "8a845907dc1cff31d42fa6f7bb9c6eef5f3ae6f6",
+      "passages": 40181
+    },
+    {
+      "name": "freshstack/langchain id list (seed 20260530)",
+      "sha256": "702ea7cdb6de28742aad8c75084ddd88eec225f163959316093e615268bec107",
+      "documents": 10024
+    },
+    {
+      "name": "embedding tokenizer (Qwen/Qwen3-Embedding-4B tokenizer.json)",
+      "sha256": "83cdf8c3a34f68862319cb1810ee7b1e2c0a44e0864ae930194ddb76bb7feb8d",
+      "revision": "5cf2132abc99cad020ac570b19d031efec650f2b"
+    }
+  ],
+  "runtime": {
+    "runtime_under_test": false,
+    "models": [
+      {
+        "role": "embedding-0.6b",
+        "repository": "Qwen/Qwen3-Embedding-0.6B-GGUF",
+        "file": "Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {
+          "embeddings": true,
+          "pooling": "last",
+          "embd-normalize": 2,
+          "ctx-size": 8192,
+          "batch-size": 8192,
+          "ubatch-size": 8192,
+          "parallel": 1,
+          "kv-unified": false,
+          "flash-attn": true,
+          "n-gpu-layers": "all",
+          "fit": false,
+          "cache-type-k": "f16",
+          "cache-type-v": "f16"
+        }
+      },
+      {
+        "role": "embedding-4b-baseline",
+        "repository": "Qwen/Qwen3-Embedding-4B-GGUF",
+        "file": "Qwen3-Embedding-4B-Q8_0.gguf",
+        "sha256": "b60ae5ce2dd6a0b77f82cadf21def1f310a3e10cde380ad0081b07a9d416949d",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {
+          "embeddings": true,
+          "pooling": "last",
+          "embd-normalize": 2,
+          "ctx-size": 8192,
+          "batch-size": 8192,
+          "ubatch-size": 8192,
+          "parallel": 1,
+          "kv-unified": false,
+          "flash-attn": true,
+          "n-gpu-layers": "all",
+          "fit": false,
+          "cache-type-k": "f16",
+          "cache-type-v": "f16"
+        }
+      },
+      {
+        "role": "embedding-8b",
+        "repository": "Qwen/Qwen3-Embedding-8B-GGUF",
+        "file": "Qwen3-Embedding-8B-Q8_0.gguf",
+        "sha256": "d20ddc71e8a5c4344f2343481e242233a997dc5eaff442427a945836c97b4deb",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {
+          "embeddings": true,
+          "pooling": "last",
+          "embd-normalize": 2,
+          "ctx-size": 8192,
+          "batch-size": 8192,
+          "ubatch-size": 8192,
+          "parallel": 1,
+          "kv-unified": false,
+          "flash-attn": true,
+          "n-gpu-layers": "all",
+          "fit": false,
+          "cache-type-k": "f16",
+          "cache-type-v": "f16"
+        }
+      },
+      {
+        "role": "chat-answer",
+        "repository": "Qwen/Qwen3-4B-GGUF",
+        "file": "Qwen3-4B-Q8_0.gguf",
+        "sha256": "8c2f07f26af9747e41988551106f149b03eb9b5cb6df636027b6bf6278473300",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {
+          "ctx-size": 16384,
+          "parallel": 1,
+          "flash-attn": true,
+          "n-gpu-layers": "all",
+          "fit": false,
+          "cache-type-k": "f16",
+          "cache-type-v": "f16",
+          "spec-type": "none",
+          "cache-prompt": false,
+          "cache-reuse": 0
+        }
+      }
+    ],
+    "references": [],
+    "tolerance": [
+      {
+        "metric": "hit_at_1",
+        "max_abs_change": 0.059
+      },
+      {
+        "metric": "mrr",
+        "max_abs_change": 0.06
+      }
+    ]
+  },
+  "amendments": []
+}

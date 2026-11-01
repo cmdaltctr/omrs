@@ -1,0 +1,19 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "43",
+  "title": "Pipeline sweep on llama.cpp",
+  "date": "2026-11-01",
+  "category": "runtime",
+  "size": "Standard",
+  "status": "PLANNED",
+  "superseded_by": null,
+  "finding": "",
+  "purpose": "optimisation",
+  "refs": {
+    "adrs": [],
+    "changes": [
+      "pipeline-sweep-llamacpp"
+    ],
+    "tasks": []
+  }
+}
