@@ -108,7 +108,7 @@ Write all tests in this group first, against the fake server and the client proc
   - Verify: `npm test` passes; each new test fails before the component exists.
 - [x] 8.3 Remove the idle sleep field from the llama.cpp card (`web/src/settings/LlamacppServerPanel.tsx` and its tests and fixtures). Match the existing style by hand. Do not run Prettier.
   - Verify: `npm run lint`, `npm run typecheck`, `npm test` and `npm run build` pass.
-- [ ] 8.4 Browser check at 1,280 px and 390 px. Warn the operator before the server starts. Use a scratch `OMRS_CONFIG_DIR`, `OMRS_STATE_DIR` and `--workspace`, a free port checked with `lsof -iTCP:<port> -sTCP:LISTEN`, and the fake `llama-server` as the managed Chat program. Use `chrome-devtools`; if Chrome is missing, use `orca-cli`.
+- [x] 8.4 Browser check at 1,280 px and 390 px. Warn the operator before the server starts. Use a scratch `OMRS_CONFIG_DIR`, `OMRS_STATE_DIR` and `--workspace`, a free port checked with `lsof -iTCP:<port> -sTCP:LISTEN`, and the fake `llama-server` as the managed Chat program. Use `chrome-devtools`; if Chrome is missing, use `orca-cli`.
   - Verify: screenshots at both widths show the section with a running and a stopped row; Stop works; no sideways scroll at 390 px; the scratch server is stopped after the check.
 
 ## 9. Documentation, ADR and agent guides
