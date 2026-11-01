@@ -34,13 +34,4 @@ LLAMACPP_SERVER_FIELDS: tuple[ConnectionField, ...] = (
         minimum=2048,
         maximum=262144,
     ),
-    ConnectionField(
-        "idle_sleep",
-        "Idle sleep (seconds)",
-        "int",
-        "llamacpp_idle_sleep_seconds",
-        "LLAMACPP_IDLE_SLEEP_SECONDS",
-        minimum=0,
-        maximum=86400,
-    ),
 )

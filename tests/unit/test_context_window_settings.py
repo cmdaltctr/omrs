@@ -44,7 +44,6 @@ def folder(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     for variable in (
         *FIELDS.values(),
         *TEXT_FIELDS.values(),
-        "LLAMACPP_IDLE_SLEEP_SECONDS",
         "LLAMACPP_CHAT_SERVER",
     ):
         monkeypatch.delenv(variable, raising=False)
@@ -374,42 +373,3 @@ def test_server_values_never_reach_effective_settings(tmp_path: Path) -> None:
     effective = compose.settings_to_effective(build(tmp_path, "LLAMACPP_CONTEXT_WINDOW=4096\n"))
     assert not hasattr(effective, "llamacpp_server_binary")
     assert not hasattr(effective, "llamacpp_context_window")
-
-
-# ── llama.cpp idle sleep (task 17.9) ─────────────────────────────────────
-
-IDLE = "llamacpp_idle_sleep_seconds"
-
-
-def test_idle_sleep_defaults_to_300(tmp_path: Path) -> None:
-    settings = build(tmp_path)
-    assert getattr(settings, IDLE) == 300
-    assert IDLE not in settings.provider_explicit
-
-
-def test_idle_sleep_from_the_environment_locks(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    monkeypatch.setenv("LLAMACPP_IDLE_SLEEP_SECONDS", "0")
-    settings = build(tmp_path)
-    assert getattr(settings, IDLE) == 0
-    assert locked_fields(settings, settings.provider_explicit)[IDLE] == "environment"
-
-
-def test_idle_sleep_from_the_config_file_applies_and_does_not_lock(
-    folder: Path, tmp_path: Path
-) -> None:
-    (folder / "omrs.jsonc").write_text('{"llamacpp_idle_sleep_seconds": 900}', encoding="utf-8")
-    settings = build(tmp_path)
-    assert getattr(settings, IDLE) == 900
-    assert IDLE in settings.config_file_fields
-    assert IDLE not in locked_fields(settings, settings.provider_explicit)
-
-
-@pytest.mark.parametrize("value", ["-1", "86401", "soon"])
-def test_a_bad_idle_sleep_in_the_environment_fails_startup(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, value: str
-) -> None:
-    monkeypatch.setenv("LLAMACPP_IDLE_SLEEP_SECONDS", value)
-    with pytest.raises(ValidationError):
-        build(tmp_path)

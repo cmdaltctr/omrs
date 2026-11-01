@@ -10628,8 +10628,7 @@ components:
         value:
           type: [string, integer]
           description: >
-            The program path (empty when not set), the Chat server choice, the context window or
-            the idle sleep.
+            The program path (empty when not set), the Chat server choice or the context window.
         min:
           type: [integer, "null"]
         max:

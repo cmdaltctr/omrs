@@ -98,7 +98,6 @@ def test_every_row_kind_lands_under_its_file_key(rows: WorkspaceSettings, folder
     rows.set(provider_key("openai_compatible", "base_url"), "https://example.test/v1")
     rows.set(provider_key("llamacpp", "server_binary"), "/opt/bin/llama-server")
     rows.set(provider_key("llamacpp", "context_window"), "8192")
-    rows.set(provider_key("llamacpp", "idle_sleep"), "60")
     handover(rows, folder)
     values = dict(read_settings_file(folder).values)
     assert values == {
@@ -113,7 +112,6 @@ def test_every_row_kind_lands_under_its_file_key(rows: WorkspaceSettings, folder
         "openai_compatible_base_url": "https://example.test/v1",
         "llamacpp_server_binary": "/opt/bin/llama-server",
         "llamacpp_context_window": 8192,
-        "llamacpp_idle_sleep_seconds": 60,
     }
     assert count_rows(rows) == 0
 
@@ -126,6 +124,16 @@ def test_an_old_server_model_row_writes_no_key(rows: WorkspaceSettings, folder: 
     text = (folder / "omrs.jsonc").read_text(encoding="utf-8")
     assert "llamacpp_server_model" not in text and "model.gguf" not in text
     assert read_settings_file(folder).values["web_port"] == 9100
+
+
+def test_an_old_idle_sleep_row_writes_no_key(rows: WorkspaceSettings, folder: Path) -> None:
+    """The idle sleep setting is retired, so an old row is not handed over (change D12)."""
+    rows.set(provider_key("llamacpp", "idle_sleep"), "60")
+    rows.set_web_port(9100)
+    handover(rows, folder)
+    text = (folder / "omrs.jsonc").read_text(encoding="utf-8")
+    assert "idle_sleep" not in text
+    assert read_settings_file(folder).values == {"web_port": 9100}
 
 
 def test_a_saved_off_switch_moves_as_false(rows: WorkspaceSettings, folder: Path) -> None:
@@ -228,7 +236,7 @@ def test_a_file_reference_wins_over_the_saved_key(rows: WorkspaceSettings, folde
 def test_a_row_that_breaks_its_rule_is_not_copied(rows: WorkspaceSettings, folder: Path) -> None:
     rows.set(provider_key("ollama", "base_url"), "file:///etc/passwd")
     rows.set(provider_key("ollama", "context_window"), "12")
-    rows.set(provider_key("llamacpp", "idle_sleep"), "soon")
+    rows.set(provider_key("llamacpp", "context_window"), "soon")
     rows.set("chat.provider", "not a name!")
     handover(rows, folder)
     assert read_settings_file(folder).values == {}

@@ -55,14 +55,12 @@ class LaunchConfig:
         model: ``.gguf`` path or Hugging Face id.
         context_window: Tokens passed as ``-c``.
         chat_url: The chat address. Its port is the port of the server.
-        idle_sleep: Seconds passed as ``--sleep-idle-seconds``; 0 sends no flag.
     """
 
     binary: str
     model: str
     context_window: int
     chat_url: str
-    idle_sleep: int = 0
 
 
 @dataclass(frozen=True)
@@ -73,7 +71,6 @@ class StartedWith:
     model: str
     model_kind: rules.ModelKind
     context_window: int
-    idle_sleep: int = 0
 
 
 @dataclass(frozen=True)
@@ -234,7 +231,6 @@ class LlamacppServer:
             kind,
             port,
             config.context_window,
-            idle_sleep=config.idle_sleep,
         )
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
         try:
@@ -256,9 +252,7 @@ class LlamacppServer:
             target=pump_capped, args=(proc.stdout, self.log_path), daemon=True
         )
         self._pump.start()
-        self._started_with = StartedWith(
-            config.binary, config.model, kind, config.context_window, config.idle_sleep
-        )
+        self._started_with = StartedWith(config.binary, config.model, kind, config.context_window)
         self._state, self._reason, self._exit_code = "starting", None, None
         self._hook_exit()
         self._watcher = asyncio.create_task(self._watch(proc, port))

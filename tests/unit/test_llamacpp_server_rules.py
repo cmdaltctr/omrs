@@ -338,11 +338,9 @@ def test_argv_has_no_idle_sleep_flag_at_zero() -> None:
     assert "--sleep-idle-seconds" not in argv
 
 
-def test_the_idle_sleep_field_is_a_whole_number_from_zero_to_a_day() -> None:
-    field = next(f for f in LLAMACPP_SERVER_FIELDS if f.id == "idle_sleep")
-    assert (field.kind, field.settings_field, field.env_var) == (
-        "int",
-        "llamacpp_idle_sleep_seconds",
-        "LLAMACPP_IDLE_SLEEP_SECONDS",
+def test_the_card_has_no_idle_sleep_field() -> None:
+    ids = [f.id for f in LLAMACPP_SERVER_FIELDS]
+    assert ids == ["server_binary", "chat_server", "context_window"]
+    assert all(
+        "idle" not in f.settings_field and "IDLE" not in f.env_var for f in LLAMACPP_SERVER_FIELDS
     )
-    assert (field.minimum, field.maximum) == (0, 86400)

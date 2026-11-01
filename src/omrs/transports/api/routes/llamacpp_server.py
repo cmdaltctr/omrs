@@ -2,7 +2,7 @@
 
 ``GET`` reports the state and the settings (read from ``omrs.jsonc``, with its
 ``revision``). ``PUT`` writes the program, the Chat server choice, the context
-window and the idle sleep to the file; it may send the ``revision`` it read.
+window to the file; it may send the ``revision`` it read.
 ``POST`` start, stop and restart control the one process the server owns. The
 server loads the Chat model in force (ADR-108 D5). With the choice ``external``
 Start and Restart start nothing. Every write and control route needs the browser
@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
@@ -41,6 +41,9 @@ router = APIRouter(prefix="/v1")
 CHOICE_RULE = "The Chat server choice must be external or managed."
 CREDENTIALS_RULE = "Changing the program or the Chat server choice needs the credentials scope."
 MODEL_RETIRED = "Set the Chat model in Settings > Chat."
+IDLE_SLEEP_RETIRED = (
+    "idle_sleep is retired. OMRS stops an idle llama.cpp server after a fixed 10 minutes."
+)
 #: The plain line of each 409 reason (design D10, ``transports/api/AGENTS.md`` rule 4).
 CONFLICT_REASONS = {
     "external-server": (
@@ -52,16 +55,14 @@ CONFLICT_REASONS = {
 _CHOICES = ("external", "managed")
 _REFUSED = "The running engine cannot take this change. Restart the server to apply it."
 _WINDOW = next(spec for spec in LLAMACPP_SERVER_FIELDS if spec.id == "context_window")
-_IDLE = next(spec for spec in LLAMACPP_SERVER_FIELDS if spec.id == "idle_sleep")
 #: Request key to the ``Settings`` field (and so the ``omrs.jsonc`` key) it writes.
 _FIELD_IDS = {
     "binary": "llamacpp_server_binary",
     "chat_server": "llamacpp_chat_server",
     "context_window": "llamacpp_context_window",
-    "idle_sleep": "llamacpp_idle_sleep_seconds",
 }
 #: The settings the status shows under ``saved``.
-_SAVED_KEYS = ("binary", "chat_server", "context_window", "idle_sleep")
+_SAVED_KEYS = ("binary", "chat_server", "context_window")
 #: Keys that change what the owned server launches, so they need ``credentials``.
 _CREDENTIAL_KEYS = frozenset({"binary", "chat_server"})
 
@@ -79,8 +80,22 @@ class ServerBody(BaseModel):
     model: str | None = Field(None, max_length=2048)
     chat_server: str | None = Field(None, max_length=16)
     context_window: int | float | str | None = None
-    idle_sleep: int | float | str | None = None
     revision: Annotated[str, Field(max_length=128)] | None = None
+
+
+async def reject_idle_sleep(request: Request) -> None:
+    """Refuse a body that holds ``idle_sleep`` with 400 and the fixed 10-minute idle stop.
+
+    The key is not in the contract, so the body model forbids it and would give a generic
+    validation message. This check reads the raw body after the session check, before the
+    model validates it. A body that is not a JSON object passes on to the model.
+    """
+    try:
+        data = await request.json()
+    except ValueError:
+        return
+    if isinstance(data, dict) and "idle_sleep" in data:
+        raise HTTPException(status_code=400, detail=IDLE_SLEEP_RETIRED)
 
 
 def _manager(request: Request) -> LlamacppServer:
@@ -97,7 +112,6 @@ def _launch_config(view: dict[str, Any]) -> LaunchConfig:
         model=str(view["launch_model"] or ""),
         context_window=int(view["context_window"]["value"]),
         chat_url=str(view["chat_url"]),
-        idle_sleep=int(view["idle_sleep"]["value"]),
     )
 
 
@@ -110,8 +124,8 @@ def _body(view: dict[str, Any], status: ServerStatus, revision: str) -> dict[str
     started = status.started_with
     saved = _launch_config(view)
     pending = started is not None and (
-        (started.binary, started.model, started.context_window, started.idle_sleep)
-        != (saved.binary, saved.model, saved.context_window, saved.idle_sleep)
+        (started.binary, started.model, started.context_window)
+        != (saved.binary, saved.model, saved.context_window)
     )
     return {
         "revision": revision,
@@ -157,8 +171,6 @@ def _check(key: str, value: object) -> tuple[str | None, str | None]:
         return None, None
     if key == "context_window":
         return validate_int(_WINDOW, value)
-    if key == "idle_sleep":
-        return validate_int(_IDLE, value)
     text = str(value).strip()
     if key == "binary":
         return (text, None) if rules.check_binary(text) else (None, BINARY_RULE)
@@ -167,12 +179,17 @@ def _check(key: str, value: object) -> tuple[str | None, str | None]:
 
 @router.put("/llamacpp/server", operation_id="saveLlamacppServer")
 async def save_server(
-    principal: ManageScope, body: ServerBody, request: Request, runtime: RuntimeDep
+    principal: ManageScope,
+    _retired: Annotated[None, Depends(reject_idle_sleep)],
+    body: ServerBody,
+    request: Request,
+    runtime: RuntimeDep,
 ) -> Response:
-    """Save the program, the Chat server choice, the context window and the idle sleep.
+    """Save the program, the Chat server choice and the context window.
 
     400 for a broken rule (the message names the rule, never the value) or a
-    ``model`` key, 403 when the body sets the program or the Chat server choice
+    ``model`` key or an ``idle_sleep`` key (see :func:`reject_idle_sleep`), 403 when the body
+    sets the program or the Chat server choice
     and the session lacks the ``credentials`` scope, 409 for a locked field or a
     switch to ``external`` while the owned server runs. A running server keeps running.
     """
@@ -180,9 +197,7 @@ async def save_server(
         return error_response(400, MODEL_RETIRED)
     keys = [k for k in _FIELD_IDS if k in body.model_fields_set]
     if not keys:
-        return error_response(
-            400, "Send at least one of binary, chat_server, context_window or idle_sleep."
-        )
+        return error_response(400, "Send at least one of binary, chat_server or context_window.")
     if _CREDENTIAL_KEYS & set(keys) and "credentials" not in principal.scopes:
         return error_response(403, CREDENTIALS_RULE)
     updates: dict[str, str | int | None] = {}
@@ -190,8 +205,7 @@ async def save_server(
         text, rule = _check(key, getattr(body, key))
         if rule:
             return error_response(400, rule)
-        whole = key in ("context_window", "idle_sleep") and text
-        updates[_FIELD_IDS[key]] = int(text) if whole else text
+        updates[_FIELD_IDS[key]] = int(text) if key == "context_window" and text else text
     state = runtime.providers
     if state is None:
         return error_response(404, "Provider settings are not available.")

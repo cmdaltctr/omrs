@@ -128,12 +128,21 @@ _NEVER_SHIPPED_ALIASES: dict[str, str] = {
 #
 # ADR-108 D5: OMRS's own llama.cpp server loads the Chat model, so its
 # separate model setting could only drift from it.
+#
+# managed-llamacpp-runtimes D12: the runtime manager stops an idle runtime after
+# a fixed 10 minutes, so the idle sleep setting has no replacement.
+#: Removed names that nothing replaced, each with the reason the start-up message
+#: and the ``omrs.jsonc`` problem list give.
+NOTHING_REPLACES: dict[str, str] = {
+    "LLAMACPP_IDLE_SLEEP_SECONDS": "OMRS stops an idle llama.cpp server after a fixed 10 minutes",
+}
 _REMOVED_ENV_VARS: dict[str, str] = {
     "OCR_WORKER_COMMAND": "OCR_WORKERS_DIR with OCR_ENGINE_PRIMARY",
     "OCR_WORKER_ENV_DIR": "OCR_WORKERS_DIR with OCR_ENGINE_PRIMARY",
     "LLAMACPP_SERVER_MODEL": (
         "ANSWER__PROVIDER=llamacpp with ANSWER__MODEL, and LLAMACPP_CHAT_SERVER=managed"
     ),
+    **{name: f"nothing. {reason}" for name, reason in NOTHING_REPLACES.items()},
 }
 
 
@@ -187,7 +196,7 @@ def check_legacy_env_vars(env: dict[str, str] | None = None) -> None:
         sections.append(
             "Removed settings. OCR routes resolve from the OCR workers folder and "
             "an engine name; OMRS's llama.cpp server loads the Chat model. Remove "
-            "these and set:\n"
+            "these and set the replacement where one is named:\n"
             f"{removed_lines}"
         )
     body = "\n".join(sections)

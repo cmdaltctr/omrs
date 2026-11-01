@@ -119,7 +119,7 @@ def test_the_default_status(rig: Any) -> None:
             False,
         )
         saved = body["saved"]
-        assert set(saved) == {"binary", "chat_server", "context_window", "idle_sleep"}
+        assert set(saved) == {"binary", "chat_server", "context_window"}
         assert (saved["binary"]["value"], saved["binary"]["source"]) == ("", "default")
         window = saved["context_window"]
         assert (window["value"], window["source"], window["locked"]) == (16384, "default", False)
@@ -401,6 +401,7 @@ def test_the_responses_conform_to_the_contract(rig: Any) -> None:
         check.check(r.client.get(URL), 200)
         check.check(r.put({"context_window": 1000}), 400)
         check.check(r.put({"binary": "relative"}), 400)
+        check.check(r.put({"idle_sleep": 60}), 400)
         check.check(r.put({"context_window": 4096}), 200)
         r.save_all()
         check.check(r.client.get(URL), 200)
@@ -420,42 +421,42 @@ def test_the_routes_start_no_process_themselves() -> None:
     assert "os.kill" not in source
 
 
-# ── Idle sleep (task 17.9) ───────────────────────────────────────────────
+# ── Idle sleep is retired (change managed-llamacpp-runtimes, task 5.4) ───
+
+IDLE_STOP = "OMRS stops an idle llama.cpp server after 10 minutes."
 
 
-def test_idle_sleep_defaults_to_300_and_is_passed_at_start(rig: Any) -> None:
+def test_start_never_sends_the_idle_sleep_flag(rig: Any) -> None:
     with rig() as r:
-        sleep = r.get()["saved"]["idle_sleep"]
-        assert (sleep["value"], sleep["source"], sleep["min"], sleep["max"]) == (
-            300,
-            "default",
-            0,
-            86400,
-        )
         r.save_all()
         assert r.post("start").status_code == 200
         r.wait_state("running")
-        argv = r.program.argv()
-        assert argv[argv.index("--sleep-idle-seconds") + 1] == "300"
-
-
-def test_idle_sleep_zero_sends_no_flag_and_a_change_needs_a_restart(rig: Any) -> None:
-    with rig() as r:
-        r.save_all(idle_sleep=0)
-        assert r.post("start").status_code == 200
-        body = r.wait_state("running")
         assert "--sleep-idle-seconds" not in r.program.argv()
-        assert body["pending_restart"] is False
-        assert r.put({"idle_sleep": 120}).status_code == 200
-        assert r.get()["pending_restart"] is True
-        assert r.post("restart").status_code == 200
-        r.wait_state("running")
-        argv = r.program.argv()
-        assert argv[argv.index("--sleep-idle-seconds") + 1] == "120"
 
 
-@pytest.mark.parametrize("bad", [-1, 86401, "soon", 1.5])
-def test_an_idle_sleep_out_of_range_is_400(rig: Any, bad: object) -> None:
+@pytest.mark.parametrize("bad", [0, 120, "soon", 1.5, None])
+def test_an_idle_sleep_key_is_400_and_names_the_fixed_idle_stop(rig: Any, bad: object) -> None:
     with rig() as r:
-        assert r.put({"idle_sleep": bad}).status_code == 400
-        assert r.get()["saved"]["idle_sleep"]["source"] == "default"
+        response = r.put({"idle_sleep": bad})
+        assert response.status_code == 400, response.text
+        body = response.json()
+        assert body["status"] == "error"
+        assert "10 minutes" in body["message"]
+        assert "idle_sleep" in body["message"]
+        assert str(bad) not in body["message"] or bad in (0, None)
+
+
+def test_an_idle_sleep_key_saves_nothing_even_with_valid_keys(rig: Any) -> None:
+    with rig() as r:
+        response = r.put({"context_window": 4096, "idle_sleep": 60})
+        assert response.status_code == 400
+        assert "10 minutes" in response.json()["message"]
+        window = r.get()["saved"]["context_window"]
+        assert (window["value"], window["source"]) == (16384, "default")
+        assert "context_window" not in r.h.file_text()
+
+
+def test_an_idle_sleep_key_without_a_session_is_401_not_400(rig: Any) -> None:
+    with rig() as r:
+        r.client.cookies.clear()
+        assert r.client.put(URL, json={"idle_sleep": 1}, headers=ORIGIN).status_code == 401

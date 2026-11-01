@@ -298,8 +298,8 @@ browser session; a bearer credential gets 403. A bearer credential with
 
 | Method | Path | Scope | Changed body or result | Refusals |
 | --- | --- | --- | --- | --- |
-| GET | `/v1/llamacpp/server` | `read` | `saved` holds `binary`, `chat_server`, `context_window` and `idle_sleep`, each with its value, `source` and `locked`. `saved.model` is gone. New: `chat_model` (`provider`, `model`, `usable`) and `shared_with_classification` | none |
-| PUT | `/v1/llamacpp/server` | `manage`; `credentials` when the body sets `binary` or `chat_server` | Keys `binary`, `chat_server` (`external`, `managed`, or `null` to clear), `context_window`, `idle_sleep` and `revision` | 400 for a rule failure, an unknown choice, or a body that holds `model` ("Set the Chat model in Settings > Chat."); 403; 409 for a locked field, a stale `revision`, or `server-running` |
+| GET | `/v1/llamacpp/server` | `read` | `saved` holds `binary`, `chat_server`, and `context_window`, each with its value, `source` and `locked`. `saved.model` is gone. New: `chat_model` (`provider`, `model`, `usable`) and `shared_with_classification` | none |
+| PUT | `/v1/llamacpp/server` | `manage`; `credentials` when the body sets `binary` or `chat_server` | Keys `binary`, `chat_server` (`external`, `managed`, or `null` to clear), `context_window` and `revision` | 400 for a rule failure, an unknown choice, or a body that holds `model` ("Set the Chat model in Settings > Chat.") or the retired `idle_sleep` (OMRS stops an idle server after 10 minutes); 403; 409 for a locked field, a stale `revision`, or `server-running` |
 | POST | `/v1/llamacpp/server/start` | `manage` | Launches with the Chat model in force | 409 `external-server` |
 | POST | `/v1/llamacpp/server/restart` | `manage` | Stop, then start with the saved values and the Chat model in force | 409 `external-server` |
 | GET | `/v1/settings/chat` | `read` | `reason` adds `no-model`: the provider is llama.cpp and the Chat model is empty | none |
@@ -317,7 +317,7 @@ Rules:
 2. Start fails with `not-configured` when no program is set, the Chat
    provider is not `llamacpp`, or the Chat model is empty. The model rule
    (an existing `.gguf` file or `org/name[:tag]`) runs before every launch.
-3. `pending_restart` is true when the saved program, window or idle sleep,
+3. `pending_restart` is true when the saved program or window,
    or the Chat model in force, differ from the running process.
 4. `shared_with_classification` is true when the choice is `managed` and
    classification uses the Chat address. The owned server then answers

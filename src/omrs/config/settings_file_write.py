@@ -61,6 +61,8 @@ _STORAGE = "Existing collections stay where they are. Change it in omrs.jsonc an
 #: The reason of every key field: the Providers cards write references.
 KEY_FIELD_REASON = "Keys are set on the provider cards as references."
 EDIT_BY_HAND = "Edit this in omrs.jsonc."
+#: Who runs the embedding and OCR runtimes is an operator choice made outside the page.
+RUNTIME_MODE = "Set this in the environment, .env or omrs.jsonc."
 NOT_A_SETTING = "This is not a setting."
 
 #: Keys the page never writes, each with the reason the page shows (design D1).
@@ -84,6 +86,8 @@ READ_ONLY_KEYS: Mapping[str, str] = {
     "ingestion.ingest_extensions": EDIT_BY_HAND,
     "metadata.keyword_rules": EDIT_BY_HAND,
     "llamacpp_chat_server": "Set this on the llama.cpp card.",
+    "llamacpp_embed_server": RUNTIME_MODE,
+    "ocr_runtime_url": RUNTIME_MODE,
 }
 #: Read-only on the Settings page, but written by a provider card route through
 #: :func:`write_settings`, which checks its own scope rule (ADR-108 D11).

@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING, Annotated, Any, get_args
 from pydantic import BaseModel, TypeAdapter, ValidationError
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
 
+from .legacy import NOTHING_REPLACES
 from .rules import (
     FILE_ONLY,
     INTERNAL_FIELDS,
@@ -328,6 +329,12 @@ class _Reader:
 
     def unknown(self, key: str, leaf: str | None = None) -> None:
         name = key if leaf is None else f"{key}.{leaf}"
+        reason = NOTHING_REPLACES.get(key.upper()) if leaf is None else None
+        if reason is not None:
+            self.problem(
+                KIND_RETIRED, name, f"This name is retired and nothing replaces it. {reason}."
+            )
+            return
         new = _replacement((key if leaf is None else f"{key}__{leaf}").upper())
         if new is not None:
             self.problem(KIND_RETIRED, name, f"This name is retired. Use {new}.", new)

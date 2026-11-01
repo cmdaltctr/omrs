@@ -41,7 +41,6 @@ KEYCHAIN_PREFIX = "keychain://"
 INT_KEY_BOUNDS: dict[str, tuple[int, int]] = {
     "ollama_context_window": (2048, 262144),
     "llamacpp_context_window": (2048, 262144),
-    "llamacpp_idle_sleep_seconds": (0, 86400),
 }
 #: Keys that also read ``secrets/<provider>.key`` when ``omrs.jsonc`` holds no
 #: reference. The provider name is the key minus ``_api_key``.
