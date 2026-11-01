@@ -1,23 +1,23 @@
-"""Tests for the pure parts of the pipeline-sweep runner (change task 3.1, 4.0, 4.1).
+"""Tests for the pure parts of the pipeline-sweep runner (change tasks 3.1, 4.0, 4.1).
 
-Run with: uv run --no-sync pytest experiments/43-pipeline-sweep-llamacpp-2026-11-01/test_sweep_lib.py -q
+Run with: uv run --no-sync pytest test_sweep_lib.py -q
 """
 
 from __future__ import annotations
 
 import pytest
-
 from sweep_lib import (
     ChangedInputError,
     ChunkingGuardError,
     chunking_guard,
     compare_rankings,
+    compare_vectors,
     convert_evidence_page,
     extrapolate,
+    preset_has_parallel,
     select_financebench,
     verify_input_hashes,
 )
-
 
 # --- input-hash check (task 3.1) -------------------------------------------
 
@@ -160,3 +160,43 @@ def test_chunking_guard_passes_on_model_token_aware():
     identity = {"model": "Qwen/Qwen3-Embedding-4B", "revision": "5cf2132a"}
     aware = _Resolution(object(), identity, "model_token_aware")
     chunking_guard(settings=object(), resolver=lambda _settings: aware)
+
+
+# --- Part C comparison (task 4.0) ------------------------------------------
+
+
+def test_identical_vectors_pass_with_cosine_one():
+    vectors = {"c1": [1.0, 0.0], "c2": [0.0, 1.0]}
+    report = compare_vectors(vectors, vectors)
+    assert report["lowest_cosine"] == pytest.approx(1.0)
+    assert report["median_cosine"] == pytest.approx(1.0)
+    assert report["failed_chunks"] == []
+
+
+def test_drifted_vector_fails_rule_and_names_chunk():
+    exact = {"c1": [1.0, 0.0], "c2": [0.0, 1.0]}
+    fast = {"c1": [0.99, 0.1411], "c2": [0.0, 1.0]}  # cosine just below 0.9999
+    report = compare_vectors(exact, fast, threshold=0.9999)
+    assert report["failed_chunks"] == ["c1"]
+    assert report["lowest_cosine"] < 0.9999
+
+
+def test_swapped_top10_pair_fails_and_names_question():
+    left = {"q1": ["c1", "c2", "c3"], "q2": ["c4", "c5"]}
+    right = {"q1": ["c2", "c1", "c3"], "q2": ["c4", "c5"]}
+    changed = compare_rankings("exact-vs-fast", left, right)
+    assert [row["question"] for row in changed] == ["q1"]
+
+
+def test_preset_check_fails_without_parallel():
+    import pytest as _pytest
+
+    model = {"role": "embedding", "file": "x.gguf", "server_args": {"embeddings": True}}
+    with _pytest.raises(ValueError) as exc:
+        preset_has_parallel([model])
+    assert "x.gguf" in str(exc.value)
+
+
+def test_preset_check_passes_with_parallel():
+    model = {"role": "embedding", "file": "x.gguf", "server_args": {"parallel": 1}}
+    preset_has_parallel([model])

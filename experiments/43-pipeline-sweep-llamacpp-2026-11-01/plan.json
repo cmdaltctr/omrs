@@ -237,5 +237,10 @@
       }
     ]
   },
-  "amendments": []
+  "amendments": [
+    {
+      "date": "2026-11-01",
+      "change": "Metadata extraction runs disabled in every stage, not at the llamaindex default. The thinking-mode Qwen3-4B spends about 40 s per chunk on metadata generation (measured in the 1 November dry run: 735 s for 19 chunks), which would add 6 to 9 hours to Part A and measure the thinking preamble rather than the pipeline. Experiment 35 already resolved metadata to disabled in every arm (its design, open question 7), so the sweep matches the configuration it rehearses. The per-chunk metadata cost is reported from the dry-run measurement instead."
+    }
+  ]
 }

@@ -19,7 +19,6 @@ from collections import Counter
 from pathlib import Path
 
 from pypdf import PdfReader
-
 from sweep_lib import convert_evidence_page, file_sha256, select_financebench
 
 HERE = Path(__file__).resolve().parent
@@ -67,10 +66,12 @@ def main() -> None:
     out_dir = HERE / "output" / "financebench" / "pdfs"
     out_dir.mkdir(parents=True, exist_ok=True)
     for doc in chosen:
-        shutil.copy2(PDFS / f"{doc['doc_name']}.pdf", out_dir / f"{doc['doc_name']}.pdf")
+        shutil.copy2(PDFS / f"{doc['doc_name']}.pdf",
+                    out_dir / f"{doc['doc_name']}.pdf")
         found = file_sha256(out_dir / f"{doc['doc_name']}.pdf")
         if found != doc["sha256"]:
-            raise SystemExit(f"{doc['doc_name']}: copied PDF hash {found} != manifest {doc['sha256']}")
+            raise SystemExit(
+                f"{doc['doc_name']}: copied PDF hash {found} != manifest {doc['sha256']}")
 
     rows = []
     for question in questions:
@@ -83,7 +84,10 @@ def main() -> None:
                 "question": question["question"],
                 "answer": question.get("answer", ""),
                 "evidence": [
-                    {"doc_name": item.get("doc_name") or question["doc_name"], "pages": evidence_pages(item)}
+                    {
+                        "doc_name": item.get("doc_name") or question["doc_name"],
+                        "pages": evidence_pages(item),
+                    }
                     for item in question.get("evidence", [])
                 ],
             }

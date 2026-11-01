@@ -112,6 +112,50 @@ def extrapolate(
     return corpus_tokens / tokens_per_second / 3600.0
 
 
+# --- Part C vector comparison (task 4.0) ------------------------------------
+
+
+def compare_vectors(
+    exact: Mapping[str, Sequence[float]],
+    fast: Mapping[str, Sequence[float]],
+    threshold: float = 0.9999,
+) -> dict[str, Any]:
+    """Compare every vector pair; list the chunks below *threshold* cosine."""
+    import math
+
+    cosines = []
+    failed = []
+    for chunk_id in sorted(exact):
+        left, right = exact[chunk_id], fast.get(chunk_id)
+        if right is None:
+            failed.append(chunk_id)
+            continue
+        dot = sum(a * b for a, b in zip(left, right, strict=False))
+        norm = math.sqrt(sum(a * a for a in left)) * math.sqrt(sum(b * b for b in right))
+        cosine = dot / norm if norm else 0.0
+        cosines.append(cosine)
+        if cosine < threshold:
+            failed.append(chunk_id)
+    ordered = sorted(cosines)
+    median = ordered[len(ordered) // 2] if ordered else 1.0
+    return {
+        "pairs": len(cosines),
+        "lowest_cosine": min(cosines) if cosines else 1.0,
+        "median_cosine": median,
+        "failed_chunks": failed,
+    }
+
+
+def preset_has_parallel(models: Sequence[Mapping[str, Any]]) -> None:
+    """Require an explicit ``parallel`` in every embedding preset (D6a)."""
+    for model in models:
+        if "parallel" not in model.get("server_args", {}):
+            raise ValueError(
+                f"{model.get('file', '<model>')}: preset has no parallel value; "
+                "write it out so no default can change silently"
+            )
+
+
 # --- chunking guard (task 3.1) ----------------------------------------------
 
 
