@@ -40,6 +40,7 @@ ACCEPTED: dict[str, tuple[str, ...]] = {
     "chroma_mode": ("local", "cloud"),
     "ocr_routing_unit": OCR_ROUTING_UNITS,
     "llamacpp_chat_server": ("external", "managed"),
+    "llamacpp_embed_server": ("external", "managed"),
 }
 
 #: Settings that hold an address; ``omrs.jsonc`` accepts http and https only.
@@ -48,6 +49,7 @@ ADDRESS_FIELDS: tuple[str, ...] = (
     "llamacpp_chat_url",
     "llamacpp_classify_url",
     "llamacpp_embed_url",
+    "ocr_runtime_url",
     "openai_compatible_base_url",
     "azure_doc_intelligence_endpoint",
 )

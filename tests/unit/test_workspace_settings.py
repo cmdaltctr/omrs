@@ -153,9 +153,10 @@ def test_stored_field_ids_match_the_provider_descriptors() -> None:
     managed_server_ids = {f.id for f in LLAMACPP_SERVER_FIELDS}  # not a provider descriptor
     # The table stopped taking settings at ADR-087, so the list is frozen: fields added
     # since then were never stored, and the retired server model may still be in an
-    # old table (ADR-108 D5).
+    # old table (ADR-108 D5), and so may the retired idle sleep (change
+    # managed-llamacpp-runtimes D12).
     never_stored = {"classify_url", "chat_server"}
     assert PROVIDER_FIELD_IDS == (
-        url_ids | managed_server_ids | {KEY_SAVED_AT} | {"server_model"}
+        url_ids | managed_server_ids | {KEY_SAVED_AT} | {"server_model", "idle_sleep"}
     ) - (never_stored)
     assert not secret_ids & PROVIDER_FIELD_IDS

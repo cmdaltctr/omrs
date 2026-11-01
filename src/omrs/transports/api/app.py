@@ -14,6 +14,7 @@ from typing import Any
 from fastapi import APIRouter, FastAPI
 
 from ... import __version__
+from ...compose_runtime_manager import runtime_manager
 from ...integrations.keychain import KeychainStore
 from .bind_address import validate_bind_host
 from .errors import install_error_handlers
@@ -53,6 +54,7 @@ from .routes.plugins import router as plugins_router
 from .routes.power import router as power_router
 from .routes.profiles import router as profiles_router
 from .routes.runs import router as runs_router
+from .routes.runtimes import router as runtimes_router
 from .routes.templates import router as templates_router
 from .routes.usage_credit import router as usage_credit_router
 from .security import AccessPolicy, SecretSet
@@ -88,6 +90,7 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     integration_tools_router,
     connections_router,
     llamacpp_server_router,
+    runtimes_router,
     model_downloads_router,
     logs_router,
     power_router,
@@ -177,7 +180,9 @@ def create_app(
     )
     app.state.secrets = secrets if secrets is not None else app.state.log_buffer.secrets
     app.state.keychain = keychain if keychain is not None else KeychainStore()
-    app.state.llamacpp_server = LlamacppServer(config.workspace / "llamacpp-server.log")
+    # One runtime manager per process (managed-llamacpp-runtimes D1); the routes use it.
+    app.state.runtime_manager = runtime_manager()
+    app.state.llamacpp_server = LlamacppServer(app.state.runtime_manager)
     install_error_handlers(app)
     for router in API_ROUTERS:
         app.include_router(router)

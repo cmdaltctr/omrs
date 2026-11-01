@@ -13,8 +13,9 @@ degrades to the unavailable fingerprint at the composition boundary.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
+from .rules import address_problem
 from .sources import LegacyBool
 
 
@@ -34,9 +35,26 @@ class OcrRouteSettingsMixin(BaseModel):
     # dots.mocr took 7-56 s per page on MPS (Experiment 34); 120 s leaves
     # headroom for CPU and long pages. The per-request timeout stays a floor.
     ocr_worker_seconds_per_page: float = Field(default=120.0, ge=0.0)
+    # Change managed-llamacpp-runtimes D2: blank means OMRS starts the
+    # llama-server an engine declares (managed). A set address means external:
+    # OMRS starts nothing and passes it to every engine that declares a runtime.
+    ocr_runtime_url: str = ""
 
     @field_validator("ocr_workers_dir", "ocr_engine_primary", "ocr_engine_fallback")
     @classmethod
     def _strip(cls, value: str) -> str:
         """Strip padding so ``OCR_ENGINE_FALLBACK= `` means no fallback."""
         return value.strip()
+
+    @model_validator(mode="after")
+    def _check_runtime_url(self) -> OcrRouteSettingsMixin:
+        """Strip padding, let blank mean managed, and apply the address rule to the rest.
+
+        A model validator, not a field validator, so the error never echoes the address.
+        """
+        value = self.ocr_runtime_url.strip()
+        problem = address_problem(value) if value else None
+        if problem:
+            raise ValueError(f"OCR_RUNTIME_URL is not valid. {problem}")
+        object.__setattr__(self, "ocr_runtime_url", value)
+        return self

@@ -32,17 +32,18 @@ async function open(handlers = {}) {
 const RUNNING = serverStatus({ state: "running", pid_running: true, running_with: { context_window: 16384, model_kind: "file" } });
 
 describe("Local server block on the llama.cpp card", () => {
-  it("shows the note, three setting rows, the Chat model row and a Stopped status with Start enabled and Stop disabled", async () => {
+  it("shows the note, two setting rows, the Chat model row and a Stopped status with Start enabled and Stop disabled", async () => {
     const { panel } = await open();
     expect(panel()).toHaveTextContent(NOTE);
-    for (const label of ["Program path", "Context window (tokens)", "Idle sleep (seconds)"]) {
+    for (const label of ["Program path", "Context window (tokens)"]) {
       expect(within(panel()).getByRole("button", { name: `Edit ${label}` })).toBeInTheDocument();
     }
     expect(within(panel()).queryByRole("textbox")).toBeNull();
     expect(within(panel()).getByText("16384")).toBeInTheDocument();
-    expect(within(panel()).getByText("300")).toBeInTheDocument();
+    expect(within(panel()).queryByRole("button", { name: /Idle sleep/ })).toBeNull();
+    expect(panel()).not.toHaveTextContent(/idle/i);
     expect(within(panel()).getAllByText("Not set")).toHaveLength(1);
-    expect(within(panel()).getAllByText("default")).toHaveLength(3);
+    expect(within(panel()).getAllByText("default")).toHaveLength(2);
     expect(within(panel()).getByRole("status")).toHaveTextContent("Stopped");
     expect(within(panel()).getByRole("button", { name: "Start" })).toBeEnabled();
     expect(within(panel()).getByRole("button", { name: "Stop" })).toBeDisabled();
@@ -133,25 +134,6 @@ describe("Local server block on the llama.cpp card", () => {
     ]);
   });
 
-  it("saves the idle sleep in seconds and says what sleep does", async () => {
-    const put: unknown[] = [];
-    const { user, panel } = await open({
-      "PUT /v1/llamacpp/server": (body: unknown) => {
-        put.push(body);
-        return serverStatus({});
-      },
-    });
-    expect(panel()).toHaveTextContent(/frees the model after this many idle seconds/i);
-    expect(panel()).toHaveTextContent(/0 turns sleep off/i);
-    await user.click(within(panel()).getByRole("button", { name: "Edit Idle sleep (seconds)" }));
-    const sleep = within(panel()).getByRole("spinbutton", { name: "Idle sleep (seconds)" });
-    expect(sleep).toHaveValue(300);
-    await user.clear(sleep);
-    await user.type(sleep, "0");
-    await user.click(within(panel()).getByRole("button", { name: "Save" }));
-    expect(put).toEqual([{ idle_sleep: 0, revision: "r1" }]);
-  });
-
   it("returns a file value to the default with null", async () => {
     const put: unknown[] = [];
     const { user, panel } = await open({
@@ -186,7 +168,6 @@ describe("Local server block on the llama.cpp card", () => {
     expect(within(panel()).getAllByText(/credentials session is needed/i)).toHaveLength(1);
     expect(within(within(panel()).getByText("Chat model").closest("[data-slot='setting-row']") as HTMLElement).queryByRole("button")).toBeNull();
     expect(within(panel()).getByRole("button", { name: "Edit Context window (tokens)" })).toBeInTheDocument();
-    expect(within(panel()).getByRole("button", { name: "Edit Idle sleep (seconds)" })).toBeInTheDocument();
   });
 
   it("shows the program rule message in place of a generic line when a save is refused", async () => {
@@ -284,6 +265,8 @@ describe("Local server block on the llama.cpp card", () => {
     ["not-loopback", "The chat address is not on this machine, so omrs will not start a server for it."],
     ["port-in-use", "Another program already uses the chat port. omrs did not touch it."],
     ["timeout", "The server did not become ready in time and was stopped."],
+    ["not-supported", "OMRS cannot start its own server on this system. Use a server that you run yourself."],
+    ["version-busy", "Another OMRS process still uses the server with the earlier program. Stop that server in Integrations, Model runtimes, then start again."],
   ] as const)("shows a friendly sentence for %s", async (reason, sentence) => {
     const { panel } = await open({ "GET /v1/llamacpp/server": () => serverStatus({ state: "failed", reason }) });
     const status = within(panel()).getByRole("status");
@@ -336,7 +319,7 @@ describe("Local server block on the llama.cpp card", () => {
 
   it("shows the exit code for exited", async () => {
     const { panel } = await open({ "GET /v1/llamacpp/server": () => serverStatus({ state: "failed", reason: "exited", exit_code: 3 }) });
-    expect(within(panel()).getByRole("status")).toHaveTextContent("The server stopped by itself with exit code 3. See llamacpp-server.log in the workspace folder.");
+    expect(within(panel()).getByRole("status")).toHaveTextContent("The server stopped by itself with exit code 3. See server.log in runtimes/chat under the OMRS state folder.");
   });
 
   it("never puts raw log or process text in the page", async () => {

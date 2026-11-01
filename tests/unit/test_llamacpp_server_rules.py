@@ -13,7 +13,8 @@ from pathlib import Path
 
 import pytest
 
-from omrs.core.providers.llm import llamacpp_rules as rules
+from omrs.core.providers.llm.llamacpp_rules import LLAMACPP_SERVER_FIELDS
+from omrs.integrations.llamacpp_runtime import rules
 
 POSIX = pytest.mark.skipif(sys.platform == "win32", reason="POSIX modes and links")
 HF_TOKEN = "hf_FAKE_TOKEN_FOR_TESTS"  # noqa: S105  # gitleaks:allow
@@ -213,36 +214,6 @@ def test_other_urls_are_not_loopback(url: str) -> None:
     assert rules.chat_port(url) is None
 
 
-# ── Argument list ────────────────────────────────────────────────────────
-
-
-def test_argv_for_a_file_model_is_exact() -> None:
-    argv = rules.build_argv("/opt/llama/llama-server", "/m/q.gguf", "file", 8081, 16384)
-    assert argv == [
-        "/opt/llama/llama-server",
-        "-m",
-        "/m/q.gguf",
-        "--host",
-        "127.0.0.1",
-        "--port",
-        "8081",
-        "-c",
-        "16384",
-    ]
-
-
-def test_argv_for_a_hugging_face_model_uses_hf() -> None:
-    argv = rules.build_argv("/b/llama-server", "Qwen/Qwen3-0.6B-GGUF:Q8_0", "hf", 9000, 4096)
-    assert argv[:3] == ["/b/llama-server", "-hf", "Qwen/Qwen3-0.6B-GGUF:Q8_0"]
-    assert argv[3:] == ["--host", "127.0.0.1", "--port", "9000", "-c", "4096"]
-
-
-def test_argv_has_no_other_flag() -> None:
-    argv = rules.build_argv("/b/llama-server", "/m/q.gguf", "file", 8081, 2048)
-    flags = [item for item in argv if item.startswith("-")]
-    assert flags == ["-m", "--host", "--port", "-c"]
-
-
 # ── Environment ──────────────────────────────────────────────────────────
 
 FULL = {
@@ -320,28 +291,9 @@ def test_make_program_helper_is_executable(tmp_path: Path) -> None:
 # ── Idle sleep (task 17.9) ───────────────────────────────────────────────
 
 
-def test_argv_adds_the_idle_sleep_flag_when_above_zero() -> None:
-    argv = rules.build_argv("/b/llama-server", "/m/q.gguf", "file", 8081, 16384, idle_sleep=300)
-    assert argv[-4:] == ["--sleep-idle-seconds", "300", "-c", "16384"]
-    assert [item for item in argv if item.startswith("-")] == [
-        "-m",
-        "--host",
-        "--port",
-        "--sleep-idle-seconds",
-        "-c",
-    ]
-
-
-def test_argv_has_no_idle_sleep_flag_at_zero() -> None:
-    argv = rules.build_argv("/b/llama-server", "/m/q.gguf", "file", 8081, 16384, idle_sleep=0)
-    assert "--sleep-idle-seconds" not in argv
-
-
-def test_the_idle_sleep_field_is_a_whole_number_from_zero_to_a_day() -> None:
-    field = next(f for f in rules.LLAMACPP_SERVER_FIELDS if f.id == "idle_sleep")
-    assert (field.kind, field.settings_field, field.env_var) == (
-        "int",
-        "llamacpp_idle_sleep_seconds",
-        "LLAMACPP_IDLE_SLEEP_SECONDS",
+def test_the_card_has_no_idle_sleep_field() -> None:
+    ids = [f.id for f in LLAMACPP_SERVER_FIELDS]
+    assert ids == ["server_binary", "chat_server", "context_window"]
+    assert all(
+        "idle" not in f.settings_field and "IDLE" not in f.env_var for f in LLAMACPP_SERVER_FIELDS
     )
-    assert (field.minimum, field.maximum) == (0, 86400)

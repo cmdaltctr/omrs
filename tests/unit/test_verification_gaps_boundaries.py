@@ -34,6 +34,8 @@ _ALLOWED_TOP_LEVEL = {
     "compose_profile_setup.py": "composition root: profile upgrade step and factories",
     "compose_profiles.py": "composition root: user profiles that own three pipelines",
     "compose_providers.py": "composition root: saved LLM provider values over settings",
+    "compose_runtime_manager.py": "composition root: the one llama.cpp runtime manager",
+    "compose_runtimes.py": "composition root: llama.cpp runtime gates and the runtimes list",
     "compose_settings.py": "composition root: settings resolution",
     "compose_templates.py": "composition root: standard graphs for a profile duplicate",
     "capabilities.py": "composition root: runtime capability probes",

@@ -84,6 +84,69 @@ Each engine keeps its weights in `<engine folder>/.model-cache/`. This folder
 is gitignored. To keep weights outside a worktree, set `OMRS_OCR_MODEL_CACHE`.
 Engine `<name>` then uses `$OMRS_OCR_MODEL_CACHE/<name>/`.
 
+## Runtime block
+
+An engine that needs a `llama-server` does not start one. It declares the
+server in its `pyproject.toml`. OMRS starts or adopts the server, and the
+engine is a client of it. Several OMRS processes share one server. The last
+process to leave stops it. A server with no request for 10 minutes stops.
+
+```toml
+[tool.omrs-ocr.runtime]
+program = "llama.cpp/llama-b11941/llama-server"
+build = 11941
+flags = ["--temp", "0", "-c", "24576", "-np", "1", "--image-min-tokens", "4", "--image-max-tokens", "14400"]
+
+[[tool.omrs-ocr.runtime.files]]
+flag = "-m"
+path = "models/dots-mocr-Q8_0.gguf"
+sha256 = "<64 hex digits>"
+
+[[tool.omrs-ocr.runtime.files]]
+flag = "--mmproj"
+path = "models/dots-mocr-mmproj-bf16.gguf"
+sha256 = "<64 hex digits>"
+```
+
+| Key       | Meaning                                                                           |
+| --------- | --------------------------------------------------------------------------------- |
+| `program` | Path of the `llama-server` binary. Its file name must be `llama-server`.           |
+| `build`   | The llama.cpp build number that OMRS requires.                                     |
+| `flags`   | Fixed flags, as a list of strings.                                                 |
+| `files`   | The model files. Each has a `flag` (`-m` or `--mmproj`), a `path` and a `sha256`.  |
+
+Rules:
+
+1. `program` and every `path` are relative to the engine cache. The cache is
+   `$OMRS_OCR_MODEL_CACHE/<engine>`, or `<engine folder>/.model-cache`. An
+   absolute path, a `..` part or a link that leaves the cache is refused.
+2. `flags` must not hold `--host`, `--port`, `-m`, `--model`, `--mmproj`,
+   `-hf`, `--hf-repo`, `--api-key`, `--sleep-idle-seconds`, `--log-file` or a
+   flag that starts with `--model-url`. OMRS adds `--host 127.0.0.1` and
+   `--port <n>` itself.
+3. Before each start, OMRS runs `<program> --version` and compares the build.
+   A different build fails with `wrong-build`. OMRS also hashes each declared
+   file. A changed file fails with `file-changed`, and the reason names the
+   file. OMRS checks hashes at a start, not when it adopts a running server.
+4. An engine with no block does not change. PaddleOCR-VL has no block.
+
+OMRS starts the worker with `OMRS_OCR_RUNTIME_URL=http://127.0.0.1:<port>` in
+its environment. The worker sends its model requests to that address. If the
+server moves to a new port, OMRS restarts the worker with the new address.
+The `--capabilities` probe needs no server and starts none.
+
+If a runtime fails before dispatch, the route is unavailable for that request
+and the usual fallback rule applies. If the operator presses Stop on a
+runtime while a parse runs, OMRS sends that request once to the fallback
+route. A worker failure after dispatch stays a structured error with no retry.
+
+To use a server that you run yourself, set `OCR_RUNTIME_URL`. OMRS then
+starts nothing and gives that address to every engine that declares a
+runtime. The build check still runs. OMRS cannot check model files on an
+external server, and the Integrations page says: "External server. Model
+files are not checked." One external address serves one llama.cpp engine at a
+time. See [Configuration](../docs/guides/configuration.md#local-llamacpp-server).
+
 ## Engines
 
 ### dots-mocr (primary)
@@ -122,6 +185,8 @@ same parts.
    - if the model licence adds terms: `[tool.omrs-ocr] licence-file = "..."`
      and `requires-acceptance = true`;
    - if the engine downloads weights: `[project.scripts] omrs-ocr-fetch = "..."`.
+   - if the engine needs a `llama-server`: `[tool.omrs-ocr.runtime]` (see
+     [Runtime block](#runtime-block)). The engine does not start the server.
 3. Add the engine module. Its `ENGINE` object has:
    - `name`: the folder name;
    - `backend_id`: the diagnostic name, for example `dots_mocr`;

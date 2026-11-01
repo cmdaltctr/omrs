@@ -5,7 +5,7 @@ import { useSaveLlamacppServer } from "../api/llamacppServerHooks";
 import { sessionQuery } from "../api/queries";
 import { SettingRow } from "./SettingRow";
 
-type Key = "binary" | "context_window" | "idle_sleep";
+type Key = "binary" | "context_window";
 
 interface FieldRow {
   key: Key;
@@ -17,7 +17,6 @@ interface FieldRow {
 const ROWS: FieldRow[] = [
   { key: "binary", inputType: "text", needsCredentials: true },
   { key: "context_window", inputType: "number", needsCredentials: false },
-  { key: "idle_sleep", inputType: "number", needsCredentials: false },
 ];
 
 export const NEEDS_CREDENTIALS = "A credentials session is needed to change this.";
@@ -28,7 +27,7 @@ function readOnlyReason(field: ServerField, row: FieldRow, hasCredentials: boole
   return row.needsCredentials && !hasCredentials ? NEEDS_CREDENTIALS : null;
 }
 
-/** The program path, context window and idle sleep of the managed server, each a setting row saved on its own. */
+/** The program path and context window of the managed server, each a setting row saved on its own. */
 export function LlamacppServerFields({ saved }: { saved: Record<Key, ServerField> }) {
   const save = useSaveLlamacppServer();
   const session = useQuery(sessionQuery(useApi()));
@@ -58,9 +57,6 @@ export function LlamacppServerFields({ saved }: { saved: Record<Key, ServerField
           />
         );
       })}
-      <p className="text-meta text-muted-foreground">
-        Idle sleep: the server frees the model after this many idle seconds and loads it again on the next request, so that answer is slower. 0 turns sleep off.
-      </p>
     </>
   );
 }

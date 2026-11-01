@@ -38,7 +38,7 @@ The LlamaIndex OpenAI-like packages are in the base install. The `llamacpp` and 
 | `LLAMACPP_CHAT_MODEL`   | _(required for local metadata mode)_ | Text model (classification): the model for metadata extraction. Chat never uses it |
 | `LLAMACPP_CLASSIFY_URL` | unset: uses `LLAMACPP_CHAT_URL`      | llama-server address for classification |
 | `LLAMACPP_CHAT_URL`     | `http://localhost:8081/v1`           | llama-server address for Chat, and for classification while `LLAMACPP_CLASSIFY_URL` is unset |
-| `LLAMACPP_CHAT_SERVER`  | `external`                           | Who runs the Chat server: `external` (the Llama app or another server you run) or `managed` (the `llama-server` that `omrs web` starts) |
+| `LLAMACPP_CHAT_SERVER`  | `external`                           | Who runs the Chat server: `external` (the Llama app or another server you run) or `managed` (the `llama-server` that OMRS starts) |
 
 Chat on llama.cpp uses the Chat model, `ANSWER__MODEL` with `ANSWER__PROVIDER=llamacpp` (Settings > Chat in `omrs web`). It never falls back to `LLAMACPP_CHAT_MODEL`. An empty Chat model is refused with "Choose a Chat model". See [llama.cpp Chat and classification](configuration.md#llamacpp-chat-and-classification).
 
@@ -50,7 +50,7 @@ llama-server -hf Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0 --port 8080 --embeddings
 llama-server -hf Qwen/Qwen3-0.6B-GGUF:Q8_0 --port 8081
 ```
 
-**Managed server or your own.** You can start `llama-server` yourself, as above. This is the default, `LLAMACPP_CHAT_SERVER=external`. With `LLAMACPP_CHAT_SERVER=managed` (or "OMRS's own llama-server" on the llama.cpp card), `omrs web` can start, stop and restart one chat server for you (Settings > Providers > llama.cpp > Local server). That server loads the Chat model from Settings > Chat. It has no model setting of its own. omrs manages only the server it started. It never touches a server you started yourself. It does not manage the embedding server. By default omrs passes `--sleep-idle-seconds 300`, so its server frees the model after five idle minutes, as Ollama does. See [Local llama.cpp server](configuration.md#local-llamacpp-server) for the settings and guardrails.
+**Managed server or your own.** You can start `llama-server` yourself, as above. This is the default, `LLAMACPP_CHAT_SERVER=external`. With `LLAMACPP_CHAT_SERVER=managed` (or "OMRS's own llama-server" on the llama.cpp card), OMRS can start, stop and restart one chat server for you (Settings > Providers > llama.cpp > Local server). The CLI and the MCP server start and share it too, and it stops when the last OMRS process leaves. That server loads the Chat model from Settings > Chat. It has no model setting of its own. omrs manages only the server it started. It never touches a server you started yourself. The embedding server is `external` by default. OMRS can manage it with `LLAMACPP_EMBED_SERVER=managed`. A managed server stops after 10 idle minutes and starts again on the next request. See [Local llama.cpp server](configuration.md#local-llamacpp-server) for the settings and guardrails.
 
 ```bash
 # .env

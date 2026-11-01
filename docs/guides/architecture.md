@@ -520,6 +520,89 @@ can select `OCR_ENGINE_PRIMARY=paddleocr-vl`. Neither runtime enters the
 OMRS base environment. `OMRS_OCR_MODEL_CACHE` can keep per-engine weights
 outside worktrees.
 
+### Local model runtimes
+
+OMRS owns the local `llama-server` processes. Chat, embeddings and OCR
+engines are clients of a runtime. They do not start or stop one
+([ADR-109](../adr/109-omrs-owns-local-model-runtimes-components-are-clients.md)).
+
+One manager does this for every OMRS process: `omrs web`, the CLI, the stdio
+MCP server and the watcher. It lives in `integrations/llamacpp_runtime/`:
+
+| Module       | Job                                                                                   |
+| ------------ | ------------------------------------------------------------------------------------- |
+| `rules.py`   | Launch checks: program, model, loopback port, argument lists, child environment, fixed reasons |
+| `spec.py`    | `RuntimeSpec`: id, role, mode, binary, arguments, declared files, build, port policy, slots |
+| `state.py`   | The state folder and the atomic read and write of `server.json`                       |
+| `locks.py`   | `flock` helpers for the lock files                                                    |
+| `process.py` | Detached start, build and file checks, command-line check, stop                       |
+| `manager.py` | `RuntimeManager` (one per process) and `RuntimeLease` (one per runtime per process)   |
+
+The code is synchronous and uses threads, so the CLI and the watcher need no
+event loop. The web routes call it through `run_in_threadpool`.
+
+**Roles and modes.** The runtime ids are `chat`, `embeddings` and
+`ocr-<engine folder>`. Each role is `external` (you run the server and give
+a URL) or `managed` (OMRS starts or adopts it). Chat and embeddings default
+to `external`. An OCR runtime is managed unless `ocr_runtime_url` is set.
+
+**Where it sits in the import contracts.** The manager is an integration, so
+`integrations-are-leaves` applies: it does not import `core`, `transports` or
+`daemon`. `compose.py` builds one `RuntimeManager` per process. It hands a
+lease to the llama.cpp Chat, classification and embedding clients in `core/`
+by injection. `core/` never imports the package. The field list for the
+llama.cpp card (`LLAMACPP_SERVER_FIELDS`) stays in
+`core/providers/llm/llamacpp_rules.py` because it is settings data.
+`transports/api/llamacpp_server.py` is a thin adapter: it keeps the web
+lifespan hook and maps the manager's status to the route body.
+
+**State folder.** Each runtime has `<state root>/runtimes/<runtime id>/`. The
+state root is `OMRS_STATE_DIR`, else `$XDG_STATE_HOME/omrs`, else
+`~/.local/state/omrs`. It must be on a local disk. Every OMRS process writes
+there. It holds no settings and no secrets. The folder holds:
+
+- `start.lock`: held exclusive while one process decides to adopt, start or
+  stop the server.
+- `clients.lock`: held shared by every process that uses the runtime.
+- `request.lock`: held exclusive for one request on a one-slot runtime.
+- `server.json`: pid, port, binary path, argument digest, build, state,
+  `stopped_by`, generation and the last failure reason.
+- `server.log`: the server output.
+
+**The lease.** A process joins a runtime on its first request. It takes a
+shared lock on `clients.lock`, then `start.lock`, then reads `server.json`.
+It adopts a live server that has the same binary and arguments. Otherwise it
+starts one. When a process leaves (idle stop, close or exit), it drops its
+shared lock and tries an exclusive, non-blocking lock on `clients.lock`. If
+that works, no other client exists, and it stops the server. The kernel frees
+a lock when its process dies, so a killed process never blocks the others.
+
+**Lock order rule.** A process blocks on `clients.lock` only while it holds no
+other lock. While it holds `start.lock`, it makes only non-blocking attempts
+on `clients.lock`. No wait cycle can form.
+
+**Stale rule.** A server is stale only when its pid is gone or its command
+line does not hold the recorded binary path. A slow `/health` answer, a 503
+or a long request never makes a server stale. `/health` is read during a
+start only.
+
+**Idle stop and exit.** A runtime with no request for 10 minutes stops. This
+is a fixed constant (`IDLE_STOP_SECONDS = 600`), not a setting. OMRS does not
+pass `--sleep-idle-seconds` to `llama-server`. After SIGKILL of the last
+client, an orphan server can stay up. The next OMRS process adopts it, and
+`omrs web` stops it at start-up when no process uses it.
+
+**OCR engines.** An engine declares its server in `[tool.omrs-ocr.runtime]`
+in its `pyproject.toml`. The host reads the block through
+`integrations/ocr_worker/manifest.py` (standard library only), starts or
+adopts the runtime, and gives the worker its address in
+`OMRS_OCR_RUNTIME_URL`. The host never names an engine. See the
+[runtime block](../../ocr-workers/README.md#runtime-block). A one-slot
+runtime serialises requests across processes with `request.lock`.
+
+Operator detail, including the failure reasons:
+[Configuration](configuration.md#local-llamacpp-server).
+
 ### A new setting
 
 - Belongs to one area? Add it to that area's `settings.py`
@@ -550,7 +633,7 @@ peers stays an integration.
 Every Python module under `src/omrs/integrations/`, classified. A contract
 test fails when a module is missing from this table.
 
-<!-- integration-inventory:start count=41 -->
+<!-- integration-inventory:start count=51 -->
 
 | Module                                   | Availability                                                   | Selector                                                            | Shared contract                               | Fallback owner                                                                    | Disposition                                                         |
 | ---------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
@@ -560,13 +643,23 @@ test fails when a module is missing from this table.
 | `omrs.integrations.magika`            | Optional executable                                            | `MAGIKA_BINARY` selects the binary path, not an implementation      | `FileEntry` detection results                 | `core/codebase/codebase_map.py` suffix detection                                  | Capability integration; remains unregistered                        |
 | `omrs.integrations.ocr_worker`        | Native                                                         | None                                                                | `OcrWorkerClient` and protocol types          | None                                                                              | Facade; exports the worker client and protocol types                |
 | `omrs.integrations.ocr_worker.client` | Native                                                         | `OCR_FALLBACK_ENABLED` and resolved route command                  | JSON Lines request/response client            | `integrations/pdf/ocr_routing.py` before dispatch                                 | Subprocess capability adapter; injected into core                   |
+| `omrs.integrations.ocr_worker.dispatch` | Native | Resolved primary and fallback routes | `RoutedClient`: sends a parse to the primary and, after an operator stop of its runtime, once to the fallback | Unavailable before dispatch goes to the fallback; no retry after dispatch | Never sends one request twice to the same route |
 | `omrs.integrations.ocr_worker.fingerprint` | Native                                                      | Resolved route command with `--capabilities`                       | Frozen `OcrWorkerFingerprint`                 | Stable unavailable fingerprint                                                     | Capability probe; invalid probes have one stable identity           |
 | `omrs.integrations.ocr_worker.managed` | Native                                                         | `OCR_FALLBACK_ENABLED` and resolved route command                  | Owner-scoped `ManagedOcrClient` lifecycle     | `capabilities.build_ocr_routes` unavailable path                                   | Composition-boundary wrapper; injected into core                    |
 | `omrs.integrations.ocr_worker.manifest` | Native | Engine `pyproject.toml` `[tool.omrs-ocr]` | Parsed manifest, licence gate and not-provisioned reason | Minimal TOML reader before Python 3.11 | Standard-library helper; `ocr-workers/provision.py` loads it by file path |
 | `omrs.integrations.ocr_worker.pool` | Native | Resolved route commands of each node and of the host | `OcrClientPool`: one lazy `ManagedOcrClient` per command, `routes(settings)` | Unavailable route when a command does not resolve | Engine-owned; one pool-wide lock serialises parsing (ADR-105) |
 | `omrs.integrations.ocr_worker.protocol` | Native                                                       | None                                                                | Versioned JSON Lines envelopes                 | None                                                                              | Wire-protocol twin (1.1: optional request `pages`, response `pages_markdown`); tests keep its independent copy compatible      |
 | `omrs.integrations.ocr_worker.routes` | Native | `OCR_WORKERS_DIR`, `OCR_ENGINE_PRIMARY`, `OCR_ENGINE_FALLBACK` | `OcrRoutes` (primary, fallback) and `select()` | Unknown or unprovisioned engine → stable unavailable fingerprint | Resolves engines by folder name; fallback only before dispatch; per-page timeout scaling |
+| `omrs.integrations.ocr_worker.runtime` | Native | Engine `[tool.omrs-ocr.runtime]` block, `OCR_RUNTIME_URL` | Runtime spec per engine (`ocr-<engine folder>`) and lease use around one worker parse with `OMRS_OCR_RUNTIME_URL` | Runtime unavailable makes the route unavailable before dispatch | Host never names an engine; ADR-109 |
 | `omrs.integrations.ocr_worker.validation` | Native                                                    | None                                                                | Protocol violation codes and payload checks    | None                                                                              | Split from `protocol.py` at the 500-line ceiling; byte-identical twin in `ocr-workers/core/` |
+| `omrs.integrations.llamacpp_runtime` | Native | `LLAMACPP_CHAT_SERVER`, `LLAMACPP_EMBED_SERVER`, `OCR_RUNTIME_URL` | Facade; exports the manager, lease, spec, state and lock surface of the shared runtime manager | None | One manager for every local llama.cpp runtime; components are clients |
+| `omrs.integrations.llamacpp_runtime.lease` | Native | None | `RuntimeLease` (one per runtime per process): join, `request`/`arequest`/`session`, crash restart, leave; `RuntimeUnavailable` and `RuntimeRequestFailed` | Crash restart once; none after an operator stop | Split from `manager.py` at the 500-line ceiling; holds the D4 lock order |
+| `omrs.integrations.llamacpp_runtime.locks` | Native | None | `LockFile`: shared and exclusive `flock` on one descriptor each | None | Kernel locks free themselves when a process dies; `not-supported` on Windows |
+| `omrs.integrations.llamacpp_runtime.manager` | Native | `LLAMACPP_CHAT_SERVER`, `LLAMACPP_EMBED_SERVER`, `OCR_RUNTIME_URL` | `RuntimeManager` (one per process): `lease`, `stop` (operator), `sweep`, `status`, `close`; `install_sigterm_exit` | None; an external runtime is never started or stopped | Injected by `compose.py`; `IDLE_STOP_SECONDS = 600`; `atexit` leave |
+| `omrs.integrations.llamacpp_runtime.process` | Native | None | Detached start, build check (`--version`), SHA-256 file check, `ps` command-line check, SIGTERM/SIGKILL stop | None; a failed check gives a fixed reason | Only module that starts or stops a runtime process; no shell |
+| `omrs.integrations.llamacpp_runtime.rules` | Native | None | Launch checks: program rule, model kind, loopback port, argument lists, child environment, fixed reasons | None | Moved from `core/providers/llm/llamacpp_rules.py`; standard-library only |
+| `omrs.integrations.llamacpp_runtime.spec` | Native | None | Frozen `RuntimeSpec` (id, role, mode, argv, files, build, port policy, slots) | None | Chat and embeddings builders; free-port OCR runtime; no `--sleep-idle-seconds` |
+| `omrs.integrations.llamacpp_runtime.state` | Native | `OMRS_STATE_DIR`, `$XDG_STATE_HOME` | `server.json` atomic read/write and the state root | Missing or broken file reads as no record | Local-disk runtime state shared by every OMRS process |
 | `omrs.integrations.pdf`               | Native                                                         | None                                                                | `get_pdf_reader(reader)`                      | None                                                                              | Public facade exposing the factory                                  |
 | `omrs.integrations.pdf.factory`       | Native                                                         | `PDF_READER=auto`                                                   | Reader instance with `load_data`              | Factory itself (LiteParse → pypdfium2 → pypdf probe, for direct `auto` callers)   | Registry-backed factory; `auto` stays ordered capability resolution |
 | `omrs.integrations.pdf.liteparse`     | Base dependency (despite the stale docstring naming an extra)  | `PDF_READER=liteparse`                                              | `load_data`                                   | `compose.resolve_pdf_reader` `auto` probe                                         | Registered reader strategy                                          |

@@ -386,9 +386,10 @@ class EnginePipelines:
         """
         if self._ocr is None:
             from .capabilities import probe_ocr_worker
+            from .compose_runtime_manager import runtime_manager
             from .integrations.ocr_worker.pool import OcrClientPool
 
-            self._ocr = OcrClientPool(probe=probe_ocr_worker)
+            self._ocr = OcrClientPool(probe=probe_ocr_worker, runtime_manager=runtime_manager())
         return self._ocr
 
     def release(self) -> None:

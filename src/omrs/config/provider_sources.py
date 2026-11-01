@@ -138,9 +138,6 @@ class ProviderSourceMixin(BaseModel):
     ollama_context_window: int = Field(16384, ge=2048, le=262144)
     #: Tokens passed as ``-c`` to the llama.cpp server that ``omrs web`` starts.
     llamacpp_context_window: int = Field(16384, ge=2048, le=262144)
-    #: Idle seconds before the managed llama.cpp server frees its model
-    #: (``--sleep-idle-seconds``). 0 turns sleep off.
-    llamacpp_idle_sleep_seconds: int = Field(300, ge=0, le=86400)
     #: Program of the managed llama.cpp server (empty means not set).
     llamacpp_server_binary: str = ""
     #: Classification address; blank follows ``llamacpp_chat_url`` (ADR-108).
@@ -148,6 +145,9 @@ class ProviderSourceMixin(BaseModel):
     #: Who runs the llama.cpp Chat server: ``external`` (the Llama app or another
     #: server you run) or ``managed`` (OMRS's own ``llama-server``).
     llamacpp_chat_server: str = "external"
+    #: Who runs the llama.cpp embedding server: ``external`` or ``managed``
+    #: (``llama-server --embedding``). The Settings page never writes it.
+    llamacpp_embed_server: str = "external"
 
     #: Fields ``omrs.jsonc`` set (an ``env://`` key reference counts).
     config_file_fields: frozenset[str] = frozenset()
@@ -166,9 +166,15 @@ class ProviderSourceMixin(BaseModel):
     user_config_dir: str = ""
 
     @model_validator(mode="after")
-    def _check_chat_server(self) -> Settings:
+    def _check_server_choices(self) -> Settings:
         _validate_provider_value(
             self, "llamacpp_chat_server", ACCEPTED["llamacpp_chat_server"], "LLAMACPP_CHAT_SERVER"
+        )
+        _validate_provider_value(
+            self,
+            "llamacpp_embed_server",
+            ACCEPTED["llamacpp_embed_server"],
+            "LLAMACPP_EMBED_SERVER",
         )
         return self  # type: ignore[return-value]
 

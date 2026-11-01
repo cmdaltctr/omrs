@@ -151,6 +151,7 @@ FAMILIES: dict[str, frozenset[str]] = {
             "restartLlamacppServer",
         }
     ),
+    "runtimes": frozenset({"listRuntimes", "stopRuntime"}),
     "model_downloads": frozenset(
         {
             "searchModels",

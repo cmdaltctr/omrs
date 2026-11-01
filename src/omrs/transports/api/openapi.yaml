@@ -4302,18 +4302,17 @@ paths:
           $ref: "#/components/responses/ServiceUnavailable"
     put:
       operationId: saveLlamacppServer
-      summary: Save the program, the Chat server choice, the context window and the idle sleep
+      summary: Save the program, the Chat server choice and the context window
       description: >
-        Body keys `binary`, `chat_server`, `context_window` and `idle_sleep`, all optional; a key
+        Body keys `binary`, `chat_server` and `context_window`, all optional; a key
         that is absent stays as it is and `null` clears the saved value. No other
         key is accepted; a body with `model` gets 400 with "Set the Chat model in Settings >
-        Chat." The program must be an absolute path to an executable
+        Chat." A body with `idle_sleep` gets 400 with a line that says OMRS stops an idle
+        server after 10 minutes. The program must be an absolute path to an executable
         file named exactly `llama-server`, both as given and after links are
         resolved. `chat_server` is `external` or `managed`. A change to `external` while the
         owned server is starting or running gives 409 with the reason `server-running`, and the
-        server keeps running. The context window is a whole number from 2,048 to 262,144. The idle
-        sleep is a whole number of seconds from 0 to 86,400; 0 sends no
-        `--sleep-idle-seconds` flag. 400 names
+        server keeps running. The context window is a whole number from 2,048 to 262,144. 400 names
         the rule and never the value. Changing the program or the Chat server choice needs
         the `credentials` scope of the browser session; 403 otherwise. 409 for
         a field set by the environment or `.env`, or when `omrs.jsonc` changed since the
@@ -4442,6 +4441,86 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "409":
           $ref: "#/components/responses/LlamacppServerConflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  # ── Local model runtimes (Chat, embeddings and OCR) ─────────────────
+  /runtimes:
+    get:
+      operationId: listRuntimes
+      summary: List the local model runtimes
+      description: >
+        Returns one item per runtime in force: `chat`, `embeddings` and one `ocr-<engine>` for
+        each OCR engine that declares a runtime. Each item holds the `mode` (`external` or
+        `managed`), the `state`, one fixed `reason` with a plain `reason_text`, the memory of
+        the server process, whether another OMRS process uses it (`clients`), the settings that
+        use it (`used_by`), the address and whether OMRS checked the model files. The route
+        starts nothing, stops nothing and writes nothing. It never returns the log file or any
+        text of a server.
+      security:
+        - sessionCookie: [read]
+        - bearerToken: [read]
+      x-omrs-scopes: [read]
+      responses:
+        "200":
+          description: The runtimes.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelRuntimeList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /runtimes/{runtime_id}/stop:
+    post:
+      operationId: stopRuntime
+      summary: Stop a managed model runtime
+      description: >
+        Sends SIGTERM to the process group of the recorded server, waits up to 10 seconds, then
+        sends SIGKILL, and records an operator stop. A request in progress fails. A process that
+        joined the runtime before the stop does not start it again. A bearer token is refused;
+        the call needs a browser session with `manage`. An id that is malformed or not in the
+        list gets 404. An `external` runtime gets 409 with the reason `external-runtime` and no
+        signal is sent. Returns the item after the stop.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      parameters:
+        - name: runtime_id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^(chat|embeddings|ocr-[A-Za-z0-9._-]+)$"
+            maxLength: 128
+          description: A runtime id from `listRuntimes`.
+      responses:
+        "200":
+          description: The runtime after the stop.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModelRuntimeItem"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/ModelRuntimeConflict"
         "500":
           $ref: "#/components/responses/InternalError"
         "503":
@@ -5539,6 +5618,14 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/LlamacppServerRefused"
+    ModelRuntimeConflict:
+      description: >
+        `stopRuntime` refused a valid request. `reason` is `external-runtime`: the runtime is
+        `external`, so OMRS stops nothing. The message is plain English.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ModelRuntimeRefused"
     ModelDownloadConflict:
       description: >
         `startModelDownload` refused a valid request. `reason` is `busy` (a
@@ -10541,8 +10628,7 @@ components:
         value:
           type: [string, integer]
           description: >
-            The program path (empty when not set), the Chat server choice, the context window or
-            the idle sleep.
+            The program path (empty when not set), the Chat server choice or the context window.
         min:
           type: [integer, "null"]
         max:
@@ -10594,6 +10680,8 @@ components:
             - exited
             - timeout
             - not-configured
+            - not-supported
+            - version-busy
             - null
           description: One fixed reason when the state is `failed`; never text from the process.
         exit_code:
@@ -10618,20 +10706,18 @@ components:
         pending_restart:
           type: boolean
           description: >
-            The saved program, window or idle sleep, or the Chat model in force, differ from the
+            The saved program or window, or the Chat model in force, differ from the
             live process.
         saved:
           type: object
           additionalProperties: false
-          required: [binary, chat_server, context_window, idle_sleep]
+          required: [binary, chat_server, context_window]
           properties:
             binary:
               $ref: "#/components/schemas/LlamacppServerField"
             chat_server:
               $ref: "#/components/schemas/LlamacppServerField"
             context_window:
-              $ref: "#/components/schemas/LlamacppServerField"
-            idle_sleep:
               $ref: "#/components/schemas/LlamacppServerField"
         chat_model:
           type: object
@@ -10655,6 +10741,105 @@ components:
           description: >
             True when the choice is `managed` and classification uses the Chat address, so the
             owned server answers classification with the Chat model.
+
+    ModelRuntimeItem:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - role
+        - mode
+        - state
+        - reason
+        - reason_text
+        - memory_bytes
+        - clients
+        - used_by
+        - address
+        - files_checked
+      properties:
+        id:
+          type: string
+          pattern: "^(chat|embeddings|ocr-[A-Za-z0-9._-]+)$"
+          description: "`chat`, `embeddings` or `ocr-` and the engine folder name."
+        role:
+          type: string
+          enum: [chat, embeddings, ocr]
+        mode:
+          type: string
+          enum: [external, managed]
+        state:
+          type: string
+          enum: [running, starting, stopped, failed]
+        reason:
+          type: [string, "null"]
+          enum:
+            - binary-invalid
+            - model-invalid
+            - not-loopback
+            - port-in-use
+            - exited
+            - timeout
+            - not-configured
+            - not-supported
+            - version-busy
+            - bind-failed
+            - wrong-build
+            - file-changed
+            - null
+          description: >
+            One fixed reason when the state is `failed`, else null. Never text from a server.
+        reason_text:
+          type: [string, "null"]
+          description: >
+            A plain-English line for the reason. For `file-changed` it names the changed file.
+            Null when there is no reason.
+        memory_bytes:
+          type: [integer, "null"]
+          minimum: 0
+          description: Resident memory of the recorded server process. Null when not running.
+        clients:
+          type: string
+          enum: [some, none]
+          description: Whether another OMRS process holds the runtime open.
+        used_by:
+          type: array
+          items:
+            type: string
+          description: The settings in force that use the runtime, for example `ocr_engine_primary`.
+        address:
+          type: [string, "null"]
+          description: Host and port of the server. No user name and no path.
+        files_checked:
+          type: boolean
+          description: >
+            False for an external OCR runtime, because OMRS cannot check the model files of a
+            server it did not start.
+
+    ModelRuntimeList:
+      type: object
+      additionalProperties: false
+      required: [runtimes]
+      properties:
+        runtimes:
+          type: array
+          items:
+            $ref: "#/components/schemas/ModelRuntimeItem"
+
+    ModelRuntimeRefused:
+      type: object
+      additionalProperties: false
+      required: [status, message, reason]
+      properties:
+        status:
+          type: string
+          enum: [error]
+        message:
+          type: string
+          description: A plain-English line.
+        reason:
+          type: string
+          enum: [external-runtime]
 
     LlamacppServerRefused:
       type: object
@@ -10702,9 +10887,6 @@ components:
         context_window:
           type: [integer, number, string, "null"]
           description: A whole number from 2,048 to 262,144 (or a string of digits).
-        idle_sleep:
-          type: [integer, number, string, "null"]
-          description: Seconds from 0 to 86,400 (or a string of digits). 0 turns sleep off.
         revision:
           type: [string, "null"]
           maxLength: 128

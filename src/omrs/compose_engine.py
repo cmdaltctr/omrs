@@ -164,6 +164,14 @@ def build_engine(
             base, provider_source(), profiles_ollama=uses_ollama_embeddings(catalogue)
         )
 
+    if environment_based:
+        # The process's own engine installs the llama.cpp runtime gates
+        # (managed-llamacpp-runtimes D1). An engine built from explicit
+        # settings (an experiment context) leaves the process's gates alone.
+        from .compose_runtimes import install_gates
+
+        install_gates(provider_source)
+
     embed_model = build_embed_model(settings)
     store = build_vector_store(settings)
     effective = settings_to_effective(settings)

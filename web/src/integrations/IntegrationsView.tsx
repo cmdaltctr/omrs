@@ -7,6 +7,7 @@ import { PageHeader } from "../components/PageHeader";
 import { useRoute } from "../lib/RouteProvider";
 import { ExtrasSection } from "./ExtrasSection";
 import { integrationCardId } from "./IntegrationCard";
+import { ModelRuntimesSection } from "./ModelRuntimesSection";
 import { RuntimeSection } from "./RuntimeSection";
 import { SectionChips } from "./SectionChips";
 import { isRuntimeSection, sectionFor, sectionsFor } from "./sections";
@@ -67,6 +68,8 @@ export function IntegrationsView({ entry = null }: { entry?: string | null }) {
         <ExtrasSection list={list} control={control} />
       ) : section === "tools" ? (
         <ToolsSection list={list} control={control} />
+      ) : section === "model-runtimes" ? (
+        <ModelRuntimesSection />
       ) : isRuntimeSection(section) && list.runtime !== undefined ? (
         <RuntimeSection section={section} runtime={list.runtime} />
       ) : null}

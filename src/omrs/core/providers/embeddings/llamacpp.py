@@ -15,6 +15,8 @@ from __future__ import annotations
 from functools import cache
 from typing import TYPE_CHECKING, Any
 
+from ...runtime_gate import http_clients
+
 if TYPE_CHECKING:
     from ....config import Settings
 
@@ -98,4 +100,6 @@ def build(settings: Settings, *, model: str | None = None) -> Any:
         api_base=settings.llamacpp_embed_url,
         api_key="no-key",
         embed_batch_size=settings.ingestion.embed_batch_size,
+        # OMRS's own embedding server, when managed: each request joins it first.
+        **http_clients("embeddings"),
     )

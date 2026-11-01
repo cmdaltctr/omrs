@@ -112,6 +112,11 @@ def main() -> None:
     """Start the MCP server on stdio transport."""
     import sys
 
+    from ...integrations.llamacpp_runtime.manager import install_sigterm_exit
+
+    # SIGTERM exits normally, so the runtime manager's atexit hook leaves.
+    install_sigterm_exit()
+
     logging.basicConfig(
         level=logging.WARNING,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",

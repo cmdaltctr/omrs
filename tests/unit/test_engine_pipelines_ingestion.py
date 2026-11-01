@@ -76,7 +76,7 @@ class FakePool:
 
     built: list[FakePool] = []
 
-    def __init__(self, *, probe: Any) -> None:
+    def __init__(self, *, probe: Any, runtime_manager: Any = None) -> None:
         self.closed = 0
         self.routed: list[Any] = []
         FakePool.built.append(self)

@@ -8,7 +8,9 @@ engine shares the host client. A worker starts only on its first dispatch.
 One pool-wide lock is held around each parse dispatch. Two engines then
 never parse at the same time, so they never hold peak memory together. An
 idle engine stays loaded: a worker has no idle exit and stops only when
-the pool closes or the worker fails.
+the pool closes or the worker fails. The exception is an engine that declares
+a llama.cpp runtime: its route closes the worker just before its lease leaves
+the runtime after 10 idle minutes, and the next parse starts both again.
 
 The Engine owns the pool and closes it in ``Engine.close()``. ``core/``
 sees only the ``ocr`` resource: it calls :meth:`OcrClientPool.routes` with
@@ -19,11 +21,15 @@ from __future__ import annotations
 
 import threading
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .fingerprint import OcrWorkerFingerprint
 from .managed import ManagedOcrClient
 from .routes import OcrRoutes, RouteCommand, resolve_route_command
+from .runtime import runtime_lease
+
+if TYPE_CHECKING:
+    from ..llamacpp_runtime.manager import RuntimeManager
 
 
 class OcrClientPool:
@@ -32,14 +38,22 @@ class OcrClientPool:
     Construction starts nothing and probes nothing.
     """
 
-    def __init__(self, *, probe: Callable[[list[str]], OcrWorkerFingerprint]) -> None:
-        """Hold the capability probe; build no client.
+    def __init__(
+        self,
+        *,
+        probe: Callable[[list[str]], OcrWorkerFingerprint],
+        runtime_manager: RuntimeManager | None = None,
+    ) -> None:
+        """Hold the capability probe and the runtime manager; build no client.
 
         Args:
             probe: The composition boundary's capability probe. It runs once
                 per route command, when the pool builds that command's client.
+            runtime_manager: The process's runtime manager. A route whose
+                engine declares a llama.cpp runtime is unavailable without one.
         """
         self._probe = probe
+        self._runtime_manager = runtime_manager
         self._clients: dict[RouteCommand, ManagedOcrClient] = {}
         self._lock = threading.Lock()
         self._dispatch_lock = threading.Lock()
@@ -63,10 +77,12 @@ class OcrClientPool:
             return OcrRoutes()
         primary_name = str(getattr(settings, "ocr_engine_primary", "") or "")
         fallback_name = str(getattr(settings, "ocr_engine_fallback", "") or "")
-        primary = self._client(resolve_route_command(primary_name, settings), settings)
+        primary = self._client(
+            resolve_route_command(primary_name, settings, self._runtime_manager), settings
+        )
         fallback = None
         if fallback_name.strip():
-            route = resolve_route_command(fallback_name, settings)
+            route = resolve_route_command(fallback_name, settings, self._runtime_manager)
             fallback = self._client(route, settings)
         return OcrRoutes(primary=primary, fallback=fallback)
 
@@ -93,6 +109,7 @@ class OcrClientPool:
                     request_timeout=settings.ocr_worker_request_timeout,
                     cwd=route.cwd,
                     dispatch_lock=self._dispatch_lock,
+                    lease=runtime_lease(route, self._runtime_manager),
                 )
                 self._clients[route] = client
             return client

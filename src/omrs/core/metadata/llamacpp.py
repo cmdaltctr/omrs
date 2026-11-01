@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ..runtime_gate import NO_RETRY_HEADER, AsyncGatedTransport, gate_for
 from ..settings import classification_url, resolve_effective_settings
 from ._common import (
     _get_classify_max_attempts,
@@ -87,10 +88,13 @@ async def _extract_llamacpp_chat_async(
     max_attempts = _get_classify_max_attempts(resolved)
     timeout_s = _resolve_classify_timeout(resolved, "llamacpp")
     last_error: Exception | None = None
+    # OMRS's own Chat server, when managed and classification has no address of its own.
+    gate = gate_for("classification")
 
     for attempt in range(max_attempts):
         try:
-            async with httpx.AsyncClient(timeout=timeout_s) as client:
+            transport = AsyncGatedTransport(gate) if gate is not None else None
+            async with httpx.AsyncClient(timeout=timeout_s, transport=transport) as client:
                 resp = await client.post(
                     url,
                     json=data,
@@ -125,6 +129,8 @@ async def _extract_llamacpp_chat_async(
                 type(exc).__name__,
                 exc,
             )
+            if _no_retry(exc):
+                break  # the runtime refused: another try would start it again
 
             if attempt + 1 < max_attempts:
                 backoff = 2**attempt
@@ -139,3 +145,9 @@ async def _extract_llamacpp_chat_async(
     )
     _signal_degraded()
     return fallback
+
+
+def _no_retry(exc: Exception) -> bool:
+    """Return whether *exc* is a runtime refusal that says not to retry."""
+    response = getattr(exc, "response", None)
+    return response is not None and response.headers.get(NO_RETRY_HEADER) == "false"

@@ -402,10 +402,10 @@ Two Chat providers serve answering only. They are not valid for `EMBED_PROVIDER`
 | `EMBED_MODEL` | — | Model name for embeddings |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama endpoint |
 | `OLLAMA_CONTEXT_WINDOW` | `16384` | Ollama context window in tokens, 2,048 to 262,144. See [Context windows](#context-windows) |
-| `LLAMACPP_CONTEXT_WINDOW` | `16384` | Context window (`-c`) for the llama.cpp chat server that `omrs web` starts, 2,048 to 262,144 |
-| `LLAMACPP_IDLE_SLEEP_SECONDS` | `300` | Idle seconds before that server frees its model (`--sleep-idle-seconds`), 0 to 86,400. 0 turns sleep off |
-| `LLAMACPP_SERVER_BINARY` | unset | Absolute path to `llama-server`, for the server that `omrs web` starts. See [Local llama.cpp server](#local-llamacpp-server) |
-| `LLAMACPP_CHAT_SERVER` | `external` | Who runs the llama.cpp Chat server: `external` (the Llama app or another server you run) or `managed` (the `llama-server` that `omrs web` starts) |
+| `LLAMACPP_CONTEXT_WINDOW` | `16384` | Context window (`-c`) for the llama.cpp chat server that OMRS starts, 2,048 to 262,144 |
+| `LLAMACPP_SERVER_BINARY` | unset | Absolute path to `llama-server`, for the servers that OMRS starts (Chat and managed embeddings). See [Local llama.cpp server](#local-llamacpp-server) |
+| `LLAMACPP_CHAT_SERVER` | `external` | Who runs the llama.cpp Chat server: `external` (the Llama app or another server you run) or `managed` (the `llama-server` that OMRS starts) |
+| `LLAMACPP_EMBED_SERVER` | `external` | Who runs the llama.cpp embedding server: `external` (the Llama app or another server you run) or `managed` (the `llama-server` that OMRS starts, with `--embedding`). Set in the environment, `.env` or `omrs.jsonc`. The Settings page does not write it. See [Local llama.cpp server](#local-llamacpp-server) |
 | `LLAMACPP_CLASSIFY_URL` | `""` (unset) | Address for llama.cpp classification. Unset or blank: classification uses `LLAMACPP_CHAT_URL`. See [llama.cpp Chat and classification](#llamacpp-chat-and-classification) |
 
 An unrecognised value for any of the four provider selections above
@@ -460,7 +460,7 @@ Rules:
 
 #### Change provider values in the web workspace
 
-In `omrs web`, Settings > Providers saves these values in `omrs.jsonc`: `OLLAMA_BASE_URL`, `OLLAMA_CONTEXT_WINDOW`, `LLAMACPP_CHAT_URL`, `LLAMACPP_CLASSIFY_URL`, `LLAMACPP_CHAT_SERVER`, `LLAMACPP_SERVER_BINARY`, `LLAMACPP_CONTEXT_WINDOW`, `LLAMACPP_IDLE_SLEEP_SECONDS`, `OPENROUTER_API_KEY`, `OPENAI_COMPATIBLE_BASE_URL`, `OPENAI_COMPATIBLE_API_KEY` and `ANTHROPIC_API_KEY`. The server uses the first source it finds, highest first:
+In `omrs web`, Settings > Providers saves these values in `omrs.jsonc`: `OLLAMA_BASE_URL`, `OLLAMA_CONTEXT_WINDOW`, `LLAMACPP_CHAT_URL`, `LLAMACPP_CLASSIFY_URL`, `LLAMACPP_CHAT_SERVER`, `LLAMACPP_SERVER_BINARY`, `LLAMACPP_CONTEXT_WINDOW`, `OPENROUTER_API_KEY`, `OPENAI_COMPATIBLE_BASE_URL`, `OPENAI_COMPATIBLE_API_KEY` and `ANTHROPIC_API_KEY`. The server uses the first source it finds, highest first:
 
 | Rank | Source | Shown as | Locks the field |
 |---|---|---|---|
@@ -610,37 +610,82 @@ Ollama chat calls need an explicit context window. Without one, LlamaIndex read 
 - The first source wins, highest first: environment and `.env` (both lock), `omrs.jsonc`, the default. A page save writes `omrs.jsonc`.
 - The Chat answer model and metadata extraction use it. A saved or hand-edited value applies to the next call. Ollama reloads the model at the new size.
 - Embedding models are not covered. A different window can change how text is cut, and so the vectors.
-- `LLAMACPP_CONTEXT_WINDOW` has the same range and default. It applies only to the llama.cpp server that `omrs web` starts.
+- `LLAMACPP_CONTEXT_WINDOW` has the same range and default. It applies only to the llama.cpp Chat server that OMRS starts.
 
 ### Local llama.cpp server
 
-`omrs web` can start, stop and restart its own `llama-server` for Chat when `llamacpp_chat_server` is `managed`. Use the llama.cpp card in Settings > Providers, or set the values in the environment or in `omrs.jsonc`. With `external` (the default), OMRS starts nothing: Start and Restart return 409 with the reason `external-server`.
+OMRS can start, stop and adopt its own `llama-server` for each local model role. One runtime manager does this for every OMRS process: `omrs web`, the CLI, the stdio MCP server and the watcher. Each role has two modes.
+
+- `external`: OMRS starts nothing. You run the server and give its address. This is the default for Chat and for embeddings.
+- `managed`: OMRS starts the server, or adopts one that is already running, with a fixed argument list.
+
+| Role | Mode setting | Default | Address |
+|---|---|---|---|
+| Chat | `llamacpp_chat_server` | `external` | `llamacpp_chat_url` |
+| Embeddings | `llamacpp_embed_server` | `external` | `llamacpp_embed_url` |
+| OCR | `ocr_runtime_url` | blank, which means managed | A free loopback port that OMRS picks |
+
+With `external`, Start and Restart for Chat return 409 with the reason `external-server`. Use the llama.cpp card in Settings > Providers for Chat, or set the values in the environment or in `omrs.jsonc`. The Settings page does not write `llamacpp_embed_server`. Set it in the environment, `.env` or `omrs.jsonc`.
 
 | Setting | Env | `omrs.jsonc` key |
 |---|---|---|
 | Who runs the Chat server | `LLAMACPP_CHAT_SERVER` | `llamacpp_chat_server` |
+| Who runs the embedding server | `LLAMACPP_EMBED_SERVER` | `llamacpp_embed_server` |
 | Program path | `LLAMACPP_SERVER_BINARY` | `llamacpp_server_binary` |
 | Context window | `LLAMACPP_CONTEXT_WINDOW` | `llamacpp_context_window` |
-| Idle sleep | `LLAMACPP_IDLE_SLEEP_SECONDS` | `llamacpp_idle_sleep_seconds` |
-| Port | `LLAMACPP_CHAT_URL` | `llamacpp_chat_url` |
+| Chat port | `LLAMACPP_CHAT_URL` | `llamacpp_chat_url` |
+| Embedding port | `LLAMACPP_EMBED_URL` | `llamacpp_embed_url` |
+| External OCR server | `OCR_RUNTIME_URL` | `ocr_runtime_url` |
 
 The sources and locks are the same as for other provider values.
 
-The server has no model setting of its own. It loads the Chat model in force: `answer.model` while `answer.provider` is `llamacpp`. Set it in Settings > Chat, or with `ANSWER__PROVIDER` and `ANSWER__MODEL`. A Chat save while the server runs does not restart it. The card then says "Restart to apply".
+The Chat server has no model setting of its own. It loads the Chat model in force: `answer.model` while `answer.provider` is `llamacpp`. Set it in Settings > Chat, or with `ANSWER__PROVIDER` and `ANSWER__MODEL`. A Chat save while the server runs does not restart it. The card then says "Restart to apply". The embedding server loads `llamacpp_embed_model`. Chat and embeddings use the same program path.
 
 Guardrails:
 
-1. The program is an absolute path to an executable file named exactly `llama-server`. The server checks it at save and before every launch.
-2. While the choice is `managed`, the Chat model is an existing `.gguf` file or a Hugging Face id `org/name[:tag]`. It never starts with `-`. The server checks it at a Chat save and before every launch. A name such as `qwen3:4b` fails.
-3. The port comes from `llamacpp_chat_url`. The URL must be `http` on a loopback host. The server binds to `127.0.0.1`.
-4. The arguments are fixed: `-m` or `-hf`, `--host 127.0.0.1`, `--port` and `-c`. No shell runs. You cannot add other arguments.
+1. The program is an absolute path to an executable file named exactly `llama-server`. OMRS checks it at save and before every launch.
+2. The model is an existing `.gguf` file or a Hugging Face id `org/name[:tag]`. OMRS checks it at a Chat save and before every launch. A name such as `qwen3:4b` fails.
+3. The port comes from `llamacpp_chat_url` or `llamacpp_embed_url`. The URL must be `http` on a loopback host. The server binds to `127.0.0.1`.
+4. The arguments are fixed. Chat uses `-m` or `-hf`, `--host 127.0.0.1`, `--port` and `-c`. Embeddings use `-m` or `-hf`, `--host 127.0.0.1`, `--port` and `--embedding`. No shell runs. You cannot add other arguments.
 5. The process gets a minimal environment with no API key.
-6. omrs starts and stops only this server. It never touches a server you started yourself. It never finds or stops a process by name or port.
-7. The output of the server goes to `llamacpp-server.log` in the workspace folder. The page and the routes never show it.
+6. OMRS starts and stops only the servers it records. It never touches a server you started yourself. It never finds or stops a process by name or port.
+7. The output of each server goes to `server.log` in its runtime folder (see [Runtime state folder](#runtime-state-folder)). OMRS empties the file at each start and again when it passes 5 MiB. The page and the routes never show it.
 
-States are `stopped`, `starting`, `running` and `failed`. A failed start gives one reason: `binary-invalid`, `model-invalid`, `not-loopback`, `port-in-use`, `exited`, `timeout` or `not-configured`. `not-configured` means that no program path is set, or that the Chat provider is not `llamacpp`, or that the Chat model is empty. The start waits up to 180 seconds for `GET /health`. Stop sends SIGTERM, waits 10 seconds, then sends SIGKILL. The server stops when `omrs web` exits. A save does not restart a running server. The card then says "Restart to apply".
+States are `stopped`, `starting`, `running` and `failed`. A failed start gives one reason: `binary-invalid`, `model-invalid`, `not-loopback`, `port-in-use`, `exited`, `timeout`, `not-configured`, `not-supported` or `version-busy`. `not-configured` means that no program path is set, or that the Chat provider is not `llamacpp`, or that the Chat model is empty. `not-supported` means that managed mode does not run on this platform (Windows). `version-busy` means that another OMRS process uses a server with a different program or arguments, so OMRS does not replace it. The start waits up to 180 seconds for `GET /health`.
 
-A change of the choice to `external` while the owned server is `starting` or `running` returns 409 with the reason `server-running`. Stop the server first. The choice survives a launch of `omrs web`. The server state stays `stopped` until you press Start.
+A change of the Chat choice to `external` while the managed server is `starting` or `running` returns 409 with the reason `server-running`. Stop the server first. The choice survives a launch of `omrs web`. The server state stays `stopped` until an OMRS process sends a request to it or you press Start.
+
+#### Runtime state folder
+
+Every runtime keeps its state in `<state folder>/runtimes/<runtime id>/`. The runtime id is `chat`, `embeddings` or `ocr-<engine folder>`. The state folder is the first of these that exists:
+
+1. `$OMRS_STATE_DIR`.
+2. `$XDG_STATE_HOME/omrs`.
+3. `~/.local/state/omrs`.
+
+The folder holds lock files, a record of the running server (`server.json`) and `server.log`. It holds no settings and no secrets. Every OMRS process writes to it. The CLI and the watcher cannot see the `--workspace` flag of `omrs web`, so only the environment sets this folder.
+
+Put the state folder on a local disk. The locks use `flock`, which is not reliable on NFS or SMB. OMRS does not try to detect a network file system. Tests set `OMRS_STATE_DIR` to a temporary folder, so they never read your real folder.
+
+#### Sharing, idle stop and exit
+
+- Several OMRS processes share one server. A process that needs a runtime joins it. The first process starts the server. Later processes adopt it.
+- The last process to leave stops the server. A server stays up while any other OMRS process uses it. So `omrs web` can exit while a CLI ingest still uses the Chat server, and the server keeps running.
+- A runtime with no request for 10 minutes stops. This idle stop is a fixed value. No setting changes it. The next request starts the server again.
+- A server counts as stale only when its process is gone or runs another command. A slow `/health` answer never makes it stale.
+- If a process dies without a clean exit (SIGKILL), the server can stay up with no client. The next OMRS process adopts it. `omrs web` also stops such a server at start-up. The Integrations page shows it as "Running, no OMRS process uses it", with a Stop button.
+- Stop on the Chat card, or on a row of the Model runtimes section, stops a managed server. It sends SIGTERM, waits 10 seconds, then sends SIGKILL. An external server has no Stop.
+- On Windows, managed mode fails with `not-supported`. External mode works.
+
+#### Retired: idle sleep
+
+`LLAMACPP_IDLE_SLEEP_SECONDS` and `llamacpp_idle_sleep_seconds` no longer exist. OMRS does not pass `--sleep-idle-seconds` to `llama-server`, because that flag has an open race (llama.cpp issue #29689). If the environment or `.env` sets `LLAMACPP_IDLE_SLEEP_SECONDS`, start-up fails with a message that names it and the fixed 10-minute idle stop. Remove the variable. A `llamacpp_idle_sleep_seconds` key in `omrs.jsonc` is ignored and listed in the problem list. `PUT /v1/llamacpp/server` with `idle_sleep` returns 400.
+
+#### OCR runtimes
+
+An OCR engine can declare the `llama-server` it needs in its `pyproject.toml` (see [OCR engines](../../ocr-workers/README.md#runtime-block)). OMRS then starts or adopts that server, checks the build and the SHA-256 of each declared model file, and gives the address to the worker. This is the default. `ocr_runtime_url` is blank.
+
+To use a server that you run yourself, set `OCR_RUNTIME_URL` (or `ocr_runtime_url`) to its address. OMRS then starts nothing and passes the address to every engine that declares a runtime. The build check still runs. OMRS cannot check model files on an external server. The Integrations page says so: "External server. Model files are not checked." One external address serves one llama.cpp engine at a time, so use it with one engine only.
 
 Example `omrs.jsonc`:
 
@@ -650,18 +695,13 @@ Example `omrs.jsonc`:
   "llamacpp_chat_server": "managed",
   "llamacpp_server_binary": "/opt/homebrew/bin/llama-server",
   "llamacpp_context_window": 16384,
-  "llamacpp_idle_sleep_seconds": 300,
   "answer": { "provider": "llamacpp", "model": "Qwen/Qwen3-0.6B-GGUF:Q8_0" },
 }
 ```
 
-Idle sleep. With the default of 300, the server frees the model after five idle minutes and reloads it on the next request, so that answer is slower. The process keeps running. Set 0 to keep the model loaded, or to run a `llama-server` build that has no sleep mode.
-
-Limits. The program path is editable in the GUI by choice. The guardrails limit what can run to a file named `llama-server`. Anyone with the browser session and the `credentials` scope can still point the setting at any file with that name. The Chat server choice needs the `credentials` scope. While the choice is `managed`, a llama.cpp Chat save on any route needs the `credentials` scope too. The llama.cpp embedding server is not managed. OMRS runs no server for classification. The stdio MCP server and the CLI never start or stop the server.
+Limits. The program path is editable in the GUI by choice. The guardrails limit what can run to a file named `llama-server`. Anyone with the browser session and the `credentials` scope can still point the setting at any file with that name. The Chat server choice needs the `credentials` scope. While the choice is `managed`, a llama.cpp Chat save on any route needs the `credentials` scope too. OMRS runs no server for classification. The CLI, the stdio MCP server and the watcher start and adopt managed servers as clients. They have no Stop.
 
 Shared address. When the choice is `managed` and classification follows the Chat address, classification goes to the owned server. That server loads only the Chat model and ignores the model name in a request, so classification uses the Chat model and the Text model is not used. The card warns about it. Set `llamacpp_classify_url` to another server, for example the Llama app, to keep the two models apart.
-
-Tests set `OMRS_CONFIG_DIR` to a temporary folder, so they never read your real folder.
 
 ### Get a model (search and download)
 
@@ -919,13 +959,14 @@ Engine routes and operation:
 | `OCR_ENGINE_FALLBACK` | `paddleocr-vl` | Engine selected when the primary is unavailable before dispatch. Empty disables this route |
 | `OCR_WORKER_REQUEST_TIMEOUT` | `300.0` | Minimum timeout in seconds for one parse response |
 | `OCR_WORKER_SECONDS_PER_PAGE` | `120.0` | Per-page timeout allowance in seconds |
+| `OCR_RUNTIME_URL` | empty | Address of a `llama-server` you run for OCR engines that declare a runtime. Empty means OMRS starts the server (managed). Set means external: OMRS starts nothing and does not check model files. See [OCR runtimes](#ocr-runtimes) |
 | `OCR_MATHS_ROUTING_ENABLED` | `true` | Detect maths fonts on the pdf-inspector path and route affected pages |
 | `OCR_MATHS_PAGE_FRACTION` | `0.10` | Maths-page fraction that routes a whole document. Range 0.0–1.0; `0.0` disables this condition |
 
 These settings are flat, top-level fields beside `PDF_READER`, resolved
 once at the composition root and injected. The timeout is
 `max(OCR_WORKER_REQUEST_TIMEOUT, requested_pages * OCR_WORKER_SECONDS_PER_PAGE)`.
-A 14-page request gets 1,680 seconds with the defaults.
+A 14-page request gets 1,680 seconds with the defaults. On a managed runtime with one slot, the timeout starts when the request holds the runtime's request lock. Time spent waiting for another OMRS process does not count.
 
 An unknown or unprovisioned engine is unavailable. If both routes are
 unavailable, the PDF keeps its available text. A worker failure after
@@ -1172,6 +1213,23 @@ An install that used OMRS's own server:
 Then press Start in the Local server panel. Steps 1 and 3 need a browser session with the `credentials` scope.
 
 Rollback is a revert of the merge commit. The older build ignores `llamacpp_classify_url` and `llamacpp_chat_server` and lists them as unknown keys. It reads `llamacpp_server_model` again if you kept it.
+
+### Managed llama.cpp runtimes (ADR-109)
+
+One runtime manager now starts and stops every local `llama-server` for all OMRS processes. See [Local llama.cpp server](#local-llamacpp-server).
+
+| Before upgrade | After upgrade | What to do |
+|---|---|---|
+| `LLAMACPP_IDLE_SLEEP_SECONDS` in the environment or `.env` | Start-up fails. The message names the variable and the fixed 10-minute idle stop. | Remove the variable. |
+| `llamacpp_idle_sleep_seconds` in `omrs.jsonc` | Ignored and listed in the problem list. | Remove the key. |
+| `PUT /v1/llamacpp/server` with `idle_sleep` | Returns 400. | Remove the field from the request. |
+| The managed Chat server stopped when `omrs web` exited | It stops when the last OMRS process leaves. A CLI process that still uses it keeps it running. | Nothing. Press Stop on the card to stop it at once. |
+| The managed Chat server freed its model after 300 idle seconds and kept running | The server stops after 10 idle minutes and starts again on the next request. | Nothing. |
+| `llamacpp-server.log` in the workspace folder | `server.log` in the runtime folder, under the state folder. | Nothing. |
+| Embeddings on a server you run | No change. `LLAMACPP_EMBED_SERVER` defaults to `external`. | Nothing. |
+| An OCR engine started its own `llama-server` | The engine declares a runtime and OMRS starts it. `OCR_RUNTIME_URL` stays blank. | Nothing. |
+
+Rollback: revert the merge commit. The state folder holds no settings, so you can delete it.
 
 ---
 

@@ -281,6 +281,10 @@ def run_cli() -> None:
     """Entry point for CLI mode — delegates to the Typer app."""
     global _runtime_details_enabled
 
+    from ...integrations.llamacpp_runtime.manager import install_sigterm_exit
+
+    # SIGTERM exits normally, so the runtime manager's atexit hook leaves.
+    install_sigterm_exit()
     if not {"--help", "-h", "--version"}.intersection(sys.argv[1:]):
         _setup_logging()
     try:

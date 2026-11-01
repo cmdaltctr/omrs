@@ -1,7 +1,7 @@
 """Settings view of the llama.cpp server that ``omrs web`` manages (design D12, ADR-108).
 
 A pure function over resolved ``Settings`` and the saved values. It gives the
-program, the Chat server choice, the context window and the idle sleep with
+program, the Chat server choice and the context window with
 their source and lock, laid out like a provider card field, plus the chat
 address the server listens on, the Chat model in force (which the server loads)
 and whether classification shares the owned server.
@@ -17,22 +17,22 @@ from typing import Any
 from .compose_connections import _plain_field
 from .compose_providers import ProviderValues, apply_provider_values, locked_fields
 from .config import Settings
-from .core.providers.llm.llamacpp_rules import LLAMACPP_SERVER_FIELDS, model_kind
+from .core.providers.llm.llamacpp_rules import LLAMACPP_SERVER_FIELDS
 from .core.settings import classification_url
+from .integrations.llamacpp_runtime.rules import model_kind
 
-#: Key of each field in the view (``binary``, ``chat_server``, ``context_window``, ``idle_sleep``).
+#: Key of each field in the view (``binary``, ``chat_server``, ``context_window``).
 VIEW_KEYS = {
     "server_binary": "binary",
     "chat_server": "chat_server",
     "context_window": "context_window",
-    "idle_sleep": "idle_sleep",
 }
 
 
 def build_llamacpp_server_view(
     settings: Settings, values: ProviderValues | None = None
 ) -> dict[str, Any]:
-    """Return the four server settings, each with value, source and lock, and the Chat model.
+    """Return the three server settings, each with value, source and lock, and the Chat model.
 
     Args:
         settings: Settings as the environment and ``.env`` resolved them.
@@ -40,7 +40,7 @@ def build_llamacpp_server_view(
 
     Returns:
         ``{"chat_url": str, "binary": field, "chat_server": field, "context_window":
-        field, "idle_sleep": field, "chat_model": {"provider", "model", "usable"},
+        field, "chat_model": {"provider", "model", "usable"},
         "launch_model": str, "shared_with_classification": bool}``. A field holds
         ``id``, ``label``, ``kind``, ``value``, ``min``, ``max``, ``source`` (``env``,
         ``dotenv``, ``config-file`` or ``default``), ``locked`` and ``lock_reason``.

@@ -251,7 +251,7 @@ describe("Integrations sections", () => {
     const names = within(await sections())
       .getAllByRole("button")
       .map((button) => button.textContent);
-    expect(names.map((name) => name?.replace(/\d+$/, ""))).toEqual(["Extras", "Tools", "OCR engines", "Model files", "Local servers"]);
+    expect(names.map((name) => name?.replace(/\d+$/, ""))).toEqual(["Extras", "Tools", "OCR engines", "Model files", "Local servers", "Model runtimes"]);
     expect(await chip(/^Extras/)).toHaveAttribute("aria-pressed", "true");
     expect(await screen.findByRole("list", { name: "Integrations" })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "OCR engines" })).not.toBeInTheDocument();

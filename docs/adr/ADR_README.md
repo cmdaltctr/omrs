@@ -117,6 +117,7 @@ development of OMRG — Opinionated Modular RAG.
 | [106](./106-app-searches-and-downloads-local-models.md) | The App Searches and Downloads Local Models | 2026-10-29 | Accepted (2026-10-29; built and merged to v3 at PR #148) |
 | [107](./107-ci-keeps-one-job-per-distinct-check.md) | CI Keeps One Job per Distinct Check | 2026-10-29 | Accepted (2026-10-29; built and merged to v3 at PR #146) |
 | [108](./108-local-chat-and-classification-stay-apart.md) | Local Chat and Classification Stay Apart | 2026-10-29 | Accepted (ADR-108 amends ADR-084 decision 4 and ADR-106 decision 4) |
+| [109](./109-omrs-owns-local-model-runtimes-components-are-clients.md) | OMRS Owns Local Model Runtimes; Components Are Clients | 2026-11-01 | Proposed (ADR-109 amends ADR-084 and ADR-108 decision 4) |
 
 ## Convention
 

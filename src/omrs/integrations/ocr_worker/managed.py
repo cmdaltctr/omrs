@@ -20,9 +20,11 @@ import threading
 from collections.abc import Sequence
 from typing import Any
 
+from ..llamacpp_runtime.lease import RuntimeLease, RuntimeRequestFailed, RuntimeUnavailable
 from .client import OcrWorkerClient, OcrWorkerError
 from .fingerprint import OcrWorkerFingerprint
 from .protocol import ParseSuccess
+from .runtime import RUNTIME_URL_ENV
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +41,12 @@ _FATAL_OCR_WORKER_CODES = frozenset(
         "spawn_failed",
     }
 )
+
+
+#: The request never reached a worker: the runtime or the fingerprint is unavailable.
+UNAVAILABLE_CODE = "worker_unavailable"
+#: An operator stopped the runtime while the request ran (design D8).
+RUNTIME_STOPPED_CODE = "runtime_stopped"
 
 
 class ManagedOcrClient:
@@ -61,6 +69,7 @@ class ManagedOcrClient:
         env: dict[str, str] | None = None,
         on_stderr_line: Any = None,
         dispatch_lock: Any = None,
+        lease: RuntimeLease | None = None,
     ) -> None:
         """Hold the resolved fingerprint and worker command; start nothing.
 
@@ -78,6 +87,10 @@ class ManagedOcrClient:
             dispatch_lock: Optional lock held around each dispatch. The
                 OCR client pool shares one lock between its clients, so at
                 most one worker parses at a time (design D5).
+            lease: The lease of the llama.cpp runtime the engine declares.
+                Before a parse the client joins the runtime, takes its request
+                lock and starts the worker with ``OMRS_OCR_RUNTIME_URL``.
+                ``None`` for an engine that declares no runtime.
         """
         self.fingerprint = fingerprint
         self._command = list(command)
@@ -90,6 +103,10 @@ class ManagedOcrClient:
         self._closed = False
         self._process_generations = 0
         self._dispatch_lock = dispatch_lock or contextlib.nullcontext()
+        self._lease = lease
+        self._worker_url: str | None = None
+        if lease is not None:
+            lease.on_idle_leave(self._close_worker)
 
     # ── Observability ───────────────────────────────────────────────
 
@@ -97,6 +114,11 @@ class ManagedOcrClient:
     def is_available(self) -> bool:
         """Whether the resolved fingerprint reports a compatible worker."""
         return self.fingerprint.available
+
+    @property
+    def lease(self) -> RuntimeLease | None:
+        """The lease of the runtime the engine declares, or ``None``."""
+        return self._lease
 
     @property
     def is_started(self) -> bool:
@@ -151,17 +173,13 @@ class ManagedOcrClient:
             raise RuntimeError("ManagedOcrClient is closed; construct a new client.")
         if not self.fingerprint.available:
             raise OcrWorkerError(
-                "worker_unavailable",
+                UNAVAILABLE_CODE,
                 "the OCR worker fingerprint is unavailable; dispatch refused",
             )
         with self._dispatch_lock:
-            client = self._ensure_client()
-            try:
-                return client.parse(pdf_path, pages=pages, timeout=timeout)
-            except OcrWorkerError as exc:
-                if exc.code in _FATAL_OCR_WORKER_CODES:
-                    self._drop_client(client)
-                raise
+            if self._lease is not None:
+                return self._parse_in_runtime(self._lease, pdf_path, pages, timeout)
+            return self._send(self._ensure_client(), pdf_path, pages, timeout)
 
     # ── Owner lifecycle ─────────────────────────────────────────────
 
@@ -180,6 +198,8 @@ class ManagedOcrClient:
         if client is not None:
             client.close()
             logger.debug("closed managed OCR worker client")
+        if self._lease is not None:  # the worker first, then the runtime (design D9)
+            self._lease.leave()
 
     def __enter__(self) -> ManagedOcrClient:
         """Return self for ``with``-scoped ownership."""
@@ -191,21 +211,111 @@ class ManagedOcrClient:
 
     # ── Internals ───────────────────────────────────────────────────
 
-    def _ensure_client(self) -> OcrWorkerClient:
-        """Return the shared underlying client, constructing it lazily."""
+    def _send(
+        self,
+        client: OcrWorkerClient,
+        pdf_path: str,
+        pages: Sequence[int] | None,
+        timeout: float | None,
+    ) -> ParseSuccess:
+        """Send one request; a fatal failure discards the worker."""
+        try:
+            return client.parse(pdf_path, pages=pages, timeout=timeout)
+        except OcrWorkerError as exc:
+            if exc.code in _FATAL_OCR_WORKER_CODES:
+                self._drop_client(client)
+            raise
+
+    def _parse_in_runtime(
+        self,
+        lease: RuntimeLease,
+        pdf_path: str,
+        pages: Sequence[int] | None,
+        timeout: float | None,
+    ) -> ParseSuccess:
+        """Parse while holding the runtime (design D10).
+
+        ``session`` joins the runtime and takes its request lock, so the
+        request timeout starts when the lock is held. A runtime that cannot
+        serve is refused before dispatch (``worker_unavailable``). After a
+        failure the lease checks for a crash or an operator stop.
+        """
+        try:
+            with lease.session() as base_url:
+                client = self._ensure_client(base_url)
+                try:
+                    return self._send(client, pdf_path, pages, timeout)
+                except OcrWorkerError as failure:
+                    outcome = failure
+        except RuntimeUnavailable as unavailable:
+            raise OcrWorkerError(UNAVAILABLE_CODE, unavailable.reason_text) from unavailable
+        self._check_runtime_after(lease, outcome)
+        raise outcome
+
+    def _check_runtime_after(self, lease: RuntimeLease, failure: OcrWorkerError) -> None:
+        """After a failure, restart a crashed server or report an operator stop.
+
+        A crashed server restarts once, for the next request. The failed
+        request is not sent again. An operator stop raises ``runtime_stopped``
+        so the dispatcher can send the request to the fallback route once.
+        """
+        try:
+            lease.restart_if_crashed()
+        except RuntimeRequestFailed as stopped:
+            self._discard_worker()  # the dispatch lock is held here
+            raise OcrWorkerError(
+                RUNTIME_STOPPED_CODE, "an operator stopped the runtime during the request"
+            ) from stopped
+        except RuntimeUnavailable:
+            logger.warning("OCR runtime did not restart after: %s", failure)
+
+    def _close_worker(self) -> None:
+        """Close the worker, not the client, before an idle leave.
+
+        It waits for a parse in progress, because a parse holds the dispatch lock.
+        """
+        with self._dispatch_lock:
+            self._discard_worker()
+
+    def _discard_worker(self) -> None:
+        """Close the worker, not the client. The caller holds the dispatch lock."""
+        with self._lock:
+            client, self._client = self._client, None
+        if client is not None:
+            client.close()
+
+    def _worker_env(self, base_url: str | None) -> dict[str, str] | None:
+        """Return the worker's extra environment; add the runtime URL for a runtime."""
+        if base_url is None:
+            return self._env
+        return {**(self._env or {}), RUNTIME_URL_ENV: base_url}
+
+    def _ensure_client(self, base_url: str | None = None) -> OcrWorkerClient:
+        """Return the shared underlying client, constructing it lazily.
+
+        A worker started for another runtime URL (the server restarted on a
+        new port) is closed and replaced.
+        """
+        stale: OcrWorkerClient | None = None
         with self._lock:
             if self._closed:
                 raise RuntimeError("ManagedOcrClient is closed; construct a new client.")
+            if self._client is not None and self._worker_url != base_url:
+                stale, self._client = self._client, None
             if self._client is None:
                 self._client = OcrWorkerClient(
                     self._command,
                     cwd=self._cwd,
-                    env=self._env,
+                    env=self._worker_env(base_url),
                     request_timeout=self._request_timeout,
                     on_stderr_line=self._on_stderr_line,
                 )
+                self._worker_url = base_url
                 self._process_generations += 1
-            return self._client
+            client = self._client
+        if stale is not None:
+            stale.close()
+        return client
 
     def _drop_client(self, client: OcrWorkerClient) -> None:
         """Discard a fatally failed client; the next parse builds a fresh one."""

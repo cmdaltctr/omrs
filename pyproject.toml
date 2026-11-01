@@ -540,6 +540,8 @@ forbidden_modules = [
     "omrs.compose_profile_setup",
     "omrs.compose_profiles",
     "omrs.compose_providers",
+    "omrs.compose_runtime_manager",
+    "omrs.compose_runtimes",
     "omrs.compose_settings",
     "omrs.compose_templates",
     "omrs.engine",

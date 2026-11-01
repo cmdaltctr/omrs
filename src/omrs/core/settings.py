@@ -363,6 +363,9 @@ class EffectiveSettings(BaseModel):
     # name means no fallback. The explicit command above overrides the
     # primary route only.
     ocr_workers_dir: str = ""
+    #: Address of an external OCR llama.cpp runtime; blank means OMRS starts
+    #: the runtime the engine declares (managed-llamacpp-runtimes D2).
+    ocr_runtime_url: str = ""
     ocr_engine_primary: str = "dots-mocr"
     ocr_engine_fallback: str = "paddleocr-vl"
     ocr_maths_routing_enabled: bool = True

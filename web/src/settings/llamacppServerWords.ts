@@ -14,9 +14,11 @@ const REASON_SENTENCES: Record<Exclude<ServerReason, "exited" | "not-configured"
   "not-loopback": "The chat address is not on this machine, so omrs will not start a server for it.",
   "port-in-use": "Another program already uses the chat port. omrs did not touch it.",
   timeout: "The server did not become ready in time and was stopped.",
+  "not-supported": "OMRS cannot start its own server on this system. Use a server that you run yourself.",
+  "version-busy": "Another OMRS process still uses the server with the earlier program. Stop that server in Integrations, Model runtimes, then start again.",
 };
 
-const LOG_HINT = "See llamacpp-server.log in the workspace folder.";
+const LOG_HINT = "See server.log in runtimes/chat under the OMRS state folder.";
 
 /** One plain sentence for a failure reason. The text comes from this table and never from the process. */
 export function reasonSentence(status: LlamacppServerStatus): string {
