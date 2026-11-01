@@ -347,7 +347,7 @@ def test_the_real_worker_launch_passes_the_runtime_url_in_its_environment(
     assert (evidence / "eq01-p002.md").read_text(encoding="utf-8") == "page text"
 
 
-def test_the_script_has_no_server_pid_file_reader(smoke: ModuleType) -> None:
+def test_the_script_has_no_pid_file_reader(smoke: ModuleType) -> None:
     assert not hasattr(smoke, "server_pid")
     assert "llama-server.pid" not in SCRIPT.read_text(encoding="utf-8")
 

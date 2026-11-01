@@ -67,7 +67,7 @@ Start this group only after `managed-llamacpp-runtimes` is merged into `v3` and 
   - Verify: a host-path test (`build_ocr_routes` with a test workers folder) shows that a changed model file makes the route unavailable with a reason that names the file, and that the fallback route parses the PDF; the engine test for the old parse-time check is removed with a note in the commit message.
 - [x] 2b.6 Update `smoke_test.py`: it starts the runtime through the host's manager with a scratch `OMRS_STATE_DIR`, passes the URL to the worker, and leaves the runtime at the end.
   - Verify: a plan-only run lists the steps and touches nothing; the smoke tests pass against the shared fake.
-- [ ] 2b.7 Update the tripwire pin by test-ID diff (removed server tests, new manifest and URL tests). Run the parallel fast suite with a JUnit report, then the tripwire on that report.
+- [x] 2b.7 Update the tripwire pin by test-ID diff (removed server tests, new manifest and URL tests). Run the parallel fast suite with a JUnit report, then the tripwire on that report.
   - Verify: both pass; the diff of test IDs is in the commit message.
 
 ## 3. Provision and the real-document check (design D9)
