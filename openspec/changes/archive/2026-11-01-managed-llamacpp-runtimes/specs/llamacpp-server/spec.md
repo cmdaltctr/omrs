@@ -2,7 +2,7 @@
 
 ### Requirement: omrs owns only the server it starts
 
-The managed Chat server SHALL run on the shared runtime manager (capability `llamacpp-runtimes`) as the runtime `chat`. At most one `llama-server` SHALL run for it. Every OMRS process (`omrs web`, the CLI, the stdio MCP server and the watcher) SHALL be allowed to start or adopt it as a client when the Chat choice is `managed`. OMRS SHALL stop, restart and report only a server that its runtime state records and whose command line holds the recorded binary path. It SHALL NOT find a process by name or by port. It SHALL NOT signal a process it did not start. The CLI and the stdio MCP server SHALL NOT expose a command or tool that starts or stops `llama-server`. The llama.cpp embedding server SHALL be managed only when `llamacpp_embed_server` is `managed`.
+The managed Chat server SHALL run on the shared runtime manager (capability `llamacpp-runtimes`) as the runtime `chat`, with at most one `llama-server`. OMRS SHALL stop, restart and report only a server that its runtime state records and whose command line holds the recorded binary path. It SHALL NOT find a process by name or by port, and SHALL NOT signal a process it did not start.
 
 #### Scenario: User's own server on the port
 
@@ -24,6 +24,16 @@ The managed Chat server SHALL run on the shared runtime manager (capability `lla
 - **WHEN** the user runs the CLI or the stdio MCP server
 - **THEN** neither MUST expose a command or tool that starts or stops `llama-server`
 
+#### Scenario: Every process is a client
+
+- **WHEN** the Chat choice is `managed`
+- **THEN** `omrs web`, the CLI, the stdio MCP server and the watcher MUST each be allowed to start or adopt the server as a client
+
+#### Scenario: Embedding server
+
+- **WHEN** `llamacpp_embed_server` is not `managed`
+- **THEN** OMRS MUST NOT manage a llama.cpp embedding server
+
 #### Scenario: CLI answer starts the managed server
 
 - **WHEN** the Chat choice is `managed`, no server runs and the CLI sends a Chat request
@@ -31,7 +41,7 @@ The managed Chat server SHALL run on the shared runtime manager (capability `lla
 
 ### Requirement: Server settings and sources
 
-The server SHALL have the settings `llamacpp_server_binary` (env `LLAMACPP_SERVER_BINARY`), `llamacpp_chat_server` (env `LLAMACPP_CHAT_SERVER`, `external` or `managed`, default `external`) and `llamacpp_context_window` (env `LLAMACPP_CONTEXT_WINDOW`, default 16,384, range 2,048 to 262,144). Each SHALL be settable in `omrs.jsonc` and in the llama.cpp card. `llamacpp_embed_server` (env `LLAMACPP_EMBED_SERVER`) SHALL be settable in the environment, `.env` and `omrs.jsonc`, and SHALL NOT be written by the Settings page.
+The server SHALL have the settings `llamacpp_server_binary`, `llamacpp_chat_server` (`external` or `managed`, default `external`) and `llamacpp_context_window` (default 16,384, range 2,048 to 262,144). Each SHALL have an upper-case env name (for example `LLAMACPP_CHAT_SERVER`) and SHALL be settable in `omrs.jsonc` and in the llama.cpp card. `llamacpp_embed_server` SHALL be settable in the environment, `.env` and `omrs.jsonc`, and SHALL NOT be written by the Settings page.
 
 #### Scenario: Config file sets all three
 
@@ -144,7 +154,7 @@ The server state SHALL be one of `stopped`, `starting`, `running` and `failed`. 
 
 ### Requirement: Stop and restart
 
-Stop SHALL send SIGTERM to the process group of the recorded server, wait up to 10 seconds, then send SIGKILL to the group, and SHALL record an operator stop. Restart SHALL stop the recorded server and then start it with the saved values. When `omrs web` exits, it SHALL leave the runtime: the server SHALL stop only when no other OMRS process uses it. A save SHALL NOT stop a running server. The status SHALL report the values the running process started with and the saved values, so the page can show "Restart to apply" when they differ.
+Stop SHALL send SIGTERM to the process group of the recorded server, wait up to 10 seconds, then send SIGKILL to the group, and SHALL record an operator stop. Restart SHALL stop the recorded server and then start it with the saved values. When `omrs web` exits, the server SHALL stop only when no other OMRS process uses it. A save SHALL NOT stop a running server.
 
 #### Scenario: Graceful stop
 
@@ -170,6 +180,11 @@ Stop SHALL send SIGTERM to the process group of the recorded server, wait up to 
 
 - **WHEN** `omrs web` shuts down while a CLI process still sends Chat requests
 - **THEN** the server MUST keep running
+
+#### Scenario: Status shows both value sets
+
+- **WHEN** the saved values differ from the values the running process started with
+- **THEN** the status MUST report both sets, so the page can show "Restart to apply"
 
 #### Scenario: Save keeps it running
 
