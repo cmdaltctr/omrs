@@ -482,6 +482,17 @@ def _isolated_user_config_dir(monkeypatch: pytest.MonkeyPatch, tmp_path_factory)
 
 
 @pytest.fixture(autouse=True)
+def _isolated_state_dir(monkeypatch: pytest.MonkeyPatch, tmp_path_factory) -> None:
+    """Point the runtime state root at an empty temporary folder.
+
+    No test may read or write the real ``~/.local/state/omrs``. The runtime
+    manager writes ``server.json`` and lock files there (design D3), so an
+    unpatched run would touch the operator's live runtime state.
+    """
+    monkeypatch.setenv("OMRS_STATE_DIR", str(tmp_path_factory.mktemp("omrs-state")))
+
+
+@pytest.fixture(autouse=True)
 def _isolate_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Set deterministic environment variables for every test.
 

@@ -1,0 +1,191 @@
+"""A fake ``llama-server`` for the shared runtime manager tests.
+
+Tests copy this file to ``<tmp>/llama-server`` behind a Python shebang and
+make it executable (see :mod:`tests.fixtures.llamacpp.install`). CI has no
+GPU and no model, so this script stands in for the real binary. It speaks
+only what the manager and its clients use:
+
+- ``--version`` prints ``version: 0.7.0-dev (build <build>, commit fake)``;
+- ``GET /health`` answers 503 until the health delay has passed, then 200;
+- ``GET /props`` answers the reported build number;
+- ``POST /v1/chat/completions`` records the request body and answers a
+  fixed completion;
+- ``POST /v1/embeddings`` records the request body and answers a fixed
+  vector.
+
+Behaviour comes from environment variables, which the child process
+inherits from the test:
+
+``FAKE_LLAMA_BUILD``
+    Build number for ``--version`` and ``GET /props`` (default 11941).
+``FAKE_LLAMA_STARTS``
+    A file; each server start appends one line ``<pid> <argv as JSON>``.
+    Tests count the lines to prove how many servers started.
+``FAKE_LLAMA_REQUESTS``
+    A file; each POST appends its JSON body as one line.
+``FAKE_LLAMA_HEALTH_DELAY``
+    Seconds before ``/health`` turns healthy (default 0).
+``FAKE_LLAMA_NEVER_HEALTHY``
+    When set, ``/health`` answers 503 for ever.
+``FAKE_LLAMA_REQUEST_DELAY``
+    Seconds each POST sleeps before it answers, to hold a request busy.
+``FAKE_LLAMA_BIND_FAILS``
+    A file whose text is the number of starts that must fail. Each failed
+    start prints llama-server's bind error line, decrements the file and
+    exits 1.
+``FAKE_LLAMA_EXIT_AFTER``
+    A number of answered POSTs; the process then exits 1 at once, to act
+    as a crash between two requests.
+``FAKE_LLAMA_CONTENT`` and ``FAKE_LLAMA_TOKENS``
+    The completion text and the ``completion_tokens`` usage value.
+``FAKE_LLAMA_STATUS``
+    When set, every chat request answers with this HTTP status and an
+    error body.
+``FAKE_LLAMA_BAD_JSON``
+    When set, every chat request answers 200 with a body that is not JSON.
+``FAKE_LLAMA_SPAM_BYTES``
+    Bytes to write to standard error at start, to fill the log.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+import threading
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+#: The fixed embedding vector of ``POST /v1/embeddings``.
+EMBEDDING_VECTOR = [0.1, 0.2, 0.3]
+
+
+def _arg(name: str) -> str:
+    return sys.argv[sys.argv.index(name) + 1]
+
+
+def _bind_fails() -> int | None:
+    """Return the remaining number of starts that must fail, if any."""
+    path = os.environ.get("FAKE_LLAMA_BIND_FAILS")
+    if not path:
+        return None
+    try:
+        with open(path, encoding="utf-8") as handle:
+            return int(handle.read().strip() or "0")
+    except (OSError, ValueError):
+        return None
+
+
+def _decrement_bind_fails(path: str) -> None:
+    with open(path, encoding="utf-8") as handle:
+        left = int(handle.read().strip() or "0")
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(str(max(0, left - 1)))
+
+
+def main() -> int:
+    """Run the fake server (or print its version)."""
+    if "--version" in sys.argv:
+        build = os.environ.get("FAKE_LLAMA_BUILD", "11941")
+        print(f"version: 0.7.0-dev (build {build}, commit fake)")
+        return 0
+    bind = _bind_fails()
+    if bind is not None and bind > 0:
+        _decrement_bind_fails(os.environ["FAKE_LLAMA_BIND_FAILS"])
+        print("couldn't bind HTTP server socket: address already in use", file=sys.stderr)
+        return 1
+    starts = os.environ.get("FAKE_LLAMA_STARTS")
+    if starts:
+        with open(starts, "a", encoding="utf-8") as handle:
+            handle.write(f"{os.getpid()} {json.dumps(sys.argv[1:])}\n")
+    spam = int(os.environ.get("FAKE_LLAMA_SPAM_BYTES", "0"))
+    for _ in range(spam // 100):
+        print("x" * 99, file=sys.stderr, flush=True)
+    ready_at = time.monotonic() + float(os.environ.get("FAKE_LLAMA_HEALTH_DELAY", "0"))
+    never = bool(os.environ.get("FAKE_LLAMA_NEVER_HEALTHY"))
+    exit_after = int(os.environ.get("FAKE_LLAMA_EXIT_AFTER", "0") or "0")
+    served = 0
+    served_lock = threading.Lock()
+
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, format: str, *args: object) -> None:  # noqa: A002 - base signature
+            return
+
+        def _send(self, status: int, body: dict[str, object]) -> None:
+            data = json.dumps(body).encode()
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+
+        def do_GET(self) -> None:  # noqa: N802 - http.server API
+            if self.path == "/health":
+                healthy = not never and time.monotonic() >= ready_at
+                self._send(200 if healthy else 503, {"status": "ok" if healthy else "loading"})
+            elif self.path == "/props":
+                build = int(os.environ.get("FAKE_LLAMA_BUILD", "11941"))
+                self._send(200, {"build": build})
+            else:
+                self._send(404, {})
+
+        def do_POST(self) -> None:  # noqa: N802 - http.server API
+            nonlocal served
+            body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+            requests = os.environ.get("FAKE_LLAMA_REQUESTS")
+            if requests:
+                with open(requests, "a", encoding="utf-8") as handle:
+                    handle.write(body.decode() + "\n")
+            delay = float(os.environ.get("FAKE_LLAMA_REQUEST_DELAY", "0") or "0")
+            if delay:
+                time.sleep(delay)
+            if os.environ.get("FAKE_LLAMA_STATUS"):
+                self._send(int(os.environ["FAKE_LLAMA_STATUS"]), {"error": {"message": "boom"}})
+            elif os.environ.get("FAKE_LLAMA_BAD_JSON"):
+                data = b"this is not json"
+                self.send_response(200)
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+            elif self.path == "/v1/embeddings":
+                self._send(
+                    200,
+                    {
+                        "object": "list",
+                        "data": [
+                            {"object": "embedding", "index": 0, "embedding": EMBEDDING_VECTOR}
+                        ],
+                        "model": "fake",
+                    },
+                )
+            else:
+                self._send(
+                    200,
+                    {
+                        "choices": [
+                            {
+                                "message": {"content": os.environ.get("FAKE_LLAMA_CONTENT", "[]")},
+                                "finish_reason": "stop",
+                            }
+                        ],
+                        "usage": {
+                            "completion_tokens": int(os.environ.get("FAKE_LLAMA_TOKENS", "5"))
+                        },
+                    },
+                )
+            with served_lock:
+                served += 1
+                crash = exit_after > 0 and served >= exit_after
+            if crash:
+                # Act as a crash between two requests: die with the answer on
+                # the wire and the socket still half open.
+                os._exit(1)
+
+    server = ThreadingHTTPServer(("127.0.0.1", int(_arg("--port"))), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    while True:
+        time.sleep(0.2)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
