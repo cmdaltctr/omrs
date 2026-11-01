@@ -22,7 +22,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .... import compose
 from ....config.settings_file_write import SettingsFileError
-from ....core.providers.llm import llamacpp_rules as rules
+from ....core.providers.llm.llamacpp_rules import LLAMACPP_SERVER_FIELDS
+from ....integrations.llamacpp_runtime import rules
 from ..engine_access import ReadScope, RuntimeDep, admitted
 from ..errors import API_HEADERS, error_response
 from ..llamacpp_chat_rule import BINARY_RULE
@@ -50,8 +51,8 @@ CONFLICT_REASONS = {
 }
 _CHOICES = ("external", "managed")
 _REFUSED = "The running engine cannot take this change. Restart the server to apply it."
-_WINDOW = next(spec for spec in rules.LLAMACPP_SERVER_FIELDS if spec.id == "context_window")
-_IDLE = next(spec for spec in rules.LLAMACPP_SERVER_FIELDS if spec.id == "idle_sleep")
+_WINDOW = next(spec for spec in LLAMACPP_SERVER_FIELDS if spec.id == "context_window")
+_IDLE = next(spec for spec in LLAMACPP_SERVER_FIELDS if spec.id == "idle_sleep")
 #: Request key to the ``Settings`` field (and so the ``omrs.jsonc`` key) it writes.
 _FIELD_IDS = {
     "binary": "llamacpp_server_binary",

@@ -32,7 +32,7 @@ from typing import Any, Literal, Protocol
 
 import httpx
 
-from ...core.providers.llm import llamacpp_rules as rules
+from ...integrations.llamacpp_runtime import rules
 
 logger = logging.getLogger(__name__)
 

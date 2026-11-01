@@ -26,7 +26,7 @@ from tests.unit.llamacpp_fake import FakeServerProgram, await_until, free_port, 
 
 pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="POSIX process groups")
 
-from omrs.core.providers.llm.llamacpp_rules import REASONS  # noqa: E402
+from omrs.integrations.llamacpp_runtime.rules import REASONS  # noqa: E402
 from omrs.transports.api import llamacpp_server as lifecycle  # noqa: E402
 from omrs.transports.api.llamacpp_server import LaunchConfig, LlamacppServer  # noqa: E402
 

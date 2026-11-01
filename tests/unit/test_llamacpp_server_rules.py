@@ -13,7 +13,8 @@ from pathlib import Path
 
 import pytest
 
-from omrs.core.providers.llm import llamacpp_rules as rules
+from omrs.core.providers.llm.llamacpp_rules import LLAMACPP_SERVER_FIELDS
+from omrs.integrations.llamacpp_runtime import rules
 
 POSIX = pytest.mark.skipif(sys.platform == "win32", reason="POSIX modes and links")
 HF_TOKEN = "hf_FAKE_TOKEN_FOR_TESTS"  # noqa: S105  # gitleaks:allow
@@ -338,7 +339,7 @@ def test_argv_has_no_idle_sleep_flag_at_zero() -> None:
 
 
 def test_the_idle_sleep_field_is_a_whole_number_from_zero_to_a_day() -> None:
-    field = next(f for f in rules.LLAMACPP_SERVER_FIELDS if f.id == "idle_sleep")
+    field = next(f for f in LLAMACPP_SERVER_FIELDS if f.id == "idle_sleep")
     assert (field.kind, field.settings_field, field.env_var) == (
         "int",
         "llamacpp_idle_sleep_seconds",

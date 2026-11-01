@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from ...core.providers.llm import llamacpp_rules as rules
+from ...integrations.llamacpp_runtime import rules
 
 MODEL_RULE = (
     "The model must be the absolute path of an existing .gguf file, or a Hugging Face id "
