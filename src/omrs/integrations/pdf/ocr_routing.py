@@ -41,6 +41,7 @@ from pathlib import Path
 from typing import Any
 
 from ..ocr_worker.client import OcrWorkerError
+from ..ocr_worker.managed import UNAVAILABLE_CODE
 from ..ocr_worker.protocol import PAGES_PROTOCOL_VERSION, ParseSuccess
 from ..ocr_worker.routes import OcrRoutes, backend_id_of, request_timeout
 from .maths_routing import detect_maths_pages, maths_condition, split_page_routes
@@ -180,7 +181,14 @@ class OcrRoutedPdfInspector:
             return documents
 
         client = self._routes.select()
-        if client is None:
+        result, timeout = None, request_timeout(self._settings, page_count)
+        if client is not None:
+            try:
+                result = client.parse(str(file), timeout=timeout)
+            except OcrWorkerError as exc:
+                if exc.code != UNAVAILABLE_CODE:  # else refused before dispatch: no route (D10)
+                    raise OcrPostDispatchError(exc.code, exc.message) from exc
+        if result is None:
             for document in documents:
                 _stamp_ocr_diagnostics(
                     document.metadata,
@@ -190,11 +198,9 @@ class OcrRoutedPdfInspector:
                 )
             pdf_type = evidence.get("pdf_type", "")
             logger.warning(
-                "OCR required for %s (pdf_type=%s, %s page(s) flagged) but the "
-                "OCR routes are unavailable — keeping the partial "
-                "pdf-inspector extraction. Provision an engine and set "
-                "OCR_WORKERS_DIR to enable document "
-                "understanding.",
+                "OCR required for %s (pdf_type=%s, %s page(s) flagged) but the OCR routes "
+                "are unavailable — keeping the partial pdf-inspector extraction. "
+                "Provision an engine and set OCR_WORKERS_DIR to enable document understanding.",
                 getattr(file, "name", file),
                 pdf_type,
                 "classification-flagged"
@@ -202,11 +208,6 @@ class OcrRoutedPdfInspector:
                 else "threshold-flagged",
             )
             return documents
-
-        try:
-            result = client.parse(str(file), timeout=request_timeout(self._settings, page_count))
-        except OcrWorkerError as exc:
-            raise OcrPostDispatchError(exc.code, exc.message) from exc
         return self._worker_document(evidence, result, backend_id_of(client))
 
     def _worker_document(
@@ -436,6 +437,9 @@ class OcrRoutedPdfInspector:
                 str(file), pages=pages, timeout=request_timeout(self._settings, len(pages))
             )
         except OcrWorkerError as exc:
+            if exc.code == UNAVAILABLE_CODE:  # refused before dispatch: no route (design D10)
+                logger.warning("%d escalated page(s) in %s: %s", len(pages), name, exc.message)
+                return {}, None
             raise OcrPostDispatchError(exc.code, exc.message) from exc
         pages_markdown = result.pages_markdown
         if pages_markdown is None or len(pages_markdown) != len(pages):
