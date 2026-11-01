@@ -87,9 +87,10 @@ Start this group only after group 2b is done.
     - the JSON is in `smoke_evidence/`.
 - [ ] 3.4 Ingest `eq01`, `io06` and `rf06` into a scratch collection with the CLI, using scratch `LANCEDB_URI` and `OMRS_CONFIG_DIR` and never `~/.omrs`.
   - Verify: search finds a known phrase from an OCR page of each PDF, and KaTeX 0.16.22 renders every formula on the `eq01` pages.
-- [ ] 3.5 Start a scratch web preview with `ocr_engine_primary = "dots-mocr-llamacpp"` and open the Integrations page in Orca.
+  - Result 2026-11-02, NOT ticked: `eq01` and `io06` pass (OCR through dots-mocr-llamacpp, phrase found, 304 formulas, 0 KaTeX errors). `rf06` is not sent to OCR by the default gate, because its text layer is accepted (see `SMOKE_RESULTS.md`, F1), so no OCR page of `rf06` is searchable. Needs an operator decision.
+- [x] 3.5 Start a scratch web preview with `ocr_engine_primary = "dots-mocr-llamacpp"` and open the Integrations page in Orca.
   - Verify: the engine row shows ready at 1,280 px and at 390 px, with screenshots in `smoke_evidence/`.
-- [ ] 3.6 Check for a clean exit: stop the CLI run and then the preview server.
+- [x] 3.6 Check for a clean exit: stop the CLI run and then the preview server.
   - Verify: `pgrep -fl llama-server` lists no process whose path is inside the engine folder, and the runtime's `server.json` in the scratch `OMRS_STATE_DIR` records `stopped_by` `last-client`.
 - [ ] 3.7 Write the results to `SMOKE_RESULTS.md`: pass or fail per rule, seconds per page, peak memory and the llama.cpp build. **Stop here** and ask the operator to confirm cut-over.
   - Verify: the operator's confirmation and its date are recorded under this task.
