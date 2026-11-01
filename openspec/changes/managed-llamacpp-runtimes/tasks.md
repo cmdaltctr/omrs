@@ -11,7 +11,7 @@ Each group writes its tests first. Each test must fail on the code before the gr
   - `FAKE_LLAMA_BIND_FAILS` (a count; each failed start prints llama-server's bind error line and exits 1);
   - `FAKE_LLAMA_EXIT_AFTER` (exit after N requests, to act as a crash).
   - Verify: a fixture self-test starts the fake, reads `/health`, `/props`, `--version`, and sees each variable change the behaviour.
-- [ ] 1.2 Add `tests/fixtures/llamacpp/client.py`: a small process that joins one runtime through the manager, sends requests on command lines from standard input, and prints one JSON line per result. Tests use it as a second, third or fifth OMRS client.
+- [x] 1.2 Add `tests/fixtures/llamacpp/client.py`: a small process that joins one runtime through the manager, sends requests on command lines from standard input, and prints one JSON line per result. Tests use it as a second, third or fifth OMRS client.
   - Verify: a self-test starts two client processes against one fake server and reads both answers.
 - [x] 1.3 Add an autouse fixture in `tests/conftest.py` that sets `OMRS_STATE_DIR` to a tmp folder, beside the `OMRS_CONFIG_DIR` fixture.
   - Verify: a test asserts that the resolved state root is under `tmp_path` and never under the home folder.
@@ -26,41 +26,41 @@ Each group writes its tests first. Each test must fail on the code before the gr
   - Verify tests first: each root source in order; a broken `server.json` reads as no record; a write never leaves a partial file.
 - [x] 2.4 Write `locks.py`: shared and exclusive `flock`, blocking and non-blocking, each on its own descriptor; `not-supported` on Windows.
   - Verify tests first: a shared lock in a child process makes a non-blocking exclusive attempt fail; the lock frees when the child is killed with SIGKILL.
-- [ ] 2.5 Add the integration inventory row for `llamacpp_runtime` in `docs/guides/architecture.md`.
+- [x] 2.5 Add the integration inventory row for `llamacpp_runtime` in `docs/guides/architecture.md`.
   - Verify: `tests/test_strategy_registration_inventory.py` passes, and fails before the row exists.
 
 ## 3. Lease lifecycle across processes (design D4)
 
 Write all tests in this group first, against the fake server and the client process from group 1. Then write `manager.py` and `process.py` until they pass.
 
-- [ ] 3.1 Two clients share one server: two client processes join one runtime; the fake's start log shows exactly one start.
-- [ ] 3.2 First leaves, server lives: the first client exits normally; the second client's next request succeeds with no new start.
-- [ ] 3.3 Last leaves, server stops: the only client exits normally; the server process group is gone and `server.json` records `stopped_by` `last-client`.
-- [ ] 3.4 SIGKILL one of two clients: the server keeps running and the other client's next request succeeds.
-- [ ] 3.5 SIGKILL the only client, then a new client joins: the new client adopts the orphan; the start log still shows one start.
-- [ ] 3.6 A slow `/health` (5 s) and a request in progress (3 s in the fast suite; 60 s in a test marked `slow`) never make the server stale: a second client joins and adopts it; no signal goes to it.
-- [ ] 3.7 A recorded pid that now runs another command (a `sleep` process written into `server.json`) is never signalled; the manager starts a new server and the `sleep` process still runs.
-- [ ] 3.8 Five clients start at once against a stopped runtime: exactly one server starts and all five get an answer.
-- [ ] 3.9 SIGINT to a CLI process group: a client in its own process group starts the server, a second client stands in for the web app, SIGINT goes to the first group; the server keeps running and the second client's request succeeds.
-- [ ] 3.10 The lock descriptor is not inherited: after the starter exits with no other client and the server still runs (stopped from leaving by a test hook), a non-blocking exclusive lock on `clients.lock` succeeds.
-- [ ] 3.11 A changed pinned binary path while the old server has clients: the new client gets `version-busy`, the old server keeps running and is not signalled. With no other client, the old server stops and the new one starts.
-- [ ] 3.12 Lock order: a test runs leave and join in many threads and processes for 20 s with no deadlock (each finishes within its timeout).
+- [x] 3.1 Two clients share one server: two client processes join one runtime; the fake's start log shows exactly one start.
+- [x] 3.2 First leaves, server lives: the first client exits normally; the second client's next request succeeds with no new start.
+- [x] 3.3 Last leaves, server stops: the only client exits normally; the server process group is gone and `server.json` records `stopped_by` `last-client`.
+- [x] 3.4 SIGKILL one of two clients: the server keeps running and the other client's next request succeeds.
+- [x] 3.5 SIGKILL the only client, then a new client joins: the new client adopts the orphan; the start log still shows one start.
+- [x] 3.6 A slow `/health` (5 s) and a request in progress (3 s in the fast suite; 60 s in a test marked `slow`) never make the server stale: a second client joins and adopts it; no signal goes to it.
+- [x] 3.7 A recorded pid that now runs another command (a `sleep` process written into `server.json`) is never signalled; the manager starts a new server and the `sleep` process still runs.
+- [x] 3.8 Five clients start at once against a stopped runtime: exactly one server starts and all five get an answer.
+- [x] 3.9 SIGINT to a CLI process group: a client in its own process group starts the server, a second client stands in for the web app, SIGINT goes to the first group; the server keeps running and the second client's request succeeds.
+- [x] 3.10 The lock descriptor is not inherited: after the starter exits with no other client and the server still runs (stopped from leaving by a test hook), a non-blocking exclusive lock on `clients.lock` succeeds.
+- [x] 3.11 A changed pinned binary path while the old server has clients: the new client gets `version-busy`, the old server keeps running and is not signalled. With no other client, the old server stops and the new one starts.
+- [x] 3.12 Lock order: a test runs leave and join in many threads and processes for 20 s with no deadlock (each finishes within its timeout).
   - Verify for 3.1 to 3.12: `uv run pytest tests/test_llamacpp_runtime_lease.py -q` passes, and each test fails when its rule is removed from the code (check by hand once per rule and record the result in the pull request).
 
 ## 4. Start, retries, idle stop, request lock, operator stop and exit (design D5 to D9)
 
-- [ ] 4.1 Start checks and detach. Tests first:
+- [x] 4.1 Start checks and detach. Tests first:
   - wrong build refused: the fake reports 11960 for a declared 11941; state `failed`, reason `wrong-build`, no start;
   - changed model file refused: one byte changed in a declared file; reason `file-changed` and the reason line names the file name; no start;
   - health timeout stops the process and gives `timeout`;
   - the child has no pipe to the starter and its output goes to `server.log`.
-- [ ] 4.2 Bind retries. Test first: with `FAKE_LLAMA_BIND_FAILS=10`, the manager tries 4 ports in total and reports `bind-failed`; with `FAKE_LLAMA_BIND_FAILS=2`, the third try runs. An early exit without the bind line gives `exited` with no retry. Chat and embeddings (fixed port) get no retry.
-- [ ] 4.3 Crash restart. Test first: with `FAKE_LLAMA_EXIT_AFTER=1`, the second request starts exactly one new server under `start.lock` and succeeds; a second crash in the same request ends it with `exited`.
-- [ ] 4.4 Idle stop. Test first: with `IDLE_STOP_SECONDS` patched to 2 s, the only client leaves after 2 s idle and the server stops with `stopped_by` `idle`; with a second client active, the server keeps running; the next request after an idle stop starts it again. A test asserts that the shipped constant is 600 and that no setting changes it.
-- [ ] 4.5 Request lock (design D6). Test first: on a `-np 1` runtime with a fake request delay of 3 s and a client timeout of 4 s, two client processes each send one request at the same time; both succeed, and the second request's timer starts after the first ends. Without the lock (test hook), the second times out.
-- [ ] 4.6 Operator stop. Test first: stop while a client process uses the runtime; the server stops, `stopped_by` is `operator`, the client's request in progress fails, and its next request does not start the server; a new client process starts it again.
-- [ ] 4.7 Exit paths. Test first: SIGTERM to the only client (CLI entry point) stops the server before the client exits; `omrs web` start-up sweep stops an owned server with no client and leaves a server that a client holds.
-- [ ] 4.8 Log cap: after a request, a `server.log` over 5 MiB is emptied in place and the fake's next line still lands in it.
+- [x] 4.2 Bind retries. Test first: with `FAKE_LLAMA_BIND_FAILS=10`, the manager tries 4 ports in total and reports `bind-failed`; with `FAKE_LLAMA_BIND_FAILS=2`, the third try runs. An early exit without the bind line gives `exited` with no retry. Chat and embeddings (fixed port) get no retry.
+- [x] 4.3 Crash restart. Test first: with `FAKE_LLAMA_EXIT_AFTER=1`, the second request starts exactly one new server under `start.lock` and succeeds; a second crash in the same request ends it with `exited`.
+- [x] 4.4 Idle stop. Test first: with `IDLE_STOP_SECONDS` patched to 2 s, the only client leaves after 2 s idle and the server stops with `stopped_by` `idle`; with a second client active, the server keeps running; the next request after an idle stop starts it again. A test asserts that the shipped constant is 600 and that no setting changes it.
+- [x] 4.5 Request lock (design D6). Test first: on a `-np 1` runtime with a fake request delay of 3 s and a client timeout of 4 s, two client processes each send one request at the same time; both succeed, and the second request's timer starts after the first ends. Without the lock (test hook), the second times out.
+- [x] 4.6 Operator stop. Test first: stop while a client process uses the runtime; the server stops, `stopped_by` is `operator`, the client's request in progress fails, and its next request does not start the server; a new client process starts it again.
+- [x] 4.7 Exit paths. Test first: SIGTERM to the only client (CLI entry point) stops the server before the client exits; `omrs web` start-up sweep stops an owned server with no client and leaves a server that a client holds.
+- [x] 4.8 Log cap: after a request, a `server.log` over 5 MiB is emptied in place and the fake's next line still lands in it.
   - Verify for group 4: `uv run pytest tests/test_llamacpp_runtime_*.py -q` passes; each file stays under 500 lines.
 
 ## 5. Chat and embeddings on the manager (design D1, D2, D12)
@@ -71,7 +71,7 @@ Write all tests in this group first, against the fake server and the client proc
   - Verify: a CLI-path test with `llamacpp_chat_server=managed` starts the fake as a client and gets an answer; `lint-imports` passes.
 - [ ] 5.3 Add `llamacpp_embed_server` (env `LLAMACPP_EMBED_SERVER`, default `external`) to `config/provider_sources.py` and `config/rules.py`. Read it from env, `.env` and `omrs.jsonc`; refuse it in the Settings page write path. Inject the embeddings lease.
   - Verify tests first: default `external` starts nothing; `managed` starts the fake with `--embedding` and embeds text; `PUT /v1/settings/configuration` with the key is refused.
-- [ ] 5.4 Retire `llamacpp_idle_sleep_seconds` (design D12): remove it from `provider_sources.py`, `user_config.py`, `compose_llamacpp.py`, the card fields and the status `saved` block; add the env and `.env` start-up failure and the `omrs.jsonc` problem-list entry in `config/legacy.py`; `PUT /v1/llamacpp/server` with `idle_sleep` returns 400.
+- [x] 5.4 Retire `llamacpp_idle_sleep_seconds` (design D12): remove it from `provider_sources.py`, `user_config.py`, `compose_llamacpp.py`, the card fields and the status `saved` block; add the env and `.env` start-up failure and the `omrs.jsonc` problem-list entry in `config/legacy.py`; `PUT /v1/llamacpp/server` with `idle_sleep` returns 400.
   - Verify tests first: `.env` with `LLAMACPP_IDLE_SLEEP_SECONDS` fails start-up with the message; the `omrs.jsonc` key is listed; the 400 message names the 10-minute idle stop.
 
 ## 6. OCR host seam (design D10)
