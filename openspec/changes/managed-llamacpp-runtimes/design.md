@@ -76,7 +76,7 @@ The code is synchronous with threads, so the CLI and the watcher need no event l
 - `llamacpp_embed_server` is read from the environment, `.env` and `omrs.jsonc`. The Settings page does not write it in this change. The operator switches it later.
 - Chat keeps every guardrail: the program is an absolute path to an executable file named `llama-server` (links resolved), the argument list is a list with no shell, the flags are fixed, the host is `127.0.0.1`, a change of program or Chat server choice needs the `credentials` scope, and so does a llama.cpp Chat model write while Chat is managed. The same program check and model rule apply to managed embeddings (`llamacpp_embed_model` names the `.gguf` file or Hugging Face id). Embeddings reuse `llamacpp_server_binary`.
 - Chat and embeddings keep the fixed port from their URL. Their clients and the readiness probes need no change. A port held by a process that is not the recorded server gives `port-in-use`, as today. They get no bind retry, because a fixed port cannot move.
-- OCR in external mode: the host starts nothing and passes `ocr_runtime_url` to every engine that declares a runtime. It reads `GET /props` and refuses the runtime with `wrong-build` when the build is not the declared one, so the fingerprint stays honest about the build. It cannot check model files. The runtimes list shows "Model files not checked" for that row.
+- OCR in external mode (operator decision, 2026-11-01: `ocr_runtime_url` stays, opt-in only). A blank value, the default, means managed. When the value is set, the host starts nothing and passes `ocr_runtime_url` to every engine that declares a runtime. The build check still runs: the host reads `GET /props` and refuses the runtime with `wrong-build` when the build is not the declared one, so the fingerprint stays honest about the build. The host cannot check model files. The runtimes list never hides this: the row for an external OCR runtime says plainly "External server. Model files are not checked." (the item reports `mode` `external` and `files_checked` false).
 - **Rejected: `--models-max` router mode (one server, many models).** It puts the OCR result outside the pinned build and ties Chat restarts to OCR.
 
 ### D3. State folder and files (D-c)
@@ -157,7 +157,7 @@ Chat and embeddings have no `-np 1`. llama-server gives them several slots and c
 
 - `POST /v1/runtimes/{runtime_id}/stop` and the Chat card's Stop both call `RuntimeManager.stop(runtime_id)`.
 - It takes `start.lock`, checks the recorded pid as in D4, sends SIGTERM to the process group, waits 10 s, sends SIGKILL, and writes `stopped_by: operator` with the current generation.
-- A request in progress fails. For OCR, the host sends that request to the fallback route once (a narrow exception to "a worker failure after dispatch is not retried", because the host itself caused it).
+- A request in progress fails. For OCR, the host sends that request to the fallback route once. This is a narrow exception to "a worker failure after dispatch is not retried". The operator accepted it on 2026-11-01 (operator decision), because the operator's own Stop caused the failure and not a fault of the engine. The retry is one only: if the fallback also fails or is also stopped, the file gets a structured error and the host does not send it again, to this route or to any other.
 - A lease that joined that generation does not restart the server. Its route is then unavailable before dispatch, so OCR uses the fallback route for the rest of that lease. A process that joins later, or the same process after its lease left and joins again, starts the server again.
 - An external runtime has no Stop. The route returns 409 with the reason `external-runtime`.
 - Scope: the session with `manage`, the same as `POST /v1/llamacpp/server/stop`. A bearer credential is refused.
@@ -212,26 +212,27 @@ sha256 = "63f415f961da981d0ee101cfdbf7a7bcc81ace4c4aa780a6e2823c0cd780761f"
 - `llamacpp_idle_sleep_seconds` leaves `config/provider_sources.py`, `user_config.py`, the card and `GET /v1/llamacpp/server`.
 - `config/legacy.py`: `LLAMACPP_IDLE_SLEEP_SECONDS` in the environment or `.env` fails start-up with a message that names it and the fixed 10-minute idle stop. The `omrs.jsonc` key is ignored and listed in the problem list. This follows the `llamacpp_server_model` retirement.
 - `PUT /v1/llamacpp/server` with `idle_sleep` returns 400 with that message.
+- Live-app check (read only, 2026-11-01, names counted and values not read): the live app does not set `LLAMACPP_IDLE_SLEEP_SECONDS` in the shell environment, in `~/.config/omrs/omrs.jsonc` or in the `com.omrs.web` login item plist. No `~/.omrs/.env` exists. The retirement goes ahead as planned, and start-up will not fail on the live app.
 
 ## Risks / Trade-offs
 
 - [An orphan holds memory after a SIGKILL of the last client] → D9 sweep at `omrs web` start, adoption by the next client, and a "no OMRS process uses it" row with Stop.
 - [The operator stops a runtime that a CLI ingest uses] → Stop asks for confirmation when `clients` is `some`. OCR requests go to the fallback route.
 - [`flock` on a network file system] → the default root is local. The guide says so.
-- [The live app's `.env` sets `LLAMACPP_IDLE_SLEEP_SECONDS`] → start-up would fail. Task 9.3 asks the operator to check before merge.
+- [The live app sets `LLAMACPP_IDLE_SLEEP_SECONDS`] → start-up would fail. Checked on 2026-11-01 (task 9.4): the live app does not set it, so the risk is closed for the live app.
 - [Windows users of managed Chat lose it] → reason `not-supported`, and external mode stays. CI is POSIX only, so Windows was never tested.
-- [External OCR serves a model OMRS cannot check] → the build check stays, the row says "Model files not checked", and the guide says external OCR suits one llama.cpp engine at a time.
+- [External OCR serves a model OMRS cannot check] → the build check stays, the row says "External server. Model files are not checked.", and the guide says external OCR suits one llama.cpp engine at a time.
 - [A one-slot runtime serialises pages across processes] → this is the server's real capacity. D6 makes the wait visible as lock wait, not as timeouts.
 - [`ps` output differs between macOS and Linux] → only the `command=` and `rss=` columns are used. Tests run the fake server on both CI platforms.
 
 ## Migration Plan
 
 1. Land the manager with Chat on it. Chat behaviour stays the same for one process. The live app's settings do not change.
-2. The idle sleep key retires. The live app's `omrs.jsonc` key, if present, is ignored with a problem-list line.
+2. The idle sleep key retires. The live app does not set it (checked 2026-11-01), so nothing changes for the live app. Any other `omrs.jsonc` key is ignored with a problem-list line.
 3. `dots-mocr-llamacpp-backend` rebases and declares a runtime.
 4. Rollback: revert the merge commit. The state folder can be deleted. It holds no settings.
 
 ## Open Questions
 
-- **External OCR:** keep `ocr_runtime_url`, or drop it until an operator needs it? It cannot check model files. The design keeps it because the brief lists OCR among the roles with two modes.
+- **External OCR (decided 2026-11-01):** `ocr_runtime_url` stays, opt-in only. It cannot check model files, so the build check still runs and the Integrations row says so plainly (D2). Nothing is open.
 - **`GET /props` build field on b11941:** the design assumes `/props` reports the build. Task 6.4 checks the real binary. If it does not, external OCR refuses with `wrong-build` until another check is chosen.

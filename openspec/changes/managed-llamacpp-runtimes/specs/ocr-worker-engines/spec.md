@@ -27,7 +27,7 @@ The host SHALL resolve an engine from its name and the configured workers direct
 
 ### Requirement: A worker failure after dispatch is not retried on the other route
 
-A worker failure after dispatch SHALL remain a structured per-file error. It SHALL NOT trigger a retry on the other route. The one exception SHALL be a request that failed because the operator stopped the route's runtime while it ran: the host SHALL send that request once to the fallback route.
+A worker failure after dispatch SHALL remain a structured per-file error. It SHALL NOT trigger a retry on the other route. The one exception SHALL be a request that failed because the operator stopped the route's runtime while it ran (accepted by the operator on 2026-11-01): the host SHALL send that request once to the fallback route. The host SHALL NOT retry it again, whatever the fallback result.
 
 #### Scenario: Post-dispatch failure does not retry on the fallback
 
@@ -42,6 +42,13 @@ A worker failure after dispatch SHALL remain a structured per-file error. It SHA
 - **WHEN** the operator stops that runtime
 - **THEN** the host SHALL send the same request once to the fallback route
 - **AND** later requests of that lease SHALL go to the fallback route without starting the runtime
+
+#### Scenario: The operator-stop retry happens once only
+
+- **GIVEN** the host has sent a request once to the fallback route after an operator stop
+- **WHEN** the fallback route also fails or its runtime is also stopped by the operator
+- **THEN** the file SHALL receive a structured error
+- **AND** the host SHALL NOT send that request to any route again
 
 ## ADDED Requirements
 

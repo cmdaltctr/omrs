@@ -12,7 +12,7 @@ The cause is a design fault: an OCR engine owns a model server. OMRS reaches eve
 - **Two modes per role.** Roles: Chat, embeddings and OCR. `external` connects to a URL that the operator runs (today's embeddings on the Llama app). `managed` lets OMRS start or adopt a `llama-server` with fixed arguments.
   - Chat moves onto the manager and keeps every guardrail it has today.
   - Embeddings get a managed mode, built and tested. The live app stays on `external`.
-  - OCR runtimes are managed by default. An operator can point them at an external server with `ocr_runtime_url`.
+  - OCR runtimes are managed by default. An operator can opt in to an external server with `ocr_runtime_url` (blank by default means managed). The build check still runs, and the Integrations row says plainly that the server is external and its model files are not checked.
 - **Cross-process lifecycle with file locks.** Each OMRS process that uses a runtime holds a shared lock for as long as it uses it. The last process to leave stops the server. A new process adopts a server that is still running. A server is stale only when its process is gone or runs another command line, never because `/health` is slow.
 - **Idle stop after 10 minutes.** A fixed constant, not a setting. The next request starts the runtime again. OMRS does not use llama-server's own idle sleep (llama.cpp issue #29689).
 - **BREAKING:** `llamacpp_idle_sleep_seconds` (`LLAMACPP_IDLE_SLEEP_SECONDS`) is retired. The environment or `.env` value fails start-up with a message that names the 10-minute idle stop. An `omrs.jsonc` key is ignored and listed in the problem list.
@@ -20,7 +20,7 @@ The cause is a design fault: an OCR engine owns a model server. OMRS reaches eve
 - **Queued requests on one-slot runtimes.** A per-runtime request lock serialises OMRS requests across processes. The request timeout starts only when the lock is held.
 - **Engines declare a runtime.** An OCR engine's `[tool.omrs-ocr.runtime]` block names the binary, the model files with SHA-256, the llama.cpp build and the fixed flags. The host checks them, starts or adopts the runtime, and passes the base URL to the worker in `OMRS_OCR_RUNTIME_URL`. The host never names an engine. An engine with no block (PaddleOCR-VL) does not change.
 - **GUI.** The Integrations page lists each runtime: role, mode, state with one reason line, memory, and who uses it. Managed runtimes have a Stop button. New routes `GET /v1/runtimes` and `POST /v1/runtimes/{runtime_id}/stop`, in the OpenAPI contract.
-- **OCR fallback on an operator stop.** A request that fails because the operator stopped its runtime goes to the fallback engine.
+- **OCR fallback on an operator stop.** A request that fails because the operator stopped its runtime goes once to the fallback engine. The operator accepted this exception on 2026-11-01.
 
 ## Capabilities
 

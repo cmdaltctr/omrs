@@ -227,9 +227,15 @@ On a normal exit, a SIGTERM, an engine close, an OCR pool close or the shutdown 
 
 ### Requirement: An external OCR runtime is checked for its build
 
-When `ocr_runtime_url` is set, OMRS SHALL pass it to every OCR engine that declares a runtime and SHALL start nothing. It SHALL read the build that the server reports and SHALL refuse the runtime with `wrong-build` when it differs from the declared build. The runtime item SHALL report `files_checked` false.
+External OCR SHALL be opt-in only: a blank `ocr_runtime_url` SHALL mean managed. When it is set, OMRS SHALL pass it to every OCR engine that declares a runtime, SHALL start nothing, and SHALL refuse the runtime with `wrong-build` when the server's reported build differs from the declared build. The runtime item SHALL report `mode` `external` and `files_checked` false.
 
 #### Scenario: External OCR server with another build
 
 - **WHEN** `ocr_runtime_url` names a server that reports build 11960 and the engine declares 11941
 - **THEN** the OCR route MUST be unavailable with `wrong-build` and the fallback route MUST serve the file
+
+#### Scenario: External OCR server with the declared build
+
+- **WHEN** `ocr_runtime_url` names a server that reports build 11941 and the engine declares 11941
+- **THEN** OMRS MUST start no process and MUST pass the URL to the worker
+- **AND** the runtime item MUST report `mode` `external` and `files_checked` false

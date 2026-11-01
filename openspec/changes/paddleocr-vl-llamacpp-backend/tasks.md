@@ -6,8 +6,8 @@ Parked. Start only after `managed-llamacpp-runtimes` and `dots-mocr-llamacpp-bac
 
 - [ ] 1.1 Read the value that arm P4 passed as `vl_rec_api_model_name` from the Experiment 41 run log or command record.
   - Verify: the value and its source file are recorded under this task.
-- [ ] 1.2 Ask the operator where `PaddleOCR-VL-1.6-Q8_0.gguf` is hosted (for example the private `cmdaltctr/omrs-ocr-gguf-converted`), and check the Apache-2.0 terms (licence notice, attribution, statement of changes) before any upload.
-  - Verify: the operator's decision, the repository, the pinned commit and a fresh-download SHA-256 match are recorded under this task.
+- [ ] 1.2 Upload `PaddleOCR-VL-1.6-Q8_0.gguf` to the operator's private repository `cmdaltctr/omrs-ocr-gguf-converted` (decision, design D5), with operator approval for the upload. Write or update its model card to keep the Apache-2.0 licence text, keep any upstream NOTICE file, and state that the file was changed: re-quantised to Q8_0 with `llama-quantize`, llama.cpp build 11941, from `PaddlePaddle/PaddleOCR-VL-1.6-GGUF` at `511b09642bb324401f15f97cc23bc67e8f0a291d`.
+  - Verify: the model card holds the three items; the pinned commit of the repository is recorded under this task; a fresh download has SHA-256 `2bda93a416339f2d9f06accae505600544a9e72cc159d0cd1af4c0f679866e1c`.
 
 ## 2. Engine (tests first)
 
@@ -15,8 +15,8 @@ Parked. Start only after `managed-llamacpp-runtimes` and `dots-mocr-llamacpp-bac
   - Verify tests first: the host reads the block with no rule failure; every value equals the engine's pins; `openspec validate --all --strict` passes.
 - [ ] 2.2 Wire `OMRS_OCR_RUNTIME_URL` into the pipeline as `vl_rec_backend="llama-cpp-server"` and `vl_rec_server_url=<url>/v1` (design D2). A missing or non-loopback URL gives a parse error that names the variable.
   - Verify tests first, with PaddleX mocked: the pipeline gets the URL; the missing URL gives the named error; the layout settings equal P0's.
-- [ ] 2.3 Add the fetch step for the two GGUF files and the `b11941` archive, with SHA-256 checks and `.tmp` then rename.
-  - Verify tests first: a hash mismatch stops with the file name and leaves no partial file.
+- [ ] 2.3 Add the fetch step for the two GGUF files and the `b11941` archive, with SHA-256 checks and `.tmp` then rename. The Q8_0 file comes from the private repository at the pinned commit (task 1.2) and uses a Hugging Face token from the environment.
+  - Verify tests first: a hash mismatch stops with the file name and leaves no partial file; a missing token gives an error that names the variable and writes no token to any file or log.
 - [ ] 2.4 Update the fingerprint (design D3) and re-pin the tripwire by test-ID diff.
   - Verify: the fingerprint test fails before the change; the parallel fast suite and the tripwire pass.
 

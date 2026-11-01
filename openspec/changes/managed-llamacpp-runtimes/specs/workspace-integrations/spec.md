@@ -2,7 +2,7 @@
 
 ### Requirement: The Integrations page lists model runtimes
 
-The Integrations page SHALL have a "Model runtimes" section with one row per runtime from `GET /v1/runtimes`. Each row SHALL show the role, the mode, a status badge, one plain reason line when a reason is sent, the memory when it is sent, the address and what uses it. An external OCR row SHALL say "Model files not checked". A running managed runtime with no client SHALL say "Running, no OMRS process uses it".
+The Integrations page SHALL have a "Model runtimes" section with one row per runtime from `GET /v1/runtimes`. Each row SHALL show the role, the mode, a status badge, one plain reason line when a reason is sent, the memory when it is sent, the address and what uses it. An external OCR row SHALL say "External server. Model files are not checked." and SHALL NOT hide it when the build check passes. A running managed runtime with no client SHALL say "Running, no OMRS process uses it".
 
 #### Scenario: Failed OCR runtime
 
@@ -13,6 +13,13 @@ The Integrations page SHALL have a "Model runtimes" section with one row per run
 
 - **WHEN** the Chat runtime is `external`
 - **THEN** its row MUST show the mode External and MUST NOT show a Stop button
+
+#### Scenario: External OCR runtime
+
+- **GIVEN** `ocr_runtime_url` is set and the build check passes
+- **WHEN** the page shows the OCR runtime row
+- **THEN** the row MUST show the mode External and MUST say "External server. Model files are not checked."
+- **AND** the row MUST NOT show a Stop button
 
 #### Scenario: Phone width
 

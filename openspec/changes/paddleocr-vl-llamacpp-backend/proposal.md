@@ -49,5 +49,5 @@ None.
 - **Code:** `ocr-workers/engines/paddleocr-vl/` only (manifest block, engine wiring, fetch step, pins, smoke test). No host code.
 - **Spec conflict to settle at start:** `managed-llamacpp-runtimes` adds a scenario "PaddleOCR-VL unchanged" (no runtime, no URL). This change must rewrite that scenario to name an engine without a runtime block in place of PaddleOCR-VL.
 - **Data:** the Q8_0 model file, the projector and a 16 MB llama.cpp binary per install.
-- **Open question:** where the Q8_0 file is hosted. It is an own `llama-quantize` output, not a file that PaddlePaddle publishes. PaddleOCR-VL is Apache-2.0; check the terms before any redistribution. The operator's private repository `cmdaltctr/omrs-ocr-gguf-converted` is one option.
+- **Hosting (decided by the operator):** the Q8_0 file is an own `llama-quantize` output, not a file that PaddlePaddle publishes. It goes in the operator's private Hugging Face repository `cmdaltctr/omrs-ocr-gguf-converted`, beside the dots.mocr files. PaddleOCR-VL is Apache-2.0, so its model card keeps the licence text and any upstream NOTICE file, and states that the file was changed (design D5).
 - **Not changed:** the fallback order, the protocol version, the settings keys, the layout model.

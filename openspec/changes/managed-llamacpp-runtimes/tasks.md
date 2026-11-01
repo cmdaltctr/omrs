@@ -82,12 +82,13 @@ Write all tests in this group first, against the fake server and the client proc
   - Verify tests first, with a test engine folder that declares the fake: the worker environment holds `OMRS_OCR_RUNTIME_URL`; the probe starts no server; a restart on a new port restarts the worker; no host module names an engine (grep test).
 - [ ] 6.3 Fallback rules. Tests first:
   - a runtime that fails before dispatch (`file-changed`) makes the primary route unavailable and the fallback parses the PDF;
-  - an operator stop during a primary parse sends that request once to the fallback, and later requests of that lease go to the fallback without a start;
+  - an operator stop during a primary parse sends that request once to the fallback (operator decision, 2026-11-01), and later requests of that lease go to the fallback without a start;
+  - one retry only, no loop: when the fallback also fails or is also stopped by the operator, the file gets a structured error, the fake fallback records exactly one request for that file, and the host sends nothing to the primary route again for it;
   - a worker crash after dispatch still gives a structured error with no fallback retry;
   - a worker killed with SIGKILL leaves the runtime running while the host holds its lease.
 - [ ] 6.4 External OCR (`ocr_runtime_url`). First, start the real `llama-server` b11941 binary from the dots engine cache in this worktree's scratch folder (operator approval needed if it is not on disk) and record whether `GET /props` reports the build, and in which field. Then write the build check against that field.
-  - Verify tests first: a matching build passes the URL to the worker and starts nothing; another build gives `wrong-build` and the fallback serves the file; the runtime item reports `files_checked` false.
-  - If the operator drops external OCR (design Open Questions), cancel this task with the reason and remove its scenario from the spec delta.
+  - External OCR stays, opt-in only (operator decision, 2026-11-01). A blank `ocr_runtime_url` means managed.
+  - Verify tests first: a matching build passes the URL to the worker and starts nothing; the build check still runs when the URL is set; another build gives `wrong-build` and the fallback serves the file; the runtime item reports `mode` `external` and `files_checked` false; a blank URL gives a managed runtime.
 - [ ] 6.5 Engine without a block. Test: a PaddleOCR-VL-shaped test engine starts no server and gets no `OMRS_OCR_RUNTIME_URL`.
 
 ## 7. HTTP routes and contract (design D8, D11)
@@ -103,7 +104,7 @@ Write all tests in this group first, against the fake server and the client proc
 
 - [ ] 8.1 Load the `omrs-design` skill and read `web/DESIGN.md`, `web/AGENTS.md` and `web/src/AGENTS.md` before any web edit. Run `npm ci` in `web/`.
   - Verify: the skill is loaded in the session log; `node_modules/` exists.
-- [ ] 8.2 Write Vitest tests first for a "Model runtimes" section in `web/src/integrations/`: rows for each role and mode, the badge, one reason line, memory, used by, "Model files not checked", "Running, no OMRS process uses it", Stop only for a managed running runtime with `manage`, confirmation when `clients` is `some`. Then write the section, its API hook and the section chip.
+- [ ] 8.2 Write Vitest tests first for a "Model runtimes" section in `web/src/integrations/`: rows for each role and mode, the badge, one reason line, memory, used by, "External server. Model files are not checked." on an external OCR row (plus the mode External and no Stop button), "Running, no OMRS process uses it", Stop only for a managed running runtime with `manage`, confirmation when `clients` is `some`. Then write the section, its API hook and the section chip.
   - Verify: `npm test` passes; each new test fails before the component exists.
 - [ ] 8.3 Remove the idle sleep field from the llama.cpp card (`web/src/settings/LlamacppServerPanel.tsx` and its tests and fixtures). Match the existing style by hand. Do not run Prettier.
   - Verify: `npm run lint`, `npm run typecheck`, `npm test` and `npm run build` pass.
@@ -116,8 +117,10 @@ Write all tests in this group first, against the fake server and the client proc
   - Verify: the ADR index lists it; a search of the ADR for home-folder paths and user names finds nothing.
 - [ ] 9.2 Update `docs/guides/configuration.md` (state folder and local-disk rule, `llamacpp_embed_server`, `ocr_runtime_url`, the retired idle sleep key, the 10-minute idle stop), `docs/guides/architecture.md` (the manager and the lease) and `ocr-workers/README.md` (the runtime block and `OMRS_OCR_RUNTIME_URL`).
   - Verify: `grep -rn "LLAMACPP_IDLE_SLEEP_SECONDS" docs/guides` names it only as retired; the documentation drift check finds no old default.
-- [ ] 9.3 Update Gotcha 17 in the root `AGENTS.md` (runtime state files are written by every process) and rule 15 in `src/omrs/transports/api/AGENTS.md`. Ask the operator to check, read only, whether the live app's environment or `.env` sets `LLAMACPP_IDLE_SLEEP_SECONDS`, because start-up would then fail.
-  - Verify: the operator's answer and date are recorded under this task.
+- [ ] 9.3 Update Gotcha 17 in the root `AGENTS.md` (runtime state files are written by every process) and rule 15 in `src/omrs/transports/api/AGENTS.md`.
+  - Verify: both files name the runtime state files as written by every process.
+- [x] 9.4 Check, read only, whether the live app sets `LLAMACPP_IDLE_SLEEP_SECONDS`, because start-up would then fail.
+  - Evidence (2026-11-01, names counted and values not read): not set in the shell environment, in `~/.config/omrs/omrs.jsonc` or in the `com.omrs.web` login item plist. No `~/.omrs/.env` exists. The retirement (task 5.4) goes ahead as planned.
 
 ## 10. Closing gates
 

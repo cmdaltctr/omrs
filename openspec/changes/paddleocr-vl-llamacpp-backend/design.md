@@ -54,13 +54,19 @@ See proposal.md, "Why" and "Evidence". The current state:
 - The operator reviews the invented-text pages of P4 and P0 (the 25-page C5 list) and decides.
 - A real-document check runs through the app's OCR path with dots.mocr made unavailable, so the fallback serves. Rules are set by the operator before the run.
 
+### D5. Hosting and licence (operator decision)
+
+- The Q8_0 file goes in the operator's private Hugging Face repository `cmdaltctr/omrs-ocr-gguf-converted`, beside the dots.mocr files.
+- The model card of that repository SHALL keep the Apache-2.0 licence text, keep any upstream NOTICE file, and state that the file was changed: re-quantised to Q8_0 with `llama-quantize`, llama.cpp build 11941, from `PaddlePaddle/PaddleOCR-VL-1.6-GGUF` at `511b09642bb324401f15f97cc23bc67e8f0a291d`.
+- The projector stays as published by PaddlePaddle. Its source is the same pinned commit.
+- The repository is private, so the fetch step reads a Hugging Face token from the environment. A missing token gives a fetch error that names the variable. The token is never written to a file or a log. If the repository is made public later, the same model card applies.
+
 ## Risks / Trade-offs
 
 - [Invented text on some scripts] → C5 fails for P0 too, so P4 is not worse on the list. The operator review is a ship condition.
-- [Model hosting and licence] → open question in the proposal. Provisioning cannot ship until the file has a pinned home.
+- [Model hosting and licence] → decided (D5). The file goes in a private repository with a model card that carries the Apache-2.0 terms. Provisioning cannot ship until the file is uploaded and its commit is pinned.
 - [Two OCR runtimes in memory] → the fallback runtime starts only when the fallback route serves, and stops after 10 minutes idle.
 
 ## Open Questions
 
-- Where the Q8_0 file is hosted, and under which terms (Apache-2.0 notice, attribution).
 - Which value P4 passed as `vl_rec_api_model_name`. Task 1.1 reads it from the Experiment 41 run log.
