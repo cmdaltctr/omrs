@@ -227,7 +227,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # idle sleep (243 added, 51 removed, no fastapi: includes the 38 old lifecycle cases);
 # lifecycle (14), shared Chat server (3), runtimes routes (14) and llama.cpp server
 # routes (+9 -7) need fastapi (+33, see _WEB_EXTRA_CASES).
-_BASE_EXECUTED = 9740
+# +1 (2026-11-01, PR 160 macOS fix): test_llamacpp_fixtures.py gets a no-reverse-DNS case.
+# No fastapi needed.
+_BASE_EXECUTED = 9741
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

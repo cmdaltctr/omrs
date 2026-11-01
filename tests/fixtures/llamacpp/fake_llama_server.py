@@ -75,6 +75,7 @@ from __future__ import annotations
 
 import json
 import os
+import socketserver
 import stat
 import sys
 import threading
@@ -164,6 +165,19 @@ def _bump_counter(path: str) -> None:
         count = 0
     with open(path, "w", encoding="utf-8") as handle:
         handle.write(str(count + 1))
+
+
+class _FastBindServer(ThreadingHTTPServer):
+    """Skip the reverse DNS lookup that ``HTTPServer.server_bind`` does.
+
+    The standard bind calls ``socket.getfqdn``. On a GitHub macOS runner that call takes
+    about 35 s, so the fake never answered ``/health`` in time (PR 160). The fake needs
+    no server name.
+    """
+
+    def server_bind(self) -> None:
+        socketserver.TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address[:2]
 
 
 def main() -> int:
@@ -292,7 +306,7 @@ def main() -> int:
                 # the wire and the socket still half open.
                 os._exit(1)
 
-    server = ThreadingHTTPServer(("127.0.0.1", int(_arg("--port"))), Handler)
+    server = _FastBindServer(("127.0.0.1", int(_arg("--port"))), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     while True:
         time.sleep(0.2)

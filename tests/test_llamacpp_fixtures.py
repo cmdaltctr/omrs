@@ -309,3 +309,50 @@ def test_two_client_processes_join_one_fake_server_through_the_manager(
         assert len(fake.starts()) == 1
     finally:
         env.cleanup()
+
+
+def test_the_fake_starts_without_a_reverse_dns_lookup(tmp_path: Path) -> None:
+    """``socket.getfqdn`` took about 35 s on a GitHub macOS runner (PR 160).
+
+    The standard ``HTTPServer`` bind calls it, so the fake overrides the bind. The
+    child here makes ``getfqdn`` raise: the fake must still answer ``/health``.
+    """
+    fake = FakeServer(tmp_path)
+    fake.port = _free_port()
+    code = (
+        "import runpy, socket, sys\n"
+        "def _no_dns(*args, **kwargs):\n"
+        "    raise RuntimeError('getfqdn called')\n"
+        "socket.getfqdn = _no_dns\n"
+        "sys.argv = sys.argv[1:]\n"
+        "runpy.run_path(sys.argv[0], run_name='__main__')\n"
+    )
+    fake.proc = subprocess.Popen(  # noqa: S603 - test fixture, fixed argv
+        [
+            sys.executable,
+            "-c",
+            code,
+            str(fake.binary),
+            "--host",
+            "127.0.0.1",
+            "--port",
+            str(fake.port),
+        ],
+        env=fake.env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
+        start_new_session=True,
+    )
+    try:
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline and fake.proc.poll() is None:
+            try:
+                if httpx.get(fake.url("/health"), timeout=1).status_code == 200:
+                    return
+            except httpx.HTTPError:
+                pass
+            time.sleep(0.05)
+        stderr = fake.proc.stderr.read().decode() if fake.proc.poll() is not None else ""
+        pytest.fail(f"the fake did not answer /health without getfqdn: {stderr[-300:]}")
+    finally:
+        fake.stop()
