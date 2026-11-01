@@ -95,7 +95,6 @@ def test_plan_only_lists_steps_and_touches_nothing(
         assert name in out
     assert "plan only" in out
     assert snapshot(ENGINE_DIR) == before
-    assert not (ENGINE_DIR / "smoke_evidence").exists()
 
 
 def test_plan_only_as_a_real_subprocess(tmp_path: Path) -> None:

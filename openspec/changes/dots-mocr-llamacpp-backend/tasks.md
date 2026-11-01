@@ -77,9 +77,9 @@ Start this group only after group 2b is done.
 - [x] 3.1 Provision `dots-mocr-llamacpp` in this worktree with `--accept-model-licence`. This is a download of about 4.4 GB, plus the binary.
   - Needs operator approval for the download and the licence acceptance.
   - Verify: `--capabilities` prints the D7 fingerprint, and the model files match their hashes.
-- [ ] 3.2 Run the smoke test offline (`eq01` p2 and p3).
+- [x] 3.2 Run the smoke test offline (`eq01` p2 and p3).
   - Verify: both pages give non-empty Markdown with the network blocked; the result is in `SMOKE_RESULTS.md`.
-- [ ] 3.3 Run the parity check: the 20 T-control pages plus `eq01` p2 and p3, through `build_ocr_routes` with primary `dots-mocr-llamacpp`. Compare with Experiment 41 arm D4 and with the T-control text.
+- [x] 3.3 Run the parity check: the 20 T-control pages plus `eq01` p2 and p3, through `build_ocr_routes` with primary `dots-mocr-llamacpp`. Compare with Experiment 41 arm D4 and with the T-control text.
   - Verify:
     - every page Dice is 0.99 or more against D4;
     - at least 18 of 22 pages are identical to D4;
