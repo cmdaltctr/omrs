@@ -1,0 +1,111 @@
+{
+  "experiment_id": "35a-full-rag-benchmark-runpod-2026-11-01",
+  "protocol_version": 1,
+  "question": "What retrieval and answer quality does the full OMRS pipeline reach on FinanceBench, the FreshStack LangChain slice and BioASQ with pinned local models, and how much do embedding size, the reranker, token-aware chunking and hybrid search change it?",
+  "decision": "The first fellowship paper cites these numbers; the experiment changes no production default, and any setting change it suggests goes to a separate proposal.",
+  "hypotheses": [
+    {
+      "id": "H1",
+      "role": "primary",
+      "statement": "on at least one dataset, the embedding-0.6b arm's nDCG@10 differs from the baseline's",
+      "null": "the arm's nDCG@10 equals the baseline's on every dataset, within the minimum detectable effect"
+    },
+    {
+      "id": "H2",
+      "role": "primary",
+      "statement": "on at least one dataset, the embedding-8b arm's nDCG@10 differs from the baseline's",
+      "null": "the arm's nDCG@10 equals the baseline's on every dataset, within the minimum detectable effect"
+    },
+    {
+      "id": "H3",
+      "role": "primary",
+      "statement": "on at least one dataset, the reranker-off arm's nDCG@10 differs from the baseline's",
+      "null": "the arm's nDCG@10 equals the baseline's on every dataset, within the minimum detectable effect"
+    },
+    {
+      "id": "H4",
+      "role": "primary",
+      "statement": "on at least one dataset, the token-aware-chunking-off arm's nDCG@10 differs from the baseline's",
+      "null": "the arm's nDCG@10 equals the baseline's on every dataset, within the minimum detectable effect"
+    },
+    {
+      "id": "H5",
+      "role": "primary",
+      "statement": "on at least one dataset, the hybrid-search arm's nDCG@10 differs from the baseline's",
+      "null": "the arm's nDCG@10 equals the baseline's on every dataset, within the minimum detectable effect"
+    }
+  ],
+  "decision_rule": "An arm shows a difference on a dataset when the Holm-adjusted p of the paired permutation test on per-question nDCG@10 (3 runs averaged per question first) is below 0.05 and the paired 95% bootstrap interval excludes zero. Otherwise the report says no difference larger than the minimum detectable effect was found.",
+  "stats": "expert",
+  "seed": 20261101,
+  "baseline": "documents-profile-4b",
+  "candidate": "one of embedding-0.6b, embedding-8b, reranker-off, chunking-off, hybrid",
+  "metrics": [
+    {"name": "Recall@10", "binary": false, "primary": true},
+    {"name": "MRR@10", "binary": false, "primary": true},
+    {"name": "nDCG@10", "binary": false, "primary": true},
+    {"name": "hit@page", "binary": true, "primary": true},
+    {"name": "ragas_faithfulness", "binary": false, "primary": false},
+    {"name": "ragas_answer_relevancy", "binary": false, "primary": false},
+    {"name": "ragas_context_precision", "binary": false, "primary": false},
+    {"name": "ragas_context_recall", "binary": false, "primary": false}
+  ],
+  "gates": [
+    {"id": "G1", "metric": "determinism_mismatches", "value": "count", "op": "<=", "threshold": 0},
+    {"id": "G2", "metric": "rebuild_mismatches", "value": "count", "op": "<=", "threshold": 0},
+    {"id": "G3", "metric": "preflight_failures", "value": "count", "op": "<=", "threshold": 0}
+  ],
+  "frozen": [],
+  "runtime": {
+    "runtime_under_test": false,
+    "models": [
+      {
+        "role": "embedding-baseline-4b",
+        "repository": "Qwen/Qwen3-Embedding-4B-GGUF",
+        "file": "Qwen3-Embedding-4B-Q8_0.gguf",
+        "sha256": "b60ae5ce2dd6a0b77f82cadf21def1f310a3e10cde380ad0081b07a9d416949d",
+        "runtime": "llama.cpp",
+        "build": 11671,
+        "server_args": {"embeddings": true, "pooling": "last", "ctx-size": 8192, "ubatch-size": 8192}
+      },
+      {
+        "role": "embedding-0.6b",
+        "repository": "Qwen/Qwen3-Embedding-0.6B-GGUF",
+        "file": "Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+        "runtime": "llama.cpp",
+        "build": 11671,
+        "server_args": {"embeddings": true, "pooling": "last", "ctx-size": 8192, "ubatch-size": 8192}
+      },
+      {
+        "role": "embedding-8b",
+        "repository": "Qwen/Qwen3-Embedding-8B-GGUF",
+        "file": "Qwen3-Embedding-8B-Q8_0.gguf",
+        "sha256": "d20ddc71e8a5c4344f2343481e242233a997dc5eaff442427a945836c97b4deb",
+        "runtime": "llama.cpp",
+        "build": 11671,
+        "server_args": {"embeddings": true, "pooling": "last", "ctx-size": 8192, "ubatch-size": 8192}
+      },
+      {
+        "role": "answer",
+        "repository": "Qwen/Qwen3-4B-GGUF",
+        "file": "Qwen3-4B-Q8_0.gguf",
+        "sha256": "8c2f07f26af9747e41988551106f149b03eb9b5cb6df636027b6bf6278473300",
+        "runtime": "llama.cpp",
+        "build": 11671,
+        "server_args": {"ctx-size": 16384}
+      }
+    ],
+    "references": [
+      {"role": "judge-main", "provider": "openrouter", "model": "deepseek/deepseek-v4.1-flash-1017"},
+      {"role": "judge-crosscheck", "provider": "openrouter", "model": "openai/gpt-6.1-terra"}
+    ],
+    "tolerance": [
+      {"metric": "Recall@10", "max_abs_change": 0.005},
+      {"metric": "MRR@10", "max_abs_change": 0.005},
+      {"metric": "nDCG@10", "max_abs_change": 0.005},
+      {"metric": "hit@page", "max_abs_change": 0.005}
+    ]
+  },
+  "amendments": []
+}
