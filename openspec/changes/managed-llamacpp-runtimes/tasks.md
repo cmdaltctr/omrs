@@ -131,8 +131,9 @@ Write all tests in this group first, against the fake server and the client proc
   - Verify: both pass.
 - [x] 10.3 Run `openspec validate --all --strict`.
   - Verify: passes.
-- [ ] 10.4 Ask the operator before the full local CI run, then run `./scripts/local_ci.sh`.
+- [x] 10.4 Ask the operator before the full local CI run, then run `./scripts/local_ci.sh`.
   - Verify: every step passes, and no step reports `SKIPPED` without a stated reason.
+  - Evidence (2026-11-01, commit 0db7bb04): `./scripts/local_ci.sh` exit 0, `== local CI passed ==`. No step printed `SKIPPED`. ruff, ruff format, import-linter, OpenSpec strict (92 of 92), actionlint, OpenAPI contract and torch-free install all passed. Fast suite 9736 passed, 149 skipped (parallel, 114 s). Tripwire 5 passed. Frontend gates 2284 tests passed, web build ok. Pyright advisory only.
 - [ ] 10.5 Commit with `uv run --no-sync git commit`, open a pull request into `v3`, watch CI to the end, and work through every review comment.
   - Verify: every check is green and every thread is answered and resolved. Merge only when the operator says so.
 
