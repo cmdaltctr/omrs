@@ -7,7 +7,9 @@ only what the manager and its clients use:
 
 - ``--version`` prints ``version: 0.7.0-dev (build <build>, commit fake)``;
 - ``GET /health`` answers 503 until the health delay has passed, then 200;
-- ``GET /props`` answers the reported build number;
+- ``GET /props`` answers the build as ``{PROPS_BUILD_FIELD: "b<build>-fake"}``,
+  the shape of a real llama-server (``build_info``, for example
+  ``b11671-ba3c05f71``);
 - ``POST /v1/chat/completions`` records the request body and answers a
   fixed completion;
 - ``POST /v1/embeddings`` records the request body and answers a fixed
@@ -56,6 +58,16 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+#: The ``GET /props`` field that holds the build. A real llama-server b11671
+#: reports ``build_info``; task 6.4 of the change confirms it on b11941.
+PROPS_BUILD_FIELD = "build_info"
+
+#: The line a real llama-server prints when the port is taken (from the
+#: ``server.cpp`` source; task 6.4 can check it on b11941). The manager
+#: matches the fixed part ``couldn't bind HTTP server socket`` to decide on a
+#: bind retry (design D5).
+BIND_ERROR_LINE = "main: couldn't bind HTTP server socket, hostname: 127.0.0.1, port: {port}"
+
 #: The fixed embedding vector of ``POST /v1/embeddings``.
 EMBEDDING_VECTOR = [0.1, 0.2, 0.3]
 
@@ -92,7 +104,7 @@ def main() -> int:
     bind = _bind_fails()
     if bind is not None and bind > 0:
         _decrement_bind_fails(os.environ["FAKE_LLAMA_BIND_FAILS"])
-        print("couldn't bind HTTP server socket: address already in use", file=sys.stderr)
+        print(BIND_ERROR_LINE.format(port=_arg("--port")), file=sys.stderr)
         return 1
     starts = os.environ.get("FAKE_LLAMA_STARTS")
     if starts:
@@ -125,7 +137,7 @@ def main() -> int:
                 self._send(200 if healthy else 503, {"status": "ok" if healthy else "loading"})
             elif self.path == "/props":
                 build = int(os.environ.get("FAKE_LLAMA_BUILD", "11941"))
-                self._send(200, {"build": build})
+                self._send(200, {PROPS_BUILD_FIELD: f"b{build}-fake"})
             else:
                 self._send(404, {})
 

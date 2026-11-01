@@ -20,6 +20,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from tests.fixtures.llamacpp.fake_llama_server import BIND_ERROR_LINE, PROPS_BUILD_FIELD
 from tests.fixtures.llamacpp.install import install_fake_server, touch_count_file
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -98,7 +99,52 @@ def test_health_and_props_report_the_build(server: FakeServer) -> None:
     assert answer.status_code == 200
     props = httpx.get(server.url("/props"), timeout=2)
     assert props.status_code == 200
-    assert props.json()["build"] == 11941
+    # The field name sits in one constant; task 6.4 confirms it on a real binary.
+    assert props.json()[PROPS_BUILD_FIELD] == "b11941-fake"
+
+
+def test_llama_flags_are_accepted_and_each_start_is_logged(tmp_path: Path) -> None:
+    fake = FakeServer(tmp_path)
+    flags = [
+        "-m",
+        "/m/e.gguf",
+        "--mmproj",
+        "/m/p.gguf",
+        "--embedding",
+        "-np",
+        "1",
+        "-c",
+        "2048",
+        "--temp",
+        "0",
+        "--image-min-tokens",
+        "4",
+    ]
+    fake.proc = subprocess.Popen(  # noqa: S603 - test fixture, fixed argv
+        [str(fake.binary), *flags, "--host", "127.0.0.1", "--port", str(fake.port)],
+        env=fake.env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    try:
+        deadline = time.monotonic() + 10
+        while time.monotonic() < deadline:
+            try:
+                if httpx.get(fake.url("/health"), timeout=1).status_code == 200:
+                    break
+            except httpx.HTTPError:
+                pass
+            time.sleep(0.05)
+        else:  # pragma: no cover
+            pytest.fail("the fake server never became healthy")
+    finally:
+        fake.stop()
+    lines = fake.starts.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 1
+    pid, argv = lines[0].split(" ", 1)
+    assert pid.isdigit()
+    assert json.loads(argv)[: len(flags)] == flags
 
 
 def test_version_reports_the_build_and_it_changes(tmp_path: Path) -> None:
@@ -157,15 +203,16 @@ def test_bind_fails_exits_with_the_bind_error_then_succeeds(tmp_path: Path) -> N
     fails = touch_count_file(tmp_path / "logs", "bind-fails.txt", 2)
     env = {**os.environ, "FAKE_LLAMA_BIND_FAILS": str(fails)}
     for _ in range(2):
+        port = _free_port()
         run = subprocess.run(  # noqa: S603 - fixed argv
-            [str(binary), "--port", str(_free_port())],
+            [str(binary), "--port", str(port)],
             capture_output=True,
             text=True,
             env=env,
             timeout=10,
         )
         assert run.returncode == 1
-        assert "couldn't bind HTTP server socket" in run.stderr
+        assert BIND_ERROR_LINE.format(port=port) in run.stderr
     assert fails.read_text().strip() == "0"
     port = _free_port()
     good = subprocess.Popen(  # noqa: S603 - fixed argv
