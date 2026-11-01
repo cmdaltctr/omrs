@@ -1,0 +1,78 @@
+{
+  "experiment_id": "35-full-rag-benchmark-2026-11-01",
+  "protocol_version": 1,
+  "question": "<one sentence: the question>",
+  "decision": "<one sentence: the decision that depends on the answer>",
+  "hypotheses": [
+    {
+      "id": "H1",
+      "role": "primary",
+      "statement": "<change> makes <primary metric> better than <baseline> by at least <amount>",
+      "null": "the difference is smaller than <amount>, or goes the other way"
+    }
+  ],
+  "decision_rule": "If H1 holds and <guardrail> does not get worse by more than <amount>, then <action>. Otherwise <other action>.",
+  "stats": "medium",
+  "seed": 0,
+  "baseline": "baseline",
+  "candidate": "candidate",
+  "metrics": [
+    {"name": "<primary metric>", "binary": false, "primary": true}
+  ],
+  "gates": [
+    {"id": "G1", "metric": "<primary metric>", "value": "difference", "op": ">=", "threshold": 0.0}
+  ],
+  "frozen": [],
+  "runtime": {
+    "runtime_under_test": false,
+    "models": [
+      {
+        "role": "embedding-baseline-4b",
+        "repository": "Qwen/Qwen3-Embedding-4B-GGUF",
+        "file": "Qwen3-Embedding-4B-Q8_0.gguf",
+        "sha256": "b60ae5ce2dd6a0b77f82cadf21def1f310a3e10cde380ad0081b07a9d416949d",
+        "runtime": "llama.cpp",
+        "build": 11671,
+        "server_args": {"embeddings": true, "pooling": "last", "ctx-size": 8192, "ubatch-size": 8192}
+      },
+      {
+        "role": "embedding-0.6b",
+        "repository": "Qwen/Qwen3-Embedding-0.6B-GGUF",
+        "file": "Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+        "runtime": "llama.cpp",
+        "build": 11671,
+        "server_args": {"embeddings": true, "pooling": "last", "ctx-size": 8192, "ubatch-size": 8192}
+      },
+      {
+        "role": "embedding-8b",
+        "repository": "Qwen/Qwen3-Embedding-8B-GGUF",
+        "file": "Qwen3-Embedding-8B-Q8_0.gguf",
+        "sha256": "d20ddc71e8a5c4344f2343481e242233a997dc5eaff442427a945836c97b4deb",
+        "runtime": "llama.cpp",
+        "build": 11671,
+        "server_args": {"embeddings": true, "pooling": "last", "ctx-size": 8192, "ubatch-size": 8192}
+      },
+      {
+        "role": "answer",
+        "repository": "Qwen/Qwen3-4B-GGUF",
+        "file": "Qwen3-4B-Q8_0.gguf",
+        "sha256": "8c2f07f26af9747e41988551106f149b03eb9b5cb6df636027b6bf6278473300",
+        "runtime": "llama.cpp",
+        "build": 11671,
+        "server_args": {"ctx-size": 16384}
+      }
+    ],
+    "references": [
+      {"role": "judge-main", "provider": "openrouter", "model": "deepseek/deepseek-v4.1-flash-1017"},
+      {"role": "judge-crosscheck", "provider": "openrouter", "model": "openai/gpt-6.1-terra"}
+    ],
+    "tolerance": [
+      {"metric": "Recall@10", "max_abs_change": 0.005},
+      {"metric": "MRR@10", "max_abs_change": 0.005},
+      {"metric": "nDCG@10", "max_abs_change": 0.005},
+      {"metric": "hit@page", "max_abs_change": 0.005}
+    ]
+  },
+  "amendments": []
+}

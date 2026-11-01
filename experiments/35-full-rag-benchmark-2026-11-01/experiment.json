@@ -1,0 +1,19 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "35",
+  "title": "Reproducible local RAG benchmark of OMRS",
+  "date": "2026-11-01",
+  "category": "retrieval",
+  "size": "Confirmatory",
+  "status": "PLANNED",
+  "superseded_by": null,
+  "finding": "",
+  "purpose": "publication",
+  "refs": {
+    "adrs": [],
+    "changes": [
+      "experiment-35-full-document-rag-benchmark"
+    ],
+    "tasks": []
+  }
+}
