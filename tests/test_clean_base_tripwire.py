@@ -524,6 +524,10 @@ _EQ01_COPIES = (
 )
 if any(path.is_file() for path in _EQ01_COPIES):
     _BASE_EXECUTED += 1
+# The sandbox-exec case in test_ocr_dots_llamacpp_smoke.py skips off macOS, so a Linux run
+# passes one case fewer (dots-mocr-llamacpp-backend, 2026-10-31).
+if sys.platform != "darwin":
+    _BASE_EXECUTED -= 1
 # The nine Exp25 installed-adapter cases always run now:
 # the OpenAI-like packages moved into the base dependencies (ADR-083), so the
 # pin below includes them and there is no conditional adjustment.
