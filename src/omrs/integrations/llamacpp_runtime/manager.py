@@ -238,6 +238,10 @@ class RuntimeManager:
         elif record is not None and record.reason:
             item["state"], item["reason"] = "failed", record.reason
             item["reason_text"] = record.reason_text or reason_text(record.reason)
+        elif record is not None and record.state != "stopped":
+            # Recorded as live but the process is gone: it crashed.
+            item["state"], item["reason"] = "failed", "exited"
+            item["reason_text"] = reason_text("exited")
         if (folder / "clients.lock").exists():
             probe = LockFile(folder / "clients.lock")
             try:

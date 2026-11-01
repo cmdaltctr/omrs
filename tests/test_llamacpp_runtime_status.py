@@ -19,7 +19,12 @@ from omrs.integrations.llamacpp_runtime import locks
 from omrs.integrations.llamacpp_runtime.manager import RuntimeUnavailable
 from omrs.integrations.llamacpp_runtime.rules import REASONS
 from omrs.integrations.llamacpp_runtime.spec import RuntimeSpec
-from omrs.integrations.llamacpp_runtime.state import state_root
+from omrs.integrations.llamacpp_runtime.state import (
+    ServerRecord,
+    runtime_dir,
+    state_root,
+    write_server_record,
+)
 
 FIELDS = {
     "id",
@@ -128,6 +133,31 @@ def test_an_orphan_reports_no_client(runtime_env: RuntimeEnv) -> None:
     item = runtime_env.manager().status([spec])[0]
     assert (item["state"], item["clients"]) == ("running", "none")
     assert item["files_checked"] is False
+
+
+def test_a_crashed_server_reads_failed_exited(runtime_env: RuntimeEnv) -> None:
+    fake = runtime_env.fake()
+    spec = fake.chat(_free_port())
+    gone = subprocess.Popen(["true"])  # noqa: S603, S607 - a pid that is gone
+    gone.wait()
+    folder = runtime_dir(state_root(), spec.id)
+    folder.mkdir(parents=True, exist_ok=True)
+    record = ServerRecord(
+        pid=gone.pid,
+        port=spec.port,
+        binary=spec.binary,
+        digest=spec.digest,
+        build=None,
+        state="running",
+        stopped_by=None,
+        generation=1,
+        reason=None,
+    )
+    write_server_record(folder, record)
+    item = runtime_env.manager().status([spec])[0]
+    assert (item["state"], item["reason"]) == ("failed", "exited")
+    assert item["reason_text"]
+    assert (item["address"], item["memory_bytes"]) == (None, None)
 
 
 def test_every_reason_is_from_the_fixed_set(runtime_env: RuntimeEnv) -> None:
