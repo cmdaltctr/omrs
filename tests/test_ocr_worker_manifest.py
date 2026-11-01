@@ -36,12 +36,5 @@ def test_minimal_reader_matches_tomllib_for_the_gate() -> None:
     assert licence_gate(minimal_toml(LICENSED)) == (True, "LICENCE-NOTES.md")
 
 
-def test_helper_imports_only_the_standard_library() -> None:
-    source = Path(__file__).resolve().parents[1] / "src/omrs/integrations/ocr_worker/manifest.py"
-    imports = [
-        line.split()[1]
-        for line in source.read_text(encoding="utf-8").splitlines()
-        if line.startswith(("import ", "from ")) and not line.startswith("from __future__")
-    ]
-    assert imports
-    assert all(name.split(".")[0] in {"re", "pathlib", "typing", "tomllib"} for name in imports)
+# The standard-library-only rule is checked by an AST test in
+# tests/test_ocr_manifest_runtime.py (function-local imports included).
