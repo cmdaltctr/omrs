@@ -46,7 +46,8 @@ LOG_FILE = "server.log"
 #: The fixed part of llama-server's bind error line (``server.cpp``).
 BIND_ERROR_MARK = "couldn't bind HTTP server socket"
 #: The ``GET /props`` field that holds the build (``b11941-<commit>``).
-#: Task 6.4 of the change confirms the field name on a real b11941 binary.
+#: Confirmed on the official b11941 macOS arm64 binary (task 6.4, 2026-11-01):
+#: ``"build_info": "b11941-19ff817fb"``.
 PROPS_BUILD_FIELD = "build_info"
 
 _BUILD_IN_VERSION = re.compile(r"build[:\s]+(\d+)")

@@ -81,8 +81,8 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-#: The ``GET /props`` field that holds the build. A real llama-server b11671
-#: reports ``build_info``; task 6.4 of the change confirms it on b11941.
+#: The ``GET /props`` field that holds the build. A real llama-server reports
+#: ``build_info`` on b11671 and on b11941 (task 6.4, 2026-11-01).
 PROPS_BUILD_FIELD = "build_info"
 
 #: The line a real llama-server prints when the port is taken (from the
