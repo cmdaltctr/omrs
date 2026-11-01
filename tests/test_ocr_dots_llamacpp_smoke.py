@@ -1,9 +1,10 @@
-"""Tests for the dots-mocr-llamacpp smoke script (task 2.6).
+"""Tests for the dots-mocr-llamacpp smoke script (tasks 2.6 and 2b.6).
 
 Change dots-mocr-llamacpp-backend.
 The script is not an installable package, so the tests load it by path. They
-never provision the engine, start a llama-server or use the network. The
-sandbox test runs a real ``sandbox-exec`` on macOS only.
+never provision the engine, start a real llama-server or use the network. The
+runtime session test starts the shared fake server through the host's runtime
+manager. The sandbox test runs a real ``sandbox-exec`` on macOS only.
 """
 
 from __future__ import annotations
@@ -11,16 +12,23 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import os
 import shutil
 import socket
 import subprocess
 import sys
+import tempfile
 from collections.abc import Iterator
 from pathlib import Path
 from types import ModuleType
 from typing import Any
 
 import pytest
+from tests.fixtures.llamacpp.harness import pid_alive, wait_until
+from tests.fixtures.ocr_worker.dots_llamacpp import stand_in_engine
+
+from omrs.integrations.llamacpp_runtime import process
+from omrs.integrations.llamacpp_runtime.state import read_server_record, runtime_dir
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ENGINE_DIR = REPO_ROOT / "ocr-workers" / "engines" / "dots-mocr-llamacpp"
@@ -66,6 +74,7 @@ def test_plan_only_lists_steps_and_touches_nothing(
     monkeypatch.setattr(subprocess, "run", _refuse)
     monkeypatch.setattr(subprocess, "Popen", _refuse)
     monkeypatch.setattr(socket, "create_connection", _refuse)
+    monkeypatch.setattr(tempfile, "mkdtemp", _refuse)
     import urllib.request
 
     monkeypatch.setattr(urllib.request, "urlopen", _refuse)
@@ -81,6 +90,7 @@ def test_plan_only_lists_steps_and_touches_nothing(
     assert "eq01" in out and "page 2" in out and "page 3" in out
     assert "sandbox-exec" in out
     assert "clean exit" in out
+    assert "RuntimeManager" in out and "OMRS_STATE_DIR" in out and "OMRS_OCR_RUNTIME_URL" in out
     for name in ("capabilities.json", "run.json", "worker-stderr.log", "eq01-p002.md"):
         assert name in out
     assert "plan only" in out
@@ -104,6 +114,28 @@ def test_plan_only_as_a_real_subprocess(tmp_path: Path) -> None:
     assert list(tmp_path.iterdir()) == []
 
 
+class FakeSession:
+    """Stands for :class:`RuntimeSession`: records the start, the pid and the leave."""
+
+    url = "http://127.0.0.1:12345"
+
+    def __init__(self, calls: list[str], fail: str = "") -> None:
+        self.calls = calls
+        self.fail = fail
+
+    def start(self) -> str:
+        self.calls.append("runtime")
+        if self.fail:
+            raise RuntimeError(self.fail)
+        return self.url
+
+    def pid(self) -> int | None:
+        return None
+
+    def leave(self) -> None:
+        self.calls.append("leave")
+
+
 class Fakes:
     """Replace the slow parts of the script and record what ran, in order."""
 
@@ -114,6 +146,14 @@ class Fakes:
         self.pdf = folder / "doc.pdf"
         self.pdf.write_bytes(b"%PDF-1.4\n")
         self.evidence = folder / "evidence"
+        self.state = folder / "scratch-state"
+        self.session = FakeSession(self.calls)
+        self.worker_urls: list[str] = []
+        self.session_state: Path | None = None
+
+    def make_session(self, state: Path) -> FakeSession:
+        self.session_state = state
+        return self.session
 
     def run(self, argv: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
         if "--capabilities" in argv:
@@ -124,8 +164,11 @@ class Fakes:
         assert "--accept-model-licence" in argv and "dots-mocr-llamacpp" in argv
         return subprocess.CompletedProcess(argv, 0, "", "")
 
-    def worker(self, cases: list[tuple[str, Path, int]]) -> dict[str, Any]:
+    def worker(
+        self, cases: list[tuple[str, Path, int]], session: FakeSession | None = None
+    ) -> dict[str, Any]:
         self.calls.append("worker")
+        self.worker_urls.append(getattr(session, "url", ""))
         results = [
             {"case": n, "page": p, "ok": True, "seconds": 1.0, "chars": 5} for n, _, p in cases
         ]
@@ -141,6 +184,9 @@ class Fakes:
         monkeypatch.setattr(self.smoke, "CLEAN_EXIT_WAIT_SECONDS", 0.0)
         monkeypatch.setattr(self.smoke.subprocess, "run", self.run)
         monkeypatch.setattr(self.smoke, "run_worker", self.worker)
+        monkeypatch.setattr(self.smoke, "RuntimeSession", self.make_session)
+        monkeypatch.setattr(self.smoke.tempfile, "mkdtemp", lambda **_k: str(self.state))
+        monkeypatch.setenv("OMRS_STATE_DIR", "/not/the/scratch/folder")
 
 
 @pytest.fixture(name="fakes")
@@ -152,12 +198,12 @@ def _fakes(smoke: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
 
 def test_provision_runs_before_the_probe(smoke: ModuleType, fakes: Fakes) -> None:
     assert smoke.main(["--provision", "--case", f"eq01={fakes.pdf}:2"]) == 0
-    assert fakes.calls == ["provision", "probe", "worker"]
+    assert fakes.calls == ["provision", "probe", "runtime", "worker", "leave"]
 
 
 def test_run_does_not_provision(smoke: ModuleType, fakes: Fakes) -> None:
     assert smoke.main(["--run", "--case", f"eq01={fakes.pdf}:2"]) == 0
-    assert fakes.calls == ["probe", "worker"]
+    assert fakes.calls == ["probe", "runtime", "worker", "leave"]
     evidence = json.loads((fakes.evidence / "run.json").read_text(encoding="utf-8"))
     assert evidence["clean_exit"] is True
     assert (fakes.evidence / "capabilities.json").is_file()
@@ -179,8 +225,8 @@ def test_wrong_backend_id_fails_the_run(smoke: ModuleType, fakes: Fakes) -> None
 def test_empty_markdown_fails_the_run(
     smoke: ModuleType, fakes: Fakes, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def empty(cases: list[tuple[str, Path, int]]) -> dict[str, Any]:
-        out = fakes.worker(cases)
+    def empty(cases: list[tuple[str, Path, int]], session: FakeSession) -> dict[str, Any]:
+        out = fakes.worker(cases, session)
         out["results"][0]["chars"] = 0
         return out
 
@@ -208,6 +254,150 @@ def test_run_without_sandbox_exec_says_so(
     assert smoke.main(["--provision", "--case", f"eq01={fakes.pdf}:2"]) != 0
     assert "sandbox-exec" in capsys.readouterr().err
     assert fakes.calls == []
+
+
+def test_the_runtime_starts_after_the_probe_and_its_url_goes_to_the_worker(
+    smoke: ModuleType, fakes: Fakes
+) -> None:
+    assert smoke.main(["--run", "--case", f"eq01={fakes.pdf}:2"]) == 0
+    assert fakes.worker_urls == [FakeSession.url]
+
+
+def test_the_runtime_uses_a_scratch_state_folder_and_not_the_real_one(
+    smoke: ModuleType, fakes: Fakes
+) -> None:
+    assert smoke.main(["--run", "--case", f"eq01={fakes.pdf}:2"]) == 0
+    assert os.environ["OMRS_STATE_DIR"] == str(fakes.state)
+    assert fakes.session_state == fakes.state
+    evidence = json.loads((fakes.evidence / "run.json").read_text(encoding="utf-8"))
+    assert evidence["state_dir"] == str(fakes.state)
+
+
+def test_the_runtime_is_left_when_the_worker_raises(smoke: ModuleType, fakes: Fakes) -> None:
+    def boom(_cases: object, _session: object) -> dict[str, Any]:
+        fakes.calls.append("worker")
+        raise RuntimeError("worker broke")
+
+    fakes.smoke.run_worker = boom
+    with pytest.raises(RuntimeError, match="worker broke"):
+        smoke.main(["--run", "--case", f"eq01={fakes.pdf}:2"])
+    assert fakes.calls == ["probe", "runtime", "worker", "leave"]
+
+
+def test_a_runtime_that_does_not_start_fails_the_run_with_its_reason(
+    smoke: ModuleType, fakes: Fakes, capsys: pytest.CaptureFixture[str]
+) -> None:
+    fakes.session.fail = "A model file changed: dots-mocr-Q8_0.gguf."
+    assert smoke.main(["--run", "--case", f"eq01={fakes.pdf}:2"]) != 0
+    assert "dots-mocr-Q8_0.gguf" in capsys.readouterr().err
+    assert fakes.calls == ["probe", "runtime", "leave"]
+
+
+def test_the_worker_gets_the_runtime_url_in_its_environment(smoke: ModuleType) -> None:
+    env = smoke.worker_env("http://127.0.0.1:4321")
+    assert env["OMRS_OCR_RUNTIME_URL"] == "http://127.0.0.1:4321"
+    assert env["PATH"] == os.environ["PATH"]
+
+
+class FakePopen:
+    """Stands for the sandboxed worker process: answers each request with one page."""
+
+    started: list[dict[str, Any]] = []  # noqa: RUF012 - reset by the test
+
+    def __init__(self, argv: list[str], **kwargs: Any) -> None:
+        self.argv, self.kwargs = argv, kwargs
+        FakePopen.started.append(kwargs)
+        self.requests: list[dict[str, Any]] = []
+        self.stdin = self
+        self.stdout = self
+
+    def write(self, line: str) -> None:
+        self.requests.append(json.loads(line))
+
+    def flush(self) -> None:
+        pass
+
+    def close(self) -> None:
+        pass
+
+    def readline(self) -> str:
+        request = self.requests[-1]
+        return json.dumps({"id": request["id"], "ok": True, "pages_markdown": ["page text"]}) + "\n"
+
+    def wait(self, timeout: float | None = None) -> int:
+        return 0
+
+
+def test_the_real_worker_launch_passes_the_runtime_url_in_its_environment(
+    smoke: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    FakePopen.started = []
+    evidence = tmp_path / "evidence"
+    evidence.mkdir()
+    monkeypatch.setattr(smoke, "EVIDENCE_DIR", evidence)
+    monkeypatch.setattr(smoke.subprocess, "Popen", FakePopen)
+    session = FakeSession([])
+    session.start()
+
+    outcome = smoke.run_worker([("eq01", tmp_path / "x.pdf", 2)], session)
+
+    (launch,) = FakePopen.started
+    assert launch["env"]["OMRS_OCR_RUNTIME_URL"] == FakeSession.url
+    assert outcome["results"][0]["ok"] is True and outcome["results"][0]["chars"] == 9
+    assert (evidence / "eq01-p002.md").read_text(encoding="utf-8") == "page text"
+
+
+def test_the_script_has_no_server_pid_file_reader(smoke: ModuleType) -> None:
+    assert not hasattr(smoke, "server_pid")
+    assert "llama-server.pid" not in SCRIPT.read_text(encoding="utf-8")
+
+
+def test_the_runtime_session_starts_the_declared_server_and_leaves_it(
+    smoke: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Against the shared fake: the host manager starts it, the pid is known, leaving stops it."""
+    folder = tmp_path / "engines" / "dots-mocr-llamacpp"
+    folder.mkdir(parents=True)
+    fake = stand_in_engine(folder)
+    monkeypatch.setattr(smoke, "ENGINE_DIR", folder)
+    monkeypatch.delenv("OMRS_OCR_MODEL_CACHE", raising=False)
+    monkeypatch.setattr(process, "HEALTH_POLL_SECONDS", 0.05)
+    state = tmp_path / "state"
+    session = smoke.RuntimeSession(state)
+    try:
+        url = session.start()
+        assert url.startswith("http://127.0.0.1:")
+        (started,) = fake.starts()
+        assert started["argv"][-2:] != []  # the declared flags travel with the start
+        assert "-np" in started["argv"] and "24576" in started["argv"]
+        pid = session.pid()
+        assert pid == started["pid"] and pid_alive(pid)
+        record = read_server_record(runtime_dir(state, "ocr-dots-mocr-llamacpp"))
+        assert record is not None and record.pid == pid
+    finally:
+        session.leave()
+    assert wait_until(lambda: not pid_alive(pid))
+    after = read_server_record(runtime_dir(state, "ocr-dots-mocr-llamacpp"))
+    assert after is not None and after.stopped_by == "last-client"
+    fake.kill_all()
+
+
+def test_a_runtime_session_refuses_a_changed_model_file_and_starts_nothing(
+    smoke: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    folder = tmp_path / "engines" / "dots-mocr-llamacpp"
+    folder.mkdir(parents=True)
+    fake = stand_in_engine(folder)
+    (folder / ".model-cache" / "models" / "dots-mocr-Q8_0.gguf").write_bytes(b"changed")
+    monkeypatch.setattr(smoke, "ENGINE_DIR", folder)
+    monkeypatch.delenv("OMRS_OCR_MODEL_CACHE", raising=False)
+    session = smoke.RuntimeSession(tmp_path / "state")
+    try:
+        with pytest.raises(Exception, match="dots-mocr-Q8_0.gguf"):
+            session.start()
+    finally:
+        session.leave()
+    assert fake.starts() == []
 
 
 @needs_sandbox
@@ -239,11 +429,8 @@ def test_sandbox_profile_allows_loopback_and_denies_the_rest(smoke: ModuleType) 
             f"import socket; socket.create_connection(('127.0.0.1', {port}), 2)"
         )
         assert loopback.returncode == 0, loopback.stderr
-        server = under_profile(
-            "import socket; s = socket.socket(); s.bind(('127.0.0.1', 0)); s.listen(1);"
-            " c = socket.create_connection(s.getsockname(), 2); c.send(b'x')"
-        )
-        assert server.returncode == 0, server.stderr
+        server = under_profile("import socket; s = socket.socket(); s.bind(('127.0.0.1', 0))")
+        assert server.returncode != 0, "the worker has no reason to listen"
         outside = under_profile("import socket; socket.create_connection(('203.0.113.1', 9), 2)")
     finally:
         listener.close()

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline smoke test for the dots-mocr-llamacpp engine (task 2.6; run in 3.1, 3.2).
+"""Offline smoke test for the dots-mocr-llamacpp engine (tasks 2.6 and 2b.6; run in 3.1, 3.2).
 
 SEPARATE from the main OMRS pytest suite: it needs the provisioned engine
 environment, the downloaded model and the llama.cpp build. It follows the
@@ -12,20 +12,25 @@ PyTorch engine's script, with these differences:
   everything ``--run`` does.
 - ``--run`` skips provisioning and probes the capabilities, then sends one
   page-listed parse request per ``--case`` to one worker process.
-- The worker runs under ``sandbox-exec``. This engine's worker starts a
-  ``llama-server`` on 127.0.0.1 and talks to it, so the profile allows
-  loopback traffic only. Every other network connection is refused.
+- The script starts the engine's runtime the way OMRS does. The host's
+  ``RuntimeManager`` runs the ``llama-server`` that ``pyproject.toml``
+  declares, with a scratch ``OMRS_STATE_DIR`` (never the real state folder).
+  The worker gets the address in ``OMRS_OCR_RUNTIME_URL``. The script leaves
+  the runtime at the end, and the server stops with the last client. This
+  needs the OMRS environment: run it with ``uv run --no-sync python``.
+- The worker runs under ``sandbox-exec``. It only calls the server on
+  127.0.0.1, so the profile allows loopback connections and nothing else.
 - Peak memory has two parts. ``/usr/bin/time -l`` reports the footprint of
   the worker process. The kernel's lifetime peak footprint of the
   ``llama-server`` process (Experiment 41's method) is read after every
   response. Metal memory counts in both, as it is unified memory.
-- After the worker exits, ``ps`` must show no process that runs from the
+- After the runtime is left, ``ps`` must show no process that runs from the
   engine's llama.cpp folder. A leftover process fails the run.
 
 Usage::
 
     python3 ocr-workers/engines/dots-mocr-llamacpp/smoke_test.py          # plan only
-    python3 ocr-workers/engines/dots-mocr-llamacpp/smoke_test.py \\
+    uv run --no-sync python ocr-workers/engines/dots-mocr-llamacpp/smoke_test.py \\
         --case eq01=/path/eq01.pdf:2 --case eq01=/path/eq01.pdf:3 --run
 
 Evidence (capability JSON, per-page Markdown, ``run.json``, worker standard
@@ -41,6 +46,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -53,20 +59,20 @@ VENV_PYTHON = ENGINE_DIR / ".venv" / "bin" / "python"
 EVIDENCE_DIR = ENGINE_DIR / "smoke_evidence"
 PROTOCOL_VERSION = "1.1"
 MODEL_CACHE_ENV = "OMRS_OCR_MODEL_CACHE"
+#: The variable in which the host gives a worker the address of its runtime.
+RUNTIME_URL_ENV = "OMRS_OCR_RUNTIME_URL"
+STATE_DIR_ENV = "OMRS_STATE_DIR"
 SANDBOX_EXEC = "/usr/bin/sandbox-exec"
 
 #: Seconds to wait for the llama-server to leave after the worker exits.
 CLEAN_EXIT_WAIT_SECONDS = 10.0
 
-#: Deny every network operation, then allow loopback only. Outbound and
-#: inbound are allowed to localhost, and binding is allowed on localhost,
-#: because the worker listens for its own llama-server. A connection to any
-#: other address fails at once with ``Operation not permitted``.
+#: Deny every network operation, then allow outbound connections to localhost
+#: only. The worker is a client of the host's llama-server and listens for
+#: nothing. A connection to any other address, or a bind, fails at once with
+#: ``Operation not permitted``.
 SANDBOX_PROFILE = (
-    "(version 1)(allow default)(deny network*)"
-    '(allow network-outbound (remote ip "localhost:*"))'
-    '(allow network-inbound (local ip "localhost:*"))'
-    '(allow network-bind (local ip "localhost:*"))'
+    '(version 1)(allow default)(deny network*)(allow network-outbound (remote ip "localhost:*"))'
 )
 
 _PEAK_RE = re.compile(r"^\s*(\d+)\s+peak memory footprint", re.MULTILINE)
@@ -153,7 +159,12 @@ def plan_lines(cases: list[Case]) -> list[str]:
     )
     lines.append(f"  {next(step)}. capability probe: {' '.join(probe_argv())}")
     lines.append(f"       backend_id must be {BACKEND_ID!r}")
-    lines.append(f"  {next(step)}. offline parse, one worker, network blocked except loopback:")
+    lines.append(f"  {next(step)}. start the runtime with the host's RuntimeManager:")
+    lines.append(
+        "       it runs the llama-server the engine declares, with a scratch OMRS_STATE_DIR"
+    )
+    lines.append(f"  {next(step)}. offline parse, one worker, network blocked except loopback;")
+    lines.append(f"       the worker gets the runtime address in {RUNTIME_URL_ENV}:")
     lines.append(f"       {' '.join(worker_command())}")
     if cases:
         for name, pdf, page in cases:
@@ -162,6 +173,7 @@ def plan_lines(cases: list[Case]) -> list[str]:
         lines.append("       case: none given (--run needs at least one --case name=path.pdf:page)")
     lines.append(f"  {next(step)}. peak memory: /usr/bin/time -l (worker) plus the kernel's")
     lines.append("       lifetime peak footprint of the llama-server (read after each response)")
+    lines.append(f"  {next(step)}. leave the runtime (the server stops with the last client)")
     lines.append(f"  {next(step)}. clean exit: no process may run from {llama_dir()}")
     lines.append(f"  {next(step)}. evidence written to {EVIDENCE_DIR}:")
     files = ["capabilities.json", "run.json", "worker-stderr.log"]
@@ -191,13 +203,66 @@ def peak_footprint(pid: int) -> int | None:
     return int(buf[_PEAK_INDEX]) if ok else None
 
 
-def server_pid() -> int | None:
-    """Return the pid the worker recorded for its llama-server, or None."""
-    try:
-        data = json.loads((cache_dir() / "llama-server.pid").read_text(encoding="utf-8"))
-        return int(data["pid"])
-    except (OSError, ValueError, KeyError, TypeError):
-        return None
+class RuntimeSession:
+    """The engine's llama-server, run by the host's runtime manager (design D2).
+
+    The session reads the runtime block of the engine's ``pyproject.toml``
+    with the host's rules and joins the runtime like an OMRS process does.
+    """
+
+    def __init__(self, state: Path) -> None:
+        """Hold the state folder; start nothing."""
+        self._state = state
+        self._manager: Any = None
+        self._spec: Any = None
+        self.url = ""
+
+    def start(self) -> str:
+        """Start the server through the manager and return its address.
+
+        Raises:
+            RuntimeError: The host refuses the start (wrong build, a changed
+                file, a server that does not become healthy). The text says why.
+            ValueError: The engine's runtime block breaks a rule.
+            SystemExit: OMRS is not importable; run the script with ``uv run``.
+        """
+        try:
+            from omrs.integrations.llamacpp_runtime.manager import RuntimeManager
+            from omrs.integrations.ocr_worker.manifest import declared_runtime
+            from omrs.integrations.ocr_worker.routes import RouteCommand
+            from omrs.integrations.ocr_worker.runtime import runtime_spec
+        except ImportError as exc:
+            raise SystemExit(
+                f"error: cannot import OMRS ({exc}); run this script with "
+                "`uv run --no-sync python ocr-workers/engines/dots-mocr-llamacpp/smoke_test.py`"
+            ) from exc
+        declared = declared_runtime(ENGINE_DIR, cache_dir())
+        if declared is None:
+            raise ValueError(f"{ENGINE_NAME} declares no runtime in its pyproject.toml")
+        route = RouteCommand(command=(), cwd=str(ENGINE_DIR), runtime=declared)
+        self._spec = runtime_spec(route, declared)
+        self._manager = RuntimeManager(self._state, exit_hook=False)
+        self.url = self._manager.lease(self._spec).join()
+        return self.url
+
+    def pid(self) -> int | None:
+        """Return the pid the manager recorded for the server, or None."""
+        if self._spec is None:
+            return None
+        from omrs.integrations.llamacpp_runtime.state import read_server_record, runtime_dir
+
+        record = read_server_record(runtime_dir(self._state, self._spec.id))
+        return record.pid if record is not None else None
+
+    def leave(self) -> None:
+        """Leave the runtime. The server stops when this was the last client."""
+        if self._manager is not None:
+            self._manager.close()
+
+
+def worker_env(url: str) -> dict[str, str]:
+    """Return the worker's environment: this process's, plus the runtime address."""
+    return {**os.environ, RUNTIME_URL_ENV: url}
 
 
 def list_processes() -> list[str]:
@@ -240,8 +305,12 @@ def _ask(worker: subprocess.Popen[str], request: dict[str, Any]) -> tuple[str, f
     return line, time.perf_counter() - started
 
 
-def run_worker(cases: list[Case]) -> dict[str, Any]:
+def run_worker(cases: list[Case], session: RuntimeSession) -> dict[str, Any]:
     """Run every case in one sandboxed worker and save the Markdown.
+
+    Args:
+        cases: The pages to parse.
+        session: The started runtime; its address goes to the worker.
 
     Returns:
         ``results`` (one dict per case), the worker ``stderr`` text and the
@@ -260,6 +329,7 @@ def run_worker(cases: list[Case]) -> dict[str, Any]:
             text=True,
             encoding="utf-8",
             cwd=ENGINE_DIR,
+            env=worker_env(session.url),
         )
         try:
             for name, pdf, page in cases:
@@ -279,7 +349,7 @@ def run_worker(cases: list[Case]) -> dict[str, Any]:
                 text = pages[0] if len(pages) == 1 else ""
                 ok = response.get("ok") is True and response.get("id") == request["id"]
                 (EVIDENCE_DIR / f"{name}-p{page:03d}.md").write_text(text, encoding="utf-8")
-                pid = server_pid()
+                pid = session.pid()
                 server_peak = max(server_peak, (peak_footprint(pid) if pid else 0) or 0)
                 results.append(
                     {
@@ -310,7 +380,7 @@ def run_worker(cases: list[Case]) -> dict[str, Any]:
         "method": (
             "worker: /usr/bin/time -l 'peak memory footprint' of the worker process; "
             "server: proc_pid_rusage lifetime max physical footprint of the llama-server "
-            "pid in llama-server.pid, read after each response; total is their sum"
+            "pid in the runtime's server.json, read after each response; total is their sum"
         ),
     }
     return {"results": results, "stderr": stderr, "peak": peak}
@@ -339,7 +409,19 @@ def run(cases: list[Case]) -> int:
     )
     print(f"capabilities: {json.dumps(capabilities, sort_keys=True)}")
 
-    outcome = run_worker(cases)
+    state = Path(tempfile.mkdtemp(prefix="omrs-smoke-state-"))
+    os.environ[STATE_DIR_ENV] = str(state)
+    session = RuntimeSession(state)
+    try:
+        try:
+            session.start()
+        except (RuntimeError, ValueError, OSError) as exc:
+            print(f"error: the runtime did not start: {exc}", file=sys.stderr)
+            return 1
+        print(f"runtime: {session.url} (state folder {state})")
+        outcome = run_worker(cases, session)
+    finally:
+        session.leave()
     results: list[dict[str, Any]] = outcome["results"]
     clean, left = check_clean_exit()
     revision = str((capabilities.get("pipeline") or {}).get("revision", ""))
@@ -351,9 +433,10 @@ def run(cases: list[Case]) -> int:
         "pipeline_revision": revision or None,
         "llama_cpp_build": int(build.group(1)) if build else None,
         "peak_memory": outcome["peak"],
+        "state_dir": str(state),
         "clean_exit": clean,
         "leftover_processes": left,
-        "note": "the first case's seconds include the llama-server start and model load",
+        "note": "the first case's seconds include the model load by the llama-server",
     }
     (EVIDENCE_DIR / "run.json").write_text(
         json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8"

@@ -9,22 +9,17 @@ replaced, with the hashes of two small stand-in files.
 
 from __future__ import annotations
 
-import hashlib
-import tomllib
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
 import pytest
-from tests.fixtures.llamacpp.harness import FakeRuntime
+from tests.fixtures.ocr_worker.dots_llamacpp import STAND_IN_FILES, stand_in_engine
 from tests.fixtures.ocr_worker.runtime_engine import OcrRuntimeHarness, TestEngine
 
 from omrs.integrations.llamacpp_runtime import process
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-REAL_MANIFEST = REPO_ROOT / "ocr-workers/engines/dots-mocr-llamacpp/pyproject.toml"
 NAME = "dots-mocr-llamacpp"
-FILES = {"dots-mocr-Q8_0.gguf": b"stand-in model", "dots-mocr-mmproj-bf16.gguf": b"stand-in proj"}
 
 
 @pytest.fixture
@@ -42,24 +37,11 @@ def harness(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[OcrRunt
 def _dots_engine(harness: OcrRuntimeHarness) -> TestEngine:
     """Return the engine folder: the real runtime block, stand-in model files, a fake server."""
     engine = harness.engine(NAME, runtime=False)
-    text = REAL_MANIFEST.read_text(encoding="utf-8")
-    block = tomllib.loads(text)["tool"]["omrs-ocr"]["runtime"]
-    cache = engine.folder / ".model-cache"
-    models = cache / "models"
-    models.mkdir(parents=True)
-    for pinned in block["files"]:
-        name = Path(pinned["path"]).name
-        (models / name).write_bytes(FILES[name])
-        text = text.replace(pinned["sha256"], hashlib.sha256(FILES[name]).hexdigest())
-    (engine.folder / "pyproject.toml").write_text(text, encoding="utf-8")
-    fake = FakeRuntime(cache, "llama.cpp/llama-b11941")
-    (fake.logs / "llama.cpp").mkdir()  # the start log of a nested name
-    fake.set_env(FAKE_LLAMA_REQUESTS=str(fake.logs / "requests.txt"))
-    engine.fake = fake
+    engine.fake = stand_in_engine(engine.folder)
     return engine
 
 
-@pytest.mark.parametrize("name", sorted(FILES))
+@pytest.mark.parametrize("name", sorted(STAND_IN_FILES))
 def test_a_changed_model_file_makes_the_route_unavailable_and_the_fallback_parses(
     harness: OcrRuntimeHarness, effective_settings: Any, name: str
 ) -> None:
