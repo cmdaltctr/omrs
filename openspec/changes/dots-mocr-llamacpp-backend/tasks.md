@@ -74,7 +74,7 @@ Start this group only after `managed-llamacpp-runtimes` is merged into `v3` and 
 
 Start this group only after group 2b is done.
 
-- [ ] 3.1 Provision `dots-mocr-llamacpp` in this worktree with `--accept-model-licence`. This is a download of about 4.4 GB, plus the binary.
+- [x] 3.1 Provision `dots-mocr-llamacpp` in this worktree with `--accept-model-licence`. This is a download of about 4.4 GB, plus the binary.
   - Needs operator approval for the download and the licence acceptance.
   - Verify: `--capabilities` prints the D7 fingerprint, and the model files match their hashes.
 - [ ] 3.2 Run the smoke test offline (`eq01` p2 and p3).
