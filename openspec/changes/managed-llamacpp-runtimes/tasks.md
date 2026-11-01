@@ -124,11 +124,11 @@ Write all tests in this group first, against the fake server and the client proc
 
 ## 10. Closing gates
 
-- [ ] 10.1 Re-pin the tripwire by test-ID diff: collect test IDs with `pytest --collect-only -q` before and after the change, diff them, and update `_BASE_EXECUTED` (and `_WEB_EXTRA_CASES` for fastapi tests) with a dated comment that names the added and removed IDs.
+- [x] 10.1 Re-pin the tripwire by test-ID diff: collect test IDs with `pytest --collect-only -q` before and after the change, diff them, and update `_BASE_EXECUTED` (and `_WEB_EXTRA_CASES` for fastapi tests) with a dated comment that names the added and removed IDs.
   - Verify: the diff is in the pull request description.
-- [ ] 10.2 Run the parallel fast suite with a JUnit report, then the tripwire on that report: `uv run pytest -n auto -m "not slow" --deselect tests/test_clean_base_tripwire.py -q --junitxml=<scratch>/fast.xml`, then `OMRS_TRIPWIRE_JUNIT=<scratch>/fast.xml uv run pytest tests/test_clean_base_tripwire.py -q`.
+- [x] 10.2 Run the parallel fast suite with a JUnit report, then the tripwire on that report: `uv run pytest -n auto -m "not slow" --deselect tests/test_clean_base_tripwire.py -q --junitxml=<scratch>/fast.xml`, then `OMRS_TRIPWIRE_JUNIT=<scratch>/fast.xml uv run pytest tests/test_clean_base_tripwire.py -q`.
   - Verify: both pass.
-- [ ] 10.3 Run `openspec validate --all --strict`.
+- [x] 10.3 Run `openspec validate --all --strict`.
   - Verify: passes.
 - [ ] 10.4 Ask the operator before the full local CI run, then run `./scripts/local_ci.sh`.
   - Verify: every step passes, and no step reports `SKIPPED` without a stated reason.

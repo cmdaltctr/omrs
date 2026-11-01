@@ -222,7 +222,12 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # 14 removed or replaced): roles, view, settings file, resolver, retired server model,
 # judge, runtime list and descriptors (48, no fastapi); chat settings, chat test list,
 # configuration save, connections and llama.cpp server routes (23, need fastapi).
-_BASE_EXECUTED = 9515
+# +225 (2026-11-01, managed-llamacpp-runtimes, by test-ID diff, 283 added, 58 removed):
+# runtime package, fixtures, manifest runtime block, OCR host, settings and retired
+# idle sleep (243 added, 51 removed, no fastapi: includes the 38 old lifecycle cases);
+# lifecycle (14), shared Chat server (3), runtimes routes (14) and llama.cpp server
+# routes (+9 -7) need fastapi (+33, see _WEB_EXTRA_CASES).
+_BASE_EXECUTED = 9740
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -553,11 +558,16 @@ if not _has_qwen_tokenizer:
 # +1 (2026-10-29, Xet stall fix): test_model_download_job.py (37).
 # +19 (2026-10-29, separate-local-chat-and-classification, measured by the floor job,
 # which ran 4 of the 23 new route cases without fastapi).
-_WEB_EXTRA_CASES = 1805
+# +33 (2026-11-01, managed-llamacpp-runtimes): test_llamacpp_server_lifecycle.py (14,
+# now skips without fastapi), test_web_llamacpp_server_shared.py (3),
+# test_web_runtimes.py (14) and test_web_llamacpp_server.py (+9 -7).
+_WEB_EXTRA_CASES = 1838
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)
-_BASE_DESELECTED = 21
+# +2 (2026-11-01, managed-llamacpp-runtimes): the 60 s request and 20 s lock-order
+# cases in test_llamacpp_runtime_lease_busy.py are slow. No fastapi needed.
+_BASE_DESELECTED = 23
 # +2 (2026-10-19): the two signal tests in test_launch_link.py are slow. That module
 # needs fastapi (module-level importorskip), so a run without it never collects them.
 if find_spec("fastapi") is not None:
