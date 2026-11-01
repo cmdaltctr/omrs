@@ -47,12 +47,35 @@ inherits from the test:
     When set, every chat request answers 200 with a body that is not JSON.
 ``FAKE_LLAMA_SPAM_BYTES``
     Bytes to write to standard error at start, to fill the log.
+``FAKE_LLAMA_LOG_REQUESTS``
+    When set, each POST prints one line ``request <path>`` to standard error.
+``FAKE_LLAMA_CRASH_ON_REQUEST``
+    When set, each POST exits the process at once with no answer.
+``FAKE_LLAMA_HEALTH_SLEEP_FILE``
+    A file path; while the file exists, each ``/health`` sleeps the seconds
+    written in it before it answers (a slow, busy server).
+``FAKE_LLAMA_EARLY_EXIT``
+    A counter file; each start adds 1 to it and exits 1 with no bind line.
+``FAKE_LLAMA_FDS``
+    A file; each start writes a JSON object that names the type of each open
+    descriptor from 0 to 63 (``fifo``, ``reg``, ``chr``, ``sock`` or
+    ``other``), to prove what the child inherited.
+
+``-np 1`` on the command line makes the fake answer one POST at a time, as a
+one-slot llama-server queues a second request until the first ends.
+
+The manager gives the child a minimal environment (``PATH``, ``HOME``,
+``LANG``, ``TMPDIR``), so the variables above cannot travel from the test
+through it. Tests therefore also write them to ``fake-llama.json`` beside the
+program (see :func:`tests.fixtures.llamacpp.install.write_fake_env`); the
+fake reads that file first.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import stat
 import sys
 import threading
 import time
@@ -95,12 +118,69 @@ def _decrement_bind_fails(path: str) -> None:
         handle.write(str(max(0, left - 1)))
 
 
+#: The side file beside the program that carries the ``FAKE_LLAMA_*`` values.
+SIDE_ENV_FILE = "fake-llama.json"
+
+
+def _load_side_env() -> None:
+    """Merge ``fake-llama.json`` beside the program into the environment."""
+    path = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), SIDE_ENV_FILE)
+    try:
+        with open(path, encoding="utf-8") as handle:
+            values = json.load(handle)
+    except (OSError, ValueError):
+        return
+    for name, value in values.items():
+        if name.startswith("FAKE_LLAMA_"):
+            os.environ[name] = str(value)
+
+
+def _descriptor_types() -> dict[str, str]:
+    """Return the type of every open descriptor from 0 to 63."""
+    kinds: dict[str, str] = {}
+    for fd in range(64):
+        try:
+            mode = os.fstat(fd).st_mode
+        except OSError:
+            continue
+        if stat.S_ISFIFO(mode):
+            kinds[str(fd)] = "fifo"
+        elif stat.S_ISREG(mode):
+            kinds[str(fd)] = "reg"
+        elif stat.S_ISCHR(mode):
+            kinds[str(fd)] = "chr"
+        elif stat.S_ISSOCK(mode):
+            kinds[str(fd)] = "sock"
+        else:
+            kinds[str(fd)] = "other"
+    return kinds
+
+
+def _bump_counter(path: str) -> None:
+    try:
+        with open(path, encoding="utf-8") as handle:
+            count = int(handle.read().strip() or "0")
+    except (OSError, ValueError):
+        count = 0
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(str(count + 1))
+
+
 def main() -> int:
     """Run the fake server (or print its version)."""
+    fds = _descriptor_types()
+    _load_side_env()
     if "--version" in sys.argv:
         build = os.environ.get("FAKE_LLAMA_BUILD", "11941")
         print(f"version: 0.7.0-dev (build {build}, commit fake)")
         return 0
+    if os.environ.get("FAKE_LLAMA_FDS"):
+        with open(os.environ["FAKE_LLAMA_FDS"], "w", encoding="utf-8") as handle:
+            json.dump(fds, handle)
+    if os.environ.get("FAKE_LLAMA_EARLY_EXIT"):
+        _bump_counter(os.environ["FAKE_LLAMA_EARLY_EXIT"])
+        print("main: model failed to load", file=sys.stderr)
+        return 1
     bind = _bind_fails()
     if bind is not None and bind > 0:
         _decrement_bind_fails(os.environ["FAKE_LLAMA_BIND_FAILS"])
@@ -118,6 +198,8 @@ def main() -> int:
     exit_after = int(os.environ.get("FAKE_LLAMA_EXIT_AFTER", "0") or "0")
     served = 0
     served_lock = threading.Lock()
+    one_slot = "-np" in sys.argv and _arg("-np") == "1"
+    slot = threading.Lock()
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, format: str, *args: object) -> None:  # noqa: A002 - base signature
@@ -133,6 +215,10 @@ def main() -> int:
 
         def do_GET(self) -> None:  # noqa: N802 - http.server API
             if self.path == "/health":
+                sleep_file = os.environ.get("FAKE_LLAMA_HEALTH_SLEEP_FILE")
+                if sleep_file and os.path.exists(sleep_file):
+                    with open(sleep_file, encoding="utf-8") as handle:
+                        time.sleep(float(handle.read().strip() or "0"))
                 healthy = not never and time.monotonic() >= ready_at
                 self._send(200 if healthy else 503, {"status": "ok" if healthy else "loading"})
             elif self.path == "/props":
@@ -142,8 +228,19 @@ def main() -> int:
                 self._send(404, {})
 
         def do_POST(self) -> None:  # noqa: N802 - http.server API
+            if one_slot:
+                with slot:
+                    self._post()
+            else:
+                self._post()
+
+        def _post(self) -> None:
             nonlocal served
             body = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+            if os.environ.get("FAKE_LLAMA_CRASH_ON_REQUEST"):
+                os._exit(1)
+            if os.environ.get("FAKE_LLAMA_LOG_REQUESTS"):
+                print(f"request {self.path}", file=sys.stderr, flush=True)
             requests = os.environ.get("FAKE_LLAMA_REQUESTS")
             if requests:
                 with open(requests, "a", encoding="utf-8") as handle:

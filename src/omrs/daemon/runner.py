@@ -54,6 +54,11 @@ def watch_directory(
     """
     from rich.console import Console
 
+    from ..integrations.llamacpp_runtime.manager import install_sigterm_exit
+
+    # SIGTERM exits normally, so the runtime manager's atexit hook leaves.
+    install_sigterm_exit()
+
     console = Console(stderr=True)
 
     # Validate debounce

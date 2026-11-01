@@ -3,108 +3,144 @@
 The tests start this file as a process (``python client.py``). It reads one
 JSON command per line from standard input and answers one JSON line per
 command on standard output. Each answer is flushed at once, so a test can
-drive two clients in lockstep.
+drive several clients in lockstep. The process joins runtimes through the
+real :class:`~omrs.integrations.llamacpp_runtime.manager.RuntimeManager`,
+with its ``atexit`` hook, and turns SIGTERM into a normal exit as the CLI
+entry point does.
 
 Commands:
 
 ``{"cmd": "join", "spec": <spec dict>}``
-    Join the runtime through the manager. The spec dict is the JSON form
-    of ``RuntimeSpec`` (see ``omrs.integrations.llamacpp_runtime.spec``).
-    Answers ``{"ok": true, "url_base": ..., "started": bool}`` or
-    ``{"ok": false, "reason": ..., "reason_text": ...}``.
+    Join the runtime. Answers ``{"ok": true, "url_base": ..., "generation": n}``
+    or ``{"ok": false, "reason": ..., "reason_text": ...}``.
 ``{"cmd": "request", "path": "/v1/chat/completions", "body": {}, "timeout": 30}``
-    Send one POST through the lease (the request lock runs inside). A
-    connection refused by a crashed server is restarted once, as in the
-    manager. Answers ``{"ok": true, "status": 200, "body": ...}``.
+    Send one POST through the lease (join on first use, request lock, crash
+    restart once). Answers ``{"ok": true, "status": 200, "body": ...}``, or
+    ``{"ok": false, "phase": "before"|"after"|"client", "reason": ...}``.
 ``{"cmd": "leave"}``
     Leave the lease (the server stops only when this was the last client).
+``{"cmd": "stop", "runtime_id": "chat"}``
+    Operator stop through this process's manager.
+``{"cmd": "sweep"}``
+    Run the ``omrs web`` start-up sweep; answers the stopped runtime ids.
+``{"cmd": "config", ...}``
+    Test hooks: ``idle_stop_seconds``, ``idle_check_seconds``,
+    ``health_poll_seconds`` and ``request_lock`` (``false`` turns the
+    request lock off).
 ``{"cmd": "ping"}``
     Answers ``{"ok": true, "pid": <pid>}`` without touching any runtime.
 ``{"cmd": "exit"}``
-    Leaves the lease and ends the process with status 0.
+    Ends the process with status 0; the ``atexit`` hook leaves.
+``{"cmd": "abandon"}``
+    Ends the process at once with no leave (a test hook for an orphan).
 """
 
 from __future__ import annotations
 
 import json
+import os
 import sys
+from typing import Any
+
+
+def _say(payload: dict[str, Any]) -> None:
+    print(json.dumps(payload, default=str), flush=True)
+
+
+def _post(lease: Any, path: str, body: Any, timeout: float) -> dict[str, Any]:
+    import httpx
+
+    from omrs.integrations.llamacpp_runtime.manager import (
+        RuntimeRequestFailed,
+        RuntimeUnavailable,
+    )
+
+    def send(base_url: str) -> httpx.Response:
+        return httpx.post(f"{base_url}{path}", json=body, timeout=timeout)
+
+    try:
+        answer = lease.request(send)
+    except RuntimeUnavailable as error:
+        return {"ok": False, "phase": "before", "reason": error.reason}
+    except RuntimeRequestFailed as error:
+        return {"ok": False, "phase": "after", "reason": error.reason}
+    except httpx.TimeoutException:
+        return {"ok": False, "phase": "client", "reason": "client-timeout"}
+    except httpx.HTTPError as error:
+        return {"ok": False, "phase": "client", "reason": type(error).__name__}
+    return {"ok": True, "status": answer.status_code, "body": answer.json()}
+
+
+def _config(payload: dict[str, Any]) -> None:
+    from omrs.integrations.llamacpp_runtime import manager as manager_module
+    from omrs.integrations.llamacpp_runtime import process
+
+    if "idle_stop_seconds" in payload:
+        manager_module.IDLE_STOP_SECONDS = float(payload["idle_stop_seconds"])
+    if "idle_check_seconds" in payload:
+        manager_module.IDLE_CHECK_SECONDS = float(payload["idle_check_seconds"])
+    if "health_poll_seconds" in payload:
+        process.HEALTH_POLL_SECONDS = float(payload["health_poll_seconds"])
+    if payload.get("request_lock") is False:
+        manager_module.RuntimeLease._uses_request_lock = lambda self: False  # type: ignore[method-assign]
 
 
 def main() -> int:
     """Read command lines until ``exit`` or end of input."""
+    from omrs.integrations.llamacpp_runtime.manager import (
+        RuntimeManager,
+        RuntimeUnavailable,
+        install_sigterm_exit,
+    )
+    from omrs.integrations.llamacpp_runtime.spec import RuntimeSpec
+
+    install_sigterm_exit()
+    manager = RuntimeManager()
     lease = None
-    for line in sys.stdin:
-        line = line.strip()
+    for raw in sys.stdin:
+        line = raw.strip()
         if not line:
             continue
         try:
             payload = json.loads(line)
         except ValueError:
-            print(json.dumps({"ok": False, "reason": "bad-command"}), flush=True)
+            _say({"ok": False, "reason": "bad-command"})
             continue
         cmd = payload.get("cmd")
         if cmd == "ping":
-            import os
-
-            print(json.dumps({"ok": True, "pid": os.getpid()}), flush=True)
+            _say({"ok": True, "pid": os.getpid()})
+        elif cmd == "config":
+            _config(payload)
+            _say({"ok": True})
         elif cmd == "join":
-            if lease is not None:
-                print(json.dumps({"ok": False, "reason": "already-joined"}), flush=True)
-                continue
+            lease = manager.lease(RuntimeSpec.from_dict(payload["spec"]))
             try:
-                from omrs.integrations.llamacpp_runtime.manager import RuntimeManager
-
-                manager = RuntimeManager()
-                lease = manager.lease_from_json(payload["spec"])
-                outcome = lease.join()
-            except Exception as error:  # noqa: BLE001 - reported as a line
-                print(
-                    json.dumps({"ok": False, "reason": "error", "reason_text": str(error)}),
-                    flush=True,
-                )
-                lease = None
+                url = lease.join()
+            except RuntimeUnavailable as error:
+                _say({"ok": False, "reason": error.reason, "reason_text": error.reason_text})
                 continue
-            if outcome.ok:
-                print(
-                    json.dumps(
-                        {"ok": True, "url_base": outcome.url_base, "started": outcome.started}
-                    ),
-                    flush=True,
-                )
-            else:
-                print(
-                    json.dumps(
-                        {
-                            "ok": False,
-                            "reason": outcome.reason,
-                            "reason_text": outcome.reason_text,
-                        }
-                    ),
-                    flush=True,
-                )
-                lease = None
+            _say({"ok": True, "url_base": url, "generation": lease.generation})
         elif cmd == "request":
             if lease is None:
-                print(json.dumps({"ok": False, "reason": "not-joined"}), flush=True)
+                _say({"ok": False, "reason": "not-joined"})
                 continue
-            answer = lease.request(
-                path=payload["path"], body=payload.get("body"), timeout=payload.get("timeout", 30)
-            )
-            print(json.dumps(answer, default=str), flush=True)
+            _say(_post(lease, payload["path"], payload.get("body"), payload.get("timeout", 30)))
         elif cmd == "leave":
             if lease is not None:
                 lease.leave()
-                lease = None
-            print(json.dumps({"ok": True}), flush=True)
+            _say({"ok": True})
+        elif cmd == "stop":
+            _say({"ok": True, "stopped": manager.stop(payload["runtime_id"])})
+        elif cmd == "sweep":
+            _say({"ok": True, "stopped": manager.sweep()})
+        elif cmd == "abandon":
+            sys.stdout.flush()
+            os._exit(0)
         elif cmd == "exit":
-            if lease is not None:
-                lease.leave()
-            print(json.dumps({"ok": True}), flush=True)
+            _say({"ok": True})
             return 0
         else:
-            print(json.dumps({"ok": False, "reason": "bad-command"}), flush=True)
-    if lease is not None:  # end of input: a normal client exit
-        lease.leave()
+            _say({"ok": False, "reason": "bad-command"})
     return 0
 
 

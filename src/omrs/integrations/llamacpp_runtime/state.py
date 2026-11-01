@@ -44,6 +44,7 @@ class ServerRecord:
         "stopped_by",
         "generation",
         "reason",
+        "reason_text",
     )
 
     def __init__(
@@ -58,6 +59,7 @@ class ServerRecord:
         stopped_by: _StoppedBy | None = None,
         generation: int = 1,
         reason: str | None = None,
+        reason_text: str | None = None,
     ) -> None:
         self.pid = pid
         self.port = port
@@ -68,6 +70,7 @@ class ServerRecord:
         self.stopped_by = stopped_by
         self.generation = generation
         self.reason = reason
+        self.reason_text = reason_text
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-safe dict of the record."""
@@ -81,6 +84,7 @@ class ServerRecord:
             "stopped_by": self.stopped_by,
             "generation": self.generation,
             "reason": self.reason,
+            "reason_text": self.reason_text,
         }
 
     @classmethod
@@ -96,6 +100,7 @@ class ServerRecord:
             stopped_by=data.get("stopped_by"),
             generation=int(data.get("generation", 1)),
             reason=data.get("reason"),
+            reason_text=data.get("reason_text"),
         )
 
     def __eq__(self, other: object) -> bool:

@@ -36,6 +36,18 @@ def install_fake_server(folder: Path) -> Path:
     return target
 
 
+def write_fake_env(binary: Path, **values: object) -> Path:
+    """Write the ``FAKE_LLAMA_*`` values the fake reads beside *binary*.
+
+    The manager passes a minimal environment to the child, so tests set the
+    fake's behaviour through this side file. Later calls replace the file;
+    a running fake read it once at its start.
+    """
+    path = binary.parent / "fake-llama.json"
+    path.write_text(json.dumps({k: str(v) for k, v in values.items()}), encoding="utf-8")
+    return path
+
+
 def touch_count_file(folder: Path, name: str, value: int) -> Path:
     """Write *value* into ``folder/name`` and return the path.
 

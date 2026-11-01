@@ -288,3 +288,24 @@ def test_client_refuses_a_request_before_a_join() -> None:
         [{"cmd": "request", "path": "/v1/chat/completions", "body": {}}, {"cmd": "exit"}]
     )
     assert answers[0] == {"ok": False, "reason": "not-joined"}
+
+
+def test_two_client_processes_join_one_fake_server_through_the_manager(
+    tmp_path: Path,
+) -> None:
+    """Task 1.2: two client processes, one fake server, both answers."""
+    from tests.fixtures.llamacpp.harness import RuntimeEnv
+
+    env = RuntimeEnv(tmp_path)
+    try:
+        fake = env.fake()
+        spec = fake.chat(_free_port())
+        first, second = env.client(), env.client()
+        assert first.join(spec)["ok"] is True
+        assert second.join(spec)["ok"] is True
+        answers = [first.chat(), second.chat()]
+        assert [answer["status"] for answer in answers] == [200, 200]
+        assert answers[0]["body"]["choices"][0]["finish_reason"] == "stop"
+        assert len(fake.starts()) == 1
+    finally:
+        env.cleanup()
