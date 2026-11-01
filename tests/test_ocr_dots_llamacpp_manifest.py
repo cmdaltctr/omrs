@@ -1,9 +1,11 @@
 """The dots-mocr-llamacpp engine folder: lockfile, manifest and copied code.
 
-Change dots-mocr-llamacpp-backend, tasks 2.1 and 2.2. The engine runs
+Change dots-mocr-llamacpp-backend, tasks 2.1, 2.2 and 2b.3. The engine runs
 dots.mocr through a llama.cpp server, so its environment must hold no
 PyTorch. The prompt, the render settings and ``layout.py`` are copies of
 the PyTorch engine's until cut-over (design D6); a test pins the copies.
+The ``[tool.omrs-ocr.runtime]`` block tells the host which server to run
+(design D2); a test pins it to ``pins.py`` and the host's rules.
 """
 
 from __future__ import annotations
@@ -16,7 +18,10 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from tests.fixtures.ocr_worker.dots_llamacpp import engine_modules
 from tests.fixtures.ocr_worker.isolation import isolated_worker_modules
+
+from omrs.integrations.ocr_worker.manifest import RuntimeDeclarationError, declared_runtime
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WORKERS = REPO_ROOT / "ocr-workers"
@@ -52,10 +57,8 @@ def test_manifest_declares_entry_point_gate_and_no_fetch_of_pytorch() -> None:
         "dots-mocr-llamacpp": f"{PACKAGE}.engine:ENGINE"
     }
     assert project["scripts"]["omrs-ocr-fetch"] == f"{PACKAGE}.fetch:main"
-    assert manifest["tool"]["omrs-ocr"] == {
-        "licence-file": "LICENCE-NOTES.md",
-        "requires-acceptance": True,
-    }
+    gate = {k: v for k, v in manifest["tool"]["omrs-ocr"].items() if k != "runtime"}
+    assert gate == {"licence-file": "LICENCE-NOTES.md", "requires-acceptance": True}
     declared = {
         _normalise(re.split(r"[\[\s><=!~]", r, maxsplit=1)[0]) for r in project["dependencies"]
     }
@@ -133,3 +136,89 @@ def test_no_module_of_the_package_imports_pytorch() -> None:
     sources = sorted((ENGINE_DIR / "src" / PACKAGE).glob("*.py"))
     assert sources, "the package has no source files"
     assert not [p.name for p in sources if pattern.search(p.read_text(encoding="utf-8"))]
+
+
+# ── Task 2b.3: the runtime block the host reads (design D2) ────────────────
+
+
+@pytest.fixture
+def pins(monkeypatch: pytest.MonkeyPatch) -> Iterator[Any]:
+    """Import the engine's ``pins`` module from source."""
+    with engine_modules(monkeypatch) as load:
+        yield load("pins")
+
+
+def _engine_copy(tmp_path: Path, old: str = "", new: str = "") -> Path:
+    """Copy the engine manifest into a new folder, replacing *old* with *new* once."""
+    source = (ENGINE_DIR / "pyproject.toml").read_text(encoding="utf-8")
+    changed = source.replace(old, new, 1) if old else source
+    assert old == "" or changed != source, f"{old!r} is not in the manifest"
+    folder = tmp_path / "engine"
+    folder.mkdir()
+    (folder / "pyproject.toml").write_text(changed, encoding="utf-8")
+    return folder
+
+
+def test_the_host_reads_the_runtime_block_and_every_value_equals_pins(
+    pins: Any, tmp_path: Path
+) -> None:
+    """The host accepts the block; its program, build, flags and hashes match ``pins.py``."""
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    runtime = declared_runtime(ENGINE_DIR, cache)
+    assert runtime is not None
+    assert runtime.program == cache / "llama.cpp" / f"llama-{pins.LLAMA_TAG}" / "llama-server"
+    assert runtime.build == pins.LLAMA_BUILD
+    assert runtime.flags == pins.SERVER_FLAGS
+    assert [(f.flag, f.path, f.sha256) for f in runtime.files] == [
+        ("-m", cache / "models" / pins.MODEL_FILE.name, pins.MODEL_FILE.sha256),
+        ("--mmproj", cache / "models" / pins.PROJECTOR_FILE.name, pins.PROJECTOR_FILE.sha256),
+    ]
+
+
+def test_the_declared_program_is_where_the_fetch_step_unpacks_it(pins: Any, tmp_path: Path) -> None:
+    """The archive holds one folder named after the tag; the program path goes through it."""
+    runtime = declared_runtime(ENGINE_DIR, tmp_path)
+    assert runtime is not None
+    assert runtime.program.parent.name == f"llama-{pins.LLAMA_TAG}"
+    assert runtime.program.parent.parent.name == "llama.cpp"
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "rule"),
+    [
+        ('program = "llama.cpp/', 'program = "/opt/llama.cpp/', "path"),
+        ('program = "llama.cpp/', 'program = "../llama.cpp/', "path"),
+        (
+            'program = "llama.cpp/llama-b11941/llama-server"',
+            'program = "llama.cpp/server"',
+            "program",
+        ),
+        ("build = 11941", "build = 0", "build"),
+        ("build = 11941", 'build = "11941"', "build"),
+        ("flags = [", 'flags = ["--port", "9", ', "flag"),
+        ("flags = [", 'flags = ["--model", "x.gguf", ', "flag"),
+        ('flag = "-m"', 'flag = "-hf"', "file"),
+        ('flag = "--mmproj"', 'flag = "-m"', "file"),
+        ('path = "models/dots-mocr-Q8_0.gguf"', 'path = "../dots-mocr-Q8_0.gguf"', "path"),
+        ('sha256 = "6017b184', 'sha256 = "6017', "file"),
+    ],
+)
+def test_the_host_refuses_each_breach_of_a_declaration_rule(
+    tmp_path: Path, old: str, new: str, rule: str
+) -> None:
+    """A copy of the block that breaks one rule is refused, and the error names that rule."""
+    folder = _engine_copy(tmp_path, old, new)
+    with pytest.raises(RuntimeDeclarationError) as excinfo:
+        declared_runtime(folder, tmp_path)
+    assert excinfo.value.rule == rule
+
+
+def test_one_changed_hash_character_no_longer_equals_pins(pins: Any, tmp_path: Path) -> None:
+    """One changed hash character passes the host but no longer equals ``pins.py``."""
+    first = pins.MODEL_FILE.sha256
+    flipped = ("0" if first[10] != "0" else "1").join([first[:10], first[11:]])
+    folder = _engine_copy(tmp_path, first, flipped)
+    runtime = declared_runtime(folder, tmp_path)
+    assert runtime is not None
+    assert runtime.files[0].sha256 != pins.MODEL_FILE.sha256

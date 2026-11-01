@@ -1,4 +1,4 @@
-"""The dots-mocr-llamacpp OCR engine: dots.mocr on a llama.cpp server it owns.
+"""The dots-mocr-llamacpp OCR engine: dots.mocr as a client of a llama.cpp server.
 
 The engine renders each requested page, asks the server for the layout
 JSON, and converts that to Markdown with :mod:`.layout`. Framing,
@@ -6,9 +6,11 @@ validation and the capability command belong to the worker core.
 
 Runtime rules (design D2, D5, D7):
 
-- the first parse checks the SHA-256 of the model file and the projector,
-  then starts the pinned ``llama-server`` on a free loopback port. Later
-  parses reuse it. :mod:`.server` stops it with the worker;
+- the engine starts no process. OMRS runs the pinned ``llama-server`` that
+  ``pyproject.toml`` declares, checks the build and the SHA-256 of both model
+  files before each start, and gives the worker the address in
+  ``OMRS_OCR_RUNTIME_URL``. A missing or non-loopback address is a parse
+  error that names the variable;
 - a page is rendered with pypdfium2 at :data:`RENDER_DPI`, raised so the
   long side reaches :data:`MIN_LONG_SIDE_PX`, and sent as a PNG;
 - a page whose reply reaches the token cap, or whose layout JSON does not
@@ -26,37 +28,73 @@ import base64
 import io
 import json
 import logging
+import os
 import urllib.error
 import urllib.request
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from omrs_ocr_worker_core.engine import WorkerParseError
 
 from . import pins
-from .files import sha256_of
 from .layout import CONVERTER_VERSION, page_markdown
-from .paths import ENGINE_NAME, models_dir, server_log, server_pid_file
+from .paths import ENGINE_NAME
 from .prompt import MAX_NEW_TOKENS, MIN_LONG_SIDE_PX, PROMPT, RENDER_DPI
-from .server import LlamaServer, ServerError, find_binary
 
 logger = logging.getLogger("omrs_ocr_dots_mocr_llamacpp")
 
 CHAT_PATH = "/v1/chat/completions"
 
-#: Seconds the server may take to load the model and report healthy.
-START_TIMEOUT_S = 180.0
-#: Seconds between health checks.
-POLL_INTERVAL_S = 0.5
 #: Seconds one page may take (Experiment 41 used the same limit).
 REQUEST_TIMEOUT_S = 300.0
 
-_PROVISION_COMMAND = "python3 ocr-workers/provision.py dots-mocr-llamacpp --accept-model-licence"
+#: The variable in which OMRS gives the worker the address of its runtime.
+RUNTIME_URL_ENV = "OMRS_OCR_RUNTIME_URL"
+_LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
+
+
+def runtime_base_url(environ: Mapping[str, str] | None = None) -> str:
+    """Return the llama-server address OMRS gave this worker.
+
+    Args:
+        environ: The environment to read; the process environment by default.
+
+    Returns:
+        An ``http://host:port`` address without a path.
+
+    Raises:
+        WorkerParseError: If the variable is missing, or its value is not an
+            ``http`` address on this computer. The message names the variable.
+    """
+    value = (os.environ if environ is None else environ).get(RUNTIME_URL_ENV, "").strip()
+    if not value:
+        raise WorkerParseError(
+            "runtime_url_missing",
+            f"{RUNTIME_URL_ENV} is not set; OMRS gives the worker the address of its llama-server",
+        )
+    try:
+        parts = urlsplit(value)
+        host = (parts.hostname or "").lower()
+        port = 80 if parts.port is None else parts.port
+    except ValueError:
+        host, port = "", 0
+    if (
+        parts.scheme != "http"
+        or host not in _LOOPBACK_HOSTS
+        or parts.username is not None
+        or not 1 <= port <= 65535
+    ):
+        raise WorkerParseError(
+            "runtime_url_invalid",
+            f"{RUNTIME_URL_ENV} must be an http address on this computer, not {value!r}",
+        )
+    return f"http://{parts.netloc}"
 
 
 class DotsMocrLlamacppEngine:
-    """dots.mocr on a pinned llama.cpp server, one page at a time."""
+    """dots.mocr through a llama.cpp server that OMRS runs, one page at a time."""
 
     name = ENGINE_NAME
     backend_id = "dots_mocr_llamacpp"
@@ -71,9 +109,6 @@ class DotsMocrLlamacppEngine:
         f"prompt_layout_all_en+llamacpp-{pins.LLAMA_TAG}+{pins.QUANT}+layout-{CONVERTER_VERSION}",
     )
     model = (pins.MODEL_REPO, pins.MODEL_REVISION)
-
-    def __init__(self) -> None:
-        self._server: LlamaServer | None = None
 
     # ── Engine contract ──────────────────────────────────────────────
 
@@ -93,11 +128,6 @@ class DotsMocrLlamacppEngine:
                 logger.warning("page %d of %s gives no text: %s", number, pdf.name, reason)
             out.append(markdown)
         return out
-
-    def close(self) -> None:
-        """Stop the llama.cpp server if this engine started one."""
-        if self._server is not None:
-            self._server.stop()
 
     # ── Seams (tests stub these) ─────────────────────────────────────
 
@@ -120,10 +150,11 @@ class DotsMocrLlamacppEngine:
         """Ask the server about one page image; return ``(raw text, new tokens)``.
 
         Raises:
-            WorkerParseError: If the model files or the server are not usable,
-                or the server's reply is an error or not a chat completion.
+            WorkerParseError: If the runtime address is missing or not on this
+                computer, or the server's reply is an error or not a chat
+                completion.
         """
-        url = self._ensure_server() + CHAT_PATH
+        url = runtime_base_url() + CHAT_PATH
         image = {"url": "data:image/png;base64," + base64.b64encode(png).decode("ascii")}
         body: dict[str, Any] = {
             "messages": [
@@ -139,7 +170,7 @@ class DotsMocrLlamacppEngine:
             "max_tokens": MAX_NEW_TOKENS,
             "stream": False,
         }
-        request = urllib.request.Request(  # noqa: S310 - loopback URL built by the server module
+        request = urllib.request.Request(  # noqa: S310 - loopback address checked by runtime_base_url
             url, json.dumps(body).encode(), {"Content-Type": "application/json"}
         )
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))  # ignore proxies
@@ -174,48 +205,6 @@ class DotsMocrLlamacppEngine:
         from omrs_ocr_worker_core.pages import document_page_count
 
         return list(range(1, document_page_count(pdf) + 1))
-
-    def _ensure_server(self) -> str:
-        """Return the server URL; on the first call check the files and start it.
-
-        The model files are hashed once per worker, before the server starts.
-        """
-        try:
-            server = self._server
-            if server is None:
-                binary = find_binary()
-                self._verify_model_files()
-                server = LlamaServer(
-                    binary,
-                    models_dir() / pins.MODEL_FILE.name,
-                    models_dir() / pins.PROJECTOR_FILE.name,
-                    log_path=server_log(),
-                    pid_path=server_pid_file(),
-                    start_timeout=START_TIMEOUT_S,
-                    poll_interval=POLL_INTERVAL_S,
-                )
-                server.install_shutdown_hooks()
-                self._server = server
-            return server.ensure_started()
-        except ServerError as exc:
-            raise WorkerParseError(exc.code, exc.message) from exc
-
-    def _verify_model_files(self) -> None:
-        """Check that each pinned file is present and matches its SHA-256."""
-        folder = models_dir()
-        for pinned in pins.MODEL_FILES:
-            path = folder / pinned.name
-            if not path.is_file():
-                raise WorkerParseError(
-                    "model_missing",
-                    f"{pinned.name} is missing from {folder}; run `{_PROVISION_COMMAND}`",
-                )
-            if sha256_of(path) != pinned.sha256:
-                raise WorkerParseError(
-                    "model_changed",
-                    f"{pinned.name} in {folder} no longer matches its pinned SHA-256; "
-                    f"run `{_PROVISION_COMMAND}` again",
-                )
 
 
 #: The object the ``omrs.ocr_engine`` entry point names.

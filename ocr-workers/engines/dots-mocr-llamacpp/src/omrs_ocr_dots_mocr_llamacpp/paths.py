@@ -1,4 +1,4 @@
-"""Where the dots-mocr-llamacpp engine keeps its files (design D3, D4, D8)."""
+"""Where the dots-mocr-llamacpp engine keeps its files (design D3, D4)."""
 
 from __future__ import annotations
 
@@ -26,13 +26,3 @@ def models_dir() -> Path:
 def llama_dir() -> Path:
     """Return the folder that holds the unpacked llama.cpp release."""
     return cache_dir() / "llama.cpp"
-
-
-def server_log() -> Path:
-    """Return the llama-server log file."""
-    return cache_dir() / "llama-server.log"
-
-
-def server_pid_file() -> Path:
-    """Return the file that records the running server's pid and binary."""
-    return cache_dir() / "llama-server.pid"

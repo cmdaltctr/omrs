@@ -1,21 +1,23 @@
-"""The dots-mocr-llamacpp engine (change dots-mocr-llamacpp-backend, task 2.5).
+"""The dots-mocr-llamacpp engine (change dots-mocr-llamacpp-backend, tasks 2.5 and 2b.4).
 
-The engine talks to a fake ``llama-server`` script, so no GPU, model or
-network is needed. Page rendering needs pypdfium2, which the main
-environment does not hold, so tests replace ``render_page`` or give it a
-fake ``pypdfium2`` module. The real render and the real server run in the
-provisioned smoke test.
+The engine is a client of a ``llama-server`` that the host runs. These tests
+start the shared fake server of ``tests/fixtures/llamacpp`` through the host's
+runtime manager and give its address to the engine in
+``OMRS_OCR_RUNTIME_URL``, as the host does for a real worker. No GPU, model or
+network is needed. Page rendering needs pypdfium2, which the main environment
+does not hold, so tests replace ``render_page`` or give it a fake ``pypdfium2``
+module. The real render and the real server run in the provisioned smoke test.
 """
 
 from __future__ import annotations
 
 import base64
-import hashlib
 import json
 import logging
 import subprocess
 import sys
 import types
+import urllib.request
 from collections.abc import Iterator
 from pathlib import Path
 from types import ModuleType
@@ -23,37 +25,52 @@ from typing import Any
 
 import pytest
 from pypdf import PdfWriter
+from tests.fixtures.llamacpp.harness import FakeRuntime
 from tests.fixtures.ocr_worker.dots_llamacpp import (
     ENGINE_DIR,
     PACKAGE,
     WORKERS,
     engine_modules,
-    make_fake_binary,
 )
+
+from omrs.integrations.llamacpp_runtime import process
+from omrs.integrations.llamacpp_runtime.manager import RuntimeManager
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FIXTURES = REPO_ROOT / "experiments" / "34-worker-sample-review-2026-09-19" / "output" / "dots_mocr"
 PNG = b"\x89PNG-fake-page-bytes"
-MODEL_BYTES = b"model"
-PROJECTOR_BYTES = b"projector"
-
-
-def _sha(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
+URL_ENV = "OMRS_OCR_RUNTIME_URL"
 
 
 class Env:
-    """The loaded modules, the engine under test and the files the fake writes."""
+    """The loaded modules, the engine under test and the fake server the host runs."""
 
-    def __init__(self, load: Any, folder: Path) -> None:
+    def __init__(
+        self, load: Any, folder: Path, monkeypatch: pytest.MonkeyPatch, manager: RuntimeManager
+    ) -> None:
         self.engine_mod: ModuleType = load("engine")
         self.pins: ModuleType = load("pins")
-        self.paths: ModuleType = load("paths")
         self.prompt: ModuleType = load("prompt")
-        self.folder = folder
-        self.requests = folder / "requests.txt"
-        self.starts = folder / "starts.txt"
+        self.fake = FakeRuntime(folder)
+        self.requests = self.fake.logs / "requests.txt"
         self.engine = self.engine_mod.DotsMocrLlamacppEngine()
+        self._monkeypatch = monkeypatch
+        self._manager = manager
+
+    def serve(self, **fake_values: object) -> str:
+        """Start the fake server through the manager and give its URL to the engine.
+
+        Args:
+            **fake_values: ``FAKE_LLAMA_*`` settings for the fake (the text it
+                answers, the token count, an error status).
+
+        Returns:
+            The server address, which is also set as ``OMRS_OCR_RUNTIME_URL``.
+        """
+        self.fake.set_env(FAKE_LLAMA_REQUESTS=str(self.requests), **fake_values)
+        url = self._manager.lease(self.fake.ocr()).join()
+        self._monkeypatch.setenv(URL_ENV, url)
+        return url
 
     def request_bodies(self) -> list[dict[str, Any]]:
         """Return the JSON body of each chat request the fake received."""
@@ -61,36 +78,22 @@ class Env:
             return []
         return [json.loads(line) for line in self.requests.read_text().splitlines()]
 
-    def start_count(self) -> int:
-        """Return how many times the fake server started."""
-        return len(self.starts.read_text().splitlines()) if self.starts.exists() else 0
-
 
 @pytest.fixture
 def env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[Env]:
-    """An engine whose cache holds tiny model files and a fake llama-server."""
-    cache = tmp_path / "cache"
-    monkeypatch.setenv("OMRS_OCR_MODEL_CACHE", str(cache))
-    monkeypatch.setenv("FAKE_LLAMA_STARTS", str(tmp_path / "starts.txt"))
-    monkeypatch.setenv("FAKE_LLAMA_REQUESTS", str(tmp_path / "requests.txt"))
+    """An engine and a fake llama-server that the host's manager can start."""
+    monkeypatch.delenv(URL_ENV, raising=False)
+    monkeypatch.setenv("OMRS_OCR_MODEL_CACHE", str(tmp_path / "cache"))
+    monkeypatch.setattr(process, "HEALTH_POLL_SECONDS", 0.05)
+    manager = RuntimeManager(tmp_path / "state", exit_hook=False)
     with engine_modules(monkeypatch) as load:
-        e = Env(load, tmp_path)
-        files = (
-            e.pins.PinnedFile("dots-mocr-Q8_0.gguf", _sha(MODEL_BYTES)),
-            e.pins.PinnedFile("dots-mocr-mmproj-bf16.gguf", _sha(PROJECTOR_BYTES)),
-        )
-        monkeypatch.setattr(e.pins, "MODEL_FILES", files)
-        models = e.paths.models_dir()
-        models.mkdir(parents=True)
-        (models / files[0].name).write_bytes(MODEL_BYTES)
-        (models / files[1].name).write_bytes(PROJECTOR_BYTES)
-        llama = e.paths.llama_dir()
-        llama.mkdir(parents=True)
-        make_fake_binary(llama)
-        monkeypatch.setattr(e.engine_mod, "POLL_INTERVAL_S", 0.05)
+        e = Env(load, tmp_path, monkeypatch, manager)
         monkeypatch.setattr(e.engine, "render_page", lambda _pdf, _page: PNG)
-        yield e
-        e.engine.close()
+        try:
+            yield e
+        finally:
+            manager.close()
+            e.fake.kill_all()
 
 
 @pytest.fixture
@@ -112,12 +115,9 @@ def _raw(doc: str, page: int) -> str:
 # ── parse and the D5 request ───────────────────────────────────────────────
 
 
-def test_parse_sends_the_d5_request_and_converts_the_layout(
-    env: Env, pdf: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_parse_sends_the_d5_request_and_converts_the_layout(env: Env, pdf: Path) -> None:
     """The request body matches design D5; the reply becomes Markdown."""
-    monkeypatch.setenv("FAKE_LLAMA_CONTENT", _raw("eq01", 11))
-    monkeypatch.setenv("FAKE_LLAMA_TOKENS", "1937")
+    env.serve(FAKE_LLAMA_CONTENT=_raw("eq01", 11), FAKE_LLAMA_TOKENS=1937)
     pages = env.engine.parse(pdf, [2])
     assert len(pages) == 1 and pages[0].count("$$") == 8
     (body,) = env.request_bodies()
@@ -132,112 +132,164 @@ def test_parse_sends_the_d5_request_and_converts_the_layout(
     assert base64.b64decode(image["image_url"]["url"][len(prefix) :]) == PNG
 
 
-def test_a_whole_document_request_parses_every_page_with_one_server(
-    env: Env, pdf: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """``pages=None`` parses both pages; the second call reuses the server."""
-    monkeypatch.setenv("FAKE_LLAMA_CONTENT", _raw("eq01", 11))
+def test_a_whole_document_request_parses_every_page_on_the_same_server(env: Env, pdf: Path) -> None:
+    """``pages=None`` parses both pages; a second call sends to the same server."""
+    env.serve(FAKE_LLAMA_CONTENT=_raw("eq01", 11))
     assert len(env.engine.parse(pdf, None)) == 2
     assert len(env.engine.parse(pdf, [1])) == 1
-    assert env.start_count() == 1
+    assert len(env.fake.starts()) == 1
     assert len(env.request_bodies()) == 3
 
 
 def test_a_capped_page_is_empty_and_the_reason_is_logged(
-    env: Env, pdf: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    env: Env, pdf: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     """A reply at the token cap gives "" and logs the reason."""
-    monkeypatch.setenv("FAKE_LLAMA_CONTENT", _raw("eq01", 11))
-    monkeypatch.setenv("FAKE_LLAMA_TOKENS", "8192")
+    env.serve(FAKE_LLAMA_CONTENT=_raw("eq01", 11), FAKE_LLAMA_TOKENS=8192)
     with caplog.at_level(logging.WARNING, logger="omrs_ocr_dots_mocr_llamacpp"):
         assert env.engine.parse(pdf, [1]) == [""]
     assert "token_cap" in caplog.text and "doc.pdf" in caplog.text
 
 
-def test_an_unparsable_reply_gives_an_empty_page(
-    env: Env, pdf: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_an_unparsable_reply_gives_an_empty_page(env: Env, pdf: Path) -> None:
     """Text that is not a layout object gives "" like the PyTorch backend."""
-    monkeypatch.setenv("FAKE_LLAMA_CONTENT", "not json")
+    env.serve(FAKE_LLAMA_CONTENT="not json")
     assert env.engine.parse(pdf, [1]) == [""]
 
 
 @pytest.mark.parametrize(
-    ("variable", "code", "needle"),
+    ("fake_values", "code", "needle"),
     [
-        ("FAKE_LLAMA_STATUS", "server_error", "500"),
-        ("FAKE_LLAMA_BAD_JSON", "server_bad_response", "JSON"),
+        ({"FAKE_LLAMA_STATUS": 500}, "server_error", "500"),
+        ({"FAKE_LLAMA_BAD_JSON": 1}, "server_bad_response", "JSON"),
     ],
 )
 def test_server_failures_become_parse_errors(
-    env: Env, pdf: Path, monkeypatch: pytest.MonkeyPatch, variable: str, code: str, needle: str
+    env: Env, pdf: Path, fake_values: dict[str, object], code: str, needle: str
 ) -> None:
     """An HTTP error or a body that is not JSON gives a coded parse error."""
-    monkeypatch.setenv(variable, "500" if variable == "FAKE_LLAMA_STATUS" else "1")
+    env.serve(**fake_values)
     with pytest.raises(env.engine_mod.WorkerParseError) as excinfo:
         env.engine.parse(pdf, [1])
     assert excinfo.value.code == code and needle in excinfo.value.message
 
 
-# ── The model file check ───────────────────────────────────────────────────
-
-
-def test_a_changed_model_file_names_the_file_and_never_starts_the_server(
-    env: Env, pdf: Path
-) -> None:
-    """A model whose hash differs from its pin stops the parse before the server starts."""
-    (env.paths.models_dir() / "dots-mocr-Q8_0.gguf").write_bytes(b"changed")
-    with pytest.raises(env.engine_mod.WorkerParseError) as excinfo:
-        env.engine.parse(pdf, [1])
-    assert excinfo.value.code == "model_changed"
-    assert "dots-mocr-Q8_0.gguf" in excinfo.value.message
-    assert env.start_count() == 0
-
-
-def test_a_changed_projector_names_the_projector(env: Env, pdf: Path) -> None:
-    """The projector is checked like the model."""
-    (env.paths.models_dir() / "dots-mocr-mmproj-bf16.gguf").write_bytes(b"changed")
-    with pytest.raises(env.engine_mod.WorkerParseError) as excinfo:
-        env.engine.parse(pdf, [1])
-    assert "dots-mocr-mmproj-bf16.gguf" in excinfo.value.message
-    assert env.start_count() == 0
-
-
-def test_a_missing_model_file_names_the_file_and_the_provision_command(env: Env, pdf: Path) -> None:
-    """A file that is not there gives ``model_missing`` and the provisioning command."""
-    (env.paths.models_dir() / "dots-mocr-Q8_0.gguf").unlink()
-    with pytest.raises(env.engine_mod.WorkerParseError) as excinfo:
-        env.engine.parse(pdf, [1])
-    assert excinfo.value.code == "model_missing"
-    assert "dots-mocr-Q8_0.gguf" in excinfo.value.message
-    assert "provision.py dots-mocr-llamacpp" in excinfo.value.message
-
-
-def test_a_missing_server_binary_gives_a_parse_error(env: Env, pdf: Path) -> None:
-    """The server's own error code reaches the host."""
-    (env.paths.llama_dir() / "llama-server").unlink()
-    with pytest.raises(env.engine_mod.WorkerParseError) as excinfo:
-        env.engine.parse(pdf, [1])
-    assert excinfo.value.code == "server_binary_missing"
-
-
-def test_the_wrong_build_gives_a_parse_error(
+def test_each_page_goes_to_the_chat_completions_path_of_the_runtime(
     env: Env, pdf: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """A server of another build is refused and never starts."""
-    monkeypatch.setenv("FAKE_LLAMA_BUILD", "11960")
+    """The request URL is the runtime address plus ``/v1/chat/completions``."""
+    url = env.serve(FAKE_LLAMA_CONTENT=_raw("eq01", 11))
+    seen: list[str] = []
+    real = urllib.request.Request
+
+    def spy(target: str, *args: Any, **kwargs: Any) -> urllib.request.Request:
+        seen.append(target)
+        return real(target, *args, **kwargs)
+
+    monkeypatch.setattr(urllib.request, "Request", spy)
+    env.engine.parse(pdf, [1])
+    assert seen == [f"{url}/v1/chat/completions"]
+
+
+def test_an_unreachable_server_gives_a_parse_error(
+    env: Env, pdf: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An address where nothing listens gives ``server_unreachable``."""
+    monkeypatch.setenv(URL_ENV, "http://127.0.0.1:1")
     with pytest.raises(env.engine_mod.WorkerParseError) as excinfo:
         env.engine.parse(pdf, [1])
-    assert excinfo.value.code == "server_build" and "11960" in excinfo.value.message
-    assert env.start_count() == 0
+    assert excinfo.value.code == "server_unreachable"
 
 
-def test_the_hash_check_runs_once_per_worker(env: Env, pdf: Path) -> None:
-    """After the first good check, later pages do not hash the files again."""
-    env.engine.parse(pdf, [1])
-    (env.paths.models_dir() / "dots-mocr-Q8_0.gguf").write_bytes(b"changed later")
-    assert len(env.engine.parse(pdf, [2])) == 1
-    assert env.start_count() == 1
+# ── The runtime address (design D2) ────────────────────────────────────────
+
+
+def test_a_missing_address_gives_a_parse_error_that_names_the_variable(env: Env, pdf: Path) -> None:
+    """With no ``OMRS_OCR_RUNTIME_URL`` a parse fails and sends nothing."""
+    env.serve()
+    env._monkeypatch.delenv(URL_ENV)
+    with pytest.raises(env.engine_mod.WorkerParseError) as excinfo:
+        env.engine.parse(pdf, [1])
+    assert excinfo.value.code == "runtime_url_missing"
+    assert URL_ENV in excinfo.value.message
+    assert env.request_bodies() == []
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "",
+        "   ",
+        "https://127.0.0.1:8080",
+        "http://example.com:8080",
+        "http://192.168.1.5:8080",
+        "http://user@127.0.0.1:8080",
+        "http://127.0.0.1:99999",
+        "http://127.0.0.1:0",
+        "ftp://127.0.0.1:21",
+        "not a url",
+    ],
+)
+def test_an_address_that_is_not_loopback_http_is_refused_by_name(
+    env: Env, pdf: Path, monkeypatch: pytest.MonkeyPatch, value: str
+) -> None:
+    """Only an ``http`` address on this computer is accepted; the error names the variable."""
+    env.serve()
+    monkeypatch.setenv(URL_ENV, value)
+    with pytest.raises(env.engine_mod.WorkerParseError) as excinfo:
+        env.engine.parse(pdf, [1])
+    assert excinfo.value.code in {"runtime_url_missing", "runtime_url_invalid"}
+    assert URL_ENV in excinfo.value.message
+    assert env.request_bodies() == []
+
+
+@pytest.mark.parametrize("host", ["127.0.0.1", "localhost", "[::1]"])
+def test_each_loopback_host_form_is_accepted(env: Env, host: str) -> None:
+    """The three loopback spellings of the host rule pass the address check."""
+    url = env.engine_mod.runtime_base_url({URL_ENV: f"http://{host}:8081/"})
+    assert url == f"http://{host}:8081"
+
+
+def test_the_engine_starts_no_process(env: Env, pdf: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A parse works while ``subprocess.Popen`` is made to fail."""
+    env.serve(FAKE_LLAMA_CONTENT=_raw("eq01", 11))
+
+    def refuse(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("the engine started a process")
+
+    monkeypatch.setattr(subprocess, "Popen", refuse)
+    assert len(env.engine.parse(pdf, [1])) == 1
+
+
+def test_no_engine_module_imports_subprocess() -> None:
+    """The engine package holds no ``subprocess`` import and no server module."""
+    package = ENGINE_DIR / "src" / PACKAGE
+    assert not (package / "server.py").exists()
+    for source in sorted(package.glob("*.py")):
+        text = source.read_text(encoding="utf-8")
+        assert "import subprocess" not in text, source.name
+        assert "from subprocess" not in text, source.name
+
+
+def test_no_leftover_server_helper_remains_in_the_engine_or_the_tests() -> None:
+    """The names of the old worker-owned server are gone from the engine and the tests."""
+    # Built in pieces so a grep for the old names does not match this test.
+    needles = (
+        "server_pid" + "_file",
+        "Llama" + "Server",
+        "install_shutdown" + "_hooks",
+        "def server" + "_log",
+    )
+    here = Path(__file__).resolve()
+    roots = [ENGINE_DIR / "src", ENGINE_DIR / "smoke_test.py", REPO_ROOT / "tests"]
+    for root in roots:
+        files = [root] if root.is_file() else sorted(root.rglob("*.py"))
+        for source in files:
+            if source == here or "__pycache__" in source.parts:
+                continue
+            text = source.read_text(encoding="utf-8")
+            for needle in needles:
+                assert needle not in text, f"{needle} found in {source.name}"
 
 
 # ── Identity (design D7) ───────────────────────────────────────────────────

@@ -55,15 +55,15 @@
 
 Start this group only after `managed-llamacpp-runtimes` is merged into `v3` and this branch is rebased on `v3`. Write each test first and see it fail.
 
-- [ ] 2b.1 Rebase `feat/dots-mocr-llamacpp-backend` on `v3` with `managed-llamacpp-runtimes` merged. Resolve the tripwire pin conflict by test-ID diff, not by hand-edited counts.
+- [x] 2b.1 Rebase `feat/dots-mocr-llamacpp-backend` on `v3` with `managed-llamacpp-runtimes` merged. Resolve the tripwire pin conflict by test-ID diff, not by hand-edited counts.
   - Verify: `git merge-base --is-ancestor <managed-llamacpp-runtimes merge commit> HEAD` succeeds; the fast suite passes before any further edit.
-- [ ] 2b.2 Remove `src/omrs_ocr_dots_mocr_llamacpp/server.py`, `tests/test_ocr_dots_llamacpp_server.py`, the `server_log` and `server_pid_file` helpers in `paths.py`, and `tests/fixtures/ocr_worker/fake_llama_server.py`. Point the engine tests at the shared fake in `tests/fixtures/llamacpp/`.
+- [x] 2b.2 Remove `src/omrs_ocr_dots_mocr_llamacpp/server.py`, `tests/test_ocr_dots_llamacpp_server.py`, the `server_log` and `server_pid_file` helpers in `paths.py`, and `tests/fixtures/ocr_worker/fake_llama_server.py`. Point the engine tests at the shared fake in `tests/fixtures/llamacpp/`.
   - Verify: `grep -rn "server_pid_file\|LlamaServer\|install_shutdown_hooks" ocr-workers/engines/dots-mocr-llamacpp tests` finds nothing; no engine module imports `subprocess`.
-- [ ] 2b.3 Add the `[tool.omrs-ocr.runtime]` block to the engine's `pyproject.toml` (design D2): program, build 11941, the D5 flags, and both files with their SHA-256.
+- [x] 2b.3 Add the `[tool.omrs-ocr.runtime]` block to the engine's `pyproject.toml` (design D2): program, build 11941, the D5 flags, and both files with their SHA-256.
   - Verify tests first: the host's `declared_runtime` reads the block with no rule failure; a test asserts that every value equals `pins.py`, and fails when one character of a hash changes.
-- [ ] 2b.4 Make the engine read `OMRS_OCR_RUNTIME_URL` and send each page to `<url>/v1/chat/completions`. A missing or non-loopback value gives a parse error that names the variable.
+- [x] 2b.4 Make the engine read `OMRS_OCR_RUNTIME_URL` and send each page to `<url>/v1/chat/completions`. A missing or non-loopback value gives a parse error that names the variable.
   - Verify tests first, against the shared fake: the request body still matches D5; a missing variable gives the named error; the worker starts no process (a test patches `subprocess.Popen` to fail).
-- [ ] 2b.5 Move the model-file hash check to the host (design D2). Remove `_verify_model_files` from the engine. Keep the hash checks in `fetch.py`.
+- [x] 2b.5 Move the model-file hash check to the host (design D2). Remove `_verify_model_files` from the engine. Keep the hash checks in `fetch.py`.
   - Verify: a host-path test (`build_ocr_routes` with a test workers folder) shows that a changed model file makes the route unavailable with a reason that names the file, and that the fallback route parses the PDF; the engine test for the old parse-time check is removed with a note in the commit message.
 - [ ] 2b.6 Update `smoke_test.py`: it starts the runtime through the host's manager with a scratch `OMRS_STATE_DIR`, passes the URL to the worker, and leaves the runtime at the end.
   - Verify: a plan-only run lists the steps and touches nothing; the smoke tests pass against the shared fake.

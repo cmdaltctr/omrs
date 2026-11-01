@@ -1,7 +1,8 @@
 # Isolated dots.mocr OCR engine on llama.cpp (OpenSpec change
 # dots-mocr-llamacpp-backend, design D1). This project holds no PyTorch,
 # torchvision, transformers or accelerate: the model runs in a pinned
-# llama.cpp server that the worker starts itself. Nothing here may enter
+# llama.cpp server that OMRS starts and the worker only calls (the runtime
+# block below, design D2). Nothing here may enter
 # OMRS's main environment, root lockfile, or import graph. Provision with
 # `python3 ocr-workers/provision.py dots-mocr-llamacpp --accept-model-licence`,
 # never with a bare `uv sync` from the repository root.
@@ -34,6 +35,25 @@ omrs-ocr-worker-core = { path = "../../core" }
 # engine without --accept-model-licence and prints this file's path.
 licence-file = "LICENCE-NOTES.md"
 requires-acceptance = true
+
+[tool.omrs-ocr.runtime]
+# The server OMRS runs for this engine (design D2, D5). Paths are relative to
+# the engine cache. The values must equal pins.py; a test checks that. OMRS
+# adds --host and --port, checks the build and both hashes before each start,
+# and gives the worker the address in OMRS_OCR_RUNTIME_URL.
+program = "llama.cpp/llama-b11941/llama-server"
+build = 11941
+flags = ["--temp", "0", "-c", "24576", "-np", "1", "--image-min-tokens", "4", "--image-max-tokens", "14400"]
+
+[[tool.omrs-ocr.runtime.files]]
+flag = "-m"
+path = "models/dots-mocr-Q8_0.gguf"
+sha256 = "6017b1844a77837010649939fe2e934af17728fc89243f88b10bde4afa04d6be"
+
+[[tool.omrs-ocr.runtime.files]]
+flag = "--mmproj"
+path = "models/dots-mocr-mmproj-bf16.gguf"
+sha256 = "63f415f961da981d0ee101cfdbf7a7bcc81ace4c4aa780a6e2823c0cd780761f"
 
 [build-system]
 requires = ["hatchling"]

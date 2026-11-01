@@ -73,8 +73,9 @@ UBUNTU_X64 = LlamaArchive(
     "e8a1ee13aa19c6c78f5651457758160da27410301b179d6ef3505c81c8ea31f1",
 )
 
-#: The server flags of Experiment 41 arm D4 (D5). Port, model and projector
-#: are added by :func:`omrs_ocr_dots_mocr_llamacpp.server.server_command`.
+#: The server flags of Experiment 41 arm D4 (D5). The host adds the host,
+#: the port, the model and the projector. ``pyproject.toml`` holds the same
+#: values in its runtime block, and a test pins the two together.
 SERVER_FLAGS = (
     "--temp",
     "0",
