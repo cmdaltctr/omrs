@@ -441,9 +441,12 @@ def build_ocr_routes(settings: Any) -> Any:
         An :class:`~omrs.integrations.ocr_worker.routes.OcrRoutes` pair.
         Construction starts no parsing process.
     """
+    from .compose_runtime_manager import runtime_manager
     from .integrations.ocr_worker.routes import build_route_clients
 
-    return build_route_clients(settings, probe=probe_ocr_worker)
+    # One runtime manager per process: a route whose engine declares a
+    # llama.cpp runtime gets its lease from it (managed-llamacpp-runtimes D1).
+    return build_route_clients(settings, probe=probe_ocr_worker, runtime_manager=runtime_manager())
 
 
 # ── OCR engine list for Settings > Document reading (design D5) ──────────

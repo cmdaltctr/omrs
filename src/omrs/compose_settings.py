@@ -96,6 +96,7 @@ def settings_to_effective(settings: Settings | None = None) -> Any:
         ocr_local_model_directory=settings.ocr_local_model_directory,
         ocr_worker_request_timeout=settings.ocr_worker_request_timeout,
         ocr_workers_dir=settings.ocr_workers_dir,
+        ocr_runtime_url=settings.ocr_runtime_url,
         ocr_engine_primary=settings.ocr_engine_primary,
         ocr_engine_fallback=settings.ocr_engine_fallback,
         ocr_maths_routing_enabled=settings.ocr_maths_routing_enabled,

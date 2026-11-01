@@ -1,49 +1,46 @@
-"""The llama.cpp server that ``omrs web`` starts and owns (design D12).
+"""The llama.cpp Chat card's view of the shared ``chat`` runtime (managed-llamacpp-runtimes D1, D8).
 
-:class:`LlamacppServer` keeps the handle of the one process it launched. It
-signals that process group and nothing else. It never lists processes, never
-looks a process up by name or port and never touches a server the user
-started: when the chat port is already taken, a start is refused with
-``port-in-use``.
+:class:`LlamacppServer` is a thin adapter over the process's
+:class:`~omrs.integrations.llamacpp_runtime.RuntimeManager`. Start joins the
+``chat`` runtime as a client (it starts or adopts the server), Stop is an
+operator stop, and the status reads the runtime state files. The methods
+block, so the routes call them through ``run_in_threadpool``.
 
-The module belongs to the web transport only. The CLI and the stdio MCP server
-do not import it. Nothing here returns child output: the status holds a state,
-one reason from a fixed set and an exit code. The child writes to a capped log
-file in the workspace folder, which no route reads.
+The server is detached and may belong to another OMRS process, so the status
+has no exit code. Its output goes to ``server.log`` in the runtime folder,
+which no route reads. The CLI and the stdio MCP server do not import this
+module.
 """
 
 from __future__ import annotations
 
-import asyncio
-import atexit
-import contextlib
 import logging
-import os
-import signal
-import socket
-import subprocess
-import threading
-import time
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal, Protocol
+from typing import Any, Literal
 
-import httpx
+from fastapi.concurrency import run_in_threadpool
 
-from ...integrations.llamacpp_runtime import rules
+from ...integrations.llamacpp_runtime import (
+    RuntimeLease,
+    RuntimeManager,
+    RuntimeSpec,
+    RuntimeUnavailable,
+    chat_spec,
+    read_server_record,
+    rules,
+    runtime_dir,
+)
+from ...integrations.llamacpp_runtime import process as runtime_process
 
 logger = logging.getLogger(__name__)
 
 State = Literal["stopped", "starting", "running", "failed"]
 
-#: The log file never grows past this many bytes.
-LOG_CAP_BYTES = 5 * 1024 * 1024
-#: Seconds to wait for ``GET /health`` to return 200.
-HEALTH_TIMEOUT = 180.0
-#: Seconds between SIGTERM and SIGKILL.
-STOP_GRACE = 10.0
+#: The runtime id of the Chat server.
+CHAT = "chat"
 
 
 @dataclass(frozen=True)
@@ -75,7 +72,7 @@ class StartedWith:
 
 @dataclass(frozen=True)
 class ServerStatus:
-    """The state of the owned server. ``reason`` is one of ``REASONS`` or ``None``."""
+    """The state of the Chat server. ``reason`` is one of ``rules.REASONS`` or ``None``."""
 
     state: State
     reason: str | None = None
@@ -84,299 +81,157 @@ class ServerStatus:
     started_with: StartedWith | None = None
 
 
-class _Readable(Protocol):
-    def read(self, size: int) -> bytes: ...
+def _check(config: LaunchConfig) -> str | RuntimeSpec:
+    """Return a refusal reason, or the managed ``chat`` spec when every rule holds."""
+    if not config.binary.strip() or not config.model.strip():
+        return "not-configured"
+    if not rules.check_binary(config.binary):
+        return "binary-invalid"
+    kind = rules.model_kind(config.model)
+    if kind is None:
+        return "model-invalid"
+    port = rules.loopback_port(config.chat_url)
+    if port is None:
+        return "not-loopback"
+    return chat_spec(
+        mode="managed",
+        binary=config.binary,
+        model=config.model,
+        port=port,
+        window=config.context_window,
+        kind=kind,
+    )
 
 
-def pump_capped(source: _Readable, path: Path, cap: int = LOG_CAP_BYTES) -> None:
-    """Copy *source* to *path* until *cap* bytes are written, then drain the rest.
-
-    The file is emptied first and created with mode 0600. Output past the cap
-    is read and dropped, so the child never blocks on a full pipe.
-    """
-    written = 0
-    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
-    fd = os.open(path, flags, 0o600)
-    with os.fdopen(fd, "wb") as handle:
-        while chunk := source.read(65536):
-            room = cap - written
-            if room > 0:
-                part = chunk[:room]
-                handle.write(part)
-                handle.flush()
-                written += len(part)
-
-
-def port_in_use(port: int) -> bool:
-    """Return whether something accepts connections on 127.0.0.1:*port*."""
-    try:
-        with socket.create_connection(("127.0.0.1", port), timeout=0.5):
-            return True
-    except OSError:
-        return False
+def _started_with(spec: RuntimeSpec) -> StartedWith:
+    flag = "-hf" if "-hf" in spec.argv else "-m"
+    window = int(spec.argv[spec.argv.index("-c") + 1])
+    model = spec.argv[spec.argv.index(flag) + 1]
+    return StartedWith(spec.binary, model, "hf" if flag == "-hf" else "file", window)
 
 
 class LlamacppServer:
-    """Starts, watches and stops one owned ``llama-server`` process.
+    """The Chat card's start, stop and status over the shared ``chat`` runtime.
 
     Args:
-        log_path: File that receives the child's output (emptied at each start).
-        health_timeout: Seconds to wait for ``/health`` to return 200.
-        stop_grace: Seconds between SIGTERM and SIGKILL.
-        poll_interval: Seconds between health checks.
-        popen: Process factory; tests wrap it to record the call.
-        environ: The environment the child's variables are taken from.
+        manager: The runtime manager of this process.
     """
 
-    def __init__(
-        self,
-        log_path: Path,
-        *,
-        health_timeout: float = HEALTH_TIMEOUT,
-        stop_grace: float = STOP_GRACE,
-        poll_interval: float = 0.5,
-        popen: Callable[..., Any] = subprocess.Popen,
-        environ: Callable[[], Any] = lambda: os.environ,
-    ) -> None:
-        """Create a stopped manager. Nothing starts until :meth:`start`."""
-        self.log_path = Path(log_path)
-        self._health_timeout = health_timeout
-        self._stop_grace = stop_grace
-        self._poll_interval = poll_interval
-        self._popen = popen
-        self._environ = environ
-        self._lock = asyncio.Lock()
-        self._proc: Any = None
-        self._watcher: asyncio.Task[None] | None = None
-        self._pump: threading.Thread | None = None
-        self._state: State = "stopped"
-        self._reason: str | None = None
-        self._exit_code: int | None = None
-        self._started_with: StartedWith | None = None
-        self._hooked = False
+    def __init__(self, manager: RuntimeManager) -> None:
+        self.manager = manager
+        self._lease: RuntimeLease | None = None
+        self._refusal: str | None = None
+
+    @property
+    def log_path(self) -> Path:
+        """``server.log`` in the Chat runtime folder. No route reads it."""
+        return runtime_dir(self.manager.root, CHAT) / runtime_process.LOG_FILE
 
     # ── Status ───────────────────────────────────────────────────────────
 
-    def status(self) -> ServerStatus:
-        """Return the state. An owned process that has ended reads as ``failed``/``exited``."""
-        self._refresh()
-        return ServerStatus(
-            state=self._state,
-            reason=self._reason,
-            exit_code=self._exit_code,
-            pid_running=self._proc is not None and self._proc.poll() is None,
-            started_with=self._started_with,
-        )
+    def status(self, config: LaunchConfig | None = None) -> ServerStatus:
+        """Return the state from the runtime files. Starts and writes nothing.
 
-    def _refresh(self) -> None:
-        proc = self._proc
-        if proc is None or self._state not in ("starting", "running"):
-            return
-        code = proc.poll()
-        if code is not None:
-            self._ended(proc, code)
-
-    def _ended(self, proc: Any, code: int) -> None:
-        if proc is not self._proc:
-            return
-        self._proc = None
-        self._started_with = None
-        self._state, self._reason, self._exit_code = "failed", "exited", code
-
-    def _fail(self, reason: str) -> None:
-        self._state, self._reason, self._exit_code = "failed", reason, None
-        self._started_with = None
-
-    # ── Start ────────────────────────────────────────────────────────────
-
-    async def start(self, config: LaunchConfig) -> ServerStatus:
-        """Check the rules, launch the process and begin watching its health.
-
-        A server that is already ``starting`` or ``running`` is left alone.
-        Every refusal is a ``failed`` status with one fixed reason and no
-        process.
+        Args:
+            config: The saved values; a server started with them reports them
+                as ``started_with``.
         """
-        async with self._lock:
-            self._refresh()
-            if self._proc is not None and self._state in ("starting", "running"):
-                return self.status()
-            checked = await asyncio.to_thread(self._check, config)
-            if isinstance(checked, str):
-                self._fail(checked)
-                return self.status()
-            kind, port = checked
-            self._launch(config, kind, port)
-            return self.status()
+        record = read_server_record(runtime_dir(self.manager.root, CHAT))
+        if record is not None and runtime_process.owns(record.pid, record.binary):
+            state: State = "running" if record.state == "running" else "starting"
+            return ServerStatus(state, pid_running=True, started_with=self._known(record, config))
+        if self._refusal is not None:
+            return ServerStatus("failed", self._refusal)
+        if record is not None and record.reason:
+            return ServerStatus("failed", record.reason)
+        if record is not None and record.state != "stopped":
+            return ServerStatus("failed", "exited")  # gone with no stop recorded: it crashed
+        return ServerStatus("stopped")
 
-    def _check(self, config: LaunchConfig) -> str | tuple[rules.ModelKind, int]:
-        """Return a failure reason, or the model kind and port when every rule holds."""
-        if not config.binary.strip() or not config.model.strip():
-            return "not-configured"
-        if not rules.check_binary(config.binary):
-            return "binary-invalid"
-        kind = rules.model_kind(config.model)
-        if kind is None:
-            return "model-invalid"
-        port = rules.chat_port(config.chat_url)
-        if port is None:
-            return "not-loopback"
-        if port_in_use(port):
-            return "port-in-use"
-        return kind, port
+    def _known(self, record: Any, config: LaunchConfig | None) -> StartedWith | None:
+        """Return what the running server started with, when this process knows its spec."""
+        candidates = [self._lease.spec] if self._lease is not None else []
+        if config is not None and isinstance(spec := _check(config), RuntimeSpec):
+            candidates.append(spec)
+        for spec in candidates:
+            if spec.digest == record.digest:
+                return _started_with(spec)
+        return None
 
-    def _launch(self, config: LaunchConfig, kind: rules.ModelKind, port: int) -> None:
-        argv = rules.build_argv(
-            config.binary,
-            config.model,
-            kind,
-            port,
-            config.context_window,
-        )
-        self.log_path.parent.mkdir(parents=True, exist_ok=True)
+    # ── Control ──────────────────────────────────────────────────────────
+
+    def start(self, config: LaunchConfig) -> ServerStatus:
+        """Join the ``chat`` runtime with *config*; it starts the server when none runs.
+
+        A server that runs with other values is left alone (Restart applies
+        them). Every refusal is a ``failed`` status with one fixed reason.
+        """
+        checked = _check(config)
+        if isinstance(checked, str):
+            self._refusal = checked
+            return self.status(config)
+        self._refusal = None
+        record = read_server_record(runtime_dir(self.manager.root, CHAT))
+        running = record is not None and runtime_process.owns(record.pid, record.binary)
+        if running and record is not None and record.digest != checked.digest:
+            return self.status(config)  # running with other values
+        lease = self.manager.lease(checked)
+        if lease.operator_stopped:
+            lease.leave()  # the operator's own Start: join again
+        self._lease = lease
         try:
-            proc = self._popen(
-                argv,
-                shell=False,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                bufsize=0,
-                env=rules.child_environment(self._environ(), kind),
-                start_new_session=True,
-            )
-        except OSError:
-            self._fail("binary-invalid")
-            return
-        self._proc = proc
-        self._pump = threading.Thread(
-            target=pump_capped, args=(proc.stdout, self.log_path), daemon=True
-        )
-        self._pump.start()
-        self._started_with = StartedWith(config.binary, config.model, kind, config.context_window)
-        self._state, self._reason, self._exit_code = "starting", None, None
-        self._hook_exit()
-        self._watcher = asyncio.create_task(self._watch(proc, port))
-        logger.info("Started the llama.cpp server (port %d).", port)
+            lease.join()
+        except RuntimeUnavailable as refused:
+            self._refusal = refused.reason
+        return self.status(config)
 
-    def _hook_exit(self) -> None:
-        if not self._hooked:
-            self._hooked = True
-            atexit.register(self.stop_now)
+    def stop(self) -> ServerStatus:
+        """Operator stop (design D8). With no recorded server, nothing is signalled.
 
-    async def _watch(self, proc: Any, port: int) -> None:
-        """Poll ``/health`` until 200, the process exits or the time runs out."""
-        deadline = time.monotonic() + self._health_timeout
-        url = f"http://127.0.0.1:{port}/health"
-        async with httpx.AsyncClient(timeout=2.0, trust_env=False) as client:
-            while proc is self._proc:
-                code = proc.poll()
-                if code is not None:
-                    self._ended(proc, code)
-                    return
-                if time.monotonic() >= deadline:
-                    # Detach and report the timeout before signalling. Our own SIGTERM
-                    # kills the child at once, and a status read while we still wait
-                    # for it would otherwise read that death as the server exiting.
-                    self._proc = None
-                    self._fail("timeout")
-                    await asyncio.to_thread(self._terminate, proc)
-                    return
-                with contextlib.suppress(httpx.HTTPError):
-                    if (await client.get(url)).status_code == 200:
-                        self._state, self._reason = "running", None
-                        return
-                await asyncio.sleep(self._poll_interval)
+        The lease stays: a process that joined this server does not start it
+        again until it leaves. Start leaves and joins again.
+        """
+        self._refusal = None
+        self.manager.stop(CHAT)
+        return self.status()
 
-    # ── Stop ─────────────────────────────────────────────────────────────
+    def restart(self, config: LaunchConfig) -> ServerStatus:
+        """Stop the server, then start it with *config*."""
+        self.stop()
+        return self.start(config)
 
-    async def stop(self) -> ServerStatus:
-        """Stop the owned process (SIGTERM, then SIGKILL after the grace). Do nothing if none."""
-        async with self._lock:
-            await self._stop_locked()
-            return self.status()
-
-    async def _stop_locked(self) -> None:
-        watcher, self._watcher = self._watcher, None
-        if watcher is not None and watcher is not asyncio.current_task():
-            watcher.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await watcher
-        proc, self._proc = self._proc, None
-        if proc is not None:
-            await asyncio.to_thread(self._terminate, proc)
-        self._state, self._reason, self._exit_code, self._started_with = "stopped", None, None, None
-
-    async def restart(self, config: LaunchConfig) -> ServerStatus:
-        """Stop the owned process, then start it with *config*."""
-        async with self._lock:
-            await self._stop_locked()
-        return await self.start(config)
-
-    async def shutdown(self) -> None:
-        """Stop the owned process when ``omrs web`` exits."""
-        await self.stop()
-
-    def stop_now(self) -> None:
-        """Stop the owned process from a synchronous exit hook."""
-        proc, self._proc = self._proc, None
-        if proc is not None:
-            self._terminate(proc)
-            self._state, self._reason, self._started_with = "stopped", None, None
-
-    def _terminate(self, proc: Any) -> None:
-        """SIGTERM the process group, wait the grace, then SIGKILL it. Only this *proc*."""
-        if proc.poll() is not None:
-            return
-        self._signal(proc, signal.SIGTERM)
-        deadline = time.monotonic() + self._stop_grace
-        while time.monotonic() < deadline:
-            if proc.poll() is not None:
-                break
-            time.sleep(0.02)
-        if proc.poll() is None:
-            self._signal(proc, getattr(signal, "SIGKILL", signal.SIGTERM))
-            with contextlib.suppress(subprocess.TimeoutExpired):
-                proc.wait(timeout=5)
-        with contextlib.suppress(subprocess.TimeoutExpired):
-            proc.wait(timeout=5)
-        if proc.stdout is not None:
-            with contextlib.suppress(OSError):
-                proc.stdout.close()
-
-    @staticmethod
-    def _signal(proc: Any, sig: int) -> None:
-        """Send *sig* to the process group that this manager created for *proc*."""
-        if proc.poll() is not None:
-            return
-        with contextlib.suppress(ProcessLookupError, PermissionError):
-            if os.name == "nt":
-                proc.terminate() if sig == signal.SIGTERM else proc.kill()
-            elif os.getpgid(proc.pid) == proc.pid:
-                os.killpg(proc.pid, sig)  # the child leads its own session, so pgid == pid
-            else:
-                # The child shares a group (its new session did not take). A group
-                # signal would reach omrs's own group, so signal the child alone.
-                os.kill(proc.pid, sig)
+    def shutdown(self) -> None:
+        """Leave the ``chat`` lease when ``omrs web`` exits; the last client stops the server."""
+        if self._lease is not None:
+            self._lease.leave()
 
 
 def owning_lifespan(inner: Callable[[Any], Any]) -> Callable[[Any], Any]:
-    """Wrap an app lifespan so the owned server stops when ``omrs web`` shuts down.
+    """Wrap an app lifespan with the runtime sweep at start and the Chat leave at shutdown.
 
-    The manager is read from ``app.state.llamacpp_server`` at shutdown, so a
-    test can replace it. A failure to stop is logged and never raised.
+    At start-up the manager stops every owned server that no OMRS process
+    uses (design D9). At shutdown the Chat adapter leaves its lease. Both
+    read ``app.state`` then, so a test can replace them. A failure is logged
+    and never raised.
     """
 
     @asynccontextmanager
     async def lifespan(app: Any) -> AsyncIterator[None]:
+        manager = getattr(app.state, "runtime_manager", None)
+        if manager is not None:
+            try:
+                await run_in_threadpool(manager.sweep)
+            except Exception:
+                logger.exception("The llama.cpp runtime sweep failed.")
         try:
             async with inner(app):
                 yield
         finally:
-            manager = getattr(app.state, "llamacpp_server", None)
-            if manager is not None:
+            server = getattr(app.state, "llamacpp_server", None)
+            if server is not None:
                 try:
-                    await manager.shutdown()
+                    await run_in_threadpool(server.shutdown)
                 except Exception:
-                    logger.exception("The llama.cpp server could not be stopped cleanly.")
+                    logger.exception("The llama.cpp Chat runtime could not be left cleanly.")
 
     return lifespan

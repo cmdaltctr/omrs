@@ -30,8 +30,8 @@ from tests.unit.test_web_openapi_conformance_support import (  # noqa: E402
 )
 
 from omrs.core.answer.settings import AnswerSettings  # noqa: E402
+from omrs.integrations.llamacpp_runtime import process  # noqa: E402
 from omrs.transports.api import security  # noqa: E402
-from omrs.transports.api.llamacpp_server import LlamacppServer  # noqa: E402
 
 pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="POSIX process groups")
 
@@ -69,9 +69,15 @@ class Rig:
 
 
 @pytest.fixture
-def rig(harness: Any, tmp_path: Path):
-    """Return a factory: ``with rig(**settings) as r``."""
+def rig(harness: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Return a factory: ``with rig(**settings) as r``.
+
+    The app keeps its own runtime manager and Chat adapter, both under this
+    test's state folder (``OMRS_STATE_DIR``).
+    """
     from contextlib import contextmanager
+
+    monkeypatch.setattr(process, "HEALTH_POLL_SECONDS", 0.05)
 
     @contextmanager
     def build(mode: str = "ok", **overrides: Any):
@@ -86,13 +92,6 @@ def rig(harness: Any, tmp_path: Path):
             "answer", AnswerSettings(enabled=True, provider="llamacpp", model=str(model))
         )
         with harness(**overrides) as h:
-            manager = LlamacppServer(
-                tmp_path / "ws" / "llamacpp-server.log",
-                health_timeout=20.0,
-                stop_grace=3.0,
-                poll_interval=0.05,
-            )
-            h.app.state.llamacpp_server = manager
             state = Rig(h, program, model, port)
             try:
                 yield state
@@ -360,15 +359,16 @@ def test_a_refused_start_is_failed_with_a_fixed_reason(
         assert r.program.pids() == []
 
 
-def test_a_server_that_exits_reports_the_code_and_never_its_text(rig: Any) -> None:
+def test_a_server_that_exits_reports_exited_and_never_its_text(rig: Any) -> None:
+    """The server is detached (design D4), so OMRS reads no exit code: ``exit_code`` is null."""
     with rig(mode="exit:3") as r:
         r.save_all()
         r.post("start")
         body = r.wait_state("failed")
-        assert (body["reason"], body["exit_code"]) == ("exited", 3)
-        wait_until(
-            lambda: "SECRET-CHILD-TEXT" in (r.h.app.state.llamacpp_server.log_path).read_text()
-        )
+        assert (body["reason"], body["exit_code"]) == ("exited", None)
+        log = r.h.app.state.runtime_manager.root / "runtimes" / "chat" / "server.log"
+        assert r.h.app.state.llamacpp_server.log_path == log
+        wait_until(lambda: "SECRET-CHILD-TEXT" in log.read_text())
         assert "SECRET-CHILD-TEXT" not in json.dumps(body)
         logs = r.client.get("/v1/logs")
         assert "SECRET-CHILD-TEXT" not in logs.text

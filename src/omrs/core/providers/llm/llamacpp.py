@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from ...runtime_gate import http_clients
 from ...settings import classification_url
 from .connection import (
     ConnectionDescriptor,
@@ -23,6 +24,7 @@ from .reply_read import read_openai_reply
 
 if TYPE_CHECKING:
     from ....config import Settings
+    from ...runtime_gate import Role
 
 
 def reasoning_kwargs(level: str) -> dict[str, Any] | None:
@@ -66,8 +68,10 @@ def build(
     """
     if answer_model is None:
         model, address = settings.llamacpp_chat_model, classification_url(settings)
+        role: Role = "classification"
     elif answer_model.strip():
         model, address = answer_model, settings.llamacpp_chat_url
+        role = "chat"
     else:
         raise ValueError("Choose a model for llama.cpp in Settings > Chat.")
 
@@ -80,6 +84,8 @@ def build(
         # OpenAILike names this ``timeout``; ``request_timeout`` is the Ollama
         # spelling and is silently dropped, leaving the 60s default in place.
         timeout=(timeout if timeout is not None else settings.metadata.classify_timeout),
+        # OMRS's own server, when managed: each request joins the runtime first.
+        **http_clients(role),
     )
 
 

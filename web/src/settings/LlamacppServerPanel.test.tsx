@@ -319,7 +319,7 @@ describe("Local server block on the llama.cpp card", () => {
 
   it("shows the exit code for exited", async () => {
     const { panel } = await open({ "GET /v1/llamacpp/server": () => serverStatus({ state: "failed", reason: "exited", exit_code: 3 }) });
-    expect(within(panel()).getByRole("status")).toHaveTextContent("The server stopped by itself with exit code 3. See llamacpp-server.log in the workspace folder.");
+    expect(within(panel()).getByRole("status")).toHaveTextContent("The server stopped by itself with exit code 3. See server.log in runtimes/chat under the OMRS state folder.");
   });
 
   it("never puts raw log or process text in the page", async () => {

@@ -65,11 +65,11 @@ Write all tests in this group first, against the fake server and the client proc
 
 ## 5. Chat and embeddings on the manager (design D1, D2, D12)
 
-- [ ] 5.1 Rework `transports/api/llamacpp_server.py` into a thin adapter: the routes call `RuntimeManager` through `run_in_threadpool`; the lifespan hook leaves the `chat` lease. Keep the route bodies and the 409 reasons.
+- [x] 5.1 Rework `transports/api/llamacpp_server.py` into a thin adapter: the routes call `RuntimeManager` through `run_in_threadpool`; the lifespan hook leaves the `chat` lease. Keep the route bodies and the 409 reasons.
   - Verify: the existing `/v1/llamacpp/server` route tests pass with only the idle sleep cases changed; a new test shows a CLI client and the web app sharing one Chat server, and the server living on after `omrs web` exits while the CLI uses it.
-- [ ] 5.2 Inject a lease into the llama.cpp Chat and classification clients (classification only when `llamacpp_classify_url` is blank) from `compose.py`. `core/` must not import `integrations.llamacpp_runtime`.
+- [x] 5.2 Inject a lease into the llama.cpp Chat and classification clients (classification only when `llamacpp_classify_url` is blank) from `compose.py`. `core/` must not import `integrations.llamacpp_runtime`.
   - Verify: a CLI-path test with `llamacpp_chat_server=managed` starts the fake as a client and gets an answer; `lint-imports` passes.
-- [ ] 5.3 Add `llamacpp_embed_server` (env `LLAMACPP_EMBED_SERVER`, default `external`) to `config/provider_sources.py` and `config/rules.py`. Read it from env, `.env` and `omrs.jsonc`; refuse it in the Settings page write path. Inject the embeddings lease.
+- [x] 5.3 Add `llamacpp_embed_server` (env `LLAMACPP_EMBED_SERVER`, default `external`) to `config/provider_sources.py` and `config/rules.py`. Read it from env, `.env` and `omrs.jsonc`; refuse it in the Settings page write path. Inject the embeddings lease.
   - Verify tests first: default `external` starts nothing; `managed` starts the fake with `--embedding` and embeds text; `PUT /v1/settings/configuration` with the key is refused.
 - [x] 5.4 Retire `llamacpp_idle_sleep_seconds` (design D12): remove it from `provider_sources.py`, `user_config.py`, `compose_llamacpp.py`, the card fields and the status `saved` block; add the env and `.env` start-up failure and the `omrs.jsonc` problem-list entry in `config/legacy.py`; `PUT /v1/llamacpp/server` with `idle_sleep` returns 400.
   - Verify tests first: `.env` with `LLAMACPP_IDLE_SLEEP_SECONDS` fails start-up with the message; the `omrs.jsonc` key is listed; the 400 message names the 10-minute idle stop.
@@ -78,9 +78,9 @@ Write all tests in this group first, against the fake server and the client proc
 
 - [x] 6.1 Add `declared_runtime(folder, cache_dir)` to `src/omrs/integrations/ocr_worker/manifest.py`, standard library only. Apply the path, program and flag rules.
   - Verify tests first: a valid block reads; `..`, an absolute path, a link outside the cache, a program with another name and each reserved flag are refused with a reason that names the rule; `manifest.py` imports only standard-library modules (an AST test); `ocr-workers/provision.py` still loads the file by path.
-- [ ] 6.2 Carry the declared runtime on `RouteCommand` in `routes.py`; build the `RuntimeSpec` (id `ocr-<engine folder>`) in the pool; give `ManagedOcrClient` the lease. Join and take the request lock before a parse; start the worker with `OMRS_OCR_RUNTIME_URL`; restart the worker when the URL changes; close the worker before an idle leave.
+- [x] 6.2 Carry the declared runtime on `RouteCommand` in `routes.py`; build the `RuntimeSpec` (id `ocr-<engine folder>`) in the pool; give `ManagedOcrClient` the lease. Join and take the request lock before a parse; start the worker with `OMRS_OCR_RUNTIME_URL`; restart the worker when the URL changes; close the worker before an idle leave.
   - Verify tests first, with a test engine folder that declares the fake: the worker environment holds `OMRS_OCR_RUNTIME_URL`; the probe starts no server; a restart on a new port restarts the worker; no host module names an engine (grep test).
-- [ ] 6.3 Fallback rules. Tests first:
+- [x] 6.3 Fallback rules. Tests first:
   - a runtime that fails before dispatch (`file-changed`) makes the primary route unavailable and the fallback parses the PDF;
   - an operator stop during a primary parse sends that request once to the fallback (operator decision, 2026-11-01), and later requests of that lease go to the fallback without a start;
   - one retry only, no loop: when the fallback also fails or is also stopped by the operator, the file gets a structured error, the fake fallback records exactly one request for that file, and the host sends nothing to the primary route again for it;
@@ -89,13 +89,13 @@ Write all tests in this group first, against the fake server and the client proc
 - [ ] 6.4 External OCR (`ocr_runtime_url`). First, start the real `llama-server` b11941 binary from the dots engine cache in this worktree's scratch folder (operator approval needed if it is not on disk) and record whether `GET /props` reports the build, and in which field. Then write the build check against that field.
   - External OCR stays, opt-in only (operator decision, 2026-11-01). A blank `ocr_runtime_url` means managed.
   - Verify tests first: a matching build passes the URL to the worker and starts nothing; the build check still runs when the URL is set; another build gives `wrong-build` and the fallback serves the file; the runtime item reports `mode` `external` and `files_checked` false; a blank URL gives a managed runtime.
-- [ ] 6.5 Engine without a block. Test: a PaddleOCR-VL-shaped test engine starts no server and gets no `OMRS_OCR_RUNTIME_URL`.
+- [x] 6.5 Engine without a block. Test: a PaddleOCR-VL-shaped test engine starts no server and gets no `OMRS_OCR_RUNTIME_URL`.
 
 ## 7. HTTP routes and contract (design D8, D11)
 
 - [x] 7.1 Change `src/omrs/transports/api/openapi.yaml` first: `GET /v1/runtimes` (`listRuntimes`), `POST /v1/runtimes/{runtime_id}/stop` (`stopRuntime`), the item schema with `additionalProperties: false`, the 409 reason `external-runtime`, the new reasons, and the removed `idle_sleep`. Add both operation ids to a family in `FAMILIES`.
   - Verify: the OpenAPI conformance tests fail before the routes exist.
-- [ ] 7.2 Write `src/omrs/transports/api/routes/runtimes.py`: `read` for the list; `require_session("manage")` for stop, bearer refused; 404 for an unknown or malformed id; 409 `external-runtime`. The list reads `server.json`, the recorded pid's `rss` and a non-blocking lock attempt only.
+- [x] 7.2 Write `src/omrs/transports/api/routes/runtimes.py`: `read` for the list; `require_session("manage")` for stop, bearer refused; 404 for an unknown or malformed id; 409 `external-runtime`. The list reads `server.json`, the recorded pid's `rss` and a non-blocking lock attempt only.
   - Verify tests first: list shape; reading starts nothing and changes no runtime file; bearer stop refused with no signal; external stop gives 409; the conformance tests pass.
 - [x] 7.3 Update `docs/guides/web-workspace.md` route table for both new routes and the changed `/v1/llamacpp/server` body.
   - Verify: `grep -n "idle_sleep" docs/guides/web-workspace.md` finds nothing.

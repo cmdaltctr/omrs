@@ -1,13 +1,15 @@
-"""Routes of the llama.cpp server that ``omrs web`` starts and owns (design D12).
+"""Routes of the llama.cpp Chat server card (design D12, managed-llamacpp-runtimes D1).
 
 ``GET`` reports the state and the settings (read from ``omrs.jsonc``, with its
 ``revision``). ``PUT`` writes the program, the Chat server choice, the context
 window to the file; it may send the ``revision`` it read.
-``POST`` start, stop and restart control the one process the server owns. The
-server loads the Chat model in force (ADR-108 D5). With the choice ``external``
-Start and Restart start nothing. Every write and control route needs the browser
-session. Changing the program or the Chat server choice also needs the
-``credentials`` scope. No route returns the log file or any text of the child process.
+``POST`` start, stop and restart control the shared ``chat`` runtime through the
+process's runtime manager (``run_in_threadpool``): Start joins it as a client,
+Stop is an operator stop. The server loads the Chat model in force (ADR-108 D5).
+With the choice ``external`` Start and Restart start nothing. Every write and
+control route needs the browser session. Changing the program or the Chat server
+choice also needs the ``credentials`` scope. No route returns the log file or any
+text of the child process.
 """
 
 from __future__ import annotations
@@ -153,8 +155,10 @@ def _external(view: dict[str, Any]) -> bool:
     return view["chat_server"]["value"] != "managed"
 
 
-async def _respond(runtime: Any, status: ServerStatus) -> Response:
+async def _respond(runtime: Any, request: Request) -> Response:
+    """Return the status body; the saved values tell what a running server started with."""
     view = await run_in_threadpool(compose.llamacpp_server_settings, _values(runtime))
+    status = await run_in_threadpool(_manager(request).status, _launch_config(view))
     return ok(_body(view, status, _revision(runtime)))
 
 
@@ -162,7 +166,7 @@ async def _respond(runtime: Any, status: ServerStatus) -> Response:
 async def get_server(_: ReadScope, request: Request, runtime: RuntimeDep) -> Response:
     """Return the state, the values the process started with and the saved settings."""
     async with admitted(runtime):
-        return await _respond(runtime, _manager(request).status())
+        return await _respond(runtime, request)
 
 
 def _check(key: str, value: object) -> tuple[str | None, str | None]:
@@ -215,7 +219,8 @@ async def save_server(
             if view[key]["locked"]:
                 return error_response(409, view[key]["lock_reason"] or "This field is locked.")
         leaving = "chat_server" in keys and updates["llamacpp_chat_server"] != "managed"
-        if leaving and _manager(request).status().state in ("starting", "running"):
+        current = await run_in_threadpool(_manager(request).status)
+        if leaving and current.state in ("starting", "running"):
             return _conflict("server-running")
         try:
             await run_in_threadpool(state.save_fields, runtime.engine, updates, body.revision)
@@ -223,7 +228,7 @@ async def save_server(
             return refusal_response(exc)
         except EngineRefused:
             return error_response(409, _REFUSED)
-        return await _respond(runtime, _manager(request).status())
+        return await _respond(runtime, request)
 
 
 @router.post("/llamacpp/server/start", operation_id="startLlamacppServer")
@@ -237,20 +242,21 @@ async def start_server(_: ManageScope, request: Request, runtime: RuntimeDep) ->
         view = await run_in_threadpool(compose.llamacpp_server_settings, _values(runtime))
         if _external(view):
             return _conflict("external-server")
-        status = await _manager(request).start(_launch_config(view))
+        status = await run_in_threadpool(_manager(request).start, _launch_config(view))
         return ok(_body(view, status, _revision(runtime)))
 
 
 @router.post("/llamacpp/server/stop", operation_id="stopLlamacppServer")
 async def stop_server(_: ManageScope, request: Request, runtime: RuntimeDep) -> Response:
-    """Stop the process this server started. With none owned, nothing is signalled."""
+    """Operator stop of the recorded Chat server. With none recorded, nothing is signalled."""
     async with admitted(runtime):
-        return await _respond(runtime, await _manager(request).stop())
+        await run_in_threadpool(_manager(request).stop)
+        return await _respond(runtime, request)
 
 
 @router.post("/llamacpp/server/restart", operation_id="restartLlamacppServer")
 async def restart_server(_: ManageScope, request: Request, runtime: RuntimeDep) -> Response:
-    """Stop the owned process, then start it with the saved values and the Chat model.
+    """Stop the Chat server, then start it with the saved values and the Chat model.
 
     409 ``external-server`` when the Chat server choice is ``external``; nothing stops.
     """
@@ -258,5 +264,5 @@ async def restart_server(_: ManageScope, request: Request, runtime: RuntimeDep) 
         view = await run_in_threadpool(compose.llamacpp_server_settings, _values(runtime))
         if _external(view):
             return _conflict("external-server")
-        status = await _manager(request).restart(_launch_config(view))
+        status = await run_in_threadpool(_manager(request).restart, _launch_config(view))
         return ok(_body(view, status, _revision(runtime)))

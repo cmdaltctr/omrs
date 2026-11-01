@@ -476,11 +476,15 @@ def runtime_engine() -> Any:
 def reset_runtime_setup() -> None:
     """Force ``ensure_runtime_setup`` to run again on the next call.
 
-    Used by tests that need to re-trigger setup with different env vars.
+    Used by tests that need to re-trigger setup with different env vars. It
+    also leaves every llama.cpp runtime lease and removes the runtime gates.
     """
     global _runtime_setup_done, _runtime_engine
     _runtime_setup_done = False
     _runtime_engine = None
+    from .compose_runtimes import reset as reset_runtimes
+
+    reset_runtimes()
 
 
 # Engine construction lives in a sibling module (this module sits at the

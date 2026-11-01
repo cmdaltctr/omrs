@@ -18,7 +18,7 @@ const REASON_SENTENCES: Record<Exclude<ServerReason, "exited" | "not-configured"
   "version-busy": "Another OMRS process still uses the server with the earlier program. Stop that server in Integrations, Model runtimes, then start again.",
 };
 
-const LOG_HINT = "See llamacpp-server.log in the workspace folder.";
+const LOG_HINT = "See server.log in runtimes/chat under the OMRS state folder.";
 
 /** One plain sentence for a failure reason. The text comes from this table and never from the process. */
 export function reasonSentence(status: LlamacppServerStatus): string {

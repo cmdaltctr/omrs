@@ -214,36 +214,6 @@ def test_other_urls_are_not_loopback(url: str) -> None:
     assert rules.chat_port(url) is None
 
 
-# ── Argument list ────────────────────────────────────────────────────────
-
-
-def test_argv_for_a_file_model_is_exact() -> None:
-    argv = rules.build_argv("/opt/llama/llama-server", "/m/q.gguf", "file", 8081, 16384)
-    assert argv == [
-        "/opt/llama/llama-server",
-        "-m",
-        "/m/q.gguf",
-        "--host",
-        "127.0.0.1",
-        "--port",
-        "8081",
-        "-c",
-        "16384",
-    ]
-
-
-def test_argv_for_a_hugging_face_model_uses_hf() -> None:
-    argv = rules.build_argv("/b/llama-server", "Qwen/Qwen3-0.6B-GGUF:Q8_0", "hf", 9000, 4096)
-    assert argv[:3] == ["/b/llama-server", "-hf", "Qwen/Qwen3-0.6B-GGUF:Q8_0"]
-    assert argv[3:] == ["--host", "127.0.0.1", "--port", "9000", "-c", "4096"]
-
-
-def test_argv_has_no_other_flag() -> None:
-    argv = rules.build_argv("/b/llama-server", "/m/q.gguf", "file", 8081, 2048)
-    flags = [item for item in argv if item.startswith("-")]
-    assert flags == ["-m", "--host", "--port", "-c"]
-
-
 # ── Environment ──────────────────────────────────────────────────────────
 
 FULL = {
@@ -319,23 +289,6 @@ def test_make_program_helper_is_executable(tmp_path: Path) -> None:
 
 
 # ── Idle sleep (task 17.9) ───────────────────────────────────────────────
-
-
-def test_argv_adds_the_idle_sleep_flag_when_above_zero() -> None:
-    argv = rules.build_argv("/b/llama-server", "/m/q.gguf", "file", 8081, 16384, idle_sleep=300)
-    assert argv[-4:] == ["--sleep-idle-seconds", "300", "-c", "16384"]
-    assert [item for item in argv if item.startswith("-")] == [
-        "-m",
-        "--host",
-        "--port",
-        "--sleep-idle-seconds",
-        "-c",
-    ]
-
-
-def test_argv_has_no_idle_sleep_flag_at_zero() -> None:
-    argv = rules.build_argv("/b/llama-server", "/m/q.gguf", "file", 8081, 16384, idle_sleep=0)
-    assert "--sleep-idle-seconds" not in argv
 
 
 def test_the_card_has_no_idle_sleep_field() -> None:

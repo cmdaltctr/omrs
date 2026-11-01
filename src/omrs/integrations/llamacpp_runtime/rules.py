@@ -145,22 +145,6 @@ def loopback_port(url: str) -> int | None:
 chat_port = loopback_port
 
 
-def build_argv(
-    binary: str, model: str, kind: ModelKind, port: int, window: int, *, idle_sleep: int = 0
-) -> list[str]:
-    """Return the legacy Chat argument list (retired with the idle sleep key).
-
-    ``--sleep-idle-seconds`` is added only when *idle_sleep* is above 0. The
-    shared runtime builders in :mod:`.spec` never pass it; this builder stays
-    until the web adapter moves onto the manager (task 5.4 of the change).
-    """
-    flag = "-m" if kind == "file" else "-hf"
-    argv = [binary, flag, model, "--host", "127.0.0.1", "--port", str(port)]
-    if idle_sleep > 0:
-        argv += ["--sleep-idle-seconds", str(idle_sleep)]
-    return [*argv, "-c", str(window)]
-
-
 def child_environment(environ: Mapping[str, str], kind: ModelKind) -> dict[str, str]:
     """Return the environment of the child process.
 
