@@ -1,11 +1,11 @@
 import type { IntegrationList, RuntimeComponents, RuntimeItem } from "../api/integrations";
 
 /** The Integrations sections, in the order the chips show them. */
-export const INTEGRATION_SECTIONS = ["extras", "tools", "ocr-engines", "model-files", "local-servers"] as const;
+export const INTEGRATION_SECTIONS = ["extras", "tools", "ocr-engines", "model-files", "local-servers", "model-runtimes"] as const;
 
 export type IntegrationSection = (typeof INTEGRATION_SECTIONS)[number];
 
-export type RuntimeSection = Exclude<IntegrationSection, "extras" | "tools">;
+export type RuntimeSection = Exclude<IntegrationSection, "extras" | "tools" | "model-runtimes">;
 
 export const SECTION_LABELS: Record<IntegrationSection, string> = {
   extras: "Extras",
@@ -13,6 +13,7 @@ export const SECTION_LABELS: Record<IntegrationSection, string> = {
   "ocr-engines": "OCR engines",
   "model-files": "Model files",
   "local-servers": "Local servers",
+  "model-runtimes": "Model runtimes",
 };
 
 /** The runtime block field each runtime section shows. */
@@ -39,6 +40,8 @@ export function sectionsFor(list: IntegrationList | undefined): IntegrationSecti
     if (section === "extras") return true;
     if (list === undefined) return false;
     if (section === "tools") return list.tools.length > 0;
+    // The runtimes come from their own route, so this section needs no `runtime` block.
+    if (section === "model-runtimes") return true;
     return list.runtime !== undefined;
   });
 }

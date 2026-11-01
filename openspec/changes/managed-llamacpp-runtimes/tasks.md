@@ -4,7 +4,7 @@ Each group writes its tests first. Each test must fail on the code before the gr
 
 ## 1. Test fixtures
 
-- [ ] 1.1 Copy the fake `llama-server` from the `feat/dots-mocr-llamacpp-backend` branch (`git show feat/dots-mocr-llamacpp-backend:tests/fixtures/ocr_worker/fake_llama_server.py`) to `tests/fixtures/llamacpp/fake_llama_server.py`. Add only what this change needs:
+- [x] 1.1 Copy the fake `llama-server` from the `feat/dots-mocr-llamacpp-backend` branch (`git show feat/dots-mocr-llamacpp-backend:tests/fixtures/ocr_worker/fake_llama_server.py`) to `tests/fixtures/llamacpp/fake_llama_server.py`. Add only what this change needs:
   - `GET /props` that reports `FAKE_LLAMA_BUILD`;
   - `POST /v1/embeddings` with a fixed vector;
   - `FAKE_LLAMA_REQUEST_DELAY` (seconds per request) and `FAKE_LLAMA_HEALTH_DELAY` per request (slow `/health` after start);
@@ -13,18 +13,18 @@ Each group writes its tests first. Each test must fail on the code before the gr
   - Verify: a fixture self-test starts the fake, reads `/health`, `/props`, `--version`, and sees each variable change the behaviour.
 - [ ] 1.2 Add `tests/fixtures/llamacpp/client.py`: a small process that joins one runtime through the manager, sends requests on command lines from standard input, and prints one JSON line per result. Tests use it as a second, third or fifth OMRS client.
   - Verify: a self-test starts two client processes against one fake server and reads both answers.
-- [ ] 1.3 Add an autouse fixture in `tests/conftest.py` that sets `OMRS_STATE_DIR` to a tmp folder, beside the `OMRS_CONFIG_DIR` fixture.
+- [x] 1.3 Add an autouse fixture in `tests/conftest.py` that sets `OMRS_STATE_DIR` to a tmp folder, beside the `OMRS_CONFIG_DIR` fixture.
   - Verify: a test asserts that the resolved state root is under `tmp_path` and never under the home folder.
 
 ## 2. Package skeleton and moved launch rules (design D1, D2, D3)
 
-- [ ] 2.1 Create `src/omrs/integrations/llamacpp_runtime/` with `rules.py`, `spec.py`, `state.py` and `locks.py`. Move the launch checks (program rule, model kind, loopback port, argument lists, child environment, reasons) from `src/omrs/core/providers/llm/llamacpp_rules.py` into `rules.py`. Keep `LLAMACPP_SERVER_FIELDS` in `core/`. Update every importer (`compose_llamacpp.py`, `transports/api/llamacpp_chat_rule.py`, `transports/api/llamacpp_server.py`, `transports/api/settings_handover.py`, `transports/api/routes/llamacpp_server.py`).
+- [x] 2.1 Create `src/omrs/integrations/llamacpp_runtime/` with `rules.py`, `spec.py`, `state.py` and `locks.py`. Move the launch checks (program rule, model kind, loopback port, argument lists, child environment, reasons) from `src/omrs/core/providers/llm/llamacpp_rules.py` into `rules.py`. Keep `LLAMACPP_SERVER_FIELDS` in `core/`. Update every importer (`compose_llamacpp.py`, `transports/api/llamacpp_chat_rule.py`, `transports/api/llamacpp_server.py`, `transports/api/settings_handover.py`, `transports/api/routes/llamacpp_server.py`).
   - Verify: the existing llama.cpp rule tests pass against the new module path; `uv run lint-imports` passes; `grep -rn "llamacpp_rules import" src/omrs/transports` names only field-list uses.
-- [ ] 2.2 Write `spec.py` (`RuntimeSpec`: id, role, mode, binary, argument list, declared files with SHA-256, build, port policy, slot count) and the argument builders for Chat (no `--sleep-idle-seconds`) and embeddings (`--embedding`).
+- [x] 2.2 Write `spec.py` (`RuntimeSpec`: id, role, mode, binary, argument list, declared files with SHA-256, build, port policy, slot count) and the argument builders for Chat (no `--sleep-idle-seconds`) and embeddings (`--embedding`).
   - Verify tests first: the Chat list equals `[binary, "-m", "/m/q.gguf", "--host", "127.0.0.1", "--port", "8081", "-c", "16384"]`; the embeddings list equals the spec scenario; no list holds `--sleep-idle-seconds`.
-- [ ] 2.3 Write `state.py`: state root (`OMRS_STATE_DIR`, `$XDG_STATE_HOME/omrs`, `~/.local/state/omrs`), runtime folder, atomic `server.json` write (`.tmp` then rename) and a tolerant read (a broken file reads as no record).
+- [x] 2.3 Write `state.py`: state root (`OMRS_STATE_DIR`, `$XDG_STATE_HOME/omrs`, `~/.local/state/omrs`), runtime folder, atomic `server.json` write (`.tmp` then rename) and a tolerant read (a broken file reads as no record).
   - Verify tests first: each root source in order; a broken `server.json` reads as no record; a write never leaves a partial file.
-- [ ] 2.4 Write `locks.py`: shared and exclusive `flock`, blocking and non-blocking, each on its own descriptor; `not-supported` on Windows.
+- [x] 2.4 Write `locks.py`: shared and exclusive `flock`, blocking and non-blocking, each on its own descriptor; `not-supported` on Windows.
   - Verify tests first: a shared lock in a child process makes a non-blocking exclusive attempt fail; the lock frees when the child is killed with SIGKILL.
 - [ ] 2.5 Add the integration inventory row for `llamacpp_runtime` in `docs/guides/architecture.md`.
   - Verify: `tests/test_strategy_registration_inventory.py` passes, and fails before the row exists.
@@ -76,7 +76,7 @@ Write all tests in this group first, against the fake server and the client proc
 
 ## 6. OCR host seam (design D10)
 
-- [ ] 6.1 Add `declared_runtime(folder, cache_dir)` to `src/omrs/integrations/ocr_worker/manifest.py`, standard library only. Apply the path, program and flag rules.
+- [x] 6.1 Add `declared_runtime(folder, cache_dir)` to `src/omrs/integrations/ocr_worker/manifest.py`, standard library only. Apply the path, program and flag rules.
   - Verify tests first: a valid block reads; `..`, an absolute path, a link outside the cache, a program with another name and each reserved flag are refused with a reason that names the rule; `manifest.py` imports only standard-library modules (an AST test); `ocr-workers/provision.py` still loads the file by path.
 - [ ] 6.2 Carry the declared runtime on `RouteCommand` in `routes.py`; build the `RuntimeSpec` (id `ocr-<engine folder>`) in the pool; give `ManagedOcrClient` the lease. Join and take the request lock before a parse; start the worker with `OMRS_OCR_RUNTIME_URL`; restart the worker when the URL changes; close the worker before an idle leave.
   - Verify tests first, with a test engine folder that declares the fake: the worker environment holds `OMRS_OCR_RUNTIME_URL`; the probe starts no server; a restart on a new port restarts the worker; no host module names an engine (grep test).
@@ -93,31 +93,31 @@ Write all tests in this group first, against the fake server and the client proc
 
 ## 7. HTTP routes and contract (design D8, D11)
 
-- [ ] 7.1 Change `src/omrs/transports/api/openapi.yaml` first: `GET /v1/runtimes` (`listRuntimes`), `POST /v1/runtimes/{runtime_id}/stop` (`stopRuntime`), the item schema with `additionalProperties: false`, the 409 reason `external-runtime`, the new reasons, and the removed `idle_sleep`. Add both operation ids to a family in `FAMILIES`.
+- [x] 7.1 Change `src/omrs/transports/api/openapi.yaml` first: `GET /v1/runtimes` (`listRuntimes`), `POST /v1/runtimes/{runtime_id}/stop` (`stopRuntime`), the item schema with `additionalProperties: false`, the 409 reason `external-runtime`, the new reasons, and the removed `idle_sleep`. Add both operation ids to a family in `FAMILIES`.
   - Verify: the OpenAPI conformance tests fail before the routes exist.
 - [ ] 7.2 Write `src/omrs/transports/api/routes/runtimes.py`: `read` for the list; `require_session("manage")` for stop, bearer refused; 404 for an unknown or malformed id; 409 `external-runtime`. The list reads `server.json`, the recorded pid's `rss` and a non-blocking lock attempt only.
   - Verify tests first: list shape; reading starts nothing and changes no runtime file; bearer stop refused with no signal; external stop gives 409; the conformance tests pass.
-- [ ] 7.3 Update `docs/guides/web-workspace.md` route table for both new routes and the changed `/v1/llamacpp/server` body.
+- [x] 7.3 Update `docs/guides/web-workspace.md` route table for both new routes and the changed `/v1/llamacpp/server` body.
   - Verify: `grep -n "idle_sleep" docs/guides/web-workspace.md` finds nothing.
 
 ## 8. Web page (design D11)
 
-- [ ] 8.1 Load the `omrs-design` skill and read `web/DESIGN.md`, `web/AGENTS.md` and `web/src/AGENTS.md` before any web edit. Run `npm ci` in `web/`.
+- [x] 8.1 Load the `omrs-design` skill and read `web/DESIGN.md`, `web/AGENTS.md` and `web/src/AGENTS.md` before any web edit. Run `npm ci` in `web/`.
   - Verify: the skill is loaded in the session log; `node_modules/` exists.
-- [ ] 8.2 Write Vitest tests first for a "Model runtimes" section in `web/src/integrations/`: rows for each role and mode, the badge, one reason line, memory, used by, "External server. Model files are not checked." on an external OCR row (plus the mode External and no Stop button), "Running, no OMRS process uses it", Stop only for a managed running runtime with `manage`, confirmation when `clients` is `some`. Then write the section, its API hook and the section chip.
+- [x] 8.2 Write Vitest tests first for a "Model runtimes" section in `web/src/integrations/`: rows for each role and mode, the badge, one reason line, memory, used by, "External server. Model files are not checked." on an external OCR row (plus the mode External and no Stop button), "Running, no OMRS process uses it", Stop only for a managed running runtime with `manage`, confirmation when `clients` is `some`. Then write the section, its API hook and the section chip.
   - Verify: `npm test` passes; each new test fails before the component exists.
-- [ ] 8.3 Remove the idle sleep field from the llama.cpp card (`web/src/settings/LlamacppServerPanel.tsx` and its tests and fixtures). Match the existing style by hand. Do not run Prettier.
+- [x] 8.3 Remove the idle sleep field from the llama.cpp card (`web/src/settings/LlamacppServerPanel.tsx` and its tests and fixtures). Match the existing style by hand. Do not run Prettier.
   - Verify: `npm run lint`, `npm run typecheck`, `npm test` and `npm run build` pass.
 - [ ] 8.4 Browser check at 1,280 px and 390 px. Warn the operator before the server starts. Use a scratch `OMRS_CONFIG_DIR`, `OMRS_STATE_DIR` and `--workspace`, a free port checked with `lsof -iTCP:<port> -sTCP:LISTEN`, and the fake `llama-server` as the managed Chat program. Use `chrome-devtools`; if Chrome is missing, use `orca-cli`.
   - Verify: screenshots at both widths show the section with a running and a stopped row; Stop works; no sideways scroll at 390 px; the scratch server is stopped after the check.
 
 ## 9. Documentation, ADR and agent guides
 
-- [ ] 9.1 Write ADR-109 "OMRS owns local model runtimes; components are clients" in `docs/adr/` (check first that 109 is still free on every branch; else use the next free number). Cite the research in design.md: Ollama, LM Studio, llama-swap, docling, MinerU, dots.ocr, PaddleOCR-VL, surya, GAIA #5314 and #5352, unsloth #6425, LM Studio #2481, and llama.cpp #27388, #24496, #29689 and PR #30012.
+- [x] 9.1 Write ADR-109 "OMRS owns local model runtimes; components are clients" in `docs/adr/` (check first that 109 is still free on every branch; else use the next free number). Cite the research in design.md: Ollama, LM Studio, llama-swap, docling, MinerU, dots.ocr, PaddleOCR-VL, surya, GAIA #5314 and #5352, unsloth #6425, LM Studio #2481, and llama.cpp #27388, #24496, #29689 and PR #30012.
   - Verify: the ADR index lists it; a search of the ADR for home-folder paths and user names finds nothing.
-- [ ] 9.2 Update `docs/guides/configuration.md` (state folder and local-disk rule, `llamacpp_embed_server`, `ocr_runtime_url`, the retired idle sleep key, the 10-minute idle stop), `docs/guides/architecture.md` (the manager and the lease) and `ocr-workers/README.md` (the runtime block and `OMRS_OCR_RUNTIME_URL`).
+- [x] 9.2 Update `docs/guides/configuration.md` (state folder and local-disk rule, `llamacpp_embed_server`, `ocr_runtime_url`, the retired idle sleep key, the 10-minute idle stop), `docs/guides/architecture.md` (the manager and the lease) and `ocr-workers/README.md` (the runtime block and `OMRS_OCR_RUNTIME_URL`).
   - Verify: `grep -rn "LLAMACPP_IDLE_SLEEP_SECONDS" docs/guides` names it only as retired; the documentation drift check finds no old default.
-- [ ] 9.3 Update Gotcha 17 in the root `AGENTS.md` (runtime state files are written by every process) and rule 15 in `src/omrs/transports/api/AGENTS.md`.
+- [x] 9.3 Update Gotcha 17 in the root `AGENTS.md` (runtime state files are written by every process) and rule 15 in `src/omrs/transports/api/AGENTS.md`.
   - Verify: both files name the runtime state files as written by every process.
 - [x] 9.4 Check, read only, whether the live app sets `LLAMACPP_IDLE_SLEEP_SECONDS`, because start-up would then fail.
   - Evidence (2026-11-01, names counted and values not read): not set in the shell environment, in `~/.config/omrs/omrs.jsonc` or in the `com.omrs.web` login item plist. No `~/.omrs/.env` exists. The retirement (task 5.4) goes ahead as planned.

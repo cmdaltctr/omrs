@@ -11,7 +11,7 @@ import type { SaveOptions } from "./settings";
 export type ServerState = "stopped" | "starting" | "running" | "failed";
 
 /** The fixed reasons of a `failed` state. */
-export type ServerReason = "binary-invalid" | "model-invalid" | "not-loopback" | "port-in-use" | "exited" | "timeout" | "not-configured";
+export type ServerReason = "binary-invalid" | "model-invalid" | "not-loopback" | "port-in-use" | "exited" | "timeout" | "not-configured" | "not-supported" | "version-busy";
 
 /** Who runs the llama.cpp Chat server: a server the user runs (such as the Llama app) or OMRS's own `llama-server`. */
 export type ChatServerChoice = "external" | "managed";
@@ -24,7 +24,7 @@ export interface ServerField {
   label: string;
   /** `choice` is the Chat server choice: `external` or `managed`. */
   kind: "text" | "int" | "choice";
-  /** The program path (empty when not set), the Chat server choice, the context window or the idle sleep. */
+  /** The program path (empty when not set), the Chat server choice, or the context window. */
   value: string | number;
   min: number | null;
   max: number | null;
@@ -43,9 +43,9 @@ export interface LlamacppServerStatus {
   pid_running: boolean;
   /** What the live process was started with, or `null` when none is owned. */
   running_with: { context_window: number; model_kind: "file" | "hf" } | null;
-  /** The saved program, window or idle sleep, or the Chat model in force, differ from the live process. */
+  /** The saved program or window, or the Chat model in force, differ from the live process. */
   pending_restart: boolean;
-  saved: { binary: ServerField; chat_server: ServerField; context_window: ServerField; idle_sleep: ServerField };
+  saved: { binary: ServerField; chat_server: ServerField; context_window: ServerField };
   /** The Chat choice in force. OMRS's own server loads this model while the choice is `managed`. */
   chat_model: {
     provider: string;
@@ -63,8 +63,6 @@ export interface LlamacppServerChange {
   /** `null` clears the saved value, so `external` applies. */
   chat_server?: ChatServerChoice | null;
   context_window?: number | null;
-  /** Seconds before the server frees its model; 0 turns sleep off. */
-  idle_sleep?: number | null;
 }
 
 const PATH = "/v1/llamacpp/server";
@@ -73,7 +71,7 @@ export function getLlamacppServer(api: ApiClient, options: CallOptions = {}): Pr
   return api.request<LlamacppServerStatus>("GET", PATH, { signal: options.signal });
 }
 
-/** Saves the program, the Chat server choice, the window or the idle sleep. A running server keeps running. */
+/** Saves the program, the Chat server choice or the window. A running server keeps running. */
 export function saveLlamacppServer(api: ApiClient, change: LlamacppServerChange, options: SaveOptions = {}): Promise<LlamacppServerStatus> {
   return api.request<LlamacppServerStatus>("PUT", PATH, { body: { ...change, revision: options.revision }, signal: options.signal });
 }

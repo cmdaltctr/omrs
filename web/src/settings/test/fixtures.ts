@@ -23,7 +23,7 @@ function serverField(id: string, label: string, kind: ServerField["kind"], value
 }
 
 type SavedKey = keyof LlamacppServerStatus["saved"];
-const SAVED_KEYS: SavedKey[] = ["binary", "chat_server", "context_window", "idle_sleep"];
+const SAVED_KEYS: SavedKey[] = ["binary", "chat_server", "context_window"];
 
 /** The llama.cpp server status with nothing set and nothing running: the Chat server is the user's own (`external`). */
 export const SERVER_STOPPED: LlamacppServerStatus = {
@@ -39,7 +39,6 @@ export const SERVER_STOPPED: LlamacppServerStatus = {
     binary: serverField("server_binary", "Program path", "text", ""),
     chat_server: serverField("chat_server", "Who runs the Chat server", "choice", "external"),
     context_window: serverField("context_window", "Context window (tokens)", "int", 16384),
-    idle_sleep: { ...serverField("idle_sleep", "Idle sleep (seconds)", "int", 300), min: 0, max: 86400 },
   },
   chat_model: { provider: "ollama", model: "qwen3:4b", usable: false },
   shared_with_classification: false,
