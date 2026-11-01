@@ -34,6 +34,7 @@
     - a stale server from a killed worker is stopped, and an unrelated pid is left alone;
     - a health timeout returns a parse error that names the log;
     - a wrong build is refused.
+  - Note 2026-11-01: superseded. Two OMRS processes started two workers that shared one cache folder, and the second stopped the first one's server. The server lifecycle moves to the host (`managed-llamacpp-runtimes`). Task 2b.2 removes `server.py` and its tests. This task stays ticked as a record of the work done.
 - [x] 2.5 Write the engine:
   - `parse` with the D5 request;
   - empty Markdown for a capped or unparsable page;
@@ -50,7 +51,28 @@
 - [x] 2.7 Update the tripwire pin by test ID for the new tests. Run the new engine tests and the OCR route tests.
   - Verify: `uv run pytest -n auto -m "not slow" --deselect tests/test_clean_base_tripwire.py -q` passes, then the tripwire passes on that report.
 
+## 2b. Move the engine onto the runtime manager (design D2)
+
+Start this group only after `managed-llamacpp-runtimes` is merged into `v3` and this branch is rebased on `v3`. Write each test first and see it fail.
+
+- [ ] 2b.1 Rebase `feat/dots-mocr-llamacpp-backend` on `v3` with `managed-llamacpp-runtimes` merged. Resolve the tripwire pin conflict by test-ID diff, not by hand-edited counts.
+  - Verify: `git merge-base --is-ancestor <managed-llamacpp-runtimes merge commit> HEAD` succeeds; the fast suite passes before any further edit.
+- [ ] 2b.2 Remove `src/omrs_ocr_dots_mocr_llamacpp/server.py`, `tests/test_ocr_dots_llamacpp_server.py`, the `server_log` and `server_pid_file` helpers in `paths.py`, and `tests/fixtures/ocr_worker/fake_llama_server.py`. Point the engine tests at the shared fake in `tests/fixtures/llamacpp/`.
+  - Verify: `grep -rn "server_pid_file\|LlamaServer\|install_shutdown_hooks" ocr-workers/engines/dots-mocr-llamacpp tests` finds nothing; no engine module imports `subprocess`.
+- [ ] 2b.3 Add the `[tool.omrs-ocr.runtime]` block to the engine's `pyproject.toml` (design D2): program, build 11941, the D5 flags, and both files with their SHA-256.
+  - Verify tests first: the host's `declared_runtime` reads the block with no rule failure; a test asserts that every value equals `pins.py`, and fails when one character of a hash changes.
+- [ ] 2b.4 Make the engine read `OMRS_OCR_RUNTIME_URL` and send each page to `<url>/v1/chat/completions`. A missing or non-loopback value gives a parse error that names the variable.
+  - Verify tests first, against the shared fake: the request body still matches D5; a missing variable gives the named error; the worker starts no process (a test patches `subprocess.Popen` to fail).
+- [ ] 2b.5 Move the model-file hash check to the host (design D2). Remove `_verify_model_files` from the engine. Keep the hash checks in `fetch.py`.
+  - Verify: a host-path test (`build_ocr_routes` with a test workers folder) shows that a changed model file makes the route unavailable with a reason that names the file, and that the fallback route parses the PDF; the engine test for the old parse-time check is removed with a note in the commit message.
+- [ ] 2b.6 Update `smoke_test.py`: it starts the runtime through the host's manager with a scratch `OMRS_STATE_DIR`, passes the URL to the worker, and leaves the runtime at the end.
+  - Verify: a plan-only run lists the steps and touches nothing; the smoke tests pass against the shared fake.
+- [ ] 2b.7 Update the tripwire pin by test-ID diff (removed server tests, new manifest and URL tests). Run the parallel fast suite with a JUnit report, then the tripwire on that report.
+  - Verify: both pass; the diff of test IDs is in the commit message.
+
 ## 3. Provision and the real-document check (design D9)
+
+Start this group only after group 2b is done.
 
 - [ ] 3.1 Provision `dots-mocr-llamacpp` in this worktree with `--accept-model-licence`. This is a download of about 4.4 GB, plus the binary.
   - Needs operator approval for the download and the licence acceptance.
@@ -68,7 +90,7 @@
 - [ ] 3.5 Start a scratch web preview with `ocr_engine_primary = "dots-mocr-llamacpp"` and open the Integrations page in Orca.
   - Verify: the engine row shows ready at 1,280 px and at 390 px, with screenshots in `smoke_evidence/`.
 - [ ] 3.6 Check for a clean exit: stop the CLI run and then the preview server.
-  - Verify: `pgrep -fl llama-server` lists no process whose path is inside the engine folder.
+  - Verify: `pgrep -fl llama-server` lists no process whose path is inside the engine folder, and the runtime's `server.json` in the scratch `OMRS_STATE_DIR` records `stopped_by` `last-client`.
 - [ ] 3.7 Write the results to `SMOKE_RESULTS.md`: pass or fail per rule, seconds per page, peak memory and the llama.cpp build. **Stop here** and ask the operator to confirm cut-over.
   - Verify: the operator's confirmation and its date are recorded under this task.
 

@@ -21,7 +21,7 @@ One provisioning command SHALL provision one named engine from that engine's loc
 
 ### Requirement: Model weights are fetched at provisioning
 
-Model files and any runtime binary an engine needs SHALL be fetched at provisioning, each at a pinned revision or release, and each SHALL be checked against a pinned SHA-256. A parse SHALL NOT download files. An engine whose files do not match their pinned SHA-256 SHALL refuse to parse and SHALL name the file that differs.
+Model files and any runtime binary an engine needs SHALL be fetched at provisioning, each at a pinned revision or release, and each SHALL be checked against a pinned SHA-256. A parse SHALL NOT download files. A model file that an engine declares with a SHA-256 and that no longer matches SHALL stop that engine's route before dispatch, with a reason that names the file.
 
 #### Scenario: Parse runs offline
 
@@ -31,10 +31,10 @@ Model files and any runtime binary an engine needs SHALL be fetched at provision
 
 #### Scenario: A changed model file stops the engine
 
-- **GIVEN** a provisioned `dots-mocr` engine whose model file no longer matches its pinned SHA-256
-- **WHEN** the host sends a parse request
-- **THEN** the worker SHALL return a parse error that names the file
-- **AND** it SHALL NOT start the llama.cpp server
+- **GIVEN** a provisioned `dots-mocr` engine whose declared model file no longer matches its pinned SHA-256
+- **WHEN** a PDF needs the `dots-mocr` route
+- **THEN** the route SHALL be unavailable with a reason that names the file
+- **AND** no llama.cpp server SHALL start for it
 
 #### Scenario: Provisioning rejects a download that does not match
 
@@ -44,37 +44,37 @@ Model files and any runtime binary an engine needs SHALL be fetched at provision
 
 ## ADDED Requirements
 
-### Requirement: The dots-mocr engine SHALL run on a llama.cpp server it owns
+### Requirement: The dots-mocr engine SHALL declare a pinned llama.cpp runtime
 
-The `dots-mocr` engine SHALL run the model through a llama.cpp server that its worker starts, uses and stops. The server SHALL listen on a loopback address only. The engine SHALL use only the llama.cpp release pinned for it, and SHALL refuse to parse when the server reports another build. The prompt, page rendering, token limit and Markdown conversion SHALL stay as the PyTorch backend had them.
+The `dots-mocr` engine SHALL declare its llama.cpp runtime in its manifest: the pinned `llama-server` program in its cache, build 11941, the fixed server flags, and the model file and projector with their SHA-256. The worker SHALL NOT start, adopt or stop a model server. The prompt, page rendering, token limit and Markdown conversion SHALL stay as the PyTorch backend had them.
 
-#### Scenario: The first parse starts the server
+#### Scenario: The declared runtime matches the pins
 
-- **GIVEN** a provisioned `dots-mocr` worker with no server running
-- **WHEN** the worker receives its first parse request
-- **THEN** it SHALL start the pinned llama.cpp server on a free loopback port
-- **AND** it SHALL wait until the server reports healthy before it sends the page
-- **AND** later requests to the same worker SHALL reuse that server
+- **WHEN** the host reads the `dots-mocr` manifest
+- **THEN** the declared program, build, flags, file paths and SHA-256 values SHALL equal the engine's pins
+- **AND** the flags SHALL be `--temp 0 -c 24576 -np 1 --image-min-tokens 4 --image-max-tokens 14400`
 
-#### Scenario: The server stops with the worker
+#### Scenario: The worker starts no server
 
-- **GIVEN** a `dots-mocr` worker with a running server
-- **WHEN** the host closes the worker
-- **THEN** the server process SHALL stop
-- **AND** no llama.cpp process started by that worker SHALL remain
+- **GIVEN** a provisioned `dots-mocr` worker
+- **WHEN** it parses a page
+- **THEN** it SHALL start no process
 
-#### Scenario: A server left by a killed worker is cleaned up
+### Requirement: The dots-mocr engine SHALL use the runtime URL the host passes
 
-- **GIVEN** a `dots-mocr` worker was killed and left its server running
-- **WHEN** a new `dots-mocr` worker starts its server
-- **THEN** it SHALL stop the server that the earlier worker started
-- **AND** it SHALL NOT stop any llama.cpp process that the engine did not start
+The `dots-mocr` worker SHALL send each page to the server at `OMRS_OCR_RUNTIME_URL`. When the variable is missing or is not a loopback `http` URL, a parse SHALL return a parse error that names the variable.
 
-#### Scenario: The server does not become healthy
+#### Scenario: Pages go to the passed URL
 
-- **WHEN** the server does not report healthy within the start timeout
-- **THEN** the worker SHALL return a parse error that names the server log
-- **AND** the host SHALL apply the fallback chain for that file
+- **GIVEN** `OMRS_OCR_RUNTIME_URL` names a running server
+- **WHEN** the worker parses a page
+- **THEN** it SHALL send one chat request for that page to `<url>/v1/chat/completions`
+
+#### Scenario: Missing URL
+
+- **GIVEN** `OMRS_OCR_RUNTIME_URL` is not set
+- **WHEN** the worker receives a parse request
+- **THEN** it SHALL return a parse error that names `OMRS_OCR_RUNTIME_URL`
 
 #### Scenario: The fingerprint names the runtime
 

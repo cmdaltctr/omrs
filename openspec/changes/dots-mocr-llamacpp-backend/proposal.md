@@ -12,7 +12,8 @@ The arm was not faster: re-timed alone, the PyTorch backend was as quick. The op
 
 ## What Changes
 
-- Add a new engine folder, `ocr-workers/engines/dots-mocr-llamacpp`. Its worker runs dots.mocr through a llama.cpp server that the worker starts and stops itself. It keeps the same prompt, page rendering, token cap and Markdown conversion as the PyTorch engine.
+- Add a new engine folder, `ocr-workers/engines/dots-mocr-llamacpp`. It keeps the same prompt, page rendering, token cap and Markdown conversion as the PyTorch engine.
+- The engine declares its llama.cpp runtime in its manifest (`[tool.omrs-ocr.runtime]`, design D10 of `managed-llamacpp-runtimes`): the program, the build, the fixed flags and the two model files with their SHA-256. The host starts or adopts the server and passes its base URL in `OMRS_OCR_RUNTIME_URL`. The worker starts no server.
 - Provisioning fetches three pinned items into the engine folder and checks each SHA-256:
   - the converted model file (Q8_0) and its image projector (mmproj), from the operator's private Hugging Face repository;
   - the llama.cpp `b11941` release binary for the host platform.
@@ -33,7 +34,7 @@ None.
 ### Modified Capabilities
 
 - `ocr-worker-engines`:
-  - The dots.mocr engine runs on a pinned llama.cpp server that it owns.
+  - The dots.mocr engine declares a pinned llama.cpp runtime that the host runs, and uses the URL the host passes.
   - Its model files and runtime are pinned and checked by SHA-256.
   - The engine is free of PyTorch.
   - Provisioning still needs licence acceptance.
@@ -41,10 +42,12 @@ None.
 
 ## Impact
 
+- **Depends on:** `managed-llamacpp-runtimes` must land in `v3` first. This branch then rebases on `v3` before the engine rework (tasks group 2b) and the provisioning check (group 3).
 - **New code**: `ocr-workers/engines/dots-mocr-llamacpp/`, with its engine package, fetch step, lockfile, licence notes and smoke test.
+- **Removed in this change**: the engine's own server lifecycle (`server.py`) and its tests, written before the design moved the server to the host.
 - **Removed at cut-over**: `ocr-workers/engines/dots-mocr/`, which holds PyTorch, transformers, accelerate, qwen-vl-utils and the model-code patches.
-- **Host code**: none. The host resolves engines by folder name (spec: "Adding an OCR engine SHALL NOT require host code changes").
-- **Tests**: new engine tests. `tests/test_ocr_worker_import_boundary.py` (which asserts that the dots-mocr lock owns PyTorch) and `tests/test_ocr_engine_dots_mocr.py` change at cut-over.
+- **Host code**: none in this change; the host seam comes from `managed-llamacpp-runtimes`.
+- **Tests**: new engine tests. The engine tests use the shared fake `llama-server` from `managed-llamacpp-runtimes` (`tests/fixtures/llamacpp/`). `tests/test_ocr_worker_import_boundary.py` (which asserts that the dots-mocr lock owns PyTorch) and `tests/test_ocr_engine_dots_mocr.py` change at cut-over.
 - **Docs**: `docs/guides/ingestion.md`, `docs/guides/configuration.md`, `docs/guides/architecture.md`, `ocr-workers/README.md` and the engine `LICENCE-NOTES.md`.
 - **ADRs**: a new ADR supersedes the PyTorch part of ADR-072. It cites Experiment 41 and the real-document check.
 - **Live app**: the hand-built workers in `~/.omrs/ocr-workers` need the new engine provisioned. The operator approves that step.
