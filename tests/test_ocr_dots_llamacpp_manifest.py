@@ -167,7 +167,7 @@ def test_the_host_reads_the_runtime_block_and_every_value_equals_pins(
     cache.mkdir()
     runtime = declared_runtime(ENGINE_DIR, cache)
     assert runtime is not None
-    assert runtime.program == cache / "llama.cpp" / f"llama-{pins.LLAMA_TAG}" / "llama-server"
+    assert runtime.program == cache / "llama.cpp" / "llama-server"
     assert runtime.build == pins.LLAMA_BUILD
     assert runtime.flags == pins.SERVER_FLAGS
     assert [(f.flag, f.path, f.sha256) for f in runtime.files] == [
@@ -176,21 +176,13 @@ def test_the_host_reads_the_runtime_block_and_every_value_equals_pins(
     ]
 
 
-def test_the_declared_program_is_where_the_fetch_step_unpacks_it(pins: Any, tmp_path: Path) -> None:
-    """The archive holds one folder named after the tag; the program path goes through it."""
-    runtime = declared_runtime(ENGINE_DIR, tmp_path)
-    assert runtime is not None
-    assert runtime.program.parent.name == f"llama-{pins.LLAMA_TAG}"
-    assert runtime.program.parent.parent.name == "llama.cpp"
-
-
 @pytest.mark.parametrize(
     ("old", "new", "rule"),
     [
         ('program = "llama.cpp/', 'program = "/opt/llama.cpp/', "path"),
         ('program = "llama.cpp/', 'program = "../llama.cpp/', "path"),
         (
-            'program = "llama.cpp/llama-b11941/llama-server"',
+            'program = "llama.cpp/llama-server"',
             'program = "llama.cpp/server"',
             "program",
         ),

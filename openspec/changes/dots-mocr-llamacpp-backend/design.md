@@ -55,7 +55,7 @@ See proposal.md, "Why", for the motivation. The current state that shapes the ap
 ### D2. The engine declares its runtime; the host runs it
 
 - **Declare:** `pyproject.toml` holds `[tool.omrs-ocr.runtime]` with paths inside the engine cache:
-  - `program = "llama.cpp/llama-b11941/llama-server"`;
+  - `program = "llama.cpp/llama-server"` (the fetch step strips the archive's top folder, D3);
   - `build = 11941`;
   - `flags` from D5 (`--temp 0 -c 24576 -np 1 --image-min-tokens 4 --image-max-tokens 14400`);
   - two `files` entries: `-m models/dots-mocr-Q8_0.gguf` (SHA-256 `6017b184…`) and `--mmproj models/dots-mocr-mmproj-bf16.gguf` (SHA-256 `63f415f9…`).

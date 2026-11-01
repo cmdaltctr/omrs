@@ -79,6 +79,5 @@ def stand_in_engine(folder: Path) -> FakeRuntime:
     (folder / "pyproject.toml").write_text(text, encoding="utf-8")
     program = Path(block["program"])
     fake = FakeRuntime(cache, program.parent.as_posix())
-    (fake.logs / program.parent.parent.name).mkdir()  # the start log of a nested name
     fake.set_env(FAKE_LLAMA_REQUESTS=str(fake.logs / "requests.txt"))
     return fake

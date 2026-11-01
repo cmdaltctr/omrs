@@ -41,7 +41,7 @@ requires-acceptance = true
 # the engine cache. The values must equal pins.py; a test checks that. OMRS
 # adds --host and --port, checks the build and both hashes before each start,
 # and gives the worker the address in OMRS_OCR_RUNTIME_URL.
-program = "llama.cpp/llama-b11941/llama-server"
+program = "llama.cpp/llama-server"
 build = 11941
 flags = ["--temp", "0", "-c", "24576", "-np", "1", "--image-min-tokens", "4", "--image-max-tokens", "14400"]
 

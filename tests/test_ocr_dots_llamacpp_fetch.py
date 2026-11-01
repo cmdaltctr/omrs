@@ -18,7 +18,7 @@ from types import ModuleType
 from typing import Any
 
 import pytest
-from tests.fixtures.ocr_worker.dots_llamacpp import engine_modules
+from tests.fixtures.ocr_worker.dots_llamacpp import ENGINE_DIR, engine_modules
 
 MODEL_BYTES = b"model-weights"
 PROJECTOR_BYTES = b"projector-weights"
@@ -265,3 +265,14 @@ def test_platform_lookup(real_pins: ModuleType) -> None:
     assert real_pins.llama_archive("linux", "x86_64") is real_pins.UBUNTU_X64
     assert real_pins.llama_archive("darwin", "x86_64") is None
     assert real_pins.llama_archive("win32", "AMD64") is None
+
+
+def test_the_declared_program_exists_after_the_fetch_step_unpacks_the_archive(env: Env) -> None:
+    """The host's ``program`` path in the manifest is the file the fetch step leaves."""
+    from omrs.integrations.ocr_worker.manifest import declared_runtime
+
+    env.fetch.fetch_llama()
+    runtime = declared_runtime(ENGINE_DIR, env.paths.cache_dir())
+    assert runtime is not None
+    assert runtime.program.is_file()
+    assert os.access(runtime.program, os.X_OK)
