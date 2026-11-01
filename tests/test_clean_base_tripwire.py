@@ -561,7 +561,10 @@ if not _has_qwen_tokenizer:
 # +33 (2026-11-01, managed-llamacpp-runtimes): test_llamacpp_server_lifecycle.py (14,
 # now skips without fastapi), test_web_llamacpp_server_shared.py (3),
 # test_web_runtimes.py (14) and test_web_llamacpp_server.py (+9 -7).
-_WEB_EXTRA_CASES = 1838
+# Re-measured from the CI logs of PR #160 (2026-11-01): the test job ran 9733 executed with
+# the web extra and the floors job ran 7880 without it, so 15 more managed-llamacpp-runtimes
+# cases need fastapi than the 33 first counted (1853).
+_WEB_EXTRA_CASES = 1853
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)
