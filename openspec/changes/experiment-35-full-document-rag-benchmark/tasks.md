@@ -32,8 +32,8 @@
 ## 3. Create the experiment record
 
 - [x] 3.1 Create the folder with `uv run --no-sync omrs experiments new full-rag-benchmark --title "Reproducible local RAG benchmark of OMRS" --category retrieval --size Confirmatory --purpose publication`. Update the number 35 reservation text in `experiments/reserved.json`. Verify: `omrs experiments check` reports no error for the folder.
-- [ ] 3.2 Write `plan.json` with the ADR-103 `runtime` block: every local model, the hosted references and a tolerance per primary metric. Verify: `load_runtime_block` accepts it and the checker reports no `publication-*` error.
-- [ ] 3.3 Write `protocol.md`: datasets, arms, metrics, the 3-run policy, the statistics plan, hypotheses, null, decision rule and the minimum detectable effect per dataset. Verify: every section of design D2 to D6 has a matching protocol section.
+- [x] 3.2 Write `plan.json` with the ADR-103 `runtime` block: every local model, the hosted references and a tolerance per primary metric. Verify: `load_runtime_block` accepts it and the checker reports no `publication-*` error.
+- [x] 3.3 Write `protocol.md`: datasets, arms, metrics, the 3-run policy, the statistics plan, hypotheses, null, decision rule and the minimum detectable effect per dataset. Verify: every section of design D2 to D6 has a matching protocol section.
 - [ ] 3.4 Build the shareable example set: example input, expected output and a reading guide. Use only data whose licence allows sharing. Verify: the release check in 2.10 passes on it.
 
 ## 4. Freeze

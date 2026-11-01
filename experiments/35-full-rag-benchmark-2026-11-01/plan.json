@@ -1,26 +1,59 @@
 {
   "experiment_id": "35-full-rag-benchmark-2026-11-01",
   "protocol_version": 1,
-  "question": "<one sentence: the question>",
-  "decision": "<one sentence: the decision that depends on the answer>",
+  "question": "What retrieval and answer quality does the full OMRS pipeline reach on FinanceBench, the FreshStack LangChain slice and BioASQ with pinned local models, and how much do embedding size, the reranker, token-aware chunking and hybrid search change it?",
+  "decision": "The first fellowship paper cites these numbers; the experiment changes no production default, and any setting change it suggests goes to a separate proposal.",
   "hypotheses": [
     {
       "id": "H1",
       "role": "primary",
-      "statement": "<change> makes <primary metric> better than <baseline> by at least <amount>",
-      "null": "the difference is smaller than <amount>, or goes the other way"
+      "statement": "on at least one dataset, the embedding-0.6b arm's nDCG@10 differs from the baseline's",
+      "null": "the arm's nDCG@10 equals the baseline's on every dataset, within the minimum detectable effect"
+    },
+    {
+      "id": "H2",
+      "role": "primary",
+      "statement": "on at least one dataset, the embedding-8b arm's nDCG@10 differs from the baseline's",
+      "null": "the arm's nDCG@10 equals the baseline's on every dataset, within the minimum detectable effect"
+    },
+    {
+      "id": "H3",
+      "role": "primary",
+      "statement": "on at least one dataset, the reranker-off arm's nDCG@10 differs from the baseline's",
+      "null": "the arm's nDCG@10 equals the baseline's on every dataset, within the minimum detectable effect"
+    },
+    {
+      "id": "H4",
+      "role": "primary",
+      "statement": "on at least one dataset, the token-aware-chunking-off arm's nDCG@10 differs from the baseline's",
+      "null": "the arm's nDCG@10 equals the baseline's on every dataset, within the minimum detectable effect"
+    },
+    {
+      "id": "H5",
+      "role": "primary",
+      "statement": "on at least one dataset, the hybrid-search arm's nDCG@10 differs from the baseline's",
+      "null": "the arm's nDCG@10 equals the baseline's on every dataset, within the minimum detectable effect"
     }
   ],
-  "decision_rule": "If H1 holds and <guardrail> does not get worse by more than <amount>, then <action>. Otherwise <other action>.",
-  "stats": "medium",
-  "seed": 0,
-  "baseline": "baseline",
-  "candidate": "candidate",
+  "decision_rule": "An arm shows a difference on a dataset when the Holm-adjusted p of the paired permutation test on per-question nDCG@10 (3 runs averaged per question first) is below 0.05 and the paired 95% bootstrap interval excludes zero. Otherwise the report says no difference larger than the minimum detectable effect was found.",
+  "stats": "expert",
+  "seed": 20261101,
+  "baseline": "documents-profile-4b",
+  "candidate": "one of embedding-0.6b, embedding-8b, reranker-off, chunking-off, hybrid",
   "metrics": [
-    {"name": "<primary metric>", "binary": false, "primary": true}
+    {"name": "Recall@10", "binary": false, "primary": true},
+    {"name": "MRR@10", "binary": false, "primary": true},
+    {"name": "nDCG@10", "binary": false, "primary": true},
+    {"name": "hit@page", "binary": true, "primary": true},
+    {"name": "ragas_faithfulness", "binary": false, "primary": false},
+    {"name": "ragas_answer_relevancy", "binary": false, "primary": false},
+    {"name": "ragas_context_precision", "binary": false, "primary": false},
+    {"name": "ragas_context_recall", "binary": false, "primary": false}
   ],
   "gates": [
-    {"id": "G1", "metric": "<primary metric>", "value": "difference", "op": ">=", "threshold": 0.0}
+    {"id": "G1", "metric": "determinism_mismatches", "value": "count", "op": "<=", "threshold": 0},
+    {"id": "G2", "metric": "rebuild_mismatches", "value": "count", "op": "<=", "threshold": 0},
+    {"id": "G3", "metric": "preflight_failures", "value": "count", "op": "<=", "threshold": 0}
   ],
   "frozen": [],
   "runtime": {
