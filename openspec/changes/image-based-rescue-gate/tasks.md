@@ -10,9 +10,9 @@ Run in a sibling worktree `omrs-feat-image-based-rescue-gate` from `v3`. Large f
 
 ## 2. Runtime and inputs
 
-- [ ] 2.1 Check the build (b11941) and both Clef-Flash file hashes against `plan.json`, then run the smoke test (right text, wrong text, one page). Verify: the answers differ in the expected direction; without the projector file the run stops before scoring.
-- [ ] 2.2 Check the Experiment 33 inputs: run its `freeze.py --check`, list PDFs, page images and labels for the 40 documents. Verify: prints `freeze verified`, and a missing file stops the run with its path.
-- [ ] 2.3 Extract the rescued text per page with the shipped LiteParse and pypdf adapters. Verify: one text per page, tool versions recorded, and the junk layer of `rf06` page 29 reads as in issue #161.
+- [x] 2.1 Check the build (b11941) and both Clef-Flash file hashes against `plan.json`, then run the smoke test (right text, wrong text, one page). Verify: the answers differ in the expected direction; without the projector file the run stops before scoring.
+- [x] 2.2 Check the Experiment 33 inputs: run its `freeze.py --check`, list PDFs, page images and labels for the 40 documents. Verify: prints `freeze verified`, and a missing file stops the run with its path.
+- [x] 2.3 Extract the rescued text per page with the shipped LiteParse and pypdf adapters. Verify: one text per page, tool versions recorded, and the junk layer of `rf06` page 29 reads as in issue #161.
 
 ## 3. Score and decide
 

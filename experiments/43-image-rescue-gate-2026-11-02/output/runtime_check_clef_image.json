@@ -1,0 +1,56 @@
+{
+  "utc": "2026-11-02T14:46:15+00:00",
+  "arm": "clef_image",
+  "R1_build": {
+    "value": "version: 0.7.0-dev (build 11941, commit 19ff817fb)",
+    "pass": true
+  },
+  "R2_runtime": {
+    "value": {
+      "build": 11941,
+      "models": [
+        {
+          "file": "Clef-Flash-Q8_0.gguf",
+          "sha256": "25f801e2a27610b0ccc0cb1558d7eda3d7a304e34e2c4a04e3079357ff7d906e"
+        }
+      ]
+    },
+    "pass": true
+  },
+  "R3_projector": {
+    "file": "mmproj-Clef-Flash-Q8_0.gguf",
+    "sha256": "9dd8bc279f57d33b0697d4d0fe900fe751a24c9e3d30ab90969d4714ffc0722d",
+    "pass": true
+  },
+  "R6_bind": {
+    "value": [
+      "127.0.0.1:18443"
+    ],
+    "pass": true
+  },
+  "R4_smoke": {
+    "page": "bd01 p2",
+    "right": {
+      "p_yes": 0.9029127610001875,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2430,
+      "seconds": 4.021985750005115
+    },
+    "wrong": {
+      "p_yes": 0.0689559691906302,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2535,
+      "seconds": 4.192466334003257
+    },
+    "margin": 0.2,
+    "pass": true
+  },
+  "R5_no_projector": {
+    "runner_stop": "server started without the projector file (--mmproj): stop",
+    "server": {
+      "error": "HTTP 501: {\"error\":{\"code\":501,\"message\":\"This server does not support image input for decisions. For a model that supports it, start it with `--mmproj`\",\"type\":\"not_supported_error\"}}"
+    },
+    "pass": true
+  },
+  "passed": true
+}
