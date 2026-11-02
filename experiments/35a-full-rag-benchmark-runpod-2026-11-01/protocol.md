@@ -2,7 +2,7 @@
 
 - **Folder**: `35a-full-rag-benchmark-runpod-2026-11-01`
 - **Record**: [experiment.json](experiment.json) holds the category, size and status.
-- **Operator**: Aizat, with the a-build agent (plan draft; the operator confirms the open values at freeze).
+- **Operator**: Dr Muhammad Aizat Bin Md Hawari, with AI agent (plan draft; the operator confirms the open values at freeze).
 - **Related**: Experiment 35 (`35-full-rag-benchmark-2026-11-01`), the same benchmark planned for the local Mac; it stays at PLANNED for a possible local run and is never mixed with this run's numbers. ADR-103 (llama.cpp GGUF runtime), ADR-018 (documents profile), ADR-063 (token-aware chunking), change `experiment-35-full-document-rag-benchmark`, `docs/proposals/first-publication-benchmark.md`. Carries forward Experiments 2, 3, 10b, 15, 22 and 25. Experiment 22 is a reference only, not a baseline.
 
 ## 1. Question
