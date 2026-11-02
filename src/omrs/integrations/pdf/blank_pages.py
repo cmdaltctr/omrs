@@ -143,16 +143,23 @@ def find_blank_pages(file: Path | str, pages: Sequence[int]) -> frozenset[int]:
 
 
 def _blank_pages_in_batches(file: Path | str, wanted: list[int]) -> frozenset[int]:
-    """Render and score page by page, batch by batch, keeping only numbers."""
+    """Render and score page by page, batch by batch, keeping only numbers.
+
+    Warns once for the file when any page could not be decoded or scored
+    (spec pdf-reader: one warning for each file), so the degradation is
+    visible at the default log level.
+    """
     from liteparse import LiteParse
 
     parser = LiteParse(ocr_enabled=False, quiet=True)
     blank: set[int] = set()
+    failed = 0
     for start in range(0, len(wanted), _RENDER_BATCH):
         batch = wanted[start : start + _RENDER_BATCH]
         for shot in parser.screenshot(str(file), page_numbers=batch):
             image = _decode(shot.image_bytes)
             if image is None:
+                failed += 1
                 continue
             try:
                 score = page_ink_score(image)
@@ -164,9 +171,18 @@ def _blank_pages_in_batches(file: Path | str, wanted: list[int]) -> frozenset[in
                     type(exc).__name__,
                     exc,
                 )
+                failed += 1
                 continue
             if score_is_blank(score):
                 blank.add(int(shot.page_num))
+    if failed:
+        logger.warning(
+            "Blank-page test could not read %d of %d flagged page(s) in %s; "
+            "those pages follow their normal OCR route",
+            failed,
+            len(wanted),
+            getattr(file, "name", file),
+        )
     return frozenset(blank)
 
 

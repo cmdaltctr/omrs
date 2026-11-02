@@ -109,7 +109,7 @@ The corpus has no page with 3 to 18 characters, so words were drawn on the real 
 | "RECEIVED" stamp, 18 pt | 0.000998 | not blank |
 | one 40-character line, 11 pt | 0.001597 | not blank |
 
-**Verdict: a safe blank test exists for real pages.** On the measured corpus no page with content is skipped, with a 5.3 times margin. Two known limits remain. A page whose only mark is a page number counts blank (8 of 16 measured), which loses only the number; `page_label` already carries it. A page whose only mark is one faint short word also counts blank. Open question 1 asks the operator to accept these limits.
+**Verdict: a safe blank test exists for real pages.** On the measured corpus no page with content is skipped, with a 5.3 times margin. Three known limits remain. A page whose only mark is a page number counts blank (8 of 16 measured), which loses only the number; `page_label` already carries it. A page whose only mark is one faint short word also counts blank. A page whose only mark is a lone one-pixel stroke also counts blank: the speck guard drops isolated single-pixel strokes before the score, and a hairline carries less ink than the faint word above. A test pins each limit. Open question 1 asks the operator to accept these limits.
 
 ## Decisions
 

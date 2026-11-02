@@ -6,7 +6,7 @@ Under `OCR_ROUTING_UNIT=page`, blank sheets (covers, empty backs) go through loc
 
 ## What Changes
 
-- **New fifth page-source count `ocr_pages_blank`.** The page unit counts a flagged page as blank when the page image has no marks. The five counts (`native`, `local`, `worker`, `blank`, `unresolved`) sum to `page_count`. `unresolved` keeps its meaning: an escalation that did not produce text.
+- **New fifth page-source count `ocr_pages_blank`.** The page unit counts a flagged page as blank when the page image has no marks. The five counts (`native`, `local`, `worker`, `blank`, `unresolved`) sum to `page_count`. `unresolved` keeps its meaning: a flagged, non-blank page no tier produced text for, whether the local tier never ran or an escalation came back empty.
 - **Blank pages skip both OCR tiers.** After pdf-inspector flags a page and before local OCR runs, the page unit renders the page and measures stroke ink. A page below the fixed threshold is blank. It keeps its native text (empty on every measured blank page) and emits no page document, as today. It never reaches local OCR or the OCR engine.
 - **The blank test reads the page image, never OCR text.** Local OCR returns empty text on real content too (Experiment 33: recall 0.000 on Arabic and Devanagari pages, 0.310 on handwriting). Design.md records the measured signal on all 1,123 Experiment 33 pages and the margin between blank pages and pages with content.
 - **Safe failure.** A page that cannot be rendered or measured is treated as not blank. It follows today's path.

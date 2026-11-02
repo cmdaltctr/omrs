@@ -307,28 +307,36 @@ def test_pages_are_deduplicated_for_rendering(
 
 
 def test_undecodable_render_payload_is_not_blank(
-    fake_liteparse: _FakeLiteParse, tmp_path: Path
+    fake_liteparse: _FakeLiteParse, tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
     """A page whose PNG payload cannot be decoded follows today's route.
 
-    The failure is page-level: the corrupt page is not blank, and the
-    other pages still score.
+    The failure is page-level: the corrupt page is not blank, the other
+    pages still score, and the file gets one warning.
     """
     fake_liteparse.raw_results = {1: b"\x89PNG\r\n\x1a\n this is not a real image"}
     fake_liteparse.images = {2: grain_empty_page()}
 
-    blank = find_blank_pages(tmp_path / "scan.pdf", [1, 2])
+    with caplog.at_level("WARNING", logger="omrs.integrations.pdf.blank_pages"):
+        blank = find_blank_pages(tmp_path / "scan.pdf", [1, 2])
 
     assert blank == {2}
+    warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+    assert len(warnings) == 1
+    assert "scan.pdf" in warnings[0].getMessage()
+    assert "1 of 2" in warnings[0].getMessage()
 
 
 def test_page_that_cannot_be_scored_is_not_blank(
-    fake_liteparse: _FakeLiteParse, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    fake_liteparse: _FakeLiteParse,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     """One page whose score raises is not blank and fails no other page.
 
     The failure is page-level: the unscoreable page keeps today's route
-    while the other page still scores.
+    while the other page still scores, and the file gets one warning.
     """
     from omrs.integrations.pdf import blank_pages
 
@@ -345,6 +353,24 @@ def test_page_that_cannot_be_scored_is_not_blank(
 
     monkeypatch.setattr(blank_pages, "page_ink_score", flaky)
 
-    blank = find_blank_pages(tmp_path / "scan.pdf", [1, 2])
+    with caplog.at_level("WARNING", logger="omrs.integrations.pdf.blank_pages"):
+        blank = find_blank_pages(tmp_path / "scan.pdf", [1, 2])
 
     assert blank == {1}
+    warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+    assert len(warnings) == 1
+    assert "1 of 2" in warnings[0].getMessage()
+
+
+def test_one_pixel_hairline_alone_counts_blank() -> None:
+    """A lone one-pixel stroke is speck, not content: the calibration's limit.
+
+    The speck guard drops isolated single-pixel strokes before the score,
+    so a page whose only mark is one hairline counts blank. The measured
+    margin (5.3 times at the lowest content page) covers real content.
+    """
+    image = grain_empty_page()
+    draw = ImageDraw.Draw(image)
+    draw.line([(150, 500), (650, 500)], fill=60, width=1)
+
+    assert score_is_blank(page_ink_score(image))

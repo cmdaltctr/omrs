@@ -420,18 +420,22 @@ whole PDF. They sum to `page_count`:
 | `ocr_pages_local` | Pages whose text is local OCR |
 | `ocr_pages_worker` | Pages whose text is the worker's |
 | `ocr_pages_blank` | Flagged pages the blank test removed before any OCR tier; they keep their native text |
-| `ocr_pages_unresolved` | Escalated pages no tier resolved; they keep their best available text |
+| `ocr_pages_unresolved` | Flagged, non-blank pages no tier produced text for: an escalation came back empty, or the local tier never ran. They keep their best available text |
 
 Before local OCR runs, the blank test renders each flagged page and
 measures stroke ink. A page below the fixed threshold (1.5e-4 of its
 pixels, version 1 of the test) is blank: it skips both OCR tiers and
 counts `ocr_pages_blank`, so `unresolved` means only "an escalation
-produced no text". Two known limits, accepted: a page whose only mark is
-a page number counts blank (the number is lost; `page_label` still
-carries it), and a page whose only mark is one faint short word counts
-blank too. On all 1,123 Experiment 33 pages no page with three or more
-reference characters was skipped, with a 5.3-times margin. A page the
-test cannot render or score is not blank and follows the route above.
+produced no text" or "the local tier never ran". Three known limits,
+accepted: a page whose only mark is a page number counts blank (the
+number stays in the text when the native layer read it, otherwise it is
+lost; `page_label` still carries it), a page whose only mark is one
+faint short word counts blank, and a page whose only mark is a lone
+one-pixel stroke counts blank, because the speck guard removes it
+before the score. On all 1,123 Experiment 33 pages no page with three
+or more reference characters was skipped, with a 5.3-times margin. A
+page the test cannot render or score is not blank and follows the route
+above.
 
 `ocr_backend` names a backend only when it alone produced the text
 (`pdf_inspector`, `pdf_inspector_ocr`, `dots_mocr`, `paddleocr_vl`); anything else

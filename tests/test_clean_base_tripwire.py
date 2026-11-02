@@ -234,7 +234,8 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # (4), test_ocr_identity_reingestion.py (4). No fastapi needed.
 # +2 (2026-11-02, same change, PR review): test_blank_pages.py gains the two
 # safe-failure guard tests (undecodable payload, unscoreable page). No fastapi.
-_BASE_EXECUTED = 9770
+# +1 (2026-11-02, same change, PR review): the one-pixel hairline limit pin.
+_BASE_EXECUTED = 9771
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
