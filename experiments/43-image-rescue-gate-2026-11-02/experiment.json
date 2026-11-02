@@ -5,13 +5,19 @@
   "date": "2026-11-02",
   "category": "ingestion",
   "size": "Standard",
-  "status": "ACTIVE",
+  "status": "FAIL",
   "superseded_by": null,
-  "finding": "",
+  "finding": "FAIL: the local Clef-Flash image check routes rf06 and rf07 (54/54 junk pages caught) but also newly routes usable rf05 (25 pages) under the 10% rule; the hosted Jev image control also fails (rf08, tl04, tl06).",
   "purpose": "optimisation",
   "refs": {
-    "adrs": ["ADR-066", "ADR-074", "ADR-103"],
-    "changes": ["image-based-rescue-gate"],
+    "adrs": [
+      "ADR-066",
+      "ADR-074",
+      "ADR-103"
+    ],
+    "changes": [
+      "image-based-rescue-gate"
+    ],
     "tasks": []
   }
 }
