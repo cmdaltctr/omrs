@@ -35,7 +35,7 @@ The text items look like a library stamp, watermark or catalogue text, not page 
 
 ### D1. One setting with three values
 
-`ocr_non_latin_routing`: `off`, `detect`, `always`. Alternative: a boolean plus a per-profile "collection script" field. Rejected: two settings for one decision. Alternative: auto-detect only. Rejected: it would detect nothing on the measured scans, and the setting would look broken.
+`ocr_non_latin_routing`: `off`, `detect`, `always` (the `always` mode for scanned non-Latin collections was confirmed by the operator on 2026-11-02). Alternative: a boolean plus a per-profile "collection script" field. Rejected: two settings for one decision. Alternative: auto-detect only. Rejected: it would detect nothing on the measured scans, and the setting would look broken.
 
 ### D2. Detector is fixed and versioned, not tuned by settings
 

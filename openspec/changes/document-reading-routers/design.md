@@ -33,7 +33,7 @@ Classification has one address and one model because one model labels metadata. 
 
 `core/providers/decision/registry.py` maps kind to an adapter file. Each adapter builds one System One `noul` request (options `no`, `yes`), sends text and an optional image, and returns P(yes). `llamacpp` and `typesafe` ship now. The adapter adds `TypeSafe-Danger-Zone-Images: true` only for a hosted image request. Only `compose_decision.py` imports a concrete adapter (the `providers-constructed-only-in-compose` contract).
 
-### D3. Routers live in `omrs.jsonc`
+### D3. Routers live in `omrs.jsonc` (confirmed by the operator 2026-11-02)
 
 `document_routers` is a map of named recipes; `document_router` names the host default. Both live in `omrs.jsonc` (ADR-087). The CLI, the stdio MCP server and the watcher can then run the host router without the web server, and a hand edit applies like any other setting. Alternative: a workspace database table, like user profiles (ADR-080). Rejected: gotcha 18 says the workspace database holds no settings, and the host default must resolve in processes that only read the workspace. Rename and delete are refused while a saved profile names the router.
 
@@ -107,6 +107,6 @@ No router by default, so nothing changes on upgrade. Rollback: revert; the `deci
 ## Open Questions
 
 1. **Page renderer for image routers. Answered 2026-11-02 by the operator:** LiteParse first (always installed), pypdfium2 when its extra is installed, and more renderers through Integrations later. poppler `pdftoppm` (external program, used in Experiment 43) is not a product renderer. Remaining check: LiteParse and pypdfium2 images match closely on a scanned page and on a vector-only page (task list).
-2. **llama.cpp build floor for image decision requests.** Experiment 43 used b11941. ADR-074 sets b11510 for the Metal fix. Recommendation: floor b11941 until a lower build passes the smoke test.
-3. **Cloudflare Clef kind.** Its endpoint and request shape were not checked in this planning. Recommendation: add the kind in a follow-up after one recorded request.
-4. **Ollama kind.** No `/v1/systemone` endpoint is known for Ollama. Recommendation: leave it out until an adapter maps the request to Ollama's API and passes the smoke test.
+2. **llama.cpp build floor for image decision requests. Answered 2026-11-02 by the operator:** floor b11941, the build Experiment 43 used. ADR-074 sets b11510 for the Metal fix, and b11941 is above it. A lower build may be allowed later, only after it passes the smoke test.
+3. **Cloudflare Clef kind. Answered 2026-11-02 by the operator:** not in this change. It can be tested later. A follow-up adds the kind after one recorded request.
+4. **Ollama kind. Answered 2026-11-02 by the operator:** not in this change. It can be tested later. No `/v1/systemone` endpoint is known for Ollama, so a follow-up needs an adapter and a passing smoke test first.
