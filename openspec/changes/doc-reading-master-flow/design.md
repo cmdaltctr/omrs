@@ -8,17 +8,16 @@ Worktrees (siblings under `~/Development/PROJECTS/om-systems/omrs/`, all clean, 
 
 | Worktree | Branch | State |
 | --- | --- | --- |
-| `omrs-v3` | `v3` | Proposals A, B, C, `skip-blank-pages-before-worker` committed. Last commit `7823fc88`. |
+| `omrs-v3` | `v3` | Proposals A, B, C, `skip-blank-pages-before-worker`, this master flow. |
 | `omrs-feat-dots-mocr-llamacpp-backend` | `feat/dots-mocr-llamacpp-backend` | Last commit `d552a92d`. Tasks 2b.1 to 2b.7, 3.1 to 3.3, 3.5, 3.6 ticked; 3.4 and 3.7 open. Tripwire pin `_BASE_EXECUTED = 9859`. |
-| `omrs-feat-image-based-rescue-gate` | `feat/image-based-rescue-gate` | Experiment 43. Last commit `4c7a8bf4`. |
+| `omrs-feat-image-based-rescue-gate` | `feat/image-based-rescue-gate` | Experiment 43, verdict FAIL under the 10% document rule. Last commit `4c7a8bf4`. |
 
 ## Goals / Non-Goals
 
 **Goals:**
 
 - One recorded order an agent can follow group by group, stopping at every gate.
-- Correctness before optimisation: the #161 fix is verified before blank-page skipping is built.
-- Evidence before defaults: the `document` unit and the 10% rule are removed only after the pre-registered re-test.
+- The operator's confirmed order (2026-11-02), six steps, small changes only.
 
 **Non-Goals:**
 
@@ -26,13 +25,13 @@ Worktrees (siblings under `~/Development/PROJECTS/om-systems/omrs/`, all clean, 
 - No re-planning of the changes it orders; each keeps its own tasks and design.
 - No decision made here that belongs to the operator.
 
-## D1. Why blank pages moved after the dots-mocr merge
+## D1. Blank pages first, verified on the PyTorch engine
 
-Task 4.1 of `skip-blank-pages-before-worker` re-runs the 10-page `rf06` extract with `dots-mocr-llamacpp` and checks the `llama-server` log. That engine folder exists only on `feat/dots-mocr-llamacpp-backend`; `v3` has `dots-mocr` (PyTorch) and `paddleocr-vl` only (checked). Running the blank-page change first either stalls on its own verification or forces a workaround. After the dots-mocr change merges (group 2), the engine sits on `v3` and task 4.1 runs cleanly. If group 4's rename already applied, the engine is named `dots-mocr` with `backend_id` `dots_mocr_llamacpp`; update the engine name in the task 4.1 verification note, not the measured rule.
+`skip-blank-pages-before-worker` runs first because it is the smallest change and the operator ordered it so. Its task 4.1 was written against `dots-mocr-llamacpp`, which reaches `v3` only when group 6 merges; `v3` today holds `dots-mocr` (PyTorch) and `paddleocr-vl` only (checked). Task 4.1 therefore verifies on the PyTorch engine with a same-engine baseline: record the 10-page extract's page texts and engine calls before the change, then confirm blank pages make zero engine calls and the other pages stay identical. This keeps the measurement honest without waiting for group 6.
 
-## D2. Why the default flip waits for the re-test
+## D2. The default flip decision (operator, 2026-11-02)
 
-Evidence for page routing today: one scratch run on a 10-page `rf06` extract (page 29 found, 5 worker pages, 1 local page, 4 blank sheets) and the parity results. Experiment 43 also showed thresholds fitted and judged on the same documents are optimistic. The handoff records the operator's rule: re-test on new documents, pre-registered, before any default change. Group 4 (the re-test) therefore gates group 5 (the flip). The re-test needs no judge model and no proposal; it is an experiment with a protocol committed before any run.
+The 2026-11-02 handoff recorded the rule "re-test on new documents before any default change". On 2026-11-02, in session, the operator confirmed a different order: remove the `document` unit and make `page` the default in group 2, before any new-document re-test, on the strength of the `rf06` 10-page page-mode run (page 29 found at 0.99, worker pages Dice 1.0 against parity references, one local page, four blank sheets explained). The pre-registered re-test stops being a gate. If the operator later wants a light check on new documents, he asks for it; the flow does not plan it.
 
 ## D3. The local-OCR library trap
 
@@ -46,16 +45,19 @@ The scratch extract from the 2026-11-02 page-mode test may not exist any more. I
 
 | Gate | After | Question |
 | --- | --- | --- |
-| G0 | Group 0 | Operator reports the live page-mode result; if the log shows the local-OCR warning, fix the library paths first. |
-| G1 | Group 1 GPU run | Operator approves the 1 to 1.5 hour GPU run. |
-| G2 | Group 1 | Operator gives "3.7 confirmed" with a date. |
-| G3 | Group 2 task 4.5 | Operator approves touching the live workers folder and restart. |
-| G4 | Group 2 PR | Operator says merge. |
-| G5 | Group 3 PR | Operator says merge. |
-| G6 | Group 4 | Operator supplies or approves the new-document set. |
-| G7 | Group 5 | Operator answers the default-flip question with the re-test evidence on the table. |
-| G8 | Group 6 | Operator says whether to post the drafted #161 comment; later, whether to run the judge follow-up. |
+| G1 | Group 1 PR | Operator says merge the blank-pages PR. |
+| G2 | Group 2 PR | Operator says merge the `page-routing-default` PR. |
+| G3 | Group 3 GPU run | Operator approves the 1 to 1.5 hour GPU run. |
+| G4 | Group 4 A PR | Operator says merge. |
+| G5 | Group 4 B PR | Operator says merge. |
+| G6 | Group 4 C PR | Operator says merge. |
+| G7 | After G6 | Operator says whether to run the judge confirmation experiment on new documents. |
+| G8 | Group 5 PR | Operator says merge the Experiment 43 branch PR. |
+| G9 | Group 5 | Operator says whether to post the drafted #161 comment. |
+| G10 | Group 6 start | Operator gives "3.7 confirmed" with a date. |
+| G11 | Group 6 task 4.5 | Operator approves touching the live workers folder and restart. |
+| G12 | Group 6 PR | Operator says merge. |
 
 ## D6. What stays parked
 
-Proposals `ordered-reader-and-ocr-lists`, `non-latin-script-routing` and `document-reading-routers` stay unstarted until the operator names one; all three modify `pdf-reader` specs together with `skip-blank-pages-before-worker`, so each apply must fork fresh from the merged `v3` and rebase its deltas. Experiment 44 (image fidelity pilot), Experiments 35 and 35a (RunPod CUDA) and the Ollama/MLX `model`-field parity runs stay parked.
+`paddleocr-vl-llamacpp-backend` waits for group 6 to merge (its own tasks say so). Experiment 44 (image fidelity pilot), Experiments 35 and 35a (RunPod CUDA) and the Ollama/MLX `model`-field parity runs stay parked. The `cloudflare` and `ollama` decision-model kinds inside `document-reading-routers` are built to fake-server tests only; live checks are that change's own follow-up, outside this flow.
