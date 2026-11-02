@@ -94,7 +94,7 @@ def test_local_request_holds_image_and_text_head(fake) -> None:
 
 
 def test_hosted_request_shape_and_header(fake, monkeypatch) -> None:
-    monkeypatch.setenv("TYPESAFE_API_KEY", KEY)
+    monkeypatch.setenv("TYPESAFE_API_KEY", STAND_IN)
     server = fake([noul(0.3)])
     client = clients.HostedClient(QUESTION, "jev-1.14.0", endpoint=server.url + "/v1/systemone")
     image_id = clients.placeholder("bd01", 2)
@@ -102,7 +102,7 @@ def test_hosted_request_shape_and_header(fake, monkeypatch) -> None:
     request = server.requests[0]
     body = request["body"]
     assert request["headers"]["typesafe-danger-zone-images"] == "true"
-    assert request["headers"]["authorization"] == f"Bearer {KEY}"
+    assert request["headers"]["authorization"] == f"Bearer {STAND_IN}"
     assert body["model"] == "jev-1.14.0"
     assert body["state"] == {"page_image": image_id, "text": "x" * 2000}
     asset = body["assets"][image_id]
@@ -113,14 +113,14 @@ def test_hosted_request_shape_and_header(fake, monkeypatch) -> None:
 
 
 def test_hosted_error_never_shows_the_key(fake, monkeypatch) -> None:
-    monkeypatch.setenv("TYPESAFE_API_KEY", KEY)
-    server = fake([(400, {"detail": f"bad token {KEY}"})])
+    monkeypatch.setenv("TYPESAFE_API_KEY", STAND_IN)
+    server = fake([(400, {"detail": f"bad token {STAND_IN}"})])
     client = clients.HostedClient(QUESTION, "jev-1.14.0", endpoint=server.url)
     with pytest.raises(RuntimeError) as error:
         client.score("text", PNG, "id")
     assert "HTTP 400" in str(error.value)
-    assert KEY not in str(error.value)
-    assert KEY not in repr(client)
+    assert STAND_IN not in str(error.value)
+    assert STAND_IN not in repr(client)
 
 
 def test_missing_key_stops(monkeypatch) -> None:
@@ -183,7 +183,7 @@ def hosted_scorer(server: FakeServer, current: dict):
 def test_fit_phase_scores_only_healthy_pages_and_resume_does_not_rescore(
     fake, workspace, monkeypatch
 ) -> None:
-    monkeypatch.setenv("TYPESAFE_API_KEY", KEY)
+    monkeypatch.setenv("TYPESAFE_API_KEY", STAND_IN)
     output, current = workspace
     server = fake([noul(0.8)])
     score = hosted_scorer(server, current)
@@ -193,7 +193,7 @@ def test_fit_phase_scores_only_healthy_pages_and_resume_does_not_rescore(
     assert [(r["doc_id"], r["page"]) for r in saved["rows"]] == [("bd01", 1), ("bd01", 2)]
     assert len(server.requests) == 2
     assert all(r["model"] == "jev-1.14.0" for r in saved["rows"])
-    assert KEY not in (output / "scores_jev_image.json").read_text()
+    assert STAND_IN not in (output / "scores_jev_image.json").read_text()
 
 
 def test_rest_phase_needs_committed_threshold(workspace) -> None:
@@ -203,7 +203,7 @@ def test_rest_phase_needs_committed_threshold(workspace) -> None:
 
 
 def test_rest_phase_skips_empty_pages(fake, workspace, monkeypatch) -> None:
-    monkeypatch.setenv("TYPESAFE_API_KEY", KEY)
+    monkeypatch.setenv("TYPESAFE_API_KEY", STAND_IN)
     output, current = workspace
     server = fake([noul(0.1)])
     score_pages.run_pages("jev_image", "rest", hosted_scorer(server, current), current, None, False)
@@ -212,7 +212,7 @@ def test_rest_phase_skips_empty_pages(fake, workspace, monkeypatch) -> None:
 
 
 def test_model_id_change_stops_the_run(fake, workspace, monkeypatch) -> None:
-    monkeypatch.setenv("TYPESAFE_API_KEY", KEY)
+    monkeypatch.setenv("TYPESAFE_API_KEY", STAND_IN)
     output, current = workspace
     server = fake([noul(0.8, "jev-1.14.0"), noul(0.8, "jev-1.15.0")])
     with pytest.raises(SystemExit, match="model id changed"):
@@ -222,7 +222,7 @@ def test_model_id_change_stops_the_run(fake, workspace, monkeypatch) -> None:
 
 
 def test_hosted_refusal_stops_the_run(fake, workspace, monkeypatch) -> None:
-    monkeypatch.setenv("TYPESAFE_API_KEY", KEY)
+    monkeypatch.setenv("TYPESAFE_API_KEY", STAND_IN)
     _, current = workspace
     server = fake([(403, {"detail": "images not allowed"})])
     with pytest.raises(SystemExit, match="refused"):
@@ -230,7 +230,7 @@ def test_hosted_refusal_stops_the_run(fake, workspace, monkeypatch) -> None:
 
 
 def test_hosted_arm_needs_approval(workspace, monkeypatch) -> None:
-    monkeypatch.setenv("TYPESAFE_API_KEY", KEY)
+    monkeypatch.setenv("TYPESAFE_API_KEY", STAND_IN)
     _, current = workspace
     current["decision_register"] = [{"status": "APPROVED", "date": "2026-11-02"}]
     with pytest.raises(SystemExit, match="approval"):
