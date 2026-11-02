@@ -33,6 +33,15 @@ A local candidate that takes page images SHALL run on `llama-server` with its mo
 - **WHEN** the server is up and before the first scored page
 - **THEN** one request with the right text and one with a wrong text on the same page image give different answers in the expected direction, or the run stops
 
+### Requirement: A hosted image control SHALL run beside the local candidate
+
+The evaluation SHALL score the same pages, with the same question and threshold rule, with a hosted image model as a control, and the report SHALL show it beside the local candidate. The hosted arm needs the operator's approval in `plan.json` that names the provider and the documents, recorded before any image is sent.
+
+#### Scenario: Control missing
+
+- **WHEN** the report is written and the hosted arm has no scores
+- **THEN** the report gives no verdict
+
 ### Requirement: Page images SHALL stay on the machine unless the operator approves a hosted service
 
 A hosted candidate that receives page images SHALL need the operator's approval in `plan.json` that names the provider and the documents. The model id that the service returns SHALL be recorded for every page, and the run SHALL stop if it changes. The service key SHALL be read from the environment and SHALL NOT be written to any output. Rendered page images SHALL go to a gitignored folder.

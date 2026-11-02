@@ -6,6 +6,7 @@ Run in a sibling worktree `omrs-feat-image-based-rescue-gate` from `v3`. Large f
 
 - [ ] 1.1 Scaffold `experiments/43-image-rescue-gate-2026-11-02/` with `protocol.md`, `plan.json` (PLANNED) and `experiment.json`. Verify: `omrs experiments check` passes, and the commit precedes any `output/` file.
 - [ ] 1.2 Write the question, text head (2,000 characters), image settings (150 DPI, 1,568 px), pass rule and D2 threshold rule into `plan.json`. Verify: the commit precedes task 3.1.
+- [ ] 1.3 Operator records the approval to send page images to TypeSafe, naming the documents (it includes `rf06` and `rf07`). Verify: a dated entry exists in `plan.json` before task 3.5 starts.
 
 ## 2. Runtime and inputs
 
@@ -19,11 +20,11 @@ Run in a sibling worktree `omrs-feat-image-based-rescue-gate` from `v3`. Large f
 - [ ] 3.2 Write the scoring script (image plus text head, one request at a time, checkpoints, atomic writes) and a test with a fake server. Verify: the test checks that the request holds the image and the text head, and fails when either is missing.
 - [ ] 3.3 Score all pages with the treatment, and the word check on the same pages. Verify: every page has a score, failed requests are counted, and a resumed run does not rescore.
 - [ ] 3.4 Write `analysis.py`: junk caught, healthy flagged, routed documents at the 10% and one-page rules, OCR cost. Verify: a small fixed table gives known values, and a broken rule fails a test.
-- [ ] 3.5 Optional: if the operator approves in `plan.json`, score the same pages with hosted Jev (D7). Verify: the returned model id is recorded for every page and the run stops if it changes.
+- [ ] 3.5 Score the same pages with hosted Jev (D7), after the operator has recorded the approval in `plan.json`. Write a scoring script with a fake-server test for the request shape, key handling and model-id stop. Verify: the returned model id is recorded for every page, the run stops if it changes, and the key never appears in any output.
 
 ## 4. Report
 
-- [ ] 4.1 Write `report.md` with the verdict against the pass rule, tables, speed and memory, and the limits from D2. Verify: every number comes from `output/summary.json`.
+- [ ] 4.1 Write `report.md` with the verdict against the pass rule, the local arm beside the hosted Jev arm, tables, speed and memory, and the limits from D2. Verify: every number comes from `output/summary.json`.
 - [ ] 4.2 Record the result in `experiment.json` and the index, and comment on issue #161. Verify: `omrs experiments check` passes and the comment exists. A PASS opens a follow-up change and ADR. A FAIL leaves #161 open.
 - [ ] 4.3 Run `openspec validate --all --strict` and the fast tests. Verify: all pass, and nothing under `src/` changed.
 

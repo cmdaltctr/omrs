@@ -29,7 +29,7 @@ One threshold on `P(yes)`. Fit it on the healthy pages of the 38 documents that 
 | Production today | never flags |
 | Word check (Experiment 38 code, unchanged) | below its committed threshold |
 | Clef-Flash Q8_0 with image (treatment) | `P(yes)` below the D2 threshold |
-| Hosted Jev with image (optional control) | same question and threshold rule, runs only if approved |
+| Hosted Jev with image (required control) | same question, pages and threshold rule |
 
 ### D4. What the report shows
 
@@ -43,9 +43,9 @@ External `llama-server` b11941, `127.0.0.1`, one request at a time. Before scori
 
 PNG, 150 DPI, long side at most 1,568 px. One image serves the local and the hosted arm (the hosted limit is 1,568 px).
 
-### D7. Optional hosted Jev control
+### D7. Required hosted Jev control
 
-Model `jev-1.14.0`, header `TypeSafe-Danger-Zone-Images: true`, image as base64 PNG in the request `assets` map, key from the environment, never printed. Stop if the returned model id changes (pattern from `experiments/38-rescue-quality-signal-2026-09-30/jev_hosted.py`). The operator approves it in `plan.json` at run time. This sends page images to a third party. `rf06` and `rf07` hold named-person records.
+Model `jev-1.14.0`, header `TypeSafe-Danger-Zone-Images: true`, image as base64 PNG in the request `assets` map, key from the environment, never printed. Stop if the returned model id changes (pattern from `experiments/38-rescue-quality-signal-2026-09-30/jev_hosted.py`). The arm is required: the verdict compares the local arm with it. The operator records the approval in `plan.json` before the first image is sent, naming the documents. This sends page images to a third party, and the comparison needs `rf06` and `rf07`, which hold named-person records. If the operator refuses, the experiment does not run.
 
 ## Risks / Trade-offs
 
