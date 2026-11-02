@@ -38,6 +38,6 @@ When the rescue tiers return text for flagged pages, OMRS sets the flagged count
 - **Changed code:** `integrations/pdf/pdf_inspector.py` and `ocr_routing.py` (router hook; `ocr_routing.py` is at 500 lines, so logic goes in the new module), `integrations/llamacpp_runtime/spec.py` (role `decision`), `compose_runtimes.py`, `config/` (maps, `document_router`), `core/ingestion/ocr_identity.py`, `source_state.py`, `graph_adapters_catalogue.py`.
 - **HTTP contract:** new routes for decision models and routers (list, save, test), new `openapi.yaml` schemas and `FAMILIES` entries.
 - **Front end:** a Decision models card in Providers and a Router section in Document reading.
-- **Dependencies:** none new in the base install. Image routers need a page renderer; see design Open Questions.
+- **Dependencies:** none new in the base install. Image routers render pages with LiteParse (always installed) or pypdfium2 (optional `pdf-pypdfium2` extra, when installed). More renderers can be added through Integrations.
 - **Cloud:** opt-in only, per router. Keys by reference only (gotcha 18).
 - **Docs:** ADR-110, `docs/adr/ADR_README.md`, `docs/guides/configuration.md`, `docs/guides/providers.md`, `docs/guides/pipelines.md`, `docs/guides/web-workspace.md`, TDR-024 note.

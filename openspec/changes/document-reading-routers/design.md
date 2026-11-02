@@ -50,7 +50,7 @@ A router never sends a whole document to OCR. One rejected page costs one page o
 
 ### D5. Page images
 
-An image router renders one page at 150 DPI, long side at most 1,568 px, PNG (Experiment 43 values, so the frozen threshold stays valid). The renderer is chosen in the Open Questions. A router whose renderer is missing degrades with reason `renderer-missing`.
+An image router renders one page at 150 DPI, long side at most 1,568 px, PNG (Experiment 43 values, so the frozen threshold stays valid). Page renderers are a list that grows through Integrations, like PDF readers. The first renderer is LiteParse, which is always installed and has a `screenshot` call (checked on 2026-11-02: one scanned page rendered in 0.12 s, 1,475 by 1,238 px). Where the optional `pdf-pypdfium2` extra is installed, pypdfium2 is the second renderer (same page in 0.09 s, 1,476 by 1,239 px). The operator may add others the same way. The router uses the first renderer that is available. A router whose renderers are all missing degrades with reason `renderer-missing`. Both renderers wrap PDFium, so images should match to about a pixel. Task 3.x checks this on a scanned page and a vector-only page before the threshold is reused.
 
 ### D6. Model checks
 
@@ -106,7 +106,7 @@ No router by default, so nothing changes on upgrade. Rollback: revert; the `deci
 
 ## Open Questions
 
-1. **Page renderer for image routers.** Options: pypdfium2 behind the existing `pdf-pypdfium2` extra; the PDFium library that LiteParse ships (no new package, but no Python render API seen); poppler `pdftoppm` (external program, as Experiment 43). Recommendation: pypdfium2 extra, shown in Integrations › PDF readers.
+1. **Page renderer for image routers. Answered 2026-11-02 by the operator:** LiteParse first (always installed), pypdfium2 when its extra is installed, and more renderers through Integrations later. poppler `pdftoppm` (external program, used in Experiment 43) is not a product renderer. Remaining check: LiteParse and pypdfium2 images match closely on a scanned page and on a vector-only page (task list).
 2. **llama.cpp build floor for image decision requests.** Experiment 43 used b11941. ADR-074 sets b11510 for the Metal fix. Recommendation: floor b11941 until a lower build passes the smoke test.
 3. **Cloudflare Clef kind.** Its endpoint and request shape were not checked in this planning. Recommendation: add the kind in a follow-up after one recorded request.
 4. **Ollama kind.** No `/v1/systemone` endpoint is known for Ollama. Recommendation: leave it out until an adapter maps the request to Ollama's API and passes the smoke test.
