@@ -122,7 +122,11 @@ def arm_scores(arm: str, inputs: list[dict]) -> tuple[dict[Key, float], dict]:
     tokens = [r["input_tokens"] for r in rows if r.get("input_tokens")]
     facts = {
         "scored_pages": len(rows),
-        "failed_pages": len(payload["failures"]),
+        "failure_events": len(payload["failures"]),
+        "failed_pages_without_score": len(
+            {(f["doc_id"], f["page"]) for f in payload["failures"]}
+            - {(r["doc_id"], r["page"]) for r in rows}
+        ),
         "models": sorted({str(r["model"]) for r in rows}),
         "mean_seconds_per_page": sum(r["seconds"] for r in rows) / len(rows) if rows else None,
         "total_seconds": sum(r["seconds"] for r in rows),

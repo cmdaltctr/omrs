@@ -230,6 +230,12 @@ def identity(arm: str, current: dict) -> dict:
     }
 
 
+def unscored_failures(payload: dict) -> set[tuple[str, int]]:
+    """Pages that failed and still have no score (amendment A2: a resume retries them)."""
+    scored = {(r["doc_id"], r["page"]) for r in payload["rows"]}
+    return {(f["doc_id"], f["page"]) for f in payload["failures"]} - scored
+
+
 def run_pages(arm: str, phase: str, score: Any, current: dict, limit: int | None, resume: bool) -> dict:
     """Score the phase population once per page, checkpointing after each."""
     rows = read_json(OUTPUT / "inputs.json")["rows"]
@@ -268,7 +274,7 @@ def run_pages(arm: str, phase: str, score: Any, current: dict, limit: int | None
             payload["failures"].append({"doc_id": key[0], "page": key[1], "error": message[:200]})
             atomic_json(target, payload)
             log(f"[{arm}] failure {key[0]} p{key[1]}: {message[:120]}")
-            if len(payload["failures"]) > MAX_FAILURES:
+            if len(unscored_failures(payload)) > MAX_FAILURES:
                 raise SystemExit(f"more than {MAX_FAILURES} failed pages: stop (INCONCLUSIVE)") from None
             continue
         guard.check(result["model"])

@@ -210,6 +210,12 @@
       "date": "2026-11-02",
       "change": "thresholds.clef_image.value set to 0.17220524482651753, fitted by the pre-registered D2 rule on the 561 local fit-phase scores (output/scores_clef_image.json, SHA-256 5721f983...). No junk page and no rf06 or rf07 page had been scored by this arm.",
       "reason": "the plan registers the threshold rule; the value can only exist after phase fit"
+    },
+    {
+      "id": "A2",
+      "date": "2026-11-02",
+      "change": "the 10-failure stop counts pages that still have no score. A page whose request fails after 2 retries is logged in failures and retried on the next --resume run (again with 2 retries). Failure events and pages left without a score are both reported.",
+      "reason": "during the hosted fit phase TypeSafe returned transient HTTP 503 'Image processing is unavailable' and HTTP 529 'system_overloaded' on about 3% of requests. These pages can be scored on a resume; counting each event would stop the run with no missing data. The scores themselves, the question, the threshold rule and the pass rule do not change."
     }
   ]
 }

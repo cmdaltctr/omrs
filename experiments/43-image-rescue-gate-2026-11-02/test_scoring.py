@@ -229,6 +229,22 @@ def test_hosted_refusal_stops_the_run(fake, workspace, monkeypatch) -> None:
         score_pages.run_pages("jev_image", "fit", hosted_scorer(server, current), current, None, False)
 
 
+def test_failed_page_is_retried_on_resume_and_stops_counting(fake, workspace, monkeypatch) -> None:
+    monkeypatch.setenv("TYPESAFE_API_KEY", STAND_IN)
+    monkeypatch.setattr(clients.time, "sleep", lambda s: None)
+    monkeypatch.setattr(score_pages, "MAX_FAILURES", 0)
+    output, current = workspace
+    overloaded = (503, {"detail": "Image processing is unavailable."})
+    server = fake([overloaded, overloaded, overloaded, noul(0.8)])
+    with pytest.raises(SystemExit, match="failed pages"):
+        score_pages.run_pages("jev_image", "fit", hosted_scorer(server, current), current, None, False)
+    score_pages.run_pages("jev_image", "fit", hosted_scorer(server, current), current, None, True)
+    saved = json.loads((output / "scores_jev_image.json").read_text())
+    assert [(r["doc_id"], r["page"]) for r in saved["rows"]] == [("bd01", 1), ("bd01", 2)]
+    assert len(saved["failures"]) == 1
+    assert score_pages.unscored_failures(saved) == set()
+
+
 def test_hosted_arm_needs_approval(workspace, monkeypatch) -> None:
     monkeypatch.setenv("TYPESAFE_API_KEY", STAND_IN)
     _, current = workspace
