@@ -13,7 +13,6 @@ This change records one order with gates, so any agent can pick the work up and 
 
 - A task order only (tasks.md groups 1 to 6). No code, no capability deltas.
 - Twelve gates, each a hard stop where the operator decides.
-- A supersession note: this order replaces the phase order in `~/Development/DATA/omrs/handoffs/2026-11-02-ORCHESTRATOR-PROMPT.md` (kept for background).
 
 ## Capabilities
 
