@@ -198,9 +198,9 @@ def test_rgb_image_is_converted() -> None:
 
 
 class _FakeResult:
-    def __init__(self, page_num: int, image: Image.Image) -> None:
+    def __init__(self, page_num: int, image: Image.Image, raw: bytes | None = None) -> None:
         self.page_num = page_num
-        self.image_bytes = _png_bytes(image)
+        self.image_bytes = raw if raw is not None else _png_bytes(image)
         self.width, self.height = image.size
         self.is_solid_fill = False
 
@@ -215,6 +215,7 @@ class _FakeLiteParse:
         self.images: dict[int, Image.Image] = {}
         self.error: Exception | None = None
         self.serve_only: set[int] | None = None  # pages missing from results
+        self.raw_results: dict[int, bytes] = {}  # payloads served undecodable
         _FakeLiteParse.last = self
 
     def screenshot(self, file_path, *, page_numbers=None):
@@ -225,7 +226,15 @@ class _FakeLiteParse:
         served = (
             requested if self.serve_only is None else [p for p in requested if p in self.serve_only]
         )
-        return [_FakeResult(page, self.images[page]) for page in served if page in self.images]
+        results = []
+        for page in served:
+            if page in self.images:
+                results.append(_FakeResult(page, self.images[page]))
+            elif page in self.raw_results:
+                results.append(
+                    _FakeResult(page, Image.new("L", (1, 1)), raw=self.raw_results[page])
+                )
+        return results
 
 
 @pytest.fixture()
@@ -295,3 +304,47 @@ def test_pages_are_deduplicated_for_rendering(
 
     assert blank == {4}
     assert fake_liteparse.calls == [[4, 5]]
+
+
+def test_undecodable_render_payload_is_not_blank(
+    fake_liteparse: _FakeLiteParse, tmp_path: Path
+) -> None:
+    """A page whose PNG payload cannot be decoded follows today's route.
+
+    The failure is page-level: the corrupt page is not blank, and the
+    other pages still score.
+    """
+    fake_liteparse.raw_results = {1: b"\x89PNG\r\n\x1a\n this is not a real image"}
+    fake_liteparse.images = {2: grain_empty_page()}
+
+    blank = find_blank_pages(tmp_path / "scan.pdf", [1, 2])
+
+    assert blank == {2}
+
+
+def test_page_that_cannot_be_scored_is_not_blank(
+    fake_liteparse: _FakeLiteParse, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One page whose score raises is not blank and fails no other page.
+
+    The failure is page-level: the unscoreable page keeps today's route
+    while the other page still scores.
+    """
+    from omrs.integrations.pdf import blank_pages
+
+    scoreable, unscoreable = grain_empty_page(), dense_text_page()
+    fake_liteparse.images = {1: scoreable, 2: unscoreable}
+    real_score = blank_pages.page_ink_score
+
+    def flaky(image):
+        # The dense page stands in for one whose score fails; the blank
+        # page still scores.
+        if real_score(image) >= blank_pages.BLANK_PAGE_INK_THRESHOLD:
+            raise RuntimeError("cannot score")
+        return real_score(image)
+
+    monkeypatch.setattr(blank_pages, "page_ink_score", flaky)
+
+    blank = find_blank_pages(tmp_path / "scan.pdf", [1, 2])
+
+    assert blank == {1}
