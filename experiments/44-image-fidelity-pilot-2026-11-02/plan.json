@@ -1,0 +1,172 @@
+{
+  "experiment_id": "44-image-fidelity-pilot-2026-11-02",
+  "protocol_version": 1,
+  "change_ref": "OpenSpec change image-based-rescue-gate (Experiment 43, issue #161). This pilot runs before Experiment 43 and does not change its plan.",
+  "question": "Given a page image and the rescued text of that page, does the model's yes/no answer to 'Does the text match the text written or printed on the page image?' separate a junk text layer from a faithful one?",
+  "decision": "Whether Experiment 43 starts with this question wording and these render settings, starts only after a runtime fix, or does not start as designed.",
+  "hypotheses": [
+    {
+      "id": "H1",
+      "role": "primary",
+      "statement": "On the local arm, the median P(yes) for faithful text minus the median P(yes) for wrong text (text of another page) is at least 0.5 over all 30 pages.",
+      "null": "The difference is smaller than 0.5, or goes the other way: the model does not use the image to judge the text."
+    },
+    {
+      "id": "H2",
+      "role": "primary",
+      "statement": "On the local arm, P(yes) ranks faithful text above the junk LiteParse layer on the 7 junk pages with AUC at least 0.9.",
+      "null": "AUC is below 0.9: the question does not separate a junk layer from faithful text on the same page."
+    }
+  ],
+  "decision_rule": "If H1 and H2 both hold on the local arm, Experiment 43 starts with this wording and these render settings as its Stage 1 starting point. If H1 holds and H2 fails, Experiment 43 does not start until its plan is revised (more wordings or another signal). If H1 fails, read the hosted arm: if the hosted arm passes G1, fix the local runtime and run this pilot again; if the hosted arm also fails G1, Experiment 43 does not start as designed.",
+  "stats": "basic",
+  "seed": 0,
+  "baseline": "wrong_text",
+  "candidate": "faithful_text",
+  "arms": {
+    "A_local": {
+      "role": "decision arm",
+      "model": "Clef-Flash Q8_0 plus mmproj-Clef-Flash-Q8_0.gguf on llama-server build 11941",
+      "endpoint": "http://127.0.0.1:<port>/v1/systemone (loopback only, one request at a time)",
+      "pages": "all 30 pages in pages.junk and pages.healthy"
+    },
+    "B_hosted": {
+      "role": "reference arm, does not decide",
+      "provider": "TypeSafe (api.typesafe.ai/v1/systemone)",
+      "model": "jev-latest with image input; response model id recorded per page",
+      "key": "read from the TYPESAFE_API_KEY environment variable; never printed, logged or saved",
+      "pages": "the 23 pages in pages.healthy only (open licence, no named-person records). The 7 rf06 and rf07 pages are excluded, because they hold named-person records. They may go to the hosted arm only after the operator approves it in a dated entry in amendments.",
+      "wrong_text_source": "healthy pages only, so no rf06 or rf07 text reaches the hosted arm"
+    }
+  },
+  "request": {
+    "type": "noul",
+    "options": ["no", "yes"],
+    "question": "Does the text match the text written or printed on the page image?",
+    "text_head_chars": 2000,
+    "text_head_rule": "the first 2000 characters of the text variant, after Unicode NFC; no other cleaning",
+    "score": "P(yes) from the noul result",
+    "same_request_both_arms": true
+  },
+  "render": {
+    "format": "PNG",
+    "dpi": 150,
+    "max_long_side_px": 1600,
+    "rule": "render at 150 DPI with pypdfium2; if the long side is above 1600 px, scale down to 1600 px (Lanczos), keep the aspect ratio",
+    "llama_server_image_tokens": "follow Experiment 43 design D4 (--image-min-tokens 4, --image-max-tokens 14400) when the projector accepts them, else the server defaults; record what ran in the run record"
+  },
+  "text_variants": {
+    "junk": "the LiteParse text layer of the page, the text the rescue chain (ADR-066) returns today. Scored only on the 7 junk pages.",
+    "faithful": "junk pages: the dots.mocr transcription in the sibling worktree omrs-feat-dots-mocr-llamacpp-backend, ocr-workers/engines/dots-mocr-llamacpp/smoke_evidence/parity-pages/<doc>-p<NNN>.md (hashes in frozen). Healthy pages: the page's own text layer from pdftotext, which Experiment 33 labelled usable with token recall at least 0.95.",
+    "wrong": "the faithful text of the next page in the same group (junk or healthy, in the listed order, cyclic) that comes from a different document"
+  },
+  "pages": {
+    "source": "Experiment 33 corpus (experiments/33-ocr-routing-natural-positive-2026-09-17/corpus/natural/, copy under ~/Development/DATA/omrs/experiments/33-ocr-routing-natural-positive-2026-09-17/) with frozen labels",
+    "junk": [
+      {"doc_id": "rf06", "page": 29},
+      {"doc_id": "rf06", "page": 46},
+      {"doc_id": "rf06", "page": 50},
+      {"doc_id": "rf06", "page": 86},
+      {"doc_id": "rf07", "page": 6},
+      {"doc_id": "rf07", "page": 47},
+      {"doc_id": "rf07", "page": 49}
+    ],
+    "healthy_rule": "for each document in strata born_digital (bd), mixed (mx) and scan_with_text_layer (tl): the lowest page above 1 with Experiment 33 label usable, r_best >= 0.95 and reference_tokens >= 100. tl06 has no such page. Result: 23 pages, all open licence (CC BY, US government work, US patent).",
+    "healthy": [
+      {"doc_id": "bd01", "page": 2}, {"doc_id": "bd02", "page": 2}, {"doc_id": "bd03", "page": 2},
+      {"doc_id": "bd04", "page": 2}, {"doc_id": "bd05", "page": 2}, {"doc_id": "bd06", "page": 2},
+      {"doc_id": "bd07", "page": 2}, {"doc_id": "bd08", "page": 2}, {"doc_id": "mx01", "page": 2},
+      {"doc_id": "mx02", "page": 2}, {"doc_id": "mx03", "page": 3}, {"doc_id": "mx04", "page": 2},
+      {"doc_id": "mx05", "page": 3}, {"doc_id": "mx06", "page": 3}, {"doc_id": "mx07", "page": 3},
+      {"doc_id": "mx08", "page": 5}, {"doc_id": "tl01", "page": 4}, {"doc_id": "tl02", "page": 2},
+      {"doc_id": "tl03", "page": 2}, {"doc_id": "tl04", "page": 3}, {"doc_id": "tl05", "page": 2},
+      {"doc_id": "tl07", "page": 2}, {"doc_id": "tl08", "page": 2}
+    ],
+    "count": 30,
+    "requests_local": 67,
+    "requests_hosted": 46
+  },
+  "metrics": [
+    {"name": "median_p_yes_faithful_minus_wrong", "binary": false, "primary": true},
+    {"name": "auc_faithful_vs_junk", "binary": false, "primary": true},
+    {"name": "median_p_yes_faithful_healthy", "binary": false, "primary": false},
+    {"name": "seconds_per_request", "binary": false, "primary": false}
+  ],
+  "gates": [
+    {"id": "G1", "metric": "median_p_yes_faithful_minus_wrong", "value": "local arm, all 30 pages", "op": ">=", "threshold": 0.5},
+    {"id": "G2", "metric": "auc_faithful_vs_junk", "value": "local arm, 7 junk pages, 49 faithful-junk pairs, ties count 0.5", "op": ">=", "threshold": 0.9}
+  ],
+  "analysis": {
+    "g1": "median over pages of P(yes | faithful) minus median over pages of P(yes | wrong). Report the 95% paired bootstrap interval of the per-page difference with _lib/stats.py paired_bootstrap_ci (seed 0). The gate uses the point value.",
+    "g2": "Mann-Whitney AUC: share of (faithful, junk) page pairs where P(yes | faithful) > P(yes | junk), ties 0.5. With 7 pages per side, report it as a point value only.",
+    "hosted": "G1 on the 23 healthy pages, reported beside the local value. It does not decide.",
+    "exploratory": "per-page tables, P(yes) for faithful healthy text, seconds per request. Any other comparison is labelled exploratory."
+  },
+  "runtime_checks": [
+    "R1: GET /props on the local server; the build number must be 11941.",
+    "R2: verify_llamacpp_runtime from experiments/_lib/llamacpp_runtime.py checks the build and the SHA-256 of Clef-Flash-Q8_0.gguf against runtime.models.",
+    "R3: the runner hashes mmproj-Clef-Flash-Q8_0.gguf itself and compares it with frozen (the shared check reads only the --model file). It also confirms that the server command line holds --mmproj with that file.",
+    "R4: wrong-text smoke test on rf06 page 29: one request with its faithful text, one with its wrong text. P(yes | faithful) must be above P(yes | wrong) by at least 0.2. This also shows the projector is loaded.",
+    "R5: hosted arm only: the same smoke test on bd01 page 2, with the key read from TYPESAFE_API_KEY. Never print the key."
+  ],
+  "stopping_rules": [
+    "Stop before any score if R1, R2 or R3 fails. Record the found value. Do not change the build or files without an amendment.",
+    "Stop before any score if R4 fails. Status stays PLANNED and the report names the failure. Experiment 43 does not start until the image path works.",
+    "Stop the hosted arm on any 401, 403 or quota error. The local arm continues.",
+    "If more than 3 of the 67 local requests fail after 2 retries each, stop. The result is INCONCLUSIVE.",
+    "Score each page and variant once. No reruns to improve a value. A rerun after a crash uses --resume and keeps the earlier scores."
+  ],
+  "outcome_table": {
+    "G1 pass, G2 pass": "PASS. Experiment 43 starts with this wording and these render settings as its Stage 1 starting point.",
+    "G1 pass, G2 fail": "FAIL. The model reads the image but does not catch junk layers. Revise the Experiment 43 plan before it starts (more wordings, or another signal).",
+    "G1 fail, hosted G1 pass": "FAIL for the local runtime. Fix the local image path (projector, token limits, build) and run this pilot again before Experiment 43.",
+    "G1 fail, hosted G1 fail": "FAIL. The question does not work. Experiment 43 does not start as designed."
+  },
+  "cloud": "Hosted arm B only, healthy open-licence pages only, key from TYPESAFE_API_KEY. rf06 and rf07 page images and text never go to a hosted service without a dated operator amendment.",
+  "production_change": "none",
+  "frozen": [
+    {"item": "Experiment 33 labels.json", "path": "experiments/33-ocr-routing-natural-positive-2026-09-17/labels.json", "sha256": "cd4960ba36bddd3cd665a9142592457945fe2234c4a37bbfb81a0bfe1041c6bf"},
+    {"item": "Experiment 33 page_evidence.json (page labels, r_best)", "path": "experiments/33-ocr-routing-natural-positive-2026-09-17/output/page_evidence.json", "sha256": "7279a0cf0ddcfa5a044c5e892bd48953798c2b490810605750fbcb422dd3617d"},
+    {"item": "Experiment 33 sources.json (documents, licences)", "path": "experiments/33-ocr-routing-natural-positive-2026-09-17/sources.json", "sha256": "3b05d580dec2a9bf59a27dba24974822c83c56c32f67b9b778738fd523991cab"},
+    {"item": "dots.mocr text rf06-p029.md", "path": "../omrs-feat-dots-mocr-llamacpp-backend/ocr-workers/engines/dots-mocr-llamacpp/smoke_evidence/parity-pages/rf06-p029.md", "sha256": "763672ca7567a644226ae52f4945af4f47a7aed52e2d820084d60db63e56af37"},
+    {"item": "dots.mocr text rf06-p046.md", "path": "../omrs-feat-dots-mocr-llamacpp-backend/ocr-workers/engines/dots-mocr-llamacpp/smoke_evidence/parity-pages/rf06-p046.md", "sha256": "b27ae134d0ebadbdb411836cff9421a70e1d4918802d53aa37df1bb2f3c11920"},
+    {"item": "dots.mocr text rf06-p050.md", "path": "../omrs-feat-dots-mocr-llamacpp-backend/ocr-workers/engines/dots-mocr-llamacpp/smoke_evidence/parity-pages/rf06-p050.md", "sha256": "10eca6dd3254a8cd66bf3062e23c63adc6082a5dff5526b6224de69794a1e2fe"},
+    {"item": "dots.mocr text rf06-p086.md", "path": "../omrs-feat-dots-mocr-llamacpp-backend/ocr-workers/engines/dots-mocr-llamacpp/smoke_evidence/parity-pages/rf06-p086.md", "sha256": "29f573cb7be011b1eb1384359b0439225e2ebffbe50a943f09bf30327051fafa"},
+    {"item": "dots.mocr text rf07-p006.md", "path": "../omrs-feat-dots-mocr-llamacpp-backend/ocr-workers/engines/dots-mocr-llamacpp/smoke_evidence/parity-pages/rf07-p006.md", "sha256": "5551c88f99c7b473c8fe06e0eb245abf280db4de83140af6ecb02d7e9653726b"},
+    {"item": "dots.mocr text rf07-p047.md", "path": "../omrs-feat-dots-mocr-llamacpp-backend/ocr-workers/engines/dots-mocr-llamacpp/smoke_evidence/parity-pages/rf07-p047.md", "sha256": "2fe173bbd88c99686030a6647a01c9976cb0e7ed69c91e1be0c07f6dc90c22e7"},
+    {"item": "dots.mocr text rf07-p049.md", "path": "../omrs-feat-dots-mocr-llamacpp-backend/ocr-workers/engines/dots-mocr-llamacpp/smoke_evidence/parity-pages/rf07-p049.md", "sha256": "fc4cbeb8001431c14b56287c97fdeffa47a4f0e08798393ebc0e14fe46ba2abb"},
+    {"item": "projector mmproj-Clef-Flash-Q8_0.gguf (ggml-org/Clef-Flash-GGUF revision a5a18a6e13bb36573a5f11385a1e7b9a0c868e9e)", "path": "~/Development/DATA/omrs/ocr-models/clef-flash/mmproj-Clef-Flash-Q8_0.gguf", "sha256": "9dd8bc279f57d33b0697d4d0fe900fe751a24c9e3d30ab90969d4714ffc0722d"},
+    {"item": "git commit at planning", "value": "c1df9866"}
+  ],
+  "runtime": {
+    "runtime_under_test": false,
+    "models": [
+      {
+        "role": "decision (image and text)",
+        "repository": "ggml-org/Clef-Flash-GGUF@a5a18a6e13bb36573a5f11385a1e7b9a0c868e9e",
+        "file": "Clef-Flash-Q8_0.gguf",
+        "sha256": "25f801e2a27610b0ccc0cb1558d7eda3d7a304e34e2c4a04e3079357ff7d906e",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {
+          "mmproj": "mmproj-Clef-Flash-Q8_0.gguf",
+          "host": "127.0.0.1",
+          "parallel": 1,
+          "ctx_size": 8192,
+          "batch_size": 8192,
+          "ubatch_size": 8192,
+          "temperature": 0
+        }
+      }
+    ],
+    "references": [
+      {"role": "reference (hosted image control, arm B)", "provider": "TypeSafe", "model": "jev-latest"}
+    ],
+    "tolerance": [
+      {"metric": "median_p_yes_faithful_minus_wrong", "max_abs_change": 0.05},
+      {"metric": "auc_faithful_vs_junk", "max_abs_change": 0.05},
+      {"item_score": "p_yes", "max_abs_change": 0.02}
+    ]
+  },
+  "amendments": []
+}

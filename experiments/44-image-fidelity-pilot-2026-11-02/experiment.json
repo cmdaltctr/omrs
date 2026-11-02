@@ -1,0 +1,17 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "44",
+  "title": "Image fidelity question pilot",
+  "date": "2026-11-02",
+  "category": "ingestion",
+  "size": "Standard",
+  "status": "PLANNED",
+  "superseded_by": null,
+  "finding": "Planned pilot before Experiment 43: 30 Experiment 33 pages (7 rf06/rf07 junk layers, 23 open-licence healthy), Clef-Flash Q8_0 plus mmproj on llama.cpp b11941 and a hosted TypeSafe Jev image control on healthy pages only; gates G1 (median P(yes) faithful minus wrong >= 0.5) and G2 (AUC faithful vs junk >= 0.9).",
+  "purpose": "optimisation",
+  "refs": {
+    "adrs": ["ADR-066", "ADR-074", "ADR-103"],
+    "changes": ["image-based-rescue-gate"],
+    "tasks": []
+  }
+}
