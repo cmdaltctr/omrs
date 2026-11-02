@@ -24,7 +24,7 @@ Run in a sibling worktree `omrs-feat-image-based-rescue-gate` from `v3`. Large f
 
 ## 4. Report
 
-- [ ] 4.1 Write `report.md` with the verdict against the pass rule, the local arm beside the hosted Jev arm, tables, speed and memory, and the limits from D2. Verify: every number comes from `output/summary.json`.
+- [x] 4.1 Write `report.md` with the verdict against the pass rule, the local arm beside the hosted Jev arm, tables, speed and memory, and the limits from D2. Verify: every number comes from `output/summary.json`.
 - [ ] 4.2 Record the result in `experiment.json` and the index, and comment on issue #161. Verify: `omrs experiments check` passes and the comment exists. A PASS opens a follow-up change and ADR. A FAIL leaves #161 open.
 - [x] 4.3 Run `openspec validate --all --strict` and the fast tests. Verify: all pass, and nothing under `src/` changed.
 
