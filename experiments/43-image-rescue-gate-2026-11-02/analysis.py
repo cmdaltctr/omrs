@@ -137,6 +137,23 @@ def arm_scores(arm: str, inputs: list[dict]) -> tuple[dict[Key, float], dict]:
     return {(r["doc_id"], r["page"]): r["p_yes"] for r in rows}, facts
 
 
+def local_runtime() -> dict:
+    """Build, files and their sizes from the committed runtime check (memory footprint)."""
+    path = OUTPUT / "runtime_check_clef_image.json"
+    if not path.exists():
+        return {}
+    check = read_json(path)
+    from score_pages import MMPROJ, MODEL
+
+    return {
+        "build": check["R1_build"]["value"],
+        "model_file_gb": round(MODEL.stat().st_size / 1e9, 2) if MODEL.exists() else None,
+        "projector_file_gb": round(MMPROJ.stat().st_size / 1e9, 2) if MMPROJ.exists() else None,
+        "smoke": {k: check["R4_smoke"][k]["p_yes"] for k in ("right", "wrong")},
+        "no_projector_error": check["R5_no_projector"]["server"].get("error"),
+    }
+
+
 def summarise(current: dict) -> dict:
     """Compute page and document results for every arm."""
     inputs = read_json(OUTPUT / "inputs.json")["rows"]
@@ -180,6 +197,7 @@ def summarise(current: dict) -> dict:
         "verdict_note": None if verdict else "no verdict: an image arm has no scores or threshold",
         "hosted_pass": arms["jev_image"].get(decides, {}).get("pass_rule", {}).get("pass"),
         "population_sizes": {"rescued_scored_pages": len(all_scored), "rescued_classified": len(classified)},
+        "local_runtime": local_runtime(),
         "arms": arms,
     }
 
