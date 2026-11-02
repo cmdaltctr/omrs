@@ -99,12 +99,14 @@ Start this group only after group 2b is done.
 
 - [ ] 4.1 Remove `ocr-workers/engines/dots-mocr` (the PyTorch engine). Move `dots-mocr-llamacpp` to `engines/dots-mocr`, and rename the package to `omrs_ocr_dots_mocr` and the entry point to `dots-mocr`. Keep `backend_id` `dots_mocr_llamacpp`.
   - Verify: re-provisioning `dots-mocr` succeeds, and `--capabilities` shows the llama.cpp fingerprint.
+  - Operator decision 2026-11-02: the engine name is `dots-mocr` (the runtime is a setting inside it, so the same engine can later serve Ollama or MLX after a parity run). This is the name only. Group 4 still waits for the task 3.7 confirmation.
 - [ ] 4.2 Update the tests. `tests/test_ocr_worker_import_boundary.py` must now assert that no engine lock holds PyTorch. `tests/test_ocr_engine_dots_mocr.py` moves to the llama.cpp engine, the patch and code-hash tests go, and the D6 copy test goes. Re-pin the tripwire by test ID.
   - Verify: each changed assertion fails on the old tree first; the parallel fast suite and the tripwire pass.
 - [ ] 4.3 Update `docs/guides/ingestion.md`, `docs/guides/configuration.md`, `docs/guides/architecture.md`, `ocr-workers/README.md` and the engine's `LICENCE-NOTES.md`. Cover the llama.cpp runtime, the pins, the token needed for a private repository, peak memory, and the one-time re-index.
   - Verify: `grep -rn "PyTorch\|torch" docs/guides ocr-workers/README.md` names no OCR engine.
 - [ ] 4.4 Write the ADR "dots.mocr runs on llama.cpp", and append a dated note to ADR-072 (no edits to its old text). The ADR states that Experiment 41 failed the speed gate, records the operator's reasons for moving anyway, and cites the D9 results. Add it to the ADR index.
   - Verify: the index lists the new ADR, and ADR-072 links to it.
+  - Operator decision 2026-11-02: write this ADR later, after the cut-over. It also records that Ollama and MLX can run the engine (a `model` field is needed) but gave different text from llama.cpp on a 10-page test (Ollama 7 of 10 pages identical, MLX 3 of 10), so llama.cpp is the only parity-checked runtime.
 - [ ] 4.5 Provision the new `dots-mocr` engine in the live workers folder `~/.omrs/ocr-workers`, then restart the live web app.
   - Needs operator approval before touching the live app. The next ingest re-indexes the live collections.
   - Verify: the live Integrations page shows `dots-mocr` ready, and one live ingest of a scanned PDF returns OCR text.
