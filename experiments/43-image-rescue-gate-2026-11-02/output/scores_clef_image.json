@@ -5055,6 +5055,2148 @@
       "model": "Clef-Flash-Q8_0.gguf",
       "input_tokens": 971,
       "seconds": 1.1551484579977114
+    },
+    {
+      "doc_id": "mx01",
+      "page": 9,
+      "phase": "rest",
+      "p_yes": 0.9292827662368611,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2362,
+      "seconds": 3.9799833339930046
+    },
+    {
+      "doc_id": "mx01",
+      "page": 26,
+      "phase": "rest",
+      "p_yes": 0.5150603679243846,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2065,
+      "seconds": 3.7274462499917718
+    },
+    {
+      "doc_id": "mx01",
+      "page": 27,
+      "phase": "rest",
+      "p_yes": 0.9145764034439198,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2054,
+      "seconds": 3.7284946250001667
+    },
+    {
+      "doc_id": "mx02",
+      "page": 15,
+      "phase": "rest",
+      "p_yes": 0.8456290682662935,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2067,
+      "seconds": 3.7329530419956427
+    },
+    {
+      "doc_id": "mx02",
+      "page": 16,
+      "phase": "rest",
+      "p_yes": 0.9274928876986106,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2053,
+      "seconds": 3.729312958996161
+    },
+    {
+      "doc_id": "mx02",
+      "page": 17,
+      "phase": "rest",
+      "p_yes": 0.926218221098033,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2053,
+      "seconds": 3.721524500011583
+    },
+    {
+      "doc_id": "mx03",
+      "page": 2,
+      "phase": "rest",
+      "p_yes": 0.9111649454252588,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2497,
+      "seconds": 4.101915249993908
+    },
+    {
+      "doc_id": "mx03",
+      "page": 14,
+      "phase": "rest",
+      "p_yes": 0.9077585539050291,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2151,
+      "seconds": 3.773746000006213
+    },
+    {
+      "doc_id": "mx03",
+      "page": 17,
+      "phase": "rest",
+      "p_yes": 0.9209316648704918,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2423,
+      "seconds": 3.997864541001036
+    },
+    {
+      "doc_id": "mx03",
+      "page": 34,
+      "phase": "rest",
+      "p_yes": 0.7579798646304032,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2070,
+      "seconds": 3.7603907090087887
+    },
+    {
+      "doc_id": "mx03",
+      "page": 35,
+      "phase": "rest",
+      "p_yes": 0.9244946164225062,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2054,
+      "seconds": 3.7624281250027707
+    },
+    {
+      "doc_id": "mx04",
+      "page": 1,
+      "phase": "rest",
+      "p_yes": 0.9391244375435807,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2072,
+      "seconds": 3.7785125829977915
+    },
+    {
+      "doc_id": "mx04",
+      "page": 31,
+      "phase": "rest",
+      "p_yes": 0.7583926007009296,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2063,
+      "seconds": 3.793471208002302
+    },
+    {
+      "doc_id": "mx04",
+      "page": 32,
+      "phase": "rest",
+      "p_yes": 0.9225541404663601,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2051,
+      "seconds": 3.793416291999165
+    },
+    {
+      "doc_id": "mx05",
+      "page": 13,
+      "phase": "rest",
+      "p_yes": 0.9095129738556196,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2234,
+      "seconds": 3.920917333001853
+    },
+    {
+      "doc_id": "mx05",
+      "page": 33,
+      "phase": "rest",
+      "p_yes": 0.923705296158954,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2234,
+      "seconds": 3.930501082999399
+    },
+    {
+      "doc_id": "mx05",
+      "page": 36,
+      "phase": "rest",
+      "p_yes": 0.929252920735784,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2190,
+      "seconds": 3.9016044580057496
+    },
+    {
+      "doc_id": "mx05",
+      "page": 51,
+      "phase": "rest",
+      "p_yes": 0.7569515463241349,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2061,
+      "seconds": 3.7755807079956867
+    },
+    {
+      "doc_id": "mx05",
+      "page": 52,
+      "phase": "rest",
+      "p_yes": 0.9241116958105322,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2050,
+      "seconds": 3.7758519159979187
+    },
+    {
+      "doc_id": "mx06",
+      "page": 15,
+      "phase": "rest",
+      "p_yes": 0.9194417171527837,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2081,
+      "seconds": 3.76821262500016
+    },
+    {
+      "doc_id": "mx06",
+      "page": 26,
+      "phase": "rest",
+      "p_yes": 0.7574867162016881,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2063,
+      "seconds": 3.7687617920018965
+    },
+    {
+      "doc_id": "mx06",
+      "page": 27,
+      "phase": "rest",
+      "p_yes": 0.9213762740892916,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2051,
+      "seconds": 3.7605904170050053
+    },
+    {
+      "doc_id": "mx07",
+      "page": 12,
+      "phase": "rest",
+      "p_yes": 0.9244961475317685,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2065,
+      "seconds": 3.764580125003704
+    },
+    {
+      "doc_id": "mx07",
+      "page": 39,
+      "phase": "rest",
+      "p_yes": 0.6671063114929913,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2069,
+      "seconds": 3.7906359170010546
+    },
+    {
+      "doc_id": "mx07",
+      "page": 40,
+      "phase": "rest",
+      "p_yes": 0.9111642120830432,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2055,
+      "seconds": 3.7553883750078967
+    },
+    {
+      "doc_id": "mx07",
+      "page": 41,
+      "phase": "rest",
+      "p_yes": 0.8086568476671802,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2067,
+      "seconds": 3.7654553330066847
+    },
+    {
+      "doc_id": "mx07",
+      "page": 42,
+      "phase": "rest",
+      "p_yes": 0.9197381336976332,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2053,
+      "seconds": 3.761397542009945
+    },
+    {
+      "doc_id": "mx07",
+      "page": 43,
+      "phase": "rest",
+      "p_yes": 0.914452304655767,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2053,
+      "seconds": 3.7585732910083607
+    },
+    {
+      "doc_id": "mx07",
+      "page": 44,
+      "phase": "rest",
+      "p_yes": 0.8152039011902117,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2067,
+      "seconds": 3.7861666249955306
+    },
+    {
+      "doc_id": "tl01",
+      "page": 1,
+      "phase": "rest",
+      "p_yes": 0.6249497724992038,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1942,
+      "seconds": 3.407357999996748
+    },
+    {
+      "doc_id": "tl01",
+      "page": 19,
+      "phase": "rest",
+      "p_yes": 0.6982552379952286,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2272,
+      "seconds": 3.7288575830025366
+    },
+    {
+      "doc_id": "tl01",
+      "page": 34,
+      "phase": "rest",
+      "p_yes": 0.015264005900961592,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1933,
+      "seconds": 3.506576750005479
+    },
+    {
+      "doc_id": "tl01",
+      "page": 35,
+      "phase": "rest",
+      "p_yes": 0.9550544507176303,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1923,
+      "seconds": 3.4910064169962425
+    },
+    {
+      "doc_id": "tl01",
+      "page": 36,
+      "phase": "rest",
+      "p_yes": 0.9540528482456325,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1923,
+      "seconds": 3.4961125410045497
+    },
+    {
+      "doc_id": "tl01",
+      "page": 37,
+      "phase": "rest",
+      "p_yes": 0.025438465330006953,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1966,
+      "seconds": 3.502767665995634
+    },
+    {
+      "doc_id": "tl01",
+      "page": 38,
+      "phase": "rest",
+      "p_yes": 0.020208923537328984,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1933,
+      "seconds": 3.5018542909965618
+    },
+    {
+      "doc_id": "tl01",
+      "page": 39,
+      "phase": "rest",
+      "p_yes": 0.5593498557518545,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1962,
+      "seconds": 3.5230575839959783
+    },
+    {
+      "doc_id": "tl01",
+      "page": 41,
+      "phase": "rest",
+      "p_yes": 0.09604213987160969,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1970,
+      "seconds": 3.491738708005869
+    },
+    {
+      "doc_id": "tl01",
+      "page": 42,
+      "phase": "rest",
+      "p_yes": 0.8942217837892816,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1934,
+      "seconds": 3.513594791991636
+    },
+    {
+      "doc_id": "tl01",
+      "page": 44,
+      "phase": "rest",
+      "p_yes": 0.010917192580498135,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1992,
+      "seconds": 3.5603458330006106
+    },
+    {
+      "doc_id": "tl01",
+      "page": 47,
+      "phase": "rest",
+      "p_yes": 0.024125591689437592,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1990,
+      "seconds": 3.5142511669982923
+    },
+    {
+      "doc_id": "tl01",
+      "page": 48,
+      "phase": "rest",
+      "p_yes": 0.016525952439635446,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1939,
+      "seconds": 3.51491787499981
+    },
+    {
+      "doc_id": "tl01",
+      "page": 49,
+      "phase": "rest",
+      "p_yes": 0.9495719809311931,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1923,
+      "seconds": 3.4974425829859683
+    },
+    {
+      "doc_id": "tl01",
+      "page": 50,
+      "phase": "rest",
+      "p_yes": 0.019144195003373,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1946,
+      "seconds": 3.515185374999419
+    },
+    {
+      "doc_id": "tl01",
+      "page": 51,
+      "phase": "rest",
+      "p_yes": 0.018409751813852265,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2045,
+      "seconds": 3.630450208002003
+    },
+    {
+      "doc_id": "tl01",
+      "page": 52,
+      "phase": "rest",
+      "p_yes": 0.015587025378082799,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1946,
+      "seconds": 3.5059820839960594
+    },
+    {
+      "doc_id": "tl01",
+      "page": 53,
+      "phase": "rest",
+      "p_yes": 0.02124843586087836,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1966,
+      "seconds": 3.5139670420030598
+    },
+    {
+      "doc_id": "tl01",
+      "page": 54,
+      "phase": "rest",
+      "p_yes": 0.012451028449566694,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1941,
+      "seconds": 3.5141366250027204
+    },
+    {
+      "doc_id": "tl01",
+      "page": 55,
+      "phase": "rest",
+      "p_yes": 0.09965054972519738,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1929,
+      "seconds": 3.506332000004477
+    },
+    {
+      "doc_id": "tl01",
+      "page": 56,
+      "phase": "rest",
+      "p_yes": 0.9546033012783955,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1923,
+      "seconds": 3.531220917007886
+    },
+    {
+      "doc_id": "tl01",
+      "page": 57,
+      "phase": "rest",
+      "p_yes": 0.8984298211464324,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1927,
+      "seconds": 3.518016499991063
+    },
+    {
+      "doc_id": "tl01",
+      "page": 58,
+      "phase": "rest",
+      "p_yes": 0.020147651211090183,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1938,
+      "seconds": 3.5220705829997314
+    },
+    {
+      "doc_id": "tl01",
+      "page": 59,
+      "phase": "rest",
+      "p_yes": 0.018656522484902068,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1946,
+      "seconds": 3.5138888340006815
+    },
+    {
+      "doc_id": "tl01",
+      "page": 60,
+      "phase": "rest",
+      "p_yes": 0.022178206256972425,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1970,
+      "seconds": 3.522097749999375
+    },
+    {
+      "doc_id": "tl01",
+      "page": 61,
+      "phase": "rest",
+      "p_yes": 0.9506951973456833,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1923,
+      "seconds": 3.5112767909886315
+    },
+    {
+      "doc_id": "tl01",
+      "page": 62,
+      "phase": "rest",
+      "p_yes": 0.013720530453401714,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1932,
+      "seconds": 3.5209703339933185
+    },
+    {
+      "doc_id": "tl01",
+      "page": 63,
+      "phase": "rest",
+      "p_yes": 0.018565484807341253,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1997,
+      "seconds": 3.522593166999286
+    },
+    {
+      "doc_id": "tl01",
+      "page": 64,
+      "phase": "rest",
+      "p_yes": 0.012646401469923541,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1926,
+      "seconds": 3.5369967499864288
+    },
+    {
+      "doc_id": "tl01",
+      "page": 65,
+      "phase": "rest",
+      "p_yes": 0.021054212327323917,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1964,
+      "seconds": 3.544633541998337
+    },
+    {
+      "doc_id": "tl01",
+      "page": 66,
+      "phase": "rest",
+      "p_yes": 0.9517885613359992,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1923,
+      "seconds": 3.5148479170020437
+    },
+    {
+      "doc_id": "tl01",
+      "page": 67,
+      "phase": "rest",
+      "p_yes": 0.022575134523144254,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1961,
+      "seconds": 3.537462583000888
+    },
+    {
+      "doc_id": "tl01",
+      "page": 68,
+      "phase": "rest",
+      "p_yes": 0.020517465068750972,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1957,
+      "seconds": 3.525150458997814
+    },
+    {
+      "doc_id": "tl01",
+      "page": 69,
+      "phase": "rest",
+      "p_yes": 0.013837583079214625,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1995,
+      "seconds": 3.5223139580048155
+    },
+    {
+      "doc_id": "tl01",
+      "page": 70,
+      "phase": "rest",
+      "p_yes": 0.04256977804060378,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1937,
+      "seconds": 3.5307170000014594
+    },
+    {
+      "doc_id": "tl01",
+      "page": 71,
+      "phase": "rest",
+      "p_yes": 0.051575441232862465,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1930,
+      "seconds": 3.5288412910012994
+    },
+    {
+      "doc_id": "tl01",
+      "page": 72,
+      "phase": "rest",
+      "p_yes": 0.9523297678254918,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1923,
+      "seconds": 3.538102334001451
+    },
+    {
+      "doc_id": "tl01",
+      "page": 73,
+      "phase": "rest",
+      "p_yes": 0.01681212167038544,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1937,
+      "seconds": 3.5202862919977633
+    },
+    {
+      "doc_id": "tl01",
+      "page": 74,
+      "phase": "rest",
+      "p_yes": 0.9548626306006979,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1923,
+      "seconds": 3.5129020000022138
+    },
+    {
+      "doc_id": "tl01",
+      "page": 75,
+      "phase": "rest",
+      "p_yes": 0.01802941424499135,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1966,
+      "seconds": 3.5248724999983096
+    },
+    {
+      "doc_id": "tl01",
+      "page": 76,
+      "phase": "rest",
+      "p_yes": 0.9535296156869721,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1923,
+      "seconds": 3.5240237090038136
+    },
+    {
+      "doc_id": "tl01",
+      "page": 77,
+      "phase": "rest",
+      "p_yes": 0.013675550614714345,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1946,
+      "seconds": 3.5318970829976024
+    },
+    {
+      "doc_id": "tl01",
+      "page": 78,
+      "phase": "rest",
+      "p_yes": 0.04613442018855568,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1943,
+      "seconds": 3.5126711670018267
+    },
+    {
+      "doc_id": "tl01",
+      "page": 80,
+      "phase": "rest",
+      "p_yes": 0.009933154318737569,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2004,
+      "seconds": 3.530330084002344
+    },
+    {
+      "doc_id": "tl02",
+      "page": 3,
+      "phase": "rest",
+      "p_yes": 0.8097364630389026,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2279,
+      "seconds": 3.950361957991845
+    },
+    {
+      "doc_id": "tl02",
+      "page": 4,
+      "phase": "rest",
+      "p_yes": 0.6735175335060845,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2575,
+      "seconds": 4.247560750009143
+    },
+    {
+      "doc_id": "tl02",
+      "page": 8,
+      "phase": "rest",
+      "p_yes": 0.5816266523991958,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2328,
+      "seconds": 4.141764540996519
+    },
+    {
+      "doc_id": "tl02",
+      "page": 11,
+      "phase": "rest",
+      "p_yes": 0.737751060566959,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2406,
+      "seconds": 4.150718291988596
+    },
+    {
+      "doc_id": "tl02",
+      "page": 12,
+      "phase": "rest",
+      "p_yes": 0.3197687033678033,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2343,
+      "seconds": 3.9332947920047445
+    },
+    {
+      "doc_id": "tl02",
+      "page": 13,
+      "phase": "rest",
+      "p_yes": 0.9129591559741922,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2564,
+      "seconds": 4.249856458991417
+    },
+    {
+      "doc_id": "tl02",
+      "page": 15,
+      "phase": "rest",
+      "p_yes": 0.114290638486376,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2220,
+      "seconds": 3.918123875002493
+    },
+    {
+      "doc_id": "tl02",
+      "page": 17,
+      "phase": "rest",
+      "p_yes": 0.1737101780823876,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2236,
+      "seconds": 3.9309996670053806
+    },
+    {
+      "doc_id": "tl02",
+      "page": 18,
+      "phase": "rest",
+      "p_yes": 0.6461806682898689,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2361,
+      "seconds": 4.024301583005581
+    },
+    {
+      "doc_id": "tl02",
+      "page": 21,
+      "phase": "rest",
+      "p_yes": 0.8667657802011506,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2583,
+      "seconds": 4.2786118340009125
+    },
+    {
+      "doc_id": "tl02",
+      "page": 31,
+      "phase": "rest",
+      "p_yes": 0.8300089894964242,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2540,
+      "seconds": 4.153234166005859
+    },
+    {
+      "doc_id": "tl02",
+      "page": 32,
+      "phase": "rest",
+      "p_yes": 0.7781948239249027,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2630,
+      "seconds": 4.352058042000863
+    },
+    {
+      "doc_id": "tl02",
+      "page": 33,
+      "phase": "rest",
+      "p_yes": 0.15842878584512007,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2116,
+      "seconds": 3.812099249989842
+    },
+    {
+      "doc_id": "tl02",
+      "page": 35,
+      "phase": "rest",
+      "p_yes": 0.6360415000342929,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2281,
+      "seconds": 3.9243007090117317
+    },
+    {
+      "doc_id": "tl02",
+      "page": 36,
+      "phase": "rest",
+      "p_yes": 0.2018833983548784,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2296,
+      "seconds": 4.1315613750048215
+    },
+    {
+      "doc_id": "tl02",
+      "page": 37,
+      "phase": "rest",
+      "p_yes": 0.13975047549579217,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2190,
+      "seconds": 3.9299728749901988
+    },
+    {
+      "doc_id": "tl02",
+      "page": 38,
+      "phase": "rest",
+      "p_yes": 0.026424755468190505,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2054,
+      "seconds": 3.8068840420019114
+    },
+    {
+      "doc_id": "tl02",
+      "page": 39,
+      "phase": "rest",
+      "p_yes": 0.2650517981277298,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2094,
+      "seconds": 3.7136822089960333
+    },
+    {
+      "doc_id": "tl02",
+      "page": 40,
+      "phase": "rest",
+      "p_yes": 0.18332992288605562,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2185,
+      "seconds": 3.988973999992595
+    },
+    {
+      "doc_id": "tl02",
+      "page": 41,
+      "phase": "rest",
+      "p_yes": 0.4231524347201001,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2257,
+      "seconds": 3.919205833997694
+    },
+    {
+      "doc_id": "tl02",
+      "page": 43,
+      "phase": "rest",
+      "p_yes": 0.17564878450315133,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2075,
+      "seconds": 3.7108965420047753
+    },
+    {
+      "doc_id": "tl03",
+      "page": 1,
+      "phase": "rest",
+      "p_yes": 0.9380554868451464,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2057,
+      "seconds": 3.7161112089961534
+    },
+    {
+      "doc_id": "tl03",
+      "page": 2,
+      "phase": "rest",
+      "p_yes": 0.8654238838812419,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2577,
+      "seconds": 4.158886292003444
+    },
+    {
+      "doc_id": "tl03",
+      "page": 5,
+      "phase": "rest",
+      "p_yes": 0.8507875500249601,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2471,
+      "seconds": 3.954975624990766
+    },
+    {
+      "doc_id": "tl03",
+      "page": 7,
+      "phase": "rest",
+      "p_yes": 0.013631277172101577,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2006,
+      "seconds": 3.6182067499903496
+    },
+    {
+      "doc_id": "tl03",
+      "page": 8,
+      "phase": "rest",
+      "p_yes": 0.013794230794925607,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1963,
+      "seconds": 3.5403737910091877
+    },
+    {
+      "doc_id": "tl03",
+      "page": 11,
+      "phase": "rest",
+      "p_yes": 0.14265137963079882,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2144,
+      "seconds": 3.7382080410025083
+    },
+    {
+      "doc_id": "tl03",
+      "page": 12,
+      "phase": "rest",
+      "p_yes": 0.22622872551788006,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2041,
+      "seconds": 3.539389541998389
+    },
+    {
+      "doc_id": "tl03",
+      "page": 13,
+      "phase": "rest",
+      "p_yes": 0.08717834235109113,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2185,
+      "seconds": 3.817262500000652
+    },
+    {
+      "doc_id": "tl03",
+      "page": 14,
+      "phase": "rest",
+      "p_yes": 0.3439443152550105,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2122,
+      "seconds": 3.6291325420024805
+    },
+    {
+      "doc_id": "tl03",
+      "page": 15,
+      "phase": "rest",
+      "p_yes": 0.5097362905231406,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2003,
+      "seconds": 3.522175292004249
+    },
+    {
+      "doc_id": "tl03",
+      "page": 17,
+      "phase": "rest",
+      "p_yes": 0.09205865358762855,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2178,
+      "seconds": 3.805359333011438
+    },
+    {
+      "doc_id": "tl03",
+      "page": 18,
+      "phase": "rest",
+      "p_yes": 0.20212398669560097,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2069,
+      "seconds": 3.628196416000719
+    },
+    {
+      "doc_id": "tl03",
+      "page": 19,
+      "phase": "rest",
+      "p_yes": 0.05867975845110197,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2206,
+      "seconds": 3.8302472499926807
+    },
+    {
+      "doc_id": "tl03",
+      "page": 20,
+      "phase": "rest",
+      "p_yes": 0.14356054352266964,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2096,
+      "seconds": 3.623249875003239
+    },
+    {
+      "doc_id": "tl03",
+      "page": 21,
+      "phase": "rest",
+      "p_yes": 0.46497381283045974,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2108,
+      "seconds": 3.7094739580061287
+    },
+    {
+      "doc_id": "tl03",
+      "page": 22,
+      "phase": "rest",
+      "p_yes": 0.09406177119179937,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2062,
+      "seconds": 3.6143353750085225
+    },
+    {
+      "doc_id": "tl03",
+      "page": 24,
+      "phase": "rest",
+      "p_yes": 0.26580577714631404,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2034,
+      "seconds": 3.5589176250068704
+    },
+    {
+      "doc_id": "tl03",
+      "page": 25,
+      "phase": "rest",
+      "p_yes": 0.35277428654383247,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2010,
+      "seconds": 3.618624875001842
+    },
+    {
+      "doc_id": "tl04",
+      "page": 9,
+      "phase": "rest",
+      "p_yes": 0.22014447739955176,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1985,
+      "seconds": 3.4274022500030696
+    },
+    {
+      "doc_id": "tl04",
+      "page": 11,
+      "phase": "rest",
+      "p_yes": 0.25598255037842566,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2103,
+      "seconds": 3.531264791992726
+    },
+    {
+      "doc_id": "tl07",
+      "page": 1,
+      "phase": "rest",
+      "p_yes": 0.03246577346821392,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1850,
+      "seconds": 3.180133540998213
+    },
+    {
+      "doc_id": "tl08",
+      "page": 1,
+      "phase": "rest",
+      "p_yes": 0.10771077261206127,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1847,
+      "seconds": 3.166998959000921
+    },
+    {
+      "doc_id": "rf05",
+      "page": 3,
+      "phase": "rest",
+      "p_yes": 0.2459576039640936,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1086,
+      "seconds": 1.364241666989983
+    },
+    {
+      "doc_id": "rf05",
+      "page": 9,
+      "phase": "rest",
+      "p_yes": 0.06319518370673906,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1187,
+      "seconds": 1.4798465000058059
+    },
+    {
+      "doc_id": "rf05",
+      "page": 13,
+      "phase": "rest",
+      "p_yes": 0.129848206034824,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1069,
+      "seconds": 1.2414408340118825
+    },
+    {
+      "doc_id": "rf05",
+      "page": 18,
+      "phase": "rest",
+      "p_yes": 0.09266559043364948,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1185,
+      "seconds": 1.4424852920055855
+    },
+    {
+      "doc_id": "rf05",
+      "page": 21,
+      "phase": "rest",
+      "p_yes": 0.07815210033029271,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1057,
+      "seconds": 1.2385083750123158
+    },
+    {
+      "doc_id": "rf05",
+      "page": 25,
+      "phase": "rest",
+      "p_yes": 0.0391564583470205,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1899,
+      "seconds": 3.3896395839983597
+    },
+    {
+      "doc_id": "rf06",
+      "page": 1,
+      "phase": "rest",
+      "p_yes": 0.031057044067144633,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1941,
+      "seconds": 3.3923418749909615
+    },
+    {
+      "doc_id": "rf06",
+      "page": 2,
+      "phase": "rest",
+      "p_yes": 0.041028169665356176,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1732,
+      "seconds": 2.974716625001747
+    },
+    {
+      "doc_id": "rf06",
+      "page": 3,
+      "phase": "rest",
+      "p_yes": 0.0154707941214866,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1810,
+      "seconds": 3.0971755420032423
+    },
+    {
+      "doc_id": "rf06",
+      "page": 4,
+      "phase": "rest",
+      "p_yes": 0.015384409354644699,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1791,
+      "seconds": 3.020261167010176
+    },
+    {
+      "doc_id": "rf06",
+      "page": 6,
+      "phase": "rest",
+      "p_yes": 0.025934016168740862,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1794,
+      "seconds": 3.076757417002227
+    },
+    {
+      "doc_id": "rf06",
+      "page": 7,
+      "phase": "rest",
+      "p_yes": 0.02379401080400453,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1899,
+      "seconds": 3.1079051659908146
+    },
+    {
+      "doc_id": "rf06",
+      "page": 11,
+      "phase": "rest",
+      "p_yes": 0.02261381550765151,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1950,
+      "seconds": 3.01464575000864
+    },
+    {
+      "doc_id": "rf06",
+      "page": 15,
+      "phase": "rest",
+      "p_yes": 0.02584722929310032,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1772,
+      "seconds": 2.9027497909992235
+    },
+    {
+      "doc_id": "rf06",
+      "page": 19,
+      "phase": "rest",
+      "p_yes": 0.01706313254582991,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1737,
+      "seconds": 2.888059582997812
+    },
+    {
+      "doc_id": "rf06",
+      "page": 23,
+      "phase": "rest",
+      "p_yes": 0.01690969860632874,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2135,
+      "seconds": 3.2187267080007587
+    },
+    {
+      "doc_id": "rf06",
+      "page": 24,
+      "phase": "rest",
+      "p_yes": 0.019773861570963107,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1727,
+      "seconds": 2.420309458000702
+    },
+    {
+      "doc_id": "rf06",
+      "page": 25,
+      "phase": "rest",
+      "p_yes": 0.010821135622754522,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1524,
+      "seconds": 2.2141045419994043
+    },
+    {
+      "doc_id": "rf06",
+      "page": 27,
+      "phase": "rest",
+      "p_yes": 0.02269833091047143,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2370,
+      "seconds": 4.301229374992545
+    },
+    {
+      "doc_id": "rf06",
+      "page": 29,
+      "phase": "rest",
+      "p_yes": 0.029393944181218278,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2229,
+      "seconds": 3.8209957079961896
+    },
+    {
+      "doc_id": "rf06",
+      "page": 31,
+      "phase": "rest",
+      "p_yes": 0.017300828776604618,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2515,
+      "seconds": 4.419912541008671
+    },
+    {
+      "doc_id": "rf06",
+      "page": 32,
+      "phase": "rest",
+      "p_yes": 0.018854026018541265,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1668,
+      "seconds": 2.3691889999900013
+    },
+    {
+      "doc_id": "rf06",
+      "page": 33,
+      "phase": "rest",
+      "p_yes": 0.014225250629643431,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1560,
+      "seconds": 2.2620101670036092
+    },
+    {
+      "doc_id": "rf06",
+      "page": 35,
+      "phase": "rest",
+      "p_yes": 0.1789576655204273,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1482,
+      "seconds": 1.9671177919954062
+    },
+    {
+      "doc_id": "rf06",
+      "page": 36,
+      "phase": "rest",
+      "p_yes": 0.06892869760756379,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2304,
+      "seconds": 2.8199382919992786
+    },
+    {
+      "doc_id": "rf06",
+      "page": 37,
+      "phase": "rest",
+      "p_yes": 0.04214052554199576,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1804,
+      "seconds": 2.5006837919936515
+    },
+    {
+      "doc_id": "rf06",
+      "page": 38,
+      "phase": "rest",
+      "p_yes": 0.06995207783588668,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2048,
+      "seconds": 3.320927250009845
+    },
+    {
+      "doc_id": "rf06",
+      "page": 39,
+      "phase": "rest",
+      "p_yes": 0.016838548290243054,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1942,
+      "seconds": 3.326508832993568
+    },
+    {
+      "doc_id": "rf06",
+      "page": 41,
+      "phase": "rest",
+      "p_yes": 0.048426553246716394,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2345,
+      "seconds": 3.6287657920038328
+    },
+    {
+      "doc_id": "rf06",
+      "page": 42,
+      "phase": "rest",
+      "p_yes": 0.028936183679875452,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2629,
+      "seconds": 3.5494244580040686
+    },
+    {
+      "doc_id": "rf06",
+      "page": 43,
+      "phase": "rest",
+      "p_yes": 0.021085982844707685,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2544,
+      "seconds": 3.4755293750058627
+    },
+    {
+      "doc_id": "rf06",
+      "page": 44,
+      "phase": "rest",
+      "p_yes": 0.017401962438459633,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1951,
+      "seconds": 3.03492695800378
+    },
+    {
+      "doc_id": "rf06",
+      "page": 45,
+      "phase": "rest",
+      "p_yes": 0.02255080024826728,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2473,
+      "seconds": 3.4704505420086207
+    },
+    {
+      "doc_id": "rf06",
+      "page": 46,
+      "phase": "rest",
+      "p_yes": 0.02176854621555781,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2038,
+      "seconds": 3.105985917005455
+    },
+    {
+      "doc_id": "rf06",
+      "page": 47,
+      "phase": "rest",
+      "p_yes": 0.022480950426926917,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1952,
+      "seconds": 3.116047041999991
+    },
+    {
+      "doc_id": "rf06",
+      "page": 48,
+      "phase": "rest",
+      "p_yes": 0.015727182648044374,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1847,
+      "seconds": 2.9970697079988895
+    },
+    {
+      "doc_id": "rf06",
+      "page": 49,
+      "phase": "rest",
+      "p_yes": 0.02182683579947465,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2506,
+      "seconds": 3.542859416003921
+    },
+    {
+      "doc_id": "rf06",
+      "page": 50,
+      "phase": "rest",
+      "p_yes": 0.020676074694537354,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2380,
+      "seconds": 3.431965958996443
+    },
+    {
+      "doc_id": "rf06",
+      "page": 51,
+      "phase": "rest",
+      "p_yes": 0.02648424046074342,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2007,
+      "seconds": 3.144647167006042
+    },
+    {
+      "doc_id": "rf06",
+      "page": 52,
+      "phase": "rest",
+      "p_yes": 0.02139794477419813,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2188,
+      "seconds": 3.293593124995823
+    },
+    {
+      "doc_id": "rf06",
+      "page": 53,
+      "phase": "rest",
+      "p_yes": 0.010313141710668734,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1863,
+      "seconds": 3.002350374998059
+    },
+    {
+      "doc_id": "rf06",
+      "page": 54,
+      "phase": "rest",
+      "p_yes": 0.09364419335445953,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1677,
+      "seconds": 2.871533333993284
+    },
+    {
+      "doc_id": "rf06",
+      "page": 57,
+      "phase": "rest",
+      "p_yes": 0.014650881664505237,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1907,
+      "seconds": 3.3709687500086147
+    },
+    {
+      "doc_id": "rf06",
+      "page": 59,
+      "phase": "rest",
+      "p_yes": 0.05823849454594288,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2243,
+      "seconds": 3.0852557920006802
+    },
+    {
+      "doc_id": "rf06",
+      "page": 60,
+      "phase": "rest",
+      "p_yes": 0.13918251793703182,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1394,
+      "seconds": 1.8232307500002207
+    },
+    {
+      "doc_id": "rf06",
+      "page": 61,
+      "phase": "rest",
+      "p_yes": 0.03946965971544836,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1389,
+      "seconds": 1.812579082994489
+    },
+    {
+      "doc_id": "rf06",
+      "page": 62,
+      "phase": "rest",
+      "p_yes": 0.010836016480275702,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1308,
+      "seconds": 1.9978105409973068
+    },
+    {
+      "doc_id": "rf06",
+      "page": 64,
+      "phase": "rest",
+      "p_yes": 0.014857404819458542,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1964,
+      "seconds": 3.361604832985904
+    },
+    {
+      "doc_id": "rf06",
+      "page": 65,
+      "phase": "rest",
+      "p_yes": 0.11261578820985373,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2388,
+      "seconds": 3.4315515420021256
+    },
+    {
+      "doc_id": "rf06",
+      "page": 66,
+      "phase": "rest",
+      "p_yes": 0.13127614406232152,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2153,
+      "seconds": 3.2681426249910146
+    },
+    {
+      "doc_id": "rf06",
+      "page": 67,
+      "phase": "rest",
+      "p_yes": 0.01896590581935918,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2319,
+      "seconds": 3.6225781250104774
+    },
+    {
+      "doc_id": "rf06",
+      "page": 71,
+      "phase": "rest",
+      "p_yes": 0.06491995587898172,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1558,
+      "seconds": 2.269677000003867
+    },
+    {
+      "doc_id": "rf06",
+      "page": 72,
+      "phase": "rest",
+      "p_yes": 0.06929523226547701,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1838,
+      "seconds": 2.620693625009153
+    },
+    {
+      "doc_id": "rf06",
+      "page": 73,
+      "phase": "rest",
+      "p_yes": 0.021029177638612614,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1594,
+      "seconds": 2.3968640840030275
+    },
+    {
+      "doc_id": "rf06",
+      "page": 75,
+      "phase": "rest",
+      "p_yes": 0.08947861278169972,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1677,
+      "seconds": 2.856781915994361
+    },
+    {
+      "doc_id": "rf06",
+      "page": 76,
+      "phase": "rest",
+      "p_yes": 0.20017302339828347,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1464,
+      "seconds": 2.274146332987584
+    },
+    {
+      "doc_id": "rf06",
+      "page": 77,
+      "phase": "rest",
+      "p_yes": 0.1131575220902397,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1794,
+      "seconds": 2.6131180000083987
+    },
+    {
+      "doc_id": "rf06",
+      "page": 78,
+      "phase": "rest",
+      "p_yes": 0.10240381334753731,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1668,
+      "seconds": 2.5114895419974346
+    },
+    {
+      "doc_id": "rf06",
+      "page": 79,
+      "phase": "rest",
+      "p_yes": 0.027886967388081933,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1623,
+      "seconds": 2.401664790988434
+    },
+    {
+      "doc_id": "rf06",
+      "page": 80,
+      "phase": "rest",
+      "p_yes": 0.07238644783189674,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1632,
+      "seconds": 2.6918864579929505
+    },
+    {
+      "doc_id": "rf06",
+      "page": 81,
+      "phase": "rest",
+      "p_yes": 0.032188168044083705,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1628,
+      "seconds": 2.68084841700329
+    },
+    {
+      "doc_id": "rf06",
+      "page": 83,
+      "phase": "rest",
+      "p_yes": 0.05839774123394073,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2068,
+      "seconds": 3.554083291994175
+    },
+    {
+      "doc_id": "rf06",
+      "page": 85,
+      "phase": "rest",
+      "p_yes": 0.029427359037411446,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2619,
+      "seconds": 4.200278999996954
+    },
+    {
+      "doc_id": "rf06",
+      "page": 86,
+      "phase": "rest",
+      "p_yes": 0.01998993890205102,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2090,
+      "seconds": 3.240471165991039
+    },
+    {
+      "doc_id": "rf06",
+      "page": 87,
+      "phase": "rest",
+      "p_yes": 0.02118579793372635,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2136,
+      "seconds": 3.2417710840090876
+    },
+    {
+      "doc_id": "rf06",
+      "page": 88,
+      "phase": "rest",
+      "p_yes": 0.018188932467676378,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2034,
+      "seconds": 3.312354041991057
+    },
+    {
+      "doc_id": "rf06",
+      "page": 89,
+      "phase": "rest",
+      "p_yes": 0.045185597884242534,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1851,
+      "seconds": 3.2746456249878975
+    },
+    {
+      "doc_id": "rf07",
+      "page": 1,
+      "phase": "rest",
+      "p_yes": 0.04522313199830471,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1864,
+      "seconds": 3.278351457993267
+    },
+    {
+      "doc_id": "rf07",
+      "page": 2,
+      "phase": "rest",
+      "p_yes": 0.04769912346323692,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1824,
+      "seconds": 3.25611695900443
+    },
+    {
+      "doc_id": "rf07",
+      "page": 3,
+      "phase": "rest",
+      "p_yes": 0.10224983862596788,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2434,
+      "seconds": 3.831330666987924
+    },
+    {
+      "doc_id": "rf07",
+      "page": 4,
+      "phase": "rest",
+      "p_yes": 0.06758368263392041,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1926,
+      "seconds": 3.3830257080117008
+    },
+    {
+      "doc_id": "rf07",
+      "page": 5,
+      "phase": "rest",
+      "p_yes": 0.01751874709598489,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2550,
+      "seconds": 3.8529794579953887
+    },
+    {
+      "doc_id": "rf07",
+      "page": 6,
+      "phase": "rest",
+      "p_yes": 0.018492420298396393,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2277,
+      "seconds": 3.623224124996341
+    },
+    {
+      "doc_id": "rf07",
+      "page": 7,
+      "phase": "rest",
+      "p_yes": 0.03833978780178484,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1824,
+      "seconds": 3.28086162499676
+    },
+    {
+      "doc_id": "rf07",
+      "page": 8,
+      "phase": "rest",
+      "p_yes": 0.04178922484435788,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1835,
+      "seconds": 3.280034291994525
+    },
+    {
+      "doc_id": "rf07",
+      "page": 9,
+      "phase": "rest",
+      "p_yes": 0.028507277725734647,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2218,
+      "seconds": 3.6090413329948206
+    },
+    {
+      "doc_id": "rf07",
+      "page": 10,
+      "phase": "rest",
+      "p_yes": 0.022346384266014256,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2415,
+      "seconds": 3.7537504579959204
+    },
+    {
+      "doc_id": "rf07",
+      "page": 11,
+      "phase": "rest",
+      "p_yes": 0.026844574112892945,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2234,
+      "seconds": 3.5636549170012586
+    },
+    {
+      "doc_id": "rf07",
+      "page": 12,
+      "phase": "rest",
+      "p_yes": 0.09310507276017232,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1842,
+      "seconds": 3.2506154580041766
+    },
+    {
+      "doc_id": "rf07",
+      "page": 13,
+      "phase": "rest",
+      "p_yes": 0.01866147530868538,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1999,
+      "seconds": 3.383244291006122
+    },
+    {
+      "doc_id": "rf07",
+      "page": 14,
+      "phase": "rest",
+      "p_yes": 0.21940685248279598,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1930,
+      "seconds": 3.354242792003788
+    },
+    {
+      "doc_id": "rf07",
+      "page": 16,
+      "phase": "rest",
+      "p_yes": 0.072451150872814,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1778,
+      "seconds": 3.0704129579971777
+    },
+    {
+      "doc_id": "rf07",
+      "page": 17,
+      "phase": "rest",
+      "p_yes": 0.012194454689626889,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1782,
+      "seconds": 3.071117792002042
+    },
+    {
+      "doc_id": "rf07",
+      "page": 19,
+      "phase": "rest",
+      "p_yes": 0.10266128056611493,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2113,
+      "seconds": 3.4553281249973224
+    },
+    {
+      "doc_id": "rf07",
+      "page": 20,
+      "phase": "rest",
+      "p_yes": 0.032363018880837514,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1829,
+      "seconds": 3.250306500005536
+    },
+    {
+      "doc_id": "rf07",
+      "page": 21,
+      "phase": "rest",
+      "p_yes": 0.016114537479088885,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1890,
+      "seconds": 3.279255875007948
+    },
+    {
+      "doc_id": "rf07",
+      "page": 23,
+      "phase": "rest",
+      "p_yes": 0.18217071989191624,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2123,
+      "seconds": 3.6362940410035662
+    },
+    {
+      "doc_id": "rf07",
+      "page": 24,
+      "phase": "rest",
+      "p_yes": 0.09900472658402677,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1945,
+      "seconds": 3.4539735419966746
+    },
+    {
+      "doc_id": "rf07",
+      "page": 25,
+      "phase": "rest",
+      "p_yes": 0.07130504590375315,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2246,
+      "seconds": 3.66433645899815
+    },
+    {
+      "doc_id": "rf07",
+      "page": 26,
+      "phase": "rest",
+      "p_yes": 0.47212899964685756,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2031,
+      "seconds": 3.5533851250074804
+    },
+    {
+      "doc_id": "rf07",
+      "page": 27,
+      "phase": "rest",
+      "p_yes": 0.07420659698415918,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2368,
+      "seconds": 3.862415042007342
+    },
+    {
+      "doc_id": "rf07",
+      "page": 28,
+      "phase": "rest",
+      "p_yes": 0.04127813669558753,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1924,
+      "seconds": 3.530317708995426
+    },
+    {
+      "doc_id": "rf07",
+      "page": 29,
+      "phase": "rest",
+      "p_yes": 0.14016815483457587,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2270,
+      "seconds": 3.770109625009354
+    },
+    {
+      "doc_id": "rf07",
+      "page": 31,
+      "phase": "rest",
+      "p_yes": 0.012202245822524722,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1927,
+      "seconds": 3.5402124160027597
+    },
+    {
+      "doc_id": "rf07",
+      "page": 32,
+      "phase": "rest",
+      "p_yes": 0.03996732748744079,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1988,
+      "seconds": 3.5301602909894427
+    },
+    {
+      "doc_id": "rf07",
+      "page": 33,
+      "phase": "rest",
+      "p_yes": 0.05643414703520791,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2202,
+      "seconds": 3.744305957996403
+    },
+    {
+      "doc_id": "rf07",
+      "page": 34,
+      "phase": "rest",
+      "p_yes": 0.05397825388464785,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1975,
+      "seconds": 3.6583492909994675
+    },
+    {
+      "doc_id": "rf07",
+      "page": 35,
+      "phase": "rest",
+      "p_yes": 0.07002819089499884,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2427,
+      "seconds": 3.977384499987238
+    },
+    {
+      "doc_id": "rf07",
+      "page": 36,
+      "phase": "rest",
+      "p_yes": 0.028085349082088644,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1984,
+      "seconds": 3.6305772909981897
+    },
+    {
+      "doc_id": "rf07",
+      "page": 37,
+      "phase": "rest",
+      "p_yes": 0.015238668553623371,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2043,
+      "seconds": 3.6552420420048293
+    },
+    {
+      "doc_id": "rf07",
+      "page": 39,
+      "phase": "rest",
+      "p_yes": 0.12425387005356095,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2188,
+      "seconds": 3.7351381670014234
+    },
+    {
+      "doc_id": "rf07",
+      "page": 40,
+      "phase": "rest",
+      "p_yes": 0.1446367242955314,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2132,
+      "seconds": 3.649547542008804
+    },
+    {
+      "doc_id": "rf07",
+      "page": 41,
+      "phase": "rest",
+      "p_yes": 0.1040423270564197,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2363,
+      "seconds": 3.856583332992159
+    },
+    {
+      "doc_id": "rf07",
+      "page": 42,
+      "phase": "rest",
+      "p_yes": 0.1237927538061997,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2040,
+      "seconds": 3.5533065000054194
+    },
+    {
+      "doc_id": "rf07",
+      "page": 43,
+      "phase": "rest",
+      "p_yes": 0.09154484940306691,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2280,
+      "seconds": 3.7695762499934062
+    },
+    {
+      "doc_id": "rf07",
+      "page": 44,
+      "phase": "rest",
+      "p_yes": 0.15576978130283994,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2033,
+      "seconds": 3.5525372499978403
+    },
+    {
+      "doc_id": "rf07",
+      "page": 45,
+      "phase": "rest",
+      "p_yes": 0.07581814291072173,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2127,
+      "seconds": 3.6520162919914583
+    },
+    {
+      "doc_id": "rf07",
+      "page": 46,
+      "phase": "rest",
+      "p_yes": 0.0778130843293526,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2181,
+      "seconds": 3.735360333987046
+    },
+    {
+      "doc_id": "rf07",
+      "page": 47,
+      "phase": "rest",
+      "p_yes": 0.05640741281879614,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2284,
+      "seconds": 3.7645984580012737
+    },
+    {
+      "doc_id": "rf07",
+      "page": 48,
+      "phase": "rest",
+      "p_yes": 0.02330625676787665,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1973,
+      "seconds": 3.635604291004711
+    },
+    {
+      "doc_id": "rf07",
+      "page": 49,
+      "phase": "rest",
+      "p_yes": 0.023122481646757755,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1977,
+      "seconds": 3.629520958987996
+    },
+    {
+      "doc_id": "rf07",
+      "page": 50,
+      "phase": "rest",
+      "p_yes": 0.03127637191780283,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1923,
+      "seconds": 3.5269574169942643
+    },
+    {
+      "doc_id": "rf07",
+      "page": 53,
+      "phase": "rest",
+      "p_yes": 0.08264902049271171,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2308,
+      "seconds": 3.858272625002428
+    },
+    {
+      "doc_id": "rf07",
+      "page": 54,
+      "phase": "rest",
+      "p_yes": 0.02679870403989431,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1922,
+      "seconds": 3.5323533750051865
+    },
+    {
+      "doc_id": "rf07",
+      "page": 55,
+      "phase": "rest",
+      "p_yes": 0.01108540887813472,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1997,
+      "seconds": 3.552081541987718
+    },
+    {
+      "doc_id": "rf07",
+      "page": 56,
+      "phase": "rest",
+      "p_yes": 0.01779317745547043,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1971,
+      "seconds": 3.6335848340095254
+    },
+    {
+      "doc_id": "rf07",
+      "page": 57,
+      "phase": "rest",
+      "p_yes": 0.017059859875648235,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2151,
+      "seconds": 3.743848208003328
+    },
+    {
+      "doc_id": "rf07",
+      "page": 58,
+      "phase": "rest",
+      "p_yes": 0.2833693596152377,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2038,
+      "seconds": 3.5456748330034316
+    },
+    {
+      "doc_id": "rf07",
+      "page": 60,
+      "phase": "rest",
+      "p_yes": 0.08625682858836461,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1897,
+      "seconds": 3.399756917002378
+    },
+    {
+      "doc_id": "rf07",
+      "page": 63,
+      "phase": "rest",
+      "p_yes": 0.021509829797145996,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1975,
+      "seconds": 3.3936608330113813
+    },
+    {
+      "doc_id": "rf08",
+      "page": 4,
+      "phase": "rest",
+      "p_yes": 0.9484442995417153,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 833,
+      "seconds": 1.0400817079935223
+    },
+    {
+      "doc_id": "rf08",
+      "page": 27,
+      "phase": "rest",
+      "p_yes": 0.028711735323257836,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 812,
+      "seconds": 1.0508373339980608
     }
   ],
   "failures": []
