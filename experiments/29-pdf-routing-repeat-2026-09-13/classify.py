@@ -236,14 +236,17 @@ def _record_error(doc_id: str, exc: Exception, documents: list[dict]) -> dict:
 
 def _gate_decision(evidence: dict, gate: _Gate, unconditional: frozenset[str]) -> bool:
     """Route one document through the production gate under a policy."""
-    from omrs.integrations.pdf import ocr_routing
+    # The gate function moved to ocr_policy (change skip-blank-pages-before-
+    # worker, design decision 2); patching the ocr_routing re-export stopped
+    # working then, because the function reads its own module's constant.
+    from omrs.integrations.pdf import ocr_policy
 
-    original = ocr_routing.OCR_UNCONDITIONAL_TYPES
+    original = ocr_policy.OCR_UNCONDITIONAL_TYPES
     try:
-        ocr_routing.OCR_UNCONDITIONAL_TYPES = unconditional
-        return ocr_routing.ocr_required_by_gate(settings=gate, **evidence)
+        ocr_policy.OCR_UNCONDITIONAL_TYPES = unconditional
+        return ocr_policy.ocr_required_by_gate(settings=gate, **evidence)
     finally:
-        ocr_routing.OCR_UNCONDITIONAL_TYPES = original
+        ocr_policy.OCR_UNCONDITIONAL_TYPES = original
 
 
 def _runtime_manifest(plan: dict, documents: list[dict]) -> dict:

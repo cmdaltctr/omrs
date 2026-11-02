@@ -107,6 +107,14 @@ def ocr_routing_payload(
     # changes which engine reads which page, so its sources must reindex.
     if getattr(settings, "ocr_routing_unit", "document") != "document":
         payload["routing_unit"] = settings.ocr_routing_unit
+        # The blank-test version (skip-blank-pages-before-worker): the
+        # threshold decides which flagged pages emit no document at all,
+        # so a version bump must reindex page-unit sources. Imported at
+        # call time so a test can move the version and see the digest
+        # follow, the same seam as the maths detector version.
+        from ...integrations.pdf.blank_pages import BLANK_PAGE_TEST_VERSION
+
+        payload["blank_page_test"] = BLANK_PAGE_TEST_VERSION
         local_tier: dict[str, Any] = {"min_confidence": settings.ocr_local_min_confidence}
         # The resolved model identity (task 4.2): absent while unresolved,
         # present once the runtime resolves it. The page-unit digest moves

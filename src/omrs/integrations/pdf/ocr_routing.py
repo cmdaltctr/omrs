@@ -44,12 +44,17 @@ from ..ocr_worker.client import OcrWorkerError
 from ..ocr_worker.managed import UNAVAILABLE_CODE
 from ..ocr_worker.protocol import PAGES_PROTOCOL_VERSION, ParseSuccess
 from ..ocr_worker.routes import OcrRoutes, backend_id_of, request_timeout
+from .blank_pages import find_blank_pages
 from .maths_routing import detect_maths_pages, maths_condition, split_page_routes
 from .maths_routing import stamp_maths_count as _stamp_maths
 from .ocr_policy import OCR_UNCONDITIONAL_TYPES
+from .ocr_policy import (
+    ocr_required_by_gate as ocr_required_by_gate,  # re-export (tests import it here)
+)
 from .page_routing import (
     OCR_BACKEND_LOCAL_OCR,
     PAGE_KEYS,
+    PAGE_SOURCE_BLANK,
     PAGE_SOURCE_LOCAL,
     PAGE_SOURCE_NATIVE,
     PAGE_SOURCE_UNRESOLVED,
@@ -251,7 +256,7 @@ class OcrRoutedPdfInspector:
 
         Returns:
             One document per page with text, in page order, each carrying
-            the four page-source counts and the OCR diagnostics. When no
+            the five page-source counts and the OCR diagnostics. When no
             page has text, the wrapped reader's rescued documents, or one
             empty document.
 
@@ -266,9 +271,16 @@ class OcrRoutedPdfInspector:
         evidence = page_evidence(file)
         page_count = len(evidence)
         flagged = {entry.page for entry in evidence if entry.needs_ocr}
+        # Blank pages leave the route before the maths split and before
+        # both OCR tiers (skip-blank-pages-before-worker, design
+        # decision 1): they keep their native text and count blank.
+        blank = find_blank_pages(file, sorted(flagged)) if flagged else frozenset()
+        routed = flagged - blank
         maths_pages = detect_maths_pages(file, self._settings)
         # Maths pages skip the local tier and join the one worker request.
-        direct, local_pages_wanted = split_page_routes(flagged, maths_pages)
+        # A blank maths page left the route above, so it joins neither.
+        active_maths = maths_pages - blank if maths_pages is not None else None
+        direct, local_pages_wanted = split_page_routes(routed, active_maths)
 
         results: list[PageResult] = []
         placed: set[int] = set()
@@ -325,6 +337,13 @@ class OcrRoutedPdfInspector:
                             producer=OCR_BACKEND_LOCAL_OCR if local_text.strip() else None,
                         )
                     )
+            elif entry.page in blank:
+                # The blank test removed this flagged page from the route.
+                # It ran no OCR tier; its native text was empty on every
+                # page the calibration measured, so it emits no document.
+                results.append(
+                    PageResult(page=entry.page, text=entry.markdown, source=PAGE_SOURCE_BLANK)
+                )
             elif entry.page in flagged:
                 # The local tier never ran; native text is all there is.
                 results.append(
@@ -362,6 +381,7 @@ class OcrRoutedPdfInspector:
                     "ocr_pages_native": page_count,
                     "ocr_pages_local": 0,
                     "ocr_pages_worker": 0,
+                    "ocr_pages_blank": 0,
                     "ocr_pages_unresolved": 0,
                 }
             )
@@ -451,50 +471,3 @@ class OcrRoutedPdfInspector:
             )
             return {}, None
         return dict(zip(pages, pages_markdown, strict=True)), backend_id_of(client)
-
-
-def ocr_required_by_gate(
-    *,
-    pdf_type: str,
-    pdf_confidence: float,
-    pages_needing_ocr: int,
-    page_count: int,
-    settings: Any,
-) -> bool:
-    """Decide whether inspection evidence routes a PDF to the OCR worker.
-
-    Reads every threshold from the injected settings object (spec
-    pdf-reader: "Routing threshold is read from injected settings" —
-    this module contains no threshold constant). A ``0.0`` threshold is
-    the packaged "never additionally triggered" sentinel, so at the
-    defaults the decision is classification-only.
-
-    Args:
-        pdf_type: ``pdf-inspector`` classification of the PDF.
-        pdf_confidence: ``pdf-inspector`` classification confidence.
-        pages_needing_ocr: Count of pages the classifier flagged as
-            needing OCR (the scalar evidence, not the page list).
-        page_count: Total page count of the PDF.
-        settings: Injected settings carrying ``ocr_fallback_min_confidence``
-            and ``ocr_fallback_page_fraction``.
-
-    Returns:
-        True when the PDF is OCR-required under the injected gate.
-    """
-    if pdf_type in OCR_UNCONDITIONAL_TYPES:
-        return True
-    min_confidence = settings.ocr_fallback_min_confidence
-    # 0.0 is the disabled sentinel: a confidence can never be negative,
-    # so a bare `confidence < 0.0` comparison would never fire anyway,
-    # but the explicit guard keeps the sentinel semantics readable and
-    # protects a future negative-confidence classifier from routing
-    # every document at the packaged default.
-    if min_confidence > 0.0 and pdf_confidence < min_confidence:
-        return True
-    fraction = settings.ocr_fallback_page_fraction
-    # 0.0 is the disabled sentinel: `0/1 >= 0.0` is always true, so a
-    # bare comparison would route every text-based PDF at the packaged
-    # default — the opposite of classification-only routing.
-    if fraction > 0.0 and page_count > 0 and (pages_needing_ocr / page_count) >= fraction:
-        return True
-    return False
