@@ -82,10 +82,14 @@ Whole corpus, flagged pages only (701):
 
 | Group | Pages | Below 1.5e-4 (skipped) |
 |---|---|---|
-| Content: 3 or more reference characters, or illegible | 632 | 0 |
+| Content: 3 or more reference characters, or illegible | 633 | 0 |
 | Page number only: 1 or 2 reference characters | 16 | 8 |
 | Empty reference, `no_text` | 52 | 29 |
-| The 4 `rf06` blanks from the handoff | 4 | 4 |
+| Of which, the 4 `rf06` blanks from the handoff (subset of the row above) | 4 | 4 |
+
+The three groups total 701. Recounted 2026-11-02 from the frozen
+references during the PR review: 633 + 16 + 52; the table first published
+632 for the content group, one short.
 
 None of the 422 unflagged pages scores below the threshold either. The 23 empty pages that stay above it (mostly `rf07` sheets with show-through and specks) go to OCR as today.
 
