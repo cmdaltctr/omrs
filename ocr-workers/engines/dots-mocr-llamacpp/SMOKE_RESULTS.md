@@ -36,6 +36,28 @@ Change `dots-mocr-llamacpp-backend`, design D9, tasks 3.1 to 3.7. Run on 2026-11
 - **F3: Linux and CUDA.** The engine pins a macOS arm64 build and an Ubuntu x64 CPU build of b11941. A CUDA build of b11941 is not pinned, so the engine on a CUDA machine would use the CPU build or an external server. The parity result was measured on Metal. An external server (`OCR_RUNTIME_URL`) with a CUDA build of b11941 avoids a code change, but OMRS cannot check the model files on it. Run `parity_check.py` on that machine first.
 - **F4: the parity page texts stay local.** `smoke_evidence/parity-pages/` is ignored, because the pages come from the corpora.
 
+## Other runtimes: Ollama and MLX (checked 2026-11-02, not part of the pass rules)
+
+Question: does this engine give the same text on a runtime other than llama.cpp? The engine ran unchanged against each runtime. It sends no `model` field, so a scratch proxy that only adds that field stood in front of each server. No engine code was changed.
+
+| Runtime | Model | Runs the engine? | Identical to llama.cpp, 10 pages | Lowest Dice | Median Dice |
+| --- | --- | --- | --- | ---: | ---: |
+| llama.cpp b11941 | pinned Q8_0 plus bf16 projector | yes, unchanged | all pages (22 of 22 in the parity check) | 1.000 | 1.000 |
+| Ollama 0.40.13 | the same two pinned files, built with a two-line Modelfile | only with a `model` field | 7 of 10 | 0.767 | 1.000 |
+| mlx-vlm 0.7.11 | `mlx-community/dots.mocr-8bit` | only with a `model` field | 3 of 10 | 0.901 | 0.994 |
+
+Both runtimes fail the rule that llama.cpp passed (every page Dice 0.99 or more, and at least 8 of 10 pages identical).
+
+- **Pages:** 10 pages from 8 documents (`eq01`, `io01` twice, `io02`, `io04`, `io07` twice, `mp05`, `rf06`, `rf07`).
+- **Ollama differences:** real wording changes on three pages (one handwritten Spanish page, one handwritten Spanish record, one Arabic page with added page markers). The other seven pages are identical. An earlier four-page run used a community conversion (`richardyoung/dots.mocr:Q8_0`). It gave byte-identical output to our own two files, so the differences come from Ollama, not from the conversion.
+- **MLX differences:** some are format only (`\mathbf{}` dropped in formulas, a missing space before a danda, spaces inside LaTeX). Others are real wording errors on a Bengali page, an Arabic page and the two handwritten pages. MLX output equals Experiment 41's MLX 8-bit output on the pages checked.
+- **Speed and memory:** Ollama 13 to 47 s per page, 6.5 GB with the model loaded. MLX 9 to 28 s per page, 8.4 GB peak.
+- **Read this as:** both can run the engine after a one-line change (send a `model` name, which `llama-server` ignores). Neither gives llama.cpp's text. llama.cpp is the only runtime with a parity record. Ollama and MLX need their own 22-page parity run before anyone relies on them, and an Ollama or MLX index needs its own fingerprint value.
+- **Limit:** MLX is not an allowed runtime for experiments (ADR-103). It was run here as a comparison only.
+- **Where this goes next:** the ADR written after the cut-over (task 4.4) records it. The scratch proxy and driver scripts are not kept.
+
 ## Operator confirmation of cut-over (task 3.7)
 
 Not given yet. Date and confirmation go here.
+
+Status on 2026-11-02: held. The operator decided that 3.7 is not conclusive while issue #161 is open (task 3.4 is unticked for the same reason). Run the cut-over decision again after the routing work is tested: page-mode test on `rf06` (10-page extract: page 29 found, 4 of 10 pages unresolved, cause unknown), then the judge router. Group 4 has not started.
