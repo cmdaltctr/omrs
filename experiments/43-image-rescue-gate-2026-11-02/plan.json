@@ -99,7 +99,7 @@
   },
   "thresholds": {
     "clef_image": {"value": 0.17220524482651753, "status": "fitted 2026-11-02 by analysis.py --fit clef_image on 561 fit pages (11 flag); frozen before phase rest (amendment A1)", "input_sha256": "5721f983e20ed1bb95df784af3b49f8dc3a36d3120bc234621d3878aebe5b9cd"},
-    "jev_image": {"value": null, "status": "to be fitted after phase fit, before phase rest"}
+    "jev_image": {"value": 0.21, "status": "fitted 2026-11-02 by analysis.py --fit jev_image on 561 fit pages (11 flag); frozen before phase rest (amendment A3)", "input_sha256": "8cc9e7c8048dd17f15b0a40937552d6418ea8f54923fa5b1927c3b4be3bf045f"}
   },
   "routing_rules": {
     "ten_percent": "a document routes when it routed before (prior route) or when its flagged pages reach 10% of its page count (the current production fraction; Experiment 38 routing_simulation)",
@@ -216,6 +216,12 @@
       "date": "2026-11-02",
       "change": "the 10-failure stop counts pages that still have no score. A page whose request fails after 2 retries is logged in failures and retried on the next --resume run (again with 2 retries). Failure events and pages left without a score are both reported.",
       "reason": "during the hosted fit phase TypeSafe returned transient HTTP 503 'Image processing is unavailable' and HTTP 529 'system_overloaded' on about 3% of requests. These pages can be scored on a resume; counting each event would stop the run with no missing data. The scores themselves, the question, the threshold rule and the pass rule do not change."
+    },
+    {
+      "id": "A3",
+      "date": "2026-11-02",
+      "change": "thresholds.jev_image.value set to 0.21, fitted by the pre-registered D2 rule on the 561 hosted fit-phase scores (output/scores_jev_image.json, SHA-256 8cc9e7c8...). No junk page and no rf06 or rf07 page had been sent to TypeSafe for scoring. Every fit page returned model id jev-1.14.0.",
+      "reason": "the plan registers the threshold rule; the value can only exist after phase fit"
     }
   ]
 }

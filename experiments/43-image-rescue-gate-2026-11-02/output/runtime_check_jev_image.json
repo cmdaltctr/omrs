@@ -1,0 +1,24 @@
+{
+  "utc": "2026-11-02T15:39:04+00:00",
+  "arm": "jev_image",
+  "R4_smoke": {
+    "page": "bd01 p2",
+    "right": {
+      "p_yes": 0.39,
+      "model": "jev-1.14.0",
+      "input_tokens": 5621,
+      "output_tokens": 22,
+      "seconds": 1.0296873330080416
+    },
+    "wrong": {
+      "p_yes": 0.01,
+      "model": "jev-1.14.0",
+      "input_tokens": 5716,
+      "output_tokens": 22,
+      "seconds": 1.066231874996447
+    },
+    "margin": 0.2,
+    "pass": true
+  },
+  "passed": true
+}
