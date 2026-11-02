@@ -87,7 +87,7 @@ Start this group only after group 2b is done.
     - the JSON is in `smoke_evidence/`.
 - [ ] 3.4 Ingest `eq01`, `io06` and `rf06` into a scratch collection with the CLI, using scratch `LANCEDB_URI` and `OMRS_CONFIG_DIR` and never `~/.omrs`.
   - Verify: search finds a known phrase from an OCR page of each PDF, and KaTeX 0.16.22 renders every formula on the `eq01` pages.
-  - Result 2026-11-02, NOT ticked: `eq01` and `io06` pass (OCR through dots-mocr-llamacpp, phrase found, 304 formulas, 0 KaTeX errors). `rf06` is not sent to OCR by the default gate, because its text layer is accepted (see `SMOKE_RESULTS.md`, F1), so no OCR page of `rf06` is searchable. Needs an operator decision.
+  - Result 2026-11-02, NOT ticked: `eq01` and `io06` pass (OCR through dots-mocr-llamacpp, phrase found, 304 formulas, 0 KaTeX errors). `rf06` is not sent to OCR by the default gate, because its text layer is accepted (see `SMOKE_RESULTS.md`, F1; issue #161), so no OCR page of `rf06` is searchable. Operator decision 2026-11-02: stays unticked until the routing fix is tested by change `image-based-rescue-gate` (Experiment 43).
 - [x] 3.5 Start a scratch web preview with `ocr_engine_primary = "dots-mocr-llamacpp"` and open the Integrations page in Orca.
   - Verify: the engine row shows ready at 1,280 px and at 390 px, with screenshots in `smoke_evidence/`.
 - [x] 3.6 Check for a clean exit: stop the CLI run and then the preview server.
