@@ -98,7 +98,7 @@
     "limit": "the fit documents are the test documents. The result shows whether the idea works; it does not show that it generalises."
   },
   "thresholds": {
-    "clef_image": {"value": null, "status": "to be fitted after phase fit, before phase rest"},
+    "clef_image": {"value": 0.17220524482651753, "status": "fitted 2026-11-02 by analysis.py --fit clef_image on 561 fit pages (11 flag); frozen before phase rest (amendment A1)", "input_sha256": "5721f983e20ed1bb95df784af3b49f8dc3a36d3120bc234621d3878aebe5b9cd"},
     "jev_image": {"value": null, "status": "to be fitted after phase fit, before phase rest"}
   },
   "routing_rules": {
@@ -204,5 +204,12 @@
       {"item_score": "p_yes", "max_abs_change": 0.02}
     ]
   },
-  "amendments": []
+  "amendments": [
+    {
+      "id": "A1",
+      "date": "2026-11-02",
+      "change": "thresholds.clef_image.value set to 0.17220524482651753, fitted by the pre-registered D2 rule on the 561 local fit-phase scores (output/scores_clef_image.json, SHA-256 5721f983...). No junk page and no rf06 or rf07 page had been scored by this arm.",
+      "reason": "the plan registers the threshold rule; the value can only exist after phase fit"
+    }
+  ]
 }

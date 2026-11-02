@@ -16,7 +16,7 @@ Run in a sibling worktree `omrs-feat-image-based-rescue-gate` from `v3`. Large f
 
 ## 3. Score and decide
 
-- [ ] 3.1 Fit the threshold on the healthy pages (D2) and commit it. Verify: the value is in `plan.json` before any junk page is scored.
+- [x] 3.1 Fit the threshold on the healthy pages (D2) and commit it. Verify: the value is in `plan.json` before any junk page is scored.
 - [ ] 3.2 Write the scoring script (image plus text head, one request at a time, checkpoints, atomic writes) and a test with a fake server. Verify: the test checks that the request holds the image and the text head, and fails when either is missing.
 - [ ] 3.3 Score all pages with the treatment, and the word check on the same pages. Verify: every page has a score, failed requests are counted, and a resumed run does not rescore.
 - [ ] 3.4 Write `analysis.py`: junk caught, healthy flagged, routed documents at the 10% and one-page rules, OCR cost. Verify: a small fixed table gives known values, and a broken rule fails a test.
