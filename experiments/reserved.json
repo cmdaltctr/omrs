@@ -1,15 +1,1 @@
-{
-  "format": "omrs-experiment-reservations/1",
-  "reservations": [
-    {
-      "number": "40",
-      "reason": "Page versus document OCR routing on mixed PDFs, on the dots.mocr system",
-      "ref": "NiftyPM task AIE-101"
-    },
-    {
-      "number": "43",
-      "reason": "Image-based check on rescued PDF text, two-stage study (issue #161)",
-      "ref": "OpenSpec change image-based-rescue-gate"
-    }
-  ]
-}
+{"format":"omrs-experiment-reservations/1","reservations":[{"number":"40","reason":"Page versus document OCR routing on mixed PDFs, on the dots.mocr system","ref":"NiftyPM task AIE-101"}]}

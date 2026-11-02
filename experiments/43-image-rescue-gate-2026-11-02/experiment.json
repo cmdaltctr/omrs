@@ -1,0 +1,17 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "43",
+  "title": "Image-based check on rescued PDF text",
+  "date": "2026-11-02",
+  "category": "ingestion",
+  "size": "Standard",
+  "status": "PLANNED",
+  "superseded_by": null,
+  "finding": "",
+  "purpose": "optimisation",
+  "refs": {
+    "adrs": ["ADR-066", "ADR-074", "ADR-103"],
+    "changes": ["image-based-rescue-gate"],
+    "tasks": []
+  }
+}

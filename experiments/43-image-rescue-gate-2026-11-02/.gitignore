@@ -1,0 +1,7 @@
+# Page images, page text and logs stay local (never commit page images).
+output/.renders/
+output/.rescue_text/
+output/.logs/
+output/*.log
+output/*.tmp
+analysis.ipynb

@@ -4,9 +4,9 @@ Run in a sibling worktree `omrs-feat-image-based-rescue-gate` from `v3`. Large f
 
 ## 1. Plan
 
-- [ ] 1.1 Scaffold `experiments/43-image-rescue-gate-2026-11-02/` with `protocol.md`, `plan.json` (PLANNED) and `experiment.json`. Verify: `omrs experiments check` passes, and the commit precedes any `output/` file.
-- [ ] 1.2 Write the question, text head (2,000 characters), image settings (150 DPI, 1,568 px), pass rule and D2 threshold rule into `plan.json`. Verify: the commit precedes task 3.1.
-- [ ] 1.3 Operator records the approval to send page images to TypeSafe, naming the documents (it includes `rf06` and `rf07`). Verify: a dated entry exists in `plan.json` before task 3.5 starts.
+- [x] 1.1 Scaffold `experiments/43-image-rescue-gate-2026-11-02/` with `protocol.md`, `plan.json` (PLANNED) and `experiment.json`. Verify: `omrs experiments check` passes, and the commit precedes any `output/` file.
+- [x] 1.2 Write the question, text head (2,000 characters), image settings (150 DPI, 1,568 px), pass rule and D2 threshold rule into `plan.json`. Verify: the commit precedes task 3.1.
+- [x] 1.3 Operator records the approval to send page images to TypeSafe, naming the documents (it includes `rf06` and `rf07`). Verify: a dated entry exists in `plan.json` before task 3.5 starts.
 
 ## 2. Runtime and inputs
 
