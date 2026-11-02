@@ -408,11 +408,16 @@ def log_route_plan(settings: Any) -> None:
     """
     if not getattr(settings, "ocr_fallback_enabled", False):
         return
+    workers_dir = str(getattr(settings, "ocr_workers_dir", "") or "")
     names = engine_names(settings)
     words = []
     for index, name in enumerate(names + ("",) * (2 - len(names))):
+        # The engine folder alone answers this. ``resolve_route_command`` also asks for the
+        # runtime manager, which this line does not have, and would call the route unavailable.
         state = (
-            "provisioned" if resolve_route_command(name, settings).command else "not provisioned"
+            "provisioned"
+            if resolve_engine_command(name, workers_dir).command
+            else "not provisioned"
         )
         words.append(f"{route_role(index)}={name or '-'} [{state}]")
     summary = "OCR routes: " + ", ".join(words)

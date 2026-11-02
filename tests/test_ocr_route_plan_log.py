@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from tests.fixtures.ocr_worker.runtime_engine import make_engine
 
 from omrs.integrations.ocr_worker.routes import log_route_plan, reset_route_log
 
@@ -48,6 +49,32 @@ def test_the_line_names_both_engines_once_without_starting_a_worker(
     assert _lines(caplog) == [
         "OCR routes: primary=dots-mocr [not provisioned], fallback=paddleocr-vl [provisioned]"
     ]
+
+
+def test_an_engine_with_a_runtime_is_provisioned_and_the_line_raises_no_manager_warning(
+    tmp_path: Path,
+    effective_settings: Any,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The start-up line has no runtime manager; it must not call the route unavailable."""
+    for name in ("OMRS_OCR_MODEL_CACHE", "OMRS_OCR_RUNTIME_URL"):
+        monkeypatch.delenv(name, raising=False)
+    make_engine(tmp_path, "llama-engine")
+    settings = effective_settings(
+        ocr_fallback_enabled=True,
+        ocr_workers_dir=str(tmp_path),
+        ocr_engine_primary="llama-engine",
+        ocr_engine_fallback="",
+    )
+
+    with caplog.at_level(logging.INFO, logger=LOGGER):
+        log_route_plan(settings)
+
+    assert _lines(caplog) == [
+        "OCR routes: primary=llama-engine [provisioned], fallback=- [not provisioned]"
+    ]
+    assert not [r for r in caplog.records if "no runtime manager" in r.getMessage()]
 
 
 def test_no_workers_folder_says_so(
