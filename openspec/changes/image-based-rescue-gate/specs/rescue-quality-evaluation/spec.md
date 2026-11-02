@@ -104,6 +104,33 @@ A hosted candidate that receives page images SHALL need the operator's approval 
 - **THEN** they go to a gitignored folder
 - **AND** no render is committed
 
+### Requirement: A hosted model arm SHALL be a pinned, separately reported control
+
+A hosted model arm SHALL pin a versioned model id in `plan.json`, record the returned id for every page, and stop when it changes. It SHALL read its key only from the environment and never write it out. It SHALL send only pages of operator-approved documents. It SHALL be reported as a separate control and SHALL NOT change the verdict.
+
+#### Scenario: Returned model id changes mid-run
+
+- **WHEN** a hosted response names a model id that differs from the pinned id in `plan.json`
+- **THEN** the run stops before it scores more pages
+- **AND** the pages already scored keep their recorded model id, and the report names the new id
+
+#### Scenario: API key handling
+
+- **WHEN** the hosted arm runs or a request fails
+- **THEN** the key comes from the environment only
+- **AND** no output file, log line or error message holds the key
+
+#### Scenario: Page from a document not approved
+
+- **WHEN** a page belongs to a document that is not on the approved list in `plan.json`
+- **THEN** the hosted arm does not send it
+
+#### Scenario: Hosted control beats the local candidate
+
+- **WHEN** the hosted arm passes the gates and the local candidate fails them
+- **THEN** the verdict is still FAIL
+- **AND** the report shows the hosted result only in its control table
+
 ### Requirement: Results SHALL be reported at page level and at document level
 
 The report SHALL state, for each arm, the junk pages caught and the healthy pages flagged, and the documents that would route to OCR at the 10% page share and at one or more flagged pages. It SHALL name each usable document that a rule would route, with the pages of OCR that this would cost. The report SHALL NOT recommend a routing unit; that choice belongs to the page versus document routing experiment.

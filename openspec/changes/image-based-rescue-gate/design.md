@@ -23,7 +23,7 @@
 
 - Changing TDR-024, the reader chain, the `0.5` and `0.10` thresholds or any default.
 - Choosing page or document routing (Experiment 40).
-- Hosted Clef-Flash, Jev images, or other models.
+- Hosted Clef-Flash, or other models. Hosted Jev with images runs only as a control arm (D10). It is not a candidate for adoption.
 - Running the production integration: where the check runs, caching, index identity, the managed runtime entry. A PASS opens that change.
 - Fixing the CUDA build gap for Experiment 35a.
 
@@ -43,6 +43,9 @@ Alternative: ask "is this text readable?" with an image added. Rejected, because
 | Comparator | Experiment 38 word check (candidate A), code unchanged | below its frozen threshold |
 | Reference row | Experiment 42 text-only Clef-flash scores | reported from `summary.json`, not rerun |
 | Treatment | Clef-Flash Q8_0 plus `mmproj`, image and text, wording from D1 | `P(yes)` below a threshold frozen after Stage 1 |
+| Hosted control | TypeSafe Jev `jev-1.14.0` with images (D10), same page render, same text head and same wording as the Treatment, operator-approved documents only | `P(yes)` below its own threshold, fitted by the same rule on Stage 1 approved pages and frozen with the Treatment amendment before Stage 2 |
+
+The hosted control is a post-verdict control. It shows how far a hosted image model gets on the same input. It does not set the verdict, it does not choose the wording, and it is not a candidate for adoption, because production stays local-first. The report gives it a separate table.
 
 Why no text-only rerun: Experiment 42 already measured it on 68 documents with a frozen threshold. A rerun would repeat a known FAIL.
 
@@ -55,7 +58,7 @@ Alternative: one stage on all documents. Rejected, because fitting and testing o
 
 ### D4. Render settings
 
-The page renders as PNG from the PDF, with the long side and the DPI fixed in `plan.json` after a short Stage 1 trial. Start from these values: 150 DPI, long side at most 1,600 px. The hosted API limits (4 MiB, 16 MP per image) show the order of size the model was built for. The llama.cpp flags `--image-min-tokens` and `--image-max-tokens` follow the dots.mocr values already in use (`4` and `14400`) if the Clef projector accepts them, otherwise the defaults. Task 1 checks both. Context size and `-b/-ub` follow Experiment 42 decision A5 (`8192`), with the large-input bug from llama.cpp issue #30073 in mind.
+The page renders as PNG from the PDF, with the long side and the DPI fixed in `plan.json` after a short Stage 1 trial. Start from these values: 150 DPI, long side at most 1,568 px. The TypeSafe image limits (D10) allow 280 to 1,568 px on each side, so one render at most 1,568 px serves the Treatment and the hosted control. The final long side SHALL stay at most 1,568 px for that reason. The llama.cpp flags `--image-min-tokens` and `--image-max-tokens` follow the dots.mocr values already in use (`4` and `14400`) if the Clef projector accepts them, otherwise the defaults. Task 1 checks both. Context size and `-b/-ub` follow Experiment 42 decision A5 (`8192`), with the large-input bug from llama.cpp issue #30073 in mind.
 
 ### D5. Labels
 
@@ -82,7 +85,29 @@ For the follow-up change, not for this one: the check would run inside the reade
 1. **Gate priority.** Gates G1 and G2 primary and G3 secondary, as in Experiment 42, or all three primary as in Experiment 38. Recommended: G1 and G2 primary. G3 reads one false flag as a failure, but under the page unit a false flag costs one page.
 2. **Stage 2 documents.** Approval to download new open-licence PDFs (size to be stated in `protocol.md`).
 3. **Second reference.** Confirm dots.mocr as the second transcriber for handwritten and ambiguous pages.
-4. **Hosted run.** Not planned. Page images of `rf06` hold named-person records. A hosted run needs a separate approval and is not part of this change.
+4. **Hosted Jev image arm.** Approve the hosted control (D10) and name the documents whose page images may leave the machine. The default is open-licence documents only. `rf06` and `rf07` stay excluded unless the operator names them.
+
+### D10. Hosted Jev image control
+
+**API facts.** Read from docs.typesafe.ai on 2026-11-02 (`images.md`, `models.md`, `api/system-one.md`, `legal.md`). Each fact is recorded again in `plan.json` before the run.
+
+- **Model.** "Jev 1.13 and Jev 1.14 both accept images." The arm sends the versioned id `jev-1.14.0`, which `jev-latest` points to today. The models table lists the input of both as "Text", so the image path rests on the images page alone. The smoke test proves it.
+- **Status.** "Images and Box questions aren't yet up to our standards to call ready for production." The docs also say the format, answers and limits "can change between releases".
+- **Opt-in.** "send the `TypeSafe-Danger-Zone-Images: true` header with each request that contains an image".
+- **How images go.** "Each image is listed once, in the request's top-level `assets` map." The asset is `{"type": "image", "format": "png", "data_base64": ...}`, with "no `data:` prefix". A multipart upload is the other way. Image URLs: not stated.
+- **Limits.** "PNG or JPEG, still images only." "16 MiB per image file." "280 to 1568 pixels each." Request body "32 MiB". Image count per request: not stated as a number; it "depends on these limits and on the context length" (64k per request, 32k per question).
+- **Answer.** "A Noul answer is a single number representing the probability that the answer is yes". "Each response's `model` field gives the versioned ID that answered".
+- **Price.** "\$42 / \$0.042" per Btok / per Mtok of input. "There is no separate charge for images." Tokens per image: not stated. Stage 1 measures it from `usage.input_tokens`.
+- **Rate limits.** "Rate limits are set per organization." A request over a limit "returns `429 Too Many Requests`". Numbers: not stated in the docs.
+- **Data retention.** The legal page links a Data Processing Agreement and a Privacy Policy, with a "commitment not to train models on user data". Zero data retention is offered "for enterprise customers". The retention period: not stated in the docs read.
+
+**Request shape.** One request per page, to `POST https://api.typesafe.ai/v1/systemone`, with `Authorization: Bearer <key>` and `TypeSafe-Danger-Zone-Images: true`. The body holds `"model": "jev-1.14.0"`, a `state` with the page image reference and the 2,000-character text head, an `assets` map with one base64 PNG, and one `noul` question with the frozen wording. The PNG is the same file the Treatment reads.
+
+**Pinning and drift.** The script records the returned `model` for every page. It stops when any page returns a model id other than `jev-1.14.0`. It reuses the pattern of `experiments/38-rescue-quality-signal-2026-09-30/jev_hosted.py`: the key comes from `TYPESAFE_API_KEY` only and is never written to output, logs or error text; errors report the HTTP status only, because a body can echo page text; HTTP 429, 500, 502, 503, 504 and 529 retry with exponential backoff (and `retry-after` when sent); a stop on model change keeps finished pages and names the new id.
+
+**Privacy cost.** Page images leave the machine with this arm. `rf06` and `rf07` hold named-person records. The arm runs only on documents the operator approves by name in a dated `plan.json` amendment. The default list is open-licence documents only. `rf06` and `rf07` are excluded unless the operator names them. The script refuses any page whose document is not on the list. Responses go to gitignored `output/`.
+
+Alternative: leave the hosted model out, as first planned. Rejected by the operator, who holds a TypeSafe key and wants a hosted reference beside the local result.
 
 ## Risks / Trade-offs
 
@@ -93,6 +118,10 @@ For the follow-up change, not for this one: the check would run inside the reade
 - **Memory.** Clef-Flash (about 10 GB) and dots.mocr (about 7 to 17 GB) must not run at the same time on this Mac → run the label step and the scoring step in sequence.
 - **Overfit to handwriting.** A small handwritten set can pass by luck → Stage 2 has a minimum number of handwritten documents, and the report gives intervals, not only point rates.
 - **Experiment 40 may change the unit.** → D6 reports both units, so the result stays usable.
+- **The hosted model can change without notice.** Image support is marked not ready for production, and an alias can move → pin `jev-1.14.0`, record the returned id per page, and stop on a change (D10).
+- **Hosted cost.** Tokens per image are not stated → measure `usage.input_tokens` on the Stage 1 approved pages, state the cost of Stage 2 in `plan.json` before the run, and stop if it exceeds that figure.
+- **Rate limits.** Limits are per organisation and not stated in the docs → one request at a time, backoff on 429, and resume from checkpoints.
+- **Fewer pages in the hosted arm.** Approval by name can leave out the personal-record documents → the report states the page and document counts of the hosted arm and compares arms only on shared pages.
 
 ## Migration Plan
 
