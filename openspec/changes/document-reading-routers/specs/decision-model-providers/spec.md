@@ -6,7 +6,7 @@ Let the operator name decision models that answer yes/no questions about documen
 
 ### Requirement: Decision models are named entries of a registered kind
 
-The system SHALL hold zero or more named decision model entries. Each entry SHALL have a kind, an address, a model name and an "accepts images" flag. Each kind SHALL come from a decision model registry, so a new kind is one file plus one `register()` line. This change SHALL register `llamacpp` and `typesafe`.
+The system SHALL hold zero or more named decision model entries. Each entry SHALL have a kind, an address, a model name and an "accepts images" flag. Each kind SHALL come from a decision model registry, so a new kind is one file plus one `register()` line. This change SHALL register `llamacpp`, `typesafe`, `cloudflare` and `ollama`.
 
 #### Scenario: Two entries
 
@@ -97,3 +97,19 @@ The Providers card SHALL offer Test for each entry. Test SHALL run the quantisat
 
 - **WHEN** the Providers page loads
 - **THEN** no request SHALL go to any decision model
+
+### Requirement: A kind without a recorded live request is labelled
+
+A kind SHALL be labelled "Not yet tested" in Settings until one live request of that kind has passed the smoke test and been recorded. An entry of such a kind SHALL still be usable. A hosted kind SHALL still need the router opt-in.
+
+#### Scenario: Cloudflare entry before its live check
+
+- **GIVEN** an entry of kind `cloudflare` and no recorded live request
+- **WHEN** the Providers page loads
+- **THEN** the entry SHALL show "Not yet tested"
+- **AND** a router that uses it SHALL still need the "send pages off this machine" tick
+
+#### Scenario: Label removed after the live check
+
+- **WHEN** a live request of kind `ollama` passes the smoke test and the result is recorded
+- **THEN** the "Not yet tested" label SHALL no longer show for kind `ollama`

@@ -9,7 +9,7 @@ Code tasks are tests first: write the test, run it, confirm it fails, then chang
 
 ## 2. Decision model providers
 
-- [ ] 2.1 Tests first: `core/providers/decision/registry.py` with `llamacpp` and `typesafe` adapters: request shape (`noul`, options `no` and `yes`), image list for llama.cpp, `assets` plus `TypeSafe-Danger-Zone-Images: true` only for hosted image requests, P(yes) bounds, malformed reply gives a fixed reason with no body in logs. `compose_decision.py` resolves key references. Add the contract entry in import-linter. Verify: `uv run pytest tests -k "decision_model" -q` passes; `lint-imports` passes.
+- [ ] 2.1 Tests first: `core/providers/decision/registry.py` with `llamacpp`, `typesafe`, `cloudflare` and `ollama` adapters (the last two against fake servers only): request shape (`noul`, options `no` and `yes`), image list for llama.cpp, `assets` plus `TypeSafe-Danger-Zone-Images: true` only for hosted image requests, P(yes) bounds, malformed reply gives a fixed reason with no body in logs. `compose_decision.py` resolves key references. Add the contract entry in import-linter. Verify: `uv run pytest tests -k "decision_model" -q` passes; `lint-imports` passes.
 - [ ] 2.2 Tests first: GGUF header quantisation check on small fixture headers (Q8_0, F16 pass; Q4_K_M refused with the rule text); external model-name check; "Quantisation not checked" when unknown. Verify: a mutation that accepts Q4_K_M fails a test.
 - [ ] 2.3 Tests first: the projector smoke test against a fake server (right text high, wrong text low passes; equal answers fail with `projector-not-loaded`); set the margin constant from the Experiment 43 smoke results with a version. Verify: the tests pass; the bundled fixture image is under 50 KB and holds no personal data.
 - [ ] 2.4 Tests first: a managed decision runtime: role `decision`, id `decision-<name>`, model and projector files with SHA-256, build floor refusal `wrong-build`, `127.0.0.1`, one slot (`integrations/llamacpp_runtime/spec.py`, `compose_runtimes.py`). Verify: `uv run pytest tests -k "llamacpp_runtime or runtimes" -q` passes; `GET /v1/runtimes` lists the role in a route test.
@@ -45,6 +45,8 @@ Code tasks are tests first: write the test, run it, confirm it fails, then chang
 - [ ] 7.2 Run `openspec validate document-reading-routers --strict` and `openspec validate --all --strict`. Verify: both pass.
 
 ## Workflow follow-up
+
+- Later, by the operator (not part of this change's task list): run one live request for each of the `cloudflare` and `ollama` kinds with the smoke test (right text against wrong text), record the result, and remove the "Not yet tested" label. For `ollama`, first build the model from the pinned Clef-Flash Q8_0 and projector files with a two-line Modelfile. For `cloudflare`, read the Workers AI data retention terms before sending any page, and re-read the request shape from the current docs.
 
 - Branch `feat/document-reading-routers` from `v3` in a sibling worktree. Open a pull request into `v3`. Do not merge.
 - Watch CI to the end, fix failures, and answer every review thread.
