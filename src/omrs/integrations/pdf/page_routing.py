@@ -26,10 +26,13 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-#: Page sources, in tier order. ``unresolved`` means no tier produced text.
+#: Page sources, in tier order. ``blank`` names a page the blank test
+#: removed from the route before any OCR tier; ``unresolved`` means no
+#: tier produced text.
 PAGE_SOURCE_NATIVE = "native"
 PAGE_SOURCE_LOCAL = "local"
 PAGE_SOURCE_WORKER = "worker"
+PAGE_SOURCE_BLANK = "blank"
 PAGE_SOURCE_UNRESOLVED = "unresolved"
 
 #: ``ocr_backend`` values. The first and third are the document unit's own
@@ -53,11 +56,14 @@ _SOURCE_BACKENDS = {
     PAGE_SOURCE_WORKER: OCR_BACKEND_WORKER_PATH,
 }
 
-#: Page source -> its metadata count key. The four sum to ``page_count``.
+#: Page source -> its metadata count key. The five sum to ``page_count``.
+#: ``blank`` sits between the tiers and ``unresolved``: a blank page ran
+#: no engine, and it is not a failure.
 _COUNT_KEYS = {
     PAGE_SOURCE_NATIVE: "ocr_pages_native",
     PAGE_SOURCE_LOCAL: "ocr_pages_local",
     PAGE_SOURCE_WORKER: "ocr_pages_worker",
+    PAGE_SOURCE_BLANK: "ocr_pages_blank",
     PAGE_SOURCE_UNRESOLVED: "ocr_pages_unresolved",
 }
 
@@ -349,7 +355,7 @@ class MergedDocument:
 
     Attributes:
         text: Page texts in page order, separated by a blank line.
-        counts: The four page-source counts, summing to the page count.
+        counts: The five page-source counts, summing to the page count.
         ocr_backend: The one backend that produced the text, or ``mixed``.
         ocr_used: Whether OCR produced the text of at least one page.
     """
@@ -374,7 +380,7 @@ def merge_pages(pages: list[PageResult], *, page_count: int) -> MergedDocument:
             reported.
 
     Returns:
-        The merged text, the four page-source counts, and the diagnostics
+        The merged text, the five page-source counts, and the diagnostics
         that describe them.
     """
     ordered = sorted(pages, key=lambda result: result.page)
@@ -383,7 +389,7 @@ def merge_pages(pages: list[PageResult], *, page_count: int) -> MergedDocument:
     counts = dict.fromkeys(_COUNT_KEYS.values(), 0)
     for result in ordered:
         counts[_COUNT_KEYS[result.source]] += 1
-    # A page no tier reported is a page nothing resolved, so the four counts
+    # A page no tier reported is a page nothing resolved, so the counts
     # always account for the whole document.
     reported = sum(counts.values())
     if reported < page_count:

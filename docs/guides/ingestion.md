@@ -411,7 +411,7 @@ Unreported confidence escalates too. There is deliberately no script or
 typography pre-check: the failure classes announce themselves after the
 attempt, and no measured signal predicts them beforehand.
 
-Every emitted page document carries the same four scalar counts for the
+Every emitted page document carries the same five scalar counts for the
 whole PDF. They sum to `page_count`:
 
 | Key | Meaning |
@@ -419,7 +419,23 @@ whole PDF. They sum to `page_count`:
 | `ocr_pages_native` | Pages whose text is the native pdf-inspector extraction |
 | `ocr_pages_local` | Pages whose text is local OCR |
 | `ocr_pages_worker` | Pages whose text is the worker's |
-| `ocr_pages_unresolved` | Escalated pages no tier resolved; they keep their best available text |
+| `ocr_pages_blank` | Flagged pages the blank test removed before any OCR tier; they keep their native text |
+| `ocr_pages_unresolved` | Flagged, non-blank pages no tier produced text for: an escalation came back empty, or the local tier never ran. They keep their best available text |
+
+Before local OCR runs, the blank test renders each flagged page and
+measures stroke ink. A page below the fixed threshold (1.5e-4 of its
+pixels, version 1 of the test) is blank: it skips both OCR tiers and
+counts `ocr_pages_blank`, so `unresolved` means only "an escalation
+produced no text" or "the local tier never ran". Three known limits,
+accepted: a page whose only mark is a page number counts blank (the
+number stays in the text when the native layer read it, otherwise it is
+lost; `page_label` still carries it), a page whose only mark is one
+faint short word counts blank, and a page whose only mark is a lone
+one-pixel stroke counts blank, because the speck guard removes it
+before the score. On all 1,123 Experiment 33 pages no page with three
+or more reference characters was skipped, with a 5.3-times margin. A
+page the test cannot render or score is not blank and follows the route
+above.
 
 `ocr_backend` names a backend only when it alone produced the text
 (`pdf_inspector`, `pdf_inspector_ocr`, `dots_mocr`, `paddleocr_vl`); anything else
@@ -650,10 +666,10 @@ Disabling maths routing omits `pages_maths_font`.
 Under the `page` routing unit two of these generalise: `ocr_used` is
 true when OCR produced the text of at least one page, local or worker;
 `ocr_backend` also takes `pdf_inspector_ocr` (the local tier alone
-produced the text) and `mixed` (more than one backend did). Four
+produced the text) and `mixed` (more than one backend did). Five
 further scalar keys — `ocr_pages_native`, `ocr_pages_local`,
-`ocr_pages_worker`, `ocr_pages_unresolved` — sum to `page_count` and
-carry the per-page provenance; see
+`ocr_pages_worker`, `ocr_pages_blank`, `ocr_pages_unresolved` — sum to
+`page_count` and carry the per-page provenance; see
 [page-level routing](#page-level-routing-opt-in-ocr_routing_unitpage).
 Like every key in this section they are excluded from embedding text.
 

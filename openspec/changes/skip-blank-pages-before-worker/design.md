@@ -82,10 +82,14 @@ Whole corpus, flagged pages only (701):
 
 | Group | Pages | Below 1.5e-4 (skipped) |
 |---|---|---|
-| Content: 3 or more reference characters, or illegible | 632 | 0 |
+| Content: 3 or more reference characters, or illegible | 633 | 0 |
 | Page number only: 1 or 2 reference characters | 16 | 8 |
 | Empty reference, `no_text` | 52 | 29 |
-| The 4 `rf06` blanks from the handoff | 4 | 4 |
+| Of which, the 4 `rf06` blanks from the handoff (subset of the row above) | 4 | 4 |
+
+The three groups total 701. Recounted 2026-11-02 from the frozen
+references during the PR review: 633 + 16 + 52; the table first published
+632 for the content group, one short.
 
 None of the 422 unflagged pages scores below the threshold either. The 23 empty pages that stay above it (mostly `rf07` sheets with show-through and specks) go to OCR as today.
 
@@ -105,7 +109,7 @@ The corpus has no page with 3 to 18 characters, so words were drawn on the real 
 | "RECEIVED" stamp, 18 pt | 0.000998 | not blank |
 | one 40-character line, 11 pt | 0.001597 | not blank |
 
-**Verdict: a safe blank test exists for real pages.** On the measured corpus no page with content is skipped, with a 5.3 times margin. Two known limits remain. A page whose only mark is a page number counts blank (8 of 16 measured), which loses only the number; `page_label` already carries it. A page whose only mark is one faint short word also counts blank. Open question 1 asks the operator to accept these limits.
+**Verdict: a safe blank test exists for real pages.** On the measured corpus no page with content is skipped, with a 5.3 times margin. Three known limits remain. A page whose only mark is a page number counts blank (8 of 16 measured), which loses only the number; `page_label` already carries it. A page whose only mark is one faint short word also counts blank. A page whose only mark is a lone one-pixel stroke also counts blank: the speck guard drops isolated single-pixel strokes before the score, and a hairline carries less ink than the faint word above. A test pins each limit. Open question 1 asks the operator to accept these limits.
 
 ## Decisions
 

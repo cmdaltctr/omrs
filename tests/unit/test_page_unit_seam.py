@@ -142,9 +142,23 @@ def _counts(metadata: dict) -> dict:
             "ocr_pages_native",
             "ocr_pages_local",
             "ocr_pages_worker",
+            "ocr_pages_blank",
             "ocr_pages_unresolved",
         )
     }
+
+
+@pytest.fixture(autouse=True)
+def _blank_test_finds_nothing(monkeypatch):
+    """Default: the blank test flags no page; blank-specific tests override it.
+
+    Stands in for :func:`find_blank_pages` at the seam's import of it,
+    including its safe-failure shape (a render failure also yields no
+    blank pages), so no test renders a real PDF.
+    """
+    from omrs.integrations.pdf import ocr_routing
+
+    monkeypatch.setattr(ocr_routing, "find_blank_pages", lambda file, pages: frozenset())
 
 
 def _joined(docs: list) -> str:
@@ -176,6 +190,7 @@ def test_only_flagged_pages_are_ocred(monkeypatch, tmp_path, effective_settings)
         "ocr_pages_native": 19,
         "ocr_pages_local": 1,
         "ocr_pages_worker": 0,
+        "ocr_pages_blank": 0,
         "ocr_pages_unresolved": 0,
     }
     assert meta["ocr_required"] is True
@@ -211,6 +226,7 @@ def test_a_document_read_wholly_by_local_ocr_names_the_local_tier(
         "ocr_pages_native": 0,
         "ocr_pages_local": 2,
         "ocr_pages_worker": 0,
+        "ocr_pages_blank": 0,
         "ocr_pages_unresolved": 0,
     }
     assert meta["ocr_backend"] == OCR_BACKEND_LOCAL_OCR
@@ -236,6 +252,7 @@ def test_no_flagged_pages_never_touches_ocr_or_worker(monkeypatch, tmp_path, eff
         "ocr_pages_native": 4,
         "ocr_pages_local": 0,
         "ocr_pages_worker": 0,
+        "ocr_pages_blank": 0,
         "ocr_pages_unresolved": 0,
     }
     assert meta["ocr_required"] is False
@@ -276,6 +293,7 @@ def test_unreadable_pages_escalate_alone_in_one_request(monkeypatch, tmp_path, e
         "ocr_pages_native": 5,
         "ocr_pages_local": 1,
         "ocr_pages_worker": 2,
+        "ocr_pages_blank": 0,
         "ocr_pages_unresolved": 0,
     }
     assert sum(_counts(meta).values()) == meta["page_count"]
@@ -307,6 +325,7 @@ def test_worker_response_without_pages_markdown_degrades_to_unresolved(
         "ocr_pages_native": 3,
         "ocr_pages_local": 0,
         "ocr_pages_worker": 0,
+        "ocr_pages_blank": 0,
         "ocr_pages_unresolved": 1,
     }
     # The best available text is kept; no marker is inserted.
@@ -333,6 +352,154 @@ def test_worker_empty_entry_for_a_page_keeps_best_text_unresolved(
         "ocr_pages_native": 2,
         "ocr_pages_local": 0,
         "ocr_pages_worker": 0,
+        "ocr_pages_blank": 0,
+        "ocr_pages_unresolved": 1,
+    }
+    assert "flawed two" in _joined(docs)
+
+
+# ── Blank pages skip both OCR tiers (change skip-blank-pages-before-worker) ─
+
+
+def test_blank_flagged_page_skips_both_ocr_tiers(monkeypatch, tmp_path, effective_settings):
+    """A blank flagged page reaches neither the local tier nor the worker.
+
+    The blank test runs before the maths split too: a blank page that is
+    also a maths page still never joins the worker request.
+    """
+    from omrs.integrations.pdf import ocr_routing
+
+    scan = [
+        _scan_page(0, "native 1", False),
+        _scan_page(1, "", True),  # page 2: blank sheet, flagged
+        _scan_page(2, "", True),  # page 3: content, resolves locally
+        _scan_page(3, "native 4", False),
+    ]
+    engine = _EngineCalls(scan, ocr_pages_by_call=[[_ocr_page(3, "LOCAL three", 0.9)]])
+    _stub_engine(monkeypatch, engine)
+    blank_calls: list[list[int]] = []
+
+    def fake_blank(file, pages):
+        blank_calls.append(list(pages))
+        return frozenset({2})
+
+    monkeypatch.setattr(ocr_routing, "find_blank_pages", fake_blank)
+    monkeypatch.setattr(ocr_routing, "detect_maths_pages", lambda file, settings: frozenset({2}))
+    inner = _FakeInner(text="whole", metadata=_inner_metadata(4, flagged=2))
+    worker = _FakeWorker()
+
+    docs = _page_reader(
+        inner,
+        effective_settings(
+            ocr_fallback_enabled=True,
+            ocr_routing_unit="page",
+            ocr_maths_routing_enabled=True,
+        ),
+        worker,
+    ).load_data(tmp_path / "doc.pdf")
+
+    # The blank test saw exactly the flagged pages, then page 2 left the route.
+    assert blank_calls == [[2, 3]]
+    assert engine.ocr_calls[0]["page_numbers"] == [3]
+    assert worker.calls == [], "a blank page must not reach the worker, maths or not"
+    meta = docs[0].metadata
+    assert _counts(meta) == {
+        "ocr_pages_native": 2,
+        "ocr_pages_local": 1,
+        "ocr_pages_worker": 0,
+        "ocr_pages_blank": 1,
+        "ocr_pages_unresolved": 0,
+    }
+    assert sum(_counts(meta).values()) == meta["page_count"] == 4
+
+
+def test_blank_pages_are_counted_on_every_document_and_emit_none(
+    monkeypatch, tmp_path, effective_settings
+):
+    """One blank page among five: four documents, the blank one counted everywhere."""
+    from omrs.integrations.pdf import ocr_routing
+
+    scan = [
+        _scan_page(0, "native 1", False),
+        _scan_page(1, "", True),  # page 2: blank
+        _scan_page(2, "", True),  # page 3: local
+        _scan_page(3, "", True),  # page 4: worker
+        _scan_page(4, "native 5", False),
+    ]
+    engine = _EngineCalls(
+        scan,
+        ocr_pages_by_call=[[_ocr_page(3, "LOCAL three", 0.9), _ocr_page(4, "flawed four", 0.3)]],
+    )
+    _stub_engine(monkeypatch, engine)
+    monkeypatch.setattr(ocr_routing, "find_blank_pages", lambda file, pages: frozenset({2}))
+    inner = _FakeInner(text="whole", metadata=_inner_metadata(5, flagged=3))
+    worker = _FakeWorker(pages_markdown=["WORKER four"])
+
+    docs = _page_reader(
+        inner, effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page"), worker
+    ).load_data(tmp_path / "doc.pdf")
+
+    assert worker.calls[0]["pages"] == [4]
+    assert [doc.metadata["page"] for doc in docs] == [1, 3, 4, 5]
+    for doc in docs:
+        assert _counts(doc.metadata) == {
+            "ocr_pages_native": 2,
+            "ocr_pages_local": 1,
+            "ocr_pages_worker": 1,
+            "ocr_pages_blank": 1,
+            "ocr_pages_unresolved": 0,
+        }
+
+
+def test_blank_page_with_native_text_keeps_it_as_its_document(
+    monkeypatch, tmp_path, effective_settings
+):
+    """A page-number-only sheet counts blank and keeps its native text."""
+    from omrs.integrations.pdf import ocr_routing
+
+    scan = [_scan_page(0, "13", True), _scan_page(1, "native 2", False)]
+    engine = _EngineCalls(scan, ocr_pages_by_call=[])
+    _stub_engine(monkeypatch, engine)
+    monkeypatch.setattr(ocr_routing, "find_blank_pages", lambda file, pages: frozenset({1}))
+    inner = _FakeInner(text="whole", metadata=_inner_metadata(2, flagged=1))
+    worker = _FakeWorker()
+
+    docs = _page_reader(
+        inner, effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page"), worker
+    ).load_data(tmp_path / "doc.pdf")
+
+    assert engine.ocr_calls == []
+    assert [doc.text for doc in docs] == ["13", "native 2"]
+    assert _counts(docs[0].metadata) == {
+        "ocr_pages_native": 1,
+        "ocr_pages_local": 0,
+        "ocr_pages_worker": 0,
+        "ocr_pages_blank": 1,
+        "ocr_pages_unresolved": 0,
+    }
+
+
+def test_blank_test_yielding_nothing_keeps_today_counts(
+    monkeypatch, tmp_path, effective_settings, caplog
+):
+    """A render failure yields no blank pages; the file routes exactly as before."""
+    scan = [_scan_page(i, f"native {i + 1}", i + 1 == 2) for i in range(3)]
+    engine = _EngineCalls(scan, ocr_pages_by_call=[[_ocr_page(2, "flawed two", 0.4)]])
+    _stub_engine(monkeypatch, engine)
+    inner = _FakeInner(text="whole", metadata=_inner_metadata(3, flagged=1))
+    worker = _FakeWorker(available=False)
+
+    with caplog.at_level("WARNING"):
+        docs = _page_reader(
+            inner, effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page"), worker
+        ).load_data(tmp_path / "doc.pdf")
+
+    meta = docs[0].metadata
+    assert _counts(meta) == {
+        "ocr_pages_native": 2,
+        "ocr_pages_local": 0,
+        "ocr_pages_worker": 0,
+        "ocr_pages_blank": 0,
         "ocr_pages_unresolved": 1,
     }
     assert "flawed two" in _joined(docs)
@@ -362,6 +529,7 @@ def test_missing_worker_keeps_local_text_and_counts_unresolved(
         "ocr_pages_native": 4,
         "ocr_pages_local": 0,
         "ocr_pages_worker": 0,
+        "ocr_pages_blank": 0,
         "ocr_pages_unresolved": 1,
     }
     assert "flawed four" in _joined(docs)
@@ -418,6 +586,7 @@ def test_protocol_1_0_worker_never_receives_a_page_request(
         "ocr_pages_native": 4,
         "ocr_pages_local": 0,
         "ocr_pages_worker": 0,
+        "ocr_pages_blank": 0,
         "ocr_pages_unresolved": 1,
     }
     assert "flawed four" in _joined(docs)
@@ -447,6 +616,7 @@ def test_missing_local_runtime_keeps_native_text_and_counts_unresolved(
         "ocr_pages_native": 2,
         "ocr_pages_local": 0,
         "ocr_pages_worker": 0,
+        "ocr_pages_blank": 0,
         "ocr_pages_unresolved": 2,
     }
     assert meta["ocr_used"] is False
@@ -492,6 +662,7 @@ def test_rescued_text_survives_when_page_routing_produces_none(
         "ocr_pages_native": 2,
         "ocr_pages_local": 0,
         "ocr_pages_worker": 0,
+        "ocr_pages_blank": 0,
         "ocr_pages_unresolved": 0,
     }
     assert meta["ocr_backend"] == OCR_BACKEND_FAST_PATH
@@ -518,6 +689,7 @@ def test_document_unit_keeps_whole_pdf_behaviour(monkeypatch, tmp_path, effectiv
     assert "ocr_pages_native" not in meta
     assert "ocr_pages_local" not in meta
     assert "ocr_pages_worker" not in meta
+    assert "ocr_pages_blank" not in meta
     assert "ocr_pages_unresolved" not in meta
     assert meta["ocr_backend"] == "paddleocr_vl"
     assert _joined(docs) == "WORKER one"
@@ -599,6 +771,7 @@ class TestPageUnitEmitsPageDocuments:
                 "ocr_pages_native": 3,
                 "ocr_pages_local": 1,
                 "ocr_pages_worker": 1,
+                "ocr_pages_blank": 0,
                 "ocr_pages_unresolved": 0,
             }
             assert sum(_counts(doc.metadata).values()) == doc.metadata["page_count"] == 5
@@ -628,6 +801,7 @@ class TestPageUnitEmitsPageDocuments:
                 "ocr_pages_native": 3,
                 "ocr_pages_local": 0,
                 "ocr_pages_worker": 0,
+                "ocr_pages_blank": 0,
                 "ocr_pages_unresolved": 0,
             }
             assert doc.metadata["ocr_backend"] == OCR_BACKEND_FAST_PATH

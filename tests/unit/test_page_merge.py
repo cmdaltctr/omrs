@@ -1,7 +1,7 @@
 """Merging page results into one document (task 4.5, change page-level-ocr-routing).
 
 The ``page`` unit may read one PDF with three engines. The merge decides what
-the emitted document says about that: text in page order, four scalar counts
+the emitted document says about that: text in page order, five scalar counts
 that sum to the page count, and an ``ocr_backend`` that never names a backend
 which produced only part of the document.
 """
@@ -27,34 +27,63 @@ def test_pages_join_in_page_order_with_a_blank_line():
 
 
 def test_counts_sum_to_page_count():
-    """Every page is accounted for exactly once."""
+    """Every page is accounted for exactly once, blank pages included."""
     merged = merge_pages(
         [
             _result(1, "a", "native"),
             _result(2, "b", "local"),
             _result(3, "c", "worker"),
-            _result(4, "", "unresolved"),
+            _result(4, "", "blank"),
+            _result(5, "", "unresolved"),
         ],
-        page_count=4,
+        page_count=5,
     )
 
     counts = merged.counts
     assert counts["ocr_pages_native"] == 1
     assert counts["ocr_pages_local"] == 1
     assert counts["ocr_pages_worker"] == 1
+    assert counts["ocr_pages_blank"] == 1
     assert counts["ocr_pages_unresolved"] == 1
-    assert sum(counts.values()) == 4
+    assert sum(counts.values()) == 5
 
 
 @pytest.mark.parametrize("page_count", [1, 5, 40])
 def test_counts_sum_to_page_count_for_any_document(page_count: int):
     """The sum holds whatever the mixture, so no page is lost or double-counted."""
-    sources = ("native", "local", "worker", "unresolved")
-    pages = [_result(n + 1, "x", sources[n % 4]) for n in range(page_count)]
+    sources = ("native", "local", "worker", "blank", "unresolved")
+    pages = [_result(n + 1, "x", sources[n % 5]) for n in range(page_count)]
 
     merged = merge_pages(pages, page_count=page_count)
 
     assert sum(merged.counts.values()) == page_count
+
+
+def test_unreported_pages_count_unresolved_not_blank():
+    """A page no tier reported is unresolved; only the blank test makes pages blank."""
+    merged = merge_pages([_result(1, "a", "native")], page_count=3)
+
+    assert merged.counts["ocr_pages_unresolved"] == 2
+    assert merged.counts["ocr_pages_blank"] == 0
+
+
+def test_blank_pages_name_no_backend():
+    """A blank page ran no engine, so it never sways ``ocr_backend`` or ``ocr_used``."""
+    merged = merge_pages(
+        [_result(1, "c", "worker"), _result(2, "", "blank")],
+        page_count=2,
+    )
+
+    assert merged.ocr_backend == "paddleocr_vl"  # the blank page adds no second backend
+    assert merged.ocr_used is True
+
+
+def test_only_blank_pages_leave_ocr_unused():
+    """A document of blank pages and native text ran no OCR at all."""
+    merged = merge_pages([_result(1, "a", "native"), _result(2, "", "blank")], page_count=2)
+
+    assert merged.ocr_backend == "pdf_inspector"
+    assert merged.ocr_used is False
 
 
 def test_one_backend_is_named_when_only_one_produced_text():

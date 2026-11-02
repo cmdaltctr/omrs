@@ -41,7 +41,7 @@ Under the `page` unit, the system SHALL test every flagged page for blankness af
 
 #### Scenario: A page with content is not blank
 
-- **GIVEN** the `page` routing unit and a flagged page of faint handwriting, of non-Latin script, or with one printed 12 pt word
+- **GIVEN** the `page` routing unit and a flagged page of faint handwriting, of non-Latin script, or with one printed dark 12 pt word
 - **WHEN** the PDF is ingested
 - **THEN** the page SHALL follow the local tier and escalation path as before
 

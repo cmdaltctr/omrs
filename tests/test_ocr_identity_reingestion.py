@@ -294,6 +294,60 @@ def test_page_unit_identity_follows_the_escalation_threshold(effective_settings)
     assert raised_cut != default_cut
 
 
+# ── The blank-page test version (change skip-blank-pages-before-worker) ───
+
+
+def test_page_unit_payload_carries_the_blank_page_test_version(
+    effective_settings,
+) -> None:
+    """The page payload names the blank-test version; the document one does not."""
+    page = ocr_routing_payload(effective_settings(ocr_routing_unit="page"))
+    document = ocr_routing_payload(effective_settings())
+
+    assert page["blank_page_test"] == 1
+    assert "blank_page_test" not in document
+
+
+def test_blank_page_test_version_moves_the_page_identity(monkeypatch, effective_settings) -> None:
+    """A threshold change reindexes page-unit sources only, through the version."""
+    from omrs.core.ingestion.source_state import build_index_identity
+    from omrs.integrations.pdf import blank_pages
+
+    settings = effective_settings(ocr_routing_unit="page")
+    before = build_index_identity(settings, **_IDENTITY_KWARGS)
+    monkeypatch.setattr(blank_pages, "BLANK_PAGE_TEST_VERSION", 2)
+    after = build_index_identity(settings, **_IDENTITY_KWARGS)
+
+    assert after != before
+
+
+def test_blank_page_test_version_leaves_the_document_identity_alone(
+    monkeypatch, effective_settings
+) -> None:
+    """The document unit runs no blank test, so its identity ignores the version."""
+    from omrs.core.ingestion.source_state import build_index_identity
+    from omrs.integrations.pdf import blank_pages
+
+    settings = effective_settings()
+    before = build_index_identity(settings, **_IDENTITY_KWARGS)
+    monkeypatch.setattr(blank_pages, "BLANK_PAGE_TEST_VERSION", 2)
+    after = build_index_identity(settings, **_IDENTITY_KWARGS)
+
+    assert after == before
+
+
+def test_blank_count_key_is_excluded_and_page_scoped() -> None:
+    """``ocr_pages_blank`` never reaches the embedding model and never moves
+    a document-unit install's identity."""
+    from omrs.core.ingestion.embed_exclusions import (
+        EXCLUDED_EMBED_METADATA_KEYS,
+        PAGE_ROUTING_ONLY_EMBED_KEYS,
+    )
+
+    assert "ocr_pages_blank" in EXCLUDED_EMBED_METADATA_KEYS
+    assert "ocr_pages_blank" in PAGE_ROUTING_ONLY_EMBED_KEYS
+
+
 @pytest.mark.parametrize(("unit", "changes"), [("page", True), ("document", False)])
 def test_local_cut_default_change_only_moves_page_identity(
     effective_settings, unit: str, changes: bool

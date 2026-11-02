@@ -229,7 +229,13 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # routes (+9 -7) need fastapi (+33, see _WEB_EXTRA_CASES).
 # +1 (2026-11-01, PR 160 macOS fix): test_llamacpp_fixtures.py gets a no-reverse-DNS case.
 # No fastapi needed.
-_BASE_EXECUTED = 9741
+# +27 (2026-11-02, skip-blank-pages-before-worker, by test-ID diff, 27 added, 0
+# removed): test_blank_pages.py (16), test_page_merge.py (3), test_page_unit_seam.py
+# (4), test_ocr_identity_reingestion.py (4). No fastapi needed.
+# +2 (2026-11-02, same change, PR review): test_blank_pages.py gains the two
+# safe-failure guard tests (undecodable payload, unscoreable page). No fastapi.
+# +1 (2026-11-02, same change, PR review): the one-pixel hairline limit pin.
+_BASE_EXECUTED = 9771
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

@@ -633,7 +633,7 @@ peers stays an integration.
 Every Python module under `src/omrs/integrations/`, classified. A contract
 test fails when a module is missing from this table.
 
-<!-- integration-inventory:start count=51 -->
+<!-- integration-inventory:start count=52 -->
 
 | Module                                   | Availability                                                   | Selector                                                            | Shared contract                               | Fallback owner                                                                    | Disposition                                                         |
 | ---------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
@@ -661,6 +661,7 @@ test fails when a module is missing from this table.
 | `omrs.integrations.llamacpp_runtime.spec` | Native | None | Frozen `RuntimeSpec` (id, role, mode, argv, files, build, port policy, slots) | None | Chat and embeddings builders; free-port OCR runtime; no `--sleep-idle-seconds` |
 | `omrs.integrations.llamacpp_runtime.state` | Native | `OMRS_STATE_DIR`, `$XDG_STATE_HOME` | `server.json` atomic read/write and the state root | Missing or broken file reads as no record | Local-disk runtime state shared by every OMRS process |
 | `omrs.integrations.pdf`               | Native                                                         | None                                                                | `get_pdf_reader(reader)`                      | None                                                                              | Public facade exposing the factory                                  |
+| `omrs.integrations.pdf.blank_pages` | Base, via `liteparse` renders | `OCR_ROUTING_UNIT=page`, flagged pages only | `find_blank_pages` frozenset and `BLANK_PAGE_TEST_VERSION` | Render or score failure → no page blank; every page keeps its normal route | Edge-free stroke-ink blank test with a versioned threshold (change `skip-blank-pages-before-worker`) |
 | `omrs.integrations.pdf.factory`       | Native                                                         | `PDF_READER=auto`                                                   | Reader instance with `load_data`              | Factory itself (LiteParse → pypdfium2 → pypdf probe, for direct `auto` callers)   | Registry-backed factory; `auto` stays ordered capability resolution |
 | `omrs.integrations.pdf.liteparse`     | Base dependency (despite the stale docstring naming an extra)  | `PDF_READER=liteparse`                                              | `load_data`                                   | `compose.resolve_pdf_reader` `auto` probe                                         | Registered reader strategy                                          |
 | `omrs.integrations.pdf.maths_pages` | Base, via `pypdf` | `OCR_MATHS_ROUTING_ENABLED` | `maths_font_pages` frozenset of 1-based pages | Unreadable font resources → no pages flagged | Closed, versioned maths-font list (`MATHS_DETECTOR_VERSION`) |
