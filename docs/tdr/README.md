@@ -68,6 +68,7 @@ architecture), see the [ADR index](../adr/).
 | 040 | [LanceDB writer processes crashed at interpreter exit on the floor jobs](040-lancedb-writer-processes-crashed-at-interpreter-exit-on-the-floor-jobs.md) | Accepted | 2026-10-25 |
 | 041 | [uv tool install ignores uv.lock, so the live app drifted from the lock](041-uv-tool-install-ignores-uv-lock-so-the-live-app-drifted-from-the-lock.md) | Accepted | 2026-10-26 |
 | 042 | [Browser check at fixed widths without Chrome](042-browser-check-at-fixed-widths-without-chrome.md) | Accepted | 2026-10-29 |
+| 043 | [A closing display-maths fence followed by text swallows the prose](043-a-closing-display-maths-fence-followed-by-text-swallows-the-prose.md) | Accepted | 2026-11-03 |
 
 ## Status values
 
