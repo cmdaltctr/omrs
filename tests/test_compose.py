@@ -439,12 +439,14 @@ class TestResolvePdfReader:
         monkeypatch: pytest.MonkeyPatch,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        """A pdf_inspector reader with the package absent falls back to pypdf.
+        """A list of only pdf_inspector with the package absent falls back to pypdf.
 
         Spec: pdf-reader delta, scenario "Missing configured backend falls
         back safely": log an error naming the missing package and return
-        pypdf rather than raising. An installed liteparse must NOT be
-        silently selected in place of the configured reader.
+        pypdf rather than raising. A reader that is not in the list must NOT
+        be selected in place of the configured one. (The single value
+        ``pdf_inspector`` now expands to a list that holds liteparse, so
+        this test uses a list of one.)
         """
         import logging
 
@@ -453,7 +455,7 @@ class TestResolvePdfReader:
 
         monkeypatch.setitem(sys.modules, "pdf_inspector", None)
         monkeypatch.setitem(sys.modules, "liteparse", MagicMock())
-        settings = Settings(_env_file=None, pdf_reader="pdf_inspector")
+        settings = Settings(_env_file=None, pdf_readers=("pdf_inspector",))
         with caplog.at_level(logging.ERROR, logger="omrs.compose"):
             assert compose.resolve_pdf_reader(settings) == "pypdf"
         assert any("pdf_inspector" in r.message and "pypdf" in r.message for r in caplog.records)
@@ -561,8 +563,10 @@ class TestResolvePdfReader:
 
         settings = Settings(_env_file=None)
         object.__setattr__(settings, "pdf_reader", "fastparser")
+        object.__setattr__(settings, "pdf_readers", ("fastparser",))
 
-        with caplog.at_level(logging.ERROR, logger="omrs.compose"):
+        # An unregistered name in the list is dropped with a warning (spec pdf-reader).
+        with caplog.at_level(logging.WARNING, logger="omrs.compose"):
             assert compose.resolve_pdf_reader(settings) == "pypdf"
         assert any("fastparser" in r.message and "registered" in r.message for r in caplog.records)
 
@@ -586,8 +590,9 @@ class TestResolvePdfReader:
         hostile = "evil\nreader"
         settings = Settings(_env_file=None)
         object.__setattr__(settings, "pdf_reader", hostile)
+        object.__setattr__(settings, "pdf_readers", (hostile,))
 
-        with caplog.at_level(logging.ERROR, logger="omrs.compose"):
+        with caplog.at_level(logging.WARNING, logger="omrs.compose"):
             assert compose.resolve_pdf_reader(settings) == "pypdf"
         record = next(r for r in caplog.records if "unregistered" in r.message)
         assert repr(hostile) in record.message
@@ -674,6 +679,7 @@ class TestResolvePdfReader:
 
         settings = Settings(_env_file=None)
         object.__setattr__(settings, "pdf_reader", "resolvetest_reader")
+        object.__setattr__(settings, "pdf_readers", ("resolvetest_reader",))
 
         assert compose.resolve_pdf_reader(settings) == "resolvetest_reader"
 
@@ -713,6 +719,7 @@ class TestResolvePdfReader:
 
         settings = Settings(_env_file=None)
         object.__setattr__(settings, "pdf_reader", "resolvetest_ghost")
+        object.__setattr__(settings, "pdf_readers", ("resolvetest_ghost",))
 
         with caplog.at_level(logging.ERROR, logger="omrs.compose"):
             assert compose.resolve_pdf_reader(settings) == "pypdf"

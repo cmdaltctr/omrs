@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Any
 
 from .config import Settings
+from .core.reading_lists import expand_pdf_reader
 from .integrations.ocr_worker.fingerprint import (
     UNAVAILABLE_OCR_WORKER_FINGERPRINT,  # noqa: F401 - re-exported probe result
 )
@@ -31,6 +32,7 @@ __all__ = [
     "ENGINE_WORKERS_UNSET",
     "UNAVAILABLE_OCR_WORKER_FINGERPRINT",
     "build_ocr_routes",
+    "configured_pdf_readers",
     "magika_available",
     "module_installed",
     "ocr_engine_options",
@@ -39,6 +41,7 @@ __all__ = [
     "reset_ocr_fingerprint_cache",
     "resolve_document_backend",
     "resolve_pdf_reader",
+    "resolve_pdf_readers",
     "resolve_sparse_backend",
     "validate_document_backend",
     "validate_sparse_backend",
@@ -266,40 +269,40 @@ def _native_sparse_available(settings: Settings) -> bool:
         return False
 
 
-def resolve_pdf_reader(settings: Settings) -> str:
-    """Resolve the configured PDF reader to a concrete backend name.
+def configured_pdf_readers(settings: Any) -> tuple[str, ...]:
+    """Return the reader list of *settings*, before any check.
 
-    Explicit values probe their registered dependency metadata. ``auto``
-    keeps the established LiteParse → pypdfium2 → pypdf capability policy.
+    A stand-in without ``pdf_readers`` (a test double) gets its single
+    ``pdf_reader`` value expanded: ``pdf_inspector`` and ``auto`` by their
+    lists, any other name alone so the registry check names it.
     """
-    reader = settings.pdf_reader
-    if reader != "auto":
-        from .integrations.pdf import registry as pdf_registry
+    if listed := tuple(getattr(settings, "pdf_readers", ())):
+        return listed
+    single = settings.pdf_reader
+    return expand_pdf_reader(single) if single in ("auto", "pdf_inspector") else (single,)
 
-        if reader not in pdf_registry.available():
-            logger.error("PDF_READER=%r is unregistered; falling back to pypdf.", reader)
-            return "pypdf"
-        try:
-            pdf_registry.probe(reader)
-            return reader
-        except ImportError:
-            logger.error(
-                "PDF_READER=%r was requested but the package is not "
-                "installed. Falling back to pypdf.",
-                reader,
-            )
-            return "pypdf"
 
-    # auto resolution: probe the established capability preference order.
-    for backend in ("liteparse", "pypdfium2"):
-        try:
-            __import__(backend)
-            logger.info("PDF_READER=auto resolved to %s", backend)
-            return backend
-        except ImportError:
-            continue
+def resolve_pdf_readers(settings: Any) -> tuple[str, tuple[str, ...]]:
+    """Resolve the reader list once, for the composition root (design D2).
 
-    return "pypdf"
+    The first installed reader of the list reads files. ``auto`` inside a list
+    and unregistered names are dropped with a warning. None installed logs an
+    error and gives pypdf, the base dependency. A single ``auto`` keeps its
+    LiteParse, pypdfium2, pypdf probe through the list it expands to.
+
+    Returns:
+        ``(reader, readers)``: the reader that reads files, and the cleaned
+        list that the index identity and the rescue tiers use.
+    """
+    from .integrations.pdf.chain import clean_reader_list, first_installed
+
+    readers = clean_reader_list(configured_pdf_readers(settings))
+    return first_installed(readers), readers
+
+
+def resolve_pdf_reader(settings: Settings) -> str:
+    """Resolve the configured reader list to the one concrete reader that reads files."""
+    return resolve_pdf_readers(settings)[0]
 
 
 def _resolve_sparse_backend_for(settings: Settings) -> str:
