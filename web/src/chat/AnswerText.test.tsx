@@ -2,6 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { Citation, Evidence } from "../api/documents";
 import { TooltipProvider } from "../components/ui/tooltip";
+import { EQ01_CHUNKS } from "../test/eq01Fixture";
 import { AnswerText, ClaimList } from "./AnswerText";
 
 function cite(ordinal: number): Citation {
@@ -77,6 +78,78 @@ describe("AnswerText markdown", () => {
   });
 });
 
+describe("AnswerText maths", () => {
+  it.each(EQ01_CHUNKS.map((chunk) => [chunk.chunk_id.slice(0, 8), chunk] as const))(
+    "renders every formula of eq01 chunk %s as maths with no KaTeX error",
+    (_id, chunk) => {
+      const { container } = show(chunk.text);
+      expect(container.querySelectorAll(".katex-error")).toHaveLength(0);
+      expect(container.querySelectorAll(".katex").length).toBeGreaterThanOrEqual(chunk.formulas);
+    },
+  );
+
+  it("renders inline and display maths as KaTeX", () => {
+    const { container } = show("Inline $x^2$ here.\n\n$$\n\\sum_i y_i\n$$");
+    expect(container.querySelectorAll(".katex")).toHaveLength(2);
+    expect(container.querySelectorAll(".katex-display")).toHaveLength(1);
+    expect(container).not.toHaveTextContent("$");
+  });
+
+  it("shows a formula that cannot be parsed as its source in the error element and keeps the text after it", () => {
+    const { container } = show("Before $\\frac{a}{$ after");
+    const errors = container.querySelectorAll(".katex-error");
+    expect(errors).toHaveLength(1);
+    expect(errors[0]).toHaveTextContent("\\frac{a}{");
+    expect(container).toHaveTextContent("after");
+  });
+
+  it("renders a formula next to HTML and creates no element from the HTML, which shows as text", () => {
+    const { container } = show("$x$ <b>raw</b><script>window.__x = 1</script>");
+    expect(container.querySelectorAll(".katex")).toHaveLength(1);
+    expect(container.querySelector("b")).toBeNull();
+    expect(container.querySelector("script")).toBeNull();
+    expect(container).toHaveTextContent("<b>raw</b>");
+  });
+
+  it("renders a merged passage whose closing fence is followed by prose and inline maths", () => {
+    const { container } = show("as:\n\n$$\n\\log p = a\n$$\nwhere again the term $y_i$ holds");
+    expect(container.querySelectorAll(".katex-display")).toHaveLength(1);
+    expect(container.querySelectorAll(".katex-error")).toHaveLength(0);
+    expect(container).toHaveTextContent("where again the term");
+  });
+
+  it("shows dollar amounts as text, with every space", () => {
+    const { container } = show("It costs $5 and $10, or $40 more. A ton of coal is another $");
+    expect(container.querySelector(".katex")).toBeNull();
+    expect(container).toHaveTextContent("It costs $5 and $10, or $40 more. A ton of coal is another $");
+  });
+
+  it("creates no link from a \\href command in a formula", () => {
+    const { container } = show("$\\href{javascript:alert(1)}{x}$");
+    // With trust off KaTeX shows the command name in the error colour and drops its argument.
+    expect(container.querySelectorAll(".katex")).toHaveLength(1);
+    expect(container.querySelector(".katex-html")).toHaveTextContent("\\href");
+    expect(container.querySelector("a")).toBeNull();
+  });
+
+  it("creates no element from HTML inside a formula", () => {
+    const { container } = show("$<script>$");
+    expect(container.querySelectorAll(".katex")).toHaveLength(1);
+    expect(container.querySelector("script")).toBeNull();
+  });
+
+  it("keeps [1] after a formula as a citation button", () => {
+    const { container } = show("The bound $\\mathcal{L}(\\theta, \\phi; \\mathbf{x})$ holds [1]");
+    expect(container.querySelectorAll(".katex")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Citation 1" })).toBeInTheDocument();
+  });
+
+  it("does not make a citation button from [1] inside a formula", () => {
+    show("The term $a_{[1]}$ is local.");
+    expect(screen.queryByRole("button", { name: "Citation 1" })).toBeNull();
+  });
+});
+
 describe("AnswerText citations inside markdown", () => {
   it("keeps [n] as a citation button inside bold, a list item and a heading", () => {
     show("## Result [1]\n\n- item **strong [2]**");
@@ -121,6 +194,28 @@ describe("ClaimList", () => {
     const { container } = claims([{ claim: "Run `omrs --version` first.", verdict: "unsupported", ordinals: [1] }]);
     expect(screen.getByText("omrs --version").tagName).toBe("CODE");
     expect(container).not.toHaveTextContent("`");
+  });
+
+  it("renders inline maths in a claim, with no dollar signs left", () => {
+    const { container } = claims([{ claim: "The prior is $p_{\\theta}(\\mathbf{z})$", verdict: "unsupported", ordinals: [1] }]);
+    expect(container.querySelectorAll(".katex")).toHaveLength(1);
+    // The inner KaTeX spans and the MathML survive the claim filter, so the formula is not unwrapped.
+    expect(container.querySelector(".katex .katex-html")).not.toBeNull();
+    expect(container.querySelector(".katex math")).not.toBeNull();
+    expect(container).not.toHaveTextContent("$");
+  });
+
+  it("shows a display formula in a claim as an inline formula, since a claim keeps inline maths only", () => {
+    const { container } = claims([{ claim: "$$\nx^2\n$$", verdict: "unsupported", ordinals: [1] }]);
+    expect(container.querySelector(".katex-display")).toBeNull();
+    expect(container.querySelectorAll(".katex")).toHaveLength(1);
+  });
+
+  it("drops a heading in a claim to text and still renders its formula", () => {
+    const { container } = claims([{ claim: "# Heading $x$", verdict: "unsupported", ordinals: [1] }]);
+    expect(container.querySelector("h1")).toBeNull();
+    expect(container).toHaveTextContent("Heading");
+    expect(container.querySelectorAll(".katex")).toHaveLength(1);
   });
 
   it("renders the cited ordinal of a claim as a citation button", () => {

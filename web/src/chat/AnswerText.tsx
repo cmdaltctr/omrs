@@ -1,9 +1,10 @@
 import { Children, createContext, Fragment, useContext, type ReactNode } from "react";
-import Markdown, { type Components } from "react-markdown";
+import Markdown, { type AllowElement, type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Citation, Evidence } from "../api/documents";
 import { Button } from "../components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
+import { rehypeMathPlugins, remarkMathPlugins } from "../lib/maths";
 import { CitationPopover } from "./CitationPopover";
 
 interface AnswerTextProps {
@@ -182,7 +183,27 @@ const CLAIM_COMPONENTS: Components = {
   code: ANSWER_COMPONENTS.code,
 };
 
-const CLAIM_ELEMENTS = ["p", "strong", "em", "code"];
+const CLAIM_ELEMENTS = new Set(["p", "strong", "em", "code"]);
+
+const KATEX_ROOTS = new Set(["katex", "katex-error"]);
+
+/** Elements that belong to a KaTeX tree. A parent is always tested before its children. */
+const katexTree = new WeakSet<Parameters<AllowElement>[0] | NonNullable<Parameters<AllowElement>[2]>>();
+
+/**
+ * Keeps the claim's own inline marks and whole KaTeX trees. A list of tag names
+ * alone would unwrap the spans of a rendered formula, because `react-markdown`
+ * tests elements after the rehype plugins have run.
+ */
+const allowClaimElement: AllowElement = (element, _index, parent) => {
+  const classes = element.properties?.className;
+  const isRoot = element.tagName === "span" && Array.isArray(classes) && classes.some((name) => KATEX_ROOTS.has(String(name)));
+  if (isRoot || (parent !== undefined && katexTree.has(parent))) {
+    katexTree.add(element);
+    return true;
+  }
+  return CLAIM_ELEMENTS.has(element.tagName);
+};
 
 /** A line that is only a code fence has no text to render. Show it as written. */
 const BARE_FENCE = /^`{3,}\w*$/;
@@ -193,7 +214,7 @@ interface ClaimListProps extends CitationTarget {
 
 /**
  * The claims that failed verification, one line each. A claim renders its
- * inline code and marks, and the `[n]` it cites is a citation button.
+ * inline code, marks and maths, and the `[n]` it cites is a citation button.
  */
 export function ClaimList({ claims, citations, evidence, collection, onShowChunk }: ClaimListProps) {
   return (
@@ -204,7 +225,13 @@ export function ClaimList({ claims, citations, evidence, collection, onShowChunk
             {BARE_FENCE.test(item.claim.trim()) ? (
               item.claim.trim()
             ) : (
-              <Markdown remarkPlugins={[remarkGfm]} components={CLAIM_COMPONENTS} allowedElements={CLAIM_ELEMENTS} unwrapDisallowed>
+              <Markdown
+                remarkPlugins={[remarkGfm, ...remarkMathPlugins]}
+                rehypePlugins={rehypeMathPlugins}
+                components={CLAIM_COMPONENTS}
+                allowElement={allowClaimElement}
+                unwrapDisallowed
+              >
                 {item.claim}
               </Markdown>
             )}{" "}
@@ -217,15 +244,16 @@ export function ClaimList({ claims, citations, evidence, collection, onShowChunk
 }
 
 /**
- * The answer rendered as markdown (GitHub flavour). The model's text is parsed
- * into React elements and never into raw HTML, so markup in it shows as text.
+ * The answer rendered as markdown (GitHub flavour) with `$...$` and `$$...$$`
+ * as maths. The model's text is parsed into React elements and never into raw
+ * HTML, so markup in it shows as text.
  * A `[n]` marker is a citation button only when `n` matches a returned citation.
  */
 export function AnswerText({ text, citations, evidence, collection, onShowChunk }: AnswerTextProps) {
   return (
     <CitationContext.Provider value={{ citations, evidence, collection, onShowChunk }}>
       <div className="flex min-w-0 flex-col gap-4 break-words">
-        <Markdown remarkPlugins={[remarkGfm]} components={ANSWER_COMPONENTS}>
+        <Markdown remarkPlugins={[remarkGfm, ...remarkMathPlugins]} rehypePlugins={rehypeMathPlugins} components={ANSWER_COMPONENTS}>
           {text}
         </Markdown>
       </div>

@@ -4,7 +4,7 @@
  *
  *   theme, base  Tailwind theme variables, then Tailwind's preflight reset and
  *                the few global rules below.
- *   vendor       third-party CSS (React Flow).
+ *   vendor       third-party CSS (React Flow, KaTeX).
  *   components   overrides that must target a third-party library's own class
  *                names. Everything else is a utility on our own elements.
  *   utilities    Tailwind utility classes.
@@ -25,6 +25,7 @@
 @import "tailwindcss/utilities.css" layer(utilities);
 @import "tw-animate-css";
 @import "@xyflow/react/dist/style.css" layer(vendor);
+@import "katex/dist/katex.min.css" layer(vendor);
 
 
 /*
@@ -183,6 +184,17 @@
     --xy-controls-button-border-color: var(--border);
     --xy-attribution-background-color: transparent;
     color: var(--text-primary);
+  }
+
+  /*
+   * A display formula wider than its box scrolls inside the box, so the page never scrolls sideways.
+   * Its tallest glyphs reach up to 3 px past the line box, so the vertical padding keeps them
+   * inside while overflow-y stays hidden, which also stops a stray vertical scrollbar.
+   */
+  .katex-display {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-block: 0.25em;
   }
 
   /* The library sets "outline: none" on selectable nodes; keep a visible focus ring. */

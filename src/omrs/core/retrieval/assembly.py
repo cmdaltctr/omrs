@@ -14,7 +14,8 @@ merge removes only a longest exact suffix/prefix text match whose
 tokenised size fits the configured ``chunking.chunk_overlap`` budget.
 When no exact match fits, the texts are concatenated without deletion,
 so unique text is never lost and no character boundary is ever inferred
-from the numeric token budget.
+from the numeric token budget. The join is one space, or one line break
+where it touches a display-maths fence (a line that holds only ``$$``).
 
 Neighbour expansion is opt-in (``expand_window`` of zero, the default,
 adds nothing) and reads through the lineage navigator's store-neutral
@@ -141,12 +142,29 @@ def _border_lengths(prefix_text: str, suffix_text: str) -> list[int]:
     return borders
 
 
+def _is_maths_fence(line: str) -> bool:
+    """Return whether *line* is a display-maths fence: only ``$$``."""
+    return line.strip() == "$$"
+
+
 def _join_spaced(left: str, right: str) -> str:
-    """Concatenate two texts, inserting one space only when needed."""
+    """Concatenate two texts, inserting one separator only when needed.
+
+    The separator is one space. It is one line break when the join touches a
+    display-maths fence, because ``$$`` followed by text on the same line is
+    not a closing fence and the formula block would swallow the prose after
+    it. A text that already has whitespace at the join gets nothing added, except
+    that a fence line which ends in a space still gets its line break.
+    """
     if not left:
         return right
     if not right:
         return left
+    touches_fence = _is_maths_fence(left[left.rfind("\n") + 1 :]) or _is_maths_fence(
+        right[: right.find("\n") if "\n" in right else len(right)]
+    )
+    if touches_fence and left[-1] != "\n" and right[0] != "\n":
+        return left + "\n" + right
     if left[-1].isspace() or right[0].isspace():
         return left + right
     return left + " " + right

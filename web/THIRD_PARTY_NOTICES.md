@@ -36,7 +36,7 @@ SOFTWARE.
 
 Used by: the built application in `src/omrs/transports/api/static/`. The production build (`npm run build`) bundles these npm packages into one script file. The build removes their licence comments, so their notices are kept here. Development-only packages (test, lint and type tools, `@types/*`) are not bundled and are not listed.
 
-Versions are from `web/package-lock.json` on 2026-10-14. Update this list when a runtime dependency changes.
+Versions are from `web/package-lock.json` on 2026-11-03. Update this list when a runtime dependency changes.
 
 | Package | Version | Licence | Copyright |
 |---|---|---|---|
@@ -83,6 +83,13 @@ Versions are from `web/package-lock.json` on 2026-10-14. Update this list when a
 | `@tanstack/react-query`, `@tanstack/query-core` | 5.104.2, 5.104.2 | MIT | Copyright (c) 2021-present Tanner Linsley |
 | `react-markdown` | 10.1.0 | MIT | Copyright (c) Espen Hovlandsdal |
 | `remark-gfm` and the unified family it loads: `remark-parse`, `remark-rehype`, `unified`, `vfile`, `vfile-message`, `trough`, `bail`, `devlop`, `ccount`, `markdown-table`, `longest-streak`, `trim-lines`, `stringify-entities`, `parse-entities`, `property-information`, `decode-named-character-reference`, `character-entities`, `character-entities-html4`, `character-entities-legacy`, `character-reference-invalid`, `comma-separated-tokens`, `space-separated-tokens`, `is-alphabetical`, `is-alphanumerical`, `is-decimal`, `is-hexadecimal`, `estree-util-is-identifier-name`, `html-url-attributes`, `hast-util-*`, `mdast-util-*`, `micromark*`, `unist-util-*` | 4.0.1 and the versions in `web/package-lock.json` | MIT | Copyright (c) 2014-2023 Titus Wormer |
+| `katex` | 0.16.22 | MIT | Copyright (c) 2013-2020 Khan Academy and other contributors. The package also supplies the KaTeX fonts, listed under Bundled fonts. |
+| `rehype-katex`, `remark-math` | 7.0.1, 6.0.0 | MIT | Copyright (c) Junyoung Choi <fluke8259@gmail.com> |
+| `hast-util-from-html-isomorphic` | 2.0.0 | MIT | Copyright (c) 2023 Remco Haszing |
+| `hast-util-from-dom` | 5.0.1 | ISC | Copyright (c) Keith McKnight |
+| `hast-util-from-html`, `hast-util-from-parse5`, `hast-util-parse-selector`, `hast-util-to-text`, `hastscript`, `web-namespaces`, `vfile-location`, `unist-util-remove-position`, `mdast-util-math`, `micromark-extension-math` (the new members of the unified family above) | 2.0.3, 8.0.4, 4.0.0, 4.0.3, 9.0.3, 2.0.1, 5.0.3, 5.0.0, 3.0.0, 3.1.0 | MIT | Copyright (c) Titus Wormer |
+| `parse5` | 7.3.0 | MIT | Copyright (c) 2013-2019 Ivan Nikulin |
+| `entities` | 6.0.1 | BSD-2-Clause | Copyright (c) Felix Böhm |
 | `is-plain-obj`, `escape-string-regexp` | 4.1.0, 5.0.0 | MIT | Copyright (c) Sindre Sorhus |
 | `extend` | 3.0.2 | MIT | Copyright (c) 2014 Stefan Thomas |
 | `style-to-js`, `style-to-object` | 1.1.21, 1.0.14 | MIT | Copyright (c) 2017-2020 Menglin "Mark" Xu |
@@ -357,6 +364,23 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
+### BSD 2-Clause licence (`entities`)
+
+
+```text
+Copyright (c) Felix Böhm
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+THIS IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS,
+EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+```
+
 ### Build-time packages
 
 `tailwindcss` 4.3.3 (MIT, Copyright (c) Tailwind Labs, Inc.), `@tailwindcss/vite` 4.3.3 (MIT, Copyright (c) Tailwind Labs, Inc.) and `tw-animate-css` 1.4.0 (MIT, Copyright (c) 2025 Wombosvideo) compile the stylesheet and are not bundled as scripts. The generated CSS can contain rules derived from them, so their notices are kept here. The MIT licence below applies to them.
@@ -380,6 +404,7 @@ Used by: Settings > Appearance, Interface font and Code font. Each font loads fr
 | `@fontsource-variable/jetbrains-mono` | 5.3.0 | OFL-1.1 | Copyright 2020 The JetBrains Mono Project Authors |
 | `@fontsource-variable/fira-code` | 5.3.0 | OFL-1.1 | Copyright 2014-2020 The Fira Code Project Authors |
 | `@fontsource-variable/geist-mono` | 5.3.0 | OFL-1.1 | Copyright 2024 The Geist Project Authors |
+| `katex` (files `KaTeX_*`, bundled by the maths stylesheet) | 0.16.22 | OFL-1.1 | Copyright (c) 2009-2010 Design Science, Inc.; Copyright (c) 2014-2018 Khan Academy. Reserved Font Names `KaTeX_AMS`, `KaTeX_Main` and the other `KaTeX_*` names. |
 
 ### SIL Open Font License 1.1 (applies to each font above)
 

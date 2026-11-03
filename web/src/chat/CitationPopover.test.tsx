@@ -5,6 +5,7 @@ import type { AnswerResult } from "../api/documents";
 import { documentsServer, json } from "../test/fakeDocumentsServer";
 import { renderWithProviders } from "../test/providers";
 import { AssistantTurn } from "./AssistantTurn";
+import { CitationPopover } from "./CitationPopover";
 import { TooltipProvider } from "../components/ui/tooltip";
 import { CitationList } from "./SourcesPanel";
 
@@ -151,5 +152,33 @@ describe("citation popover load failures", () => {
     expect(await within(panel).findByRole("alert")).toBeInTheDocument();
     expect(within(panel).getByRole("button", { name: "Open full chunk" })).toBeInTheDocument();
     expect(within(panel).queryByText(/stored chunk is not available/i)).not.toBeInTheDocument();
+  });
+});
+
+describe("citation popover passage maths", () => {
+  function openPassage(text: string) {
+    const citation = cite(1, ["c-1"]);
+    const server = documentsServer({});
+    renderWithProviders(
+      <TooltipProvider>
+        <CitationPopover
+          citation={citation as AnswerResult["citations"][number]}
+          evidence={{ ...citation, text } as AnswerResult["evidence"][number]}
+          collection="documents"
+          onShowChunk={vi.fn()}
+          trigger={(props) => <button {...props}>Open passage</button>}
+        />
+      </TooltipProvider>,
+      { fetchImpl: server.fetchImpl },
+    );
+    return userEvent.setup().click(screen.getByRole("button", { name: "Open passage" }));
+  }
+
+  it("shows maths as a formula and every other character as written", async () => {
+    await openPassage("*a* # b <i>c</i> $x^2$");
+    const panel = document.querySelector("[data-slot='citation-popover-content']") as HTMLElement;
+    expect(panel.querySelectorAll(".katex")).toHaveLength(1);
+    expect(panel.querySelector(".whitespace-pre-wrap")?.firstElementChild?.textContent).toBe("*a* # b <i>c</i> ");
+    expect(panel.querySelector("em, h1, i")).toBeNull();
   });
 });
