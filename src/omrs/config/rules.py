@@ -12,6 +12,7 @@ rule, never a value.
 from __future__ import annotations
 
 import re
+from collections.abc import Collection
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -101,13 +102,44 @@ ENGINE_NAME_RULE = (
     "hyphens and underscores, and be at most 64 characters."
 )
 
+#: The list keys that hold the reader and engine order (change
+#: ordered-reader-and-ocr-lists, D4), and the single-value keys each one replaces.
+#: The single-value keys stay readable in every source and are never retired.
+READING_LIST_KEYS: tuple[str, ...] = ("pdf_readers", "ocr_engines")
+OLD_READING_KEYS: dict[str, tuple[str, ...]] = {
+    "pdf_readers": ("pdf_reader",),
+    "ocr_engines": ("ocr_engine_primary", "ocr_engine_fallback"),
+}
+KNOWN_READER_NAMES: tuple[str, ...] = tuple(name for name in PDF_READER_NAMES if name != "auto")
+LIST_TYPE_RULE = "The value must be a list of names."
+LIST_EMPTY_RULE = "The list must not be empty. Send null to use the default."
+LIST_DUPLICATE_RULE = "The list must not name the same item twice."
+#: Settings fields the starter ``omrs.jsonc`` leaves out. The old keys stay valid
+#: in the file, so they are not in :data:`INTERNAL_FIELDS`, which the reader refuses.
+TEMPLATE_SKIPPED_FIELDS: frozenset[str] = frozenset(
+    old for olds in OLD_READING_KEYS.values() for old in olds
+)
+#: The rule for a reader entry that is not a known name, ``auto`` included.
+READER_LIST_RULE = f"The value must be one of: {', '.join(KNOWN_READER_NAMES)}."
+#: The old key to the list key that replaced it. A page write of an old key is refused.
+REPLACED_READING_KEYS: dict[str, str] = {
+    old: new for new, olds in OLD_READING_KEYS.items() for old in olds
+}
+
+
+def replaced_key_reason(key: str) -> str:
+    """Return why the page does not write the old reading *key*, naming the list key."""
+    new = REPLACED_READING_KEYS[key]
+    return f"Replaced by {new}. Write {new} instead."
+
+
 #: The keys of Settings > Document reading, in the order of the HTTP contract.
+#: The three old single-value keys left it: the list keys replace them.
 DOCUMENT_READING_KEYS: tuple[str, ...] = (
-    "pdf_reader",
+    "pdf_readers",
     "ocr_fallback_enabled",
     "ocr_routing_unit",
-    "ocr_engine_primary",
-    "ocr_engine_fallback",
+    "ocr_engines",
     "ocr_maths_routing_enabled",
 )
 _READING_BOOLEANS = frozenset({"ocr_fallback_enabled", "ocr_maths_routing_enabled"})
@@ -116,14 +148,58 @@ BLANK_RULE = "The value must not be blank. Send null to use the default."
 BOOL_RULE = "The value must be true or false."
 
 
+def reading_list_problem(key: str, value: Any) -> str | None:
+    """Return the write rule that a reader or engine list *value* breaks, or ``None``.
+
+    A list holds known names, at least one, with no repeat. A reader list may
+    not hold ``auto``, because the order is the choice. An engine name follows
+    :data:`ENGINE_NAME_RULE`. The rule never holds *value*.
+    """
+    if not isinstance(value, (list, tuple)):
+        return LIST_TYPE_RULE
+    if not value:
+        return LIST_EMPTY_RULE
+    if not all(isinstance(item, str) for item in value):
+        return LIST_TYPE_RULE
+    if any(not item.strip() for item in value):
+        return BLANK_RULE
+    if len(set(value)) != len(value):
+        return LIST_DUPLICATE_RULE
+    if key == "pdf_readers":
+        return None if all(item in KNOWN_READER_NAMES for item in value) else READER_LIST_RULE
+    named = all(
+        len(item) <= MAX_ENGINE_NAME_CHARS and re.fullmatch(ENGINE_NAME_PATTERN, item)
+        for item in value
+    )
+    return None if named else ENGINE_NAME_RULE
+
+
+def ignored_old_keys(present: Collection[str]) -> list[tuple[str, str]]:
+    """Return ``(old key, list key)`` for each old key that a list key in *present* overrides.
+
+    Within one source the list key wins (design D4), so an old key beside it is
+    ignored. *present* holds the keys that one source sets.
+    """
+    return [
+        (old, new)
+        for new in READING_LIST_KEYS
+        if new in present
+        for old in OLD_READING_KEYS[new]
+        if old in present
+    ]
+
+
 def document_reading_problem(key: str, value: Any) -> str | None:
     """Return the write rule that a document-reading *value* breaks, or ``None``.
 
     Only a page write runs this check; startup reading does not. The JSON type
-    is strict: a boolean key takes ``true`` or ``false``, a fraction key takes a
-    number (not a boolean, not text) and a text key takes text. Blank text is
-    refused, because the writer would read it as "remove the key". ``None``
-    always passes: it removes the key. A key outside the nine passes.
+    is strict: a boolean key takes ``true`` or ``false``, a list key takes an
+    array of names (:func:`reading_list_problem`) and a text key takes text.
+    Blank text is refused, because the writer would read it as "remove the
+    key". ``None`` always passes: it removes the key. A key outside the checked
+    set passes. The three old single-value keys are still checked here, because
+    a Studio Read step accepts them; the settings writer refuses them on their
+    own (:func:`replaced_key_reason`).
 
     Args:
         key: The setting key.
@@ -132,8 +208,10 @@ def document_reading_problem(key: str, value: Any) -> str | None:
     Returns:
         The rule, which never holds *value*, or ``None`` when *value* is fine.
     """
-    if key not in DOCUMENT_READING_KEYS or value is None:
+    if value is None or not (key in DOCUMENT_READING_KEYS or key in REPLACED_READING_KEYS):
         return None
+    if key in READING_LIST_KEYS:
+        return reading_list_problem(key, value)
     if key in _READING_BOOLEANS:
         return None if isinstance(value, bool) else BOOL_RULE
     if isinstance(value, str) and not value.strip():
@@ -199,6 +277,8 @@ def accepted_problem(path: str, value: Any) -> str | None:
     Paths with no choice list and no address rule always pass here (their
     type is checked elsewhere).
     """
+    if path in READING_LIST_KEYS and not value:
+        return LIST_EMPTY_RULE
     accepted = ACCEPTED.get(path)
     if accepted is not None and value not in accepted:
         return f"The value must be one of: {', '.join(accepted)}."

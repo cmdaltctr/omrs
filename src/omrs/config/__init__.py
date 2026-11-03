@@ -41,6 +41,7 @@ from .provider_sources import (  # noqa: E402
     explicit_provider_fields,
     source_layers,
 )
+from .reading_lists import ReadingListMixin  # noqa: E402
 from .rules import ACCEPTED, PDF_READER_NAMES, _validate_provider_value  # noqa: E402,F401
 from .settings_file import UserConfigSource  # noqa: E402
 from .sources import LegacyBool  # noqa: E402
@@ -52,7 +53,13 @@ logger = logging.getLogger(__name__)
 # ── Root Settings model ─────────────────────────────────────────────
 
 
-class Settings(StorageValidationMixin, OcrRouteSettingsMixin, ProviderSourceMixin, BaseSettings):
+class Settings(
+    StorageValidationMixin,
+    OcrRouteSettingsMixin,
+    ReadingListMixin,
+    ProviderSourceMixin,
+    BaseSettings,
+):
     """Resolved configuration for OMRS — Opinionated Modular RAG System.
 
     Composes the per-subpackage settings models by **nesting** (PROPOSAL

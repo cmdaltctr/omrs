@@ -66,6 +66,9 @@ _DEFAULTS: list[tuple[str, str, object]] = [
     ("RETRIEVAL__HYBRID_SPARSE_BACKEND", "retrieval.hybrid_sparse_backend", "bm25"),
     # PDF reader.
     ("PDF_READER", "pdf_reader", "pdf_inspector"),
+    # Ordered list (ordered-reader-and-ocr-lists). The PDF_READERS default is checked in
+    # tests/unit/test_reading_list_settings.py: conftest sets PDF_READER=pypdf, which wins.
+    ("OCR_ENGINES", "ocr_engines", ("dots-mocr", "paddleocr-vl")),
     ("LITEPARSE_NUM_WORKERS", "liteparse_num_workers", None),
     ("LITEPARSE_OCR_ENABLED", "liteparse_ocr_enabled", False),
     # Metadata.
@@ -144,6 +147,14 @@ _OVERRIDES: list[tuple[str, str, str, object]] = [
     ("RETRIEVAL__HYBRID_SPARSE_BACKEND", "retrieval.hybrid_sparse_backend", "native", "native"),
     # PDF reader.
     ("PDF_READER", "pdf_reader", "pypdf", "pypdf"),
+    # Comma-separated, spaces trimmed (ordered-reader-and-ocr-lists D4).
+    ("PDF_READERS", "pdf_readers", " pypdf , liteparse ", ("pypdf", "liteparse")),
+    (
+        "OCR_ENGINES",
+        "ocr_engines",
+        "paddleocr-vl,dots-mocr, other",
+        ("paddleocr-vl", "dots-mocr", "other"),
+    ),
     ("LITEPARSE_NUM_WORKERS", "liteparse_num_workers", "4", 4),
     ("LITEPARSE_OCR_ENABLED", "liteparse_ocr_enabled", "true", True),
     # Metadata.

@@ -85,6 +85,7 @@ def settings_to_effective(settings: Settings | None = None) -> Any:
         embed_model=settings.embed_model,
         # Bake the RESOLVED reader in: the `auto` probe runs once here.
         pdf_reader=resolve_pdf_reader(settings),
+        pdf_readers=settings.pdf_readers,
         liteparse_num_workers=settings.liteparse_num_workers,
         liteparse_ocr_enabled=settings.liteparse_ocr_enabled,
         ocr_fallback_enabled=settings.ocr_fallback_enabled,
@@ -97,6 +98,7 @@ def settings_to_effective(settings: Settings | None = None) -> Any:
         ocr_runtime_url=settings.ocr_runtime_url,
         ocr_engine_primary=settings.ocr_engine_primary,
         ocr_engine_fallback=settings.ocr_engine_fallback,
+        ocr_engines=settings.ocr_engines,
         ocr_maths_routing_enabled=settings.ocr_maths_routing_enabled,
         ocr_worker_seconds_per_page=settings.ocr_worker_seconds_per_page,
         magika_binary=settings.magika_binary,

@@ -38,8 +38,12 @@ from .jsonc_edit import JsoncEditError, remove_value, set_value
 from .provider_sources import PROVIDER_FIELDS
 from .rules import (
     INTERNAL_FIELDS,
+    OLD_READING_KEYS,
+    READING_LIST_KEYS,
+    REPLACED_READING_KEYS,
     SECRET_FIELDS,
     document_reading_problem,
+    replaced_key_reason,
     workers_folder_problem,
 )
 from .setting_shapes import is_scalar
@@ -102,6 +106,10 @@ def read_only_reason(key: str) -> str | None:
     """
     if key in SECRET_FIELDS:
         return KEY_FIELD_REASON
+    if key in REPLACED_READING_KEYS:
+        return replaced_key_reason(key)
+    if key in READING_LIST_KEYS:
+        return None  # an array, so is_scalar says no, but the page writes it whole
     if key in READ_ONLY_KEYS:
         return READ_ONLY_KEYS[key]
     block, dot, _ = key.partition(".")
@@ -179,6 +187,8 @@ def _plan(changes: Mapping[str, Any], secrets: Path) -> dict[str, Any]:
     """Check every change. Return ``{key: value or None}``, a blank value as ``None``."""
     plan: dict[str, Any] = {}
     for key, value in changes.items():
+        if key in REPLACED_READING_KEYS:
+            raise SettingsFileRefused(f"{key}: {replaced_key_reason(key)}")
         if key not in _WRITABLE:
             raise SettingsFileRefused(f"{key} is not a setting that can be changed here.")
         reading_rule = document_reading_problem(key, value)  # blank text is refused here
@@ -203,6 +213,18 @@ def _plan(changes: Mapping[str, Any], secrets: Path) -> dict[str, Any]:
             if rule is not None:
                 raise SettingsFileRefused(f"{key}: {rule}")
             plan[key] = validated
+    return _with_old_keys_removed(plan)
+
+
+def _with_old_keys_removed(plan: dict[str, Any]) -> dict[str, Any]:
+    """Add the removal of each old key whose list key is in *plan* (a save, or a reset).
+
+    The page never writes an old key. The list save takes it out of the file in
+    the same replace, so the old key cannot outlive the list that replaced it.
+    """
+    for list_key in READING_LIST_KEYS:
+        if list_key in plan:
+            plan.update(dict.fromkeys(OLD_READING_KEYS[list_key]))
     return plan
 
 

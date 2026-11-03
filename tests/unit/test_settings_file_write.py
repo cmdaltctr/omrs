@@ -80,11 +80,10 @@ def test_the_card_keys_stay_allowed_and_key_fields_are_not() -> None:
         "web_max_upload_mib",
         "mcp_http_enabled",
         # document-reading-settings: Settings > Document reading
-        "pdf_reader",
+        "pdf_readers",
         "ocr_fallback_enabled",
         "ocr_routing_unit",
-        "ocr_engine_primary",
-        "ocr_engine_fallback",
+        "ocr_engines",
         "ocr_maths_routing_enabled",
     }
 

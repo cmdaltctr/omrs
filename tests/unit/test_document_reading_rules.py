@@ -31,6 +31,10 @@ ENGINE_RULE = (
 BOOL_RULE = "The value must be true or false."
 BLANK_RULE = "The value must not be blank. Send null to use the default."
 READER_RULE = "The value must be one of: auto, liteparse, pdf_inspector, pypdfium2, pypdf."
+READER_LIST_RULE = "The value must be one of: liteparse, pdf_inspector, pypdfium2, pypdf."
+EMPTY_RULE = "The list must not be empty. Send null to use the default."
+DUPLICATE_RULE = "The list must not name the same item twice."
+LIST_RULE = "The value must be a list of names."
 UNIT_RULE = "The value must be one of: page."
 REMOVED_KEYS = (
     "ocr_fallback_min_confidence",
@@ -64,11 +68,10 @@ def test_the_settings_validator_reads_the_shared_reader_names(
 
 def test_the_key_order_is_the_contract_order() -> None:
     assert DOCUMENT_READING_KEYS == (
-        "pdf_reader",
+        "pdf_readers",
         "ocr_fallback_enabled",
         "ocr_routing_unit",
-        "ocr_engine_primary",
-        "ocr_engine_fallback",
+        "ocr_engines",
         "ocr_maths_routing_enabled",
     )
 
@@ -132,7 +135,7 @@ def test_a_rule_never_holds_the_value() -> None:
         assert "zz-secret-zz" not in message
 
 
-def test_a_key_outside_the_six_passes_unchecked() -> None:
+def test_a_key_outside_the_five_passes_unchecked() -> None:
     assert document_reading_problem("ollama_base_url", "") is None
 
 
@@ -164,9 +167,9 @@ def text(folder: Path) -> str:
 
 def test_a_valid_reader_is_written_and_every_other_byte_stays(folder: Path) -> None:
     before = text(folder)
-    write_settings({"pdf_reader": "liteparse"}, revision=None, directory=folder)
+    write_settings({"pdf_readers": ["liteparse"]}, revision=None, directory=folder)
     after = text(folder)
-    assert parse_jsonc(after)["pdf_reader"] == "liteparse"
+    assert parse_jsonc(after)["pdf_readers"] == ["liteparse"]
     assert "// keep this" in after and after.startswith("// mine\n")
     assert '"ocr_engine_fallback": "my-engine", // keep this' in after
     assert len(after) > len(before)
@@ -175,9 +178,15 @@ def test_a_valid_reader_is_written_and_every_other_byte_stays(folder: Path) -> N
 @pytest.mark.parametrize(
     ("changes", "message"),
     [
-        ({"pdf_reader": "pdfminer"}, f"pdf_reader: {READER_RULE}"),
-        ({"ocr_engine_fallback": "../other"}, f"ocr_engine_fallback: {ENGINE_RULE}"),
-        ({"ocr_engine_fallback": ""}, f"ocr_engine_fallback: {BLANK_RULE}"),
+        ({"pdf_readers": ["pdfminer"]}, f"pdf_readers: {READER_LIST_RULE}"),
+        ({"pdf_readers": ["auto"]}, f"pdf_readers: {READER_LIST_RULE}"),
+        ({"pdf_readers": []}, f"pdf_readers: {EMPTY_RULE}"),
+        ({"pdf_readers": ["pypdf", "pypdf"]}, f"pdf_readers: {DUPLICATE_RULE}"),
+        ({"pdf_readers": "pypdf"}, f"pdf_readers: {LIST_RULE}"),
+        ({"ocr_engines": ["../other"]}, f"ocr_engines: {ENGINE_RULE}"),
+        ({"ocr_engines": ["dots-mocr", ""]}, f"ocr_engines: {BLANK_RULE}"),
+        ({"ocr_engines": ["a", "a"]}, f"ocr_engines: {DUPLICATE_RULE}"),
+        ({"ocr_engines": [3]}, f"ocr_engines: {LIST_RULE}"),
         ({"ocr_fallback_enabled": "true"}, f"ocr_fallback_enabled: {BOOL_RULE}"),
         ({"ocr_routing_unit": "document"}, f"ocr_routing_unit: {UNIT_RULE}"),
         (
@@ -197,9 +206,10 @@ def test_a_refused_value_writes_nothing(
 
 
 def test_null_removes_the_key_and_keeps_the_comments(folder: Path) -> None:
-    write_settings({"ocr_engine_fallback": None}, revision=None, directory=folder)
+    write_settings({"ocr_engines": None}, revision=None, directory=folder)
     after = text(folder)
-    assert "ocr_engine_fallback" not in parse_jsonc(after)
+    assert "ocr_engines" not in parse_jsonc(after)
+    assert "ocr_engine_fallback" not in parse_jsonc(after)  # the old key goes with the list
     assert after.startswith("// mine\n") and parse_jsonc(after)["web_port"] == 9100
 
 
@@ -240,3 +250,46 @@ def test_an_unknown_reader_in_the_file_still_falls_back_to_auto_at_startup(
         settings = Settings(_env_file=empty)
     assert settings.pdf_reader == "auto"
     assert any("Unknown PDF_READER" in record.getMessage() for record in caplog.records)
+
+
+# ── Ordered lists (ordered-reader-and-ocr-lists, tasks 1.1 to 1.3) ───────
+
+
+def test_a_list_save_removes_the_old_keys_in_the_same_write(folder: Path) -> None:
+    (folder / "omrs.jsonc").write_text(
+        '// mine\n{\n  "ocr_engine_primary": "dots-mocr", // old\n'
+        '  "ocr_engine_fallback": "paddleocr-vl",\n  "pdf_reader": "pypdf",\n'
+        '  "web_port": 9100\n}\n',
+        encoding="utf-8",
+    )
+    write_settings({"ocr_engines": ["dots-mocr", "paddleocr-vl"]}, revision=None, directory=folder)
+    data = parse_jsonc(text(folder))
+    assert data["ocr_engines"] == ["dots-mocr", "paddleocr-vl"]
+    assert "ocr_engine_primary" not in data and "ocr_engine_fallback" not in data
+    assert data["pdf_reader"] == "pypdf"  # the other list's old key stays until that list is saved
+    assert text(folder).startswith("// mine\n") and data["web_port"] == 9100
+
+
+@pytest.mark.parametrize(
+    ("key", "list_key"),
+    [
+        ("pdf_reader", "pdf_readers"),
+        ("ocr_engine_primary", "ocr_engines"),
+        ("ocr_engine_fallback", "ocr_engines"),
+    ],
+)
+@pytest.mark.parametrize("value", ["pypdf", None])
+def test_a_write_of_an_old_key_is_refused_naming_the_list_key(
+    folder: Path, key: str, list_key: str, value: Any
+) -> None:
+    before = text(folder)
+    with pytest.raises(SettingsFileRefused) as caught:
+        write_settings({key: value}, revision=None, directory=folder)
+    assert list_key in str(caught.value) and str(caught.value).startswith(f"{key}: ")
+    assert text(folder) == before
+
+
+def test_an_old_key_is_still_checked_for_a_studio_step() -> None:
+    """A Read step accepts the old names, so the value rule still judges them."""
+    assert document_reading_problem("pdf_reader", "pdfminer") == READER_RULE
+    assert document_reading_problem("ocr_engine_fallback", "../x") == ENGINE_RULE
