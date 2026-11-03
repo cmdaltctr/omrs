@@ -5,6 +5,7 @@
  */
 import type { EffectiveControl, JsonValue, NodeSpec, OperationDescriptor } from "../api/pipelines";
 import { optionLabel } from "./labels";
+import { isHiddenOldOption } from "./ListParam";
 import { paramFields, type ParamField } from "./schema";
 
 /** The settings of the draft's graph that change a value: its collection and its overrides. */
@@ -26,8 +27,15 @@ const SOURCE_TEXT: Record<string, string> = {
  * The first three editable settings in catalogue order, with the collection
  * setting last, then the editable settings left over (`rest`) and their number.
  */
-export function mainSettings(operation: OperationDescriptor): { shown: ParamField[]; rest: ParamField[]; more: number } {
-  const editable = paramFields(operation).filter((field) => field.kind !== "unsupported");
+export function mainSettings(
+  operation: OperationDescriptor,
+  params: NodeSpec["params"] = undefined,
+): { shown: ParamField[]; rest: ParamField[]; more: number } {
+  const fields = paramFields(operation);
+  // The card hides the same old single-value options as Step settings does.
+  const editable = fields.filter(
+    (field) => field.kind !== "unsupported" && !isHiddenOldOption(field, fields, params?.[field.name]),
+  );
   const ordered = [...editable.filter((field) => !field.isCollection), ...editable.filter((field) => field.isCollection)];
   const rest = ordered.slice(MAIN_SETTINGS);
   return { shown: ordered.slice(0, MAIN_SETTINGS), rest, more: rest.length };
@@ -116,7 +124,7 @@ export function cardLines(
   controls: readonly EffectiveControl[] | undefined,
   graph: GraphSettings,
 ): CardLines {
-  const { shown, rest, more } = mainSettings(operation);
+  const { shown, rest, more } = mainSettings(operation, node.params);
   const line = (field: ParamField) => ({ label: field.label, value: settingValue(field, node, controlFor(field, controls), graph) });
   return { summary: firstSentence(operation.description), settings: shown.map(line), extraSettings: rest.map(line), moreSettings: more };
 }
