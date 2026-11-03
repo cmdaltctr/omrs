@@ -556,19 +556,16 @@ A cloud judge sends each claim and its cited passages off this machine. The bloc
 
 ### Document reading
 
-Settings > Document reading (`#/settings/document-reading`) sets how OMRS reads documents. It has one row for each of these nine keys:
+Settings > Document reading (`#/settings/document-reading`) sets how OMRS reads documents. It has one row for each of these six keys:
 
 | Row | Key | Control |
 | --- | --- | --- |
 | PDF reader | `pdf_reader` | A select. A reader that is not installed shows the reason and you cannot choose it. |
 | OCR fallback | `ocr_fallback_enabled` | A switch. |
-| Lowest text confidence | `ocr_fallback_min_confidence` | A number from 0 to 1. |
-| OCR page fraction | `ocr_fallback_page_fraction` | A number from 0 to 1. |
-| OCR routing unit | `ocr_routing_unit` | A select of `document` and `page`. |
+| OCR routing unit | `ocr_routing_unit` | A select. `page` is the only unit. |
 | Primary engine | `ocr_engine_primary` | A select of the engines that the server finds. |
 | Fallback engine | `ocr_engine_fallback` | A select of the engines that the server finds. |
 | Maths routing | `ocr_maths_routing_enabled` | A switch. |
-| Maths page fraction | `ocr_maths_page_fraction` | A number from 0 to 1. |
 
 Each row shows the value in force, where it comes from and the default. To change a value:
 
@@ -587,7 +584,7 @@ These rules also apply:
 - When `auto` or a missing reader resolves to another reader, the PDF reader row shows the reader in use.
 - A Read document step in a pipeline can choose its own reader.
 
-The nine keys are part of the index identity. After a restart, the next ingest can read existing files again. A failed save shows the server message. When `omrs.jsonc` changed on disk, select Reload to read the new values, then save again.
+The six keys are part of the index identity. After a restart, the next ingest can read existing files again. A failed save shows the server message. When `omrs.jsonc` changed on disk, select Reload to read the new values, then save again.
 
 ### Configuration
 

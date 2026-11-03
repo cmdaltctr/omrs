@@ -935,20 +935,18 @@ the registry must stay in agreement (a guard test enforces this).
 
 | Reader | Declared text format | Page provenance |
 | --- | --- | --- |
-| `pdf_inspector` | `markdown` | Yes: one document per page; the whole-document fallback and worker-read documents have no page |
+| `pdf_inspector` | `markdown` | Yes: one document per page; the whole-document fallback has no page |
 | `liteparse` | `plain` | Yes — string `page_label` alongside the integer `page` |
 | `pypdf` | `plain` | Yes |
 | `pypdfium2` | `plain` | Yes |
 
 ### OCR fallback and isolated engines
 
-The calibrated routing gate — which PDFs deserve OCR:
+The OCR routing switch. OCR routing judges every page, so no document-level threshold exists:
 
 | Variable | Default | What it does |
 |---|---|---|
-| `OCR_FALLBACK_ENABLED` | `true` | Master switch. Off means no PDF reaches the worker |
-| `OCR_FALLBACK_MIN_CONFIDENCE` | `0.5` | Confidence floor for text-based PDFs. `0.0` is the never-trigger sentinel |
-| `OCR_FALLBACK_PAGE_FRACTION` | `0.10` | Flagged-page proportion that triggers OCR. `0.0` is the never-trigger sentinel |
+| `OCR_FALLBACK_ENABLED` | `true` | Switches OCR routing on and off. Off means no page reaches OCR |
 
 Engine routes and operation:
 
@@ -961,7 +959,6 @@ Engine routes and operation:
 | `OCR_WORKER_SECONDS_PER_PAGE` | `120.0` | Per-page timeout allowance in seconds |
 | `OCR_RUNTIME_URL` | empty | Address of a `llama-server` you run for OCR engines that declare a runtime. Empty means OMRS starts the server (managed). Set means external: OMRS starts nothing and does not check model files. See [OCR runtimes](#ocr-runtimes) |
 | `OCR_MATHS_ROUTING_ENABLED` | `true` | Detect maths fonts on the pdf-inspector path and route affected pages |
-| `OCR_MATHS_PAGE_FRACTION` | `0.10` | Maths-page fraction that routes a whole document. Range 0.0–1.0; `0.0` disables this condition |
 
 These settings are flat, top-level fields beside `PDF_READER`, resolved
 once at the composition root and injected. The timeout is
@@ -969,14 +966,17 @@ once at the composition root and injected. The timeout is
 A 14-page request gets 1,680 seconds with the defaults. On a managed runtime with one slot, the timeout starts when the request holds the runtime's request lock. Time spent waiting for another OMRS process does not count.
 
 An unknown or unprovisioned engine is unavailable. If both routes are
-unavailable, the PDF keeps its available text. A worker failure after
+unavailable, flagged pages keep their available text. A worker failure after
 dispatch fails that file without retrying on the other engine.
 
-Maths pages skip local OCR under `OCR_ROUTING_UNIT=page`. Under
-`document`, the maths fraction adds a condition to the existing gate.
-`OCR_MATHS_PAGE_FRACTION=0.0` affects only the document unit. Use
-`OCR_MATHS_ROUTING_ENABLED=false` to disable maths routing for either unit.
-The master switch `OCR_FALLBACK_ENABLED=false` disables all OCR routing.
+Maths pages skip local OCR. Use `OCR_MATHS_ROUTING_ENABLED=false` to
+disable maths routing. The master switch `OCR_FALLBACK_ENABLED=false`
+disables all OCR routing.
+
+OMRS removed three settings with the document routing unit:
+`OCR_FALLBACK_MIN_CONFIDENCE`, `OCR_FALLBACK_PAGE_FRACTION` and
+`OCR_MATHS_PAGE_FRACTION`. Each name in the environment fails start-up.
+Each lower-case key in `omrs.jsonc` is listed as retired and ignored.
 
 Each engine has its own environment under `ocr-workers/engines/<engine>`.
 dots-mocr needs explicit model-licence acceptance. Over 257 pages,
@@ -996,7 +996,7 @@ feature worktree that you remove later. When `OCR_WORKERS_DIR` comes from
 the environment or `.env`, the field is read-only.
 
 **OCR settings on a pipeline step.** A Read document step of a user
-profile can set each of the eight OCR settings above (not the worker
+profile can set each of the five OCR settings above (not the worker
 command, folder or timeouts). An empty value uses the server setting.
 Built-in profiles always use the server settings. See
 [ADR-105](../adr/105-pipeline-steps-own-their-ocr-settings.md).
@@ -1020,13 +1020,13 @@ provisioning and worker execution to preserve weights outside worktrees.
 
 ### OCR routing unit and the local OCR tier
 
-The unit that OCR is decided on, and the local tier that runs first
+The unit that OCR is decided on (always the page), and the local tier that runs first
 under it (change `page-level-ocr-routing`,
 [ADR-069](../adr/069-page-level-ocr-routing-and-the-pdfium-runtime.md)):
 
 | Variable | Default | What it does |
 |---|---|---|
-| `OCR_ROUTING_UNIT` | `document` | `document` keeps whole-PDF routing. `page` (opt-in) OCRs only flagged pages |
+| `OCR_ROUTING_UNIT` | `page` | `page` is the only legal value. `document` fails start-up with a message that names `page`. In `omrs.jsonc`, `"ocr_routing_unit": "document"` is listed as a settings-file problem and ignored, so `page` applies |
 | `OCR_LOCAL_MIN_CONFIDENCE` | `0.9` | Below this reported confidence a page escalates to the worker. Unreported confidence escalates too |
 | `OCR_LOCAL_OFFLINE` | `false` | `true` forbids the model download; a missing cached model then degrades |
 | `OCR_LOCAL_MODEL_DIRECTORY` | empty | Artifact directory (`<name>/<revision>` leaf) to load the model from. Empty means the library's default cache |
@@ -1034,8 +1034,8 @@ under it (change `page-level-ocr-routing`,
 The default cut is 0.9, supported by Experiments 33, 37 and 39. On the
 399 flagged pages re-scored in Experiment 39, 59.6% escalate and 2.5% of
 kept pages have body recall below 0.5. Explicit operator values still apply.
-Page-unit installs using the previous 0.8 default re-index once on their
-next ingest. The `document` unit keeps its identity for this cut change.
+Installs using the previous 0.8 default re-index once on their
+next ingest.
 
 These four names are **flat on purpose**. `pydantic-settings` resolves
 its `__` delimiter only into nested settings blocks, and the OCR
@@ -1044,9 +1044,9 @@ fields are top-level — a nested spelling such as
 never-shipped nested spellings are trapped in `config/legacy.py` with
 an error naming the flat replacement, so a typo cannot pass unnoticed.
 
-An invalid `OCR_ROUTING_UNIT` raises at startup rather than warning
-and falling back: the unit feeds the index identity, and a fallback
-would index a corpus under a unit nobody chose.
+An `OCR_ROUTING_UNIT` other than `page` raises at startup rather than
+warning and falling back: the unit feeds the index identity, and a
+fallback would index a corpus under a unit nobody chose.
 
 The local tier needs two process-level libraries that pdf-inspector
 loads by environment variable: `PDFIUM_LIB_PATH` (LiteParse ships
@@ -1056,28 +1056,23 @@ the composition root runs `load_dotenv()` before any read, which
 exports them into the process environment the Rust library sees. On
 first use the model (`pp-ocrv6-small@oar-ocr-v0.7.0`, about 31 MB)
 downloads unless `OCR_LOCAL_OFFLINE=true` and a cache is present. A
-missing library or model never fails a file: flagged pages keep
-native text and count unresolved, with one warning naming what is
-missing.
+missing library or model never fails a file. Flagged pages go to the
+worker engine in one page-listed request (issue #161). Only when no OCR
+route exists either do they keep native text and count unresolved, with
+one warning that names both missing tiers.
 
-Identity consequences: an install that switches to `page` reindexes
-its sources once — a different engine reads the pages — and the
-payload additionally records the escalation threshold and the
-resolved model identity. The modular-engine upgrade separately changes
-identity for every source, including `document` installs: both route
-fingerprints and the maths-routing settings participate. Sources
-reprocess on their next ingestion; reading an index does not rebuild it.
+Identity consequences: the index identity schema moved from 6 to 7.
+The routing payload is `{enabled, routing_unit, blank_page_test,
+local_tier}`, and the maths block is `{enabled, detector_version}`. The
+page-source counts are excluded for every source. Every existing source
+reindexes once on its next ingest. Reading an index does not rebuild it.
 
-The packaged default is the promoted gate validated by Experiment 29
-([ADR-065](../adr/065-ocr-fallback-gate-promoted-to-packaged-default.md)):
-enabled at `0.5` confidence and `0.10` page fraction, shipped together —
-enabling the flag while leaving the thresholds at `0.0` silently misses
-threshold-flagged documents. With no worker provisioned, an OCR-required
-PDF keeps its partial extraction and the batch continues with an
-actionable warning. Set `OCR_FALLBACK_ENABLED=false` to disable routing
-entirely. For classification-only routing under `document`, set both
-gate thresholds to `0.0` and disable maths routing. Only `scanned` and
-`image_based` PDFs then route.
+The packaged default is `OCR_FALLBACK_ENABLED=true`
+([ADR-065](../adr/065-ocr-fallback-gate-promoted-to-packaged-default.md),
+page routing from [ADR-069](../adr/069-page-level-ocr-routing-and-the-pdfium-runtime.md)).
+With no OCR route available, a flagged page keeps its native text and the
+batch continues with an actionable warning. Set `OCR_FALLBACK_ENABLED=false`
+to disable routing entirely.
 
 Full behaviour, including provisioning and OCR metadata, is in
 [the ingestion guide](ingestion.md#ocr-fallback-for-scanned-pdfs).
@@ -1173,7 +1168,7 @@ A launch value (step 1 or 2) locks the limit for that run. Settings then shows t
 
 ### Document reading values
 
-Settings > Document reading edits nine keys in `omrs.jsonc`: `pdf_reader`, `ocr_fallback_enabled`, `ocr_fallback_min_confidence`, `ocr_fallback_page_fraction`, `ocr_routing_unit`, `ocr_engine_primary`, `ocr_engine_fallback`, `ocr_maths_routing_enabled` and `ocr_maths_page_fraction`. See [PDF reading](#pdf-reading) and [OCR fallback and isolated engines](#ocr-fallback-and-isolated-engines).
+Settings > Document reading edits six keys in `omrs.jsonc`: `pdf_reader`, `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engine_primary`, `ocr_engine_fallback` and `ocr_maths_routing_enabled`. See [PDF reading](#pdf-reading) and [OCR fallback and isolated engines](#ocr-fallback-and-isolated-engines).
 
 - Each key applies after a restart only. Until then, the row shows the value in force and the saved value with "Restart to apply".
 - Each key is part of the [index identity](#index-identity-and-re-ingestion). After the restart, the next ingest can read existing files again.
@@ -1247,10 +1242,10 @@ These settings are part of the index identity:
 | The output revision of the resolved PDF reader (PDF sources only) | A reader declares a new revision when its output changes, so each PDF source reprocesses once. `pdf_inspector` declares 2 since it emits page documents; the other readers declare 1. Non-PDF sources do not carry it |
 | `EMBEDDING__TOKENIZER_MODEL` and `EMBEDDING__TOKENIZER_REVISION` | They set the Markdown token budget, so chunk boundaries move |
 | The **resolved** Markdown splitter | Model-token-aware or legacy fallback. The resolved value is recorded, not the configured one, so a corpus chunked under the fallback does not stay "matching" forever once the tokenizer becomes loadable |
-| `OCR_FALLBACK_ENABLED`, `OCR_FALLBACK_MIN_CONFIDENCE`, `OCR_FALLBACK_PAGE_FRACTION` | They decide which reader produced the text |
-| `OCR_ROUTING_UNIT` and, under `page`, the escalation threshold and the resolved local model identity | They decide which engine reads each page. These local-tier fields are recorded only when the unit is not `document` |
+| `OCR_FALLBACK_ENABLED` | It decides which reader produced the text |
+| `OCR_ROUTING_UNIT`, the escalation threshold and the resolved local model identity | They decide which engine reads each page |
 | Both resolved OCR route fingerprints | Availability, protocol version, every package and exact version, pipeline identity and revision, model identity and revision, output-schema identity and version, and backend identifier |
-| `OCR_MATHS_ROUTING_ENABLED`, `OCR_MATHS_PAGE_FRACTION` and the detector version | They decide whether maths pages reach OCR; recorded for every source |
+| `OCR_MATHS_ROUTING_ENABLED` and the detector version | They decide whether maths pages reach OCR; recorded for every source |
 
 Two consequences worth planning for:
 
