@@ -795,7 +795,7 @@ If the check after the uninstall finds a clash, do not restart. Run the entry's 
 
 ### PDF readers on the Integrations page
 
-The PDF readers section (`#/integrations/pdf-readers`) lists every reader in the PDF reader registry, in registry order. A reader added to the registry later shows with no page change. `GET /v1/integrations` returns the same list in its `pdf_readers` block.
+The PDF readers section (`#/integrations/pdf-readers`) lists every reader in the PDF reader registry. Readers in the host list come first, in list order. The rest follow in registry order. A reader added to the registry later shows with no page change. `GET /v1/integrations` returns the same list in its `pdf_readers` block.
 
 Each row shows these items:
 

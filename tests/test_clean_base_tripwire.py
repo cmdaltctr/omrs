@@ -252,7 +252,8 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # extra installed): the reading-list settings, reader chain, reader identity, OCR
 # route list, read-step lists, PDF readers block and uninstall list tests arrive;
 # the document-reading tests are rewritten for the five-key shape.
-_BASE_EXECUTED = 9984
+# +1 (2026-11-03, same PR): PDF readers sort by host list position.
+_BASE_EXECUTED = 9985
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

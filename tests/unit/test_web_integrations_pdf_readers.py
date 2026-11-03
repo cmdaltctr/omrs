@@ -51,7 +51,7 @@ def _readers(client: TestClient) -> dict[str, dict[str, Any]]:
 
 def test_one_row_per_registered_reader_with_the_contract_fields(client: TestClient) -> None:
     readers = _readers(client)
-    assert list(readers) == ["liteparse", "pdf_inspector", "pypdf", "pypdfium2"]
+    assert list(readers) == ["pdf_inspector", "pypdfium2", "pypdf", "liteparse"]
     assert all(
         set(item) == {"name", "installed", "extra", "fix_command", "used_by"}
         for item in readers.values()

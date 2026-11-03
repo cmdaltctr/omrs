@@ -42,7 +42,7 @@ function ReaderRow({ reader }: { reader: PdfReaderItem }) {
   );
 }
 
-/** Every registered PDF reader, in registry order. The list is generic: a reader registered later shows with no change here. */
+/** Every registered PDF reader. Readers in the host list come first, in list order; the server sorts them. The list is generic: a reader registered later shows with no change here. */
 export function PdfReadersSection({ readers }: { readers: PdfReaderItem[] }) {
   const title = SECTION_LABELS["pdf-readers"];
   return (

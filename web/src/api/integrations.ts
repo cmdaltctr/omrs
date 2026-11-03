@@ -118,7 +118,7 @@ export interface IntegrationList {
   tools: ExternalTool[];
   /** OCR engines, model files and local servers. Older fixtures may leave it out. */
   runtime?: RuntimeComponents;
-  /** Every registered PDF reader, in registry order. Older fixtures may leave it out. */
+  /** Every registered PDF reader: host-list readers first, in list order, then the rest in registry order. Older fixtures may leave it out. */
   pdf_readers?: PdfReaderItem[];
 }
 

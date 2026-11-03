@@ -134,6 +134,12 @@ def test_the_host_list_gives_one_position_line_per_reader(effective_settings: An
     assert found["pypdfium2"] == []
 
 
+def test_listed_readers_come_first_in_list_order(effective_settings: Any) -> None:
+    settings = effective_settings(pdf_readers=("pypdf", "pdf_inspector"))
+    names = [item["name"] for item in pdf_reader_items(settings, CHECKOUT_ENV, None)]
+    assert names == ["pypdf", "pdf_inspector", "liteparse", "pypdfium2"]
+
+
 def test_a_list_read_from_the_single_value_setting_counts(effective_settings: Any) -> None:
     settings = effective_settings(pdf_reader="pypdf")
     assert _items(settings)["pypdf"]["used_by"] == ["First in Settings > Document reading"]

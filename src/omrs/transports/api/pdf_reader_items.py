@@ -1,8 +1,10 @@
 """The ``pdf_readers`` block of ``GET /v1/integrations`` (ordered-reader-and-ocr-lists, D8).
 
 One item for each registered PDF reader, so a reader registered later shows
-with no change here. The probe only checks that the reader's package imports
-(``capabilities.pdf_reader_options``). Nothing installs, downloads or starts.
+with no change here. Readers in the host list come first, in list order. The
+other readers follow in registry order. The probe only checks that the
+reader's package imports (``capabilities.pdf_reader_options``). Nothing
+installs, downloads or starts.
 
 ``used_by`` holds the lines the Integrations page shows as given: the reader's
 place in the host list, and each saved user profile whose Read document step
@@ -111,7 +113,10 @@ def _profile_lines(catalogue: Any) -> dict[str, list[str]]:
 def pdf_reader_items(
     settings: Any, environment: InstallEnvironment, catalogue: Any
 ) -> list[dict[str, Any]]:
-    """Return one item for each registered PDF reader, in registry order.
+    """Return one item for each registered PDF reader.
+
+    Readers in the host list come first, in list position. The rest follow in
+    registry order.
 
     Args:
         settings: The Engine's frozen ``EffectiveSettings``, or ``None``.
@@ -141,4 +146,9 @@ def pdf_reader_items(
                 "used_by": used_by,
             }
         )
+    listed = list(dict.fromkeys(reader_list(settings))) if settings is not None else []
+    # sort is stable, so readers outside the list keep registry order.
+    items.sort(
+        key=lambda item: listed.index(item["name"]) if item["name"] in listed else len(listed)
+    )
     return items
