@@ -26,7 +26,7 @@ Issue #161 showed the failure: a junk hidden text layer survives because documen
 - [Flagged pages may cost worker time when the local runtime is missing] → Correct behaviour: reading the page beats keeping junk. The blank test and the local tier still shield the common cases.
 - [The pdf-reader baseline loses its gate-calibration requirements] → The calibration history stays in the ADRs and experiment records; the spec describes the system as it will be.
 
-## Open Questions
+## Resolved Questions (operator, 2026-11-03)
 
-1. Remove `ocr_fallback_min_confidence` along with the gate? Recommendation: yes; nothing reads it once the gate goes. (The master flow named only the fraction; this follows the intent.)
-2. Fold the ADR-069 page-routing amendment and this flip into one dated note on the ADR after merge? Recommendation: yes, as a short follow-up, matching the blank-pages follow-up pattern.
+1. Remove `ocr_fallback_min_confidence` along with the gate: yes. Nothing reads it once the gate goes.
+2. The ADR-069 amendment goes into this change, as one dated note on ADR-069 in the same pull request (task 3.5).

@@ -17,6 +17,7 @@
 - [ ] 3.2 Apply the payload and exclusion changes in `core/ingestion/ocr_identity.py` and `core/ingestion/embed_exclusions.py`; remove the three keys from `core/pipelines/levers.py` and `core/ingestion/graph_adapters_catalogue.py`; update the identity baseline pins with a dated comment. Verify: the tests from 3.1 pass.
 - [ ] 3.3 Update the Settings page rows and the settings-file write rule for the removed keys and the `page`-only unit rule, with the refusals from the spec. Verify: the web gates and the settings-file tests pass.
 - [ ] 3.4 Drift check: grep `docs/guides/` and `.env.example` for the `document` unit, `OCR_FALLBACK_PAGE_FRACTION`, `OCR_FALLBACK_MIN_CONFIDENCE` and the 10% rule; fix what the change makes wrong. Verify: `grep -rn "ocr_fallback_page_fraction" docs/ .env.example` finds nothing stale.
+- [ ] 3.5 Add a dated amendment note to ADR-069: `page` is the only routing unit, the document gate and its three settings are gone, and a missing local runtime escalates to the worker. Verify: the note names this change and the master flow D2 decision.
 
 ## 4. Gates and PR
 
