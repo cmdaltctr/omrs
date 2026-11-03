@@ -35,7 +35,7 @@ Code tasks are tests first: write the test, run it, confirm it fails, then chang
 ## 6. Integration checks
 
 - [ ] 6.1 Run `./scripts/local_ci.sh`. Verify: no step prints `SKIPPED`, every step passes, including `tests/test_file_size_ceiling.py` and the tripwire.
-- [ ] 6.2 Run `openspec validate ordered-reader-and-ocr-lists --strict` and `openspec validate --all --strict`. Verify: both pass.
+- [x] 6.2 Run `openspec validate ordered-reader-and-ocr-lists --strict` and `openspec validate --all --strict`. Verify: both pass.
 
 ## Workflow follow-up
 
