@@ -85,9 +85,10 @@ Start this group only after group 2b is done.
     - at least 18 of 22 pages are identical to D4;
     - the median Dice against T-control is 0.99 or more;
     - the JSON is in `smoke_evidence/`.
-- [ ] 3.4 Ingest `eq01`, `io06` and `rf06` into a scratch collection with the CLI, using scratch `LANCEDB_URI` and `OMRS_CONFIG_DIR` and never `~/.omrs`.
+- [x] 3.4 Ingest `eq01`, `io06` and `rf06` into a scratch collection with the CLI, using scratch `LANCEDB_URI` and `OMRS_CONFIG_DIR` and never `~/.omrs`.
   - Verify: search finds a known phrase from an OCR page of each PDF, and KaTeX 0.16.22 renders every formula on the `eq01` pages.
-  - Result 2026-11-02, NOT ticked: `eq01` and `io06` pass (OCR through dots-mocr-llamacpp, phrase found, 304 formulas, 0 KaTeX errors). `rf06` is not sent to OCR by the default gate, because its text layer is accepted (see `SMOKE_RESULTS.md`, F1; issue #161), so no OCR page of `rf06` is searchable. Operator decision 2026-11-02: stays unticked until the routing fix is tested by change `image-based-rescue-gate` (Experiment 43).
+  - Result 2026-11-03, ticked: re-run in page mode (`ocr_routing_unit = "page"`, set in the scratch config because this branch defaults to `document`), llama.cpp for OCR and embeddings. All three pass (master flow group 3, gate G3 approved): `rf06` page 29 reads "Antonía Cruz González / Sevilla 17 de Agosto de 1911" and both searches return it; the `io06` page 28 phrase is found; an OCR'd `eq01` page 3 phrase is the top hit; 300 `eq01` formulas, 0 KaTeX errors. See `SMOKE_RESULTS.md`.
+  - Result 2026-11-02 (superseded by the line above): `eq01` and `io06` pass (OCR through dots-mocr-llamacpp, phrase found, 304 formulas, 0 KaTeX errors). `rf06` is not sent to OCR by the default gate, because its text layer is accepted (see `SMOKE_RESULTS.md`, F1; issue #161), so no OCR page of `rf06` is searchable. Operator decision 2026-11-02: stays unticked until the routing fix is tested by change `image-based-rescue-gate` (Experiment 43).
 - [x] 3.5 Start a scratch web preview with `ocr_engine_primary = "dots-mocr-llamacpp"` and open the Integrations page in Orca.
   - Verify: the engine row shows ready at 1,280 px and at 390 px, with screenshots in `smoke_evidence/`.
 - [x] 3.6 Check for a clean exit: stop the CLI run and then the preview server.
