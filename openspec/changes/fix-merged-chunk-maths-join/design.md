@@ -10,7 +10,7 @@ The stored chunks are sound, so the fix belongs at the join and nowhere else.
 
 **Goals:**
 
-- A display-maths fence never shares a line with other text after a merge.
+- A display-maths fence never shares a line with other text after a merge that has no exact overlap to remove.
 - Every join that does not touch a fence stays byte for byte as it is.
 
 **Non-Goals:**

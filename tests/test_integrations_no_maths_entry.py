@@ -7,6 +7,7 @@ installable integration.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 _CATALOGUE = (
@@ -19,3 +20,4 @@ def test_catalogue_names_no_maths_package() -> None:
     assert source
     assert "katex" not in source
     assert "remark-math" not in source
+    assert not re.search(r"\bmaths?\b|latex", source)

@@ -4,7 +4,7 @@
 
 ### Requirement: Search results render maths
 
-Each Knowledge Base search result SHALL render `$...$` and `$$...$$` in its passage text as maths. Every other character SHALL show as plain text, exactly as stored, with its indentation, trailing spaces and line breaks kept, so OCR text is not read as Markdown.
+Each Knowledge Base search result SHALL render `$...$` and `$$...$$` in its passage text as maths. Every other character SHALL show as plain text, exactly as stored, with its indentation, trailing spaces and line breaks kept, so OCR text is not read as Markdown. Text in inline code or a fenced code block SHALL stay as written, so `$x$` in a code sample renders no maths.
 
 #### Scenario: A result from eq01
 

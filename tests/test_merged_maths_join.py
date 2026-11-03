@@ -110,9 +110,11 @@ def test_a_join_adds_only_whitespace() -> None:
     assert merged.startswith(left) and merged.endswith(right)
 
 
-def test_a_fence_line_that_ends_in_a_space_still_gets_a_line_break() -> None:
+def test_a_fence_line_that_ends_in_a_space_or_tab_still_gets_a_line_break() -> None:
     assert _merge("a\n$$ ", "where") == "a\n$$ \nwhere"
     assert _merge("where", "$$ \nx\n$$") == "where\n$$ \nx\n$$"
+    assert _merge("a\n$$\t", "where") == "a\n$$\t\nwhere"
+    assert _merge("where", "$$\t\nx\n$$") == "where\n$$\t\nx\n$$"
 
 
 def test_a_fence_line_with_a_break_on_the_other_side_adds_nothing() -> None:

@@ -30,6 +30,16 @@ describe("MathText", () => {
     expect(container.querySelectorAll(".katex-display")).toHaveLength(1);
     expect(container).toHaveTextContent("Before");
     expect(container).toHaveTextContent("After");
+    expect(container.textContent).toContain("Before\n");
+    expect(container.textContent).toContain("\nAfter");
+  });
+
+  it("shows $x$ inside inline code and a fenced block as written, and renders it outside", () => {
+    const text = "`$x$`\n```\n$y$\n```\n$z$";
+    const { container } = render(<MathText text={text} />);
+    expect(container.querySelectorAll(".katex")).toHaveLength(1);
+    expect(container.querySelector(".katex")).toHaveTextContent("z");
+    expect(container.textContent).toContain("`$x$`\n```\n$y$\n```\n");
   });
 
   it.each(EQ01_CHUNKS.map((chunk) => [chunk.chunk_id.slice(0, 8), chunk] as const))(

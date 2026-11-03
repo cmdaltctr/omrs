@@ -2,7 +2,7 @@
 
 ## 1. Failing tests first
 
-- [x] 1.1 Add tests in the new file `tests/test_merged_maths_join.py` (`tests/test_context_assembly.py` already runs to 794 lines) for the scenarios in `specs/retrieval-context-assembly/spec.md`: a closing fence then prose, prose then an opening fence, an ordinary join, a one-line display formula, a break that is already there, overlap removal with a fence in the text, and a check that only whitespace is added. Use the `eq01` shape (a chunk ending in a line that holds only `$$`, a chunk starting `where again the term`) with no paper text. Verify: run `uv run --no-sync pytest tests/test_context_assembly.py -q` on the unchanged code. The fence cases fail. The ordinary-join, one-line, break-already-there and overlap cases pass.
+- [x] 1.1 Add tests in the new file `tests/test_merged_maths_join.py` (`tests/test_context_assembly.py` already runs to 794 lines) for the scenarios in `specs/retrieval-context-assembly/spec.md`: a closing fence then prose, prose then an opening fence, an ordinary join, a one-line display formula, a break that is already there, overlap removal with a fence in the text, and a check that only whitespace is added. Use the `eq01` shape (a chunk ending in a line that holds only `$$`, a chunk starting `where again the term`) with no paper text. Verify: run `uv run --no-sync pytest tests/test_merged_maths_join.py -q` on the unchanged code. The fence cases fail. The ordinary-join, one-line, break-already-there and overlap cases pass.
 
 ## 2. The fix
 

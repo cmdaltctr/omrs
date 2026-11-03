@@ -32,7 +32,7 @@ A claim in the list of claims that failed verification SHALL render inline maths
 
 ### Requirement: The citation passage renders maths only
 
-The passage text in the citation popover text view, which the Sources panel "Show passage" button also opens, SHALL render `$...$` and `$$...$$` as maths. Every other character SHALL show as plain text, exactly as stored, with its indentation, trailing spaces and line breaks kept. The chunk viewer SHALL keep showing the exact stored text.
+The passage text in the citation popover text view, which the Sources panel "Show passage" button also opens, SHALL render `$...$` and `$$...$$` as maths. Every other character SHALL show as plain text, exactly as stored, with its indentation, trailing spaces and line breaks kept. Text in inline code or a fenced code block SHALL stay as written, so `$x$` in a code sample renders no maths. The chunk viewer SHALL keep showing the exact stored text.
 
 #### Scenario: A passage with maths and Markdown signs
 
