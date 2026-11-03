@@ -18,11 +18,12 @@ The order below is the operator's confirmed order (2026-11-02). Do not reorder g
 
 ## 3. Re-run #161: redo dots-mocr task 3.4 with page mode (worktree `omrs-feat-dots-mocr-llamacpp-backend`)
 
-- [ ] 3.1 Read that change's `tasks.md` (task 3.4), `design.md` D9, and `ocr-workers/engines/dots-mocr-llamacpp/SMOKE_RESULTS.md`. Confirm worktree and branch. `uv sync --frozen --extra web`.
-- [ ] 3.2 Scratch environment: scratch `OMRS_CONFIG_DIR`, `OMRS_STATE_DIR`, `LANCEDB_URI`; `ocr_routing_unit=page` in the scratch config; engine `dots-mocr-llamacpp`; set `PDFIUM_LIB_PATH` and `ORT_DYLIB_PATH`; after the first pages, grep the log for "Local OCR tier unavailable".
-- [ ] 3.3 GATE G3: warn the operator: about 1 to 1.5 hours of GPU. Blank pages add time; the blank-skip change is not in this worktree.
-- [ ] 3.4 Ingest `eq01`, `io06`, `rf06` with the CLI. Pass: a search finds a known phrase from an OCR page of each PDF, including "Antonia Cruz Gonzalez" and "Sevilla 17 de Agosto" from `rf06` page 29; KaTeX 0.16.22 renders `eq01` formulas with 0 errors.
-- [ ] 3.5 Record the run in `SMOKE_RESULTS.md` (amend the task 3.4 row), tick 3.4 only if all pass, and report the three search results. A pass here is the evidence group 6's gate asks for.
+- [x] 3.1 Read that change's `tasks.md` (task 3.4), `design.md` D9, and `ocr-workers/engines/dots-mocr-llamacpp/SMOKE_RESULTS.md`. Confirm worktree and branch. `uv sync --frozen --extra web`.
+- [x] 3.2 Scratch environment: scratch `OMRS_CONFIG_DIR`, `OMRS_STATE_DIR`, `LANCEDB_URI`; `ocr_routing_unit=page` in the scratch config; engine `dots-mocr-llamacpp`; set `PDFIUM_LIB_PATH` and `ORT_DYLIB_PATH`; after the first pages, grep the log for "Local OCR tier unavailable".
+- [x] 3.3 GATE G3: warn the operator: about 1 to 1.5 hours of GPU. Blank pages add time; the blank-skip change is not in this worktree.
+- [x] 3.4 Ingest `eq01`, `io06`, `rf06` with the CLI. Pass: a search finds a known phrase from an OCR page of each PDF, including "Antonia Cruz Gonzalez" and "Sevilla 17 de Agosto" from `rf06` page 29; KaTeX 0.16.22 renders `eq01` formulas with 0 errors.
+- [x] 3.5 Record the run in `SMOKE_RESULTS.md` (amend the task 3.4 row), tick 3.4 only if all pass, and report the three search results. A pass here is the evidence group 6's gate asks for.
+  - Result 2026-11-03 (gate G3 approved): dots-mocr commit `7d0f4a42` on `feat/dots-mocr-llamacpp-backend` (not pushed). `rf06` p29 reads "Antonía Cruz González / Sevilla 17 de Agosto de 1911"; searches return it at rank 3 and rank 1. `io06` p28 phrase found at rank 3. 300 `eq01` formulas, 0 KaTeX errors. 0 "Local OCR tier unavailable". Times: rf06 3,511 s, io06 294 s, eq01 489 s. 35 of 89 `rf06` and 8 of 78 `io06` pages unresolved (blank sheets likely, not checked one by one). A first run hung 29 minutes with no output; cause not found, not reproduced. Group 6 gate G10 still needs the operator's "3.7 confirmed" date.
 
 ## 4. Proposals A, B, C (one at a time; fresh fork from `v3` after each merge)
 
