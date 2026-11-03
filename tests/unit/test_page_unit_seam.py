@@ -699,6 +699,74 @@ def test_an_interrupt_in_the_local_tier_is_not_swallowed(monkeypatch, tmp_path, 
         reader.load_data(tmp_path / "doc.pdf")
 
 
+def test_a_1_0_primary_passes_page_requests_to_a_1_1_fallback(
+    monkeypatch, tmp_path, effective_settings, caplog
+):
+    """Route choice for a page-listed request skips a route that speaks only 1.0."""
+    from omrs.integrations.ocr_worker.routes import OcrRoutes
+
+    scan = [_scan_page(i, f"junk {i + 1}", i + 1 == 2) for i in range(3)]
+    engine = _EngineCalls(scan, ocr_error=ValueError("failed to load PDFium"))
+    _stub_engine(monkeypatch, engine)
+    inner = _FakeInner(text="whole", metadata=_inner_metadata(3, flagged=1))
+    old = _FakeWorker(protocol_version="1.0")
+    new = _FakeWorker(pages_markdown=["FALLBACK two"])
+    routes = OcrRoutes(primary=old, fallback=new)
+
+    with caplog.at_level("WARNING"):
+        docs = _page_reader(inner, effective_settings(ocr_fallback_enabled=True), routes).load_data(
+            tmp_path / "doc.pdf"
+        )
+
+    assert old.calls == []
+    assert [call["pages"] for call in new.calls] == [[2]]
+    assert docs[0].metadata["ocr_pages_worker"] == 1
+    assert "1.0" not in caplog.text
+
+
+def test_a_lone_1_0_route_with_no_local_tier_gives_one_consistent_warning(
+    monkeypatch, tmp_path, effective_settings, caplog
+):
+    scan = [_scan_page(i, f"native {i + 1}", i + 1 == 2) for i in range(3)]
+    engine = _EngineCalls(scan, ocr_error=ValueError("failed to load PDFium"))
+    _stub_engine(monkeypatch, engine)
+    inner = _FakeInner(text="whole", metadata=_inner_metadata(3, flagged=1))
+    old = _FakeWorker(protocol_version="1.0")
+
+    with caplog.at_level("WARNING"):
+        docs = _page_reader(inner, effective_settings(ocr_fallback_enabled=True), old).load_data(
+            tmp_path / "doc.pdf"
+        )
+
+    assert old.calls == []
+    assert docs[0].metadata["ocr_pages_unresolved"] == 1
+    warnings = [r.getMessage() for r in caplog.records if r.levelname == "WARNING"]
+    assert len(warnings) == 1, warnings
+    assert "go to the OCR routes" not in warnings[0]
+    assert "protocol 1.1" in warnings[0]
+
+
+def test_the_protocol_warning_names_both_1_0_routes(
+    monkeypatch, tmp_path, effective_settings, caplog
+):
+    from omrs.integrations.ocr_worker.routes import OcrRoutes
+
+    scan = [_scan_page(i, f"native {i + 1}", i + 1 == 2) for i in range(3)]
+    engine = _EngineCalls(scan, ocr_pages_by_call=[[_ocr_page(2, "flawed", 0.2)]])
+    _stub_engine(monkeypatch, engine)
+    inner = _FakeInner(text="whole", metadata=_inner_metadata(3, flagged=1))
+    routes = OcrRoutes(
+        primary=_FakeWorker(protocol_version="1.0"), fallback=_FakeWorker(protocol_version="1.0")
+    )
+
+    with caplog.at_level("WARNING"):
+        _page_reader(inner, effective_settings(ocr_fallback_enabled=True), routes).load_data(
+            tmp_path / "doc.pdf"
+        )
+
+    assert "primary speaks 1.0, fallback speaks 1.0" in caplog.text
+
+
 def test_post_dispatch_worker_failure_fails_the_file(monkeypatch, tmp_path, effective_settings):
     """A worker that fails after accepting the request is a file failure, as today."""
     scan = [_scan_page(i, f"native {i + 1}", i + 1 == 2) for i in range(3)]

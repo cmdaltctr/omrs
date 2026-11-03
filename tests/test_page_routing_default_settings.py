@@ -103,3 +103,11 @@ def test_the_starter_file_has_no_removed_key() -> None:
     template = build_template()
     for key in REMOVED:
         assert key not in template
+
+
+@pytest.mark.parametrize("unit", ["document", "", "Page"])
+def test_effective_settings_refuse_a_unit_other_than_page(unit: str) -> None:
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError, match="page"):
+        EffectiveSettings(ocr_routing_unit=unit)
