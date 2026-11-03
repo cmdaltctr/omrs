@@ -11,3 +11,27 @@ describe("experiment Markdown links", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 });
+
+describe("experiment Markdown maths", () => {
+  const show = (text: string) => render(<MarkdownText text={text} fileNames={new Set()} onOpenFile={() => undefined} />);
+
+  it("renders a display formula on its own lines as one display formula", () => {
+    const { container } = show("Bound:\n\n$$\n\\log p_{\\theta}(\\mathbf{x})\n$$\n");
+    expect(container.querySelectorAll(".katex-display")).toHaveLength(1);
+    expect(container.querySelectorAll(".katex-error")).toHaveLength(0);
+    expect(container).not.toHaveTextContent("$");
+  });
+
+  it("renders inline maths next to Markdown", () => {
+    const { container } = show("The **loss** is $x^2$.");
+    expect(container.querySelectorAll(".katex")).toHaveLength(1);
+    expect(container.querySelector("strong")).toHaveTextContent("loss");
+  });
+
+  it("renders a formula next to a script tag and creates no script element", () => {
+    const { container } = show("$x$ <script>window.__x = 1</script>");
+    expect(container.querySelectorAll(".katex")).toHaveLength(1);
+    expect(container.querySelector("script")).toBeNull();
+    expect(container).toHaveTextContent("<script>window.__x = 1</script>");
+  });
+});

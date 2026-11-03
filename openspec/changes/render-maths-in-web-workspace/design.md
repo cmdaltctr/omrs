@@ -40,9 +40,9 @@ Alternative: a lazy-loaded optional chunk behind the Integrations page. Rejected
 
 A new module `web/src/lib/maths.ts` exports the plugin lists and the KaTeX options. Every surface imports from it, so the options cannot drift.
 
-- `remarkPlugins`: `remark-math` with its defaults (single-dollar inline maths on, because `dots-mocr` uses `$...$`).
+- `remarkPlugins`: `remark-math` with its defaults (single-dollar inline maths on, because `dots-mocr` uses `$...$`), then a small plugin that turns an `inlineMath` node back into the text it was parsed from when the single-dollar pair breaks the pandoc rule (decision 9).
 - `rehypePlugins`: `[rehypeKatex, KATEX_OPTIONS]`.
-- `KATEX_OPTIONS`: `{ trust: false, errorColor: "var(--status-error-label)" }`. `trust: false` is the KaTeX default. The module sets it explicitly so a later edit has to remove it on purpose. The error colour is a token reference, so no literal colour enters a component.
+- `KATEX_OPTIONS`: `{ trust: false, maxSize: 20, errorColor: "var(--status-error-label)" }`. `trust: false` is the KaTeX default. The module sets it explicitly so a later edit has to remove it on purpose. `maxSize` is in em; KaTeX's default is unlimited, so a `\rule{5000em}{5000em}` would draw a block about 80,000 px square. The error colour is a token reference, so no literal colour enters a component.
 
 ### 3. Broken formulas: rehype-katex's own fallback
 
@@ -54,8 +54,8 @@ The test feeds `$\frac{a}{$` (the case in the scratch `broken.json`) and checks 
 
 - No `rehype-raw` is added. Raw HTML nodes still become text in `react-markdown`, so `<b>`, `<script>` and `<img onerror>` in an answer stay text.
 - `rehype-katex` replaces only `code.language-math` elements made by `remark-math`. It parses KaTeX's own output string into hast elements. The model's text reaches KaTeX only as LaTeX source, and KaTeX escapes every character it outputs.
-- With `trust: false`, KaTeX refuses `\href`, `\url`, `\includegraphics`, `\htmlClass`, `\htmlId`, `\htmlStyle` and `\htmlData`. These render as an error span with their source as text.
-- KaTeX limits macro expansion (`maxExpand`, default 1000) and size (`maxSize`), which bounds a hostile formula.
+- With `trust: false`, KaTeX refuses `\href`, `\url`, `\includegraphics`, `\htmlClass`, `\htmlId`, `\htmlStyle` and `\htmlData`. KaTeX shows the command name as plain text in the error colour and adds no element.
+- KaTeX limits macro expansion (`maxExpand`, default 1000). Its `maxSize` default is unlimited, so `KATEX_OPTIONS` sets `maxSize: 20`, which bounds a `ule` or a box.
 - New tests: a formula with `\href{javascript:alert(1)}{x}` creates no `a` element; `$<script>$` creates no `script` element; the existing raw-HTML test still passes with the maths plugins on.
 
 ### 5. CSS and fonts through the build
@@ -65,7 +65,7 @@ The test feeds `$\frac{a}{$` (the case in the scratch `broken.json`) and checks 
 - A components-layer rule in `app.css` lets a wide display formula scroll inside its own box: `.katex-display { overflow-x: auto; overflow-y: hidden; }`. The page itself must not scroll sideways at 390 px.
 - Tailwind preflight (base layer) loses to the KaTeX rules (vendor layer). KaTeX sets its own `display` on its SVGs, so preflight's `svg { display: block }` does not break radicals or arrows.
 
-The build copies woff, ttf and woff2 files (60 files, about 1.2 MB). A browser reads only woff2. Copying only woff2 would need a hand-written `@font-face` set. That would be a third stylesheet or a large rule block that repeats KaTeX's CSS. This change accepts the extra disk use and measures it in tasks.
+The build copies woff, ttf and woff2 files (59 files, about 1.07 MB). A browser reads only woff2. Copying only woff2 would need a hand-written `@font-face` set. That would be a third stylesheet or a large rule block that repeats KaTeX's CSS. This change accepts the extra disk use and measures it in tasks.
 
 ### 6. Surfaces
 
@@ -86,9 +86,9 @@ Citation markers do not change. `CitedText` splits only string children, and KaT
 
 ### 7. Maths-only text for chunk passages
 
-Search results and citation passages are raw chunk text. Rendering them as full Markdown would change how `*`, `_`, `#`, list markers and indented lines look in OCR output. So these surfaces get a new component, `components/MathText.tsx`. It uses `react-markdown` with `remark-math`, `rehype-katex` and one small remark plugin that turns off every CommonMark construct except paragraphs and maths. The plugin adds a micromark extension `{ disable: { null: [...] } }` to the parser, the same hook `remark-math` uses. The list: `attention`, `autolink`, `blockQuote`, `characterEscape`, `characterReference`, `codeFenced`, `codeIndented`, `codeText`, `definition`, `hardBreakEscape`, `headingAtx`, `htmlFlow`, `htmlText`, `labelEnd`, `labelStartImage`, `labelStartLink`, `list`, `setextUnderline`, `thematicBreak`. Paragraphs render with `whitespace-pre-wrap`, as today.
+Search results and citation passages are raw chunk text. Rendering them as Markdown would change how `*`, `_`, `#`, list markers, indentation and trailing spaces look in OCR and source text. So these surfaces get a new component, `components/MathText.tsx`. It parses the text with `remark-math` and one small remark plugin. The plugin keeps only the maths nodes of the tree, cuts the source between them into plain text nodes and drops the rest of the Markdown tree. Every non-maths character therefore stays exactly as stored. `mdast-util-to-hast` trims the spaces around every line break of a plain text node, so each text node goes through a `span` (`data.hName` and `hChildren`), which it leaves alone. The wrapper is `whitespace-pre-wrap`. A display formula owns the line break before its opening `$$` and after its closing `$$`, because the block is a line of its own. An earlier draft disabled the CommonMark constructs in the parser. That kept most characters but still stripped indentation and trailing spaces, because paragraph rules run on the rest.
 
-Tests pin the result: `*a* # b <i>c</i> [d](e)` renders as that exact text; `$x$` renders one `.katex` element.
+Tests pin the result: `*a* # b <i>c</i> [d](e)` renders as that exact text; indentation, tabs, trailing spaces and runs of blank lines are kept; `$x$` renders one `.katex` element; shell and PHP dollar signs stay text.
 
 Alternatives:
 
@@ -98,14 +98,18 @@ Alternatives:
 
 ### 8. The `eq01` fixture
 
-The test fixture is `web/src/test/fixtures/eq01-chunks.json`. It holds the text of the stored `eq01` chunks that contain maths, copied once from the scratch collection `scratchpad/g3/lancedb-eq01` (read only). Each row keeps `chunk_id`, `source` and `text`. A header field records the source paper (arXiv 1312.6114), the collection path, the extraction date and the formula count. The test renders each chunk through `AnswerText` and through `MathText`, then counts `.katex-error` elements (must be 0) and `.katex` elements (must be at least the counted formulas). If the operator wants no paper prose in the repository, the fallback is a formulas-only fixture made from `eq01-formulas.json`, wrapped in `$` or `$$`. See Open Questions.
+The test fixture is `web/src/test/fixtures/eq01-chunks.json`. It holds the formulas of the stored `eq01` chunks that contain maths (300 formulas, 30 of them display, in 20 chunks), copied once from the scratch collection `scratchpad/g3/lancedb-eq01` (read only). Each row keeps `chunk_id`, `source`, the formula counts and a `text` of the formulas joined by blank lines. The header records the source paper (arXiv 1312.6114), the collection, the extraction date and the counts, and says the file holds no paper prose. The tests render each chunk through `AnswerText`, `MathText` and `ResultList`, then count `.katex-error` elements (must be 0) and `.katex` elements (must be at least the counted formulas). The operator chose formulas only, so the repository holds none of the paper's text.
+
+### 9. The dollar rule
+
+`remark-math` reads `$5 and $` as a formula. KaTeX then drops the spaces in maths mode, so "another $40 more. A ton of coal is another $" shows as italic run-together letters. The review found 17 such spans in 5 of the 43 tracked `dots_mocr` pages of the experiments, which the experiment library opens through `MarkdownText`. So `lib/maths.ts` adds a plugin after `remark-math`: it reads the source of each `inlineMath` node and, for a single-dollar pair, keeps it as maths only when no space follows the opening dollar sign, no space comes before the closing one, and no digit follows it. Otherwise the node becomes text again. A `$$ ... $$` pair on one line is never changed. All five surfaces share the rule because they share the plugin list.
 
 ## Risks / Trade-offs
 
-- **Dollar amounts.** "It costs $5 and $10" renders `5 and ` as maths, because `remark-math` reads single dollars. Likelihood is low in the current corpora (papers and reports). Impact is cosmetic. Turning off single-dollar maths would break `dots-mocr` inline maths, which is the purpose of this change. Accept, and note it in the guide.
+- **Dollar amounts.** Decision 9 keeps "It costs $5 and $10" as text. A rare shape still reads as maths: a span with no space inside its dollar signs and no digit after the closing one, such as `$a$` in a price list. The result is a formula, as it would be in LaTeX. Accept.
 - **A `$$` block cut by the chunker.** An open `$$` with no close runs to the end of the passage, like an open code fence. KaTeX then shows an error span with the source. The text is all still visible. Accept.
 - **Bundle size.** The main script grows by about 76 kB gzip, and the build already warns at 500 kB. Task 5 measures it. If the growth crosses 100 kB gzip, a follow-up can split KaTeX into a lazy chunk. This change does not do that.
-- **Wheel size.** About 1.2 MB of font files. Measured in task 5.
+- **Wheel size.** About 1.07 MB of font files. Measured in task 5.
 - **KaTeX `strict` warnings.** The default `strict: "warn"` writes a console warning for some Unicode in maths mode. This does not change the output. Accept.
 
 ## Migration Plan
@@ -114,5 +118,5 @@ None. The change is front-end only and needs no data migration. To roll back, re
 
 ## Open Questions
 
-1. Fixture content: may the committed `eq01` fixture keep the stored chunk prose from arXiv 1312.6114, or must it hold only the formulas? The design assumes chunk text. The formulas-only fallback is ready.
+1. Resolved: the operator chose formulas only for the `eq01` fixture. Nothing from the paper's prose is committed.
 2. Chat answers from some models use `\(...\)` and `\[...\]`. Should a follow-up add these delimiters (a text step before `remark-math`), or ask the answer prompt to use `$`? This change does neither.

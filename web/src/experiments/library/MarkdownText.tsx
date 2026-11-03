@@ -3,6 +3,7 @@ import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "../../components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../../components/ui/table";
+import { rehypeMathPlugins, remarkMathPlugins } from "../../lib/maths";
 
 export type LinkTarget = { kind: "file"; name: string } | { kind: "external"; href: string } | { kind: "text" };
 
@@ -69,9 +70,9 @@ interface MarkdownTextProps {
 }
 
 /**
- * Markdown from an experiment file (GitHub flavour). It is parsed into React
- * elements and never into raw HTML, so markup such as `<script>` in the file
- * shows as text.
+ * Markdown from an experiment file (GitHub flavour), with `$...$` and `$$...$$`
+ * as maths. It is parsed into React elements and never into raw HTML, so markup
+ * such as `<script>` in the file shows as text.
  */
 export function MarkdownText({ text, fileNames, onOpenFile }: MarkdownTextProps) {
   const components = useMemo<Components>(
@@ -100,7 +101,7 @@ export function MarkdownText({ text, fileNames, onOpenFile }: MarkdownTextProps)
   );
   return (
     <div className="flex min-w-0 flex-col gap-3 break-words text-ui">
-      <Markdown remarkPlugins={[remarkGfm]} components={components}>
+      <Markdown remarkPlugins={[remarkGfm, ...remarkMathPlugins]} rehypePlugins={rehypeMathPlugins} components={components}>
         {text}
       </Markdown>
     </div>

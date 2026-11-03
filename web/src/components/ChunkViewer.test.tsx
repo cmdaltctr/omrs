@@ -78,4 +78,14 @@ describe("ChunkViewer", () => {
     const alert = await screen.findByRole("alert");
     expect(alert).not.toHaveTextContent("Boom");
   });
+
+  it("shows maths source as written, with no rendered formula", async () => {
+    const server = documentsServer({
+      "GET /v1/collections/documents/chunks/m-1": () => inspection("m-1", 1, "The square $x^2$ and *star*", [], []),
+    });
+    renderWithProviders(<ChunkViewer collection="documents" chunkId="m-1" onClose={vi.fn()} />, { fetchImpl: server.fetchImpl });
+    const dialog = await screen.findByRole("dialog", { name: "Stored chunk" });
+    expect(await within(dialog).findByText("The square $x^2$ and *star*")).toBeInTheDocument();
+    expect(dialog.querySelector(".katex")).toBeNull();
+  });
 });

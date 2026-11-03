@@ -1,5 +1,6 @@
 import type { DocumentInfo, SearchHit } from "../api/documents";
 import { Badge } from "../components/ui/badge";
+import { MathText } from "../components/MathText";
 import { Button } from "../components/ui/button";
 import { availabilityLabel, chunkPosition, formatScore, pageText, scoreKindLabel } from "../lib/labels";
 
@@ -45,7 +46,7 @@ export function ResultList({ hits, sources, onShowChunk }: ResultListProps) {
               </span>
               <Badge variant={availabilityVariant(orphaned)}>{availabilityLabel(orphaned)}</Badge>
             </div>
-            <p className="whitespace-pre-wrap break-words">{hit.text}</p>
+            <MathText text={hit.text} />
             <div>
               {hit.chunk_id !== null ? (
                 <Button variant="outline" size="sm" onClick={() => onShowChunk(hit.chunk_id!)}>

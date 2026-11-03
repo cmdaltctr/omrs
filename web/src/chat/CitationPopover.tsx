@@ -6,6 +6,7 @@ import type { ChunkView, Citation, Evidence } from "../api/documents";
 import { chunkQuery } from "../api/queries";
 import { ChunkMetadata } from "../components/ChunkMetadata";
 import { ErrorNotice } from "../components/ErrorNotice";
+import { MathText } from "../components/MathText";
 import { Button } from "../components/ui/button";
 import { Popover, type PopoverTriggerProps } from "../components/ui/popover";
 import { scoreText, sourceName } from "./citationText";
@@ -86,7 +87,7 @@ function PopoverBody({ citation, evidence, collection, view, onOpenChunk }: Popo
         </span>
       </div>
       {score !== null ? <p className="text-muted-foreground">{score}</p> : null}
-      {view === "text" && evidence !== undefined ? <p className="whitespace-pre-wrap break-words">{evidence.text}</p> : null}
+      {view === "text" && evidence !== undefined ? <MathText text={evidence.text} /> : null}
       {view === "details" ? (
         <ChunkMetadata chunk={stored ?? fromCitation(citation)} chunkIds={citation.chunk_ids} pageLabels={citation.page_labels} showMetadata={stored !== undefined} />
       ) : null}

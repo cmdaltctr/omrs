@@ -723,6 +723,8 @@ Every area has its own address. Back and forward move between them. An address t
 | Integrations | `#/integrations`, `#/integrations/<section>` | Pick a section with its chip: Extras, Tools, OCR engines, Model files or Local servers. A chip with a red number has parts that a setting in force needs and that are not ready. See which optional parts are installed. When the server is a `uv tool` install and finds `uv`, press Install on an entry, confirm the packages, then restart the server to use them. Read a red "Before you install" note first: it names a package version the install can change, or, for PyTorch, the download size. An entry marked "Base default" comes with every install, so do not install it again. After the install the server checks every package; if they clash, run the entry's command instead of restarting. Otherwise copy the command, run it in a terminal and restart the server. For a `uv tool` install, the copied command keeps the extra after a later reinstall. To remove an installed extra, press Uninstall (see [Uninstall an integration](#uninstall-an-integration)). |
 | Settings | `#/settings`, `#/settings/<section>` | Nine sections: Appearance, Providers, Chat, MCP, Server log, Runtime, Workspace, Document reading and Configuration. Set provider addresses and keys and test them, choose the Chat model, read the server log, copy the MCP client configuration, manage MCP access over HTTP, set the per-file upload limit, choose the PDF reader and the OCR settings for the next launch, and read and change every setting. |
 
+In Knowledge Base, a search result renders `$...$` and `$$...$$` in its passage as maths. It shows every other character exactly as stored, with its indentation and line breaks, so OCR text is not read as Markdown. Press Show chunk to read the stored text in the chunk viewer.
+
 The screenshots show a local server with small Markdown sources. The run output screenshot shows a search result passage that is longer than the 4 KiB preview.
 
 | Area | Light | Dark |
@@ -930,9 +932,11 @@ A badge above each answer gives its status. A green "Cited and verified" badge m
 
 The answer text renders as Markdown (GitHub flavour): bold, italic, headings, ordered and unordered lists, inline code, fenced code blocks, tables, quotes and links. The app never renders raw HTML from the model, so a tag in the answer shows as text. A link opens in a new tab, and a link with an unsafe scheme such as `javascript:` shows as plain text. A `[n]` marker stays a citation button inside any of these elements, but not inside code.
 
+The answer text renders a formula between `$...$` as inline maths and a formula between `$$...$$` as display maths. The maths fonts and styles load from the OMRS server, so maths needs no internet. A formula that KaTeX cannot read shows its source in red. The rest of the answer renders as usual. A wide display formula scrolls sideways inside its own box. A single dollar sign opens a formula only when no space follows it, no space comes before the closing one and no digit follows that one. So "It costs $5 and $10" and `echo $HOME and $PATH` show as written. The delimiters `\(...\)` and `\[...\]` are not read.
+
 Citations are the passages the answer cites. Evidence is every passage the model was given, so the Evidence tab usually has more rows than the Citations tab has chips.
 
-In the Citations tab, each citation is a chip such as `[1] configuration.md`. Press the chip to open a popover with the passage text and the button Open full chunk. A `[n]` marker in the answer text opens the same popover. That popover shows no lineage and no metadata.
+In the Citations tab, each citation is a chip such as `[1] configuration.md`. Press the chip to open a popover with the passage text and the button Open full chunk. A `[n]` marker in the answer text opens the same popover. That popover shows no lineage and no metadata. The passage renders `$...$` and `$$...$$` as maths and shows every other character exactly as stored, with its indentation and line breaks. A `*`, a `#` or a tag in the passage stays text.
 
 Next to each chip is a small "i" button (tooltip "Lineage and metadata"). Press it to open a popover with two sections:
 
@@ -943,7 +947,7 @@ The index does not record which keys a chunk got from its document, so the popov
 
 The Evidence tab shows one compact row for each passage the model was given. A row shows `[n]`, the source path and the score, and it shows no passage text. Every row carries a label: a green Cited for a passage the answer cited, and a red Not cited for the others. Above the rows, the buttons Cited and Not cited filter the list. Press Cited to show only the cited rows, or Not cited to show only the others. Press the pressed button again to show all rows. Press Show passage on a row to open a popover with the exact text the model read. The server merges adjacent chunks of one source, so this text can be longer than one stored chunk.
 
-Choose Open full chunk in any of these popovers to read the chunk in the chunk viewer. If the source was deleted, the popover keeps the saved passage text and says the stored chunk is not available.
+Choose Open full chunk in any of these popovers to read the chunk in the chunk viewer. The chunk viewer shows the stored text exactly as written, so a formula shows there as its `$...$` source. If the source was deleted, the popover keeps the saved passage text and says the stored chunk is not available.
 
 ### Studio canvas layout
 

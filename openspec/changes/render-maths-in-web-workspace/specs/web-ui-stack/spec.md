@@ -47,7 +47,7 @@ When KaTeX cannot parse a formula, the surface SHALL show that formula's LaTeX s
 
 ### Requirement: Maths keeps HTML out
 
-Maths rendering SHALL keep the rule that HTML in model or document text is shown as text. KaTeX SHALL run with `trust` off, so a formula cannot create a link, an image, a class, an id, a style or a data attribute through a KaTeX command.
+Maths rendering SHALL keep the rule that HTML in model or document text is shown as text. KaTeX SHALL run with `trust` off, so a formula cannot create a link, an image or a script element through a KaTeX command.
 
 #### Scenario: Raw HTML next to maths
 
@@ -67,3 +67,32 @@ A display formula wider than its container SHALL scroll sideways inside its own 
 
 - **WHEN** an answer with the longest `eq01` display formula is shown at a 390 px wide window
 - **THEN** the formula box MUST scroll sideways and the page MUST have no horizontal scroll
+
+### Requirement: A dollar sign that is not maths stays text
+
+A single `$` pair SHALL render as a formula only when no space follows the opening dollar sign, no space comes before the closing dollar sign, and no digit follows the closing dollar sign. Otherwise the text, with every space, SHALL show as written. A `$$` pair SHALL not be changed by this rule.
+
+#### Scenario: Dollar amounts
+
+- **WHEN** text reads `It costs $5 and $10, or $40 more. A ton of coal is another $`
+- **THEN** no formula SHALL render
+- **AND** every space SHALL stay
+
+#### Scenario: Shell variables
+
+- **WHEN** text reads `echo $HOME and $PATH`
+- **THEN** no formula SHALL render
+
+#### Scenario: Two formulas in one sentence
+
+- **WHEN** text reads `a $x$, b $y$.`
+- **THEN** two formulas SHALL render
+
+### Requirement: A formula's size is limited
+
+KaTeX SHALL run with a maximum size of 20 em, so a formula cannot draw a rule or box larger than that.
+
+#### Scenario: An oversized rule
+
+- **WHEN** text holds `$\rule{5000em}{5000em}$`
+- **THEN** the rendered rule SHALL be no larger than 20 em in either direction
