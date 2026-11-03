@@ -22,6 +22,10 @@
 - [x] 4.2 Run `uv run --no-sync ruff check src tests`, `uv run --no-sync ruff format --check src tests` and `openspec validate fix-merged-chunk-maths-join --strict`. Verify: all pass.
 - [x] 4.3 Repeat the browser check of `render-maths-in-web-workspace` task 6.1 on a scratch server from this worktree. Run the same search as before (`variational lower bound estimator`). Verify: 0 `.katex-error` elements in the 6 results, at 1280 px and at 390 px. Then tick that task.
 
+## 5. Review fixes
+
+- [x] 5.1 Fence lines that end in a space or tab get the line break (2 new tests in `tests/test_merged_maths_join.py`, tripwire pin 9753).
+
 ## Workflow follow-up
 
 - Run `./scripts/local_ci.sh` only after the operator agrees. The clean-base tripwire pins the executed test count, so adding tests moves the pin: diff the collected test IDs against the last pin, as the tripwire notes in `AGENTS.md` say, and update the pin in the same commit.

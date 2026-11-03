@@ -29,6 +29,12 @@ A display-maths fence is a line that holds only `$$`. When assembly joins two ch
 - **WHEN** assembly merges them without an overlap match
 - **THEN** the merged text SHALL join them with one space, as before
 
+#### Scenario: A fence line that ends in a space
+
+- **GIVEN** adjacent chunks, the first ending with a line that holds `$$` and a trailing space, and the second starting with prose
+- **WHEN** assembly merges them without an overlap match
+- **THEN** the join SHALL be one line break after the trailing space
+
 #### Scenario: A break that is already there is kept as it is
 
 - **GIVEN** adjacent chunks, the first ending with a line that holds only `$$` followed by a newline

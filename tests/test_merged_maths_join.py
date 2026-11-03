@@ -108,3 +108,12 @@ def test_a_join_adds_only_whitespace() -> None:
     merged = _merge(left, right)
     assert "".join(merged.split()) == "".join((left + right).split())
     assert merged.startswith(left) and merged.endswith(right)
+
+
+def test_a_fence_line_that_ends_in_a_space_still_gets_a_line_break() -> None:
+    assert _merge("a\n$$ ", "where") == "a\n$$ \nwhere"
+    assert _merge("where", "$$ \nx\n$$") == "where\n$$ \nx\n$$"
+
+
+def test_a_fence_line_with_a_break_on_the_other_side_adds_nothing() -> None:
+    assert _merge("a\n$$ ", "\nwhere") == "a\n$$ \nwhere"

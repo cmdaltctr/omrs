@@ -245,7 +245,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +1 (2026-11-03, same PR, review): the protocol warning names both routes.
 # +9 (2026-11-03, fix-merged-chunk-maths-join, by test-ID diff, 9 added, 0 removed):
 # test_merged_maths_join.py. No fastapi needed.
-_BASE_EXECUTED = 9751
+# +2 (2026-11-03, same change, review): fence lines that end in a space.
+# +1 (2026-11-03, render-maths-in-web-workspace): no maths catalogue entry. No fastapi.
+_BASE_EXECUTED = 9754
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

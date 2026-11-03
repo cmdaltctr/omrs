@@ -26,6 +26,8 @@ The stored chunks are sound, so the fix belongs at the join and nowhere else.
 
 A join gets `"\n"` instead of one space when the last line of the left text, or the first line of the right text, is `$$` once outer whitespace is stripped. The test reads one line from each side, so it costs nothing on long texts.
 
+The fence test runs before the whitespace test, so a fence line that ends in a space or tab (`$$ `) still gets its line break. The join adds nothing only when the left text ends with a line break or the right text starts with one.
+
 A left text that ends with a line break has an empty last line, so it is not a fence line and the existing whitespace rule joins the texts directly. The same holds for a right text that starts with a line break. This gives the "break already there" scenario without extra code.
 
 A one-line `$$ x^2 $$` is not a fence line, so it keeps the space. `remark-math` reads `$$ x^2 $$ text` as inline double-dollar maths, which is correct and swallows nothing.

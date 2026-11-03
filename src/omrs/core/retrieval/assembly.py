@@ -153,16 +153,20 @@ def _join_spaced(left: str, right: str) -> str:
     The separator is one space. It is one line break when the join touches a
     display-maths fence, because ``$$`` followed by text on the same line is
     not a closing fence and the formula block would swallow the prose after
-    it. A text that already has whitespace at the join gets nothing added.
+    it. A text that already has whitespace at the join gets nothing added, except
+    that a fence line which ends in a space still gets its line break.
     """
     if not left:
         return right
     if not right:
         return left
+    touches_fence = _is_maths_fence(left[left.rfind("\n") + 1 :]) or _is_maths_fence(
+        right[: right.find("\n") if "\n" in right else len(right)]
+    )
+    if touches_fence and left[-1] != "\n" and right[0] != "\n":
+        return left + "\n" + right
     if left[-1].isspace() or right[0].isspace():
         return left + right
-    if _is_maths_fence(left.rsplit("\n", 1)[-1]) or _is_maths_fence(right.split("\n", 1)[0]):
-        return left + "\n" + right
     return left + " " + right
 
 
