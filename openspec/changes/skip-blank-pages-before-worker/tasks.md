@@ -20,7 +20,7 @@
 
 - [x] 4.1 Rerun the 10-page `rf06` extract (original pages 20, 29, 33, 40, 46, 50, 60, 70, 80, 86; blank sheets 20, 40, 70, 80) in page mode with the PyTorch `dots-mocr` engine on `v3`. Record a same-engine baseline of the extract (page texts and engine calls) before the change lands. Verify after: 4 pages count `ocr_pages_blank`, 0 pages count unresolved, the engine log shows no call for the 4 blank pages, the text of the other 6 pages is identical to the baseline, and the report states the engine seconds saved.
 - [x] 4.2 Run the blank test through the real module on all 40 Experiment 33 documents (render and score only, no OCR model). Verify: every skipped page has an empty frozen reference transcription or a reference of at most 2 characters, no page with 3 or more reference characters or `illegible` legibility is skipped, and the counts match design.md (37 skipped of 701 flagged).
-- [ ] 4.3 Run `./scripts/local_ci.sh` and `openspec validate skip-blank-pages-before-worker --strict`. Verify: both pass, with no `SKIPPED` step.
+- [x] 4.3 Run `./scripts/local_ci.sh` and `openspec validate skip-blank-pages-before-worker --strict`. Verify: both pass, with no `SKIPPED` step.
 
 ## Workflow follow-up
 
