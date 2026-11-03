@@ -8,6 +8,8 @@ disabled and an empty tokenizer identity, 512/100 chunks.
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from omrs.core.ingestion import source_state
@@ -24,7 +26,7 @@ PYPDF_PDF = "5373263b47c1e596dc677d2ee0a03e49dcf56dce84f8fb9e12c82ed93d866b45"
 DEFAULT_LIST = ("pdf_inspector", "liteparse", "pypdf")
 
 
-def digest(content_type: str = "application/pdf", **overrides: object) -> str:
+def digest(content_type: str = "application/pdf", **overrides: Any) -> str:
     settings = EffectiveSettings(
         metadata=MetadataBlock(extraction_mode="disabled"),
         embedding=EmbeddingBlock(tokenizer_model="", tokenizer_revision=""),

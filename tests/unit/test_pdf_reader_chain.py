@@ -112,7 +112,8 @@ def test_the_resolved_list_is_the_cleaned_list(monkeypatch: pytest.MonkeyPatch) 
 def test_a_single_auto_keeps_the_probe_order(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setitem(sys.modules, "liteparse", None)
     monkeypatch.setitem(sys.modules, "pypdfium2", SimpleNamespace())
-    assert resolve_pdf_reader(SimpleNamespace(pdf_readers=(), pdf_reader="auto")) == "pypdfium2"
+    settings: Any = SimpleNamespace(pdf_readers=(), pdf_reader="auto")
+    assert resolve_pdf_reader(settings) == "pypdfium2"
 
 
 # ── 2.2 Rescue tiers ─────────────────────────────────────────────────────
