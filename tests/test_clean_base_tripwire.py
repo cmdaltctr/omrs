@@ -239,7 +239,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # the document unit, its gate and the three removed settings go; page-only tests,
 # runtime-panic guards and removed-key refusals arrive. 3 of the net need fastapi
 # (test_web_document_reading.py, -4 +7, see _WEB_EXTRA_CASES).
-_BASE_EXECUTED = 9735
+# +6 (2026-11-03, PR 163 review follow-ups, by test-ID diff, 6 added, 0 removed):
+# EffectiveSettings unit check (3), identity after tier off (1), protocol-aware
+# route choice (2). No fastapi needed.
+_BASE_EXECUTED = 9741
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

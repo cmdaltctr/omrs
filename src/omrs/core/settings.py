@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 #: Valid ``OCR_ROUTING_UNIT`` values. ``page`` is the only unit (change
 #: page-routing-default); the key stays so a stale ``document`` is refused.
@@ -394,6 +394,14 @@ class EffectiveSettings(BaseModel):
     # These preserve the pre-group-5 access pattern (effective_settings.top_k)
     # so the tree stays runnable while group 5 threads the nested blocks.
     # They will be removed after group 11 completes the test migration.
+
+    @field_validator("ocr_routing_unit")
+    @classmethod
+    def _page_is_the_only_unit(cls, value: str) -> str:
+        """Refuse a unit other than ``page``, so the index identity never names one."""
+        if value not in OCR_ROUTING_UNITS:
+            raise ValueError(f"page is the only routing unit; got {value!r}")
+        return value
 
     @property
     def top_k(self) -> int:

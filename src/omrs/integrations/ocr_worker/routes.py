@@ -210,8 +210,12 @@ class OcrRoutes:
         """The fallback route's fingerprint."""
         return _fingerprint_of(self.fallback)
 
-    def select(self) -> Any:
+    def select(self, *, protocol: str | None = None) -> Any:
         """Return the client for the next dispatch, chosen BEFORE dispatch.
+
+        Args:
+            protocol: When set, only a route whose fingerprint speaks this
+                protocol version is usable (page-listed requests need 1.1).
 
         Returns:
             The primary client when available, else the fallback client
@@ -221,8 +225,14 @@ class OcrRoutes:
         """
         usable: list[Any] = []
         for client in (self.primary, self.fallback):
-            if client is not None and _fingerprint_of(client).available and client not in usable:
-                usable.append(client)
+            if client is None or client in usable:
+                continue
+            fingerprint = _fingerprint_of(client)
+            if not fingerprint.available:
+                continue
+            if protocol is not None and fingerprint.protocol_version != protocol:
+                continue
+            usable.append(client)
         if len(usable) > 1 and any(getattr(c, "lease", None) is not None for c in usable):
             return RoutedClient(usable)
         return usable[0] if usable else None

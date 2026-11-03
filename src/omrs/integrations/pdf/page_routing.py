@@ -298,6 +298,9 @@ def resolve_local_model_identity(settings: Any) -> str | None:
     Returns:
         The resolved ``name@revision``, or ``None`` when unresolvable.
     """
+    if _LOCAL_TIER_BROKEN is not None:
+        # The tier no longer reads pages, so no model may vouch for the text.
+        return None
     key = ((settings.ocr_local_model_directory or ""), bool(settings.ocr_local_offline))
     with _RESOLUTION_LOCK:
         cached = _local_model_resolution.get(key)

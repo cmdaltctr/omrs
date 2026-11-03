@@ -523,6 +523,19 @@ def test_an_interrupt_in_the_probe_is_not_swallowed(
         page_routing.resolve_local_model_identity(effective_settings())
 
 
+def test_a_cached_identity_is_dropped_when_the_tier_switches_off(
+    monkeypatch, effective_settings, _clean_resolution_cache
+):
+    """Once the tier is off, the identity must not claim a model that no longer reads."""
+    monkeypatch.setattr(page_routing, "_LOCAL_TIER_BROKEN", None)
+    _stub_process(monkeypatch, _Calls([_probe_stub(1, "", _provenance())]))
+    assert page_routing.resolve_local_model_identity(effective_settings()) is not None
+
+    page_routing.switch_local_tier_off("PanicException: Mutex poisoned")
+
+    assert page_routing.resolve_local_model_identity(effective_settings()) is None
+
+
 def test_probe_cache_is_scoped_by_the_model_settings(
     monkeypatch, effective_settings, _clean_resolution_cache
 ):

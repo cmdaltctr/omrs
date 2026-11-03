@@ -219,12 +219,13 @@ class OcrRoutedPdfInspector:
             # Native text on a flagged page may be a junk hidden layer, so a
             # missing local tier escalates every page it should have read.
             escalated.update(dict.fromkeys(local_pages_wanted))
-            no_tier = self._routes.select() is None
+            no_tier = self._routes.select(protocol=PAGES_PROTOCOL_VERSION) is None
             if no_tier:
                 logger.warning(
-                    "Local OCR tier unavailable for %s (%s) and no OCR route; %d flagged "
-                    "page(s) keep native text and count unresolved. Install the local "
-                    "runtime, or provision an engine and set OCR_WORKERS_DIR.",
+                    "Local OCR tier unavailable for %s (%s) and no OCR route that speaks "
+                    "protocol 1.1; %d flagged page(s) keep native text and count "
+                    "unresolved. Install the local runtime, or provision an engine and "
+                    "set OCR_WORKERS_DIR.",
                     getattr(file, "name", file),
                     local_error,
                     len(escalated),
@@ -357,32 +358,31 @@ class OcrRoutedPdfInspector:
                 request was written and flushed.
         """
         name = getattr(file, "name", file)
-        client = self._routes.select()
+        # Only a 1.1 route may receive a page-listed request: a 1.0 worker would
+        # reject the envelope after dispatch and fail the file. A 1.0 primary
+        # therefore passes the request to a 1.1 fallback.
+        client = self._routes.select(protocol=PAGES_PROTOCOL_VERSION)
         if client is None:
-            logger.warning(
-                "%d escalated page(s) in %s have no OCR route; keeping the "
-                "best available text and counting them unresolved. Provision an "
-                "engine and set OCR_WORKERS_DIR to enable it.",
-                len(pages),
-                name,
-            )
-            return {}, None
-        if client.fingerprint.protocol_version != PAGES_PROTOCOL_VERSION:
-            # A worker still on 1.0 during a rolling upgrade must never
-            # receive a page-listed request: it would reject the 1.1
-            # envelope after dispatch and fail the file. A worker that
-            # cannot speak pages is, for page routing, a worker that is
-            # not there — degrade, never fail the file.
-            logger.warning(
-                "%d escalated page(s) in %s need a worker that speaks protocol "
-                "%s, but this worker speaks %s; page routing degrades and the "
-                "pages keep their best available text, counting unresolved. "
-                "Upgrade the worker to enable page-listed parsing.",
-                len(pages),
-                name,
-                PAGES_PROTOCOL_VERSION,
-                client.fingerprint.protocol_version,
-            )
+            older = self._routes.select()
+            if older is not None:
+                logger.warning(
+                    "%d escalated page(s) in %s need a worker that speaks protocol "
+                    "%s, but the only OCR route speaks %s; page routing degrades and "
+                    "the pages keep their best available text, counting unresolved. "
+                    "Upgrade the worker to enable page-listed parsing.",
+                    len(pages),
+                    name,
+                    PAGES_PROTOCOL_VERSION,
+                    older.fingerprint.protocol_version,
+                )
+            else:
+                logger.warning(
+                    "%d escalated page(s) in %s have no OCR route; keeping the "
+                    "best available text and counting them unresolved. Provision an "
+                    "engine and set OCR_WORKERS_DIR to enable it.",
+                    len(pages),
+                    name,
+                )
             return {}, None
         try:
             result = client.parse(
