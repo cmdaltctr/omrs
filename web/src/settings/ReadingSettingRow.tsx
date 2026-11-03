@@ -1,10 +1,10 @@
-import { useId, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import type { DocumentReadingSetting, DocumentReadingState } from "../api/settingsDocumentReading";
 import { useSaveDocumentReading } from "../api/settingsMutations";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { sourceText } from "./connectionWords";
-import { draftText, draftValue, fractionError, readingText, type ReadingChoice, type ReadingRowWords } from "./documentReadingWords";
+import { draftText, draftValue, readingText, type ReadingChoice, type ReadingRowWords } from "./documentReadingWords";
 import { ReadingControl } from "./ReadingControl";
 import { SaveErrorNotice } from "./SaveErrorNotice";
 import { SettingBox, useDenseRows } from "./SettingBox";
@@ -29,10 +29,8 @@ interface ReadingSettingRowProps {
  * from the environment or `.env` has no Edit and names the variable to remove.
  */
 export function ReadingSettingRow({ setting, words, choices, notes, onSaved }: ReadingSettingRowProps) {
-  const id = useId();
   const save = useSaveDocumentReading();
   const [draft, setDraft] = useState<string | null>(null);
-  const [refusal, setRefusal] = useState<string | null>(null);
   const { label, kind } = words;
   const next = setting.saved ?? setting.value;
   const start = draftText(next);
@@ -40,13 +38,11 @@ export function ReadingSettingRow({ setting, words, choices, notes, onSaved }: R
 
   function close() {
     setDraft(null);
-    setRefusal(null);
     save.reset();
   }
 
   function change(text: string) {
     setDraft(text);
-    setRefusal(null);
   }
 
   function send(value: DocumentReadingSetting["value"] | null) {
@@ -64,8 +60,6 @@ export function ReadingSettingRow({ setting, words, choices, notes, onSaved }: R
   function submit(event: FormEvent) {
     event.preventDefault();
     if (draft === null || draft === start) return;
-    const message = kind === "fraction" ? fractionError(draft) : null;
-    if (message !== null) return setRefusal(message);
     send(draftValue(kind, draft));
   }
 
@@ -143,7 +137,7 @@ export function ReadingSettingRow({ setting, words, choices, notes, onSaved }: R
       )}
       {draft !== null ? (
         <form onSubmit={submit} noValidate className="flex flex-col gap-1.5">
-          <ReadingControl id={id} label={label} kind={kind} draft={draft} choices={choices} refusal={refusal} onChange={change} />
+          <ReadingControl label={label} kind={kind} draft={draft} choices={choices} onChange={change} />
           <div className="flex flex-wrap items-center gap-2">
             <Button type="submit" size="sm" disabled={draft === start || save.isPending}>
               Save

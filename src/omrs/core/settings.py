@@ -17,8 +17,9 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-#: Valid ``OCR_ROUTING_UNIT`` values; ``page`` is opt-in.
-OCR_ROUTING_UNITS = ("document", "page")
+#: Valid ``OCR_ROUTING_UNIT`` values. ``page`` is the only unit (change
+#: page-routing-default); the key stays so a stale ``document`` is refused.
+OCR_ROUTING_UNITS = ("page",)
 
 #: Server-default provider fields the web workspace may change while the
 #: server runs: addresses first, then API keys. They match the ``fields`` of
@@ -331,20 +332,16 @@ class EffectiveSettings(BaseModel):
     liteparse_num_workers: int | None = None
     liteparse_ocr_enabled: bool = False
 
-    # ── OCR routing gate (design D7.3, improve-rag-input-quality-5) ──
-    # The packaged default is the promoted gate validated by Experiment
-    # 29 (ADR-065): the fallback is enabled with the calibrated
-    # 0.5/0.10 thresholds. With no worker provisioned, OCR-required
-    # files degrade deterministically to the kept partial extraction
-    # plus an actionable warning; nothing is spawned or probed.
+    # ── OCR routing (change page-routing-default) ─────────────────
+    # The switch turns OCR routing on and off. With no worker provisioned,
+    # flagged pages degrade to the kept native text plus an actionable
+    # warning; nothing is spawned or probed.
     ocr_fallback_enabled: bool = True
-    ocr_fallback_min_confidence: float = Field(default=0.5, ge=0.0, le=1.0)
-    ocr_fallback_page_fraction: float = Field(default=0.10, ge=0.0, le=1.0)
 
     # ── OCR routing unit and local tier (change page-level-ocr-routing) ──
-    # "document" is the shipped whole-PDF behaviour; "page" is opt-in and
-    # routes page by page. Experiments 33, 37 and 39 support the 0.9 cut.
-    ocr_routing_unit: str = "document"  # see OCR_ROUTING_UNITS
+    # "page" routes page by page and is the only unit (page-routing-default).
+    # Experiments 33, 37 and 39 support the 0.9 cut.
+    ocr_routing_unit: str = "page"  # see OCR_ROUTING_UNITS
     ocr_local_min_confidence: float = Field(default=0.9, ge=0.0, le=1.0)
     ocr_local_offline: bool = False
     ocr_local_model_directory: str = ""
@@ -369,7 +366,6 @@ class EffectiveSettings(BaseModel):
     ocr_engine_primary: str = "dots-mocr"
     ocr_engine_fallback: str = "paddleocr-vl"
     ocr_maths_routing_enabled: bool = True
-    ocr_maths_page_fraction: float = Field(default=0.10, ge=0.0, le=1.0)
     ocr_worker_seconds_per_page: float = Field(default=120.0, ge=0.0)
 
     # ── Codebase map ──────────────────────────────────────────────

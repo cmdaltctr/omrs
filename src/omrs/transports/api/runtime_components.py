@@ -144,7 +144,7 @@ def _engine_names(root: str, settings: Any) -> list[str]:
 
 
 def _local_tier_item(settings: Any) -> RuntimeItem:
-    used_by = ("ocr_routing_unit",) if settings.ocr_routing_unit == "page" else ()
+    used_by = ("ocr_routing_unit",)  # page is the only unit (page-routing-default)
     if not capabilities.pdf_reader_installed("pdf_inspector"):
         reason = "The pdf-inspector reader is not installed."
         fix = "uv sync --extra pdf-inspector"
@@ -229,7 +229,7 @@ def local_model_folder(settings: Any) -> Path:
 
 
 def _local_model_item(settings: Any) -> RuntimeItem:
-    used_by = ("ocr_routing_unit",) if settings.ocr_routing_unit == "page" else ()
+    used_by = ("ocr_routing_unit",)  # page is the only unit (page-routing-default)
     folder = local_model_folder(settings)
     if all((folder / name).is_file() for name in LOCAL_MODEL_FILES):
         return RuntimeItem(LOCAL_MODEL_NAME, LOCAL_MODEL_PURPOSE, READY, used_by=used_by)

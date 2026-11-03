@@ -141,22 +141,15 @@ class Settings(StorageValidationMixin, OcrRouteSettingsMixin, ProviderSourceMixi
     liteparse_num_workers: int | None = None
     liteparse_ocr_enabled: LegacyBool = False
 
-    # ── OCR routing gate (design D7.3, improve-rag-input-quality-5) ──
-    # Top-level fields beside the PDF knobs, matching the shape the
-    # existing PDF settings already have. The packaged default is the
-    # promoted gate validated by Experiment 29 (ADR-065): enabled, with
-    # the calibrated 0.5/0.10 thresholds. The flag and both thresholds
-    # ship together — a bare enable at the 0.0 sentinels is the
-    # classification-only configuration the study showed silently misses
-    # threshold-flagged documents.
+    # ── OCR routing switch (change page-routing-default) ──────────
+    # Top-level, beside the PDF knobs. The document gate and its two
+    # thresholds are gone (config/legacy.py names them at start-up).
     ocr_fallback_enabled: LegacyBool = True
-    ocr_fallback_min_confidence: float = Field(default=0.5, ge=0.0, le=1.0)
-    ocr_fallback_page_fraction: float = Field(default=0.10, ge=0.0, le=1.0)
 
     # ── OCR routing unit and local tier (page-level-ocr-routing) ──
     # Flat names: the nested delimiter binds only to nested blocks, so a
     # nested spelling is discarded in silence (config/legacy.py aliases).
-    ocr_routing_unit: str = "document"
+    ocr_routing_unit: str = "page"
     # Experiments 33, 37 and 39 support the 0.9 cut.
     ocr_local_min_confidence: float = Field(default=0.9, ge=0.0, le=1.0)
     ocr_local_offline: LegacyBool = False
@@ -303,7 +296,8 @@ class Settings(StorageValidationMixin, OcrRouteSettingsMixin, ProviderSourceMixi
         if self.ocr_routing_unit not in OCR_ROUTING_UNITS:
             raise ValueError(
                 f"Unknown OCR_ROUTING_UNIT={self.ocr_routing_unit!r}. "
-                f"Valid units: {', '.join(OCR_ROUTING_UNITS)}."
+                f"{OCR_ROUTING_UNITS[0]} is the only routing unit; remove the value "
+                "or set it to page. The document unit was removed."
             )
 
         # Profile selection (Phase 4).  Unknown values fall back to

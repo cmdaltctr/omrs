@@ -116,7 +116,7 @@ def test_identity_block_names_only_the_set_ocr_options(
 ) -> None:
     """The ``graph_shape`` block carries the set OCR options and no others."""
     host = _host(effective_settings)
-    read = {"ocr_engine_primary": "paddleocr-vl", "ocr_fallback_page_fraction": 0.5}
+    read = {"ocr_engine_primary": "paddleocr-vl", "ocr_maths_routing_enabled": False}
     shape = ingestion_shape(
         admit(canonical_graph("x", read=read), host, pdf_root), build_catalogue()
     )
@@ -135,17 +135,17 @@ def test_identity_block_names_only_the_set_ocr_options(
 async def test_identify_builds_the_identity_with_the_step_ocr_settings(
     pdf_root: Path, effective_settings: Any
 ) -> None:
-    """A step ``ocr_fallback_page_fraction`` reaches the stored OCR routing payload."""
+    """A step ``ocr_maths_routing_enabled`` reaches the stored maths routing payload."""
     host = _host(effective_settings)
-    run, store = await _runner(host, pdf_root, "ocr_fraction")
-    assert await run(ocr_fallback_page_fraction=0.5) == ["indexed"]
+    run, store = await _runner(host, pdf_root, "ocr_maths_off")
+    assert await run(ocr_maths_routing_enabled=False) == ["indexed"]
 
     shape = ingestion_shape(
-        admit(canonical_graph("x", read={"ocr_fallback_page_fraction": 0.5}), host, pdf_root),
+        admit(canonical_graph("x", read={"ocr_maths_routing_enabled": False}), host, pdf_root),
         build_catalogue(),
     )
-    step = host.model_copy(update={"ocr_fallback_page_fraction": 0.5})
-    rows = collect_rows(store, "ocr_fraction", pdf_root)
+    step = host.model_copy(update={"ocr_maths_routing_enabled": False})
+    rows = collect_rows(store, "ocr_maths_off", pdf_root)
     identities = {r["metadata"]["source_index_identity"] for r in rows}
     assert identities == {_identity_with(step, shape.identity_block())}
     assert identities != {_identity_with(host, shape.identity_block())}

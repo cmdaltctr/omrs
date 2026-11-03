@@ -152,13 +152,10 @@ export const WEB_PORT: WebPortState = { status: "ok", revision: "r1", saved: nul
 const READING_DEFAULTS: Record<DocumentReadingKey, DocumentReadingSetting["value"]> = {
   pdf_reader: "pdf_inspector",
   ocr_fallback_enabled: true,
-  ocr_fallback_min_confidence: 0.5,
-  ocr_fallback_page_fraction: 0.1,
-  ocr_routing_unit: "document",
+  ocr_routing_unit: "page",
   ocr_engine_primary: "dots-mocr",
   ocr_engine_fallback: "paddleocr-vl",
   ocr_maths_routing_enabled: true,
-  ocr_maths_page_fraction: 0.1,
 };
 
 /** `GET /v1/settings/document-reading` with every key at its default, nothing saved and one engine not provisioned. */

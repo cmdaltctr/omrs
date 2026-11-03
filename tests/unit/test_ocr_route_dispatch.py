@@ -1,14 +1,17 @@
 """OCR route dispatch and maths-page routing through the reader seam.
 
-Tasks 4.5, 5.2 and 5.3 of change modular-ocr-workers-dots-mocr. The
-scenarios come from ``specs/ocr-worker-engines/spec.md`` ("Every OCR
-dispatch SHALL use the primary route, then the fallback route", "OCR
-diagnostics SHALL name the answering engine") and
-``specs/maths-page-routing/spec.md`` ("Maths pages SHALL route to the
-OCR routes", "Maths routing diagnostics SHALL be honest").
+Tasks 4.5, 5.2 and 5.3 of change modular-ocr-workers-dots-mocr, rewritten
+for page routing (change page-routing-default). The scenarios come from
+``specs/ocr-worker-engines/spec.md`` ("Every OCR dispatch SHALL use the
+primary route, then the fallback route", "OCR diagnostics SHALL name the
+answering engine") and ``specs/maths-page-routing/spec.md`` ("Maths pages
+SHALL route to the OCR routes", "Maths routing diagnostics SHALL be
+honest"). Every dispatch is one page-listed request; no request carries
+the whole PDF.
 
 Everything external is stubbed: the pdf-inspector scan, its local OCR,
-the maths-font detector and both route clients are in-process fakes.
+the blank test, the maths-font detector and both route clients are
+in-process fakes.
 """
 
 from __future__ import annotations
@@ -25,7 +28,7 @@ from omrs.core.ingestion.source_state import EXCLUDED_EMBED_METADATA_KEYS, stamp
 from omrs.integrations.ocr_worker.client import OcrWorkerError
 from omrs.integrations.ocr_worker.protocol import make_success
 from omrs.integrations.ocr_worker.routes import OcrRoutes
-from omrs.integrations.pdf import maths_routing
+from omrs.integrations.pdf import maths_routing, ocr_routing
 from omrs.integrations.pdf.ocr_routing import OcrPostDispatchError, OcrRoutedPdfInspector
 
 pytest.importorskip("pdf_inspector", reason="pdf-inspector is a base dependency (ADR-050)")
@@ -53,10 +56,7 @@ class _Client:
         self.calls.append({"pages": list(pages) if pages is not None else None, "timeout": timeout})
         if self._error is not None:
             raise self._error
-        if pages is None:
-            return make_success(
-                "r", f"WHOLE by {self.fingerprint.backend_id}", ocr_backend="x", page_count=1
-            )
+        assert pages is not None, "page routing never sends a whole-PDF request"
         texts = [self._pages.get(page, f"{self.fingerprint.backend_id} p{page}") for page in pages]
         return make_success(
             "r",
@@ -84,6 +84,21 @@ def _metadata(page_count: int, *, pdf_type: str = "text_based", flagged: int = 0
         "page_count": page_count,
         "pages_needing_ocr": flagged,
     }
+
+
+@pytest.fixture(autouse=True)
+def _no_blank_pages(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The blank test finds nothing, so no machine render library is needed."""
+    monkeypatch.setattr(ocr_routing, "find_blank_pages", lambda file, pages: frozenset())
+
+
+def _local_tier_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Make the local OCR tier a missing runtime: flagged pages go to the routes."""
+
+    def _missing(*args, **kwargs):
+        raise ValueError("failed to load ONNX Runtime (stubbed)")
+
+    monkeypatch.setattr(ocr_routing, "local_ocr", _missing)
 
 
 def _maths(monkeypatch: pytest.MonkeyPatch, pages: set[int]) -> None:
@@ -138,7 +153,7 @@ def _scan(monkeypatch: pytest.MonkeyPatch, page_count: int, needs_ocr: set[int])
 def _read(settings: Any, routes: OcrRoutes, metadata: dict, tmp_path) -> Document:
     reader = OcrRoutedPdfInspector(_Inner(metadata), settings=settings, ocr_client=routes)
     docs = reader.load_data(tmp_path / "doc.pdf")
-    # The page unit emits one document per page (change pdf-inspector-page-provenance);
+    # Page routing emits one document per page (change pdf-inspector-page-provenance);
     # join the page texts so the routing assertions read one string.
     return Document(text="\n\n".join(doc.text for doc in docs), metadata=docs[0].metadata)
 
@@ -153,29 +168,37 @@ def _counts(meta: dict) -> dict:
 # ── Every OCR dispatch uses the primary route, then the fallback (4.5) ─────
 
 
-def test_scanned_pdf_goes_to_the_primary_engine(monkeypatch, tmp_path, effective_settings):
-    """Spec: "A scanned PDF goes to the primary engine"; the fallback never runs."""
+def test_flagged_pages_go_to_the_primary_engine_in_one_request(
+    monkeypatch, tmp_path, effective_settings
+):
+    """Spec: "A scanned PDF goes to the primary engine"; one page-listed request."""
     _maths(monkeypatch, set())
+    _local_tier_missing(monkeypatch)
+    _scan(monkeypatch, 14, needs_ocr=set(range(1, 15)))
     primary, fallback = _Client("dots_mocr"), _Client("paddleocr_vl")
     settings = effective_settings(ocr_fallback_enabled=True)
     doc = _read(settings, OcrRoutes(primary, fallback), _metadata(14, pdf_type="scanned"), tmp_path)
-    assert doc.text == "WHOLE by dots_mocr"
-    assert len(primary.calls) == 1 and primary.calls[0]["pages"] is None
+    assert [c["pages"] for c in primary.calls] == [list(range(1, 15))]
     assert primary.calls[0]["timeout"] == 1680.0, "14 pages x 120 s"
     assert fallback.calls == []
+    assert "dots_mocr p1" in doc.text and "dots_mocr p14" in doc.text
     assert doc.metadata["ocr_backend"] == "dots_mocr"
+    assert _counts(doc.metadata)["ocr_pages_worker"] == 14
 
 
-def test_missing_primary_hands_the_whole_pdf_to_the_fallback(
+def test_missing_primary_hands_the_flagged_pages_to_the_fallback(
     monkeypatch, tmp_path, effective_settings
 ):
     """Spec: "A missing primary engine hands the request to the fallback"."""
     _maths(monkeypatch, set())
+    _local_tier_missing(monkeypatch)
+    _scan(monkeypatch, 3, needs_ocr={1, 2, 3})
     primary = _Client("dots_mocr", available=False)
     fallback = _Client("paddleocr_vl")
     settings = effective_settings(ocr_fallback_enabled=True)
     doc = _read(settings, OcrRoutes(primary, fallback), _metadata(3, pdf_type="scanned"), tmp_path)
-    assert doc.text == "WHOLE by paddleocr_vl"
+    assert [c["pages"] for c in fallback.calls] == [[1, 2, 3]]
+    assert "paddleocr_vl p2" in doc.text
     assert primary.calls == []
     assert doc.metadata["ocr_backend"] == "paddleocr_vl", "the fallback names itself"
 
@@ -185,34 +208,40 @@ def test_post_dispatch_failure_does_not_retry_on_the_fallback(
 ):
     """Spec: "Post-dispatch failure does not retry on the fallback"."""
     _maths(monkeypatch, set())
+    _local_tier_missing(monkeypatch)
+    _scan(monkeypatch, 2, needs_ocr={1, 2})
     primary = _Client("dots_mocr", error=OcrWorkerError("worker_crashed", "exit 9"))
     fallback = _Client("paddleocr_vl")
     settings = effective_settings(ocr_fallback_enabled=True)
     with pytest.raises(OcrPostDispatchError) as excinfo:
         _read(settings, OcrRoutes(primary, fallback), _metadata(2, pdf_type="scanned"), tmp_path)
     assert excinfo.value.code == "worker_crashed"
+    assert len(primary.calls) == 1
     assert fallback.calls == []
 
 
-def test_no_route_keeps_partial_text(monkeypatch, tmp_path, effective_settings):
-    """Both routes unavailable: the existing degraded behaviour applies."""
+def test_no_route_keeps_native_text(monkeypatch, tmp_path, effective_settings):
+    """Both routes unavailable: flagged pages keep native text and count unresolved."""
     _maths(monkeypatch, set())
-    routes = OcrRoutes(_Client("a", available=False), _Client("b", available=False))
+    _local_tier_missing(monkeypatch)
+    _scan(monkeypatch, 2, needs_ocr={1, 2})
+    a, b = _Client("a", available=False), _Client("b", available=False)
     settings = effective_settings(ocr_fallback_enabled=True)
-    doc = _read(settings, routes, _metadata(2, pdf_type="scanned"), tmp_path)
-    assert doc.text == "partial native text"
+    doc = _read(settings, OcrRoutes(a, b), _metadata(2, pdf_type="scanned"), tmp_path)
+    assert doc.text == "native 1\n\nnative 2"
     assert doc.metadata["ocr_required"] is True and doc.metadata["ocr_used"] is False
+    assert _counts(doc.metadata)["ocr_pages_unresolved"] == 2
+    assert a.calls == [] and b.calls == []
 
 
-def test_page_unit_escalation_uses_the_fallback_when_primary_is_missing(
+def test_maths_page_uses_the_fallback_when_primary_is_missing(
     monkeypatch, tmp_path, effective_settings
 ):
-    """Escalated pages follow the same route selection, and name the fallback."""
-    _maths(monkeypatch, set())
+    """Maths pages follow the same route selection, and the answer names the fallback."""
     _scan(monkeypatch, 3, needs_ocr=set())
     primary = _Client("dots_mocr", available=False)
     fallback = _Client("paddleocr_vl")
-    settings = effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page")
+    settings = effective_settings(ocr_fallback_enabled=True)
     routes = OcrRoutes(primary, fallback)
     _maths(monkeypatch, {2})
     doc = _read(settings, routes, _metadata(3), tmp_path)
@@ -229,7 +258,7 @@ def test_only_maths_pages_go_to_the_primary_engine(monkeypatch, tmp_path, effect
     local_calls = _scan(monkeypatch, 12, needs_ocr=set())
     _maths(monkeypatch, {2, 5, 7, 11})
     primary, fallback = _Client("dots_mocr"), _Client("paddleocr_vl")
-    settings = effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page")
+    settings = effective_settings(ocr_fallback_enabled=True)
     doc = _read(settings, OcrRoutes(primary, fallback), _metadata(12), tmp_path)
     assert [c["pages"] for c in primary.calls] == [[2, 5, 7, 11]]
     assert fallback.calls == []
@@ -250,7 +279,7 @@ def test_a_page_both_maths_and_needing_ocr_is_sent_once(monkeypatch, tmp_path, e
     local_calls = _scan(monkeypatch, 4, needs_ocr={1, 3})
     _maths(monkeypatch, {3})
     primary = _Client("dots_mocr")
-    settings = effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page")
+    settings = effective_settings(ocr_fallback_enabled=True)
     doc = _read(settings, OcrRoutes(primary), _metadata(4), tmp_path)
     assert local_calls == [[1]]
     assert [c["pages"] for c in primary.calls] == [[3]]
@@ -265,7 +294,7 @@ def test_missing_primary_sends_maths_pages_to_the_fallback(
     _maths(monkeypatch, {1, 2, 3, 4})
     primary = _Client("dots_mocr", available=False)
     fallback = _Client("paddleocr_vl")
-    settings = effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page")
+    settings = effective_settings(ocr_fallback_enabled=True)
     _read(settings, OcrRoutes(primary, fallback), _metadata(12), tmp_path)
     assert [c["pages"] for c in fallback.calls] == [[1, 2, 3, 4]]
 
@@ -274,7 +303,7 @@ def test_no_engine_keeps_native_text_for_maths_pages(monkeypatch, tmp_path, effe
     """Spec: "No engine keeps native text"; the pages count unresolved."""
     _scan(monkeypatch, 6, needs_ocr=set())
     _maths(monkeypatch, {1, 2, 3, 4})
-    settings = effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page")
+    settings = effective_settings(ocr_fallback_enabled=True)
     doc = _read(settings, OcrRoutes(_Client("a", available=False)), _metadata(6), tmp_path)
     assert _counts(doc.metadata)["ocr_pages_unresolved"] == 4
     assert "native 1" in doc.text and "native 4" in doc.text
@@ -285,7 +314,7 @@ def test_empty_engine_page_keeps_native_text(monkeypatch, tmp_path, effective_se
     _scan(monkeypatch, 3, needs_ocr=set())
     _maths(monkeypatch, {2, 3})
     primary = _Client("dots_mocr", pages_markdown={2: ""})
-    settings = effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page")
+    settings = effective_settings(ocr_fallback_enabled=True)
     doc = _read(settings, OcrRoutes(primary), _metadata(3), tmp_path)
     assert _counts(doc.metadata) == {
         "ocr_pages_native": 1,
@@ -296,57 +325,32 @@ def test_empty_engine_page_keeps_native_text(monkeypatch, tmp_path, effective_se
     assert "native 2" in doc.text
 
 
-def test_document_unit_sends_a_maths_paper_whole(monkeypatch, tmp_path, effective_settings):
-    """Spec: 14 pages, 9 flagged, default fraction: the whole PDF goes to the primary."""
+def test_a_maths_paper_goes_as_a_page_listed_request(monkeypatch, tmp_path, effective_settings):
+    """14 pages, 9 maths pages: one request lists the 9 pages; no whole-PDF request."""
+    local_calls = _scan(monkeypatch, 14, needs_ocr=set())
     _maths(monkeypatch, set(range(1, 10)))
     primary = _Client("dots_mocr")
     settings = effective_settings(ocr_fallback_enabled=True)
-    assert settings.ocr_maths_page_fraction == 0.10
     doc = _read(settings, OcrRoutes(primary), _metadata(14), tmp_path)
-    assert [c["pages"] for c in primary.calls] == [None]
-    assert doc.text == "WHOLE by dots_mocr"
+    assert [c["pages"] for c in primary.calls] == [list(range(1, 10))]
+    assert local_calls == []
+    assert _counts(doc.metadata)["ocr_pages_worker"] == 9
+    assert "native 14" in doc.text and "dots_mocr p9" in doc.text
     assert doc.metadata["pages_maths_font"] == 9
 
 
-def test_document_unit_keeps_few_maths_pages_on_the_fast_path(
+def test_a_single_maths_page_in_a_long_file_still_goes_direct(
     monkeypatch, tmp_path, effective_settings
 ):
-    """Spec: 40 pages, 1 flagged, gate not selected: no request."""
+    """40 pages, 1 maths page: no page fraction gates it, so it goes in its own request."""
+    _scan(monkeypatch, 40, needs_ocr=set())
     _maths(monkeypatch, {7})
     primary = _Client("dots_mocr")
     settings = effective_settings(ocr_fallback_enabled=True)
     doc = _read(settings, OcrRoutes(primary), _metadata(40), tmp_path)
-    assert primary.calls == []
-    assert doc.metadata["ocr_used"] is False
+    assert [c["pages"] for c in primary.calls] == [[7]]
+    assert _counts(doc.metadata)["ocr_pages_worker"] == 1
     assert doc.metadata["pages_maths_font"] == 1
-
-
-def test_zero_fraction_disables_the_document_condition(monkeypatch, tmp_path, effective_settings):
-    """``OCR_MATHS_PAGE_FRACTION=0.0`` never selects a PDF for its maths pages."""
-    _maths(monkeypatch, set(range(1, 15)))
-    primary = _Client("dots_mocr")
-    settings = effective_settings(ocr_fallback_enabled=True, ocr_maths_page_fraction=0.0)
-    _read(settings, OcrRoutes(primary), _metadata(14), tmp_path)
-    assert primary.calls == []
-
-
-def test_fraction_is_read_from_injected_settings(monkeypatch, tmp_path, effective_settings):
-    """Spec: the fraction comes from the injected settings (3 of 14 is 0.21)."""
-    _maths(monkeypatch, {1, 2, 3})
-    high, low = _Client("dots_mocr"), _Client("dots_mocr")
-    _read(
-        effective_settings(ocr_fallback_enabled=True, ocr_maths_page_fraction=0.25),
-        OcrRoutes(high),
-        _metadata(14),
-        tmp_path,
-    )
-    _read(
-        effective_settings(ocr_fallback_enabled=True, ocr_maths_page_fraction=0.20),
-        OcrRoutes(low),
-        _metadata(14),
-        tmp_path,
-    )
-    assert high.calls == [] and len(low.calls) == 1
 
 
 def test_disabled_maths_routing_changes_nothing(monkeypatch, tmp_path, effective_settings):
@@ -358,23 +362,20 @@ def test_disabled_maths_routing_changes_nothing(monkeypatch, tmp_path, effective
     monkeypatch.setattr(maths_routing, "maths_font_pages", forbidden)
     local_calls = _scan(monkeypatch, 4, needs_ocr=set())
     primary = _Client("dots_mocr")
-    for unit in ("document", "page"):
-        settings = effective_settings(
-            ocr_fallback_enabled=True, ocr_maths_routing_enabled=False, ocr_routing_unit=unit
-        )
-        doc = _read(settings, OcrRoutes(primary), _metadata(4), tmp_path)
-        assert "pages_maths_font" not in doc.metadata
+    settings = effective_settings(ocr_fallback_enabled=True, ocr_maths_routing_enabled=False)
+    doc = _read(settings, OcrRoutes(primary), _metadata(4), tmp_path)
+    assert "pages_maths_font" not in doc.metadata
     assert primary.calls == [] and local_calls == []
 
 
 # ── Diagnostics stay out of embedded text (5.3) ────────────────────────────
 
 
-def test_page_unit_counts_sum_and_backend_is_mixed(monkeypatch, tmp_path, effective_settings):
+def test_counts_sum_and_backend_is_mixed(monkeypatch, tmp_path, effective_settings):
     """Spec: native plus primary-route maths pages report ``mixed``; counts sum."""
     _scan(monkeypatch, 5, needs_ocr={4})
     _maths(monkeypatch, {1})
-    settings = effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page")
+    settings = effective_settings(ocr_fallback_enabled=True)
     doc = _read(settings, OcrRoutes(_Client("dots_mocr")), _metadata(5), tmp_path)
     assert doc.metadata["ocr_backend"] == "mixed"
     assert sum(_counts(doc.metadata).values()) == doc.metadata["page_count"] == 5

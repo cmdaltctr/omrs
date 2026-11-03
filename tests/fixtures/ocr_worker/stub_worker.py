@@ -28,6 +28,10 @@ without output), ``hang`` (never answer).
 (default ``paddleocr_vl``, the engine this stub historically stands
 for), so route tests can tell a primary stub from a fallback stub
 (change modular-ocr-workers-dots-mocr).
+
+``--protocol-version V`` sets the protocol the fingerprint reports
+(default ``1.0``). ``1.1`` lets page-routed seam tests send page-listed
+requests (change page-routing-default).
 """
 
 from __future__ import annotations
@@ -44,10 +48,12 @@ OUTPUT_SCHEMA = {"id": "omrs.ocr.parse_output", "version": "1"}
 CAPABILITY_MODES = ("json", "bad-json", "wrong-protocol", "wrong-schema", "fail", "hang")
 
 
-def stub_fingerprint_payload(backend_id: str = "paddleocr_vl") -> dict:
+def stub_fingerprint_payload(
+    backend_id: str = "paddleocr_vl", protocol_version: str = PROTOCOL_VERSION
+) -> dict:
     """Build the stub worker's wire-valid capability fingerprint."""
     return {
-        "protocol_version": PROTOCOL_VERSION,
+        "protocol_version": protocol_version,
         "backend_id": backend_id,
         "packages": {"stub-worker": "1.0"},
         "pipeline": {"identity": "stub-pipeline", "revision": "1"},
@@ -121,7 +127,9 @@ def _failure(request_id: str, protocol_version: str = "1.0") -> dict:
     }
 
 
-def _run_capabilities(mode: str, backend_id: str = "paddleocr_vl") -> int:
+def _run_capabilities(
+    mode: str, backend_id: str = "paddleocr_vl", protocol_version: str = PROTOCOL_VERSION
+) -> int:
     """Answer the metadata-only capability probe, then exit.
 
     The ``json`` mode prints a wire-valid fingerprint; every other mode
@@ -129,7 +137,7 @@ def _run_capabilities(mode: str, backend_id: str = "paddleocr_vl") -> int:
     the stable unavailable fingerprint.
     """
     if mode == "json":
-        _emit(stub_fingerprint_payload(backend_id))
+        _emit(stub_fingerprint_payload(backend_id, protocol_version))
         return 0
     if mode == "bad-json":
         sys.stdout.write("this is not json {{{\n")
@@ -162,6 +170,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--mode", choices=MODES, default="echo")
     parser.add_argument("--stderr-lines", type=int, default=0)
     parser.add_argument("--backend-id", default="paddleocr_vl")
+    parser.add_argument("--protocol-version", default=PROTOCOL_VERSION)
     parser.add_argument(
         "--capabilities",
         choices=CAPABILITY_MODES,
@@ -173,7 +182,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.capabilities is not None:
-        return _run_capabilities(args.capabilities, args.backend_id)
+        return _run_capabilities(args.capabilities, args.backend_id, args.protocol_version)
 
     for raw_line in sys.stdin:
         line = raw_line.strip()

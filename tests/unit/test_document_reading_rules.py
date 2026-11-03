@@ -28,12 +28,15 @@ ENGINE_RULE = (
     "The engine name must start with a letter or digit, hold only letters, digits, dots, "
     "hyphens and underscores, and be at most 64 characters."
 )
-FRACTION_RULE = "The value must be a number from 0.0 to 1.0."
 BOOL_RULE = "The value must be true or false."
 BLANK_RULE = "The value must not be blank. Send null to use the default."
 READER_RULE = "The value must be one of: auto, liteparse, pdf_inspector, pypdfium2, pypdf."
-UNIT_RULE = "The value must be one of: document, page."
-FRACTIONS = ("ocr_fallback_min_confidence", "ocr_fallback_page_fraction", "ocr_maths_page_fraction")
+UNIT_RULE = "The value must be one of: page."
+REMOVED_KEYS = (
+    "ocr_fallback_min_confidence",
+    "ocr_fallback_page_fraction",
+    "ocr_maths_page_fraction",
+)
 BOOLEANS = ("ocr_fallback_enabled", "ocr_maths_routing_enabled")
 ENGINES = ("ocr_engine_primary", "ocr_engine_fallback")
 
@@ -63,13 +66,10 @@ def test_the_key_order_is_the_contract_order() -> None:
     assert DOCUMENT_READING_KEYS == (
         "pdf_reader",
         "ocr_fallback_enabled",
-        "ocr_fallback_min_confidence",
-        "ocr_fallback_page_fraction",
         "ocr_routing_unit",
         "ocr_engine_primary",
         "ocr_engine_fallback",
         "ocr_maths_routing_enabled",
-        "ocr_maths_page_fraction",
     )
 
 
@@ -91,10 +91,6 @@ def test_engine_pattern_matches_the_route_resolver() -> None:
         ("ocr_engine_fallback", "e" * 64),
         ("ocr_fallback_enabled", False),
         ("ocr_maths_routing_enabled", True),
-        ("ocr_fallback_page_fraction", 0.2),
-        ("ocr_fallback_min_confidence", 0),
-        ("ocr_maths_page_fraction", 1),
-        ("ocr_maths_page_fraction", 1.0),
         ("ocr_engine_primary", None),
         ("pdf_reader", None),
     ],
@@ -109,6 +105,7 @@ def test_valid_values_pass(key: str, value: Any) -> None:
         ("pdf_reader", "pdfminer", READER_RULE),
         ("pdf_reader", 3, READER_RULE),
         ("pdf_reader", "", BLANK_RULE),
+        ("ocr_routing_unit", "document", UNIT_RULE),
         ("ocr_routing_unit", "chapter", UNIT_RULE),
         ("ocr_routing_unit", True, UNIT_RULE),
         ("ocr_routing_unit", "  ", BLANK_RULE),
@@ -123,11 +120,6 @@ def test_valid_values_pass(key: str, value: Any) -> None:
         ("ocr_fallback_enabled", "true", BOOL_RULE),
         ("ocr_fallback_enabled", 1, BOOL_RULE),
         ("ocr_maths_routing_enabled", "", BOOL_RULE),
-        ("ocr_fallback_page_fraction", 1.5, FRACTION_RULE),
-        ("ocr_fallback_page_fraction", -0.1, FRACTION_RULE),
-        ("ocr_fallback_min_confidence", True, FRACTION_RULE),
-        ("ocr_maths_page_fraction", "0.2", FRACTION_RULE),
-        ("ocr_maths_page_fraction", float("nan"), FRACTION_RULE),
     ],
 )
 def test_each_rule_has_its_exact_message(key: str, value: Any, rule: str) -> None:
@@ -140,8 +132,15 @@ def test_a_rule_never_holds_the_value() -> None:
         assert "zz-secret-zz" not in message
 
 
-def test_a_key_outside_the_nine_passes_unchecked() -> None:
+def test_a_key_outside_the_six_passes_unchecked() -> None:
     assert document_reading_problem("ollama_base_url", "") is None
+
+
+@pytest.mark.parametrize("key", REMOVED_KEYS)
+def test_a_removed_fraction_key_is_not_a_reading_key(key: str) -> None:
+    """The three deleted gate settings left the contract, so the rule no longer checks them."""
+    assert key not in DOCUMENT_READING_KEYS
+    assert document_reading_problem(key, 7) is None
 
 
 # ── 1.3 The writer ───────────────────────────────────────────────────────
@@ -180,9 +179,10 @@ def test_a_valid_reader_is_written_and_every_other_byte_stays(folder: Path) -> N
         ({"ocr_engine_fallback": "../other"}, f"ocr_engine_fallback: {ENGINE_RULE}"),
         ({"ocr_engine_fallback": ""}, f"ocr_engine_fallback: {BLANK_RULE}"),
         ({"ocr_fallback_enabled": "true"}, f"ocr_fallback_enabled: {BOOL_RULE}"),
+        ({"ocr_routing_unit": "document"}, f"ocr_routing_unit: {UNIT_RULE}"),
         (
-            {"ocr_routing_unit": "page", "ocr_maths_page_fraction": 1.5},
-            f"ocr_maths_page_fraction: {FRACTION_RULE}",
+            {"ocr_routing_unit": "page", "ocr_fallback_enabled": 1},
+            f"ocr_fallback_enabled: {BOOL_RULE}",
         ),
     ],
 )
@@ -203,10 +203,18 @@ def test_null_removes_the_key_and_keeps_the_comments(folder: Path) -> None:
     assert after.startswith("// mine\n") and parse_jsonc(after)["web_port"] == 9100
 
 
-def test_numbers_and_booleans_are_written_as_json(folder: Path) -> None:
+@pytest.mark.parametrize("key", REMOVED_KEYS)
+def test_a_removed_fraction_key_is_refused_and_writes_nothing(folder: Path, key: str) -> None:
+    before = text(folder)
+    with pytest.raises(SettingsFileRefused) as caught:
+        write_settings({key: 0.2}, revision=None, directory=folder)
+    assert str(caught.value) == f"{key} is not a setting that can be changed here."
+    assert text(folder) == before
+
+
+def test_booleans_and_the_unit_are_written_as_json(folder: Path) -> None:
     write_settings(
         {
-            "ocr_fallback_page_fraction": 0.2,
             "ocr_maths_routing_enabled": False,
             "ocr_routing_unit": "page",
         },
@@ -214,7 +222,6 @@ def test_numbers_and_booleans_are_written_as_json(folder: Path) -> None:
         directory=folder,
     )
     data = parse_jsonc(text(folder))
-    assert data["ocr_fallback_page_fraction"] == 0.2
     assert data["ocr_maths_routing_enabled"] is False
     assert data["ocr_routing_unit"] == "page"
 

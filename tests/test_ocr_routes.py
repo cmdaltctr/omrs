@@ -17,7 +17,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from pydantic import ValidationError
 
 from omrs.capabilities import build_ocr_routes, probe_ocr_worker, reset_ocr_fingerprint_cache
 from omrs.config import Settings
@@ -76,13 +75,12 @@ def settings_for(effective_settings: Any, **overrides: Any) -> Any:
 
 
 def test_route_setting_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Defaults: dots-mocr primary, paddleocr-vl fallback, maths on at 0.10."""
+    """Defaults: dots-mocr primary, paddleocr-vl fallback, maths routing on."""
     for name in (
         "OCR_WORKERS_DIR",
         "OCR_ENGINE_PRIMARY",
         "OCR_ENGINE_FALLBACK",
         "OCR_MATHS_ROUTING_ENABLED",
-        "OCR_MATHS_PAGE_FRACTION",
         "OCR_WORKER_SECONDS_PER_PAGE",
     ):
         monkeypatch.delenv(name, raising=False)
@@ -91,7 +89,6 @@ def test_route_setting_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     assert settings.ocr_engine_primary == "dots-mocr"
     assert settings.ocr_engine_fallback == "paddleocr-vl"
     assert settings.ocr_maths_routing_enabled is True
-    assert settings.ocr_maths_page_fraction == 0.10
     assert settings.ocr_worker_seconds_per_page == 120.0
 
 
@@ -101,42 +98,28 @@ def test_route_settings_parse_from_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OCR_ENGINE_PRIMARY", "paddleocr-vl")
     monkeypatch.setenv("OCR_ENGINE_FALLBACK", " ")
     monkeypatch.setenv("OCR_MATHS_ROUTING_ENABLED", "false")
-    monkeypatch.setenv("OCR_MATHS_PAGE_FRACTION", "0.25")
     monkeypatch.setenv("OCR_WORKER_SECONDS_PER_PAGE", "90")
     settings = Settings(_env_file=None)
     assert settings.ocr_workers_dir == "/opt/ocr-workers"
     assert settings.ocr_engine_primary == "paddleocr-vl"
     assert settings.ocr_engine_fallback == ""
     assert settings.ocr_maths_routing_enabled is False
-    assert settings.ocr_maths_page_fraction == 0.25
     assert settings.ocr_worker_seconds_per_page == 90.0
 
 
-@pytest.mark.parametrize("value", ["-0.01", "1.01"])
-def test_maths_page_fraction_bounds(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
-    """``OCR_MATHS_PAGE_FRACTION`` must lie in 0.0 to 1.0."""
-    monkeypatch.setenv("OCR_MATHS_PAGE_FRACTION", value)
-    with pytest.raises(ValidationError):
-        Settings(_env_file=None)
-
-
-@pytest.mark.parametrize("value", ["0.0", "1.0"])
-def test_maths_page_fraction_accepts_the_ends(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
-    """Both ends of the range are valid; 0.0 is the disabled sentinel."""
-    monkeypatch.setenv("OCR_MATHS_PAGE_FRACTION", value)
-    assert Settings(_env_file=None).ocr_maths_page_fraction == float(value)
+def test_document_unit_maths_fraction_is_no_longer_a_setting() -> None:
+    """The page unit is the only unit, so the maths page fraction field is gone."""
+    assert "ocr_maths_page_fraction" not in Settings.model_fields
 
 
 def test_effective_settings_carry_the_route_fields(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The composition root copies the six fields into EffectiveSettings."""
+    """The composition root copies the route fields into EffectiveSettings."""
     from omrs.compose_settings import settings_to_effective
 
     monkeypatch.setenv("OCR_ENGINE_FALLBACK", "")
-    monkeypatch.setenv("OCR_MATHS_PAGE_FRACTION", "0.3")
     effective = settings_to_effective(Settings(_env_file=None))
     assert effective.ocr_engine_primary == "dots-mocr"
     assert effective.ocr_engine_fallback == ""
-    assert effective.ocr_maths_page_fraction == 0.3
     assert effective.ocr_worker_seconds_per_page == 120.0
 
 
@@ -433,6 +416,10 @@ def test_operation_owned_routes_close_after_ingest(
         return routes
 
     monkeypatch.setattr("omrs.capabilities.build_ocr_routes", recording_build)
+    # The index identity would probe the machine's local OCR runtime.
+    monkeypatch.setattr(
+        "omrs.integrations.pdf.page_routing.resolve_local_model_identity", lambda settings: None
+    )
     source = tmp_path / "note.txt"
     source.write_text("plain text", encoding="utf-8")
     settings = effective_settings(

@@ -86,13 +86,10 @@ ALLOWED_LEVERS: Mapping[str, LeverSpec] = {
 # integrations-show-runtime-components). A graph-wide override stays host-owned.
 _READ_STEP_OCR_KEYS = (
     "ocr_fallback_enabled",
-    "ocr_fallback_min_confidence",
-    "ocr_fallback_page_fraction",
     "ocr_routing_unit",
     "ocr_engine_primary",
     "ocr_engine_fallback",
     "ocr_maths_routing_enabled",
-    "ocr_maths_page_fraction",
 )
 
 # Host-owned settings: matched by exact path, block prefix or name fragment.

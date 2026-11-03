@@ -82,13 +82,10 @@ def test_the_card_keys_stay_allowed_and_key_fields_are_not() -> None:
         # document-reading-settings: Settings > Document reading
         "pdf_reader",
         "ocr_fallback_enabled",
-        "ocr_fallback_min_confidence",
-        "ocr_fallback_page_fraction",
         "ocr_routing_unit",
         "ocr_engine_primary",
         "ocr_engine_fallback",
         "ocr_maths_routing_enabled",
-        "ocr_maths_page_fraction",
     }
 
 

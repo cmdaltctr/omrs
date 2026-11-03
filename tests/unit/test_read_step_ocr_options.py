@@ -1,6 +1,6 @@
 """The Read document step sets OCR options (tasks 4.1 and 4.2, design D4).
 
-Change integrations-show-runtime-components. The step takes the eight
+Change integrations-show-runtime-components. The step takes the five
 document-reading keys other than ``pdf_reader``. ``None`` inherits the host
 value. A set value passes the same rule as Settings > Document reading. An
 engine that is not provisioned under the host workers folder fails admission
@@ -23,16 +23,13 @@ from omrs.core.ingestion.graph_adapters import canonical_ingestion_definition
 from omrs.core.ingestion.graph_adapters_catalogue import ReadParams
 from omrs.core.pipelines import IssueCode, PipelineValidationError
 
-#: The eight step keys and one valid value for each.
+#: The five step keys and one valid value for each.
 VALID_VALUES: dict[str, Any] = {
     "ocr_fallback_enabled": True,
-    "ocr_fallback_min_confidence": 0.4,
-    "ocr_fallback_page_fraction": 0.25,
     "ocr_routing_unit": "page",
     "ocr_engine_primary": "paddleocr-vl",
     "ocr_engine_fallback": "dots-mocr",
     "ocr_maths_routing_enabled": False,
-    "ocr_maths_page_fraction": 1.0,
 }
 
 
@@ -78,11 +75,10 @@ def test_each_key_inherits_by_default_and_accepts_a_valid_value(key: str) -> Non
 @pytest.mark.parametrize(
     ("key", "value"),
     [
-        ("ocr_fallback_page_fraction", 1.5),
-        ("ocr_fallback_min_confidence", -0.1),
-        ("ocr_maths_page_fraction", "0.5"),
+        ("ocr_maths_routing_enabled", "yes"),
         ("ocr_fallback_enabled", "yes"),
         ("ocr_routing_unit", "pages"),
+        ("ocr_routing_unit", "document"),
         ("ocr_engine_primary", "../escape"),
         ("ocr_engine_fallback", " "),
     ],
@@ -97,7 +93,18 @@ def test_values_that_break_the_settings_rule_fail(key: str, value: Any) -> None:
 
 
 @pytest.mark.parametrize(
-    ("key", "value"), [("ocr_fallback_page_fraction", 1.5), ("ocr_routing_unit", "pages")]
+    "key",
+    ["ocr_fallback_min_confidence", "ocr_fallback_page_fraction", "ocr_maths_page_fraction"],
+)
+def test_a_removed_fraction_key_is_not_a_step_parameter(key: str) -> None:
+    """The three deleted gate settings are no longer step parameters."""
+    assert key not in ReadParams.model_fields
+    with pytest.raises(ValidationError, match=key):
+        ReadParams.model_validate({key: 0.5})
+
+
+@pytest.mark.parametrize(
+    ("key", "value"), [("ocr_routing_unit", "document"), ("ocr_routing_unit", "pages")]
 )
 def test_invalid_values_fail_validation_before_any_node_runs(
     key: str, value: Any, effective_settings: Any, tmp_path: Path

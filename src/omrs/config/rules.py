@@ -105,21 +105,14 @@ ENGINE_NAME_RULE = (
 DOCUMENT_READING_KEYS: tuple[str, ...] = (
     "pdf_reader",
     "ocr_fallback_enabled",
-    "ocr_fallback_min_confidence",
-    "ocr_fallback_page_fraction",
     "ocr_routing_unit",
     "ocr_engine_primary",
     "ocr_engine_fallback",
     "ocr_maths_routing_enabled",
-    "ocr_maths_page_fraction",
 )
 _READING_BOOLEANS = frozenset({"ocr_fallback_enabled", "ocr_maths_routing_enabled"})
-_READING_FRACTIONS = frozenset(
-    {"ocr_fallback_min_confidence", "ocr_fallback_page_fraction", "ocr_maths_page_fraction"}
-)
 _READING_ENGINES = frozenset({"ocr_engine_primary", "ocr_engine_fallback"})
 BLANK_RULE = "The value must not be blank. Send null to use the default."
-FRACTION_RULE = "The value must be a number from 0.0 to 1.0."
 BOOL_RULE = "The value must be true or false."
 
 
@@ -143,9 +136,6 @@ def document_reading_problem(key: str, value: Any) -> str | None:
         return None
     if key in _READING_BOOLEANS:
         return None if isinstance(value, bool) else BOOL_RULE
-    if key in _READING_FRACTIONS:
-        number = isinstance(value, (int, float)) and not isinstance(value, bool)
-        return None if number and 0.0 <= value <= 1.0 else FRACTION_RULE
     if isinstance(value, str) and not value.strip():
         return BLANK_RULE
     if key in _READING_ENGINES:

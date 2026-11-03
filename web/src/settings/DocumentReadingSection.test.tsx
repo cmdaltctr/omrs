@@ -45,7 +45,7 @@ function savingServer(start: DocumentReadingState) {
 describe("Document reading", () => {
   it("shows each reading setting as a compact row, with no mini card", async () => {
     const { section } = await openSection();
-    for (const name of ["PDF reader", "OCR fallback", "Lowest text confidence"]) {
+    for (const name of ["PDF reader", "OCR fallback", "OCR routing unit"]) {
       expect(row(name)).toHaveAttribute("data-slot", "setting-row");
     }
     expect(section.querySelector("[data-slot='card-inset']")).toBeNull();
@@ -56,8 +56,8 @@ describe("Document reading", () => {
     const ocr = within(section).getByRole("region", { name: "OCR" });
     const block = (name: string) => within(ocr).getByRole("group", { name });
     const names = (name: string) => within(block(name)).getAllByRole("group").map((group) => group.getAttribute("aria-label"));
-    expect(names("When to use OCR")).toEqual(["OCR fallback", "Lowest text confidence", "OCR page fraction", "OCR routing unit"]);
-    expect(names("Maths pages")).toEqual(["Maths routing", "Maths page fraction"]);
+    expect(names("When to use OCR")).toEqual(["OCR fallback", "OCR routing unit"]);
+    expect(names("Maths pages")).toEqual(["Maths routing"]);
     expect(names("Engines")).toEqual(["Primary engine", "Fallback engine"]);
     expect(block("Engines")).toHaveTextContent(/OCR engines folder|OCR_WORKERS_DIR/);
     const [left, right] = Array.from(ocr.querySelector("[data-slot='reading-columns']")!.children) as HTMLElement[];
@@ -72,16 +72,16 @@ describe("Document reading", () => {
     expect(screen.getByRole("button", { name: "Document reading" })).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("shows one row for each of the nine keys with the value in force, its source and the default", async () => {
+  it("shows one row for each of the six keys with the value in force, its source and the default", async () => {
     const { section } = await openSection();
-    const names = ["PDF reader", "OCR fallback", "Lowest text confidence", "OCR page fraction", "OCR routing unit", "Primary engine", "Fallback engine", "Maths routing", "Maths page fraction"];
+    const names = ["PDF reader", "OCR fallback", "OCR routing unit", "Primary engine", "Fallback engine", "Maths routing"];
     for (const name of names) expect(within(section).getByRole("group", { name })).toBeInTheDocument();
     const reader = row("PDF reader");
     expect(within(reader).getByText("pdf_inspector", { selector: "code" })).toBeInTheDocument();
     expect(reader).toHaveTextContent("Default: pdf_inspector");
     expect(within(row("OCR fallback")).getByText("On", { selector: "code" })).toBeInTheDocument();
-    expect(within(row("OCR page fraction")).getByText("0.1", { selector: "code" })).toBeInTheDocument();
-    expect(row("OCR page fraction")).toHaveTextContent("default");
+    expect(within(row("OCR routing unit")).getByText("page", { selector: "code" })).toBeInTheDocument();
+    expect(row("OCR routing unit")).toHaveTextContent("default");
     expect(within(section).queryByText("Restart to apply")).toBeNull();
   });
 
@@ -153,34 +153,28 @@ describe("Document reading", () => {
     expect(within(row("Fallback engine")).getByText("None (no fallback)")).toBeInTheDocument();
   });
 
-  it("saves a fraction with the revision, shows Restart to apply and opens the restart dialog with the index identity note", async () => {
+  it("saves an engine with the revision, shows Restart to apply and opens the restart dialog with the index identity note", async () => {
     const { user, server } = await openSection(savingServer(readingState()));
-    await user.click(within(row("OCR page fraction")).getByRole("button", { name: "Edit OCR page fraction" }));
-    const input = within(row("OCR page fraction")).getByRole("spinbutton", { name: "OCR page fraction" });
-    expect(input).toHaveValue(0.1);
-    await user.clear(input);
-    await user.type(input, "0.2");
-    await user.click(within(row("OCR page fraction")).getByRole("button", { name: "Save" }));
+    await user.click(within(row("Primary engine")).getByRole("button", { name: "Edit Primary engine" }));
+    await user.click(within(row("Primary engine")).getByRole("combobox", { name: "Primary engine" }));
+    await user.click(await screen.findByRole("option", { name: "paddleocr-vl (not provisioned)" }));
+    await user.click(within(row("Primary engine")).getByRole("button", { name: "Save" }));
     const dialog = await screen.findByRole("dialog", { name: "Restart to apply?" });
-    expect(dialog).toHaveTextContent("OCR page fraction applies after a restart.");
+    expect(dialog).toHaveTextContent("Primary engine applies after a restart.");
     expect(dialog).toHaveTextContent(IDENTITY_NOTE);
-    expect(server.find("PUT", "/v1/settings/document-reading").map((call) => call.body)).toEqual([{ values: { ocr_fallback_page_fraction: 0.2 }, revision: "r1" }]);
+    expect(server.find("PUT", "/v1/settings/document-reading").map((call) => call.body)).toEqual([{ values: { ocr_engine_primary: "paddleocr-vl" }, revision: "r1" }]);
     await user.click(within(dialog).getByRole("button", { name: "Later" }));
-    const fraction = row("OCR page fraction");
-    expect(within(fraction).getByText("Restart to apply")).toBeInTheDocument();
-    expect(fraction).toHaveTextContent("Saved for the next launch: 0.2");
-    expect(within(fraction).getByText("0.1", { selector: "code" })).toBeInTheDocument();
+    const engine = row("Primary engine");
+    expect(within(engine).getByText("Restart to apply")).toBeInTheDocument();
+    expect(engine).toHaveTextContent("Saved for the next launch: paddleocr-vl");
+    expect(within(engine).getByText("dots-mocr", { selector: "code" })).toBeInTheDocument();
   });
 
-  it("refuses a fraction outside 0 to 1 before it sends anything", async () => {
-    const { user, server } = await openSection();
-    await user.click(within(row("Maths page fraction")).getByRole("button", { name: "Edit Maths page fraction" }));
-    const input = within(row("Maths page fraction")).getByRole("spinbutton", { name: "Maths page fraction" });
-    await user.clear(input);
-    await user.type(input, "1.5");
-    await user.click(within(row("Maths page fraction")).getByRole("button", { name: "Save" }));
-    expect(row("Maths page fraction")).toHaveTextContent("Enter a number from 0 to 1.");
-    expect(server.find("PUT", "/v1/settings/document-reading")).toHaveLength(0);
+  it("offers page as the only routing unit", async () => {
+    const { user } = await openSection();
+    await user.click(within(row("OCR routing unit")).getByRole("button", { name: "Edit OCR routing unit" }));
+    await user.click(within(row("OCR routing unit")).getByRole("combobox", { name: "OCR routing unit" }));
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["page"]);
   });
 
   it("saves a switch as true or false", async () => {
@@ -228,11 +222,10 @@ describe("Document reading", () => {
     const { user, server } = await openSection({
       "PUT /v1/settings/document-reading": () => json({ status: "error", message: "omrs.jsonc changed on disk. Reload to see the new values." }, 409),
     });
-    await user.click(within(row("OCR routing unit")).getByRole("button", { name: "Edit OCR routing unit" }));
-    await user.click(within(row("OCR routing unit")).getByRole("combobox", { name: "OCR routing unit" }));
-    await user.click(await screen.findByRole("option", { name: "page" }));
-    await user.click(within(row("OCR routing unit")).getByRole("button", { name: "Save" }));
-    const alert = await within(row("OCR routing unit")).findByRole("alert");
+    await user.click(within(row("Maths routing")).getByRole("button", { name: "Edit Maths routing" }));
+    await user.click(within(row("Maths routing")).getByRole("switch", { name: "Maths routing" }));
+    await user.click(within(row("Maths routing")).getByRole("button", { name: "Save" }));
+    const alert = await within(row("Maths routing")).findByRole("alert");
     expect(alert).toHaveTextContent("omrs.jsonc changed on disk. Reload to see the new values.");
     expect(server.find("GET", "/v1/settings/document-reading")).toHaveLength(1);
     await user.click(within(alert).getByRole("button", { name: "Reload" }));

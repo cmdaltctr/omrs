@@ -25,6 +25,27 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 _CONFIG_GUIDE = _REPO_ROOT / "docs" / "guides" / "configuration.md"
 
 
+@pytest.fixture(autouse=True)
+def _no_local_ocr_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep page routing off the machine's PDFium and ONNX Runtime libraries.
+
+    Page routing is the default, so ``pdf_inspector`` runs the local OCR tier
+    and the blank test on flagged pages. A missing runtime and no blank page
+    keep these provenance tests deterministic.
+    """
+    from omrs.integrations.pdf import ocr_routing
+
+    def _missing(*args, **kwargs):
+        raise ValueError("failed to load ONNX Runtime (stubbed)")
+
+    monkeypatch.setattr(ocr_routing, "local_ocr", _missing)
+    monkeypatch.setattr(ocr_routing, "find_blank_pages", lambda file, pages: frozenset())
+    # The index identity probes the local model once per process; skip it too.
+    monkeypatch.setattr(
+        "omrs.integrations.pdf.page_routing.resolve_local_model_identity", lambda settings: None
+    )
+
+
 # ── Stub plumbing for pypdfium2 (not installed in the base venv) ───────
 
 

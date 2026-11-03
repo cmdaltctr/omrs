@@ -6,22 +6,19 @@
 import type { ApiClient, CallOptions } from "./client";
 import type { SaveOptions } from "./settings";
 
-/** The nine keys, in the order the server lists them and the order of lock precedence. */
+/** The six keys, in the order the server lists them and the order of lock precedence. */
 export const DOCUMENT_READING_KEYS = [
   "pdf_reader",
   "ocr_fallback_enabled",
-  "ocr_fallback_min_confidence",
-  "ocr_fallback_page_fraction",
   "ocr_routing_unit",
   "ocr_engine_primary",
   "ocr_engine_fallback",
   "ocr_maths_routing_enabled",
-  "ocr_maths_page_fraction",
 ] as const;
 
 export type DocumentReadingKey = (typeof DOCUMENT_READING_KEYS)[number];
 
-/** A boolean key holds `true` or `false`, a fraction key a number from 0 to 1, and the others text. */
+/** A boolean key holds `true` or `false` and the others text. */
 export type DocumentReadingValue = string | number | boolean;
 
 export interface DocumentReadingSetting {
@@ -72,7 +69,7 @@ export interface DocumentReadingState {
   };
 }
 
-/** One to nine keys. `null` removes a key from `omrs.jsonc`, so its default applies. */
+/** One to six keys. `null` removes a key from `omrs.jsonc`, so its default applies. */
 export type DocumentReadingValues = Partial<Record<DocumentReadingKey, DocumentReadingValue | null>>;
 
 export function getDocumentReadingSettings(api: ApiClient, options: CallOptions = {}): Promise<DocumentReadingState> {

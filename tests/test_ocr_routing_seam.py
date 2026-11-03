@@ -1,11 +1,17 @@
 """Routing-seam tests through the reader contract (tasks 2.3–2.5, 2.7, 2.8, 2.10).
 
 Reader-level coverage against the committed calibration fixtures and
-the stub worker: clean text-based PDFs never start the worker,
-complex text layouts stay on pdf-inspector, scanned fixtures dispatch
-the whole PDF and reuse one process, an unavailable worker degrades
-deterministically, and every branch stamps the four additive OCR
-diagnostics with ``pages_needing_ocr`` as a scalar count.
+the stub worker, under the ``page`` routing unit (the only unit since
+change page-routing-default): clean text-based PDFs never start the
+worker, complex text layouts stay on pdf-inspector, a scanned fixture
+sends its flagged page to the worker and reuses one process, an
+unavailable worker degrades deterministically, and every branch stamps
+the four additive OCR diagnostics with ``pages_needing_ocr`` as a scalar
+count.
+
+The local OCR tier and the blank test are stubbed (a missing runtime and
+no blank page), so the result never depends on the PDFium or ONNX Runtime
+libraries of the machine.
 """
 
 from __future__ import annotations
@@ -13,7 +19,6 @@ from __future__ import annotations
 import sys
 from collections.abc import Iterator
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -39,8 +44,20 @@ CALIBRATION = REPO_ROOT / "tests" / "fixtures" / "pdf_baseline" / "calibration"
 
 
 def _stub_command(mode: str) -> list[str]:
-    """Build the stub worker launch command."""
-    return [sys.executable, str(STUB_WORKER), "--mode", mode]
+    """Build the stub worker launch command (protocol 1.1: page-listed requests)."""
+    return [sys.executable, str(STUB_WORKER), "--mode", mode, "--protocol-version", "1.1"]
+
+
+@pytest.fixture(autouse=True)
+def _no_local_runtime(monkeypatch) -> None:
+    """Make the local OCR tier a missing runtime and the blank test find nothing."""
+    from omrs.integrations.pdf import ocr_routing
+
+    def _missing(*args, **kwargs):
+        raise ValueError("failed to load ONNX Runtime (stubbed)")
+
+    monkeypatch.setattr(ocr_routing, "local_ocr", _missing)
+    monkeypatch.setattr(ocr_routing, "find_blank_pages", lambda file, pages: frozenset())
 
 
 @pytest.fixture(autouse=True)
@@ -125,27 +142,25 @@ def test_packaged_default_composes_the_seam(effective_settings) -> None:
     assert isinstance(reader, OcrRoutedPdfInspector)
 
 
-# ── Tasks 2.3/2.4: scanned fixtures dispatch the whole PDF ────────────────
+# ── Tasks 2.3/2.4: a scanned fixture sends its flagged page ───────────────
 
 
-def test_scanned_fixture_dispatches_and_replaces_extraction(effective_settings) -> None:
-    """The worker result replaces the partial pdf-inspector extraction."""
+def test_scanned_fixture_sends_its_flagged_page_to_the_worker(effective_settings) -> None:
+    """The worker's page text replaces the empty native page."""
     client = _echo_client()
     try:
         reader = _routed_reader(client, effective_settings)
         docs = reader.load_data(file=CALIBRATION / "cal_scanned.pdf")
         assert len(docs) == 1
-        text = docs[0].get_content()
         meta = docs[0].metadata
-        assert text.startswith("# Stub extraction"), "worker Markdown replaced the empty partial"
-        assert str(CALIBRATION / "cal_scanned.pdf") in text, "whole PDF was routed"
+        assert docs[0].get_content() == "# Stub page 1"
         assert meta["ocr_required"] is True
         assert meta["ocr_used"] is True
         assert meta["ocr_backend"] == OCR_BACKEND_WORKER_PATH
-        assert meta["ocr_used"] is True and meta["ocr_required"] is True
+        assert meta["ocr_pages_worker"] == 1
+        assert meta["page"] == 1
         # Honest provenance: the inspection evidence stays authoritative.
         assert meta["pdf_type"] == "scanned"
-        assert meta["pdf_confidence"] == pytest.approx(0.9)
         assert meta["page_count"] == 1
         assert client.is_started is True
         assert client.process_generations == 1
@@ -185,10 +200,11 @@ def test_unavailable_client_keeps_partial_markdown_and_degrades(effective_settin
     assert meta["ocr_used"] is False
     assert meta["ocr_backend"] == OCR_BACKEND_FAST_PATH
     assert meta["pages_needing_ocr"] == 1
+    assert meta["ocr_pages_unresolved"] == 1
     # The partial (empty) pdf-inspector markdown is kept as-is.
     assert docs[0].get_content() == ""
     assert "OCR_WORKERS_DIR" in caplog.text
-    assert "unavailable" in caplog.text
+    assert "Local OCR tier unavailable" in caplog.text
 
 
 def test_unavailable_fingerprint_client_degrades_the_same_way(effective_settings) -> None:
@@ -233,310 +249,25 @@ def test_pages_needing_ocr_is_a_scalar_on_every_branch(fixture: str, effective_s
         client.close()
 
 
-# ── Mixed-PDF dispatch boundary: OCR enabled, thresholds at 0.0 ──────────
+# ── Every document carries the page-source counts ─────────────────────────
 
 
-def _mock_inner_document(pdf_type: str, confidence: float, pages_needing_ocr: int, page_count: int):
-    """Build a mock inner reader returning one document with inspection evidence."""
-    from llama_index.core import Document
-
-    return lambda file, *args, **kwargs: [
-        Document(
-            text="partial extraction",
-            metadata={
-                "pdf_type": pdf_type,
-                "pdf_confidence": confidence,
-                "pages_needing_ocr": pages_needing_ocr,
-                "page_count": page_count,
-                "file_name": str(file),
-            },
-        )
-    ]
-
-
-def test_mixed_pdf_with_ocr_enabled_zero_thresholds_stays_on_fast_path(
-    effective_settings, monkeypatch
-) -> None:
-    """A mixed PDF with OCR enabled and both thresholds at 0.0 stays on pdf-inspector.
-
-    The reader dispatch boundary follows the gate: 0.0 sentinels are
-    disabled, so a mixed classification does not route to the worker even
-    when OCR fallback is enabled. The worker is never started.
-    """
-    client = _echo_client()
-    try:
-        settings = effective_settings(
-            pdf_reader="pdf_inspector",
-            ocr_fallback_enabled=True,
-            ocr_fallback_min_confidence=0.0,
-            ocr_fallback_page_fraction=0.0,
-        )
-        reader = build_pdf_reader("pdf_inspector", settings, ocr_client=client)
-        assert isinstance(reader, OcrRoutedPdfInspector)
-        # Mock the inner reader to return a mixed-classification document.
-        reader._inner.load_data = _mock_inner_document(
-            pdf_type="mixed",
-            confidence=0.76,
-            pages_needing_ocr=10,
-            page_count=991,
-        )
-        docs = reader.load_data(file=Path("/fake/mixed.pdf"))
-        meta = docs[0].metadata
-        assert meta["ocr_required"] is False
-        assert meta["ocr_used"] is False
-        assert meta["ocr_backend"] == OCR_BACKEND_FAST_PATH
-        assert client.is_started is False
-        assert client.process_generations == 0
-    finally:
-        client.close()
-
-
-def test_scanned_pdf_with_ocr_enabled_zero_thresholds_dispatches_worker(
-    effective_settings, monkeypatch
-) -> None:
-    """A scanned PDF with OCR enabled and both thresholds at 0.0 dispatches the worker.
-
-    Scanned is unconditional, so it routes regardless of threshold values.
-    The worker is started and the extraction is replaced.
-    """
-    client = _echo_client()
-    try:
-        settings = effective_settings(
-            pdf_reader="pdf_inspector",
-            ocr_fallback_enabled=True,
-            ocr_fallback_min_confidence=0.0,
-            ocr_fallback_page_fraction=0.0,
-        )
-        reader = build_pdf_reader("pdf_inspector", settings, ocr_client=client)
-        assert isinstance(reader, OcrRoutedPdfInspector)
-        reader._inner.load_data = _mock_inner_document(
-            pdf_type="scanned",
-            confidence=0.9,
-            pages_needing_ocr=1,
-            page_count=1,
-        )
-        docs = reader.load_data(file=Path("/fake/scanned.pdf"))
-        meta = docs[0].metadata
-        assert meta["ocr_required"] is True
-        assert meta["ocr_used"] is True
-        assert meta["ocr_backend"] == OCR_BACKEND_WORKER_PATH
-        assert client.is_started is True
-        assert client.process_generations == 1
-    finally:
-        client.close()
-
-
-def test_image_based_pdf_with_ocr_enabled_zero_thresholds_dispatches_worker(
-    effective_settings, monkeypatch
-) -> None:
-    """An image-based PDF with OCR enabled and both thresholds at 0.0 dispatches the worker.
-
-    Image-based is unconditional, so it routes regardless of threshold values.
-    """
-    client = _echo_client()
-    try:
-        settings = effective_settings(
-            pdf_reader="pdf_inspector",
-            ocr_fallback_enabled=True,
-            ocr_fallback_min_confidence=0.0,
-            ocr_fallback_page_fraction=0.0,
-        )
-        reader = build_pdf_reader("pdf_inspector", settings, ocr_client=client)
-        assert isinstance(reader, OcrRoutedPdfInspector)
-        reader._inner.load_data = _mock_inner_document(
-            pdf_type="image_based",
-            confidence=0.95,
-            pages_needing_ocr=1,
-            page_count=1,
-        )
-        docs = reader.load_data(file=Path("/fake/image.pdf"))
-        meta = docs[0].metadata
-        assert meta["ocr_required"] is True
-        assert meta["ocr_used"] is True
-        assert meta["ocr_backend"] == OCR_BACKEND_WORKER_PATH
-        assert client.is_started is True
-    finally:
-        client.close()
-
-
-def test_mixed_pdf_with_ocr_enabled_zero_thresholds_preserves_diagnostics(
-    effective_settings, monkeypatch
-) -> None:
-    """The mixed fast path still stamps the four additive OCR diagnostics."""
-    client = _echo_client()
-    try:
-        settings = effective_settings(
-            pdf_reader="pdf_inspector",
-            ocr_fallback_enabled=True,
-            ocr_fallback_min_confidence=0.0,
-            ocr_fallback_page_fraction=0.0,
-        )
-        reader = build_pdf_reader("pdf_inspector", settings, ocr_client=client)
-        assert isinstance(reader, OcrRoutedPdfInspector)
-        reader._inner.load_data = _mock_inner_document(
-            pdf_type="mixed",
-            confidence=0.5,
-            pages_needing_ocr=3,
-            page_count=10,
-        )
-        docs = reader.load_data(file=Path("/fake/mixed.pdf"))
-        meta = docs[0].metadata
-        assert "ocr_required" in meta
-        assert "ocr_used" in meta
-        assert "ocr_backend" in meta
-        assert "pages_needing_ocr" in meta
-        assert meta["pages_needing_ocr"] == 3
-        assert isinstance(meta["pages_needing_ocr"], int)
-    finally:
-        client.close()
-
-
-# ── Sloman guard: recovered text never reaches the worker ────────────────
-#
-# pdf-inspector can classify a file text_based while extracting nothing
-# (TDR-024). The adapter's LiteParse-first retry corrects the
-# flagged-page evidence to zero BEFORE the seam reads it, so at the
-# promoted thresholds (0.5 confidence / 0.10 page fraction) the gate sees
-# a clean fast-path file instead of dispatching ~30 minutes of OCR onto
-# text recovered in ~1 second.
-
-
-def _stub_inspector_contradiction(monkeypatch, *, page_count: int) -> None:
-    """Stub pdf_inspector to return the Sloman signature: text_based, empty."""
-    stub = MagicMock()
-    result = stub.process_pdf.return_value
-    result.markdown = ""
-    result.pdf_type = "text_based"
-    result.confidence = 1.0
-    result.page_count = page_count
-    result.pages_needing_ocr = list(range(page_count))
-    monkeypatch.setitem(sys.modules, "pdf_inspector", stub)
-
-
-def _stub_liteparse_pages(monkeypatch, page_texts: list[str]) -> None:
-    """Seed the registry cache so the adapter's LiteParse retry is stubbed."""
-    from llama_index.core import Document
-
-    from omrs.integrations.pdf import registry
-
-    class _StubLiteParseReader:
-        def __init__(self, *, ocr_enabled: bool = False, num_workers: int | None = None) -> None:
-            self.ocr_enabled = ocr_enabled
-            self.num_workers = num_workers
-
-        def load_data(self, file, *args, **kwargs):
-            return [Document(text=text) for text in page_texts]
-
-    monkeypatch.setitem(registry._cache, "liteparse", _StubLiteParseReader)
-
-
-def _stub_pypdf_pages(monkeypatch, page_texts: list[str]) -> None:
-    """Seed the registry cache so the adapter's pypdf retry is stubbed."""
-    from llama_index.core import Document
-
-    from omrs.integrations.pdf import registry
-
-    class _StubPypdfReader:
-        def load_data(self, file, *args, **kwargs):
-            return [Document(text=text) for text in page_texts]
-
-    monkeypatch.setitem(registry._cache, "pypdf", _StubPypdfReader)
-
-
-def _promoted_settings(effective_settings):
-    """The Experiment-29-promoted routing thresholds (0.5 / 0.10)."""
-    return effective_settings(
-        pdf_reader="pdf_inspector",
-        ocr_fallback_enabled=True,
-        ocr_fallback_min_confidence=0.5,
-        ocr_fallback_page_fraction=0.10,
-    )
-
-
-def test_liteparse_rescue_takes_the_fast_path_at_promoted_thresholds(
-    effective_settings, monkeypatch
-) -> None:
-    """A LiteParse rescue corrects the gate evidence before worker dispatch.
-
-    Pre-guard this evidence (3/3 flagged at confidence 1.0) routes to the
-    worker under the promoted thresholds; the corrected scalar keeps the
-    file on pdf-inspector and the worker is never started.
-    """
-    _stub_inspector_contradiction(monkeypatch, page_count=3)
-    _stub_liteparse_pages(monkeypatch, ["liteparse rescue"] * 3)
-    _stub_pypdf_pages(monkeypatch, ["pypdf must not be selected"])
-    client = _echo_client()
-    try:
-        reader = build_pdf_reader(
-            "pdf_inspector", _promoted_settings(effective_settings), ocr_client=client
-        )
-        assert isinstance(reader, OcrRoutedPdfInspector)
-        docs = reader.load_data(file=Path("/fake/sloman.pdf"))
-        meta = docs[0].metadata
-        # One document per recovered page (change pdf-inspector-page-provenance, D4).
-        assert [doc.get_content() for doc in docs] == ["liteparse rescue"] * 3
-        assert meta["ocr_required"] is False
-        assert meta["ocr_used"] is False
-        assert meta["ocr_backend"] == OCR_BACKEND_FAST_PATH
-        # Corrected evidence plus the additive fallback diagnostics.
-        assert meta["pages_needing_ocr"] == 0
-        assert meta["pages_needing_ocr_before_fallback"] == 3
-        assert meta["extraction_fallback_backend"] == "liteparse"
-        assert client.is_started is False
-        assert client.process_generations == 0
-    finally:
-        client.close()
-
-
-def test_failed_retry_still_routes_to_ocr_at_promoted_thresholds(
-    effective_settings, monkeypatch
-) -> None:
-    """When both retry tiers yield nothing, the flagged evidence routes."""
-    _stub_inspector_contradiction(monkeypatch, page_count=3)
-    _stub_liteparse_pages(monkeypatch, ["", "", ""])
-    _stub_pypdf_pages(monkeypatch, ["", "", ""])
-    client = _echo_client()
-    try:
-        reader = build_pdf_reader(
-            "pdf_inspector", _promoted_settings(effective_settings), ocr_client=client
-        )
-        docs = reader.load_data(file=Path("/fake/sloman.pdf"))
-        meta = docs[0].metadata
-        assert meta["ocr_required"] is True
-        assert meta["ocr_used"] is True
-        assert meta["ocr_backend"] == OCR_BACKEND_WORKER_PATH
-        # Unchanged pdf-inspector evidence — no fallback diagnostics.
-        assert meta["pages_needing_ocr"] == 3
-        assert "pages_needing_ocr_before_fallback" not in meta
-        assert "extraction_fallback_backend" not in meta
-        assert client.is_started is True
-        assert client.process_generations == 1
-    finally:
-        client.close()
-
-
-# ── The page unit's keys never appear on the document unit ────────────────
-
-
-def test_document_unit_emits_no_page_source_counts(effective_settings) -> None:
-    """The default unit's metadata is exactly what it was before page routing.
-
-    The page-source counts describe a merge that only the ``page`` unit
-    performs. Emitting them on the default — even as zeros — would tell a
-    consumer a merge happened, and would move the index identity of every
-    install that never opted in.
-    """
+def test_a_clean_text_pdf_carries_the_page_source_counts(effective_settings) -> None:
+    """With page routing the only unit, even a clean PDF reports its merge."""
     from omrs.integrations.pdf.page_routing import _COUNT_KEYS
 
     client = _echo_client()
     try:
         reader = _routed_reader(client, effective_settings)
-        meta = reader.load_data(file=CALIBRATION / "cal_clean_text.pdf")[0].metadata
+        documents = reader.load_data(file=CALIBRATION / "cal_clean_text.pdf")
     finally:
         client.close()
 
-    assert not set(meta) & set(_COUNT_KEYS.values())
-    assert meta["ocr_backend"] == OCR_BACKEND_FAST_PATH
+    for document in documents:
+        meta = document.metadata
+        assert set(_COUNT_KEYS.values()) <= set(meta)
+        assert meta["ocr_pages_native"] == meta["page_count"]
+        assert meta["ocr_backend"] == OCR_BACKEND_FAST_PATH
 
 
 def test_page_source_count_keys_are_all_excluded_from_embedding_text() -> None:
@@ -549,41 +280,6 @@ def test_page_source_count_keys_are_all_excluded_from_embedding_text() -> None:
     from omrs.integrations.pdf.page_routing import _COUNT_KEYS
 
     assert set(_COUNT_KEYS.values()) <= set(EXCLUDED_EMBED_METADATA_KEYS)
-
-
-def test_page_routing_keys_are_exactly_the_unit_scoped_set() -> None:
-    """The reader's counts and the identity's unit-scoped subset must agree.
-
-    They are declared in two modules: the reader owns the keys it emits, the
-    identity owns which keys a document-unit install may subtract. If the two
-    drift, a key emitted on the document path would be subtracted from its
-    identity — freezing the fingerprint while the embedded text changed. That
-    is the one failure this arrangement could cause, so it is pinned here.
-    """
-    from omrs.core.ingestion.embed_exclusions import PAGE_ROUTING_ONLY_EMBED_KEYS
-    from omrs.integrations.pdf.page_routing import _COUNT_KEYS
-
-    assert set(_COUNT_KEYS.values()) == set(PAGE_ROUTING_ONLY_EMBED_KEYS)
-
-
-def test_no_unit_scoped_key_is_emitted_on_the_document_path(effective_settings) -> None:
-    """The guard: a document-unit document carries none of the subtracted keys.
-
-    The identity subtracts these keys for a document-unit install on the
-    grounds that it never emits them. This asserts that premise against the
-    real reader rather than trusting it.
-    """
-    from omrs.core.ingestion.embed_exclusions import PAGE_ROUTING_ONLY_EMBED_KEYS
-
-    client = _echo_client()
-    try:
-        reader = _routed_reader(client, effective_settings)
-        documents = reader.load_data(file=CALIBRATION / "cal_clean_text.pdf")
-    finally:
-        client.close()
-
-    for document in documents:
-        assert not set(document.metadata) & set(PAGE_ROUTING_ONLY_EMBED_KEYS)
 
 
 def test_page_unit_counts_never_reach_embedding_text() -> None:
@@ -608,125 +304,3 @@ def test_page_unit_counts_never_reach_embedding_text() -> None:
     for key in _COUNT_KEYS.values():
         assert key not in embedded
     assert "page one" in embedded
-
-
-# ── Document unit keeps page documents (change pdf-inspector-page-provenance, D5) ──
-
-
-class _PagesInner:
-    """Inner reader standing in for the adapter: one document per page."""
-
-    def __init__(self, texts: list[str], evidence: dict) -> None:
-        from llama_index.core import Document
-
-        self._documents = [
-            Document(
-                text=text,
-                metadata={**evidence, "page": index + 1, "page_label": str(index + 1)},
-            )
-            for index, text in enumerate(texts)
-        ]
-
-    def load_data(self, file, *args, **kwargs) -> list:
-        return self._documents
-
-
-class _WholePdfWorker:
-    """In-process worker answering a whole-PDF request with one Markdown text."""
-
-    def __init__(self) -> None:
-        from types import SimpleNamespace
-
-        self.fingerprint = SimpleNamespace(
-            available=True, protocol_version="1.1", backend_id="paddleocr_vl"
-        )
-        self.calls: list[dict] = []
-
-    def parse(self, pdf_path: str, *, pages=None, timeout=None):
-        from omrs.integrations.ocr_worker.protocol import make_success
-
-        self.calls.append({"path": pdf_path, "pages": pages})
-        return make_success("req", "# Worker whole PDF", ocr_backend="paddleocr-vl", page_count=3)
-
-
-def _page_evidence(pdf_type: str = "text_based", flagged: int = 0) -> dict:
-    return {
-        "pdf_reader": "pdf_inspector",
-        "pdf_type": pdf_type,
-        "pdf_confidence": 1.0,
-        "page_count": 3,
-        "pages_needing_ocr": flagged,
-        "file_path": "/fake/doc.pdf",
-        "file_name": "doc.pdf",
-    }
-
-
-def _document_unit(inner, settings, client=None) -> OcrRoutedPdfInspector:
-    return OcrRoutedPdfInspector(inner, settings=settings, ocr_client=client)
-
-
-class TestDocumentUnitKeepsPages:
-    """Task 4.1: the document unit stamps every page document (design D5)."""
-
-    def test_fast_path_returns_every_page_stamped(self, effective_settings) -> None:
-        """Spec scenario "Fast path keeps the pages"."""
-        inner = _PagesInner(["one", "two", "three"], _page_evidence())
-        settings = effective_settings(pdf_reader="pdf_inspector", ocr_fallback_enabled=True)
-
-        docs = _document_unit(inner, settings).load_data(file=Path("/fake/doc.pdf"))
-
-        assert [doc.metadata["page"] for doc in docs] == [1, 2, 3]
-        assert [doc.text for doc in docs] == ["one", "two", "three"]
-        for doc in docs:
-            assert doc.metadata["ocr_required"] is False
-            assert doc.metadata["ocr_used"] is False
-            assert doc.metadata["ocr_backend"] == OCR_BACKEND_FAST_PATH
-
-    def test_degraded_path_returns_native_pages_stamped(self, effective_settings) -> None:
-        """Spec scenario "Degraded path keeps the pages"."""
-        inner = _PagesInner(["one", "", "three"], _page_evidence("mixed", flagged=3))
-        settings = effective_settings(pdf_reader="pdf_inspector", ocr_fallback_enabled=True)
-
-        docs = _document_unit(inner, settings).load_data(file=Path("/fake/doc.pdf"))
-
-        assert [doc.metadata["page"] for doc in docs] == [1, 2, 3]
-        for doc in docs:
-            assert doc.metadata["ocr_required"] is True
-            assert doc.metadata["ocr_used"] is False
-            assert doc.metadata["ocr_backend"] == OCR_BACKEND_FAST_PATH
-
-    def test_maths_count_on_every_page(self, effective_settings, monkeypatch) -> None:
-        """The maths count joins every page document, not only the first."""
-        from omrs.integrations.pdf import maths_routing
-
-        monkeypatch.setattr(maths_routing, "maths_font_pages", lambda file: frozenset({2}))
-        inner = _PagesInner(["one", "two", "three"], _page_evidence())
-        settings = effective_settings(
-            pdf_reader="pdf_inspector",
-            ocr_fallback_enabled=True,
-            ocr_maths_routing_enabled=True,
-            ocr_maths_page_fraction=0.0,
-        )
-
-        docs = _document_unit(inner, settings).load_data(file=Path("/fake/doc.pdf"))
-
-        assert len(docs) == 3
-        assert [doc.metadata["pages_maths_font"] for doc in docs] == [1, 1, 1]
-
-    def test_worker_path_returns_one_document_without_page(self, effective_settings) -> None:
-        """Spec scenario "Worker path emits one document without a page"."""
-        inner = _PagesInner(["", "", ""], _page_evidence("scanned", flagged=3))
-        settings = effective_settings(pdf_reader="pdf_inspector", ocr_fallback_enabled=True)
-        worker = _WholePdfWorker()
-
-        docs = _document_unit(inner, settings, worker).load_data(file=Path("/fake/doc.pdf"))
-
-        assert len(worker.calls) == 1
-        assert worker.calls[0]["pages"] is None
-        assert len(docs) == 1
-        meta = docs[0].metadata
-        assert docs[0].text == "# Worker whole PDF"
-        assert "page" not in meta
-        assert "page_label" not in meta
-        assert meta["page_count"] == 3
-        assert meta["ocr_used"] is True

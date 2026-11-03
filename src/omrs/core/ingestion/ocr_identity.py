@@ -9,10 +9,8 @@ home is full.
 
 Design D8 contract implemented here:
 
-- the OCR routing gate's three configured values (``enabled``,
-  ``min_confidence``, ``page_fraction``) and the unconditional routing
-  types enter the payload as resolved data, never re-read from the
-  environment;
+- the OCR routing switch (``enabled``) enters the payload as resolved
+  data, never re-read from the environment;
 - the identity carries what changes the emitted text — the routing unit
   and the local tier's escalation threshold — and not where files live or
   how they are fetched. A model directory is a filesystem location, so the
@@ -20,15 +18,12 @@ Design D8 contract implemented here:
   mode decides whether a download may happen; its only route to different
   text is whether the model resolves, which the resolved model identity
   records directly (change page-level-ocr-routing, task 4.2);
-- the routing-unit keys are present only when the unit is not
-  ``document``, so an install on the default emits the payload it emits
-  today and no source reindexes. Absence of ``routing_unit`` means
-  ``document``: no other configuration emits that key. The same rule
-  scopes ``local_tier.model``: it joins only with a resolved identity on
-  a ``page``-unit install, where the model's text can differ. Absence
-  means unresolved, which is itself identity-relevant — the runtime
-  appearing changes the emitted text, so the digest moves then and only
-  then;
+- the routing unit, the blank-test version and the local tier are
+  present for every source: ``page`` is the only unit (change
+  page-routing-default, schema 7). ``local_tier.model`` joins only with a
+  resolved identity. Absence means unresolved, which is itself
+  identity-relevant: the runtime appearing changes the emitted text, so
+  the digest moves then and only then;
 - the resolved worker fingerprint enters as ONE canonical,
   transient-free payload. An unavailable worker contributes the stable
   ``UNAVAILABLE_OCR_WORKER_FINGERPRINT`` shape — the field is never
@@ -43,8 +38,6 @@ from __future__ import annotations
 
 from dataclasses import asdict, is_dataclass
 from typing import Any
-
-from ...integrations.pdf.ocr_policy import OCR_UNCONDITIONAL_TYPES
 
 #: The canonical unavailable fingerprint payload. Byte-identical, by
 #: construction, to ``asdict(UNAVAILABLE_OCR_WORKER_FINGERPRINT)`` from
@@ -69,61 +62,40 @@ _UNAVAILABLE_FINGERPRINT_PAYLOAD: dict[str, Any] = {
 def ocr_routing_payload(
     settings: Any, *, local_model_identity: str | None = None
 ) -> dict[str, Any]:
-    """Return the canonical OCR routing-gate payload from settings.
+    """Return the canonical OCR routing payload from settings.
 
     Args:
         settings: Settings object (flat ``Settings`` or frozen
-            ``EffectiveSettings``) carrying the three top-level routing
-            fields ``ocr_fallback_enabled``,
-            ``ocr_fallback_min_confidence``, and
-            ``ocr_fallback_page_fraction``.
+            ``EffectiveSettings``) carrying ``ocr_fallback_enabled``,
+            ``ocr_routing_unit`` and ``ocr_local_min_confidence``.
         local_model_identity: The local OCR tier's resolved model
             identity (``name@revision``), or ``None`` when unresolved.
-            Recorded only under a non-``document`` unit: a document-unit
-            install has no local tier, so a resolved identity passed for
-            one is dropped rather than hashed.
 
     Returns:
-        A JSON-ready dict with the three calibrated gate values that
-        decide routing (design D7.3) plus the unconditional routing
-        types, and — only when the routing unit is not ``document`` —
-        that unit, the local tier's escalation threshold, and, when
-        resolved, the local model identity. The operational worker
-        settings (command, environment, timeout) are deliberately
-        absent: they shape dispatch, never chunk text. The unconditional
-        types are included because changing which ``pdf_type`` values
-        bypass the thresholds changes the routing decision for affected
-        PDFs, and the index identity must reflect that to prevent stale
-        ``skipped_unchanged`` results.
+        A JSON-ready dict: the routing switch, the routing unit, the
+        blank-test version and the local tier's escalation threshold,
+        plus the local model identity when resolved. The operational
+        worker settings (folder, timeout) are deliberately absent: they
+        shape dispatch, never chunk text.
     """
-    payload = {
-        "enabled": settings.ocr_fallback_enabled,
-        "min_confidence": settings.ocr_fallback_min_confidence,
-        "page_fraction": settings.ocr_fallback_page_fraction,
-        "unconditional_types": sorted(OCR_UNCONDITIONAL_TYPES),
-    }
-    # Added only off the default, so a document-unit install keeps the
-    # identity it has today and nothing reindexes. Switching to "page"
-    # changes which engine reads which page, so its sources must reindex.
-    if getattr(settings, "ocr_routing_unit", "document") != "document":
-        payload["routing_unit"] = settings.ocr_routing_unit
-        # The blank-test version (skip-blank-pages-before-worker): the
-        # threshold decides which flagged pages emit no document at all,
-        # so a version bump must reindex page-unit sources. Imported at
-        # call time so a test can move the version and see the digest
-        # follow, the same seam as the maths detector version.
-        from ...integrations.pdf.blank_pages import BLANK_PAGE_TEST_VERSION
+    # The blank-test version (skip-blank-pages-before-worker): the threshold
+    # decides which flagged pages emit no document at all, so a version bump
+    # must reindex. Imported at call time so a test can move the version and
+    # see the digest follow, the same seam as the maths detector version.
+    from ...integrations.pdf.blank_pages import BLANK_PAGE_TEST_VERSION
 
-        payload["blank_page_test"] = BLANK_PAGE_TEST_VERSION
-        local_tier: dict[str, Any] = {"min_confidence": settings.ocr_local_min_confidence}
-        # The resolved model identity (task 4.2): absent while unresolved,
-        # present once the runtime resolves it. The page-unit digest moves
-        # with this key, which is correct — the model changes what the
-        # pages read as.
-        if local_model_identity is not None:
-            local_tier["model"] = local_model_identity
-        payload["local_tier"] = local_tier
-    return payload
+    local_tier: dict[str, Any] = {"min_confidence": settings.ocr_local_min_confidence}
+    # The resolved model identity (task 4.2): absent while unresolved,
+    # present once the runtime resolves it. The digest moves with this key,
+    # which is correct: the model changes what the pages read as.
+    if local_model_identity is not None:
+        local_tier["model"] = local_model_identity
+    return {
+        "enabled": settings.ocr_fallback_enabled,
+        "routing_unit": settings.ocr_routing_unit,
+        "blank_page_test": BLANK_PAGE_TEST_VERSION,
+        "local_tier": local_tier,
+    }
 
 
 def resolved_routing_payload(settings: Any) -> dict[str, Any]:
@@ -131,10 +103,9 @@ def resolved_routing_payload(settings: Any) -> dict[str, Any]:
 
     Boundary wrapper for the composition path: resolves the local tier's
     model identity exactly once per process (the probe is cached), then
-    delegates to :func:`ocr_routing_payload`. The probe runs only when its
-    result can reach the payload — a non-``document`` routing unit with
-    the OCR fallback enabled. Anywhere else the tier cannot run, so the
-    model cannot change the emitted text and the payload stays put.
+    delegates to :func:`ocr_routing_payload`. The probe runs only when the
+    OCR fallback is enabled. Otherwise the tier cannot run, so the model
+    cannot change the emitted text and the payload stays put.
 
     The lazy import keeps pdf-inspector out of every import of this
     module; ``core`` reaching into ``integrations`` lazily inside a
@@ -142,17 +113,15 @@ def resolved_routing_payload(settings: Any) -> dict[str, Any]:
     precedent.
 
     Args:
-        settings: Settings object carrying the routing gate, the routing
+        settings: Settings object carrying the routing switch, the routing
             unit and the local tier settings.
 
     Returns:
         The canonical routing payload, with ``local_tier.model`` when the
-        probe resolved an identity under a ``page`` unit.
+        probe resolved an identity.
     """
     local_model_identity = None
-    if getattr(settings, "ocr_routing_unit", "document") != "document" and getattr(
-        settings, "ocr_fallback_enabled", False
-    ):
+    if getattr(settings, "ocr_fallback_enabled", False):
         from ...integrations.pdf.page_routing import resolve_local_model_identity
 
         local_model_identity = resolve_local_model_identity(settings)
@@ -207,8 +176,8 @@ def route_fingerprints(ocr_client: Any) -> tuple[Any, Any]:
 def maths_routing_payload(settings: Any) -> dict[str, Any]:
     """Return the maths-routing identity block, present for every source.
 
-    The resolved flag, the document-unit fraction and the detector
-    version decide which pages reach OCR, so each change re-ingests
+    The resolved flag and the detector version decide which pages reach
+    OCR, so each change re-ingests
     (spec maths-page-routing: "Maths routing SHALL participate in the
     source index identity").
     """
@@ -216,6 +185,5 @@ def maths_routing_payload(settings: Any) -> dict[str, Any]:
 
     return {
         "enabled": bool(getattr(settings, "ocr_maths_routing_enabled", False)),
-        "page_fraction": getattr(settings, "ocr_maths_page_fraction", 0.0),
         "detector_version": MATHS_DETECTOR_VERSION,
     }

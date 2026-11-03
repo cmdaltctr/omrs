@@ -9,7 +9,13 @@ exercise the repaired contracts the change requires before approval:
 - task 1.2: exception text never reaches public outputs; a synthetic
   private path cannot leak into a serialised artefact.
 - task 3.3: the pinned historical policy is extracted from its revision
-  (never the working tree), and a tampered plan fails preflight.
+  (never the working tree).
+
+Change page-routing-default (2026-11-03) deleted the document routing gate
+that the experiment's candidate arm replays live. The tests that replayed
+that gate or bound the checkpoint to its source are removed. The
+experiment's record is frozen; to re-run it, use a checkout from before
+that change.
 """
 
 from __future__ import annotations
@@ -131,11 +137,6 @@ class TestPinnedBaseline:
         )
         assert pinned == frozenset({"scanned", "image_based", "mixed"})
 
-    def test_live_candidate_dropped_mixed(self, classify):
-        live = classify._live_unconditional_types()
-        assert live == frozenset({"scanned", "image_based"})
-        assert "mixed" not in live
-
     def test_plan_baselines_match_pinned_revision(self, classify):
         plan = json.loads(_PLAN_PATH.read_text())
         for name in ("baseline_exp28", "baseline_matched"):
@@ -145,102 +146,8 @@ class TestPinnedBaseline:
             )
             assert pinned == frozenset(baseline["unconditional_types"]), name
 
-    def test_plan_candidate_matches_committed_code(self, classify):
-        plan = json.loads(_PLAN_PATH.read_text())
-        for name in ("candidate", "enable_only"):
-            assert classify._live_unconditional_types() == frozenset(
-                plan["policies"][name]["unconditional_types"]
-            ), name
-
-    def test_tampered_plan_fails_baseline_check(self, classify, tmp_path):
-        """A plan claiming the wrong baseline set must fail preflight."""
-        from _lib.preflight import PreflightError
-
-        plan = json.loads(_PLAN_PATH.read_text())
-        plan["policies"]["baseline_matched"]["unconditional_types"] = ["scanned"]
-        with pytest.raises(PreflightError, match="baseline_matched"):
-            classify._preflight(plan, _documents(tmp_path))
-
-
-class TestRoutingReplay:
-    """Synthetic evidence rows replayed through the production gate."""
-
-    # The experiment-28 false route: mixed, 991 pages, 10 flagged,
-    # healthy text layer.
-    BOOK_EVIDENCE = {
-        "pdf_type": "mixed",
-        "pdf_confidence": 0.76,
-        "pages_needing_ocr": 10,
-        "page_count": 991,
-    }
-    # doc_045-shaped: scanned, every page flagged.
-    SCANNED_EVIDENCE = {
-        "pdf_type": "scanned",
-        "pdf_confidence": 1.0,
-        "pages_needing_ocr": 23,
-        "page_count": 23,
-    }
-    # doc_067-shaped: confidently text_based, zero extractable text.
-    SLOMAN_EVIDENCE = {
-        "pdf_type": "text_based",
-        "pdf_confidence": 1.0,
-        "pages_needing_ocr": 17,
-        "page_count": 17,
-    }
-
-    def test_book_routes_under_baseline_not_candidate(self, classify):
-        baseline = frozenset({"scanned", "image_based", "mixed"})
-        candidate = frozenset({"scanned", "image_based"})
-        gate = classify._Gate(0.5, 0.5)
-        assert classify._gate_decision(self.BOOK_EVIDENCE, gate, baseline) is True
-        assert classify._gate_decision(self.BOOK_EVIDENCE, gate, candidate) is False
-
-    def test_true_positives_route_under_both(self, classify):
-        gate = classify._Gate(0.5, 0.5)
-        for evidence in (self.SCANNED_EVIDENCE, self.SLOMAN_EVIDENCE):
-            for types in (
-                frozenset({"scanned", "image_based", "mixed"}),
-                frozenset({"scanned", "image_based"}),
-            ):
-                assert classify._gate_decision(evidence, gate, types) is True
-
-    def test_enable_only_misses_threshold_only_detection(self, classify):
-        """Enable-only (0.0 sentinels) keeps the book fast but loses Sloman."""
-        gate = classify._Gate(0.0, 0.0)
-        candidate = frozenset({"scanned", "image_based"})
-        assert classify._gate_decision(self.BOOK_EVIDENCE, gate, candidate) is False
-        assert classify._gate_decision(self.SLOMAN_EVIDENCE, gate, candidate) is False
-        assert classify._gate_decision(self.SCANNED_EVIDENCE, gate, candidate) is True
-
 
 class TestResumeSafety:
-    def test_identity_binds_plan_labels_collection_and_code(self, classify, tmp_path, monkeypatch):
-        monkeypatch.setattr(classify, "PLAN_PATH", _PLAN_PATH)
-        docs = _documents(tmp_path)
-        public = tmp_path / "collection.public.json"
-        labels = tmp_path / "labels.json"
-        labels.write_text('{"frozen": true, "labels": {}}')
-        public.write_text(
-            json.dumps(
-                {
-                    "documents": [
-                        {"doc_id": d["doc_id"], "sha256": d["sha256"], "split": d["split"]}
-                        for d in docs
-                    ]
-                }
-            )
-        )
-        monkeypatch.setattr(classify, "PUBLIC_COLLECTION", public)
-        monkeypatch.setattr(classify, "LABELS_PATH", labels)
-        manifest = {"policies": {"candidate": {"unconditional_types": ["scanned"]}}}
-        first = classify._run_identity(manifest)
-        second = classify._run_identity(manifest)
-        assert first == second
-        changed = classify._run_identity(
-            {"policies": {"candidate": {"unconditional_types": ["scanned", "mixed"]}}}
-        )
-        assert changed["runtime_manifest"] != first["runtime_manifest"]
-
     def test_resume_refused_on_identity_drift(self, classify):
         from experiments._lib.checkpoint_validity import evaluate_resume
 

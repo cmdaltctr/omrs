@@ -200,7 +200,7 @@ def test_a_one_sided_bound_is_named(key: str, rule: str) -> None:
 
 
 def test_a_two_sided_bound_keeps_its_text() -> None:
-    assert check_setting("ocr_maths_page_fraction", 2.0) == (
+    assert check_setting("ocr_local_min_confidence", 2.0) == (
         None,
         "The value must be a number from 0.0 to 1.0.",
     )

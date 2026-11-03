@@ -49,7 +49,7 @@ describe("settings revision", () => {
     ["MCP switch", "PUT /v1/mcp", () => useSetMcpEnabled(), (m: ReturnType<typeof useSetMcpEnabled>) => m.mutate(true), { enabled: true, revision: "r1" }],
     ["web port", "PUT /v1/settings/web-port", () => useSetWebPort(), (m: ReturnType<typeof useSetWebPort>) => m.mutate(9100), { port: 9100, revision: "r1" }],
     ["upload limit", "PUT /v1/settings/upload-limit", () => useSetUploadLimit(), (m: ReturnType<typeof useSetUploadLimit>) => m.mutate(200), { max_mib: 200, revision: "r1" }],
-    ["document reading save", "PUT /v1/settings/document-reading", () => useSaveDocumentReading(), (m: ReturnType<typeof useSaveDocumentReading>) => m.mutate({ ocr_fallback_page_fraction: 0.2 }), { values: { ocr_fallback_page_fraction: 0.2 }, revision: "r1" }],
+    ["document reading save", "PUT /v1/settings/document-reading", () => useSaveDocumentReading(), (m: ReturnType<typeof useSaveDocumentReading>) => m.mutate({ ocr_engine_primary: "paddleocr-vl" }), { values: { ocr_engine_primary: "paddleocr-vl" }, revision: "r1" }],
   ])("sends the remembered revision with a %s and remembers the one that comes back", async (_name, route, hook, run, body) => {
     const { queryClient, wrapper, server } = setup({ [route]: () => ({ status: "ok", revision: "r2" }) });
     rememberRevision(queryClient, { revision: "r1" });

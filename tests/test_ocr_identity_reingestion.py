@@ -9,7 +9,7 @@ PDF stays on the ``pdf_inspector`` fast path, so the identity change is the
 ONLY difference between ingestion legs).
 
 The conservative inclusion rule (design D8) is exercised directly: the
-fingerprint and routing gate are hashed for a file that never routes to
+fingerprint and routing settings are hashed for a file that never routes to
 the worker, because unnecessary reprocessing is safer than stale chunks.
 """
 
@@ -123,37 +123,26 @@ def test_unavailable_fingerprint_payload_has_one_stable_shape() -> None:
     )
 
 
-def test_routing_payload_echoes_the_three_gate_values(effective_settings) -> None:
-    """The routing payload carries the gate values and the unconditional types."""
-    settings = effective_settings(
-        ocr_fallback_enabled=True,
-        ocr_fallback_min_confidence=0.5,
-        ocr_fallback_page_fraction=0.25,
-    )
+def test_routing_payload_carries_the_switch_unit_blank_test_and_local_tier(
+    effective_settings,
+) -> None:
+    """The routing payload carries the switch, the unit, the blank test and the local cut."""
+    from omrs.integrations.pdf.blank_pages import BLANK_PAGE_TEST_VERSION
+
+    settings = effective_settings(ocr_fallback_enabled=True, ocr_local_min_confidence=0.7)
     assert ocr_routing_payload(settings) == {
         "enabled": True,
-        "min_confidence": 0.5,
-        "page_fraction": 0.25,
-        "unconditional_types": ["image_based", "scanned"],
+        "routing_unit": "page",
+        "blank_page_test": BLANK_PAGE_TEST_VERSION,
+        "local_tier": {"min_confidence": 0.7},
+    }
+    assert ocr_routing_payload(settings, local_model_identity="model@1")["local_tier"] == {
+        "min_confidence": 0.7,
+        "model": "model@1",
     }
 
 
 # ── Routing unit in the index identity (change page-level-ocr-routing) ───
-
-#: The routing payload as it stood before the routing unit joined it. The
-#: document-unit identity is pinned against this rather than against a
-#: recorded hash: ``build_index_identity`` hashes the *ambient* embedding
-#: model, which conftest replaces with a mock, so a literal digest would
-#: encode the test harness and break whenever that mock changed. Passing
-#: this payload through ``ocr_routing=`` bypasses the new code, so the
-#: comparison asks exactly the question that matters — does an install on
-#: the default still hash what it hashed before?
-_PRE_CHANGE_ROUTING_PAYLOAD = {
-    "enabled": True,
-    "min_confidence": 0.5,
-    "page_fraction": 0.10,
-    "unconditional_types": ["image_based", "scanned"],
-}
 
 _IDENTITY_KWARGS = {
     "content_type": "application/pdf",
@@ -161,102 +150,54 @@ _IDENTITY_KWARGS = {
     "chunk_overlap": 100,
 }
 
+#: The page-source counts every install now emits (change page-routing-default).
+_PAGE_SOURCE_COUNT_KEYS = (
+    "ocr_pages_native",
+    "ocr_pages_local",
+    "ocr_pages_worker",
+    "ocr_pages_blank",
+    "ocr_pages_unresolved",
+)
 
-def test_document_unit_payload_is_unchanged(effective_settings) -> None:
-    """The default emits exactly the four keys it emitted before this change."""
+
+def test_routing_payload_has_no_gate_values(effective_settings) -> None:
+    """The default payload names the unit and the local tier, and no document gate."""
     payload = ocr_routing_payload(effective_settings())
 
-    assert set(payload) == {
-        "enabled",
-        "min_confidence",
-        "page_fraction",
-        "unconditional_types",
-    }
+    assert set(payload) == {"enabled", "routing_unit", "blank_page_test", "local_tier"}
 
 
-def test_document_unit_identity_does_not_move(monkeypatch, effective_settings) -> None:
-    """A document-unit install keeps its identity, so nothing reindexes.
+def test_every_install_identity_includes_the_page_source_counts(
+    monkeypatch, effective_settings
+) -> None:
+    """On default settings the page-source counts move the identity.
 
-    Both halves of the payload are exercised, because either could move it.
-    The left-hand side runs against the exclusion set as it stands today,
-    grown by the page-routing keys; the right-hand side runs against the
-    set as it stood before them, with the pre-change routing payload. They
-    must agree: a corpus indexed before page routing existed has no reason
-    to reprocess for keys its install can never emit.
-
-    This is why the earlier version of this test was too weak — it held the
-    exclusion set constant on both sides, so registering a page-unit key in
-    ``EXCLUDED_EMBED_METADATA_KEYS`` without listing it in
-    ``PAGE_ROUTING_ONLY_EMBED_KEYS`` passed unnoticed while every install's
-    identity moved.
-
-    Do not replace this with a recorded digest. ``build_index_identity``
-    hashes the *ambient* embedding model, and conftest swaps in a mock, so
-    the same settings hash differently inside and outside pytest: a literal
-    digest would pin the mock rather than the configuration, and break
-    whenever the harness changed its embedder.
+    Page is the only unit, so every install can emit these keys. Leaving
+    them out of the exclusion set would hide a real change in embedded text,
+    which is the failure the exclusion set is hashed to prevent.
     """
-    from omrs.core.ingestion import embed_exclusions, source_state
+    from omrs.core.ingestion import source_state
     from omrs.core.ingestion.source_state import build_index_identity
 
     settings = effective_settings()
-    grown = build_index_identity(settings, **_IDENTITY_KWARGS)
-
-    before = tuple(
-        key
-        for key in source_state.EXCLUDED_EMBED_METADATA_KEYS
-        if key not in embed_exclusions.PAGE_ROUTING_ONLY_EMBED_KEYS
-    )
-    monkeypatch.setattr(source_state, "EXCLUDED_EMBED_METADATA_KEYS", before)
-    pre_change = build_index_identity(
-        settings, ocr_routing=_PRE_CHANGE_ROUTING_PAYLOAD, **_IDENTITY_KWARGS
-    )
-
-    assert grown == pre_change
-
-
-def test_page_unit_identity_includes_the_page_routing_keys(monkeypatch, effective_settings) -> None:
-    """On a page-unit install the same keys must move the identity.
-
-    This is the other half of the rule. Subtracting them everywhere would
-    hide a real change in embedded text, which is the failure the exclusion
-    set is hashed to prevent.
-    """
-    from omrs.core.ingestion import embed_exclusions, source_state
-    from omrs.core.ingestion.source_state import build_index_identity
-
-    settings = effective_settings(ocr_routing_unit="page")
     with_keys = build_index_identity(settings, **_IDENTITY_KWARGS)
 
-    before = tuple(
+    without = tuple(
         key
         for key in source_state.EXCLUDED_EMBED_METADATA_KEYS
-        if key not in embed_exclusions.PAGE_ROUTING_ONLY_EMBED_KEYS
+        if key not in _PAGE_SOURCE_COUNT_KEYS
     )
-    monkeypatch.setattr(source_state, "EXCLUDED_EMBED_METADATA_KEYS", before)
+    monkeypatch.setattr(source_state, "EXCLUDED_EMBED_METADATA_KEYS", without)
     without_keys = build_index_identity(settings, **_IDENTITY_KWARGS)
 
     assert with_keys != without_keys
 
 
-def test_unit_scoped_keys_are_a_subset_of_the_exclusion_set() -> None:
-    """A unit-scoped key that is not excluded would reach the embedding model."""
-    from omrs.core.ingestion.embed_exclusions import (
-        EXCLUDED_EMBED_METADATA_KEYS,
-        PAGE_ROUTING_ONLY_EMBED_KEYS,
-    )
+def test_page_source_count_keys_are_excluded_from_the_embedding_text() -> None:
+    """A page-source count outside the exclusion set would reach the embedding model."""
+    from omrs.core.ingestion.embed_exclusions import EXCLUDED_EMBED_METADATA_KEYS
 
-    assert PAGE_ROUTING_ONLY_EMBED_KEYS <= set(EXCLUDED_EMBED_METADATA_KEYS)
-
-
-def test_page_unit_identity_differs_from_document_unit(effective_settings) -> None:
-    """Opting into page routing reindexes: a different engine reads the pages."""
-    from omrs.core.ingestion.source_state import build_index_identity
-
-    document = build_index_identity(effective_settings(), **_IDENTITY_KWARGS)
-    page = build_index_identity(effective_settings(ocr_routing_unit="page"), **_IDENTITY_KWARGS)
-
-    assert page != document
+    assert set(_PAGE_SOURCE_COUNT_KEYS) <= set(EXCLUDED_EMBED_METADATA_KEYS)
 
 
 def test_page_unit_identity_ignores_the_model_directory(effective_settings) -> None:
@@ -268,11 +209,11 @@ def test_page_unit_identity_ignores_the_model_directory(effective_settings) -> N
     from omrs.core.ingestion.source_state import build_index_identity
 
     here = build_index_identity(
-        effective_settings(ocr_routing_unit="page", ocr_local_model_directory="/models/a"),
+        effective_settings(ocr_local_model_directory="/models/a"),
         **_IDENTITY_KWARGS,
     )
     there = build_index_identity(
-        effective_settings(ocr_routing_unit="page", ocr_local_model_directory="/models/b"),
+        effective_settings(ocr_local_model_directory="/models/b"),
         **_IDENTITY_KWARGS,
     )
 
@@ -283,12 +224,9 @@ def test_page_unit_identity_follows_the_escalation_threshold(effective_settings)
     """The threshold decides which pages the worker rereads, so it must count."""
     from omrs.core.ingestion.source_state import build_index_identity
 
-    default_cut = build_index_identity(
-        effective_settings(ocr_routing_unit="page"), **_IDENTITY_KWARGS
-    )
+    default_cut = build_index_identity(effective_settings(), **_IDENTITY_KWARGS)
     raised_cut = build_index_identity(
-        effective_settings(ocr_routing_unit="page", ocr_local_min_confidence=0.95),
-        **_IDENTITY_KWARGS,
+        effective_settings(ocr_local_min_confidence=0.95), **_IDENTITY_KWARGS
     )
 
     assert raised_cut != default_cut
@@ -297,34 +235,15 @@ def test_page_unit_identity_follows_the_escalation_threshold(effective_settings)
 # ── The blank-page test version (change skip-blank-pages-before-worker) ───
 
 
-def test_page_unit_payload_carries_the_blank_page_test_version(
-    effective_settings,
-) -> None:
-    """The page payload names the blank-test version; the document one does not."""
-    page = ocr_routing_payload(effective_settings(ocr_routing_unit="page"))
-    document = ocr_routing_payload(effective_settings())
+def test_payload_carries_the_blank_page_test_version(effective_settings) -> None:
+    """The routing payload names the blank-test version for every install."""
+    payload = ocr_routing_payload(effective_settings())
 
-    assert page["blank_page_test"] == 1
-    assert "blank_page_test" not in document
+    assert payload["blank_page_test"] == 1
 
 
-def test_blank_page_test_version_moves_the_page_identity(monkeypatch, effective_settings) -> None:
-    """A threshold change reindexes page-unit sources only, through the version."""
-    from omrs.core.ingestion.source_state import build_index_identity
-    from omrs.integrations.pdf import blank_pages
-
-    settings = effective_settings(ocr_routing_unit="page")
-    before = build_index_identity(settings, **_IDENTITY_KWARGS)
-    monkeypatch.setattr(blank_pages, "BLANK_PAGE_TEST_VERSION", 2)
-    after = build_index_identity(settings, **_IDENTITY_KWARGS)
-
-    assert after != before
-
-
-def test_blank_page_test_version_leaves_the_document_identity_alone(
-    monkeypatch, effective_settings
-) -> None:
-    """The document unit runs no blank test, so its identity ignores the version."""
+def test_blank_page_test_version_moves_the_identity(monkeypatch, effective_settings) -> None:
+    """A threshold change reindexes every source, through the version."""
     from omrs.core.ingestion.source_state import build_index_identity
     from omrs.integrations.pdf import blank_pages
 
@@ -333,35 +252,26 @@ def test_blank_page_test_version_leaves_the_document_identity_alone(
     monkeypatch.setattr(blank_pages, "BLANK_PAGE_TEST_VERSION", 2)
     after = build_index_identity(settings, **_IDENTITY_KWARGS)
 
-    assert after == before
+    assert after != before
 
 
-def test_blank_count_key_is_excluded_and_page_scoped() -> None:
-    """``ocr_pages_blank`` never reaches the embedding model and never moves
-    a document-unit install's identity."""
-    from omrs.core.ingestion.embed_exclusions import (
-        EXCLUDED_EMBED_METADATA_KEYS,
-        PAGE_ROUTING_ONLY_EMBED_KEYS,
-    )
+def test_blank_count_key_is_excluded() -> None:
+    """``ocr_pages_blank`` never reaches the embedding model."""
+    from omrs.core.ingestion.embed_exclusions import EXCLUDED_EMBED_METADATA_KEYS
 
     assert "ocr_pages_blank" in EXCLUDED_EMBED_METADATA_KEYS
-    assert "ocr_pages_blank" in PAGE_ROUTING_ONLY_EMBED_KEYS
 
 
-@pytest.mark.parametrize(("unit", "changes"), [("page", True), ("document", False)])
-def test_local_cut_default_change_only_moves_page_identity(
-    effective_settings, unit: str, changes: bool
-) -> None:
-    """The previous 0.8 cut differs from the default only for page routing."""
+def test_local_cut_default_change_moves_the_identity(effective_settings) -> None:
+    """The previous 0.8 cut differs from the default, so a source on default settings reindexes."""
     from omrs.core.ingestion.source_state import build_index_identity
 
     previous = build_index_identity(
-        effective_settings(ocr_routing_unit=unit, ocr_local_min_confidence=0.8),
-        **_IDENTITY_KWARGS,
+        effective_settings(ocr_local_min_confidence=0.8), **_IDENTITY_KWARGS
     )
-    current = build_index_identity(effective_settings(ocr_routing_unit=unit), **_IDENTITY_KWARGS)
+    current = build_index_identity(effective_settings(), **_IDENTITY_KWARGS)
 
-    assert (previous != current) is changes
+    assert previous != current
 
 
 # ── Scenario: degraded extraction recovers when OCR becomes available ─────
@@ -494,17 +404,17 @@ async def test_unchanged_fingerprint_preserves_skip(tmp_path: Path, effective_se
 async def test_routing_configuration_change_alone_prevents_skip(
     tmp_path: Path, effective_settings
 ) -> None:
-    """A routing-gate change alone invalidates the stored identity.
+    """A routing-setting change alone invalidates the stored identity.
 
     Spec scenario "OCR routing configuration change forces reprocessing":
-    only ``OCR_FALLBACK_MIN_CONFIDENCE`` changes (0.5 → 0.7) between legs
+    only ``OCR_LOCAL_MIN_CONFIDENCE`` changes (0.8 → 0.95) between legs
     — same fingerprint, same bytes, same chunking.
     """
     source = tmp_path / "clean.pdf"
     source.write_bytes(CAL_CLEAN.read_bytes())
     base = _echo_fingerprint()
-    low = _ocr_settings(effective_settings, ocr_fallback_min_confidence=0.5)
-    high = _ocr_settings(effective_settings, ocr_fallback_min_confidence=0.7)
+    low = _ocr_settings(effective_settings, ocr_local_min_confidence=0.8)
+    high = _ocr_settings(effective_settings, ocr_local_min_confidence=0.95)
 
     client = _client(base)
     try:
@@ -522,7 +432,7 @@ async def test_routing_configuration_change_alone_prevents_skip(
         "each leg must leave exactly one complete current version"
     )
     assert second_identities.isdisjoint(first_identities), (
-        "the stored identity must change when the routing gate changes"
+        "the stored identity must change when the routing setting changes"
     )
 
 
@@ -563,86 +473,3 @@ async def test_query_instruction_change_alone_still_skips(
     ), "equal content plus an instruction-only change must reproduce the version"
     assert _stored_identities("ocr_id_query") == first_identities
     assert len(first_identities) == 1
-
-
-# ── Scenario: unconditional routing types participate in the index identity ─
-
-
-def test_unconditional_types_are_in_the_routing_payload(effective_settings) -> None:
-    """The routing payload carries the unconditional types for identity.
-
-    The unconditional routing set decides which ``pdf_type`` values bypass
-    the calibrated thresholds. Changing that set changes the routing
-    decision for affected PDFs, so it MUST participate in the index
-    identity to prevent stale ``skipped_unchanged`` results after a
-    routing-rule fix.
-    """
-    payload = ocr_routing_payload(
-        type(
-            "S",
-            (),
-            {
-                "ocr_fallback_enabled": True,
-                "ocr_fallback_min_confidence": 0.5,
-                "ocr_fallback_page_fraction": 0.5,
-            },
-        )()
-    )
-    assert "unconditional_types" in payload
-    assert set(payload["unconditional_types"]) == {"scanned", "image_based"}
-    assert "mixed" not in payload["unconditional_types"]
-
-    from omrs.core.ingestion.source_state import build_index_identity
-
-    settings = _ocr_settings(effective_settings)
-    kwargs = {
-        "content_type": "document",
-        "chunk_size": 512,
-        "chunk_overlap": 100,
-        "embed_model": object(),
-    }
-    current = ocr_routing_payload(settings)
-    previous = {**current, "unconditional_types": sorted({"scanned", "image_based", "mixed"})}
-    assert build_index_identity(settings, ocr_routing=current, **kwargs) != build_index_identity(
-        settings, ocr_routing=previous, **kwargs
-    )
-
-
-def test_routing_payload_unconditional_types_are_sorted() -> None:
-    """The unconditional types are sorted for deterministic identity hashing."""
-    payload = ocr_routing_payload(
-        type(
-            "S",
-            (),
-            {
-                "ocr_fallback_enabled": False,
-                "ocr_fallback_min_confidence": 0.0,
-                "ocr_fallback_page_fraction": 0.0,
-            },
-        )()
-    )
-    assert payload["unconditional_types"] == sorted(payload["unconditional_types"])
-
-
-def test_mixed_is_not_in_unconditional_types() -> None:
-    """``mixed`` is deliberately excluded from the unconditional routing set.
-
-    ``scanned`` and ``image_based`` both mean "the whole document is
-    pictures", so no threshold can change the answer. ``mixed`` means
-    "some pages carry text and some do not" — which is precisely the
-    question ``ocr_fallback_page_fraction`` exists to answer, so routing
-    it unconditionally skips the one check designed for it.
-    """
-    from omrs.core.ingestion.ocr_identity import OCR_UNCONDITIONAL_TYPES
-
-    assert "mixed" not in OCR_UNCONDITIONAL_TYPES
-    assert "scanned" in OCR_UNCONDITIONAL_TYPES
-    assert "image_based" in OCR_UNCONDITIONAL_TYPES
-
-
-def test_ocr_routing_constant_is_consistent_across_modules() -> None:
-    """Routing and identity re-export the same pure policy constant."""
-    from omrs.core.ingestion.ocr_identity import OCR_UNCONDITIONAL_TYPES as identity_types
-    from omrs.integrations.pdf.ocr_routing import OCR_UNCONDITIONAL_TYPES as routing_types
-
-    assert identity_types is routing_types

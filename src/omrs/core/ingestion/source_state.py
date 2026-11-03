@@ -22,10 +22,7 @@ from llama_index.core.schema import (
 )
 
 from ..vectordb.base import VectorStore
-from .embed_exclusions import (  # re-exported: the historic import site
-    EXCLUDED_EMBED_METADATA_KEYS,
-    scoped_excluded_keys,
-)
+from .embed_exclusions import EXCLUDED_EMBED_METADATA_KEYS  # re-exported: historic import site
 from .normalise import NORMALISER_VERSION
 from .ocr_identity import maths_routing_payload, ocr_fingerprint_payload, ocr_routing_payload
 
@@ -42,7 +39,9 @@ SOURCE_CHUNK_INDEX_KEY = "source_chunk_index"
 # It also covers the ocr_fallback_fingerprint and maths_routing blocks of
 # modular-ocr-workers-dots-mocr: both changes ship in one release, so they
 # share this single bump (design D7). The new blocks change every digest.
-_INDEX_IDENTITY_SCHEMA = 6
+# Schema 7 (page-routing-default): page is the only routing unit; the routing
+# payload loses the gate values and every install excludes the page counts.
+_INDEX_IDENTITY_SCHEMA = 7
 _SOURCE_METADATA_KEYS = (
     SOURCE_CONTENT_HASH_KEY,
     SOURCE_ID_KEY,
@@ -152,7 +151,7 @@ def build_index_identity(
     """
     configured_provider, configured_model = _configured_embedding(settings)
     routing = ocr_routing_payload(settings) if ocr_routing is None else ocr_routing
-    excluded_keys = scoped_excluded_keys(EXCLUDED_EMBED_METADATA_KEYS, routing)
+    excluded_keys = set(EXCLUDED_EMBED_METADATA_KEYS)
     payload = {
         "schema": _INDEX_IDENTITY_SCHEMA,
         "normalisation": {

@@ -177,9 +177,9 @@ def test_only_flagged_pages_are_ocred(monkeypatch, tmp_path, effective_settings)
     inner = _FakeInner(text="whole", metadata=_inner_metadata(20, flagged=1))
     worker = _FakeWorker()
 
-    docs = _page_reader(
-        inner, effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page"), worker
-    ).load_data(tmp_path / "doc.pdf")
+    docs = _page_reader(inner, effective_settings(ocr_fallback_enabled=True), worker).load_data(
+        tmp_path / "doc.pdf"
+    )
 
     assert len(engine.ocr_calls) == 1
     # The library's scan numbers from 0, the OCR API from 1: page ten is ten.
@@ -217,9 +217,9 @@ def test_a_document_read_wholly_by_local_ocr_names_the_local_tier(
     inner = _FakeInner(text="", metadata=_inner_metadata(2, pdf_type="scanned", flagged=2))
     worker = _FakeWorker()
 
-    docs = _page_reader(
-        inner, effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page"), worker
-    ).load_data(tmp_path / "doc.pdf")
+    docs = _page_reader(inner, effective_settings(ocr_fallback_enabled=True), worker).load_data(
+        tmp_path / "doc.pdf"
+    )
 
     meta = docs[0].metadata
     assert _counts(meta) == {
@@ -241,9 +241,9 @@ def test_no_flagged_pages_never_touches_ocr_or_worker(monkeypatch, tmp_path, eff
     inner = _FakeInner(text="whole", metadata=_inner_metadata(4, pdf_type="text_based"))
     worker = _FakeWorker()
 
-    docs = _page_reader(
-        inner, effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page"), worker
-    ).load_data(tmp_path / "doc.pdf")
+    docs = _page_reader(inner, effective_settings(ocr_fallback_enabled=True), worker).load_data(
+        tmp_path / "doc.pdf"
+    )
 
     assert engine.ocr_calls == []
     assert worker.calls == []
@@ -282,9 +282,9 @@ def test_unreadable_pages_escalate_alone_in_one_request(monkeypatch, tmp_path, e
     inner = _FakeInner(text="whole", metadata=_inner_metadata(8, flagged=3))
     worker = _FakeWorker(pages_markdown=["WORKER five", "WORKER seven"])
 
-    docs = _page_reader(
-        inner, effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page"), worker
-    ).load_data(tmp_path / "doc.pdf")
+    docs = _page_reader(inner, effective_settings(ocr_fallback_enabled=True), worker).load_data(
+        tmp_path / "doc.pdf"
+    )
 
     assert len(worker.calls) == 1, "escalation is ONE request"
     assert worker.calls[0]["pages"] == [5, 7]
@@ -315,9 +315,9 @@ def test_worker_response_without_pages_markdown_degrades_to_unresolved(
     worker = _FakeWorker(pages_markdown=None)
 
     with caplog.at_level("WARNING"):
-        docs = _page_reader(
-            inner, effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page"), worker
-        ).load_data(tmp_path / "doc.pdf")
+        docs = _page_reader(inner, effective_settings(ocr_fallback_enabled=True), worker).load_data(
+            tmp_path / "doc.pdf"
+        )
 
     assert len(worker.calls) == 1
     meta = docs[0].metadata
@@ -343,9 +343,9 @@ def test_worker_empty_entry_for_a_page_keeps_best_text_unresolved(
     inner = _FakeInner(text="whole", metadata=_inner_metadata(3, flagged=1))
     worker = _FakeWorker(pages_markdown=[""])
 
-    docs = _page_reader(
-        inner, effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page"), worker
-    ).load_data(tmp_path / "doc.pdf")
+    docs = _page_reader(inner, effective_settings(ocr_fallback_enabled=True), worker).load_data(
+        tmp_path / "doc.pdf"
+    )
 
     meta = docs[0].metadata
     assert _counts(meta) == {
@@ -435,9 +435,9 @@ def test_blank_pages_are_counted_on_every_document_and_emit_none(
     inner = _FakeInner(text="whole", metadata=_inner_metadata(5, flagged=3))
     worker = _FakeWorker(pages_markdown=["WORKER four"])
 
-    docs = _page_reader(
-        inner, effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page"), worker
-    ).load_data(tmp_path / "doc.pdf")
+    docs = _page_reader(inner, effective_settings(ocr_fallback_enabled=True), worker).load_data(
+        tmp_path / "doc.pdf"
+    )
 
     assert worker.calls[0]["pages"] == [4]
     assert [doc.metadata["page"] for doc in docs] == [1, 3, 4, 5]
@@ -464,9 +464,9 @@ def test_blank_page_with_native_text_keeps_it_as_its_document(
     inner = _FakeInner(text="whole", metadata=_inner_metadata(2, flagged=1))
     worker = _FakeWorker()
 
-    docs = _page_reader(
-        inner, effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page"), worker
-    ).load_data(tmp_path / "doc.pdf")
+    docs = _page_reader(inner, effective_settings(ocr_fallback_enabled=True), worker).load_data(
+        tmp_path / "doc.pdf"
+    )
 
     assert engine.ocr_calls == []
     assert [doc.text for doc in docs] == ["13", "native 2"]
@@ -490,9 +490,9 @@ def test_blank_test_yielding_nothing_keeps_today_counts(
     worker = _FakeWorker(available=False)
 
     with caplog.at_level("WARNING"):
-        docs = _page_reader(
-            inner, effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page"), worker
-        ).load_data(tmp_path / "doc.pdf")
+        docs = _page_reader(inner, effective_settings(ocr_fallback_enabled=True), worker).load_data(
+            tmp_path / "doc.pdf"
+        )
 
     meta = docs[0].metadata
     assert _counts(meta) == {
@@ -519,9 +519,9 @@ def test_missing_worker_keeps_local_text_and_counts_unresolved(
     worker = _FakeWorker(available=False)
 
     with caplog.at_level("WARNING"):
-        docs = _page_reader(
-            inner, effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page"), worker
-        ).load_data(tmp_path / "doc.pdf")
+        docs = _page_reader(inner, effective_settings(ocr_fallback_enabled=True), worker).load_data(
+            tmp_path / "doc.pdf"
+        )
 
     assert worker.calls == []
     meta = docs[0].metadata
@@ -549,9 +549,9 @@ def test_missing_worker_with_blank_local_text_keeps_native_text(
     inner = _FakeInner(text="whole", metadata=_inner_metadata(5, flagged=1))
     worker = _FakeWorker(available=False)
 
-    docs = _page_reader(
-        inner, effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page"), worker
-    ).load_data(tmp_path / "doc.pdf")
+    docs = _page_reader(inner, effective_settings(ocr_fallback_enabled=True), worker).load_data(
+        tmp_path / "doc.pdf"
+    )
 
     meta = docs[0].metadata
     assert "native 4" in _joined(docs)
@@ -576,9 +576,9 @@ def test_protocol_1_0_worker_never_receives_a_page_request(
     worker = _FakeWorker(protocol_version="1.0")
 
     with caplog.at_level("WARNING"):
-        docs = _page_reader(
-            inner, effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page"), worker
-        ).load_data(tmp_path / "doc.pdf")
+        docs = _page_reader(inner, effective_settings(ocr_fallback_enabled=True), worker).load_data(
+            tmp_path / "doc.pdf"
+        )
 
     assert worker.calls == [], "no page-listed request may reach a 1.0 worker"
     meta = docs[0].metadata
@@ -593,34 +593,110 @@ def test_protocol_1_0_worker_never_receives_a_page_request(
     assert "1.0" in caplog.text and "1.1" in caplog.text
 
 
-def test_missing_local_runtime_keeps_native_text_and_counts_unresolved(
+def test_missing_local_runtime_sends_flagged_pages_to_the_worker(
     monkeypatch, tmp_path, effective_settings, caplog
 ):
-    """No PDFium means flagged pages keep native text, unresolved, with one warning."""
+    """No PDFium means the flagged pages go to the worker in one request (issue #161)."""
+    scan = [_scan_page(i, f"junk {i + 1}", i + 1 in (1, 3)) for i in range(4)]
+    engine = _EngineCalls(
+        scan, ocr_error=ValueError("failed to load PDFium; install a compatible library")
+    )
+    _stub_engine(monkeypatch, engine)
+    inner = _FakeInner(text="whole", metadata=_inner_metadata(4, flagged=2))
+    worker = _FakeWorker(pages_markdown=["WORKER one", "WORKER three"])
+
+    with caplog.at_level("WARNING"):
+        docs = _page_reader(inner, effective_settings(ocr_fallback_enabled=True), worker).load_data(
+            tmp_path / "doc.pdf"
+        )
+
+    assert [call["pages"] for call in worker.calls] == [[1, 3]]
+    assert _joined(docs) == "WORKER one\n\njunk 2\n\nWORKER three\n\njunk 4"
+    meta = docs[0].metadata
+    assert _counts(meta) == {
+        "ocr_pages_native": 2,
+        "ocr_pages_local": 0,
+        "ocr_pages_worker": 2,
+        "ocr_pages_blank": 0,
+        "ocr_pages_unresolved": 0,
+    }
+    assert meta["ocr_used"] is True
+    assert "Local OCR tier unavailable" in caplog.text
+    assert "PDFium" in caplog.text
+
+
+def test_missing_local_runtime_and_no_route_keeps_native_text_with_one_warning(
+    monkeypatch, tmp_path, effective_settings, caplog
+):
+    """With neither tier, flagged pages keep native text, unresolved, and one warning names both."""
     scan = [_scan_page(i, f"native {i + 1}", i + 1 in (1, 3)) for i in range(4)]
     engine = _EngineCalls(
         scan, ocr_error=ValueError("failed to load PDFium; install a compatible library")
     )
     _stub_engine(monkeypatch, engine)
     inner = _FakeInner(text="whole", metadata=_inner_metadata(4, flagged=2))
-    worker = _FakeWorker()
+    worker = _FakeWorker(available=False)
 
     with caplog.at_level("WARNING"):
-        docs = _page_reader(
-            inner, effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page"), worker
-        ).load_data(tmp_path / "doc.pdf")
+        docs = _page_reader(inner, effective_settings(ocr_fallback_enabled=True), worker).load_data(
+            tmp_path / "doc.pdf"
+        )
 
-    assert worker.calls == [], "nothing escalates when the local tier never ran"
-    meta = docs[0].metadata
-    assert _counts(meta) == {
+    assert worker.calls == []
+    assert _counts(docs[0].metadata) == {
         "ocr_pages_native": 2,
         "ocr_pages_local": 0,
         "ocr_pages_worker": 0,
         "ocr_pages_blank": 0,
         "ocr_pages_unresolved": 2,
     }
-    assert meta["ocr_used"] is False
-    assert "PDFium" in caplog.text
+    assert docs[0].metadata["ocr_used"] is False
+    warnings = [r for r in caplog.records if r.levelname == "WARNING"]
+    assert len(warnings) == 1, [r.getMessage() for r in warnings]
+    message = warnings[0].getMessage()
+    assert "Local OCR tier unavailable" in message
+    assert "no OCR route" in message
+
+
+class _RuntimePanic(BaseException):
+    """Stands in for ``pyo3_runtime.PanicException``: a BaseException, not an Exception."""
+
+
+def test_a_local_runtime_panic_escalates_and_switches_the_tier_off(
+    monkeypatch, tmp_path, effective_settings, caplog
+):
+    """A runtime panic poisons the engine, so later files skip the local tier."""
+    from omrs.integrations.pdf import page_routing
+
+    monkeypatch.setattr(page_routing, "_LOCAL_TIER_BROKEN", None)
+    scan = [_scan_page(i, f"junk {i + 1}", i + 1 == 2) for i in range(3)]
+    engine = _EngineCalls(scan, ocr_error=_RuntimePanic("Mutex poisoned"))
+    _stub_engine(monkeypatch, engine)
+    inner = _FakeInner(text="whole", metadata=_inner_metadata(3, flagged=1))
+    worker = _FakeWorker(pages_markdown=["WORKER two"])
+    reader = _page_reader(inner, effective_settings(ocr_fallback_enabled=True), worker)
+
+    with caplog.at_level("WARNING"):
+        first = reader.load_data(tmp_path / "a.pdf")
+        second = reader.load_data(tmp_path / "b.pdf")
+
+    assert len(engine.ocr_calls) == 1, "the poisoned engine is not called again"
+    assert [call["pages"] for call in worker.calls] == [[2], [2]]
+    for docs in (first, second):
+        assert docs[0].metadata["ocr_pages_worker"] == 1
+        assert docs[0].metadata["ocr_pages_unresolved"] == 0
+    assert caplog.text.count("Local OCR tier unavailable") == 2
+
+
+def test_an_interrupt_in_the_local_tier_is_not_swallowed(monkeypatch, tmp_path, effective_settings):
+    scan = [_scan_page(0, "junk", True)]
+    engine = _EngineCalls(scan, ocr_error=KeyboardInterrupt())
+    _stub_engine(monkeypatch, engine)
+    inner = _FakeInner(text="whole", metadata=_inner_metadata(1, flagged=1))
+    reader = _page_reader(inner, effective_settings(ocr_fallback_enabled=True), _FakeWorker())
+
+    with pytest.raises(KeyboardInterrupt):
+        reader.load_data(tmp_path / "doc.pdf")
 
 
 def test_post_dispatch_worker_failure_fails_the_file(monkeypatch, tmp_path, effective_settings):
@@ -631,9 +707,7 @@ def test_post_dispatch_worker_failure_fails_the_file(monkeypatch, tmp_path, effe
     inner = _FakeInner(text="whole", metadata=_inner_metadata(3, flagged=1))
     worker = _FakeWorker(error=OcrWorkerError("timeout", "no terminal response"))
 
-    reader = _page_reader(
-        inner, effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page"), worker
-    )
+    reader = _page_reader(inner, effective_settings(ocr_fallback_enabled=True), worker)
     with pytest.raises(OcrPostDispatchError) as excinfo:
         reader.load_data(tmp_path / "doc.pdf")
     assert excinfo.value.code == "timeout"
@@ -652,9 +726,9 @@ def test_rescued_text_survives_when_page_routing_produces_none(
     inner = _FakeInner(text="RESCUED", metadata=_inner_metadata(2, pdf_type="text_based"))
     worker = _FakeWorker()
 
-    docs = _page_reader(
-        inner, effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page"), worker
-    ).load_data(tmp_path / "doc.pdf")
+    docs = _page_reader(inner, effective_settings(ocr_fallback_enabled=True), worker).load_data(
+        tmp_path / "doc.pdf"
+    )
 
     assert _joined(docs) == "RESCUED"
     meta = docs[0].metadata
@@ -668,31 +742,36 @@ def test_rescued_text_survives_when_page_routing_produces_none(
     assert meta["ocr_backend"] == OCR_BACKEND_FAST_PATH
 
 
-# ── Task 5.3: the document unit is unchanged ──────────────────────────────
+# ── page-routing-default: the page unit is the only unit ──────────────────
 
 
-def test_document_unit_keeps_whole_pdf_behaviour(monkeypatch, tmp_path, effective_settings):
-    """The default unit never scans per page and dispatches without a page list."""
-    engine = _EngineCalls([], ocr_pages_by_call=[])
+def test_no_configured_unit_routes_page_by_page(monkeypatch, tmp_path, effective_settings):
+    """The default settings scan per page and send a page-listed request."""
+    scan = [_scan_page(0, "", True)]
+    engine = _EngineCalls(scan, ocr_pages_by_call=[[_ocr_page(1, "flawed", 0.2)]])
     _stub_engine(monkeypatch, engine)
     inner = _FakeInner(text="partial", metadata=_inner_metadata(1, pdf_type="scanned", flagged=1))
     worker = _FakeWorker(pages_markdown=["WORKER one"])
 
-    docs = _page_reader(
-        inner, effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="document"), worker
-    ).load_data(tmp_path / "doc.pdf")
+    docs = _page_reader(inner, effective_settings(ocr_fallback_enabled=True), worker).load_data(
+        tmp_path / "doc.pdf"
+    )
 
-    assert engine.scan_calls == [], "the document unit takes no page scan"
-    assert len(worker.calls) == 1
-    assert worker.calls[0]["pages"] is None, "the whole PDF is routed, no page list"
-    meta = docs[0].metadata
-    assert "ocr_pages_native" not in meta
-    assert "ocr_pages_local" not in meta
-    assert "ocr_pages_worker" not in meta
-    assert "ocr_pages_blank" not in meta
-    assert "ocr_pages_unresolved" not in meta
-    assert meta["ocr_backend"] == "paddleocr_vl"
+    assert engine.scan_calls, "the page unit takes the page scan"
+    assert [call["pages"] for call in worker.calls] == [[1]]
+    assert docs[0].metadata["ocr_pages_worker"] == 1
     assert _joined(docs) == "WORKER one"
+
+
+def test_the_document_unit_code_is_gone():
+    import importlib.util
+
+    from omrs.integrations.pdf import maths_routing, ocr_routing
+
+    assert not hasattr(OcrRoutedPdfInspector, "_worker_document")
+    assert not hasattr(maths_routing, "maths_condition")
+    assert not hasattr(ocr_routing, "ocr_required_by_gate")
+    assert importlib.util.find_spec("omrs.integrations.pdf.ocr_policy") is None
 
 
 # ── Page documents (change pdf-inspector-page-provenance, design D5) ──────
@@ -731,9 +810,9 @@ def _local_and_worker_read(monkeypatch, tmp_path, effective_settings) -> list:
     inner = _FakeInner(text="whole", metadata=_inner_metadata(5, flagged=2))
     worker = _FakeWorker(pages_markdown=["WORKER four"])
 
-    docs = _page_reader(
-        inner, effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page"), worker
-    ).load_data(tmp_path / "doc.pdf")
+    docs = _page_reader(inner, effective_settings(ocr_fallback_enabled=True), worker).load_data(
+        tmp_path / "doc.pdf"
+    )
     assert worker.calls[0]["pages"] == [4]
     return docs
 
@@ -790,7 +869,7 @@ class TestPageUnitEmitsPageDocuments:
 
         docs = _page_reader(
             inner,
-            effective_settings(ocr_fallback_enabled=True, ocr_routing_unit="page"),
+            effective_settings(ocr_fallback_enabled=True),
             _FakeWorker(),
         ).load_data(tmp_path / "doc.pdf")
 

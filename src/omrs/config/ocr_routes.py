@@ -28,10 +28,9 @@ class OcrRouteSettingsMixin(BaseModel):
     ocr_workers_dir: str = ""
     ocr_engine_primary: str = "dots-mocr"
     ocr_engine_fallback: str = "paddleocr-vl"
-    # Design D5/D6: maths pages route to OCR. The document-unit fraction
-    # 0.10 matches the calibrated OCR-page fraction of the gate (ADR-065).
+    # Design D5/D6: maths pages route to OCR. The document-unit maths page
+    # fraction went with the document unit (change page-routing-default).
     ocr_maths_routing_enabled: LegacyBool = True
-    ocr_maths_page_fraction: float = Field(default=0.10, ge=0.0, le=1.0)
     # dots.mocr took 7-56 s per page on MPS (Experiment 34); 120 s leaves
     # headroom for CPU and long pages. The per-request timeout stays a floor.
     ocr_worker_seconds_per_page: float = Field(default=120.0, ge=0.0)
