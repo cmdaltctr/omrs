@@ -4,7 +4,7 @@
 
 ### Requirement: The maths routing flag SHALL be injected configuration
 
-The maths routing enable flag SHALL be a top-level field on the effective settings, beside the other OCR routing fields. It SHALL be resolved once at the composition root and passed downstream. Maths routing SHALL be enabled by default. Maths routing SHALL have no page fraction: every flagged maths page goes to the OCR routes under the page unit. A configured `ocr_maths_page_fraction` SHALL fail at start-up with a message naming its removal.
+The maths routing enable flag SHALL be a top-level effective-settings field, resolved once at the composition root and enabled by default. Maths routing SHALL have no page fraction: every flagged maths page goes to the OCR routes. A stale `ocr_maths_page_fraction` SHALL be refused as the scenarios state.
 
 #### Scenario: The flag is read from injected settings
 
@@ -13,9 +13,16 @@ The maths routing enable flag SHALL be a top-level field on the effective settin
 
 #### Scenario: A stale maths page fraction is refused
 
-- **GIVEN** `OCR_MATHS_PAGE_FRACTION` in the environment or `ocr_maths_page_fraction` in the settings file
+- **GIVEN** `OCR_MATHS_PAGE_FRACTION` in the environment
 - **WHEN** settings are resolved at start-up
 - **THEN** the start-up SHALL fail with a message naming the removed key
+
+#### Scenario: A stale maths page fraction in the settings file is not read
+
+- **GIVEN** `"ocr_maths_page_fraction": 0.2` in the settings file
+- **WHEN** settings are resolved at start-up
+- **THEN** the settings-file problem list SHALL name the key as retired
+- **AND** no settings field SHALL hold the value
 
 ## MODIFIED Requirements
 
