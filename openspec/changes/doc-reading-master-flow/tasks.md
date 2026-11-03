@@ -13,7 +13,7 @@ The order below is the operator's confirmed order (2026-11-02). Do not reorder g
 
 - [x] 2.1 Write the proposal (`openspec-propose`, new change `page-routing-default`), and get the operator's approval before applying. Contents: default `page`; delete `ocr_required_by_gate` and `ocr_fallback_page_fraction`; an old `document` value in a config is refused with a message naming `page` (the gotcha-11 pattern); when the local OCR model or runtime is missing, flagged pages go straight to the worker engine, never back to native junk text; state the index identity effect (one re-index, accepted); no other settings. Design D2 records the operator decision that authorises flipping before any new-document re-test.
 - [x] 2.2 Apply it in its own worktree `omrs-feat-page-routing-default`, tests first: the default resolves to `page`; a `document` value is refused with the message; the gate function and the fraction setting are gone; the missing-local-OCR path sends flagged pages to the worker engine.
-- [ ] 2.3 Drift check: grep `docs/guides/` for `document` unit and the 10% rule, fix what the change makes wrong. Ask before `./scripts/local_ci.sh`; validate strict; PR into `v3`. GATE G2: the operator says merge.
+- [x] 2.3 Drift check: grep `docs/guides/` for `document` unit and the 10% rule, fix what the change makes wrong. Ask before `./scripts/local_ci.sh`; validate strict; PR into `v3`. GATE G2: the operator says merge.
 - [ ] 2.4 (Operator) After the merge reaches the live app: add `PDFIUM_LIB_PATH` and `ORT_DYLIB_PATH` (design D3) to the live app's environment. No manual routing key is needed any more; `page` is the default.
 
 ## 3. Re-run #161: redo dots-mocr task 3.4 with page mode (worktree `omrs-feat-dots-mocr-llamacpp-backend`)
