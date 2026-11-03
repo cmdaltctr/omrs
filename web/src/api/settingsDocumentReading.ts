@@ -6,11 +6,18 @@
 import type { ApiClient, CallOptions } from "./client";
 import type { SaveOptions } from "./settings";
 
-/** The six keys, in the order the server lists them and the order of lock precedence. */
+/**
+ * The keys, in the order the server lists them and the order of lock precedence.
+ * `pdf_readers` and `ocr_engines` hold ordered lists. The page writes only these two;
+ * the three single-value keys stay valid in answers and requests, and the server
+ * removes them from `omrs.jsonc` when a list key is saved.
+ */
 export const DOCUMENT_READING_KEYS = [
+  "pdf_readers",
   "pdf_reader",
   "ocr_fallback_enabled",
   "ocr_routing_unit",
+  "ocr_engines",
   "ocr_engine_primary",
   "ocr_engine_fallback",
   "ocr_maths_routing_enabled",
@@ -18,12 +25,12 @@ export const DOCUMENT_READING_KEYS = [
 
 export type DocumentReadingKey = (typeof DOCUMENT_READING_KEYS)[number];
 
-/** A boolean key holds `true` or `false` and the others text. */
-export type DocumentReadingValue = string | number | boolean;
+/** A boolean key holds `true` or `false`, a list key an array of names and the others text. */
+export type DocumentReadingValue = string | number | boolean | string[];
 
 export interface DocumentReadingSetting {
   key: DocumentReadingKey;
-  /** The value in force since this launch. For `pdf_reader` this is the configured name, which can be `auto`. */
+  /** The value in force since this launch. A list key holds an array of names. For `pdf_reader` this is the configured name, which can be `auto`. */
   value: DocumentReadingValue;
   /** The valid value `omrs.jsonc` holds now, or `null` when the file does not set it or holds a value that breaks its rule. */
   saved: DocumentReadingValue | null;
@@ -69,7 +76,7 @@ export interface DocumentReadingState {
   };
 }
 
-/** One to six keys. `null` removes a key from `omrs.jsonc`, so its default applies. */
+/** One or more keys. `null` removes a key from `omrs.jsonc`, so its default applies. */
 export type DocumentReadingValues = Partial<Record<DocumentReadingKey, DocumentReadingValue | null>>;
 
 export function getDocumentReadingSettings(api: ApiClient, options: CallOptions = {}): Promise<DocumentReadingState> {

@@ -208,24 +208,29 @@ describe("revision, run and cancellation", () => {
     expect(server.calls.filter((call) => call.method === "PATCH")).toEqual([]);
   });
 
-  it("offers PDF readers: disables an uninstalled one, writes the choice and names the inherited reader", async () => {
+  it("offers the PDF reader list with Inherit, starts the step's own list from the host list and writes pdf_readers", async () => {
     const { server, user } = await setup({ catalogue: [...CATALOGUE, ...CATALOGUE_INGEST] });
     await addWithKeyboard(user, "Read document", "read.document");
-    const reader = group("PDF reader");
-    expect(reader).toHaveTextContent("Inherit uses the host value: pdf_inspector.");
+    const readers = group("PDF readers");
+    expect(readers).toHaveTextContent("Inherit uses the host value: pdf_inspector, liteparse, pypdf.");
+    expect(within(inspector()).queryByRole("group", { name: "PDF reader" })).toBeNull();
+    expect(within(inspector()).queryByRole("group", { name: "Primary OCR engine" })).toBeNull();
 
-    await user.click(within(reader).getByRole("combobox", { name: "PDF reader value" }));
-    const missing = await screen.findByRole("option", { name: /pypdfium2 \(not installed\)/ });
-    expect(missing).toHaveAttribute("aria-disabled", "true");
-    await user.click(await screen.findByRole("option", { name: "liteparse" }));
-    expect((await saveRevision(user, server)).nodes.find((n) => n.operation === "read.document")?.params).toEqual({ pdf_reader: "liteparse" });
+    await user.click(within(readers).getByRole("radio", { name: "Set list" }));
+    await user.click(await within(readers).findByRole("button", { name: "Move pypdf up" }));
+    expect((await saveRevision(user, server)).nodes.find((n) => n.operation === "read.document")?.params).toEqual({ pdf_readers: ["pdf_inspector", "pypdf", "liteparse"] });
+
+    await user.click(within(readers).getByRole("radio", { name: "Inherit" }));
+    expect((await saveRevision(user, server)).nodes.find((n) => n.operation === "read.document")).not.toHaveProperty("params.pdf_readers");
   });
 
-  it("shows why a PDF reader is unavailable", async () => {
-    const { user } = await setup({ catalogue: [...CATALOGUE, ...CATALOGUE_INGEST] });
+  it("offers the OCR engine list with Inherit on the same step", async () => {
+    const { server, user } = await setup({ catalogue: [...CATALOGUE, ...CATALOGUE_INGEST] });
     await addWithKeyboard(user, "Read document", "read.document");
-    await user.click(within(group("PDF reader")).getByRole("combobox", { name: "PDF reader value" }));
-    await screen.findByRole("option", { name: /pypdfium2/ });
-    expect(screen.getByText("The package 'pypdfium2' is not installed.")).toBeInTheDocument();
+    const engines = group("OCR engines");
+    expect(engines).toHaveTextContent("Inherit uses the host value: dots-mocr, paddleocr-vl.");
+    await user.click(within(engines).getByRole("radio", { name: "Set list" }));
+    await user.click(await within(engines).findByRole("button", { name: "Remove paddleocr-vl" }));
+    expect((await saveRevision(user, server)).nodes.find((n) => n.operation === "read.document")?.params).toEqual({ ocr_engines: ["dots-mocr"] });
   });
 });

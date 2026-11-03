@@ -33,6 +33,7 @@ export interface JsonSchema {
   description?: string;
   anyOf?: JsonSchema[];
   enum?: JsonValue[];
+  items?: JsonSchema;
   minimum?: number;
   maximum?: number;
   exclusiveMinimum?: number;

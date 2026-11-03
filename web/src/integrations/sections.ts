@@ -1,15 +1,16 @@
-import type { IntegrationList, RuntimeComponents, RuntimeItem } from "../api/integrations";
+import type { IntegrationList, PdfReaderItem, RuntimeComponents, RuntimeItem } from "../api/integrations";
 
 /** The Integrations sections, in the order the chips show them. */
-export const INTEGRATION_SECTIONS = ["extras", "tools", "ocr-engines", "model-files", "local-servers", "model-runtimes"] as const;
+export const INTEGRATION_SECTIONS = ["extras", "tools", "pdf-readers", "ocr-engines", "model-files", "local-servers", "model-runtimes"] as const;
 
 export type IntegrationSection = (typeof INTEGRATION_SECTIONS)[number];
 
-export type RuntimeSection = Exclude<IntegrationSection, "extras" | "tools" | "model-runtimes">;
+export type RuntimeSection = Exclude<IntegrationSection, "extras" | "tools" | "pdf-readers" | "model-runtimes">;
 
 export const SECTION_LABELS: Record<IntegrationSection, string> = {
   extras: "Extras",
   tools: "Tools",
+  "pdf-readers": "PDF readers",
   "ocr-engines": "OCR engines",
   "model-files": "Model files",
   "local-servers": "Local servers",
@@ -40,6 +41,7 @@ export function sectionsFor(list: IntegrationList | undefined): IntegrationSecti
     if (section === "extras") return true;
     if (list === undefined) return false;
     if (section === "tools") return list.tools.length > 0;
+    if (section === "pdf-readers") return (list.pdf_readers?.length ?? 0) > 0;
     // The runtimes come from their own route, so this section needs no `runtime` block.
     if (section === "model-runtimes") return true;
     return list.runtime !== undefined;
@@ -64,8 +66,14 @@ export function needsAttention(item: RuntimeItem): boolean {
   return item.status !== "ready" && item.used_by.length > 0;
 }
 
-/** How many parts in a section need attention. Only runtime sections count. */
+/** A reader that a setting in force lists and that is not installed. These show in red. */
+export function readerNeedsAttention(reader: PdfReaderItem): boolean {
+  return !reader.installed && reader.used_by.length > 0;
+}
+
+/** How many parts in a section need attention. Only runtime sections and PDF readers count. */
 export function attentionCount(section: IntegrationSection, list: IntegrationList | undefined): number {
+  if (section === "pdf-readers") return list?.pdf_readers?.filter(readerNeedsAttention).length ?? 0;
   if (!isRuntimeSection(section) || list?.runtime === undefined) return 0;
   return list.runtime[RUNTIME_FIELDS[section]].filter(needsAttention).length;
 }

@@ -4,7 +4,8 @@ import { useSaveDocumentReading } from "../api/settingsMutations";
 import { Badge } from "../components/ui/badge";
 import { Button } from "../components/ui/button";
 import { sourceText } from "./connectionWords";
-import { draftText, draftValue, readingText, type ReadingChoice, type ReadingRowWords } from "./documentReadingWords";
+import { draftOf, draftValue, isListKind, listNotes, readerListWarning, readingText, sameDraft, type ReadingChoice, type ReadingDraft, type ReadingRowWords } from "./documentReadingWords";
+import type { ListOption } from "./OrderedListControl";
 import { ReadingControl } from "./ReadingControl";
 import { SaveErrorNotice } from "./SaveErrorNotice";
 import { SettingBox, useDenseRows } from "./SettingBox";
@@ -16,7 +17,9 @@ interface ReadingSettingRowProps {
   setting: DocumentReadingSetting;
   words: ReadingRowWords;
   choices: ReadingChoice[];
-  /** Extra lines for this row, such as the reader in use or the worker command notice. */
+  /** The names a list row can hold. Other rows have none. */
+  options: ListOption[];
+  /** Extra lines for this row, such as the reader in use. */
   notes: string[];
   /** Called with the state the server returned after a good save. */
   onSaved: (state: DocumentReadingState) => void;
@@ -28,21 +31,17 @@ interface ReadingSettingRowProps {
  * Edit opens the control filled with the value the next launch will use. A key
  * from the environment or `.env` has no Edit and names the variable to remove.
  */
-export function ReadingSettingRow({ setting, words, choices, notes, onSaved }: ReadingSettingRowProps) {
+export function ReadingSettingRow({ setting, words, choices, options, notes, onSaved }: ReadingSettingRowProps) {
   const save = useSaveDocumentReading();
-  const [draft, setDraft] = useState<string | null>(null);
+  const [draft, setDraft] = useState<ReadingDraft | null>(null);
   const { label, kind } = words;
   const next = setting.saved ?? setting.value;
-  const start = draftText(next);
-  const nextReason = choices.find((choice) => choice.value === next)?.reason ?? null;
+  const start = draftOf(next);
+  const list = isListKind(kind) && Array.isArray(next) ? next : null;
 
   function close() {
     setDraft(null);
     save.reset();
-  }
-
-  function change(text: string) {
-    setDraft(text);
   }
 
   function send(value: DocumentReadingSetting["value"] | null) {
@@ -59,7 +58,7 @@ export function ReadingSettingRow({ setting, words, choices, notes, onSaved }: R
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (draft === null || draft === start) return;
+    if (draft === null || sameDraft(draft, start)) return;
     send(draftValue(kind, draft));
   }
 
@@ -94,7 +93,8 @@ export function ReadingSettingRow({ setting, words, choices, notes, onSaved }: R
   ) : null;
   const extras = (
     <>
-      {draft === null && kind === "engine" && nextReason !== null ? <p className={META}>{`${String(next)}: ${nextReason}`}</p> : null}
+      {draft === null && list !== null ? listNotes(list, options).map((note) => <p key={note} className={META}>{note}</p>) : null}
+      {draft === null && list !== null && kind === "readers" && readerListWarning(list) !== null ? <p className={META}>{readerListWarning(list)}</p> : null}
       {notes.map((note) => (
         <p key={note} className="text-ui">
           {note}
@@ -137,9 +137,9 @@ export function ReadingSettingRow({ setting, words, choices, notes, onSaved }: R
       )}
       {draft !== null ? (
         <form onSubmit={submit} noValidate className="flex flex-col gap-1.5">
-          <ReadingControl label={label} kind={kind} draft={draft} choices={choices} onChange={change} />
+          <ReadingControl label={label} kind={kind} draft={draft} choices={choices} options={options} onChange={setDraft} />
           <div className="flex flex-wrap items-center gap-2">
-            <Button type="submit" size="sm" disabled={draft === start || save.isPending}>
+            <Button type="submit" size="sm" disabled={sameDraft(draft, start) || save.isPending}>
               Save
             </Button>
             <Button type="button" variant="outline" size="sm" onClick={close}>

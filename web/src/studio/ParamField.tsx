@@ -4,6 +4,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { EngineSelect, isEngineField } from "./EngineSelect";
+import { isListField, ListParam } from "./ListParam";
 import { optionLabel } from "./labels";
 import { checkValue, type ParamField as Field } from "./schema";
 
@@ -29,7 +30,7 @@ function Choice({ type, name, checked, disabled, onChange, children }: { type: "
 }
 
 function InheritNote({ field, note }: { field: Field; note: string | null }) {
-  const inherited = field.inheritedValue == null ? null : `Inherit uses the host value: ${String(field.inheritedValue)}.`;
+  const inherited = field.inheritedValue == null ? null : `Inherit uses the host value: ${Array.isArray(field.inheritedValue) ? field.inheritedValue.join(", ") : String(field.inheritedValue)}.`;
   const text = note ?? inherited ?? (field.nullable ? "Inherit uses the operation default." : null);
   return text === null ? null : <p className="text-meta text-muted-foreground">{text}</p>;
 }
@@ -189,6 +190,7 @@ export function ParamField(props: ParamFieldProps) {
   } else if (field.kind === "integer" || field.kind === "number") control = <NumberInput {...props} name={name} />;
   else if (field.kind === "enum") control = <EnumSelect {...props} />;
   else if (field.kind === "json") control = <JsonInput {...props} name={name} />;
+  else if (isListField(field)) control = <ListParam field={field} value={value} onChange={onChange} disabled={props.disabled} />;
   else if (isEngineField(field)) control = <EngineSelect {...props} />;
   else if (field.kind === "string") {
     control = (

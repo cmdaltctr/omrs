@@ -43,6 +43,7 @@ export function formatValue(field: ParamField, value: JsonValue): string {
   if (value === true) return "On";
   if (value === false) return "Off";
   if (field.kind === "enum") return optionLabel(field, value);
+  if (Array.isArray(value)) return value.join(", ");
   return typeof value === "string" ? value : JSON.stringify(value);
 }
 

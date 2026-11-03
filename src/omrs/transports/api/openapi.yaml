@@ -3722,7 +3722,8 @@ paths:
         apart from the extras: today only marimo, which lives in its own
         `uv tool` environment outside OMRS (ADR-101). `runtime` lists the
         OCR engines, model files and local servers that settings depend on,
-        each with its status, reason and fix command.
+        each with its status, reason and fix command. `pdf_readers` lists every
+        registered PDF reader with its install state, fix command and uses.
       security:
         - sessionCookie: [read]
         - bearerToken: [read]
@@ -5254,9 +5255,12 @@ paths:
       operationId: getDocumentReadingSettings
       summary: Read the document-reading settings, the PDF readers and the OCR engines
       description: >
-        Lists the six document-reading keys in a fixed order (`pdf_reader`,
-        `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engine_primary`,
-        `ocr_engine_fallback`, `ocr_maths_routing_enabled`). Each row has the value in force since
+        Lists the document-reading keys in a fixed order (`pdf_readers`,
+        `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engines`,
+        `ocr_maths_routing_enabled`). `pdf_readers` and `ocr_engines` hold an ordered
+        list of names. The old single-value keys `pdf_reader`,
+        `ocr_engine_primary` and `ocr_engine_fallback` stay valid in every source and
+        expand to the equivalent list. Each row has the value in force since
         launch, the valid value `omrs.jsonc` holds now (`saved`), the source,
         the lock state, whether a restart is pending and the code default. Every
         key applies at the next launch only, and every key is part of the index
@@ -5287,15 +5291,18 @@ paths:
       operationId: setDocumentReadingSettings
       summary: Save document-reading settings to omrs.jsonc for the next launch
       description: >
-        Writes one to six of the six keys to `omrs.jsonc`, all in one write
-        or none. `null` removes a key, so the default applies. The value in
+        Writes one or more document-reading keys to `omrs.jsonc`, all in one write
+        or none. `null` removes a key, so the default applies. A list key
+        (`pdf_readers`, `ocr_engines`) takes an array of names. A save of a list key
+        also removes the old single-value keys it replaces in the same write. The value in
         force does not change until a restart. The checks run in this order
         and stop at the first failure: body shape (400, `Invalid request. …`);
-        a key outside the six (400, "<key> is not a document reading
+        a key outside the list (400, "<key> is not a document reading
         setting."); a key that the environment or `.env` sets (409, "Remove
         <ENV_NAME> from the environment or .env to edit it here.", first locked
         key in key order); a value that breaks its rule, including blank text
-        (400, "<key>: <rule>"); a PDF reader that is not installed (400,
+        (400, "<key>: <rule>", including an empty list, a duplicate name and `auto`
+        inside a list); a PDF reader that is not installed (400,
         "pdf_reader: This PDF reader is not installed. Install its package,
         then save again."); a stale `revision` (409, "omrs.jsonc changed on
         disk. Reload to see the new values."); a file that cannot be parsed or
@@ -9822,7 +9829,7 @@ components:
           description: >
             The saved user profile that uses the extra when `uninstall_reason`
             is `in-use` because of a profile (`uninstall_setting` is then the
-            key inside it: `pdf_reader` on a Read document step, or
+            key inside it: `pdf_reader` or `pdf_readers` on a Read document step, or
             `embed_provider`). Null when a global setting uses the extra, or
             when nothing does.
         readiness:
@@ -9895,6 +9902,36 @@ components:
           items:
             type: string
 
+    PdfReaderItem:
+      type: object
+      additionalProperties: false
+      required: [name, installed, extra, fix_command, used_by]
+      properties:
+        name:
+          type: string
+          description: The registry name, for example `pdf_inspector`.
+        installed:
+          type: boolean
+          description: The reader's package imports in this launch.
+        extra:
+          type: [string, "null"]
+          description: The pip extra that holds the reader, or null for a reader in the base install.
+        fix_command:
+          type: [string, "null"]
+          description: >
+            A copy command that installs the reader, or null when it is
+            installed. A reader behind an extra gets the extra's command; a
+            reader in the base install gets the base sync command.
+        used_by:
+          type: array
+          description: >
+            One plain line for each use of the reader: its place in the host
+            reader list (for example "First in Settings > Document reading") and
+            each saved profile whose Read document step lists it. Empty when
+            nothing uses it. The page shows each line as given.
+          items:
+            type: string
+
     IntegrationProfileRef:
       type: object
       additionalProperties: false
@@ -9908,13 +9945,21 @@ components:
     IntegrationList:
       type: object
       additionalProperties: false
-      required: [status, install_type, integrations, tools, runtime]
+      required: [status, install_type, integrations, tools, runtime, pdf_readers]
       properties:
         status:
           type: string
           enum: [ok]
         runtime:
           $ref: "#/components/schemas/RuntimeComponents"
+        pdf_readers:
+          type: array
+          description: >
+            One item for each registered PDF reader, in registry order, so a
+            reader registered later appears with no page change. The probe only
+            imports the reader's package.
+          items:
+            $ref: "#/components/schemas/PdfReaderItem"
         install_type:
           type: string
           enum: [uv-tool, checkout, other]
@@ -11315,9 +11360,11 @@ components:
             Send it back on a save; a file that changed since gives 409.
         settings:
           type: array
-          minItems: 6
-          maxItems: 6
-          description: One row per key, in the fixed key order.
+          minItems: 5
+          maxItems: 8
+          description: >
+            One row per key, in the fixed key order. The page shows the list
+            keys; a row for an old single-value key can also appear.
           items:
             $ref: "#/components/schemas/DocumentReadingSetting"
         pdf_readers:
@@ -11357,19 +11404,26 @@ components:
         key:
           type: string
           enum:
+            - pdf_readers
             - pdf_reader
             - ocr_fallback_enabled
             - ocr_routing_unit
+            - ocr_engines
             - ocr_engine_primary
             - ocr_engine_fallback
             - ocr_maths_routing_enabled
         value:
-          type: [string, boolean, number]
+          type: [string, boolean, number, array]
+          items:
+            type: string
           description: >
-            The value in force since launch. For `pdf_reader` this is the
-            configured name, which can be `auto`.
+            The value in force since launch. A list key holds an array of
+            names. For `pdf_reader` this is the configured name, which can be
+            `auto`.
         saved:
-          type: [string, boolean, number, "null"]
+          type: [string, boolean, number, array, "null"]
+          items:
+            type: string
           description: >
             The valid value `omrs.jsonc` holds now. Null when the file does not
             set the key or holds a value that breaks its rule. A blank text
@@ -11391,7 +11445,9 @@ components:
           type: boolean
           description: The file value differs from the value captured at launch, and the key is not locked.
         default:
-          type: [string, boolean, number]
+          type: [string, boolean, number, array]
+          items:
+            type: string
           description: The code default from the `Settings` model.
 
     ReaderOption:
@@ -11437,21 +11493,26 @@ components:
         values:
           type: object
           minProperties: 1
-          maxProperties: 6
+          maxProperties: 8
           description: >
-            One to six of the six keys. Each value has the key's JSON type, or
-            is null to remove the key so the default applies. A key outside the
-            six gets 400.
+            One or more of the eight keys. Each value has the key's JSON type
+            (an array of names for `pdf_readers` and `ocr_engines`), or is null
+            to remove the key so the default applies. A key outside the eight
+            gets 400.
           propertyNames:
             enum:
+              - pdf_readers
               - pdf_reader
               - ocr_fallback_enabled
               - ocr_routing_unit
+              - ocr_engines
               - ocr_engine_primary
               - ocr_engine_fallback
               - ocr_maths_routing_enabled
           additionalProperties:
-            type: [string, boolean, number, "null"]
+            type: [string, boolean, number, array, "null"]
+            items:
+              type: string
         revision:
           type: string
           maxLength: 128

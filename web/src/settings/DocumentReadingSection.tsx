@@ -5,23 +5,23 @@ import { documentReadingQuery } from "../api/queries";
 import type { DocumentReadingKey, DocumentReadingSetting, DocumentReadingState } from "../api/settingsDocumentReading";
 import { ErrorNotice } from "../components/ErrorNotice";
 import { Card, CardHeader, CardTitle } from "../components/ui/card";
-import { READING_ROWS, readingChoices } from "./documentReadingWords";
+import { isListKind, listOptions, READING_ROWS, readingChoices } from "./documentReadingWords";
 import { ReadingSettingRow } from "./ReadingSettingRow";
 import { RestartDialog } from "./RestartDialog";
 import { DenseSettingRows } from "./SettingBox";
 
 export const IDENTITY_NOTE = "These settings are part of the index identity. After a restart, the next ingest can read existing files again.";
 
-const PDF_KEYS: readonly DocumentReadingKey[] = ["pdf_reader"];
+const PDF_KEYS: readonly DocumentReadingKey[] = ["pdf_readers"];
 
 interface RestartRequest {
   change: string;
   plural: boolean;
 }
 
-/** The lines a row shows under its value: the reader the engine resolved. */
+/** The lines a row shows under its value: the reader the engine resolved, when it is not the first in the list. */
 function rowNotes(setting: DocumentReadingSetting, state: DocumentReadingState): string[] {
-  if (setting.key === "pdf_reader" && state.pdf_reader_in_use !== null && state.pdf_reader_in_use !== setting.value) return [`In use: ${state.pdf_reader_in_use}`];
+  if (setting.key === "pdf_readers" && Array.isArray(setting.value) && state.pdf_reader_in_use !== null && state.pdf_reader_in_use !== setting.value[0]) return [`In use: ${state.pdf_reader_in_use}`];
   return [];
 }
 
@@ -29,7 +29,7 @@ function rowNotes(setting: DocumentReadingSetting, state: DocumentReadingState):
 function restartFor(state: DocumentReadingState, key: DocumentReadingKey): RestartRequest | null {
   const waiting = state.settings.filter((setting) => setting.restart_pending);
   if (waiting.length === 0) return null;
-  if (waiting.length === 1 && waiting[0]?.key === key) return { change: READING_ROWS[key].label, plural: false };
+  if (waiting.length === 1 && waiting[0]?.key === key) return { change: READING_ROWS[key]?.label ?? key, plural: false };
   return { change: "Document reading settings", plural: true };
 }
 
@@ -39,7 +39,7 @@ const OCR_BLOCKS: { title: string; keys: readonly DocumentReadingKey[] }[][] = [
     { title: "When to use OCR", keys: ["ocr_fallback_enabled", "ocr_routing_unit"] },
     { title: "Maths pages", keys: ["ocr_maths_routing_enabled"] },
   ],
-  [{ title: "Engines", keys: ["ocr_engine_primary", "ocr_engine_fallback"] }],
+  [{ title: "Engines", keys: ["ocr_engines"] }],
 ];
 
 type Saved = (state: DocumentReadingState, key: DocumentReadingKey) => void;
@@ -48,16 +48,21 @@ function ReadingRows({ state, keys, onSaved }: { state: DocumentReadingState; ke
   return state.settings
     .filter((setting) => keys.includes(setting.key))
     .sort((a, b) => keys.indexOf(a.key) - keys.indexOf(b.key))
-    .map((setting) => (
-      <ReadingSettingRow
-        key={setting.key}
-        setting={setting}
-        words={READING_ROWS[setting.key]}
-        choices={readingChoices(READING_ROWS[setting.key].kind, state)}
-        notes={rowNotes(setting, state)}
-        onSaved={(next) => onSaved(next, setting.key)}
-      />
-    ));
+    .flatMap((setting) => {
+      const words = READING_ROWS[setting.key];
+      if (words === undefined) return [];
+      return [
+        <ReadingSettingRow
+          key={setting.key}
+          setting={setting}
+          words={words}
+          choices={readingChoices(words.kind)}
+          options={isListKind(words.kind) ? listOptions(words.kind, state) : []}
+          notes={rowNotes(setting, state)}
+          onSaved={(next) => onSaved(next, setting.key)}
+        />,
+      ];
+    });
 }
 
 /** Where the OCR engines live, or why none can run. */

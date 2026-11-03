@@ -149,12 +149,12 @@ export const MCP_OFF: McpState = {
 
 export const WEB_PORT: WebPortState = { status: "ok", revision: "r1", saved: null, bound: 8765 };
 
-const READING_DEFAULTS: Record<DocumentReadingKey, DocumentReadingSetting["value"]> = {
-  pdf_reader: "pdf_inspector",
+/** The rows the page shows. The three old single-value keys can stay valid in requests, and the server may leave their rows out. */
+const READING_DEFAULTS: Partial<Record<DocumentReadingKey, DocumentReadingSetting["value"]>> = {
+  pdf_readers: ["pdf_inspector", "liteparse", "pypdf"],
   ocr_fallback_enabled: true,
   ocr_routing_unit: "page",
-  ocr_engine_primary: "dots-mocr",
-  ocr_engine_fallback: "paddleocr-vl",
+  ocr_engines: ["dots-mocr", "paddleocr-vl"],
   ocr_maths_routing_enabled: true,
 };
 
@@ -162,15 +162,15 @@ const READING_DEFAULTS: Record<DocumentReadingKey, DocumentReadingSetting["value
 export const DOCUMENT_READING: DocumentReadingState = {
   status: "ok",
   revision: "r1",
-  settings: DOCUMENT_READING_KEYS.map((key) => ({
+  settings: DOCUMENT_READING_KEYS.filter((key) => key in READING_DEFAULTS).map((key) => ({
     key,
-    value: READING_DEFAULTS[key],
+    value: READING_DEFAULTS[key]!,
     saved: null,
     source: "default",
     locked: false,
     lock_reason: null,
     restart_pending: false,
-    default: READING_DEFAULTS[key],
+    default: READING_DEFAULTS[key]!,
   })),
   pdf_readers: [
     { name: "auto", available: true, reason: null },

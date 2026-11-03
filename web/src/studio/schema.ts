@@ -5,8 +5,8 @@
 import type { JsonSchema, JsonValue, OperationDescriptor } from "../api/pipelines";
 import { fieldLabel } from "./labels";
 
-/** `json` is a JSON object, edited as text. */
-export type FieldKind = "string" | "number" | "integer" | "boolean" | "enum" | "json" | "unsupported";
+/** `json` is a JSON object, edited as text. `stringList` is an array of names. */
+export type FieldKind = "string" | "number" | "integer" | "boolean" | "enum" | "json" | "stringList" | "unsupported";
 
 export interface ParamField {
   name: string;
@@ -50,6 +50,8 @@ function kindOf(schema: JsonSchema): FieldKind {
       return schema.type;
     case "object":
       return "json";
+    case "array":
+      return schema.items?.type === "string" ? "stringList" : "unsupported";
     default:
       return "unsupported";
   }

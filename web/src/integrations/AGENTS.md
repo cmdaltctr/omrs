@@ -9,6 +9,7 @@ The page that lists optional integrations and installs or uninstalls an extra. I
 - `InstallRefusal.tsx`: the line for a refused start (409).
 - `useIntegrationInstall.ts`: the job state and the start actions. The API client is `../api/integrations.ts`.
 - `RuntimeSection.tsx`: one runtime section from `runtime`. The workers folder card sits above the list of parts. `WorkersFolderField.tsx` writes `ocr_workers_dir` through the settings write route. The page only shows these parts; each fix is a copy command.
+- `PdfReadersSection.tsx`: one row for each reader in `pdf_readers`, generic over the list, so a reader registered later shows with no change here. A reader that is missing and in use (`used_by` not empty) counts on its chip (`readerNeedsAttention` in `sections.ts`). The page only shows readers; a missing one gets a copy command.
 - `ToolCard.tsx`, `ToolInstallControls.tsx`, `ToolUninstallControls.tsx` and `ToolDialogs.tsx`: the marimo card in the Tools section.
 
 ## Rules

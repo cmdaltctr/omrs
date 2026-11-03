@@ -11,11 +11,13 @@ function setup(handlers: Parameters<typeof documentsServer>[0]) {
 }
 
 describe("document reading API", () => {
-  it("lists the six keys in the contract order", () => {
+  it("lists the keys in the contract order, the two list keys beside the old single-value keys", () => {
     expect(DOCUMENT_READING_KEYS).toEqual([
+      "pdf_readers",
       "pdf_reader",
       "ocr_fallback_enabled",
       "ocr_routing_unit",
+      "ocr_engines",
       "ocr_engine_primary",
       "ocr_engine_fallback",
       "ocr_maths_routing_enabled",
@@ -30,7 +32,7 @@ describe("document reading API", () => {
 
   it("saves values and the revision with PUT /v1/settings/document-reading, keeping null to reset a key", async () => {
     const { api, server } = setup({ "PUT /v1/settings/document-reading": () => ({ ...STATE, revision: "r2" }) });
-    const values = { pdf_reader: "liteparse", ocr_engine_primary: "paddleocr-vl", ocr_engine_fallback: null };
+    const values = { pdf_readers: ["pdf_inspector", "pypdf"], ocr_engines: ["paddleocr-vl"], ocr_engine_fallback: null };
     await expect(saveDocumentReadingSettings(api, values, { revision: "r1" })).resolves.toMatchObject({ revision: "r2" });
     expect(server.calls.map((call) => [call.method, call.path, call.body])).toEqual([["PUT", "/v1/settings/document-reading", { values, revision: "r1" }]]);
   });
