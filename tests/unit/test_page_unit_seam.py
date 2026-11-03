@@ -746,6 +746,27 @@ def test_a_lone_1_0_route_with_no_local_tier_gives_one_consistent_warning(
     assert "protocol 1.1" in warnings[0]
 
 
+def test_the_protocol_warning_names_both_1_0_routes(
+    monkeypatch, tmp_path, effective_settings, caplog
+):
+    from omrs.integrations.ocr_worker.routes import OcrRoutes
+
+    scan = [_scan_page(i, f"native {i + 1}", i + 1 == 2) for i in range(3)]
+    engine = _EngineCalls(scan, ocr_pages_by_call=[[_ocr_page(2, "flawed", 0.2)]])
+    _stub_engine(monkeypatch, engine)
+    inner = _FakeInner(text="whole", metadata=_inner_metadata(3, flagged=1))
+    routes = OcrRoutes(
+        primary=_FakeWorker(protocol_version="1.0"), fallback=_FakeWorker(protocol_version="1.0")
+    )
+
+    with caplog.at_level("WARNING"):
+        _page_reader(inner, effective_settings(ocr_fallback_enabled=True), routes).load_data(
+            tmp_path / "doc.pdf"
+        )
+
+    assert "primary speaks 1.0, fallback speaks 1.0" in caplog.text
+
+
 def test_post_dispatch_worker_failure_fails_the_file(monkeypatch, tmp_path, effective_settings):
     """A worker that fails after accepting the request is a file failure, as today."""
     scan = [_scan_page(i, f"native {i + 1}", i + 1 == 2) for i in range(3)]

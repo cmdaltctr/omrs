@@ -363,17 +363,24 @@ class OcrRoutedPdfInspector:
         # therefore passes the request to a 1.1 fallback.
         client = self._routes.select(protocol=PAGES_PROTOCOL_VERSION)
         if client is None:
-            older = self._routes.select()
-            if older is not None:
+            spoken = [
+                f"{role} speaks {fp.protocol_version}"
+                for role, fp in (
+                    ("primary", self._routes.fingerprint),
+                    ("fallback", self._routes.fallback_fingerprint),
+                )
+                if fp.available
+            ]
+            if spoken:
                 logger.warning(
                     "%d escalated page(s) in %s need a worker that speaks protocol "
-                    "%s, but the only OCR route speaks %s; page routing degrades and "
-                    "the pages keep their best available text, counting unresolved. "
+                    "%s, but no OCR route does (%s); page routing degrades and the "
+                    "pages keep their best available text, counting unresolved. "
                     "Upgrade the worker to enable page-listed parsing.",
                     len(pages),
                     name,
                     PAGES_PROTOCOL_VERSION,
-                    older.fingerprint.protocol_version,
+                    ", ".join(spoken),
                 )
             else:
                 logger.warning(
