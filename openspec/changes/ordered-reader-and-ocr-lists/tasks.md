@@ -30,7 +30,7 @@ Code tasks are tests first: write the test, run it, confirm it fails, then chang
 
 - [x] 5.1 Load the `omrs-design` skill. Tests first (Vitest): `PdfReadersSection.tsx` shows one row per reader, "Not installed" with a copy command, use positions, and the chip count for a reader in use but missing; add the section to `sections.ts` and every typed fixture. Verify: `npm run lint`, `npm run typecheck` and `npm test` pass in `web/`.
 - [x] 5.2 Tests first: `OrderedListControl.tsx` (add, remove, move, empty list refused) used by `DocumentReadingSection.tsx` for both lists, with lock and "Not provisioned" or "Not installed" lines; Studio reader and engine controls use the same control with Inherit. Keep each component under 200 lines. Verify: `npm test` passes; `npm run typecheck` finds no fixture without the new fields.
-- [ ] 5.3 Check Integrations › PDF readers and Settings › Document reading in a browser at 1280 px and 390 px (Chrome DevTools, else Orca; scratch config folder, free port). Warn the user before starting the server. Save screenshots in the change folder. Update `docs/guides/web-workspace.md`. Verify: no horizontal scroll at 390 px, and move and remove buttons are reachable and labelled.
+- [x] 5.3 Check Integrations › PDF readers and Settings › Document reading in a browser at 1280 px and 390 px (Chrome DevTools, else Orca; scratch config folder, free port). Warn the user before starting the server. Save screenshots in the change folder. Update `docs/guides/web-workspace.md`. Verify: no horizontal scroll at 390 px, and move and remove buttons are reachable and labelled.
 
 ## 6. Integration checks
 
