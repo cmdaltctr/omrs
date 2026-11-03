@@ -22,4 +22,4 @@
 ## 4. Gates and PR
 
 - [x] 4.1 Re-pin `tests/test_clean_base_tripwire.py` `_BASE_EXECUTED` by test-ID diff. Ask before `./scripts/local_ci.sh`; run `openspec validate page-routing-default --strict`. Verify: both pass, with no `SKIPPED` step.
-- [ ] 4.2 Open a pull request from `feat/page-routing-default` into `v3`. Do not merge; wait for the operator. GATE G2.
+- [x] 4.2 Open a pull request from `feat/page-routing-default` into `v3`. Do not merge; wait for the operator. GATE G2.

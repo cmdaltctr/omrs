@@ -306,12 +306,17 @@ When `omrs web` opens a workspace whose database still holds settings rows, it S
 
 ### Requirement: The page may write the document-reading keys
 
-The keys the Settings page may write SHALL include `pdf_reader`, `ocr_fallback_enabled`, `ocr_fallback_min_confidence`, `ocr_fallback_page_fraction`, `ocr_routing_unit`, `ocr_engine_primary`, `ocr_engine_fallback`, `ocr_maths_routing_enabled` and `ocr_maths_page_fraction`. `null` SHALL remove the key.
+The keys the Settings page may write SHALL include `pdf_reader`, `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engine_primary`, `ocr_engine_fallback` and `ocr_maths_routing_enabled`. `null` SHALL remove the key. The removed keys `ocr_fallback_min_confidence`, `ocr_fallback_page_fraction` and `ocr_maths_page_fraction` SHALL NOT be writable; a write of any of them SHALL be refused naming its removal.
 
 #### Scenario: Valid reader written
 
 - **WHEN** the page writes `pdf_reader` `liteparse`
 - **THEN** `omrs.jsonc` MUST hold `"pdf_reader": "liteparse"` and every other byte of the file MUST stay as it was
+
+#### Scenario: Removed gate key refused
+
+- **WHEN** the page writes `ocr_fallback_page_fraction` `0.2`
+- **THEN** the write MUST be refused naming the removed key and the file MUST NOT change
 
 ### Requirement: A page write checks reader and engine names
 
@@ -327,9 +332,9 @@ A page write of a document-reading key SHALL check the value before it writes: `
 - **WHEN** the page writes `ocr_engine_fallback` `../other`
 - **THEN** the write MUST be refused with the engine name rule and the file MUST NOT change
 
-### Requirement: A page write checks boolean, fraction, unit and blank values
+### Requirement: A page write checks boolean, unit and blank values
 
-A page write of a document-reading key SHALL also check the value before it writes: a boolean key SHALL take only `true` or `false`; a fraction key SHALL take only a number from 0.0 to 1.0; `ocr_routing_unit` SHALL be `document` or `page`; and a blank text value SHALL be refused.
+A page write of a document-reading key SHALL also check the value before it writes: a boolean key SHALL take only `true` or `false`; `ocr_routing_unit` SHALL be `page`; and a blank text value SHALL be refused.
 
 #### Scenario: Blank engine name refused
 
@@ -340,6 +345,11 @@ A page write of a document-reading key SHALL also check the value before it writ
 
 - **WHEN** the page writes `ocr_fallback_enabled` as the text `"true"`
 - **THEN** the write MUST be refused with "ocr_fallback_enabled: The value must be true or false." and the file MUST NOT change
+
+#### Scenario: Document unit refused
+
+- **WHEN** the page writes `ocr_routing_unit` `document`
+- **THEN** the write MUST be refused with a message naming `page` as the only routing unit and the file MUST NOT change
 
 ### Requirement: Write checks do not change how a value is read at startup
 

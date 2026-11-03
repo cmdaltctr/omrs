@@ -493,7 +493,7 @@ A setting set in the environment or `.env` SHALL be read-only with the reason "R
 
 ### Requirement: Document reading shows the reading settings and their state
 
-The Document reading section SHALL show one row for each of `pdf_reader`, `ocr_fallback_enabled`, `ocr_fallback_min_confidence`, `ocr_fallback_page_fraction`, `ocr_routing_unit`, `ocr_engine_primary`, `ocr_engine_fallback`, `ocr_maths_routing_enabled` and `ocr_maths_page_fraction`. Each row SHALL show the value in force since launch, its source and the default. When the saved file value differs from the value in force, the row SHALL show the saved value and "Restart to apply".
+The Document reading section SHALL show one row for each of `pdf_reader`, `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engine_primary`, `ocr_engine_fallback` and `ocr_maths_routing_enabled`. Each row SHALL show the value in force since launch, its source and the default. When the saved file value differs from the value in force, the row SHALL show the saved value and "Restart to apply".
 
 #### Scenario: Value saved but not yet in force
 
@@ -509,38 +509,19 @@ A key set in the environment or `.env` SHALL be read-only and SHALL show "Remove
 - **WHEN** `OCR_ROUTING_UNIT=page` is set in `.env`
 - **THEN** the routing unit row MUST offer no Edit and MUST show "Remove OCR_ROUTING_UNIT from the environment or .env to edit it here."
 
-### Requirement: Document reading saves to omrs.jsonc for the next launch
-
-A save in the Document reading section SHALL write the changed keys into `omrs.jsonc` with the file revision the page last read. A save SHALL NOT change the value in force. After a save that leaves a key waiting for a restart, the page SHALL offer the restart dialog and SHALL repeat the index identity note. "Use default" on a row SHALL remove the key from the file. A refused save SHALL show the server message and SHALL leave the row unchanged.
-
-#### Scenario: Save a fraction
-
-- **WHEN** the user sets the OCR page fraction to 0.2 and presses Save
-- **THEN** `omrs.jsonc` MUST hold `"ocr_fallback_page_fraction": 0.2`, the row MUST show "Restart to apply", and the restart dialog MUST open
-
-#### Scenario: Return to the default
-
-- **WHEN** the file holds `"ocr_engine_fallback": "my-engine"` and the user presses "Use default" on that row
-- **THEN** `omrs.jsonc` MUST no longer hold `ocr_engine_fallback`
-
-#### Scenario: File edited while the page is open
-
-- **WHEN** the user edits `omrs.jsonc` in an editor and then saves a row in Document reading
-- **THEN** the page MUST show "omrs.jsonc changed on disk. Reload to see the new values." and MUST offer Reload
-
 ### Requirement: Document reading routes
 
-`GET /v1/settings/document-reading` SHALL need the read scope. It SHALL return the file `revision`, one entry for each of the nine keys in a fixed order (with the value in force, the saved value, the source, whether it is locked, the lock reason, whether a restart is pending, and the default), every PDF reader with its availability, the reader in use, the OCR workers folder, and each known engine with its availability.
+`GET /v1/settings/document-reading` SHALL need the read scope. It SHALL return the file `revision`, one entry for each of the six keys in a fixed order (with the value in force, the saved value, the source, whether it is locked, the lock reason, whether a restart is pending, and the default), every PDF reader with its availability, the reader in use, the OCR workers folder, and each known engine with its availability.
 
 #### Scenario: Read the section
 
 - **WHEN** a session with the read scope sends `GET /v1/settings/document-reading`
-- **THEN** the answer MUST be 200 and MUST hold nine `settings` entries, `pdf_readers` starting with `auto`, and `ocr.engines`
+- **THEN** the answer MUST be 200 and MUST hold six `settings` entries, `pdf_readers` starting with `auto`, and `ocr.engines`
 - **AND** `ocr` MUST NOT hold `worker_command_set`
 
 ### Requirement: The document reading save writes all values or none
 
-`PUT /v1/settings/document-reading` SHALL need a browser session with the manage scope. It SHALL take `values` (one to nine of the nine keys, each a value or `null`) and a required `revision`. It SHALL write all values or none.
+`PUT /v1/settings/document-reading` SHALL need a browser session with the manage scope. It SHALL take `values` (one to six of the six keys, each a value or `null`) and a required `revision`. It SHALL write all values or none.
 
 #### Scenario: One bad value stops the whole save
 
@@ -549,7 +530,7 @@ A save in the Document reading section SHALL write the changed keys into `omrs.j
 
 ### Requirement: The document reading save answers with a status for each outcome
 
-On success it SHALL return the same body as `GET`. It SHALL answer 400 for a key outside the nine, for a value that breaks its rule, for a blank text value and for a PDF reader that is not installed. It SHALL answer 409 for a locked key, for a stale revision and for a file that cannot be parsed. No error message SHALL hold a submitted value.
+On success it SHALL return the same body as `GET`. It SHALL answer 400 for a key outside the six, for a value that breaks its rule, for a blank text value and for a PDF reader that is not installed. It SHALL answer 409 for a locked key, for a stale revision and for a file that cannot be parsed. No error message SHALL hold a submitted value. The scenario heading "Key outside the nine" keeps its baseline name for delta continuity; six keys are writable.
 
 #### Scenario: Key outside the nine
 
@@ -563,8 +544,8 @@ On success it SHALL return the same body as `GET`. It SHALL answer 400 for a key
 
 #### Scenario: Value out of range
 
-- **WHEN** a `PUT` sets `ocr_maths_page_fraction` to 1.5
-- **THEN** the server MUST answer 400 with a message that names `ocr_maths_page_fraction` and the range and does not hold 1.5, and MUST NOT change the file
+- **WHEN** a `PUT` sets `ocr_routing_unit` to `document`
+- **THEN** the server MUST answer 400 with a message that names `page` as the only routing unit, and MUST NOT change the file
 
 #### Scenario: Uninstalled reader
 
@@ -760,3 +741,22 @@ When the user changes the provider in the Chat form or the judge form, the model
 
 - **WHEN** the Chat form opens with the provider Ollama and the model `qwen3:4b` and the user selects llama.cpp
 - **THEN** the model name field MUST be empty and Save MUST be disabled
+
+### Requirement: A Document reading save goes to omrs.jsonc for the next launch
+
+A save in the Document reading section SHALL write the changed keys into `omrs.jsonc` with the file revision the page last read. A save SHALL NOT change the value in force. After a save that leaves a key waiting for a restart, the page SHALL offer the restart dialog and SHALL repeat the index identity note. "Use default" on a row SHALL remove the key from the file. A refused save SHALL show the server message and SHALL leave the row unchanged.
+
+#### Scenario: Save a boolean
+
+- **WHEN** the user turns maths routing off and presses Save
+- **THEN** `omrs.jsonc` MUST hold `"ocr_maths_routing_enabled": false`, the row MUST show "Restart to apply", and the restart dialog MUST open
+
+#### Scenario: Return to the default
+
+- **WHEN** the file holds `"ocr_engine_fallback": "my-engine"` and the user presses "Use default" on that row
+- **THEN** `omrs.jsonc` MUST no longer hold `ocr_engine_fallback`
+
+#### Scenario: File edited while the page is open
+
+- **WHEN** the user edits `omrs.jsonc` in an editor and then saves a row in Document reading
+- **THEN** the page MUST show "omrs.jsonc changed on disk. Reload to see the new values." and MUST offer Reload

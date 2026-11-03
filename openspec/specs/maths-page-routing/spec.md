@@ -89,23 +89,6 @@ If the primary route is unavailable before dispatch, the flagged pages SHALL go 
 - **THEN** the 4 pages SHALL keep native text
 - **AND** they SHALL count as unresolved without failing the file
 
-### Requirement: The document unit sends a maths-heavy PDF whole to the OCR routes
-
-Under the `document` routing unit, a PDF SHALL go whole to the OCR routes when the flagged-page fraction is at or above the configured maths page fraction. This condition SHALL be in addition to the existing OCR gate. A fraction of `0.0` SHALL disable it. The default fraction SHALL be `0.10`. The document unit SHALL NOT merge pages from two engines.
-
-#### Scenario: Document unit sends a maths paper whole to the primary engine
-
-- **GIVEN** the `document` routing unit, the default maths page fraction, and a 14-page PDF with 9 flagged pages
-- **AND** the primary route is available
-- **WHEN** the PDF is ingested
-- **THEN** the whole PDF SHALL be parsed by the primary route
-
-#### Scenario: Document unit keeps a PDF with few maths pages on the fast path
-
-- **GIVEN** the `document` routing unit, the default maths page fraction, and a 40-page PDF with 1 flagged page that the OCR gate does not select
-- **WHEN** the PDF is ingested
-- **THEN** no parse request SHALL be dispatched
-
 ### Requirement: Disabled maths routing keeps the old routing
 
 When maths routing is disabled, routing SHALL behave as it did before this capability.
@@ -115,15 +98,6 @@ When maths routing is disabled, routing SHALL behave as it did before this capab
 - **GIVEN** maths routing is disabled
 - **WHEN** a PDF with flagged maths pages is ingested
 - **THEN** no page SHALL be routed because of maths fonts
-
-### Requirement: Maths routing SHALL be injected configuration
-
-The enable flag and the document-unit maths page fraction SHALL be top-level fields on the effective settings, beside the other OCR routing fields. They SHALL be resolved once at the composition root and passed downstream. Maths routing SHALL be enabled by default. The routing modules SHALL NOT contain a hardcoded fraction.
-
-#### Scenario: The fraction is read from injected settings
-
-- **WHEN** the document unit decides whether a PDF goes to the OCR routes because of maths pages
-- **THEN** it SHALL read the fraction from the injected effective settings
 
 ### Requirement: Maths routing diagnostics SHALL be honest
 
@@ -145,7 +119,7 @@ A scalar `pages_maths_font` SHALL carry the count of flagged maths pages when ma
 
 ### Requirement: Maths routing SHALL participate in the source index identity
 
-The existing source index identity SHALL include a maths-routing block: the resolved enable flag, the maths page fraction and the detector version. The block SHALL be present for every source. The identity schema SHALL advance by one.
+The existing source index identity SHALL include a maths-routing block: the resolved enable flag and the detector version. The block SHALL be present for every source.
 
 #### Scenario: A detector change triggers re-ingestion
 
@@ -162,5 +136,27 @@ The existing source index identity SHALL include a maths-routing block: the reso
 #### Scenario: Unchanged maths routing inputs still skip
 
 - **GIVEN** a previously indexed, byte-identical source
-- **WHEN** it is ingested again with every maths-routing input unchanged
+- **WHEN** it is ingested again with every source index identity input unchanged, maths-routing inputs included
 - **THEN** it SHALL be reported as `skipped_unchanged`
+
+### Requirement: The maths routing flag SHALL be injected configuration
+
+The maths routing enable flag SHALL be a top-level effective-settings field, resolved once at the composition root and enabled by default. Maths routing SHALL have no page fraction: every flagged maths page goes to the OCR routes. A stale `ocr_maths_page_fraction` SHALL be refused as the scenarios state.
+
+#### Scenario: The flag is read from injected settings
+
+- **WHEN** the page unit decides whether flagged maths pages skip the local OCR tier
+- **THEN** it SHALL read the enable flag from the injected effective settings
+
+#### Scenario: A stale maths page fraction is refused
+
+- **GIVEN** `OCR_MATHS_PAGE_FRACTION` in the environment
+- **WHEN** settings are resolved at start-up
+- **THEN** the start-up SHALL fail with a message naming the removed key
+
+#### Scenario: A stale maths page fraction in the settings file is not read
+
+- **GIVEN** `"ocr_maths_page_fraction": 0.2` in the settings file
+- **WHEN** settings are resolved at start-up
+- **THEN** the settings-file problem list SHALL name the key as retired
+- **AND** no settings field SHALL hold the value

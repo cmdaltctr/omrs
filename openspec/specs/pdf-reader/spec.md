@@ -297,38 +297,17 @@ produced.
 
 ### Requirement: pdf-inspector SHALL route OCR-required PDFs to an isolated document-understanding worker
 
-When the configured PDF path uses `pdf_inspector`, the system SHALL use the existing `pdf-inspector` result as both the fast extraction result and the evidence for deciding whether OCR/document understanding is required. Text-based PDFs with acceptable extraction quality SHALL keep the `pdf-inspector` Markdown.
+When the configured PDF path uses `pdf_inspector`, the system SHALL use the `pdf-inspector` result as both the fast extraction result and the evidence for which pages need OCR. Pages that need OCR SHALL go to the local tier and the OCR routes under the page-level routing requirements. Text-based PDFs with no flagged pages and no maths pages SHALL dispatch no OCR request.
 
 #### Scenario: Clean text-based PDF stays on pdf-inspector without starting the parsing worker
 
 - **GIVEN** `pdf_inspector` is the configured PDF path and the OCR worker is available
-- **AND** `pdf-inspector` classifies the PDF as text-based with acceptable extraction quality and no material OCR requirement
+- **AND** `pdf-inspector` classifies the PDF as text-based and flags no page
 - **AND** the PDF has no maths pages
 - **WHEN** the PDF is ingested
 - **THEN** the `pdf-inspector` Markdown SHALL be used
 - **AND** no OCR parse request SHALL be dispatched
 - **AND** the long-lived worker and its model SHALL NOT be started
-
-### Requirement: Scanned PDFs always route to OCR and other PDFs route by threshold
-
-When an OCR route is available and OCR is enabled, scanned and image-based PDFs SHALL route unconditionally. Other types, including mixed PDFs, SHALL route only when a positive configured threshold condition is met, or when the maths-page condition is met. A confidence below the minimum or an OCR-page proportion at or above the configured fraction SHALL select OCR. A zero threshold SHALL disable its condition.
-
-#### Scenario: Scanned or image-based PDF uses the OCR worker
-
-- **GIVEN** `pdf-inspector` classifies a PDF as scanned or image-based
-- **AND** the capability probe reports that the primary OCR route is available and compatible
-- **WHEN** the PDF is ingested
-- **THEN** the whole PDF SHALL be parsed by the primary OCR route
-- **AND** the worker result SHALL replace the partial `pdf-inspector` extraction as the downstream document text
-
-#### Scenario: Mixed PDF with zero thresholds stays on the fast path
-
-- **GIVEN** OCR is enabled and a PDF is classified as mixed
-- **AND** both routing thresholds are zero
-- **AND** the PDF has no maths pages
-- **WHEN** the PDF is ingested
-- **THEN** no OCR parse request SHALL be dispatched
-- **AND** the existing extracted Markdown and page diagnostics SHALL be preserved
 
 ### Requirement: OCR dispatch uses the primary route before the fallback route
 
@@ -336,38 +315,24 @@ Every dispatch SHALL use the primary OCR route (dots.mocr by default), and the f
 
 #### Scenario: OCR required but the worker is unavailable
 
-- **GIVEN** `pdf-inspector` reports that OCR is required
+- **GIVEN** flagged or escalated pages exist
 - **AND** both OCR routes are absent, unprovisioned, incompatible, or unusable before dispatch
 - **WHEN** the PDF is ingested
-- **THEN** the system SHALL retain the available `pdf-inspector` Markdown rather than fabricate missing content
+- **THEN** the system SHALL retain the best available text rather than fabricate missing content
 - **AND** the document/file result SHALL report that OCR was required but unavailable
 - **AND** ingestion SHALL remain within the existing per-file degradation boundary
 
 ### Requirement: Layout complexity alone does not route a PDF to OCR
 
-Layout complexity alone SHALL NOT require OCR. A text-based multi-column or table-heavy PDF that `pdf-inspector` extracts acceptably SHALL remain on the fast path, unless it has maths pages.
+Layout complexity alone SHALL NOT flag a page for OCR. A text-based multi-column or table-heavy page that `pdf-inspector` extracts acceptably SHALL remain native, unless it is a maths page.
 
 #### Scenario: Complex text layout does not imply OCR
 
 - **GIVEN** a text-based PDF containing multiple columns or tables and no maths pages
 - **AND** `pdf-inspector` extracts the layout with acceptable quality
 - **WHEN** the PDF is ingested
-- **THEN** the PDF SHALL remain on the `pdf-inspector` path
+- **THEN** every page SHALL remain on the `pdf-inspector` path
 - **AND** layout complexity alone SHALL NOT start or invoke the OCR worker
-
-### Requirement: The document routing unit sends the whole PDF to the worker
-
-With the `document` routing unit (the default), the system SHALL route the whole PDF to the worker when the OCR condition is met and SHALL NOT merge page fragments from two PDF engines. With the `page` routing unit, routing SHALL follow the page-level OCR routing requirement instead.
-
-#### Scenario: Mixed PDF with material OCR requirement uses the worker
-
-- **GIVEN** the `document` routing unit is configured
-- **AND** `pdf-inspector` reports mixed content or material `pages_needing_ocr`
-- **AND** the configured routing gate selects OCR
-- **AND** the capability probe reports that the primary OCR route is available and compatible
-- **WHEN** the PDF is ingested
-- **THEN** the whole PDF SHALL be parsed by the primary OCR route
-- **AND** the system SHALL NOT stitch independently parsed page fragments from the two engines
 
 ### Requirement: The PaddleOCR-VL fallback SHALL run in an isolated worker environment
 
@@ -593,54 +558,6 @@ The initial payload extension used schema 4. The routing-policy amendment used s
 - **WHEN** the two-route amendment lands
 - **THEN** the source index identity schema SHALL advance by one from the schema current when it lands
 
-### Requirement: The OCR routing gate SHALL be calibrated evidence expressed as injected configuration
-
-The threshold that selects the OCR fallback SHALL be a calibrated value carried in injected configuration, not a constant in the routing module. It SHALL follow the shape the existing PDF knobs already use: top-level fields on the effective settings beside `pdf_reader` and `liteparse_ocr_enabled`, resolved once at the composition root and passed downstream.
-
-`config/` SHALL NOT probe the worker, and no module SHALL read a settings singleton to obtain the gate.
-
-#### Scenario: Routing threshold is read from injected settings
-
-- **WHEN** the routing seam decides whether a PDF needs OCR
-- **THEN** it SHALL read the gate from the injected effective settings
-- **AND** the routing module SHALL NOT contain a hardcoded threshold constant
-
-### Requirement: The routing gate is calibrated on fixtures disjoint from evaluation
-
-The gate SHALL be calibrated on a committed fixture set disjoint from the fixtures used to evaluate whether the OCR fallback improves retrieval. Calibration SHALL report routing behaviour — text-based PDFs the gate would route to OCR, and OCR-required PDFs it would leave on the fast path — and SHALL NOT be the same run that measures downstream retrieval quality.
-
-#### Scenario: Calibration and evaluation fixtures are disjoint
-
-- **GIVEN** the committed PDF calibration fixtures and the committed PDF evaluation fixtures
-- **WHEN** the OCR routing gate is calibrated
-- **THEN** calibration SHALL use only the calibration fixtures
-- **AND** the evaluation fixtures SHALL remain unused until the Stage 5 ablation
-
-### Requirement: Packaged routing defaults ship the promoted gate
-
-The packaged default SHALL be the promoted pair validated by the repeat routing study
-(`29-pdf-routing-repeat-2026-09-13`): routing enabled, `0.5` minimum
-confidence, `0.10` flagged-page fraction. The enable flag and both
-thresholds SHALL ship together — enabling routing while leaving
-thresholds at the `0.0` sentinels is the bare-enable configuration the
-study showed silently misses threshold-flagged documents, and packaged
-defaults SHALL NOT present it.
-
-#### Scenario: Packaged default routes OCR-required PDFs
-
-- **GIVEN** a fresh installation whose operator has set no OCR routing configuration
-- **AND** the isolated OCR worker is provisioned and compatible
-- **WHEN** a scanned PDF is ingested
-- **THEN** the OCR fallback SHALL be selected
-- **AND** a healthy text-based PDF SHALL stay on the fast path
-
-#### Scenario: Unprovisioned worker degrades deterministically
-
-- **GIVEN** a fresh installation with no OCR worker provisioned
-- **WHEN** an OCR-required PDF is ingested
-- **THEN** the file SHALL keep the partial pdf-inspector extraction with degraded diagnostics
-- **AND** the batch SHALL continue with an actionable warning naming the provisioning step
-
 ### Requirement: pdf-inspector silent-empty extraction SHALL recover via a plain-text retry
 
 When the pdf-inspector reader classifies a PDF as `text_based` while its own Markdown extraction is empty and the page count is greater than zero, the adapter SHALL retry the file with the registered `liteparse` reader in extraction-only mode (OCR disabled regardless of operator settings), keeping one document for each recovered page, so a readable text layer is not silently discarded.
@@ -829,68 +746,15 @@ A gap wider than the taller item's height SHALL start a new line, so a sidebar a
 - **WHEN** the adapter emits its Document
 - **THEN** they SHALL be on separate lines
 
-### Requirement: Unit-scoped metadata keys SHALL enter the index identity only under their unit
-
-A metadata key that only one routing unit can emit SHALL contribute to `embedding_text.excluded_keys` in the source index identity only when that unit is active.
-
-This mirrors the routing unit's own treatment, which enters the identity only when it is not `document`.
-
-#### Scenario: A document-unit install keeps the identity it had
-
-- **GIVEN** the `document` routing unit and a source indexed before page routing existed
-- **WHEN** its index identity is computed
-- **THEN** the identity SHALL equal the identity computed before the page-source counts joined the exclusion set
-- **AND** the source SHALL NOT be reprocessed
-
-#### Scenario: A page-unit install includes them
-
-- **GIVEN** the `page` routing unit
-- **WHEN** its index identity is computed
-- **THEN** the page-source counts SHALL contribute to `embedding_text.excluded_keys`
-
-### Requirement: The page-source counts are keys only the page unit emits
-
-The page-source counts SHALL be treated as keys that only one routing unit can emit: the `document` unit never puts them on a Document, so their presence in the centrally owned exclusion set cannot change a `document`-unit install's embedded text, and including them in its identity would reprocess every existing corpus for a key it can never emit.
-
-#### Scenario: Subtracted keys are never emitted on the document path
-
-- **GIVEN** the `document` routing unit
-- **WHEN** a PDF is ingested
-- **THEN** the emitted metadata SHALL carry none of the page-source counts
-
 ### Requirement: The page-source counts stay in the central exclusion set
 
-The page-source counts SHALL remain in the one centrally owned exclusion set; a second list held by the PDF reader would exclude them from embedding text while moving no identity at all, on any unit.
+The page-source counts SHALL remain in the one centrally owned exclusion set for every source; a second list held by the PDF reader would exclude them from embedding text while moving no identity at all.
 
 #### Scenario: The PDF reader holds no second exclusion list
 
-- **WHEN** embedding text is built on either routing unit
+- **WHEN** embedding text is built
 - **THEN** the page-source counts SHALL be excluded through the centrally owned exclusion set
 - **AND** the PDF reader SHALL hold no second list of them
-
-### Requirement: Page-level OCR routing SHALL OCR only pages that need it
-
-When `OCR_ROUTING_UNIT=page` and OCR is enabled, the pdf-inspector path SHALL decide OCR need per page from a scan of every page. Pages that do not need OCR SHALL keep native pdf-inspector Markdown. Pages that need OCR SHALL be processed by the local OCR tier. The default routing unit SHALL remain `document`.
-
-#### Scenario: Only flagged pages are OCRed
-
-- **GIVEN** the `page` routing unit and a 20-page PDF with 3 pages needing OCR
-- **WHEN** the PDF is ingested
-- **THEN** the 17 other pages SHALL keep native Markdown
-- **AND** only the 3 flagged pages SHALL be processed by the local OCR tier
-
-#### Scenario: Missing local OCR runtime degrades to native text
-
-- **GIVEN** the `page` routing unit and no usable PDFium library or ONNX Runtime
-- **WHEN** a PDF with flagged pages is ingested
-- **THEN** flagged pages SHALL keep native text and be counted as unresolved
-- **AND** a warning SHALL name the missing runtime once per operation
-
-#### Scenario: Document unit is unchanged
-
-- **GIVEN** no routing unit is configured
-- **WHEN** a PDF is ingested
-- **THEN** routing SHALL follow the whole-PDF behaviour of the `document` unit
 
 ### Requirement: Only unreadable local OCR pages escalate to the OCR routes
 
@@ -920,36 +784,13 @@ A page SHALL escalate to the OCR routes only when the local tier returns no text
 - **THEN** the page SHALL keep its local OCR text, or native text when local OCR produced none
 - **AND** the page SHALL be counted as unresolved without failing the file
 
-### Requirement: A page-routed document counts the source of every page
+### Requirement: The scalar OCR diagnostics keep their meaning
 
-The `page` routing unit SHALL emit one document for each page that has text, in page order, each carrying its `page` and `page_label`. Every emitted document SHALL carry the same scalar counts of native, local-OCR, worker, blank and unresolved pages, which SHALL sum to the page count.
-
-#### Scenario: Page-source counts sum to the page count
-
-- **GIVEN** the `page` routing unit and any ingested PDF
-- **WHEN** the adapter emits its documents
-- **THEN** the native, local-OCR, worker, blank and unresolved page counts SHALL sum to `page_count` on every document
-
-#### Scenario: OCR pages keep their page numbers
-
-- **GIVEN** the `page` routing unit and a 5-page PDF whose page 3 is read by the local tier and page 4 by the worker
-- **WHEN** the adapter emits its documents
-- **THEN** the document for page 3 SHALL carry `page` 3 and the local OCR text
-- **AND** the document for page 4 SHALL carry `page` 4 and the worker text
-
-#### Scenario: The document unit emits no page-source counts
-
-- **GIVEN** no routing unit is configured
-- **WHEN** a PDF is ingested
-- **THEN** the emitted metadata SHALL NOT carry the native, local-OCR, worker, blank or unresolved page counts
-
-### Requirement: The scalar OCR diagnostics keep their document-unit meaning
-
-The four existing OCR diagnostics SHALL remain scalars and SHALL keep their document-unit meaning. `ocr_required` SHALL be true when at least one page was flagged. `ocr_used` SHALL be true when OCR produced the text of at least one page, by either tier. `pages_needing_ocr` SHALL remain the count of flagged pages.
+The four existing OCR diagnostics SHALL remain scalars and SHALL keep their meaning. `ocr_required` SHALL be true when at least one page was flagged or goes direct to the worker. `ocr_used` SHALL be true when OCR produced the text of at least one page, by either tier. `pages_needing_ocr` SHALL remain the count of flagged pages.
 
 #### Scenario: Page routing keeps the scalar OCR diagnostics
 
-- **GIVEN** the `page` routing unit and a PDF with at least one flagged page
+- **GIVEN** a PDF with at least one flagged page
 - **WHEN** OCR produces the text of at least one page
 - **THEN** `ocr_required` and `ocr_used` SHALL be true
 - **AND** `pages_needing_ocr` SHALL be the count of flagged pages
@@ -986,22 +827,6 @@ When `OCR_ROUTING_UNIT=page` and the operator has not set `OCR_LOCAL_MIN_CONFIDE
 - **GIVEN** `OCR_LOCAL_MIN_CONFIDENCE=0.7`
 - **WHEN** the local tier reads a page with text and confidence 0.75
 - **THEN** the page SHALL keep its local text
-
-### Requirement: Changing the local cut re-indexes page-unit sources only
-
-The page-unit index identity SHALL change when the effective cut changes, so that sources read under a different cut are re-indexed. The default `document` routing unit has no local tier, and its index identity SHALL NOT change.
-
-#### Scenario: Page unit re-indexes when the default changes
-
-- **GIVEN** a source indexed under `page` routing with the previous default cut of 0.8
-- **WHEN** the source is ingested again under the default cut of 0.9
-- **THEN** the source SHALL be re-indexed
-
-#### Scenario: Document unit keeps its index identity
-
-- **GIVEN** the default `document` routing unit
-- **WHEN** the default cut changes from 0.8 to 0.9
-- **THEN** the index identity of every source SHALL stay the same
 
 ### Requirement: Reader installation SHALL be reported per reader
 
@@ -1113,35 +938,6 @@ Each registered PDF reader SHALL declare an integer output revision in its regis
 - **THEN** `pdf_inspector` SHALL declare output revision 2
 - **AND** `liteparse`, `pypdf` and `pypdfium2` SHALL declare output revision 1
 
-### Requirement: The document unit stamps OCR diagnostics on every page document
-
-Under the `document` routing unit, the OCR routing seam SHALL read the evidence from the page documents and SHALL stamp `ocr_required`, `ocr_used`, `ocr_backend` and any maths count on every page document it returns. The fast and degraded paths SHALL keep the page documents and their page numbers.
-
-#### Scenario: Fast path keeps the pages
-
-- **GIVEN** the `document` unit and a clean 3-page text-based PDF
-- **WHEN** the PDF is ingested
-- **THEN** 3 page documents SHALL be returned with `page` 1, 2 and 3
-- **AND** each SHALL carry `ocr_required` false and `ocr_backend` `pdf_inspector`
-
-#### Scenario: Degraded path keeps the pages
-
-- **GIVEN** the `document` unit, a PDF the gate routes to OCR, and no available OCR route
-- **WHEN** the PDF is ingested
-- **THEN** the native page documents SHALL be returned with their page numbers
-- **AND** each SHALL carry `ocr_required` true and `ocr_used` false
-
-### Requirement: A worker-read document carries no page provenance
-
-Under the `document` routing unit, a document built from the worker's whole-PDF Markdown SHALL NOT carry `page` or `page_label`, because the response does not attribute text to pages. It SHALL keep `page_count` and the other whole-PDF evidence.
-
-#### Scenario: Worker path emits one document without a page
-
-- **GIVEN** the `document` unit and a scanned PDF that an available OCR route parses
-- **WHEN** the PDF is ingested
-- **THEN** the seam SHALL return one document with the worker Markdown
-- **AND** that document SHALL NOT carry `page` or `page_label`
-
 ### Requirement: Blank flagged pages SHALL skip both OCR tiers
 
 Under the `page` unit, the system SHALL test every flagged page for blankness after flagging and before the local tier. A blank page SHALL NOT be sent to the local tier or to any OCR route. It SHALL keep its native text, SHALL be counted in `ocr_pages_blank`, and SHALL emit a page document only when that native text is not empty. Unflagged pages SHALL NOT be tested.
@@ -1196,18 +992,125 @@ The blank test SHALL have no setting or option. Its threshold SHALL be a code co
 - **WHEN** an operator lists the OCR settings
 - **THEN** no setting SHALL enable, disable or tune the blank test
 
-### Requirement: The blank test SHALL participate in the page-unit index identity
+### Requirement: The routing unit is `page`
 
-The blank test version SHALL enter the source index identity under the `page` unit only. `ocr_pages_blank` SHALL join the central embedding exclusion set and the page-routing-only keys. A `document`-unit source SHALL keep the identity it has.
+The `page` routing unit SHALL be the default and the only routing unit. An environment value of `document` for `ocr_routing_unit` SHALL fail at start-up with a message that names `page` as the only routing unit. A settings-file value of `document` SHALL be listed as a settings-file problem that names `page`, and SHALL NOT be used. No other value SHALL be accepted.
 
-#### Scenario: Page-unit sources reindex once
+#### Scenario: A stale document value in the environment is refused
 
-- **GIVEN** a source indexed under the `page` unit before this change
+- **GIVEN** `OCR_ROUTING_UNIT=document` in the environment
+- **WHEN** settings are resolved at start-up
+- **THEN** the start-up SHALL fail with a message naming `page` as the only routing unit
+
+#### Scenario: A stale document value in the settings file is not used
+
+- **GIVEN** `"ocr_routing_unit": "document"` in the settings file
+- **WHEN** settings are resolved at start-up
+- **THEN** the settings-file problem list SHALL name `ocr_routing_unit` and `page`
+- **AND** the routing unit in force SHALL be `page`
+
+#### Scenario: No value resolves to page
+
+- **GIVEN** no `ocr_routing_unit` value is configured
+- **WHEN** a PDF is ingested
+- **THEN** routing SHALL follow the page-level OCR routing requirement
+
+### Requirement: A missing local OCR runtime sends flagged pages to the worker engine
+
+When the local OCR model or runtime is unavailable, the page unit SHALL send every flagged page to the OCR routes in one page-listed request. Flagged pages SHALL NOT keep their native text as a fallback for a missing runtime, because a junk native text layer would then survive unseen (issue #161). A worker failure after dispatch SHALL keep the existing per-file error boundary.
+
+#### Scenario: No local runtime, worker available
+
+- **GIVEN** the `page` routing unit, a PDF with flagged pages, and no usable local OCR runtime
+- **AND** the primary OCR route is available
+- **WHEN** the PDF is ingested
+- **THEN** the flagged pages SHALL be parsed by the OCR routes
+- **AND** the flagged pages SHALL NOT keep native text
+
+#### Scenario: No local runtime and no OCR route
+
+- **GIVEN** the `page` routing unit, a PDF with flagged pages, no usable local OCR runtime and no available OCR route
+- **WHEN** the PDF is ingested
+- **THEN** the flagged pages SHALL keep their best available text and count unresolved
+- **AND** one warning SHALL name both missing tiers
+
+### Requirement: Adopting page routing re-indexes every source once
+
+The OCR routing payload SHALL drop the gate values (`min_confidence`, `page_fraction`) and the unconditional routing types, the unit-scoped key subtraction SHALL be removed, and the identity schema SHALL advance from 6 to 7. Every source indexed before this change SHALL be re-indexed on its next ingest.
+
+#### Scenario: A source indexed before the change reprocesses
+
+- **GIVEN** a source indexed before this change, under any settings
 - **WHEN** it is ingested again after this change
 - **THEN** the source SHALL be re-indexed
 
-#### Scenario: Document-unit sources keep their identity
+### Requirement: Page-level OCR routing SHALL OCR only flagged pages
 
-- **GIVEN** a source indexed under the default `document` unit before this change
-- **WHEN** it is ingested again after this change
-- **THEN** the source SHALL NOT be reprocessed
+When OCR is enabled, the pdf-inspector path SHALL decide OCR need per page from a scan of every page. Pages that do not need OCR SHALL keep native pdf-inspector Markdown. Pages that need OCR SHALL be processed by the local OCR tier. A missing local runtime SHALL follow the missing-runtime requirement instead of keeping native text.
+
+#### Scenario: Only flagged pages are OCRed
+
+- **GIVEN** a 20-page PDF with 3 pages needing OCR
+- **WHEN** the PDF is ingested
+- **THEN** the 17 other pages SHALL keep native Markdown
+- **AND** only the 3 flagged pages SHALL be processed by the local OCR tier
+
+#### Scenario: Missing local OCR runtime sends flagged pages to the OCR routes
+
+- **GIVEN** no usable local OCR runtime and a PDF with flagged pages
+- **WHEN** the PDF is ingested
+- **THEN** the flagged pages SHALL be parsed by the OCR routes under the missing-runtime requirement
+- **AND** the flagged pages SHALL NOT keep native text while any OCR route is available
+
+### Requirement: Every PDF document counts the source of every page
+
+The PDF reader SHALL emit one document for each page that has text, in page order, each carrying its `page` and `page_label`. Every emitted document SHALL carry the same scalar counts of native, local-OCR, worker, blank and unresolved pages, which SHALL sum to the page count.
+
+#### Scenario: Page-source counts sum to the page count
+
+- **GIVEN** any ingested PDF
+- **WHEN** the adapter emits its documents
+- **THEN** the native, local-OCR, worker, blank and unresolved page counts SHALL sum to `page_count` on every document
+
+#### Scenario: OCR pages keep their page numbers
+
+- **GIVEN** a 5-page PDF whose page 3 is read by the local tier and page 4 by the worker
+- **WHEN** the adapter emits its documents
+- **THEN** the document for page 3 SHALL carry `page` 3 and the local OCR text
+- **AND** the document for page 4 SHALL carry `page` 4 and the worker text
+
+#### Scenario: No configured unit still counts every page
+
+- **GIVEN** no routing unit is configured
+- **WHEN** a PDF is ingested
+- **THEN** the emitted metadata SHALL carry the native, local-OCR, worker, blank and unresolved page counts
+
+### Requirement: The blank test SHALL participate in the index identity
+
+The blank test version SHALL enter the source index identity for every source. `ocr_pages_blank` SHALL be in the central embedding exclusion set.
+
+#### Scenario: A blank test version change re-indexes
+
+- **GIVEN** a source indexed under one blank test version
+- **WHEN** it is ingested again under a different blank test version
+- **THEN** the source SHALL be re-indexed
+
+### Requirement: Metadata keys enter the index identity for every source
+
+A metadata key in the centrally owned exclusion set SHALL contribute to `embedding_text.excluded_keys` in the source index identity for every source, with no subtraction by routing unit, because the page unit is the only unit and every install can emit its keys.
+
+#### Scenario: Every install includes the page-source counts
+
+- **GIVEN** any install
+- **WHEN** a source index identity is computed
+- **THEN** the page-source counts SHALL contribute to `embedding_text.excluded_keys`
+
+### Requirement: Changing the local cut re-indexes sources
+
+The index identity SHALL change when the effective local cut changes, so that sources read under a different cut are re-indexed.
+
+#### Scenario: Sources re-index when the default changes
+
+- **GIVEN** a source indexed with the previous default cut of 0.8
+- **WHEN** the source is ingested again under the default cut of 0.9
+- **THEN** the source SHALL be re-indexed
