@@ -243,7 +243,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # EffectiveSettings unit check (3), identity after tier off (1), protocol-aware
 # route choice (2). No fastapi needed.
 # +1 (2026-11-03, same PR, review): the protocol warning names both routes.
-_BASE_EXECUTED = 9742
+# +9 (2026-11-03, fix-merged-chunk-maths-join, by test-ID diff, 9 added, 0 removed):
+# test_merged_maths_join.py. No fastapi needed.
+_BASE_EXECUTED = 9751
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
