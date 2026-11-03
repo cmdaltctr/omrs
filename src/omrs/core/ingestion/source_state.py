@@ -25,6 +25,7 @@ from ..vectordb.base import VectorStore
 from .embed_exclusions import EXCLUDED_EMBED_METADATA_KEYS  # re-exported: historic import site
 from .normalise import NORMALISER_VERSION
 from .ocr_identity import maths_routing_payload, ocr_fingerprint_payload, ocr_routing_payload
+from .reader_identity import reader_list_payload
 
 SOURCE_CONTENT_HASH_KEY = "source_content_hash"
 SOURCE_ID_KEY = "source_id"
@@ -136,6 +137,7 @@ def build_index_identity(
     ocr_routing: dict[str, Any] | None = None,
     ocr_worker_fingerprint: Any = None,
     ocr_fallback_fingerprint: Any = None,
+    ocr_more_fingerprints: tuple[Any, ...] = (),
     tokenizer: dict[str, str] | None = None,
     resolved_splitter: str = "legacy_fallback",
     graph_shape: dict[str, Any] | None = None,
@@ -236,6 +238,9 @@ def build_index_identity(
     }
     if pdf_reader_revision is not None:
         payload["parser"]["pdf_reader_output_revision"] = pdf_reader_revision
+        payload["parser"].update(reader_list_payload(settings))  # PDF sources only (D5)
+    if ocr_more_fingerprints:  # the third engine and later; absent for two or fewer (D5)
+        payload["ocr_more_fingerprints"] = list(map(ocr_fingerprint_payload, ocr_more_fingerprints))
     if graph_shape is not None:
         payload["graph_shape"] = dict(graph_shape)
     canonical = json.dumps(

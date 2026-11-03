@@ -281,13 +281,13 @@ def test_routes_close_each_distinct_client_once() -> None:
             self.closed += 1
 
     shared = _Client()
-    OcrRoutes(primary=shared, fallback=shared).close()
+    OcrRoutes((shared, shared)).close()
     assert shared.closed == 1
     primary, fallback = _Client(), _Client()
-    OcrRoutes(primary=primary, fallback=fallback).close()
+    OcrRoutes((primary, fallback)).close()
     assert (primary.closed, fallback.closed) == (1, 1)
     assert OcrRoutes.of(None).select() is None
-    routes = OcrRoutes(primary=primary)
+    routes = OcrRoutes((primary,))
     assert OcrRoutes.of(routes) is routes
 
 

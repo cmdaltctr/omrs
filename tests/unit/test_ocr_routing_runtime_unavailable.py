@@ -55,7 +55,7 @@ def harness(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[OcrRunt
 
 
 def _no_route_read(settings: Any, metadata: dict, tmp_path: Path) -> Any:
-    return _read(settings, OcrRoutes(_Client("x", available=False), None), metadata, tmp_path)
+    return _read(settings, OcrRoutes((_Client("x", available=False), None)), metadata, tmp_path)
 
 
 def test_flagged_pages_degrade_when_the_only_route_is_unavailable_before_dispatch(
@@ -68,7 +68,7 @@ def test_flagged_pages_degrade_when_the_only_route_is_unavailable_before_dispatc
     metadata = _metadata(2, pdf_type="scanned")
     route = _Client("dots_mocr", error=_UNAVAILABLE)
 
-    doc = _read(settings, OcrRoutes(route, None), metadata, tmp_path)
+    doc = _read(settings, OcrRoutes((route, None)), metadata, tmp_path)
 
     expected = _no_route_read(settings, metadata, tmp_path)
     assert doc.text == "native 1\n\nnative 2"
@@ -88,7 +88,7 @@ def test_flagged_pages_still_fail_the_file_on_a_worker_error_after_dispatch(
     route = _Client("dots_mocr", error=OcrWorkerError("worker_crashed", "exit 9"))
 
     with pytest.raises(OcrPostDispatchError) as caught:
-        _read(settings, OcrRoutes(route, None), _metadata(2, pdf_type="scanned"), tmp_path)
+        _read(settings, OcrRoutes((route, None)), _metadata(2, pdf_type="scanned"), tmp_path)
 
     assert caught.value.code == "worker_crashed"
 
@@ -101,7 +101,7 @@ def test_maths_pages_degrade_when_the_only_route_is_unavailable_before_dispatch(
     settings = effective_settings(ocr_fallback_enabled=True)
     route = _Client("dots_mocr", error=_UNAVAILABLE)
 
-    doc = _read(settings, OcrRoutes(route, None), _metadata(3), tmp_path)
+    doc = _read(settings, OcrRoutes((route, None)), _metadata(3), tmp_path)
 
     expected = _no_route_read(settings, _metadata(3), tmp_path)
     assert doc.text == expected.text
@@ -118,7 +118,7 @@ def test_maths_pages_still_fail_the_file_on_a_worker_error_after_dispatch(
     route = _Client("dots_mocr", error=OcrWorkerError("timeout", "no terminal response"))
 
     with pytest.raises(OcrPostDispatchError) as caught:
-        _read(settings, OcrRoutes(route, None), _metadata(3), tmp_path)
+        _read(settings, OcrRoutes((route, None)), _metadata(3), tmp_path)
 
     assert caught.value.code == "timeout"
 

@@ -711,7 +711,7 @@ def test_a_1_0_primary_passes_page_requests_to_a_1_1_fallback(
     inner = _FakeInner(text="whole", metadata=_inner_metadata(3, flagged=1))
     old = _FakeWorker(protocol_version="1.0")
     new = _FakeWorker(pages_markdown=["FALLBACK two"])
-    routes = OcrRoutes(primary=old, fallback=new)
+    routes = OcrRoutes((old, new))
 
     with caplog.at_level("WARNING"):
         docs = _page_reader(inner, effective_settings(ocr_fallback_enabled=True), routes).load_data(
@@ -755,9 +755,7 @@ def test_the_protocol_warning_names_both_1_0_routes(
     engine = _EngineCalls(scan, ocr_pages_by_call=[[_ocr_page(2, "flawed", 0.2)]])
     _stub_engine(monkeypatch, engine)
     inner = _FakeInner(text="whole", metadata=_inner_metadata(3, flagged=1))
-    routes = OcrRoutes(
-        primary=_FakeWorker(protocol_version="1.0"), fallback=_FakeWorker(protocol_version="1.0")
-    )
+    routes = OcrRoutes((_FakeWorker(protocol_version="1.0"), _FakeWorker(protocol_version="1.0")))
 
     with caplog.at_level("WARNING"):
         _page_reader(inner, effective_settings(ocr_fallback_enabled=True), routes).load_data(

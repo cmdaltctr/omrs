@@ -177,7 +177,9 @@ def test_flagged_pages_go_to_the_primary_engine_in_one_request(
     _scan(monkeypatch, 14, needs_ocr=set(range(1, 15)))
     primary, fallback = _Client("dots_mocr"), _Client("paddleocr_vl")
     settings = effective_settings(ocr_fallback_enabled=True)
-    doc = _read(settings, OcrRoutes(primary, fallback), _metadata(14, pdf_type="scanned"), tmp_path)
+    doc = _read(
+        settings, OcrRoutes((primary, fallback)), _metadata(14, pdf_type="scanned"), tmp_path
+    )
     assert [c["pages"] for c in primary.calls] == [list(range(1, 15))]
     assert primary.calls[0]["timeout"] == 1680.0, "14 pages x 120 s"
     assert fallback.calls == []
@@ -196,7 +198,9 @@ def test_missing_primary_hands_the_flagged_pages_to_the_fallback(
     primary = _Client("dots_mocr", available=False)
     fallback = _Client("paddleocr_vl")
     settings = effective_settings(ocr_fallback_enabled=True)
-    doc = _read(settings, OcrRoutes(primary, fallback), _metadata(3, pdf_type="scanned"), tmp_path)
+    doc = _read(
+        settings, OcrRoutes((primary, fallback)), _metadata(3, pdf_type="scanned"), tmp_path
+    )
     assert [c["pages"] for c in fallback.calls] == [[1, 2, 3]]
     assert "paddleocr_vl p2" in doc.text
     assert primary.calls == []
@@ -214,7 +218,7 @@ def test_post_dispatch_failure_does_not_retry_on_the_fallback(
     fallback = _Client("paddleocr_vl")
     settings = effective_settings(ocr_fallback_enabled=True)
     with pytest.raises(OcrPostDispatchError) as excinfo:
-        _read(settings, OcrRoutes(primary, fallback), _metadata(2, pdf_type="scanned"), tmp_path)
+        _read(settings, OcrRoutes((primary, fallback)), _metadata(2, pdf_type="scanned"), tmp_path)
     assert excinfo.value.code == "worker_crashed"
     assert len(primary.calls) == 1
     assert fallback.calls == []
@@ -227,7 +231,7 @@ def test_no_route_keeps_native_text(monkeypatch, tmp_path, effective_settings):
     _scan(monkeypatch, 2, needs_ocr={1, 2})
     a, b = _Client("a", available=False), _Client("b", available=False)
     settings = effective_settings(ocr_fallback_enabled=True)
-    doc = _read(settings, OcrRoutes(a, b), _metadata(2, pdf_type="scanned"), tmp_path)
+    doc = _read(settings, OcrRoutes((a, b)), _metadata(2, pdf_type="scanned"), tmp_path)
     assert doc.text == "native 1\n\nnative 2"
     assert doc.metadata["ocr_required"] is True and doc.metadata["ocr_used"] is False
     assert _counts(doc.metadata)["ocr_pages_unresolved"] == 2
@@ -242,7 +246,7 @@ def test_maths_page_uses_the_fallback_when_primary_is_missing(
     primary = _Client("dots_mocr", available=False)
     fallback = _Client("paddleocr_vl")
     settings = effective_settings(ocr_fallback_enabled=True)
-    routes = OcrRoutes(primary, fallback)
+    routes = OcrRoutes((primary, fallback))
     _maths(monkeypatch, {2})
     doc = _read(settings, routes, _metadata(3), tmp_path)
     assert fallback.calls == [{"pages": [2], "timeout": 300.0}]
@@ -259,7 +263,7 @@ def test_only_maths_pages_go_to_the_primary_engine(monkeypatch, tmp_path, effect
     _maths(monkeypatch, {2, 5, 7, 11})
     primary, fallback = _Client("dots_mocr"), _Client("paddleocr_vl")
     settings = effective_settings(ocr_fallback_enabled=True)
-    doc = _read(settings, OcrRoutes(primary, fallback), _metadata(12), tmp_path)
+    doc = _read(settings, OcrRoutes((primary, fallback)), _metadata(12), tmp_path)
     assert [c["pages"] for c in primary.calls] == [[2, 5, 7, 11]]
     assert fallback.calls == []
     assert local_calls == [], "the local tier does not process maths pages"
@@ -280,7 +284,7 @@ def test_a_page_both_maths_and_needing_ocr_is_sent_once(monkeypatch, tmp_path, e
     _maths(monkeypatch, {3})
     primary = _Client("dots_mocr")
     settings = effective_settings(ocr_fallback_enabled=True)
-    doc = _read(settings, OcrRoutes(primary), _metadata(4), tmp_path)
+    doc = _read(settings, OcrRoutes((primary,)), _metadata(4), tmp_path)
     assert local_calls == [[1]]
     assert [c["pages"] for c in primary.calls] == [[3]]
     assert sum(_counts(doc.metadata).values()) == 4
@@ -295,7 +299,7 @@ def test_missing_primary_sends_maths_pages_to_the_fallback(
     primary = _Client("dots_mocr", available=False)
     fallback = _Client("paddleocr_vl")
     settings = effective_settings(ocr_fallback_enabled=True)
-    _read(settings, OcrRoutes(primary, fallback), _metadata(12), tmp_path)
+    _read(settings, OcrRoutes((primary, fallback)), _metadata(12), tmp_path)
     assert [c["pages"] for c in fallback.calls] == [[1, 2, 3, 4]]
 
 
@@ -304,7 +308,7 @@ def test_no_engine_keeps_native_text_for_maths_pages(monkeypatch, tmp_path, effe
     _scan(monkeypatch, 6, needs_ocr=set())
     _maths(monkeypatch, {1, 2, 3, 4})
     settings = effective_settings(ocr_fallback_enabled=True)
-    doc = _read(settings, OcrRoutes(_Client("a", available=False)), _metadata(6), tmp_path)
+    doc = _read(settings, OcrRoutes((_Client("a", available=False),)), _metadata(6), tmp_path)
     assert _counts(doc.metadata)["ocr_pages_unresolved"] == 4
     assert "native 1" in doc.text and "native 4" in doc.text
 
@@ -315,7 +319,7 @@ def test_empty_engine_page_keeps_native_text(monkeypatch, tmp_path, effective_se
     _maths(monkeypatch, {2, 3})
     primary = _Client("dots_mocr", pages_markdown={2: ""})
     settings = effective_settings(ocr_fallback_enabled=True)
-    doc = _read(settings, OcrRoutes(primary), _metadata(3), tmp_path)
+    doc = _read(settings, OcrRoutes((primary,)), _metadata(3), tmp_path)
     assert _counts(doc.metadata) == {
         "ocr_pages_native": 1,
         "ocr_pages_local": 0,
@@ -331,7 +335,7 @@ def test_a_maths_paper_goes_as_a_page_listed_request(monkeypatch, tmp_path, effe
     _maths(monkeypatch, set(range(1, 10)))
     primary = _Client("dots_mocr")
     settings = effective_settings(ocr_fallback_enabled=True)
-    doc = _read(settings, OcrRoutes(primary), _metadata(14), tmp_path)
+    doc = _read(settings, OcrRoutes((primary,)), _metadata(14), tmp_path)
     assert [c["pages"] for c in primary.calls] == [list(range(1, 10))]
     assert local_calls == []
     assert _counts(doc.metadata)["ocr_pages_worker"] == 9
@@ -347,7 +351,7 @@ def test_a_single_maths_page_in_a_long_file_still_goes_direct(
     _maths(monkeypatch, {7})
     primary = _Client("dots_mocr")
     settings = effective_settings(ocr_fallback_enabled=True)
-    doc = _read(settings, OcrRoutes(primary), _metadata(40), tmp_path)
+    doc = _read(settings, OcrRoutes((primary,)), _metadata(40), tmp_path)
     assert [c["pages"] for c in primary.calls] == [[7]]
     assert _counts(doc.metadata)["ocr_pages_worker"] == 1
     assert doc.metadata["pages_maths_font"] == 1
@@ -363,7 +367,7 @@ def test_disabled_maths_routing_changes_nothing(monkeypatch, tmp_path, effective
     local_calls = _scan(monkeypatch, 4, needs_ocr=set())
     primary = _Client("dots_mocr")
     settings = effective_settings(ocr_fallback_enabled=True, ocr_maths_routing_enabled=False)
-    doc = _read(settings, OcrRoutes(primary), _metadata(4), tmp_path)
+    doc = _read(settings, OcrRoutes((primary,)), _metadata(4), tmp_path)
     assert "pages_maths_font" not in doc.metadata
     assert primary.calls == [] and local_calls == []
 
@@ -376,7 +380,7 @@ def test_counts_sum_and_backend_is_mixed(monkeypatch, tmp_path, effective_settin
     _scan(monkeypatch, 5, needs_ocr={4})
     _maths(monkeypatch, {1})
     settings = effective_settings(ocr_fallback_enabled=True)
-    doc = _read(settings, OcrRoutes(_Client("dots_mocr")), _metadata(5), tmp_path)
+    doc = _read(settings, OcrRoutes((_Client("dots_mocr"),)), _metadata(5), tmp_path)
     assert doc.metadata["ocr_backend"] == "mixed"
     assert sum(_counts(doc.metadata).values()) == doc.metadata["page_count"] == 5
 

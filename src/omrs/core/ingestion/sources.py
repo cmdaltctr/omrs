@@ -33,7 +33,7 @@ from typing import Any, NamedTuple
 from .backends.orchestrator import resolve_declared_text_format, resolve_pdf_reader_revision
 from .chunker import read_and_chunk_file_async
 from .hashing import sha256_file
-from .ocr_identity import resolved_routing_payload, route_fingerprints
+from .ocr_identity import more_route_fingerprints, resolved_routing_payload, route_fingerprints
 from .replacement import ReplaceSourceOutcome, replace_source_nodes_async
 from .source_state import (
     assert_source_lineage_compatible,
@@ -70,6 +70,7 @@ class IngestionContext:
         ocr_routing: Resolved OCR routing payload for the identity.
         ocr_worker_fingerprint: Fingerprint of the OCR worker route.
         ocr_fallback_fingerprint: Fingerprint of the OCR fallback route.
+        ocr_more_fingerprints: Fingerprints of the third and later OCR routes.
         graph_shape: Identity block of a non-standard ingestion graph, or
             ``None`` for the standard shape.
         embedding_identity: Provider and model that made the vectors, or
@@ -84,6 +85,7 @@ class IngestionContext:
     ocr_routing: dict[str, Any]
     ocr_worker_fingerprint: Any
     ocr_fallback_fingerprint: Any
+    ocr_more_fingerprints: tuple[Any, ...] = ()
     graph_shape: dict[str, Any] | None = None
     embedding_identity: Any = None
 
@@ -190,6 +192,7 @@ def build_ingestion_context(
         ocr_routing=resolved_routing_payload(settings),
         ocr_worker_fingerprint=worker_fingerprint,
         ocr_fallback_fingerprint=fallback_fingerprint,
+        ocr_more_fingerprints=more_route_fingerprints(ocr_client),
         graph_shape=graph_shape,
         embedding_identity=embedding_identity,
     )
@@ -233,6 +236,7 @@ async def prepare_source(
         ocr_routing=context.ocr_routing,
         ocr_worker_fingerprint=context.ocr_worker_fingerprint,
         ocr_fallback_fingerprint=context.ocr_fallback_fingerprint,
+        ocr_more_fingerprints=context.ocr_more_fingerprints,
         tokenizer=context.markdown_chunking.tokenizer_identity,
         resolved_splitter=context.markdown_chunking.resolved_splitter,
         graph_shape=context.graph_shape,

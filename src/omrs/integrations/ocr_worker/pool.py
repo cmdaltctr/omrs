@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, Any
 
 from .fingerprint import OcrWorkerFingerprint
 from .managed import ManagedOcrClient
-from .routes import OcrRoutes, RouteCommand, resolve_route_command
+from .routes import OcrRoutes, RouteCommand, engine_names, resolve_route_command
 from .runtime import runtime_lease
 
 if TYPE_CHECKING:
@@ -60,31 +60,28 @@ class OcrClientPool:
         self._closed = False
 
     def routes(self, settings: Any) -> OcrRoutes:
-        """Return the primary and fallback routes of *settings*.
+        """Return the ordered routes of *settings*.
 
         Args:
             settings: The effective settings of a node or of the host.
 
         Returns:
-            The route pair. With the OCR fallback off, or a route that
-            resolves no command, that route is ``None``: it reports the
-            unavailable fingerprint, as an unprobed client does.
+            The routes in list order. With the OCR fallback off there are none.
+            A route that resolves no command is ``None``: it reports the
+            unavailable fingerprint, as an unprobed client does. Routes that
+            resolve to the same command share one pool client.
 
         Raises:
             RuntimeError: When the pool is closed.
         """
         if not getattr(settings, "ocr_fallback_enabled", False):
             return OcrRoutes()
-        primary_name = str(getattr(settings, "ocr_engine_primary", "") or "")
-        fallback_name = str(getattr(settings, "ocr_engine_fallback", "") or "")
-        primary = self._client(
-            resolve_route_command(primary_name, settings, self._runtime_manager), settings
+        return OcrRoutes(
+            routes=tuple(
+                self._client(resolve_route_command(name, settings, self._runtime_manager), settings)
+                for name in engine_names(settings)
+            )
         )
-        fallback = None
-        if fallback_name.strip():
-            route = resolve_route_command(fallback_name, settings, self._runtime_manager)
-            fallback = self._client(route, settings)
-        return OcrRoutes(primary=primary, fallback=fallback)
 
     def close(self) -> None:
         """Close every client the pool built. Idempotent."""

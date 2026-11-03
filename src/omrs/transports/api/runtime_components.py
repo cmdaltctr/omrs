@@ -26,7 +26,11 @@ from huggingface_hub import try_to_load_from_cache
 from ... import capabilities
 from ...config.user_config import display_path
 from ...integrations.ocr_worker.manifest import engine_manifest, licence_gate
-from ...integrations.ocr_worker.routes import _ENGINE_NAME_RE, resolve_engine_command
+from ...integrations.ocr_worker.routes import (
+    _ENGINE_NAME_RE,
+    engine_names,
+    resolve_engine_command,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -93,8 +97,7 @@ LOCAL_TIER_PURPOSE = "Reads flagged pages with the small local model before a wo
 def _engine_used_by(settings: Any, name: str) -> tuple[str, ...]:
     if not settings.ocr_fallback_enabled:
         return ()
-    keys = ("ocr_engine_primary", "ocr_engine_fallback")
-    return tuple(key for key in keys if str(getattr(settings, key, "")).strip() == name)
+    return ("ocr_engines",) if name in engine_names(settings) else ()
 
 
 def _engine_item(name: str, root: str, settings: Any) -> RuntimeItem:
@@ -125,10 +128,7 @@ def _engine_item(name: str, root: str, settings: Any) -> RuntimeItem:
 
 
 def _engine_names(root: str, settings: Any) -> list[str]:
-    names = {
-        str(getattr(settings, key, "")).strip()
-        for key in ("ocr_engine_primary", "ocr_engine_fallback")
-    }
+    names = set(engine_names(settings))
     try:
         engines = Path(root).expanduser() / "engines"
         if root and engines.is_dir():

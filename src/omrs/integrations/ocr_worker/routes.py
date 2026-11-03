@@ -1,9 +1,11 @@
-"""Primary and fallback OCR routes (design D3).
+"""Ordered OCR routes (design D3; ordered-reader-and-ocr-lists D6).
 
-Every OCR dispatch goes to the primary route. When the primary route is
-unavailable BEFORE dispatch, the same request goes to the fallback route.
-After dispatch there is no switch: a worker failure stays a per-file
-error (spec: no cross-route retry).
+Every OCR dispatch goes to the first route of the engine list. When that
+route is unavailable BEFORE dispatch, the same request goes to the next one,
+and so on down the list. After dispatch there is no switch: a worker failure
+stays a per-file error (spec: no cross-route retry). The one exception is an
+operator stop of the engine's runtime, which moves the request once
+(``dispatch.RoutedClient``). An empty or poor answer never moves a request.
 
 A route names an engine. The host resolves an engine from its name and
 the workers directory alone: the engine's own environment runs the
@@ -177,37 +179,67 @@ def request_timeout(settings: Any, pages: int) -> float:
     return max(floor, max(pages, 0) * per_page)
 
 
+def engine_names(settings: Any) -> tuple[str, ...]:
+    """Return the engine order of *settings*: ``ocr_engines``, else primary then fallback.
+
+    Mirrors ``core.reading_lists.engine_list``, which this leaf module cannot
+    import (``integrations-are-leaves``). A test pins the two to the same answer.
+    A blank name is left out; a fallback equal to the primary stays, so both
+    entries resolve to one shared client.
+    """
+    listed = tuple(getattr(settings, "ocr_engines", ()) or ())
+    if listed:
+        return listed
+    primary = str(getattr(settings, "ocr_engine_primary", "") or "").strip()
+    fallback = str(getattr(settings, "ocr_engine_fallback", "") or "").strip()
+    return tuple(name for name in (primary, fallback) if name)
+
+
 @dataclass(frozen=True)
 class OcrRoutes:
-    """The frozen pair of route clients (design D3).
+    """The frozen, ordered route clients (design D3, D6).
 
     Each route owns one lazy, long-lived client. A route's subprocess
-    starts only on that route's first dispatch. A fallback that resolves
-    to the primary's command shares the primary's client.
+    starts only on that route's first dispatch. Routes that resolve to the
+    same command share one client.
 
     Attributes:
-        primary: The primary route's client, or ``None``.
-        fallback: The fallback route's client, or ``None``.
+        routes: The route clients in list order. An entry is ``None`` when its
+            engine resolved no command; it reports the unavailable fingerprint.
     """
 
-    primary: Any = None
-    fallback: Any = None
+    routes: tuple[Any, ...] = ()
 
     @classmethod
     def of(cls, client: Any) -> OcrRoutes:
-        """Return *client* as routes: routes pass through, a client is primary-only."""
+        """Return *client* as routes: routes pass through, a client is the first route only."""
         if isinstance(client, OcrRoutes):
             return client
-        return cls(primary=client, fallback=None)
+        return cls(routes=(client,))
+
+    @property
+    def primary(self) -> Any:
+        """The first route's client, or ``None``."""
+        return self.routes[0] if self.routes else None
+
+    @property
+    def fallback(self) -> Any:
+        """The second route's client, or ``None``."""
+        return self.routes[1] if len(self.routes) > 1 else None
+
+    @property
+    def fingerprints(self) -> tuple[OcrWorkerFingerprint, ...]:
+        """The fingerprint of every route, in list order."""
+        return tuple(_fingerprint_of(client) for client in self.routes)
 
     @property
     def fingerprint(self) -> OcrWorkerFingerprint:
-        """The primary route's fingerprint (the index identity's worker field)."""
+        """The first route's fingerprint (the index identity's worker field)."""
         return _fingerprint_of(self.primary)
 
     @property
     def fallback_fingerprint(self) -> OcrWorkerFingerprint:
-        """The fallback route's fingerprint."""
+        """The second route's fingerprint."""
         return _fingerprint_of(self.fallback)
 
     def select(self, *, protocol: str | None = None) -> Any:
@@ -218,13 +250,14 @@ class OcrRoutes:
                 protocol version is usable (page-listed requests need 1.1).
 
         Returns:
-            The primary client when available, else the fallback client
-            when available, else ``None``. When both are available and one
-            holds a runtime lease, a :class:`RoutedClient`: a route that cannot
-            start its runtime before dispatch passes the request on (design D10).
+            The first available client, else ``None``. When two or more are
+            available and one holds a runtime lease, a :class:`RoutedClient`: a
+            route that cannot start its runtime before dispatch passes the
+            request on (design D10). Only availability decides. The answer a
+            route gave never does.
         """
         usable: list[Any] = []
-        for client in (self.primary, self.fallback):
+        for client in self.routes:
             if client is None or client in usable:
                 continue
             fingerprint = _fingerprint_of(client)
@@ -240,7 +273,7 @@ class OcrRoutes:
     def close(self) -> None:
         """Close every distinct route client."""
         closed: set[int] = set()
-        for client in (self.primary, self.fallback):
+        for client in self.routes:
             if client is not None and id(client) not in closed:
                 closed.add(id(client))
                 client.close()
@@ -268,7 +301,7 @@ def build_route_clients(
     probe: Callable[[list[str]], OcrWorkerFingerprint],
     runtime_manager: RuntimeManager | None = None,
 ) -> OcrRoutes:
-    """Compose both route clients from injected settings.
+    """Compose the route clients of the engine list from injected settings.
 
     The probe runs only when the operator enabled OCR and the route
     resolved a command, so an unconfigured install spawns nothing.
@@ -280,31 +313,23 @@ def build_route_clients(
             declares a llama.cpp runtime is unavailable without one.
 
     Returns:
-        The route pair. Construction starts no parsing process.
+        The routes in list order. Routes that resolve to the same command share
+        one client. Construction starts no parsing process.
     """
     enabled = bool(getattr(settings, "ocr_fallback_enabled", False))
-    primary_name = str(getattr(settings, "ocr_engine_primary", "") or "")
-    fallback_name = str(getattr(settings, "ocr_engine_fallback", "") or "")
-    primary_route = resolve_route_command(primary_name, settings, runtime_manager)
-    primary = _client(
-        primary_route, settings, probe=probe, enabled=enabled, runtime_manager=runtime_manager
-    )
-    fallback = None
-    if fallback_name.strip():
-        fallback_route = resolve_route_command(fallback_name, settings, runtime_manager)
-        if fallback_route == primary_route:
-            fallback = primary
-        else:
-            fallback = _client(
-                fallback_route,
-                settings,
-                probe=probe,
-                enabled=enabled,
-                runtime_manager=runtime_manager,
+    names = engine_names(settings)
+    shared: dict[RouteCommand, ManagedOcrClient] = {}
+    clients: list[ManagedOcrClient] = []
+    for name in names:
+        route = resolve_route_command(name, settings, runtime_manager)
+        if route not in shared:
+            shared[route] = _client(
+                route, settings, probe=probe, enabled=enabled, runtime_manager=runtime_manager
             )
-    routes = OcrRoutes(primary=primary, fallback=fallback)
+        clients.append(shared[route])
+    routes = OcrRoutes(routes=tuple(clients))
     if enabled:
-        _log_routes_once(primary_name, fallback_name, routes)
+        _log_routes_once(names, routes)
     return routes
 
 
@@ -328,15 +353,25 @@ def _client(
     )
 
 
-def _log_routes_once(primary_name: str, fallback_name: str, routes: OcrRoutes) -> None:
-    """Log the resolved primary and fallback engines once per process."""
-    primary_label = primary_name or "-"
-    summary = (
-        f"OCR routes: primary={primary_label} "
-        f"[{'available' if routes.fingerprint.available else 'unavailable'}], "
-        f"fallback={fallback_name or '-'} "
-        f"[{'available' if routes.fallback_fingerprint.available else 'unavailable'}]"
-    )
+def route_role(index: int) -> str:
+    """Name a list position (0-based): primary, fallback, then ``engine 3``."""
+    return ("primary", "fallback")[index] if index < 2 else f"engine {index + 1}"
+
+
+def _log_routes_once(names: tuple[str, ...], routes: OcrRoutes) -> None:
+    """Log the resolved engines once per process; the line always shows two roles."""
+    padded = names + ("",) * (2 - len(names))
+    states = ["available" if fp.available else "unavailable" for fp in routes.fingerprints]
+    states += ["unavailable"] * (len(padded) - len(states))
+    words = [
+        f"{route_role(i)}={name or '-'} [{state}]"
+        for i, (name, state) in enumerate(zip(padded, states, strict=True))
+    ]
+    _log_once("OCR routes: " + ", ".join(words))
+
+
+def _log_once(summary: str) -> None:
+    """Log *summary* at most once per process."""
     if summary in _logged_summaries:
         return
     _logged_summaries.add(summary)
@@ -344,7 +379,7 @@ def _log_routes_once(primary_name: str, fallback_name: str, routes: OcrRoutes) -
 
 
 def log_route_plan(settings: Any) -> None:
-    """Log the primary and fallback engines once, from the engine folders alone.
+    """Log the engines once, from the engine folders alone.
 
     The Engine-owned pool starts a worker on first use, so this start-up line
     starts no process and probes nothing: an engine is ``provisioned`` when its
@@ -352,20 +387,17 @@ def log_route_plan(settings: Any) -> None:
     """
     if not getattr(settings, "ocr_fallback_enabled", False):
         return
+    names = engine_names(settings)
     words = []
-    for role, key in (("primary", "ocr_engine_primary"), ("fallback", "ocr_engine_fallback")):
-        name = str(getattr(settings, key, "") or "").strip()
+    for index, name in enumerate(names + ("",) * (2 - len(names))):
         state = (
             "provisioned" if resolve_route_command(name, settings).command else "not provisioned"
         )
-        words.append(f"{role}={name or '-'} [{state}]")
+        words.append(f"{route_role(index)}={name or '-'} [{state}]")
     summary = "OCR routes: " + ", ".join(words)
     if not str(getattr(settings, "ocr_workers_dir", "") or "").strip():
         summary += " (OCR workers folder not set)"
-    if summary in _logged_summaries:
-        return
-    _logged_summaries.add(summary)
-    logger.info(summary)
+    _log_once(summary)
 
 
 def reset_route_log() -> None:

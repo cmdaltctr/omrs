@@ -1,11 +1,12 @@
-"""One dispatch over the primary and the fallback route (design D3, D8, D10).
+"""One dispatch over the ordered routes (design D3, D8, D10; ordered lists D6).
 
 A route whose engine declares a llama.cpp runtime can be unavailable only when
 the host tries to start it. The host learns that before it sends the request,
-so the same request goes to the fallback route. The operator pressing Stop
-during a parse is the one failure after dispatch that also moves the request to
-the fallback, once. The walk goes forward over the two routes and never back,
-so no request is sent to a route twice.
+so the same request goes to the next route, and so on down the list. The
+operator pressing Stop during a parse is the one failure after dispatch that
+also moves the request, to the next route, once. The walk goes forward and
+never back, so no request is sent to a route twice. A second operator stop in
+the same walk ends it.
 """
 
 from __future__ import annotations
@@ -32,10 +33,10 @@ class RoutedClient:
     """
 
     def __init__(self, routes: Sequence[Any]) -> None:
-        """Hold the routes in order: primary first.
+        """Hold the routes in order: the first engine of the list first.
 
         Args:
-            routes: The available route clients, primary first.
+            routes: The available route clients, in list order.
         """
         self._routes = list(routes)
         self._answered: Any = self._routes[0]
@@ -51,19 +52,24 @@ class RoutedClient:
         """Send the request to the first route that takes it.
 
         A route that cannot start its runtime before dispatch passes the request
-        on. So does a route whose runtime the operator stopped during the request.
-        Any other failure after dispatch is the file's error.
+        on, as often as it takes. A route whose runtime the operator stopped
+        during the request also passes it on, but only once per request: a
+        second stop, or any other failure after dispatch, is the file's error.
+        The answer a route gives never moves the request, empty or not.
 
         Raises:
             OcrWorkerError: The last route failed, or a route failed after dispatch.
         """
         last = len(self._routes) - 1
+        stop_retried = False
         for index, route in enumerate(self._routes):
             try:
                 result = route.parse(pdf_path, pages=pages, timeout=timeout)
             except OcrWorkerError as exc:
-                if exc.code not in _MOVES_ON or index == last:
+                stopped = exc.code == RUNTIME_STOPPED_CODE
+                if exc.code not in _MOVES_ON or index == last or (stopped and stop_retried):
                     raise
+                stop_retried = stop_retried or stopped
                 logger.info(
                     "OCR route %d did not take the request (%s); trying the next", index, exc.code
                 )
