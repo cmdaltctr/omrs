@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { EffectiveControl, OperationDescriptor } from "../api/pipelines";
 import { setEnabled, setParam, type Draft } from "./graph";
-import { isHiddenOldOption } from "./ListParam";
+import { isHiddenOldOption, replacedOptions } from "./ListParam";
 import { ParamField } from "./ParamField";
 import { paramFields } from "./schema";
 import { controlFor, valueNote } from "./stepSummary";
@@ -58,7 +58,14 @@ export function StepSettingsFields({ draft, nodeId, operation, controls, onChang
             disabled={readOnly}
             value={node.params?.[field.name]}
             note={valueNote(field, node, controlFor(field, controls[nodeId]), draft.graph)}
-            onChange={(value) => onChange((current) => setParam(current, nodeId, field.name, value))}
+            onChange={(value) =>
+              onChange((current) => {
+                const next = setParam(current, nodeId, field.name, value);
+                // A set list replaces its old options in the same update: a step may not set both forms.
+                if (value == null) return next;
+                return replacedOptions(field.name).reduce((draft, old) => setParam(draft, nodeId, old, null), next);
+              })
+            }
           />
         ))}
     </>

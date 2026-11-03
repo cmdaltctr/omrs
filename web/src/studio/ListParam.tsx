@@ -28,6 +28,11 @@ export function isHiddenOldOption(field: ParamField, fields: readonly ParamField
   return list !== undefined && value == null && fields.some((other) => other.name === list);
 }
 
+/** The single-value options that *listName* replaces; a step that sets the list must not keep them. */
+export function replacedOptions(listName: string): string[] {
+  return Object.keys(SUPERSEDED).filter((old) => SUPERSEDED[old] === listName);
+}
+
 interface ListParamProps {
   field: ParamField;
   value: JsonValue | undefined;

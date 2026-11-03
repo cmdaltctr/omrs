@@ -79,4 +79,17 @@ describe("StepSettingsFields", () => {
     expect(await screen.findByRole("option", { name: /pypdfium2 \(not installed\)/ })).toHaveAttribute("aria-disabled", "true");
     expect(screen.getByText("The package 'pypdfium2' is not installed.")).toBeInTheDocument();
   });
+
+  it("clears the old options in the same update that sets their list, so the step never sets both forms", async () => {
+    const saved = { pdf_reader: "liteparse", ocr_engine_primary: "dots-mocr", ocr_engine_fallback: "paddleocr-vl" };
+    const { seen, user } = setup({ id: "rd", operation: "read.document", version: 1, params: saved });
+    await user.click(within(screen.getByRole("group", { name: "PDF readers" })).getByRole("radio", { name: "Set list" }));
+    await user.click(within(screen.getByRole("group", { name: "OCR engines" })).getByRole("radio", { name: "Set list" }));
+    const params = seen.draft.graph.nodes[0]?.params ?? {};
+    expect(params.pdf_readers).toBeDefined();
+    expect(params.ocr_engines).toBeDefined();
+    expect(params).not.toHaveProperty("pdf_reader");
+    expect(params).not.toHaveProperty("ocr_engine_primary");
+    expect(params).not.toHaveProperty("ocr_engine_fallback");
+  });
 });
