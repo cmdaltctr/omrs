@@ -1,7 +1,7 @@
 """Tests for the join of merged chunks that touches a display-maths fence.
 
 Pins the scenarios of
-``openspec/changes/fix-merged-chunk-maths-join/specs/retrieval-context-assembly/``:
+``openspec/changes/archive/2026-11-03-fix-merged-chunk-maths-join/specs/retrieval-context-assembly/``:
 a merge never puts text on the same line as a line that holds only ``$$``.
 The texts follow the shape of the stored ``eq01`` chunks (Kingma and Welling,
 arXiv 1312.6114) without copying any of the paper's prose.
