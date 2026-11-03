@@ -591,7 +591,10 @@ if not _has_qwen_tokenizer:
 # the web extra and the floors job ran 7880 without it, so 15 more managed-llamacpp-runtimes
 # cases need fastapi than the 33 first counted (1853).
 # +3 (2026-11-03, page-routing-default): test_web_document_reading.py, -4 +7.
-_WEB_EXTRA_CASES = 1856
+# +23 (2026-11-03, ordered-reader-and-ocr-lists, measured by the floor job of PR 166:
+# 8099 executed without fastapi against 8122 expected): the PDF readers route,
+# list-valued document-reading and configuration-save tests.
+_WEB_EXTRA_CASES = 1879
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)
