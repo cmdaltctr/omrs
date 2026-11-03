@@ -1,24 +1,29 @@
 ## MODIFIED Requirements
 
-### Requirement: Read document step sets OCR options
+### Requirement: The Read document step sets its OCR options
 
-The `read.document` operation SHALL accept these optional settings: `ocr_fallback_enabled`, `ocr_fallback_min_confidence`, `ocr_fallback_page_fraction`, `ocr_routing_unit`, `ocr_engines` (or the older `ocr_engine_primary` and `ocr_engine_fallback`), `ocr_maths_routing_enabled` and `ocr_maths_page_fraction`. `null` SHALL inherit the host value. Each set value SHALL pass the same rule as the matching key on Settings › Document reading. A graph-wide override of any of these keys SHALL remain a host-owned setting.
+The `read.document` operation SHALL accept these optional settings: `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engines`, `ocr_maths_routing_enabled`, and the older `ocr_engine_primary` and `ocr_engine_fallback`. `null` SHALL inherit the host value. Each set value SHALL pass the same rule as the matching key on Settings › Document reading. A graph-wide override of any of these keys SHALL remain a host-owned setting.
 
 #### Scenario: Engine not provisioned
 
-- **WHEN** a Read document node lists an engine in `ocr_engines` that is not provisioned under the host workers folder
+- **WHEN** a Read document node lists, in `ocr_engines`, an engine that is not provisioned under the host workers folder
 - **THEN** validation SHALL fail with issue code `option_unavailable`
 - **AND** the issue SHALL name the node, the engine and the provision command
 - **AND** no node SHALL run
 
-#### Scenario: Invalid fraction
+#### Scenario: Removed key refused
 
-- **WHEN** a Read document node sets `ocr_fallback_page_fraction` to `1.5`
+- **WHEN** a Read document node sets `ocr_maths_page_fraction`, `ocr_fallback_page_fraction` or `ocr_fallback_min_confidence`
+- **THEN** validation SHALL fail with issue code `invalid_parameter` before any node runs
+
+#### Scenario: Document unit refused
+
+- **WHEN** a Read document node sets `ocr_routing_unit` to `document`
 - **THEN** validation SHALL fail with issue code `invalid_parameter` before any node runs
 
 #### Scenario: Graph-wide OCR override stays host-owned
 
-- **WHEN** a graph sets `overrides.ocr_engine_primary`
+- **WHEN** a graph sets `overrides.ocr_engine_primary` or `overrides.ocr_engines`
 - **THEN** validation SHALL fail with issue code `host_owned_setting`
 - **AND** the message SHALL tell the user to set the engine on the Read document step
 

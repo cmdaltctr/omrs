@@ -2,25 +2,22 @@
 
 ### Requirement: PDF reader SHALL be selectable via environment variable
 
-The system SHALL read the PDF reader setting at config-load time into a frozen ordered list of reader names, `Settings.pdf_readers`. The list SHALL come from `pdf_readers` (env `PDF_READERS`, comma-separated) or, when no source sets it, from the single value `pdf_reader` (env `PDF_READER`). Accepted single values SHALL stay `auto`, `pdf_inspector`, `liteparse`, `pypdfium2` and `pypdf`. An unknown single value SHALL log a warning naming it and fall back to `auto`. An unknown name in a list SHALL log a warning naming it and SHALL be dropped from the list.
+The system SHALL read the PDF reader setting at config-load time into the frozen ordered list `Settings.pdf_readers`. The list SHALL come from `PDF_READERS` (comma-separated) or, when no source sets it, from `PDF_READER`. Accepted single values SHALL be `auto`, `pdf_inspector`, `liteparse`, `pypdfium2`, and `pypdf`. Any other single value SHALL log a warning naming the offending value and fall back to `auto`. An unknown name in a list SHALL log a warning and be dropped.
 
 #### Scenario: Explicit pdf-inspector selection via env var
 
 - **WHEN** `PDF_READER=pdf_inspector` is set, `PDF_READERS` is not set and the package is importable
-- **THEN** the injected `EffectiveSettings.pdf_readers` SHALL equal `("pdf_inspector", "liteparse", "pypdf")`
-- **AND** pdf-inspector SHALL read every `.pdf` file
+- **THEN** the injected `EffectiveSettings.pdf_readers` SHALL equal `("pdf_inspector", "liteparse", "pypdf")` and the pdf-inspector adapter SHALL ingest all `.pdf` files
 
 #### Scenario: Explicit override selection via env var
 
-- **WHEN** `PDF_READER=liteparse` is set, `PDF_READERS` is not set and `liteparse` is importable
-- **THEN** the injected `EffectiveSettings.pdf_readers` SHALL equal `("liteparse",)`
-- **AND** the LiteParse adapter SHALL be used for all `.pdf` ingestion
+- **WHEN** `PDF_READER=liteparse` is set, `PDF_READERS` is not set and the `liteparse` package is importable
+- **THEN** the injected `EffectiveSettings.pdf_readers` SHALL equal `("liteparse",)` and the LiteParse adapter SHALL be used for all `.pdf` ingestion
 
 #### Scenario: Unknown value falls back to auto with warning
 
-- **WHEN** `PDF_READER=fastparser` is set
-- **THEN** the system SHALL log a warning naming the offending value and the fallback
-- **AND** it SHALL resolve as if `PDF_READER=auto` had been set
+- **WHEN** `PDF_READER=fastparser` (an unsupported value) is set
+- **THEN** the system SHALL log a warning naming the offending value and the fallback, and SHALL resolve as if `PDF_READER=auto` had been set
 
 #### Scenario: Explicit list via the env var
 
@@ -29,7 +26,7 @@ The system SHALL read the PDF reader setting at config-load time into a frozen o
 
 ### Requirement: pdf-inspector silent-empty extraction SHALL recover via a plain-text retry
 
-When the pdf-inspector reader classifies a PDF as `text_based` while its own Markdown extraction is empty and its page count is greater than zero, the adapter SHALL retry the file with the readers that follow `pdf_inspector` in the injected reader list, in list order. Each retry SHALL run in extraction-only mode (OCR disabled regardless of operator settings) and SHALL keep one document per recovered page, so a readable text layer is not silently discarded. With the default list the tiers SHALL be `liteparse`, then `pypdf`.
+When the pdf-inspector reader classifies a PDF as `text_based` while its own Markdown extraction is empty and the page count is greater than zero, the adapter SHALL retry the file with the readers that follow `pdf_inspector` in the injected list, in list order, in extraction-only mode (OCR disabled regardless of operator settings). It SHALL keep one document for each recovered page, so a readable text layer is not silently discarded. The default list gives the tiers `liteparse`, then `pypdf`.
 
 #### Scenario: Normal extraction is untouched
 
@@ -40,14 +37,14 @@ When the pdf-inspector reader classifies a PDF as `text_based` while its own Mar
 
 #### Scenario: Scanned classifications are untouched
 
-- **GIVEN** pdf-inspector classifies a PDF as `scanned`, `image_based` or another non-`text_based` type
+- **GIVEN** pdf-inspector classifies a PDF as `scanned`, `image_based`, or another non-`text_based` type
 - **WHEN** the adapter emits its documents
 - **THEN** no retry SHALL occur regardless of extraction emptiness
 - **AND** the OCR routing decision SHALL be unchanged
 
 #### Scenario: Recovered pages keep their numbers
 
-- **GIVEN** the first retry tier recovers text for pages 1 and 3 of a 3-page PDF
+- **GIVEN** the liteparse tier recovers text from pages 1 and 3 of a 3-page PDF
 - **WHEN** the adapter emits its documents
 - **THEN** it SHALL emit 2 documents with `page` 1 and 3 and `page_label` `"1"` and `"3"`
 - **AND** each SHALL carry the pdf-inspector evidence and the fallback diagnostics
@@ -68,22 +65,22 @@ When the pdf-inspector reader classifies a PDF as `text_based` while its own Mar
 
 ### Requirement: The rescue retry needs no default settings and falls back to pypdf
 
-A retry tier SHALL receive concrete OCR and worker settings, so it does not need default effective settings. A tier that is not installed, raises, or yields no text SHALL hand over to the next tier. The last tier's exception SHALL propagate to the per-file error boundary. When the adapter is built directly without a reader list, its tiers SHALL be `liteparse`, then `pypdf`. Tier pages SHALL be numbered by position, from 1.
+The rescue tier SHALL receive concrete OCR and worker settings so it does not require default effective settings. A tier that is not installed, raises, or yields no text SHALL hand over to the next tier, and the last tier's exception SHALL propagate to the per-file error boundary. An adapter built directly without a reader list SHALL use the tiers `liteparse`, then `pypdf`, preserving the same page-document contract.
 
 #### Scenario: Bare direct adapter use stays on liteparse
 
-- **GIVEN** no default effective settings are installed and the adapter is built without a reader list
-- **WHEN** the contradiction triggers and LiteParse can recover text
-- **THEN** the LiteParse tier SHALL run with OCR disabled and automatic worker selection
+- **GIVEN** no default effective settings were installed and the adapter was built without a reader list
+- **WHEN** the contradiction triggers and liteparse can recover text
+- **THEN** the liteparse tier SHALL run with OCR disabled and automatic worker selection
 - **AND** pypdf SHALL NOT be selected
 
 #### Scenario: liteparse unavailable falls through to pypdf
 
-- **GIVEN** the default list and the contradiction triggers
-- **AND** LiteParse is not installed, raises, or yields no text
+- **GIVEN** the default reader list
+- **AND** the contradiction triggers and the liteparse package is not installed, or its retry raises or yields no text
 - **WHEN** the adapter emits its documents
-- **THEN** the retry SHALL proceed with pypdf
-- **AND** the diagnostic SHALL name pypdf as the fallback backend when it produces text
+- **THEN** the retry SHALL proceed with the registered pypdf reader
+- **AND** the diagnostic SHALL name pypdf as the fallback backend when it produces the text
 
 #### Scenario: pypdf pages are numbered by position
 
@@ -94,14 +91,14 @@ A retry tier SHALL receive concrete OCR and worker settings, so it does not need
 
 ### Requirement: OCR dispatch uses the primary route before the fallback route
 
-Every dispatch SHALL use the first engine of the injected OCR engine list (dots.mocr by default). A later engine SHALL serve the request only when every engine before it is unavailable before dispatch (PaddleOCR-VL is second by default).
+Every dispatch SHALL use the first engine of the injected OCR engine list (dots.mocr by default). A later engine (PaddleOCR-VL is second by default) SHALL serve the request only when every engine before it is unavailable before dispatch. A bad answer SHALL NOT move a request to a later engine.
 
 #### Scenario: OCR required but the worker is unavailable
 
-- **GIVEN** `pdf-inspector` reports that OCR is required
-- **AND** every engine in the list is absent, unprovisioned, incompatible, or unusable before dispatch
+- **GIVEN** flagged or escalated pages exist
+- **AND** every engine in the OCR engine list is absent, unprovisioned, incompatible, or unusable before dispatch
 - **WHEN** the PDF is ingested
-- **THEN** the system SHALL retain the available `pdf-inspector` Markdown rather than fabricate missing content
+- **THEN** the system SHALL retain the best available text rather than fabricate missing content
 - **AND** the document/file result SHALL report that OCR was required but unavailable
 - **AND** ingestion SHALL remain within the existing per-file degradation boundary
 
