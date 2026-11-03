@@ -63,7 +63,7 @@ class _Calls:
     def __call__(self, path, **kwargs):
         self.calls.append({"path": path, **kwargs})
         result = self._results_by_call.pop(0)
-        if isinstance(result, Exception):
+        if isinstance(result, BaseException):
             raise result
         return result
 
@@ -330,13 +330,14 @@ def test_escalation_cut_comes_from_settings_not_a_constant(
 # ── The resolved model identity in the index identity payload ──────────────
 
 
-def test_payload_gains_the_model_only_when_resolved_and_page_unit(effective_settings):
-    """local_tier.model appears with a resolved identity under the page unit."""
-    page = effective_settings(ocr_routing_unit="page")
+def test_payload_gains_the_model_only_when_resolved(effective_settings):
+    """local_tier.model appears with a resolved identity, on default settings."""
+    settings = effective_settings()
 
-    with_model = ocr_routing_payload(page, local_model_identity="pp-ocrv6-small@oar-ocr-v0.7.0")
-    unresolved = ocr_routing_payload(page, local_model_identity=None)
+    with_model = ocr_routing_payload(settings, local_model_identity="pp-ocrv6-small@oar-ocr-v0.7.0")
+    unresolved = ocr_routing_payload(settings, local_model_identity=None)
 
+    assert with_model["routing_unit"] == "page"
     assert with_model["local_tier"] == {
         "min_confidence": 0.9,
         "model": "pp-ocrv6-small@oar-ocr-v0.7.0",
@@ -346,18 +347,8 @@ def test_payload_gains_the_model_only_when_resolved_and_page_unit(effective_sett
     assert unresolved["local_tier"] == {"min_confidence": 0.9}
 
 
-def test_document_unit_ignores_a_resolved_model(effective_settings):
-    """A document-unit install hashes exactly what it hashed; no local tier exists."""
-    document = effective_settings(ocr_routing_unit="document")
-
-    payload = ocr_routing_payload(document, local_model_identity="pp-ocrv6-small@oar-ocr-v0.7.0")
-
-    assert "local_tier" not in payload
-    assert "routing_unit" not in payload
-
-
-def test_resolved_payload_probes_only_when_the_tier_can_run(monkeypatch, effective_settings):
-    """The probe runs for page unit with the fallback enabled, and only then."""
+def test_resolved_payload_probes_only_when_ocr_is_enabled(monkeypatch, effective_settings):
+    """The probe runs with the fallback enabled, on default routing settings, and only then."""
     probed: list[dict] = []
 
     def _probe(settings):
@@ -366,18 +357,15 @@ def test_resolved_payload_probes_only_when_the_tier_can_run(monkeypatch, effecti
 
     monkeypatch.setattr(page_routing, "resolve_local_model_identity", _probe)
 
-    resolved_routing_payload(effective_settings(ocr_routing_unit="document"))
-    resolved_routing_payload(
-        effective_settings(ocr_routing_unit="page", ocr_fallback_enabled=False)
-    )
+    disabled = resolved_routing_payload(effective_settings(ocr_fallback_enabled=False))
 
     assert probed == []
+    assert disabled["local_tier"] == {"min_confidence": 0.9}
 
-    payload = resolved_routing_payload(
-        effective_settings(ocr_routing_unit="page", ocr_fallback_enabled=True)
-    )
+    payload = resolved_routing_payload(effective_settings(ocr_fallback_enabled=True))
 
     assert probed == [{"offline": False}]
+    assert payload["routing_unit"] == "page"
     assert payload["local_tier"] == {"min_confidence": 0.9, "model": "m@r1"}
 
 
@@ -492,6 +480,47 @@ def test_an_unresolved_runtime_is_reprobed(
     assert first is None
     assert second == "pp-ocrv6-small@oar-ocr-v0.7.0"
     assert len(calls.calls) == 2
+
+
+class _RuntimePanic(BaseException):
+    """Stands in for ``pyo3_runtime.PanicException``: a BaseException, not an Exception."""
+
+
+def test_a_runtime_panic_resolves_to_none_and_stops_the_probe(
+    monkeypatch, effective_settings, _clean_resolution_cache, caplog
+):
+    """A panic poisons the engine: the probe returns None and never runs again.
+
+    With PDFium present and ONNX Runtime missing, the first call raises
+    ``ValueError`` and every later call panics. The identity runs on every
+    ingest, so a panic past this boundary would stop the ingest.
+    """
+    monkeypatch.setattr(page_routing, "_LOCAL_TIER_BROKEN", None)
+    calls = _Calls(
+        [
+            ValueError("failed to load ONNX Runtime from libonnxruntime.dylib"),
+            _RuntimePanic("OrtGetApiBase must be present"),
+        ]
+    )
+    _stub_process(monkeypatch, calls)
+
+    with caplog.at_level("WARNING"):
+        results = [
+            page_routing.resolve_local_model_identity(effective_settings()) for _ in range(3)
+        ]
+
+    assert results == [None, None, None]
+    assert len(calls.calls) == 2, "no probe after the panic"
+    assert page_routing.local_tier_off_reason() is not None
+
+
+def test_an_interrupt_in_the_probe_is_not_swallowed(
+    monkeypatch, effective_settings, _clean_resolution_cache
+):
+    _stub_process(monkeypatch, _Calls([KeyboardInterrupt()]))
+
+    with pytest.raises(KeyboardInterrupt):
+        page_routing.resolve_local_model_identity(effective_settings())
 
 
 def test_probe_cache_is_scoped_by_the_model_settings(

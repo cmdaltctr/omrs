@@ -30,8 +30,8 @@ CAL_SCANNED = REPO_ROOT / "tests" / "fixtures" / "pdf_baseline" / "calibration" 
 
 
 def _stub_command(mode: str) -> list[str]:
-    """Build the stub worker launch command."""
-    return [sys.executable, str(STUB_WORKER), "--mode", mode]
+    """Build the stub worker launch command (protocol 1.1: page-listed requests)."""
+    return [sys.executable, str(STUB_WORKER), "--mode", mode, "--protocol-version", "1.1"]
 
 
 def _client(mode: str, *, request_timeout: float = 30.0) -> ManagedOcrClient:
@@ -43,6 +43,26 @@ def _client(mode: str, *, request_timeout: float = 30.0) -> ManagedOcrClient:
         fingerprint=fingerprint,
         command=_stub_command(mode),
         request_timeout=request_timeout,
+    )
+
+
+@pytest.fixture(autouse=True)
+def _no_local_runtime(monkeypatch) -> None:
+    """Make the local OCR tier a missing runtime and the blank test find nothing.
+
+    The flagged page of the scanned fixture then reaches the worker whatever
+    PDFium or ONNX Runtime libraries the machine has.
+    """
+    from omrs.integrations.pdf import ocr_routing
+
+    def _missing(*args, **kwargs):
+        raise ValueError("failed to load ONNX Runtime (stubbed)")
+
+    monkeypatch.setattr(ocr_routing, "local_ocr", _missing)
+    monkeypatch.setattr(ocr_routing, "find_blank_pages", lambda file, pages: frozenset())
+    # The index identity probes the local model once per process; skip it too.
+    monkeypatch.setattr(
+        "omrs.integrations.pdf.page_routing.resolve_local_model_identity", lambda settings: None
     )
 
 
@@ -206,7 +226,7 @@ async def test_unavailable_worker_degrades_and_batch_continues(
 ) -> None:
     """OCR required but unavailable: honest degradation, batch continues.
 
-    The scanned calibration fixture's partial markdown is EMPTY, so the
+    The scanned calibration fixture has no native text, so the
     degraded document legitimately produces no chunks: the file fails
     within the existing per-file boundary ("No chunks were produced"),
     nothing is fabricated, and the batch continues to the plain-text

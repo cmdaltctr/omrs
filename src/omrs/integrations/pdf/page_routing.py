@@ -1,10 +1,10 @@
 """Page-unit OCR routing for the pdf-inspector path (change page-level-ocr-routing).
 
-``OCR_ROUTING_UNIT=page`` routes a PDF page by page instead of whole. This
-module holds that unit's logic, so the document unit's seam in
-``ocr_routing.py`` stays the shape it has always been: per-page evidence
-from a full scan, the local OCR tier with its post-check escalation
-(tasks 4.2 and 4.2a), the counts and backend of the merge, and one
+The ``page`` unit routes a PDF page by page; it is the only unit (change
+page-routing-default). This module holds that unit's logic beside the seam
+in ``ocr_routing.py``: per-page evidence from a full scan, the local OCR
+tier with its post-check escalation (tasks 4.2 and 4.2a), the counts and
+backend of the merge, and one
 document per page with text (change pdf-inspector-page-provenance, D5).
 
 Page numbering is the trap here. pdf-inspector numbers
@@ -35,8 +35,7 @@ PAGE_SOURCE_WORKER = "worker"
 PAGE_SOURCE_BLANK = "blank"
 PAGE_SOURCE_UNRESOLVED = "unresolved"
 
-#: ``ocr_backend`` values. The first and third are the document unit's own
-#: values, unchanged. ``pdf_inspector_ocr`` names pdf-inspector's selective
+#: ``ocr_backend`` values. ``pdf_inspector_ocr`` names pdf-inspector's selective
 #: OCR, which is not the worker. ``mixed`` is emitted when more than one
 #: backend produced text: naming the highest tier instead would report
 #: ``paddleocr_vl`` for a 200-page document the worker read one page of.
@@ -99,10 +98,10 @@ def page_evidence(file: Path) -> list[PageEvidence]:
 
     Raises:
         ImportError: If ``pdf_inspector`` is not installed.
-        Exception: Whatever the scan raises. The document unit can fall back
-            to sampled evidence when a scan fails; the page unit cannot,
-            because the scan is the only evidence it has. Swallowing the
-            failure would route nothing and call the file clean.
+        Exception: Whatever the scan raises. The page unit cannot fall back
+            to sampled evidence, because the scan is the only evidence it
+            has. Swallowing the failure would route nothing and call the
+            file clean.
     """
     try:
         import pdf_inspector
@@ -234,6 +233,25 @@ def local_ocr(file: Path, pages: list[int], *, settings: Any) -> list[LocalOcrPa
 
 # ── The local model resolution probe (task 4.2, identity) ─────────────────
 
+#: The reason the local tier is off for this process, or ``None``. A runtime
+#: panic (``pyo3_runtime.PanicException``, a BaseException) poisons the
+#: engine's lock, so every later call panics again: after one, the local tier
+#: and its identity probe stay off until the process restarts
+#: (change page-routing-default).
+_LOCAL_TIER_BROKEN: str | None = None
+
+
+def switch_local_tier_off(reason: str) -> None:
+    """Record that the local tier is off for the rest of this process."""
+    global _LOCAL_TIER_BROKEN
+    _LOCAL_TIER_BROKEN = reason
+
+
+def local_tier_off_reason() -> str | None:
+    """Return why the local tier is off for this process, or ``None``."""
+    return _LOCAL_TIER_BROKEN
+
+
 _RESOLUTION_LOCK = threading.Lock()
 #: Process-wide cache of resolved local model identities, keyed by the
 #: ``(model_directory, offline)`` pair the probe ran under — the pair
@@ -293,6 +311,8 @@ def resolve_local_model_identity(settings: Any) -> str | None:
 
 def _probe_local_model_identity(settings: Any) -> str | None:
     """Run the one-page blank probe and read the model identity it reports."""
+    if _LOCAL_TIER_BROKEN is not None:
+        return None
     path: str | None = None
     try:
         import pdf_inspector
@@ -315,7 +335,11 @@ def _probe_local_model_identity(settings: Any) -> str | None:
             if identity is not None:
                 return identity
         return None
-    except Exception as exc:  # noqa: BLE001 - an unresolvable runtime is a None, not a failure
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except BaseException as exc:  # noqa: BLE001 - an unresolvable runtime is a None, not a failure
+        if not isinstance(exc, Exception):
+            switch_local_tier_off(f"{type(exc).__name__}: {exc}")
         logger.warning(
             "Local OCR model identity unresolved (%s: %s); the index identity "
             "omits the model until the local OCR runtime is available",
@@ -407,8 +431,7 @@ def merge_pages(pages: list[PageResult], *, page_count: int) -> MergedDocument:
     elif backends:
         backend = OCR_BACKEND_MIXED
     else:
-        # Nothing produced text. The fast path is what ran, and what the
-        # document unit reports for a file it could not improve.
+        # Nothing produced text. The fast path is what ran.
         backend = OCR_BACKEND_FAST_PATH
     ocr_used = bool(backends - {OCR_BACKEND_FAST_PATH})
     return MergedDocument(text=text, counts=counts, ocr_backend=backend, ocr_used=ocr_used)

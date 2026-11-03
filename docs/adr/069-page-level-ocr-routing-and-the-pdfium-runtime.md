@@ -1,7 +1,7 @@
 # ADR-069: Page-Level OCR Routing with a Local Tier, and the PDFium Runtime
 
 **Date:** 2026-09-18
-**Status:** Accepted (PR #96 merged to `v3`, 2026-09-28). Amended by ADR-104 (2026-10-27): decision 4 now emits one document per page, not one merged document per file.
+**Status:** Accepted (PR #96 merged to `v3`, 2026-09-28). Amended by ADR-104 (2026-10-27): decision 4 now emits one document per page, not one merged document per file. Amended 2026-11-03 (`page-routing-default`): `page` is the only routing unit; see the last addendum.
 **Deciders:** Dr Muhammad Aizat Bin Md Hawari
 **Change:** `openspec/changes/page-level-ocr-routing/` (tasks 3–6)
 **Related:** [ADR-050](050-configure-pdf-inspector-as-default-reader.md) (pdf-inspector default), [ADR-065](065-ocr-fallback-gate-promoted-to-packaged-default.md) (document-unit gate), [ADR-066](066-tiered-reader-fallback-chain.md) (reader chain, kept), TDR-026 (false-alarm risk that motivated the unit)
@@ -164,3 +164,39 @@ The original Consequences figures describe the previous 0.8 confidence
 cut. Its 11.3% figure refers to kept pages with body recall below 0.5.
 The original phrase "below 0.8 recall" is a typographical error, confirmed
 by the Experiment 33 calibration and Experiment 39 reproduction.
+
+## Addendum (2026-11-03)
+
+Change `page-routing-default` makes `page` the only routing unit.
+Master flow decision D2 (`openspec/changes/doc-reading-master-flow/design.md`)
+records the order. The operator accepted the flip on the evidence of the
+`rf06` 10-page page-mode run, before any new-document re-test. The earlier
+rule "re-test on new documents before any default change" stopped being a
+gate.
+
+1. `ocr_routing_unit` defaults to `page`, and `page` is its only legal
+   value. `OCR_ROUTING_UNIT=document` fails start-up with a message that
+   names `page`. `"ocr_routing_unit": "document"` in `omrs.jsonc` is listed
+   as a settings-file problem and ignored.
+2. The document unit is deleted. This removes the whole-PDF worker path,
+   the document gate from [ADR-065](065-ocr-fallback-gate-promoted-to-packaged-default.md)
+   (`ocr_required_by_gate`, the 10% flagged-page rule and the 0.5
+   confidence rule), the document-unit maths condition and the module
+   `integrations/pdf/ocr_policy.py`.
+3. The settings `ocr_fallback_min_confidence`, `ocr_fallback_page_fraction`
+   and `ocr_maths_page_fraction` are removed. Each environment name fails
+   start-up and names its removal. Each `omrs.jsonc` key is listed as
+   retired and ignored. `ocr_fallback_enabled` and
+   `ocr_maths_routing_enabled` stay.
+4. Decision 3 changes for a missing local runtime (for example no PDFium).
+   Flagged pages go to the worker engine in one page-listed request. They no
+   longer fall back to native text (issue #161). Only when no OCR route
+   exists either do the pages keep native text and count unresolved, with
+   one warning that names both tiers.
+5. The index identity schema moves from 6 to 7. The routing payload is
+   `{enabled, routing_unit, blank_page_test, local_tier}`. The maths block
+   is `{enabled, detector_version}`. The page-source counts are excluded for
+   every source. Every existing source reindexes once on its next ingest.
+
+The Settings > Document reading page now has six keys. ADR-065 stays as the
+record of the document-unit gate; this addendum supersedes it for routing.

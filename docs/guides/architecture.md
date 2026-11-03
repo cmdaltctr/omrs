@@ -483,8 +483,8 @@ engine name only; the explicit `OCR_WORKER_COMMAND` override was removed
 (ADR-105). See [migration](ingestion.md#provision-the-engines).
 
 Before each worker dispatch, `OcrRoutes.select()` chooses an available
-primary, otherwise the fallback. If neither is available, the existing
-partial-text behaviour applies. A post-dispatch failure remains a
+primary, otherwise the fallback. If neither is available, flagged pages
+keep native text and count unresolved. A post-dispatch failure remains a
 per-file error without a cross-route retry. Each client starts its parsing
 subprocess lazily. Identical commands and working directories share a
 client; owner shutdown closes each distinct client. The timeout grows
@@ -494,11 +494,8 @@ with requested page count, with `OCR_WORKER_REQUEST_TIMEOUT` as its floor.
 Its closed, versioned font list includes maths fonts with Unicode maps.
 `maths_routing.py` keeps the routing decisions outside the reader wrapper:
 
-- Under `document`, a maths-page share of at least
-  `OCR_MATHS_PAGE_FRACTION` selects the whole PDF. The default is `0.10`;
-  `0.0` disables this condition.
-- Under `page`, maths pages skip local OCR and join locally escalated
-  pages in one worker request. Unresolved maths pages keep native text.
+- Maths pages skip local OCR and join locally escalated pages in one
+  worker request. Unresolved maths pages keep native text.
 
 `OCR_MATHS_ROUTING_ENABLED=false` disables maths routing, and the master
 `OCR_FALLBACK_ENABLED=false` disables all OCR routing. The answering
@@ -506,10 +503,11 @@ fingerprint supplies `ocr_backend`; documents with several text producers
 report `mixed`. The scalar `pages_maths_font` stays out of embedding and
 language-model metadata text.
 
-Source identity includes both route fingerprints and a maths-routing
-block for every source. The upgrade causes one-off reprocessing on the
-next ingest. This branch shares schema 6 with reader-output normalisation;
-the added payload also invalidates earlier schema-6 digests.
+Source identity includes the routing payload `{enabled, routing_unit,
+blank_page_test, local_tier}`, both route fingerprints and the maths block
+`{enabled, detector_version}` for every source. The page-source counts are
+excluded. Identity schema 7 reindexes every existing source once on its
+next ingest.
 
 The dots-mocr engine needs explicit model-licence acceptance. It checks
 model-code hashes before loading and parses offline. Experiment 37 measured
@@ -633,7 +631,7 @@ peers stays an integration.
 Every Python module under `src/omrs/integrations/`, classified. A contract
 test fails when a module is missing from this table.
 
-<!-- integration-inventory:start count=52 -->
+<!-- integration-inventory:start count=51 -->
 
 | Module                                   | Availability                                                   | Selector                                                            | Shared contract                               | Fallback owner                                                                    | Disposition                                                         |
 | ---------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
@@ -661,14 +659,13 @@ test fails when a module is missing from this table.
 | `omrs.integrations.llamacpp_runtime.spec` | Native | None | Frozen `RuntimeSpec` (id, role, mode, argv, files, build, port policy, slots) | None | Chat and embeddings builders; free-port OCR runtime; no `--sleep-idle-seconds` |
 | `omrs.integrations.llamacpp_runtime.state` | Native | `OMRS_STATE_DIR`, `$XDG_STATE_HOME` | `server.json` atomic read/write and the state root | Missing or broken file reads as no record | Local-disk runtime state shared by every OMRS process |
 | `omrs.integrations.pdf`               | Native                                                         | None                                                                | `get_pdf_reader(reader)`                      | None                                                                              | Public facade exposing the factory                                  |
-| `omrs.integrations.pdf.blank_pages` | Base, via `liteparse` renders | `OCR_ROUTING_UNIT=page`, flagged pages only | `find_blank_pages` frozenset and `BLANK_PAGE_TEST_VERSION` | Render or score failure → no page blank; every page keeps its normal route | Edge-free stroke-ink blank test with a versioned threshold (change `skip-blank-pages-before-worker`) |
+| `omrs.integrations.pdf.blank_pages` | Base, via `liteparse` renders | `OCR_FALLBACK_ENABLED`, flagged pages only | `find_blank_pages` frozenset and `BLANK_PAGE_TEST_VERSION` | Render or score failure → no page blank; every page keeps its normal route | Edge-free stroke-ink blank test with a versioned threshold (change `skip-blank-pages-before-worker`) |
 | `omrs.integrations.pdf.factory`       | Native                                                         | `PDF_READER=auto`                                                   | Reader instance with `load_data`              | Factory itself (LiteParse → pypdfium2 → pypdf probe, for direct `auto` callers)   | Registry-backed factory; `auto` stays ordered capability resolution |
 | `omrs.integrations.pdf.liteparse`     | Base dependency (despite the stale docstring naming an extra)  | `PDF_READER=liteparse`                                              | `load_data`                                   | `compose.resolve_pdf_reader` `auto` probe                                         | Registered reader strategy                                          |
 | `omrs.integrations.pdf.maths_pages` | Base, via `pypdf` | `OCR_MATHS_ROUTING_ENABLED` | `maths_font_pages` frozenset of 1-based pages | Unreadable font resources → no pages flagged | Closed, versioned maths-font list (`MATHS_DETECTOR_VERSION`) |
-| `omrs.integrations.pdf.maths_routing` | Native | `OCR_MATHS_ROUTING_ENABLED`, `OCR_MATHS_PAGE_FRACTION` | Document-unit condition and page-unit split | Disabled → routing unchanged | Maths-page decisions the pdf-inspector seam calls |
-| `omrs.integrations.pdf.ocr_policy`    | Native                                                         | None                                                                | `OCR_UNCONDITIONAL_TYPES` frozenset           | None                                                                              | Pure routing-policy constant; shared by routing and identity        |
-| `omrs.integrations.pdf.ocr_routing`   | Native                                                         | `PDF_READER=pdf_inspector` and `OCR_FALLBACK_*`                     | `OcrRoutedPdfInspector` and OCR diagnostics  | Keeps partial pdf-inspector Markdown before dispatch                              | Calibrated routing gate around the pdf-inspector strategy           |
-| `omrs.integrations.pdf.page_routing` | Base dependency (`pdf-inspector`) | `OCR_ROUTING_UNIT=page` (opt-in; `document` is the default) | `page_evidence`, `local_ocr`, `resolve_local_model_identity`, `merge_pages` | Full page scan raises — the page unit has no sampled evidence to fall back to | Page-unit OCR routing: per-page evidence, the local tier with its post-check, and the page-source counts; the seam emits one document per page |
+| `omrs.integrations.pdf.maths_routing` | Native | `OCR_MATHS_ROUTING_ENABLED` | Maths-page detection and page split | Disabled → routing unchanged | Maths-page decisions the pdf-inspector seam calls |
+| `omrs.integrations.pdf.ocr_routing`   | Native                                                         | `PDF_READER=pdf_inspector` and `OCR_FALLBACK_ENABLED`               | `OcrRoutedPdfInspector` and OCR diagnostics  | No OCR route before dispatch: flagged pages keep native text and count unresolved | Page-level routing seam around the pdf-inspector strategy           |
+| `omrs.integrations.pdf.page_routing` | Base dependency (`pdf-inspector`) | `OCR_ROUTING_UNIT=page` (the default and only legal value) | `page_evidence`, `local_ocr`, `resolve_local_model_identity`, `merge_pages` | Full page scan raises — the page unit has no sampled evidence to fall back to | Page-unit OCR routing: per-page evidence, the local tier with its post-check, and the page-source counts; the seam emits one document per page |
 | `omrs.integrations.pdf.pdf_inspector` | Base dependency (compatibility `pdf-inspector` extra retained) | `PDF_READER=pdf_inspector` (packaged default, ADR-050)              | `load_data`                                   | `compose.resolve_pdf_reader` missing-backend error → pypdf                        | Registered reader strategy; configuration-owned default             |
 | `omrs.integrations.pdf.pypdf`         | Base, via `llama-index-readers-file`                           | `PDF_READER=pypdf`                                                  | `load_data`                                   | Terminal `auto` tier                                                              | Registered reader strategy                                          |
 | `omrs.integrations.pdf.pypdfium`      | Optional `pdf-pypdfium2` extra                                 | `PDF_READER=pypdfium2`                                              | `load_data`                                   | None                                                                              | Registered reader strategy                                          |

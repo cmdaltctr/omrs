@@ -224,13 +224,11 @@ overlap stays inside one page. The chunker carries the open heading path from
 one page to the next page of the same PDF, so the first chunks of a page keep
 the section heading that an earlier page opened.
 
-Two cases give one document without `page` or `page_label`:
+One case gives one document without `page` or `page_label`:
 
 - The per-page call fails, or gives no text while the whole-document Markdown
   has text. The adapter then emits the whole-document Markdown and logs a
   warning.
-- The OCR worker reads the whole PDF under the `document` routing unit. The
-  worker returns one text for the file.
 
 When the extraction-fallback chain recovers the text, it also keeps one
 document per page. LiteParse pages keep their own numbers. pypdf pages get the
@@ -275,7 +273,7 @@ engines. Only PDF sources are normalised; a `.md` file is left as written.
 
 Set `INGESTION__NORMALISE_READER_OUTPUT=false` to index raw reader text, for
 example in a reader comparison. The setting and the normaliser version are
-part of the index identity (schema 6), so changing either reprocesses every
+part of the index identity (schema 7), so changing either reprocesses every
 source once on its next ingest. See
 [TDR-028](../tdr/028-normalise-reader-markdown-before-chunking.md).
 
@@ -287,21 +285,22 @@ that content never reaches the index. The OCR fallback sends those PDFs
 to isolated OCR engines: dots-mocr is the default primary engine, with
 PaddleOCR-VL as fallback when the primary is unavailable before dispatch.
 
-**Routing is on by default** at the promoted gate
-([ADR-065](../adr/065-ocr-fallback-gate-promoted-to-packaged-default.md)):
-enabled, with the calibrated `0.5` confidence and `0.10` page-fraction
-thresholds. Experiment 29 validated the gate on an operator-approved
-17-PDF collection — zero false routes on the held-out papers, both
-genuinely-needy documents caught.
+**Routing is on by default**
+([ADR-065](../adr/065-ocr-fallback-gate-promoted-to-packaged-default.md)),
+and it judges every page
+([ADR-069](../adr/069-page-level-ocr-routing-and-the-pdfium-runtime.md)).
+The document-level gate that ADR-065 promoted, with its `0.5` confidence
+and `0.10` page-fraction thresholds, is gone. Experiment 29 validated that
+gate on an operator-approved 17-PDF collection.
 
 OCR is expensive. Earlier PaddleOCR-VL measurements took 34–106 seconds
 per page against roughly one second per file on the fast path.
 dots.mocr took 7–56 seconds per page using Metal Performance Shaders (MPS)
 on Apple Silicon in Experiment 34. Time depends on the page and hardware.
-The thresholds exist so that cost lands only on files
-that need it, and with no worker provisioned an OCR-required PDF
-degrades to its partial extraction plus an actionable warning rather
-than failing. Set `OCR_FALLBACK_ENABLED=false` to opt out entirely.
+Page routing exists so that cost lands only on pages
+that need it. With no OCR route available, a flagged page
+degrades to its native text plus an actionable warning rather
+than failing the file. Set `OCR_FALLBACK_ENABLED=false` to opt out entirely.
 
 The earlier prevalence concern is on record: on a library of 79 real
 academic PDFs, only 2 documents genuinely lacked a text layer — but with
@@ -312,8 +311,8 @@ so "rare" is supported and "negligible" is not. See
 The same measurement identified a limitation in the original policy: it
 sent a 991-page `mixed` document to OCR in full, despite extracting 1,127
 characters per page with only 10 of 991 pages flagged. That defect was
-fixed on 2026-09-10: `mixed` is no longer in the unconditional routing
-set and now routes by the calibrated thresholds.
+fixed on 2026-09-10 and is now closed for good: page routing sends only
+the flagged pages to OCR, whatever the document type.
 
 Workers live under `ocr-workers/`. The shared `core/` package owns the
 protocol, framing loop, validation and capability command. Each project
@@ -327,44 +326,26 @@ On the `pdf_inspector` path, the routing seam uses `pdf_type`,
 `pdf_confidence`, the count of pages flagged for OCR, and the page count.
 When maths routing is enabled, it also reads the PDF's font resources.
 
-Under the default `document` unit, with OCR enabled and a route available,
-a PDF routes when any condition below holds:
-
-1. `pdf_type` is `scanned` or `image_based`. This is unconditional and
-   ignores the thresholds, because both labels mean the whole document
-   is pictures and no threshold can change that.
-2. Other types, including `mixed` and `text_based`, route if
-   `pdf_confidence` falls below a positive `OCR_FALLBACK_MIN_CONFIDENCE`,
-   or the flagged-page proportion reaches a positive `OCR_FALLBACK_PAGE_FRACTION`.
-3. With maths routing enabled, the maths-page proportion reaches a positive
-   `OCR_MATHS_PAGE_FRACTION` (default `0.10`).
-
-`mixed` sits in the second group. It means "some pages carry text and
-some do not", which the page-fraction threshold can evaluate. The whole
-file is dispatched together, with no page-level stitching. The 991-page
-document from experiment 28 motivated this fix; see
+With OCR enabled and a route available, OMRS judges every page. A page
+goes to OCR when pdf-inspector flags it as needing OCR. With maths routing
+enabled, a page that uses a recognised maths font goes to OCR too. A
+scanned or image-based PDF flags all its pages. A `mixed` PDF flags only
+the pages that carry no text. The 991-page document from experiment 28
+motivated this design; see
 [ADR-064](../adr/064-input-quality-promotion-decisions.md).
 
-OCR routing is on by default at the promoted gate (ADR-065, Experiment
-29): `OCR_FALLBACK_ENABLED=true`, `OCR_FALLBACK_MIN_CONFIDENCE=0.5`,
-`OCR_FALLBACK_PAGE_FRACTION=0.10`. The flag and both thresholds ship
-together — enabling the switch while leaving the thresholds at `0.0`
-silently misses threshold-flagged documents. With no worker
-provisioned, an OCR-required PDF keeps its partial extraction and the
-batch continues with an actionable warning.
+`OCR_FALLBACK_ENABLED=true` is the packaged default (ADR-065). With no
+worker provisioned and no local runtime, a flagged page keeps its native
+text and the batch continues with an actionable warning.
 
 Layout complexity is not a rule. Multi-column and table-heavy PDFs stay
 on the fast path when their text extracts cleanly and no maths condition
 applies. Experiment 24 confirmed the fast-path Markdown is byte-identical with the fallback
 enabled and disabled.
 
-The whole PDF goes to the worker, not individual pages. There is no
-page-level stitching between the two readers — **under the default
-`document` unit**. The opt-in `page` unit below changes exactly that.
-The worker returns one text for the whole PDF, so a worker-read document
-carries no `page` or `page_label`. On the fast path and the degraded path,
-the routing seam keeps the page documents and stamps the OCR diagnostics on
-each one.
+Only flagged pages go to OCR. A page that the local tier or the worker
+reads carries `page` and `page_label` like any other page document. The
+routing seam stamps the OCR diagnostics on each page document.
 
 ### Maths pages and engine selection
 
@@ -376,14 +357,14 @@ structure. The detector reads font resources without rendering pages or
 calling a model. Unreadable resources flag no pages. Equations drawn as
 images or vector paths without recognised fonts are outside its scope.
 
-Under `document`, the maths condition sends the whole PDF to OCR. Under
-`page`, maths pages skip the local tier and join locally escalated pages
+Maths pages skip the local tier and join locally escalated pages
 in one request. A page in both groups is sent once. Maths pages keep
 native text and count as unresolved if no route supplies usable text.
 
 Set `OCR_MATHS_ROUTING_ENABLED=false` to disable this detector and its
-routing. `OCR_MATHS_PAGE_FRACTION=0.0` disables only the document-unit
-condition. The master OCR switch still applies.
+routing. The master OCR switch still applies. OMRS removed
+`OCR_MATHS_PAGE_FRACTION`: a maths page routes on its own, so no page
+fraction applies.
 
 Every worker request selects the primary route first. The fallback is
 selected only when the primary is unavailable before dispatch. A failure
@@ -391,9 +372,11 @@ after dispatch is a per-file error and never retries on the other route.
 If both routes resolve to the same command and working directory, they
 share one client. Startup logs name the resolved routes and availability.
 
-### Page-level routing (opt-in, `OCR_ROUTING_UNIT=page`)
+### Page-level routing
 
-Setting `OCR_ROUTING_UNIT=page` routes per page instead of per file
+OMRS routes per page. `OCR_ROUTING_UNIT=page` is the default and the only
+legal value; `OCR_ROUTING_UNIT=document` fails start-up with a message that
+names `page`
 ([ADR-069](../adr/069-page-level-ocr-routing-and-the-pdfium-runtime.md)).
 Every page is scanned; flagged non-maths pages run through pdf-inspector's local
 OCR (PP-OCRv6 Small on ONNX Runtime, CPU, no PyTorch) at roughly 0.75 s
@@ -420,13 +403,13 @@ whole PDF. They sum to `page_count`:
 | `ocr_pages_local` | Pages whose text is local OCR |
 | `ocr_pages_worker` | Pages whose text is the worker's |
 | `ocr_pages_blank` | Flagged pages the blank test removed before any OCR tier; they keep their native text |
-| `ocr_pages_unresolved` | Flagged, non-blank pages no tier produced text for: an escalation came back empty, or the local tier never ran. They keep their best available text |
+| `ocr_pages_unresolved` | Flagged, non-blank pages no tier produced text for: an escalation came back empty, or no OCR route was available. They keep their best available text |
 
 Before local OCR runs, the blank test renders each flagged page and
 measures stroke ink. A page below the fixed threshold (1.5e-4 of its
 pixels, version 1 of the test) is blank: it skips both OCR tiers and
 counts `ocr_pages_blank`, so `unresolved` means only "an escalation
-produced no text" or "the local tier never ran". Three known limits,
+produced no text" or "no OCR route was available". Three known limits,
 accepted: a page whose only mark is a page number counts blank (the
 number stays in the text when the native layer read it, otherwise it is
 lost; `page_label` still carries it), a page whose only mark is one
@@ -446,10 +429,12 @@ Degradation never fails the file. A missing worker, a reply that
 cannot be attributed per page, or an empty per-page entry keeps the
 best available text (local, then native) and counts the page
 unresolved; no marker is inserted into retrieval text. A missing local
-runtime keeps native text for flagged pages and warns once, naming
-what is missing. A worker failure after a complete request was flushed
-still fails the file, exactly as the document unit's post-dispatch
-boundary does. When page routing finds no text on any page and the
+runtime (for example no PDFium) sends the flagged pages to the worker
+engine in one page-listed request. They never fall back to native text
+for that reason (issue #161). Only when no OCR route exists either do
+the pages keep native text and count unresolved, with one warning that
+names both missing tiers. A worker failure after a complete request was
+flushed still fails the file. When page routing finds no text on any page and the
 reader's fallback chain rescued the document, the rescued text is
 emitted with all-native counts.
 
@@ -469,26 +454,22 @@ cached model, the tier degrades. `OCR_LOCAL_MODEL_DIRECTORY`, when
 set, points at the artifact leaf directory (`<name>/<revision>`), not
 the cache root.
 
-Switching an install to `page` reindexes its sources once: the routing
-unit, the escalation threshold and the resolved model identity join
-the source index identity under that unit, and a different engine
-reads the pages. Raising the default cut from 0.8 to 0.9 also re-indexes
-page-unit sources once on their next ingest. Explicit operator values
-still apply. This cut change leaves the `document` unit's identity unchanged.
-The modular-engine upgrade also changes identity for
-`document` installs, as described below. The local tier's quality residual
-is accepted and named in ADR-069; the deferred retrieval experiment gates any future default
-change.
+The routing unit, the escalation threshold and the resolved model
+identity are part of the source index identity, because a different engine
+reads the pages. Raising the default cut from 0.8 to 0.9 reindexes
+sources once on their next ingest. Explicit operator values
+still apply. Identity schema 7 reindexes every source once, as described
+under [Routing identity](#routing-identity-and-existing-indexes). The local
+tier's quality residual is accepted and named in ADR-069; the deferred
+retrieval experiment gates any future default change.
 
 ### Configuration
 
 | Variable                      | Default | Meaning                                                          |
 | ----------------------------- | ------- | ---------------------------------------------------------------- |
-| `OCR_FALLBACK_ENABLED`        | `true`  | Master switch. Off means no PDF ever reaches the worker.         |
-| `OCR_FALLBACK_MIN_CONFIDENCE` | `0.5`   | Confidence floor for text-based PDFs. `0.0` never triggers.      |
-| `OCR_FALLBACK_PAGE_FRACTION`  | `0.10`  | Flagged-page proportion that triggers OCR. `0.0` never triggers. |
-| `OCR_ROUTING_UNIT`            | `document` | `page` opts into per-page routing (see above).                 |
-| `OCR_LOCAL_MIN_CONFIDENCE`    | `0.9`   | Escalation cut for the local tier (page unit only).               |
+| `OCR_FALLBACK_ENABLED`        | `true`  | Switches OCR routing on and off. Off means no page reaches OCR. |
+| `OCR_ROUTING_UNIT`            | `page`  | Only legal value. `document` fails start-up.                      |
+| `OCR_LOCAL_MIN_CONFIDENCE`    | `0.9`   | Escalation cut for the local tier.                                |
 | `OCR_LOCAL_OFFLINE`           | `false` | Forbid the model download.                                        |
 | `OCR_LOCAL_MODEL_DIRECTORY`   | empty   | Model artifact leaf directory; empty means the default cache.     |
 | `OCR_WORKERS_DIR`             | empty   | Absolute path to `ocr-workers`; empty disables folder-based routes. |
@@ -497,30 +478,28 @@ change.
 | `OCR_WORKER_REQUEST_TIMEOUT`  | `300.0` | Minimum parse-response timeout in seconds. |
 | `OCR_WORKER_SECONDS_PER_PAGE` | `120.0` | Timeout allowance per requested page in seconds. |
 | `OCR_MATHS_ROUTING_ENABLED`   | `true`  | Detect maths fonts and route affected pages. |
-| `OCR_MATHS_PAGE_FRACTION`     | `0.10`  | Maths-page proportion that routes a whole PDF; `0.0` disables this document-unit condition. |
 
 The timeout is `max(OCR_WORKER_REQUEST_TIMEOUT, requested_pages * OCR_WORKER_SECONDS_PER_PAGE)`.
 With the defaults, a 14-page request gets 1,680 seconds.
 
-Both `0.0` gate thresholds disable their conditions. Under `document`,
-with maths routing also disabled, only `scanned` and `image_based` PDFs
-then route. The page unit follows its per-page rules instead.
-
-The first three fields form the promoted routing gate.
-`0.5` / `0.10` are the values Experiment 29 approved on the frozen plan's
-10% flagged-page tolerance; Experiment 23 calibrated `0.5` / `0.5` on the
-committed calibration fixtures.
+OMRS removed three settings with the document routing unit:
+`OCR_FALLBACK_MIN_CONFIDENCE`, `OCR_FALLBACK_PAGE_FRACTION` and
+`OCR_MATHS_PAGE_FRACTION`. OCR routing judges every page, so the
+document-level threshold is gone. Each name in the environment fails
+start-up. Each lower-case key in `omrs.jsonc` is listed as retired and
+ignored.
 
 ### Routing identity and existing indexes
 
-Source identity includes the sorted unconditional routing types, both
-route fingerprints, and the maths-routing flag, fraction and detector
-version. These fields apply to every source, including non-PDF sources
-and sources with OCR disabled. This branch uses schema 6, shared with
-reader-output normalisation; the added payload also changes earlier
-schema-6 digests.
+Source identity includes the OCR routing payload `{enabled, routing_unit,
+blank_page_test, local_tier}`, both route fingerprints, and the maths block
+`{enabled, detector_version}`. These fields apply to every source,
+including non-PDF sources and sources with OCR disabled. The page-source
+counts are excluded for every source. This branch uses schema 7. Schema 6
+was the earlier payload with the document-gate thresholds and the maths
+page fraction.
 
-The upgrade causes one-off reprocessing on the next ingestion. Later
+The move to schema 7 reindexes every existing source once on its next ingestion. Later
 changes to either engine fingerprint or maths-routing input also change
 identity. Reading an index does not rebuild it. Keep preserved experiment
 databases out of ingestion and migration tests.
@@ -634,8 +613,8 @@ in the fingerprint.
 
 ### When the worker is not there
 
-If a PDF needs OCR but no usable worker exists **before dispatch**,
-ingestion keeps `pdf-inspector`'s partial Markdown, marks the result
+If flagged pages need OCR but no usable route exists **before dispatch**,
+ingestion keeps the pages' native text, marks the result
 degraded through the OCR metadata, logs an actionable warning naming
 `OCR_WORKERS_DIR`, and continues
 the batch. Nothing is fabricated and no other file fails.
@@ -653,7 +632,7 @@ what happened by reading a retrieval result:
 
 | Key                 | Meaning                                   |
 | ------------------- | ----------------------------------------- |
-| `ocr_required`      | The OCR gate or maths condition selected this PDF. |
+| `ocr_required`      | At least one page was flagged for OCR or maths routing. |
 | `ocr_used`          | The worker actually parsed it.            |
 | `ocr_backend`       | `pdf_inspector`, `dots_mocr` or `paddleocr_vl`; legacy workers can report `ocr_worker`. |
 | `pages_needing_ocr` | Scalar count of flagged pages.            |
@@ -663,14 +642,14 @@ number of pages with recognised maths fonts. It is separate from
 `pages_needing_ocr`, which counts pages flagged by pdf-inspector.
 Disabling maths routing omits `pages_maths_font`.
 
-Under the `page` routing unit two of these generalise: `ocr_used` is
+Two of these generalise to pages: `ocr_used` is
 true when OCR produced the text of at least one page, local or worker;
 `ocr_backend` also takes `pdf_inspector_ocr` (the local tier alone
 produced the text) and `mixed` (more than one backend did). Five
 further scalar keys — `ocr_pages_native`, `ocr_pages_local`,
 `ocr_pages_worker`, `ocr_pages_blank`, `ocr_pages_unresolved` — sum to
 `page_count` and carry the per-page provenance; see
-[page-level routing](#page-level-routing-opt-in-ocr_routing_unitpage).
+[page-level routing](#page-level-routing).
 Like every key in this section they are excluded from embedding text.
 
 Read them together:
@@ -713,10 +692,11 @@ is not installed, or its retry raises or yields no text, pypdf retries
 last. It is the always-available registered plain-text reader, which
 preserves the previous coverage.
 
-When recovery succeeds, `pages_needing_ocr` reads `0` — the pages were
-flagged only by the failed extraction — and the file takes the fast
-path. When both tiers find no text, the original flagged count stands
-and neither key is stamped, so the OCR gate still sees the evidence.
+When recovery succeeds, the adapter sets `pages_needing_ocr` to `0`.
+The page routing unit then replaces it with the full-scan count, so
+pages the scan flags still go to OCR (see
+[page-level routing](#page-level-routing)). When both tiers find no text,
+the original flagged count stands and neither key is stamped.
 Both keys are parser telemetry and sit in
 `EXCLUDED_EMBED_METADATA_KEYS` alongside the OCR keys.
 

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import math
 import os
+import sys
 import tempfile
 from collections.abc import Iterator
 from contextlib import asynccontextmanager
@@ -83,6 +84,19 @@ _TEST_PERSIST_DIR = os.path.join(
     f"test_chroma_omrs_{os.getpid()}",
 )
 _TEST_COLLECTION = "test_documents"
+
+
+@pytest.fixture(autouse=True)
+def _local_ocr_tier_on(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Start every test with the local OCR tier on.
+
+    A runtime panic switches the tier off for the process (change
+    page-routing-default); a real-fixture test can trigger one, so the
+    switch must not leak into the next test.
+    """
+    page_routing = sys.modules.get("omrs.integrations.pdf.page_routing")
+    if page_routing is not None:  # never import it just to reset it
+        monkeypatch.setattr(page_routing, "_LOCAL_TIER_BROKEN", None)
 
 
 @pytest.fixture(autouse=True)

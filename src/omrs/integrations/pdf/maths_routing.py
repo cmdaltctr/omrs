@@ -5,15 +5,12 @@ here and the seam calls them:
 
 - :func:`detect_maths_pages` runs the font detector once per PDF, only
   when maths routing is enabled;
-- :func:`maths_condition` is the document-unit condition: the flagged
-  fraction reaches the configured maths page fraction (``0.0`` disables
-  it). The seam ORs it with the calibrated OCR gate;
 - :func:`split_page_routes` is the page-unit split: maths pages skip the
   local OCR tier and join the escalated pages in the one page-listed
   request to the OCR routes.
 
-Every value comes from the injected settings. This module holds no
-threshold constant.
+Every value comes from the injected settings. The document-unit maths
+condition went with the document unit (change page-routing-default).
 """
 
 from __future__ import annotations
@@ -43,24 +40,6 @@ def detect_maths_pages(file: Path | str, settings: Any) -> frozenset[int] | None
     if not maths_routing_enabled(settings):
         return None
     return maths_font_pages(file)
-
-
-def maths_condition(maths_pages: frozenset[int] | None, page_count: int, settings: Any) -> bool:
-    """Return True when the document unit must OCR the PDF for its maths pages.
-
-    Args:
-        maths_pages: Flagged pages, or ``None`` when routing is disabled.
-        page_count: Total pages in the PDF.
-        settings: Injected settings carrying ``ocr_maths_page_fraction``.
-
-    Returns:
-        True when the flagged fraction is at or above the configured
-        fraction. A fraction of ``0.0`` disables the condition.
-    """
-    if not maths_pages or page_count <= 0:
-        return False
-    fraction = settings.ocr_maths_page_fraction
-    return fraction > 0.0 and len(maths_pages) / page_count >= fraction
 
 
 def split_page_routes(

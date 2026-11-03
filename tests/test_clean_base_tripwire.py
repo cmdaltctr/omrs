@@ -235,7 +235,11 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +2 (2026-11-02, same change, PR review): test_blank_pages.py gains the two
 # safe-failure guard tests (undecodable payload, unscoreable page). No fastapi.
 # +1 (2026-11-02, same change, PR review): the one-pixel hairline limit pin.
-_BASE_EXECUTED = 9771
+# -36 (2026-11-03, page-routing-default, by test-ID diff, 112 removed, 76 added):
+# the document unit, its gate and the three removed settings go; page-only tests,
+# runtime-panic guards and removed-key refusals arrive. 3 of the net need fastapi
+# (test_web_document_reading.py, -4 +7, see _WEB_EXTRA_CASES).
+_BASE_EXECUTED = 9735
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -572,7 +576,8 @@ if not _has_qwen_tokenizer:
 # Re-measured from the CI logs of PR #160 (2026-11-01): the test job ran 9733 executed with
 # the web extra and the floors job ran 7880 without it, so 15 more managed-llamacpp-runtimes
 # cases need fastapi than the 33 first counted (1853).
-_WEB_EXTRA_CASES = 1853
+# +3 (2026-11-03, page-routing-default): test_web_document_reading.py, -4 +7.
+_WEB_EXTRA_CASES = 1856
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)

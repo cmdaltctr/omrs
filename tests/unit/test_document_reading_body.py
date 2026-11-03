@@ -30,13 +30,10 @@ VARIABLES = tuple(key.upper() for key in DOCUMENT_READING_KEYS) + ("OCR_WORKERS_
 DEFAULTS = {
     "pdf_reader": "pdf_inspector",
     "ocr_fallback_enabled": True,
-    "ocr_fallback_min_confidence": 0.5,
-    "ocr_fallback_page_fraction": 0.10,
-    "ocr_routing_unit": "document",
+    "ocr_routing_unit": "page",
     "ocr_engine_primary": "dots-mocr",
     "ocr_engine_fallback": "paddleocr-vl",
     "ocr_maths_routing_enabled": True,
-    "ocr_maths_page_fraction": 0.10,
 }
 OPTIONS = {"pypdf": None, "pypdfium2": "The package 'pypdfium2' is not installed."}
 
@@ -87,7 +84,7 @@ def harness(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Harness:
 # ── Shape ────────────────────────────────────────────────────────────────
 
 
-def test_nine_rows_in_key_order_with_defaults(harness: Harness) -> None:
+def test_six_rows_in_key_order_with_defaults(harness: Harness) -> None:
     harness.launch()
     body = harness.body()
     assert set(body) == {"revision", "settings", "pdf_readers", "pdf_reader_in_use", "ocr"}
@@ -139,7 +136,7 @@ def test_a_failing_reader_probe_gives_null(
 
 
 def test_a_file_value_reads_config_file_and_is_saved(harness: Harness) -> None:
-    harness.write('{ "pdf_reader": "liteparse", "ocr_fallback_page_fraction": 0.2 }')
+    harness.write('{ "pdf_reader": "liteparse", "ocr_fallback_enabled": false }')
     harness.launch()
     found = harness.rows()
     assert (found["pdf_reader"]["value"], found["pdf_reader"]["saved"]) == (
@@ -147,7 +144,7 @@ def test_a_file_value_reads_config_file_and_is_saved(harness: Harness) -> None:
         "liteparse",
     )
     assert found["pdf_reader"]["source"] == "config-file"
-    assert found["ocr_fallback_page_fraction"]["value"] == 0.2
+    assert found["ocr_fallback_enabled"]["value"] is False
     assert harness.body()["revision"] == file_revision(harness.folder)
 
 
@@ -171,9 +168,11 @@ def test_env_and_dotenv_lock_the_row(harness: Harness, monkeypatch: pytest.Monke
 
 def test_an_explicit_option_reads_default(harness: Harness) -> None:
     harness.launch()
-    harness.state.launch_settings = Settings(_env_file=harness.empty_env, ocr_routing_unit="page")
-    row = harness.rows()["ocr_routing_unit"]
-    assert (row["value"], row["source"], row["locked"]) == ("page", "default", False)
+    harness.state.launch_settings = Settings(
+        _env_file=harness.empty_env, ocr_engine_primary="paddleocr-vl"
+    )
+    row = harness.rows()["ocr_engine_primary"]
+    assert (row["value"], row["source"], row["locked"]) == ("paddleocr-vl", "default", False)
 
 
 # ── restart_pending and saved ────────────────────────────────────────────
@@ -201,14 +200,14 @@ def test_a_locked_key_is_never_pending(harness: Harness, monkeypatch: pytest.Mon
 
 def test_saved_is_null_for_a_value_that_breaks_its_rule(harness: Harness) -> None:
     harness.write(
-        '{ "pdf_reader": "pdfminer", "ocr_engine_primary": "../x", "ocr_maths_page_fraction": 3 }'
+        '{ "pdf_reader": "pdfminer", "ocr_engine_primary": "../x", "ocr_maths_routing_enabled": 3 }'
     )
     harness.launch()
     found = harness.rows()
     assert found["pdf_reader"]["saved"] is None
     assert found["pdf_reader"]["value"] == "auto"  # startup fallback, unchanged
     assert found["ocr_engine_primary"]["saved"] is None
-    assert found["ocr_maths_page_fraction"]["saved"] is None
+    assert found["ocr_maths_routing_enabled"]["saved"] is None
 
 
 def test_a_hand_written_blank_fallback_comes_back_as_not_set(harness: Harness) -> None:
@@ -274,15 +273,27 @@ def test_update_checks_follow_the_contract_order(
         409,
         "Remove OCR_ROUTING_UNIT from the environment or .env to edit it here.",
     )
-    assert update_refusal({"ocr_maths_page_fraction": 1.5}, launch) == (
+    assert update_refusal({"ocr_fallback_page_fraction": 0.5}, launch) == (
         400,
-        "ocr_maths_page_fraction: The value must be a number from 0.0 to 1.0.",
+        "ocr_fallback_page_fraction is not a document reading setting.",
+    )
+    assert update_refusal({"ocr_maths_routing_enabled": "yes"}, launch) == (
+        400,
+        "ocr_maths_routing_enabled: The value must be true or false.",
     )
     assert update_refusal({"pdf_reader": "pypdfium2"}, launch) == (
         400,
         "pdf_reader: This PDF reader is not installed. Install its package, then save again.",
     )
     assert update_refusal({"pdf_reader": "auto", "ocr_engine_primary": "nowhere"}, launch) is None
+
+
+def test_update_refuses_the_document_unit(harness: Harness) -> None:
+    harness.launch()
+    assert update_refusal({"ocr_routing_unit": "document"}, harness.state.launch_settings) == (
+        400,
+        "ocr_routing_unit: The value must be one of: page.",
+    )
 
 
 def test_the_builder_module_imports_no_web_framework() -> None:

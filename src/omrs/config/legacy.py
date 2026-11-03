@@ -131,10 +131,17 @@ _NEVER_SHIPPED_ALIASES: dict[str, str] = {
 #
 # managed-llamacpp-runtimes D12: the runtime manager stops an idle runtime after
 # a fixed 10 minutes, so the idle sleep setting has no replacement.
+#
+# page-routing-default: the page unit is the only routing unit, so the document
+# gate thresholds and the document-unit maths page fraction have no reader.
+_PAGE_UNIT_ONLY = "OCR routing judges every page, so the document-level threshold is gone"
 #: Removed names that nothing replaced, each with the reason the start-up message
 #: and the ``omrs.jsonc`` problem list give.
 NOTHING_REPLACES: dict[str, str] = {
     "LLAMACPP_IDLE_SLEEP_SECONDS": "OMRS stops an idle llama.cpp server after a fixed 10 minutes",
+    "OCR_FALLBACK_PAGE_FRACTION": _PAGE_UNIT_ONLY,
+    "OCR_FALLBACK_MIN_CONFIDENCE": _PAGE_UNIT_ONLY,
+    "OCR_MATHS_PAGE_FRACTION": _PAGE_UNIT_ONLY,
 }
 _REMOVED_ENV_VARS: dict[str, str] = {
     "OCR_WORKER_COMMAND": "OCR_WORKERS_DIR with OCR_ENGINE_PRIMARY",

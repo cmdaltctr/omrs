@@ -1,37 +1,25 @@
-"""OCR routing: the calibrated gate plus the seam around pdf-inspector.
+"""OCR routing: the seam around pdf-inspector, page by page.
 
-Two pieces live here:
+:class:`OcrRoutedPdfInspector` reads every PDF under the ``page`` routing
+unit, the only unit (change page-routing-default): a full scan flags the
+pages that need OCR, the blank test removes blank sheets, the local OCR
+tier reads each remaining flagged page, and the pages it cannot read go to
+the OCR routes in one page-listed request. Clean text-based PDFs, including
+multi-column and table-heavy layouts, never dispatch: layout complexity is
+not a routing input.
 
-- :func:`ocr_required_by_gate` — the calibrated routing decision
-  (design D7.3) as a pure function of the inspection evidence and the
-  injected settings. Every threshold is configuration; this module
-  contains no threshold constant.
-- :class:`OcrRoutedPdfInspector` — the smallest seam the spec allows
-  (task 2.3). It consumes the inspection evidence the pdf-inspector
-  adapter already produced (``pdf_type``, ``pdf_confidence``, the
-  scalar ``pages_needing_ocr`` count), decides fast path versus worker
-  dispatch, and routes the WHOLE PDF — no page stitching (task 2.4).
-  The fast and degraded paths keep the adapter's page documents; the
-  worker path returns one document without page keys, because the
-  worker's Markdown spans the whole PDF (change
-  pdf-inspector-page-provenance, design D5).
-  Clean text-based PDFs, including multi-column and table-heavy
-  layouts, never dispatch (task 2.5): layout complexity is not a gate
-  input.
+Every emitted document carries the OCR diagnostics ``ocr_required``,
+``ocr_used``, ``ocr_backend`` and the scalar ``pages_needing_ocr``, plus the
+five page-source counts.
 
-Both branches stamp the additive OCR diagnostics (task 2.10):
-``ocr_required``, ``ocr_used``, ``ocr_backend`` and the scalar
-``pages_needing_ocr`` (the adapter already emits the count — never the
-page list, which no vector store accepts).
+Failure behaviour:
 
-Failure behaviour follows design "Failure behaviour" 2/4/5 exactly:
-
-- worker unavailable BEFORE dispatch → keep the partial pdf-inspector
-  Markdown, stamp the degraded diagnostics, log an actionable message,
-  continue the batch (task 2.7);
-- worker failure AFTER dispatch → raise :class:`OcrPostDispatchError`
-  so the existing per-file reader error boundary reports the file
-  failed without substituting the partial Markdown (task 2.9).
+- a missing local OCR runtime sends the flagged pages to the OCR routes,
+  never back to native text (issue #161);
+- no OCR route before dispatch → the pages keep the best available text
+  and count unresolved, with an actionable warning;
+- worker failure AFTER dispatch → raise :class:`OcrPostDispatchError` so the
+  existing per-file reader error boundary reports the file failed.
 """
 
 from __future__ import annotations
@@ -42,15 +30,11 @@ from typing import Any
 
 from ..ocr_worker.client import OcrWorkerError
 from ..ocr_worker.managed import UNAVAILABLE_CODE
-from ..ocr_worker.protocol import PAGES_PROTOCOL_VERSION, ParseSuccess
+from ..ocr_worker.protocol import PAGES_PROTOCOL_VERSION
 from ..ocr_worker.routes import OcrRoutes, backend_id_of, request_timeout
 from .blank_pages import find_blank_pages
-from .maths_routing import detect_maths_pages, maths_condition, split_page_routes
+from .maths_routing import detect_maths_pages, split_page_routes
 from .maths_routing import stamp_maths_count as _stamp_maths
-from .ocr_policy import OCR_UNCONDITIONAL_TYPES
-from .ocr_policy import (
-    ocr_required_by_gate as ocr_required_by_gate,  # re-export (tests import it here)
-)
 from .page_routing import (
     OCR_BACKEND_LOCAL_OCR,
     PAGE_KEYS,
@@ -62,14 +46,16 @@ from .page_routing import (
     LocalOcrPage,
     PageResult,
     local_ocr,
+    local_tier_off_reason,
     merge_pages,
     page_documents,
     page_evidence,
+    switch_local_tier_off,
 )
 
 logger = logging.getLogger(__name__)
 
-#: The fast and degraded paths ran pdf-inspector alone. A worker result
+#: A rescued document was read by pdf-inspector alone. A worker result
 #: names the answering engine's ``backend_id`` (design D6).
 OCR_BACKEND_FAST_PATH = "pdf_inspector"
 
@@ -123,7 +109,7 @@ class OcrRoutedPdfInspector:
 
         Args:
             inner: The concrete pdf-inspector reader instance.
-            settings: Injected settings carrying the routing gate and
+            settings: Injected settings carrying the routing settings and
                 the worker request timeout.
             ocr_client: Injected :class:`OcrRoutes` (engine- or
                 operation-owned), or one managed client, which becomes a
@@ -135,7 +121,7 @@ class OcrRoutedPdfInspector:
         self._routes = OcrRoutes.of(ocr_client)
 
     def load_data(self, file: Path, *args: Any, **kwargs: Any) -> list:
-        """Read one PDF, routing it through the OCR gate.
+        """Read one PDF page by page through the OCR tiers.
 
         Args:
             file: Path to the PDF file.
@@ -143,13 +129,9 @@ class OcrRoutedPdfInspector:
             **kwargs: Forwarded to the wrapped reader.
 
         Returns:
-            The pdf-inspector page documents (fast or degraded path), each
-            stamped, or one document built from the worker's structured
-            Markdown with no page keys (worker path), always carrying the
-            four OCR diagnostics. Under the ``page`` routing unit, one
-            document per page with text, each read by the highest tier
-            that produced text for it and carrying the four page-source
-            counts.
+            One document per page with text, each read by the highest tier
+            that produced text for it and carrying the page-source counts
+            and the four OCR diagnostics.
 
         Raises:
             OcrPostDispatchError: On any worker failure after the
@@ -160,79 +142,7 @@ class OcrRoutedPdfInspector:
         documents = self._inner.load_data(file, *args, **kwargs)
         if not documents:
             return documents
-        if getattr(self._settings, "ocr_routing_unit", "document") == "page":
-            return self._page_unit_documents(file, documents)
-        # Every page document carries the same whole-PDF evidence (D5).
-        evidence = documents[0].metadata
-        page_count = int(evidence.get("page_count", 0))
-        maths_pages = detect_maths_pages(file, self._settings)
-        for document in documents:
-            _stamp_maths(document.metadata, maths_pages)
-        required = ocr_required_by_gate(
-            pdf_type=str(evidence.get("pdf_type", "")),
-            pdf_confidence=float(evidence.get("pdf_confidence", 1.0)),
-            pages_needing_ocr=int(evidence.get("pages_needing_ocr", 0)),
-            page_count=page_count,
-            settings=self._settings,
-        ) or maths_condition(maths_pages, page_count, self._settings)
-        if not required:
-            for document in documents:
-                _stamp_ocr_diagnostics(
-                    document.metadata,
-                    ocr_required=False,
-                    ocr_used=False,
-                    ocr_backend=OCR_BACKEND_FAST_PATH,
-                )
-            return documents
-
-        client = self._routes.select()
-        result, timeout = None, request_timeout(self._settings, page_count)
-        if client is not None:
-            try:
-                result = client.parse(str(file), timeout=timeout)
-            except OcrWorkerError as exc:
-                if exc.code != UNAVAILABLE_CODE:  # else refused before dispatch: no route (D10)
-                    raise OcrPostDispatchError(exc.code, exc.message) from exc
-        if result is None:
-            for document in documents:
-                _stamp_ocr_diagnostics(
-                    document.metadata,
-                    ocr_required=True,
-                    ocr_used=False,
-                    ocr_backend=OCR_BACKEND_FAST_PATH,
-                )
-            pdf_type = evidence.get("pdf_type", "")
-            logger.warning(
-                "OCR required for %s (pdf_type=%s, %s page(s) flagged) but the OCR routes "
-                "are unavailable — keeping the partial pdf-inspector extraction. "
-                "Provision an engine and set OCR_WORKERS_DIR to enable document understanding.",
-                getattr(file, "name", file),
-                pdf_type,
-                "classification-flagged"
-                if pdf_type in OCR_UNCONDITIONAL_TYPES
-                else "threshold-flagged",
-            )
-            return documents
-        return self._worker_document(evidence, result, backend_id_of(client))
-
-    def _worker_document(
-        self, evidence: dict[str, Any], result: ParseSuccess, backend: str
-    ) -> list:
-        """Build the worker-path document, preserving provenance metadata.
-
-        The worker's Markdown spans the whole PDF, so the document carries
-        no ``page`` or ``page_label`` (D5): a page number would be a guess.
-        """
-        from llama_index.core import Document
-
-        merged = {key: value for key, value in evidence.items() if key not in PAGE_KEYS}
-        _stamp_ocr_diagnostics(
-            merged,
-            ocr_required=True,
-            ocr_used=True,
-            ocr_backend=backend,
-        )
-        return [Document(text=result.markdown, metadata=merged)]
+        return self._page_unit_documents(file, documents)
 
     # ── The page routing unit (tasks 4.4, 4.5c, 4.6) ──────────────────
 
@@ -243,11 +153,11 @@ class OcrRoutedPdfInspector:
         (task 4.2), the pages the post-check rejects go to the worker in ONE request (task
         4.4), and the merge computes the counts and the backend (task 4.5c). Each page with
         text becomes its own document with its ``page`` (change
-        pdf-inspector-page-provenance). Degradation never fails the file (task 4.6): a
-        missing local runtime keeps native text, a missing or unattributable worker keeps
-        the best available text, and both count the affected pages unresolved. Only a worker
-        failure AFTER a complete request was flushed raises, exactly as the document unit's
-        post-dispatch boundary does.
+        pdf-inspector-page-provenance). A missing local runtime sends the flagged pages
+        to the worker (page-routing-default, issue #161). Degradation never fails the file
+        (task 4.6): a missing or unattributable worker keeps the best available text and
+        counts the affected pages unresolved. Only a worker failure AFTER a complete request
+        was flushed raises.
 
         Args:
             file: Path to the PDF file.
@@ -285,18 +195,17 @@ class OcrRoutedPdfInspector:
         results: list[PageResult] = []
         placed: set[int] = set()
         escalated: dict[int, LocalOcrPage | None] = dict.fromkeys(direct)
-        if local_pages_wanted:
+        no_tier = False  # neither tier can read the flagged pages; one warning said so
+        local_error = local_tier_off_reason() if local_pages_wanted else None
+        if local_pages_wanted and local_error is None:
             try:
                 local_pages = local_ocr(file, local_pages_wanted, settings=self._settings)
-            except Exception as exc:  # noqa: BLE001 - a missing runtime degrades, never fails
-                logger.warning(
-                    "Local OCR tier unavailable for %s (%s: %s); %d flagged page(s) "
-                    "keep native text and count unresolved",
-                    getattr(file, "name", file),
-                    type(exc).__name__,
-                    exc,
-                    len(local_pages_wanted),
-                )
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except BaseException as exc:  # noqa: BLE001 - a missing runtime escalates, never fails
+                local_error = f"{type(exc).__name__}: {exc}"
+                if not isinstance(exc, Exception):
+                    switch_local_tier_off(local_error)
             else:
                 for page in local_pages:
                     if page.escalates:
@@ -306,9 +215,33 @@ class OcrRoutedPdfInspector:
                             PageResult(page=page.page, text=page.text, source=PAGE_SOURCE_LOCAL)
                         )
                         placed.add(page.page)
+        if local_error is not None:
+            # Native text on a flagged page may be a junk hidden layer, so a
+            # missing local tier escalates every page it should have read.
+            escalated.update(dict.fromkeys(local_pages_wanted))
+            no_tier = self._routes.select() is None
+            if no_tier:
+                logger.warning(
+                    "Local OCR tier unavailable for %s (%s) and no OCR route; %d flagged "
+                    "page(s) keep native text and count unresolved. Install the local "
+                    "runtime, or provision an engine and set OCR_WORKERS_DIR.",
+                    getattr(file, "name", file),
+                    local_error,
+                    len(escalated),
+                )
+            else:
+                logger.warning(
+                    "Local OCR tier unavailable for %s (%s); %d flagged page(s) go to the OCR "
+                    "routes",
+                    getattr(file, "name", file),
+                    local_error,
+                    len(local_pages_wanted),
+                )
 
         worker_text, backend = (
-            self._escalated_worker_text(file, sorted(escalated)) if escalated else ({}, None)
+            self._escalated_worker_text(file, sorted(escalated))
+            if escalated and not no_tier
+            else ({}, None)
         )
 
         for entry in evidence:
@@ -345,7 +278,8 @@ class OcrRoutedPdfInspector:
                     PageResult(page=entry.page, text=entry.markdown, source=PAGE_SOURCE_BLANK)
                 )
             elif entry.page in flagged:
-                # The local tier never ran; native text is all there is.
+                # The local tier returned no entry for this page; native text
+                # is all there is.
                 results.append(
                     PageResult(page=entry.page, text=entry.markdown, source=PAGE_SOURCE_UNRESOLVED)
                 )
@@ -373,9 +307,8 @@ class OcrRoutedPdfInspector:
             # ADR-066 rescue of last resort: the scan produced no text on
             # any page, yet the wrapped reader recovered the document
             # through the fallback chain. That rescued text is the record;
-            # the counts report every page native, the same whole-document
-            # claim the document unit makes for a rescued file, with
-            # ``extraction_fallback_backend`` naming the true origin.
+            # the counts report every page native, a whole-document claim,
+            # with ``extraction_fallback_backend`` naming the true origin.
             metadata.update(
                 {
                     "ocr_pages_native": page_count,
@@ -421,8 +354,7 @@ class OcrRoutedPdfInspector:
 
         Raises:
             OcrPostDispatchError: On a worker failure after the complete
-                request was written and flushed — the same boundary the
-                document unit applies.
+                request was written and flushed.
         """
         name = getattr(file, "name", file)
         client = self._routes.select()

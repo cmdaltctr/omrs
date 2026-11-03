@@ -161,19 +161,18 @@ async def test_detector_change_triggers_reingestion(
     assert await _status(source, settings, _routes(primary, fallback), "maths_det") == "indexed"
 
 
-def test_fraction_change_moves_the_identity(effective_settings: Any) -> None:
-    """The maths page fraction is part of the identity."""
+def test_maths_toggle_moves_the_identity(effective_settings: Any) -> None:
+    """The resolved maths routing flag is part of the identity."""
     a = _identity(_settings(effective_settings))
-    b = _identity(_settings(effective_settings, ocr_maths_page_fraction=0.2))
+    b = _identity(_settings(effective_settings, ocr_maths_routing_enabled=False))
     assert a != b
 
 
 def test_maths_block_reads_injected_settings(effective_settings: Any) -> None:
-    """The block echoes the resolved flag, fraction and detector version."""
-    settings = _settings(effective_settings, ocr_maths_page_fraction=0.3)
+    """The block echoes the resolved flag and the detector version, nothing else."""
+    settings = _settings(effective_settings, ocr_maths_routing_enabled=False)
     assert maths_routing_payload(settings) == {
-        "enabled": True,
-        "page_fraction": 0.3,
+        "enabled": False,
         "detector_version": maths_pages.MATHS_DETECTOR_VERSION,
     }
 
@@ -190,13 +189,13 @@ def _identity(settings: Any, **kwargs: Any) -> str:
 def test_a_schema_6_source_indexed_before_this_change_reprocesses(
     effective_settings: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The schema stays 6 (shared bump), yet a pre-change schema-6 digest moves.
+    """The schema is 7, and the digest of a schema-6 payload differs from today's.
 
-    The pre-change payload is today's payload without the fallback
-    fingerprint, the maths block, and the fingerprint's ``backend_id``.
-    Its digest differs from today's, so every source indexed under the
-    earlier schema-6 payload reprocesses once. The digest covers the
-    whole payload, never the schema number alone.
+    The pre-change payload is today's payload under schema 6 with the
+    gate-shaped routing block (min confidence, page fraction and the
+    unconditional types). Its digest differs from today's, so every source
+    indexed under schema 6 reprocesses once. The digest covers the whole
+    payload, never the schema number alone.
     """
     settings = _settings(effective_settings)
     payloads: list[dict] = []
@@ -209,16 +208,20 @@ def test_a_schema_6_source_indexed_before_this_change_reprocesses(
     monkeypatch.setattr(source_state, "json", _Recorder())
     today = _identity(settings, ocr_worker_fingerprint=_fingerprint("dots_mocr"))
     payload = payloads[-1]
-    assert payload["schema"] == 6
-    before = dict(payload)
-    del before["ocr_fallback_fingerprint"], before["maths_routing"]
-    before["ocr_worker_fingerprint"] = {
-        k: v for k, v in payload["ocr_worker_fingerprint"].items() if k != "backend_id"
+    assert payload["schema"] == 7
+    assert set(payload["ocr_routing"]) == {
+        "enabled",
+        "routing_unit",
+        "blank_page_test",
+        "local_tier",
     }
-    before["embedding_text"] = {
-        "excluded_keys": [
-            k for k in payload["embedding_text"]["excluded_keys"] if k != "pages_maths_font"
-        ]
+    before = dict(payload)
+    before["schema"] = 6
+    before["ocr_routing"] = {
+        "enabled": True,
+        "min_confidence": 0.5,
+        "page_fraction": 0.10,
+        "unconditional_types": ["image_based", "scanned"],
     }
     monkeypatch.setattr(source_state, "json", json)
     canonical = json.dumps(before, sort_keys=True, separators=(",", ":"), ensure_ascii=True)

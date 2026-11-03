@@ -12,6 +12,10 @@ neither OCR block; the diff to this file shows the schema-4 extension
 schema 6 (reader normalisation version and toggle). Schema 6 also carries
 the fallback-route fingerprint and the maths-routing block of change
 modular-ocr-workers-dots-mocr, which shares the one bump (design D7).
+Schema 7 (change page-routing-default): the page unit is the only unit, so
+the routing payload drops the gate values and the unconditional types, the
+maths block drops its fraction, and the page-source counts join every
+install's excluded keys.
 
 The payload is captured by wrapping the module-local ``json`` binding, so
 the recorded structure is exactly what gets canonicalised and hashed —
@@ -67,7 +71,7 @@ EXPECTED_CHUNKING_SETTINGS_KEYS = {
     "markdown_min_chunk_fraction",
     "strategy_fallback",
 }
-EXPECTED_OCR_ROUTING_KEYS = {"enabled", "min_confidence", "page_fraction", "unconditional_types"}
+EXPECTED_OCR_ROUTING_KEYS = {"enabled", "routing_unit", "blank_page_test", "local_tier"}
 EXPECTED_OCR_FINGERPRINT_KEYS = {
     "available",
     "protocol_version",
@@ -136,16 +140,16 @@ def _baseline_payload(monkeypatch: pytest.MonkeyPatch) -> tuple[dict, str]:
 
 
 def test_index_identity_schema_value_is_pinned() -> None:
-    """Schema 6 tracks the reader normaliser version and enabled state."""
-    assert source_state._INDEX_IDENTITY_SCHEMA == 6
+    """Schema 7: page routing is the only unit (change page-routing-default)."""
+    assert source_state._INDEX_IDENTITY_SCHEMA == 7
 
 
 def test_index_identity_payload_shape_is_recorded(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Pin the exact key structure of the schema-6 payload."""
+    """Pin the exact key structure of the schema-7 payload."""
     payload, _ = _baseline_payload(monkeypatch)
 
     assert set(payload) == EXPECTED_TOP_LEVEL_KEYS
-    assert payload["schema"] == 6
+    assert payload["schema"] == 7
     assert set(payload["embedding"]) == EXPECTED_EMBEDDING_KEYS
     assert set(payload["embedding_text"]) == EXPECTED_EMBEDDING_TEXT_KEYS
     assert set(payload["tokenizer"]) == EXPECTED_TOKENIZER_KEYS
@@ -158,7 +162,6 @@ def test_index_identity_payload_shape_is_recorded(monkeypatch: pytest.MonkeyPatc
     assert set(payload["ocr_fallback_fingerprint"]) == EXPECTED_OCR_FINGERPRINT_KEYS
     assert payload["maths_routing"] == {
         "enabled": True,
-        "page_fraction": 0.10,
         "detector_version": 1,
     }
     assert set(payload["metadata_shape"]) == EXPECTED_METADATA_SHAPE_KEYS
@@ -173,24 +176,26 @@ def test_index_identity_payload_values_echo_configuration(monkeypatch: pytest.Mo
     assert payload["parser"]["text_format"] is None
     assert payload["chunking"]["effective_chunk_size"] == 512
     assert payload["chunking"]["effective_chunk_overlap"] == 100
-    # Scoped by routing unit (change page-level-ocr-routing): this payload is
-    # built on the default `document` unit, which can never emit the
-    # page-routing keys, so they are subtracted. Including them would
-    # reprocess every existing corpus for a key it will never see.
+    # Every install can emit the page-source counts now that page routing
+    # is the only unit (change page-routing-default), so nothing is scoped out.
     assert payload["embedding_text"]["excluded_keys"] == sorted(
-        set(source_state.EXCLUDED_EMBED_METADATA_KEYS)
-        - embed_exclusions.PAGE_ROUTING_ONLY_EMBED_KEYS
+        source_state.EXCLUDED_EMBED_METADATA_KEYS
     )
+    assert "ocr_pages_blank" in payload["embedding_text"]["excluded_keys"]
+    assert not hasattr(embed_exclusions, "PAGE_ROUTING_ONLY_EMBED_KEYS")
+    assert not hasattr(embed_exclusions, "scoped_excluded_keys")
     assert payload["tokenizer"] == {"model": "", "revision": ""}
     # Direct callers that pass no OCR keyword arguments still get the
     # complete identity: routing falls back to the settings values and
     # the fingerprint contributes the stable unavailable payload.
-    # The routing values are the promoted packaged defaults (ADR-065).
+    # The routing values are the page-unit defaults (page-routing-default).
+    from omrs.integrations.pdf.blank_pages import BLANK_PAGE_TEST_VERSION
+
     assert payload["ocr_routing"] == {
         "enabled": True,
-        "min_confidence": 0.5,
-        "page_fraction": 0.10,
-        "unconditional_types": ["image_based", "scanned"],
+        "routing_unit": "page",
+        "blank_page_test": BLANK_PAGE_TEST_VERSION,
+        "local_tier": {"min_confidence": 0.9},
     }
     fingerprint = payload["ocr_worker_fingerprint"]
     assert fingerprint["available"] is False
@@ -267,8 +272,10 @@ def test_normaliser_version_and_toggle_change_identity_for_every_source(
 #: Digest of a ``.md`` source under the baseline settings and the pinned
 #: embedder below, computed on 27 October 2026 with the ``v3`` source
 #: before the reader output revision existed. A non-PDF source must keep
-#: it, so no Markdown or code collection reprocesses.
-_MD_DIGEST_BEFORE_REVISION = "3a06f8a5a08edd836547be189e99f2b9e3b5a7ba3f9c1147fae1253b5c5d0302"
+#: it, so no Markdown or code collection reprocesses for the revision.
+#: Re-pinned on 3 November 2026 for schema 7 (change page-routing-default):
+#: that change reindexes every source once, by design.
+_MD_DIGEST_BEFORE_REVISION = "c27e477667271a174554e90f4a8d8231ca46d78e93e9b405f2aca6e59918aaa2"
 
 
 def _source_identity(
@@ -311,7 +318,7 @@ def test_pdf_source_carries_its_reader_revision(
 
     assert payload["parser"]["pdf_reader_output_revision"] == revision
     assert set(payload["parser"]) == EXPECTED_PARSER_KEYS | {"pdf_reader_output_revision"}
-    assert payload["schema"] == 6
+    assert payload["schema"] == 7
 
 
 def test_markdown_source_identity_is_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:

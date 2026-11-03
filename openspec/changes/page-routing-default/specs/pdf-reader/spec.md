@@ -4,13 +4,20 @@
 
 ### Requirement: The routing unit is `page`
 
-The `page` routing unit SHALL be the default and the only routing unit. A configuration or environment value of `document` for `ocr_routing_unit` SHALL fail at start-up with a message that names `page` as the routing unit in force. No other value SHALL be accepted.
+The `page` routing unit SHALL be the default and the only routing unit. An environment value of `document` for `ocr_routing_unit` SHALL fail at start-up with a message that names `page` as the only routing unit. A settings-file value of `document` SHALL be listed as a settings-file problem that names `page`, and SHALL NOT be used. No other value SHALL be accepted.
 
-#### Scenario: A stale document value is refused
+#### Scenario: A stale document value in the environment is refused
 
-- **GIVEN** `OCR_ROUTING_UNIT=document` or `"ocr_routing_unit": "document"` in the settings file
+- **GIVEN** `OCR_ROUTING_UNIT=document` in the environment
 - **WHEN** settings are resolved at start-up
 - **THEN** the start-up SHALL fail with a message naming `page` as the only routing unit
+
+#### Scenario: A stale document value in the settings file is not used
+
+- **GIVEN** `"ocr_routing_unit": "document"` in the settings file
+- **WHEN** settings are resolved at start-up
+- **THEN** the settings-file problem list SHALL name `ocr_routing_unit` and `page`
+- **AND** the routing unit in force SHALL be `page`
 
 #### Scenario: No value resolves to page
 

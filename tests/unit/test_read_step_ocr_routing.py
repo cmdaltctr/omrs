@@ -6,7 +6,9 @@ the ``ocr`` resource for the routes of those settings, so a node that turns
 OCR off reads without OCR, and a node that names another engine sends its
 request to that engine. A node that inherits uses the host engine.
 
-The pdf-inspector reader and the OCR clients are in-process fakes.
+The pdf-inspector reader, the page scan, the local OCR tier and the OCR
+clients are in-process fakes. The local tier is missing, so the one flagged
+page goes to the OCR route of the step settings (page-routing-default).
 """
 
 from __future__ import annotations
@@ -26,7 +28,7 @@ from omrs.core.ingestion.sources import SourceUnit
 from omrs.core.pipelines import CancellationFlag, NodeContext
 from omrs.integrations.ocr_worker.protocol import make_success
 from omrs.integrations.ocr_worker.routes import OcrRoutes
-from omrs.integrations.pdf import factory, maths_routing
+from omrs.integrations.pdf import factory, maths_routing, ocr_routing
 
 pytest.importorskip("pdf_inspector", reason="pdf-inspector is a base dependency (ADR-050)")
 
@@ -42,9 +44,8 @@ class _Client:
 
     def parse(self, pdf_path: str, *, pages: Any = None, timeout: Any = None) -> Any:
         self.calls += 1
-        return make_success(
-            "r", f"OCR by {self.fingerprint.backend_id}", ocr_backend="x", page_count=1
-        )
+        text = f"OCR by {self.fingerprint.backend_id}"
+        return make_success("r", text, ocr_backend="x", page_count=1, pages_markdown=[text])
 
 
 class _Pool:
@@ -61,7 +62,7 @@ class _Pool:
 
 
 class _ScannedPdf:
-    """pdf-inspector double: every PDF is a scanned PDF that needs OCR."""
+    """pdf-inspector double: every PDF is a one-page scan that needs OCR."""
 
     def load_data(self, file: Any, *args: Any, **kwargs: Any) -> list[Document]:
         metadata = {
@@ -76,13 +77,23 @@ class _ScannedPdf:
 
 @pytest.fixture
 def pool(monkeypatch: pytest.MonkeyPatch) -> _Pool:
-    """Read every PDF as a flagged scan; return the fake OCR pool."""
+    """Read every PDF as one flagged page; return the fake OCR pool."""
+
+    def _no_local_tier(*_args: Any, **_kwargs: Any) -> None:
+        raise RuntimeError("no local OCR runtime")
 
     async def _no_specialised(*_args: Any, **_kwargs: Any) -> None:
         return None
 
     monkeypatch.setattr(factory, "get_pdf_reader", lambda name: _ScannedPdf())
     monkeypatch.setattr(maths_routing, "maths_font_pages", lambda file: frozenset())
+    monkeypatch.setattr(
+        ocr_routing,
+        "page_evidence",
+        lambda file: [SimpleNamespace(page=1, markdown="partial native text", needs_ocr=True)],
+    )
+    monkeypatch.setattr(ocr_routing, "find_blank_pages", lambda file, pages: frozenset())
+    monkeypatch.setattr(ocr_routing, "local_ocr", _no_local_tier)
     monkeypatch.setattr(graph_adapters, "chunk_specialised_source", _no_specialised)
     return _Pool()
 
@@ -158,10 +169,10 @@ def test_with_read_options_applies_only_set_options(effective_settings: Any) -> 
     """Set options reach a copy; ``None`` inherits; the host settings stay as they were."""
     from omrs.core.ingestion.graph_adapters_values import with_read_options
 
-    host = effective_settings(pdf_reader="pypdf", ocr_fallback_page_fraction=0.3)
-    params = ReadParams(pdf_reader="pdf_inspector", ocr_routing_unit="page")
+    host = effective_settings(pdf_reader="pypdf", ocr_engine_fallback="dots-mocr")
+    params = ReadParams(pdf_reader="pdf_inspector", ocr_engine_primary="paddleocr-vl")
     step = with_read_options(host, params)
-    assert (step.pdf_reader, step.ocr_routing_unit) == ("pdf_inspector", "page")
-    assert step.ocr_fallback_page_fraction == 0.3
-    assert (host.pdf_reader, host.ocr_routing_unit) == ("pypdf", "document")
+    assert (step.pdf_reader, step.ocr_engine_primary) == ("pdf_inspector", "paddleocr-vl")
+    assert step.ocr_engine_fallback == "dots-mocr"
+    assert (host.pdf_reader, host.ocr_engine_primary) == ("pypdf", "dots-mocr")
     assert with_read_options(host, ReadParams()) is host

@@ -189,14 +189,14 @@ def test_a_read_failure_gives_the_envelope(harness: Harness, client: TestClient)
 # ── Write ────────────────────────────────────────────────────────────────
 
 
-def test_save_a_fraction(harness: Harness, client: TestClient) -> None:
+def test_save_a_boolean(harness: Harness, client: TestClient) -> None:
     harness.launch()
-    response = put(client, {"ocr_fallback_page_fraction": 0.2})
+    response = put(client, {"ocr_maths_routing_enabled": False})
     assert response.status_code == 200, response.text
     body = response.json()
-    assert parse_jsonc(harness.text())["ocr_fallback_page_fraction"] == 0.2
-    row = rows(body)["ocr_fallback_page_fraction"]
-    assert (row["value"], row["saved"], row["restart_pending"]) == (0.1, 0.2, True)
+    assert parse_jsonc(harness.text())["ocr_maths_routing_enabled"] is False
+    row = rows(body)["ocr_maths_routing_enabled"]
+    assert (row["value"], row["saved"], row["restart_pending"]) == (True, False, True)
     assert body["revision"] == file_revision(harness.folder)
 
 
@@ -219,18 +219,15 @@ def test_unprovisioned_engine_is_allowed(harness: Harness, client: TestClient) -
     assert engines["my-engine"]["reason"]
 
 
-def test_all_nine_keys_in_one_save(harness: Harness, client: TestClient) -> None:
+def test_all_six_keys_in_one_save(harness: Harness, client: TestClient) -> None:
     harness.launch()
     values = {
         "pdf_reader": "pypdf",
         "ocr_fallback_enabled": False,
-        "ocr_fallback_min_confidence": 1,
-        "ocr_fallback_page_fraction": 0,
         "ocr_routing_unit": "page",
         "ocr_engine_primary": "a",
         "ocr_engine_fallback": "b",
         "ocr_maths_routing_enabled": False,
-        "ocr_maths_page_fraction": 0.5,
     }
     response = put(client, values)
     assert response.status_code == 200, response.text
@@ -259,13 +256,23 @@ def test_1_body_shape(harness: Harness, client: TestClient, body: dict[str, Any]
     assert harness.text() == ""
 
 
-def test_2_key_outside_the_nine(harness: Harness, client: TestClient) -> None:
+def test_2_key_outside_the_six(harness: Harness, client: TestClient) -> None:
     harness.launch()
     refused(
         put(client, {"embed_provider": "local"}),
         400,
         "embed_provider is not a document reading setting.",
     )
+    assert harness.text() == ""
+
+
+@pytest.mark.parametrize(
+    "key",
+    ["ocr_fallback_min_confidence", "ocr_fallback_page_fraction", "ocr_maths_page_fraction"],
+)
+def test_2_removed_fraction_key(harness: Harness, client: TestClient, key: str) -> None:
+    harness.launch()
+    refused(put(client, {key: 0.2}), 400, f"{key} is not a document reading setting.")
     assert harness.text() == ""
 
 
@@ -280,11 +287,11 @@ def test_3_locked_key(
     assert harness.text() == ""
 
 
-def test_4_value_out_of_range(harness: Harness, client: TestClient) -> None:
+def test_4_value_not_allowed(harness: Harness, client: TestClient) -> None:
     harness.launch()
-    message = refused(put(client, {"ocr_maths_page_fraction": 1.5}), 400)
-    assert message == "ocr_maths_page_fraction: The value must be a number from 0.0 to 1.0."
-    assert "1.5" not in message
+    message = refused(put(client, {"ocr_routing_unit": "document"}), 400)
+    assert message == "ocr_routing_unit: The value must be one of: page."
+    assert "document" not in message
     assert harness.text() == ""
 
 
@@ -292,7 +299,7 @@ def test_4_one_bad_value_stops_the_whole_save(harness: Harness, client: TestClie
     harness.write('{ "web_port": 9100 }')
     harness.launch()
     before = harness.text()
-    response = put(client, {"ocr_routing_unit": "page", "ocr_engine_primary": "../x"})
+    response = put(client, {"ocr_fallback_enabled": False, "ocr_engine_primary": "../x"})
     refused(response, 400)
     assert harness.text() == before
 
@@ -357,7 +364,7 @@ def test_8_disk_refuses_the_write(
         {"pdf_reader": SUBMITTED},
         {"ocr_engine_primary": f"../{SUBMITTED}"},
         {"ocr_fallback_enabled": SUBMITTED},
-        {"ocr_maths_page_fraction": SUBMITTED},
+        {"ocr_maths_routing_enabled": SUBMITTED},
         {"ocr_routing_unit": SUBMITTED},
     ],
 )

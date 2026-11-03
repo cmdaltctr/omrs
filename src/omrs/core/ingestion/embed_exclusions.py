@@ -12,8 +12,6 @@ invalidates the index identity precisely.
 
 from __future__ import annotations
 
-from typing import Any
-
 #: ``_RETAINED_EMBED_METADATA_KEYS`` instead.
 
 EXCLUDED_EMBED_METADATA_KEYS = (
@@ -53,46 +51,3 @@ EXCLUDED_EMBED_METADATA_KEYS = (
     "last_modified_date",
     "last_accessed_date",
 )
-
-#: Keys in ``EXCLUDED_EMBED_METADATA_KEYS`` that only the ``page``
-#: routing unit can emit. The document
-#: unit never puts them on a Document, so their presence in the exclusion
-#: set cannot change a document-unit install's embedded text, and
-#: ``build_index_identity`` subtracts them from that install's payload
-#: rather than reindexing every corpus for a key it will never see.
-#: If ``page`` ever becomes the default, empty this set and bump
-#: ``_INDEX_IDENTITY_SCHEMA``: from then on every install can emit them.
-PAGE_ROUTING_ONLY_EMBED_KEYS = frozenset(
-    {
-        "ocr_pages_native",
-        "ocr_pages_local",
-        "ocr_pages_worker",
-        "ocr_pages_blank",
-        "ocr_pages_unresolved",
-    }
-)
-
-
-def scoped_excluded_keys(exclusion_set: tuple[str, ...], routing: dict[str, Any]) -> set[str]:
-    """Return the exclusions that can affect this install's embedded text.
-
-    A key only one routing unit can emit belongs in the identity only under
-    that unit. Under ``document`` the page-routing keys are never put on a
-    Document, so leaving them out is accurate rather than a lie — and it
-    keeps a corpus indexed before page routing existed from reprocessing for
-    a key it can never see. Under ``page`` they are included, because there
-    they really do describe what was kept out of the embedded text.
-
-    Args:
-        exclusion_set: The centrally owned exclusion set.
-        routing: The computed OCR routing payload. The unit is read from
-            here rather than from settings, so the ``ocr_routing=``
-            injection seam decides.
-
-    Returns:
-        The exclusion set, minus any key scoped to an inactive unit.
-    """
-    keys = set(exclusion_set)
-    if routing.get("routing_unit", "document") == "document":
-        keys -= PAGE_ROUTING_ONLY_EMBED_KEYS
-    return keys
