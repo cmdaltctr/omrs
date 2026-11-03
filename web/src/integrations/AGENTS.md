@@ -4,12 +4,11 @@ The page that lists optional integrations and installs or uninstalls an extra. I
 
 ## What belongs here
 
-- `IntegrationsView.tsx`: the shell, as `settings/SettingsView.tsx`. One file per section: `ExtrasSection.tsx`, `ToolsSection.tsx`, `RuntimeSection.tsx`. `SectionChips.tsx`, `SectionFrame.tsx`, `CardTitleRow.tsx` and `EntryList.tsx` are shared (each section is one full-width card with a row per entry, `EntryList` and `EntryRow`); `sections.ts` maps addresses to sections.
+- `IntegrationsView.tsx`: the shell, as `settings/SettingsView.tsx`. One file per section: `ExtrasSection.tsx`, `ToolsSection.tsx`, `RuntimeSection.tsx`, `PdfReadersSection.tsx`. `SectionChips.tsx`, `SectionFrame.tsx`, `CardTitleRow.tsx` and `EntryList.tsx` are shared (each section is one full-width card with a row per entry, `EntryList` and `EntryRow`); `sections.ts` maps addresses to sections.
 - `InstallControls.tsx`, `UninstallControls.tsx` and `UninstallDialog.tsx`: the actions of one card.
 - `InstallRefusal.tsx`: the line for a refused start (409).
 - `useIntegrationInstall.ts`: the job state and the start actions. The API client is `../api/integrations.ts`.
-- `RuntimeSection.tsx`: one runtime section from `runtime`. The workers folder card sits above the list of parts. `WorkersFolderField.tsx` writes `ocr_workers_dir` through the settings write route. The page only shows these parts; each fix is a copy command.
-- `PdfReadersSection.tsx`: one row for each reader in `pdf_readers`, generic over the list, so a reader registered later shows with no change here. A reader that is missing and in use (`used_by` not empty) counts on its chip (`readerNeedsAttention` in `sections.ts`). The page only shows readers; a missing one gets a copy command.
+- `RuntimeSection.tsx`: one runtime section from `runtime`. The workers folder card sits above the list of parts. `WorkersFolderField.tsx` writes `ocr_workers_dir` through the settings write route. The page only shows these parts; each fix is a copy command. `PdfReadersSection.tsx` works the same way for `pdf_readers`: generic over the list, and a missing reader that is in use (`used_by`) counts on the chip (`readerNeedsAttention` in `sections.ts`).
 - `ToolCard.tsx`, `ToolInstallControls.tsx`, `ToolUninstallControls.tsx` and `ToolDialogs.tsx`: the marimo card in the Tools section.
 
 ## Rules

@@ -556,15 +556,14 @@ A cloud judge sends each claim and its cited passages off this machine. The bloc
 
 ### Document reading
 
-Settings > Document reading (`#/settings/document-reading`) sets how OMRS reads documents. It has one row for each of these six keys:
+Settings > Document reading (`#/settings/document-reading`) sets how OMRS reads documents. It has one row for each of these five keys:
 
 | Row | Key | Control |
 | --- | --- | --- |
-| PDF reader | `pdf_reader` | A select. A reader that is not installed shows the reason and you cannot choose it. |
+| PDF readers | `pdf_readers` | An ordered list. Add, remove, move up and move down. |
 | OCR fallback | `ocr_fallback_enabled` | A switch. |
 | OCR routing unit | `ocr_routing_unit` | A select. `page` is the only unit. |
-| Primary engine | `ocr_engine_primary` | A select of the engines that the server finds. |
-| Fallback engine | `ocr_engine_fallback` | A select of the engines that the server finds. |
+| OCR engines | `ocr_engines` | An ordered list. Add, remove, move up and move down. |
 | Maths routing | `ocr_maths_routing_enabled` | A switch. |
 
 Each row shows the value in force, where it comes from and the default. To change a value:
@@ -575,16 +574,29 @@ Each row shows the value in force, where it comes from and the default. To chang
 
 Save writes the key to `omrs.jsonc`. It does not change the value in force. The changes apply after a restart of `omrs web`. Until the restart, the row shows the saved value and "Restart to apply". After the save, the restart dialog opens. Select "Restart now", or select Later and restart yourself.
 
-Select "Use default" to remove the key from `omrs.jsonc`. The default then applies at the next launch. A blank engine name is refused. To use no fallback engine, set `OCR_ENGINE_FALLBACK=` in the environment or `.env`. The row is then locked and shows "None (no fallback)". A blank value in `omrs.jsonc` reads as not set, so the row shows "Not set".
+Select "Use default" to remove the key from `omrs.jsonc`. The default then applies at the next launch.
+
+**Edit an ordered list.** The two list rows use the same control. Each entry is one numbered line. The line says what its position does. The first reader reads first when it is installed. A later reader retries when the readers above are not installed or return no text. The first engine reads first when it is available. A later engine runs only when every engine above is unavailable.
+
+1. Select Edit on the PDF readers row or the OCR engines row.
+2. Select the up or down arrow on a line to move that name.
+3. Select the X on a line to remove that name.
+4. Choose a name in the add control to put it at the end of the list.
+5. Select Save.
+
+The buttons carry labels such as "Move pypdf up" and "Remove pypdf" for screen readers. The page refuses an empty list: the Remove button of the last name stays disabled. A reader that is not installed shows "Not installed" with a link to Integrations › PDF readers, and you cannot add it. An engine that is not provisioned shows the reason and a link to Integrations › OCR engines. You can add it, for example before you provision it.
+
+A list of one engine turns the fallback engine off. Remove the second engine and save. A save writes the list key and removes the matching old keys (`pdf_reader`, `ocr_engine_primary`, `ocr_engine_fallback`) from `omrs.jsonc` in the same write. The page never writes an old key.
 
 These rules also apply:
 
 - A key set in the environment or `.env` is read-only. The row names the variable to remove.
-- An engine that is not provisioned shows the reason. You can still choose it, for example before you provision it.
-- When `auto` or a missing reader resolves to another reader, the PDF reader row shows the reader in use.
-- A Read document step in a pipeline can choose its own reader.
+- When a missing reader means that another reader reads, the PDF readers row shows the reader in use.
+- A Read document step in a pipeline can choose its own reader list and engine list.
 
-The six keys are part of the index identity. After a restart, the next ingest can read existing files again. A failed save shows the server message. When `omrs.jsonc` changed on disk, select Reload to read the new values, then save again.
+The five keys are part of the index identity. After a restart, the next ingest can read existing files again. A failed save shows the server message. When `omrs.jsonc` changed on disk, select Reload to read the new values, then save again.
+
+The Settings page lists a list key in the Configuration table like any other key. See [Document reading values](configuration.md#document-reading-values) for the rules that the server checks on a save.
 
 ### Configuration
 
@@ -720,7 +732,7 @@ Every area has its own address. Back and forward move between them. An address t
 | Knowledge Base | `#/knowledge-base/<collection>` | Rename the project title with the pencil. See the database that holds the project (logo and name in the header, name in the project list and in the Sources table). List sources, upload and ingest files, ingest from an approved folder, search, preview and confirm a deletion or a profile change. The upload panel shows the server's per-file limit and refuses a larger file before it is sent. Change the limit in Settings › Workspace. |
 | Studio | `#/studio`, `#/studio/<profile-id>`, `#/studio/<profile-id>/<purpose>` | Open a gallery of profiles. Duplicate a profile, start an empty one, rename it or delete it. Open the Ingest, Search or Answer pipeline of a profile. Add operations, connect ports, save a revision, validate, run and cancel. |
 | Experiments | `#/experiments`, `#/experiments/runs/<run-id>` | Create experiment folders and sub-experiments, issue a bound credential, register and open the notebook editor, and read pipeline runs. A preview that is cut offers Open full output, which shows the redacted value as text and downloads it. |
-| Integrations | `#/integrations`, `#/integrations/<section>` | Pick a section with its chip: Extras, Tools, OCR engines, Model files or Local servers. A chip with a red number has parts that a setting in force needs and that are not ready. See which optional parts are installed. When the server is a `uv tool` install and finds `uv`, press Install on an entry, confirm the packages, then restart the server to use them. Read a red "Before you install" note first: it names a package version the install can change, or, for PyTorch, the download size. An entry marked "Base default" comes with every install, so do not install it again. After the install the server checks every package; if they clash, run the entry's command instead of restarting. Otherwise copy the command, run it in a terminal and restart the server. For a `uv tool` install, the copied command keeps the extra after a later reinstall. To remove an installed extra, press Uninstall (see [Uninstall an integration](#uninstall-an-integration)). |
+| Integrations | `#/integrations`, `#/integrations/<section>` | Pick a section with its chip: Extras, Tools, PDF readers, OCR engines, Model files or Local servers. A chip with a red number has parts that a setting in force needs and that are not ready. See which optional parts are installed. When the server is a `uv tool` install and finds `uv`, press Install on an entry, confirm the packages, then restart the server to use them. Read a red "Before you install" note first: it names a package version the install can change, or, for PyTorch, the download size. An entry marked "Base default" comes with every install, so do not install it again. After the install the server checks every package; if they clash, run the entry's command instead of restarting. Otherwise copy the command, run it in a terminal and restart the server. For a `uv tool` install, the copied command keeps the extra after a later reinstall. To remove an installed extra, press Uninstall (see [Uninstall an integration](#uninstall-an-integration)). |
 | Settings | `#/settings`, `#/settings/<section>` | Nine sections: Appearance, Providers, Chat, MCP, Server log, Runtime, Workspace, Document reading and Configuration. Set provider addresses and keys and test them, choose the Chat model, read the server log, copy the MCP client configuration, manage MCP access over HTTP, set the per-file upload limit, choose the PDF reader and the OCR settings for the next launch, and read and change every setting. |
 
 In Knowledge Base, a search result renders `$...$` and `$$...$$` in its passage as maths. It shows every other character exactly as stored, with its indentation and line breaks, so OCR text is not read as Markdown. Press Show chunk to read the stored text in the chunk viewer.
@@ -769,7 +781,7 @@ If the check after the uninstall finds a clash, do not restart. Run the entry's 
 | A provider extra, such as `anthropic` | A provider setting names a provider that needs the extra (see below) |
 | `hybrid` | None. The built-in BM25 search takes over. |
 
-**Provider settings.** Each LLM and embedding provider declares the extra it needs. The server reads these provider settings: `answer.provider`, `answer.verify_provider`, `metadata.extraction_mode` (or `metadata_llm_provider`) and `embed_provider`. The value `local` or `cloud` stands for the provider in `local_backend` or `cloud_backend`, so the card can name that key. The server counts a provider setting even when its role is off, because you can turn it on later. Ollama and OpenAI-compatible need no extra, so they never block an uninstall. The server also reads every saved user profile that is not deleted. A profile blocks an uninstall when an enabled Read document step names a PDF reader that needs the extra (for example `pypdfium2`), or when its embedding provider needs the extra. The card then names the profile and links to it in Studio. Change the step or the provider there, then uninstall. A global setting is named before a profile.
+**Provider settings.** Each LLM and embedding provider declares the extra it needs. The server reads these provider settings: `answer.provider`, `answer.verify_provider`, `metadata.extraction_mode` (or `metadata_llm_provider`) and `embed_provider`. The value `local` or `cloud` stands for the provider in `local_backend` or `cloud_backend`, so the card can name that key. The server counts a provider setting even when its role is off, because you can turn it on later. Ollama and OpenAI-compatible need no extra, so they never block an uninstall. The server also reads every saved user profile that is not deleted. A profile blocks an uninstall when an enabled Read document step names a PDF reader that needs the extra (for example `pypdfium2`), in its `pdf_readers` list or its older `pdf_reader` option, or when its embedding provider needs the extra. The card then names the profile and links to it in Studio. Change the step or the provider there, then uninstall. A global setting is named before a profile.
 
 **Shared packages.** A package stays when the base install, another installed extra or another installed package needs it. A requirement that another package lists under one of its own extras counts only when something asks for that extra, as `pip check` reads it. For example, LanceDB lists the PyTorch packages under its `embeddings` extra, but nothing asks for that extra, so PyTorch's packages can go. Packages of one extra that only need each other go together, for example `leidenalg` and `igraph`.
 
@@ -780,6 +792,21 @@ If the check after the uninstall finds a clash, do not restart. Run the entry's 
 **The lasting command.** The `uv tool` receipt records the extras of the install, for example `omrs[web,hybrid]`. A later `uv tool install --reinstall` from the receipt adds a removed extra back. When the receipt lists the extra, the card shows the reinstall command without it, for example `uv tool install --reinstall "omrs[web] @ <source>"`. Copy it, run it in a terminal and restart the server. It removes the extra for good and drops the leftover packages. The card hides this command while a setting uses the extra, because the next start would fail.
 
 **Restart state.** After an install or uninstall, the card shows "Installed, restart to use" or "Removed, restart to apply" until the server restarts. The server keeps this state for each extra, so a later install or uninstall does not change an earlier card.
+
+### PDF readers on the Integrations page
+
+The PDF readers section (`#/integrations/pdf-readers`) lists every reader in the PDF reader registry, in registry order. A reader added to the registry later shows with no page change. `GET /v1/integrations` returns the same list in its `pdf_readers` block.
+
+Each row shows these items:
+
+- The reader name and a badge, "Installed" or "Not installed".
+- Where the reader comes from: the base install, or the name of the extra that holds it.
+- Where the reader is used: its place in the host list ("First in Settings > Document reading"), and each saved profile whose Read document step lists it. A reader that nothing uses says so.
+- For a reader that is not installed, the command that installs it, with a copy button. A base reader shows the base sync command. A reader behind an extra shows the command of that extra, for example `uv sync --extra pdf-pypdfium2` on a checkout.
+
+A reader that a list uses and that is not installed shows in the attention colour. The chip of the section counts it. A missing reader that nothing uses stays plain.
+
+The section only checks that each reader imports. It installs nothing, downloads nothing and starts nothing. To install an extra from the app, use the Extras section.
 
 ### Local servers on the Integrations page
 
