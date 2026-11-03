@@ -692,10 +692,11 @@ is not installed, or its retry raises or yields no text, pypdf retries
 last. It is the always-available registered plain-text reader, which
 preserves the previous coverage.
 
-When recovery succeeds, `pages_needing_ocr` reads `0` — the pages were
-flagged only by the failed extraction — and the file takes the fast
-path. When both tiers find no text, the original flagged count stands
-and neither key is stamped, so the OCR gate still sees the evidence.
+When recovery succeeds, the adapter sets `pages_needing_ocr` to `0`.
+The page routing unit then replaces it with the full-scan count, so
+pages the scan flags still go to OCR (see
+[page-level routing](#page-level-routing)). When both tiers find no text,
+the original flagged count stands and neither key is stamped.
 Both keys are parser telemetry and sit in
 `EXCLUDED_EMBED_METADATA_KEYS` alongside the OCR keys.
 

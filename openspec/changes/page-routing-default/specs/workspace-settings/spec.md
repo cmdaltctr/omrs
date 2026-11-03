@@ -53,7 +53,7 @@ The Document reading section SHALL show one row for each of `pdf_reader`, `ocr_f
 
 ### Requirement: The document reading save answers with a status for each outcome
 
-On success it SHALL return the same body as `GET`. It SHALL answer 400 for a key outside the six, for a value that breaks its rule, for a blank text value and for a PDF reader that is not installed. It SHALL answer 409 for a locked key, for a stale revision and for a file that cannot be parsed. No error message SHALL hold a submitted value.
+On success it SHALL return the same body as `GET`. It SHALL answer 400 for a key outside the six, for a value that breaks its rule, for a blank text value and for a PDF reader that is not installed. It SHALL answer 409 for a locked key, for a stale revision and for a file that cannot be parsed. No error message SHALL hold a submitted value. The scenario heading "Key outside the nine" keeps its baseline name for delta continuity; six keys are writable.
 
 #### Scenario: Key outside the nine
 

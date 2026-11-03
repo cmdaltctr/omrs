@@ -6,7 +6,7 @@ Issue #161 is the failure this closes: a scan with a junk hidden text layer keep
 
 ## What Changes
 
-- **`ocr_routing_unit` defaults to `page` and `document` is refused.** A config or environment value of `document` fails at start-up with a message naming `page` (the gotcha-11 pattern). The key stays, with `page` as its only legal value.
+- **`ocr_routing_unit` defaults to `page` and `document` is refused.** An environment value of `document` fails at start-up with a message naming `page` (the gotcha-11 pattern). The same value in `omrs.jsonc` is listed as a settings-file problem and ignored, so `page` applies. The key stays, with `page` as its only legal value.
 - **The document routing gate is deleted.** `ocr_required_by_gate` and `ocr_fallback_page_fraction` go. `ocr_fallback_min_confidence` has no reader once the gate goes, so it goes with them. `ocr_maths_page_fraction` is read only by the document-unit maths condition, so it goes too (operator decisions, 2026-11-03). `ocr_fallback_enabled` stays: it still switches OCR routing on and off.
 - **A missing local OCR runtime never returns junk text.** When the local OCR model or runtime is unavailable, flagged pages go straight to the worker engine. The current page-unit fallback (keep native text, count unresolved) is exactly the #161 failure mode and is removed.
 - **One re-index, accepted.** The routing payload loses the gate values and the unconditional types; the page-only key scoping dies with the document unit; the identity schema advances from 6 to 7. Every existing source reindexes once.
@@ -29,6 +29,6 @@ None.
 ## Impact
 
 - Code: `ocr_policy.py` (the gate function and both threshold constants), the document-unit branch and `_worker_document` in `ocr_routing.py`, `maths_condition` (document-unit only), the local-OCR failure branch in the page unit, the settings fields and their validation in `config/`, the identity payload in `core/ingestion/ocr_identity.py`, the page-only key scoping in `core/ingestion/embed_exclusions.py` (emptied; `_INDEX_IDENTITY_SCHEMA` 6 to 7), the pipeline lever lists in `core/pipelines/levers.py` and `core/ingestion/graph_adapters_catalogue.py`, and the Settings page rows in `web/`.
-- Operators: `OCR_ROUTING_UNIT=document` or the removed keys in `omrs.jsonc`/environment fail at start-up with a message naming the fix. Every existing index reindexes once on the next ingest.
+- Operators: `OCR_ROUTING_UNIT=document` or a removed key in the environment fails at start-up with a message naming the fix. In `omrs.jsonc` they are listed as settings-file problems and ignored. Every existing index reindexes once on the next ingest.
 - The operator's live-app step (master flow 2.4: add `PDFIUM_LIB_PATH` and `ORT_DYLIB_PATH` to the live environment) stays the operator's; this change touches no live state.
 - Evidence: the `rf06` page-mode run (master flow D2), issue #161, and the Experiment 33 corpus measurements already recorded.

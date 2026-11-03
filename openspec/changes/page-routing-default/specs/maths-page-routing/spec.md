@@ -45,7 +45,7 @@ The existing source index identity SHALL include a maths-routing block: the reso
 #### Scenario: Unchanged maths routing inputs still skip
 
 - **GIVEN** a previously indexed, byte-identical source
-- **WHEN** it is ingested again with every maths-routing input unchanged
+- **WHEN** it is ingested again with every source index identity input unchanged, maths-routing inputs included
 - **THEN** it SHALL be reported as `skipped_unchanged`
 
 ## REMOVED Requirements
