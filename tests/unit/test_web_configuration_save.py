@@ -24,7 +24,6 @@ from tests.unit.test_web_configuration import URL, FakeKeychain, Harness, rows  
 from tests.unit.test_web_documents_support import ORIGIN, bearer  # noqa: E402
 from tests.unit.test_web_openapi_conformance_support import FAMILIES, ContractChecker  # noqa: E402
 
-from omrs import capabilities  # noqa: E402
 from omrs.config.settings_file import file_revision  # noqa: E402
 from omrs.config.user_config import parse_jsonc  # noqa: E402
 from omrs.transports.api.provider_state import ProviderState  # noqa: E402
@@ -168,39 +167,66 @@ def test_a_read_only_key_is_refused_before_a_lock(
     refused(response, 400, "embed_model is not a setting that can be changed here.")
 
 
+@pytest.mark.parametrize(
+    ("key", "list_key"),
+    [
+        ("pdf_reader", "pdf_readers"),
+        ("ocr_engine_primary", "ocr_engines"),
+        ("ocr_engine_fallback", "ocr_engines"),
+    ],
+)
+def test_an_old_reading_key_is_refused_naming_the_list_key(
+    harness: Harness, client: TestClient, key: str, list_key: str
+) -> None:
+    harness.launch()
+    response = put(client, {"retrieval.top_k": 20, key: "pypdf"})
+    refused(response, 400, f"{key}: Replaced by {list_key}. Write {list_key} instead.")
+    assert text(harness) == ""
+
+
 @pytest.fixture
-def readers(monkeypatch: pytest.MonkeyPatch) -> None:
-    """``pypdf`` is installed and ``pypdfium2`` is not. ``PDF_READER`` is unset."""
-    monkeypatch.delenv("PDF_READER", raising=False)  # conftest sets it
-    options = {"pypdf": None, "pypdfium2": "The package 'pypdfium2' is not installed."}
-    monkeypatch.setattr(capabilities, "pdf_reader_options", lambda: dict(options))
+def readers_unlocked(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The test conftest sets ``PDF_READER``, which would lock the reader list."""
+    monkeypatch.delenv("PDF_READER", raising=False)
 
 
-@pytest.mark.usefixtures("readers")
-def test_a_pdf_reader_that_is_not_installed_is_refused(
+@pytest.mark.usefixtures("readers_unlocked")
+def test_a_reader_list_is_saved_and_an_uninstalled_reader_may_be_listed(
     harness: Harness, client: TestClient
 ) -> None:
     harness.launch()
-    response = put(client, {"retrieval.top_k": 20, "pdf_reader": "pypdfium2"})
+    assert put(client, {"pdf_readers": ["pypdfium2", "pypdf"]}).status_code == 200
+    assert data(harness) == {"pdf_readers": ["pypdfium2", "pypdf"]}
+
+
+@pytest.mark.usefixtures("readers_unlocked")
+def test_a_reader_list_that_breaks_its_rule_is_refused(
+    harness: Harness, client: TestClient
+) -> None:
+    harness.launch()
+    response = put(client, {"pdf_readers": ["pdfminer"], "retrieval.top_k": 20})
     refused(
         response,
         400,
-        "pdf_reader: This PDF reader is not installed. Install its package, then save again.",
+        "pdf_readers: The value must be one of: liteparse, pdf_inspector, pypdfium2, pypdf.",
     )
     assert text(harness) == ""
 
 
-@pytest.mark.usefixtures("readers")
-def test_an_installed_pdf_reader_is_saved(harness: Harness, client: TestClient) -> None:
+def test_a_list_save_removes_the_old_keys(harness: Harness, client: TestClient) -> None:
+    harness.write(
+        '{ "pdf_reader": "pypdf", "ocr_engine_primary": "x", "ocr_engine_fallback": "y" }'
+    )
     harness.launch()
-    assert put(client, {"pdf_reader": "pypdf"}).status_code == 200
-    assert data(harness) == {"pdf_reader": "pypdf"}
+    response = put(client, {"ocr_engines": ["x"]}, file_revision(harness.folder))
+    assert response.status_code == 200, response.text
+    assert data(harness) == {"pdf_reader": "pypdf", "ocr_engines": ["x"]}
 
 
-@pytest.mark.usefixtures("readers")
-def test_a_value_rule_is_checked_before_the_reader(harness: Harness, client: TestClient) -> None:
+@pytest.mark.usefixtures("readers_unlocked")
+def test_a_value_rule_is_checked_in_order(harness: Harness, client: TestClient) -> None:
     harness.launch()
-    response = put(client, {"pdf_reader": "pypdfium2", "answer.max_rounds": 12})
+    response = put(client, {"pdf_readers": ["pypdf"], "answer.max_rounds": 12})
     refused(response, 400, "answer.max_rounds: The value must be a whole number from 1 to 8.")
 
 

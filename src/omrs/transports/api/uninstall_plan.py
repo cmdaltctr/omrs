@@ -267,6 +267,19 @@ def _reader(settings: Any, saved: Mapping[str, Any]) -> Read:
     return read
 
 
+def _lists_reader(settings: Any, saved: Mapping[str, Any], name: str) -> bool:
+    """Return whether a reader list, saved or effective, holds *name* at any position.
+
+    A later reader in the list is a retry tier, so it needs its extra as much
+    as the first one does.
+    """
+    explicit = None if settings is None else getattr(settings, "pdf_readers", None)
+    for listed in (saved.get("pdf_readers"), explicit):
+        if isinstance(listed, (list, tuple)) and name in listed:
+            return True
+    return False
+
+
 def _through(read: Read, alias: str, llm: Callable[[str], str | None]) -> Role:
     key = _ALIASES[alias]
     return key, read(key), llm
@@ -315,6 +328,8 @@ def in_use_setting(extra: str, settings: Any, saved: Mapping[str, Any]) -> str |
         for key, provider, extra_of in _provider_roles(read):
             if provider and extra_of(provider) == extra:
                 return key
+    if extra == "pdf-pypdfium2" and _lists_reader(settings, saved, "pypdfium2"):
+        return "pdf_readers"
     return None
 
 

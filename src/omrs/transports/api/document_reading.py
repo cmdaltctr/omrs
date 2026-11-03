@@ -1,6 +1,6 @@
 """The body and the write checks of ``/v1/settings/document-reading`` (design D10).
 
-Settings > Document reading edits nine server-wide keys in ``omrs.jsonc``. Each
+Settings > Document reading edits five server-wide keys in ``omrs.jsonc``. Each
 key applies only at the next launch, so a row shows the value in force since
 launch (the launch ``Settings``), the valid value the file holds now, the
 source, the default and whether a restart is pending. A key that ``env`` or
@@ -17,13 +17,21 @@ This module imports no web framework. No message holds a submitted value.
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
 from ... import capabilities
-from ...config.rules import DOCUMENT_READING_KEYS, document_reading_problem
+from ...config.rules import (
+    DOCUMENT_READING_KEYS,
+    OLD_READING_KEYS,
+    REPLACED_READING_KEYS,
+    document_reading_problem,
+    replaced_key_reason,
+)
 from ...config.settings_file import SettingsFile, read_settings_file
 from ...config.user_config import display_path
+from ...core.reading_lists import OCR_ENGINES_DEFAULT, expand_ocr_engines, expand_pdf_reader
 from ..settings_view import plain, source_word
 from .restart_snapshot import capture, pending
 
@@ -36,9 +44,6 @@ logger = logging.getLogger(__name__)
 _SHOWN_SOURCES = frozenset({"env", "dotenv", "config-file"})
 _LOCKING_SOURCES = frozenset({"env", "dotenv"})
 NOT_A_READING_KEY = "{key} is not a document reading setting."
-READER_NOT_INSTALLED = (
-    "pdf_reader: This PDF reader is not installed. Install its package, then save again."
-)
 
 #: The reader the running engine uses. It is resolved once per process.
 _reader_in_use: list[str] = []
@@ -60,9 +65,29 @@ def reader_in_use(launch: Settings) -> str | None:
     return _reader_in_use[0]
 
 
-def lock_reason(key: str) -> str:
-    """Return the lock text for *key*, which names its environment variable."""
-    return f"Remove {key.upper()} from the environment or .env to edit it here."
+def lock_reason(key: str, variable: str | None = None) -> str:
+    """Return the lock text for *key*, which names its environment variable.
+
+    Args:
+        key: The setting key.
+        variable: The key whose variable locks the row, when that is an old
+            single-value key (``OCR_ENGINE_PRIMARY`` locks ``ocr_engines``).
+            Defaults to *key*.
+    """
+    return f"Remove {(variable or key).upper()} from the environment or .env to edit it here."
+
+
+def locking_key(key: str) -> str:
+    """Return the key whose environment variable locks the row of *key*.
+
+    A list key is locked by its own variable or by the old single-value
+    variable that wins in its place. ``Settings`` records the winner under the
+    list key, so the variables that are set tell which one it was.
+    """
+    for candidate in (key, *OLD_READING_KEYS.get(key, ())):
+        if os.environ.get(candidate.upper(), "").strip():
+            return candidate
+    return key
 
 
 def row_source(launch: Settings, key: str) -> str:
@@ -81,11 +106,29 @@ def _launch_state(state: Any) -> tuple[Settings, SettingsFile, Mapping[str, Any]
 
 
 def _saved(file: SettingsFile, key: str) -> Any:
-    """Return the valid value the file holds for *key*, or ``None``."""
+    """Return the valid value the file holds for *key*, or ``None``.
+
+    A list key that the file does not set reads as the list that its old
+    single-value keys mean, when the file holds a valid one.
+    """
     if key in file.values:
         value = file.values[key]
-        return None if document_reading_problem(key, value) is not None else value
-    return None
+        return None if document_reading_problem(key, value) is not None else plain(value)
+    held = {
+        old: file.values[old]
+        for old in OLD_READING_KEYS.get(key, ())
+        if old in file.values and document_reading_problem(old, file.values[old]) is None
+    }
+    if not held:
+        return None
+    if key == "pdf_readers":
+        return list(expand_pdf_reader(held["pdf_reader"]))
+    primary, fallback = OCR_ENGINES_DEFAULT
+    return list(
+        expand_ocr_engines(
+            held.get("ocr_engine_primary", primary), held.get("ocr_engine_fallback", fallback)
+        )
+    )
 
 
 def _rows(launch: Settings, file: SettingsFile, snapshot: Mapping[str, Any]) -> list[dict]:
@@ -102,9 +145,10 @@ def _rows(launch: Settings, file: SettingsFile, snapshot: Mapping[str, Any]) -> 
                 "saved": _saved(file, key),
                 "source": source,
                 "locked": locked,
-                "lock_reason": lock_reason(key) if locked else None,
-                "restart_pending": key in changed and not locked,
-                "default": fields[key].default,
+                "lock_reason": lock_reason(key, locking_key(key)) if locked else None,
+                "restart_pending": bool(changed & {key, *OLD_READING_KEYS.get(key, ())})
+                and not locked,
+                "default": plain(fields[key].default),
             }
         )
     return rows
@@ -120,10 +164,11 @@ def _readers() -> list[dict[str, Any]]:
 def _ocr(launch: Settings, rows: list[dict[str, Any]]) -> dict[str, Any]:
     workers_dir = launch.ocr_workers_dir.strip()
     names = [
-        str(row[field] or "")
+        str(name)
         for row in rows
-        if row["key"] in ("ocr_engine_primary", "ocr_engine_fallback")
+        if row["key"] == "ocr_engines"
         for field in ("value", "saved")
+        for name in row[field] or ()
     ]
     return {
         "workers_dir": display_path(workers_dir) if workers_dir else None,
@@ -138,7 +183,7 @@ def build_document_reading(state: Any) -> dict[str, Any]:
         state: ``app.state.configuration``, or ``None`` when the launch set none.
 
     Returns:
-        ``revision``, the nine ``settings`` rows in key order, ``pdf_readers``,
+        ``revision``, the five ``settings`` rows in key order, ``pdf_readers``,
         ``pdf_reader_in_use`` and the ``ocr`` block (design D10).
     """
     launch, file, snapshot = _launch_state(state)
@@ -163,38 +208,31 @@ def launch_settings(state: Any) -> Settings:
 
 
 def update_refusal(values: Mapping[str, Any], launch: Settings) -> tuple[int, str] | None:
-    """Run checks 2 to 5 of a ``PUT`` and return ``(status, message)``, or ``None``.
+    """Run checks 2 to 4 of a ``PUT`` and return ``(status, message)``, or ``None``.
 
-    The checks run in contract order: a key outside the nine (400), a locked key
-    (409, the first in key order), a value that breaks its rule (400), then a
-    PDF reader that is not installed (400). The body shape (check 1) is the
-    framework's job; the file checks (6 to 8) belong to the writer.
+    The checks run in contract order: a key outside the five (400; an old
+    single-value key gets its own message naming the list key that replaces it),
+    a locked key (409, the first in key order), then a value that breaks its
+    rule (400). The body shape (check 1) is the framework's job; the file
+    checks (5 to 7) belong to the writer. A listed PDF reader that is not
+    installed is allowed: the row says "Not installed" and start-up falls
+    back to the next reader.
 
     Args:
         values: The ``values`` member of the request.
         launch: The launch ``Settings``, which say where each value came from.
     """
     for key in values:
+        if key in REPLACED_READING_KEYS:
+            return 400, f"{key}: {replaced_key_reason(key)}"
         if key not in DOCUMENT_READING_KEYS:
             return 400, NOT_A_READING_KEY.format(key=key)
     for key in DOCUMENT_READING_KEYS:
         if key in values and row_source(launch, key) in _LOCKING_SOURCES:
-            return 409, lock_reason(key)
+            return 409, lock_reason(key, locking_key(key))
     for key in DOCUMENT_READING_KEYS:
         if key in values:
             rule = document_reading_problem(key, values[key])
             if rule is not None:
                 return 400, f"{key}: {rule}"
-    return reader_refusal(values)
-
-
-def reader_refusal(values: Mapping[str, Any]) -> tuple[int, str] | None:
-    """Return ``(400, READER_NOT_INSTALLED)`` when *values* name a PDF reader that is missing.
-
-    ``auto``, ``None`` and a missing ``pdf_reader`` pass. The Configuration save
-    runs this check too.
-    """
-    reader = values.get("pdf_reader")
-    if reader not in (None, "auto") and capabilities.pdf_reader_options().get(reader) is not None:
-        return 400, READER_NOT_INSTALLED
     return None

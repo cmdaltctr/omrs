@@ -5,7 +5,7 @@ ADR-096 checks the effective settings and the saved ``omrs.jsonc``
 extra, in two ways only:
 
 * an enabled ``read.document`` step in its ingest graph names a PDF reader,
-  through ``params.pdf_reader``;
+  through ``params.pdf_reader`` or the list ``params.pdf_readers``;
 * its ``embed_provider`` names a provider whose embedding registry entry
   declares an extra.
 
@@ -52,14 +52,21 @@ def _readers(extra: str) -> frozenset[str]:
     return frozenset(value for key, value in IN_USE.get(extra, ()) if key == "pdf_reader")
 
 
-def _graph_readers(document: Mapping[str, Any] | None) -> Iterator[str]:
-    """Yield the PDF reader of every enabled Read document step in a graph."""
+def graph_readers(document: Mapping[str, Any] | None) -> Iterator[tuple[str, tuple[str, ...]]]:
+    """Yield ``(option, readers)`` for each enabled Read document step that sets a reader.
+
+    *option* is ``pdf_reader`` (one name) or ``pdf_readers`` (the list). Names
+    are trimmed and lower-cased.
+    """
     for node in (document or {}).get("nodes", []):
         if node.get("operation") not in PROFILE_READER_OPERATIONS or node.get("enabled") is False:
             continue
-        reader = (node.get("params") or {}).get("pdf_reader")
-        if isinstance(reader, str):
-            yield reader.strip().lower()
+        params = node.get("params") or {}
+        single, listed = params.get("pdf_reader"), params.get("pdf_readers")
+        if isinstance(single, str):
+            yield "pdf_reader", (single.strip().lower(),)
+        if isinstance(listed, (list, tuple)):
+            yield "pdf_readers", tuple(r.strip().lower() for r in listed if isinstance(r, str))
 
 
 def profile_in_use(extra: str, catalogue: Any) -> InUse | None:
@@ -76,10 +83,11 @@ def profile_in_use(extra: str, catalogue: Any) -> InUse | None:
     try:
         for record in catalogue.list_profiles():
             who = {"id": str(record["profile_id"]), "title": str(record.get("title") or "")}
-            if readers and readers & set(
-                _graph_readers(catalogue.slot_document(record["profile_id"], "ingest"))
-            ):
-                return InUse("pdf_reader", who)
+            if readers:
+                document = catalogue.slot_document(record["profile_id"], "ingest")
+                for option, names in graph_readers(document):
+                    if readers & set(names):
+                        return InUse(option, who)
             provider = record.get("embed_provider")
             if isinstance(provider, str) and embedding_registry.extra_for(provider) == extra:
                 return InUse("embed_provider", who)

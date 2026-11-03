@@ -191,13 +191,14 @@ class HostOptionSet:
     """What the host knows about the choices of one setting.
 
     Attributes:
-        inherited: Value a node inherits when its parameter is ``None``.
+        inherited: Value a node inherits when its parameter is ``None``. A
+            list parameter inherits a tuple of names.
         unavailable: Choice to the reason the host cannot run it. Each reason
             holds the fix (for example the command that installs the choice).
         remedy: What the user can do instead, appended to each refusal.
     """
 
-    inherited: str | None = None
+    inherited: str | tuple[str, ...] | None = None
     unavailable: Mapping[str, str] = field(default_factory=dict)
     remedy: str = "Install the package and restart OMRS, or choose another value or Inherit."
 
@@ -308,19 +309,20 @@ def capability_reasons(
 
 def option_reports(
     descriptor: OperationDescriptor, options: Mapping[str, HostOptionSet]
-) -> tuple[dict[str, dict[str, str]], dict[str, str]]:
+) -> tuple[dict[str, dict[str, str]], dict[str, str | list[str]]]:
     """Return ``(unavailable_options, inherited_values)`` for ``descriptor``.
 
     Both maps are empty when the operation has no option parameters or the
     host supplies no matching option set.
     """
     unavailable: dict[str, dict[str, str]] = {}
-    inherited: dict[str, str] = {}
+    inherited: dict[str, str | list[str]] = {}
     for param, set_name in descriptor.option_params.items():
         option_set = options.get(set_name)
         if option_set is None:
             continue
         unavailable[param] = dict(option_set.unavailable)
         if option_set.inherited is not None:
-            inherited[param] = option_set.inherited
+            value = option_set.inherited
+            inherited[param] = value if isinstance(value, str) else list(value)
     return unavailable, inherited

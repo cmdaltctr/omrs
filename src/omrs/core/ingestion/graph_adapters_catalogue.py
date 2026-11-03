@@ -23,6 +23,7 @@ from pydantic import (
     ConfigDict,
     Field,
     WithJsonSchema,
+    model_validator,
 )
 
 from ...integrations.pdf import registry as pdf_registry
@@ -120,17 +121,25 @@ def _reading_rule(key: str) -> BeforeValidator:
 #: An OCR routing unit. The schema carries the names as an ``enum``.
 RoutingUnit = Annotated[str, WithJsonSchema({"type": "string", "enum": list(OCR_ROUTING_UNITS)})]
 
-#: The OCR keys of ``ReadParams``: the document-reading keys other than ``pdf_reader``.
+#: The OCR keys of ``ReadParams``: the document-reading keys other than the reader keys.
 READ_OCR_KEYS: tuple[str, ...] = (
     "ocr_fallback_enabled",
     "ocr_routing_unit",
+    "ocr_engines",
     "ocr_engine_primary",
     "ocr_engine_fallback",
     "ocr_maths_routing_enabled",
 )
 
 #: Every read option a node applies to its settings copy (``with_read_options``).
-READ_OPTION_KEYS: tuple[str, ...] = ("pdf_reader", *READ_OCR_KEYS)
+READ_OPTION_KEYS: tuple[str, ...] = ("pdf_reader", "pdf_readers", *READ_OCR_KEYS)
+
+#: A single-value option and the list option that replaces it. A step sets one form.
+SUPERSEDED_BY: dict[str, str] = {
+    "pdf_reader": "pdf_readers",
+    "ocr_engine_primary": "ocr_engines",
+    "ocr_engine_fallback": "ocr_engines",
+}
 
 
 class ReadParams(BaseModel):
@@ -139,17 +148,22 @@ class ReadParams(BaseModel):
     Code and configuration sources are split by their registered strategy
     in this node, before any document read (content type has precedence).
 
-    The read options (``pdf_reader`` and the OCR keys) are not levers: the
-    host default and a graph-wide override stay host-owned. Each set OCR
-    value passes the same rule as Settings > Document reading.
+    The read options (the reader and OCR keys) are not levers: the host
+    default and a graph-wide override stay host-owned. Each set value passes
+    the same rule as Settings > Document reading. A step sets a single-value
+    option or the list that replaces it, never both.
 
     Attributes:
         strategy_fallback: ``chunking.strategy_fallback`` lever.
         code_chunk_lines: ``chunking.code_chunk_lines`` lever.
         pdf_reader: Registered concrete PDF reader for this step. ``None``
-            inherits the host reader.
+            inherits the host reader. Expands like the host value.
+        pdf_readers: Ordered reader list for this step. ``None`` inherits the
+            host list.
         ocr_fallback_enabled: Whether OCR-required PDFs go to an OCR engine.
         ocr_routing_unit: ``page``, the only routing unit.
+        ocr_engines: Ordered engine folder names for this step. ``None``
+            inherits the host list.
         ocr_engine_primary: Engine folder name of the primary route.
         ocr_engine_fallback: Engine folder name of the fallback route.
         ocr_maths_routing_enabled: Whether maths pages go to the OCR engine.
@@ -160,13 +174,25 @@ class ReadParams(BaseModel):
     strategy_fallback: Literal["markdown", "code", "sentence"] | None = None
     code_chunk_lines: int | None = Field(default=None, ge=1)
     pdf_reader: PdfReaderName | None = None
+    pdf_readers: Annotated[tuple[str, ...] | None, _reading_rule("pdf_readers")] = None
     ocr_fallback_enabled: Annotated[bool | None, _reading_rule("ocr_fallback_enabled")] = None
     ocr_routing_unit: Annotated[RoutingUnit | None, _reading_rule("ocr_routing_unit")] = None
+    ocr_engines: Annotated[tuple[str, ...] | None, _reading_rule("ocr_engines")] = None
     ocr_engine_primary: Annotated[str | None, _reading_rule("ocr_engine_primary")] = None
     ocr_engine_fallback: Annotated[str | None, _reading_rule("ocr_engine_fallback")] = None
     ocr_maths_routing_enabled: Annotated[
         bool | None, _reading_rule("ocr_maths_routing_enabled")
     ] = None
+
+    @model_validator(mode="after")
+    def _one_form_per_option(self) -> ReadParams:
+        """Refuse a step that sets a single-value option and the list that replaces it."""
+        for old, new in SUPERSEDED_BY.items():
+            if getattr(self, old) is not None and getattr(self, new) is not None:
+                raise ValueError(
+                    f"{old} and {new} are both set. Set {new} only; it replaces {old}."
+                )
+        return self
 
 
 class EnrichParams(BaseModel):
@@ -252,6 +278,8 @@ READ = OperationDescriptor(
     },
     option_params={
         "pdf_reader": "pdf_reader",
+        "pdf_readers": "pdf_readers",
+        "ocr_engines": "ocr_engines",
         "ocr_engine_primary": "ocr_engine_primary",
         "ocr_engine_fallback": "ocr_engine_fallback",
     },

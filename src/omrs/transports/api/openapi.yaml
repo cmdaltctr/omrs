@@ -5196,15 +5196,16 @@ paths:
         Writes the `changes` to `omrs.jsonc` in one write under the `revision`
         the page read, or writes nothing. `null` removes a key, so the default
         applies. The checks run in this order and stop at the first failure:
-        body shape (400, `Invalid request. …`); a key that the page may not
-        write: read-only, a key field, not one plain value, or not a setting
-        (400, "<key> is not a setting that can be changed here."); a key that
+        body shape (400, `Invalid request. …`); an old single-value reading key
+        (`pdf_reader`, `ocr_engine_primary`, `ocr_engine_fallback`) (400,
+        "<key>: Replaced by <list key>. Write <list key> instead."); a key that
+        the page may not write: read-only, a key field, not one plain value
+        or a list, or not a setting (400, "<key> is not a setting that can be
+        changed here."); a key that
         the environment or `.env` sets (409, "Remove <ENV_NAME> from the
         environment or .env to edit it here."); a value that breaks its rule
         (400, "<key>: <rule>", for example "answer.max_rounds: The value must
-        be a whole number from 1 to 8."); a PDF reader that is not installed
-        (400, "pdf_reader: This PDF reader is not installed. Install its
-        package, then save again."); a stale `revision` (409, "omrs.jsonc
+        be a whole number from 1 to 8."); a stale `revision` (409, "omrs.jsonc
         changed on disk. Reload to see the new values."); a file that cannot be
         parsed or holds a key twice (409, "omrs.jsonc could not be read. Fix
         it, then save again."); a disk error (500, "omrs.jsonc could not be
@@ -5297,20 +5298,24 @@ paths:
         also removes the old single-value keys it replaces in the same write. The value in
         force does not change until a restart. The checks run in this order
         and stop at the first failure: body shape (400, `Invalid request. …`);
-        a key outside the list (400, "<key> is not a document reading
-        setting."); a key that the environment or `.env` sets (409, "Remove
-        <ENV_NAME> from the environment or .env to edit it here.", first locked
-        key in key order); a value that breaks its rule, including blank text
-        (400, "<key>: <rule>", including an empty list, a duplicate name and `auto`
-        inside a list); a PDF reader that is not installed (400,
-        "pdf_reader: This PDF reader is not installed. Install its package,
-        then save again."); a stale `revision` (409, "omrs.jsonc changed on
-        disk. Reload to see the new values."); a file that cannot be parsed or
-        holds a key twice (409, "omrs.jsonc could not be read. Fix it, then
-        save again."); a disk error (500, "omrs.jsonc could not be written.").
-        An OCR engine name that is valid but not provisioned is allowed. No
-        message holds a submitted value. Session only: a bearer credential
-        gets 403.
+        an old single-value key `pdf_reader`, `ocr_engine_primary` or
+        `ocr_engine_fallback` (400, "<key>: Replaced by <list key>. Write <list
+        key> instead."); any other key outside the list (400, "<key> is not a
+        document reading setting."); a key that the environment or `.env` sets
+        (409, "Remove <ENV_NAME> from the environment or .env to edit it
+        here.", first locked key in key order; a list key names the variable
+        that sets it, which can be an old single-value variable such as
+        `OCR_ENGINE_PRIMARY`); a value that breaks its rule, including blank
+        text (400, "<key>: <rule>", including an empty list, a duplicate name,
+        a blank entry and `auto` inside a list, for example "pdf_readers: The
+        value must be one of: liteparse, pdf_inspector, pypdfium2, pypdf.");
+        a stale `revision` (409, "omrs.jsonc changed on disk. Reload to see the
+        new values."); a file that cannot be parsed or holds a key twice (409,
+        "omrs.jsonc could not be read. Fix it, then save again."); a disk error
+        (500, "omrs.jsonc could not be written."). A reader that is not
+        installed and an OCR engine that is valid but not provisioned are
+        allowed in a list. No message holds a submitted value. Session only: a
+        bearer credential gets 403.
       security:
         - sessionCookie: [manage]
       x-omrs-scopes: [manage]
@@ -11256,8 +11261,11 @@ components:
             "Remove <ENV_NAME> from the environment or .env to edit it here."
         kind:
           type: [string, "null"]
-          enum: [bool, int, float, text, choice, null]
-          description: The control to show. Null for a setting that is not one plain value.
+          enum: [bool, int, float, text, choice, list, null]
+          description: >
+            The control to show. `list` is an ordered array of names (the
+            reader and OCR engine lists). Null for a setting that is not one
+            plain value or an ordered list.
         choices:
           type: [array, "null"]
           items:
@@ -11361,10 +11369,10 @@ components:
         settings:
           type: array
           minItems: 5
-          maxItems: 8
+          maxItems: 5
           description: >
-            One row per key, in the fixed key order. The page shows the list
-            keys; a row for an old single-value key can also appear.
+            One row per key, in the fixed key order. The old single-value keys
+            have no row: a list row holds the value that they mean.
           items:
             $ref: "#/components/schemas/DocumentReadingSetting"
         pdf_readers:
@@ -11405,12 +11413,9 @@ components:
           type: string
           enum:
             - pdf_readers
-            - pdf_reader
             - ocr_fallback_enabled
             - ocr_routing_unit
             - ocr_engines
-            - ocr_engine_primary
-            - ocr_engine_fallback
             - ocr_maths_routing_enabled
         value:
           type: [string, boolean, number, array]
@@ -11418,8 +11423,8 @@ components:
             type: string
           description: >
             The value in force since launch. A list key holds an array of
-            names. For `pdf_reader` this is the configured name, which can be
-            `auto`.
+            names. An old single-value setting in force reads as the list it
+            means.
         saved:
           type: [string, boolean, number, array, "null"]
           items:
