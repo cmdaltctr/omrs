@@ -47,6 +47,9 @@ Work in `/Users/aizat/Development/PROJECTS/om-systems/omrs/omrs-feat-render-math
 - [x] 7.3 Set `maxSize: 20` in `KATEX_OPTIONS` with a test.
 - [x] 7.4 Pin the `ClaimList` descendant rule: the claim test asserts `.katex .katex-html` and `.katex math`.
 - [x] 7.5 Correct the proposal, design and specs (300 formulas, 59 font files, `\href` shows its command name, no "style" claim, fixture holds formulas only), and remove the trailing blank line of `CitationPopover.test.tsx`.
+- [x] 7.6 A claim keeps inline maths only: a `$$` block in a claim renders as an inline formula (`katex-display` is no longer an allowed root). Test failed first.
+- [x] 7.7 Pin the scenarios that had no test: one katex copy in the lockfile and no maths entry in the Integrations front end (`lib/maths.test.ts`) and catalogue (`tests/test_integrations_no_maths_entry.py`, tripwire pin 9754), and a merged passage (closing fence, prose, inline maths) through `AnswerText`.
+- [x] 7.8 `.katex-display` keeps `overflow-y: hidden` and gains `padding-block: 0.25em`. Measured in the browser on the `eq01` search: without `hidden`, 3 of 15 display formulas overflowed by up to 3 px; with the padding, 0 of 15 do and nothing is clipped.
 
 ## Workflow follow-up
 

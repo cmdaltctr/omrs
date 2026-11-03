@@ -111,6 +111,13 @@ describe("AnswerText maths", () => {
     expect(container).toHaveTextContent("<b>raw</b>");
   });
 
+  it("renders a merged passage whose closing fence is followed by prose and inline maths", () => {
+    const { container } = show("as:\n\n$$\n\\log p = a\n$$\nwhere again the term $y_i$ holds");
+    expect(container.querySelectorAll(".katex-display")).toHaveLength(1);
+    expect(container.querySelectorAll(".katex-error")).toHaveLength(0);
+    expect(container).toHaveTextContent("where again the term");
+  });
+
   it("shows dollar amounts as text, with every space", () => {
     const { container } = show("It costs $5 and $10, or $40 more. A ton of coal is another $");
     expect(container.querySelector(".katex")).toBeNull();
@@ -196,6 +203,12 @@ describe("ClaimList", () => {
     expect(container.querySelector(".katex .katex-html")).not.toBeNull();
     expect(container.querySelector(".katex math")).not.toBeNull();
     expect(container).not.toHaveTextContent("$");
+  });
+
+  it("shows a display formula in a claim as an inline formula, since a claim keeps inline maths only", () => {
+    const { container } = claims([{ claim: "$$\nx^2\n$$", verdict: "unsupported", ordinals: [1] }]);
+    expect(container.querySelector(".katex-display")).toBeNull();
+    expect(container.querySelectorAll(".katex")).toHaveLength(1);
   });
 
   it("drops a heading in a claim to text and still renders its formula", () => {

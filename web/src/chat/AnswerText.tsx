@@ -185,7 +185,7 @@ const CLAIM_COMPONENTS: Components = {
 
 const CLAIM_ELEMENTS = new Set(["p", "strong", "em", "code"]);
 
-const KATEX_ROOTS = new Set(["katex", "katex-display", "katex-error"]);
+const KATEX_ROOTS = new Set(["katex", "katex-error"]);
 
 /** Elements that belong to a KaTeX tree. A parent is always tested before its children. */
 const katexTree = new WeakSet<Parameters<AllowElement>[0] | NonNullable<Parameters<AllowElement>[2]>>();
