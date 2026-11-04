@@ -86,6 +86,13 @@ function serve(runtime: RuntimeComponents = RUNTIME, handlers: Parameters<typeof
 }
 
 const group = async (name: string) => screen.findByRole("region", { name });
+const noteWith = (region: HTMLElement, pattern: RegExp) => {
+  const found = within(region)
+    .getAllByRole("note")
+    .find((element) => pattern.test(element.textContent ?? ""));
+  if (found === undefined) throw new Error(`No note matching ${pattern}`);
+  return found;
+};
 const row = async (groupName: string, name: string) => {
   const items = within(await group(groupName)).getAllByRole("listitem");
   const found = items.find((entry) => within(entry).queryByText(name, { selector: "h3" }) !== null);
@@ -145,6 +152,41 @@ describe("Runtime groups", () => {
     const titleRow = within(dots).getByRole("heading", { name: "dots-mocr" }).parentElement as HTMLElement;
     expect(titleRow).toHaveAttribute("data-slot", "card-title-row");
     expect(within(titleRow).getByText("Missing", { selector: "[data-slot=badge]" })).toBeInTheDocument();
+  });
+
+  it("tells where the engine list and order are set, and that the workers folder is the one setting here", async () => {
+    startApp("#/integrations/ocr-engines", serve());
+    const note = noteWith(await group("OCR engines"), /engine/i);
+    expect(note).toHaveTextContent(
+      "To choose which engines are used and in what order, go to Settings › Document reading. The workers folder below is the one setting you can change on this page.",
+    );
+    expect(within(note).getByRole("link", { name: "Settings › Document reading" })).toHaveAttribute("href", "#/settings/document-reading");
+    expect(note).toHaveClass("border-status-info");
+  });
+
+  it("tells where the server addresses are set, with a link to Providers", async () => {
+    startApp("#/integrations/local-servers", serve());
+    const note = noteWith(await group("Local servers"), /addresses/i);
+    expect(note).toHaveTextContent(
+      "The addresses these rows check are set in Settings › Providers, except the llama.cpp embedding address, which is set in omrs.jsonc.",
+    );
+    expect(within(note).getByRole("link", { name: "Settings › Providers" })).toHaveAttribute("href", "#/settings/providers");
+    expect(note).toHaveClass("border-status-info");
+  });
+
+  it("tells that a row offers a download command, and links to no Settings page", async () => {
+    startApp("#/integrations/model-files", serve());
+    const note = noteWith(await group("Model files"), /command/i);
+    expect(note).toHaveTextContent("Run the command on a row to download its files, then reload this page.");
+    expect(within(note).queryByRole("link")).toBeNull();
+    expect(note).toHaveClass("border-status-info");
+  });
+
+  it("shows each runtime callout on its own section only", async () => {
+    startApp("#/integrations/ocr-engines", serve());
+    const engines = await group("OCR engines");
+    expect(within(engines).queryByRole("link", { name: "Settings › Providers" })).toBeNull();
+    expect(within(engines).getAllByRole("link", { name: /^Settings/ })).toHaveLength(1);
   });
 
   it("says when a group is empty", async () => {
@@ -325,5 +367,9 @@ describe("Integrations sections", () => {
     const tools = await screen.findByRole("region", { name: "Tools" });
     expect(within(tools).getByRole("note")).toHaveTextContent(/needs no restart/);
     expect(within(tools).getByRole("note")).not.toHaveTextContent(/restart the server/);
+    expect(within(tools).getAllByRole("note").map((note) => note.textContent)).toEqual([
+      "A tool installs into its own environment, so the server needs no restart. Each card says what to do next.",
+    ]);
+    expect(within(tools).queryByRole("link", { name: /^Settings/ })).toBeNull();
   });
 });

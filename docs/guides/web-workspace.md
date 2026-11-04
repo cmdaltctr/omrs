@@ -825,7 +825,7 @@ The section checks installs and files only. It installs nothing, downloads nothi
 
 ### Local servers on the Integrations page
 
-The Local servers section lists each local model server at the address that the settings give. Each item is ready when its health request succeeds, and not running when it fails. Each item names the settings that use it. An item that no setting uses still shows, with no users. The list never shows a user name or password from an address.
+The Local servers section lists each local model server at the address that the settings give. Each item is ready when its health request succeeds, and not running when it fails. Each item names the settings that use it. An item that no setting uses still shows, with no users. The list never shows a user name or password from an address. A note at the top of the section links to Settings › Providers, where you set these addresses. The llama.cpp embedding address is the exception: you set it in `omrs.jsonc`.
 
 | Item | Address | Shown |
 |---|---|---|

@@ -196,6 +196,15 @@ describe("Integrations", () => {
     expect(within(callout).getByRole("link", { name: "Settings" })).toHaveAttribute("href", "#/settings");
   });
 
+  it("keeps the Extras note as it is, with no Settings link of its own", async () => {
+    startApp("#/integrations", serve());
+    const extras = await screen.findByRole("region", { name: "Extras" });
+    expect(within(extras).getAllByRole("note").map((note) => note.textContent)).toEqual([
+      "Availability reflects the running launch of the server. This server cannot install extras from the app. To add an extra, run its command in a terminal outside the app, then restart the server.",
+    ]);
+    expect(within(extras).queryByRole("link", { name: /^Settings/ })).toBeNull();
+  });
+
   it("links to Document reading only on the Reading parts section", async () => {
     startApp("#/integrations", serve());
     await screen.findByRole("list", { name: "Integrations" });

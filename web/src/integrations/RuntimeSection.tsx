@@ -1,6 +1,9 @@
+import type { ReactNode } from "react";
 import type { RuntimeComponents, RuntimeItem, RuntimeStatus } from "../api/integrations";
 import { Badge } from "../components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { formatRoute } from "../lib/routes";
+import { ServerCallout } from "../settings/ServerCallout";
 import { CopyCommand } from "./CopyCommand";
 import { EntryList, EntryRow } from "./EntryList";
 import { needsAttention, RUNTIME_FIELDS, SECTION_LABELS, type RuntimeSection as Section } from "./sections";
@@ -57,6 +60,31 @@ const SUMMARIES: Record<Section, string> = {
   "local-servers": "Servers at the configured addresses.",
 };
 
+const LINK = "underline underline-offset-4";
+
+/** Where to change what each section shows, with a link to the exact Settings page. Model files has no page that chooses its rows. */
+const WHERE: Record<Section, ReactNode> = {
+  "ocr-engines": (
+    <>
+      To choose which engines are used and in what order, go to{" "}
+      <a href={formatRoute({ area: "settings", section: "document-reading" })} className={LINK}>
+        Settings › Document reading
+      </a>
+      . The workers folder below is the one setting you can change on this page.
+    </>
+  ),
+  "model-files": "Run the command on a row to download its files, then reload this page.",
+  "local-servers": (
+    <>
+      The addresses these rows check are set in{" "}
+      <a href={formatRoute({ area: "settings", section: "providers" })} className={LINK}>
+        Settings › Providers
+      </a>
+      , except the llama.cpp embedding address, which is set in omrs.jsonc.
+    </>
+  ),
+};
+
 /** These parts are not pip extras. Said once under each runtime section heading. */
 const CHECKED = "The server checks these parts when the page loads and changes nothing.";
 
@@ -88,6 +116,7 @@ export function RuntimeSection({ section, runtime }: { section: Section; runtime
   const items: RuntimeItem[] = runtime[RUNTIME_FIELDS[section]];
   return (
     <SectionFrame id={`integrations-${section}`} title={title} lines={[`${SUMMARIES[section]} ${CHECKED}`]}>
+      <ServerCallout text={WHERE[section]} />
       {section === "ocr-engines" ? <WorkersFolderCard /> : null}
       {items.length === 0 ? (
         <p className="text-meta text-muted-foreground">Nothing to show in this group.</p>
