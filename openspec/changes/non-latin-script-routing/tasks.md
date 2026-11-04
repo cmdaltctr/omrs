@@ -18,7 +18,7 @@ Code tasks are tests first: write the test, run it, confirm it fails, then chang
 ## 3. Studio, contract and Settings page
 
 - [x] 3.1 Tests first: `ReadParams` accepts `ocr_non_latin_routing`, refuses `arabic` with `invalid_parameter`, and records the value in the step identity. Change `openapi.yaml` first for the document-reading key and confirm the conformance tests fail. Update `docs/guides/pipelines.md`. Verify: `uv run pytest tests/unit -k "openapi or read_params or document_reading" -q` passes.
-- [ ] 3.2 Load the `omrs-design` skill. Tests first (Vitest): the Document reading row shows the three choices and the scan note; Studio shows the option with Inherit. Check at 1280 px and 390 px in a browser (warn the user before starting a server; scratch config folder, free port). Verify: `npm run lint`, `npm run typecheck` and `npm test` pass in `web/`; no horizontal scroll at 390 px.
+- [x] 3.2 Load the `omrs-design` skill. Tests first (Vitest): the Document reading row shows the three choices and the scan note; Studio shows the option with Inherit. Check at 1280 px and 390 px in a browser (warn the user before starting a server; scratch config folder, free port). Verify: `npm run lint`, `npm run typecheck` and `npm test` pass in `web/`; no horizontal scroll at 390 px.
 
 ## 4. Experiment before any default
 
