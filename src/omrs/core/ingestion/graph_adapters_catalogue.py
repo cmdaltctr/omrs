@@ -299,6 +299,7 @@ READ = OperationDescriptor(
         "ocr_engine_primary": "ocr_engine_primary",
         "ocr_engine_fallback": "ocr_engine_fallback",
         "ocr_non_latin_routing": "ocr_non_latin_routing",
+        "ocr_local_backends": "ocr_local_backends",
     },
     index_shaping=True,
 )

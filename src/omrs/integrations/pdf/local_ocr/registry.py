@@ -76,6 +76,11 @@ def available() -> list[str]:
     return BACKENDS.names()
 
 
+def installed(name: str) -> bool:
+    """Return whether the probe module of *name* is installed; imports nothing."""
+    return BACKENDS.installed(name)
+
+
 def listed(settings: Any) -> tuple[str, ...]:
     """Return the injected backend list, or :data:`DEFAULT_BACKENDS` without one."""
     return tuple(getattr(settings, "ocr_local_backends", DEFAULT_BACKENDS))

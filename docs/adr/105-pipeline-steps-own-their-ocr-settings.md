@@ -1,7 +1,7 @@
 # ADR-105: Pipeline Steps Own Their OCR Settings
 
 - **Date:** 2026-10-28
-- **Status:** Accepted (2026-10-28; built and merged to v3 at PR #137, merge commit `24961fa5`)
+- **Status:** Accepted (2026-10-28; built and merged to v3 at PR #137, merge commit `24961fa5`) Amended by ADR-112 (2026-11-04): decision 1, the Read document step also takes `ocr_local_backends`.
 - **Deciders:** Dr Muhammad Aizat Bin Md Hawari
 - **Amends:** design D5 of the archived change `add-pdf-reader-step-setting` (OCR settings stay host-owned)
 - **Related:** [ADR-072](072-modular-ocr-engines-dots-mocr-primary-and-maths-routing.md) (engine routes and maths routing), [ADR-069](069-page-level-ocr-routing-and-the-pdfium-runtime.md) (routing unit), [ADR-080](080-profiles-own-pipelines.md) (built-in profiles run no saved pipeline)

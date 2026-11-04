@@ -63,7 +63,7 @@ Write technical documentation in ASD-STE100 Simplified Technical English where p
 8. **Graph construction is deterministic** — no LLM involvement in code graph, document graph, or community detection.
 9. **Settings are injected, never global** (ADR-037). `core/` and `integrations/` MUST NOT import a settings singleton. Entry points (`search`, `ingest_path_async`) resolve `EffectiveSettings` **once at the boundary**; everything below takes it as a parameter. `EffectiveSettings` and all four of its blocks are frozen. `Engine` owns its embedder, store and settings; `EMBEDDING_PROVIDER_SCOPE = "engine"` (was `"process"`), so each engine gets an isolated embedder lifecycle.
 10. **`Engine` is the public API.** The public surface is `omrs.Engine`, `omrs.EffectiveSettings` and `omrs.__version__` — exported via PEP 562 lazy imports. There is no module-level default engine. `compose.build_engine()` is the single construction path; `ensure_runtime_setup()` is the legacy installer for pre-v2 callers.
-11. **Registries are the dispatch mechanism** (PROPOSAL §4.4). A new strategy = one new file + one `register()` line. Dispatch modules MUST NOT import concrete strategy modules at module level, and MUST NOT branch `if/elif` over strategy names. Each vector-store backend has its own folder under `core/vectordb/` (`lancedb/`, `chroma/`).
+11. **Registries are the dispatch mechanism** (PROPOSAL §4.4). A new strategy = one new file + one `register()` line. Dispatch modules MUST NOT import concrete strategy modules at module level, and MUST NOT branch `if/elif` over strategy names. Each vector-store backend has its own folder under `core/vectordb/` (`lancedb/`, `chroma/`). A reading part (PDF reader, local OCR backend or page rule) is one file, one descriptor entry in `core/reading_parts.py` and one pinned `register()` line (`tests/unit/test_reading_parts_pins.py`). Entry points (`omrs.pdf_readers`, `omrs.local_ocr_backends`, `omrs.page_rules`) are a second source of part names. Only compose reads them (ADR-112; guide: `docs/guides/reading-parts.md`).
 12. **No file exceeds 500 lines.** Enforced by `tests/test_file_size_ceiling.py`.
 
 ## Critical Gotchas (silent breakage if violated)
@@ -167,6 +167,7 @@ Each folder below has a short `AGENTS.md` (and a `CLAUDE.md` link to it). Read t
 | Architecture deep-dive        | [`docs/guides/architecture.md`](docs/guides/architecture.md)               |
 | MCP tools reference           | [`docs/guides/mcp-tools.md`](docs/guides/mcp-tools.md)                     |
 | Ingestion pipeline            | [`docs/guides/ingestion.md`](docs/guides/ingestion.md)                     |
+| Reading parts (readers, OCR, rules) | [`docs/guides/reading-parts.md`](docs/guides/reading-parts.md)       |
 | Retrieval + reranker          | [`docs/guides/reranker.md`](docs/guides/reranker.md)                       |
 | Metadata extraction           | [`docs/guides/metadata-extraction.md`](docs/guides/metadata-extraction.md) |
 | CLI reference                 | [`docs/guides/cli-reference.md`](docs/guides/cli-reference.md)             |

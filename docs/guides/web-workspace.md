@@ -556,7 +556,7 @@ A cloud judge sends each claim and its cited passages off this machine. The bloc
 
 ### Document reading
 
-Settings > Document reading (`#/settings/document-reading`) sets how OMRS reads documents. It has one row for each of these six keys:
+Settings > Document reading (`#/settings/document-reading`) sets how OMRS reads documents. It has one row for each of these seven keys:
 
 | Row | Key | Control |
 | --- | --- | --- |
@@ -566,6 +566,7 @@ Settings > Document reading (`#/settings/document-reading`) sets how OMRS reads 
 | OCR engines | `ocr_engines` | An ordered list. Add, remove, move up and move down. |
 | Maths routing | `ocr_maths_routing_enabled` | A switch. |
 | Non-Latin routing | `ocr_non_latin_routing` | A select: `off`, `detect` or `always`. `detect` does not catch scanned pages. Use `always` for a collection you know is non-Latin. |
+| Local OCR backends | `ocr_local_backends` | An ordered list. Add, remove, move up and move down. |
 
 Each row shows the value in force, where it comes from and the default. To change a value:
 
@@ -577,15 +578,15 @@ Save writes the key to `omrs.jsonc`. It does not change the value in force. The 
 
 Select "Use default" to remove the key from `omrs.jsonc`. The default then applies at the next launch.
 
-**Edit an ordered list.** The two list rows use the same control. Each entry is one numbered line. The line says what its position does. The first reader reads first when it is installed. A later reader retries when the readers above are not installed or return no text. The first engine reads first when it is available. A later engine runs only when every engine above is unavailable.
+**Edit an ordered list.** The three list rows use the same control. Each entry is one numbered line. The line says what its position does. The first reader reads first when it is installed. A later reader retries when the readers above are not installed or return no text. The first engine reads first when it is available. A later engine runs only when every engine above is unavailable. The first local OCR backend reads flagged pages first when it is installed. A later backend reads the pages that the backends above could not read well.
 
-1. Select Edit on the PDF readers row or the OCR engines row.
+1. Select Edit on the PDF readers row, the OCR engines row or the Local OCR backends row.
 2. Select the up or down arrow on a line to move that name.
 3. Select the X on a line to remove that name.
 4. Choose a name in the add control to put it at the end of the list.
 5. Select Save.
 
-The buttons carry labels such as "Move pypdf up" and "Remove pypdf" for screen readers. The page refuses an empty list: the Remove button of the last name stays disabled. A reader that is not installed shows "Not installed" with a link to Integrations › PDF readers, and you cannot add it. An engine that is not provisioned shows the reason and a link to Integrations › OCR engines. You can add it, for example before you provision it.
+The buttons carry labels such as "Move pypdf up" and "Remove pypdf" for screen readers. The page refuses an empty list: the Remove button of the last name stays disabled. A reader that is not installed shows "Not installed" with a link to Integrations › PDF readers, and you cannot add it. An engine that is not provisioned shows the reason and a link to Integrations › OCR engines. You can add it, for example before you provision it. A local OCR backend that is not installed shows "Not installed" with a link to Integrations › Reading parts, and you cannot add it.
 
 A list of one engine turns the fallback engine off. Remove the second engine and save. A save writes the list key and removes the matching old keys (`pdf_reader`, `ocr_engine_primary`, `ocr_engine_fallback`) from `omrs.jsonc` in the same write. The page never writes an old key.
 
@@ -593,9 +594,10 @@ These rules also apply:
 
 - A key set in the environment or `.env` is read-only. The row names the variable to remove.
 - When a missing reader means that another reader reads, the PDF readers row shows the reader in use.
-- A Read document step in a pipeline can choose its own reader list and engine list.
+- A Read document step in a pipeline can choose its own reader list, engine list and local OCR backend list.
+- The page has no row for `reading_part_options`. Edit that key in `omrs.jsonc` (see [Reading part options](configuration.md#reading-part-options)).
 
-The six keys are part of the index identity. After a restart, the next ingest can read existing files again. A failed save shows the server message. When `omrs.jsonc` changed on disk, select Reload to read the new values, then save again.
+The seven keys are part of the index identity. After a restart, the next ingest can read existing files again. A failed save shows the server message. When `omrs.jsonc` changed on disk, select Reload to read the new values, then save again.
 
 The Settings page lists a list key in the Configuration table like any other key. See [Document reading values](configuration.md#document-reading-values) for the rules that the server checks on a save.
 
@@ -733,7 +735,7 @@ Every area has its own address. Back and forward move between them. An address t
 | Knowledge Base | `#/knowledge-base/<collection>` | Rename the project title with the pencil. See the database that holds the project (logo and name in the header, name in the project list and in the Sources table). List sources, upload and ingest files, ingest from an approved folder, search, preview and confirm a deletion or a profile change. The upload panel shows the server's per-file limit and refuses a larger file before it is sent. Change the limit in Settings › Workspace. |
 | Studio | `#/studio`, `#/studio/<profile-id>`, `#/studio/<profile-id>/<purpose>` | Open a gallery of profiles. Duplicate a profile, start an empty one, rename it or delete it. Open the Ingest, Search or Answer pipeline of a profile. Add operations, connect ports, save a revision, validate, run and cancel. |
 | Experiments | `#/experiments`, `#/experiments/runs/<run-id>` | Create experiment folders and sub-experiments, issue a bound credential, register and open the notebook editor, and read pipeline runs. A preview that is cut offers Open full output, which shows the redacted value as text and downloads it. |
-| Integrations | `#/integrations`, `#/integrations/<section>` | Pick a section with its chip: Extras, Tools, PDF readers, OCR engines, Model files or Local servers. A chip with a red number has parts that a setting in force needs and that are not ready. See which optional parts are installed. When the server is a `uv tool` install and finds `uv`, press Install on an entry, confirm the packages, then restart the server to use them. Read a red "Before you install" note first: it names a package version the install can change, or, for PyTorch, the download size. An entry marked "Base default" comes with every install, so do not install it again. After the install the server checks every package; if they clash, run the entry's command instead of restarting. Otherwise copy the command, run it in a terminal and restart the server. For a `uv tool` install, the copied command keeps the extra after a later reinstall. To remove an installed extra, press Uninstall (see [Uninstall an integration](#uninstall-an-integration)). |
+| Integrations | `#/integrations`, `#/integrations/<section>` | Pick a section with its chip: Extras, Tools, PDF readers, Reading parts, OCR engines, Model files or Local servers. A chip with a red number has parts that a setting in force needs and that are not ready. See which optional parts are installed. When the server is a `uv tool` install and finds `uv`, press Install on an entry, confirm the packages, then restart the server to use them. Read a red "Before you install" note first: it names a package version the install can change, or, for PyTorch, the download size. An entry marked "Base default" comes with every install, so do not install it again. After the install the server checks every package; if they clash, run the entry's command instead of restarting. Otherwise copy the command, run it in a terminal and restart the server. For a `uv tool` install, the copied command keeps the extra after a later reinstall. To remove an installed extra, press Uninstall (see [Uninstall an integration](#uninstall-an-integration)). |
 | Settings | `#/settings`, `#/settings/<section>` | Nine sections: Appearance, Providers, Chat, MCP, Server log, Runtime, Workspace, Document reading and Configuration. Set provider addresses and keys and test them, choose the Chat model, read the server log, copy the MCP client configuration, manage MCP access over HTTP, set the per-file upload limit, choose the PDF reader and the OCR settings for the next launch, and read and change every setting. |
 
 In Knowledge Base, a search result renders `$...$` and `$$...$$` in its passage as maths. It shows every other character exactly as stored, with its indentation and line breaks, so OCR text is not read as Markdown. Press Show chunk to read the stored text in the chunk viewer.
@@ -808,6 +810,18 @@ Each row shows these items:
 A reader that a list uses and that is not installed shows in the attention colour. The chip of the section counts it. A missing reader that nothing uses stays plain.
 
 The section only checks that each reader imports. It installs nothing, downloads nothing and starts nothing. To install an extra from the app, use the Extras section.
+
+### Reading parts on the Integrations page
+
+The Reading parts section (`#/integrations/reading-parts`) shows the parts that read PDF pages, in three groups. `GET /v1/integrations` returns the same facts in its `reading_parts` block. The server checks the parts when the page loads and changes nothing.
+
+- **Local OCR backends.** One row for each backend in the Settings list, in list order. The badge reads "Ready", "Not installed", "Model missing" or "Switched off". A row also shows the confidence cut in force, whether the model files are on the machine and the part name. A backend that failed with a fatal error stays "Switched off", with the reason, until the server restarts.
+- **Page rules.** One row for each rule, in rule order. The badge reads "On" or "Off". A row shows the rule version and where the rule comes from: "Comes with OMRS." or "Added by" the name of an installed package.
+- **Discovered parts.** One row for each part that an installed package adds. The badge reads "Loaded" or "Broken". A broken row shows the reason. When no package adds a part, the group says so.
+
+A listed backend that cannot read, and a broken discovered part, show in attention colour. The section chip counts them. A page rule that is off stays plain.
+
+The section checks installs and files only. It installs nothing, downloads nothing and starts nothing. To install a backend, use the Extras section. See [Reading parts](reading-parts.md) for the part descriptors and the procedures to add a part.
 
 ### Local servers on the Integrations page
 

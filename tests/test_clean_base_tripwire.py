@@ -281,7 +281,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # _WEB_EXTRA_CASES).
 # +19 (2026-11-04, same change, group 7, by test-ID diff, 19 added, 0 removed): Indra
 # backend with a fake indra_ocr (17) and the one-part check (2). No fastapi needed.
-_BASE_EXECUTED = 10452
+# +4 (2026-11-04, same change, group 8 review, by test-ID diff, 4 added, 0 removed):
+# registry-names audit of the local OCR backend and page rule blocks (2) and the Read
+# step host facts for ocr_local_backends (2). No fastapi needed.
+_BASE_EXECUTED = 10456
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

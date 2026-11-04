@@ -18,6 +18,7 @@ All domain logic: ingestion, retrieval, pipelines, vector stores, providers, pro
 3. `core/ingestion/` and `core/retrieval/` never import each other.
 4. Graph construction stays deterministic. Do not call an LLM in the code graph, the document graph or community detection.
 5. When you fix an import-linter violation, delete its `ignore_imports` entry. A stale entry fails the build.
+6. `reading_parts.py` is pure data. It imports only the standard library, never `omrs`. A test reads its syntax tree. A new reading part needs a descriptor here (ADR-112).
 
 ## Links
 

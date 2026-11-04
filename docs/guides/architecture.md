@@ -626,6 +626,17 @@ a configured strategy family (Louvain registers next to Leiden; pypdf
 registers next to liteparse and pypdfium2). An optional adapter with no named
 peers stays an integration.
 
+The three page-reading registries (PDF readers, local OCR backends and page
+rules) share one helper, `integrations/part_registry.py`. Each registry holds
+a `PartRegistry`: a lazy table of import strings and declared facts, with a
+per-process switch-off. Each built-in part has one descriptor in
+`core/reading_parts.py` and one lazy `register()` line in its registry.
+`tests/unit/test_reading_parts_pins.py` fails when the two differ. The helper
+also reads the entry-point groups for external parts. Only the composition root runs that
+discovery. The other registries (community, chunking, metadata, embeddings,
+LLM, retrieval, sparse backend, vector store and document backend) keep their
+own code. They adopt the helper later.
+
 ### Integration inventory
 
 Every Python module under `src/omrs/integrations/`, classified. A contract
@@ -673,7 +684,7 @@ test fails when a module is missing from this table.
 | `omrs.integrations.pdf.maths_pages` | Base, via `pypdf` | `OCR_MATHS_ROUTING_ENABLED` | `maths_font_pages` frozenset of 1-based pages | Unreadable font resources → no pages flagged | Closed, versioned maths-font list (`MATHS_DETECTOR_VERSION`) |
 | `omrs.integrations.pdf.maths_routing` | Native | `OCR_MATHS_ROUTING_ENABLED` | Maths-page detection and page split | Disabled → routing unchanged | Maths-page decisions the pdf-inspector seam calls |
 | `omrs.integrations.pdf.ocr_routing`   | Native                                                         | `PDF_READER=pdf_inspector` and `OCR_FALLBACK_ENABLED`               | `OcrRoutedPdfInspector` and OCR diagnostics  | No OCR route before dispatch: flagged pages keep native text and count unresolved | Page-level routing seam around the pdf-inspector strategy           |
-| `omrs.integrations.pdf.page_routing` | Base dependency (`pdf-inspector`) | `OCR_ROUTING_UNIT=page` (the default and only legal value) | `page_evidence`, `local_ocr` (delegates to `local_ocr.chain`), `resolve_local_model_identity(settings, backend)`, `local_tier_off_reason`, `merge_pages` | Full page scan raises — the page unit has no sampled evidence to fall back to | Page-unit OCR routing: per-page evidence, the local tier with its post-check, and the page-source counts; the seam emits one document per page |
+| `omrs.integrations.pdf.page_routing` | Base dependency (`pdf-inspector`) | `OCR_ROUTING_UNIT=page` (the default and only legal value) | `page_evidence`, `local_ocr` (delegates to `local_ocr.chain`), `resolve_local_model_identity(settings, backend)`, `local_tier_off_reason`, `merge_pages` | Full page scan raises: the page unit has no sampled evidence to fall back to | Page-unit OCR routing: per-page evidence, the local tier with its post-check, and the page-source counts; the seam emits one document per page |
 | `omrs.integrations.pdf.page_rules` | Native | None | Package marker for the page rules | None | Imports no rule module (change `local-ocr-backends`, design D5) |
 | `omrs.integrations.pdf.page_rules.base` | Native | None | `RuleContext`, `RuleOutcome`, the `PageRule` protocol and the `PostCheck` callable | None | Interface of a page rule; optional `post_check`, `degrade` and `stamp` hooks |
 | `omrs.integrations.pdf.page_rules.blank` | Base, via `liteparse` renders | Always on, flagged pages only | `RULE`, order 10: drops the pages `blank_pages.find_blank_pages` finds | Render or score failure → no page dropped | Built-in page rule; calls the blank test through its module at call time |
@@ -684,7 +695,7 @@ test fails when a module is missing from this table.
 | `omrs.integrations.pdf.pdf_inspector` | Base dependency (compatibility `pdf-inspector` extra retained) | `PDF_READER=pdf_inspector` (packaged default, ADR-050)              | `load_data`                                   | `compose.resolve_pdf_reader` missing-backend error → pypdf                        | Registered reader strategy; configuration-owned default             |
 | `omrs.integrations.pdf.pypdf`         | Base, via `llama-index-readers-file`                           | `PDF_READER=pypdf`                                                  | `load_data`                                   | Terminal `auto` tier                                                              | Registered reader strategy                                          |
 | `omrs.integrations.pdf.pypdfium`      | Optional `pdf-pypdfium2` extra                                 | `PDF_READER=pypdfium2`                                              | `load_data`                                   | None                                                                              | Registered reader strategy                                          |
-| `omrs.integrations.pdf.registry`      | Native                                                         | `PDF_READER` concrete values                                        | Reader class with `load_data`                 | None; unknown names raise                                                         | Lazy registry for concrete PDF readers                              |
+| `omrs.integrations.pdf.registry`      | Native                                                         | `PDF_READER` concrete values                                        | Reader class with `load_data`                 | None; unknown names raise                                                         | Lazy registry for concrete PDF readers, on a shared `PartRegistry`; one `register()` line per built-in reader, pinned to `PDF_READERS` descriptors                              |
 | `omrs.integrations.pdf.script_routing` | Native | `OCR_NON_LATIN_ROUTING` (`off` default, `detect`, `always`) | `is_non_latin`, `non_latin_direct_pages`, `post_check_enabled`, `non_latin_output_reason`, `output_script`; versioned detector (`SCRIPT_DETECTOR_VERSION`) and output-script rule (`OUTPUT_SCRIPT_VERSION`) | `detect` reads only existing text and finds no scanned page; no engine available → today's routing and one warning | Non-Latin page routing for the page unit; no rendering, OCR or model call |
 | `omrs.integrations.tokenizer`         | Base `tokenizers` and `huggingface-hub` dependencies           | `EMBEDDING__TOKENIZER_MODEL` and `EMBEDDING__TOKENIZER_REVISION`    | `load_tokenizer(model, revision)`             | `core/chunking/model_token.py` legacy splitter                                    | Offline cache adapter; never downloads                              |
 | `omrs.integrations.process_launcher`  | Native (standard library; no shell)                            | A registered and enabled external-tool plugin                       | Owned process group, private directory, loopback port | None; a used port or failed launch is refused                             | Only plugin module that starts processes; imports no `omrs.core` module |
@@ -713,7 +724,9 @@ The same rule applied to every name-dispatched family, inside and outside
 | Family              | Selector                                                                                                 | Live registry / factory                                             | Conclusion                                                                                                                                                       | Follow-up |
 | ------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
 | Community detection | `COMMUNITY_ALGORITHM`                                                                                    | `core/community/registry.py`                                        | Registered in this change: `louvain` native, `leiden` optional via `integrations/leidenalg.py`                                                                   | None      |
-| PDF readers         | `PDF_READERS`                                                                                            | `integrations/pdf/registry.py` behind `integrations/pdf/factory.py` | Concrete readers registered behind the unchanged `auto` factory                                                                                                  | None      |
+| PDF readers         | `PDF_READERS`                                                                                            | `integrations/pdf/registry.py` behind `integrations/pdf/factory.py` | Concrete readers registered behind the unchanged `auto` factory, on the shared `PartRegistry`                                                                                                  | None      |
+| Local OCR backends | `OCR_LOCAL_BACKENDS` (ordered list), `OCR_LOCAL_MIN_CONFIDENCE` (optional override of every cut) | `integrations/pdf/local_ocr/registry.py` | `pp-ocrv6-small` native default and `indra` optional via `integrations/pdf/local_ocr/indra.py`, both on the shared `PartRegistry`; the chain in `local_ocr/chain.py` owns escalation and fallback | None |
+| Page rules | Registered rules in ascending order; `OCR_MATHS_ROUTING_ENABLED`, `OCR_NON_LATIN_ROUTING` | `integrations/pdf/page_rules/registry.py` | `blank`, `maths` and `non_latin` registered on the shared `PartRegistry`; `page_rules/pipeline.py` owns the order and the failure rule | None |
 | Chunking            | Content-type dispatch in `core/ingestion/chunker.py`; `CHUNKING__STRATEGY_FALLBACK` (default `markdown`) | `core/chunking/registry.py`                                         | Already a registry                                                                                                                                               | None      |
 | Metadata extraction | `METADATA__EXTRACTION_MODE` and provider backends                                                        | `core/metadata/registry.py`                                         | Already a registry                                                                                                                                               | None      |
 | Embedding providers | `EMBED_PROVIDER`                                                                                         | `core/providers/embeddings/registry.py`                             | Already a registry                                                                                                                                               | None      |
@@ -736,6 +749,18 @@ Live registry contents, kept in step with the code by contract tests:
 `liteparse` `pdf_inspector` `pypdf` `pypdfium2`
 
 <!-- /registry-names:pdf -->
+
+<!-- registry-names:local-ocr-backend -->
+
+`indra` `pp-ocrv6-small`
+
+<!-- /registry-names:local-ocr-backend -->
+
+<!-- registry-names:page-rule -->
+
+`blank` `maths` `non_latin`
+
+<!-- /registry-names:page-rule -->
 
 <!-- registry-names:chunking -->
 
@@ -827,6 +852,10 @@ These are not documentation. They fail the build.
 | No global settings reads in core                                   | `tests/test_no_global_settings_reads.py`         |
 | No file over 500 lines                                             | `tests/test_file_size_ceiling.py`                |
 | Dispatch goes through registries                                   | `tests/test_no_module_level_strategy_imports.py` |
+| Each built-in reading part has one descriptor and one `register()` line, with equal facts | `tests/unit/test_reading_parts_pins.py` |
+| Adding the Indra backend touches only its own backend module, its `register()` line and its descriptor | `tests/unit/test_indra_is_one_part.py` |
+| Hand-typed copies of the reading-part lists (HTTP contract enums, web key lists) follow the descriptors | `tests/unit/test_reading_parts_drift.py` |
+| Page-unit routing output stays equal to its recorded snapshots | `tests/unit/test_page_routing_golden.py` |
 
 Run them with `uv run lint-imports` and `uv run pytest -m "not slow"`.
 

@@ -38,6 +38,8 @@ from omrs.core.retrieval import registry as retrieval_registry
 from omrs.core.retrieval import sparse_registry
 from omrs.core.vectordb import registry as vectordb_registry
 from omrs.integrations.pdf import registry as pdf_registry
+from omrs.integrations.pdf.local_ocr import registry as local_ocr_registry
+from omrs.integrations.pdf.page_rules import registry as page_rule_registry
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ARCHITECTURE_GUIDE = REPO_ROOT / "docs" / "guides" / "architecture.md"
@@ -70,6 +72,9 @@ REGISTRY_KINDS: dict[str, ModuleType] = {
     "sparse-backend": sparse_registry,
     "vectordb": vectordb_registry,
     "document-backend": docbackend_registry,
+    # Change local-ocr-backends: the two new page-reading registries.
+    "local-ocr-backend": local_ocr_registry,
+    "page-rule": page_rule_registry,
 }
 
 #: Behaviour-changing migrations the audit defers to follow-up changes.
