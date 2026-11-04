@@ -1,0 +1,404 @@
+{
+  "experiment_id": "45-non-latin-script-routing-2026-11-04",
+  "stats": "basic",
+  "detector": {
+    "SCRIPT_DETECTOR_VERSION": 1,
+    "minimum_letters": 40,
+    "non_latin_share": 0.5,
+    "module_file": "src/omrs/integrations/pdf/script_routing.py",
+    "module_sha256": "9c70f200cb2a753d5ff673ea7ef017dc1a8d95814e499abd4e7f66ef6718fcf2"
+  },
+  "cut": 0.9,
+  "pdf_inspector": "1.17.0",
+  "a": {
+    "per_document": {
+      "io01": {
+        "non_latin": {
+          "latin_verdict": 48
+        },
+        "unclassified": {
+          "latin_verdict": 1
+        }
+      },
+      "io02": {
+        "non_latin": {
+          "no_verdict": 16
+        }
+      },
+      "io03": {
+        "non_latin": {
+          "no_verdict": 5
+        }
+      },
+      "io04": {
+        "latin": {
+          "no_verdict": 52
+        }
+      },
+      "io05": {
+        "latin": {
+          "no_verdict": 8
+        }
+      },
+      "io06": {
+        "latin": {
+          "no_verdict": 78
+        }
+      },
+      "io07": {
+        "non_latin": {
+          "no_verdict": 60
+        },
+        "unclassified": {
+          "no_verdict": 6
+        }
+      },
+      "io08": {
+        "latin": {
+          "no_verdict": 2
+        }
+      },
+      "mx08": {
+        "latin": {
+          "no_verdict": 13
+        }
+      },
+      "rf01": {
+        "latin": {
+          "no_verdict": 1
+        }
+      },
+      "rf02": {
+        "latin": {
+          "no_verdict": 8
+        }
+      },
+      "rf03": {
+        "latin": {
+          "no_verdict": 7
+        }
+      },
+      "rf04": {
+        "latin": {
+          "no_verdict": 8
+        }
+      },
+      "rf05": {
+        "latin": {
+          "no_verdict": 25
+        }
+      },
+      "rf06": {
+        "latin": {
+          "no_verdict": 89
+        }
+      },
+      "rf07": {
+        "latin": {
+          "no_verdict": 63
+        }
+      },
+      "rf08": {
+        "latin": {
+          "no_verdict": 28
+        }
+      },
+      "tl01": {
+        "latin": {
+          "no_verdict": 80
+        }
+      },
+      "tl02": {
+        "latin": {
+          "no_verdict": 45
+        }
+      },
+      "tl03": {
+        "latin": {
+          "no_verdict": 24
+        }
+      },
+      "tl04": {
+        "latin": {
+          "no_verdict": 12
+        }
+      },
+      "tl05": {
+        "latin": {
+          "no_verdict": 12
+        }
+      },
+      "tl06": {
+        "latin": {
+          "no_verdict": 3
+        }
+      },
+      "tl07": {
+        "latin": {
+          "no_verdict": 3
+        }
+      },
+      "tl08": {
+        "latin": {
+          "no_verdict": 4
+        }
+      }
+    },
+    "totals_by_class": {
+      "non_latin": {
+        "latin_verdict": 48,
+        "no_verdict": 81
+      },
+      "unclassified": {
+        "latin_verdict": 1,
+        "no_verdict": 6
+      },
+      "latin": {
+        "no_verdict": 565
+      }
+    },
+    "non_latin_verdicts": 0,
+    "flagged_pages": 701,
+    "flagged_pages_with_a_text_item": 701
+  },
+  "b": {
+    "per_document": {
+      "bd02": {
+        "latin": {
+          "latin_verdict": 2
+        }
+      },
+      "bd04": {
+        "latin": {
+          "latin_verdict": 6
+        }
+      },
+      "bd07": {
+        "latin": {
+          "latin_verdict": 3
+        }
+      },
+      "io01": {
+        "non_latin": {
+          "latin_verdict": 21,
+          "no_verdict": 18,
+          "non_latin": 9
+        }
+      },
+      "io02": {
+        "non_latin": {
+          "no_verdict": 15,
+          "latin_verdict": 1
+        }
+      },
+      "io03": {
+        "non_latin": {
+          "latin_verdict": 5
+        }
+      },
+      "io04": {
+        "latin": {
+          "latin_verdict": 52
+        }
+      },
+      "io05": {
+        "latin": {
+          "latin_verdict": 7
+        }
+      },
+      "io06": {
+        "latin": {
+          "latin_verdict": 64,
+          "no_verdict": 3
+        }
+      },
+      "io07": {
+        "non_latin": {
+          "no_verdict": 7,
+          "non_latin": 52,
+          "latin_verdict": 1
+        }
+      },
+      "io08": {
+        "latin": {
+          "latin_verdict": 2
+        }
+      },
+      "mx01": {
+        "latin": {
+          "latin_verdict": 2
+        }
+      },
+      "mx02": {
+        "latin": {
+          "latin_verdict": 3
+        }
+      },
+      "mx03": {
+        "latin": {
+          "latin_verdict": 4
+        }
+      },
+      "mx04": {
+        "latin": {
+          "latin_verdict": 2
+        }
+      },
+      "mx05": {
+        "latin": {
+          "latin_verdict": 11
+        }
+      },
+      "mx06": {
+        "latin": {
+          "latin_verdict": 3
+        }
+      },
+      "mx07": {
+        "latin": {
+          "latin_verdict": 7
+        }
+      },
+      "mx08": {
+        "latin": {
+          "latin_verdict": 1
+        }
+      },
+      "rf06": {
+        "latin": {
+          "latin_verdict": 44
+        }
+      },
+      "rf07": {
+        "latin": {
+          "latin_verdict": 17,
+          "no_verdict": 1
+        }
+      },
+      "rf08": {
+        "latin": {
+          "latin_verdict": 1
+        }
+      },
+      "tl01": {
+        "latin": {
+          "latin_verdict": 27,
+          "no_verdict": 20
+        }
+      },
+      "tl02": {
+        "latin": {
+          "latin_verdict": 33
+        }
+      },
+      "tl03": {
+        "latin": {
+          "no_verdict": 2,
+          "latin_verdict": 15
+        }
+      },
+      "tl06": {
+        "latin": {
+          "latin_verdict": 1
+        }
+      },
+      "tl07": {
+        "latin": {
+          "latin_verdict": 1
+        }
+      },
+      "tl08": {
+        "latin": {
+          "latin_verdict": 1
+        }
+      }
+    },
+    "totals_by_class": {
+      "non_latin": {
+        "latin_verdict": 28,
+        "no_verdict": 40,
+        "non_latin": 61
+      },
+      "unclassified": {},
+      "latin": {
+        "latin_verdict": 309,
+        "no_verdict": 26
+      }
+    }
+  },
+  "c": {
+    "c1_flagged_latin_pages_non_latin_verdict": 0,
+    "c2_stored_latin_rows_non_latin_verdict": 0,
+    "c": 0,
+    "latin_flagged_pages": 565,
+    "latin_flagged_pages_with_a_verdict": 0,
+    "latin_stored_rows": 335,
+    "latin_stored_rows_with_a_verdict": 309,
+    "c3_not_gated_engine_text_latin_pages": {
+      "pages": 128,
+      "with_a_verdict": 119,
+      "non_latin_verdicts": 0,
+      "listed": []
+    },
+    "c1_listed": [],
+    "c2_listed": []
+  },
+  "d": {
+    "per_document_seconds": {
+      "io01": 20.064,
+      "io02": 22.528,
+      "io03": 15.485,
+      "io07": 31.86
+    },
+    "total_seconds_129_pages": 89.937,
+    "total_seconds_without_timed_out_documents": 89.937,
+    "latin_class_stored_rows_seconds": 641.432,
+    "latin_class_stored_rows": 335
+  },
+  "e": {
+    "e": 0,
+    "e0_kept_by_cut_any_verdict": 0,
+    "non_latin_class_rows": 129,
+    "escalated_by_shipped_reasons_of_129": 129,
+    "reasons_among_129": {
+      "low_confidence": 129,
+      "hosted_recommended": 5
+    },
+    "confidence_min_max_of_129": [
+      0.45422714948654175,
+      0.8046315908432007
+    ],
+    "kept_rows": [],
+    "verdicts_of_129_non_latin_class": {
+      "latin_verdict": 28,
+      "no_verdict": 40,
+      "non_latin": 61
+    }
+  },
+  "engine_text_class_check": {
+    "non_latin_class_pages": 129,
+    "non_latin_class_with_non_latin_verdict": 129
+  },
+  "gates": {
+    "G1": {
+      "metric": "e_non_latin_pages_kept_by_cut_and_escalated_by_detect",
+      "value": 0,
+      "op": ">=",
+      "threshold": 1,
+      "pass": false
+    },
+    "G2": {
+      "metric": "c_false_positives_on_latin_pages",
+      "value": 0,
+      "op": "<=",
+      "threshold": 0,
+      "pass": true
+    }
+  },
+  "rule_outcome": "FAIL for the default: keep `off`",
+  "outcome_row": "G1 fail, G2 pass",
+  "hypotheses": {
+    "H1": "not supported",
+    "H2": "supported"
+  }
+}

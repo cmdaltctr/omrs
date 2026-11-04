@@ -57,7 +57,7 @@
   "detector": {
     "module": "omrs.integrations.pdf.script_routing",
     "import_rule": "The analysis imports the shipped detector from the module above. It does not hold a copy of the rule, the letter test or the constants. The function names are read from the module before the first run and written into this block by a plan edit made before the first run (not an amendment).",
-    "entry_points": "to be filled before the first run, from the shipped module",
+    "entry_points": "omrs.integrations.pdf.script_routing: is_non_latin(text) -> None | True | False (the verdict; returns no letter count or share); constants SCRIPT_DETECTOR_VERSION, MIN_LETTERS, NON_LATIN_SHARE, NON_LATIN_OUTPUT_REASON; _text_layer_verdicts(file, pages) -> frozenset of pages with a non-Latin text layer (the shipped point-1 check, used as a cross-check). Flags come from omrs.integrations.pdf.page_routing.page_evidence(file). Text items come from pdf_inspector.extract_text_with_positions(str(file), sorted(pages)), joined per page with a space, as the shipped point-1 check does.",
     "expected_constants": {"SCRIPT_DETECTOR_VERSION": 1, "minimum_letters": 40, "non_latin_share": 0.5},
     "rule_text": "design.md D2: letters are characters where str.isalpha() is true; a letter is Latin when its Unicode name starts with LATIN; the verdict needs at least 40 letters and a non-Latin share of at least 0.5.",
     "required_output_per_page": "letters, non-Latin share and verdict. If the shipped module returns only a verdict, stop and ask. Do not recompute the share in the experiment."
