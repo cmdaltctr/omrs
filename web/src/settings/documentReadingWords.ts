@@ -28,7 +28,7 @@ export const READING_ROWS: Partial<Record<DocumentReadingKey, ReadingRowWords>> 
   ocr_non_latin_routing: {
     label: "Non-Latin routing",
     kind: "script",
-    help: "Sends flagged pages in a non-Latin script to OCR. The choice detect sees only text that already exists and does not catch scanned pages. Use always for a collection you know is non-Latin.",
+    help: "Sends flagged pages straight to OCR: always sends every flagged page, detect only non-Latin ones. The choice detect sees only text that already exists and does not catch scanned pages. Use always for a collection you know is non-Latin.",
   },
 };
 

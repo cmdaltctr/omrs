@@ -60,7 +60,7 @@ Per-document tables are in `output/report_tables.md`.
 ### Exploratory findings
 
 - Exploratory: the local model reads these scripts as other scripts. `io01` local text is mostly Latin and CJK letters (1,421 and 764). Check point 2 alone would catch 61 of the 129 pages.
-- Exploratory: the engine text gives `io01` Devanagari, `io02` and `io03` Arabic, and `io07` Bengali. `design.md` and the Experiment 39 plan disagree on `io01` and `io07`; the engine text settles it. These names enter no gate.
+- Exploratory: the engine text gives `io01` Devanagari, `io02` and `io03` Arabic, and `io07` Bengali. The engine text matches the Experiment 39 plan. `design.md` had swapped `io01` and `io07` and was corrected after this run. `protocol.md` and `plan.json` keep the pre-run wording, because they record the plan as frozen. These names enter no gate.
 
 ## Why it happened
 

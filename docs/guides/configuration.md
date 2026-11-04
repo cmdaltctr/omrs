@@ -1109,7 +1109,7 @@ kept pages have body recall below 0.5. Explicit operator values still apply.
 Installs using the previous 0.8 default re-index once on their
 next ingest.
 
-These four names are **flat on purpose**. `pydantic-settings` resolves
+These five names are **flat on purpose**. `pydantic-settings` resolves
 its `__` delimiter only into nested settings blocks, and the OCR
 fields are top-level — a nested spelling such as
 `OCR__ROUTING_UNIT` matches nothing and is discarded in silence. The
