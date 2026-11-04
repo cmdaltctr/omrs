@@ -58,7 +58,7 @@ Before building the direct set, check `OcrRoutes.select()`. If it is `None`, use
 
 ### D6. Interactions
 
-- **Page unit only.** Under `document` the setting is ignored with one start-up note, and it leaves the identity alone.
+- **Page unit only.** Rebase note (2026-11-04): change `page-routing-default` removed the `document` unit (`OCR_ROUTING_UNITS = ("page",)`), and start-up refuses any other value. The earlier document-unit note and identity rule were dropped, because that state cannot occur.
 - **Maths.** Union of direct sets, one request, one entry per page.
 - **`ocr_local_min_confidence`.** Unchanged for pages the local tier reads. `non_latin_output` is an extra reason, not a new cut.
 - **Change C routers.** A router acts on rescued or native text pages. This setting acts on flagged pages. They do not touch the same pages. If both apply to one page in future, the router runs first, and its "no" pages enter the flagged set.
@@ -66,7 +66,7 @@ Before building the direct set, check `OcrRoutes.select()`. If it is `None`, use
 
 ### D7. Identity and diagnostics
 
-Block `script_routing: {mode, detector_version}` only under the `page` unit with a mode other than `off`. Existing digests stay the same. Cost for real users: turning the setting on reindexes PDF sources in page-unit collections once. `pages_non_latin` is a scalar count, added to `EXCLUDED_EMBED_METADATA_KEYS`.
+Block `script_routing: {mode, detector_version}` only with a mode other than `off`. Existing digests stay the same. Cost for real users: turning the setting on reindexes PDF sources in page-unit collections once. `pages_non_latin` is a scalar count, added to `EXCLUDED_EMBED_METADATA_KEYS`.
 
 ### D8. Studio
 

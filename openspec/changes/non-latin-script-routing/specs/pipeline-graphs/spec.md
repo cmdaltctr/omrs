@@ -35,7 +35,7 @@ The `read.document` operation SHALL accept these optional settings: `ocr_fallbac
 #### Scenario: Step sets always
 
 - **WHEN** a Read document node of an Arabic collection's profile sets `ocr_non_latin_routing` to `always`
-- **THEN** that node SHALL send every flagged page past the local tier under the `page` unit
+- **THEN** that node SHALL send every flagged page past the local tier
 - **AND** other pipelines SHALL keep the host value
 
 #### Scenario: Invalid non-Latin routing value
@@ -59,5 +59,5 @@ Graph ingestion SHALL compute each source's index identity with the effective OC
 
 #### Scenario: Step non-Latin routing forces reprocessing of PDF sources
 
-- **WHEN** a page-unit source was indexed through a graph whose Read document node inherits `off`, and the node then sets `ocr_non_latin_routing` to `always`
+- **WHEN** a PDF source was indexed through a graph whose Read document node inherits `off`, and the node then sets `ocr_non_latin_routing` to `always`
 - **THEN** the next explicit ingest SHALL process the PDF source again

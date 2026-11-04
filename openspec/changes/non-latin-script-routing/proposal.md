@@ -11,7 +11,7 @@ The local OCR tier (PP-OCRv6 Small) has no recogniser for Arabic, Bengali or Dev
   - `detect`: a flagged page whose available text is mostly non-Latin letters skips the local tier. A local OCR result that is mostly non-Latin letters escalates whatever its confidence.
   - `always`: every flagged page skips the local tier. This is for a collection the operator knows is non-Latin.
 - **What it can detect, stated plainly.** A read-only probe on 2026-11-02 found that all four Experiment 33 non-Latin PDFs are pure scans: every page is flagged `scanned`, the page Markdown is empty, there are no fonts, and the only text items are Latin (7 letters a page on three of them, more on `io01`), which look like stamp or catalogue text. So no cheap signal exists before OCR for these pages. `detect` can act only where text exists: a text layer on the flagged page, or the local OCR output. For scans, `always` is the only way to skip the local tier.
-- **Page unit only.** Under the `document` unit the whole PDF already goes to the engine, so the setting changes nothing there.
+- **Page routing only.** Change `page-routing-default` removed the `document` unit, so `page` is the only routing unit and the setting needs no rule for another unit.
 - **Maths and confidence.** A page that is both a maths page and a non-Latin page goes direct once. The `ocr_local_min_confidence` cut still applies to every page that the local tier reads.
 - **Degradation.** When no OCR engine is available before dispatch, the pages run through the local tier as today, so no text is lost.
 - **Studio and Settings.** The Read document step and Settings › Document reading show the setting.

@@ -89,16 +89,6 @@ When no engine in the OCR engine list is available before dispatch, pages chosen
 - **THEN** the local tier SHALL read it
 - **AND** one warning SHALL name the missing engine
 
-### Requirement: Non-Latin routing changes nothing under the document unit
-
-Under the `document` routing unit, the setting SHALL NOT change routing, text or identity. A value other than `off` with the `document` unit SHALL log one start-up note.
-
-#### Scenario: Document unit
-
-- **GIVEN** `always` and the `document` unit
-- **WHEN** a PDF is ingested
-- **THEN** routing and the source identity SHALL equal those with `off`
-
 ### Requirement: Maths and non-Latin pages go direct once
 
 A page that is both a maths page and a non-Latin page SHALL be sent to the OCR engine list once, in the same request.
@@ -111,7 +101,7 @@ A page that is both a maths page and a non-Latin page SHALL be sent to the OCR e
 
 ### Requirement: Non-Latin routing SHALL participate in the source index identity
 
-Under the `page` unit with a value other than `off`, the identity SHALL hold a block with the mode and the detector version. With `off`, or under the `document` unit, the block SHALL be absent, so existing digests do not change.
+With a value other than `off`, the identity SHALL hold a block with the mode and the detector version. With `off`, the block SHALL be absent, so existing digests do not change.
 
 #### Scenario: Turning the setting on reindexes PDF sources
 
@@ -127,7 +117,7 @@ Under the `page` unit with a value other than `off`, the identity SHALL hold a b
 
 ### Requirement: Non-Latin routing diagnostics SHALL be honest
 
-A page-unit document SHALL carry `pages_non_latin`, the number of pages sent direct or escalated by this setting, only when the setting is not `off`. The key SHALL be in the central embedding exclusion set. Diagnostics SHALL NOT claim a script for a page that got no verdict.
+A PDF document read by page routing SHALL carry `pages_non_latin`, the number of pages sent direct or escalated by this setting, only when the setting is not `off`. The key SHALL be in the central embedding exclusion set. Diagnostics SHALL NOT claim a script for a page that got no verdict.
 
 #### Scenario: Count stamped
 
