@@ -65,8 +65,9 @@ def test_composition_root_copies_the_value(monkeypatch: pytest.MonkeyPatch) -> N
 
 
 def test_key_is_a_document_reading_key_after_the_maths_key() -> None:
-    assert DOCUMENT_READING_KEYS[-1] == KEY
-    assert DOCUMENT_READING_KEYS[-2] == "ocr_maths_routing_enabled"
+    # local-ocr-backends appends ``ocr_local_backends`` after this key.
+    assert DOCUMENT_READING_KEYS[-2] == KEY
+    assert DOCUMENT_READING_KEYS[-3] == "ocr_maths_routing_enabled"
 
 
 @pytest.mark.parametrize("mode", MODES)

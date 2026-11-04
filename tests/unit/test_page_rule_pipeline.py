@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -79,8 +80,13 @@ def _add(rule: FakeRule, order: int, *, source: str = "built-in", **flags: bool)
     return rule
 
 
-def _run(flagged: set[int], **kwargs: Any):
-    return run_rules(FILE, [], flagged, settings=None, routes=None, **kwargs)
+def _run(flagged: set[int], settings: Any = None):
+    return run_rules(FILE, [], flagged, settings=settings, routes=None)
+
+
+def _enabled(*names: str) -> SimpleNamespace:
+    """Settings that switch on the named external rules (design D12)."""
+    return SimpleNamespace(reading_part_options={name: {"enabled": True} for name in names})
 
 
 def test_rules_run_in_ascending_order_whatever_the_registration_order(log):
@@ -226,7 +232,7 @@ def test_an_external_rule_that_raises_is_skipped_warned_and_switched_off(log, ca
     later = _add(FakeRule("later", log, direct=frozenset({3})), 20, sends_direct=True)
 
     with caplog.at_level(logging.WARNING, logger="omrs.integrations.pdf.page_rules.pipeline"):
-        plan = _run({1, 2, 3})
+        plan = _run({1, 2, 3}, _enabled("acme"))
 
     assert [name for kind, name, _ in log if kind == "run"] == ["first", "acme", "later"]
     assert later.seen[0].routed == {1, 2, 3}
@@ -244,7 +250,7 @@ def test_an_external_rule_that_cannot_be_imported_is_skipped_too(log, caplog):
     _add(FakeRule("later", log), 20)
 
     with caplog.at_level(logging.WARNING, logger="omrs.integrations.pdf.page_rules.pipeline"):
-        plan = _run({1})
+        plan = _run({1}, _enabled("missing"))
 
     assert [run.name for run in plan.runs] == ["later"]
     assert registry.RULES.off_reason("missing").startswith("ImportError")

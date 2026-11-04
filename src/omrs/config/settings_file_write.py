@@ -38,6 +38,7 @@ from .jsonc_edit import JsoncEditError, remove_value, set_value
 from .provider_sources import PROVIDER_FIELDS
 from .rules import (
     INTERNAL_FIELDS,
+    LOCAL_BACKENDS_KEY,
     OLD_READING_KEYS,
     READING_LIST_KEYS,
     REPLACED_READING_KEYS,
@@ -108,7 +109,7 @@ def read_only_reason(key: str) -> str | None:
         return KEY_FIELD_REASON
     if key in REPLACED_READING_KEYS:
         return replaced_key_reason(key)
-    if key in READING_LIST_KEYS:
+    if key in READING_LIST_KEYS or key == LOCAL_BACKENDS_KEY:
         return None  # an array, so is_scalar says no, but the page writes it whole
     if key in READ_ONLY_KEYS:
         return READ_ONLY_KEYS[key]

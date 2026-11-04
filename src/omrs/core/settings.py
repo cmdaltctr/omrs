@@ -13,7 +13,7 @@ import-linter contract extended in task 10.2).
 
 from __future__ import annotations
 
-from typing import Literal, get_args
+from typing import Any, Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -340,6 +340,8 @@ class EffectiveSettings(BaseModel):
     ocr_local_backends: tuple[str, ...] = ("pp-ocrv6-small",)
     ocr_local_offline: bool = False
     ocr_local_model_directory: str = ""
+    # Design D12: options of parts without flat keys, checked by compose.
+    reading_part_options: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
     # ── OCR worker operation (design D2.1) ────────────────────────
     # Operational settings, deliberately separate from the calibrated

@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Collection, Mapping
+from typing import Any
 
 from pydantic import BaseModel, ValidationInfo, field_validator, model_validator
 
@@ -32,7 +33,11 @@ from ..core.reading_lists import (
     expand_ocr_engines,
     expand_pdf_reader,
 )
-from ..core.reading_parts import DEFAULT_LOCAL_OCR_BACKENDS
+from ..core.reading_parts import (
+    DEFAULT_LOCAL_OCR_BACKENDS,
+    KIND_LOCAL_OCR_BACKEND,
+    discovered,
+)
 from .provenance import SOURCE_ORDER
 from .rules import OLD_READING_KEYS, ignored_old_keys, local_backend_problem
 
@@ -69,6 +74,10 @@ class ReadingListMixin(BaseModel):
     ocr_engines: NameList = OCR_ENGINES_DEFAULT
     # Change local-ocr-backends, design D8: the local OCR tier's backend order.
     ocr_local_backends: NameList = DEFAULT_LOCAL_OCR_BACKENDS
+    # Design D12: options of parts without flat keys, keyed by part name. The
+    # environment form (READING_PART_OPTIONS) is JSON. Compose checks each entry
+    # against the part's descriptor at start-up.
+    reading_part_options: dict[str, dict[str, Any]] = {}
 
     @field_validator("pdf_readers", "ocr_engines", "ocr_local_backends", mode="after")
     @classmethod
@@ -78,8 +87,13 @@ class ReadingListMixin(BaseModel):
 
     @model_validator(mode="after")
     def _check_local_backends(self) -> ReadingListMixin:
-        """Stop start-up on an unknown backend or one without a calibrated cut (design D8)."""
-        problem = local_backend_problem(self.ocr_local_backends)
+        """Stop start-up on an unknown backend or one without a calibrated cut (design D8).
+
+        Backends that compose discovered (design D11) are accepted too; before
+        compose runs discovery there are none, so ``config`` reads no entry point.
+        """
+        extra: tuple[Any, ...] = discovered(KIND_LOCAL_OCR_BACKEND)
+        problem = local_backend_problem(self.ocr_local_backends, extra)
         if problem:
             raise ValueError(
                 f"OCR_LOCAL_BACKENDS={','.join(self.ocr_local_backends)!r} is not valid. {problem}"

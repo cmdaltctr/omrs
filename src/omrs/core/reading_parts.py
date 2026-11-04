@@ -7,12 +7,17 @@ importing the part: its name, import path, settings, index-identity contribution
 and health facts. Integration code keeps a lazy ``register()`` line per part, and a
 pin test compares the two (design D3).
 
+Parts that entry-point discovery accepts (design D11) join the built-in tables
+through :func:`install_discovered`. Only the composition root calls it, so the
+lookups here see built-in parts only until compose has run discovery.
+
 This module imports only the standard library, like ``core/reading_lists.py``. A test
 reads its syntax tree and fails on any ``omrs`` import.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from typing import Any, TypeVar
 
@@ -377,8 +382,39 @@ check_table(PAGE_RULES)
 DEFAULT_LOCAL_OCR_BACKENDS: tuple[str, ...] = (LOCAL_OCR_BACKENDS[0].name,)
 
 
+#: The implicit option of every page rule (design D12). A discovered rule runs
+#: only when it is ``true``; a built-in rule ignores it.
+RULE_ENABLED_OPTION = SettingField(name="enabled", env="", default=False)
+
+#: The descriptors that discovery accepted, set by :func:`install_discovered`.
+_discovered: tuple[PartDescriptor, ...] = ()
+
+
+def install_discovered(descriptors: Iterable[PartDescriptor]) -> None:
+    """Add the accepted discovered descriptors to the lookups (composition root only)."""
+    global _discovered
+    _discovered = tuple(descriptors)
+
+
+def reset_discovered() -> None:
+    """Forget the discovered descriptors (test seam)."""
+    global _discovered
+    _discovered = ()
+
+
+def discovered(kind: str | None = None) -> tuple[PartDescriptor, ...]:
+    """Return the discovered descriptors, of one *kind* when it is given."""
+    return tuple(d for d in _discovered if kind is None or d.kind == kind)
+
+
+def parts_named(name: str) -> tuple[PartDescriptor, ...]:
+    """Return every built-in and discovered descriptor called *name*, of any kind."""
+    table = (*PDF_READERS, *LOCAL_OCR_BACKENDS, *PAGE_RULES, *_discovered)
+    return tuple(d for d in table if d.name == name)
+
+
 def local_backend(name: str) -> LocalOcrBackendDescriptor:
-    """Return the local OCR backend called *name*.
+    """Return the local OCR backend called *name*, built-in or discovered.
 
     The table is read at call time, so a test can patch
     :data:`LOCAL_OCR_BACKENDS` on this module.
@@ -386,7 +422,8 @@ def local_backend(name: str) -> LocalOcrBackendDescriptor:
     Raises:
         KeyError: If no backend has that name.
     """
-    return by_name(LOCAL_OCR_BACKENDS, name)
+    extra: tuple[Any, ...] = discovered(KIND_LOCAL_OCR_BACKEND)
+    return by_name((*LOCAL_OCR_BACKENDS, *extra), name)
 
 
 def effective_cut(settings: Any, name: str) -> float | None:

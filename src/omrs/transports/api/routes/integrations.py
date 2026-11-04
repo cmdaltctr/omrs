@@ -32,6 +32,7 @@ from ..integrations_catalogue import CATALOGUE, Integration, describe_entry, des
 from ..integrations_catalogue import find_integration as find_extra
 from ..lifespan import WebRuntime
 from ..pdf_reader_items import pdf_reader_items
+from ..reading_parts_health import reading_parts_health
 from ..runtime_components import RuntimeItem, model_file_items, ocr_engine_items
 from ..runtime_servers import llamacpp_readiness, local_server_items, openrouter_readiness
 from ..security import Principal, redact
@@ -204,6 +205,7 @@ async def list_integrations(_: ReadScope, runtime: RuntimeDep) -> Response:
     loop. A probe that fails gives the ``unknown`` state for that entry.
     The ``runtime`` block lists OCR engines, model files and local servers.
     The ``pdf_readers`` block lists every registered PDF reader (import probe only).
+    The ``reading_parts`` block shows the health of each reading part (design D14).
     """
     async with admitted(runtime):
         settings = await _settings(runtime)
@@ -215,6 +217,7 @@ async def list_integrations(_: ReadScope, runtime: RuntimeDep) -> Response:
         readers = await run_in_threadpool(
             pdf_reader_items, settings, environment, _profiles(runtime)()
         )
+        parts = await run_in_threadpool(reading_parts_health, settings)
     _add_readiness(entries, servers, settings)
     return ok(
         {
@@ -223,6 +226,7 @@ async def list_integrations(_: ReadScope, runtime: RuntimeDep) -> Response:
             "tools": tools,
             "runtime": block,
             "pdf_readers": readers,
+            "reading_parts": parts,
         }
     )
 

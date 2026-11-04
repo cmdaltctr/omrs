@@ -274,7 +274,12 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # OCR backends (18), chain (19), output script (7), producers (6), backend list
 # setting (11), cut override (9), backend identity (9), backend pins (2) and the
 # contract coverage case for the local_ocr package (1). No fastapi needed.
-_BASE_EXECUTED = 10316
+# +117 (2026-11-04, same change, groups 5 and 6, by test-ID diff, 117 added, 0 removed):
+# discovery (14), compose discovery (6), part options (22), backend list setting (13),
+# discovered names in rules (5), single source (19), drift (10), health (18), catalogue
+# (6), integrations route (1) and Settings save (3). The last 10 need fastapi (see
+# _WEB_EXTRA_CASES).
+_BASE_EXECUTED = 10433
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -616,7 +621,9 @@ if not _has_qwen_tokenizer:
 # 8099 executed without fastapi against 8122 expected): the PDF readers route,
 # list-valued document-reading and configuration-save tests.
 # +1 (2026-11-04, local-ocr-backends group 1): the extras catalogue row pin.
-_WEB_EXTRA_CASES = 1880
+# +10 (2026-11-04, same change, group 6): catalogue (6), integrations route (1) and
+# Settings save (3).
+_WEB_EXTRA_CASES = 1890
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)

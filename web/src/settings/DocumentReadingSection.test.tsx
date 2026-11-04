@@ -152,7 +152,7 @@ describe("Document reading", () => {
     });
     const ocr = screen.getByRole("region", { name: "OCR" });
     const rows = within(ocr).getAllByRole("group").flatMap((group) => group.getAttribute("aria-label") ?? []);
-    expect(rows).toEqual(["OCR fallback", "OCR routing unit", "Non-Latin routing", "Maths routing", "OCR engines"]);
+    expect(rows).toEqual(["OCR fallback", "OCR routing unit", "Non-Latin routing", "Maths routing", "Local OCR backends", "OCR engines"]);
     for (const name of ["PDF reader", "Primary engine", "Fallback engine"]) expect(screen.queryByRole("group", { name })).toBeNull();
   });
 

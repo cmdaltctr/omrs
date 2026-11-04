@@ -2,18 +2,18 @@ import { useQuery } from "@tanstack/react-query";
 import { useId } from "react";
 import { useApi } from "../api/ApiProvider";
 import type { JsonValue } from "../api/pipelines";
-import { integrationsQuery } from "../api/queries";
-import { engineOptions, LIST_WORDS, readerListWarning, readerOptions, type ListKind } from "../settings/documentReadingWords";
+import { documentReadingQuery, integrationsQuery } from "../api/queries";
+import { backendOptions, engineOptions, LIST_WORDS, readerListWarning, readerOptions, type ListKind } from "../settings/documentReadingWords";
 import { OrderedListControl, type ListOption } from "../settings/OrderedListControl";
 import type { ParamField } from "./schema";
 
 /** The Read document lists, and the single-value options each one replaces. */
-const LIST_KINDS: Record<string, ListKind> = { pdf_readers: "readers", ocr_engines: "engines" };
+const LIST_KINDS: Record<string, ListKind> = { pdf_readers: "readers", ocr_engines: "engines", ocr_local_backends: "backends" };
 const SUPERSEDED: Record<string, string> = { pdf_reader: "pdf_readers", ocr_engine_primary: "ocr_engines", ocr_engine_fallback: "ocr_engines" };
 /** The local tier sits in the OCR engines group but is not a worker engine a step can name. */
 const LOCAL_TIER = "local OCR tier";
 
-/** True for the two list options of the Read document step. */
+/** True for the three list options of the Read document step. */
 export function isListField(field: ParamField): boolean {
   return field.kind === "stringList" && field.name in LIST_KINDS;
 }
@@ -50,11 +50,16 @@ export function ListParam({ field, value, onChange, disabled = false }: ListPara
   const group = useId();
   const kind = LIST_KINDS[field.name]!;
   const words = LIST_WORDS[kind];
-  const data = useQuery(integrationsQuery(useApi())).data;
+  const api = useApi();
+  // The backends that a list can name come with Settings > Document reading, not with Integrations.
+  const data = useQuery({ ...integrationsQuery(api), enabled: kind !== "backends" }).data;
+  const reading = useQuery({ ...documentReadingQuery(api), enabled: kind === "backends" }).data;
   const options: ListOption[] =
-    kind === "readers"
-      ? readerOptions((data?.pdf_readers ?? []).map(({ name, installed }) => ({ name, available: installed, reason: null })))
-      : engineOptions((data?.runtime?.ocr_engines ?? []).filter((engine) => engine.name !== LOCAL_TIER).map(({ name, status, reason }) => ({ name, available: status === "ready", reason })));
+    kind === "backends"
+      ? backendOptions(reading?.local_ocr_backends ?? [])
+      : kind === "readers"
+        ? readerOptions((data?.pdf_readers ?? []).map(({ name, installed }) => ({ name, available: installed, reason: null })))
+        : engineOptions((data?.runtime?.ocr_engines ?? []).filter((engine) => engine.name !== LOCAL_TIER).map(({ name, status, reason }) => ({ name, available: status === "ready", reason })));
   const own = value == null ? null : names(value);
   const warning = kind === "readers" && own !== null ? readerListWarning(own) : null;
 

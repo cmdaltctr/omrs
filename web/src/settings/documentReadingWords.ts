@@ -1,12 +1,12 @@
-import type { DocumentReadingKey, DocumentReadingState, DocumentReadingValue, OcrEngineOption, ReaderOption } from "../api/settingsDocumentReading";
+import type { DocumentReadingKey, DocumentReadingState, DocumentReadingValue, LocalBackendOption, OcrEngineOption, ReaderOption } from "../api/settingsDocumentReading";
 import { formatRoute } from "../lib/routes";
 import type { ListOption } from "./OrderedListControl";
 
-/** How a row edits its value: an ordered list of readers or engines, a select of units or script modes, or a switch. */
-export type ReadingKind = "readers" | "unit" | "engines" | "switch" | "script";
+/** How a row edits its value: an ordered list of readers, engines or local backends, a select of units or script modes, or a switch. */
+export type ReadingKind = "readers" | "unit" | "engines" | "backends" | "switch" | "script";
 
-/** The two list kinds. */
-export type ListKind = "readers" | "engines";
+/** The three list kinds. */
+export type ListKind = "readers" | "engines" | "backends";
 
 export interface ReadingRowWords {
   label: string;
@@ -30,6 +30,11 @@ export const READING_ROWS: Partial<Record<DocumentReadingKey, ReadingRowWords>> 
     kind: "script",
     help: "Sends flagged pages straight to OCR: always sends every flagged page, detect only non-Latin ones. The choice detect sees only text that already exists and does not catch scanned pages. Use always for a collection you know is non-Latin.",
   },
+  ocr_local_backends: {
+    label: "Local OCR backends",
+    kind: "backends",
+    help: "The local models that read flagged pages on this machine before an OCR engine. A page the first backend cannot read well goes to the next one.",
+  },
 };
 
 export const ROUTING_UNITS = ["page"] as const;
@@ -47,6 +52,11 @@ export const LIST_WORDS: Record<ListKind, { noun: string; position: (index: numb
     noun: "engine",
     position: (index) => (index === 0 ? "Reads first, when available." : "Runs only when every engine above is unavailable."),
     integrations: { entry: "ocr-engines", text: "See OCR engines in Integrations" },
+  },
+  backends: {
+    noun: "backend",
+    position: (index) => (index === 0 ? "Reads flagged pages first, when installed." : "Reads the pages the backends above could not read well."),
+    integrations: { entry: "reading-parts", text: "See Reading parts in Integrations" },
   },
 };
 
@@ -83,14 +93,21 @@ export function engineOptions(engines: OcrEngineOption[]): ListOption[] {
   }));
 }
 
+/** The backend names a list can hold. A backend that is not installed can be listed already but not added, as a reader. */
+export function backendOptions(backends: LocalBackendOption[]): ListOption[] {
+  const link = { href: formatRoute({ area: "integrations", entry: LIST_WORDS.backends.integrations.entry }), text: LIST_WORDS.backends.integrations.text };
+  return backends.map(({ name, available, reason }) => ({ value: name, label: available ? name : `${name} (not installed)`, disabled: !available, note: available ? null : (reason ?? "Not installed."), link: available ? null : link }));
+}
+
 /** The options of a list row, from what the server reports. */
 export function listOptions(kind: ListKind, state: DocumentReadingState): ListOption[] {
+  if (kind === "backends") return backendOptions(state.local_ocr_backends ?? []);
   return kind === "readers" ? readerOptions(state.pdf_readers) : engineOptions(state.ocr.engines);
 }
 
 /** True for a kind that holds a list. */
 export function isListKind(kind: ReadingKind): kind is ListKind {
-  return kind === "readers" || kind === "engines";
+  return kind === "readers" || kind === "engines" || kind === "backends";
 }
 
 /** The lines for listed names that cannot run, such as `pypdfium2: Not installed.`. */

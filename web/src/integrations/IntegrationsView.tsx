@@ -9,6 +9,7 @@ import { ExtrasSection } from "./ExtrasSection";
 import { integrationCardId } from "./IntegrationCard";
 import { ModelRuntimesSection } from "./ModelRuntimesSection";
 import { PdfReadersSection } from "./PdfReadersSection";
+import { ReadingPartsSection } from "./ReadingPartsSection";
 import { RuntimeSection } from "./RuntimeSection";
 import { SectionChips } from "./SectionChips";
 import { isRuntimeSection, sectionFor, sectionsFor } from "./sections";
@@ -71,6 +72,8 @@ export function IntegrationsView({ entry = null }: { entry?: string | null }) {
         <ToolsSection list={list} control={control} />
       ) : section === "pdf-readers" ? (
         <PdfReadersSection readers={list.pdf_readers ?? []} />
+      ) : section === "reading-parts" && list.reading_parts !== undefined ? (
+        <ReadingPartsSection parts={list.reading_parts} />
       ) : section === "model-runtimes" ? (
         <ModelRuntimesSection />
       ) : isRuntimeSection(section) && list.runtime !== undefined ? (

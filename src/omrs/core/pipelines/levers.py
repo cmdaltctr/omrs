@@ -15,6 +15,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import Field, TypeAdapter, ValidationError
 
+from .. import reading_parts
 from ..settings import EffectiveSettings
 
 
@@ -84,14 +85,15 @@ ALLOWED_LEVERS: Mapping[str, LeverSpec] = {
 
 # The OCR keys the Read document step sets (design D4 of
 # integrations-show-runtime-components). A graph-wide override stays host-owned.
+# The page rule keys come from the descriptors (change local-ocr-backends, D15).
 _READ_STEP_OCR_KEYS = (
     "ocr_fallback_enabled",
     "ocr_routing_unit",
     "ocr_engines",
     "ocr_engine_primary",
     "ocr_engine_fallback",
-    "ocr_maths_routing_enabled",
-    "ocr_non_latin_routing",
+    *(field.name for rule in reading_parts.PAGE_RULES for field in rule.settings),
+    "ocr_local_backends",
 )
 
 # Host-owned settings: matched by exact path, block prefix or name fragment.

@@ -43,6 +43,7 @@ def get_settings() -> Settings:
     """Return the resolved ``Settings`` with ``keychain://`` key references resolved (D6)."""
     from .compose_providers import resolve_launch_settings
 
+    discover_reading_parts()  # once per process, before Settings resolves (design D11)
     return resolve_launch_settings(_config_get_settings())
 
 
@@ -241,7 +242,7 @@ from .compose_providers import (  # noqa: E402,F401
     apply_provider_values,
     provider_effective_settings,
 )
-from .compose_settings import settings_to_effective  # noqa: E402,F401
+from .compose_settings import discover_reading_parts, settings_to_effective  # noqa: E402,F401
 
 # Backward-compatible import surface (existing callers/tests).
 from .core.vectordb.summary import storage_summary as _summary_storage  # noqa: E402

@@ -111,6 +111,49 @@ export interface PdfReaderItem {
   used_by: string[];
 }
 
+/** One listed local OCR backend (`LocalOcrBackendHealth` in `openapi.yaml`). */
+export interface LocalOcrBackendHealth {
+  name: string;
+  label: string;
+  /** The backend's package can be found. */
+  installed: boolean;
+  /** Every model file the descriptor names is on disk; `null` when it names none. */
+  model_present: boolean | null;
+  /** Why the backend is switched off for this process, or `null` when it is on. */
+  off_reason: string | null;
+  /** The confidence cut the backend applies. */
+  effective_cut: number | null;
+  /** `built-in`, or the distribution that adds the backend. */
+  source: string;
+}
+
+/** One registered page rule (`PageRuleHealth`). */
+export interface PageRuleHealth {
+  name: string;
+  label: string;
+  enabled: boolean;
+  version: number;
+  source: string;
+}
+
+/** One part that an installed package declares (`DiscoveredPartHealth`). */
+export interface DiscoveredPartHealth {
+  /** `null` when the descriptor could not load. */
+  name: string | null;
+  kind: "pdf_reader" | "local_ocr_backend" | "page_rule";
+  distribution: string | null;
+  version: string | null;
+  /** Why the part is broken or refused, or `null` when it loaded. */
+  problem: string | null;
+}
+
+/** The health of each reading part, from the part descriptors (`ReadingPartsHealth`). */
+export interface ReadingPartsHealth {
+  local_ocr_backends: LocalOcrBackendHealth[];
+  page_rules: PageRuleHealth[];
+  discovered_parts: DiscoveredPartHealth[];
+}
+
 export interface IntegrationList {
   install_type: InstallType;
   integrations: Integration[];
@@ -120,6 +163,8 @@ export interface IntegrationList {
   runtime?: RuntimeComponents;
   /** Every registered PDF reader: host-list readers first, in list order, then the rest in registry order. Older fixtures may leave it out. */
   pdf_readers?: PdfReaderItem[];
+  /** The listed local OCR backends, the page rules and the discovered parts. Older fixtures may leave it out. */
+  reading_parts?: ReadingPartsHealth;
 }
 
 /** The state of an external tool's `uv tool` environment. It does not depend on the server's install type. */
@@ -188,7 +233,12 @@ export interface IntegrationInstall {
 export async function listIntegrations(api: ApiClient, options: CallOptions = {}): Promise<IntegrationList> {
   const reply = await api.request<IntegrationList>("GET", "/v1/integrations", { signal: options.signal });
   const list: IntegrationList = { install_type: reply.install_type, integrations: reply.integrations, tools: reply.tools };
-  return { ...list, ...(reply.runtime === undefined ? {} : { runtime: reply.runtime }), ...(reply.pdf_readers === undefined ? {} : { pdf_readers: reply.pdf_readers }) };
+  return {
+    ...list,
+    ...(reply.runtime === undefined ? {} : { runtime: reply.runtime }),
+    ...(reply.pdf_readers === undefined ? {} : { pdf_readers: reply.pdf_readers }),
+    ...(reply.reading_parts === undefined ? {} : { reading_parts: reply.reading_parts }),
+  };
 }
 
 export async function getIntegrationInstall(api: ApiClient, options: CallOptions = {}): Promise<IntegrationInstall> {

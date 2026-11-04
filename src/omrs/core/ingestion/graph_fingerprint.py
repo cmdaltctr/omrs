@@ -53,10 +53,12 @@ INGESTION_SHAPE_RESOURCE = "ingestion_shape"
 _Lookup = Callable[[str, int | None], OperationDescriptor | None]
 
 #: Parameters added after saved graphs were fingerprinted (changes
-#: ordered-reader-and-ocr-lists and non-latin-script-routing). Unset, they stay
-#: out of the hash, so a saved graph that never set them keeps its fingerprint
-#: and no source reprocesses.
-_ADDED_PARAMS = frozenset({"pdf_readers", "ocr_engines", "ocr_non_latin_routing"})
+#: ordered-reader-and-ocr-lists, non-latin-script-routing and local-ocr-backends).
+#: Unset, they stay out of the hash, so a saved graph that never set them keeps
+#: its fingerprint and no source reprocesses.
+_ADDED_PARAMS = frozenset(
+    {"pdf_readers", "ocr_engines", "ocr_non_latin_routing", "ocr_local_backends"}
+)
 
 
 @dataclass(frozen=True)

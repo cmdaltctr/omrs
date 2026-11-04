@@ -12,7 +12,9 @@ routing the rules replace:
 
 A built-in rule that raises fails the file, as before. A rule from another
 distribution that fails to load or raises is skipped for the file, logs one
-warning and is switched off in the registry with the reason (design D11).
+warning and is switched off in the registry with the reason (design D11). A
+rule from another distribution runs only while it is on and its
+``reading_part_options`` entry holds ``"enabled": true`` (design D12).
 """
 
 from __future__ import annotations
@@ -112,6 +114,16 @@ class RoutingPlan:
                 stamp(metadata, run.ctx, run.outcome, results)
 
 
+def _waits(name: str, facts: dict[str, Any], settings: Any) -> bool:
+    """Return True for a rule from another distribution that is off or not enabled."""
+    if facts["source"] == registry.SOURCE_BUILT_IN:
+        return False
+    if registry.RULES.off_reason(name) is not None:
+        return True
+    options = (getattr(settings, "reading_part_options", None) or {}).get(name, {})
+    return options.get("enabled") is not True
+
+
 def _run_one(name: str, facts: dict[str, Any], ctx: RuleContext) -> tuple[Any, RuleOutcome] | None:
     """Load and run one rule; return ``None`` when an external rule failed."""
     if facts["source"] == registry.SOURCE_BUILT_IN:
@@ -156,6 +168,8 @@ def run_rules(
     direct: frozenset[int] = frozenset()
     runs: list[RuleRun] = []
     for name, facts in registry.ordered():
+        if _waits(name, facts, settings):
+            continue
         ctx = RuleContext(file, evidence, flagged, flagged - dropped, settings, routes)
         ran = _run_one(name, facts, ctx)
         if ran is None:

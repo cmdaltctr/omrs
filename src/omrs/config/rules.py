@@ -136,15 +136,25 @@ def replaced_key_reason(key: str) -> str:
     return f"Replaced by {new}. Write {new} instead."
 
 
+#: The flat settings of the page rules, in rule order (change local-ocr-backends, D15).
+PAGE_RULE_KEYS: tuple[str, ...] = tuple(
+    field.name for rule in _reading_parts.PAGE_RULES for field in rule.settings
+)
+
+#: The ordered list of local OCR backends (change local-ocr-backends, design D8).
+LOCAL_BACKENDS_KEY = "ocr_local_backends"
+
 #: The keys of Settings > Document reading, in the order of the HTTP contract.
-#: The three old single-value keys left it: the list keys replace them.
+#: The three old single-value keys left it: the list keys replace them. The page
+#: rule keys come from the descriptors. The local OCR backend list comes last:
+#: the page groups the rows itself, so the order here only fixes the contract.
 DOCUMENT_READING_KEYS: tuple[str, ...] = (
     "pdf_readers",
     "ocr_fallback_enabled",
     "ocr_routing_unit",
     "ocr_engines",
-    "ocr_maths_routing_enabled",
-    "ocr_non_latin_routing",
+    *PAGE_RULE_KEYS,
+    LOCAL_BACKENDS_KEY,
 )
 _READING_BOOLEANS = frozenset({"ocr_fallback_enabled", "ocr_maths_routing_enabled"})
 _READING_ENGINES = frozenset({"ocr_engine_primary", "ocr_engine_fallback"})
@@ -153,11 +163,13 @@ BOOL_RULE = "The value must be true or false."
 
 
 def reading_list_problem(key: str, value: Any) -> str | None:
-    """Return the write rule that a reader or engine list *value* breaks, or ``None``.
+    """Return the write rule that a reader, engine or local backend list *value* breaks.
 
     A list holds known names, at least one, with no repeat. A reader list may
     not hold ``auto``, because the order is the choice. An engine name follows
-    :data:`ENGINE_NAME_RULE`. The rule never holds *value*.
+    :data:`ENGINE_NAME_RULE`. A local backend list follows
+    :func:`local_backend_problem`. The rule never holds *value*; ``None`` means
+    the value is fine.
     """
     if not isinstance(value, (list, tuple)):
         return LIST_TYPE_RULE
@@ -170,12 +182,32 @@ def reading_list_problem(key: str, value: Any) -> str | None:
     if len(set(value)) != len(value):
         return LIST_DUPLICATE_RULE
     if key == "pdf_readers":
-        return None if all(item in KNOWN_READER_NAMES for item in value) else READER_LIST_RULE
+        return _reader_list_problem(value)
+    if key == LOCAL_BACKENDS_KEY:
+        return local_backend_problem(value, _discovered_backends())
     named = all(
         len(item) <= MAX_ENGINE_NAME_CHARS and re.fullmatch(ENGINE_NAME_PATTERN, item)
         for item in value
     )
     return None if named else ENGINE_NAME_RULE
+
+
+def _discovered_backends() -> tuple[_reading_parts.LocalOcrBackendDescriptor, ...]:
+    """Return the local OCR backends that compose discovered (design D11), at call time."""
+    found = _reading_parts.discovered(_reading_parts.KIND_LOCAL_OCR_BACKEND)
+    return tuple(d for d in found if isinstance(d, _reading_parts.LocalOcrBackendDescriptor))
+
+
+def _reader_list_problem(value: Collection[str]) -> str | None:
+    """Return the rule a reader list breaks: built-in names first, then discovered readers.
+
+    With nothing discovered the rule is :data:`READER_LIST_RULE`, as before.
+    """
+    found = tuple(d.name for d in _reading_parts.discovered(_reading_parts.KIND_PDF_READER))
+    known = (*KNOWN_READER_NAMES, *found)
+    if all(item in known for item in value):
+        return None
+    return f"The value must be one of: {', '.join(known)}." if found else READER_LIST_RULE
 
 
 def local_backend_problem(
@@ -245,7 +277,7 @@ def document_reading_problem(key: str, value: Any) -> str | None:
     """
     if value is None or not (key in DOCUMENT_READING_KEYS or key in REPLACED_READING_KEYS):
         return None
-    if key in READING_LIST_KEYS:
+    if key in READING_LIST_KEYS or key == LOCAL_BACKENDS_KEY:
         return reading_list_problem(key, value)
     if key in _READING_BOOLEANS:
         return None if isinstance(value, bool) else BOOL_RULE
@@ -314,8 +346,8 @@ def accepted_problem(path: str, value: Any) -> str | None:
     """
     if path in READING_LIST_KEYS and not value:
         return LIST_EMPTY_RULE
-    if path == "ocr_local_backends":
-        return local_backend_problem(value)
+    if path == LOCAL_BACKENDS_KEY:
+        return local_backend_problem(value, _discovered_backends())
     accepted = ACCEPTED.get(path)
     if accepted is not None and value not in accepted:
         return f"The value must be one of: {', '.join(accepted)}."

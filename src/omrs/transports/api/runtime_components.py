@@ -25,6 +25,7 @@ from huggingface_hub import try_to_load_from_cache
 
 from ... import capabilities
 from ...config.user_config import display_path
+from ...core import reading_parts
 from ...integrations.ocr_worker.manifest import engine_manifest, licence_gate
 from ...integrations.ocr_worker.routes import (
     _ENGINE_NAME_RE,
@@ -45,10 +46,11 @@ TOKENIZER_NAME = "Chunking tokenizer"
 RERANKER_NAME = "Reranker model"
 LOCAL_MODEL_NAME = "Local OCR model"
 
-#: The pdf-inspector page model (``pp-ocrv6-small@oar-ocr-v0.7.0``).
+#: The pdf-inspector page model (``pp-ocrv6-small@oar-ocr-v0.7.0``). The file
+#: names and the cache folder come from the backend descriptor (design D14).
 LOCAL_MODEL_RELEASE = "https://github.com/GreatV/oar-ocr/releases/download/v0.7.0"
-LOCAL_MODEL_FILES = ("pp-ocrv6_small_det.onnx", "pp-ocrv6_small_rec.onnx", "ppocrv6_dict.txt")
-_LOCAL_MODEL_SUBDIR = Path("pp-ocrv6-small") / "oar-ocr-v0.7.0"
+_LOCAL_BACKEND = reading_parts.local_backend(reading_parts.DEFAULT_LOCAL_OCR_BACKENDS[0])
+LOCAL_MODEL_FILES: tuple[str, ...] = _LOCAL_BACKEND.health.model_files
 
 UNCHECKED = "The server could not check this item."
 
@@ -218,14 +220,32 @@ def _platform_cache() -> Path:
     return Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
 
 
-def local_model_folder(settings: Any) -> Path:
-    """Return the folder that pdf-inspector reads the local OCR model from."""
+def model_folder(
+    settings: Any, backend: reading_parts.LocalOcrBackendDescriptor = _LOCAL_BACKEND
+) -> Path | None:
+    """Return the folder that *backend* reads its model files from, or ``None``.
+
+    ``ocr_local_model_directory`` wins when the backend reads that setting.
+    Otherwise the folder is the descriptor's cache folder under the
+    pdf-inspector model cache. A backend with neither has no known folder.
+    """
+    reads_directory = any(f.name == "ocr_local_model_directory" for f in backend.settings)
     explicit = str(getattr(settings, "ocr_local_model_directory", "") or "").strip()
-    if explicit:
+    if reads_directory and explicit:
         return Path(explicit).expanduser()
+    if backend.health.cache_folder is None:
+        return None
     root = os.environ.get("PDF_INSPECTOR_MODEL_CACHE", "").strip()
     models = Path(root).expanduser() if root else _platform_cache() / "pdf-inspector" / "models"
-    return models / _LOCAL_MODEL_SUBDIR
+    return models / backend.health.cache_folder
+
+
+def local_model_folder(settings: Any) -> Path:
+    """Return the folder that pdf-inspector reads the local OCR model from."""
+    folder = model_folder(settings)
+    if folder is None:  # The default descriptor names a cache folder; a test pins it.
+        raise RuntimeError("The default local OCR backend names no model folder.")
+    return folder
 
 
 def _local_model_item(settings: Any) -> RuntimeItem:

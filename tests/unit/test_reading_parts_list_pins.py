@@ -37,6 +37,7 @@ def test_document_reading_keys_keep_value_and_order() -> None:
         "ocr_engines",
         "ocr_maths_routing_enabled",
         "ocr_non_latin_routing",
+        "ocr_local_backends",
     )
 
 
@@ -50,6 +51,7 @@ def test_read_ocr_keys_keep_value_and_order() -> None:
         "ocr_engine_fallback",
         "ocr_maths_routing_enabled",
         "ocr_non_latin_routing",
+        "ocr_local_backends",
     )
 
 
@@ -63,6 +65,7 @@ def test_read_step_ocr_keys_keep_value_and_order() -> None:
         "ocr_engine_fallback",
         "ocr_maths_routing_enabled",
         "ocr_non_latin_routing",
+        "ocr_local_backends",
     )
 
 

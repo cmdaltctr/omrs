@@ -3,10 +3,15 @@
 Split out of ``compose.py``, which sits at the 500-line ceiling, the same way
 ``compose_answer`` and ``compose_engine`` were. ``compose`` re-exports
 :func:`settings_to_effective`, so every existing import site is unchanged.
+
+It also runs entry-point discovery of reading parts before settings resolve,
+and checks ``reading_part_options`` against the part descriptors (change
+local-ocr-backends, design D11 and D12).
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any, cast
 
 from .capabilities import (
@@ -21,6 +26,78 @@ from .core.settings import (
     PROVIDER_SECRET_FIELDS,
     OcrNonLatinMode,
 )
+
+
+def discover_reading_parts() -> tuple[Any, ...]:
+    """Run reading-part discovery once per process and let settings accept the parts.
+
+    :func:`compose.get_settings` calls this before it resolves ``Settings``. The
+    accepted descriptors join the lookups of ``core.reading_parts``, which
+    ``config/`` reads when it checks a part name. ``config`` itself never
+    runs discovery, so importing it reads no entry point (design D11).
+
+    Returns:
+        Every discovered entry point, accepted or not.
+    """
+    from .core import reading_parts as parts
+    from .integrations.part_registry import discover_parts
+
+    found = discover_parts(
+        builtin_names={
+            parts.KIND_PDF_READER: parts.names(parts.PDF_READERS),
+            parts.KIND_LOCAL_OCR_BACKEND: parts.names(parts.LOCAL_OCR_BACKENDS),
+            parts.KIND_PAGE_RULE: parts.names(parts.PAGE_RULES),
+        },
+        descriptor_types={
+            parts.KIND_PDF_READER: parts.PdfReaderDescriptor,
+            parts.KIND_LOCAL_OCR_BACKEND: parts.LocalOcrBackendDescriptor,
+            parts.KIND_PAGE_RULE: parts.PageRuleDescriptor,
+        },
+    )
+    parts.install_discovered(cast(Any, p.descriptor) for p in found if p.descriptor is not None)
+    return found
+
+
+def _value_problem(option: Any, value: Any) -> str | None:
+    """Return the rule that *value* breaks for one ``SettingField``, or ``None``."""
+    if option.accepted is not None and value not in option.accepted:
+        return f"the value must be one of: {', '.join(option.accepted)}"
+    if option.default is None:
+        return None
+    kind = type(option.default)
+    if kind is float:
+        fits = isinstance(value, (int, float)) and not isinstance(value, bool)
+    else:
+        fits = type(value) is kind
+    return None if fits else f"the value must be of type {kind.__name__}"
+
+
+def part_options_problem(options: Mapping[str, Mapping[str, Any]]) -> str | None:
+    """Return why ``reading_part_options`` is not valid, or ``None`` (design D12).
+
+    Each key must name a built-in or discovered part, and each option must be
+    one its descriptor declares, with a value of the declared type and accepted
+    set. Every page rule also takes ``enabled`` (a built-in rule ignores it).
+    The rule names the part and the key, never the value.
+    """
+    from .core import reading_parts as parts
+
+    for name, values in options.items():
+        found = parts.parts_named(name)
+        if not found:
+            return f"{name!r} is not a reading part."
+        known = {option.name: option for part in found for option in part.options}
+        if any(part.kind == parts.KIND_PAGE_RULE for part in found):
+            known.setdefault(parts.RULE_ENABLED_OPTION.name, parts.RULE_ENABLED_OPTION)
+        for key, value in values.items():
+            option = known.get(key)
+            if option is None:
+                choices = ", ".join(sorted(known)) or "none"
+                return f"Part {name!r} has no option {key!r}. Its options: {choices}."
+            rule = _value_problem(option, value)
+            if rule is not None:
+                return f"Option {key!r} of part {name!r}: {rule}."
+    return None
 
 
 def settings_to_effective(settings: Settings | None = None) -> Any:
@@ -47,10 +124,14 @@ def settings_to_effective(settings: Settings | None = None) -> Any:
     )
 
     if settings is None:
+        discover_reading_parts()  # this path reads Settings without compose.get_settings
         settings = get_settings()
 
     if settings.chunking.chunk_overlap >= settings.chunking.markdown_chunk_size:
         raise ValueError("CHUNKING__CHUNK_OVERLAP must be less than CHUNKING__MARKDOWN_CHUNK_SIZE")
+    problem = part_options_problem(settings.reading_part_options)
+    if problem is not None:
+        raise ValueError(f"READING_PART_OPTIONS is not valid. {problem}")
 
     # Bake the RESOLVED reader and the cleaned list in: the probe and the
     # `auto` / unknown-name warnings run once here (ordered-reader-and-ocr-lists D2).
@@ -102,6 +183,7 @@ def settings_to_effective(settings: Settings | None = None) -> Any:
         ocr_local_backends=settings.ocr_local_backends,
         ocr_local_offline=settings.ocr_local_offline,
         ocr_local_model_directory=settings.ocr_local_model_directory,
+        reading_part_options=settings.reading_part_options,
         ocr_worker_request_timeout=settings.ocr_worker_request_timeout,
         ocr_workers_dir=settings.ocr_workers_dir,
         ocr_runtime_url=settings.ocr_runtime_url,
