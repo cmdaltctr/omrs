@@ -92,8 +92,8 @@
 
 ## 9. Verify and hand over
 
-- [ ] 9.1 Run `openspec validate local-ocr-backends --strict` and `openspec validate --all --strict`. Verify: both pass.
-- [ ] 9.2 Run the parallel fast suite with a JUnit report, then the tripwire on that report (AGENTS.md "Parallel runs"). Verify: both pass.
+- [x] 9.1 Run `openspec validate local-ocr-backends --strict` and `openspec validate --all --strict`. Verify: both pass.
+- [x] 9.2 Run the parallel fast suite with a JUnit report, then the tripwire on that report (AGENTS.md "Parallel runs"). Verify: both pass.
 - [ ] 9.3 Ask the operator, then run `./scripts/local_ci.sh`. Verify: no `SKIPPED`; every step passes, including the file-size ceiling, import contracts and frontend gates.
 - [ ] 9.4 Open one pull request into `v3`. Watch CI to the end and fix failures. Run `/code-review` or read the CodeRabbit comments; fix valid findings, answer each thread and resolve it. Verify: all checks green; no open thread.
 - [ ] 9.5 Stop at gate G6. Do not merge until the operator says so. Before the worktree is removed, finish task 0.5. Verify: the operator's merge word is in the PR.
