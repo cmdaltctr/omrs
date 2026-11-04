@@ -356,9 +356,9 @@ def test_maths_pages_fall_back_down_the_whole_list(
         _scan,
     )
 
-    from omrs.integrations.pdf import ocr_routing
-
-    monkeypatch.setattr(ocr_routing, "find_blank_pages", lambda file, pages: frozenset())
+    monkeypatch.setattr(
+        "omrs.integrations.pdf.blank_pages.find_blank_pages", lambda file, pages: frozenset()
+    )
     _scan(monkeypatch, 12, needs_ocr=set())
     _maths(monkeypatch, {1, 2, 3, 4})
     first = _Client("dots_mocr", available=False)
@@ -381,9 +381,9 @@ def test_the_protocol_warning_names_the_position_of_each_route(
 ) -> None:
     from tests.unit.test_ocr_route_dispatch import _Client, _maths, _metadata, _read, _scan
 
-    from omrs.integrations.pdf import ocr_routing
-
-    monkeypatch.setattr(ocr_routing, "find_blank_pages", lambda file, pages: frozenset())
+    monkeypatch.setattr(
+        "omrs.integrations.pdf.blank_pages.find_blank_pages", lambda file, pages: frozenset()
+    )
     _scan(monkeypatch, 6, needs_ocr=set())
     _maths(monkeypatch, {1, 2})
     routes = [_Client("a"), _Client("b"), _Client("c")]

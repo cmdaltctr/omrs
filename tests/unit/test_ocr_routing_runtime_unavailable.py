@@ -28,7 +28,6 @@ from tests.unit.test_ocr_route_dispatch import (
 from omrs.integrations.llamacpp_runtime import process
 from omrs.integrations.ocr_worker.client import OcrWorkerError
 from omrs.integrations.ocr_worker.routes import OcrRoutes
-from omrs.integrations.pdf import ocr_routing
 from omrs.integrations.pdf.ocr_routing import OcrPostDispatchError, OcrRoutedPdfInspector
 
 pytest.importorskip("pdf_inspector", reason="pdf-inspector is a base dependency (ADR-050)")
@@ -39,7 +38,9 @@ _UNAVAILABLE = OcrWorkerError("worker_unavailable", "A model file changed: q.ggu
 @pytest.fixture(autouse=True)
 def _no_blank_pages(monkeypatch: pytest.MonkeyPatch) -> None:
     """The blank test finds nothing, so no machine render library is needed."""
-    monkeypatch.setattr(ocr_routing, "find_blank_pages", lambda file, pages: frozenset())
+    monkeypatch.setattr(
+        "omrs.integrations.pdf.blank_pages.find_blank_pages", lambda file, pages: frozenset()
+    )
 
 
 @pytest.fixture

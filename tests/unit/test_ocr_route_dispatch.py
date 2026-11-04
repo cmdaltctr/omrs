@@ -89,7 +89,9 @@ def _metadata(page_count: int, *, pdf_type: str = "text_based", flagged: int = 0
 @pytest.fixture(autouse=True)
 def _no_blank_pages(monkeypatch: pytest.MonkeyPatch) -> None:
     """The blank test finds nothing, so no machine render library is needed."""
-    monkeypatch.setattr(ocr_routing, "find_blank_pages", lambda file, pages: frozenset())
+    monkeypatch.setattr(
+        "omrs.integrations.pdf.blank_pages.find_blank_pages", lambda file, pages: frozenset()
+    )
 
 
 def _local_tier_missing(monkeypatch: pytest.MonkeyPatch) -> None:

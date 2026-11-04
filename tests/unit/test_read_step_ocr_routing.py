@@ -93,7 +93,9 @@ def pool(monkeypatch: pytest.MonkeyPatch) -> _Pool:
         "page_evidence",
         lambda file: [SimpleNamespace(page=1, markdown="partial native text", needs_ocr=True)],
     )
-    monkeypatch.setattr(ocr_routing, "find_blank_pages", lambda file, pages: frozenset())
+    monkeypatch.setattr(
+        "omrs.integrations.pdf.blank_pages.find_blank_pages", lambda file, pages: frozenset()
+    )
     monkeypatch.setattr(ocr_routing, "local_ocr", _no_local_tier)
     monkeypatch.setattr(graph_adapters, "chunk_specialised_source", _no_specialised)
     return _Pool()

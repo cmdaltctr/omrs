@@ -88,6 +88,15 @@ def post_check_enabled(settings: Any, routes: Any) -> bool:
     return routing_mode(settings) == "detect" and _engine_available(routes)
 
 
+def non_latin_output_reason(text: str, facts: Any = None) -> str | None:
+    """Return :data:`NON_LATIN_OUTPUT_REASON` when a local result is mostly non-Latin.
+
+    The post-local check (a page-rule post-check). *facts* are the facts of the
+    backend that read the page; this check does not read them yet.
+    """
+    return NON_LATIN_OUTPUT_REASON if is_non_latin(text) is True else None
+
+
 def _text_layer_verdicts(file: Path, pages: Collection[int]) -> frozenset[int]:
     """Return the *pages* whose text items are mostly non-Latin letters.
 

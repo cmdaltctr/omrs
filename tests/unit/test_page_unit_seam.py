@@ -156,9 +156,10 @@ def _blank_test_finds_nothing(monkeypatch):
     including its safe-failure shape (a render failure also yields no
     blank pages), so no test renders a real PDF.
     """
-    from omrs.integrations.pdf import ocr_routing
 
-    monkeypatch.setattr(ocr_routing, "find_blank_pages", lambda file, pages: frozenset())
+    monkeypatch.setattr(
+        "omrs.integrations.pdf.blank_pages.find_blank_pages", lambda file, pages: frozenset()
+    )
 
 
 def _joined(docs: list) -> str:
@@ -367,7 +368,6 @@ def test_blank_flagged_page_skips_both_ocr_tiers(monkeypatch, tmp_path, effectiv
     The blank test runs before the maths split too: a blank page that is
     also a maths page still never joins the worker request.
     """
-    from omrs.integrations.pdf import ocr_routing
 
     scan = [
         _scan_page(0, "native 1", False),
@@ -383,8 +383,11 @@ def test_blank_flagged_page_skips_both_ocr_tiers(monkeypatch, tmp_path, effectiv
         blank_calls.append(list(pages))
         return frozenset({2})
 
-    monkeypatch.setattr(ocr_routing, "find_blank_pages", fake_blank)
-    monkeypatch.setattr(ocr_routing, "detect_maths_pages", lambda file, settings: frozenset({2}))
+    monkeypatch.setattr("omrs.integrations.pdf.blank_pages.find_blank_pages", fake_blank)
+    monkeypatch.setattr(
+        "omrs.integrations.pdf.maths_routing.detect_maths_pages",
+        lambda file, settings: frozenset({2}),
+    )
     inner = _FakeInner(text="whole", metadata=_inner_metadata(4, flagged=2))
     worker = _FakeWorker()
 
@@ -417,7 +420,6 @@ def test_blank_pages_are_counted_on_every_document_and_emit_none(
     monkeypatch, tmp_path, effective_settings
 ):
     """One blank page among five: four documents, the blank one counted everywhere."""
-    from omrs.integrations.pdf import ocr_routing
 
     scan = [
         _scan_page(0, "native 1", False),
@@ -431,7 +433,9 @@ def test_blank_pages_are_counted_on_every_document_and_emit_none(
         ocr_pages_by_call=[[_ocr_page(3, "LOCAL three", 0.9), _ocr_page(4, "flawed four", 0.3)]],
     )
     _stub_engine(monkeypatch, engine)
-    monkeypatch.setattr(ocr_routing, "find_blank_pages", lambda file, pages: frozenset({2}))
+    monkeypatch.setattr(
+        "omrs.integrations.pdf.blank_pages.find_blank_pages", lambda file, pages: frozenset({2})
+    )
     inner = _FakeInner(text="whole", metadata=_inner_metadata(5, flagged=3))
     worker = _FakeWorker(pages_markdown=["WORKER four"])
 
@@ -455,12 +459,13 @@ def test_blank_page_with_native_text_keeps_it_as_its_document(
     monkeypatch, tmp_path, effective_settings
 ):
     """A page-number-only sheet counts blank and keeps its native text."""
-    from omrs.integrations.pdf import ocr_routing
 
     scan = [_scan_page(0, "13", True), _scan_page(1, "native 2", False)]
     engine = _EngineCalls(scan, ocr_pages_by_call=[])
     _stub_engine(monkeypatch, engine)
-    monkeypatch.setattr(ocr_routing, "find_blank_pages", lambda file, pages: frozenset({1}))
+    monkeypatch.setattr(
+        "omrs.integrations.pdf.blank_pages.find_blank_pages", lambda file, pages: frozenset({1})
+    )
     inner = _FakeInner(text="whole", metadata=_inner_metadata(2, flagged=1))
     worker = _FakeWorker()
 
