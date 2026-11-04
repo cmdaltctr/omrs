@@ -129,13 +129,12 @@ Experiment 46 reads stored evidence (Experiment 33 images, reference transcripti
 
 No data migration. Existing indexes keep their digest. Rollback is a revert of the change; the setting has one accepted value.
 
-## Open Questions
+## Operator Decisions (2026-11-04)
 
-These are open operator decisions. This design does not decide them.
-
-1. Retype `ocr_local_min_confidence` now (as drafted in D6) or with the first second backend?
-2. Merge the seam if no experiment arm passes, or hold it?
-3. Latin margin: gate G3 of Experiment 46 uses a median paired difference of -0.02 (strata -0.05). Keep, tighten or loosen?
-4. Indra's licence (modified OpenRAIL-M, with limits on commercial and competing use): who decides, and when? The experiment cannot start the Indra arm before the operator reads the full licence.
+1. Retype of `ocr_local_min_confidence`: deferred to the follow-up change that adds the first second backend. Until then the global cut stays 0.9 and D6 does not apply.
+2. Seam on FAIL: not merged. Only the Experiment 46 report merges, and the code part is descoped.
+3. Latin margin: G3 stays at -0.02 (strata -0.05).
+4. Order: Experiment 46 runs first. Code groups 1 to 3 and 5 start only after a PASS.
+5. Indra licence: the operator reads the full text before the Indra arm runs.
 
 Considered and dropped by the operator on 2026-11-04: RapidOCR and Tesseract as experiment arms.

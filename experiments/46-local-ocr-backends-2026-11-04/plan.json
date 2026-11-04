@@ -235,9 +235,12 @@
   },
   "amendments": [],
   "dropped_arms": "RapidOCR and Tesseract were considered and dropped by the operator on 2026-11-04.",
-  "open_operator_decisions": [
-    "Latin margin: G3 uses -0.02 overall and -0.05 per stratum; the operator may change it before the first run.",
-    "Retype ocr_local_min_confidence now or with the first second backend.",
-    "Whether to merge the seam if no arm passes."
-  ]
+  "operator_decisions": {
+    "date": "2026-11-04",
+    "made_before_any_run": true,
+    "latin_margin": "Keep G3: -0.02 overall, -0.05 per stratum.",
+    "retype_min_confidence": "Deferred to the follow-up change that adds the first second backend.",
+    "merge_seam_on_fail": "No. On FAIL only the report merges and the code part is descoped.",
+    "order": "Experiment first; code groups only after PASS."
+  }
 }

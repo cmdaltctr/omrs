@@ -133,13 +133,12 @@ These are known before the run. The report repeats them.
 7. Oracle language choice for D flatters it.
 8. The decision rule numbers are judgement. They are written down so the run cannot move them.
 
-## 9. Open operator decisions
+## 9. Operator decisions (made 2026-11-04, before any run)
 
-The plan does not decide these. The operator decides them before the run, and a decision that changes a number goes in as a plan amendment only after the first run.
-
-1. **Latin margin.** G3 uses a median paired difference of -0.02 (strata -0.05). This is a judgement. The operator may tighten or loosen it before the first run.
-2. **Retype of `ocr_local_min_confidence`.** Change `local-ocr-backends` proposes making it optional now. The operator may defer it to the change that adds the first second backend. The experiment does not depend on the answer.
-3. **Merge the seam if no arm passes.** If the outcome is FAIL, the registry stays with one backend. The operator decides whether to merge it.
+1. **Latin margin.** Keep G3 as written: median paired difference at least -0.02, no stratum below -0.05. Reason: 0.02 is about the noise of the Gemini reference, and the stratum floor still catches damage to one page type.
+2. **Retype of `ocr_local_min_confidence`.** Deferred. It moves to the follow-up change that adds the first second backend, because only then does a second cut exist. The experiment does not depend on it.
+3. **Merge the seam if no arm passes.** No. On FAIL, only this experiment's report merges, and the code part of `local-ocr-backends` is descoped. On PASS, the seam is built in the same change.
+4. **Order.** The experiment runs first, from its own scripts. The code groups start only after a PASS.
 
 ## 10. Considered and dropped
 
