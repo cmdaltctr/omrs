@@ -72,6 +72,19 @@ describe("StepSettingsFields", () => {
     expect(legends()).not.toContain("PDF reader");
   });
 
+  it("offers Non-Latin routing on Read document with Inherit and writes the chosen value", async () => {
+    const { seen, user } = setup({ id: "rd", operation: "read.document", version: 1 });
+    const field = screen.getByRole("group", { name: "Non-Latin routing" });
+    expect(field).toHaveTextContent("Inherit uses the host value: off.");
+    await user.click(within(field).getByRole("combobox", { name: "Non-Latin routing value" }));
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["Inherit", "off", "detect", "always"]);
+    await user.click(screen.getByRole("option", { name: "always" }));
+    expect(seen.draft.graph.nodes[0]?.params).toEqual({ ocr_non_latin_routing: "always" });
+    await user.click(within(field).getByRole("combobox", { name: "Non-Latin routing value" }));
+    await user.click(await screen.findByRole("option", { name: "Inherit" }));
+    expect(seen.draft.graph.nodes[0]).not.toHaveProperty("params.ocr_non_latin_routing");
+  });
+
   it("keeps the old PDF reader control, with its unavailable choices, on a saved step that still sets it", async () => {
     const { user } = setup({ id: "rd", operation: "read.document", version: 1, params: { pdf_reader: "liteparse" } });
     expect(legends()).toContain("PDF reader");

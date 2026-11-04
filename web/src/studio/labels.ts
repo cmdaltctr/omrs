@@ -36,6 +36,7 @@ const FIELD_LABELS: Record<string, string> = {
   ocr_engine_fallback: "Fallback OCR engine",
   ocr_engines: "OCR engines",
   ocr_maths_routing_enabled: "Maths page routing",
+  ocr_non_latin_routing: "Non-Latin routing",
   expand_window: "Neighbour chunks to add",
   include_diagnostics: "Include diagnostics",
 };
