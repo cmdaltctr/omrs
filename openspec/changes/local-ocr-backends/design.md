@@ -50,12 +50,13 @@ class LocalOcrBackend(Protocol):
     def read_pages(self, file: Path, pages: list[int], *, settings: Any) -> list[BackendPage]: ...
     def identity(self, settings: Any) -> str | None: ...
 
+
 @dataclass(frozen=True)
 class BackendPage:
-    page: int                      # 1-based
-    text: str                      # Markdown or plain text
-    confidence: float | None       # one number in [0, 1], or None
-    model: str | None              # "name@revision"
+    page: int  # 1-based
+    text: str  # Markdown or plain text
+    confidence: float | None  # one number in [0, 1], or None
+    model: str | None  # "name@revision"
     hosted_recommended: bool = False
 ```
 
