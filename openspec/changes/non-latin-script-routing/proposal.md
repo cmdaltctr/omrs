@@ -25,8 +25,9 @@ The local OCR tier (PP-OCRv6 Small) has no recogniser for Arabic, Bengali or Dev
 
 ### Modified Capabilities
 
-- `pipeline-graphs`: the Read document step accepts `ocr_non_latin_routing`.
-- `workspace-settings`: Document reading shows the setting.
+- `pipeline-graphs`: the Read document step accepts `ocr_non_latin_routing`, and the step identity records it.
+- `workspace-settings`: Document reading shows the setting; the row list names the keys in force after change A.
+- `settings-file`: the page may write `ocr_non_latin_routing`.
 
 ## Impact
 
@@ -37,4 +38,4 @@ The local OCR tier (PP-OCRv6 Small) has no recogniser for Arabic, Bengali or Dev
 - **HTTP contract and front end:** document-reading key enum in `openapi.yaml`, `web/src/settings/documentReadingWords.ts`, the Studio read-step form.
 - **Docs:** `docs/guides/configuration.md` ("OCR routing unit and the local OCR tier"), `docs/guides/pipelines.md`, the architecture integration inventory.
 - **Experiment:** a new numbered experiment folder that reads stored Experiment 33 and 37 outputs. No model run is needed for its core questions.
-- **Order with change A:** independent. If `ordered-reader-and-ocr-lists` merges first, rebase the document-reading key list.
+- **Order with change A:** `ordered-reader-and-ocr-lists` merged first (PR #166). The deltas are rebased onto its specs. Direct pages go to the ordered `ocr_engines` list; this change adds no single-value engine key.

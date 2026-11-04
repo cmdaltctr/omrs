@@ -1,3 +1,14 @@
+## MODIFIED Requirements
+
+### Requirement: Document reading shows the reading settings and their state
+
+The Document reading section SHALL show one row for each of `pdf_readers`, `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engines`, `ocr_maths_routing_enabled` and `ocr_non_latin_routing`. Each row SHALL show the value in force since launch, its source and the default. When the saved file value differs from the value in force, the row SHALL show the saved value and "Restart to apply".
+
+#### Scenario: Value saved but not yet in force
+
+- **WHEN** the server launched with `pdf_reader` `auto` and `omrs.jsonc` now holds `"pdf_reader": "liteparse"`
+- **THEN** the PDF reader row MUST show `auto` in force, `liteparse` saved and "Restart to apply"
+
 ## ADDED Requirements
 
 ### Requirement: Document reading shows non-Latin routing
