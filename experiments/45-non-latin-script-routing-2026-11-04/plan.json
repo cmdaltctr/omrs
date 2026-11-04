@@ -73,7 +73,7 @@
     "roots_in_order": [
       "this worktree: experiments/",
       "~/Development/DATA/omrs/experiments/",
-      "/Users/aizat/Development/PROJECTS/om-systems/omrs/omrs-v3/experiments/ (read only sibling checkout)"
+      "<source checkout>/experiments/ (read only sibling checkout)"
     ],
     "files": {
       "labels": "<exp33_dir>/labels.json (this worktree, sibling checkout; absent from DATA)",

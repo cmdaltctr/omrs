@@ -55,6 +55,7 @@ Per-document tables are in `output/report_tables.md`.
 3. `output/run-records.jsonl` has 4 lines. Lines 1 and 2 are crashed starts from a key-name bug in the runner, before any page was scored. Line 3 is the first complete run. Line 4 is a rerun after the runner was changed to write `~` and relative paths. Its rows match line 3 exactly.
 4. Check point 1 used the shipped `page_evidence`, then `pdf_inspector.extract_text_with_positions`, then `is_non_latin`. It matches the shipped `_text_layer_verdicts` on all 40 PDFs.
 5. The shipped `local_ocr` needs a live OCR run, so (e) applies the plan's definition to the stored rows. Like the plan, it leaves out the blank-page and maths-page steps.
+6. After the run, one input-location note in `plan.json` was changed from an absolute home-folder path to `<source checkout>/experiments/`, so the pushed record holds no personal path. Nothing else changed and no number moved. The plan SHA-256 in `output/run-records.jsonl` is the value before this edit (`13127843c287…77c9933`); the current file is `37d2929170f4…dd71809`.
 
 ### Exploratory findings
 
