@@ -241,6 +241,13 @@ def _score_arm(arm: str, rows: list[dict[str, Any]], control: dict, th: dict) ->
         if r["script"] == "latin"
     ]
     g3 = gate_g3(latin, th)
+    diffs: dict[str, list[float]] = defaultdict(list)
+    for item in latin:
+        diffs[item["stratum"]].append(item["diff"])
+    g3_values = {  # reported values behind the two G3 booleans
+        "overall_median_diff": _median([item["diff"] for item in latin]),
+        "stratum_median_diff": {s: _median(v) for s, v in sorted(diffs.items())},
+    }
     stopped = (OUT / f"arm_{arm.lower()}.stopped.json").is_file()
     g4 = gate_g4(timed_seconds(rows), th) and not stopped
     table = {
@@ -264,6 +271,7 @@ def _score_arm(arm: str, rows: list[dict[str, Any]], control: dict, th: dict) ->
         },
         "gates": {"G1": g1, **g2, **g3, "G4": g4, "stopped_by_rule": stopped},
         "verdict_by_script": table,
+        "g3_values": g3_values,
         "loo_cuts": folded["cuts"],
         "registered_cut": registered_cut(list(folded["cuts"].values())),
         "g2_counts": {
@@ -308,6 +316,7 @@ def main() -> int:
                 s: _median([r["recall"] for r in a if r["stratum"] == s])
                 for s in sorted({r["stratum"] for r in a if r["stratum"]})
             },
+            "rows": a,
         }
     table = {arm: res["verdict_by_script"] for arm, res in summary["arms"].items()}
     summary["outcome"] = decide(table) if table else None

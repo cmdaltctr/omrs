@@ -5,9 +5,9 @@
   "date": "2026-11-04",
   "category": "ingestion",
   "size": "Standard",
-  "status": "PLANNED",
+  "status": "PASS",
   "superseded_by": null,
-  "finding": "",
+  "finding": "Indra OCR passes all four gates for Arabic and Devanagari (58 of 69 pages kept local, none bad, 0.10 s per page) but reads Bengali at median recall 0.59; Apple Vision fails the confidence gate.",
   "purpose": "optimisation",
   "refs": {
     "adrs": [
