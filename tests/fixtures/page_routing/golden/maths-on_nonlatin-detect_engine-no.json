@@ -1,0 +1,107 @@
+{
+  "documents": [
+    {
+      "metadata": {
+        "file_name": "routing_fixture.pdf",
+        "file_path": "<fixture>",
+        "ocr_backend": "mixed",
+        "ocr_pages_blank": 1,
+        "ocr_pages_local": 2,
+        "ocr_pages_native": 1,
+        "ocr_pages_unresolved": 1,
+        "ocr_pages_worker": 0,
+        "ocr_required": true,
+        "ocr_used": true,
+        "page": 1,
+        "page_count": 5,
+        "page_label": "1",
+        "pages_maths_font": 1,
+        "pages_needing_ocr": 3,
+        "pages_non_latin": 0,
+        "pdf_confidence": 0.699999988079071,
+        "pdf_reader": "pdf_inspector",
+        "pdf_type": "mixed"
+      },
+      "text": "Routing fixture, page one: native text. This page has a real text layer, so the page scan does not flag it. The quick brown fox jumps over the lazy dog. The quick brown fox jumps over the lazy dog.\n"
+    },
+    {
+      "metadata": {
+        "file_name": "routing_fixture.pdf",
+        "file_path": "<fixture>",
+        "ocr_backend": "mixed",
+        "ocr_pages_blank": 1,
+        "ocr_pages_local": 2,
+        "ocr_pages_native": 1,
+        "ocr_pages_unresolved": 1,
+        "ocr_pages_worker": 0,
+        "ocr_required": true,
+        "ocr_used": true,
+        "page": 2,
+        "page_count": 5,
+        "page_label": "2",
+        "pages_maths_font": 1,
+        "pages_needing_ocr": 3,
+        "pages_non_latin": 0,
+        "pdf_confidence": 0.699999988079071,
+        "pdf_reader": "pdf_inspector",
+        "pdf_type": "mixed"
+      },
+      "text": "Local text for the scanned page."
+    },
+    {
+      "metadata": {
+        "file_name": "routing_fixture.pdf",
+        "file_path": "<fixture>",
+        "ocr_backend": "mixed",
+        "ocr_pages_blank": 1,
+        "ocr_pages_local": 2,
+        "ocr_pages_native": 1,
+        "ocr_pages_unresolved": 1,
+        "ocr_pages_worker": 0,
+        "ocr_required": true,
+        "ocr_used": true,
+        "page": 4,
+        "page_count": 5,
+        "page_label": "4",
+        "pages_maths_font": 1,
+        "pages_needing_ocr": 3,
+        "pages_non_latin": 0,
+        "pdf_confidence": 0.699999988079071,
+        "pdf_reader": "pdf_inspector",
+        "pdf_type": "mixed"
+      },
+      "text": "Maths page: x = a + b, y = c-d. The text is set in a Computer Modern maths font without a Unicode map.\n"
+    },
+    {
+      "metadata": {
+        "file_name": "routing_fixture.pdf",
+        "file_path": "<fixture>",
+        "ocr_backend": "mixed",
+        "ocr_pages_blank": 1,
+        "ocr_pages_local": 2,
+        "ocr_pages_native": 1,
+        "ocr_pages_unresolved": 1,
+        "ocr_pages_worker": 0,
+        "ocr_required": true,
+        "ocr_used": true,
+        "page": 5,
+        "page_count": 5,
+        "page_label": "5",
+        "pages_maths_font": 1,
+        "pages_needing_ocr": 3,
+        "pages_non_latin": 0,
+        "pdf_confidence": 0.699999988079071,
+        "pdf_reader": "pdf_inspector",
+        "pdf_type": "mixed"
+      },
+      "text": "بببببببببببببببببببببببببببببببببببببببببببببببببببببببببببب"
+    }
+  ],
+  "engine_calls": [],
+  "local_calls": [
+    [
+      2,
+      5
+    ]
+  ]
+}

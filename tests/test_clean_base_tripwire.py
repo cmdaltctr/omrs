@@ -261,7 +261,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # local fallback for direct non-Latin pages the engine cannot read. No fastapi.
 # +45 (2026-11-04, local-ocr-backends task 4.2, by test-ID diff, 45 added, 0 removed):
 # test_experiment_46_local_ocr_backends.py. No fastapi needed.
-_BASE_EXECUTED = 10117
+# +31 (2026-11-04, local-ocr-backends group 1, by test-ID diff, 31 added, 0 removed):
+# digest pins (6), key-list pins (7), page-routing golden snapshots (18). The
+# catalogue row pin needs fastapi (see _WEB_EXTRA_CASES).
+_BASE_EXECUTED = 10148
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -602,7 +605,8 @@ if not _has_qwen_tokenizer:
 # +23 (2026-11-03, ordered-reader-and-ocr-lists, measured by the floor job of PR 166:
 # 8099 executed without fastapi against 8122 expected): the PDF readers route,
 # list-valued document-reading and configuration-save tests.
-_WEB_EXTRA_CASES = 1879
+# +1 (2026-11-04, local-ocr-backends group 1): the extras catalogue row pin.
+_WEB_EXTRA_CASES = 1880
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)
