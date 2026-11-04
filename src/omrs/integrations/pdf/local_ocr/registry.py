@@ -106,3 +106,12 @@ register(
     keeps_scripts=None,
     probe_module="pdf_inspector",
 )
+register(
+    "indra",
+    "omrs.integrations.pdf.local_ocr.indra:BACKEND",
+    producer="indra_ocr",
+    min_confidence=0.90,
+    calibrated_by="46-local-ocr-backends-2026-11-04",
+    keeps_scripts={"arabic", "devanagari"},
+    probe_module="indra_ocr",
+)

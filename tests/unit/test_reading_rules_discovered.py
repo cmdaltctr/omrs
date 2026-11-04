@@ -77,8 +77,8 @@ def test_without_discovery_the_messages_are_as_before() -> None:
         "The value must be one of: liteparse, pdf_inspector, pypdfium2, pypdf."
     )
     assert check_setting("ocr_local_backends", ["fake-ocr"])[1] == (
-        "Each name must be a local OCR backend. Accepted values: pp-ocrv6-small."
+        "Each name must be a local OCR backend. Accepted values: pp-ocrv6-small, indra."
     )
     assert rules.document_reading_problem("ocr_local_backends", ["fake-ocr"]) == (
-        "Each name must be a local OCR backend. Accepted values: pp-ocrv6-small."
+        "Each name must be a local OCR backend. Accepted values: pp-ocrv6-small, indra."
     )

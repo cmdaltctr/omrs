@@ -159,7 +159,7 @@ def test_nothing_discovered_keeps_names_and_messages(
 
     assert part_registry.discovered_parts() == ()
     assert after == before
-    assert "Accepted values: pp-ocrv6-small." in after[1]
+    assert "Accepted values: pp-ocrv6-small, indra." in after[1]
     assert (rules.KNOWN_READER_NAMES, reading_parts.names(reading_parts.PAGE_RULES)) == (
         names_before
     )

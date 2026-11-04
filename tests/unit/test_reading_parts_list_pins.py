@@ -149,6 +149,13 @@ def test_catalogue_pdf_reader_rows_keep_every_field_and_order() -> None:
             None,
         ),
     ]
-    # The rows sit third and fourth in the whole catalogue, between hybrid and leiden.
+    # The rows sit third and fourth in the whole catalogue, after hybrid. The
+    # local OCR backend rows follow them, then leiden.
     ids = [item.id for item in integrations_catalogue.CATALOGUE]
-    assert ids[1:5] == ["hybrid", "pdf-pypdfium2", "pdf-inspector", "community-leiden"]
+    assert ids[1:6] == [
+        "hybrid",
+        "pdf-pypdfium2",
+        "pdf-inspector",
+        "local-ocr-indra",
+        "community-leiden",
+    ]

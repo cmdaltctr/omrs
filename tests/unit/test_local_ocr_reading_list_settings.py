@@ -105,7 +105,7 @@ def test_unknown_name_stops_start_up_and_names_accepted_values(
     message = str(caught.value)
     assert "OCR_LOCAL_BACKENDS='tesseract' is not valid." in message
     assert "Each name must be a local OCR backend." in message
-    assert "Accepted values: pp-ocrv6-small." in message
+    assert "Accepted values: pp-ocrv6-small, indra." in message
 
 
 def test_backend_without_a_cut_stops_start_up(
@@ -118,7 +118,7 @@ def test_backend_without_a_cut_stops_start_up(
     assert "OCR_LOCAL_BACKENDS='pp-ocrv6-small,fake-no-cut' is not valid." in message
     assert "A backend with no calibrated confidence cut cannot be listed." in message
     # A backend without a cut is never offered as an accepted value.
-    assert "Accepted values: pp-ocrv6-small, fake-cut." in message
+    assert "Accepted values: pp-ocrv6-small, indra, fake-cut." in message
 
 
 def test_bad_file_value_is_dropped_and_named_without_the_value(folder: Path) -> None:

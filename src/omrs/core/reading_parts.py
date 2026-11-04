@@ -315,6 +315,29 @@ LOCAL_OCR_BACKENDS: tuple[LocalOcrBackendDescriptor, ...] = (
         producer="pdf_inspector_ocr",
         model="pp-ocrv6-small@oar-ocr-v0.7.0",
     ),
+    LocalOcrBackendDescriptor(
+        name="indra",
+        import_path="omrs.integrations.pdf.local_ocr.indra:BACKEND",
+        label="Indra OCR",
+        help_key="local_ocr_backend.indra",
+        # Exact pin indra-ocr==1.1.2: the cut was measured on 1.1.2 only (design D19).
+        extra="local-ocr-indra",
+        probe_module="indra_ocr",
+        # The folder is INDRA_OCR_MODEL_DIR or the Hugging Face cache, so no
+        # cache_folder: health reports the files as unknown. Weights tree hash
+        # 1a9ef1fc65c0546f63b89eed936e524077ba94dcd1d7689de89265b158b9324f.
+        health=HealthFacts(
+            model_files=("det.onnx", "rec.onnx", "meta.json"),
+            licence=(
+                "code Apache-2.0; weights modified OpenRAIL-M, read by the operator on 2026-11-04"
+            ),
+        ),
+        min_confidence=0.90,
+        calibrated_by="46-local-ocr-backends-2026-11-04",
+        keeps_scripts=frozenset({"arabic", "devanagari"}),
+        producer="indra_ocr",
+        model="datalab-to/indra-ocr@bd02167fdf2005a19962cc15188f8496a2c87d3b",
+    ),
 )
 
 PAGE_RULES: tuple[PageRuleDescriptor, ...] = (

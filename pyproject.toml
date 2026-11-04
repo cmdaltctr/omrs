@@ -112,6 +112,13 @@ pdf-pypdfium2 = [
 pdf-inspector = [
     "pdf-inspector>=1.17.0",
 ]
+# Indra OCR local backend, opt-in and not in the default list (design D19).
+# Exact pin: the 0.90 cut was measured on 1.1.2 only (Experiment 46); a new
+# version needs the gates again (design settled question 3; see magika==1.0.3).
+# Pulls onnxruntime, opencv-python-headless and pypdfium2; no PyTorch.
+local-ocr-indra = [
+    "indra-ocr==1.1.2",
+]
 # Optional Leiden community detection (COMMUNITY_ALGORITHM=leiden).
 # Floors pair on the igraph 1.x boundary: leidenalg 0.11+ declares
 # igraph<2.0,>=1.0.0, both ship abi3 wheels for macOS (arm64/x86_64),

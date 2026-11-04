@@ -279,7 +279,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # discovered names in rules (5), single source (19), drift (10), health (18), catalogue
 # (6), integrations route (1) and Settings save (3). The last 10 need fastapi (see
 # _WEB_EXTRA_CASES).
-_BASE_EXECUTED = 10433
+# +19 (2026-11-04, same change, group 7, by test-ID diff, 19 added, 0 removed): Indra
+# backend with a fake indra_ocr (17) and the one-part check (2). No fastapi needed.
+_BASE_EXECUTED = 10452
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

@@ -35,13 +35,15 @@ def test_the_row_and_the_backend_options_conform(harness: Harness, client: TestC
         ["pp-ocrv6-small"],
         None,
     )
-    installed = registry.BACKENDS.installed("pp-ocrv6-small")
+    # Read the install state, so the test holds with and without each extra.
+    installed = {name: registry.BACKENDS.installed(name) for name in ("pp-ocrv6-small", "indra")}
     assert body["local_ocr_backends"] == [
         {
-            "name": "pp-ocrv6-small",
-            "available": installed,
-            "reason": None if installed else "Not installed.",
+            "name": name,
+            "available": installed[name],
+            "reason": None if installed[name] else "Not installed.",
         }
+        for name in ("pp-ocrv6-small", "indra")
     ]
 
 

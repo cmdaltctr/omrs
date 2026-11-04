@@ -66,7 +66,7 @@ def test_pdf_reader_names_and_order() -> None:
 
 
 def test_local_backend_names() -> None:
-    assert names(LOCAL_OCR_BACKENDS) == ("pp-ocrv6-small",)
+    assert names(LOCAL_OCR_BACKENDS) == ("pp-ocrv6-small", "indra")
 
 
 def test_page_rule_names_and_orders() -> None:
