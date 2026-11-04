@@ -25,6 +25,27 @@ The data is 229 scanned pages from Experiment 33: 129 non-Latin pages (Devanagar
 
 Indra reads Arabic and Devanagari well, and its confidence ranks pages well. Apple Vision reads as well or better, but its confidence does not separate good pages from bad ones.
 
+Side by side with today's default (arm A, PP-OCRv6 Small with its fixed cut of 0.9). Sources: `output/summary.json` (`arms.B`, `arms.D`, `control_A`) and `output/report_tables.md`.
+
+| What we measured | A: today's default (PP-OCRv6) | B: Indra | D: Apple Vision |
+| --- | --- | --- | --- |
+| Reads Arabic (median recall, 21 pages) | 0.00 | 0.75 | 0.87 |
+| Reads Devanagari (48 pages) | 0.00 | 0.99 | 1.00 |
+| Reads Bengali (60 pages) | 0.00 | 0.59 | cannot read it, not run |
+| Arabic and Devanagari pages kept local (of 69) | 0 | **58** | 4 |
+| Kept pages that are bad | none kept | 0 of 58 | 0 of 4 |
+| Bengali pages kept local (of 60) | 0 | 53 (9 of them bad) | not run |
+| Latin print (median recall) | 0.974 | 0.976 | 0.982 |
+| Latin old print | 0.607 | 0.793 | 0.694 |
+| Latin handwriting | 0.275 | 0.428 | 0.413 |
+| Latin pages kept local (of 100) | 56 (3 bad) | 48 (6 bad) | 68 (11 bad) |
+| Seconds per page | 0.6 (document average, not gated) | 0.10 | 0.15 |
+| Runs on | any platform | any platform (CPU) | macOS only |
+| Download | none | 76 MB | none |
+| Gate result | the baseline | PASS for Arabic and Devanagari | fails G2 (confidence) |
+
+Two cautions on reading this table. Arm A uses its fixed 0.9 cut. Arms B and D use cuts chosen from the other documents (leave-one-document-out), so their "kept" rows are a stricter test. Arm A's 0.6 s is a document average that includes model load, so it does not compare directly with the timed 0.10 s and 0.15 s. Arm A keeps none of the 129 non-Latin pages because its confidence is low on them (median 0.58 to 0.64, against the cut of 0.9). Its text is correct, because every such page goes to the engine.
+
 Median token recall by script (G1 needs 0.70 or more). Source: `output/summary.json`, `median_recall_by_script`.
 
 | Script | Pages | A PP-OCRv6 (control) | B Indra | D Apple Vision |
