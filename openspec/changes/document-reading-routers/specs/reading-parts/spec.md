@@ -2,7 +2,7 @@
 
 ### Requirement: A page rule descriptor SHALL declare whether the rule adds pages
 
-A page rule descriptor SHALL carry the fact `adds_pages`, default false, beside `drops_pages`, `sends_direct`, `has_post_check` and `has_degrade`. The `register()` line SHALL carry the same fact, and the pin test SHALL fail when they differ. A rule that returns pages in `add` without the fact SHALL fail its tests.
+A page rule descriptor SHALL carry the fact `adds_pages`, default false, beside `drops_pages`, `sends_direct`, `has_post_check` and `has_degrade`. The `register()` line SHALL carry the same fact, and the pin test SHALL fail when they differ. A rule that returns pages in `add` without the fact has returned a bad outcome (see page-routing-rules).
 
 #### Scenario: Pin catches a missing fact
 

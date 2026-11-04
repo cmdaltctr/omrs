@@ -20,7 +20,7 @@ OMRS has no provider for a model that answers yes/no questions about a page. Cla
 1. **A new provider kind: decision model.** Named entries in `omrs.jsonc` (`decision_models`), each with a kind, address, model, an image flag and, for hosted kinds, a key reference. Kinds come from a registry (`llamacpp` and `typesafe` first). All kinds send the same System One yes/no request and return P(yes).
 2. **Local decision models run at 8-bit or higher.** Managed entries check the GGUF header before start; Q4_K_M and other sub-8-bit types are refused. Image entries must pass a right-text against wrong-text smoke test, which proves the vision projector is loaded. A managed entry declares its model and projector files separately and runs under ADR-109 as runtime `decision-<name>`.
 3. **Named routers.** A router is a recipe in `omrs.jsonc` (`document_routers`): decision model, question, threshold, image flag, character limit. "Yes" keeps the page text; "no" sends that page to OCR. The host default (`document_router`), Studio's Read document step and user profiles pick a router by name. No router is selected by default.
-4. **A router is a page rule at order 40.** It judges the pages that the scan did not flag and that have native text, one request at a time. A rejected page joins the route through a new `RuleOutcome.add` set and goes alone through the local tier and the OCR engine list. One rejected page never sends a whole document to OCR. With no router selected the rule does nothing, and every digest and output stays as before.
+4. **A router is a page rule at order 40.** It judges the pages that the scan did not flag, that have native text and that no earlier rule claimed, one request at a time. It never judges OCR output. A rejected page joins the route through a new `RuleOutcome.add` set, which only a rule that declares `adds_pages` may return. It goes alone to the OCR engine list, like a direct page, and the local tier reads it only when no engine can. One rejected page never sends a whole document to OCR. With no router selected the rule does nothing, and every digest and output stays as before.
 5. **Local by default, hosted by explicit opt-in.** A router on a hosted decision model runs only when its own "send pages off this machine" opt-in is on. Settings warns on every hosted router and labels hosted image input experimental.
 6. **A router that cannot run changes nothing.** Reading falls back to the behaviour without a router, with a fixed reason in the diagnostics.
 7. **Confirmation before any default.** A router becomes a default only after an experiment on new documents passes a page-based rule fixed before scoring.
@@ -35,7 +35,7 @@ OMRS has no provider for a model that answers yes/no questions about a page. Cla
 
 ### Negative
 
-- A router adds about 0.84 s a page for text and more for images on a local model, for every unflagged text page.
+- A router costs about 3.6 s per judged page with images on a local model (Experiment 43), for every unflagged text page, and sent about 2.7% of healthy pages to OCR. The help text says so.
 - Two new settings maps make `omrs.jsonc` larger and need a file-only shape.
 - Selecting or editing a router reprocesses PDF sources once.
 

@@ -23,9 +23,9 @@ See proposal.md for the why.
 
 ## Goals / Non-Goals
 
-**Goals:** a decision model provider kind; named routers chosen by name; a router that is one page rule at order 40; per-page routing of rejected pages; local by default and hosted only by explicit opt-in; model checks that enforce gotcha 16 and the projector rule; a confirmation experiment.
+**Goals:** a decision model provider kind; named routers chosen by name; a router that is one page rule at order 40; per-page routing of rejected pages; local by default and hosted only by explicit opt-in; model checks that enforce gotcha 16 and the projector rule.
 
-**Non-Goals:** judging OCR output; a router that moves a request to another OCR engine; a default router; any change to the routing of flagged pages, to the blank, maths or non-Latin rules, or to any digest when no router is selected.
+**Non-Goals:** the confirmation experiment (it waits for GATE G7, see Deferred); judging OCR output; a router that moves a request to another OCR engine; a default router; any change to the routing of flagged pages, to the blank, maths or non-Latin rules, or to any digest when no router is selected.
 
 ## Decisions
 
@@ -53,28 +53,37 @@ The router is a built-in page rule, name `document_router`, order 40. It adds on
 **What the rule does.** `run(ctx)`:
 
 1. Returns an empty outcome when no router is selected, when the router cannot run (D8), or when no judge is wired. With no router, `run` is a cheap early return before any page is read, so no digest, count or golden snapshot moves.
-2. Takes the candidate pages: every page in `ctx.evidence` that has non-blank text and is **not** in `ctx.flagged` (flagged pages already go to OCR), not dropped by an earlier rule, and not sent direct by an earlier rule. A page that is already in the OCR route is never judged.
+2. Takes the candidate pages: every page in `ctx.evidence` with non-blank text that the scan did not flag and that no earlier rule claimed. `ctx.claimed` is the set of pages that earlier rules dropped, sent direct or added. The rule reads it and skips those pages. A flagged page already goes to OCR, so it is never judged. OCR output is never judged.
 3. Asks the judge one page at a time (ADR-074 rule 5): P(yes) for the page text (cut to the character limit) and, when the router sees images, the page image (D5).
-4. Pages with P(yes) below the threshold are **rejected**. The rule returns them in a new `RuleOutcome.add` set. Pages with a failed request keep their text and count unjudged.
+4. Pages with P(yes) below the threshold are rejected. The rule returns them in `RuleOutcome.add`. Pages with a failed request keep their text and count unjudged.
 
-**What the hook gains.** A rule today can only drop or direct pages the scan flagged, so it cannot name an unflagged page. The hook gets one extension (ADR-112 decision 3 says routers join the pipeline; this is the form):
+**Amendment to ADR-112 decision 3 (the page-rule interface).** A rule today can drop or direct only pages that the scan flagged, so it cannot name an unflagged page. The amendment is small and additive, and the four older rules are untouched:
 
-- `RuleOutcome.add`: pages the rule adds to the route. Each must have text, be unflagged, and be neither dropped nor direct. A built-in rule that names a stray page fails the file, as for `drop` and `direct`. A discovered rule that does so is skipped for the file, as for `drop` and `direct`.
-- The descriptor and the `register()` line carry a fifth fact, `adds_pages`, pinned like the four flags.
-- A fifth fixed semantic: a page a rule adds joins the local set. `local = (flagged - dropped - direct) ∪ added`. Added pages leave the `routed` set of no earlier rule and are seen by no later rule's `routed`. The router is the last built-in rule, so no later built-in rule misses them.
-- `RuleContext` gets one optional field, `judge`, the built page judge from compose (D12). Existing rules ignore it.
+- `RuleOutcome.add`: pages the rule adds to the OCR route. Default empty.
+- `PageRuleDescriptor.adds_pages` and the matching `register()` argument: the fifth declared fact, pinned like the other four (`drops_pages`, `sends_direct`, `has_post_check`, `has_degrade`). Default false.
+- `RuleContext.claimed` (default empty) and `RuleContext.judge` (default `None`). Existing rules ignore both.
 
-**What the page unit does with an added page.** It goes where a flagged page goes: the local tier reads it (backend list, cuts and post-checks as for any page), and a page the local tier does not keep escalates to the OCR engine list in the one page-listed request. Pages are numbered from 1, as in `page_routing.py`. If no tier can read an added page, it keeps its native text and counts unresolved, with the existing warning. A missing local runtime sends added pages to the engine list, because a router judged that native text junk (issue #161 reasoning, same as for flagged pages).
+Fixed semantics of `add`:
 
-**What does not change.** `pages_needing_ocr` stays the count of scan-flagged pages (spec: "remain the count of flagged pages"). `ocr_required` is true when a page is flagged, goes direct or is added. The five page-source counts still sum to the page count. A router never sends the whole document to OCR. One rejected page costs one page of OCR.
+1. **Only a rule that declares `adds_pages` may return `add`.** Any other rule that returns a non-empty `add` has returned a bad outcome. A built-in rule then fails the file. A discovered rule is skipped for the file, with one warning, and switched off, as for a stray `drop` or `direct`.
+2. **A valid added page** is in the page scan, has non-blank text, is not flagged, and is not in `ctx.claimed`. Any other page in `add` is a bad outcome.
+3. **Added pages go to the engine once.** They join the direct set. The pipeline folds `add` into that rule's direct pages, so a page that several rules name is sent once, in the one page-listed request. The local tier does not read them first: the router judged their text junk, and its engine is the reader that handles scans and handwriting.
+4. **Later drops still apply.** A later rule's `drop` may name a page that an earlier rule added, and the page then leaves the direct set. The final direct set is the union of all direct sets minus every dropped page. No built-in rule runs after order 40, so this matters for rules added later.
+5. **`pages_needing_ocr` stays the scan's count** (spec: it remains the count of flagged pages). `ocr_required` is true when any page is flagged, goes direct or is added (it already reads `flagged or direct`).
+6. **Degrade.** When no engine reads an added page, the router's `degrade` hook (the declared flag `has_degrade`) returns it, so the local tier reads it with no post-check and one warning says so, as the non-Latin rule does. If the local tier cannot read it either, the page keeps its native text and counts unresolved.
+7. **The router stamps its own count.** See Stamp.
 
-**Stamp.** The rule stamps scalar counts: pages judged, accepted, rejected and unjudged, and a status. The keys are `router_pages_judged`, `router_pages_accepted`, `router_pages_rejected`, `router_pages_unjudged` and `router_status`. They go in `EXCLUDED_EMBED_METADATA_KEYS` and in `IDENTITY_UNLISTED_KEYS`, as `pages_non_latin` does, so a default install keeps every digest. A rule that stamps nothing when no router is selected leaves the metadata of a default install unchanged.
+**Why not mark rejected pages as flagged.** It would corrupt `pages_needing_ocr`, mix router verdicts into the scan count and move digests.
 
-**Scope.** The first plan had a `scope` field (`rescued` or `all-text`). Under the one routing unit the `rescued` scope has no pages (see Context), so the field goes. A router judges the unflagged text pages, which is what `all-text` meant for them.
+**Stamp.** The rule stamps the scalar counts `router_pages_judged`, `router_pages_accepted`, `router_pages_rejected`, `router_pages_unjudged` and the text `router_status`. The keys go in `EXCLUDED_EMBED_METADATA_KEYS` and in `IDENTITY_UNLISTED_KEYS`, as `pages_non_latin` does, so a default install keeps every digest. With no router, the rule stamps nothing.
+
+**Scope.** The first plan had a `scope` field (`rescued` or `all-text`). Under the one routing unit the `rescued` scope has no pages (see Context), so the field goes, and no setting replaces it. A router judges the unflagged text pages that no earlier rule claimed.
+
+**Cost, stated to the operator and not a setting.** Experiment 43 measured about 3.6 s per judged page with the local model, and about 2.7% of healthy pages (15 of 565) wrongly sent to OCR. These numbers go in `docs/guides/reading-parts.md` and in the router's help text. The group-6 experiment, when the operator runs it (G7), is the place to re-check them.
 
 ### D5. Page images
 
-An image router renders one page at 150 DPI, long side at most 1,568 px, PNG (Experiment 43 values, so the frozen threshold stays valid). Page renderers are an ordered list in `integrations/pdf/page_images/`, held by the shared `PartRegistry` (ADR-112 decision 2), with one `register()` line per renderer. A renderer is not a reading part: it has no descriptor and no entry-point group. A later change can promote it. The first renderer is LiteParse, which is always installed and has a `screenshot` call (checked on 2026-11-02: one scanned page rendered in 0.12 s, 1,475 by 1,238 px). Where the optional `pdf-pypdfium2` extra is installed, pypdfium2 is the second renderer (same page in 0.09 s, 1,476 by 1,239 px). The router uses the first renderer that is available. A router whose renderers are all missing degrades with reason `renderer-missing`. Both renderers wrap PDFium, so images should match to about a pixel. Task 3.5 checks this on a scanned page and a vector-only page before the threshold is reused.
+An image router renders one page at 150 DPI, long side at most 1,568 px, PNG (Experiment 43 values, so the frozen threshold stays valid). Page renderers are an ordered list in `integrations/pdf/page_images/`, held by the shared `PartRegistry` (ADR-112 decision 2), with one `register()` line per renderer. A renderer is not a reading part: it has no descriptor and no entry-point group. A later change can promote it. The first renderer is LiteParse, which is always installed and has a `screenshot` call (checked on 2026-11-02: one scanned page rendered in 0.12 s, 1,475 by 1,238 px). Where the optional `pdf-pypdfium2` extra is installed, pypdfium2 is the second renderer (same page in 0.09 s, 1,476 by 1,239 px). The router uses the first renderer that is available. A router whose renderers are all missing degrades with reason `renderer-missing`. Both renderers wrap PDFium, so images should match to about a pixel. Task 3.6 checks this on a scanned page and a vector-only page before the threshold is reused.
 
 ### D6. Model checks
 
@@ -104,7 +113,7 @@ The router adds one entry to the `parser` block, key `document_router`, present 
 
 ### D11. Speed
 
-Clef-Flash Q8_0 took 0.84 s a page for text (ADR-074). Image requests are slower: Experiment 43 estimated over an hour for 1,123 pages, about 3 s a page. A router judges every unflagged text page, so a long born-digital PDF pays for each page. The Router form says so. No router is selected by default.
+Clef-Flash Q8_0 took 0.84 s a page for text (ADR-074). Experiment 43 measured about 3.6 s per judged page with images. A router judges every unflagged text page that no earlier rule claimed, so a long born-digital PDF pays for each page. The help text says so (D4, Cost). No router is selected by default.
 
 ### D12. How the judge reaches the rule
 
@@ -116,12 +125,16 @@ The first plan carried an open decision about making page routing the default an
 
 ## Risks / Trade-offs
 
-- [The Experiment 43 threshold was fitted on the same documents it was tested on, and under the old document rule] → the confirmation experiment (group 6) uses new documents and a page-based rule. The template labels the threshold "not confirmed".
+- [The Experiment 43 threshold was fitted on the same documents it was tested on, and under the old document rule] → the confirmation experiment (deferred to GATE G7) uses new documents and a page-based rule. The template labels the threshold "not confirmed".
 - [Hosted image input is not production-ready per TypeSafe] → experimental label, opt-in per router, local default.
-- [A router slows ingestion] → opt-in; one request at a time; counts show the cost; the form states the cost per page.
+- [A router slows ingestion and sends some good pages to OCR] → opt-in; one request at a time; counts show the cost; the help text states about 3.6 s per judged page and about 2.7% of healthy pages sent to OCR (Experiment 43).
 - [A local server on a shared port serves another model] → Test checks the model name and the smoke test; managed entries own their runtime.
 - [Worker on protocol 1.0 cannot take page lists] → rejected pages keep their text, count unresolved, and a warning names the upgrade, as page routing does today.
-- [The hook extension touches ADR-112's rule interface] → `add` is empty for the three older rules, the golden snapshots (`tests/unit/test_page_routing_golden.py`) and digest pins (`tests/unit/test_reading_parts_digest_pins.py`) must stay byte-identical, and a moved pin stops the work.
+- [The hook extension amends ADR-112's rule interface] → `add` is empty for the three older rules, the golden snapshots (`tests/unit/test_page_routing_golden.py`) and digest pins (`tests/unit/test_reading_parts_digest_pins.py`) must stay byte-identical, and a moved pin stops the work.
+
+## Deferred
+
+The confirmation experiment (tasks 6.1 and 6.2 of the first plan) waits for GATE G7 of the master flow (`doc-reading-master-flow`, task 4.3). The operator decided on 2026-11-04 to move it out of this change. After this change merges, the operator says whether to run it. If yes, it is a follow-up change.
 
 ## Migration Plan
 
@@ -129,10 +142,12 @@ No router by default, so nothing changes on upgrade. Rollback: revert; the `deci
 
 ## Open Questions
 
-0. **Page-rule hook: settled by change `local-ocr-backends` (ADR-112, 2026-11-04).** The router registers as page rule order 40. D4 states the one extension the hook needs (`RuleOutcome.add`).
+0. **Page-rule hook: settled by change `local-ocr-backends` (ADR-112, 2026-11-04).** The router registers as page rule order 40. D4 records the one amendment the hook needs (`RuleOutcome.add`, `adds_pages`), approved by the operator on 2026-11-04.
 
-1. **Page renderer for image routers. Answered 2026-11-02 by the operator:** LiteParse first (always installed), pypdfium2 when its extra is installed, and more renderers through Integrations later. poppler `pdftoppm` (external program, used in Experiment 43) is not a product renderer. Remaining check: LiteParse and pypdfium2 images match closely on a scanned page and on a vector-only page (task 3.5).
+1. **Page renderer for image routers. Answered 2026-11-02 by the operator:** LiteParse first (always installed), pypdfium2 when its extra is installed, and more renderers through Integrations later. poppler `pdftoppm` (external program, used in Experiment 43) is not a product renderer. Remaining check: LiteParse and pypdfium2 images match closely on a scanned page and on a vector-only page (task 3.6).
 2. **llama.cpp build floor for image decision requests. Answered 2026-11-02 by the operator:** floor b11941, the build Experiment 43 used. ADR-074 sets b11510 for the Metal fix, and b11941 is above it. A lower build may be allowed later, only after it passes the smoke test.
 3. **Cloudflare Clef kind. Answered 2026-11-02 by the operator:** set up in this change, tested later. The kind is labelled "Not yet tested" until one recorded live request passes.
 4. **Ollama kind. Answered 2026-11-02 by the operator:** set up in this change, tested later. The route exists (see D2 facts). The kind is labelled "Not yet tested" until one recorded live request passes.
-5. **Router scope. Raised in the replan:** the `scope` field (`rescued` or `all-text`) is removed (D4, Scope). To be confirmed by the operator at the plan gate.
+5. **Router scope. Answered 2026-11-04 by the operator:** the `scope` field is removed. The router judges pages that are not flagged and not claimed by an earlier rule, and never judges OCR output. No new setting; the cost is stated in the guide and the help text (D4).
+6. **ADR-112 amendment. Approved 2026-11-04 by the operator:** `RuleOutcome.add` and `adds_pages`, with the semantics in D4. The alternative, marking rejected pages as flagged, is refused: it would corrupt `pages_needing_ocr` and move digests.
+7. **Confirmation experiment. Answered 2026-11-04 by the operator:** it is not part of this change. It waits for GATE G7 of `doc-reading-master-flow` (see tasks.md, Deferred).

@@ -56,7 +56,7 @@ The router SHALL be a built-in page rule named `document_router` with order 40, 
 
 ### Requirement: A router judges the unflagged pages that have text
 
-With a router selected, the rule SHALL judge each page that has non-blank native text, that the scan did not flag, and that no earlier rule dropped or sent direct. It SHALL NOT judge a flagged page, because a flagged page already goes to OCR. A page is "no" when P(yes) is below the threshold.
+With a router selected, the rule SHALL judge each page that has non-blank native text, that the scan did not flag, and that no earlier rule claimed (dropped, sent direct or added). It SHALL NOT judge a flagged page, because a flagged page already goes to OCR. It SHALL NOT judge OCR output. A page is "no" when P(yes) is below the threshold.
 
 #### Scenario: Junk native page rejected
 
@@ -73,13 +73,13 @@ With a router selected, the rule SHALL judge each page that has non-blank native
 
 #### Scenario: Pages of earlier rules are not judged
 
-- **GIVEN** a selected router, a page that the blank rule dropped and a page that the maths rule sent direct
+- **GIVEN** a selected router and two pages that are in the claimed set of earlier rules
 - **WHEN** the PDF is read
 - **THEN** neither page SHALL be judged
 
 ### Requirement: A rejected page goes to OCR on its own
 
-Each "no" page SHALL be returned in the rule's `add` set and SHALL go through the page path: the local OCR tier, then the OCR engine list for pages it escalates. "No" pages SHALL NOT send any other page of the document to OCR.
+Each "no" page SHALL be returned in the rule's `add` set and SHALL go to the OCR engine list once, in the page-listed request, like a direct page. When no engine reads it, the local tier SHALL read it. "No" pages SHALL NOT send any other page of the document to OCR.
 
 #### Scenario: One junk page in a long document
 
@@ -93,6 +93,15 @@ Each "no" page SHALL be returned in the rule's `add` set and SHALL go through th
 - **GIVEN** a 20-page PDF and 5 rejected pages
 - **WHEN** the PDF is read
 - **THEN** exactly those 5 pages SHALL go to OCR
+
+### Requirement: The router help text states the cost
+
+The router's help text and `docs/guides/reading-parts.md` SHALL state that the router judges every unflagged text page that no earlier rule claimed, at about 3.6 s per judged page with the local model, and that Experiment 43 sent about 2.7% of healthy pages to OCR. No setting SHALL change which pages are judged.
+
+#### Scenario: Cost visible
+
+- **WHEN** the Router form renders
+- **THEN** its help text SHALL show the per-page time and the share of healthy pages sent to OCR
 
 ### Requirement: A hosted router needs an explicit opt-in
 
