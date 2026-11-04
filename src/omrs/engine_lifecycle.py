@@ -146,7 +146,12 @@ def graph_host(engine: Engine, collection: str | None) -> Any:
         resolver=engine._resolver(),
         collection=collection,
     )
-    options = {"pdf_reader": readers, "pdf_readers": reader_lists, **engine_option_sets(settings)}
+    options = {
+        "pdf_reader": readers,
+        "pdf_readers": reader_lists,
+        "ocr_non_latin_routing": HostOptionSet(inherited=settings.ocr_non_latin_routing),
+        **engine_option_sets(settings),
+    }
     return replace(graph, host=replace(graph.host, options=options))
 
 

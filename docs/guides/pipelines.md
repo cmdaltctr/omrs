@@ -92,6 +92,16 @@ What a step reader list changes:
 - When the host uses the Azure document backend, Azure reads the PDF files. The step reader applies only when a read falls back to the local backend.
 - The stored source identity names the step reader list. When you change the list, or any other Read document setting, each affected source is processed again on its next explicit ingest. A rerun with the same settings reuses the source.
 
+### Non-Latin script routing on the Read document step
+
+The Read document step has an `ocr_non_latin_routing` setting. It takes `off`, `detect` or `always`. The values mean the same as on Settings › Document reading.
+
+- `null` (Inherit) uses the host value from `OCR_NON_LATIN_ROUTING`. The catalogue reports that value in `inherited_values.ocr_non_latin_routing`.
+- A value that is not `off`, `detect` or `always` (for example `arabic`) fails validation with `invalid_parameter` before any node runs.
+- A node that sets `always` sends every flagged page of its PDF files past the local OCR tier to the OCR engine. Other pipelines keep the host value.
+- The stored source identity names the step value. A PDF source that was indexed with the node on `off` is processed again on the next explicit ingest after the node sets `always`. A node that inherits every OCR setting keeps the identity of the standard ingest path.
+- A graph-wide `overrides.ocr_non_latin_routing` stays refused (`host_owned_setting`). Set the value on the Read document step instead.
+
 ## Canonical templates
 
 `omrs.pipeline_templates` publishes three canonical graphs. Each graph reproduces one standard Engine operation:

@@ -163,6 +163,12 @@ def test_a_set_list_moves_the_fingerprint_and_lists_are_ordered() -> None:
     assert len({a, b, standard_shape().fingerprint}) == 3
 
 
+def test_a_set_non_latin_routing_moves_the_fingerprint() -> None:
+    always = _fingerprint(read={"ocr_non_latin_routing": "always"})
+    off = _fingerprint(read={"ocr_non_latin_routing": "off"})
+    assert len({always, off, standard_shape().fingerprint}) == 3
+
+
 def test_the_identity_block_names_a_step_list() -> None:
     data = canonical_graph("documents", read={"pdf_readers": ["pypdf"], "ocr_engines": ["x"]})
     shape = graph_shape(parse_definition(data).graph, build_catalogue())

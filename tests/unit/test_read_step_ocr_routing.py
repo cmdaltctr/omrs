@@ -29,6 +29,7 @@ from omrs.core.pipelines import CancellationFlag, NodeContext
 from omrs.integrations.ocr_worker.protocol import make_success
 from omrs.integrations.ocr_worker.routes import OcrRoutes
 from omrs.integrations.pdf import factory, maths_routing, ocr_routing
+from omrs.integrations.pdf.page_routing import LocalOcrPage
 
 pytest.importorskip("pdf_inspector", reason="pdf-inspector is a base dependency (ADR-050)")
 
@@ -98,12 +99,21 @@ def pool(monkeypatch: pytest.MonkeyPatch) -> _Pool:
     return _Pool()
 
 
-async def _read(tmp_path: Path, effective_settings: Any, pool: _Pool, **step: Any) -> Document:
+async def _read(
+    tmp_path: Path,
+    effective_settings: Any,
+    pool: _Pool,
+    host_options: dict[str, Any] | None = None,
+    **step: Any,
+) -> Document:
     """Run ``read_adapter`` on a flagged PDF and return the read document."""
     pdf = tmp_path / "scan.pdf"
     pdf.write_bytes(b"%PDF-1.4\n")
     host = effective_settings(
-        pdf_reader="pdf_inspector", ocr_fallback_enabled=True, ocr_engine_primary="dots-mocr"
+        pdf_reader="pdf_inspector",
+        ocr_fallback_enabled=True,
+        ocr_engine_primary="dots-mocr",
+        **(host_options or {}),
     )
     context = NodeContext(
         run_id="r",
@@ -152,6 +162,53 @@ async def test_route_lookup_runs_off_the_event_loop(
     await _read(tmp_path, effective_settings, pool, ocr_engine_primary="paddleocr-vl")
     assert pool.threads
     assert threading.get_ident() not in pool.threads
+
+
+@pytest.fixture
+def local_pages(monkeypatch: pytest.MonkeyPatch) -> list[list[int]]:
+    """Replace the missing local tier with one that reads every page it gets."""
+    calls: list[list[int]] = []
+
+    def _local(file: Any, pages: Any, **_kwargs: Any) -> list[LocalOcrPage]:
+        calls.append(list(pages))
+        return [LocalOcrPage(p, "LOCAL", 0.95, None, False, ()) for p in pages]
+
+    monkeypatch.setattr(ocr_routing, "local_ocr", _local)
+    return calls
+
+
+@pytest.mark.asyncio
+async def test_step_non_latin_always_sends_the_flagged_page_past_the_local_tier(
+    tmp_path: Path, effective_settings: Any, pool: _Pool, local_pages: list[list[int]]
+) -> None:
+    """``ocr_non_latin_routing=always`` on the node: the engine reads the page, not the local tier.
+
+    The host value is ``off``. The same read without the node option uses the
+    local tier, so the option (not the fixture) moves the page.
+    """
+    inherited = await _read(tmp_path, effective_settings, pool)
+    assert inherited.text == "LOCAL"
+    assert local_pages == [[1]]
+    assert pool.clients["dots-mocr"].calls == 0
+
+    local_pages.clear()
+    doc = await _read(tmp_path, effective_settings, pool, ocr_non_latin_routing="always")
+    assert doc.text == "OCR by dots-mocr"
+    assert local_pages == []
+    assert pool.clients["dots-mocr"].calls == 1
+
+
+@pytest.mark.asyncio
+async def test_step_non_latin_off_overrides_a_host_always(
+    tmp_path: Path, effective_settings: Any, pool: _Pool, local_pages: list[list[int]]
+) -> None:
+    """Other pipelines keep the host value: a node that inherits follows the host ``always``."""
+    host = {"ocr_non_latin_routing": "always"}
+    doc = await _read(tmp_path, effective_settings, pool, host)
+    assert doc.text == "OCR by dots-mocr" and local_pages == []
+
+    doc = await _read(tmp_path, effective_settings, pool, host, ocr_non_latin_routing="off")
+    assert doc.text == "LOCAL" and local_pages == [[1]]
 
 
 @pytest.mark.asyncio

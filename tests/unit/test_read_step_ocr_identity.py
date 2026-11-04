@@ -152,6 +152,33 @@ async def test_identify_builds_the_identity_with_the_step_ocr_settings(
 
 
 @pytest.mark.asyncio
+async def test_step_non_latin_routing_reprocesses_a_pdf_source(
+    pdf_root: Path, effective_settings: Any
+) -> None:
+    """Inherited ``off``, then ``always`` on the node: the PDF is indexed again."""
+    host = _host(effective_settings)
+    assert host.ocr_non_latin_routing == "off"
+    run, store = await _runner(host, pdf_root, "ocr_non_latin")
+
+    assert await run() == ["indexed"]
+    assert await run() == ["skipped_unchanged"]
+    assert await run(ocr_non_latin_routing="always") == ["indexed"]
+    assert await run(ocr_non_latin_routing="always") == ["skipped_unchanged"]
+
+    shape = ingestion_shape(
+        admit(canonical_graph("x", read={"ocr_non_latin_routing": "always"}), host, pdf_root),
+        build_catalogue(),
+    )
+    step = host.model_copy(update={"ocr_non_latin_routing": "always"})
+    identities = {
+        r["metadata"]["source_index_identity"]
+        for r in collect_rows(store, "ocr_non_latin", pdf_root)
+    }
+    assert identities == {_identity_with(step, shape.identity_block())}
+    assert identities != {_identity_with(host, shape.identity_block())}
+
+
+@pytest.mark.asyncio
 async def test_all_inherit_template_keeps_the_standard_identity(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, effective_settings: Any
 ) -> None:

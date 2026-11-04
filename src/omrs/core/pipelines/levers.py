@@ -91,6 +91,7 @@ _READ_STEP_OCR_KEYS = (
     "ocr_engine_primary",
     "ocr_engine_fallback",
     "ocr_maths_routing_enabled",
+    "ocr_non_latin_routing",
 )
 
 # Host-owned settings: matched by exact path, block prefix or name fragment.
