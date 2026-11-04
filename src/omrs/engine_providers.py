@@ -18,11 +18,11 @@ from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any
 
 from .core.profiles.catalogue import uses_ollama_embeddings
+from .core.provider_values import provider_secret_values
 from .core.settings import (
     PROVIDER_ADDRESS_FIELDS,
     PROVIDER_INT_FIELDS,
     PROVIDER_SECRET_FIELDS,
-    provider_secret_values,
 )
 
 if TYPE_CHECKING:

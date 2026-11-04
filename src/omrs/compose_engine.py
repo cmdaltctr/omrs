@@ -244,7 +244,7 @@ def experiment_base_settings() -> Settings:
 
 def build_redaction(settings: Any) -> Any:
     """Return the credential values an Engine removes from error text."""
-    from .core.settings import provider_secret_values
+    from .core.provider_values import provider_secret_values
     from .core.vectordb.identity import RedactionSecrets
 
     return RedactionSecrets(

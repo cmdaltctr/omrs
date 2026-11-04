@@ -16,7 +16,7 @@ from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 
-from ...core.settings import classification_url
+from ...core.provider_values import classification_url
 from .runtime_components import NOT_RUNNING, READY, UNCHECKED, UNKNOWN, RuntimeItem
 
 logger = logging.getLogger(__name__)

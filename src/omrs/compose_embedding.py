@@ -22,8 +22,8 @@ from typing import Any
 
 from .config import Settings, get_settings
 from .core.norm_guard import ENABLE_SETTING, TOLERANCE_SETTING, is_within_tolerance, l2_norm
+from .core.provider_values import provider_secret_values
 from .core.providers.embeddings import registry as embed_registry
-from .core.settings import provider_secret_values
 from .core.vectordb.identity import (
     EmbeddingIdentity,
     RedactionSecrets,

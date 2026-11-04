@@ -25,8 +25,9 @@ from .capabilities import (  # noqa: F401  (re-exported for existing callers/tes
 )
 from .config import Settings, _resolve_effective_embed_provider
 from .config import get_settings as _config_get_settings
+from .core.provider_values import provider_secret_values
 from .core.providers.embeddings import registry as embed_registry
-from .core.settings import PROVIDER_SECRET_FIELDS, provider_secret_values
+from .core.settings import PROVIDER_SECRET_FIELDS
 
 logger = logging.getLogger(__name__)
 

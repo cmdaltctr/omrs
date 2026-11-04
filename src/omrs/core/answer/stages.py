@@ -64,7 +64,7 @@ def safe_error_detail(exc: BaseException, settings: Any) -> str:
     helpers the MCP transport applies to tool errors are applied here so
     the error strings embedded in core results cannot bypass them.
     """
-    from ..settings import provider_secret_values
+    from ..provider_values import provider_secret_values
     from ..vectordb.identity import redact_cloud_secrets, redact_secrets
 
     detail = str(exc)

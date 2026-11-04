@@ -20,6 +20,7 @@ from omrs import compose
 from omrs.compose_providers import ProviderValues, apply_provider_values, locked_fields
 from omrs.config import Settings
 from omrs.config.provider_sources import PROVIDER_FIELDS
+from omrs.core.provider_values import provider_secret_values
 from omrs.core.providers.llm import registry
 from omrs.core.providers.llm.connection import (
     ConnectionDescriptor,
@@ -29,7 +30,6 @@ from omrs.core.providers.llm.connection import (
 from omrs.core.settings import (
     PROVIDER_ADDRESS_FIELDS,
     PROVIDER_SECRET_FIELDS,
-    provider_secret_values,
 )
 from omrs.core.vectordb.identity import RedactionSecrets
 

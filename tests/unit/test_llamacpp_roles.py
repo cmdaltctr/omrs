@@ -15,8 +15,8 @@ from typing import Any
 import httpx
 import pytest
 
+from omrs.core.provider_values import classification_url
 from omrs.core.providers.llm import llamacpp
-from omrs.core.providers.llm.llamacpp import classification_url
 from omrs.core.settings import EffectiveSettings, MetadataBlock
 
 CHAT = "http://localhost:8081/v1"

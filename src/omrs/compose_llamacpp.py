@@ -17,8 +17,8 @@ from typing import Any
 from .compose_connections import _plain_field
 from .compose_providers import ProviderValues, apply_provider_values, locked_fields
 from .config import Settings
+from .core.provider_values import classification_url
 from .core.providers.llm.llamacpp_rules import LLAMACPP_SERVER_FIELDS
-from .core.settings import classification_url
 from .integrations.llamacpp_runtime.rules import model_kind
 
 #: Key of each field in the view (``binary``, ``chat_server``, ``context_window``).
