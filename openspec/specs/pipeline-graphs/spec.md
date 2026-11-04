@@ -373,7 +373,7 @@ The operation catalogue SHALL report, for each operation setting whose choices d
 
 ### Requirement: Ingestion identity records the step OCR settings
 
-Graph ingestion SHALL compute each source's index identity with the effective OCR settings of the Read document node in the commit node's ancestor slice, in the same way as the step reader. A node that inherits every OCR setting SHALL keep the identity of the standard ingest path.
+Graph ingestion SHALL compute each source's index identity with the effective OCR settings of the Read document node in the commit node's ancestor slice, in the same way as the step reader. This SHALL include `ocr_non_latin_routing`. A node that inherits every OCR setting SHALL keep the identity of the standard ingest path.
 
 #### Scenario: Engine change forces reprocessing
 
@@ -384,6 +384,11 @@ Graph ingestion SHALL compute each source's index identity with the effective OC
 
 - **WHEN** the canonical ingestion template runs with every OCR setting empty
 - **THEN** its sources SHALL keep the same identity as the standard ingest path
+
+#### Scenario: Step non-Latin routing forces reprocessing of PDF sources
+
+- **WHEN** a PDF source was indexed through a graph whose Read document node inherits `off`, and the node then sets `ocr_non_latin_routing` to `always`
+- **THEN** the next explicit ingest SHALL process the PDF source again
 
 ### Requirement: Step OCR workers share one pool
 
@@ -401,7 +406,7 @@ The host SHALL keep one lazy worker client per engine name, shared by every node
 
 ### Requirement: The Read document step sets its OCR options
 
-The `read.document` operation SHALL accept these optional settings: `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engines`, `ocr_maths_routing_enabled`, and the older `ocr_engine_primary` and `ocr_engine_fallback`. `null` SHALL inherit the host value. Each set value SHALL pass the same rule as the matching key on Settings › Document reading. A graph-wide override of any of these keys SHALL remain a host-owned setting.
+The `read.document` operation SHALL accept these optional settings: `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engines`, `ocr_maths_routing_enabled`, `ocr_non_latin_routing`, and the older `ocr_engine_primary` and `ocr_engine_fallback`. `null` SHALL inherit the host value. Each set value SHALL pass the same rule as the matching key on Settings › Document reading. A graph-wide override of any of these keys SHALL remain a host-owned setting.
 
 #### Scenario: Engine not provisioned
 
@@ -430,6 +435,17 @@ The `read.document` operation SHALL accept these optional settings: `ocr_fallbac
 
 - **WHEN** the user opens the Read document step of a user profile in Studio
 - **THEN** the engine choices SHALL be the engines of the OCR engines group, each marked ready or not, and an "Inherit" choice
+
+#### Scenario: Step sets always
+
+- **WHEN** a Read document node of an Arabic collection's profile sets `ocr_non_latin_routing` to `always`
+- **THEN** that node SHALL send every flagged page past the local tier
+- **AND** other pipelines SHALL keep the host value
+
+#### Scenario: Invalid non-Latin routing value
+
+- **WHEN** a node sets `ocr_non_latin_routing` to `arabic`
+- **THEN** validation SHALL fail with issue code `invalid_parameter` before any node runs
 
 ### Requirement: Read document step accepts a reader list
 
