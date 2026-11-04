@@ -371,5 +371,6 @@ describe("Integrations sections", () => {
       "A tool installs into its own environment, so the server needs no restart. Each card says what to do next.",
     ]);
     expect(within(tools).queryByRole("link", { name: /^Settings/ })).toBeNull();
+    expect(within(tools).getByRole("note").querySelector("svg.lucide-info")).not.toBeNull();
   });
 });

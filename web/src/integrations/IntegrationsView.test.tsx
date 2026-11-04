@@ -203,6 +203,7 @@ describe("Integrations", () => {
       "Availability reflects the running launch of the server. This server cannot install extras from the app. To add an extra, run its command in a terminal outside the app, then restart the server.",
     ]);
     expect(within(extras).queryByRole("link", { name: /^Settings/ })).toBeNull();
+    expect(within(extras).getByRole("note").querySelector("svg.lucide-info")).not.toBeNull();
   });
 
   it("links to Document reading only on the Reading parts section", async () => {

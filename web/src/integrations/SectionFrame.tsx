@@ -19,7 +19,7 @@ export function SectionFrame({
           {title}
         </h2>
         {lines.map((line, index) => (
-          // The last line of Extras and Tools is the availability note.
+          // A line after the summary is a note about the whole section.
           <p key={line} role={index > 0 ? "note" : undefined} className="text-meta text-muted-foreground">
             {line}
           </p>

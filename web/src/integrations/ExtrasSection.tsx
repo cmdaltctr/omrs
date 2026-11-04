@@ -1,5 +1,6 @@
 import type { IntegrationList } from "../api/integrations";
 import { IntegrationCard } from "./IntegrationCard";
+import { ServerCallout } from "../settings/ServerCallout";
 import { EntryList } from "./EntryList";
 import { SectionFrame } from "./SectionFrame";
 import type { InstallControl } from "./useIntegrationInstall";
@@ -27,8 +28,9 @@ export function ExtrasSection({ list, control }: { list: IntegrationList; contro
     <SectionFrame
       id="integrations-extras"
       title="Extras"
-      lines={["Python package extras that add backends, readers and providers to the server.", availabilityNote(list)]}
+      lines={["Python package extras that add backends, readers and providers to the server."]}
     >
+      <ServerCallout text={availabilityNote(list)} />
       <EntryList label="Integrations">
         {list.integrations.map((integration) => (
           <IntegrationCard key={integration.id} integration={integration} installType={list.install_type} control={control} />

@@ -1,7 +1,7 @@
 # ADR-112: Reading Parts: One Descriptor, an Ordered Page-Rule Pipeline, Ordered Fallback Lists and Entry-Point Discovery
 
 - **Date:** 2026-11-04
-- **Status:** Proposed (2026-11-04; decided by the operator, not built. Accepted when change `local-ocr-backends` merges.)
+- **Status:** Accepted (2026-11-04; built and merged to v3 in PR #168)
 - **Deciders:** Maintainer
 - **Amends:** [ADR-037](037-architecture-v2-conformance.md) (decision 1: registries stay the dispatch, and entry points become a second source of names), [ADR-066](066-tiered-reader-fallback-chain.md) (fallback follows list order, not a fixed chain), [ADR-069](069-page-level-ocr-routing-and-the-pdfium-runtime.md) (page routing runs as a pipeline of registered rules), [ADR-105](105-pipeline-steps-own-their-ocr-settings.md) (decision 1: the Read document step gains the local backend list)
 - **Related:** [ADR-072](072-modular-ocr-engines-dots-mocr-primary-and-maths-routing.md) (the `omrs.ocr_engine` entry-point group, the precedent), [ADR-075](075-omrg-owned-pipeline-runner-local-web-packaging-and-external-tool-plugins.md) (owns the word "plugin"), [ADR-110](110-decision-models-and-named-document-routers.md) (routers join the rule pipeline), [ADR-050](050-configure-pdf-inspector-as-default-reader.md) (reader metadata in the registry), [ADR-104](104-pdf-inspector-emits-page-documents.md) (one document per page)

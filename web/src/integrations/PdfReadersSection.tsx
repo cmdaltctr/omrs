@@ -1,5 +1,7 @@
 import type { PdfReaderItem } from "../api/integrations";
 import { Badge } from "../components/ui/badge";
+import { formatRoute } from "../lib/routes";
+import { ServerCallout } from "../settings/ServerCallout";
 import { CopyCommand } from "./CopyCommand";
 import { EntryList, EntryRow } from "./EntryList";
 import { readerNeedsAttention, SECTION_LABELS } from "./sections";
@@ -8,6 +10,7 @@ import { SectionFrame } from "./SectionFrame";
 const SUMMARY = "The readers that turn a PDF into text. The first installed reader in the list reads; a later reader retries when the readers before it return no text.";
 /** Said once under the heading, as for the runtime sections. */
 const CHECKED = "The server checks these readers when the page loads and changes nothing.";
+const DOCUMENT_READING = formatRoute({ area: "settings", section: "document-reading" });
 
 /** Installed is green. A reader that a setting lists and that is missing is red; a missing reader nothing uses stays plain. */
 function variant(reader: PdfReaderItem): "success" | "error" | "neutral" {
@@ -47,6 +50,17 @@ export function PdfReadersSection({ readers }: { readers: PdfReaderItem[] }) {
   const title = SECTION_LABELS["pdf-readers"];
   return (
     <SectionFrame id="integrations-pdf-readers" title={title} lines={[SUMMARY, CHECKED]}>
+      <ServerCallout
+        text={
+          <>
+            To change which readers are used and in what order, go to{" "}
+            <a href={DOCUMENT_READING} className="underline underline-offset-4">
+              Settings › Document reading
+            </a>
+            .
+          </>
+        }
+      />
       <EntryList label={title}>
         {readers.map((reader) => (
           <ReaderRow key={reader.name} reader={reader} />
