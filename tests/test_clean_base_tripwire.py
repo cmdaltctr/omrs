@@ -259,7 +259,40 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # Read document step option, identity, routing and fingerprint. No fastapi needed.
 # +4 (2026-11-04, same change, PR 167 review, by test-ID diff, 4 added, 0 removed):
 # local fallback for direct non-Latin pages the engine cannot read. No fastapi.
-_BASE_EXECUTED = 10072
+# +45 (2026-11-04, local-ocr-backends task 4.2, by test-ID diff, 45 added, 0 removed):
+# test_experiment_46_local_ocr_backends.py. No fastapi needed.
+# +31 (2026-11-04, local-ocr-backends group 1, by test-ID diff, 31 added, 0 removed):
+# digest pins (6), key-list pins (7), page-routing golden snapshots (18). The
+# catalogue row pin needs fastapi (see _WEB_EXTRA_CASES).
+# +50 (2026-11-04, same change, group 2 and task 6.1, by test-ID diff, 50 added, 0
+# removed): part descriptors (22), registry helper (21), descriptor pins (2), runtimes
+# follow the engine list (5). No fastapi needed.
+# +36 (2026-11-04, same change, group 3, by test-ID diff, 36 added, 0 removed): page
+# rule pipeline (13), built-in rules (20), rule descriptor pins (2) and the contract
+# coverage case for the new page_rules package (1). No fastapi needed.
+# +82 (2026-11-04, same change, group 4, by test-ID diff, 82 added, 0 removed): local
+# OCR backends (18), chain (19), output script (7), producers (6), backend list
+# setting (11), cut override (9), backend identity (9), backend pins (2) and the
+# contract coverage case for the local_ocr package (1). No fastapi needed.
+# +117 (2026-11-04, same change, groups 5 and 6, by test-ID diff, 117 added, 0 removed):
+# discovery (14), compose discovery (6), part options (22), backend list setting (13),
+# discovered names in rules (5), single source (19), drift (10), health (18), catalogue
+# (6), integrations route (1) and Settings save (3). The last 10 need fastapi (see
+# _WEB_EXTRA_CASES).
+# +19 (2026-11-04, same change, group 7, by test-ID diff, 19 added, 0 removed): Indra
+# backend with a fake indra_ocr (17) and the one-part check (2). No fastapi needed.
+# +4 (2026-11-04, same change, group 8 review, by test-ID diff, 4 added, 0 removed):
+# registry-names audit of the local OCR backend and page rule blocks (2) and the Read
+# step host facts for ocr_local_backends (2). No fastapi needed.
+# +24 (2026-11-04, same change, follow-up fixes, by test-ID diff, 24 added, 0 removed):
+# external rule hooks guarded (6), compose siblings discover (6), local backend identity
+# resolved once per operation (4) and per graph run (3), discovered backends offered (5).
+# No fastapi needed.
+# +31 (2026-11-04, same change, PR 168 review fixes, by test-ID diff, 31 added, 0
+# removed): external rule guards (13), broken named parts (6), Indra identity (5),
+# clean health reasons (4), PP-OCRv6 probe only when listed (2) and the discovered
+# part name in the contract (1, needs fastapi, see _WEB_EXTRA_CASES).
+_BASE_EXECUTED = 10511
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -600,7 +633,11 @@ if not _has_qwen_tokenizer:
 # +23 (2026-11-03, ordered-reader-and-ocr-lists, measured by the floor job of PR 166:
 # 8099 executed without fastapi against 8122 expected): the PDF readers route,
 # list-valued document-reading and configuration-save tests.
-_WEB_EXTRA_CASES = 1879
+# +1 (2026-11-04, local-ocr-backends group 1): the extras catalogue row pin.
+# +10 (2026-11-04, same change, group 6): catalogue (6), integrations route (1) and
+# Settings save (3).
+# +1 (2026-11-04, same change, PR 168 review): the discovered part name in the contract.
+_WEB_EXTRA_CASES = 1891
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)

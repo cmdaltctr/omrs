@@ -34,6 +34,7 @@ from importlib import metadata
 from typing import Any, NamedTuple
 
 from ...config.settings_file import read_settings_file
+from ...core import reading_parts
 from ...core.providers.embeddings import registry as embedding_registry
 from ...core.providers.llm import registry as llm_registry
 from .install_environment import (
@@ -69,13 +70,31 @@ Installed = Mapping[str, frozenset[Edge] | frozenset[str]]
 _ASKS = re.compile(r"^\s*[A-Za-z0-9][A-Za-z0-9._-]*\s*\[(?P<extras>[^\]]*)\]")
 _OR = re.compile(r"\s+or\s+")
 
+
+def part_in_use_rows() -> dict[str, tuple[tuple[str, str], ...]]:
+    """Return the :data:`IN_USE` rows of reading parts with an extra, from the descriptors.
+
+    A PDF reader is selected by its ``pdf_reader`` value. A local OCR backend
+    has no single-value key: only its list selects it (:func:`in_use_setting`).
+    """
+    rows: dict[str, tuple[tuple[str, str], ...]] = {}
+    for reader in reading_parts.PDF_READERS:
+        if reader.extra:
+            rows[reader.extra] = (("pdf_reader", reader.name),)
+    for backend in reading_parts.LOCAL_OCR_BACKENDS:
+        if backend.extra:
+            rows[backend.extra] = ()
+    return rows
+
+
 #: Extra to the ``(setting key, value)`` pairs that select it, checked in order.
 #: An empty tuple means no setting selects the extra (``hybrid``: the built-in
 #: BM25 takes over). Keys are ``omrs.jsonc`` keys and ``EffectiveSettings`` paths.
+#: The reading-part rows come from the descriptors (change local-ocr-backends, D15).
 IN_USE: dict[str, tuple[tuple[str, str], ...]] = {
     "chroma": (("vector_store", "chroma"),),
     "torch": (("retrieval.rerank_backend", "torch"),),
-    "pdf-pypdfium2": (("pdf_reader", "pypdfium2"),),
+    **part_in_use_rows(),
     "azure": (("document_backend", "azure"),),
     "community-leiden": (("community_algorithm", "leiden"),),
     # Provider settings come from the provider registries (see in_use_setting).
@@ -267,17 +286,30 @@ def _reader(settings: Any, saved: Mapping[str, Any]) -> Read:
     return read
 
 
-def _lists_reader(settings: Any, saved: Mapping[str, Any], name: str) -> bool:
-    """Return whether a reader list, saved or effective, holds *name* at any position.
+def _lists_part(settings: Any, saved: Mapping[str, Any], key: str, names: set[str]) -> bool:
+    """Return whether list *key*, saved or effective, holds one of *names* at any position.
 
-    A later reader in the list is a retry tier, so it needs its extra as much
-    as the first one does.
+    A later reader or backend in the list is a retry tier, so it needs its
+    extra as much as the first one does.
     """
-    explicit = None if settings is None else getattr(settings, "pdf_readers", None)
-    for listed in (saved.get("pdf_readers"), explicit):
-        if isinstance(listed, (list, tuple)) and name in listed:
+    explicit = None if settings is None else getattr(settings, key, None)
+    for listed in (saved.get(key), explicit):
+        if isinstance(listed, (list, tuple)) and names & set(listed):
             return True
     return False
+
+
+def _part_list_setting(extra: str, settings: Any, saved: Mapping[str, Any]) -> str | None:
+    """Return the list key whose value names a reading part of *extra*, or ``None``."""
+    lists = (
+        ("pdf_readers", reading_parts.PDF_READERS),
+        ("ocr_local_backends", reading_parts.LOCAL_OCR_BACKENDS),
+    )
+    for key, table in lists:
+        names = {part.name for part in table if part.extra == extra}
+        if names and _lists_part(settings, saved, key, names):
+            return key
+    return None
 
 
 def _through(read: Read, alias: str, llm: Callable[[str], str | None]) -> Role:
@@ -328,9 +360,7 @@ def in_use_setting(extra: str, settings: Any, saved: Mapping[str, Any]) -> str |
         for key, provider, extra_of in _provider_roles(read):
             if provider and extra_of(provider) == extra:
                 return key
-    if extra == "pdf-pypdfium2" and _lists_reader(settings, saved, "pypdfium2"):
-        return "pdf_readers"
-    return None
+    return _part_list_setting(extra, settings, saved)
 
 
 def uninstall_reason(

@@ -35,6 +35,7 @@ DECLARED = (
     "hybrid",
     "pdf-pypdfium2",
     "pdf-inspector",
+    "local-ocr-indra",
     "community-leiden",
     "azure",
     "llamacpp",

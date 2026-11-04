@@ -118,7 +118,9 @@ development of OMRG — Opinionated Modular RAG.
 | [107](./107-ci-keeps-one-job-per-distinct-check.md) | CI Keeps One Job per Distinct Check | 2026-10-29 | Accepted (2026-10-29; built and merged to v3 at PR #146) |
 | [108](./108-local-chat-and-classification-stay-apart.md) | Local Chat and Classification Stay Apart | 2026-10-29 | Accepted (ADR-108 amends ADR-084 decision 4 and ADR-106 decision 4) |
 | [109](./109-omrs-owns-local-model-runtimes-components-are-clients.md) | OMRS Owns Local Model Runtimes; Components Are Clients | 2026-11-01 | Proposed (ADR-109 amends ADR-084 and ADR-108 decision 4) |
+| [110](./110-decision-models-and-named-document-routers.md) | Decision Models and Named Document-Reading Routers | 2026-11-02 | Proposed (2026-11-02; draft written with the change, not accepted) |
 | [111](./111-the-web-workspace-renders-maths-with-bundled-katex.md) | The Web Workspace Renders Maths with Bundled KaTeX | 2026-11-03 | Accepted (2026-11-03; built and merged in PR #165) |
+| [112](./112-reading-parts-descriptor-pipeline-and-discovery.md) | Reading Parts: One Descriptor, an Ordered Page-Rule Pipeline, Ordered Fallback Lists and Entry-Point Discovery | 2026-11-04 | Accepted (2026-11-04; built and merged to v3 in PR #168; amends ADR-037, ADR-066, ADR-069 and ADR-105) |
 
 ## Convention
 

@@ -77,3 +77,22 @@ describe("navigation column", () => {
     expect(column).toHaveClass("md:sticky", "md:top-0", "md:h-dvh", "md:self-start");
   });
 });
+
+describe("mobile navigation bar", () => {
+  it("shows icons only: no visible short label, and each item keeps its name for screen readers", () => {
+    const nav = start(false);
+    for (const short of ["Data", "Labs", "Add-ons"]) expect(nav.queryByText(short)).toBeNull();
+    for (const name of ["Home", "Chat", "Knowledge Base", "Studio", "Experiments", "Integrations", "Settings"]) {
+      expect(nav.getByRole("link", { name })).toBeInTheDocument();
+    }
+  });
+});
+
+describe("Settings on narrow screens", () => {
+  it("hides the Settings item of the nav row below md, where the quick controls already link to Settings", () => {
+    const nav = start(false);
+    const item = nav.getByRole("link", { name: "Settings" }).closest("li");
+    expect(item).toHaveClass("hidden", "md:block");
+    for (const name of ["Home", "Chat", "Integrations"]) expect(nav.getByRole("link", { name }).closest("li")).not.toHaveClass("hidden");
+  });
+});

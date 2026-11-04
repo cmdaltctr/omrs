@@ -8,9 +8,9 @@ import type { SaveOptions } from "./settings";
 
 /**
  * The keys, in the order the server lists them and the order of lock precedence.
- * `pdf_readers` and `ocr_engines` hold ordered lists. The page writes only these two;
- * the three single-value keys stay valid in answers and requests, and the server
- * removes them from `omrs.jsonc` when a list key is saved.
+ * `pdf_readers`, `ocr_engines` and `ocr_local_backends` hold ordered lists. The page
+ * writes the list keys; the three single-value keys stay valid in answers and requests,
+ * and the server removes them from `omrs.jsonc` when a list key is saved.
  */
 export const DOCUMENT_READING_KEYS = [
   "pdf_readers",
@@ -22,6 +22,7 @@ export const DOCUMENT_READING_KEYS = [
   "ocr_engine_fallback",
   "ocr_maths_routing_enabled",
   "ocr_non_latin_routing",
+  "ocr_local_backends",
 ] as const;
 
 export type DocumentReadingKey = (typeof DOCUMENT_READING_KEYS)[number];
@@ -53,6 +54,15 @@ export interface ReaderOption {
   reason: string | null;
 }
 
+/** A local OCR backend that `ocr_local_backends` can name. */
+export interface LocalBackendOption {
+  name: string;
+  /** The backend's package can be found. */
+  available: boolean;
+  /** Why it cannot run (`Not installed.`), or `null` when available. */
+  reason: string | null;
+}
+
 export interface OcrEngineOption {
   name: string;
   /** The engine has a command now. */
@@ -69,6 +79,8 @@ export interface DocumentReadingState {
   pdf_readers: ReaderOption[];
   /** The reader the running engine uses after resolution, or `null` when it cannot be computed. */
   pdf_reader_in_use: string | null;
+  /** Each backend a local OCR list can name, in descriptor order. */
+  local_ocr_backends: LocalBackendOption[];
   ocr: {
     /** Launch `ocr_workers_dir` with `~` for the home folder, or `null` when unset. */
     workers_dir: string | null;

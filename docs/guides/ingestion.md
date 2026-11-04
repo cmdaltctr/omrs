@@ -376,14 +376,43 @@ after dispatch is a per-file error and never retries on the other route.
 If both routes resolve to the same command and working directory, they
 share one client. Startup logs name the resolved routes and availability.
 
+### Page rules
+
+A page rule decides what happens to flagged pages before any OCR tier reads
+them. Rules run in ascending order. Each built-in rule has a descriptor in
+`core/reading_parts.py`. See [Reading parts](reading-parts.md).
+
+| Order | Rule | Setting | What it does |
+|---|---|---|---|
+| 10 | `blank` | None (always on) | Drops a flagged page that the blank test finds blank. The page keeps its native text. |
+| 20 | `maths` | `OCR_MATHS_ROUTING_ENABLED` | Sends a page with a maths font direct to the OCR engines. |
+| 30 | `non_latin` | `OCR_NON_LATIN_ROUTING` | Sends non-Latin pages direct, and checks the output of the local backends under `detect`. |
+
+Four fixed rules combine the results:
+
+1. A page that an earlier rule dropped leaves the page set of every later rule.
+2. The direct set of a rule loses the pages that earlier rules dropped.
+3. The direct pages are the union of every direct set. The local backends read
+   the flagged pages that are neither dropped nor direct.
+4. A direct page that no OCR engine read goes to the degrade hook of the first
+   rule that sent it direct. The `non_latin` rule sends such a page to the
+   local backends with one warning.
+
+A built-in rule that raises an error fails the file. A rule from another
+package runs only when its `reading_part_options` entry holds
+`"enabled": true`. If that rule fails to load or raises an error, OMRS skips it
+for the file, logs one warning and switches it off until the server restarts.
+
 ### Page-level routing
 
 OMRS routes per page. `OCR_ROUTING_UNIT=page` is the default and the only
 legal value; `OCR_ROUTING_UNIT=document` fails start-up with a message that
 names `page`
 ([ADR-069](../adr/069-page-level-ocr-routing-and-the-pdfium-runtime.md)).
-Every page is scanned; flagged non-maths pages run through pdf-inspector's local
-OCR (PP-OCRv6 Small on ONNX Runtime, CPU, no PyTorch) at roughly 0.75 s
+Every page is scanned; the flagged pages that no [page rule](#page-rules) dropped or sent
+direct run through the local OCR backends in the order of `OCR_LOCAL_BACKENDS`. The default
+backend, `pp-ocrv6-small`, is pdf-inspector's local OCR (PP-OCRv6 Small on ONNX Runtime, CPU,
+no PyTorch) at roughly 0.75 s
 median per page; pages the local tier cannot read escalate to the
 worker in **one** request with any directly routed maths pages. The seam
 emits one document for each page that has text, in page order, with `page`
@@ -391,14 +420,27 @@ and `page_label`. This includes pages that local OCR or the worker read.
 
 A page escalates when the local attempt returns empty or
 whitespace-only text, reports confidence below
-`OCR_LOCAL_MIN_CONFIDENCE` (0.9, supported by Experiments 33, 37 and 39:
-escalation 59.6%, wrongly kept 2.5% on the 399 flagged pages re-scored in
-Experiment 39), or flags `hosted_recommended`.
+the cut of the backend that read it (0.9 for `pp-ocrv6-small`, supported by Experiments
+33, 37 and 39: escalation 59.6%, wrongly kept 2.5% on the 399 flagged pages re-scored in
+Experiment 39), flags `hosted_recommended`, or returns text in a script that the
+backend does not keep (`script_not_kept`).
 Unreported confidence escalates too. With the default
 `OCR_NON_LATIN_ROUTING=off` there is no script or typography pre-check:
 the failure classes announce themselves after the attempt. Under `detect`,
 a flagged page with a non-Latin text layer skips the local tier, and a
 non-Latin local result escalates with reason `non_latin_output`.
+
+`OCR_LOCAL_MIN_CONFIDENCE` is unset by default. When set, it replaces the cut of every
+listed backend.
+
+With more than one backend listed, the first backend reads every page the local tier takes.
+The next backend reads, in one call, the pages that the backend before it did not keep.
+The OCR engines read the pages that no listed backend kept. An escalated page reports the
+reasons of the last backend that read it and carries the text of the first backend that
+returned non-empty text. A backend that raises an error is skipped for the call, with one
+warning per process. A backend with a script filter (`indra` keeps Arabic and Devanagari)
+keeps a page only when the script of its output is in that set. See
+[Local OCR backends](configuration.md#local-ocr-backends).
 
 Every emitted page document carries the same five scalar counts for the
 whole PDF. They sum to `page_count`:
@@ -427,8 +469,8 @@ page the test cannot render or score is not blank and follows the route
 above.
 
 `ocr_backend` names a backend only when it alone produced the text
-(`pdf_inspector`, `pdf_inspector_ocr`, `dots_mocr`, `paddleocr_vl`); anything else
-is `mixed`. A 200-page document whose worker read one page reports
+(`pdf_inspector`, `pdf_inspector_ocr`, `indra_ocr`, `dots_mocr`, `paddleocr_vl`); anything else
+is `mixed`. A local page names the producer of the backend that kept it. A 200-page document whose worker read one page reports
 `mixed`, not `paddleocr_vl` — naming the higher tier would be false.
 
 Degradation never fails the file. A missing worker, a reply that
@@ -454,17 +496,22 @@ exported before any read):
 | `ORT_DYLIB_PATH` | ONNX Runtime's dylib, in `onnxruntime/capi/` of the environment |
 | `PDF_INSPECTOR_MODEL_CACHE` | Optional model cache directory; the default is a user-level cache |
 
-The model (`pp-ocrv6-small@oar-ocr-v0.7.0`, about 31 MB) downloads on
+The `pp-ocrv6-small` model (`pp-ocrv6-small@oar-ocr-v0.7.0`, about 31 MB) downloads on
 first use unless `OCR_LOCAL_OFFLINE=true`; with offline mode and no
 cached model, the tier degrades. `OCR_LOCAL_MODEL_DIRECTORY`, when
 set, points at the artifact leaf directory (`<name>/<revision>`), not
 the cache root.
 
-The routing unit, the escalation threshold and the resolved model
+The `indra` backend needs the `local-ocr-indra` extra and its weights in the
+folder that `INDRA_OCR_MODEL_DIR` names. Under `OCR_LOCAL_OFFLINE=true`, it reads
+only that folder and never downloads.
+
+The routing unit, the escalation cut and the resolved model
 identity are part of the source index identity, because a different engine
-reads the pages. Raising the default cut from 0.8 to 0.9 reindexes
-sources once on their next ingest. Explicit operator values
-still apply. Identity schema 7 reindexes every source once, as described
+reads the pages. The default list keeps every digest, and an unset cut gives the
+same digest as an explicit `0.9`. Another list adds the entry
+`parser.local_ocr_backends` to PDF sources, which re-index once. Other sources
+keep their digest. Identity schema 7 reindexes every source once, as described
 under [Routing identity](#routing-identity-and-existing-indexes). The local
 tier's quality residual is accepted and named in ADR-069; the deferred
 retrieval experiment gates any future default change.
@@ -475,7 +522,8 @@ retrieval experiment gates any future default change.
 | ----------------------------- | ------- | ---------------------------------------------------------------- |
 | `OCR_FALLBACK_ENABLED`        | `true`  | Switches OCR routing on and off. Off means no page reaches OCR. |
 | `OCR_ROUTING_UNIT`            | `page`  | Only legal value. `document` fails start-up.                      |
-| `OCR_LOCAL_MIN_CONFIDENCE`    | `0.9`   | Escalation cut for the local tier.                                |
+| `OCR_LOCAL_BACKENDS`          | `pp-ocrv6-small` | Ordered list of local OCR backends (`pp-ocrv6-small`, `indra`). Comma-separated; a JSON array in `omrs.jsonc`. See [Local OCR backends](configuration.md#local-ocr-backends). |
+| `OCR_LOCAL_MIN_CONFIDENCE`    | unset   | Optional override. Replaces the escalation cut of every listed backend. Unset, each backend uses its own cut. |
 | `OCR_LOCAL_OFFLINE`           | `false` | Forbid the model download.                                        |
 | `OCR_LOCAL_MODEL_DIRECTORY`   | empty   | Model artifact leaf directory; empty means the default cache.     |
 | `OCR_WORKERS_DIR`             | empty   | Absolute path to `ocr-workers`; empty disables folder-based routes. |
@@ -484,6 +532,7 @@ retrieval experiment gates any future default change.
 | `OCR_WORKER_REQUEST_TIMEOUT`  | `300.0` | Minimum parse-response timeout in seconds. |
 | `OCR_WORKER_SECONDS_PER_PAGE` | `120.0` | Timeout allowance per requested page in seconds. |
 | `OCR_MATHS_ROUTING_ENABLED`   | `true`  | Detect maths fonts and route affected pages. |
+| `READING_PART_OPTIONS`        | `{}`    | JSON object of options per reading part. See [Reading part options](configuration.md#reading-part-options). |
 | `OCR_NON_LATIN_ROUTING`       | `off`   | `always` sends every flagged page past the local tier. `detect` sends a flagged page past it only when its text layer is non-Latin, and escalates a non-Latin local result. See [Non-Latin page routing](configuration.md#non-latin-page-routing). |
 
 The timeout is `max(OCR_WORKER_REQUEST_TIMEOUT, requested_pages * OCR_WORKER_SECONDS_PER_PAGE)`.
@@ -650,7 +699,7 @@ Disabling maths routing omits `pages_maths_font`.
 
 Two of these generalise to pages: `ocr_used` is
 true when OCR produced the text of at least one page, local or worker;
-`ocr_backend` also takes `pdf_inspector_ocr` (the local tier alone
+`ocr_backend` also takes `pdf_inspector_ocr` or `indra_ocr` (one local backend alone
 produced the text) and `mixed` (more than one backend did). Five
 further scalar keys — `ocr_pages_native`, `ocr_pages_local`,
 `ocr_pages_worker`, `ocr_pages_blank`, `ocr_pages_unresolved` — sum to

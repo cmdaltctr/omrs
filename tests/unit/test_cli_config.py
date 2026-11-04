@@ -74,7 +74,8 @@ def _expected_keys() -> set[str]:
 def _flatten(data: dict[str, Any], prefix: str = "") -> dict[str, Any]:
     out: dict[str, Any] = {}
     for key, value in data.items():
-        if isinstance(value, dict):
+        # A block holds keys; an empty map is one map-valued key (reading_part_options).
+        if isinstance(value, dict) and value:
             out.update(_flatten(value, f"{prefix}{key}."))
         else:
             out[f"{prefix}{key}"] = value

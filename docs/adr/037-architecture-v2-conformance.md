@@ -1,7 +1,7 @@
 # ADR-037: Architecture v2 Conformance
 
 - **Date:** 2026-08-05
-- **Status:** Accepted
+- **Status:** Accepted Amended by ADR-112 (2026-11-04): decision 1, entry points become a second source of reading-part names.
 - **Phase:** Conformance — closing the gap left by Phases 1–5
 - **Deciders:** Dr Muhammad Aizat Bin Md Hawari
 

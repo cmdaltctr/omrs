@@ -1,13 +1,20 @@
+import { Info, TriangleAlert } from "lucide-react";
+import type { ReactNode } from "react";
+
 const TONES = {
   info: "rounded-small border border-status-info bg-status-info/10 px-3 py-2 text-ui text-status-info-label",
   warning: "rounded-small border border-status-warning bg-status-warning/10 px-3 py-2 text-ui text-status-warning-label",
 } as const;
 
-/** Fixed words on the llama.cpp card: the facts of a Chat server choice (`info`) or a warning. */
-export function ServerCallout({ text, tone = "info" }: { text: string; tone?: keyof typeof TONES }) {
+const ICONS = { info: Info, warning: TriangleAlert } as const;
+
+/** Fixed words, such as the facts of a Chat server choice or a note with a link: `info` for a fact, `warning` for a risk. */
+export function ServerCallout({ text, tone = "info" }: { text: ReactNode; tone?: keyof typeof TONES }) {
+  const Icon = ICONS[tone];
   return (
-    <p role="note" className={TONES[tone]}>
-      {text}
-    </p>
+    <div role="note" className={`flex min-w-0 gap-2 ${TONES[tone]}`}>
+      <Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+      <p className="min-w-0 [overflow-wrap:anywhere]">{text}</p>
+    </div>
   );
 }

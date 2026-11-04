@@ -49,10 +49,53 @@ PAGES_NON_LATIN_KEY = "pages_non_latin"
 #: The escalation reason the post-local check adds.
 NON_LATIN_OUTPUT_REASON = "non_latin_output"
 
+#: Bump on ANY change to :data:`OUTPUT_SCRIPT_MIN_LETTERS` or
+#: :data:`OUTPUT_SCRIPT_SHARE` (change local-ocr-backends, design D10). It is
+#: separate from :data:`SCRIPT_DETECTOR_VERSION`, so the ``detect`` and
+#: ``always`` digests do not move. A test pins both constants to this version.
+OUTPUT_SCRIPT_VERSION = 1
+
+#: Fewest letters a local OCR result needs before it gets a script verdict.
+OUTPUT_SCRIPT_MIN_LETTERS = 40
+
+#: One script must hold at least this share of the letters to name the text.
+OUTPUT_SCRIPT_SHARE = 0.5
+
 
 @lru_cache(maxsize=4096)
 def _is_latin_letter(char: str) -> bool:
     return unicodedata.name(char, "").startswith("LATIN")
+
+
+@lru_cache(maxsize=4096)
+def _script_of(char: str) -> str:
+    """Return the lower-case first word of the Unicode name of *char*."""
+    return unicodedata.name(char, "").split(" ", 1)[0].lower()
+
+
+def output_script(text: str) -> str | None:
+    """Return the script of a local OCR result, or ``None`` for no verdict.
+
+    Args:
+        text: Page text. Digits, punctuation and space are not letters.
+
+    Returns:
+        The lower-case first word of the Unicode name of the letters of one
+        script (for example ``arabic`` or ``latin``) when the text holds at
+        least :data:`OUTPUT_SCRIPT_MIN_LETTERS` letters and that script holds
+        at least :data:`OUTPUT_SCRIPT_SHARE` of them, else ``None``.
+    """
+    letters = [char for char in text if char.isalpha()]
+    if len(letters) < OUTPUT_SCRIPT_MIN_LETTERS:
+        return None
+    counts: dict[str, int] = {}
+    for char in letters:
+        script = _script_of(char)
+        counts[script] = counts.get(script, 0) + 1
+    script, count = max(counts.items(), key=lambda item: item[1])
+    if not script or count / len(letters) < OUTPUT_SCRIPT_SHARE:
+        return None
+    return script
 
 
 def is_non_latin(text: str) -> bool | None:
@@ -86,6 +129,20 @@ def _engine_available(routes: Any) -> bool:
 def post_check_enabled(settings: Any, routes: Any) -> bool:
     """Return whether the post-local check runs: ``detect`` with an engine to escalate to."""
     return routing_mode(settings) == "detect" and _engine_available(routes)
+
+
+def non_latin_output_reason(text: str, facts: Any = None) -> str | None:
+    """Return :data:`NON_LATIN_OUTPUT_REASON` when a local result is mostly non-Latin.
+
+    The post-local check (a page-rule post-check). *facts* are the registered
+    facts of the backend that read the page. A backend whose ``keeps_scripts``
+    holds the text's :func:`output_script` gets no reason (change
+    local-ocr-backends, design D10); without a script filter the check is as before.
+    """
+    keeps = (facts or {}).get("keeps_scripts")
+    if keeps is not None and output_script(text) in keeps:
+        return None
+    return NON_LATIN_OUTPUT_REASON if is_non_latin(text) is True else None
 
 
 def _text_layer_verdicts(file: Path, pages: Collection[int]) -> frozenset[int]:

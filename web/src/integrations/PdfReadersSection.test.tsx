@@ -31,6 +31,16 @@ const row = async (name: string) => {
 };
 
 describe("Integrations PDF readers", () => {
+  it("tells where to change the reader list, with a link to Document reading", async () => {
+    startApp("#/integrations/pdf-readers", serve());
+    const note = within(await group())
+      .getAllByRole("note")
+      .find((element) => /change which readers are used/i.test(element.textContent ?? ""));
+    if (note === undefined) throw new Error("no Document reading note");
+    expect(note).toHaveTextContent("To change which readers are used and in what order, go to Settings › Document reading.");
+    expect(within(note).getByRole("link", { name: "Settings › Document reading" })).toHaveAttribute("href", "#/settings/document-reading");
+  });
+
   it("shows one row for each reader in server order, built on the shared entry list", async () => {
     startApp("#/integrations/pdf-readers", serve());
     const list = within(await group()).getByRole("list", { name: "PDF readers" });

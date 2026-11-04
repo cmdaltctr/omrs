@@ -73,7 +73,9 @@ def _stub(monkeypatch, engine: _Engine) -> None:
 
 @pytest.fixture(autouse=True)
 def _blank_test_finds_nothing(monkeypatch):
-    monkeypatch.setattr(ocr_routing, "find_blank_pages", lambda file, pages: frozenset())
+    monkeypatch.setattr(
+        "omrs.integrations.pdf.blank_pages.find_blank_pages", lambda file, pages: frozenset()
+    )
 
 
 def _read(effective_settings, tmp_path, scan, engine, worker, *, mode, **overrides):
@@ -157,7 +159,9 @@ def test_detect_reads_only_the_flagged_pages_and_skips_blank_ones(
 ):
     """Page 2 is flagged and blank: it leaves the route before the text check."""
     scan = _scan(False, True, True)
-    monkeypatch.setattr(ocr_routing, "find_blank_pages", lambda file, pages: frozenset({2}))
+    monkeypatch.setattr(
+        "omrs.integrations.pdf.blank_pages.find_blank_pages", lambda file, pages: frozenset({2})
+    )
     engine = _Engine(
         scan,
         ocr_pages_by_call=[],
@@ -242,7 +246,9 @@ def test_always_keeps_unflagged_pages_native(monkeypatch, tmp_path, effective_se
 
 def test_always_does_not_send_a_blank_page(monkeypatch, tmp_path, effective_settings):
     scan = _scan(True, True)
-    monkeypatch.setattr(ocr_routing, "find_blank_pages", lambda file, pages: frozenset({1}))
+    monkeypatch.setattr(
+        "omrs.integrations.pdf.blank_pages.find_blank_pages", lambda file, pages: frozenset({1})
+    )
     engine = _Engine(scan)
     _stub(monkeypatch, engine)
     worker = _FakeWorker(pages_markdown=["W2"])
@@ -255,7 +261,10 @@ def test_always_does_not_send_a_blank_page(monkeypatch, tmp_path, effective_sett
 
 def test_a_maths_page_that_is_also_non_latin_goes_once(monkeypatch, tmp_path, effective_settings):
     scan = _scan(True, True, True)
-    monkeypatch.setattr(ocr_routing, "detect_maths_pages", lambda file, settings: frozenset({2}))
+    monkeypatch.setattr(
+        "omrs.integrations.pdf.maths_routing.detect_maths_pages",
+        lambda file, settings: frozenset({2}),
+    )
     engine = _Engine(scan)
     _stub(monkeypatch, engine)
     worker = _FakeWorker(pages_markdown=["W1", "W2", "W3"])
@@ -304,7 +313,10 @@ def test_a_maths_page_the_engine_cannot_read_gets_no_local_run(
 ):
     """Maths pages keep today's behaviour: only the non-Latin page falls back."""
     scan = _scan(True, True)
-    monkeypatch.setattr(ocr_routing, "detect_maths_pages", lambda file, settings: frozenset({2}))
+    monkeypatch.setattr(
+        "omrs.integrations.pdf.maths_routing.detect_maths_pages",
+        lambda file, settings: frozenset({2}),
+    )
     engine = _Engine(scan, ocr_pages_by_call=[[_ocr_page(1, "LOCAL one", 0.95)]])
     _stub(monkeypatch, engine)
     worker = _FakeWorker(pages_markdown=None)
@@ -345,7 +357,7 @@ def test_the_local_fallback_respects_a_switched_off_local_tier(
     scan = _scan(True)
     engine = _Engine(scan, ocr_pages_by_call=[[_ocr_page(1, "LOCAL one", 0.95)]])
     _stub(monkeypatch, engine)
-    monkeypatch.setattr(ocr_routing, "local_tier_off_reason", lambda: "switched off")
+    monkeypatch.setattr(ocr_routing, "local_tier_off_reason", lambda *_: "switched off")
     worker = _FakeWorker(pages_markdown=None)
 
     docs = _read(effective_settings, tmp_path, scan, engine, worker, mode="always")

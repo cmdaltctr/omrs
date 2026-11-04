@@ -33,13 +33,16 @@ function restartFor(state: DocumentReadingState, key: DocumentReadingKey): Resta
   return { change: "Document reading settings", plural: true };
 }
 
-/** The OCR blocks in their columns: when to use OCR and maths pages left, engines right. */
+/** The OCR blocks in their columns: when to use OCR and maths pages left, the local backends and the engines right. */
 const OCR_BLOCKS: { title: string; keys: readonly DocumentReadingKey[] }[][] = [
   [
     { title: "When to use OCR", keys: ["ocr_fallback_enabled", "ocr_routing_unit", "ocr_non_latin_routing"] },
     { title: "Maths pages", keys: ["ocr_maths_routing_enabled"] },
   ],
-  [{ title: "Engines", keys: ["ocr_engines"] }],
+  [
+    { title: "Local OCR", keys: ["ocr_local_backends"] },
+    { title: "Engines", keys: ["ocr_engines"] },
+  ],
 ];
 
 type Saved = (state: DocumentReadingState, key: DocumentReadingKey) => void;

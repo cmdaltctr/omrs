@@ -41,17 +41,6 @@ PROVIDER_SECRET_FIELDS = ("openrouter_api_key", "openai_compatible_api_key", "an
 PROVIDER_INT_FIELDS = ("ollama_context_window",)
 
 
-def classification_url(settings: Any) -> str:
-    """Return the llama.cpp classification address: ``llamacpp_classify_url``, else Chat's.
-
-    A blank classification address follows ``llamacpp_chat_url``, so an install
-    that set only the Chat address keeps working (ADR-108 D2). Both
-    classification paths, the llama.cpp card and the runtime list call this.
-    """
-    own = (getattr(settings, "llamacpp_classify_url", "") or "").strip()
-    return own or settings.llamacpp_chat_url
-
-
 class ChunkingBlock(BaseModel):
     """Chunking knobs carried in :attr:`EffectiveSettings.chunking`."""
 
@@ -343,11 +332,16 @@ class EffectiveSettings(BaseModel):
 
     # ── OCR routing unit and local tier (change page-level-ocr-routing) ──
     # "page" routes page by page and is the only unit (page-routing-default).
-    # Experiments 33, 37 and 39 support the 0.9 cut.
     ocr_routing_unit: str = "page"  # see OCR_ROUTING_UNITS
-    ocr_local_min_confidence: float = Field(default=0.9, ge=0.0, le=1.0)
+    # Design D9: unset means each listed backend uses its own calibrated cut.
+    ocr_local_min_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    # Design D8. The literal equals core.reading_parts.DEFAULT_LOCAL_OCR_BACKENDS
+    # (this module imports nothing from omrs.core); a test pins the two.
+    ocr_local_backends: tuple[str, ...] = ("pp-ocrv6-small",)
     ocr_local_offline: bool = False
     ocr_local_model_directory: str = ""
+    # Design D12: options of parts without flat keys, checked by compose.
+    reading_part_options: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
     # ── OCR worker operation (design D2.1) ────────────────────────
     # Operational settings, deliberately separate from the calibrated
@@ -452,15 +446,6 @@ class EffectiveSettings(BaseModel):
 # honour the instance they were given.
 
 _default_effective: EffectiveSettings | None = None
-
-
-def provider_secret_values(settings: object) -> tuple[str, ...]:
-    """Return the value of each provider API key on *settings*, in field order.
-
-    A field the object lacks counts as blank. Blank values are kept so the
-    position matches :data:`PROVIDER_SECRET_FIELDS`.
-    """
-    return tuple(str(getattr(settings, name, "") or "") for name in PROVIDER_SECRET_FIELDS)
 
 
 def set_default_effective_settings(settings: EffectiveSettings) -> None:

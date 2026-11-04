@@ -5,10 +5,13 @@ import { integrationsQuery } from "../api/queries";
 import { ErrorNotice } from "../components/ErrorNotice";
 import { PageHeader } from "../components/PageHeader";
 import { useRoute } from "../lib/RouteProvider";
+import { formatRoute } from "../lib/routes";
+import { ServerCallout } from "../settings/ServerCallout";
 import { ExtrasSection } from "./ExtrasSection";
 import { integrationCardId } from "./IntegrationCard";
 import { ModelRuntimesSection } from "./ModelRuntimesSection";
 import { PdfReadersSection } from "./PdfReadersSection";
+import { ReadingPartsSection } from "./ReadingPartsSection";
 import { RuntimeSection } from "./RuntimeSection";
 import { SectionChips } from "./SectionChips";
 import { isRuntimeSection, sectionFor, sectionsFor } from "./sections";
@@ -16,6 +19,16 @@ import { ToolsSection } from "./ToolsSection";
 import { useIntegrationInstall } from "./useIntegrationInstall";
 
 const SUMMARY = "Optional extras and tools, and the local parts that your settings depend on.";
+/** Says what the page does and where the other settings are. `info`, not `warning`: it states a fact, not a risk. */
+const PAGE_ROLE = (
+  <>
+    This page shows what is installed and running. You can install or remove extras and tools here.{" "}
+    <a href={formatRoute({ area: "settings", section: null })} className="underline underline-offset-4">
+      Settings
+    </a>{" "}
+    holds the rest, such as how OMRS reads documents and which models it uses.
+  </>
+);
 
 /**
  * Moves focus to the entry a link names, such as `#/integrations/anthropic`.
@@ -51,6 +64,7 @@ export function IntegrationsView({ entry = null }: { entry?: string | null }) {
   return (
     <div className="flex flex-col gap-4">
       <PageHeader title="Integrations" summary={SUMMARY} />
+      <ServerCallout text={PAGE_ROLE} />
       <SectionChips
         sections={sectionsFor(list)}
         current={section}
@@ -71,6 +85,8 @@ export function IntegrationsView({ entry = null }: { entry?: string | null }) {
         <ToolsSection list={list} control={control} />
       ) : section === "pdf-readers" ? (
         <PdfReadersSection readers={list.pdf_readers ?? []} />
+      ) : section === "reading-parts" && list.reading_parts !== undefined ? (
+        <ReadingPartsSection parts={list.reading_parts} />
       ) : section === "model-runtimes" ? (
         <ModelRuntimesSection />
       ) : isRuntimeSection(section) && list.runtime !== undefined ? (

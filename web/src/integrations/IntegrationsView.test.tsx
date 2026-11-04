@@ -170,11 +170,46 @@ describe("Integrations", () => {
   it("explains that availability reflects this launch and that installing here needs the command outside the app", async () => {
     startApp("#/integrations", serve());
     await screen.findByRole("list", { name: "Integrations" });
-    const notice = screen.getByRole("note");
+    const notice = screen.getAllByRole("note").find((note) => /running launch/i.test(note.textContent ?? ""));
+    if (notice === undefined) throw new Error("No availability note");
     expect(notice).toHaveTextContent(/running launch/i);
     expect(notice).toHaveTextContent(/outside the app/i);
     expect(notice).toHaveTextContent(/restart the server/i);
     expect(notice).not.toHaveTextContent(/never installs/i);
+  });
+
+  it("says under the heading what the page does and links to Settings", async () => {
+    startApp("#/integrations", serve());
+    await screen.findByRole("list", { name: "Integrations" });
+    const callout = screen.getAllByRole("note").find((note) => /shows what is installed and running/i.test(note.textContent ?? ""));
+    if (callout === undefined) throw new Error("No callout under the Integrations heading");
+    expect(callout).toHaveTextContent(/install or remove extras and tools here/i);
+    expect(callout).toHaveClass("border-status-info");
+    expect(within(callout).getByRole("link", { name: "Settings" })).toHaveAttribute("href", "#/settings");
+  });
+
+  it("shows the same callout on another section", async () => {
+    startApp("#/integrations/tools", serve());
+    await screen.findByRole("heading", { level: 1, name: "Integrations" });
+    const callout = screen.getAllByRole("note").find((note) => /shows what is installed and running/i.test(note.textContent ?? ""));
+    if (callout === undefined) throw new Error("No callout under the Integrations heading");
+    expect(within(callout).getByRole("link", { name: "Settings" })).toHaveAttribute("href", "#/settings");
+  });
+
+  it("keeps the Extras note as it is, with no Settings link of its own", async () => {
+    startApp("#/integrations", serve());
+    const extras = await screen.findByRole("region", { name: "Extras" });
+    expect(within(extras).getAllByRole("note").map((note) => note.textContent)).toEqual([
+      "Availability reflects the running launch of the server. This server cannot install extras from the app. To add an extra, run its command in a terminal outside the app, then restart the server.",
+    ]);
+    expect(within(extras).queryByRole("link", { name: /^Settings/ })).toBeNull();
+    expect(within(extras).getByRole("note").querySelector("svg.lucide-info")).not.toBeNull();
+  });
+
+  it("links to Document reading only on the Reading parts section", async () => {
+    startApp("#/integrations", serve());
+    await screen.findByRole("list", { name: "Integrations" });
+    expect(screen.queryByRole("link", { name: "Settings › Document reading" })).toBeNull();
   });
 
   it("offers no install or run control when the server cannot install", async () => {

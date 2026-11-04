@@ -337,9 +337,21 @@ def test_revision_change_changes_the_pdf_digest(monkeypatch: pytest.MonkeyPatch)
 
     _, before = _source_identity(monkeypatch, "report.pdf", pdf_reader="pdf_inspector")
     _, markdown_before = _source_identity(monkeypatch, "notes.md", pdf_reader="pdf_inspector")
-    monkeypatch.setitem(registry._output_revisions, "pdf_inspector", 3)
-    _, after = _source_identity(monkeypatch, "report.pdf", pdf_reader="pdf_inspector")
-    _, markdown_after = _source_identity(monkeypatch, "notes.md", pdf_reader="pdf_inspector")
+    saved = registry.READERS.snapshot()
+    entry = registry.describe("pdf_inspector")
+    registry.register(
+        "pdf_inspector",
+        entry["import_path"],
+        entry["probe_module"],
+        text_format=entry["text_format"],
+        page_provenance=entry["page_provenance"],
+        output_revision=3,
+    )
+    try:
+        _, after = _source_identity(monkeypatch, "report.pdf", pdf_reader="pdf_inspector")
+        _, markdown_after = _source_identity(monkeypatch, "notes.md", pdf_reader="pdf_inspector")
+    finally:
+        registry.READERS.restore(saved)
 
     assert before != after
     assert markdown_before == markdown_after

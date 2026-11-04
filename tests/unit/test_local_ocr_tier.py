@@ -27,6 +27,7 @@ import pytest
 
 from omrs.core.ingestion.ocr_identity import ocr_routing_payload, resolved_routing_payload
 from omrs.integrations.pdf import page_routing
+from omrs.integrations.pdf.local_ocr import registry as local_ocr_registry
 from omrs.integrations.pdf.page_routing import local_ocr
 
 
@@ -495,7 +496,7 @@ def test_a_runtime_panic_resolves_to_none_and_stops_the_probe(
     ``ValueError`` and every later call panics. The identity runs on every
     ingest, so a panic past this boundary would stop the ingest.
     """
-    monkeypatch.setattr(page_routing, "_LOCAL_TIER_BROKEN", None)
+    local_ocr_registry.BACKENDS.reset_off()
     calls = _Calls(
         [
             ValueError("failed to load ONNX Runtime from libonnxruntime.dylib"),
@@ -527,7 +528,7 @@ def test_a_cached_identity_is_dropped_when_the_tier_switches_off(
     monkeypatch, effective_settings, _clean_resolution_cache
 ):
     """Once the tier is off, the identity must not claim a model that no longer reads."""
-    monkeypatch.setattr(page_routing, "_LOCAL_TIER_BROKEN", None)
+    local_ocr_registry.BACKENDS.reset_off()
     _stub_process(monkeypatch, _Calls([_probe_stub(1, "", _provenance())]))
     assert page_routing.resolve_local_model_identity(effective_settings()) is not None
 

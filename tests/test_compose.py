@@ -605,29 +605,16 @@ class TestResolvePdfReader:
         The registry is module-global state. Tests below plant temporary
         entries via the public ``register()`` call, and a correct
         composition root will resolve (and cache) through those entries;
-        the sandbox restores ``_registry``, ``_probe_modules``, and ``_cache``
-        so the planted names never leak into other tests.
+        the sandbox restores the registry entries and cache so the planted
+        names never leak into other tests.
         """
         from omrs.integrations.pdf import registry as pdf_registry
 
-        saved_registry = dict(pdf_registry._registry)
-        saved_probe_modules = dict(pdf_registry._probe_modules)
-        saved_text_formats = dict(pdf_registry._text_formats)
-        saved_page_provenance = dict(pdf_registry._page_provenance)
-        saved_cache = dict(pdf_registry._cache)
+        saved = pdf_registry.READERS.snapshot()
         try:
             yield pdf_registry
         finally:
-            pdf_registry._registry.clear()
-            pdf_registry._registry.update(saved_registry)
-            pdf_registry._probe_modules.clear()
-            pdf_registry._probe_modules.update(saved_probe_modules)
-            pdf_registry._text_formats.clear()
-            pdf_registry._text_formats.update(saved_text_formats)
-            pdf_registry._page_provenance.clear()
-            pdf_registry._page_provenance.update(saved_page_provenance)
-            pdf_registry._cache.clear()
-            pdf_registry._cache.update(saved_cache)
+            pdf_registry.READERS.restore(saved)
 
     def test_registered_reader_resolves_via_registry_probe_not_name_import(
         self,

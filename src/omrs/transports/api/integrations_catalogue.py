@@ -30,6 +30,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from ... import capabilities
+from ...core import reading_parts
 from .install_environment import (
     EXCLUDED_EXTRAS,
     InstallEnvironment,
@@ -124,7 +125,48 @@ class Integration:
     caution: str | None = None
 
 
-CATALOGUE: tuple[Integration, ...] = (
+#: A reading part whose package is in the base install has ``extra=None`` in its
+#: descriptor. It keeps a row under the compatibility extra that older install
+#: commands name (``pyproject.toml`` still declares it).
+_COMPATIBILITY_EXTRAS: dict[str, str] = {"pdf_inspector": "pdf-inspector"}
+
+
+def _part_row(part: reading_parts.PartDescriptor, extra: str) -> Integration:
+    """Return the catalogue row of reading *part* under *extra* (design D15)."""
+    if isinstance(part, reading_parts.PdfReaderDescriptor):
+        read = "files as Markdown" if part.text_format == "markdown" else "pages"
+        purpose = f"Reads PDF {read} with the {part.label} library."
+        return Integration(
+            extra, f"PDF reader: {part.label}", purpose, extra, _pdf_reader(part.name)
+        )
+    module = part.probe_module or part.import_path.split(":", maxsplit=1)[0]
+    purpose = f"Reads flagged PDF pages with {part.label} on this machine."
+    return Integration(extra, f"Local OCR backend: {part.label}", purpose, extra, _modules(module))
+
+
+def _part_rows() -> tuple[Integration, ...]:
+    """Return a row per reading part with an extra, read from the descriptors at call time.
+
+    For each kind, the parts with their own extra come first, then the parts
+    with a compatibility extra.
+    """
+    rows: list[Integration] = []
+    for table in (reading_parts.PDF_READERS, reading_parts.LOCAL_OCR_BACKENDS):
+        rows += [_part_row(part, part.extra) for part in table if part.extra]
+        rows += [
+            _part_row(part, _COMPATIBILITY_EXTRAS[part.name])
+            for part in table
+            if part.extra is None and part.name in _COMPATIBILITY_EXTRAS
+        ]
+    return tuple(rows)
+
+
+def build_catalogue() -> tuple[Integration, ...]:
+    """Return the catalogue, with the reading-part rows taken from the descriptors now."""
+    return (*_HEAD, *_part_rows(), *_TAIL)
+
+
+_HEAD: tuple[Integration, ...] = (
     Integration(
         "chroma",
         "Chroma vector store",
@@ -139,20 +181,9 @@ CATALOGUE: tuple[Integration, ...] = (
         "hybrid",
         _modules("rank_bm25"),
     ),
-    Integration(
-        "pdf-pypdfium2",
-        "PDF reader: pypdfium2",
-        "Reads PDF pages with the pypdfium2 library.",
-        "pdf-pypdfium2",
-        _pdf_reader("pypdfium2"),
-    ),
-    Integration(
-        "pdf-inspector",
-        "PDF reader: pdf-inspector",
-        "Reads PDF files as Markdown with the pdf-inspector library.",
-        "pdf-inspector",
-        _pdf_reader("pdf_inspector"),
-    ),
+)
+
+_TAIL: tuple[Integration, ...] = (
     Integration(
         "community-leiden",
         "Leiden communities",
@@ -218,6 +249,8 @@ CATALOGUE: tuple[Integration, ...] = (
         _magika,
     ),
 )
+
+CATALOGUE: tuple[Integration, ...] = build_catalogue()
 
 
 def find_integration(extra: str) -> Integration | None:

@@ -56,6 +56,9 @@ def clean_reader_list(names: Sequence[str]) -> tuple[str, ...]:
     for name in names:
         if name == "auto":
             logger.warning("PDF reader 'auto' is a single-value policy; dropping it from the list.")
+        elif name not in registered and registry.READERS.off_reason(name) is not None:
+            # A discovered reader that failed to load: compose warned once already.
+            logger.debug("PDF reader %r is broken; dropping it from the list.", name)
         elif name not in registered:
             logger.warning("PDF reader %r is unregistered; dropping it from the list.", name)
         else:

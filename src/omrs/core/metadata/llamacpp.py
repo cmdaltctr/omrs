@@ -11,8 +11,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ..provider_values import classification_url
 from ..runtime_gate import NO_RETRY_HEADER, AsyncGatedTransport, gate_for
-from ..settings import classification_url, resolve_effective_settings
+from ..settings import resolve_effective_settings
 from ._common import (
     _get_classify_max_attempts,
     _resolve_classify_timeout,

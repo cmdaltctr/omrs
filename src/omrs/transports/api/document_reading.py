@@ -31,6 +31,7 @@ from ...config.rules import (
 )
 from ...config.settings_file import SettingsFile, read_settings_file
 from ...config.user_config import display_path
+from ...core import reading_parts
 from ...core.reading_lists import OCR_ENGINES_DEFAULT, expand_ocr_engines, expand_pdf_reader
 from ..settings_view import plain, source_word
 from .restart_snapshot import capture, pending
@@ -161,6 +162,24 @@ def _readers() -> list[dict[str, Any]]:
     return readers
 
 
+def _local_backends() -> list[dict[str, Any]]:
+    """Return each backend a local OCR list can name, with its install probe (design D8).
+
+    The built-in backends come first, then the ones that an installed package adds.
+    """
+    from ...integrations.pdf.local_ocr import registry
+
+    discovered = reading_parts.discovered(reading_parts.KIND_LOCAL_OCR_BACKEND)
+    options = []
+    for backend in (*reading_parts.LOCAL_OCR_BACKENDS, *discovered):
+        if backend.min_confidence is None:
+            continue
+        available = registry.BACKENDS.installed(backend.name)
+        reason = None if available else "Not installed."
+        options.append({"name": backend.name, "available": available, "reason": reason})
+    return options
+
+
 def _ocr(launch: Settings, rows: list[dict[str, Any]]) -> dict[str, Any]:
     workers_dir = launch.ocr_workers_dir.strip()
     names = [
@@ -183,8 +202,9 @@ def build_document_reading(state: Any) -> dict[str, Any]:
         state: ``app.state.configuration``, or ``None`` when the launch set none.
 
     Returns:
-        ``revision``, the six ``settings`` rows in key order, ``pdf_readers``,
-        ``pdf_reader_in_use`` and the ``ocr`` block (design D10).
+        ``revision``, the ``settings`` rows in key order, ``pdf_readers``,
+        ``pdf_reader_in_use``, ``local_ocr_backends`` and the ``ocr`` block
+        (design D10).
     """
     launch, file, snapshot = _launch_state(state)
     rows = _rows(launch, file, snapshot)
@@ -193,6 +213,7 @@ def build_document_reading(state: Any) -> dict[str, Any]:
         "settings": rows,
         "pdf_readers": _readers(),
         "pdf_reader_in_use": reader_in_use(launch),
+        "local_ocr_backends": _local_backends(),
         "ocr": _ocr(launch, rows),
     }
 

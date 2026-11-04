@@ -10,8 +10,8 @@ ocr-workers/
   provision.py     provisions one engine: python3 provision.py <engine>
   core/            omrs-ocr-worker-core: protocol, framing, capabilities, engine contract
   engines/
-    dots-mocr/     primary engine (PyTorch, licence gate)
-    paddleocr-vl/  fallback engine (PaddlePaddle)
+    dots-mocr/     first engine of the default list (PyTorch, licence gate)
+    paddleocr-vl/  second engine of the default list (PaddlePaddle)
 ```
 
 ## How OMRS talks to an engine
@@ -38,17 +38,22 @@ OMRS starts an engine with this command, from the engine folder:
 The core loads the one engine that the environment registers. An environment
 with zero engines, or with more than one, reports itself unavailable.
 
-## Routes
+## Engine list
 
-OMRS reads two route settings:
+OMRS reads two settings:
 
-| Setting               | Default        | Meaning                                  |
-| --------------------- | -------------- | ---------------------------------------- |
-| `OCR_WORKERS_DIR`     | empty          | This folder. Empty makes every route unavailable. |
-| `OCR_ENGINE_PRIMARY`  | `dots-mocr`    | Engine for every OCR dispatch.           |
-| `OCR_ENGINE_FALLBACK` | `paddleocr-vl` | Engine when the primary is unavailable before dispatch. Empty means no fallback. |
+| Setting           | Default                  | Meaning                                  |
+| ----------------- | ------------------------ | ---------------------------------------- |
+| `OCR_WORKERS_DIR` | empty                    | This folder. Empty makes every engine unavailable. |
+| `OCR_ENGINES`     | `dots-mocr,paddleocr-vl` | Ordered engine list. The first available engine serves every OCR dispatch. A later engine serves it only when every engine above is unavailable before dispatch. A list of one engine means no fallback. |
 
-Both routes resolve from `OCR_WORKERS_DIR` and the engine name only.
+`OCR_ENGINE_PRIMARY` and `OCR_ENGINE_FALLBACK` stay readable as aliases. The
+primary is the first entry and the fallback is the second entry. An empty
+`OCR_ENGINE_FALLBACK` gives a list of one engine. When `OCR_ENGINES` is also
+set in the same source, the list wins. See
+[Configuration](../docs/guides/configuration.md#ocr-fallback-and-isolated-engines).
+
+Every engine resolves from `OCR_WORKERS_DIR` and the engine name only.
 `OCR_WORKER_COMMAND` and `OCR_WORKER_ENV_DIR` were removed; start-up refuses
 either variable.
 
@@ -149,7 +154,7 @@ time. See [Configuration](../docs/guides/configuration.md#local-llamacpp-server)
 
 ## Engines
 
-### dots-mocr (primary)
+### dots-mocr (first in the default list)
 
 - Model `rednote-hilab/dots.mocr`, pinned revision
   `e539fbb52280393adc081b289ec597430a0f9031`.
@@ -157,11 +162,11 @@ time. See [Configuration](../docs/guides/configuration.md#local-llamacpp-server)
   first. It records clauses 3.3(c), 5.2, 8 and 9 of the model licence.
 - Uses about 7 to 9 GB of MPS memory in bfloat16 on Apple Silicon. It is slow
   on CPU. On a machine with little memory, set
-  `OCR_ENGINE_PRIMARY=paddleocr-vl`.
+  `OCR_ENGINES=paddleocr-vl`.
 - Parses offline. The worker refuses to load when a model code file differs
   from the hash recorded at provisioning.
 
-### paddleocr-vl (fallback)
+### paddleocr-vl (second in the default list)
 
 - PaddleOCR-VL 1.6 document pipeline on the CPU PaddlePaddle runtime.
 - Apache-2.0. No licence flag.
@@ -169,7 +174,7 @@ time. See [Configuration](../docs/guides/configuration.md#local-llamacpp-server)
 
 ## Add an engine
 
-A new engine needs one folder and one route setting. OMRS code does not
+A new engine needs one folder and one name in `OCR_ENGINES`. OMRS code does not
 change. The stub engine in `tests/fixtures/ocr_worker/stub_engine/` has the
 same parts.
 
@@ -200,4 +205,4 @@ same parts.
 5. Run `uv lock` in `engines/<name>/` and commit `uv.lock`.
 6. If the licence adds terms, add the licence file that step 2 names.
 7. Provision the engine: `python3 ocr-workers/provision.py <name>`.
-8. Set `OCR_ENGINE_PRIMARY=<name>` or `OCR_ENGINE_FALLBACK=<name>`.
+8. Add `<name>` to `OCR_ENGINES`, for example `OCR_ENGINES=<name>,paddleocr-vl`.

@@ -46,7 +46,11 @@ export function AppNav({ current, collapsed, onToggle }: AppNavProps) {
             {AREAS.map((area) => {
               const Icon = area.icon;
               return (
-                <li key={area.id} className="min-w-0 flex-1 md:flex-none">
+                <li
+                  key={area.id}
+                  // Below md the quick controls row already links to Settings.
+                  className={cn("min-w-0 flex-1 md:flex-none", area.id === "settings" && "hidden md:block")}
+                >
                   <NavTooltip label={area.label}>
                     <a
                       href={formatRoute(area.route)}
@@ -58,9 +62,6 @@ export function AppNav({ current, collapsed, onToggle }: AppNavProps) {
                       )}
                     >
                       <Icon aria-hidden="true" className="size-4 shrink-0" />
-                      <span aria-hidden="true" className="w-full truncate text-center md:hidden">
-                        {area.shortLabel}
-                      </span>
                       <span className={cn("sr-only", !collapsed && "md:not-sr-only md:truncate")}>{area.label}</span>
                     </a>
                   </NavTooltip>

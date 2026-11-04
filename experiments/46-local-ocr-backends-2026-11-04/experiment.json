@@ -1,0 +1,25 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "46",
+  "title": "Local OCR backends for non-Latin scripts",
+  "date": "2026-11-04",
+  "category": "ingestion",
+  "size": "Standard",
+  "status": "PASS",
+  "superseded_by": null,
+  "finding": "Indra OCR passes all four gates for Arabic and Devanagari (58 of 69 pages kept local, none bad, 0.10 s per page) but reads Bengali at median recall 0.59; Apple Vision fails the confidence gate.",
+  "purpose": "optimisation",
+  "refs": {
+    "adrs": [
+      "ADR-069",
+      "ADR-071"
+    ],
+    "changes": [
+      "local-ocr-backends"
+    ],
+    "tasks": [
+      "local-ocr-backends 4.1",
+      "local-ocr-backends 4.2"
+    ]
+  }
+}

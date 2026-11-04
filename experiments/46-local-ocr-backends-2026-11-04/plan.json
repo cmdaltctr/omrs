@@ -1,0 +1,251 @@
+{
+  "experiment_id": "46-local-ocr-backends-2026-11-04",
+  "protocol_version": 1,
+  "change_ref": "OpenSpec change local-ocr-backends (design D5, D6, D8, D9)",
+  "question": "Does a local OCR backend that supports Arabic, Bengali and Devanagari read the 129 non-Latin pages well enough to keep many of them local, without making Latin pages worse, and does its confidence separate good pages from bad pages?",
+  "decision": "Whether a follow-up change adds a second backend to the local OCR registry, and which one, with which confidence cut.",
+  "hypotheses": [
+    {
+      "id": "H1",
+      "role": "primary",
+      "statement": "At least one candidate arm (B Indra OCR, D Apple Vision) passes G1 to G4 for at least one script: median recall 0.70 or more on that script, at least 0.30 of that script's pages kept local by a leave-one-document-out cut with at most 0.05 of kept pages bad, Latin recall not worse than PP-OCRv6 Small beyond the stated margins, and 5.0 s per page or less on CPU. Apple Vision is not run on Bengali, so a pass for it can cover only Arabic and Devanagari.",
+      "null": "No candidate arm passes G1 to G4 for any script."
+    },
+    {
+      "id": "H2",
+      "role": "secondary",
+      "statement": "The page confidence of at least one arm ranks pages by recall: AUC 0.80 or more for the event recall at least 0.8, over the 229 pages.",
+      "null": "No arm reaches AUC 0.80."
+    },
+    {
+      "id": "H3",
+      "role": "secondary",
+      "statement": "At least one arm passes G1, G2 and G4 for a script and fails only G3 (Latin non-regression), so a script chooser would unlock it.",
+      "null": "No arm fails only G3."
+    }
+  ],
+  "decision_rule": "An arm is a candidate for script S when G1, G2, G3 and G4 all hold for S. PASS: at least one arm (B or D) is a candidate for at least one script; open a follow-up change that adds that backend with the cut this experiment picks. FAIL: no arm passes G1, G2 and G4 for any script; keep pp-ocrv6-small only. INCONCLUSIVE: an arm passes G1, G2 and G4 for a script and fails only G3; record that a script chooser would unlock it and adopt nothing now. The gate numbers are fixed before any run and do not move after it.",
+  "stats": "basic",
+  "seed": 46,
+  "baseline": "A PP-OCRv6 Small (stored Experiment 33 output, no rerun)",
+  "candidate": "B Indra OCR 1.1.2; D Apple Vision through ocrmac 1.0.1",
+  "metrics": [
+    {
+      "name": "median_token_recall_by_script",
+      "binary": false,
+      "primary": true
+    },
+    {
+      "name": "kept_local_share_and_kept_bad_share_loo_cut",
+      "binary": false,
+      "primary": true
+    },
+    {
+      "name": "latin_paired_recall_difference_vs_pp_ocrv6",
+      "binary": false,
+      "primary": true
+    },
+    {
+      "name": "median_seconds_per_page_cpu",
+      "binary": false,
+      "primary": true
+    },
+    {
+      "name": "recall_vs_dots_mocr_text",
+      "binary": false,
+      "primary": false
+    },
+    {
+      "name": "confidence_auc_for_recall_ge_0_8",
+      "binary": false,
+      "primary": false
+    }
+  ],
+  "gates": [
+    {
+      "id": "G1",
+      "metric": "median_token_recall_by_script",
+      "value": "median recall on the pages of script S",
+      "op": ">=",
+      "threshold": 0.7
+    },
+    {
+      "id": "G2a",
+      "metric": "kept_local_share_and_kept_bad_share_loo_cut",
+      "value": "share of good pages (recall >= 0.8) kept local, scripts passing G1, leave-one-document-out cut",
+      "op": ">=",
+      "threshold": 0.6
+    },
+    {
+      "id": "G2b",
+      "metric": "kept_local_share_and_kept_bad_share_loo_cut",
+      "value": "share of kept pages with recall < 0.5, same pages and cut",
+      "op": "<=",
+      "threshold": 0.05
+    },
+    {
+      "id": "G2c",
+      "metric": "kept_local_share_and_kept_bad_share_loo_cut",
+      "value": "share of all pages of the scripts passing G1 that stay local",
+      "op": ">=",
+      "threshold": 0.3
+    },
+    {
+      "id": "G3a",
+      "metric": "latin_paired_recall_difference_vs_pp_ocrv6",
+      "value": "median over the 100 Latin pages of (arm recall minus PP-OCRv6 recall)",
+      "op": ">=",
+      "threshold": -0.02
+    },
+    {
+      "id": "G3b",
+      "metric": "latin_paired_recall_difference_vs_pp_ocrv6",
+      "value": "lowest stratum median of the same difference (print 30, old print 35, handwriting 35)",
+      "op": ">=",
+      "threshold": -0.05
+    },
+    {
+      "id": "G4",
+      "metric": "median_seconds_per_page_cpu",
+      "value": "median over timed pages, warm-up excluded, one request at a time",
+      "op": "<=",
+      "threshold": 5.0
+    }
+  ],
+  "gate_justification": {
+    "G1": "Experiment 37 reports dots.mocr medians of 0.985 (Devanagari), 0.887 (Bengali) and 0.873 (Arabic) against this reference. 0.70 is about 0.8 of the lowest, 0.873.",
+    "G2a": "At 0.60, the cut sends at most 0.40 of the good pages to a 37.0 s engine (Experiment 37).",
+    "G2b": "The Experiment 39 G2 bound: kept bad pages at most 0.05 of kept pages.",
+    "G2c": "0.30 of 129 pages is about 39 pages. 39 pages at 37.0 s is about 24 minutes saved per 129 pages against always. Below that the second backend does not pay for its dependency, licence and cut.",
+    "G3a": "Small margin. Scans give no script verdict before OCR (Experiment 45), so a backend that reads every flagged page must not make Latin worse.",
+    "G3b": "Wider margin because strata have 30 to 35 pages.",
+    "G4": "The engine takes 37.0 s per page (Experiment 37). 5.0 s is about one seventh. PP-OCRv6 takes about 0.7 s per page (Experiment 45 (d))."
+  },
+  "definitions": {
+    "recall": "Multiset token recall as in Experiment 33: build_labels.tokens and build_labels.recall, imported. Reference tokens are the split body text when it exists, else the first transcription (the rule of local_ocr._reference in Experiment 33 and score_recall.py in Experiment 37). A page with no output scores 0.",
+    "good_page": "recall >= 0.8 (Experiment 39)",
+    "bad_page": "recall < 0.5 (Experiment 39)",
+    "page_confidence": "Mean of line confidences weighted by character count (change local-ocr-backends, design D5). Indra uses Line.conf; Apple Vision uses its line scores. Exploratory alternatives reported: minimum over lines of 10 or more characters; share of characters on lines at 0.8 or above.",
+    "cut_selection": "Leave one document out over nine documents. For each held-out document, on the other eight documents choose the lowest cut on the grid 0.50, 0.55, ..., 0.95, 0.99 for which the pages at or above the cut have a share with recall below 0.5 of at most 0.05. No qualifying cut means the arm keeps no page in that fold. Apply the cut to the held-out document. Pool the nine results. The cut to register is the median of the nine chosen cuts, rounded to 0.05; it is reported and not gated.",
+    "timing": "Wall-clock seconds per page, CPU, one request at a time, default thread settings of the runtime, first 3 pages of each arm not timed, model load time recorded once and apart. Arm D may use the Neural Engine and is reported as measured."
+  },
+  "page_classes": {
+    "non_latin": "129 pages: io01 48 (Devanagari), io02 16 and io03 5 (Arabic, 21 total), io07 60 (Bengali). The same set as Experiment 45.",
+    "latin_sample": "100 pages drawn with seed 46 from pages that have a stored PP-OCRv6 row, a split reference transcription and at least one reference token. Strata: print io04 and io05, 30 pages; old print io06, 35 pages; handwriting rf06 and rf07, 35 pages."
+  },
+  "arms": [
+    {
+      "id": "A",
+      "name": "PP-OCRv6 Small via pdf-inspector 1.17.0 (control)",
+      "source": "stored Experiment 33 output/local_ocr/pages.json and output/.local_ocr_text/",
+      "runs_ocr": false,
+      "needs_download": false
+    },
+    {
+      "id": "B",
+      "name": "Indra OCR 1.1.2 (Datalab)",
+      "runtime": "ONNX Runtime",
+      "oracle_script": false,
+      "needs_download": true,
+      "size": "about 76 MB (vendor figure)",
+      "licence": "modified OpenRAIL-M; the operator reads the full licence before any run",
+      "version": "indra-ocr 1.1.2 (PyPI), onnxruntime 1.31.1, Python 3.12.15; weights datalab-to/indra-ocr tag v1.1.0, snapshot bd02167fdf2005a19962cc15188f8496a2c87d3b",
+      "weights_sha256": "1a9ef1fc65c0546f63b89eed936e524077ba94dcd1d7689de89265b158b9324f",
+      "weights_sha256_method": "SHA-256 of the sorted '<file sha>  <name>' lines of the 12 downloaded files (76.1 MB)",
+      "approved_on": "2026-11-04",
+      "licence_read_by_operator": "2026-11-04 (operator statement in session)"
+    },
+    {
+      "id": "D",
+      "name": "Apple Vision through ocrmac 1.0.1",
+      "runtime": "Apple Vision",
+      "oracle_script": true,
+      "languages": {
+        "arabic": "ar-SA",
+        "devanagari": "hi-IN",
+        "latin": "en-US"
+      },
+      "bengali": "not run on the 60 Bengali pages: no support. A pass for D can cover only Arabic and Devanagari.",
+      "needs_download": true,
+      "size": "OS model; a few MB of Python packages",
+      "licence": "OS licence; ocrmac MIT",
+      "version": "ocrmac 1.0.1, pyobjc-framework-Vision 13.0, Python 3.12.15, macOS 27.2 (26B123), Apple M5 Pro, 64 GB",
+      "weights_sha256": "not applicable (OS-provided)",
+      "approved_on": "2026-11-04"
+    }
+  ],
+  "frozen": [
+    {
+      "file": "experiments/33-ocr-routing-natural-positive-2026-09-17/labels.json",
+      "sha256": "cd4960ba36bddd3cd665a9142592457945fe2234c4a37bbfb81a0bfe1041c6bf"
+    },
+    {
+      "file": "experiments/33-ocr-routing-natural-positive-2026-09-17/output/local_ocr/pages.json",
+      "sha256": "e6223d1536293b6860cd8eda9d48b2e383139e3e6c2f5e095a36f2b9822a711f",
+      "rows": 464
+    },
+    {
+      "file": "experiments/37-dots-mocr-routing-acceptance-2026-09-30/output/recall_dots-mocr.json",
+      "sha256": "8203fb88c5f117bb9925d32fafbc3d3456d44b9bd95e963d8df7570f24ef4e5a"
+    },
+    {
+      "file": "experiments/37-dots-mocr-routing-acceptance-2026-09-30/output/ocr_state_dots-mocr.json",
+      "sha256": "6bafafaf4b2a3db4a250f68bfb09e5addbdf3c71a0725137c7bba3340ef8e597"
+    },
+    {
+      "file": "experiments/33-ocr-routing-natural-positive-2026-09-17/output/.local_ocr_text/",
+      "tree_sha256": "22405b097529f4bdbff697a86f1a2986301df5f72e5d9650dd597a8737ef2489",
+      "files": 464
+    },
+    {
+      "file": "experiments/33-ocr-routing-natural-positive-2026-09-17/output/.pages/",
+      "tree_sha256": "3f51833ea9d7efb1def413ffd6c23cd30d57297dcb06522062c26c40ca07ca0f",
+      "files": 3369
+    },
+    {
+      "file": "experiments/37-dots-mocr-routing-acceptance-2026-09-30/corpus/exp33_transcripts_split/",
+      "tree_sha256": "0e7b99fc466b8f02a11f480de529a7885b703737543fea21dc2fad67f6b9b163"
+    },
+    {
+      "file": "experiments/46-local-ocr-backends-2026-11-04/pages.json",
+      "sha256": "e1fd1862df29f81207f52fa62ad1791691bc3c80460ac20634dba9abd18328f0"
+    }
+  ],
+  "input_locations": "Inputs are read only. Repository paths come first and the local data store second (<data store>/experiments/<experiment folder>/). Gitignored outputs live in the data store: the stored local OCR text, the page images, the reference transcriptions and the dots.mocr text. The runner reads the first copy it finds and checks its SHA-256 against this file.",
+  "preconditions": [
+    "P1: the frozen hashes match. Stop on any difference.",
+    "P2: the non-Latin class equals the rows of the stored PP-OCRv6 file for io01, io02, io03 and io07 (129 pages, same keys).",
+    "P3: every Latin stratum has at least as many eligible pages as its draw (30, 35, 35). Stop and amend before any run if not.",
+    "P4: every page has a PNG in the Experiment 33 image folder, or the runner renders it with pypdfium2 and logs it.",
+    "P5: the Experiment 33 tokeniser imports and reproduces the stored body_recall of arm A on all 229 pages within 0.0005. Stop on any larger difference.",
+    "P6: before each arm, the operator has approved its downloads. Before arm B, the operator has read the Indra licence in full."
+  ],
+  "script_limit": "Three Python files: run_arm.py (check, sample and one arm per call), summarise.py, analysis.py.",
+  "runtime": {
+    "runtime_under_test": true,
+    "models": [],
+    "references": [
+      {
+        "role": "reference transcription",
+        "provider": "OpenRouter (stored, Experiment 33)",
+        "model": "google/gemini-3.8-flash"
+      }
+    ],
+    "tolerance": [
+      {
+        "metric": "page recall, same arm, two runs",
+        "max_abs_change": 0.01
+      }
+    ]
+  },
+  "amendments": [],
+  "dropped_arms": "RapidOCR and Tesseract were considered and dropped by the operator on 2026-11-04.",
+  "operator_decisions": {
+    "date": "2026-11-04",
+    "made_before_any_run": true,
+    "latin_margin": "Keep G3: -0.02 overall, -0.05 per stratum.",
+    "retype_min_confidence": "Deferred to the follow-up change that adds the first second backend.",
+    "merge_seam_on_fail": "No. On FAIL only the report merges and the code part is descoped.",
+    "order": "Experiment first; code groups only after PASS."
+  }
+}

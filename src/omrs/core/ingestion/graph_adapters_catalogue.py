@@ -27,6 +27,7 @@ from pydantic import (
 )
 
 from ...integrations.pdf import registry as pdf_registry
+from .. import reading_parts
 from ..pipelines import (
     READER_STRUCTURED,
     READER_TEXT_FORMAT,
@@ -125,14 +126,15 @@ RoutingUnit = Annotated[str, WithJsonSchema({"type": "string", "enum": list(OCR_
 NonLatinMode = Annotated[str, WithJsonSchema({"type": "string", "enum": list(OCR_NON_LATIN_MODES)})]
 
 #: The OCR keys of ``ReadParams``: the document-reading keys other than the reader keys.
+#: The page rule keys come from the descriptors (change local-ocr-backends, D15).
 READ_OCR_KEYS: tuple[str, ...] = (
     "ocr_fallback_enabled",
     "ocr_routing_unit",
     "ocr_engines",
     "ocr_engine_primary",
     "ocr_engine_fallback",
-    "ocr_maths_routing_enabled",
-    "ocr_non_latin_routing",
+    *(field.name for rule in reading_parts.PAGE_RULES for field in rule.settings),
+    "ocr_local_backends",
 )
 
 #: Every read option a node applies to its settings copy (``with_read_options``).
@@ -173,6 +175,8 @@ class ReadParams(BaseModel):
         ocr_maths_routing_enabled: Whether maths pages go to the OCR engine.
         ocr_non_latin_routing: ``off``, ``detect`` or ``always``: whether pages
             in a non-Latin script skip the local OCR tier.
+        ocr_local_backends: Ordered local OCR backend names for this step.
+            ``None`` inherits the host list.
     """
 
     model_config = _FROZEN
@@ -192,6 +196,9 @@ class ReadParams(BaseModel):
     ocr_non_latin_routing: Annotated[
         NonLatinMode | None, _reading_rule("ocr_non_latin_routing")
     ] = None
+    ocr_local_backends: Annotated[tuple[str, ...] | None, _reading_rule("ocr_local_backends")] = (
+        None
+    )
 
     @model_validator(mode="after")
     def _one_form_per_option(self) -> ReadParams:
@@ -292,6 +299,7 @@ READ = OperationDescriptor(
         "ocr_engine_primary": "ocr_engine_primary",
         "ocr_engine_fallback": "ocr_engine_fallback",
         "ocr_non_latin_routing": "ocr_non_latin_routing",
+        "ocr_local_backends": "ocr_local_backends",
     },
     index_shaping=True,
 )

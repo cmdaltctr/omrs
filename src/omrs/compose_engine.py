@@ -225,8 +225,10 @@ def configured_vector_store() -> str:
     without calling ``get_settings()`` directly (the settings-resolution
     boundary forbids ``get_settings()`` outside ``compose`` siblings).
     """
+    from .compose_settings import discover_reading_parts
     from .config import get_settings
 
+    discover_reading_parts()  # this path reads Settings without compose.get_settings
     return get_settings().vector_store
 
 
@@ -237,14 +239,16 @@ def experiment_base_settings() -> Settings:
     derives each context's settings from this value and moves only the
     store location. Transports must not call ``get_settings()`` directly.
     """
+    from .compose_settings import discover_reading_parts
     from .config import get_settings
 
+    discover_reading_parts()  # this path reads Settings without compose.get_settings
     return get_settings()
 
 
 def build_redaction(settings: Any) -> Any:
     """Return the credential values an Engine removes from error text."""
-    from .core.settings import provider_secret_values
+    from .core.provider_values import provider_secret_values
     from .core.vectordb.identity import RedactionSecrets
 
     return RedactionSecrets(

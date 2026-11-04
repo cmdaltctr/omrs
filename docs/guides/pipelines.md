@@ -102,6 +102,17 @@ The Read document step has an `ocr_non_latin_routing` setting. It takes `off`, `
 - The stored source identity names the step value. A PDF source that was indexed with the node on `off` is processed again on the next explicit ingest after the node sets `always`. A node that inherits every OCR setting keeps the identity of the standard ingest path.
 - A graph-wide `overrides.ocr_non_latin_routing` stays refused (`host_owned_setting`). Set the value on the Read document step instead.
 
+### Local OCR backends on Read document step
+
+Read document step has an `ocr_local_backends` setting. It is an ordered list of local OCR backend names for the step. See [Local OCR backends](configuration.md#local-ocr-backends) for the names and the reading order.
+
+- `null` (Inherit) uses the host list from `OCR_LOCAL_BACKENDS`.
+- A name that is not a local OCR backend fails validation with `invalid_parameter`. The message names the node, the setting and the accepted names. An empty list or a repeated name fails the same way.
+- A graph-wide `overrides.ocr_local_backends` stays refused (`host_owned_setting`). Set the list on the Read document step instead.
+- Other pipelines and the standard ingest path keep the host list.
+- A saved graph that never set the list keeps its fingerprint, so no source re-indexes. A step that sets the list changes the fingerprint of the graph.
+- The stored source identity of PDF sources names a list that differs from the default. A PDF source indexed under another list is processed again on the next explicit ingest.
+
 ## Canonical templates
 
 `omrs.pipeline_templates` publishes three canonical graphs. Each graph reproduces one standard Engine operation:

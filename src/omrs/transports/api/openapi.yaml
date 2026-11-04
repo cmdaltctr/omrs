@@ -3724,6 +3724,9 @@ paths:
         OCR engines, model files and local servers that settings depend on,
         each with its status, reason and fix command. `pdf_readers` lists every
         registered PDF reader with its install state, fix command and uses.
+        `reading_parts` shows the health of each reading part from its
+        descriptor: the listed local OCR backends, the page rules and the
+        parts that installed packages add.
       security:
         - sessionCookie: [read]
         - bearerToken: [read]
@@ -5258,16 +5261,18 @@ paths:
       description: >
         Lists the document-reading keys in a fixed order (`pdf_readers`,
         `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engines`,
-        `ocr_maths_routing_enabled`, `ocr_non_latin_routing`). `pdf_readers` and `ocr_engines` hold an ordered
-        list of names. The old single-value keys `pdf_reader`,
+        `ocr_maths_routing_enabled`, `ocr_non_latin_routing`,
+        `ocr_local_backends`). `pdf_readers`, `ocr_engines` and
+        `ocr_local_backends` hold an ordered list of names. The old single-value keys `pdf_reader`,
         `ocr_engine_primary` and `ocr_engine_fallback` stay valid in every source and
         expand to the equivalent list. Each row has the value in force since
         launch, the valid value `omrs.jsonc` holds now (`saved`), the source,
         the lock state, whether a restart is pending and the code default. Every
         key applies at the next launch only, and every key is part of the index
         identity. `pdf_readers` lists `auto` first, then each registered reader
-        with its availability. `ocr` lists the OCR workers folder and each known
-        engine with its availability now. The route reads the file and probes packages
+        with its availability. `local_ocr_backends` lists each local OCR backend
+        that a list can name, with its availability. `ocr` lists the OCR workers
+        folder and each known engine with its availability now. The route reads the file and probes packages
         and folders; it writes nothing.
       security:
         - sessionCookie: [read]
@@ -5294,7 +5299,7 @@ paths:
       description: >
         Writes one or more document-reading keys to `omrs.jsonc`, all in one write
         or none. `null` removes a key, so the default applies. A list key
-        (`pdf_readers`, `ocr_engines`) takes an array of names. A save of a list key
+        (`pdf_readers`, `ocr_engines`, `ocr_local_backends`) takes an array of names. A save of a list key
         also removes the old single-value keys it replaces in the same write. The value in
         force does not change until a restart. The checks run in this order
         and stop at the first failure: body shape (400, `Invalid request. …`);
@@ -9950,7 +9955,7 @@ components:
     IntegrationList:
       type: object
       additionalProperties: false
-      required: [status, install_type, integrations, tools, runtime, pdf_readers]
+      required: [status, install_type, integrations, tools, runtime, pdf_readers, reading_parts]
       properties:
         status:
           type: string
@@ -9981,6 +9986,111 @@ components:
           description: External tools apart from the extras. Today only marimo.
           items:
             $ref: "#/components/schemas/ExternalTool"
+        reading_parts:
+          $ref: "#/components/schemas/ReadingPartsHealth"
+
+    ReadingPartsHealth:
+      type: object
+      additionalProperties: false
+      required: [local_ocr_backends, page_rules, discovered_parts]
+      description: >
+        The health of each reading part, built from the part descriptors and
+        registries. Every check only reads. A section whose check fails is an
+        empty list; the detail stays in the server log.
+      properties:
+        local_ocr_backends:
+          type: array
+          description: One entry per backend in `ocr_local_backends`, in list order.
+          items:
+            $ref: "#/components/schemas/LocalOcrBackendHealth"
+        page_rules:
+          type: array
+          description: One entry per registered page rule, in rule order.
+          items:
+            $ref: "#/components/schemas/PageRuleHealth"
+        discovered_parts:
+          type: array
+          description: >
+            One entry per part that an installed package declares through an
+            entry point. Empty when no package adds a part.
+          items:
+            $ref: "#/components/schemas/DiscoveredPartHealth"
+
+    LocalOcrBackendHealth:
+      type: object
+      additionalProperties: false
+      required: [name, label, installed, model_present, off_reason, effective_cut, source]
+      properties:
+        name:
+          type: string
+          description: Backend name, as `ocr_local_backends` lists it.
+        label:
+          type: string
+          description: Short name for the page. The name when no descriptor has a label.
+        installed:
+          type: boolean
+          description: The backend's package can be found. The check imports nothing.
+        model_present:
+          type: [boolean, "null"]
+          description: >
+            True when every model file the descriptor names is on disk. Null
+            when the descriptor names no model files.
+        off_reason:
+          type: [string, "null"]
+          description: >
+            Why the backend is switched off for this process, for example the
+            message of a panic during an ingest. Null when it is on.
+        effective_cut:
+          type: [number, "null"]
+          description: >
+            The confidence cut the backend applies: `ocr_local_min_confidence`
+            when it is set, else the backend's own calibrated cut.
+        source:
+          type: string
+          description: "`built-in`, or the distribution that adds the backend."
+
+    PageRuleHealth:
+      type: object
+      additionalProperties: false
+      required: [name, label, enabled, version, source]
+      properties:
+        name:
+          type: string
+        label:
+          type: string
+          description: Short name for the page. The name when no descriptor has a label.
+        enabled:
+          type: boolean
+          description: >
+            Whether the rule runs. A built-in rule follows its setting (a choice
+            set to `off` is off). A rule without a setting is on. A discovered
+            rule is on only when its `enabled` option is true.
+        version:
+          type: integer
+          description: The rule version. It changes when the rule's output changes.
+        source:
+          type: string
+          description: "`built-in`, or the distribution that adds the rule."
+
+    DiscoveredPartHealth:
+      type: object
+      additionalProperties: false
+      required: [name, kind, distribution, version, problem]
+      properties:
+        name:
+          type: string
+        kind:
+          type: string
+          enum: [pdf_reader, local_ocr_backend, page_rule]
+        distribution:
+          type: [string, "null"]
+          description: The installed distribution that declares the part.
+        version:
+          type: [string, "null"]
+          description: The version of that distribution.
+        problem:
+          type: [string, "null"]
+          description: Why the part is broken or refused, or null when it loaded.
 
     ExternalTool:
       type: object
@@ -11356,7 +11466,7 @@ components:
     DocumentReadingState:
       type: object
       additionalProperties: false
-      required: [status, revision, settings, pdf_readers, pdf_reader_in_use, ocr]
+      required: [status, revision, settings, pdf_readers, pdf_reader_in_use, local_ocr_backends, ocr]
       properties:
         status:
           type: string
@@ -11368,8 +11478,8 @@ components:
             Send it back on a save; a file that changed since gives 409.
         settings:
           type: array
-          minItems: 6
-          maxItems: 6
+          minItems: 7
+          maxItems: 7
           description: >
             One row per key, in the fixed key order. The old single-value keys
             have no row: a list row holds the value that they mean.
@@ -11388,6 +11498,16 @@ components:
             The reader the running engine uses after resolution (`auto`
             resolved, an uninstalled choice replaced by `pypdf`). Computed once
             per process. Null only when it cannot be computed.
+        local_ocr_backends:
+          type: array
+          description: >
+            Each local OCR backend that `ocr_local_backends` can name (a backend
+            with a calibrated confidence cut): the built-in backends in descriptor
+            order, then the backends that an installed package adds through the
+            `omrs.local_ocr_backends` entry point. A backend that is not installed
+            can be listed; start-up skips it with a warning.
+          items:
+            $ref: "#/components/schemas/LocalBackendOption"
         ocr:
           type: object
           additionalProperties: false
@@ -11418,6 +11538,7 @@ components:
             - ocr_engines
             - ocr_maths_routing_enabled
             - ocr_non_latin_routing
+            - ocr_local_backends
         value:
           type: [string, boolean, number, array]
           items:
@@ -11471,6 +11592,21 @@ components:
           type: [string, "null"]
           description: Why the reader cannot run (names the missing package), or null.
 
+    LocalBackendOption:
+      type: object
+      additionalProperties: false
+      required: [name, available, reason]
+      properties:
+        name:
+          type: string
+          description: Backend name, as `ocr_local_backends` lists it.
+        available:
+          type: boolean
+          description: The backend's package can be found. The check imports nothing.
+        reason:
+          type: [string, "null"]
+          description: Why the backend cannot run (`Not installed.`), or null.
+
     OcrEngineOption:
       type: object
       additionalProperties: false
@@ -11499,12 +11635,12 @@ components:
         values:
           type: object
           minProperties: 1
-          maxProperties: 9
+          maxProperties: 10
           description: >
-            One or more of the nine keys. Each value has the key's JSON type
-            (an array of names for `pdf_readers` and `ocr_engines`), or is null
-            to remove the key so the default applies. A key outside the nine
-            gets 400.
+            One or more of the ten keys. Each value has the key's JSON type
+            (an array of names for `pdf_readers`, `ocr_engines` and
+            `ocr_local_backends`), or is null to remove the key so the default
+            applies. A key outside the ten gets 400.
           propertyNames:
             enum:
               - pdf_readers
@@ -11516,6 +11652,7 @@ components:
               - ocr_engine_fallback
               - ocr_maths_routing_enabled
               - ocr_non_latin_routing
+              - ocr_local_backends
           additionalProperties:
             type: [string, boolean, number, array, "null"]
             items:

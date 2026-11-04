@@ -1,16 +1,17 @@
-import type { IntegrationList, PdfReaderItem, RuntimeComponents, RuntimeItem } from "../api/integrations";
+import type { DiscoveredPartHealth, IntegrationList, LocalOcrBackendHealth, PdfReaderItem, RuntimeComponents, RuntimeItem } from "../api/integrations";
 
 /** The Integrations sections, in the order the chips show them. */
-export const INTEGRATION_SECTIONS = ["extras", "tools", "pdf-readers", "ocr-engines", "model-files", "local-servers", "model-runtimes"] as const;
+export const INTEGRATION_SECTIONS = ["extras", "tools", "pdf-readers", "reading-parts", "ocr-engines", "model-files", "local-servers", "model-runtimes"] as const;
 
 export type IntegrationSection = (typeof INTEGRATION_SECTIONS)[number];
 
-export type RuntimeSection = Exclude<IntegrationSection, "extras" | "tools" | "pdf-readers" | "model-runtimes">;
+export type RuntimeSection = Exclude<IntegrationSection, "extras" | "tools" | "pdf-readers" | "reading-parts" | "model-runtimes">;
 
 export const SECTION_LABELS: Record<IntegrationSection, string> = {
   extras: "Extras",
   tools: "Tools",
   "pdf-readers": "PDF readers",
+  "reading-parts": "Reading parts",
   "ocr-engines": "OCR engines",
   "model-files": "Model files",
   "local-servers": "Local servers",
@@ -42,6 +43,7 @@ export function sectionsFor(list: IntegrationList | undefined): IntegrationSecti
     if (list === undefined) return false;
     if (section === "tools") return list.tools.length > 0;
     if (section === "pdf-readers") return (list.pdf_readers?.length ?? 0) > 0;
+    if (section === "reading-parts") return list.reading_parts !== undefined;
     // The runtimes come from their own route, so this section needs no `runtime` block.
     if (section === "model-runtimes") return true;
     return list.runtime !== undefined;
@@ -71,9 +73,23 @@ export function readerNeedsAttention(reader: PdfReaderItem): boolean {
   return !reader.installed && reader.used_by.length > 0;
 }
 
-/** How many parts in a section need attention. Only runtime sections and PDF readers count. */
+/** A listed backend that cannot read now: switched off, not installed or without its model files. These show in red. */
+export function backendNeedsAttention(backend: LocalOcrBackendHealth): boolean {
+  return backend.off_reason !== null || !backend.installed || backend.model_present === false;
+}
+
+/** A discovered part that was refused or failed to load. */
+export function partNeedsAttention(part: DiscoveredPartHealth): boolean {
+  return part.problem !== null;
+}
+
+/** How many parts in a section need attention. Only runtime sections, PDF readers and reading parts count. */
 export function attentionCount(section: IntegrationSection, list: IntegrationList | undefined): number {
   if (section === "pdf-readers") return list?.pdf_readers?.filter(readerNeedsAttention).length ?? 0;
+  if (section === "reading-parts") {
+    const parts = list?.reading_parts;
+    return parts === undefined ? 0 : parts.local_ocr_backends.filter(backendNeedsAttention).length + parts.discovered_parts.filter(partNeedsAttention).length;
+  }
   if (!isRuntimeSection(section) || list?.runtime === undefined) return 0;
   return list.runtime[RUNTIME_FIELDS[section]].filter(needsAttention).length;
 }

@@ -3,7 +3,8 @@
 The ``page`` unit routes a PDF page by page; it is the only unit (change
 page-routing-default). This module holds that unit's logic beside the seam
 in ``ocr_routing.py``: per-page evidence from a full scan, the local OCR
-tier with its post-check escalation (tasks 4.2 and 4.2a), the counts and
+tier with its post-check escalation (tasks 4.2 and 4.2a; the backends and
+their chain live in ``local_ocr/``, change local-ocr-backends), the counts and
 backend of the merge, and one
 document per page with text (change pdf-inspector-page-provenance, D5).
 
@@ -17,14 +18,16 @@ page that gets read.
 from __future__ import annotations
 
 import logging
-import os
-import tempfile
 import threading
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .script_routing import NON_LATIN_OUTPUT_REASON, is_non_latin, routing_mode
+from .local_ocr import chain as local_ocr_chain
+from .local_ocr import registry as local_ocr_registry
+from .local_ocr.base import LocalOcrPage
+from .script_routing import non_latin_output_reason, routing_mode
 
 logger = logging.getLogger(__name__)
 
@@ -38,23 +41,24 @@ PAGE_SOURCE_BLANK = "blank"
 PAGE_SOURCE_UNRESOLVED = "unresolved"
 
 #: ``ocr_backend`` values. ``pdf_inspector_ocr`` names pdf-inspector's selective
-#: OCR, which is not the worker. ``mixed`` is emitted when more than one
-#: backend produced text: naming the highest tier instead would report
-#: ``paddleocr_vl`` for a 200-page document the worker read one page of.
+#: OCR, which is not the worker. A worker page names the answering engine's
+#: ``backend_id`` and a local page its backend's producer (change
+#: local-ocr-backends). ``mixed`` is emitted when more than one backend produced
+#: text: naming the highest tier instead would report the worker for a 200-page
+#: document it read one page of.
 OCR_BACKEND_FAST_PATH = "pdf_inspector"
 OCR_BACKEND_LOCAL_OCR = "pdf_inspector_ocr"
-OCR_BACKEND_WORKER_PATH = "paddleocr_vl"
 OCR_BACKEND_MIXED = "mixed"
 
 #: Page keys a page document carries. A document whose text spans the
 #: whole PDF (the worker's response) must carry neither.
 PAGE_KEYS = ("page", "page_label")
 
-#: Page source -> the backend that produced it. ``unresolved`` names none.
+#: Page source -> the backend that produced it, when the page names no producer.
+#: ``unresolved`` names none, and a worker page always names its engine.
 _SOURCE_BACKENDS = {
     PAGE_SOURCE_NATIVE: OCR_BACKEND_FAST_PATH,
     PAGE_SOURCE_LOCAL: OCR_BACKEND_LOCAL_OCR,
-    PAGE_SOURCE_WORKER: OCR_BACKEND_WORKER_PATH,
 }
 
 #: Page source -> its metadata count key. The five sum to ``page_count``.
@@ -123,155 +127,76 @@ def page_evidence(file: Path) -> list[PageEvidence]:
     ]
 
 
-@dataclass(frozen=True)
-class LocalOcrPage:
-    """One flagged page after the local OCR tier, with its escalation verdict.
-
-    Attributes:
-        page: 1-based page number.
-        text: The page's local OCR Markdown, possibly empty.
-        confidence: The engine's reported OCR confidence, ``None`` when it
-            reported none.
-        model: The resolved local model identity (``name@revision``),
-            ``None`` when the engine named no model.
-        escalates: Whether the post-check sends this page to the worker.
-        reasons: Every escalation condition that fired, in check order.
-    """
-
-    page: int
-    text: str
-    confidence: float | None
-    model: str | None
-    escalates: bool
-    reasons: tuple[str, ...]
-
-
-def _model_identity(provenance: Any) -> str | None:
-    """Return ``name@revision`` from a page's provenance, or ``None``."""
-    model = getattr(provenance, "ocr_model", None)
-    if model is None:
-        return None
-    return f"{model.name}@{model.revision}"
-
-
 def local_ocr(
-    file: Path, pages: list[int], *, settings: Any, script_check: bool | None = None
+    file: Path, pages: list[int], *, settings: Any, post_checks: Sequence | None = None
 ) -> list[LocalOcrPage]:
-    """OCR every flagged page locally with pdf-inspector's selective OCR.
+    """OCR each flagged page with the listed local OCR backends, in list order.
 
-    Tier 1 of the ``page`` unit (design decision 3): ``force`` mode with the
-    1-based page list, so the library re-routes nothing — exactly the call
-    Experiment 33 task 6.7 measured. The model directory and offline mode
-    come from the injected settings; an empty directory means the library's
-    default cache.
-
-    The engine's own ``minimum_confidence`` and
-    ``hosted_recommendation_confidence`` parameters stay at their library
-    defaults: the experiment measured those defaults and applies the cut in
-    the post-check below. Feeding our threshold into the engine would run
-    unmeasured behaviour.
+    Tier 1 of the ``page`` unit. The chain (``local_ocr/chain.py``, change
+    local-ocr-backends, design D8) reads the pages with the backends of
+    ``ocr_local_backends`` and runs the post-check escalation (design decision
+    4) with each backend's effective cut. The default list is
+    ``pp-ocrv6-small``: pdf-inspector's selective OCR in ``force`` mode on the
+    1-based page list, exactly the call Experiment 33 task 6.7 measured.
 
     Args:
         file: Path to the PDF file.
         pages: 1-based page numbers to OCR. Uniqueness and order are the
-            caller's to guarantee; the evidence scan emits sorted uniques.
-        settings: Injected settings carrying ``ocr_local_model_directory``,
-            ``ocr_local_offline`` and ``ocr_local_min_confidence``.
-        script_check: Whether a non-Latin result escalates whatever its
-            confidence (reason ``non_latin_output``). ``None`` means yes under
-            ``ocr_non_latin_routing=detect``. The seam passes ``False`` when no
-            OCR engine is available, so the check runs as if the setting were off.
+            caller's guarantee; the evidence scan emits sorted uniques.
+        settings: Injected settings carrying the backend list, the optional cut
+            override and each backend's own fields.
+        post_checks: The page rules' post-checks, each ``check(text, facts)``,
+            or ``None``. ``None`` gives the non-Latin check under ``detect``.
 
     Returns:
-        One :class:`LocalOcrPage` per requested page, in page order.
+        One :class:`LocalOcrPage` per page, in page order.
 
     Raises:
-        ImportError: If ``pdf_inspector`` is not installed.
-        Exception: Whatever the engine raises. Degradation for a missing
-            runtime is the caller's (task 4.6); the tier reports.
+        ImportError: The only listed backend is not installed.
+        Exception: No listed backend could read. Degradation for a missing
+            runtime is the caller's (task 4.6); the tier only reports it.
     """
-    if not pages:
-        return []
-    try:
-        import pdf_inspector
-    except ImportError as exc:  # pragma: no cover - mirrors the adapter's message
-        raise ImportError("pdf_inspector is not installed. Install with: uv sync") from exc
-
-    result = pdf_inspector.process_pdf_with_ocr(
-        str(file),
-        mode="force",
-        page_numbers=sorted(pages),
-        model_directory=(settings.ocr_local_model_directory or None),
-        offline=bool(settings.ocr_local_offline),
-    )
-    by_number = {page.page_number: page for page in result.pages}
-    minimum = settings.ocr_local_min_confidence
-    if script_check is None:
-        script_check = routing_mode(settings) == "detect"
-    outcomes: list[LocalOcrPage] = []
-    for number in sorted(pages):
-        page = by_number.get(number)
-        provenance = getattr(page, "provenance", None) if page is not None else None
-        text = (getattr(page, "markdown", "") or "") if page is not None else ""
-        confidence = getattr(provenance, "ocr_confidence", None)
-        # Post-check escalation (design decision 4), decided AFTER the
-        # attempt: a pre-check would need a signal nobody has measured.
-        reasons: list[str] = []
-        if page is None:
-            reasons.append("missing_page")
-        if not text.strip():
-            reasons.append("empty_text")
-        # ``None`` escalates with the below-threshold pages: an unreported
-        # confidence cannot vouch for the text, and the experiment's
-        # calibration treated it as zero.
-        if confidence is None or confidence < minimum:
-            reasons.append("low_confidence")
-        if bool(getattr(provenance, "hosted_recommended", False)):
-            reasons.append("hosted_recommended")
-        if script_check and is_non_latin(text) is True:
-            reasons.append(NON_LATIN_OUTPUT_REASON)
-        outcomes.append(
-            LocalOcrPage(
-                page=number,
-                text=text,
-                confidence=confidence,
-                model=_model_identity(provenance),
-                escalates=bool(reasons),
-                reasons=tuple(reasons),
-            )
-        )
-    return outcomes
+    if post_checks is None:
+        post_checks = (non_latin_output_reason,) if routing_mode(settings) == "detect" else ()
+    return local_ocr_chain.read_local_pages(file, pages, settings=settings, post_checks=post_checks)
 
 
-# ── The local model resolution probe (task 4.2, identity) ─────────────────
+# ── Switch-off and the local model resolution probe (task 4.2, identity) ──
 
-#: The reason the local tier is off for this process, or ``None``. A runtime
-#: panic (``pyo3_runtime.PanicException``, a BaseException) poisons the
-#: engine's lock, so every later call panics again: after one, the local tier
-#: and its identity probe stay off until the process restarts
-#: (change page-routing-default).
-_LOCAL_TIER_BROKEN: str | None = None
+#: The backend a one-argument call means (the head of the default list).
+DEFAULT_BACKEND = local_ocr_registry.DEFAULT_BACKENDS[0]
 
 
-def switch_local_tier_off(reason: str) -> None:
-    """Record that the local tier is off for the rest of this process."""
-    global _LOCAL_TIER_BROKEN
-    _LOCAL_TIER_BROKEN = reason
+def switch_local_tier_off(reason: str, backend: str = DEFAULT_BACKEND) -> None:
+    """Switch *backend* off for the rest of this process.
+
+    A runtime panic (``pyo3_runtime.PanicException``, a BaseException) poisons
+    the engine's lock, so every later call panics again: after one, the backend
+    and its identity probe stay off until the process restarts (change
+    page-routing-default). The state lives in the local OCR registry, per backend.
+    """
+    local_ocr_registry.switch_off(backend, reason)
 
 
-def local_tier_off_reason() -> str | None:
-    """Return why the local tier is off for this process, or ``None``."""
-    return _LOCAL_TIER_BROKEN
+def local_tier_off_reason(settings: Any = None) -> str | None:
+    """Return why the local tier is off for this process, or ``None``.
+
+    The tier is off only when every listed backend is off; the reason is the
+    first listed backend's. Without *settings*, the default list is read.
+    """
+    reasons = [local_ocr_registry.off_reason(name) for name in local_ocr_registry.listed(settings)]
+    if not reasons or any(reason is None for reason in reasons):
+        return None
+    return reasons[0]
 
 
 _RESOLUTION_LOCK = threading.Lock()
-#: Process-wide cache of resolved local model identities, keyed by the
-#: ``(model_directory, offline)`` pair the probe ran under — the pair
-#: ``local_ocr`` feeds the engine, so a different pair is a different
-#: model and must resolve afresh. Only successful identities are cached:
-#: an unresolved runtime is re-probed, so the identity is gained the
-#: moment the runtime appears and the index identity follows.
-_local_model_resolution: dict[tuple[str, bool], str] = {}
+#: Process-wide cache of resolved local model identities, keyed by the backend
+#: and the ``(model_directory, offline)`` pair the probe ran under. A different
+#: backend or pair is a different model and must resolve afresh. Only successful
+#: identities are cached: an unresolved runtime is re-probed, so the identity is
+#: gained the moment the runtime appears and the index identity follows.
+_local_model_resolution: dict[tuple[str, str, bool], str] = {}
 
 
 def reset_local_model_resolution() -> None:
@@ -285,76 +210,51 @@ def reset_local_model_resolution() -> None:
         _local_model_resolution.clear()
 
 
-def resolve_local_model_identity(settings: Any) -> str | None:
-    """Resolve the local OCR model's ``name@revision``, once per settings pair.
+def resolve_local_model_identity(settings: Any, backend: str = DEFAULT_BACKEND) -> str | None:
+    """Resolve a local OCR backend's ``name@revision``, once per backend and settings pair.
 
-    pdf-inspector reports the identity only in per-page provenance after
-    OCR runs, and an empty page list skips the model entirely, so the
-    resolution is a one-page ``force`` attempt on a generated blank PDF.
-    The blank page costs one render and no recognition work; its
-    provenance still names the model. The probe applies the same model
-    directory and offline settings as the tier, so it resolves the model
-    the tier would use, and the cache is keyed by exactly that pair.
-
-    A successful resolution is cached per ``(model_directory, offline)``.
-    A failure resolves to ``None`` and caches nothing: an unavailable
-    runtime is re-probed on the next call, so the identity is gained when
-    the runtime appears — reindexing exactly when the emitted text would
-    change, which a cached ``None`` would miss. Lock-guarded because
-    ingest operations run on worker threads.
+    The backend's ``identity`` probe runs with the same model directory and
+    offline mode the tier would use. A failed probe returns ``None`` and caches
+    nothing, so the next call re-probes and the identity is gained the moment
+    the runtime appears: reindexing exactly when the emitted text would change.
+    Lock-guarded because ingest operations run on worker threads.
 
     Args:
         settings: Injected settings carrying ``ocr_local_model_directory``
             and ``ocr_local_offline``.
+        backend: The backend name; the default backend when omitted.
 
     Returns:
         The resolved ``name@revision``, or ``None`` when unresolvable.
     """
-    if _LOCAL_TIER_BROKEN is not None:
-        # The tier no longer reads pages, so no model may vouch for the text.
+    if local_ocr_registry.off_reason(backend) is not None:
+        # The backend no longer reads pages, so its model may not vouch for text.
         return None
-    key = ((settings.ocr_local_model_directory or ""), bool(settings.ocr_local_offline))
+    key = (backend, settings.ocr_local_model_directory or "", bool(settings.ocr_local_offline))
     with _RESOLUTION_LOCK:
         cached = _local_model_resolution.get(key)
         if cached is not None:
             return cached
-        identity = _probe_local_model_identity(settings)
+        # The default backend is probed with one argument, so a test stub of the
+        # one-argument probe keeps working.
+        extra = () if backend == DEFAULT_BACKEND else (backend,)
+        identity = _probe_local_model_identity(settings, *extra)
         if identity is not None:
             _local_model_resolution[key] = identity
         return identity
 
 
-def _probe_local_model_identity(settings: Any) -> str | None:
-    """Run the one-page blank probe and read the model identity it reports."""
-    if _LOCAL_TIER_BROKEN is not None:
+def _probe_local_model_identity(settings: Any, backend: str = DEFAULT_BACKEND) -> str | None:
+    """Run *backend*'s identity probe; a failure is ``None`` with a warning."""
+    if local_ocr_registry.off_reason(backend) is not None:
         return None
-    path: str | None = None
     try:
-        import pdf_inspector
-        from pypdf import PdfWriter
-
-        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as handle:
-            path = handle.name
-        writer = PdfWriter()
-        writer.add_blank_page(width=200, height=200)
-        writer.write(path)
-        result = pdf_inspector.process_pdf_with_ocr(
-            path,
-            mode="force",
-            page_numbers=[1],
-            model_directory=(settings.ocr_local_model_directory or None),
-            offline=bool(settings.ocr_local_offline),
-        )
-        for page in result.pages:
-            identity = _model_identity(getattr(page, "provenance", None))
-            if identity is not None:
-                return identity
-        return None
+        return local_ocr_registry.BACKENDS.get(backend).identity(settings)
     except (KeyboardInterrupt, SystemExit):
         raise
     except BaseException as exc:  # noqa: BLE001 - an unresolvable runtime is a None, not a failure
         if not isinstance(exc, Exception):
-            switch_local_tier_off(f"{type(exc).__name__}: {exc}")
+            switch_local_tier_off(f"{type(exc).__name__}: {exc}", backend)
         logger.warning(
             "Local OCR model identity unresolved (%s: %s); the index identity "
             "omits the model until the local OCR runtime is available",
@@ -362,12 +262,6 @@ def _probe_local_model_identity(settings: Any) -> str | None:
             exc,
         )
         return None
-    finally:
-        if path is not None:
-            try:
-                os.unlink(path)
-            except OSError:  # pragma: no cover - best-effort temp cleanup
-                pass
 
 
 @dataclass(frozen=True)
@@ -378,8 +272,9 @@ class PageResult:
         page: 1-based page number.
         text: The page's text, possibly empty.
         source: One of the ``PAGE_SOURCE_*`` values.
-        producer: The ``OCR_BACKEND_*`` that produced ``text`` when the source
-            does not name one: an unresolved page that kept local OCR text.
+        producer: The ``ocr_backend`` value of what produced ``text``: the
+            worker's engine, the local backend that kept the page, or the local
+            backend whose text an unresolved page kept.
     """
 
     page: int

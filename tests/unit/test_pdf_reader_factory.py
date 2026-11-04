@@ -215,19 +215,15 @@ _GHOST_PATH = "omrs.integrations.pdf.ghost_module:GhostReader"
 def pdf_registry_sandbox():
     """Isolate global pdf-registry mutations to the requesting test.
 
-    ``registry._registry``/``_cache`` are module-level dicts shared with
+    The registry state is process-wide and shared with
     ``test_strategy_registration_inventory.py`` (which asserts the exact
     advertised name set), so alias registrations must never leak.
     """
     from omrs.integrations.pdf import registry as pdf_registry
 
-    state_attrs = ("_registry", "_probe_modules", "_text_formats", "_page_provenance", "_cache")
-    saved = {attr: dict(getattr(pdf_registry, attr)) for attr in state_attrs}
+    saved = pdf_registry.READERS.snapshot()
     yield pdf_registry
-    for attr in state_attrs:
-        mapping = getattr(pdf_registry, attr)
-        mapping.clear()
-        mapping.update(saved[attr])
+    pdf_registry.READERS.restore(saved)
 
 
 def _reader_settings(name: str):

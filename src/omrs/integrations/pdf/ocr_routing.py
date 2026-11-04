@@ -32,11 +32,7 @@ from ..ocr_worker.client import OcrWorkerError
 from ..ocr_worker.managed import UNAVAILABLE_CODE
 from ..ocr_worker.protocol import PAGES_PROTOCOL_VERSION
 from ..ocr_worker.routes import OcrRoutes, backend_id_of, request_timeout, route_role
-from .blank_pages import find_blank_pages
-from .maths_routing import detect_maths_pages, split_page_routes
-from .maths_routing import stamp_maths_count as _stamp_maths
 from .page_routing import (
-    OCR_BACKEND_LOCAL_OCR,
     PAGE_KEYS,
     PAGE_SOURCE_BLANK,
     PAGE_SOURCE_LOCAL,
@@ -50,9 +46,8 @@ from .page_routing import (
     merge_pages,
     page_documents,
     page_evidence,
-    switch_local_tier_off,
 )
-from .script_routing import non_latin_direct_pages, post_check_enabled, stamp_non_latin_count
+from .page_rules.pipeline import run_rules
 
 logger = logging.getLogger(__name__)
 
@@ -182,47 +177,33 @@ class OcrRoutedPdfInspector:
         evidence = page_evidence(file)
         page_count = len(evidence)
         flagged = {entry.page for entry in evidence if entry.needs_ocr}
-        # Blank pages leave the route before the maths split and before
-        # both OCR tiers (skip-blank-pages-before-worker, design
-        # decision 1): they keep their native text and count blank.
-        blank = find_blank_pages(file, sorted(flagged)) if flagged else frozenset()
-        routed = flagged - blank
-        maths_pages = detect_maths_pages(file, self._settings)
-        # Maths pages skip the local tier and join the one worker request.
-        # A blank maths page left the route above, so it joins neither.
-        active_maths = maths_pages - blank if maths_pages is not None else None
-        # Non-Latin pages (ocr_non_latin_routing) join the same direct set.
-        script_direct = non_latin_direct_pages(file, routed, self._settings, self._routes)
-        direct, local_pages_wanted = split_page_routes(
-            routed, (active_maths or frozenset()) | script_direct
-        )
+        # The page rules (blank, maths, non-Latin; design D5) run in order. A
+        # dropped page keeps its native text and counts blank; a direct page
+        # skips the local tier and joins the one worker request.
+        plan = run_rules(file, evidence, flagged, self._settings, self._routes)
+        blank, direct, local_pages_wanted = plan.dropped, plan.direct, list(plan.local)
 
         results: list[PageResult] = []
         placed: set[int] = set()
         escalated: dict[int, LocalOcrPage | None] = dict.fromkeys(direct)
         no_tier = False  # neither tier can read the flagged pages; one warning said so
-        local_error = local_tier_off_reason() if local_pages_wanted else None
+        local_error = local_tier_off_reason(self._settings) if local_pages_wanted else None
         if local_pages_wanted and local_error is None:
-            try:
-                local_pages = local_ocr(
-                    file,
-                    local_pages_wanted,
-                    settings=self._settings,
-                    script_check=post_check_enabled(self._settings, self._routes),
-                )
-            except (KeyboardInterrupt, SystemExit):
-                raise
-            except BaseException as exc:  # noqa: BLE001 - a missing runtime escalates, never fails
-                local_error = f"{type(exc).__name__}: {exc}"
-                if not isinstance(exc, Exception):
-                    switch_local_tier_off(local_error)
-            else:
+            local_pages, local_error = self._read_local(
+                file, local_pages_wanted, plan.post_checks()
+            )
+            if local_error is None:
                 for page in local_pages:
                     if page.escalates:
                         escalated[page.page] = page
                     else:
                         results.append(
-                            PageResult(page=page.page, text=page.text, source=PAGE_SOURCE_LOCAL)
+                            PageResult(
+                                page=page.page,
+                                text=page.text,
+                                source=PAGE_SOURCE_LOCAL,
+                                producer=page.producer,
+                            )
                         )
                         placed.add(page.page)
         if local_error is not None:
@@ -255,17 +236,22 @@ class OcrRoutedPdfInspector:
             else ({}, None)
         )
 
-        # Non-Latin pages the engine could not read go through the local tier
-        # (spec: "Non-Latin routing degrades to the local tier"). Maths pages
-        # keep their existing behaviour.
-        unread = sorted(
-            page
-            for page in script_direct - (active_maths or frozenset())
-            if not worker_text.get(page)
-        )
-        if unread and local_error is None:
-            for page in self._local_fallback(file, unread):
-                results.append(PageResult(page=page.page, text=page.text, source=PAGE_SOURCE_LOCAL))
+        # Direct pages no engine read go to the degrade hook of the rule that
+        # sent them first; the local tier reads what the hooks return, with no
+        # post-check, because no engine can take an escalation now.
+        unread = [page for page in sorted(direct) if not worker_text.get(page)]
+        if unread and local_error is None and local_tier_off_reason(self._settings) is None:
+            degraded = plan.degrade(unread)
+            found = self._read_local(file, degraded, ())[0] if degraded else []
+            for page in (page for page in found if page.text.strip()):
+                results.append(
+                    PageResult(
+                        page=page.page,
+                        text=page.text,
+                        source=PAGE_SOURCE_LOCAL,
+                        producer=page.producer,
+                    )
+                )
                 placed.add(page.page)
                 escalated.pop(page.page, None)
 
@@ -292,7 +278,7 @@ class OcrRoutedPdfInspector:
                             page=entry.page,
                             text=local_text if local_text.strip() else entry.markdown,
                             source=PAGE_SOURCE_UNRESOLVED,
-                            producer=OCR_BACKEND_LOCAL_OCR if local_text.strip() else None,
+                            producer=local_page.producer if local_text.strip() else None,
                         )
                     )
             elif entry.page in blank:
@@ -325,8 +311,7 @@ class OcrRoutedPdfInspector:
             ocr_backend=merged.ocr_backend,
         )
         metadata.update(merged.counts)
-        _stamp_maths(metadata, maths_pages)
-        stamp_non_latin_count(metadata, self._settings, script_direct, escalated.values())
+        plan.stamp(metadata, escalated.values())
 
         rescued = [doc for doc in inner_documents if doc.text]
         if not merged.text and rescued:
@@ -360,34 +345,20 @@ class OcrRoutedPdfInspector:
             ]
         return page_documents(results, metadata) or [Document(text="", metadata=metadata)]
 
-    def _local_fallback(self, file: Path, pages: list[int]) -> list[LocalOcrPage]:
-        """Run the local tier on non-Latin pages that no engine could read.
+    def _read_local(
+        self, file: Path, pages: list[int], post_checks: tuple
+    ) -> tuple[list[LocalOcrPage], str | None]:
+        """Run the local tier on *pages*; return its results and the error, if any.
 
-        Args:
-            file: Path to the PDF file.
-            pages: 1-based page numbers, sorted.
-
-        Returns:
-            The local results with text. Empty when the local tier is off or
-            fails; such pages keep the unresolved handling and never fail the file.
+        A missing runtime never fails the file: the error comes back as text. The
+        chain has already switched a panicking backend off for the process.
         """
-        if local_tier_off_reason() is not None:
-            return []
-        logger.warning(
-            "No OCR engine read %d non-Latin page(s) in %s; they went to the local tier.",
-            len(pages),
-            getattr(file, "name", file),
-        )
         try:
-            # No engine can take an escalation now, so skip the post-check.
-            found = local_ocr(file, pages, settings=self._settings, script_check=False)
+            return local_ocr(file, pages, settings=self._settings, post_checks=post_checks), None
         except (KeyboardInterrupt, SystemExit):
             raise
         except BaseException as exc:  # noqa: BLE001 - a missing runtime never fails the file
-            if not isinstance(exc, Exception):
-                switch_local_tier_off(f"{type(exc).__name__}: {exc}")
-            return []
-        return [page for page in found if page.text.strip()]
+            return [], f"{type(exc).__name__}: {exc}"
 
     def _escalated_worker_text(
         self, file: Path, pages: list[int]

@@ -15,13 +15,20 @@ reader change alters the documents it emits for the same file; the index
 identity of PDF sources hashes it, change pdf-inspector-page-provenance).
 Inspect them with :func:`describe`.
 
+The entries live on the shared page-reading registry helper
+(:class:`integrations.part_registry.PartRegistry`, change local-ocr-backends,
+design D4). Each ``register()`` line below has a part descriptor in
+``core/reading_parts.py``; ``tests/unit/test_reading_parts_pins.py`` pins the
+two to each other (design D3).
+
 Importing this module does NOT import any adapter or optional dependency.
 """
 
 from __future__ import annotations
 
-import importlib
 from typing import Any, Literal
+
+from ..part_registry import PartRegistry
 
 #: The text format a reader declares for its emitted documents
 #: (spec pdf-reader: "Readers declare their emitted text format").
@@ -29,12 +36,11 @@ from typing import Any, Literal
 #: format from the source file's extension.
 TextFormat = Literal["plain", "markdown"]
 
-_registry: dict[str, str] = {}
-_probe_modules: dict[str, str] = {}
-_text_formats: dict[str, TextFormat] = {}
-_page_provenance: dict[str, bool] = {}
-_output_revisions: dict[str, int] = {}
-_cache: dict[str, type[Any]] = {}
+#: The shared registry the module functions below delegate to.
+READERS = PartRegistry("PDF reader")
+#: The live cache of loaded reader classes. Tests stub a reader with
+#: ``monkeypatch.setitem(registry._cache, name, Stub)``.
+_cache: dict[str, Any] = READERS.cache
 
 
 def register(
@@ -71,11 +77,14 @@ def register(
             f"PDF reader {name!r} declared text_format={text_format!r}; "
             "expected 'plain' or 'markdown'."
         )
-    _registry[name] = import_path
-    _probe_modules[name] = probe_module or import_path.split(":", maxsplit=1)[0]
-    _text_formats[name] = text_format
-    _page_provenance[name] = page_provenance
-    _output_revisions[name] = output_revision
+    READERS.register(
+        name,
+        import_path,
+        probe_module=probe_module,
+        text_format=text_format,
+        page_provenance=page_provenance,
+        output_revision=output_revision,
+    )
 
 
 def describe(name: str) -> dict[str, Any]:
@@ -89,15 +98,7 @@ def describe(name: str) -> dict[str, Any]:
     Raises:
         KeyError: If *name* is not registered (lists available names).
     """
-    if name not in _registry:
-        raise KeyError(f"Unknown PDF reader {name!r}. Available: {sorted(_registry)}")
-    return {
-        "import_path": _registry[name],
-        "probe_module": _probe_modules[name],
-        "text_format": _text_formats[name],
-        "page_provenance": _page_provenance[name],
-        "output_revision": _output_revisions[name],
-    }
+    return READERS.describe(name)
 
 
 def get(name: str) -> type[Any]:
@@ -113,20 +114,7 @@ def get(name: str) -> type[Any]:
         KeyError: If *name* is not registered (lists available names).
         ImportError: If the adapter module cannot be imported.
     """
-    if name in _cache:
-        return _cache[name]
-    if name not in _registry:
-        raise KeyError(f"Unknown PDF reader {name!r}. Available: {sorted(_registry)}")
-    module_path, attr = _registry[name].split(":")
-    try:
-        module = importlib.import_module(module_path)
-    except ImportError as exc:
-        raise ImportError(
-            f"PDF reader {name!r} could not be imported (module {module_path!r}): {exc}"
-        ) from exc
-    reader_class = getattr(module, attr)
-    _cache[name] = reader_class
-    return reader_class
+    return READERS.get(name)
 
 
 def probe(name: str) -> None:
@@ -139,20 +127,12 @@ def probe(name: str) -> None:
         KeyError: If *name* is not registered.
         ImportError: If the reader dependency is unavailable.
     """
-    if name not in _registry:
-        raise KeyError(f"Unknown PDF reader {name!r}. Available: {sorted(_registry)}")
-    module_name = _probe_modules[name]
-    try:
-        importlib.import_module(module_name)
-    except ImportError as exc:
-        raise ImportError(
-            f"PDF reader {name!r} dependency {module_name!r} is not importable: {exc}"
-        ) from exc
+    READERS.probe(name)
 
 
 def available() -> list[str]:
     """Return the sorted registered concrete reader names."""
-    return sorted(_registry)
+    return READERS.names()
 
 
 register(

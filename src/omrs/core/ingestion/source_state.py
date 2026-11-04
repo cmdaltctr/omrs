@@ -138,6 +138,7 @@ def build_index_identity(
     ocr_worker_fingerprint: Any = None,
     ocr_fallback_fingerprint: Any = None,
     ocr_more_fingerprints: tuple[Any, ...] = (),
+    local_ocr_backends: dict[str, Any] | None = None,
     tokenizer: dict[str, str] | None = None,
     resolved_splitter: str = "legacy_fallback",
     graph_shape: dict[str, Any] | None = None,
@@ -238,7 +239,7 @@ def build_index_identity(
     }
     if pdf_reader_revision is not None:
         payload["parser"]["pdf_reader_output_revision"] = pdf_reader_revision
-        payload["parser"].update(pdf_parser_payload(settings))  # PDF sources only (D5)
+        payload["parser"].update(pdf_parser_payload(settings, local_ocr_backends))  # PDF only
     if ocr_more_fingerprints:  # the third engine and later; absent for two or fewer (D5)
         payload["ocr_more_fingerprints"] = list(map(ocr_fingerprint_payload, ocr_more_fingerprints))
     if graph_shape is not None:

@@ -258,7 +258,7 @@ jobs:
         # that land on the base branch after the fork do not count. Any git
         # error keeps the full list: a broken check runs more floors, not fewer.
         run: |
-          full='["","hybrid","pdf-pypdfium2","community-leiden","azure","anthropic","chroma","web"]'
+          full='["","hybrid","pdf-pypdfium2","local-ocr-indra","community-leiden","azure","anthropic","chroma","web"]'
           extras="$full"
           if [ "$EVENT_NAME" = "pull_request" ]; then
             if [ -z "$BASE_SHA" ] || [ -z "$HEAD_SHA" ]; then

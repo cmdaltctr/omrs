@@ -150,6 +150,7 @@ def graph_host(engine: Engine, collection: str | None) -> Any:
         "pdf_reader": readers,
         "pdf_readers": reader_lists,
         "ocr_non_latin_routing": HostOptionSet(inherited=settings.ocr_non_latin_routing),
+        "ocr_local_backends": local_backend_option_set(settings),
         **engine_option_sets(settings),
     }
     return replace(graph, host=replace(graph.host, options=options))
@@ -214,6 +215,25 @@ def engine_option_sets(settings: Any) -> dict[str, Any]:
         "ocr_engine_primary": HostOptionSet(primary or None, reasons, remedy),
         "ocr_engine_fallback": HostOptionSet(fallback or None, reasons, remedy),
     }
+
+
+def local_backend_option_set(settings: Any) -> Any:
+    """Return the host option set of ``ocr_local_backends`` (change local-ocr-backends).
+
+    A backend whose probe module is missing is unavailable, and the reason names the
+    extra that installs it. The probe imports nothing, so it runs on every call.
+    """
+    from .core import reading_parts
+    from .core.pipelines import HostOptionSet
+    from .integrations.pdf.local_ocr import registry
+
+    unavailable = {}
+    for name in registry.available():
+        if not registry.installed(name):
+            extra = reading_parts.local_backend(name).extra
+            fix = f"Install with: uv sync --extra {extra}." if extra else "It is not installed."
+            unavailable[name] = f"The local OCR backend {name!r} is not installed. {fix}"
+    return HostOptionSet(inherited=tuple(settings.ocr_local_backends), unavailable=unavailable)
 
 
 def install_as_process_default(engine: Engine) -> None:

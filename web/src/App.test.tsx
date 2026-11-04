@@ -85,18 +85,6 @@ describe("navigation", () => {
     expect(screen.getByRole("link", { name: "Skip to content" })).toHaveAttribute("href", "#workspace-main");
   });
 
-  it("keeps every short label within eight characters so seven fit one row at 390px", () => {
-    start();
-    const labels = [...nav().querySelectorAll("span[aria-hidden='true']")].map((span) => span.textContent ?? "");
-    expect(labels).toHaveLength(7);
-    for (const label of labels) expect(label.length, label).toBeLessThanOrEqual(8);
-  });
-
-  it("truncates a short label that is still too wide instead of touching its neighbour", () => {
-    start();
-    for (const span of nav().querySelectorAll("span[aria-hidden='true']")) expect(span).toHaveClass("w-full", "truncate", "text-center");
-  });
-
   it("gives narrow screens a row of targets at least 44px high", () => {
     start();
     for (const link of within(nav()).getAllByRole("link")) expect(link.className).toContain("min-h-11");

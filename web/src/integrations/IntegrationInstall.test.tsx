@@ -217,8 +217,9 @@ describe("Install from the Integrations page", () => {
   it("says Install adds the packages and a restart makes them available", async () => {
     const { server } = installServer();
     startApp("#/integrations", server);
-    const notice = await screen.findByRole("note");
-    await waitFor(() => expect(notice).toHaveTextContent(/Install adds the packages/i));
+    await screen.findByText(/Install adds the packages/i);
+    const notice = screen.getAllByRole("note").find((note) => /Install adds the packages/i.test(note.textContent ?? ""));
+    if (notice === undefined) throw new Error("no install note");
     expect(notice).toHaveTextContent(/restart makes them available/i);
   });
 });

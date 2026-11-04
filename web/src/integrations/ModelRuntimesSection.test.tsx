@@ -61,6 +61,19 @@ describe("Model runtimes section", () => {
     expect(window.location.hash).toBe("#/integrations/model-runtimes");
   });
 
+  it("tells where the Chat server is chosen and where embeddings and OCR are set, with a link to Providers", async () => {
+    startApp("#/integrations/model-runtimes", serve());
+    const note = within(await section())
+      .getAllByRole("note")
+      .find((element) => /llama\.cpp card/i.test(element.textContent ?? ""));
+    if (note === undefined) throw new Error("No Providers note");
+    expect(note).toHaveTextContent(
+      "Who runs the Chat server is chosen on the llama.cpp card in Settings › Providers, where you can also start OMRS's own server. The embeddings and OCR runtimes are set in the environment, .env or omrs.jsonc.",
+    );
+    expect(within(note).getByRole("link", { name: "Settings › Providers" })).toHaveAttribute("href", "#/settings/providers");
+    expect(note).toHaveClass("border-status-info");
+  });
+
   it("shows one row for each runtime with its role, mode, status and address", async () => {
     startApp("#/integrations/model-runtimes", serve());
     const chat = await row("Chat");

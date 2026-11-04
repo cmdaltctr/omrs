@@ -59,7 +59,9 @@ def _no_local_runtime(monkeypatch) -> None:
         raise ValueError("failed to load ONNX Runtime (stubbed)")
 
     monkeypatch.setattr(ocr_routing, "local_ocr", _missing)
-    monkeypatch.setattr(ocr_routing, "find_blank_pages", lambda file, pages: frozenset())
+    monkeypatch.setattr(
+        "omrs.integrations.pdf.blank_pages.find_blank_pages", lambda file, pages: frozenset()
+    )
     # The index identity probes the local model once per process; skip it too.
     monkeypatch.setattr(
         "omrs.integrations.pdf.page_routing.resolve_local_model_identity", lambda settings: None

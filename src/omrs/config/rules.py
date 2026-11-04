@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
+from ..core import reading_parts as _reading_parts
 from ..core.settings import OCR_NON_LATIN_MODES, OCR_ROUTING_UNITS, PROVIDER_SECRET_FIELDS
 
 METADATA_EXTRACTION_MODES = (
@@ -91,8 +92,9 @@ FILE_ONLY: dict[str, tuple[str, int, int]] = {
 
 #: Names ``pdf_reader`` accepts. ``Settings`` warns and falls back to ``auto`` for
 #: any other name, so ``pdf_reader`` is not in :data:`ACCEPTED` (the file reader
-#: would then drop a bad value and use the code default instead).
-PDF_READER_NAMES: tuple[str, ...] = ("auto", "liteparse", "pdf_inspector", "pypdfium2", "pypdf")
+#: would then drop a bad value and use the code default instead). Derived from the
+#: PDF reader descriptors (change local-ocr-backends, design D15).
+PDF_READER_NAMES: tuple[str, ...] = ("auto", *_reading_parts.names(_reading_parts.PDF_READERS))
 
 #: Engine names are folder names. ``config/`` cannot import ``integrations/``, so a
 #: test pins this to ``integrations.ocr_worker.routes._ENGINE_NAME_RE``.
@@ -134,15 +136,25 @@ def replaced_key_reason(key: str) -> str:
     return f"Replaced by {new}. Write {new} instead."
 
 
+#: The flat settings of the page rules, in rule order (change local-ocr-backends, D15).
+PAGE_RULE_KEYS: tuple[str, ...] = tuple(
+    field.name for rule in _reading_parts.PAGE_RULES for field in rule.settings
+)
+
+#: The ordered list of local OCR backends (change local-ocr-backends, design D8).
+LOCAL_BACKENDS_KEY = "ocr_local_backends"
+
 #: The keys of Settings > Document reading, in the order of the HTTP contract.
-#: The three old single-value keys left it: the list keys replace them.
+#: The three old single-value keys left it: the list keys replace them. The page
+#: rule keys come from the descriptors. The local OCR backend list comes last:
+#: the page groups the rows itself, so the order here only fixes the contract.
 DOCUMENT_READING_KEYS: tuple[str, ...] = (
     "pdf_readers",
     "ocr_fallback_enabled",
     "ocr_routing_unit",
     "ocr_engines",
-    "ocr_maths_routing_enabled",
-    "ocr_non_latin_routing",
+    *PAGE_RULE_KEYS,
+    LOCAL_BACKENDS_KEY,
 )
 _READING_BOOLEANS = frozenset({"ocr_fallback_enabled", "ocr_maths_routing_enabled"})
 _READING_ENGINES = frozenset({"ocr_engine_primary", "ocr_engine_fallback"})
@@ -151,11 +163,13 @@ BOOL_RULE = "The value must be true or false."
 
 
 def reading_list_problem(key: str, value: Any) -> str | None:
-    """Return the write rule that a reader or engine list *value* breaks, or ``None``.
+    """Return the write rule that a reader, engine or local backend list *value* breaks.
 
     A list holds known names, at least one, with no repeat. A reader list may
     not hold ``auto``, because the order is the choice. An engine name follows
-    :data:`ENGINE_NAME_RULE`. The rule never holds *value*.
+    :data:`ENGINE_NAME_RULE`. A local backend list follows
+    :func:`local_backend_problem`. The rule never holds *value*; ``None`` means
+    the value is fine.
     """
     if not isinstance(value, (list, tuple)):
         return LIST_TYPE_RULE
@@ -168,12 +182,75 @@ def reading_list_problem(key: str, value: Any) -> str | None:
     if len(set(value)) != len(value):
         return LIST_DUPLICATE_RULE
     if key == "pdf_readers":
-        return None if all(item in KNOWN_READER_NAMES for item in value) else READER_LIST_RULE
+        return _reader_list_problem(value)
+    if key == LOCAL_BACKENDS_KEY:
+        return local_backend_problem(value, _discovered_backends(), _broken_backends())
     named = all(
         len(item) <= MAX_ENGINE_NAME_CHARS and re.fullmatch(ENGINE_NAME_PATTERN, item)
         for item in value
     )
     return None if named else ENGINE_NAME_RULE
+
+
+def _discovered_backends() -> tuple[_reading_parts.LocalOcrBackendDescriptor, ...]:
+    """Return the local OCR backends that compose discovered (design D11), at call time."""
+    found = _reading_parts.discovered(_reading_parts.KIND_LOCAL_OCR_BACKEND)
+    return tuple(d for d in found if isinstance(d, _reading_parts.LocalOcrBackendDescriptor))
+
+
+def _broken_backends() -> tuple[str, ...]:
+    """Return the discovered local OCR backends that failed to load, at call time."""
+    return tuple(_reading_parts.broken(_reading_parts.KIND_LOCAL_OCR_BACKEND))
+
+
+def _reader_list_problem(value: Collection[str]) -> str | None:
+    """Return the rule a reader list breaks: built-in names first, then discovered readers.
+
+    With nothing discovered the rule is :data:`READER_LIST_RULE`, as before.
+    """
+    found = tuple(d.name for d in _reading_parts.discovered(_reading_parts.KIND_PDF_READER))
+    known = (*KNOWN_READER_NAMES, *found)
+    broken = _reading_parts.broken(_reading_parts.KIND_PDF_READER)
+    if all(item in known or item in broken for item in value):
+        return None
+    return f"The value must be one of: {', '.join(known)}." if found else READER_LIST_RULE
+
+
+def local_backend_problem(
+    names: Collection[str],
+    extra: Collection[_reading_parts.LocalOcrBackendDescriptor] = (),
+    broken: Collection[str] = (),
+) -> str | None:
+    """Return the rule a local OCR backend list breaks, or ``None`` (design D8).
+
+    Each name must name a backend descriptor with a calibrated cut. A backend
+    without a cut is never an accepted value. The rule never holds a name.
+
+    Args:
+        names: The ``ocr_local_backends`` list.
+        extra: More descriptors to accept beside the built-in table. Discovery
+            (group 5, design D11) passes discovered backends here.
+        broken: Names of discovered backends that failed to load. They are
+            accepted and stay off (review of PR #168, finding 4).
+
+    Returns:
+        The rule, with the accepted values, or ``None`` when every name is fine.
+    """
+    table = {d.name: d for d in (*_reading_parts.LOCAL_OCR_BACKENDS, *extra)}
+    accepted = ", ".join(name for name, d in table.items() if d.min_confidence is not None)
+    if not names:
+        return LIST_EMPTY_RULE
+    for name in names:
+        if name in broken and name not in table:
+            continue
+        if name not in table:
+            return f"Each name must be a local OCR backend. Accepted values: {accepted}."
+        if table[name].min_confidence is None:
+            return (
+                "A backend with no calibrated confidence cut cannot be listed. "
+                f"Accepted values: {accepted}."
+            )
+    return None
 
 
 def ignored_old_keys(present: Collection[str]) -> list[tuple[str, str]]:
@@ -212,7 +289,7 @@ def document_reading_problem(key: str, value: Any) -> str | None:
     """
     if value is None or not (key in DOCUMENT_READING_KEYS or key in REPLACED_READING_KEYS):
         return None
-    if key in READING_LIST_KEYS:
+    if key in READING_LIST_KEYS or key == LOCAL_BACKENDS_KEY:
         return reading_list_problem(key, value)
     if key in _READING_BOOLEANS:
         return None if isinstance(value, bool) else BOOL_RULE
@@ -281,6 +358,8 @@ def accepted_problem(path: str, value: Any) -> str | None:
     """
     if path in READING_LIST_KEYS and not value:
         return LIST_EMPTY_RULE
+    if path == LOCAL_BACKENDS_KEY:
+        return local_backend_problem(value, _discovered_backends(), _broken_backends())
     accepted = ACCEPTED.get(path)
     if accepted is not None and value not in accepted:
         return f"The value must be one of: {', '.join(accepted)}."

@@ -14,7 +14,10 @@ from omrs.integrations.pdf.page_routing import PageResult, merge_pages
 
 
 def _result(page: int, text: str, source: str) -> PageResult:
-    return PageResult(page=page, text=text, source=source)
+    # The page unit gives every worker page the answering engine's backend_id
+    # (tests/unit/test_page_unit_producers.py), so the merge has no worker default.
+    producer = "paddleocr_vl" if source == "worker" else None
+    return PageResult(page=page, text=text, source=source, producer=producer)
 
 
 def test_pages_join_in_page_order_with_a_blank_line():

@@ -246,7 +246,8 @@ def test_all_five_keys_in_one_save(harness: Harness, client: TestClient) -> None
     response = put(client, values)
     assert response.status_code == 200, response.text
     saved = {key: row["saved"] for key, row in rows(response.json()).items()}
-    assert saved == values
+    # ocr_local_backends (local-ocr-backends) is not in this save: its row stays unset.
+    assert saved == {**values, "ocr_local_backends": None}
 
 
 def test_a_list_save_removes_the_old_keys_in_the_same_write(

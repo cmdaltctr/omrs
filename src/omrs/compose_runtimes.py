@@ -8,7 +8,7 @@ answers with an adapted lease of the ``chat`` or ``embeddings`` runtime, or
 runtime only when ``llamacpp_classify_url`` is blank.
 
 The module also lists the runtimes in force for ``GET /v1/runtimes``: Chat,
-embeddings and one OCR runtime for each OCR route whose engine declares one.
+embeddings and one OCR runtime for each engine in the OCR engine list that declares one.
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING, Any, TypeVar
 
 from .compose_runtime_manager import close_runtime_manager, runtime_manager
 from .core import runtime_gate
+from .core.reading_lists import engine_list
 from .core.runtime_gate import GateRefused, Role, RuntimeGate
 from .integrations.llamacpp_runtime import (
     DeclaredFile,
@@ -40,9 +41,6 @@ if TYPE_CHECKING:
     from .config import Settings
 
 T = TypeVar("T")
-
-#: The OCR route settings, in the order the list shows them.
-OCR_ROUTE_SETTINGS = ("ocr_engine_primary", "ocr_engine_fallback")
 
 
 def reset() -> None:
@@ -196,7 +194,7 @@ def install_gates(provider_source: Callable[[], ProviderValues] | None) -> None:
 
 
 def _ocr_runtimes(settings: Any) -> dict[str, tuple[RuntimeSpec, list[str]]]:
-    """Return the OCR runtimes of the routes in force, keyed by runtime id."""
+    """Return the OCR runtimes of the engines in ``ocr_engines``, keyed by runtime id."""
     from .integrations.ocr_worker.manifest import declared_runtime
     from .integrations.ocr_worker.routes import engine_cache_dir
 
@@ -205,12 +203,11 @@ def _ocr_runtimes(settings: Any) -> dict[str, tuple[RuntimeSpec, list[str]]]:
     if not workers:
         return found
     external = str(getattr(settings, "ocr_runtime_url", "") or "").strip()
-    for setting in OCR_ROUTE_SETTINGS:
-        name = str(getattr(settings, setting, "") or "").strip()
+    for entry in engine_list(settings):
+        name = str(entry or "").strip()
         if not name or "/" in name or name in {".", ".."}:
             continue
         if f"ocr-{name}" in found:
-            found[f"ocr-{name}"][1].append(setting)
             continue
         folder = Path(workers).expanduser() / "engines" / name
         try:
@@ -228,7 +225,7 @@ def _ocr_runtimes(settings: Any) -> dict[str, tuple[RuntimeSpec, list[str]]]:
             continue
         if external:
             spec = replace(spec, mode="external", url_base=external)
-        found[spec.id] = (spec, [setting])
+        found[spec.id] = (spec, ["ocr_engines"])
     return found
 
 

@@ -35,6 +35,7 @@ DEFAULTS = {
     "ocr_engines": ["dots-mocr", "paddleocr-vl"],
     "ocr_maths_routing_enabled": True,
     "ocr_non_latin_routing": "off",
+    "ocr_local_backends": ["pp-ocrv6-small"],
 }
 OPTIONS = {"pypdf": None, "pypdfium2": "The package 'pypdfium2' is not installed."}
 
@@ -88,7 +89,14 @@ def harness(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Harness:
 def test_five_rows_in_key_order_with_defaults(harness: Harness) -> None:
     harness.launch()
     body = harness.body()
-    assert set(body) == {"revision", "settings", "pdf_readers", "pdf_reader_in_use", "ocr"}
+    assert set(body) == {
+        "revision",
+        "settings",
+        "pdf_readers",
+        "pdf_reader_in_use",
+        "local_ocr_backends",
+        "ocr",
+    }
     assert [row["key"] for row in body["settings"]] == list(DOCUMENT_READING_KEYS)
     assert body["revision"] == "absent"
     for row in body["settings"]:

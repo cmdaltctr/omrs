@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from ...provider_values import classification_url
 from ...runtime_gate import http_clients
-from ...settings import classification_url
 from .connection import (
     ConnectionDescriptor,
     ConnectionField,
