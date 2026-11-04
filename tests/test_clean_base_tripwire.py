@@ -259,7 +259,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # Read document step option, identity, routing and fingerprint. No fastapi needed.
 # +4 (2026-11-04, same change, PR 167 review, by test-ID diff, 4 added, 0 removed):
 # local fallback for direct non-Latin pages the engine cannot read. No fastapi.
-_BASE_EXECUTED = 10072
+# +45 (2026-11-04, local-ocr-backends task 4.2, by test-ID diff, 45 added, 0 removed):
+# test_experiment_46_local_ocr_backends.py. No fastapi needed.
+_BASE_EXECUTED = 10117
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

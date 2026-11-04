@@ -149,8 +149,11 @@
       "needs_download": true,
       "size": "about 76 MB (vendor figure)",
       "licence": "modified OpenRAIL-M; the operator reads the full licence before any run",
-      "version": "fill before first run",
-      "weights_sha256": "fill before first run"
+      "version": "indra-ocr 1.1.2 (PyPI), onnxruntime 1.31.1, Python 3.12.15; weights datalab-to/indra-ocr tag v1.1.0, snapshot bd02167fdf2005a19962cc15188f8496a2c87d3b",
+      "weights_sha256": "1a9ef1fc65c0546f63b89eed936e524077ba94dcd1d7689de89265b158b9324f",
+      "weights_sha256_method": "SHA-256 of the sorted '<file sha>  <name>' lines of the 12 downloaded files (76.1 MB)",
+      "approved_on": "2026-11-04",
+      "licence_read_by_operator": "2026-11-04 (operator statement in session)"
     },
     {
       "id": "D",
@@ -166,8 +169,9 @@
       "needs_download": true,
       "size": "OS model; a few MB of Python packages",
       "licence": "OS licence; ocrmac MIT",
-      "version": "fill before first run",
-      "weights_sha256": "not applicable (OS-provided)"
+      "version": "ocrmac 1.0.1, pyobjc-framework-Vision 13.0, Python 3.12.15, macOS 27.2 (26B123), Apple M5 Pro, 64 GB",
+      "weights_sha256": "not applicable (OS-provided)",
+      "approved_on": "2026-11-04"
     }
   ],
   "frozen": [
@@ -190,20 +194,21 @@
     },
     {
       "file": "experiments/33-ocr-routing-natural-positive-2026-09-17/output/.local_ocr_text/",
-      "tree_sha256": "fill before first run (precondition P1)",
+      "tree_sha256": "22405b097529f4bdbff697a86f1a2986301df5f72e5d9650dd597a8737ef2489",
       "files": 464
     },
     {
       "file": "experiments/33-ocr-routing-natural-positive-2026-09-17/output/.pages/",
-      "tree_sha256": "fill before first run (precondition P1)"
+      "tree_sha256": "3f51833ea9d7efb1def413ffd6c23cd30d57297dcb06522062c26c40ca07ca0f",
+      "files": 3369
     },
     {
       "file": "experiments/37-dots-mocr-routing-acceptance-2026-09-30/corpus/exp33_transcripts_split/",
-      "tree_sha256": "fill before first run (precondition P1)"
+      "tree_sha256": "0e7b99fc466b8f02a11f480de529a7885b703737543fea21dc2fad67f6b9b163"
     },
     {
       "file": "experiments/46-local-ocr-backends-2026-11-04/pages.json",
-      "sha256": "fill after the sample step and before the first arm runs (not an amendment)"
+      "sha256": "e1fd1862df29f81207f52fa62ad1791691bc3c80460ac20634dba9abd18328f0"
     }
   ],
   "input_locations": "Inputs are read only. Repository paths come first and the local data store second (<data store>/experiments/<experiment folder>/). Gitignored outputs live in the data store: the stored local OCR text, the page images, the reference transcriptions and the dots.mocr text. The runner reads the first copy it finds and checks its SHA-256 against this file.",

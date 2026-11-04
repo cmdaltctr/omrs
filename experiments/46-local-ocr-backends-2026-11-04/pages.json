@@ -1,0 +1,1379 @@
+{
+ "seed": 46,
+ "pages": [
+  {
+   "doc": "io01",
+   "page": 2,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 3,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 4,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 5,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 6,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 7,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 8,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 9,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 10,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 11,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 12,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 13,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 14,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 15,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 16,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 17,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 18,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 19,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 20,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 21,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 22,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 23,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 24,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 25,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 26,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 27,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 28,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 29,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 30,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 31,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 32,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 33,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 34,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 35,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 36,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 37,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 38,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 39,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 40,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 41,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 42,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 43,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 44,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 45,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 46,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 47,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 48,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io01",
+   "page": 49,
+   "script": "devanagari",
+   "stratum": null
+  },
+  {
+   "doc": "io02",
+   "page": 1,
+   "script": "arabic",
+   "stratum": null
+  },
+  {
+   "doc": "io02",
+   "page": 2,
+   "script": "arabic",
+   "stratum": null
+  },
+  {
+   "doc": "io02",
+   "page": 3,
+   "script": "arabic",
+   "stratum": null
+  },
+  {
+   "doc": "io02",
+   "page": 4,
+   "script": "arabic",
+   "stratum": null
+  },
+  {
+   "doc": "io02",
+   "page": 5,
+   "script": "arabic",
+   "stratum": null
+  },
+  {
+   "doc": "io02",
+   "page": 6,
+   "script": "arabic",
+   "stratum": null
+  },
+  {
+   "doc": "io02",
+   "page": 7,
+   "script": "arabic",
+   "stratum": null
+  },
+  {
+   "doc": "io02",
+   "page": 8,
+   "script": "arabic",
+   "stratum": null
+  },
+  {
+   "doc": "io02",
+   "page": 9,
+   "script": "arabic",
+   "stratum": null
+  },
+  {
+   "doc": "io02",
+   "page": 10,
+   "script": "arabic",
+   "stratum": null
+  },
+  {
+   "doc": "io02",
+   "page": 11,
+   "script": "arabic",
+   "stratum": null
+  },
+  {
+   "doc": "io02",
+   "page": 12,
+   "script": "arabic",
+   "stratum": null
+  },
+  {
+   "doc": "io02",
+   "page": 13,
+   "script": "arabic",
+   "stratum": null
+  },
+  {
+   "doc": "io02",
+   "page": 14,
+   "script": "arabic",
+   "stratum": null
+  },
+  {
+   "doc": "io02",
+   "page": 15,
+   "script": "arabic",
+   "stratum": null
+  },
+  {
+   "doc": "io02",
+   "page": 16,
+   "script": "arabic",
+   "stratum": null
+  },
+  {
+   "doc": "io03",
+   "page": 1,
+   "script": "arabic",
+   "stratum": null
+  },
+  {
+   "doc": "io03",
+   "page": 2,
+   "script": "arabic",
+   "stratum": null
+  },
+  {
+   "doc": "io03",
+   "page": 3,
+   "script": "arabic",
+   "stratum": null
+  },
+  {
+   "doc": "io03",
+   "page": 4,
+   "script": "arabic",
+   "stratum": null
+  },
+  {
+   "doc": "io03",
+   "page": 5,
+   "script": "arabic",
+   "stratum": null
+  },
+  {
+   "doc": "io04",
+   "page": 2,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io04",
+   "page": 3,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io04",
+   "page": 4,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io04",
+   "page": 5,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io04",
+   "page": 6,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io04",
+   "page": 9,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io04",
+   "page": 10,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io04",
+   "page": 15,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io04",
+   "page": 16,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io04",
+   "page": 19,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io04",
+   "page": 21,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io04",
+   "page": 22,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io04",
+   "page": 24,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io04",
+   "page": 26,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io04",
+   "page": 31,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io04",
+   "page": 34,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io04",
+   "page": 35,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io04",
+   "page": 36,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io04",
+   "page": 38,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io04",
+   "page": 41,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io04",
+   "page": 45,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io04",
+   "page": 46,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io04",
+   "page": 51,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io04",
+   "page": 52,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io05",
+   "page": 3,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io05",
+   "page": 4,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io05",
+   "page": 5,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io05",
+   "page": 6,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io05",
+   "page": 7,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io05",
+   "page": 8,
+   "stratum": "print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 7,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 9,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 10,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 12,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 14,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 16,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 17,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 18,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 20,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 21,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 23,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 24,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 25,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 26,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 27,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 28,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 29,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 31,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 32,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 33,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 36,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 41,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 42,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 46,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 51,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 56,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 57,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 58,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 59,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 63,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 65,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 66,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 67,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 70,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io06",
+   "page": 72,
+   "stratum": "old_print",
+   "script": "latin"
+  },
+  {
+   "doc": "io07",
+   "page": 2,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 4,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 6,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 7,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 8,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 9,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 10,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 11,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 12,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 13,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 14,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 15,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 16,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 17,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 18,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 19,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 20,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 21,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 22,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 23,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 24,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 25,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 26,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 27,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 28,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 29,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 30,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 31,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 32,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 33,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 34,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 35,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 36,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 37,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 38,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 39,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 40,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 41,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 42,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 43,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 44,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 45,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 46,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 47,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 48,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 49,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 50,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 51,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 52,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 53,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 54,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 55,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 56,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 57,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 58,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 59,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 60,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 61,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 62,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "io07",
+   "page": 63,
+   "script": "bengali",
+   "stratum": null
+  },
+  {
+   "doc": "rf06",
+   "page": 1,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 3,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 4,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 11,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 15,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 19,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 27,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 29,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 31,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 33,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 37,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 44,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 45,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 46,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 48,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 50,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 61,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 63,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 64,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 65,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 67,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 73,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 85,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 87,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf06",
+   "page": 88,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf07",
+   "page": 4,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf07",
+   "page": 6,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf07",
+   "page": 9,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf07",
+   "page": 10,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf07",
+   "page": 11,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf07",
+   "page": 13,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf07",
+   "page": 27,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf07",
+   "page": 37,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf07",
+   "page": 51,
+   "stratum": "handwriting",
+   "script": "latin"
+  },
+  {
+   "doc": "rf07",
+   "page": 55,
+   "stratum": "handwriting",
+   "script": "latin"
+  }
+ ]
+}
