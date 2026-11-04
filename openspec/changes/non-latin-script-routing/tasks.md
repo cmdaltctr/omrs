@@ -17,18 +17,18 @@ Code tasks are tests first: write the test, run it, confirm it fails, then chang
 
 ## 3. Studio, contract and Settings page
 
-- [ ] 3.1 Tests first: `ReadParams` accepts `ocr_non_latin_routing`, refuses `arabic` with `invalid_parameter`, and records the value in the step identity. Change `openapi.yaml` first for the document-reading key and confirm the conformance tests fail. Update `docs/guides/pipelines.md`. Verify: `uv run pytest tests/unit -k "openapi or read_params or document_reading" -q` passes.
+- [x] 3.1 Tests first: `ReadParams` accepts `ocr_non_latin_routing`, refuses `arabic` with `invalid_parameter`, and records the value in the step identity. Change `openapi.yaml` first for the document-reading key and confirm the conformance tests fail. Update `docs/guides/pipelines.md`. Verify: `uv run pytest tests/unit -k "openapi or read_params or document_reading" -q` passes.
 - [ ] 3.2 Load the `omrs-design` skill. Tests first (Vitest): the Document reading row shows the three choices and the scan note; Studio shows the option with Inherit. Check at 1280 px and 390 px in a browser (warn the user before starting a server; scratch config folder, free port). Verify: `npm run lint`, `npm run typecheck` and `npm test` pass in `web/`; no horizontal scroll at 390 px.
 
 ## 4. Experiment before any default
 
 - [x] 4.1 Reserve the next free experiment number and write the protocol with the `s-experiment` skill (format `omrs-experiment/1`). Inputs, read only: Experiment 33 `labels.json`, stored local OCR outputs (`output/.local_ocr_text`, `output/local_ocr/pages.json`) and Experiment 37 engine outputs for `io01`, `io02`, `io03`, `io07` and every Latin page. No model run, no download. Pre-register in `plan.json`: (a) pages with a pre-OCR verdict, (b) post-local verdicts per document, (c) false positives on Latin pages, (d) local seconds saved by `always`, (e) non-Latin pages kept by the 0.9 cut. Verify: `plan.json` is committed before any analysis output exists.
-- [ ] 4.2 Run the analysis with the shipped detector code and write `report.md`. Default rule, fixed in the protocol: propose `detect` as default only if (e) finds at least one non-Latin page that `detect` escalates and (c) is zero; otherwise keep `off`. State the gap: the corpus holds no born-digital non-Latin PDF with flagged pages. Verify: the report gives counts per document, the rule outcome, and the limitation; `experiment.json` validates.
+- [x] 4.2 Run the analysis with the shipped detector code and write `report.md`. Default rule, fixed in the protocol: propose `detect` as default only if (e) finds at least one non-Latin page that `detect` escalates and (c) is zero; otherwise keep `off`. State the gap: the corpus holds no born-digital non-Latin PDF with flagged pages. Verify: the report gives counts per document, the rule outcome, and the limitation; `experiment.json` validates.
 
 ## 5. Integration checks
 
 - [ ] 5.1 Run `./scripts/local_ci.sh`. Verify: no `SKIPPED`, every step passes, including the file-size ceiling and the tripwire.
-- [ ] 5.2 Run `openspec validate non-latin-script-routing --strict` and `openspec validate --all --strict`. Verify: both pass.
+- [x] 5.2 Run `openspec validate non-latin-script-routing --strict` and `openspec validate --all --strict`. Verify: both pass.
 
 ## Workflow follow-up
 

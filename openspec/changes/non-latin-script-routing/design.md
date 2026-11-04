@@ -16,10 +16,10 @@ See proposal.md for the why.
 
 | PDF | Script | Type | Pages flagged | Flagged Markdown | Fonts | Text items, pages 1 to 3 | `/Lang` |
 | --- | --- | --- | ---: | ---: | --- | --- | --- |
-| `io01` | Bengali | scanned | 49 of 49 | 0 chars | none | 20 items, 402 Latin letters | none |
+| `io01` | Devanagari | scanned | 49 of 49 | 0 chars | none | 20 items, 402 Latin letters | none |
 | `io02` | Arabic | scanned | 16 of 16 | 0 chars | none | 3 items, 21 Latin letters | none |
 | `io03` | Arabic | scanned | 5 of 5 | 0 chars | none | 3 items, 21 Latin letters | none |
-| `io07` | Devanagari | scanned | 66 of 66 | 0 chars | none | 3 items, 21 Latin letters | none |
+| `io07` | Bengali | scanned | 66 of 66 | 0 chars | none | 3 items, 21 Latin letters | none |
 
 The text items look like a library stamp, watermark or catalogue text, not page text. They are all Latin, so on `io01` the detector would give a Latin verdict and keep the page on the local tier, which is the safe outcome. Stored Experiment 33 local OCR outputs (task 6.7) give a preliminary view of a post-local check: pages whose local output is mostly non-Latin letters: `io07` 59 of 60, `io01` 16 of 48, `io02` 1 of 14, `io03` 0 of 5. Local confidence was below 0.9 on all 129 pages, so the current cut already escalates every one. These counts come from a quick script, not a protocol. The experiment in task group 4 repeats them properly.
 
