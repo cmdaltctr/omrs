@@ -1,6 +1,6 @@
 # Tasks
 
-Code tasks are tests first: write the test, run it, confirm it fails, then change the code. No test contacts a real decision model: use `httpx.MockTransport` or a fake server. Update the pins in `tests/test_clean_base_tripwire.py` by test IDs after each group. Open Questions 1 to 4 were answered by the operator; Open Question 5 (router scope) is confirmed at the plan gate.
+Code tasks are tests first: write the test, run it, confirm it fails, then change the code. No test contacts a real decision model: use `httpx.MockTransport` or a fake server. Update the pins in `tests/test_clean_base_tripwire.py` by test IDs after each group. All design Open Questions are answered (design.md).
 
 ## 1. Settings maps
 
