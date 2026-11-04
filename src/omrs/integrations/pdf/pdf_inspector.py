@@ -23,8 +23,11 @@ by the integrations.
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
+
+from .chain import DEFAULT_TIERS, rescue_pages
 
 logger = logging.getLogger(__name__)
 
@@ -45,7 +48,18 @@ class PdfInspectorReader:
     route on them (e.g. scanned PDFs to an OCR path). When the per-page
     result is unusable, the whole-document markdown is emitted as one
     document without page keys.
+
+    Args:
+        tiers: Registered reader names that retry the file, in order, when
+            pdf-inspector classifies it ``text_based`` yet extracts nothing
+            (ADR-066). The factory passes the readers that follow
+            ``pdf_inspector`` in the reader list. A bare adapter keeps the
+            ADR-066 chain, LiteParse then pypdf. An empty tuple runs no retry.
     """
+
+    def __init__(self, tiers: Sequence[str] = DEFAULT_TIERS) -> None:
+        """Keep the retry tier names; the adapter itself names no reader."""
+        self._tiers = tuple(tiers)
 
     def load_data(self, file: Path, *args: Any, **kwargs: Any) -> list:
         """Parse a PDF into page documents via pdf-inspector.
@@ -60,15 +74,16 @@ class PdfInspectorReader:
             whole-document markdown has text, one document with that
             markdown and no page keys. When pdf-inspector classifies the
             file ``text_based`` yet extracts nothing from a non-empty page
-            count, the documents are the fallback chain's recovered pages
-            instead — liteparse first, pypdf last (ADR-066). When nothing
+            count, the documents are the retry tiers' recovered pages
+            instead — in tier order, by default liteparse then pypdf
+            (ADR-066). When nothing
             has text, one document with empty text and no page keys, so
             callers observe the classification.
 
         Raises:
             ImportError: If ``pdf_inspector`` is not installed.
-            Exception: Whatever the final pypdf tier raises — a file that
-                opens in pdf-inspector but crashes pypdf is genuinely
+            Exception: Whatever the final retry tier raises — a file that
+                opens in pdf-inspector but crashes that tier is genuinely
                 broken input for the per-file error boundary.
         """
         try:
@@ -112,17 +127,17 @@ class PdfInspectorReader:
         # non-empty document is a contradiction — the classifier saw a
         # text layer the extractor failed to read (WinAnsi TrueType
         # without /ToUnicode; IA GlyphLessFont; TDR-024). Retry through
-        # the tiered fallback chain — liteparse first (extraction-only,
-        # fastest rescue), pypdf last (always available) — before
-        # emitting zero characters (ADR-066; unqualified design numbers
-        # below are D1–D5 of change tiered-reader-fallback-chain).
+        # the tiers that follow pdf-inspector in the reader list (by
+        # default liteparse, then pypdf) before emitting zero characters
+        # (ADR-066; unqualified design numbers below are D1–D5 of change
+        # tiered-reader-fallback-chain).
         if result.pdf_type == "text_based" and markdown == "" and result.page_count > 0:
-            recovered, fallback_backend = _rescue_pages(file)
+            recovered, fallback_backend = rescue_pages(file, self._tiers)
             if not recovered:
                 logger.warning(
                     "pdf-inspector extracted no text from %s despite a "
-                    "text_based classification, and both fallback tiers "
-                    "recovered nothing — emitting the flagged "
+                    "text_based classification, and no fallback tier "
+                    "recovered text — emitting the flagged "
                     "evidence unchanged for OCR routing",
                     file.name,
                 )
@@ -210,54 +225,6 @@ def _extract_pages(pdf_inspector: Any, file: Path) -> Any | None:
             type(exc).__name__,
         )
         return None
-
-
-def _rescue_pages(file: Path) -> tuple[list[tuple[int, str, str]], str | None]:
-    """Run the silent-empty fallback chain and keep one entry per recovered page.
-
-    Change pdf-inspector-page-provenance, design D4: each recovered page
-    stays its own document. liteparse pages keep their own ``page`` and
-    ``page_label`` (already physical and 1-based). pypdf pages are numbered
-    by their position in the file, counted before empty pages are dropped,
-    because its own label is the PDF's logical label (``"iii"``, ``"365"``)
-    and one reader must give one label format.
-
-    Args:
-        file: Path to the PDF file.
-
-    Returns:
-        ``([(page, page_label, text), ...], tier)`` for the first tier that
-        recovers text, or ``([], None)`` when neither does.
-    """
-    from .registry import get as get_reader
-
-    # Tier 1 — liteparse, constructed extraction-only (design D2: an
-    # operator enabling liteparse OCR must not turn the fallback chain
-    # into an OCR path); any failure hands over to pypdf (D3).
-    try:
-        documents = get_reader("liteparse")(ocr_enabled=False, num_workers=None).load_data(file)
-        recovered = []
-        for index, doc in enumerate(documents):
-            page = int(doc.metadata.get("page", index + 1))
-            label = str(doc.metadata.get("page_label", page))
-            recovered.append((page, label, doc.text or ""))
-        recovered = [entry for entry in recovered if entry[2].strip()]
-        if recovered:
-            return recovered, "liteparse"
-    except Exception:  # noqa: BLE001 - a tier failure must never block the next tier
-        logger.debug("liteparse fallback tier failed for %s; handing over", file.name)
-    # Tier 2 — pypdf: always available; its exceptions propagate to the
-    # per-file error boundary (D3) — a file that opens in pdf-inspector
-    # but crashes pypdf is genuinely broken input. Number by position
-    # first, then drop empty pages, so page 3 stays page 3.
-    numbered = [
-        (index + 1, str(index + 1), doc.text or "")
-        for index, doc in enumerate(get_reader("pypdf")().load_data(file))
-    ]
-    recovered = [entry for entry in numbered if entry[2].strip()]
-    if recovered:
-        return recovered, "pypdf"
-    return [], None
 
 
 def _complete_ocr_pages(file: Path, result: Any, scan: Any | None) -> list:

@@ -24,7 +24,7 @@ from tests.unit.test_web_openapi_conformance_support import (  # noqa: E402
 
 from omrs import capabilities  # noqa: E402
 from omrs.config import Settings, provenance  # noqa: E402
-from omrs.config.rules import DOCUMENT_READING_KEYS  # noqa: E402
+from omrs.config.rules import DOCUMENT_READING_KEYS, OLD_READING_KEYS  # noqa: E402
 from omrs.config.settings_file import file_revision, read_settings_file  # noqa: E402
 from omrs.config.user_config import parse_jsonc  # noqa: E402
 from omrs.transports.api.app import create_app  # noqa: E402
@@ -36,7 +36,8 @@ from omrs.transports.api.security import AccessPolicy  # noqa: E402
 
 URL = "/v1/settings/document-reading"
 OPTIONS = {"pypdf": None, "pypdfium2": "The package 'pypdfium2' is not installed."}
-VARIABLES = tuple(key.upper() for key in DOCUMENT_READING_KEYS) + ("OCR_WORKERS_DIR",)
+OLD_KEYS = tuple(old for olds in OLD_READING_KEYS.values() for old in olds)
+VARIABLES = tuple(key.upper() for key in (*DOCUMENT_READING_KEYS, *OLD_KEYS)) + ("OCR_WORKERS_DIR",)
 SUBMITTED = "zz-submitted-zz"
 
 
@@ -127,7 +128,7 @@ def test_put_refuses_a_bearer_credential(harness: Harness, client: TestClient) -
     harness.launch()
     client.cookies.clear()
     headers = {**ORIGIN, **bearer(harness.policy, "read", "run", "graph")}
-    body = {"values": {"pdf_reader": "pypdf"}, "revision": "absent"}
+    body = {"values": {"pdf_readers": ["pypdf"]}, "revision": "absent"}
     assert client.put(URL, json=body, headers=headers).status_code == 403
     assert harness.text() == ""
 
@@ -147,18 +148,22 @@ def test_read_the_section(harness: Harness, client: TestClient) -> None:
 
 
 def test_value_saved_but_not_yet_in_force(harness: Harness, client: TestClient) -> None:
-    harness.write('{ "pdf_reader": "auto" }')
+    harness.write('{ "pdf_readers": ["pypdf"] }')
     harness.launch()
-    harness.write('{ "pdf_reader": "liteparse" }')
-    row = rows(client.get(URL).json())["pdf_reader"]
-    assert (row["value"], row["saved"], row["restart_pending"]) == ("auto", "liteparse", True)
+    harness.write('{ "pdf_readers": ["liteparse", "pypdf"] }')
+    row = rows(client.get(URL).json())["pdf_readers"]
+    assert (row["value"], row["saved"], row["restart_pending"]) == (
+        ["pypdf"],
+        ["liteparse", "pypdf"],
+        True,
+    )
 
 
 def test_blank_saved_fallback_shows_as_not_set(harness: Harness, client: TestClient) -> None:
     # The file reader treats a blank value as not set, so the engine keeps its default.
     harness.write('{ "ocr_engine_fallback": "" }')
     harness.launch()
-    row = rows(client.get(URL).json())["ocr_engine_fallback"]
+    row = rows(client.get(URL).json())["ocr_engines"]
     assert row["saved"] is None
 
 
@@ -201,32 +206,40 @@ def test_save_a_boolean(harness: Harness, client: TestClient) -> None:
 
 
 def test_use_default_removes_the_key(harness: Harness, client: TestClient) -> None:
-    harness.write('// mine\n{ "ocr_engine_fallback": "my-engine" }\n')
+    harness.write('// mine\n{ "ocr_engines": ["dots-mocr", "my-engine"] }\n')
     harness.launch()
-    response = put(client, {"ocr_engine_fallback": None}, file_revision(harness.folder))
+    response = put(client, {"ocr_engines": None}, file_revision(harness.folder))
     assert response.status_code == 200, response.text
-    assert "ocr_engine_fallback" not in parse_jsonc(harness.text())
+    assert "ocr_engines" not in parse_jsonc(harness.text())
     assert harness.text().startswith("// mine\n")
 
 
 def test_unprovisioned_engine_is_allowed(harness: Harness, client: TestClient) -> None:
     harness.launch()
-    response = put(client, {"ocr_engine_primary": "my-engine"})
+    response = put(client, {"ocr_engines": ["my-engine"]})
     assert response.status_code == 200, response.text
-    assert parse_jsonc(harness.text())["ocr_engine_primary"] == "my-engine"
+    assert parse_jsonc(harness.text())["ocr_engines"] == ["my-engine"]
     engines = {engine["name"]: engine for engine in response.json()["ocr"]["engines"]}
     assert engines["my-engine"]["available"] is False
     assert engines["my-engine"]["reason"]
 
 
-def test_all_six_keys_in_one_save(harness: Harness, client: TestClient) -> None:
+def test_a_reader_that_is_not_installed_is_allowed_in_a_list(
+    harness: Harness, client: TestClient
+) -> None:
+    harness.launch()
+    response = put(client, {"pdf_readers": ["pypdfium2", "pypdf"]})
+    assert response.status_code == 200, response.text
+    assert parse_jsonc(harness.text())["pdf_readers"] == ["pypdfium2", "pypdf"]
+
+
+def test_all_five_keys_in_one_save(harness: Harness, client: TestClient) -> None:
     harness.launch()
     values = {
-        "pdf_reader": "pypdf",
+        "pdf_readers": ["pypdf", "liteparse"],
         "ocr_fallback_enabled": False,
         "ocr_routing_unit": "page",
-        "ocr_engine_primary": "a",
-        "ocr_engine_fallback": "b",
+        "ocr_engines": ["a", "b"],
         "ocr_maths_routing_enabled": False,
     }
     response = put(client, values)
@@ -235,18 +248,46 @@ def test_all_six_keys_in_one_save(harness: Harness, client: TestClient) -> None:
     assert saved == values
 
 
+def test_a_list_save_removes_the_old_keys_in_the_same_write(
+    harness: Harness, client: TestClient
+) -> None:
+    harness.write(
+        '// mine\n{ "pdf_reader": "pypdf", "ocr_engine_primary": "dots-mocr",'
+        ' "ocr_engine_fallback": "paddleocr-vl", "web_port": 9100 }\n'
+    )
+    harness.launch()
+    revision = file_revision(harness.folder)
+    response = put(client, {"pdf_readers": ["liteparse"], "ocr_engines": ["dots-mocr"]}, revision)
+    assert response.status_code == 200, response.text
+    saved = parse_jsonc(harness.text())
+    assert saved == {"pdf_readers": ["liteparse"], "ocr_engines": ["dots-mocr"], "web_port": 9100}
+    assert harness.text().startswith("// mine\n")
+
+
+def test_a_list_save_with_a_file_that_holds_one_old_key_removes_only_that_list_old_keys(
+    harness: Harness, client: TestClient
+) -> None:
+    harness.write('{ "pdf_reader": "pypdf", "ocr_engine_primary": "mine" }')
+    harness.launch()
+    put(client, {"pdf_readers": ["liteparse"]}, file_revision(harness.folder))
+    assert parse_jsonc(harness.text()) == {
+        "pdf_readers": ["liteparse"],
+        "ocr_engine_primary": "mine",
+    }
+
+
 # ── Refusals, in the D10 order ───────────────────────────────────────────
 
 
 @pytest.mark.parametrize(
     "body",
     [
-        {"values": {"pdf_reader": "pypdf"}},
-        {"values": {"pdf_reader": "pypdf"}, "revision": "absent", "extra": 1},
-        {"values": ["pdf_reader"], "revision": "absent"},
+        {"values": {"pdf_readers": ["pypdf"]}},
+        {"values": {"pdf_readers": ["pypdf"]}, "revision": "absent", "extra": 1},
+        {"values": ["pdf_readers"], "revision": "absent"},
         {"values": {}, "revision": "absent"},
         {"values": {f"k{i}": 1 for i in range(10)}, "revision": "absent"},
-        {"values": {"pdf_reader": "pypdf"}, "revision": "r" * 129},
+        {"values": {"pdf_readers": ["pypdf"]}, "revision": "r" * 129},
     ],
 )
 def test_1_body_shape(harness: Harness, client: TestClient, body: dict[str, Any]) -> None:
@@ -256,7 +297,7 @@ def test_1_body_shape(harness: Harness, client: TestClient, body: dict[str, Any]
     assert harness.text() == ""
 
 
-def test_2_key_outside_the_six(harness: Harness, client: TestClient) -> None:
+def test_2_key_outside_the_five(harness: Harness, client: TestClient) -> None:
     harness.launch()
     refused(
         put(client, {"embed_provider": "local"}),
@@ -276,14 +317,50 @@ def test_2_removed_fraction_key(harness: Harness, client: TestClient, key: str) 
     assert harness.text() == ""
 
 
+@pytest.mark.parametrize(
+    ("key", "list_key"),
+    [
+        ("pdf_reader", "pdf_readers"),
+        ("ocr_engine_primary", "ocr_engines"),
+        ("ocr_engine_fallback", "ocr_engines"),
+    ],
+)
+def test_2_old_key_is_refused_naming_the_list_key(
+    harness: Harness, client: TestClient, key: str, list_key: str
+) -> None:
+    harness.launch()
+    refused(
+        put(client, {key: "pypdf"}),
+        400,
+        f"{key}: Replaced by {list_key}. Write {list_key} instead.",
+    )
+    refused(
+        put(client, {key: None}), 400, f"{key}: Replaced by {list_key}. Write {list_key} instead."
+    )
+    assert harness.text() == ""
+
+
 def test_3_locked_key(
     harness: Harness, client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("PDF_READER", "pypdf")
+    monkeypatch.setenv("PDF_READERS", "pypdf")
     harness.launch()
-    message = "Remove PDF_READER from the environment or .env to edit it here."
-    refused(put(client, {"pdf_reader": "liteparse"}), 409, message)
-    refused(put(client, {"pdf_reader": None}), 409, message)
+    message = "Remove PDF_READERS from the environment or .env to edit it here."
+    refused(put(client, {"pdf_readers": ["liteparse"]}), 409, message)
+    refused(put(client, {"pdf_readers": None}), 409, message)
+    assert harness.text() == ""
+
+
+def test_3_locked_by_an_old_variable_names_that_variable(
+    harness: Harness, client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("OCR_ENGINE_PRIMARY", "x")
+    harness.launch()
+    refused(
+        put(client, {"ocr_engines": ["a"]}),
+        409,
+        "Remove OCR_ENGINE_PRIMARY from the environment or .env to edit it here.",
+    )
     assert harness.text() == ""
 
 
@@ -299,7 +376,7 @@ def test_4_one_bad_value_stops_the_whole_save(harness: Harness, client: TestClie
     harness.write('{ "web_port": 9100 }')
     harness.launch()
     before = harness.text()
-    response = put(client, {"ocr_fallback_enabled": False, "ocr_engine_primary": "../x"})
+    response = put(client, {"ocr_fallback_enabled": False, "ocr_engines": ["../x"]})
     refused(response, 400)
     assert harness.text() == before
 
@@ -307,19 +384,33 @@ def test_4_one_bad_value_stops_the_whole_save(harness: Harness, client: TestClie
 def test_4_blank_text(harness: Harness, client: TestClient) -> None:
     harness.launch()
     refused(
-        put(client, {"ocr_engine_fallback": ""}),
+        put(client, {"ocr_engines": ["dots-mocr", ""]}),
         400,
-        "ocr_engine_fallback: The value must not be blank. Send null to use the default.",
+        "ocr_engines: The value must not be blank. Send null to use the default.",
     )
 
 
-def test_5_uninstalled_reader(harness: Harness, client: TestClient) -> None:
+def test_4_unknown_reader(harness: Harness, client: TestClient) -> None:
     harness.launch()
     refused(
-        put(client, {"pdf_reader": "pypdfium2"}),
+        put(client, {"pdf_readers": ["pdfminer"]}),
         400,
-        "pdf_reader: This PDF reader is not installed. Install its package, then save again.",
+        "pdf_readers: The value must be one of: liteparse, pdf_inspector, pypdfium2, pypdf.",
     )
+    assert harness.text() == ""
+
+
+@pytest.mark.parametrize("value", [[], ["pypdf", "pypdf"], ["auto"], ["pypdf", ""], "pypdf"])
+def test_4_bad_reader_lists(harness: Harness, client: TestClient, value: Any) -> None:
+    harness.launch()
+    refused(put(client, {"pdf_readers": value}), 400)
+    assert harness.text() == ""
+
+
+def test_4_engine_name_with_a_path(harness: Harness, client: TestClient) -> None:
+    harness.launch()
+    message = refused(put(client, {"ocr_engines": ["../other"]}), 400)
+    assert message.startswith("ocr_engines: The engine name must start")
     assert harness.text() == ""
 
 
@@ -329,7 +420,7 @@ def test_6_stale_revision(harness: Harness, client: TestClient) -> None:
     revision = file_revision(harness.folder)
     harness.write('{ "web_port": 9100 }')
     refused(
-        put(client, {"pdf_reader": "pypdf"}, revision),
+        put(client, {"pdf_readers": ["pypdf"]}, revision),
         409,
         "omrs.jsonc changed on disk. Reload to see the new values.",
     )
@@ -339,7 +430,7 @@ def test_7_broken_file(harness: Harness, client: TestClient) -> None:
     harness.write('{ "pdf_reader": ')
     harness.launch()
     refused(
-        put(client, {"pdf_reader": "pypdf"}, file_revision(harness.folder)),
+        put(client, {"pdf_readers": ["pypdf"]}, file_revision(harness.folder)),
         409,
         "omrs.jsonc could not be read. Fix it, then save again.",
     )
@@ -355,14 +446,16 @@ def test_8_disk_refuses_the_write(
 
     monkeypatch.setattr(settings_file_write, "_write_atomically", refuse)
     harness.launch()
-    refused(put(client, {"pdf_reader": "pypdf"}), 500, "omrs.jsonc could not be written.")
+    refused(put(client, {"pdf_readers": ["pypdf"]}), 500, "omrs.jsonc could not be written.")
 
 
 @pytest.mark.parametrize(
     "values",
     [
+        {"pdf_readers": [SUBMITTED]},
         {"pdf_reader": SUBMITTED},
-        {"ocr_engine_primary": f"../{SUBMITTED}"},
+        {"ocr_engines": [f"../{SUBMITTED}"]},
+        {"ocr_engines": SUBMITTED},
         {"ocr_fallback_enabled": SUBMITTED},
         {"ocr_maths_routing_enabled": SUBMITTED},
         {"ocr_routing_unit": SUBMITTED},
@@ -379,7 +472,7 @@ def test_no_message_holds_the_submitted_value(
 
 def test_no_shape_message_holds_the_submitted_value(harness: Harness, client: TestClient) -> None:
     harness.launch()
-    body = {"values": {"pdf_reader": "x"}, "revision": SUBMITTED * 10}
+    body = {"values": {"pdf_readers": ["x"]}, "revision": SUBMITTED * 10}
     response = client.put(URL, json=body, headers=ORIGIN)
     assert response.status_code == 400 and SUBMITTED not in response.text
 
@@ -396,8 +489,9 @@ def test_responses_conform_to_the_contract(
     harness.write('{ "ocr_engine_fallback": "" }')
     harness.launch()
     body = check.check(client.get(URL), 200)
-    check.check(put(client, {"pdf_reader": "pypdf"}, body["revision"]), 200)
-    check.check(put(client, {"pdf_reader": "pypdf"}, "stale"), 409)
+    check.check(put(client, {"pdf_readers": ["pypdf"]}, body["revision"]), 200)
+    check.check(put(client, {"pdf_readers": ["pypdf"]}, "stale"), 409)
+    check.check(put(client, {"pdf_reader": "pypdf"}), 400)
     check.check(put(client, {"ocr_routing_unit": "page"}), 409)
     check.check(put(client, {"embed_provider": "x"}), 400)
     check.check(client.put(URL, json={"values": {}}, headers=ORIGIN), 400)

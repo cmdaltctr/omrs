@@ -57,7 +57,7 @@ def test_no_workers_folder_gives_not_configured(effective_settings: Any) -> None
     item = _by_name(rc.ocr_engine_items(settings))["dots-mocr"]
 
     assert item.status == "not-configured"
-    assert "ocr_engine_primary" in item.used_by
+    assert item.used_by == ("ocr_engines",)
 
 
 def test_licence_engine_without_venv_names_the_licence(
@@ -91,7 +91,62 @@ def test_provisioned_engine_is_ready(tmp_path: Path, effective_settings: Any) ->
 
     assert item.status == "ready"
     assert item.fix is None
-    assert item.used_by == ("ocr_engine_fallback",)
+    assert item.used_by == ("ocr_engines",)
+
+
+def test_engine_in_any_list_position_names_ocr_engines(
+    tmp_path: Path, effective_settings: Any
+) -> None:
+    """Change ordered-reader-and-ocr-lists: the third engine is in force too."""
+    _engine(tmp_path, "glm-ocr", PLAIN, provisioned=True)
+    _engine(tmp_path, "unlisted", PLAIN, provisioned=True)
+    settings = effective_settings(
+        ocr_workers_dir=str(tmp_path),
+        ocr_engines=("dots-mocr", "paddleocr-vl", "glm-ocr"),
+    )
+
+    items = _by_name(rc.ocr_engine_items(settings))
+
+    assert set(items) >= {"dots-mocr", "paddleocr-vl", "glm-ocr", "unlisted"}
+    assert items["dots-mocr"].used_by == ("ocr_engines",)
+    assert items["glm-ocr"].used_by == ("ocr_engines",)
+    assert items["glm-ocr"].status == "ready"
+    assert items["unlisted"].used_by == ()
+
+
+def test_engine_names_come_from_the_old_keys_when_the_list_is_not_given(
+    effective_settings: Any,
+) -> None:
+    settings = effective_settings(
+        ocr_engines=(), ocr_engine_primary="alpha", ocr_engine_fallback="beta"
+    )
+
+    items = _by_name(rc.ocr_engine_items(settings))
+
+    assert items["alpha"].used_by == ("ocr_engines",)
+    assert items["beta"].used_by == ("ocr_engines",)
+
+
+def test_engine_used_by_is_empty_while_ocr_fallback_is_off(effective_settings: Any) -> None:
+    settings = effective_settings(ocr_fallback_enabled=False)
+
+    items = _by_name(rc.ocr_engine_items(settings))
+
+    assert items["dots-mocr"].used_by == ()
+    assert items["paddleocr-vl"].used_by == ()
+
+
+def test_engine_named_in_the_list_without_a_folder_is_missing(
+    tmp_path: Path, effective_settings: Any
+) -> None:
+    (tmp_path / "engines").mkdir()
+    settings = effective_settings(ocr_workers_dir=str(tmp_path), ocr_engines=("ghost-ocr",))
+
+    item = _by_name(rc.ocr_engine_items(settings))["ghost-ocr"]
+
+    assert item.status == "missing"
+    assert item.fix is None
+    assert item.used_by == ("ocr_engines",)
 
 
 def test_engine_list_holds_the_local_tier(effective_settings: Any) -> None:

@@ -56,8 +56,10 @@ def _routes(primary: Any, fallback: Any) -> OcrRoutes:
     """Routes whose clients carry the given fingerprints; nothing dispatches."""
     command = [sys.executable, str(STUB_WORKER)]
     return OcrRoutes(
-        primary=ManagedOcrClient(fingerprint=primary, command=command),
-        fallback=ManagedOcrClient(fingerprint=fallback, command=command),
+        (
+            ManagedOcrClient(fingerprint=primary, command=command),
+            ManagedOcrClient(fingerprint=fallback, command=command),
+        )
     )
 
 
@@ -233,7 +235,7 @@ def test_a_schema_6_source_indexed_before_this_change_reprocesses(
 def test_route_fingerprints_of_routes_client_and_none() -> None:
     """Routes give both fingerprints; one client is primary-only; None is none."""
     fp = UNAVAILABLE_OCR_WORKER_FINGERPRINT
-    routes = OcrRoutes(primary=type("C", (), {"fingerprint": fp})())
+    routes = OcrRoutes((type("C", (), {"fingerprint": fp})(),))
     assert route_fingerprints(routes) == (fp, fp)
     single = type("C", (), {"fingerprint": fp})()
     assert route_fingerprints(single) == (fp, None)

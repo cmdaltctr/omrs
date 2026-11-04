@@ -55,29 +55,42 @@ The Engine catalogue holds these operations. Each operation is version `1`. The 
 
 `retrieve.prepare_query` resolves `top_k`, the similarity threshold, the rerank decision and the candidate pool once. Connect it before the dense and sparse nodes, as the templates do. `select.threshold` applies the score-kind-aware threshold and the `top_k` cut. After a successful rerank it divides the threshold by 30, as `search()` does.
 
-### PDF reader on the Read document step
+### PDF readers on the Read document step
 
-The Read document step has a `pdf_reader` setting. Use it to read the PDF files of one pipeline with a different reader from the host default.
+The Read document step has a `pdf_readers` setting. Use it to read the PDF files of one pipeline with a different reader list from the host default.
 
-- `null` (Inherit) uses the host reader. The host reader comes from `PDF_READER`, resolved once at start-up.
-- A value must be a registered concrete reader: `pypdf`, `pypdfium2`, `liteparse` or `pdf_inspector`.
-- `auto` is not a choice. It is a host policy. Validation rejects it with `invalid_parameter`.
-- A graph-wide `overrides.pdf_reader` stays refused (`host_owned_setting`). Set the reader on the Read document step instead.
-- The step setting changes only that step. The environment, the standard ingest path and other pipelines keep the host reader.
+- `null` (Inherit) uses the host list. The host list comes from `PDF_READERS`, resolved once at start-up.
+- A value is an ordered list of registered concrete readers: `pdf_inspector`, `liteparse`, `pypdfium2` and `pypdf`. The first reader reads the file. A later reader retries when the readers before it returned no text for a PDF that has pages. See [PDF reading](configuration.md#pdf-reading) for the rule.
+- `auto` is not a choice. It is a host policy. Validation rejects it with `invalid_parameter`. An empty list or a repeated name fails the same way.
+- A graph-wide `overrides.pdf_reader` or `overrides.pdf_readers` stays refused (`host_owned_setting`). Set the list on the Read document step instead.
+- The step setting changes only that step. The environment, the standard ingest path and other pipelines keep the host list.
 
-The host probes each reader once for each Engine. A reader whose package is not installed gives `option_unavailable` at validation, and no node runs. The catalogue reports this for each operation:
+The step also accepts the older `pdf_reader` option. A saved graph that sets it still validates and runs. The single reader expands to a list by the same rule as the host key: `pdf_inspector` gives `pdf_inspector, liteparse, pypdf`, and any other reader stands alone. A step that sets `pdf_reader` and `pdf_readers` together fails validation, and the message names both keys. Set `pdf_readers` only.
+
+The host probes each reader once for each Engine. A step list that holds a reader whose package is not installed gives `option_unavailable` at validation, and no node runs. The catalogue reports this for each operation:
 
 - `unavailable_options` maps a setting to its unavailable choices and the reason for each. For `read.document` it lists the uninstalled readers and names the missing package.
-- `inherited_values` maps a setting to the value that `null` uses. For `read.document` it holds the host reader.
+- `inherited_values` maps a setting to the value that `null` uses. For `read.document` it holds the host list.
 
 Both fields are empty for an operation that has no such setting. The operation stays available when a choice is not.
 
-What a step reader changes:
+### OCR engines on the Read document step
 
-- OCR routing and the rescue for PDFs that give no text apply only to `pdf_inspector`, under the host OCR settings. A step that selects another reader reads without them. A scanned PDF that `pypdf` reads can give no text and fail with "No chunks produced".
-- A step that selects `pdf_inspector` on a host with another default turns OCR routing on for that step. It adds no OCR route and starts no worker that the host has not set up.
+The Read document step has an `ocr_engines` setting. It is an ordered list of engine folder names for that step.
+
+- `null` (Inherit) uses the host list from `OCR_ENGINES`.
+- The first available engine serves every request. A later engine serves only when every engine before it is unavailable before dispatch. A bad answer never moves a request. A list of one engine means no fallback engine.
+- A step list that holds an engine that is not provisioned under the host workers folder fails validation with `option_unavailable`. The issue names the node, the engine and the provision command.
+- A graph-wide `overrides.ocr_engines` stays refused (`host_owned_setting`). Set the list on the Read document step instead.
+
+The step also accepts the older `ocr_engine_primary` and `ocr_engine_fallback` options. They still validate, run and expand to a list: primary first, then fallback. A step that sets one of them together with `ocr_engines` fails validation, and the message names both keys.
+
+What a step reader list changes:
+
+- OCR routing and the rescue for PDFs that give no text apply only to `pdf_inspector`, under the host OCR settings. A step whose first installed reader is another reader reads without them. A scanned PDF that `pypdf` reads can give no text and fail with "No chunks produced". A list of one reader, such as `pdf_inspector` alone, runs no rescue, so a PDF that pdf-inspector reads as empty indexes nothing.
+- A step whose first installed reader is `pdf_inspector`, on a host with another default, turns OCR routing on for that step. It adds no OCR route and starts no worker that the host has not set up.
 - When the host uses the Azure document backend, Azure reads the PDF files. The step reader applies only when a read falls back to the local backend.
-- The stored source identity names the step reader. When you change the reader, or any other Read document setting, each affected source is processed again on its next explicit ingest. A rerun with the same settings reuses the source.
+- The stored source identity names the step reader list. When you change the list, or any other Read document setting, each affected source is processed again on its next explicit ingest. A rerun with the same settings reuses the source.
 
 ## Canonical templates
 

@@ -247,7 +247,13 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # test_merged_maths_join.py. No fastapi needed.
 # +2 (2026-11-03, same change, review): fence lines that end in a space.
 # +1 (2026-11-03, render-maths-in-web-workspace): no maths catalogue entry. No fastapi.
-_BASE_EXECUTED = 9754
+# +230 (2026-11-03, ordered-reader-and-ocr-lists, by executed count: a fresh
+# worktree without the historical ground truth ran 9980 against 9750 before, web
+# extra installed): the reading-list settings, reader chain, reader identity, OCR
+# route list, read-step lists, PDF readers block and uninstall list tests arrive;
+# the document-reading tests are rewritten for the five-key shape.
+# +1 (2026-11-03, same PR): PDF readers sort by host list position.
+_BASE_EXECUTED = 9985
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -585,7 +591,10 @@ if not _has_qwen_tokenizer:
 # the web extra and the floors job ran 7880 without it, so 15 more managed-llamacpp-runtimes
 # cases need fastapi than the 33 first counted (1853).
 # +3 (2026-11-03, page-routing-default): test_web_document_reading.py, -4 +7.
-_WEB_EXTRA_CASES = 1856
+# +23 (2026-11-03, ordered-reader-and-ocr-lists, measured by the floor job of PR 166:
+# 8099 executed without fastapi against 8122 expected): the PDF readers route,
+# list-valued document-reading and configuration-save tests.
+_WEB_EXTRA_CASES = 1879
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)

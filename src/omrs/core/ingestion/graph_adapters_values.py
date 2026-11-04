@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from typing import Any, TypeVar
 
 from ..pipelines import NodeContext, PipelineCancelledError
+from ..reading_lists import engine_list, expand_ocr_engines, expand_pdf_reader
 from ..settings import EffectiveSettings
 from .backends.orchestrator import BackendRead
 from .commit import PreparedSource
@@ -140,10 +141,45 @@ def optional(context: NodeContext, name: str) -> Any:
     return context.resources.get(name)
 
 
+def _step_lists(settings: EffectiveSettings, update: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the list and single-value fields that the step options in *update* set.
+
+    ``EffectiveSettings`` has no auto-fill, so compose fills ``pdf_readers`` and
+    ``ocr_engines`` from the host. A copy that only changed ``pdf_reader`` would
+    keep the stale host list, and readers of the list would ignore the step. This
+    sets both forms together: the list from the step, and the single-value keys
+    from the list, as ``Settings`` does for a list it receives.
+
+    A single-value engine option replaces its entry in the host list. The
+    other entry stays the host's, and later host entries drop out, because the
+    single-value form means at most two engines.
+    """
+    fields: dict[str, Any] = {}
+    readers = update.get("pdf_readers") or (
+        expand_pdf_reader(update["pdf_reader"]) if "pdf_reader" in update else ()
+    )
+    if readers:
+        fields.update(pdf_readers=tuple(readers), pdf_reader=readers[0])
+    engines = update.get("ocr_engines")
+    if not engines and ("ocr_engine_primary" in update or "ocr_engine_fallback" in update):
+        host = engine_list(settings)
+        engines = expand_ocr_engines(
+            update.get("ocr_engine_primary", host[0] if host else ""),
+            update.get("ocr_engine_fallback", host[1] if len(host) > 1 else ""),
+        )
+    if engines:
+        fields.update(
+            ocr_engines=tuple(engines),
+            ocr_engine_primary=engines[0],
+            ocr_engine_fallback=engines[1] if len(engines) > 1 else "",
+        )
+    return fields
+
+
 def with_read_options(settings: EffectiveSettings, params: Any) -> EffectiveSettings:
     """Return *settings* with every set read option of a Read document node.
 
-    The read options are ``pdf_reader`` and the OCR keys (``READ_OPTION_KEYS``).
+    The read options are the reader keys and the OCR keys (``READ_OPTION_KEYS``).
     ``None`` inherits the host value. Without a set option, *settings* is
     returned unchanged. The copy leaves the frozen host settings alone. The
     read and identify adapters both use this helper, so the read and the
@@ -156,7 +192,9 @@ def with_read_options(settings: EffectiveSettings, params: Any) -> EffectiveSett
     """
     values = params if isinstance(params, Mapping) else dict(params)
     update = {k: v for k, v in values.items() if k in READ_OPTION_KEYS and v is not None}
-    return settings.model_copy(update=update) if update else settings
+    if not update:
+        return settings
+    return settings.model_copy(update={**update, **_step_lists(settings, update)})
 
 
 def node_ocr(context: NodeContext, settings: EffectiveSettings) -> Any:

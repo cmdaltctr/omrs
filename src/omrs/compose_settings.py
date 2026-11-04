@@ -12,7 +12,7 @@ from typing import Any
 from .capabilities import (
     _resolve_sparse_backend_for,
     resolve_document_backend,
-    resolve_pdf_reader,
+    resolve_pdf_readers,
 )
 from .config import Settings, get_settings
 from .core.settings import PROVIDER_ADDRESS_FIELDS, PROVIDER_INT_FIELDS, PROVIDER_SECRET_FIELDS
@@ -46,6 +46,10 @@ def settings_to_effective(settings: Settings | None = None) -> Any:
 
     if settings.chunking.chunk_overlap >= settings.chunking.markdown_chunk_size:
         raise ValueError("CHUNKING__CHUNK_OVERLAP must be less than CHUNKING__MARKDOWN_CHUNK_SIZE")
+
+    # Bake the RESOLVED reader and the cleaned list in: the probe and the
+    # `auto` / unknown-name warnings run once here (ordered-reader-and-ocr-lists D2).
+    pdf_reader, pdf_readers = resolve_pdf_readers(settings)
 
     # Nested Settings blocks map 1:1 onto EffectiveSettings blocks — a
     # straight copy plus cross-cutting fields (pre-nested-schema: ~30 names).
@@ -83,8 +87,8 @@ def settings_to_effective(settings: Settings | None = None) -> Any:
             for name in PROVIDER_ADDRESS_FIELDS + PROVIDER_SECRET_FIELDS + PROVIDER_INT_FIELDS
         },
         embed_model=settings.embed_model,
-        # Bake the RESOLVED reader in: the `auto` probe runs once here.
-        pdf_reader=resolve_pdf_reader(settings),
+        pdf_reader=pdf_reader,
+        pdf_readers=pdf_readers,
         liteparse_num_workers=settings.liteparse_num_workers,
         liteparse_ocr_enabled=settings.liteparse_ocr_enabled,
         ocr_fallback_enabled=settings.ocr_fallback_enabled,
@@ -97,6 +101,7 @@ def settings_to_effective(settings: Settings | None = None) -> Any:
         ocr_runtime_url=settings.ocr_runtime_url,
         ocr_engine_primary=settings.ocr_engine_primary,
         ocr_engine_fallback=settings.ocr_engine_fallback,
+        ocr_engines=settings.ocr_engines,
         ocr_maths_routing_enabled=settings.ocr_maths_routing_enabled,
         ocr_worker_seconds_per_page=settings.ocr_worker_seconds_per_page,
         magika_binary=settings.magika_binary,

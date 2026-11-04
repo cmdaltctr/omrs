@@ -6,7 +6,7 @@ See proposal.md for the why. This section separates what the code does today (ob
 
 **Observed:**
 
-- `config/__init__.py` holds one `pdf_reader: str = "pdf_inspector"`. `config/rules.py` holds `PDF_READER_NAMES = ("auto", "liteparse", "pdf_inspector", "pypdfium2", "pypdf")` and the nine `DOCUMENT_READING_KEYS`. An unknown value warns and falls back to `auto`.
+- `config/__init__.py` holds one `pdf_reader: str = "pdf_inspector"`. `config/rules.py` holds `PDF_READER_NAMES = ("auto", "liteparse", "pdf_inspector", "pypdfium2", "pypdf")` and the `DOCUMENT_READING_KEYS` (six keys on `v3` after the OCR gate and the `document` routing unit were removed). An unknown value warns and falls back to `auto`.
 - `integrations/pdf/registry.py` registers four readers with `register(name, import_path, probe_module, text_format=..., page_provenance=..., output_revision=...)`. `factory.py` resolves `auto` as LiteParse, then pypdfium2, then pypdf.
 - `capabilities.resolve_pdf_reader` logs an error and uses pypdf when the configured reader is not importable. `capabilities.pdf_reader_options()` already probes every registered reader.
 - The ADR-066 rescue chain lives inside `integrations/pdf/pdf_inspector.py` (`_rescue_pages`). It names `liteparse` and `pypdf` in code. A LiteParse failure hands over to pypdf; a pypdf exception propagates.
@@ -22,7 +22,7 @@ See proposal.md for the why. This section separates what the code does today (ob
 
 **Goals:** visible reader installation state, ordered and editable reader and engine lists, no behaviour or identity change for existing configurations.
 
-**Non-Goals:** per-page reader rescue (change C judges pages), changing the OCR gate or routing unit, a judge that moves a request to the next engine on a bad answer (change C), retiring the old keys.
+**Non-Goals:** per-page reader rescue (change C judges pages), changing the page routing unit, a judge that moves a request to the next engine on a bad answer (change C), retiring the old keys.
 
 ## Decisions
 

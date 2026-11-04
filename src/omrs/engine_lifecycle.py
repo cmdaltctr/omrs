@@ -14,6 +14,7 @@ from collections.abc import Iterator, Mapping
 from typing import TYPE_CHECKING, Any
 
 from .compose_pipelines import build_graph_host
+from .core.reading_lists import engine_list, reader_list
 from .engine_answer import judge_provider_of, recording_answer_llm, recording_judge
 from .engine_embedders import embedding_for
 
@@ -136,17 +137,16 @@ def graph_host(engine: Engine, collection: str | None) -> Any:
 
     from .core.pipelines import HostOptionSet
 
-    readers = HostOptionSet(
-        inherited=engine._effective_settings.pdf_reader,
-        unavailable={n: r for n, r in engine._pipelines.reader_options().items() if r},
-    )
+    missing = {n: r for n, r in engine._pipelines.reader_options().items() if r}
+    readers = HostOptionSet(inherited=settings.pdf_reader, unavailable=missing)
+    reader_lists = HostOptionSet(inherited=reader_list(settings), unavailable=missing)
     graph = build_graph_host(
         engine._effective_settings,
         resources=resources,
         resolver=engine._resolver(),
         collection=collection,
     )
-    options = {"pdf_reader": readers, **engine_option_sets(settings)}
+    options = {"pdf_reader": readers, "pdf_readers": reader_lists, **engine_option_sets(settings)}
     return replace(graph, host=replace(graph.host, options=options))
 
 
@@ -200,10 +200,12 @@ def engine_option_sets(settings: Any) -> dict[str, Any]:
     """
     from .core.pipelines import HostOptionSet
 
-    primary, fallback = settings.ocr_engine_primary, settings.ocr_engine_fallback
-    reasons = EngineReasons(settings.ocr_workers_dir, [primary, fallback])
+    engines = engine_list(settings)
+    primary, fallback = engines[0] if engines else "", engines[1] if len(engines) > 1 else ""
+    reasons = EngineReasons(settings.ocr_workers_dir, list(engines))
     remedy = "Choose another engine or Inherit."
     return {
+        "ocr_engines": HostOptionSet(engines or None, reasons, remedy),
         "ocr_engine_primary": HostOptionSet(primary or None, reasons, remedy),
         "ocr_engine_fallback": HostOptionSet(fallback or None, reasons, remedy),
     }

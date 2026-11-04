@@ -1,11 +1,14 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
 import type { EffectiveControl, NodeSpec } from "../api/pipelines";
+import { documentsServer } from "../test/fakeDocumentsServer";
+import { renderWithProviders } from "../test/providers";
 import { emptyDraft, type Draft } from "./graph";
 import { StepSettingsFields } from "./StepSettingsFields";
 import { CATALOGUE } from "./test/catalogueFixture";
+import { CATALOGUE_INGEST } from "./test/catalogueIngest";
 
 function draftWith(node: NodeSpec): Draft {
   const base = emptyDraft();
@@ -13,14 +16,14 @@ function draftWith(node: NodeSpec): Draft {
 }
 
 function setup(node: NodeSpec, { readOnly = false, controls = {} }: { readOnly?: boolean; controls?: Record<string, EffectiveControl[]> } = {}) {
-  const operation = CATALOGUE.find((entry) => entry.operation_id === node.operation)!;
+  const operation = [...CATALOGUE, ...CATALOGUE_INGEST].find((entry) => entry.operation_id === node.operation)!;
   const seen = { draft: draftWith(node) };
   function Harness() {
     const [draft, setDraft] = useState(seen.draft);
     seen.draft = draft;
     return <StepSettingsFields draft={draft} nodeId={node.id} operation={operation} controls={controls} readOnly={readOnly} onChange={(change) => setDraft((d) => change(d))} />;
   }
-  render(<Harness />);
+  renderWithProviders(<Harness />, { fetchImpl: documentsServer().fetchImpl });
   return { seen, user: userEvent.setup() };
 }
 
@@ -61,5 +64,32 @@ describe("StepSettingsFields", () => {
     expect(screen.getByRole("checkbox", { name: "Bypass this step" })).toBeDisabled();
     for (const radio of within(screen.getByRole("group", { name: "Reranker" })).getAllByRole("radio")) expect(radio).toBeDisabled();
     expect(within(screen.getByRole("group", { name: "Reranker" })).getByRole("radio", { name: "Off" })).toBeChecked();
+  });
+
+  it("shows the list options of Read document and hides the single-value options the step does not set", () => {
+    setup({ id: "rd", operation: "read.document", version: 1 });
+    expect(legends()).toEqual(expect.arrayContaining(["PDF readers", "OCR engines"]));
+    expect(legends()).not.toContain("PDF reader");
+  });
+
+  it("keeps the old PDF reader control, with its unavailable choices, on a saved step that still sets it", async () => {
+    const { user } = setup({ id: "rd", operation: "read.document", version: 1, params: { pdf_reader: "liteparse" } });
+    expect(legends()).toContain("PDF reader");
+    await user.click(within(screen.getByRole("group", { name: "PDF reader" })).getByRole("combobox", { name: "PDF reader value" }));
+    expect(await screen.findByRole("option", { name: /pypdfium2 \(not installed\)/ })).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByText("The package 'pypdfium2' is not installed.")).toBeInTheDocument();
+  });
+
+  it("clears the old options in the same update that sets their list, so the step never sets both forms", async () => {
+    const saved = { pdf_reader: "liteparse", ocr_engine_primary: "dots-mocr", ocr_engine_fallback: "paddleocr-vl" };
+    const { seen, user } = setup({ id: "rd", operation: "read.document", version: 1, params: saved });
+    await user.click(within(screen.getByRole("group", { name: "PDF readers" })).getByRole("radio", { name: "Set list" }));
+    await user.click(within(screen.getByRole("group", { name: "OCR engines" })).getByRole("radio", { name: "Set list" }));
+    const params = seen.draft.graph.nodes[0]?.params ?? {};
+    expect(params.pdf_readers).toBeDefined();
+    expect(params.ocr_engines).toBeDefined();
+    expect(params).not.toHaveProperty("pdf_reader");
+    expect(params).not.toHaveProperty("ocr_engine_primary");
+    expect(params).not.toHaveProperty("ocr_engine_fallback");
   });
 });

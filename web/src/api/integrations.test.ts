@@ -46,6 +46,13 @@ describe("listIntegrations", () => {
     expect(server.calls[0]).toMatchObject({ method: "GET", path: "/v1/integrations" });
   });
 
+  it("keeps the PDF readers the server lists", async () => {
+    const readers = [{ name: "pypdf", installed: true, extra: null, fix_command: null, used_by: ["Third in Settings > Document reading"] }];
+    const server = documentsServer({ "GET /v1/integrations": () => ({ status: "ok", install_type: "checkout", integrations: [], tools: [], pdf_readers: readers }) });
+    const result = await listIntegrations(createApiClient(server.fetchImpl));
+    expect(result.pdf_readers).toEqual(readers);
+  });
+
   it("throws an ApiError for an HTTP failure", async () => {
     const server = documentsServer({ "GET /v1/integrations": () => json({ status: "error", message: "boom" }, 500) });
     await expect(listIntegrations(createApiClient(server.fetchImpl))).rejects.toBeInstanceOf(ApiError);

@@ -75,7 +75,16 @@ export const CATALOGUE_INGEST: OperationDescriptor[] = [
   "free_text_params": [],
   "index_shaping": true,
   "inherited_values": {
-   "pdf_reader": "pdf_inspector"
+   "pdf_reader": "pdf_inspector",
+   "pdf_readers": [
+    "pdf_inspector",
+    "liteparse",
+    "pypdf"
+   ],
+   "ocr_engines": [
+    "dots-mocr",
+    "paddleocr-vl"
+   ]
   },
   "inputs": [
    {
@@ -136,6 +145,36 @@ export const CATALOGUE_INGEST: OperationDescriptor[] = [
      ],
      "default": null,
      "title": "Code Chunk Lines"
+    },
+    "ocr_engines": {
+     "anyOf": [
+      {
+       "items": {
+        "type": "string"
+       },
+       "type": "array"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Ocr Engines"
+    },
+    "pdf_readers": {
+     "anyOf": [
+      {
+       "items": {
+        "type": "string"
+       },
+       "type": "array"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Pdf Readers"
     },
     "pdf_reader": {
      "anyOf": [

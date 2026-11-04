@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { EffectiveControl, OperationDescriptor } from "../api/pipelines";
 import { setEnabled, setParam, type Draft } from "./graph";
+import { isHiddenOldOption, replacedOptions } from "./ListParam";
 import { ParamField } from "./ParamField";
 import { paramFields } from "./schema";
 import { controlFor, valueNote } from "./stepSummary";
@@ -34,6 +35,7 @@ export function Check({ checked, onChange, disabled, children }: { checked: bool
 export function StepSettingsFields({ draft, nodeId, operation, controls, onChange, readOnly = false, children }: StepSettingsFieldsProps) {
   const node = draft.graph.nodes.find((candidate) => candidate.id === nodeId);
   if (!node) return null;
+  const fields = paramFields(operation);
   return (
     <>
       {operation.bypass && (
@@ -47,16 +49,25 @@ export function StepSettingsFields({ draft, nodeId, operation, controls, onChang
         </>
       )}
       {children}
-      {paramFields(operation).map((field) => (
-        <ParamField
-          key={`${nodeId}:${field.name}`}
-          field={field}
-          disabled={readOnly}
-          value={node.params?.[field.name]}
-          note={valueNote(field, node, controlFor(field, controls[nodeId]), draft.graph)}
-          onChange={(value) => onChange((current) => setParam(current, nodeId, field.name, value))}
-        />
-      ))}
+      {fields
+        .filter((field) => !isHiddenOldOption(field, fields, node.params?.[field.name]))
+        .map((field) => (
+          <ParamField
+            key={`${nodeId}:${field.name}`}
+            field={field}
+            disabled={readOnly}
+            value={node.params?.[field.name]}
+            note={valueNote(field, node, controlFor(field, controls[nodeId]), draft.graph)}
+            onChange={(value) =>
+              onChange((current) => {
+                const next = setParam(current, nodeId, field.name, value);
+                // A set list replaces its old options in the same update: a step may not set both forms.
+                if (value == null) return next;
+                return replacedOptions(field.name).reduce((draft, old) => setParam(draft, nodeId, old, null), next);
+              })
+            }
+          />
+        ))}
     </>
   );
 }

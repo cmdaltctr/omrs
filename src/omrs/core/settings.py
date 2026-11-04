@@ -365,6 +365,10 @@ class EffectiveSettings(BaseModel):
     ocr_runtime_url: str = ""
     ocr_engine_primary: str = "dots-mocr"
     ocr_engine_fallback: str = "paddleocr-vl"
+    # Ordered lists (ordered-reader-and-ocr-lists D4). Empty means "not given":
+    # read them through core.reading_lists.reader_list and engine_list.
+    pdf_readers: tuple[str, ...] = ()
+    ocr_engines: tuple[str, ...] = ()
     ocr_maths_routing_enabled: bool = True
     ocr_worker_seconds_per_page: float = Field(default=120.0, ge=0.0)
 

@@ -58,7 +58,7 @@ class _Pool:
     def routes(self, settings: Any) -> OcrRoutes:
         # The real pool may probe a worker with a blocking subprocess call.
         self.threads.append(threading.get_ident())
-        return OcrRoutes(primary=self.clients[settings.ocr_engine_primary])
+        return OcrRoutes((self.clients[settings.ocr_engine_primary],))
 
 
 class _ScannedPdf:
@@ -85,7 +85,7 @@ def pool(monkeypatch: pytest.MonkeyPatch) -> _Pool:
     async def _no_specialised(*_args: Any, **_kwargs: Any) -> None:
         return None
 
-    monkeypatch.setattr(factory, "get_pdf_reader", lambda name: _ScannedPdf())
+    monkeypatch.setattr(factory, "get_pdf_reader", lambda name, tiers=None: _ScannedPdf())
     monkeypatch.setattr(maths_routing, "maths_font_pages", lambda file: frozenset())
     monkeypatch.setattr(
         ocr_routing,

@@ -24,7 +24,7 @@ The host SHALL read one ordered list of engine names from the injected effective
 
 ### Requirement: Every OCR dispatch SHALL use the primary route, then the fallback route
 
-Every OCR dispatch SHALL go to the first engine of the list. This covers whole PDFs that the OCR gate selects, scanned and image-based PDFs, pages escalated from the local OCR tier, and maths pages. If that engine is unavailable before dispatch, the same request SHALL go to the next engine, and so on down the list. If every engine is unavailable, the existing degraded behaviour for an unavailable worker SHALL apply. A poor or empty answer SHALL NOT move a request to another engine.
+Every OCR dispatch SHALL go to the first engine of the list. This covers scanned and image-based PDFs, pages escalated from the local OCR tier, and maths pages. If that engine is unavailable before dispatch, the same request SHALL go to the next engine, and so on down the list. If every engine is unavailable, the existing degraded behaviour for an unavailable worker SHALL apply. A poor or empty answer SHALL NOT move a request to another engine.
 
 #### Scenario: A scanned PDF goes to the primary engine
 

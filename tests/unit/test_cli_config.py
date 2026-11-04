@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from typer.testing import CliRunner
 
 from omrs.config import Settings, rules
+from omrs.config.rules import TEMPLATE_SKIPPED_FIELDS
 from omrs.config.user_config import parse_jsonc
 from omrs.transports.cli import app as cli_app
 from omrs.transports.cli import config_template as template
@@ -61,7 +62,7 @@ def _expected_keys() -> set[str]:
     """Every file key the template must offer, derived from the model."""
     keys: set[str] = set()
     for name, field in Settings.model_fields.items():
-        if name in template.INTERNAL_FIELDS:
+        if name in template.INTERNAL_FIELDS or name in TEMPLATE_SKIPPED_FIELDS:
             continue
         if _is_block(field.annotation):
             keys.update(f"{name}.{leaf}" for leaf in field.annotation.model_fields)  # type: ignore[union-attr]
@@ -120,13 +121,13 @@ def test_defaults_yaml_overrides_the_model_default(monkeypatch: pytest.MonkeyPat
     monkeypatch.setattr(
         template,
         "_yaml_defaults",
-        lambda: {"retrieval": {"top_k": 99}, "pdf_reader": "pypdf"},
+        lambda: {"retrieval": {"top_k": 99}, "pdf_readers": ["pypdf"]},
     )
 
     offered = _flatten(parse_jsonc(_uncomment(template.build_template())))
 
     assert offered["retrieval.top_k"] == 99
-    assert offered["pdf_reader"] == "pypdf"
+    assert offered["pdf_readers"] == ["pypdf"]
     assert offered["retrieval.rerank_model"] == "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
 

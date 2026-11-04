@@ -12,8 +12,10 @@ adapter plus one ``register()`` call, with no strategy-specific branch here.
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from typing import Any
 
+from .chain import construct, tiers_after
 from .registry import available as _available_readers
 from .registry import describe as _describe_reader
 from .registry import get as _get_reader
@@ -82,7 +84,7 @@ def declared_output_revision(reader: str) -> int:
     return _describe_reader(resolve_reader_name(reader))["output_revision"]
 
 
-def get_pdf_reader(reader: str) -> Any:
+def get_pdf_reader(reader: str, tiers: Sequence[str] | None = None) -> Any:
     """Return the PDF reader adapter for *reader*.
 
     The returned object has a ``load_data(file: Path) -> list[Document]``
@@ -94,6 +96,8 @@ def get_pdf_reader(reader: str) -> Any:
             ``pypdf``, ``pypdfium2``, ``liteparse``, or ``auto``. ``auto`` is
             resolved locally (LiteParse → pypdfium2 → pypdf) for callers that
             bypass the composition root.
+        tiers: Retry reader names for an adapter that accepts them
+            (``PdfInspectorReader``). ``None`` keeps the adapter's own default.
 
     Returns:
         An instance of ``PdfInspectorReader``, ``PyPDFReader``,
@@ -122,7 +126,7 @@ def get_pdf_reader(reader: str) -> Any:
             f"{', '.join(_available_readers())}. The 'auto' value is a "
             "factory capability policy, not a registered reader."
         ) from exc
-    return reader_class()
+    return construct(reader_class, **({} if tiers is None else {"tiers": tuple(tiers)}))
 
 
 def build_pdf_reader(reader: str, settings: Any = None, *, ocr_client: Any = None) -> Any:
@@ -149,7 +153,10 @@ def build_pdf_reader(reader: str, settings: Any = None, *, ocr_client: Any = Non
         method, wrapped in :class:`OcrRoutedPdfInspector` when active.
     """
     resolved = resolve_reader_name(reader) if reader == "auto" else reader
-    inner = get_pdf_reader(resolved)
+    # The readers after this one in the settings' list are the retry tiers of an
+    # adapter that has them. No list (a test double) keeps the adapter default.
+    listed = tuple(getattr(settings, "pdf_readers", ()))
+    inner = get_pdf_reader(resolved, tiers_after(resolved, listed) if listed else None)
     if resolved == "pdf_inspector" and settings is not None:
         enabled = bool(getattr(settings, "ocr_fallback_enabled", False))
         if enabled:

@@ -21,11 +21,16 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
-from ...config.rules import FILE_ONLY, document_reading_problem, workers_folder_problem
+from ...config.rules import (
+    FILE_ONLY,
+    REPLACED_READING_KEYS,
+    document_reading_problem,
+    replaced_key_reason,
+    workers_folder_problem,
+)
 from ...config.settings_file import check_setting
 from ...config.settings_file_write import read_only_reason
 from ..settings_view import LOCKING_SOURCES, env_lock_reason, source_word
-from .document_reading import reader_refusal
 
 if TYPE_CHECKING:
     from ...config import Settings
@@ -68,6 +73,8 @@ def update_refusal(
     """
     fixed = overrides or {}
     for key in changes:
+        if key in REPLACED_READING_KEYS:
+            return 400, f"{key}: {replaced_key_reason(key)}"
         if read_only_reason(key) is not None:
             return 400, NOT_WRITABLE.format(key=key)
     for key in changes:
@@ -77,4 +84,4 @@ def update_refusal(
         rule = value_rule(key, value)
         if rule is not None:
             return 400, f"{key}: {rule}"
-    return reader_refusal(changes)
+    return None

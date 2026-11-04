@@ -98,6 +98,19 @@ export interface IntegrationProfileRef {
   title: string;
 }
 
+/** One registered PDF reader. The probe only imports the reader's package. */
+export interface PdfReaderItem {
+  /** The registry name, such as `pdf_inspector`. */
+  name: string;
+  installed: boolean;
+  /** The pip extra that holds the reader, or null for a reader in the base install. */
+  extra: string | null;
+  /** A copy command that installs the reader, or null when it is installed. */
+  fix_command: string | null;
+  /** One plain line for each use: its place in the host list and each profile that lists it. Empty when nothing uses it. */
+  used_by: string[];
+}
+
 export interface IntegrationList {
   install_type: InstallType;
   integrations: Integration[];
@@ -105,6 +118,8 @@ export interface IntegrationList {
   tools: ExternalTool[];
   /** OCR engines, model files and local servers. Older fixtures may leave it out. */
   runtime?: RuntimeComponents;
+  /** Every registered PDF reader: host-list readers first, in list order, then the rest in registry order. Older fixtures may leave it out. */
+  pdf_readers?: PdfReaderItem[];
 }
 
 /** The state of an external tool's `uv tool` environment. It does not depend on the server's install type. */
@@ -173,7 +188,7 @@ export interface IntegrationInstall {
 export async function listIntegrations(api: ApiClient, options: CallOptions = {}): Promise<IntegrationList> {
   const reply = await api.request<IntegrationList>("GET", "/v1/integrations", { signal: options.signal });
   const list: IntegrationList = { install_type: reply.install_type, integrations: reply.integrations, tools: reply.tools };
-  return reply.runtime === undefined ? list : { ...list, runtime: reply.runtime };
+  return { ...list, ...(reply.runtime === undefined ? {} : { runtime: reply.runtime }), ...(reply.pdf_readers === undefined ? {} : { pdf_readers: reply.pdf_readers }) };
 }
 
 export async function getIntegrationInstall(api: ApiClient, options: CallOptions = {}): Promise<IntegrationInstall> {

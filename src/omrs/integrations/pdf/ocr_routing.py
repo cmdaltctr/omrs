@@ -31,7 +31,7 @@ from typing import Any
 from ..ocr_worker.client import OcrWorkerError
 from ..ocr_worker.managed import UNAVAILABLE_CODE
 from ..ocr_worker.protocol import PAGES_PROTOCOL_VERSION
-from ..ocr_worker.routes import OcrRoutes, backend_id_of, request_timeout
+from ..ocr_worker.routes import OcrRoutes, backend_id_of, request_timeout, route_role
 from .blank_pages import find_blank_pages
 from .maths_routing import detect_maths_pages, split_page_routes
 from .maths_routing import stamp_maths_count as _stamp_maths
@@ -364,11 +364,8 @@ class OcrRoutedPdfInspector:
         client = self._routes.select(protocol=PAGES_PROTOCOL_VERSION)
         if client is None:
             spoken = [
-                f"{role} speaks {fp.protocol_version}"
-                for role, fp in (
-                    ("primary", self._routes.fingerprint),
-                    ("fallback", self._routes.fallback_fingerprint),
-                )
+                f"{route_role(index)} speaks {fp.protocol_version}"
+                for index, fp in enumerate(self._routes.fingerprints)
                 if fp.available
             ]
             if spoken:

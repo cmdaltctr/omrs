@@ -283,6 +283,15 @@ def test_a_saved_setting_blocks_its_extra(extra: str, path: str, value: str) -> 
     assert in_use_setting(extra, None, {path: value}) == path
 
 
+def test_a_reader_list_entry_blocks_the_pypdfium2_extra() -> None:
+    """A host list that holds pypdfium2 keeps its extra, even when it is not first."""
+    listed = EffectiveSettings.model_validate({"pdf_readers": ["pdf_inspector", "pypdfium2"]})
+    assert in_use_setting("pdf-pypdfium2", listed, {}) == "pdf_readers"
+    assert in_use_setting("pdf-pypdfium2", None, {"pdf_readers": ["pypdfium2"]}) == "pdf_readers"
+    default = EffectiveSettings.model_validate({"pdf_readers": ["pdf_inspector", "pypdf"]})
+    assert in_use_setting("pdf-pypdfium2", default, {}) is None
+
+
 def test_hybrid_is_never_in_use() -> None:
     assert IN_USE["hybrid"] == ()
     everything = {path: value for _, path, value in ROWS}

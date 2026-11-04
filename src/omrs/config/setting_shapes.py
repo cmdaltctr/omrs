@@ -3,8 +3,9 @@
 The Configuration page shows one control per setting. The server reads the
 control from the ``Settings`` model, so the page keeps no key lists of its own:
 
-- ``kind`` is ``bool``, ``int``, ``float``, ``text`` or ``choice``, or ``None``
-  for a setting that is not one plain value (a tuple, for example);
+- ``kind`` is ``bool``, ``int``, ``float``, ``text``, ``choice`` or ``list`` (the
+  ordered ``pdf_readers`` and ``ocr_engines`` only), or ``None`` for a setting that
+  is not one plain value (any other tuple, for example);
 - ``choices`` come from a ``Literal`` type, from :data:`rules.ACCEPTED`, or
   from :data:`rules.PDF_READER_NAMES` for ``pdf_reader``;
 - ``min`` and ``max`` are inclusive. A whole-number ``gt`` n gives the minimum
@@ -23,7 +24,7 @@ import types
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, Union, get_args, get_origin
 
-from .rules import ACCEPTED, FILE_ONLY, PDF_READER_NAMES
+from .rules import ACCEPTED, FILE_ONLY, KNOWN_READER_NAMES, PDF_READER_NAMES, READING_LIST_KEYS
 from .settings_file import _settings_class, field_bounds, setting_blocks
 
 if TYPE_CHECKING:
@@ -34,6 +35,7 @@ KIND_INT = "int"
 KIND_FLOAT = "float"
 KIND_TEXT = "text"
 KIND_CHOICE = "choice"
+KIND_LIST = "list"
 
 _KINDS: dict[type, str] = {bool: KIND_BOOL, int: KIND_INT, float: KIND_FLOAT, str: KIND_TEXT}
 
@@ -43,9 +45,10 @@ class SettingShape:
     """The control of one setting.
 
     Attributes:
-        kind: ``bool``, ``int``, ``float``, ``text`` or ``choice``; ``None`` when
-            the setting is not one plain value.
-        choices: The accepted values of a ``choice`` setting, else ``None``.
+        kind: ``bool``, ``int``, ``float``, ``text``, ``choice`` or ``list``; ``None``
+            when the setting is not one plain value.
+        choices: The accepted values of a ``choice`` setting, or the names a
+            ``list`` may hold, else ``None``.
         min: The inclusive lower bound of a number, else ``None``.
         max: The inclusive upper bound of a number, else ``None``.
         nullable: The setting takes ``None``, so Clear restores its default.
@@ -111,6 +114,8 @@ def setting_shape(path: str) -> SettingShape:
     info = setting_field(path)
     if info is None:
         return NO_SHAPE
+    if path in READING_LIST_KEYS:
+        return SettingShape(KIND_LIST, KNOWN_READER_NAMES if path == "pdf_readers" else None)
     base, nullable = _base_type(info.annotation)
     choices = _choices(path, base)
     if choices is not None:
@@ -124,4 +129,4 @@ def setting_shape(path: str) -> SettingShape:
 
 def is_scalar(path: str) -> bool:
     """Return whether *path* holds one plain value: a boolean, a number, a text or a choice."""
-    return setting_shape(path).kind is not None
+    return setting_shape(path).kind not in (None, KIND_LIST)

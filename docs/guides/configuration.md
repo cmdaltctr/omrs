@@ -68,7 +68,7 @@ metadata.extraction_mode    →  METADATA__EXTRACTION_MODE
 ```
 
 Cross-cutting settings stay flat: `EMBED_MODEL`, `CHROMA_PERSIST_DIR`,
-`VECTOR_STORE`, `LANCEDB_URI`, `RAG_PROFILE`, `PDF_READER`, and every
+`VECTOR_STORE`, `LANCEDB_URI`, `RAG_PROFILE`, `PDF_READERS`, and every
 credential.
 
 In YAML the same thing looks like this:
@@ -909,22 +909,75 @@ degradation from the configured mode is reported in the ingestion result.
 
 | Variable | Default | What it does |
 |---|---|---|
-| `PDF_READER` | `pdf_inspector` | `auto`, `pypdf`, `pypdfium2`, `liteparse`, or `pdf_inspector` |
+| `PDF_READERS` | `pdf_inspector,liteparse,pypdf` | The reader list, in order. Names: `pdf_inspector`, `liteparse`, `pypdfium2`, `pypdf`. Comma-separated in the environment and `.env`; a JSON array in `omrs.jsonc` |
+| `PDF_READER` | `pdf_inspector` | The single-value form of the same setting: `auto`, `pypdf`, `pypdfium2`, `liteparse`, or `pdf_inspector`. It expands to a list |
 | `LITEPARSE_OCR_ENABLED` | `false` | OCR for scanned PDFs |
 | `LITEPARSE_NUM_WORKERS` | — | Parallel workers |
 
-The packaged default `pdf_inspector` is a base dependency
-([ADR-050](../adr/050-configure-pdf-inspector-as-default-reader.md)).
-`auto` keeps the LiteParse → pypdfium2 → pypdf probe order. A configured
-reader that is not importable logs an error and falls back to pypdf. Tests
-pin `pypdf` for determinism.
+The environment form is one line, and the file form is an array:
 
-`PDF_READER` is the host default. A Read document step in a pipeline can
-choose another installed reader for that step only. The step setting does
-not change the environment or the other pipelines. `auto` is a host policy
-and is not a step choice. A step that names a reader whose package is not
-installed fails validation with `option_unavailable`, and no node runs. See
-[Pipeline graphs](pipelines.md#pdf-reader-on-the-read-document-step).
+```text
+PDF_READERS=pdf_inspector,liteparse,pypdf
+```
+
+```jsonc
+"pdf_readers": ["pdf_inspector", "liteparse", "pypdf"]
+```
+
+The packaged default starts with `pdf_inspector`, a base dependency
+([ADR-050](../adr/050-configure-pdf-inspector-as-default-reader.md)).
+LiteParse and pypdf are base dependencies too. The default list is the
+rescue chain of [ADR-066](../adr/066-tiered-reader-fallback-chain.md) written
+out, so the page can show and edit it.
+
+**How the list works.** One rule decides when a later reader runs. A later
+reader runs when one of these is true:
+
+1. The reader before it is not installed. This is checked at start-up. The
+   first installed reader of the list reads every file. Each reader skipped
+   on the way is named in an error. When no listed reader is installed, the
+   error says so and pypdf reads the files.
+2. The reader before it returned no text for a PDF that has pages. For
+   `pdf_inspector` this is the case where it classifies a PDF as text-based
+   and still extracts nothing. The readers after it then read the file again,
+   in list order, with OCR switched off. A reader that is not installed,
+   raises an error or returns no text hands over to the next one. The error of
+   the last reader is not caught, because it means broken input.
+
+An error from the first reader is never caught. A list of one reader runs no
+retry.
+
+`auto` is not allowed in a list. A list that holds `auto` or an unregistered
+name drops that name and logs a warning. The page refuses an empty list, a
+repeated name and `auto`.
+
+**The single-value key still works.** `PDF_READER` is valid in every source.
+OMRS expands it to a list:
+
+| `PDF_READER` | Same as `PDF_READERS` |
+|---|---|
+| `pdf_inspector` | `pdf_inspector,liteparse,pypdf` |
+| `liteparse`, `pypdfium2` or `pypdf` | That reader alone |
+| `auto`, or an unknown name (logs a warning) | `liteparse,pypdfium2,pypdf`, so the first installed reader reads |
+
+The highest source that sets either form wins, in the order of [the short
+version](#the-short-version). Inside one source the list key wins, and OMRS
+reports the single-value key as ignored: in the log for the environment and
+`.env`, and in the problem list for `omrs.jsonc`. When the single-value key
+wins, `PDF_READERS` shows its expansion, and the other way round. Code that
+reads `pdf_reader` sees the first reader of the list.
+
+The packaged default list is the expansion of the packaged default
+`PDF_READER`, so both forms give the same behaviour and the same
+[index identity](#index-identity-and-re-ingestion). Tests pin `pypdf` for
+determinism.
+
+`PDF_READERS` is the host default. A Read document step in a pipeline can
+choose its own `pdf_readers` list for that step only. The step setting does
+not change the environment or the other pipelines. A step that lists a reader
+whose package is not installed fails validation with `option_unavailable`, and
+no node runs. See
+[Pipeline graphs](pipelines.md#pdf-readers-on-the-read-document-step).
 
 Each reader declares the text format it emits and whether it provides
 page-level provenance. Downstream consumers route on the declared format
@@ -953,21 +1006,38 @@ Engine routes and operation:
 | Variable | Default | What it does |
 |---|---|---|
 | `OCR_WORKERS_DIR` | empty | Absolute path to `ocr-workers`. Empty disables folder-based routes |
-| `OCR_ENGINE_PRIMARY` | `dots-mocr` | Engine selected for every worker request |
-| `OCR_ENGINE_FALLBACK` | `paddleocr-vl` | Engine selected when the primary is unavailable before dispatch. Empty disables this route |
+| `OCR_ENGINES` | `dots-mocr,paddleocr-vl` | The engine list, in order, of any length. The first available engine serves every worker request. Comma-separated in the environment and `.env`; a JSON array in `omrs.jsonc` |
+| `OCR_ENGINE_PRIMARY` | `dots-mocr` | The single-value form of the first entry of `OCR_ENGINES` |
+| `OCR_ENGINE_FALLBACK` | `paddleocr-vl` | The single-value form of the second entry. Empty means a list of one engine |
 | `OCR_WORKER_REQUEST_TIMEOUT` | `300.0` | Minimum timeout in seconds for one parse response |
 | `OCR_WORKER_SECONDS_PER_PAGE` | `120.0` | Per-page timeout allowance in seconds |
 | `OCR_RUNTIME_URL` | empty | Address of a `llama-server` you run for OCR engines that declare a runtime. Empty means OMRS starts the server (managed). Set means external: OMRS starts nothing and does not check model files. See [OCR runtimes](#ocr-runtimes) |
 | `OCR_MATHS_ROUTING_ENABLED` | `true` | Detect maths fonts on the pdf-inspector path and route affected pages |
 
-These settings are flat, top-level fields beside `PDF_READER`, resolved
+These settings are flat, top-level fields beside `PDF_READERS`, resolved
 once at the composition root and injected. The timeout is
 `max(OCR_WORKER_REQUEST_TIMEOUT, requested_pages * OCR_WORKER_SECONDS_PER_PAGE)`.
 A 14-page request gets 1,680 seconds with the defaults. On a managed runtime with one slot, the timeout starts when the request holds the runtime's request lock. Time spent waiting for another OMRS process does not count.
 
-An unknown or unprovisioned engine is unavailable. If both routes are
-unavailable, flagged pages keep their available text. A worker failure after
-dispatch fails that file without retrying on the other engine.
+**How the engine list works.** The first available engine of the list
+serves every request. A later engine serves only when every engine before it
+is unavailable before dispatch. An engine is unavailable when it is unknown,
+not provisioned or cannot start its runtime. If no engine is available,
+flagged pages keep their available text. The answer never decides: an empty or
+poor answer does not move a request to the next engine. A worker failure after
+dispatch fails that file without retrying on another engine.
+
+One exception exists. When an operator stops the runtime of the engine while
+it serves a request (ADR-109), OMRS sends the request once to the next
+available engine. It does not send a request twice to the same engine.
+
+**The single-value keys still work.** `OCR_ENGINE_PRIMARY` and
+`OCR_ENGINE_FALLBACK` are valid in every source. They expand to the list
+primary first, then fallback. A blank name is left out, so an empty fallback
+gives a list of one engine. The highest source that sets either form wins.
+Inside one source `OCR_ENGINES` wins and the single-value keys are reported
+as ignored. To run with no fallback engine, list one engine: set
+`OCR_ENGINES=dots-mocr`, or remove the second engine on the Settings page.
 
 Maths pages skip local OCR. Use `OCR_MATHS_ROUTING_ENABLED=false` to
 disable maths routing. The master switch `OCR_FALLBACK_ENABLED=false`
@@ -984,7 +1054,8 @@ Experiment 37 measured a peak of about 22 GiB of Apple Silicon GPU memory
 through Metal Performance Shaders (MPS). One-page smoke tests showed only
 7–9.5 GiB, so plan for the larger figure. PaddleOCR-VL peaked at about
 15 GiB on CPU in the same run. CPU execution is slower. Set
-`OCR_ENGINE_PRIMARY=paddleocr-vl` on machines with limited memory.
+`OCR_ENGINES=paddleocr-vl,dots-mocr` (PaddleOCR-VL first) on machines with
+limited memory.
 PyTorch and Paddle packages stay outside the OMRS environment.
 
 **Set the workers folder in the web app.** Open Integrations › OCR
@@ -996,8 +1067,8 @@ feature worktree that you remove later. When `OCR_WORKERS_DIR` comes from
 the environment or `.env`, the field is read-only.
 
 **OCR settings on a pipeline step.** A Read document step of a user
-profile can set each of the five OCR settings above (not the worker
-command, folder or timeouts). An empty value uses the server setting.
+profile can set the OCR switch, the engine list, the routing unit and the
+maths switch of this section (not the worker command, folder or timeouts). An empty value uses the server setting.
 Built-in profiles always use the server settings. See
 [ADR-105](../adr/105-pipeline-steps-own-their-ocr-settings.md).
 
@@ -1168,20 +1239,37 @@ A launch value (step 1 or 2) locks the limit for that run. Settings then shows t
 
 ### Document reading values
 
-Settings > Document reading edits six keys in `omrs.jsonc`: `pdf_reader`, `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engine_primary`, `ocr_engine_fallback` and `ocr_maths_routing_enabled`. See [PDF reading](#pdf-reading) and [OCR fallback and isolated engines](#ocr-fallback-and-isolated-engines).
+Settings > Document reading edits five keys in `omrs.jsonc`: `pdf_readers`, `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engines` and `ocr_maths_routing_enabled`. The two list keys hold an array of names, and the page shows each as an ordered list with add, remove, move up and move down. See [PDF reading](#pdf-reading) and [OCR fallback and isolated engines](#ocr-fallback-and-isolated-engines).
 
 - Each key applies after a restart only. Until then, the row shows the value in force and the saved value with "Restart to apply".
 - Each key is part of the [index identity](#index-identity-and-re-ingestion). After the restart, the next ingest can read existing files again.
 - A key in the environment or `.env` is locked. The row tells you which variable to remove.
-- The page refuses a PDF reader that is not installed. It allows an OCR engine name that is valid but not provisioned yet, and marks it "Not provisioned".
-- The page refuses blank text. "Use default" removes the key from the file.
+- The page refuses a reader list that holds a name that is not a known reader. A reader that is not installed shows "Not installed". The page allows an OCR engine name that is valid but not provisioned yet, and marks it "Not provisioned".
+- The page refuses an empty list, a repeated name, `auto` in the reader list, and blank text. "Use default" removes the key from the file.
+- A save of a list writes the list key and removes the matching single-value keys (`pdf_reader`, `ocr_engine_primary`, `ocr_engine_fallback`) from `omrs.jsonc` in the same write. The page never writes a single-value key.
+- A list of one engine turns the fallback engine off. Remove the second engine on the page and save.
 - These checks run only when the page saves. At startup, an unknown `pdf_reader` from any source still logs a warning and falls back to `auto`.
-
-The page cannot set "no fallback engine" yet. To turn the fallback route off, set `OCR_ENGINE_FALLBACK=` in the environment or `.env`. A blank `"ocr_engine_fallback": ""` in `omrs.jsonc` does not turn it off: the file reader treats blank text as not set, and the row shows "Not set".
 
 ---
 
 ## Upgrade notes
+
+### Ordered reader and OCR engine lists
+
+`PDF_READERS` and `OCR_ENGINES` replace the single-value reader and engine keys as the settings that the page edits. See [PDF reading](#pdf-reading) and [OCR fallback and isolated engines](#ocr-fallback-and-isolated-engines).
+
+Nothing to do on upgrade. The default lists equal the behaviour before the change. The old keys `PDF_READER`, `OCR_ENGINE_PRIMARY` and `OCR_ENGINE_FALLBACK` still work in every source, and start-up does not refuse them. Every existing [index identity](#index-identity-and-re-ingestion) stays the same, so no source re-ingests.
+
+| Before upgrade | After upgrade | What to do |
+|---|---|---|
+| `PDF_READER`, `OCR_ENGINE_PRIMARY` or `OCR_ENGINE_FALLBACK` set in the environment, `.env` or `omrs.jsonc` | The old key still applies and expands to a list. | Nothing. |
+| An old key saved in `omrs.jsonc`, then you save a list on the Settings page | The page writes the list key and removes the old keys in the same write. | Nothing. |
+| `PDF_READER=pdf_inspector` and pdf-inspector is not installed | Start-up uses LiteParse, the next reader of the list. Before, it used pypdf. PDF sources can then read with a different reader. | Install pdf-inspector, or set `PDF_READERS=pypdf` to keep the old reader. |
+| `OCR_ENGINE_FALLBACK=` (empty) to turn the fallback engine off | Still turns it off. | Optional: set `OCR_ENGINES` to one engine. |
+
+A reader list that no single value expands to adds `parser.pdf_readers` to the identity of PDF sources. An engine list with a third engine adds its fingerprint to every source. After you edit a list, the next explicit ingest reads the affected sources again once.
+
+Rollback: revert the merge commit. A file that holds only the list keys then falls back to the code defaults. These equal the default lists. A custom list is lost on rollback, so keep a copy of it.
 
 ### Local Chat and classification stay apart (ADR-108)
 
@@ -1238,22 +1326,23 @@ These settings are part of the index identity:
 
 | What | Why it counts |
 | --- | --- |
-| `PDF_READER`, as the **resolved** reader | It decides which reader produced the text. The resolved name is recorded, so `auto` counts as the reader it resolved to, and an uninstalled choice counts as `pypdf` |
+| `PDF_READERS`, as the **resolved** reader and list | It decides which reader produced the text. The resolved first reader is recorded, so `auto` counts as the reader it resolved to, and an uninstalled first reader counts as the next installed reader. A list that equals the expansion of one `PDF_READER` value adds nothing, so older identities stay the same. Any other list adds the full ordered list (PDF sources only) |
 | The output revision of the resolved PDF reader (PDF sources only) | A reader declares a new revision when its output changes, so each PDF source reprocesses once. `pdf_inspector` declares 2 since it emits page documents; the other readers declare 1. Non-PDF sources do not carry it |
 | `EMBEDDING__TOKENIZER_MODEL` and `EMBEDDING__TOKENIZER_REVISION` | They set the Markdown token budget, so chunk boundaries move |
 | The **resolved** Markdown splitter | Model-token-aware or legacy fallback. The resolved value is recorded, not the configured one, so a corpus chunked under the fallback does not stay "matching" forever once the tokenizer becomes loadable |
 | `OCR_FALLBACK_ENABLED` | It decides which reader produced the text |
 | `OCR_ROUTING_UNIT`, the escalation threshold and the resolved local model identity | They decide which engine reads each page |
-| Both resolved OCR route fingerprints | Availability, protocol version, every package and exact version, pipeline identity and revision, model identity and revision, output-schema identity and version, and backend identifier |
+| The resolved OCR route fingerprints (the first two engines; a third engine and later add their own) | Availability, protocol version, every package and exact version, pipeline identity and revision, model identity and revision, output-schema identity and version, and backend identifier |
 | `OCR_MATHS_ROUTING_ENABLED` and the detector version | They decide whether maths pages reach OCR; recorded for every source |
 
 Two consequences worth planning for:
 
-1. **Provisioning either engine changes identity for previously indexed
+1. **Provisioning either of the first two engines changes identity for previously indexed
    sources, including non-PDF sources.** Both route fingerprints belong
-   to the shared identity payload. A previously unavailable route
+   to the shared identity payload. A list of one engine gives the same
+   payload for the second engine as an empty fallback does. A previously unavailable route
    becoming available causes re-ingestion, including when it is the
-   fallback route. Package, model, pipeline, protocol and output-schema
+   second route. Package, model, pipeline, protocol and output-schema
    changes have the same effect. Provision the required engines before
    building the corpus, or plan for re-ingestion.
 2. **`EMBEDDING__QUERY_INSTRUCTION` deliberately does NOT count.** It

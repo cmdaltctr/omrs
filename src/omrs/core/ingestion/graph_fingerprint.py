@@ -52,6 +52,11 @@ INGESTION_SHAPE_RESOURCE = "ingestion_shape"
 
 _Lookup = Callable[[str, int | None], OperationDescriptor | None]
 
+#: Parameters added after saved graphs were fingerprinted (change
+#: ordered-reader-and-ocr-lists). Unset, they stay out of the hash, so a saved
+#: graph that never set them keeps its fingerprint and no source reprocesses.
+_ADDED_PARAMS = frozenset({"pdf_readers", "ocr_engines"})
+
 
 @dataclass(frozen=True)
 class IngestionShape:
@@ -64,8 +69,9 @@ class IngestionShape:
             node's ancestor slice selects. ``None`` when the node inherits
             the host reader. The fingerprint already covers it; the identify
             step reads it to build the same identity as the read.
-        read_options: The OCR options that the same Read document node sets
-            (design D4 of integrations-show-runtime-components). Only set
+        read_options: The other options that the same Read document node sets:
+            the OCR options (design D4 of integrations-show-runtime-components)
+            and the ``pdf_readers`` and ``ocr_engines`` lists. Only set
             keys are present, so a node that inherits everything has none.
     """
 
@@ -157,6 +163,7 @@ class _Slice:
             descriptor = self.descriptors[node_id]
             params = descriptor.parameters.model_validate(node.params).model_dump(mode="json")
             params.pop(descriptor.collection_param or "", None)
+            params = {k: v for k, v in params.items() if v is not None or k not in _ADDED_PARAMS}
             self._memo[node_id] = _digest(
                 {
                     "operation": descriptor.operation_id,

@@ -18,7 +18,7 @@ import yaml
 from pydantic import BaseModel
 
 from ...config import Settings
-from ...config.rules import INTERNAL_FIELDS, SECRET_FIELDS
+from ...config.rules import INTERNAL_FIELDS, SECRET_FIELDS, TEMPLATE_SKIPPED_FIELDS
 from ..settings_view import FILE_ONLY_DEFAULTS
 
 #: Settings that live only in the file, with their default and the
@@ -88,7 +88,11 @@ def _setting_lines(
 def _flat_section(yaml_data: dict[str, Any]) -> list[str]:
     lines: list[str] = []
     for name, field in Settings.model_fields.items():
-        if name in INTERNAL_FIELDS or _is_block(field.annotation):
+        if (
+            name in INTERNAL_FIELDS
+            or name in TEMPLATE_SKIPPED_FIELDS
+            or _is_block(field.annotation)
+        ):
             continue
         value = yaml_data.get(name, field.default)
         lines += _setting_lines(

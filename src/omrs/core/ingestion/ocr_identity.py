@@ -154,8 +154,9 @@ def route_fingerprints(ocr_client: Any) -> tuple[Any, Any]:
     """Return the ``(primary, fallback)`` fingerprints of the injected routes.
 
     Change modular-ocr-workers-dots-mocr, design D7: the existing
-    ``ocr_worker_fingerprint`` is the primary route's, and
-    ``ocr_fallback_fingerprint`` sits beside it. A single injected
+    ``ocr_worker_fingerprint`` is the first route's, and
+    ``ocr_fallback_fingerprint`` is the second's. Later routes are read by
+    :func:`more_route_fingerprints`. A single injected
     client is a primary-only route pair; ``None`` (OCR off) and a
     missing route yield ``None``, which
     :func:`ocr_fingerprint_payload` maps to the stable unavailable payload.
@@ -171,6 +172,16 @@ def route_fingerprints(ocr_client: Any) -> tuple[Any, Any]:
         return None, None
     primary = getattr(ocr_client, "fingerprint", None)
     return primary, getattr(ocr_client, "fallback_fingerprint", None)
+
+
+def more_route_fingerprints(ocr_client: Any) -> tuple[Any, ...]:
+    """Return the fingerprints of the third and later routes, in list order.
+
+    Change ordered-reader-and-ocr-lists, design D5. The first two routes keep
+    their own identity keys, so a two-engine install (the default) has none
+    here and its digest does not move. A single client or ``None`` has none.
+    """
+    return tuple(getattr(ocr_client, "fingerprints", ())[2:])
 
 
 def maths_routing_payload(settings: Any) -> dict[str, Any]:

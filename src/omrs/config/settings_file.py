@@ -25,7 +25,7 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, get_args
+from typing import TYPE_CHECKING, Annotated, Any, get_args, get_origin
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
@@ -34,9 +34,12 @@ from .legacy import NOTHING_REPLACES
 from .rules import (
     FILE_ONLY,
     INTERNAL_FIELDS,
+    LIST_TYPE_RULE,
+    READING_LIST_KEYS,
     SECRET_FIELDS,
     accepted_problem,
     file_only_problem,
+    ignored_old_keys,
 )
 from .user_config import (
     CONFIG_FILE,
@@ -206,6 +209,8 @@ _ONE_SIDED = (
 
 def _rule_text(info: FieldInfo) -> str:
     """Describe the type rule of a field. It names a kind and a range, never a value."""
+    if get_origin(info.annotation) is tuple:
+        return LIST_TYPE_RULE
     names = {info.annotation, *get_args(info.annotation)}
     bounds = field_bounds(info)
     low, high = bounds.get("ge", bounds.get("gt")), bounds.get("le", bounds.get("lt"))
@@ -235,6 +240,8 @@ def _check(
     path: str, value: Any, info: FieldInfo, block: type[BaseModel] | None, leaf: str
 ) -> tuple[Any, str | None]:
     """Return ``(validated, rule)``: *rule* is ``None`` when *value* is fine."""
+    if path in READING_LIST_KEYS and not isinstance(value, (list, tuple)):
+        return None, LIST_TYPE_RULE  # the file form is an array; text is the environment form
     try:
         if block is not None:
             validated = getattr(block.model_validate({leaf: value}), leaf)
@@ -359,6 +366,18 @@ class _Reader:
                 self.unknown_block(key, value)
             else:
                 self.unknown(key)
+        self.drop_overridden_keys()
+
+    def drop_overridden_keys(self) -> None:
+        """Drop each old reading key that sits beside its list key, and list it as ignored.
+
+        Within one source the list key wins (design D4). The old key is listed as
+        ``retired`` with the list key as its replacement, so the contract keeps its
+        four problem kinds.
+        """
+        for old, new in ignored_old_keys(self.values):
+            del self.values[old]
+            self.problem(KIND_RETIRED, old, f"Ignored: {new} is set in this file and wins.", new)
 
     def read_block(self, name: str, value: Any) -> None:
         if not isinstance(value, Mapping):

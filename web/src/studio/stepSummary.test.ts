@@ -3,6 +3,7 @@ import type { EffectiveControl, NodeSpec, OperationDescriptor } from "../api/pip
 import { paramFields } from "./schema";
 import { cardLines, firstSentence, mainSettings, settingValue } from "./stepSummary";
 import { CATALOGUE } from "./test/catalogueFixture";
+import { CATALOGUE_INGEST } from "./test/catalogueIngest";
 
 function operation(id: string): OperationDescriptor {
   const found = CATALOGUE.find((entry) => entry.operation_id === id);
@@ -130,6 +131,20 @@ describe("cardLines", () => {
       { label: "Metadata filter", value: "Default" },
       { label: "Collection", value: "docs (from pipeline settings)" },
     ]);
+  });
+
+  it("leaves out the old single-value options that a list replaces, unless the step sets them", () => {
+    const read = CATALOGUE_INGEST.find((entry) => entry.operation_id === "read.document");
+    if (read === undefined) throw new Error("read.document");
+    const all = (node: NodeSpec) => {
+      const lines = cardLines(read, node, undefined, NO_OVERRIDES);
+      return [...lines.settings, ...lines.extraSettings].map((entry) => entry.label);
+    };
+    const listed = all({ id: "read", operation: "read.document", params: { pdf_readers: ["liteparse", "pdf_inspector"] } });
+    expect(listed).toContain("PDF readers");
+    expect(listed).not.toContain("PDF reader");
+    const saved = all({ id: "read", operation: "read.document", params: { pdf_reader: "pypdf" } });
+    expect(saved).toContain("PDF reader");
   });
 
   it("gives no extra settings for a step that shows them all", () => {

@@ -105,7 +105,7 @@ metadata.extraction_mode    →  METADATA__EXTRACTION_MODE
 ```
 
 Cross-cutting settings stay flat: `EMBED_MODEL`, `CHROMA_PERSIST_DIR`,
-`VECTOR_STORE`, `LANCEDB_URI`, `RAG_PROFILE`, `PDF_READER`, and all
+`VECTOR_STORE`, `LANCEDB_URI`, `RAG_PROFILE`, `PDF_READERS`, and all
 credentials.
 
 Use a pre-v2 name like `TOP_K` and the app refuses to start, telling you the
@@ -464,8 +464,8 @@ OCR engines live outside the OMRS environment:
 ```text
 ocr-workers/
   core/                  shared protocol, validation, framing and engine contract
-  engines/dots-mocr/     primary engine, isolated PyTorch environment
-  engines/paddleocr-vl/  fallback engine, isolated Paddle environment
+  engines/dots-mocr/     default first engine, isolated PyTorch environment
+  engines/paddleocr-vl/  default second engine, isolated Paddle environment
   provision.py           provisions one named engine from its lockfile
 ```
 
@@ -475,15 +475,15 @@ or multiple engines. The host resolves engine folders by name without
 branching on engine names. See the
 [add-an-engine checklist](../../ocr-workers/README.md#add-an-engine).
 
-`capabilities.build_ocr_routes` constructs an `OcrRoutes` pair from
-injected settings. `OCR_ENGINE_PRIMARY=dots-mocr` and
-`OCR_ENGINE_FALLBACK=paddleocr-vl` are the defaults. `OCR_WORKERS_DIR`
-locates the engine projects. Both routes resolve from the folder and the
+`capabilities.build_ocr_routes` constructs an `OcrRoutes` tuple from
+injected settings, one route for each engine in `OCR_ENGINES`. The default
+list is `dots-mocr, paddleocr-vl`. `OCR_WORKERS_DIR`
+locates the engine projects. Each route resolves from the folder and the
 engine name only; the explicit `OCR_WORKER_COMMAND` override was removed
 (ADR-105). See [migration](ingestion.md#provision-the-engines).
 
-Before each worker dispatch, `OcrRoutes.select()` chooses an available
-primary, otherwise the fallback. If neither is available, flagged pages
+Before each worker dispatch, `OcrRoutes.select()` chooses the first
+available engine of the list. If none is available, flagged pages
 keep native text and count unresolved. A post-dispatch failure remains a
 per-file error without a cross-route retry. Each client starts its parsing
 subprocess lazily. Identical commands and working directories share a
@@ -514,7 +514,7 @@ model-code hashes before loading and parses offline. Experiment 37 measured
 a peak of about 22 GiB of Apple Silicon GPU memory through Metal
 Performance Shaders (MPS) over 257 pages; one-page smoke tests showed
 only 7–9.5 GiB. CPU execution is slower. Operators with limited memory
-can select `OCR_ENGINE_PRIMARY=paddleocr-vl`. Neither runtime enters the
+can put `paddleocr-vl` first in `OCR_ENGINES`. Neither runtime enters the
 OMRS base environment. `OMRS_OCR_MODEL_CACHE` can keep per-engine weights
 outside worktrees.
 
@@ -631,7 +631,7 @@ peers stays an integration.
 Every Python module under `src/omrs/integrations/`, classified. A contract
 test fails when a module is missing from this table.
 
-<!-- integration-inventory:start count=51 -->
+<!-- integration-inventory:start count=52 -->
 
 | Module                                   | Availability                                                   | Selector                                                            | Shared contract                               | Fallback owner                                                                    | Disposition                                                         |
 | ---------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
@@ -641,13 +641,13 @@ test fails when a module is missing from this table.
 | `omrs.integrations.magika`            | Optional executable                                            | `MAGIKA_BINARY` selects the binary path, not an implementation      | `FileEntry` detection results                 | `core/codebase/codebase_map.py` suffix detection                                  | Capability integration; remains unregistered                        |
 | `omrs.integrations.ocr_worker`        | Native                                                         | None                                                                | `OcrWorkerClient` and protocol types          | None                                                                              | Facade; exports the worker client and protocol types                |
 | `omrs.integrations.ocr_worker.client` | Native                                                         | `OCR_FALLBACK_ENABLED` and resolved route command                  | JSON Lines request/response client            | `integrations/pdf/ocr_routing.py` before dispatch                                 | Subprocess capability adapter; injected into core                   |
-| `omrs.integrations.ocr_worker.dispatch` | Native | Resolved primary and fallback routes | `RoutedClient`: sends a parse to the primary and, after an operator stop of its runtime, once to the fallback | Unavailable before dispatch goes to the fallback; no retry after dispatch | Never sends one request twice to the same route |
+| `omrs.integrations.ocr_worker.dispatch` | Native | Resolved routes in list order | `RoutedClient`: sends a parse to the first available route and, after an operator stop of its runtime, once to the next available route | Unavailable before dispatch goes to the next route; no retry after dispatch | Never sends one request twice to the same route |
 | `omrs.integrations.ocr_worker.fingerprint` | Native                                                      | Resolved route command with `--capabilities`                       | Frozen `OcrWorkerFingerprint`                 | Stable unavailable fingerprint                                                     | Capability probe; invalid probes have one stable identity           |
 | `omrs.integrations.ocr_worker.managed` | Native                                                         | `OCR_FALLBACK_ENABLED` and resolved route command                  | Owner-scoped `ManagedOcrClient` lifecycle     | `capabilities.build_ocr_routes` unavailable path                                   | Composition-boundary wrapper; injected into core                    |
 | `omrs.integrations.ocr_worker.manifest` | Native | Engine `pyproject.toml` `[tool.omrs-ocr]` | Parsed manifest, licence gate and not-provisioned reason | Minimal TOML reader before Python 3.11 | Standard-library helper; `ocr-workers/provision.py` loads it by file path |
 | `omrs.integrations.ocr_worker.pool` | Native | Resolved route commands of each node and of the host | `OcrClientPool`: one lazy `ManagedOcrClient` per command, `routes(settings)` | Unavailable route when a command does not resolve | Engine-owned; one pool-wide lock serialises parsing (ADR-105) |
 | `omrs.integrations.ocr_worker.protocol` | Native                                                       | None                                                                | Versioned JSON Lines envelopes                 | None                                                                              | Wire-protocol twin (1.1: optional request `pages`, response `pages_markdown`); tests keep its independent copy compatible      |
-| `omrs.integrations.ocr_worker.routes` | Native | `OCR_WORKERS_DIR`, `OCR_ENGINE_PRIMARY`, `OCR_ENGINE_FALLBACK` | `OcrRoutes` (primary, fallback) and `select()` | Unknown or unprovisioned engine → stable unavailable fingerprint | Resolves engines by folder name; fallback only before dispatch; per-page timeout scaling |
+| `omrs.integrations.ocr_worker.routes` | Native | `OCR_WORKERS_DIR`, `OCR_ENGINES` | `OcrRoutes` (one route per listed engine) and `select()` | Unknown or unprovisioned engine → stable unavailable fingerprint | Resolves engines by folder name; a later engine only before dispatch; per-page timeout scaling |
 | `omrs.integrations.ocr_worker.runtime` | Native | Engine `[tool.omrs-ocr.runtime]` block, `OCR_RUNTIME_URL` | Runtime spec per engine (`ocr-<engine folder>`) and lease use around one worker parse with `OMRS_OCR_RUNTIME_URL` | Runtime unavailable makes the route unavailable before dispatch | Host never names an engine; ADR-109 |
 | `omrs.integrations.ocr_worker.validation` | Native                                                    | None                                                                | Protocol violation codes and payload checks    | None                                                                              | Split from `protocol.py` at the 500-line ceiling; byte-identical twin in `ocr-workers/core/` |
 | `omrs.integrations.llamacpp_runtime` | Native | `LLAMACPP_CHAT_SERVER`, `LLAMACPP_EMBED_SERVER`, `OCR_RUNTIME_URL` | Facade; exports the manager, lease, spec, state and lock surface of the shared runtime manager | None | One manager for every local llama.cpp runtime; components are clients |
@@ -660,6 +660,7 @@ test fails when a module is missing from this table.
 | `omrs.integrations.llamacpp_runtime.state` | Native | `OMRS_STATE_DIR`, `$XDG_STATE_HOME` | `server.json` atomic read/write and the state root | Missing or broken file reads as no record | Local-disk runtime state shared by every OMRS process |
 | `omrs.integrations.pdf`               | Native                                                         | None                                                                | `get_pdf_reader(reader)`                      | None                                                                              | Public facade exposing the factory                                  |
 | `omrs.integrations.pdf.blank_pages` | Base, via `liteparse` renders | `OCR_FALLBACK_ENABLED`, flagged pages only | `find_blank_pages` frozenset and `BLANK_PAGE_TEST_VERSION` | Render or score failure → no page blank; every page keeps its normal route | Edge-free stroke-ink blank test with a versioned threshold (change `skip-blank-pages-before-worker`) |
+| `omrs.integrations.pdf.chain` | Native | `PDF_READERS` | `clean_reader_list`, `first_installed`, `tiers_after`, `rescue_pages`, `construct` | A tier that is not installed, raises or returns no text hands over to the next tier; the last tier's exception propagates; no installed reader gives pypdf | Runs the reader list: start-up choice and pdf-inspector rescue tiers; names no reader, so tiers come from the list through the registry |
 | `omrs.integrations.pdf.factory`       | Native                                                         | `PDF_READER=auto`                                                   | Reader instance with `load_data`              | Factory itself (LiteParse → pypdfium2 → pypdf probe, for direct `auto` callers)   | Registry-backed factory; `auto` stays ordered capability resolution |
 | `omrs.integrations.pdf.liteparse`     | Base dependency (despite the stale docstring naming an extra)  | `PDF_READER=liteparse`                                              | `load_data`                                   | `compose.resolve_pdf_reader` `auto` probe                                         | Registered reader strategy                                          |
 | `omrs.integrations.pdf.maths_pages` | Base, via `pypdf` | `OCR_MATHS_ROUTING_ENABLED` | `maths_font_pages` frozenset of 1-based pages | Unreadable font resources → no pages flagged | Closed, versioned maths-font list (`MATHS_DETECTOR_VERSION`) |
@@ -697,7 +698,7 @@ The same rule applied to every name-dispatched family, inside and outside
 | Family              | Selector                                                                                                 | Live registry / factory                                             | Conclusion                                                                                                                                                       | Follow-up |
 | ------------------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
 | Community detection | `COMMUNITY_ALGORITHM`                                                                                    | `core/community/registry.py`                                        | Registered in this change: `louvain` native, `leiden` optional via `integrations/leidenalg.py`                                                                   | None      |
-| PDF readers         | `PDF_READER`                                                                                             | `integrations/pdf/registry.py` behind `integrations/pdf/factory.py` | Concrete readers registered behind the unchanged `auto` factory                                                                                                  | None      |
+| PDF readers         | `PDF_READERS`                                                                                            | `integrations/pdf/registry.py` behind `integrations/pdf/factory.py` | Concrete readers registered behind the unchanged `auto` factory                                                                                                  | None      |
 | Chunking            | Content-type dispatch in `core/ingestion/chunker.py`; `CHUNKING__STRATEGY_FALLBACK` (default `markdown`) | `core/chunking/registry.py`                                         | Already a registry                                                                                                                                               | None      |
 | Metadata extraction | `METADATA__EXTRACTION_MODE` and provider backends                                                        | `core/metadata/registry.py`                                         | Already a registry                                                                                                                                               | None      |
 | Embedding providers | `EMBED_PROVIDER`                                                                                         | `core/providers/embeddings/registry.py`                             | Already a registry                                                                                                                                               | None      |

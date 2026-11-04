@@ -13,7 +13,7 @@ async function openSection(handlers = {}) {
   const server = settingsServer(handlers);
   startApp("#/settings/document-reading", server);
   const section = await screen.findByRole("region", { name: "Document reading" });
-  await within(section).findByRole("group", { name: "PDF reader" });
+  await within(section).findByRole("group", { name: "PDF readers" });
   return { server, section, user: userEvent.setup() };
 }
 
@@ -45,7 +45,7 @@ function savingServer(start: DocumentReadingState) {
 describe("Document reading", () => {
   it("shows each reading setting as a compact row, with no mini card", async () => {
     const { section } = await openSection();
-    for (const name of ["PDF reader", "OCR fallback", "OCR routing unit"]) {
+    for (const name of ["PDF readers", "OCR fallback", "OCR routing unit"]) {
       expect(row(name)).toHaveAttribute("data-slot", "setting-row");
     }
     expect(section.querySelector("[data-slot='card-inset']")).toBeNull();
@@ -58,7 +58,7 @@ describe("Document reading", () => {
     const names = (name: string) => within(block(name)).getAllByRole("group").map((group) => group.getAttribute("aria-label"));
     expect(names("When to use OCR")).toEqual(["OCR fallback", "OCR routing unit"]);
     expect(names("Maths pages")).toEqual(["Maths routing"]);
-    expect(names("Engines")).toEqual(["Primary engine", "Fallback engine"]);
+    expect(names("Engines")).toEqual(["OCR engines"]);
     expect(block("Engines")).toHaveTextContent(/OCR engines folder|OCR_WORKERS_DIR/);
     const [left, right] = Array.from(ocr.querySelector("[data-slot='reading-columns']")!.children) as HTMLElement[];
     expect(within(left!).getByRole("group", { name: "When to use OCR" })).toBeInTheDocument();
@@ -72,13 +72,14 @@ describe("Document reading", () => {
     expect(screen.getByRole("button", { name: "Document reading" })).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("shows one row for each of the six keys with the value in force, its source and the default", async () => {
+  it("shows one row for each key the page edits with the value in force, its source and the default", async () => {
     const { section } = await openSection();
-    const names = ["PDF reader", "OCR fallback", "OCR routing unit", "Primary engine", "Fallback engine", "Maths routing"];
+    const names = ["PDF readers", "OCR fallback", "OCR routing unit", "OCR engines", "Maths routing"];
     for (const name of names) expect(within(section).getByRole("group", { name })).toBeInTheDocument();
-    const reader = row("PDF reader");
-    expect(within(reader).getByText("pdf_inspector", { selector: "code" })).toBeInTheDocument();
-    expect(reader).toHaveTextContent("Default: pdf_inspector");
+    for (const old of ["PDF reader", "Primary engine", "Fallback engine"]) expect(within(section).queryByRole("group", { name: old })).toBeNull();
+    const readers = row("PDF readers");
+    expect(within(readers).getByText("pdf_inspector, liteparse, pypdf", { selector: "code" })).toBeInTheDocument();
+    expect(readers).toHaveTextContent("Default: pdf_inspector, liteparse, pypdf");
     expect(within(row("OCR fallback")).getByText("On", { selector: "code" })).toBeInTheDocument();
     expect(within(row("OCR routing unit")).getByText("page", { selector: "code" })).toBeInTheDocument();
     expect(row("OCR routing unit")).toHaveTextContent("default");
@@ -92,20 +93,21 @@ describe("Document reading", () => {
     expect(section).toHaveTextContent("A Read document step in a pipeline can choose its own reader.");
   });
 
-  it("shows a value saved but not yet in force with Restart to apply", async () => {
+  it("shows a list saved but not yet in force with Restart to apply, and the reader in use when it is not the first", async () => {
     await openSection({
-      "GET /v1/settings/document-reading": () => readingState({ pdf_reader: { value: "auto", saved: "liteparse", source: "config-file", restart_pending: true } }, { pdf_reader_in_use: "liteparse" }),
+      "GET /v1/settings/document-reading": () =>
+        readingState({ pdf_readers: { saved: ["liteparse", "pypdf"], source: "config-file", restart_pending: true } }, { pdf_reader_in_use: "liteparse" }),
     });
-    const reader = row("PDF reader");
-    expect(within(reader).getByText("auto", { selector: "code" })).toBeInTheDocument();
-    expect(reader).toHaveTextContent("Saved for the next launch: liteparse");
-    expect(within(reader).getByText("Restart to apply")).toBeInTheDocument();
-    expect(reader).toHaveTextContent("In use: liteparse");
+    const readers = row("PDF readers");
+    expect(within(readers).getByText("pdf_inspector, liteparse, pypdf", { selector: "code" })).toBeInTheDocument();
+    expect(readers).toHaveTextContent("Saved for the next launch: liteparse, pypdf");
+    expect(within(readers).getByText("Restart to apply")).toBeInTheDocument();
+    expect(readers).toHaveTextContent("In use: liteparse");
   });
 
-  it("says nothing about the reader in use when it is the configured one", async () => {
+  it("says nothing about the reader in use when it is the first in the list", async () => {
     await openSection();
-    expect(row("PDF reader")).not.toHaveTextContent("In use:");
+    expect(row("PDF readers")).not.toHaveTextContent("In use:");
   });
 
   it("makes a key from the environment read-only and names its variable", async () => {
@@ -116,58 +118,135 @@ describe("Document reading", () => {
     const unit = row("OCR routing unit");
     expect(within(unit).queryByRole("button", { name: /Edit/ })).toBeNull();
     expect(unit).toHaveTextContent(lock);
-    expect(within(row("PDF reader")).getByRole("button", { name: "Edit PDF reader" })).toBeInTheDocument();
+    expect(within(row("PDF readers")).getByRole("button", { name: "Edit PDF readers" })).toBeInTheDocument();
   });
 
-  it("marks a PDF reader that is not installed and does not let it be chosen", async () => {
-    const { user } = await openSection();
-    await user.click(within(row("PDF reader")).getByRole("button", { name: "Edit PDF reader" }));
-    expect(row("PDF reader")).toHaveTextContent("pypdfium2 is not available. The package 'pypdfium2' is not installed.");
-    await user.click(within(row("PDF reader")).getByRole("combobox", { name: "PDF reader" }));
-    expect(await screen.findByRole("option", { name: "pypdfium2 (not installed)" })).toHaveAttribute("aria-disabled", "true");
-    expect(screen.getByRole("option", { name: "liteparse" })).not.toHaveAttribute("aria-disabled");
-  });
-
-  it("lists the engines the server reports and allows one that is not provisioned, with the reason", async () => {
+  it("edits the readers as an ordered list and writes only the list key", async () => {
     const { user, server } = await openSection(savingServer(readingState()));
-    const fallback = row("Fallback engine");
-    expect(fallback).toHaveTextContent("Not provisioned. Run python3 ocr-workers/provision.py paddleocr-vl.");
-    await user.click(within(row("Primary engine")).getByRole("button", { name: "Edit Primary engine" }));
-    await user.click(within(row("Primary engine")).getByRole("combobox", { name: "Primary engine" }));
-    const options = await screen.findAllByRole("option");
-    expect(options.map((option) => option.textContent)).toEqual(["dots-mocr", "paddleocr-vl (not provisioned)"]);
-    await user.click(screen.getByRole("option", { name: "paddleocr-vl (not provisioned)" }));
-    expect(row("Primary engine")).toHaveTextContent("Not provisioned. Run python3 ocr-workers/provision.py paddleocr-vl.");
-    await user.click(within(row("Primary engine")).getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(server.find("PUT", "/v1/settings/document-reading").map((call) => call.body)).toEqual([{ values: { ocr_engine_primary: "paddleocr-vl" }, revision: "r1" }]));
-  });
-
-  it("never says that a worker command replaces the primary engine, because the setting is gone", async () => {
-    await openSection({ "GET /v1/settings/document-reading": () => readingState({}, { ocr: { ...readingState().ocr, worker_command_set: true } as never }) });
-    expect(row("Primary engine")).not.toHaveTextContent("OCR_WORKER_COMMAND");
-    expect(row("Fallback engine")).not.toHaveTextContent("OCR_WORKER_COMMAND");
-  });
-
-  it("shows an empty fallback engine set in .env as no fallback", async () => {
-    await openSection({ "GET /v1/settings/document-reading": () => readingState({ ocr_engine_fallback: { value: "", saved: null, source: "dotenv", locked: true, lock_reason: "Remove OCR_ENGINE_FALLBACK from the environment or .env to edit it here." } }) });
-    expect(within(row("Fallback engine")).getByText("None (no fallback)")).toBeInTheDocument();
-  });
-
-  it("saves an engine with the revision, shows Restart to apply and opens the restart dialog with the index identity note", async () => {
-    const { user, server } = await openSection(savingServer(readingState()));
-    await user.click(within(row("Primary engine")).getByRole("button", { name: "Edit Primary engine" }));
-    await user.click(within(row("Primary engine")).getByRole("combobox", { name: "Primary engine" }));
-    await user.click(await screen.findByRole("option", { name: "paddleocr-vl (not provisioned)" }));
-    await user.click(within(row("Primary engine")).getByRole("button", { name: "Save" }));
+    await user.click(within(row("PDF readers")).getByRole("button", { name: "Edit PDF readers" }));
+    const list = within(row("PDF readers")).getByRole("list", { name: "PDF readers" });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(3);
+    await user.click(within(row("PDF readers")).getByRole("button", { name: "Move pypdf up" }));
+    await user.click(within(row("PDF readers")).getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(server.find("PUT", "/v1/settings/document-reading").map((call) => call.body)).toEqual([{ values: { pdf_readers: ["pdf_inspector", "pypdf", "liteparse"] }, revision: "r1" }]),
+    );
     const dialog = await screen.findByRole("dialog", { name: "Restart to apply?" });
-    expect(dialog).toHaveTextContent("Primary engine applies after a restart.");
+    expect(dialog).toHaveTextContent("PDF readers applies after a restart.");
+  });
+
+  it("keeps Save off until the list changes", async () => {
+    const { user } = await openSection();
+    await user.click(within(row("PDF readers")).getByRole("button", { name: "Edit PDF readers" }));
+    expect(within(row("PDF readers")).getByRole("button", { name: "Save" })).toBeDisabled();
+    await user.click(within(row("PDF readers")).getByRole("button", { name: "Move pypdf up" }));
+    await user.click(within(row("PDF readers")).getByRole("button", { name: "Move pypdf down" }));
+    expect(within(row("PDF readers")).getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
+  it("shows no row for an old single-value key, even when the server still sends one", async () => {
+    const base = readingState();
+    const old = (key: "pdf_reader" | "ocr_engine_primary" | "ocr_engine_fallback", value: string) => ({ ...base.settings[0]!, key, value, default: value });
+    await openSection({
+      "GET /v1/settings/document-reading": () => ({ ...base, settings: [...base.settings, old("pdf_reader", "pypdf"), old("ocr_engine_primary", "dots-mocr"), old("ocr_engine_fallback", "paddleocr-vl")] }),
+    });
+    const ocr = screen.getByRole("region", { name: "OCR" });
+    const rows = within(ocr).getAllByRole("group").flatMap((group) => group.getAttribute("aria-label") ?? []);
+    expect(rows).toEqual(["OCR fallback", "OCR routing unit", "Maths routing", "OCR engines"]);
+    for (const name of ["PDF reader", "Primary engine", "Fallback engine"]) expect(screen.queryByRole("group", { name })).toBeNull();
+  });
+
+  it("makes a locked engine list read-only and names the variable", async () => {
+    const lock = "Remove OCR_ENGINES from the environment or .env to edit it here.";
+    await openSection({
+      "GET /v1/settings/document-reading": () => readingState({ ocr_engines: { source: "env", locked: true, lock_reason: lock } }),
+    });
+    const engines = row("OCR engines");
+    expect(within(engines).queryByRole("button", { name: /Edit/ })).toBeNull();
+    expect(engines).toHaveTextContent(lock);
+  });
+
+  it("marks a listed PDF reader that is not installed with a link to Integrations, and offers only the others to add", async () => {
+    const { user } = await openSection(savingServer(readingState({ pdf_readers: { value: ["pdf_inspector", "pypdfium2"], default: ["pdf_inspector", "liteparse", "pypdf"] } })));
+    expect(row("PDF readers")).toHaveTextContent("pypdfium2: Not installed.");
+    await user.click(within(row("PDF readers")).getByRole("button", { name: "Edit PDF readers" }));
+    expect(within(row("PDF readers")).getByRole("link", { name: "See PDF readers in Integrations" })).toHaveAttribute("href", "#/integrations/pdf-readers");
+    await user.click(within(row("PDF readers")).getByRole("combobox", { name: "Add reader" }));
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["pypdf", "liteparse"]);
+  });
+
+  it("does not let a reader that is not installed be added", async () => {
+    const { user } = await openSection(savingServer(readingState({ pdf_readers: { value: ["pdf_inspector"] } })));
+    await user.click(within(row("PDF readers")).getByRole("button", { name: "Edit PDF readers" }));
+    await user.click(within(row("PDF readers")).getByRole("combobox", { name: "Add reader" }));
+    expect(await screen.findByRole("option", { name: "pypdfium2 (not installed)" })).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("refuses an empty reader list", async () => {
+    const { user, server } = await openSection(savingServer(readingState({ pdf_readers: { value: ["pdf_inspector", "pypdf"] } })));
+    await user.click(within(row("PDF readers")).getByRole("button", { name: "Edit PDF readers" }));
+    await user.click(within(row("PDF readers")).getByRole("button", { name: "Remove pdf_inspector" }));
+    expect(within(row("PDF readers")).getByRole("button", { name: "Remove pypdf" })).toBeDisabled();
+    expect(row("PDF readers")).toHaveTextContent("The list needs at least one reader.");
+    expect(server.find("PUT", "/v1/settings/document-reading")).toHaveLength(0);
+  });
+
+  it("warns when pdf_inspector is the only reader, because a PDF with no text layer then indexes nothing", async () => {
+    const { user } = await openSection();
+    expect(row("PDF readers")).not.toHaveTextContent("indexes nothing");
+    await user.click(within(row("PDF readers")).getByRole("button", { name: "Edit PDF readers" }));
+    await user.click(within(row("PDF readers")).getByRole("button", { name: "Remove liteparse" }));
+    expect(row("PDF readers")).not.toHaveTextContent("indexes nothing");
+    await user.click(within(row("PDF readers")).getByRole("button", { name: "Remove pypdf" }));
+    expect(row("PDF readers")).toHaveTextContent("pdf_inspector alone has no retry: a PDF with no text layer indexes nothing. Add liteparse or pypdf.");
+  });
+
+  it("shows the warning outside edit mode when the list in force is pdf_inspector alone", async () => {
+    await openSection({ "GET /v1/settings/document-reading": () => readingState({ pdf_readers: { value: ["pdf_inspector"] } }) });
+    expect(row("PDF readers")).toHaveTextContent("indexes nothing");
+  });
+
+  it("shows no warning for a single reader that is not pdf_inspector", async () => {
+    await openSection({ "GET /v1/settings/document-reading": () => readingState({ pdf_readers: { value: ["pypdf"] } }) });
+    expect(row("PDF readers")).not.toHaveTextContent("indexes nothing");
+  });
+
+  it("lists the engines in order and says Not provisioned on an engine that cannot run yet", async () => {
+    await openSection();
+    const engines = row("OCR engines");
+    expect(within(engines).getByText("dots-mocr, paddleocr-vl", { selector: "code" })).toBeInTheDocument();
+    expect(engines).toHaveTextContent("paddleocr-vl: Not provisioned. Run python3 ocr-workers/provision.py paddleocr-vl.");
+  });
+
+  it("never says that a worker command replaces an engine, because the setting is gone", async () => {
+    await openSection({ "GET /v1/settings/document-reading": () => readingState({}, { ocr: { ...readingState().ocr, worker_command_set: true } as never }) });
+    expect(row("OCR engines")).not.toHaveTextContent("OCR_WORKER_COMMAND");
+  });
+
+  it("removes the fallback engine to run with one engine, and writes only the list key", async () => {
+    const { user, server } = await openSection(savingServer(readingState()));
+    await user.click(within(row("OCR engines")).getByRole("button", { name: "Edit OCR engines" }));
+    await user.click(within(row("OCR engines")).getByRole("button", { name: "Remove paddleocr-vl" }));
+    await user.click(within(row("OCR engines")).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(server.find("PUT", "/v1/settings/document-reading").map((call) => call.body)).toEqual([{ values: { ocr_engines: ["dots-mocr"] }, revision: "r1" }]));
+    const dialog = await screen.findByRole("dialog", { name: "Restart to apply?" });
+    expect(dialog).toHaveTextContent("OCR engines applies after a restart.");
     expect(dialog).toHaveTextContent(IDENTITY_NOTE);
-    expect(server.find("PUT", "/v1/settings/document-reading").map((call) => call.body)).toEqual([{ values: { ocr_engine_primary: "paddleocr-vl" }, revision: "r1" }]);
     await user.click(within(dialog).getByRole("button", { name: "Later" }));
-    const engine = row("Primary engine");
-    expect(within(engine).getByText("Restart to apply")).toBeInTheDocument();
-    expect(engine).toHaveTextContent("Saved for the next launch: paddleocr-vl");
-    expect(within(engine).getByText("dots-mocr", { selector: "code" })).toBeInTheDocument();
+    const engines = row("OCR engines");
+    expect(within(engines).getByText("Restart to apply")).toBeInTheDocument();
+    expect(engines).toHaveTextContent("Saved for the next launch: dots-mocr");
+  });
+
+  it("adds an engine that is not provisioned, because a later engine only runs when the ones above cannot", async () => {
+    const { user, server } = await openSection(savingServer(readingState({ ocr_engines: { value: ["dots-mocr"] } })));
+    await user.click(within(row("OCR engines")).getByRole("button", { name: "Edit OCR engines" }));
+    await user.click(within(row("OCR engines")).getByRole("combobox", { name: "Add engine" }));
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["paddleocr-vl (not provisioned)"]);
+    await user.click(screen.getByRole("option", { name: "paddleocr-vl (not provisioned)" }));
+    expect(row("OCR engines")).toHaveTextContent("Not provisioned. Run python3 ocr-workers/provision.py paddleocr-vl.");
+    await user.click(within(row("OCR engines")).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(server.find("PUT", "/v1/settings/document-reading").map((call) => call.body)).toEqual([{ values: { ocr_engines: ["dots-mocr", "paddleocr-vl"] }, revision: "r1" }]));
   });
 
   it("offers page as the only routing unit", async () => {
@@ -189,11 +268,11 @@ describe("Document reading", () => {
   });
 
   it("sends null for Use default, so the key leaves omrs.jsonc", async () => {
-    const { user, server } = await openSection(savingServer(readingState({ ocr_engine_fallback: { value: "paddleocr-vl", saved: "my-engine", source: "default", restart_pending: true } }, { ocr: { ...readingState().ocr, engines: [...readingState().ocr.engines, { name: "my-engine", available: false, reason: "Not provisioned. Run python3 ocr-workers/provision.py my-engine." }] } })));
-    await user.click(within(row("Fallback engine")).getByRole("button", { name: "Edit Fallback engine" }));
-    await user.click(within(row("Fallback engine")).getByRole("button", { name: "Use default" }));
-    await waitFor(() => expect(server.find("PUT", "/v1/settings/document-reading").map((call) => call.body)).toEqual([{ values: { ocr_engine_fallback: null }, revision: "r1" }]));
-    await waitFor(() => expect(within(row("Fallback engine")).queryByText("Restart to apply")).toBeNull());
+    const { user, server } = await openSection(savingServer(readingState({ ocr_engines: { value: ["dots-mocr", "paddleocr-vl"], saved: ["dots-mocr"], source: "default", restart_pending: true } })));
+    await user.click(within(row("OCR engines")).getByRole("button", { name: "Edit OCR engines" }));
+    await user.click(within(row("OCR engines")).getByRole("button", { name: "Use default" }));
+    await waitFor(() => expect(server.find("PUT", "/v1/settings/document-reading").map((call) => call.body)).toEqual([{ values: { ocr_engines: null }, revision: "r1" }]));
+    await waitFor(() => expect(within(row("OCR engines")).queryByText("Restart to apply")).toBeNull());
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
@@ -205,16 +284,15 @@ describe("Document reading", () => {
 
   it("shows the server message of a refused save and leaves the row unchanged", async () => {
     const { user } = await openSection({
-      "PUT /v1/settings/document-reading": () => json({ status: "error", message: "pdf_reader: This PDF reader is not installed. Install its package, then save again." }, 400),
+      "PUT /v1/settings/document-reading": () => json({ status: "error", message: "pdf_readers: The list cannot hold a name twice." }, 400),
     });
-    await user.click(within(row("PDF reader")).getByRole("button", { name: "Edit PDF reader" }));
-    await user.click(within(row("PDF reader")).getByRole("combobox", { name: "PDF reader" }));
-    await user.click(await screen.findByRole("option", { name: "liteparse" }));
-    await user.click(within(row("PDF reader")).getByRole("button", { name: "Save" }));
-    expect(await within(row("PDF reader")).findByRole("alert")).toHaveTextContent("pdf_reader: This PDF reader is not installed. Install its package, then save again.");
-    await user.click(within(row("PDF reader")).getByRole("button", { name: "Cancel" }));
-    expect(within(row("PDF reader")).getByText("pdf_inspector", { selector: "code" })).toBeInTheDocument();
-    expect(row("PDF reader")).not.toHaveTextContent("Restart to apply");
+    await user.click(within(row("PDF readers")).getByRole("button", { name: "Edit PDF readers" }));
+    await user.click(within(row("PDF readers")).getByRole("button", { name: "Move pypdf up" }));
+    await user.click(within(row("PDF readers")).getByRole("button", { name: "Save" }));
+    expect(await within(row("PDF readers")).findByRole("alert")).toHaveTextContent("pdf_readers: The list cannot hold a name twice.");
+    await user.click(within(row("PDF readers")).getByRole("button", { name: "Cancel" }));
+    expect(within(row("PDF readers")).getByText("pdf_inspector, liteparse, pypdf", { selector: "code" })).toBeInTheDocument();
+    expect(row("PDF readers")).not.toHaveTextContent("Restart to apply");
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 

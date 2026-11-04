@@ -87,6 +87,7 @@ ALLOWED_LEVERS: Mapping[str, LeverSpec] = {
 _READ_STEP_OCR_KEYS = (
     "ocr_fallback_enabled",
     "ocr_routing_unit",
+    "ocr_engines",
     "ocr_engine_primary",
     "ocr_engine_fallback",
     "ocr_maths_routing_enabled",
@@ -105,6 +106,7 @@ _HOST_OWNED_EXACT = frozenset(
         "chroma_persist_dir",
         "collection_name",
         "pdf_reader",
+        "pdf_readers",
         *_READ_STEP_OCR_KEYS,
         "rag_profile",
         "profile_name",
@@ -116,9 +118,10 @@ _HOST_OWNED_EXACT = frozenset(
     }
 )
 _HOST_OWNED_HINTS = {
-    "pdf_reader": (
+    **dict.fromkeys(
+        ("pdf_reader", "pdf_readers"),
         " To read PDF files differently in one pipeline, set the reader on the "
-        "Read document step instead."
+        "Read document step instead.",
     ),
     **dict.fromkeys(_READ_STEP_OCR_KEYS, " Set it on the Read document step."),
     "embed_model": " Set the model on the profile's Embed step.",

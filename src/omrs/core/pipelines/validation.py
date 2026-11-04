@@ -245,14 +245,18 @@ class _Checker:
         for param, set_name in entry.descriptor.option_params.items():
             option_set = host.options.get(set_name)
             value = getattr(params, param, None)
-            if option_set is None or value is None or value not in option_set.unavailable:
+            if option_set is None or value is None:
                 continue
-            self.add(
-                IssueCode.OPTION_UNAVAILABLE,
-                f"Setting '{param}' selects '{value}', which this host cannot use: "
-                f"{option_set.unavailable[value]} {option_set.remedy}",
-                node_id=node_id,
-            )
+            # A list parameter (pdf_readers, ocr_engines) checks every entry it names.
+            for choice in [value] if isinstance(value, str) else value:
+                if choice not in option_set.unavailable:
+                    continue
+                self.add(
+                    IssueCode.OPTION_UNAVAILABLE,
+                    f"Setting '{param}' selects '{choice}', which this host cannot use: "
+                    f"{option_set.unavailable[choice]} {option_set.remedy}",
+                    node_id=node_id,
+                )
 
     def _check_identity(self, node_id: str, entry: RegisteredOperation) -> None:
         host, collection = self.host, self.collections.get(node_id)

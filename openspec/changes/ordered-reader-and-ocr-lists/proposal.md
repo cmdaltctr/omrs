@@ -40,4 +40,4 @@ None.
 - **HTTP contract:** `openapi.yaml` (`IntegrationList.pdf_readers`, document-reading key enum and array values). The conformance tests must pass.
 - **Front end:** `web/src/integrations/` (new section), `web/src/settings/DocumentReadingSection.tsx` and a list control, `web/src/studio/` engine and reader controls.
 - **Docs:** `docs/guides/configuration.md` (PDF reading, OCR fallback, Document reading values, an upgrade note), `docs/guides/pipelines.md`, `docs/guides/architecture.md` (integration inventory row), `.env.example`.
-- **Not changed:** the OCR gate thresholds, the routing unit, the local OCR tier, and the default behaviour of any existing install.
+- **Not changed:** the page routing unit (the only unit), the local OCR tier, and the default behaviour of any existing install.

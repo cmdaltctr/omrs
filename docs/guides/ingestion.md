@@ -196,8 +196,9 @@ weakens nor replaces that guard.
 
 ## PDF reader configuration
 
-The PDF parser is a pluggable factory controlled by the `PDF_READER`
-environment variable. Accepted values:
+The PDF parser is a pluggable factory controlled by the `PDF_READERS` list
+(comma-separated in the environment). The single-value `PDF_READER` key still
+works and expands to a list. Accepted names and values:
 
 | Value           | Description                                                         | Install                      |
 | --------------- | ------------------------------------------------------------------- | ---------------------------- |
@@ -210,9 +211,12 @@ environment variable. Accepted values:
 The packaged default is `pdf_inspector`, a base dependency selected through
 configuration after Experiment 14
 ([ADR-050](../adr/050-configure-pdf-inspector-as-default-reader.md)).
-`auto` keeps the LiteParse-first capability policy. Set `PDF_READER` to any
-registered name to override the default. A configured reader that is not
-importable logs an error and falls back to pypdf.
+`auto` keeps the LiteParse-first capability policy, as the single value
+`PDF_READER=auto`. Set `PDF_READERS` to an ordered list of registered names to
+override the default. The first installed reader of the list reads each file.
+A listed reader that is not installed is skipped with an error. When no listed
+reader is installed, pypdf reads the files. See
+[PDF reading](configuration.md#pdf-reading) for the full rule.
 
 `pdf_inspector` emits one document for each page that has text, in page
 order. Each document carries `page` (integer, from 1) and `page_label` (the
@@ -473,8 +477,8 @@ retrieval experiment gates any future default change.
 | `OCR_LOCAL_OFFLINE`           | `false` | Forbid the model download.                                        |
 | `OCR_LOCAL_MODEL_DIRECTORY`   | empty   | Model artifact leaf directory; empty means the default cache.     |
 | `OCR_WORKERS_DIR`             | empty   | Absolute path to `ocr-workers`; empty disables folder-based routes. |
-| `OCR_ENGINE_PRIMARY`          | `dots-mocr` | Engine selected first for every worker request. |
-| `OCR_ENGINE_FALLBACK`         | `paddleocr-vl` | Engine used when the primary is unavailable before dispatch; empty disables fallback. |
+| `OCR_ENGINES`                 | `dots-mocr,paddleocr-vl` | Ordered engine list. The first available engine serves every worker request. A later engine serves only when every engine before it is unavailable before dispatch. A list of one engine means no fallback. |
+| `OCR_ENGINE_PRIMARY`, `OCR_ENGINE_FALLBACK` | `dots-mocr`, `paddleocr-vl` | The older single-value form of the first two entries. Still valid; see [OCR fallback and isolated engines](configuration.md#ocr-fallback-and-isolated-engines). |
 | `OCR_WORKER_REQUEST_TIMEOUT`  | `300.0` | Minimum parse-response timeout in seconds. |
 | `OCR_WORKER_SECONDS_PER_PAGE` | `120.0` | Timeout allowance per requested page in seconds. |
 | `OCR_MATHS_ROUTING_ENABLED`   | `true`  | Detect maths fonts and route affected pages. |
@@ -535,8 +539,7 @@ Set the route configuration in `.env`:
 
 ```dotenv
 OCR_WORKERS_DIR=/absolute/path/to/ocr-workers
-OCR_ENGINE_PRIMARY=dots-mocr
-OCR_ENGINE_FALLBACK=paddleocr-vl
+OCR_ENGINES=dots-mocr,paddleocr-vl
 ```
 
 Each engine starts from `engines/<engine>/` using its `.venv` interpreter
@@ -566,7 +569,7 @@ for preserved weights.
 Experiment 37 measured a peak of about 22 GiB of MPS memory for dots.mocr
 on Apple Silicon over 257 pages. One-page smoke tests showed only
 7–9.5 GiB. CPU execution is slower. For limited memory, set
-`OCR_ENGINE_PRIMARY=paddleocr-vl`. Leave dots-mocr unprovisioned if you
+`OCR_ENGINES=paddleocr-vl,dots-mocr` (PaddleOCR-VL first). Leave dots-mocr unprovisioned if you
 do not accept its licence; a provisioned Paddle fallback can serve every
 worker request.
 
