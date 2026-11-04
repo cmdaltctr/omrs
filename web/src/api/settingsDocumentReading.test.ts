@@ -21,6 +21,7 @@ describe("document reading API", () => {
       "ocr_engine_primary",
       "ocr_engine_fallback",
       "ocr_maths_routing_enabled",
+      "ocr_non_latin_routing",
     ]);
   });
 

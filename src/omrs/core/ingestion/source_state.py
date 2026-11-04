@@ -22,10 +22,10 @@ from llama_index.core.schema import (
 )
 
 from ..vectordb.base import VectorStore
-from .embed_exclusions import EXCLUDED_EMBED_METADATA_KEYS  # re-exported: historic import site
+from .embed_exclusions import EXCLUDED_EMBED_METADATA_KEYS, IDENTITY_UNLISTED_KEYS  # re-exported
 from .normalise import NORMALISER_VERSION
 from .ocr_identity import maths_routing_payload, ocr_fingerprint_payload, ocr_routing_payload
-from .reader_identity import reader_list_payload
+from .reader_identity import pdf_parser_payload
 
 SOURCE_CONTENT_HASH_KEY = "source_content_hash"
 SOURCE_ID_KEY = "source_id"
@@ -153,7 +153,7 @@ def build_index_identity(
     """
     configured_provider, configured_model = _configured_embedding(settings)
     routing = ocr_routing_payload(settings) if ocr_routing is None else ocr_routing
-    excluded_keys = set(EXCLUDED_EMBED_METADATA_KEYS)
+    excluded_keys = set(EXCLUDED_EMBED_METADATA_KEYS) - IDENTITY_UNLISTED_KEYS
     payload = {
         "schema": _INDEX_IDENTITY_SCHEMA,
         "normalisation": {
@@ -238,7 +238,7 @@ def build_index_identity(
     }
     if pdf_reader_revision is not None:
         payload["parser"]["pdf_reader_output_revision"] = pdf_reader_revision
-        payload["parser"].update(reader_list_payload(settings))  # PDF sources only (D5)
+        payload["parser"].update(pdf_parser_payload(settings))  # PDF sources only (D5)
     if ocr_more_fingerprints:  # the third engine and later; absent for two or fewer (D5)
         payload["ocr_more_fingerprints"] = list(map(ocr_fingerprint_payload, ocr_more_fingerprints))
     if graph_shape is not None:

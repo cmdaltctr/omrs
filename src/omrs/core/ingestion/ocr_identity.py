@@ -198,3 +198,18 @@ def maths_routing_payload(settings: Any) -> dict[str, Any]:
         "enabled": bool(getattr(settings, "ocr_maths_routing_enabled", False)),
         "detector_version": MATHS_DETECTOR_VERSION,
     }
+
+
+def non_latin_routing_payload(settings: Any) -> dict[str, Any]:
+    """Return the ``parser`` entry for non-Latin routing, empty when the mode is ``off``.
+
+    Change non-latin-script-routing. The mode and the detector version decide
+    which flagged pages skip the local tier, so a change reindexes PDF sources.
+    ``off`` adds nothing, so every digest from before the change stays the same.
+    """
+    mode = getattr(settings, "ocr_non_latin_routing", "off")
+    if mode == "off":
+        return {}
+    from ...integrations.pdf.script_routing import SCRIPT_DETECTOR_VERSION
+
+    return {"non_latin_routing": {"mode": mode, "detector_version": SCRIPT_DETECTOR_VERSION}}

@@ -16,10 +16,10 @@ See proposal.md for the why.
 
 | PDF | Script | Type | Pages flagged | Flagged Markdown | Fonts | Text items, pages 1 to 3 | `/Lang` |
 | --- | --- | --- | ---: | ---: | --- | --- | --- |
-| `io01` | Bengali | scanned | 49 of 49 | 0 chars | none | 20 items, 402 Latin letters | none |
+| `io01` | Devanagari | scanned | 49 of 49 | 0 chars | none | 20 items, 402 Latin letters | none |
 | `io02` | Arabic | scanned | 16 of 16 | 0 chars | none | 3 items, 21 Latin letters | none |
 | `io03` | Arabic | scanned | 5 of 5 | 0 chars | none | 3 items, 21 Latin letters | none |
-| `io07` | Devanagari | scanned | 66 of 66 | 0 chars | none | 3 items, 21 Latin letters | none |
+| `io07` | Bengali | scanned | 66 of 66 | 0 chars | none | 3 items, 21 Latin letters | none |
 
 The text items look like a library stamp, watermark or catalogue text, not page text. They are all Latin, so on `io01` the detector would give a Latin verdict and keep the page on the local tier, which is the safe outcome. Stored Experiment 33 local OCR outputs (task 6.7) give a preliminary view of a post-local check: pages whose local output is mostly non-Latin letters: `io07` 59 of 60, `io01` 16 of 48, `io02` 1 of 14, `io03` 0 of 5. Local confidence was below 0.9 on all 129 pages, so the current cut already escalates every one. These counts come from a quick script, not a protocol. The experiment in task group 4 repeats them properly.
 
@@ -58,7 +58,7 @@ Before building the direct set, check `OcrRoutes.select()`. If it is `None`, use
 
 ### D6. Interactions
 
-- **Page unit only.** Under `document` the setting is ignored with one start-up note, and it leaves the identity alone.
+- **Page unit only.** Rebase note (2026-11-04): change `page-routing-default` removed the `document` unit (`OCR_ROUTING_UNITS = ("page",)`), and start-up refuses any other value. The earlier document-unit note and identity rule were dropped, because that state cannot occur.
 - **Maths.** Union of direct sets, one request, one entry per page.
 - **`ocr_local_min_confidence`.** Unchanged for pages the local tier reads. `non_latin_output` is an extra reason, not a new cut.
 - **Change C routers.** A router acts on rescued or native text pages. This setting acts on flagged pages. They do not touch the same pages. If both apply to one page in future, the router runs first, and its "no" pages enter the flagged set.
@@ -66,7 +66,7 @@ Before building the direct set, check `OcrRoutes.select()`. If it is `None`, use
 
 ### D7. Identity and diagnostics
 
-Block `script_routing: {mode, detector_version}` only under the `page` unit with a mode other than `off`. Existing digests stay the same. Cost for real users: turning the setting on reindexes PDF sources in page-unit collections once. `pages_non_latin` is a scalar count, added to `EXCLUDED_EMBED_METADATA_KEYS`.
+Block `script_routing: {mode, detector_version}` only with a mode other than `off`. Existing digests stay the same. Cost for real users: turning the setting on reindexes PDF sources in page-unit collections once. `pages_non_latin` is a scalar count, added to `EXCLUDED_EMBED_METADATA_KEYS`.
 
 ### D8. Studio
 

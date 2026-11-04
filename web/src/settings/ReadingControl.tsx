@@ -10,7 +10,7 @@ interface ReadingControlProps {
   kind: ReadingKind;
   /** The editor value: the names of a list, `true` or `false` for a switch, a name otherwise. */
   draft: ReadingDraft;
-  /** The routing unit choices. Lists and switches have none. */
+  /** The select choices: routing units or script modes. Lists and switches have none. */
   choices: ReadingChoice[];
   /** The names a list can hold. */
   options: ListOption[];

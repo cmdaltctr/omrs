@@ -156,6 +156,7 @@ const READING_DEFAULTS: Partial<Record<DocumentReadingKey, DocumentReadingSettin
   ocr_routing_unit: "page",
   ocr_engines: ["dots-mocr", "paddleocr-vl"],
   ocr_maths_routing_enabled: true,
+  ocr_non_latin_routing: "off",
 };
 
 /** `GET /v1/settings/document-reading` with every key at its default, nothing saved and one engine not provisioned. */

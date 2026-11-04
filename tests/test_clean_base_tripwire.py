@@ -253,7 +253,13 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # route list, read-step lists, PDF readers block and uninstall list tests arrive;
 # the document-reading tests are rewritten for the five-key shape.
 # +1 (2026-11-03, same PR): PDF readers sort by host list position.
-_BASE_EXECUTED = 9985
+# +73 (2026-11-04, non-latin-script-routing, by test-ID diff, 73 added, 0 removed):
+# setting (19), detector (15), routing (24), identity (15). No fastapi needed.
+# +10 (2026-11-04, same change, task 3.1, by test-ID diff, 10 added, 0 removed):
+# Read document step option, identity, routing and fingerprint. No fastapi needed.
+# +4 (2026-11-04, same change, PR 167 review, by test-ID diff, 4 added, 0 removed):
+# local fallback for direct non-Latin pages the engine cannot read. No fastapi.
+_BASE_EXECUTED = 10072
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

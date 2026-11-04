@@ -1,0 +1,20 @@
+{
+  "io01": {
+    "DEVANAGARI": 15067,
+    "LATIN": 497
+  },
+  "io02": {
+    "ARABIC": 31417,
+    "LATIN": 124,
+    "CJK": 7,
+    "THAI": 1,
+    "CYRILLIC": 1
+  },
+  "io03": {
+    "ARABIC": 29545,
+    "LATIN": 122
+  },
+  "io07": {
+    "BENGALI": 22253
+  }
+}

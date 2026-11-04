@@ -556,7 +556,7 @@ A cloud judge sends each claim and its cited passages off this machine. The bloc
 
 ### Document reading
 
-Settings > Document reading (`#/settings/document-reading`) sets how OMRS reads documents. It has one row for each of these five keys:
+Settings > Document reading (`#/settings/document-reading`) sets how OMRS reads documents. It has one row for each of these six keys:
 
 | Row | Key | Control |
 | --- | --- | --- |
@@ -565,6 +565,7 @@ Settings > Document reading (`#/settings/document-reading`) sets how OMRS reads 
 | OCR routing unit | `ocr_routing_unit` | A select. `page` is the only unit. |
 | OCR engines | `ocr_engines` | An ordered list. Add, remove, move up and move down. |
 | Maths routing | `ocr_maths_routing_enabled` | A switch. |
+| Non-Latin routing | `ocr_non_latin_routing` | A select: `off`, `detect` or `always`. `detect` does not catch scanned pages. Use `always` for a collection you know is non-Latin. |
 
 Each row shows the value in force, where it comes from and the default. To change a value:
 
@@ -594,7 +595,7 @@ These rules also apply:
 - When a missing reader means that another reader reads, the PDF readers row shows the reader in use.
 - A Read document step in a pipeline can choose its own reader list and engine list.
 
-The five keys are part of the index identity. After a restart, the next ingest can read existing files again. A failed save shows the server message. When `omrs.jsonc` changed on disk, select Reload to read the new values, then save again.
+The six keys are part of the index identity. After a restart, the next ingest can read existing files again. A failed save shows the server message. When `omrs.jsonc` changed on disk, select Reload to read the new values, then save again.
 
 The Settings page lists a list key in the Configuration table like any other key. See [Document reading values](configuration.md#document-reading-values) for the rules that the server checks on a save.
 

@@ -1,6 +1,6 @@
 """The body and the write checks of ``/v1/settings/document-reading`` (design D10).
 
-Settings > Document reading edits five server-wide keys in ``omrs.jsonc``. Each
+Settings > Document reading edits six server-wide keys in ``omrs.jsonc``. Each
 key applies only at the next launch, so a row shows the value in force since
 launch (the launch ``Settings``), the valid value the file holds now, the
 source, the default and whether a restart is pending. A key that ``env`` or
@@ -183,7 +183,7 @@ def build_document_reading(state: Any) -> dict[str, Any]:
         state: ``app.state.configuration``, or ``None`` when the launch set none.
 
     Returns:
-        ``revision``, the five ``settings`` rows in key order, ``pdf_readers``,
+        ``revision``, the six ``settings`` rows in key order, ``pdf_readers``,
         ``pdf_reader_in_use`` and the ``ocr`` block (design D10).
     """
     launch, file, snapshot = _launch_state(state)
@@ -210,7 +210,7 @@ def launch_settings(state: Any) -> Settings:
 def update_refusal(values: Mapping[str, Any], launch: Settings) -> tuple[int, str] | None:
     """Run checks 2 to 4 of a ``PUT`` and return ``(status, message)``, or ``None``.
 
-    The checks run in contract order: a key outside the five (400; an old
+    The checks run in contract order: a key outside the six (400; an old
     single-value key gets its own message naming the list key that replaces it),
     a locked key (409, the first in key order), then a value that breaks its
     rule (400). The body shape (check 1) is the framework's job; the file

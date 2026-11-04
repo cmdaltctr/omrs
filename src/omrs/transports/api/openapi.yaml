@@ -5258,7 +5258,7 @@ paths:
       description: >
         Lists the document-reading keys in a fixed order (`pdf_readers`,
         `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engines`,
-        `ocr_maths_routing_enabled`). `pdf_readers` and `ocr_engines` hold an ordered
+        `ocr_maths_routing_enabled`, `ocr_non_latin_routing`). `pdf_readers` and `ocr_engines` hold an ordered
         list of names. The old single-value keys `pdf_reader`,
         `ocr_engine_primary` and `ocr_engine_fallback` stay valid in every source and
         expand to the equivalent list. Each row has the value in force since
@@ -11368,8 +11368,8 @@ components:
             Send it back on a save; a file that changed since gives 409.
         settings:
           type: array
-          minItems: 5
-          maxItems: 5
+          minItems: 6
+          maxItems: 6
           description: >
             One row per key, in the fixed key order. The old single-value keys
             have no row: a list row holds the value that they mean.
@@ -11417,6 +11417,7 @@ components:
             - ocr_routing_unit
             - ocr_engines
             - ocr_maths_routing_enabled
+            - ocr_non_latin_routing
         value:
           type: [string, boolean, number, array]
           items:
@@ -11498,11 +11499,11 @@ components:
         values:
           type: object
           minProperties: 1
-          maxProperties: 8
+          maxProperties: 9
           description: >
-            One or more of the eight keys. Each value has the key's JSON type
+            One or more of the nine keys. Each value has the key's JSON type
             (an array of names for `pdf_readers` and `ocr_engines`), or is null
-            to remove the key so the default applies. A key outside the eight
+            to remove the key so the default applies. A key outside the nine
             gets 400.
           propertyNames:
             enum:
@@ -11514,6 +11515,7 @@ components:
               - ocr_engine_primary
               - ocr_engine_fallback
               - ocr_maths_routing_enabled
+              - ocr_non_latin_routing
           additionalProperties:
             type: [string, boolean, number, array, "null"]
             items:

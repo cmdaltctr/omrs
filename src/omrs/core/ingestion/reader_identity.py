@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from ..reading_lists import AUTO_READERS, PDF_READERS_DEFAULT, reader_list
+from .ocr_identity import non_latin_routing_payload
 
 #: Every list that some single ``pdf_reader`` value expands to (see
 #: :func:`omrs.core.reading_lists.expand_pdf_reader`).
@@ -31,3 +32,12 @@ def reader_list_payload(settings: Any) -> dict[str, list[str]]:
     """
     names = reader_list(settings)
     return {} if names in _SINGLE_VALUE_LISTS else {"pdf_readers": list(names)}
+
+
+def pdf_parser_payload(settings: Any) -> dict[str, Any]:
+    """Return every ``parser`` entry that only a PDF source carries beyond the revision.
+
+    The reader list (D5) and the non-Latin routing block (change
+    non-latin-script-routing). Both are empty on a default install.
+    """
+    return {**reader_list_payload(settings), **non_latin_routing_payload(settings)}

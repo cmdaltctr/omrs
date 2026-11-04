@@ -21,6 +21,7 @@ export const DOCUMENT_READING_KEYS = [
   "ocr_engine_primary",
   "ocr_engine_fallback",
   "ocr_maths_routing_enabled",
+  "ocr_non_latin_routing",
 ] as const;
 
 export type DocumentReadingKey = (typeof DOCUMENT_READING_KEYS)[number];

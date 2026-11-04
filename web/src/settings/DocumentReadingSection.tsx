@@ -36,7 +36,7 @@ function restartFor(state: DocumentReadingState, key: DocumentReadingKey): Resta
 /** The OCR blocks in their columns: when to use OCR and maths pages left, engines right. */
 const OCR_BLOCKS: { title: string; keys: readonly DocumentReadingKey[] }[][] = [
   [
-    { title: "When to use OCR", keys: ["ocr_fallback_enabled", "ocr_routing_unit"] },
+    { title: "When to use OCR", keys: ["ocr_fallback_enabled", "ocr_routing_unit", "ocr_non_latin_routing"] },
     { title: "Maths pages", keys: ["ocr_maths_routing_enabled"] },
   ],
   [{ title: "Engines", keys: ["ocr_engines"] }],

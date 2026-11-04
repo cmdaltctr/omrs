@@ -7,7 +7,7 @@ Split out of ``compose.py``, which sits at the 500-line ceiling, the same way
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 from .capabilities import (
     _resolve_sparse_backend_for,
@@ -15,7 +15,12 @@ from .capabilities import (
     resolve_pdf_readers,
 )
 from .config import Settings, get_settings
-from .core.settings import PROVIDER_ADDRESS_FIELDS, PROVIDER_INT_FIELDS, PROVIDER_SECRET_FIELDS
+from .core.settings import (
+    PROVIDER_ADDRESS_FIELDS,
+    PROVIDER_INT_FIELDS,
+    PROVIDER_SECRET_FIELDS,
+    OcrNonLatinMode,
+)
 
 
 def settings_to_effective(settings: Settings | None = None) -> Any:
@@ -103,6 +108,8 @@ def settings_to_effective(settings: Settings | None = None) -> Any:
         ocr_engine_fallback=settings.ocr_engine_fallback,
         ocr_engines=settings.ocr_engines,
         ocr_maths_routing_enabled=settings.ocr_maths_routing_enabled,
+        # Settings checked the value against OCR_NON_LATIN_MODES at start-up.
+        ocr_non_latin_routing=cast(OcrNonLatinMode, settings.ocr_non_latin_routing),
         ocr_worker_seconds_per_page=settings.ocr_worker_seconds_per_page,
         magika_binary=settings.magika_binary,
         doc_similarity_threshold=settings.doc_similarity_threshold,

@@ -84,7 +84,8 @@ export const CATALOGUE_INGEST: OperationDescriptor[] = [
    "ocr_engines": [
     "dots-mocr",
     "paddleocr-vl"
-   ]
+   ],
+   "ocr_non_latin_routing": "off"
   },
   "inputs": [
    {
@@ -160,6 +161,23 @@ export const CATALOGUE_INGEST: OperationDescriptor[] = [
      ],
      "default": null,
      "title": "Ocr Engines"
+    },
+    "ocr_non_latin_routing": {
+     "anyOf": [
+      {
+       "enum": [
+        "off",
+        "detect",
+        "always"
+       ],
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Ocr Non Latin Routing"
     },
     "pdf_readers": {
      "anyOf": [

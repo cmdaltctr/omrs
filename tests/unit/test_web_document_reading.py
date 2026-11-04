@@ -241,6 +241,7 @@ def test_all_five_keys_in_one_save(harness: Harness, client: TestClient) -> None
         "ocr_routing_unit": "page",
         "ocr_engines": ["a", "b"],
         "ocr_maths_routing_enabled": False,
+        "ocr_non_latin_routing": "always",
     }
     response = put(client, values)
     assert response.status_code == 200, response.text

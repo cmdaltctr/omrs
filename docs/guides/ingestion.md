@@ -394,9 +394,11 @@ whitespace-only text, reports confidence below
 `OCR_LOCAL_MIN_CONFIDENCE` (0.9, supported by Experiments 33, 37 and 39:
 escalation 59.6%, wrongly kept 2.5% on the 399 flagged pages re-scored in
 Experiment 39), or flags `hosted_recommended`.
-Unreported confidence escalates too. There is deliberately no script or
-typography pre-check: the failure classes announce themselves after the
-attempt, and no measured signal predicts them beforehand.
+Unreported confidence escalates too. With the default
+`OCR_NON_LATIN_ROUTING=off` there is no script or typography pre-check:
+the failure classes announce themselves after the attempt. Under `detect`,
+a flagged page with a non-Latin text layer skips the local tier, and a
+non-Latin local result escalates with reason `non_latin_output`.
 
 Every emitted page document carries the same five scalar counts for the
 whole PDF. They sum to `page_count`:
@@ -482,6 +484,7 @@ retrieval experiment gates any future default change.
 | `OCR_WORKER_REQUEST_TIMEOUT`  | `300.0` | Minimum parse-response timeout in seconds. |
 | `OCR_WORKER_SECONDS_PER_PAGE` | `120.0` | Timeout allowance per requested page in seconds. |
 | `OCR_MATHS_ROUTING_ENABLED`   | `true`  | Detect maths fonts and route affected pages. |
+| `OCR_NON_LATIN_ROUTING`       | `off`   | `always` sends every flagged page past the local tier. `detect` sends a flagged page past it only when its text layer is non-Latin, and escalates a non-Latin local result. See [Non-Latin page routing](configuration.md#non-latin-page-routing). |
 
 The timeout is `max(OCR_WORKER_REQUEST_TIMEOUT, requested_pages * OCR_WORKER_SECONDS_PER_PAGE)`.
 With the defaults, a 14-page request gets 1,680 seconds.

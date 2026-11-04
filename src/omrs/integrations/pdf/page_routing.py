@@ -24,6 +24,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .script_routing import NON_LATIN_OUTPUT_REASON, is_non_latin, routing_mode
+
 logger = logging.getLogger(__name__)
 
 #: Page sources, in tier order. ``blank`` names a page the blank test
@@ -152,7 +154,9 @@ def _model_identity(provenance: Any) -> str | None:
     return f"{model.name}@{model.revision}"
 
 
-def local_ocr(file: Path, pages: list[int], *, settings: Any) -> list[LocalOcrPage]:
+def local_ocr(
+    file: Path, pages: list[int], *, settings: Any, script_check: bool | None = None
+) -> list[LocalOcrPage]:
     """OCR every flagged page locally with pdf-inspector's selective OCR.
 
     Tier 1 of the ``page`` unit (design decision 3): ``force`` mode with the
@@ -173,6 +177,10 @@ def local_ocr(file: Path, pages: list[int], *, settings: Any) -> list[LocalOcrPa
             caller's to guarantee; the evidence scan emits sorted uniques.
         settings: Injected settings carrying ``ocr_local_model_directory``,
             ``ocr_local_offline`` and ``ocr_local_min_confidence``.
+        script_check: Whether a non-Latin result escalates whatever its
+            confidence (reason ``non_latin_output``). ``None`` means yes under
+            ``ocr_non_latin_routing=detect``. The seam passes ``False`` when no
+            OCR engine is available, so the check runs as if the setting were off.
 
     Returns:
         One :class:`LocalOcrPage` per requested page, in page order.
@@ -198,6 +206,8 @@ def local_ocr(file: Path, pages: list[int], *, settings: Any) -> list[LocalOcrPa
     )
     by_number = {page.page_number: page for page in result.pages}
     minimum = settings.ocr_local_min_confidence
+    if script_check is None:
+        script_check = routing_mode(settings) == "detect"
     outcomes: list[LocalOcrPage] = []
     for number in sorted(pages):
         page = by_number.get(number)
@@ -218,6 +228,8 @@ def local_ocr(file: Path, pages: list[int], *, settings: Any) -> list[LocalOcrPa
             reasons.append("low_confidence")
         if bool(getattr(provenance, "hosted_recommended", False)):
             reasons.append("hosted_recommended")
+        if script_check and is_non_latin(text) is True:
+            reasons.append(NON_LATIN_OUTPUT_REASON)
         outcomes.append(
             LocalOcrPage(
                 page=number,

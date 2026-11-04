@@ -56,7 +56,7 @@ describe("Document reading", () => {
     const ocr = within(section).getByRole("region", { name: "OCR" });
     const block = (name: string) => within(ocr).getByRole("group", { name });
     const names = (name: string) => within(block(name)).getAllByRole("group").map((group) => group.getAttribute("aria-label"));
-    expect(names("When to use OCR")).toEqual(["OCR fallback", "OCR routing unit"]);
+    expect(names("When to use OCR")).toEqual(["OCR fallback", "OCR routing unit", "Non-Latin routing"]);
     expect(names("Maths pages")).toEqual(["Maths routing"]);
     expect(names("Engines")).toEqual(["OCR engines"]);
     expect(block("Engines")).toHaveTextContent(/OCR engines folder|OCR_WORKERS_DIR/);
@@ -152,7 +152,7 @@ describe("Document reading", () => {
     });
     const ocr = screen.getByRole("region", { name: "OCR" });
     const rows = within(ocr).getAllByRole("group").flatMap((group) => group.getAttribute("aria-label") ?? []);
-    expect(rows).toEqual(["OCR fallback", "OCR routing unit", "Maths routing", "OCR engines"]);
+    expect(rows).toEqual(["OCR fallback", "OCR routing unit", "Non-Latin routing", "Maths routing", "OCR engines"]);
     for (const name of ["PDF reader", "Primary engine", "Fallback engine"]) expect(screen.queryByRole("group", { name })).toBeNull();
   });
 
@@ -254,6 +254,41 @@ describe("Document reading", () => {
     await user.click(within(row("OCR routing unit")).getByRole("button", { name: "Edit OCR routing unit" }));
     await user.click(within(row("OCR routing unit")).getByRole("combobox", { name: "OCR routing unit" }));
     expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["page"]);
+  });
+
+  it("offers off, detect and always for Non-Latin routing and says what detect cannot see", async () => {
+    const { user } = await openSection();
+    const routing = row("Non-Latin routing");
+    expect(within(routing).getByText("off", { selector: "code" })).toBeInTheDocument();
+    expect(routing).toHaveTextContent("default");
+    expect(routing).toHaveTextContent("detect sees only text that already exists");
+    expect(routing).toHaveTextContent("does not catch scanned pages");
+    expect(routing).toHaveTextContent("Use always for a collection you know is non-Latin.");
+    await user.click(within(routing).getByRole("button", { name: "Edit Non-Latin routing" }));
+    await user.click(within(routing).getByRole("combobox", { name: "Non-Latin routing" }));
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["off", "detect", "always"]);
+  });
+
+  it("saves always for Non-Latin routing and asks for a restart", async () => {
+    const { user, server } = await openSection(savingServer(readingState()));
+    await user.click(within(row("Non-Latin routing")).getByRole("button", { name: "Edit Non-Latin routing" }));
+    await user.click(within(row("Non-Latin routing")).getByRole("combobox", { name: "Non-Latin routing" }));
+    await user.click(await screen.findByRole("option", { name: "always" }));
+    await user.click(within(row("Non-Latin routing")).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(server.find("PUT", "/v1/settings/document-reading").map((call) => call.body)).toEqual([{ values: { ocr_non_latin_routing: "always" }, revision: "r1" }]));
+    const dialog = await screen.findByRole("dialog", { name: "Restart to apply?" });
+    expect(dialog).toHaveTextContent("Non-Latin routing applies after a restart.");
+    await user.click(within(dialog).getByRole("button", { name: "Later" }));
+    expect(within(row("Non-Latin routing")).getByText("Restart to apply")).toBeInTheDocument();
+  });
+
+  it("makes Non-Latin routing read-only when the environment holds it", async () => {
+    const lock = "Remove OCR_NON_LATIN_ROUTING from the environment or .env to edit it here.";
+    await openSection({
+      "GET /v1/settings/document-reading": () => readingState({ ocr_non_latin_routing: { value: "detect", source: "env", locked: true, lock_reason: lock } }),
+    });
+    expect(within(row("Non-Latin routing")).queryByRole("button", { name: /Edit/ })).toBeNull();
+    expect(row("Non-Latin routing")).toHaveTextContent(lock);
   });
 
   it("saves a switch as true or false", async () => {

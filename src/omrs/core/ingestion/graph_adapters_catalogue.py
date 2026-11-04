@@ -40,7 +40,7 @@ from ..pipelines import (
     Provenance,
     parse_definition,
 )
-from ..settings import OCR_ROUTING_UNITS
+from ..settings import OCR_NON_LATIN_MODES, OCR_ROUTING_UNITS
 
 _SOURCE = frozenset({Provenance.SOURCE})
 _RAW_PATH = PortType(PortKind.SOURCES)
@@ -121,6 +121,9 @@ def _reading_rule(key: str) -> BeforeValidator:
 #: An OCR routing unit. The schema carries the names as an ``enum``.
 RoutingUnit = Annotated[str, WithJsonSchema({"type": "string", "enum": list(OCR_ROUTING_UNITS)})]
 
+#: An ``ocr_non_latin_routing`` mode. The schema carries the names as an ``enum``.
+NonLatinMode = Annotated[str, WithJsonSchema({"type": "string", "enum": list(OCR_NON_LATIN_MODES)})]
+
 #: The OCR keys of ``ReadParams``: the document-reading keys other than the reader keys.
 READ_OCR_KEYS: tuple[str, ...] = (
     "ocr_fallback_enabled",
@@ -129,6 +132,7 @@ READ_OCR_KEYS: tuple[str, ...] = (
     "ocr_engine_primary",
     "ocr_engine_fallback",
     "ocr_maths_routing_enabled",
+    "ocr_non_latin_routing",
 )
 
 #: Every read option a node applies to its settings copy (``with_read_options``).
@@ -167,6 +171,8 @@ class ReadParams(BaseModel):
         ocr_engine_primary: Engine folder name of the primary route.
         ocr_engine_fallback: Engine folder name of the fallback route.
         ocr_maths_routing_enabled: Whether maths pages go to the OCR engine.
+        ocr_non_latin_routing: ``off``, ``detect`` or ``always``: whether pages
+            in a non-Latin script skip the local OCR tier.
     """
 
     model_config = _FROZEN
@@ -182,6 +188,9 @@ class ReadParams(BaseModel):
     ocr_engine_fallback: Annotated[str | None, _reading_rule("ocr_engine_fallback")] = None
     ocr_maths_routing_enabled: Annotated[
         bool | None, _reading_rule("ocr_maths_routing_enabled")
+    ] = None
+    ocr_non_latin_routing: Annotated[
+        NonLatinMode | None, _reading_rule("ocr_non_latin_routing")
     ] = None
 
     @model_validator(mode="after")
@@ -282,6 +291,7 @@ READ = OperationDescriptor(
         "ocr_engines": "ocr_engines",
         "ocr_engine_primary": "ocr_engine_primary",
         "ocr_engine_fallback": "ocr_engine_fallback",
+        "ocr_non_latin_routing": "ocr_non_latin_routing",
     },
     index_shaping=True,
 )

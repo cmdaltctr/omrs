@@ -2,8 +2,8 @@ import type { DocumentReadingKey, DocumentReadingState, DocumentReadingValue, Oc
 import { formatRoute } from "../lib/routes";
 import type { ListOption } from "./OrderedListControl";
 
-/** How a row edits its value: an ordered list of readers or engines, a select of units, or a switch. */
-export type ReadingKind = "readers" | "unit" | "engines" | "switch";
+/** How a row edits its value: an ordered list of readers or engines, a select of units or script modes, or a switch. */
+export type ReadingKind = "readers" | "unit" | "engines" | "switch" | "script";
 
 /** The two list kinds. */
 export type ListKind = "readers" | "engines";
@@ -25,9 +25,16 @@ export const READING_ROWS: Partial<Record<DocumentReadingKey, ReadingRowWords>> 
   ocr_routing_unit: { label: "OCR routing unit", kind: "unit", help: "Page is the only unit. OCR reads only the flagged pages." },
   ocr_engines: { label: "OCR engines", kind: "engines", help: "The first available engine reads. A later engine runs only when every engine above is unavailable before the request starts." },
   ocr_maths_routing_enabled: { label: "Maths routing", kind: "switch", help: "Finds maths fonts and sends those pages to OCR." },
+  ocr_non_latin_routing: {
+    label: "Non-Latin routing",
+    kind: "script",
+    help: "Sends flagged pages straight to OCR: always sends every flagged page, detect only non-Latin ones. The choice detect sees only text that already exists and does not catch scanned pages. Use always for a collection you know is non-Latin.",
+  },
 };
 
 export const ROUTING_UNITS = ["page"] as const;
+
+export const SCRIPT_MODES = ["off", "detect", "always"] as const;
 
 /** What a list says about itself: the add choice, the empty-list line and what each position does. */
 export const LIST_WORDS: Record<ListKind, { noun: string; position: (index: number) => string; integrations: { entry: string; text: string } }> = {
@@ -50,9 +57,10 @@ export interface ReadingChoice {
   disabled: boolean;
 }
 
-/** The options of the routing unit select. Lists and switches have none. */
+/** The options of a select row: the routing units or the script modes. Lists and switches have none. */
 export function readingChoices(kind: ReadingKind): ReadingChoice[] {
-  return kind === "unit" ? ROUTING_UNITS.map((unit) => ({ value: unit, label: unit, disabled: false })) : [];
+  const values: readonly string[] = kind === "unit" ? ROUTING_UNITS : kind === "script" ? SCRIPT_MODES : [];
+  return values.map((value) => ({ value, label: value, disabled: false }));
 }
 
 /** The reader names a list can hold. `auto` is not a name for a list. An uninstalled reader can be listed already but not added. */

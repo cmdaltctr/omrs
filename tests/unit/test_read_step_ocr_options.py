@@ -30,6 +30,7 @@ VALID_VALUES: dict[str, Any] = {
     "ocr_engine_primary": "paddleocr-vl",
     "ocr_engine_fallback": "dots-mocr",
     "ocr_maths_routing_enabled": False,
+    "ocr_non_latin_routing": "always",
 }
 
 
@@ -79,6 +80,8 @@ def test_each_key_inherits_by_default_and_accepts_a_valid_value(key: str) -> Non
         ("ocr_fallback_enabled", "yes"),
         ("ocr_routing_unit", "pages"),
         ("ocr_routing_unit", "document"),
+        ("ocr_non_latin_routing", "arabic"),
+        ("ocr_non_latin_routing", True),
         ("ocr_engine_primary", "../escape"),
         ("ocr_engine_fallback", " "),
     ],
@@ -104,7 +107,12 @@ def test_a_removed_fraction_key_is_not_a_step_parameter(key: str) -> None:
 
 
 @pytest.mark.parametrize(
-    ("key", "value"), [("ocr_routing_unit", "document"), ("ocr_routing_unit", "pages")]
+    ("key", "value"),
+    [
+        ("ocr_routing_unit", "document"),
+        ("ocr_routing_unit", "pages"),
+        ("ocr_non_latin_routing", "arabic"),
+    ],
 )
 def test_invalid_values_fail_validation_before_any_node_runs(
     key: str, value: Any, effective_settings: Any, tmp_path: Path
@@ -177,6 +185,23 @@ def test_catalogue_lists_unprovisioned_engines_and_the_inherited_engine(
     )
     assert list(entry["unavailable_options"]["ocr_engine_primary"]) == ["paddleocr-vl"]
     assert entry["inherited_values"]["ocr_engine_primary"] == "dots-mocr"
+
+
+def test_catalogue_offers_non_latin_routing_as_a_nullable_enum(effective_settings: Any) -> None:
+    """The Read document entry types the key as ``off|detect|always|null`` and inherits the host."""
+    settings = offline_settings(effective_settings, ocr_non_latin_routing="detect")
+    entry = next(
+        e
+        for e in build_engine(settings).describe_operations()
+        if e["operation_id"] == "read.document"
+    )
+    schema = entry["parameters"]["properties"]["ocr_non_latin_routing"]
+    assert schema["default"] is None
+    assert {"type": "null"} in schema["anyOf"]
+    assert {"type": "string", "enum": ["off", "detect", "always"]} in schema["anyOf"]
+    assert entry["option_params"]["ocr_non_latin_routing"] == "ocr_non_latin_routing"
+    assert entry["unavailable_options"]["ocr_non_latin_routing"] == {}
+    assert entry["inherited_values"]["ocr_non_latin_routing"] == "detect"
 
 
 # ── Graph-wide overrides stay host-owned (task 4.2) ──────────────────────
