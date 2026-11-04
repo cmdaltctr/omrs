@@ -1,0 +1,148 @@
+{
+  "experiment_id": "45-non-latin-script-routing-2026-11-04",
+  "protocol_version": 1,
+  "change_ref": "OpenSpec change non-latin-script-routing, task 4.1 (protocol) and task 4.2 (run and report). Design D2 (detector), D3 (two check points).",
+  "question": "On the stored Experiment 33 and 37 evidence, does the `detect` mode of `ocr_non_latin_routing` escalate any non-Latin page that the 0.9 confidence cut keeps, without a false positive on a Latin page?",
+  "decision": "Whether `detect` is proposed as the default for `ocr_non_latin_routing` (in its own change and ADR), or the default stays `off`.",
+  "hypotheses": [
+    {
+      "id": "H1",
+      "role": "primary",
+      "statement": "At least 1 of the 129 non-Latin pages has a stored local OCR result that the 0.9 cut keeps (no shipped escalation reason) and that the shipped detector marks non-Latin, so `detect` escalates a page the cut does not.",
+      "null": "No such page exists: every non-Latin page is escalated already by the cut or the other shipped reasons, or the detector gives no non-Latin verdict on the kept ones."
+    },
+    {
+      "id": "H2",
+      "role": "primary",
+      "statement": "The shipped detector gives a non-Latin verdict on 0 Latin pages, at both check points (the text items of flagged pages before OCR, and the stored local OCR text).",
+      "null": "The detector gives a non-Latin verdict on 1 or more Latin pages."
+    }
+  ],
+  "decision_rule": "Propose `detect` as the default only if G1 and G2 both pass: (e) is at least 1 and (c) is 0. Otherwise keep `off`. Counts (a), (b) and (d) do not enter the rule. The rule, both constants of the detector and the 0.9 cut are fixed before the run and do not move after it.",
+  "prediction_not_a_gate": "design.md of the change records a quick script with local confidence below 0.9 on all 129 pages, which gives (e) = 0 and the outcome `keep off`. This plan does not use that script and does not repeat its numbers.",
+  "stats": "basic",
+  "seed": 0,
+  "baseline": "off",
+  "candidate": "detect",
+  "metrics": [
+    {"name": "e_non_latin_pages_kept_by_cut_and_escalated_by_detect", "binary": false, "primary": true},
+    {"name": "c_false_positives_on_latin_pages", "binary": false, "primary": true},
+    {"name": "a_pages_with_pre_ocr_verdict", "binary": false, "primary": false},
+    {"name": "b_post_local_verdicts_per_document", "binary": false, "primary": false},
+    {"name": "d_local_seconds_saved_by_always", "binary": false, "primary": false}
+  ],
+  "gates": [
+    {"id": "G1", "metric": "e_non_latin_pages_kept_by_cut_and_escalated_by_detect", "value": "count over the 129 non-Latin pages", "op": ">=", "threshold": 1},
+    {"id": "G2", "metric": "c_false_positives_on_latin_pages", "value": "c1 + c2 over all Latin pages", "op": "<=", "threshold": 0}
+  ],
+  "quantities": {
+    "a": "Count of flagged pages whose text items give a non-Latin verdict before OCR (design D3 point 1). Counted per document, split by page class (non_latin, latin, unclassified). Also reported: flagged pages with a Latin verdict, and flagged pages with no verdict (under 40 letters, or no text items).",
+    "b": "Per document, for every page with a stored local OCR result (design D3 point 2): count of non-Latin verdicts, Latin verdicts and no-verdict pages (under 40 letters), split by page class. One row per document.",
+    "c": "False positives on Latin pages. c1 = Latin-class flagged pages with a non-Latin verdict before OCR. c2 = Latin-class pages with a stored local OCR result and a non-Latin verdict. c = c1 + c2. G2 gates c. Beside it: the number of Latin pages that had a verdict (40 letters or more), so the reader sees how many pages the zero rests on. c3 (not gated): the same detector run on the Experiment 37 dots.mocr text of the Latin pages, as a view of maths and handwriting pages. The detector does not run on engine text in the shipped design, so c3 cannot fail the gate.",
+    "d": "Local seconds saved by `always`: sum of `doc_seconds_share` over the 129 non-Latin pages in the stored local OCR rows. These pages go to the engine either way, because the 0.9 cut escalates them or `always` sends them direct. So the saving is the local seconds only. Reported per document and in total. Beside it: the same sum with rows where `doc_over_soft_timeout` is true removed, and the sum for the Latin-class stored rows (the cost of using `always` on a collection that holds Latin pages).",
+    "e": "Non-Latin pages kept by the 0.9 cut that `detect` escalates. A stored row is kept when none of the shipped reasons fires: the row has no `error_class`, the stored text is not empty after strip, `confidence` is not null and is 0.9 or more, and `hosted_recommended` is false. e = count of kept rows among the 129 with a non-Latin verdict on the stored text. Also reported: the count of kept rows among the 129 whatever the verdict (e0), and each page's confidence."
+  },
+  "page_classes": {
+    "non_latin": "The 129 pages of `io01`, `io02`, `io03` and `io07` in the `E-script` page list of `ocr_state_dots-mocr.json` (io01 48, io02 16, io03 5, io07 60). The same set Experiment 39 froze by Unicode block count of the Experiment 33 reference transcriptions. The class does not come from the detector under test.",
+    "unclassified": "The pages of those four documents that are not in the non_latin class (arithmetic: 136 pages in the four documents, 129 in the class). They are counted in (a) only, as their own row, and are not Latin pages for (c).",
+    "latin": "Every page of the other 36 documents. For (b), (c2) and (d) only pages with a stored local OCR result count. For (a) and (c1) every flagged page counts."
+  },
+  "preconditions": [
+    "P1: `freeze.py --check` in Experiment 33 prints `freeze verified`, or the SHA-256 values in `frozen` below match. Stop on any difference.",
+    "P2: the 129-page class equals the rows of `pages.json` for the four documents (same document and page keys). Stop and report if not.",
+    "P3: the detector module is the shipped one: `omrs.integrations.pdf.script_routing`, imported from this worktree's `src/`. `SCRIPT_DETECTOR_VERSION` is 1, the letter floor is 40 and the non-Latin share floor is 0.5, all read from the module. Stop if any value differs from `detector` below. The runner records the git blob SHA-256 of the module file in the run record.",
+    "P4: `pdf_inspector.__version__` is 1.17.0 (the version of the Experiment 33 run). Stop on a different version, because the page flags depend on it.",
+    "P5: the runner makes no OCR call, no model call and no network call. It reads the PDFs, the stored text and the stored rows only."
+  ],
+  "detector": {
+    "module": "omrs.integrations.pdf.script_routing",
+    "import_rule": "The analysis imports the shipped detector from the module above. It does not hold a copy of the rule, the letter test or the constants. The function names are read from the module before the first run and written into this block by a plan edit made before the first run (not an amendment).",
+    "entry_points": "to be filled before the first run, from the shipped module",
+    "expected_constants": {"SCRIPT_DETECTOR_VERSION": 1, "minimum_letters": 40, "non_latin_share": 0.5},
+    "rule_text": "design.md D2: letters are characters where str.isalpha() is true; a letter is Latin when its Unicode name starts with LATIN; the verdict needs at least 40 letters and a non-Latin share of at least 0.5.",
+    "required_output_per_page": "letters, non-Latin share and verdict. If the shipped module returns only a verdict, stop and ask. Do not recompute the share in the experiment."
+  },
+  "cut": {
+    "ocr_local_min_confidence": 0.9,
+    "source": "default of `ocr_local_min_confidence` in the shipped settings; the runner reads the default from the settings model and stops if it is not 0.9"
+  },
+  "inputs": {
+    "note": "Read only. The runner never writes under ~/Development/DATA/ or another worktree. Each path is tried in the order listed; the first one that exists is used, and its SHA-256 must match `frozen`. The Experiment 33 and 37 JSON files are also in this worktree under the same relative paths.",
+    "exp33_dir": "experiments/33-ocr-routing-natural-positive-2026-09-17",
+    "exp37_dir": "experiments/37-dots-mocr-routing-acceptance-2026-09-30",
+    "roots_in_order": [
+      "this worktree: experiments/",
+      "~/Development/DATA/omrs/experiments/",
+      "/Users/aizat/Development/PROJECTS/om-systems/omrs/omrs-v3/experiments/ (read only sibling checkout)"
+    ],
+    "files": {
+      "labels": "<exp33_dir>/labels.json (this worktree, sibling checkout; absent from DATA)",
+      "local_rows": "<exp33_dir>/output/local_ocr/pages.json (this worktree, sibling checkout; absent from DATA)",
+      "local_text": "<exp33_dir>/output/.local_ocr_text/<doc>/p<NNN>.md (DATA, sibling checkout; absent from this worktree)",
+      "corpus_pdfs": "<exp33_dir>/corpus/natural/<doc>.pdf (DATA, sibling checkout; absent from this worktree)",
+      "engine_state": "<exp37_dir>/output/ocr_state_dots-mocr.json (this worktree, sibling checkout; absent from DATA)",
+      "engine_text": "<exp37_dir>/output/dots-mocr/<doc>/p<NNN>.md (DATA, sibling checkout; absent from this worktree)",
+      "exp39_plan": "experiments/39-local-tier-escalation-2026-09-30/plan.json (this worktree; for the 129-page cross-check only)"
+    },
+    "missing_inputs": "none. Two inputs sit in only some roots (see `files`). Experiment 33 has no born-digital non-Latin PDF with flagged pages, so no text-layer case for point 1 exists in the corpus (see `known_gap`)."
+  },
+  "frozen": [
+    {"file": "experiments/33-ocr-routing-natural-positive-2026-09-17/labels.json", "sha256": "cd4960ba36bddd3cd665a9142592457945fe2234c4a37bbfb81a0bfe1041c6bf"},
+    {"file": "experiments/33-ocr-routing-natural-positive-2026-09-17/output/local_ocr/pages.json", "sha256": "e6223d1536293b6860cd8eda9d48b2e383139e3e6c2f5e095a36f2b9822a711f", "rows": 464},
+    {"file": "experiments/33-ocr-routing-natural-positive-2026-09-17/plan.json", "sha256": "b2e3c05b92f3bd36c4445dfd3e79c78b0d9f19488b4432f9c7995781a324ce9a"},
+    {"file": "experiments/33-ocr-routing-natural-positive-2026-09-17/output/.local_ocr_text/", "tree_sha256": "22405b097529f4bdbff697a86f1a2986301df5f72e5d9650dd597a8737ef2489", "files": 464},
+    {"file": "experiments/33-ocr-routing-natural-positive-2026-09-17/corpus/natural/", "tree_sha256": "e4f2dddd600ad1d189e8d0d3dbace2c6c7cb5e321055ecdef27f85d083c2f22c", "files": 40},
+    {"file": "experiments/37-dots-mocr-routing-acceptance-2026-09-30/output/ocr_state_dots-mocr.json", "sha256": "6bafafaf4b2a3db4a250f68bfb09e5addbdf3c71a0725137c7bba3340ef8e597"},
+    {"file": "experiments/37-dots-mocr-routing-acceptance-2026-09-30/output/dots-mocr/", "tree_sha256": "695d5e1762065dbe3b2d73d3087963748f4e3d0638ca79becb049e0be9eda1f9", "files": 257},
+    {"file": "experiments/39-local-tier-escalation-2026-09-30/plan.json", "sha256": "96d7d50d526a117b9799b99a1567d86a1ce1f018fb73c828c3ab193e34eb0c4e"}
+  ],
+  "tree_sha256_method": "SHA-256 of the text made by sorting all files by relative path (forward slashes) and writing one line `<file SHA-256>  <relative path>\\n` for each.",
+  "git": {
+    "worktree": "omrs-feat-non-latin-script-routing, branch feat/non-latin-script-routing",
+    "base_commit_at_planning": "08214784",
+    "plan_commit": "to be recorded in the run record: the orchestrator commits this plan before any output exists"
+  },
+  "engine": {
+    "pdf_inspector": "1.17.0",
+    "local_model_of_stored_rows": "pp-ocrv6-small@oar-ocr-v0.7.0 (onnxruntime 1.28.0, mode force), from the identity block of pages.json",
+    "note": "No engine runs in this experiment. pdf-inspector is used only to read the page flags and the text items of the 40 PDFs, as the shipped routing does."
+  },
+  "steps": [
+    "S1: check preconditions P1 to P5. Stop on any failure.",
+    "S2: for each of the 40 PDFs, read the page flags with pdf_inspector (the call the shipped `page_evidence` makes) and read the text items of the flagged pages (the call the shipped point-1 check makes). Apply the shipped detector. Save one row per flagged page.",
+    "S3: for each stored local row, read the stored text, apply the shipped detector, and apply the shipped escalation reasons with the 0.9 cut. Save one row per stored page.",
+    "S4: for the Experiment 37 engine text of the 14 documents, apply the shipped detector. Save one row per page (c3, and a check of the non_latin class).",
+    "S5: summarise (a) to (e), G1, G2 and the rule outcome into output/summary.json. No other test runs. Any other comparison is labelled exploratory.",
+    "S6: write analysis.py and report.md after the summary exists."
+  ],
+  "scripts": {
+    "limit": 3,
+    "planned": ["run_script_routing.py (S1 to S4, writes output/verdicts.json atomically)", "summarise.py (S5)", "analysis.py (tables, reads output/ only)"],
+    "checkpoint": "none. The run reads local files and applies a string rule, so it is short and a restart is safe. Each run appends one line to output/run-records.jsonl."
+  },
+  "stopping_rules": [
+    "Stop before any score if a precondition fails. Record the found value. Do not change a constant, a path or a file without an amendment.",
+    "Each page is scored once. No rerun to improve a value. A rerun after a crash starts from step S1 and appends a new run record.",
+    "Do not tune the letter floor (40), the share floor (0.5) or the cut (0.9) in this experiment. A sweep is exploratory and cannot change the answer. A better constant needs a detector version bump in a separate change."
+  ],
+  "outcome_table": {
+    "G1 pass, G2 pass": "PASS. Propose `detect` as the default in its own change and ADR. This change keeps `off`.",
+    "G1 fail, G2 pass": "FAIL for the default. Keep `off`. On this corpus `detect` adds nothing that the 0.9 cut does not already do. `always` stays the opt-in for known collections.",
+    "G1 pass, G2 fail": "FAIL for the default. Keep `off`. List the Latin pages with a non-Latin verdict. A new detector version is a separate change.",
+    "G1 fail, G2 fail": "FAIL. Keep `off`. Report both lists."
+  },
+  "known_gap": "The corpus holds no born-digital non-Latin PDF with flagged pages. All four non-Latin PDFs (io01, io02, io03, io07) are pure scans: page Markdown empty, no fonts, only a few Latin text items (design.md probe, 2026-11-02). So check point 1 (the text layer of a flagged page) has no positive case here, and (a) cannot show that `detect` works on a flagged page that has a text layer. The experiment measures check point 2 (local OCR output) and the false-positive rate of both points only.",
+  "limitations": [
+    "4 non-Latin documents, 129 pages, 3 scripts. One local model (pp-ocrv6-small). A different local model changes the confidences and so (e).",
+    "(d) uses the seconds of the Experiment 33 run (`doc_seconds_share`), on that machine. Treat it as an order of magnitude.",
+    "Latin-class stored rows are the pages Experiment 33 labelled `needs_ocr` (464 rows in all). Latin pages that were never sent to the local tier have no stored text. They count in (c1) through the live flag scan only.",
+    "The design.md probe names io01 as Bengali and io07 as Devanagari. The Experiment 39 plan names io01 as Devanagari and io07 as Bengali. This plan does not use script names. The report states the scripts found by Unicode block count."
+  ],
+  "runtime": {
+    "runtime_under_test": false,
+    "models": [],
+    "references": [],
+    "tolerance": []
+  },
+  "amendments": []
+}
