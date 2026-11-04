@@ -78,7 +78,7 @@
 - [x] 7.2 Tests first, with a fake `indra_ocr` module in `sys.modules` (no download): `read_pages`, the character-weighted page confidence, the model identity `datalab-to/indra-ocr@bd02167fdf2005a19962cc15188f8496a2c87d3b`, offline weights through `INDRA_OCR_MODEL_DIR`, a missing extra shown as not installed and skipped, and Indra absent from the default list. Verify: the tests fail before the backend exists.
 - [x] 7.3 Write `integrations/pdf/local_ocr/indra.py`, its `register()` line and its descriptor entry (design D19). Add the extra after task 7.1. Verify: the task 7.2 tests and the pin test pass; `uv sync --frozen --extra web --extra local-ocr-indra` works; `uv run pytest tests/test_dependency_floors.py -q` passes.
 - [x] 7.4 Tests first: `tests/unit/test_indra_is_one_part.py` (design D19). Verify: adding the word `indra` to any other file under `src/omrs/` fails the test; the PR shows `git diff --stat` of the Indra commit with only the allowed files.
-- [ ] 7.5 Ask the operator before a live run (download about 76 MB if the weights are not cached). In a scratch HOME, ingest `io01` and `io02` with `OCR_LOCAL_BACKENDS=indra,pp-ocrv6-small`. Count pages whose producer is `indra_ocr` and compare with `evidence/ordered-list-simulation.md`. Verify: `evidence/indra-live-check.md` gives the counts per document and names each difference.
+- [x] 7.5 Ask the operator before a live run (download about 76 MB if the weights are not cached). In a scratch HOME, ingest `io01` and `io02` with `OCR_LOCAL_BACKENDS=indra,pp-ocrv6-small`. Count pages whose producer is `indra_ocr` and compare with `evidence/ordered-list-simulation.md`. Verify: `evidence/indra-live-check.md` gives the counts per document and names each difference.
 - [x] 7.6 Re-pin the tripwire by test IDs. Verify: the parallel fast suite and the tripwire test pass.
 
 ## 8. Docs, ADR and AGENTS.md
@@ -94,7 +94,7 @@
 
 - [x] 9.1 Run `openspec validate local-ocr-backends --strict` and `openspec validate --all --strict`. Verify: both pass.
 - [x] 9.2 Run the parallel fast suite with a JUnit report, then the tripwire on that report (AGENTS.md "Parallel runs"). Verify: both pass.
-- [ ] 9.3 Ask the operator, then run `./scripts/local_ci.sh`. Verify: no `SKIPPED`; every step passes, including the file-size ceiling, import contracts and frontend gates.
+- [x] 9.3 Ask the operator, then run `./scripts/local_ci.sh`. Verify: no `SKIPPED`; every step passes, including the file-size ceiling, import contracts and frontend gates.
 - [ ] 9.4 Open one pull request into `v3`. Watch CI to the end and fix failures. Run `/code-review` or read the CodeRabbit comments; fix valid findings, answer each thread and resolve it. Verify: all checks green; no open thread.
 - [ ] 9.5 Stop at gate G6. Do not merge until the operator says so. Before the worktree is removed, finish task 0.5. Verify: the operator's merge word is in the PR.
 
