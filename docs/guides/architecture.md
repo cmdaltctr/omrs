@@ -631,7 +631,7 @@ peers stays an integration.
 Every Python module under `src/omrs/integrations/`, classified. A contract
 test fails when a module is missing from this table.
 
-<!-- integration-inventory:start count=53 -->
+<!-- integration-inventory:start count=54 -->
 
 | Module                                   | Availability                                                   | Selector                                                            | Shared contract                               | Fallback owner                                                                    | Disposition                                                         |
 | ---------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
@@ -658,6 +658,7 @@ test fails when a module is missing from this table.
 | `omrs.integrations.llamacpp_runtime.rules` | Native | None | Launch checks: program rule, model kind, loopback port, argument lists, child environment, fixed reasons | None | Moved from `core/providers/llm/llamacpp_rules.py`; standard-library only |
 | `omrs.integrations.llamacpp_runtime.spec` | Native | None | Frozen `RuntimeSpec` (id, role, mode, argv, files, build, port policy, slots) | None | Chat and embeddings builders; free-port OCR runtime; no `--sleep-idle-seconds` |
 | `omrs.integrations.llamacpp_runtime.state` | Native | `OMRS_STATE_DIR`, `$XDG_STATE_HOME` | `server.json` atomic read/write and the state root | Missing or broken file reads as no record | Local-disk runtime state shared by every OMRS process |
+| `omrs.integrations.part_registry` | Native | None | `PartRegistry`: register, describe, names, lazy cached `get`, `probe`, import-free `installed`, per-process `switch_off` and `off_reason` | None | Shared helper for the page-reading registries (change `local-ocr-backends`, ADR-112); imports no part at module level |
 | `omrs.integrations.pdf`               | Native                                                         | None                                                                | `get_pdf_reader(reader)`                      | None                                                                              | Public facade exposing the factory                                  |
 | `omrs.integrations.pdf.blank_pages` | Base, via `liteparse` renders | `OCR_FALLBACK_ENABLED`, flagged pages only | `find_blank_pages` frozenset and `BLANK_PAGE_TEST_VERSION` | Render or score failure → no page blank; every page keeps its normal route | Edge-free stroke-ink blank test with a versioned threshold (change `skip-blank-pages-before-worker`) |
 | `omrs.integrations.pdf.chain` | Native | `PDF_READERS` | `clean_reader_list`, `first_installed`, `tiers_after`, `rescue_pages`, `construct` | A tier that is not installed, raises or returns no text hands over to the next tier; the last tier's exception propagates; no installed reader gives pypdf | Runs the reader list: start-up choice and pdf-inspector rescue tiers; names no reader, so tiers come from the list through the registry |

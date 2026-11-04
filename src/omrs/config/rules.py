@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
+from ..core import reading_parts as _reading_parts
 from ..core.settings import OCR_NON_LATIN_MODES, OCR_ROUTING_UNITS, PROVIDER_SECRET_FIELDS
 
 METADATA_EXTRACTION_MODES = (
@@ -91,8 +92,9 @@ FILE_ONLY: dict[str, tuple[str, int, int]] = {
 
 #: Names ``pdf_reader`` accepts. ``Settings`` warns and falls back to ``auto`` for
 #: any other name, so ``pdf_reader`` is not in :data:`ACCEPTED` (the file reader
-#: would then drop a bad value and use the code default instead).
-PDF_READER_NAMES: tuple[str, ...] = ("auto", "liteparse", "pdf_inspector", "pypdfium2", "pypdf")
+#: would then drop a bad value and use the code default instead). Derived from the
+#: PDF reader descriptors (change local-ocr-backends, design D15).
+PDF_READER_NAMES: tuple[str, ...] = ("auto", *_reading_parts.names(_reading_parts.PDF_READERS))
 
 #: Engine names are folder names. ``config/`` cannot import ``integrations/``, so a
 #: test pins this to ``integrations.ocr_worker.routes._ENGINE_NAME_RE``.

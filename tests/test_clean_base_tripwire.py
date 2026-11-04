@@ -264,7 +264,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +31 (2026-11-04, local-ocr-backends group 1, by test-ID diff, 31 added, 0 removed):
 # digest pins (6), key-list pins (7), page-routing golden snapshots (18). The
 # catalogue row pin needs fastapi (see _WEB_EXTRA_CASES).
-_BASE_EXECUTED = 10148
+# +50 (2026-11-04, same change, group 2 and task 6.1, by test-ID diff, 50 added, 0
+# removed): part descriptors (22), registry helper (21), descriptor pins (2), runtimes
+# follow the engine list (5). No fastapi needed.
+_BASE_EXECUTED = 10198
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

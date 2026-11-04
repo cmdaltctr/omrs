@@ -143,7 +143,7 @@ def test_an_ocr_engine_that_declares_a_runtime_is_listed(harness: Any, tmp_path:
     assert sorted(items) == ["chat", "embeddings", "ocr-declares"]
     ocr = items["ocr-declares"]
     assert (ocr["role"], ocr["mode"], ocr["files_checked"]) == ("ocr", "managed", True)
-    assert ocr["used_by"] == ["ocr_engine_primary"]
+    assert ocr["used_by"] == ["ocr_engines"]
 
 
 def test_an_external_ocr_runtime_says_its_files_are_not_checked(
@@ -161,7 +161,7 @@ def test_an_external_ocr_runtime_says_its_files_are_not_checked(
     with harness(**settings) as h:
         ocr = _items(h)["ocr-declares"]
     assert (ocr["mode"], ocr["files_checked"]) == ("external", False)
-    assert ocr["used_by"] == ["ocr_engine_primary", "ocr_engine_fallback"]
+    assert ocr["used_by"] == ["ocr_engines"]
 
 
 def test_reading_starts_nothing_and_changes_no_runtime_file(
