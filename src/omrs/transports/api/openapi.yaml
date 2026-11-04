@@ -11502,8 +11502,10 @@ components:
           type: array
           description: >
             Each local OCR backend that `ocr_local_backends` can name (a backend
-            with a calibrated confidence cut), in descriptor order. A backend
-            that is not installed can be listed; start-up skips it with a warning.
+            with a calibrated confidence cut): the built-in backends in descriptor
+            order, then the backends that an installed package adds through the
+            `omrs.local_ocr_backends` entry point. A backend that is not installed
+            can be listed; start-up skips it with a warning.
           items:
             $ref: "#/components/schemas/LocalBackendOption"
         ocr:

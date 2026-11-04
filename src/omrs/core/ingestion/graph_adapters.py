@@ -76,6 +76,7 @@ from .graph_adapters_values import (
     node_ocr,
     optional,
     required,
+    run_ocr_resolution,
     run_protected,
     single_unit,
     stop_if_cancelled,
@@ -170,12 +171,14 @@ async def identify_adapter(
     settings = with_read_options(context.settings, shape.step_options())
     # A route lookup can probe a new worker with a blocking subprocess call.
     ocr_client = await asyncio.to_thread(node_ocr, context, settings)
+    resolved_ocr = await asyncio.to_thread(run_ocr_resolution, shape, settings)
     ingestion = await asyncio.to_thread(
         build_ingestion_context,
         settings,
         embed_model=embedder,
         ocr_client=ocr_client,
         graph_shape=shape.identity_block(),
+        resolved_ocr=resolved_ocr,
     )
     identity = await prepare_source(
         unit.file_path, content_type=unit.content_type, context=ingestion

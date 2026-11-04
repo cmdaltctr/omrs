@@ -76,12 +76,17 @@ class IngestionShape:
             the OCR options (design D4 of integrations-show-runtime-components)
             and the ``pdf_readers`` and ``ocr_engines`` lists. Only set
             keys are present, so a node that inherits everything has none.
+        resolved: The run's OCR identity entries, filled by the first identify
+            step and reused by the rest (``run_ocr_resolution``). The host
+            builds one shape per admitted run, so a failed probe runs once per
+            run and the next run probes again. Not part of equality.
     """
 
     fingerprint: str
     standard: bool
     pdf_reader: str | None = None
     read_options: Mapping[str, Any] = field(default_factory=dict)
+    resolved: dict[str, Any] = field(default_factory=dict, compare=False, repr=False)
 
     def step_options(self) -> dict[str, Any]:
         """Return every read option the Read document node sets (``pdf_reader`` included)."""

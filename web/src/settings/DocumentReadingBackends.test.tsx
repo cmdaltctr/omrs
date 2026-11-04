@@ -63,6 +63,17 @@ describe("Document reading local OCR backends", () => {
     expect(await screen.findByRole("option", { name: "indra (not installed)" })).toHaveAttribute("aria-disabled", "true");
   });
 
+  it("offers a backend that an installed package adds, from the server list", async () => {
+    const added = readingState({}, { local_ocr_backends: [...TWO.local_ocr_backends, { name: "fake-ocr", available: true, reason: null }] });
+    const { user, server } = await openSection(savingServer(added));
+    await user.click(within(row()).getByRole("button", { name: "Edit Local OCR backends" }));
+    await user.click(within(row()).getByRole("combobox", { name: "Add backend" }));
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["indra (not installed)", "fake-ocr"]);
+    await user.click(screen.getByRole("option", { name: "fake-ocr" }));
+    await user.click(within(row()).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(server.find("PUT", "/v1/settings/document-reading").map((call) => call.body)).toEqual([{ values: { ocr_local_backends: ["pp-ocrv6-small", "fake-ocr"] }, revision: "r1" }]));
+  });
+
   it("names a listed backend that is not installed", async () => {
     await openSection({ "GET /v1/settings/document-reading": () => readingState({ ocr_local_backends: { value: ["indra", "pp-ocrv6-small"] } }, TWO) });
     expect(row()).toHaveTextContent("indra: Not installed.");

@@ -280,13 +280,21 @@ class TestCancel:
         assert aborts == []
 
     def test_watcher_thread_ends_with_the_call(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        before = threading.active_count()
+        """Check the watcher thread itself, not the process-wide thread count."""
+        started: list[threading.Thread] = []
+        real_watch = hf._watch_for_cancel
+
+        def recording_watch(*args: Any, **kwargs: Any) -> None:
+            started.append(threading.current_thread())
+            real_watch(*args, **kwargs)
+
+        monkeypatch.setattr(hf, "_watch_for_cancel", recording_watch)
         _install(monkeypatch, lambda **kw: "/p")
 
         _call(["a.gguf"])
-        threading.Event().wait(0.1)
 
-        assert threading.active_count() == before
+        assert len(started) == 1
+        assert not started[0].is_alive()
 
     def test_missing_abort_function_only_loses_the_fast_stop(
         self, monkeypatch: pytest.MonkeyPatch

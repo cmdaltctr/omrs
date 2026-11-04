@@ -33,7 +33,12 @@ from typing import Any, NamedTuple
 from .backends.orchestrator import resolve_declared_text_format, resolve_pdf_reader_revision
 from .chunker import read_and_chunk_file_async
 from .hashing import sha256_file
-from .ocr_identity import more_route_fingerprints, resolved_routing_payload, route_fingerprints
+from .ocr_identity import (
+    local_backends_payload,
+    more_route_fingerprints,
+    resolved_routing_payload,
+    route_fingerprints,
+)
 from .replacement import ReplaceSourceOutcome, replace_source_nodes_async
 from .source_state import (
     assert_source_lineage_compatible,
@@ -71,6 +76,8 @@ class IngestionContext:
         ocr_worker_fingerprint: Fingerprint of the OCR worker route.
         ocr_fallback_fingerprint: Fingerprint of the OCR fallback route.
         ocr_more_fingerprints: Fingerprints of the third and later OCR routes.
+        local_ocr_backends: The non-default local OCR list's ``parser`` entry,
+            resolved once per operation (``{}`` for the default list).
         graph_shape: Identity block of a non-standard ingestion graph, or
             ``None`` for the standard shape.
         embedding_identity: Provider and model that made the vectors, or
@@ -86,6 +93,7 @@ class IngestionContext:
     ocr_worker_fingerprint: Any
     ocr_fallback_fingerprint: Any
     ocr_more_fingerprints: tuple[Any, ...] = ()
+    local_ocr_backends: dict[str, Any] | None = None
     graph_shape: dict[str, Any] | None = None
     embedding_identity: Any = None
 
@@ -160,6 +168,7 @@ def build_ingestion_context(
     ocr_client: Any = None,
     graph_shape: dict[str, Any] | None = None,
     embedding_identity: Any = None,
+    resolved_ocr: Mapping[str, Any] | None = None,
 ) -> IngestionContext:
     """Resolve the operation-wide index-shaping inputs once.
 
@@ -175,12 +184,18 @@ def build_ingestion_context(
             stable unavailable fingerprint.
         graph_shape: Identity block of a non-standard ingestion graph.
         embedding_identity: Provider and model that made the vectors.
+        resolved_ocr: ``ocr_routing`` and ``local_ocr_backends`` already
+            resolved for the whole run (the graph path). ``None`` resolves them here.
     """
     if markdown_chunking is None:
         from ..chunking.model_token import resolve_markdown_chunking
 
         markdown_chunking = resolve_markdown_chunking(settings)
     worker_fingerprint, fallback_fingerprint = route_fingerprints(ocr_client)
+    resolved = resolved_ocr or {
+        "ocr_routing": resolved_routing_payload(settings),
+        "local_ocr_backends": local_backends_payload(settings),
+    }
     return IngestionContext(
         settings=settings,
         chunk_size=chunk_size if chunk_size is not None else settings.chunking.chunk_size,
@@ -189,10 +204,11 @@ def build_ingestion_context(
         ),
         markdown_chunking=markdown_chunking,
         embed_model=embed_model,
-        ocr_routing=resolved_routing_payload(settings),
+        ocr_routing=resolved["ocr_routing"],
         ocr_worker_fingerprint=worker_fingerprint,
         ocr_fallback_fingerprint=fallback_fingerprint,
         ocr_more_fingerprints=more_route_fingerprints(ocr_client),
+        local_ocr_backends=resolved["local_ocr_backends"],
         graph_shape=graph_shape,
         embedding_identity=embedding_identity,
     )
@@ -237,6 +253,7 @@ async def prepare_source(
         ocr_worker_fingerprint=context.ocr_worker_fingerprint,
         ocr_fallback_fingerprint=context.ocr_fallback_fingerprint,
         ocr_more_fingerprints=context.ocr_more_fingerprints,
+        local_ocr_backends=context.local_ocr_backends,
         tokenizer=context.markdown_chunking.tokenizer_identity,
         resolved_splitter=context.markdown_chunking.resolved_splitter,
         graph_shape=context.graph_shape,

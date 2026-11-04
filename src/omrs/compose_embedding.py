@@ -47,9 +47,22 @@ class UnknownEmbeddingProviderError(KeyError):
         return str(self.args[0]) if self.args else "unknown embedding provider"
 
 
+def _read_settings() -> Settings:
+    """Read ``Settings`` after reading-part discovery (design D11).
+
+    This module reads settings without ``compose.get_settings``, so it runs the
+    same discovery first. A listed discovered backend is then accepted when
+    this is the first settings read in the process.
+    """
+    from .compose_settings import discover_reading_parts
+
+    discover_reading_parts()
+    return get_settings()
+
+
 def server_default_identity(settings: Settings | None = None) -> EmbeddingIdentity:
     """Return the provider and model that the ``EMBED_*`` settings select."""
-    return embedding_identity_from_settings(settings or get_settings())
+    return embedding_identity_from_settings(settings or _read_settings())
 
 
 def _first_line(text: str) -> str:
@@ -164,7 +177,7 @@ def check_embedding_model(
     Raises:
         UnknownEmbeddingProviderError: If ``provider`` is not registered.
     """
-    settings = settings or get_settings()
+    settings = settings or _read_settings()
     redactor = (
         redact
         or RedactionSecrets(

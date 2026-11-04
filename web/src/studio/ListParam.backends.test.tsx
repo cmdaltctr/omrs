@@ -23,19 +23,19 @@ function field(inherited: JsonValue | undefined) {
   return paramFields(operation)[0]!;
 }
 
-function serve() {
-  const state = readingState({}, {
-    local_ocr_backends: [
-      { name: "pp-ocrv6-small", available: true, reason: null },
-      { name: "indra", available: false, reason: "Not installed." },
-    ],
-  });
+const BUILT_IN = [
+  { name: "pp-ocrv6-small", available: true, reason: null },
+  { name: "indra", available: false, reason: "Not installed." },
+];
+
+function serve(backends = BUILT_IN) {
+  const state = readingState({}, { local_ocr_backends: backends });
   return documentsServer({ "GET /v1/settings/document-reading": () => state });
 }
 
-function setup(value: JsonValue | undefined, inherited?: JsonValue) {
+function setup(value: JsonValue | undefined, inherited?: JsonValue, backends = BUILT_IN) {
   const onChange = vi.fn();
-  renderWithProviders(<ParamField field={field(inherited)} value={value} note={null} disabled={false} onChange={onChange} />, { fetchImpl: serve().fetchImpl });
+  renderWithProviders(<ParamField field={field(inherited)} value={value} note={null} disabled={false} onChange={onChange} />, { fetchImpl: serve(backends).fetchImpl });
   return { onChange, user: userEvent.setup() };
 }
 
@@ -57,5 +57,12 @@ describe("Read document step local OCR backends", () => {
     await user.click(await screen.findByRole("combobox", { name: "Add backend" }));
     expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["indra (not installed)"]);
     expect(screen.getByRole("option", { name: "indra (not installed)" })).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("offers a backend that an installed package adds, from the server list", async () => {
+    const { user } = setup(["pp-ocrv6-small"], undefined, [...BUILT_IN, { name: "fake-ocr", available: true, reason: null }]);
+    await user.click(await screen.findByRole("combobox", { name: "Add backend" }));
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["indra (not installed)", "fake-ocr"]);
+    expect(screen.getByRole("option", { name: "fake-ocr" })).not.toHaveAttribute("aria-disabled", "true");
   });
 });

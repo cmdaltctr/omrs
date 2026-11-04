@@ -11,16 +11,19 @@ routing the rules replace:
    direct.
 
 A built-in rule that raises fails the file, as before. A rule from another
-distribution that fails to load or raises is skipped for the file, logs one
-warning and is switched off in the registry with the reason (design D11). A
-rule from another distribution runs only while it is on and its
+distribution that fails to load or raises in ``run``, ``post_check``,
+``degrade`` or ``stamp`` is skipped for the file, logs one warning and is
+switched off in the registry with the reason (design D11). A failing
+``post_check`` adds no reason, a failing ``degrade`` degrades no page and a
+failing ``stamp`` writes no key. A rule from another distribution runs only
+while it is on and its
 ``reading_part_options`` entry holds ``"enabled": true`` (design D12).
 """
 
 from __future__ import annotations
 
 import logging
-from collections.abc import Collection, Iterable, Sequence
+from collections.abc import Callable, Collection, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -71,7 +74,7 @@ class RoutingPlan:
     def post_checks(self) -> tuple[PostCheck, ...]:
         """Return the post-checks of the rules that declare one, in rule order."""
         checks = (
-            run.rule.post_check(run.ctx, run.outcome)
+            _guarded(run, "post_check", lambda run=run: run.rule.post_check(run.ctx, run.outcome))
             for run in self.runs
             if run.facts["has_post_check"]
         )
@@ -96,7 +99,14 @@ class RoutingPlan:
             mine = sorted((run.direct - claimed) & unread)
             claimed |= run.direct
             if mine and run.facts["has_degrade"]:
-                pages.update(run.rule.degrade(run.ctx, run.outcome, mine))
+                pages.update(
+                    _guarded(
+                        run,
+                        "degrade",
+                        lambda run=run, mine=mine: run.rule.degrade(run.ctx, run.outcome, mine),
+                    )
+                    or ()
+                )
         return sorted(pages)
 
     def stamp(self, metadata: dict[str, Any], escalated: Iterable[Any]) -> None:
@@ -111,7 +121,36 @@ class RoutingPlan:
         for run in self.runs:
             stamp = getattr(run.rule, "stamp", None)
             if stamp is not None:
-                stamp(metadata, run.ctx, run.outcome, results)
+                _guarded(
+                    run,
+                    "stamp",
+                    lambda run=run, stamp=stamp: stamp(metadata, run.ctx, run.outcome, results),
+                )
+
+
+def _skip(name: str, source: str, ctx: RuleContext, where: str, exc: Exception) -> None:
+    """Log one warning and switch an external rule off with the reason."""
+    reason = f"{type(exc).__name__}: {exc}"
+    logger.warning(
+        "Page rule %r from %s failed %s on %s and was skipped (%s).",
+        name,
+        source,
+        where,
+        getattr(ctx.file, "name", ctx.file),
+        reason,
+    )
+    registry.RULES.switch_off(name, reason)
+
+
+def _guarded(run: RuleRun, hook: str, call: Callable[[], Any]) -> Any:
+    """Call a rule hook; an external rule that raises is skipped and returns ``None``."""
+    if run.facts["source"] == registry.SOURCE_BUILT_IN:
+        return call()
+    try:
+        return call()
+    except Exception as exc:  # noqa: BLE001 - an external rule never fails the file
+        _skip(run.name, run.facts["source"], run.ctx, hook, exc)
+        return None
 
 
 def _waits(name: str, facts: dict[str, Any], settings: Any) -> bool:
@@ -133,15 +172,7 @@ def _run_one(name: str, facts: dict[str, Any], ctx: RuleContext) -> tuple[Any, R
         rule = registry.RULES.get(name)
         return rule, rule.run(ctx)
     except Exception as exc:  # noqa: BLE001 - an external rule never fails the file
-        reason = f"{type(exc).__name__}: {exc}"
-        logger.warning(
-            "Page rule %r from %s failed on %s and was skipped (%s).",
-            name,
-            facts["source"],
-            getattr(ctx.file, "name", ctx.file),
-            reason,
-        )
-        registry.RULES.switch_off(name, reason)
+        _skip(name, facts["source"], ctx, "run", exc)
         return None
 
 

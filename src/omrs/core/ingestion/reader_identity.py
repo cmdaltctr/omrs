@@ -91,16 +91,25 @@ def part_options_payload(settings: Any) -> dict[str, Any]:
     return {"reading_part_options": chosen} if chosen else {}
 
 
-def pdf_parser_payload(settings: Any) -> dict[str, Any]:
+def pdf_parser_payload(
+    settings: Any, local_ocr_backends: dict[str, Any] | None = None
+) -> dict[str, Any]:
     """Return every ``parser`` entry that only a PDF source carries beyond the revision.
 
     The reader list (D5), the non-Latin routing block (change
     non-latin-script-routing), the local OCR backend list and the part options
     (change local-ocr-backends). All four are empty on a default install.
+
+    Args:
+        settings: Settings the entries read.
+        local_ocr_backends: The backend list entry resolved once for the
+            operation (``{}`` for the default list). ``None`` resolves it here.
     """
+    if local_ocr_backends is None:
+        local_ocr_backends = local_backends_payload(settings)
     return {
         **reader_list_payload(settings),
         **non_latin_routing_payload(settings),
-        **local_backends_payload(settings),
+        **local_ocr_backends,
         **part_options_payload(settings),
     }

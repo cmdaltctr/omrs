@@ -11,6 +11,7 @@ without work, so the commit can report the same per-source outcome as
 from __future__ import annotations
 
 import asyncio
+import threading
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, TypeVar
@@ -21,6 +22,7 @@ from ..settings import EffectiveSettings
 from .backends.orchestrator import BackendRead
 from .commit import PreparedSource
 from .graph_adapters_catalogue import READ_OPTION_KEYS
+from .ocr_identity import local_backends_payload, resolved_routing_payload
 from .sources import SourceIdentity, SourceUnit
 
 #: Engine resource names used by the ingestion adapters.
@@ -195,6 +197,33 @@ def with_read_options(settings: EffectiveSettings, params: Any) -> EffectiveSett
     if not update:
         return settings
     return settings.model_copy(update={**update, **_step_lists(settings, update)})
+
+
+_RESOLVE_LOCK = threading.Lock()
+
+
+def run_ocr_resolution(shape: Any, settings: EffectiveSettings) -> dict[str, Any]:
+    """Return the OCR identity entries, resolved once per graph run.
+
+    The identify step runs once per source, and a failed model probe is never
+    cached, so resolving per source would probe once per source. The run's
+    :class:`IngestionShape` holds the entries instead: the host builds one per
+    admitted run, so the first call resolves and the rest reuse, and the next
+    run starts empty. Units run on worker threads, so the lock lets a
+    concurrent unit wait for the first resolve.
+
+    Args:
+        shape: The run's ingestion shape.
+        settings: The identify node's settings with the Read options applied.
+
+    Returns:
+        ``{"ocr_routing": ..., "local_ocr_backends": ...}``.
+    """
+    with _RESOLVE_LOCK:
+        if not shape.resolved:
+            shape.resolved["ocr_routing"] = resolved_routing_payload(settings)
+            shape.resolved["local_ocr_backends"] = local_backends_payload(settings)
+        return dict(shape.resolved)
 
 
 def node_ocr(context: NodeContext, settings: EffectiveSettings) -> Any:

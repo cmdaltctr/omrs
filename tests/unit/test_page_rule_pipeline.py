@@ -37,6 +37,7 @@ class FakeRule:
     check: Any = None
     degrade_answer: list[int] | None = None
     error: Exception | None = None
+    hook_errors: dict[str, Exception] = field(default_factory=dict)
     seen: list[RuleContext] = field(default_factory=list)
 
     def run(self, ctx: RuleContext) -> RuleOutcome:
@@ -48,14 +49,20 @@ class FakeRule:
 
     def post_check(self, ctx: RuleContext, outcome: RuleOutcome) -> Any:
         self.log.append(("post_check", self.name, None))
+        if "post_check" in self.hook_errors:
+            raise self.hook_errors["post_check"]
         return self.check
 
     def degrade(self, ctx: RuleContext, outcome: RuleOutcome, unread: list[int]) -> list[int]:
         self.log.append(("degrade", self.name, list(unread)))
+        if "degrade" in self.hook_errors:
+            raise self.hook_errors["degrade"]
         return list(unread) if self.degrade_answer is None else self.degrade_answer
 
     def stamp(self, metadata: dict, ctx: RuleContext, outcome: RuleOutcome, escalated) -> None:
         self.log.append(("stamp", self.name, outcome.state))
+        if "stamp" in self.hook_errors:
+            raise self.hook_errors["stamp"]
         metadata[f"stamp_{self.name}"] = len(list(escalated))
 
 
@@ -254,3 +261,85 @@ def test_an_external_rule_that_cannot_be_imported_is_skipped_too(log, caplog):
 
     assert [run.name for run in plan.runs] == ["later"]
     assert registry.RULES.off_reason("missing").startswith("ImportError")
+
+
+def _hook_failure_plan(log, hook: str, source: str, **flags: bool):
+    """Plan with a working built-in rule and a rule named ``acme`` whose *hook* raises."""
+    _add(
+        FakeRule("first", log, direct=frozenset({1}), check=_check_a),
+        10,
+        sends_direct=True,
+        has_post_check=True,
+        has_degrade=True,
+    )
+    acme = FakeRule(
+        "acme",
+        log,
+        direct=frozenset({2}),
+        check=_check_b,
+        hook_errors={hook: ValueError("boom")},
+    )
+    _add(acme, 20, source=source, sends_direct=True, **flags)
+    return _run({1, 2}, _enabled("acme"))
+
+
+def _warnings(caplog) -> list[logging.LogRecord]:
+    return [record for record in caplog.records if record.levelno == logging.WARNING]
+
+
+def test_an_external_rule_whose_post_check_raises_adds_no_reason(log, caplog):
+    plan = _hook_failure_plan(log, "post_check", "acme", has_post_check=True)
+
+    with caplog.at_level(logging.WARNING, logger="omrs.integrations.pdf.page_rules.pipeline"):
+        checks = plan.post_checks()
+
+    assert checks == (_check_a,)
+    assert len(_warnings(caplog)) == 1
+    assert "acme" in _warnings(caplog)[0].getMessage()
+    assert registry.RULES.off_reason("acme") == "ValueError: boom"
+
+
+def test_an_external_rule_whose_degrade_raises_degrades_no_page(log, caplog):
+    plan = _hook_failure_plan(log, "degrade", "acme", has_degrade=True)
+
+    with caplog.at_level(logging.WARNING, logger="omrs.integrations.pdf.page_rules.pipeline"):
+        pages = plan.degrade([1, 2])
+
+    assert pages == [1]
+    assert len(_warnings(caplog)) == 1
+    assert "acme" in _warnings(caplog)[0].getMessage()
+    assert registry.RULES.off_reason("acme") == "ValueError: boom"
+
+
+def test_an_external_rule_whose_stamp_raises_writes_no_key(log, caplog):
+    plan = _hook_failure_plan(log, "stamp", "acme")
+    metadata: dict = {}
+
+    with caplog.at_level(logging.WARNING, logger="omrs.integrations.pdf.page_rules.pipeline"):
+        plan.stamp(metadata, [None])
+
+    assert metadata == {"stamp_first": 1}
+    assert len(_warnings(caplog)) == 1
+    assert "acme" in _warnings(caplog)[0].getMessage()
+    assert registry.RULES.off_reason("acme") == "ValueError: boom"
+
+
+@pytest.mark.parametrize("hook", ["post_check", "degrade", "stamp"])
+def test_a_built_in_rule_whose_hook_raises_reaches_the_caller(log, hook):
+    _add(
+        FakeRule("broken", log, direct=frozenset({1}), hook_errors={hook: ValueError("boom")}),
+        10,
+        sends_direct=True,
+        has_post_check=True,
+        has_degrade=True,
+    )
+    plan = _run({1})
+
+    with pytest.raises(ValueError, match="boom"):
+        if hook == "post_check":
+            plan.post_checks()
+        elif hook == "degrade":
+            plan.degrade([1])
+        else:
+            plan.stamp({}, [None])
+    assert registry.RULES.off_reason("broken") is None

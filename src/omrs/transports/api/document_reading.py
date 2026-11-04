@@ -163,11 +163,15 @@ def _readers() -> list[dict[str, Any]]:
 
 
 def _local_backends() -> list[dict[str, Any]]:
-    """Return each backend a local OCR list can name, with its install probe (design D8)."""
+    """Return each backend a local OCR list can name, with its install probe (design D8).
+
+    The built-in backends come first, then the ones that an installed package adds.
+    """
     from ...integrations.pdf.local_ocr import registry
 
+    discovered = reading_parts.discovered(reading_parts.KIND_LOCAL_OCR_BACKEND)
     options = []
-    for backend in reading_parts.LOCAL_OCR_BACKENDS:
+    for backend in (*reading_parts.LOCAL_OCR_BACKENDS, *discovered):
         if backend.min_confidence is None:
             continue
         available = registry.BACKENDS.installed(backend.name)

@@ -61,10 +61,12 @@ def build_answer_llm(settings: Settings | None = None) -> Any:
             configuration that is absent — configuration errors are
             deliberately loud, unlike missing optional extras.
     """
+    from .compose_settings import discover_reading_parts
     from .config import get_settings
     from .core.providers.llm import registry as llm_registry
 
     if settings is None:
+        discover_reading_parts()  # this path reads Settings without compose.get_settings
         settings = get_settings()
 
     if not settings.answer.enabled:
@@ -230,10 +232,12 @@ def build_verify_llm(
             naming the error so the answer never fails behind an
             unconfigured judge (spec: graceful degradation).
     """
+    from .compose_settings import discover_reading_parts
     from .config import get_settings
     from .core.providers.llm import registry as llm_registry
 
     if settings is None:
+        discover_reading_parts()  # this path reads Settings without compose.get_settings
         settings = get_settings()
 
     block = answer_block if answer_block is not None else settings.answer
