@@ -1,42 +1,58 @@
-# Proposal: a local OCR backend seam, and an experiment on the backends that could use it
+# Proposal: page reading built from replaceable reading parts
 
 ## Why
 
-The local OCR tier has one recogniser: PP-OCRv6 Small, inside pdf-inspector. pdf-inspector 1.17.0 pins that model set and has no option to change it. The model covers Chinese, Japanese, English and 46 Latin-script languages. It has no recogniser for Arabic, Bengali or Devanagari. Experiments 33 and 45 measured recall 0.000 on all 129 such pages (`io01`, `io02`, `io03`, `io07`). The confidence cut sends all of them to the OCR engine (local confidence 0.454 to 0.805), so no text is lost. The cost is time: the engine takes a median 37.0 s per page (Experiment 37) and the local tier takes about a second.
+Experiment 46 passed (`experiments/46-local-ocr-backends-2026-11-04/report.md`). Indra OCR 1.1.2 passes gates G1 to G4 for Arabic and Devanagari at a cut of 0.90. It keeps 58 of 69 such pages local and none of the kept pages is bad. It reads Bengali badly (median recall 0.59), so it must not keep Bengali pages. A simulation on the same data (`evidence/ordered-list-simulation.md`) shows that an ordered list `[indra (keeps arabic, devanagari), pp-ocrv6-small]` keeps those 58 pages and leaves Latin and Bengali pages exactly as today. The output script is detected correctly on 229 of 229 pages.
 
-Candidate local backends exist that cover these scripts and need no PyTorch. A short research pass on 2026-11-04 found Indra OCR 1.1.2 and Apple Vision (macOS only, no Bengali). The operator kept these two for the experiment (RapidOCR and Tesseract were considered and dropped on 2026-11-04). Neither is measured on OMRS pages. Two facts block a direct switch:
+The code cannot take Indra as one part today. The audit of 2026-11-04 found:
 
-1. The 0.9 confidence cut was calibrated on PP-OCRv6 Small only (Experiments 33, 37, 39). Another backend reports confidence on another scale, so it needs its own cut.
-2. There is no place in the code to put a second backend. `page_routing.local_ocr` calls pdf-inspector directly.
+1. The local tier is one hard call to pdf-inspector (`integrations/pdf/page_routing.py:195-206`). There is no seam.
+2. Each page-routing rule is wired by hand. Non-Latin routing touched 21 production files (16 in `src/`, 5 in `web/src/`). Maths routing touches 15. Each rule has its own call site in `ocr_routing._page_unit_documents` (`ocr_routing.py:188-198`).
+3. The 10 registries repeat the same `_registry`, `_cache`, `get()` and probe code. No shared helper exists.
+4. Hand-typed lists repeat the same keys in Python, the HTTP contract and the web app (`config/rules.py:139-146`, `graph_adapters_catalogue.py:128-136`, `levers.py:87-95`, `openapi.yaml:11414-11420`, `web/src/api/settingsDocumentReading.ts:15-25`).
+5. Health is hand-coded. The local tier's run-time switch-off (`page_routing.py:253-264`) is not shown anywhere. Page rules have no health row.
 
-This change adds the place (one small registry) and an experiment that measures the candidates before any of them ships.
+The operator decided on 2026-11-04 to make page reading plug-and-play "like a car": each part is replaceable and can be diagnosed on its own. This change does that once, then adds Indra as the proof.
+
+## Terms
+
+- **Reading part** (or **part**): one replaceable unit of page reading. Three kinds are in scope: a PDF reader, a local OCR backend and a page rule. The word "plugin" is not used, because ADR-075 and `src/omrs/core/plugins/` use it for marimo-style executables.
+- **Part descriptor**: one pure-data record per part. It names the part, its import path, its extra and probe, the settings it reads with defaults, its exact index-identity contribution, its health facts, and its UI label and help key.
+- **Page rule**: a part that decides, per page, which pages leave the route, which go direct to the OCR engine, and which local results escalate. Blank pages, maths routing and non-Latin routing become page rules.
+- **Local OCR backend**: a part that reads page images locally and returns text with one confidence per page.
 
 ## What Changes
 
-- **New setting `ocr_local_backend`** (env `OCR_LOCAL_BACKEND`, flat like the other OCR keys). Default `pp-ocrv6-small`, the pdf-inspector path in use today. Only that value is accepted in this change. Behaviour, escalation reasons, index identity and digests stay the same for every current user.
-- **A local OCR backend registry** in `integrations/pdf/`, copied from the PDF reader registry pattern: one file per backend and one `register()` line. A backend reads a PDF's pages and returns, for each page, the text, one page confidence and the model identity. The shared escalation rule (missing page, empty text, low confidence, hosted recommendation, and the non-Latin post-check) stays in `page_routing.local_ocr`. No backend carries its own escalation rule.
-- **The confidence cut belongs to the backend.** A backend registers a calibrated cut, or none. `ocr_local_min_confidence` becomes optional: unset, it resolves to the backend's cut (0.9 for `pp-ocrv6-small`); set, it overrides. A backend with no calibrated cut is not accepted as a value of `ocr_local_backend`.
-- **Identity.** The local tier block names the backend when it is not the default, and keeps the resolved model identity and the resolved cut. The default digest does not change.
-- **Only the PP-OCRv6 backend ships.** The candidate backends are not built here. The experiment runs them from its own folder, in scratch environments outside the repository. A follow-up change adds a backend only if the experiment supports it. This keeps new dependencies, licence questions and per-backend calibration out of `src/` until there is a measured reason.
-- **Experiment 46** measures two candidates (Indra OCR and Apple Vision) against the stored PP-OCRv6 output on the 129 non-Latin pages and a stratified Latin sample of 100 pages. It fixes the decision rule before any run.
-- **Not in this change:** Settings and Studio rows (one accepted value gives nothing to choose; a follow-up adds them with the first second backend), a pre-OCR script chooser, any new dependency, any model download.
+- **Part descriptors** in one pure-data module, `core/reading_parts.py`. It imports nothing from `omrs` (precedent `core/reading_lists.py`).
+- **A shared registry helper** for the page-reading registries: PDF readers, local OCR backends and page rules. The nine `core/` registries adopt it in later changes.
+- **A page-rule pipeline** on one hook in `ocr_routing._page_unit_documents`. Blank, maths and non-Latin become ordered, registered rules. The pipeline reproduces today's order and semantics exactly. Change `document-reading-routers` registers its routers as the next rule.
+- **An ordered local OCR list**, `ocr_local_backends` (env `OCR_LOCAL_BACKENDS`), default `["pp-ocrv6-small"]`. Each backend declares its calibrated cut and the output scripts it may keep. A page a backend escalates, or whose output script it may not keep, passes to the next backend. After the last backend, today's shared escalation to the OCR engine applies. `ocr_local_min_confidence` becomes an optional override of each backend's cut.
+- **Entry-point discovery** (standard library `importlib.metadata.entry_points`) in groups `omrs.pdf_readers`, `omrs.local_ocr_backends` and `omrs.page_rules`. It runs once in compose. A broken or clashing external part is skipped with a warning and shown in health. It never stops start-up.
+- **Diagnosis from descriptors**: the Integrations page lists each local backend (installed, model present, switched off at run time), each page rule (on or off, version) and each discovered part.
+- **One fix on the way**: `compose_runtimes._ocr_runtimes` reads the two legacy engine keys (`compose_runtimes.py:45,208`), so a third engine's runtime is missing from `GET /v1/runtimes` (likelihood 2, impact 3, score 6). It moves to the engine list. The legacy keys stay as input aliases (`config/rules.py:108`).
+- **Indra OCR as one new backend** behind a new optional extra `local-ocr-indra`, with a cut of 0.90 and `keeps_scripts = {arabic, devanagari}`. It is not in the default list. The operator approves the extra first.
+- **Zero behaviour change for current users, proven first.** New digest pins and golden end-to-end snapshots are written before any refactor. Every pin stays byte-identical.
+- **Not in this change:** generated web or OpenAPI lists (drift tests pin them instead), the nine `core/` registries, OCR engines (they already plug in through the worker's `omrs.ocr_engine` entry point), a Bengali backend, and any default change.
 
 ## Capabilities
 
 ### New Capabilities
 
-- `local-ocr-backends`: the registry, the backend contract, the per-backend confidence cut, the setting and the identity block.
+- `local-ocr-backends`: the ordered list, the backend contract, per-backend cuts and kept scripts, identity, producer names, and the Indra backend.
+- `reading-parts`: part descriptors, the shared registry helper, entry-point discovery, part options, diagnosis, single-source lists and drift tests, and the engine-list runtime fix.
+- `page-routing-rules`: the rule interface, rule order, the three built-in rules, post-checks, degrade paths and failure handling.
 
 ### Modified Capabilities
 
-- `pdf-reader`: the requirement that sets the local tier's escalation cut. The default 0.9 becomes the default of the default backend, and an operator value still replaces it.
+- `pdf-reader`: the local cut, the escalation rule and the missing-runtime rule now apply to an ordered list of backends.
+- `script-page-routing`: the `detect` post-check does not escalate output that the backend may keep.
 
 ## Impact
 
-- **New code:** `integrations/pdf/local_ocr_registry.py` (registry, helper for the effective cut) and `integrations/pdf/local_ocr_pp_ocrv6.py` (the pdf-inspector call and the identity probe, moved out of `page_routing.py`).
-- **Changed code:** `integrations/pdf/page_routing.py` (`local_ocr` and `resolve_local_model_identity` dispatch through the registry; the file shrinks from 480 lines), `core/ingestion/ocr_identity.py` (resolved cut and backend name), `config/__init__.py`, `config/rules.py` and `core/settings.py` (the new key; `ocr_local_min_confidence` becomes optional), `compose_settings.py` (pass the new key).
-- **Not touched:** `ocr_routing.py` (the two call sites keep calling `local_ocr`), the OCR engine routes, the maths and non-Latin routing modules, Settings and Studio.
-- **Tests:** `tests/unit/test_local_ocr_tier.py`, `tests/test_ocr_identity_reingestion.py`, `tests/unit/test_effective_settings.py`, `tests/unit/test_settings_file_editable_keys.py`, plus new registry tests. The clean-base tripwire pin changes by test IDs.
-- **Docs:** `docs/guides/configuration.md` and `docs/guides/ingestion.md` (the cut is per backend), the architecture integration inventory.
-- **Experiment:** a new folder `experiments/46-local-ocr-backends-2026-11-04/` (planned in this change; its run needs operator approval for downloads and, for Indra, a licence read).
-- **Risk to current users:** none by design. The default value, the default cut and the default digest are pinned by tests.
+- **New code:** `core/reading_parts.py`; `integrations/part_registry.py`; `integrations/pdf/page_rules/` (interface, pipeline, registry); `integrations/pdf/local_ocr/` (registry, chain, `pp_ocrv6_small.py`, later `indra.py`); a health module under `transports/api/`.
+- **Changed code:** `ocr_routing.py`, `page_routing.py`, `blank_pages.py`, `maths_routing.py`, `script_routing.py`, `pdf/registry.py`, `config/` (list setting, override, derived key lists), `core/settings.py` (split first, at 499 lines), `compose.py` and `compose_settings.py` (discovery), `compose_runtimes.py`, `core/ingestion/ocr_identity.py`, `graph_adapters_catalogue.py`, `levers.py`, `embed_exclusions.py`, `runtime_components.py`, `integrations_catalogue.py`.
+- **HTTP contract and web:** health fields, the Settings row and Read-step key for `ocr_local_backends`, Integrations page rows.
+- **Dependencies:** none in the base install. New optional extra `local-ocr-indra` (`indra-ocr==1.1.2`, which pulls onnxruntime and opencv-python-headless; no PyTorch), after operator approval.
+- **Identity:** default digests do not move. A non-default list re-indexes PDF sources once.
+- **Docs:** ADR-112 (drafted in parallel, `docs/adr/112-reading-parts-descriptor-pipeline-and-discovery.md`), a new guide `docs/guides/reading-parts.md`, and updates listed in tasks group 8.
+- **Experiment 46:** done. Its data-store copy (task 0.5) stays open until worktree removal.
