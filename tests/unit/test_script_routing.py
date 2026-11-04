@@ -275,6 +275,85 @@ def test_a_maths_page_that_is_also_non_latin_goes_once(monkeypatch, tmp_path, ef
     assert _counts(docs[0].metadata)["ocr_pages_worker"] == 3
 
 
+# ── degrade: the engine gives no text for a direct page (spec: degrades to local) ──
+
+
+def test_a_direct_page_the_engine_cannot_read_gets_local_text(
+    monkeypatch, tmp_path, effective_settings, caplog
+):
+    scan = _scan(True)
+    engine = _Engine(scan, ocr_pages_by_call=[[_ocr_page(1, "LOCAL one", 0.95)]])
+    _stub(monkeypatch, engine)
+    worker = _FakeWorker(pages_markdown=None)
+
+    with caplog.at_level(logging.WARNING):
+        docs = _read(effective_settings, tmp_path, scan, engine, worker, mode="always")
+
+    assert worker.calls[0]["pages"] == [1]
+    assert [call["page_numbers"] for call in engine.ocr_calls] == [[1]]
+    assert docs[0].text == "LOCAL one"
+    counts = _counts(docs[0].metadata)
+    assert (counts["ocr_pages_local"], counts["ocr_pages_unresolved"]) == (1, 0)
+    fallback = [r for r in caplog.records if "went to the local tier" in r.getMessage()]
+    assert len(fallback) == 1
+    assert "doc.pdf" in fallback[0].getMessage()
+
+
+def test_a_maths_page_the_engine_cannot_read_gets_no_local_run(
+    monkeypatch, tmp_path, effective_settings
+):
+    """Maths pages keep today's behaviour: only the non-Latin page falls back."""
+    scan = _scan(True, True)
+    monkeypatch.setattr(ocr_routing, "detect_maths_pages", lambda file, settings: frozenset({2}))
+    engine = _Engine(scan, ocr_pages_by_call=[[_ocr_page(1, "LOCAL one", 0.95)]])
+    _stub(monkeypatch, engine)
+    worker = _FakeWorker(pages_markdown=None)
+
+    docs = _read(
+        effective_settings,
+        tmp_path,
+        scan,
+        engine,
+        worker,
+        mode="always",
+        ocr_maths_routing_enabled=True,
+    )
+
+    assert [call["page_numbers"] for call in engine.ocr_calls] == [[1]]
+    counts = _counts(docs[0].metadata)
+    assert (counts["ocr_pages_local"], counts["ocr_pages_unresolved"]) == (1, 1)
+
+
+def test_a_direct_page_the_engine_read_runs_no_local_tier(
+    monkeypatch, tmp_path, effective_settings
+):
+    scan = _scan(True)
+    engine = _Engine(scan, ocr_pages_by_call=[[_ocr_page(1, "LOCAL one", 0.95)]])
+    _stub(monkeypatch, engine)
+    worker = _FakeWorker(pages_markdown=["WORKER one"])
+
+    docs = _read(effective_settings, tmp_path, scan, engine, worker, mode="always")
+
+    assert engine.ocr_calls == []
+    assert docs[0].text == "WORKER one"
+    assert _counts(docs[0].metadata)["ocr_pages_worker"] == 1
+
+
+def test_the_local_fallback_respects_a_switched_off_local_tier(
+    monkeypatch, tmp_path, effective_settings
+):
+    scan = _scan(True)
+    engine = _Engine(scan, ocr_pages_by_call=[[_ocr_page(1, "LOCAL one", 0.95)]])
+    _stub(monkeypatch, engine)
+    monkeypatch.setattr(ocr_routing, "local_tier_off_reason", lambda: "switched off")
+    worker = _FakeWorker(pages_markdown=None)
+
+    docs = _read(effective_settings, tmp_path, scan, engine, worker, mode="always")
+
+    assert engine.ocr_calls == []
+    assert _counts(docs[0].metadata)["ocr_pages_unresolved"] == 1
+
+
 # ── off: nothing changes (task 2.1) ───────────────────────────────────────
 
 
