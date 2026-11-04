@@ -1,28 +1,44 @@
 ## MODIFIED Requirements
 
-### Requirement: A rescue corrects the routing evidence only when it recovers text
+### Requirement: Page-level OCR routing SHALL OCR only flagged pages
 
-A successful retry SHALL correct the routing evidence it emits: the scalar `pages_needing_ocr` SHALL be set to zero, because the pages were flagged only by the failed extraction, and the pre-fallback flagged count SHALL be preserved under an additive diagnostic key. A retry chain that yields no text from either tier SHALL leave the original pdf-inspector result unchanged so the OCR routing gate still sees the flagged evidence.
+When OCR is enabled, the pdf-inspector path SHALL decide OCR need per page from a scan of every page. Pages that do not need OCR SHALL keep native pdf-inspector Markdown, except a page that a page rule adds to the route (for example a page that a selected router rejects). Pages that need OCR, and added pages, SHALL be processed by the local OCR tier. A missing local runtime SHALL follow the missing-runtime requirement instead of keeping native text.
 
-When a document router is selected, the zero SHALL be replaced by the router's verdicts: the scalar `pages_needing_ocr` SHALL equal the number of rescued pages the router rejects, and only those pages SHALL go to OCR, page by page. Without a router, the rule above SHALL apply unchanged.
+#### Scenario: Only flagged pages are OCRed
 
-#### Scenario: Recovered text corrects the routing evidence
+- **GIVEN** a 20-page PDF with 3 pages needing OCR
+- **WHEN** the PDF is ingested
+- **THEN** the 17 other pages SHALL keep native Markdown
+- **AND** only the 3 flagged pages SHALL be processed by the local OCR tier
 
-- **GIVEN** a fallback tier recovers text from a file pdf-inspector flagged page-by-page
-- **WHEN** the OCR routing seam reads the emitted metadata
-- **THEN** `pages_needing_ocr` SHALL be zero
-- **AND** the original flagged count SHALL be preserved under a separate diagnostic key
+#### Scenario: Missing local OCR runtime sends flagged pages to the OCR routes
 
-#### Scenario: Failed retry keeps the original evidence
+- **GIVEN** no usable local OCR runtime and a PDF with flagged pages
+- **WHEN** the PDF is ingested
+- **THEN** the flagged pages SHALL be parsed by the OCR routes under the missing-runtime requirement
+- **AND** the flagged pages SHALL NOT keep native text while any OCR route is available
 
-- **GIVEN** both fallback tiers yield no text
-- **WHEN** the adapter emits its document
-- **THEN** the emitted result SHALL be the unchanged pdf-inspector result with its original flagged count
-- **AND** the OCR routing decision SHALL be unchanged from a run without the guard
+#### Scenario: A rejected unflagged page is OCRed
 
-#### Scenario: A selected router replaces the zero
+- **GIVEN** a 20-page PDF with no flagged page and a selected router that rejects page 7
+- **WHEN** the PDF is ingested
+- **THEN** page 7 SHALL be processed by the local OCR tier
+- **AND** the 19 other pages SHALL keep native Markdown
 
-- **GIVEN** a selected router and a rescue that recovers text for 44 flagged pages
-- **WHEN** the router rejects 40 of them
-- **THEN** `pages_needing_ocr` SHALL be 40
-- **AND** the original flagged count SHALL be preserved under its diagnostic key
+### Requirement: The scalar OCR diagnostics keep their meaning
+
+The four existing OCR diagnostics SHALL remain scalars and SHALL keep their meaning. `ocr_required` SHALL be true when at least one page was flagged, goes direct to the worker or was added to the route by a page rule. `ocr_used` SHALL be true when OCR produced the text of at least one page, by either tier. `pages_needing_ocr` SHALL remain the count of flagged pages, which does not include pages that a page rule added.
+
+#### Scenario: Page routing keeps the scalar OCR diagnostics
+
+- **GIVEN** a PDF with at least one flagged page
+- **WHEN** OCR produces the text of at least one page
+- **THEN** `ocr_required` and `ocr_used` SHALL be true
+- **AND** `pages_needing_ocr` SHALL be the count of flagged pages
+
+#### Scenario: An added page does not change the flagged count
+
+- **GIVEN** a PDF with 2 flagged pages and 1 page that a router rejects
+- **WHEN** OCR reads all 3 pages
+- **THEN** `pages_needing_ocr` SHALL be 2
+- **AND** `ocr_required` SHALL be true
