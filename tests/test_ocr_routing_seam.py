@@ -39,7 +39,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 STUB_WORKER = REPO_ROOT / "tests" / "fixtures" / "ocr_worker" / "stub_worker.py"
 #: The stub worker's fingerprint reports this backend_id; the worker path
 #: stamps the answering engine's backend_id (modular-ocr-workers-dots-mocr).
-OCR_BACKEND_WORKER_PATH = "paddleocr_vl"
+_STUB_WORKER_BACKEND = "paddleocr_vl"
 CALIBRATION = REPO_ROOT / "tests" / "fixtures" / "pdf_baseline" / "calibration"
 
 
@@ -158,7 +158,7 @@ def test_scanned_fixture_sends_its_flagged_page_to_the_worker(effective_settings
         assert docs[0].get_content() == "# Stub page 1"
         assert meta["ocr_required"] is True
         assert meta["ocr_used"] is True
-        assert meta["ocr_backend"] == OCR_BACKEND_WORKER_PATH
+        assert meta["ocr_backend"] == _STUB_WORKER_BACKEND
         assert meta["ocr_pages_worker"] == 1
         assert meta["page"] == 1
         # Honest provenance: the inspection evidence stays authoritative.

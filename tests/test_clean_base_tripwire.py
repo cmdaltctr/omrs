@@ -270,7 +270,11 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +36 (2026-11-04, same change, group 3, by test-ID diff, 36 added, 0 removed): page
 # rule pipeline (13), built-in rules (20), rule descriptor pins (2) and the contract
 # coverage case for the new page_rules package (1). No fastapi needed.
-_BASE_EXECUTED = 10234
+# +82 (2026-11-04, same change, group 4, by test-ID diff, 82 added, 0 removed): local
+# OCR backends (18), chain (19), output script (7), producers (6), backend list
+# setting (11), cut override (9), backend identity (9), backend pins (2) and the
+# contract coverage case for the local_ocr package (1). No fastapi needed.
+_BASE_EXECUTED = 10316
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

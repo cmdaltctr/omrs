@@ -357,7 +357,7 @@ def test_the_local_fallback_respects_a_switched_off_local_tier(
     scan = _scan(True)
     engine = _Engine(scan, ocr_pages_by_call=[[_ocr_page(1, "LOCAL one", 0.95)]])
     _stub(monkeypatch, engine)
-    monkeypatch.setattr(ocr_routing, "local_tier_off_reason", lambda: "switched off")
+    monkeypatch.setattr(ocr_routing, "local_tier_off_reason", lambda *_: "switched off")
     worker = _FakeWorker(pages_markdown=None)
 
     docs = _read(effective_settings, tmp_path, scan, engine, worker, mode="always")

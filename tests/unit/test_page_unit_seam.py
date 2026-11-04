@@ -671,9 +671,9 @@ def test_a_local_runtime_panic_escalates_and_switches_the_tier_off(
     monkeypatch, tmp_path, effective_settings, caplog
 ):
     """A runtime panic poisons the engine, so later files skip the local tier."""
-    from omrs.integrations.pdf import page_routing
+    from omrs.integrations.pdf.local_ocr import registry as local_ocr_registry
 
-    monkeypatch.setattr(page_routing, "_LOCAL_TIER_BROKEN", None)
+    local_ocr_registry.BACKENDS.reset_off()
     scan = [_scan_page(i, f"junk {i + 1}", i + 1 == 2) for i in range(3)]
     engine = _EngineCalls(scan, ocr_error=_RuntimePanic("Mutex poisoned"))
     _stub_engine(monkeypatch, engine)

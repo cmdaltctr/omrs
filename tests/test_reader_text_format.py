@@ -37,22 +37,6 @@ def _orchestrator():
     return orchestrator
 
 
-def _drop_temp_pdf_entries(name: str) -> None:
-    """Remove temporary PDF-registry entries from every backing dict."""
-    registry = _pdf_registry()
-    for attr in (
-        "_registry",
-        "_probe_modules",
-        "_text_formats",
-        "_page_provenance",
-        "_output_revisions",
-        "_cache",
-    ):
-        mapping = getattr(registry, attr, None)
-        if isinstance(mapping, dict):
-            mapping.pop(name, None)
-
-
 def _azure_settings(effective_settings, pdf_reader: str = "pypdf", **overrides):
     """EffectiveSettings selecting azure with dummy credentials."""
     return effective_settings(
@@ -193,6 +177,7 @@ class TestRegistrationRequiresDeclaration:
     def test_temporary_registration_roundtrip(self) -> None:
         """A fully declared temporary registration is describable."""
         registry = _pdf_registry()
+        saved = registry.READERS.snapshot()
         try:
             registry.register(
                 "temp_markdown_reader",
@@ -206,7 +191,8 @@ class TestRegistrationRequiresDeclaration:
             assert meta["probe_module"] == "omrs.integrations.pdf.pypdf"
             assert meta["output_revision"] == 1
         finally:
-            _drop_temp_pdf_entries("temp_markdown_reader")
+            registry.READERS.restore(saved)
+        assert "temp_markdown_reader" not in registry.available()
 
 
 # ── Task 3.3: the shared pre-read resolver ─────────────────────────────

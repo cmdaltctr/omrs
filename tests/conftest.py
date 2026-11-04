@@ -94,9 +94,9 @@ def _local_ocr_tier_on(monkeypatch: pytest.MonkeyPatch) -> None:
     page-routing-default); a real-fixture test can trigger one, so the
     switch must not leak into the next test.
     """
-    page_routing = sys.modules.get("omrs.integrations.pdf.page_routing")
-    if page_routing is not None:  # never import it just to reset it
-        monkeypatch.setattr(page_routing, "_LOCAL_TIER_BROKEN", None)
+    local_ocr_registry = sys.modules.get("omrs.integrations.pdf.local_ocr.registry")
+    if local_ocr_registry is not None:  # never import it just to reset it
+        local_ocr_registry.BACKENDS.reset_off()
 
 
 @pytest.fixture(autouse=True)

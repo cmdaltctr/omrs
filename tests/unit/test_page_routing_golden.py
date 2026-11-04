@@ -170,10 +170,11 @@ class _FakeWorker:
 def _reset_routing_state() -> None:
     """Reset the process state the local tier keeps between cases.
 
-    ``page_routing._LOCAL_TIER_BROKEN`` is the panic switch. A later group moves
-    it into the local OCR registry, so this is the one place to change.
+    The panic switch lives in the local OCR registry, per backend (design D17).
     """
-    page_routing._LOCAL_TIER_BROKEN = None
+    from omrs.integrations.pdf.local_ocr import registry as local_ocr_registry
+
+    local_ocr_registry.BACKENDS.reset_off()
     page_routing.reset_local_model_resolution()
 
 

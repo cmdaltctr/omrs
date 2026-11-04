@@ -73,16 +73,21 @@ def _json(value: Any) -> str:
 
 
 def _setting_lines(
-    key: str, value: Any, env_name: str | None, *, indent: str, secret: bool
+    key: str, value: Any, env_name: str | None, *, indent: str, secret: bool, sample: Any = None
 ) -> list[str]:
-    """Return the two comment lines for one setting."""
+    """Return the two comment lines for one setting.
+
+    *sample* replaces an unset *value* on the commented line, so an optional
+    override with an example (``ocr_local_min_confidence``) never shows ``null``.
+    """
     env = f"Environment name: {env_name}." if env_name else "File only: no environment name."
     if secret:
         shown = f"env://{env_name}" if env_name else "env://NAME"
         note = f"{env} Write a reference, never a key."
         return [f"{indent}// {note}", f'{indent}// "{key}": {_json(shown)},']
     default = "unset" if value is None else _json(value)
-    return [f"{indent}// {env} Default: {default}.", f'{indent}// "{key}": {_json(value)},']
+    shown = sample if value is None and sample is not None else value
+    return [f"{indent}// {env} Default: {default}.", f'{indent}// "{key}": {_json(shown)},']
 
 
 def _flat_section(yaml_data: dict[str, Any]) -> list[str]:
@@ -96,7 +101,12 @@ def _flat_section(yaml_data: dict[str, Any]) -> list[str]:
             continue
         value = yaml_data.get(name, field.default)
         lines += _setting_lines(
-            name, value, name.upper(), indent="  ", secret=name in SECRET_FIELDS
+            name,
+            value,
+            name.upper(),
+            indent="  ",
+            secret=name in SECRET_FIELDS,
+            sample=(field.examples or [None])[0],
         )
         lines.append("")
     return lines

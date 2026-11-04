@@ -178,6 +178,37 @@ def reading_list_problem(key: str, value: Any) -> str | None:
     return None if named else ENGINE_NAME_RULE
 
 
+def local_backend_problem(
+    names: Collection[str], extra: Collection[_reading_parts.LocalOcrBackendDescriptor] = ()
+) -> str | None:
+    """Return the rule a local OCR backend list breaks, or ``None`` (design D8).
+
+    Each name must name a backend descriptor with a calibrated cut. A backend
+    without a cut is never an accepted value. The rule never holds a name.
+
+    Args:
+        names: The ``ocr_local_backends`` list.
+        extra: More descriptors to accept beside the built-in table. Discovery
+            (group 5, design D11) passes discovered backends here.
+
+    Returns:
+        The rule, with the accepted values, or ``None`` when every name is fine.
+    """
+    table = {d.name: d for d in (*_reading_parts.LOCAL_OCR_BACKENDS, *extra)}
+    accepted = ", ".join(name for name, d in table.items() if d.min_confidence is not None)
+    if not names:
+        return LIST_EMPTY_RULE
+    for name in names:
+        if name not in table:
+            return f"Each name must be a local OCR backend. Accepted values: {accepted}."
+        if table[name].min_confidence is None:
+            return (
+                "A backend with no calibrated confidence cut cannot be listed. "
+                f"Accepted values: {accepted}."
+            )
+    return None
+
+
 def ignored_old_keys(present: Collection[str]) -> list[tuple[str, str]]:
     """Return ``(old key, list key)`` for each old key that a list key in *present* overrides.
 
@@ -283,6 +314,8 @@ def accepted_problem(path: str, value: Any) -> str | None:
     """
     if path in READING_LIST_KEYS and not value:
         return LIST_EMPTY_RULE
+    if path == "ocr_local_backends":
+        return local_backend_problem(value)
     accepted = ACCEPTED.get(path)
     if accepted is not None and value not in accepted:
         return f"The value must be one of: {', '.join(accepted)}."

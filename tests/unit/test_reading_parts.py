@@ -131,7 +131,8 @@ def test_local_backend_pp_ocrv6_small_values() -> None:
         "ocr_local_offline",
         "ocr_local_model_directory",
     ]
-    assert [s.default for s in backend.settings] == [0.9, False, ""]
+    # The override is unset by default; the cut above applies (design D9).
+    assert [s.default for s in backend.settings] == [None, False, ""]
     assert backend.identity is not None
     assert (backend.identity.block, backend.identity.keys, backend.identity.presence) == (
         "ocr_routing",

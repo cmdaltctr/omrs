@@ -21,8 +21,8 @@ from pathlib import Path
 from typing import Any, Protocol
 
 #: A post-check gets the text of one local result and the facts of the backend
-#: that read it, and returns an escalation reason or ``None``. The facts are
-#: ``None`` until the ordered local backend list exists (task group 4).
+#: that read it (for example ``keeps_scripts``), and returns an escalation reason
+#: or ``None``.
 PostCheck = Callable[[str, Any], "str | None"]
 
 

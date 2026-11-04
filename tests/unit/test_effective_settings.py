@@ -27,14 +27,16 @@ def test_effective_settings_is_frozen() -> None:
 
 
 def test_local_ocr_confidence_defaults_agree() -> None:
-    """The resolver and injected settings share the calibrated 0.9 default."""
-    from omrs.config import Settings
+    """The resolver and injected settings share the unset default (design D9).
 
-    assert (
-        Settings.model_fields["ocr_local_min_confidence"].default
-        == EffectiveSettings().ocr_local_min_confidence
-        == 0.9
-    )
+    Unset, the backend's own cut applies: 0.9 for ``pp-ocrv6-small``.
+    """
+    from omrs.config import Settings
+    from omrs.core.reading_parts import effective_cut
+
+    assert Settings.model_fields["ocr_local_min_confidence"].default is None
+    assert EffectiveSettings().ocr_local_min_confidence is None
+    assert effective_cut(EffectiveSettings(), "pp-ocrv6-small") == 0.9
 
 
 def test_two_instances_are_independent() -> None:

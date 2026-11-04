@@ -32,8 +32,9 @@ from ..core.reading_lists import (
     expand_ocr_engines,
     expand_pdf_reader,
 )
+from ..core.reading_parts import DEFAULT_LOCAL_OCR_BACKENDS
 from .provenance import SOURCE_ORDER
-from .rules import OLD_READING_KEYS, ignored_old_keys
+from .rules import OLD_READING_KEYS, ignored_old_keys, local_backend_problem
 
 logger = logging.getLogger(__name__)
 
@@ -62,16 +63,28 @@ def _single_wins(layers: Mapping[str, Collection[str]], list_key: str) -> tuple[
 
 
 class ReadingListMixin(BaseModel):
-    """The ``pdf_readers`` and ``ocr_engines`` fields of :class:`omrs.config.Settings`."""
+    """The ordered list fields of :class:`omrs.config.Settings`."""
 
     pdf_readers: NameList = PDF_READERS_DEFAULT
     ocr_engines: NameList = OCR_ENGINES_DEFAULT
+    # Change local-ocr-backends, design D8: the local OCR tier's backend order.
+    ocr_local_backends: NameList = DEFAULT_LOCAL_OCR_BACKENDS
 
-    @field_validator("pdf_readers", "ocr_engines", mode="after")
+    @field_validator("pdf_readers", "ocr_engines", "ocr_local_backends", mode="after")
     @classmethod
     def _blank_means_default(cls, value: tuple[str, ...], info: ValidationInfo) -> tuple[str, ...]:
         """Read ``PDF_READERS=`` (no names) as not set, as other blank lines are."""
         return value or cls.model_fields[str(info.field_name)].default
+
+    @model_validator(mode="after")
+    def _check_local_backends(self) -> ReadingListMixin:
+        """Stop start-up on an unknown backend or one without a calibrated cut (design D8)."""
+        problem = local_backend_problem(self.ocr_local_backends)
+        if problem:
+            raise ValueError(
+                f"OCR_LOCAL_BACKENDS={','.join(self.ocr_local_backends)!r} is not valid. {problem}"
+            )
+        return self
 
     @model_validator(mode="after")
     def _settle_reading_lists(self) -> ReadingListMixin:

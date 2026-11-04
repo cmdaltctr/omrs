@@ -332,9 +332,12 @@ class EffectiveSettings(BaseModel):
 
     # ── OCR routing unit and local tier (change page-level-ocr-routing) ──
     # "page" routes page by page and is the only unit (page-routing-default).
-    # Experiments 33, 37 and 39 support the 0.9 cut.
     ocr_routing_unit: str = "page"  # see OCR_ROUTING_UNITS
-    ocr_local_min_confidence: float = Field(default=0.9, ge=0.0, le=1.0)
+    # Design D9: unset means each listed backend uses its own calibrated cut.
+    ocr_local_min_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    # Design D8. The literal equals core.reading_parts.DEFAULT_LOCAL_OCR_BACKENDS
+    # (this module imports nothing from omrs.core); a test pins the two.
+    ocr_local_backends: tuple[str, ...] = ("pp-ocrv6-small",)
     ocr_local_offline: bool = False
     ocr_local_model_directory: str = ""
 

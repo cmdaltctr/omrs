@@ -284,7 +284,8 @@ LOCAL_OCR_BACKENDS: tuple[LocalOcrBackendDescriptor, ...] = (
             SettingField(
                 name="ocr_local_min_confidence",
                 env="OCR_LOCAL_MIN_CONFIDENCE",
-                default=0.9,
+                # Unset: each listed backend uses its own cut (design D9).
+                default=None,
                 enters_identity=True,
             ),
             SettingField(name="ocr_local_offline", env="OCR_LOCAL_OFFLINE", default=False),
@@ -371,3 +372,28 @@ PAGE_RULES: tuple[PageRuleDescriptor, ...] = (
 check_table(PDF_READERS)
 check_table(LOCAL_OCR_BACKENDS)
 check_table(PAGE_RULES)
+
+#: Default ``ocr_local_backends``: the first backend of the table (design D8).
+DEFAULT_LOCAL_OCR_BACKENDS: tuple[str, ...] = (LOCAL_OCR_BACKENDS[0].name,)
+
+
+def local_backend(name: str) -> LocalOcrBackendDescriptor:
+    """Return the local OCR backend called *name*.
+
+    The table is read at call time, so a test can patch
+    :data:`LOCAL_OCR_BACKENDS` on this module.
+
+    Raises:
+        KeyError: If no backend has that name.
+    """
+    return by_name(LOCAL_OCR_BACKENDS, name)
+
+
+def effective_cut(settings: Any, name: str) -> float | None:
+    """Return the confidence cut backend *name* applies (design D9).
+
+    The operator value ``ocr_local_min_confidence`` replaces the cut of every
+    listed backend when it is set. Unset, the backend keeps its own cut.
+    """
+    override = getattr(settings, "ocr_local_min_confidence", None)
+    return override if override is not None else local_backend(name).min_confidence

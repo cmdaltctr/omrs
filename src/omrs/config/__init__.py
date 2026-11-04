@@ -157,8 +157,8 @@ class Settings(
     # Flat names: the nested delimiter binds only to nested blocks, so a
     # nested spelling is discarded in silence (config/legacy.py aliases).
     ocr_routing_unit: str = "page"
-    # Experiments 33, 37 and 39 support the 0.9 cut.
-    ocr_local_min_confidence: float = Field(default=0.9, ge=0.0, le=1.0)
+    # Design D9: unset means each backend uses its own cut (pp-ocrv6-small: 0.9).
+    ocr_local_min_confidence: float | None = Field(default=None, ge=0.0, le=1.0, examples=[0.9])
     ocr_local_offline: LegacyBool = False
     ocr_local_model_directory: str = ""
 

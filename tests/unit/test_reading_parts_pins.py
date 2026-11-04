@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from omrs.core import reading_parts
 from omrs.integrations.pdf import registry as pdf_registry
+from omrs.integrations.pdf.local_ocr import registry as local_ocr_registry
 from omrs.integrations.pdf.page_rules import registry as page_rule_registry
 
 #: The facts a PDF reader descriptor and its registration both carry.
@@ -64,6 +65,37 @@ def test_page_rule_descriptor_and_registration_agree_on_each_fact() -> None:
     for descriptor in reading_parts.PAGE_RULES:
         entry = page_rule_registry.describe(descriptor.name)
         for field in _PAGE_RULE_FIELDS:
+            if entry[field] != getattr(descriptor, field):
+                value = getattr(descriptor, field)
+                problems.append(f"{descriptor.name}.{field}: {value!r} != {entry[field]!r}")
+    assert problems == []
+
+
+#: The facts a local OCR backend descriptor and its registration both carry.
+_LOCAL_OCR_BACKEND_FIELDS = (
+    "import_path",
+    "probe_module",
+    "min_confidence",
+    "calibrated_by",
+    "keeps_scripts",
+    "producer",
+)
+
+
+def test_every_local_ocr_backend_descriptor_has_a_registration_and_back() -> None:
+    """Names agree in both directions, so a missing line names the backend."""
+    described = set(reading_parts.names(reading_parts.LOCAL_OCR_BACKENDS))
+    registered = set(local_ocr_registry.available())
+    assert described - registered == set(), "descriptor without register(): "
+    assert registered - described == set(), "register() without descriptor: "
+
+
+def test_local_ocr_backend_descriptor_and_registration_agree_on_each_fact() -> None:
+    """Import path, probe, cut, calibrating experiment, kept scripts and producer agree."""
+    problems = []
+    for descriptor in reading_parts.LOCAL_OCR_BACKENDS:
+        entry = local_ocr_registry.describe(descriptor.name)
+        for field in _LOCAL_OCR_BACKEND_FIELDS:
             if entry[field] != getattr(descriptor, field):
                 value = getattr(descriptor, field)
                 problems.append(f"{descriptor.name}.{field}: {value!r} != {entry[field]!r}")

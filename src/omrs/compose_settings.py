@@ -99,6 +99,7 @@ def settings_to_effective(settings: Settings | None = None) -> Any:
         ocr_fallback_enabled=settings.ocr_fallback_enabled,
         ocr_routing_unit=settings.ocr_routing_unit,
         ocr_local_min_confidence=settings.ocr_local_min_confidence,
+        ocr_local_backends=settings.ocr_local_backends,
         ocr_local_offline=settings.ocr_local_offline,
         ocr_local_model_directory=settings.ocr_local_model_directory,
         ocr_worker_request_timeout=settings.ocr_worker_request_timeout,

@@ -39,6 +39,8 @@ from __future__ import annotations
 from dataclasses import asdict, is_dataclass
 from typing import Any
 
+from ..reading_parts import DEFAULT_LOCAL_OCR_BACKENDS, effective_cut, local_backend
+
 #: The canonical unavailable fingerprint payload. Byte-identical, by
 #: construction, to ``asdict(UNAVAILABLE_OCR_WORKER_FINGERPRINT)`` from
 #: ``integrations/ocr_worker/fingerprint.py``: every identity field
@@ -84,7 +86,11 @@ def ocr_routing_payload(
     # see the digest follow, the same seam as the maths detector version.
     from ...integrations.pdf.blank_pages import BLANK_PAGE_TEST_VERSION
 
-    local_tier: dict[str, Any] = {"min_confidence": settings.ocr_local_min_confidence}
+    # Design D9: the effective cut of the default backend, so an unset override
+    # and an explicit 0.9 give the same bytes. The list enters ``parser``.
+    local_tier: dict[str, Any] = {
+        "min_confidence": effective_cut(settings, DEFAULT_LOCAL_OCR_BACKENDS[0])
+    }
     # The resolved model identity (task 4.2): absent while unresolved,
     # present once the runtime resolves it. The digest moves with this key,
     # which is correct: the model changes what the pages read as.
@@ -126,6 +132,50 @@ def resolved_routing_payload(settings: Any) -> dict[str, Any]:
 
         local_model_identity = resolve_local_model_identity(settings)
     return ocr_routing_payload(settings, local_model_identity=local_model_identity)
+
+
+def local_backends_payload(settings: Any) -> dict[str, Any]:
+    """Return the ``parser`` entry of a non-default local OCR list (design D9, D10).
+
+    The default list adds nothing, so every digest stays put. Another list
+    names each backend in list order with its effective cut, its kept scripts
+    (a sorted list, or ``None``) and its model once resolved, plus the
+    output-script classifier version. A model is resolved only when OCR
+    routing is on, the rule :func:`resolved_routing_payload` follows. PDF
+    sources only: :func:`omrs.core.ingestion.reader_identity.pdf_parser_payload`
+    calls it, so other sources keep their digest.
+
+    Args:
+        settings: Settings carrying ``ocr_local_backends``,
+            ``ocr_local_min_confidence`` and ``ocr_fallback_enabled``.
+
+    Returns:
+        ``{}`` for the default list, else ``{"local_ocr_backends": {...}}``.
+    """
+    names = tuple(getattr(settings, "ocr_local_backends", DEFAULT_LOCAL_OCR_BACKENDS))
+    if names == DEFAULT_LOCAL_OCR_BACKENDS:
+        return {}
+    # Call-time imports: the same lazy seam as resolved_routing_payload.
+    from ...integrations.pdf import page_routing, script_routing
+
+    resolve = getattr(settings, "ocr_fallback_enabled", False)
+    backends: list[dict[str, Any]] = []
+    for name in names:
+        kept = local_backend(name).keeps_scripts
+        entry: dict[str, Any] = {"name": name, "min_confidence": effective_cut(settings, name)}
+        model = (
+            page_routing.resolve_local_model_identity(settings, backend=name) if resolve else None
+        )
+        if model is not None:
+            entry["model"] = model
+        entry["keeps_scripts"] = sorted(kept) if kept is not None else None
+        backends.append(entry)
+    return {
+        "local_ocr_backends": {
+            "backends": backends,
+            "output_script_version": script_routing.OUTPUT_SCRIPT_VERSION,
+        }
+    }
 
 
 def ocr_fingerprint_payload(fingerprint: Any) -> dict[str, Any]:

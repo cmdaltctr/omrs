@@ -33,7 +33,6 @@ from ..ocr_worker.managed import UNAVAILABLE_CODE
 from ..ocr_worker.protocol import PAGES_PROTOCOL_VERSION
 from ..ocr_worker.routes import OcrRoutes, backend_id_of, request_timeout, route_role
 from .page_routing import (
-    OCR_BACKEND_LOCAL_OCR,
     PAGE_KEYS,
     PAGE_SOURCE_BLANK,
     PAGE_SOURCE_LOCAL,
@@ -47,7 +46,6 @@ from .page_routing import (
     merge_pages,
     page_documents,
     page_evidence,
-    switch_local_tier_off,
 )
 from .page_rules.pipeline import run_rules
 
@@ -189,7 +187,7 @@ class OcrRoutedPdfInspector:
         placed: set[int] = set()
         escalated: dict[int, LocalOcrPage | None] = dict.fromkeys(direct)
         no_tier = False  # neither tier can read the flagged pages; one warning said so
-        local_error = local_tier_off_reason() if local_pages_wanted else None
+        local_error = local_tier_off_reason(self._settings) if local_pages_wanted else None
         if local_pages_wanted and local_error is None:
             local_pages, local_error = self._read_local(
                 file, local_pages_wanted, plan.post_checks()
@@ -200,7 +198,12 @@ class OcrRoutedPdfInspector:
                         escalated[page.page] = page
                     else:
                         results.append(
-                            PageResult(page=page.page, text=page.text, source=PAGE_SOURCE_LOCAL)
+                            PageResult(
+                                page=page.page,
+                                text=page.text,
+                                source=PAGE_SOURCE_LOCAL,
+                                producer=page.producer,
+                            )
                         )
                         placed.add(page.page)
         if local_error is not None:
@@ -237,11 +240,18 @@ class OcrRoutedPdfInspector:
         # sent them first; the local tier reads what the hooks return, with no
         # post-check, because no engine can take an escalation now.
         unread = [page for page in sorted(direct) if not worker_text.get(page)]
-        if unread and local_error is None and local_tier_off_reason() is None:
+        if unread and local_error is None and local_tier_off_reason(self._settings) is None:
             degraded = plan.degrade(unread)
             found = self._read_local(file, degraded, ())[0] if degraded else []
             for page in (page for page in found if page.text.strip()):
-                results.append(PageResult(page=page.page, text=page.text, source=PAGE_SOURCE_LOCAL))
+                results.append(
+                    PageResult(
+                        page=page.page,
+                        text=page.text,
+                        source=PAGE_SOURCE_LOCAL,
+                        producer=page.producer,
+                    )
+                )
                 placed.add(page.page)
                 escalated.pop(page.page, None)
 
@@ -268,7 +278,7 @@ class OcrRoutedPdfInspector:
                             page=entry.page,
                             text=local_text if local_text.strip() else entry.markdown,
                             source=PAGE_SOURCE_UNRESOLVED,
-                            producer=OCR_BACKEND_LOCAL_OCR if local_text.strip() else None,
+                            producer=local_page.producer if local_text.strip() else None,
                         )
                     )
             elif entry.page in blank:
@@ -340,18 +350,15 @@ class OcrRoutedPdfInspector:
     ) -> tuple[list[LocalOcrPage], str | None]:
         """Run the local tier on *pages*; return its results and the error, if any.
 
-        A missing runtime never fails the file: the error comes back as text. A
-        non-``Exception`` panic also switches the tier off for the process.
+        A missing runtime never fails the file: the error comes back as text. The
+        chain has already switched a panicking backend off for the process.
         """
         try:
             return local_ocr(file, pages, settings=self._settings, post_checks=post_checks), None
         except (KeyboardInterrupt, SystemExit):
             raise
         except BaseException as exc:  # noqa: BLE001 - a missing runtime never fails the file
-            error = f"{type(exc).__name__}: {exc}"
-            if not isinstance(exc, Exception):
-                switch_local_tier_off(error)
-            return [], error
+            return [], f"{type(exc).__name__}: {exc}"
 
     def _escalated_worker_text(
         self, file: Path, pages: list[int]
