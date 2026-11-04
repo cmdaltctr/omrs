@@ -29,6 +29,7 @@ def register(
     sends_direct: bool = False,
     has_post_check: bool = False,
     has_degrade: bool = False,
+    adds_pages: bool = False,
     source: str = SOURCE_BUILT_IN,
 ) -> None:
     """Register a page rule. Registering a name again replaces it.
@@ -41,6 +42,7 @@ def register(
         sends_direct: True when the rule can send a page straight to OCR.
         has_post_check: True when the rule has a ``post_check`` hook.
         has_degrade: True when the rule has a ``degrade`` hook.
+        adds_pages: True when the rule can add unflagged pages to the OCR route.
         source: ``built-in``, or the distribution that adds the rule.
     """
     RULES.register(
@@ -51,6 +53,7 @@ def register(
         sends_direct=sends_direct,
         has_post_check=has_post_check,
         has_degrade=has_degrade,
+        adds_pages=adds_pages,
         source=source,
     )
 

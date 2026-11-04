@@ -37,6 +37,10 @@ class RuleContext:
         routed: Flagged pages that earlier rules did not drop.
         settings: The injected settings.
         routes: The injected ``OcrRoutes`` (OCR engine availability).
+        claimed: Pages that earlier rules dropped, sent direct or added. A rule
+            that adds pages skips them.
+        judge: The page judge of the selected router, or ``None`` (change
+            document-reading-routers, design D12).
     """
 
     file: Path
@@ -45,6 +49,8 @@ class RuleContext:
     routed: frozenset[int]
     settings: Any
     routes: Any
+    claimed: frozenset[int] = frozenset()
+    judge: Any = None
 
 
 @dataclass(frozen=True)
@@ -54,11 +60,15 @@ class RuleOutcome:
     Attributes:
         drop: Pages that leave the route. They keep native text and count blank.
         direct: Pages sent to the OCR engine list without the local tier.
+        add: Unflagged pages with text that the rule sends to the OCR engine list.
+            Only a rule whose registration declares ``adds_pages`` may return
+            any. They join the direct set once (design D4).
         state: Anything the rule needs later, for its stamp or its degrade hook.
     """
 
     drop: frozenset[int] = frozenset()
     direct: frozenset[int] = frozenset()
+    add: frozenset[int] = frozenset()
     state: Any = None
 
 

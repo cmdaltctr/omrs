@@ -287,6 +287,7 @@ def _register_rule(descriptor: Any, source: str) -> None:
         sends_direct=descriptor.sends_direct,
         has_post_check=descriptor.has_post_check,
         has_degrade=descriptor.has_degrade,
+        adds_pages=descriptor.adds_pages,
         source=source,
     )
 

@@ -181,6 +181,8 @@ class PageRuleDescriptor(PartDescriptor):
         sends_direct: True when the rule can send a page straight to OCR.
         has_post_check: True when the rule checks the OCR output.
         has_degrade: True when the rule can degrade a page to local text.
+        adds_pages: True when the rule can add unflagged pages to the OCR route
+            (change document-reading-routers, design D4).
     """
 
     kind: str = field(default=KIND_PAGE_RULE, init=False)
@@ -189,6 +191,7 @@ class PageRuleDescriptor(PartDescriptor):
     sends_direct: bool = False
     has_post_check: bool = False
     has_degrade: bool = False
+    adds_pages: bool = False
 
     def __post_init__(self) -> None:
         _require_kind(self, KIND_PAGE_RULE)

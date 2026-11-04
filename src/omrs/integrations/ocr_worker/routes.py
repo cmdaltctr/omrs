@@ -206,9 +206,13 @@ class OcrRoutes:
     Attributes:
         routes: The route clients in list order. An entry is ``None`` when its
             engine resolved no command; it reports the unavailable fingerprint.
+        judge: The page judge of the selected document router, or ``None``. The
+            composition root builds it per settings (change document-reading-routers,
+            design D12); the page unit hands it to the page rules.
     """
 
     routes: tuple[Any, ...] = ()
+    judge: Any = None
 
     @classmethod
     def of(cls, client: Any) -> OcrRoutes:
