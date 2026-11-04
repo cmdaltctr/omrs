@@ -1098,6 +1098,7 @@ under it (change `page-level-ocr-routing`,
 | Variable | Default | What it does |
 |---|---|---|
 | `OCR_ROUTING_UNIT` | `page` | `page` is the only legal value. `document` fails start-up with a message that names `page`. In `omrs.jsonc`, `"ocr_routing_unit": "document"` is listed as a settings-file problem and ignored, so `page` applies |
+| `OCR_NON_LATIN_ROUTING` | `off` | `off`, `detect` or `always`. Sends non-Latin pages past the local tier to the OCR engines. See [Non-Latin page routing](#non-latin-page-routing). Any other value fails start-up and names the three |
 | `OCR_LOCAL_MIN_CONFIDENCE` | `0.9` | Below this reported confidence a page escalates to the worker. Unreported confidence escalates too |
 | `OCR_LOCAL_OFFLINE` | `false` | `true` forbids the model download; a missing cached model then degrades |
 | `OCR_LOCAL_MODEL_DIRECTORY` | empty | Artifact directory (`<name>/<revision>` leaf) to load the model from. Empty means the library's default cache |
@@ -1131,6 +1132,60 @@ missing library or model never fails a file. Flagged pages go to the
 worker engine in one page-listed request (issue #161). Only when no OCR
 route exists either do they keep native text and count unresolved, with
 one warning that names both missing tiers.
+
+#### Non-Latin page routing
+
+The local tier has no recogniser for Arabic, Bengali or Devanagari
+(Experiment 33: recall 0.000 on all 129 such pages). `OCR_NON_LATIN_ROUTING`
+(change `non-latin-script-routing`) sends these pages to the OCR engines
+without a wasted local pass. It has three values:
+
+| Value | What happens |
+|---|---|
+| `off` | Default. Routing is as before. |
+| `detect` | A flagged page whose text layer is mostly non-Latin letters skips the local tier. A local OCR result that is mostly non-Latin letters escalates whatever its confidence, with the reason `non_latin_output`. |
+| `always` | Every flagged page skips the local tier. Use this only for a collection that you know is non-Latin. |
+
+A page is non-Latin when it has at least 40 letters and at least half of them
+are not Latin. Accented Latin letters count as Latin. Digits, punctuation and
+space are not letters. A page with fewer than 40 letters gets no verdict. The
+two numbers are fixed in the code with a version number. They are not settings.
+
+What `detect` cannot see: a scanned page. A scan has no text layer, so the
+detector has nothing to read before OCR. The four non-Latin PDFs of
+Experiment 33 are all scans, and each page holds only a few Latin letters
+of stamp text. For a scanned non-Latin collection, `detect` leaves the local
+tier in place, and the 0.9 confidence cut sends the pages on after the local
+pass. Use `always` to skip the local pass. `detect` never renders a page, runs
+OCR or calls a model.
+
+How it combines with other settings:
+
+- Only the page unit exists, so only the page unit has this setting.
+- A page that is both a maths page and a non-Latin page goes to the OCR
+  engines once, in the same page-listed request.
+- `OCR_LOCAL_MIN_CONFIDENCE` is unchanged. `non_latin_output` is an extra
+  reason to escalate. It does not replace the cut.
+- A blank flagged page leaves the route before this setting acts.
+- If no OCR engine that speaks the page-listed protocol is available, the
+  pages go through the local tier as if the setting were `off`. One warning
+  per file names the configured engines.
+- A PDF read this way carries `pages_non_latin`, the number of pages the setting
+  sent direct or escalated. The key appears only when the setting is not `off`.
+  It stays out of the embedded text.
+
+Identity effect: with `detect` or `always`, the source identity of a PDF
+holds `non_latin_routing: {mode, detector_version}`. Turning the setting on
+reindexes PDF sources once on the next ingest. Other sources keep their
+digest. With `off` the block is absent, so installs that do not use the
+setting keep every digest. Settings > Document reading shows the setting
+as a choice of the three values.
+
+Example environment line:
+
+```bash
+OCR_NON_LATIN_ROUTING=always
+```
 
 Identity consequences: the index identity schema moved from 6 to 7.
 The routing payload is `{enabled, routing_unit, blank_page_test,
@@ -1239,7 +1294,7 @@ A launch value (step 1 or 2) locks the limit for that run. Settings then shows t
 
 ### Document reading values
 
-Settings > Document reading edits five keys in `omrs.jsonc`: `pdf_readers`, `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engines` and `ocr_maths_routing_enabled`. The two list keys hold an array of names, and the page shows each as an ordered list with add, remove, move up and move down. See [PDF reading](#pdf-reading) and [OCR fallback and isolated engines](#ocr-fallback-and-isolated-engines).
+Settings > Document reading edits six keys in `omrs.jsonc`: `pdf_readers`, `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engines`, `ocr_maths_routing_enabled` and `ocr_non_latin_routing`. The two list keys hold an array of names, and the page shows each as an ordered list with add, remove, move up and move down. See [PDF reading](#pdf-reading) and [OCR fallback and isolated engines](#ocr-fallback-and-isolated-engines).
 
 - Each key applies after a restart only. Until then, the row shows the value in force and the saved value with "Restart to apply".
 - Each key is part of the [index identity](#index-identity-and-re-ingestion). After the restart, the next ingest can read existing files again.
@@ -1334,6 +1389,7 @@ These settings are part of the index identity:
 | `OCR_ROUTING_UNIT`, the escalation threshold and the resolved local model identity | They decide which engine reads each page |
 | The resolved OCR route fingerprints (the first two engines; a third engine and later add their own) | Availability, protocol version, every package and exact version, pipeline identity and revision, model identity and revision, output-schema identity and version, and backend identifier |
 | `OCR_MATHS_ROUTING_ENABLED` and the detector version | They decide whether maths pages reach OCR; recorded for every source |
+| `OCR_NON_LATIN_ROUTING` (when not `off`) and its detector version | They decide which flagged pages skip the local tier; recorded for PDF sources only |
 
 Two consequences worth planning for:
 

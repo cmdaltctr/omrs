@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-from ..core.settings import OCR_ROUTING_UNITS, PROVIDER_SECRET_FIELDS
+from ..core.settings import OCR_NON_LATIN_MODES, OCR_ROUTING_UNITS, PROVIDER_SECRET_FIELDS
 
 METADATA_EXTRACTION_MODES = (
     "disabled",
@@ -40,6 +40,7 @@ ACCEPTED: dict[str, tuple[str, ...]] = {
     "retrieval.rerank_backend": ("onnx", "torch"),
     "chroma_mode": ("local", "cloud"),
     "ocr_routing_unit": OCR_ROUTING_UNITS,
+    "ocr_non_latin_routing": OCR_NON_LATIN_MODES,
     "llamacpp_chat_server": ("external", "managed"),
     "llamacpp_embed_server": ("external", "managed"),
 }
@@ -141,6 +142,7 @@ DOCUMENT_READING_KEYS: tuple[str, ...] = (
     "ocr_routing_unit",
     "ocr_engines",
     "ocr_maths_routing_enabled",
+    "ocr_non_latin_routing",
 )
 _READING_BOOLEANS = frozenset({"ocr_fallback_enabled", "ocr_maths_routing_enabled"})
 _READING_ENGINES = frozenset({"ocr_engine_primary", "ocr_engine_fallback"})

@@ -52,6 +52,7 @@ from .page_routing import (
     page_evidence,
     switch_local_tier_off,
 )
+from .script_routing import non_latin_direct_pages, post_check_enabled, stamp_non_latin_count
 
 logger = logging.getLogger(__name__)
 
@@ -190,7 +191,11 @@ class OcrRoutedPdfInspector:
         # Maths pages skip the local tier and join the one worker request.
         # A blank maths page left the route above, so it joins neither.
         active_maths = maths_pages - blank if maths_pages is not None else None
-        direct, local_pages_wanted = split_page_routes(routed, active_maths)
+        # Non-Latin pages (ocr_non_latin_routing) join the same direct set.
+        script_direct = non_latin_direct_pages(file, routed, self._settings, self._routes)
+        direct, local_pages_wanted = split_page_routes(
+            routed, (active_maths or frozenset()) | script_direct
+        )
 
         results: list[PageResult] = []
         placed: set[int] = set()
@@ -199,7 +204,12 @@ class OcrRoutedPdfInspector:
         local_error = local_tier_off_reason() if local_pages_wanted else None
         if local_pages_wanted and local_error is None:
             try:
-                local_pages = local_ocr(file, local_pages_wanted, settings=self._settings)
+                local_pages = local_ocr(
+                    file,
+                    local_pages_wanted,
+                    settings=self._settings,
+                    script_check=post_check_enabled(self._settings, self._routes),
+                )
             except (KeyboardInterrupt, SystemExit):
                 raise
             except BaseException as exc:  # noqa: BLE001 - a missing runtime escalates, never fails
@@ -302,6 +312,7 @@ class OcrRoutedPdfInspector:
         )
         metadata.update(merged.counts)
         _stamp_maths(metadata, maths_pages)
+        stamp_non_latin_count(metadata, self._settings, script_direct, escalated.values())
 
         rescued = [doc for doc in inner_documents if doc.text]
         if not merged.text and rescued:

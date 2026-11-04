@@ -482,6 +482,7 @@ retrieval experiment gates any future default change.
 | `OCR_WORKER_REQUEST_TIMEOUT`  | `300.0` | Minimum parse-response timeout in seconds. |
 | `OCR_WORKER_SECONDS_PER_PAGE` | `120.0` | Timeout allowance per requested page in seconds. |
 | `OCR_MATHS_ROUTING_ENABLED`   | `true`  | Detect maths fonts and route affected pages. |
+| `OCR_NON_LATIN_ROUTING`       | `off`   | `detect` or `always` sends non-Latin pages past the local tier. See [Non-Latin page routing](configuration.md#non-latin-page-routing). |
 
 The timeout is `max(OCR_WORKER_REQUEST_TIMEOUT, requested_pages * OCR_WORKER_SECONDS_PER_PAGE)`.
 With the defaults, a 14-page request gets 1,680 seconds.

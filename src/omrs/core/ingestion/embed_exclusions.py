@@ -36,6 +36,9 @@ EXCLUDED_EMBED_METADATA_KEYS = (
     "ocr_pages_unresolved",
     # Maths-page count (modular-ocr-workers-dots-mocr, maths-page-routing).
     "pages_maths_font",
+    # Non-Latin page count (non-latin-script-routing); stamped only when the
+    # setting is not ``off``.
+    "pages_non_latin",
     "page_count",
     "page",
     "page_label",
@@ -51,3 +54,9 @@ EXCLUDED_EMBED_METADATA_KEYS = (
     "last_modified_date",
     "last_accessed_date",
 )
+
+#: Keys in :data:`EXCLUDED_EMBED_METADATA_KEYS` that the index identity's
+#: excluded-key list leaves out. ``pages_non_latin`` exists only while
+#: ``ocr_non_latin_routing`` is on, and that setting has its own identity block,
+#: so listing the key would change the digest of every default install.
+IDENTITY_UNLISTED_KEYS = frozenset({"pages_non_latin"})

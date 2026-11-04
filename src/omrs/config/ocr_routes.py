@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from .rules import address_problem
+from .rules import ACCEPTED, _validate_provider_value, address_problem
 from .sources import LegacyBool
 
 
@@ -31,6 +31,9 @@ class OcrRouteSettingsMixin(BaseModel):
     # Design D5/D6: maths pages route to OCR. The document-unit maths page
     # fraction went with the document unit (change page-routing-default).
     ocr_maths_routing_enabled: LegacyBool = True
+    # Change non-latin-script-routing: off, detect or always. The value feeds
+    # the index identity, so an unknown one stops start-up (no fallback).
+    ocr_non_latin_routing: str = "off"
     # dots.mocr took 7-56 s per page on MPS (Experiment 34); 120 s leaves
     # headroom for CPU and long pages. The per-request timeout stays a floor.
     ocr_worker_seconds_per_page: float = Field(default=120.0, ge=0.0)
@@ -44,6 +47,17 @@ class OcrRouteSettingsMixin(BaseModel):
     def _strip(cls, value: str) -> str:
         """Strip padding so ``OCR_ENGINE_FALLBACK= `` means no fallback."""
         return value.strip()
+
+    @model_validator(mode="after")
+    def _check_non_latin_routing(self) -> OcrRouteSettingsMixin:
+        """Strip padding, reset blank to ``off`` and refuse an unknown mode."""
+        _validate_provider_value(
+            self,
+            "ocr_non_latin_routing",
+            ACCEPTED["ocr_non_latin_routing"],
+            "OCR_NON_LATIN_ROUTING",
+        )
+        return self
 
     @model_validator(mode="after")
     def _check_runtime_url(self) -> OcrRouteSettingsMixin:

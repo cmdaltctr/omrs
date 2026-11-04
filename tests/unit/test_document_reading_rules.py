@@ -73,6 +73,7 @@ def test_the_key_order_is_the_contract_order() -> None:
         "ocr_routing_unit",
         "ocr_engines",
         "ocr_maths_routing_enabled",
+        "ocr_non_latin_routing",
     )
 
 

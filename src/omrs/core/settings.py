@@ -13,13 +13,16 @@ import-linter contract extended in task 10.2).
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 #: Valid ``OCR_ROUTING_UNIT`` values. ``page`` is the only unit (change
 #: page-routing-default); the key stays so a stale ``document`` is refused.
 OCR_ROUTING_UNITS = ("page",)
+#: ``OCR_NON_LATIN_ROUTING`` values (change non-latin-script-routing).
+OcrNonLatinMode = Literal["off", "detect", "always"]
+OCR_NON_LATIN_MODES: tuple[str, ...] = get_args(OcrNonLatinMode)
 
 #: Server-default provider fields the web workspace may change while the
 #: server runs: addresses first, then API keys. They match the ``fields`` of
@@ -370,6 +373,7 @@ class EffectiveSettings(BaseModel):
     pdf_readers: tuple[str, ...] = ()
     ocr_engines: tuple[str, ...] = ()
     ocr_maths_routing_enabled: bool = True
+    ocr_non_latin_routing: OcrNonLatinMode = "off"
     ocr_worker_seconds_per_page: float = Field(default=120.0, ge=0.0)
 
     # ── Codebase map ──────────────────────────────────────────────

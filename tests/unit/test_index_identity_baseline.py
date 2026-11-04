@@ -178,8 +178,10 @@ def test_index_identity_payload_values_echo_configuration(monkeypatch: pytest.Mo
     assert payload["chunking"]["effective_chunk_overlap"] == 100
     # Every install can emit the page-source counts now that page routing
     # is the only unit (change page-routing-default), so nothing is scoped out.
+    # ``pages_non_latin`` is excluded from the text but left out of the identity
+    # list: its setting has its own block (change non-latin-script-routing).
     assert payload["embedding_text"]["excluded_keys"] == sorted(
-        source_state.EXCLUDED_EMBED_METADATA_KEYS
+        set(source_state.EXCLUDED_EMBED_METADATA_KEYS) - embed_exclusions.IDENTITY_UNLISTED_KEYS
     )
     assert "ocr_pages_blank" in payload["embedding_text"]["excluded_keys"]
     assert not hasattr(embed_exclusions, "PAGE_ROUTING_ONLY_EMBED_KEYS")

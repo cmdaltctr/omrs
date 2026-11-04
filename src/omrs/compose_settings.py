@@ -103,6 +103,7 @@ def settings_to_effective(settings: Settings | None = None) -> Any:
         ocr_engine_fallback=settings.ocr_engine_fallback,
         ocr_engines=settings.ocr_engines,
         ocr_maths_routing_enabled=settings.ocr_maths_routing_enabled,
+        ocr_non_latin_routing=settings.ocr_non_latin_routing,
         ocr_worker_seconds_per_page=settings.ocr_worker_seconds_per_page,
         magika_binary=settings.magika_binary,
         doc_similarity_threshold=settings.doc_similarity_threshold,
