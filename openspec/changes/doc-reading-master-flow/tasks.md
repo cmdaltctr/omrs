@@ -27,7 +27,7 @@ The order below is the operator's confirmed order (2026-11-02). Do not reorder g
 
 ## 4. Proposals A, B, C (one at a time; fresh fork from `v3` after each merge)
 
-- [ ] 4.1 `ordered-reader-and-ocr-lists` in `omrs-feat-ordered-reader-and-ocr-lists`. Apply, verify per its tasks, ask before `./scripts/local_ci.sh`, validate strict, PR into `v3`. GATE G4: the operator says merge.
+- [x] 4.1 `ordered-reader-and-ocr-lists` in `omrs-feat-ordered-reader-and-ocr-lists`. Apply, verify per its tasks, ask before `./scripts/local_ci.sh`, validate strict, PR into `v3`. GATE G4: the operator says merge.
 - [ ] 4.2 `non-latin-script-routing` in `omrs-feat-non-latin-script-routing`, forked fresh from the merged `v3`. Same gates (G5).
 - [ ] 4.3 `document-reading-routers` in `omrs-feat-document-reading-routers`, forked fresh from the merged `v3`. Its ADR-110 index line and the `cloudflare` and `ollama` kinds are as already written and answered. Same gates (G6). After its merge, GATE G7: ask whether to run the judge confirmation experiment on new documents.
 - [ ] 4.4 Remember: these changes and groups 1 and 2 all touch `pdf-reader` and related specs. Never two branches at once; rebase deltas when a fork lands on a changed spec.

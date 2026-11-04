@@ -41,8 +41,8 @@ The OCR engine list SHALL hold every valid folder under `<ocr_workers_dir>/engin
 
 #### Scenario: Workers folder not set
 
-- **WHEN** `ocr_workers_dir` is empty, `ocr_fallback_enabled` is true and `ocr_engine_primary` is `dots-mocr`
-- **THEN** the `dots-mocr` item MUST be `not-configured` and its `used_by` MUST hold `ocr_engine_primary`
+- **WHEN** `ocr_workers_dir` is empty, `ocr_fallback_enabled` is true and `ocr_engines` starts with `dots-mocr`
+- **THEN** the `dots-mocr` item MUST be `not-configured` and its `used_by` MUST hold `ocr_engines`
 
 #### Scenario: Engine needs a licence
 
@@ -63,7 +63,7 @@ The OCR engine list SHALL hold every valid folder under `<ocr_workers_dir>/engin
 
 #### Scenario: Engine name without a folder
 
-- **WHEN** `ocr_engine_primary` names an engine that has no folder under `<ocr_workers_dir>/engines/`
+- **WHEN** `ocr_engines` names an engine that has no folder under `<ocr_workers_dir>/engines/`
 - **THEN** the item MUST be `missing` with no fix command
 
 #### Scenario: OCR fallback off
