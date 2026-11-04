@@ -13,12 +13,18 @@ page-reading registries, so a new part shows here with no edit:
 Every check only reads. No check imports a part, downloads a file or starts
 a process. A section whose check raises is an empty list; the detail goes
 to the log. This module imports no web framework.
+
+A reason or problem text is cleaned before it leaves the server: the home
+folder becomes ``~`` and the text is capped at :data:`MAX_REASON_CHARS`. The
+log keeps the full text.
 """
 
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from ...core import reading_parts
@@ -32,6 +38,24 @@ logger = logging.getLogger(__name__)
 
 #: What discovery found (``part_registry.DiscoveredPart`` items).
 Found = tuple[Any, ...]
+
+#: The longest reason or problem text a row carries, ellipsis included.
+MAX_REASON_CHARS = 300
+
+
+def _clean(text: str | None) -> str | None:
+    """Return *text* with the home folder as ``~`` and at most :data:`MAX_REASON_CHARS`.
+
+    A panic or a ``dlopen`` error can hold a full path under the home folder.
+    """
+    if text is None:
+        return None
+    home = str(Path.home()).rstrip("/\\")
+    if home:
+        text = re.sub(re.escape(home) + r"(?![\w.-])", "~", text)
+    if len(text) > MAX_REASON_CHARS:
+        text = text[: MAX_REASON_CHARS - 1] + "…"
+    return text
 
 
 def _descriptors(table: tuple[Any, ...], kind: str, found: Found) -> dict[str, Any]:
@@ -80,7 +104,7 @@ def local_backend_rows(settings: Any, found: Found = ()) -> list[dict[str, Any]]
                 "label": descriptor.label if descriptor is not None else name,
                 "installed": _installed(name),
                 "model_present": _model_present(settings, descriptor),
-                "off_reason": local_ocr_registry.off_reason(name),
+                "off_reason": _clean(local_ocr_registry.off_reason(name)),
                 "effective_cut": _cut(settings, descriptor),
                 "source": descriptor.source if descriptor is not None else "built-in",
             }
@@ -132,7 +156,7 @@ def discovered_rows(found: Found) -> list[dict[str, Any]]:
             "kind": part.kind,
             "distribution": part.distribution,
             "version": part.version,
-            "problem": part.problem,
+            "problem": _clean(part.problem),
         }
         for part in found
     ]

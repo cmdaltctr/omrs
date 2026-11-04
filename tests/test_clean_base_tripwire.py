@@ -288,7 +288,11 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # external rule hooks guarded (6), compose siblings discover (6), local backend identity
 # resolved once per operation (4) and per graph run (3), discovered backends offered (5).
 # No fastapi needed.
-_BASE_EXECUTED = 10480
+# +31 (2026-11-04, same change, PR 168 review fixes, by test-ID diff, 31 added, 0
+# removed): external rule guards (13), broken named parts (6), Indra identity (5),
+# clean health reasons (4), PP-OCRv6 probe only when listed (2) and the discovered
+# part name in the contract (1, needs fastapi, see _WEB_EXTRA_CASES).
+_BASE_EXECUTED = 10511
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -632,7 +636,8 @@ if not _has_qwen_tokenizer:
 # +1 (2026-11-04, local-ocr-backends group 1): the extras catalogue row pin.
 # +10 (2026-11-04, same change, group 6): catalogue (6), integrations route (1) and
 # Settings save (3).
-_WEB_EXTRA_CASES = 1890
+# +1 (2026-11-04, same change, PR 168 review): the discovered part name in the contract.
+_WEB_EXTRA_CASES = 1891
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)

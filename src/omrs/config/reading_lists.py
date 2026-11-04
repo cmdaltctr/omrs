@@ -36,6 +36,7 @@ from ..core.reading_lists import (
 from ..core.reading_parts import (
     DEFAULT_LOCAL_OCR_BACKENDS,
     KIND_LOCAL_OCR_BACKEND,
+    broken,
     discovered,
 )
 from .provenance import SOURCE_ORDER
@@ -93,7 +94,9 @@ class ReadingListMixin(BaseModel):
         compose runs discovery there are none, so ``config`` reads no entry point.
         """
         extra: tuple[Any, ...] = discovered(KIND_LOCAL_OCR_BACKEND)
-        problem = local_backend_problem(self.ocr_local_backends, extra)
+        problem = local_backend_problem(
+            self.ocr_local_backends, extra, broken(KIND_LOCAL_OCR_BACKEND)
+        )
         if problem:
             raise ValueError(
                 f"OCR_LOCAL_BACKENDS={','.join(self.ocr_local_backends)!r} is not valid. {problem}"

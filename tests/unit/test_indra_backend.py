@@ -25,6 +25,10 @@ from omrs.integrations.pdf import page_routing
 from omrs.integrations.pdf.local_ocr import chain, registry
 
 MODEL = "datalab-to/indra-ocr@bd02167fdf2005a19962cc15188f8496a2c87d3b"
+#: ``indra_ocr.models`` facts of indra-ocr 1.1.2.
+HF_REPO = "datalab-to/indra-ocr"
+HF_REVISION = "v1.1.0"
+FILES = ("det.onnx", "rec.onnx", "order.onnx", "meta.json")
 ARABIC = "ب" * 300
 BENGALI = "ক" * 300
 #: A US Letter page in points: the long side is the height.
@@ -80,6 +84,10 @@ class _FakeIndra:
             path = path or os.environ.get("INDRA_OCR_MODEL_DIR")
             if not path:
                 raise AssertionError("the real model_dir would download the weights here")
+            # As the library: every file but the optional order.onnx must be there.
+            missing = [f for f in FILES if f != "order.onnx" and not (Path(path) / f).exists()]
+            if missing:
+                raise OSError(f"the model folder {path} lacks {', '.join(missing)}")
             return Path(path)
 
         class OrtOCR:
@@ -97,14 +105,42 @@ class _FakeIndra:
         module.__spec__ = importlib.machinery.ModuleSpec("indra_ocr", None)
         module.OrtOCR = OrtOCR
         module.model_dir = model_dir
+        module.models = SimpleNamespace(HF_REPO=HF_REPO, HF_REVISION=HF_REVISION, FILES=FILES)
         self.module = module
+
+
+class _FakeHub:
+    """A ``huggingface_hub`` stand-in whose cache holds *cached* (a folder) or nothing."""
+
+    def __init__(self, cached: Path | None) -> None:
+        self.calls: list[dict] = []
+        fake = self
+
+        def snapshot_download(repo_id, **kwargs):
+            fake.calls.append({"repo_id": repo_id, **kwargs})
+            if kwargs.get("local_files_only") is not True:
+                raise AssertionError("snapshot_download would download the weights here")
+            if cached is None:
+                raise FileNotFoundError("not in the local cache")
+            return str(cached)
+
+        self.module = types.ModuleType("huggingface_hub")
+        self.module.snapshot_download = snapshot_download
+
+
+def _write_weights(folder: Path) -> Path:
+    """Write the weight files the library requires into *folder*."""
+    folder.mkdir(parents=True, exist_ok=True)
+    for name in FILES:
+        (folder / name).write_bytes(b"")
+    return folder
 
 
 @pytest.fixture(autouse=True)
 def isolated(monkeypatch, tmp_path):
     state = registry.BACKENDS.snapshot()
     chain.reset_skip_warnings()
-    monkeypatch.setenv("INDRA_OCR_MODEL_DIR", str(tmp_path / "weights"))
+    monkeypatch.setenv("INDRA_OCR_MODEL_DIR", str(_write_weights(tmp_path / "weights")))
     yield
     registry.BACKENDS.restore(state)
     chain.reset_skip_warnings()
@@ -189,7 +225,7 @@ def test_each_page_is_rendered_grey_with_a_1600_px_long_side(monkeypatch, pdfium
 
 
 def test_weights_come_from_indra_ocr_model_dir(monkeypatch, pdfium, tmp_path) -> None:
-    folder = tmp_path / "offline-weights"
+    folder = _write_weights(tmp_path / "offline-weights")
     monkeypatch.setenv("INDRA_OCR_MODEL_DIR", str(folder))
     fake = _indra(monkeypatch, [("a", 1.0)])
 
@@ -226,6 +262,63 @@ def test_identity_without_indra_ocr_raises_import_error(monkeypatch) -> None:
 
     with pytest.raises(ImportError, match="local-ocr-indra"):
         _backend().identity(_settings())
+
+
+def _hub(monkeypatch, cached: Path | None) -> _FakeHub:
+    hub = _FakeHub(cached)
+    monkeypatch.setitem(sys.modules, "huggingface_hub", hub.module)
+    return hub
+
+
+def _offline(offline: bool) -> SimpleNamespace:
+    return SimpleNamespace(**{**vars(_settings()), "ocr_local_offline": offline})
+
+
+def test_identity_is_none_when_the_weights_folder_lacks_files(monkeypatch, tmp_path) -> None:
+    _indra(monkeypatch)
+    hub = _hub(monkeypatch, None)
+    (tmp_path / "empty").mkdir()
+    monkeypatch.setenv("INDRA_OCR_MODEL_DIR", str(tmp_path / "empty"))
+
+    assert _backend().identity(_settings()) is None
+    assert hub.calls == []
+
+
+def test_identity_offline_without_a_weights_folder_is_none(monkeypatch) -> None:
+    _indra(monkeypatch)
+    hub = _hub(monkeypatch, None)
+    monkeypatch.delenv("INDRA_OCR_MODEL_DIR", raising=False)
+
+    assert _backend().identity(_offline(True)) is None
+    assert hub.calls == []
+
+
+def test_identity_reads_the_hugging_face_cache_without_a_download(monkeypatch, tmp_path) -> None:
+    _indra(monkeypatch)
+    hub = _hub(monkeypatch, _write_weights(tmp_path / "hf-snapshot"))
+    monkeypatch.delenv("INDRA_OCR_MODEL_DIR", raising=False)
+
+    assert _backend().identity(_offline(False)) == MODEL
+    assert [(c["repo_id"], c["revision"]) for c in hub.calls] == [(HF_REPO, HF_REVISION)]
+    assert all(call["local_files_only"] is True for call in hub.calls)
+
+
+def test_identity_is_none_when_the_weights_are_not_cached(monkeypatch) -> None:
+    _indra(monkeypatch)
+    hub = _hub(monkeypatch, None)
+    monkeypatch.delenv("INDRA_OCR_MODEL_DIR", raising=False)
+
+    assert _backend().identity(_offline(False)) is None
+    assert hub.calls and all(call["local_files_only"] is True for call in hub.calls)
+
+
+def test_identity_is_none_when_the_cached_snapshot_lacks_files(monkeypatch, tmp_path) -> None:
+    _indra(monkeypatch)
+    (tmp_path / "partial").mkdir()
+    _hub(monkeypatch, tmp_path / "partial")
+    monkeypatch.delenv("INDRA_OCR_MODEL_DIR", raising=False)
+
+    assert _backend().identity(_offline(False)) is None
 
 
 # ── Registration, descriptor and default list ─────────────────────────────
@@ -345,7 +438,7 @@ def test_offline_without_a_weights_folder_refuses_before_any_download(
 
 
 def test_offline_with_a_weights_folder_reads(monkeypatch, pdfium, tmp_path) -> None:
-    folder = tmp_path / "offline-weights"
+    folder = _write_weights(tmp_path / "offline-weights")
     monkeypatch.setenv("INDRA_OCR_MODEL_DIR", str(folder))
     fake = _indra(monkeypatch, [("a", 1.0)])
     settings = SimpleNamespace(**{**vars(_settings()), "ocr_local_offline": True})

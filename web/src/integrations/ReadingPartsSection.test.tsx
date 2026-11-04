@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { ReadingPartsHealth } from "../api/integrations";
+import type { LocalOcrBackendHealth, ReadingPartsHealth } from "../api/integrations";
 import { documentsServer } from "../test/fakeDocumentsServer";
 import { startApp } from "../test/startApp";
 import { attentionCount, sectionsFor } from "./sections";
@@ -37,6 +37,16 @@ const entry = async (list: string, name: string) => {
 };
 
 describe("Integrations reading parts", () => {
+  it("tells where to change page rules and the backend list, with a link to Document reading", async () => {
+    startApp("#/integrations/reading-parts", serve());
+    const note = within(await region())
+      .getAllByRole("note")
+      .find((element) => /turn page rules on or off/i.test(element.textContent ?? ""));
+    if (note === undefined) throw new Error("no Document reading note");
+    expect(note).toHaveTextContent("To turn page rules on or off, or to change the local OCR backend list, go to Settings › Document reading.");
+    expect(within(note).getByRole("link", { name: "Settings › Document reading" })).toHaveAttribute("href", "#/settings/document-reading");
+  });
+
   it("lists the local OCR backends in list order", async () => {
     startApp("#/integrations/reading-parts", serve());
     const list = within(await region()).getByRole("list", { name: "Local OCR backends" });
@@ -57,6 +67,36 @@ describe("Integrations reading parts", () => {
     const row = await entry("Local OCR backends", "Indra OCR");
     expect(within(row).getByText("Not installed", { selector: "[data-slot=badge]" })).toBeInTheDocument();
     expect(row).not.toHaveTextContent("Model files");
+  });
+
+  describe("purpose line of a backend", () => {
+    const FIRST = "Reads flagged pages first.";
+    const LATER = "Reads the pages the backends above could not read well.";
+    const NEUTRAL = "Listed, but it does not read pages now.";
+    const ready = (name: string): LocalOcrBackendHealth => ({ name, label: name, installed: true, model_present: true, off_reason: null, effective_cut: 0.9, source: "built-in" });
+    const withBackends = (...backends: LocalOcrBackendHealth[]) => serve({ ...PARTS, local_ocr_backends: backends });
+
+    it("keeps the first and later wording when every backend is ready", async () => {
+      startApp("#/integrations/reading-parts", withBackends(ready("one"), ready("two")));
+      expect(await entry("Local OCR backends", "one")).toHaveTextContent(FIRST);
+      expect(await entry("Local OCR backends", "two")).toHaveTextContent(LATER);
+    });
+
+    it("gives the first ready backend the first wording when the backend above it is switched off", async () => {
+      startApp("#/integrations/reading-parts", withBackends({ ...ready("one"), off_reason: "PanicException: lock poisoned" }, ready("two")));
+      const off = await entry("Local OCR backends", "one");
+      expect(off).toHaveTextContent(NEUTRAL);
+      expect(off).not.toHaveTextContent(FIRST);
+      expect(await entry("Local OCR backends", "two")).toHaveTextContent(FIRST);
+    });
+
+    it("gives a backend that is not installed or has no model the neutral line", async () => {
+      startApp("#/integrations/reading-parts", withBackends({ ...ready("one"), installed: false, model_present: null }, { ...ready("two"), model_present: false }, ready("three"), ready("four")));
+      expect(await entry("Local OCR backends", "one")).toHaveTextContent(NEUTRAL);
+      expect(await entry("Local OCR backends", "two")).toHaveTextContent(NEUTRAL);
+      expect(await entry("Local OCR backends", "three")).toHaveTextContent(FIRST);
+      expect(await entry("Local OCR backends", "four")).toHaveTextContent(LATER);
+    });
   });
 
   it("shows each page rule on or off with its version", async () => {

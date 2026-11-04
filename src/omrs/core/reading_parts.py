@@ -411,18 +411,35 @@ RULE_ENABLED_OPTION = SettingField(name="enabled", env="", default=False)
 
 #: The descriptors that discovery accepted, set by :func:`install_discovered`.
 _discovered: tuple[PartDescriptor, ...] = ()
+#: ``(kind, name) -> problem`` of the discovered parts that failed to load.
+_broken: dict[tuple[str, str], str] = {}
 
 
-def install_discovered(descriptors: Iterable[PartDescriptor]) -> None:
-    """Add the accepted discovered descriptors to the lookups (composition root only)."""
-    global _discovered
+def install_discovered(
+    descriptors: Iterable[PartDescriptor], broken: Iterable[tuple[str, str, str]] = ()
+) -> None:
+    """Add the discovered parts to the lookups (composition root only).
+
+    Args:
+        descriptors: The accepted descriptors.
+        broken: ``(kind, name, problem)`` of each part that failed to load. A
+            setting may name such a part; it is off.
+    """
+    global _discovered, _broken
     _discovered = tuple(descriptors)
+    _broken = {(kind, name): problem for kind, name, problem in broken}
 
 
 def reset_discovered() -> None:
-    """Forget the discovered descriptors (test seam)."""
-    global _discovered
+    """Forget the discovered parts (test seam)."""
+    global _discovered, _broken
     _discovered = ()
+    _broken = {}
+
+
+def broken(kind: str | None = None) -> dict[str, str]:
+    """Return ``name -> problem`` of the broken discovered parts, of one *kind* when given."""
+    return {name: problem for (k, name), problem in _broken.items() if kind is None or k == kind}
 
 
 def discovered(kind: str | None = None) -> tuple[PartDescriptor, ...]:

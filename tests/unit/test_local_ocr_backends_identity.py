@@ -148,3 +148,34 @@ def test_explicit_default_cut_keeps_the_default_digest(effective_settings: Any) 
     assert _digest(effective_settings(ocr_local_min_confidence=0.9)) == _digest(
         effective_settings()
     )
+
+
+# ── The default backend's model only when the list holds it (PR #168, finding 5) ──
+
+
+def test_a_list_without_the_default_backend_leaves_its_model_out(
+    effective_settings: Any, models: list[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from omrs.core.ingestion import graph_adapters_values, sources
+    from omrs.core.ingestion.ocr_identity import resolved_routing_payload
+
+    settings = effective_settings(ocr_fallback_enabled=True, ocr_local_backends=("indra",))
+
+    payload = resolved_routing_payload(settings)
+
+    assert "pp-ocrv6-small" not in models
+    assert payload["local_tier"] == {"min_confidence": 0.9}
+    # The two composition paths reach the payload through this one function.
+    for module in (graph_adapters_values, sources):
+        assert module.resolved_routing_payload is resolved_routing_payload
+
+
+def test_the_default_list_still_resolves_the_default_model(
+    effective_settings: Any, models: list[str]
+) -> None:
+    from omrs.core.ingestion.ocr_identity import resolved_routing_payload
+
+    payload = resolved_routing_payload(effective_settings(ocr_fallback_enabled=True))
+
+    assert models == ["pp-ocrv6-small"]
+    assert payload["local_tier"] == {"min_confidence": 0.9, "model": "pp-ocrv6-small@rev"}

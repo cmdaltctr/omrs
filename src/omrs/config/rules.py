@@ -184,7 +184,7 @@ def reading_list_problem(key: str, value: Any) -> str | None:
     if key == "pdf_readers":
         return _reader_list_problem(value)
     if key == LOCAL_BACKENDS_KEY:
-        return local_backend_problem(value, _discovered_backends())
+        return local_backend_problem(value, _discovered_backends(), _broken_backends())
     named = all(
         len(item) <= MAX_ENGINE_NAME_CHARS and re.fullmatch(ENGINE_NAME_PATTERN, item)
         for item in value
@@ -198,6 +198,11 @@ def _discovered_backends() -> tuple[_reading_parts.LocalOcrBackendDescriptor, ..
     return tuple(d for d in found if isinstance(d, _reading_parts.LocalOcrBackendDescriptor))
 
 
+def _broken_backends() -> tuple[str, ...]:
+    """Return the discovered local OCR backends that failed to load, at call time."""
+    return tuple(_reading_parts.broken(_reading_parts.KIND_LOCAL_OCR_BACKEND))
+
+
 def _reader_list_problem(value: Collection[str]) -> str | None:
     """Return the rule a reader list breaks: built-in names first, then discovered readers.
 
@@ -205,13 +210,16 @@ def _reader_list_problem(value: Collection[str]) -> str | None:
     """
     found = tuple(d.name for d in _reading_parts.discovered(_reading_parts.KIND_PDF_READER))
     known = (*KNOWN_READER_NAMES, *found)
-    if all(item in known for item in value):
+    broken = _reading_parts.broken(_reading_parts.KIND_PDF_READER)
+    if all(item in known or item in broken for item in value):
         return None
     return f"The value must be one of: {', '.join(known)}." if found else READER_LIST_RULE
 
 
 def local_backend_problem(
-    names: Collection[str], extra: Collection[_reading_parts.LocalOcrBackendDescriptor] = ()
+    names: Collection[str],
+    extra: Collection[_reading_parts.LocalOcrBackendDescriptor] = (),
+    broken: Collection[str] = (),
 ) -> str | None:
     """Return the rule a local OCR backend list breaks, or ``None`` (design D8).
 
@@ -222,6 +230,8 @@ def local_backend_problem(
         names: The ``ocr_local_backends`` list.
         extra: More descriptors to accept beside the built-in table. Discovery
             (group 5, design D11) passes discovered backends here.
+        broken: Names of discovered backends that failed to load. They are
+            accepted and stay off (review of PR #168, finding 4).
 
     Returns:
         The rule, with the accepted values, or ``None`` when every name is fine.
@@ -231,6 +241,8 @@ def local_backend_problem(
     if not names:
         return LIST_EMPTY_RULE
     for name in names:
+        if name in broken and name not in table:
+            continue
         if name not in table:
             return f"Each name must be a local OCR backend. Accepted values: {accepted}."
         if table[name].min_confidence is None:
@@ -347,7 +359,7 @@ def accepted_problem(path: str, value: Any) -> str | None:
     if path in READING_LIST_KEYS and not value:
         return LIST_EMPTY_RULE
     if path == LOCAL_BACKENDS_KEY:
-        return local_backend_problem(value, _discovered_backends())
+        return local_backend_problem(value, _discovered_backends(), _broken_backends())
     accepted = ACCEPTED.get(path)
     if accepted is not None and value not in accepted:
         return f"The value must be one of: {', '.join(accepted)}."

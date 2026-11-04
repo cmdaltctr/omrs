@@ -169,6 +169,16 @@ class PartRegistry:
         with self._lock:
             return self._off.get(name)
 
+    def hold_off(self, name: str, reason: str) -> None:
+        """Hold an unregistered *name* off with *reason*.
+
+        Discovery calls it for a part that failed to load, so a list that names
+        the part skips it. A registered name is left as it is.
+        """
+        with self._lock:
+            if name not in self._entries:
+                self._off[name] = reason
+
     def reset_off(self) -> None:
         """Clear every switch-off reason (test seam)."""
         with self._lock:
@@ -213,7 +223,8 @@ class DiscoveredPart:
     """One entry point of a reading-part group, accepted or not.
 
     Attributes:
-        name: Descriptor name, or ``None`` when the descriptor could not load.
+        name: Descriptor name, or the entry-point name when the descriptor
+            could not load or has no text name.
         kind: ``pdf_reader``, ``local_ocr_backend`` or ``page_rule``.
         group: The entry-point group.
         distribution: The distribution that declares the entry point.
@@ -222,9 +233,12 @@ class DiscoveredPart:
         descriptor: The loaded descriptor when it was accepted, else ``None``.
             Its ``source`` is the distribution name.
         problem: Why the part was refused or is broken, else ``None``.
+        broken: True when the part is refused for a fault of its own (it did
+            not load, or it is of the wrong type) and its name belongs to no
+            built-in or accepted part. The registry of its kind holds it off.
     """
 
-    name: str | None
+    name: str
     kind: str
     group: str
     distribution: str | None
@@ -232,6 +246,7 @@ class DiscoveredPart:
     value: str
     descriptor: object | None
     problem: str | None
+    broken: bool = False
 
 
 def _register_reader(descriptor: Any, source: str) -> None:
@@ -283,6 +298,22 @@ _REGISTER: dict[str, Callable[[Any, str], None]] = {
     "page_rule": _register_rule,
 }
 
+
+def _registry_of(kind: str) -> PartRegistry:
+    """Return the registry of part *kind* (lazy imports, as in :data:`_REGISTER`)."""
+    if kind == "pdf_reader":
+        from .pdf import registry as readers
+
+        return readers.READERS
+    if kind == "local_ocr_backend":
+        from .pdf.local_ocr import registry as backends
+
+        return backends.BACKENDS
+    from .pdf.page_rules import registry as rules
+
+    return rules.RULES
+
+
 _discovery_lock = threading.Lock()
 _discovered: tuple[DiscoveredPart, ...] | None = None
 
@@ -293,39 +324,73 @@ def _accept(
     builtin: Collection[str],
     expected: type,
     taken: dict[tuple[str, str], str],
-) -> tuple[str | None, object | None, str | None]:
-    """Load one descriptor and return ``(name, descriptor, problem)``."""
+) -> tuple[str, object | None, str | None, bool]:
+    """Load one descriptor and return ``(name, descriptor, problem, fault)``.
+
+    The name is the entry-point name until a loaded descriptor gives its own.
+    *fault* is True when the part itself is at fault: it did not load, or it is
+    of the wrong type.
+    """
     source = entry.dist.name if entry.dist is not None else entry.value
     try:
         loaded = entry.load()
     except Exception as exc:  # noqa: BLE001 - an external part never stops start-up
-        return None, None, f"it could not be loaded ({type(exc).__name__}: {exc})"
+        return entry.name, None, f"it could not be loaded ({type(exc).__name__}: {exc})", True
     name = getattr(loaded, "name", None)
-    name = name if isinstance(name, str) else None
+    name = name if isinstance(name, str) and name else entry.name
     if not isinstance(loaded, expected):
-        return name, None, f"it is a {type(loaded).__name__}, not a {expected.__name__}"
+        return name, None, f"it is a {type(loaded).__name__}, not a {expected.__name__}", True
     if name in builtin:
-        return name, None, f"the name {name!r} belongs to a built-in {kind}; the built-in stays"
+        problem = f"the name {name!r} belongs to a built-in {kind}; the built-in stays"
+        return name, None, problem, False
     if (kind, name) in taken:
-        return name, None, f"the name {name!r} is already taken by {taken[(kind, name)]!r}"
+        problem = f"the name {name!r} is already taken by {taken[(kind, name)]!r}"
+        return name, None, problem, False
     descriptor = dataclasses.replace(loaded, source=source)  # type: ignore[type-var]
     _REGISTER[kind](descriptor, source)
     taken[(kind, name)] = source
-    return name, descriptor, None
+    return name, descriptor, None, False
+
+
+def _mark_broken(
+    found: list[DiscoveredPart],
+    faults: set[int],
+    builtin_names: Mapping[str, Collection[str]],
+    taken: dict[tuple[str, str], str],
+) -> list[DiscoveredPart]:
+    """Mark the faulty parts whose name no built-in or accepted part holds, and hold them off."""
+    marked = []
+    for index, part in enumerate(found):
+        free = part.name not in builtin_names.get(part.kind, ()) and (
+            (part.kind, part.name) not in taken
+        )
+        if index in faults and free and part.problem is not None:
+            _registry_of(part.kind).hold_off(part.name, part.problem)
+            part = dataclasses.replace(part, broken=True)
+        marked.append(part)
+    return marked
 
 
 def _discover(
     builtin_names: Mapping[str, Collection[str]], descriptor_types: Mapping[str, type]
 ) -> tuple[DiscoveredPart, ...]:
     found: list[DiscoveredPart] = []
+    faults: set[int] = set()
     taken: dict[tuple[str, str], str] = {}
     for group, kind in GROUPS.items():
         for entry in entry_points(group=group):
             builtin, expected = builtin_names.get(kind, ()), descriptor_types[kind]
             try:
-                name, descriptor, problem = _accept(entry, kind, builtin, expected, taken)
+                name, descriptor, problem, fault = _accept(entry, kind, builtin, expected, taken)
             except Exception as exc:  # noqa: BLE001 - an external part never stops start-up
-                name, descriptor, problem = None, None, f"{type(exc).__name__}: {exc}"
+                name, descriptor, problem, fault = (
+                    entry.name,
+                    None,
+                    f"{type(exc).__name__}: {exc}",
+                    True,
+                )
+            if fault:
+                faults.add(len(found))
             dist = entry.dist
             part = DiscoveredPart(
                 name=name,
@@ -340,14 +405,14 @@ def _discover(
             if problem is not None:
                 logger.warning(
                     "Reading part %s (%s, entry point %r) from distribution %r was refused: %s.",
-                    repr(name) if name else entry.name,
+                    repr(name),
                     kind,
                     entry.value,
                     part.distribution,
                     problem,
                 )
             found.append(part)
-    return tuple(found)
+    return tuple(_mark_broken(found, faults, builtin_names, taken))
 
 
 def _log_found(found: tuple[DiscoveredPart, ...]) -> None:

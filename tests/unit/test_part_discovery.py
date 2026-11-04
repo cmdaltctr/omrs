@@ -167,7 +167,9 @@ def test_a_module_that_raises_import_error_is_listed_broken(fake_parts, caplog) 
         found = run_discovery()
 
     [broken] = _ours(found, "brokenpart")
-    assert broken.name is None
+    # The entry-point name, known before loading (review of PR #168, finding 4).
+    assert broken.name == "broken"
+    assert broken.broken is True
     assert broken.descriptor is None
     assert "ImportError" in broken.problem
     assert "needs the moon package" in broken.problem

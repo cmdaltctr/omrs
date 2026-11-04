@@ -39,7 +39,13 @@ from __future__ import annotations
 from dataclasses import asdict, is_dataclass
 from typing import Any
 
-from ..reading_parts import DEFAULT_LOCAL_OCR_BACKENDS, effective_cut, local_backend
+from ..reading_parts import (
+    DEFAULT_LOCAL_OCR_BACKENDS,
+    KIND_LOCAL_OCR_BACKEND,
+    broken,
+    effective_cut,
+    local_backend,
+)
 
 #: The canonical unavailable fingerprint payload. Byte-identical, by
 #: construction, to ``asdict(UNAVAILABLE_OCR_WORKER_FINGERPRINT)`` from
@@ -110,8 +116,9 @@ def resolved_routing_payload(settings: Any) -> dict[str, Any]:
     Boundary wrapper for the composition path: resolves the local tier's
     model identity exactly once per process (the probe is cached), then
     delegates to :func:`ocr_routing_payload`. The probe runs only when the
-    OCR fallback is enabled. Otherwise the tier cannot run, so the model
-    cannot change the emitted text and the payload stays put.
+    OCR fallback is enabled and ``ocr_local_backends`` holds the default
+    backend. Otherwise that model cannot change the emitted text, so the
+    payload leaves it out.
 
     The lazy import keeps pdf-inspector out of every import of this
     module; ``core`` reaching into ``integrations`` lazily inside a
@@ -127,7 +134,9 @@ def resolved_routing_payload(settings: Any) -> dict[str, Any]:
         probe resolved an identity.
     """
     local_model_identity = None
-    if getattr(settings, "ocr_fallback_enabled", False):
+    # The default backend's model counts only when the list holds it (PR #168, finding 5).
+    listed = tuple(getattr(settings, "ocr_local_backends", DEFAULT_LOCAL_OCR_BACKENDS))
+    if getattr(settings, "ocr_fallback_enabled", False) and DEFAULT_LOCAL_OCR_BACKENDS[0] in listed:
         from ...integrations.pdf.page_routing import resolve_local_model_identity
 
         local_model_identity = resolve_local_model_identity(settings)
@@ -155,6 +164,9 @@ def local_backends_payload(settings: Any) -> dict[str, Any]:
     names = tuple(getattr(settings, "ocr_local_backends", DEFAULT_LOCAL_OCR_BACKENDS))
     if names == DEFAULT_LOCAL_OCR_BACKENDS:
         return {}
+    # A broken discovered backend reads no page, so it adds nothing (finding 4).
+    off = broken(KIND_LOCAL_OCR_BACKEND)
+    names = tuple(name for name in names if name not in off)
     # Call-time imports: the same lazy seam as resolved_routing_payload.
     from ...integrations.pdf import page_routing, script_routing
 

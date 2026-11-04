@@ -12,7 +12,8 @@ character-weighted mean of the line confidences (:func:`.base.page_confidence`).
 The weights come from ``indra_ocr.model_dir()``: the ``INDRA_OCR_MODEL_DIR``
 folder when it is set, else the Hugging Face cache, else a download. Under
 ``ocr_local_offline`` the backend reads only the ``INDRA_OCR_MODEL_DIR`` folder,
-so it never downloads.
+so it never downloads. ``identity`` gives the model only when those weights are
+already on disk, and it never downloads either.
 
 ``indra_ocr`` and ``pypdfium2`` are imported inside each method, because tests
 stub them in ``sys.modules`` after this module is imported.
@@ -118,13 +119,45 @@ class IndraOcr:
         return read
 
     def identity(self, settings: Any) -> str | None:
-        """Return the pinned model identity when ``indra_ocr`` is installed.
+        """Return the pinned model identity when the weights can load, else ``None``.
+
+        The weights must be on disk: the ``INDRA_OCR_MODEL_DIR`` folder when it
+        is set, else the Hugging Face cache. Offline, only that folder counts, as
+        in :meth:`read_pages`. The check never downloads.
 
         Raises:
             ImportError: ``indra_ocr`` is not installed.
         """
-        _require()
-        return MODEL
+        return MODEL if _weights_present(_require(), settings) else None
+
+
+def _has_weights(folder: Path, indra_ocr: Any) -> bool:
+    """Return whether *folder* holds every file ``indra_ocr.model_dir`` requires.
+
+    As the library does, ``order.onnx`` is optional (reading order then falls
+    back to XY-cut).
+    """
+    required = [name for name in indra_ocr.models.FILES if name != "order.onnx"]
+    return all((folder / name).is_file() for name in required)
+
+
+def _weights_present(indra_ocr: Any, settings: Any) -> bool:
+    """Return whether the weights are on disk, without a download."""
+    folder = os.environ.get("INDRA_OCR_MODEL_DIR")
+    if folder:
+        return _has_weights(Path(folder).expanduser(), indra_ocr)
+    if getattr(settings, "ocr_local_offline", False):
+        return False
+    models = indra_ocr.models
+    try:
+        from huggingface_hub import snapshot_download
+
+        cached = snapshot_download(
+            models.HF_REPO, revision=models.HF_REVISION, local_files_only=True
+        )
+    except Exception:  # noqa: BLE001 - not cached, or no hub: the weights cannot load
+        return False
+    return _has_weights(Path(cached), indra_ocr)
 
 
 #: The backend object the registry loads.

@@ -11,6 +11,7 @@ local-ocr-backends, design D11 and D12).
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping
 from typing import Any, cast
 
@@ -26,6 +27,13 @@ from .core.settings import (
     PROVIDER_SECRET_FIELDS,
     OcrNonLatinMode,
 )
+
+logger = logging.getLogger(__name__)
+
+#: ``(kind, name)`` of the broken parts a setting named, already warned about
+#: for :data:`_warned_for` (one discovery result).
+_warned: set[tuple[str, str]] = set()
+_warned_for: tuple[Any, ...] | None = None
 
 
 def discover_reading_parts() -> tuple[Any, ...]:
@@ -54,8 +62,42 @@ def discover_reading_parts() -> tuple[Any, ...]:
             parts.KIND_PAGE_RULE: parts.PageRuleDescriptor,
         },
     )
-    parts.install_discovered(cast(Any, p.descriptor) for p in found if p.descriptor is not None)
+    parts.install_discovered(
+        (cast(Any, p.descriptor) for p in found if p.descriptor is not None),
+        ((p.kind, p.name, p.problem) for p in found if p.broken),
+    )
+    global _warned_for
+    if found is not _warned_for:
+        _warned_for = found
+        _warned.clear()
     return found
+
+
+def warn_broken_parts_named(settings: Any) -> None:
+    """Log one warning per broken discovered part that a setting names (finding 4).
+
+    The setting is accepted and the part is off: the registries hold it off
+    from discovery on, so the local tier, the page rules and the reader chain
+    skip it.
+    """
+    from .core import reading_parts as parts
+
+    named = {
+        parts.KIND_PDF_READER: tuple(getattr(settings, "pdf_readers", ())),
+        parts.KIND_LOCAL_OCR_BACKEND: tuple(getattr(settings, "ocr_local_backends", ())),
+        parts.KIND_PAGE_RULE: tuple(getattr(settings, "reading_part_options", None) or {}),
+    }
+    for kind, names in named.items():
+        broken = parts.broken(kind)
+        for name in names:
+            if name in broken and (kind, name) not in _warned:
+                _warned.add((kind, name))
+                logger.warning(
+                    "The settings name the %s %r, which is broken and stays off: %s.",
+                    kind.replace("_", " "),
+                    name,
+                    broken[name],
+                )
 
 
 def _value_problem(option: Any, value: Any) -> str | None:
@@ -84,6 +126,8 @@ def part_options_problem(options: Mapping[str, Mapping[str, Any]]) -> str | None
 
     for name, values in options.items():
         found = parts.parts_named(name)
+        if not found and name in parts.broken():
+            continue  # A broken part has no descriptor to check; it is off (finding 4).
         if not found:
             return f"{name!r} is not a reading part."
         known = {option.name: option for part in found for option in part.options}
@@ -132,6 +176,7 @@ def settings_to_effective(settings: Settings | None = None) -> Any:
     problem = part_options_problem(settings.reading_part_options)
     if problem is not None:
         raise ValueError(f"READING_PART_OPTIONS is not valid. {problem}")
+    warn_broken_parts_named(settings)
 
     # Bake the RESOLVED reader and the cleaned list in: the probe and the
     # `auto` / unknown-name warnings run once here (ordered-reader-and-ocr-lists D2).

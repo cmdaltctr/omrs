@@ -15,13 +15,17 @@ distribution that fails to load or raises in ``run``, ``post_check``,
 ``degrade`` or ``stamp`` is skipped for the file, logs one warning and is
 switched off in the registry with the reason (design D11). A failing
 ``post_check`` adds no reason, a failing ``degrade`` degrades no page and a
-failing ``stamp`` writes no key. A rule from another distribution runs only
-while it is on and its
+failing ``stamp`` writes no key. The same holds for the check that
+``post_check`` returns, for a panic (a ``BaseException`` that is not an
+``Exception``), and for a ``run`` outcome that is not a ``RuleOutcome`` or that
+drops or sends direct a page that is not routed. A rule from another
+distribution runs only while it is on and its
 ``reading_part_options`` entry holds ``"enabled": true`` (design D12).
 """
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 from collections.abc import Callable, Collection, Iterable, Sequence
 from dataclasses import dataclass
@@ -72,13 +76,20 @@ class RoutingPlan:
     local: tuple[int, ...]
 
     def post_checks(self) -> tuple[PostCheck, ...]:
-        """Return the post-checks of the rules that declare one, in rule order."""
-        checks = (
-            _guarded(run, "post_check", lambda run=run: run.rule.post_check(run.ctx, run.outcome))
-            for run in self.runs
-            if run.facts["has_post_check"]
-        )
-        return tuple(check for check in checks if check is not None)
+        """Return the post-checks of the rules that declare one, in rule order.
+
+        The check of an external rule comes back wrapped by :func:`_guarded_check`.
+        """
+        checks: list[PostCheck] = []
+        for run in self.runs:
+            if not run.facts["has_post_check"]:
+                continue
+            check = _guarded(
+                run, "post_check", lambda run=run: run.rule.post_check(run.ctx, run.outcome)
+            )
+            if check is not None:
+                checks.append(check if _built_in(run.facts) else _guarded_check(run, check))
+        return tuple(checks)
 
     def degrade(self, unread: Collection[int]) -> list[int]:
         """Return the direct pages no engine read that must go to the local tier.
@@ -128,7 +139,11 @@ class RoutingPlan:
                 )
 
 
-def _skip(name: str, source: str, ctx: RuleContext, where: str, exc: Exception) -> None:
+def _built_in(facts: dict[str, Any]) -> bool:
+    return facts["source"] == registry.SOURCE_BUILT_IN
+
+
+def _skip(name: str, source: str, ctx: RuleContext, where: str, exc: BaseException) -> None:
     """Log one warning and switch an external rule off with the reason."""
     reason = f"{type(exc).__name__}: {exc}"
     logger.warning(
@@ -143,14 +158,58 @@ def _skip(name: str, source: str, ctx: RuleContext, where: str, exc: Exception) 
 
 
 def _guarded(run: RuleRun, hook: str, call: Callable[[], Any]) -> Any:
-    """Call a rule hook; an external rule that raises is skipped and returns ``None``."""
-    if run.facts["source"] == registry.SOURCE_BUILT_IN:
+    """Call a rule hook; an external rule that raises is skipped and returns ``None``.
+
+    A panic (a ``BaseException`` that is not an ``Exception``) counts as a raise.
+    ``KeyboardInterrupt`` and ``SystemExit`` always reach the caller.
+    """
+    if _built_in(run.facts):
         return call()
     try:
         return call()
-    except Exception as exc:  # noqa: BLE001 - an external rule never fails the file
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except BaseException as exc:  # noqa: BLE001 - an external rule never fails the file
         _skip(run.name, run.facts["source"], run.ctx, hook, exc)
         return None
+
+
+def _guarded_check(run: RuleRun, check: PostCheck) -> PostCheck:
+    """Wrap the post-check of an external rule (review of PR #168, finding 2).
+
+    A check that raises logs one warning, switches the rule off and adds no
+    reason. Once the rule is off, the check adds no reason and is not called.
+    """
+
+    def guarded(text: str, facts: Any) -> str | None:
+        if registry.RULES.off_reason(run.name) is not None:
+            return None
+        return _guarded(run, "post-check", lambda: check(text, facts))
+
+    return guarded
+
+
+def _checked(outcome: Any, ctx: RuleContext) -> RuleOutcome:
+    """Return the outcome of an external rule with frozen sets, or raise.
+
+    An external rule may drop or send direct only routed pages.
+
+    Raises:
+        TypeError: The outcome is not a ``RuleOutcome``, or a page set is not a set.
+        ValueError: A page set names a page that is not routed.
+    """
+    if not isinstance(outcome, RuleOutcome):
+        raise TypeError(f"run returned a {type(outcome).__name__}, not a RuleOutcome")
+    for field in ("drop", "direct"):
+        pages = getattr(outcome, field)
+        if not isinstance(pages, (set, frozenset)):
+            raise TypeError(f"{field} is a {type(pages).__name__}, not a frozenset")
+        if not pages <= ctx.routed:
+            stray = sorted(pages - ctx.routed)
+            raise ValueError(f"{field} names pages that are not routed: {stray}")
+    return dataclasses.replace(
+        outcome, drop=frozenset(outcome.drop), direct=frozenset(outcome.direct)
+    )
 
 
 def _waits(name: str, facts: dict[str, Any], settings: Any) -> bool:
@@ -165,13 +224,15 @@ def _waits(name: str, facts: dict[str, Any], settings: Any) -> bool:
 
 def _run_one(name: str, facts: dict[str, Any], ctx: RuleContext) -> tuple[Any, RuleOutcome] | None:
     """Load and run one rule; return ``None`` when an external rule failed."""
-    if facts["source"] == registry.SOURCE_BUILT_IN:
+    if _built_in(facts):
         rule = registry.RULES.get(name)
         return rule, rule.run(ctx)
     try:
         rule = registry.RULES.get(name)
-        return rule, rule.run(ctx)
-    except Exception as exc:  # noqa: BLE001 - an external rule never fails the file
+        return rule, _checked(rule.run(ctx), ctx)
+    except (KeyboardInterrupt, SystemExit):
+        raise
+    except BaseException as exc:  # noqa: BLE001 - an external rule never fails the file
         _skip(name, facts["source"], ctx, "run", exc)
         return None
 

@@ -1,11 +1,14 @@
 import type { DiscoveredPartHealth, LocalOcrBackendHealth, PageRuleHealth, ReadingPartsHealth } from "../api/integrations";
 import { Badge } from "../components/ui/badge";
+import { formatRoute } from "../lib/routes";
+import { ServerCallout } from "../settings/ServerCallout";
 import { EntryList, EntryRow } from "./EntryList";
 import { SECTION_LABELS } from "./sections";
 import { SectionFrame } from "./SectionFrame";
 
 const SUMMARY = "The parts that read PDF pages: the local OCR backends in the order Settings lists them, the page rules, and the parts that installed packages add.";
 const CHECKED = "The server checks these parts when the page loads and changes nothing.";
+const DOCUMENT_READING = formatRoute({ area: "settings", section: "document-reading" });
 const META = "text-meta text-muted-foreground [overflow-wrap:anywhere]";
 
 const KIND_WORDS: Record<DiscoveredPartHealth["kind"], string> = {
@@ -25,9 +28,19 @@ function backendBadge(backend: LocalOcrBackendHealth) {
   return <Badge variant="success">Ready</Badge>;
 }
 
+function isReady(backend: LocalOcrBackendHealth): boolean {
+  return backend.off_reason === null && backend.installed && backend.model_present !== false;
+}
+
+/** What the backend does now: only a ready backend reads pages, and the first ready one reads flagged pages first. */
+function positionLine(backend: LocalOcrBackendHealth, index: number, firstReady: number): string {
+  if (!isReady(backend)) return "Listed, but it does not read pages now.";
+  return index === firstReady ? "Reads flagged pages first." : "Reads the pages the backends above could not read well.";
+}
+
 /** One listed backend: the state, why it is off, its cut and whether its model files are on disk. */
-function BackendRow({ backend, index }: { backend: LocalOcrBackendHealth; index: number }) {
-  const position = index === 0 ? "Reads flagged pages first." : "Reads the pages the backends above could not read well.";
+function BackendRow({ backend, index, firstReady }: { backend: LocalOcrBackendHealth; index: number; firstReady: number }) {
+  const position = positionLine(backend, index, firstReady);
   return (
     <EntryRow
       title={backend.label}
@@ -84,12 +97,24 @@ function Group({ title, children }: { title: string; children: React.ReactNode }
 
 /** The health of each reading part, from the part descriptors. Every list is generic: a part added later shows with no change here. */
 export function ReadingPartsSection({ parts }: { parts: ReadingPartsHealth }) {
+  const firstReady = parts.local_ocr_backends.findIndex(isReady);
   return (
     <SectionFrame id="integrations-reading-parts" title={SECTION_LABELS["reading-parts"]} lines={[SUMMARY, CHECKED]}>
+      <ServerCallout
+        text={
+          <>
+            To turn page rules on or off, or to change the local OCR backend list, go to{" "}
+            <a href={DOCUMENT_READING} className="underline underline-offset-4">
+              Settings › Document reading
+            </a>
+            .
+          </>
+        }
+      />
       <Group title="Local OCR backends">
         <EntryList label="Local OCR backends">
           {parts.local_ocr_backends.map((backend, index) => (
-            <BackendRow key={backend.name} backend={backend} index={index} />
+            <BackendRow key={backend.name} backend={backend} index={index} firstReady={firstReady} />
           ))}
         </EntryList>
       </Group>
