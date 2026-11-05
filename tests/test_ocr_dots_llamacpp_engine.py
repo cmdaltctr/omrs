@@ -339,7 +339,7 @@ def test_importing_the_engine_loads_no_pytorch_module() -> None:
         "print(sorted(m for m in sys.modules if m.split('.')[0] in banned))\n"
     )
     out = subprocess.run(  # noqa: S603 - fixed argv
-        [sys.executable, "-I", "-c", code], capture_output=True, text=True, check=True
+        [sys.executable, "-I", "-B", "-c", code], capture_output=True, text=True, check=True
     )
     assert out.stdout.strip() == "[]"
 
