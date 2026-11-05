@@ -306,7 +306,15 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # identity (7) and router stops and check errors (6). No fastapi needed.
 # +1 (2026-11-05, same change, PR 169 CodeRabbit): the router check runs off the
 # event loop. No fastapi needed.
-_BASE_EXECUTED = 10911
+# +108 (2026-11-05, dots-mocr-llamacpp-backend rebased on v3 and cut over, by test-ID
+# diff against origin/v3 8f2acf3b, 118 added, 11 removed): the llama.cpp engine suites
+# tests/test_ocr_dots_llamacpp_*.py (engine 32, fetch 14, host 3, manifest 18, parity 25,
+# smoke 23), the new dots-mocr identity case, the no-PyTorch engine-lock case and the
+# runtime-engine route-line case. Removed: 10 PyTorch engine cases (patches, code hash,
+# PyTorch fetch, offline variables, identity) and the PyTorch lock case; the 11th, the
+# real-model patch case, always skipped. No fastapi needed. The sandbox case needs macOS
+# (below).
+_BASE_EXECUTED = 11019
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
