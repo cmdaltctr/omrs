@@ -100,6 +100,28 @@ def test_a_child_process_does_not_inherit_the_descriptor(tmp_path: Path) -> None
         probe.close()
 
 
+def test_close_drops_the_lock_while_a_forked_copy_waits_for_exec(tmp_path: Path) -> None:
+    """A fork in another thread copies the descriptor until the child runs exec.
+
+    ``flock`` belongs to the open file, so a plain close keeps the lock while
+    that copy lives. The leave probe then sees a client that does not exist
+    and the server is never stopped. ``os.dup`` makes the same copy here.
+    """
+    path = tmp_path / "clients.lock"
+    held, probe = LockFile(path), LockFile(path)
+    copy = -1
+    try:
+        assert held.acquire(shared=True)
+        copy = os.dup(held._fd)
+        held.close()
+        assert probe.acquire(shared=False, blocking=False) is True
+    finally:
+        if copy >= 0:
+            os.close(copy)
+        held.close()
+        probe.close()
+
+
 def test_the_lock_file_is_private_to_the_owner(tmp_path: Path) -> None:
     path = tmp_path / "runtimes" / "chat" / "clients.lock"
     lock = LockFile(path)

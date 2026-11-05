@@ -324,7 +324,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # removed): tests/unit/test_local_ocr_library_paths.py. No fastapi needed.
 # +6 (2026-11-05, fix-managed-chat-classification, by test-ID diff, 6 added, 0 removed):
 # test_llamacpp_runtime_clients.py (4), test_web_runtimes.py (1), test_compose_llamacpp_view.py (1).
-_BASE_EXECUTED = 11054
+# +1 (2026-11-05, fix-flaky-idle-stop-test, by test-ID diff, 1 added, 0 removed):
+# close drops a flock that a forked copy still holds. No fastapi needed.
+_BASE_EXECUTED = 11055
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
