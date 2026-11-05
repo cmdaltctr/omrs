@@ -4,7 +4,9 @@ The engine was called `dots-mocr-llamacpp` during these checks. At cut-over (tas
 
 Change `dots-mocr-llamacpp-backend`, design D9, tasks 3.1 to 3.7. Run on 2026-11-01 and 2026-11-02 on one Apple silicon Mac (macOS, 64 GB), with llama.cpp build 11941 (Metal) and the Q8_0 model. The Linux build was not run.
 
-**Verdict for the operator:** rules 1, 2 (parity), the offline smoke test, the clean exit and the app view pass. One rule is not met as written: `rf06` never reaches OCR under the default routing (see "Open finding F1"). Cut-over waits for your decision.
+**Verdict:** every rule passes. The `rf06` ingest rule passed in the page-mode re-run of 2026-11-03 (see "Open finding F1" and the task 3.4 re-run). The operator confirmed cut-over on 2026-11-05.
+
+**Status on 2026-11-02 (superseded):** rules 1, 2 (parity), the offline smoke test, the clean exit and the app view passed. One rule was not met as written: `rf06` never reached OCR under the then-default document routing.
 
 ## Pass or fail per rule
 

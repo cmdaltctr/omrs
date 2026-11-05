@@ -83,7 +83,10 @@ def runtime_base_url(environ: Mapping[str, str] | None = None) -> str:
         host = (parts.hostname or "").lower()
         port = 80 if parts.port is None else parts.port
     except ValueError:
-        host, port = "", 0
+        raise WorkerParseError(
+            "runtime_url_invalid",
+            f"{RUNTIME_URL_ENV} must be an http address on this computer, not {value!r}",
+        ) from None
     if (
         parts.scheme != "http"
         or host not in _LOOPBACK_HOSTS

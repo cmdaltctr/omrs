@@ -240,6 +240,7 @@ def test_a_missing_address_gives_a_parse_error_that_names_the_variable(env: Env,
         "http://127.0.0.1:0",
         "ftp://127.0.0.1:21",
         "not a url",
+        "http://[::1",
     ],
 )
 def test_an_address_that_is_not_loopback_http_is_refused_by_name(

@@ -314,7 +314,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # PyTorch fetch, offline variables, identity) and the PyTorch lock case; the 11th, the
 # real-model patch case, always skipped. No fastapi needed. The sandbox case needs macOS
 # (below).
-_BASE_EXECUTED = 11019
+# +1 (2026-11-05, dots-mocr-llamacpp-backend, PR 172 review): an unclosed IPv6
+# bracket in the runtime address is refused by name. No fastapi needed.
+_BASE_EXECUTED = 11020
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
