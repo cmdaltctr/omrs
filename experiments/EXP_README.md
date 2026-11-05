@@ -168,7 +168,7 @@ Hypothesis → Variables → Method → Results → Conclusion
 | 44 | [Image fidelity question pilot](./44-image-fidelity-pilot-2026-11-02/) | 2026-11-02 | PLANNED | Planned pilot before Experiment 43: 30 Experiment 33 pages (7 rf06/rf07 junk layers, 23 open-licence healthy), Clef-Flash Q8_0 plus mmproj on llama.cpp b11941 and a hosted TypeSafe Jev image control on healthy pages only; gates G1 (median P(yes) faithful minus wrong >= 0.5) and G2 (AUC faithful vs junk >= 0.9). |
 | 45 | [Non-Latin script routing on stored OCR evidence](./45-non-latin-script-routing-2026-11-04/) | 2026-11-04 | FAIL | detect adds no page: the 0.9 cut already escalates all 129 non-Latin pages (confidence 0.454 to 0.805), so G1 (e >= 1) fails with e = 0; G2 passes with 0 false positives on Latin pages; keep the default off. |
 | 46 | [Local OCR backends for non-Latin scripts](./46-local-ocr-backends-2026-11-04/) | 2026-11-04 | PASS | Indra OCR passes all four gates for Arabic and Devanagari (58 of 69 pages kept local, none bad, 0.10 s per page) but reads Bengali at median recall 0.59; Apple Vision fails the confidence gate. |
-| 47 | [Document router confirmation on new documents](./47-router-confirmation-2026-11-05/) | 2026-11-05 | PLANNED |  |
+| 47 | [Document router confirmation on new documents](./47-router-confirmation-2026-11-05/) | 2026-11-05 | FAIL | Router caught 28 of 54 unflagged junk pages (0.52, gate 0.70) and wrongly rejected 2 of 54 healthy pages (0.037); keep it off by default |
 |  | [Leiden versus Louvain community detection](./leiden-vs-louvain-2026-08-14/) | 2026-08-14 | MEASURED | Both algorithms found the same 8 communities on both test graphs; Louvain was slightly faster. |
 
 ### Reserved numbers

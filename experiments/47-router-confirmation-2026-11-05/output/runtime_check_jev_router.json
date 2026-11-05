@@ -1,0 +1,23 @@
+{
+  "utc": "2026-11-05T20:30:46+00:00",
+  "identity": {
+    "arm": "jev_router",
+    "plan_sha256": "2f96e5df01f3f603f377720f91d67b9088b51ef05c1b8d6ed023b9ee5b2cb41b",
+    "inputs_sha256": "4b89a16b18f08edd3b6c0d829727833e96b1633fa6414862aa4c627752b5f53f",
+    "labels_sha256": "d480977ee857c13b975de61d7c1081c7eec721a8141aac412984213aead04748",
+    "model": "jev-1.14.0",
+    "runner_sha256": "e33a56afc84d477bcac52a11b23ad940a7252f49d5c312804428bedfa0072bb6"
+  },
+  "checks": {
+    "R4_shipped_checks": {
+      "value": {
+        "status": "ok",
+        "quantisation": "Quantisation not checked",
+        "projector": "Projector smoke test passed.",
+        "build": null
+      },
+      "pass": true
+    }
+  },
+  "passed": true
+}

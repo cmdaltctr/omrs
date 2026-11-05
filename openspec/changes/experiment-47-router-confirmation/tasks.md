@@ -22,24 +22,24 @@
 ## 3. Inputs and labels (local only)
 
 - [x] 3.1 Download each PDF into `corpus/`. Run `prepare_inputs.py`. Verify: `output/inputs.json` holds every document; `git check-ignore` covers `output/.private/` and `corpus/`.
-- [ ] 3.2 Make local references with `label_pages.py references --resume`. Verify: `output/reference_state.json` has one `ok` entry per page, or each failure is named.
-- [ ] 3.3 Make labels with `label_pages.py labels`. Verify: `output/labels.json` and `output/set_check.json` exist; the set check passes, or stop and amend.
-- [ ] 3.4 Label review in `output/label_review.json` by the coding agent (amendment A1, 2026-11-05: the operator does not review labels by eye). Verify: every verdict set; 3 or fewer disagreements, or stop and amend.
-- [ ] 3.5 Commit the labels, the review and the set check. Verify: committed before any `scores_*.json` exists.
+- [x] 3.2 Make local references with `label_pages.py references --resume`. Verify: `output/reference_state.json` has one `ok` entry per page, or each failure is named.
+- [x] 3.3 Make labels with `label_pages.py labels`. Verify: `output/labels.json` and `output/set_check.json` exist; the set check passes, or stop and amend.
+- [x] 3.4 Label review in `output/label_review.json` by the coding agent (amendment A1, 2026-11-05: the operator does not review labels by eye). Verify: every verdict set; 3 or fewer disagreements, or stop and amend.
+- [x] 3.5 Commit the labels, the review and the set check. Verify: committed before any `scores_*.json` exists.
 
 ## 4. Runtime check
 
-- [ ] 4.1 Run `score_router.py --arm clef_router --check`. Verify: `output/runtime_check_clef_router.json` passes R1 to R6.
+- [x] 4.1 Run `score_router.py --arm clef_router --check`. Verify: `output/runtime_check_clef_router.json` passes R1 to R6.
 
 ## 5. Scoring
 
-- [ ] 5.1 Speed trial: `score_router.py --arm clef_router --limit 2`. Verify: no stop rule fired.
-- [ ] 5.2 All pages: `score_router.py --arm clef_router --resume`. Verify: every document in `scores_clef_router.json`, no failures left.
-- [ ] 5.3 Hosted reference, only with OD4 approval: tasks 4.1, 5.1 and 5.2 with `--arm jev_router`.
+- [x] 5.1 Speed trial: `score_router.py --arm clef_router --limit 2`. Verify: no stop rule fired.
+- [x] 5.2 All pages: `score_router.py --arm clef_router --resume`. Verify: every document in `scores_clef_router.json`, no failures left.
+- [x] 5.3 Hosted reference, only with OD4 approval: tasks 4.1, 5.1 and 5.2 with `--arm jev_router`.
 
 ## 6. Analysis and report
 
-- [ ] 6.1 Run `analysis.py`. Verify: `output/summary.json` has a verdict, or names each gap.
-- [ ] 6.2 Write `report.md` from the template; set `status` and `finding` in `experiment.json`. Verify: `omrs experiments check` and `omrs experiments index --write`.
-- [ ] 6.3 Follow the cleanup procedure (protocol section 8). Verify: the copy receipt holds a SHA-256 per file.
+- [x] 6.1 Run `analysis.py`. Verify: `output/summary.json` has a verdict, or names each gap.
+- [x] 6.2 Write `report.md` from the template; set `status` and `finding` in `experiment.json`. Verify: `omrs experiments check` and `omrs experiments index --write`.
+- [x] 6.3 Follow the cleanup procedure (protocol section 8). Verify: the copy receipt holds a SHA-256 per file.
 - [ ] 6.4 Record the G7 result in `doc-reading-master-flow`. Close issue #171 with a link to this change.
