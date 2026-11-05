@@ -79,10 +79,13 @@ def build_hosted_body(
 def _detail(error: urllib.error.HTTPError, secret: str | None) -> str:
     """Return a short error detail with any secret removed."""
     try:
-        text = error.read().decode("utf-8", "replace")[:300]
+        text = error.read().decode("utf-8", "replace")
     except OSError:
         text = ""
-    return text.replace(secret, "<redacted>") if secret else text
+    # Redact before the cut, so a key that crosses the cut leaves no prefix behind.
+    if secret:
+        text = text.replace(secret, "<redacted>")
+    return text[:300]
 
 
 def post(
@@ -117,7 +120,7 @@ def post(
 def parse_noul(reply: dict) -> float:
     """Return P(yes) from a systemone reply, checking its bounds."""
     value = reply["answers"][QUESTION_ID]["noul"]
-    if not isinstance(value, (int, float)) or not 0 <= value <= 1:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 1:
         raise ValueError("noul score outside probability bounds")
     return float(value)
 

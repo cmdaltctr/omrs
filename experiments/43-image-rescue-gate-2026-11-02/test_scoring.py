@@ -123,6 +123,22 @@ def test_hosted_error_never_shows_the_key(fake, monkeypatch) -> None:
     assert STAND_IN not in repr(client)
 
 
+def test_hosted_error_hides_a_key_that_crosses_the_cut(fake, monkeypatch) -> None:
+    monkeypatch.setenv("TYPESAFE_API_KEY", STAND_IN)
+    # The JSON body opens with '{"detail": "' (12 characters), so the key starts at 290.
+    server = fake([(400, {"detail": "x" * 278 + STAND_IN})])
+    client = clients.HostedClient(QUESTION, "jev-1.14.0", endpoint=server.url)
+    with pytest.raises(RuntimeError) as error:
+        client.score("text", PNG, "id")
+    assert STAND_IN[:10] not in str(error.value)
+
+
+@pytest.mark.parametrize("value", [True, False])
+def test_boolean_noul_is_rejected(value) -> None:
+    with pytest.raises(ValueError, match="probability bounds"):
+        clients.parse_noul({"answers": {"fidelity": {"type": "noul", "noul": value}}})
+
+
 def test_missing_key_stops(monkeypatch) -> None:
     monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
     with pytest.raises(RuntimeError, match="not set"):

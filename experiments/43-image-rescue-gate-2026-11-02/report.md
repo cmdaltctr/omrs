@@ -17,7 +17,7 @@
 
 ## What we tested
 
-We gave each page of the 40 Experiment 33 documents (1,123 pages, 799 with a text layer) to a model as an image together with the first 2,000 characters of its rescued text, and asked one question: "Does the text match the text written or printed on the page image?". Two models answered: local Clef-Flash Q8_0 with its projector file on llama.cpp b11941, and hosted TypeSafe `jev-1.14.0`. The result decides whether an image-based check can fix issue #161 (`rf06` and `rf07` never reach OCR). The data are the frozen Experiment 33 labels: 89 junk pages and 565 healthy pages among the pages with rescued text.
+The 40 Experiment 33 documents have 1,123 pages. Only the 799 pages with a text layer were scored; the other 324 have no text to check. We gave a model each scored page as an image with the first 2,000 characters of its rescued text, and asked one question: "Does the text match the text written or printed on the page image?". Two models answered: local Clef-Flash Q8_0 with its projector file on llama.cpp b11941, and hosted TypeSafe `jev-1.14.0`. The result decides whether an image-based check can fix issue #161 (`rf06` and `rf07` never reach OCR). The data are the frozen Experiment 33 labels: 89 junk pages and 565 healthy pages among the pages with rescued text.
 
 ## Results
 
@@ -66,6 +66,7 @@ The word check row uses the classified pages only, from the committed Experiment
 2. Only two documents (`rf06`, `rf07`) have a junk text layer, and only 13 documents reach the check, so one document changes the verdict.
 3. Hosted scores are noisy (up to 0.03 between calls), and the hosted model id was the same on every page (`jev-1.14.0`) but TypeSafe states that image input is not yet ready for production.
 4. The local arm was run once. The result does not show how it behaves on new documents.
+5. `prepare_inputs.py` checks the hashes of the Experiment 33 files only. It does not check the Experiment 38 files that `analysis.py` reads: `candidate_a.json` (word check scores) and `signal_stats.py` (threshold rule).
 
 ## Speed and cost
 
@@ -75,7 +76,7 @@ The word check row uses the classified pages only, from the committed Experiment
 | Seconds per page | 3.64 mean | 1.38 mean (median 0.81, maximum 7.8) |
 | Total request time | 48.5 minutes | 18.4 minutes (about 30 minutes of wall clock with retries) |
 | Input tokens | 1.75 million | 4.08 million |
-| Cost | none (9.66 GB model plus 0.62 GB projector, free memory stayed between 65% and 83%) | about USD 0.17 |
+| Cost | none (9.66 GB model plus 0.62 GB projector) | about USD 0.17 |
 | Failed requests | 0 | 21 error events, 0 pages left without a score |
 
 ## What it means for you
