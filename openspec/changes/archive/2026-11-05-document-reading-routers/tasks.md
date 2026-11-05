@@ -44,7 +44,7 @@ Group 3 follows `docs/guides/reading-parts.md` (Add a page rule) and the group-1
 
 ## 7. Integration checks
 
-- [ ] 7.1 Run `./scripts/local_ci.sh`. Verify: no `SKIPPED`, every step passes, including the file-size ceiling and the tripwire.
+- [x] 7.1 Run `./scripts/local_ci.sh`. Verify: no `SKIPPED`, every step passes, including the file-size ceiling and the tripwire.
 - [x] 7.2 Run `openspec validate document-reading-routers --strict` and `openspec validate --all --strict`. Verify: both pass.
 
 ## Workflow follow-up

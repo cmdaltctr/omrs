@@ -809,7 +809,7 @@ A page SHALL escalate to the OCR routes only when no listed local OCR backend ke
 
 ### Requirement: The scalar OCR diagnostics keep their meaning
 
-The four existing OCR diagnostics SHALL remain scalars and SHALL keep their meaning. `ocr_required` SHALL be true when at least one page was flagged or goes direct to the worker. `ocr_used` SHALL be true when OCR produced the text of at least one page, by either tier. `pages_needing_ocr` SHALL remain the count of flagged pages.
+The four existing OCR diagnostics SHALL remain scalars and SHALL keep their meaning. `ocr_required` SHALL be true when at least one page was flagged, goes direct to the worker or was added to the route by a page rule. `ocr_used` SHALL be true when OCR produced the text of at least one page, by either tier. `pages_needing_ocr` SHALL remain the count of flagged pages, which does not include pages that a page rule added.
 
 #### Scenario: Page routing keeps the scalar OCR diagnostics
 
@@ -817,6 +817,13 @@ The four existing OCR diagnostics SHALL remain scalars and SHALL keep their mean
 - **WHEN** OCR produces the text of at least one page
 - **THEN** `ocr_required` and `ocr_used` SHALL be true
 - **AND** `pages_needing_ocr` SHALL be the count of flagged pages
+
+#### Scenario: An added page does not change the flagged count
+
+- **GIVEN** a PDF with 2 flagged pages and 1 page that a router rejects
+- **WHEN** OCR reads all 3 pages
+- **THEN** `pages_needing_ocr` SHALL be 2
+- **AND** `ocr_required` SHALL be true
 
 ### Requirement: ocr_backend names a single backend or mixed
 
@@ -1081,7 +1088,7 @@ The OCR routing payload SHALL drop the gate values (`min_confidence`, `page_frac
 
 ### Requirement: Page-level OCR routing SHALL OCR only flagged pages
 
-When OCR is enabled, the pdf-inspector path SHALL decide OCR need per page from a scan of every page. Pages that do not need OCR SHALL keep native pdf-inspector Markdown. Pages that need OCR SHALL be processed by the local OCR tier. A missing local runtime SHALL follow the missing-runtime requirement instead of keeping native text.
+When OCR is enabled, the pdf-inspector path SHALL decide OCR need per page from a scan of every page. Pages that do not need OCR SHALL keep native Markdown, except a page a page rule adds to the OCR route (such as a page a router rejects), which SHALL go to the OCR engine list like a direct page. Pages that need OCR SHALL be processed by the local OCR tier. A missing local runtime SHALL follow the missing-runtime requirement instead of keeping native text.
 
 #### Scenario: Only flagged pages are OCRed
 
@@ -1096,6 +1103,13 @@ When OCR is enabled, the pdf-inspector path SHALL decide OCR need per page from 
 - **WHEN** the PDF is ingested
 - **THEN** the flagged pages SHALL be parsed by the OCR routes under the missing-runtime requirement
 - **AND** the flagged pages SHALL NOT keep native text while any OCR route is available
+
+#### Scenario: A rejected unflagged page is OCRed
+
+- **GIVEN** a 20-page PDF with no flagged page and a selected router that rejects page 7
+- **WHEN** the PDF is ingested
+- **THEN** page 7 SHALL be sent to the OCR engine list
+- **AND** the 19 other pages SHALL keep native Markdown
 
 ### Requirement: Every PDF document counts the source of every page
 
