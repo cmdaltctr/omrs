@@ -5,9 +5,9 @@ Each key applies at the next launch only. ``PUT`` needs a browser session with
 the manage scope: a bearer credential never passes. The checks run in the
 contract order and stop at the first failure, so nothing is written on any
 failure: body shape (400), a key outside the nine (400), a locked key (409), a
-value that breaks its rule (400), a PDF reader that is not installed (400),
-then the file write (409 for a stale revision or a broken file, 500 for a disk
-error). No message holds a submitted value.
+value that breaks its rule (400), a host router that ``omrs.jsonc`` does not
+hold (400), then the file write (409 for a stale revision or a broken file,
+500 for a disk error). No message holds a submitted value.
 
 The body builder and checks 2 to 5 live in ``api/document_reading.py``, which
 imports no web framework.
@@ -25,7 +25,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from ....config.rules import DOCUMENT_READING_KEYS
 from ....config.settings_file_write import SettingsFileError
-from ..document_reading import build_document_reading, launch_settings, update_refusal
+from ..document_reading import (
+    build_document_reading,
+    launch_settings,
+    router_refusal,
+    update_refusal,
+)
 from ..engine_access import ReadScope, require_session
 from ..errors import error_response
 from ..security import Principal
@@ -78,9 +83,11 @@ async def set_document_reading(
     state = getattr(request.app.state, "configuration", None)
     launch = await run_in_threadpool(launch_settings, state)
     refusal = await run_in_threadpool(update_refusal, body.values, launch)
+    store = request.app.state.mcp_http.store
+    if refusal is None:
+        refusal = router_refusal(body.values, await run_in_threadpool(store.read))
     if refusal is not None:
         return error_response(*refusal)
-    store = request.app.state.mcp_http.store
     try:
         await run_in_threadpool(store.write, body.values, body.revision)
     except SettingsFileError as exc:

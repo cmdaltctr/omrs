@@ -166,6 +166,17 @@ FAMILIES: dict[str, frozenset[str]] = {
     "configuration": frozenset({"getSettingsConfiguration"}),
     "configuration_save": frozenset({"setSettingsConfiguration"}),
     "document_reading": frozenset({"getDocumentReadingSettings", "setDocumentReadingSettings"}),
+    "decision_models": frozenset(
+        {"listDecisionModels", "saveDecisionModel", "deleteDecisionModel", "testDecisionModel"}
+    ),
+    "document_routers": frozenset(
+        {
+            "listDocumentRouters",
+            "saveDocumentRouter",
+            "renameDocumentRouter",
+            "deleteDocumentRouter",
+        }
+    ),
     "experiments": frozenset(
         {
             "createExperiment",

@@ -47,6 +47,7 @@ _PAGE_RULE_FIELDS = (
     "sends_direct",
     "has_post_check",
     "has_degrade",
+    "adds_pages",
     "source",
 )
 

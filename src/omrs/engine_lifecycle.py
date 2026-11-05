@@ -151,6 +151,7 @@ def graph_host(engine: Engine, collection: str | None) -> Any:
         "pdf_readers": reader_lists,
         "ocr_non_latin_routing": HostOptionSet(inherited=settings.ocr_non_latin_routing),
         "ocr_local_backends": local_backend_option_set(settings),
+        "document_router": router_option_set(settings),
         **engine_option_sets(settings),
     }
     return replace(graph, host=replace(graph.host, options=options))
@@ -234,6 +235,48 @@ def local_backend_option_set(settings: Any) -> Any:
             fix = f"Install with: uv sync --extra {extra}." if extra else "It is not installed."
             unavailable[name] = f"The local OCR backend {name!r} is not installed. {fix}"
     return HostOptionSet(inherited=tuple(settings.ocr_local_backends), unavailable=unavailable)
+
+
+class RouterReasons(Mapping[str, str]):
+    """Router names that no ``document_routers`` entry holds, and why.
+
+    Iteration lists nothing: the host cannot list every name it lacks. A
+    lookup refuses any name other than ``none`` and the defined routers, so
+    admission refuses a step that names a router this host does not hold.
+    """
+
+    def __init__(self, routers: Mapping[str, Any]) -> None:
+        """Keep the names of the defined routers."""
+        self._names = frozenset(routers)
+
+    def __getitem__(self, name: str) -> str:
+        """Return why router *name* cannot run; ``KeyError`` when it can."""
+        if name == "none" or name in self._names:
+            raise KeyError(name)
+        return "No router of this name is defined in omrs.jsonc."
+
+    def __iter__(self) -> Iterator[str]:
+        """Iterate over nothing (see the class text)."""
+        return iter(())
+
+    def __len__(self) -> int:
+        """Return 0 (see the class text)."""
+        return 0
+
+
+def router_option_set(settings: Any) -> Any:
+    """Return the host option set of ``document_router`` (change document-reading-routers).
+
+    A step inherits the host router. A name that no router entry holds is
+    unavailable, so validation fails with ``option_unavailable`` before any
+    node runs.
+    """
+    from .core.pipelines import HostOptionSet
+
+    routers = getattr(settings, "document_routers", None) or {}
+    inherited = getattr(settings, "document_router", "") or None
+    remedy = "Choose a router from Settings > Document reading, none or Inherit."
+    return HostOptionSet(inherited, RouterReasons(routers), remedy)
 
 
 def install_as_process_default(engine: Engine) -> None:

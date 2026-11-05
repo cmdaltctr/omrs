@@ -5,8 +5,8 @@ routing the rules replace:
 
 1. A page dropped by an earlier rule leaves the ``routed`` set of every later rule.
 2. A rule's ``direct`` set loses the pages earlier rules dropped.
-3. ``direct`` is the union of every rule's reduced ``direct`` set, and the local
-   tier reads ``routed - direct``.
+3. ``direct`` is the union of every rule's reduced ``direct`` set and added
+   pages, minus every dropped page, and the local tier reads ``routed - direct``.
 4. :meth:`RoutingPlan.degrade` gives a rule only the pages it was first to send
    direct.
 
@@ -189,26 +189,57 @@ def _guarded_check(run: RuleRun, check: PostCheck) -> PostCheck:
     return guarded
 
 
-def _checked(outcome: Any, ctx: RuleContext) -> RuleOutcome:
+def _check_add(outcome: Any, ctx: RuleContext, facts: dict[str, Any]) -> None:
+    """Raise when *outcome* uses ``add`` in a way the hook does not allow (design D4).
+
+    Only a rule that declares ``adds_pages`` may add. A valid added page is in
+    the scan, has text, is not flagged and is not claimed by an earlier rule.
+
+    Raises:
+        ValueError: The rule does not declare ``adds_pages``, or a page is not valid.
+    """
+    add = getattr(outcome, "add", frozenset())
+    if not add:
+        return
+    if not facts["adds_pages"]:
+        raise ValueError("run returned add but the rule does not declare adds_pages")
+    with_text = {entry.page for entry in ctx.evidence if (entry.markdown or "").strip()}
+    claimed = sorted(page for page in add if page in ctx.claimed)
+    if claimed:
+        raise ValueError(f"add names pages that earlier rules claimed: {claimed}")
+    stray = sorted(page for page in add if page not in with_text or page in ctx.flagged)
+    if stray:
+        raise ValueError(f"add names pages that are flagged, blank or not in the scan: {stray}")
+
+
+def _checked(
+    outcome: Any, ctx: RuleContext, facts: dict[str, Any], added: frozenset[int]
+) -> RuleOutcome:
     """Return the outcome of an external rule with frozen sets, or raise.
 
-    An external rule may drop or send direct only routed pages.
+    An external rule may drop a routed page or a page that an earlier rule added,
+    send direct only routed pages, and add only valid pages (:func:`_check_add`).
 
     Raises:
         TypeError: The outcome is not a ``RuleOutcome``, or a page set is not a set.
-        ValueError: A page set names a page that is not routed.
+        ValueError: A page set names a page the rule may not name.
     """
     if not isinstance(outcome, RuleOutcome):
         raise TypeError(f"run returned a {type(outcome).__name__}, not a RuleOutcome")
-    for field in ("drop", "direct"):
+    allowed = {"drop": ctx.routed | added, "direct": ctx.routed}
+    for field in ("drop", "direct", "add"):
         pages = getattr(outcome, field)
         if not isinstance(pages, (set, frozenset)):
             raise TypeError(f"{field} is a {type(pages).__name__}, not a frozenset")
-        if not pages <= ctx.routed:
-            stray = sorted(pages - ctx.routed)
+        if field != "add" and not pages <= allowed[field]:
+            stray = sorted(pages - allowed[field])
             raise ValueError(f"{field} names pages that are not routed: {stray}")
+    _check_add(outcome, ctx, facts)
     return dataclasses.replace(
-        outcome, drop=frozenset(outcome.drop), direct=frozenset(outcome.direct)
+        outcome,
+        drop=frozenset(outcome.drop),
+        direct=frozenset(outcome.direct),
+        add=frozenset(outcome.add),
     )
 
 
@@ -222,14 +253,18 @@ def _waits(name: str, facts: dict[str, Any], settings: Any) -> bool:
     return options.get("enabled") is not True
 
 
-def _run_one(name: str, facts: dict[str, Any], ctx: RuleContext) -> tuple[Any, RuleOutcome] | None:
+def _run_one(
+    name: str, facts: dict[str, Any], ctx: RuleContext, added: frozenset[int]
+) -> tuple[Any, RuleOutcome] | None:
     """Load and run one rule; return ``None`` when an external rule failed."""
     if _built_in(facts):
         rule = registry.RULES.get(name)
-        return rule, rule.run(ctx)
+        outcome = rule.run(ctx)
+        _check_add(outcome, ctx, facts)
+        return rule, outcome
     try:
         rule = registry.RULES.get(name)
-        return rule, _checked(rule.run(ctx), ctx)
+        return rule, _checked(rule.run(ctx), ctx, facts, added)
     except (KeyboardInterrupt, SystemExit):
         raise
     except BaseException as exc:  # noqa: BLE001 - an external rule never fails the file
@@ -238,7 +273,12 @@ def _run_one(name: str, facts: dict[str, Any], ctx: RuleContext) -> tuple[Any, R
 
 
 def run_rules(
-    file: Path, evidence: Sequence[Any], flagged: Collection[int], settings: Any, routes: Any
+    file: Path,
+    evidence: Sequence[Any],
+    flagged: Collection[int],
+    settings: Any,
+    routes: Any,
+    judge: Any = None,
 ) -> RoutingPlan:
     """Run every registered page rule on one PDF, in ascending order.
 
@@ -248,6 +288,7 @@ def run_rules(
         flagged: Pages the scan flagged as needing OCR.
         settings: The injected settings.
         routes: The injected ``OcrRoutes``.
+        judge: The page judge of the selected router, or ``None``. Every rule sees it.
 
     Returns:
         The combined plan.
@@ -258,18 +299,24 @@ def run_rules(
     flagged = frozenset(flagged)
     dropped: frozenset[int] = frozenset()
     direct: frozenset[int] = frozenset()
+    added: frozenset[int] = frozenset()
     runs: list[RuleRun] = []
     for name, facts in registry.ordered():
         if _waits(name, facts, settings):
             continue
-        ctx = RuleContext(file, evidence, flagged, flagged - dropped, settings, routes)
-        ran = _run_one(name, facts, ctx)
+        ctx = RuleContext(
+            file, evidence, flagged, flagged - dropped, settings, routes, dropped | direct, judge
+        )
+        ran = _run_one(name, facts, ctx, added)
         if ran is None:
             continue
         rule, outcome = ran
-        reduced = frozenset(outcome.direct) - dropped
+        # Added pages go to the engine once, like direct pages (design D4).
+        reduced = (frozenset(outcome.direct) | frozenset(outcome.add)) - dropped
         runs.append(RuleRun(name, facts, rule, ctx, outcome, reduced))
         dropped |= outcome.drop
         direct |= reduced
+        added |= outcome.add
+    direct -= dropped  # a later drop still removes a page an earlier rule added
     local = tuple(sorted(flagged - dropped - direct))
     return RoutingPlan(tuple(runs), dropped, direct, local)

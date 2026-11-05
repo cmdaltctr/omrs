@@ -17,7 +17,7 @@ Before any change proposes a router as a default or as a built-in profile settin
 
 ### Requirement: The confirmation pass rule SHALL be stricter and page based
 
-The pass rule SHALL be fixed in the protocol before scoring. It SHALL judge pages, not the 10% document share: junk-page recall at least 0.90 with the lower 95% interval bound at least 0.80, and the healthy-page flag rate at most 0.02 with the upper 95% interval bound at most 0.05. The report SHALL also give, per document, the pages that would go to OCR and their cost.
+The pass rule SHALL be fixed in the protocol before scoring. It SHALL judge pages, not the share of a document: junk-page recall at least 0.90 with the lower 95% interval bound at least 0.80, and the healthy-page flag rate at most 0.02 with the upper 95% interval bound at most 0.05. The report SHALL also give, per document, the pages that would go to OCR and their cost.
 
 #### Scenario: Recall passes but false flags fail
 

@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, Any
 
 from .fingerprint import OcrWorkerFingerprint
 from .managed import ManagedOcrClient
-from .routes import OcrRoutes, RouteCommand, engine_names, resolve_route_command
+from .routes import OcrRoutes, RouteCommand, engine_names, page_judge, resolve_route_command
 from .runtime import runtime_lease
 
 if TYPE_CHECKING:
@@ -66,7 +66,8 @@ class OcrClientPool:
             settings: The effective settings of a node or of the host.
 
         Returns:
-            The routes in list order. With the OCR fallback off there are none.
+            The routes in list order, with the page judge of the settings'
+            document router. With the OCR fallback off there are none.
             A route that resolves no command is ``None``: it reports the
             unavailable fingerprint, as an unprobed client does. Routes that
             resolve to the same command share one pool client.
@@ -80,7 +81,8 @@ class OcrClientPool:
             routes=tuple(
                 self._client(resolve_route_command(name, settings, self._runtime_manager), settings)
                 for name in engine_names(settings)
-            )
+            ),
+            judge=page_judge(settings),
         )
 
     def close(self) -> None:

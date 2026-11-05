@@ -5,7 +5,7 @@
  */
 import type { ApiClient, CallOptions } from "./client";
 
-export type ModelRuntimeRole = "chat" | "embeddings" | "ocr";
+export type ModelRuntimeRole = "chat" | "embeddings" | "ocr" | "decision";
 
 /** `external` is a server the user runs. `managed` is a `llama-server` that OMRS starts and stops. */
 export type ModelRuntimeMode = "external" | "managed";

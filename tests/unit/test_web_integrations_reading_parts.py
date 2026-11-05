@@ -44,7 +44,7 @@ def test_the_block_conforms_to_the_contract(client: TestClient) -> None:
     assert [row["name"] for row in parts["local_ocr_backends"]] == ["pp-ocrv6-small"]
     assert parts["local_ocr_backends"][0]["off_reason"] == "PanicException: lock poisoned"
     rules = {row["name"]: row["enabled"] for row in parts["page_rules"]}
-    assert rules == {"blank": True, "maths": True, "non_latin": True}
+    assert rules == {"blank": True, "maths": True, "non_latin": True, "document_router": False}
     assert parts["discovered_parts"] == []
 
 

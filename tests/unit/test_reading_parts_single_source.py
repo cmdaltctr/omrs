@@ -75,7 +75,7 @@ def test_document_reading_keys_take_rule_settings_from_the_descriptors(
     copy = _copy_with_fake_rule(rules, monkeypatch)
 
     keys = copy.DOCUMENT_READING_KEYS
-    assert keys[keys.index(_FAKE_KEY) - 1] == "ocr_non_latin_routing"
+    assert keys[keys.index(_FAKE_KEY) - 1] == "document_router"
     assert _without_fake(copy.DOCUMENT_READING_KEYS) == rules.DOCUMENT_READING_KEYS
 
 
@@ -111,13 +111,20 @@ def test_every_rule_setting_is_in_each_list_in_rule_order() -> None:
 
 # ── 2. Kept literals pinned to the descriptors ───────────────────────────
 
-#: The page-count metadata key each page rule stamps. A descriptor has no
-#: metadata-key fact, so ``embed_exclusions`` keeps its literal list and this
-#: map names the key per rule. A new rule fails the first test until it is added.
+#: The metadata keys each page rule stamps. A descriptor has no metadata-key
+#: fact, so ``embed_exclusions`` keeps its literal list and this map names the
+#: keys per rule. A new rule fails the first test until it is added.
 _RULE_METADATA_KEYS = {
-    "blank": "ocr_pages_blank",
-    "maths": "pages_maths_font",
-    "non_latin": "pages_non_latin",
+    "blank": ("ocr_pages_blank",),
+    "maths": ("pages_maths_font",),
+    "non_latin": ("pages_non_latin",),
+    "document_router": (
+        "router_pages_judged",
+        "router_pages_accepted",
+        "router_pages_rejected",
+        "router_pages_unjudged",
+        "router_status",
+    ),
 }
 
 
@@ -127,15 +134,17 @@ def test_every_page_rule_names_its_metadata_key() -> None:
 
 def test_rule_metadata_keys_never_reach_the_embedder() -> None:
     excluded = embed_exclusions.EXCLUDED_EMBED_METADATA_KEYS
-    assert [key for key in _RULE_METADATA_KEYS.values() if key not in excluded] == []
+    keys = [key for keys in _RULE_METADATA_KEYS.values() for key in keys]
+    assert [key for key in keys if key not in excluded] == []
 
 
 def test_only_rules_with_a_conditional_identity_block_leave_the_identity_list() -> None:
     """A rule whose identity block is not always present has its key unlisted."""
     conditional = {
-        _RULE_METADATA_KEYS[rule.name]
+        key
         for rule in reading_parts.PAGE_RULES
         if rule.identity is not None and rule.identity.presence != "always"
+        for key in _RULE_METADATA_KEYS[rule.name]
     }
     assert embed_exclusions.IDENTITY_UNLISTED_KEYS == conditional
 
@@ -159,6 +168,21 @@ def _changed(field: reading_parts.SettingField) -> Any:
 def _on(part: reading_parts.PartDescriptor) -> dict[str, Any]:
     """Return the overrides that turn *part* on (a non-default value of each choice)."""
     return {field.name: _changed(field) for field in part.settings if field.accepted}
+
+
+#: The settings that select a router. The ``document_router`` setting is a free
+#: name, so turning the rule on needs a router entry and a decision model entry.
+_ROUTER_ON = {
+    "document_router": "r",
+    "document_routers": {"r": {"model": "m", "question": "q", "threshold": 0.5}},
+    "decision_models": {"m": {"kind": "llamacpp", "model": "clef"}},
+}
+
+
+def _settings_on(part: reading_parts.PartDescriptor, effective_settings: Any) -> Any:
+    """Return PDF settings with *part* on."""
+    settings = effective_settings(pdf_reader="pdf_inspector", **_on(part))
+    return settings.model_copy(update=_ROUTER_ON) if part.name == "document_router" else settings
 
 
 def _payload(settings: Any, monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
@@ -196,7 +220,7 @@ def test_each_identity_builder_writes_the_keys_its_descriptor_names(
 ) -> None:
     spec = part.identity
     assert spec is not None
-    settings = effective_settings(pdf_reader="pdf_inspector", **_on(part))
+    settings = _settings_on(part, effective_settings)
 
     written = _BUILDERS[spec.block](settings)
 
@@ -209,7 +233,7 @@ def test_each_identity_block_reaches_the_source_identity(
 ) -> None:
     spec = part.identity
     assert spec is not None
-    settings = effective_settings(pdf_reader="pdf_inspector", **_on(part))
+    settings = _settings_on(part, effective_settings)
 
     payload = _payload(settings, monkeypatch)
 

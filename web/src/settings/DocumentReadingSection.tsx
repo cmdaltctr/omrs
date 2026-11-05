@@ -5,6 +5,7 @@ import { documentReadingQuery } from "../api/queries";
 import type { DocumentReadingKey, DocumentReadingSetting, DocumentReadingState } from "../api/settingsDocumentReading";
 import { ErrorNotice } from "../components/ErrorNotice";
 import { Card, CardHeader, CardTitle } from "../components/ui/card";
+import { DocumentRoutersCard } from "./DocumentRoutersCard";
 import { isListKind, listOptions, READING_ROWS, readingChoices } from "./documentReadingWords";
 import { ReadingSettingRow } from "./ReadingSettingRow";
 import { RestartDialog } from "./RestartDialog";
@@ -153,6 +154,7 @@ export function DocumentReadingSection() {
               </div>
             </Card>
             <OcrCard state={state} onSaved={saved} />
+            <DocumentRoutersCard state={state} onSaved={(next) => saved(next, "document_router")} />
           </DenseSettingRows>
         </>
       )}

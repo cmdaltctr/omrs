@@ -87,6 +87,7 @@ from .graph_adapters_values import (
 from .graph_fingerprint import INGESTION_SHAPE_RESOURCE, IngestionShape
 from .loader import gather_supported_files, make_file_detail
 from .replacement import prepare_source_embeddings
+from .router_identity import settle_router_identity
 from .source_state import new_source_attempt
 from .sources import (
     SourceUnit,
@@ -314,6 +315,9 @@ async def embed_adapter(
     identity, nodes = work.require_identity(), work.nodes
     if not nodes:
         raise ValueError(f"Source {work.unit.rel_path!r} has no chunks. Connect prepare.chunk.")
+    # A read whose router failed is stored as not runnable (design D9).
+    identity = settle_router_identity(identity, nodes)
+    work = replace(work, identity=identity)
     settings = context.settings
     context.progress("embed_start", {"chunks": len(nodes)})
     # Refuse a wrong-model source before the embedder (maybe a paid provider)

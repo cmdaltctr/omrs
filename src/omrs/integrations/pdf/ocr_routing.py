@@ -180,7 +180,14 @@ class OcrRoutedPdfInspector:
         # The page rules (blank, maths, non-Latin; design D5) run in order. A
         # dropped page keeps its native text and counts blank; a direct page
         # skips the local tier and joins the one worker request.
-        plan = run_rules(file, evidence, flagged, self._settings, self._routes)
+        plan = run_rules(
+            file,
+            evidence,
+            flagged,
+            self._settings,
+            self._routes,
+            judge=getattr(self._routes, "judge", None),
+        )
         blank, direct, local_pages_wanted = plan.dropped, plan.direct, list(plan.local)
 
         results: list[PageResult] = []
@@ -281,10 +288,12 @@ class OcrRoutedPdfInspector:
                             producer=local_page.producer if local_text.strip() else None,
                         )
                     )
-            elif entry.page in blank:
+            elif entry.page in blank and entry.page in flagged:
                 # The blank test removed this flagged page from the route.
                 # It ran no OCR tier; its native text was empty on every
                 # page the calibration measured, so it emits no document.
+                # A page a later rule dropped after an earlier rule added it
+                # was never flagged: it keeps its native text below.
                 results.append(
                     PageResult(page=entry.page, text=entry.markdown, source=PAGE_SOURCE_BLANK)
                 )

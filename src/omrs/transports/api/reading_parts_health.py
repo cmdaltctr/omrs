@@ -116,7 +116,8 @@ def _rule_enabled(settings: Any, name: str, descriptor: Any, source: str) -> boo
     """Return whether rule *name* runs under *settings* (design D12).
 
     A discovered rule runs only when its ``enabled`` option is true. A built-in
-    rule follows its first setting: a flag as it is, a choice unless ``off``.
+    rule follows its first setting: a flag as it is, a choice unless ``off``,
+    a free-text name (the router) when it is not empty or ``none``.
     A built-in rule without a setting always runs.
     """
     if source != reading_parts.SOURCE_BUILT_IN:
@@ -126,7 +127,11 @@ def _rule_enabled(settings: Any, name: str, descriptor: Any, source: str) -> boo
     if not fields:
         return True
     value = getattr(settings, fields[0].name, fields[0].default)
-    return value is True if fields[0].accepted is None else value != "off"
+    if fields[0].accepted is not None:
+        return value != "off"
+    if isinstance(fields[0].default, bool):
+        return value is True
+    return bool(value) and value != "none"
 
 
 def page_rule_rows(settings: Any, found: Found = ()) -> list[dict[str, Any]]:

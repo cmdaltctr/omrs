@@ -246,8 +246,9 @@ def test_all_five_keys_in_one_save(harness: Harness, client: TestClient) -> None
     response = put(client, values)
     assert response.status_code == 200, response.text
     saved = {key: row["saved"] for key, row in rows(response.json()).items()}
-    # ocr_local_backends (local-ocr-backends) is not in this save: its row stays unset.
-    assert saved == {**values, "ocr_local_backends": None}
+    # ocr_local_backends (local-ocr-backends) and document_router
+    # (document-reading-routers) are not in this save: their rows stay unset.
+    assert saved == {**values, "ocr_local_backends": None, "document_router": None}
 
 
 def test_a_list_save_removes_the_old_keys_in_the_same_write(
@@ -414,6 +415,35 @@ def test_4_engine_name_with_a_path(harness: Harness, client: TestClient) -> None
     message = refused(put(client, {"ocr_engines": ["../other"]}), 400)
     assert message.startswith("ocr_engines: The engine name must start")
     assert harness.text() == ""
+
+
+ROUTERS = (
+    '{ "decision_models": { "clef": { "kind": "llamacpp", '
+    '"address": "http://127.0.0.1:9100", "model": "clef" } }, '
+    '"document_routers": { "handwriting": { "model": "clef", '
+    '"question": "Is the text right?", "threshold": 0.2 } } }'
+)
+
+
+def test_4_host_router_must_name_a_saved_router(harness: Harness, client: TestClient) -> None:
+    harness.write(ROUTERS)
+    harness.launch()
+    before = harness.text()
+    revision = file_revision(harness.folder)
+    message = refused(put(client, {"document_router": "missing"}, revision), 400)
+    assert message == "document_router: No router of this name is in omrs.jsonc."
+    assert harness.text() == before
+
+
+@pytest.mark.parametrize("name", ["handwriting", "none"])
+def test_4_host_router_takes_a_saved_router_or_none(
+    harness: Harness, client: TestClient, name: str
+) -> None:
+    harness.write(ROUTERS)
+    harness.launch()
+    response = put(client, {"document_router": name}, file_revision(harness.folder))
+    assert response.status_code == 200, response.text
+    assert rows(response.json())["document_router"]["saved"] == name
 
 
 def test_6_stale_revision(harness: Harness, client: TestClient) -> None:

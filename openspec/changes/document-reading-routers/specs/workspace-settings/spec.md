@@ -18,7 +18,7 @@ Settings › Providers SHALL show a Decision models card. It SHALL list each ent
 
 ### Requirement: Document reading has a Router section
 
-Settings › Document reading SHALL have a Router section. It SHALL show the host router choice (a router name or "None"), and one row per router with its decision model, question, threshold, image flag and scope. The user SHALL be able to create a router from blank or from the Experiment 43 template, edit, rename and delete it.
+Settings › Document reading SHALL have a Router section. It SHALL show the host router choice (a router name or "None"), and one row per router with its decision model, question, threshold, image flag. The user SHALL be able to create a router from blank or from the Experiment 43 template, edit, rename and delete it.
 
 #### Scenario: Choose the host router
 

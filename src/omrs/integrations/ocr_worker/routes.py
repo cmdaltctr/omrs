@@ -53,6 +53,22 @@ _ENGINE_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 #: Route summaries already logged in this process (start-up log, once).
 _logged_summaries: set[str] = set()
 
+#: Settings in, the selected document router's page judge (or ``None``) out. The
+#: composition root installs it (change document-reading-routers, design D12),
+#: so this package imports no decision model provider.
+_judge_factory: Callable[[Any], Any] | None = None
+
+
+def install_judge_factory(factory: Callable[[Any], Any] | None) -> None:
+    """Install the page judge factory of the OCR routes; ``None`` removes it."""
+    global _judge_factory
+    _judge_factory = factory
+
+
+def page_judge(settings: Any) -> Any:
+    """Return the page judge of *settings*: ``None`` with no factory or no router."""
+    return _judge_factory(settings) if _judge_factory is not None else None
+
 
 @dataclass(frozen=True)
 class RouteCommand:
@@ -206,9 +222,13 @@ class OcrRoutes:
     Attributes:
         routes: The route clients in list order. An entry is ``None`` when its
             engine resolved no command; it reports the unavailable fingerprint.
+        judge: The page judge of the selected document router, or ``None``. The
+            composition root builds it per settings (change document-reading-routers,
+            design D12); the page unit hands it to the page rules.
     """
 
     routes: tuple[Any, ...] = ()
+    judge: Any = None
 
     @classmethod
     def of(cls, client: Any) -> OcrRoutes:
@@ -313,8 +333,9 @@ def build_route_clients(
             declares a llama.cpp runtime is unavailable without one.
 
     Returns:
-        The routes in list order. Routes that resolve to the same command share
-        one client. Construction starts no parsing process.
+        The routes in list order, with the page judge of the settings' router.
+        Routes that resolve to the same command share one client.
+        Construction starts no parsing process.
     """
     enabled = bool(getattr(settings, "ocr_fallback_enabled", False))
     names = engine_names(settings)
@@ -327,7 +348,7 @@ def build_route_clients(
                 route, settings, probe=probe, enabled=enabled, runtime_manager=runtime_manager
             )
         clients.append(shared[route])
-    routes = OcrRoutes(routes=tuple(clients))
+    routes = OcrRoutes(routes=tuple(clients), judge=page_judge(settings))
     if enabled:
         _log_routes_once(names, routes)
     return routes

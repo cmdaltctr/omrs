@@ -77,7 +77,7 @@ def test_a_broken_rule_named_in_the_options_is_accepted_and_off(
     assert PROBLEM in warning
     assert "acme" not in [name for name, _ in rule_registry.ordered()]
     plan = run_rules(Path("doc.pdf"), [], {1}, effective, None)
-    assert [run.name for run in plan.runs] == ["blank", "maths", "non_latin"]
+    assert [run.name for run in plan.runs] == ["blank", "maths", "non_latin", "document_router"]
     assert [row.name for row in part_registry.discovered_parts()] == ["acme"]
 
 

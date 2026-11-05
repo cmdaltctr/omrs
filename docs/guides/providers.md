@@ -169,6 +169,7 @@ Providers are resolved through flat, per-domain lazy registries. Each registry m
 | Embedding providers | `core/providers/embeddings/registry.py` |
 | LLM providers | `core/providers/llm/registry.py` |
 | Metadata extraction backends | `core/metadata/registry.py` |
+| Decision model kinds | `core/providers/decision/registry.py` |
 
 Provider construction (instantiating the LlamaIndex client) lives in `compose.py` (`build_embed_model`), enforced by `import-linter`. The registries only resolve names to callables; they do not construct. Metadata extraction resolves LLMs through its own dispatch in `core/metadata/extractor.py`, not through the composition root.
 
@@ -209,6 +210,81 @@ Registered LLM providers: `ollama`, `llamacpp`, `openrouter`, `openai_compatible
 7. If the provider can download models, set `model_source` on its `CONNECTION` descriptor to `huggingface-gguf` or `ollama-pull`. Leave it unset for any other provider. A third source kind needs a new adapter and a registry for the job, not a name check. See ADR-106.
 
 No changes to `core/ingestion/`, `core/retrieval/`, or `transports/` are needed — they consume providers through the registries and the composition root.
+
+## Decision models
+
+A decision model answers one yes/no question about a document page. A document router uses it to find pages whose native text is junk (ADR-110). Decision models are named entries in the `decision_models` map of `omrs.jsonc`. The map format is in [Configuration](configuration.md).
+
+### Kinds
+
+Each entry has a kind. The kind comes from `core/providers/decision/registry.py`. All kinds send the same System One request: one `noul` question (options `no` and `yes`), the page text in `state.text` and, for an image router, one page image. The reply gives P(yes) between 0 and 1.
+
+| Kind | Request | Image | Status |
+| --- | --- | --- | --- |
+| `llamacpp` | `POST <address>/v1/systemone` | `images` list, data URL | Tested (Experiment 43) |
+| `typesafe` | `POST https://api.typesafe.ai/v1/systemone` | `assets` map | Tested (Experiment 43) |
+| `cloudflare` | `POST <address>/ai/run/@cf/cloudflare/<model>` | `images` list, base64 | Not yet tested |
+| `ollama` | `POST <address>/v1/systemone` | `images` list, base64 | Not yet tested |
+
+"Not yet tested" means no live request of that kind has passed the smoke test. The entry still works. Each adapter module holds the label as `NOT_YET_TESTED`, and `registry.not_yet_tested()` lists those kinds. Remove the label only after one live request passes the smoke test and the result is recorded.
+
+A reply without a P(yes), or with a value that is not a finite number in [0, 1], counts as a failed request. The log gives the fixed reason `malformed-reply` and never the reply.
+
+### Local and hosted
+
+An entry whose address is not a loopback address (`127.0.0.1`, `::1` or `localhost`) is hosted. A router that uses a hosted entry sends nothing until the router itself sets `send_off_machine: true`. Without it, the router status is `needs-opt-in`.
+
+Only a hosted request with an image carries the header `TypeSafe-Danger-Zone-Images: true`. A local request never carries it.
+
+### Key references
+
+The `key` field holds a reference, never the key:
+
+- `env://NAME` reads the environment variable `NAME`.
+- `file://~/.config/omrs/secrets/<name>.key` reads a file inside the `secrets/` folder.
+- `keychain://<provider>` reads the system keychain.
+
+A literal key is ignored. `compose_decision.py` resolves the reference with the same rules as the provider keys (ADR-083, gotcha 18). A reference that does not resolve gives the status `request-failed`, and no request goes out.
+
+### The 8-bit rule
+
+A decision model on this machine must run at 8-bit or higher: Q8_0, F16, BF16 or F32 (AGENTS.md gotcha 16). A 4-bit build gave different answers in Experiment 38.
+
+- A managed `llamacpp` entry: OMRS reads `general.file_type` from the GGUF header of `model_file`. It reads only the header bytes. Any other type, such as Q4_K_M, gives `quantisation-refused` with the rule text.
+- An external `llamacpp` or `ollama` entry: OMRS reads the quantisation marker in the model name that the server reports, for example `Clef-Flash-Q8_0.gguf`.
+- When no type can be read, the entry shows "Quantisation not checked".
+
+Hosted kinds have no quantisation check.
+
+### Vision projector
+
+An image router needs an entry with `images: true`. A managed image entry must also declare `projector_file` (the `--mmproj` flag). A llama.cpp server without a projector answers an image request with HTTP 501.
+
+Before an image router uses an entry, OMRS runs a smoke test. It sends one bundled page image (`core/providers/decision/smoke_page.png`) twice: with its right text and with wrong text. The test passes when P(yes) for the right text is higher by at least the margin 0.2 (`SMOKE_MARGIN`, version `exp43-r4-2026-11-02`). Experiment 43 recorded that margin: Clef-Flash Q8_0 gave 0.903 against 0.069, hosted Jev 0.39 against 0.01. A failed smoke test gives `projector-not-loaded`.
+
+### Managed runtime
+
+A `llamacpp` entry sets `server` to `external` or `managed`. OMRS starts nothing for an external entry and sends requests to its address.
+
+A managed entry runs as the runtime `decision-<entry name>`, role `decision`. It follows the same lease, adoption, idle-stop and stop rules as the other managed runtimes, and `GET /v1/runtimes` lists it. To start it, OMRS needs:
+
+- `LLAMACPP_SERVER_BINARY`, the `llama-server` program.
+- A loopback `http` address with a port. The server binds `127.0.0.1` on that port.
+- `model_file` and `model_sha256`. An image entry also needs `projector_file` and `projector_sha256`.
+
+The server serves one request at a time (`--parallel 1`). It gets `--mmproj` for an image entry. A changed file gives `file-changed`, and the server does not start. If a field is missing, the router status is `unreachable`.
+
+The server starts on the first request of a router or of Test, not at start-up.
+
+### Build floor
+
+Image requests to llama.cpp need build b11941 or later, the build of Experiment 43 (`BUILD_FLOOR` in `core/providers/decision/checks.py`). Before OMRS starts a managed decision runtime, it reads the build from `llama-server --version`. A lower build, or no build number, gives `wrong-build`. The server does not start, and the reason names the build found and the floor. The router status is `wrong-build`. OMRS does not check the build of an external server.
+
+### When the checks run
+
+Building the judge sends nothing. The checks run on the first page that the router judges: the quantisation check, one text request with no page content, and the smoke test for an image router. For a managed entry, the text request starts the runtime, so the build check runs then. A passing result is kept for the process for each entry. A failed result is kept for 60 seconds, then the next page checks again, so a local server started later is found. A slow check of one entry does not hold up another entry. Fixed reasons: `unknown-model`, `unreachable`, `quantisation-refused`, `projector-not-loaded`, `wrong-build`, `needs-opt-in`, `request-failed`, `malformed-reply` (the text request got a reply OMRS cannot read). Logs give the reason and counts only, never page text, images, keys or reply bodies.
+
+Test on the Providers card runs the checks again for one entry (`compose_decision.test_decision_model`). It also updates the result that the routers use. The text request holds no page content, so Test also sends it to a hosted entry without the router opt-in. Test shows the quantisation line, the projector line of an image entry and, for a managed entry, the build line.
 
 ## ChromaDB dimension lock
 

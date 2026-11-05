@@ -51,7 +51,7 @@ _REASON_TEXTS = {
     "not-configured": "No program or model is set.",
     "not-supported": "Managed servers need file locks, which this system does not have.",
     "version-busy": "Another OMRS process still uses the older version of this server.",
-    "wrong-build": "The llama-server build is not the build the engine declares.",
+    "wrong-build": "The llama-server build is not the build the runtime declares.",
     "file-changed": "A model file changed: {name}.",
     "bind-failed": "The server could not open a port after 4 tries.",
     OPERATOR_STOP: "An operator stopped this server.",
@@ -59,8 +59,14 @@ _REASON_TEXTS = {
 
 
 def reason_text(reason: str, detail: str = "") -> str:
-    """Return the fixed plain-English line of *reason*."""
-    return _REASON_TEXTS.get(reason, reason).format(name=detail or "unknown")
+    """Return the fixed plain-English line of *reason*.
+
+    A detail fills ``{name}``; a line without ``{name}`` gets the detail after a colon.
+    """
+    template = _REASON_TEXTS.get(reason, reason)
+    if detail and "{name}" not in template:
+        return f"{template.rstrip('.')}: {detail}."
+    return template.format(name=detail or "unknown")
 
 
 class RuntimeUnavailable(RuntimeError):

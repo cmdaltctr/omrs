@@ -8,11 +8,13 @@ answers with an adapted lease of the ``chat`` or ``embeddings`` runtime, or
 runtime only when ``llamacpp_classify_url`` is blank.
 
 The module also lists the runtimes in force for ``GET /v1/runtimes``: Chat,
-embeddings and one OCR runtime for each engine in the OCR engine list that declares one.
+embeddings, one OCR runtime for each engine in the OCR engine list that declares one,
+and one decision runtime for each managed ``llamacpp`` decision model entry.
 """
 
 from __future__ import annotations
 
+import os
 from collections.abc import Awaitable, Callable
 from dataclasses import replace
 from pathlib import Path
@@ -30,11 +32,13 @@ from .integrations.llamacpp_runtime import (
     RuntimeSpec,
     RuntimeUnavailable,
     chat_spec,
+    decision_spec,
     embeddings_spec,
     ocr_spec,
+    process,
 )
 from .integrations.llamacpp_runtime.lease import reason_text
-from .integrations.llamacpp_runtime.rules import loopback_port, model_kind
+from .integrations.llamacpp_runtime.rules import child_environment, loopback_port, model_kind
 
 if TYPE_CHECKING:
     from .compose_providers import ProviderValues
@@ -45,7 +49,10 @@ T = TypeVar("T")
 
 def reset() -> None:
     """Leave every lease, drop the manager and remove the gate resolver (tests)."""
+    from .integrations.ocr_worker.routes import install_judge_factory
+
     runtime_gate.install(None)
+    install_judge_factory(None)
     close_runtime_manager()
 
 
@@ -176,7 +183,11 @@ def gate(role: Role, settings: Any) -> RuntimeGate | None:
 
 
 def install_gates(provider_source: Callable[[], ProviderValues] | None) -> None:
-    """Install the gate resolver of this process.
+    """Install the gate resolver of this process and the page judge factory of its OCR routes.
+
+    The OCR routes take each settings' document router judge from the factory
+    (change document-reading-routers, design D12); a managed decision model
+    asks through its ``decision-<name>`` runtime lease.
 
     Args:
         provider_source: Returns the saved web values (``omrs web``); ``None``
@@ -188,6 +199,10 @@ def install_gates(provider_source: Callable[[], ProviderValues] | None) -> None:
         return gate(role, current_settings(values))
 
     runtime_gate.install(resolve)
+    from .compose_decision import page_judge_for
+    from .integrations.ocr_worker.routes import install_judge_factory
+
+    install_judge_factory(page_judge_for)
 
 
 # ── The runtimes list (GET /v1/runtimes) ─────────────────────────────────
@@ -229,6 +244,88 @@ def _ocr_runtimes(settings: Any) -> dict[str, tuple[RuntimeSpec, list[str]]]:
     return found
 
 
+def _entry_field(entry: Any, name: str) -> Any:
+    """Return field *name* of a decision model entry given as a mapping or an object."""
+    return entry.get(name) if isinstance(entry, dict) else getattr(entry, name, None)
+
+
+def decision_runtime(binary: str, name: str, entry: Any) -> RuntimeSpec | str | None:
+    """Return the runtime of decision model entry *name* (change document-reading-routers).
+
+    Args:
+        binary: The ``llama-server`` program (``llamacpp_server_binary``).
+        name: The entry name.
+        entry: The decision model entry.
+
+    Returns:
+        ``None`` for an entry OMRS does not start (not ``llamacpp``, or not
+        ``managed``), the spec, or ``not-configured`` (no program, a missing
+        file or SHA-256, or an image entry without a projector file) or
+        ``not-loopback`` (the entry address is not a loopback ``http`` address).
+    """
+    from .core.providers.decision.checks import BUILD_FLOOR
+
+    if _entry_field(entry, "kind") != "llamacpp" or _entry_field(entry, "server") != "managed":
+        return None
+    pairs = [("-m", "model_file", "model_sha256")]
+    if _entry_field(entry, "images"):
+        pairs.append(("--mmproj", "projector_file", "projector_sha256"))
+    files = []
+    for flag, path_field, sha_field in pairs:
+        path, sha256 = _entry_field(entry, path_field), _entry_field(entry, sha_field)
+        if not path or not sha256:
+            return "not-configured"
+        files.append(DeclaredFile(flag, str(Path(str(path)).expanduser()), str(sha256)))
+    if not binary.strip():
+        return "not-configured"
+    port = loopback_port(str(_entry_field(entry, "address") or ""))
+    if port is None:
+        return "not-loopback"
+    return decision_spec(
+        name=name, binary=binary.strip(), port=port, files=files, min_build=BUILD_FLOOR
+    )
+
+
+def decision_runtime_for(settings: Any, model: str, entry: Any) -> RuntimeSpec | str | None:
+    """Return :func:`decision_runtime` of *entry*, with the program from *settings*.
+
+    ``EffectiveSettings`` has no program field, so the process settings give it.
+    An entry OMRS does not start reads no settings.
+    """
+    if _entry_field(entry, "kind") != "llamacpp" or _entry_field(entry, "server") != "managed":
+        return None
+    binary = getattr(settings, "llamacpp_server_binary", None)
+    if binary is None:
+        binary = current_settings().llamacpp_server_binary
+    return decision_runtime(str(binary or ""), model, entry)
+
+
+def decision_build_line(runtime: RuntimeSpec | str | None) -> str | None:
+    """Return the llama.cpp build line of a decision runtime, ``None`` for no runtime."""
+    if runtime is None:
+        return None
+    if isinstance(runtime, str):
+        return reason_text(runtime)
+    floor = runtime.min_build
+    found = process.read_build(runtime.binary, child_environment(os.environ, "file"))
+    if found is None:
+        return f"llama.cpp build not found; it needs b{floor} or later."
+    if floor is not None and found < floor:
+        return f"llama.cpp build b{found} is below the floor b{floor}."
+    return f"llama.cpp build b{found}."
+
+
+def _decision_runtimes(settings: Any) -> list[tuple[RuntimeSpec, list[str]]]:
+    """Return the runtime of each managed ``llamacpp`` decision model entry."""
+    rows = []
+    binary = str(getattr(settings, "llamacpp_server_binary", "") or "")
+    for name, entry in (getattr(settings, "decision_models", None) or {}).items():
+        spec = decision_runtime(binary, name, entry)
+        if spec is not None:
+            rows.append((_listed(f"decision-{name}", spec, "decision"), ["decision_models"]))
+    return rows
+
+
 def runtime_specs(settings: Any) -> list[tuple[RuntimeSpec, list[str]]]:
     """Return each runtime in force with the settings that use it."""
     chat = chat_runtime(settings)
@@ -241,14 +338,15 @@ def runtime_specs(settings: Any) -> list[tuple[RuntimeSpec, list[str]]]:
         (_listed("embeddings", embed), ["llamacpp_embed_url"]),
     ]
     rows += list(_ocr_runtimes(settings).values())
+    rows += _decision_runtimes(settings)
     return rows
 
 
-def _listed(runtime_id: str, spec: RuntimeSpec | str) -> RuntimeSpec:
+def _listed(runtime_id: str, spec: RuntimeSpec | str, role: str | None = None) -> RuntimeSpec:
     """A spec for the status read; a managed role that cannot be built keeps its id."""
     if isinstance(spec, RuntimeSpec):
         return spec
-    return RuntimeSpec(id=runtime_id, role=runtime_id, mode="managed", binary="")  # type: ignore[arg-type]
+    return RuntimeSpec(id=runtime_id, role=role or runtime_id, mode="managed", binary="")  # type: ignore[arg-type]
 
 
 def list_runtimes(

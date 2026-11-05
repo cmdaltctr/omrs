@@ -36,7 +36,7 @@ export function ReadingSettingRow({ setting, words, choices, options, notes, onS
   const [draft, setDraft] = useState<ReadingDraft | null>(null);
   const { label, kind } = words;
   const next = setting.saved ?? setting.value;
-  const start = draftOf(next);
+  const start = draftOf(next, kind);
   const list = isListKind(kind) && Array.isArray(next) ? next : null;
 
   function close() {
@@ -65,14 +65,14 @@ export function ReadingSettingRow({ setting, words, choices, options, notes, onS
   const dense = useDenseRows();
   const value = (
     <code dir="ltr" className={CODE}>
-      {readingText(setting.value)}
+      {readingText(setting.value, kind)}
     </code>
   );
   const sourceLine = (
     <>
       {sourceText(setting.source)}
       {" · Default: "}
-      <span dir="ltr">{readingText(setting.default)}</span>
+      <span dir="ltr">{readingText(setting.default, kind)}</span>
     </>
   );
   const editButton = (variant: "ghost" | "outline") => (
@@ -85,7 +85,7 @@ export function ReadingSettingRow({ setting, words, choices, options, notes, onS
       <p className="text-ui">
         {"Saved for the next launch: "}
         <code dir="ltr" className={CODE}>
-          {readingText(setting.saved)}
+          {readingText(setting.saved, kind)}
         </code>
       </p>
       <Badge variant="warning">Restart to apply</Badge>

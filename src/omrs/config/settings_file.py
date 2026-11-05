@@ -25,11 +25,13 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, get_args, get_origin
+from typing import TYPE_CHECKING, Annotated, Any
 
 from pydantic import BaseModel, TypeAdapter, ValidationError
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
 
+from .field_rules import KIND_BROKEN, KIND_INVALID, KIND_RETIRED, KIND_UNKNOWN, field_bounds
+from .field_rules import rule_text as _rule_text
 from .legacy import NOTHING_REPLACES
 from .rules import (
     FILE_ONLY,
@@ -41,6 +43,7 @@ from .rules import (
     file_only_problem,
     ignored_old_keys,
 )
+from .settings_maps import MAP_KEYS, read_map
 from .user_config import (
     CONFIG_FILE,
     REFERENCE_RULE,
@@ -58,12 +61,7 @@ if TYPE_CHECKING:
     from pydantic.fields import FieldInfo
 
 logger = logging.getLogger(__name__)
-
-#: Problem kinds.
-KIND_BROKEN = "broken"
-KIND_INVALID = "invalid"
-KIND_UNKNOWN = "unknown"
-KIND_RETIRED = "retired"
+__all__ = ["KIND_BROKEN", "KIND_INVALID", "KIND_RETIRED", "KIND_UNKNOWN", "field_bounds"]
 
 #: Revision of a folder with no ``omrs.jsonc``.
 ABSENT = "absent"
@@ -105,6 +103,7 @@ class SettingsFile:
         key_paths: Field name to the file a ``file://`` reference read.
         key_file: Keys from ``secrets/<provider>.key``, by field name.
         problems: Everything that was ignored, in file order.
+        maps: The valid entries of each named map (``settings_maps``), by entry name.
     """
 
     directory: Path
@@ -117,6 +116,7 @@ class SettingsFile:
     key_paths: Mapping[str, str] = field(default_factory=dict)
     key_file: Mapping[str, str] = field(default_factory=dict, repr=False)
     problems: tuple[Problem, ...] = ()
+    maps: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
 
     def __repr__(self) -> str:
         names = sorted({*self.values, *self.secrets, *self.references, *self.key_file})
@@ -188,43 +188,6 @@ def _replacement(env_name: str) -> str | None:
     return None if new is None else new.lower().replace("__", ".")
 
 
-def field_bounds(info: FieldInfo) -> dict[str, Any]:
-    """Return the ``ge``, ``gt``, ``le`` and ``lt`` bounds that *info* declares."""
-    found: dict[str, Any] = {}
-    for item in info.metadata:
-        for name in ("ge", "gt", "le", "lt"):
-            if getattr(item, name, None) is not None:
-                found[name] = getattr(item, name)
-    return found
-
-
-#: The text of a one-sided bound, in the order the rule text tries them.
-_ONE_SIDED = (
-    ("gt", "greater than"),
-    ("ge", "of at least"),
-    ("lt", "less than"),
-    ("le", "of at most"),
-)
-
-
-def _rule_text(info: FieldInfo) -> str:
-    """Describe the type rule of a field. It names a kind and a range, never a value."""
-    if get_origin(info.annotation) is tuple:
-        return LIST_TYPE_RULE
-    names = {info.annotation, *get_args(info.annotation)}
-    bounds = field_bounds(info)
-    low, high = bounds.get("ge", bounds.get("gt")), bounds.get("le", bounds.get("lt"))
-    if bool in names:
-        return "The value must be true or false."
-    kind = "a whole number" if int in names else "a number" if float in names else None
-    if kind is None:
-        return "The value must be text." if str in names else "The value is not valid."
-    span = f" from {low} to {high}" if low is not None and high is not None else ""
-    if not span:
-        span = next((f" {text} {bounds[name]}" for name, text in _ONE_SIDED if name in bounds), "")
-    return f"The value must be {kind}{span}."
-
-
 _adapters: dict[int, TypeAdapter[Any]] = {}
 
 
@@ -294,6 +257,7 @@ class _Reader:
         self.references: dict[str, str] = {}
         self.key_paths: dict[str, str] = {}
         self.problems: list[Problem] = []
+        self.maps: dict[str, dict[str, Any]] = {}
         cls = _settings_class()
         self.fields = cls.model_fields
         self.blocks = setting_blocks(cls)
@@ -350,7 +314,9 @@ class _Reader:
 
     def read(self, data: Mapping[str, Any]) -> None:
         for key, value in data.items():
-            if key in FILE_ONLY:
+            if key in MAP_KEYS:
+                self.maps[key] = read_map(key, value, self.secrets_dir, self.problem)
+            elif key in FILE_ONLY:
                 rule = file_only_problem(key, value)
                 if rule is None:
                     self.values[key] = value
@@ -441,6 +407,7 @@ def read_settings_file(directory: Path | None = None) -> SettingsFile:
         reader.key_paths,
         key_file,
         tuple(reader.problems),
+        reader.maps,
     )
 
 

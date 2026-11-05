@@ -32,7 +32,9 @@ from .routes.chat_settings import router as chat_settings_router
 from .routes.chats import router as chats_router
 from .routes.configuration import router as configuration_router
 from .routes.connections import router as connections_router
+from .routes.decision_models import router as decision_models_router
 from .routes.document_reading import router as document_reading_router
+from .routes.document_routers import router as document_routers_router
 from .routes.documents import router as documents_router
 from .routes.embedding import router as embedding_router
 from .routes.experiment_editor import router as experiment_editor_router
@@ -77,6 +79,8 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     usage_credit_router,
     configuration_router,
     document_reading_router,
+    decision_models_router,
+    document_routers_router,
     embedding_router,
     runs_router,
     experiments_router,

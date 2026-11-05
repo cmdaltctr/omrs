@@ -241,12 +241,19 @@ forbidden_modules = [
     "omrs.core.providers.llm.ollama",
     "omrs.core.providers.llm.llamacpp",
     "omrs.core.providers.llm.openrouter",
+    # document-reading-routers task 2.1: decision model adapters. Only
+    # compose_decision reaches them, through the lazy decision registry.
+    "omrs.core.providers.decision.llamacpp",
+    "omrs.core.providers.decision.typesafe",
+    "omrs.core.providers.decision.cloudflare",
+    "omrs.core.providers.decision.ollama",
 ]
 # Imports within core/providers/ and imports made by the composition root
 # are permitted (registries resolve concrete modules lazily via importlib,
 # which import-linter cannot see; these expressions cover the static cases).
 ignore_imports = [
     "omrs.compose -> omrs.core.providers.**",
+    "omrs.compose_decision -> omrs.core.providers.decision.**",
     "omrs.core.providers.** -> omrs.core.providers.**",
 ]
 unmatched_ignore_imports_alerting = "none"
@@ -418,6 +425,7 @@ forbidden_modules = [
     "omrs.compose",
     "omrs.compose_answer",
     "omrs.compose_connections",
+    "omrs.compose_decision",
     "omrs.compose_embedding",
     "omrs.compose_engine",
     "omrs.compose_experiments",
@@ -537,6 +545,8 @@ forbidden_modules = [
     "omrs.compose",
     "omrs.compose_answer",
     "omrs.compose_connections",
+    "omrs.compose_decision",
+    "omrs.compose_decision_keys",
     "omrs.compose_llamacpp",
     "omrs.compose_embedding",
     "omrs.compose_engine",

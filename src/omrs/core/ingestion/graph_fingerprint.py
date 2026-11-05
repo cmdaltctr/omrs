@@ -60,6 +60,13 @@ _ADDED_PARAMS = frozenset(
     {"pdf_readers", "ocr_engines", "ocr_non_latin_routing", "ocr_local_backends"}
 )
 
+#: Read options whose name never enters the fingerprint or the ``graph_shape``
+#: block (change document-reading-routers, D9). The step's router still reaches
+#: the identify step through :meth:`IngestionShape.step_options`, and its recipe
+#: enters the ``parser`` block as the host router's does, so a rename does not
+#: reindex and a step that names the host router keeps the host identity.
+_UNHASHED_OPTIONS = frozenset({"document_router"})
+
 
 @dataclass(frozen=True)
 class IngestionShape:
@@ -104,8 +111,9 @@ class IngestionShape:
         if self.standard:
             return None
         block: dict[str, Any] = {"schema": SHAPE_SCHEMA, "fingerprint": self.fingerprint}
-        if self.read_options:
-            block["read_options"] = dict(sorted(self.read_options.items()))
+        shown = {k: v for k, v in self.read_options.items() if k not in _UNHASHED_OPTIONS}
+        if shown:
+            block["read_options"] = dict(sorted(shown.items()))
         return block
 
 
@@ -171,6 +179,8 @@ class _Slice:
             descriptor = self.descriptors[node_id]
             params = descriptor.parameters.model_validate(node.params).model_dump(mode="json")
             params.pop(descriptor.collection_param or "", None)
+            for name in _UNHASHED_OPTIONS:
+                params.pop(name, None)
             params = {k: v for k, v in params.items() if v is not None or k not in _ADDED_PARAMS}
             self._memo[node_id] = _digest(
                 {

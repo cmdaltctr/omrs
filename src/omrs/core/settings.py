@@ -369,6 +369,11 @@ class EffectiveSettings(BaseModel):
     ocr_maths_routing_enabled: bool = True
     ocr_non_latin_routing: OcrNonLatinMode = "off"
     ocr_worker_seconds_per_page: float = Field(default=120.0, ge=0.0)
+    # Document routers (ADR-110): the host router name, and the named maps of
+    # omrs.jsonc as the frozen entries of config/settings_maps.py, by name.
+    document_router: str = ""
+    decision_models: dict[str, Any] = Field(default_factory=dict)
+    document_routers: dict[str, Any] = Field(default_factory=dict)
 
     # ── Codebase map ──────────────────────────────────────────────
     magika_binary: str = "magika"

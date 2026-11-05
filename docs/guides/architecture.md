@@ -539,10 +539,14 @@ MCP server and the watcher. It lives in `integrations/llamacpp_runtime/`:
 The code is synchronous and uses threads, so the CLI and the watcher need no
 event loop. The web routes call it through `run_in_threadpool`.
 
-**Roles and modes.** The runtime ids are `chat`, `embeddings` and
-`ocr-<engine folder>`. Each role is `external` (you run the server and give
-a URL) or `managed` (OMRS starts or adopts it). Chat and embeddings default
-to `external`. An OCR runtime is managed unless `ocr_runtime_url` is set.
+**Roles and modes.** The runtime ids are `chat`, `embeddings`,
+`ocr-<engine folder>` and `decision-<entry name>`. Each role is `external`
+(you run the server and give a URL) or `managed` (OMRS starts or adopts it).
+Chat and embeddings default to `external`. An OCR runtime is managed unless
+`ocr_runtime_url` is set. A decision runtime exists only for a `llamacpp`
+decision model entry with `server: "managed"`. It declares the model and
+projector files with SHA-256, binds `127.0.0.1` with one slot, and refuses a
+build below `BUILD_FLOOR` with `wrong-build` (change `document-reading-routers`).
 
 **Where it sits in the import contracts.** The manager is an integration, so
 `integrations-are-leaves` applies: it does not import `core`, `transports` or
@@ -642,7 +646,7 @@ own code. They adopt the helper later.
 Every Python module under `src/omrs/integrations/`, classified. A contract
 test fails when a module is missing from this table.
 
-<!-- integration-inventory:start count=67 -->
+<!-- integration-inventory:start count=72 -->
 
 | Module                                   | Availability                                                   | Selector                                                            | Shared contract                               | Fallback owner                                                                    | Disposition                                                         |
 | ---------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
@@ -667,7 +671,7 @@ test fails when a module is missing from this table.
 | `omrs.integrations.llamacpp_runtime.manager` | Native | `LLAMACPP_CHAT_SERVER`, `LLAMACPP_EMBED_SERVER`, `OCR_RUNTIME_URL` | `RuntimeManager` (one per process): `lease`, `stop` (operator), `sweep`, `status`, `close`; `install_sigterm_exit` | None; an external runtime is never started or stopped | Injected by `compose.py`; `IDLE_STOP_SECONDS = 600`; `atexit` leave |
 | `omrs.integrations.llamacpp_runtime.process` | Native | None | Detached start, build check (`--version`), SHA-256 file check, `ps` command-line check, SIGTERM/SIGKILL stop | None; a failed check gives a fixed reason | Only module that starts or stops a runtime process; no shell |
 | `omrs.integrations.llamacpp_runtime.rules` | Native | None | Launch checks: program rule, model kind, loopback port, argument lists, child environment, fixed reasons | None | Moved from `core/providers/llm/llamacpp_rules.py`; standard-library only |
-| `omrs.integrations.llamacpp_runtime.spec` | Native | None | Frozen `RuntimeSpec` (id, role, mode, argv, files, build, port policy, slots) | None | Chat and embeddings builders; free-port OCR runtime; no `--sleep-idle-seconds` |
+| `omrs.integrations.llamacpp_runtime.spec` | Native | None | Frozen `RuntimeSpec` (id, role, mode, argv, files, build, build floor, port policy, slots) | None | Chat and embeddings builders; free-port OCR runtime; fixed-port decision runtime with one slot; no `--sleep-idle-seconds` |
 | `omrs.integrations.llamacpp_runtime.state` | Native | `OMRS_STATE_DIR`, `$XDG_STATE_HOME` | `server.json` atomic read/write and the state root | Missing or broken file reads as no record | Local-disk runtime state shared by every OMRS process |
 | `omrs.integrations.part_registry` | Native | None | `PartRegistry`: register, describe, names, lazy cached `get`, `probe`, import-free `installed`, per-process `switch_off` and `off_reason` | None | Shared helper for the page-reading registries (change `local-ocr-backends`, ADR-112); imports no part at module level |
 | `omrs.integrations.pdf`               | Native                                                         | None                                                                | `get_pdf_reader(reader)`                      | None                                                                              | Public facade exposing the factory                                  |
@@ -684,10 +688,15 @@ test fails when a module is missing from this table.
 | `omrs.integrations.pdf.maths_pages` | Base, via `pypdf` | `OCR_MATHS_ROUTING_ENABLED` | `maths_font_pages` frozenset of 1-based pages | Unreadable font resources → no pages flagged | Closed, versioned maths-font list (`MATHS_DETECTOR_VERSION`) |
 | `omrs.integrations.pdf.maths_routing` | Native | `OCR_MATHS_ROUTING_ENABLED` | Maths-page detection and page split | Disabled → routing unchanged | Maths-page decisions the pdf-inspector seam calls |
 | `omrs.integrations.pdf.ocr_routing`   | Native                                                         | `PDF_READER=pdf_inspector` and `OCR_FALLBACK_ENABLED`               | `OcrRoutedPdfInspector` and OCR diagnostics  | No OCR route before dispatch: flagged pages keep native text and count unresolved | Page-level routing seam around the pdf-inspector strategy           |
+| `omrs.integrations.pdf.page_images` | Native | An image router (`images: true`) | `render_page(file, page)` (PNG, 150 DPI, long side at most 1,568 px, page from 1), `available()`, `NoRendererError` | No renderer installed → `NoRendererError`; the router status is `renderer-missing` | Page images for image routers (change `document-reading-routers`, design D5); `available()` imports no renderer |
+| `omrs.integrations.pdf.page_images.liteparse` | Base dependency (`liteparse`) | First in `registry.ORDER` | `LiteParseRenderer.render` through LiteParse `screenshot` | Render failure raises; the router keeps the page and counts it unjudged | First renderer; pages numbered from 1 |
+| `omrs.integrations.pdf.page_images.pypdfium2` | Optional extra (`pdf-pypdfium2`) | Second in `registry.ORDER`, when LiteParse is missing | `PyPdfium2Renderer.render`, PNG encoding | `pypdfium2` missing → not available | Second renderer; page `n` is index `n - 1` |
+| `omrs.integrations.pdf.page_images.registry` | Native | None | `PartRegistry("page renderer")`, `ORDER`, `register` with `probe_module` | Unknown names raise | Not a reading part: no descriptor, no entry-point group; importing it imports no renderer |
 | `omrs.integrations.pdf.page_routing` | Base dependency (`pdf-inspector`) | `OCR_ROUTING_UNIT=page` (the default and only legal value) | `page_evidence`, `local_ocr` (delegates to `local_ocr.chain`), `resolve_local_model_identity(settings, backend)`, `local_tier_off_reason`, `merge_pages` | Full page scan raises: the page unit has no sampled evidence to fall back to | Page-unit OCR routing: per-page evidence, the local tier with its post-check, and the page-source counts; the seam emits one document per page |
 | `omrs.integrations.pdf.page_rules` | Native | None | Package marker for the page rules | None | Imports no rule module (change `local-ocr-backends`, design D5) |
 | `omrs.integrations.pdf.page_rules.base` | Native | None | `RuleContext`, `RuleOutcome`, the `PageRule` protocol and the `PostCheck` callable | None | Interface of a page rule; optional `post_check`, `degrade` and `stamp` hooks |
 | `omrs.integrations.pdf.page_rules.blank` | Base, via `liteparse` renders | Always on, flagged pages only | `RULE`, order 10: drops the pages `blank_pages.find_blank_pages` finds | Render or score failure → no page dropped | Built-in page rule; calls the blank test through its module at call time |
+| `omrs.integrations.pdf.page_rules.document_router` | Native; the judge comes from the composition root | `DOCUMENT_ROUTER` names a `document_routers` entry | `RULE`, order 40, `adds_pages`: unflagged, unclaimed text pages below the router threshold go to the OCR engine list; degrade to the local tier; `router_pages_*` and `router_status` stamps | A fixed reason (for example `unreachable`, `renderer-missing`) → empty outcome and `router_status`; a failed request keeps the page | Built-in page rule (change `document-reading-routers`, design D4); imports no provider |
 | `omrs.integrations.pdf.page_rules.maths` | Base, via `pypdf` | `OCR_MATHS_ROUTING_ENABLED` | `RULE`, order 20: maths pages go direct; stamps `pages_maths_font` | Disabled → no page direct, no stamp | Built-in page rule; calls `maths_routing.detect_maths_pages` at call time |
 | `omrs.integrations.pdf.page_rules.non_latin` | Native | `OCR_NON_LATIN_ROUTING` | `RULE`, order 30: direct set, `non_latin_output` post-check, degrade to the local tier, `pages_non_latin` stamp | No engine available → today's routing and one warning | Built-in page rule; calls `script_routing` at call time |
 | `omrs.integrations.pdf.page_rules.pipeline` | Native | Registered page rules in ascending order | `run_rules` → `RoutingPlan` (drops, direct, local split, post-checks, degrade, stamps) | External rule that fails → skipped for the file, one warning, switched off | Four fixed semantics of design D5; a built-in rule's exception reaches the caller |
@@ -726,7 +735,7 @@ The same rule applied to every name-dispatched family, inside and outside
 | Community detection | `COMMUNITY_ALGORITHM`                                                                                    | `core/community/registry.py`                                        | Registered in this change: `louvain` native, `leiden` optional via `integrations/leidenalg.py`                                                                   | None      |
 | PDF readers         | `PDF_READERS`                                                                                            | `integrations/pdf/registry.py` behind `integrations/pdf/factory.py` | Concrete readers registered behind the unchanged `auto` factory, on the shared `PartRegistry`                                                                                                  | None      |
 | Local OCR backends | `OCR_LOCAL_BACKENDS` (ordered list), `OCR_LOCAL_MIN_CONFIDENCE` (optional override of every cut) | `integrations/pdf/local_ocr/registry.py` | `pp-ocrv6-small` native default and `indra` optional via `integrations/pdf/local_ocr/indra.py`, both on the shared `PartRegistry`; the chain in `local_ocr/chain.py` owns escalation and fallback | None |
-| Page rules | Registered rules in ascending order; `OCR_MATHS_ROUTING_ENABLED`, `OCR_NON_LATIN_ROUTING` | `integrations/pdf/page_rules/registry.py` | `blank`, `maths` and `non_latin` registered on the shared `PartRegistry`; `page_rules/pipeline.py` owns the order and the failure rule | None |
+| Page rules | Registered rules in ascending order; `OCR_MATHS_ROUTING_ENABLED`, `OCR_NON_LATIN_ROUTING`, `DOCUMENT_ROUTER` | `integrations/pdf/page_rules/registry.py` | `blank`, `maths`, `non_latin` and `document_router` registered on the shared `PartRegistry`; `page_rules/pipeline.py` owns the order and the failure rule | None |
 | Chunking            | Content-type dispatch in `core/ingestion/chunker.py`; `CHUNKING__STRATEGY_FALLBACK` (default `markdown`) | `core/chunking/registry.py`                                         | Already a registry                                                                                                                                               | None      |
 | Metadata extraction | `METADATA__EXTRACTION_MODE` and provider backends                                                        | `core/metadata/registry.py`                                         | Already a registry                                                                                                                                               | None      |
 | Embedding providers | `EMBED_PROVIDER`                                                                                         | `core/providers/embeddings/registry.py`                             | Already a registry                                                                                                                                               | None      |
@@ -758,7 +767,7 @@ Live registry contents, kept in step with the code by contract tests:
 
 <!-- registry-names:page-rule -->
 
-`blank` `maths` `non_latin`
+`blank` `document_router` `maths` `non_latin`
 
 <!-- /registry-names:page-rule -->
 

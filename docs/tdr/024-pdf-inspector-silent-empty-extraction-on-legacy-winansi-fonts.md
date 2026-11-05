@@ -174,3 +174,11 @@ OpenSpec change modifying the shipped guard. The character deltas
 between rescue tiers (liteparse ~2–16% fewer characters) are textless
 pages and page furniture; token-level content equivalence is not
 measured.
+
+## Note (2026-11-04): page routing superseded the zero for routing
+
+Change `document-reading-routers` checked the zeroing of `pages_needing_ocr` against the current code.
+
+- The adapter still sets `pages_needing_ocr` to 0 after a rescue. The page routing unit does not read that value. It scans every page again and routes the pages that the scan flags. So the zero no longer decides routing. The rescue text is the record only when the scan finds no text on any page.
+- A page that the scan does not flag and that has a junk text layer keeps that text. The document routers of change `document-reading-routers` cover this case. A router is the page rule `document_router` (order 40). It judges each unflagged page with text and sends a rejected page to OCR. No router is selected by default.
+- See `docs/guides/reading-parts.md`, section "The document router".

@@ -157,13 +157,27 @@ def build_pdf_reader(reader: str, settings: Any = None, *, ocr_client: Any = Non
     # adapter that has them. No list (a test double) keeps the adapter default.
     listed = tuple(getattr(settings, "pdf_readers", ()))
     inner = get_pdf_reader(resolved, tiers_after(resolved, listed) if listed else None)
-    if resolved == "pdf_inspector" and settings is not None:
-        enabled = bool(getattr(settings, "ocr_fallback_enabled", False))
-        if enabled:
-            from .ocr_routing import OcrRoutedPdfInspector
+    if wraps_ocr_routing(resolved, settings):
+        from .ocr_routing import OcrRoutedPdfInspector
 
-            return OcrRoutedPdfInspector(inner, settings=settings, ocr_client=ocr_client)
+        return OcrRoutedPdfInspector(inner, settings=settings, ocr_client=ocr_client)
     return inner
+
+
+def wraps_ocr_routing(resolved: str, settings: Any) -> bool:
+    """Report whether :func:`build_pdf_reader` wraps reader *resolved* in the OCR seam.
+
+    Only the seam runs the page rules, so the router's index identity reads
+    this too (change document-reading-routers, design D9).
+
+    Args:
+        resolved: A concrete reader name (``auto`` never resolves to
+            ``pdf_inspector``, so it reads as not wrapped).
+        settings: Settings carrying ``ocr_fallback_enabled``, or ``None``.
+    """
+    if resolved != "pdf_inspector" or settings is None:
+        return False
+    return bool(getattr(settings, "ocr_fallback_enabled", False))
 
 
 def _resolve_auto() -> str:

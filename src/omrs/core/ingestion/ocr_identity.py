@@ -36,9 +36,11 @@ Design D8 contract implemented here:
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import asdict, is_dataclass
 from typing import Any
 
+from .. import reading_parts
 from ..reading_parts import (
     DEFAULT_LOCAL_OCR_BACKENDS,
     KIND_LOCAL_OCR_BACKEND,
@@ -275,3 +277,82 @@ def non_latin_routing_payload(settings: Any) -> dict[str, Any]:
     from ...integrations.pdf.script_routing import SCRIPT_DETECTOR_VERSION
 
     return {"non_latin_routing": {"mode": mode, "detector_version": SCRIPT_DETECTOR_VERSION}}
+
+
+def _entry_value(entry: Any, key: str, default: Any = None) -> Any:
+    """Return *key* of a settings map entry given as a mapping or as an object."""
+    if isinstance(entry, Mapping):
+        return entry.get(key, default)
+    return getattr(entry, key, default)
+
+
+def _decision_model_identity(entry: Any) -> dict[str, Any]:
+    """Return the kind and model identity of a decision model entry (design D9).
+
+    A managed entry adds the SHA-256 of its model and projector files. The
+    address, the key and the file paths say where the model lives, not what
+    it is, so they stay out.
+    """
+    if entry is None:
+        return {}
+    identity = {"kind": _entry_value(entry, "kind"), "model": _entry_value(entry, "model")}
+    if _entry_value(entry, "server") == "managed":
+        identity["model_sha256"] = _entry_value(entry, "model_sha256")
+        identity["projector_sha256"] = _entry_value(entry, "projector_sha256")
+    return identity
+
+
+def document_router_payload(settings: Any) -> dict[str, Any]:
+    """Return the ``parser`` entry of the selected router, empty with no router.
+
+    Change document-reading-routers, design D9. The entry holds what decides
+    the text: the question, threshold, image flag, character limit, the
+    decision model identity and the rule version. The router name, address,
+    key and opt-in stay out, so a rename does not reindex. ``""`` or ``none``,
+    or a name that no router entry has, adds nothing. ``runnable`` records
+    whether the router can judge pages now (:func:`_router_runnable`), so a
+    source read while it could not stays stale until it can.
+    """
+    name = getattr(settings, "document_router", "") or ""
+    router = (getattr(settings, "document_routers", None) or {}).get(name)
+    if name in ("", "none") or router is None:
+        return {}
+    model = (getattr(settings, "decision_models", None) or {}).get(_entry_value(router, "model"))
+    rule = reading_parts.by_name(reading_parts.PAGE_RULES, "document_router")
+    return {
+        "document_router": {
+            "question": _entry_value(router, "question"),
+            "threshold": _entry_value(router, "threshold"),
+            "images": bool(_entry_value(router, "images", False)),
+            "max_chars": _entry_value(router, "max_chars", 2000),
+            "model": _decision_model_identity(model),
+            "version": rule.version,
+            "runnable": _router_runnable(settings),
+        }
+    }
+
+
+def _router_runnable(settings: Any) -> bool:
+    """Report whether the selected router can judge pages on this host now.
+
+    The router's counterpart of the worker fingerprint's ``available``. True
+    only when the PDF path wraps the reader in the OCR seam (the only place
+    page rules run), the OCR routes' judge hook gives a page judge whose
+    status is ``None``, and an image router has a page renderer. The hook
+    keeps ``core`` free of the composition root; with no hook installed
+    there is no judge, so the router cannot run. ``router_identity`` builds
+    the ``runnable: false`` digest a read whose router failed is stored under.
+    """
+    from ...integrations.ocr_worker.routes import page_judge
+    from ...integrations.pdf import page_images
+    from ...integrations.pdf.factory import wraps_ocr_routing
+    from .router_identity import router_assumed_not_runnable
+
+    if router_assumed_not_runnable():  # the digest a failed read is stored under
+        return False
+    if not wraps_ocr_routing(getattr(settings, "pdf_reader", ""), settings):
+        return False
+    judge = page_judge(settings)
+    if judge is None or judge.status is not None:
+        return False
+    return page_images.available() if judge.images else True

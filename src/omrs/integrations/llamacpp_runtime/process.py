@@ -62,7 +62,8 @@ class StartRefused(Exception):
 
     Attributes:
         reason: The fixed reason.
-        detail: A file name for ``file-changed``, else ``""``.
+        detail: A file name for ``file-changed``, the build found and the floor
+            for a decision runtime's ``wrong-build``, else ``""``.
     """
 
     def __init__(self, reason: str, detail: str = "") -> None:
@@ -334,6 +335,11 @@ def start_server(
     env = rules.child_environment(environ, kind)
     if spec.build is not None and read_build(spec.binary, env) != spec.build:
         raise StartRefused("wrong-build")
+    if spec.min_build is not None:
+        found = read_build(spec.binary, env)
+        if found is None or found < spec.min_build:
+            shown = "no build" if found is None else f"b{found}"
+            raise StartRefused("wrong-build", f"found {shown}, needs b{spec.min_build} or later")
     changed = changed_file(spec.files)
     if changed is not None:
         raise StartRefused("file-changed", changed)

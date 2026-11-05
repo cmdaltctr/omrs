@@ -2,7 +2,7 @@
 
 Each ``register()`` line below has a part descriptor in
 ``core/reading_parts.py`` (``PAGE_RULES``); ``tests/unit/test_reading_parts_pins.py``
-pins the two to each other. The order and the four hook flags are declared
+pins the two to each other. The order and the hook flags are declared
 facts. Importing this module imports no rule module.
 """
 
@@ -29,6 +29,7 @@ def register(
     sends_direct: bool = False,
     has_post_check: bool = False,
     has_degrade: bool = False,
+    adds_pages: bool = False,
     source: str = SOURCE_BUILT_IN,
 ) -> None:
     """Register a page rule. Registering a name again replaces it.
@@ -41,6 +42,7 @@ def register(
         sends_direct: True when the rule can send a page straight to OCR.
         has_post_check: True when the rule has a ``post_check`` hook.
         has_degrade: True when the rule has a ``degrade`` hook.
+        adds_pages: True when the rule can add unflagged pages to the OCR route.
         source: ``built-in``, or the distribution that adds the rule.
     """
     RULES.register(
@@ -51,6 +53,7 @@ def register(
         sends_direct=sends_direct,
         has_post_check=has_post_check,
         has_degrade=has_degrade,
+        adds_pages=adds_pages,
         source=source,
     )
 
@@ -84,4 +87,11 @@ register(
     sends_direct=True,
     has_post_check=True,
     has_degrade=True,
+)
+register(
+    "document_router",
+    "omrs.integrations.pdf.page_rules.document_router:RULE",
+    order=40,
+    has_degrade=True,
+    adds_pages=True,
 )

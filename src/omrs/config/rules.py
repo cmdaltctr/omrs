@@ -156,6 +156,12 @@ DOCUMENT_READING_KEYS: tuple[str, ...] = (
     *PAGE_RULE_KEYS,
     LOCAL_BACKENDS_KEY,
 )
+#: The name of a decision model or router entry, and of the host router (ADR-110).
+ENTRY_NAME_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}")
+ENTRY_NAME_RULE = (
+    "An entry name must start with a letter or digit, hold only letters, digits, "
+    "hyphens and underscores, and be at most 64 characters."
+)
 _READING_BOOLEANS = frozenset({"ocr_fallback_enabled", "ocr_maths_routing_enabled"})
 _READING_ENGINES = frozenset({"ocr_engine_primary", "ocr_engine_fallback"})
 BLANK_RULE = "The value must not be blank. Send null to use the default."
@@ -298,6 +304,9 @@ def document_reading_problem(key: str, value: Any) -> str | None:
     if key in _READING_ENGINES:
         ok = isinstance(value, str) and len(value) <= MAX_ENGINE_NAME_CHARS
         return None if ok and re.fullmatch(ENGINE_NAME_PATTERN, value) else ENGINE_NAME_RULE
+    if key == "document_router":
+        ok = isinstance(value, str) and ENTRY_NAME_PATTERN.fullmatch(value)
+        return None if ok else ENTRY_NAME_RULE
     accepted = PDF_READER_NAMES if key == "pdf_reader" else ACCEPTED[key]
     return None if value in accepted else f"The value must be one of: {', '.join(accepted)}."
 
