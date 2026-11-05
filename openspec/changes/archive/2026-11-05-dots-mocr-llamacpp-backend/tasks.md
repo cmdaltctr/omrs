@@ -110,10 +110,11 @@ Start this group only after group 2b is done.
 - [x] 4.4 Write the ADR "dots.mocr runs on llama.cpp", and append a dated note to ADR-072 (no edits to its old text). The ADR states that Experiment 41 failed the speed gate, records the operator's reasons for moving anyway, and cites the D9 results. Add it to the ADR index.
   - Verify: the index lists the new ADR, and ADR-072 links to it.
   - Operator decision 2026-11-02: write this ADR later, after the cut-over. It also records that Ollama and MLX can run the engine (a `model` field is needed) but gave different text from llama.cpp on a 10-page test (Ollama 7 of 10 pages identical, MLX 3 of 10), so llama.cpp is the only parity-checked runtime.
-- [ ] 4.5 Provision the new `dots-mocr` engine in the live workers folder `~/.omrs/ocr-workers`, then restart the live web app.
+- [x] 4.5 Provision the new `dots-mocr` engine in the live workers folder `~/.omrs/ocr-workers`, then restart the live web app.
   - Open 2026-11-05: waits for the operator (gate G11 of doc-reading-master-flow). The live workers folder still holds the PyTorch `dots-mocr`. Once this change reaches the live app, that engine stops working until it is provisioned again (breaking change), so merge only together with task 4.5.
   - Needs operator approval before touching the live app. The next ingest re-indexes the live collections.
   - Verify: the live Integrations page shows `dots-mocr` ready, and one live ingest of a scanned PDF returns OCR text.
+  - Done 2026-11-05 (gate G11 given by the operator): PR #172 merged (`c902b09a`). The live app was reinstalled from `v3` with the lock constraints (0 version differences). The engine files came from `git archive`, the model cache was APFS-cloned, then `uv sync --locked --python 3.12` and `omrs-ocr-fetch` ran (hashes checked). The PyTorch engine moved to `~/.omrs/ocr-workers-retired/`. Integrations shows `dots-mocr` Ready. A 1-page image-only extract of `rf06` page 29, ingested with the live program and live engine into a scratch store, gave `ocr_pages_worker = 1`, `ocr_backend = dots_mocr_llamacpp` and the text "Dr. Antonia Cruz González … Sevilla 17 de Abril de 1911".
 
 ## 5. Close
 
@@ -121,8 +122,9 @@ Start this group only after group 2b is done.
   - Verify: every step passes, and no step reports `SKIPPED` without a stated reason.
 - [x] 5.2 Run `openspec validate --all --strict`.
   - Verify: everything passes.
-- [ ] 5.3 Open the pull request into `v3`, wait for CI, and work through the review comments.
+- [x] 5.3 Open the pull request into `v3`, wait for CI, and work through the review comments.
   - Verify: every CI check is green, and every review thread is answered and resolved. Merge only when the operator says so.
+  - Done 2026-11-05: PR #172, CI green, 20 review threads answered and resolved, merged on the operator's word (`c902b09a`). Smoke evidence copied to `DATA/omrs/openspec-evidence/2026-11-05-dots-mocr-llamacpp-backend/` with SHA-256 values.
 
 ## Workflow follow-up
 

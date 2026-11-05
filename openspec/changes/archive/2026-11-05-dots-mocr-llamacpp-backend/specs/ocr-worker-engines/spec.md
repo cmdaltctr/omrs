@@ -21,13 +21,19 @@ One provisioning command SHALL provision one named engine from that engine's loc
 
 ### Requirement: Model weights are fetched at provisioning
 
-An engine that ships the `omrs-ocr-fetch` step (the `dots-mocr` engine) SHALL fetch its model files and any runtime binary it needs at provisioning, each at a pinned revision or release, and SHALL check each against a pinned SHA-256. A parse by such an engine SHALL NOT download files. The `paddleocr-vl` engine ships no fetch step: Paddle downloads its model files into the engine cache on the first parse. A model file that an engine declares with a SHA-256 and that no longer matches SHALL stop that engine's route before dispatch, with a reason that names the file.
+An engine that ships the `omrs-ocr-fetch` step (the `dots-mocr` engine) SHALL fetch its model files and any runtime binary it needs at provisioning, each at a pinned revision or release, and SHALL check each against a pinned SHA-256. A parse by such an engine SHALL NOT download files. A declared model file that no longer matches its SHA-256 SHALL stop that engine's route before dispatch.
 
 #### Scenario: Parse runs offline
 
 - **GIVEN** a provisioned `dots-mocr` engine with its files in the engine cache
 - **WHEN** it parses a page with network access blocked
 - **THEN** the parse SHALL succeed without a download attempt
+
+#### Scenario: An engine without a fetch step downloads on the first parse
+
+- **GIVEN** the `paddleocr-vl` engine, which ships no `omrs-ocr-fetch` step
+- **WHEN** it parses its first page
+- **THEN** Paddle MAY download its model files into the engine cache
 
 #### Scenario: A changed model file stops the engine
 
