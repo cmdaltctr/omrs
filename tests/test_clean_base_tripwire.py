@@ -292,7 +292,13 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # removed): external rule guards (13), broken named parts (6), Indra identity (5),
 # clean health reasons (4), PP-OCRv6 probe only when listed (2) and the discovered
 # part name in the contract (1, needs fastapi, see _WEB_EXTRA_CASES).
-_BASE_EXECUTED = 10511
+# +364 (2026-11-05, document-reading-routers, by test-ID diff against 2e877109, 366
+# added, 2 removed): page-rule add hook (27), document_router rule, identity and
+# one-part pins (56), page renderers (13), settings maps (74), decision models (111),
+# judge wiring (7), decision runtime (6), Read step router (18), health and order
+# pins (6), contract coverage (2) and router and decision model routes (46, need
+# fastapi, see _WEB_EXTRA_CASES). Removed: two renamed built-in order cases.
+_BASE_EXECUTED = 10875
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -637,7 +643,10 @@ if not _has_qwen_tokenizer:
 # +10 (2026-11-04, same change, group 6): catalogue (6), integrations route (1) and
 # Settings save (3).
 # +1 (2026-11-04, same change, PR 168 review): the discovered part name in the contract.
-_WEB_EXTRA_CASES = 1891
+# +46 (2026-11-05, document-reading-routers, measured with fastapi blocked):
+# test_web_document_routers.py (22), test_web_decision_models.py (20),
+# test_web_document_reading.py (3) and test_web_runtimes_decision.py (1).
+_WEB_EXTRA_CASES = 1937
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)
