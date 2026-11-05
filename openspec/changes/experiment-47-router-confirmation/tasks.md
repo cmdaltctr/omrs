@@ -9,7 +9,7 @@
 - [x] 1.3 Write the harness on the shipped router path (`prepare_inputs.py`, `label_pages.py`, `score_router.py`, `analysis.py`, `exp47_io.py`). Verify: the tests call `run_rules` and `build_page_judge` with a mock transport; no `src/` change.
 - [x] 1.4 Fix the 11 points of issue #171, each with a test that fails without the fix and a mutation check. Verify: `uv run --no-sync pytest experiments/47-router-confirmation-2026-11-05 experiments/_lib -q` passes.
 - [x] 1.5 Validate this change. Verify: `openspec validate experiment-47-router-confirmation --strict` and `openspec validate --all --strict` pass.
-- [ ] 1.6 Commit `protocol.md`, `plan.json`, the harness and this change before any download or score. Verify: `git log` shows the commit before any `corpus/` or `output/` file exists.
+- [x] 1.6 Commit `protocol.md`, `plan.json`, the harness and this change before any download or score. Verify: `git log` shows the commit before any `corpus/` or `output/` file exists.
 
 ## 2. Operator decisions
 
@@ -17,11 +17,11 @@
 - [x] 2.2 OD2: approve the shortlist and fill `corpus_manifest.json`. Verify: `uv run --no-sync python prepare_inputs.py --validate` prints "manifest valid".
 - [x] 2.3 OD3: approve the labelling method and the review rule (design D4). Verify: a dated entry.
 - [x] 2.4 OD4: decide on the hosted reference arm (design D7). Verify: a dated entry with scope `hosted_reference_arm`, or the entry stays `NOT REQUESTED`.
-- [ ] 2.5 Commit the approved `plan.json`. No run exists yet, so this is not an amendment. Verify: `git status` shows `plan.json` clean.
+- [x] 2.5 Commit the approved `plan.json`. No run exists yet, so this is not an amendment. Verify: `git status` shows `plan.json` clean.
 
 ## 3. Inputs and labels (local only)
 
-- [ ] 3.1 Download each PDF into `corpus/`. Run `prepare_inputs.py`. Verify: `output/inputs.json` holds every document; `git check-ignore` covers `output/.private/` and `corpus/`.
+- [x] 3.1 Download each PDF into `corpus/`. Run `prepare_inputs.py`. Verify: `output/inputs.json` holds every document; `git check-ignore` covers `output/.private/` and `corpus/`.
 - [ ] 3.2 Make local references with `label_pages.py references --resume`. Verify: `output/reference_state.json` has one `ok` entry per page, or each failure is named.
 - [ ] 3.3 Make labels with `label_pages.py labels`. Verify: `output/labels.json` and `output/set_check.json` exist; the set check passes, or stop and amend.
 - [ ] 3.4 Label review in `output/label_review.json` by the coding agent (amendment A1, 2026-11-05: the operator does not review labels by eye). Verify: every verdict set; 3 or fewer disagreements, or stop and amend.

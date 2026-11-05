@@ -1,0 +1,1339 @@
+{
+  "identity": {
+    "pdf_inspector": "1.17.0",
+    "renderer": "liteparse",
+    "renderer_version": "2.11.1",
+    "page_routing_sha256": "9a6ffb7635f7c7dd4878d14169005a0bb195f6fa236412fb84b26083cea7eeda",
+    "page_images_sha256": "53e4cff9bd55e52ca030d119b83fc3af981dd861f303b80e33c03f294843b6fc"
+  },
+  "manifest_sha256": "5d628b2711dd2676b12a628bd29501174ae78be087fd4284c26c16e7a28eed29",
+  "documents": {
+    "j1": {
+      "pdf_sha256": "e6f5587b72e3a8700487843761fd980f82b8cb970a54016f9f1d1a1ba67d1138",
+      "rows": [
+        {
+          "doc_id": "j1",
+          "page": 1,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "aefac3bc7f7b49d62db95bf899c6fd2fd58d04b8e14b33db1dc119113cba6e5c"
+        },
+        {
+          "doc_id": "j1",
+          "page": 2,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "a1389d732bbd1f56934253713dff6ba23d89c40ddc541ce34f6556b5d6223984"
+        },
+        {
+          "doc_id": "j1",
+          "page": 3,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "14d42e7f13699035efd0d85e3ef31984bb13ed79ed8508c4234e494208b805f5"
+        },
+        {
+          "doc_id": "j1",
+          "page": 4,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "dbee6634c9cbf371f9f1f8311caea9cff037f14144b90f62df90989ce1c62b9a"
+        }
+      ]
+    },
+    "j2": {
+      "pdf_sha256": "a0f362f3d09b06bb7a4b9ac92b5944380430deaed3d9b7c596f93931c1a29a02",
+      "rows": [
+        {
+          "doc_id": "j2",
+          "page": 1,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "3d0e86e7e89eff9acc0bb3615f06ab0adeada12c544479ff2b24ced9eacf3373"
+        },
+        {
+          "doc_id": "j2",
+          "page": 2,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "71b3dadf2195d6150558f9a324b56647bc562b4bc5cc2a5b550034a500299c2f"
+        },
+        {
+          "doc_id": "j2",
+          "page": 3,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "6d143284a39f5e0e6b98eb6c43b6645519d9bf586b1c3bb9ded69aea3b0148dc"
+        }
+      ]
+    },
+    "j3": {
+      "pdf_sha256": "aed378e4a7044d55a11284d4c709dc88da25fc3ceef3d7e8847e163105cbba7e",
+      "rows": [
+        {
+          "doc_id": "j3",
+          "page": 1,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "b788610891ca13ebfc424db9e2899181232049ec07864423bf60640ad2976c57"
+        },
+        {
+          "doc_id": "j3",
+          "page": 2,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "fa47795b58252fee65fdc95b2f9d5f72955ed234e94207f84333156a9fb016c3"
+        },
+        {
+          "doc_id": "j3",
+          "page": 3,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "b2229183c8dbec4e7f9c8319528da68e33eaa0b61792c503416a7afb396dacca"
+        },
+        {
+          "doc_id": "j3",
+          "page": 4,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "70c4a829b91bbec0e936978c12b0cb90b950a11cacc0a27e7365954440840cc5"
+        }
+      ]
+    },
+    "j4": {
+      "pdf_sha256": "623d0f9c6702df3290efaa3056f44605403783d0043467e1b7b668caaadbabdc",
+      "rows": [
+        {
+          "doc_id": "j4",
+          "page": 9,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "f73d1b3ebfaf4438da138be586d3d6aee414fd3e838f94158bd9ae5a86e1be6d"
+        },
+        {
+          "doc_id": "j4",
+          "page": 10,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "e1cb968082197dd2a1cad994be300e5aa92e62c5c367f3585ece1875951c780c"
+        },
+        {
+          "doc_id": "j4",
+          "page": 11,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "e3cf5a64abe41096a70a92a8b1598c528558824d861b170c17a4e863f2116785"
+        },
+        {
+          "doc_id": "j4",
+          "page": 12,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "ee08461be0428978d68e3c6f1f9e0eea2d35d47e544dc986215b983c6ca4d5f7"
+        },
+        {
+          "doc_id": "j4",
+          "page": 13,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "38a5af1781070a0bab21b649475d37082a9971e68914ddcd9c483e106f15e07c"
+        },
+        {
+          "doc_id": "j4",
+          "page": 14,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "e1090c51f533354d973201861df7c88bded36f02f2d8134822e976230dc5b217"
+        },
+        {
+          "doc_id": "j4",
+          "page": 15,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "451b510e8128c968209a860d6e05dec34eaffeb1b2dc530178c6f0a059e14859"
+        },
+        {
+          "doc_id": "j4",
+          "page": 16,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "cca990728ad3b92ffd28c9bcf95edc4a43a5f0461642e365062c4127089fa1d0"
+        }
+      ]
+    },
+    "j5": {
+      "pdf_sha256": "8ab07bcf231ec72ed2ddbbb3b94e8a67085d3ea353ba5a8c76a250abe8e29e4c",
+      "rows": [
+        {
+          "doc_id": "j5",
+          "page": 1,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "0f8fe2c55b94301c0216a9f33f2741b6f0cdef97033130da7ee77cc15bed33be"
+        },
+        {
+          "doc_id": "j5",
+          "page": 2,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "4828926d8596006f94e554e94db9cd9f6988a736808045d17d2fffaf10ab4320"
+        },
+        {
+          "doc_id": "j5",
+          "page": 3,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "d2e79e10f6cd2af564a744f68549eb7e37ff275969f0c0352195f9d42178bc45"
+        },
+        {
+          "doc_id": "j5",
+          "page": 4,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "71107f950542882988a339ee4ddf9891ae5cfa9357aa69ddf01ccd6ff5d94972"
+        }
+      ]
+    },
+    "j6": {
+      "pdf_sha256": "c98892ea0908beea232aa13016eee954c71c6e7d6a37f67311b8be2a36877892",
+      "rows": [
+        {
+          "doc_id": "j6",
+          "page": 2,
+          "group": "JUNK",
+          "markdown_sha256": "ec4c2ae932e5868038c35cfa76e56a8522857d9f2f1effdda9a5fd32358d8f3f",
+          "markdown_chars": 2432,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "fb3facf3ec115d1d14f63d827a8e3d2c72fc031429d661090cf4e145781a521b"
+        },
+        {
+          "doc_id": "j6",
+          "page": 3,
+          "group": "JUNK",
+          "markdown_sha256": "04c1d6821406939503ac5436cfcaf3708c4b243ef070b7b114468970dde0a2d9",
+          "markdown_chars": 3026,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "aed0eac91eb16ca3bfe87e7b11a022e0ebc79617dd9e9213d94de508597aab46"
+        },
+        {
+          "doc_id": "j6",
+          "page": 4,
+          "group": "JUNK",
+          "markdown_sha256": "160bfc0f22403502ff4ab23ad0fd9e25b123fa68f56c1e65f87aef20ee70a46b",
+          "markdown_chars": 2987,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "f44624d8484ad968f401d585789f19c4c2e0d713ff6a14ba8fb8dca39c9df872"
+        },
+        {
+          "doc_id": "j6",
+          "page": 5,
+          "group": "JUNK",
+          "markdown_sha256": "aee1742c7f87acc7c06f5bd6b75dc51c2300deaac0a6ab8a6654bd8352bdcaa9",
+          "markdown_chars": 3198,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "a0f996b54285513bc8af54819ecf922479b246fee35f5380573269d45e507215"
+        },
+        {
+          "doc_id": "j6",
+          "page": 6,
+          "group": "JUNK",
+          "markdown_sha256": "2598ee4015f17c1a2be88d847aaf0e3e8f96790805e00163ce8a6fe2341e3015",
+          "markdown_chars": 3024,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "a1f650aacb3763eab965c6ae26ae530b77503183e9d309d51e0d5669d71d0ceb"
+        },
+        {
+          "doc_id": "j6",
+          "page": 7,
+          "group": "JUNK",
+          "markdown_sha256": "1cf1a1715331e1d5575464d50344d9d9a7e150a49c2a55063963cb8f6a49061d",
+          "markdown_chars": 3051,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "373f2fd29dcf72e9b04c1fda1289bd2d29bc28264488936130d872f1cbb4291f"
+        },
+        {
+          "doc_id": "j6",
+          "page": 8,
+          "group": "JUNK",
+          "markdown_sha256": "aa2cf3cea2e0e642c19ee62421f8157da916dab3e18d26ebe24b200eaa4e5b14",
+          "markdown_chars": 2083,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "682a51c24eaea23db78975629b07c7d3a78af7884c8ed88ba0323225b48bcaa9"
+        }
+      ]
+    },
+    "j7": {
+      "pdf_sha256": "99b385ce29216469b4861ab7d9750f4f9dad52ceda3cdb4bee73b679f81f9e32",
+      "rows": [
+        {
+          "doc_id": "j7",
+          "page": 5,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "af9f35fedabe8306680cf2ba576fc499c86773163a0753d5431d87544d7e28d6"
+        },
+        {
+          "doc_id": "j7",
+          "page": 6,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "5c8f6f58920c7b3f1834b86090ed242b935eaf107595547e37fa3d63a9575d90"
+        },
+        {
+          "doc_id": "j7",
+          "page": 7,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "4e01a74085ce874670c2a9fdc7509382e5955065c1e1b650d51c33bb334d64b2"
+        },
+        {
+          "doc_id": "j7",
+          "page": 8,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "ca102af236074083be8165fd4f078195050ce8296dac71279cdeadbfea0e69ed"
+        },
+        {
+          "doc_id": "j7",
+          "page": 9,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "e4c31b46b8067e6ed22243d680369eefe0d8cadb9a0e47d8bb932739713b239f"
+        },
+        {
+          "doc_id": "j7",
+          "page": 10,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "836948b98e2c8cd0f6b4893adf145901564344a7d7826571ee02fdc1a5024208"
+        },
+        {
+          "doc_id": "j7",
+          "page": 11,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "41268b11c361b704cde03f67b7e4f74db7b91db722614bbafcfbf5753f73d05d"
+        },
+        {
+          "doc_id": "j7",
+          "page": 12,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "707f90346c709c958cb6dac025a5e003542e0532f826495f6b5ababa28a4f04d"
+        }
+      ]
+    },
+    "j8": {
+      "pdf_sha256": "a70128335083f374f2de702dd03d8844e049febb6752effbd457e8ea48da7a98",
+      "rows": [
+        {
+          "doc_id": "j8",
+          "page": 1,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "ad3d1ee0ed5c826deb14b7e447e2c2dcd6486a35b54a70165dc630332deffae0"
+        },
+        {
+          "doc_id": "j8",
+          "page": 2,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "4d17fe8a18c69e6ead342e53c66ee2b5543d2b8d1343ae4f1783204aab485ce8"
+        },
+        {
+          "doc_id": "j8",
+          "page": 3,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "0b289637108e9bd90f39cdffb5196e3e05b8efd40a16681a8f33d0aaa9824063"
+        },
+        {
+          "doc_id": "j8",
+          "page": 4,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "03847167a6593b52056b5ffdd70b2b442180fcef05ab10e663d23d3d127d6f62"
+        },
+        {
+          "doc_id": "j8",
+          "page": 5,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "284afcb65d337abe286320eb37ff9318268463c14e1b280caa79c8cbf98b9cdb"
+        },
+        {
+          "doc_id": "j8",
+          "page": 6,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "ad983a5e4e9e7462e729ff09dbb4609ba741c14ff881a290b76de45e3ca1fe31"
+        }
+      ]
+    },
+    "j9": {
+      "pdf_sha256": "0d8b3cb7ea6e26cff03768a6f0ba29d5a2bcf7da561f53faf98c25b74ec8ca00",
+      "rows": [
+        {
+          "doc_id": "j9",
+          "page": 4,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "80349dd08a43fb891e14468d6f3140d2ea86763a7ed85b039f482d533fef1dcb"
+        },
+        {
+          "doc_id": "j9",
+          "page": 5,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "582b1fc1141174a200258afda0f5b8a6fb8e51116b6c2476c3723f77df5b64ae"
+        },
+        {
+          "doc_id": "j9",
+          "page": 6,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "a3ee384cf5d40f5ed585869494443076c375574fbf7dd448adce0d9fe7bb537d"
+        },
+        {
+          "doc_id": "j9",
+          "page": 7,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "91f566d797521395b2f871755a6e9154e109256523da26af0974f1e75b8e2f77"
+        },
+        {
+          "doc_id": "j9",
+          "page": 8,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "ee90f03ea1a1b2d6e4323da66ae848e96313889909baac37ad66730f5ab128d2"
+        },
+        {
+          "doc_id": "j9",
+          "page": 9,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "2997aaddc1699e99d56d20144244bfc067279e0bfa822de0d365cf476bcbf660"
+        },
+        {
+          "doc_id": "j9",
+          "page": 10,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "44246249792edf062f5a4deea9a6aff79a36b42eb342bb41c4ca9dba3ab5437a"
+        },
+        {
+          "doc_id": "j9",
+          "page": 11,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "b753891334f34e72c9eabb7e18e8123544e80847eb7c1d53c37a0e7ae700c278"
+        },
+        {
+          "doc_id": "j9",
+          "page": 12,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "f05e4f1dcf1296377eb8c9a3970597721b404ce37ccbb7e6c2b58979cd49da48"
+        }
+      ]
+    },
+    "j10": {
+      "pdf_sha256": "5b2982796d6d450b144014c5a85fc7d288ed5be047d1733e2b62367ed3eeaf23",
+      "rows": [
+        {
+          "doc_id": "j10",
+          "page": 7,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "a711a421c87835ad4824a2ec9b4de6d2a9973fc934637b617f6bae1d419634f1"
+        },
+        {
+          "doc_id": "j10",
+          "page": 8,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "4370fa6616388d49046cbaa2ffdca0b94f42bc4ffb496226095b588c25f6309e"
+        },
+        {
+          "doc_id": "j10",
+          "page": 9,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "261b96951d5bdfca0e46f0486dce43c9b487cd5c86336e17ec713ff69963b817"
+        },
+        {
+          "doc_id": "j10",
+          "page": 10,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "88d2ad966da447eabdd7094667624478975eaa8475b04aae298355088b2c0060"
+        },
+        {
+          "doc_id": "j10",
+          "page": 11,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": "scanned",
+          "png_sha256": "5dacdf6449aba8ba778797bfed5db1d81e3986ad3503d04b7be356f95be61448"
+        },
+        {
+          "doc_id": "j10",
+          "page": 12,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "d748101ff847dc12d12493c2e0599cfb1895d3882ae0edbbb2795e10b1160263"
+        },
+        {
+          "doc_id": "j10",
+          "page": 13,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "bf15ae877d8a752849ada77470244c71cd73d23b9c25c738e9a96c3a5bdfb8a4"
+        },
+        {
+          "doc_id": "j10",
+          "page": 14,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "ca0be6fabe09d30bdb1ce226bb28240b92cb54491c5f5cd482c79ad8d0403dfe"
+        },
+        {
+          "doc_id": "j10",
+          "page": 15,
+          "group": "JUNK",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "deec7faca643d470d305257fdf214133bcf44eef57ec925037ee88a8ea345524"
+        }
+      ]
+    },
+    "g1": {
+      "pdf_sha256": "54c4e61dbfa3b213c6deddd6049c4864fc92478b4118c7dffd8b1613d3aa9fd0",
+      "rows": [
+        {
+          "doc_id": "g1",
+          "page": 1,
+          "group": "GOOD",
+          "markdown_sha256": "de24bd53b77993b431427d65341a4df95e1b210bb44c0bca4ee202fc20f686f6",
+          "markdown_chars": 5315,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "f323ed0af5e5fea5de560fcf1aa74ad2e58428af848b600ecf3a2b3b16849dbf"
+        },
+        {
+          "doc_id": "g1",
+          "page": 2,
+          "group": "GOOD",
+          "markdown_sha256": "2c8fcf980d494bd660d51a99018bbf0bf2239f2a225dba8f6308e99578cdbfeb",
+          "markdown_chars": 5854,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "d78cfa18da95e96fab00609e56cd31d2a0c1dc65d2044ddebf435772bbfa8143"
+        },
+        {
+          "doc_id": "g1",
+          "page": 3,
+          "group": "GOOD",
+          "markdown_sha256": "0c2f94cfc278d2fc03fc6621303e938a64f56fc679596118070f40282e1bb6d4",
+          "markdown_chars": 4193,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "23b65eb1f73b0077bf8c35bdf213a5d0d81c445251d1ffaae0da316a587be9fc"
+        },
+        {
+          "doc_id": "g1",
+          "page": 4,
+          "group": "GOOD",
+          "markdown_sha256": "7135a2731625bba4171e0f38ed5f307db503367efdf727b26433476768321fa5",
+          "markdown_chars": 4751,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "d8c1b962017a7cee5da58917cbd8f92590ba74b422641399c8ed1c235cfc3fae"
+        },
+        {
+          "doc_id": "g1",
+          "page": 5,
+          "group": "GOOD",
+          "markdown_sha256": "57f179f9a8de932604b39abc896431ea191c88a54a713033c4fbbe7029462253",
+          "markdown_chars": 4591,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "c6b442b6a1ade373eed780e2400f82cba741311241bcae7aa91aa41d27b4d7ed"
+        },
+        {
+          "doc_id": "g1",
+          "page": 6,
+          "group": "GOOD",
+          "markdown_sha256": "770fff8799b4612b31f4aa3c1aea1c1f88c54b556ded3c9493b2092f8f01e56d",
+          "markdown_chars": 9834,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "7f2e8a954be33677d60e97cf29966bd372f8beb1a86261b47daa254d6418f1f7"
+        }
+      ]
+    },
+    "g2": {
+      "pdf_sha256": "3c31f46fee98cac0c4323453e5109291a213b4de7fef8c058af9bf67f717433c",
+      "rows": [
+        {
+          "doc_id": "g2",
+          "page": 5,
+          "group": "GOOD",
+          "markdown_sha256": "17678d1f587ce8e6231608abd0b5057fe30eaf8cd59516568c46da0f65701995",
+          "markdown_chars": 3391,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "0696c90532cfe4b7ba8f147c095190263ad1f5c4ebbefeb5f4039d910a1b3d9a"
+        },
+        {
+          "doc_id": "g2",
+          "page": 6,
+          "group": "GOOD",
+          "markdown_sha256": "176681f0dc6bbeed6d16bc980b6f995de6d2d49eb355d329e9b73d5b38cc6a1a",
+          "markdown_chars": 2823,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "2cc84ed669ad0cbf6d8e8cbf41e77103cd5fdcf41767bc5cb27435194a59cd48"
+        },
+        {
+          "doc_id": "g2",
+          "page": 7,
+          "group": "GOOD",
+          "markdown_sha256": "2cafd7720c24d9fb0467b3e953ec924ace09f9ac8d00975754574199c2a9bae6",
+          "markdown_chars": 2323,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "dad61e2838c9fd39f8fce0c3edf357640d0d09a0de7789a02f5ed8017cc52875"
+        },
+        {
+          "doc_id": "g2",
+          "page": 8,
+          "group": "GOOD",
+          "markdown_sha256": "db8518887a7863ee3b6164fff2374ecf66401ef1ff61710912e6734bc3706f18",
+          "markdown_chars": 2094,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "e782dcce0e85bcada334567e84f1adc4f62b85f02f3a0b12f7da77aebeba55a6"
+        },
+        {
+          "doc_id": "g2",
+          "page": 9,
+          "group": "GOOD",
+          "markdown_sha256": "a3bfc4c64b14aed8a0598fdbdd4a2421d49bc29dececbade2a967b787729e9ca",
+          "markdown_chars": 2997,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "7636d4ae01d2edcd4ae4241355b93e2927e396520d03602f0602ed2bdb8df44e"
+        },
+        {
+          "doc_id": "g2",
+          "page": 10,
+          "group": "GOOD",
+          "markdown_sha256": "630f21fd6316b177004502331920ddfe8156e3f1a05923814133f673499422b4",
+          "markdown_chars": 1419,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "b85c4778628983e6fc5d94e1e96e137c24cd438f9a253312884bc7bef9b26fe2"
+        }
+      ]
+    },
+    "g3": {
+      "pdf_sha256": "f481022dbe004536d5c02eaf0480017f5e6a4858693ae7cbb8843d1e937c23a9",
+      "rows": [
+        {
+          "doc_id": "g3",
+          "page": 1,
+          "group": "GOOD",
+          "markdown_sha256": "f01b4db01614b6571a78fb28e7073f05225335c960f8dba35f45a0b28adee4c7",
+          "markdown_chars": 3562,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "b3ea714d3d439c72132b2daea3e434bc470687d41794673b9774bcc78b13a3ae"
+        },
+        {
+          "doc_id": "g3",
+          "page": 2,
+          "group": "GOOD",
+          "markdown_sha256": "eb1da035bc65d9520b4fe5f361feff67b3117da3a2667b44a2b3164066ca1bd3",
+          "markdown_chars": 5401,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "fd88c6fc6f33e68ecc23f2a32e0f32e4ce245303c4fa7d7b113c350c564aa07d"
+        },
+        {
+          "doc_id": "g3",
+          "page": 3,
+          "group": "GOOD",
+          "markdown_sha256": "552025ec5b42484a532886080c8a3d7f4eaa39d52dee427fa247b18f850e8a22",
+          "markdown_chars": 4996,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "b3d44db3b7bd5659ea4a1570d1c16907f87c94bae7453281dc48081447b790b6"
+        },
+        {
+          "doc_id": "g3",
+          "page": 4,
+          "group": "GOOD",
+          "markdown_sha256": "614c1548714363f940ae5f7ffebfa3fbe530418aad91986438b3814dd9751a4d",
+          "markdown_chars": 4934,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "c6a5822227732a25a019470ae3d3000229d9c929b36e8aaa48cc8d2c8ba54328"
+        },
+        {
+          "doc_id": "g3",
+          "page": 5,
+          "group": "GOOD",
+          "markdown_sha256": "7946f5cfabb822dae1da17e55b5d945b455c5cdb47e3b7af1a05d99b9f3ac78a",
+          "markdown_chars": 2040,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "46263325ee86229134833ebb66a2336c4dc84c2847e6621196f80a623cad659a"
+        },
+        {
+          "doc_id": "g3",
+          "page": 6,
+          "group": "GOOD",
+          "markdown_sha256": "a401541b73057f0221cbf5e2a891e6b301274724200766ccec6520f5613bcb5c",
+          "markdown_chars": 790,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "16116f70a2522c0390853dbf77741385bdc690e73cd593f2f9128e57d0264bb2"
+        }
+      ]
+    },
+    "g4": {
+      "pdf_sha256": "a2fb9a7dbd0069025bb6631019edd6eabf4baa7e29d7cc3e557ef2313d7c8884",
+      "rows": [
+        {
+          "doc_id": "g4",
+          "page": 3,
+          "group": "GOOD",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "1dbf2e946dd8b5624ab01cff531a371b5bf0285f2a1f57c9e249d58742f131af"
+        },
+        {
+          "doc_id": "g4",
+          "page": 4,
+          "group": "GOOD",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "7857f5465246809492832504c01ac728c2d000c4abcc9c860d4ad00ef03e975f"
+        },
+        {
+          "doc_id": "g4",
+          "page": 5,
+          "group": "GOOD",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "1fbd430f96fa191e5e053a05363ebe52eaa6e153daab817f1818450b0271d26e"
+        },
+        {
+          "doc_id": "g4",
+          "page": 6,
+          "group": "GOOD",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "d1ca2404a6989be59627829a3937a93f66e3ed822e194eed427bcc864c085d86"
+        },
+        {
+          "doc_id": "g4",
+          "page": 7,
+          "group": "GOOD",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "aeb837ad449c5762396ca8c38632ca8e9a144f524b41d844495a85153395e144"
+        },
+        {
+          "doc_id": "g4",
+          "page": 8,
+          "group": "GOOD",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "0c9f8d17b553ef28524711dcfcd2bad4edb013bbfc51f566b8cda8d9022349ee"
+        }
+      ]
+    },
+    "g5": {
+      "pdf_sha256": "7393e0200567f33e7cffa377428bcdda406023c1e1031d192d2ce7b18536fd48",
+      "rows": [
+        {
+          "doc_id": "g5",
+          "page": 13,
+          "group": "GOOD",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "a41817daa2da07c1a953f1249807767abe9c45e25e008deb47f30b4b6ecee51f"
+        },
+        {
+          "doc_id": "g5",
+          "page": 14,
+          "group": "GOOD",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "1088c95d03b21a20c2aee19748d86c280c86c322ae07993c8636ea8aa1b60b74"
+        },
+        {
+          "doc_id": "g5",
+          "page": 15,
+          "group": "GOOD",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "ca5e70c6d96ecff877a4728bf21b7323841c03c1a34a09f44791f00b7e2ac9ce"
+        },
+        {
+          "doc_id": "g5",
+          "page": 16,
+          "group": "GOOD",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "32b64883e271d477b97859c67b393dae13f83668b35fc2bac2a828214d7787c3"
+        },
+        {
+          "doc_id": "g5",
+          "page": 17,
+          "group": "GOOD",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "391be5a5df99adca8604b69502ed3a56beef4e515d7b368a6abacbc71326f7b1"
+        },
+        {
+          "doc_id": "g5",
+          "page": 18,
+          "group": "GOOD",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": null,
+          "png_sha256": "1635edd26bcc36380f816611c626c373f2c903db4038a027a1402da4506b8e3b"
+        }
+      ]
+    },
+    "g6": {
+      "pdf_sha256": "d224800cccba92f05d44fdc065df7dd029afd7e0e8a724ce2da8c4c4e8535a60",
+      "rows": [
+        {
+          "doc_id": "g6",
+          "page": 8,
+          "group": "GOOD",
+          "markdown_sha256": "9029ac30a3cd7114ac9abea54653e3e96415445e1b167ba6ea03a97963abd653",
+          "markdown_chars": 1547,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "f34662c41f27d05b717e533c904fa2af8990a1c05b8f526760f6e86313d5dbdd"
+        },
+        {
+          "doc_id": "g6",
+          "page": 9,
+          "group": "GOOD",
+          "markdown_sha256": "f63e78bc6190fb7175cb83b9e45e60cbe6c9b030e297d4a8827db5f1743f80b2",
+          "markdown_chars": 1520,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "83b080994ef453b8e59c62a5ccba68097b8892d4b95cdbad60c9e912984f41f7"
+        },
+        {
+          "doc_id": "g6",
+          "page": 10,
+          "group": "GOOD",
+          "markdown_sha256": "c596a198b68f01af5365f39575a3104aa6cde71cf337fb0e4d4695d2505b2fea",
+          "markdown_chars": 1503,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "e5c0ad4da9b805d19112f29772f152ed35121eb446d5e987557a6b3c32c65dd0"
+        },
+        {
+          "doc_id": "g6",
+          "page": 11,
+          "group": "GOOD",
+          "markdown_sha256": "329d1e27717c8dd2e23e1c9837c28ed28568dd471b1cf053dec8ad7bd4eb1f29",
+          "markdown_chars": 1528,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "15c49fc15f3ff5d183a02e48a5c2d74516d438e39021706e3ad3b2c0561e8771"
+        },
+        {
+          "doc_id": "g6",
+          "page": 12,
+          "group": "GOOD",
+          "markdown_sha256": "901252f5d789e053d7206e55f6a72f7727e6a1a0dbb5e72549973eb2be1ffbca",
+          "markdown_chars": 1353,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "6b992a1961d71a23b0a5887652065a174bce61fa820c34e3bcdebc6c1f6b8f42"
+        },
+        {
+          "doc_id": "g6",
+          "page": 13,
+          "group": "GOOD",
+          "markdown_sha256": "dccb59b502f4e09d391bc4403c7d7c58e726e011856f50118050c5dfa8bff322",
+          "markdown_chars": 1510,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "a5d7b83a4456a5dc031a32cd63ed566a2a85b4a1d7ecf5ec1d7e615aa0f03973"
+        },
+        {
+          "doc_id": "g6",
+          "page": 14,
+          "group": "GOOD",
+          "markdown_sha256": "77b7d471be98b72e265a729c5c7733be70313efdc22ae8494863bfa769b0eab3",
+          "markdown_chars": 1535,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "b1ffbc56453514980f8e6b1648bbaabd1b95b9240ce5d368fb9429c09b0f5f2d"
+        }
+      ]
+    },
+    "g7": {
+      "pdf_sha256": "e3fddda3f71625e1db93760c7aa30d65cd352d4b152124940253fe83616278ce",
+      "rows": [
+        {
+          "doc_id": "g7",
+          "page": 2,
+          "group": "GOOD",
+          "markdown_sha256": "d68a0e1182cee10e76a1d0a7b05084f8fcca008a9b4b638f02eaa42020b0c541",
+          "markdown_chars": 3722,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "2496b404e780ed1d5c841e1fb797bebce55155535e1eeb0ee00ab1e2777d2b8b"
+        },
+        {
+          "doc_id": "g7",
+          "page": 3,
+          "group": "GOOD",
+          "markdown_sha256": "1206a345b73bc0b29c7daeae30069d8d03131e58d50835cfb2454f75ab940185",
+          "markdown_chars": 3443,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "509be3c3d7de23f6e4261378a008259899dd00eddd2e27d4d9e5fdbc8bb70bfc"
+        },
+        {
+          "doc_id": "g7",
+          "page": 4,
+          "group": "GOOD",
+          "markdown_sha256": "73929b6c66cca0dbcc5e074e7547b15595614fc4af9aac78382815ae14f8857f",
+          "markdown_chars": 3066,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "5e7a5497d448d5da9363158c902dfb9b3c009e7647f6bdd5a8f85478f05fd31a"
+        },
+        {
+          "doc_id": "g7",
+          "page": 5,
+          "group": "GOOD",
+          "markdown_sha256": "89367be9d2824edb91b82fee0a5d3c58cd91d78e0987398ee956c698519a1f6a",
+          "markdown_chars": 2989,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "fbea6ab57c6bd7096fe63c32a46742cf695d5650c1cf8004df639248ca36f1b2"
+        },
+        {
+          "doc_id": "g7",
+          "page": 6,
+          "group": "GOOD",
+          "markdown_sha256": "5ab3b71f05af288d3d23daa871db9cfa5eb16c482fd507b068d62c681d856e7c",
+          "markdown_chars": 2894,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "8993af7577d5b719cb2975689f85be0b5194d9a1a25429407be2a8aca4ac9cf5"
+        }
+      ]
+    },
+    "g8": {
+      "pdf_sha256": "93b45760fc7d51b1fd19b157c8f862f224aa1f0fa707a8e3b5770c1815404fcc",
+      "rows": [
+        {
+          "doc_id": "g8",
+          "page": 8,
+          "group": "GOOD",
+          "markdown_sha256": "aed9bdc2ed2c50f6b46f50443065feabd2b9d5eececeeb4322269620468e4aeb",
+          "markdown_chars": 4457,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "e5cda2c237bc80f14461e06980ddaa5b5c3e36017190ef5261502b9de2e7e64e"
+        },
+        {
+          "doc_id": "g8",
+          "page": 9,
+          "group": "GOOD",
+          "markdown_sha256": "b7933e6392d2a328754325e614075476987a48544ad176a47d3e225506043e42",
+          "markdown_chars": 5405,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "aee9855952804c83a6559cc81cdf19ede63be5171e375edc6b8251205afd4822"
+        },
+        {
+          "doc_id": "g8",
+          "page": 10,
+          "group": "GOOD",
+          "markdown_sha256": "cdea2fbfc1a88e487d695b440e9d2e7b511d62c0a806a1ef7f8c68adac23796d",
+          "markdown_chars": 4507,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "47019971c623c58b2a64475e30f6c0018f8fcdd20b4b6f2d52e709a5ff861fee"
+        },
+        {
+          "doc_id": "g8",
+          "page": 11,
+          "group": "GOOD",
+          "markdown_sha256": "59270312ca79d0dac9bb77db43bdc66a1d8680908d691109f7f440c57762613b",
+          "markdown_chars": 678,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "92f7e4f080a2ee2f884e9ecf677e9d6be53383ea08dff3367f626ab6e39c44b1"
+        },
+        {
+          "doc_id": "g8",
+          "page": 12,
+          "group": "GOOD",
+          "markdown_sha256": "e6cd6df7183ee5a036e08967f5a76ee3430fc20f5bbfe98a4e877887bc6e30a8",
+          "markdown_chars": 5050,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "27e37c65177e2f3dd50c6f095cabbf7bd3483ff30a63f49050b182d185270c6d"
+        },
+        {
+          "doc_id": "g8",
+          "page": 13,
+          "group": "GOOD",
+          "markdown_sha256": "d69fbe30424608bd614dd0bec4b19cef673c6096370114fd6d11d5a308c63076",
+          "markdown_chars": 5064,
+          "has_text": true,
+          "needs_ocr": false,
+          "ocr_reason": null,
+          "png_sha256": "c3e4f21008569175ccbd84cbc8bbb922dc81dc850c5240a7b91eb09a7ed07626"
+        }
+      ]
+    },
+    "g9": {
+      "pdf_sha256": "fe61191c1bdcb88205d379ad4d70cecffc25206c342838fa931dbc3ee7118acf",
+      "rows": [
+        {
+          "doc_id": "g9",
+          "page": 1,
+          "group": "GOOD",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": "suspected_garbled_text",
+          "png_sha256": "47bc15072b3162028e86e593c445d83d8fde40e0125220871b0fee770a8f5e96"
+        },
+        {
+          "doc_id": "g9",
+          "page": 2,
+          "group": "GOOD",
+          "markdown_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "markdown_chars": 0,
+          "has_text": false,
+          "needs_ocr": true,
+          "ocr_reason": "suspected_garbled_text",
+          "png_sha256": "9b36fb12765df881ba6e9e67ad11d4f93bb6a90f6446029d42a679b216909256"
+        }
+      ]
+    }
+  }
+}
