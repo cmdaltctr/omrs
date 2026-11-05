@@ -1,0 +1,292 @@
+{
+ "pages": {
+  "eq01:2": {
+   "doc": "eq01",
+   "page": 2,
+   "status": "ok",
+   "seconds": 37.26,
+   "chars": 3993,
+   "sha256": "b1915d1a68a216d7236a72ee2754b171f05eb8d919a3a54083631ad36705a2c6",
+   "dice_d4": 1.0,
+   "identical_d4": true,
+   "dice_tcontrol": 1.0,
+   "tcontrol_source": "T-D0"
+  },
+  "mp05:13": {
+   "doc": "mp05",
+   "page": 13,
+   "status": "ok",
+   "seconds": 34.95,
+   "chars": 1791,
+   "sha256": "eadfeea6102f6607f354739145cc1bed03d2a91e7c0bcf08a01a1ad63a934e79",
+   "dice_d4": 1.0,
+   "identical_d4": true,
+   "dice_tcontrol": 1.0,
+   "tcontrol_source": "T-D0"
+  },
+  "io04:49": {
+   "doc": "io04",
+   "page": 49,
+   "status": "ok",
+   "seconds": 41.54,
+   "chars": 3587,
+   "sha256": "83bfaf593d779767e64a7b8700bf5d7a870f78014c160e2509b056b230922070",
+   "dice_d4": 1.0,
+   "identical_d4": true,
+   "dice_tcontrol": 1.0,
+   "tcontrol_source": "T-D0"
+  },
+  "io01:13": {
+   "doc": "io01",
+   "page": 13,
+   "status": "ok",
+   "seconds": 14.5,
+   "chars": 596,
+   "sha256": "b421911a32b840e8a503433a0408b61e4e5a4d9dd94af02e2e673f58ff7e7e49",
+   "dice_d4": 1.0,
+   "identical_d4": true,
+   "dice_tcontrol": 1.0,
+   "tcontrol_source": "T-D0"
+  },
+  "io01:17": {
+   "doc": "io01",
+   "page": 17,
+   "status": "ok",
+   "seconds": 12.17,
+   "chars": 496,
+   "sha256": "f05b903526b22cff4ad54894fce1639a729e9d67e95baffd7273b237fbd28932",
+   "dice_d4": 1.0,
+   "identical_d4": true,
+   "dice_tcontrol": 1.0,
+   "tcontrol_source": "T-D0"
+  },
+  "io01:24": {
+   "doc": "io01",
+   "page": 24,
+   "status": "ok",
+   "seconds": 12.07,
+   "chars": 496,
+   "sha256": "e33178ace090afdc65a0f1859641a217f18f8d02398f891155a0a7c573ac3add",
+   "dice_d4": 1.0,
+   "identical_d4": true,
+   "dice_tcontrol": 1.0,
+   "tcontrol_source": "T-D0"
+  },
+  "io01:26": {
+   "doc": "io01",
+   "page": 26,
+   "status": "ok",
+   "seconds": 14.61,
+   "chars": 766,
+   "sha256": "f1abaff502ec052846f21a78db4aca5caa601cc1232610b65bb33364734c288f",
+   "dice_d4": 1.0,
+   "identical_d4": true,
+   "dice_tcontrol": 1.0,
+   "tcontrol_source": "T-D0"
+  },
+  "io01:39": {
+   "doc": "io01",
+   "page": 39,
+   "status": "ok",
+   "seconds": 13.21,
+   "chars": 742,
+   "sha256": "4ddae9f9337a358ae8e117548c3b43021f06925ea1ec0db8d9da2732eb9118ab",
+   "dice_d4": 1.0,
+   "identical_d4": true,
+   "dice_tcontrol": 1.0,
+   "tcontrol_source": "T-D0"
+  },
+  "io02:2": {
+   "doc": "io02",
+   "page": 2,
+   "status": "ok",
+   "seconds": 44.47,
+   "chars": 3019,
+   "sha256": "a2cc61d43c251aa72b1435193d9c3a44e33702d2924ff17d11ba70b6808dafd1",
+   "dice_d4": 1.0,
+   "identical_d4": true,
+   "dice_tcontrol": 0.9904,
+   "tcontrol_source": "T-D0"
+  },
+  "io02:3": {
+   "doc": "io02",
+   "page": 3,
+   "status": "ok",
+   "seconds": 40.32,
+   "chars": 2376,
+   "sha256": "0e39a6d457906616c7a44035d4091220562a360c574e702fe5edc672e58d1459",
+   "dice_d4": 1.0,
+   "identical_d4": true,
+   "dice_tcontrol": 0.9948,
+   "tcontrol_source": "T-D0"
+  },
+  "io07:28": {
+   "doc": "io07",
+   "page": 28,
+   "status": "ok",
+   "seconds": 12.82,
+   "chars": 741,
+   "sha256": "e662bfaac5cf1b1e840d035cbed1d47ff492c4e1a7a4f4afffa427369936d232",
+   "dice_d4": 1.0,
+   "identical_d4": true,
+   "dice_tcontrol": 0.9848,
+   "tcontrol_source": "T-D0"
+  },
+  "io07:34": {
+   "doc": "io07",
+   "page": 34,
+   "status": "ok",
+   "seconds": 12.11,
+   "chars": 553,
+   "sha256": "fd4e29794a7a97a090f236fa830e373acc2fc3614063eb6fb4e6349b29f7ae43",
+   "dice_d4": 1.0,
+   "identical_d4": true,
+   "dice_tcontrol": 0.9899,
+   "tcontrol_source": "T-D0"
+  },
+  "io07:56": {
+   "doc": "io07",
+   "page": 56,
+   "status": "ok",
+   "seconds": 15.94,
+   "chars": 1142,
+   "sha256": "d577a253db3ae521640e783443bd070502078e6705dd5b9373e78822ee9165ee",
+   "dice_d4": 1.0,
+   "identical_d4": true,
+   "dice_tcontrol": 1.0,
+   "tcontrol_source": "T-D0"
+  },
+  "io07:63": {
+   "doc": "io07",
+   "page": 63,
+   "status": "ok",
+   "seconds": 9.15,
+   "chars": 296,
+   "sha256": "8c2d456c03a6b16c7b4fa337f60ab3b124ff258eb39549c34ddef5bf4d64065d",
+   "dice_d4": 1.0,
+   "identical_d4": true,
+   "dice_tcontrol": 1.0,
+   "tcontrol_source": "T-D0"
+  },
+  "rf06:29": {
+   "doc": "rf06",
+   "page": 29,
+   "status": "ok",
+   "seconds": 19.84,
+   "chars": 264,
+   "sha256": "763672ca7567a644226ae52f4945af4f47a7aed52e2d820084d60db63e56af37",
+   "dice_d4": 1.0,
+   "identical_d4": true,
+   "dice_tcontrol": 0.8571,
+   "tcontrol_source": "T-D0"
+  },
+  "rf06:46": {
+   "doc": "rf06",
+   "page": 46,
+   "status": "ok",
+   "seconds": 34.33,
+   "chars": 594,
+   "sha256": "b27ae134d0ebadbdb411836cff9421a70e1d4918802d53aa37df1bb2f3c11920",
+   "dice_d4": 1.0,
+   "identical_d4": true,
+   "dice_tcontrol": 1.0,
+   "tcontrol_source": "T-D0"
+  },
+  "rf06:50": {
+   "doc": "rf06",
+   "page": 50,
+   "status": "ok",
+   "seconds": 42.21,
+   "chars": 1098,
+   "sha256": "10eca6dd3254a8cd66bf3062e23c63adc6082a5dff5526b6224de69794a1e2fe",
+   "dice_d4": 1.0,
+   "identical_d4": true,
+   "dice_tcontrol": 0.9441,
+   "tcontrol_source": "T-D0"
+  },
+  "rf06:86": {
+   "doc": "rf06",
+   "page": 86,
+   "status": "ok",
+   "seconds": 43.93,
+   "chars": 2173,
+   "sha256": "29f573cb7be011b1eb1384359b0439225e2ebffbe50a943f09bf30327051fafa",
+   "dice_d4": 1.0,
+   "identical_d4": true,
+   "dice_tcontrol": 1.0,
+   "tcontrol_source": "T-D0"
+  },
+  "rf07:6": {
+   "doc": "rf07",
+   "page": 6,
+   "status": "ok",
+   "seconds": 38.69,
+   "chars": 631,
+   "sha256": "5551c88f99c7b473c8fe06e0eb245abf280db4de83140af6ecb02d7e9653726b",
+   "dice_d4": 1.0,
+   "identical_d4": true,
+   "dice_tcontrol": 1.0,
+   "tcontrol_source": "T-D0"
+  },
+  "rf07:47": {
+   "doc": "rf07",
+   "page": 47,
+   "status": "ok",
+   "seconds": 47.79,
+   "chars": 843,
+   "sha256": "2fe173bbd88c99686030a6647a01c9976cb0e7ed69c91e1be0c07f6dc90c22e7",
+   "dice_d4": 1.0,
+   "identical_d4": true,
+   "dice_tcontrol": 0.9961,
+   "tcontrol_source": "T-D0"
+  },
+  "rf07:49": {
+   "doc": "rf07",
+   "page": 49,
+   "status": "ok",
+   "seconds": 43.09,
+   "chars": 59,
+   "sha256": "fc4cbeb8001431c14b56287c97fdeffa47a4f0e08798393ebc0e14fe46ba2abb",
+   "dice_d4": 1.0,
+   "identical_d4": true,
+   "dice_tcontrol": 0.9091,
+   "tcontrol_source": "T-D0"
+  },
+  "eq01:3": {
+   "doc": "eq01",
+   "page": 3,
+   "status": "ok",
+   "seconds": 44.04,
+   "chars": 5442,
+   "sha256": "f7cf025d13393da0f06a15ab31945df29a0334b484c0b7a4cc4dd9fb13ba53f9",
+   "dice_d4": 1.0,
+   "identical_d4": true,
+   "dice_tcontrol": 1.0,
+   "tcontrol_source": "exp37-D0"
+  }
+ },
+ "engine": "dots-mocr-llamacpp",
+ "references": {
+  "d4": "Experiment 41 arm D4",
+  "tcontrol": "T-D0"
+ },
+ "rule1_dice_d4_min": {
+  "rule": "every page Dice >= 0.99 against D4",
+  "min": 1.0,
+  "failing": [],
+  "pass": true
+ },
+ "rule2_identical_d4": {
+  "rule": "at least 18 of 22 pages identical to D4",
+  "identical": 22,
+  "pass": true
+ },
+ "rule3_median_dice_tcontrol": {
+  "rule": "median Dice against the T-control text >= 0.99",
+  "median": 1.0,
+  "pass": true
+ },
+ "complete": true,
+ "pass": true,
+ "heartbeat_utc": "2026-11-01T23:07:26.337974+00:00"
+}

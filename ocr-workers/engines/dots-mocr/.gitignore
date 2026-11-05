@@ -1,6 +1,6 @@
-# Engine-local environment and model weights
+# Engine-local environment and model files
 .venv/
 .model-cache/
 __pycache__/
 *.py[cod]
-.ocr-pages-*
+smoke_evidence/parity-pages/

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 from importlib import import_module, metadata
@@ -306,7 +307,20 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # identity (7) and router stops and check errors (6). No fastapi needed.
 # +1 (2026-11-05, same change, PR 169 CodeRabbit): the router check runs off the
 # event loop. No fastapi needed.
-_BASE_EXECUTED = 10911
+# +108 (2026-11-05, dots-mocr-llamacpp-backend rebased on v3 and cut over, by test-ID
+# diff against origin/v3 8f2acf3b, 118 added, 11 removed): the llama.cpp engine suites
+# tests/test_ocr_dots_llamacpp_*.py (engine 32, fetch 14, host 3, manifest 18, parity 25,
+# smoke 23), the new dots-mocr identity case, the no-PyTorch engine-lock case and the
+# runtime-engine route-line case. Removed: 10 PyTorch engine cases (patches, code hash,
+# PyTorch fetch, offline variables, identity) and the PyTorch lock case; the 11th, the
+# real-model patch case, always skipped. No fastapi needed. The sandbox case needs macOS
+# (below).
+# +1 (2026-11-05, dots-mocr-llamacpp-backend, PR 172 review): an unclosed IPv6
+# bracket in the runtime address is refused by name. No fastapi needed.
+# +19 (2026-11-05, same change, PR 172 CodeRabbit review, by test-ID diff, 19 added,
+# 0 removed): smoke harness checks (10), unrounded Dice (1), malformed chat
+# completions (7) and the tar data filter (1). No fastapi needed.
+_BASE_EXECUTED = 11039
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -524,6 +538,10 @@ _EQ01_COPIES = (
 )
 if any(path.is_file() for path in _EQ01_COPIES):
     _BASE_EXECUTED += 1
+# The sandbox-exec case in test_ocr_dots_llamacpp_smoke.py skips off macOS, so a Linux run
+# passes one case fewer (dots-mocr-llamacpp-backend, 2026-10-31).
+if sys.platform != "darwin" or not shutil.which("sandbox-exec"):
+    _BASE_EXECUTED -= 1
 # The nine Exp25 installed-adapter cases always run now:
 # the OpenAI-like packages moved into the base dependencies (ADR-083), so the
 # pin below includes them and there is no conditional adjustment.

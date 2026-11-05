@@ -121,6 +121,7 @@ development of OMRG — Opinionated Modular RAG.
 | [110](./110-decision-models-and-named-document-routers.md) | Decision Models and Named Document-Reading Routers | 2026-11-02 | Proposed (2026-11-02; revised 2026-11-05 for the page-rule form; not accepted) |
 | [111](./111-the-web-workspace-renders-maths-with-bundled-katex.md) | The Web Workspace Renders Maths with Bundled KaTeX | 2026-11-03 | Accepted (2026-11-03; built and merged in PR #165) |
 | [112](./112-reading-parts-descriptor-pipeline-and-discovery.md) | Reading Parts: One Descriptor, an Ordered Page-Rule Pipeline, Ordered Fallback Lists and Entry-Point Discovery | 2026-11-04 | Accepted (2026-11-04; built and merged to v3 in PR #168; amends ADR-037, ADR-066, ADR-069 and ADR-105) |
+| [113](./113-dots-mocr-runs-on-llama-cpp.md) | dots.mocr Runs on llama.cpp | 2026-11-05 | Proposed (2026-11-05; supersedes the PyTorch runtime of ADR-072) |
 
 ## Convention
 

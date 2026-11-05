@@ -155,3 +155,7 @@ None of these blocks acceptance, and none changes detector code in this change.
 - `experiments/37-dots-mocr-routing-acceptance-2026-09-30/report.md`, `protocol.md` (A1), `output/summary.json`
 - `ocr-workers/engines/dots-mocr/LICENCE-NOTES.md`
 - [ADR-062](062-isolate-paddleocr-vl-in-a-versioned-ocr-worker.md), [ADR-069](069-page-level-ocr-routing-and-the-pdfium-runtime.md), [ADR-071](071-ocr-routing-natural-positive-findings.md)
+
+## Update (2026-11-05, dots-mocr-llamacpp-backend)
+
+[ADR-113](113-dots-mocr-runs-on-llama-cpp.md) supersedes the PyTorch runtime of decision 3 and the model-code patches. The `dots-mocr` engine now runs a GGUF Q8_0 conversion of the same model revision on a pinned llama.cpp server (build 11941) that OMRS runs. The PyTorch engine folder is removed. The engine layout, the routes, maths routing and the licence gate of this ADR stay. Experiment 41 failed its speed gate; the operator moved for no PyTorch, one runtime and lower memory.

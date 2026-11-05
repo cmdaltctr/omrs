@@ -1,0 +1,45 @@
+{
+ "eq01": {
+  "query": "of: 1. Intractability: the case where the",
+  "rc": 0,
+  "phrase_in_a_hit": true,
+  "top_sources": [
+   "eq01.pdf",
+   "rf06.pdf",
+   "rf06.pdf",
+   "eq01.pdf",
+   "rf06.pdf"
+  ]
+ },
+ "io06": {
+  "query": "gradu, quoad nuptias, incipiat collateralis cognatio. De",
+  "rc": 0,
+  "phrase_in_a_hit": true,
+  "top_sources": [
+   "io06.pdf",
+   "io06.pdf",
+   "io06.pdf",
+   "io06.pdf"
+  ]
+ },
+ "rf06": {
+  "phrase_in_a_hit": null,
+  "note": "not OCR routed; see SMOKE_RESULTS.md"
+ },
+ "katex": {
+  "version": "0.16.22",
+  "eq01_p002": {
+   "formulas": 30,
+   "errors": 0
+  },
+  "eq01_p003": {
+   "formulas": 40,
+   "errors": 0
+  },
+  "eq01_all_stored_chunks": {
+   "formulas": 304,
+   "errors": 0
+  },
+  "self_test": "a deliberately broken formula gives 1 error"
+ }
+}

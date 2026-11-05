@@ -299,8 +299,9 @@ gate on an operator-approved 17-PDF collection.
 
 OCR is expensive. Earlier PaddleOCR-VL measurements took 34–106 seconds
 per page against roughly one second per file on the fast path.
-dots.mocr took 7–56 seconds per page using Metal Performance Shaders (MPS)
-on Apple Silicon in Experiment 34. Time depends on the page and hardware.
+dots.mocr on llama.cpp took 9 to 48 seconds per page (median 35) on Apple
+silicon in the cut-over check of change `dots-mocr-llamacpp-backend`.
+Time depends on the page and hardware.
 Page routing exists so that cost lands only on pages
 that need it. With no OCR route available, a flagged page
 degrades to its native text plus an actionable warning rather
@@ -321,7 +322,8 @@ the flagged pages to OCR, whatever the document type.
 Workers live under `ocr-workers/`. The shared `core/` package owns the
 protocol, framing loop, validation and capability command. Each project
 under `engines/<engine>/` has its own environment and lockfile.
-Paddle and PyTorch packages stay in those environments; the OMRS main
+Paddle packages stay in the PaddleOCR-VL environment, and the llama.cpp
+binary and model files stay in the dots-mocr engine cache. The OMRS main
 install does not install them.
 
 ### Routing policy
@@ -582,6 +584,23 @@ Only an operator who accepts those terms should run:
 python3 ocr-workers/provision.py dots-mocr --accept-model-licence
 ```
 
+dots-mocr runs on llama.cpp ([ADR-113](../adr/113-dots-mocr-runs-on-llama-cpp.md)).
+Provisioning downloads three pinned items and checks the SHA-256 of each:
+
+- the model `dots-mocr-Q8_0.gguf` (1.9 GB);
+- the image projector `dots-mocr-mmproj-bf16.gguf` (2.5 GB);
+- the llama.cpp release `b11941` for macOS on Apple silicon or Linux on
+  x86-64 (16 to 22 MB).
+
+The two model files come from a private Hugging Face repository. Log in
+with `hf auth login`, or set `HF_TOKEN`, before you provision. A parse
+needs no token and no network. OMRS starts the pinned `llama-server`
+itself (see [Runtime block](../../ocr-workers/README.md#runtime-block)).
+
+A `dots-mocr` engine provisioned before the move to llama.cpp stops
+working until you provision it again. The engine fingerprint also
+changes, so the next ingest re-indexes each document once.
+
 The script syncs each engine's `uv.lock` with `uv sync --locked` and runs
 its fetch command when one is declared. It rejects Python outside
 3.11–3.13 and never changes the OMRS environment. A root-level `uv sync`
@@ -618,9 +637,10 @@ use `$OMRS_OCR_MODEL_CACHE/<engine>/` outside the worktree. See the
 [Paddle cache record](../../ocr-workers/engines/paddleocr-vl/DATA_LOCATIONS.md)
 for preserved weights.
 
-Experiment 37 measured a peak of about 22 GiB of MPS memory for dots.mocr
-on Apple Silicon over 257 pages. One-page smoke tests showed only
-7–9.5 GiB. CPU execution is slower. For limited memory, set
+Experiment 41 measured a peak of 17.3 GiB for dots.mocr on llama.cpp
+(worker plus server) on Apple silicon over 257 pages. The earlier backend
+peaked at 22.2 GiB. Plan for 17.3 GiB. The Linux build runs on the CPU and
+is slower. For limited memory, set
 `OCR_ENGINES=paddleocr-vl,dots-mocr` (PaddleOCR-VL first). Leave dots-mocr unprovisioned if you
 do not accept its licence; a provisioned Paddle fallback can serve every
 worker request.
