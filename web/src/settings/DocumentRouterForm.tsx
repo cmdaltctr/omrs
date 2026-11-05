@@ -7,7 +7,7 @@ import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Textarea } from "../components/ui/textarea";
 import { ROUTER_COST } from "./documentReadingWords";
-import { maxCharsOf, offMachineWarning, OPT_IN_LABEL, routerEntryOf, thresholdOf, THRESHOLD_NOTE, type RouterDraft } from "./routerWords";
+import { maxCharsOf, offMachineWarning, OPT_IN_LABEL, routerEntryOf, thresholdOf, THRESHOLD_NOTE, type RouterDraft, RESERVED_NAME } from "./routerWords";
 import { SaveErrorNotice } from "./SaveErrorNotice";
 
 const META = "text-meta text-muted-foreground";
@@ -50,7 +50,8 @@ export function DocumentRouterForm({ initial, models, creating, fromTemplate, on
   const model = models.find((item) => item.name === draft.model);
   const hosted = model?.hosted === true;
   const entry = routerEntryOf(draft, hosted);
-  const ready = entry !== null && draft.name.trim() !== "";
+  const reserved = draft.name.trim() === "none";
+  const ready = entry !== null && draft.name.trim() !== "" && !reserved;
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -60,7 +61,8 @@ export function DocumentRouterForm({ initial, models, creating, fromTemplate, on
   return (
     <form aria-label={creating ? "New router" : `Edit ${initial.name}`} onSubmit={submit} noValidate className="flex min-w-0 flex-col gap-3">
       <p className={META}>{ROUTER_COST}</p>
-      {creating ? <Field label="Name">{(id) => <Input id={id} dir="ltr" autoComplete="off" spellCheck={false} className="max-w-xs" value={draft.name} onChange={(event) => set("name", event.target.value)} />}</Field> : null}
+      {creating ? <Field label="Name">{(id) => <Input id={id} dir="ltr" autoComplete="off" spellCheck={false} className="max-w-xs" value={draft.name} aria-invalid={reserved ? true : undefined} onChange={(event) => set("name", event.target.value)} />}</Field> : null}
+      {creating && reserved ? <p className="text-meta text-status-error-label">{RESERVED_NAME}</p> : null}
       <Field label="Decision model">
         {(id) => (
           <Select value={draft.model} onValueChange={(value) => set("model", value)}>

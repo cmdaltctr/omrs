@@ -93,6 +93,18 @@ describe("Router section", () => {
     await waitFor(() => expect(puts(server)).toEqual([["/v1/settings/document-routers/handwriting", { entry: { ...{ model: "clef-local", question: HANDWRITING.question, images: true, max_chars: 2000, send_off_machine: false }, threshold: 0.2 }, revision: "r1" }]]));
   });
 
+  it("refuses the name none, which means no router", async () => {
+    const { card, user } = await openRouters();
+    await user.click(within(card).getByRole("button", { name: "New from template: Text matches the page image" }));
+    const form = within(card).getByRole("form", { name: "New router" });
+    await user.type(within(form).getByLabelText("Name"), "pages");
+    expect(within(form).getByRole("button", { name: "Save" })).toBeEnabled();
+    await user.clear(within(form).getByLabelText("Name"));
+    await user.type(within(form).getByLabelText("Name"), "none");
+    expect(form).toHaveTextContent('The name "none" means no router.');
+    expect(within(form).getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
   it("keeps Save off while the threshold is outside 0 to 1", async () => {
     const { user } = await openRouters();
     await user.click(within(row("handwriting")).getByRole("button", { name: "Edit handwriting" }));

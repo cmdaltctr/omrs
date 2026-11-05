@@ -11,6 +11,9 @@ export const TEMPLATE = {
 } as const;
 
 /** Said beside the template threshold. */
+/** Said beside the Name field: `none` is the "No router" choice, so no router can take it. */
+export const RESERVED_NAME = 'The name "none" means no router.';
+
 export const THRESHOLD_NOTE = "Fitted on Experiment 33 documents, not confirmed.";
 
 export const OPT_IN_LABEL = "Send pages off this machine";
