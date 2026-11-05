@@ -75,6 +75,6 @@ Both runtimes fail the rule that llama.cpp passed (every page Dice 0.99 or more,
 
 ## Operator confirmation of cut-over (task 3.7)
 
-Not given yet. Date and confirmation go here.
+Confirmed on 2026-11-05 (master flow gate G10). The evidence is master flow group 3, the page-mode re-run of task 3.4: `rf06` p29 found, `eq01` 0 KaTeX errors.
 
-Status on 2026-11-02: held. The operator decided that 3.7 is not conclusive while issue #161 is open (task 3.4 is unticked for the same reason). Run the cut-over decision again after the routing work is tested: page-mode test on `rf06` (10-page extract: page 29 found, 4 of 10 pages unresolved, cause unknown), then the judge router. Group 4 has not started.
+Status on 2026-11-02 (superseded): held. The operator decided that 3.7 is not conclusive while issue #161 is open (task 3.4 is unticked for the same reason). Run the cut-over decision again after the routing work is tested: page-mode test on `rf06` (10-page extract: page 29 found, 4 of 10 pages unresolved, cause unknown), then the judge router. Group 4 has not started.

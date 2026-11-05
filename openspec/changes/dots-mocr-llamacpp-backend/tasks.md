@@ -93,8 +93,9 @@ Start this group only after group 2b is done.
   - Verify: the engine row shows ready at 1,280 px and at 390 px, with screenshots in `smoke_evidence/`.
 - [x] 3.6 Check for a clean exit: stop the CLI run and then the preview server.
   - Verify: `pgrep -fl llama-server` lists no process whose path is inside the engine folder, and the runtime's `server.json` in the scratch `OMRS_STATE_DIR` records `stopped_by` `last-client`.
-- [ ] 3.7 Write the results to `SMOKE_RESULTS.md`: pass or fail per rule, seconds per page, peak memory and the llama.cpp build. **Stop here** and ask the operator to confirm cut-over.
-  - Status 2026-11-02: results written (`SMOKE_RESULTS.md`), NOT ticked. The operator holds the cut-over: 3.7 is not conclusive while issue #161 is open, as for 3.4. Decide again after the routing work is tested (page-mode test on `rf06`, then the judge router). Group 4 has not started.
+- [x] 3.7 Write the results to `SMOKE_RESULTS.md`: pass or fail per rule, seconds per page, peak memory and the llama.cpp build. **Stop here** and ask the operator to confirm cut-over.
+  - Confirmed 2026-11-05: the operator confirmed cut-over (master flow gate G10). Evidence: master flow group 3, the page-mode re-run of task 3.4 (`rf06` p29 found, `eq01` 0 KaTeX errors).
+  - Status 2026-11-02 (superseded by the line above): results written (`SMOKE_RESULTS.md`), NOT ticked. The operator holds the cut-over: 3.7 is not conclusive while issue #161 is open, as for 3.4. Decide again after the routing work is tested (page-mode test on `rf06`, then the judge router). Group 4 has not started.
   - Verify: the operator's confirmation and its date are recorded under this task.
 
 ## 4. Cut-over (only after 3.7 is confirmed)
