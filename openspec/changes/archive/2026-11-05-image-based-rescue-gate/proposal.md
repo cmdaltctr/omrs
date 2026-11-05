@@ -31,3 +31,7 @@ None.
 - **Cloud:** the required Jev image control sends page images to TypeSafe, including `rf06` and `rf07` (named-person records). The key comes from the `TYPESAFE_API_KEY` environment variable.
 - **Data:** page renders and scores go to gitignored `output/`. Experiment 33 files are read only.
 - **Related:** issue #161, TDR-024, ADR-066, ADR-074, ADR-103, Experiments 33, 38, 42 and 44.
+
+## Archive note (2026-11-05)
+
+Superseded design. Page routing became the default (change `page-routing-default`, no 10% rule), and change `document-reading-routers` (ADR-110, PR #169) turned the image check into a per-page router. The Experiment 43 record (PR #170) stays as the evidence for the router's question, thresholds and cost figures. Issue #161 stays open until a confirmation run on new documents.

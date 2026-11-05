@@ -35,15 +35,21 @@ The order below is the operator's confirmed order (2026-11-02). Do not reorder g
 
 ## 5. Close out the image-based rescue gate (no build work)
 
-- [ ] 5.1 Open a PR for `feat/image-based-rescue-gate` into `v3` (Experiment 43's scripts and report). No merge unasked. GATE G8: the operator says merge.
-- [ ] 5.2 GATE G9: post the drafted comment on issue #161 (text in the handoff, section 4)? Only on a yes.
-- [ ] 5.3 After the merge, archive the change `image-based-rescue-gate`, noting in the archive that page-as-default plus C's routers supersede its design; the record stays as evidence.
+- [x] 5.1 Open a PR for `feat/image-based-rescue-gate` into `v3` (Experiment 43's scripts and report). No merge unasked. GATE G8: the operator says merge.
+  - Done 2026-11-05: PR #170 merged (`92dc0d9a`) after CI and the CodeRabbit review (6 points fixed, 11 carried to issue #171). Gate G8 waived by the operator.
+- [x] 5.2 GATE G9: post the drafted comment on issue #161 (text in the handoff, section 4)? Only on a yes.
+  - Done 2026-11-05: comment https://github.com/cmdaltctr/omrs/issues/161#issuecomment-6647763018 (written fresh: the drafted text was not in the handoff). #161 stays open.
+- [x] 5.3 After the merge, archive the change `image-based-rescue-gate`, noting in the archive that page-as-default plus C's routers supersede its design; the record stays as evidence.
+  - Done 2026-11-05: archived as `2026-11-05-image-based-rescue-gate`, with the supersession note in its proposal.
 
 ## 6. Finish the dots-mocr change: task 3.7 (worktree `omrs-feat-dots-mocr-llamacpp-backend`)
 
-- [ ] 6.1 GATE G10: the operator gives "3.7 confirmed" with a date. Group 3's pass is the evidence. Without it, stop.
-- [ ] 6.2 Do group 4 exactly as already decided (change `tasks.md` 4.1 to 4.4): delete the PyTorch engine `ocr-workers/engines/dots-mocr`; rename `dots-mocr-llamacpp` to `dots-mocr` keeping `backend_id` `dots_mocr_llamacpp`; update tests, docs and the tripwire (pin moves from 9859); add a `model` name to the engine request as a separate small commit, test first; write the ADR "dots.mocr runs on llama.cpp" after the cut-over with a dated note on ADR-072, recording Ollama 7 of 10, MLX 3 of 10, llama.cpp 22 of 22 identical pages.
+- [x] 6.1 GATE G10: the operator gives "3.7 confirmed" with a date. Group 3's pass is the evidence. Without it, stop.
+  - Gate G10 given by the operator on 2026-11-05 (blanket approval; group 3 is the evidence).
+- [x] 6.2 Do group 4 exactly as already decided (change `tasks.md` 4.1 to 4.4): delete the PyTorch engine `ocr-workers/engines/dots-mocr`; rename `dots-mocr-llamacpp` to `dots-mocr` keeping `backend_id` `dots_mocr_llamacpp`; update tests, docs and the tripwire (pin moves from 9859); add a `model` name to the engine request as a separate small commit, test first; write the ADR "dots.mocr runs on llama.cpp" after the cut-over with a dated note on ADR-072, recording Ollama 7 of 10, MLX 3 of 10, llama.cpp 22 of 22 identical pages.
+  - Done 2026-11-05 on `feat/dots-mocr-llamacpp-backend`: rebased onto `v3`, PyTorch engine removed, `dots-mocr` is the llama.cpp engine, `model` in each request, ADR-113 with a dated note on ADR-072, tripwire re-pinned, local CI passed. PR #172 is open with a hold.
 - [ ] 6.3 STOP before task 4.5. GATE G11: the operator approves touching the live workers folder `~/.omrs/ocr-workers` and restarting the app.
+  - Waiting 2026-11-05: PR #172 must merge together with task 4.5 (breaking change for the PyTorch-provisioned live engine).
 - [ ] 6.4 Group 5: rebase the branch onto the merged `v3` (it now carries groups 1, 2 and A/B/C; the engine rename may touch references those changes introduced, so re-run their tests after the rebase). Ask before `./scripts/local_ci.sh`; run `openspec validate --all --strict`; PR into `v3`. GATE G12: the operator says merge.
 
 ## Not in this flow (leave parked)
