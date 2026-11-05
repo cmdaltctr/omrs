@@ -74,8 +74,15 @@ class LockFile:
         fcntl.flock(self._fd, fcntl.LOCK_UN)
 
     def close(self) -> None:
-        """Close the descriptor, which also drops any held lock."""
+        """Drop any held lock, then close the descriptor.
+
+        A fork in another thread copies this descriptor until its child runs
+        exec, and ``flock`` belongs to the open file, so a plain close would
+        keep the lock alive in that copy. Unlocking first drops it at once.
+        """
         if self._fd >= 0:
+            if LOCKS_SUPPORTED:
+                fcntl.flock(self._fd, fcntl.LOCK_UN)
             os.close(self._fd)
             self._fd = -1
 

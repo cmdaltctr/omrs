@@ -12,6 +12,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from omrs.integrations.llamacpp_runtime.locks import LockFile
 
 
@@ -98,6 +100,50 @@ def test_a_child_process_does_not_inherit_the_descriptor(tmp_path: Path) -> None
     finally:
         held.close()
         probe.close()
+
+
+def test_close_drops_the_lock_while_a_forked_copy_waits_for_exec(tmp_path: Path) -> None:
+    """A fork in another thread copies the descriptor until the child runs exec.
+
+    ``flock`` belongs to the open file, so a plain close keeps the lock while
+    that copy lives. The leave probe then sees a client that does not exist
+    and the server is never stopped. ``os.dup`` makes the same copy here.
+    """
+    path = tmp_path / "clients.lock"
+    held, probe = LockFile(path), LockFile(path)
+    copy = -1
+    try:
+        assert held.acquire(shared=True)
+        copy = os.dup(held._fd)
+        held.close()
+        assert probe.acquire(shared=False, blocking=False) is True
+    finally:
+        if copy >= 0:
+            os.close(copy)
+        held.close()
+        probe.close()
+
+
+def test_close_without_lock_support_only_closes_the_descriptor(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Where ``flock`` is missing (Windows), close must not call it."""
+    from omrs.integrations.llamacpp_runtime import locks
+
+    calls: list[tuple[int, int]] = []
+
+    def flock(fd: int, op: int) -> None:
+        calls.append((fd, op))
+
+    lock = LockFile(tmp_path / "clients.lock")
+    fd = lock._fd
+    monkeypatch.setattr(locks, "LOCKS_SUPPORTED", False)
+    monkeypatch.setattr(locks.fcntl, "flock", flock)
+    lock.close()
+    assert calls == []
+    assert lock._fd == -1
+    with pytest.raises(OSError):
+        os.fstat(fd)
 
 
 def test_the_lock_file_is_private_to_the_owner(tmp_path: Path) -> None:
