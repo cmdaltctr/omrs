@@ -228,3 +228,36 @@ def test_the_embed_step_stamps_the_runnable_false_identity(
     assert seen["index_identity"] == down.index_identity
     assert seen["source_version"] == down.source_version
     assert out.values["chunks"].identity.source_version == down.source_version
+
+
+# ── The router check never blocks the event loop (CodeRabbit, PR 169) ────
+
+
+def test_a_slow_router_check_does_not_block_the_event_loop(
+    effective_settings: Any, pdf: Path
+) -> None:
+    import threading
+
+    release = threading.Event()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        release.wait(10)
+        reply = {"model": "Clef-Flash-Q8_0.gguf", "answers": {"fidelity": {"noul": 0.9}}}
+        return httpx.Response(200, json=reply)
+
+    def factory(settings: Any) -> Any:
+        transport = httpx.MockTransport(handler)
+        return compose_decision.build_page_judge(settings, transport=transport)
+
+    routes_module.install_judge_factory(factory)
+    context = build_ingestion_context(_settings(effective_settings))
+
+    async def run() -> bool:
+        task = asyncio.create_task(prepare_source(pdf, content_type=None, context=context))
+        await asyncio.sleep(0.2)  # a blocked loop would not come back here first
+        loop_ran = not task.done()
+        release.set()
+        await task
+        return loop_ran
+
+    assert asyncio.run(run()) is True

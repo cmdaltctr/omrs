@@ -264,11 +264,17 @@ async def prepare_source(
         resolved_splitter=context.markdown_chunking.resolved_splitter,
         graph_shape=context.graph_shape,
     )
-    index_identity = build()
-    # A PDF read whose router fails is stored under this digest (design D9).
     unrouted = None
-    if pdf_reader_revision is not None:
-        unrouted = unrouted_index_identity(context.settings, build, index_identity)
+    if pdf_reader_revision is None or not _router_selected(context.settings):
+        index_identity = build()
+    else:
+        # The router identity reads the judge status, which may probe a model
+        # server; run it off the event loop. A PDF read whose router fails is
+        # stored under the unrouted digest (design D9).
+        index_identity = await asyncio.to_thread(build)
+        unrouted = await asyncio.to_thread(
+            unrouted_index_identity, context.settings, build, index_identity
+        )
     return SourceIdentity(
         file_path=file_path,
         canonical_file_path=canonical_file_path,
@@ -280,6 +286,11 @@ async def prepare_source(
         source_version=build_source_version(content_hash, index_identity),
         unrouted_identity=unrouted,
     )
+
+
+def _router_selected(settings: Any) -> bool:
+    """Return whether *settings* select a document router."""
+    return (getattr(settings, "document_router", "") or "").strip() not in ("", "none")
 
 
 async def check_source_state(
