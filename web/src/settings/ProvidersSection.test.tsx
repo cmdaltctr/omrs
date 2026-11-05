@@ -57,7 +57,7 @@ describe("Providers", () => {
 
   it("lists a card per server entry with Local and Cloud badges in text and the roles", async () => {
     await openProviders();
-    expect(screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent)).toEqual(["Ollama", "llama.cpp", "OpenRouter"]);
+    expect(screen.getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent)).toEqual(["Ollama", "llama.cpp", "OpenRouter", "Decision models"]);
     expect(within(card("Ollama")).getByText("Local")).toHaveAttribute("data-slot", "badge");
     expect(within(card("OpenRouter")).getByText("Cloud")).toHaveAttribute("data-slot", "badge");
     expect(within(card("Ollama")).getByText("Answers")).toBeInTheDocument();

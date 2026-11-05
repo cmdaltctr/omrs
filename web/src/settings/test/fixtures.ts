@@ -3,6 +3,7 @@ import type { ChatSettings, Connection, ConnectionList, JudgeSettings, LogRecord
 import { DOCUMENT_READING_KEYS, type DocumentReadingKey, type DocumentReadingSetting, type DocumentReadingState } from "../../api/settingsDocumentReading";
 import { documentsServer, type Handler } from "../../test/fakeDocumentsServer";
 import { IDLE } from "./downloadFixtures";
+import { decisionModels, documentRouters } from "./routerFixtures";
 
 /** Fixtures built from the `openapi.yaml` schemas for the Settings routes. */
 export const CONFIG_DIR = "/srv/omrs project";
@@ -157,6 +158,7 @@ const READING_DEFAULTS: Partial<Record<DocumentReadingKey, DocumentReadingSettin
   ocr_engines: ["dots-mocr", "paddleocr-vl"],
   ocr_maths_routing_enabled: true,
   ocr_non_latin_routing: "off",
+  document_router: "",
   ocr_local_backends: ["pp-ocrv6-small"],
 };
 
@@ -222,6 +224,8 @@ export function settingsServer(handlers: Record<string, Handler> = {}) {
     "GET /v1/mcp": () => MCP_OFF,
     "GET /v1/settings/web-port": () => WEB_PORT,
     "GET /v1/settings/document-reading": () => DOCUMENT_READING,
+    "GET /v1/settings/decision-models": () => decisionModels([]),
+    "GET /v1/settings/document-routers": () => documentRouters([]),
     ...handlers,
   });
 }

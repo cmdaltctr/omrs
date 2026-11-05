@@ -53,6 +53,12 @@ const row = async (title: string) => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("Model runtimes section", () => {
+  it("titles a decision runtime by its entry name and says what it does", async () => {
+    startApp("#/integrations/model-runtimes", serve([runtimeItem("decision-clef", { role: "decision" })]));
+    const found = await row("Decision: clef");
+    expect(found).toHaveTextContent("Judges page text for a document router.");
+  });
+
   it("has a chip on the Integrations page that opens the section", async () => {
     const user = userEvent.setup();
     startApp("#/integrations", serve());

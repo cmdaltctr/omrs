@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useApi } from "../api/ApiProvider";
 import { connectionsQuery } from "../api/queries";
 import { ErrorNotice } from "../components/ErrorNotice";
+import { DecisionModelsCard } from "./DecisionModelsCard";
 import { ProviderCard } from "./ProviderCard";
 
 /**
@@ -65,6 +66,7 @@ export function ProvidersSection() {
           ) : null}
         </>
       )}
+      <DecisionModelsCard />
     </section>
   );
 }

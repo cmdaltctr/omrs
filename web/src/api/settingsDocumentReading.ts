@@ -22,6 +22,7 @@ export const DOCUMENT_READING_KEYS = [
   "ocr_engine_fallback",
   "ocr_maths_routing_enabled",
   "ocr_non_latin_routing",
+  "document_router",
   "ocr_local_backends",
 ] as const;
 

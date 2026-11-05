@@ -2,8 +2,8 @@ import type { DocumentReadingKey, DocumentReadingState, DocumentReadingValue, Lo
 import { formatRoute } from "../lib/routes";
 import type { ListOption } from "./OrderedListControl";
 
-/** How a row edits its value: an ordered list of readers, engines or local backends, a select of units or script modes, or a switch. */
-export type ReadingKind = "readers" | "unit" | "engines" | "backends" | "switch" | "script";
+/** How a row edits its value: an ordered list of readers, engines or local backends, a select of units, script modes or routers, or a switch. */
+export type ReadingKind = "readers" | "unit" | "engines" | "backends" | "switch" | "script" | "router";
 
 /** The three list kinds. */
 export type ListKind = "readers" | "engines" | "backends";
@@ -14,6 +14,13 @@ export interface ReadingRowWords {
   /** One plain line on what the setting does. */
   help: string;
 }
+
+/** The cost of a router, in the router help text and the host row (design D4, Experiment 43). */
+export const ROUTER_COST =
+  "The router judges every unflagged page with text: about 3.6 s per judged page with the local model. In Experiment 43 it sent about 2.7% of healthy pages (15 of 565) to OCR.";
+
+/** The select value and label of the host choice that means no router. A save of it removes the key, so the default (no router) applies. */
+export const NO_ROUTER = { value: "none", label: "No router" } as const;
 
 /**
  * The rows the page shows. The three old single-value keys have no row: the
@@ -30,6 +37,7 @@ export const READING_ROWS: Partial<Record<DocumentReadingKey, ReadingRowWords>> 
     kind: "script",
     help: "Sends flagged pages straight to OCR: always sends every flagged page, detect only non-Latin ones. The choice detect sees only text that already exists and does not catch scanned pages. Use always for a collection you know is non-Latin.",
   },
+  document_router: { label: "Host router", kind: "router", help: `The router that asks a decision model whether each page keeps its text. A Read document step can pick its own. ${ROUTER_COST}` },
   ocr_local_backends: {
     label: "Local OCR backends",
     kind: "backends",
@@ -67,8 +75,9 @@ export interface ReadingChoice {
   disabled: boolean;
 }
 
-/** The options of a select row: the routing units or the script modes. Lists and switches have none. */
-export function readingChoices(kind: ReadingKind): ReadingChoice[] {
+/** The options of a select row: the routing units, the script modes, or No router and the router names. Lists and switches have none. */
+export function readingChoices(kind: ReadingKind, routers: readonly string[] = []): ReadingChoice[] {
+  if (kind === "router") return [{ ...NO_ROUTER, disabled: false }, ...routers.map((name) => ({ value: name, label: name, disabled: false }))];
   const values: readonly string[] = kind === "unit" ? ROUTING_UNITS : kind === "script" ? SCRIPT_MODES : [];
   return values.map((value) => ({ value, label: value, disabled: false }));
 }
@@ -123,8 +132,14 @@ export function readerListWarning(list: string[]): string | null {
   return list.length === 1 && list[0] === "pdf_inspector" ? "pdf_inspector alone has no retry: a PDF with no text layer indexes nothing. Add liteparse or pypdf." : null;
 }
 
+/** True for the router values that mean no router: blank, `none` or not set. */
+function isNoRouter(value: DocumentReadingValue | null): boolean {
+  return value === null || value === "" || value === NO_ROUTER.value;
+}
+
 /** A value as the row shows it. A list reads in order, separated by commas. */
-export function readingText(value: DocumentReadingValue | null): string {
+export function readingText(value: DocumentReadingValue | null, kind?: ReadingKind): string {
+  if (kind === "router" && isNoRouter(value)) return NO_ROUTER.label;
   if (value === null) return "Not set";
   if (typeof value === "boolean") return value ? "On" : "Off";
   if (Array.isArray(value)) return value.join(", ");
@@ -135,7 +150,8 @@ export function readingText(value: DocumentReadingValue | null): string {
 export type ReadingDraft = string | string[];
 
 /** The editor value of a saved or running value. */
-export function draftOf(value: DocumentReadingValue | null): ReadingDraft {
+export function draftOf(value: DocumentReadingValue | null, kind?: ReadingKind): ReadingDraft {
+  if (kind === "router" && isNoRouter(value)) return NO_ROUTER.value;
   if (Array.isArray(value)) return value;
   return value === null ? "" : String(value);
 }
@@ -144,8 +160,9 @@ export function sameDraft(a: ReadingDraft, b: ReadingDraft): boolean {
   return typeof a === "string" || typeof b === "string" ? a === b : a.length === b.length && a.every((name, index) => name === b[index]);
 }
 
-/** The editor value as the JSON value the route takes. */
-export function draftValue(kind: ReadingKind, draft: ReadingDraft): DocumentReadingValue {
+/** The editor value as the JSON value the route takes. No router is `null`, which removes the key. */
+export function draftValue(kind: ReadingKind, draft: ReadingDraft): DocumentReadingValue | null {
   if (typeof draft !== "string") return draft;
+  if (kind === "router" && draft === NO_ROUTER.value) return null;
   return kind === "switch" ? draft === "true" : draft;
 }

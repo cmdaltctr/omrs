@@ -17,6 +17,7 @@ const PURPOSES = {
   chat: "Answers Chat requests.",
   embeddings: "Turns text into vectors for search and ingest.",
   ocr: "Reads pages for an OCR engine.",
+  decision: "Judges page text for a document router.",
 } as const;
 
 /** Said on an external OCR row, because OMRS cannot check the model files of a server it did not start. */
@@ -25,10 +26,11 @@ export const EXTERNAL_OCR_NOTE = "External server. Model files are not checked."
 /** Said on a running managed row that no other OMRS process holds open. */
 export const NO_CLIENT_NOTE = "Running, no OMRS process uses it";
 
-/** `Chat`, `Embeddings`, or `OCR: <engine folder name>`. */
+/** `Chat`, `Embeddings`, `Decision: <entry name>` or `OCR: <engine folder name>`. */
 export function runtimeTitle(item: ModelRuntime): string {
   if (item.role === "chat") return "Chat";
   if (item.role === "embeddings") return "Embeddings";
+  if (item.role === "decision") return `Decision: ${item.id.replace(/^decision-/, "")}`;
   return `OCR: ${item.id.replace(/^ocr-/, "")}`;
 }
 
