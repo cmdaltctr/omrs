@@ -1141,9 +1141,12 @@ fallback would index a corpus under a unit nobody chose.
 The local tier needs two process-level libraries that pdf-inspector
 loads by environment variable: `PDFIUM_LIB_PATH` (LiteParse ships
 `libpdfium.dylib` in its package directory) and `ORT_DYLIB_PATH`
-(ONNX Runtime ships its dylib in `capi/`). Both may live in `.env`:
-the composition root runs `load_dotenv()` before any read, which
-exports them into the process environment the Rust library sees. On
+(ONNX Runtime ships its dylib in `capi/`). OMRS sets each variable itself,
+from the library bundled in the running environment, when the variable is
+unset or empty. This holds for the CLI, the MCP server, the watcher and
+`omrs web`. A value you set stays: put your own path in the shell or in
+`.env` (the composition root runs `load_dotenv()` before any read). When a
+bundled library is missing, its variable stays unset. On
 first use the model (`pp-ocrv6-small@oar-ocr-v0.7.0`, about 31 MB)
 downloads unless `OCR_LOCAL_OFFLINE=true` and a cache is present. A
 missing library or model never fails a file. Flagged pages go to the

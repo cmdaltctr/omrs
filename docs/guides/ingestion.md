@@ -489,8 +489,10 @@ reader's fallback chain rescued the document, the rescued text is
 emitted with all-native counts.
 
 The local tier's runtime comes from existing base dependencies and is
-configured with process-level variables (settable in `.env`, which is
-exported before any read):
+configured with process-level variables. OMRS sets `PDFIUM_LIB_PATH` and
+`ORT_DYLIB_PATH` itself from the bundled libraries when they are unset or
+empty. To use other libraries, set them in the shell or in `.env`, which is
+exported before any read. A value you set is never replaced.
 
 | Variable | Where the library lives |
 |---|---|
