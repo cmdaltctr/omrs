@@ -35,6 +35,7 @@ DEFAULTS = {
     "ocr_engines": ["dots-mocr", "paddleocr-vl"],
     "ocr_maths_routing_enabled": True,
     "ocr_non_latin_routing": "off",
+    "document_router": "",
     "ocr_local_backends": ["pp-ocrv6-small"],
 }
 OPTIONS = {"pypdf": None, "pypdfium2": "The package 'pypdfium2' is not installed."}

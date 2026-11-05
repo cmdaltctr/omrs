@@ -55,7 +55,7 @@ class IdentitySpec:
         block: Identity block: ``ocr_routing``, ``maths_routing`` or ``parser``.
         keys: Keys that the part writes in that block.
         presence: When the block is present. ``always``; ``pdf_when_on`` (only PDF
-            sources, and only when the mode is not ``off``); ``with_local_tier``
+            sources, and only when the part is on); ``with_local_tier``
             (only when the local OCR tier is in use).
     """
 
@@ -397,6 +397,18 @@ PAGE_RULES: tuple[PageRuleDescriptor, ...] = (
         sends_direct=True,
         has_post_check=True,
         has_degrade=True,
+    ),
+    PageRuleDescriptor(
+        name="document_router",
+        import_path="omrs.integrations.pdf.page_rules.document_router:RULE",
+        label="Document router",
+        help_key="page_rule.document_router",
+        # "" means no router. The router recipe, not its name, enters the identity.
+        settings=(SettingField(name="document_router", env="DOCUMENT_ROUTER", default=""),),
+        identity=IdentitySpec(block="parser", keys=("document_router",), presence="pdf_when_on"),
+        order=40,
+        has_degrade=True,
+        adds_pages=True,
     ),
 )
 

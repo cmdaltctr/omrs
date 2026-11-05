@@ -16,12 +16,13 @@ from typing import Any, Literal
 
 from .rules import ModelKind, model_kind
 
-Role = Literal["chat", "embeddings", "ocr"]
+Role = Literal["chat", "embeddings", "ocr", "decision"]
 Mode = Literal["external", "managed"]
 PortPolicy = Literal["fixed", "free"]
 
-#: Runtime ids: a role, or ``ocr-<engine folder name>`` (design D11).
-RUNTIME_ID_RE = re.compile(r"^(chat|embeddings|ocr-[A-Za-z0-9._-]+)$")
+#: Runtime ids: a role, ``ocr-<engine folder name>`` (design D11) or
+#: ``decision-<decision model entry name>`` (change document-reading-routers).
+RUNTIME_ID_RE = re.compile(r"^(chat|embeddings|ocr-[A-Za-z0-9._-]+|decision-[A-Za-z0-9._-]+)$")
 
 _PORT_FLAG = "--port"
 _HOST_BLOCK = ("--host", "127.0.0.1")
@@ -29,7 +30,7 @@ _HOST_BLOCK = ("--host", "127.0.0.1")
 
 @dataclass(frozen=True)
 class DeclaredFile:
-    """A model file an OCR runtime declares, with its SHA-256.
+    """A model file an OCR or decision runtime declares, with its SHA-256.
 
     Attributes:
         flag: ``-m`` or ``--mmproj``.
@@ -47,7 +48,7 @@ class RuntimeSpec:
     """One managed runtime as a process wants it.
 
     Attributes:
-        id: ``chat``, ``embeddings`` or ``ocr-<engine folder>``.
+        id: ``chat``, ``embeddings``, ``ocr-<engine folder>`` or ``decision-<entry>``.
         role: The role the runtime serves.
         mode: ``managed`` starts or adopts a server; ``external`` only holds
             a URL.
@@ -58,7 +59,8 @@ class RuntimeSpec:
             manager picks a loopback port at each start).
         url_base: Base URL in external mode, else ``""``.
         build: Required llama.cpp build of an OCR runtime, else ``None``.
-        files: Declared model files with SHA-256 (OCR), else empty.
+        files: Declared model files with SHA-256 (OCR, decision), else empty.
+        min_build: Lowest llama.cpp build a decision runtime accepts, else ``None``.
     """
 
     id: str
@@ -70,6 +72,7 @@ class RuntimeSpec:
     url_base: str = ""
     build: int | None = None
     files: tuple[DeclaredFile, ...] = field(default=())
+    min_build: int | None = None
 
     def __post_init__(self) -> None:
         if not RUNTIME_ID_RE.fullmatch(self.id):
@@ -89,9 +92,10 @@ class RuntimeSpec:
 
     @property
     def slots(self) -> int:
-        """The ``-np`` token, or ``0`` when the server picks its slots."""
+        """The ``-np`` (or ``--parallel``) token, or ``0`` when the server picks its slots."""
+        flag = "-np" if "-np" in self.argv else "--parallel"
         try:
-            return int(self.argv[self.argv.index("-np") + 1])
+            return int(self.argv[self.argv.index(flag) + 1])
         except (ValueError, IndexError):
             return 0
 
@@ -149,6 +153,7 @@ class RuntimeSpec:
             "url_base": self.url_base,
             "build": self.build,
             "files": [{"flag": f.flag, "path": f.path, "sha256": f.sha256} for f in self.files],
+            "min_build": self.min_build,
         }
 
     @classmethod
@@ -167,6 +172,7 @@ class RuntimeSpec:
                 DeclaredFile(flag=str(f["flag"]), path=str(f["path"]), sha256=str(f["sha256"]))
                 for f in data.get("files", ())
             ),
+            min_build=data.get("min_build"),
         )
 
 
@@ -230,4 +236,39 @@ def ocr_spec(
         port_policy="free",
         build=build,
         files=tuple(files),
+    )
+
+
+def decision_spec(
+    *,
+    name: str,
+    binary: str,
+    port: int,
+    files: tuple[DeclaredFile, ...] | list[DeclaredFile],
+    min_build: int,
+) -> RuntimeSpec:
+    """Return a managed decision runtime (change document-reading-routers, task 2.4).
+
+    The fixed port is the port of the entry's loopback address. The server
+    binds ``127.0.0.1`` and serves one request at a time (``--parallel 1``).
+
+    Args:
+        name: The decision model entry name; the runtime id is ``decision-<name>``.
+        binary: Absolute path of ``llama-server``.
+        port: The port of the entry address.
+        files: The model file (``-m``) and, for an image entry, the projector
+            file (``--mmproj``), each with its SHA-256.
+        min_build: The lowest llama.cpp build that serves the request with images.
+    """
+    file_flags: list[str] = []
+    for declared in files:
+        file_flags += [declared.flag, declared.path]
+    return RuntimeSpec(
+        id=f"decision-{name}",
+        role="decision",
+        mode="managed",
+        binary=binary,
+        argv=(binary, *file_flags, *_HOST_BLOCK, _PORT_FLAG, str(port), "--parallel", "1"),
+        files=tuple(files),
+        min_build=min_build,
     )

@@ -239,6 +239,9 @@ def settings_to_effective(settings: Settings | None = None) -> Any:
         # Settings checked the value against OCR_NON_LATIN_MODES at start-up.
         ocr_non_latin_routing=cast(OcrNonLatinMode, settings.ocr_non_latin_routing),
         ocr_worker_seconds_per_page=settings.ocr_worker_seconds_per_page,
+        document_router=settings.document_router,
+        decision_models=dict(settings.decision_models),
+        document_routers=dict(settings.document_routers),
         magika_binary=settings.magika_binary,
         doc_similarity_threshold=settings.doc_similarity_threshold,
         codebase_map_cache_dir=settings.codebase_map_cache_dir,

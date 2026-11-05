@@ -177,6 +177,9 @@ class ReadParams(BaseModel):
             in a non-Latin script skip the local OCR tier.
         ocr_local_backends: Ordered local OCR backend names for this step.
             ``None`` inherits the host list.
+        document_router: A ``document_routers`` entry name, or ``none`` to
+            turn routing off for this step. ``None`` inherits the host router.
+            The router's recipe enters the source identity; its name does not.
     """
 
     model_config = _FROZEN
@@ -199,6 +202,7 @@ class ReadParams(BaseModel):
     ocr_local_backends: Annotated[tuple[str, ...] | None, _reading_rule("ocr_local_backends")] = (
         None
     )
+    document_router: Annotated[str | None, _reading_rule("document_router")] = None
 
     @model_validator(mode="after")
     def _one_form_per_option(self) -> ReadParams:
@@ -300,6 +304,7 @@ READ = OperationDescriptor(
         "ocr_engine_fallback": "ocr_engine_fallback",
         "ocr_non_latin_routing": "ocr_non_latin_routing",
         "ocr_local_backends": "ocr_local_backends",
+        "document_router": "document_router",
     },
     index_shaping=True,
 )

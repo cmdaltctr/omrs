@@ -20,7 +20,11 @@ from ..reading_parts import (
     PartDescriptor,
     parts_named,
 )
-from .ocr_identity import local_backends_payload, non_latin_routing_payload
+from .ocr_identity import (
+    document_router_payload,
+    local_backends_payload,
+    non_latin_routing_payload,
+)
 
 #: Every list that some single ``pdf_reader`` value expands to (see
 #: :func:`omrs.core.reading_lists.expand_pdf_reader`).
@@ -97,8 +101,9 @@ def pdf_parser_payload(
     """Return every ``parser`` entry that only a PDF source carries beyond the revision.
 
     The reader list (D5), the non-Latin routing block (change
-    non-latin-script-routing), the local OCR backend list and the part options
-    (change local-ocr-backends). All four are empty on a default install.
+    non-latin-script-routing), the local OCR backend list, the part options
+    (change local-ocr-backends) and the selected router (change
+    document-reading-routers). All five are empty on a default install.
 
     Args:
         settings: Settings the entries read.
@@ -112,4 +117,5 @@ def pdf_parser_payload(
         **non_latin_routing_payload(settings),
         **local_ocr_backends,
         **part_options_payload(settings),
+        **document_router_payload(settings),
     }

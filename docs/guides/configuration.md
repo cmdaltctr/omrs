@@ -1281,6 +1281,106 @@ to disable routing entirely.
 Full behaviour, including provisioning and OCR metadata, is in
 [the ingestion guide](ingestion.md#ocr-fallback-for-scanned-pdfs).
 
+#### Decision models and document routers
+
+A document router asks a decision model one yes-or-no question about a PDF page:
+"is this text layer usable?". The router judges only pages that the scan did not
+flag and that have native text. A low answer sends the page to OCR. This finds a
+page whose hidden text layer is junk (ADR-110). No router is selected by default.
+A router costs about 3.6 s per judged page and sent about 2.7% of healthy pages to
+OCR in Experiment 43.
+
+Three keys in `omrs.jsonc` set it up:
+
+| Key | Env | What it holds |
+|---|---|---|
+| `decision_models` | none | Named decision models: where a request goes. |
+| `document_routers` | none | Named routers: the question, the model and the threshold. |
+| `document_router` | `DOCUMENT_ROUTER` | The host router: a router name. Blank means no router. |
+
+The two maps are objects keyed by entry name. They live only in `omrs.jsonc`.
+No environment variable sets a map, and `.env` does not either. An entry name
+starts with a letter or digit, holds only letters, digits, hyphens and
+underscores, and has at most 64 characters. No router can take the name `none`.
+
+`document_router` follows the normal source order. Set in the environment or
+`.env`, it wins and locks the choice on the Settings page.
+
+Fields of a `decision_models` entry:
+
+| Field | Required | What it holds |
+|---|---|---|
+| `kind` | yes | `llamacpp`, `typesafe`, `cloudflare` or `ollama`. |
+| `address` | yes | The server address, `http` or `https`, with no user name, password, query or fragment. |
+| `model` | yes | The model name that the request names. |
+| `images` | no | `true` when the model takes a page image. Default `false`. |
+| `key` | no | A key reference: `env://NAME`, `file://<path in secrets/>` or `keychain://<provider>`. Never the key itself. |
+| `server` | no | `llamacpp` only: `external` or `managed`. |
+| `model_file`, `projector_file` | no | Managed `llamacpp` only: the GGUF model file and the projector file. |
+| `model_sha256`, `projector_sha256` | no | The SHA-256 of each file: 64 lower-case hexadecimal characters. |
+
+Fields of a `document_routers` entry:
+
+| Field | Required | What it holds |
+|---|---|---|
+| `model` | yes | The name of a `decision_models` entry. |
+| `question` | yes | The question the model answers with yes or no. |
+| `threshold` | yes | A number from 0 to 1. A page whose P(yes) is below it goes to OCR. |
+| `images` | no | `true` sends the page image with the text. Default `false`. |
+| `max_chars` | no | The page text is cut to this many characters. Default 2000. |
+| `send_off_machine` | no | The opt-in for a hosted model. Default `false`: a hosted router sends nothing. |
+
+Example `omrs.jsonc` (fake values; the threshold 0.172 comes from Experiment 43
+and is not confirmed):
+
+```jsonc
+{
+  // Where each yes-or-no request goes.
+  "decision_models": {
+    "clef-local": {
+      "kind": "llamacpp",
+      "address": "http://127.0.0.1:8090",
+      "model": "clef-flash-q8_0",
+      "images": true,
+      "server": "external"
+    },
+    "jev": {
+      "kind": "typesafe",
+      "address": "https://api.typesafe.ai",
+      "model": "jev",
+      "images": true,
+      "key": "env://TYPESAFE_API_KEY" // a reference, never the key
+    }
+  },
+  // Named routers. A profile or the host setting picks one by name.
+  "document_routers": {
+    "handwriting": {
+      "model": "clef-local",
+      "question": "Is the text layer of this page a usable transcription of the page?",
+      "threshold": 0.172,
+      "images": true,
+      "max_chars": 2000
+    }
+  },
+  // The host router. Remove the key, or leave it blank, for no router.
+  "document_router": "handwriting"
+}
+```
+
+Rules:
+
+- An entry with an unknown field or a wrong value is ignored. The problem list
+  names the field, for example `document_routers.handwriting.threshold`. The
+  other entries load.
+- A literal key in an entry is ignored and listed. The entry loads without the
+  key. The log and the problem list never show the key.
+- Only `omrs web` writes the maps, through the Settings page. A save keeps the
+  comments, checks the file revision and refuses a literal key. The page cannot
+  delete a decision model that a router names, or a router that a saved
+  profile names.
+- The CLI, the stdio MCP server and the watcher read the maps when they start.
+  They never write the file.
+
 ### Document backend
 
 | Variable | Default | What it does |

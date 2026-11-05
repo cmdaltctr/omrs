@@ -52,11 +52,12 @@ def _ctx(settings: Any, *, flagged=(1, 2, 3), routed=None, routes=None) -> RuleC
 # ── Registration (task 3.5) ───────────────────────────────────────────────
 
 
-def test_the_built_in_rules_run_as_blank_maths_non_latin():
+def test_the_built_in_rules_run_as_blank_maths_non_latin_document_router():
     assert [(name, facts["order"]) for name, facts in registry.ordered()] == [
         ("blank", 10),
         ("maths", 20),
         ("non_latin", 30),
+        ("document_router", 40),
     ]
 
 
@@ -344,7 +345,7 @@ def forty_registered():
         import_path=f"{__name__}:FORTY",
         label="Forty",
         help_key="page_rule.forty",
-        order=40,
+        order=50,
         sends_direct=True,
     )
     saved = registry.RULES.snapshot()
@@ -359,7 +360,7 @@ def forty_registered():
     registry.RULES.restore(saved)
 
 
-def test_a_fake_rule_with_order_40_runs_after_non_latin(
+def test_a_fake_rule_with_order_50_runs_after_document_router(
     monkeypatch, tmp_path, effective_settings, local_calls, forty_registered
 ):
     _scan(monkeypatch)
@@ -372,7 +373,7 @@ def test_a_fake_rule_with_order_40_runs_after_non_latin(
         _Inner(), settings=effective_settings(ocr_maths_routing_enabled=False), ocr_client=worker
     ).load_data(tmp_path / "doc.pdf")
 
-    assert [name for name, _ in registry.ordered()][-2:] == ["non_latin", "forty"]
+    assert [name for name, _ in registry.ordered()][-2:] == ["document_router", "forty"]
     assert FORTY.seen[0].routed == {3}, "the blank rule ran first and dropped page 2"
     assert local_calls == []
     assert worker.calls == [[3]]

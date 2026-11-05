@@ -254,7 +254,8 @@ def test_the_judge_on_the_routes_reaches_the_rule_context(
 
     _scan(monkeypatch)
     rule = rules("adder", _Rule(), 45, adds_pages=True)
-    judge = object()
+    # A judge that cannot run: the built-in router reads only its status.
+    judge = SimpleNamespace(status="unreachable")
     routes = OcrRoutes(routes=(_Worker({}),), judge=judge)
 
     _read(tmp_path, _settings(effective_settings), routes)

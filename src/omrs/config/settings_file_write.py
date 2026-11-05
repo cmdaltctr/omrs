@@ -29,7 +29,7 @@ import hashlib
 import os
 import stat
 import threading
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -298,22 +298,47 @@ def write_settings(
         SettingsFileWriteError: The disk refused the write.
     """
     folder = directory or user_config_dir()
-    plan = _plan(changes, folder / SECRETS_DIR)
+    return commit_plan(folder, _plan(changes, folder / SECRETS_DIR), revision)
+
+
+def commit_plan(
+    folder: Path,
+    plan: Mapping[str, Any],
+    revision: str | None,
+    guard: Callable[[Mapping[str, Any]], None] | None = None,
+) -> WriteResult:
+    """Apply a checked *plan* to ``omrs.jsonc`` in *folder*, under the write lock.
+
+    Args:
+        folder: The user config folder.
+        plan: Dotted key to new value; ``None`` removes the key.
+        revision: As :func:`write_settings`.
+        guard: Called with the file's current content, under the lock and
+            before the edit. It raises :class:`SettingsFileRefused` to stop
+            the write.
+
+    Returns:
+        The revision after the write.
+    """
     path = folder / CONFIG_FILE
     with _lock:
         real = Path(os.path.realpath(path))  # write through a link (dotfile managers)
         raw = _read(real)
         if revision is not None and revision != _revision(raw):
             raise SettingsFileConflict(CONFLICT_CHANGED)
-        if raw is None and all(value is None for value in plan.values()):
-            return WriteResult(ABSENT, False)
+        current: Any = {}
         old = _HEADER if raw is None else raw.decode("utf-8", errors="replace")
         if raw is not None:
             try:
-                if not isinstance(parse_jsonc(old), dict):
+                current = parse_jsonc(old)
+                if not isinstance(current, dict):
                     raise ValueError
             except ValueError as exc:
                 raise SettingsFileConflict(CONFLICT_BROKEN) from exc
+        if guard is not None:
+            guard(current)
+        if raw is None and all(value is None for value in plan.values()):
+            return WriteResult(ABSENT, False)
         new = _edit(old, plan)
         if raw is not None and new == old:
             return WriteResult(_revision(raw), False)

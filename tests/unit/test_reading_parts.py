@@ -70,8 +70,8 @@ def test_local_backend_names() -> None:
 
 
 def test_page_rule_names_and_orders() -> None:
-    assert names(PAGE_RULES) == ("blank", "maths", "non_latin")
-    assert [rule.order for rule in PAGE_RULES] == [10, 20, 30]
+    assert names(PAGE_RULES) == ("blank", "maths", "non_latin", "document_router")
+    assert [rule.order for rule in PAGE_RULES] == [10, 20, 30, 40]
 
 
 def test_kind_is_readable_per_table() -> None:

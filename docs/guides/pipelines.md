@@ -113,6 +113,19 @@ Read document step has an `ocr_local_backends` setting. It is an ordered list of
 - A saved graph that never set the list keeps its fingerprint, so no source re-indexes. A step that sets the list changes the fingerprint of the graph.
 - The stored source identity of PDF sources names a list that differs from the default. A PDF source indexed under another list is processed again on the next explicit ingest.
 
+### Document router on Read document step
+
+Read document step has a `document_router` setting. It names one router of `document_routers` in `omrs.jsonc`. See [Reading parts](reading-parts.md) for what a router does and what it costs.
+
+- `null` (Inherit) uses the host router from `DOCUMENT_ROUTER`. The catalogue reports that value in `inherited_values.document_router`. An empty host value means no router.
+- `none` turns routing off for the step, also when the host has a router.
+- A name follows the entry name rule: a letter or digit first, then letters, digits, hyphens and underscores, 64 characters at most. Another value fails validation with `invalid_parameter`.
+- A name that no router holds fails validation with `option_unavailable` before any node runs. The issue names the node and the router.
+- A graph-wide `overrides.document_router` stays refused (`host_owned_setting`). Set the router on the Read document step instead.
+- Other pipelines and the standard ingest path keep the host router.
+- The step router enters the source identity by the host rule. The `parser` block of a PDF source holds the router recipe: question, threshold, image flag, character limit, decision model identity and rule version. The router name does not enter the identity or the graph fingerprint. A step that names the host router keeps the host identity. A saved graph that never set the router keeps its fingerprint.
+- When you select a router, or change the recipe of the selected router, PDF sources are processed again on the next explicit ingest. A rename does not reprocess a source. Settings refuses to rename or delete a router while a saved profile names it.
+
 ## Canonical templates
 
 `omrs.pipeline_templates` publishes three canonical graphs. Each graph reproduces one standard Engine operation:

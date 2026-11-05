@@ -375,6 +375,18 @@ The user config folder is read-only. The app never writes to it, and the page ca
 
 A saved value applies at once to new requests in the running `omrs web` process. You do not restart the server. A call that already started finishes with the old value. The Engine refuses a change that would alter an embedding field. The Ollama address is locked while embeddings use Ollama ("embeddings use it").
 
+#### Decision models
+
+The Decision models card at the end of Settings > Providers lists the models that a document router can ask. Each row shows the name, the kind, the model, "Images" when the model sees page images, and "Local" or "Hosted". A hosted model has an address that is not on this machine. The row shows the key state: not needed, set or missing. It never shows the key.
+
+- Select "Add decision model" to add an entry. Select Edit to change one.
+- The key field takes a reference only: `env://NAME`, `file://~/.config/omrs/secrets/<name>.key` or `keychain://<provider>`. The form refuses a literal key.
+- The list does not return a saved reference. To keep it when you edit the entry, type it again. A blank field removes it.
+- A `llamacpp` entry can set its server to "Managed by OMRS". The form then asks for the model file, the projector file and their SHA-256 values. The row shows the two files, and the runtime state when the runtime list has the entry.
+- Select Test to run the model checks. The row shows "Not tested" until then. After the test it shows "Working" or the reason, plus the quantisation, projector and build lines.
+- The `cloudflare` and `ollama` kinds show "Not yet tested". No live request of these kinds is recorded.
+- Select Remove to delete an entry. The server refuses while a router uses the entry. The message names the router.
+
 #### Keychain
 
 The server saves a key with the `keyring` package. The service name is `omrs` and the user name is the provider name, for example `openrouter`. All workspaces of one login share that entry. The database stores only the time of the save. The app never writes a key to `.env`, to the database or to a file. No response contains more than the last four characters of a key, and no log line contains a key.
@@ -556,7 +568,7 @@ A cloud judge sends each claim and its cited passages off this machine. The bloc
 
 ### Document reading
 
-Settings > Document reading (`#/settings/document-reading`) sets how OMRS reads documents. It has one row for each of these seven keys:
+Settings > Document reading (`#/settings/document-reading`) sets how OMRS reads documents. It has one row for each of these eight keys:
 
 | Row | Key | Control |
 | --- | --- | --- |
@@ -566,6 +578,7 @@ Settings > Document reading (`#/settings/document-reading`) sets how OMRS reads 
 | OCR engines | `ocr_engines` | An ordered list. Add, remove, move up and move down. |
 | Maths routing | `ocr_maths_routing_enabled` | A switch. |
 | Non-Latin routing | `ocr_non_latin_routing` | A select: `off`, `detect` or `always`. `detect` does not catch scanned pages. Use `always` for a collection you know is non-Latin. |
+| Host router | `document_router` | A select: "No router" or a router name. The row is in the Router card. |
 | Local OCR backends | `ocr_local_backends` | An ordered list. Add, remove, move up and move down. |
 
 Each row shows the value in force, where it comes from and the default. To change a value:
@@ -597,7 +610,29 @@ These rules also apply:
 - A Read document step in a pipeline can choose its own reader list, engine list and local OCR backend list.
 - The page has no row for `reading_part_options`. Edit that key in `omrs.jsonc` (see [Reading part options](configuration.md#reading-part-options)).
 
-The seven keys are part of the index identity. After a restart, the next ingest can read existing files again. A failed save shows the server message. When `omrs.jsonc` changed on disk, select Reload to read the new values, then save again.
+The seven OCR and reader keys are part of the index identity. After a restart, the next ingest can read existing files again. For `document_router`, the recipe of the selected router enters the index identity, but its name does not. A failed save shows the server message. When `omrs.jsonc` changed on disk, select Reload to read the new values, then save again.
+
+#### Router
+
+The Router card asks a decision model, page by page, whether the page text can stay ([ADR-110](../adr/110-decision-models-and-named-document-routers.md)). A "yes" keeps the page text. A "no" sends that page alone to OCR. A page gets "no" when its yes score is below the threshold. The router judges every unflagged page with text: about 3.6 s per judged page with the local model. In Experiment 43 it sent about 2.7% of healthy pages (15 of 565) to OCR.
+
+The Host router row selects the router that reading uses. "No router" is the default. Select "No router" and Save to remove the key from `omrs.jsonc`. The choice applies after a restart. `DOCUMENT_ROUTER` in the environment or `.env` makes the row read-only.
+
+Each router row shows the decision model, the question, the threshold, the character limit and the image flag. It also shows "Host router" when the host setting names it, and the saved profiles that use it.
+
+To add a router:
+
+1. Select "New router", or select "New from template: Text matches the page image".
+2. Type a name.
+3. Choose a decision model.
+4. Change the question, the threshold, the image flag or the character limit if necessary.
+5. Select Save.
+
+The template asks "Does the text match the text written or printed on the page image?". It sends the page image and at most 2,000 characters. Its threshold is 0.172, with the note "Fitted on Experiment 33 documents, not confirmed."
+
+Select Edit to change a router. Select Rename to give it a new name. A rename does not change any source digest. Select Delete to remove it. The server refuses a delete or a rename while the host setting or a saved profile names the router. The message names the setting or the profile.
+
+A router on a hosted decision model sends page text off this machine, plus page images when the image flag is on. Its row and its form name the third party, for example "TypeSafe at api.typesafe.ai". The form has the checkbox "Send pages off this machine". It is off by default. While it is off, the router sends nothing, and the row shows "Will not run". A hosted router that sends page images shows "Experimental". A router whose decision model is not in `omrs.jsonc` also shows "Will not run" and names the model.
 
 The Settings page lists a list key in the Configuration table like any other key. See [Document reading values](configuration.md#document-reading-values) for the rules that the server checks on a save.
 

@@ -37,6 +37,7 @@ def test_document_reading_keys_keep_value_and_order() -> None:
         "ocr_engines",
         "ocr_maths_routing_enabled",
         "ocr_non_latin_routing",
+        "document_router",
         "ocr_local_backends",
     )
 
@@ -51,6 +52,7 @@ def test_read_ocr_keys_keep_value_and_order() -> None:
         "ocr_engine_fallback",
         "ocr_maths_routing_enabled",
         "ocr_non_latin_routing",
+        "document_router",
         "ocr_local_backends",
     )
 
@@ -65,6 +67,7 @@ def test_read_step_ocr_keys_keep_value_and_order() -> None:
         "ocr_engine_fallback",
         "ocr_maths_routing_enabled",
         "ocr_non_latin_routing",
+        "document_router",
         "ocr_local_backends",
     )
 
@@ -92,6 +95,11 @@ def test_excluded_embed_metadata_keys_keep_value_and_order() -> None:
         "ocr_pages_unresolved",
         "pages_maths_font",
         "pages_non_latin",
+        "router_pages_judged",
+        "router_pages_accepted",
+        "router_pages_rejected",
+        "router_pages_unjudged",
+        "router_status",
         "page_count",
         "page",
         "page_label",
@@ -112,7 +120,14 @@ def test_identity_unlisted_keys_keep_value() -> None:
 
     The code value is a frozenset, so the pin is a sorted tuple.
     """
-    assert tuple(sorted(embed_exclusions.IDENTITY_UNLISTED_KEYS)) == ("pages_non_latin",)
+    assert tuple(sorted(embed_exclusions.IDENTITY_UNLISTED_KEYS)) == (
+        "pages_non_latin",
+        "router_pages_accepted",
+        "router_pages_judged",
+        "router_pages_rejected",
+        "router_pages_unjudged",
+        "router_status",
+    )
 
 
 def test_catalogue_pdf_reader_rows_keep_every_field_and_order() -> None:

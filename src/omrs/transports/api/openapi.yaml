@@ -4505,7 +4505,7 @@ paths:
           required: true
           schema:
             type: string
-            pattern: "^(chat|embeddings|ocr-[A-Za-z0-9._-]+)$"
+            pattern: "^(chat|embeddings|ocr-[A-Za-z0-9._-]+|decision-[A-Za-z0-9._-]+)$"
             maxLength: 128
           description: A runtime id from `listRuntimes`.
       responses:
@@ -5261,7 +5261,7 @@ paths:
       description: >
         Lists the document-reading keys in a fixed order (`pdf_readers`,
         `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engines`,
-        `ocr_maths_routing_enabled`, `ocr_non_latin_routing`,
+        `ocr_maths_routing_enabled`, `ocr_non_latin_routing`, `document_router`,
         `ocr_local_backends`). `pdf_readers`, `ocr_engines` and
         `ocr_local_backends` hold an ordered list of names. The old single-value keys `pdf_reader`,
         `ocr_engine_primary` and `ocr_engine_fallback` stay valid in every source and
@@ -5314,7 +5314,9 @@ paths:
         text (400, "<key>: <rule>", including an empty list, a duplicate name,
         a blank entry and `auto` inside a list, for example "pdf_readers: The
         value must be one of: liteparse, pdf_inspector, pypdfium2, pypdf.");
-        a stale `revision` (409, "omrs.jsonc changed on disk. Reload to see the
+        a `document_router` that is not `none` and names no router that
+        `omrs.jsonc` holds now (400, "document_router: No router of this name
+        is in omrs.jsonc."); a stale `revision` (409, "omrs.jsonc changed on disk. Reload to see the
         new values."); a file that cannot be parsed or holds a key twice (409,
         "omrs.jsonc could not be read. Fix it, then save again."); a disk error
         (500, "omrs.jsonc could not be written."). A reader that is not
@@ -5345,6 +5347,315 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "409":
           $ref: "#/components/responses/Conflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  # ── Decision models and document routers (ADR-110) ──────────────────
+  /settings/decision-models:
+    get:
+      operationId: listDecisionModels
+      summary: List the decision models of omrs.jsonc
+      description: >
+        Lists each valid `decision_models` entry that `omrs.jsonc` holds now,
+        by name. A broken entry is not listed: the Configuration problems name
+        it. No item holds a key: `key_state` says whether a key reference is
+        set and whether it resolves. A `keychain://` reference is not read, so
+        it shows `reference-set`. `hosted` is true when the address is not a
+        loopback address. `not_yet_tested` is true for a kind with no recorded
+        live request (`cloudflare`, `ollama`). `used_by` names the routers that
+        name the entry. The route reads the file; it contacts no model and
+        writes nothing.
+      security:
+        - sessionCookie: [read]
+        - bearerToken: [read]
+      x-omrs-scopes: [read]
+      responses:
+        "200":
+          description: The decision models.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DecisionModelList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /settings/decision-models/{name}:
+    put:
+      operationId: saveDecisionModel
+      summary: Add or replace one decision model in omrs.jsonc
+      description: >
+        Writes the entry under `decision_models.<name>` in one atomic replace
+        that keeps comments. An entry that breaks a rule gets 400 naming the
+        field and the rule, a literal key included (a key field holds
+        `env://NAME`, `file://<path in secrets/>` or `keychain://<provider>`
+        only). A stale `revision` or a broken file gets 409 with no `reason`.
+        Nothing contacts the model. No message holds a submitted value.
+        Session only: a bearer credential gets 403.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      parameters:
+        - $ref: "#/components/parameters/EntryName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DecisionModelSave"
+      responses:
+        "200":
+          description: The decision models after the write, with the new revision.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DecisionModelList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/RouterMapConflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: deleteDecisionModel
+      summary: Remove one decision model from omrs.jsonc
+      description: >
+        Removes `decision_models.<name>`. A name the file does not hold gets
+        404. A router that names the entry gets 409 `in-use`, and the message
+        names the router. A stale `revision` or a broken file gets 409 with no
+        `reason`. Session only: a bearer credential gets 403.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      parameters:
+        - $ref: "#/components/parameters/EntryName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RouterMapRevision"
+      responses:
+        "200":
+          description: The decision models after the write, with the new revision.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DecisionModelList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/RouterMapConflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /settings/decision-models/{name}/test:
+    post:
+      operationId: testDecisionModel
+      summary: Run the model checks of one decision model
+      description: >
+        Runs the checks on the entry that `omrs.jsonc` holds now: the
+        quantisation check, a one-question text request and, for an image
+        entry, the projector smoke test. It contacts the entry's server, which
+        can be hosted, so it needs `manage`. `result` is `ok` or a fixed
+        reason. No body holds a key, page text or reply text. A name the file
+        does not hold as a valid entry gets 404. Session only: a bearer
+        credential gets 403.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      parameters:
+        - $ref: "#/components/parameters/EntryName"
+      responses:
+        "200":
+          description: The check result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DecisionModelTest"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /settings/document-routers:
+    get:
+      operationId: listDocumentRouters
+      summary: List the document routers of omrs.jsonc
+      description: >
+        Lists each valid `document_routers` entry that `omrs.jsonc` holds now,
+        by name, with the state of its decision model. `hosted` is true when
+        the decision model's address is not a loopback address. `will_run` is
+        false with `will_not_run_reason` `unknown-model` when the file holds no
+        valid decision model of that name, and `needs-opt-in` when the model is
+        hosted and `send_off_machine` is off. `experimental` is true for a
+        hosted router that sends page images. `host` is true when the saved
+        `document_router` names the router. `used_by` names the saved user
+        profiles whose Read document step names the router. The route reads
+        the file and the saved profiles; it contacts no model and writes
+        nothing.
+      security:
+        - sessionCookie: [read]
+        - bearerToken: [read]
+      x-omrs-scopes: [read]
+      responses:
+        "200":
+          description: The document routers.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentRouterList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /settings/document-routers/{name}:
+    put:
+      operationId: saveDocumentRouter
+      summary: Add or replace one document router in omrs.jsonc
+      description: >
+        Writes the router under `document_routers.<name>` in one atomic
+        replace that keeps comments. `none` is not a router name (400). An
+        entry that breaks a rule gets 400 naming the field and the rule. A
+        router may name a decision model that does not exist yet; it then does
+        not run. A stale `revision` or a broken file gets 409 with no `reason`.
+        Session only: a bearer credential gets 403.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      parameters:
+        - $ref: "#/components/parameters/EntryName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentRouterSave"
+      responses:
+        "200":
+          description: The document routers after the write, with the new revision.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentRouterList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/RouterMapConflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      operationId: deleteDocumentRouter
+      summary: Remove one document router from omrs.jsonc
+      description: >
+        Removes `document_routers.<name>`. A name the file does not hold gets
+        404. 409 `in-use` when the saved `document_router` names the router or
+        a saved user profile's Read document step names it; the message names
+        the setting or the profile. 409 `profiles-unreadable` when the saved
+        profiles cannot be read, so nothing is removed. A stale `revision` or a
+        broken file gets 409 with no `reason`. Session only: a bearer
+        credential gets 403.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      parameters:
+        - $ref: "#/components/parameters/EntryName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RouterMapRevision"
+      responses:
+        "200":
+          description: The document routers after the write, with the new revision.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentRouterList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/RouterMapConflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /settings/document-routers/{name}/rename:
+    post:
+      operationId: renameDocumentRouter
+      summary: Rename one document router in omrs.jsonc
+      description: >
+        Removes the old name and writes the same fields under `new_name` in one
+        atomic replace. A rename does not change any source digest, because the
+        router name is not part of the index identity. The checks of a delete
+        apply to the old name (404, 409 `in-use`, 409 `profiles-unreadable`).
+        A `new_name` that breaks the name rule, or is `none`, gets 400. A
+        `new_name` that the file already holds gets 409 `name-taken`. Session
+        only: a bearer credential gets 403.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      parameters:
+        - $ref: "#/components/parameters/EntryName"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentRouterRename"
+      responses:
+        "200":
+          description: The document routers after the write, with the new revision.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentRouterList"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/RouterMapConflict"
         "500":
           $ref: "#/components/responses/InternalError"
 
@@ -5447,6 +5758,14 @@ components:
         revoked or when the server stops.
 
   parameters:
+    EntryName:
+      name: name
+      in: path
+      required: true
+      description: A decision model or router name.
+      schema:
+        type: string
+        pattern: "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
     CollectionName:
       name: collection
       in: path
@@ -5651,6 +5970,15 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ModelDownloadRefused"
+    RouterMapConflict:
+      description: >
+        A decision model or router write refused a valid request. `reason` is
+        `in-use`, `name-taken` or `profiles-unreadable`. A stale `revision` or
+        a broken `omrs.jsonc` has no `reason`. Nothing was written.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/RouterMapRefused"
     PayloadTooLarge:
       description: The file is larger than the upload limit.
       content:
@@ -10918,11 +11246,11 @@ components:
       properties:
         id:
           type: string
-          pattern: "^(chat|embeddings|ocr-[A-Za-z0-9._-]+)$"
+          pattern: "^(chat|embeddings|ocr-[A-Za-z0-9._-]+|decision-[A-Za-z0-9._-]+)$"
           description: "`chat`, `embeddings` or `ocr-` and the engine folder name."
         role:
           type: string
-          enum: [chat, embeddings, ocr]
+          enum: [chat, embeddings, ocr, decision]
         mode:
           type: string
           enum: [external, managed]
@@ -11478,8 +11806,8 @@ components:
             Send it back on a save; a file that changed since gives 409.
         settings:
           type: array
-          minItems: 7
-          maxItems: 7
+          minItems: 8
+          maxItems: 8
           description: >
             One row per key, in the fixed key order. The old single-value keys
             have no row: a list row holds the value that they mean.
@@ -11538,6 +11866,7 @@ components:
             - ocr_engines
             - ocr_maths_routing_enabled
             - ocr_non_latin_routing
+            - document_router
             - ocr_local_backends
         value:
           type: [string, boolean, number, array]
@@ -11635,12 +11964,13 @@ components:
         values:
           type: object
           minProperties: 1
-          maxProperties: 10
+          maxProperties: 11
           description: >
-            One or more of the ten keys. Each value has the key's JSON type
+            One or more of the eleven keys. Each value has the key's JSON type
             (an array of names for `pdf_readers`, `ocr_engines` and
             `ocr_local_backends`), or is null to remove the key so the default
-            applies. A key outside the ten gets 400.
+            applies. `document_router` names a router of `document_routers` in
+            `omrs.jsonc` now, or `none`. A key outside the eleven gets 400.
           propertyNames:
             enum:
               - pdf_readers
@@ -11652,6 +11982,7 @@ components:
               - ocr_engine_fallback
               - ocr_maths_routing_enabled
               - ocr_non_latin_routing
+              - document_router
               - ocr_local_backends
           additionalProperties:
             type: [string, boolean, number, array, "null"]
@@ -11663,6 +11994,299 @@ components:
           description: >
             The `revision` last read. A file that changed since gives 409 and
             nothing is written.
+
+    # ── Decision models and document routers (ADR-110) ──────────────────
+    DecisionModelList:
+      type: object
+      additionalProperties: false
+      required: [status, revision, kinds, models]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        revision:
+          type: string
+          description: >
+            SHA-256 of the `omrs.jsonc` bytes, or `absent` when there is no
+            file. Send it back on a write; a file that changed since gives 409.
+        kinds:
+          type: array
+          description: Each registered kind, sorted by name.
+          items:
+            $ref: "#/components/schemas/DecisionKindOption"
+        models:
+          type: array
+          description: The valid entries, sorted by name.
+          items:
+            $ref: "#/components/schemas/DecisionModelItem"
+
+    DecisionKindOption:
+      type: object
+      additionalProperties: false
+      required: [name, not_yet_tested]
+      properties:
+        name:
+          type: string
+          enum: [cloudflare, llamacpp, ollama, typesafe]
+        not_yet_tested:
+          type: boolean
+          description: No live request of this kind is recorded. Settings shows "Not yet tested".
+
+    DecisionModelItem:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - kind
+        - address
+        - model
+        - images
+        - server
+        - model_file
+        - projector_file
+        - model_sha256
+        - projector_sha256
+        - hosted
+        - key_state
+        - not_yet_tested
+        - used_by
+      properties:
+        name:
+          type: string
+        kind:
+          type: string
+          enum: [cloudflare, llamacpp, ollama, typesafe]
+        address:
+          type: string
+        model:
+          type: string
+        images:
+          type: boolean
+        server:
+          type: [string, "null"]
+          enum: [external, managed, null]
+        model_file:
+          type: [string, "null"]
+        projector_file:
+          type: [string, "null"]
+        model_sha256:
+          type: [string, "null"]
+        projector_sha256:
+          type: [string, "null"]
+        hosted:
+          type: boolean
+          description: The address is not a loopback address.
+        key_state:
+          type: string
+          enum: [not-needed, not-set, reference-set, resolvable, unresolvable]
+          description: >
+            `not-needed`: a local entry with no key reference. `not-set`: a
+            hosted entry with no key reference. `resolvable`: an `env://` or
+            `file://` reference that names a set variable or a file inside
+            `secrets/`. `unresolvable`: such a reference that does not.
+            `reference-set`: a `keychain://` reference, which the list does not
+            read. The key itself is never returned.
+        not_yet_tested:
+          type: boolean
+          description: The kind has no recorded live request.
+        used_by:
+          type: array
+          description: The routers that name this entry, sorted.
+          items:
+            type: string
+
+    DecisionModelSave:
+      type: object
+      additionalProperties: false
+      required: [entry, revision]
+      properties:
+        entry:
+          type: object
+          description: >
+            The entry's fields: `kind`, `address`, `model`, and optionally
+            `images`, `key` (a reference only), `server`, `model_file`,
+            `projector_file`, `model_sha256`, `projector_sha256`. The settings
+            writer checks every field; a broken field gets 400.
+          additionalProperties: true
+        revision:
+          type: string
+          maxLength: 128
+          description: The `revision` last read. A file that changed since gives 409.
+
+    DecisionModelTest:
+      type: object
+      additionalProperties: false
+      required: [status, name, result, quantisation, projector, build]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        name:
+          type: string
+        result:
+          type: string
+          enum:
+            - ok
+            - unknown-model
+            - unreachable
+            - quantisation-refused
+            - projector-not-loaded
+            - wrong-build
+            - request-failed
+            - malformed-reply
+          description: "`ok` when every check passed, else the first fixed reason."
+        quantisation:
+          type: string
+          description: The quantisation line, for example "Quantisation not checked".
+        projector:
+          type: [string, "null"]
+          description: The projector smoke test line, or null for a text-only entry.
+        build:
+          type: [string, "null"]
+          description: The llama.cpp build line, or null when the build is not checked.
+
+    DocumentRouterList:
+      type: object
+      additionalProperties: false
+      required: [status, revision, routers]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        revision:
+          type: string
+          description: >
+            SHA-256 of the `omrs.jsonc` bytes, or `absent` when there is no
+            file. Send it back on a write; a file that changed since gives 409.
+        routers:
+          type: array
+          description: The valid routers, sorted by name.
+          items:
+            $ref: "#/components/schemas/DocumentRouterItem"
+
+    DocumentRouterItem:
+      type: object
+      additionalProperties: false
+      required:
+        - name
+        - model
+        - question
+        - threshold
+        - images
+        - max_chars
+        - send_off_machine
+        - model_kind
+        - hosted
+        - experimental
+        - will_run
+        - will_not_run_reason
+        - host
+        - used_by
+      properties:
+        name:
+          type: string
+        model:
+          type: string
+          description: The decision model entry name.
+        question:
+          type: string
+        threshold:
+          type: number
+          minimum: 0
+          maximum: 1
+        images:
+          type: boolean
+        max_chars:
+          type: integer
+          minimum: 1
+        send_off_machine:
+          type: boolean
+        model_kind:
+          type: [string, "null"]
+          enum: [cloudflare, llamacpp, ollama, typesafe, null]
+          description: The kind of the decision model, or null when the file holds no valid entry of that name.
+        hosted:
+          type: boolean
+          description: The decision model's address is not a loopback address.
+        experimental:
+          type: boolean
+          description: A hosted router that sends page images.
+        will_run:
+          type: boolean
+        will_not_run_reason:
+          type: [string, "null"]
+          enum: [unknown-model, needs-opt-in, null]
+          description: Null when `will_run` is true.
+        host:
+          type: boolean
+          description: The saved `document_router` names this router.
+        used_by:
+          type: array
+          description: Titles of the saved user profiles whose Read document step names this router.
+          items:
+            type: string
+
+    DocumentRouterSave:
+      type: object
+      additionalProperties: false
+      required: [entry, revision]
+      properties:
+        entry:
+          type: object
+          description: >
+            The router's fields: `model`, `question`, `threshold` (0 to 1), and
+            optionally `images`, `max_chars` (default 2000) and
+            `send_off_machine` (default false). The settings writer checks
+            every field; a broken field gets 400.
+          additionalProperties: true
+        revision:
+          type: string
+          maxLength: 128
+          description: The `revision` last read. A file that changed since gives 409.
+
+    DocumentRouterRename:
+      type: object
+      additionalProperties: false
+      required: [new_name, revision]
+      properties:
+        new_name:
+          type: string
+          maxLength: 64
+        revision:
+          type: string
+          maxLength: 128
+          description: The `revision` last read. A file that changed since gives 409.
+
+    RouterMapRevision:
+      type: object
+      additionalProperties: false
+      required: [revision]
+      properties:
+        revision:
+          type: string
+          maxLength: 128
+          description: The `revision` last read. A file that changed since gives 409.
+
+    RouterMapRefused:
+      type: object
+      additionalProperties: false
+      required: [status, message]
+      properties:
+        status:
+          type: string
+          enum: [error]
+        message:
+          type: string
+          description: A plain-English line. It names the router, setting or profile that blocks the change.
+        reason:
+          type: string
+          enum: [in-use, name-taken, profiles-unreadable]
+          description: >
+            `in-use`: a router names the decision model, or the saved
+            `document_router` or a saved profile names the router.
+            `name-taken`: the new router name exists. `profiles-unreadable`:
+            the saved profiles could not be read, so nothing changed. Absent on
+            a stale `revision` or a broken file.
 
     PowerStatus:
       type: object

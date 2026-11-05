@@ -147,13 +147,21 @@ def test_backends_follow_the_list_order(
 def test_rules_follow_rule_order_with_version_and_source(effective_settings: Any) -> None:
     rows = health.reading_parts_health(effective_settings())["page_rules"]
 
-    assert [row["name"] for row in rows] == ["blank", "maths", "non_latin"]
+    assert [row["name"] for row in rows] == ["blank", "maths", "non_latin", "document_router"]
     assert all(row["source"] == "built-in" for row in rows)
     assert rows[0]["enabled"] is True, "a rule without a setting is on"
 
 
 def test_non_latin_detect_is_on(effective_settings: Any) -> None:
     assert _rules(effective_settings(ocr_non_latin_routing="detect"))["non_latin"]["enabled"]
+
+
+def test_a_selected_router_shows_as_on(effective_settings: Any) -> None:
+    assert _rules(effective_settings(document_router="handwriting"))["document_router"]["enabled"]
+
+
+def test_no_router_shows_as_off(effective_settings: Any) -> None:
+    assert not _rules(effective_settings(document_router=""))["document_router"]["enabled"]
 
 
 def test_maths_off_is_off(effective_settings: Any) -> None:
@@ -166,6 +174,8 @@ def test_each_built_in_rule_version_equals_its_detector_version() -> None:
         "blank": blank_pages.BLANK_PAGE_TEST_VERSION,
         "maths": maths_pages.MATHS_DETECTOR_VERSION,
         "non_latin": script_routing.SCRIPT_DETECTOR_VERSION,
+        # The router has no detector; its version enters the identity entry directly.
+        "document_router": 1,
     }
     assert {rule.name: rule.version for rule in reading_parts.PAGE_RULES} == detector
 
@@ -260,7 +270,12 @@ def test_a_failing_section_is_empty_and_the_others_stay(
     body = health.reading_parts_health(effective_settings())
 
     assert body["discovered_parts"] == []
-    assert [row["name"] for row in body["page_rules"]] == ["blank", "maths", "non_latin"]
+    assert [row["name"] for row in body["page_rules"]] == [
+        "blank",
+        "maths",
+        "non_latin",
+        "document_router",
+    ]
 
 
 def test_runtime_components_read_the_model_files_from_the_descriptor() -> None:

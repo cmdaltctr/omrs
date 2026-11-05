@@ -2,7 +2,7 @@
 
 Each ``register()`` line below has a part descriptor in
 ``core/reading_parts.py`` (``PAGE_RULES``); ``tests/unit/test_reading_parts_pins.py``
-pins the two to each other. The order and the four hook flags are declared
+pins the two to each other. The order and the hook flags are declared
 facts. Importing this module imports no rule module.
 """
 
@@ -87,4 +87,11 @@ register(
     sends_direct=True,
     has_post_check=True,
     has_degrade=True,
+)
+register(
+    "document_router",
+    "omrs.integrations.pdf.page_rules.document_router:RULE",
+    order=40,
+    has_degrade=True,
+    adds_pages=True,
 )

@@ -18,7 +18,7 @@ OMRS reads a PDF in stages. A PDF reader extracts the text of each page. A page 
 | --- | --- | --- | --- |
 | PDF reader | `PdfReaderDescriptor` | `liteparse`, `pdf_inspector`, `pypdfium2`, `pypdf` | `pdf_readers` |
 | Local OCR backend | `LocalOcrBackendDescriptor` | `pp-ocrv6-small`, `indra` | `ocr_local_backends` |
-| Page rule | `PageRuleDescriptor` | `blank` (order 10), `maths` (order 20), `non_latin` (order 30) | Each rule has its own setting |
+| Page rule | `PageRuleDescriptor` | `blank` (order 10), `maths` (order 20), `non_latin` (order 30), `document_router` (order 40) | Each rule has its own setting |
 
 The default `ocr_local_backends` list holds the first backend of the table, `pp-ocrv6-small`. `indra` needs the `local-ocr-indra` extra and stays out of the default list.
 
@@ -55,7 +55,7 @@ Each kind adds fields:
 | --- | --- |
 | PDF reader | `text_format` (`plain` or `markdown`), `page_provenance` (true when each document carries its page number), `output_revision` (a change re-ingests PDF sources) |
 | Local OCR backend | `min_confidence` (the escalation cut), `calibrated_by` (the experiment folder that measured the cut), `keeps_scripts` (script names the backend may keep, or `None`), `producer` (the `ocr_backend` value of kept pages), `model` (`name@revision`) |
-| Page rule | `order` (unique among page rules), `drops_pages`, `sends_direct`, `has_post_check`, `has_degrade` |
+| Page rule | `order` (unique among page rules), `drops_pages`, `sends_direct`, `has_post_check`, `has_degrade`, `adds_pages` |
 
 The descriptor classes refuse two mistakes when the module loads:
 
@@ -85,20 +85,49 @@ A local OCR backend is an object with two methods. It reads pages and reports wh
 - `read_pages(file, pages, *, settings)` returns one `BackendPage` per page: page number, text, confidence between 0 and 1 (or `None`), model identity and a hosted-engine hint.
 - `identity(settings)` returns the model identity as `name@revision`, or `None`.
 
-A page rule is an object with `run(ctx)`. It returns a `RuleOutcome`: pages to drop, pages to send direct to the OCR engine list, and optional state. Three optional hooks exist. The registration declares them with `has_post_check` and `has_degrade`; `stamp` runs when the rule has one.
+A page rule is an object with `run(ctx)`. It returns a `RuleOutcome`: pages to drop (`drop`), pages to send direct to the OCR engine list (`direct`), pages to add to the OCR route (`add`), and optional state. Three optional hooks exist. The registration declares them with `has_post_check` and `has_degrade`; `stamp` runs when the rule has one.
 
 - `post_check(ctx, outcome)` returns a check that the shared escalation rule runs on each local OCR result.
 - `degrade(ctx, outcome, unread)` returns the pages the local tier must read when no engine read a page that this rule sent direct.
 - `stamp(metadata, ctx, outcome, escalated)` writes the rule's diagnostic count.
 
+The context `ctx` holds the file, the page scan (`evidence`), the flagged pages, the routed pages, the settings and the OCR engine routes. It also holds two fields for rules that add pages:
+
+- `claimed`: the pages that earlier rules dropped, sent direct or added. A rule that adds pages skips them.
+- `judge`: the page judge of the selected document router, or `None`. Only the router reads it.
+
+`drop` and `direct` can name only routed pages, which are flagged pages. `add` can name unflagged pages. Only a rule whose registration declares `adds_pages` can return `add`. A valid added page is in the page scan, has non-blank text, is not flagged and is not in `claimed`. Any other added page is a bad outcome: a built-in rule fails the file, and a discovered rule is skipped with one warning and switched off.
+
 The page rule pipeline in `src/omrs/integrations/pdf/page_rules/pipeline.py` runs the rules in ascending `order` with four fixed semantics:
 
 1. A page dropped by an earlier rule leaves the routed set of every later rule.
 2. A rule's direct set loses the pages that earlier rules dropped.
-3. The direct pages are the union of every rule's reduced direct set. The local tier reads the routed pages that are not direct.
+3. The direct pages are the union of every rule's reduced direct set and added pages, minus every dropped page. A page that two rules name goes to the OCR engine list once. The local tier reads the routed pages that are not direct. `pages_needing_ocr` stays the count of flagged pages.
 4. A rule's `degrade` hook sees only the pages that the rule was first to send direct.
 
 The local backend list runs in list order. The first backend that can run reads every page. A page that the backend does not keep passes to the next backend. A page with no escalation reason is kept and carries the backend's `producer`. A backend that declares `keeps_scripts` does not keep a page whose output script is outside that set (reason `script_not_kept`).
+
+## The document router
+
+The document router is the fourth built-in page rule, `document_router`, at order 40. It runs after the blank, maths and non-Latin rules. It declares `adds_pages` and `has_degrade`.
+
+A router asks a decision model, one page at a time, whether the native text of a page can stay. The setting `document_router` (environment `DOCUMENT_ROUTER`) names one entry of the `document_routers` map in `omrs.jsonc`. An empty value means no router. This is the default. The composition root builds the page judge from the router entry and its decision model entry, and the page unit puts it on `ctx.judge`.
+
+The router judges each page that has non-blank native text, that the scan did not flag and that is not in `claimed`. It does not judge a flagged page, because a flagged page already goes to OCR. It does not judge OCR output. It sends the page text, cut to the router's character limit, and the page image when the router sees images. A page with P(yes) below the router threshold goes to the OCR engine list in `add`.
+
+Cost: the router judges every unflagged text page that no earlier rule claimed. That is about 3.6 s per judged page with the local model. In Experiment 43, about 2.7% of healthy pages (15 of 565) went to OCR by mistake. No setting changes which pages the router judges.
+
+Worked example. A 20-page PDF has page 2 flagged, and its blank test drops nothing. A router with threshold 0.17 is selected.
+
+1. The blank, maths and non-Latin rules run. Page 2 is routed. No rule claims another page.
+2. The router judges pages 1 and 3 to 20, one request at a time. It skips page 2, because page 2 is flagged.
+3. Page 7 gets P(yes) 0.05. That is below 0.17, so the router returns `add = {7}`. The other 18 pages keep their native text.
+4. The page unit sends pages 2 and 7 to the OCR engine list in one page-listed request. When no engine is available, the router's `degrade` hook sends page 7 to the local tier, with one warning.
+5. The document carries `router_pages_judged: 19`, `router_pages_accepted: 18`, `router_pages_rejected: 1`, `router_pages_unjudged: 0` and `router_status: "ok"`. `pages_needing_ocr` stays 1.
+
+When the router cannot run, the rule returns an empty outcome and reads no page. Reading behaves as with no router, and `router_status` holds the reason: `unknown-model`, `unreachable`, `quantisation-refused`, `projector-not-loaded`, `wrong-build`, `renderer-missing`, `needs-opt-in` or `request-failed`. A single failed request keeps the page's native text and counts it in `router_pages_unjudged`. With no router, the rule stamps no key. The five keys are diagnostics: they never reach the embedding text and do not enter the index identity key list.
+
+With a router selected, the `parser` block of a PDF source holds a `document_router` entry: the question, threshold, image flag, character limit, the decision model kind and model identity, and the rule version. The router name, address, key and opt-in stay out, so a rename does not re-ingest. A change to the threshold re-ingests PDF sources on the next explicit ingest.
 
 ## Part options
 
@@ -251,14 +280,14 @@ The integrations catalogue row, the health row and the uninstall plan come from 
 
 ### Add a page rule
 
-Before you start, decide the rule's `order`. No other page rule may use it. Choose which of the four flags the rule needs.
+Before you start, decide the rule's `order`. No other page rule may use it. Choose which of the five flags the rule needs.
 
 1. Create `src/omrs/integrations/pdf/page_rules/<module>.py`.
 2. Add a class with `run(self, ctx)`. Return a `RuleOutcome`.
 3. Add the hook methods that the rule needs: `post_check`, `degrade` or `stamp`.
 4. Add a module-level `RULE` object.
 5. Add a `PageRuleDescriptor` to `PAGE_RULES` in `src/omrs/core/reading_parts.py`.
-6. Set `name`, `import_path`, `label`, `help_key`, `order` and the flags `drops_pages`, `sends_direct`, `has_post_check` and `has_degrade`.
+6. Set `name`, `import_path`, `label`, `help_key`, `order` and the flags `drops_pages`, `sends_direct`, `has_post_check`, `has_degrade` and `adds_pages`.
 7. If the rule has a setting, add a `SettingField` to `settings`. Add the field to the `Settings` model in `src/omrs/config/ocr_routes.py` and to `EffectiveSettings` in `src/omrs/core/settings.py`. Pass it in `src/omrs/compose_settings.py`.
 8. If the rule changes the index identity, set `identity` and add a builder in `src/omrs/core/ingestion/ocr_identity.py`.
 9. If the rule stamps a page count, add the metadata key to `EXCLUDED_EMBED_METADATA_KEYS` in `src/omrs/core/ingestion/embed_exclusions.py`.

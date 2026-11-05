@@ -39,6 +39,13 @@ EXCLUDED_EMBED_METADATA_KEYS = (
     # Non-Latin page count (non-latin-script-routing); stamped only when the
     # setting is not ``off``.
     "pages_non_latin",
+    # Router counts and status (document-reading-routers); stamped only when a
+    # router is selected.
+    "router_pages_judged",
+    "router_pages_accepted",
+    "router_pages_rejected",
+    "router_pages_unjudged",
+    "router_status",
     "page_count",
     "page",
     "page_label",
@@ -57,6 +64,16 @@ EXCLUDED_EMBED_METADATA_KEYS = (
 
 #: Keys in :data:`EXCLUDED_EMBED_METADATA_KEYS` that the index identity's
 #: excluded-key list leaves out. ``pages_non_latin`` exists only while
-#: ``ocr_non_latin_routing`` is on, and that setting has its own identity block,
-#: so listing the key would change the digest of every default install.
-IDENTITY_UNLISTED_KEYS = frozenset({"pages_non_latin"})
+#: ``ocr_non_latin_routing`` is on, and the router keys only while a router is
+#: selected. Each setting has its own identity entry, so listing the keys would
+#: change the digest of every default install.
+IDENTITY_UNLISTED_KEYS = frozenset(
+    {
+        "pages_non_latin",
+        "router_pages_judged",
+        "router_pages_accepted",
+        "router_pages_rejected",
+        "router_pages_unjudged",
+        "router_status",
+    }
+)

@@ -44,6 +44,7 @@ from .provider_sources import (  # noqa: E402
 from .reading_lists import ReadingListMixin  # noqa: E402
 from .rules import ACCEPTED, PDF_READER_NAMES, _validate_provider_value  # noqa: E402,F401
 from .settings_file import UserConfigSource  # noqa: E402
+from .settings_maps import SettingsMapsMixin  # noqa: E402
 from .sources import LegacyBool  # noqa: E402
 from .storage import StorageValidationMixin, source_keys  # noqa: E402
 
@@ -57,6 +58,7 @@ class Settings(
     StorageValidationMixin,
     OcrRouteSettingsMixin,
     ReadingListMixin,
+    SettingsMapsMixin,  # after ProviderSourceMixin: it adds to setting_sources
     ProviderSourceMixin,
     BaseSettings,
 ):

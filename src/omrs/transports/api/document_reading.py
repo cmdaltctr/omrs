@@ -30,6 +30,7 @@ from ...config.rules import (
     replaced_key_reason,
 )
 from ...config.settings_file import SettingsFile, read_settings_file
+from ...config.settings_maps import DOCUMENT_ROUTERS, NO_ROUTER
 from ...config.user_config import display_path
 from ...core import reading_parts
 from ...core.reading_lists import OCR_ENGINES_DEFAULT, expand_ocr_engines, expand_pdf_reader
@@ -45,6 +46,7 @@ logger = logging.getLogger(__name__)
 _SHOWN_SOURCES = frozenset({"env", "dotenv", "config-file"})
 _LOCKING_SOURCES = frozenset({"env", "dotenv"})
 NOT_A_READING_KEY = "{key} is not a document reading setting."
+UNKNOWN_ROUTER = "document_router: No router of this name is in omrs.jsonc."
 
 #: The reader the running engine uses. It is resolved once per process.
 _reader_in_use: list[str] = []
@@ -257,3 +259,24 @@ def update_refusal(values: Mapping[str, Any], launch: Settings) -> tuple[int, st
             if rule is not None:
                 return 400, f"{key}: {rule}"
     return None
+
+
+def router_refusal(values: Mapping[str, Any], file: SettingsFile) -> tuple[int, str] | None:
+    """Refuse a host ``document_router`` that names no router in *file* (ADR-110, D3).
+
+    The host choice applies at the next launch, so it must name a router that
+    ``omrs.jsonc`` holds now, or ``none``. ``null`` removes the key and passes.
+
+    Args:
+        values: The ``values`` member of the request, already checked by
+            :func:`update_refusal`.
+        file: ``omrs.jsonc`` as it is now.
+
+    Returns:
+        ``(400, message)``, or ``None`` when the value is fine. The message
+        never holds the value.
+    """
+    name = values.get("document_router")
+    if name is None or name == NO_ROUTER or name in file.maps.get(DOCUMENT_ROUTERS, {}):
+        return None
+    return 400, UNKNOWN_ROUTER
