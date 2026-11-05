@@ -3,7 +3,7 @@
 - **Folder**: `43-image-rescue-gate-2026-11-02`
 - **Record**: [experiment.json](experiment.json) holds the category, size and status.
 - **Date run**: 2026-11-02
-- **Operator**: Dr Muhammad Aizat Bin Md Hawari, with a Claude Code agent
+- **Operator**: the project operator, with a Claude Code agent
 - **Plan**: [protocol.md](protocol.md) · [plan.json](plan.json)
 - **Source of every number**: `output/summary.json`, `output/scores_clef_image.json`, `output/scores_jev_image.json`, `output/run-records.jsonl`
 
