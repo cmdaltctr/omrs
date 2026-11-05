@@ -81,6 +81,9 @@ def build(
         model=model,
         api_base=address,
         api_key="no-key",
+        # Without this, LlamaIndex sends raw text to the legacy /completions
+        # endpoint: no chat template, no stop token, a run to the context limit.
+        is_chat_model=True,
         # OpenAILike names this ``timeout``; ``request_timeout`` is the Ollama
         # spelling and is silently dropped, leaving the 60s default in place.
         timeout=(timeout if timeout is not None else settings.metadata.classify_timeout),

@@ -287,7 +287,11 @@ def main() -> int:
                     {
                         "choices": [
                             {
-                                "message": {"content": os.environ.get("FAKE_LLAMA_CONTENT", "[]")},
+                                # A chat client (LlamaIndex) rejects a message without a role.
+                                "message": {
+                                    "role": "assistant",
+                                    "content": os.environ.get("FAKE_LLAMA_CONTENT", "[]"),
+                                },
                                 # ``/v1/completions`` clients read ``text``.
                                 "text": os.environ.get("FAKE_LLAMA_CONTENT", "[]"),
                                 "finish_reason": "stop",
