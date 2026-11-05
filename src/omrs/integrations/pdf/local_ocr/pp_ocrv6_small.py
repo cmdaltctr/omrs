@@ -13,12 +13,62 @@ applied after the read, by the chain.
 
 from __future__ import annotations
 
+import logging
 import os
 import tempfile
+from importlib.util import find_spec
 from pathlib import Path
 from typing import Any
 
 from .base import BackendPage
+
+logger = logging.getLogger(__name__)
+
+#: Variable pdf-inspector reads, the package that bundles the library, the folder
+#: inside it, and the file patterns (macOS, Linux, Windows) in order of preference.
+_LIBRARIES: tuple[tuple[str, str, str, tuple[str, ...]], ...] = (
+    ("PDFIUM_LIB_PATH", "liteparse", "", ("libpdfium.dylib", "libpdfium.so", "pdfium.dll")),
+    (
+        "ORT_DYLIB_PATH",
+        "onnxruntime",
+        "capi",
+        ("libonnxruntime.*.dylib", "libonnxruntime.so.*", "onnxruntime.dll"),
+    ),
+)
+
+
+def _bundled_library(package: str, folder: str, patterns: tuple[str, ...]) -> Path | None:
+    """Return the library file inside an installed *package*, or ``None``."""
+    try:
+        spec = find_spec(package)
+    except (ImportError, ValueError):
+        return None
+    for root in (spec.submodule_search_locations or []) if spec else []:
+        for pattern in patterns:
+            found = sorted((Path(root) / folder).glob(pattern))
+            if found:
+                return found[-1]
+    return None
+
+
+def export_library_paths() -> None:
+    """Set the PDFium and ONNX Runtime paths pdf-inspector loads, when unset.
+
+    A variable that is unset or empty gets the library bundled in the running
+    environment (``liteparse`` for PDFium, ``onnxruntime`` for ONNX Runtime).
+    A value the user set stays. A library that is not there leaves its variable
+    unset, so the tier degrades as before. pdf-inspector reads the variables
+    when it loads a library, so calling this before each OCR call is early enough
+    and also runs after ``.env`` has been loaded.
+    """
+    for variable, package, folder, patterns in _LIBRARIES:
+        if os.environ.get(variable):
+            continue
+        library = _bundled_library(package, folder, patterns)
+        if library is None:
+            continue
+        os.environ[variable] = str(library)
+        logger.info("%s set from the bundled library %s", variable, library)
 
 
 def _model_identity(provenance: Any) -> str | None:
@@ -60,6 +110,7 @@ class PpOcrV6Small:
         except ImportError as exc:  # mirrors the adapter's message
             raise ImportError("pdf_inspector is not installed. Install with: uv sync") from exc
 
+        export_library_paths()
         result = pdf_inspector.process_pdf_with_ocr(
             str(file), mode="force", page_numbers=sorted(pages), **_model_options(settings)
         )
@@ -92,6 +143,7 @@ class PpOcrV6Small:
         import pdf_inspector
         from pypdf import PdfWriter
 
+        export_library_paths()
         path: str | None = None
         try:
             with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as handle:

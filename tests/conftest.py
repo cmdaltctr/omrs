@@ -541,6 +541,11 @@ def _isolate_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     # key set a fake one themselves.
     for name in [name for name in os.environ if name.endswith("_API_KEY")]:
         monkeypatch.delenv(name)
+    # The local OCR backend exports these two library paths itself (issue #175).
+    # setenv then delenv makes monkeypatch remove whatever a test leaves behind.
+    for name in ("PDFIUM_LIB_PATH", "ORT_DYLIB_PATH"):
+        monkeypatch.setenv(name, "")
+        monkeypatch.delenv(name)
 
     monkeypatch.setenv("VECTOR_STORE", "lancedb")
     monkeypatch.setenv("LANCEDB_URI", str(tmp_path / "lancedb"))
