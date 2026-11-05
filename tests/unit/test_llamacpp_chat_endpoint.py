@@ -8,7 +8,7 @@ Both roles must use ``/chat/completions``.
 
 from __future__ import annotations
 
-from types import SimpleNamespace
+from collections.abc import Callable
 from typing import Any
 
 import httpx
@@ -19,12 +19,12 @@ from omrs.core.providers.llm import llamacpp
 BASE = "http://127.0.0.1:9931/v1"
 
 
-def _settings() -> SimpleNamespace:
-    return SimpleNamespace(
+@pytest.fixture
+def _settings(effective_settings: Callable[..., Any]) -> Any:
+    return effective_settings(
         llamacpp_chat_url=BASE,
-        llamacpp_classify_url="",
         llamacpp_chat_model="Qwen/Qwen3-0.6B-GGUF:Q8_0",
-        metadata=SimpleNamespace(classify_timeout=30.0),
+        **{"metadata.classify_timeout": 30.0},
     )
 
 
@@ -71,18 +71,18 @@ def _wire(monkeypatch: pytest.MonkeyPatch) -> list[httpx.Request]:
 
 
 @pytest.mark.parametrize("answer_model", [None, "m"])
-def test_build_declares_a_chat_model(answer_model: str | None) -> None:
-    llm = llamacpp.build(_settings(), answer_model=answer_model)
+def test_build_declares_a_chat_model(_settings: Any, answer_model: str | None) -> None:
+    llm = llamacpp.build(_settings, answer_model=answer_model)
     assert llm.is_chat_model is True
     assert llm.metadata.is_chat_model is True
 
 
 @pytest.mark.parametrize("answer_model", [None, "m"])
 def test_complete_uses_the_chat_endpoint(
-    monkeypatch: pytest.MonkeyPatch, answer_model: str | None
+    _settings: Any, monkeypatch: pytest.MonkeyPatch, answer_model: str | None
 ) -> None:
     seen = _wire(monkeypatch)
-    llm = llamacpp.build(_settings(), answer_model=answer_model)
+    llm = llamacpp.build(_settings, answer_model=answer_model)
 
     reply = llm.complete("question")
 
@@ -93,10 +93,10 @@ def test_complete_uses_the_chat_endpoint(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("answer_model", [None, "m"])
 async def test_acomplete_uses_the_chat_endpoint(
-    monkeypatch: pytest.MonkeyPatch, answer_model: str | None
+    _settings: Any, monkeypatch: pytest.MonkeyPatch, answer_model: str | None
 ) -> None:
     seen = _wire(monkeypatch)
-    llm = llamacpp.build(_settings(), answer_model=answer_model)
+    llm = llamacpp.build(_settings, answer_model=answer_model)
 
     reply = await llm.acomplete("question")
 
@@ -104,10 +104,12 @@ async def test_acomplete_uses_the_chat_endpoint(
     assert reply.text == "A Title"
 
 
-def test_reasoning_text_stays_out_of_the_answer(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_reasoning_text_stays_out_of_the_answer(
+    _settings: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """The extractors read ``reply.text``; ``reasoning_content`` must not reach it."""
     _wire(monkeypatch)
-    reply: Any = llamacpp.build(_settings()).complete("question")
+    reply: Any = llamacpp.build(_settings).complete("question")
 
     assert "thinking" not in reply.text
     assert llamacpp.read_reply(reply.raw).reasoning == "thinking about it"
