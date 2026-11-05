@@ -29,7 +29,14 @@ def test_committed_manifest_holds_the_approved_shortlist() -> None:
     manifest = exp47_io.read_json(exp47_io.EXP_DIR / "corpus_manifest.json")
     assert prepare_inputs.validate_manifest(manifest, LICENCES) == []
     groups = [d["group"] for d in manifest["documents"]]
-    assert (groups.count("JUNK"), groups.count("GOOD")) == (10, 9)
+    # 19 approved documents (10 JUNK, 9 GOOD) plus 13 from amendment A2 (8 JUNK, 5 GOOD).
+    assert (groups.count("JUNK"), groups.count("GOOD")) == (18, 14)
+    ids = {d["id"] for d in manifest["documents"]}
+    assert {f"j{n}" for n in range(1, 11)} | {f"g{n}" for n in range(1, 10)} <= ids
+    added = [d for d in manifest["documents"] if "amendment A2" in d["title"]]
+    assert {d["id"] for d in added} == {f"j{n}" for n in range(11, 19)} | {
+        f"g{n}" for n in range(10, 15)
+    }
     assert all(d["language"] for d in manifest["documents"])
 
 

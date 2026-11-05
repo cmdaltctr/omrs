@@ -262,6 +262,11 @@
       "scope": "hosted_reference_arm",
       "status": "APPROVED: page images and text heads of the 19 public-domain or open-licence documents go to TypeSafe jev-1.14.0 (images on, as in Experiment 43). Key from TYPESAFE_API_KEY, never printed or saved. Compared with clef_router in the report.",
       "date": "2026-11-05"
+    },
+    {
+      "item": "Set check cannot pass on the approved corpus (scan flags 9 of 10 JUNK documents): option 2, add documents (amendment A2)",
+      "status": "APPROVED: option 2, add documents. Minimums stay; all 19 approved documents stay.",
+      "date": "2026-11-05"
     }
   ],
   "frozen": [
@@ -327,6 +332,15 @@
       "change": "The label review is done by the coding agent, not the operator. The agent checks each review page image, its page text and its dots-mocr reference, and records a verdict per page. The rule of more than 3 disagreements stopping the run is kept.",
       "reason": "Operator decision 2026-11-05: the operator does not review labels by eye.",
       "approved_by": "operator"
+    },
+    {
+      "id": "A2",
+      "date": "2026-11-05",
+      "before_any_score": true,
+      "before_any_label": true,
+      "change": "Add 13 documents to corpus_manifest.json: JUNK j11 to j18 (early modern and 18th-century prints with a garbled text layer that the shipped scan does not flag; Google Books via archive.org, Public Domain Mark 1.0) and GOOD g10 to g14 (born-digital CC BY 4.0 articles in French, Spanish, Portuguese and Russian). All 19 approved documents stay. output/inputs.json is made again from the start, because prepare_inputs.py refuses a resume after a manifest change; the rows of the 19 original documents must equal the committed rows of a58c03ea. The hosted reference arm covers the added documents under the same approval (page images and text heads of public-domain or open-licence documents). Hypotheses, gates, threshold 0.172, stop rules, set-check minimums, labelling method and review rule do not change.",
+      "reason": "The set check cannot pass on the approved corpus. The shipped page scan (output/inputs.json, commit a58c03ea) sends every page of 9 of 10 JUNK documents (the manuscript scans j1 to j5 and j7 to j10) and of 3 GOOD documents (g4, g5, g9) to OCR. Only j6 (7 pages) is left as unflagged JUNK, against a minimum of 20 pages in 5 documents. Each added document was checked with the shipped scan before it was added: no page in its range is flagged.",
+      "approved_by": "operator (option 2, add documents, 2026-11-05)"
     }
   ]
 }

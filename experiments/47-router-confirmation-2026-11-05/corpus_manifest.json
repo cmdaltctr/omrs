@@ -267,6 +267,188 @@
       ],
       "language": "Japanese, born-digital",
       "title": "Japanese Journal of Ecology editorial, DOI 10.18960/seitai.2513; CC BY 4.0"
+    },
+    {
+      "id": "j11",
+      "group": "JUNK",
+      "file": "bub_gb_ZLlDAAAAcAAJ.pdf",
+      "source_url": "https://archive.org/download/bub_gb_ZLlDAAAAcAAJ/bub_gb_ZLlDAAAAcAAJ.pdf",
+      "licence": "public-domain",
+      "sha256": "96180c2a371923cd6f007d87db4fa5a079ff953d3405501ae7f68b3285e3d400",
+      "page_range": [
+        1,
+        6
+      ],
+      "language": "German, Fraktur print",
+      "title": "Repartition fuer Hauptmann Peiseles Compagnie, about 1700 (via Google Books); Public Domain Mark 1.0; amendment A2"
+    },
+    {
+      "id": "j12",
+      "group": "JUNK",
+      "file": "bub_gb_9utDAAAAcAAJ.pdf",
+      "source_url": "https://archive.org/download/bub_gb_9utDAAAAcAAJ/bub_gb_9utDAAAAcAAJ.pdf",
+      "licence": "public-domain",
+      "sha256": "30f8836b196f3d9606ed32b91f7d8f6a689391f0db74e7b36e9d102d27f4b784",
+      "page_range": [
+        5,
+        10
+      ],
+      "language": "German, Fraktur print",
+      "title": "Gruendliche GeschichtsErzaehlung den Zehend zu Langenmosen betreffend, 1765 (via Google Books); Public Domain Mark 1.0; amendment A2"
+    },
+    {
+      "id": "j13",
+      "group": "JUNK",
+      "file": "bub_gb_sCJaAAAAcAAJ.pdf",
+      "source_url": "https://archive.org/download/bub_gb_sCJaAAAAcAAJ/bub_gb_sCJaAAAAcAAJ.pdf",
+      "licence": "public-domain",
+      "sha256": "43f016a5e79c993a1d2cfa1f4bb809c97561db0b3451ebfc2b8a221def239e3d",
+      "page_range": [
+        8,
+        11
+      ],
+      "language": "German, Fraktur print",
+      "title": "Regensburg council notice (Demnach Ein Wohl-Edler Herr Cammerer und Rath), 1733 (via Google Books); Public Domain Mark 1.0; amendment A2"
+    },
+    {
+      "id": "j14",
+      "group": "JUNK",
+      "file": "bub_gb_APZQAAAAcAAJ.pdf",
+      "source_url": "https://archive.org/download/bub_gb_APZQAAAAcAAJ/bub_gb_APZQAAAAcAAJ.pdf",
+      "licence": "public-domain",
+      "sha256": "cb2f0cc7ab5b5c2354037fac975d5efc7765d016294cb8bcaeda6123af6a1ffb",
+      "page_range": [
+        3,
+        6
+      ],
+      "language": "German, Fraktur print",
+      "title": "TrauerRede, Mannheim, 1758 (via Google Books); Public Domain Mark 1.0; amendment A2"
+    },
+    {
+      "id": "j15",
+      "group": "JUNK",
+      "file": "bub_gb_atMQzzYaiJkC.pdf",
+      "source_url": "https://archive.org/download/bub_gb_atMQzzYaiJkC/bub_gb_atMQzzYaiJkC.pdf",
+      "licence": "public-domain",
+      "sha256": "8d0459a2311300c2e851b570d050a467189b14cdb92e6aff539a7c8c03df4671",
+      "page_range": [
+        1,
+        6
+      ],
+      "language": "Polish, blackletter print",
+      "title": "Zdanie jednego Milosnika Oyczyzny, o cel morskich fundacyi, about 1600 (via Google Books); Public Domain Mark 1.0; amendment A2"
+    },
+    {
+      "id": "j16",
+      "group": "JUNK",
+      "file": "bub_gb_qL_o3E0so7sC.pdf",
+      "source_url": "https://archive.org/download/bub_gb_qL_o3E0so7sC/bub_gb_qL_o3E0so7sC.pdf",
+      "licence": "public-domain",
+      "sha256": "0dcff34e9fc45d170c6147c8ef02f1a10995beef84f4dd9096e9023d8b66abdd",
+      "page_range": [
+        2,
+        7
+      ],
+      "language": "Polish, early modern print",
+      "title": "Nowe Zawstydzenie Socinistow, Cichowski, 1654 (via Google Books); Public Domain Mark 1.0; amendment A2"
+    },
+    {
+      "id": "j17",
+      "group": "JUNK",
+      "file": "bub_gb_921JAAAAcAAJ.pdf",
+      "source_url": "https://archive.org/download/bub_gb_921JAAAAcAAJ/bub_gb_921JAAAAcAAJ.pdf",
+      "licence": "public-domain",
+      "sha256": "f2ae54f5b7828f686ca43625bff93aeafdb56077a68d919b08aafc21ac2bbd8a",
+      "page_range": [
+        5,
+        10
+      ],
+      "language": "Dutch, blackletter print",
+      "title": "Francisci Gomari Proeve van M. P. Bertii Aenspraeck, 1610 (via Google Books); Public Domain Mark 1.0; amendment A2"
+    },
+    {
+      "id": "j18",
+      "group": "JUNK",
+      "file": "bub_gb_6uG8uOyXe_cC.pdf",
+      "source_url": "https://archive.org/download/bub_gb_6uG8uOyXe_cC/bub_gb_6uG8uOyXe_cC.pdf",
+      "licence": "public-domain",
+      "sha256": "2f5c0f5bc201f4bd91f3077a541ac3f7a2ff37c07f295d6930797a5b3bd36e95",
+      "page_range": [
+        3,
+        8
+      ],
+      "language": "Latin, italic print",
+      "title": "Parentalia anniversaria duci Augusto, Wittenberg, 1588 (via Google Books); Public Domain Mark 1.0; amendment A2"
+    },
+    {
+      "id": "g10",
+      "group": "GOOD",
+      "file": "mtsi-2024-449.pdf",
+      "source_url": "https://revuemtsi.societe-mtsi.fr/index.php/bspe-articles/article/download/449/444/1374",
+      "licence": "cc-by",
+      "sha256": "7dbd1f78659985a84547a387721a7384c8184d497c62ced91dc2d997366d24fe",
+      "page_range": [
+        2,
+        7
+      ],
+      "language": "French, born-digital",
+      "title": "Acute flaccid paralysis surveillance in Niger, Med Trop Sante Int 4(4), 2024, DOI 10.48327/mtsi.v4i4.2024.449; CC BY 4.0; amendment A2"
+    },
+    {
+      "id": "g11",
+      "group": "GOOD",
+      "file": "scielo-hcsm-2024-es0065.pdf",
+      "source_url": "https://www.scielo.br/j/hcsm/a/W4Lv8Lt8gVQPSF7gCJQWJgy/?format=pdf&lang=es",
+      "licence": "cc-by",
+      "sha256": "dfd74c09bdead1ec1f8a9ae4b1b6277a1ec711950ecc095bb6eb0416e18dc900",
+      "page_range": [
+        2,
+        7
+      ],
+      "language": "Spanish, born-digital",
+      "title": "Profilaxis urbana frente al brote de colera en Arica, 1886-1888, Hist Cienc Saude-Manguinhos 2024, DOI 10.1590/S0104-59702024000100065; CC BY 4.0; amendment A2"
+    },
+    {
+      "id": "g12",
+      "group": "GOOD",
+      "file": "scielo-hcsm-2024-pt0064.pdf",
+      "source_url": "https://www.scielo.br/j/hcsm/a/TTkNbG8Sj9mvnTdRhkPyMDp/?format=pdf&lang=pt",
+      "licence": "cc-by",
+      "sha256": "b0cba776cbbab13a8e1ee6fb5f5622bcbb43d9eaa1c389ee30f4d88f40769dfe",
+      "page_range": [
+        2,
+        7
+      ],
+      "language": "Portuguese, born-digital",
+      "title": "Vacinacao antivariolica na provincia do Parana, 1853-1863, Hist Cienc Saude-Manguinhos 2024, DOI 10.1590/S0104-59702024000100064; CC BY 4.0; amendment A2"
+    },
+    {
+      "id": "g13",
+      "group": "GOOD",
+      "file": "vavilov-vj21-028.pdf",
+      "source_url": "https://vavilov.elpub.ru/jour/article/download/3003/1502",
+      "licence": "cc-by",
+      "sha256": "51823a1546c197e1abe0d6015f5b422ac2b366a83f9ad978a02ba3d1ade049d5",
+      "page_range": [
+        3,
+        8
+      ],
+      "language": "Russian, born-digital",
+      "title": "Ribosomal profiling in plants (review), Vavilov J Genet Breed 25(3), 2021, DOI 10.18699/VJ21.028; CC BY 4.0; amendment A2"
+    },
+    {
+      "id": "g14",
+      "group": "GOOD",
+      "file": "scielo-hcsm-2024-pt0061.pdf",
+      "source_url": "https://www.scielo.br/j/hcsm/a/nHt7GjNNrxMHkGMXS5tkGVB/?format=pdf&lang=pt",
+      "licence": "cc-by",
+      "sha256": "5a259026cc0e97582ef99d874687e0174aae013668825fc833162424f5bc3406",
+      "page_range": [
+        2,
+        7
+      ],
+      "language": "Portuguese, born-digital",
+      "title": "Sob o solo pestilencial da mentira (smallpox, Fortaleza, 19th century), Hist Cienc Saude-Manguinhos 2024, DOI 10.1590/S0104-59702024000100061; CC BY 4.0; amendment A2"
     }
   ]
 }

@@ -5,7 +5,7 @@
 - **Operator**: OMRS maintainer, with a coding agent
 - **Related**: OpenSpec change `experiment-47-router-confirmation`, gate G7 of the `doc-reading-master-flow` change, issue #171, ADR-110, Experiments 33, 38, 42 and 43
 
-> **Approved 2026-11-05.** The operator approved the hypotheses, gates (option B), stop rules, set-check minimums, corpus, labelling method and hosted reference arm on 2026-11-05. `plan.json` `decision_register` holds each dated approval. Amendment A1 (same date, before any router score): the coding agent does the label review, not the operator.
+> **Approved 2026-11-05.** The operator approved the hypotheses, gates (option B), stop rules, set-check minimums, corpus, labelling method and hosted reference arm on 2026-11-05. `plan.json` `decision_register` holds each dated approval. Amendment A1 (same date, before any router score): the coding agent does the label review, not the operator. Amendment A2 (same date, before any label or router score): 13 documents added because the set check could not pass (section 4).
 
 ## 1. Question
 
@@ -70,6 +70,15 @@ The run calls the shipped code path. Nothing in the harness decides a page:
 4. Change: Experiment 33 scored body text only, split from figure text by a hosted model. Here the reference is the whole-page local transcription. The operator approved this change on 2026-11-05.
 5. Amendment A1 (2026-11-05, before any router score): the coding agent, not the operator, checks every junk and grey page and 15 seeded healthy pages. For each page it looks at the local page image, the page text the router reads and the dots-mocr reference. It records agree or disagree with the class in `output/label_review.json`. More than 3 class disagreements stop the run. The fix is an amendment before any score.
 6. The set check needs at least 20 unflagged junk pages in 5 documents and 40 unflagged healthy pages in 8 documents. A miss makes the run INCONCLUSIVE before scoring.
+
+**Amendment A2 (2026-11-05, before any label or router score).** The operator approved option 2, "add documents", on 2026-11-05.
+
+- **Why.** The router judges only pages that the shipped page scan did not send to OCR. The scan (`output/inputs.json`, commit `a58c03ea`) sent every page of 9 of the 10 JUNK documents to OCR. These are the manuscript scans J1 to J5 and J7 to J10. It also sent every page of 3 GOOD documents (G4, G5 and G9) to OCR. Only J6 (7 pages) is left as unflagged JUNK, so the set check cannot pass: 7 junk pages in 1 document, against 20 pages in 5 documents.
+- **What is added.** 13 documents, listed in `corpus_manifest.json` with "amendment A2" in the title. JUNK J11 to J18 are early modern and 18th-century prints (German Fraktur, Polish, Dutch blackletter, Latin italic) from Google Books via archive.org, Public Domain Mark 1.0. Each has a text layer that looks like text but is garbled. GOOD G10 to G14 are born-digital CC BY 4.0 articles in French, Spanish, Portuguese (2) and Russian.
+- **How they were chosen.** Before adding a document, the coding agent ran the shipped page scan (`page_routing.page_evidence`) on it. No page in the chosen ranges is flagged. For each JUNK document the agent read a sample of the text layer and looked at a rendered page to confirm that the print is clear and the text layer is garbled. None of the 13 is in Experiments 33, 38, 42, 43 or 44 (`prepare_inputs.py --validate`).
+- **What stays.** All 19 approved documents stay in the corpus and in the report. The scan result on them is reported as a finding. The hypotheses, gates, threshold 0.172, stop rules, set-check minimums, labelling method and review rule do not change. The hosted reference arm sends the added documents under the same approval: page images and text heads of public-domain or CC BY documents.
+- **Inputs.** `prepare_inputs.py` refuses a resume when the manifest changes. The old `output/inputs.json` was removed and the step was run again from the start. The rows of the 19 original documents must equal the committed rows of `a58c03ea`. The run stops if they differ.
+- **If the set check still fails.** One more round of documents (amendment A3), or stop and report. The minimums are not lowered.
 
 ## 5. Steps
 
