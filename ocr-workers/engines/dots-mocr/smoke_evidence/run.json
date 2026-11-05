@@ -2,20 +2,31 @@
   "cases": [
     {
       "case": "eq01",
-      "chars": 3590,
+      "chars": 3992,
       "ok": true,
-      "page": 11,
-      "seconds": 73.8
+      "page": 2,
+      "seconds": 36.0
     },
     {
-      "case": "io06",
-      "chars": 1173,
+      "case": "eq01",
+      "chars": 5441,
       "ok": true,
-      "page": 28,
-      "seconds": 17.6
+      "page": 3,
+      "seconds": 45.2
     }
   ],
-  "network": "denied by sandbox-exec",
-  "note": "the first case's seconds include model load",
-  "peak_memory_footprint_bytes": 10242885336
+  "clean_exit": true,
+  "leftover_processes": [],
+  "llama_cpp_build": 11941,
+  "network": "denied by sandbox-exec except loopback (127.0.0.1 and ::1)",
+  "note": "the first case's seconds include the model load by the llama-server",
+  "peak_memory": {
+    "method": "worker: /usr/bin/time -l 'peak memory footprint' of the worker process; server: proc_pid_rusage lifetime max physical footprint of the llama-server pid in the runtime's server.json, read after each response; total is their sum",
+    "server_bytes": 4069758016,
+    "total_bytes": 4152301328,
+    "worker_bytes": 82543312
+  },
+  "pipeline_revision": "prompt_layout_all_en+llamacpp-b11941+q8_0+layout-1",
+  "sandbox_profile": "(version 1)(allow default)(deny network*)(allow network-outbound (remote ip \"localhost:*\"))",
+  "state_dir": "/var/folders/pm/r3lm2qh15pd5gsmgrj61lg9m0000gn/T/omrs-smoke-state-xm11ajid"
 }

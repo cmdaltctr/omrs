@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Parity check for the dots-mocr-llamacpp engine (task 3.3; design D9 item 1).
+"""Parity check for the dots-mocr engine on llama.cpp (task 3.3; design D9 item 1).
 
 Parses 22 pages through the app's OCR path (``build_ocr_routes``, primary engine
-``dots-mocr-llamacpp``, so the host's RuntimeManager starts the ``llama-server``)
+``dots-mocr``, so the host's RuntimeManager starts the ``llama-server``)
 and compares each page with two Experiment 41 references: arm D4 (this engine's
 GGUF Q8_0 build in the Experiment 41 harness) and the T-control text (shipped
 PyTorch backend, ``T-D0``; eq01:3 was not re-timed, so it takes the Experiment 37
-``dots-mocr`` text, the same backend). The pages are the 21 of ``T-D0`` (warm-up
+PyTorch ``dots-mocr`` text, the same backend). The pages are the 21 of ``T-D0`` (warm-up
 eq01:2 and the 20 T-control pages) plus eq01:3. Pass rules:
 
 1. every page has Dice >= 0.99 against D4;
@@ -17,8 +17,8 @@ Dice is Experiment 41's (``analysis.py``, Experiment 33 ``tokens``).
 
 Usage::
 
-    python3 ocr-workers/engines/dots-mocr-llamacpp/parity_check.py          # plan only
-    uv run --no-sync python ocr-workers/engines/dots-mocr-llamacpp/parity_check.py --run
+    python3 ocr-workers/engines/dots-mocr/parity_check.py          # plan only
+    uv run --no-sync python ocr-workers/engines/dots-mocr/parity_check.py --run
 
 Without ``--run`` the script prints the plan and touches nothing. ``--run`` uses a
 scratch ``OMRS_STATE_DIR`` and ``OMRS_CONFIG_DIR`` (never ``~/.omrs``) and writes
@@ -46,7 +46,7 @@ from typing import Any
 
 ENGINE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = ENGINE_DIR.parents[2]
-ENGINE_NAME = "dots-mocr-llamacpp"
+ENGINE_NAME = "dots-mocr"
 EVIDENCE_DIR = ENGINE_DIR / "smoke_evidence"
 RESULT_PATH = EVIDENCE_DIR / "parity.json"
 EXPERIMENTS = REPO_ROOT / "experiments"
@@ -231,7 +231,7 @@ def plan_lines(exp41_output: Path, exp37_d0: Path) -> list[str]:
         f"D4 text: {exp41_output / 'D4'} (missing: {len(missing)})",
         f"T-control text: {exp41_output / 'T-D0'}, else {exp37_d0} (eq01:3)",
         f"output: {RESULT_PATH}",
-        "run: uv run --no-sync python ocr-workers/engines/dots-mocr-llamacpp/parity_check.py --run",
+        "run: uv run --no-sync python ocr-workers/engines/dots-mocr/parity_check.py --run",
     ]
 
 

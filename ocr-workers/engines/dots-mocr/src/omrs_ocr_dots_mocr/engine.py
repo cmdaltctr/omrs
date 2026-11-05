@@ -1,99 +1,114 @@
-"""The dots-mocr OCR engine: the primary route (design D4).
+"""The dots-mocr OCR engine: dots.mocr as a client of a llama.cpp server.
 
-The engine renders each requested page, asks dots.mocr for its layout
-JSON, and converts that to Markdown with :mod:`.layout`. Everything
-else (framing, validation, the capability command) is the worker core.
+The engine renders each requested page, asks the server for the layout
+JSON, and converts that to Markdown with :mod:`.layout`. Framing,
+validation and the capability command belong to the worker core.
 
-Runtime rules:
+Runtime rules (design D2, D5, D7):
 
-- ``HF_HUB_OFFLINE=1`` and ``TRANSFORMERS_OFFLINE=1`` are set before any
-  Hugging Face import, so a parse never downloads;
-- the code-file hashes recorded at provisioning are checked before the
-  model loads, because ``trust_remote_code`` executes those files;
-- MPS when available, else CPU; bfloat16; greedy decoding;
-  ``max_new_tokens`` :data:`MAX_NEW_TOKENS`;
-- pages render with pypdfium2 at :data:`RENDER_DPI`, raised so the long
-  side reaches :data:`MIN_LONG_SIDE_PX`.
+- the engine starts no process. OMRS runs the pinned ``llama-server`` that
+  ``pyproject.toml`` declares, checks the build and the SHA-256 of both model
+  files before each start, and gives the worker the address in
+  ``OMRS_OCR_RUNTIME_URL``. A missing or non-loopback address is a parse
+  error that names the variable;
+- a page is rendered with pypdfium2 at :data:`RENDER_DPI`, raised so the
+  long side reaches :data:`MIN_LONG_SIDE_PX`, and sent as a PNG;
+- a page whose reply reaches the token cap, or whose layout JSON does not
+  parse, gives empty Markdown, and the reason goes to the log;
+- a parse never downloads anything. The download step lives in another
+  module that this one does not import.
 
-PyTorch, transformers and pypdfium2 are imported lazily, inside the
-methods that need them, so the capability command and the tests never
-import them.
+pypdfium2 and Pillow are imported inside :meth:`render_page`, so the
+capability command and the tests never import them.
 """
 
 from __future__ import annotations
 
+import base64
+import io
+import json
 import logging
 import os
-from collections.abc import Sequence
+import urllib.error
+import urllib.request
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from omrs_ocr_worker_core.engine import WorkerParseError
 
-from .fetch import REPO_ID, REVISION
+from . import pins
 from .layout import CONVERTER_VERSION, page_markdown
-from .patches import PATCH_SET, CodeHashMismatchError, verify_hashes
-from .paths import ENGINE_NAME, cache_dir, model_dir
+from .paths import ENGINE_NAME
+from .prompt import MAX_NEW_TOKENS, MIN_LONG_SIDE_PX, PROMPT, RENDER_DPI
 
 logger = logging.getLogger("omrs_ocr_dots_mocr")
 
-RENDER_DPI = 200
-MIN_LONG_SIDE_PX = 1600
-MAX_NEW_TOKENS = 8192
+CHAT_PATH = "/v1/chat/completions"
 
-#: Upstream ``prompt_layout_all_en`` (the prompt Experiment 34 measured).
-PROMPT = """Please output the layout information from the PDF image, including each layout element's bbox, its category, and the corresponding text content within the bbox.
+#: Seconds one page may take (Experiment 41 used the same limit).
+REQUEST_TIMEOUT_S = 300.0
 
-1. Bbox format: [x1, y1, x2, y2]
-
-2. Layout Categories: The possible categories are ['Caption', 'Footnote', 'Formula', 'List-item', 'Page-footer', 'Page-header', 'Picture', 'Section-header', 'Table', 'Text', 'Title'].
-
-3. Text Extraction & Formatting Rules:
-    - Picture: For the 'Picture' category, the text field should be omitted.
-    - Formula: Format its text as LaTeX.
-    - Table: Format its text as HTML.
-    - All Others (Text, Title, etc.): Format their text as Markdown.
-
-4. Constraints:
-    - The output text must be the original text from the image, with no translation.
-    - All layout elements must be sorted according to human reading order.
-
-5. Final Output: The entire output must be a single JSON object.
-"""  # noqa: E501 - upstream prompt text, kept verbatim
+#: The variable in which OMRS gives the worker the address of its runtime.
+RUNTIME_URL_ENV = "OMRS_OCR_RUNTIME_URL"
+_LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 
 
-def apply_offline_env() -> None:
-    """Force offline Hugging Face access and the engine-owned cache.
+def runtime_base_url(environ: Mapping[str, str] | None = None) -> str:
+    """Return the llama-server address OMRS gave this worker.
 
-    Assignment, not ``setdefault``: an inherited value would let a parse
-    download or read a cache outside the engine's model folder.
+    Args:
+        environ: The environment to read; the process environment by default.
+
+    Returns:
+        An ``http://host:port`` address without a path.
+
+    Raises:
+        WorkerParseError: If the variable is missing, or its value is not an
+            ``http`` address on this computer. The message names the variable.
     """
-    os.environ["HF_HUB_OFFLINE"] = "1"
-    os.environ["TRANSFORMERS_OFFLINE"] = "1"
-    os.environ["HF_HOME"] = str(cache_dir())
+    value = (os.environ if environ is None else environ).get(RUNTIME_URL_ENV, "").strip()
+    if not value:
+        raise WorkerParseError(
+            "runtime_url_missing",
+            f"{RUNTIME_URL_ENV} is not set; OMRS gives the worker the address of its llama-server",
+        )
+    try:
+        parts = urlsplit(value)
+        host = (parts.hostname or "").lower()
+        port = 80 if parts.port is None else parts.port
+    except ValueError:
+        host, port = "", 0
+    if (
+        parts.scheme != "http"
+        or host not in _LOOPBACK_HOSTS
+        or parts.username is not None
+        or not 1 <= port <= 65535
+    ):
+        raise WorkerParseError(
+            "runtime_url_invalid",
+            f"{RUNTIME_URL_ENV} must be an http address on this computer, not {value!r}",
+        )
+    return f"http://{parts.netloc}"
 
 
-class DotsMocrEngine:
-    """dots.mocr on MPS or CPU, one page at a time."""
+class DotsMocrLlamacppEngine:
+    """dots.mocr through a llama.cpp server that OMRS runs, one page at a time."""
 
     name = ENGINE_NAME
-    backend_id = "dots_mocr"
+    backend_id = "dots_mocr_llamacpp"
     declared_packages: tuple[str, ...] = (
         "omrs-ocr-worker-core",
         "omrs-ocr-dots-mocr",
-        "torch",
-        "torchvision",
-        "transformers",
-        "accelerate",
-        "qwen-vl-utils",
         "pypdfium2",
         "pillow",
     )
-    pipeline = ("dots-mocr-layout", f"prompt_layout_all_en+{PATCH_SET}+layout-{CONVERTER_VERSION}")
-    model = (REPO_ID, REVISION)
-
-    def __init__(self) -> None:
-        self._runtime: dict[str, Any] | None = None
+    pipeline = (
+        "dots-mocr-layout",
+        f"prompt_layout_all_en+llamacpp-{pins.LLAMA_TAG}+{pins.QUANT}+layout-{CONVERTER_VERSION}",
+    )
+    model = (pins.MODEL_REPO, pins.MODEL_REVISION)
 
     # ── Engine contract ──────────────────────────────────────────────
 
@@ -101,13 +116,13 @@ class DotsMocrEngine:
         """Return one Markdown string per parsed page.
 
         A page that reaches the token cap, or whose layout JSON does not
-        parse, yields ``""``; the reason goes to standard error.
+        parse, yields ``""``; the reason goes to the log.
         """
         numbers = list(pages) if pages is not None else self._all_pages(pdf)
         out: list[str] = []
         for number in numbers:
-            image = self.render_page(pdf, number)
-            raw, new_tokens = self.generate(image)
+            png = self.render_page(pdf, number)
+            raw, new_tokens = self.generate(png)
             markdown, reason = page_markdown(raw, hit_token_cap=new_tokens >= MAX_NEW_TOKENS)
             if reason is not None:
                 logger.warning("page %d of %s gives no text: %s", number, pdf.name, reason)
@@ -116,43 +131,72 @@ class DotsMocrEngine:
 
     # ── Seams (tests stub these) ─────────────────────────────────────
 
-    def render_page(self, pdf: Path, page: int) -> Any:
-        """Render one 1-based page to an RGB image."""
+    def render_page(self, pdf: Path, page: int) -> bytes:
+        """Render one 1-based page to PNG bytes (lossless RGB pixels)."""
         import pypdfium2 as pdfium  # engine environment only
 
         document = pdfium.PdfDocument(str(pdf))
         try:
             page_obj = document[page - 1]
             scale = max(RENDER_DPI / 72, MIN_LONG_SIDE_PX / max(page_obj.get_size()))
-            return page_obj.render(scale=scale).to_pil().convert("RGB")
+            image = page_obj.render(scale=scale).to_pil().convert("RGB")
+            buffer = io.BytesIO()
+            image.save(buffer, format="PNG")
+            return buffer.getvalue()
         finally:
             document.close()
 
-    def generate(self, image: Any) -> tuple[str, int]:
-        """Run the model on one page image; return ``(raw text, new tokens)``."""
-        runtime = self._load_runtime()
-        torch = runtime["torch"]
-        processor = runtime["processor"]
-        messages = [
-            {
-                "role": "user",
-                "content": [{"type": "image", "image": image}, {"type": "text", "text": PROMPT}],
-            }
-        ]
-        text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        image_inputs, video_inputs = runtime["process_vision_info"](messages)
-        inputs = processor(
-            text=[text], images=image_inputs, videos=video_inputs, padding=True, return_tensors="pt"
-        ).to(runtime["device"])
-        with torch.inference_mode():
-            ids = runtime["model"].generate(
-                **inputs, max_new_tokens=MAX_NEW_TOKENS, do_sample=False
-            )
-        new_ids = ids[:, inputs.input_ids.shape[1] :]
-        raw = processor.batch_decode(
-            new_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False
-        )[0]
-        return raw, int(new_ids.shape[1])
+    def generate(self, png: bytes) -> tuple[str, int]:
+        """Ask the server about one page image; return ``(raw text, new tokens)``.
+
+        Raises:
+            WorkerParseError: If the runtime address is missing or not on this
+                computer, or the server's reply is an error or not a chat
+                completion.
+        """
+        url = runtime_base_url() + CHAT_PATH
+        image = {"url": "data:image/png;base64," + base64.b64encode(png).decode("ascii")}
+        body: dict[str, Any] = {
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "image_url", "image_url": image},
+                        {"type": "text", "text": PROMPT},
+                    ],
+                }
+            ],
+            "temperature": 0,
+            "max_tokens": MAX_NEW_TOKENS,
+            "stream": False,
+        }
+        request = urllib.request.Request(  # noqa: S310 - loopback address checked by runtime_base_url
+            url, json.dumps(body).encode(), {"Content-Type": "application/json"}
+        )
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))  # ignore proxies
+        try:
+            with opener.open(request, timeout=REQUEST_TIMEOUT_S) as response:
+                data = json.loads(response.read())
+        except urllib.error.HTTPError as exc:
+            detail = exc.read(300).decode("utf-8", "replace")
+            raise WorkerParseError(
+                "server_error", f"llama-server answered HTTP {exc.code}: {detail}"
+            ) from exc
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            raise WorkerParseError(
+                "server_unreachable", f"cannot reach llama-server: {exc}"
+            ) from exc
+        except ValueError as exc:
+            raise WorkerParseError(
+                "server_bad_response", f"the llama-server reply was not JSON: {exc}"
+            ) from exc
+        try:
+            choice = data["choices"][0]
+            return (choice["message"].get("content") or ""), int(data["usage"]["completion_tokens"])
+        except (KeyError, IndexError, TypeError, ValueError) as exc:
+            raise WorkerParseError(
+                "server_bad_response", f"the llama-server reply is not a chat completion: {exc!r}"
+            ) from exc
 
     # ── Internals ────────────────────────────────────────────────────
 
@@ -162,54 +206,6 @@ class DotsMocrEngine:
 
         return list(range(1, document_page_count(pdf) + 1))
 
-    def _load_runtime(self) -> dict[str, Any]:
-        """Load the model once per process, offline, after the hash check.
-
-        Raises:
-            WorkerParseError: If the model folder is missing, a code file
-                changed since provisioning, or the runtime cannot load.
-        """
-        if self._runtime is not None:
-            return self._runtime
-        apply_offline_env()
-        folder = model_dir()
-        if not folder.is_dir():
-            raise WorkerParseError(
-                "model_missing",
-                f"no dots.mocr model at {folder}; run "
-                "`python3 ocr-workers/provision.py dots-mocr --accept-model-licence`",
-            )
-        try:
-            verify_hashes(folder)
-        except CodeHashMismatchError as exc:
-            raise WorkerParseError("model_code_changed", str(exc)) from exc
-        try:
-            import torch
-            from qwen_vl_utils import process_vision_info
-            from transformers import AutoModelForCausalLM, AutoProcessor
-        except ImportError as exc:
-            raise WorkerParseError("runtime_unavailable", f"import failed: {exc}") from exc
-        device = "mps" if torch.backends.mps.is_available() else "cpu"
-        model = AutoModelForCausalLM.from_pretrained(
-            folder,
-            attn_implementation="sdpa",
-            torch_dtype=torch.bfloat16,
-            trust_remote_code=True,
-            local_files_only=True,
-        ).to(device)
-        processor = AutoProcessor.from_pretrained(
-            folder, trust_remote_code=True, local_files_only=True
-        )
-        logger.info("dots.mocr %s loaded on %s", REVISION[:12], device)
-        self._runtime = {
-            "torch": torch,
-            "model": model,
-            "processor": processor,
-            "process_vision_info": process_vision_info,
-            "device": device,
-        }
-        return self._runtime
-
 
 #: The object the ``omrs.ocr_engine`` entry point names.
-ENGINE = DotsMocrEngine()
+ENGINE = DotsMocrLlamacppEngine()

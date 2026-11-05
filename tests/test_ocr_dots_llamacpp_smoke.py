@@ -1,4 +1,4 @@
-"""Tests for the dots-mocr-llamacpp smoke script (tasks 2.6 and 2b.6).
+"""Tests for the dots-mocr smoke script on llama.cpp (tasks 2.6 and 2b.6).
 
 Change dots-mocr-llamacpp-backend.
 The script is not an installable package, so the tests load it by path. They
@@ -31,9 +31,9 @@ from omrs.integrations.llamacpp_runtime import process
 from omrs.integrations.llamacpp_runtime.state import read_server_record, runtime_dir
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-ENGINE_DIR = REPO_ROOT / "ocr-workers" / "engines" / "dots-mocr-llamacpp"
+ENGINE_DIR = REPO_ROOT / "ocr-workers" / "engines" / "dots-mocr"
 SCRIPT = ENGINE_DIR / "smoke_test.py"
-PROVISION_TEXT = "python3 ocr-workers/provision.py dots-mocr-llamacpp --accept-model-licence"
+PROVISION_TEXT = "python3 ocr-workers/provision.py dots-mocr --accept-model-licence"
 
 needs_sandbox = pytest.mark.skipif(
     sys.platform != "darwin" or not shutil.which("sandbox-exec"),
@@ -160,7 +160,7 @@ class Fakes:
             body = json.dumps({"backend_id": self.backend_id, "pipeline": {"revision": "x"}})
             return subprocess.CompletedProcess(argv, 0, body + "\n", "")
         self.calls.append("provision")
-        assert "--accept-model-licence" in argv and "dots-mocr-llamacpp" in argv
+        assert "--accept-model-licence" in argv and "dots-mocr" in argv
         return subprocess.CompletedProcess(argv, 0, "", "")
 
     def worker(
@@ -355,7 +355,7 @@ def test_the_runtime_session_starts_the_declared_server_and_leaves_it(
     smoke: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Against the shared fake: the host manager starts it, the pid is known, leaving stops it."""
-    folder = tmp_path / "engines" / "dots-mocr-llamacpp"
+    folder = tmp_path / "engines" / "dots-mocr"
     folder.mkdir(parents=True)
     fake = stand_in_engine(folder)
     monkeypatch.setattr(smoke, "ENGINE_DIR", folder)
@@ -371,12 +371,12 @@ def test_the_runtime_session_starts_the_declared_server_and_leaves_it(
         assert "-np" in started["argv"] and "24576" in started["argv"]
         pid = session.pid()
         assert pid == started["pid"] and pid_alive(pid)
-        record = read_server_record(runtime_dir(state, "ocr-dots-mocr-llamacpp"))
+        record = read_server_record(runtime_dir(state, "ocr-dots-mocr"))
         assert record is not None and record.pid == pid
     finally:
         session.leave()
     assert wait_until(lambda: not pid_alive(pid))
-    after = read_server_record(runtime_dir(state, "ocr-dots-mocr-llamacpp"))
+    after = read_server_record(runtime_dir(state, "ocr-dots-mocr"))
     assert after is not None and after.stopped_by == "last-client"
     fake.kill_all()
 
@@ -384,7 +384,7 @@ def test_the_runtime_session_starts_the_declared_server_and_leaves_it(
 def test_a_runtime_session_refuses_a_changed_model_file_and_starts_nothing(
     smoke: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    folder = tmp_path / "engines" / "dots-mocr-llamacpp"
+    folder = tmp_path / "engines" / "dots-mocr"
     folder.mkdir(parents=True)
     fake = stand_in_engine(folder)
     (folder / ".model-cache" / "models" / "dots-mocr-Q8_0.gguf").write_bytes(b"changed")
@@ -445,7 +445,7 @@ def test_case_parser(smoke: ModuleType) -> None:
 
 
 def test_clean_exit_helper(smoke: ModuleType) -> None:
-    folder = Path("/cache/dots-mocr-llamacpp/llama.cpp")
+    folder = Path("/cache/dots-mocr/llama.cpp")
     busy = ["1 /sbin/launchd", f"77 {folder}/llama-server --port 9", "5 python -m other"]
     quiet = ["1 /sbin/launchd", "5 /other/cache/llama.cpp/llama-server --port 9"]
     assert smoke.leftover_processes(folder, busy) == [busy[1]]
@@ -456,7 +456,7 @@ def test_llama_folder_follows_the_cache_variable(
     smoke: ModuleType, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.setenv("OMRS_OCR_MODEL_CACHE", str(tmp_path))
-    assert smoke.llama_dir() == tmp_path / "dots-mocr-llamacpp" / "llama.cpp"
+    assert smoke.llama_dir() == tmp_path / "dots-mocr" / "llama.cpp"
     monkeypatch.delenv("OMRS_OCR_MODEL_CACHE")
     assert smoke.llama_dir() == ENGINE_DIR / ".model-cache" / "llama.cpp"
 

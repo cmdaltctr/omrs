@@ -1,9 +1,9 @@
 """The dots.mocr prompt and the page render settings (design D5, D6).
 
-These values are copies of the PyTorch engine's (``omrs_ocr_dots_mocr.engine``),
-so the llama.cpp backend asks the same question of the same pixels.
-``tests/test_ocr_dots_llamacpp_manifest.py`` fails when the two copies differ.
-After cut-over only this copy remains.
+These values were copied from the PyTorch engine, so the llama.cpp backend
+asks the same question of the same pixels. The PyTorch engine was removed at
+cut-over, so this is the only copy. ``tests/test_ocr_engine_dots_mocr.py``
+pins the prompt by its SHA-256 and the render settings by value.
 """
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-"""The host checks the dots-mocr-llamacpp model files (change dots-mocr-llamacpp-backend, 2b.5).
+"""The host checks the dots-mocr model files (change dots-mocr-llamacpp-backend, 2b.5).
 
 The engine keeps no hash check at parse time (design D2). The host hashes both
 declared model files before it starts the server. These tests build a workers
@@ -19,7 +19,7 @@ from tests.fixtures.ocr_worker.runtime_engine import OcrRuntimeHarness, TestEngi
 
 from omrs.integrations.llamacpp_runtime import process
 
-NAME = "dots-mocr-llamacpp"
+NAME = "dots-mocr"
 
 
 @pytest.fixture

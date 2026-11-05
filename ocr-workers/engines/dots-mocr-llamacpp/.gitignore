@@ -1,6 +1,0 @@
-# Engine-local environment and model files
-.venv/
-.model-cache/
-__pycache__/
-*.py[cod]
-smoke_evidence/parity-pages/

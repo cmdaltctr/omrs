@@ -1,4 +1,4 @@
-"""Import helper for the dots-mocr-llamacpp engine tests.
+"""Import helper for the dots-mocr engine tests (the llama.cpp engine).
 
 The engine package is not installed in the main environment, so each test
 module puts the worker core and the engine on ``sys.path`` and unloads
@@ -21,8 +21,8 @@ from tests.fixtures.ocr_worker.isolation import isolated_worker_modules
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 WORKERS = REPO_ROOT / "ocr-workers"
-ENGINE_DIR = WORKERS / "engines" / "dots-mocr-llamacpp"
-PACKAGE = "omrs_ocr_dots_mocr_llamacpp"
+ENGINE_DIR = WORKERS / "engines" / "dots-mocr"
+PACKAGE = "omrs_ocr_dots_mocr"
 
 
 @contextmanager

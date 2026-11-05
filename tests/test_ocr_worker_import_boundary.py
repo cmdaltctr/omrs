@@ -105,8 +105,7 @@ def test_base_dependencies_carry_no_pytorch() -> None:
     """The OMRS base install declares no PyTorch or transformers package.
 
     PyTorch may appear only behind the optional ``torch`` extra (the
-    reranker's Ask-tier opt-in) and in the dots-mocr engine's own
-    lockfile. The dots-mocr engine never adds it to the base install.
+    reranker's Ask-tier opt-in). No OCR engine lock holds it.
     """
     pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     declared = {_distribution_name(r) for r in pyproject["project"].get("dependencies", [])}
@@ -124,16 +123,17 @@ def test_no_omrs_module_imports_an_engine_package() -> None:
     assert not violations, f"OMRS source imports OCR worker packages: {violations}"
 
 
-def test_dots_mocr_lock_owns_pytorch_and_the_core_stays_free() -> None:
-    """PyTorch lives only in the dots-mocr lock; the core declares pypdf alone."""
+_ENGINE_PYTORCH = _TORCH_DISTRIBUTIONS | {"accelerate"}
+
+
+def test_no_engine_lock_holds_pytorch_and_the_core_stays_free() -> None:
+    """No OCR engine lock holds PyTorch (dots-mocr runs on llama.cpp); the core declares pypdf."""
     workers = REPO_ROOT / "ocr-workers"
-    lock = tomllib.loads((workers / "engines" / "dots-mocr" / "uv.lock").read_text("utf-8"))
-    names = {_normalise(pkg["name"]) for pkg in lock.get("package", [])}
-    assert {"torch", "transformers"} <= names
-    paddle_lock = tomllib.loads(
-        (workers / "engines" / "paddleocr-vl" / "uv.lock").read_text("utf-8")
-    )
-    paddle_names = {_normalise(pkg["name"]) for pkg in paddle_lock.get("package", [])}
-    assert not paddle_names & {"torch", "transformers"}
+    locks = sorted((workers / "engines").glob("*/uv.lock"))
+    assert {lock.parent.name for lock in locks} >= {"dots-mocr", "paddleocr-vl"}
+    for path in locks:
+        lock = tomllib.loads(path.read_text("utf-8"))
+        names = {_normalise(pkg["name"]) for pkg in lock.get("package", [])}
+        assert not names & _ENGINE_PYTORCH, (path.parent.name, sorted(names & _ENGINE_PYTORCH))
     core = tomllib.loads((workers / "core" / "pyproject.toml").read_text("utf-8"))
     assert [_distribution_name(r) for r in core["project"]["dependencies"]] == ["pypdf"]

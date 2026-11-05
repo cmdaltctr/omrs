@@ -1,4 +1,4 @@
-"""The fetch step of the dots-mocr-llamacpp engine (change dots-mocr-llamacpp-backend, task 2.3).
+"""The dots-mocr fetch step on llama.cpp (change dots-mocr-llamacpp-backend, task 2.3).
 
 No test touches the network. The two download seams (``download_model_file``
 for the private Hugging Face repository and ``download_url`` for the

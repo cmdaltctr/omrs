@@ -1,4 +1,4 @@
-"""The dots-mocr-llamacpp engine (change dots-mocr-llamacpp-backend, tasks 2.5 and 2b.4).
+"""The dots-mocr engine on llama.cpp (change dots-mocr-llamacpp-backend, tasks 2.5, 2b.4, 4.2).
 
 The engine is a client of a ``llama-server`` that the host runs. These tests
 start the shared fake server of ``tests/fixtures/llamacpp`` through the host's
@@ -146,7 +146,7 @@ def test_a_capped_page_is_empty_and_the_reason_is_logged(
 ) -> None:
     """A reply at the token cap gives "" and logs the reason."""
     env.serve(FAKE_LLAMA_CONTENT=_raw("eq01", 11), FAKE_LLAMA_TOKENS=8192)
-    with caplog.at_level(logging.WARNING, logger="omrs_ocr_dots_mocr_llamacpp"):
+    with caplog.at_level(logging.WARNING, logger="omrs_ocr_dots_mocr"):
         assert env.engine.parse(pdf, [1]) == [""]
     assert "token_cap" in caplog.text and "doc.pdf" in caplog.text
 
@@ -298,7 +298,7 @@ def test_no_leftover_server_helper_remains_in_the_engine_or_the_tests() -> None:
 def test_the_fingerprint_fields_match_d7(env: Env) -> None:
     """The contract fields name the backend, the build, the quantisation and the model."""
     engine = env.engine_mod.ENGINE
-    assert engine.name == "dots-mocr-llamacpp"
+    assert engine.name == "dots-mocr"
     assert engine.backend_id == "dots_mocr_llamacpp"
     assert engine.model == ("cmdaltctr/omrs-ocr-gguf-converted", env.pins.MODEL_REVISION)
     assert engine.pipeline == (
@@ -307,7 +307,7 @@ def test_the_fingerprint_fields_match_d7(env: Env) -> None:
     )
     assert engine.declared_packages == (
         "omrs-ocr-worker-core",
-        "omrs-ocr-dots-mocr-llamacpp",
+        "omrs-ocr-dots-mocr",
         "pypdfium2",
         "pillow",
     )

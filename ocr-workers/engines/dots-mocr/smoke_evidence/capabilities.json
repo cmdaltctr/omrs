@@ -1,27 +1,22 @@
 {
-  "backend_id": "dots_mocr",
+  "backend_id": "dots_mocr_llamacpp",
   "model": {
-    "identity": "rednote-hilab/dots.mocr",
-    "revision": "e539fbb52280393adc081b289ec597430a0f9031"
+    "identity": "cmdaltctr/omrs-ocr-gguf-converted",
+    "revision": "64803a1fa579b1e95be9c352ada2b808d5e708ff"
   },
   "output_schema": {
     "id": "omrs.ocr.parse_output",
     "version": "1"
   },
   "packages": {
-    "accelerate": "1.15.0",
-    "omrs-ocr-dots-mocr": "0.1.0",
+    "omrs-ocr-dots-mocr-llamacpp": "0.1.0",
     "omrs-ocr-worker-core": "0.1.0",
-    "pillow": "12.3.0",
-    "pypdfium2": "5.13.0",
-    "qwen-vl-utils": "0.0.14",
-    "torch": "2.14.0",
-    "torchvision": "0.29.0",
-    "transformers": "4.57.6"
+    "pillow": "13.0.0",
+    "pypdfium2": "5.14.0"
   },
   "pipeline": {
     "identity": "dots-mocr-layout",
-    "revision": "prompt_layout_all_en+omrs-mps-1+layout-1"
+    "revision": "prompt_layout_all_en+llamacpp-b11941+q8_0+layout-1"
   },
   "protocol_version": "1.1"
 }

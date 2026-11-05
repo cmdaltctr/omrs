@@ -56,3 +56,21 @@ PaddleOCR-VL (Apache-2.0) then serves the OCR routes as the fallback engine.
 > 9. Regulatory Compliance Amendments
 >
 > In the event that any part of this Agreement becomes invalid or requires adjustment due to changes in applicable laws or regulations, Licensor reserves the right to issue a revised version of this Agreement. Licensee shall migrate to the new version within [e.g., ninety (90)] days of its release; otherwise, all rights granted under this Agreement shall automatically terminate.
+
+## Provenance of the GGUF files (this engine only)
+
+This engine does not load the original weights. It loads two files that the operator converted
+from the pinned model with llama.cpp build 11941. OMRS downloads them at provisioning time from a
+private Hugging Face repository. OMRS does not publish them (clause 4.4 of the agreement bars the
+dots.mocr name as a product name, and the files stay private).
+
+| File | SHA-256 |
+| --- | --- |
+| `dots-mocr-Q8_0.gguf` (8-bit quantised model) | `6017b1844a77837010649939fe2e934af17728fc89243f88b10bde4afa04d6be` |
+| `dots-mocr-mmproj-bf16.gguf` (image projector, bf16) | `63f415f961da981d0ee101cfdbf7a7bcc81ace4c4aa780a6e2823c0cd780761f` |
+
+- **Source model:** `rednote-hilab/dots.mocr`, revision `e539fbb52280393adc081b289ec597430a0f9031`.
+- **Converter and quantiser:** llama.cpp build 11941.
+- **Evidence:** Experiment 41 (`experiments/41-ocr-runtimes-2026-10-30/`), arm D4.
+- **Runtime:** the llama.cpp release `b11941` from `ggml-org/llama.cpp`, which is MIT-licensed. The
+  engine downloads the archive for the host platform and checks its SHA-256.

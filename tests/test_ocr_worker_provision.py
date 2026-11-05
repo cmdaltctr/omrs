@@ -20,7 +20,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WORKERS_DIR = REPO_ROOT / "ocr-workers"
 PROVISION_SCRIPT = WORKERS_DIR / "provision.py"
-ENGINES = ("dots-mocr", "dots-mocr-llamacpp", "paddleocr-vl")
+ENGINES = ("dots-mocr", "paddleocr-vl")
 
 
 def _load_provision_module():
@@ -114,7 +114,7 @@ def test_unknown_engine_is_rejected_before_anything_runs(
     assert provision.main([name]) == 1
     assert recorded == []
     err = capsys.readouterr().err
-    assert "available engines: dots-mocr, dots-mocr-llamacpp, paddleocr-vl" in err
+    assert "available engines: dots-mocr, paddleocr-vl" in err
 
 
 def test_dots_mocr_without_the_flag_stops_before_uv_sync(

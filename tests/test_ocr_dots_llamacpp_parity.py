@@ -1,4 +1,4 @@
-"""Tests for the dots-mocr-llamacpp parity script (task 3.3, design D9 item 1).
+"""Tests for the dots-mocr parity script on llama.cpp (task 3.3, design D9 item 1).
 
 Change dots-mocr-llamacpp-backend.
 The script is not an installable package, so the tests load it by path. They
@@ -20,7 +20,7 @@ from typing import Any
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-ENGINE_DIR = REPO_ROOT / "ocr-workers" / "engines" / "dots-mocr-llamacpp"
+ENGINE_DIR = REPO_ROOT / "ocr-workers" / "engines" / "dots-mocr"
 SCRIPT = ENGINE_DIR / "parity_check.py"
 EXP41_DIR = REPO_ROOT / "experiments" / "41-ocr-runtimes-2026-10-30"
 
