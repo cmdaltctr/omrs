@@ -340,12 +340,16 @@ def _router_runnable(settings: Any) -> bool:
     page rules run), the OCR routes' judge hook gives a page judge whose
     status is ``None``, and an image router has a page renderer. The hook
     keeps ``core`` free of the composition root; with no hook installed
-    there is no judge, so the router cannot run.
+    there is no judge, so the router cannot run. ``router_identity`` builds
+    the ``runnable: false`` digest a read whose router failed is stored under.
     """
     from ...integrations.ocr_worker.routes import page_judge
     from ...integrations.pdf import page_images
     from ...integrations.pdf.factory import wraps_ocr_routing
+    from .router_identity import router_assumed_not_runnable
 
+    if router_assumed_not_runnable():  # the digest a failed read is stored under
+        return False
     if not wraps_ocr_routing(getattr(settings, "pdf_reader", ""), settings):
         return False
     judge = page_judge(settings)

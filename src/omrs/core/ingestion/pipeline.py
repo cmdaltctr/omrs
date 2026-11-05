@@ -23,6 +23,7 @@ from .chunker import read_and_chunk_file_async
 from .loader import gather_supported_files, make_file_detail
 from .metrics import sample_peak_rss_bytes
 from .replacement import IngestionStageError, replace_source_nodes_async
+from .router_identity import settle_router_identity
 from .source_state import (
     IncompatibleSourceLineageError,
     assert_source_lineage_compatible,
@@ -327,6 +328,9 @@ async def ingest_path_async(
                         "parse_chunk",
                         f"No chunks were produced for '{file_path}'.",
                     )
+                # A read whose router failed is stored as not runnable (design D9).
+                identity = settle_router_identity(identity, nodes)
+                source_version = identity.source_version
 
                 file_metadata_degraded = getattr(nodes, "metadata_degraded", False)
                 # Count degradation on observation, not on replacement success:

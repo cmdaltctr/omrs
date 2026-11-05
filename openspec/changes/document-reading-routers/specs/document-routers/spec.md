@@ -131,6 +131,18 @@ When a router cannot run for a file (entry unknown, unreachable, a model check f
 - **THEN** reading SHALL behave as before this change
 - **AND** the diagnostics SHALL give the reason `unreachable`
 
+### Requirement: A router stops asking after 3 failed requests in a row
+
+After 3 failed page requests in a row, the router SHALL stop asking for that file. The pages left SHALL keep their text and count as unjudged. `router_status` SHALL be `unreachable` when no page was judged. A page whose image fails to render SHALL NOT count as a failed request.
+
+#### Scenario: Server stops answering during a file
+
+- **GIVEN** a router whose server stops answering before the first page of a 50-page PDF
+- **WHEN** the PDF is read
+- **THEN** the router SHALL send exactly 3 page requests
+- **AND** all 50 pages SHALL keep their text and count as unjudged
+- **AND** the diagnostics SHALL give the reason `unreachable`
+
 ### Requirement: A router enters the source index identity only when selected
 
 With a router selected, the `parser` block of a PDF source SHALL hold an entry `document_router` with the router's question, threshold, image flag, character limit, the decision model's kind and model identity, the rule version and `runnable`. It SHALL NOT hold the router name, the address, the key or the opt-in. With no router, or for a source that is not a PDF, the entry SHALL be absent, so existing digests do not change.
@@ -155,6 +167,13 @@ The `runnable` value of the `document_router` entry SHALL be true only when the 
 - **AND** the router can run on a later explicit ingest
 - **THEN** the source digest SHALL change
 - **AND** the source SHALL be processed again, so the router judges its pages
+
+#### Scenario: A router that fails during the read leaves the source stale
+
+- **GIVEN** the router could run when the source identity was computed
+- **WHEN** the read stamps a `router_status` other than `ok` (for example `unreachable`)
+- **THEN** the source SHALL be stored under the identity with `runnable` false
+- **AND** the next explicit ingest with the router able to run SHALL process the source again
 
 ### Requirement: Router diagnostics SHALL be honest
 

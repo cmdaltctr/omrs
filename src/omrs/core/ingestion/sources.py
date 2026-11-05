@@ -24,6 +24,7 @@ explicitly. None of them reads a process-wide default.
 from __future__ import annotations
 
 import asyncio
+import functools
 import logging
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
@@ -40,6 +41,7 @@ from .ocr_identity import (
     route_fingerprints,
 )
 from .replacement import ReplaceSourceOutcome, replace_source_nodes_async
+from .router_identity import unrouted_index_identity
 from .source_state import (
     assert_source_lineage_compatible,
     build_index_identity,
@@ -110,6 +112,9 @@ class SourceIdentity:
     text_format: str
     index_identity: str
     source_version: str
+    #: The digest with the router entry's ``runnable: false``; ``None`` when it
+    #: equals ``index_identity`` or no router is selected (``router_identity``).
+    unrouted_identity: str | None = None
 
 
 class SourceReuse(NamedTuple):
@@ -241,7 +246,8 @@ async def prepare_source(
     # Reader output revision (change pdf-inspector-page-provenance, D7):
     # ``None`` for sources no PDF reader reads, so their identity is unchanged.
     pdf_reader_revision = resolve_pdf_reader_revision(file_path, settings=context.settings)
-    index_identity = build_index_identity(
+    build = functools.partial(
+        build_index_identity,
         context.settings,
         content_type=content_type,
         chunk_size=context.chunk_size,
@@ -258,6 +264,11 @@ async def prepare_source(
         resolved_splitter=context.markdown_chunking.resolved_splitter,
         graph_shape=context.graph_shape,
     )
+    index_identity = build()
+    # A PDF read whose router fails is stored under this digest (design D9).
+    unrouted = None
+    if pdf_reader_revision is not None:
+        unrouted = unrouted_index_identity(context.settings, build, index_identity)
     return SourceIdentity(
         file_path=file_path,
         canonical_file_path=canonical_file_path,
@@ -267,6 +278,7 @@ async def prepare_source(
         text_format=text_format,
         index_identity=index_identity,
         source_version=build_source_version(content_hash, index_identity),
+        unrouted_identity=unrouted,
     )
 
 

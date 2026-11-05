@@ -136,3 +136,30 @@ def test_a_hosted_entry_is_tested_without_the_router_opt_in():
 
     assert result["status"] == "ok"
     assert server.calls == 1, "the probe is content free, so Test may send it"
+
+
+# ── Review finding 3: a malformed probe reply has its own reason ─────────
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        httpx.Response(200, json={"model": "Clef-Flash-Q8_0.gguf", "answers": {}}),
+        httpx.Response(200, text="not json"),
+    ],
+    ids=["no-answer", "not-json"],
+)
+def test_a_malformed_probe_reply_reads_malformed_reply(response: httpx.Response):
+    transport = httpx.MockTransport(lambda request: response)
+
+    result = compose_decision.test_decision_model(_settings(), "m", transport=transport)
+
+    assert result["status"] == "malformed-reply"
+
+
+def test_an_http_error_on_the_probe_still_reads_request_failed():
+    transport = httpx.MockTransport(lambda request: httpx.Response(500, text="boom"))
+
+    result = compose_decision.test_decision_model(_settings(), "m", transport=transport)
+
+    assert result["status"] == "request-failed"

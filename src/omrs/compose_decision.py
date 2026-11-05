@@ -9,8 +9,9 @@ provider.
   loopback address is hosted. A hosted router without ``send_off_machine``
   gets ``needs-opt-in`` and sends nothing (design D7).
 - Key references resolve through the provider key rules of ``omrs.jsonc``
-  (ADR-083, gotcha 18): ``env://``, ``file://`` inside ``secrets/`` and
-  ``keychain://``. A literal key is never used.
+  (ADR-083, gotcha 18; ``compose_decision_keys``). A literal key is never
+  used. A judge with a fixed reason is never kept, and Test drops the kept
+  judges of its entry, so a fixed key reaches the router without a restart.
 - The checks of design D6 (quantisation, a text probe, the projector smoke
   test) run on the first read of ``PageJudge.status``, under the entry's own
   lock. A pass is kept for the process, a failure for ``FAILED_CHECK_SECONDS``
@@ -37,6 +38,7 @@ from typing import Any
 
 import httpx
 
+from .compose_decision_keys import resolve_key_reference
 from .core.providers.decision import base, checks, registry
 from .integrations.llamacpp_runtime import RuntimeRequestFailed, RuntimeUnavailable
 
@@ -102,41 +104,6 @@ def _field(entry: Any, name: str, default: Any = None) -> Any:
     if isinstance(entry, Mapping):
         return entry.get(name, default)
     return getattr(entry, name, default)
-
-
-def resolve_key_reference(reference: str | None, *, keychain: Any = None) -> str | None:
-    """Return the key that *reference* names, or ``None``.
-
-    Args:
-        reference: ``env://NAME``, ``file://<path inside secrets/>`` or
-            ``keychain://<provider>``. A literal key resolves to ``None``.
-        keychain: The keychain store to read; ``None`` builds a ``KeychainStore``
-            when a ``keychain://`` reference needs one.
-    """
-    if not reference:
-        return None
-    from .config.user_config import (
-        CONFIG_FILE,
-        SECRETS_DIR,
-        KeychainRef,
-        _resolve_reference,
-        user_config_dir,
-    )
-
-    folder = user_config_dir()
-    resolved, _problem = _resolve_reference(
-        "key", reference, folder / SECRETS_DIR, folder / CONFIG_FILE
-    )
-    if not isinstance(resolved, KeychainRef):
-        return resolved
-    from .integrations.keychain import KeychainStore, KeychainUnavailableError
-
-    store = keychain if keychain is not None else KeychainStore()
-    try:
-        secret = store.read(resolved.provider) if store.available else None
-    except KeychainUnavailableError:
-        return None
-    return secret.reveal() if secret is not None else None
 
 
 def _identity(entry: Any) -> dict[str, Any]:
@@ -311,8 +278,8 @@ class PageJudge:
             return CheckResult(reason, quant.message)
         except (httpx.TransportError, RuntimeRequestFailed):
             return CheckResult(UNREACHABLE, quant.message)
-        except Exception:  # noqa: BLE001 - HTTP error or malformed reply
-            return CheckResult(REQUEST_FAILED, quant.message)
+        except Exception as error:  # noqa: BLE001 - HTTP error or malformed reply
+            return CheckResult(_reason(error), quant.message)
         if local and quant.status == checks.NOT_CHECKED:
             name = self._adapter.reported_model(reply) or str(_field(self._entry, "model", ""))
             quant = checks.quantisation_from_name(name)
@@ -419,7 +386,9 @@ def page_judge_for(settings: Any) -> PageJudge | None:
     The composition root calls this each time it builds OCR routes for
     ingestion. Settings that name the same router with the same recipe and
     decision model entry share one judge, so a key reference resolves once.
-    :func:`reset_decision_checks` forgets the judges.
+    A judge with a fixed reason is not kept, so the next call builds it again
+    (a key file made later is found). :func:`reset_decision_checks` and
+    :func:`test_decision_model` forget the kept judges.
 
     Args:
         settings: ``Settings`` or ``EffectiveSettings``. A step overlay has
@@ -436,6 +405,8 @@ def page_judge_for(settings: Any) -> PageJudge | None:
         if key in _judges:
             return _judges[key]
     judge = build_page_judge(settings, router_name=name)
+    if judge is not None and judge._static_status is not None:
+        return judge
     with _checks_lock:
         return _judges.setdefault(key, judge)
 
@@ -450,8 +421,8 @@ def test_decision_model(
 ) -> dict[str, Any]:
     """Run the checks of decision model entry *name* again (the Test button, design D6).
 
-    Test forgets the cached result of the entry first, so the routers that use
-    it see the new result too. The probe holds no page content, so a hosted
+    Test forgets the cached result and the kept judges of the entry first, so
+    the routers that use it see the new result too. The probe holds no page content, so a hosted
     entry is tested without a router's opt-in.
 
     Args:
@@ -469,6 +440,9 @@ def test_decision_model(
     with _checks_lock:
         for flag in (False, True):
             _checks.pop(_fingerprint(entry, flag), None)
+        used = _fingerprint(entry, False)
+        for key in [k for k in _judges if json.loads(k)["entry"] == used]:
+            del _judges[key]
     recipe = {"question": PROBE_QUESTION, "threshold": 0.0, "images": images}
     runtime = _runtime_of(settings, name, entry)
     judge = _make_judge(name, recipe, entry, transport, opt_in=True, runtime=runtime)

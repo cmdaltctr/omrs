@@ -546,6 +546,7 @@ forbidden_modules = [
     "omrs.compose_answer",
     "omrs.compose_connections",
     "omrs.compose_decision",
+    "omrs.compose_decision_keys",
     "omrs.compose_llamacpp",
     "omrs.compose_embedding",
     "omrs.compose_engine",

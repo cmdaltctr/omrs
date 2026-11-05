@@ -38,6 +38,7 @@ REASONS = (
     "renderer-missing",
     "needs-opt-in",
     "request-failed",
+    "malformed-reply",
 )
 RENDERER = "omrs.integrations.pdf.page_images"
 
@@ -415,3 +416,82 @@ def test_the_registration_declares_the_router_facts() -> None:
         False,
         False,
     )
+
+
+# ── Review finding 2: a hung server does not cost every page ─────────────
+
+
+def test_three_failed_requests_in_a_row_stop_the_router() -> None:
+    judge = FakeJudge(default=None)
+    ctx = _ctx([_page(n) for n in range(1, 51)], judge)
+
+    outcome = RULE.run(ctx)
+
+    assert len(judge.calls) == 3
+    assert document_router.MAX_FAILED_IN_A_ROW == 3
+    stamped = _stamp(ctx, outcome)
+    assert [stamped[key] for key in STAMP_KEYS] == [0, 0, 0, 50, "unreachable"]
+
+
+def test_a_stop_after_judged_pages_keeps_ok_and_counts_the_rest_unjudged() -> None:
+    judge = FakeJudge({"page 1": 0.9, "page 2": 0.01}, default=None)
+    ctx = _ctx([_page(n) for n in range(1, 11)], judge)
+
+    outcome = RULE.run(ctx)
+
+    assert len(judge.calls) == 5
+    assert outcome.add == frozenset({2})
+    stamped = _stamp(ctx, outcome)
+    assert [stamped[key] for key in STAMP_KEYS] == [2, 1, 1, 8, "ok"]
+
+
+def test_an_answer_between_failures_resets_the_count() -> None:
+    answers = {f"page {n}": None for n in (1, 2, 4, 5, 7, 8)}
+    judge = FakeJudge(answers)
+    ctx = _ctx([_page(n) for n in range(1, 10)], judge)
+
+    RULE.run(ctx)
+
+    assert len(judge.calls) == 9
+
+
+def test_pages_whose_image_fails_to_render_do_not_stop_the_router(
+    renderer: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def broken(file: Path, page: int) -> bytes:
+        if page <= 4:
+            raise RuntimeError("render failed")
+        return b"PNG"
+
+    monkeypatch.setattr(renderer, "render_page", broken)
+    judge = FakeJudge(images=True)
+    ctx = _ctx([_page(n) for n in range(1, 7)], judge)
+
+    outcome = RULE.run(ctx)
+
+    assert len(judge.calls) == 2
+    assert _stamp(ctx, outcome)["router_pages_unjudged"] == 4
+
+
+class _BrokenStatusJudge:
+    """A judge whose model checks raise an unexpected error when read."""
+
+    images = False
+    max_chars = 2000
+    threshold = 0.5
+
+    @property
+    def status(self) -> str | None:
+        raise RuntimeError("unexpected check error")
+
+    def judge(self, text: str, image: bytes | None) -> float | None:
+        raise AssertionError("a judge that failed its checks is never asked")
+
+
+def test_an_error_in_the_checks_degrades_and_does_not_fail_the_file() -> None:
+    ctx = _ctx([_page(1), _page(2)], judge=_BrokenStatusJudge())
+
+    outcome = document_router.RULE.run(ctx)
+
+    assert outcome.add == frozenset()
+    assert _stamp(ctx, outcome)["router_status"] == document_router.REQUEST_FAILED

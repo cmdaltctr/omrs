@@ -301,7 +301,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +16 (2026-11-05, same change, review fixes, by test-ID diff, 16 added, 0 removed):
 # router runnable identity (9), decision check cache and locks (5) and unknown step
 # router admission (2). No fastapi needed.
-_BASE_EXECUTED = 10891
+# +19 (2026-11-05, same change, second review fixes, by test-ID diff, 19 added, 0
+# removed): fixed key reaches the router (3), malformed probe reply (3), failed read
+# identity (7) and router stops and check errors (6). No fastapi needed.
+_BASE_EXECUTED = 10910
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

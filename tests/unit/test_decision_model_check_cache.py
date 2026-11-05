@@ -133,3 +133,80 @@ def test_two_readers_of_one_entry_run_the_check_once() -> None:
 
     assert results == [None, None]
     assert server.calls == 1
+
+
+# ── Review finding 1: a fixed key reaches the router without a restart ──
+
+
+def _key_settings(key_ref: str) -> SimpleNamespace:
+    model = {
+        "kind": "llamacpp",
+        "address": "http://127.0.0.1:18936",
+        "model": "clef-flash",
+        "key": key_ref,
+    }
+    router = {"model": "m", "question": "Q?", "threshold": 0.172}
+    return SimpleNamespace(
+        document_router="r", decision_models={"m": model}, document_routers={"r": router}
+    )
+
+
+def test_a_fixed_key_file_reaches_the_router_after_test(monkeypatch, tmp_path) -> None:
+    config = tmp_path / "omrs"
+    secrets = config / "secrets"
+    secrets.mkdir(parents=True)
+    secrets.chmod(0o700)
+    monkeypatch.setenv("OMRS_CONFIG_DIR", str(config))
+    server = _Server()
+    real = httpx.Client
+
+    def client(*args, transport=None, **kwargs):
+        return real(*args, transport=server.transport, **kwargs)
+
+    monkeypatch.setattr(compose_decision.httpx, "Client", client)
+    key_file = secrets / "decision.key"
+    settings = _key_settings(f"file://{key_file}")
+
+    before = compose_decision.page_judge_for(settings)
+    assert before is not None
+    assert before.status == compose_decision.REQUEST_FAILED
+    assert server.calls == 0
+
+    key_file.write_text("secret-key\n")
+    key_file.chmod(0o600)
+    result = compose_decision.test_decision_model(settings, "m")
+    assert result["status"] == "ok"
+    probes = server.calls
+
+    after = compose_decision.page_judge_for(settings)
+    assert after is not None
+    assert after.status is None
+    assert after.judge("page text", None) is not None
+    assert server.calls == probes + 1, "the router judge sent its page request"
+
+
+def test_a_judge_with_a_fixed_reason_is_not_kept(monkeypatch) -> None:
+    monkeypatch.delenv("DECISION_TEST_KEY", raising=False)
+    settings = _key_settings("env://DECISION_TEST_KEY")
+
+    first = compose_decision.page_judge_for(settings)
+    assert first is not None
+    assert first.status == compose_decision.REQUEST_FAILED
+    monkeypatch.setenv("DECISION_TEST_KEY", "secret-key")
+    second = compose_decision.page_judge_for(settings)
+
+    assert second is not first
+    assert second is not None
+    assert second._static_status is None
+
+
+def test_test_drops_the_kept_judges_of_its_entry() -> None:
+    server = _Server()
+    settings = _key_settings("")
+    settings.decision_models["m"]["key"] = None
+    first = compose_decision.page_judge_for(settings)
+    assert compose_decision.page_judge_for(settings) is first
+
+    compose_decision.test_decision_model(settings, "m", transport=server.transport)
+
+    assert compose_decision.page_judge_for(settings) is not first
