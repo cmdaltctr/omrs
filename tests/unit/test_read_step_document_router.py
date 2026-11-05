@@ -76,6 +76,29 @@ def test_an_unknown_router_fails_admission_naming_node_and_router(
     assert "missing" in unavailable[0].message
 
 
+@pytest.mark.parametrize("routers", [{"handwriting": RECIPE}, {}])
+def test_run_refuses_an_unknown_router_before_any_node_runs(
+    effective_settings: Any, tmp_path: Path, routers: dict[str, Any]
+) -> None:
+    """Review finding C: ``RouterReasons`` lists nothing, yet admission still refuses.
+
+    The validator asks ``choice in option_set.unavailable``, which a ``Mapping``
+    answers through ``__getitem__``, so an empty iteration does not let the
+    name through. Also with no router defined at all.
+    """
+    import asyncio
+
+    settings = offline_settings(effective_settings, **_routers(**routers))
+    engine = build_engine(settings)
+    graph = _graph(document_router="no-such-router")
+
+    with pytest.raises(PipelineValidationError) as caught:
+        asyncio.run(engine.run_pipeline(graph, inputs={"path": str(tmp_path)}))
+
+    codes = [i.code for i in caught.value.issues]
+    assert IssueCode.OPTION_UNAVAILABLE in codes, caught.value.issues
+
+
 @pytest.mark.parametrize("value", ["handwriting", "none"])
 def test_a_known_router_or_none_passes_admission(
     effective_settings: Any, tmp_path: Path, value: str

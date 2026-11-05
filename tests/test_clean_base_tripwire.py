@@ -298,7 +298,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # judge wiring (7), decision runtime (6), Read step router (18), health and order
 # pins (6), contract coverage (2) and router and decision model routes (46, need
 # fastapi, see _WEB_EXTRA_CASES). Removed: two renamed built-in order cases.
-_BASE_EXECUTED = 10875
+# +16 (2026-11-05, same change, review fixes, by test-ID diff, 16 added, 0 removed):
+# router runnable identity (9), decision check cache and locks (5) and unknown step
+# router admission (2). No fastapi needed.
+_BASE_EXECUTED = 10891
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

@@ -11,10 +11,11 @@ provider.
 - Key references resolve through the provider key rules of ``omrs.jsonc``
   (ADR-083, gotcha 18): ``env://``, ``file://`` inside ``secrets/`` and
   ``keychain://``. A literal key is never used.
-- The checks of design D6 (quantisation, a one-question text request, the
-  projector smoke test) run on the first read of ``PageJudge.status``, not
-  when the judge is built. They run once per process for each entry
-  fingerprint; :func:`reset_decision_checks` clears them.
+- The checks of design D6 (quantisation, a text probe, the projector smoke
+  test) run on the first read of ``PageJudge.status``, under the entry's own
+  lock. A pass is kept for the process, a failure for ``FAILED_CHECK_SECONDS``
+  only, so a server started later is found. :func:`reset_decision_checks`
+  clears them.
 - A managed ``llamacpp`` entry sends every request through the lease of its
   runtime ``decision-<name>``, which starts ``llama-server`` on the first
   request. A build below the floor reads ``wrong-build``.
@@ -30,6 +31,7 @@ import logging
 import threading
 from collections.abc import Mapping
 from dataclasses import dataclass
+from time import monotonic
 from types import ModuleType
 from typing import Any
 
@@ -53,7 +55,12 @@ REQUEST_TIMEOUT = 120.0
 PROBE_QUESTION = "Is this sentence written in English?"
 PROBE_TEXT = "This is a short test sentence."
 
-_checks: dict[str, CheckResult] = {}
+#: Seconds a failed check result is kept before the next read checks again.
+FAILED_CHECK_SECONDS = 60.0
+#: Entry fingerprint to (check result, clock time), and to the lock its checks run under.
+_checks: dict[str, tuple[CheckResult, float]] = {}
+_entry_locks: dict[str, threading.Lock] = {}
+#: Guards ``_checks``, ``_entry_locks`` and ``_judges``. Held for lookups only.
 _checks_lock = threading.Lock()
 #: The judges :func:`page_judge_for` built, by router recipe and entry fingerprint.
 _judges: dict[str, PageJudge | None] = {}
@@ -76,7 +83,18 @@ def reset_decision_checks() -> None:
     """Forget every cached check result (a test seam; the Test button re-runs checks)."""
     with _checks_lock:
         _checks.clear()
+        _entry_locks.clear()
         _judges.clear()
+
+
+def _kept(fingerprint: str) -> tuple[CheckResult | None, threading.Lock]:
+    """Return the kept result of *fingerprint* (a pass, or a recent failure) and its lock."""
+    with _checks_lock:
+        result, made = _checks.get(fingerprint, (None, 0.0))
+        lock = _entry_locks.setdefault(fingerprint, threading.Lock())
+    if result is None or (result.status and monotonic() - made >= FAILED_CHECK_SECONDS):
+        return None, lock
+    return result, lock
 
 
 def _field(entry: Any, name: str, default: Any = None) -> Any:
@@ -258,17 +276,17 @@ class PageJudge:
         if self._static_status is not None:
             return CheckResult(self._static_status, checks.NOT_CHECKED_TEXT)
         fingerprint = _fingerprint(self._entry, self.images)
-        with _checks_lock:
-            result = _checks.get(fingerprint)
-            if result is None:
-                result = self._run_checks()
-                _checks[fingerprint] = result
-                if result.status is not None:
-                    logger.warning(
-                        "The %s decision model cannot run: %s.",
-                        self.identity["kind"],
-                        result.status,
-                    )
+        result, lock = _kept(fingerprint)
+        if result is None:
+            with lock:
+                result, _ = _kept(fingerprint)  # another thread may have checked meanwhile
+                if result is None:
+                    result = self._run_checks()
+                    with _checks_lock:
+                        _checks[fingerprint] = (result, monotonic())
+                    if result.status is not None:
+                        kind = self.identity["kind"]
+                        logger.warning("The %s decision model cannot run: %s.", kind, result.status)
         return result
 
     def _run_checks(self) -> CheckResult:

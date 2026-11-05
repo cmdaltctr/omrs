@@ -127,7 +127,7 @@ Worked example. A 20-page PDF has page 2 flagged, and its blank test drops nothi
 
 When the router cannot run, the rule returns an empty outcome and reads no page. Reading behaves as with no router, and `router_status` holds the reason: `unknown-model`, `unreachable`, `quantisation-refused`, `projector-not-loaded`, `wrong-build`, `renderer-missing`, `needs-opt-in` or `request-failed`. A single failed request keeps the page's native text and counts it in `router_pages_unjudged`. With no router, the rule stamps no key. The five keys are diagnostics: they never reach the embedding text and do not enter the index identity key list.
 
-With a router selected, the `parser` block of a PDF source holds a `document_router` entry: the question, threshold, image flag, character limit, the decision model kind and model identity, and the rule version. The router name, address, key and opt-in stay out, so a rename does not re-ingest. A change to the threshold re-ingests PDF sources on the next explicit ingest.
+With a router selected, the `parser` block of a PDF source holds a `document_router` entry: the question, threshold, image flag, character limit, the decision model kind and model identity, the rule version and `runnable`. `runnable` is true only when the router can judge pages now: OCR routing wraps the PDF reader, the decision model check passed, and an image router has a renderer. A source read while the router could not run is read again on the next explicit ingest after the router can run. The router name, address, key and opt-in stay out, so a rename does not re-ingest. A change to the threshold re-ingests PDF sources on the next explicit ingest.
 
 ## Part options
 

@@ -123,7 +123,7 @@ Read document step has a `document_router` setting. It names one router of `docu
 - A name that no router holds fails validation with `option_unavailable` before any node runs. The issue names the node and the router.
 - A graph-wide `overrides.document_router` stays refused (`host_owned_setting`). Set the router on the Read document step instead.
 - Other pipelines and the standard ingest path keep the host router.
-- The step router enters the source identity by the host rule. The `parser` block of a PDF source holds the router recipe: question, threshold, image flag, character limit, decision model identity and rule version. The router name does not enter the identity or the graph fingerprint. A step that names the host router keeps the host identity. A saved graph that never set the router keeps its fingerprint.
+- The step router enters the source identity by the host rule. The `parser` block of a PDF source holds the router recipe: question, threshold, image flag, character limit, decision model identity, rule version and `runnable` (whether the router could judge pages). The router name does not enter the identity or the graph fingerprint. A step that names the host router keeps the host identity. A saved graph that never set the router keeps its fingerprint.
 - When you select a router, or change the recipe of the selected router, PDF sources are processed again on the next explicit ingest. A rename does not reprocess a source. Settings refuses to rename or delete a router while a saved profile names it.
 
 ## Canonical templates

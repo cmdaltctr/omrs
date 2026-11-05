@@ -309,7 +309,9 @@ def document_router_payload(settings: Any) -> dict[str, Any]:
     the text: the question, threshold, image flag, character limit, the
     decision model identity and the rule version. The router name, address,
     key and opt-in stay out, so a rename does not reindex. ``""`` or ``none``,
-    or a name that no router entry has, adds nothing.
+    or a name that no router entry has, adds nothing. ``runnable`` records
+    whether the router can judge pages now (:func:`_router_runnable`), so a
+    source read while it could not stays stale until it can.
     """
     name = getattr(settings, "document_router", "") or ""
     router = (getattr(settings, "document_routers", None) or {}).get(name)
@@ -325,5 +327,28 @@ def document_router_payload(settings: Any) -> dict[str, Any]:
             "max_chars": _entry_value(router, "max_chars", 2000),
             "model": _decision_model_identity(model),
             "version": rule.version,
+            "runnable": _router_runnable(settings),
         }
     }
+
+
+def _router_runnable(settings: Any) -> bool:
+    """Report whether the selected router can judge pages on this host now.
+
+    The router's counterpart of the worker fingerprint's ``available``. True
+    only when the PDF path wraps the reader in the OCR seam (the only place
+    page rules run), the OCR routes' judge hook gives a page judge whose
+    status is ``None``, and an image router has a page renderer. The hook
+    keeps ``core`` free of the composition root; with no hook installed
+    there is no judge, so the router cannot run.
+    """
+    from ...integrations.ocr_worker.routes import page_judge
+    from ...integrations.pdf import page_images
+    from ...integrations.pdf.factory import wraps_ocr_routing
+
+    if not wraps_ocr_routing(getattr(settings, "pdf_reader", ""), settings):
+        return False
+    judge = page_judge(settings)
+    if judge is None or judge.status is not None:
+        return False
+    return page_images.available() if judge.images else True

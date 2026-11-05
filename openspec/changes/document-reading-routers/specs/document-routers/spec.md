@@ -133,7 +133,7 @@ When a router cannot run for a file (entry unknown, unreachable, a model check f
 
 ### Requirement: A router enters the source index identity only when selected
 
-With a router selected, the `parser` block of a PDF source SHALL hold an entry `document_router` with the router's question, threshold, image flag, character limit, the decision model's kind and model identity, and the rule version. It SHALL NOT hold the router name, the address, the key or the opt-in. With no router, or for a source that is not a PDF, the entry SHALL be absent, so existing digests do not change.
+With a router selected, the `parser` block of a PDF source SHALL hold an entry `document_router` with the router's question, threshold, image flag, character limit, the decision model's kind and model identity, the rule version and `runnable`. It SHALL NOT hold the router name, the address, the key or the opt-in. With no router, or for a source that is not a PDF, the entry SHALL be absent, so existing digests do not change.
 
 #### Scenario: Renaming does not reindex
 
@@ -144,6 +144,17 @@ With a router selected, the `parser` block of a PDF source SHALL hold an entry `
 
 - **WHEN** the threshold of the selected router changes
 - **THEN** PDF sources SHALL be processed again on the next explicit ingest
+
+### Requirement: The router identity entry records whether the router can run
+
+The `runnable` value of the `document_router` entry SHALL be true only when the router can judge pages on this host at the time of the read. A page judge SHALL be resolved for the settings and its status SHALL hold no reason. An image router SHALL have a page renderer. The PDF path SHALL run the page rules.
+
+#### Scenario: A router that could not run leaves the source stale
+
+- **WHEN** a PDF source was read while the selected router could not run (for example `unreachable` or `needs-opt-in`)
+- **AND** the router can run on a later explicit ingest
+- **THEN** the source digest SHALL change
+- **AND** the source SHALL be processed again, so the router judges its pages
 
 ### Requirement: Router diagnostics SHALL be honest
 

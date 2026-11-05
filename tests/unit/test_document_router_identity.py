@@ -123,6 +123,7 @@ def test_a_selected_router_adds_its_recipe_and_model_identity() -> None:
             "max_chars": 2000,
             "model": {"kind": "llamacpp", "model": "clef-flash-q8_0"},
             "version": version,
+            "runnable": False,  # no judge hook here; see test_document_router_runnable
         }
     }
 
