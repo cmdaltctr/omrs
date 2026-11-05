@@ -1,0 +1,227 @@
+{
+  "experiment_id": "43-image-rescue-gate-2026-11-02",
+  "protocol_version": 1,
+  "change_ref": "OpenSpec change image-based-rescue-gate (issue #161)",
+  "question": "Does an image-based check (page image plus rescued text, one fidelity question) route rf06 and rf07 to OCR without newly routing any document labelled usable?",
+  "decision": "PASS opens a separate change and ADR that confirm the check on new documents before any default moves. FAIL is recorded and issue #161 stays open.",
+  "hypotheses": [
+    {
+      "id": "H1",
+      "role": "primary",
+      "statement": "With the local Clef-Flash Q8_0 image arm at its D2 threshold, rf06 and rf07 both route to OCR under the 10% rule, and no document labelled usable is newly routed.",
+      "null": "rf06 or rf07 does not route, or at least one usable document is newly routed."
+    }
+  ],
+  "decision_rule": "PASS when the local image arm meets both pass-rule parts on the primary population (pass_rule below). FAIL otherwise. The hosted Jev arm is a required control: without its scores the report gives no verdict. The control does not change the verdict; the outcome table states what each combination means.",
+  "stats": "basic",
+  "seed": 0,
+  "baseline": "control",
+  "candidate": "clef_image",
+  "arms": {
+    "control": {"role": "production today", "flag_rule": "never flags a rescued page (TDR-024)"},
+    "word_check": {
+      "role": "comparison",
+      "definition": "Experiment 38 candidate A, unchanged: min(real-word ratio, script consistency)",
+      "scores": "committed Experiment 38 output/candidate_a.json, LiteParse tier, reused page by page only where the page text SHA-256 equals the text extracted here",
+      "threshold": 0.8834080717488789,
+      "threshold_source": "Experiment 38 output/summary.json candidates.A.equal_cost_threshold (committed)",
+      "flag_rule": "score < threshold",
+      "limit": "candidate A needs wordfreq, which is not installed and cannot be fetched without a download. Its scores exist only on the Experiment 38 classified pages (junk and healthy), so this arm is reported on the classified population only."
+    },
+    "clef_image": {
+      "role": "treatment (decides the verdict)",
+      "model": "Clef-Flash Q8_0 with mmproj-Clef-Flash-Q8_0.gguf on llama-server build 11941",
+      "endpoint": "http://127.0.0.1:<free port>/v1/systemone, loopback only, one request at a time",
+      "request_shape": "{model, state: {text: <text head>}, images: [<base64 PNG>], questions: {fidelity: {type: noul, instructions: <question>}}}; the exact image encoding the server accepts is recorded by the smoke test",
+      "flag_rule": "P(yes) < threshold (D2)"
+    },
+    "jev_image": {
+      "role": "required control (hosted)",
+      "provider": "TypeSafe",
+      "endpoint": "https://api.typesafe.ai/v1/systemone",
+      "model": "jev-1.14.0",
+      "header": "TypeSafe-Danger-Zone-Images: true",
+      "request_shape": "{model, state: {page_image: <uuid placeholder>, text: <text head>}, assets: {<uuid>: {type: image, format: png, data_base64: <base64 PNG, no data: prefix>}}, questions: {fidelity: {type: noul, instructions: <question>}}}",
+      "key": "read from the TYPESAFE_API_KEY environment variable; never printed, logged or saved",
+      "model_id_rule": "record the returned model id for every page; stop the run if it differs from the first one recorded",
+      "flag_rule": "P(yes) < threshold (D2, fitted on this arm's own scores)"
+    }
+  },
+  "request": {
+    "type": "noul",
+    "options": ["no", "yes"],
+    "question": "Does the text match the text written or printed on the page image?",
+    "text_head_chars": 2000,
+    "text_head_rule": "the first 2,000 characters (Python code points) of the LiteParse page text after the shipped normaliser; no other cleaning",
+    "score": "P(yes), the noul value",
+    "never_asked": "readability or naturalness of the text"
+  },
+  "render": {
+    "format": "PNG",
+    "dpi": 150,
+    "max_long_side_px": 1568,
+    "min_side_px": 280,
+    "rule": "render each page with poppler pdftoppm at 150 DPI; if the long side is above 1,568 px, scale down to 1,568 px with Lanczos and keep the aspect ratio. A page with a side under 280 px stops the run.",
+    "reuse_check": "the Experiment 33 renders (output/.pages) are not reused: they are not 150 DPI and their long side is 1,600 px",
+    "storage": "gitignored output/.renders/; only SHA-256 values are committed"
+  },
+  "source_data": {
+    "experiment": "33-ocr-routing-natural-positive-2026-09-17",
+    "documents": 40,
+    "pages": 1123,
+    "precondition": "Experiment 33 freeze.py --check prints 'freeze verified', run in a checkout that holds its corpus",
+    "text_under_test": "LiteParse adapter page text, OCR off, shipped normaliser (the text the rescue chain returns today); pypdf text is extracted and hash-checked but not scored",
+    "text_identity_check": "every LiteParse and pypdf page text SHA-256 must equal the committed Experiment 38 output/rescue_text.json row; any difference stops the run",
+    "classes": "page classes (junk, healthy, grey, excluded) are taken unchanged from Experiment 38 output/rescue_text.json, LiteParse tier",
+    "rescued_documents": "documents whose Experiment 33 sampled_baseline routing row has extraction_fallback_backend = liteparse: tl04 tl05 tl06 tl07 tl08 rf01 rf02 rf03 rf04 rf05 rf06 rf07 rf08 (263 pages)",
+    "prior_routes": "Experiment 33 output/arm_sampled_baseline/routing.json ocr_required; a prior route is kept in every arm"
+  },
+  "populations": {
+    "fit": "healthy LiteParse pages of the 38 documents that are not rf06 or rf07: 561 pages",
+    "scored": "every LiteParse page with non-empty text after strip. A page with empty text is not scored and never flags.",
+    "primary_routing": "all scored pages of the rescued documents (what production would see)",
+    "classified_routing": "only junk and healthy pages of the rescued documents; used to compare all four arms, because the word check has scores only there",
+    "page_level": "junk pages (89, of which 54 in rf06 and rf07) and healthy pages (565) of all 40 documents"
+  },
+  "order": [
+    "1. Score the 561 fit pages with the local arm (phase fit).",
+    "2. Fit the local threshold (D2) and commit it to plan.json through an amendment.",
+    "3. Score every other scored page with the local arm (phase rest).",
+    "4. Repeat 1 to 3 with the hosted arm after the approval in decision_register.",
+    "No rf06 or rf07 page and no junk page is scored by an arm before that arm's threshold is committed."
+  ],
+  "threshold_rule": {
+    "name": "Experiment 38 equal-cost rule",
+    "code": "experiments/38-rescue-quality-signal-2026-09-30/signal_stats.py equal_cost_threshold (imported, unchanged)",
+    "definition": "sort the fit-page P(yes) values; allowance = floor(0.02 x fit pages); threshold = the value at index allowance; a page flags when P(yes) < threshold",
+    "fitted_on": "the fit population only, per arm",
+    "limit": "the fit documents are the test documents. The result shows whether the idea works; it does not show that it generalises."
+  },
+  "thresholds": {
+    "clef_image": {"value": 0.17220524482651753, "status": "fitted 2026-11-02 by analysis.py --fit clef_image on 561 fit pages (11 flag); frozen before phase rest (amendment A1)", "input_sha256": "5721f983e20ed1bb95df784af3b49f8dc3a36d3120bc234621d3878aebe5b9cd"},
+    "jev_image": {"value": 0.21, "status": "fitted 2026-11-02 by analysis.py --fit jev_image on 561 fit pages (11 flag); frozen before phase rest (amendment A3)", "input_sha256": "8cc9e7c8048dd17f15b0a40937552d6418ea8f54923fa5b1927c3b4be3bf045f"}
+  },
+  "routing_rules": {
+    "ten_percent": "a document routes when it routed before (prior route) or when its flagged pages reach 10% of its page count (the current production fraction; Experiment 38 routing_simulation)",
+    "one_page": "a document routes when it routed before or when at least one of its pages flags",
+    "flags_count_only_on": "pages of rescued documents (the check only sees rescued text)"
+  },
+  "pass_rule": {
+    "part_1": "rf06 and rf07 both route under the 10% rule",
+    "part_2": "no document labelled usable in Experiment 33 labels.json is newly routed (routed now, not routed before) under the 10% rule",
+    "population": "primary_routing for the image arms; classified_routing for the word check",
+    "one_page_rule": "reported for every arm; it does not decide"
+  },
+  "metrics": [
+    {"name": "rf06_rf07_routed", "binary": true, "primary": true},
+    {"name": "usable_newly_routed", "binary": false, "primary": true},
+    {"name": "junk_pages_caught", "binary": false, "primary": false},
+    {"name": "healthy_pages_flagged", "binary": false, "primary": false},
+    {"name": "ocr_cost_pages_wrong_routes", "binary": false, "primary": false},
+    {"name": "seconds_per_page", "binary": false, "primary": false}
+  ],
+  "gates": [
+    {"id": "G1", "metric": "rf06_rf07_routed", "value": "local image arm, primary routing, 10% rule", "op": "==", "threshold": 1},
+    {"id": "G2", "metric": "usable_newly_routed", "value": "local image arm, primary routing, 10% rule", "op": "==", "threshold": 0}
+  ],
+  "outcome_table": {
+    "local PASS, hosted PASS": "PASS. Open a follow-up change and ADR to confirm on new documents.",
+    "local PASS, hosted FAIL": "PASS for the local arm. The report names the documents where the arms differ.",
+    "local FAIL, hosted PASS": "FAIL. The question works on a stronger model; the local runtime or model is the limit. Issue #161 stays open.",
+    "local FAIL, hosted FAIL": "FAIL. The fidelity question does not separate junk layers well enough. Issue #161 stays open."
+  },
+  "ocr_cost": {
+    "unit": "pages sent to OCR",
+    "seconds_estimate": "pages x 38.2 s (dots.mocr seconds per page, Experiment 38 false_positive_cost)"
+  },
+  "runtime_checks": [
+    "R1: llama-server --version and GET /props report build 11941.",
+    "R2: verify_llamacpp_runtime (experiments/_lib/llamacpp_runtime.py) checks the build and the SHA-256 of Clef-Flash-Q8_0.gguf against runtime.models.",
+    "R3: the runner hashes mmproj-Clef-Flash-Q8_0.gguf against frozen and confirms the server command holds --mmproj with that file.",
+    "R4: smoke test on bd01 page 2 (healthy, CC BY): its own text (right) and the text of bd02 page 2 (wrong). P(yes | right) must exceed P(yes | wrong) by at least 0.2.",
+    "R5: a server started with --no-mmproj must reject the image request, and the runner must stop before any score.",
+    "R6: the server listens on 127.0.0.1 only."
+  ],
+  "stopping_rules": [
+    "Stop before any score if R1 to R6 fails.",
+    "Stop if any extracted page text differs from Experiment 38, or if Experiment 33 freeze.py --check fails.",
+    "Stop the local arm if the 40-page speed estimate for all scored pages exceeds 6 hours.",
+    "Stop the hosted arm if the 5-page cost estimate for all scored pages exceeds USD 10 (price USD 42 per billion input tokens).",
+    "Stop the hosted arm on HTTP 401, 403 or a rejected image, or when the returned model id changes.",
+    "Stop if free memory falls under 15%.",
+    "If more than 10 pages of an arm fail after 2 retries each, stop; the result is INCONCLUSIVE.",
+    "Score each page once per arm. A resumed run keeps earlier scores and never rescores."
+  ],
+  "cloud": "Hosted arm jev_image only, after the dated approval in decision_register. It sends the page image and the first 2,000 characters of the rescued text of every scored page of the 40 documents, including rf06 and rf07 (named-person records), to TypeSafe.",
+  "production_change": "none",
+  "decision_register": [
+    {
+      "item": "Send the page images and the first 2,000 characters of the rescued text of all scored pages of the 40 Experiment 33 documents, including rf06 and rf07 (named-person records), to TypeSafe (api.typesafe.ai, model jev-1.14.0) for the required hosted arm",
+      "provider": "TypeSafe",
+      "documents": "all 40 Experiment 33 documents, including rf06 and rf07",
+      "status": "APPROVED by the operator in the agent session",
+      "date": "2026-11-02"
+    },
+    {
+      "item": "Gate rule is the proposal pass rule: rf06 and rf07 route to OCR; no usable document routes to OCR. No second stage, no downloads, no new labels.",
+      "status": "APPROVED by the operator in the agent session",
+      "date": "2026-11-02"
+    },
+    {
+      "item": "Hosted Jev with images is a required arm",
+      "status": "APPROVED by the operator in the agent session",
+      "date": "2026-11-02"
+    }
+  ],
+  "frozen": [
+    {"item": "Experiment 33 labels.json", "path": "experiments/33-ocr-routing-natural-positive-2026-09-17/labels.json", "sha256": "cd4960ba36bddd3cd665a9142592457945fe2234c4a37bbfb81a0bfe1041c6bf"},
+    {"item": "Experiment 33 sources.json", "path": "experiments/33-ocr-routing-natural-positive-2026-09-17/sources.json", "sha256": "3b05d580dec2a9bf59a27dba24974822c83c56c32f67b9b778738fd523991cab"},
+    {"item": "Experiment 33 frozen.manifest.json", "path": "experiments/33-ocr-routing-natural-positive-2026-09-17/output/frozen.manifest.json", "sha256": "e8cc25491bfe33b5bd5ade88ef0775b68a1b51548dd990ffba4a5e409c580180"},
+    {"item": "Experiment 33 sampled_baseline routing.json", "path": "experiments/33-ocr-routing-natural-positive-2026-09-17/output/arm_sampled_baseline/routing.json", "sha256": "2d54b8ccdf3fd764e3482dbd24f2145f8d31c545247393ddec77698a2f8eb5ec"},
+    {"item": "Experiment 38 rescue_text.json (page classes, text hashes)", "path": "experiments/38-rescue-quality-signal-2026-09-30/output/rescue_text.json", "sha256": "ddd54f9266e586824c80a632c6a22956de196e77f662693237db1bbec2db877c"},
+    {"item": "Experiment 38 candidate_a.json (word check scores)", "path": "experiments/38-rescue-quality-signal-2026-09-30/output/candidate_a.json", "sha256": "c771cd3e125c879787cbc4431a14706dfeeb62a6e194006f562a7ea843016c05"},
+    {"item": "Experiment 38 signal_stats.py (equal-cost rule)", "path": "experiments/38-rescue-quality-signal-2026-09-30/signal_stats.py", "sha256": "6d5a0c061fe7389280873be2133f25fa0fbdb1f071fce233db72d675acbd1c3a"},
+    {"item": "projector mmproj-Clef-Flash-Q8_0.gguf (ggml-org/Clef-Flash-GGUF revision a5a18a6e13bb36573a5f11385a1e7b9a0c868e9e)", "path": "~/Development/DATA/omrs/ocr-models/clef-flash/mmproj-Clef-Flash-Q8_0.gguf", "sha256": "9dd8bc279f57d33b0697d4d0fe900fe751a24c9e3d30ab90969d4714ffc0722d"},
+    {"item": "git commit at planning", "value": "12699bda"}
+  ],
+  "runtime": {
+    "runtime_under_test": false,
+    "models": [
+      {
+        "role": "decision (image and text)",
+        "repository": "ggml-org/Clef-Flash-GGUF@a5a18a6e13bb36573a5f11385a1e7b9a0c868e9e",
+        "file": "Clef-Flash-Q8_0.gguf",
+        "sha256": "25f801e2a27610b0ccc0cb1558d7eda3d7a304e34e2c4a04e3079357ff7d906e",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {"mmproj": "mmproj-Clef-Flash-Q8_0.gguf", "host": "127.0.0.1", "parallel": 1, "ctx_size": 8192, "batch_size": 8192, "ubatch_size": 8192}
+      }
+    ],
+    "references": [
+      {"role": "reference (required hosted image control)", "provider": "TypeSafe", "model": "jev-1.14.0"}
+    ],
+    "tolerance": [
+      {"item_score": "p_yes", "max_abs_change": 0.02}
+    ]
+  },
+  "amendments": [
+    {
+      "id": "A1",
+      "date": "2026-11-02",
+      "change": "thresholds.clef_image.value set to 0.17220524482651753, fitted by the pre-registered D2 rule on the 561 local fit-phase scores (output/scores_clef_image.json, SHA-256 5721f983...). No junk page and no rf06 or rf07 page had been scored by this arm.",
+      "reason": "the plan registers the threshold rule; the value can only exist after phase fit"
+    },
+    {
+      "id": "A2",
+      "date": "2026-11-02",
+      "change": "the 10-failure stop counts pages that still have no score. A page whose request fails after 2 retries is logged in failures and retried on the next --resume run (again with 2 retries). Failure events and pages left without a score are both reported.",
+      "reason": "during the hosted fit phase TypeSafe returned transient HTTP 503 'Image processing is unavailable' and HTTP 529 'system_overloaded' on about 3% of requests. These pages can be scored on a resume; counting each event would stop the run with no missing data. The scores themselves, the question, the threshold rule and the pass rule do not change."
+    },
+    {
+      "id": "A3",
+      "date": "2026-11-02",
+      "change": "thresholds.jev_image.value set to 0.21, fitted by the pre-registered D2 rule on the 561 hosted fit-phase scores (output/scores_jev_image.json, SHA-256 8cc9e7c8...). No junk page and no rf06 or rf07 page had been sent to TypeSafe for scoring. Every fit page returned model id jev-1.14.0.",
+      "reason": "the plan registers the threshold rule; the value can only exist after phase fit"
+    }
+  ]
+}

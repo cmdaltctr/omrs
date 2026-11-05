@@ -1,0 +1,5929 @@
+{
+  "experiment": "43-image-rescue-gate-2026-11-02",
+  "decides": "clef_image primary_ten_percent",
+  "verdict": "FAIL",
+  "verdict_note": null,
+  "hosted_pass": false,
+  "population_sizes": {
+    "rescued_scored_pages": 220,
+    "rescued_classified": 153
+  },
+  "local_runtime": {
+    "build": "version: 0.7.0-dev (build 11941, commit 19ff817fb)",
+    "model_file_gb": 9.66,
+    "projector_file_gb": 0.62,
+    "smoke": {
+      "right": 0.9029127610001875,
+      "wrong": 0.0689559691906302
+    },
+    "no_projector_error": "HTTP 501: {\"error\":{\"code\":501,\"message\":\"This server does not support image input for decisions. For a model that supports it, start it with `--mmproj`\",\"type\":\"not_supported_error\"}}"
+  },
+  "arms": {
+    "control": {
+      "threshold": null,
+      "facts": {},
+      "pages": {
+        "junk_pages": 89,
+        "junk_caught": 0,
+        "junk_rf06_rf07_pages": 54,
+        "junk_rf06_rf07_caught": 0,
+        "healthy_pages": 565,
+        "healthy_flagged": 0,
+        "junk_unscored": 0,
+        "healthy_unscored": 0
+      },
+      "classified_ten_percent": {
+        "pass_rule": {
+          "part_1_rf06_rf07_routed": false,
+          "rf06_routed": false,
+          "rf07_routed": false,
+          "part_2_no_usable_newly_routed": true,
+          "usable_newly_routed": [],
+          "ocr_cost_pages": 0,
+          "ocr_cost_seconds": 0.0,
+          "pass": false
+        },
+        "routing": {
+          "bd01": {
+            "pages": 6,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd02": {
+            "pages": 12,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd03": {
+            "pages": 25,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd04": {
+            "pages": 31,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd05": {
+            "pages": 30,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd06": {
+            "pages": 9,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd07": {
+            "pages": 44,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd08": {
+            "pages": 11,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx01": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx02": {
+            "pages": 19,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx03": {
+            "pages": 37,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx04": {
+            "pages": 34,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx05": {
+            "pages": 54,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx06": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx07": {
+            "pages": 46,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx08": {
+            "pages": 13,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io01": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io02": {
+            "pages": 16,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io03": {
+            "pages": 5,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io04": {
+            "pages": 52,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io05": {
+            "pages": 8,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io06": {
+            "pages": 78,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io07": {
+            "pages": 66,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io08": {
+            "pages": 2,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl01": {
+            "pages": 80,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl02": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl03": {
+            "pages": 26,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl04": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl05": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl06": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl07": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl08": {
+            "pages": 4,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf01": {
+            "pages": 1,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf02": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf03": {
+            "pages": 7,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf04": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf05": {
+            "pages": 25,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf06": {
+            "pages": 89,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf07": {
+            "pages": 63,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf08": {
+            "pages": 28,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          }
+        }
+      },
+      "classified_one_page": {
+        "pass_rule": {
+          "part_1_rf06_rf07_routed": false,
+          "rf06_routed": false,
+          "rf07_routed": false,
+          "part_2_no_usable_newly_routed": true,
+          "usable_newly_routed": [],
+          "ocr_cost_pages": 0,
+          "ocr_cost_seconds": 0.0,
+          "pass": false
+        },
+        "routing": {
+          "bd01": {
+            "pages": 6,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd02": {
+            "pages": 12,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd03": {
+            "pages": 25,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd04": {
+            "pages": 31,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd05": {
+            "pages": 30,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd06": {
+            "pages": 9,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd07": {
+            "pages": 44,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd08": {
+            "pages": 11,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx01": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx02": {
+            "pages": 19,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx03": {
+            "pages": 37,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx04": {
+            "pages": 34,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx05": {
+            "pages": 54,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx06": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx07": {
+            "pages": 46,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx08": {
+            "pages": 13,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io01": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io02": {
+            "pages": 16,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io03": {
+            "pages": 5,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io04": {
+            "pages": 52,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io05": {
+            "pages": 8,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io06": {
+            "pages": 78,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io07": {
+            "pages": 66,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io08": {
+            "pages": 2,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl01": {
+            "pages": 80,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl02": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl03": {
+            "pages": 26,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl04": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl05": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl06": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl07": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl08": {
+            "pages": 4,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf01": {
+            "pages": 1,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf02": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf03": {
+            "pages": 7,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf04": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf05": {
+            "pages": 25,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf06": {
+            "pages": 89,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf07": {
+            "pages": 63,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf08": {
+            "pages": 28,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          }
+        }
+      },
+      "primary_ten_percent": {
+        "pass_rule": {
+          "part_1_rf06_rf07_routed": false,
+          "rf06_routed": false,
+          "rf07_routed": false,
+          "part_2_no_usable_newly_routed": true,
+          "usable_newly_routed": [],
+          "ocr_cost_pages": 0,
+          "ocr_cost_seconds": 0.0,
+          "pass": false
+        },
+        "routing": {
+          "bd01": {
+            "pages": 6,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd02": {
+            "pages": 12,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd03": {
+            "pages": 25,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd04": {
+            "pages": 31,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd05": {
+            "pages": 30,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd06": {
+            "pages": 9,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd07": {
+            "pages": 44,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd08": {
+            "pages": 11,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx01": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx02": {
+            "pages": 19,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx03": {
+            "pages": 37,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx04": {
+            "pages": 34,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx05": {
+            "pages": 54,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx06": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx07": {
+            "pages": 46,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx08": {
+            "pages": 13,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io01": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io02": {
+            "pages": 16,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io03": {
+            "pages": 5,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io04": {
+            "pages": 52,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io05": {
+            "pages": 8,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io06": {
+            "pages": 78,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io07": {
+            "pages": 66,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io08": {
+            "pages": 2,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl01": {
+            "pages": 80,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl02": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl03": {
+            "pages": 26,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl04": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl05": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl06": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl07": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl08": {
+            "pages": 4,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf01": {
+            "pages": 1,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf02": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf03": {
+            "pages": 7,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf04": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf05": {
+            "pages": 25,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf06": {
+            "pages": 89,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf07": {
+            "pages": 63,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf08": {
+            "pages": 28,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          }
+        }
+      },
+      "primary_one_page": {
+        "pass_rule": {
+          "part_1_rf06_rf07_routed": false,
+          "rf06_routed": false,
+          "rf07_routed": false,
+          "part_2_no_usable_newly_routed": true,
+          "usable_newly_routed": [],
+          "ocr_cost_pages": 0,
+          "ocr_cost_seconds": 0.0,
+          "pass": false
+        },
+        "routing": {
+          "bd01": {
+            "pages": 6,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd02": {
+            "pages": 12,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd03": {
+            "pages": 25,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd04": {
+            "pages": 31,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd05": {
+            "pages": 30,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd06": {
+            "pages": 9,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd07": {
+            "pages": 44,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd08": {
+            "pages": 11,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx01": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx02": {
+            "pages": 19,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx03": {
+            "pages": 37,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx04": {
+            "pages": 34,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx05": {
+            "pages": 54,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx06": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx07": {
+            "pages": 46,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx08": {
+            "pages": 13,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io01": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io02": {
+            "pages": 16,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io03": {
+            "pages": 5,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io04": {
+            "pages": 52,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io05": {
+            "pages": 8,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io06": {
+            "pages": 78,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io07": {
+            "pages": 66,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io08": {
+            "pages": 2,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl01": {
+            "pages": 80,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl02": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl03": {
+            "pages": 26,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl04": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl05": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl06": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl07": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl08": {
+            "pages": 4,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf01": {
+            "pages": 1,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf02": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf03": {
+            "pages": 7,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf04": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf05": {
+            "pages": 25,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf06": {
+            "pages": 89,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf07": {
+            "pages": 63,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf08": {
+            "pages": 28,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          }
+        }
+      }
+    },
+    "word_check": {
+      "threshold": 0.8834080717488789,
+      "facts": {
+        "reused_pages": 654
+      },
+      "pages": {
+        "junk_pages": 89,
+        "junk_caught": 37,
+        "junk_rf06_rf07_pages": 54,
+        "junk_rf06_rf07_caught": 32,
+        "healthy_pages": 565,
+        "healthy_flagged": 11,
+        "junk_unscored": 0,
+        "healthy_unscored": 0
+      },
+      "classified_ten_percent": {
+        "pass_rule": {
+          "part_1_rf06_rf07_routed": true,
+          "rf06_routed": true,
+          "rf07_routed": true,
+          "part_2_no_usable_newly_routed": false,
+          "usable_newly_routed": [
+            "rf05"
+          ],
+          "ocr_cost_pages": 25,
+          "ocr_cost_seconds": 955.0,
+          "pass": false
+        },
+        "routing": {
+          "bd01": {
+            "pages": 6,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd02": {
+            "pages": 12,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd03": {
+            "pages": 25,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd04": {
+            "pages": 31,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd05": {
+            "pages": 30,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd06": {
+            "pages": 9,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd07": {
+            "pages": 44,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd08": {
+            "pages": 11,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx01": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx02": {
+            "pages": 19,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx03": {
+            "pages": 37,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx04": {
+            "pages": 34,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx05": {
+            "pages": 54,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx06": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx07": {
+            "pages": 46,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx08": {
+            "pages": 13,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io01": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io02": {
+            "pages": 16,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io03": {
+            "pages": 5,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io04": {
+            "pages": 52,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io05": {
+            "pages": 8,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io06": {
+            "pages": 78,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io07": {
+            "pages": 66,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io08": {
+            "pages": 2,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl01": {
+            "pages": 80,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl02": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl03": {
+            "pages": 26,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl04": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 1,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl05": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl06": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl07": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl08": {
+            "pages": 4,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf01": {
+            "pages": 1,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf02": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf03": {
+            "pages": 7,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf04": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf05": {
+            "pages": 25,
+            "rescued": true,
+            "flagged_pages": 3,
+            "prior_routed": false,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": true,
+            "ocr_cost_pages": 25
+          },
+          "rf06": {
+            "pages": 89,
+            "rescued": true,
+            "flagged_pages": 25,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf07": {
+            "pages": 63,
+            "rescued": true,
+            "flagged_pages": 7,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf08": {
+            "pages": 28,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          }
+        }
+      },
+      "classified_one_page": {
+        "pass_rule": {
+          "part_1_rf06_rf07_routed": true,
+          "rf06_routed": true,
+          "rf07_routed": true,
+          "part_2_no_usable_newly_routed": false,
+          "usable_newly_routed": [
+            "rf05",
+            "tl04"
+          ],
+          "ocr_cost_pages": 37,
+          "ocr_cost_seconds": 1413.4,
+          "pass": false
+        },
+        "routing": {
+          "bd01": {
+            "pages": 6,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd02": {
+            "pages": 12,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd03": {
+            "pages": 25,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd04": {
+            "pages": 31,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd05": {
+            "pages": 30,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd06": {
+            "pages": 9,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd07": {
+            "pages": 44,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd08": {
+            "pages": 11,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx01": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx02": {
+            "pages": 19,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx03": {
+            "pages": 37,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx04": {
+            "pages": 34,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx05": {
+            "pages": 54,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx06": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx07": {
+            "pages": 46,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx08": {
+            "pages": 13,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io01": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io02": {
+            "pages": 16,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io03": {
+            "pages": 5,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io04": {
+            "pages": 52,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io05": {
+            "pages": 8,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io06": {
+            "pages": 78,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io07": {
+            "pages": 66,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io08": {
+            "pages": 2,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl01": {
+            "pages": 80,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl02": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl03": {
+            "pages": 26,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl04": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 1,
+            "prior_routed": false,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": true,
+            "ocr_cost_pages": 12
+          },
+          "tl05": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl06": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl07": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl08": {
+            "pages": 4,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf01": {
+            "pages": 1,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf02": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf03": {
+            "pages": 7,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf04": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf05": {
+            "pages": 25,
+            "rescued": true,
+            "flagged_pages": 3,
+            "prior_routed": false,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": true,
+            "ocr_cost_pages": 25
+          },
+          "rf06": {
+            "pages": 89,
+            "rescued": true,
+            "flagged_pages": 25,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf07": {
+            "pages": 63,
+            "rescued": true,
+            "flagged_pages": 7,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf08": {
+            "pages": 28,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          }
+        }
+      }
+    },
+    "clef_image": {
+      "threshold": 0.17220524482651753,
+      "facts": {
+        "scored_pages": 799,
+        "failure_events": 0,
+        "failed_pages_without_score": 0,
+        "models": [
+          "Clef-Flash-Q8_0.gguf"
+        ],
+        "mean_seconds_per_page": 3.6420395175944016,
+        "total_seconds": 2909.989574557927,
+        "input_tokens": 1754491
+      },
+      "pages": {
+        "junk_pages": 89,
+        "junk_caught": 62,
+        "junk_rf06_rf07_pages": 54,
+        "junk_rf06_rf07_caught": 54,
+        "healthy_pages": 565,
+        "healthy_flagged": 15,
+        "junk_unscored": 0,
+        "healthy_unscored": 0
+      },
+      "classified_ten_percent": {
+        "pass_rule": {
+          "part_1_rf06_rf07_routed": true,
+          "rf06_routed": true,
+          "rf07_routed": true,
+          "part_2_no_usable_newly_routed": false,
+          "usable_newly_routed": [
+            "rf05"
+          ],
+          "ocr_cost_pages": 25,
+          "ocr_cost_seconds": 955.0,
+          "pass": false
+        },
+        "routing": {
+          "bd01": {
+            "pages": 6,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd02": {
+            "pages": 12,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd03": {
+            "pages": 25,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd04": {
+            "pages": 31,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd05": {
+            "pages": 30,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd06": {
+            "pages": 9,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd07": {
+            "pages": 44,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd08": {
+            "pages": 11,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx01": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx02": {
+            "pages": 19,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx03": {
+            "pages": 37,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx04": {
+            "pages": 34,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx05": {
+            "pages": 54,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx06": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx07": {
+            "pages": 46,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx08": {
+            "pages": 13,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io01": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io02": {
+            "pages": 16,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io03": {
+            "pages": 5,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io04": {
+            "pages": 52,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io05": {
+            "pages": 8,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io06": {
+            "pages": 78,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io07": {
+            "pages": 66,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io08": {
+            "pages": 2,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl01": {
+            "pages": 80,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl02": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl03": {
+            "pages": 26,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl04": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl05": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl06": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl07": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl08": {
+            "pages": 4,
+            "rescued": true,
+            "flagged_pages": 1,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf01": {
+            "pages": 1,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf02": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf03": {
+            "pages": 7,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf04": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf05": {
+            "pages": 25,
+            "rescued": true,
+            "flagged_pages": 5,
+            "prior_routed": false,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": true,
+            "ocr_cost_pages": 25
+          },
+          "rf06": {
+            "pages": 89,
+            "rescued": true,
+            "flagged_pages": 41,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf07": {
+            "pages": 63,
+            "rescued": true,
+            "flagged_pages": 17,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf08": {
+            "pages": 28,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          }
+        }
+      },
+      "classified_one_page": {
+        "pass_rule": {
+          "part_1_rf06_rf07_routed": true,
+          "rf06_routed": true,
+          "rf07_routed": true,
+          "part_2_no_usable_newly_routed": false,
+          "usable_newly_routed": [
+            "rf05"
+          ],
+          "ocr_cost_pages": 25,
+          "ocr_cost_seconds": 955.0,
+          "pass": false
+        },
+        "routing": {
+          "bd01": {
+            "pages": 6,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd02": {
+            "pages": 12,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd03": {
+            "pages": 25,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd04": {
+            "pages": 31,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd05": {
+            "pages": 30,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd06": {
+            "pages": 9,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd07": {
+            "pages": 44,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd08": {
+            "pages": 11,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx01": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx02": {
+            "pages": 19,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx03": {
+            "pages": 37,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx04": {
+            "pages": 34,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx05": {
+            "pages": 54,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx06": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx07": {
+            "pages": 46,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx08": {
+            "pages": 13,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io01": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io02": {
+            "pages": 16,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io03": {
+            "pages": 5,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io04": {
+            "pages": 52,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io05": {
+            "pages": 8,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io06": {
+            "pages": 78,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io07": {
+            "pages": 66,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io08": {
+            "pages": 2,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl01": {
+            "pages": 80,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl02": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl03": {
+            "pages": 26,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl04": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl05": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl06": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl07": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl08": {
+            "pages": 4,
+            "rescued": true,
+            "flagged_pages": 1,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf01": {
+            "pages": 1,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf02": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf03": {
+            "pages": 7,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf04": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf05": {
+            "pages": 25,
+            "rescued": true,
+            "flagged_pages": 5,
+            "prior_routed": false,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": true,
+            "ocr_cost_pages": 25
+          },
+          "rf06": {
+            "pages": 89,
+            "rescued": true,
+            "flagged_pages": 41,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf07": {
+            "pages": 63,
+            "rescued": true,
+            "flagged_pages": 17,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf08": {
+            "pages": 28,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          }
+        }
+      },
+      "primary_ten_percent": {
+        "pass_rule": {
+          "part_1_rf06_rf07_routed": true,
+          "rf06_routed": true,
+          "rf07_routed": true,
+          "part_2_no_usable_newly_routed": false,
+          "usable_newly_routed": [
+            "rf05"
+          ],
+          "ocr_cost_pages": 25,
+          "ocr_cost_seconds": 955.0,
+          "pass": false
+        },
+        "routing": {
+          "bd01": {
+            "pages": 6,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd02": {
+            "pages": 12,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd03": {
+            "pages": 25,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd04": {
+            "pages": 31,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd05": {
+            "pages": 30,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd06": {
+            "pages": 9,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd07": {
+            "pages": 44,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd08": {
+            "pages": 11,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx01": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx02": {
+            "pages": 19,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx03": {
+            "pages": 37,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx04": {
+            "pages": 34,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx05": {
+            "pages": 54,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx06": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx07": {
+            "pages": 46,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx08": {
+            "pages": 13,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io01": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io02": {
+            "pages": 16,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io03": {
+            "pages": 5,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io04": {
+            "pages": 52,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io05": {
+            "pages": 8,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io06": {
+            "pages": 78,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io07": {
+            "pages": 66,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io08": {
+            "pages": 2,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl01": {
+            "pages": 80,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl02": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl03": {
+            "pages": 26,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl04": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl05": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl06": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl07": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 1,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl08": {
+            "pages": 4,
+            "rescued": true,
+            "flagged_pages": 1,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf01": {
+            "pages": 1,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf02": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf03": {
+            "pages": 7,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf04": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf05": {
+            "pages": 25,
+            "rescued": true,
+            "flagged_pages": 10,
+            "prior_routed": false,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": true,
+            "ocr_cost_pages": 25
+          },
+          "rf06": {
+            "pages": 89,
+            "rescued": true,
+            "flagged_pages": 59,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf07": {
+            "pages": 63,
+            "rescued": true,
+            "flagged_pages": 49,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf08": {
+            "pages": 28,
+            "rescued": true,
+            "flagged_pages": 1,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          }
+        }
+      },
+      "primary_one_page": {
+        "pass_rule": {
+          "part_1_rf06_rf07_routed": true,
+          "rf06_routed": true,
+          "rf07_routed": true,
+          "part_2_no_usable_newly_routed": false,
+          "usable_newly_routed": [
+            "rf05",
+            "rf08"
+          ],
+          "ocr_cost_pages": 53,
+          "ocr_cost_seconds": 2024.6,
+          "pass": false
+        },
+        "routing": {
+          "bd01": {
+            "pages": 6,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd02": {
+            "pages": 12,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd03": {
+            "pages": 25,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd04": {
+            "pages": 31,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd05": {
+            "pages": 30,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd06": {
+            "pages": 9,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd07": {
+            "pages": 44,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd08": {
+            "pages": 11,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx01": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx02": {
+            "pages": 19,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx03": {
+            "pages": 37,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx04": {
+            "pages": 34,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx05": {
+            "pages": 54,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx06": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx07": {
+            "pages": 46,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx08": {
+            "pages": 13,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io01": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io02": {
+            "pages": 16,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io03": {
+            "pages": 5,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io04": {
+            "pages": 52,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io05": {
+            "pages": 8,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io06": {
+            "pages": 78,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io07": {
+            "pages": 66,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io08": {
+            "pages": 2,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl01": {
+            "pages": 80,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl02": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl03": {
+            "pages": 26,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl04": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl05": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl06": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl07": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 1,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl08": {
+            "pages": 4,
+            "rescued": true,
+            "flagged_pages": 1,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf01": {
+            "pages": 1,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf02": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf03": {
+            "pages": 7,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf04": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf05": {
+            "pages": 25,
+            "rescued": true,
+            "flagged_pages": 10,
+            "prior_routed": false,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": true,
+            "ocr_cost_pages": 25
+          },
+          "rf06": {
+            "pages": 89,
+            "rescued": true,
+            "flagged_pages": 59,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf07": {
+            "pages": 63,
+            "rescued": true,
+            "flagged_pages": 49,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf08": {
+            "pages": 28,
+            "rescued": true,
+            "flagged_pages": 1,
+            "prior_routed": false,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": true,
+            "ocr_cost_pages": 28
+          }
+        }
+      }
+    },
+    "jev_image": {
+      "threshold": 0.21,
+      "facts": {
+        "scored_pages": 799,
+        "failure_events": 21,
+        "failed_pages_without_score": 0,
+        "models": [
+          "jev-1.14.0"
+        ],
+        "mean_seconds_per_page": 1.3832048176809575,
+        "total_seconds": 1105.1806493270851,
+        "input_tokens": 4084932,
+        "usd_spent_estimate": 0.1716
+      },
+      "pages": {
+        "junk_pages": 89,
+        "junk_caught": 61,
+        "junk_rf06_rf07_pages": 54,
+        "junk_rf06_rf07_caught": 53,
+        "healthy_pages": 565,
+        "healthy_flagged": 15,
+        "junk_unscored": 0,
+        "healthy_unscored": 0
+      },
+      "classified_ten_percent": {
+        "pass_rule": {
+          "part_1_rf06_rf07_routed": true,
+          "rf06_routed": true,
+          "rf07_routed": true,
+          "part_2_no_usable_newly_routed": false,
+          "usable_newly_routed": [
+            "tl04",
+            "tl06"
+          ],
+          "ocr_cost_pages": 15,
+          "ocr_cost_seconds": 573.0,
+          "pass": false
+        },
+        "routing": {
+          "bd01": {
+            "pages": 6,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd02": {
+            "pages": 12,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd03": {
+            "pages": 25,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd04": {
+            "pages": 31,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd05": {
+            "pages": 30,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd06": {
+            "pages": 9,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd07": {
+            "pages": 44,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd08": {
+            "pages": 11,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx01": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx02": {
+            "pages": 19,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx03": {
+            "pages": 37,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx04": {
+            "pages": 34,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx05": {
+            "pages": 54,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx06": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx07": {
+            "pages": 46,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx08": {
+            "pages": 13,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io01": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io02": {
+            "pages": 16,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io03": {
+            "pages": 5,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io04": {
+            "pages": 52,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io05": {
+            "pages": 8,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io06": {
+            "pages": 78,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io07": {
+            "pages": 66,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io08": {
+            "pages": 2,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl01": {
+            "pages": 80,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl02": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl03": {
+            "pages": 26,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl04": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 2,
+            "prior_routed": false,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": true,
+            "ocr_cost_pages": 12
+          },
+          "tl05": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl06": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 1,
+            "prior_routed": false,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": true,
+            "ocr_cost_pages": 3
+          },
+          "tl07": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl08": {
+            "pages": 4,
+            "rescued": true,
+            "flagged_pages": 1,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf01": {
+            "pages": 1,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf02": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf03": {
+            "pages": 7,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf04": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf05": {
+            "pages": 25,
+            "rescued": true,
+            "flagged_pages": 1,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf06": {
+            "pages": 89,
+            "rescued": true,
+            "flagged_pages": 41,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf07": {
+            "pages": 63,
+            "rescued": true,
+            "flagged_pages": 16,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf08": {
+            "pages": 28,
+            "rescued": true,
+            "flagged_pages": 2,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          }
+        }
+      },
+      "classified_one_page": {
+        "pass_rule": {
+          "part_1_rf06_rf07_routed": true,
+          "rf06_routed": true,
+          "rf07_routed": true,
+          "part_2_no_usable_newly_routed": false,
+          "usable_newly_routed": [
+            "rf05",
+            "rf08",
+            "tl04",
+            "tl06"
+          ],
+          "ocr_cost_pages": 68,
+          "ocr_cost_seconds": 2597.6,
+          "pass": false
+        },
+        "routing": {
+          "bd01": {
+            "pages": 6,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd02": {
+            "pages": 12,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd03": {
+            "pages": 25,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd04": {
+            "pages": 31,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd05": {
+            "pages": 30,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd06": {
+            "pages": 9,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd07": {
+            "pages": 44,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd08": {
+            "pages": 11,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx01": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx02": {
+            "pages": 19,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx03": {
+            "pages": 37,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx04": {
+            "pages": 34,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx05": {
+            "pages": 54,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx06": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx07": {
+            "pages": 46,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx08": {
+            "pages": 13,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io01": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io02": {
+            "pages": 16,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io03": {
+            "pages": 5,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io04": {
+            "pages": 52,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io05": {
+            "pages": 8,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io06": {
+            "pages": 78,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io07": {
+            "pages": 66,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io08": {
+            "pages": 2,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl01": {
+            "pages": 80,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl02": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl03": {
+            "pages": 26,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl04": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 2,
+            "prior_routed": false,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": true,
+            "ocr_cost_pages": 12
+          },
+          "tl05": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl06": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 1,
+            "prior_routed": false,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": true,
+            "ocr_cost_pages": 3
+          },
+          "tl07": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl08": {
+            "pages": 4,
+            "rescued": true,
+            "flagged_pages": 1,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf01": {
+            "pages": 1,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf02": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf03": {
+            "pages": 7,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf04": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf05": {
+            "pages": 25,
+            "rescued": true,
+            "flagged_pages": 1,
+            "prior_routed": false,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": true,
+            "ocr_cost_pages": 25
+          },
+          "rf06": {
+            "pages": 89,
+            "rescued": true,
+            "flagged_pages": 41,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf07": {
+            "pages": 63,
+            "rescued": true,
+            "flagged_pages": 16,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf08": {
+            "pages": 28,
+            "rescued": true,
+            "flagged_pages": 2,
+            "prior_routed": false,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": true,
+            "ocr_cost_pages": 28
+          }
+        }
+      },
+      "primary_ten_percent": {
+        "pass_rule": {
+          "part_1_rf06_rf07_routed": true,
+          "rf06_routed": true,
+          "rf07_routed": true,
+          "part_2_no_usable_newly_routed": false,
+          "usable_newly_routed": [
+            "rf08",
+            "tl04",
+            "tl06"
+          ],
+          "ocr_cost_pages": 43,
+          "ocr_cost_seconds": 1642.6,
+          "pass": false
+        },
+        "routing": {
+          "bd01": {
+            "pages": 6,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd02": {
+            "pages": 12,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd03": {
+            "pages": 25,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd04": {
+            "pages": 31,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd05": {
+            "pages": 30,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd06": {
+            "pages": 9,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd07": {
+            "pages": 44,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd08": {
+            "pages": 11,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx01": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx02": {
+            "pages": 19,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx03": {
+            "pages": 37,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx04": {
+            "pages": 34,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx05": {
+            "pages": 54,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx06": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx07": {
+            "pages": 46,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx08": {
+            "pages": 13,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io01": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io02": {
+            "pages": 16,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io03": {
+            "pages": 5,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io04": {
+            "pages": 52,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io05": {
+            "pages": 8,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io06": {
+            "pages": 78,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io07": {
+            "pages": 66,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io08": {
+            "pages": 2,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl01": {
+            "pages": 80,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl02": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl03": {
+            "pages": 26,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl04": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 3,
+            "prior_routed": false,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": true,
+            "ocr_cost_pages": 12
+          },
+          "tl05": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl06": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 1,
+            "prior_routed": false,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": true,
+            "ocr_cost_pages": 3
+          },
+          "tl07": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 1,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl08": {
+            "pages": 4,
+            "rescued": true,
+            "flagged_pages": 1,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf01": {
+            "pages": 1,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf02": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf03": {
+            "pages": 7,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf04": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf05": {
+            "pages": 25,
+            "rescued": true,
+            "flagged_pages": 2,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf06": {
+            "pages": 89,
+            "rescued": true,
+            "flagged_pages": 56,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf07": {
+            "pages": 63,
+            "rescued": true,
+            "flagged_pages": 37,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf08": {
+            "pages": 28,
+            "rescued": true,
+            "flagged_pages": 3,
+            "prior_routed": false,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": true,
+            "ocr_cost_pages": 28
+          }
+        }
+      },
+      "primary_one_page": {
+        "pass_rule": {
+          "part_1_rf06_rf07_routed": true,
+          "rf06_routed": true,
+          "rf07_routed": true,
+          "part_2_no_usable_newly_routed": false,
+          "usable_newly_routed": [
+            "rf05",
+            "rf08",
+            "tl04",
+            "tl06"
+          ],
+          "ocr_cost_pages": 68,
+          "ocr_cost_seconds": 2597.6,
+          "pass": false
+        },
+        "routing": {
+          "bd01": {
+            "pages": 6,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd02": {
+            "pages": 12,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd03": {
+            "pages": 25,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd04": {
+            "pages": 31,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd05": {
+            "pages": 30,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd06": {
+            "pages": 9,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd07": {
+            "pages": 44,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "bd08": {
+            "pages": 11,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx01": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx02": {
+            "pages": 19,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx03": {
+            "pages": 37,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx04": {
+            "pages": 34,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx05": {
+            "pages": 54,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx06": {
+            "pages": 29,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx07": {
+            "pages": 46,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "mx08": {
+            "pages": 13,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io01": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io02": {
+            "pages": 16,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io03": {
+            "pages": 5,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io04": {
+            "pages": 52,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io05": {
+            "pages": 8,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io06": {
+            "pages": 78,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io07": {
+            "pages": 66,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "io08": {
+            "pages": 2,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl01": {
+            "pages": 80,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl02": {
+            "pages": 49,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl03": {
+            "pages": 26,
+            "rescued": false,
+            "flagged_pages": 0,
+            "prior_routed": true,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl04": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 3,
+            "prior_routed": false,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": true,
+            "ocr_cost_pages": 12
+          },
+          "tl05": {
+            "pages": 12,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl06": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 1,
+            "prior_routed": false,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": true,
+            "ocr_cost_pages": 3
+          },
+          "tl07": {
+            "pages": 3,
+            "rescued": true,
+            "flagged_pages": 1,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "tl08": {
+            "pages": 4,
+            "rescued": true,
+            "flagged_pages": 1,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf01": {
+            "pages": 1,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf02": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf03": {
+            "pages": 7,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf04": {
+            "pages": 8,
+            "rescued": true,
+            "flagged_pages": 0,
+            "prior_routed": false,
+            "routed": false,
+            "label": "usable",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf05": {
+            "pages": 25,
+            "rescued": true,
+            "flagged_pages": 2,
+            "prior_routed": false,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": true,
+            "ocr_cost_pages": 25
+          },
+          "rf06": {
+            "pages": 89,
+            "rescued": true,
+            "flagged_pages": 56,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf07": {
+            "pages": 63,
+            "rescued": true,
+            "flagged_pages": 37,
+            "prior_routed": false,
+            "routed": true,
+            "label": "needs_ocr",
+            "newly_routed_usable": false,
+            "ocr_cost_pages": 0
+          },
+          "rf08": {
+            "pages": 28,
+            "rescued": true,
+            "flagged_pages": 3,
+            "prior_routed": false,
+            "routed": true,
+            "label": "usable",
+            "newly_routed_usable": true,
+            "ocr_cost_pages": 28
+          }
+        }
+      }
+    }
+  }
+}

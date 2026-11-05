@@ -1,0 +1,8108 @@
+{
+  "identity": {
+    "arm": "jev_image",
+    "question": "Does the text match the text written or printed on the page image?",
+    "text_head_chars": 2000,
+    "inputs_sha256": "438dcc369f1c037772e176e9458074264f9bcc6f123eef51f61cd7d5ad885c20",
+    "model": "jev-1.14.0"
+  },
+  "rows": [
+    {
+      "doc_id": "bd01",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.81,
+      "model": "jev-1.14.0",
+      "input_tokens": 5643,
+      "output_tokens": 22,
+      "seconds": 1.9403906249935972
+    },
+    {
+      "doc_id": "bd01",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.36,
+      "model": "jev-1.14.0",
+      "input_tokens": 5621,
+      "output_tokens": 22,
+      "seconds": 2.9828220839990536
+    },
+    {
+      "doc_id": "bd01",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.35,
+      "model": "jev-1.14.0",
+      "input_tokens": 5559,
+      "output_tokens": 22,
+      "seconds": 1.0672123339900281
+    },
+    {
+      "doc_id": "bd01",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.38,
+      "model": "jev-1.14.0",
+      "input_tokens": 5588,
+      "output_tokens": 22,
+      "seconds": 1.11573133400816
+    },
+    {
+      "doc_id": "bd01",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.76,
+      "model": "jev-1.14.0",
+      "input_tokens": 5624,
+      "output_tokens": 22,
+      "seconds": 1.0239699170051608
+    },
+    {
+      "doc_id": "bd01",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.8,
+      "model": "jev-1.14.0",
+      "input_tokens": 5514,
+      "output_tokens": 22,
+      "seconds": 0.355766249995213
+    },
+    {
+      "doc_id": "bd02",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.62,
+      "model": "jev-1.14.0",
+      "input_tokens": 5467,
+      "output_tokens": 22,
+      "seconds": 2.188652707991423
+    },
+    {
+      "doc_id": "bd02",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.52,
+      "model": "jev-1.14.0",
+      "input_tokens": 5378,
+      "output_tokens": 22,
+      "seconds": 0.8216799999936484
+    },
+    {
+      "doc_id": "bd02",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.44,
+      "model": "jev-1.14.0",
+      "input_tokens": 5573,
+      "output_tokens": 22,
+      "seconds": 0.7823669999925187
+    },
+    {
+      "doc_id": "bd02",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.46,
+      "model": "jev-1.14.0",
+      "input_tokens": 5330,
+      "output_tokens": 22,
+      "seconds": 2.53261237499828
+    },
+    {
+      "doc_id": "bd02",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.66,
+      "model": "jev-1.14.0",
+      "input_tokens": 5090,
+      "output_tokens": 22,
+      "seconds": 0.7191746250027791
+    },
+    {
+      "doc_id": "bd02",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.87,
+      "model": "jev-1.14.0",
+      "input_tokens": 5000,
+      "output_tokens": 22,
+      "seconds": 0.4713879159971839
+    },
+    {
+      "doc_id": "bd02",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.27,
+      "model": "jev-1.14.0",
+      "input_tokens": 5379,
+      "output_tokens": 22,
+      "seconds": 1.2523946250003064
+    },
+    {
+      "doc_id": "bd02",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.48,
+      "model": "jev-1.14.0",
+      "input_tokens": 5173,
+      "output_tokens": 22,
+      "seconds": 2.087154875000124
+    },
+    {
+      "doc_id": "bd02",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.59,
+      "model": "jev-1.14.0",
+      "input_tokens": 5279,
+      "output_tokens": 22,
+      "seconds": 2.138894291012548
+    },
+    {
+      "doc_id": "bd02",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.47,
+      "model": "jev-1.14.0",
+      "input_tokens": 5388,
+      "output_tokens": 22,
+      "seconds": 3.4043122500006575
+    },
+    {
+      "doc_id": "bd02",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.72,
+      "model": "jev-1.14.0",
+      "input_tokens": 5280,
+      "output_tokens": 22,
+      "seconds": 1.1475726250064326
+    },
+    {
+      "doc_id": "bd02",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.41,
+      "model": "jev-1.14.0",
+      "input_tokens": 5736,
+      "output_tokens": 22,
+      "seconds": 0.9125403750076657
+    },
+    {
+      "doc_id": "bd03",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.53,
+      "model": "jev-1.14.0",
+      "input_tokens": 5787,
+      "output_tokens": 22,
+      "seconds": 1.0885757920041215
+    },
+    {
+      "doc_id": "bd03",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.65,
+      "model": "jev-1.14.0",
+      "input_tokens": 5773,
+      "output_tokens": 22,
+      "seconds": 0.7931357089983067
+    },
+    {
+      "doc_id": "bd03",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.65,
+      "model": "jev-1.14.0",
+      "input_tokens": 5677,
+      "output_tokens": 22,
+      "seconds": 0.8907407500082627
+    },
+    {
+      "doc_id": "bd03",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.76,
+      "model": "jev-1.14.0",
+      "input_tokens": 5838,
+      "output_tokens": 22,
+      "seconds": 2.326326666996465
+    },
+    {
+      "doc_id": "bd03",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.9,
+      "model": "jev-1.14.0",
+      "input_tokens": 5540,
+      "output_tokens": 22,
+      "seconds": 2.004001374996733
+    },
+    {
+      "doc_id": "bd03",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.61,
+      "model": "jev-1.14.0",
+      "input_tokens": 5942,
+      "output_tokens": 22,
+      "seconds": 3.6657380830001784
+    },
+    {
+      "doc_id": "bd03",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.65,
+      "model": "jev-1.14.0",
+      "input_tokens": 5786,
+      "output_tokens": 22,
+      "seconds": 1.1029433340008836
+    },
+    {
+      "doc_id": "bd03",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.76,
+      "model": "jev-1.14.0",
+      "input_tokens": 5745,
+      "output_tokens": 22,
+      "seconds": 0.6687695000000531
+    },
+    {
+      "doc_id": "bd03",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.34,
+      "model": "jev-1.14.0",
+      "input_tokens": 5714,
+      "output_tokens": 22,
+      "seconds": 0.727517874998739
+    },
+    {
+      "doc_id": "bd03",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.68,
+      "model": "jev-1.14.0",
+      "input_tokens": 5707,
+      "output_tokens": 22,
+      "seconds": 0.875256333994912
+    },
+    {
+      "doc_id": "bd03",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.77,
+      "model": "jev-1.14.0",
+      "input_tokens": 5750,
+      "output_tokens": 22,
+      "seconds": 0.7645594589994289
+    },
+    {
+      "doc_id": "bd03",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.6,
+      "model": "jev-1.14.0",
+      "input_tokens": 5711,
+      "output_tokens": 22,
+      "seconds": 3.0259470000019064
+    },
+    {
+      "doc_id": "bd03",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.8,
+      "model": "jev-1.14.0",
+      "input_tokens": 5504,
+      "output_tokens": 22,
+      "seconds": 0.45281466700544115
+    },
+    {
+      "doc_id": "bd03",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.82,
+      "model": "jev-1.14.0",
+      "input_tokens": 5630,
+      "output_tokens": 22,
+      "seconds": 0.6493833749991609
+    },
+    {
+      "doc_id": "bd03",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.49,
+      "model": "jev-1.14.0",
+      "input_tokens": 5723,
+      "output_tokens": 22,
+      "seconds": 0.9540333750046557
+    },
+    {
+      "doc_id": "bd03",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.54,
+      "model": "jev-1.14.0",
+      "input_tokens": 5793,
+      "output_tokens": 22,
+      "seconds": 1.2071802499995101
+    },
+    {
+      "doc_id": "bd03",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.51,
+      "model": "jev-1.14.0",
+      "input_tokens": 5691,
+      "output_tokens": 22,
+      "seconds": 1.0089825839968398
+    },
+    {
+      "doc_id": "bd03",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.58,
+      "model": "jev-1.14.0",
+      "input_tokens": 5720,
+      "output_tokens": 22,
+      "seconds": 1.028194334008731
+    },
+    {
+      "doc_id": "bd03",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.42,
+      "model": "jev-1.14.0",
+      "input_tokens": 5795,
+      "output_tokens": 22,
+      "seconds": 0.8008565409982111
+    },
+    {
+      "doc_id": "bd03",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.68,
+      "model": "jev-1.14.0",
+      "input_tokens": 5692,
+      "output_tokens": 22,
+      "seconds": 0.8107352499937406
+    },
+    {
+      "doc_id": "bd03",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.71,
+      "model": "jev-1.14.0",
+      "input_tokens": 5993,
+      "output_tokens": 22,
+      "seconds": 1.1768200830119895
+    },
+    {
+      "doc_id": "bd03",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.48,
+      "model": "jev-1.14.0",
+      "input_tokens": 6071,
+      "output_tokens": 22,
+      "seconds": 1.3439030830049887
+    },
+    {
+      "doc_id": "bd03",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.64,
+      "model": "jev-1.14.0",
+      "input_tokens": 6083,
+      "output_tokens": 22,
+      "seconds": 0.9295661669893889
+    },
+    {
+      "doc_id": "bd03",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.53,
+      "model": "jev-1.14.0",
+      "input_tokens": 6050,
+      "output_tokens": 22,
+      "seconds": 2.856145917001413
+    },
+    {
+      "doc_id": "bd03",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.66,
+      "model": "jev-1.14.0",
+      "input_tokens": 6066,
+      "output_tokens": 22,
+      "seconds": 2.5289090419973945
+    },
+    {
+      "doc_id": "bd04",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.74,
+      "model": "jev-1.14.0",
+      "input_tokens": 4077,
+      "output_tokens": 22,
+      "seconds": 1.6798014170053648
+    },
+    {
+      "doc_id": "bd04",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.47,
+      "model": "jev-1.14.0",
+      "input_tokens": 4113,
+      "output_tokens": 22,
+      "seconds": 4.501283125006012
+    },
+    {
+      "doc_id": "bd04",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.33,
+      "model": "jev-1.14.0",
+      "input_tokens": 4228,
+      "output_tokens": 22,
+      "seconds": 0.5163744169985875
+    },
+    {
+      "doc_id": "bd04",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.51,
+      "model": "jev-1.14.0",
+      "input_tokens": 4130,
+      "output_tokens": 22,
+      "seconds": 5.22677829200984
+    },
+    {
+      "doc_id": "bd04",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.41,
+      "model": "jev-1.14.0",
+      "input_tokens": 4184,
+      "output_tokens": 22,
+      "seconds": 0.5878998749976745
+    },
+    {
+      "doc_id": "bd04",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.48,
+      "model": "jev-1.14.0",
+      "input_tokens": 4281,
+      "output_tokens": 22,
+      "seconds": 1.9770800830010558
+    },
+    {
+      "doc_id": "bd04",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.51,
+      "model": "jev-1.14.0",
+      "input_tokens": 4240,
+      "output_tokens": 22,
+      "seconds": 0.47657754199462943
+    },
+    {
+      "doc_id": "bd04",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.4,
+      "model": "jev-1.14.0",
+      "input_tokens": 4265,
+      "output_tokens": 22,
+      "seconds": 1.7611810419912217
+    },
+    {
+      "doc_id": "bd04",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.43,
+      "model": "jev-1.14.0",
+      "input_tokens": 4255,
+      "output_tokens": 22,
+      "seconds": 0.3613650420011254
+    },
+    {
+      "doc_id": "bd04",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.37,
+      "model": "jev-1.14.0",
+      "input_tokens": 4378,
+      "output_tokens": 22,
+      "seconds": 2.9697365000029095
+    },
+    {
+      "doc_id": "bd04",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.43,
+      "model": "jev-1.14.0",
+      "input_tokens": 4099,
+      "output_tokens": 22,
+      "seconds": 0.33087937500386033
+    },
+    {
+      "doc_id": "bd04",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.36,
+      "model": "jev-1.14.0",
+      "input_tokens": 4189,
+      "output_tokens": 22,
+      "seconds": 1.6822207090008305
+    },
+    {
+      "doc_id": "bd04",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.3,
+      "model": "jev-1.14.0",
+      "input_tokens": 4138,
+      "output_tokens": 22,
+      "seconds": 0.31932545799645595
+    },
+    {
+      "doc_id": "bd04",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.46,
+      "model": "jev-1.14.0",
+      "input_tokens": 4072,
+      "output_tokens": 22,
+      "seconds": 0.3699700419965666
+    },
+    {
+      "doc_id": "bd04",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.39,
+      "model": "jev-1.14.0",
+      "input_tokens": 4264,
+      "output_tokens": 22,
+      "seconds": 0.44447841600049287
+    },
+    {
+      "doc_id": "bd04",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.31,
+      "model": "jev-1.14.0",
+      "input_tokens": 4303,
+      "output_tokens": 22,
+      "seconds": 0.44746466701326426
+    },
+    {
+      "doc_id": "bd04",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.32,
+      "model": "jev-1.14.0",
+      "input_tokens": 4239,
+      "output_tokens": 22,
+      "seconds": 0.5485905420064228
+    },
+    {
+      "doc_id": "bd04",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.35,
+      "model": "jev-1.14.0",
+      "input_tokens": 4337,
+      "output_tokens": 22,
+      "seconds": 0.3883718750003027
+    },
+    {
+      "doc_id": "bd04",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.33,
+      "model": "jev-1.14.0",
+      "input_tokens": 4290,
+      "output_tokens": 22,
+      "seconds": 1.7589766660094028
+    },
+    {
+      "doc_id": "bd04",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.39,
+      "model": "jev-1.14.0",
+      "input_tokens": 4282,
+      "output_tokens": 22,
+      "seconds": 0.37977087500621565
+    },
+    {
+      "doc_id": "bd04",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.36,
+      "model": "jev-1.14.0",
+      "input_tokens": 4381,
+      "output_tokens": 22,
+      "seconds": 1.6036662090045866
+    },
+    {
+      "doc_id": "bd04",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.45,
+      "model": "jev-1.14.0",
+      "input_tokens": 4407,
+      "output_tokens": 22,
+      "seconds": 1.6885758749995148
+    },
+    {
+      "doc_id": "bd04",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.36,
+      "model": "jev-1.14.0",
+      "input_tokens": 4219,
+      "output_tokens": 22,
+      "seconds": 1.9178552920056973
+    },
+    {
+      "doc_id": "bd04",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.49,
+      "model": "jev-1.14.0",
+      "input_tokens": 4320,
+      "output_tokens": 22,
+      "seconds": 1.6724257079913514
+    },
+    {
+      "doc_id": "bd04",
+      "page": 26,
+      "phase": "fit",
+      "p_yes": 0.28,
+      "model": "jev-1.14.0",
+      "input_tokens": 4245,
+      "output_tokens": 22,
+      "seconds": 0.5707565409975359
+    },
+    {
+      "doc_id": "bd04",
+      "page": 27,
+      "phase": "fit",
+      "p_yes": 0.24,
+      "model": "jev-1.14.0",
+      "input_tokens": 4176,
+      "output_tokens": 22,
+      "seconds": 0.4263545830035582
+    },
+    {
+      "doc_id": "bd04",
+      "page": 28,
+      "phase": "fit",
+      "p_yes": 0.32,
+      "model": "jev-1.14.0",
+      "input_tokens": 4208,
+      "output_tokens": 22,
+      "seconds": 0.30712250000215136
+    },
+    {
+      "doc_id": "bd04",
+      "page": 29,
+      "phase": "fit",
+      "p_yes": 0.31,
+      "model": "jev-1.14.0",
+      "input_tokens": 4222,
+      "output_tokens": 22,
+      "seconds": 0.432663291998324
+    },
+    {
+      "doc_id": "bd04",
+      "page": 30,
+      "phase": "fit",
+      "p_yes": 0.3,
+      "model": "jev-1.14.0",
+      "input_tokens": 4261,
+      "output_tokens": 22,
+      "seconds": 0.6841041659936309
+    },
+    {
+      "doc_id": "bd04",
+      "page": 31,
+      "phase": "fit",
+      "p_yes": 0.56,
+      "model": "jev-1.14.0",
+      "input_tokens": 4411,
+      "output_tokens": 22,
+      "seconds": 0.5399779170111287
+    },
+    {
+      "doc_id": "bd05",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.94,
+      "model": "jev-1.14.0",
+      "input_tokens": 3932,
+      "output_tokens": 22,
+      "seconds": 0.44544833300460596
+    },
+    {
+      "doc_id": "bd05",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.46,
+      "model": "jev-1.14.0",
+      "input_tokens": 4136,
+      "output_tokens": 22,
+      "seconds": 2.005374500004109
+    },
+    {
+      "doc_id": "bd05",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.42,
+      "model": "jev-1.14.0",
+      "input_tokens": 4145,
+      "output_tokens": 22,
+      "seconds": 0.5446700419997796
+    },
+    {
+      "doc_id": "bd05",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.4,
+      "model": "jev-1.14.0",
+      "input_tokens": 4173,
+      "output_tokens": 22,
+      "seconds": 0.6765815419930732
+    },
+    {
+      "doc_id": "bd05",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.49,
+      "model": "jev-1.14.0",
+      "input_tokens": 4150,
+      "output_tokens": 22,
+      "seconds": 6.548267042002408
+    },
+    {
+      "doc_id": "bd05",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.54,
+      "model": "jev-1.14.0",
+      "input_tokens": 4178,
+      "output_tokens": 22,
+      "seconds": 0.41750145801051985
+    },
+    {
+      "doc_id": "bd05",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.34,
+      "model": "jev-1.14.0",
+      "input_tokens": 4141,
+      "output_tokens": 22,
+      "seconds": 2.867439749999903
+    },
+    {
+      "doc_id": "bd05",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.52,
+      "model": "jev-1.14.0",
+      "input_tokens": 4157,
+      "output_tokens": 22,
+      "seconds": 1.9071378329972504
+    },
+    {
+      "doc_id": "bd05",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.59,
+      "model": "jev-1.14.0",
+      "input_tokens": 4157,
+      "output_tokens": 22,
+      "seconds": 2.0969947910052724
+    },
+    {
+      "doc_id": "bd05",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.41,
+      "model": "jev-1.14.0",
+      "input_tokens": 4137,
+      "output_tokens": 22,
+      "seconds": 0.7240015419956762
+    },
+    {
+      "doc_id": "bd05",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.57,
+      "model": "jev-1.14.0",
+      "input_tokens": 4160,
+      "output_tokens": 22,
+      "seconds": 0.8927292089938419
+    },
+    {
+      "doc_id": "bd05",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.66,
+      "model": "jev-1.14.0",
+      "input_tokens": 4180,
+      "output_tokens": 22,
+      "seconds": 0.5211709580034949
+    },
+    {
+      "doc_id": "bd05",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.56,
+      "model": "jev-1.14.0",
+      "input_tokens": 4147,
+      "output_tokens": 22,
+      "seconds": 0.5277152909984579
+    },
+    {
+      "doc_id": "bd05",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.52,
+      "model": "jev-1.14.0",
+      "input_tokens": 4126,
+      "output_tokens": 22,
+      "seconds": 0.5996403330063913
+    },
+    {
+      "doc_id": "bd05",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.59,
+      "model": "jev-1.14.0",
+      "input_tokens": 4147,
+      "output_tokens": 22,
+      "seconds": 0.5153611669957172
+    },
+    {
+      "doc_id": "bd05",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.43,
+      "model": "jev-1.14.0",
+      "input_tokens": 4164,
+      "output_tokens": 22,
+      "seconds": 5.1188907499890774
+    },
+    {
+      "doc_id": "bd05",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.45,
+      "model": "jev-1.14.0",
+      "input_tokens": 4150,
+      "output_tokens": 22,
+      "seconds": 0.5799001669947756
+    },
+    {
+      "doc_id": "bd05",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.54,
+      "model": "jev-1.14.0",
+      "input_tokens": 4124,
+      "output_tokens": 22,
+      "seconds": 1.919185666993144
+    },
+    {
+      "doc_id": "bd05",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.43,
+      "model": "jev-1.14.0",
+      "input_tokens": 4190,
+      "output_tokens": 22,
+      "seconds": 0.5255672089988366
+    },
+    {
+      "doc_id": "bd05",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.95,
+      "model": "jev-1.14.0",
+      "input_tokens": 3987,
+      "output_tokens": 22,
+      "seconds": 0.46986429099342786
+    },
+    {
+      "doc_id": "bd05",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.54,
+      "model": "jev-1.14.0",
+      "input_tokens": 4206,
+      "output_tokens": 22,
+      "seconds": 0.6959058750071563
+    },
+    {
+      "doc_id": "bd05",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.49,
+      "model": "jev-1.14.0",
+      "input_tokens": 4190,
+      "output_tokens": 22,
+      "seconds": 1.8051342499966267
+    },
+    {
+      "doc_id": "bd05",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.45,
+      "model": "jev-1.14.0",
+      "input_tokens": 4182,
+      "output_tokens": 22,
+      "seconds": 0.5813536249916069
+    },
+    {
+      "doc_id": "bd05",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.4,
+      "model": "jev-1.14.0",
+      "input_tokens": 4206,
+      "output_tokens": 22,
+      "seconds": 0.6785689590033144
+    },
+    {
+      "doc_id": "bd05",
+      "page": 26,
+      "phase": "fit",
+      "p_yes": 0.67,
+      "model": "jev-1.14.0",
+      "input_tokens": 4370,
+      "output_tokens": 22,
+      "seconds": 0.5903116670087911
+    },
+    {
+      "doc_id": "bd05",
+      "page": 27,
+      "phase": "fit",
+      "p_yes": 0.24,
+      "model": "jev-1.14.0",
+      "input_tokens": 4387,
+      "output_tokens": 22,
+      "seconds": 0.5276965419907356
+    },
+    {
+      "doc_id": "bd05",
+      "page": 28,
+      "phase": "fit",
+      "p_yes": 0.94,
+      "model": "jev-1.14.0",
+      "input_tokens": 3789,
+      "output_tokens": 22,
+      "seconds": 0.34059241600334644
+    },
+    {
+      "doc_id": "bd05",
+      "page": 29,
+      "phase": "fit",
+      "p_yes": 0.59,
+      "model": "jev-1.14.0",
+      "input_tokens": 4161,
+      "output_tokens": 22,
+      "seconds": 2.9150173330126563
+    },
+    {
+      "doc_id": "bd05",
+      "page": 30,
+      "phase": "fit",
+      "p_yes": 0.82,
+      "model": "jev-1.14.0",
+      "input_tokens": 3876,
+      "output_tokens": 22,
+      "seconds": 0.40971108300436754
+    },
+    {
+      "doc_id": "bd06",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.8,
+      "model": "jev-1.14.0",
+      "input_tokens": 5722,
+      "output_tokens": 22,
+      "seconds": 0.8693193750077626
+    },
+    {
+      "doc_id": "bd06",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.55,
+      "model": "jev-1.14.0",
+      "input_tokens": 5644,
+      "output_tokens": 22,
+      "seconds": 1.112665290987934
+    },
+    {
+      "doc_id": "bd06",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.51,
+      "model": "jev-1.14.0",
+      "input_tokens": 5704,
+      "output_tokens": 22,
+      "seconds": 0.960198083994328
+    },
+    {
+      "doc_id": "bd06",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.85,
+      "model": "jev-1.14.0",
+      "input_tokens": 5367,
+      "output_tokens": 22,
+      "seconds": 2.0134940419957275
+    },
+    {
+      "doc_id": "bd06",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.63,
+      "model": "jev-1.14.0",
+      "input_tokens": 6297,
+      "output_tokens": 22,
+      "seconds": 0.5824951669928851
+    },
+    {
+      "doc_id": "bd06",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.68,
+      "model": "jev-1.14.0",
+      "input_tokens": 5627,
+      "output_tokens": 22,
+      "seconds": 2.203300000008312
+    },
+    {
+      "doc_id": "bd06",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.66,
+      "model": "jev-1.14.0",
+      "input_tokens": 5628,
+      "output_tokens": 22,
+      "seconds": 0.7643817919888534
+    },
+    {
+      "doc_id": "bd06",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.72,
+      "model": "jev-1.14.0",
+      "input_tokens": 5647,
+      "output_tokens": 22,
+      "seconds": 1.058446750001167
+    },
+    {
+      "doc_id": "bd06",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.51,
+      "model": "jev-1.14.0",
+      "input_tokens": 5831,
+      "output_tokens": 22,
+      "seconds": 0.7908884999924339
+    },
+    {
+      "doc_id": "bd07",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.72,
+      "model": "jev-1.14.0",
+      "input_tokens": 5335,
+      "output_tokens": 22,
+      "seconds": 0.6103969999967376
+    },
+    {
+      "doc_id": "bd07",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.61,
+      "model": "jev-1.14.0",
+      "input_tokens": 5383,
+      "output_tokens": 22,
+      "seconds": 0.8578117919969372
+    },
+    {
+      "doc_id": "bd07",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.52,
+      "model": "jev-1.14.0",
+      "input_tokens": 5338,
+      "output_tokens": 22,
+      "seconds": 0.7347625830007019
+    },
+    {
+      "doc_id": "bd07",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.54,
+      "model": "jev-1.14.0",
+      "input_tokens": 5383,
+      "output_tokens": 22,
+      "seconds": 0.5638537920021918
+    },
+    {
+      "doc_id": "bd07",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.36,
+      "model": "jev-1.14.0",
+      "input_tokens": 5535,
+      "output_tokens": 22,
+      "seconds": 0.7142760410060873
+    },
+    {
+      "doc_id": "bd07",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.57,
+      "model": "jev-1.14.0",
+      "input_tokens": 5453,
+      "output_tokens": 22,
+      "seconds": 0.7341709589964012
+    },
+    {
+      "doc_id": "bd07",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.55,
+      "model": "jev-1.14.0",
+      "input_tokens": 5492,
+      "output_tokens": 22,
+      "seconds": 0.5948568339954363
+    },
+    {
+      "doc_id": "bd07",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.44,
+      "model": "jev-1.14.0",
+      "input_tokens": 5673,
+      "output_tokens": 22,
+      "seconds": 0.5018245419923915
+    },
+    {
+      "doc_id": "bd07",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.3,
+      "model": "jev-1.14.0",
+      "input_tokens": 5466,
+      "output_tokens": 22,
+      "seconds": 0.6206544589949772
+    },
+    {
+      "doc_id": "bd07",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.32,
+      "model": "jev-1.14.0",
+      "input_tokens": 5389,
+      "output_tokens": 22,
+      "seconds": 0.5801688749925233
+    },
+    {
+      "doc_id": "bd07",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.91,
+      "model": "jev-1.14.0",
+      "input_tokens": 4925,
+      "output_tokens": 22,
+      "seconds": 0.4029272089974256
+    },
+    {
+      "doc_id": "bd07",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.29,
+      "model": "jev-1.14.0",
+      "input_tokens": 5408,
+      "output_tokens": 22,
+      "seconds": 2.4554393750004238
+    },
+    {
+      "doc_id": "bd07",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.41,
+      "model": "jev-1.14.0",
+      "input_tokens": 5479,
+      "output_tokens": 22,
+      "seconds": 2.6237079999991693
+    },
+    {
+      "doc_id": "bd07",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.55,
+      "model": "jev-1.14.0",
+      "input_tokens": 5510,
+      "output_tokens": 22,
+      "seconds": 4.732942874994478
+    },
+    {
+      "doc_id": "bd07",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.45,
+      "model": "jev-1.14.0",
+      "input_tokens": 5470,
+      "output_tokens": 22,
+      "seconds": 0.6080114999931538
+    },
+    {
+      "doc_id": "bd07",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.48,
+      "model": "jev-1.14.0",
+      "input_tokens": 5569,
+      "output_tokens": 22,
+      "seconds": 0.6484687910124194
+    },
+    {
+      "doc_id": "bd07",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.55,
+      "model": "jev-1.14.0",
+      "input_tokens": 5532,
+      "output_tokens": 22,
+      "seconds": 2.665270708996104
+    },
+    {
+      "doc_id": "bd07",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.74,
+      "model": "jev-1.14.0",
+      "input_tokens": 5565,
+      "output_tokens": 22,
+      "seconds": 1.9621185830037575
+    },
+    {
+      "doc_id": "bd07",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.58,
+      "model": "jev-1.14.0",
+      "input_tokens": 5844,
+      "output_tokens": 22,
+      "seconds": 0.46294441701320466
+    },
+    {
+      "doc_id": "bd07",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.29,
+      "model": "jev-1.14.0",
+      "input_tokens": 5839,
+      "output_tokens": 22,
+      "seconds": 2.163278292005998
+    },
+    {
+      "doc_id": "bd07",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.38,
+      "model": "jev-1.14.0",
+      "input_tokens": 5912,
+      "output_tokens": 22,
+      "seconds": 0.4712299999955576
+    },
+    {
+      "doc_id": "bd07",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.48,
+      "model": "jev-1.14.0",
+      "input_tokens": 5896,
+      "output_tokens": 22,
+      "seconds": 0.5296980410057586
+    },
+    {
+      "doc_id": "bd07",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.39,
+      "model": "jev-1.14.0",
+      "input_tokens": 5626,
+      "output_tokens": 22,
+      "seconds": 0.712899958001799
+    },
+    {
+      "doc_id": "bd07",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.42,
+      "model": "jev-1.14.0",
+      "input_tokens": 5804,
+      "output_tokens": 22,
+      "seconds": 0.4990353330067592
+    },
+    {
+      "doc_id": "bd07",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.52,
+      "model": "jev-1.14.0",
+      "input_tokens": 5680,
+      "output_tokens": 22,
+      "seconds": 0.43513424998673145
+    },
+    {
+      "doc_id": "bd07",
+      "page": 27,
+      "phase": "fit",
+      "p_yes": 0.5,
+      "model": "jev-1.14.0",
+      "input_tokens": 5813,
+      "output_tokens": 22,
+      "seconds": 0.48279179199016653
+    },
+    {
+      "doc_id": "bd07",
+      "page": 28,
+      "phase": "fit",
+      "p_yes": 0.42,
+      "model": "jev-1.14.0",
+      "input_tokens": 5833,
+      "output_tokens": 22,
+      "seconds": 0.5309135410061572
+    },
+    {
+      "doc_id": "bd07",
+      "page": 29,
+      "phase": "fit",
+      "p_yes": 0.38,
+      "model": "jev-1.14.0",
+      "input_tokens": 5854,
+      "output_tokens": 22,
+      "seconds": 1.9066944579972187
+    },
+    {
+      "doc_id": "bd07",
+      "page": 30,
+      "phase": "fit",
+      "p_yes": 0.42,
+      "model": "jev-1.14.0",
+      "input_tokens": 5787,
+      "output_tokens": 22,
+      "seconds": 0.5789879999938421
+    },
+    {
+      "doc_id": "bd07",
+      "page": 31,
+      "phase": "fit",
+      "p_yes": 0.34,
+      "model": "jev-1.14.0",
+      "input_tokens": 5748,
+      "output_tokens": 22,
+      "seconds": 1.8969148339965614
+    },
+    {
+      "doc_id": "bd07",
+      "page": 32,
+      "phase": "fit",
+      "p_yes": 0.38,
+      "model": "jev-1.14.0",
+      "input_tokens": 5798,
+      "output_tokens": 22,
+      "seconds": 2.9927040000038687
+    },
+    {
+      "doc_id": "bd07",
+      "page": 33,
+      "phase": "fit",
+      "p_yes": 0.54,
+      "model": "jev-1.14.0",
+      "input_tokens": 5756,
+      "output_tokens": 22,
+      "seconds": 0.4541234169882955
+    },
+    {
+      "doc_id": "bd07",
+      "page": 35,
+      "phase": "fit",
+      "p_yes": 0.36,
+      "model": "jev-1.14.0",
+      "input_tokens": 5886,
+      "output_tokens": 22,
+      "seconds": 0.5304572080058279
+    },
+    {
+      "doc_id": "bd07",
+      "page": 36,
+      "phase": "fit",
+      "p_yes": 0.51,
+      "model": "jev-1.14.0",
+      "input_tokens": 5938,
+      "output_tokens": 22,
+      "seconds": 0.5090606250014389
+    },
+    {
+      "doc_id": "bd07",
+      "page": 37,
+      "phase": "fit",
+      "p_yes": 0.43,
+      "model": "jev-1.14.0",
+      "input_tokens": 5782,
+      "output_tokens": 22,
+      "seconds": 2.96982912500971
+    },
+    {
+      "doc_id": "bd07",
+      "page": 38,
+      "phase": "fit",
+      "p_yes": 0.36,
+      "model": "jev-1.14.0",
+      "input_tokens": 5569,
+      "output_tokens": 22,
+      "seconds": 0.42625350000162143
+    },
+    {
+      "doc_id": "bd07",
+      "page": 39,
+      "phase": "fit",
+      "p_yes": 0.47,
+      "model": "jev-1.14.0",
+      "input_tokens": 5760,
+      "output_tokens": 22,
+      "seconds": 0.4909572920005303
+    },
+    {
+      "doc_id": "bd07",
+      "page": 40,
+      "phase": "fit",
+      "p_yes": 0.35,
+      "model": "jev-1.14.0",
+      "input_tokens": 5835,
+      "output_tokens": 22,
+      "seconds": 0.4915242919960292
+    },
+    {
+      "doc_id": "bd07",
+      "page": 41,
+      "phase": "fit",
+      "p_yes": 0.58,
+      "model": "jev-1.14.0",
+      "input_tokens": 5788,
+      "output_tokens": 22,
+      "seconds": 0.479494250001153
+    },
+    {
+      "doc_id": "bd07",
+      "page": 42,
+      "phase": "fit",
+      "p_yes": 0.42,
+      "model": "jev-1.14.0",
+      "input_tokens": 5506,
+      "output_tokens": 22,
+      "seconds": 0.6308977080043405
+    },
+    {
+      "doc_id": "bd07",
+      "page": 43,
+      "phase": "fit",
+      "p_yes": 0.54,
+      "model": "jev-1.14.0",
+      "input_tokens": 5517,
+      "output_tokens": 22,
+      "seconds": 0.5313267500023358
+    },
+    {
+      "doc_id": "bd07",
+      "page": 44,
+      "phase": "fit",
+      "p_yes": 0.84,
+      "model": "jev-1.14.0",
+      "input_tokens": 5343,
+      "output_tokens": 22,
+      "seconds": 1.8427310840052087
+    },
+    {
+      "doc_id": "bd08",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.66,
+      "model": "jev-1.14.0",
+      "input_tokens": 5772,
+      "output_tokens": 22,
+      "seconds": 1.1139577919966541
+    },
+    {
+      "doc_id": "bd08",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.54,
+      "model": "jev-1.14.0",
+      "input_tokens": 5682,
+      "output_tokens": 22,
+      "seconds": 1.123230124998372
+    },
+    {
+      "doc_id": "bd08",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.71,
+      "model": "jev-1.14.0",
+      "input_tokens": 5688,
+      "output_tokens": 22,
+      "seconds": 0.9094216670055175
+    },
+    {
+      "doc_id": "bd08",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.78,
+      "model": "jev-1.14.0",
+      "input_tokens": 5696,
+      "output_tokens": 22,
+      "seconds": 6.749597999994876
+    },
+    {
+      "doc_id": "bd08",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.58,
+      "model": "jev-1.14.0",
+      "input_tokens": 5730,
+      "output_tokens": 22,
+      "seconds": 0.9098511250049341
+    },
+    {
+      "doc_id": "bd08",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.42,
+      "model": "jev-1.14.0",
+      "input_tokens": 6210,
+      "output_tokens": 22,
+      "seconds": 0.7579267090040958
+    },
+    {
+      "doc_id": "bd08",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.61,
+      "model": "jev-1.14.0",
+      "input_tokens": 5778,
+      "output_tokens": 22,
+      "seconds": 2.232064875002834
+    },
+    {
+      "doc_id": "bd08",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.21,
+      "model": "jev-1.14.0",
+      "input_tokens": 6267,
+      "output_tokens": 22,
+      "seconds": 0.7293089590093587
+    },
+    {
+      "doc_id": "bd08",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.28,
+      "model": "jev-1.14.0",
+      "input_tokens": 5781,
+      "output_tokens": 22,
+      "seconds": 1.1430153330002213
+    },
+    {
+      "doc_id": "bd08",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.79,
+      "model": "jev-1.14.0",
+      "input_tokens": 6044,
+      "output_tokens": 22,
+      "seconds": 0.9983214579988271
+    },
+    {
+      "doc_id": "mx01",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.95,
+      "model": "jev-1.14.0",
+      "input_tokens": 5312,
+      "output_tokens": 22,
+      "seconds": 0.3358340419945307
+    },
+    {
+      "doc_id": "mx01",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.67,
+      "model": "jev-1.14.0",
+      "input_tokens": 5719,
+      "output_tokens": 22,
+      "seconds": 1.1720985419960925
+    },
+    {
+      "doc_id": "mx01",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.92,
+      "model": "jev-1.14.0",
+      "input_tokens": 5511,
+      "output_tokens": 22,
+      "seconds": 0.3548114169971086
+    },
+    {
+      "doc_id": "mx01",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.96,
+      "model": "jev-1.14.0",
+      "input_tokens": 5495,
+      "output_tokens": 22,
+      "seconds": 0.3732456249999814
+    },
+    {
+      "doc_id": "mx01",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.59,
+      "model": "jev-1.14.0",
+      "input_tokens": 5743,
+      "output_tokens": 22,
+      "seconds": 2.223143124996568
+    },
+    {
+      "doc_id": "mx01",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.52,
+      "model": "jev-1.14.0",
+      "input_tokens": 5696,
+      "output_tokens": 22,
+      "seconds": 2.438813166998443
+    },
+    {
+      "doc_id": "mx01",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.56,
+      "model": "jev-1.14.0",
+      "input_tokens": 5672,
+      "output_tokens": 22,
+      "seconds": 0.5373600839957362
+    },
+    {
+      "doc_id": "mx01",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.67,
+      "model": "jev-1.14.0",
+      "input_tokens": 5664,
+      "output_tokens": 22,
+      "seconds": 2.2129854999948293
+    },
+    {
+      "doc_id": "mx01",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.67,
+      "model": "jev-1.14.0",
+      "input_tokens": 5686,
+      "output_tokens": 22,
+      "seconds": 0.5987306669994723
+    },
+    {
+      "doc_id": "mx01",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.52,
+      "model": "jev-1.14.0",
+      "input_tokens": 5667,
+      "output_tokens": 22,
+      "seconds": 0.7794088340015151
+    },
+    {
+      "doc_id": "mx01",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.9,
+      "model": "jev-1.14.0",
+      "input_tokens": 5668,
+      "output_tokens": 22,
+      "seconds": 0.5405045840016101
+    },
+    {
+      "doc_id": "mx01",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.75,
+      "model": "jev-1.14.0",
+      "input_tokens": 5504,
+      "output_tokens": 22,
+      "seconds": 4.097079749990371
+    },
+    {
+      "doc_id": "mx01",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.71,
+      "model": "jev-1.14.0",
+      "input_tokens": 5543,
+      "output_tokens": 22,
+      "seconds": 0.4824768340040464
+    },
+    {
+      "doc_id": "mx01",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.72,
+      "model": "jev-1.14.0",
+      "input_tokens": 5624,
+      "output_tokens": 22,
+      "seconds": 0.5057127920008497
+    },
+    {
+      "doc_id": "mx01",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.61,
+      "model": "jev-1.14.0",
+      "input_tokens": 5733,
+      "output_tokens": 22,
+      "seconds": 2.165129291010089
+    },
+    {
+      "doc_id": "mx01",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.59,
+      "model": "jev-1.14.0",
+      "input_tokens": 5665,
+      "output_tokens": 22,
+      "seconds": 0.8371416250010952
+    },
+    {
+      "doc_id": "mx01",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.9,
+      "model": "jev-1.14.0",
+      "input_tokens": 5644,
+      "output_tokens": 22,
+      "seconds": 0.5019288750045234
+    },
+    {
+      "doc_id": "mx01",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.65,
+      "model": "jev-1.14.0",
+      "input_tokens": 5365,
+      "output_tokens": 22,
+      "seconds": 1.5979402079974534
+    },
+    {
+      "doc_id": "mx01",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.96,
+      "model": "jev-1.14.0",
+      "input_tokens": 5439,
+      "output_tokens": 22,
+      "seconds": 0.37877075000142213
+    },
+    {
+      "doc_id": "mx01",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.48,
+      "model": "jev-1.14.0",
+      "input_tokens": 5708,
+      "output_tokens": 22,
+      "seconds": 4.946951167003135
+    },
+    {
+      "doc_id": "mx01",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.92,
+      "model": "jev-1.14.0",
+      "input_tokens": 5709,
+      "output_tokens": 22,
+      "seconds": 0.476547333993949
+    },
+    {
+      "doc_id": "mx01",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.58,
+      "model": "jev-1.14.0",
+      "input_tokens": 5723,
+      "output_tokens": 22,
+      "seconds": 0.609043999997084
+    },
+    {
+      "doc_id": "mx01",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.59,
+      "model": "jev-1.14.0",
+      "input_tokens": 5691,
+      "output_tokens": 22,
+      "seconds": 0.6176137080037734
+    },
+    {
+      "doc_id": "mx01",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.94,
+      "model": "jev-1.14.0",
+      "input_tokens": 5356,
+      "output_tokens": 22,
+      "seconds": 3.7111674580082763
+    },
+    {
+      "doc_id": "mx01",
+      "page": 28,
+      "phase": "fit",
+      "p_yes": 0.76,
+      "model": "jev-1.14.0",
+      "input_tokens": 5391,
+      "output_tokens": 22,
+      "seconds": 0.3088917080021929
+    },
+    {
+      "doc_id": "mx01",
+      "page": 29,
+      "phase": "fit",
+      "p_yes": 0.31,
+      "model": "jev-1.14.0",
+      "input_tokens": 5750,
+      "output_tokens": 22,
+      "seconds": 0.9986828330002027
+    },
+    {
+      "doc_id": "mx02",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.54,
+      "model": "jev-1.14.0",
+      "input_tokens": 5716,
+      "output_tokens": 22,
+      "seconds": 1.0343618329934543
+    },
+    {
+      "doc_id": "mx02",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.92,
+      "model": "jev-1.14.0",
+      "input_tokens": 5401,
+      "output_tokens": 22,
+      "seconds": 0.34565266699064523
+    },
+    {
+      "doc_id": "mx02",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.95,
+      "model": "jev-1.14.0",
+      "input_tokens": 5447,
+      "output_tokens": 22,
+      "seconds": 0.34936320800625253
+    },
+    {
+      "doc_id": "mx02",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.65,
+      "model": "jev-1.14.0",
+      "input_tokens": 5784,
+      "output_tokens": 22,
+      "seconds": 0.6008214160101488
+    },
+    {
+      "doc_id": "mx02",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.55,
+      "model": "jev-1.14.0",
+      "input_tokens": 5687,
+      "output_tokens": 22,
+      "seconds": 1.0826927910093218
+    },
+    {
+      "doc_id": "mx02",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.5,
+      "model": "jev-1.14.0",
+      "input_tokens": 5687,
+      "output_tokens": 22,
+      "seconds": 0.5452628749917494
+    },
+    {
+      "doc_id": "mx02",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.53,
+      "model": "jev-1.14.0",
+      "input_tokens": 5696,
+      "output_tokens": 22,
+      "seconds": 0.5942529160092818
+    },
+    {
+      "doc_id": "mx02",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.87,
+      "model": "jev-1.14.0",
+      "input_tokens": 5541,
+      "output_tokens": 22,
+      "seconds": 0.4710161670082016
+    },
+    {
+      "doc_id": "mx02",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.59,
+      "model": "jev-1.14.0",
+      "input_tokens": 5712,
+      "output_tokens": 22,
+      "seconds": 0.6309779999864986
+    },
+    {
+      "doc_id": "mx02",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.72,
+      "model": "jev-1.14.0",
+      "input_tokens": 5709,
+      "output_tokens": 22,
+      "seconds": 2.1856109159998596
+    },
+    {
+      "doc_id": "mx02",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.65,
+      "model": "jev-1.14.0",
+      "input_tokens": 5748,
+      "output_tokens": 22,
+      "seconds": 2.4649270410009194
+    },
+    {
+      "doc_id": "mx02",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.59,
+      "model": "jev-1.14.0",
+      "input_tokens": 5724,
+      "output_tokens": 22,
+      "seconds": 0.6177663749986095
+    },
+    {
+      "doc_id": "mx02",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.71,
+      "model": "jev-1.14.0",
+      "input_tokens": 5728,
+      "output_tokens": 22,
+      "seconds": 0.5781684160028817
+    },
+    {
+      "doc_id": "mx02",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.82,
+      "model": "jev-1.14.0",
+      "input_tokens": 5389,
+      "output_tokens": 22,
+      "seconds": 0.43279633299971465
+    },
+    {
+      "doc_id": "mx02",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.56,
+      "model": "jev-1.14.0",
+      "input_tokens": 5770,
+      "output_tokens": 22,
+      "seconds": 2.2047488749958575
+    },
+    {
+      "doc_id": "mx03",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.94,
+      "model": "jev-1.14.0",
+      "input_tokens": 5316,
+      "output_tokens": 22,
+      "seconds": 0.33529320800153073
+    },
+    {
+      "doc_id": "mx03",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.91,
+      "model": "jev-1.14.0",
+      "input_tokens": 5575,
+      "output_tokens": 22,
+      "seconds": 0.40351779099728446
+    },
+    {
+      "doc_id": "mx03",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.86,
+      "model": "jev-1.14.0",
+      "input_tokens": 5365,
+      "output_tokens": 22,
+      "seconds": 0.3148187920014607
+    },
+    {
+      "doc_id": "mx03",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.71,
+      "model": "jev-1.14.0",
+      "input_tokens": 5791,
+      "output_tokens": 22,
+      "seconds": 0.5513415000023087
+    },
+    {
+      "doc_id": "mx03",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.64,
+      "model": "jev-1.14.0",
+      "input_tokens": 5701,
+      "output_tokens": 22,
+      "seconds": 0.8028317080024863
+    },
+    {
+      "doc_id": "mx03",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.81,
+      "model": "jev-1.14.0",
+      "input_tokens": 5671,
+      "output_tokens": 22,
+      "seconds": 3.304566207996686
+    },
+    {
+      "doc_id": "mx03",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.65,
+      "model": "jev-1.14.0",
+      "input_tokens": 5713,
+      "output_tokens": 22,
+      "seconds": 0.5994520839885809
+    },
+    {
+      "doc_id": "mx03",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.88,
+      "model": "jev-1.14.0",
+      "input_tokens": 5649,
+      "output_tokens": 22,
+      "seconds": 0.5136250420036959
+    },
+    {
+      "doc_id": "mx03",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.63,
+      "model": "jev-1.14.0",
+      "input_tokens": 5707,
+      "output_tokens": 22,
+      "seconds": 1.998400833006599
+    },
+    {
+      "doc_id": "mx03",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.77,
+      "model": "jev-1.14.0",
+      "input_tokens": 5474,
+      "output_tokens": 22,
+      "seconds": 2.306214041003841
+    },
+    {
+      "doc_id": "mx03",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.82,
+      "model": "jev-1.14.0",
+      "input_tokens": 5607,
+      "output_tokens": 22,
+      "seconds": 0.6465065000083996
+    },
+    {
+      "doc_id": "mx03",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.63,
+      "model": "jev-1.14.0",
+      "input_tokens": 5603,
+      "output_tokens": 22,
+      "seconds": 2.3459809999912977
+    },
+    {
+      "doc_id": "mx03",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.51,
+      "model": "jev-1.14.0",
+      "input_tokens": 5692,
+      "output_tokens": 22,
+      "seconds": 2.613389874997665
+    },
+    {
+      "doc_id": "mx03",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.51,
+      "model": "jev-1.14.0",
+      "input_tokens": 5648,
+      "output_tokens": 22,
+      "seconds": 0.6630651250015944
+    },
+    {
+      "doc_id": "mx03",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.77,
+      "model": "jev-1.14.0",
+      "input_tokens": 5734,
+      "output_tokens": 22,
+      "seconds": 0.8651755830069305
+    },
+    {
+      "doc_id": "mx03",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.4,
+      "model": "jev-1.14.0",
+      "input_tokens": 5678,
+      "output_tokens": 22,
+      "seconds": 2.250384250000934
+    },
+    {
+      "doc_id": "mx03",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.38,
+      "model": "jev-1.14.0",
+      "input_tokens": 5676,
+      "output_tokens": 22,
+      "seconds": 0.611587250008597
+    },
+    {
+      "doc_id": "mx03",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.63,
+      "model": "jev-1.14.0",
+      "input_tokens": 5682,
+      "output_tokens": 22,
+      "seconds": 3.2727413329994306
+    },
+    {
+      "doc_id": "mx03",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.83,
+      "model": "jev-1.14.0",
+      "input_tokens": 5683,
+      "output_tokens": 22,
+      "seconds": 0.7670178749976913
+    },
+    {
+      "doc_id": "mx03",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.64,
+      "model": "jev-1.14.0",
+      "input_tokens": 5690,
+      "output_tokens": 22,
+      "seconds": 0.7077498339931481
+    },
+    {
+      "doc_id": "mx03",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.53,
+      "model": "jev-1.14.0",
+      "input_tokens": 5678,
+      "output_tokens": 22,
+      "seconds": 0.6379396660049679
+    },
+    {
+      "doc_id": "mx03",
+      "page": 26,
+      "phase": "fit",
+      "p_yes": 0.63,
+      "model": "jev-1.14.0",
+      "input_tokens": 5706,
+      "output_tokens": 22,
+      "seconds": 0.6100986250094138
+    },
+    {
+      "doc_id": "mx03",
+      "page": 27,
+      "phase": "fit",
+      "p_yes": 0.47,
+      "model": "jev-1.14.0",
+      "input_tokens": 5685,
+      "output_tokens": 22,
+      "seconds": 0.9524506250018021
+    },
+    {
+      "doc_id": "mx03",
+      "page": 28,
+      "phase": "fit",
+      "p_yes": 0.66,
+      "model": "jev-1.14.0",
+      "input_tokens": 5691,
+      "output_tokens": 22,
+      "seconds": 0.8807092920033028
+    },
+    {
+      "doc_id": "mx03",
+      "page": 29,
+      "phase": "fit",
+      "p_yes": 0.48,
+      "model": "jev-1.14.0",
+      "input_tokens": 5688,
+      "output_tokens": 22,
+      "seconds": 0.6003812499984633
+    },
+    {
+      "doc_id": "mx03",
+      "page": 30,
+      "phase": "fit",
+      "p_yes": 0.85,
+      "model": "jev-1.14.0",
+      "input_tokens": 5447,
+      "output_tokens": 22,
+      "seconds": 0.37164658299298026
+    },
+    {
+      "doc_id": "mx03",
+      "page": 31,
+      "phase": "fit",
+      "p_yes": 0.62,
+      "model": "jev-1.14.0",
+      "input_tokens": 5690,
+      "output_tokens": 22,
+      "seconds": 2.3468748340092134
+    },
+    {
+      "doc_id": "mx03",
+      "page": 32,
+      "phase": "fit",
+      "p_yes": 0.53,
+      "model": "jev-1.14.0",
+      "input_tokens": 5701,
+      "output_tokens": 22,
+      "seconds": 0.6080784999940079
+    },
+    {
+      "doc_id": "mx03",
+      "page": 36,
+      "phase": "fit",
+      "p_yes": 0.81,
+      "model": "jev-1.14.0",
+      "input_tokens": 5446,
+      "output_tokens": 22,
+      "seconds": 0.3886363330093445
+    },
+    {
+      "doc_id": "mx03",
+      "page": 37,
+      "phase": "fit",
+      "p_yes": 0.56,
+      "model": "jev-1.14.0",
+      "input_tokens": 5774,
+      "output_tokens": 22,
+      "seconds": 2.148577750005643
+    },
+    {
+      "doc_id": "mx04",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.77,
+      "model": "jev-1.14.0",
+      "input_tokens": 5728,
+      "output_tokens": 22,
+      "seconds": 6.116946915994049
+    },
+    {
+      "doc_id": "mx04",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.93,
+      "model": "jev-1.14.0",
+      "input_tokens": 5462,
+      "output_tokens": 22,
+      "seconds": 1.5806761249987176
+    },
+    {
+      "doc_id": "mx04",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.94,
+      "model": "jev-1.14.0",
+      "input_tokens": 5406,
+      "output_tokens": 22,
+      "seconds": 1.5395832079957472
+    },
+    {
+      "doc_id": "mx04",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.66,
+      "model": "jev-1.14.0",
+      "input_tokens": 5733,
+      "output_tokens": 22,
+      "seconds": 0.833085124992067
+    },
+    {
+      "doc_id": "mx04",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.58,
+      "model": "jev-1.14.0",
+      "input_tokens": 5689,
+      "output_tokens": 22,
+      "seconds": 0.654766291991109
+    },
+    {
+      "doc_id": "mx04",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.6,
+      "model": "jev-1.14.0",
+      "input_tokens": 5661,
+      "output_tokens": 22,
+      "seconds": 0.8112810420134338
+    },
+    {
+      "doc_id": "mx04",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.48,
+      "model": "jev-1.14.0",
+      "input_tokens": 5682,
+      "output_tokens": 22,
+      "seconds": 2.079602541998611
+    },
+    {
+      "doc_id": "mx04",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.8,
+      "model": "jev-1.14.0",
+      "input_tokens": 5699,
+      "output_tokens": 22,
+      "seconds": 3.4872689170006197
+    },
+    {
+      "doc_id": "mx04",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.68,
+      "model": "jev-1.14.0",
+      "input_tokens": 5676,
+      "output_tokens": 22,
+      "seconds": 0.5552268749888754
+    },
+    {
+      "doc_id": "mx04",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.88,
+      "model": "jev-1.14.0",
+      "input_tokens": 5495,
+      "output_tokens": 22,
+      "seconds": 5.310980790993199
+    },
+    {
+      "doc_id": "mx04",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.68,
+      "model": "jev-1.14.0",
+      "input_tokens": 5684,
+      "output_tokens": 22,
+      "seconds": 7.2490995839907555
+    },
+    {
+      "doc_id": "mx04",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.66,
+      "model": "jev-1.14.0",
+      "input_tokens": 5673,
+      "output_tokens": 22,
+      "seconds": 0.7821672499994747
+    },
+    {
+      "doc_id": "mx04",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.75,
+      "model": "jev-1.14.0",
+      "input_tokens": 5688,
+      "output_tokens": 22,
+      "seconds": 4.865607250001631
+    },
+    {
+      "doc_id": "mx04",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.77,
+      "model": "jev-1.14.0",
+      "input_tokens": 5714,
+      "output_tokens": 22,
+      "seconds": 0.6859236250020331
+    },
+    {
+      "doc_id": "mx04",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.66,
+      "model": "jev-1.14.0",
+      "input_tokens": 5717,
+      "output_tokens": 22,
+      "seconds": 2.6536797500011744
+    },
+    {
+      "doc_id": "mx04",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.62,
+      "model": "jev-1.14.0",
+      "input_tokens": 5670,
+      "output_tokens": 22,
+      "seconds": 0.4711826669954462
+    },
+    {
+      "doc_id": "mx04",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.82,
+      "model": "jev-1.14.0",
+      "input_tokens": 5734,
+      "output_tokens": 22,
+      "seconds": 0.7715134159952868
+    },
+    {
+      "doc_id": "mx04",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.58,
+      "model": "jev-1.14.0",
+      "input_tokens": 5723,
+      "output_tokens": 22,
+      "seconds": 2.1631386670051143
+    },
+    {
+      "doc_id": "mx04",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.7,
+      "model": "jev-1.14.0",
+      "input_tokens": 5684,
+      "output_tokens": 22,
+      "seconds": 0.8576886669907253
+    },
+    {
+      "doc_id": "mx04",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.7,
+      "model": "jev-1.14.0",
+      "input_tokens": 5715,
+      "output_tokens": 22,
+      "seconds": 0.8886077079951065
+    },
+    {
+      "doc_id": "mx04",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.85,
+      "model": "jev-1.14.0",
+      "input_tokens": 5703,
+      "output_tokens": 22,
+      "seconds": 0.6435014580056304
+    },
+    {
+      "doc_id": "mx04",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.7,
+      "model": "jev-1.14.0",
+      "input_tokens": 5692,
+      "output_tokens": 22,
+      "seconds": 0.8375044580025133
+    },
+    {
+      "doc_id": "mx04",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.65,
+      "model": "jev-1.14.0",
+      "input_tokens": 5682,
+      "output_tokens": 22,
+      "seconds": 0.6968173750065034
+    },
+    {
+      "doc_id": "mx04",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.79,
+      "model": "jev-1.14.0",
+      "input_tokens": 5683,
+      "output_tokens": 22,
+      "seconds": 0.7850941250071628
+    },
+    {
+      "doc_id": "mx04",
+      "page": 26,
+      "phase": "fit",
+      "p_yes": 0.65,
+      "model": "jev-1.14.0",
+      "input_tokens": 5687,
+      "output_tokens": 22,
+      "seconds": 0.6522614160057856
+    },
+    {
+      "doc_id": "mx04",
+      "page": 27,
+      "phase": "fit",
+      "p_yes": 0.65,
+      "model": "jev-1.14.0",
+      "input_tokens": 5703,
+      "output_tokens": 22,
+      "seconds": 0.6548525419930229
+    },
+    {
+      "doc_id": "mx04",
+      "page": 28,
+      "phase": "fit",
+      "p_yes": 0.5,
+      "model": "jev-1.14.0",
+      "input_tokens": 5676,
+      "output_tokens": 22,
+      "seconds": 2.4326516250002896
+    },
+    {
+      "doc_id": "mx04",
+      "page": 29,
+      "phase": "fit",
+      "p_yes": 0.89,
+      "model": "jev-1.14.0",
+      "input_tokens": 5515,
+      "output_tokens": 22,
+      "seconds": 1.8592767079971964
+    },
+    {
+      "doc_id": "mx04",
+      "page": 33,
+      "phase": "fit",
+      "p_yes": 0.77,
+      "model": "jev-1.14.0",
+      "input_tokens": 5420,
+      "output_tokens": 22,
+      "seconds": 1.5547335000010207
+    },
+    {
+      "doc_id": "mx04",
+      "page": 34,
+      "phase": "fit",
+      "p_yes": 0.58,
+      "model": "jev-1.14.0",
+      "input_tokens": 5768,
+      "output_tokens": 22,
+      "seconds": 2.0997475829935865
+    },
+    {
+      "doc_id": "mx05",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.95,
+      "model": "jev-1.14.0",
+      "input_tokens": 5313,
+      "output_tokens": 22,
+      "seconds": 0.33932458399794996
+    },
+    {
+      "doc_id": "mx05",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.63,
+      "model": "jev-1.14.0",
+      "input_tokens": 5760,
+      "output_tokens": 22,
+      "seconds": 2.6467404160066508
+    },
+    {
+      "doc_id": "mx05",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.94,
+      "model": "jev-1.14.0",
+      "input_tokens": 5663,
+      "output_tokens": 22,
+      "seconds": 0.45811012499325443
+    },
+    {
+      "doc_id": "mx05",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.91,
+      "model": "jev-1.14.0",
+      "input_tokens": 5724,
+      "output_tokens": 22,
+      "seconds": 1.9351113750017248
+    },
+    {
+      "doc_id": "mx05",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.96,
+      "model": "jev-1.14.0",
+      "input_tokens": 5479,
+      "output_tokens": 22,
+      "seconds": 1.697394874994643
+    },
+    {
+      "doc_id": "mx05",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.38,
+      "model": "jev-1.14.0",
+      "input_tokens": 5715,
+      "output_tokens": 22,
+      "seconds": 0.8189913340029307
+    },
+    {
+      "doc_id": "mx05",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.77,
+      "model": "jev-1.14.0",
+      "input_tokens": 5702,
+      "output_tokens": 22,
+      "seconds": 0.7352116249967366
+    },
+    {
+      "doc_id": "mx05",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.73,
+      "model": "jev-1.14.0",
+      "input_tokens": 5666,
+      "output_tokens": 22,
+      "seconds": 0.8330965000059223
+    },
+    {
+      "doc_id": "mx05",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.66,
+      "model": "jev-1.14.0",
+      "input_tokens": 5724,
+      "output_tokens": 22,
+      "seconds": 0.5478641250083456
+    },
+    {
+      "doc_id": "mx05",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.7,
+      "model": "jev-1.14.0",
+      "input_tokens": 5506,
+      "output_tokens": 22,
+      "seconds": 0.7672072499990463
+    },
+    {
+      "doc_id": "mx05",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.64,
+      "model": "jev-1.14.0",
+      "input_tokens": 5649,
+      "output_tokens": 22,
+      "seconds": 0.8460176249936922
+    },
+    {
+      "doc_id": "mx05",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.73,
+      "model": "jev-1.14.0",
+      "input_tokens": 5689,
+      "output_tokens": 22,
+      "seconds": 0.5969693749939324
+    },
+    {
+      "doc_id": "mx05",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.67,
+      "model": "jev-1.14.0",
+      "input_tokens": 5663,
+      "output_tokens": 22,
+      "seconds": 0.6226149999856716
+    },
+    {
+      "doc_id": "mx05",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.63,
+      "model": "jev-1.14.0",
+      "input_tokens": 5711,
+      "output_tokens": 22,
+      "seconds": 0.5956297080119839
+    },
+    {
+      "doc_id": "mx05",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.74,
+      "model": "jev-1.14.0",
+      "input_tokens": 5574,
+      "output_tokens": 22,
+      "seconds": 0.46559845900628716
+    },
+    {
+      "doc_id": "mx05",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.75,
+      "model": "jev-1.14.0",
+      "input_tokens": 5702,
+      "output_tokens": 22,
+      "seconds": 0.5589348330104258
+    },
+    {
+      "doc_id": "mx05",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.71,
+      "model": "jev-1.14.0",
+      "input_tokens": 5530,
+      "output_tokens": 22,
+      "seconds": 0.469410624995362
+    },
+    {
+      "doc_id": "mx05",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.93,
+      "model": "jev-1.14.0",
+      "input_tokens": 5586,
+      "output_tokens": 22,
+      "seconds": 0.40635745800682344
+    },
+    {
+      "doc_id": "mx05",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.73,
+      "model": "jev-1.14.0",
+      "input_tokens": 5439,
+      "output_tokens": 22,
+      "seconds": 0.64089758299815
+    },
+    {
+      "doc_id": "mx05",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.76,
+      "model": "jev-1.14.0",
+      "input_tokens": 5654,
+      "output_tokens": 22,
+      "seconds": 0.6262828330072807
+    },
+    {
+      "doc_id": "mx05",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.71,
+      "model": "jev-1.14.0",
+      "input_tokens": 5664,
+      "output_tokens": 22,
+      "seconds": 2.2273310000018682
+    },
+    {
+      "doc_id": "mx05",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.51,
+      "model": "jev-1.14.0",
+      "input_tokens": 5481,
+      "output_tokens": 22,
+      "seconds": 5.441480875000707
+    },
+    {
+      "doc_id": "mx05",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.95,
+      "model": "jev-1.14.0",
+      "input_tokens": 5552,
+      "output_tokens": 22,
+      "seconds": 1.8898814580024919
+    },
+    {
+      "doc_id": "mx05",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.79,
+      "model": "jev-1.14.0",
+      "input_tokens": 5438,
+      "output_tokens": 22,
+      "seconds": 1.6930021250009304
+    },
+    {
+      "doc_id": "mx05",
+      "page": 26,
+      "phase": "fit",
+      "p_yes": 0.91,
+      "model": "jev-1.14.0",
+      "input_tokens": 5528,
+      "output_tokens": 22,
+      "seconds": 0.3744371249922551
+    },
+    {
+      "doc_id": "mx05",
+      "page": 27,
+      "phase": "fit",
+      "p_yes": 0.78,
+      "model": "jev-1.14.0",
+      "input_tokens": 5387,
+      "output_tokens": 22,
+      "seconds": 1.833360749995336
+    },
+    {
+      "doc_id": "mx05",
+      "page": 28,
+      "phase": "fit",
+      "p_yes": 0.95,
+      "model": "jev-1.14.0",
+      "input_tokens": 5509,
+      "output_tokens": 22,
+      "seconds": 0.3737565410119714
+    },
+    {
+      "doc_id": "mx05",
+      "page": 29,
+      "phase": "fit",
+      "p_yes": 0.71,
+      "model": "jev-1.14.0",
+      "input_tokens": 5371,
+      "output_tokens": 22,
+      "seconds": 1.8202314999944065
+    },
+    {
+      "doc_id": "mx05",
+      "page": 30,
+      "phase": "fit",
+      "p_yes": 0.94,
+      "model": "jev-1.14.0",
+      "input_tokens": 5470,
+      "output_tokens": 22,
+      "seconds": 0.5313487910025287
+    },
+    {
+      "doc_id": "mx05",
+      "page": 31,
+      "phase": "fit",
+      "p_yes": 0.81,
+      "model": "jev-1.14.0",
+      "input_tokens": 5445,
+      "output_tokens": 22,
+      "seconds": 0.4629179170005955
+    },
+    {
+      "doc_id": "mx05",
+      "page": 32,
+      "phase": "fit",
+      "p_yes": 0.74,
+      "model": "jev-1.14.0",
+      "input_tokens": 5693,
+      "output_tokens": 22,
+      "seconds": 1.0800211669993587
+    },
+    {
+      "doc_id": "mx05",
+      "page": 34,
+      "phase": "fit",
+      "p_yes": 0.76,
+      "model": "jev-1.14.0",
+      "input_tokens": 5689,
+      "output_tokens": 22,
+      "seconds": 2.557334750003065
+    },
+    {
+      "doc_id": "mx05",
+      "page": 35,
+      "phase": "fit",
+      "p_yes": 0.65,
+      "model": "jev-1.14.0",
+      "input_tokens": 5670,
+      "output_tokens": 22,
+      "seconds": 2.1592346249963157
+    },
+    {
+      "doc_id": "mx05",
+      "page": 37,
+      "phase": "fit",
+      "p_yes": 0.56,
+      "model": "jev-1.14.0",
+      "input_tokens": 5701,
+      "output_tokens": 22,
+      "seconds": 0.642825000002631
+    },
+    {
+      "doc_id": "mx05",
+      "page": 38,
+      "phase": "fit",
+      "p_yes": 0.6,
+      "model": "jev-1.14.0",
+      "input_tokens": 5663,
+      "output_tokens": 22,
+      "seconds": 2.173179000004893
+    },
+    {
+      "doc_id": "mx05",
+      "page": 39,
+      "phase": "fit",
+      "p_yes": 0.6,
+      "model": "jev-1.14.0",
+      "input_tokens": 5607,
+      "output_tokens": 22,
+      "seconds": 0.47781533299712464
+    },
+    {
+      "doc_id": "mx05",
+      "page": 41,
+      "phase": "fit",
+      "p_yes": 0.62,
+      "model": "jev-1.14.0",
+      "input_tokens": 5679,
+      "output_tokens": 22,
+      "seconds": 0.6406632920115953
+    },
+    {
+      "doc_id": "mx05",
+      "page": 42,
+      "phase": "fit",
+      "p_yes": 0.43,
+      "model": "jev-1.14.0",
+      "input_tokens": 5660,
+      "output_tokens": 22,
+      "seconds": 0.6523210830055177
+    },
+    {
+      "doc_id": "mx05",
+      "page": 43,
+      "phase": "fit",
+      "p_yes": 0.78,
+      "model": "jev-1.14.0",
+      "input_tokens": 5693,
+      "output_tokens": 22,
+      "seconds": 0.7669302909926046
+    },
+    {
+      "doc_id": "mx05",
+      "page": 44,
+      "phase": "fit",
+      "p_yes": 0.83,
+      "model": "jev-1.14.0",
+      "input_tokens": 5316,
+      "output_tokens": 22,
+      "seconds": 0.2898897919949377
+    },
+    {
+      "doc_id": "mx05",
+      "page": 45,
+      "phase": "fit",
+      "p_yes": 0.95,
+      "model": "jev-1.14.0",
+      "input_tokens": 5438,
+      "output_tokens": 22,
+      "seconds": 0.3580267919896869
+    },
+    {
+      "doc_id": "mx05",
+      "page": 46,
+      "phase": "fit",
+      "p_yes": 0.55,
+      "model": "jev-1.14.0",
+      "input_tokens": 5727,
+      "output_tokens": 22,
+      "seconds": 0.6828237080044346
+    },
+    {
+      "doc_id": "mx05",
+      "page": 47,
+      "phase": "fit",
+      "p_yes": 0.75,
+      "model": "jev-1.14.0",
+      "input_tokens": 5714,
+      "output_tokens": 22,
+      "seconds": 0.6539898750052089
+    },
+    {
+      "doc_id": "mx05",
+      "page": 48,
+      "phase": "fit",
+      "p_yes": 0.61,
+      "model": "jev-1.14.0",
+      "input_tokens": 5691,
+      "output_tokens": 22,
+      "seconds": 0.5499565830104984
+    },
+    {
+      "doc_id": "mx05",
+      "page": 49,
+      "phase": "fit",
+      "p_yes": 0.47,
+      "model": "jev-1.14.0",
+      "input_tokens": 5685,
+      "output_tokens": 22,
+      "seconds": 3.33140349999303
+    },
+    {
+      "doc_id": "mx05",
+      "page": 50,
+      "phase": "fit",
+      "p_yes": 0.91,
+      "model": "jev-1.14.0",
+      "input_tokens": 5547,
+      "output_tokens": 22,
+      "seconds": 0.43139179098943714
+    },
+    {
+      "doc_id": "mx05",
+      "page": 53,
+      "phase": "fit",
+      "p_yes": 0.72,
+      "model": "jev-1.14.0",
+      "input_tokens": 5410,
+      "output_tokens": 22,
+      "seconds": 0.324892374992487
+    },
+    {
+      "doc_id": "mx05",
+      "page": 54,
+      "phase": "fit",
+      "p_yes": 0.54,
+      "model": "jev-1.14.0",
+      "input_tokens": 5769,
+      "output_tokens": 22,
+      "seconds": 0.6145604579942301
+    },
+    {
+      "doc_id": "mx06",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.93,
+      "model": "jev-1.14.0",
+      "input_tokens": 5325,
+      "output_tokens": 22,
+      "seconds": 0.36651316699862946
+    },
+    {
+      "doc_id": "mx06",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.55,
+      "model": "jev-1.14.0",
+      "input_tokens": 5769,
+      "output_tokens": 22,
+      "seconds": 1.1709657079918543
+    },
+    {
+      "doc_id": "mx06",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.88,
+      "model": "jev-1.14.0",
+      "input_tokens": 5545,
+      "output_tokens": 22,
+      "seconds": 2.0472158749907976
+    },
+    {
+      "doc_id": "mx06",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.95,
+      "model": "jev-1.14.0",
+      "input_tokens": 5433,
+      "output_tokens": 22,
+      "seconds": 2.6018798330042046
+    },
+    {
+      "doc_id": "mx06",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.83,
+      "model": "jev-1.14.0",
+      "input_tokens": 5833,
+      "output_tokens": 22,
+      "seconds": 0.5344820409954991
+    },
+    {
+      "doc_id": "mx06",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.72,
+      "model": "jev-1.14.0",
+      "input_tokens": 5749,
+      "output_tokens": 22,
+      "seconds": 0.6967042909964221
+    },
+    {
+      "doc_id": "mx06",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.55,
+      "model": "jev-1.14.0",
+      "input_tokens": 5675,
+      "output_tokens": 22,
+      "seconds": 4.728627000004053
+    },
+    {
+      "doc_id": "mx06",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.84,
+      "model": "jev-1.14.0",
+      "input_tokens": 5702,
+      "output_tokens": 22,
+      "seconds": 4.311492499997257
+    },
+    {
+      "doc_id": "mx06",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.85,
+      "model": "jev-1.14.0",
+      "input_tokens": 5619,
+      "output_tokens": 22,
+      "seconds": 1.8867748329939786
+    },
+    {
+      "doc_id": "mx06",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.67,
+      "model": "jev-1.14.0",
+      "input_tokens": 5645,
+      "output_tokens": 22,
+      "seconds": 2.2729988750070333
+    },
+    {
+      "doc_id": "mx06",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.73,
+      "model": "jev-1.14.0",
+      "input_tokens": 5604,
+      "output_tokens": 22,
+      "seconds": 0.7604763749986887
+    },
+    {
+      "doc_id": "mx06",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.8,
+      "model": "jev-1.14.0",
+      "input_tokens": 5676,
+      "output_tokens": 22,
+      "seconds": 0.4965971659985371
+    },
+    {
+      "doc_id": "mx06",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.77,
+      "model": "jev-1.14.0",
+      "input_tokens": 5603,
+      "output_tokens": 22,
+      "seconds": 0.4382535829936387
+    },
+    {
+      "doc_id": "mx06",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.96,
+      "model": "jev-1.14.0",
+      "input_tokens": 5596,
+      "output_tokens": 22,
+      "seconds": 1.7564624579972588
+    },
+    {
+      "doc_id": "mx06",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.71,
+      "model": "jev-1.14.0",
+      "input_tokens": 5683,
+      "output_tokens": 22,
+      "seconds": 0.8079897080024239
+    },
+    {
+      "doc_id": "mx06",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.59,
+      "model": "jev-1.14.0",
+      "input_tokens": 5674,
+      "output_tokens": 22,
+      "seconds": 0.8790488329977961
+    },
+    {
+      "doc_id": "mx06",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.58,
+      "model": "jev-1.14.0",
+      "input_tokens": 5643,
+      "output_tokens": 22,
+      "seconds": 0.6047558329883032
+    },
+    {
+      "doc_id": "mx06",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.68,
+      "model": "jev-1.14.0",
+      "input_tokens": 5673,
+      "output_tokens": 22,
+      "seconds": 3.2638747500022873
+    },
+    {
+      "doc_id": "mx06",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.68,
+      "model": "jev-1.14.0",
+      "input_tokens": 5657,
+      "output_tokens": 22,
+      "seconds": 0.6286355000047479
+    },
+    {
+      "doc_id": "mx06",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.68,
+      "model": "jev-1.14.0",
+      "input_tokens": 5671,
+      "output_tokens": 22,
+      "seconds": 0.6775744999904418
+    },
+    {
+      "doc_id": "mx06",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.59,
+      "model": "jev-1.14.0",
+      "input_tokens": 5682,
+      "output_tokens": 22,
+      "seconds": 0.9065566659992328
+    },
+    {
+      "doc_id": "mx06",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.84,
+      "model": "jev-1.14.0",
+      "input_tokens": 5511,
+      "output_tokens": 22,
+      "seconds": 1.8723422909970395
+    },
+    {
+      "doc_id": "mx06",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.96,
+      "model": "jev-1.14.0",
+      "input_tokens": 5530,
+      "output_tokens": 22,
+      "seconds": 1.792207166989101
+    },
+    {
+      "doc_id": "mx06",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.92,
+      "model": "jev-1.14.0",
+      "input_tokens": 5337,
+      "output_tokens": 22,
+      "seconds": 0.26393941600690596
+    },
+    {
+      "doc_id": "mx06",
+      "page": 28,
+      "phase": "fit",
+      "p_yes": 0.74,
+      "model": "jev-1.14.0",
+      "input_tokens": 5439,
+      "output_tokens": 22,
+      "seconds": 2.600713750012801
+    },
+    {
+      "doc_id": "mx06",
+      "page": 29,
+      "phase": "fit",
+      "p_yes": 0.54,
+      "model": "jev-1.14.0",
+      "input_tokens": 5770,
+      "output_tokens": 22,
+      "seconds": 0.6061179999960586
+    },
+    {
+      "doc_id": "mx07",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.94,
+      "model": "jev-1.14.0",
+      "input_tokens": 5317,
+      "output_tokens": 22,
+      "seconds": 0.3161225829971954
+    },
+    {
+      "doc_id": "mx07",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.65,
+      "model": "jev-1.14.0",
+      "input_tokens": 5696,
+      "output_tokens": 22,
+      "seconds": 2.6037922499963315
+    },
+    {
+      "doc_id": "mx07",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.92,
+      "model": "jev-1.14.0",
+      "input_tokens": 5546,
+      "output_tokens": 22,
+      "seconds": 0.3840599169925554
+    },
+    {
+      "doc_id": "mx07",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.92,
+      "model": "jev-1.14.0",
+      "input_tokens": 5531,
+      "output_tokens": 22,
+      "seconds": 0.5938120000064373
+    },
+    {
+      "doc_id": "mx07",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.68,
+      "model": "jev-1.14.0",
+      "input_tokens": 5684,
+      "output_tokens": 22,
+      "seconds": 2.3320714159926865
+    },
+    {
+      "doc_id": "mx07",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.54,
+      "model": "jev-1.14.0",
+      "input_tokens": 5669,
+      "output_tokens": 22,
+      "seconds": 0.5772599170013564
+    },
+    {
+      "doc_id": "mx07",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.63,
+      "model": "jev-1.14.0",
+      "input_tokens": 5678,
+      "output_tokens": 22,
+      "seconds": 0.7962897919933312
+    },
+    {
+      "doc_id": "mx07",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.68,
+      "model": "jev-1.14.0",
+      "input_tokens": 5754,
+      "output_tokens": 22,
+      "seconds": 0.5583531669981312
+    },
+    {
+      "doc_id": "mx07",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.33,
+      "model": "jev-1.14.0",
+      "input_tokens": 5664,
+      "output_tokens": 22,
+      "seconds": 0.6593487090140115
+    },
+    {
+      "doc_id": "mx07",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.69,
+      "model": "jev-1.14.0",
+      "input_tokens": 5683,
+      "output_tokens": 22,
+      "seconds": 0.5183519999991404
+    },
+    {
+      "doc_id": "mx07",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.86,
+      "model": "jev-1.14.0",
+      "input_tokens": 5571,
+      "output_tokens": 22,
+      "seconds": 1.755840249999892
+    },
+    {
+      "doc_id": "mx07",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.78,
+      "model": "jev-1.14.0",
+      "input_tokens": 5651,
+      "output_tokens": 22,
+      "seconds": 0.5839728330029175
+    },
+    {
+      "doc_id": "mx07",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.76,
+      "model": "jev-1.14.0",
+      "input_tokens": 5673,
+      "output_tokens": 22,
+      "seconds": 0.8693739169975743
+    },
+    {
+      "doc_id": "mx07",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.73,
+      "model": "jev-1.14.0",
+      "input_tokens": 5737,
+      "output_tokens": 22,
+      "seconds": 0.6463470000016969
+    },
+    {
+      "doc_id": "mx07",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.75,
+      "model": "jev-1.14.0",
+      "input_tokens": 5670,
+      "output_tokens": 22,
+      "seconds": 0.6491683749918593
+    },
+    {
+      "doc_id": "mx07",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.59,
+      "model": "jev-1.14.0",
+      "input_tokens": 5684,
+      "output_tokens": 22,
+      "seconds": 0.5612251660058973
+    },
+    {
+      "doc_id": "mx07",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.76,
+      "model": "jev-1.14.0",
+      "input_tokens": 5704,
+      "output_tokens": 22,
+      "seconds": 0.7011419579939684
+    },
+    {
+      "doc_id": "mx07",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.75,
+      "model": "jev-1.14.0",
+      "input_tokens": 5665,
+      "output_tokens": 22,
+      "seconds": 3.265934875002131
+    },
+    {
+      "doc_id": "mx07",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.6,
+      "model": "jev-1.14.0",
+      "input_tokens": 5621,
+      "output_tokens": 22,
+      "seconds": 0.6217892910062801
+    },
+    {
+      "doc_id": "mx07",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.79,
+      "model": "jev-1.14.0",
+      "input_tokens": 5632,
+      "output_tokens": 22,
+      "seconds": 0.9497686670074472
+    },
+    {
+      "doc_id": "mx07",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.49,
+      "model": "jev-1.14.0",
+      "input_tokens": 5640,
+      "output_tokens": 22,
+      "seconds": 0.5995429169997806
+    },
+    {
+      "doc_id": "mx07",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.57,
+      "model": "jev-1.14.0",
+      "input_tokens": 5638,
+      "output_tokens": 22,
+      "seconds": 0.6289191669930005
+    },
+    {
+      "doc_id": "mx07",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.7,
+      "model": "jev-1.14.0",
+      "input_tokens": 5644,
+      "output_tokens": 22,
+      "seconds": 0.623962666009902
+    },
+    {
+      "doc_id": "mx07",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.51,
+      "model": "jev-1.14.0",
+      "input_tokens": 5687,
+      "output_tokens": 22,
+      "seconds": 0.5573836249968736
+    },
+    {
+      "doc_id": "mx07",
+      "page": 26,
+      "phase": "fit",
+      "p_yes": 0.53,
+      "model": "jev-1.14.0",
+      "input_tokens": 5649,
+      "output_tokens": 22,
+      "seconds": 2.46441825000511
+    },
+    {
+      "doc_id": "mx07",
+      "page": 27,
+      "phase": "fit",
+      "p_yes": 0.71,
+      "model": "jev-1.14.0",
+      "input_tokens": 5726,
+      "output_tokens": 22,
+      "seconds": 0.8819024999975227
+    },
+    {
+      "doc_id": "mx07",
+      "page": 28,
+      "phase": "fit",
+      "p_yes": 0.78,
+      "model": "jev-1.14.0",
+      "input_tokens": 5646,
+      "output_tokens": 22,
+      "seconds": 0.5869842499960214
+    },
+    {
+      "doc_id": "mx07",
+      "page": 29,
+      "phase": "fit",
+      "p_yes": 0.62,
+      "model": "jev-1.14.0",
+      "input_tokens": 5678,
+      "output_tokens": 22,
+      "seconds": 0.8806637079978827
+    },
+    {
+      "doc_id": "mx07",
+      "page": 30,
+      "phase": "fit",
+      "p_yes": 0.68,
+      "model": "jev-1.14.0",
+      "input_tokens": 5643,
+      "output_tokens": 22,
+      "seconds": 0.8961844590085093
+    },
+    {
+      "doc_id": "mx07",
+      "page": 31,
+      "phase": "fit",
+      "p_yes": 0.66,
+      "model": "jev-1.14.0",
+      "input_tokens": 5666,
+      "output_tokens": 22,
+      "seconds": 2.416560625002603
+    },
+    {
+      "doc_id": "mx07",
+      "page": 32,
+      "phase": "fit",
+      "p_yes": 0.69,
+      "model": "jev-1.14.0",
+      "input_tokens": 5652,
+      "output_tokens": 22,
+      "seconds": 2.2469960419985
+    },
+    {
+      "doc_id": "mx07",
+      "page": 33,
+      "phase": "fit",
+      "p_yes": 0.89,
+      "model": "jev-1.14.0",
+      "input_tokens": 5458,
+      "output_tokens": 22,
+      "seconds": 0.35280841699568555
+    },
+    {
+      "doc_id": "mx07",
+      "page": 34,
+      "phase": "fit",
+      "p_yes": 0.59,
+      "model": "jev-1.14.0",
+      "input_tokens": 5664,
+      "output_tokens": 22,
+      "seconds": 0.6334927910065744
+    },
+    {
+      "doc_id": "mx07",
+      "page": 35,
+      "phase": "fit",
+      "p_yes": 0.64,
+      "model": "jev-1.14.0",
+      "input_tokens": 5665,
+      "output_tokens": 22,
+      "seconds": 5.356662125006551
+    },
+    {
+      "doc_id": "mx07",
+      "page": 36,
+      "phase": "fit",
+      "p_yes": 0.66,
+      "model": "jev-1.14.0",
+      "input_tokens": 5636,
+      "output_tokens": 22,
+      "seconds": 0.5584346250107046
+    },
+    {
+      "doc_id": "mx07",
+      "page": 37,
+      "phase": "fit",
+      "p_yes": 0.77,
+      "model": "jev-1.14.0",
+      "input_tokens": 5683,
+      "output_tokens": 22,
+      "seconds": 0.4839095829956932
+    },
+    {
+      "doc_id": "mx07",
+      "page": 38,
+      "phase": "fit",
+      "p_yes": 0.79,
+      "model": "jev-1.14.0",
+      "input_tokens": 5523,
+      "output_tokens": 22,
+      "seconds": 0.471160625005723
+    },
+    {
+      "doc_id": "mx07",
+      "page": 45,
+      "phase": "fit",
+      "p_yes": 0.78,
+      "model": "jev-1.14.0",
+      "input_tokens": 5420,
+      "output_tokens": 22,
+      "seconds": 0.3281481659942074
+    },
+    {
+      "doc_id": "mx07",
+      "page": 46,
+      "phase": "fit",
+      "p_yes": 0.56,
+      "model": "jev-1.14.0",
+      "input_tokens": 5772,
+      "output_tokens": 22,
+      "seconds": 4.6025095409859205
+    },
+    {
+      "doc_id": "mx08",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.85,
+      "model": "jev-1.14.0",
+      "input_tokens": 4861,
+      "output_tokens": 22,
+      "seconds": 5.279041084009805
+    },
+    {
+      "doc_id": "mx08",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.95,
+      "model": "jev-1.14.0",
+      "input_tokens": 4758,
+      "output_tokens": 22,
+      "seconds": 0.2864538750000065
+    },
+    {
+      "doc_id": "mx08",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.92,
+      "model": "jev-1.14.0",
+      "input_tokens": 4839,
+      "output_tokens": 22,
+      "seconds": 1.6152397499972722
+    },
+    {
+      "doc_id": "mx08",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.7,
+      "model": "jev-1.14.0",
+      "input_tokens": 5149,
+      "output_tokens": 22,
+      "seconds": 0.8333550420065876
+    },
+    {
+      "doc_id": "mx08",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.47,
+      "model": "jev-1.14.0",
+      "input_tokens": 5112,
+      "output_tokens": 22,
+      "seconds": 2.4198724159941776
+    },
+    {
+      "doc_id": "mx08",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.31,
+      "model": "jev-1.14.0",
+      "input_tokens": 4971,
+      "output_tokens": 22,
+      "seconds": 3.103395541998907
+    },
+    {
+      "doc_id": "mx08",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.63,
+      "model": "jev-1.14.0",
+      "input_tokens": 4872,
+      "output_tokens": 22,
+      "seconds": 3.7595234580076067
+    },
+    {
+      "doc_id": "mx08",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.23,
+      "model": "jev-1.14.0",
+      "input_tokens": 5115,
+      "output_tokens": 22,
+      "seconds": 0.6618277500092518
+    },
+    {
+      "doc_id": "mx08",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.92,
+      "model": "jev-1.14.0",
+      "input_tokens": 4936,
+      "output_tokens": 22,
+      "seconds": 1.62941100000171
+    },
+    {
+      "doc_id": "mx08",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.68,
+      "model": "jev-1.14.0",
+      "input_tokens": 4771,
+      "output_tokens": 22,
+      "seconds": 0.26843183299934026
+    },
+    {
+      "doc_id": "mx08",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.62,
+      "model": "jev-1.14.0",
+      "input_tokens": 5095,
+      "output_tokens": 22,
+      "seconds": 0.642901166997035
+    },
+    {
+      "doc_id": "mx08",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.22,
+      "model": "jev-1.14.0",
+      "input_tokens": 4976,
+      "output_tokens": 22,
+      "seconds": 2.0350220419932157
+    },
+    {
+      "doc_id": "tl01",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.16,
+      "model": "jev-1.14.0",
+      "input_tokens": 5037,
+      "output_tokens": 22,
+      "seconds": 0.31133133299590554
+    },
+    {
+      "doc_id": "tl01",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.75,
+      "model": "jev-1.14.0",
+      "input_tokens": 5002,
+      "output_tokens": 22,
+      "seconds": 0.28500225000607315
+    },
+    {
+      "doc_id": "tl01",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.67,
+      "model": "jev-1.14.0",
+      "input_tokens": 5039,
+      "output_tokens": 22,
+      "seconds": 4.461164958003792
+    },
+    {
+      "doc_id": "tl01",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.31,
+      "model": "jev-1.14.0",
+      "input_tokens": 5058,
+      "output_tokens": 22,
+      "seconds": 0.3328260840062285
+    },
+    {
+      "doc_id": "tl01",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.85,
+      "model": "jev-1.14.0",
+      "input_tokens": 5024,
+      "output_tokens": 22,
+      "seconds": 0.3064307909953641
+    },
+    {
+      "doc_id": "tl01",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.43,
+      "model": "jev-1.14.0",
+      "input_tokens": 5329,
+      "output_tokens": 22,
+      "seconds": 0.5220307499985211
+    },
+    {
+      "doc_id": "tl01",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.45,
+      "model": "jev-1.14.0",
+      "input_tokens": 5268,
+      "output_tokens": 22,
+      "seconds": 0.5560658750036964
+    },
+    {
+      "doc_id": "tl01",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.49,
+      "model": "jev-1.14.0",
+      "input_tokens": 5280,
+      "output_tokens": 22,
+      "seconds": 0.4775352500000736
+    },
+    {
+      "doc_id": "tl01",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.75,
+      "model": "jev-1.14.0",
+      "input_tokens": 5292,
+      "output_tokens": 22,
+      "seconds": 1.9035142909997376
+    },
+    {
+      "doc_id": "tl01",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.39,
+      "model": "jev-1.14.0",
+      "input_tokens": 5291,
+      "output_tokens": 22,
+      "seconds": 0.45565904199611396
+    },
+    {
+      "doc_id": "bd04",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.33,
+      "model": "jev-1.14.0",
+      "input_tokens": 4243,
+      "output_tokens": 22,
+      "seconds": 0.3608325840032194
+    },
+    {
+      "doc_id": "bd05",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.31,
+      "model": "jev-1.14.0",
+      "input_tokens": 4387,
+      "output_tokens": 22,
+      "seconds": 0.4705346659902716
+    },
+    {
+      "doc_id": "bd07",
+      "page": 26,
+      "phase": "fit",
+      "p_yes": 0.35,
+      "model": "jev-1.14.0",
+      "input_tokens": 5662,
+      "output_tokens": 22,
+      "seconds": 0.729835334001109
+    },
+    {
+      "doc_id": "bd07",
+      "page": 34,
+      "phase": "fit",
+      "p_yes": 0.44,
+      "model": "jev-1.14.0",
+      "input_tokens": 5661,
+      "output_tokens": 22,
+      "seconds": 0.7818593749980209
+    },
+    {
+      "doc_id": "bd08",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.57,
+      "model": "jev-1.14.0",
+      "input_tokens": 5668,
+      "output_tokens": 22,
+      "seconds": 0.943849457995384
+    },
+    {
+      "doc_id": "mx02",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.94,
+      "model": "jev-1.14.0",
+      "input_tokens": 5325,
+      "output_tokens": 22,
+      "seconds": 0.36696533400390763
+    },
+    {
+      "doc_id": "mx03",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.94,
+      "model": "jev-1.14.0",
+      "input_tokens": 5416,
+      "output_tokens": 22,
+      "seconds": 0.3399587500025518
+    },
+    {
+      "doc_id": "mx03",
+      "page": 33,
+      "phase": "fit",
+      "p_yes": 0.94,
+      "model": "jev-1.14.0",
+      "input_tokens": 5656,
+      "output_tokens": 22,
+      "seconds": 0.51328979099344
+    },
+    {
+      "doc_id": "mx04",
+      "page": 30,
+      "phase": "fit",
+      "p_yes": 0.42,
+      "model": "jev-1.14.0",
+      "input_tokens": 5704,
+      "output_tokens": 22,
+      "seconds": 0.6592169170035049
+    },
+    {
+      "doc_id": "mx05",
+      "page": 40,
+      "phase": "fit",
+      "p_yes": 0.63,
+      "model": "jev-1.14.0",
+      "input_tokens": 5674,
+      "output_tokens": 22,
+      "seconds": 0.8536154169996735
+    },
+    {
+      "doc_id": "tl01",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.58,
+      "model": "jev-1.14.0",
+      "input_tokens": 5320,
+      "output_tokens": 22,
+      "seconds": 0.47002266701019835
+    },
+    {
+      "doc_id": "tl01",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.72,
+      "model": "jev-1.14.0",
+      "input_tokens": 5297,
+      "output_tokens": 22,
+      "seconds": 0.8717048749967944
+    },
+    {
+      "doc_id": "tl01",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.49,
+      "model": "jev-1.14.0",
+      "input_tokens": 5304,
+      "output_tokens": 22,
+      "seconds": 1.8219978340057423
+    },
+    {
+      "doc_id": "tl01",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.45,
+      "model": "jev-1.14.0",
+      "input_tokens": 5339,
+      "output_tokens": 22,
+      "seconds": 0.49703362499712966
+    },
+    {
+      "doc_id": "tl01",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.29,
+      "model": "jev-1.14.0",
+      "input_tokens": 5238,
+      "output_tokens": 22,
+      "seconds": 0.4504153750021942
+    },
+    {
+      "doc_id": "tl01",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.65,
+      "model": "jev-1.14.0",
+      "input_tokens": 5219,
+      "output_tokens": 22,
+      "seconds": 0.4313625829963712
+    },
+    {
+      "doc_id": "tl01",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.39,
+      "model": "jev-1.14.0",
+      "input_tokens": 5300,
+      "output_tokens": 22,
+      "seconds": 0.6130492910015164
+    },
+    {
+      "doc_id": "tl01",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.37,
+      "model": "jev-1.14.0",
+      "input_tokens": 5217,
+      "output_tokens": 22,
+      "seconds": 0.5654519169911509
+    },
+    {
+      "doc_id": "tl01",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.28,
+      "model": "jev-1.14.0",
+      "input_tokens": 5324,
+      "output_tokens": 22,
+      "seconds": 1.8375748749967897
+    },
+    {
+      "doc_id": "tl01",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.48,
+      "model": "jev-1.14.0",
+      "input_tokens": 5353,
+      "output_tokens": 22,
+      "seconds": 1.860439125011908
+    },
+    {
+      "doc_id": "tl01",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.32,
+      "model": "jev-1.14.0",
+      "input_tokens": 5296,
+      "output_tokens": 22,
+      "seconds": 0.47237741701246705
+    },
+    {
+      "doc_id": "tl01",
+      "page": 26,
+      "phase": "fit",
+      "p_yes": 0.33,
+      "model": "jev-1.14.0",
+      "input_tokens": 5462,
+      "output_tokens": 22,
+      "seconds": 0.4872469170077238
+    },
+    {
+      "doc_id": "tl01",
+      "page": 27,
+      "phase": "fit",
+      "p_yes": 0.4,
+      "model": "jev-1.14.0",
+      "input_tokens": 5327,
+      "output_tokens": 22,
+      "seconds": 0.5034276249934919
+    },
+    {
+      "doc_id": "tl01",
+      "page": 28,
+      "phase": "fit",
+      "p_yes": 0.66,
+      "model": "jev-1.14.0",
+      "input_tokens": 5290,
+      "output_tokens": 22,
+      "seconds": 0.5844924159900984
+    },
+    {
+      "doc_id": "tl01",
+      "page": 29,
+      "phase": "fit",
+      "p_yes": 0.55,
+      "model": "jev-1.14.0",
+      "input_tokens": 5262,
+      "output_tokens": 22,
+      "seconds": 0.48585729200567584
+    },
+    {
+      "doc_id": "tl01",
+      "page": 30,
+      "phase": "fit",
+      "p_yes": 0.66,
+      "model": "jev-1.14.0",
+      "input_tokens": 5343,
+      "output_tokens": 22,
+      "seconds": 2.106227582989959
+    },
+    {
+      "doc_id": "tl01",
+      "page": 31,
+      "phase": "fit",
+      "p_yes": 0.1,
+      "model": "jev-1.14.0",
+      "input_tokens": 5354,
+      "output_tokens": 22,
+      "seconds": 0.4432087080058409
+    },
+    {
+      "doc_id": "tl01",
+      "page": 32,
+      "phase": "fit",
+      "p_yes": 0.76,
+      "model": "jev-1.14.0",
+      "input_tokens": 5037,
+      "output_tokens": 22,
+      "seconds": 0.29677716600417625
+    },
+    {
+      "doc_id": "tl01",
+      "page": 33,
+      "phase": "fit",
+      "p_yes": 0.89,
+      "model": "jev-1.14.0",
+      "input_tokens": 5084,
+      "output_tokens": 22,
+      "seconds": 0.27650316699873656
+    },
+    {
+      "doc_id": "tl01",
+      "page": 40,
+      "phase": "fit",
+      "p_yes": 0.22,
+      "model": "jev-1.14.0",
+      "input_tokens": 5105,
+      "output_tokens": 22,
+      "seconds": 0.6142432500055293
+    },
+    {
+      "doc_id": "tl02",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.2,
+      "model": "jev-1.14.0",
+      "input_tokens": 5321,
+      "output_tokens": 22,
+      "seconds": 0.4407442079973407
+    },
+    {
+      "doc_id": "tl02",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.54,
+      "model": "jev-1.14.0",
+      "input_tokens": 5677,
+      "output_tokens": 22,
+      "seconds": 0.2763224999944214
+    },
+    {
+      "doc_id": "tl02",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.5,
+      "model": "jev-1.14.0",
+      "input_tokens": 5461,
+      "output_tokens": 22,
+      "seconds": 0.4580922089953674
+    },
+    {
+      "doc_id": "tl02",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.3,
+      "model": "jev-1.14.0",
+      "input_tokens": 5824,
+      "output_tokens": 22,
+      "seconds": 2.5927278330054833
+    },
+    {
+      "doc_id": "tl02",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.58,
+      "model": "jev-1.14.0",
+      "input_tokens": 5776,
+      "output_tokens": 22,
+      "seconds": 0.8087316669989377
+    },
+    {
+      "doc_id": "tl02",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.35,
+      "model": "jev-1.14.0",
+      "input_tokens": 5799,
+      "output_tokens": 22,
+      "seconds": 0.34506504199816845
+    },
+    {
+      "doc_id": "tl02",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.25,
+      "model": "jev-1.14.0",
+      "input_tokens": 5801,
+      "output_tokens": 22,
+      "seconds": 0.3013847080001142
+    },
+    {
+      "doc_id": "tl02",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.52,
+      "model": "jev-1.14.0",
+      "input_tokens": 5812,
+      "output_tokens": 22,
+      "seconds": 1.517789375007851
+    },
+    {
+      "doc_id": "tl02",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.46,
+      "model": "jev-1.14.0",
+      "input_tokens": 5759,
+      "output_tokens": 22,
+      "seconds": 0.3773058749939082
+    },
+    {
+      "doc_id": "tl02",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.52,
+      "model": "jev-1.14.0",
+      "input_tokens": 5655,
+      "output_tokens": 22,
+      "seconds": 3.7567045420000795
+    },
+    {
+      "doc_id": "tl02",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.51,
+      "model": "jev-1.14.0",
+      "input_tokens": 5702,
+      "output_tokens": 22,
+      "seconds": 0.4382330840016948
+    },
+    {
+      "doc_id": "tl02",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.53,
+      "model": "jev-1.14.0",
+      "input_tokens": 5802,
+      "output_tokens": 22,
+      "seconds": 0.3154346670053201
+    },
+    {
+      "doc_id": "tl02",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.34,
+      "model": "jev-1.14.0",
+      "input_tokens": 5815,
+      "output_tokens": 22,
+      "seconds": 0.40295316600531805
+    },
+    {
+      "doc_id": "tl02",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.51,
+      "model": "jev-1.14.0",
+      "input_tokens": 5827,
+      "output_tokens": 22,
+      "seconds": 0.4778697080037091
+    },
+    {
+      "doc_id": "tl02",
+      "page": 26,
+      "phase": "fit",
+      "p_yes": 0.34,
+      "model": "jev-1.14.0",
+      "input_tokens": 5763,
+      "output_tokens": 22,
+      "seconds": 0.3061485840007663
+    },
+    {
+      "doc_id": "tl02",
+      "page": 27,
+      "phase": "fit",
+      "p_yes": 0.51,
+      "model": "jev-1.14.0",
+      "input_tokens": 5779,
+      "output_tokens": 22,
+      "seconds": 0.323716124999919
+    },
+    {
+      "doc_id": "tl02",
+      "page": 28,
+      "phase": "fit",
+      "p_yes": 0.31,
+      "model": "jev-1.14.0",
+      "input_tokens": 6017,
+      "output_tokens": 22,
+      "seconds": 0.4371851250034524
+    },
+    {
+      "doc_id": "tl02",
+      "page": 29,
+      "phase": "fit",
+      "p_yes": 0.45,
+      "model": "jev-1.14.0",
+      "input_tokens": 5820,
+      "output_tokens": 22,
+      "seconds": 0.44823004100180697
+    },
+    {
+      "doc_id": "tl02",
+      "page": 30,
+      "phase": "fit",
+      "p_yes": 0.39,
+      "model": "jev-1.14.0",
+      "input_tokens": 5644,
+      "output_tokens": 22,
+      "seconds": 0.463993749988731
+    },
+    {
+      "doc_id": "tl02",
+      "page": 34,
+      "phase": "fit",
+      "p_yes": 0.32,
+      "model": "jev-1.14.0",
+      "input_tokens": 5314,
+      "output_tokens": 22,
+      "seconds": 0.2469508750073146
+    },
+    {
+      "doc_id": "tl02",
+      "page": 42,
+      "phase": "fit",
+      "p_yes": 0.22,
+      "model": "jev-1.14.0",
+      "input_tokens": 5335,
+      "output_tokens": 22,
+      "seconds": 0.24715566699160263
+    },
+    {
+      "doc_id": "tl02",
+      "page": 44,
+      "phase": "fit",
+      "p_yes": 0.26,
+      "model": "jev-1.14.0",
+      "input_tokens": 5344,
+      "output_tokens": 22,
+      "seconds": 0.24670316599076614
+    },
+    {
+      "doc_id": "tl02",
+      "page": 45,
+      "phase": "fit",
+      "p_yes": 0.28,
+      "model": "jev-1.14.0",
+      "input_tokens": 5271,
+      "output_tokens": 22,
+      "seconds": 0.23226741699909326
+    },
+    {
+      "doc_id": "tl02",
+      "page": 46,
+      "phase": "fit",
+      "p_yes": 0.38,
+      "model": "jev-1.14.0",
+      "input_tokens": 5860,
+      "output_tokens": 22,
+      "seconds": 1.5363664589967811
+    },
+    {
+      "doc_id": "tl02",
+      "page": 47,
+      "phase": "fit",
+      "p_yes": 0.15,
+      "model": "jev-1.14.0",
+      "input_tokens": 5445,
+      "output_tokens": 22,
+      "seconds": 0.250659415993141
+    },
+    {
+      "doc_id": "tl02",
+      "page": 48,
+      "phase": "fit",
+      "p_yes": 0.29,
+      "model": "jev-1.14.0",
+      "input_tokens": 5503,
+      "output_tokens": 22,
+      "seconds": 1.463304082994
+    },
+    {
+      "doc_id": "tl02",
+      "page": 49,
+      "phase": "fit",
+      "p_yes": 0.34,
+      "model": "jev-1.14.0",
+      "input_tokens": 5705,
+      "output_tokens": 22,
+      "seconds": 0.2960852079995675
+    },
+    {
+      "doc_id": "tl03",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.3,
+      "model": "jev-1.14.0",
+      "input_tokens": 5339,
+      "output_tokens": 22,
+      "seconds": 1.5356431660038652
+    },
+    {
+      "doc_id": "tl03",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.44,
+      "model": "jev-1.14.0",
+      "input_tokens": 5547,
+      "output_tokens": 22,
+      "seconds": 4.349032333993819
+    },
+    {
+      "doc_id": "tl03",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.33,
+      "model": "jev-1.14.0",
+      "input_tokens": 5548,
+      "output_tokens": 22,
+      "seconds": 0.47159745800308883
+    },
+    {
+      "doc_id": "tl03",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.56,
+      "model": "jev-1.14.0",
+      "input_tokens": 5183,
+      "output_tokens": 22,
+      "seconds": 1.4126250419940334
+    },
+    {
+      "doc_id": "tl03",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.15,
+      "model": "jev-1.14.0",
+      "input_tokens": 5145,
+      "output_tokens": 22,
+      "seconds": 1.4550725419976516
+    },
+    {
+      "doc_id": "tl03",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.26,
+      "model": "jev-1.14.0",
+      "input_tokens": 5165,
+      "output_tokens": 22,
+      "seconds": 0.25973991700448096
+    },
+    {
+      "doc_id": "tl03",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.22,
+      "model": "jev-1.14.0",
+      "input_tokens": 5126,
+      "output_tokens": 22,
+      "seconds": 0.269419750009547
+    },
+    {
+      "doc_id": "tl03",
+      "page": 26,
+      "phase": "fit",
+      "p_yes": 0.24,
+      "model": "jev-1.14.0",
+      "input_tokens": 5190,
+      "output_tokens": 22,
+      "seconds": 2.454876666000928
+    },
+    {
+      "doc_id": "tl04",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.22,
+      "model": "jev-1.14.0",
+      "input_tokens": 5026,
+      "output_tokens": 22,
+      "seconds": 0.2750828339922009
+    },
+    {
+      "doc_id": "tl04",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.08,
+      "model": "jev-1.14.0",
+      "input_tokens": 5006,
+      "output_tokens": 22,
+      "seconds": 3.5695182499912335
+    },
+    {
+      "doc_id": "tl04",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.09,
+      "model": "jev-1.14.0",
+      "input_tokens": 5324,
+      "output_tokens": 22,
+      "seconds": 1.9268324580043554
+    },
+    {
+      "doc_id": "tl04",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.26,
+      "model": "jev-1.14.0",
+      "input_tokens": 5307,
+      "output_tokens": 22,
+      "seconds": 1.6054818330012495
+    },
+    {
+      "doc_id": "tl04",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.49,
+      "model": "jev-1.14.0",
+      "input_tokens": 5379,
+      "output_tokens": 22,
+      "seconds": 0.3931941250048112
+    },
+    {
+      "doc_id": "tl04",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.65,
+      "model": "jev-1.14.0",
+      "input_tokens": 5299,
+      "output_tokens": 22,
+      "seconds": 0.322093250011676
+    },
+    {
+      "doc_id": "tl04",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.27,
+      "model": "jev-1.14.0",
+      "input_tokens": 5035,
+      "output_tokens": 22,
+      "seconds": 0.2901178330066614
+    },
+    {
+      "doc_id": "tl04",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.27,
+      "model": "jev-1.14.0",
+      "input_tokens": 5073,
+      "output_tokens": 22,
+      "seconds": 0.24169170900131576
+    },
+    {
+      "doc_id": "tl04",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.4,
+      "model": "jev-1.14.0",
+      "input_tokens": 5300,
+      "output_tokens": 22,
+      "seconds": 1.841883917004452
+    },
+    {
+      "doc_id": "tl05",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.29,
+      "model": "jev-1.14.0",
+      "input_tokens": 5291,
+      "output_tokens": 22,
+      "seconds": 1.1921714579948457
+    },
+    {
+      "doc_id": "tl05",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.32,
+      "model": "jev-1.14.0",
+      "input_tokens": 5215,
+      "output_tokens": 22,
+      "seconds": 4.046896959000151
+    },
+    {
+      "doc_id": "tl05",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.24,
+      "model": "jev-1.14.0",
+      "input_tokens": 5295,
+      "output_tokens": 22,
+      "seconds": 0.9115841669990914
+    },
+    {
+      "doc_id": "tl05",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.48,
+      "model": "jev-1.14.0",
+      "input_tokens": 5277,
+      "output_tokens": 22,
+      "seconds": 0.9376080840011127
+    },
+    {
+      "doc_id": "tl05",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.51,
+      "model": "jev-1.14.0",
+      "input_tokens": 5269,
+      "output_tokens": 22,
+      "seconds": 1.2376270840031793
+    },
+    {
+      "doc_id": "tl05",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.57,
+      "model": "jev-1.14.0",
+      "input_tokens": 5280,
+      "output_tokens": 22,
+      "seconds": 0.9235900409985334
+    },
+    {
+      "doc_id": "tl05",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.44,
+      "model": "jev-1.14.0",
+      "input_tokens": 5345,
+      "output_tokens": 22,
+      "seconds": 0.8050334590079729
+    },
+    {
+      "doc_id": "tl05",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.33,
+      "model": "jev-1.14.0",
+      "input_tokens": 5257,
+      "output_tokens": 22,
+      "seconds": 3.2540149580017896
+    },
+    {
+      "doc_id": "tl05",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.37,
+      "model": "jev-1.14.0",
+      "input_tokens": 5268,
+      "output_tokens": 22,
+      "seconds": 0.960157875000732
+    },
+    {
+      "doc_id": "tl05",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.42,
+      "model": "jev-1.14.0",
+      "input_tokens": 5407,
+      "output_tokens": 22,
+      "seconds": 1.1473702499934006
+    },
+    {
+      "doc_id": "tl05",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.56,
+      "model": "jev-1.14.0",
+      "input_tokens": 5361,
+      "output_tokens": 22,
+      "seconds": 0.8612992920097895
+    },
+    {
+      "doc_id": "tl05",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.44,
+      "model": "jev-1.14.0",
+      "input_tokens": 5241,
+      "output_tokens": 22,
+      "seconds": 0.6117578749981476
+    },
+    {
+      "doc_id": "tl06",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.18,
+      "model": "jev-1.14.0",
+      "input_tokens": 4795,
+      "output_tokens": 22,
+      "seconds": 2.8420219169929624
+    },
+    {
+      "doc_id": "tl06",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.3,
+      "model": "jev-1.14.0",
+      "input_tokens": 5244,
+      "output_tokens": 22,
+      "seconds": 2.915858416003175
+    },
+    {
+      "doc_id": "tl06",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.27,
+      "model": "jev-1.14.0",
+      "input_tokens": 5181,
+      "output_tokens": 22,
+      "seconds": 0.8315615419996902
+    },
+    {
+      "doc_id": "tl07",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.43,
+      "model": "jev-1.14.0",
+      "input_tokens": 5219,
+      "output_tokens": 22,
+      "seconds": 4.028624875005335
+    },
+    {
+      "doc_id": "tl07",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.49,
+      "model": "jev-1.14.0",
+      "input_tokens": 5190,
+      "output_tokens": 22,
+      "seconds": 5.535618624999188
+    },
+    {
+      "doc_id": "tl08",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.24,
+      "model": "jev-1.14.0",
+      "input_tokens": 5195,
+      "output_tokens": 22,
+      "seconds": 1.2018951250065584
+    },
+    {
+      "doc_id": "tl08",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.44,
+      "model": "jev-1.14.0",
+      "input_tokens": 5215,
+      "output_tokens": 22,
+      "seconds": 1.027637750012218
+    },
+    {
+      "doc_id": "tl08",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.38,
+      "model": "jev-1.14.0",
+      "input_tokens": 4910,
+      "output_tokens": 22,
+      "seconds": 1.7028415000095265
+    },
+    {
+      "doc_id": "rf01",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.41,
+      "model": "jev-1.14.0",
+      "input_tokens": 5719,
+      "output_tokens": 22,
+      "seconds": 0.5122266249964014
+    },
+    {
+      "doc_id": "rf02",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.51,
+      "model": "jev-1.14.0",
+      "input_tokens": 5781,
+      "output_tokens": 22,
+      "seconds": 0.7553509170102188
+    },
+    {
+      "doc_id": "rf02",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.28,
+      "model": "jev-1.14.0",
+      "input_tokens": 5829,
+      "output_tokens": 22,
+      "seconds": 0.6100444170006085
+    },
+    {
+      "doc_id": "rf02",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.21,
+      "model": "jev-1.14.0",
+      "input_tokens": 5850,
+      "output_tokens": 22,
+      "seconds": 0.6484007499966538
+    },
+    {
+      "doc_id": "rf02",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.28,
+      "model": "jev-1.14.0",
+      "input_tokens": 5944,
+      "output_tokens": 22,
+      "seconds": 0.6680377500015311
+    },
+    {
+      "doc_id": "rf02",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.43,
+      "model": "jev-1.14.0",
+      "input_tokens": 5741,
+      "output_tokens": 22,
+      "seconds": 3.9040462090051733
+    },
+    {
+      "doc_id": "rf02",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.32,
+      "model": "jev-1.14.0",
+      "input_tokens": 5943,
+      "output_tokens": 22,
+      "seconds": 0.6555651670059888
+    },
+    {
+      "doc_id": "rf02",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.34,
+      "model": "jev-1.14.0",
+      "input_tokens": 5728,
+      "output_tokens": 22,
+      "seconds": 0.9720976659882581
+    },
+    {
+      "doc_id": "rf02",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.55,
+      "model": "jev-1.14.0",
+      "input_tokens": 5760,
+      "output_tokens": 22,
+      "seconds": 1.0785532500012778
+    },
+    {
+      "doc_id": "rf03",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.4,
+      "model": "jev-1.14.0",
+      "input_tokens": 5774,
+      "output_tokens": 22,
+      "seconds": 0.6900214160123141
+    },
+    {
+      "doc_id": "rf03",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.4,
+      "model": "jev-1.14.0",
+      "input_tokens": 5727,
+      "output_tokens": 22,
+      "seconds": 3.706115833003423
+    },
+    {
+      "doc_id": "rf03",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.31,
+      "model": "jev-1.14.0",
+      "input_tokens": 5758,
+      "output_tokens": 22,
+      "seconds": 2.312458874992444
+    },
+    {
+      "doc_id": "rf03",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.43,
+      "model": "jev-1.14.0",
+      "input_tokens": 5775,
+      "output_tokens": 22,
+      "seconds": 2.8829103330062935
+    },
+    {
+      "doc_id": "rf03",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.33,
+      "model": "jev-1.14.0",
+      "input_tokens": 5932,
+      "output_tokens": 22,
+      "seconds": 1.0072348329995293
+    },
+    {
+      "doc_id": "rf03",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.36,
+      "model": "jev-1.14.0",
+      "input_tokens": 5784,
+      "output_tokens": 22,
+      "seconds": 0.7619560000021011
+    },
+    {
+      "doc_id": "rf03",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.58,
+      "model": "jev-1.14.0",
+      "input_tokens": 5887,
+      "output_tokens": 22,
+      "seconds": 3.0911823340138653
+    },
+    {
+      "doc_id": "rf04",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.33,
+      "model": "jev-1.14.0",
+      "input_tokens": 5809,
+      "output_tokens": 22,
+      "seconds": 0.8503712909878232
+    },
+    {
+      "doc_id": "rf04",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.29,
+      "model": "jev-1.14.0",
+      "input_tokens": 5758,
+      "output_tokens": 22,
+      "seconds": 0.9733368330053054
+    },
+    {
+      "doc_id": "rf04",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.34,
+      "model": "jev-1.14.0",
+      "input_tokens": 5825,
+      "output_tokens": 22,
+      "seconds": 0.9768643339921255
+    },
+    {
+      "doc_id": "rf04",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.4,
+      "model": "jev-1.14.0",
+      "input_tokens": 5773,
+      "output_tokens": 22,
+      "seconds": 1.2765415409958223
+    },
+    {
+      "doc_id": "rf04",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.46,
+      "model": "jev-1.14.0",
+      "input_tokens": 5754,
+      "output_tokens": 22,
+      "seconds": 0.8978726670029573
+    },
+    {
+      "doc_id": "rf04",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.44,
+      "model": "jev-1.14.0",
+      "input_tokens": 5766,
+      "output_tokens": 22,
+      "seconds": 3.676563957997132
+    },
+    {
+      "doc_id": "rf04",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.29,
+      "model": "jev-1.14.0",
+      "input_tokens": 5794,
+      "output_tokens": 22,
+      "seconds": 0.8560235839977395
+    },
+    {
+      "doc_id": "rf05",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.22,
+      "model": "jev-1.14.0",
+      "input_tokens": 2515,
+      "output_tokens": 22,
+      "seconds": 0.8464026660076343
+    },
+    {
+      "doc_id": "rf05",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.26,
+      "model": "jev-1.14.0",
+      "input_tokens": 2561,
+      "output_tokens": 22,
+      "seconds": 3.5467190409981413
+    },
+    {
+      "doc_id": "rf05",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.53,
+      "model": "jev-1.14.0",
+      "input_tokens": 2566,
+      "output_tokens": 22,
+      "seconds": 0.9332065420021536
+    },
+    {
+      "doc_id": "rf05",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.35,
+      "model": "jev-1.14.0",
+      "input_tokens": 2567,
+      "output_tokens": 22,
+      "seconds": 0.8032070829940494
+    },
+    {
+      "doc_id": "rf05",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.4,
+      "model": "jev-1.14.0",
+      "input_tokens": 2571,
+      "output_tokens": 22,
+      "seconds": 2.785205624997616
+    },
+    {
+      "doc_id": "rf05",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.33,
+      "model": "jev-1.14.0",
+      "input_tokens": 2596,
+      "output_tokens": 22,
+      "seconds": 0.882172832993092
+    },
+    {
+      "doc_id": "rf05",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.36,
+      "model": "jev-1.14.0",
+      "input_tokens": 2563,
+      "output_tokens": 22,
+      "seconds": 2.7142174589971546
+    },
+    {
+      "doc_id": "rf05",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.26,
+      "model": "jev-1.14.0",
+      "input_tokens": 2578,
+      "output_tokens": 22,
+      "seconds": 7.140446792007424
+    },
+    {
+      "doc_id": "rf05",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.32,
+      "model": "jev-1.14.0",
+      "input_tokens": 2581,
+      "output_tokens": 22,
+      "seconds": 0.6272565830004169
+    },
+    {
+      "doc_id": "rf05",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.29,
+      "model": "jev-1.14.0",
+      "input_tokens": 2560,
+      "output_tokens": 22,
+      "seconds": 0.8754069159913342
+    },
+    {
+      "doc_id": "rf05",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.25,
+      "model": "jev-1.14.0",
+      "input_tokens": 2312,
+      "output_tokens": 22,
+      "seconds": 5.1483369170018705
+    },
+    {
+      "doc_id": "rf05",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.27,
+      "model": "jev-1.14.0",
+      "input_tokens": 2595,
+      "output_tokens": 22,
+      "seconds": 2.007675708999159
+    },
+    {
+      "doc_id": "rf05",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.19,
+      "model": "jev-1.14.0",
+      "input_tokens": 2351,
+      "output_tokens": 22,
+      "seconds": 0.5786835829931078
+    },
+    {
+      "doc_id": "rf05",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.36,
+      "model": "jev-1.14.0",
+      "input_tokens": 2254,
+      "output_tokens": 22,
+      "seconds": 2.1729078749922337
+    },
+    {
+      "doc_id": "rf05",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.36,
+      "model": "jev-1.14.0",
+      "input_tokens": 2573,
+      "output_tokens": 22,
+      "seconds": 3.089185082993936
+    },
+    {
+      "doc_id": "rf05",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.34,
+      "model": "jev-1.14.0",
+      "input_tokens": 2585,
+      "output_tokens": 22,
+      "seconds": 2.933070917002624
+    },
+    {
+      "doc_id": "rf05",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.22,
+      "model": "jev-1.14.0",
+      "input_tokens": 2108,
+      "output_tokens": 22,
+      "seconds": 0.7723553750111023
+    },
+    {
+      "doc_id": "rf08",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.91,
+      "model": "jev-1.14.0",
+      "input_tokens": 2241,
+      "output_tokens": 22,
+      "seconds": 0.9256899580068421
+    },
+    {
+      "doc_id": "rf08",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.6,
+      "model": "jev-1.14.0",
+      "input_tokens": 2332,
+      "output_tokens": 22,
+      "seconds": 0.7894975420058472
+    },
+    {
+      "doc_id": "rf08",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.85,
+      "model": "jev-1.14.0",
+      "input_tokens": 2359,
+      "output_tokens": 22,
+      "seconds": 6.538148292005644
+    },
+    {
+      "doc_id": "rf08",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.63,
+      "model": "jev-1.14.0",
+      "input_tokens": 2375,
+      "output_tokens": 22,
+      "seconds": 0.8460803340130951
+    },
+    {
+      "doc_id": "rf08",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.94,
+      "model": "jev-1.14.0",
+      "input_tokens": 2347,
+      "output_tokens": 22,
+      "seconds": 0.6399585420003859
+    },
+    {
+      "doc_id": "rf08",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.9,
+      "model": "jev-1.14.0",
+      "input_tokens": 2373,
+      "output_tokens": 22,
+      "seconds": 0.6615103329968406
+    },
+    {
+      "doc_id": "rf08",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.84,
+      "model": "jev-1.14.0",
+      "input_tokens": 2378,
+      "output_tokens": 22,
+      "seconds": 0.8573587499995483
+    },
+    {
+      "doc_id": "rf08",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.92,
+      "model": "jev-1.14.0",
+      "input_tokens": 2366,
+      "output_tokens": 22,
+      "seconds": 2.1791520830010995
+    },
+    {
+      "doc_id": "rf08",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.44,
+      "model": "jev-1.14.0",
+      "input_tokens": 2390,
+      "output_tokens": 22,
+      "seconds": 1.1349459580087569
+    },
+    {
+      "doc_id": "rf08",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.1,
+      "model": "jev-1.14.0",
+      "input_tokens": 2375,
+      "output_tokens": 22,
+      "seconds": 0.6994217500032391
+    },
+    {
+      "doc_id": "rf08",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.06,
+      "model": "jev-1.14.0",
+      "input_tokens": 2368,
+      "output_tokens": 22,
+      "seconds": 3.7108431669912534
+    },
+    {
+      "doc_id": "rf08",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.57,
+      "model": "jev-1.14.0",
+      "input_tokens": 2373,
+      "output_tokens": 22,
+      "seconds": 0.6316182909940835
+    },
+    {
+      "doc_id": "rf08",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.55,
+      "model": "jev-1.14.0",
+      "input_tokens": 2383,
+      "output_tokens": 22,
+      "seconds": 0.6320324999978766
+    },
+    {
+      "doc_id": "rf08",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.47,
+      "model": "jev-1.14.0",
+      "input_tokens": 2362,
+      "output_tokens": 22,
+      "seconds": 2.204390124999918
+    },
+    {
+      "doc_id": "rf08",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.65,
+      "model": "jev-1.14.0",
+      "input_tokens": 2377,
+      "output_tokens": 22,
+      "seconds": 0.8305949170025997
+    },
+    {
+      "doc_id": "rf08",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.63,
+      "model": "jev-1.14.0",
+      "input_tokens": 2342,
+      "output_tokens": 22,
+      "seconds": 0.7415906249952968
+    },
+    {
+      "doc_id": "rf08",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.66,
+      "model": "jev-1.14.0",
+      "input_tokens": 2352,
+      "output_tokens": 22,
+      "seconds": 0.6367904579965398
+    },
+    {
+      "doc_id": "rf08",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.73,
+      "model": "jev-1.14.0",
+      "input_tokens": 2350,
+      "output_tokens": 22,
+      "seconds": 0.6402172499947483
+    },
+    {
+      "doc_id": "rf08",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.9,
+      "model": "jev-1.14.0",
+      "input_tokens": 2374,
+      "output_tokens": 22,
+      "seconds": 0.8615917090064613
+    },
+    {
+      "doc_id": "rf08",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.32,
+      "model": "jev-1.14.0",
+      "input_tokens": 2375,
+      "output_tokens": 22,
+      "seconds": 2.186015833998681
+    },
+    {
+      "doc_id": "rf08",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.82,
+      "model": "jev-1.14.0",
+      "input_tokens": 2357,
+      "output_tokens": 22,
+      "seconds": 0.6305640420032432
+    },
+    {
+      "doc_id": "rf08",
+      "page": 26,
+      "phase": "fit",
+      "p_yes": 0.75,
+      "model": "jev-1.14.0",
+      "input_tokens": 2222,
+      "output_tokens": 22,
+      "seconds": 1.9066020419995766
+    },
+    {
+      "doc_id": "tl01",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.23,
+      "model": "jev-1.14.0",
+      "input_tokens": 5305,
+      "output_tokens": 22,
+      "seconds": 2.869489250006154
+    },
+    {
+      "doc_id": "tl01",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.38,
+      "model": "jev-1.14.0",
+      "input_tokens": 5291,
+      "output_tokens": 22,
+      "seconds": 0.45396162501128856
+    },
+    {
+      "doc_id": "tl02",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.41,
+      "model": "jev-1.14.0",
+      "input_tokens": 5807,
+      "output_tokens": 22,
+      "seconds": 0.3029098749975674
+    },
+    {
+      "doc_id": "tl04",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.36,
+      "model": "jev-1.14.0",
+      "input_tokens": 5427,
+      "output_tokens": 22,
+      "seconds": 0.31570820799970534
+    },
+    {
+      "doc_id": "rf04",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.33,
+      "model": "jev-1.14.0",
+      "input_tokens": 5806,
+      "output_tokens": 22,
+      "seconds": 1.4747182919963961
+    },
+    {
+      "doc_id": "rf08",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.9,
+      "model": "jev-1.14.0",
+      "input_tokens": 2089,
+      "output_tokens": 22,
+      "seconds": 0.4362991670059273
+    },
+    {
+      "doc_id": "mx01",
+      "page": 9,
+      "phase": "rest",
+      "p_yes": 0.7,
+      "model": "jev-1.14.0",
+      "input_tokens": 5606,
+      "output_tokens": 22,
+      "seconds": 1.017592500007595
+    },
+    {
+      "doc_id": "mx01",
+      "page": 26,
+      "phase": "rest",
+      "p_yes": 0.71,
+      "model": "jev-1.14.0",
+      "input_tokens": 5302,
+      "output_tokens": 22,
+      "seconds": 2.69808866699168
+    },
+    {
+      "doc_id": "mx01",
+      "page": 27,
+      "phase": "rest",
+      "p_yes": 0.89,
+      "model": "jev-1.14.0",
+      "input_tokens": 5289,
+      "output_tokens": 22,
+      "seconds": 0.46408129199699033
+    },
+    {
+      "doc_id": "mx02",
+      "page": 15,
+      "phase": "rest",
+      "p_yes": 0.63,
+      "model": "jev-1.14.0",
+      "input_tokens": 5306,
+      "output_tokens": 22,
+      "seconds": 0.5066527500021039
+    },
+    {
+      "doc_id": "mx02",
+      "page": 16,
+      "phase": "rest",
+      "p_yes": 0.84,
+      "model": "jev-1.14.0",
+      "input_tokens": 5292,
+      "output_tokens": 22,
+      "seconds": 0.8209365840011742
+    },
+    {
+      "doc_id": "mx02",
+      "page": 17,
+      "phase": "rest",
+      "p_yes": 0.85,
+      "model": "jev-1.14.0",
+      "input_tokens": 5289,
+      "output_tokens": 22,
+      "seconds": 0.3077079580107238
+    },
+    {
+      "doc_id": "mx03",
+      "page": 2,
+      "phase": "rest",
+      "p_yes": 0.77,
+      "model": "jev-1.14.0",
+      "input_tokens": 5746,
+      "output_tokens": 22,
+      "seconds": 0.9748440409894101
+    },
+    {
+      "doc_id": "mx03",
+      "page": 14,
+      "phase": "rest",
+      "p_yes": 0.71,
+      "model": "jev-1.14.0",
+      "input_tokens": 5387,
+      "output_tokens": 22,
+      "seconds": 0.8399005829996895
+    },
+    {
+      "doc_id": "mx03",
+      "page": 17,
+      "phase": "rest",
+      "p_yes": 0.77,
+      "model": "jev-1.14.0",
+      "input_tokens": 5668,
+      "output_tokens": 22,
+      "seconds": 3.101369166004588
+    },
+    {
+      "doc_id": "mx03",
+      "page": 34,
+      "phase": "rest",
+      "p_yes": 0.54,
+      "model": "jev-1.14.0",
+      "input_tokens": 5307,
+      "output_tokens": 22,
+      "seconds": 0.5044974170014029
+    },
+    {
+      "doc_id": "mx03",
+      "page": 35,
+      "phase": "rest",
+      "p_yes": 0.84,
+      "model": "jev-1.14.0",
+      "input_tokens": 5291,
+      "output_tokens": 22,
+      "seconds": 0.3841748330014525
+    },
+    {
+      "doc_id": "mx04",
+      "page": 1,
+      "phase": "rest",
+      "p_yes": 0.86,
+      "model": "jev-1.14.0",
+      "input_tokens": 5315,
+      "output_tokens": 22,
+      "seconds": 1.6821837500028778
+    },
+    {
+      "doc_id": "mx04",
+      "page": 31,
+      "phase": "rest",
+      "p_yes": 0.59,
+      "model": "jev-1.14.0",
+      "input_tokens": 5302,
+      "output_tokens": 22,
+      "seconds": 0.4944456670054933
+    },
+    {
+      "doc_id": "mx04",
+      "page": 32,
+      "phase": "rest",
+      "p_yes": 0.88,
+      "model": "jev-1.14.0",
+      "input_tokens": 5289,
+      "output_tokens": 22,
+      "seconds": 0.4713595829962287
+    },
+    {
+      "doc_id": "mx05",
+      "page": 13,
+      "phase": "rest",
+      "p_yes": 0.72,
+      "model": "jev-1.14.0",
+      "input_tokens": 5480,
+      "output_tokens": 22,
+      "seconds": 0.4891790840047179
+    },
+    {
+      "doc_id": "mx05",
+      "page": 36,
+      "phase": "rest",
+      "p_yes": 0.82,
+      "model": "jev-1.14.0",
+      "input_tokens": 5423,
+      "output_tokens": 22,
+      "seconds": 0.4714222500042524
+    },
+    {
+      "doc_id": "mx05",
+      "page": 51,
+      "phase": "rest",
+      "p_yes": 0.62,
+      "model": "jev-1.14.0",
+      "input_tokens": 5300,
+      "output_tokens": 22,
+      "seconds": 0.3660609159996966
+    },
+    {
+      "doc_id": "mx05",
+      "page": 52,
+      "phase": "rest",
+      "p_yes": 0.87,
+      "model": "jev-1.14.0",
+      "input_tokens": 5286,
+      "output_tokens": 22,
+      "seconds": 0.5114660410035867
+    },
+    {
+      "doc_id": "mx06",
+      "page": 15,
+      "phase": "rest",
+      "p_yes": 0.82,
+      "model": "jev-1.14.0",
+      "input_tokens": 5318,
+      "output_tokens": 22,
+      "seconds": 0.403347917002975
+    },
+    {
+      "doc_id": "mx06",
+      "page": 26,
+      "phase": "rest",
+      "p_yes": 0.63,
+      "model": "jev-1.14.0",
+      "input_tokens": 5303,
+      "output_tokens": 22,
+      "seconds": 0.40161033399635926
+    },
+    {
+      "doc_id": "mx06",
+      "page": 27,
+      "phase": "rest",
+      "p_yes": 0.89,
+      "model": "jev-1.14.0",
+      "input_tokens": 5289,
+      "output_tokens": 22,
+      "seconds": 0.5881262090115342
+    },
+    {
+      "doc_id": "mx07",
+      "page": 12,
+      "phase": "rest",
+      "p_yes": 0.81,
+      "model": "jev-1.14.0",
+      "input_tokens": 5302,
+      "output_tokens": 22,
+      "seconds": 0.39848891699512023
+    },
+    {
+      "doc_id": "mx07",
+      "page": 39,
+      "phase": "rest",
+      "p_yes": 0.35,
+      "model": "jev-1.14.0",
+      "input_tokens": 5312,
+      "output_tokens": 22,
+      "seconds": 5.97088475000055
+    },
+    {
+      "doc_id": "mx07",
+      "page": 40,
+      "phase": "rest",
+      "p_yes": 0.89,
+      "model": "jev-1.14.0",
+      "input_tokens": 5295,
+      "output_tokens": 22,
+      "seconds": 0.32252116699237376
+    },
+    {
+      "doc_id": "mx07",
+      "page": 41,
+      "phase": "rest",
+      "p_yes": 0.45,
+      "model": "jev-1.14.0",
+      "input_tokens": 5309,
+      "output_tokens": 22,
+      "seconds": 0.5123930830013705
+    },
+    {
+      "doc_id": "mx07",
+      "page": 42,
+      "phase": "rest",
+      "p_yes": 0.89,
+      "model": "jev-1.14.0",
+      "input_tokens": 5295,
+      "output_tokens": 22,
+      "seconds": 0.4065288749989122
+    },
+    {
+      "doc_id": "mx07",
+      "page": 43,
+      "phase": "rest",
+      "p_yes": 0.86,
+      "model": "jev-1.14.0",
+      "input_tokens": 5293,
+      "output_tokens": 22,
+      "seconds": 1.5490525420027552
+    },
+    {
+      "doc_id": "mx07",
+      "page": 44,
+      "phase": "rest",
+      "p_yes": 0.54,
+      "model": "jev-1.14.0",
+      "input_tokens": 5308,
+      "output_tokens": 22,
+      "seconds": 2.182992791000288
+    },
+    {
+      "doc_id": "tl01",
+      "page": 1,
+      "phase": "rest",
+      "p_yes": 0.28,
+      "model": "jev-1.14.0",
+      "input_tokens": 4880,
+      "output_tokens": 22,
+      "seconds": 0.3498985000042012
+    },
+    {
+      "doc_id": "tl01",
+      "page": 19,
+      "phase": "rest",
+      "p_yes": 0.52,
+      "model": "jev-1.14.0",
+      "input_tokens": 5274,
+      "output_tokens": 22,
+      "seconds": 6.275604249996832
+    },
+    {
+      "doc_id": "tl01",
+      "page": 34,
+      "phase": "rest",
+      "p_yes": 0.03,
+      "model": "jev-1.14.0",
+      "input_tokens": 4932,
+      "output_tokens": 22,
+      "seconds": 0.7920411250088364
+    },
+    {
+      "doc_id": "tl01",
+      "page": 35,
+      "phase": "rest",
+      "p_yes": 0.97,
+      "model": "jev-1.14.0",
+      "input_tokens": 5036,
+      "output_tokens": 22,
+      "seconds": 0.4141843749966938
+    },
+    {
+      "doc_id": "tl01",
+      "page": 36,
+      "phase": "rest",
+      "p_yes": 0.98,
+      "model": "jev-1.14.0",
+      "input_tokens": 4921,
+      "output_tokens": 22,
+      "seconds": 0.3559192910033744
+    },
+    {
+      "doc_id": "tl01",
+      "page": 37,
+      "phase": "rest",
+      "p_yes": 0.09,
+      "model": "jev-1.14.0",
+      "input_tokens": 4955,
+      "output_tokens": 22,
+      "seconds": 1.6287989589909557
+    },
+    {
+      "doc_id": "tl01",
+      "page": 38,
+      "phase": "rest",
+      "p_yes": 0.17,
+      "model": "jev-1.14.0",
+      "input_tokens": 5044,
+      "output_tokens": 22,
+      "seconds": 0.36355404200730845
+    },
+    {
+      "doc_id": "tl01",
+      "page": 39,
+      "phase": "rest",
+      "p_yes": 0.21,
+      "model": "jev-1.14.0",
+      "input_tokens": 5077,
+      "output_tokens": 22,
+      "seconds": 0.4190681659965776
+    },
+    {
+      "doc_id": "tl01",
+      "page": 41,
+      "phase": "rest",
+      "p_yes": 0.07,
+      "model": "jev-1.14.0",
+      "input_tokens": 5081,
+      "output_tokens": 22,
+      "seconds": 1.6101363750058226
+    },
+    {
+      "doc_id": "tl01",
+      "page": 42,
+      "phase": "rest",
+      "p_yes": 0.22,
+      "model": "jev-1.14.0",
+      "input_tokens": 5045,
+      "output_tokens": 22,
+      "seconds": 0.732886583005893
+    },
+    {
+      "doc_id": "tl01",
+      "page": 44,
+      "phase": "rest",
+      "p_yes": 0.03,
+      "model": "jev-1.14.0",
+      "input_tokens": 5092,
+      "output_tokens": 22,
+      "seconds": 1.5347925840032985
+    },
+    {
+      "doc_id": "tl01",
+      "page": 47,
+      "phase": "rest",
+      "p_yes": 0.06,
+      "model": "jev-1.14.0",
+      "input_tokens": 5097,
+      "output_tokens": 22,
+      "seconds": 1.0904182499944
+    },
+    {
+      "doc_id": "tl01",
+      "page": 48,
+      "phase": "rest",
+      "p_yes": 0.01,
+      "model": "jev-1.14.0",
+      "input_tokens": 5046,
+      "output_tokens": 22,
+      "seconds": 0.9629994160059141
+    },
+    {
+      "doc_id": "tl01",
+      "page": 49,
+      "phase": "rest",
+      "p_yes": 0.97,
+      "model": "jev-1.14.0",
+      "input_tokens": 5034,
+      "output_tokens": 22,
+      "seconds": 5.662274624992278
+    },
+    {
+      "doc_id": "tl01",
+      "page": 50,
+      "phase": "rest",
+      "p_yes": 0.04,
+      "model": "jev-1.14.0",
+      "input_tokens": 5055,
+      "output_tokens": 22,
+      "seconds": 4.9635347919975175
+    },
+    {
+      "doc_id": "tl01",
+      "page": 51,
+      "phase": "rest",
+      "p_yes": 0.03,
+      "model": "jev-1.14.0",
+      "input_tokens": 5101,
+      "output_tokens": 22,
+      "seconds": 0.7178775840002345
+    },
+    {
+      "doc_id": "tl01",
+      "page": 52,
+      "phase": "rest",
+      "p_yes": 0.05,
+      "model": "jev-1.14.0",
+      "input_tokens": 5057,
+      "output_tokens": 22,
+      "seconds": 0.6982562500052154
+    },
+    {
+      "doc_id": "tl01",
+      "page": 53,
+      "phase": "rest",
+      "p_yes": 0.06,
+      "model": "jev-1.14.0",
+      "input_tokens": 4960,
+      "output_tokens": 22,
+      "seconds": 0.7785127910028677
+    },
+    {
+      "doc_id": "tl01",
+      "page": 54,
+      "phase": "rest",
+      "p_yes": 0.01,
+      "model": "jev-1.14.0",
+      "input_tokens": 5047,
+      "output_tokens": 22,
+      "seconds": 0.6991982910112711
+    },
+    {
+      "doc_id": "tl01",
+      "page": 55,
+      "phase": "rest",
+      "p_yes": 0.19,
+      "model": "jev-1.14.0",
+      "input_tokens": 5041,
+      "output_tokens": 22,
+      "seconds": 0.3053108339954633
+    },
+    {
+      "doc_id": "tl01",
+      "page": 56,
+      "phase": "rest",
+      "p_yes": 0.97,
+      "model": "jev-1.14.0",
+      "input_tokens": 5036,
+      "output_tokens": 22,
+      "seconds": 0.2985887079994427
+    },
+    {
+      "doc_id": "tl01",
+      "page": 57,
+      "phase": "rest",
+      "p_yes": 0.68,
+      "model": "jev-1.14.0",
+      "input_tokens": 5038,
+      "output_tokens": 22,
+      "seconds": 0.3446118749998277
+    },
+    {
+      "doc_id": "tl01",
+      "page": 58,
+      "phase": "rest",
+      "p_yes": 0.08,
+      "model": "jev-1.14.0",
+      "input_tokens": 5050,
+      "output_tokens": 22,
+      "seconds": 5.995875499997055
+    },
+    {
+      "doc_id": "tl01",
+      "page": 59,
+      "phase": "rest",
+      "p_yes": 0.07,
+      "model": "jev-1.14.0",
+      "input_tokens": 5055,
+      "output_tokens": 22,
+      "seconds": 0.6155789579934208
+    },
+    {
+      "doc_id": "tl01",
+      "page": 60,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 5077,
+      "output_tokens": 22,
+      "seconds": 2.745582542003831
+    },
+    {
+      "doc_id": "tl01",
+      "page": 61,
+      "phase": "rest",
+      "p_yes": 0.97,
+      "model": "jev-1.14.0",
+      "input_tokens": 5032,
+      "output_tokens": 22,
+      "seconds": 0.5959777499956544
+    },
+    {
+      "doc_id": "tl01",
+      "page": 62,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 5041,
+      "output_tokens": 22,
+      "seconds": 2.173751666006865
+    },
+    {
+      "doc_id": "tl01",
+      "page": 63,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 5106,
+      "output_tokens": 22,
+      "seconds": 5.6863405000040075
+    },
+    {
+      "doc_id": "tl01",
+      "page": 64,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 5039,
+      "output_tokens": 22,
+      "seconds": 0.6209431669994956
+    },
+    {
+      "doc_id": "tl01",
+      "page": 65,
+      "phase": "rest",
+      "p_yes": 0.05,
+      "model": "jev-1.14.0",
+      "input_tokens": 5074,
+      "output_tokens": 22,
+      "seconds": 0.5967580839933362
+    },
+    {
+      "doc_id": "tl01",
+      "page": 66,
+      "phase": "rest",
+      "p_yes": 0.96,
+      "model": "jev-1.14.0",
+      "input_tokens": 5035,
+      "output_tokens": 22,
+      "seconds": 2.6263820829917677
+    },
+    {
+      "doc_id": "tl01",
+      "page": 67,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 5069,
+      "output_tokens": 22,
+      "seconds": 0.6911643749917857
+    },
+    {
+      "doc_id": "tl01",
+      "page": 68,
+      "phase": "rest",
+      "p_yes": 0.05,
+      "model": "jev-1.14.0",
+      "input_tokens": 5069,
+      "output_tokens": 22,
+      "seconds": 0.6093103750026785
+    },
+    {
+      "doc_id": "tl01",
+      "page": 69,
+      "phase": "rest",
+      "p_yes": 0.01,
+      "model": "jev-1.14.0",
+      "input_tokens": 4994,
+      "output_tokens": 22,
+      "seconds": 3.191325207997579
+    },
+    {
+      "doc_id": "tl01",
+      "page": 70,
+      "phase": "rest",
+      "p_yes": 0.1,
+      "model": "jev-1.14.0",
+      "input_tokens": 4935,
+      "output_tokens": 22,
+      "seconds": 0.8957481249963166
+    },
+    {
+      "doc_id": "tl01",
+      "page": 71,
+      "phase": "rest",
+      "p_yes": 0.13,
+      "model": "jev-1.14.0",
+      "input_tokens": 4925,
+      "output_tokens": 22,
+      "seconds": 0.6334679580031661
+    },
+    {
+      "doc_id": "tl01",
+      "page": 72,
+      "phase": "rest",
+      "p_yes": 0.97,
+      "model": "jev-1.14.0",
+      "input_tokens": 5035,
+      "output_tokens": 22,
+      "seconds": 0.7526604999875417
+    },
+    {
+      "doc_id": "tl01",
+      "page": 73,
+      "phase": "rest",
+      "p_yes": 0.06,
+      "model": "jev-1.14.0",
+      "input_tokens": 5044,
+      "output_tokens": 22,
+      "seconds": 0.6635917499952484
+    },
+    {
+      "doc_id": "tl01",
+      "page": 74,
+      "phase": "rest",
+      "p_yes": 0.98,
+      "model": "jev-1.14.0",
+      "input_tokens": 5034,
+      "output_tokens": 22,
+      "seconds": 0.5878886249993229
+    },
+    {
+      "doc_id": "tl01",
+      "page": 75,
+      "phase": "rest",
+      "p_yes": 0.04,
+      "model": "jev-1.14.0",
+      "input_tokens": 4961,
+      "output_tokens": 22,
+      "seconds": 2.0760289159952663
+    },
+    {
+      "doc_id": "tl01",
+      "page": 76,
+      "phase": "rest",
+      "p_yes": 0.97,
+      "model": "jev-1.14.0",
+      "input_tokens": 4925,
+      "output_tokens": 22,
+      "seconds": 6.803590583003825
+    },
+    {
+      "doc_id": "tl01",
+      "page": 77,
+      "phase": "rest",
+      "p_yes": 0.07,
+      "model": "jev-1.14.0",
+      "input_tokens": 5056,
+      "output_tokens": 22,
+      "seconds": 0.7298729580070358
+    },
+    {
+      "doc_id": "tl01",
+      "page": 78,
+      "phase": "rest",
+      "p_yes": 0.24,
+      "model": "jev-1.14.0",
+      "input_tokens": 5047,
+      "output_tokens": 22,
+      "seconds": 0.3443351660098415
+    },
+    {
+      "doc_id": "tl01",
+      "page": 80,
+      "phase": "rest",
+      "p_yes": 0.04,
+      "model": "jev-1.14.0",
+      "input_tokens": 5109,
+      "output_tokens": 22,
+      "seconds": 0.2826551250036573
+    },
+    {
+      "doc_id": "tl02",
+      "page": 3,
+      "phase": "rest",
+      "p_yes": 0.27,
+      "model": "jev-1.14.0",
+      "input_tokens": 5522,
+      "output_tokens": 22,
+      "seconds": 1.6195425420009997
+    },
+    {
+      "doc_id": "tl02",
+      "page": 4,
+      "phase": "rest",
+      "p_yes": 0.31,
+      "model": "jev-1.14.0",
+      "input_tokens": 5773,
+      "output_tokens": 22,
+      "seconds": 0.385377291997429
+    },
+    {
+      "doc_id": "tl02",
+      "page": 8,
+      "phase": "rest",
+      "p_yes": 0.25,
+      "model": "jev-1.14.0",
+      "input_tokens": 5558,
+      "output_tokens": 22,
+      "seconds": 0.29007904199534096
+    },
+    {
+      "doc_id": "tl02",
+      "page": 11,
+      "phase": "rest",
+      "p_yes": 0.41,
+      "model": "jev-1.14.0",
+      "input_tokens": 5697,
+      "output_tokens": 22,
+      "seconds": 0.328192000000854
+    },
+    {
+      "doc_id": "tl02",
+      "page": 12,
+      "phase": "rest",
+      "p_yes": 0.31,
+      "model": "jev-1.14.0",
+      "input_tokens": 5484,
+      "output_tokens": 22,
+      "seconds": 0.26027241701376624
+    },
+    {
+      "doc_id": "tl02",
+      "page": 13,
+      "phase": "rest",
+      "p_yes": 0.53,
+      "model": "jev-1.14.0",
+      "input_tokens": 5792,
+      "output_tokens": 22,
+      "seconds": 0.3356505410047248
+    },
+    {
+      "doc_id": "tl02",
+      "page": 15,
+      "phase": "rest",
+      "p_yes": 0.24,
+      "model": "jev-1.14.0",
+      "input_tokens": 5446,
+      "output_tokens": 22,
+      "seconds": 0.2525224590062862
+    },
+    {
+      "doc_id": "tl02",
+      "page": 17,
+      "phase": "rest",
+      "p_yes": 0.19,
+      "model": "jev-1.14.0",
+      "input_tokens": 5464,
+      "output_tokens": 22,
+      "seconds": 0.2997764159954386
+    },
+    {
+      "doc_id": "tl02",
+      "page": 18,
+      "phase": "rest",
+      "p_yes": 0.27,
+      "model": "jev-1.14.0",
+      "input_tokens": 5589,
+      "output_tokens": 22,
+      "seconds": 2.4985993330046767
+    },
+    {
+      "doc_id": "tl02",
+      "page": 21,
+      "phase": "rest",
+      "p_yes": 0.49,
+      "model": "jev-1.14.0",
+      "input_tokens": 5807,
+      "output_tokens": 22,
+      "seconds": 0.33072554200771265
+    },
+    {
+      "doc_id": "tl02",
+      "page": 31,
+      "phase": "rest",
+      "p_yes": 0.53,
+      "model": "jev-1.14.0",
+      "input_tokens": 5768,
+      "output_tokens": 22,
+      "seconds": 0.3589427909901133
+    },
+    {
+      "doc_id": "tl02",
+      "page": 32,
+      "phase": "rest",
+      "p_yes": 0.48,
+      "model": "jev-1.14.0",
+      "input_tokens": 5924,
+      "output_tokens": 22,
+      "seconds": 0.37459504199796356
+    },
+    {
+      "doc_id": "tl02",
+      "page": 33,
+      "phase": "rest",
+      "p_yes": 0.23,
+      "model": "jev-1.14.0",
+      "input_tokens": 5332,
+      "output_tokens": 22,
+      "seconds": 4.599082415996236
+    },
+    {
+      "doc_id": "tl02",
+      "page": 35,
+      "phase": "rest",
+      "p_yes": 0.31,
+      "model": "jev-1.14.0",
+      "input_tokens": 5393,
+      "output_tokens": 22,
+      "seconds": 0.2455265419994248
+    },
+    {
+      "doc_id": "tl02",
+      "page": 36,
+      "phase": "rest",
+      "p_yes": 0.21,
+      "model": "jev-1.14.0",
+      "input_tokens": 5649,
+      "output_tokens": 22,
+      "seconds": 0.38195233399164863
+    },
+    {
+      "doc_id": "tl02",
+      "page": 37,
+      "phase": "rest",
+      "p_yes": 0.31,
+      "model": "jev-1.14.0",
+      "input_tokens": 5427,
+      "output_tokens": 22,
+      "seconds": 1.5521724590071244
+    },
+    {
+      "doc_id": "tl02",
+      "page": 38,
+      "phase": "rest",
+      "p_yes": 0.06,
+      "model": "jev-1.14.0",
+      "input_tokens": 5173,
+      "output_tokens": 22,
+      "seconds": 0.28377070899296086
+    },
+    {
+      "doc_id": "tl02",
+      "page": 39,
+      "phase": "rest",
+      "p_yes": 0.22,
+      "model": "jev-1.14.0",
+      "input_tokens": 5261,
+      "output_tokens": 22,
+      "seconds": 1.4399526250053896
+    },
+    {
+      "doc_id": "tl02",
+      "page": 40,
+      "phase": "rest",
+      "p_yes": 0.15,
+      "model": "jev-1.14.0",
+      "input_tokens": 5480,
+      "output_tokens": 22,
+      "seconds": 0.2586117920000106
+    },
+    {
+      "doc_id": "tl02",
+      "page": 41,
+      "phase": "rest",
+      "p_yes": 0.2,
+      "model": "jev-1.14.0",
+      "input_tokens": 5486,
+      "output_tokens": 22,
+      "seconds": 0.2582866250013467
+    },
+    {
+      "doc_id": "tl02",
+      "page": 43,
+      "phase": "rest",
+      "p_yes": 0.2,
+      "model": "jev-1.14.0",
+      "input_tokens": 5244,
+      "output_tokens": 22,
+      "seconds": 2.4441788330004783
+    },
+    {
+      "doc_id": "tl03",
+      "page": 1,
+      "phase": "rest",
+      "p_yes": 0.7,
+      "model": "jev-1.14.0",
+      "input_tokens": 5124,
+      "output_tokens": 22,
+      "seconds": 1.784728583006654
+    },
+    {
+      "doc_id": "tl03",
+      "page": 2,
+      "phase": "rest",
+      "p_yes": 0.2,
+      "model": "jev-1.14.0",
+      "input_tokens": 5632,
+      "output_tokens": 22,
+      "seconds": 0.3329036659997655
+    },
+    {
+      "doc_id": "tl03",
+      "page": 5,
+      "phase": "rest",
+      "p_yes": 0.4,
+      "model": "jev-1.14.0",
+      "input_tokens": 5579,
+      "output_tokens": 22,
+      "seconds": 2.4972239999915473
+    },
+    {
+      "doc_id": "tl03",
+      "page": 7,
+      "phase": "rest",
+      "p_yes": 0.08,
+      "model": "jev-1.14.0",
+      "input_tokens": 5175,
+      "output_tokens": 22,
+      "seconds": 0.24085354099224787
+    },
+    {
+      "doc_id": "tl03",
+      "page": 8,
+      "phase": "rest",
+      "p_yes": 0.07,
+      "model": "jev-1.14.0",
+      "input_tokens": 5066,
+      "output_tokens": 22,
+      "seconds": 0.23963391700817738
+    },
+    {
+      "doc_id": "tl03",
+      "page": 11,
+      "phase": "rest",
+      "p_yes": 0.25,
+      "model": "jev-1.14.0",
+      "input_tokens": 5199,
+      "output_tokens": 22,
+      "seconds": 3.5913722920086
+    },
+    {
+      "doc_id": "tl03",
+      "page": 12,
+      "phase": "rest",
+      "p_yes": 0.29,
+      "model": "jev-1.14.0",
+      "input_tokens": 5146,
+      "output_tokens": 22,
+      "seconds": 0.28039587500097696
+    },
+    {
+      "doc_id": "tl03",
+      "page": 13,
+      "phase": "rest",
+      "p_yes": 0.31,
+      "model": "jev-1.14.0",
+      "input_tokens": 5237,
+      "output_tokens": 22,
+      "seconds": 1.456070083004306
+    },
+    {
+      "doc_id": "tl03",
+      "page": 14,
+      "phase": "rest",
+      "p_yes": 0.33,
+      "model": "jev-1.14.0",
+      "input_tokens": 5220,
+      "output_tokens": 22,
+      "seconds": 1.4239627499919152
+    },
+    {
+      "doc_id": "tl03",
+      "page": 15,
+      "phase": "rest",
+      "p_yes": 0.23,
+      "model": "jev-1.14.0",
+      "input_tokens": 5113,
+      "output_tokens": 22,
+      "seconds": 0.2961592500068946
+    },
+    {
+      "doc_id": "tl03",
+      "page": 17,
+      "phase": "rest",
+      "p_yes": 0.27,
+      "model": "jev-1.14.0",
+      "input_tokens": 5224,
+      "output_tokens": 22,
+      "seconds": 0.26009691698709503
+    },
+    {
+      "doc_id": "tl03",
+      "page": 18,
+      "phase": "rest",
+      "p_yes": 0.21,
+      "model": "jev-1.14.0",
+      "input_tokens": 5165,
+      "output_tokens": 22,
+      "seconds": 0.317675208003493
+    },
+    {
+      "doc_id": "tl03",
+      "page": 20,
+      "phase": "rest",
+      "p_yes": 0.19,
+      "model": "jev-1.14.0",
+      "input_tokens": 5196,
+      "output_tokens": 22,
+      "seconds": 0.24943712499225512
+    },
+    {
+      "doc_id": "tl03",
+      "page": 21,
+      "phase": "rest",
+      "p_yes": 0.27,
+      "model": "jev-1.14.0",
+      "input_tokens": 5155,
+      "output_tokens": 22,
+      "seconds": 2.4544129580026492
+    },
+    {
+      "doc_id": "tl03",
+      "page": 22,
+      "phase": "rest",
+      "p_yes": 0.25,
+      "model": "jev-1.14.0",
+      "input_tokens": 5164,
+      "output_tokens": 22,
+      "seconds": 5.569239792006556
+    },
+    {
+      "doc_id": "tl03",
+      "page": 24,
+      "phase": "rest",
+      "p_yes": 0.19,
+      "model": "jev-1.14.0",
+      "input_tokens": 5142,
+      "output_tokens": 22,
+      "seconds": 0.2689699580078013
+    },
+    {
+      "doc_id": "tl03",
+      "page": 25,
+      "phase": "rest",
+      "p_yes": 0.46,
+      "model": "jev-1.14.0",
+      "input_tokens": 5182,
+      "output_tokens": 22,
+      "seconds": 2.6180294579971815
+    },
+    {
+      "doc_id": "tl04",
+      "page": 9,
+      "phase": "rest",
+      "p_yes": 0.16,
+      "model": "jev-1.14.0",
+      "input_tokens": 4946,
+      "output_tokens": 22,
+      "seconds": 0.2633876249892637
+    },
+    {
+      "doc_id": "tl04",
+      "page": 11,
+      "phase": "rest",
+      "p_yes": 0.21,
+      "model": "jev-1.14.0",
+      "input_tokens": 5054,
+      "output_tokens": 22,
+      "seconds": 2.401851542002987
+    },
+    {
+      "doc_id": "tl07",
+      "page": 1,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 4772,
+      "output_tokens": 22,
+      "seconds": 5.843454207992181
+    },
+    {
+      "doc_id": "tl08",
+      "page": 1,
+      "phase": "rest",
+      "p_yes": 0.05,
+      "model": "jev-1.14.0",
+      "input_tokens": 4764,
+      "output_tokens": 22,
+      "seconds": 0.5028138749912614
+    },
+    {
+      "doc_id": "rf05",
+      "page": 3,
+      "phase": "rest",
+      "p_yes": 0.29,
+      "model": "jev-1.14.0",
+      "input_tokens": 2445,
+      "output_tokens": 22,
+      "seconds": 0.7785863750032149
+    },
+    {
+      "doc_id": "rf05",
+      "page": 9,
+      "phase": "rest",
+      "p_yes": 0.24,
+      "model": "jev-1.14.0",
+      "input_tokens": 2583,
+      "output_tokens": 22,
+      "seconds": 3.6698289170017233
+    },
+    {
+      "doc_id": "rf05",
+      "page": 13,
+      "phase": "rest",
+      "p_yes": 0.22,
+      "model": "jev-1.14.0",
+      "input_tokens": 2355,
+      "output_tokens": 22,
+      "seconds": 2.1031110000039916
+    },
+    {
+      "doc_id": "rf05",
+      "page": 18,
+      "phase": "rest",
+      "p_yes": 0.36,
+      "model": "jev-1.14.0",
+      "input_tokens": 2596,
+      "output_tokens": 22,
+      "seconds": 2.0190953749988694
+    },
+    {
+      "doc_id": "rf05",
+      "page": 21,
+      "phase": "rest",
+      "p_yes": 0.3,
+      "model": "jev-1.14.0",
+      "input_tokens": 2270,
+      "output_tokens": 22,
+      "seconds": 0.7064932909997879
+    },
+    {
+      "doc_id": "rf05",
+      "page": 25,
+      "phase": "rest",
+      "p_yes": 0.09,
+      "model": "jev-1.14.0",
+      "input_tokens": 4837,
+      "output_tokens": 22,
+      "seconds": 1.180966250001802
+    },
+    {
+      "doc_id": "rf06",
+      "page": 1,
+      "phase": "rest",
+      "p_yes": 0.04,
+      "model": "jev-1.14.0",
+      "input_tokens": 4807,
+      "output_tokens": 22,
+      "seconds": 1.2942965419933898
+    },
+    {
+      "doc_id": "rf06",
+      "page": 3,
+      "phase": "rest",
+      "p_yes": 0.01,
+      "model": "jev-1.14.0",
+      "input_tokens": 4556,
+      "output_tokens": 22,
+      "seconds": 5.451874957987457
+    },
+    {
+      "doc_id": "rf06",
+      "page": 4,
+      "phase": "rest",
+      "p_yes": 0.01,
+      "model": "jev-1.14.0",
+      "input_tokens": 4538,
+      "output_tokens": 22,
+      "seconds": 1.4838620420050574
+    },
+    {
+      "doc_id": "rf06",
+      "page": 6,
+      "phase": "rest",
+      "p_yes": 0.1,
+      "model": "jev-1.14.0",
+      "input_tokens": 4537,
+      "output_tokens": 22,
+      "seconds": 1.5514754159958102
+    },
+    {
+      "doc_id": "rf06",
+      "page": 7,
+      "phase": "rest",
+      "p_yes": 0.03,
+      "model": "jev-1.14.0",
+      "input_tokens": 4638,
+      "output_tokens": 22,
+      "seconds": 1.6327414160041371
+    },
+    {
+      "doc_id": "rf06",
+      "page": 11,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 4548,
+      "output_tokens": 22,
+      "seconds": 0.8501324169919826
+    },
+    {
+      "doc_id": "rf06",
+      "page": 15,
+      "phase": "rest",
+      "p_yes": 0.03,
+      "model": "jev-1.14.0",
+      "input_tokens": 4452,
+      "output_tokens": 22,
+      "seconds": 2.628734790996532
+    },
+    {
+      "doc_id": "rf06",
+      "page": 19,
+      "phase": "rest",
+      "p_yes": 0.03,
+      "model": "jev-1.14.0",
+      "input_tokens": 4418,
+      "output_tokens": 22,
+      "seconds": 0.8520335420034826
+    },
+    {
+      "doc_id": "rf06",
+      "page": 23,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 4796,
+      "output_tokens": 22,
+      "seconds": 2.7162524169980315
+    },
+    {
+      "doc_id": "rf06",
+      "page": 24,
+      "phase": "rest",
+      "p_yes": 0.01,
+      "model": "jev-1.14.0",
+      "input_tokens": 3810,
+      "output_tokens": 22,
+      "seconds": 2.761907916996279
+    },
+    {
+      "doc_id": "rf06",
+      "page": 25,
+      "phase": "rest",
+      "p_yes": 0.01,
+      "model": "jev-1.14.0",
+      "input_tokens": 3624,
+      "output_tokens": 22,
+      "seconds": 0.8144062499923166
+    },
+    {
+      "doc_id": "rf06",
+      "page": 27,
+      "phase": "rest",
+      "p_yes": 0.06,
+      "model": "jev-1.14.0",
+      "input_tokens": 5741,
+      "output_tokens": 22,
+      "seconds": 5.88184524999815
+    },
+    {
+      "doc_id": "rf06",
+      "page": 29,
+      "phase": "rest",
+      "p_yes": 0.07,
+      "model": "jev-1.14.0",
+      "input_tokens": 5348,
+      "output_tokens": 22,
+      "seconds": 2.7512715000048047
+    },
+    {
+      "doc_id": "rf06",
+      "page": 31,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 5992,
+      "output_tokens": 22,
+      "seconds": 0.895897333000903
+    },
+    {
+      "doc_id": "rf06",
+      "page": 32,
+      "phase": "rest",
+      "p_yes": 0.01,
+      "model": "jev-1.14.0",
+      "input_tokens": 3782,
+      "output_tokens": 22,
+      "seconds": 3.548468375010998
+    },
+    {
+      "doc_id": "rf06",
+      "page": 33,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 3679,
+      "output_tokens": 22,
+      "seconds": 0.8887351250014035
+    },
+    {
+      "doc_id": "rf06",
+      "page": 35,
+      "phase": "rest",
+      "p_yes": 0.14,
+      "model": "jev-1.14.0",
+      "input_tokens": 3421,
+      "output_tokens": 22,
+      "seconds": 0.8365564160048962
+    },
+    {
+      "doc_id": "rf06",
+      "page": 36,
+      "phase": "rest",
+      "p_yes": 0.17,
+      "model": "jev-1.14.0",
+      "input_tokens": 4311,
+      "output_tokens": 22,
+      "seconds": 1.1742967500031227
+    },
+    {
+      "doc_id": "rf06",
+      "page": 37,
+      "phase": "rest",
+      "p_yes": 0.07,
+      "model": "jev-1.14.0",
+      "input_tokens": 3980,
+      "output_tokens": 22,
+      "seconds": 0.8099459170043701
+    },
+    {
+      "doc_id": "rf06",
+      "page": 38,
+      "phase": "rest",
+      "p_yes": 0.08,
+      "model": "jev-1.14.0",
+      "input_tokens": 5032,
+      "output_tokens": 22,
+      "seconds": 0.7033166670007631
+    },
+    {
+      "doc_id": "rf06",
+      "page": 39,
+      "phase": "rest",
+      "p_yes": 0.07,
+      "model": "jev-1.14.0",
+      "input_tokens": 4920,
+      "output_tokens": 22,
+      "seconds": 0.9298105839989148
+    },
+    {
+      "doc_id": "rf06",
+      "page": 41,
+      "phase": "rest",
+      "p_yes": 0.06,
+      "model": "jev-1.14.0",
+      "input_tokens": 5197,
+      "output_tokens": 22,
+      "seconds": 1.1758987910143333
+    },
+    {
+      "doc_id": "rf06",
+      "page": 42,
+      "phase": "rest",
+      "p_yes": 0.08,
+      "model": "jev-1.14.0",
+      "input_tokens": 5023,
+      "output_tokens": 22,
+      "seconds": 3.663534042003448
+    },
+    {
+      "doc_id": "rf06",
+      "page": 43,
+      "phase": "rest",
+      "p_yes": 0.03,
+      "model": "jev-1.14.0",
+      "input_tokens": 5017,
+      "output_tokens": 22,
+      "seconds": 1.0465543330064975
+    },
+    {
+      "doc_id": "rf06",
+      "page": 44,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 4551,
+      "output_tokens": 22,
+      "seconds": 1.2281762919883477
+    },
+    {
+      "doc_id": "rf06",
+      "page": 45,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 5056,
+      "output_tokens": 22,
+      "seconds": 1.0960312919924036
+    },
+    {
+      "doc_id": "rf06",
+      "page": 46,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 4703,
+      "output_tokens": 22,
+      "seconds": 0.753191167008481
+    },
+    {
+      "doc_id": "rf06",
+      "page": 47,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 4624,
+      "output_tokens": 22,
+      "seconds": 1.1042347500042524
+    },
+    {
+      "doc_id": "rf06",
+      "page": 48,
+      "phase": "rest",
+      "p_yes": 0.01,
+      "model": "jev-1.14.0",
+      "input_tokens": 4526,
+      "output_tokens": 22,
+      "seconds": 2.7820514579943847
+    },
+    {
+      "doc_id": "rf06",
+      "page": 49,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 5159,
+      "output_tokens": 22,
+      "seconds": 1.2473743750015274
+    },
+    {
+      "doc_id": "rf06",
+      "page": 50,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 4898,
+      "output_tokens": 22,
+      "seconds": 0.913698292002664
+    },
+    {
+      "doc_id": "rf06",
+      "page": 51,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 4559,
+      "output_tokens": 22,
+      "seconds": 1.160258750009234
+    },
+    {
+      "doc_id": "rf06",
+      "page": 52,
+      "phase": "rest",
+      "p_yes": 0.01,
+      "model": "jev-1.14.0",
+      "input_tokens": 4840,
+      "output_tokens": 22,
+      "seconds": 1.2286398750002263
+    },
+    {
+      "doc_id": "rf06",
+      "page": 53,
+      "phase": "rest",
+      "p_yes": 0.01,
+      "model": "jev-1.14.0",
+      "input_tokens": 4535,
+      "output_tokens": 22,
+      "seconds": 0.8892207499884535
+    },
+    {
+      "doc_id": "rf06",
+      "page": 54,
+      "phase": "rest",
+      "p_yes": 0.52,
+      "model": "jev-1.14.0",
+      "input_tokens": 4359,
+      "output_tokens": 22,
+      "seconds": 3.4086470420006663
+    },
+    {
+      "doc_id": "rf06",
+      "page": 57,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 4838,
+      "output_tokens": 22,
+      "seconds": 0.9122160409897333
+    },
+    {
+      "doc_id": "rf06",
+      "page": 59,
+      "phase": "rest",
+      "p_yes": 0.06,
+      "model": "jev-1.14.0",
+      "input_tokens": 4720,
+      "output_tokens": 22,
+      "seconds": 2.6830723750026664
+    },
+    {
+      "doc_id": "rf06",
+      "page": 60,
+      "phase": "rest",
+      "p_yes": 0.15,
+      "model": "jev-1.14.0",
+      "input_tokens": 3163,
+      "output_tokens": 22,
+      "seconds": 5.720568958000513
+    },
+    {
+      "doc_id": "rf06",
+      "page": 61,
+      "phase": "rest",
+      "p_yes": 0.05,
+      "model": "jev-1.14.0",
+      "input_tokens": 3146,
+      "output_tokens": 22,
+      "seconds": 0.9066939579934115
+    },
+    {
+      "doc_id": "rf06",
+      "page": 62,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 3416,
+      "output_tokens": 22,
+      "seconds": 1.0214299590006704
+    },
+    {
+      "doc_id": "rf06",
+      "page": 64,
+      "phase": "rest",
+      "p_yes": 0.01,
+      "model": "jev-1.14.0",
+      "input_tokens": 4831,
+      "output_tokens": 22,
+      "seconds": 0.8430017909995513
+    },
+    {
+      "doc_id": "rf06",
+      "page": 65,
+      "phase": "rest",
+      "p_yes": 0.1,
+      "model": "jev-1.14.0",
+      "input_tokens": 5068,
+      "output_tokens": 22,
+      "seconds": 2.877828208002029
+    },
+    {
+      "doc_id": "rf06",
+      "page": 66,
+      "phase": "rest",
+      "p_yes": 0.1,
+      "model": "jev-1.14.0",
+      "input_tokens": 4824,
+      "output_tokens": 22,
+      "seconds": 0.9117023330036318
+    },
+    {
+      "doc_id": "rf06",
+      "page": 67,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 5064,
+      "output_tokens": 22,
+      "seconds": 0.789862332996563
+    },
+    {
+      "doc_id": "rf06",
+      "page": 71,
+      "phase": "rest",
+      "p_yes": 0.16,
+      "model": "jev-1.14.0",
+      "input_tokens": 3700,
+      "output_tokens": 22,
+      "seconds": 3.4505949579906883
+    },
+    {
+      "doc_id": "rf06",
+      "page": 73,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 3842,
+      "output_tokens": 22,
+      "seconds": 0.7953546249918872
+    },
+    {
+      "doc_id": "rf06",
+      "page": 75,
+      "phase": "rest",
+      "p_yes": 0.23,
+      "model": "jev-1.14.0",
+      "input_tokens": 4362,
+      "output_tokens": 22,
+      "seconds": 0.5385574579995591
+    },
+    {
+      "doc_id": "rf06",
+      "page": 76,
+      "phase": "rest",
+      "p_yes": 0.34,
+      "model": "jev-1.14.0",
+      "input_tokens": 3717,
+      "output_tokens": 22,
+      "seconds": 0.6448813330061967
+    },
+    {
+      "doc_id": "rf06",
+      "page": 77,
+      "phase": "rest",
+      "p_yes": 0.12,
+      "model": "jev-1.14.0",
+      "input_tokens": 4047,
+      "output_tokens": 22,
+      "seconds": 0.887468542001443
+    },
+    {
+      "doc_id": "rf06",
+      "page": 78,
+      "phase": "rest",
+      "p_yes": 0.09,
+      "model": "jev-1.14.0",
+      "input_tokens": 3930,
+      "output_tokens": 22,
+      "seconds": 1.1035467080073431
+    },
+    {
+      "doc_id": "rf06",
+      "page": 79,
+      "phase": "rest",
+      "p_yes": 0.09,
+      "model": "jev-1.14.0",
+      "input_tokens": 3875,
+      "output_tokens": 22,
+      "seconds": 1.0012096669961466
+    },
+    {
+      "doc_id": "rf06",
+      "page": 80,
+      "phase": "rest",
+      "p_yes": 0.25,
+      "model": "jev-1.14.0",
+      "input_tokens": 4142,
+      "output_tokens": 22,
+      "seconds": 0.49574716699135024
+    },
+    {
+      "doc_id": "rf06",
+      "page": 81,
+      "phase": "rest",
+      "p_yes": 0.24,
+      "model": "jev-1.14.0",
+      "input_tokens": 4138,
+      "output_tokens": 22,
+      "seconds": 5.171796709008049
+    },
+    {
+      "doc_id": "rf06",
+      "page": 83,
+      "phase": "rest",
+      "p_yes": 0.09,
+      "model": "jev-1.14.0",
+      "input_tokens": 4985,
+      "output_tokens": 22,
+      "seconds": 1.2190284579992294
+    },
+    {
+      "doc_id": "rf06",
+      "page": 85,
+      "phase": "rest",
+      "p_yes": 0.04,
+      "model": "jev-1.14.0",
+      "input_tokens": 5663,
+      "output_tokens": 22,
+      "seconds": 1.2412946249969536
+    },
+    {
+      "doc_id": "rf06",
+      "page": 86,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 4758,
+      "output_tokens": 22,
+      "seconds": 1.65638904098887
+    },
+    {
+      "doc_id": "rf06",
+      "page": 87,
+      "phase": "rest",
+      "p_yes": 0.04,
+      "model": "jev-1.14.0",
+      "input_tokens": 4808,
+      "output_tokens": 22,
+      "seconds": 1.516561583004659
+    },
+    {
+      "doc_id": "rf06",
+      "page": 88,
+      "phase": "rest",
+      "p_yes": 0.03,
+      "model": "jev-1.14.0",
+      "input_tokens": 4833,
+      "output_tokens": 22,
+      "seconds": 1.3364461669989396
+    },
+    {
+      "doc_id": "rf06",
+      "page": 89,
+      "phase": "rest",
+      "p_yes": 0.12,
+      "model": "jev-1.14.0",
+      "input_tokens": 4834,
+      "output_tokens": 22,
+      "seconds": 1.0610798339912435
+    },
+    {
+      "doc_id": "rf07",
+      "page": 1,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 4735,
+      "output_tokens": 22,
+      "seconds": 0.9707885000098031
+    },
+    {
+      "doc_id": "rf07",
+      "page": 2,
+      "phase": "rest",
+      "p_yes": 0.37,
+      "model": "jev-1.14.0",
+      "input_tokens": 4812,
+      "output_tokens": 22,
+      "seconds": 0.9235884999943664
+    },
+    {
+      "doc_id": "rf07",
+      "page": 3,
+      "phase": "rest",
+      "p_yes": 0.09,
+      "model": "jev-1.14.0",
+      "input_tokens": 5391,
+      "output_tokens": 22,
+      "seconds": 1.5201680419995682
+    },
+    {
+      "doc_id": "rf07",
+      "page": 4,
+      "phase": "rest",
+      "p_yes": 0.06,
+      "model": "jev-1.14.0",
+      "input_tokens": 4791,
+      "output_tokens": 22,
+      "seconds": 1.2610218330082716
+    },
+    {
+      "doc_id": "rf07",
+      "page": 5,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 5374,
+      "output_tokens": 22,
+      "seconds": 1.6995854580018204
+    },
+    {
+      "doc_id": "rf07",
+      "page": 6,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 5107,
+      "output_tokens": 22,
+      "seconds": 1.6136609169916483
+    },
+    {
+      "doc_id": "rf07",
+      "page": 7,
+      "phase": "rest",
+      "p_yes": 0.21,
+      "model": "jev-1.14.0",
+      "input_tokens": 4698,
+      "output_tokens": 22,
+      "seconds": 4.262904000002891
+    },
+    {
+      "doc_id": "rf07",
+      "page": 8,
+      "phase": "rest",
+      "p_yes": 0.15,
+      "model": "jev-1.14.0",
+      "input_tokens": 4820,
+      "output_tokens": 22,
+      "seconds": 1.250108749998617
+    },
+    {
+      "doc_id": "rf07",
+      "page": 9,
+      "phase": "rest",
+      "p_yes": 0.07,
+      "model": "jev-1.14.0",
+      "input_tokens": 5183,
+      "output_tokens": 22,
+      "seconds": 4.372351666999748
+    },
+    {
+      "doc_id": "rf07",
+      "page": 10,
+      "phase": "rest",
+      "p_yes": 0.05,
+      "model": "jev-1.14.0",
+      "input_tokens": 5252,
+      "output_tokens": 22,
+      "seconds": 1.5775945000059437
+    },
+    {
+      "doc_id": "rf07",
+      "page": 11,
+      "phase": "rest",
+      "p_yes": 0.06,
+      "model": "jev-1.14.0",
+      "input_tokens": 5084,
+      "output_tokens": 22,
+      "seconds": 0.8423649169999408
+    },
+    {
+      "doc_id": "rf07",
+      "page": 12,
+      "phase": "rest",
+      "p_yes": 0.2,
+      "model": "jev-1.14.0",
+      "input_tokens": 4717,
+      "output_tokens": 22,
+      "seconds": 2.182515667009284
+    },
+    {
+      "doc_id": "rf07",
+      "page": 13,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 4860,
+      "output_tokens": 22,
+      "seconds": 0.7689938330004225
+    },
+    {
+      "doc_id": "rf07",
+      "page": 14,
+      "phase": "rest",
+      "p_yes": 0.3,
+      "model": "jev-1.14.0",
+      "input_tokens": 4786,
+      "output_tokens": 22,
+      "seconds": 0.664252791000763
+    },
+    {
+      "doc_id": "rf07",
+      "page": 16,
+      "phase": "rest",
+      "p_yes": 0.11,
+      "model": "jev-1.14.0",
+      "input_tokens": 4584,
+      "output_tokens": 22,
+      "seconds": 0.4654082500055665
+    },
+    {
+      "doc_id": "rf07",
+      "page": 17,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 4591,
+      "output_tokens": 22,
+      "seconds": 5.145692541991593
+    },
+    {
+      "doc_id": "rf07",
+      "page": 19,
+      "phase": "rest",
+      "p_yes": 0.12,
+      "model": "jev-1.14.0",
+      "input_tokens": 5100,
+      "output_tokens": 22,
+      "seconds": 0.7213443749933504
+    },
+    {
+      "doc_id": "rf07",
+      "page": 20,
+      "phase": "rest",
+      "p_yes": 0.14,
+      "model": "jev-1.14.0",
+      "input_tokens": 4811,
+      "output_tokens": 22,
+      "seconds": 0.6218382919905707
+    },
+    {
+      "doc_id": "rf07",
+      "page": 21,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 4872,
+      "output_tokens": 22,
+      "seconds": 0.9257517919904785
+    },
+    {
+      "doc_id": "rf07",
+      "page": 23,
+      "phase": "rest",
+      "p_yes": 0.14,
+      "model": "jev-1.14.0",
+      "input_tokens": 5237,
+      "output_tokens": 22,
+      "seconds": 0.8146351250034058
+    },
+    {
+      "doc_id": "rf07",
+      "page": 24,
+      "phase": "rest",
+      "p_yes": 0.2,
+      "model": "jev-1.14.0",
+      "input_tokens": 4869,
+      "output_tokens": 22,
+      "seconds": 0.8524512919975678
+    },
+    {
+      "doc_id": "rf07",
+      "page": 25,
+      "phase": "rest",
+      "p_yes": 0.03,
+      "model": "jev-1.14.0",
+      "input_tokens": 5166,
+      "output_tokens": 22,
+      "seconds": 0.918459749998874
+    },
+    {
+      "doc_id": "rf07",
+      "page": 26,
+      "phase": "rest",
+      "p_yes": 0.42,
+      "model": "jev-1.14.0",
+      "input_tokens": 5020,
+      "output_tokens": 22,
+      "seconds": 0.8583239169965964
+    },
+    {
+      "doc_id": "rf07",
+      "page": 27,
+      "phase": "rest",
+      "p_yes": 0.03,
+      "model": "jev-1.14.0",
+      "input_tokens": 5360,
+      "output_tokens": 22,
+      "seconds": 3.738368915990577
+    },
+    {
+      "doc_id": "rf07",
+      "page": 28,
+      "phase": "rest",
+      "p_yes": 0.37,
+      "model": "jev-1.14.0",
+      "input_tokens": 5035,
+      "output_tokens": 22,
+      "seconds": 3.4568924580089515
+    },
+    {
+      "doc_id": "rf07",
+      "page": 29,
+      "phase": "rest",
+      "p_yes": 0.11,
+      "model": "jev-1.14.0",
+      "input_tokens": 5370,
+      "output_tokens": 22,
+      "seconds": 2.5433912919979775
+    },
+    {
+      "doc_id": "rf07",
+      "page": 31,
+      "phase": "rest",
+      "p_yes": 0.03,
+      "model": "jev-1.14.0",
+      "input_tokens": 5037,
+      "output_tokens": 22,
+      "seconds": 0.9799603749997914
+    },
+    {
+      "doc_id": "rf07",
+      "page": 32,
+      "phase": "rest",
+      "p_yes": 0.25,
+      "model": "jev-1.14.0",
+      "input_tokens": 5087,
+      "output_tokens": 22,
+      "seconds": 6.656764209008543
+    },
+    {
+      "doc_id": "rf07",
+      "page": 33,
+      "phase": "rest",
+      "p_yes": 0.08,
+      "model": "jev-1.14.0",
+      "input_tokens": 5308,
+      "output_tokens": 22,
+      "seconds": 0.7371027920016786
+    },
+    {
+      "doc_id": "rf07",
+      "page": 34,
+      "phase": "rest",
+      "p_yes": 0.24,
+      "model": "jev-1.14.0",
+      "input_tokens": 5040,
+      "output_tokens": 22,
+      "seconds": 3.1632693330029724
+    },
+    {
+      "doc_id": "rf07",
+      "page": 35,
+      "phase": "rest",
+      "p_yes": 0.1,
+      "model": "jev-1.14.0",
+      "input_tokens": 5464,
+      "output_tokens": 22,
+      "seconds": 2.43539304099977
+    },
+    {
+      "doc_id": "rf07",
+      "page": 36,
+      "phase": "rest",
+      "p_yes": 0.13,
+      "model": "jev-1.14.0",
+      "input_tokens": 5046,
+      "output_tokens": 22,
+      "seconds": 0.7185524999949848
+    },
+    {
+      "doc_id": "rf07",
+      "page": 37,
+      "phase": "rest",
+      "p_yes": 0.01,
+      "model": "jev-1.14.0",
+      "input_tokens": 5101,
+      "output_tokens": 22,
+      "seconds": 0.7519132499874104
+    },
+    {
+      "doc_id": "rf07",
+      "page": 39,
+      "phase": "rest",
+      "p_yes": 0.08,
+      "model": "jev-1.14.0",
+      "input_tokens": 5181,
+      "output_tokens": 22,
+      "seconds": 0.7780180410045432
+    },
+    {
+      "doc_id": "rf07",
+      "page": 40,
+      "phase": "rest",
+      "p_yes": 0.21,
+      "model": "jev-1.14.0",
+      "input_tokens": 5094,
+      "output_tokens": 22,
+      "seconds": 0.7119922909914749
+    },
+    {
+      "doc_id": "rf07",
+      "page": 41,
+      "phase": "rest",
+      "p_yes": 0.09,
+      "model": "jev-1.14.0",
+      "input_tokens": 5352,
+      "output_tokens": 22,
+      "seconds": 7.321221125006559
+    },
+    {
+      "doc_id": "rf07",
+      "page": 42,
+      "phase": "rest",
+      "p_yes": 0.2,
+      "model": "jev-1.14.0",
+      "input_tokens": 5020,
+      "output_tokens": 22,
+      "seconds": 0.7026552919996902
+    },
+    {
+      "doc_id": "rf07",
+      "page": 43,
+      "phase": "rest",
+      "p_yes": 0.08,
+      "model": "jev-1.14.0",
+      "input_tokens": 5263,
+      "output_tokens": 22,
+      "seconds": 0.8411581669934094
+    },
+    {
+      "doc_id": "rf07",
+      "page": 44,
+      "phase": "rest",
+      "p_yes": 0.34,
+      "model": "jev-1.14.0",
+      "input_tokens": 5132,
+      "output_tokens": 22,
+      "seconds": 2.5854914159863256
+    },
+    {
+      "doc_id": "rf07",
+      "page": 45,
+      "phase": "rest",
+      "p_yes": 0.07,
+      "model": "jev-1.14.0",
+      "input_tokens": 5239,
+      "output_tokens": 22,
+      "seconds": 1.057755707995966
+    },
+    {
+      "doc_id": "rf07",
+      "page": 46,
+      "phase": "rest",
+      "p_yes": 0.23,
+      "model": "jev-1.14.0",
+      "input_tokens": 5251,
+      "output_tokens": 22,
+      "seconds": 6.23391433400684
+    },
+    {
+      "doc_id": "rf07",
+      "page": 47,
+      "phase": "rest",
+      "p_yes": 0.09,
+      "model": "jev-1.14.0",
+      "input_tokens": 5381,
+      "output_tokens": 22,
+      "seconds": 7.273463749996154
+    },
+    {
+      "doc_id": "rf07",
+      "page": 48,
+      "phase": "rest",
+      "p_yes": 0.31,
+      "model": "jev-1.14.0",
+      "input_tokens": 5033,
+      "output_tokens": 22,
+      "seconds": 1.0361687499971595
+    },
+    {
+      "doc_id": "rf07",
+      "page": 49,
+      "phase": "rest",
+      "p_yes": 0.37,
+      "model": "jev-1.14.0",
+      "input_tokens": 5041,
+      "output_tokens": 22,
+      "seconds": 0.9541147080017254
+    },
+    {
+      "doc_id": "rf07",
+      "page": 50,
+      "phase": "rest",
+      "p_yes": 0.49,
+      "model": "jev-1.14.0",
+      "input_tokens": 5034,
+      "output_tokens": 22,
+      "seconds": 0.6661963340011425
+    },
+    {
+      "doc_id": "rf07",
+      "page": 53,
+      "phase": "rest",
+      "p_yes": 0.1,
+      "model": "jev-1.14.0",
+      "input_tokens": 5409,
+      "output_tokens": 22,
+      "seconds": 0.772437791005359
+    },
+    {
+      "doc_id": "rf07",
+      "page": 54,
+      "phase": "rest",
+      "p_yes": 0.32,
+      "model": "jev-1.14.0",
+      "input_tokens": 4924,
+      "output_tokens": 22,
+      "seconds": 3.4418026659986936
+    },
+    {
+      "doc_id": "rf07",
+      "page": 55,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 4992,
+      "output_tokens": 22,
+      "seconds": 2.5132061670010444
+    },
+    {
+      "doc_id": "rf07",
+      "page": 56,
+      "phase": "rest",
+      "p_yes": 0.17,
+      "model": "jev-1.14.0",
+      "input_tokens": 5145,
+      "output_tokens": 22,
+      "seconds": 0.6583221659966512
+    },
+    {
+      "doc_id": "rf07",
+      "page": 57,
+      "phase": "rest",
+      "p_yes": 0.03,
+      "model": "jev-1.14.0",
+      "input_tokens": 5314,
+      "output_tokens": 22,
+      "seconds": 0.8820717080088798
+    },
+    {
+      "doc_id": "rf07",
+      "page": 58,
+      "phase": "rest",
+      "p_yes": 0.3,
+      "model": "jev-1.14.0",
+      "input_tokens": 5024,
+      "output_tokens": 22,
+      "seconds": 3.4190871250029886
+    },
+    {
+      "doc_id": "rf07",
+      "page": 60,
+      "phase": "rest",
+      "p_yes": 0.22,
+      "model": "jev-1.14.0",
+      "input_tokens": 4947,
+      "output_tokens": 22,
+      "seconds": 1.2656005000026198
+    },
+    {
+      "doc_id": "rf07",
+      "page": 63,
+      "phase": "rest",
+      "p_yes": 0.02,
+      "model": "jev-1.14.0",
+      "input_tokens": 4947,
+      "output_tokens": 22,
+      "seconds": 7.841177458001766
+    },
+    {
+      "doc_id": "rf08",
+      "page": 4,
+      "phase": "rest",
+      "p_yes": 0.54,
+      "model": "jev-1.14.0",
+      "input_tokens": 2068,
+      "output_tokens": 22,
+      "seconds": 0.381383875006577
+    },
+    {
+      "doc_id": "rf08",
+      "page": 27,
+      "phase": "rest",
+      "p_yes": 0.17,
+      "model": "jev-1.14.0",
+      "input_tokens": 2073,
+      "output_tokens": 22,
+      "seconds": 0.7904323749971809
+    },
+    {
+      "doc_id": "mx05",
+      "page": 33,
+      "phase": "rest",
+      "p_yes": 0.69,
+      "model": "jev-1.14.0",
+      "input_tokens": 5475,
+      "output_tokens": 22,
+      "seconds": 0.5949191669933498
+    },
+    {
+      "doc_id": "tl03",
+      "page": 19,
+      "phase": "rest",
+      "p_yes": 0.22,
+      "model": "jev-1.14.0",
+      "input_tokens": 5251,
+      "output_tokens": 22,
+      "seconds": 1.3995609169942327
+    },
+    {
+      "doc_id": "rf06",
+      "page": 2,
+      "phase": "rest",
+      "p_yes": 0.14,
+      "model": "jev-1.14.0",
+      "input_tokens": 4477,
+      "output_tokens": 22,
+      "seconds": 1.1537095830135513
+    },
+    {
+      "doc_id": "rf06",
+      "page": 72,
+      "phase": "rest",
+      "p_yes": 0.16,
+      "model": "jev-1.14.0",
+      "input_tokens": 4091,
+      "output_tokens": 22,
+      "seconds": 1.4062969999940833
+    }
+  ],
+  "failures": [
+    {
+      "doc_id": "bd04",
+      "page": 18,
+      "error": "HTTP 503: {\"detail\":{\"error_type\":\"api_usage_error\",\"message\":\"Image processing is unavailable.\"}}"
+    },
+    {
+      "doc_id": "bd05",
+      "page": 25,
+      "error": "HTTP 529: {\"detail\":{\"error_type\":\"system_overloaded\",\"message\":\"We are currently experiencing high traffic and cannot process your request. Please try again later.\"}}"
+    },
+    {
+      "doc_id": "bd07",
+      "page": 26,
+      "error": "HTTP 503: {\"detail\":{\"error_type\":\"api_usage_error\",\"message\":\"Image processing is unavailable.\"}}"
+    },
+    {
+      "doc_id": "bd07",
+      "page": 34,
+      "error": "HTTP 503: {\"detail\":{\"error_type\":\"api_usage_error\",\"message\":\"Image processing is unavailable.\"}}"
+    },
+    {
+      "doc_id": "bd08",
+      "page": 2,
+      "error": "HTTP 529: {\"detail\":{\"error_type\":\"system_overloaded\",\"message\":\"We are currently experiencing high traffic and cannot process your request. Please try again later.\"}}"
+    },
+    {
+      "doc_id": "mx02",
+      "page": 1,
+      "error": "HTTP 503: {\"detail\":{\"error_type\":\"api_usage_error\",\"message\":\"Image processing is unavailable.\"}}"
+    },
+    {
+      "doc_id": "mx03",
+      "page": 13,
+      "error": "HTTP 503: {\"detail\":{\"error_type\":\"api_usage_error\",\"message\":\"Image processing is unavailable.\"}}"
+    },
+    {
+      "doc_id": "mx03",
+      "page": 33,
+      "error": "HTTP 529: {\"detail\":{\"error_type\":\"system_overloaded\",\"message\":\"We are currently experiencing high traffic and cannot process your request. Please try again later.\"}}"
+    },
+    {
+      "doc_id": "mx04",
+      "page": 30,
+      "error": "HTTP 503: {\"detail\":{\"error_type\":\"api_usage_error\",\"message\":\"Image processing is unavailable.\"}}"
+    },
+    {
+      "doc_id": "mx05",
+      "page": 40,
+      "error": "HTTP 503: {\"detail\":{\"error_type\":\"api_usage_error\",\"message\":\"Image processing is unavailable.\"}}"
+    },
+    {
+      "doc_id": "tl01",
+      "page": 12,
+      "error": "HTTP 503: {\"detail\":{\"error_type\":\"api_usage_error\",\"message\":\"Image processing is unavailable.\"}}"
+    },
+    {
+      "doc_id": "tl01",
+      "page": 16,
+      "error": "HTTP 529: {\"detail\":{\"error_type\":\"system_overloaded\",\"message\":\"We are currently experiencing high traffic and cannot process your request. Please try again later.\"}}"
+    },
+    {
+      "doc_id": "tl01",
+      "page": 17,
+      "error": "HTTP 529: {\"detail\":{\"error_type\":\"system_overloaded\",\"message\":\"We are currently experiencing high traffic and cannot process your request. Please try again later.\"}}"
+    },
+    {
+      "doc_id": "tl02",
+      "page": 16,
+      "error": "HTTP 503: {\"detail\":{\"error_type\":\"api_usage_error\",\"message\":\"Image processing is unavailable.\"}}"
+    },
+    {
+      "doc_id": "tl04",
+      "page": 3,
+      "error": "HTTP 529: {\"detail\":{\"error_type\":\"system_overloaded\",\"message\":\"We are currently experiencing high traffic and cannot process your request. Please try again later.\"}}"
+    },
+    {
+      "doc_id": "rf04",
+      "page": 4,
+      "error": "HTTP 503: {\"detail\":{\"error_type\":\"api_usage_error\",\"message\":\"Image processing is unavailable.\"}}"
+    },
+    {
+      "doc_id": "rf08",
+      "page": 3,
+      "error": "HTTP 503: {\"detail\":{\"error_type\":\"api_usage_error\",\"message\":\"Image processing is unavailable.\"}}"
+    },
+    {
+      "doc_id": "mx05",
+      "page": 33,
+      "error": "HTTP 503: {\"detail\":{\"error_type\":\"api_usage_error\",\"message\":\"Image processing is unavailable.\"}}"
+    },
+    {
+      "doc_id": "tl03",
+      "page": 19,
+      "error": "HTTP 503: {\"detail\":{\"error_type\":\"api_usage_error\",\"message\":\"Image processing is unavailable.\"}}"
+    },
+    {
+      "doc_id": "rf06",
+      "page": 2,
+      "error": "HTTP 529: {\"detail\":{\"error_type\":\"system_overloaded\",\"message\":\"We are currently experiencing high traffic and cannot process your request. Please try again later.\"}}"
+    },
+    {
+      "doc_id": "rf06",
+      "page": 72,
+      "error": "HTTP 503: {\"detail\":{\"error_type\":\"api_usage_error\",\"message\":\"Image processing is unavailable.\"}}"
+    }
+  ]
+}

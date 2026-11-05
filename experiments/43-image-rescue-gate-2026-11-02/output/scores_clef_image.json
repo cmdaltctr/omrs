@@ -1,0 +1,7203 @@
+{
+  "identity": {
+    "arm": "clef_image",
+    "question": "Does the text match the text written or printed on the page image?",
+    "text_head_chars": 2000,
+    "inputs_sha256": "438dcc369f1c037772e176e9458074264f9bcc6f123eef51f61cd7d5ad885c20",
+    "model": "25f801e2a27610b0ccc0cb1558d7eda3d7a304e34e2c4a04e3079357ff7d906e"
+  },
+  "rows": [
+    {
+      "doc_id": "bd01",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.8566114938045492,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2452,
+      "seconds": 4.088476834003814
+    },
+    {
+      "doc_id": "bd01",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.9029127610001875,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2430,
+      "seconds": 3.9601273750013206
+    },
+    {
+      "doc_id": "bd01",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.8903814965425695,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2389,
+      "seconds": 3.973285957996268
+    },
+    {
+      "doc_id": "bd01",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.8390079339083083,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2403,
+      "seconds": 4.103936208004598
+    },
+    {
+      "doc_id": "bd01",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.8994960826368739,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2440,
+      "seconds": 4.140745832992252
+    },
+    {
+      "doc_id": "bd01",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.9121049849575464,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2329,
+      "seconds": 4.137107582995668
+    },
+    {
+      "doc_id": "bd02",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.9052275564305322,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2513,
+      "seconds": 4.076683875013259
+    },
+    {
+      "doc_id": "bd02",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.8750649506720891,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2437,
+      "seconds": 4.0295247079920955
+    },
+    {
+      "doc_id": "bd02",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.8682847423697787,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2690,
+      "seconds": 4.267199416004587
+    },
+    {
+      "doc_id": "bd02",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.8760870209006514,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2374,
+      "seconds": 4.016717791004339
+    },
+    {
+      "doc_id": "bd02",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.8907740287650621,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2143,
+      "seconds": 3.853106000009575
+    },
+    {
+      "doc_id": "bd02",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.9176872733217541,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2045,
+      "seconds": 3.7464667079912033
+    },
+    {
+      "doc_id": "bd02",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.9005410618111916,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2425,
+      "seconds": 4.016807250009151
+    },
+    {
+      "doc_id": "bd02",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.8504898435022525,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2225,
+      "seconds": 3.8415947500034235
+    },
+    {
+      "doc_id": "bd02",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.9114748712378771,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2329,
+      "seconds": 3.9430871670047054
+    },
+    {
+      "doc_id": "bd02",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.8570128675605534,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2437,
+      "seconds": 4.030914083996322
+    },
+    {
+      "doc_id": "bd02",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.895921529889211,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2328,
+      "seconds": 3.9608101249905303
+    },
+    {
+      "doc_id": "bd02",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.8788397948305914,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2780,
+      "seconds": 4.231507207994582
+    },
+    {
+      "doc_id": "bd03",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.9209817016193657,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2548,
+      "seconds": 4.264578874994186
+    },
+    {
+      "doc_id": "bd03",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.8563474672933098,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2522,
+      "seconds": 4.300419624996721
+    },
+    {
+      "doc_id": "bd03",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.9015771475708027,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2433,
+      "seconds": 4.238015666996944
+    },
+    {
+      "doc_id": "bd03",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.9289518109500022,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2594,
+      "seconds": 4.354828416995588
+    },
+    {
+      "doc_id": "bd03",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.93303623369678,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2298,
+      "seconds": 4.035553291992983
+    },
+    {
+      "doc_id": "bd03",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.9206282050544466,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2678,
+      "seconds": 4.332502959005069
+    },
+    {
+      "doc_id": "bd03",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.9180963851477553,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2536,
+      "seconds": 4.207519499992486
+    },
+    {
+      "doc_id": "bd03",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.9182522412968018,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2493,
+      "seconds": 4.174622082995484
+    },
+    {
+      "doc_id": "bd03",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.904973478291107,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2463,
+      "seconds": 4.138710415994865
+    },
+    {
+      "doc_id": "bd03",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.9044653878589632,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2461,
+      "seconds": 4.139471833012067
+    },
+    {
+      "doc_id": "bd03",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.8746744901052519,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2492,
+      "seconds": 4.131769874991733
+    },
+    {
+      "doc_id": "bd03",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.9181908697288209,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2464,
+      "seconds": 4.134086625010241
+    },
+    {
+      "doc_id": "bd03",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.9190040178169822,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2260,
+      "seconds": 3.9184363749955082
+    },
+    {
+      "doc_id": "bd03",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.9217868447039999,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2380,
+      "seconds": 3.999110875010956
+    },
+    {
+      "doc_id": "bd03",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.909805850384035,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2481,
+      "seconds": 4.12761079199845
+    },
+    {
+      "doc_id": "bd03",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.9126826043789302,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2552,
+      "seconds": 4.1078127499931725
+    },
+    {
+      "doc_id": "bd03",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.9129542109752267,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2446,
+      "seconds": 4.09702791699965
+    },
+    {
+      "doc_id": "bd03",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.9156045165835789,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2466,
+      "seconds": 4.0990772919903975
+    },
+    {
+      "doc_id": "bd03",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.9174175397399749,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2563,
+      "seconds": 4.194857458991464
+    },
+    {
+      "doc_id": "bd03",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.9073612325313334,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2443,
+      "seconds": 4.107424333007657
+    },
+    {
+      "doc_id": "bd03",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.9280940823170758,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2757,
+      "seconds": 4.29440899999463
+    },
+    {
+      "doc_id": "bd03",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.9186520237508189,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2831,
+      "seconds": 4.481628499997896
+    },
+    {
+      "doc_id": "bd03",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.9264514745806222,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2824,
+      "seconds": 4.5121927080035675
+    },
+    {
+      "doc_id": "bd03",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.9168125742093438,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2794,
+      "seconds": 4.387935584003571
+    },
+    {
+      "doc_id": "bd03",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.9181679610117979,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2823,
+      "seconds": 4.482863458004431
+    },
+    {
+      "doc_id": "bd04",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.9201497120101815,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1832,
+      "seconds": 2.5607493330026045
+    },
+    {
+      "doc_id": "bd04",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.8735280606840964,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1880,
+      "seconds": 2.5772277920041233
+    },
+    {
+      "doc_id": "bd04",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.6595235799449947,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2016,
+      "seconds": 2.6684250000107568
+    },
+    {
+      "doc_id": "bd04",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.9002732136018454,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1893,
+      "seconds": 2.5986150419921614
+    },
+    {
+      "doc_id": "bd04",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.8772954233912571,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1966,
+      "seconds": 2.698702791996766
+    },
+    {
+      "doc_id": "bd04",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.8811509817590923,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2057,
+      "seconds": 2.785797290998744
+    },
+    {
+      "doc_id": "bd04",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.8640810646119399,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2034,
+      "seconds": 2.729898667006637
+    },
+    {
+      "doc_id": "bd04",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.2634511645936879,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2060,
+      "seconds": 2.809910542011494
+    },
+    {
+      "doc_id": "bd04",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.35414277868463967,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2038,
+      "seconds": 2.737030832999153
+    },
+    {
+      "doc_id": "bd04",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.8124912487759931,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2177,
+      "seconds": 2.913554250000743
+    },
+    {
+      "doc_id": "bd04",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.8755786263543358,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1892,
+      "seconds": 2.6277998340083286
+    },
+    {
+      "doc_id": "bd04",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.6178034167726776,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2032,
+      "seconds": 2.7292264999996405
+    },
+    {
+      "doc_id": "bd04",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.6683483929079304,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1974,
+      "seconds": 2.7100597499957075
+    },
+    {
+      "doc_id": "bd04",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.17092498174937582,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1835,
+      "seconds": 2.5971521669998765
+    },
+    {
+      "doc_id": "bd04",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.643916710432667,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2071,
+      "seconds": 2.8061774999951012
+    },
+    {
+      "doc_id": "bd04",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.8204950270944805,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2089,
+      "seconds": 2.808372542000143
+    },
+    {
+      "doc_id": "bd04",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.8909223900735648,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2035,
+      "seconds": 2.7024731669953326
+    },
+    {
+      "doc_id": "bd04",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.8347709123078381,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2039,
+      "seconds": 2.7076793749874923
+    },
+    {
+      "doc_id": "bd04",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.45214717240672503,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2196,
+      "seconds": 2.888007292000111
+    },
+    {
+      "doc_id": "bd04",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.5378780431263149,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2080,
+      "seconds": 2.789467541006161
+    },
+    {
+      "doc_id": "bd04",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.7704006806689356,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2059,
+      "seconds": 2.7645002500066767
+    },
+    {
+      "doc_id": "bd04",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.17509472040770618,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2226,
+      "seconds": 2.871876625009463
+    },
+    {
+      "doc_id": "bd04",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.4919556019784997,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2220,
+      "seconds": 2.8952378329995554
+    },
+    {
+      "doc_id": "bd04",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.5064922349520794,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2021,
+      "seconds": 2.668899625001359
+    },
+    {
+      "doc_id": "bd04",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.6719165983893357,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2110,
+      "seconds": 2.7787053329957416
+    },
+    {
+      "doc_id": "bd04",
+      "page": 26,
+      "phase": "fit",
+      "p_yes": 0.8458447849689977,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2044,
+      "seconds": 2.676239958003862
+    },
+    {
+      "doc_id": "bd04",
+      "page": 27,
+      "phase": "fit",
+      "p_yes": 0.8299949025139016,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1951,
+      "seconds": 2.675604582997039
+    },
+    {
+      "doc_id": "bd04",
+      "page": 28,
+      "phase": "fit",
+      "p_yes": 0.16237630748478937,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2082,
+      "seconds": 2.7537107919924892
+    },
+    {
+      "doc_id": "bd04",
+      "page": 29,
+      "phase": "fit",
+      "p_yes": 0.22161088224862774,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2046,
+      "seconds": 2.6961813340021763
+    },
+    {
+      "doc_id": "bd04",
+      "page": 30,
+      "phase": "fit",
+      "p_yes": 0.42426592126467555,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2062,
+      "seconds": 2.7509902919991873
+    },
+    {
+      "doc_id": "bd04",
+      "page": 31,
+      "phase": "fit",
+      "p_yes": 0.906140732267562,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2186,
+      "seconds": 2.86992608300352
+    },
+    {
+      "doc_id": "bd05",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.9300832019662262,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1721,
+      "seconds": 2.42089575000864
+    },
+    {
+      "doc_id": "bd05",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.9272674052042703,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1897,
+      "seconds": 2.5465136250131764
+    },
+    {
+      "doc_id": "bd05",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.9185555988184045,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1905,
+      "seconds": 2.553442834003363
+    },
+    {
+      "doc_id": "bd05",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.9154898715064856,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1957,
+      "seconds": 2.622574542008806
+    },
+    {
+      "doc_id": "bd05",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.9185218816967005,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1913,
+      "seconds": 2.563942541004508
+    },
+    {
+      "doc_id": "bd05",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.9286614126148246,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1953,
+      "seconds": 2.644012750010006
+    },
+    {
+      "doc_id": "bd05",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.9311037260442903,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1908,
+      "seconds": 2.550962834007805
+    },
+    {
+      "doc_id": "bd05",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.9356118781618871,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1922,
+      "seconds": 2.7224259999929927
+    },
+    {
+      "doc_id": "bd05",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.9158379224853547,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1923,
+      "seconds": 2.6453501250070985
+    },
+    {
+      "doc_id": "bd05",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.9238077855947082,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1910,
+      "seconds": 2.5437978749978356
+    },
+    {
+      "doc_id": "bd05",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.9154967885026681,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1933,
+      "seconds": 2.6273454170004698
+    },
+    {
+      "doc_id": "bd05",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.9165685992517205,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1944,
+      "seconds": 2.631986374995904
+    },
+    {
+      "doc_id": "bd05",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.9160652151309118,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1908,
+      "seconds": 2.558624500001315
+    },
+    {
+      "doc_id": "bd05",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.9181248861238688,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1887,
+      "seconds": 2.5519685420003952
+    },
+    {
+      "doc_id": "bd05",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.9219901973695798,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1906,
+      "seconds": 2.5636929589963984
+    },
+    {
+      "doc_id": "bd05",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.9239774079133996,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1914,
+      "seconds": 2.5506006659998093
+    },
+    {
+      "doc_id": "bd05",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.9031549841016756,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1934,
+      "seconds": 2.624977667001076
+    },
+    {
+      "doc_id": "bd05",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.9202703426265498,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1882,
+      "seconds": 2.544431000002078
+    },
+    {
+      "doc_id": "bd05",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.9293737509606717,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1960,
+      "seconds": 2.6380289169901516
+    },
+    {
+      "doc_id": "bd05",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.9273970124701966,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1768,
+      "seconds": 2.435732708996511
+    },
+    {
+      "doc_id": "bd05",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.9216511417303963,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1984,
+      "seconds": 2.668006708001485
+    },
+    {
+      "doc_id": "bd05",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.9134868421723868,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1974,
+      "seconds": 2.6857286250015022
+    },
+    {
+      "doc_id": "bd05",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.9171102442276424,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1966,
+      "seconds": 2.657393041998148
+    },
+    {
+      "doc_id": "bd05",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.9136220124327384,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1983,
+      "seconds": 2.6490273749950575
+    },
+    {
+      "doc_id": "bd05",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.9212338215396572,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2189,
+      "seconds": 2.852653249996365
+    },
+    {
+      "doc_id": "bd05",
+      "page": 26,
+      "phase": "fit",
+      "p_yes": 0.9032676180753733,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2190,
+      "seconds": 2.8638883749954402
+    },
+    {
+      "doc_id": "bd05",
+      "page": 27,
+      "phase": "fit",
+      "p_yes": 0.8959035653760113,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2172,
+      "seconds": 2.786272583005484
+    },
+    {
+      "doc_id": "bd05",
+      "page": 28,
+      "phase": "fit",
+      "p_yes": 0.923815773232698,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1595,
+      "seconds": 2.3209518329967977
+    },
+    {
+      "doc_id": "bd05",
+      "page": 29,
+      "phase": "fit",
+      "p_yes": 0.8961936743926251,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1943,
+      "seconds": 2.643193791998783
+    },
+    {
+      "doc_id": "bd05",
+      "page": 30,
+      "phase": "fit",
+      "p_yes": 0.9243911506165272,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1682,
+      "seconds": 2.4272476250043837
+    },
+    {
+      "doc_id": "bd06",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.9274335409682436,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2536,
+      "seconds": 4.093902332999278
+    },
+    {
+      "doc_id": "bd06",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.9179332540832414,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2474,
+      "seconds": 4.0814457499946
+    },
+    {
+      "doc_id": "bd06",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.903632071712036,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2532,
+      "seconds": 4.096294832997955
+    },
+    {
+      "doc_id": "bd06",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.9218009986666867,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2188,
+      "seconds": 3.835794624988921
+    },
+    {
+      "doc_id": "bd06",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.8909761894565179,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 3207,
+      "seconds": 4.739971917006187
+    },
+    {
+      "doc_id": "bd06",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.9071249630717025,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2463,
+      "seconds": 4.099425167005393
+    },
+    {
+      "doc_id": "bd06",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.8932210717922198,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2456,
+      "seconds": 4.068107041006442
+    },
+    {
+      "doc_id": "bd06",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.9331481669557513,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2479,
+      "seconds": 4.07837970899709
+    },
+    {
+      "doc_id": "bd06",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.920971047589605,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2644,
+      "seconds": 4.194461334001971
+    },
+    {
+      "doc_id": "bd07",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.9170306707863508,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2382,
+      "seconds": 3.835385792001034
+    },
+    {
+      "doc_id": "bd07",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.9154771890120322,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2442,
+      "seconds": 3.895797457997105
+    },
+    {
+      "doc_id": "bd07",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.36034349788574627,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2403,
+      "seconds": 3.7989291249978123
+    },
+    {
+      "doc_id": "bd07",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.8534237171732799,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2436,
+      "seconds": 3.884592458998668
+    },
+    {
+      "doc_id": "bd07",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.836008931881896,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2555,
+      "seconds": 3.9164725419977913
+    },
+    {
+      "doc_id": "bd07",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.8369522054673197,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2499,
+      "seconds": 3.8965346249897266
+    },
+    {
+      "doc_id": "bd07",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.9018236810011449,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2558,
+      "seconds": 3.9155268750037067
+    },
+    {
+      "doc_id": "bd07",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.8400623577952196,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2713,
+      "seconds": 4.101897833010298
+    },
+    {
+      "doc_id": "bd07",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.6666571832612163,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2531,
+      "seconds": 3.9159876670019003
+    },
+    {
+      "doc_id": "bd07",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.8749090482953334,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2450,
+      "seconds": 3.881233540989342
+    },
+    {
+      "doc_id": "bd07",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.9207726587815901,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1983,
+      "seconds": 3.4596975830063457
+    },
+    {
+      "doc_id": "bd07",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.6548611852218972,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2463,
+      "seconds": 3.8947485000098823
+    },
+    {
+      "doc_id": "bd07",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.9215381629012889,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2554,
+      "seconds": 3.94167266698787
+    },
+    {
+      "doc_id": "bd07",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.8979632066536396,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2591,
+      "seconds": 3.992011292008101
+    },
+    {
+      "doc_id": "bd07",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.916189147522629,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2534,
+      "seconds": 3.921689000009792
+    },
+    {
+      "doc_id": "bd07",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.8336228477875204,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2635,
+      "seconds": 4.005469791998621
+    },
+    {
+      "doc_id": "bd07",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.8412585263744589,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2609,
+      "seconds": 3.999028666992672
+    },
+    {
+      "doc_id": "bd07",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.8712953540483681,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2623,
+      "seconds": 3.996459665999282
+    },
+    {
+      "doc_id": "bd07",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.8319640827999086,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2917,
+      "seconds": 4.354772208011127
+    },
+    {
+      "doc_id": "bd07",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.8404697854710553,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2876,
+      "seconds": 4.322680875004153
+    },
+    {
+      "doc_id": "bd07",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.47756309640735883,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 3016,
+      "seconds": 4.402172999994946
+    },
+    {
+      "doc_id": "bd07",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.7776946506697398,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2911,
+      "seconds": 4.319427791997441
+    },
+    {
+      "doc_id": "bd07",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.7064220494476373,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2656,
+      "seconds": 4.150252292005462
+    },
+    {
+      "doc_id": "bd07",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.8554006805165415,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2910,
+      "seconds": 4.330381583000417
+    },
+    {
+      "doc_id": "bd07",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.313259475286311,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2799,
+      "seconds": 4.209160792001057
+    },
+    {
+      "doc_id": "bd07",
+      "page": 26,
+      "phase": "fit",
+      "p_yes": 0.4651865421961947,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2723,
+      "seconds": 4.2121844170033
+    },
+    {
+      "doc_id": "bd07",
+      "page": 27,
+      "phase": "fit",
+      "p_yes": 0.4908014037918935,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 3016,
+      "seconds": 4.4777556659973925
+    },
+    {
+      "doc_id": "bd07",
+      "page": 28,
+      "phase": "fit",
+      "p_yes": 0.2660299168045218,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2929,
+      "seconds": 4.332806292004534
+    },
+    {
+      "doc_id": "bd07",
+      "page": 29,
+      "phase": "fit",
+      "p_yes": 0.6413042129075529,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2973,
+      "seconds": 4.4237870420038234
+    },
+    {
+      "doc_id": "bd07",
+      "page": 30,
+      "phase": "fit",
+      "p_yes": 0.8023055667056533,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2906,
+      "seconds": 4.346317999996245
+    },
+    {
+      "doc_id": "bd07",
+      "page": 31,
+      "phase": "fit",
+      "p_yes": 0.19582264299414143,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2845,
+      "seconds": 4.3139449170121225
+    },
+    {
+      "doc_id": "bd07",
+      "page": 32,
+      "phase": "fit",
+      "p_yes": 0.770003102420104,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2919,
+      "seconds": 4.332848207995994
+    },
+    {
+      "doc_id": "bd07",
+      "page": 33,
+      "phase": "fit",
+      "p_yes": 0.52774259309582,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2880,
+      "seconds": 4.314239500003168
+    },
+    {
+      "doc_id": "bd07",
+      "page": 34,
+      "phase": "fit",
+      "p_yes": 0.2979233131924116,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2778,
+      "seconds": 4.227365208003903
+    },
+    {
+      "doc_id": "bd07",
+      "page": 35,
+      "phase": "fit",
+      "p_yes": 0.7914904345832321,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2998,
+      "seconds": 4.4033402080094675
+    },
+    {
+      "doc_id": "bd07",
+      "page": 36,
+      "phase": "fit",
+      "p_yes": 0.5796879410420817,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 3019,
+      "seconds": 4.43243329199322
+    },
+    {
+      "doc_id": "bd07",
+      "page": 37,
+      "phase": "fit",
+      "p_yes": 0.452516226883227,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2887,
+      "seconds": 4.30599304199859
+    },
+    {
+      "doc_id": "bd07",
+      "page": 38,
+      "phase": "fit",
+      "p_yes": 0.30155559095761464,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2676,
+      "seconds": 4.086163583997404
+    },
+    {
+      "doc_id": "bd07",
+      "page": 39,
+      "phase": "fit",
+      "p_yes": 0.43568904517685136,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2801,
+      "seconds": 4.1864396250020945
+    },
+    {
+      "doc_id": "bd07",
+      "page": 40,
+      "phase": "fit",
+      "p_yes": 0.7957498769264372,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2928,
+      "seconds": 4.313112707997789
+    },
+    {
+      "doc_id": "bd07",
+      "page": 41,
+      "phase": "fit",
+      "p_yes": 0.7854539180720881,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2885,
+      "seconds": 4.313348958006827
+    },
+    {
+      "doc_id": "bd07",
+      "page": 42,
+      "phase": "fit",
+      "p_yes": 0.9025039417476957,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2578,
+      "seconds": 4.048684416993638
+    },
+    {
+      "doc_id": "bd07",
+      "page": 43,
+      "phase": "fit",
+      "p_yes": 0.8888967893983901,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2597,
+      "seconds": 4.021232707993477
+    },
+    {
+      "doc_id": "bd07",
+      "page": 44,
+      "phase": "fit",
+      "p_yes": 0.9256604775726996,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2403,
+      "seconds": 3.811409542002366
+    },
+    {
+      "doc_id": "bd08",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.872246239311339,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2521,
+      "seconds": 4.211305792006897
+    },
+    {
+      "doc_id": "bd08",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.9074937967377854,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2429,
+      "seconds": 4.103582750001806
+    },
+    {
+      "doc_id": "bd08",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.8939778864008041,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2451,
+      "seconds": 4.180839041990112
+    },
+    {
+      "doc_id": "bd08",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.9090687817016567,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2449,
+      "seconds": 4.219577625000966
+    },
+    {
+      "doc_id": "bd08",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.9169713512680546,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2459,
+      "seconds": 4.217066957993666
+    },
+    {
+      "doc_id": "bd08",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.9061349530405363,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2500,
+      "seconds": 4.3208751659985865
+    },
+    {
+      "doc_id": "bd08",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.898870623247227,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 3032,
+      "seconds": 4.6908640840119915
+    },
+    {
+      "doc_id": "bd08",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.9009201202331854,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2555,
+      "seconds": 4.215081041998928
+    },
+    {
+      "doc_id": "bd08",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.8981604086403207,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 3193,
+      "seconds": 4.766135541998665
+    },
+    {
+      "doc_id": "bd08",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.8837460813292671,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2601,
+      "seconds": 4.310643250006251
+    },
+    {
+      "doc_id": "bd08",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.8934911455190481,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2807,
+      "seconds": 4.492500332999043
+    },
+    {
+      "doc_id": "mx01",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.942741287074577,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2072,
+      "seconds": 3.8406491670029936
+    },
+    {
+      "doc_id": "mx01",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.927836552488587,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2485,
+      "seconds": 4.241296459003934
+    },
+    {
+      "doc_id": "mx01",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.9278271494063697,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2258,
+      "seconds": 3.9913657500001136
+    },
+    {
+      "doc_id": "mx01",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.942728866383605,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2246,
+      "seconds": 3.985572833000333
+    },
+    {
+      "doc_id": "mx01",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.9408854921526336,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2489,
+      "seconds": 4.200770665993332
+    },
+    {
+      "doc_id": "mx01",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.9400279219994065,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2451,
+      "seconds": 4.1883379589999095
+    },
+    {
+      "doc_id": "mx01",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.9308870712515828,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2434,
+      "seconds": 4.169830166007159
+    },
+    {
+      "doc_id": "mx01",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.921657373797182,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2427,
+      "seconds": 4.104751791994204
+    },
+    {
+      "doc_id": "mx01",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.9365069919579904,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2439,
+      "seconds": 4.151674416003516
+    },
+    {
+      "doc_id": "mx01",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.9315926964017591,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2431,
+      "seconds": 4.087546875001863
+    },
+    {
+      "doc_id": "mx01",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.9126012678238647,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2423,
+      "seconds": 4.089695624992601
+    },
+    {
+      "doc_id": "mx01",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.9266344829115206,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2275,
+      "seconds": 3.9494994999986375
+    },
+    {
+      "doc_id": "mx01",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.9299517690804361,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2310,
+      "seconds": 4.038636208992102
+    },
+    {
+      "doc_id": "mx01",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.9276456356691922,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2392,
+      "seconds": 4.059784625002067
+    },
+    {
+      "doc_id": "mx01",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.9164060629959863,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2489,
+      "seconds": 4.178777709006681
+    },
+    {
+      "doc_id": "mx01",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.9101229364580683,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2419,
+      "seconds": 4.068772083992371
+    },
+    {
+      "doc_id": "mx01",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.8737623641818605,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2398,
+      "seconds": 4.055303291999735
+    },
+    {
+      "doc_id": "mx01",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.9416168681784669,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2126,
+      "seconds": 3.848543750005774
+    },
+    {
+      "doc_id": "mx01",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.9383589522758073,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2175,
+      "seconds": 3.8469929579878226
+    },
+    {
+      "doc_id": "mx01",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.9069545086457566,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2460,
+      "seconds": 4.151957207999658
+    },
+    {
+      "doc_id": "mx01",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.9235180596809968,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2470,
+      "seconds": 4.155870957998559
+    },
+    {
+      "doc_id": "mx01",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.9299535939436958,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2480,
+      "seconds": 4.184418541990453
+    },
+    {
+      "doc_id": "mx01",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.9128835891352233,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2446,
+      "seconds": 4.2859770840004785
+    },
+    {
+      "doc_id": "mx01",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.9364372917165296,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2117,
+      "seconds": 4.183160540997051
+    },
+    {
+      "doc_id": "mx01",
+      "page": 28,
+      "phase": "fit",
+      "p_yes": 0.8709964822249896,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2144,
+      "seconds": 3.882148500008043
+    },
+    {
+      "doc_id": "mx01",
+      "page": 29,
+      "phase": "fit",
+      "p_yes": 0.9125763152021488,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2511,
+      "seconds": 4.447200125010568
+    },
+    {
+      "doc_id": "mx02",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.9415387804458233,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2082,
+      "seconds": 3.9967053329892224
+    },
+    {
+      "doc_id": "mx02",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.9198911383242773,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2474,
+      "seconds": 4.338298333008424
+    },
+    {
+      "doc_id": "mx02",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.9309454898837878,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2155,
+      "seconds": 4.007459583997843
+    },
+    {
+      "doc_id": "mx02",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.9427800130811927,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2208,
+      "seconds": 4.183336917005363
+    },
+    {
+      "doc_id": "mx02",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.9417646045047144,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2535,
+      "seconds": 4.337681834003888
+    },
+    {
+      "doc_id": "mx02",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.9322786972269005,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2451,
+      "seconds": 4.306605999998283
+    },
+    {
+      "doc_id": "mx02",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.9022181551824966,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2446,
+      "seconds": 4.384202957997331
+    },
+    {
+      "doc_id": "mx02",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.9264650710215893,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2454,
+      "seconds": 4.523903791006887
+    },
+    {
+      "doc_id": "mx02",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.9344014249018455,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2299,
+      "seconds": 4.108692499998142
+    },
+    {
+      "doc_id": "mx02",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.8846722200914222,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2459,
+      "seconds": 4.189822583008208
+    },
+    {
+      "doc_id": "mx02",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.915122886410099,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2456,
+      "seconds": 4.224185083992779
+    },
+    {
+      "doc_id": "mx02",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.9078361226877609,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2492,
+      "seconds": 4.223499667001306
+    },
+    {
+      "doc_id": "mx02",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.9045710815551427,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2476,
+      "seconds": 4.205619874992408
+    },
+    {
+      "doc_id": "mx02",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.9220618633524565,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2479,
+      "seconds": 4.189227958995616
+    },
+    {
+      "doc_id": "mx02",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.8909001801789943,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2147,
+      "seconds": 3.883698416990228
+    },
+    {
+      "doc_id": "mx02",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.9363018863103348,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2535,
+      "seconds": 4.210601875005523
+    },
+    {
+      "doc_id": "mx03",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.942104908137199,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2074,
+      "seconds": 3.858327875001123
+    },
+    {
+      "doc_id": "mx03",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.9127832914733371,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2322,
+      "seconds": 4.1041027500032214
+    },
+    {
+      "doc_id": "mx03",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.9447421260267928,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2129,
+      "seconds": 3.899102583003696
+    },
+    {
+      "doc_id": "mx03",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.9435546289781144,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2545,
+      "seconds": 4.210214249993442
+    },
+    {
+      "doc_id": "mx03",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.9270554820592868,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2459,
+      "seconds": 4.201500540992129
+    },
+    {
+      "doc_id": "mx03",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.9315880925131017,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2431,
+      "seconds": 4.1177056659944355
+    },
+    {
+      "doc_id": "mx03",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.9252321012414226,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2474,
+      "seconds": 4.222410791000584
+    },
+    {
+      "doc_id": "mx03",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.9025588289272266,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2410,
+      "seconds": 4.131350833995384
+    },
+    {
+      "doc_id": "mx03",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.932790406755731,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2467,
+      "seconds": 4.261440166999819
+    },
+    {
+      "doc_id": "mx03",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.9375965765536851,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2238,
+      "seconds": 4.052067625001655
+    },
+    {
+      "doc_id": "mx03",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.9343654288394074,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2362,
+      "seconds": 4.118872749997536
+    },
+    {
+      "doc_id": "mx03",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.9319552708735593,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2177,
+      "seconds": 3.999216250012978
+    },
+    {
+      "doc_id": "mx03",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.9313246773742894,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2360,
+      "seconds": 4.113863374994253
+    },
+    {
+      "doc_id": "mx03",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.9045405146507776,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2456,
+      "seconds": 4.216612958989572
+    },
+    {
+      "doc_id": "mx03",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.9345042978820723,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2414,
+      "seconds": 4.176201790993218
+    },
+    {
+      "doc_id": "mx03",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.928124879874224,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2498,
+      "seconds": 4.219693374994677
+    },
+    {
+      "doc_id": "mx03",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.934296616171764,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2438,
+      "seconds": 4.232596000001649
+    },
+    {
+      "doc_id": "mx03",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.9048376913884194,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2433,
+      "seconds": 4.284530124990852
+    },
+    {
+      "doc_id": "mx03",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.9317248103641202,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2441,
+      "seconds": 4.265375500006485
+    },
+    {
+      "doc_id": "mx03",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.912812441102577,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2435,
+      "seconds": 4.271167374987272
+    },
+    {
+      "doc_id": "mx03",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.919620381098347,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2453,
+      "seconds": 4.22744450000755
+    },
+    {
+      "doc_id": "mx03",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.8813512298613215,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2437,
+      "seconds": 4.266713958000764
+    },
+    {
+      "doc_id": "mx03",
+      "page": 26,
+      "phase": "fit",
+      "p_yes": 0.9285826181726314,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2462,
+      "seconds": 4.3067625839903485
+    },
+    {
+      "doc_id": "mx03",
+      "page": 27,
+      "phase": "fit",
+      "p_yes": 0.9124996863961414,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2442,
+      "seconds": 4.266709124989575
+    },
+    {
+      "doc_id": "mx03",
+      "page": 28,
+      "phase": "fit",
+      "p_yes": 0.9187677956079741,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2447,
+      "seconds": 4.22091033300967
+    },
+    {
+      "doc_id": "mx03",
+      "page": 29,
+      "phase": "fit",
+      "p_yes": 0.8659895840324943,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2429,
+      "seconds": 4.291069375001825
+    },
+    {
+      "doc_id": "mx03",
+      "page": 30,
+      "phase": "fit",
+      "p_yes": 0.94336911720292,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2211,
+      "seconds": 4.444616833003238
+    },
+    {
+      "doc_id": "mx03",
+      "page": 31,
+      "phase": "fit",
+      "p_yes": 0.871334464046727,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2451,
+      "seconds": 4.709773042006418
+    },
+    {
+      "doc_id": "mx03",
+      "page": 32,
+      "phase": "fit",
+      "p_yes": 0.8995532071391229,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2451,
+      "seconds": 4.427432541997405
+    },
+    {
+      "doc_id": "mx03",
+      "page": 33,
+      "phase": "fit",
+      "p_yes": 0.9088868481854997,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2409,
+      "seconds": 4.193427999998676
+    },
+    {
+      "doc_id": "mx03",
+      "page": 36,
+      "phase": "fit",
+      "p_yes": 0.9046797546654202,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2202,
+      "seconds": 4.089174166001612
+    },
+    {
+      "doc_id": "mx03",
+      "page": 37,
+      "phase": "fit",
+      "p_yes": 0.9383016279790763,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2535,
+      "seconds": 4.347674958000425
+    },
+    {
+      "doc_id": "mx04",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.9105508740589535,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2482,
+      "seconds": 4.320064333995106
+    },
+    {
+      "doc_id": "mx04",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.9161714334604952,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2217,
+      "seconds": 4.085532917000819
+    },
+    {
+      "doc_id": "mx04",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.9449085359387103,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2162,
+      "seconds": 3.9628258339944296
+    },
+    {
+      "doc_id": "mx04",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.9421421147150674,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2485,
+      "seconds": 4.320265084010316
+    },
+    {
+      "doc_id": "mx04",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.9213790374892242,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2434,
+      "seconds": 4.41284099999757
+    },
+    {
+      "doc_id": "mx04",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.9242810474106679,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2403,
+      "seconds": 4.421654624995426
+    },
+    {
+      "doc_id": "mx04",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.9317463742339068,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2442,
+      "seconds": 4.323399499990046
+    },
+    {
+      "doc_id": "mx04",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.9009816719525475,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2457,
+      "seconds": 4.294035916987923
+    },
+    {
+      "doc_id": "mx04",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.9225698278130943,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2439,
+      "seconds": 4.280669041007059
+    },
+    {
+      "doc_id": "mx04",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.93189354336038,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2248,
+      "seconds": 4.066112333995989
+    },
+    {
+      "doc_id": "mx04",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.9205543928052747,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2436,
+      "seconds": 4.315342583009624
+    },
+    {
+      "doc_id": "mx04",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.910596381076776,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2432,
+      "seconds": 4.213514750008471
+    },
+    {
+      "doc_id": "mx04",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.9071590444004107,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2446,
+      "seconds": 4.302099167005508
+    },
+    {
+      "doc_id": "mx04",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.9294281757049995,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2470,
+      "seconds": 4.508579707995523
+    },
+    {
+      "doc_id": "mx04",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.8988492247867174,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2461,
+      "seconds": 4.715178083992214
+    },
+    {
+      "doc_id": "mx04",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.915364317185393,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2415,
+      "seconds": 4.398854625003878
+    },
+    {
+      "doc_id": "mx04",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.9271115692702685,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2472,
+      "seconds": 4.494104375000461
+    },
+    {
+      "doc_id": "mx04",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.9248792074919441,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2477,
+      "seconds": 4.488887750005233
+    },
+    {
+      "doc_id": "mx04",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.9260660463674004,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2442,
+      "seconds": 4.7229265839996515
+    },
+    {
+      "doc_id": "mx04",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.9254509354725661,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2463,
+      "seconds": 4.761241999993217
+    },
+    {
+      "doc_id": "mx04",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.9142961573865147,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2449,
+      "seconds": 4.873306124994997
+    },
+    {
+      "doc_id": "mx04",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.9148195040876459,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2431,
+      "seconds": 4.34885641701112
+    },
+    {
+      "doc_id": "mx04",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.9187199880484382,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2430,
+      "seconds": 4.236015749993385
+    },
+    {
+      "doc_id": "mx04",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.9045259588455303,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2434,
+      "seconds": 4.271280291999574
+    },
+    {
+      "doc_id": "mx04",
+      "page": 26,
+      "phase": "fit",
+      "p_yes": 0.920768527911345,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2437,
+      "seconds": 4.245078457999625
+    },
+    {
+      "doc_id": "mx04",
+      "page": 27,
+      "phase": "fit",
+      "p_yes": 0.9214652799680069,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2450,
+      "seconds": 4.401425707997987
+    },
+    {
+      "doc_id": "mx04",
+      "page": 28,
+      "phase": "fit",
+      "p_yes": 0.8955838042100683,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2424,
+      "seconds": 4.312839250007528
+    },
+    {
+      "doc_id": "mx04",
+      "page": 29,
+      "phase": "fit",
+      "p_yes": 0.9253269479964523,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2284,
+      "seconds": 4.24504487500235
+    },
+    {
+      "doc_id": "mx04",
+      "page": 30,
+      "phase": "fit",
+      "p_yes": 0.8766597965444206,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2437,
+      "seconds": 4.51901791599812
+    },
+    {
+      "doc_id": "mx04",
+      "page": 33,
+      "phase": "fit",
+      "p_yes": 0.9034549116140079,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2175,
+      "seconds": 4.092029791994719
+    },
+    {
+      "doc_id": "mx04",
+      "page": 34,
+      "phase": "fit",
+      "p_yes": 0.9349017410091999,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2530,
+      "seconds": 4.583901500009233
+    },
+    {
+      "doc_id": "mx05",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.9399105086510703,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2072,
+      "seconds": 3.947375582996756
+    },
+    {
+      "doc_id": "mx05",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.9216107083605305,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2522,
+      "seconds": 4.341380792000564
+    },
+    {
+      "doc_id": "mx05",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.9270418088068939,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2406,
+      "seconds": 4.364196708003874
+    },
+    {
+      "doc_id": "mx05",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.9148843585587881,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2469,
+      "seconds": 4.3830569999990985
+    },
+    {
+      "doc_id": "mx05",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.9440502314812325,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2234,
+      "seconds": 4.07316549999814
+    },
+    {
+      "doc_id": "mx05",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.9373003843819304,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2480,
+      "seconds": 4.316439874994103
+    },
+    {
+      "doc_id": "mx05",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.9322299708053138,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2453,
+      "seconds": 4.410882791999029
+    },
+    {
+      "doc_id": "mx05",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.9300764729359309,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2428,
+      "seconds": 4.392951250003534
+    },
+    {
+      "doc_id": "mx05",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.9301435813783161,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2477,
+      "seconds": 4.384444417009945
+    },
+    {
+      "doc_id": "mx05",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.9239612619681641,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2260,
+      "seconds": 4.570187250006711
+    },
+    {
+      "doc_id": "mx05",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.9314499792983871,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2414,
+      "seconds": 4.246455999993486
+    },
+    {
+      "doc_id": "mx05",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.9352695635171655,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2448,
+      "seconds": 4.411423167010071
+    },
+    {
+      "doc_id": "mx05",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.9275658228158504,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2429,
+      "seconds": 4.47298895799031
+    },
+    {
+      "doc_id": "mx05",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.9274586003714598,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2475,
+      "seconds": 4.27589387500484
+    },
+    {
+      "doc_id": "mx05",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.9313809096705404,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2341,
+      "seconds": 4.241581374997622
+    },
+    {
+      "doc_id": "mx05",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.9107812808743372,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2464,
+      "seconds": 4.367058999996516
+    },
+    {
+      "doc_id": "mx05",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.9247148525953394,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2285,
+      "seconds": 4.367011958005605
+    },
+    {
+      "doc_id": "mx05",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.9134709382906421,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2350,
+      "seconds": 4.289705666989903
+    },
+    {
+      "doc_id": "mx05",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.9357471517217216,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2200,
+      "seconds": 4.023709750006674
+    },
+    {
+      "doc_id": "mx05",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.9285330737623743,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2413,
+      "seconds": 4.148004583010334
+    },
+    {
+      "doc_id": "mx05",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.9322269582170771,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2425,
+      "seconds": 4.144841457993607
+    },
+    {
+      "doc_id": "mx05",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.9358333501872556,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2239,
+      "seconds": 4.007140250003431
+    },
+    {
+      "doc_id": "mx05",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.9152830653553355,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2317,
+      "seconds": 4.133861666996381
+    },
+    {
+      "doc_id": "mx05",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.9287850207536947,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2202,
+      "seconds": 4.00885266700061
+    },
+    {
+      "doc_id": "mx05",
+      "page": 26,
+      "phase": "fit",
+      "p_yes": 0.9329777643743853,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2290,
+      "seconds": 4.0448312500084285
+    },
+    {
+      "doc_id": "mx05",
+      "page": 27,
+      "phase": "fit",
+      "p_yes": 0.9366467375759485,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2149,
+      "seconds": 3.927355499996338
+    },
+    {
+      "doc_id": "mx05",
+      "page": 28,
+      "phase": "fit",
+      "p_yes": 0.9269545136558579,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2271,
+      "seconds": 4.014187958993716
+    },
+    {
+      "doc_id": "mx05",
+      "page": 29,
+      "phase": "fit",
+      "p_yes": 0.9370057306409542,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2133,
+      "seconds": 3.9198844999918947
+    },
+    {
+      "doc_id": "mx05",
+      "page": 30,
+      "phase": "fit",
+      "p_yes": 0.9421173518287769,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2240,
+      "seconds": 3.991532208005083
+    },
+    {
+      "doc_id": "mx05",
+      "page": 31,
+      "phase": "fit",
+      "p_yes": 0.9364733847457835,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2206,
+      "seconds": 4.025770167005248
+    },
+    {
+      "doc_id": "mx05",
+      "page": 32,
+      "phase": "fit",
+      "p_yes": 0.9265681304666652,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2457,
+      "seconds": 4.25884216700797
+    },
+    {
+      "doc_id": "mx05",
+      "page": 34,
+      "phase": "fit",
+      "p_yes": 0.9224657702770658,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2445,
+      "seconds": 4.276512666998315
+    },
+    {
+      "doc_id": "mx05",
+      "page": 35,
+      "phase": "fit",
+      "p_yes": 0.9028030429704534,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2428,
+      "seconds": 4.159617500001332
+    },
+    {
+      "doc_id": "mx05",
+      "page": 37,
+      "phase": "fit",
+      "p_yes": 0.9246352761046474,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2464,
+      "seconds": 4.240016209005262
+    },
+    {
+      "doc_id": "mx05",
+      "page": 38,
+      "phase": "fit",
+      "p_yes": 0.9063672088777318,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2421,
+      "seconds": 4.1413692089990946
+    },
+    {
+      "doc_id": "mx05",
+      "page": 39,
+      "phase": "fit",
+      "p_yes": 0.9262920435063341,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2368,
+      "seconds": 4.098181708002812
+    },
+    {
+      "doc_id": "mx05",
+      "page": 40,
+      "phase": "fit",
+      "p_yes": 0.9201469617007428,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2429,
+      "seconds": 4.15785562498786
+    },
+    {
+      "doc_id": "mx05",
+      "page": 41,
+      "phase": "fit",
+      "p_yes": 0.9196335625646547,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2433,
+      "seconds": 4.362285041992436
+    },
+    {
+      "doc_id": "mx05",
+      "page": 42,
+      "phase": "fit",
+      "p_yes": 0.9041918455995458,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2423,
+      "seconds": 4.224135249998653
+    },
+    {
+      "doc_id": "mx05",
+      "page": 43,
+      "phase": "fit",
+      "p_yes": 0.8991342434593221,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2446,
+      "seconds": 4.2311299159919145
+    },
+    {
+      "doc_id": "mx05",
+      "page": 44,
+      "phase": "fit",
+      "p_yes": 0.9291757339554717,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2078,
+      "seconds": 3.9098859169898788
+    },
+    {
+      "doc_id": "mx05",
+      "page": 45,
+      "phase": "fit",
+      "p_yes": 0.9335823688251877,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2170,
+      "seconds": 3.9175656659936067
+    },
+    {
+      "doc_id": "mx05",
+      "page": 46,
+      "phase": "fit",
+      "p_yes": 0.9042951481467425,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2486,
+      "seconds": 4.23237962499843
+    },
+    {
+      "doc_id": "mx05",
+      "page": 47,
+      "phase": "fit",
+      "p_yes": 0.9132478170038195,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2465,
+      "seconds": 4.246837083002902
+    },
+    {
+      "doc_id": "mx05",
+      "page": 48,
+      "phase": "fit",
+      "p_yes": 0.9264829849003136,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2447,
+      "seconds": 4.2655077499948675
+    },
+    {
+      "doc_id": "mx05",
+      "page": 49,
+      "phase": "fit",
+      "p_yes": 0.9146224748465718,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2443,
+      "seconds": 4.238813750009285
+    },
+    {
+      "doc_id": "mx05",
+      "page": 50,
+      "phase": "fit",
+      "p_yes": 0.923650712888123,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2308,
+      "seconds": 4.111049125000136
+    },
+    {
+      "doc_id": "mx05",
+      "page": 53,
+      "phase": "fit",
+      "p_yes": 0.7717334134240742,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2171,
+      "seconds": 3.8985715839953627
+    },
+    {
+      "doc_id": "mx05",
+      "page": 54,
+      "phase": "fit",
+      "p_yes": 0.9373741212986444,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2535,
+      "seconds": 4.256526124998345
+    },
+    {
+      "doc_id": "mx06",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.9414015031675168,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2080,
+      "seconds": 3.8799828339979285
+    },
+    {
+      "doc_id": "mx06",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.927229432230262,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2530,
+      "seconds": 4.285431999989669
+    },
+    {
+      "doc_id": "mx06",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.9267375665127734,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2296,
+      "seconds": 3.996952166999108
+    },
+    {
+      "doc_id": "mx06",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.9459310637942753,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2193,
+      "seconds": 4.013239874999272
+    },
+    {
+      "doc_id": "mx06",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.9401506679572147,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2594,
+      "seconds": 4.379945458000293
+    },
+    {
+      "doc_id": "mx06",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.92465451305882,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2512,
+      "seconds": 4.23965758299164
+    },
+    {
+      "doc_id": "mx06",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.930457052175518,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2434,
+      "seconds": 4.225361332995817
+    },
+    {
+      "doc_id": "mx06",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.9296594034461485,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2460,
+      "seconds": 4.241424374995404
+    },
+    {
+      "doc_id": "mx06",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.9333837289873502,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2367,
+      "seconds": 4.129306249989895
+    },
+    {
+      "doc_id": "mx06",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.9276030575614577,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2414,
+      "seconds": 4.126383041002555
+    },
+    {
+      "doc_id": "mx06",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.9230895529360938,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2360,
+      "seconds": 4.137673916993663
+    },
+    {
+      "doc_id": "mx06",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.9252726644926473,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2450,
+      "seconds": 4.248627250010031
+    },
+    {
+      "doc_id": "mx06",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.9277711145921228,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2367,
+      "seconds": 4.13816233300895
+    },
+    {
+      "doc_id": "mx06",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.9363125358429051,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2363,
+      "seconds": 4.123079124998185
+    },
+    {
+      "doc_id": "mx06",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.923108051650464,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2436,
+      "seconds": 4.235276500010514
+    },
+    {
+      "doc_id": "mx06",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.9369824852586317,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2429,
+      "seconds": 4.098246374996961
+    },
+    {
+      "doc_id": "mx06",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.9229350912984439,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2409,
+      "seconds": 4.145069417005288
+    },
+    {
+      "doc_id": "mx06",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.9211072819260228,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2429,
+      "seconds": 4.143844709004043
+    },
+    {
+      "doc_id": "mx06",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.9279726666915118,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2415,
+      "seconds": 4.155995875000372
+    },
+    {
+      "doc_id": "mx06",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.9139083823319828,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2432,
+      "seconds": 4.161445792007726
+    },
+    {
+      "doc_id": "mx06",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.888683400851146,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2437,
+      "seconds": 4.22726929099008
+    },
+    {
+      "doc_id": "mx06",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.929121396293263,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2266,
+      "seconds": 3.9898927910107886
+    },
+    {
+      "doc_id": "mx06",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.9307170832383361,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2258,
+      "seconds": 3.988071375002619
+    },
+    {
+      "doc_id": "mx06",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.9477714443159275,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2084,
+      "seconds": 3.880367416990339
+    },
+    {
+      "doc_id": "mx06",
+      "page": 28,
+      "phase": "fit",
+      "p_yes": 0.8772097268184634,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2187,
+      "seconds": 4.006419707991881
+    },
+    {
+      "doc_id": "mx06",
+      "page": 29,
+      "phase": "fit",
+      "p_yes": 0.9370156372309526,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2535,
+      "seconds": 4.253646500001196
+    },
+    {
+      "doc_id": "mx07",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.9375849973091861,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2073,
+      "seconds": 3.851923333000741
+    },
+    {
+      "doc_id": "mx07",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.915457410097316,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2445,
+      "seconds": 4.268220124999061
+    },
+    {
+      "doc_id": "mx07",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.9302784933021548,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2269,
+      "seconds": 3.9863289579952834
+    },
+    {
+      "doc_id": "mx07",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.9213157852006575,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2280,
+      "seconds": 4.0075057500071125
+    },
+    {
+      "doc_id": "mx07",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.9372675054270132,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2428,
+      "seconds": 4.13366816600319
+    },
+    {
+      "doc_id": "mx07",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.9266115528101815,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2417,
+      "seconds": 4.10032174999651
+    },
+    {
+      "doc_id": "mx07",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.9311626857201474,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2439,
+      "seconds": 4.234579249998205
+    },
+    {
+      "doc_id": "mx07",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.9306123368535818,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2508,
+      "seconds": 4.2688196250092005
+    },
+    {
+      "doc_id": "mx07",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.9274510128027832,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2426,
+      "seconds": 4.160131083001033
+    },
+    {
+      "doc_id": "mx07",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.9318949506175616,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2439,
+      "seconds": 4.206702582989237
+    },
+    {
+      "doc_id": "mx07",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.9328887960682506,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2320,
+      "seconds": 4.082703124993714
+    },
+    {
+      "doc_id": "mx07",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.929277243071672,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2410,
+      "seconds": 4.14071583400073
+    },
+    {
+      "doc_id": "mx07",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.9203056022945454,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2427,
+      "seconds": 4.104255790996831
+    },
+    {
+      "doc_id": "mx07",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.9421015659867408,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2481,
+      "seconds": 4.232189084010315
+    },
+    {
+      "doc_id": "mx07",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.9222572452172203,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2424,
+      "seconds": 4.1563898749882355
+    },
+    {
+      "doc_id": "mx07",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.9342958112053303,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2442,
+      "seconds": 4.225786042006803
+    },
+    {
+      "doc_id": "mx07",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.9242109703942006,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2460,
+      "seconds": 4.258257667010184
+    },
+    {
+      "doc_id": "mx07",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.9367628966407018,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2419,
+      "seconds": 4.113651624997146
+    },
+    {
+      "doc_id": "mx07",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.9266057402093365,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2384,
+      "seconds": 4.0992660830088425
+    },
+    {
+      "doc_id": "mx07",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.9216820737982777,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2392,
+      "seconds": 4.160007415994187
+    },
+    {
+      "doc_id": "mx07",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.9349422999588088,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2399,
+      "seconds": 4.144738250004593
+    },
+    {
+      "doc_id": "mx07",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.9283372751917724,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2392,
+      "seconds": 4.11090700000932
+    },
+    {
+      "doc_id": "mx07",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.926028949729725,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2398,
+      "seconds": 4.121610874994076
+    },
+    {
+      "doc_id": "mx07",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.92917895031648,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2441,
+      "seconds": 4.2258349579933565
+    },
+    {
+      "doc_id": "mx07",
+      "page": 26,
+      "phase": "fit",
+      "p_yes": 0.9219545476246707,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2401,
+      "seconds": 4.105371416997514
+    },
+    {
+      "doc_id": "mx07",
+      "page": 27,
+      "phase": "fit",
+      "p_yes": 0.9257709233198835,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2477,
+      "seconds": 4.192871625011321
+    },
+    {
+      "doc_id": "mx07",
+      "page": 28,
+      "phase": "fit",
+      "p_yes": 0.9371618855764553,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2403,
+      "seconds": 4.122726292000152
+    },
+    {
+      "doc_id": "mx07",
+      "page": 29,
+      "phase": "fit",
+      "p_yes": 0.9349090102759016,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2432,
+      "seconds": 4.162519083998632
+    },
+    {
+      "doc_id": "mx07",
+      "page": 30,
+      "phase": "fit",
+      "p_yes": 0.925023905025212,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2403,
+      "seconds": 4.117127874997095
+    },
+    {
+      "doc_id": "mx07",
+      "page": 31,
+      "phase": "fit",
+      "p_yes": 0.8977340852899621,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2407,
+      "seconds": 4.124226332991384
+    },
+    {
+      "doc_id": "mx07",
+      "page": 32,
+      "phase": "fit",
+      "p_yes": 0.9156924093764979,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2416,
+      "seconds": 4.125426833998063
+    },
+    {
+      "doc_id": "mx07",
+      "page": 33,
+      "phase": "fit",
+      "p_yes": 0.9397170269926803,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2209,
+      "seconds": 3.976856208013487
+    },
+    {
+      "doc_id": "mx07",
+      "page": 34,
+      "phase": "fit",
+      "p_yes": 0.906424312590355,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2415,
+      "seconds": 4.135182415993768
+    },
+    {
+      "doc_id": "mx07",
+      "page": 35,
+      "phase": "fit",
+      "p_yes": 0.9272862240856731,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2426,
+      "seconds": 4.110461499993107
+    },
+    {
+      "doc_id": "mx07",
+      "page": 36,
+      "phase": "fit",
+      "p_yes": 0.93053009570988,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2398,
+      "seconds": 4.209864958000253
+    },
+    {
+      "doc_id": "mx07",
+      "page": 37,
+      "phase": "fit",
+      "p_yes": 0.9250138508556514,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2440,
+      "seconds": 4.329286124993814
+    },
+    {
+      "doc_id": "mx07",
+      "page": 38,
+      "phase": "fit",
+      "p_yes": 0.9240576219855346,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2300,
+      "seconds": 3.9677833750029095
+    },
+    {
+      "doc_id": "mx07",
+      "page": 45,
+      "phase": "fit",
+      "p_yes": 0.8980767891546858,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2171,
+      "seconds": 3.903814457997214
+    },
+    {
+      "doc_id": "mx07",
+      "page": 46,
+      "phase": "fit",
+      "p_yes": 0.9374289076312396,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2535,
+      "seconds": 4.234428791998653
+    },
+    {
+      "doc_id": "mx08",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.9356596541370183,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1924,
+      "seconds": 3.304955666011665
+    },
+    {
+      "doc_id": "mx08",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.9378884762170647,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1837,
+      "seconds": 3.2159988339990377
+    },
+    {
+      "doc_id": "mx08",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.9445893021128575,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1912,
+      "seconds": 3.265470041995286
+    },
+    {
+      "doc_id": "mx08",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.888080201480217,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2196,
+      "seconds": 3.4885974999924656
+    },
+    {
+      "doc_id": "mx08",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.9279962958388135,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2150,
+      "seconds": 3.45640304099652
+    },
+    {
+      "doc_id": "mx08",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.9259717854495217,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1968,
+      "seconds": 3.3278812500066124
+    },
+    {
+      "doc_id": "mx08",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.9209622318621828,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1928,
+      "seconds": 3.2832000839989632
+    },
+    {
+      "doc_id": "mx08",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.9329403421147964,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2129,
+      "seconds": 3.4292689579888247
+    },
+    {
+      "doc_id": "mx08",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.9352438518864813,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1964,
+      "seconds": 3.319685250011389
+    },
+    {
+      "doc_id": "mx08",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.9323359724275999,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1845,
+      "seconds": 3.192718625010457
+    },
+    {
+      "doc_id": "mx08",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.9272700984846795,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2137,
+      "seconds": 3.433224374995916
+    },
+    {
+      "doc_id": "mx08",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.7458793585600326,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2042,
+      "seconds": 3.3086433340067742
+    },
+    {
+      "doc_id": "tl01",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.6776325090968273,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1976,
+      "seconds": 3.463545625010738
+    },
+    {
+      "doc_id": "tl01",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.8780204411751746,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1948,
+      "seconds": 3.4627366659988184
+    },
+    {
+      "doc_id": "tl01",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.755395993647229,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2105,
+      "seconds": 3.605650166995474
+    },
+    {
+      "doc_id": "tl01",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.8399058770318545,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2005,
+      "seconds": 3.4607223749917466
+    },
+    {
+      "doc_id": "tl01",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.9275621544386522,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1971,
+      "seconds": 3.504333000004408
+    },
+    {
+      "doc_id": "tl01",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.7584387303421303,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2325,
+      "seconds": 3.9157859589904547
+    },
+    {
+      "doc_id": "tl01",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.854870587217448,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2224,
+      "seconds": 3.6915732089983067
+    },
+    {
+      "doc_id": "tl01",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.7469033135888137,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2244,
+      "seconds": 3.6730071249912726
+    },
+    {
+      "doc_id": "tl01",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.9019917073293188,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2258,
+      "seconds": 3.7454312500049127
+    },
+    {
+      "doc_id": "tl01",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.8660004575229163,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2241,
+      "seconds": 3.7144538330030628
+    },
+    {
+      "doc_id": "tl01",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.2233930481383961,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2278,
+      "seconds": 3.682114625000395
+    },
+    {
+      "doc_id": "tl01",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.8745908073654812,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2258,
+      "seconds": 3.7021335840108804
+    },
+    {
+      "doc_id": "tl01",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.8550784394193849,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2257,
+      "seconds": 3.703226249999716
+    },
+    {
+      "doc_id": "tl01",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.7471447018336499,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2339,
+      "seconds": 3.934551124999416
+    },
+    {
+      "doc_id": "tl01",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.7167583684288199,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2262,
+      "seconds": 3.69806070899358
+    },
+    {
+      "doc_id": "tl01",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.8121236204569726,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2241,
+      "seconds": 3.6792067080095876
+    },
+    {
+      "doc_id": "tl01",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.5425132324165676,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2245,
+      "seconds": 3.8068803339992883
+    },
+    {
+      "doc_id": "tl01",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.7065829135269278,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2165,
+      "seconds": 3.59189458299079
+    },
+    {
+      "doc_id": "tl01",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.6307499191442304,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2267,
+      "seconds": 3.70139966600982
+    },
+    {
+      "doc_id": "tl01",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.7463872036758976,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2168,
+      "seconds": 3.5921554999949876
+    },
+    {
+      "doc_id": "tl01",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.8314952630286159,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2277,
+      "seconds": 3.7396458750008605
+    },
+    {
+      "doc_id": "tl01",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.6823245772517804,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2370,
+      "seconds": 3.917862457994488
+    },
+    {
+      "doc_id": "tl01",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.6777980546836886,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2254,
+      "seconds": 3.665897999992012
+    },
+    {
+      "doc_id": "tl01",
+      "page": 26,
+      "phase": "fit",
+      "p_yes": 0.8714468188218857,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2357,
+      "seconds": 3.9205314999999246
+    },
+    {
+      "doc_id": "tl01",
+      "page": 27,
+      "phase": "fit",
+      "p_yes": 0.7591916472408557,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2320,
+      "seconds": 3.8830595829931553
+    },
+    {
+      "doc_id": "tl01",
+      "page": 28,
+      "phase": "fit",
+      "p_yes": 0.8701087673489893,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2303,
+      "seconds": 3.825678833993152
+    },
+    {
+      "doc_id": "tl01",
+      "page": 29,
+      "phase": "fit",
+      "p_yes": 0.7984353393508983,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2264,
+      "seconds": 3.8601716669945745
+    },
+    {
+      "doc_id": "tl01",
+      "page": 30,
+      "phase": "fit",
+      "p_yes": 0.7858759402590716,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2351,
+      "seconds": 3.873870416995487
+    },
+    {
+      "doc_id": "tl01",
+      "page": 31,
+      "phase": "fit",
+      "p_yes": 0.15168907901297773,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2265,
+      "seconds": 3.7997472499992
+    },
+    {
+      "doc_id": "tl01",
+      "page": 32,
+      "phase": "fit",
+      "p_yes": 0.8669512450259171,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2033,
+      "seconds": 3.5909459169924958
+    },
+    {
+      "doc_id": "tl01",
+      "page": 33,
+      "phase": "fit",
+      "p_yes": 0.931340504166844,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1977,
+      "seconds": 3.566195332998177
+    },
+    {
+      "doc_id": "tl01",
+      "page": 40,
+      "phase": "fit",
+      "p_yes": 0.6337770096170408,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1992,
+      "seconds": 3.5629153329937253
+    },
+    {
+      "doc_id": "tl02",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.8242508112135618,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2153,
+      "seconds": 3.7757920419971924
+    },
+    {
+      "doc_id": "tl02",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.9133535559704199,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2378,
+      "seconds": 4.196448792004958
+    },
+    {
+      "doc_id": "tl02",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.8508272859490393,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2274,
+      "seconds": 3.880990749996272
+    },
+    {
+      "doc_id": "tl02",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.8594314700834489,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2603,
+      "seconds": 4.289355083994451
+    },
+    {
+      "doc_id": "tl02",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.8134856765719651,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2552,
+      "seconds": 4.21551824999915
+    },
+    {
+      "doc_id": "tl02",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.8128218349991648,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2573,
+      "seconds": 4.3125741249969
+    },
+    {
+      "doc_id": "tl02",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.22423515584943424,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2578,
+      "seconds": 4.278098624999984
+    },
+    {
+      "doc_id": "tl02",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.861320079478064,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2589,
+      "seconds": 4.307275791012216
+    },
+    {
+      "doc_id": "tl02",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.7503549376807044,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2571,
+      "seconds": 4.2995875839988
+    },
+    {
+      "doc_id": "tl02",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.8964719054567969,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2527,
+      "seconds": 4.1800767079985235
+    },
+    {
+      "doc_id": "tl02",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.905049681675488,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2491,
+      "seconds": 4.128820333004114
+    },
+    {
+      "doc_id": "tl02",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.8979401795411818,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2542,
+      "seconds": 4.111677875000169
+    },
+    {
+      "doc_id": "tl02",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.8640364807560923,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2579,
+      "seconds": 4.341631666989997
+    },
+    {
+      "doc_id": "tl02",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.8466268165903518,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2585,
+      "seconds": 4.277220624993788
+    },
+    {
+      "doc_id": "tl02",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.8867214516561803,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2575,
+      "seconds": 4.209275790999527
+    },
+    {
+      "doc_id": "tl02",
+      "page": 26,
+      "phase": "fit",
+      "p_yes": 0.8131768029247529,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2546,
+      "seconds": 4.2138428750040475
+    },
+    {
+      "doc_id": "tl02",
+      "page": 27,
+      "phase": "fit",
+      "p_yes": 0.8900511360353716,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2568,
+      "seconds": 4.275145874998998
+    },
+    {
+      "doc_id": "tl02",
+      "page": 28,
+      "phase": "fit",
+      "p_yes": 0.8407282785343856,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2633,
+      "seconds": 4.364024291004171
+    },
+    {
+      "doc_id": "tl02",
+      "page": 29,
+      "phase": "fit",
+      "p_yes": 0.8881624758240737,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2560,
+      "seconds": 4.105094041995471
+    },
+    {
+      "doc_id": "tl02",
+      "page": 30,
+      "phase": "fit",
+      "p_yes": 0.852659887955582,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2488,
+      "seconds": 4.0955612499965355
+    },
+    {
+      "doc_id": "tl02",
+      "page": 34,
+      "phase": "fit",
+      "p_yes": 0.2555132788548898,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2148,
+      "seconds": 3.737302041001385
+    },
+    {
+      "doc_id": "tl02",
+      "page": 42,
+      "phase": "fit",
+      "p_yes": 0.3886036951523187,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2170,
+      "seconds": 3.804428999996162
+    },
+    {
+      "doc_id": "tl02",
+      "page": 44,
+      "phase": "fit",
+      "p_yes": 0.6761029533743539,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2171,
+      "seconds": 3.787873582987231
+    },
+    {
+      "doc_id": "tl02",
+      "page": 45,
+      "phase": "fit",
+      "p_yes": 0.3977519110938666,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2099,
+      "seconds": 3.7485679579986027
+    },
+    {
+      "doc_id": "tl02",
+      "page": 46,
+      "phase": "fit",
+      "p_yes": 0.8903454225308995,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2749,
+      "seconds": 4.399609250001959
+    },
+    {
+      "doc_id": "tl02",
+      "page": 47,
+      "phase": "fit",
+      "p_yes": 0.7880019604656819,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2206,
+      "seconds": 3.94252774999768
+    },
+    {
+      "doc_id": "tl02",
+      "page": 48,
+      "phase": "fit",
+      "p_yes": 0.17158904891810928,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2331,
+      "seconds": 3.9466610420058714
+    },
+    {
+      "doc_id": "tl02",
+      "page": 49,
+      "phase": "fit",
+      "p_yes": 0.8319423832783327,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2603,
+      "seconds": 4.221739000000525
+    },
+    {
+      "doc_id": "tl03",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.6074513029859554,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2229,
+      "seconds": 3.749653541992302
+    },
+    {
+      "doc_id": "tl03",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.8091901066396123,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2377,
+      "seconds": 3.96633691599709
+    },
+    {
+      "doc_id": "tl03",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.9184202788669987,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2358,
+      "seconds": 4.107291917011025
+    },
+    {
+      "doc_id": "tl03",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.9054894123367532,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2012,
+      "seconds": 3.7134902919933666
+    },
+    {
+      "doc_id": "tl03",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.13385175223681917,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2042,
+      "seconds": 3.5414453749981476
+    },
+    {
+      "doc_id": "tl03",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.7017840112584394,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2061,
+      "seconds": 3.6444067919946974
+    },
+    {
+      "doc_id": "tl03",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.16702942374300817,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2064,
+      "seconds": 3.7410698749881703
+    },
+    {
+      "doc_id": "tl03",
+      "page": 26,
+      "phase": "fit",
+      "p_yes": 0.1842319456078576,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2084,
+      "seconds": 3.6772045830002753
+    },
+    {
+      "doc_id": "tl04",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.6146450626903441,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2077,
+      "seconds": 3.5479634160001297
+    },
+    {
+      "doc_id": "tl04",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.37424823351976483,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2043,
+      "seconds": 3.4867199169966625
+    },
+    {
+      "doc_id": "tl04",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.8043363403906957,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2353,
+      "seconds": 3.7871487500087824
+    },
+    {
+      "doc_id": "tl04",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.25311276559658985,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2321,
+      "seconds": 3.857209084002534
+    },
+    {
+      "doc_id": "tl04",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.8714424918401936,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2369,
+      "seconds": 3.7992167500051437
+    },
+    {
+      "doc_id": "tl04",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.859873447489075,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2390,
+      "seconds": 3.8677622090035584
+    },
+    {
+      "doc_id": "tl04",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.8712112185286474,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2354,
+      "seconds": 3.7797940829914296
+    },
+    {
+      "doc_id": "tl04",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.923830152400319,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2038,
+      "seconds": 3.5985102499980712
+    },
+    {
+      "doc_id": "tl04",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.8815589032639953,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2065,
+      "seconds": 3.610876916995039
+    },
+    {
+      "doc_id": "tl04",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.8986685135451928,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2289,
+      "seconds": 3.7679925830016145
+    },
+    {
+      "doc_id": "tl05",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.7930957010736545,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2368,
+      "seconds": 3.6351089579984546
+    },
+    {
+      "doc_id": "tl05",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.31336913200101646,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2291,
+      "seconds": 3.5206546249974053
+    },
+    {
+      "doc_id": "tl05",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.7631891239287522,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2363,
+      "seconds": 3.6246894159994554
+    },
+    {
+      "doc_id": "tl05",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.6827168339711928,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2360,
+      "seconds": 3.6156521660013823
+    },
+    {
+      "doc_id": "tl05",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.7537616329077387,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2334,
+      "seconds": 3.626478208010667
+    },
+    {
+      "doc_id": "tl05",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.8486351033766829,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2341,
+      "seconds": 3.611324167010025
+    },
+    {
+      "doc_id": "tl05",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.7455316292560178,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2411,
+      "seconds": 3.6511135420005303
+    },
+    {
+      "doc_id": "tl05",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.8268883591430638,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2320,
+      "seconds": 3.6394255420018453
+    },
+    {
+      "doc_id": "tl05",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.8724867220766342,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2346,
+      "seconds": 3.6231104170001345
+    },
+    {
+      "doc_id": "tl05",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.822504596325203,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2494,
+      "seconds": 3.7267528750089696
+    },
+    {
+      "doc_id": "tl05",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.889743387856134,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2451,
+      "seconds": 3.75710687499668
+    },
+    {
+      "doc_id": "tl05",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.8705246493513529,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2344,
+      "seconds": 3.581706833996577
+    },
+    {
+      "doc_id": "tl06",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.7872304253299512,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1876,
+      "seconds": 3.1889427919959417
+    },
+    {
+      "doc_id": "tl06",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.8511176406999788,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2320,
+      "seconds": 3.6113214999932097
+    },
+    {
+      "doc_id": "tl06",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.1838583586385009,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2268,
+      "seconds": 3.5605751249968307
+    },
+    {
+      "doc_id": "tl07",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.8912539534549181,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2284,
+      "seconds": 3.5070586670044577
+    },
+    {
+      "doc_id": "tl07",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.2662300035684868,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2267,
+      "seconds": 3.4974149159970693
+    },
+    {
+      "doc_id": "tl08",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.8449439103777939,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2282,
+      "seconds": 3.5296398749924265
+    },
+    {
+      "doc_id": "tl08",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.8867628277539338,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2283,
+      "seconds": 3.54812008299632
+    },
+    {
+      "doc_id": "tl08",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.8309355235488014,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1992,
+      "seconds": 3.260804083009134
+    },
+    {
+      "doc_id": "rf01",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.9306837067581335,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2475,
+      "seconds": 4.15586358300061
+    },
+    {
+      "doc_id": "rf02",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.8940607008728106,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2541,
+      "seconds": 4.208705416007433
+    },
+    {
+      "doc_id": "rf02",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.735715797459746,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2619,
+      "seconds": 4.322796791995643
+    },
+    {
+      "doc_id": "rf02",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.817484102665486,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2637,
+      "seconds": 4.29041824999149
+    },
+    {
+      "doc_id": "rf02",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.810968568934947,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2752,
+      "seconds": 4.405492542005959
+    },
+    {
+      "doc_id": "rf02",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.8935754059189237,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2512,
+      "seconds": 4.291444709000643
+    },
+    {
+      "doc_id": "rf02",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.7608932556650645,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2748,
+      "seconds": 4.931044791999739
+    },
+    {
+      "doc_id": "rf02",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.8939940878265866,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2497,
+      "seconds": 4.628094541010796
+    },
+    {
+      "doc_id": "rf02",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.8536981251986813,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2530,
+      "seconds": 4.244527791990549
+    },
+    {
+      "doc_id": "rf03",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.8068139195737655,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2522,
+      "seconds": 4.226669291994767
+    },
+    {
+      "doc_id": "rf03",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.7932602443060793,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2481,
+      "seconds": 4.19033754200791
+    },
+    {
+      "doc_id": "rf03",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.33518337803509896,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2529,
+      "seconds": 4.311017333995551
+    },
+    {
+      "doc_id": "rf03",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.9076488358585154,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2545,
+      "seconds": 4.324859915999696
+    },
+    {
+      "doc_id": "rf03",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.9047888099789263,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2699,
+      "seconds": 4.558376208005939
+    },
+    {
+      "doc_id": "rf03",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.841871991889505,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2537,
+      "seconds": 4.965170249997755
+    },
+    {
+      "doc_id": "rf03",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.8543033484150515,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2654,
+      "seconds": 4.9290119579964085
+    },
+    {
+      "doc_id": "rf04",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.8434156520836059,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2572,
+      "seconds": 4.333987292004167
+    },
+    {
+      "doc_id": "rf04",
+      "page": 2,
+      "phase": "fit",
+      "p_yes": 0.6847359065734996,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2535,
+      "seconds": 4.239586583003984
+    },
+    {
+      "doc_id": "rf04",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.5851428691386813,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2591,
+      "seconds": 4.349257124995347
+    },
+    {
+      "doc_id": "rf04",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.8194010425656643,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2562,
+      "seconds": 4.302367791009601
+    },
+    {
+      "doc_id": "rf04",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.8434153687011698,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2536,
+      "seconds": 4.2365114580024965
+    },
+    {
+      "doc_id": "rf04",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.8928472476825035,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2524,
+      "seconds": 4.18181895800808
+    },
+    {
+      "doc_id": "rf04",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.8990715421791492,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2541,
+      "seconds": 4.211003666991019
+    },
+    {
+      "doc_id": "rf04",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.7201787866326936,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2548,
+      "seconds": 4.222553291998338
+    },
+    {
+      "doc_id": "rf05",
+      "page": 1,
+      "phase": "fit",
+      "p_yes": 0.830527382631202,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1051,
+      "seconds": 1.390210790996207
+    },
+    {
+      "doc_id": "rf05",
+      "page": 4,
+      "phase": "fit",
+      "p_yes": 0.24462831357160528,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1150,
+      "seconds": 1.3819588750047842
+    },
+    {
+      "doc_id": "rf05",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.3639079178520987,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1149,
+      "seconds": 1.3761730830010492
+    },
+    {
+      "doc_id": "rf05",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.39552412167141854,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1155,
+      "seconds": 1.4507500420004362
+    },
+    {
+      "doc_id": "rf05",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.8414242897531109,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1160,
+      "seconds": 1.457608833006816
+    },
+    {
+      "doc_id": "rf05",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.7956217761786758,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1196,
+      "seconds": 1.4884347909974167
+    },
+    {
+      "doc_id": "rf05",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.7575855209252763,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1167,
+      "seconds": 1.477045999999973
+    },
+    {
+      "doc_id": "rf05",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.3915599442582248,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1184,
+      "seconds": 1.481539791013347
+    },
+    {
+      "doc_id": "rf05",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.23759240942913767,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1196,
+      "seconds": 1.469771917007165
+    },
+    {
+      "doc_id": "rf05",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.7289219042842208,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1173,
+      "seconds": 1.470269792000181
+    },
+    {
+      "doc_id": "rf05",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.17220524482651753,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1079,
+      "seconds": 1.2893416250008158
+    },
+    {
+      "doc_id": "rf05",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.11043068723104242,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1214,
+      "seconds": 1.4776908330095466
+    },
+    {
+      "doc_id": "rf05",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.09457613884362699,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1038,
+      "seconds": 1.2551518330001272
+    },
+    {
+      "doc_id": "rf05",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.20877244670515455,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1045,
+      "seconds": 1.242959625000367
+    },
+    {
+      "doc_id": "rf05",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.09834630387085122,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1177,
+      "seconds": 1.4709172500006389
+    },
+    {
+      "doc_id": "rf05",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.13217168903942755,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1202,
+      "seconds": 1.4823170410090825
+    },
+    {
+      "doc_id": "rf05",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.05810299043452204,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 926,
+      "seconds": 1.1331018750061048
+    },
+    {
+      "doc_id": "rf08",
+      "page": 3,
+      "phase": "fit",
+      "p_yes": 0.9130522487987919,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 861,
+      "seconds": 1.0466430410015164
+    },
+    {
+      "doc_id": "rf08",
+      "page": 5,
+      "phase": "fit",
+      "p_yes": 0.9164780417867228,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1012,
+      "seconds": 1.167028374999063
+    },
+    {
+      "doc_id": "rf08",
+      "page": 6,
+      "phase": "fit",
+      "p_yes": 0.8973586990810971,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1083,
+      "seconds": 1.263269292001496
+    },
+    {
+      "doc_id": "rf08",
+      "page": 7,
+      "phase": "fit",
+      "p_yes": 0.9243648762801635,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1107,
+      "seconds": 1.2723999999871012
+    },
+    {
+      "doc_id": "rf08",
+      "page": 8,
+      "phase": "fit",
+      "p_yes": 0.9053457150083911,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1126,
+      "seconds": 1.321829666994745
+    },
+    {
+      "doc_id": "rf08",
+      "page": 9,
+      "phase": "fit",
+      "p_yes": 0.9211282433045579,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1088,
+      "seconds": 1.2703617499937536
+    },
+    {
+      "doc_id": "rf08",
+      "page": 10,
+      "phase": "fit",
+      "p_yes": 0.9155276597068182,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1126,
+      "seconds": 1.2876357920031296
+    },
+    {
+      "doc_id": "rf08",
+      "page": 11,
+      "phase": "fit",
+      "p_yes": 0.9017100241230221,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1118,
+      "seconds": 1.2717756670026574
+    },
+    {
+      "doc_id": "rf08",
+      "page": 12,
+      "phase": "fit",
+      "p_yes": 0.9091024773277098,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1110,
+      "seconds": 1.2692663750058273
+    },
+    {
+      "doc_id": "rf08",
+      "page": 13,
+      "phase": "fit",
+      "p_yes": 0.7515189769384437,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1147,
+      "seconds": 1.2847579170047538
+    },
+    {
+      "doc_id": "rf08",
+      "page": 14,
+      "phase": "fit",
+      "p_yes": 0.8985525602881412,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1135,
+      "seconds": 1.2834313750063302
+    },
+    {
+      "doc_id": "rf08",
+      "page": 15,
+      "phase": "fit",
+      "p_yes": 0.859158598566818,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1121,
+      "seconds": 1.2816355410031974
+    },
+    {
+      "doc_id": "rf08",
+      "page": 16,
+      "phase": "fit",
+      "p_yes": 0.9141367390166621,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1124,
+      "seconds": 1.2794537500012666
+    },
+    {
+      "doc_id": "rf08",
+      "page": 17,
+      "phase": "fit",
+      "p_yes": 0.46670753738279486,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1136,
+      "seconds": 1.2790861669927835
+    },
+    {
+      "doc_id": "rf08",
+      "page": 18,
+      "phase": "fit",
+      "p_yes": 0.8340419538602776,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1110,
+      "seconds": 1.2759635419934057
+    },
+    {
+      "doc_id": "rf08",
+      "page": 19,
+      "phase": "fit",
+      "p_yes": 0.9182130922273396,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1137,
+      "seconds": 1.290588291012682
+    },
+    {
+      "doc_id": "rf08",
+      "page": 20,
+      "phase": "fit",
+      "p_yes": 0.8984790348126517,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1093,
+      "seconds": 1.2645076670014532
+    },
+    {
+      "doc_id": "rf08",
+      "page": 21,
+      "phase": "fit",
+      "p_yes": 0.9132204618178874,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1099,
+      "seconds": 1.2707921670080395
+    },
+    {
+      "doc_id": "rf08",
+      "page": 22,
+      "phase": "fit",
+      "p_yes": 0.9004125626546714,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1106,
+      "seconds": 1.2742922920006095
+    },
+    {
+      "doc_id": "rf08",
+      "page": 23,
+      "phase": "fit",
+      "p_yes": 0.9280525595334226,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1123,
+      "seconds": 1.2780193329963367
+    },
+    {
+      "doc_id": "rf08",
+      "page": 24,
+      "phase": "fit",
+      "p_yes": 0.9010333678008214,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1126,
+      "seconds": 1.2801057499891613
+    },
+    {
+      "doc_id": "rf08",
+      "page": 25,
+      "phase": "fit",
+      "p_yes": 0.9230557352753652,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1100,
+      "seconds": 1.2724215829948662
+    },
+    {
+      "doc_id": "rf08",
+      "page": 26,
+      "phase": "fit",
+      "p_yes": 0.8851353030795543,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 971,
+      "seconds": 1.1551484579977114
+    },
+    {
+      "doc_id": "mx01",
+      "page": 9,
+      "phase": "rest",
+      "p_yes": 0.9292827662368611,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2362,
+      "seconds": 3.9799833339930046
+    },
+    {
+      "doc_id": "mx01",
+      "page": 26,
+      "phase": "rest",
+      "p_yes": 0.5150603679243846,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2065,
+      "seconds": 3.7274462499917718
+    },
+    {
+      "doc_id": "mx01",
+      "page": 27,
+      "phase": "rest",
+      "p_yes": 0.9145764034439198,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2054,
+      "seconds": 3.7284946250001667
+    },
+    {
+      "doc_id": "mx02",
+      "page": 15,
+      "phase": "rest",
+      "p_yes": 0.8456290682662935,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2067,
+      "seconds": 3.7329530419956427
+    },
+    {
+      "doc_id": "mx02",
+      "page": 16,
+      "phase": "rest",
+      "p_yes": 0.9274928876986106,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2053,
+      "seconds": 3.729312958996161
+    },
+    {
+      "doc_id": "mx02",
+      "page": 17,
+      "phase": "rest",
+      "p_yes": 0.926218221098033,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2053,
+      "seconds": 3.721524500011583
+    },
+    {
+      "doc_id": "mx03",
+      "page": 2,
+      "phase": "rest",
+      "p_yes": 0.9111649454252588,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2497,
+      "seconds": 4.101915249993908
+    },
+    {
+      "doc_id": "mx03",
+      "page": 14,
+      "phase": "rest",
+      "p_yes": 0.9077585539050291,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2151,
+      "seconds": 3.773746000006213
+    },
+    {
+      "doc_id": "mx03",
+      "page": 17,
+      "phase": "rest",
+      "p_yes": 0.9209316648704918,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2423,
+      "seconds": 3.997864541001036
+    },
+    {
+      "doc_id": "mx03",
+      "page": 34,
+      "phase": "rest",
+      "p_yes": 0.7579798646304032,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2070,
+      "seconds": 3.7603907090087887
+    },
+    {
+      "doc_id": "mx03",
+      "page": 35,
+      "phase": "rest",
+      "p_yes": 0.9244946164225062,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2054,
+      "seconds": 3.7624281250027707
+    },
+    {
+      "doc_id": "mx04",
+      "page": 1,
+      "phase": "rest",
+      "p_yes": 0.9391244375435807,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2072,
+      "seconds": 3.7785125829977915
+    },
+    {
+      "doc_id": "mx04",
+      "page": 31,
+      "phase": "rest",
+      "p_yes": 0.7583926007009296,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2063,
+      "seconds": 3.793471208002302
+    },
+    {
+      "doc_id": "mx04",
+      "page": 32,
+      "phase": "rest",
+      "p_yes": 0.9225541404663601,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2051,
+      "seconds": 3.793416291999165
+    },
+    {
+      "doc_id": "mx05",
+      "page": 13,
+      "phase": "rest",
+      "p_yes": 0.9095129738556196,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2234,
+      "seconds": 3.920917333001853
+    },
+    {
+      "doc_id": "mx05",
+      "page": 33,
+      "phase": "rest",
+      "p_yes": 0.923705296158954,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2234,
+      "seconds": 3.930501082999399
+    },
+    {
+      "doc_id": "mx05",
+      "page": 36,
+      "phase": "rest",
+      "p_yes": 0.929252920735784,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2190,
+      "seconds": 3.9016044580057496
+    },
+    {
+      "doc_id": "mx05",
+      "page": 51,
+      "phase": "rest",
+      "p_yes": 0.7569515463241349,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2061,
+      "seconds": 3.7755807079956867
+    },
+    {
+      "doc_id": "mx05",
+      "page": 52,
+      "phase": "rest",
+      "p_yes": 0.9241116958105322,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2050,
+      "seconds": 3.7758519159979187
+    },
+    {
+      "doc_id": "mx06",
+      "page": 15,
+      "phase": "rest",
+      "p_yes": 0.9194417171527837,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2081,
+      "seconds": 3.76821262500016
+    },
+    {
+      "doc_id": "mx06",
+      "page": 26,
+      "phase": "rest",
+      "p_yes": 0.7574867162016881,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2063,
+      "seconds": 3.7687617920018965
+    },
+    {
+      "doc_id": "mx06",
+      "page": 27,
+      "phase": "rest",
+      "p_yes": 0.9213762740892916,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2051,
+      "seconds": 3.7605904170050053
+    },
+    {
+      "doc_id": "mx07",
+      "page": 12,
+      "phase": "rest",
+      "p_yes": 0.9244961475317685,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2065,
+      "seconds": 3.764580125003704
+    },
+    {
+      "doc_id": "mx07",
+      "page": 39,
+      "phase": "rest",
+      "p_yes": 0.6671063114929913,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2069,
+      "seconds": 3.7906359170010546
+    },
+    {
+      "doc_id": "mx07",
+      "page": 40,
+      "phase": "rest",
+      "p_yes": 0.9111642120830432,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2055,
+      "seconds": 3.7553883750078967
+    },
+    {
+      "doc_id": "mx07",
+      "page": 41,
+      "phase": "rest",
+      "p_yes": 0.8086568476671802,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2067,
+      "seconds": 3.7654553330066847
+    },
+    {
+      "doc_id": "mx07",
+      "page": 42,
+      "phase": "rest",
+      "p_yes": 0.9197381336976332,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2053,
+      "seconds": 3.761397542009945
+    },
+    {
+      "doc_id": "mx07",
+      "page": 43,
+      "phase": "rest",
+      "p_yes": 0.914452304655767,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2053,
+      "seconds": 3.7585732910083607
+    },
+    {
+      "doc_id": "mx07",
+      "page": 44,
+      "phase": "rest",
+      "p_yes": 0.8152039011902117,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2067,
+      "seconds": 3.7861666249955306
+    },
+    {
+      "doc_id": "tl01",
+      "page": 1,
+      "phase": "rest",
+      "p_yes": 0.6249497724992038,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1942,
+      "seconds": 3.407357999996748
+    },
+    {
+      "doc_id": "tl01",
+      "page": 19,
+      "phase": "rest",
+      "p_yes": 0.6982552379952286,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2272,
+      "seconds": 3.7288575830025366
+    },
+    {
+      "doc_id": "tl01",
+      "page": 34,
+      "phase": "rest",
+      "p_yes": 0.015264005900961592,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1933,
+      "seconds": 3.506576750005479
+    },
+    {
+      "doc_id": "tl01",
+      "page": 35,
+      "phase": "rest",
+      "p_yes": 0.9550544507176303,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1923,
+      "seconds": 3.4910064169962425
+    },
+    {
+      "doc_id": "tl01",
+      "page": 36,
+      "phase": "rest",
+      "p_yes": 0.9540528482456325,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1923,
+      "seconds": 3.4961125410045497
+    },
+    {
+      "doc_id": "tl01",
+      "page": 37,
+      "phase": "rest",
+      "p_yes": 0.025438465330006953,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1966,
+      "seconds": 3.502767665995634
+    },
+    {
+      "doc_id": "tl01",
+      "page": 38,
+      "phase": "rest",
+      "p_yes": 0.020208923537328984,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1933,
+      "seconds": 3.5018542909965618
+    },
+    {
+      "doc_id": "tl01",
+      "page": 39,
+      "phase": "rest",
+      "p_yes": 0.5593498557518545,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1962,
+      "seconds": 3.5230575839959783
+    },
+    {
+      "doc_id": "tl01",
+      "page": 41,
+      "phase": "rest",
+      "p_yes": 0.09604213987160969,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1970,
+      "seconds": 3.491738708005869
+    },
+    {
+      "doc_id": "tl01",
+      "page": 42,
+      "phase": "rest",
+      "p_yes": 0.8942217837892816,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1934,
+      "seconds": 3.513594791991636
+    },
+    {
+      "doc_id": "tl01",
+      "page": 44,
+      "phase": "rest",
+      "p_yes": 0.010917192580498135,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1992,
+      "seconds": 3.5603458330006106
+    },
+    {
+      "doc_id": "tl01",
+      "page": 47,
+      "phase": "rest",
+      "p_yes": 0.024125591689437592,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1990,
+      "seconds": 3.5142511669982923
+    },
+    {
+      "doc_id": "tl01",
+      "page": 48,
+      "phase": "rest",
+      "p_yes": 0.016525952439635446,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1939,
+      "seconds": 3.51491787499981
+    },
+    {
+      "doc_id": "tl01",
+      "page": 49,
+      "phase": "rest",
+      "p_yes": 0.9495719809311931,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1923,
+      "seconds": 3.4974425829859683
+    },
+    {
+      "doc_id": "tl01",
+      "page": 50,
+      "phase": "rest",
+      "p_yes": 0.019144195003373,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1946,
+      "seconds": 3.515185374999419
+    },
+    {
+      "doc_id": "tl01",
+      "page": 51,
+      "phase": "rest",
+      "p_yes": 0.018409751813852265,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2045,
+      "seconds": 3.630450208002003
+    },
+    {
+      "doc_id": "tl01",
+      "page": 52,
+      "phase": "rest",
+      "p_yes": 0.015587025378082799,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1946,
+      "seconds": 3.5059820839960594
+    },
+    {
+      "doc_id": "tl01",
+      "page": 53,
+      "phase": "rest",
+      "p_yes": 0.02124843586087836,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1966,
+      "seconds": 3.5139670420030598
+    },
+    {
+      "doc_id": "tl01",
+      "page": 54,
+      "phase": "rest",
+      "p_yes": 0.012451028449566694,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1941,
+      "seconds": 3.5141366250027204
+    },
+    {
+      "doc_id": "tl01",
+      "page": 55,
+      "phase": "rest",
+      "p_yes": 0.09965054972519738,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1929,
+      "seconds": 3.506332000004477
+    },
+    {
+      "doc_id": "tl01",
+      "page": 56,
+      "phase": "rest",
+      "p_yes": 0.9546033012783955,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1923,
+      "seconds": 3.531220917007886
+    },
+    {
+      "doc_id": "tl01",
+      "page": 57,
+      "phase": "rest",
+      "p_yes": 0.8984298211464324,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1927,
+      "seconds": 3.518016499991063
+    },
+    {
+      "doc_id": "tl01",
+      "page": 58,
+      "phase": "rest",
+      "p_yes": 0.020147651211090183,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1938,
+      "seconds": 3.5220705829997314
+    },
+    {
+      "doc_id": "tl01",
+      "page": 59,
+      "phase": "rest",
+      "p_yes": 0.018656522484902068,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1946,
+      "seconds": 3.5138888340006815
+    },
+    {
+      "doc_id": "tl01",
+      "page": 60,
+      "phase": "rest",
+      "p_yes": 0.022178206256972425,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1970,
+      "seconds": 3.522097749999375
+    },
+    {
+      "doc_id": "tl01",
+      "page": 61,
+      "phase": "rest",
+      "p_yes": 0.9506951973456833,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1923,
+      "seconds": 3.5112767909886315
+    },
+    {
+      "doc_id": "tl01",
+      "page": 62,
+      "phase": "rest",
+      "p_yes": 0.013720530453401714,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1932,
+      "seconds": 3.5209703339933185
+    },
+    {
+      "doc_id": "tl01",
+      "page": 63,
+      "phase": "rest",
+      "p_yes": 0.018565484807341253,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1997,
+      "seconds": 3.522593166999286
+    },
+    {
+      "doc_id": "tl01",
+      "page": 64,
+      "phase": "rest",
+      "p_yes": 0.012646401469923541,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1926,
+      "seconds": 3.5369967499864288
+    },
+    {
+      "doc_id": "tl01",
+      "page": 65,
+      "phase": "rest",
+      "p_yes": 0.021054212327323917,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1964,
+      "seconds": 3.544633541998337
+    },
+    {
+      "doc_id": "tl01",
+      "page": 66,
+      "phase": "rest",
+      "p_yes": 0.9517885613359992,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1923,
+      "seconds": 3.5148479170020437
+    },
+    {
+      "doc_id": "tl01",
+      "page": 67,
+      "phase": "rest",
+      "p_yes": 0.022575134523144254,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1961,
+      "seconds": 3.537462583000888
+    },
+    {
+      "doc_id": "tl01",
+      "page": 68,
+      "phase": "rest",
+      "p_yes": 0.020517465068750972,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1957,
+      "seconds": 3.525150458997814
+    },
+    {
+      "doc_id": "tl01",
+      "page": 69,
+      "phase": "rest",
+      "p_yes": 0.013837583079214625,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1995,
+      "seconds": 3.5223139580048155
+    },
+    {
+      "doc_id": "tl01",
+      "page": 70,
+      "phase": "rest",
+      "p_yes": 0.04256977804060378,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1937,
+      "seconds": 3.5307170000014594
+    },
+    {
+      "doc_id": "tl01",
+      "page": 71,
+      "phase": "rest",
+      "p_yes": 0.051575441232862465,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1930,
+      "seconds": 3.5288412910012994
+    },
+    {
+      "doc_id": "tl01",
+      "page": 72,
+      "phase": "rest",
+      "p_yes": 0.9523297678254918,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1923,
+      "seconds": 3.538102334001451
+    },
+    {
+      "doc_id": "tl01",
+      "page": 73,
+      "phase": "rest",
+      "p_yes": 0.01681212167038544,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1937,
+      "seconds": 3.5202862919977633
+    },
+    {
+      "doc_id": "tl01",
+      "page": 74,
+      "phase": "rest",
+      "p_yes": 0.9548626306006979,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1923,
+      "seconds": 3.5129020000022138
+    },
+    {
+      "doc_id": "tl01",
+      "page": 75,
+      "phase": "rest",
+      "p_yes": 0.01802941424499135,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1966,
+      "seconds": 3.5248724999983096
+    },
+    {
+      "doc_id": "tl01",
+      "page": 76,
+      "phase": "rest",
+      "p_yes": 0.9535296156869721,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1923,
+      "seconds": 3.5240237090038136
+    },
+    {
+      "doc_id": "tl01",
+      "page": 77,
+      "phase": "rest",
+      "p_yes": 0.013675550614714345,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1946,
+      "seconds": 3.5318970829976024
+    },
+    {
+      "doc_id": "tl01",
+      "page": 78,
+      "phase": "rest",
+      "p_yes": 0.04613442018855568,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1943,
+      "seconds": 3.5126711670018267
+    },
+    {
+      "doc_id": "tl01",
+      "page": 80,
+      "phase": "rest",
+      "p_yes": 0.009933154318737569,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2004,
+      "seconds": 3.530330084002344
+    },
+    {
+      "doc_id": "tl02",
+      "page": 3,
+      "phase": "rest",
+      "p_yes": 0.8097364630389026,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2279,
+      "seconds": 3.950361957991845
+    },
+    {
+      "doc_id": "tl02",
+      "page": 4,
+      "phase": "rest",
+      "p_yes": 0.6735175335060845,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2575,
+      "seconds": 4.247560750009143
+    },
+    {
+      "doc_id": "tl02",
+      "page": 8,
+      "phase": "rest",
+      "p_yes": 0.5816266523991958,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2328,
+      "seconds": 4.141764540996519
+    },
+    {
+      "doc_id": "tl02",
+      "page": 11,
+      "phase": "rest",
+      "p_yes": 0.737751060566959,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2406,
+      "seconds": 4.150718291988596
+    },
+    {
+      "doc_id": "tl02",
+      "page": 12,
+      "phase": "rest",
+      "p_yes": 0.3197687033678033,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2343,
+      "seconds": 3.9332947920047445
+    },
+    {
+      "doc_id": "tl02",
+      "page": 13,
+      "phase": "rest",
+      "p_yes": 0.9129591559741922,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2564,
+      "seconds": 4.249856458991417
+    },
+    {
+      "doc_id": "tl02",
+      "page": 15,
+      "phase": "rest",
+      "p_yes": 0.114290638486376,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2220,
+      "seconds": 3.918123875002493
+    },
+    {
+      "doc_id": "tl02",
+      "page": 17,
+      "phase": "rest",
+      "p_yes": 0.1737101780823876,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2236,
+      "seconds": 3.9309996670053806
+    },
+    {
+      "doc_id": "tl02",
+      "page": 18,
+      "phase": "rest",
+      "p_yes": 0.6461806682898689,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2361,
+      "seconds": 4.024301583005581
+    },
+    {
+      "doc_id": "tl02",
+      "page": 21,
+      "phase": "rest",
+      "p_yes": 0.8667657802011506,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2583,
+      "seconds": 4.2786118340009125
+    },
+    {
+      "doc_id": "tl02",
+      "page": 31,
+      "phase": "rest",
+      "p_yes": 0.8300089894964242,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2540,
+      "seconds": 4.153234166005859
+    },
+    {
+      "doc_id": "tl02",
+      "page": 32,
+      "phase": "rest",
+      "p_yes": 0.7781948239249027,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2630,
+      "seconds": 4.352058042000863
+    },
+    {
+      "doc_id": "tl02",
+      "page": 33,
+      "phase": "rest",
+      "p_yes": 0.15842878584512007,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2116,
+      "seconds": 3.812099249989842
+    },
+    {
+      "doc_id": "tl02",
+      "page": 35,
+      "phase": "rest",
+      "p_yes": 0.6360415000342929,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2281,
+      "seconds": 3.9243007090117317
+    },
+    {
+      "doc_id": "tl02",
+      "page": 36,
+      "phase": "rest",
+      "p_yes": 0.2018833983548784,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2296,
+      "seconds": 4.1315613750048215
+    },
+    {
+      "doc_id": "tl02",
+      "page": 37,
+      "phase": "rest",
+      "p_yes": 0.13975047549579217,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2190,
+      "seconds": 3.9299728749901988
+    },
+    {
+      "doc_id": "tl02",
+      "page": 38,
+      "phase": "rest",
+      "p_yes": 0.026424755468190505,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2054,
+      "seconds": 3.8068840420019114
+    },
+    {
+      "doc_id": "tl02",
+      "page": 39,
+      "phase": "rest",
+      "p_yes": 0.2650517981277298,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2094,
+      "seconds": 3.7136822089960333
+    },
+    {
+      "doc_id": "tl02",
+      "page": 40,
+      "phase": "rest",
+      "p_yes": 0.18332992288605562,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2185,
+      "seconds": 3.988973999992595
+    },
+    {
+      "doc_id": "tl02",
+      "page": 41,
+      "phase": "rest",
+      "p_yes": 0.4231524347201001,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2257,
+      "seconds": 3.919205833997694
+    },
+    {
+      "doc_id": "tl02",
+      "page": 43,
+      "phase": "rest",
+      "p_yes": 0.17564878450315133,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2075,
+      "seconds": 3.7108965420047753
+    },
+    {
+      "doc_id": "tl03",
+      "page": 1,
+      "phase": "rest",
+      "p_yes": 0.9380554868451464,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2057,
+      "seconds": 3.7161112089961534
+    },
+    {
+      "doc_id": "tl03",
+      "page": 2,
+      "phase": "rest",
+      "p_yes": 0.8654238838812419,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2577,
+      "seconds": 4.158886292003444
+    },
+    {
+      "doc_id": "tl03",
+      "page": 5,
+      "phase": "rest",
+      "p_yes": 0.8507875500249601,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2471,
+      "seconds": 3.954975624990766
+    },
+    {
+      "doc_id": "tl03",
+      "page": 7,
+      "phase": "rest",
+      "p_yes": 0.013631277172101577,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2006,
+      "seconds": 3.6182067499903496
+    },
+    {
+      "doc_id": "tl03",
+      "page": 8,
+      "phase": "rest",
+      "p_yes": 0.013794230794925607,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1963,
+      "seconds": 3.5403737910091877
+    },
+    {
+      "doc_id": "tl03",
+      "page": 11,
+      "phase": "rest",
+      "p_yes": 0.14265137963079882,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2144,
+      "seconds": 3.7382080410025083
+    },
+    {
+      "doc_id": "tl03",
+      "page": 12,
+      "phase": "rest",
+      "p_yes": 0.22622872551788006,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2041,
+      "seconds": 3.539389541998389
+    },
+    {
+      "doc_id": "tl03",
+      "page": 13,
+      "phase": "rest",
+      "p_yes": 0.08717834235109113,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2185,
+      "seconds": 3.817262500000652
+    },
+    {
+      "doc_id": "tl03",
+      "page": 14,
+      "phase": "rest",
+      "p_yes": 0.3439443152550105,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2122,
+      "seconds": 3.6291325420024805
+    },
+    {
+      "doc_id": "tl03",
+      "page": 15,
+      "phase": "rest",
+      "p_yes": 0.5097362905231406,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2003,
+      "seconds": 3.522175292004249
+    },
+    {
+      "doc_id": "tl03",
+      "page": 17,
+      "phase": "rest",
+      "p_yes": 0.09205865358762855,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2178,
+      "seconds": 3.805359333011438
+    },
+    {
+      "doc_id": "tl03",
+      "page": 18,
+      "phase": "rest",
+      "p_yes": 0.20212398669560097,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2069,
+      "seconds": 3.628196416000719
+    },
+    {
+      "doc_id": "tl03",
+      "page": 19,
+      "phase": "rest",
+      "p_yes": 0.05867975845110197,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2206,
+      "seconds": 3.8302472499926807
+    },
+    {
+      "doc_id": "tl03",
+      "page": 20,
+      "phase": "rest",
+      "p_yes": 0.14356054352266964,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2096,
+      "seconds": 3.623249875003239
+    },
+    {
+      "doc_id": "tl03",
+      "page": 21,
+      "phase": "rest",
+      "p_yes": 0.46497381283045974,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2108,
+      "seconds": 3.7094739580061287
+    },
+    {
+      "doc_id": "tl03",
+      "page": 22,
+      "phase": "rest",
+      "p_yes": 0.09406177119179937,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2062,
+      "seconds": 3.6143353750085225
+    },
+    {
+      "doc_id": "tl03",
+      "page": 24,
+      "phase": "rest",
+      "p_yes": 0.26580577714631404,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2034,
+      "seconds": 3.5589176250068704
+    },
+    {
+      "doc_id": "tl03",
+      "page": 25,
+      "phase": "rest",
+      "p_yes": 0.35277428654383247,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2010,
+      "seconds": 3.618624875001842
+    },
+    {
+      "doc_id": "tl04",
+      "page": 9,
+      "phase": "rest",
+      "p_yes": 0.22014447739955176,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1985,
+      "seconds": 3.4274022500030696
+    },
+    {
+      "doc_id": "tl04",
+      "page": 11,
+      "phase": "rest",
+      "p_yes": 0.25598255037842566,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2103,
+      "seconds": 3.531264791992726
+    },
+    {
+      "doc_id": "tl07",
+      "page": 1,
+      "phase": "rest",
+      "p_yes": 0.03246577346821392,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1850,
+      "seconds": 3.180133540998213
+    },
+    {
+      "doc_id": "tl08",
+      "page": 1,
+      "phase": "rest",
+      "p_yes": 0.10771077261206127,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1847,
+      "seconds": 3.166998959000921
+    },
+    {
+      "doc_id": "rf05",
+      "page": 3,
+      "phase": "rest",
+      "p_yes": 0.2459576039640936,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1086,
+      "seconds": 1.364241666989983
+    },
+    {
+      "doc_id": "rf05",
+      "page": 9,
+      "phase": "rest",
+      "p_yes": 0.06319518370673906,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1187,
+      "seconds": 1.4798465000058059
+    },
+    {
+      "doc_id": "rf05",
+      "page": 13,
+      "phase": "rest",
+      "p_yes": 0.129848206034824,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1069,
+      "seconds": 1.2414408340118825
+    },
+    {
+      "doc_id": "rf05",
+      "page": 18,
+      "phase": "rest",
+      "p_yes": 0.09266559043364948,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1185,
+      "seconds": 1.4424852920055855
+    },
+    {
+      "doc_id": "rf05",
+      "page": 21,
+      "phase": "rest",
+      "p_yes": 0.07815210033029271,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1057,
+      "seconds": 1.2385083750123158
+    },
+    {
+      "doc_id": "rf05",
+      "page": 25,
+      "phase": "rest",
+      "p_yes": 0.0391564583470205,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1899,
+      "seconds": 3.3896395839983597
+    },
+    {
+      "doc_id": "rf06",
+      "page": 1,
+      "phase": "rest",
+      "p_yes": 0.031057044067144633,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1941,
+      "seconds": 3.3923418749909615
+    },
+    {
+      "doc_id": "rf06",
+      "page": 2,
+      "phase": "rest",
+      "p_yes": 0.041028169665356176,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1732,
+      "seconds": 2.974716625001747
+    },
+    {
+      "doc_id": "rf06",
+      "page": 3,
+      "phase": "rest",
+      "p_yes": 0.0154707941214866,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1810,
+      "seconds": 3.0971755420032423
+    },
+    {
+      "doc_id": "rf06",
+      "page": 4,
+      "phase": "rest",
+      "p_yes": 0.015384409354644699,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1791,
+      "seconds": 3.020261167010176
+    },
+    {
+      "doc_id": "rf06",
+      "page": 6,
+      "phase": "rest",
+      "p_yes": 0.025934016168740862,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1794,
+      "seconds": 3.076757417002227
+    },
+    {
+      "doc_id": "rf06",
+      "page": 7,
+      "phase": "rest",
+      "p_yes": 0.02379401080400453,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1899,
+      "seconds": 3.1079051659908146
+    },
+    {
+      "doc_id": "rf06",
+      "page": 11,
+      "phase": "rest",
+      "p_yes": 0.02261381550765151,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1950,
+      "seconds": 3.01464575000864
+    },
+    {
+      "doc_id": "rf06",
+      "page": 15,
+      "phase": "rest",
+      "p_yes": 0.02584722929310032,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1772,
+      "seconds": 2.9027497909992235
+    },
+    {
+      "doc_id": "rf06",
+      "page": 19,
+      "phase": "rest",
+      "p_yes": 0.01706313254582991,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1737,
+      "seconds": 2.888059582997812
+    },
+    {
+      "doc_id": "rf06",
+      "page": 23,
+      "phase": "rest",
+      "p_yes": 0.01690969860632874,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2135,
+      "seconds": 3.2187267080007587
+    },
+    {
+      "doc_id": "rf06",
+      "page": 24,
+      "phase": "rest",
+      "p_yes": 0.019773861570963107,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1727,
+      "seconds": 2.420309458000702
+    },
+    {
+      "doc_id": "rf06",
+      "page": 25,
+      "phase": "rest",
+      "p_yes": 0.010821135622754522,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1524,
+      "seconds": 2.2141045419994043
+    },
+    {
+      "doc_id": "rf06",
+      "page": 27,
+      "phase": "rest",
+      "p_yes": 0.02269833091047143,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2370,
+      "seconds": 4.301229374992545
+    },
+    {
+      "doc_id": "rf06",
+      "page": 29,
+      "phase": "rest",
+      "p_yes": 0.029393944181218278,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2229,
+      "seconds": 3.8209957079961896
+    },
+    {
+      "doc_id": "rf06",
+      "page": 31,
+      "phase": "rest",
+      "p_yes": 0.017300828776604618,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2515,
+      "seconds": 4.419912541008671
+    },
+    {
+      "doc_id": "rf06",
+      "page": 32,
+      "phase": "rest",
+      "p_yes": 0.018854026018541265,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1668,
+      "seconds": 2.3691889999900013
+    },
+    {
+      "doc_id": "rf06",
+      "page": 33,
+      "phase": "rest",
+      "p_yes": 0.014225250629643431,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1560,
+      "seconds": 2.2620101670036092
+    },
+    {
+      "doc_id": "rf06",
+      "page": 35,
+      "phase": "rest",
+      "p_yes": 0.1789576655204273,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1482,
+      "seconds": 1.9671177919954062
+    },
+    {
+      "doc_id": "rf06",
+      "page": 36,
+      "phase": "rest",
+      "p_yes": 0.06892869760756379,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2304,
+      "seconds": 2.8199382919992786
+    },
+    {
+      "doc_id": "rf06",
+      "page": 37,
+      "phase": "rest",
+      "p_yes": 0.04214052554199576,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1804,
+      "seconds": 2.5006837919936515
+    },
+    {
+      "doc_id": "rf06",
+      "page": 38,
+      "phase": "rest",
+      "p_yes": 0.06995207783588668,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2048,
+      "seconds": 3.320927250009845
+    },
+    {
+      "doc_id": "rf06",
+      "page": 39,
+      "phase": "rest",
+      "p_yes": 0.016838548290243054,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1942,
+      "seconds": 3.326508832993568
+    },
+    {
+      "doc_id": "rf06",
+      "page": 41,
+      "phase": "rest",
+      "p_yes": 0.048426553246716394,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2345,
+      "seconds": 3.6287657920038328
+    },
+    {
+      "doc_id": "rf06",
+      "page": 42,
+      "phase": "rest",
+      "p_yes": 0.028936183679875452,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2629,
+      "seconds": 3.5494244580040686
+    },
+    {
+      "doc_id": "rf06",
+      "page": 43,
+      "phase": "rest",
+      "p_yes": 0.021085982844707685,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2544,
+      "seconds": 3.4755293750058627
+    },
+    {
+      "doc_id": "rf06",
+      "page": 44,
+      "phase": "rest",
+      "p_yes": 0.017401962438459633,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1951,
+      "seconds": 3.03492695800378
+    },
+    {
+      "doc_id": "rf06",
+      "page": 45,
+      "phase": "rest",
+      "p_yes": 0.02255080024826728,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2473,
+      "seconds": 3.4704505420086207
+    },
+    {
+      "doc_id": "rf06",
+      "page": 46,
+      "phase": "rest",
+      "p_yes": 0.02176854621555781,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2038,
+      "seconds": 3.105985917005455
+    },
+    {
+      "doc_id": "rf06",
+      "page": 47,
+      "phase": "rest",
+      "p_yes": 0.022480950426926917,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1952,
+      "seconds": 3.116047041999991
+    },
+    {
+      "doc_id": "rf06",
+      "page": 48,
+      "phase": "rest",
+      "p_yes": 0.015727182648044374,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1847,
+      "seconds": 2.9970697079988895
+    },
+    {
+      "doc_id": "rf06",
+      "page": 49,
+      "phase": "rest",
+      "p_yes": 0.02182683579947465,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2506,
+      "seconds": 3.542859416003921
+    },
+    {
+      "doc_id": "rf06",
+      "page": 50,
+      "phase": "rest",
+      "p_yes": 0.020676074694537354,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2380,
+      "seconds": 3.431965958996443
+    },
+    {
+      "doc_id": "rf06",
+      "page": 51,
+      "phase": "rest",
+      "p_yes": 0.02648424046074342,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2007,
+      "seconds": 3.144647167006042
+    },
+    {
+      "doc_id": "rf06",
+      "page": 52,
+      "phase": "rest",
+      "p_yes": 0.02139794477419813,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2188,
+      "seconds": 3.293593124995823
+    },
+    {
+      "doc_id": "rf06",
+      "page": 53,
+      "phase": "rest",
+      "p_yes": 0.010313141710668734,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1863,
+      "seconds": 3.002350374998059
+    },
+    {
+      "doc_id": "rf06",
+      "page": 54,
+      "phase": "rest",
+      "p_yes": 0.09364419335445953,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1677,
+      "seconds": 2.871533333993284
+    },
+    {
+      "doc_id": "rf06",
+      "page": 57,
+      "phase": "rest",
+      "p_yes": 0.014650881664505237,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1907,
+      "seconds": 3.3709687500086147
+    },
+    {
+      "doc_id": "rf06",
+      "page": 59,
+      "phase": "rest",
+      "p_yes": 0.05823849454594288,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2243,
+      "seconds": 3.0852557920006802
+    },
+    {
+      "doc_id": "rf06",
+      "page": 60,
+      "phase": "rest",
+      "p_yes": 0.13918251793703182,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1394,
+      "seconds": 1.8232307500002207
+    },
+    {
+      "doc_id": "rf06",
+      "page": 61,
+      "phase": "rest",
+      "p_yes": 0.03946965971544836,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1389,
+      "seconds": 1.812579082994489
+    },
+    {
+      "doc_id": "rf06",
+      "page": 62,
+      "phase": "rest",
+      "p_yes": 0.010836016480275702,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1308,
+      "seconds": 1.9978105409973068
+    },
+    {
+      "doc_id": "rf06",
+      "page": 64,
+      "phase": "rest",
+      "p_yes": 0.014857404819458542,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1964,
+      "seconds": 3.361604832985904
+    },
+    {
+      "doc_id": "rf06",
+      "page": 65,
+      "phase": "rest",
+      "p_yes": 0.11261578820985373,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2388,
+      "seconds": 3.4315515420021256
+    },
+    {
+      "doc_id": "rf06",
+      "page": 66,
+      "phase": "rest",
+      "p_yes": 0.13127614406232152,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2153,
+      "seconds": 3.2681426249910146
+    },
+    {
+      "doc_id": "rf06",
+      "page": 67,
+      "phase": "rest",
+      "p_yes": 0.01896590581935918,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2319,
+      "seconds": 3.6225781250104774
+    },
+    {
+      "doc_id": "rf06",
+      "page": 71,
+      "phase": "rest",
+      "p_yes": 0.06491995587898172,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1558,
+      "seconds": 2.269677000003867
+    },
+    {
+      "doc_id": "rf06",
+      "page": 72,
+      "phase": "rest",
+      "p_yes": 0.06929523226547701,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1838,
+      "seconds": 2.620693625009153
+    },
+    {
+      "doc_id": "rf06",
+      "page": 73,
+      "phase": "rest",
+      "p_yes": 0.021029177638612614,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1594,
+      "seconds": 2.3968640840030275
+    },
+    {
+      "doc_id": "rf06",
+      "page": 75,
+      "phase": "rest",
+      "p_yes": 0.08947861278169972,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1677,
+      "seconds": 2.856781915994361
+    },
+    {
+      "doc_id": "rf06",
+      "page": 76,
+      "phase": "rest",
+      "p_yes": 0.20017302339828347,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1464,
+      "seconds": 2.274146332987584
+    },
+    {
+      "doc_id": "rf06",
+      "page": 77,
+      "phase": "rest",
+      "p_yes": 0.1131575220902397,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1794,
+      "seconds": 2.6131180000083987
+    },
+    {
+      "doc_id": "rf06",
+      "page": 78,
+      "phase": "rest",
+      "p_yes": 0.10240381334753731,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1668,
+      "seconds": 2.5114895419974346
+    },
+    {
+      "doc_id": "rf06",
+      "page": 79,
+      "phase": "rest",
+      "p_yes": 0.027886967388081933,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1623,
+      "seconds": 2.401664790988434
+    },
+    {
+      "doc_id": "rf06",
+      "page": 80,
+      "phase": "rest",
+      "p_yes": 0.07238644783189674,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1632,
+      "seconds": 2.6918864579929505
+    },
+    {
+      "doc_id": "rf06",
+      "page": 81,
+      "phase": "rest",
+      "p_yes": 0.032188168044083705,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1628,
+      "seconds": 2.68084841700329
+    },
+    {
+      "doc_id": "rf06",
+      "page": 83,
+      "phase": "rest",
+      "p_yes": 0.05839774123394073,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2068,
+      "seconds": 3.554083291994175
+    },
+    {
+      "doc_id": "rf06",
+      "page": 85,
+      "phase": "rest",
+      "p_yes": 0.029427359037411446,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2619,
+      "seconds": 4.200278999996954
+    },
+    {
+      "doc_id": "rf06",
+      "page": 86,
+      "phase": "rest",
+      "p_yes": 0.01998993890205102,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2090,
+      "seconds": 3.240471165991039
+    },
+    {
+      "doc_id": "rf06",
+      "page": 87,
+      "phase": "rest",
+      "p_yes": 0.02118579793372635,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2136,
+      "seconds": 3.2417710840090876
+    },
+    {
+      "doc_id": "rf06",
+      "page": 88,
+      "phase": "rest",
+      "p_yes": 0.018188932467676378,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2034,
+      "seconds": 3.312354041991057
+    },
+    {
+      "doc_id": "rf06",
+      "page": 89,
+      "phase": "rest",
+      "p_yes": 0.045185597884242534,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1851,
+      "seconds": 3.2746456249878975
+    },
+    {
+      "doc_id": "rf07",
+      "page": 1,
+      "phase": "rest",
+      "p_yes": 0.04522313199830471,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1864,
+      "seconds": 3.278351457993267
+    },
+    {
+      "doc_id": "rf07",
+      "page": 2,
+      "phase": "rest",
+      "p_yes": 0.04769912346323692,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1824,
+      "seconds": 3.25611695900443
+    },
+    {
+      "doc_id": "rf07",
+      "page": 3,
+      "phase": "rest",
+      "p_yes": 0.10224983862596788,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2434,
+      "seconds": 3.831330666987924
+    },
+    {
+      "doc_id": "rf07",
+      "page": 4,
+      "phase": "rest",
+      "p_yes": 0.06758368263392041,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1926,
+      "seconds": 3.3830257080117008
+    },
+    {
+      "doc_id": "rf07",
+      "page": 5,
+      "phase": "rest",
+      "p_yes": 0.01751874709598489,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2550,
+      "seconds": 3.8529794579953887
+    },
+    {
+      "doc_id": "rf07",
+      "page": 6,
+      "phase": "rest",
+      "p_yes": 0.018492420298396393,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2277,
+      "seconds": 3.623224124996341
+    },
+    {
+      "doc_id": "rf07",
+      "page": 7,
+      "phase": "rest",
+      "p_yes": 0.03833978780178484,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1824,
+      "seconds": 3.28086162499676
+    },
+    {
+      "doc_id": "rf07",
+      "page": 8,
+      "phase": "rest",
+      "p_yes": 0.04178922484435788,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1835,
+      "seconds": 3.280034291994525
+    },
+    {
+      "doc_id": "rf07",
+      "page": 9,
+      "phase": "rest",
+      "p_yes": 0.028507277725734647,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2218,
+      "seconds": 3.6090413329948206
+    },
+    {
+      "doc_id": "rf07",
+      "page": 10,
+      "phase": "rest",
+      "p_yes": 0.022346384266014256,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2415,
+      "seconds": 3.7537504579959204
+    },
+    {
+      "doc_id": "rf07",
+      "page": 11,
+      "phase": "rest",
+      "p_yes": 0.026844574112892945,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2234,
+      "seconds": 3.5636549170012586
+    },
+    {
+      "doc_id": "rf07",
+      "page": 12,
+      "phase": "rest",
+      "p_yes": 0.09310507276017232,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1842,
+      "seconds": 3.2506154580041766
+    },
+    {
+      "doc_id": "rf07",
+      "page": 13,
+      "phase": "rest",
+      "p_yes": 0.01866147530868538,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1999,
+      "seconds": 3.383244291006122
+    },
+    {
+      "doc_id": "rf07",
+      "page": 14,
+      "phase": "rest",
+      "p_yes": 0.21940685248279598,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1930,
+      "seconds": 3.354242792003788
+    },
+    {
+      "doc_id": "rf07",
+      "page": 16,
+      "phase": "rest",
+      "p_yes": 0.072451150872814,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1778,
+      "seconds": 3.0704129579971777
+    },
+    {
+      "doc_id": "rf07",
+      "page": 17,
+      "phase": "rest",
+      "p_yes": 0.012194454689626889,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1782,
+      "seconds": 3.071117792002042
+    },
+    {
+      "doc_id": "rf07",
+      "page": 19,
+      "phase": "rest",
+      "p_yes": 0.10266128056611493,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2113,
+      "seconds": 3.4553281249973224
+    },
+    {
+      "doc_id": "rf07",
+      "page": 20,
+      "phase": "rest",
+      "p_yes": 0.032363018880837514,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1829,
+      "seconds": 3.250306500005536
+    },
+    {
+      "doc_id": "rf07",
+      "page": 21,
+      "phase": "rest",
+      "p_yes": 0.016114537479088885,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1890,
+      "seconds": 3.279255875007948
+    },
+    {
+      "doc_id": "rf07",
+      "page": 23,
+      "phase": "rest",
+      "p_yes": 0.18217071989191624,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2123,
+      "seconds": 3.6362940410035662
+    },
+    {
+      "doc_id": "rf07",
+      "page": 24,
+      "phase": "rest",
+      "p_yes": 0.09900472658402677,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1945,
+      "seconds": 3.4539735419966746
+    },
+    {
+      "doc_id": "rf07",
+      "page": 25,
+      "phase": "rest",
+      "p_yes": 0.07130504590375315,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2246,
+      "seconds": 3.66433645899815
+    },
+    {
+      "doc_id": "rf07",
+      "page": 26,
+      "phase": "rest",
+      "p_yes": 0.47212899964685756,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2031,
+      "seconds": 3.5533851250074804
+    },
+    {
+      "doc_id": "rf07",
+      "page": 27,
+      "phase": "rest",
+      "p_yes": 0.07420659698415918,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2368,
+      "seconds": 3.862415042007342
+    },
+    {
+      "doc_id": "rf07",
+      "page": 28,
+      "phase": "rest",
+      "p_yes": 0.04127813669558753,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1924,
+      "seconds": 3.530317708995426
+    },
+    {
+      "doc_id": "rf07",
+      "page": 29,
+      "phase": "rest",
+      "p_yes": 0.14016815483457587,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2270,
+      "seconds": 3.770109625009354
+    },
+    {
+      "doc_id": "rf07",
+      "page": 31,
+      "phase": "rest",
+      "p_yes": 0.012202245822524722,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1927,
+      "seconds": 3.5402124160027597
+    },
+    {
+      "doc_id": "rf07",
+      "page": 32,
+      "phase": "rest",
+      "p_yes": 0.03996732748744079,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1988,
+      "seconds": 3.5301602909894427
+    },
+    {
+      "doc_id": "rf07",
+      "page": 33,
+      "phase": "rest",
+      "p_yes": 0.05643414703520791,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2202,
+      "seconds": 3.744305957996403
+    },
+    {
+      "doc_id": "rf07",
+      "page": 34,
+      "phase": "rest",
+      "p_yes": 0.05397825388464785,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1975,
+      "seconds": 3.6583492909994675
+    },
+    {
+      "doc_id": "rf07",
+      "page": 35,
+      "phase": "rest",
+      "p_yes": 0.07002819089499884,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2427,
+      "seconds": 3.977384499987238
+    },
+    {
+      "doc_id": "rf07",
+      "page": 36,
+      "phase": "rest",
+      "p_yes": 0.028085349082088644,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1984,
+      "seconds": 3.6305772909981897
+    },
+    {
+      "doc_id": "rf07",
+      "page": 37,
+      "phase": "rest",
+      "p_yes": 0.015238668553623371,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2043,
+      "seconds": 3.6552420420048293
+    },
+    {
+      "doc_id": "rf07",
+      "page": 39,
+      "phase": "rest",
+      "p_yes": 0.12425387005356095,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2188,
+      "seconds": 3.7351381670014234
+    },
+    {
+      "doc_id": "rf07",
+      "page": 40,
+      "phase": "rest",
+      "p_yes": 0.1446367242955314,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2132,
+      "seconds": 3.649547542008804
+    },
+    {
+      "doc_id": "rf07",
+      "page": 41,
+      "phase": "rest",
+      "p_yes": 0.1040423270564197,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2363,
+      "seconds": 3.856583332992159
+    },
+    {
+      "doc_id": "rf07",
+      "page": 42,
+      "phase": "rest",
+      "p_yes": 0.1237927538061997,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2040,
+      "seconds": 3.5533065000054194
+    },
+    {
+      "doc_id": "rf07",
+      "page": 43,
+      "phase": "rest",
+      "p_yes": 0.09154484940306691,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2280,
+      "seconds": 3.7695762499934062
+    },
+    {
+      "doc_id": "rf07",
+      "page": 44,
+      "phase": "rest",
+      "p_yes": 0.15576978130283994,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2033,
+      "seconds": 3.5525372499978403
+    },
+    {
+      "doc_id": "rf07",
+      "page": 45,
+      "phase": "rest",
+      "p_yes": 0.07581814291072173,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2127,
+      "seconds": 3.6520162919914583
+    },
+    {
+      "doc_id": "rf07",
+      "page": 46,
+      "phase": "rest",
+      "p_yes": 0.0778130843293526,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2181,
+      "seconds": 3.735360333987046
+    },
+    {
+      "doc_id": "rf07",
+      "page": 47,
+      "phase": "rest",
+      "p_yes": 0.05640741281879614,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2284,
+      "seconds": 3.7645984580012737
+    },
+    {
+      "doc_id": "rf07",
+      "page": 48,
+      "phase": "rest",
+      "p_yes": 0.02330625676787665,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1973,
+      "seconds": 3.635604291004711
+    },
+    {
+      "doc_id": "rf07",
+      "page": 49,
+      "phase": "rest",
+      "p_yes": 0.023122481646757755,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1977,
+      "seconds": 3.629520958987996
+    },
+    {
+      "doc_id": "rf07",
+      "page": 50,
+      "phase": "rest",
+      "p_yes": 0.03127637191780283,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1923,
+      "seconds": 3.5269574169942643
+    },
+    {
+      "doc_id": "rf07",
+      "page": 53,
+      "phase": "rest",
+      "p_yes": 0.08264902049271171,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2308,
+      "seconds": 3.858272625002428
+    },
+    {
+      "doc_id": "rf07",
+      "page": 54,
+      "phase": "rest",
+      "p_yes": 0.02679870403989431,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1922,
+      "seconds": 3.5323533750051865
+    },
+    {
+      "doc_id": "rf07",
+      "page": 55,
+      "phase": "rest",
+      "p_yes": 0.01108540887813472,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1997,
+      "seconds": 3.552081541987718
+    },
+    {
+      "doc_id": "rf07",
+      "page": 56,
+      "phase": "rest",
+      "p_yes": 0.01779317745547043,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1971,
+      "seconds": 3.6335848340095254
+    },
+    {
+      "doc_id": "rf07",
+      "page": 57,
+      "phase": "rest",
+      "p_yes": 0.017059859875648235,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2151,
+      "seconds": 3.743848208003328
+    },
+    {
+      "doc_id": "rf07",
+      "page": 58,
+      "phase": "rest",
+      "p_yes": 0.2833693596152377,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 2038,
+      "seconds": 3.5456748330034316
+    },
+    {
+      "doc_id": "rf07",
+      "page": 60,
+      "phase": "rest",
+      "p_yes": 0.08625682858836461,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1897,
+      "seconds": 3.399756917002378
+    },
+    {
+      "doc_id": "rf07",
+      "page": 63,
+      "phase": "rest",
+      "p_yes": 0.021509829797145996,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 1975,
+      "seconds": 3.3936608330113813
+    },
+    {
+      "doc_id": "rf08",
+      "page": 4,
+      "phase": "rest",
+      "p_yes": 0.9484442995417153,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 833,
+      "seconds": 1.0400817079935223
+    },
+    {
+      "doc_id": "rf08",
+      "page": 27,
+      "phase": "rest",
+      "p_yes": 0.028711735323257836,
+      "model": "Clef-Flash-Q8_0.gguf",
+      "input_tokens": 812,
+      "seconds": 1.0508373339980608
+    }
+  ],
+  "failures": []
+}
