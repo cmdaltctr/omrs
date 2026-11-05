@@ -76,7 +76,8 @@ def build_llamacpp_server_view(
     }
     view["launch_model"] = model if llamacpp else ""
     shared = _same_address(classification_url(applied), applied.llamacpp_chat_url)
-    view["shared_with_classification"] = view["chat_server"]["value"] == "managed" and shared
+    managed = view["chat_server"]["value"] == "managed"
+    view["shared_with_classification"] = managed and llamacpp and shared
     return view
 
 

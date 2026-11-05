@@ -5,7 +5,8 @@ resolver (:mod:`omrs.core.runtime_gate`). The llama.cpp Chat, classification
 and embedding clients in ``core/`` ask the resolver for a gate; this module
 answers with an adapted lease of the ``chat`` or ``embeddings`` runtime, or
 ``None`` when the role is ``external``. Classification shares the Chat
-runtime only when ``llamacpp_classify_url`` is blank.
+runtime only when ``llamacpp_classify_url`` is blank and the managed Chat
+server has a model to load (Chat is on llama.cpp).
 
 The module also lists the runtimes in force for ``GET /v1/runtimes``: Chat,
 embeddings, one OCR runtime for each engine in the OCR engine list that declares one,
@@ -68,9 +69,25 @@ def current_settings(values: ProviderValues | None = None) -> Settings:
     return apply_provider_values(settings, values) if values is not None else settings
 
 
+def _chat_on_llamacpp(settings: Any) -> bool:
+    return str(settings.answer.provider).strip() == "llamacpp"
+
+
 def _chat_model(settings: Any) -> str:
     """The model OMRS's Chat server loads: the Chat model while Chat is llama.cpp (ADR-108)."""
-    return str(settings.answer.model) if settings.answer.provider.strip() == "llamacpp" else ""
+    return str(settings.answer.model) if _chat_on_llamacpp(settings) else ""
+
+
+def _classification_uses_chat_runtime(settings: Any) -> bool:
+    """Whether classification shares the ``chat`` runtime (ADR-108 decisions 2 and 6).
+
+    False when classification has its own address. False too while OMRS's managed
+    Chat server has no model to load because Chat is not on llama.cpp (decision 5):
+    classification then goes to the Chat address as an external server.
+    """
+    if str(settings.llamacpp_classify_url or "").strip():
+        return False
+    return not (settings.llamacpp_chat_server == "managed" and not _chat_on_llamacpp(settings))
 
 
 def chat_runtime(settings: Any) -> RuntimeSpec | str:
@@ -172,8 +189,8 @@ class RefusedGate:
 
 def gate(role: Role, settings: Any) -> RuntimeGate | None:
     """Return the gate of *role* under *settings*, or ``None`` for an external role."""
-    if role == "classification" and str(settings.llamacpp_classify_url or "").strip():
-        return None  # classification has its own address: not OMRS's Chat server
+    if role == "classification" and not _classification_uses_chat_runtime(settings):
+        return None  # its own address, or Chat is not on llama.cpp: not OMRS's Chat server
     spec = embeddings_runtime(settings) if role == "embeddings" else chat_runtime(settings)
     if isinstance(spec, str):
         return RefusedGate(spec)
@@ -331,7 +348,7 @@ def runtime_specs(settings: Any) -> list[tuple[RuntimeSpec, list[str]]]:
     chat = chat_runtime(settings)
     embed = embeddings_runtime(settings)
     chat_users = ["llamacpp_chat_url"]
-    if not str(settings.llamacpp_classify_url or "").strip():
+    if _classification_uses_chat_runtime(settings):
         chat_users.append("llamacpp_classify_url")
     rows = [
         (_listed("chat", chat), chat_users),

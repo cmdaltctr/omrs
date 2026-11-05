@@ -93,3 +93,9 @@ def test_a_shared_address_is_reported_while_managed(classify: str, shared: bool)
 def test_an_external_server_shares_nothing_with_omrs() -> None:
     view = build_llamacpp_server_view(settings(llamacpp_chat_server="external"))
     assert view["shared_with_classification"] is False
+
+
+def test_nothing_is_shared_while_managed_chat_is_not_on_llamacpp() -> None:
+    """Issue 177: OMRS's server loads no model then, so classification goes to the Chat address."""
+    view = build_llamacpp_server_view(settings("openrouter", llamacpp_chat_server="managed"))
+    assert view["shared_with_classification"] is False

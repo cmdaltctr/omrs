@@ -456,6 +456,7 @@ Rules:
 - `llamacpp_classify_url` follows the provider address rules (`http` or `https`). A change applies to the next request, with no restart.
 - `llamacpp_chat_server` accepts `external` and `managed` only. The file reader ignores any other value and names both.
 - Chat on llama.cpp never uses `llamacpp_chat_model`. Classification never uses `answer.model`.
+- While `llamacpp_chat_server` is `managed` and the Chat provider is not llama.cpp, OMRS's server has no Chat model to load. Classification then goes to the Chat address as an external server and uses the Text model. Start a server there, or set `llamacpp_classify_url`.
 - The Llama app router with `--models-max 1` reloads a model each time Chat and classification ask for different models on the same port. Move Chat to another server, for example OMRS's own `llama-server`, to stop the reloads.
 
 #### Change provider values in the web workspace
