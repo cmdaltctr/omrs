@@ -1,0 +1,1 @@
+{"format":"omrs-experiment/1","number":"47","title":"Document router confirmation on new documents","date":"2026-11-05","category":"ingestion","size":"Confirmatory","status":"PLANNED","superseded_by":null,"finding":"","purpose":"optimisation","refs":{"adrs":["ADR-110"],"changes":["experiment-47-router-confirmation","doc-reading-master-flow"],"tasks":["issue #171"]}}

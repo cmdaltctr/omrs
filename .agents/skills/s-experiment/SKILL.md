@@ -139,7 +139,8 @@ Follow `references/eval-runner-pattern.md`. The runner:
 - appends a run record when it starts (see Step 4),
 - runs each cell on the same items (a paired design),
 - saves raw rows per item to `output/`,
-- writes a checkpoint after each cell, and supports `--resume`.
+- writes a checkpoint after each cell, and supports `--resume`,
+- follows the run safety rules in `references/eval-runner-pattern.md` (input hashes, runtime record first, run record before a paid request, checkpoint lock, stop rules in code, verdict withheld on missing data, clean-checkout reproduction, cleanup).
 
 Put pure scoring logic in a small module with a `test_*.py` beside it.
 
