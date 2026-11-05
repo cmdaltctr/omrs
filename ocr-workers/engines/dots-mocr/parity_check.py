@@ -209,9 +209,9 @@ def collect(
                 seconds=round(time.perf_counter() - started, 2),
                 chars=len(text),
                 sha256=hashlib.sha256(text.encode()).hexdigest(),
-                dice_d4=round(text_dice(text, refs.d4), 4),
+                dice_d4=text_dice(text, refs.d4),  # unrounded: the rules compare it
                 identical_d4=text.strip() == refs.d4.strip(),
-                dice_tcontrol=round(text_dice(text, refs.tcontrol), 4),
+                dice_tcontrol=text_dice(text, refs.tcontrol),
                 tcontrol_source=refs.tcontrol_source,
             )
         except Exception as exc:  # noqa: BLE001 - one bad page must not lose the others

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 from importlib import import_module, metadata
@@ -316,7 +317,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # (below).
 # +1 (2026-11-05, dots-mocr-llamacpp-backend, PR 172 review): an unclosed IPv6
 # bracket in the runtime address is refused by name. No fastapi needed.
-_BASE_EXECUTED = 11020
+# +19 (2026-11-05, same change, PR 172 CodeRabbit review, by test-ID diff, 19 added,
+# 0 removed): smoke harness checks (10), unrounded Dice (1), malformed chat
+# completions (7) and the tar data filter (1). No fastapi needed.
+_BASE_EXECUTED = 11039
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -536,7 +540,7 @@ if any(path.is_file() for path in _EQ01_COPIES):
     _BASE_EXECUTED += 1
 # The sandbox-exec case in test_ocr_dots_llamacpp_smoke.py skips off macOS, so a Linux run
 # passes one case fewer (dots-mocr-llamacpp-backend, 2026-10-31).
-if sys.platform != "darwin":
+if sys.platform != "darwin" or not shutil.which("sandbox-exec"):
     _BASE_EXECUTED -= 1
 # The nine Exp25 installed-adapter cases always run now:
 # the OpenAI-like packages moved into the base dependencies (ADR-083), so the

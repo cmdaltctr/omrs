@@ -44,6 +44,7 @@ import ctypes
 import json
 import os
 import re
+import signal
 import subprocess
 import sys
 import tempfile
@@ -213,6 +214,7 @@ class RuntimeSession:
         self._state = state
         self._manager: Any = None
         self._spec: Any = None
+        self._lease: Any = None
         self.url = ""
 
     def start(self) -> str:
@@ -240,8 +242,13 @@ class RuntimeSession:
         route = RouteCommand(command=(), cwd=str(ENGINE_DIR), runtime=declared)
         self._spec = runtime_spec(route, declared)
         self._manager = RuntimeManager(self._state, exit_hook=False)
-        self.url = self._manager.lease(self._spec).join()
+        self._lease = self._manager.lease(self._spec)
+        self.url = self._lease.join()
         return self.url
+
+    def hold(self) -> Any:
+        """Hold the runtime for one request, so the idle timer waits for it."""
+        return self._lease.session()
 
     def pid(self) -> int | None:
         """Return the pid the manager recorded for the server, or None."""
@@ -264,7 +271,11 @@ def worker_env(url: str) -> dict[str, str]:
 
 
 def list_processes() -> list[str]:
-    """Return one ``"<pid> <command line>"`` string for every process."""
+    """Return one ``"<pid> <command line>"`` string for every process.
+
+    Raises:
+        RuntimeError: ``ps`` failed; its empty output must not count as no leftover.
+    """
     done = subprocess.run(  # noqa: S603 - fixed argv, no shell
         ["/bin/ps", "-axww", "-o", "pid=,command="],
         capture_output=True,
@@ -272,6 +283,8 @@ def list_processes() -> list[str]:
         check=False,
         timeout=30,
     )
+    if done.returncode != 0:
+        raise RuntimeError(f"ps exited {done.returncode}: {done.stderr.strip()}")
     return done.stdout.splitlines()
 
 
@@ -303,6 +316,19 @@ def _ask(worker: subprocess.Popen[str], request: dict[str, Any]) -> tuple[str, f
     return line, time.perf_counter() - started
 
 
+def page_text(line: str, request_id: str) -> tuple[bool, str]:
+    """Decode one response line with the host's rules; return ``(ok, page Markdown)``."""
+    from omrs.integrations.ocr_worker.protocol import ParseSuccess, decode_response_line
+    from omrs.integrations.ocr_worker.validation import ProtocolError
+
+    try:
+        decoded = decode_response_line(line, expected_id=request_id)
+    except ProtocolError:
+        return False, ""
+    pages = decoded.pages_markdown if isinstance(decoded, ParseSuccess) else None
+    return (True, pages[0]) if pages and len(pages) == 1 else (False, "")
+
+
 def run_worker(cases: list[Case], session: RuntimeSession) -> dict[str, Any]:
     """Run every case in one sandboxed worker and save the Markdown.
 
@@ -311,8 +337,8 @@ def run_worker(cases: list[Case], session: RuntimeSession) -> dict[str, Any]:
         session: The started runtime; its address goes to the worker.
 
     Returns:
-        ``results`` (one dict per case), the worker ``stderr`` text and the
-        ``peak`` memory block.
+        ``results`` (one dict per case), the worker ``stderr`` text, the
+        ``peak`` memory block and the ``worker_exit`` status.
     """
     # Standard error goes to a file: a full pipe would block the worker.
     stderr_path = EVIDENCE_DIR / "worker-stderr.log"
@@ -328,6 +354,7 @@ def run_worker(cases: list[Case], session: RuntimeSession) -> dict[str, Any]:
             encoding="utf-8",
             cwd=ENGINE_DIR,
             env=worker_env(session.url),
+            start_new_session=True,  # a timeout kills the group, not only /usr/bin/time
         )
         try:
             for name, pdf, page in cases:
@@ -338,14 +365,9 @@ def run_worker(cases: list[Case], session: RuntimeSession) -> dict[str, Any]:
                     "protocol_version": PROTOCOL_VERSION,
                     "type": "parse",
                 }
-                line, seconds = _ask(worker, request)
-                try:
-                    response = json.loads(line) if line.strip() else {}
-                except ValueError:
-                    response = {}
-                pages = response.get("pages_markdown") or []
-                text = pages[0] if len(pages) == 1 else ""
-                ok = response.get("ok") is True and response.get("id") == request["id"]
+                with session.hold():
+                    line, seconds = _ask(worker, request)
+                ok, text = page_text(line, request["id"])
                 (EVIDENCE_DIR / f"{name}-p{page:03d}.md").write_text(text, encoding="utf-8")
                 pid = session.pid()
                 server_peak = max(server_peak, (peak_footprint(pid) if pid else 0) or 0)
@@ -365,10 +387,10 @@ def run_worker(cases: list[Case], session: RuntimeSession) -> dict[str, Any]:
             if worker.stdin is not None:
                 worker.stdin.close()
             try:
-                worker.wait(timeout=120)
+                exit_code = worker.wait(timeout=120)
             except subprocess.TimeoutExpired:
-                worker.kill()
-                worker.wait()
+                os.killpg(worker.pid, signal.SIGKILL)
+                exit_code = worker.wait()
     stderr = stderr_path.read_text(encoding="utf-8")
     worker_peak = parse_time_peak(stderr)
     peak = {
@@ -381,7 +403,7 @@ def run_worker(cases: list[Case], session: RuntimeSession) -> dict[str, Any]:
             "pid in the runtime's server.json, read after each response; total is their sum"
         ),
     }
-    return {"results": results, "stderr": stderr, "peak": peak}
+    return {"results": results, "stderr": stderr, "peak": peak, "worker_exit": exit_code}
 
 
 def run(cases: list[Case]) -> int:
@@ -434,6 +456,7 @@ def run(cases: list[Case]) -> int:
         "state_dir": str(state),
         "clean_exit": clean,
         "leftover_processes": left,
+        "worker_exit": outcome["worker_exit"],
         "note": "the first case's seconds include the model load by the llama-server",
     }
     (EVIDENCE_DIR / "run.json").write_text(
@@ -442,7 +465,8 @@ def run(cases: list[Case]) -> int:
     print(f"peak memory bytes: {json.dumps(outcome['peak'].get('total_bytes'))}")
     print(f"clean exit: {clean}")
     failed = [r for r in results if not r["ok"] or r["chars"] == 0]
-    if failed or not clean:
+    if failed or not clean or outcome["worker_exit"] != 0:
+        print(f"worker exit status: {outcome['worker_exit']}", file=sys.stderr)
         for item in failed:
             print(f"error: {item['case']} p{item['page']} ok={item['ok']} chars={item['chars']}")
         for line in left:

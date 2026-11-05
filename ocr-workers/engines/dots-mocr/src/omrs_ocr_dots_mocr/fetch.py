@@ -148,6 +148,11 @@ def fetch_llama() -> Path:
             f"no llama.cpp release is pinned for this platform ({sys.platform}); "
             "the engine supports macOS on Apple silicon and Linux on x86-64"
         )
+    if not hasattr(tarfile, "data_filter"):
+        raise FetchError(
+            "unpacking the llama.cpp release needs Python 3.11.4 or later "
+            f"(the tar data filter); this is Python {sys.version.split()[0]}"
+        )
     target = llama_dir()
     marker = target / ARCHIVE_MARKER
     if marker.is_file() and marker.read_text(encoding="utf-8").strip() == archive.sha256:

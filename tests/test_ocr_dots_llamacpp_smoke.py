@@ -10,10 +10,12 @@ manager. The sandbox test runs a real ``sandbox-exec`` on macOS only.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import importlib.util
 import json
 import os
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -29,6 +31,7 @@ from tests.fixtures.ocr_worker.dots_llamacpp import stand_in_engine
 
 from omrs.integrations.llamacpp_runtime import process
 from omrs.integrations.llamacpp_runtime.state import read_server_record, runtime_dir
+from omrs.integrations.ocr_worker.validation import OUTPUT_SCHEMA_ID, OUTPUT_SCHEMA_VERSION
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ENGINE_DIR = REPO_ROOT / "ocr-workers" / "engines" / "dots-mocr"
@@ -131,6 +134,14 @@ class FakeSession:
     def pid(self) -> int | None:
         return None
 
+    @contextlib.contextmanager
+    def hold(self) -> Iterator[str]:
+        self.calls.append("hold")
+        try:
+            yield self.url
+        finally:
+            self.calls.append("release")
+
     def leave(self) -> None:
         self.calls.append("leave")
 
@@ -173,7 +184,7 @@ class Fakes:
         ]
         for name, _, page in cases:
             (self.evidence / f"{name}-p{page:03d}.md").write_text("hello", encoding="utf-8")
-        return {"results": results, "stderr": "", "peak": {"method": "fake"}}
+        return {"results": results, "stderr": "", "peak": {"method": "fake"}, "worker_exit": 0}
 
     def install(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(self.smoke, "EVIDENCE_DIR", self.evidence)
@@ -298,10 +309,29 @@ def test_the_worker_gets_the_runtime_url_in_its_environment(smoke: ModuleType) -
     assert env["PATH"] == os.environ["PATH"]
 
 
+def success_line(request_id: str, pages: object = ("page text",)) -> str:
+    """Return a protocol 1.1 ``parse_result`` line the host decoder accepts."""
+    schema = {"id": OUTPUT_SCHEMA_ID, "version": OUTPUT_SCHEMA_VERSION}
+    body = {
+        "id": request_id,
+        "markdown": "page text",
+        "metadata": {"ocr_backend": "fake", "page_count": 1, "output_schema": schema},
+        "ok": True,
+        "pages_markdown": list(pages) if isinstance(pages, tuple) else pages,
+        "protocol_version": "1.1",
+        "type": "parse_result",
+    }
+    return json.dumps(body) + "\n"
+
+
 class FakePopen:
     """Stands for the sandboxed worker process: answers each request with one page."""
 
     started: list[dict[str, Any]] = []  # noqa: RUF012 - reset by the test
+    answer: Any = None  # a fixed reply line; None means a valid page
+    exit_code = 0
+    timeouts = 0  # how many waits time out before the worker exits
+    calls: list[str] | None = None  # shared with a FakeSession to record the order
 
     def __init__(self, argv: list[str], **kwargs: Any) -> None:
         self.argv, self.kwargs = argv, kwargs
@@ -309,6 +339,8 @@ class FakePopen:
         self.requests: list[dict[str, Any]] = []
         self.stdin = self
         self.stdout = self
+        self.pid = 4242
+        self.killed: list[str] = []
 
     def write(self, line: str) -> None:
         self.requests.append(json.loads(line))
@@ -320,21 +352,41 @@ class FakePopen:
         pass
 
     def readline(self) -> str:
-        request = self.requests[-1]
-        return json.dumps({"id": request["id"], "ok": True, "pages_markdown": ["page text"]}) + "\n"
+        if FakePopen.calls is not None:
+            FakePopen.calls.append("ask")
+        if FakePopen.answer is not None:
+            return FakePopen.answer
+        return success_line(self.requests[-1]["id"])
+
+    def kill(self) -> None:
+        self.killed.append("kill")
 
     def wait(self, timeout: float | None = None) -> int:
-        return 0
+        if FakePopen.timeouts:
+            FakePopen.timeouts -= 1
+            raise subprocess.TimeoutExpired("worker", timeout or 0)
+        return FakePopen.exit_code
 
 
-def test_the_real_worker_launch_passes_the_runtime_url_in_its_environment(
+@pytest.fixture(name="fake_worker")
+def _fake_worker(
     smoke: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    FakePopen.started = []
+) -> Iterator[Path]:
+    """Point the script at a fake worker process and a scratch evidence folder."""
+    FakePopen.started, FakePopen.answer, FakePopen.calls = [], None, None
+    FakePopen.exit_code, FakePopen.timeouts = 0, 0
     evidence = tmp_path / "evidence"
     evidence.mkdir()
     monkeypatch.setattr(smoke, "EVIDENCE_DIR", evidence)
     monkeypatch.setattr(smoke.subprocess, "Popen", FakePopen)
+    yield evidence
+    FakePopen.calls = None
+
+
+def test_the_real_worker_launch_passes_the_runtime_url_in_its_environment(
+    smoke: ModuleType, tmp_path: Path, fake_worker: Path
+) -> None:
+    evidence = fake_worker
     session = FakeSession([])
     session.start()
 
@@ -344,6 +396,84 @@ def test_the_real_worker_launch_passes_the_runtime_url_in_its_environment(
     assert launch["env"]["OMRS_OCR_RUNTIME_URL"] == FakeSession.url
     assert outcome["results"][0]["ok"] is True and outcome["results"][0]["chars"] == 9
     assert (evidence / "eq01-p002.md").read_text(encoding="utf-8") == "page text"
+
+
+def test_each_request_holds_the_runtime_lease(
+    smoke: ModuleType, tmp_path: Path, fake_worker: Path
+) -> None:
+    """The idle timer must not stop the server while a request runs (comment 4476420797)."""
+    calls: list[str] = []
+    FakePopen.calls = calls
+    cases = [("eq01", tmp_path / "x.pdf", 2), ("eq01", tmp_path / "x.pdf", 3)]
+    smoke.run_worker(cases, FakeSession(calls))
+    assert calls == ["hold", "ask", "release", "hold", "ask", "release"]
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        '"x"\n',  # a JSON scalar
+        "null\n",
+        json.dumps({"id": "smoke-eq01-p2", "ok": True, "pages_markdown": "x"}) + "\n",
+        success_line("smoke-eq01-p2", "x"),  # a string, not a list of pages
+        success_line("another-id"),
+    ],
+    ids=["scalar", "null", "bare-envelope", "pages-string", "wrong-id"],
+)
+def test_a_malformed_response_is_a_failed_case(
+    smoke: ModuleType, tmp_path: Path, fake_worker: Path, answer: str
+) -> None:
+    """The host decoder checks each line; a bad one fails the case (comment 4476420815)."""
+    FakePopen.answer = answer
+    outcome = smoke.run_worker([("eq01", tmp_path / "x.pdf", 2)], FakeSession([]))
+    (result,) = outcome["results"]
+    assert result["ok"] is False
+    assert result["chars"] == 0
+
+
+def test_run_worker_returns_the_worker_exit_status(
+    smoke: ModuleType, tmp_path: Path, fake_worker: Path
+) -> None:
+    FakePopen.exit_code = 3
+    outcome = smoke.run_worker([("eq01", tmp_path / "x.pdf", 2)], FakeSession([]))
+    assert outcome["worker_exit"] == 3
+
+
+def test_a_failed_worker_exit_fails_the_run(
+    smoke: ModuleType, fakes: Fakes, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A worker that crashes after its last answer cannot pass (comment 4476420823)."""
+
+    def crashed(cases: list[tuple[str, Path, int]], session: FakeSession) -> dict[str, Any]:
+        return {**fakes.worker(cases, session), "worker_exit": 1}
+
+    monkeypatch.setattr(smoke, "run_worker", crashed)
+    assert smoke.main(["--run", "--case", f"eq01={fakes.pdf}:2"]) != 0
+    evidence = json.loads((fakes.evidence / "run.json").read_text(encoding="utf-8"))
+    assert evidence["worker_exit"] == 1
+
+
+def test_a_worker_timeout_kills_the_whole_process_group(
+    smoke: ModuleType, tmp_path: Path, fake_worker: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Killing ``/usr/bin/time`` alone leaves its Python child running (comment 4476420834)."""
+    killed: list[tuple[int, int]] = []
+    monkeypatch.setattr(smoke.os, "killpg", lambda pid, sig: killed.append((pid, sig)))
+    FakePopen.timeouts = 1
+    smoke.run_worker([("eq01", tmp_path / "x.pdf", 2)], FakeSession([]))
+    (launch,) = FakePopen.started
+    assert launch["start_new_session"] is True
+    assert killed == [(4242, signal.SIGKILL)]
+
+
+def test_a_failed_ps_is_an_error_and_not_a_clean_exit(
+    smoke: ModuleType, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Empty output from a failed ``ps`` must not read as no leftover (comment 4476420804)."""
+    failed = subprocess.CompletedProcess(["/bin/ps"], 1, "", "ps: not permitted")
+    monkeypatch.setattr(smoke.subprocess, "run", lambda *_a, **_k: failed)
+    with pytest.raises(RuntimeError, match="not permitted"):
+        smoke.list_processes()
 
 
 def test_the_script_has_no_pid_file_reader(smoke: ModuleType) -> None:
@@ -373,6 +503,8 @@ def test_the_runtime_session_starts_the_declared_server_and_leaves_it(
         assert pid == started["pid"] and pid_alive(pid)
         record = read_server_record(runtime_dir(state, "ocr-dots-mocr"))
         assert record is not None and record.pid == pid
+        with session.hold() as held:
+            assert held == url
     finally:
         session.leave()
     assert wait_until(lambda: not pid_alive(pid))

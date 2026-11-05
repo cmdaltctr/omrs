@@ -26,7 +26,7 @@ Change `dots-mocr-llamacpp-backend`, design D9, tasks 3.1 to 3.7. Run on 2026-11
 
 - **Seconds per page (parity, 22 pages):** minimum 9.2, median 34.6, maximum 47.8, total 629. Light scans take about 10 to 15 seconds. Dense maths pages take about 40 to 45 seconds.
 - **Smoke test:** 36.0 s (`eq01` p2, includes loading the model) and 45.2 s (`eq01` p3).
-- **Full ingest of the three PDFs:** 22.7 minutes, 3 files indexed, 118 chunks, 0 failed. `eq01` 23 chunks and `io06` 34 chunks went through dots.mocr. `rf06` 61 chunks came from its text layer.
+- **Full ingest of the three PDFs:** 800.8 s (about 13.3 minutes, `total_seconds` in `smoke_evidence/ingest-summary.json`), 3 files indexed, 118 chunks, 0 failed. `eq01` 23 chunks and `io06` 34 chunks went through dots.mocr. `rf06` 61 chunks came from its text layer.
 - **Peak memory:**
   - Smoke test (2 pages): worker 79 MB, server 3.9 GB lifetime peak footprint, total 4.15 GB.
   - Web preview during the ingest: the server row showed 7.0 to 8.3 GiB.

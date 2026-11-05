@@ -59,6 +59,25 @@ RUNTIME_URL_ENV = "OMRS_OCR_RUNTIME_URL"
 _LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 
 
+def completion_of(data: Any) -> tuple[str, int]:
+    """Return the text and completion token count of a llama-server chat reply.
+
+    Raises:
+        WorkerParseError: ``server_bad_response`` when *data* is not a chat
+            completion, for example a null message or non-text content.
+    """
+    try:
+        content = data["choices"][0]["message"]["content"]
+        tokens = int(data["usage"]["completion_tokens"])
+    except (KeyError, IndexError, TypeError, ValueError) as exc:
+        raise WorkerParseError(
+            "server_bad_response", f"the llama-server reply is not a chat completion: {exc!r}"
+        ) from exc
+    if content is not None and not isinstance(content, str):
+        raise WorkerParseError("server_bad_response", "the llama-server reply content is not text")
+    return content or "", tokens
+
+
 def runtime_base_url(environ: Mapping[str, str] | None = None) -> str:
     """Return the llama-server address OMRS gave this worker.
 
@@ -198,13 +217,7 @@ class DotsMocrLlamacppEngine:
             raise WorkerParseError(
                 "server_bad_response", f"the llama-server reply was not JSON: {exc}"
             ) from exc
-        try:
-            choice = data["choices"][0]
-            return (choice["message"].get("content") or ""), int(data["usage"]["completion_tokens"])
-        except (KeyError, IndexError, TypeError, ValueError) as exc:
-            raise WorkerParseError(
-                "server_bad_response", f"the llama-server reply is not a chat completion: {exc!r}"
-            ) from exc
+        return completion_of(data)
 
     # ── Internals ────────────────────────────────────────────────────
 

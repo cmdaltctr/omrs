@@ -276,3 +276,13 @@ def test_the_declared_program_exists_after_the_fetch_step_unpacks_the_archive(en
     assert runtime is not None
     assert runtime.program.is_file()
     assert os.access(runtime.program, os.X_OK)
+
+
+def test_a_python_without_the_tar_data_filter_stops_before_the_download(
+    env: Env, monkeypatch: Any
+) -> None:
+    """Python 3.11.0 to 3.11.3 lack ``filter="data"``; stop with the version, download nothing."""
+    monkeypatch.delattr(env.fetch.tarfile, "data_filter")
+    with pytest.raises(env.fetch.FetchError, match="3.11.4"):
+        env.fetch.fetch_llama()
+    assert env.url_calls == []

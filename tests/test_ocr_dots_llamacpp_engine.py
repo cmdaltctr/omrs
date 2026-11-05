@@ -163,6 +163,31 @@ def test_a_capped_page_is_empty_and_the_reason_is_logged(
     assert "token_cap" in caplog.text and "doc.pdf" in caplog.text
 
 
+@pytest.mark.parametrize(
+    "data",
+    [
+        {"choices": [{"message": None}], "usage": {"completion_tokens": 1}},
+        {"choices": [{"message": {"content": 5}}], "usage": {"completion_tokens": 1}},
+        {"choices": [None], "usage": {"completion_tokens": 1}},
+        {"choices": [], "usage": {"completion_tokens": 1}},
+        {"choices": [{"message": {"content": "x"}}]},
+        [],
+    ],
+)
+def test_a_malformed_chat_completion_is_a_bad_response(env: Env, data: object) -> None:
+    """Any reply that is not a chat completion gives ``server_bad_response``."""
+    with pytest.raises(env.engine_mod.WorkerParseError) as excinfo:
+        env.engine_mod.completion_of(data)
+    assert excinfo.value.code == "server_bad_response"
+
+
+def test_a_chat_completion_gives_its_text_and_token_count(env: Env) -> None:
+    data = {"choices": [{"message": {"content": "page"}}], "usage": {"completion_tokens": 7}}
+    assert env.engine_mod.completion_of(data) == ("page", 7)
+    data["choices"][0]["message"]["content"] = None
+    assert env.engine_mod.completion_of(data) == ("", 7)
+
+
 def test_an_unparsable_reply_gives_an_empty_page(env: Env, pdf: Path) -> None:
     """Text that is not a layout object gives "" like the PyTorch backend."""
     env.serve(FAKE_LLAMA_CONTENT="not json")

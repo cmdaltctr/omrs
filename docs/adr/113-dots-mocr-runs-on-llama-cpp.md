@@ -10,7 +10,7 @@
 
 ## Context
 
-The `dots-mocr` OCR engine ran dots.mocr on PyTorch in its own worker environment, with transformers, accelerate, qwen-vl-utils and two patches to the model code. It was the only OMRS model that did not run on llama.cpp.
+The `dots-mocr` OCR engine ran dots.mocr on PyTorch in its own worker environment, with transformers, accelerate, qwen-vl-utils and two patches to the model code. It was the only OCR engine that needed PyTorch.
 
 Experiment 41 converted dots.mocr to GGUF Q8_0 with a bf16 image projector and ran it on llama.cpp build 11941 (arm D4) over 257 pages:
 
@@ -68,7 +68,7 @@ Ollama changed words on three pages (handwritten Spanish and Arabic). MLX change
 ### Positive
 
 - No OCR engine environment holds PyTorch. A test asserts that no engine lock holds `torch`, `torchvision`, `transformers` or `accelerate`.
-- Every local model runs on llama.cpp, through one runtime manager.
+- Every llama.cpp model, including dots.mocr, runs through one runtime manager. PaddleOCR-VL keeps its CPU PaddlePaddle runtime.
 - Peak memory falls from 22.2 GiB to 17.3 GiB, and the host stops the server after 10 minutes with no request.
 - The model files and the runtime binary are reproducible: pinned, hashed and checked before each start.
 

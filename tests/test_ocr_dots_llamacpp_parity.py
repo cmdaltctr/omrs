@@ -289,6 +289,17 @@ def test_collect_scores_and_checkpoints_each_page(parity: ModuleType, tmp_path: 
     assert not path.with_suffix(".json.tmp").exists()
 
 
+def test_rules_compare_the_unrounded_dice_with_the_floor(
+    parity: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A raw Dice of 395/399 (0.98997) rounds to 0.99 but fails rules 1 and 3."""
+    monkeypatch.setattr(parity, "text_dice", lambda _a, _b: 395 / 399)
+    pages = parity.PAGES[:1]
+    result = parity.collect(lambda d, p: "x", _fake_refs(parity), tmp_path / "p.json", pages=pages)
+    assert result["rule1_dice_d4_min"]["pass"] is False
+    assert result["rule3_median_dice_tcontrol"]["pass"] is False
+
+
 def test_the_returned_result_carries_the_rule_verdicts_the_summary_prints(
     parity: ModuleType, tmp_path: Path
 ) -> None:
