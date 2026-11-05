@@ -122,7 +122,7 @@ def test_parse_sends_the_d5_request_and_converts_the_layout(env: Env, pdf: Path)
     assert len(pages) == 1 and pages[0].count("$$") == 8
     (body,) = env.request_bodies()
     assert body["temperature"] == 0 and body["max_tokens"] == 8192 and body["stream"] is False
-    assert set(body) == {"messages", "temperature", "max_tokens", "stream"}
+    assert set(body) == {"model", "messages", "temperature", "max_tokens", "stream"}
     (message,) = body["messages"]
     image, text = message["content"]
     assert message["role"] == "user"
@@ -130,6 +130,18 @@ def test_parse_sends_the_d5_request_and_converts_the_layout(env: Env, pdf: Path)
     prefix = "data:image/png;base64,"
     assert image["image_url"]["url"].startswith(prefix)
     assert base64.b64decode(image["image_url"]["url"][len(prefix) :]) == PNG
+
+
+def test_the_request_names_a_model(env: Env, pdf: Path) -> None:
+    """The body names the model ``dots-mocr``.
+
+    ``llama-server`` with one model ignores the name. Ollama and mlx-vlm refuse a
+    request without one (SMOKE_RESULTS.md, "Other runtimes").
+    """
+    env.serve(FAKE_LLAMA_CONTENT=_raw("eq01", 11), FAKE_LLAMA_TOKENS=1937)
+    env.engine.parse(pdf, [2])
+    (body,) = env.request_bodies()
+    assert body["model"] == "dots-mocr"
 
 
 def test_a_whole_document_request_parses_every_page_on_the_same_server(env: Env, pdf: Path) -> None:

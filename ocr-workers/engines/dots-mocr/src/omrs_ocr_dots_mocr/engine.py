@@ -47,6 +47,10 @@ logger = logging.getLogger("omrs_ocr_dots_mocr")
 
 CHAT_PATH = "/v1/chat/completions"
 
+#: The model name in each request. ``llama-server`` with one model ignores it;
+#: Ollama and mlx-vlm refuse a request without one.
+REQUEST_MODEL = "dots-mocr"
+
 #: Seconds one page may take (Experiment 41 used the same limit).
 REQUEST_TIMEOUT_S = 300.0
 
@@ -157,6 +161,7 @@ class DotsMocrLlamacppEngine:
         url = runtime_base_url() + CHAT_PATH
         image = {"url": "data:image/png;base64," + base64.b64encode(png).decode("ascii")}
         body: dict[str, Any] = {
+            "model": REQUEST_MODEL,
             "messages": [
                 {
                     "role": "user",
