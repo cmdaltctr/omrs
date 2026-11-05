@@ -326,7 +326,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # test_llamacpp_runtime_clients.py (4), test_web_runtimes.py (1), test_compose_llamacpp_view.py (1).
 # +2 (2026-11-05, fix-flaky-idle-stop-test, by test-ID diff, 2 added, 0 removed):
 # test_llamacpp_runtime_locks_leave.py, close unlock (2). No fastapi needed.
-_BASE_EXECUTED = 11056
+# +7 (2026-11-05, fix-llamacpp-chat-endpoint, by test-ID diff, 7 added, 0 removed):
+# tests/unit/test_llamacpp_chat_endpoint.py. No fastapi needed.
+_BASE_EXECUTED = 11063
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
