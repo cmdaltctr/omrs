@@ -176,6 +176,64 @@ def test_a_refused_classification_is_not_retried(
     assert (runtime_env.folder / "early-exits").read_text(encoding="utf-8").strip() == "1"
 
 
+@pytest.mark.metadata_llm
+def test_classification_goes_to_the_chat_address_when_chat_is_not_on_llamacpp(
+    runtime_env: RuntimeEnv, monkeypatch: pytest.MonkeyPatch, effective_settings: Any
+) -> None:
+    """OMRS's server has no Chat model to load, so classification is external (issue 177)."""
+    from omrs import compose_runtimes
+    from omrs.core import runtime_gate
+    from omrs.core.metadata.llamacpp import _extract_llamacpp_chat_async
+
+    fake = _managed_chat(runtime_env, monkeypatch, ANSWER__PROVIDER="openrouter", ANSWER__MODEL="")
+    compose_runtimes.install_gates(None)
+    settings = effective_settings(llamacpp_chat_url=f"http://127.0.0.1:{fake.port}/v1")
+
+    assert runtime_gate.gate_for("classification") is None
+    result = asyncio.run(_extract_llamacpp_chat_async("some text", settings=settings))
+
+    assert result["category"] == "uncategorised"  # nothing listens at the Chat address
+    assert fake.starts() == []  # not refused: the request went out, OMRS started nothing
+
+
+def test_the_chat_role_stays_refused_when_chat_is_not_on_llamacpp(
+    runtime_env: RuntimeEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from omrs import compose, compose_runtimes
+    from omrs.compose_runtimes import RefusedGate
+
+    _managed_chat(runtime_env, monkeypatch, ANSWER__PROVIDER="openrouter", ANSWER__MODEL="")
+
+    assert isinstance(compose_runtimes.gate("chat", compose.get_settings()), RefusedGate)
+
+
+def test_classification_stays_refused_when_chat_is_on_llamacpp_without_a_model(
+    runtime_env: RuntimeEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from omrs import compose, compose_runtimes
+    from omrs.compose_runtimes import RefusedGate
+
+    _managed_chat(runtime_env, monkeypatch, ANSWER__MODEL="")
+
+    gate = compose_runtimes.gate("classification", compose.get_settings())
+
+    assert isinstance(gate, RefusedGate)
+    assert gate.reason == "not-configured"
+
+
+def test_classification_shares_the_managed_server_while_chat_is_on_llamacpp(
+    runtime_env: RuntimeEnv, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from omrs import compose, compose_runtimes
+    from omrs.compose_runtimes import LeaseGate
+
+    _managed_chat(runtime_env, monkeypatch)
+
+    gate = compose_runtimes.gate("classification", compose.get_settings())
+
+    assert isinstance(gate, LeaseGate)
+
+
 def test_the_classification_llm_shares_the_chat_server(
     runtime_env: RuntimeEnv, monkeypatch: pytest.MonkeyPatch
 ) -> None:

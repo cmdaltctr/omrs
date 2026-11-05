@@ -449,7 +449,7 @@ When the choice is "OMRS's own llama-server" and classification uses the Chat ad
 
 > Classification goes to OMRS's own Chat server, which loads only the Chat model. The Text model is not used. Set a Classification address, for example the Llama app, to keep them apart.
 
-The warning does not stop you. One model for both roles can suit a small machine. Set a Classification address that differs from the Chat address to remove the warning.
+The warning does not stop you. One model for both roles can suit a small machine. Set a Classification address that differs from the Chat address to remove the warning. The warning shows only while Chat is on llama.cpp. With another Chat provider, OMRS's server loads no model, and classification goes to the Chat address as an external server.
 
 The program path and the Chat server choice need a browser session with the `credentials` scope. While the choice is "OMRS's own llama-server", a llama.cpp Chat save in Settings > Chat or Settings > Configuration needs `credentials` too, and the model must be a `.gguf` file or a Hugging Face id. The window and the buttons need `manage`. A bearer token never works. The server output goes to `server.log` in the `runtimes/chat` folder under the OMRS state folder and is not shown. The Ollama card has a "Context window (tokens)" number field. Guardrails and limits: [Configuration](configuration.md#local-llamacpp-server).
 

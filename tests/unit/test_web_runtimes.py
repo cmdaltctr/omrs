@@ -133,6 +133,19 @@ def test_a_classification_address_of_its_own_does_not_use_the_chat_runtime(harne
         assert _items(h)["chat"]["used_by"] == ["llamacpp_chat_url"]
 
 
+def test_classification_does_not_use_a_managed_chat_runtime_when_chat_is_not_llamacpp(
+    harness: Any,
+) -> None:
+    """The server has no Chat model to load, so classification goes to the Chat address."""
+    with harness(
+        **_urls(
+            llamacpp_chat_server="managed",
+            answer=AnswerSettings(enabled=True, provider="openrouter", model="x/y"),
+        )
+    ) as h:
+        assert _items(h)["chat"]["used_by"] == ["llamacpp_chat_url"]
+
+
 def test_an_ocr_engine_that_declares_a_runtime_is_listed(harness: Any, tmp_path: Path) -> None:
     workers = tmp_path / "workers"
     make_engine(workers, "declares")

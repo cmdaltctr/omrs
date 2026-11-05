@@ -322,7 +322,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # completions (7) and the tar data filter (1). No fastapi needed.
 # +9 (2026-11-05, fix-local-ocr-library-paths, issue 175, by test-ID diff, 9 added, 0
 # removed): tests/unit/test_local_ocr_library_paths.py. No fastapi needed.
-_BASE_EXECUTED = 11048
+# +6 (2026-11-05, fix-managed-chat-classification, by test-ID diff, 6 added, 0 removed):
+# test_llamacpp_runtime_clients.py (4), test_web_runtimes.py (1), test_compose_llamacpp_view.py (1).
+_BASE_EXECUTED = 11054
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -674,7 +676,8 @@ if not _has_qwen_tokenizer:
 # +46 (2026-11-05, document-reading-routers, measured with fastapi blocked):
 # test_web_document_routers.py (22), test_web_decision_models.py (20),
 # test_web_document_reading.py (3) and test_web_runtimes_decision.py (1).
-_WEB_EXTRA_CASES = 1937
+# +1 (2026-11-05, fix-managed-chat-classification): one case in test_web_runtimes.py.
+_WEB_EXTRA_CASES = 1938
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)
