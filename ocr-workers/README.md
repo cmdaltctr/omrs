@@ -10,7 +10,7 @@ ocr-workers/
   provision.py     provisions one engine: python3 provision.py <engine>
   core/            omrs-ocr-worker-core: protocol, framing, capabilities, engine contract
   engines/
-    dots-mocr/     first engine of the default list (PyTorch, licence gate)
+    dots-mocr/     first engine of the default list (llama.cpp, licence gate)
     paddleocr-vl/  second engine of the default list (PaddlePaddle)
 ```
 
@@ -78,7 +78,8 @@ The script:
 4. Runs `uv sync --locked` in the engine folder. It never changes the OMRS
    main environment.
 5. Runs the engine's `omrs-ocr-fetch` script, if the engine has one, to
-   download pinned weights and apply patches. `--dry-run` skips this step.
+   download the pinned files and check their hashes. `--dry-run` skips
+   this step.
 
 Do not run `uv sync` from the repository root to provision an engine. That
 command installs the OMRS main environment.
@@ -98,7 +99,7 @@ process to leave stops it. A server with no request for 10 minutes stops.
 
 ```toml
 [tool.omrs-ocr.runtime]
-program = "llama.cpp/llama-b11941/llama-server"
+program = "llama.cpp/llama-server"
 build = 11941
 flags = ["--temp", "0", "-c", "24576", "-np", "1", "--image-min-tokens", "4", "--image-max-tokens", "14400"]
 
@@ -156,15 +157,30 @@ time. See [Configuration](../docs/guides/configuration.md#local-llamacpp-server)
 
 ### dots-mocr (first in the default list)
 
-- Model `rednote-hilab/dots.mocr`, pinned revision
-  `e539fbb52280393adc081b289ec597430a0f9031`.
+- Runs on llama.cpp. See
+  [ADR-113](../docs/adr/113-dots-mocr-runs-on-llama-cpp.md). The engine
+  environment holds the worker core, pypdfium2, Pillow and huggingface-hub.
+- Model: our GGUF conversion of `rednote-hilab/dots.mocr` at revision
+  `e539fbb52280393adc081b289ec597430a0f9031`. The model `dots-mocr-Q8_0.gguf`
+  (1.9 GB) and the projector `dots-mocr-mmproj-bf16.gguf` (2.5 GB) come from
+  the private Hugging Face repository `cmdaltctr/omrs-ocr-gguf-converted` at a
+  pinned commit.
+- Runtime: llama.cpp release `b11941` (macOS on Apple silicon, or the Linux
+  x86-64 CPU build). The engine declares it in its runtime block, and OMRS
+  runs it.
+- Pins: `src/omrs_ocr_dots_mocr/pins.py` holds the commit and every SHA-256.
+  A test checks that the runtime block holds the same values.
 - Needs `--accept-model-licence`. Read `engines/dots-mocr/LICENCE-NOTES.md`
   first. It records clauses 3.3(c), 5.2, 8 and 9 of the model licence.
-- Uses about 7 to 9 GB of MPS memory in bfloat16 on Apple Silicon. It is slow
-  on CPU. On a machine with little memory, set
-  `OCR_ENGINES=paddleocr-vl`.
-- Parses offline. The worker refuses to load when a model code file differs
-  from the hash recorded at provisioning.
+- Needs a Hugging Face token at provisioning, because the repository is
+  private. Run `hf auth login` or set `HF_TOKEN`. The error names both.
+- Peak memory 17.3 GiB (worker plus server) over 257 pages in Experiment 41.
+  On a machine with little memory, set `OCR_ENGINES=paddleocr-vl`.
+- Parses offline. OMRS checks both model file hashes before it starts the
+  server.
+- An engine provisioned before the move to llama.cpp stops working until you
+  provision it again. The fingerprint changed, so the next ingest re-indexes
+  each document once.
 
 ### paddleocr-vl (second in the default list)
 

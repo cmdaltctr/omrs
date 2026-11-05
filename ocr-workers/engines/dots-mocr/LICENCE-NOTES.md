@@ -6,16 +6,16 @@ It is a record of terms. It is not legal advice.
 - **Model:** `rednote-hilab/dots.mocr`, revision `e539fbb52280393adc081b289ec597430a0f9031`.
 - **Licence:** "dots.mocr LICENSE AGREEMENT", effective 8 August 2025, copyright holder
   Xingyin Information Technology (Shanghai) Co., Ltd. The agreement is based on the MIT
-  licence. The full text downloads with the model weights, as the file
-  `dots.mocr LICENSE AGREEMENT` in the model folder.
+  licence. The full text ships with the original model, as the file
+  `dots.mocr LICENSE AGREEMENT` in the upstream repository.
 - **Source of the quotes:** the copy downloaded for Experiment 34 at the pinned revision.
   The quotes below are verbatim. Only runs of narrow no-break spaces are shown as one space.
 
 ## Why provisioning asks for acceptance
 
 `python3 ocr-workers/provision.py dots-mocr` stops before it installs anything unless the
-operator adds `--accept-model-licence`. OMRS downloads the weights at provisioning time and
-does not redistribute them. Commercial use and on-premises deployment are allowed (clauses
+operator adds `--accept-model-licence`. OMRS downloads the converted model files at
+provisioning time and does not redistribute them. Commercial use and on-premises deployment are allowed (clauses
 2.1 and 3.2).
 
 With dots.mocr as the primary engine, every OCR route uses it: scanned PDFs, gate-selected
@@ -57,9 +57,9 @@ PaddleOCR-VL (Apache-2.0) then serves the OCR routes as the fallback engine.
 >
 > In the event that any part of this Agreement becomes invalid or requires adjustment due to changes in applicable laws or regulations, Licensor reserves the right to issue a revised version of this Agreement. Licensee shall migrate to the new version within [e.g., ninety (90)] days of its release; otherwise, all rights granted under this Agreement shall automatically terminate.
 
-## Provenance of the GGUF files (this engine only)
+## Provenance of the GGUF files
 
-This engine does not load the original weights. It loads two files that the operator converted
+The engine runs on llama.cpp. It does not load the original weights. It loads two files that the operator converted
 from the pinned model with llama.cpp build 11941. OMRS downloads them at provisioning time from a
 private Hugging Face repository. OMRS does not publish them (clause 4.4 of the agreement bars the
 dots.mocr name as a product name, and the files stay private).
@@ -72,5 +72,11 @@ dots.mocr name as a product name, and the files stay private).
 - **Source model:** `rednote-hilab/dots.mocr`, revision `e539fbb52280393adc081b289ec597430a0f9031`.
 - **Converter and quantiser:** llama.cpp build 11941.
 - **Evidence:** Experiment 41 (`experiments/41-ocr-runtimes-2026-10-30/`), arm D4.
+- **Repository:** `cmdaltctr/omrs-ocr-gguf-converted` (private), at the commit pinned in
+  `src/omrs_ocr_dots_mocr/pins.py`. Provisioning needs a Hugging Face token: run
+  `hf auth login` or set `HF_TOKEN`. A parse needs no token and no network.
 - **Runtime:** the llama.cpp release `b11941` from `ggml-org/llama.cpp`, which is MIT-licensed. The
-  engine downloads the archive for the host platform and checks its SHA-256.
+  engine downloads the archive for the host platform and checks its SHA-256. OMRS starts the
+  server; the engine is a client of it.
+- **Re-index:** these files replace the PyTorch weights of the earlier engine. The engine
+  fingerprint changed, so the next ingest re-indexes each document once.

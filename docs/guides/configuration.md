@@ -1049,14 +1049,29 @@ OMRS removed three settings with the document routing unit:
 Each lower-case key in `omrs.jsonc` is listed as retired and ignored.
 
 Each engine has its own environment under `ocr-workers/engines/<engine>`.
-dots-mocr needs explicit model-licence acceptance. Over 257 pages,
-Experiment 37 measured a peak of about 22 GiB of Apple Silicon GPU memory
-through Metal Performance Shaders (MPS). One-page smoke tests showed only
-7–9.5 GiB, so plan for the larger figure. PaddleOCR-VL peaked at about
-15 GiB on CPU in the same run. CPU execution is slower. Set
-`OCR_ENGINES=paddleocr-vl,dots-mocr` (PaddleOCR-VL first) on machines with
-limited memory.
-PyTorch and Paddle packages stay outside the OMRS environment.
+dots-mocr needs explicit model-licence acceptance. It runs on llama.cpp
+([ADR-113](../adr/113-dots-mocr-runs-on-llama-cpp.md)):
+
+- **Runtime.** The engine declares a pinned `llama-server`, build 11941, in
+  its `pyproject.toml`. OMRS starts it, checks the build and the model file
+  hashes, and stops it after 10 minutes with no request. See
+  [Local llama.cpp server](#local-llamacpp-server).
+- **Pins.** Provisioning downloads `dots-mocr-Q8_0.gguf`,
+  `dots-mocr-mmproj-bf16.gguf` and the llama.cpp `b11941` release, and
+  checks the SHA-256 of each. The values live in the engine's `pins.py`.
+- **Token.** The model files are in a private Hugging Face repository. Run
+  `hf auth login` or set `HF_TOKEN` before you provision. A parse needs no
+  token.
+- **Memory.** Experiment 41 measured a peak of 17.3 GiB (worker plus
+  server) over 257 pages on Apple silicon. The earlier backend peaked at
+  22.2 GiB. PaddleOCR-VL peaked at about 15 GiB on CPU (Experiment 37).
+  Set `OCR_ENGINES=paddleocr-vl,dots-mocr` (PaddleOCR-VL first) on
+  machines with limited memory.
+- **Re-index.** The engine fingerprint changed at the move to llama.cpp.
+  Provision `dots-mocr` again. The next ingest re-indexes each document
+  once.
+
+Paddle packages and the llama.cpp binary stay outside the OMRS environment.
 
 **Set the workers folder in the web app.** Open Integrations › OCR
 engines and edit "OCR workers folder". The server checks that the
@@ -1074,8 +1089,9 @@ Built-in profiles always use the server settings. See
 
 **Memory with mixed engines.** One worker runs per engine, and only one
 engine parses at a time. A pipeline whose steps use dots.mocr and
-PaddleOCR-VL can still keep both workers loaded, about 37 GiB in the
-worst case, until the server stops. A worker has no idle exit. Use one
+PaddleOCR-VL can still keep both engines loaded, about 32 GiB in the
+worst case. A worker has no idle exit. The dots-mocr `llama-server` stops
+after 10 minutes with no request. Use one
 engine per pipeline on machines with less memory.
 
 **Migration:** re-provision the required engines and set

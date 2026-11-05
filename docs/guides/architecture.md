@@ -464,7 +464,7 @@ OCR engines live outside the OMRS environment:
 ```text
 ocr-workers/
   core/                  shared protocol, validation, framing and engine contract
-  engines/dots-mocr/     default first engine, isolated PyTorch environment
+  engines/dots-mocr/     default first engine, a client of a pinned llama.cpp server
   engines/paddleocr-vl/  default second engine, isolated Paddle environment
   provision.py           provisions one named engine from its lockfile
 ```
@@ -509,13 +509,20 @@ blank_page_test, local_tier}`, both route fingerprints and the maths block
 excluded. Identity schema 7 reindexes every existing source once on its
 next ingest.
 
-The dots-mocr engine needs explicit model-licence acceptance. It checks
-model-code hashes before loading and parses offline. Experiment 37 measured
-a peak of about 22 GiB of Apple Silicon GPU memory through Metal
-Performance Shaders (MPS) over 257 pages; one-page smoke tests showed
-only 7–9.5 GiB. CPU execution is slower. Operators with limited memory
-can put `paddleocr-vl` first in `OCR_ENGINES`. Neither runtime enters the
-OMRS base environment. `OMRS_OCR_MODEL_CACHE` can keep per-engine weights
+The dots-mocr engine needs explicit model-licence acceptance. It runs on
+llama.cpp ([ADR-113](../adr/113-dots-mocr-runs-on-llama-cpp.md)). Its
+`pyproject.toml` declares the pinned `llama-server` (build 11941), the
+server flags and the two model files with their SHA-256. The host's
+runtime manager (`integrations/llamacpp_runtime/`, ADR-109) checks the build
+and the hashes, starts or adopts the server, and gives the worker its
+address in `OMRS_OCR_RUNTIME_URL`. The worker starts no process and parses
+offline. Provisioning fetches the pinned files from a private Hugging Face
+repository, so it needs `hf auth login` or `HF_TOKEN`. Experiment 41
+measured a peak of 17.3 GiB (worker plus server) over 257 pages on Apple
+silicon. Operators with limited memory can put `paddleocr-vl` first in
+`OCR_ENGINES`. The engine fingerprint (`dots_mocr_llamacpp`) differs from
+the earlier backend's, so the first ingest after the move re-indexes each
+document once. Neither runtime enters the OMRS base environment. `OMRS_OCR_MODEL_CACHE` can keep per-engine weights
 outside worktrees.
 
 ### Local model runtimes
