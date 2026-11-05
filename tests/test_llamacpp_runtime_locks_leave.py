@@ -12,6 +12,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 from omrs.integrations.llamacpp_runtime.locks import LockFile
 
 
@@ -120,6 +122,28 @@ def test_close_drops_the_lock_while_a_forked_copy_waits_for_exec(tmp_path: Path)
             os.close(copy)
         held.close()
         probe.close()
+
+
+def test_close_without_lock_support_only_closes_the_descriptor(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Where ``flock`` is missing (Windows), close must not call it."""
+    from omrs.integrations.llamacpp_runtime import locks
+
+    calls: list[tuple[int, int]] = []
+
+    def flock(fd: int, op: int) -> None:
+        calls.append((fd, op))
+
+    lock = LockFile(tmp_path / "clients.lock")
+    fd = lock._fd
+    monkeypatch.setattr(locks, "LOCKS_SUPPORTED", False)
+    monkeypatch.setattr(locks.fcntl, "flock", flock)
+    lock.close()
+    assert calls == []
+    assert lock._fd == -1
+    with pytest.raises(OSError):
+        os.fstat(fd)
 
 
 def test_the_lock_file_is_private_to_the_owner(tmp_path: Path) -> None:
