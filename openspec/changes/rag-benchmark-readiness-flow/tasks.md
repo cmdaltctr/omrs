@@ -19,7 +19,8 @@ The order is the operator's (2026-11-06, design D1). Do not reorder groups. Stop
 
 ## 2. Apply `one-llamacpp-router` (worktree `omrs-feat-one-llamacpp-router`)
 
-- [ ] 2.1 Rebase onto `v3` with group 1 merged. Check `tripwire-retirement-and-provider-symmetry` for overlap with the keys this change retires; follow its policy or record the conflict.
+- [x] 2.1 Rebase onto `v3` with group 1 merged. Check `tripwire-retirement-and-provider-symmetry` for overlap with the keys this change retires; follow its policy or record the conflict.
+  - Done 2026-11-06: PR #184 merged (`d382a763`), `cuts-follow-ups` archived (`591e89af`), worktree removed. Router branch rebased onto `591e89af` with no conflict. Overlap: every key the router retires is flat, so under the tripwire policy (now in `config/legacy.py`) its entries persist; no conflict.
 - [ ] 2.2 Run the change's spike group (systemone forwarding, `/models?reload=1`, child processes, Linux CPU and CUDA builds) in scratch only. GATE G2: report results and the design path (decision models on the router, or on their own servers); the operator confirms.
 - [ ] 2.3 Apply the remaining tasks in order, tests first, including the automatic model download (task 6.2a) and the `.env` / conftest alignment.
 - [ ] 2.4 `./scripts/local_ci.sh`, strict validation, browser check (Router panel, Model runtimes, Get a model) at 1280 px and 390 px, PR, CI, CodeRabbit.
