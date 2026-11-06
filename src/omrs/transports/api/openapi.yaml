@@ -5262,8 +5262,9 @@ paths:
         Lists the document-reading keys in a fixed order (`pdf_readers`,
         `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engines`,
         `ocr_maths_routing_enabled`, `ocr_non_latin_routing`, `document_router`,
-        `ocr_local_backends`). `pdf_readers`, `ocr_engines` and
-        `ocr_local_backends` hold an ordered list of names. The old single-value keys `pdf_reader`,
+        `ocr_local_backends`, `ocr_local_cuts`). `pdf_readers`, `ocr_engines` and
+        `ocr_local_backends` hold an ordered list of names. `ocr_local_cuts` holds a map from
+        a local OCR backend name to its confidence cut, a number from 0 to 1. The old single-value keys `pdf_reader`,
         `ocr_engine_primary` and `ocr_engine_fallback` stay valid in every source and
         expand to the equivalent list. Each row has the value in force since
         launch, the valid value `omrs.jsonc` holds now (`saved`), the source,
@@ -5271,7 +5272,9 @@ paths:
         key applies at the next launch only, and every key is part of the index
         identity. `pdf_readers` lists `auto` first, then each registered reader
         with its availability. `local_ocr_backends` lists each local OCR backend
-        that a list can name, with its availability. `ocr` lists the OCR workers
+        that a list can name, with its availability and its default cut.
+        `retired_keys` names each key that `omrs.jsonc` holds and OMRS ignores,
+        such as `ocr_local_min_confidence`. `ocr` lists the OCR workers
         folder and each known engine with its availability now. The route reads the file and probes packages
         and folders; it writes nothing.
       security:
@@ -5300,7 +5303,10 @@ paths:
         Writes one or more document-reading keys to `omrs.jsonc`, all in one write
         or none. `null` removes a key, so the default applies. A list key
         (`pdf_readers`, `ocr_engines`, `ocr_local_backends`) takes an array of names. A save of a list key
-        also removes the old single-value keys it replaces in the same write. The value in
+        also removes the old single-value keys it replaces in the same write.
+        `ocr_local_cuts` takes an object that maps a local OCR backend name to a
+        cut from 0 to 1. A save of it also removes the retired
+        `ocr_local_min_confidence` key in the same write. The value in
         force does not change until a restart. The checks run in this order
         and stop at the first failure: body shape (400, `Invalid request. …`);
         an old single-value key `pdf_reader`, `ocr_engine_primary` or
@@ -5312,8 +5318,10 @@ paths:
         that sets it, which can be an old single-value variable such as
         `OCR_ENGINE_PRIMARY`); a value that breaks its rule, including blank
         text (400, "<key>: <rule>", including an empty list, a duplicate name,
-        a blank entry and `auto` inside a list, for example "pdf_readers: The
-        value must be one of: liteparse, pdf_inspector, pypdfium2, pypdf.");
+        a blank entry and `auto` inside a list, a backend name that no list can
+        name or a cut outside 0 to 1 in `ocr_local_cuts`, for example
+        "pdf_readers: The value must be one of: liteparse, pdf_inspector,
+        pypdfium2, pypdf.");
         a `document_router` that is not `none` and names no router that
         `omrs.jsonc` holds now (400, "document_router: No router of this name
         is in omrs.jsonc."); a stale `revision` (409, "omrs.jsonc changed on disk. Reload to see the
@@ -10371,8 +10379,8 @@ components:
         effective_cut:
           type: [number, "null"]
           description: >
-            The confidence cut the backend applies: `ocr_local_min_confidence`
-            when it is set, else the backend's own calibrated cut.
+            The confidence cut the backend applies: its `ocr_local_cuts` entry,
+            else the backend's default cut.
         source:
           type: string
           description: "`built-in`, or the distribution that adds the backend."
@@ -11794,7 +11802,15 @@ components:
     DocumentReadingState:
       type: object
       additionalProperties: false
-      required: [status, revision, settings, pdf_readers, pdf_reader_in_use, local_ocr_backends, ocr]
+      required:
+        - status
+        - revision
+        - settings
+        - pdf_readers
+        - pdf_reader_in_use
+        - local_ocr_backends
+        - retired_keys
+        - ocr
       properties:
         status:
           type: string
@@ -11806,8 +11822,8 @@ components:
             Send it back on a save; a file that changed since gives 409.
         settings:
           type: array
-          minItems: 8
-          maxItems: 8
+          minItems: 9
+          maxItems: 9
           description: >
             One row per key, in the fixed key order. The old single-value keys
             have no row: a list row holds the value that they mean.
@@ -11836,6 +11852,14 @@ components:
             can be listed; start-up skips it with a warning.
           items:
             $ref: "#/components/schemas/LocalBackendOption"
+        retired_keys:
+          type: array
+          description: >
+            The keys that `omrs.jsonc` holds and OMRS ignores, in file order,
+            for example `ocr_local_min_confidence`. A save of the key that
+            replaced one removes it in the same write.
+          items:
+            type: string
         ocr:
           type: object
           additionalProperties: false
@@ -11868,18 +11892,27 @@ components:
             - ocr_non_latin_routing
             - document_router
             - ocr_local_backends
+            - ocr_local_cuts
         value:
-          type: [string, boolean, number, array]
+          type: [string, boolean, number, array, object]
           items:
             type: string
+          additionalProperties:
+            type: number
+            minimum: 0
+            maximum: 1
           description: >
             The value in force since launch. A list key holds an array of
-            names. An old single-value setting in force reads as the list it
-            means.
+            names. `ocr_local_cuts` holds an object from backend name to cut.
+            An old single-value setting in force reads as the list it means.
         saved:
-          type: [string, boolean, number, array, "null"]
+          type: [string, boolean, number, array, object, "null"]
           items:
             type: string
+          additionalProperties:
+            type: number
+            minimum: 0
+            maximum: 1
           description: >
             The valid value `omrs.jsonc` holds now. Null when the file does not
             set the key or holds a value that breaks its rule. A blank text
@@ -11901,9 +11934,13 @@ components:
           type: boolean
           description: The file value differs from the value captured at launch, and the key is not locked.
         default:
-          type: [string, boolean, number, array]
+          type: [string, boolean, number, array, object]
           items:
             type: string
+          additionalProperties:
+            type: number
+            minimum: 0
+            maximum: 1
           description: The code default from the `Settings` model.
 
     ReaderOption:
@@ -11924,7 +11961,7 @@ components:
     LocalBackendOption:
       type: object
       additionalProperties: false
-      required: [name, available, reason]
+      required: [name, available, reason, default_cut]
       properties:
         name:
           type: string
@@ -11935,6 +11972,13 @@ components:
         reason:
           type: [string, "null"]
           description: Why the backend cannot run (`Not installed.`), or null.
+        default_cut:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: >
+            The cut that applies when `ocr_local_cuts` has no entry for this
+            backend. It comes from the backend descriptor.
 
     OcrEngineOption:
       type: object
@@ -11964,13 +12008,14 @@ components:
         values:
           type: object
           minProperties: 1
-          maxProperties: 11
+          maxProperties: 12
           description: >
-            One or more of the eleven keys. Each value has the key's JSON type
+            One or more of the twelve keys. Each value has the key's JSON type
             (an array of names for `pdf_readers`, `ocr_engines` and
-            `ocr_local_backends`), or is null to remove the key so the default
+            `ocr_local_backends`, an object from backend name to cut for
+            `ocr_local_cuts`), or is null to remove the key so the default
             applies. `document_router` names a router of `document_routers` in
-            `omrs.jsonc` now, or `none`. A key outside the eleven gets 400.
+            `omrs.jsonc` now, or `none`. A key outside the twelve gets 400.
           propertyNames:
             enum:
               - pdf_readers
@@ -11984,10 +12029,15 @@ components:
               - ocr_non_latin_routing
               - document_router
               - ocr_local_backends
+              - ocr_local_cuts
           additionalProperties:
-            type: [string, boolean, number, array, "null"]
+            type: [string, boolean, number, array, object, "null"]
             items:
               type: string
+            additionalProperties:
+              type: number
+              minimum: 0
+              maximum: 1
         revision:
           type: string
           maxLength: 128

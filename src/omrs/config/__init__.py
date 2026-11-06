@@ -94,6 +94,8 @@ class Settings(
         # subpackage models set extra="forbid", so a mistyped nested key
         # still fails loudly — see design.md D9.
         extra="ignore",
+        # A start-up error names the key and the rule, never the submitted value.
+        hide_input_in_errors=True,
     )
 
     # ── Nested subpackage blocks ───────────────────────────────────
@@ -159,8 +161,6 @@ class Settings(
     # Flat names: the nested delimiter binds only to nested blocks, so a
     # nested spelling is discarded in silence (config/legacy.py aliases).
     ocr_routing_unit: str = "page"
-    # Design D9: unset means each backend uses its own cut (pp-ocrv6-small: 0.9).
-    ocr_local_min_confidence: float | None = Field(default=None, ge=0.0, le=1.0, examples=[0.9])
     ocr_local_offline: LegacyBool = False
     ocr_local_model_directory: str = ""
 

@@ -3,6 +3,7 @@ import type { JsonValue } from "../api/pipelines";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { CutsParam, isCutsField } from "./CutsParam";
 import { EngineSelect, isEngineField } from "./EngineSelect";
 import { isListField, ListParam } from "./ListParam";
 import { optionLabel } from "./labels";
@@ -16,6 +17,8 @@ interface ParamFieldProps {
   onChange: (value: JsonValue) => void;
   /** Shows the value without allowing a change. */
   disabled?: boolean;
+  /** The local OCR backends of the step, for the cuts option. */
+  backends?: string[];
 }
 
 const INHERIT = "__inherit__";
@@ -29,8 +32,17 @@ function Choice({ type, name, checked, disabled, onChange, children }: { type: "
   );
 }
 
+/** The host value as text: a list reads in order, a map as `name value` pairs. An empty map says nothing. */
+function inheritedText(value: JsonValue): string | null {
+  if (Array.isArray(value)) return value.join(", ");
+  if (typeof value !== "object" || value === null) return String(value);
+  const pairs = Object.entries(value).map(([name, entry]) => `${name} ${String(entry)}`);
+  return pairs.length === 0 ? null : pairs.join(", ");
+}
+
 function InheritNote({ field, note }: { field: Field; note: string | null }) {
-  const inherited = field.inheritedValue == null ? null : `Inherit uses the host value: ${Array.isArray(field.inheritedValue) ? field.inheritedValue.join(", ") : String(field.inheritedValue)}.`;
+  const host = field.inheritedValue == null ? null : inheritedText(field.inheritedValue);
+  const inherited = host === null ? null : `Inherit uses the host value: ${host}.`;
   const text = note ?? inherited ?? (field.nullable ? "Inherit uses the operation default." : null);
   return text === null ? null : <p className="text-meta text-muted-foreground">{text}</p>;
 }
@@ -189,6 +201,7 @@ export function ParamField(props: ParamFieldProps) {
     );
   } else if (field.kind === "integer" || field.kind === "number") control = <NumberInput {...props} name={name} />;
   else if (field.kind === "enum") control = <EnumSelect {...props} />;
+  else if (isCutsField(field)) control = <CutsParam field={field} value={value} backends={props.backends ?? []} onChange={onChange} disabled={props.disabled} />;
   else if (field.kind === "json") control = <JsonInput {...props} name={name} />;
   else if (isListField(field)) control = <ListParam field={field} value={value} onChange={onChange} disabled={props.disabled} />;
   else if (isEngineField(field)) control = <EngineSelect {...props} />;

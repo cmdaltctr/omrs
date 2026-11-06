@@ -173,7 +173,7 @@ def _joined(docs: list) -> str:
 def test_only_flagged_pages_are_ocred(monkeypatch, tmp_path, effective_settings):
     """A 20-page file with one flagged page OCRs exactly that page."""
     scan = [_scan_page(i, f"native {i + 1}", i == 9) for i in range(20)]
-    engine = _EngineCalls(scan, ocr_pages_by_call=[[_ocr_page(10, "LOCAL ten", 0.9)]])
+    engine = _EngineCalls(scan, ocr_pages_by_call=[[_ocr_page(10, "LOCAL ten", 0.95)]])
     _stub_engine(monkeypatch, engine)
     inner = _FakeInner(text="whole", metadata=_inner_metadata(20, flagged=1))
     worker = _FakeWorker()
@@ -212,7 +212,7 @@ def test_a_document_read_wholly_by_local_ocr_names_the_local_tier(
     """Every page flagged and kept locally: the local tier is the sole producer."""
     scan = [_scan_page(i, "", True) for i in range(2)]
     engine = _EngineCalls(
-        scan, ocr_pages_by_call=[[_ocr_page(1, "LOCAL one", 0.9), _ocr_page(2, "LOCAL two", 0.9)]]
+        scan, ocr_pages_by_call=[[_ocr_page(1, "LOCAL one", 0.95), _ocr_page(2, "LOCAL two", 0.95)]]
     )
     _stub_engine(monkeypatch, engine)
     inner = _FakeInner(text="", metadata=_inner_metadata(2, pdf_type="scanned", flagged=2))
@@ -273,7 +273,7 @@ def test_unreadable_pages_escalate_alone_in_one_request(monkeypatch, tmp_path, e
         scan,
         ocr_pages_by_call=[
             [
-                _ocr_page(2, "LOCAL two", 0.9),
+                _ocr_page(2, "LOCAL two", 0.95),
                 _ocr_page(5, "flawed five", 0.3),
                 _ocr_page(7, "", None, hosted=True),
             ]
@@ -375,7 +375,7 @@ def test_blank_flagged_page_skips_both_ocr_tiers(monkeypatch, tmp_path, effectiv
         _scan_page(2, "", True),  # page 3: content, resolves locally
         _scan_page(3, "native 4", False),
     ]
-    engine = _EngineCalls(scan, ocr_pages_by_call=[[_ocr_page(3, "LOCAL three", 0.9)]])
+    engine = _EngineCalls(scan, ocr_pages_by_call=[[_ocr_page(3, "LOCAL three", 0.95)]])
     _stub_engine(monkeypatch, engine)
     blank_calls: list[list[int]] = []
 
@@ -430,7 +430,7 @@ def test_blank_pages_are_counted_on_every_document_and_emit_none(
     ]
     engine = _EngineCalls(
         scan,
-        ocr_pages_by_call=[[_ocr_page(3, "LOCAL three", 0.9), _ocr_page(4, "flawed four", 0.3)]],
+        ocr_pages_by_call=[[_ocr_page(3, "LOCAL three", 0.95), _ocr_page(4, "flawed four", 0.3)]],
     )
     _stub_engine(monkeypatch, engine)
     monkeypatch.setattr(
@@ -549,7 +549,7 @@ def test_missing_worker_with_blank_local_text_keeps_native_text(
 ):
     """Whitespace-only local output is no text: the native text is kept, not credited to OCR."""
     scan = [_scan_page(i, f"native {i + 1}", i + 1 == 4) for i in range(5)]
-    engine = _EngineCalls(scan, ocr_pages_by_call=[[_ocr_page(4, "  \n ", 0.9)]])
+    engine = _EngineCalls(scan, ocr_pages_by_call=[[_ocr_page(4, "  \n ", 0.95)]])
     _stub_engine(monkeypatch, engine)
     inner = _FakeInner(text="whole", metadata=_inner_metadata(5, flagged=1))
     worker = _FakeWorker(available=False)
@@ -875,7 +875,7 @@ def _local_and_worker_read(monkeypatch, tmp_path, effective_settings) -> list:
     ]
     engine = _EngineCalls(
         scan,
-        ocr_pages_by_call=[[_ocr_page(3, "LOCAL three", 0.9), _ocr_page(4, "flawed four", 0.3)]],
+        ocr_pages_by_call=[[_ocr_page(3, "LOCAL three", 0.95), _ocr_page(4, "flawed four", 0.3)]],
     )
     _stub_engine(monkeypatch, engine)
     inner = _FakeInner(text="whole", metadata=_inner_metadata(5, flagged=2))

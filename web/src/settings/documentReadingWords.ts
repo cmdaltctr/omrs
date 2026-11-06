@@ -45,6 +45,25 @@ export const READING_ROWS: Partial<Record<DocumentReadingKey, ReadingRowWords>> 
   },
 };
 
+/** The words of the confidence cut inputs, in Settings and in the Read document step. */
+export const CUT_WORDS = {
+  /** The visible label beside each input. */
+  label: "Confidence cut",
+  /** The name of the input for one backend. */
+  nameFor: (backend: string) => `Confidence cut for ${backend}`,
+  invalid: "The cut must be a number from 0 to 1.",
+  /** What an empty input shows: the backend's default cut. */
+  defaultText: (cut: number | undefined) => (cut === undefined ? "Default" : `Default ${cut}`),
+  /** What an empty input shows in a pipeline step: the cut the host sets. */
+  hostText: (cut: number) => `Host ${cut}`,
+  help: "A page whose OCR confidence is below the cut goes to the next backend. An empty box uses the default.",
+  /** Under the cuts of a pipeline step. */
+  stepHelp: "An empty box inherits the host cut. A step entry replaces the host cut for its own backend in this pipeline only.",
+  retiredKey: "ocr_local_min_confidence",
+  retiredNotice: "omrs.jsonc holds ocr_local_min_confidence. OMRS ignores it. Each backend now has its own cut.",
+  removeRetired: "Remove it",
+};
+
 export const ROUTING_UNITS = ["page"] as const;
 
 export const SCRIPT_MODES = ["off", "detect", "always"] as const;
@@ -137,12 +156,32 @@ function isNoRouter(value: DocumentReadingValue | null): boolean {
   return value === null || value === "" || value === NO_ROUTER.value;
 }
 
+/** The confidence cut of each backend that has one, by backend name. */
+export type Cuts = Record<string, number>;
+
+/** The cuts a setting value holds: the map itself, or none. */
+export function cutsOf(value: DocumentReadingValue | null): Cuts {
+  return value !== null && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+/** The cuts as the row shows them, such as `fake-ocr 0.95`. */
+export function cutsText(cuts: Cuts): string {
+  const entries = Object.entries(cuts);
+  return entries.length === 0 ? "none" : entries.map(([name, cut]) => `${name} ${cut}`).join(", ");
+}
+
+export function sameCuts(a: Cuts, b: Cuts): boolean {
+  const names = Object.keys(a);
+  return names.length === Object.keys(b).length && names.every((name) => a[name] === b[name]);
+}
+
 /** A value as the row shows it. A list reads in order, separated by commas. */
 export function readingText(value: DocumentReadingValue | null, kind?: ReadingKind): string {
   if (kind === "router" && isNoRouter(value)) return NO_ROUTER.label;
   if (value === null) return "Not set";
   if (typeof value === "boolean") return value ? "On" : "Off";
   if (Array.isArray(value)) return value.join(", ");
+  if (typeof value === "object") return cutsText(value);
   return String(value);
 }
 

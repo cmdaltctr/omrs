@@ -1117,16 +1117,31 @@ under it (change `page-level-ocr-routing`,
 | `OCR_ROUTING_UNIT` | `page` | `page` is the only legal value. `document` fails start-up with a message that names `page`. In `omrs.jsonc`, `"ocr_routing_unit": "document"` is listed as a settings-file problem and ignored, so `page` applies |
 | `OCR_NON_LATIN_ROUTING` | `off` | `off`, `detect` or `always`. Sends non-Latin pages past the local tier to the OCR engines. See [Non-Latin page routing](#non-latin-page-routing). Any other value fails start-up and names the three |
 | `OCR_LOCAL_BACKENDS` | `pp-ocrv6-small` | The local OCR backends, in the order they read. Comma-separated in the environment; a JSON array in `omrs.jsonc`. Accepted names: `pp-ocrv6-small`, `indra`. An unknown name fails start-up and lists the accepted names. See [Local OCR backends](#local-ocr-backends) |
-| `OCR_LOCAL_MIN_CONFIDENCE` | unset | Optional override. Unset, each listed local OCR backend uses its own cut. Set, this value replaces the cut of every listed backend. A page below the cut escalates to the worker. Unreported confidence escalates too |
+| `OCR_LOCAL_CUTS` | `{}` | A JSON object that sets the confidence cut of a backend, one entry per backend name, for example `{"indra": 0.96}`. Each value is a number from 0 to 1. A backend with no entry uses its own default cut. A page below the cut goes to the next backend or to the worker. A page with no reported confidence goes on too. An unknown name, a value outside 0 to 1, or a value that is not a number fails start-up. In `omrs.jsonc` the key is `ocr_local_cuts`. See [Local OCR backends](#local-ocr-backends) |
 | `OCR_LOCAL_OFFLINE` | `false` | `true` forbids the model download; a missing cached model then degrades |
 | `OCR_LOCAL_MODEL_DIRECTORY` | empty | Artifact directory (`<name>/<revision>` leaf) to load the model from. Empty means the library's default cache |
 
-Each backend registers its own cut with the experiment that measured it.
-The cut of `pp-ocrv6-small` is 0.9, supported by Experiments 33, 37 and 39.
-On the 399 flagged pages re-scored in Experiment 39, 59.6% escalate and 2.5% of
-kept pages have body recall below 0.5. The cut of `indra` is 0.90 (Experiment 46).
-An `OCR_LOCAL_MIN_CONFIDENCE` value replaces the cut of every listed backend.
-Use it only when you have measured a better cut for your collection.
+Each backend registers its own default cut with the experiment that measured
+it. The default cut of `pp-ocrv6-small` is 0.92 and the default cut of `indra`
+is 0.94. Both come from [Experiment 46a](../../experiments/46a-local-ocr-per-backend-cuts-2026-11-06/report.md),
+which re-read the saved results of Experiment 46 (229 pages from 9 documents).
+Set `OCR_LOCAL_CUTS` only when you have measured a better cut for your
+collection. The sample is small, so treat the defaults as settings chosen from
+evidence and not as a publication result.
+
+Set one cut in the environment or in `.env`. Write the value as a JSON object:
+
+```bash
+OCR_LOCAL_CUTS={"indra": 0.96}
+```
+
+Set the same cut in `omrs.jsonc`:
+
+```jsonc
+"ocr_local_cuts": {"indra": 0.96}
+```
+
+An empty map means that every backend uses its default cut.
 
 These names are **flat on purpose**. `pydantic-settings` resolves
 its `__` delimiter only into nested settings blocks, and the OCR
@@ -1166,17 +1181,18 @@ reading edits the same list as the Local OCR backends row.
 OCR_LOCAL_BACKENDS=pp-ocrv6-small,indra
 ```
 
-| Backend | Installed by | Confidence cut | Scripts it keeps | `ocr_backend` value |
-|---|---|---|---|---|
-| `pp-ocrv6-small` | Base install | 0.9 | All | `pdf_inspector_ocr` |
-| `indra` | Extra `local-ocr-indra` (`indra-ocr==1.1.2`, no PyTorch) | 0.90 | Arabic and Devanagari | `indra_ocr` |
+| Backend | Installed by | Default confidence cut | `ocr_backend` value |
+|---|---|---|---|
+| `pp-ocrv6-small` | Base install | 0.92 | `pdf_inspector_ocr` |
+| `indra` | Extra `local-ocr-indra` (`indra-ocr==1.1.2`, no PyTorch) | 0.94 | `indra_ocr` |
 
 The first backend reads every flagged page that no page rule dropped or sent direct. The next
 backend reads only the pages that the backends above did not keep. The OCR
 engines read the pages that no listed backend kept. A backend keeps a page
-when its text is not empty and its confidence reaches the cut. A backend with
-a script filter keeps a page only when the script of the text is in its set.
-Other pages escalate with the reason `script_not_kept`.
+when its text is not empty and its confidence reaches the cut of that backend.
+Confidence is the only test. No backend filters by script. Each backend has its
+own cut because each backend reports confidence on its own scale. The cut of a
+backend is its `OCR_LOCAL_CUTS` entry, or its default cut when it has no entry.
 
 A backend that cannot run is skipped for the call, with one warning per
 process. When no listed backend can run, the missing-runtime rule of the local
@@ -1189,16 +1205,43 @@ code is Apache-2.0. The weights use the modified OpenRAIL-M licence, which
 limits commercial and competing use. Read it before you use the weights.
 
 `OCR_NON_LATIN_ROUTING=always` and the `detect` text-layer check send pages
-direct before any local backend reads them, Indra included. With `indra` in
-the list, set `OCR_NON_LATIN_ROUTING` to `off` or `detect`. Under `detect`, a
-scanned page has no text layer, so it still reaches Indra.
+direct before any local backend reads them, Indra included. Under `detect`, the
+output check also sends a mostly non-Latin result of any backend, Indra
+included, to the OCR engines. When `indra` is in the list, set
+`OCR_NON_LATIN_ROUTING` to `off`. Then the cut of Indra alone decides which
+Arabic and Devanagari pages stay local. See
+[Non-Latin page routing](#non-latin-page-routing).
 
-Check the list: run `omrs config show` and read the `ocr_local_backends` line.
-The line ends with the source that set it. The Integrations page shows each
+Check the list: run `omrs config show` and read the `ocr_local_backends` and
+`ocr_local_cuts` lines.
+Each line ends with the source that set it. The Integrations page shows each
 listed backend with its state and effective cut (see
 [Reading parts on the Integrations page](web-workspace.md#reading-parts-on-the-integrations-page)).
 To add a backend or a page rule, follow the procedures in
 [Reading parts](reading-parts.md).
+
+**Set a cut on the Settings page.** Open Settings > Document reading > Local
+OCR. Each backend row has a "Confidence cut" input. An empty input shows the
+default cut of the backend and means "use the default". Type a number from 0 to
+1 to set a cut. The page saves the cuts with the backend list in one write to
+`ocr_local_cuts`. A number outside 0 to 1 shows the message "The cut must be a
+number from 0 to 1." and the page saves nothing.
+
+**Set a cut on a pipeline step.** A Read document step of a user profile can
+set `ocr_local_cuts` for its own pipeline. The step option follows these rules:
+
+- A step entry replaces the cut of its own backend in that pipeline only.
+- A backend with no step entry keeps the effective cut of the server. This
+  differs from other read options, which replace the server value as a whole.
+- An empty box in Studio means "inherit". Clear the last step cut to remove the
+  key from the step.
+- The graph-wide override `overrides.ocr_local_cuts` is refused with the reason
+  `host_owned_setting`. The server owns the setting.
+- Step cuts do not enter the graph fingerprint. They enter the identity of PDF
+  sources, so a changed step cut re-reads PDF sources only.
+
+Built-in profiles always use the server cuts. See
+[Local OCR cuts on Read document step](pipelines.md#local-ocr-cuts-on-read-document-step).
 
 #### Reading part options
 
@@ -1232,15 +1275,17 @@ Settings page has no row for this key. Edit it in `omrs.jsonc`.
 #### Non-Latin page routing
 
 The default local backend has no recogniser for Arabic, Bengali or Devanagari
-(Experiment 33: recall 0.000 on all 129 such pages). The `indra` backend keeps Arabic
-and Devanagari pages; Bengali stays with the OCR engines (Experiment 46). `OCR_NON_LATIN_ROUTING`
-(change `non-latin-script-routing`) sends these pages to the OCR engines
-without a wasted local pass. It has three values:
+(Experiment 33: recall 0.000 on all 129 such pages). The `indra` backend reads
+Arabic and Devanagari well and Bengali badly (Experiment 46). No backend filters
+pages by script. The confidence cut of each backend decides which pages stay
+local. `OCR_NON_LATIN_ROUTING` (change `non-latin-script-routing`) sends
+non-Latin pages to the OCR engines without a wasted local pass. It has three
+values:
 
 | Value | What happens |
 |---|---|
 | `off` | Default. Routing is as before. |
-| `detect` | A flagged page whose text layer is mostly non-Latin letters skips the local tier. A local OCR result that is mostly non-Latin letters escalates whatever its confidence, with the reason `non_latin_output`. |
+| `detect` | A flagged page whose text layer is mostly non-Latin letters skips the local tier. A local OCR result that is mostly non-Latin letters escalates whatever its confidence, with the reason `non_latin_output`. This holds for the result of every local backend, Indra included. |
 | `always` | Every flagged page skips the local tier. Use this only for a collection that you know is non-Latin. |
 
 A page is non-Latin when it has at least 40 letters and at least half of them
@@ -1252,8 +1297,8 @@ What `detect` cannot see: a scanned page. A scan has no text layer, so the
 detector has nothing to read before OCR. The four non-Latin PDFs of
 Experiment 33 are all scans, and each page holds only a few Latin letters
 of stamp text. For a scanned non-Latin collection, `detect` leaves the local
-tier in place, and the 0.9 confidence cut sends the pages on after the local
-pass. Use `always` to skip the local pass. `detect` never renders a page, runs
+tier in place, and the confidence cut of each backend sends the pages on after
+the local pass. Use `always` to skip the local pass. `detect` never renders a page, runs
 OCR or calls a model.
 
 How it combines with other settings:
@@ -1262,8 +1307,10 @@ How it combines with other settings:
 - A page that is both a maths page and a non-Latin page goes to the OCR
   engines once, in the same page-listed request.
 - `non_latin_output` is an extra reason to escalate. It does not replace the
-  confidence cut. A backend that keeps the script of the text is exempt from
-  this check for that script.
+  confidence cut. No backend is exempt from this check.
+- When `indra` is in `OCR_LOCAL_BACKENDS`, set `OCR_NON_LATIN_ROUTING` to
+  `off`. Under `detect`, every non-Latin result of Indra escalates, so Indra
+  keeps no Arabic or Devanagari page.
 - A blank flagged page leaves the route before this setting acts.
 - If no OCR engine that speaks the page-listed protocol is available, the
   pages go through the local tier as if the setting were `off`. One warning
@@ -1285,11 +1332,13 @@ Example environment line:
 OCR_NON_LATIN_ROUTING=always
 ```
 
-Identity consequences: the index identity schema moved from 6 to 7.
-The routing payload is `{enabled, routing_unit, blank_page_test,
-local_tier}`, and the maths block is `{enabled, detector_version}`. The
-page-source counts are excluded for every source. Every existing source
-reindexes once on its next ingest. Reading an index does not rebuild it.
+Identity: the index identity schema is 8. The routing payload that every source
+carries is `{enabled, routing_unit, blank_page_test}`, and the maths block is
+`{enabled, detector_version}`. The page-source counts are excluded for every
+source. The local OCR cuts and the local model identity are in the `parser`
+block of PDF sources only. See
+[Index identity and re-ingestion](#index-identity-and-re-ingestion). Reading an
+index does not rebuild it.
 
 The packaged default is `OCR_FALLBACK_ENABLED=true`
 ([ADR-065](../adr/065-ocr-fallback-gate-promoted-to-packaged-default.md),
@@ -1492,15 +1541,16 @@ A launch value (step 1 or 2) locks the limit for that run. Settings then shows t
 
 ### Document reading values
 
-Settings > Document reading edits seven keys in `omrs.jsonc`: `pdf_readers`, `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engines`, `ocr_maths_routing_enabled`, `ocr_non_latin_routing` and `ocr_local_backends`. The three list keys hold an array of names, and the page shows each as an ordered list with add, remove, move up and move down. See [PDF reading](#pdf-reading), [OCR fallback and isolated engines](#ocr-fallback-and-isolated-engines) and [Local OCR backends](#local-ocr-backends).
+Settings > Document reading edits eight keys in `omrs.jsonc`: `pdf_readers`, `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engines`, `ocr_maths_routing_enabled`, `ocr_non_latin_routing`, `ocr_local_backends` and `ocr_local_cuts`. The three list keys hold an array of names, and the page shows each as an ordered list with add, remove, move up and move down. The key `ocr_local_cuts` holds an object, and the page shows it as a "Confidence cut" input in each backend row. See [PDF reading](#pdf-reading), [OCR fallback and isolated engines](#ocr-fallback-and-isolated-engines) and [Local OCR backends](#local-ocr-backends).
 
 - Each key applies after a restart only. Until then, the row shows the value in force and the saved value with "Restart to apply".
-- Each key is part of the [index identity](#index-identity-and-re-ingestion). After the restart, the next ingest can read existing files again. The default `ocr_local_backends` list keeps every digest.
+- Each key is part of the [index identity](#index-identity-and-re-ingestion). After the restart, the next ingest can read existing files again. A change to `ocr_local_cuts` or `ocr_local_backends` reads PDF sources only.
 - A key in the environment or `.env` is locked. The row tells you which variable to remove.
 - The page refuses a reader list that holds a name that is not a known reader. A reader that is not installed shows "Not installed". The page allows an OCR engine name that is valid but not provisioned yet, and marks it "Not provisioned".
 - The page refuses a local OCR backend list that holds an unknown name. A backend that is not installed shows "Not installed" and you cannot add it. A backend that is already in the list stays.
 - The page refuses an empty list, a repeated name, `auto` in the reader list, and blank text. "Use default" removes the key from the file.
 - A save of a list writes the list key and removes the matching single-value keys (`pdf_reader`, `ocr_engine_primary`, `ocr_engine_fallback`) from `omrs.jsonc` in the same write. The page never writes a single-value key.
+- The page refuses a cut that is not a number from 0 to 1, and a cut for a name that is not a local OCR backend. An empty input removes the entry, and the backend uses its default cut. Every save of `ocr_local_cuts` removes the retired single-cut key from the file in the same write. When the file holds that key, the Local OCR group shows a notice with a "Remove it" button. See [Per-backend local OCR cuts](#per-backend-local-ocr-cuts).
 - A list of one engine turns the fallback engine off. Remove the second engine on the page and save.
 - These checks run only when the page saves. At startup, an unknown `pdf_reader` from any source still logs a warning and falls back to `auto`.
 
@@ -1527,15 +1577,28 @@ Rollback: revert the merge commit. A file that holds only the list keys then fal
 
 ### Ordered local OCR backend list
 
-`OCR_LOCAL_BACKENDS` makes the local tier an ordered list. `OCR_LOCAL_MIN_CONFIDENCE` is an optional override. See [Local OCR backends](#local-ocr-backends).
+`OCR_LOCAL_BACKENDS` makes the local tier an ordered list. See [Local OCR backends](#local-ocr-backends). For the cut of each backend, see [Per-backend local OCR cuts](#per-backend-local-ocr-cuts).
 
-Nothing to do on upgrade. The default list holds `pp-ocrv6-small`, which gives the behaviour before the change. Every existing [index identity](#index-identity-and-re-ingestion) stays the same, so no source re-ingests. An unset cut and an explicit `0.9` give the same digest.
+Nothing to do on upgrade. The default list holds `pp-ocrv6-small`, which gives the behaviour before the change.
 
 | Before upgrade | After upgrade | What to do |
 |---|---|---|
-| `OCR_LOCAL_MIN_CONFIDENCE` set in the environment, `.env` or `omrs.jsonc` | The value stays in force. It replaces the cut of every listed backend. | Nothing. Remove the key to use the cut of each backend. |
-| `OCR_LOCAL_MIN_CONFIDENCE` not set | Each backend uses its own cut. The default backend keeps 0.9. | Nothing. |
-| You add `indra` to the list | PDF sources re-index once. Other sources keep their digest. | Install the extra and set `INDRA_OCR_MODEL_DIR`. Set `OCR_NON_LATIN_ROUTING` to `off` or `detect`. |
+| You add `indra` to the list | PDF sources re-index once. Other sources keep their digest. | Install the extra and set `INDRA_OCR_MODEL_DIR`. Set `OCR_NON_LATIN_ROUTING` to `off`. |
+
+### Per-backend local OCR cuts
+
+`OCR_LOCAL_CUTS` sets the confidence cut of each local OCR backend. It replaces `OCR_LOCAL_MIN_CONFIDENCE`, which set one cut for every listed backend. See [Local OCR backends](#local-ocr-backends).
+
+| Before upgrade | After upgrade | What to do |
+|---|---|---|
+| `OCR_LOCAL_MIN_CONFIDENCE` or `OCR__LOCAL_MIN_CONFIDENCE` set in the environment or in `.env` | Start-up stops. The message names `OCR_LOCAL_CUTS`. | Remove the variable. Set `OCR_LOCAL_CUTS` as a JSON object, for example `{"pp-ocrv6-small": 0.9}`, only if you need a cut other than the default. |
+| `ocr_local_min_confidence` in `omrs.jsonc` | The server starts. OMRS ignores the key and lists it as retired. Settings > Document reading shows a notice with a "Remove it" button. | Press "Remove it", or save any cut on the page. Every save of `ocr_local_cuts` removes the old key. |
+| No cut set | The default cuts change from 0.90 to 0.92 for `pp-ocrv6-small` and 0.94 for `indra`. | Set `OCR_LOCAL_CUTS` to keep the old value. |
+| Every collection | Each source is read again once on its next explicit ingest. The index identity schema moves from 7 to 8. | Plan one re-ingest of each collection. A second ingest processes no source. |
+| You change a cut later | PDF sources are read again. Markdown and code sources keep their digest. | Re-ingest PDF sources only. |
+| `indra` is in `OCR_LOCAL_BACKENDS` and `OCR_NON_LATIN_ROUTING` is `detect` | Indra has no script filter now. Under `detect`, every non-Latin result of Indra escalates. | Set `OCR_NON_LATIN_ROUTING` to `off`. |
+
+OMRS does not convert the old value. The old key meant "every backend", and that meaning no longer exists. Rollback: revert the merge commit. The old digests return, so each source is read again once more. The `ocr_local_cuts` key in `omrs.jsonc` is then listed as unknown and ignored.
 
 ### Local Chat and classification stay apart (ADR-108)
 
@@ -1597,11 +1660,11 @@ These settings are part of the index identity:
 | `EMBEDDING__TOKENIZER_MODEL` and `EMBEDDING__TOKENIZER_REVISION` | They set the Markdown token budget, so chunk boundaries move |
 | The **resolved** Markdown splitter | Model-token-aware or legacy fallback. The resolved value is recorded, not the configured one, so a corpus chunked under the fallback does not stay "matching" forever once the tokenizer becomes loadable |
 | `OCR_FALLBACK_ENABLED` | It decides which reader produced the text |
-| `OCR_ROUTING_UNIT`, the effective escalation cut of `pp-ocrv6-small` and its resolved local model identity | They decide which engine reads each page |
+| `OCR_ROUTING_UNIT` and the blank-page test | They decide which engine reads each page; recorded for every source |
 | The resolved OCR route fingerprints (the first two engines; a third engine and later add their own) | Availability, protocol version, every package and exact version, pipeline identity and revision, model identity and revision, output-schema identity and version, and backend identifier |
 | `OCR_MATHS_ROUTING_ENABLED` and the detector version | They decide whether maths pages reach OCR; recorded for every source |
 | `OCR_NON_LATIN_ROUTING` (when not `off`) and its detector version | They decide which flagged pages skip the local tier; recorded for PDF sources only |
-| `OCR_LOCAL_BACKENDS` (when not the default list) | Adds one entry to the `parser` block of PDF sources: each backend with its effective cut, kept scripts and resolved model, and the output-script version. Other sources keep their digest |
+| `OCR_LOCAL_BACKENDS`, `OCR_LOCAL_CUTS` and the resolved local model | The `parser` block of PDF sources names each listed backend in list order with its effective cut and its resolved model identity. This holds for the default list too. Only effective cuts count, so an entry equal to the default cut gives the same digest as no entry. A cut change, from the environment, `omrs.jsonc`, the Settings page or a Read document step, reads PDF sources again. Markdown and code sources keep their digest |
 | `READING_PART_OPTIONS` (identity options of parts in use) | Adds `parser.reading_part_options` for PDF sources. An empty map adds nothing |
 
 Two consequences worth planning for:

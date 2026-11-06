@@ -21,9 +21,18 @@ from omrs.core.ingestion import embed_exclusions, source_state
 from omrs.core.ingestion.ocr_identity import non_latin_routing_payload
 from omrs.core.ingestion.source_state import stamp_source_lineage
 from omrs.core.settings import EffectiveSettings, EmbeddingBlock, MetadataBlock
-from omrs.integrations.pdf import script_routing
+from omrs.integrations.pdf import page_routing, script_routing
 
 MODES = ("detect", "always")
+
+
+@pytest.fixture(autouse=True)
+def _unresolved_local_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Hash with the local OCR model unresolved: the real probe depends on the host runtime."""
+    page_routing.reset_local_model_resolution()
+    monkeypatch.setattr(
+        page_routing, "_probe_local_model_identity", lambda settings, backend="x": None
+    )
 
 
 def _settings(**overrides: Any) -> EffectiveSettings:

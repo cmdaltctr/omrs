@@ -10,7 +10,6 @@ D17), per backend: the other listed backends keep reading.
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 from typing import Any
 
 from ...part_registry import PartRegistry
@@ -29,7 +28,6 @@ def register(
     producer: str,
     min_confidence: float | None = None,
     calibrated_by: str | None = None,
-    keeps_scripts: Iterable[str] | None = None,
     probe_module: str | None = None,
 ) -> None:
     """Register a local OCR backend. Registering a name again replaces it.
@@ -38,10 +36,8 @@ def register(
         name: Backend name, as the ``ocr_local_backends`` setting lists it.
         import_path: ``"module:attr"`` of the backend object. Not imported here.
         producer: The ``ocr_backend`` value of a page the backend keeps.
-        min_confidence: The calibrated escalation cut, or ``None`` (not listable).
+        min_confidence: The default escalation cut, or ``None`` (not listable).
         calibrated_by: The experiment folder that measured the cut.
-        keeps_scripts: Lower-case Unicode script names the backend may keep, or
-            ``None`` for no script filter.
         probe_module: Module the backend needs. Defaults to the import path's.
 
     Raises:
@@ -58,7 +54,6 @@ def register(
         producer=producer,
         min_confidence=min_confidence,
         calibrated_by=calibrated_by,
-        keeps_scripts=None if keeps_scripts is None else frozenset(keeps_scripts),
     )
 
 
@@ -87,9 +82,9 @@ def listed(settings: Any) -> tuple[str, ...]:
 
 
 def effective_cut(name: str, settings: Any) -> float | None:
-    """Return the cut of *name*: the operator override when set, else its own cut."""
-    override = getattr(settings, "ocr_local_min_confidence", None)
-    return describe(name)["min_confidence"] if override is None else override
+    """Return the cut of *name*: its ``ocr_local_cuts`` entry when set, else its default cut."""
+    entry = (getattr(settings, "ocr_local_cuts", None) or {}).get(name)
+    return describe(name)["min_confidence"] if entry is None else entry
 
 
 def switch_off(name: str, reason: str) -> None:
@@ -106,17 +101,15 @@ register(
     "pp-ocrv6-small",
     "omrs.integrations.pdf.local_ocr.pp_ocrv6_small:BACKEND",
     producer="pdf_inspector_ocr",
-    min_confidence=0.9,
-    calibrated_by="39-local-tier-escalation-2026-09-30",
-    keeps_scripts=None,
+    min_confidence=0.92,
+    calibrated_by="46a-local-ocr-per-backend-cuts-2026-11-06",
     probe_module="pdf_inspector",
 )
 register(
     "indra",
     "omrs.integrations.pdf.local_ocr.indra:BACKEND",
     producer="indra_ocr",
-    min_confidence=0.90,
-    calibrated_by="46-local-ocr-backends-2026-11-04",
-    keeps_scripts={"arabic", "devanagari"},
+    min_confidence=0.94,
+    calibrated_by="46a-local-ocr-per-backend-cuts-2026-11-06",
     probe_module="indra_ocr",
 )

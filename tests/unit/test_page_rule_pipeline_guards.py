@@ -89,7 +89,7 @@ def _raising_check(text: str, facts: Any) -> str | None:
 def test_a_raising_external_post_check_keeps_the_local_text(caplog) -> None:
     _add("acme", _Rule(lambda ctx: RuleOutcome(), _raising_check), 40, has_post_check=True)
     backends.BACKENDS.cache["pp-ocrv6-small"] = _GoodBackend()
-    settings = _settings(ocr_local_backends=("pp-ocrv6-small",), ocr_local_min_confidence=None)
+    settings = _settings(ocr_local_backends=("pp-ocrv6-small",), ocr_local_cuts={})
 
     with caplog.at_level(logging.WARNING, logger=LOGGER):
         plan = run_rules(FILE, [], {1, 2}, settings, None)

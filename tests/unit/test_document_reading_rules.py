@@ -76,6 +76,7 @@ def test_the_key_order_is_the_contract_order() -> None:
         "ocr_non_latin_routing",
         "document_router",
         "ocr_local_backends",
+        "ocr_local_cuts",
     )
 
 

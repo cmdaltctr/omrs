@@ -64,7 +64,7 @@ def test_the_default_backend_row_has_every_contract_field(effective_settings: An
     assert [row["name"] for row in rows] == ["pp-ocrv6-small"]
     assert rows[0]["label"] == "PP-OCRv6 small"
     assert rows[0]["off_reason"] is None
-    assert rows[0]["effective_cut"] == 0.9
+    assert rows[0]["effective_cut"] == 0.92
     assert rows[0]["source"] == "built-in"
     assert set(rows[0]) == {
         "name",
@@ -78,9 +78,20 @@ def test_the_default_backend_row_has_every_contract_field(effective_settings: An
 
 
 def test_the_operator_cut_replaces_the_backend_cut(effective_settings: Any) -> None:
-    row = _backends(effective_settings(ocr_local_min_confidence=0.75))["pp-ocrv6-small"]
+    row = _backends(effective_settings(ocr_local_cuts={"pp-ocrv6-small": 0.75}))["pp-ocrv6-small"]
 
     assert row["effective_cut"] == 0.75
+
+
+def test_two_backends_show_their_own_cuts(effective_settings: Any) -> None:
+    # Spec scenario "Effective cuts of two backends" (reading-parts).
+    settings = effective_settings(
+        ocr_local_backends=("pp-ocrv6-small", "indra"), ocr_local_cuts={"indra": 0.96}
+    )
+
+    cuts = {name: row["effective_cut"] for name, row in _backends(settings).items()}
+
+    assert cuts == {"pp-ocrv6-small": 0.92, "indra": 0.96}
 
 
 def test_installed_comes_from_the_probe(

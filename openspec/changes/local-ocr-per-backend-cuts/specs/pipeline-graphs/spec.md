@@ -71,7 +71,7 @@ The Read document step in Studio SHALL show the `ocr_local_cuts` option as one "
 
 - **GIVEN** a step that holds `"ocr_local_cuts": {"pp-ocrv6-small": 0.88}`
 - **WHEN** the user empties the input and saves the pipeline
-- **THEN** the saved step SHALL hold `ocr_local_cuts` as `null`
+- **THEN** the saved step SHALL NOT hold `ocr_local_cuts`, so it inherits the host map like every other cleared step option
 
 #### Scenario: Value out of range
 

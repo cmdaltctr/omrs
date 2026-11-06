@@ -99,7 +99,6 @@ class TestLegacyEnvTripwire:
         """
         assert set(config._NEVER_SHIPPED_ALIASES) == {
             "OCR__ROUTING_UNIT",
-            "OCR__LOCAL_MIN_CONFIDENCE",
             "OCR__LOCAL_OFFLINE",
             "OCR__LOCAL_MODEL_DIRECTORY",
         }

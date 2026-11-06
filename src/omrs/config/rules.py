@@ -12,7 +12,7 @@ rule, never a value.
 from __future__ import annotations
 
 import re
-from collections.abc import Collection
+from collections.abc import Collection, Mapping
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -143,11 +143,21 @@ PAGE_RULE_KEYS: tuple[str, ...] = tuple(
 
 #: The ordered list of local OCR backends (change local-ocr-backends, design D8).
 LOCAL_BACKENDS_KEY = "ocr_local_backends"
+#: The per-backend cut map (change local-ocr-per-backend-cuts, design D1).
+LOCAL_CUTS_KEY = "ocr_local_cuts"
+LOCAL_CUTS_RULE = (
+    "The value must be an object that maps a local OCR backend name to a cut from 0 to 1."
+)
+#: Retired file keys that a save of a key removes in the same write (design D7).
+RETIRED_FILE_KEYS_ON_SAVE: dict[str, tuple[str, ...]] = {
+    LOCAL_CUTS_KEY: ("ocr_local_min_confidence",)
+}
 
 #: The keys of Settings > Document reading, in the order of the HTTP contract.
 #: The three old single-value keys left it: the list keys replace them. The page
-#: rule keys come from the descriptors. The local OCR backend list comes last:
-#: the page groups the rows itself, so the order here only fixes the contract.
+#: rule keys come from the descriptors. The local OCR backend list and its cut
+#: map come last: the page groups the rows itself, so the order here only fixes
+#: the contract.
 DOCUMENT_READING_KEYS: tuple[str, ...] = (
     "pdf_readers",
     "ocr_fallback_enabled",
@@ -155,6 +165,7 @@ DOCUMENT_READING_KEYS: tuple[str, ...] = (
     "ocr_engines",
     *PAGE_RULE_KEYS,
     LOCAL_BACKENDS_KEY,
+    LOCAL_CUTS_KEY,
 )
 #: The name of a decision model or router entry, and of the host router (ADR-110).
 ENTRY_NAME_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}")
@@ -222,6 +233,12 @@ def _reader_list_problem(value: Collection[str]) -> str | None:
     return f"The value must be one of: {', '.join(known)}." if found else READER_LIST_RULE
 
 
+def _listable_backends(extra: Collection[_reading_parts.LocalOcrBackendDescriptor]) -> str:
+    """Return the backend names that a list or a cut map may name, as one text."""
+    table = (*_reading_parts.LOCAL_OCR_BACKENDS, *extra)
+    return ", ".join(d.name for d in table if d.min_confidence is not None)
+
+
 def local_backend_problem(
     names: Collection[str],
     extra: Collection[_reading_parts.LocalOcrBackendDescriptor] = (),
@@ -243,7 +260,7 @@ def local_backend_problem(
         The rule, with the accepted values, or ``None`` when every name is fine.
     """
     table = {d.name: d for d in (*_reading_parts.LOCAL_OCR_BACKENDS, *extra)}
-    accepted = ", ".join(name for name, d in table.items() if d.min_confidence is not None)
+    accepted = _listable_backends(extra)
     if not names:
         return LIST_EMPTY_RULE
     for name in names:
@@ -256,6 +273,43 @@ def local_backend_problem(
                 "A backend with no calibrated confidence cut cannot be listed. "
                 f"Accepted values: {accepted}."
             )
+    return None
+
+
+def local_cuts_problem(
+    value: Any,
+    extra: Collection[_reading_parts.LocalOcrBackendDescriptor] | None = None,
+    broken: Collection[str] | None = None,
+) -> str | None:
+    """Return the rule that an ``ocr_local_cuts`` map breaks, or ``None`` (design D3).
+
+    One function serves the Settings model, the ``omrs.jsonc`` reader and the
+    Document reading write rule. Each name must be one that
+    :func:`local_backend_problem` accepts in ``ocr_local_backends``. Each value
+    must be a number from 0 to 1; a boolean is not a number. The rule lists the
+    accepted names and never holds a submitted name or value.
+
+    Args:
+        value: The submitted map.
+        extra: More descriptors to accept. ``None`` reads the discovered backends
+            at call time.
+        broken: Names of discovered backends that failed to load. ``None`` reads
+            them at call time.
+
+    Returns:
+        The rule, or ``None`` when the map is fine.
+    """
+    found = _discovered_backends() if extra is None else extra
+    off = _broken_backends() if broken is None else broken
+    if not isinstance(value, Mapping):
+        return f"{LOCAL_CUTS_RULE} Accepted values: {_listable_backends(found)}."
+    for name, cut in value.items():
+        is_number = isinstance(cut, (int, float)) and not isinstance(cut, bool)
+        if not isinstance(name, str) or not is_number or not 0 <= cut <= 1:
+            return f"{LOCAL_CUTS_RULE} Accepted values: {_listable_backends(found)}."
+        problem = local_backend_problem((name,), found, off)
+        if problem is not None:
+            return problem
     return None
 
 
@@ -297,6 +351,8 @@ def document_reading_problem(key: str, value: Any) -> str | None:
         return None
     if key in READING_LIST_KEYS or key == LOCAL_BACKENDS_KEY:
         return reading_list_problem(key, value)
+    if key == LOCAL_CUTS_KEY:
+        return local_cuts_problem(value)
     if key in _READING_BOOLEANS:
         return None if isinstance(value, bool) else BOOL_RULE
     if isinstance(value, str) and not value.strip():

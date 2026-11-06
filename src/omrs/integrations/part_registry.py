@@ -271,7 +271,6 @@ def _register_backend(descriptor: Any, source: str) -> None:
         producer=descriptor.producer,
         min_confidence=descriptor.min_confidence,
         calibrated_by=descriptor.calibrated_by,
-        keeps_scripts=descriptor.keeps_scripts,
         probe_module=descriptor.probe_module,
     )
 

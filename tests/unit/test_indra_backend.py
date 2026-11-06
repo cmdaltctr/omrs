@@ -169,7 +169,7 @@ def _backend():
 def _settings(*backends):
     return SimpleNamespace(
         ocr_local_backends=tuple(backends),
-        ocr_local_min_confidence=None,
+        ocr_local_cuts={},
         ocr_non_latin_routing="off",
         ocr_local_model_directory="",
         ocr_local_offline=False,
@@ -335,9 +335,9 @@ def test_the_registry_reports_indra_installed_only_with_indra_ocr(monkeypatch) -
 def test_the_descriptor_carries_the_facts_of_design_d19() -> None:
     descriptor = reading_parts.local_backend("indra")
 
-    assert descriptor.min_confidence == 0.90
-    assert descriptor.calibrated_by == "46-local-ocr-backends-2026-11-04"
-    assert descriptor.keeps_scripts == frozenset({"arabic", "devanagari"})
+    assert descriptor.min_confidence == 0.94
+    assert descriptor.calibrated_by == "46a-local-ocr-per-backend-cuts-2026-11-06"
+    assert not hasattr(descriptor, "keeps_scripts")
     assert descriptor.producer == "indra_ocr"
     assert descriptor.model == MODEL
     assert descriptor.extra == "local-ocr-indra"
@@ -403,7 +403,7 @@ def test_a_missing_indra_ocr_is_skipped_with_one_warning(monkeypatch, tmp_path, 
 
 def test_indra_keeps_an_arabic_page_at_its_cut(monkeypatch, pdfium, tmp_path) -> None:
     registry.BACKENDS.cache["indra"] = _backend()
-    _indra(monkeypatch, [(ARABIC, 0.90)])
+    _indra(monkeypatch, [(ARABIC, 0.95)])
     pp = _pp(monkeypatch)
 
     page = _read([1], tmp_path)[1]
@@ -412,9 +412,31 @@ def test_indra_keeps_an_arabic_page_at_its_cut(monkeypatch, pdfium, tmp_path) ->
     assert pp.calls == []
 
 
-def test_a_bengali_page_indra_reads_passes_on(monkeypatch, pdfium, tmp_path) -> None:
+def test_indra_keeps_a_latin_page_above_its_cut(monkeypatch, pdfium, tmp_path) -> None:
     registry.BACKENDS.cache["indra"] = _backend()
-    _indra(monkeypatch, [(BENGALI, 0.99)])
+    _indra(monkeypatch, [("a" * 300, 0.95)])
+    pp = _pp(monkeypatch)
+
+    page = _read([1], tmp_path)[1]
+
+    assert (page.escalates, page.producer, page.reasons) == (False, "indra_ocr", ())
+    assert pp.calls == []
+
+
+def test_indra_keeps_a_bengali_page_above_its_cut(monkeypatch, pdfium, tmp_path) -> None:
+    registry.BACKENDS.cache["indra"] = _backend()
+    _indra(monkeypatch, [(BENGALI, 0.95)])
+    pp = _pp(monkeypatch)
+
+    page = _read([1], tmp_path)[1]
+
+    assert (page.escalates, page.producer) == (False, "indra_ocr")
+    assert pp.calls == []
+
+
+def test_indra_passes_on_an_arabic_page_below_its_cut(monkeypatch, pdfium, tmp_path) -> None:
+    registry.BACKENDS.cache["indra"] = _backend()
+    _indra(monkeypatch, [(ARABIC, 0.93)])
     pp = _pp(monkeypatch, {1: ("pp text " * 10, 0.95)})
 
     page = _read([1], tmp_path)[1]

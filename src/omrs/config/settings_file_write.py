@@ -39,9 +39,11 @@ from .provider_sources import PROVIDER_FIELDS
 from .rules import (
     INTERNAL_FIELDS,
     LOCAL_BACKENDS_KEY,
+    LOCAL_CUTS_KEY,
     OLD_READING_KEYS,
     READING_LIST_KEYS,
     REPLACED_READING_KEYS,
+    RETIRED_FILE_KEYS_ON_SAVE,
     SECRET_FIELDS,
     document_reading_problem,
     replaced_key_reason,
@@ -109,8 +111,8 @@ def read_only_reason(key: str) -> str | None:
         return KEY_FIELD_REASON
     if key in REPLACED_READING_KEYS:
         return replaced_key_reason(key)
-    if key in READING_LIST_KEYS or key == LOCAL_BACKENDS_KEY:
-        return None  # an array, so is_scalar says no, but the page writes it whole
+    if key in READING_LIST_KEYS or key in (LOCAL_BACKENDS_KEY, LOCAL_CUTS_KEY):
+        return None  # an array or a map, so is_scalar says no, but the page writes it whole
     if key in READ_ONLY_KEYS:
         return READ_ONLY_KEYS[key]
     block, dot, _ = key.partition(".")
@@ -222,10 +224,14 @@ def _with_old_keys_removed(plan: dict[str, Any]) -> dict[str, Any]:
 
     The page never writes an old key. The list save takes it out of the file in
     the same replace, so the old key cannot outlive the list that replaced it.
+    A retired key goes the same way when the key that replaced it is saved.
     """
     for list_key in READING_LIST_KEYS:
         if list_key in plan:
             plan.update(dict.fromkeys(OLD_READING_KEYS[list_key]))
+    for key, retired in RETIRED_FILE_KEYS_ON_SAVE.items():
+        if key in plan:
+            plan.update(dict.fromkeys(retired))
     return plan
 
 

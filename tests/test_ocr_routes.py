@@ -418,7 +418,8 @@ def test_operation_owned_routes_close_after_ingest(
     monkeypatch.setattr("omrs.capabilities.build_ocr_routes", recording_build)
     # The index identity would probe the machine's local OCR runtime.
     monkeypatch.setattr(
-        "omrs.integrations.pdf.page_routing.resolve_local_model_identity", lambda settings: None
+        "omrs.integrations.pdf.page_routing.resolve_local_model_identity",
+        lambda settings, backend="pp-ocrv6-small": None,
     )
     source = tmp_path / "note.txt"
     source.write_text("plain text", encoding="utf-8")

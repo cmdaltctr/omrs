@@ -42,7 +42,8 @@ SOURCE_CHUNK_INDEX_KEY = "source_chunk_index"
 # share this single bump (design D7). The new blocks change every digest.
 # Schema 7 (page-routing-default): page is the only routing unit; the routing
 # payload loses the gate values and every install excludes the page counts.
-_INDEX_IDENTITY_SCHEMA = 7
+# Schema 8 (local-ocr-per-backend-cuts): local OCR cuts and models move to the PDF block.
+_INDEX_IDENTITY_SCHEMA = 8
 _SOURCE_METADATA_KEYS = (
     SOURCE_CONTENT_HASH_KEY,
     SOURCE_ID_KEY,

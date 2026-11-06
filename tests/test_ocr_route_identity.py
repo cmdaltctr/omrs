@@ -210,13 +210,8 @@ def test_a_schema_6_source_indexed_before_this_change_reprocesses(
     monkeypatch.setattr(source_state, "json", _Recorder())
     today = _identity(settings, ocr_worker_fingerprint=_fingerprint("dots_mocr"))
     payload = payloads[-1]
-    assert payload["schema"] == 7
-    assert set(payload["ocr_routing"]) == {
-        "enabled",
-        "routing_unit",
-        "blank_page_test",
-        "local_tier",
-    }
+    assert payload["schema"] == 8
+    assert set(payload["ocr_routing"]) == {"enabled", "routing_unit", "blank_page_test"}
     before = dict(payload)
     before["schema"] = 6
     before["ocr_routing"] = {

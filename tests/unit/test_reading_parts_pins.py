@@ -78,7 +78,6 @@ _LOCAL_OCR_BACKEND_FIELDS = (
     "probe_module",
     "min_confidence",
     "calibrated_by",
-    "keeps_scripts",
     "producer",
 )
 
@@ -92,7 +91,7 @@ def test_every_local_ocr_backend_descriptor_has_a_registration_and_back() -> Non
 
 
 def test_local_ocr_backend_descriptor_and_registration_agree_on_each_fact() -> None:
-    """Import path, probe, cut, calibrating experiment, kept scripts and producer agree."""
+    """Import path, probe, cut, calibrating experiment and producer agree."""
     problems = []
     for descriptor in reading_parts.LOCAL_OCR_BACKENDS:
         entry = local_ocr_registry.describe(descriptor.name)

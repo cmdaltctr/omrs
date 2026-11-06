@@ -85,10 +85,8 @@ def _installed(name: str) -> bool:
 
 
 def _cut(settings: Any, descriptor: Any) -> float | None:
-    override = getattr(settings, "ocr_local_min_confidence", None)
-    if override is not None:
-        return override
-    return None if descriptor is None else descriptor.min_confidence
+    """Return the cut the backend applies: its ``ocr_local_cuts`` entry, else its default."""
+    return None if descriptor is None else reading_parts.effective_cut(settings, descriptor.name)
 
 
 def local_backend_rows(settings: Any, found: Found = ()) -> list[dict[str, Any]]:

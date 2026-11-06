@@ -39,6 +39,7 @@ def test_document_reading_keys_keep_value_and_order() -> None:
         "ocr_non_latin_routing",
         "document_router",
         "ocr_local_backends",
+        "ocr_local_cuts",
     )
 
 

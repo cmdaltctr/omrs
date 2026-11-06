@@ -3,21 +3,21 @@
 :func:`read_local_pages` runs the listed backends in order:
 
 1. The first backend that can run reads every page in one call.
-2. The shared escalation rule runs on its results with the backend's effective cut.
-3. A backend that declares ``keeps_scripts`` does not keep a page whose output
-   script is not in the set or gets no verdict (``script_not_kept``, design D10).
-4. A page with no reason is kept and names the backend's ``producer``.
-5. Every other page passes to the next backend in one call. The last backend that
+2. The shared escalation rule runs on its results with the backend's effective cut
+   (its ``ocr_local_cuts`` entry, else its default cut). Confidence alone decides:
+   no backend refuses a page because of its script.
+3. A page with no reason is kept and names the backend's ``producer``.
+4. Every other page passes to the next backend in one call. The last backend that
    read a page gives its reasons.
-6. An escalated page carries the text of the first backend, in list order, that
+5. An escalated page carries the text of the first backend, in list order, that
    returned non-empty text for it, so an unresolved page keeps that text.
-7. A backend that raises is skipped for the call, with one warning per process
+6. A backend that raises is skipped for the call, with one warning per process
    when another backend reads. A non-``Exception`` panic also switches it off for
    the process. When no listed backend can run, the first failure is raised, so
    the caller's missing-runtime rule applies as before.
 
-With the default list (one backend, no script filter) steps 3, 5 and 6 change
-nothing, so the outcome is the one before the change.
+With the default list (one backend) steps 4 and 5 change nothing, so the outcome
+is the one before the change.
 """
 
 from __future__ import annotations
@@ -27,7 +27,6 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from ..script_routing import output_script
 from . import registry
 from .base import BackendPage, LocalOcrPage
 
@@ -50,7 +49,7 @@ def escalation_reasons(
     Args:
         result: The backend's read of the page, or ``None`` when it returned none.
         cut: The backend's effective cut.
-        facts: The backend's registered facts (``keeps_scripts``, ``producer``).
+        facts: The backend's registered facts (``producer``, ``min_confidence``).
         post_checks: Page-rule post-checks, each ``check(text, facts)``.
 
     Returns:
@@ -70,9 +69,6 @@ def escalation_reasons(
     if result is not None and result.hosted_recommended:
         reasons.append("hosted_recommended")
     reasons += [r for check in post_checks if (r := check(text, facts)) is not None]
-    keeps = facts.get("keeps_scripts")
-    if keeps is not None and output_script(text) not in keeps:
-        reasons.append("script_not_kept")
     return reasons
 
 
@@ -110,7 +106,7 @@ def read_local_pages(
         file: Path to the PDF file.
         pages: 1-based page numbers. Uniqueness is the caller's guarantee.
         settings: Injected settings (``ocr_local_backends``,
-            ``ocr_local_min_confidence`` and each backend's own fields).
+            ``ocr_local_cuts`` and each backend's own fields).
         post_checks: Page-rule post-checks, each ``check(text, facts)``.
 
     Returns:

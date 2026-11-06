@@ -39,7 +39,6 @@ _FAILING = LocalOcrBackendDescriptor(
     producer="fake_fail_ocr",
     min_confidence=0.8,
     calibrated_by="1-fake-experiment",
-    keeps_scripts=None,
 )
 _LISTED = ("pp-ocrv6-small", "fake-fail")
 

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import type { EffectiveControl, OperationDescriptor } from "../api/pipelines";
+import type { EffectiveControl, JsonValue, OperationDescriptor } from "../api/pipelines";
+import { isCutsField } from "./CutsParam";
 import { setEnabled, setParam, type Draft } from "./graph";
 import { isHiddenOldOption, replacedOptions } from "./ListParam";
 import { ParamField } from "./ParamField";
@@ -17,6 +18,8 @@ interface StepSettingsFieldsProps {
   /** Shown between the bypass switch and the parameters, for example the embedding model. */
   children?: ReactNode;
 }
+
+const names = (value: JsonValue | undefined): string[] => (Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : []);
 
 export function Check({ checked, onChange, disabled, children }: { checked: boolean; onChange: (checked: boolean) => void; disabled: boolean; children: string }) {
   return (
@@ -36,6 +39,9 @@ export function StepSettingsFields({ draft, nodeId, operation, controls, onChang
   const node = draft.graph.nodes.find((candidate) => candidate.id === nodeId);
   if (!node) return null;
   const fields = paramFields(operation);
+  // The cuts option sets one cut for each backend of the list the step reads with.
+  const own = node.params?.ocr_local_backends;
+  const backends = names(own == null ? fields.find((field) => field.name === "ocr_local_backends")?.inheritedValue : own);
   return (
     <>
       {operation.bypass && (
@@ -56,6 +62,7 @@ export function StepSettingsFields({ draft, nodeId, operation, controls, onChang
             key={`${nodeId}:${field.name}`}
             field={field}
             disabled={readOnly}
+            backends={isCutsField(field) ? backends : undefined}
             value={node.params?.[field.name]}
             note={valueNote(field, node, controlFor(field, controls[nodeId]), draft.graph)}
             onChange={(value) =>

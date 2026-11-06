@@ -124,7 +124,8 @@ def test_the_web_key_list_follows_the_descriptors() -> None:
 
 def test_the_web_rows_follow_the_descriptors() -> None:
     copy = _ts_object_keys(_WEB_WORDS, "READING_ROWS")
-    expected = list(rules.DOCUMENT_READING_KEYS)
+    # The cuts have no row of their own: the Local OCR backends row edits them.
+    expected = [key for key in rules.DOCUMENT_READING_KEYS if key != rules.LOCAL_CUTS_KEY]
     assert _differs(copy, expected, "documentReadingWords.ts READING_ROWS") == ""
 
 

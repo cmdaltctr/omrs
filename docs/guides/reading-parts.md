@@ -54,7 +54,7 @@ Each kind adds fields:
 | Kind | Added fields |
 | --- | --- |
 | PDF reader | `text_format` (`plain` or `markdown`), `page_provenance` (true when each document carries its page number), `output_revision` (a change re-ingests PDF sources) |
-| Local OCR backend | `min_confidence` (the escalation cut), `calibrated_by` (the experiment folder that measured the cut), `keeps_scripts` (script names the backend may keep, or `None`), `producer` (the `ocr_backend` value of kept pages), `model` (`name@revision`) |
+| Local OCR backend | `min_confidence` (the default confidence cut of the backend), `calibrated_by` (the experiment folder that measured the cut), `producer` (the `ocr_backend` value of kept pages), `model` (`name@revision`) |
 | Page rule | `order` (unique among page rules), `drops_pages`, `sends_direct`, `has_post_check`, `has_degrade`, `adds_pages` |
 
 The descriptor classes refuse two mistakes when the module loads:
@@ -63,6 +63,8 @@ The descriptor classes refuse two mistakes when the module loads:
 - A table with a repeated name within a kind, or a repeated page rule `order`.
 
 A backend with no cut cannot be listed in `ocr_local_backends`.
+
+The built-in defaults are 0.92 for `pp-ocrv6-small` and 0.94 for `indra`. Both name the experiment `46a-local-ocr-per-backend-cuts-2026-11-06` in `calibrated_by`. The descriptor holds the default. The operator can set a different cut for a backend with the `ocr_local_cuts` map (see [Local OCR backends](configuration.md#local-ocr-backends)). The descriptor has no field for scripts: a backend cannot declare which scripts it keeps.
 
 ### The register line
 
@@ -105,7 +107,7 @@ The page rule pipeline in `src/omrs/integrations/pdf/page_rules/pipeline.py` run
 3. The direct pages are the union of every rule's reduced direct set and added pages, minus every dropped page. A page that two rules name goes to the OCR engine list once. The local tier reads the routed pages that are not direct. `pages_needing_ocr` stays the count of flagged pages.
 4. A rule's `degrade` hook sees only the pages that the rule was first to send direct.
 
-The local backend list runs in list order. The first backend that can run reads every page. A page that the backend does not keep passes to the next backend. A page with no escalation reason is kept and carries the backend's `producer`. A backend that declares `keeps_scripts` does not keep a page whose output script is outside that set (reason `script_not_kept`).
+The local backend list runs in list order. The first backend that can run reads every page. A page that the backend does not keep passes to the next backend. A page with no escalation reason is kept and carries the backend's `producer`. The backend's own effective cut is the only test of a page: confidence below the cut gives the reason `low_confidence`. The shared rule does not look at the script of the text.
 
 ## The document router
 
@@ -155,7 +157,7 @@ Options marked `enters_identity` change the PDF source identity, but only for a 
 | `page_rules` | Registered page rule, in rule order | Enabled, version, source |
 | `discovered_parts` | Entry point that discovery found | Name, kind, distribution, version, problem |
 
-The effective cut is the backend's own `min_confidence`. When the operator sets `ocr_local_min_confidence`, that value replaces the cut of every listed backend.
+The effective cut is the entry of the backend in the `ocr_local_cuts` map when the operator set one. Otherwise it is the default cut of the backend (`min_confidence` in the descriptor). With the default list and an empty map, the row of `pp-ocrv6-small` shows 0.92. With the list `pp-ocrv6-small,indra` and `{"indra": 0.96}`, the row of `indra` shows 0.96.
 
 A section whose check raises is an empty list. The detail goes to the log. Rows come from the descriptors, so a new part appears with no edit to the health code.
 
@@ -197,7 +199,9 @@ DESCRIPTOR = LocalOcrBackendDescriptor(
 )
 ```
 
-After the operator installs the package, `fake-ocr` is a valid value of `ocr_local_backends`. The entry-point name on the left (`fake-ocr` in the example) is free. The descriptor's `name` is the part name.
+After the operator installs the package, `fake-ocr` is a valid value of `ocr_local_backends` and of a key in `ocr_local_cuts`. The entry-point name on the left (`fake-ocr` in the example) is free. The descriptor's `name` is the part name.
+
+Version note for external descriptors. The field `keeps_scripts` was removed from `LocalOcrBackendDescriptor` in the release that added `ocr_local_cuts`. A descriptor that still passes `keeps_scripts` raises `TypeError` when its module loads. Discovery then shows the part as broken in the `discovered_parts` health row and skips it. Remove the argument from the descriptor to fix it.
 
 Discovery never stops start-up. These rules apply:
 
@@ -256,7 +260,7 @@ The command ends with a `passed` line and no `failed` line.
 
 ### Add a local OCR backend
 
-Before you start, run an experiment that measures the escalation cut. The descriptor requires the experiment folder name in `calibrated_by`. Use the `s-experiment` skill. Experiment 46 is the model: `experiments/46-local-ocr-backends-2026-11-04/report.md`.
+Before you start, run an experiment that measures the default cut. The descriptor requires the experiment folder name in `calibrated_by`. Use the `s-experiment` skill. Experiment 46 is the model: `experiments/46-local-ocr-backends-2026-11-04/report.md`. Experiment 46a shows how to sweep the cut of each backend: `experiments/46a-local-ocr-per-backend-cuts-2026-11-06/report.md`.
 
 1. Create `src/omrs/integrations/pdf/local_ocr/<module>.py`.
 2. Add a class with `read_pages(self, file, pages, *, settings)` and `identity(self, settings)`.
@@ -264,7 +268,7 @@ Before you start, run an experiment that measures the escalation cut. The descri
 4. Import the backend's packages inside the methods, not at module level.
 5. Add a module-level `BACKEND` object.
 6. Add a `LocalOcrBackendDescriptor` at the end of `LOCAL_OCR_BACKENDS` in `src/omrs/core/reading_parts.py`. The first entry is the default list, so do not put the new entry first.
-7. Set `name`, `import_path`, `label`, `help_key`, `probe_module`, `min_confidence`, `calibrated_by`, `keeps_scripts`, `producer` and `model`.
+7. Set `name`, `import_path`, `label`, `help_key`, `probe_module`, `min_confidence`, `calibrated_by`, `producer` and `model`. Do not set a script filter: the descriptor has no such field.
 8. Set `health` to the model file names and the licence note.
 9. Add one `register()` line at the end of `src/omrs/integrations/pdf/local_ocr/registry.py` with the same facts.
 10. If the backend needs a package, get approval for it first. Add the extra to `pyproject.toml`, set `extra=` in the descriptor, and add it to the `floors-scope` list in `.github/workflows/ci.yml`. Pin the version the cut was measured on. Run `uv lock`.
@@ -320,7 +324,7 @@ An OCR engine is not a reading part. It runs as a separate process in its own en
 | --- | --- |
 | `descriptor without register():` or `register() without descriptor:` in `test_reading_parts_pins.py` | The descriptor and the `register()` line do not match. Add the missing one, then run the pin test again. |
 | `duplicate page rule order 20: 'maths' and 'my_rule'` when OMRS imports | Two page rules share an `order`. Give the new rule an unused order, then import again. |
-| `has a cut (0.9) but no calibrated_by experiment` | The backend descriptor has a cut and no experiment. Add `calibrated_by` with the experiment folder name. |
+| `has a cut (0.92) but no calibrated_by experiment` | The backend descriptor has a cut and no experiment. Add `calibrated_by` with the experiment folder name. |
 | `A backend with no calibrated confidence cut cannot be listed.` | `ocr_local_backends` names a backend with no cut. Remove it, or measure and set the cut. |
 | `Part 'my_rule' has no option 'x'. Its options: ...` | `reading_part_options` has a key the descriptor does not declare. Use a listed key, or add the option to the descriptor. |
 | `Reading part ... was refused:` in the log | Discovery refused an entry point. Read the reason after "refused". Fix the descriptor class or rename the part. Restart OMRS. |
@@ -330,7 +334,9 @@ An OCR engine is not a reading part. It runs as a separate process in its own en
 ## See also
 
 - [ADR-112](../adr/112-reading-parts-descriptor-pipeline-and-discovery.md): the decision and its reasons.
-- [Experiment 46](../../experiments/46-local-ocr-backends-2026-11-04/report.md): the evidence for the Indra cut.
+- [Experiment 46](../../experiments/46-local-ocr-backends-2026-11-04/report.md): the evidence for the Indra backend.
+- [Experiment 46a](../../experiments/46a-local-ocr-per-backend-cuts-2026-11-06/report.md): the evidence for the default cuts.
+- [ADR-114](../adr/114-per-backend-local-ocr-cuts.md): the decision on per-backend cuts and the removal of the script filter.
 - [Architecture](architecture.md): the registry rules and the integration inventory.
 - [Ingestion](ingestion.md): OCR routing, page-level routing and the routing identity.
 - [Configuration](configuration.md): the settings that name the parts.
