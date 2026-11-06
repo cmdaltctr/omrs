@@ -12,9 +12,9 @@ The order is the operator's (2026-11-06, design D1). Do not reorder groups. Stop
 
 ## 1. Apply `local-ocr-per-backend-cuts` (worktree `omrs-feat-local-ocr-per-backend-cuts`)
 
-- [ ] 1.1 Rebase onto current `v3`. Confirm toplevel and branch. `uv sync --frozen --extra web`.
-- [ ] 1.2 Apply the change (`/opsx:apply local-ocr-per-backend-cuts`), its tasks in order, tests first. Subagents only on non-colliding files; commit only after every agent stops.
-- [ ] 1.3 `./scripts/local_ci.sh`, `openspec validate --all --strict`, browser check at 1280 px and 390 px (Settings and Studio), PR into `v3`, CI green, CodeRabbit handled.
+- [x] 1.1 Rebase onto current `v3`. Confirm toplevel and branch. `uv sync --frozen --extra web`.
+- [x] 1.2 Apply the change (`/opsx:apply local-ocr-per-backend-cuts`), its tasks in order, tests first. Subagents only on non-colliding files; commit only after every agent stops.
+- [x] 1.3 `./scripts/local_ci.sh`, `openspec validate --all --strict`, browser check at 1280 px and 390 px (Settings and Studio), PR into `v3`, CI green, CodeRabbit handled.
 - [ ] 1.4 GATE G1: the operator says merge. Merge, archive (sync specs), remove worktree after the Gotcha 15 copy. Do not touch the live app here (group 4).
 
 ## 2. Apply `one-llamacpp-router` (worktree `omrs-feat-one-llamacpp-router`)
