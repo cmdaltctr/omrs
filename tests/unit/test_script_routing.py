@@ -531,6 +531,54 @@ def test_local_ocr_gives_no_verdict_on_short_text(monkeypatch, tmp_path, effecti
     assert page.escalates is False
 
 
+# ── no backend is exempt (change local-ocr-per-backend-cuts, design D6) ────
+
+
+@pytest.mark.parametrize("facts", [None, {}, {"producer": "indra_ocr", "min_confidence": 0.94}])
+def test_the_post_check_gives_the_same_verdict_for_every_backend(facts):
+    """Confident non-Latin output escalates whichever backend read it."""
+    from omrs.integrations.pdf.script_routing import non_latin_output_reason
+
+    assert non_latin_output_reason(DEVANAGARI, facts) == NON_LATIN_OUTPUT_REASON
+    assert non_latin_output_reason(LATIN, facts) is None
+
+
+def test_detect_escalates_a_confident_devanagari_page_of_an_indra_like_backend(
+    monkeypatch, tmp_path, effective_settings
+):
+    from omrs.integrations.pdf.local_ocr import registry
+
+    state = registry.BACKENDS.snapshot()
+    try:
+        registry.register(
+            "indra-like",
+            "fake.indra_like:BACKEND",
+            producer="indra_ocr",
+            min_confidence=0.94,
+            calibrated_by="46a-local-ocr-per-backend-cuts-2026-11-06",
+        )
+
+        class _Backend:
+            def read_pages(self, file, pages, *, settings):
+                from omrs.integrations.pdf.local_ocr.base import BackendPage
+
+                return [BackendPage(p, DEVANAGARI, 0.95, "fake@1") for p in pages]
+
+        registry.BACKENDS.cache["indra-like"] = _Backend()
+        settings = effective_settings(
+            ocr_non_latin_routing="detect", ocr_local_backends=("indra-like",)
+        )
+        from omrs.integrations.pdf.script_routing import non_latin_output_reason
+
+        (page,) = local_ocr(
+            tmp_path / "a.pdf", [1], settings=settings, post_checks=(non_latin_output_reason,)
+        )
+    finally:
+        registry.BACKENDS.restore(state)
+
+    assert (page.escalates, page.reasons) == (True, (NON_LATIN_OUTPUT_REASON,))
+
+
 # ── the count (task 2.4) ──────────────────────────────────────────────────
 
 

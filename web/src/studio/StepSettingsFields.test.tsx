@@ -2,7 +2,7 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
-import type { EffectiveControl, NodeSpec } from "../api/pipelines";
+import type { EffectiveControl, JsonValue, NodeSpec, OperationDescriptor } from "../api/pipelines";
 import { documentsServer } from "../test/fakeDocumentsServer";
 import { renderWithProviders } from "../test/providers";
 import { emptyDraft, type Draft } from "./graph";
@@ -15,8 +15,9 @@ function draftWith(node: NodeSpec): Draft {
   return { ...base, graph: { ...base.graph, nodes: [node] } };
 }
 
-function setup(node: NodeSpec, { readOnly = false, controls = {} }: { readOnly?: boolean; controls?: Record<string, EffectiveControl[]> } = {}) {
-  const operation = [...CATALOGUE, ...CATALOGUE_INGEST].find((entry) => entry.operation_id === node.operation)!;
+function setup(node: NodeSpec, { readOnly = false, controls = {}, change }: { readOnly?: boolean; controls?: Record<string, EffectiveControl[]>; change?: (operation: OperationDescriptor) => OperationDescriptor } = {}) {
+  const found = [...CATALOGUE, ...CATALOGUE_INGEST].find((entry) => entry.operation_id === node.operation)!;
+  const operation = change ? change(found) : found;
   const seen = { draft: draftWith(node) };
   function Harness() {
     const [draft, setDraft] = useState(seen.draft);
@@ -106,3 +107,58 @@ describe("StepSettingsFields", () => {
     expect(params).not.toHaveProperty("ocr_engine_fallback");
   });
 });
+
+/** The Read document step with the local OCR list and the cuts option (change local-ocr-per-backend-cuts, task 7.4). */
+function withCuts(hostBackends: JsonValue, hostCuts: JsonValue): (operation: OperationDescriptor) => OperationDescriptor {
+  const list = { anyOf: [{ type: "array", items: { type: "string" } }, { type: "null" }], default: null };
+  const map = { anyOf: [{ type: "object", additionalProperties: { type: "number" } }, { type: "null" }], default: null };
+  return (operation) => ({
+    ...operation,
+    inherited_values: { ...operation.inherited_values, ocr_local_backends: hostBackends, ocr_local_cuts: hostCuts },
+    parameters: { ...operation.parameters, properties: { ...operation.parameters.properties, ocr_local_backends: { ...list, title: "Ocr Local Backends" }, ocr_local_cuts: { ...map, title: "Ocr Local Cuts" } } },
+  });
+}
+
+describe("StepSettingsFields confidence cuts", () => {
+  const spin = (name: string) => screen.findByRole("spinbutton", { name: `Confidence cut for ${name}` });
+
+  it("shows a cut input for each backend of the inherited host list", async () => {
+    setup({ id: "rd", operation: "read.document", version: 1 }, { change: withCuts(["pp-ocrv6-small", "indra"], { indra: 0.96 }) });
+    expect(await spin("pp-ocrv6-small")).toBeInTheDocument();
+    expect(await spin("indra")).toHaveAttribute("placeholder", "Host 0.96");
+    expect(within(screen.getByRole("group", { name: "Confidence cuts" })).getAllByRole("spinbutton")).toHaveLength(2);
+  });
+
+  it("shows a cut input for each backend of the step's own list instead", async () => {
+    setup({ id: "rd", operation: "read.document", version: 1, params: { ocr_local_backends: ["indra"] } }, { change: withCuts(["pp-ocrv6-small", "indra"], {}) });
+    expect(await spin("indra")).toBeInTheDocument();
+    expect(screen.queryByRole("spinbutton", { name: "Confidence cut for pp-ocrv6-small" })).toBeNull();
+  });
+
+  it("writes a typed cut to the step and removes the option when it is cleared", async () => {
+    const { seen, user } = setup({ id: "rd", operation: "read.document", version: 1 }, { change: withCuts(["pp-ocrv6-small"], {}) });
+    const input = await spin("pp-ocrv6-small");
+    await user.type(input, "0.88");
+    expect(seen.draft.graph.nodes[0]?.params).toEqual({ ocr_local_cuts: { "pp-ocrv6-small": 0.88 } });
+    await user.clear(input);
+    // A cleared option leaves the step, as every other option does, so the step inherits.
+    expect(seen.draft.graph.nodes[0]).not.toHaveProperty("params.ocr_local_cuts");
+  });
+
+  it("makes the cut inputs read-only on a read-only graph", async () => {
+    setup({ id: "rd", operation: "read.document", version: 1 }, { readOnly: true, change: withCuts(["pp-ocrv6-small"], {}) });
+    expect(await spin("pp-ocrv6-small")).toHaveAttribute("readonly");
+  });
+
+  it("names the host cuts in the inherit note, and says nothing when the host holds none", async () => {
+    setup({ id: "rd", operation: "read.document", version: 1 }, { change: withCuts(["indra"], { indra: 0.96 }) });
+    expect(await screen.findByText("Inherit uses the host value: indra 0.96.")).toBeInTheDocument();
+  });
+
+  it("shows no inherit note for an empty host map", async () => {
+    setup({ id: "rd", operation: "read.document", version: 1 }, { change: withCuts(["indra"], {}) });
+    await spin("indra");
+    expect(screen.queryByText(/Inherit uses the host value: \./)).toBeNull();
+  });
+});
+

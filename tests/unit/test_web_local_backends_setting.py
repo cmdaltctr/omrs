@@ -15,6 +15,7 @@ from tests.unit import test_web_document_reading as reading  # noqa: E402
 from tests.unit.test_web_document_reading import URL, Harness, put, refused, rows  # noqa: E402
 from tests.unit.test_web_openapi_conformance_support import ContractChecker  # noqa: E402
 
+from omrs.core import reading_parts  # noqa: E402
 from omrs.integrations.pdf.local_ocr import registry  # noqa: E402
 
 KEY = "ocr_local_backends"
@@ -42,6 +43,7 @@ def test_the_row_and_the_backend_options_conform(harness: Harness, client: TestC
             "name": name,
             "available": installed[name],
             "reason": None if installed[name] else "Not installed.",
+            "default_cut": reading_parts.local_backend(name).min_confidence,
         }
         for name in ("pp-ocrv6-small", "indra")
     ]

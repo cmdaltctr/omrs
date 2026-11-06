@@ -123,22 +123,17 @@ def test_unavailable_fingerprint_payload_has_one_stable_shape() -> None:
     )
 
 
-def test_routing_payload_carries_the_switch_unit_blank_test_and_local_tier(
+def test_routing_payload_carries_the_switch_unit_and_blank_test_only(
     effective_settings,
 ) -> None:
-    """The routing payload carries the switch, the unit, the blank test and the local cut."""
+    """The routing payload holds no local cut and no local model (schema 8, design D8)."""
     from omrs.integrations.pdf.blank_pages import BLANK_PAGE_TEST_VERSION
 
-    settings = effective_settings(ocr_fallback_enabled=True, ocr_local_min_confidence=0.7)
+    settings = effective_settings(ocr_fallback_enabled=True, ocr_local_cuts={"pp-ocrv6-small": 0.7})
     assert ocr_routing_payload(settings) == {
         "enabled": True,
         "routing_unit": "page",
         "blank_page_test": BLANK_PAGE_TEST_VERSION,
-        "local_tier": {"min_confidence": 0.7},
-    }
-    assert ocr_routing_payload(settings, local_model_identity="model@1")["local_tier"] == {
-        "min_confidence": 0.7,
-        "model": "model@1",
     }
 
 
@@ -149,6 +144,9 @@ _IDENTITY_KWARGS = {
     "chunk_size": 512,
     "chunk_overlap": 100,
 }
+
+#: The same, for a PDF source: only a PDF source carries the local OCR backend list.
+_PDF_IDENTITY_KWARGS = {**_IDENTITY_KWARGS, "pdf_reader_revision": 2}
 
 #: The page-source counts every install now emits (change page-routing-default).
 _PAGE_SOURCE_COUNT_KEYS = (
@@ -161,10 +159,10 @@ _PAGE_SOURCE_COUNT_KEYS = (
 
 
 def test_routing_payload_has_no_gate_values(effective_settings) -> None:
-    """The default payload names the unit and the local tier, and no document gate."""
+    """The default payload names the switch, the unit and the blank test, and no document gate."""
     payload = ocr_routing_payload(effective_settings())
 
-    assert set(payload) == {"enabled", "routing_unit", "blank_page_test", "local_tier"}
+    assert set(payload) == {"enabled", "routing_unit", "blank_page_test"}
 
 
 def test_every_install_identity_includes_the_page_source_counts(
@@ -221,12 +219,12 @@ def test_page_unit_identity_ignores_the_model_directory(effective_settings) -> N
 
 
 def test_page_unit_identity_follows_the_escalation_threshold(effective_settings) -> None:
-    """The threshold decides which pages the worker rereads, so it must count."""
+    """The threshold decides which pages the worker rereads, so a PDF source must count it."""
     from omrs.core.ingestion.source_state import build_index_identity
 
-    default_cut = build_index_identity(effective_settings(), **_IDENTITY_KWARGS)
+    default_cut = build_index_identity(effective_settings(), **_PDF_IDENTITY_KWARGS)
     raised_cut = build_index_identity(
-        effective_settings(ocr_local_min_confidence=0.95), **_IDENTITY_KWARGS
+        effective_settings(ocr_local_cuts={"pp-ocrv6-small": 0.95}), **_PDF_IDENTITY_KWARGS
     )
 
     assert raised_cut != default_cut
@@ -263,13 +261,13 @@ def test_blank_count_key_is_excluded() -> None:
 
 
 def test_local_cut_default_change_moves_the_identity(effective_settings) -> None:
-    """The previous 0.8 cut differs from the default, so a source on default settings reindexes."""
+    """An older 0.8 cut differs from the default, so a PDF source on default settings reindexes."""
     from omrs.core.ingestion.source_state import build_index_identity
 
     previous = build_index_identity(
-        effective_settings(ocr_local_min_confidence=0.8), **_IDENTITY_KWARGS
+        effective_settings(ocr_local_cuts={"pp-ocrv6-small": 0.8}), **_PDF_IDENTITY_KWARGS
     )
-    current = build_index_identity(effective_settings(), **_IDENTITY_KWARGS)
+    current = build_index_identity(effective_settings(), **_PDF_IDENTITY_KWARGS)
 
     assert previous != current
 
@@ -407,14 +405,14 @@ async def test_routing_configuration_change_alone_prevents_skip(
     """A routing-setting change alone invalidates the stored identity.
 
     Spec scenario "OCR routing configuration change forces reprocessing":
-    only ``OCR_LOCAL_MIN_CONFIDENCE`` changes (0.8 → 0.95) between legs
+    only ``OCR_LOCAL_CUTS`` changes (0.8 → 0.95) between legs
     — same fingerprint, same bytes, same chunking.
     """
     source = tmp_path / "clean.pdf"
     source.write_bytes(CAL_CLEAN.read_bytes())
     base = _echo_fingerprint()
-    low = _ocr_settings(effective_settings, ocr_local_min_confidence=0.8)
-    high = _ocr_settings(effective_settings, ocr_local_min_confidence=0.95)
+    low = _ocr_settings(effective_settings, ocr_local_cuts={"pp-ocrv6-small": 0.8})
+    high = _ocr_settings(effective_settings, ocr_local_cuts={"pp-ocrv6-small": 0.95})
 
     client = _client(base)
     try:
@@ -473,3 +471,105 @@ async def test_query_instruction_change_alone_still_skips(
     ), "equal content plus an instruction-only change must reproduce the version"
     assert _stored_identities("ocr_id_query") == first_identities
     assert len(first_identities) == 1
+
+
+# ── Per-backend cuts re-index PDF sources only (change local-ocr-per-backend-cuts) ──
+
+_TWO_BACKENDS = ("pp-ocrv6-small", "indra")
+
+
+async def _ingest_folder(folder: Path, settings: Any, collection: str) -> dict[str, str]:
+    """Ingest *folder* once and return each file's status by name."""
+    client = _client(_echo_fingerprint())
+    try:
+        result = await _ingest(folder, settings, client, collection)
+    finally:
+        client.close()
+    return {detail["file"]: detail["status"] for detail in result["file_details"]}
+
+
+@pytest.fixture
+def mixed_folder(tmp_path: Path) -> Path:
+    """One PDF source and one Markdown source."""
+    folder = tmp_path / "mixed"
+    folder.mkdir()
+    (folder / "clean.pdf").write_bytes(CAL_CLEAN.read_bytes())
+    (folder / "notes.md").write_text("# Notes\n\nA short note about index identity.\n")
+    return folder
+
+
+@pytest.fixture(autouse=True)
+def _no_local_model_probe(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pin the model identity: the real probe depends on the host runtime."""
+    from omrs.integrations.pdf import page_routing
+
+    monkeypatch.setattr(
+        page_routing,
+        "resolve_local_model_identity",
+        lambda settings, backend="pp-ocrv6-small": f"{backend}@pinned",
+    )
+
+
+@pytest.mark.parametrize(
+    ("backends", "cuts"),
+    [
+        (("pp-ocrv6-small",), {"pp-ocrv6-small": 0.95}),
+        (_TWO_BACKENDS, {"pp-ocrv6-small": 0.95}),
+        (_TWO_BACKENDS, {"indra": 0.96}),
+    ],
+    ids=["default-list", "pp-cut-in-two", "indra-cut-in-two"],
+)
+async def test_a_cut_change_processes_the_pdf_source_only(
+    mixed_folder: Path, effective_settings, backends: tuple[str, ...], cuts: dict[str, float]
+) -> None:
+    before = _ocr_settings(effective_settings, ocr_local_backends=backends)
+    after = _ocr_settings(effective_settings, ocr_local_backends=backends, ocr_local_cuts=cuts)
+
+    first = await _ingest_folder(mixed_folder, before, "ocr_id_cut_mixed")
+    second = await _ingest_folder(mixed_folder, after, "ocr_id_cut_mixed")
+
+    assert first == {"clean.pdf": "indexed", "notes.md": "indexed"}
+    assert second == {"clean.pdf": "indexed", "notes.md": "skipped_unchanged"}
+
+
+async def test_an_explicit_default_cut_processes_no_source(
+    mixed_folder: Path, effective_settings
+) -> None:
+    empty = _ocr_settings(effective_settings)
+    explicit = _ocr_settings(effective_settings, ocr_local_cuts={"pp-ocrv6-small": 0.92})
+
+    await _ingest_folder(mixed_folder, empty, "ocr_id_cut_explicit")
+    second = await _ingest_folder(mixed_folder, explicit, "ocr_id_cut_explicit")
+
+    assert set(second.values()) == {"skipped_unchanged"}
+
+
+async def test_a_second_ingest_with_no_setting_change_processes_no_source(
+    mixed_folder: Path, effective_settings
+) -> None:
+    """After the upgrade has re-indexed once, nothing is processed again."""
+    settings = _ocr_settings(effective_settings, ocr_local_backends=_TWO_BACKENDS)
+
+    first = await _ingest_folder(mixed_folder, settings, "ocr_id_second_run")
+    second = await _ingest_folder(mixed_folder, settings, "ocr_id_second_run")
+
+    assert set(first.values()) == {"indexed"}
+    assert set(second.values()) == {"skipped_unchanged"}
+
+
+async def test_a_resolved_local_model_change_processes_the_pdf_source_only(
+    mixed_folder: Path, effective_settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from omrs.integrations.pdf import page_routing
+
+    settings = _ocr_settings(effective_settings)
+    await _ingest_folder(mixed_folder, settings, "ocr_id_model_mixed")
+    monkeypatch.setattr(
+        page_routing,
+        "resolve_local_model_identity",
+        lambda settings, backend="pp-ocrv6-small": f"{backend}@new",
+    )
+
+    second = await _ingest_folder(mixed_folder, settings, "ocr_id_model_mixed")
+
+    assert second == {"clean.pdf": "indexed", "notes.md": "skipped_unchanged"}

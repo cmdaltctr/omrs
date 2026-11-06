@@ -55,8 +55,8 @@ class IdentitySpec:
         block: Identity block: ``ocr_routing``, ``maths_routing`` or ``parser``.
         keys: Keys that the part writes in that block.
         presence: When the block is present. ``always``; ``pdf_when_on`` (only PDF
-            sources, and only when the part is on); ``with_local_tier``
-            (only when the local OCR tier is in use).
+            sources, and only when the part is on); ``pdf_always`` (only PDF
+            sources, whatever the settings).
     """
 
     block: str
@@ -147,10 +147,9 @@ class LocalOcrBackendDescriptor(PartDescriptor):
     """A local OCR backend of the local tier.
 
     Attributes:
-        min_confidence: Registered escalation cut, or ``None`` (not listable).
+        min_confidence: Default escalation cut, or ``None`` (not listable). The
+            operator's ``ocr_local_cuts`` entry replaces it for this backend.
         calibrated_by: Experiment folder that measured the cut. Required with a cut.
-        keeps_scripts: Lower-case Unicode script names the backend may keep, or
-            ``None`` for no script filter.
         producer: ``ocr_backend`` value of the pages the backend keeps.
         model: Expected model identity as ``name@revision``, or ``None``.
     """
@@ -158,7 +157,6 @@ class LocalOcrBackendDescriptor(PartDescriptor):
     kind: str = field(default=KIND_LOCAL_OCR_BACKEND, init=False)
     min_confidence: float | None = None
     calibrated_by: str | None = None
-    keeps_scripts: frozenset[str] | None = None
     producer: str
     model: str | None = None
 
@@ -289,13 +287,6 @@ LOCAL_OCR_BACKENDS: tuple[LocalOcrBackendDescriptor, ...] = (
         help_key="local_ocr_backend.pp-ocrv6-small",
         probe_module="pdf_inspector",
         settings=(
-            SettingField(
-                name="ocr_local_min_confidence",
-                env="OCR_LOCAL_MIN_CONFIDENCE",
-                # Unset: each listed backend uses its own cut (design D9).
-                default=None,
-                enters_identity=True,
-            ),
             SettingField(name="ocr_local_offline", env="OCR_LOCAL_OFFLINE", default=False),
             SettingField(
                 name="ocr_local_model_directory",
@@ -304,17 +295,16 @@ LOCAL_OCR_BACKENDS: tuple[LocalOcrBackendDescriptor, ...] = (
             ),
         ),
         identity=IdentitySpec(
-            block="ocr_routing",
-            keys=("local_tier",),
-            presence="with_local_tier",
+            block="parser",
+            keys=("local_ocr_backends",),
+            presence="pdf_always",
         ),
         health=HealthFacts(
             model_files=("pp-ocrv6_small_det.onnx", "pp-ocrv6_small_rec.onnx", "ppocrv6_dict.txt"),
             cache_folder="pp-ocrv6-small/oar-ocr-v0.7.0",
         ),
-        min_confidence=0.9,
-        calibrated_by="39-local-tier-escalation-2026-09-30",
-        keeps_scripts=None,
+        min_confidence=0.92,
+        calibrated_by="46a-local-ocr-per-backend-cuts-2026-11-06",
         producer="pdf_inspector_ocr",
         model="pp-ocrv6-small@oar-ocr-v0.7.0",
     ),
@@ -335,9 +325,8 @@ LOCAL_OCR_BACKENDS: tuple[LocalOcrBackendDescriptor, ...] = (
                 "code Apache-2.0; weights modified OpenRAIL-M, read by the operator on 2026-11-04"
             ),
         ),
-        min_confidence=0.90,
-        calibrated_by="46-local-ocr-backends-2026-11-04",
-        keeps_scripts=frozenset({"arabic", "devanagari"}),
+        min_confidence=0.94,
+        calibrated_by="46a-local-ocr-per-backend-cuts-2026-11-06",
         producer="indra_ocr",
         model="datalab-to/indra-ocr@bd02167fdf2005a19962cc15188f8496a2c87d3b",
     ),
@@ -482,10 +471,10 @@ def local_backend(name: str) -> LocalOcrBackendDescriptor:
 
 
 def effective_cut(settings: Any, name: str) -> float | None:
-    """Return the confidence cut backend *name* applies (design D9).
+    """Return the confidence cut backend *name* applies (change local-ocr-per-backend-cuts).
 
-    The operator value ``ocr_local_min_confidence`` replaces the cut of every
-    listed backend when it is set. Unset, the backend keeps its own cut.
+    The operator's ``ocr_local_cuts`` entry for the backend wins. Without an
+    entry the backend keeps the default cut of its descriptor.
     """
-    override = getattr(settings, "ocr_local_min_confidence", None)
-    return override if override is not None else local_backend(name).min_confidence
+    entry = (getattr(settings, "ocr_local_cuts", None) or {}).get(name)
+    return entry if entry is not None else local_backend(name).min_confidence

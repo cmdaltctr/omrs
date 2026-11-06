@@ -122,6 +122,7 @@ development of OMRG — Opinionated Modular RAG.
 | [111](./111-the-web-workspace-renders-maths-with-bundled-katex.md) | The Web Workspace Renders Maths with Bundled KaTeX | 2026-11-03 | Accepted (2026-11-03; built and merged in PR #165) |
 | [112](./112-reading-parts-descriptor-pipeline-and-discovery.md) | Reading Parts: One Descriptor, an Ordered Page-Rule Pipeline, Ordered Fallback Lists and Entry-Point Discovery | 2026-11-04 | Accepted (2026-11-04; built and merged to v3 in PR #168; amends ADR-037, ADR-066, ADR-069 and ADR-105) |
 | [113](./113-dots-mocr-runs-on-llama-cpp.md) | dots.mocr Runs on llama.cpp | 2026-11-05 | Proposed (2026-11-05; supersedes the PyTorch runtime of ADR-072) |
+| [114](./114-per-backend-local-ocr-cuts.md) | Per-Backend Local OCR Cuts, No Script Filter, and Cuts in the PDF Identity | 2026-11-06 | Proposed (2026-11-06; amends ADR-112 decision 4) |
 
 ## Convention
 

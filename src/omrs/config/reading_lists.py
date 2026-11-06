@@ -22,9 +22,9 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Collection, Mapping
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import BaseModel, ValidationInfo, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator, model_validator
 
 from ..core.reading_lists import (
     OCR_ENGINES_DEFAULT,
@@ -40,7 +40,7 @@ from ..core.reading_parts import (
     discovered,
 )
 from .provenance import SOURCE_ORDER
-from .rules import OLD_READING_KEYS, ignored_old_keys, local_backend_problem
+from .rules import OLD_READING_KEYS, ignored_old_keys, local_backend_problem, local_cuts_problem
 
 logger = logging.getLogger(__name__)
 
@@ -79,12 +79,31 @@ class ReadingListMixin(BaseModel):
     # environment form (READING_PART_OPTIONS) is JSON. Compose checks each entry
     # against the part's descriptor at start-up.
     reading_part_options: dict[str, dict[str, Any]] = {}
+    # Change local-ocr-per-backend-cuts, design D1: one cut per backend name. A
+    # backend with no entry uses its descriptor default. The environment form
+    # (OCR_LOCAL_CUTS) is JSON, like READING_PART_OPTIONS.
+    ocr_local_cuts: dict[str, Annotated[float, Field(ge=0, le=1, strict=True)]] = Field(
+        default={}, examples=[{"pp-ocrv6-small": 0.92}]
+    )
 
     @field_validator("pdf_readers", "ocr_engines", "ocr_local_backends", mode="after")
     @classmethod
     def _blank_means_default(cls, value: tuple[str, ...], info: ValidationInfo) -> tuple[str, ...]:
         """Read ``PDF_READERS=`` (no names) as not set, as other blank lines are."""
         return value or cls.model_fields[str(info.field_name)].default
+
+    @field_validator("ocr_local_cuts", mode="before")
+    @classmethod
+    def _check_local_cuts(cls, value: Any) -> Any:
+        """Stop start-up on a bad cut map before pydantic reads its types (design D3).
+
+        The rule lists the accepted backends and never holds a name or value.
+        ``Settings`` hides the input from its errors, so the value stays out.
+        """
+        problem = local_cuts_problem(value)
+        if problem:
+            raise ValueError(f"OCR_LOCAL_CUTS is not valid. {problem}")
+        return value
 
     @model_validator(mode="after")
     def _check_local_backends(self) -> ReadingListMixin:

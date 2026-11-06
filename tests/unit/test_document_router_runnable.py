@@ -23,10 +23,19 @@ from omrs.core.ingestion import source_state
 from omrs.core.ingestion.ocr_identity import document_router_payload
 from omrs.core.ingestion.reader_identity import pdf_parser_payload
 from omrs.integrations.ocr_worker import routes as routes_module
-from omrs.integrations.pdf import page_images
+from omrs.integrations.pdf import page_images, page_routing
 
 LOCAL = "http://127.0.0.1:18932"
 HOSTED = "https://api.example.invalid"
+
+
+@pytest.fixture(autouse=True)
+def _unresolved_local_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Hash with the local OCR model unresolved: the real probe depends on the host runtime."""
+    page_routing.reset_local_model_resolution()
+    monkeypatch.setattr(
+        page_routing, "_probe_local_model_identity", lambda settings, backend="x": None
+    )
 
 
 @pytest.fixture(autouse=True)

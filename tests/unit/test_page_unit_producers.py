@@ -139,9 +139,8 @@ def _with_fake_indra(result: dict[int, tuple[str, float]]) -> None:
         FAKE,
         f"fake.{FAKE}:BACKEND",
         producer="indra_ocr",
-        min_confidence=0.90,
-        calibrated_by="46-local-ocr-backends-2026-11-04",
-        keeps_scripts=("arabic", "devanagari"),
+        min_confidence=0.94,
+        calibrated_by="46a-local-ocr-per-backend-cuts-2026-11-06",
     )
     registry.BACKENDS.cache[FAKE] = _FakeIndra(result)
 
@@ -191,8 +190,8 @@ def test_direct_pages_read_by_the_worker_carry_a_producer(
 def test_two_local_backends_in_one_document_give_mixed(
     monkeypatch, tmp_path, effective_settings, merged
 ) -> None:
-    """Indra keeps page 1 (Arabic); its Latin page 2 passes on and PP-OCRv6 keeps it."""
-    _with_fake_indra({1: (ARABIC, 0.93), 2: (LATIN, 0.95)})
+    """Indra keeps page 1 (Arabic) at its cut; page 2 (Latin) is below it and PP-OCRv6 keeps it."""
+    _with_fake_indra({1: (ARABIC, 0.95), 2: (LATIN, 0.80)})
     engine = _PdfInspector(2, {2: ("latin text", 0.95)})
     base = effective_settings(ocr_fallback_enabled=True)
     settings = _Settings(base, ocr_local_backends=(FAKE, "pp-ocrv6-small"))

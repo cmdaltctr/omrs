@@ -7,6 +7,7 @@ import { ErrorNotice } from "../components/ErrorNotice";
 import { Card, CardHeader, CardTitle } from "../components/ui/card";
 import { DocumentRoutersCard } from "./DocumentRoutersCard";
 import { isListKind, listOptions, READING_ROWS, readingChoices } from "./documentReadingWords";
+import { LocalOcrBackendsRow } from "./LocalOcrBackendsRow";
 import { ReadingSettingRow } from "./ReadingSettingRow";
 import { RestartDialog } from "./RestartDialog";
 import { DenseSettingRows } from "./SettingBox";
@@ -26,11 +27,11 @@ function rowNotes(setting: DocumentReadingSetting, state: DocumentReadingState):
   return [];
 }
 
-/** After a save, the restart prompt for what waits: the saved key alone, or the section when other keys wait too. */
-function restartFor(state: DocumentReadingState, key: DocumentReadingKey): RestartRequest | null {
+/** After a save, the restart prompt for what waits: the row that was saved, or the section when other keys wait too. A row can hold more than one key. */
+function restartFor(state: DocumentReadingState, key: DocumentReadingKey, rowKeys: readonly DocumentReadingKey[]): RestartRequest | null {
   const waiting = state.settings.filter((setting) => setting.restart_pending);
   if (waiting.length === 0) return null;
-  if (waiting.length === 1 && waiting[0]?.key === key) return { change: READING_ROWS[key]?.label ?? key, plural: false };
+  if (waiting.every((setting) => rowKeys.includes(setting.key))) return { change: READING_ROWS[key]?.label ?? key, plural: false };
   return { change: "Document reading settings", plural: true };
 }
 
@@ -46,7 +47,7 @@ const OCR_BLOCKS: { title: string; keys: readonly DocumentReadingKey[] }[][] = [
   ],
 ];
 
-type Saved = (state: DocumentReadingState, key: DocumentReadingKey) => void;
+type Saved = (state: DocumentReadingState, key: DocumentReadingKey, rowKeys?: readonly DocumentReadingKey[]) => void;
 
 function ReadingRows({ state, keys, onSaved }: { state: DocumentReadingState; keys: readonly DocumentReadingKey[]; onSaved: Saved }) {
   return state.settings
@@ -55,6 +56,9 @@ function ReadingRows({ state, keys, onSaved }: { state: DocumentReadingState; ke
     .flatMap((setting) => {
       const words = READING_ROWS[setting.key];
       if (words === undefined) return [];
+      // The local backends row edits the cuts map with the list, so it takes the cuts setting too.
+      const cuts = setting.key === "ocr_local_backends" ? state.settings.find((other) => other.key === "ocr_local_cuts") : undefined;
+      if (cuts !== undefined) return [<LocalOcrBackendsRow key={setting.key} list={setting} cuts={cuts} state={state} onSaved={(next) => onSaved(next, setting.key, [setting.key, cuts.key])} />];
       return [
         <ReadingSettingRow
           key={setting.key}
@@ -122,7 +126,7 @@ export function DocumentReadingSection() {
   const query = useQuery(documentReadingQuery(useApi()));
   const [restart, setRestart] = useState<RestartRequest | null>(null);
   const state = query.data;
-  const saved = (next: DocumentReadingState, key: DocumentReadingKey) => setRestart(restartFor(next, key));
+  const saved: Saved = (next, key, rowKeys = [key]) => setRestart(restartFor(next, key, rowKeys));
 
   return (
     <section aria-labelledby="settings-document-reading" className="flex flex-col gap-4">

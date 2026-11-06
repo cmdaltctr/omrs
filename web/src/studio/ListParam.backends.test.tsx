@@ -24,8 +24,8 @@ function field(inherited: JsonValue | undefined) {
 }
 
 const BUILT_IN = [
-  { name: "pp-ocrv6-small", available: true, reason: null },
-  { name: "indra", available: false, reason: "Not installed." },
+  { name: "pp-ocrv6-small", available: true, reason: null, default_cut: 0.92 },
+  { name: "indra", available: false, reason: "Not installed.", default_cut: 0.94 },
 ];
 
 function serve(backends = BUILT_IN) {
@@ -60,7 +60,7 @@ describe("Read document step local OCR backends", () => {
   });
 
   it("offers a backend that an installed package adds, from the server list", async () => {
-    const { user } = setup(["pp-ocrv6-small"], undefined, [...BUILT_IN, { name: "fake-ocr", available: true, reason: null }]);
+    const { user } = setup(["pp-ocrv6-small"], undefined, [...BUILT_IN, { name: "fake-ocr", available: true, reason: null, default_cut: 0.9 }]);
     await user.click(await screen.findByRole("combobox", { name: "Add backend" }));
     expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["indra (not installed)", "fake-ocr"]);
     expect(screen.getByRole("option", { name: "fake-ocr" })).not.toHaveAttribute("aria-disabled", "true");

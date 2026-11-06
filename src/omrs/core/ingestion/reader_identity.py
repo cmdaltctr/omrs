@@ -101,14 +101,16 @@ def pdf_parser_payload(
     """Return every ``parser`` entry that only a PDF source carries beyond the revision.
 
     The reader list (D5), the non-Latin routing block (change
-    non-latin-script-routing), the local OCR backend list, the part options
-    (change local-ocr-backends) and the selected router (change
-    document-reading-routers). All five are empty on a default install.
+    non-latin-script-routing), the local OCR backend list with each cut and
+    model (change local-ocr-per-backend-cuts, every list included), the part
+    options (change local-ocr-backends) and the selected router (change
+    document-reading-routers). The reader list, the non-Latin block, the part
+    options and the router are empty on a default install.
 
     Args:
         settings: Settings the entries read.
         local_ocr_backends: The backend list entry resolved once for the
-            operation (``{}`` for the default list). ``None`` resolves it here.
+            operation. ``None`` resolves it here.
     """
     if local_ocr_backends is None:
         local_ocr_backends = local_backends_payload(settings)

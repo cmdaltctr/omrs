@@ -111,13 +111,40 @@ def test_pdf_reader_facts_match_integration_registrations() -> None:
     }
 
 
+def test_default_cuts_come_from_the_46a_analysis() -> None:
+    """Change local-ocr-per-backend-cuts, design D4: one descriptor line holds each default."""
+    cuts = {b.name: (b.min_confidence, b.calibrated_by) for b in LOCAL_OCR_BACKENDS}
+    experiment = "46a-local-ocr-per-backend-cuts-2026-11-06"
+    assert cuts == {"pp-ocrv6-small": (0.92, experiment), "indra": (0.94, experiment)}
+
+
+def test_effective_cut_is_the_map_entry_else_the_descriptor_default() -> None:
+    from types import SimpleNamespace
+
+    from omrs.core.reading_parts import effective_cut
+
+    unset = SimpleNamespace(ocr_local_cuts={})
+    assert effective_cut(unset, "pp-ocrv6-small") == 0.92
+    assert effective_cut(unset, "indra") == 0.94
+    one = SimpleNamespace(ocr_local_cuts={"indra": 0.96})
+    assert effective_cut(one, "indra") == 0.96
+    assert effective_cut(one, "pp-ocrv6-small") == 0.92
+    assert effective_cut(SimpleNamespace(), "indra") == 0.94
+
+
+def test_a_descriptor_with_the_removed_script_filter_is_refused() -> None:
+    """A descriptor that still passes ``keeps_scripts`` fails at construction."""
+    with pytest.raises(TypeError, match="keeps_scripts"):
+        _backend(keeps_scripts=frozenset({"arabic"}))
+
+
 def test_local_backend_pp_ocrv6_small_values() -> None:
     backend = by_name(LOCAL_OCR_BACKENDS, "pp-ocrv6-small")
     assert backend.import_path == "omrs.integrations.pdf.local_ocr.pp_ocrv6_small:BACKEND"
     assert backend.probe_module == "pdf_inspector"
-    assert backend.min_confidence == 0.9
-    assert backend.calibrated_by == "39-local-tier-escalation-2026-09-30"
-    assert backend.keeps_scripts is None
+    assert backend.min_confidence == 0.92
+    assert backend.calibrated_by == "46a-local-ocr-per-backend-cuts-2026-11-06"
+    assert not hasattr(backend, "keeps_scripts")
     assert backend.producer == "pdf_inspector_ocr"
     assert backend.model == "pp-ocrv6-small@oar-ocr-v0.7.0"
     assert backend.health.cache_folder == "pp-ocrv6-small/oar-ocr-v0.7.0"
@@ -127,17 +154,15 @@ def test_local_backend_pp_ocrv6_small_values() -> None:
         "ppocrv6_dict.txt",
     )
     assert [s.name for s in backend.settings] == [
-        "ocr_local_min_confidence",
         "ocr_local_offline",
         "ocr_local_model_directory",
     ]
-    # The override is unset by default; the cut above applies (design D9).
-    assert [s.default for s in backend.settings] == [None, False, ""]
+    assert [s.default for s in backend.settings] == [False, ""]
     assert backend.identity is not None
     assert (backend.identity.block, backend.identity.keys, backend.identity.presence) == (
-        "ocr_routing",
-        ("local_tier",),
-        "with_local_tier",
+        "parser",
+        ("local_ocr_backends",),
+        "pdf_always",
     )
 
 

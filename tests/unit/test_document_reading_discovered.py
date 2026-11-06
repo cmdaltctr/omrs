@@ -73,11 +73,17 @@ def test_a_discovered_backend_carries_its_install_state(
 
     options = {o["name"]: o for o in build_document_reading(state)["local_ocr_backends"]}
 
-    assert options["fake-ocr"] == {"name": "fake-ocr", "available": True, "reason": None}
+    assert options["fake-ocr"] == {
+        "name": "fake-ocr",
+        "available": True,
+        "reason": None,
+        "default_cut": reading_parts.local_backend("fake-ocr").min_confidence,
+    }
     assert options[BUILT_IN[0]] == {
         "name": BUILT_IN[0],
         "available": False,
         "reason": "Not installed.",
+        "default_cut": reading_parts.local_backend(BUILT_IN[0]).min_confidence,
     }
 
 

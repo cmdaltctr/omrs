@@ -126,4 +126,21 @@ describe("OrderedListControl", () => {
       "Remove liteparse",
     ]);
   });
+
+  it("renders the per-row slot inside each row, with the name and the position", () => {
+    render(
+      <OrderedListControl
+        label="PDF readers"
+        noun="reader"
+        value={["pdf_inspector", "pypdf"]}
+        options={OPTIONS}
+        positionNote={positionNote}
+        onChange={() => undefined}
+        renderRow={(name, index) => <span>{`slot ${name} ${index}`}</span>}
+      />,
+    );
+    const [first, second] = within(screen.getByRole("list", { name: "PDF readers" })).getAllByRole("listitem");
+    expect(first).toHaveTextContent("slot pdf_inspector 0");
+    expect(second).toHaveTextContent("slot pypdf 1");
+  });
 });

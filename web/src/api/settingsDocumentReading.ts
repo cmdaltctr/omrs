@@ -8,7 +8,8 @@ import type { SaveOptions } from "./settings";
 
 /**
  * The keys, in the order the server lists them and the order of lock precedence.
- * `pdf_readers`, `ocr_engines` and `ocr_local_backends` hold ordered lists. The page
+ * `pdf_readers`, `ocr_engines` and `ocr_local_backends` hold ordered lists and
+ * `ocr_local_cuts` holds a map from backend name to confidence cut. The page
  * writes the list keys; the three single-value keys stay valid in answers and requests,
  * and the server removes them from `omrs.jsonc` when a list key is saved.
  */
@@ -24,12 +25,13 @@ export const DOCUMENT_READING_KEYS = [
   "ocr_non_latin_routing",
   "document_router",
   "ocr_local_backends",
+  "ocr_local_cuts",
 ] as const;
 
 export type DocumentReadingKey = (typeof DOCUMENT_READING_KEYS)[number];
 
-/** A boolean key holds `true` or `false`, a list key an array of names and the others text. */
-export type DocumentReadingValue = string | number | boolean | string[];
+/** A boolean key holds `true` or `false`, a list key an array of names, the cuts key a map from backend name to cut and the others text. */
+export type DocumentReadingValue = string | number | boolean | string[] | Record<string, number>;
 
 export interface DocumentReadingSetting {
   key: DocumentReadingKey;
@@ -62,6 +64,8 @@ export interface LocalBackendOption {
   available: boolean;
   /** Why it cannot run (`Not installed.`), or `null` when available. */
   reason: string | null;
+  /** The cut that applies when `ocr_local_cuts` has no entry for this backend. */
+  default_cut: number;
 }
 
 export interface OcrEngineOption {
@@ -82,6 +86,8 @@ export interface DocumentReadingState {
   pdf_reader_in_use: string | null;
   /** Each backend a local OCR list can name, in descriptor order. */
   local_ocr_backends: LocalBackendOption[];
+  /** Keys that `omrs.jsonc` holds and OMRS ignores, such as `ocr_local_min_confidence`. */
+  retired_keys: string[];
   ocr: {
     /** Launch `ocr_workers_dir` with `~` for the home folder, or `null` when unset. */
     workers_dir: string | null;

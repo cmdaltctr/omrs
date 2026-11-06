@@ -1,4 +1,4 @@
-"""The ordered local OCR backend list (change local-ocr-backends, task 4.5, design D8).
+"""The ordered local OCR backend list (changes local-ocr-backends and local-ocr-per-backend-cuts).
 
 ``page_routing.local_ocr`` runs the chain: the first listed backend reads every
 page in one call, the shared escalation rule runs on its results, a kept page
@@ -84,14 +84,13 @@ def isolated_registry():
     chain.reset_skip_warnings()
 
 
-def _fake(backend, *, keeps=("arabic", "devanagari"), cut=0.90, name=FAKE, producer=None):
+def _fake(backend, *, cut=0.94, name=FAKE, producer=None):
     registry.register(
         name,
         f"fake.{name}:BACKEND",
         producer=producer or FAKE_PRODUCER,
         min_confidence=cut,
-        calibrated_by="46-local-ocr-backends-2026-11-04",
-        keeps_scripts=keeps,
+        calibrated_by="46a-local-ocr-per-backend-cuts-2026-11-06",
     )
     registry.BACKENDS.cache[name] = backend
     return backend
@@ -103,10 +102,10 @@ def _pp(monkeypatch, *calls) -> _PdfInspector:
     return stub
 
 
-def _settings(*backends, override=None, mode="off"):
+def _settings(*backends, cuts=None, mode="off"):
     return SimpleNamespace(
         ocr_local_backends=tuple(backends),
-        ocr_local_min_confidence=override,
+        ocr_local_cuts=cuts or {},
         ocr_non_latin_routing=mode,
         ocr_local_model_directory="",
         ocr_local_offline=False,
@@ -117,11 +116,11 @@ def _read(settings, pages, tmp_path):
     return {p.page: p for p in page_routing.local_ocr(tmp_path / "a.pdf", pages, settings=settings)}
 
 
-# ── Pass-on and kept scripts (design D8 steps 1 to 5, D10) ─────────────────
+# ── Pass-on and confidence cuts (design D8 steps 1 to 4) ───────────────────
 
 
 def test_the_second_backend_keeps_a_latin_page(monkeypatch, tmp_path) -> None:
-    fake = _fake(_Backend({1: (LATIN, 0.95)}))
+    fake = _fake(_Backend({1: (LATIN, 0.80)}))
     pp = _pp(monkeypatch, {1: ("latin text " * 10, 0.95)})
 
     page = _read(_settings(FAKE, PP), [1], tmp_path)[1]
@@ -134,7 +133,7 @@ def test_the_second_backend_keeps_a_latin_page(monkeypatch, tmp_path) -> None:
 
 
 def test_both_backends_escalate_with_the_last_backend_reasons(monkeypatch, tmp_path) -> None:
-    _fake(_Backend({1: (BENGALI, 0.95)}))
+    _fake(_Backend({1: (BENGALI, 0.80)}))
     _pp(monkeypatch, {1: ("some text", 0.6)})
 
     page = _read(_settings(FAKE, PP), [1], tmp_path)[1]
@@ -143,36 +142,50 @@ def test_both_backends_escalate_with_the_last_backend_reasons(monkeypatch, tmp_p
     assert page.reasons == ("low_confidence",)
 
 
-def test_an_arabic_page_is_kept_by_the_backend_that_keeps_arabic(monkeypatch, tmp_path) -> None:
-    _fake(_Backend({1: (ARABIC, 0.93)}))
+def test_a_backend_keeps_a_latin_page_above_its_cut(monkeypatch, tmp_path) -> None:
+    _fake(_Backend({1: (LATIN, 0.95)}))
     pp = _pp(monkeypatch)
 
     page = _read(_settings(FAKE, PP), [1], tmp_path)[1]
 
     assert page.escalates is False
     assert page.producer == FAKE_PRODUCER
-    assert page.text == ARABIC
+    assert page.text == LATIN
     assert pp.calls == [], "a kept page does not pass on"
 
 
-def test_a_bengali_page_gets_script_not_kept_and_passes_on(monkeypatch, tmp_path) -> None:
+def test_a_backend_keeps_a_bengali_page_above_its_cut(tmp_path) -> None:
     _fake(_Backend({1: (BENGALI, 0.95)}))
 
     page = _read(_settings(FAKE), [1], tmp_path)[1]
 
-    assert page.reasons == ("script_not_kept",)
+    assert page.escalates is False
+    assert page.reasons == ()
+    assert page.producer == FAKE_PRODUCER
 
 
-def test_a_short_output_gets_no_verdict_and_script_not_kept(tmp_path) -> None:
-    _fake(_Backend({1: ("ب" * 12, 0.95)}))
+def test_an_arabic_page_below_the_cut_passes_on_with_low_confidence(monkeypatch, tmp_path) -> None:
+    _fake(_Backend({1: (ARABIC, 0.93)}))
+    pp = _pp(monkeypatch, {1: ("pp text", 0.5)})
 
-    page = _read(_settings(FAKE), [1], tmp_path)[1]
+    page = _read(_settings(FAKE, PP), [1], tmp_path)[1]
 
-    assert page.reasons == ("script_not_kept",)
+    assert pp.calls == [[1]]
+    assert page.reasons == ("low_confidence",)
+
+
+def test_no_page_carries_the_retired_script_reason(tmp_path) -> None:
+    _fake(_Backend({1: (BENGALI, 0.5), 2: ("ب" * 12, 0.95), 3: (LATIN, 0.95)}))
+
+    pages = _read(_settings(FAKE), [1, 2, 3], tmp_path)
+
+    assert pages[1].reasons == ("low_confidence",)
+    assert pages[2].reasons == ()
+    assert pages[3].reasons == ()
 
 
 def test_only_escalated_pages_pass_on_in_one_call(monkeypatch, tmp_path) -> None:
-    _fake(_Backend({1: (ARABIC, 0.95), 2: (LATIN, 0.95), 3: (ARABIC, 0.5)}))
+    _fake(_Backend({1: (ARABIC, 0.95), 2: (LATIN, 0.80), 3: (ARABIC, 0.5)}))
     pp = _pp(monkeypatch, {2: ("two", 0.95), 3: ("three", 0.95)})
 
     pages = _read(_settings(FAKE, PP), [3, 1, 2], tmp_path)
@@ -182,11 +195,26 @@ def test_only_escalated_pages_pass_on_in_one_call(monkeypatch, tmp_path) -> None
     assert producers == [FAKE_PRODUCER, "pdf_inspector_ocr", "pdf_inspector_ocr"]
 
 
-def test_each_backend_uses_its_own_cut_unless_overridden(tmp_path) -> None:
-    _fake(_Backend({1: (ARABIC, 0.91)}, {1: (ARABIC, 0.91)}))
+def test_each_backend_uses_its_own_cut_unless_it_has_an_entry(tmp_path) -> None:
+    _fake(_Backend({1: (ARABIC, 0.91)}, {1: (ARABIC, 0.91)}, {1: (ARABIC, 0.91)}), cut=0.90)
 
     assert _read(_settings(FAKE), [1], tmp_path)[1].escalates is False
-    assert _read(_settings(FAKE, override=0.95), [1], tmp_path)[1].reasons == ("low_confidence",)
+    assert _read(_settings(FAKE, cuts={FAKE: 0.95}), [1], tmp_path)[1].reasons == (
+        "low_confidence",
+    )
+    # An entry for another backend leaves this backend's own cut alone.
+    assert _read(_settings(FAKE, cuts={PP: 0.99}), [1], tmp_path)[1].escalates is False
+
+
+def test_the_default_backend_keeps_a_page_at_its_cut_and_escalates_one_below(
+    monkeypatch, tmp_path
+) -> None:
+    _pp(monkeypatch, {1: ("kept", 0.92), 2: ("lost", 0.91)})
+
+    pages = _read(_settings(PP), [1, 2], tmp_path)
+
+    assert pages[1].escalates is False
+    assert pages[2].reasons == ("low_confidence",)
 
 
 def test_a_missing_page_passes_on(monkeypatch, tmp_path) -> None:
@@ -199,7 +227,7 @@ def test_a_missing_page_passes_on(monkeypatch, tmp_path) -> None:
     assert page.text == "found"
 
 
-# ── Unresolved text (design D8 step 6) ─────────────────────────────────────
+# ── Unresolved text (design D8 step 5) ─────────────────────────────────────
 
 
 def test_an_unresolved_page_keeps_the_first_backend_text(monkeypatch, tmp_path) -> None:
@@ -233,7 +261,7 @@ def test_a_page_no_backend_gave_text_names_no_producer(monkeypatch, tmp_path) ->
     assert page.producer is None
 
 
-# ── Skipped and switched-off backends (design D8 step 7) ───────────────────
+# ── Skipped and switched-off backends (design D8 step 6) ───────────────────
 
 
 def test_a_backend_not_installed_is_skipped_with_one_warning(monkeypatch, tmp_path, caplog) -> None:
@@ -293,18 +321,26 @@ def test_a_panic_in_the_only_backend_switches_the_tier_off(monkeypatch, tmp_path
     assert page_routing.local_tier_off_reason(_settings(PP)) == "_Panic: poisoned"
 
 
-# ── Post-checks and kept scripts under detect (design D10) ─────────────────
+# ── Post-checks under detect: no backend is exempt ─────────────────────────
 
 
-def test_detect_does_not_escalate_a_script_the_backend_keeps(monkeypatch, tmp_path) -> None:
+def test_detect_escalates_non_latin_output_of_every_backend(monkeypatch, tmp_path) -> None:
     _fake(_Backend({1: (DEVANAGARI, 0.95)}))
-    pp = _pp(monkeypatch)
+    pp = _pp(monkeypatch, {1: ("latin text " * 10, 0.95)})
 
     page = _read(_settings(FAKE, PP, mode="detect"), [1], tmp_path)[1]
 
+    assert pp.calls == [[1]], "the Indra-like backend is not exempt, so the page passes on"
     assert page.escalates is False
-    assert page.producer == FAKE_PRODUCER
-    assert pp.calls == []
+    assert page.producer == "pdf_inspector_ocr"
+
+
+def test_detect_names_non_latin_output_when_the_last_backend_gives_it(tmp_path) -> None:
+    _fake(_Backend({1: (DEVANAGARI, 0.95)}))
+
+    page = _read(_settings(FAKE, mode="detect"), [1], tmp_path)[1]
+
+    assert page.reasons == ("non_latin_output",)
 
 
 def test_detect_still_escalates_non_latin_output_of_the_default_backend(
@@ -327,5 +363,6 @@ def test_each_post_check_receives_the_backend_facts(tmp_path) -> None:
 
     page_routing.local_ocr(tmp_path / "a.pdf", [1], settings=_settings(FAKE), post_checks=(_check,))
 
-    assert seen[0]["keeps_scripts"] == frozenset({"arabic", "devanagari"})
+    assert "keeps_scripts" not in seen[0]
+    assert seen[0]["min_confidence"] == 0.94
     assert seen[0]["producer"] == FAKE_PRODUCER

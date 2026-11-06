@@ -160,6 +160,7 @@ const READING_DEFAULTS: Partial<Record<DocumentReadingKey, DocumentReadingSettin
   ocr_non_latin_routing: "off",
   document_router: "",
   ocr_local_backends: ["pp-ocrv6-small"],
+  ocr_local_cuts: {},
 };
 
 /** `GET /v1/settings/document-reading` with every key at its default, nothing saved and one engine not provisioned. */
@@ -184,7 +185,8 @@ export const DOCUMENT_READING: DocumentReadingState = {
     { name: "pdf_inspector", available: true, reason: null },
   ],
   pdf_reader_in_use: "pdf_inspector",
-  local_ocr_backends: [{ name: "pp-ocrv6-small", available: true, reason: null }],
+  local_ocr_backends: [{ name: "pp-ocrv6-small", available: true, reason: null, default_cut: 0.92 }],
+  retired_keys: [],
   ocr: {
     workers_dir: "~/ocr-workers",
     engines: [

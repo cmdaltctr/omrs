@@ -78,8 +78,8 @@ class IngestionContext:
         ocr_worker_fingerprint: Fingerprint of the OCR worker route.
         ocr_fallback_fingerprint: Fingerprint of the OCR fallback route.
         ocr_more_fingerprints: Fingerprints of the third and later OCR routes.
-        local_ocr_backends: The non-default local OCR list's ``parser`` entry,
-            resolved once per operation (``{}`` for the default list).
+        local_ocr_backends: The local OCR list's ``parser`` entry (each
+            backend's name, effective cut and model), resolved once per operation.
         graph_shape: Identity block of a non-standard ingestion graph, or
             ``None`` for the standard shape.
         embedding_identity: Provider and model that made the vectors, or

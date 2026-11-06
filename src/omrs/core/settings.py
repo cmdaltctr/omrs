@@ -333,8 +333,6 @@ class EffectiveSettings(BaseModel):
     # ── OCR routing unit and local tier (change page-level-ocr-routing) ──
     # "page" routes page by page and is the only unit (page-routing-default).
     ocr_routing_unit: str = "page"  # see OCR_ROUTING_UNITS
-    # Design D9: unset means each listed backend uses its own calibrated cut.
-    ocr_local_min_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     # Design D8. The literal equals core.reading_parts.DEFAULT_LOCAL_OCR_BACKENDS
     # (this module imports nothing from omrs.core); a test pins the two.
     ocr_local_backends: tuple[str, ...] = ("pp-ocrv6-small",)
@@ -342,6 +340,9 @@ class EffectiveSettings(BaseModel):
     ocr_local_model_directory: str = ""
     # Design D12: options of parts without flat keys, checked by compose.
     reading_part_options: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    # Change local-ocr-per-backend-cuts, design D1: the operator's cut per backend
+    # name (operator entries only). A backend with no entry uses its descriptor cut.
+    ocr_local_cuts: dict[str, float] = Field(default_factory=dict)
 
     # ── OCR worker operation (design D2.1) ────────────────────────
     # Operational settings, deliberately separate from the calibrated

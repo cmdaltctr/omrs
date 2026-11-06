@@ -11,16 +11,17 @@ Design D8 contract implemented here:
 
 - the OCR routing switch (``enabled``) enters the payload as resolved
   data, never re-read from the environment;
-- the identity carries what changes the emitted text — the routing unit
-  and the local tier's escalation threshold — and not where files live or
-  how they are fetched. A model directory is a filesystem location, so the
-  same model under a different path would reindex for nothing. Offline
-  mode decides whether a download may happen; its only route to different
-  text is whether the model resolves, which the resolved model identity
-  records directly (change page-level-ocr-routing, task 4.2);
-- the routing unit, the blank-test version and the local tier are
-  present for every source: ``page`` is the only unit (change
-  page-routing-default, schema 7). ``local_tier.model`` joins only with a
+- the identity carries what changes the emitted text, and not where files
+  live or how they are fetched. A model directory is a filesystem location,
+  so the same model under a different path would reindex for nothing.
+  Offline mode decides whether a download may happen; its only route to
+  different text is whether the model resolves, which the resolved model
+  identity records directly (change page-level-ocr-routing, task 4.2);
+- the switch, the routing unit and the blank-test version are present for
+  every source: ``page`` is the only unit (change page-routing-default).
+  The local OCR cuts and models shape PDF text only, so they live in the PDF
+  ``parser`` block (:func:`local_backends_payload`, change
+  local-ocr-per-backend-cuts, schema 8). A model joins its entry only with a
   resolved identity. Absence means unresolved, which is itself
   identity-relevant: the runtime appearing changes the emitted text, so
   the digest moves then and only then;
@@ -46,7 +47,6 @@ from ..reading_parts import (
     KIND_LOCAL_OCR_BACKEND,
     broken,
     effective_cut,
-    local_backend,
 )
 
 #: The canonical unavailable fingerprint payload. Byte-identical, by
@@ -69,24 +69,21 @@ _UNAVAILABLE_FINGERPRINT_PAYLOAD: dict[str, Any] = {
 }
 
 
-def ocr_routing_payload(
-    settings: Any, *, local_model_identity: str | None = None
-) -> dict[str, Any]:
+def ocr_routing_payload(settings: Any) -> dict[str, Any]:
     """Return the canonical OCR routing payload from settings.
 
     Args:
         settings: Settings object (flat ``Settings`` or frozen
-            ``EffectiveSettings``) carrying ``ocr_fallback_enabled``,
-            ``ocr_routing_unit`` and ``ocr_local_min_confidence``.
-        local_model_identity: The local OCR tier's resolved model
-            identity (``name@revision``), or ``None`` when unresolved.
+            ``EffectiveSettings``) carrying ``ocr_fallback_enabled`` and
+            ``ocr_routing_unit``.
 
     Returns:
-        A JSON-ready dict: the routing switch, the routing unit, the
-        blank-test version and the local tier's escalation threshold,
-        plus the local model identity when resolved. The operational
-        worker settings (folder, timeout) are deliberately absent: they
-        shape dispatch, never chunk text.
+        A JSON-ready dict: the routing switch, the routing unit and the
+        blank-test version. Every source carries it, so it holds nothing that
+        only PDF text depends on: the local OCR cuts and models enter the PDF
+        ``parser`` block through :func:`local_backends_payload` (design D8).
+        The operational worker settings (folder, timeout) are deliberately
+        absent: they shape dispatch, never chunk text.
     """
     # The blank-test version (skip-blank-pages-before-worker): the threshold
     # decides which flagged pages emit no document at all, so a version bump
@@ -94,102 +91,69 @@ def ocr_routing_payload(
     # see the digest follow, the same seam as the maths detector version.
     from ...integrations.pdf.blank_pages import BLANK_PAGE_TEST_VERSION
 
-    # Design D9: the effective cut of the default backend, so an unset override
-    # and an explicit 0.9 give the same bytes. The list enters ``parser``.
-    local_tier: dict[str, Any] = {
-        "min_confidence": effective_cut(settings, DEFAULT_LOCAL_OCR_BACKENDS[0])
-    }
-    # The resolved model identity (task 4.2): absent while unresolved,
-    # present once the runtime resolves it. The digest moves with this key,
-    # which is correct: the model changes what the pages read as.
-    if local_model_identity is not None:
-        local_tier["model"] = local_model_identity
     return {
         "enabled": settings.ocr_fallback_enabled,
         "routing_unit": settings.ocr_routing_unit,
         "blank_page_test": BLANK_PAGE_TEST_VERSION,
-        "local_tier": local_tier,
     }
 
 
 def resolved_routing_payload(settings: Any) -> dict[str, Any]:
-    """Build the routing payload with the resolved local model identity.
+    """Build the routing payload for the composition path.
 
-    Boundary wrapper for the composition path: resolves the local tier's
-    model identity exactly once per process (the probe is cached), then
-    delegates to :func:`ocr_routing_payload`. The probe runs only when the
-    OCR fallback is enabled and ``ocr_local_backends`` holds the default
-    backend. Otherwise that model cannot change the emitted text, so the
-    payload leaves it out.
-
-    The lazy import keeps pdf-inspector out of every import of this
-    module; ``core`` reaching into ``integrations`` lazily inside a
-    function follows the ``codebase_map`` → ``integrations.magika``
-    precedent.
+    The local model identity no longer enters this block (schema 8):
+    :func:`local_backends_payload` resolves it for the PDF ``parser`` block, so
+    this builder probes nothing. Both composition paths still reach the payload
+    through this one function.
 
     Args:
-        settings: Settings object carrying the routing switch, the routing
-            unit and the local tier settings.
+        settings: Settings object carrying the routing switch and the routing
+            unit.
 
     Returns:
-        The canonical routing payload, with ``local_tier.model`` when the
-        probe resolved an identity.
+        The canonical routing payload.
     """
-    local_model_identity = None
-    # The default backend's model counts only when the list holds it (PR #168, finding 5).
-    listed = tuple(getattr(settings, "ocr_local_backends", DEFAULT_LOCAL_OCR_BACKENDS))
-    if getattr(settings, "ocr_fallback_enabled", False) and DEFAULT_LOCAL_OCR_BACKENDS[0] in listed:
-        from ...integrations.pdf.page_routing import resolve_local_model_identity
-
-        local_model_identity = resolve_local_model_identity(settings)
-    return ocr_routing_payload(settings, local_model_identity=local_model_identity)
+    return ocr_routing_payload(settings)
 
 
 def local_backends_payload(settings: Any) -> dict[str, Any]:
-    """Return the ``parser`` entry of a non-default local OCR list (design D9, D10).
+    """Return the ``parser`` entry of the local OCR backend list (design D8).
 
-    The default list adds nothing, so every digest stays put. Another list
-    names each backend in list order with its effective cut, its kept scripts
-    (a sorted list, or ``None``) and its model once resolved, plus the
-    output-script classifier version. A model is resolved only when OCR
-    routing is on, the rule :func:`resolved_routing_payload` follows. PDF
-    sources only: :func:`omrs.core.ingestion.reader_identity.pdf_parser_payload`
-    calls it, so other sources keep their digest.
+    Every list, the default list included, names each listed backend in list
+    order with its effective cut (:func:`omrs.core.reading_parts.effective_cut`)
+    and its model once resolved. A model is resolved only when OCR routing is
+    on, once per listed backend. PDF sources only:
+    :func:`omrs.core.ingestion.reader_identity.pdf_parser_payload` calls it, so
+    other sources keep their digest and a cut or model change re-indexes PDF
+    sources only.
 
     Args:
         settings: Settings carrying ``ocr_local_backends``,
-            ``ocr_local_min_confidence`` and ``ocr_fallback_enabled``.
+            ``ocr_local_cuts`` and ``ocr_fallback_enabled``.
 
     Returns:
-        ``{}`` for the default list, else ``{"local_ocr_backends": {...}}``.
+        ``{"local_ocr_backends": {"backends": [{"name", "min_confidence",
+        "model"?}, ...]}}``.
     """
     names = tuple(getattr(settings, "ocr_local_backends", DEFAULT_LOCAL_OCR_BACKENDS))
-    if names == DEFAULT_LOCAL_OCR_BACKENDS:
-        return {}
     # A broken discovered backend reads no page, so it adds nothing (finding 4).
     off = broken(KIND_LOCAL_OCR_BACKEND)
     names = tuple(name for name in names if name not in off)
-    # Call-time imports: the same lazy seam as resolved_routing_payload.
-    from ...integrations.pdf import page_routing, script_routing
+    # Call-time import: pdf-inspector stays out of every import of this module;
+    # core reaching into integrations lazily follows the codebase_map precedent.
+    from ...integrations.pdf import page_routing
 
     resolve = getattr(settings, "ocr_fallback_enabled", False)
     backends: list[dict[str, Any]] = []
     for name in names:
-        kept = local_backend(name).keeps_scripts
         entry: dict[str, Any] = {"name": name, "min_confidence": effective_cut(settings, name)}
         model = (
             page_routing.resolve_local_model_identity(settings, backend=name) if resolve else None
         )
         if model is not None:
             entry["model"] = model
-        entry["keeps_scripts"] = sorted(kept) if kept is not None else None
         backends.append(entry)
-    return {
-        "local_ocr_backends": {
-            "backends": backends,
-            "output_script_version": script_routing.OUTPUT_SCRIPT_VERSION,
-        }
-    }
+    return {"local_ocr_backends": {"backends": backends}}
 
 
 def ocr_fingerprint_payload(fingerprint: Any) -> dict[str, Any]:

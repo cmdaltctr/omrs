@@ -37,11 +37,13 @@ from .rules import (
     FILE_ONLY,
     INTERNAL_FIELDS,
     LIST_TYPE_RULE,
+    LOCAL_CUTS_KEY,
     READING_LIST_KEYS,
     SECRET_FIELDS,
     accepted_problem,
     file_only_problem,
     ignored_old_keys,
+    local_cuts_problem,
 )
 from .settings_maps import MAP_KEYS, read_map
 from .user_config import (
@@ -174,8 +176,11 @@ def setting_paths(*, file_only: bool = True) -> tuple[str, ...]:
     return (*paths, *FILE_ONLY) if file_only else tuple(paths)
 
 
-#: Removed file keys whose replacement has another shape (ADR-108 D5).
-_REMOVED_FILE_KEYS = {"LLAMACPP_SERVER_MODEL": "answer.model"}
+#: Removed file keys whose replacement has another shape (ADR-108 D5, cuts D7).
+_REMOVED_FILE_KEYS = {
+    "LLAMACPP_SERVER_MODEL": "answer.model",
+    "OCR_LOCAL_MIN_CONFIDENCE": "ocr_local_cuts",
+}
 
 
 def _replacement(env_name: str) -> str | None:
@@ -205,6 +210,10 @@ def _check(
     """Return ``(validated, rule)``: *rule* is ``None`` when *value* is fine."""
     if path in READING_LIST_KEYS and not isinstance(value, (list, tuple)):
         return None, LIST_TYPE_RULE  # the file form is an array; text is the environment form
+    if path == LOCAL_CUTS_KEY:
+        # One shared rule (type, range and names); pydantic's own text would name no backend.
+        rule = local_cuts_problem(value)
+        return (dict(value), None) if rule is None else (None, rule)
     try:
         if block is not None:
             validated = getattr(block.model_validate({leaf: value}), leaf)

@@ -3,7 +3,7 @@ import { createApiClient } from "./client";
 import { DOCUMENT_READING_KEYS, getDocumentReadingSettings, saveDocumentReadingSettings } from "./settingsDocumentReading";
 import { documentsServer } from "../test/fakeDocumentsServer";
 
-const STATE = { status: "ok", revision: "r1", settings: [], pdf_readers: [], pdf_reader_in_use: "pypdf", ocr: { workers_dir: null, engines: [] } };
+const STATE = { status: "ok", revision: "r1", settings: [], pdf_readers: [], pdf_reader_in_use: "pypdf", local_ocr_backends: [], retired_keys: [], ocr: { workers_dir: null, engines: [] } };
 
 function setup(handlers: Parameters<typeof documentsServer>[0]) {
   const server = documentsServer(handlers);
@@ -11,7 +11,7 @@ function setup(handlers: Parameters<typeof documentsServer>[0]) {
 }
 
 describe("document reading API", () => {
-  it("lists the keys in the contract order, the two list keys beside the old single-value keys", () => {
+  it("lists the keys in the contract order, the list keys and the cuts map beside the old single-value keys", () => {
     expect(DOCUMENT_READING_KEYS).toEqual([
       "pdf_readers",
       "pdf_reader",
@@ -24,6 +24,7 @@ describe("document reading API", () => {
       "ocr_non_latin_routing",
       "document_router",
       "ocr_local_backends",
+      "ocr_local_cuts",
     ]);
   });
 
@@ -35,7 +36,7 @@ describe("document reading API", () => {
 
   it("saves values and the revision with PUT /v1/settings/document-reading, keeping null to reset a key", async () => {
     const { api, server } = setup({ "PUT /v1/settings/document-reading": () => ({ ...STATE, revision: "r2" }) });
-    const values = { pdf_readers: ["pdf_inspector", "pypdf"], ocr_engines: ["paddleocr-vl"], ocr_engine_fallback: null };
+    const values = { pdf_readers: ["pdf_inspector", "pypdf"], ocr_engines: ["paddleocr-vl"], ocr_engine_fallback: null, ocr_local_cuts: { "pp-ocrv6-small": 0.9 } };
     await expect(saveDocumentReadingSettings(api, values, { revision: "r1" })).resolves.toMatchObject({ revision: "r2" });
     expect(server.calls.map((call) => [call.method, call.path, call.body])).toEqual([["PUT", "/v1/settings/document-reading", { values, revision: "r1" }]]);
   });

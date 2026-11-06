@@ -19,23 +19,39 @@ from typing import Any
 
 import pytest
 
-from omrs.core.ingestion.ocr_identity import resolved_routing_payload
+from omrs.core.ingestion.ocr_identity import (
+    local_backends_payload,
+    ocr_routing_payload,
+    resolved_routing_payload,
+)
 from omrs.core.ingestion.source_state import build_index_identity
 from omrs.integrations.ocr_worker.fingerprint import OcrWorkerFingerprint
 from omrs.integrations.pdf import page_routing, script_routing
 
+# Re-pinned on 6 November 2026 (change local-ocr-per-backend-cuts): schema 7 to 8,
+# ``ocr_routing.local_tier`` gone, ``parser.local_ocr_backends`` added (default
+# backend at cut 0.92). Every pin below moved for those reasons only.
 # Non-Latin routing "detect": guards the mode and detector version in the parser block.
-DETECT_DIGEST = "d17e57eeaf1f1f964eeaca6e649571473798221941c1c2c53d85fc5d39680190"
+DETECT_DIGEST = "6f99256dde779932ef8d0ff6b956f304b7ebcd96d4c40a549be583d731ed9eaa"
 # Non-Latin routing "always": guards that the mode name alone moves the digest.
-ALWAYS_DIGEST = "21ab5a93a8bb4d858a9ab9cd1764cc4b7a37f39238901531f0048522494c6b12"
-# A resolved local model: guards ``ocr_routing.local_tier.model``.
-LOCAL_MODEL_DIGEST = "fcef2e013bf08c2024a90cabf13341779020eae0dbef4ad5c94ad38a62f7388e"
+ALWAYS_DIGEST = "70ac715a9c4ad2a2991b3fc042d74ad28df39459dc96227ba98701066de7fe39"
+# A resolved local model: guards the model in ``parser.local_ocr_backends``.
+LOCAL_MODEL_DIGEST = "6f0616a7bf2d0bf8e2b650a5a5f0acb47cab207c37445651d0ad5a27eeb3c55c"
 # Maths routing off (the default is on): guards ``maths_routing.enabled``.
-MATHS_OFF_DIGEST = "b5972655848fa62def9dc9f059114f9e9b6a60ab2a44e651b82c3b39aed475e9"
+MATHS_OFF_DIGEST = "f502cc3550e2e085c2ef6d79e3c8ee4fbea5f0fc4e81e22258b8987ea643c80f"
 # Three OCR engines: guards the ``ocr_more_fingerprints`` member.
-THIRD_ENGINE_DIGEST = "08a0b65cbec16a3d70840623555e793b2ff5190f12416071f1b92ce21fcbaaed"
+THIRD_ENGINE_DIGEST = "5347669f6b77e4ef5f168d71930a9e874b1c5cfa379637f0e7443ff7091b1939"
 
 _RESOLVED_MODEL = "PP-OCRv6_small@pinned-revision"
+
+
+@pytest.fixture(autouse=True)
+def _unresolved_local_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Hash with the local OCR model unresolved: the real probe depends on the host runtime."""
+    page_routing.reset_local_model_resolution()
+    monkeypatch.setattr(
+        page_routing, "_probe_local_model_identity", lambda settings, backend="x": None
+    )
 
 
 def _fingerprint(backend_id: str) -> OcrWorkerFingerprint:
@@ -100,10 +116,11 @@ def test_a_resolved_local_model_keeps_its_digest(
     )
     settings = pins(ocr_fallback_enabled=True)
 
-    routing = resolved_routing_payload(settings)
+    backends = local_backends_payload(settings)
 
-    assert routing["local_tier"]["model"] == _RESOLVED_MODEL
-    assert _digest(settings, ocr_routing=routing) == LOCAL_MODEL_DIGEST
+    assert backends["local_ocr_backends"]["backends"][0]["model"] == _RESOLVED_MODEL
+    assert resolved_routing_payload(settings) == ocr_routing_payload(settings)
+    assert _digest(settings, local_ocr_backends=backends) == LOCAL_MODEL_DIGEST
 
 
 def test_maths_routing_off_keeps_its_digest(pins: Any) -> None:

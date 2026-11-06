@@ -16,6 +16,9 @@ Schema 7 (change page-routing-default): the page unit is the only unit, so
 the routing payload drops the gate values and the unconditional types, the
 maths block drops its fraction, and the page-source counts join every
 install's excluded keys.
+Schema 8 (change local-ocr-per-backend-cuts): ``ocr_routing`` loses
+``local_tier``; the PDF ``parser`` block gains ``local_ocr_backends`` for every
+list, the default list included, and no block holds kept scripts.
 
 The payload is captured by wrapping the module-local ``json`` binding, so
 the recorded structure is exactly what gets canonicalised and hashed —
@@ -71,7 +74,7 @@ EXPECTED_CHUNKING_SETTINGS_KEYS = {
     "markdown_min_chunk_fraction",
     "strategy_fallback",
 }
-EXPECTED_OCR_ROUTING_KEYS = {"enabled", "routing_unit", "blank_page_test", "local_tier"}
+EXPECTED_OCR_ROUTING_KEYS = {"enabled", "routing_unit", "blank_page_test"}
 EXPECTED_OCR_FINGERPRINT_KEYS = {
     "available",
     "protocol_version",
@@ -140,16 +143,16 @@ def _baseline_payload(monkeypatch: pytest.MonkeyPatch) -> tuple[dict, str]:
 
 
 def test_index_identity_schema_value_is_pinned() -> None:
-    """Schema 7: page routing is the only unit (change page-routing-default)."""
-    assert source_state._INDEX_IDENTITY_SCHEMA == 7
+    """Schema 8: the local OCR cuts and models live in the PDF block."""
+    assert source_state._INDEX_IDENTITY_SCHEMA == 8
 
 
 def test_index_identity_payload_shape_is_recorded(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Pin the exact key structure of the schema-7 payload."""
+    """Pin the exact key structure of the schema-8 payload."""
     payload, _ = _baseline_payload(monkeypatch)
 
     assert set(payload) == EXPECTED_TOP_LEVEL_KEYS
-    assert payload["schema"] == 7
+    assert payload["schema"] == 8
     assert set(payload["embedding"]) == EXPECTED_EMBEDDING_KEYS
     assert set(payload["embedding_text"]) == EXPECTED_EMBEDDING_TEXT_KEYS
     assert set(payload["tokenizer"]) == EXPECTED_TOKENIZER_KEYS
@@ -197,7 +200,6 @@ def test_index_identity_payload_values_echo_configuration(monkeypatch: pytest.Mo
         "enabled": True,
         "routing_unit": "page",
         "blank_page_test": BLANK_PAGE_TEST_VERSION,
-        "local_tier": {"min_confidence": 0.9},
     }
     fingerprint = payload["ocr_worker_fingerprint"]
     assert fingerprint["available"] is False
@@ -277,7 +279,10 @@ def test_normaliser_version_and_toggle_change_identity_for_every_source(
 #: it, so no Markdown or code collection reprocesses for the revision.
 #: Re-pinned on 3 November 2026 for schema 7 (change page-routing-default):
 #: that change reindexes every source once, by design.
-_MD_DIGEST_BEFORE_REVISION = "c27e477667271a174554e90f4a8d8231ca46d78e93e9b405f2aca6e59918aaa2"
+#: Re-pinned on 6 November 2026 for schema 8 (change local-ocr-per-backend-cuts):
+#: the schema number moved 7 to 8 and ``ocr_routing`` lost ``local_tier`` (it had
+#: held the default cut 0.9, which also moved to 0.92). Every source re-indexes once.
+_MD_DIGEST_BEFORE_REVISION = "1e85c9a4672d753f039053d99d075754c05447e94cc71c89d1cd26ac19b69673"
 
 
 def _source_identity(
@@ -319,8 +324,11 @@ def test_pdf_source_carries_its_reader_revision(
     payload, _ = _source_identity(monkeypatch, "report.pdf", pdf_reader=reader)
 
     assert payload["parser"]["pdf_reader_output_revision"] == revision
-    assert set(payload["parser"]) == EXPECTED_PARSER_KEYS | {"pdf_reader_output_revision"}
-    assert payload["schema"] == 7
+    assert set(payload["parser"]) == EXPECTED_PARSER_KEYS | {
+        "pdf_reader_output_revision",
+        "local_ocr_backends",
+    }
+    assert payload["schema"] == 8
 
 
 def test_markdown_source_identity_is_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -355,3 +363,29 @@ def test_revision_change_changes_the_pdf_digest(monkeypatch: pytest.MonkeyPatch)
 
     assert before != after
     assert markdown_before == markdown_after
+
+
+def test_pdf_parser_block_lists_the_default_local_backend(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Schema 8: the default list is named in the PDF block, with its cut and model."""
+    from omrs.integrations.pdf import page_routing
+
+    monkeypatch.setattr(
+        page_routing,
+        "resolve_local_model_identity",
+        lambda settings, backend="pp-ocrv6-small": "pp-ocrv6-small@oar-ocr-v0.7.0",
+    )
+
+    pdf, _ = _source_identity(monkeypatch, "report.pdf", pdf_reader="pdf_inspector")
+    markdown, _ = _source_identity(monkeypatch, "notes.md")
+
+    assert pdf["parser"]["local_ocr_backends"] == {
+        "backends": [
+            {
+                "name": "pp-ocrv6-small",
+                "min_confidence": 0.92,
+                "model": "pp-ocrv6-small@oar-ocr-v0.7.0",
+            }
+        ]
+    }
+    assert "local_ocr_backends" not in markdown["parser"]
+    assert "local_tier" not in pdf["ocr_routing"]

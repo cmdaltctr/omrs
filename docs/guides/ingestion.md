@@ -422,26 +422,27 @@ and `page_label`. This includes pages that local OCR or the worker read.
 
 A page escalates when the local attempt returns empty or
 whitespace-only text, reports confidence below
-the cut of the backend that read it (0.9 for `pp-ocrv6-small`, supported by Experiments
-33, 37 and 39: escalation 59.6%, wrongly kept 2.5% on the 399 flagged pages re-scored in
-Experiment 39), flags `hosted_recommended`, or returns text in a script that the
-backend does not keep (`script_not_kept`).
+the cut of the backend that read it (default 0.92 for `pp-ocrv6-small` and 0.94 for
+`indra`, from Experiment 46a, which re-read the saved results of Experiment 46 on 229
+pages from 9 documents) or flags `hosted_recommended`. Confidence is the only test. No
+backend filters pages by script.
 Unreported confidence escalates too. With the default
 `OCR_NON_LATIN_ROUTING=off` there is no script or typography pre-check:
 the failure classes announce themselves after the attempt. Under `detect`,
 a flagged page with a non-Latin text layer skips the local tier, and a
-non-Latin local result escalates with reason `non_latin_output`.
+non-Latin local result of any backend, Indra included, escalates with reason
+`non_latin_output`. When `indra` is in the list, set `OCR_NON_LATIN_ROUTING` to
+`off`.
 
-`OCR_LOCAL_MIN_CONFIDENCE` is unset by default. When set, it replaces the cut of every
-listed backend.
+`OCR_LOCAL_CUTS` sets the cut of a backend. It is a JSON object keyed by backend name,
+for example `{"indra": 0.96}`. A backend with no entry uses its default cut.
 
 With more than one backend listed, the first backend reads every page the local tier takes.
 The next backend reads, in one call, the pages that the backend before it did not keep.
 The OCR engines read the pages that no listed backend kept. An escalated page reports the
 reasons of the last backend that read it and carries the text of the first backend that
 returned non-empty text. A backend that raises an error is skipped for the call, with one
-warning per process. A backend with a script filter (`indra` keeps Arabic and Devanagari)
-keeps a page only when the script of its output is in that set. See
+warning per process. See
 [Local OCR backends](configuration.md#local-ocr-backends).
 
 Every emitted page document carries the same five scalar counts for the
@@ -510,13 +511,15 @@ The `indra` backend needs the `local-ocr-indra` extra and its weights in the
 folder that `INDRA_OCR_MODEL_DIR` names. Under `OCR_LOCAL_OFFLINE=true`, it reads
 only that folder and never downloads.
 
-The routing unit, the escalation cut and the resolved model
-identity are part of the source index identity, because a different engine
-reads the pages. The default list keeps every digest, and an unset cut gives the
-same digest as an explicit `0.9`. Another list adds the entry
-`parser.local_ocr_backends` to PDF sources, which re-index once. Other sources
-keep their digest. Identity schema 7 reindexes every source once, as described
-under [Routing identity](#routing-identity-and-existing-indexes). The local
+The routing unit and the blank-page test are part of the identity of every
+source. The effective cut of each listed backend and the resolved local model
+identity are part of the identity of PDF sources only, in the `parser` block,
+because a different cut or model changes which engine reads each page. An entry
+in `OCR_LOCAL_CUTS` that equals the default cut gives the same digest as no
+entry. A change to a cut, a list or a local model re-indexes PDF sources only.
+Markdown and code sources keep their digest. Identity schema 8 reindexes every
+source once, as described under
+[Routing identity](#routing-identity-and-existing-indexes). The local
 tier's quality residual is accepted and named in ADR-069; the deferred
 retrieval experiment gates any future default change.
 
@@ -527,7 +530,7 @@ retrieval experiment gates any future default change.
 | `OCR_FALLBACK_ENABLED`        | `true`  | Switches OCR routing on and off. Off means no page reaches OCR. |
 | `OCR_ROUTING_UNIT`            | `page`  | Only legal value. `document` fails start-up.                      |
 | `OCR_LOCAL_BACKENDS`          | `pp-ocrv6-small` | Ordered list of local OCR backends (`pp-ocrv6-small`, `indra`). Comma-separated; a JSON array in `omrs.jsonc`. See [Local OCR backends](configuration.md#local-ocr-backends). |
-| `OCR_LOCAL_MIN_CONFIDENCE`    | unset   | Optional override. Replaces the escalation cut of every listed backend. Unset, each backend uses its own cut. |
+| `OCR_LOCAL_CUTS`              | `{}`    | JSON object that sets the escalation cut of a backend by name. A backend with no entry uses its default cut (0.92 for `pp-ocrv6-small`, 0.94 for `indra`). |
 | `OCR_LOCAL_OFFLINE`           | `false` | Forbid the model download.                                        |
 | `OCR_LOCAL_MODEL_DIRECTORY`   | empty   | Model artifact leaf directory; empty means the default cache.     |
 | `OCR_WORKERS_DIR`             | empty   | Absolute path to `ocr-workers`; empty disables folder-based routes. |
@@ -537,7 +540,7 @@ retrieval experiment gates any future default change.
 | `OCR_WORKER_SECONDS_PER_PAGE` | `120.0` | Timeout allowance per requested page in seconds. |
 | `OCR_MATHS_ROUTING_ENABLED`   | `true`  | Detect maths fonts and route affected pages. |
 | `READING_PART_OPTIONS`        | `{}`    | JSON object of options per reading part. See [Reading part options](configuration.md#reading-part-options). |
-| `OCR_NON_LATIN_ROUTING`       | `off`   | `always` sends every flagged page past the local tier. `detect` sends a flagged page past it only when its text layer is non-Latin, and escalates a non-Latin local result. See [Non-Latin page routing](configuration.md#non-latin-page-routing). |
+| `OCR_NON_LATIN_ROUTING`       | `off`   | `always` sends every flagged page past the local tier. `detect` sends a flagged page past it only when its text layer is non-Latin, and escalates a non-Latin local result of any backend. See [Non-Latin page routing](configuration.md#non-latin-page-routing). |
 
 The timeout is `max(OCR_WORKER_REQUEST_TIMEOUT, requested_pages * OCR_WORKER_SECONDS_PER_PAGE)`.
 With the defaults, a 14-page request gets 1,680 seconds.
@@ -552,14 +555,21 @@ ignored.
 ### Routing identity and existing indexes
 
 Source identity includes the OCR routing payload `{enabled, routing_unit,
-blank_page_test, local_tier}`, both route fingerprints, and the maths block
+blank_page_test}`, both route fingerprints, and the maths block
 `{enabled, detector_version}`. These fields apply to every source,
 including non-PDF sources and sources with OCR disabled. The page-source
-counts are excluded for every source. This branch uses schema 7. Schema 6
-was the earlier payload with the document-gate thresholds and the maths
-page fraction.
+counts are excluded for every source. The identity schema is 8.
 
-The move to schema 7 reindexes every existing source once on its next ingestion. Later
+The local OCR cuts and the resolved local model identity are not in the routing
+payload. They are in the `parser` block of PDF sources: one entry for each listed
+backend, in list order, with its effective cut and its resolved model identity.
+This holds for the default list too. A cut change therefore reads PDF sources
+again and leaves Markdown and code sources unchanged. The same holds for a cut
+that a Read document step sets (see
+[Local OCR cuts on Read document step](pipelines.md#local-ocr-cuts-on-read-document-step)).
+
+The move to schema 8 reindexes every existing source once on its next ingestion. After that,
+a second ingest with the same settings processes no source. Later
 changes to either engine fingerprint or maths-routing input also change
 identity. Reading an index does not rebuild it. Keep preserved experiment
 databases out of ingestion and migration tests.

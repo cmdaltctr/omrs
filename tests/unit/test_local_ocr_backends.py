@@ -59,9 +59,9 @@ def test_the_default_backend_is_registered_with_its_cut_and_producer() -> None:
 
     assert facts["import_path"] == "omrs.integrations.pdf.local_ocr.pp_ocrv6_small:BACKEND"
     assert facts["probe_module"] == "pdf_inspector"
-    assert facts["min_confidence"] == 0.9
-    assert facts["calibrated_by"] == "39-local-tier-escalation-2026-09-30"
-    assert facts["keeps_scripts"] is None
+    assert facts["min_confidence"] == 0.92
+    assert facts["calibrated_by"] == "46a-local-ocr-per-backend-cuts-2026-11-06"
+    assert "keeps_scripts" not in facts
     assert facts["producer"] == "pdf_inspector_ocr"
     assert registry.DEFAULT_BACKENDS == ("pp-ocrv6-small",)
 
@@ -78,17 +78,18 @@ def test_a_backend_without_a_cut_registers(isolated_registry) -> None:
     assert registry.describe("no-cut")["min_confidence"] is None
 
 
-def test_kept_scripts_are_stored_as_a_frozenset(isolated_registry) -> None:
-    registry.register(
-        "keeper",
-        "fake.mod:BACKEND",
-        producer="x",
-        min_confidence=0.9,
-        calibrated_by="46-local-ocr-backends-2026-11-04",
-        keeps_scripts=["arabic", "devanagari"],
-    )
-
-    assert registry.describe("keeper")["keeps_scripts"] == frozenset({"arabic", "devanagari"})
+def test_a_script_filter_is_no_longer_a_registration_fact(isolated_registry) -> None:
+    """Change local-ocr-per-backend-cuts, design D6: confidence alone decides."""
+    with pytest.raises(TypeError, match="keeps_scripts"):
+        registry.register(  # type: ignore[call-arg]
+            "keeper",
+            "fake.mod:BACKEND",
+            producer="x",
+            min_confidence=0.9,
+            calibrated_by="1-fake-experiment",
+            keeps_scripts=["arabic"],
+        )
+    assert "keeper" not in registry.available()
 
 
 def test_registering_imports_no_backend_module() -> None:
@@ -106,20 +107,22 @@ def test_registering_imports_no_backend_module() -> None:
 # ── The effective cut (design D9) ──────────────────────────────────────────
 
 
-def test_no_override_gives_the_backend_cut() -> None:
-    settings = SimpleNamespace(ocr_local_min_confidence=None)
+def test_no_entry_gives_the_backend_cut() -> None:
+    settings = SimpleNamespace(ocr_local_cuts={})
 
-    assert registry.effective_cut("pp-ocrv6-small", settings) == 0.9
+    assert registry.effective_cut("pp-ocrv6-small", settings) == 0.92
+    assert registry.effective_cut("indra", settings) == 0.94
 
 
-def test_an_override_replaces_the_backend_cut() -> None:
-    settings = SimpleNamespace(ocr_local_min_confidence=0.7)
+def test_an_entry_replaces_the_cut_of_its_own_backend_only() -> None:
+    settings = SimpleNamespace(ocr_local_cuts={"pp-ocrv6-small": 0.7})
 
     assert registry.effective_cut("pp-ocrv6-small", settings) == 0.7
+    assert registry.effective_cut("indra", settings) == 0.94
 
 
-def test_settings_without_the_field_read_as_no_override() -> None:
-    assert registry.effective_cut("pp-ocrv6-small", SimpleNamespace()) == 0.9
+def test_settings_without_the_field_read_as_no_entry() -> None:
+    assert registry.effective_cut("pp-ocrv6-small", SimpleNamespace()) == 0.92
     assert registry.listed(SimpleNamespace()) == ("pp-ocrv6-small",)
 
 

@@ -37,6 +37,7 @@ DEFAULTS = {
     "ocr_non_latin_routing": "off",
     "document_router": "",
     "ocr_local_backends": ["pp-ocrv6-small"],
+    "ocr_local_cuts": {},
 }
 OPTIONS = {"pypdf": None, "pypdfium2": "The package 'pypdfium2' is not installed."}
 
@@ -96,6 +97,7 @@ def test_five_rows_in_key_order_with_defaults(harness: Harness) -> None:
         "pdf_readers",
         "pdf_reader_in_use",
         "local_ocr_backends",
+        "retired_keys",
         "ocr",
     }
     assert [row["key"] for row in body["settings"]] == list(DOCUMENT_READING_KEYS)

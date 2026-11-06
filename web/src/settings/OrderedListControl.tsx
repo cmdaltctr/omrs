@@ -1,4 +1,5 @@
 import { ArrowDown, ArrowUp, X } from "lucide-react";
+import type { ReactNode } from "react";
 import { Button } from "../components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 
@@ -24,6 +25,8 @@ interface OrderedListControlProps {
   onChange: (next: string[]) => void;
   /** Shows the list without a way to change it, as on a read-only graph. */
   disabled?: boolean;
+  /** Extra content under the notes of the row for *name* at *index*, such as a setting that belongs to that name. */
+  renderRow?: (name: string, index: number) => ReactNode;
 }
 
 const META = "text-meta text-muted-foreground";
@@ -42,7 +45,7 @@ function moved(list: string[], from: number, to: number): string[] {
  * names. The list can never be emptied, because an empty list reads nothing.
  * Nothing is saved here; the caller keeps the draft.
  */
-export function OrderedListControl({ label, noun, value, options, positionNote, onChange, disabled = false }: OrderedListControlProps) {
+export function OrderedListControl({ label, noun, value, options, positionNote, onChange, disabled = false, renderRow }: OrderedListControlProps) {
   const known = new Map(options.map((option) => [option.value, option]));
   const addable = options.filter((option) => !value.includes(option.value));
   const last = value.length === 1;
@@ -67,6 +70,7 @@ export function OrderedListControl({ label, noun, value, options, positionNote, 
                     {option.link.text}
                   </a>
                 ) : null}
+                {renderRow?.(name, index)}
               </div>
               <div className="flex shrink-0 items-center gap-1">
                 <Button type="button" variant="ghost" size="icon-sm" className={ICON} aria-label={`Move ${name} up`} disabled={disabled || index === 0} onClick={() => onChange(moved(value, index, index - 1))}>

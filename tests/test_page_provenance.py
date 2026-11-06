@@ -44,7 +44,8 @@ def _no_local_ocr_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     # The index identity probes the local model once per process; skip it too.
     monkeypatch.setattr(
-        "omrs.integrations.pdf.page_routing.resolve_local_model_identity", lambda settings: None
+        "omrs.integrations.pdf.page_routing.resolve_local_model_identity",
+        lambda settings, backend="pp-ocrv6-small": None,
     )
 
 

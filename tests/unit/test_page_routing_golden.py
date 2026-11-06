@@ -279,8 +279,13 @@ def test_golden_snapshot(
     local = _FakeEngine(failure=failures[local_tier])
     monkeypatch.setattr(pdf_inspector, "process_pdf_with_ocr", local)
     worker = _FakeWorker() if engine_available else None
+    # Change local-ocr-per-backend-cuts: the snapshots were taken at the old default cut
+    # 0.9. An explicit entry keeps them as proof that the chain logic did not move.
     settings = effective_settings(
-        ocr_fallback_enabled=True, ocr_maths_routing_enabled=maths, ocr_non_latin_routing=mode
+        ocr_fallback_enabled=True,
+        ocr_maths_routing_enabled=maths,
+        ocr_non_latin_routing=mode,
+        ocr_local_cuts={"pp-ocrv6-small": 0.9},
     )
     reader = OcrRoutedPdfInspector(PdfInspectorReader(), settings=settings, ocr_client=worker)
 

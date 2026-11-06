@@ -1,6 +1,6 @@
 """The body and the write checks of ``/v1/settings/document-reading`` (design D10).
 
-Settings > Document reading edits six server-wide keys in ``omrs.jsonc``. Each
+Settings > Document reading edits server-wide keys in ``omrs.jsonc``. Each
 key applies only at the next launch, so a row shows the value in force since
 launch (the launch ``Settings``), the valid value the file holds now, the
 source, the default and whether a restart is pending. A key that ``env`` or
@@ -22,6 +22,7 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
 from ... import capabilities
+from ...config.field_rules import KIND_RETIRED
 from ...config.rules import (
     DOCUMENT_READING_KEYS,
     OLD_READING_KEYS,
@@ -178,8 +179,20 @@ def _local_backends() -> list[dict[str, Any]]:
             continue
         available = registry.BACKENDS.installed(backend.name)
         reason = None if available else "Not installed."
-        options.append({"name": backend.name, "available": available, "reason": reason})
+        options.append(
+            {
+                "name": backend.name,
+                "available": available,
+                "reason": reason,
+                "default_cut": backend.min_confidence,
+            }
+        )
     return options
+
+
+def _retired_keys(file: SettingsFile) -> list[str]:
+    """Return the keys that ``omrs.jsonc`` holds and OMRS ignores, in file order (design D9)."""
+    return list(dict.fromkeys(p.key for p in file.problems if p.kind == KIND_RETIRED))
 
 
 def _ocr(launch: Settings, rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -205,8 +218,8 @@ def build_document_reading(state: Any) -> dict[str, Any]:
 
     Returns:
         ``revision``, the ``settings`` rows in key order, ``pdf_readers``,
-        ``pdf_reader_in_use``, ``local_ocr_backends`` and the ``ocr`` block
-        (design D10).
+        ``pdf_reader_in_use``, ``local_ocr_backends`` (each with its
+        ``default_cut``), ``retired_keys`` and the ``ocr`` block (design D9, D10).
     """
     launch, file, snapshot = _launch_state(state)
     rows = _rows(launch, file, snapshot)
@@ -216,6 +229,7 @@ def build_document_reading(state: Any) -> dict[str, Any]:
         "pdf_readers": _readers(),
         "pdf_reader_in_use": reader_in_use(launch),
         "local_ocr_backends": _local_backends(),
+        "retired_keys": _retired_keys(file),
         "ocr": _ocr(launch, rows),
     }
 

@@ -33,6 +33,16 @@ from omrs.integrations.ocr_worker.routes import (
     engine_names,
     reset_route_log,
 )
+from omrs.integrations.pdf import page_routing
+
+
+@pytest.fixture(autouse=True)
+def _unresolved_local_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Hash with the local OCR model unresolved: the real probe depends on the host runtime."""
+    page_routing.reset_local_model_resolution()
+    monkeypatch.setattr(
+        page_routing, "_probe_local_model_identity", lambda settings, backend="x": None
+    )
 
 
 def _fp(backend_id: str, *, available: bool = True, protocol: str = "1.1") -> Any:
@@ -407,10 +417,13 @@ def test_the_protocol_warning_names_the_position_of_each_route(
 
 #: Digests of the default two-engine install, captured on the tree BEFORE this
 #: change (commit a87435a1) with the fingerprints from ``_fp``. They must never move.
-PRE_CHANGE_TWO_ENGINE_DIGEST = "a8e0349436fb2658f336e2a3e7219967a6ca926b0c184d95618c57d2c08cab3e"
-PRE_CHANGE_ONE_ENGINE_DIGEST = "2f545cfbecc733a5a16455a1f9fa6cf44d982a3863a300cdb01f582c78b99db4"
+#: Re-pinned on 6 November 2026 (change local-ocr-per-backend-cuts): schema 7 to 8,
+#: ``ocr_routing.local_tier`` gone, ``parser.local_ocr_backends`` added (default
+#: backend at cut 0.92, model unresolved). The three keep their relations.
+PRE_CHANGE_TWO_ENGINE_DIGEST = "db21712782e1f1142ba45583564a48490fb251531cfa51fc122ba40e0152c674"
+PRE_CHANGE_ONE_ENGINE_DIGEST = "02e559fa6f01f602d65443566e33745b413229c5b1b67c54cf88d640b885b343"
 PRE_CHANGE_SAME_ENGINE_TWICE_DIGEST = (
-    "303598d20be19f0ea500c401b41eb28beed1050a1463e8f3d2e038832698ec96"
+    "fbf9a1c53d0197fb33bc945aad635666edd0c16a67009b83dec98e0bc4ee5c69"
 )
 
 _IDENTITY = {

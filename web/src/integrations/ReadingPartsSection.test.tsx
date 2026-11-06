@@ -8,8 +8,8 @@ import { attentionCount, sectionsFor } from "./sections";
 /** The Integrations page shows the health of each reading part (change local-ocr-backends, task 6.3). */
 const PARTS: ReadingPartsHealth = {
   local_ocr_backends: [
-    { name: "pp-ocrv6-small", label: "PP-OCRv6 small", installed: true, model_present: true, off_reason: "PanicException: lock poisoned", effective_cut: 0.9, source: "built-in" },
-    { name: "indra", label: "Indra OCR", installed: false, model_present: null, off_reason: null, effective_cut: 0.9, source: "built-in" },
+    { name: "pp-ocrv6-small", label: "PP-OCRv6 small", installed: true, model_present: true, off_reason: "PanicException: lock poisoned", effective_cut: 0.92, source: "built-in" },
+    { name: "indra", label: "Indra OCR", installed: false, model_present: null, off_reason: null, effective_cut: 0.94, source: "built-in" },
   ],
   page_rules: [
     { name: "blank", label: "Blank pages", enabled: true, version: 1, source: "built-in" },
@@ -58,7 +58,7 @@ describe("Integrations reading parts", () => {
     const row = await entry("Local OCR backends", "PP-OCRv6 small");
     expect(within(row).getByText("Switched off", { selector: "[data-slot=badge]" })).toBeInTheDocument();
     expect(row).toHaveTextContent("PanicException: lock poisoned");
-    expect(row).toHaveTextContent("Confidence cut: 0.9");
+    expect(row).toHaveTextContent("Confidence cut: 0.92");
     expect(row).toHaveTextContent("Model files are on this machine.");
   });
 
@@ -73,7 +73,7 @@ describe("Integrations reading parts", () => {
     const FIRST = "Reads flagged pages first.";
     const LATER = "Reads the pages the backends above could not read well.";
     const NEUTRAL = "Listed, but it does not read pages now.";
-    const ready = (name: string): LocalOcrBackendHealth => ({ name, label: name, installed: true, model_present: true, off_reason: null, effective_cut: 0.9, source: "built-in" });
+    const ready = (name: string): LocalOcrBackendHealth => ({ name, label: name, installed: true, model_present: true, off_reason: null, effective_cut: 0.92, source: "built-in" });
     const withBackends = (...backends: LocalOcrBackendHealth[]) => serve({ ...PARTS, local_ocr_backends: backends });
 
     it("keeps the first and later wording when every backend is ready", async () => {

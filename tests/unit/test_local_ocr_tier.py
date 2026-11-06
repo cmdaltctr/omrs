@@ -5,9 +5,9 @@ Tier 1 of the ``page`` routing unit: pdf-inspector's selective OCR
 then the post-check that decides which pages escalate to the PaddleOCR-VL
 worker. Escalation is decided AFTER the attempt, on design decision 4 of
 change page-level-ocr-routing: empty or whitespace-only output, confidence
-below ``OCR_LOCAL_MIN_CONFIDENCE``, or ``hosted_recommended``. No script or
-typography pre-check exists, and none may be added without measurement
-(task 2.3 stays deferred).
+below the backend's cut (its ``OCR_LOCAL_CUTS`` entry, else its default), or
+``hosted_recommended``. No script or typography pre-check exists, and none may be
+added without measurement (task 2.3 stays deferred).
 
 Also covers the identity plumbing that arrived with the tier: the resolved
 local model identity (``name@revision``) joins the index identity payload
@@ -25,7 +25,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from omrs.core.ingestion.ocr_identity import ocr_routing_payload, resolved_routing_payload
+from omrs.core.ingestion.ocr_identity import (
+    local_backends_payload,
+    ocr_routing_payload,
+    resolved_routing_payload,
+)
 from omrs.integrations.pdf import page_routing
 from omrs.integrations.pdf.local_ocr import registry as local_ocr_registry
 from omrs.integrations.pdf.page_routing import local_ocr
@@ -34,7 +38,7 @@ from omrs.integrations.pdf.page_routing import local_ocr
 def _provenance(
     *,
     source: str = "ocr",
-    confidence: float | None = 0.9,
+    confidence: float | None = 0.95,
     hosted: bool = False,
     model: tuple[str, str] | None = ("pp-ocrv6-small", "oar-ocr-v0.7.0"),
     warnings: list[str] | None = None,
@@ -187,7 +191,7 @@ def test_readable_page_does_not_escalate(monkeypatch, tmp_path, effective_settin
         [
             SimpleNamespace(
                 pages=[
-                    _ocr_page(1, "readable", _provenance(confidence=0.9)),
+                    _ocr_page(1, "readable", _provenance(confidence=0.92)),
                 ]
             )
         ]
@@ -222,9 +226,9 @@ def test_whitespace_only_text_escalates(monkeypatch, tmp_path, effective_setting
     assert "empty_text" in result.reasons
 
 
-@pytest.mark.parametrize("confidence", [0.79, 0.85])
+@pytest.mark.parametrize("confidence", [0.79, 0.91])
 def test_confidence_below_the_cut_escalates(monkeypatch, tmp_path, effective_settings, confidence):
-    """Below the default 0.9 cut, the worker rereads the page."""
+    """Below the default 0.92 cut, the worker rereads the page."""
     calls = _Calls(
         [
             SimpleNamespace(
@@ -318,10 +322,14 @@ def test_escalation_cut_comes_from_settings_not_a_constant(
     _stub_process(monkeypatch, calls)
 
     at_default = local_ocr(
-        tmp_path / "doc.pdf", [1], settings=effective_settings(ocr_local_min_confidence=0.8)
+        tmp_path / "doc.pdf",
+        [1],
+        settings=effective_settings(ocr_local_cuts={"pp-ocrv6-small": 0.8}),
     )[0]
     raised = local_ocr(
-        tmp_path / "doc.pdf", [1], settings=effective_settings(ocr_local_min_confidence=0.7)
+        tmp_path / "doc.pdf",
+        [1],
+        settings=effective_settings(ocr_local_cuts={"pp-ocrv6-small": 0.7}),
     )[0]
 
     assert at_default.escalates is True
@@ -331,43 +339,55 @@ def test_escalation_cut_comes_from_settings_not_a_constant(
 # ── The resolved model identity in the index identity payload ──────────────
 
 
-def test_payload_gains_the_model_only_when_resolved(effective_settings):
-    """local_tier.model appears with a resolved identity, on default settings."""
-    settings = effective_settings()
+def test_payload_gains_the_model_only_when_resolved(monkeypatch, effective_settings):
+    """The model joins the PDF backend entry with a resolved identity, never ``ocr_routing``."""
+    settings = effective_settings(ocr_fallback_enabled=True)
+    answer = {"model": "pp-ocrv6-small@oar-ocr-v0.7.0"}
+    monkeypatch.setattr(
+        page_routing, "resolve_local_model_identity", lambda settings, backend: answer["model"]
+    )
 
-    with_model = ocr_routing_payload(settings, local_model_identity="pp-ocrv6-small@oar-ocr-v0.7.0")
-    unresolved = ocr_routing_payload(settings, local_model_identity=None)
+    with_model = local_backends_payload(settings)["local_ocr_backends"]["backends"]
+    answer["model"] = None
+    unresolved = local_backends_payload(settings)["local_ocr_backends"]["backends"]
 
-    assert with_model["routing_unit"] == "page"
-    assert with_model["local_tier"] == {
-        "min_confidence": 0.9,
-        "model": "pp-ocrv6-small@oar-ocr-v0.7.0",
-    }
+    assert ocr_routing_payload(settings)["routing_unit"] == "page"
+    assert "local_tier" not in ocr_routing_payload(settings)
+    assert with_model == [
+        {"name": "pp-ocrv6-small", "min_confidence": 0.92, "model": "pp-ocrv6-small@oar-ocr-v0.7.0"}
+    ]
     # Absence means unresolved (runtime missing): the identity moves when it
     # appears, which is correct, because the tier's text changes with it.
-    assert unresolved["local_tier"] == {"min_confidence": 0.9}
+    assert unresolved == [{"name": "pp-ocrv6-small", "min_confidence": 0.92}]
 
 
-def test_resolved_payload_probes_only_when_ocr_is_enabled(monkeypatch, effective_settings):
+def test_backend_payload_probes_only_when_ocr_is_enabled(monkeypatch, effective_settings):
     """The probe runs with the fallback enabled, on default routing settings, and only then."""
     probed: list[dict] = []
 
-    def _probe(settings):
+    def _probe(settings, backend):
         probed.append({"offline": settings.ocr_local_offline})
         return "m@r1"
 
     monkeypatch.setattr(page_routing, "resolve_local_model_identity", _probe)
 
-    disabled = resolved_routing_payload(effective_settings(ocr_fallback_enabled=False))
+    disabled = local_backends_payload(effective_settings(ocr_fallback_enabled=False))
 
     assert probed == []
-    assert disabled["local_tier"] == {"min_confidence": 0.9}
+    assert disabled["local_ocr_backends"]["backends"] == [
+        {"name": "pp-ocrv6-small", "min_confidence": 0.92}
+    ]
 
-    payload = resolved_routing_payload(effective_settings(ocr_fallback_enabled=True))
+    payload = local_backends_payload(effective_settings(ocr_fallback_enabled=True))
 
     assert probed == [{"offline": False}]
-    assert payload["routing_unit"] == "page"
-    assert payload["local_tier"] == {"min_confidence": 0.9, "model": "m@r1"}
+    assert payload["local_ocr_backends"]["backends"] == [
+        {"name": "pp-ocrv6-small", "min_confidence": 0.92, "model": "m@r1"}
+    ]
+    assert resolved_routing_payload(effective_settings(ocr_fallback_enabled=True)) == (
+        ocr_routing_payload(effective_settings(ocr_fallback_enabled=True))
+    )
+    assert probed == [{"offline": False}]
 
 
 # ── The resolution probe itself ────────────────────────────────────────────

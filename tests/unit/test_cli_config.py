@@ -74,8 +74,9 @@ def _expected_keys() -> set[str]:
 def _flatten(data: dict[str, Any], prefix: str = "") -> dict[str, Any]:
     out: dict[str, Any] = {}
     for key, value in data.items():
-        # A block holds keys; an empty map is one map-valued key (reading_part_options).
-        if isinstance(value, dict) and value:
+        # A block holds keys; a map setting is one map-valued key (reading_part_options,
+        # ocr_local_cuts, which shows its example).
+        if isinstance(value, dict) and value and key != "ocr_local_cuts":
             out.update(_flatten(value, f"{prefix}{key}."))
         else:
             out[f"{prefix}{key}"] = value

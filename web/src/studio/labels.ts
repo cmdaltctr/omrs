@@ -38,6 +38,7 @@ const FIELD_LABELS: Record<string, string> = {
   ocr_maths_routing_enabled: "Maths page routing",
   ocr_non_latin_routing: "Non-Latin routing",
   ocr_local_backends: "Local OCR backends",
+  ocr_local_cuts: "Confidence cuts",
   expand_window: "Neighbour chunks to add",
   include_diagnostics: "Include diagnostics",
 };

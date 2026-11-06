@@ -135,6 +135,7 @@ READ_OCR_KEYS: tuple[str, ...] = (
     "ocr_engine_fallback",
     *(field.name for rule in reading_parts.PAGE_RULES for field in rule.settings),
     "ocr_local_backends",
+    "ocr_local_cuts",
 )
 
 #: Every read option a node applies to its settings copy (``with_read_options``).
@@ -177,6 +178,9 @@ class ReadParams(BaseModel):
             in a non-Latin script skip the local OCR tier.
         ocr_local_backends: Ordered local OCR backend names for this step.
             ``None`` inherits the host list.
+        ocr_local_cuts: Map of local OCR backend name to confidence cut for
+            this step. ``None`` inherits the host map. An entry replaces the
+            host cut of its own backend only (``with_read_options`` merges).
         document_router: A ``document_routers`` entry name, or ``none`` to
             turn routing off for this step. ``None`` inherits the host router.
             The router's recipe enters the source identity; its name does not.
@@ -202,6 +206,7 @@ class ReadParams(BaseModel):
     ocr_local_backends: Annotated[tuple[str, ...] | None, _reading_rule("ocr_local_backends")] = (
         None
     )
+    ocr_local_cuts: Annotated[dict[str, float] | None, _reading_rule("ocr_local_cuts")] = None
     document_router: Annotated[str | None, _reading_rule("document_router")] = None
 
     @model_validator(mode="after")
@@ -304,6 +309,7 @@ READ = OperationDescriptor(
         "ocr_engine_fallback": "ocr_engine_fallback",
         "ocr_non_latin_routing": "ocr_non_latin_routing",
         "ocr_local_backends": "ocr_local_backends",
+        "ocr_local_cuts": "ocr_local_cuts",
         "document_router": "document_router",
     },
     index_shaping=True,

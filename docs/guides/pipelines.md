@@ -113,6 +113,19 @@ Read document step has an `ocr_local_backends` setting. It is an ordered list of
 - A saved graph that never set the list keeps its fingerprint, so no source re-indexes. A step that sets the list changes the fingerprint of the graph.
 - The stored source identity of PDF sources names a list that differs from the default. A PDF source indexed under another list is processed again on the next explicit ingest.
 
+### Local OCR cuts on Read document step
+
+The Read document step has an `ocr_local_cuts` setting. It is a map from a local OCR backend name to a confidence cut from 0 to 1, for example `{"indra": 0.96}`. See [Local OCR backends](configuration.md#local-ocr-backends) for the names and the default cuts.
+
+- `null` or no key (Inherit) uses the host cuts from `OCR_LOCAL_CUTS`. A box in Studio that you leave empty inherits. Studio shows the inherited cut, or the default cut, as the placeholder.
+- A name that is not a local OCR backend, a value outside 0 to 1, or a value that is not a number fails validation with `invalid_parameter`. The message names the node and the setting. It never repeats the value.
+- A step entry replaces the cut of its own backend in this pipeline only. A backend with no step entry keeps the effective cut of the host. This is a merge. Every other read option replaces the host value as a whole.
+- When you clear the last cut of a step, Studio removes the key, and the step inherits again.
+- A graph-wide `overrides.ocr_local_cuts` stays refused (`host_owned_setting`). The host owns the setting. Set the cut on the Read document step instead.
+- Built-in profiles show the cuts read-only.
+- Step cuts do not enter the fingerprint of the graph, so a saved graph keeps its fingerprint when a step sets cuts.
+- The effective cuts of the listed backends enter the `parser` block of PDF sources. When you change a step cut, PDF sources are processed again on the next explicit ingest. Markdown and code sources keep their digest. A step that sets the values of the host keeps the standard identity.
+
 ### Document router on Read document step
 
 Read document step has a `document_router` setting. It names one router of `document_routers` in `omrs.jsonc`. See [Reading parts](reading-parts.md) for what a router does and what it costs.

@@ -15,15 +15,29 @@ import pytest
 from omrs.core.ingestion import source_state
 from omrs.core.ingestion.reader_identity import reader_list_payload
 from omrs.core.settings import EffectiveSettings, EmbeddingBlock, MetadataBlock
+from omrs.integrations.pdf import page_routing
 
-# Pinned from the code before this change.
-CODE_DEFAULT_PDF = "b3ec63104c8708615f988cbce02882c19a851ffff188d2bc06b908fc97410c3c"
-PDF_INSPECTOR_PDF = "1f06f234b4cec7f3bd202f74839ff276e56c055e26a0d3a0392ef42c60fa476d"
-PDF_INSPECTOR_TEXT = "3e73e90882769ba455a46d3e56663fc83c47b29396dc31fc33d98cc550dd4a06"
-LITEPARSE_PDF = "b42e1f367efe35e3db7c075d0e02d9eb9d858151a13a3fd7826f5f5be327a852"
-PYPDF_PDF = "5373263b47c1e596dc677d2ee0a03e49dcf56dce84f8fb9e12c82ed93d866b45"
+# Pinned from the code before the reader list change.
+# Re-pinned on 6 November 2026 (change local-ocr-per-backend-cuts): schema 7 to 8
+# moved every digest. The text pin also lost ``ocr_routing.local_tier`` (default
+# cut 0.9). The PDF pins also gained ``parser.local_ocr_backends`` (the default
+# backend at cut 0.92, model left unresolved by the fixture below).
+CODE_DEFAULT_PDF = "be86b42e3153d7ad09710bdf17bb6cfaa84b56fe747b0537ef83b0352049e494"
+PDF_INSPECTOR_PDF = "2da39acb3a7781989f510e165ff6f4b3344859b1f2c6fdc93f5892d3387009e6"
+PDF_INSPECTOR_TEXT = "d73adaba8611d4289c40313c34a1cb8f3d74a2e7b3093aaffe7a417a417c811c"
+LITEPARSE_PDF = "0eea2f64a894b3f2671ac6575fb0656ffacad9d0b7dca34793c0d14a62425383"
+PYPDF_PDF = "74aff94e4d38cd024c221077de5313134690842e3f1ba8b5b02752b1434f2e8b"
 
 DEFAULT_LIST = ("pdf_inspector", "liteparse", "pypdf")
+
+
+@pytest.fixture(autouse=True)
+def _unresolved_local_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Hash with the local OCR model unresolved: the real probe depends on the host runtime."""
+    page_routing.reset_local_model_resolution()
+    monkeypatch.setattr(
+        page_routing, "_probe_local_model_identity", lambda settings, backend="x": None
+    )
 
 
 def digest(content_type: str = "application/pdf", **overrides: Any) -> str:

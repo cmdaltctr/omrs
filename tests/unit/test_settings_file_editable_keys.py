@@ -200,7 +200,7 @@ def test_a_one_sided_bound_is_named(key: str, rule: str) -> None:
 
 
 def test_a_two_sided_bound_keeps_its_text() -> None:
-    assert check_setting("ocr_local_min_confidence", 2.0) == (
+    assert check_setting("answer.max_rounds", 9) == (
         None,
-        "The value must be a number from 0.0 to 1.0.",
+        "The value must be a whole number from 1 to 8.",
     )

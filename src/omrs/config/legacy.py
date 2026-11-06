@@ -110,7 +110,6 @@ _RETIRED_ENV_VARS: dict[str, str] = {
 # Lifetime: as FLAT above — retained while the flat field exists.
 _NEVER_SHIPPED_ALIASES: dict[str, str] = {
     "OCR__ROUTING_UNIT": "OCR_ROUTING_UNIT",
-    "OCR__LOCAL_MIN_CONFIDENCE": "OCR_LOCAL_MIN_CONFIDENCE",
     "OCR__LOCAL_OFFLINE": "OCR_LOCAL_OFFLINE",
     "OCR__LOCAL_MODEL_DIRECTORY": "OCR_LOCAL_MODEL_DIRECTORY",
 }
@@ -137,6 +136,7 @@ _NEVER_SHIPPED_ALIASES: dict[str, str] = {
 _PAGE_UNIT_ONLY = "OCR routing judges every page, so the document-level threshold is gone"
 #: Removed names that nothing replaced, each with the reason the start-up message
 #: and the ``omrs.jsonc`` problem list give.
+_CUTS_REPLACEMENT = 'OCR_LOCAL_CUTS, a JSON object such as {"pp-ocrv6-small": 0.92}'
 NOTHING_REPLACES: dict[str, str] = {
     "LLAMACPP_IDLE_SLEEP_SECONDS": "OMRS stops an idle llama.cpp server after a fixed 10 minutes",
     "OCR_FALLBACK_PAGE_FRACTION": _PAGE_UNIT_ONLY,
@@ -146,6 +146,9 @@ NOTHING_REPLACES: dict[str, str] = {
 _REMOVED_ENV_VARS: dict[str, str] = {
     "OCR_WORKER_COMMAND": "OCR_WORKERS_DIR with OCR_ENGINE_PRIMARY",
     "OCR_WORKER_ENV_DIR": "OCR_WORKERS_DIR with OCR_ENGINE_PRIMARY",
+    # local-ocr-per-backend-cuts D7: one cut per backend replaces the single override.
+    "OCR_LOCAL_MIN_CONFIDENCE": _CUTS_REPLACEMENT,
+    "OCR__LOCAL_MIN_CONFIDENCE": _CUTS_REPLACEMENT,
     "LLAMACPP_SERVER_MODEL": (
         "ANSWER__PROVIDER=llamacpp with ANSWER__MODEL, and LLAMACPP_CHAT_SERVER=managed"
     ),
