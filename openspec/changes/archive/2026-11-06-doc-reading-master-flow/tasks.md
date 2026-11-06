@@ -32,7 +32,9 @@ The order below is the operator's confirmed order (2026-11-02). Do not reorder g
 - [x] 4.2 `non-latin-script-routing` in `omrs-feat-non-latin-script-routing`, forked fresh from the merged `v3`. Same gates (G5).
 - [x] 4.3 `document-reading-routers` in `omrs-feat-document-reading-routers`, forked fresh from the merged `v3`. Its ADR-110 index line and the `cloudflare` and `ollama` kinds are as already written and answered. Same gates (G6). After its merge, GATE G7: ask whether to run the judge confirmation experiment on new documents.
   - Result 2026-11-05: PR #169 merged (`39f34aae`), change archived on `v3` (`995f50fc`). Gate G6 waived by the operator (merge when green and the CodeRabbit review is checked). GATE G7 is open: the confirmation experiment needs new documents from the operator (not in Experiments 33, 38, 42, 43, 44).
-- [ ] 4.4 Remember: these changes and groups 1 and 2 all touch `pdf-reader` and related specs. Never two branches at once; rebase deltas when a fork lands on a changed spec.
+  - G7 closed 2026-11-06: Experiment 47 ran on 37 public-domain documents found by the agent and approved by the operator (PR #182, `b8de8da0`). Verdict FAIL: junk recall 0.52 (gate 0.70), healthy false-reject 0.037 (gate 0.05). The router stays off by default. The page scan alone sends handwritten scans to OCR; garbled old prints pass it. Issue #161 is narrowed to old print. Issue #171 is closed.
+- [x] 4.4 Remember: these changes and groups 1 and 2 all touch `pdf-reader` and related specs. Never two branches at once; rebase deltas when a fork lands on a changed spec.
+  - Closed 2026-11-06: a standing rule, kept for the whole flow. Every branch in groups 1 to 6 landed one at a time.
 
 ## 5. Close out the image-based rescue gate (no build work)
 

@@ -121,12 +121,18 @@ The protocol SHALL list each folder that holds page text, page images, reference
 
 ### Requirement: The confirmation pass rule SHALL be stricter and page based
 
-The pass rule SHALL be fixed in the protocol and approved by the operator before scoring. It SHALL judge pages, not the share of a document, on pages the scan did not flag. The operator SHALL choose one option and record it in `plan.json` `decision_register`:
+The pass rule SHALL be fixed in the protocol and approved by the operator before scoring. It SHALL judge pages, not the share of a document, on pages the scan did not flag. The operator SHALL choose option A or option B and record it in `plan.json` `decision_register`. The report SHALL also give, per document, the pages that would go to OCR and their cost.
 
-- Option A: junk-page recall at least 0.90 with the lower 95% interval bound at least 0.80, and the healthy-page flag rate at most 0.02 with the upper 95% interval bound at most 0.05.
-- Option B: junk-page recall at least 0.70 and a healthy-page false-reject rate at most 0.05, the cost the app states.
+#### Scenario: Option A is the strict rule
 
-The report SHALL also give, per document, the pages that would go to OCR and their cost.
+- **WHEN** the operator records option A
+- **THEN** a pass SHALL need junk-page recall at least 0.90 with the lower 95% interval bound at least 0.80
+- **AND** a healthy-page flag rate at most 0.02 with the upper 95% interval bound at most 0.05
+
+#### Scenario: Option B is the stated-cost rule
+
+- **WHEN** the operator records option B
+- **THEN** a pass SHALL need junk-page recall at least 0.70 and a healthy-page false-reject rate at most 0.05
 
 #### Scenario: Recall passes but false flags fail
 

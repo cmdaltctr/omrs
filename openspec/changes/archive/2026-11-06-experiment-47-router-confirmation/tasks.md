@@ -42,4 +42,5 @@
 - [x] 6.1 Run `analysis.py`. Verify: `output/summary.json` has a verdict, or names each gap.
 - [x] 6.2 Write `report.md` from the template; set `status` and `finding` in `experiment.json`. Verify: `omrs experiments check` and `omrs experiments index --write`.
 - [x] 6.3 Follow the cleanup procedure (protocol section 8). Verify: the copy receipt holds a SHA-256 per file.
-- [ ] 6.4 Record the G7 result in `doc-reading-master-flow`. Close issue #171 with a link to this change.
+- [x] 6.4 Record the G7 result in `doc-reading-master-flow`. Close issue #171 with a link to this change.
+  - Done 2026-11-06: G7 recorded under master flow task 4.3. Issue #171 closed with a link to PR #182.
