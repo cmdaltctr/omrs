@@ -44,7 +44,7 @@ class ProviderValues:
     """Provider values read from ``omrs.jsonc`` and held in memory.
 
     Keys are ``Settings`` field paths (``ollama_base_url``,
-    ``llamacpp_chat_url``, ``openrouter_api_key``, ``answer.provider``,
+    ``llamacpp_router_url``, ``openrouter_api_key``, ``answer.provider``,
     ``answer.model``). A blank value counts as unset. ``repr`` shows the
     field names only, because a value can be an API key.
 

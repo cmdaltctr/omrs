@@ -224,18 +224,24 @@ def test_a_bad_address_is_400_and_saves_nothing(harness: Any, bad: str) -> None:
         assert h.file_text() == ""
 
 
-def test_save_the_llamacpp_classification_address(harness: Any) -> None:
+def test_save_the_llamacpp_router_address(harness: Any) -> None:
     with harness() as h:
-        response = h.put("llamacpp", {"classify_url": "http://127.0.0.1:9931/v1"})
+        response = h.put("llamacpp", {"router_url": "http://127.0.0.1:9931/v1"})
         assert response.status_code == 200, response.text
-        field = h.field("llamacpp", "classify_url")
+        field = h.field("llamacpp", "router_url")
         assert (field["value"], field["source"]) == ("http://127.0.0.1:9931/v1", "config-file")
-        assert '"llamacpp_classify_url": "http://127.0.0.1:9931/v1"' in h.file_text()
+        assert '"llamacpp_router_url": "http://127.0.0.1:9931/v1"' in h.file_text()
 
 
-def test_a_file_url_for_the_classification_address_is_400(harness: Any) -> None:
+def test_a_retired_llamacpp_address_field_is_404(harness: Any) -> None:
     with harness() as h:
-        response = h.put("llamacpp", {"classify_url": "file:///etc/passwd"})
+        for retired in ("chat_url", "classify_url"):
+            assert h.put("llamacpp", {retired: "http://127.0.0.1:9931/v1"}).status_code == 404
+
+
+def test_a_file_url_for_the_router_address_is_400(harness: Any) -> None:
+    with harness() as h:
+        response = h.put("llamacpp", {"router_url": "file:///etc/passwd"})
         assert response.status_code == 400
         assert "passwd" not in response.text
         assert h.file_text() == ""
@@ -253,12 +259,12 @@ def test_a_key_field_is_not_saved_through_the_address_route(harness: Any) -> Non
 
 
 def test_an_address_set_by_the_environment_is_409(harness: Any) -> None:
-    with harness(explicit=frozenset({"llamacpp_chat_url"})) as h:
-        response = h.put("llamacpp", {"chat_url": "http://other:8081/v1"})
+    with harness(explicit=frozenset({"llamacpp_router_url"})) as h:
+        response = h.put("llamacpp", {"router_url": "http://other:8081/v1"})
         assert response.status_code == 409
-        assert "LLAMACPP_CHAT_URL" in response.json()["message"]
-        field = h.field("llamacpp", "chat_url")
-        assert (field["value"], field["source"]) == ("http://llama.test:8081/v1", "env")
+        assert "LLAMACPP_ROUTER_URL" in response.json()["message"]
+        field = h.field("llamacpp", "router_url")
+        assert (field["value"], field["source"]) == ("http://llama.test:8080/v1", "env")
 
 
 def test_the_ollama_address_is_409_while_embeddings_use_ollama(harness: Any) -> None:
@@ -519,7 +525,7 @@ def test_a_typed_bad_address_is_400_and_sends_nothing(
 ) -> None:
     with harness() as h:
         response = h.client.post(
-            "/v1/connections/llamacpp/test", json={"fields": {"chat_url": bad}}, headers=ORIGIN
+            "/v1/connections/llamacpp/test", json={"fields": {"router_url": bad}}, headers=ORIGIN
         )
         assert response.status_code == 400
         assert bad not in response.text

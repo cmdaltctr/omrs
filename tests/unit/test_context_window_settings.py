@@ -1,6 +1,6 @@
 """Context window settings: sources, locks and live apply (Parts A.1 to A.4).
 
-``ollama_context_window`` and ``llamacpp_context_window`` follow the provider
+``ollama_context_window`` follows the provider
 precedence of ADR-087: environment and ``.env`` lock, ``omrs.jsonc`` applies
 and does not lock, then the default of 16,384 tokens. No test calls a
 provider or reads the real user config folder.
@@ -292,8 +292,8 @@ def _fake_descriptor() -> ConnectionDescriptor:
                 "context_window",
                 "Window",
                 "int",
-                "llamacpp_context_window",
-                "LLAMACPP_CONTEXT_WINDOW",
+                "ollama_context_window",
+                "OLLAMA_CONTEXT_WINDOW",
                 minimum=2048,
                 maximum=262144,
             ),

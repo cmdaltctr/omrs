@@ -33,16 +33,12 @@ PROVIDER_INT_FIELDS: tuple[str, ...] = tuple(INT_KEY_BOUNDS)
 #: Settings of the llama.cpp server that ``omrs web`` manages: the program and
 #: who runs the Chat server (ADR-108). The server loads the Chat model.
 PROVIDER_SERVER_FIELDS: tuple[str, ...] = ("llamacpp_server_binary", "llamacpp_router_server")
-#: Addresses that ``core/settings.PROVIDER_ADDRESS_FIELDS`` still lists but ``Settings`` no
-#: longer has: the one router address replaced them (change one-llamacpp-router, D2).
-RETIRED_ADDRESS_FIELDS: tuple[str, ...] = ("llamacpp_chat_url", "llamacpp_classify_url")
 
 #: Editable provider fields, as ``Settings`` paths. ``answer.*`` live in the
 #: nested answer block: the Chat choice, the claim check judge choice and the
 #: reasoning level of each (locked one by one, add-chat-reasoning-and-usage D4).
 PROVIDER_FIELDS: tuple[str, ...] = (
-    *(name for name in PROVIDER_ADDRESS_FIELDS if name not in RETIRED_ADDRESS_FIELDS),
-    "llamacpp_router_url",
+    *PROVIDER_ADDRESS_FIELDS,
     *PROVIDER_SECRET_FIELDS,
     *PROVIDER_INT_FIELDS,
     *PROVIDER_SERVER_FIELDS,

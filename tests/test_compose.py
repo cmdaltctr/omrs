@@ -174,7 +174,9 @@ def test_build_embed_model_ollama() -> None:
 def test_build_embed_model_llamacpp_two_tier() -> None:
     """EMBED_PROVIDER=local + LOCAL_BACKEND=llamacpp resolves llamacpp."""
     pytest.importorskip("llama_index.embeddings.openai_like")
-    settings = _settings(local_backend="llamacpp", llamacpp_embed_model="t.gguf")
+    settings = _settings(
+        local_backend="llamacpp", llamacpp_embed_model="t.gguf", llamacpp_router_server="external"
+    )
     # The builder constructs its own OpenAILikeEmbedding subclass, which keeps line breaks.
     with patch("omrs.core.providers.embeddings.llamacpp._verbatim_embedding_class") as factory:
         mock_cls = factory.return_value
@@ -182,7 +184,7 @@ def test_build_embed_model_llamacpp_two_tier() -> None:
         mock_cls.assert_called_once()
         kwargs = mock_cls.call_args.kwargs
         assert kwargs["model_name"] == "t.gguf"
-        assert kwargs["api_base"] == "http://localhost:8080/v1"
+        assert kwargs["api_base"] == "http://127.0.0.1:8080/v1"
 
 
 def test_build_embed_model_validates_unknown_provider() -> None:
@@ -296,10 +298,10 @@ def test_get_embed_endpoint_ollama() -> None:
 
 
 def test_get_embed_endpoint_llamacpp() -> None:
-    """llamacpp: (embed_url, embed_model, 'no-key')."""
+    """llamacpp: (router_url, embed_model, 'no-key')."""
     settings = _settings(
         local_backend="llamacpp",
-        llamacpp_embed_url="http://llm:8080/v1",
+        llamacpp_router_url="http://llm:8080/v1",
         llamacpp_embed_model="t.gguf",
     )
     endpoint = get_embed_endpoint(settings)

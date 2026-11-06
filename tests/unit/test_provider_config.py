@@ -74,7 +74,9 @@ async def test_llamacpp_chat_parses_openai_response(monkeypatch: pytest.MonkeyPa
 
     set_default_effective_settings(
         EffectiveSettings(
-            llamacpp_chat_url="http://localhost:8081/v1", llamacpp_chat_model="test.gguf"
+            llamacpp_router_url="http://localhost:8081/v1",
+            llamacpp_router_server="external",
+            llamacpp_chat_model="test.gguf",
         )
     )
 
@@ -121,7 +123,9 @@ async def test_llamacpp_chat_retries_on_failure(monkeypatch: pytest.MonkeyPatch)
 
     set_default_effective_settings(
         EffectiveSettings(
-            llamacpp_chat_url="http://localhost:8081/v1", llamacpp_chat_model="test.gguf"
+            llamacpp_router_url="http://localhost:8081/v1",
+            llamacpp_router_server="external",
+            llamacpp_chat_model="test.gguf",
         )
     )
 

@@ -211,7 +211,6 @@ def test_judge_and_resolver_of_an_old_generation_use_its_snapshot(effective_sett
     [
         {"embed_model": "other-model"},
         {"embed_provider": "openrouter", "embed_model": "nomic"},
-        {"llamacpp_embed_url": "http://elsewhere:8080/v1"},
         {"openrouter_embed_model": "or-embed"},
     ],
 )

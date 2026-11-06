@@ -45,7 +45,8 @@ class _AsyncEmbeddings(_Embeddings):
 def embedder_and_calls(monkeypatch: pytest.MonkeyPatch) -> tuple[Any, list[list[str]]]:
     settings = Settings(
         llamacpp_embed_model="Qwen3-Embedding-0.6B-Q8_0.gguf",
-        llamacpp_embed_url="http://llama.example:8080/v1",
+        llamacpp_router_url="http://llama.example:8080/v1",
+        llamacpp_router_server="external",
         ingestion=IngestionSettings(embed_batch_size=8),
     )
     embedder = llamacpp.build(settings)

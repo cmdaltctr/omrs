@@ -15,6 +15,7 @@ from __future__ import annotations
 from functools import cache
 from typing import TYPE_CHECKING, Any
 
+from ...llamacpp_router import check_listed
 from ...runtime_gate import http_clients
 
 if TYPE_CHECKING:
@@ -86,6 +87,8 @@ def build(settings: Settings, *, model: str | None = None) -> Any:
 
     Raises:
         ImportError: If ``llama-index-embeddings-openai-like`` is absent.
+        RouterRefused: The router is managed and the model is not in its list
+            (``model-not-listed``). Nothing is sent.
     """
     try:
         from llama_index.embeddings.openai_like import OpenAILikeEmbedding
@@ -95,11 +98,13 @@ def build(settings: Settings, *, model: str | None = None) -> Any:
             "Install it with: uv sync --extra llamacpp"
         ) from None
 
+    name = model or settings.llamacpp_embed_model
+    check_listed(settings, "embeddings", name)
     return _verbatim_embedding_class(OpenAILikeEmbedding)(
-        model_name=model or settings.llamacpp_embed_model,
-        api_base=settings.llamacpp_embed_url,
+        model_name=name,
+        api_base=settings.llamacpp_router_url,
         api_key="no-key",
         embed_batch_size=settings.ingestion.embed_batch_size,
-        # OMRS's own embedding server, when managed: each request joins it first.
+        # OMRS's own router, when managed: each request joins it first.
         **http_clients("embeddings"),
     )

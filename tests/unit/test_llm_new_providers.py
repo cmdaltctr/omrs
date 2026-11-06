@@ -246,7 +246,11 @@ def test_provider_fields_match_the_descriptors() -> None:
     from omrs.core.providers.llm.llamacpp_rules import LLAMACPP_SERVER_FIELDS
     from omrs.core.settings import PROVIDER_INT_FIELDS
 
-    managed_server = {f.settings_field for f in LLAMACPP_SERVER_FIELDS}  # not in any descriptor
+    # The program, the router mode and the two router limits sit in no descriptor.
+    managed_server = {f.settings_field for f in LLAMACPP_SERVER_FIELDS} | {
+        "llamacpp_router_models_max",
+        "llamacpp_router_memory_margin_mib",
+    }
     assert set(PROVIDER_FIELDS) == declared | managed_server | {
         "answer.provider",
         "answer.model",
@@ -276,7 +280,8 @@ def test_provider_fields_match_the_descriptors() -> None:
         if f.kind == "url"
     }
     assert set(PROVIDER_ADDRESS_FIELDS) == addresses
-    assert "llamacpp_classify_url" in PROVIDER_ADDRESS_FIELDS
+    assert "llamacpp_router_url" in PROVIDER_ADDRESS_FIELDS
+    assert not {"llamacpp_chat_url", "llamacpp_classify_url"} & set(PROVIDER_ADDRESS_FIELDS)
 
 
 @pytest.mark.parametrize(("field", "variable"), list(NEW_FIELDS.items()))

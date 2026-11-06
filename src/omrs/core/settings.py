@@ -31,8 +31,7 @@ OCR_NON_LATIN_MODES: tuple[str, ...] = get_args(OcrNonLatinMode)
 #: a new field adds its name here and nowhere else.
 PROVIDER_ADDRESS_FIELDS = (
     "ollama_base_url",
-    "llamacpp_chat_url",
-    "llamacpp_classify_url",
+    "llamacpp_router_url",
     "openai_compatible_base_url",
 )
 PROVIDER_SECRET_FIELDS = ("openrouter_api_key", "openai_compatible_api_key", "anthropic_api_key")
@@ -303,12 +302,12 @@ class EffectiveSettings(BaseModel):
     cloud_backend: str = "openrouter"
 
     # ── Provider connection ───────────────────────────────────────
-    llamacpp_embed_url: str = "http://localhost:8080/v1"
+    #: The one llama.cpp router address, mode and model list (one-llamacpp-router D2, D3).
+    llamacpp_router_url: str = "http://127.0.0.1:8080/v1"
+    llamacpp_router_server: str = "managed"
+    llamacpp_models: dict[str, Any] = Field(default_factory=dict)
     llamacpp_embed_model: str = ""
-    llamacpp_chat_url: str = "http://localhost:8081/v1"
     llamacpp_chat_model: str = ""
-    #: Classification address; blank follows ``llamacpp_chat_url`` (ADR-108).
-    llamacpp_classify_url: str = ""
     openrouter_api_key: str = ""
     openai_compatible_base_url: str = "https://api.openai.com/v1"
     openai_compatible_api_key: str = ""

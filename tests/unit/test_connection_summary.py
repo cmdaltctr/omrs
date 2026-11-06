@@ -53,9 +53,9 @@ def make_settings(
         metadata_llm_provider=metadata_llm_provider,
         embed_model="nomic-embed-text",
         ollama_base_url="http://ollama.test:11434",
-        llamacpp_embed_url="http://llama.test:8080/v1",
+        llamacpp_router_url="http://llama.test:8080/v1",
+        llamacpp_router_server="external",
         llamacpp_embed_model="embed-gguf",
-        llamacpp_chat_url="http://llama.test:8081/v1",
         llamacpp_chat_model="chat-gguf",
         openrouter_api_key=openrouter_api_key,
         openrouter_embed_model="or-embed",
@@ -134,7 +134,7 @@ def test_entry_shape_and_config_dir(monkeypatch: pytest.MonkeyPatch, tmp_path: P
     assert read_only["ollama"]["Embedding model"] == "nomic-embed-text"
     assert read_only["ollama"]["Metadata model"] == "qwen-m"
     assert read_only["llamacpp"] == {
-        "Embedding address": "http://llama.test:8080/v1",
+        "Router mode": "external",
         "Embedding model": "embed-gguf",
         "Text model (classification)": "chat-gguf",
     }
@@ -160,17 +160,17 @@ def test_url_field_shape_and_default_source(monkeypatch: pytest.MonkeyPatch) -> 
         "group": None,
         "follows": None,
     }
-    assert field(entries["llamacpp"], "chat_url")["value"] == "http://llama.test:8081/v1"
+    assert field(entries["llamacpp"], "router_url")["value"] == "http://llama.test:8080/v1"
 
 
 def test_environment_value_has_source_env_and_locks(monkeypatch: pytest.MonkeyPatch) -> None:
-    result = summary(monkeypatch, make_settings(explicit=frozenset({"llamacpp_chat_url"})))
-    chat = field(by_provider(result)["llamacpp"], "chat_url")
+    result = summary(monkeypatch, make_settings(explicit=frozenset({"llamacpp_router_url"})))
+    chat = field(by_provider(result)["llamacpp"], "router_url")
     assert (chat["source"], chat["locked"]) == ("env", True)
-    assert "LLAMACPP_CHAT_URL" in chat["lock_reason"]
+    assert "LLAMACPP_ROUTER_URL" in chat["lock_reason"]
     # The card prints its own "Set from environment" label, so the reason must not repeat it.
     assert chat["lock_reason"] == (
-        "Remove LLAMACPP_CHAT_URL from the environment or .env to edit it here."
+        "Remove LLAMACPP_ROUTER_URL from the environment or .env to edit it here."
     )
 
 
@@ -516,10 +516,7 @@ def test_connection_targets_carry_the_key_server_side_only(
 ) -> None:
     targets = build_connection_targets(make_settings(openrouter_api_key=SECRET))
     assert targets["ollama"].urls == ("http://ollama.test:11434/api/tags",)
-    assert targets["llamacpp"].urls == (
-        "http://llama.test:8080/v1/models",
-        "http://llama.test:8081/v1/models",
-    )
+    assert targets["llamacpp"].urls == ("http://llama.test:8080/v1/models",)
     assert targets["openrouter"].urls == (f"{OPENROUTER_BASE_URL}/key",)
     assert targets["openrouter"].headers == {"Authorization": f"Bearer {SECRET}"}
     assert SECRET not in repr(targets)
