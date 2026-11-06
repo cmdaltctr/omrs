@@ -4,9 +4,11 @@ The order is the operator's (2026-11-06, design D1). Do not reorder groups. Stop
 
 ## 0. Preflight
 
-- [ ] 0.1 Read-only checks: `git -C omrs-v3 log --oneline -1` matches `origin/v3`; the three proposal commits exist on their branches (`314e014e`, `19c837b8`, `ebdd2333`); `openspec validate --all --strict` passes on `v3` and on each branch; `git worktree list` shows the four worktrees of design Context. Report any drift before acting.
-- [ ] 0.2 Read the three proposals in full (proposal, design, tasks, specs).
-- [ ] 0.3 GATE G0: ask the operator for the open questions of each proposal (cuts: none left; page-routing-panel: 3 with defaults; one-llamacpp-router: 11 with defaults), or "defaults ok". Record the answers in each change's `design.md` (operator decisions, dated) with `openspec-update-change`, validate, commit on its branch.
+- [x] 0.1 Read-only checks: `git -C omrs-v3 log --oneline -1` matches `origin/v3`; the three proposal commits exist on their branches (`314e014e`, `19c837b8`, `ebdd2333`); `openspec validate --all --strict` passes on `v3` and on each branch; `git worktree list` shows the four worktrees of design Context. Report any drift before acting.
+  - Done 2026-11-06. `v3` at `2d3d51da`, in sync, clean. All four validate strict (98, 100, 99, 99). Drift: Experiment 42 was already archived (`461c6ed6`); cuts branch 10 behind `v3`, router and panel 3 behind.
+- [x] 0.2 Read the three proposals in full (proposal, design, tasks, specs).
+- [x] 0.3 GATE G0: ask the operator for the open questions of each proposal (cuts: none left; page-routing-panel: 3 with defaults; one-llamacpp-router: 4 operator questions Q1 to Q4 plus 2 that spikes 1.2 and 1.4 answer; the earlier count of 11 was wrong), or "defaults ok". Record the answers in each change's `design.md` (operator decisions, dated) with `openspec-update-change`, validate, commit on its branch.
+  - Operator answers 2026-11-06. Panel: pypdfium2 gets an Install button (existing extra install job); no "Learn more" link; add an ADR. Router: Q1 `managed`; Q2 no Chat model by default (Chat must not share the classification model; user picks one); Q3 4 models and 8,192 MiB, editable in the Settings llama.cpp Router panel; Q4 CUDA 12.8 else CPU, choosable on the Integrations card. Every decision is visible in the web GUI.
 
 ## 1. Apply `local-ocr-per-backend-cuts` (worktree `omrs-feat-local-ocr-per-backend-cuts`)
 
