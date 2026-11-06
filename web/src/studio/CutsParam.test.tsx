@@ -1,5 +1,6 @@
 import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { JsonSchema, JsonValue, OperationDescriptor } from "../api/pipelines";
 import { readingState } from "../settings/test/fixtures";
@@ -110,5 +111,48 @@ describe("CutsParam", () => {
     setup({ backends: [] });
     expect(await screen.findByText("This step has no local OCR backend, so there is no cut to set.")).toBeInTheDocument();
     expect(screen.queryByRole("spinbutton")).toBeNull();
+  });
+});
+
+/** Holds the draft as the step editor does, so a test reads what a save would carry. */
+function Draft({ initial, backends }: { initial: JsonValue; backends: string[] }) {
+  const [value, setValue] = useState<JsonValue>(initial);
+  return (
+    <>
+      <CutsParam field={field({})} value={value} backends={backends} onChange={setValue} />
+      <output aria-label="draft">{JSON.stringify(value)}</output>
+    </>
+  );
+}
+
+function setupDraft(initial: JsonValue = null, backends = ["pp-ocrv6-small", "indra"]) {
+  const server = documentsServer({ "GET /v1/settings/document-reading": () => readingState({}, { local_ocr_backends: BACKENDS }) });
+  renderWithProviders(<Draft initial={initial} backends={backends} />, { fetchImpl: server.fetchImpl });
+  return { user: userEvent.setup(), draft: () => screen.getByLabelText("draft").textContent };
+}
+
+describe("CutsParam draft while a box is bad", () => {
+  it("leaves no cut in the draft when 1.4 is typed key by key", async () => {
+    const { user, draft } = setupDraft();
+    await user.type(await cut("pp-ocrv6-small"), "1.4");
+    expect(screen.getByText(INVALID)).toBeInTheDocument();
+    expect(draft()).toBe("null");
+  });
+
+  it("drops only the bad backend and keeps the other cuts", async () => {
+    const { user, draft } = setupDraft({ indra: 0.9 });
+    await user.type(await cut("pp-ocrv6-small"), "1.4");
+    expect(draft()).toBe(JSON.stringify({ indra: 0.9 }));
+  });
+
+  it("drops the earlier cut of a box that turns bad, and takes the new cut once it is good", async () => {
+    const { user, draft } = setupDraft({ "pp-ocrv6-small": 1 });
+    await user.type(await cut("pp-ocrv6-small"), ".5");
+    expect(screen.getByText(INVALID)).toBeInTheDocument();
+    expect(draft()).toBe("null");
+    await user.clear(await cut("pp-ocrv6-small"));
+    await user.type(await cut("pp-ocrv6-small"), "0.8");
+    expect(screen.queryByText(INVALID)).toBeNull();
+    expect(draft()).toBe(JSON.stringify({ "pp-ocrv6-small": 0.8 }));
   });
 });

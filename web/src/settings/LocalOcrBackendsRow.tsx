@@ -34,7 +34,7 @@ interface LocalOcrBackendsRowProps {
 /**
  * The local OCR backends and the confidence cut of each one. Edit opens the
  * ordered list with a cut input in each row, and one Save writes the list and
- * the cuts in one request. A cut for a backend that is not listed stays in the
+ * the cuts in one request; a list that did not change stays out of it. A cut for a backend that is not listed stays in the
  * map. A key that the environment locks stays out of the request. The notice
  * for the retired `ocr_local_min_confidence` key sits on top.
  */
@@ -46,7 +46,8 @@ export function LocalOcrBackendsRow({ list, cuts, state, onSaved }: LocalOcrBack
   const options = listOptions("backends", state);
   const placeholder = (name: string) => CUT_WORDS.defaultText(state.local_ocr_backends.find((option) => option.name === name)?.default_cut);
   const retired = state.retired_keys.includes(CUT_WORDS.retiredKey);
-  const dirty = draft !== null && (draft.list.join("\n") !== startList.join("\n") || !sameCuts(draft.cuts, startCuts));
+  const listChanged = draft !== null && draft.list.join("\n") !== startList.join("\n");
+  const dirty = draft !== null && (listChanged || !sameCuts(draft.cuts, startCuts));
   const waiting = [list.restart_pending ? readingText(list.saved, "backends") : null, cuts.restart_pending ? cutsText(cutsOf(cuts.saved)) : null].filter((part) => part !== null);
 
   function close() {
@@ -63,10 +64,13 @@ export function LocalOcrBackendsRow({ list, cuts, state, onSaved }: LocalOcrBack
     });
   }
 
-  /** The values to send. A locked key stays out, so the server never sees a write to it. */
-  function values(next: { list: string[] | null; cuts: Cuts | null }): DocumentReadingValues {
+  /**
+   * The values to send. A locked key stays out, so the server never sees a write to it.
+   * An unchanged list stays out too, so a cut-only save does not pin the list in force.
+   */
+  function values(next: { list?: string[] | null; cuts: Cuts | null }): DocumentReadingValues {
     return {
-      ...(list.locked ? {} : { ocr_local_backends: next.list }),
+      ...(list.locked || next.list === undefined ? {} : { ocr_local_backends: next.list }),
       ...(cuts.locked ? {} : { ocr_local_cuts: next.cuts !== null && Object.keys(next.cuts).length === 0 ? null : next.cuts }),
     };
   }
@@ -74,7 +78,7 @@ export function LocalOcrBackendsRow({ list, cuts, state, onSaved }: LocalOcrBack
   function submit(event: FormEvent) {
     event.preventDefault();
     if (draft === null || !dirty || draft.bad.size > 0) return;
-    send(values(draft));
+    send(values({ list: listChanged ? draft.list : undefined, cuts: draft.cuts }));
   }
 
   function setCut(name: string, cut: number | null) {
@@ -166,7 +170,7 @@ export function LocalOcrBackendsRow({ list, cuts, state, onSaved }: LocalOcrBack
             options={options}
             positionNote={LIST_WORDS.backends.position}
             disabled={list.locked}
-            onChange={(next) => setDraft({ ...draft, list: next })}
+            onChange={(next) => setDraft({ ...draft, list: next, bad: new Set([...draft.bad].filter((name) => next.includes(name))) })}
             renderRow={(name) => cutInput(name, draft.cuts, true)}
           />
           <div className="flex flex-wrap items-center gap-2">

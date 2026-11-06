@@ -33,7 +33,8 @@ interface CutsParamProps {
  * The cuts of a Read document step: one input for each backend of the step's
  * effective list. An empty input inherits, and shows the host's cut or the
  * backend's default. A step entry replaces the host cut of its backend only.
- * No entry at all saves `null`.
+ * No entry at all saves `null`. A box that holds a bad value drops its entry
+ * from the draft, so a save never carries the last good prefix of the text.
  */
 export function CutsParam({ field, value, backends, onChange, disabled = false }: CutsParamProps) {
   // The default cuts come with Settings > Document reading, as the backend names do.
@@ -46,6 +47,7 @@ export function CutsParam({ field, value, backends, onChange, disabled = false }
   };
 
   function set(name: string, cut: number | null) {
+    if (cut === null && !(name in own)) return;
     const next = { ...own };
     if (cut === null) delete next[name];
     else next[name] = cut;
@@ -63,7 +65,7 @@ export function CutsParam({ field, value, backends, onChange, disabled = false }
               <code dir="ltr" className="text-code font-mono [overflow-wrap:anywhere]">
                 {name}
               </code>
-              <LocalBackendCutInput backend={name} value={own[name] ?? null} placeholder={placeholder(name)} readOnly={disabled} onChange={(cut) => set(name, cut)} />
+              <LocalBackendCutInput backend={name} value={own[name] ?? null} placeholder={placeholder(name)} readOnly={disabled} onChange={(cut) => set(name, cut)} onInvalid={() => set(name, null)} />
             </li>
           ))}
         </ul>

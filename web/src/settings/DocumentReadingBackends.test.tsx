@@ -111,12 +111,12 @@ describe("Document reading local OCR confidence cuts", () => {
     expect(cut("pp-ocrv6-small")).toHaveValue(null);
   });
 
-  it("saves a typed cut with the list in one request", async () => {
+  it("saves a typed cut without the list, so a cut-only save pins no list", async () => {
     const { user, server } = await openSection(savingServer(BOTH));
     await edit(user);
     await user.type(cut("indra"), "0.95");
     await user.click(within(row()).getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(puts(server)).toEqual([{ values: { ocr_local_backends: ["pp-ocrv6-small", "indra"], ocr_local_cuts: { indra: 0.95 } }, revision: "r1" }]));
+    await waitFor(() => expect(puts(server)).toEqual([{ values: { ocr_local_cuts: { indra: 0.95 } }, revision: "r1" }]));
     expect(await screen.findByRole("dialog", { name: "Restart to apply?" })).toBeInTheDocument();
   });
 
@@ -126,16 +126,45 @@ describe("Document reading local OCR confidence cuts", () => {
     await edit(user);
     await user.clear(cut("indra"));
     await user.click(within(row()).getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(puts(server)).toEqual([{ values: { ocr_local_backends: ["pp-ocrv6-small", "indra"], ocr_local_cuts: null }, revision: "r1" }]));
+    await waitFor(() => expect(puts(server)).toEqual([{ values: { ocr_local_cuts: null }, revision: "r1" }]));
   });
 
-  it("keeps the cut of a backend that is not listed", async () => {
+  it("keeps the cut of a backend that is not listed, and sends no list", async () => {
     const saved = readingState({ ocr_local_cuts: { value: { indra: 0.95 }, saved: { indra: 0.95 }, source: "config-file" } }, TWO);
     const { user, server } = await openSection(savingServer(saved));
     await edit(user);
     await user.type(cut("pp-ocrv6-small"), "0.9");
     await user.click(within(row()).getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(puts(server)).toEqual([{ values: { ocr_local_backends: ["pp-ocrv6-small"], ocr_local_cuts: { indra: 0.95, "pp-ocrv6-small": 0.9 } }, revision: "r1" }]));
+    await waitFor(() => expect(puts(server)).toEqual([{ values: { ocr_local_cuts: { indra: 0.95, "pp-ocrv6-small": 0.9 } }, revision: "r1" }]));
+  });
+
+  it("sends the list and the cuts in one request when the list changes beside a cut", async () => {
+    const { user, server } = await openSection(savingServer(BOTH));
+    await edit(user);
+    await user.type(cut("indra"), "0.95");
+    await user.click(within(row()).getByRole("button", { name: "Move indra up" }));
+    await user.click(within(row()).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(puts(server)).toEqual([{ values: { ocr_local_backends: ["indra", "pp-ocrv6-small"], ocr_local_cuts: { indra: 0.95 } }, revision: "r1" }]));
+  });
+
+  it("sends no list when the order is moved and moved back", async () => {
+    const { user, server } = await openSection(savingServer(BOTH));
+    await edit(user);
+    await user.click(within(row()).getByRole("button", { name: "Move indra up" }));
+    await user.click(within(row()).getByRole("button", { name: "Move pp-ocrv6-small up" }));
+    await user.type(cut("indra"), "0.95");
+    await user.click(within(row()).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(puts(server)).toEqual([{ values: { ocr_local_cuts: { indra: 0.95 } }, revision: "r1" }]));
+  });
+
+  it("enables Save again after a row with a bad cut is removed", async () => {
+    const { user } = await openSection(savingServer(BOTH));
+    await edit(user);
+    await user.type(cut("indra"), "1.5");
+    expect(within(row()).getByRole("button", { name: "Save" })).toBeDisabled();
+    await user.click(within(row()).getByRole("button", { name: "Remove indra" }));
+    await user.type(cut("pp-ocrv6-small"), "0.9");
+    expect(within(row()).getByRole("button", { name: "Save" })).toBeEnabled();
   });
 
   it.each(["1.5", "-0.1"])("refuses %s beside the input and sends nothing", async (text) => {
