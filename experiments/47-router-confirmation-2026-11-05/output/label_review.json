@@ -1,0 +1,469 @@
+{
+  "reviewer": "coding agent (amendment A1): page image, page text and dots-mocr reference checked for each page",
+  "date": "2026-11-05",
+  "pages": [
+    {
+      "doc_id": "g1",
+      "page": 2,
+      "class": "healthy",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "g1",
+      "page": 3,
+      "class": "healthy",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "g1",
+      "page": 5,
+      "class": "healthy",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "g10",
+      "page": 2,
+      "class": "healthy",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "g10",
+      "page": 3,
+      "class": "healthy",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "g10",
+      "page": 5,
+      "class": "healthy",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "g11",
+      "page": 2,
+      "class": "healthy",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "g11",
+      "page": 5,
+      "class": "healthy",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "g11",
+      "page": 6,
+      "class": "healthy",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "g12",
+      "page": 3,
+      "class": "healthy",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "g3",
+      "page": 5,
+      "class": "junk",
+      "verdict": "agree",
+      "note": "Born-digital table page; the scan text lost the table layout and most of the caption"
+    },
+    {
+      "doc_id": "g3",
+      "page": 6,
+      "class": "grey",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "g6",
+      "page": 8,
+      "class": "healthy",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "g6",
+      "page": 13,
+      "class": "healthy",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "g6",
+      "page": 14,
+      "class": "healthy",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "g7",
+      "page": 2,
+      "class": "junk",
+      "verdict": "agree",
+      "note": "Born-digital Arabic; the scan text holds most words in reversed letter order, so junk describes the text the router reads"
+    },
+    {
+      "doc_id": "g7",
+      "page": 3,
+      "class": "junk",
+      "verdict": "agree",
+      "note": "Born-digital Arabic; the scan text holds most words in reversed letter order, so junk describes the text the router reads"
+    },
+    {
+      "doc_id": "g7",
+      "page": 4,
+      "class": "junk",
+      "verdict": "agree",
+      "note": "Born-digital Arabic; the scan text holds most words in reversed letter order, so junk describes the text the router reads"
+    },
+    {
+      "doc_id": "g7",
+      "page": 5,
+      "class": "junk",
+      "verdict": "agree",
+      "note": "Born-digital Arabic; the scan text holds most words in reversed letter order, so junk describes the text the router reads"
+    },
+    {
+      "doc_id": "g7",
+      "page": 6,
+      "class": "junk",
+      "verdict": "agree",
+      "note": "Born-digital Arabic; the scan text holds most words in reversed letter order, so junk describes the text the router reads"
+    },
+    {
+      "doc_id": "g8",
+      "page": 9,
+      "class": "healthy",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "g8",
+      "page": 10,
+      "class": "grey",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "g8",
+      "page": 11,
+      "class": "junk",
+      "verdict": "agree",
+      "note": "Born-digital page that is mostly a table; the scan text holds 85 of 1515 reference tokens"
+    },
+    {
+      "doc_id": "g8",
+      "page": 12,
+      "class": "grey",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "g8",
+      "page": 13,
+      "class": "healthy",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j11",
+      "page": 1,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j11",
+      "page": 2,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j11",
+      "page": 3,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j11",
+      "page": 4,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j11",
+      "page": 5,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j11",
+      "page": 6,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j12",
+      "page": 5,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j12",
+      "page": 6,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j12",
+      "page": 7,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j12",
+      "page": 8,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j12",
+      "page": 9,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j12",
+      "page": 10,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j13",
+      "page": 8,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j13",
+      "page": 9,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j13",
+      "page": 10,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j13",
+      "page": 11,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j14",
+      "page": 3,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j14",
+      "page": 4,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j14",
+      "page": 5,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j14",
+      "page": 6,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j15",
+      "page": 1,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j15",
+      "page": 2,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j15",
+      "page": 3,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j15",
+      "page": 4,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j15",
+      "page": 5,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j15",
+      "page": 6,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j16",
+      "page": 2,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j16",
+      "page": 3,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j16",
+      "page": 4,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j16",
+      "page": 5,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j16",
+      "page": 6,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j16",
+      "page": 7,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j17",
+      "page": 5,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j17",
+      "page": 6,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j17",
+      "page": 7,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j17",
+      "page": 8,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j17",
+      "page": 9,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j17",
+      "page": 10,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j18",
+      "page": 3,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j18",
+      "page": 4,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j18",
+      "page": 5,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j18",
+      "page": 6,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j18",
+      "page": 7,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j18",
+      "page": 8,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j6",
+      "page": 2,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j6",
+      "page": 3,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j6",
+      "page": 4,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j6",
+      "page": 5,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j6",
+      "page": 6,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j6",
+      "page": 7,
+      "class": "junk",
+      "verdict": "agree"
+    },
+    {
+      "doc_id": "j6",
+      "page": 8,
+      "class": "junk",
+      "verdict": "agree"
+    }
+  ]
+}

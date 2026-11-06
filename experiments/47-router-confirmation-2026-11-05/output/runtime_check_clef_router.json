@@ -1,0 +1,58 @@
+{
+  "utc": "2026-11-05T20:24:18+00:00",
+  "identity": {
+    "arm": "clef_router",
+    "plan_sha256": "2f96e5df01f3f603f377720f91d67b9088b51ef05c1b8d6ed023b9ee5b2cb41b",
+    "inputs_sha256": "4b89a16b18f08edd3b6c0d829727833e96b1633fa6414862aa4c627752b5f53f",
+    "labels_sha256": "d480977ee857c13b975de61d7c1081c7eec721a8141aac412984213aead04748",
+    "model": "25f801e2a27610b0ccc0cb1558d7eda3d7a304e34e2c4a04e3079357ff7d906e",
+    "runner_sha256": "e33a56afc84d477bcac52a11b23ad940a7252f49d5c312804428bedfa0072bb6"
+  },
+  "checks": {
+    "R1_build": {
+      "value": "version: 0.7.0-dev (build 11941, commit 19ff817fb)",
+      "pass": true
+    },
+    "R2_runtime": {
+      "value": {
+        "build": 11941,
+        "models": [
+          {
+            "file": "Clef-Flash-Q8_0.gguf",
+            "sha256": "25f801e2a27610b0ccc0cb1558d7eda3d7a304e34e2c4a04e3079357ff7d906e"
+          }
+        ]
+      },
+      "pass": true
+    },
+    "R3_projector": {
+      "value": "9dd8bc279f57d33b0697d4d0fe900fe751a24c9e3d30ab90969d4714ffc0722d",
+      "pass": true
+    },
+    "R6_bind": {
+      "value": [
+        "127.0.0.1:18447"
+      ],
+      "pass": true
+    },
+    "R4_shipped_checks": {
+      "value": {
+        "status": "ok",
+        "quantisation": "Quantisation Q8_0.",
+        "projector": "Projector smoke test passed.",
+        "build": null
+      },
+      "pass": true
+    },
+    "R5_no_projector": {
+      "value": {
+        "status": "projector-not-loaded",
+        "quantisation": "Quantisation Q8_0.",
+        "projector": "Projector smoke test failed: the model did not read the page image.",
+        "build": null
+      },
+      "pass": true
+    }
+  },
+  "passed": true
+}

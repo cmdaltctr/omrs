@@ -1,0 +1,1180 @@
+{
+  "experiment": "47-router-confirmation-2026-11-05",
+  "decides": "clef_router, primary gates",
+  "verdict": "FAIL",
+  "verdict_note": null,
+  "gates": [
+    {
+      "id": "G1",
+      "role": "primary",
+      "metric": "router_junk_recall",
+      "op": ">=",
+      "threshold": 0.7,
+      "status": "APPROVED 2026-11-05 (OD1 option B)",
+      "why": "Experiment 43 local arm caught 62 of 89 junk pages (0.70)",
+      "observed": 0.5185185185185185,
+      "pass": false
+    },
+    {
+      "id": "G2",
+      "role": "primary",
+      "metric": "healthy_false_reject_rate",
+      "op": "<=",
+      "threshold": 0.05,
+      "status": "APPROVED 2026-11-05 (OD1 option B)",
+      "why": "the stated cost is about 3% (2.7%, 15 of 565 healthy pages in Experiment 43); 5% allows two pages in 40",
+      "observed": 0.037037037037037035,
+      "pass": true
+    },
+    {
+      "id": "G3",
+      "role": "secondary",
+      "metric": "junk_documents_missed",
+      "op": "==",
+      "threshold": 0,
+      "status": "APPROVED 2026-11-05 (OD1 option B)",
+      "why": "each JUNK document with an unflagged junk page should reach OCR for at least one page",
+      "observed": 2,
+      "pass": false
+    },
+    {
+      "id": "G4",
+      "role": "secondary",
+      "metric": "seconds_per_page",
+      "op": "<=",
+      "threshold": 5.0,
+      "status": "APPROVED 2026-11-05 (OD1 option B)",
+      "why": "the stated speed is about 3.6 s per judged page (Experiment 43: 3.64 s mean)",
+      "observed": 2.654785027522936,
+      "pass": true
+    }
+  ],
+  "arms": {
+    "control": {
+      "metrics": {
+        "router_junk_recall": 0.0,
+        "healthy_false_reject_rate": 0.0,
+        "junk_documents_missed": 11,
+        "seconds_per_page": null
+      },
+      "counts": {
+        "junk_pages": 54,
+        "junk_caught": 0,
+        "healthy_pages": 54,
+        "healthy_rejected": 0,
+        "grey_pages": 3,
+        "grey_rejected": 0,
+        "scored_pages": 0
+      },
+      "junk_documents": [
+        "g7",
+        "g8",
+        "j11",
+        "j12",
+        "j13",
+        "j14",
+        "j15",
+        "j16",
+        "j17",
+        "j18",
+        "j6"
+      ],
+      "junk_documents_missed": [
+        "g7",
+        "g8",
+        "j11",
+        "j12",
+        "j13",
+        "j14",
+        "j15",
+        "j16",
+        "j17",
+        "j18",
+        "j6"
+      ],
+      "false_reject_ocr_seconds": 0.0,
+      "documents": {
+        "j1": {
+          "pages": 4,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j2": {
+          "pages": 3,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j3": {
+          "pages": 4,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j4": {
+          "pages": 8,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j5": {
+          "pages": 4,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j6": {
+          "pages": 7,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j7": {
+          "pages": 8,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j8": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j9": {
+          "pages": 9,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j10": {
+          "pages": 9,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g1": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g2": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g3": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g4": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g5": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g6": {
+          "pages": 7,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g7": {
+          "pages": 5,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g8": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g9": {
+          "pages": 2,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j11": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j12": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j13": {
+          "pages": 4,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j14": {
+          "pages": 4,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j15": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j16": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j17": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j18": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g10": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g11": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g12": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g13": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g14": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        }
+      },
+      "pages_between_shipped_and_exact_threshold": [],
+      "population_gaps": []
+    },
+    "clef_router": {
+      "metrics": {
+        "router_junk_recall": 0.5185185185185185,
+        "healthy_false_reject_rate": 0.037037037037037035,
+        "junk_documents_missed": 2,
+        "seconds_per_page": 2.654785027522936
+      },
+      "counts": {
+        "junk_pages": 54,
+        "junk_caught": 28,
+        "healthy_pages": 54,
+        "healthy_rejected": 2,
+        "grey_pages": 3,
+        "grey_rejected": 0,
+        "scored_pages": 111
+      },
+      "junk_documents": [
+        "g7",
+        "g8",
+        "j11",
+        "j12",
+        "j13",
+        "j14",
+        "j15",
+        "j16",
+        "j17",
+        "j18",
+        "j6"
+      ],
+      "junk_documents_missed": [
+        "g7",
+        "g8"
+      ],
+      "false_reject_ocr_seconds": 76.4,
+      "documents": {
+        "j1": {
+          "pages": 4,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j2": {
+          "pages": 3,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j3": {
+          "pages": 4,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j4": {
+          "pages": 8,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j5": {
+          "pages": 4,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j6": {
+          "pages": 7,
+          "rejected_pages": [
+            3,
+            4,
+            5
+          ],
+          "healthy_rejected": 0,
+          "ocr_seconds": 114.6,
+          "routes_at_one_page": true,
+          "routes_at_ten_percent": true
+        },
+        "j7": {
+          "pages": 8,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j8": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j9": {
+          "pages": 9,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j10": {
+          "pages": 9,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g1": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g2": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g3": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g4": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g5": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g6": {
+          "pages": 7,
+          "rejected_pages": [
+            10,
+            12
+          ],
+          "healthy_rejected": 2,
+          "ocr_seconds": 76.4,
+          "routes_at_one_page": true,
+          "routes_at_ten_percent": true
+        },
+        "g7": {
+          "pages": 5,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g8": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g9": {
+          "pages": 2,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j11": {
+          "pages": 6,
+          "rejected_pages": [
+            2,
+            3,
+            4,
+            6
+          ],
+          "healthy_rejected": 0,
+          "ocr_seconds": 152.8,
+          "routes_at_one_page": true,
+          "routes_at_ten_percent": true
+        },
+        "j12": {
+          "pages": 6,
+          "rejected_pages": [
+            5,
+            7,
+            8,
+            9,
+            10
+          ],
+          "healthy_rejected": 0,
+          "ocr_seconds": 191.0,
+          "routes_at_one_page": true,
+          "routes_at_ten_percent": true
+        },
+        "j13": {
+          "pages": 4,
+          "rejected_pages": [
+            8,
+            9
+          ],
+          "healthy_rejected": 0,
+          "ocr_seconds": 76.4,
+          "routes_at_one_page": true,
+          "routes_at_ten_percent": true
+        },
+        "j14": {
+          "pages": 4,
+          "rejected_pages": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "healthy_rejected": 0,
+          "ocr_seconds": 152.8,
+          "routes_at_one_page": true,
+          "routes_at_ten_percent": true
+        },
+        "j15": {
+          "pages": 6,
+          "rejected_pages": [
+            4
+          ],
+          "healthy_rejected": 0,
+          "ocr_seconds": 38.2,
+          "routes_at_one_page": true,
+          "routes_at_ten_percent": true
+        },
+        "j16": {
+          "pages": 6,
+          "rejected_pages": [
+            3
+          ],
+          "healthy_rejected": 0,
+          "ocr_seconds": 38.2,
+          "routes_at_one_page": true,
+          "routes_at_ten_percent": true
+        },
+        "j17": {
+          "pages": 6,
+          "rejected_pages": [
+            5,
+            9
+          ],
+          "healthy_rejected": 0,
+          "ocr_seconds": 76.4,
+          "routes_at_one_page": true,
+          "routes_at_ten_percent": true
+        },
+        "j18": {
+          "pages": 6,
+          "rejected_pages": [
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "healthy_rejected": 0,
+          "ocr_seconds": 229.2,
+          "routes_at_one_page": true,
+          "routes_at_ten_percent": true
+        },
+        "g10": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g11": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g12": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g13": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g14": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        }
+      },
+      "pages_between_shipped_and_exact_threshold": [],
+      "population_gaps": []
+    },
+    "jev_router": {
+      "metrics": {
+        "router_junk_recall": 0.3333333333333333,
+        "healthy_false_reject_rate": 0.07407407407407407,
+        "junk_documents_missed": 3,
+        "seconds_per_page": 0.8573280366972478
+      },
+      "counts": {
+        "junk_pages": 54,
+        "junk_caught": 18,
+        "healthy_pages": 54,
+        "healthy_rejected": 4,
+        "grey_pages": 3,
+        "grey_rejected": 0,
+        "scored_pages": 111
+      },
+      "junk_documents": [
+        "g7",
+        "g8",
+        "j11",
+        "j12",
+        "j13",
+        "j14",
+        "j15",
+        "j16",
+        "j17",
+        "j18",
+        "j6"
+      ],
+      "junk_documents_missed": [
+        "g7",
+        "g8",
+        "j6"
+      ],
+      "false_reject_ocr_seconds": 152.8,
+      "documents": {
+        "j1": {
+          "pages": 4,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j2": {
+          "pages": 3,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j3": {
+          "pages": 4,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j4": {
+          "pages": 8,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j5": {
+          "pages": 4,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j6": {
+          "pages": 7,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j7": {
+          "pages": 8,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j8": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j9": {
+          "pages": 9,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j10": {
+          "pages": 9,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g1": {
+          "pages": 6,
+          "rejected_pages": [
+            2,
+            3
+          ],
+          "healthy_rejected": 2,
+          "ocr_seconds": 76.4,
+          "routes_at_one_page": true,
+          "routes_at_ten_percent": true
+        },
+        "g2": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g3": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g4": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g5": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g6": {
+          "pages": 7,
+          "rejected_pages": [
+            10,
+            12
+          ],
+          "healthy_rejected": 2,
+          "ocr_seconds": 76.4,
+          "routes_at_one_page": true,
+          "routes_at_ten_percent": true
+        },
+        "g7": {
+          "pages": 5,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g8": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g9": {
+          "pages": 2,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "j11": {
+          "pages": 6,
+          "rejected_pages": [
+            2,
+            4
+          ],
+          "healthy_rejected": 0,
+          "ocr_seconds": 76.4,
+          "routes_at_one_page": true,
+          "routes_at_ten_percent": true
+        },
+        "j12": {
+          "pages": 6,
+          "rejected_pages": [
+            5,
+            6,
+            7,
+            10
+          ],
+          "healthy_rejected": 0,
+          "ocr_seconds": 152.8,
+          "routes_at_one_page": true,
+          "routes_at_ten_percent": true
+        },
+        "j13": {
+          "pages": 4,
+          "rejected_pages": [
+            8
+          ],
+          "healthy_rejected": 0,
+          "ocr_seconds": 38.2,
+          "routes_at_one_page": true,
+          "routes_at_ten_percent": true
+        },
+        "j14": {
+          "pages": 4,
+          "rejected_pages": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "healthy_rejected": 0,
+          "ocr_seconds": 152.8,
+          "routes_at_one_page": true,
+          "routes_at_ten_percent": true
+        },
+        "j15": {
+          "pages": 6,
+          "rejected_pages": [
+            6
+          ],
+          "healthy_rejected": 0,
+          "ocr_seconds": 38.2,
+          "routes_at_one_page": true,
+          "routes_at_ten_percent": true
+        },
+        "j16": {
+          "pages": 6,
+          "rejected_pages": [
+            7
+          ],
+          "healthy_rejected": 0,
+          "ocr_seconds": 38.2,
+          "routes_at_one_page": true,
+          "routes_at_ten_percent": true
+        },
+        "j17": {
+          "pages": 6,
+          "rejected_pages": [
+            9
+          ],
+          "healthy_rejected": 0,
+          "ocr_seconds": 38.2,
+          "routes_at_one_page": true,
+          "routes_at_ten_percent": true
+        },
+        "j18": {
+          "pages": 6,
+          "rejected_pages": [
+            5,
+            6,
+            7,
+            8
+          ],
+          "healthy_rejected": 0,
+          "ocr_seconds": 152.8,
+          "routes_at_one_page": true,
+          "routes_at_ten_percent": true
+        },
+        "g10": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g11": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g12": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g13": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        },
+        "g14": {
+          "pages": 6,
+          "rejected_pages": [],
+          "healthy_rejected": 0,
+          "ocr_seconds": 0.0,
+          "routes_at_one_page": false,
+          "routes_at_ten_percent": false
+        }
+      },
+      "pages_between_shipped_and_exact_threshold": [],
+      "population_gaps": []
+    }
+  },
+  "comparison": {
+    "arms": [
+      "clef_router",
+      "jev_router"
+    ],
+    "pages_both_scored": 111,
+    "agree": 93,
+    "both_reject": 17,
+    "neither_reject": 76,
+    "only_first_rejects": 13,
+    "only_second_rejects": 5,
+    "agreement_rate": 0.8378378378378378,
+    "differ": [
+      {
+        "doc_id": "g1",
+        "page": 2,
+        "class": "healthy",
+        "clef_router_p_yes": 0.8836170536848384,
+        "jev_router_p_yes": 0.16,
+        "rejected_by": "jev_router"
+      },
+      {
+        "doc_id": "g1",
+        "page": 3,
+        "class": "healthy",
+        "clef_router_p_yes": 0.8547865602675669,
+        "jev_router_p_yes": 0.13,
+        "rejected_by": "jev_router"
+      },
+      {
+        "doc_id": "j11",
+        "page": 3,
+        "class": "junk",
+        "clef_router_p_yes": 0.1661410841398726,
+        "jev_router_p_yes": 0.21,
+        "rejected_by": "clef_router"
+      },
+      {
+        "doc_id": "j11",
+        "page": 6,
+        "class": "junk",
+        "clef_router_p_yes": 0.0793301104637274,
+        "jev_router_p_yes": 0.24,
+        "rejected_by": "clef_router"
+      },
+      {
+        "doc_id": "j12",
+        "page": 6,
+        "class": "junk",
+        "clef_router_p_yes": 0.18772936720411132,
+        "jev_router_p_yes": 0.17,
+        "rejected_by": "jev_router"
+      },
+      {
+        "doc_id": "j12",
+        "page": 8,
+        "class": "junk",
+        "clef_router_p_yes": 0.07596595961418291,
+        "jev_router_p_yes": 0.23,
+        "rejected_by": "clef_router"
+      },
+      {
+        "doc_id": "j12",
+        "page": 9,
+        "class": "junk",
+        "clef_router_p_yes": 0.08063191324905931,
+        "jev_router_p_yes": 0.24,
+        "rejected_by": "clef_router"
+      },
+      {
+        "doc_id": "j13",
+        "page": 9,
+        "class": "junk",
+        "clef_router_p_yes": 0.16112642646036074,
+        "jev_router_p_yes": 0.28,
+        "rejected_by": "clef_router"
+      },
+      {
+        "doc_id": "j15",
+        "page": 4,
+        "class": "junk",
+        "clef_router_p_yes": 0.15578946439359598,
+        "jev_router_p_yes": 0.26,
+        "rejected_by": "clef_router"
+      },
+      {
+        "doc_id": "j15",
+        "page": 6,
+        "class": "junk",
+        "clef_router_p_yes": 0.2027339758167703,
+        "jev_router_p_yes": 0.16,
+        "rejected_by": "jev_router"
+      },
+      {
+        "doc_id": "j16",
+        "page": 3,
+        "class": "junk",
+        "clef_router_p_yes": 0.12522457134458145,
+        "jev_router_p_yes": 0.24,
+        "rejected_by": "clef_router"
+      },
+      {
+        "doc_id": "j16",
+        "page": 7,
+        "class": "junk",
+        "clef_router_p_yes": 0.20902030688564002,
+        "jev_router_p_yes": 0.16,
+        "rejected_by": "jev_router"
+      },
+      {
+        "doc_id": "j17",
+        "page": 5,
+        "class": "junk",
+        "clef_router_p_yes": 0.1396671951749999,
+        "jev_router_p_yes": 0.21,
+        "rejected_by": "clef_router"
+      },
+      {
+        "doc_id": "j18",
+        "page": 3,
+        "class": "junk",
+        "clef_router_p_yes": 0.1281243988212279,
+        "jev_router_p_yes": 0.21,
+        "rejected_by": "clef_router"
+      },
+      {
+        "doc_id": "j18",
+        "page": 4,
+        "class": "junk",
+        "clef_router_p_yes": 0.06820006187781225,
+        "jev_router_p_yes": 0.21,
+        "rejected_by": "clef_router"
+      },
+      {
+        "doc_id": "j6",
+        "page": 3,
+        "class": "junk",
+        "clef_router_p_yes": 0.13882769777996798,
+        "jev_router_p_yes": 0.33,
+        "rejected_by": "clef_router"
+      },
+      {
+        "doc_id": "j6",
+        "page": 4,
+        "class": "junk",
+        "clef_router_p_yes": 0.1403719916870646,
+        "jev_router_p_yes": 0.32,
+        "rejected_by": "clef_router"
+      },
+      {
+        "doc_id": "j6",
+        "page": 5,
+        "class": "junk",
+        "clef_router_p_yes": 0.13471911349694413,
+        "jev_router_p_yes": 0.34,
+        "rejected_by": "clef_router"
+      }
+    ]
+  }
+}

@@ -1,0 +1,454 @@
+{
+  "format": "omrs-exp47-corpus/1",
+  "note": "Approved by the operator on 2026-11-05 (plan.json decision_register). Each PDF is fetched from source_url into corpus/ and checked against sha256. archive.org documents without a rights statement (j1 to j4) are treated as public domain by age (operator decision). Only page_range is read.",
+  "documents": [
+    {
+      "id": "j1",
+      "group": "JUNK",
+      "file": "youcantimaginede00west.pdf",
+      "source_url": "https://archive.org/download/youcantimaginede00west/youcantimaginede00west.pdf",
+      "licence": "public-domain",
+      "sha256": "e6f5587b72e3a8700487843761fd980f82b8cb970a54016f9f1d1a1ba67d1138",
+      "page_range": [
+        1,
+        4
+      ],
+      "language": "English, handwriting",
+      "title": "Letter 'You can't imagine dear aunt Mary', 1836 (Boston Public Library); public domain by age"
+    },
+    {
+      "id": "j2",
+      "group": "JUNK",
+      "file": "samuelmayjrinacc00amer.pdf",
+      "source_url": "https://archive.org/download/samuelmayjrinacc00amer/39999089660854.pdf",
+      "licence": "public-domain",
+      "sha256": "a0f362f3d09b06bb7a4b9ac92b5944380430deaed3d9b7c596f93931c1a29a02",
+      "page_range": [
+        1,
+        3
+      ],
+      "language": "English, handwritten ledger",
+      "title": "Samuel May Jr. account with the Anti-Slavery Sale, 1858; public domain by age"
+    },
+    {
+      "id": "j3",
+      "group": "JUNK",
+      "file": "copyoflettertolo00noai.pdf",
+      "source_url": "https://archive.org/download/copyoflettertolo00noai/39999063814709.pdf",
+      "licence": "public-domain",
+      "sha256": "aed378e4a7044d55a11284d4c709dc88da25fc3ceef3d7e8847e163105cbba7e",
+      "page_range": [
+        1,
+        4
+      ],
+      "language": "French, handwriting",
+      "title": "Copy of a letter to Lord Weymouth, 1778; public domain by age"
+    },
+    {
+      "id": "j4",
+      "group": "JUNK",
+      "file": "elishadunbarbark00elis.pdf",
+      "source_url": "https://archive.org/download/elishadunbarbark00elis/ODHS_1142_text.pdf",
+      "licence": "public-domain",
+      "sha256": "623d0f9c6702df3290efaa3056f44605403783d0043467e1b7b668caaadbabdc",
+      "page_range": [
+        9,
+        16
+      ],
+      "language": "English, handwritten logbook",
+      "title": "Logbook of the bark Elisha Dunbar, 1854; public domain by age; pages 9 to 16 only"
+    },
+    {
+      "id": "j5",
+      "group": "JUNK",
+      "file": "AMontMsC08402.pdf",
+      "source_url": "https://archive.org/download/AMontMsC08402/AMontMsC08402.pdf",
+      "licence": "public-domain",
+      "sha256": "8ab07bcf231ec72ed2ddbbb3b94e8a67085d3ea353ba5a8c76a250abe8e29e4c",
+      "page_range": [
+        1,
+        4
+      ],
+      "language": "Spanish, handwriting",
+      "title": "Purpura regis oda, Munoz y Pabon, 1901 (University of Seville library); Public Domain Mark 1.0"
+    },
+    {
+      "id": "j6",
+      "group": "JUNK",
+      "file": "bub_gb_PiNbAAAAcAAJ.pdf",
+      "source_url": "https://archive.org/download/bub_gb_PiNbAAAAcAAJ/bub_gb_PiNbAAAAcAAJ.pdf",
+      "licence": "public-domain",
+      "sha256": "c98892ea0908beea232aa13016eee954c71c6e7d6a37f67311b8be2a36877892",
+      "page_range": [
+        2,
+        8
+      ],
+      "language": "German, Fraktur print",
+      "title": "Relation von dem grausamen MordBrand, 1689 (via Google Books); Public Domain Mark 1.0"
+    },
+    {
+      "id": "j7",
+      "group": "JUNK",
+      "file": "mscodex39.pdf",
+      "source_url": "https://archive.org/download/mscodex39/mscodex39_text.pdf",
+      "licence": "public-domain",
+      "sha256": "99b385ce29216469b4861ab7d9750f4f9dad52ceda3cdb4bee73b679f81f9e32",
+      "page_range": [
+        5,
+        12
+      ],
+      "language": "Arabic, manuscript",
+      "title": "Ratib al-mahdi, 1885 (Penn mscodex39); Public Domain Mark"
+    },
+    {
+      "id": "j8",
+      "group": "JUNK",
+      "file": "kcajs_rar_ms448.pdf",
+      "source_url": "https://archive.org/download/kcajs_rar_ms448/kcajs_rar_ms448_text.pdf",
+      "licence": "public-domain",
+      "sha256": "a70128335083f374f2de702dd03d8844e049febb6752effbd457e8ea48da7a98",
+      "page_range": [
+        1,
+        6
+      ],
+      "language": "Hebrew, manuscript",
+      "title": "Ashkenazic Mahzor leaves, about 1200 (Penn); Public Domain Mark"
+    },
+    {
+      "id": "j9",
+      "group": "JUNK",
+      "file": "ljs454.pdf",
+      "source_url": "https://archive.org/download/ljs454/ljs454_text.pdf",
+      "licence": "public-domain",
+      "sha256": "0d8b3cb7ea6e26cff03768a6f0ba29d5a2bcf7da561f53faf98c25b74ec8ca00",
+      "page_range": [
+        4,
+        12
+      ],
+      "language": "Japanese, manuscript",
+      "title": "Seiyo senpaku zukai, 1808 (Penn ljs454); Public Domain Mark"
+    },
+    {
+      "id": "j10",
+      "group": "JUNK",
+      "file": "maghakavyadurghata.pdf",
+      "source_url": "https://archive.org/download/maghakavyadurghata/maghakavyadurghata_text.pdf",
+      "licence": "public-domain",
+      "sha256": "5b2982796d6d450b144014c5a85fc7d288ed5be047d1733e2b62367ed3eeaf23",
+      "page_range": [
+        7,
+        15
+      ],
+      "language": "Sanskrit, Devanagari manuscript",
+      "title": "Maghakavyadurghata, Rajakunda; Public Domain Mark set by the uploader"
+    },
+    {
+      "id": "g1",
+      "group": "GOOD",
+      "file": "usgs-fs20243001.pdf",
+      "source_url": "https://pubs.usgs.gov/fs/2024/3001/fs20243001.pdf",
+      "licence": "public-domain",
+      "sha256": "54c4e61dbfa3b213c6deddd6049c4864fc92478b4118c7dffd8b1613d3aa9fd0",
+      "page_range": [
+        1,
+        6
+      ],
+      "language": "English, born-digital",
+      "title": "USGS Fact Sheet 2024-3001; US government work"
+    },
+    {
+      "id": "g2",
+      "group": "GOOD",
+      "file": "nist-cswp29.pdf",
+      "source_url": "https://nvlpubs.nist.gov/nistpubs/CSWP/NIST.CSWP.29.pdf",
+      "licence": "public-domain",
+      "sha256": "3c31f46fee98cac0c4323453e5109291a213b4de7fef8c058af9bf67f717433c",
+      "page_range": [
+        5,
+        10
+      ],
+      "language": "English, born-digital",
+      "title": "NIST CSWP 29, Cybersecurity Framework 2.0; US government work"
+    },
+    {
+      "id": "g3",
+      "group": "GOOD",
+      "file": "arxiv-2403.00008.pdf",
+      "source_url": "https://arxiv.org/pdf/2403.00008v1",
+      "licence": "cc-by",
+      "sha256": "f481022dbe004536d5c02eaf0480017f5e6a4858693ae7cbb8843d1e937c23a9",
+      "page_range": [
+        1,
+        6
+      ],
+      "language": "English with maths, born-digital",
+      "title": "arXiv 2403.00008, drug delivery by contact lens; CC BY 4.0"
+    },
+    {
+      "id": "g4",
+      "group": "GOOD",
+      "file": "sim_farmers-bulletin_1922-11_1281.pdf",
+      "source_url": "https://archive.org/download/sim_farmers-bulletin_1922-11_1281/sim_farmers-bulletin_1922-11_1281.pdf",
+      "licence": "public-domain",
+      "sha256": "a2fb9a7dbd0069025bb6631019edd6eabf4baa7e29d7cc3e557ef2313d7c8884",
+      "page_range": [
+        3,
+        8
+      ],
+      "language": "English, clean scan",
+      "title": "USDA Farmers' Bulletin 1281, 1922; US government work"
+    },
+    {
+      "id": "g5",
+      "group": "GOOD",
+      "file": "tatsgnraux00blai.pdf",
+      "source_url": "https://archive.org/download/tatsgnraux00blai/tatsgnraux00blai.pdf",
+      "licence": "public-domain",
+      "sha256": "7393e0200567f33e7cffa377428bcdda406023c1e1031d192d2ce7b18536fd48",
+      "page_range": [
+        13,
+        18
+      ],
+      "language": "French, clean scan",
+      "title": "Etats-generaux de Blois (1588), Blaizot, 1912; public domain in the US"
+    },
+    {
+      "id": "g6",
+      "group": "GOOD",
+      "file": "oracinfnebredele00vall.pdf",
+      "source_url": "https://archive.org/download/oracinfnebredele00vall/oracinfnebredele00vall.pdf",
+      "licence": "public-domain",
+      "sha256": "d224800cccba92f05d44fdc065df7dd029afd7e0e8a724ce2da8c4c4e8535a60",
+      "page_range": [
+        8,
+        14
+      ],
+      "language": "Spanish, clean scan",
+      "title": "Oracion funebre, Valle Ruiz, 1897; public domain (author died 1930)"
+    },
+    {
+      "id": "g7",
+      "group": "GOOD",
+      "file": "iugjeps-6079.pdf",
+      "source_url": "https://journals.iugaza.edu.ps/index.php/IUGJEPS/article/viewFile/6079/3303",
+      "licence": "cc-by",
+      "sha256": "e3fddda3f71625e1db93760c7aa30d65cd352d4b152124940253fe83616278ce",
+      "page_range": [
+        2,
+        6
+      ],
+      "language": "Arabic, born-digital",
+      "title": "IUG Journal of Educational and Psychology Sciences 28(5), 2020; CC BY 4.0"
+    },
+    {
+      "id": "g8",
+      "group": "GOOD",
+      "file": "gms-zma000997.pdf",
+      "source_url": "https://www.egms.de/static/pdf/journals/zma/2015-32/zma000997.pdf",
+      "licence": "cc-by",
+      "sha256": "93b45760fc7d51b1fd19b157c8f862f224aa1f0fa707a8e3b5770c1815404fcc",
+      "page_range": [
+        8,
+        13
+      ],
+      "language": "German, born-digital",
+      "title": "GMS ZMA 32(5) zma000997, D-RECT German; CC BY 4.0"
+    },
+    {
+      "id": "g9",
+      "group": "GOOD",
+      "file": "jstage-seitai-2513.pdf",
+      "source_url": "https://www.jstage.jst.go.jp/article/seitai/advpub/0/advpub_2513/_pdf/-char/ja",
+      "licence": "cc-by",
+      "sha256": "fe61191c1bdcb88205d379ad4d70cecffc25206c342838fa931dbc3ee7118acf",
+      "page_range": [
+        1,
+        2
+      ],
+      "language": "Japanese, born-digital",
+      "title": "Japanese Journal of Ecology editorial, DOI 10.18960/seitai.2513; CC BY 4.0"
+    },
+    {
+      "id": "j11",
+      "group": "JUNK",
+      "file": "bub_gb_ZLlDAAAAcAAJ.pdf",
+      "source_url": "https://archive.org/download/bub_gb_ZLlDAAAAcAAJ/bub_gb_ZLlDAAAAcAAJ.pdf",
+      "licence": "public-domain",
+      "sha256": "96180c2a371923cd6f007d87db4fa5a079ff953d3405501ae7f68b3285e3d400",
+      "page_range": [
+        1,
+        6
+      ],
+      "language": "German, Fraktur print",
+      "title": "Repartition fuer Hauptmann Peiseles Compagnie, about 1700 (via Google Books); Public Domain Mark 1.0; amendment A2"
+    },
+    {
+      "id": "j12",
+      "group": "JUNK",
+      "file": "bub_gb_9utDAAAAcAAJ.pdf",
+      "source_url": "https://archive.org/download/bub_gb_9utDAAAAcAAJ/bub_gb_9utDAAAAcAAJ.pdf",
+      "licence": "public-domain",
+      "sha256": "30f8836b196f3d9606ed32b91f7d8f6a689391f0db74e7b36e9d102d27f4b784",
+      "page_range": [
+        5,
+        10
+      ],
+      "language": "German, Fraktur print",
+      "title": "Gruendliche GeschichtsErzaehlung den Zehend zu Langenmosen betreffend, 1765 (via Google Books); Public Domain Mark 1.0; amendment A2"
+    },
+    {
+      "id": "j13",
+      "group": "JUNK",
+      "file": "bub_gb_sCJaAAAAcAAJ.pdf",
+      "source_url": "https://archive.org/download/bub_gb_sCJaAAAAcAAJ/bub_gb_sCJaAAAAcAAJ.pdf",
+      "licence": "public-domain",
+      "sha256": "43f016a5e79c993a1d2cfa1f4bb809c97561db0b3451ebfc2b8a221def239e3d",
+      "page_range": [
+        8,
+        11
+      ],
+      "language": "German, Fraktur print",
+      "title": "Regensburg council notice (Demnach Ein Wohl-Edler Herr Cammerer und Rath), 1733 (via Google Books); Public Domain Mark 1.0; amendment A2"
+    },
+    {
+      "id": "j14",
+      "group": "JUNK",
+      "file": "bub_gb_APZQAAAAcAAJ.pdf",
+      "source_url": "https://archive.org/download/bub_gb_APZQAAAAcAAJ/bub_gb_APZQAAAAcAAJ.pdf",
+      "licence": "public-domain",
+      "sha256": "cb2f0cc7ab5b5c2354037fac975d5efc7765d016294cb8bcaeda6123af6a1ffb",
+      "page_range": [
+        3,
+        6
+      ],
+      "language": "German, Fraktur print",
+      "title": "TrauerRede, Mannheim, 1758 (via Google Books); Public Domain Mark 1.0; amendment A2"
+    },
+    {
+      "id": "j15",
+      "group": "JUNK",
+      "file": "bub_gb_atMQzzYaiJkC.pdf",
+      "source_url": "https://archive.org/download/bub_gb_atMQzzYaiJkC/bub_gb_atMQzzYaiJkC.pdf",
+      "licence": "public-domain",
+      "sha256": "8d0459a2311300c2e851b570d050a467189b14cdb92e6aff539a7c8c03df4671",
+      "page_range": [
+        1,
+        6
+      ],
+      "language": "Polish, blackletter print",
+      "title": "Zdanie jednego Milosnika Oyczyzny, o cel morskich fundacyi, about 1600 (via Google Books); Public Domain Mark 1.0; amendment A2"
+    },
+    {
+      "id": "j16",
+      "group": "JUNK",
+      "file": "bub_gb_qL_o3E0so7sC.pdf",
+      "source_url": "https://archive.org/download/bub_gb_qL_o3E0so7sC/bub_gb_qL_o3E0so7sC.pdf",
+      "licence": "public-domain",
+      "sha256": "0dcff34e9fc45d170c6147c8ef02f1a10995beef84f4dd9096e9023d8b66abdd",
+      "page_range": [
+        2,
+        7
+      ],
+      "language": "Polish, early modern print",
+      "title": "Nowe Zawstydzenie Socinistow, Cichowski, 1654 (via Google Books); Public Domain Mark 1.0; amendment A2"
+    },
+    {
+      "id": "j17",
+      "group": "JUNK",
+      "file": "bub_gb_921JAAAAcAAJ.pdf",
+      "source_url": "https://archive.org/download/bub_gb_921JAAAAcAAJ/bub_gb_921JAAAAcAAJ.pdf",
+      "licence": "public-domain",
+      "sha256": "f2ae54f5b7828f686ca43625bff93aeafdb56077a68d919b08aafc21ac2bbd8a",
+      "page_range": [
+        5,
+        10
+      ],
+      "language": "Dutch, blackletter print",
+      "title": "Francisci Gomari Proeve van M. P. Bertii Aenspraeck, 1610 (via Google Books); Public Domain Mark 1.0; amendment A2"
+    },
+    {
+      "id": "j18",
+      "group": "JUNK",
+      "file": "bub_gb_6uG8uOyXe_cC.pdf",
+      "source_url": "https://archive.org/download/bub_gb_6uG8uOyXe_cC/bub_gb_6uG8uOyXe_cC.pdf",
+      "licence": "public-domain",
+      "sha256": "2f5c0f5bc201f4bd91f3077a541ac3f7a2ff37c07f295d6930797a5b3bd36e95",
+      "page_range": [
+        3,
+        8
+      ],
+      "language": "Latin, italic print",
+      "title": "Parentalia anniversaria duci Augusto, Wittenberg, 1588 (via Google Books); Public Domain Mark 1.0; amendment A2"
+    },
+    {
+      "id": "g10",
+      "group": "GOOD",
+      "file": "mtsi-2024-449.pdf",
+      "source_url": "https://revuemtsi.societe-mtsi.fr/index.php/bspe-articles/article/download/449/444/1374",
+      "licence": "cc-by",
+      "sha256": "7dbd1f78659985a84547a387721a7384c8184d497c62ced91dc2d997366d24fe",
+      "page_range": [
+        2,
+        7
+      ],
+      "language": "French, born-digital",
+      "title": "Acute flaccid paralysis surveillance in Niger, Med Trop Sante Int 4(4), 2024, DOI 10.48327/mtsi.v4i4.2024.449; CC BY 4.0; amendment A2"
+    },
+    {
+      "id": "g11",
+      "group": "GOOD",
+      "file": "scielo-hcsm-2024-es0065.pdf",
+      "source_url": "https://www.scielo.br/j/hcsm/a/W4Lv8Lt8gVQPSF7gCJQWJgy/?format=pdf&lang=es",
+      "licence": "cc-by",
+      "sha256": "dfd74c09bdead1ec1f8a9ae4b1b6277a1ec711950ecc095bb6eb0416e18dc900",
+      "page_range": [
+        2,
+        7
+      ],
+      "language": "Spanish, born-digital",
+      "title": "Profilaxis urbana frente al brote de colera en Arica, 1886-1888, Hist Cienc Saude-Manguinhos 2024, DOI 10.1590/S0104-59702024000100065; CC BY 4.0; amendment A2"
+    },
+    {
+      "id": "g12",
+      "group": "GOOD",
+      "file": "scielo-hcsm-2024-pt0064.pdf",
+      "source_url": "https://www.scielo.br/j/hcsm/a/TTkNbG8Sj9mvnTdRhkPyMDp/?format=pdf&lang=pt",
+      "licence": "cc-by",
+      "sha256": "b0cba776cbbab13a8e1ee6fb5f5622bcbb43d9eaa1c389ee30f4d88f40769dfe",
+      "page_range": [
+        2,
+        7
+      ],
+      "language": "Portuguese, born-digital",
+      "title": "Vacinacao antivariolica na provincia do Parana, 1853-1863, Hist Cienc Saude-Manguinhos 2024, DOI 10.1590/S0104-59702024000100064; CC BY 4.0; amendment A2"
+    },
+    {
+      "id": "g13",
+      "group": "GOOD",
+      "file": "vavilov-vj21-028.pdf",
+      "source_url": "https://vavilov.elpub.ru/jour/article/download/3003/1502",
+      "licence": "cc-by",
+      "sha256": "51823a1546c197e1abe0d6015f5b422ac2b366a83f9ad978a02ba3d1ade049d5",
+      "page_range": [
+        3,
+        8
+      ],
+      "language": "Russian, born-digital",
+      "title": "Ribosomal profiling in plants (review), Vavilov J Genet Breed 25(3), 2021, DOI 10.18699/VJ21.028; CC BY 4.0; amendment A2"
+    },
+    {
+      "id": "g14",
+      "group": "GOOD",
+      "file": "scielo-hcsm-2024-pt0061.pdf",
+      "source_url": "https://www.scielo.br/j/hcsm/a/nHt7GjNNrxMHkGMXS5tkGVB/?format=pdf&lang=pt",
+      "licence": "cc-by",
+      "sha256": "5a259026cc0e97582ef99d874687e0174aae013668825fc833162424f5bc3406",
+      "page_range": [
+        2,
+        7
+      ],
+      "language": "Portuguese, born-digital",
+      "title": "Sob o solo pestilencial da mentira (smallpox, Fortaleza, 19th century), Hist Cienc Saude-Manguinhos 2024, DOI 10.1590/S0104-59702024000100061; CC BY 4.0; amendment A2"
+    }
+  ]
+}

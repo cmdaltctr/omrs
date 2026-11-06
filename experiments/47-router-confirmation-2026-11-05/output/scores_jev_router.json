@@ -1,0 +1,1320 @@
+{
+  "identity": {
+    "arm": "jev_router",
+    "plan_sha256": "2f96e5df01f3f603f377720f91d67b9088b51ef05c1b8d6ed023b9ee5b2cb41b",
+    "inputs_sha256": "4b89a16b18f08edd3b6c0d829727833e96b1633fa6414862aa4c627752b5f53f",
+    "labels_sha256": "d480977ee857c13b975de61d7c1081c7eec721a8141aac412984213aead04748",
+    "model": "jev-1.14.0",
+    "runner_sha256": "e33a56afc84d477bcac52a11b23ad940a7252f49d5c312804428bedfa0072bb6"
+  },
+  "documents": {
+    "j1": {
+      "rows": [],
+      "router_counts": {
+        "judged": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "claimed": []
+    },
+    "j2": {
+      "rows": [],
+      "router_counts": {
+        "judged": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [
+        1,
+        2,
+        3
+      ],
+      "claimed": []
+    },
+    "j3": {
+      "rows": [],
+      "router_counts": {
+        "judged": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "claimed": []
+    },
+    "j4": {
+      "rows": [],
+      "router_counts": {
+        "judged": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16
+      ],
+      "claimed": []
+    },
+    "j5": {
+      "rows": [],
+      "router_counts": {
+        "judged": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "claimed": []
+    },
+    "j6": {
+      "rows": [
+        {
+          "doc_id": "j6",
+          "page": 2,
+          "p_yes": 0.31,
+          "seconds": 1.074864,
+          "rejected": false
+        },
+        {
+          "doc_id": "j6",
+          "page": 3,
+          "p_yes": 0.33,
+          "seconds": 0.855215,
+          "rejected": false
+        },
+        {
+          "doc_id": "j6",
+          "page": 4,
+          "p_yes": 0.32,
+          "seconds": 0.866699,
+          "rejected": false
+        },
+        {
+          "doc_id": "j6",
+          "page": 5,
+          "p_yes": 0.34,
+          "seconds": 0.857235,
+          "rejected": false
+        },
+        {
+          "doc_id": "j6",
+          "page": 6,
+          "p_yes": 0.29,
+          "seconds": 0.802433,
+          "rejected": false
+        },
+        {
+          "doc_id": "j6",
+          "page": 7,
+          "p_yes": 0.25,
+          "seconds": 1.24511,
+          "rejected": false
+        },
+        {
+          "doc_id": "j6",
+          "page": 8,
+          "p_yes": 0.3,
+          "seconds": 1.028332,
+          "rejected": false
+        }
+      ],
+      "router_counts": {
+        "judged": 7,
+        "accepted": 7,
+        "rejected": 0,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [],
+      "claimed": []
+    },
+    "j7": {
+      "rows": [],
+      "router_counts": {
+        "judged": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "claimed": []
+    },
+    "j8": {
+      "rows": [],
+      "router_counts": {
+        "judged": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ],
+      "claimed": []
+    },
+    "j9": {
+      "rows": [],
+      "router_counts": {
+        "judged": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "claimed": []
+    },
+    "j10": {
+      "rows": [],
+      "router_counts": {
+        "judged": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ],
+      "claimed": []
+    },
+    "g1": {
+      "rows": [
+        {
+          "doc_id": "g1",
+          "page": 1,
+          "p_yes": 0.47,
+          "seconds": 1.164503,
+          "rejected": false
+        },
+        {
+          "doc_id": "g1",
+          "page": 2,
+          "p_yes": 0.16,
+          "seconds": 1.766806,
+          "rejected": true
+        },
+        {
+          "doc_id": "g1",
+          "page": 3,
+          "p_yes": 0.13,
+          "seconds": 1.476814,
+          "rejected": true
+        },
+        {
+          "doc_id": "g1",
+          "page": 4,
+          "p_yes": 0.35,
+          "seconds": 1.407086,
+          "rejected": false
+        },
+        {
+          "doc_id": "g1",
+          "page": 5,
+          "p_yes": 0.32,
+          "seconds": 1.421025,
+          "rejected": false
+        },
+        {
+          "doc_id": "g1",
+          "page": 6,
+          "p_yes": 0.68,
+          "seconds": 1.085507,
+          "rejected": false
+        }
+      ],
+      "router_counts": {
+        "judged": 6,
+        "accepted": 4,
+        "rejected": 2,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [],
+      "claimed": []
+    },
+    "g2": {
+      "rows": [
+        {
+          "doc_id": "g2",
+          "page": 5,
+          "p_yes": 0.41,
+          "seconds": 0.864184,
+          "rejected": false
+        },
+        {
+          "doc_id": "g2",
+          "page": 6,
+          "p_yes": 0.43,
+          "seconds": 0.737385,
+          "rejected": false
+        },
+        {
+          "doc_id": "g2",
+          "page": 7,
+          "p_yes": 0.26,
+          "seconds": 0.693082,
+          "rejected": false
+        },
+        {
+          "doc_id": "g2",
+          "page": 8,
+          "p_yes": 0.55,
+          "seconds": 0.707309,
+          "rejected": false
+        },
+        {
+          "doc_id": "g2",
+          "page": 9,
+          "p_yes": 0.29,
+          "seconds": 0.805833,
+          "rejected": false
+        },
+        {
+          "doc_id": "g2",
+          "page": 10,
+          "p_yes": 0.68,
+          "seconds": 0.655795,
+          "rejected": false
+        }
+      ],
+      "router_counts": {
+        "judged": 6,
+        "accepted": 6,
+        "rejected": 0,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [],
+      "claimed": []
+    },
+    "g3": {
+      "rows": [
+        {
+          "doc_id": "g3",
+          "page": 1,
+          "p_yes": 0.66,
+          "seconds": 0.802216,
+          "rejected": false
+        },
+        {
+          "doc_id": "g3",
+          "page": 2,
+          "p_yes": 0.53,
+          "seconds": 1.266883,
+          "rejected": false
+        },
+        {
+          "doc_id": "g3",
+          "page": 6,
+          "p_yes": 0.62,
+          "seconds": 0.673224,
+          "rejected": false
+        }
+      ],
+      "router_counts": {
+        "judged": 3,
+        "accepted": 3,
+        "rejected": 0,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [],
+      "claimed": [
+        3,
+        4,
+        5,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        35,
+        36,
+        37,
+        38,
+        39
+      ]
+    },
+    "g4": {
+      "rows": [],
+      "router_counts": {
+        "judged": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "claimed": []
+    },
+    "g5": {
+      "rows": [],
+      "router_counts": {
+        "judged": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ],
+      "claimed": []
+    },
+    "g6": {
+      "rows": [
+        {
+          "doc_id": "g6",
+          "page": 8,
+          "p_yes": 0.37,
+          "seconds": 0.816242,
+          "rejected": false
+        },
+        {
+          "doc_id": "g6",
+          "page": 9,
+          "p_yes": 0.21,
+          "seconds": 0.850507,
+          "rejected": false
+        },
+        {
+          "doc_id": "g6",
+          "page": 10,
+          "p_yes": 0.11,
+          "seconds": 0.743902,
+          "rejected": true
+        },
+        {
+          "doc_id": "g6",
+          "page": 11,
+          "p_yes": 0.32,
+          "seconds": 0.78385,
+          "rejected": false
+        },
+        {
+          "doc_id": "g6",
+          "page": 12,
+          "p_yes": 0.18,
+          "seconds": 0.992818,
+          "rejected": true
+        },
+        {
+          "doc_id": "g6",
+          "page": 13,
+          "p_yes": 0.43,
+          "seconds": 0.793342,
+          "rejected": false
+        },
+        {
+          "doc_id": "g6",
+          "page": 14,
+          "p_yes": 0.45,
+          "seconds": 0.757925,
+          "rejected": false
+        }
+      ],
+      "router_counts": {
+        "judged": 7,
+        "accepted": 5,
+        "rejected": 2,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [],
+      "claimed": []
+    },
+    "g7": {
+      "rows": [
+        {
+          "doc_id": "g7",
+          "page": 2,
+          "p_yes": 0.27,
+          "seconds": 0.764755,
+          "rejected": false
+        },
+        {
+          "doc_id": "g7",
+          "page": 3,
+          "p_yes": 0.26,
+          "seconds": 0.748001,
+          "rejected": false
+        }
+      ],
+      "router_counts": {
+        "judged": 2,
+        "accepted": 2,
+        "rejected": 0,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [],
+      "claimed": [
+        4,
+        5,
+        6,
+        7,
+        16,
+        18,
+        19,
+        20
+      ]
+    },
+    "g8": {
+      "rows": [
+        {
+          "doc_id": "g8",
+          "page": 8,
+          "p_yes": 0.48,
+          "seconds": 0.882392,
+          "rejected": false
+        },
+        {
+          "doc_id": "g8",
+          "page": 9,
+          "p_yes": 0.59,
+          "seconds": 1.0784,
+          "rejected": false
+        },
+        {
+          "doc_id": "g8",
+          "page": 10,
+          "p_yes": 0.7,
+          "seconds": 0.957466,
+          "rejected": false
+        },
+        {
+          "doc_id": "g8",
+          "page": 11,
+          "p_yes": 0.44,
+          "seconds": 0.467417,
+          "rejected": false
+        },
+        {
+          "doc_id": "g8",
+          "page": 12,
+          "p_yes": 0.66,
+          "seconds": 0.997719,
+          "rejected": false
+        },
+        {
+          "doc_id": "g8",
+          "page": 13,
+          "p_yes": 0.69,
+          "seconds": 0.97054,
+          "rejected": false
+        }
+      ],
+      "router_counts": {
+        "judged": 6,
+        "accepted": 6,
+        "rejected": 0,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [],
+      "claimed": []
+    },
+    "g9": {
+      "rows": [],
+      "router_counts": {
+        "judged": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [
+        1,
+        2
+      ],
+      "claimed": []
+    },
+    "j11": {
+      "rows": [
+        {
+          "doc_id": "j11",
+          "page": 1,
+          "p_yes": 0.29,
+          "seconds": 0.686578,
+          "rejected": false
+        },
+        {
+          "doc_id": "j11",
+          "page": 2,
+          "p_yes": 0.08,
+          "seconds": 0.420283,
+          "rejected": true
+        },
+        {
+          "doc_id": "j11",
+          "page": 3,
+          "p_yes": 0.21,
+          "seconds": 0.62128,
+          "rejected": false
+        },
+        {
+          "doc_id": "j11",
+          "page": 4,
+          "p_yes": 0.12,
+          "seconds": 0.430256,
+          "rejected": true
+        },
+        {
+          "doc_id": "j11",
+          "page": 5,
+          "p_yes": 0.21,
+          "seconds": 0.569055,
+          "rejected": false
+        },
+        {
+          "doc_id": "j11",
+          "page": 6,
+          "p_yes": 0.24,
+          "seconds": 0.618923,
+          "rejected": false
+        }
+      ],
+      "router_counts": {
+        "judged": 6,
+        "accepted": 4,
+        "rejected": 2,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [],
+      "claimed": []
+    },
+    "j12": {
+      "rows": [
+        {
+          "doc_id": "j12",
+          "page": 5,
+          "p_yes": 0.19,
+          "seconds": 1.051355,
+          "rejected": true
+        },
+        {
+          "doc_id": "j12",
+          "page": 6,
+          "p_yes": 0.17,
+          "seconds": 1.064217,
+          "rejected": true
+        },
+        {
+          "doc_id": "j12",
+          "page": 7,
+          "p_yes": 0.18,
+          "seconds": 0.907726,
+          "rejected": true
+        },
+        {
+          "doc_id": "j12",
+          "page": 8,
+          "p_yes": 0.23,
+          "seconds": 0.97566,
+          "rejected": false
+        },
+        {
+          "doc_id": "j12",
+          "page": 9,
+          "p_yes": 0.24,
+          "seconds": 0.961681,
+          "rejected": false
+        },
+        {
+          "doc_id": "j12",
+          "page": 10,
+          "p_yes": 0.19,
+          "seconds": 0.957233,
+          "rejected": true
+        }
+      ],
+      "router_counts": {
+        "judged": 6,
+        "accepted": 2,
+        "rejected": 4,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [],
+      "claimed": []
+    },
+    "j13": {
+      "rows": [
+        {
+          "doc_id": "j13",
+          "page": 8,
+          "p_yes": 0.18,
+          "seconds": 0.556608,
+          "rejected": true
+        },
+        {
+          "doc_id": "j13",
+          "page": 9,
+          "p_yes": 0.28,
+          "seconds": 0.470416,
+          "rejected": false
+        },
+        {
+          "doc_id": "j13",
+          "page": 10,
+          "p_yes": 0.36,
+          "seconds": 0.870288,
+          "rejected": false
+        },
+        {
+          "doc_id": "j13",
+          "page": 11,
+          "p_yes": 0.25,
+          "seconds": 0.619979,
+          "rejected": false
+        }
+      ],
+      "router_counts": {
+        "judged": 4,
+        "accepted": 3,
+        "rejected": 1,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [],
+      "claimed": []
+    },
+    "j14": {
+      "rows": [
+        {
+          "doc_id": "j14",
+          "page": 3,
+          "p_yes": 0.15,
+          "seconds": 0.590443,
+          "rejected": true
+        },
+        {
+          "doc_id": "j14",
+          "page": 4,
+          "p_yes": 0.2,
+          "seconds": 0.65558,
+          "rejected": true
+        },
+        {
+          "doc_id": "j14",
+          "page": 5,
+          "p_yes": 0.17,
+          "seconds": 0.632413,
+          "rejected": true
+        },
+        {
+          "doc_id": "j14",
+          "page": 6,
+          "p_yes": 0.11,
+          "seconds": 0.551886,
+          "rejected": true
+        }
+      ],
+      "router_counts": {
+        "judged": 4,
+        "accepted": 0,
+        "rejected": 4,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [],
+      "claimed": []
+    },
+    "j15": {
+      "rows": [
+        {
+          "doc_id": "j15",
+          "page": 1,
+          "p_yes": 0.38,
+          "seconds": 0.50757,
+          "rejected": false
+        },
+        {
+          "doc_id": "j15",
+          "page": 2,
+          "p_yes": 0.31,
+          "seconds": 0.828207,
+          "rejected": false
+        },
+        {
+          "doc_id": "j15",
+          "page": 3,
+          "p_yes": 0.26,
+          "seconds": 0.82462,
+          "rejected": false
+        },
+        {
+          "doc_id": "j15",
+          "page": 4,
+          "p_yes": 0.26,
+          "seconds": 1.131681,
+          "rejected": false
+        },
+        {
+          "doc_id": "j15",
+          "page": 5,
+          "p_yes": 0.23,
+          "seconds": 0.977266,
+          "rejected": false
+        },
+        {
+          "doc_id": "j15",
+          "page": 6,
+          "p_yes": 0.16,
+          "seconds": 0.676164,
+          "rejected": true
+        }
+      ],
+      "router_counts": {
+        "judged": 6,
+        "accepted": 5,
+        "rejected": 1,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [],
+      "claimed": []
+    },
+    "j16": {
+      "rows": [
+        {
+          "doc_id": "j16",
+          "page": 2,
+          "p_yes": 0.21,
+          "seconds": 0.507583,
+          "rejected": false
+        },
+        {
+          "doc_id": "j16",
+          "page": 3,
+          "p_yes": 0.24,
+          "seconds": 0.454499,
+          "rejected": false
+        },
+        {
+          "doc_id": "j16",
+          "page": 4,
+          "p_yes": 0.38,
+          "seconds": 0.577495,
+          "rejected": false
+        },
+        {
+          "doc_id": "j16",
+          "page": 5,
+          "p_yes": 0.23,
+          "seconds": 0.474971,
+          "rejected": false
+        },
+        {
+          "doc_id": "j16",
+          "page": 6,
+          "p_yes": 0.29,
+          "seconds": 0.499949,
+          "rejected": false
+        },
+        {
+          "doc_id": "j16",
+          "page": 7,
+          "p_yes": 0.16,
+          "seconds": 0.834638,
+          "rejected": true
+        }
+      ],
+      "router_counts": {
+        "judged": 6,
+        "accepted": 5,
+        "rejected": 1,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [],
+      "claimed": []
+    },
+    "j17": {
+      "rows": [
+        {
+          "doc_id": "j17",
+          "page": 5,
+          "p_yes": 0.21,
+          "seconds": 0.73836,
+          "rejected": false
+        },
+        {
+          "doc_id": "j17",
+          "page": 6,
+          "p_yes": 0.4,
+          "seconds": 0.766868,
+          "rejected": false
+        },
+        {
+          "doc_id": "j17",
+          "page": 7,
+          "p_yes": 0.26,
+          "seconds": 0.92901,
+          "rejected": false
+        },
+        {
+          "doc_id": "j17",
+          "page": 8,
+          "p_yes": 0.3,
+          "seconds": 0.786967,
+          "rejected": false
+        },
+        {
+          "doc_id": "j17",
+          "page": 9,
+          "p_yes": 0.15,
+          "seconds": 0.767325,
+          "rejected": true
+        },
+        {
+          "doc_id": "j17",
+          "page": 10,
+          "p_yes": 0.36,
+          "seconds": 0.776352,
+          "rejected": false
+        }
+      ],
+      "router_counts": {
+        "judged": 6,
+        "accepted": 5,
+        "rejected": 1,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [],
+      "claimed": []
+    },
+    "j18": {
+      "rows": [
+        {
+          "doc_id": "j18",
+          "page": 3,
+          "p_yes": 0.21,
+          "seconds": 0.824479,
+          "rejected": false
+        },
+        {
+          "doc_id": "j18",
+          "page": 4,
+          "p_yes": 0.21,
+          "seconds": 0.513543,
+          "rejected": false
+        },
+        {
+          "doc_id": "j18",
+          "page": 5,
+          "p_yes": 0.14,
+          "seconds": 0.507172,
+          "rejected": true
+        },
+        {
+          "doc_id": "j18",
+          "page": 6,
+          "p_yes": 0.18,
+          "seconds": 0.606376,
+          "rejected": true
+        },
+        {
+          "doc_id": "j18",
+          "page": 7,
+          "p_yes": 0.2,
+          "seconds": 0.49098,
+          "rejected": true
+        },
+        {
+          "doc_id": "j18",
+          "page": 8,
+          "p_yes": 0.15,
+          "seconds": 0.512587,
+          "rejected": true
+        }
+      ],
+      "router_counts": {
+        "judged": 6,
+        "accepted": 2,
+        "rejected": 4,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [],
+      "claimed": []
+    },
+    "g10": {
+      "rows": [
+        {
+          "doc_id": "g10",
+          "page": 2,
+          "p_yes": 0.38,
+          "seconds": 1.04244,
+          "rejected": false
+        },
+        {
+          "doc_id": "g10",
+          "page": 3,
+          "p_yes": 0.45,
+          "seconds": 0.916067,
+          "rejected": false
+        },
+        {
+          "doc_id": "g10",
+          "page": 4,
+          "p_yes": 0.43,
+          "seconds": 0.86854,
+          "rejected": false
+        },
+        {
+          "doc_id": "g10",
+          "page": 5,
+          "p_yes": 0.4,
+          "seconds": 0.97234,
+          "rejected": false
+        },
+        {
+          "doc_id": "g10",
+          "page": 6,
+          "p_yes": 0.43,
+          "seconds": 0.686518,
+          "rejected": false
+        },
+        {
+          "doc_id": "g10",
+          "page": 7,
+          "p_yes": 0.55,
+          "seconds": 0.886637,
+          "rejected": false
+        }
+      ],
+      "router_counts": {
+        "judged": 6,
+        "accepted": 6,
+        "rejected": 0,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [],
+      "claimed": []
+    },
+    "g11": {
+      "rows": [
+        {
+          "doc_id": "g11",
+          "page": 2,
+          "p_yes": 0.57,
+          "seconds": 0.918241,
+          "rejected": false
+        },
+        {
+          "doc_id": "g11",
+          "page": 3,
+          "p_yes": 0.35,
+          "seconds": 0.874276,
+          "rejected": false
+        },
+        {
+          "doc_id": "g11",
+          "page": 4,
+          "p_yes": 0.46,
+          "seconds": 1.269602,
+          "rejected": false
+        },
+        {
+          "doc_id": "g11",
+          "page": 5,
+          "p_yes": 0.51,
+          "seconds": 1.011572,
+          "rejected": false
+        },
+        {
+          "doc_id": "g11",
+          "page": 6,
+          "p_yes": 0.42,
+          "seconds": 1.062199,
+          "rejected": false
+        },
+        {
+          "doc_id": "g11",
+          "page": 7,
+          "p_yes": 0.47,
+          "seconds": 0.932899,
+          "rejected": false
+        }
+      ],
+      "router_counts": {
+        "judged": 6,
+        "accepted": 6,
+        "rejected": 0,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [],
+      "claimed": []
+    },
+    "g12": {
+      "rows": [
+        {
+          "doc_id": "g12",
+          "page": 2,
+          "p_yes": 0.46,
+          "seconds": 0.898771,
+          "rejected": false
+        },
+        {
+          "doc_id": "g12",
+          "page": 3,
+          "p_yes": 0.46,
+          "seconds": 0.997541,
+          "rejected": false
+        },
+        {
+          "doc_id": "g12",
+          "page": 4,
+          "p_yes": 0.33,
+          "seconds": 0.81128,
+          "rejected": false
+        },
+        {
+          "doc_id": "g12",
+          "page": 5,
+          "p_yes": 0.57,
+          "seconds": 0.911743,
+          "rejected": false
+        },
+        {
+          "doc_id": "g12",
+          "page": 6,
+          "p_yes": 0.32,
+          "seconds": 0.836308,
+          "rejected": false
+        },
+        {
+          "doc_id": "g12",
+          "page": 7,
+          "p_yes": 0.45,
+          "seconds": 1.157097,
+          "rejected": false
+        }
+      ],
+      "router_counts": {
+        "judged": 6,
+        "accepted": 6,
+        "rejected": 0,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [],
+      "claimed": []
+    },
+    "g13": {
+      "rows": [
+        {
+          "doc_id": "g13",
+          "page": 3,
+          "p_yes": 0.52,
+          "seconds": 0.597657,
+          "rejected": false
+        },
+        {
+          "doc_id": "g13",
+          "page": 4,
+          "p_yes": 0.53,
+          "seconds": 1.398869,
+          "rejected": false
+        },
+        {
+          "doc_id": "g13",
+          "page": 5,
+          "p_yes": 0.46,
+          "seconds": 1.217853,
+          "rejected": false
+        },
+        {
+          "doc_id": "g13",
+          "page": 6,
+          "p_yes": 0.33,
+          "seconds": 1.145865,
+          "rejected": false
+        },
+        {
+          "doc_id": "g13",
+          "page": 7,
+          "p_yes": 0.32,
+          "seconds": 1.275107,
+          "rejected": false
+        },
+        {
+          "doc_id": "g13",
+          "page": 8,
+          "p_yes": 0.57,
+          "seconds": 1.188255,
+          "rejected": false
+        }
+      ],
+      "router_counts": {
+        "judged": 6,
+        "accepted": 6,
+        "rejected": 0,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [],
+      "claimed": []
+    },
+    "g14": {
+      "rows": [
+        {
+          "doc_id": "g14",
+          "page": 2,
+          "p_yes": 0.31,
+          "seconds": 0.881359,
+          "rejected": false
+        },
+        {
+          "doc_id": "g14",
+          "page": 3,
+          "p_yes": 0.29,
+          "seconds": 0.954773,
+          "rejected": false
+        },
+        {
+          "doc_id": "g14",
+          "page": 4,
+          "p_yes": 0.61,
+          "seconds": 0.929371,
+          "rejected": false
+        },
+        {
+          "doc_id": "g14",
+          "page": 5,
+          "p_yes": 0.41,
+          "seconds": 1.096002,
+          "rejected": false
+        },
+        {
+          "doc_id": "g14",
+          "page": 6,
+          "p_yes": 0.48,
+          "seconds": 0.889597,
+          "rejected": false
+        },
+        {
+          "doc_id": "g14",
+          "page": 7,
+          "p_yes": 0.54,
+          "seconds": 1.160718,
+          "rejected": false
+        }
+      ],
+      "router_counts": {
+        "judged": 6,
+        "accepted": 6,
+        "rejected": 0,
+        "unjudged": 0,
+        "status": "ok"
+      },
+      "flagged": [],
+      "claimed": []
+    }
+  },
+  "calls": {},
+  "failures": {}
+}

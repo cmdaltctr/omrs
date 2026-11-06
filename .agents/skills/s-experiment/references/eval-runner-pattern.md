@@ -139,6 +139,24 @@ if __name__ == "__main__":
     main()
 ```
 
+## Run safety rules
+
+These rules come from the Experiment 43 review (OMRS issue #171). Put each one in code, with a test. A rule that lives only in `protocol.md` does not count.
+
+1. **Check inputs before you score.** Hash each input (page text, image, query) and compare it with the hash that the prepare step stored. Stop on a difference.
+2. **Check the runtime first.** Write a passing runtime and smoke-test record before the first score. The scoring command refuses to start without it.
+3. **Record the run before you spend.** Append the run record before the first hosted or paid request, not after it.
+4. **Lock the checkpoint.** Take an exclusive lock before you read the checkpoint, and hold it for the whole run. A second runner on the same folder stops.
+5. **Enforce the stop rules.** Check the time limit, the cost limit and the failure count after each item. Stop the run when one is reached.
+6. **Treat an unreadable guard as a stop.** If a check (for example free memory) gives no value, stop. Do not go on as if it passed.
+7. **Stop what you start.** If a model server that the runner started fails before its health check passes, stop that process before you exit.
+8. **Name the phase.** When a run has phases (for example `fit`, then `rest`), require the phase argument. A phase after the fit refuses to start until the frozen threshold is in `plan.json`.
+9. **Withhold the verdict on missing data.** If any scored population has missing or failed items, `analysis.py` writes the counts and no verdict.
+10. **Reproduce from a clean checkout.** The prepare step runs from a fresh clone, with only the inputs that the protocol names. A resume after a stop at any step works.
+11. **Clean up.** `protocol.md` names each local file the run makes (images, text, logs) and how to delete it after the data copy.
+
+In OMRS, put a rule that several experiments need into `experiments/_lib/` as a new function with its own test. Do not change an existing `_lib` function: earlier results depend on it.
+
 ## Notes
 
 - Every cell has one row per item, with the same `item_id`. The summariser pairs rows by `item_id`.

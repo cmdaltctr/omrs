@@ -1,0 +1,15 @@
+{
+  "found": {
+    "unflagged_junk_pages": 58,
+    "unflagged_junk_documents": 12,
+    "unflagged_healthy_pages": 56,
+    "unflagged_healthy_documents": 10
+  },
+  "minimum": {
+    "unflagged_junk_pages": 20,
+    "unflagged_junk_documents": 5,
+    "unflagged_healthy_pages": 40,
+    "unflagged_healthy_documents": 8
+  },
+  "pass": true
+}

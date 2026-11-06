@@ -1,0 +1,346 @@
+{
+  "experiment_id": "47-router-confirmation-2026-11-05",
+  "protocol_version": 1,
+  "change_ref": "OpenSpec change experiment-47-router-confirmation (gate G7 of doc-reading-master-flow; issue #171)",
+  "question": "On documents no earlier experiment has seen, does the shipped document router (local Clef-Flash Q8_0, the shipped template, threshold 0.172) send junk text-layer pages to OCR while keeping its stated cost on good pages?",
+  "decision": "PASS supports a note in the guides that the router is confirmed on new documents, and opens a separate decision on any default. FAIL keeps the router off by default and records which gate failed. Nothing in production changes in this experiment.",
+  "hypotheses": [
+    {
+      "id": "H1",
+      "role": "primary",
+      "statement": "on pages the scan did not flag, the shipped router rejects at least 70% of junk pages and at most 5% of healthy pages.",
+      "null": "the router rejects fewer than 70% of the unflagged junk pages, or more than 5% of the unflagged healthy pages."
+    },
+    {
+      "id": "H2",
+      "role": "secondary",
+      "statement": "no JUNK-group document with an unflagged junk page is missed entirely, and the mean time per judged page is at most 5.0 s.",
+      "null": "a JUNK-group document is missed entirely, or the mean time per judged page is above 5.0 s."
+    }
+  ],
+  "decision_rule": "PASS when the treatment arm (clef_router) passes both primary gates (G1, G2) and no population is incomplete. FAIL when a primary gate fails. No verdict when a population is incomplete (analysis.py withholds it). Secondary gates (G3, G4) are reported as known costs and do not change the verdict. The control arm and the optional hosted reference never change the verdict.",
+  "stats": "basic",
+  "stats_note": "Counts and rates on a small set (about 16 to 20 documents, a few pages each). No new statistics code; _lib/stats.py has no interval for a single rate.",
+  "seed": 47,
+  "baseline": "control",
+  "candidate": "clef_router",
+  "router": {
+    "question": "Does the text match the text written or printed on the page image?",
+    "images": true,
+    "max_chars": 2000,
+    "template_source": "web/src/settings/routerWords.ts (ROUTER_TEMPLATE) and core/providers/decision/checks.py SMOKE_QUESTION; score_router.py checks both before any request",
+    "other_page_rules": "blank, maths and non_latin run before the router at their EffectiveSettings defaults (maths routing on, non-Latin routing off), as in the shipped pipeline"
+  },
+  "arms": {
+    "control": {
+      "role": "baseline: no router (the shipped default)",
+      "flag_rule": "the router rejects no page"
+    },
+    "clef_router": {
+      "role": "treatment (decides the verdict)",
+      "kind": "llamacpp",
+      "model": "clef-flash-q8_0",
+      "model_file": "Clef-Flash-Q8_0.gguf",
+      "model_sha256": "25f801e2a27610b0ccc0cb1558d7eda3d7a304e34e2c4a04e3079357ff7d906e",
+      "projector_file": "mmproj-Clef-Flash-Q8_0.gguf",
+      "projector_sha256": "9dd8bc279f57d33b0697d4d0fe900fe751a24c9e3d30ab90969d4714ffc0722d",
+      "server": "external llama-server started by score_router.py on 127.0.0.1:18447, one request at a time",
+      "threshold": 0.172,
+      "hosted": false
+    },
+    "jev_router": {
+      "role": "hosted reference, approved 2026-11-05; compared page by page with clef_router in the report; never decides",
+      "kind": "typesafe",
+      "provider": "TypeSafe",
+      "address": "https://api.typesafe.ai",
+      "model": "jev-1.14.0",
+      "key": "env://TYPESAFE_API_KEY",
+      "threshold": 0.21,
+      "hosted": true
+    }
+  },
+  "frozen_thresholds": {
+    "clef_router": {
+      "value": 0.172,
+      "exact_value": 0.17220524482651753,
+      "source_key": "clef_image",
+      "input_sha256": "5721f983e20ed1bb95df784af3b49f8dc3a36d3120bc234621d3878aebe5b9cd",
+      "note": "Experiment 43 amendment A1. The shipped template rounds it to 0.172; the summary lists pages between the two values."
+    },
+    "jev_router": {
+      "value": 0.21,
+      "exact_value": 0.21,
+      "source_key": "jev_image",
+      "input_sha256": "8cc9e7c8048dd17f15b0a40937552d6418ea8f54923fa5b1927c3b4be3bf045f",
+      "note": "Experiment 43 amendment A3"
+    }
+  },
+  "threshold_rule": "No refit. The threshold of every arm is frozen from Experiment 43 and checked on every scoring run (score_router.py, exp47_io.check_threshold). A threshold fitted on these documents is never computed.",
+  "corpus": {
+    "manifest": "corpus_manifest.json (committed; filled after operator approval of the shortlist)",
+    "folder": "corpus/ (gitignored, read only; the operator downloads each PDF named in the manifest)",
+    "groups": {
+      "JUNK": "scans with a bad embedded text layer",
+      "GOOD": "documents with a correct text layer"
+    },
+    "allowed_licences": [
+      "public-domain",
+      "cc0",
+      "cc-by",
+      "cc-by-sa"
+    ],
+    "page_unit": "the manifest page_range of each document; the scan and the router see only those pages"
+  },
+  "overlap_sources": [
+    {
+      "experiment": "33",
+      "path": "experiments/33-ocr-routing-natural-positive-2026-09-17/sources.json",
+      "sha256": "3b05d580dec2a9bf59a27dba24974822c83c56c32f67b9b778738fd523991cab",
+      "covers": "Experiments 33, 38, 43 and 44 (38, 43 and 44 used the Experiment 33 documents)"
+    },
+    {
+      "experiment": "42",
+      "path": "experiments/42-clef-flash-confirmation-2026-10-08/sources.json",
+      "sha256": "43e88fa3323c3eb2824e52a02916582be0baa8f0fe963781c745ddd1bd59f58f",
+      "covers": "Experiment 42"
+    }
+  ],
+  "overlap_rule": "prepare_inputs.py refuses a document whose SHA-256, file name or source address matches any document of these lists",
+  "labels": {
+    "method": "local reference transcription of each page by dots-mocr through the shipped OCR routes (label_pages.py references), one page per request, offline. The Experiment 33 token rule (build_labels.tokens and recall, imported by path) scores the shipped page text (pdf-inspector page Markdown, the text the router reads) against the whole-page reference.",
+    "text_under_test": "pdf-inspector page Markdown from page_routing.page_evidence, unchanged",
+    "thresholds": {
+      "junk_below": 0.5,
+      "healthy_at": 0.8,
+      "min_reference_tokens": 10
+    },
+    "classes": "junk: recall below 0.50 with at least one text token; healthy: 0.80 or more; grey: between (reported only); excluded: reference failed, reference below 10 tokens, or no text tokens",
+    "difference_from_experiment_33": "Experiment 33 scored body text only, split from figure text by a hosted model. No page text leaves the machine here, so the reference is the whole-page local transcription. Approved by the operator on 2026-11-05 (decision_register).",
+    "review": {
+      "healthy_sample": 15,
+      "max_disagreements": 3,
+      "rule": "The coding agent, not the operator, checks every junk and grey page and 15 seeded healthy pages. For each page it looks at the local page image (output/.private/renders), the page text the router reads and the dots-mocr reference, and records agree or disagree with the class in output/label_review.json. More than 3 class disagreements stop the run; the fix is an amendment before any score. Operator decision 2026-11-05, recorded as amendment A1 before any router score.",
+      "reviewer": "coding agent"
+    },
+    "privacy": "no page text, image or reference leaves the machine"
+  },
+  "set_check": {
+    "minimum": {
+      "unflagged_junk_pages": 20,
+      "unflagged_junk_documents": 5,
+      "unflagged_healthy_pages": 40,
+      "unflagged_healthy_documents": 8
+    },
+    "rule": "checked after labelling, before any score. A miss makes the run INCONCLUSIVE before scoring; the operator then extends the corpus or accepts a smaller set by amendment."
+  },
+  "populations": {
+    "unflagged_junk": "junk pages the scan did not flag and no earlier page rule claimed (the pages the router exists for)",
+    "unflagged_healthy": "healthy pages the scan did not flag and no earlier page rule claimed (the pages where a rejection is a cost)",
+    "unflagged_grey": "reported only"
+  },
+  "metrics": [
+    {
+      "name": "router_junk_recall",
+      "binary": false,
+      "primary": true
+    },
+    {
+      "name": "healthy_false_reject_rate",
+      "binary": false,
+      "primary": true
+    },
+    {
+      "name": "junk_documents_missed",
+      "binary": false,
+      "primary": false
+    },
+    {
+      "name": "seconds_per_page",
+      "binary": false,
+      "primary": false
+    }
+  ],
+  "gates": [
+    {
+      "id": "G1",
+      "role": "primary",
+      "metric": "router_junk_recall",
+      "op": ">=",
+      "threshold": 0.7,
+      "status": "APPROVED 2026-11-05 (OD1 option B)",
+      "why": "Experiment 43 local arm caught 62 of 89 junk pages (0.70)"
+    },
+    {
+      "id": "G2",
+      "role": "primary",
+      "metric": "healthy_false_reject_rate",
+      "op": "<=",
+      "threshold": 0.05,
+      "status": "APPROVED 2026-11-05 (OD1 option B)",
+      "why": "the stated cost is about 3% (2.7%, 15 of 565 healthy pages in Experiment 43); 5% allows two pages in 40"
+    },
+    {
+      "id": "G3",
+      "role": "secondary",
+      "metric": "junk_documents_missed",
+      "op": "==",
+      "threshold": 0,
+      "status": "APPROVED 2026-11-05 (OD1 option B)",
+      "why": "each JUNK document with an unflagged junk page should reach OCR for at least one page"
+    },
+    {
+      "id": "G4",
+      "role": "secondary",
+      "metric": "seconds_per_page",
+      "op": "<=",
+      "threshold": 5.0,
+      "status": "APPROVED 2026-11-05 (OD1 option B)",
+      "why": "the stated speed is about 3.6 s per judged page (Experiment 43: 3.64 s mean)"
+    }
+  ],
+  "gate_options": {
+    "decision": "OD1: the operator chose option B (stated cost) on 2026-11-05. G1 and G2 decide the verdict; G3 and G4 are reported only.",
+    "A_spec_as_written": "rescue-quality-evaluation 'The confirmation pass rule SHALL be stricter and page based': junk recall >= 0.90 with the lower 95% bound >= 0.80, and healthy flag rate <= 0.02 with the upper 95% bound <= 0.05. Needs an interval function in _lib/stats.py (new statistics code) and a larger set: 0 false rejects in about 73 healthy pages before the upper bound reaches 0.05. Experiment 43 (2.7% healthy flagged, 70% junk caught) makes a FAIL likely.",
+    "B_stated_cost": "the gates G1 to G4 above (chosen): point estimates against the cost the app states (about 3% of good pages, about 3.6 s per page). Needs the MODIFIED pass-rule requirement in the OpenSpec change."
+  },
+  "ocr_cost": {
+    "seconds_per_page": 38.2,
+    "source": "dots.mocr seconds per page (Experiment 38 false_positive_cost), as in Experiment 43; page-mode routing sends only the rejected page"
+  },
+  "stop_rules": {
+    "max_hours": 2.0,
+    "max_usd": 1.0,
+    "usd_per_hosted_page": 0.00022,
+    "usd_per_hosted_page_source": "Experiment 43 hosted arm: 4.08 million input tokens on 799 pages at USD 42 per billion; the shipped judge reports no token count, so the cost rule uses this per-page figure",
+    "warmup_pages": 2,
+    "max_failed_pages": 5,
+    "text": [
+      "Stop before any request when plan.json has an unapproved decision, the threshold is not the frozen value, plan.json is not committed, the labels are not frozen, or the runtime check record is missing, failed or stale.",
+      "Stop before any request of the hosted arm without its dated approval, or when the projected cost of the pages left is over max_usd.",
+      "Stop when the projected time for the pages left is over max_hours (after warmup_pages answers), or the hosted cost so far is over max_usd.",
+      "Stop when more than max_failed_pages answers fail in one run (INCONCLUSIVE). A resume asks the failed pages again and never asks a scored page again.",
+      "Stop when a PDF, a page text or a page image differs from inputs.json, or when the router status is not ok.",
+      "Stop when free memory is under 15%, or memory_pressure prints no percentage.",
+      "Stop when another runner holds the checkpoint lock."
+    ]
+  },
+  "runtime_checks": [
+    "R1: llama-server --version reports build 11941.",
+    "R2: verify_llamacpp_runtime checks the build and the SHA-256 of Clef-Flash-Q8_0.gguf against runtime.models.",
+    "R3: the SHA-256 of mmproj-Clef-Flash-Q8_0.gguf equals arms.clef_router.projector_sha256.",
+    "R4: the shipped checks (compose_decision.test_decision_model: quantisation, text probe, projector smoke test) report ok.",
+    "R5: with --no-mmproj the shipped checks report projector-not-loaded, so the shipped rule judges no page.",
+    "R6: the server listens on 127.0.0.1 only.",
+    "Scoring refuses without output/runtime_check_<arm>.json that passed for the same plan, inputs, labels, model and runner."
+  ],
+  "cloud": "The hosted reference arm (jev_router) sends the page images and the first 2,000 characters of each judged page of the 19 public-domain or open-licence corpus documents to TypeSafe. Approved by the operator on 2026-11-05 (scope hosted_reference_arm). It never decides the verdict.",
+  "production_change": "none",
+  "decision_register": [
+    {
+      "item": "OD1 gate option, then hypotheses, gates, decision rule, stop rules and set-check minimums",
+      "status": "APPROVED: option B (stated cost). G1 junk recall >= 0.70 and G2 healthy false-reject rate <= 0.05 decide; G3 and G4 reported only. Stop rules as drafted: 2 hours, USD 1.00 hosted, more than 5 failed answers, free memory under 15%. The MODIFIED pass-rule requirement in the OpenSpec change is approved.",
+      "date": "2026-11-05"
+    },
+    {
+      "item": "Corpus manifest: the shortlisted documents, their licences, page ranges and groups",
+      "status": "APPROVED: all 19 documents (J1 to J10 in JUNK, G1 to G9 in GOOD). J1 to J4 are treated as public domain by age; J9 and J10 stay in; J4 uses pages 9 to 16 only.",
+      "date": "2026-11-05"
+    },
+    {
+      "item": "Labelling method: local dots-mocr whole-page reference, Experiment 33 token rule, thresholds 0.50 and 0.80",
+      "status": "APPROVED, including the whole-page reference (no body and figure split) that differs from Experiment 33.",
+      "date": "2026-11-05"
+    },
+    {
+      "item": "Label review: every junk and grey page plus 15 seeded healthy pages; more than 3 disagreements stop the run",
+      "status": "APPROVED with a change: the coding agent does the review, not the operator (amendment A1). The stop rule stays.",
+      "date": "2026-11-05"
+    },
+    {
+      "item": "Hosted Jev reference arm: send page images and text heads of the judged pages to TypeSafe",
+      "provider": "TypeSafe",
+      "scope": "hosted_reference_arm",
+      "status": "APPROVED: page images and text heads of the 19 public-domain or open-licence documents go to TypeSafe jev-1.14.0 (images on, as in Experiment 43). Key from TYPESAFE_API_KEY, never printed or saved. Compared with clef_router in the report.",
+      "date": "2026-11-05"
+    },
+    {
+      "item": "Set check cannot pass on the approved corpus (scan flags 9 of 10 JUNK documents): option 2, add documents (amendment A2)",
+      "status": "APPROVED: option 2, add documents. Minimums stay; all 19 approved documents stay.",
+      "date": "2026-11-05"
+    }
+  ],
+  "frozen": [
+    {
+      "item": "Experiment 43 plan.json (thresholds)",
+      "path": "experiments/43-image-rescue-gate-2026-11-02/plan.json",
+      "sha256": "d264a90fb49ae1f8d45b8e931c984fe16b65867921fd3ff8bdde4b6666a45944"
+    },
+    {
+      "item": "Experiment 33 build_labels.py (token rule)",
+      "path": "experiments/33-ocr-routing-natural-positive-2026-09-17/build_labels.py",
+      "sha256": "4d9faa5437ee02d3de256a0fea156f9b02942e1798e2784a4f022497ac1ba2fa"
+    },
+    {
+      "item": "shipped router template",
+      "path": "web/src/settings/routerWords.ts",
+      "sha256": "504b677f9e300899cf8b2c454356c52d17637ece1017c9d80f2ff06aeb1de36b"
+    },
+    {
+      "item": "git commit at planning",
+      "value": "9c02724e"
+    }
+  ],
+  "runtime": {
+    "runtime_under_test": false,
+    "models": [
+      {
+        "role": "decision (image and text)",
+        "repository": "ggml-org/Clef-Flash-GGUF@a5a18a6e13bb36573a5f11385a1e7b9a0c868e9e",
+        "file": "Clef-Flash-Q8_0.gguf",
+        "sha256": "25f801e2a27610b0ccc0cb1558d7eda3d7a304e34e2c4a04e3079357ff7d906e",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {
+          "mmproj": "mmproj-Clef-Flash-Q8_0.gguf",
+          "host": "127.0.0.1",
+          "parallel": 1,
+          "ctx_size": 8192,
+          "batch_size": 8192,
+          "ubatch_size": 8192
+        }
+      }
+    ],
+    "references": [
+      {
+        "role": "optional hosted reference",
+        "provider": "TypeSafe",
+        "model": "jev-1.14.0"
+      }
+    ],
+    "tolerance": [
+      {
+        "item_score": "p_yes",
+        "max_abs_change": 0.02
+      }
+    ]
+  },
+  "amendments": [
+    {
+      "id": "A1",
+      "date": "2026-11-05",
+      "before_any_score": true,
+      "change": "The label review is done by the coding agent, not the operator. The agent checks each review page image, its page text and its dots-mocr reference, and records a verdict per page. The rule of more than 3 disagreements stopping the run is kept.",
+      "reason": "Operator decision 2026-11-05: the operator does not review labels by eye.",
+      "approved_by": "operator"
+    },
+    {
+      "id": "A2",
+      "date": "2026-11-05",
+      "before_any_score": true,
+      "before_any_label": true,
+      "change": "Add 13 documents to corpus_manifest.json: JUNK j11 to j18 (early modern and 18th-century prints with a garbled text layer that the shipped scan does not flag; Google Books via archive.org, Public Domain Mark 1.0) and GOOD g10 to g14 (born-digital CC BY 4.0 articles in French, Spanish, Portuguese and Russian). All 19 approved documents stay. output/inputs.json is made again from the start, because prepare_inputs.py refuses a resume after a manifest change; the rows of the 19 original documents must equal the committed rows of a58c03ea. The hosted reference arm covers the added documents under the same approval (page images and text heads of public-domain or open-licence documents). Hypotheses, gates, threshold 0.172, stop rules, set-check minimums, labelling method and review rule do not change.",
+      "reason": "The set check cannot pass on the approved corpus. The shipped page scan (output/inputs.json, commit a58c03ea) sends every page of 9 of 10 JUNK documents (the manuscript scans j1 to j5 and j7 to j10) and of 3 GOOD documents (g4, g5, g9) to OCR. Only j6 (7 pages) is left as unflagged JUNK, against a minimum of 20 pages in 5 documents. Each added document was checked with the shipped scan before it was added: no page in its range is flagged.",
+      "approved_by": "operator (option 2, add documents, 2026-11-05)"
+    }
+  ]
+}
