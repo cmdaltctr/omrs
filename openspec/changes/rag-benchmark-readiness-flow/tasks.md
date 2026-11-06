@@ -1,0 +1,55 @@
+# Tasks
+
+The order is the operator's (2026-11-06, design D1). Do not reorder groups. Stop at every gate (design D3). Each group names the change whose own `tasks.md` carries the detail. Rules: design D4.
+
+## 0. Preflight
+
+- [ ] 0.1 Read-only checks: `git -C omrs-v3 log --oneline -1` matches `origin/v3`; the three proposal commits exist on their branches (`314e014e`, `19c837b8`, `ebdd2333`); `openspec validate --all --strict` passes on `v3` and on each branch; `git worktree list` shows the four worktrees of design Context. Report any drift before acting.
+- [ ] 0.2 Read the three proposals in full (proposal, design, tasks, specs).
+- [ ] 0.3 GATE G0: ask the operator for the open questions of each proposal (cuts: none left; page-routing-panel: 3 with defaults; one-llamacpp-router: 11 with defaults), or "defaults ok". Record the answers in each change's `design.md` (operator decisions, dated) with `openspec-update-change`, validate, commit on its branch.
+
+## 1. Apply `local-ocr-per-backend-cuts` (worktree `omrs-feat-local-ocr-per-backend-cuts`)
+
+- [ ] 1.1 Rebase onto current `v3`. Confirm toplevel and branch. `uv sync --frozen --extra web`.
+- [ ] 1.2 Apply the change (`/opsx:apply local-ocr-per-backend-cuts`), its tasks in order, tests first. Subagents only on non-colliding files; commit only after every agent stops.
+- [ ] 1.3 `./scripts/local_ci.sh`, `openspec validate --all --strict`, browser check at 1280 px and 390 px (Settings and Studio), PR into `v3`, CI green, CodeRabbit handled.
+- [ ] 1.4 GATE G1: the operator says merge. Merge, archive (sync specs), remove worktree after the Gotcha 15 copy. Do not touch the live app here (group 4).
+
+## 2. Apply `one-llamacpp-router` (worktree `omrs-feat-one-llamacpp-router`)
+
+- [ ] 2.1 Rebase onto `v3` with group 1 merged. Check `tripwire-retirement-and-provider-symmetry` for overlap with the keys this change retires; follow its policy or record the conflict.
+- [ ] 2.2 Run the change's spike group (systemone forwarding, `/models?reload=1`, child processes, Linux CPU and CUDA builds) in scratch only. GATE G2: report results and the design path (decision models on the router, or on their own servers); the operator confirms.
+- [ ] 2.3 Apply the remaining tasks in order, tests first, including the automatic model download (task 6.2a) and the `.env` / conftest alignment.
+- [ ] 2.4 `./scripts/local_ci.sh`, strict validation, browser check (Router panel, Model runtimes, Get a model) at 1280 px and 390 px, PR, CI, CodeRabbit.
+- [ ] 2.5 GATE G3: the operator says merge. Merge, archive, remove worktree after Gotcha 15. Amend the pipeline sweep's design note only as a task in group 5.
+
+## 3. Apply `page-routing-panel` (worktree `omrs-feat-page-routing-panel`; may run beside group 5)
+
+- [ ] 3.1 Rebase onto `v3` with groups 1 and 2 merged. Task 0.3 of the change: update the cut-box wording to step 4 of the panel.
+- [ ] 3.2 Apply its tasks in order, tests first, including `docs/guides/page-routing.md`.
+- [ ] 3.3 `./scripts/local_ci.sh`, strict validation, browser check at 1280 px and 390 px (Settings and Studio), PR, CI, CodeRabbit.
+- [ ] 3.4 GATE G4: the operator says merge. Merge, archive, remove worktree.
+
+## 4. Live switch and one re-index (operator approval needed)
+
+- [ ] 4.1 GATE G5: the operator approves touching the live app and re-indexing every collection.
+- [ ] 4.2 Back up `~/.omrs/lancedb`, `~/.omrs/workspace/workspace.db` and `~/.config/omrs/omrs.jsonc` (dated copies). Reinstall the live app from `v3` with lock constraints and the `local-ocr-indra` extra.
+- [ ] 4.3 Router setup per `one-llamacpp-router` task group 13: provision the pinned router, model list (Qwen3-Embedding-4B, Qwen3-4B, Clef-Flash if a router is wanted), one router URL in `omrs.jsonc`, remove stale keys (`embed_model`, `ollama_classify_model`, old role URLs, `llamacpp_chat_server`). Local OCR: list `[pp-ocrv6-small, indra]`, cuts default, `ocr_non_latin_routing` off, Indra weights and `INDRA_OCR_MODEL_DIR`.
+- [ ] 4.4 Restart, check Integrations (router and models Ready, both local OCR backends Ready with cuts 0.92 and 0.94), then re-ingest every collection once. Verify: categories are model-chosen (not keyword fallback), search finds a known phrase per collection, no Ollama process is needed.
+- [ ] 4.5 Delete the backups once verified (operator preference), record the new live state in agent memory.
+
+## 5. Pipeline sweep on RunPod (worktree `omrs-v3-feat-pipeline-sweep-llamacpp`)
+
+- [ ] 5.1 Rebase the branch onto `v3` (222 commits behind on 2026-11-06). Renumber its experiment folder from `43-...` to the next free number (`omrs experiments new` rule); keep its frozen plan history honest with an amendment.
+- [ ] 5.2 Update the change's design and protocol: OMRS-managed router (`llama-server`, pinned b11941), not the Llama app's `llama serve`; Qwen3-Embedding-4B; RunPod edition (Linux CUDA build, `omrs llamacpp install`). Record as a dated amendment before any run.
+- [ ] 5.3 GATE G6: the operator approves the RunPod budget (load the `runpod` skills first; state the hourly price before creating any pod).
+- [ ] 5.4 Run the sweep, check its exit rule, copy outputs to `~/Development/DATA/omrs/`, write the report, PR, merge on the operator's word, archive.
+
+## 6. Experiment 35
+
+- [ ] 6.1 Update `experiment-35-full-document-rag-benchmark` for the router, Qwen3-Embedding-4B and the sweep's findings.
+- [ ] 6.2 GATE G7: the operator approves the freeze and the run. Freeze `protocol.md` and `plan.json`, then run per its own tasks.
+
+## 7. Close
+
+- [ ] 7.1 Archive this change once groups 0 to 6 are done or explicitly parked by the operator.
