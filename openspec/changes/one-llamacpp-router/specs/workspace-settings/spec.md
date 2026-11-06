@@ -24,6 +24,54 @@ The llama.cpp card SHALL show one Router panel. It SHALL show the choice "OMRS r
 - **WHEN** `LLAMACPP_ROUTER_URL` is set in the environment
 - **THEN** the address row MUST show a lock and name the variable, and MUST offer no edit
 
+#### Scenario: Mode and address rows
+
+- **WHEN** the Router panel opens with no source set
+- **THEN** it MUST show the mode row with "OMRS runs llama.cpp" selected and the address row with `http://127.0.0.1:8080/v1`
+
+### Requirement: The Router panel shows and edits the model limit and the memory margin
+
+The Router panel SHALL show two rows: "Models loaded at once" (`llamacpp_router_models_max`, 1 to 16) and "Free memory margin (MiB)" (`llamacpp_router_memory_margin_mib`, 0 to 262,144). Each row SHALL show the value in force, its source, its default and one plain help line, and SHALL offer Edit, Save and Use default. A saved value that differs from the running router's SHALL show "Restart to apply". A save SHALL need `manage`. A locked row SHALL show the variable name and offer no edit.
+
+#### Scenario: Defaults shown
+
+- **WHEN** no source sets either value
+- **THEN** "Models loaded at once" MUST show 4 with source default, and "Free memory margin (MiB)" MUST show 8,192 with source default, each with its default and help line
+
+#### Scenario: Edit and save the model limit
+
+- **WHEN** the user edits "Models loaded at once" to 2 and saves
+- **THEN** `omrs.jsonc` MUST hold `llamacpp_router_models_max` 2, the row MUST show source `omrs.jsonc`, and the panel MUST show "Restart to apply"
+
+#### Scenario: Use default
+
+- **WHEN** the user presses Use default on "Free memory margin (MiB)" that holds 16,384 from `omrs.jsonc`
+- **THEN** the key MUST leave `omrs.jsonc` and the row MUST show 8,192 with source default
+
+#### Scenario: Out of range refused
+
+- **WHEN** the user saves 17 for "Models loaded at once" or 262,145 for "Free memory margin (MiB)"
+- **THEN** the page MUST show the accepted range, the server MUST return 400 and nothing MUST be saved
+
+#### Scenario: Locked by environment
+
+- **WHEN** `LLAMACPP_ROUTER_MODELS_MAX` is set in the environment
+- **THEN** the "Models loaded at once" row MUST show a lock and name the variable, and MUST offer no edit
+
+### Requirement: The Chat section asks for a Chat model when none is chosen
+
+When `answer.provider` is `llamacpp` and `answer.model` is empty, the Chat section SHALL show "Choose a Chat model" with a picker of the router list entries and "Get this model" for an entry that has no file. It SHALL NOT pick the classification model for the user. An entry that holds `embeddings` true SHALL NOT be offered.
+
+#### Scenario: Fresh install Chat page
+
+- **WHEN** OMRS starts with no `omrs.jsonc` and the user opens Settings > Chat
+- **THEN** the page MUST show "Choose a Chat model" and a picker that lists the shipped entries without the embedding entry
+
+#### Scenario: Pick a model
+
+- **WHEN** the user picks `Qwen/Qwen3-4B-GGUF:Q8_0` and saves
+- **THEN** `omrs.jsonc` MUST hold `answer.model` with that value and the entry MUST list the roles Chat and classification
+
 ### Requirement: The Router panel lists the models in a table
 
 The panel SHALL show one table row per `llamacpp_models` entry with its roles, model name, file state, context size in tokens and model state. A row SHALL offer Edit (one control per allow-listed preset value), Get this model when it has no file, and Remove when it holds no role. A changed row of a running router SHALL show "Reload pending" until the reload ends. Each role SHALL link to the setting that gives it.
@@ -31,7 +79,7 @@ The panel SHALL show one table row per `llamacpp_models` entry with its roles, m
 #### Scenario: Shipped list on a fresh install
 
 - **WHEN** OMRS starts with no `omrs.jsonc`
-- **THEN** the table MUST show `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0` with the role Embeddings and `Qwen/Qwen3-4B-GGUF:Q8_0` with the roles Chat and Classification, both "Not downloaded"
+- **THEN** the table MUST show `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0` with the role Embeddings and `Qwen/Qwen3-4B-GGUF:Q8_0` with the role Classification only, both "Not downloaded"
 
 #### Scenario: Edit context size
 

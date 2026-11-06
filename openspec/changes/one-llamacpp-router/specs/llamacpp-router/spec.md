@@ -67,6 +67,11 @@ An entry SHALL have the role of each setting that names its `model`: `llamacpp_e
 - **WHEN** `llamacpp_chat_model` and `answer.model` both name `Qwen/Qwen3-4B-GGUF:Q8_0` and Chat runs on llama.cpp
 - **THEN** that entry MUST list the roles Chat and classification
 
+#### Scenario: No Chat model chosen
+
+- **WHEN** `answer.provider` is `llamacpp` and `answer.model` is empty
+- **THEN** no entry MUST hold the role Chat and the shipped `qwen3-4b` entry MUST list the role classification only
+
 #### Scenario: Unlisted model refused before contact
 
 - **WHEN** the router is managed and `answer.model` names a model that no entry holds
@@ -244,6 +249,16 @@ On request only, OMRS SHALL download llama.cpp build b11941 for the host platfor
 - **WHEN** the host is macOS x86-64
 - **THEN** the job MUST fail with reason `not-supported` and the user path MUST stay allowed
 
+#### Scenario: Flavour defaults to the detected hardware
+
+- **WHEN** the host is Linux x86-64 and `/proc/driver/nvidia/version` exists, and the install request names no flavour
+- **THEN** the job MUST use the CUDA 12.8 archive; with no such file it MUST use the CPU archive
+
+#### Scenario: Flavour chosen in the request
+
+- **WHEN** the install request names the flavour `cpu` on a host with an NVIDIA driver
+- **THEN** the job MUST use the CPU archive
+
 #### Scenario: Old user build
 
 - **WHEN** `llamacpp_server_binary` names a build 11510 binary
@@ -251,12 +266,17 @@ On request only, OMRS SHALL download llama.cpp build b11941 for the host platfor
 
 ### Requirement: Shipped local defaults use llama.cpp
 
-With no source set, the shipped list SHALL hold `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0` (embeddings preset of this spec) and `Qwen/Qwen3-4B-GGUF:Q8_0` (`ctx-size` 32,768, `parallel` 2), both with no file. `llamacpp_embed_model` and `llamacpp_chat_model` SHALL name them. An entry with no file SHALL show the state "Not downloaded", SHALL NOT be written to `models.ini`, and SHALL download automatically when the router first needs it.
+With no source set, the shipped list SHALL hold `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0` (embeddings preset of this spec) and `Qwen/Qwen3-4B-GGUF:Q8_0` (`ctx-size` 32,768, `parallel` 2), both with no file. `llamacpp_embed_model` and `llamacpp_chat_model` SHALL name them. `answer.model` SHALL be empty, so no entry serves Chat. An entry with no file SHALL show "Not downloaded" and SHALL download automatically when the router first needs it.
 
 #### Scenario: Fresh install
 
 - **WHEN** OMRS starts with no `omrs.jsonc`
 - **THEN** the Router panel MUST list both entries as "Not downloaded" until the router first needs them, then download them automatically
+
+#### Scenario: Chat and classification do not share a model
+
+- **WHEN** OMRS starts with no source set
+- **THEN** the role of `Qwen/Qwen3-4B-GGUF:Q8_0` MUST be classification only and `answer.model` MUST be empty
 
 #### Scenario: Embedding identity string
 

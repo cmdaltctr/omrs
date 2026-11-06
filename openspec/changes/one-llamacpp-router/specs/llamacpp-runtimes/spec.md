@@ -135,7 +135,7 @@ A runtime whose argument list holds `-np 1` SHALL be a one-slot runtime. Each OM
 
 #### Scenario: Router models listed
 
-- **WHEN** the router serves the embedding and Chat models
+- **WHEN** the router serves the embedding and classification models
 - **THEN** the router item's `models` MUST hold both, each with its roles
 
 ### Requirement: A route stops a managed runtime

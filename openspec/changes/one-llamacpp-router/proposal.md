@@ -14,7 +14,8 @@ OMRS runs one `llama-server` per role today: Chat, embeddings and one per decisi
 - **One Router panel** in Settings: Start, Stop, Restart and a table of models with their roles, file and context size, editable. Get a model and Use this model add or replace a list entry. They no longer overwrite the Chat model.
 - **Per-model behaviour:** a request lock for one-slot models only, a per-model preset digest, per-model readiness through the router's load endpoint, and a preset edit that reloads only the changed model.
 - **Pinned binaries.** OMRS provisions the pinned llama.cpp build b11941 with SHA-256 for macOS arm64, Linux x86-64 CPU and Linux x86-64 CUDA. A user path stays allowed as an override.
-- **BREAKING:** new shipped defaults with no Ollama: Chat `llamacpp` with `Qwen/Qwen3-4B-GGUF:Q8_0`, classification the same entry, embeddings `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0` (2,560 dimensions). Every collection re-indexes once, timed with the re-index that `local-ocr-per-backend-cuts` forces.
+- **BREAKING:** new shipped defaults with no Ollama: Chat provider `llamacpp` with no Chat model chosen (`answer.model = ""`), classification `Qwen/Qwen3-4B-GGUF:Q8_0`, embeddings `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0` (2,560 dimensions). Chat and classification do not share a model by default. A fresh install shows "Choose a Chat model" on the Chat page, and a Chat or claim-check request with no model returns a plain setup message. Every collection re-indexes once, timed with the re-index that `local-ocr-per-backend-cuts` forces.
+- **Router settings are visible and editable in the web GUI.** The Router panel shows the mode, the address, "Models loaded at once" and "Free memory margin (MiB)". The Integrations llama.cpp card shows the detected Linux flavour (CPU or CUDA) and lets the operator choose it before install.
 - **Ollama becomes opt-in only.** The provider code stays (decision kind, download source, Ollama-built collections). Defaults, tests, CI and the first-choice docs use llama.cpp.
 - **Single source of settings.** Repo `.env` and `.env.example` hold no provider, model or URL keys. Tests, `ci.yml` and `local_ci.sh` use mocked llama.cpp values equal to the shipped defaults, and a test pins that equality. The CI slow suite runs only when a llama.cpp router answers.
 - New ADR-115 supersedes ADR-109's rejection of router mode and its per-role table. It amends ADR-084, ADR-108 and ADR-110, and relates to ADR-103, ADR-106 and ADR-113.
@@ -29,13 +30,13 @@ OMRS runs one `llama-server` per role today: Chat, embeddings and one per decisi
 
 - `llamacpp-runtimes`: roles become `router` and `ocr-*`. Mode settings, state folder (preset file), adoption digest, start checks, request lock per model, runtime list and stop route change. The decision runtime moves to the router.
 - `llamacpp-server`: process control now applies to the router. Settings, argument list, routes, lifecycle and scopes change. The Chat server choice and the Chat model rule are removed. The Chat-era settings are retired.
-- `llm-provider-settings`: the classification address is removed. Shipped Chat defaults move from Ollama to llama.cpp.
+- `llm-provider-settings`: the classification address is removed. Shipped Chat defaults move from Ollama to llama.cpp, with no Chat model chosen.
 - `inference-backend`: llama.cpp embedding and classification requests go to the router address.
 - `runtime-components`: the local server list probes the router address.
 - `settings-file`: the source-order example and the read-only key list name the router keys.
 - `model-downloads`: a download is used through a router list entry. Use this model adds or replaces an entry.
-- `workspace-integrations`: provider readiness and the Model runtimes rows follow the router.
-- `workspace-settings`: the llama.cpp card shows one Router panel. The Chat-server blocks and the classification-address warnings go.
+- `workspace-integrations`: provider readiness and the Model runtimes rows follow the router. The llama.cpp card shows and sets the install flavour.
+- `workspace-settings`: the llama.cpp card shows one Router panel with the mode, address, "Models loaded at once" and "Free memory margin (MiB)" rows. The Chat-server blocks and the classification-address warnings go.
 
 ## Impact
 

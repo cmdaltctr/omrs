@@ -63,7 +63,7 @@ Live app (2026-11-06): it uses the Llama app router on 9931 for embeddings and c
    v
  llama-server --models-preset models.ini --models-max N --models-memory-margin M --host 127.0.0.1 --port P
    |-- child llama-server: Qwen/Qwen3-Embedding-4B-GGUF:Q8_0  (embeddings, pooling last)
-   |-- child llama-server: Qwen/Qwen3-4B-GGUF:Q8_0            (Chat + classification)
+   |-- child llama-server: Qwen/Qwen3-4B-GGUF:Q8_0            (classification; Chat only if picked)
    '-- child llama-server: <Clef-Flash entry>                 (decision, --mmproj, parallel 1)
 
  runtimes/ocr-dots-mocr-llamacpp/   separate pinned llama-server (ADR-113), unchanged
@@ -110,7 +110,7 @@ Retirement follows the existing mechanism: an environment or `.env` value fails 
 
 Naming: the per-model value is `ctx_size`, shown as "Context size (tokens)". The page never shows it beside `answer.context_window` without the unit "characters". `ollama_context_window` keeps its label "Ollama context window (tokens)".
 
-Default mode `managed`: with no Ollama, a fresh install needs a local server, and the router can be provisioned by OMRS (D12). It is an operator question (Q1).
+Default mode `managed`: with no Ollama, a fresh install needs a local server, and the router can be provisioned by OMRS (D12). Decided by the operator on 2026-11-06 (Q1, see "Operator decisions"). The Router panel shows the mode row ("OMRS runs llama.cpp" or "Use this address") and the router address, so the operator sees and edits both in the web GUI.
 
 Alternative: keep the three URLs pointing at one port. Rejected: three settings that must agree, and a mismatch silently splits roles across two servers.
 
@@ -126,7 +126,7 @@ Alternative: keep the three URLs pointing at one port. Rejected: three settings 
 | `sha256`, `projector_sha256` | Recorded when the entry is added through the page (D5) |
 | `preset` | Object with allow-listed keys only (D4) |
 
-Roles are derived, never stored: an entry has the role of every role key that names its `model`. The Router panel shows them. One entry can serve several roles (the shipped Qwen3-4B serves Chat and classification).
+Roles are derived, never stored: an entry has the role of every role key that names its `model`. The Router panel shows them. One entry can serve several roles (the shipped Qwen3-4B serves classification; it serves Chat too only when the operator picks it).
 
 A user map replaces the shipped list as a whole. The first page edit writes the shipped list plus the edit.
 
@@ -233,13 +233,13 @@ The shipped list (code default) holds two entries with no file. The panel shows 
 | Id | `model` | Preset | Roles |
 | --- | --- | --- | --- |
 | `qwen3-embedding-4b` | `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0` | `embeddings=true pooling=last embd-normalize=2 ctx-size=8192 batch-size=8192 ubatch-size=8192 parallel=1 kv-unified=false` | embeddings |
-| `qwen3-4b` | `Qwen/Qwen3-4B-GGUF:Q8_0` | `ctx-size=32768 parallel=2` | Chat, classification |
+| `qwen3-4b` | `Qwen/Qwen3-4B-GGUF:Q8_0` | `ctx-size=32768 parallel=2` | classification |
 
 - Embeddings write `pooling`, `ctx-size`, `batch-size` and `ubatch-size` explicitly. `ubatch-size` must hold the longest chunk, or one input splits across batches. `parallel=1` and `kv-unified=false` keep each vector independent of what shares its batch (llama.cpp issue #6950). The request lock serialises embedding calls across processes.
 - `embd-normalize=2` gives unit vectors, which the norm guard expects.
 - An entry with `embeddings=true` cannot hold a Chat, classification or judge role (refused with `role-mismatch`), because the child runs embedding-only.
-- Qwen3-4B: `ctx-size=32768` with two slots gives 16,384 tokens per slot, the old Chat window. Two slots let classification and a Chat answer run at once.
-- Default role values: `llamacpp_embed_model = Qwen/Qwen3-Embedding-4B-GGUF:Q8_0`, `llamacpp_chat_model = Qwen/Qwen3-4B-GGUF:Q8_0`, `answer.provider = llamacpp`, `answer.model = Qwen/Qwen3-4B-GGUF:Q8_0`. `metadata.ollama_classify_model` default becomes `""`, and the Ollama provider asks for a model when the user picks it.
+- Qwen3-4B: the shipped `qwen3-4b` entry serves classification only. `ctx-size=32768` with two slots gives 16,384 tokens per slot, so two classification calls run at once. The operator can pick this entry for Chat too, or add another entry (D14).
+- Default role values: `llamacpp_embed_model = Qwen/Qwen3-Embedding-4B-GGUF:Q8_0`, `llamacpp_chat_model = Qwen/Qwen3-4B-GGUF:Q8_0`, `answer.provider = llamacpp`, `answer.model = ""` (no Chat model chosen, D14). `metadata.ollama_classify_model` default becomes `""`, and the Ollama provider asks for a model when the user picks it.
 - The embedding identity string keeps the `org/repo:QUANT` form from now on, so a later file move does not re-index.
 
 ### D12. Pinned binaries on macOS and Linux
@@ -255,7 +255,8 @@ OMRS provisions llama.cpp b11941, the build that ADR-110 and ADR-113 already pin
 - The pins (names and SHA-256) live in `integrations/llamacpp_runtime/pins.py`. A test checks that the tag equals the dots-mocr engine's `LLAMA_TAG`.
 - A provisioning job (Integrations card "llama.cpp", `manage` scope, on request only) and a CLI command `omrs llamacpp install [--flavour cpu|cuda]` download, check SHA-256, unpack and place the binary in `$XDG_DATA_HOME/omrs/llamacpp/b11941-<flavour>/` (else `~/.local/share/omrs/...`). The CLI covers headless RunPod pods. Neither starts a server.
 - `llamacpp_server_binary` set means a user path. The program rule still applies, and the router refuses a build below b11941 (`wrong-build`). Homebrew b11960 passes.
-- Flavour default on Linux: CUDA when `/proc/driver/nvidia/version` exists, else CPU. CUDA 12.8 is chosen over 13.4 because it needs an older driver. Operator question Q4.
+- Flavour default on Linux: CUDA when `/proc/driver/nvidia/version` exists, else CPU. CUDA 12.8 is chosen over 13.4 because it needs an older driver. Decided by the operator on 2026-11-06 (Q4).
+- The flavour is visible and editable in the web GUI. The Integrations llama.cpp card shows the detected flavour as the default and lets the operator choose CPU or CUDA before install (Linux x86-64 only). The install request (`POST /v1/llamacpp/router/install`) carries the chosen flavour, and `GET /v1/llamacpp/router/install` reports the detected one. The CLI keeps `--flavour cpu|cuda` and uses the same detection when the flag is absent. macOS arm64 has one build and shows no choice.
 
 Alternative: user path only. Rejected: RunPod pods have no Homebrew, and ADR-103 asks for a pinned build.
 
@@ -270,11 +271,27 @@ Alternative: user path only. Rejected: RunPod pods have no Homebrew, and ADR-103
 
 ### D14. Chat default
 
-`answer.provider = llamacpp` with `Qwen/Qwen3-4B-GGUF:Q8_0` on the router. It is local-first, needs no key, and shares one loaded model with classification. A fresh install shows "Get this model" until the download ends. Alternative "no Chat model, user must choose": rejected because answers and the judge check then fail on a fresh install with a setup error instead of a download prompt. Operator question Q2.
+`answer.provider = llamacpp` and `answer.model = ""`: no Chat model is chosen on a fresh install. Classification keeps `Qwen/Qwen3-4B-GGUF:Q8_0`, and the shipped `qwen3-4b` list entry serves classification only. Decided by the operator on 2026-11-06 (Q2).
+
+- The Chat page shows "Choose a Chat model" with a picker of router list entries and a "Get this model" action for an entry that has no file. The operator can pick any local model for Chat, including the classification model, as a deliberate choice.
+- A Chat request with no model returns a plain setup message that names the setting (`answer.model`). It never crashes and never falls back to the classification model.
+- The claim-check judge follows the same rule. With `answer.verify_provider` on llama.cpp and `answer.verify_model` empty, the judge is not built and the judge status gives the reason `no-model` (existing guard `Choose a judge model in Settings > Chat.` in `compose_answer.py`, which holds because the llama.cpp provider has no default answer model). The llama.cpp client builds the Chat and judge roles only from an explicit model name. An empty name never selects `llamacpp_chat_model`.
+- Role mismatch (D11) still applies: an embedding entry cannot be picked for Chat.
+
+Alternative rejected: Chat shares the classification model (`Qwen/Qwen3-4B-GGUF:Q8_0`) by default. The operator's reason: Chat and classification would clash on one model. This was the first draft of this design.
 
 ### D15. Memory limits
 
-`--models-max 4` and `--models-memory-margin 8192` (MiB). On a 64 GB Mac during ingest: embeddings 4B Q8_0 (about 4.3 GB plus a small cache), Qwen3-4B Q8_0 (about 4.3 GB plus about 4.8 GB of f16 cache at 32,768 tokens), Clef-Flash when routing runs, and dots.mocr OCR outside the router. That stays well under 64 GB and leaves 8 GiB free for the OS and the app. On a GPU pod the margin applies per device. Operator question Q3.
+`--models-max 4` and `--models-memory-margin 8192` (MiB). On a 64 GB Mac during ingest: embeddings 4B Q8_0 (about 4.3 GB plus a small cache), Qwen3-4B Q8_0 (about 4.3 GB plus about 4.8 GB of f16 cache at 32,768 tokens), Clef-Flash when routing runs, and dots.mocr OCR outside the router. That stays well under 64 GB and leaves 8 GiB free for the OS and the app. On a GPU pod the margin applies per device. Values accepted by the operator on 2026-11-06 (Q3).
+
+Both values are visible and editable in the web GUI, in Settings > llama.cpp Router panel, as two rows:
+
+| Row | Key | Range |
+| --- | --- | --- |
+| Models loaded at once | `llamacpp_router_models_max` | 1 to 16 |
+| Free memory margin (MiB) | `llamacpp_router_memory_margin_mib` | 0 to 262,144 |
+
+Each row shows the value in force, its source (default, `omrs.jsonc`, or locked by environment), the default, and one plain help line. Each row offers Edit, Save and Use default. A save of either value changes a router argument, so the panel shows "Restart to apply" beside Restart (D7) until the router restarts. A locked row shows a lock and the variable name, and offers no edit.
 
 ### D16. Fake llama server router mode
 
@@ -302,6 +319,13 @@ This change lands before `pipeline-sweep-llamacpp`. That design plans `llama ser
 3. Provision the router, download the models, switch live `omrs.jsonc` to one router address, remove stale keys.
 4. Re-ingest every collection once. Check categories and search.
 5. Rollback: revert the merge commit. The state folder holds no settings and can be deleted. A rollback re-indexes once more (identity changes back).
+
+## Operator decisions (2026-11-06, gate G0)
+
+- **Q1, router mode default (D2):** `managed` accepted. The Router panel shows the mode row (managed or external) and the router URL.
+- **Q2, Chat default (D14):** changed. Chat does not share the classification model by default. `answer.provider = llamacpp` and `answer.model = ""`. Classification keeps `Qwen/Qwen3-4B-GGUF:Q8_0`, and the shipped `qwen3-4b` entry serves classification only. A fresh install shows "Choose a Chat model". A Chat or claim-check judge request with no model returns a plain setup message that names `answer.model`, never a crash and never a silent fallback to the classification model.
+- **Q3, memory limits (D15):** `--models-max 4` and `--models-memory-margin 8192` MiB accepted. Added: both are visible and editable in Settings > llama.cpp Router panel as "Models loaded at once" (1 to 16) and "Free memory margin (MiB)" (0 to 262,144).
+- **Q4, Linux flavour (D12):** CUDA 12.8 when an NVIDIA driver is present, else CPU, accepted. Added: the Integrations llama.cpp card shows the detected flavour as the default and lets the operator choose CPU or CUDA before install.
 
 ## Open Questions
 

@@ -50,12 +50,27 @@ The Integrations page SHALL have a "Model runtimes" section with one row per run
 
 ### Requirement: The Integrations page provisions the pinned llama.cpp build
 
-The page SHALL have a llama.cpp card that shows the pinned build, the platform archive, whether it is provisioned and where. A Get llama.cpp button SHALL start the provisioning job of capability `llamacpp-router`. On Linux it SHALL offer CPU and CUDA. The button SHALL need `manage`. The card SHALL show progress and a fixed reason on failure.
+The page SHALL have a llama.cpp card with the pinned build, the platform archive and the install state. A Get llama.cpp button SHALL start the provisioning job of capability `llamacpp-router` and SHALL need `manage`. On Linux x86-64 the card SHALL show the detected flavour as the default and let the user choose CPU or CUDA before install. On macOS arm64 it SHALL show no choice. The card SHALL show progress and a fixed reason on failure.
 
 #### Scenario: Not provisioned
 
 - **WHEN** no pinned binary is provisioned and `llamacpp_server_binary` is blank
 - **THEN** the card MUST show "Not installed" and the Get llama.cpp button
+
+#### Scenario: Detected flavour shown
+
+- **WHEN** the host is Linux x86-64 with an NVIDIA driver and the user opens the llama.cpp card
+- **THEN** the card MUST show CUDA 12.8 as the default flavour and offer CPU as the other choice
+
+#### Scenario: Flavour chosen before install
+
+- **WHEN** the user picks CPU and presses Get llama.cpp
+- **THEN** the install request MUST name the flavour `cpu` and the job MUST fetch the CPU archive
+
+#### Scenario: No choice on macOS
+
+- **WHEN** the host is macOS arm64
+- **THEN** the card MUST NOT show a flavour choice
 
 #### Scenario: Hash failure shown
 
