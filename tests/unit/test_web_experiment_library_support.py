@@ -55,6 +55,7 @@ def make_project(base: Path, name: str = "omrs", *, readme: str | None = README)
         category=Category.RETRIEVAL,
         size=Size.STANDARD,
         day=date(2026, 1, 1),
+        operator="Test operator",
     )
     create_experiment(
         experiments,
@@ -63,6 +64,7 @@ def make_project(base: Path, name: str = "omrs", *, readme: str | None = README)
         category=Category.INGESTION,
         size=Size.QUICK,
         day=date(2026, 2, 1),
+        operator="Test operator",
     )
     first = experiments / FIRST
     (first / "review.html").write_text("<script>alert(1)</script>", encoding="utf-8")

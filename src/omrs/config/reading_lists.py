@@ -38,6 +38,7 @@ from ..core.reading_parts import (
     KIND_LOCAL_OCR_BACKEND,
     broken,
     discovered,
+    example_local_cuts,
 )
 from .provenance import SOURCE_ORDER
 from .rules import OLD_READING_KEYS, ignored_old_keys, local_backend_problem, local_cuts_problem
@@ -83,7 +84,7 @@ class ReadingListMixin(BaseModel):
     # backend with no entry uses its descriptor default. The environment form
     # (OCR_LOCAL_CUTS) is JSON, like READING_PART_OPTIONS.
     ocr_local_cuts: dict[str, Annotated[float, Field(ge=0, le=1, strict=True)]] = Field(
-        default={}, examples=[{"pp-ocrv6-small": 0.92}]
+        default={}, examples=[example_local_cuts()]
     )
 
     @field_validator("pdf_readers", "ocr_engines", "ocr_local_backends", mode="after")

@@ -284,7 +284,7 @@ All commands write their output to stderr. `DIR` is the experiments directory. T
 | --- | --- |
 | `omrs experiments check [DIR] [--strict] [--json]` | Reads the directory and reports findings. It does not write a file. |
 | `omrs experiments index [DIR] [--write]` | Without `--write`, prints the table. With `--write`, replaces the marked block. |
-| `omrs experiments new SLUG --title T --category C --size S [--purpose P] [--follow-up N] [--date D] [DIR]` | Creates a folder and prints its path. |
+| `omrs experiments new SLUG --title T --category C --size S [--purpose P] [--operator TEXT] [--follow-up N] [--date D] [DIR]` | Creates a folder and prints its path. |
 
 ### Check the experiments
 
@@ -305,9 +305,11 @@ The command exits with code 1 when it finds an error. With `--strict`, it also e
 ### Create an experiment
 
 1. Choose a slug, a title, a category, a size and a purpose.
-2. Run `uv run --no-sync omrs experiments new <slug> --title "<title>" --category <category> --size <size> --purpose <purpose>`.
+2. Run `uv run --no-sync omrs experiments new <slug> --title "<title>" --category <category> --size <size> --purpose <purpose> --operator "<who runs it>"`.
 3. Read the folder path that the command prints.
 4. Fill in the plan files in that folder.
+
+The `--operator` text goes into the `Operator` line of each `report.md` and `protocol.md` that the command creates. OMRS never reads a name from git or from the system, so the text is your choice. Without the option, the placeholder `<person>, with <agent, if used>` stays in the line. The text must be one non-blank line. An experiment that the web workspace creates keeps the placeholder, because the web form has no operator field.
 
 The command takes the next whole number above every folder number and every reserved number. For a follow-up, add `--follow-up <number>`. The command then takes the next free letter, for example `38a` and then `38b`.
 
@@ -332,6 +334,7 @@ Each finding has a stable code. Some codes are less severe on a converted record
 | `files-missing` | warning; info if converted | A file that the size needs is missing. | Add the file, or correct `size`. |
 | `run-records-invalid` | warning | `output/run-records.jsonl` has a line that does not load. | Find the bad line. Do not change the other lines. |
 | `edit-log-invalid` | warning | A line of `edits.jsonl` does not load, or the file is a link or not a regular file. The message names the line. | Find the bad line in the git history of `edits.jsonl`. Do not change the other lines. |
+| `operator-placeholder` | warning | The `Operator` line in the header of `report.md` or `protocol.md` still holds a placeholder in angle brackets. The message names the file. | Write who ran the experiment in that line. |
 | `plan-changed` | warning | A run record has a `plan_sha256` that differs from the current `plan.json`. | Record the change as an amendment. Rerun if the plan change affects the result. |
 | `publication-not-confirmatory` | error | A `publication` record has a size other than `Confirmatory`. | Set `size` to `Confirmatory`, or set `purpose` to `optimisation`. |
 | `publication-plan-unreadable` | error | A `publication` record has no `plan.json`, or the file does not load. | Write a valid `plan.json`. |

@@ -478,3 +478,17 @@ def effective_cut(settings: Any, name: str) -> float | None:
     """
     entry = (getattr(settings, "ocr_local_cuts", None) or {}).get(name)
     return entry if entry is not None else local_backend(name).min_confidence
+
+
+def example_local_cuts() -> dict[str, float]:
+    """Return ``{default backend: its default cut}`` for examples (change cuts-follow-ups).
+
+    The config template and the start-up refusal for the retired single cut show
+    this, so no text types a backend name or a number. The descriptor stays the
+    one source.
+    """
+    name = DEFAULT_LOCAL_OCR_BACKENDS[0]
+    cut = local_backend(name).min_confidence
+    if cut is None:
+        raise ValueError(f"the default local OCR backend {name!r} has no default cut")
+    return {name: cut}

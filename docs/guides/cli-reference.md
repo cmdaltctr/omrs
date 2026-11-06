@@ -426,6 +426,7 @@ These commands work on research experiment folders in format `omrs-experiment/1`
 | `--follow-up N` | none | Take the next free letter of experiment `N`, for example `38a`, then `38b`. |
 | `--date` | today | Planning date, written `YYYY-MM-DD`. |
 | `--purpose` | `optimisation` | `optimisation` or `publication`. The command writes the value into the record. Use `publication` only for a result that a paper can cite. |
+| `--operator TEXT` | none | Text for the `Operator` line of each `report.md` and `protocol.md` the command creates. Without it the placeholder stays, and `check` warns about it. |
 
 | Exit code | When |
 | --- | --- |
