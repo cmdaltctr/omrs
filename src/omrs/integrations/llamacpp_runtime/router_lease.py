@@ -160,6 +160,8 @@ class RouterLease:
         self._ready: dict[str, int] = {}
         self._active: dict[str, int] = {}
         self._pending: set[str] = set()
+        #: False while a start follows a finished download: it asks for no download.
+        self.ask_downloads = True
         if self.spec.mode == "managed":
             base.before_start = self._before_start
             base.on_leave(self._on_leave)
@@ -177,7 +179,7 @@ class RouterLease:
         with self._lock:
             plan = self._new_plan()
             missing = [o.model for o in plan.outcomes if o.state == NOT_DOWNLOADED]
-            for model in missing:
+            for model in missing if self.ask_downloads else ():
                 ask_download(model)  # the start does not wait for it
             if not plan.digests:
                 if missing:  # no listed model has a file (D-b)

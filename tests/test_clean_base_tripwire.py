@@ -342,7 +342,8 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # live router maps, problems and web routes. Removed: per-role servers and their routes.
 # +36 (2026-11-06, same change, by test-ID diff, 41 added, 5 replaced): first start
 # waits for downloads (13), downloads-needed route (15), other-process holders (3).
-_BASE_EXECUTED = 11933
+# +8 (2026-11-06, same change): a failed download asks once per Start (needs fastapi).
+_BASE_EXECUTED = 11941
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -701,7 +702,8 @@ if not _has_qwen_tokenizer:
 # per-role llama.cpp server routes.
 # +33 (2026-11-06, same change, measured with fastapi blocked): first start and
 # downloads-needed route cases.
-_WEB_EXTRA_CASES = 2099
+# +8 (2026-11-06, same change): test_llamacpp_router_download_failure.py.
+_WEB_EXTRA_CASES = 2107
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)

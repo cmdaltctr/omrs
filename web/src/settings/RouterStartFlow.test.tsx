@@ -82,6 +82,34 @@ describe("Start asks before it downloads a large model", () => {
     expect(await screen.findByRole("dialog", { name: "Download 1 model, 4.0 GiB?" })).toBeInTheDocument();
   });
 
+  it("says the size is being checked while the model host is read, and drops the line after", async () => {
+    let answer: (value: unknown) => void = () => undefined;
+    const slow = new Promise((resolve) => (answer = resolve));
+    const { panel, user } = await open({ [NEEDED]: () => slow });
+    await pressStart(panel, user);
+
+    expect(await within(panel()).findByText("Checking the download size…")).toBeInTheDocument();
+    answer(DOWNLOADS_NEEDED_BOTH);
+
+    await screen.findByRole("dialog");
+    expect(screen.queryByText("Checking the download size…")).toBeNull();
+  });
+
+  it("shows no checking line before Start is pressed", async () => {
+    const { panel } = await open({ [NEEDED]: () => DOWNLOADS_NEEDED_BOTH });
+
+    expect(within(panel()).queryByText("Checking the download size…")).toBeNull();
+  });
+
+  it("shows no checking line while the start itself is in flight", async () => {
+    const slow = new Promise(() => undefined);
+    const { panel, user, server } = await open({ [NEEDED]: () => DOWNLOADS_NEEDED_NONE, [START]: () => slow });
+    await pressStart(panel, user);
+
+    await waitFor(() => expect(starts(server)).toHaveLength(1));
+    expect(within(panel()).queryByText("Checking the download size…")).toBeNull();
+  });
+
   it("does not read the sizes before Start is pressed", async () => {
     const { server } = await open({ [NEEDED]: () => DOWNLOADS_NEEDED_BOTH });
 

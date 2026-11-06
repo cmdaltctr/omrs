@@ -1,8 +1,10 @@
 # Browser check, task 7.5 (one-llamacpp-router)
 
+> Screenshots are kept out of Git: they show local scratch paths. `<screenshots>` is the folder `browser-check/` beside the session files in the OMRS data folder (`DATA/omrs/handoffs/router-session/browser-check/`, with `SHA256SUMS`).
+
 - Date: 2026-11-06
 - Commit: 48f2a3b9 (branch `feat/one-llamacpp-router`, worktree clean before this check)
-- Result: all checks pass. Four small defects found (none blocks the merge). Screenshots are in `browser-check/`.
+- Result: all checks pass. Four small defects found (none blocks the merge). Screenshots are in `<screenshots>/`.
 
 ## Setup
 
@@ -77,3 +79,75 @@ Each score is likelihood x impact, 1 to 10.
 ## Cleanup
 
 Server stopped (`pkill -f "omrs web --workspace <scratch>/workspace"`), no fake router process left, Orca tab closed, ports 18791 and 18792 free. The scratch folders remain in the session scratchpad.
+
+## Re-check after fixes (2026-11-06)
+
+- Commit: 6d8d239c (branch `feat/one-llamacpp-router`). Pages rebuilt first with `npm run build` in `web/`.
+- Result: checks 1 to 5 pass in their listed scope. Two new defects found (one with a score of 30, so it needs a fix before merge). Screenshots in `<screenshots>/`, prefix `recheck-`.
+- Setup: fresh scratch root `browser2/` (config, state, workspace, data, home, models, fakebin) in the session scratchpad. Server `omrs web --workspace <scratch>/workspace --port 18791` with `HF_HUB_OFFLINE=1`, own `HOME`, `OMRS_CONFIG_DIR`, `OMRS_STATE_DIR`, `XDG_DATA_HOME`, and the same `--allow-origin` pane variants. Fake `llama-server` and fake router from `tests/fixtures/llamacpp`, router address `http://127.0.0.1:18792/v1`.
+- Network guard: the model host reads in `huggingface_models.py` use `httpx` and ignore `HF_HUB_OFFLINE`. The server therefore ran with `HTTPS_PROXY` and `HTTP_PROXY` set to `127.0.0.1:18793` (and `NO_PROXY` for loopback). Port 18793 was closed (every request fails at once) or held by a small listener that never answers (each request waits for the 10-second timeout). No request left the machine. No model file was written (`find` on the scratch cache and data folders: none).
+- Two scratch configs: A (programme set to the fake, shipped model list, no files) and B (same, plus both listed models pointing at tiny fake `.gguf` files with their SHA-256). The server restarted between A and B.
+- Orca tab: one tab, `--page <id>` on every command, viewport set again after every page load. Themes set through the `omrs-preferences` key, then reload.
+- Ports 8765 and 9931, `~/.omrs`, `~/.config/omrs` and the login item were not touched. Both ports stayed occupied by their own owners throughout.
+
+### Results
+
+| # | Check | Result | Evidence |
+|---|-------|--------|----------|
+| 1a | Config A, Start: dialog names both models and "The size is unknown." (title "Download 2 models?", each row "Size unknown"). Same text in the four combinations of 1,280 and 390 px, light and dark | Pass | `recheck-start-dialog-1280-dark.png`, `recheck-start-dialog-1280-light.png`, `recheck-start-dialog-390-dark.png`, `recheck-start-dialog-390-light.png` |
+| 1b | Cancel starts nothing: dialog closes, state line "Stopped", port 18792 closed, no fake-router process (all four combinations) | Pass | `lsof`, `pgrep` after each Cancel |
+| 1c | Download: state line becomes "Downloading models. The router starts when they are ready." and never "Failed" while the download is pending (1,280 dark and 390 light). Rows show "Not downloaded" and "Downloading". No `huggingface.co` line in the server log, no file written | Pass for the wording. The end of the wait is defect 5 | `recheck-downloading-1280-dark.png` |
+| 1d | With both files present (config B), Start shows no dialog, state goes Running, port 18792 opens (1,280 and 390 px, both themes) | Pass | state line text, `lsof` |
+| 2 | While the router runs, Start is disabled with the same outline colours as Stop and Restart, at 0.6 opacity (light: text `rgb(57,58,52)` on `rgb(248,247,245)`; dark: `rgb(201,197,186)` on `rgb(24,23,21)`). No accent fill. Faint but legible in the light theme | Pass | `recheck-start-outline-1280-light.png`, `recheck-router-running-1280-dark.png`, `recheck-router-running-390-light.png`, computed styles |
+| 3 | Integrations > Model runtimes: Stop with only this process opens no dialog; state goes Stopped and port 18792 closes (1,280 light and dark, 390 light and dark) | Pass | `recheck-runtimes-stopped-1280-light.png`, `recheck-runtimes-stopped-390-dark.png` |
+| 4 | Integrations llama.cpp card with `llamacpp_server_binary` set to the fake: second line is only "Uses your own program: <path>", text "Not installed" absent, no Get button (1,280 light and dark, 390 light) | Pass | `recheck-llamacpp-card-1280-light.png`, `recheck-llamacpp-card-390-light.png` |
+| 5 | No sideways scroll at 390 px: `scrollWidth` 390 and `clientWidth` 390 on Settings > Providers (Router panel closed, running, dialog open), Integrations, Integrations > Model runtimes, light and dark. Router buttons Start, Stop, Restart, Edit all inside the viewport | Pass | measure output |
+
+### The four earlier defects
+
+| Earlier defect | Status | Note |
+|----------------|--------|------|
+| 1. Stop confirmation names another process and OCR | Fixed | No dialog in four combinations. The dialog for a real second process was not tried (needs a second OMRS process). |
+| 2. First Start downloads about 4 GB with no prompt, and the line says "Failed: Models still downloading." | Fixed for the prompt and the line. Not fully closed | Dialog now asks first; the line says "Downloading". The size in the dialog was only seen as "unknown". The old note that a stored failure survives a server restart was not re-checked: the state folder was wiped between runs. Defect 5 below is a new problem in the same path. |
+| 3. Card says "Ready" and "Not installed" together | Fixed | Check 4. |
+| 4. Start looks pressable while the router runs | Fixed | Check 2. |
+
+### New defects
+
+Scores are likelihood x impact, 1 to 10.
+
+#### 5. A failed automatic download makes the server spin (5 x 6 = 30)
+
+- What: when the model host cannot be read (no network, host down, or a plan that is refused), a waiting first Start never ends. The router lease asks for the download again at once, it fails at once, and this repeats about 90 times a second. One CPU core stays at 98 per cent, the server log grows by about 1.2 MB a minute, and the panel flips between "Downloading models. The router starts when they are ready." and "Stopped" with no failure line. Stop does not end it (six Stop calls, button and API); only stopping the server did. With a listener that never answers, the same loop runs once every 10 seconds, so the loop also exists in a slow-network case.
+- Likely cause (read from code, not changed): `RouterControl.load` in `src/omrs/transports/api/llamacpp_server.py`. After the last download ends without a file, it calls `self.start(config)`. `start` joins the router, sees the same missing file, queues the download again and sets the waiting flag again. `RouterDownloads._ended_without_file` calls `load` for every failed plan.
+- Repro:
+  1. Config A, server started with the proxy variables above and port 18793 closed.
+  2. Settings > Providers > Router > Start, then Download in the dialog.
+  3. Read `cannot start: network` lines in the server log: 164 after 2 seconds, 525 after 6 seconds. `ps -o pcpu` shows about 98.
+  4. Press Stop or POST `/v1/llamacpp/router/stop`. The count keeps rising.
+- Expected by the spec text: the failed `not-downloaded` state with "No model is downloaded yet." and an end to the wait.
+- Screenshot: `recheck-offline-spin-1280-dark.png`.
+- Fix: end the wait with the `not-downloaded` refusal when a plan fails (do not call `start` from `load` for an entry that still has no file), and test that a failed plan queues no second download.
+
+#### 6. Model runtimes page shows "Stopped" for up to 30 seconds after Start (4 x 2 = 8)
+
+- What: open Integrations > Model runtimes while the router is stopped, go to Settings > Providers, press Start, and return within 30 seconds. The card still says "Stopped" and has no Stop button, while `GET /v1/runtimes` already says `running`. After 30 seconds the page is right. The page list uses the 30-second stale time and the Start action does not refresh the runtime list (`web/src/api/llamacppRouterHooks.ts`, `web/src/api/modelRuntimesHooks.ts`).
+- Repro: steps above with config B; 1,280 px, light theme.
+- Fix: invalidate `modelRuntimesKey` in the success handler of the router Start, Stop and Restart actions.
+
+#### 7. Dialog rows wrap unevenly at 390 px (6 x 1 = 6, cosmetic)
+
+- What: at 390 px the first model's "Size unknown" drops under its name while the second stays on the right. See `recheck-start-dialog-390-dark.png`. Also, while the size read waits for a slow host (up to 10 seconds per model), the Start, Stop and Restart buttons are all disabled and the line says "Stopped" with no sign that a check runs.
+- Fix: give the size its own line below the name at narrow widths for every row, and show a short "Checking model sizes" line while the read runs.
+
+### Not checked
+
+- Real download sizes in the dialog and any real download (the guard blocks the host by design).
+- The "Another OMRS process" dialog when a second process holds the router.
+- A stored `not-downloaded` failure surviving a server restart (state folder wiped between runs).
+- The Downloading state line at 390 px in dark and at 1,280 px in light, and the Downloading screenshot at 390 px (the one taken was the top of the page, discarded).
+- Chat, Model files and Get a model screens (not changed after task 7.5).
+
+### Cleanup
+
+Server stopped with `pkill -f "omrs web --workspace <scratch>/workspace"`, the fake router stopped with it, the listener on 18793 stopped, the Orca tab closed, ports 18791, 18792 and 18793 free. Scratch folders remain in the session scratchpad. Screenshots show the scratch path, which holds the user name: strip it before any upload. `.openspec.yaml` of this change appeared as modified (a `pin: true` line) during the check. It was clean when the check began and this check did not write it.

@@ -17,6 +17,7 @@ import {
   type LlamacppRouterStatus,
   type RouterModelChange,
 } from "./llamacppRouter";
+import { modelRuntimesKey } from "./modelRuntimesHooks";
 import { currentRevision, rememberRevision, settingsWritten } from "./settingsRevision";
 
 export const llamacppRouterKey = ["llamacpp-router"] as const;
@@ -36,12 +37,16 @@ export function useLlamacppRouter() {
   return useQuery(llamacppRouterQuery(useApi()));
 }
 
-function useStatusMutation<V>(call: (api: ApiClient, variables: V) => Promise<LlamacppRouterStatus>) {
+function useStatusMutation<V>(call: (api: ApiClient, variables: V) => Promise<LlamacppRouterStatus>, changesRuntime = false) {
   const api = useApi();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (variables: V) => call(api, variables),
-    onSuccess: (status) => queryClient.setQueryData(llamacppRouterKey, settingsWritten(queryClient, status)),
+    onSuccess: (status) => {
+      queryClient.setQueryData(llamacppRouterKey, settingsWritten(queryClient, status));
+      // Start, Stop and Restart change the runtime that Integrations > Model runtimes lists.
+      if (changesRuntime) void queryClient.invalidateQueries({ queryKey: modelRuntimesKey });
+    },
   });
 }
 
@@ -61,6 +66,6 @@ export function useDeleteRouterModel() {
   return useStatusMutation<string>((api, id) => deleteLlamacppRouterModel(api, id, { revision: currentRevision(queryClient) }));
 }
 
-export const useStartLlamacppRouter = () => useStatusMutation<void>((api) => startLlamacppRouter(api));
-export const useStopLlamacppRouter = () => useStatusMutation<void>((api) => stopLlamacppRouter(api));
-export const useRestartLlamacppRouter = () => useStatusMutation<void>((api) => restartLlamacppRouter(api));
+export const useStartLlamacppRouter = () => useStatusMutation<void>((api) => startLlamacppRouter(api), true);
+export const useStopLlamacppRouter = () => useStatusMutation<void>((api) => stopLlamacppRouter(api), true);
+export const useRestartLlamacppRouter = () => useStatusMutation<void>((api) => restartLlamacppRouter(api), true);

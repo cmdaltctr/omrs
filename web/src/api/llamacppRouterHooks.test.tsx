@@ -4,7 +4,9 @@ import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 import { routerStatus, settingsServer } from "../settings/test/fixtures";
 import { ApiProvider } from "./ApiProvider";
-import { llamacppRouterKey, useDeleteRouterModel, useLlamacppRouter, useSaveLlamacppRouter, useSaveRouterModel, useStartLlamacppRouter } from "./llamacppRouterHooks";
+import { RUNTIMES } from "../integrations/test/modelRuntimeFixtures";
+import { llamacppRouterKey, useDeleteRouterModel, useLlamacppRouter, useRestartLlamacppRouter, useSaveLlamacppRouter, useSaveRouterModel, useStartLlamacppRouter, useStopLlamacppRouter } from "./llamacppRouterHooks";
+import { useModelRuntimes } from "./modelRuntimesHooks";
 import { createQueryClient } from "./queries";
 import { currentRevision, rememberRevision } from "./settingsRevision";
 
@@ -63,6 +65,34 @@ describe("llama.cpp router hooks", () => {
     const remove = renderHook(() => useDeleteRouterModel(), { wrapper });
     act(() => remove.result.current.mutate("qwen3-4b"));
     await waitFor(() => expect(queryClient.getQueryData(llamacppRouterKey)).toMatchObject({ state: "running" }));
+  });
+
+  it.each([
+    ["Start", "start", useStartLlamacppRouter],
+    ["Stop", "stop", useStopLlamacppRouter],
+    ["Restart", "restart", useRestartLlamacppRouter],
+  ])("reads the model runtimes again after %s succeeds, so that page is not stale", async (_name, action, useAction) => {
+    const { wrapper, server } = setup({
+      "GET /v1/runtimes": () => ({ runtimes: RUNTIMES }),
+      [`POST /v1/llamacpp/router/${action}`]: () => routerStatus({ state: "running" }),
+    });
+    const { result: list } = renderHook(() => useModelRuntimes(), { wrapper });
+    await waitFor(() => expect(list.current.data).toBeDefined());
+    expect(server.exact("GET", "/v1/runtimes")).toHaveLength(1);
+    const { result } = renderHook(() => useAction(), { wrapper });
+    act(() => result.current.mutate());
+    await waitFor(() => expect(server.exact("GET", "/v1/runtimes")).toHaveLength(2));
+  });
+
+  it("does not read the model runtimes again after a save that is not a start, stop or restart", async () => {
+    const { wrapper, server } = setup({ "GET /v1/runtimes": () => ({ runtimes: RUNTIMES }), "PUT /v1/llamacpp/router": () => routerStatus({}) });
+    const { result: list } = renderHook(() => useModelRuntimes(), { wrapper });
+    await waitFor(() => expect(list.current.data).toBeDefined());
+    const { result } = renderHook(() => useSaveLlamacppRouter(), { wrapper });
+    act(() => result.current.mutate({ models_max: 2 }));
+    await waitFor(() => expect(server.exact("PUT", "/v1/llamacpp/router")).toHaveLength(1));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(server.exact("GET", "/v1/runtimes")).toHaveLength(1);
   });
 
   it("polls while the router is starting and stops when it runs", async () => {

@@ -383,6 +383,7 @@ While an automatic download of a listed model is queued or runs, a Start SHALL g
 
 - **WHEN** every queued download fails or is cancelled
 - **THEN** the state MUST be `failed` with `not-downloaded` and the line "No model is downloaded yet."
+- **AND** OMRS MUST queue no download again until the user presses Start
 
 #### Scenario: Server restart after a wait
 

@@ -280,11 +280,13 @@ class RouterControl:
 
     # ── Control ──────────────────────────────────────────────────────────
 
-    def start(self, config: RouterConfig) -> RouterStatus:
+    def start(self, config: RouterConfig, *, ask_downloads: bool = True) -> RouterStatus:
         """Join the ``router`` runtime with *config*; it starts the router when none runs.
 
         A router that runs with other arguments is left alone (Restart applies
-        them). Every refusal is a ``failed`` status with one fixed reason.
+        them). Every refusal is a ``failed`` status with one fixed reason. A start
+        that follows a finished download passes ``ask_downloads=False``: only the
+        user's own Start asks for a download.
         """
         checked = self.check(config)
         self._end_wait()
@@ -303,6 +305,7 @@ class RouterControl:
         if router.base.operator_stopped:
             router.leave()  # the operator's own Start: join again
         self._router = router
+        router.ask_downloads = ask_downloads
         try:
             router.join()
         except RuntimeUnavailable as refused:
@@ -310,6 +313,8 @@ class RouterControl:
                 self._waiting = True  # the status says whether a download still runs
             else:
                 self._refusal = (refused.reason, refused.reason_text)
+        finally:
+            router.ask_downloads = True
         return self.status(config)
 
     def stop(self, config: RouterConfig) -> RouterStatus:
@@ -355,7 +360,10 @@ class RouterControl:
         them). With no router running, nothing starts unless a Start still waits and no
         other listed model still downloads: then the router starts and loads every model
         that downloaded meanwhile. A mode other than ``managed`` starts nothing and ends
-        the wait. A refusal is logged only: the entry shows its own state.
+        the wait. The start that follows a download asks for no download, so when every
+        download has ended and no model has a file the status reads ``not-downloaded`` and
+        nothing is asked for again until the user presses Start. A refusal is logged only:
+        the entry shows its own state.
         """
         if config.mode != "managed":
             self._end_wait()
@@ -374,7 +382,7 @@ class RouterControl:
                 self._to_load |= models  # the last download starts the router
                 return
             models |= self._to_load & with_file
-            self.start(config)
+            self.start(config, ask_downloads=False)
             if self._owned() is None:
                 return  # refused again: the status says why
         router = open_router(self.manager, checked, entries, decision_models=config.decision_models)

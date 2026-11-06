@@ -11,7 +11,7 @@ import { RouterStartDialog } from "./RouterStartDialog";
  * The server reads the model host for the sizes only when this runs, never at a status read.
  *
  * It has the shape of a mutation (`mutate`, `isPending`, `isError`, `error`, `reset`), plus the `dialog` element
- * that the caller renders once.
+ * that the caller renders once. It also holds the "Checking the download size…" line while the sizes are read.
  */
 export function useRouterStartFlow() {
   const api = useApi();
@@ -36,6 +36,7 @@ export function useRouterStartFlow() {
     dialog: (
       <RouterStartDialog
         needed={needed}
+        checking={check.isPending}
         onDownload={() => {
           setNeeded(null);
           start.mutate();

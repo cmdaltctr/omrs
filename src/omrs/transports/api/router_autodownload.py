@@ -14,8 +14,8 @@ app's event loop and downloads one model at a time:
 4. record the file path and SHA-256 through the Use this model writer, apply the
    reload rule, and load the model.
 
-A failed or cancelled download leaves the entry ``not-downloaded``; the next start or
-request asks again, and a Start that waits for the downloads ends (``RouterControl.load``).
+A failed or cancelled download leaves the entry ``not-downloaded``, and a Start that waits
+for the downloads ends (``RouterControl.load``). Only the user's next Start asks again.
 Nothing here raises into the router lease.
 """
 
