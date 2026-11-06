@@ -7,7 +7,7 @@
 
 ## 1. Router check (design D3)
 
-- [x] 1.1 Write a router preset file in the experiment folder with one preset per model (D2). Start `llama serve` on the scratch port with it, after telling the user. Run `verify_llamacpp_runtime` against it with a scratch plan that pins the 4B embedding and the 4B chat model. Verify: the check passes, the found runtime names both files, and one embedding and one chat request each return a result.
+- [x] 1.1 Write a router preset file in the experiment folder with one preset per model (D2). Start `llama serve` on the scratch port with it, after telling the user. Run `verify_llamacpp_runtime` against it with a scratch plan that pins the 4B embedding and the 4B chat model. Verify: the check passes, the found runtime names both files, and one embedding and one chat request each return a result. (Ran on `llama serve` before the 2026-11-06 amendment; task 3.5 moves the run onto the OMRS router.)
 
 ## 2. Experiment folder and plan (design D1, D2, D5, D8)
 
@@ -26,6 +26,7 @@
 - [x] 3.2 Write the Part A runner: hash check, chunking guard (stop unless the splitter resolves to `model_token_aware`), live-server check of the router, `record_run_start` with `found.as_run_record()`, ingest, three search modes, answers with claim checking off and on, and one JSONL file per step in `output/`. Use a scratch `OMRS_CONFIG_DIR` inside `output/`. Verify: 3.1 tests pass, and `--limit 1` runs one document and one question with no error.
 - [x] 3.3 Write the determinism repeat as a separate process on the same index. Verify: run twice on the `--limit 1` index gives identical output.
 - [x] 3.4 Write the comparison-arm step: dense index of the 6 Experiment 3 documents with 0.6B and 8B, 17 questions, reranker off. Verify: `--limit 1` writes one row per model.
+- [ ] 3.5 After `one-llamacpp-router` merges, rebase on `v3`. Rewire `run_part_a.py`, `run_timing.py`, `run_sweep.sh` and `plan.json` from `llama serve` and the retired `LLAMACPP_*` keys onto the OMRS managed router: scratch `OMRS_CONFIG_DIR` and `OMRS_STATE_DIR` in `output/`, one `llamacpp_models` entry per model with its D6a preset (design D2, D6a). Verify: `--limit 1` runs one document and one question with no error, and the found runtime names b11941.
 
 ## 4. Part B timing (design D6)
 

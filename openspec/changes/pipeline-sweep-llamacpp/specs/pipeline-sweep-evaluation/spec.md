@@ -114,7 +114,7 @@ The sweep SHALL embed the same slices with the 4B model in exact mode (one slot,
 
 ### Requirement: The sweep SHALL pin every server argument
 
-The plan SHALL write out every llama.cpp server argument that can change speed or output, including values that default to auto. The chat preset SHALL turn off speculative decoding and the prompt cache. The run SHALL record a `/props` snapshot and that no `LLAMA_ARG_*` environment variable is set.
+The plan SHALL write out every llama.cpp server argument that can change speed or output, including values that default to auto. The run SHALL show speculative decoding off in its `/props` snapshot, and the chat preset SHALL turn off the prompt cache. The run SHALL record a `/props` snapshot and that no `LLAMA_ARG_*` environment variable is set.
 
 #### Scenario: Default parallel slots
 

@@ -10,7 +10,7 @@ See `proposal.md` for the reason. Current state that shapes the approach:
 - `experiments/_lib/llamacpp_runtime.py` `verify_llamacpp_runtime(block, base_url=...)` reads one server. It checks every `llama.cpp` model in the `runtime` block against that one server and fails when the server does not list a planned file. `FoundRuntime.as_run_record()` holds one `build` and a `models` list.
 - llama.cpp router mode (`llama serve`) runs several models behind one address and starts each with its own preset arguments. The live Llama app on this Mac runs this way: its embedding model has `--embeddings --pooling last`, its chat models do not. Task 3.4 of `reproducible-experiment-runtime` ran the live-server check against it in router mode and passed (`openspec/changes/archive/2026-10-27-reproducible-experiment-runtime/evidence/live-check.txt`). The check reads each model path from `GET /v1/models`, so one call covers every model.
 - The OMRS llama.cpp embedding provider sends the model name with each request, so a router can route it.
-- OMRS settings also address two llama.cpp servers: `llamacpp_embed_url` (default port 8080) and `llamacpp_chat_url` (default port 8081). The embedding provider `core/providers/embeddings/llamacpp.py` needs `uv sync --extra llamacpp`.
+- OMRS settings address one llama.cpp router: `llamacpp_router_url`, served by OMRS's own router (change `one-llamacpp-router`, ADR-115). The two per-role addresses `llamacpp_embed_url` and `llamacpp_chat_url` are retired. The embedding provider `core/providers/embeddings/llamacpp.py` needs `uv sync --extra llamacpp`.
 - The `documents` profile turns the reranker on and hybrid off. `defaults.yaml` sets `metadata.extraction_mode: llamaindex`, which calls a language model during ingestion. Claim checking (`answer.verify_claims`) is off by default and uses `verify_provider` (`cloud` by default, `local` for the local backend).
 - The reranker is an ONNX cross-encoder. OCR engines run outside llama.cpp. ADR-103 leaves both on their current runtimes, under the runtime-manifest requirement.
 - The FreshStack corpus is in `~/Development/DATA/omrs/experiments/<folder>/freshstack-corpus`. `prepare_freshstack.py` (Experiments 9a and 22, seed 20260530) builds the LangChain slice. FinanceBench is not downloaded yet.
@@ -27,7 +27,6 @@ See `proposal.md` for the reason. Current state that shapes the approach:
 
 - Measuring retrieval quality. The set is too small and too easy (Experiment 2 is at the ceiling). The scores only catch gross breakage.
 - Ragas, statistics beyond Hit@1, MRR and Hit@page, and the publication rules.
-- Moving the live app, CI or the tripwire baselines off Ollama.
 - Changing any production default.
 
 ## Decisions
@@ -55,10 +54,10 @@ Alternatives: Experiment 3 alone. Rejected, because its PDFs are short academic 
 | Language: metadata, answer, claim check | `Qwen/Qwen3-4B-GGUF`, `Qwen3-4B-Q8_0.gguf` | router |
 
 - All files are Q8_0, the 8-bit level that AGENTS.md Gotcha 16 asks for.
-- The plan pins the SHA-256 of each file and one exact llama.cpp build: the build installed on the Mac on the day the plan is written (build 11671 was measured on 27 October 2026). Builds earlier than b11510 are not allowed (Gotcha 16).
-- One `llama serve` router with one preset per model. Embedding presets: `--embeddings --pooling last --ctx-size 8192 --ubatch-size 8192`, as in the guide example. Chat preset: `--ctx-size 16384` (the OMRS `llamacpp_context_window` default). The plan records each preset as `server_args`. Answer and claim-check requests use temperature 0.
-- The router listens on `127.0.0.1` on a scratch port that the live app and the live Llama app do not use (for example 18080). Both `llamacpp_embed_url` and `llamacpp_chat_url` point at it.
-- The run sets `embed_provider=llamacpp`, `local_backend=llamacpp`, metadata language model `local`, `verify_provider=local`, and the LanceDB store inside `output/`. Settings go in a scratch `OMRS_CONFIG_DIR` inside `output/`. Nothing reads or writes `~/.config/omrs` or `~/.omrs`.
+- The plan pins the SHA-256 of each file and one exact llama.cpp build: the OMRS pinned build b11941, which the router checks at every start. Builds earlier than b11510 are not allowed (Gotcha 16), and b11941 meets that floor.
+- OMRS's own managed llama.cpp router, not `llama serve` (the program rule refuses the Llama app binary, amended 2026-11-06 by `one-llamacpp-router` D17). Each model is one `llamacpp_models` entry whose `preset` holds the D6a values. Embedding presets: `embeddings pooling=last ctx-size=8192 ubatch-size=8192`, as in the guide example, plus the rest of D6a. Chat preset: `ctx-size=16384` in the entry's preset (the retired `llamacpp_context_window` no longer sets it). The plan records each preset as `server_args`. Answer and claim-check requests use temperature 0.
+- The router listens on `127.0.0.1` on a scratch port that the live app and the live Llama app do not use (for example 18080). `llamacpp_router_url` points at it and `llamacpp_router_server` is `managed`. Part B sets `llamacpp_router_models_max` to 1, so one model is loaded at a time.
+- The run sets `embed_provider=llamacpp`, `local_backend=llamacpp`, metadata language model `local`, `verify_provider=local`, and the LanceDB store inside `output/`. Settings go in a scratch `OMRS_CONFIG_DIR` and runtime state in a scratch `OMRS_STATE_DIR`, both inside `output/`. Nothing reads or writes `~/.config/omrs` or `~/.omrs`.
 - `PDF_READER` stays at its production default, `pdf_inspector` (`defaults.yaml`), for every document. No other reader is used as a substitute, because a second reader would add a variable. The sweep runs after the change `pdf-inspector-page-provenance` merges, so pdf-inspector emits one document per page with `page` and `page_label`. The run records which reader ran for each file (the fallback chain may still pass a file to LiteParse or pypdf, as in production) and checks that every PDF chunk has a page number. It also measures whether per-page output changes retrieval on the 17 questions (Experiment 3 used whole-document pdf-inspector output under Ollama).
 - Metadata extraction stays at its default (`llamaindex`, one language-model call set per chunk). The run records its time per chunk, so Experiment 35 can choose its mode with a measured cost.
 
@@ -66,7 +65,7 @@ Alternatives: `Qwen3-4B` at Q4_K_M for speed. Rejected by Gotcha 16. The Experim
 
 ### D3. One router and the live-server check
 
-The run calls the existing `verify_llamacpp_runtime(block, base_url=...)` once against the router. In router mode it reads every model path from `GET /v1/models`, hashes each planned file and checks the one build. `found.as_run_record()` goes to `record_run_start(HERE, runtime=...)`. No change to `experiments/_lib/` is needed.
+The run calls the existing `verify_llamacpp_runtime(block, base_url=...)` once against the router. In router mode it reads every model path from `GET /v1/models`, hashes each planned file and checks the one build. OMRS's router is `llama-server` in router mode, so the check reads it as before. `found.as_run_record()` goes to `record_run_start(HERE, runtime=...)`. No change to `experiments/_lib/` is needed.
 
 Each Part B timing run is its own run, with its own run record and a plan block for the one embedding model it times.
 
@@ -131,7 +130,7 @@ Presets (every value written out, so no default can change silently):
 | --- | --- |
 | Embedding, exact | `embeddings pooling=last embd-normalize=2 ctx-size=8192 batch-size=8192 ubatch-size=8192 parallel=1 kv-unified=false flash-attn=on n-gpu-layers=all fit=off cache-type-k=f16 cache-type-v=f16` |
 | Embedding, fast | As exact, but `parallel=8 kv-unified=true`, and the client sends 8 requests at a time |
-| Chat (Qwen3-4B) | `ctx-size=16384 parallel=1 flash-attn=on n-gpu-layers=all fit=off cache-type-k=f16 cache-type-v=f16 spec-type=none cache-prompt=false cache-reuse=0`; requests at temperature 0 with a fixed seed; the thinking setting pinned through `chat-template-kwargs` |
+| Chat (Qwen3-4B) | `ctx-size=16384 parallel=1 flash-attn=on n-gpu-layers=all fit=off cache-type-k=f16 cache-type-v=f16 cache-prompt=false cache-reuse=0`; requests at temperature 0 with a fixed seed; the thinking setting pinned per request through `chat-template-kwargs`. Speculative decoding is off by the b11941 default (`spec-type` `none`, spike 1.5 of `one-llamacpp-router`); `spec-type` is not a preset key, so the `/props` snapshot records it |
 
 Notes from the research:
 
@@ -144,7 +143,7 @@ Notes from the research:
 Part C method:
 
 1. Use the 4B model and the three Part B slices.
-2. Run exact mode, then fast mode, in fresh router starts. Sort inputs by chunk ID in both.
+2. Run exact mode, then fast mode, in fresh router starts. Fast mode rewrites the 4B entry's preset (`parallel=8 kv-unified=true`) in the scratch `omrs.jsonc` between the two starts. Sort inputs by chunk ID in both.
 3. Compare each vector pair. Report the lowest and the median cosine similarity.
 4. Build a dense index from each run's vectors for the 17-question set and the FinanceBench questions. Compare the rankings and nDCG@10.
 5. Record the speed of each mode.
