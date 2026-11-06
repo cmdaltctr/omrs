@@ -65,7 +65,7 @@ export function LocalBackendCutInput({ backend, value, placeholder, readOnly = f
         aria-label={CUT_WORDS.nameFor(backend)}
         aria-invalid={invalid}
         aria-describedby={invalid ? errorId : undefined}
-        className="w-28"
+        className="w-36"
         onChange={update}
       />
       {invalid ? (
