@@ -55,6 +55,8 @@ def test_read_ocr_keys_keep_value_and_order() -> None:
         "ocr_non_latin_routing",
         "document_router",
         "ocr_local_backends",
+        # Appended by change local-ocr-per-backend-cuts, D11 (the step cut map).
+        "ocr_local_cuts",
     )
 
 
@@ -70,6 +72,8 @@ def test_read_step_ocr_keys_keep_value_and_order() -> None:
         "ocr_non_latin_routing",
         "document_router",
         "ocr_local_backends",
+        # Appended by change local-ocr-per-backend-cuts, D11 (the step cut map).
+        "ocr_local_cuts",
     )
 
 

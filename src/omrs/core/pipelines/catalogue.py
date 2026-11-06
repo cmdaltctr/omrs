@@ -192,13 +192,14 @@ class HostOptionSet:
 
     Attributes:
         inherited: Value a node inherits when its parameter is ``None``. A
-            list parameter inherits a tuple of names.
+            list parameter inherits a tuple of names; a map parameter
+            (``ocr_local_cuts``) inherits a mapping.
         unavailable: Choice to the reason the host cannot run it. Each reason
             holds the fix (for example the command that installs the choice).
         remedy: What the user can do instead, appended to each refusal.
     """
 
-    inherited: str | tuple[str, ...] | None = None
+    inherited: str | tuple[str, ...] | Mapping[str, float] | None = None
     unavailable: Mapping[str, str] = field(default_factory=dict)
     remedy: str = "Install the package and restart OMRS, or choose another value or Inherit."
 
@@ -309,20 +310,27 @@ def capability_reasons(
 
 def option_reports(
     descriptor: OperationDescriptor, options: Mapping[str, HostOptionSet]
-) -> tuple[dict[str, dict[str, str]], dict[str, str | list[str]]]:
+) -> tuple[dict[str, dict[str, str]], dict[str, Any]]:
     """Return ``(unavailable_options, inherited_values)`` for ``descriptor``.
 
     Both maps are empty when the operation has no option parameters or the
-    host supplies no matching option set.
+    host supplies no matching option set. A string stays a string, a mapping
+    becomes a dict and a tuple becomes a list.
     """
     unavailable: dict[str, dict[str, str]] = {}
-    inherited: dict[str, str | list[str]] = {}
+    inherited: dict[str, Any] = {}
     for param, set_name in descriptor.option_params.items():
         option_set = options.get(set_name)
         if option_set is None:
             continue
         unavailable[param] = dict(option_set.unavailable)
-        if option_set.inherited is not None:
-            value = option_set.inherited
-            inherited[param] = value if isinstance(value, str) else list(value)
+        value = option_set.inherited
+        if value is None:
+            continue
+        if isinstance(value, str):
+            inherited[param] = value
+        elif isinstance(value, Mapping):
+            inherited[param] = dict(value)
+        else:
+            inherited[param] = list(value)
     return unavailable, inherited

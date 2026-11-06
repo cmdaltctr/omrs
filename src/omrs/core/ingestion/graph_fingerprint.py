@@ -65,7 +65,10 @@ _ADDED_PARAMS = frozenset(
 #: the identify step through :meth:`IngestionShape.step_options`, and its recipe
 #: enters the ``parser`` block as the host router's does, so a rename does not
 #: reindex and a step that names the host router keeps the host identity.
-_UNHASHED_OPTIONS = frozenset({"document_router"})
+#: ``ocr_local_cuts`` joins them (change local-ocr-per-backend-cuts, D11): the
+#: effective cuts enter the PDF ``parser`` block only, so a step cut change
+#: re-indexes PDF sources and a Markdown-only collection keeps its digests.
+_UNHASHED_OPTIONS = frozenset({"document_router", "ocr_local_cuts"})
 
 
 @dataclass(frozen=True)

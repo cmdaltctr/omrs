@@ -183,9 +183,12 @@ def with_read_options(settings: EffectiveSettings, params: Any) -> EffectiveSett
 
     The read options are the reader keys and the OCR keys (``READ_OPTION_KEYS``).
     ``None`` inherits the host value. Without a set option, *settings* is
-    returned unchanged. The copy leaves the frozen host settings alone. The
-    read and identify adapters both use this helper, so the read and the
-    stored identity use the same options.
+    returned unchanged. Every option replaces its host value as a whole except
+    ``ocr_local_cuts``, which merges: a step entry replaces the host cut of its
+    own backend only, and a backend without a step entry keeps the host's cut.
+    The copy leaves the frozen host settings alone. The read and identify
+    adapters both use this helper, so the read and the stored identity use the
+    same options.
 
     Args:
         settings: The node settings.
@@ -196,6 +199,8 @@ def with_read_options(settings: EffectiveSettings, params: Any) -> EffectiveSett
     update = {k: v for k, v in values.items() if k in READ_OPTION_KEYS and v is not None}
     if not update:
         return settings
+    if "ocr_local_cuts" in update:
+        update["ocr_local_cuts"] = {**settings.ocr_local_cuts, **update["ocr_local_cuts"]}
     return settings.model_copy(update={**update, **_step_lists(settings, update)})
 
 

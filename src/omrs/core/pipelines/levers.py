@@ -94,6 +94,7 @@ _READ_STEP_OCR_KEYS = (
     "ocr_engine_fallback",
     *(field.name for rule in reading_parts.PAGE_RULES for field in rule.settings),
     "ocr_local_backends",
+    "ocr_local_cuts",
 )
 
 # Host-owned settings: matched by exact path, block prefix or name fragment.
