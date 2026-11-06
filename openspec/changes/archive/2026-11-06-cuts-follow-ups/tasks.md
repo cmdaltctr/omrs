@@ -28,4 +28,5 @@ Tests first: write the test, run it on current code and record that it fails, im
 - [x] 5.1 Re-pin the clean-base tripwire by test-ID diff against `v3`.
 - [x] 5.2 Run `./scripts/local_ci.sh` and `openspec validate --all --strict`.
 - [x] 5.3 Browser check of the locked notice is not needed: the test renders it, and no layout changes. Record this.
-- [ ] 5.4 Push, open a PR into `v3`, watch CI, handle review. Do not merge without the operator's word.
+- [x] 5.4 Push, open a PR into `v3`, watch CI, handle review. Do not merge without the operator's word.
+  - Done 2026-11-06: PR #184, every check green, merged by the operator-set auto-merge as `d382a763`.

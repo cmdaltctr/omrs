@@ -942,3 +942,14 @@ When `omrs.jsonc` holds `ocr_local_min_confidence`, the Local OCR group SHALL sh
 - **GIVEN** `omrs.jsonc` holds `"ocr_local_min_confidence": 0.9`
 - **WHEN** the user sets the PP-OCRv6 small cut to 0.9 and presses Save
 - **THEN** `omrs.jsonc` MUST hold `"ocr_local_cuts": {"pp-ocrv6-small": 0.9}` and MUST NOT hold `ocr_local_min_confidence`
+
+### Requirement: The retired cut key notice respects the environment lock
+
+When `omrs.jsonc` holds `ocr_local_min_confidence` and `OCR_LOCAL_CUTS` locks the cuts, the notice SHALL NOT show the "Remove it" button. It SHALL say that `OCR_LOCAL_CUTS` is set in the environment or `.env`, and that the operator removes `ocr_local_min_confidence` from `omrs.jsonc` by hand.
+
+#### Scenario: Locked cuts
+
+- **GIVEN** `omrs.jsonc` holds `ocr_local_min_confidence` and `OCR_LOCAL_CUTS` is set in the environment
+- **WHEN** the Local OCR group renders
+- **THEN** the notice MUST show without a "Remove it" button
+- **AND** it MUST name `OCR_LOCAL_CUTS` and tell the operator to remove the key from `omrs.jsonc` by hand
