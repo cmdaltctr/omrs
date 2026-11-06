@@ -86,6 +86,8 @@ Before the first code task, verify the worktree: `git rev-parse --show-toplevel`
 
 ## 10. Live app rollout (operator step, after merge)
 
+Carried by master flow `rag-benchmark-readiness-flow` group 4 (tasks 4.2 to 4.4, gate G5), so the live app switches and re-indexes once with the router change. Left open on purpose at archive (2026-11-06).
+
 - [ ] 10.1 Reinstall the live app in `~/.omrs` from merged `v3` with the lock constraints (`uv export` constraints file) and the extras in use plus `local-ocr-indra`. Verify `uv pip show indra-ocr` in the live environment reports 1.1.2.
 - [ ] 10.2 Put the Indra weights in a local folder and set `INDRA_OCR_MODEL_DIR` in the live launch environment (the login item plist; `omrs web install` can drop custom variables, issue #175). Verify the folder holds `det.onnx`, `rec.onnx` and `meta.json`.
 - [ ] 10.3 Remove `OCR_LOCAL_MIN_CONFIDENCE` from the live environment, `.env` and the plist if present. Verify `omrs web` starts.

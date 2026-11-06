@@ -89,6 +89,13 @@ A discovered descriptor whose name clashes with a built-in part, or whose type d
 - **THEN** start-up SHALL succeed
 - **AND** health SHALL list the part as broken with the error
 
+#### Scenario: Descriptor with a removed field
+
+- **GIVEN** a distribution whose local OCR backend descriptor passes `keeps_scripts`
+- **WHEN** the engine starts
+- **THEN** start-up SHALL succeed
+- **AND** health SHALL list the backend as broken with the error
+
 ### Requirement: A discovered part SHALL act only when the operator names it
 
 A discovered PDF reader or local OCR backend SHALL be used only when a list setting names it. A discovered page rule SHALL be off until its `enabled` option is `true`.
@@ -116,7 +123,7 @@ Built-in parts SHALL keep their flat setting keys. A part with no flat key SHALL
 
 ### Requirement: Health SHALL show each reading part on its own
 
-The health report and the Integrations page SHALL show, from descriptors and registries: each listed local OCR backend in order with installed, model present, switched off and why, and its effective cut; each page rule with on or off, version and source; and each discovered part with its distribution and version, or broken with the reason.
+The health report and the Integrations page SHALL show, from descriptors, registries and the injected settings: each listed local OCR backend in order with installed, model present, switched off and why, and its effective cut; each page rule with on or off, version and source; and each discovered part with its distribution and version, or broken with the reason. The effective cut SHALL be the backend's `ocr_local_cuts` entry, else its default cut.
 
 #### Scenario: Backend switched off at run time
 
@@ -129,6 +136,13 @@ The health report and the Integrations page SHALL show, from descriptors and reg
 - **GIVEN** maths routing on and non-Latin routing `off`
 - **WHEN** health is read
 - **THEN** `maths` SHALL show on with its detector version and `non_latin` SHALL show off
+
+#### Scenario: Effective cuts of two backends
+
+- **GIVEN** `OCR_LOCAL_BACKENDS=pp-ocrv6-small,indra` and `OCR_LOCAL_CUTS={"indra": 0.96}`
+- **WHEN** health is read
+- **THEN** the `pp-ocrv6-small` entry SHALL show cut 0.92
+- **AND** the `indra` entry SHALL show cut 0.96
 
 ### Requirement: Hand-typed key lists SHALL derive from descriptors or be pinned to them
 

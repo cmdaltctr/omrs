@@ -774,7 +774,7 @@ The page-source counts SHALL remain in the one centrally owned exclusion set for
 
 ### Requirement: Only unreadable local OCR pages escalate to the OCR routes
 
-A page SHALL escalate to the OCR routes only when no listed local OCR backend keeps it. A backend SHALL NOT keep a page with no text, no confidence or a confidence below its cut, a hosted recommendation, a post-check reason, or an output script it may not keep. Escalated pages SHALL go in one page-listed request to the first available engine in the OCR engine list. The OCR routes SHALL receive only escalated pages and direct pages.
+A page SHALL escalate to the OCR routes only when no listed local OCR backend keeps it. A backend SHALL NOT keep a page with no text, no confidence or a confidence below its cut, a hosted recommendation, or a post-check reason. Escalated pages SHALL go in one page-listed request to the first available engine in the OCR engine list. The OCR routes SHALL receive only escalated pages and direct pages.
 
 #### Scenario: A page the local tier cannot read escalates
 
@@ -803,7 +803,7 @@ A page SHALL escalate to the OCR routes only when no listed local OCR backend ke
 #### Scenario: A page the first backend passes on is kept by the second
 
 - **GIVEN** `OCR_LOCAL_BACKENDS=indra,pp-ocrv6-small` and a flagged Latin page
-- **WHEN** Indra's output script is Latin and PP-OCRv6 reads the page at confidence 0.95
+- **WHEN** Indra reads the page at confidence 0.80 and PP-OCRv6 reads it at confidence 0.95
 - **THEN** the page SHALL NOT be sent to the OCR routes
 - **AND** the metadata SHALL count it as a local-OCR page
 
@@ -836,33 +836,33 @@ The four existing OCR diagnostics SHALL remain scalars and SHALL keep their mean
 - **THEN** `ocr_backend` SHALL be `mixed`
 - **AND** it SHALL NOT name either contributing backend alone
 
-### Requirement: Local OCR tier SHALL escalate pages below a default confidence of 0.9
+### Requirement: Local OCR tier SHALL escalate pages below the backend's effective cut
 
-When `OCR_ROUTING_UNIT=page`, a local OCR backend SHALL NOT keep a page whose reported confidence is below that backend's effective cut. The effective cut SHALL be the value of `OCR_LOCAL_MIN_CONFIDENCE` when the operator sets it, for every listed backend. Otherwise it SHALL be the backend's own calibrated cut, which is 0.9 for the default backend `pp-ocrv6-small`. A backend SHALL keep a page at or above its effective cut unless another escalation reason applies.
+When `OCR_ROUTING_UNIT=page`, a local OCR backend SHALL NOT keep a page whose reported confidence is below that backend's effective cut. The effective cut SHALL be the backend's entry in `ocr_local_cuts` when there is one, else the backend's default cut, which is 0.92 for the default backend `pp-ocrv6-small`. A backend SHALL keep a page at or above its effective cut unless another escalation reason applies.
 
 #### Scenario: Page below the default cut escalates
 
-- **GIVEN** `page` routing unit, the default backend list and no operator value for `OCR_LOCAL_MIN_CONFIDENCE`
-- **WHEN** the local tier reads a page with text and confidence 0.85
+- **GIVEN** `page` routing unit, the default backend list and an empty `ocr_local_cuts`
+- **WHEN** the local tier reads a page with text and confidence 0.91
 - **THEN** the page SHALL escalate to the worker
 
 #### Scenario: Page at the default cut stays local
 
-- **GIVEN** `page` routing unit, the default backend list and no operator value for `OCR_LOCAL_MIN_CONFIDENCE`
-- **WHEN** the local tier reads a page with text, confidence 0.9 and no hosted recommendation
+- **GIVEN** `page` routing unit, the default backend list and an empty `ocr_local_cuts`
+- **WHEN** the local tier reads a page with text, confidence 0.92 and no hosted recommendation
 - **THEN** the page SHALL keep its local text
 
 #### Scenario: Operator value replaces the default
 
-- **GIVEN** `OCR_LOCAL_MIN_CONFIDENCE=0.7`
+- **GIVEN** `OCR_LOCAL_CUTS={"pp-ocrv6-small": 0.7}`
 - **WHEN** the local tier reads a page with text and confidence 0.75
 - **THEN** the page SHALL keep its local text
 
 #### Scenario: Each backend uses its own cut
 
-- **GIVEN** `OCR_LOCAL_BACKENDS=indra,pp-ocrv6-small` and no operator value for `OCR_LOCAL_MIN_CONFIDENCE`
-- **WHEN** Indra reads an Arabic page at confidence 0.91
-- **THEN** Indra SHALL keep the page, because its cut is 0.90
+- **GIVEN** `OCR_LOCAL_BACKENDS=indra,pp-ocrv6-small` and an empty `ocr_local_cuts`
+- **WHEN** Indra reads an Arabic page at confidence 0.95
+- **THEN** Indra SHALL keep the page, because its cut is 0.94
 
 ### Requirement: Reader installation SHALL be reported per reader
 

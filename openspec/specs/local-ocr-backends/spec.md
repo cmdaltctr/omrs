@@ -1,7 +1,7 @@
 # local-ocr-backends Specification
 
 ## Purpose
-Let the local OCR tier read pages with an ordered list of local OCR backends. Each backend has its own calibrated cut and its own set of output scripts it may keep. The default list keeps today's behaviour and today's index identity.
+Let the local OCR tier read pages with an ordered list of local OCR backends. Each backend has its own calibrated default cut, which the operator can replace per backend with `ocr_local_cuts`. Confidence alone decides whether a backend keeps a page.
 
 ## Requirements
 
@@ -54,19 +54,26 @@ A backend that reports confidence per line SHALL give the page confidence as the
 
 ### Requirement: The confidence cut SHALL belong to the backend
 
-A backend SHALL register a calibrated cut together with the name of the recorded experiment that fixed it, or no cut. A registration with a cut and no experiment name SHALL fail. `ocr_local_min_confidence` SHALL be optional. When it is unset, the effective cut of each listed backend SHALL be its own cut. When it is set, the set value SHALL replace the cut of every listed backend. The cut of `pp-ocrv6-small` SHALL be 0.9.
+A backend SHALL register a default cut together with the name of the recorded experiment that fixed it, or no cut. A registration with a cut and no experiment name SHALL fail. The effective cut of a backend SHALL be its entry in `ocr_local_cuts` when there is one, else its default cut. No other setting SHALL change a cut. The default cut of `pp-ocrv6-small` SHALL be 0.92, from experiment `46a-local-ocr-per-backend-cuts-2026-11-06`.
 
 #### Scenario: Default cut
 
-- **GIVEN** the default list and no value for `ocr_local_min_confidence`
+- **GIVEN** the default list and an empty `ocr_local_cuts`
 - **WHEN** the effective cut is resolved
-- **THEN** it SHALL be 0.9
+- **THEN** it SHALL be 0.92
+
+#### Scenario: Each backend keeps its own cut
+
+- **GIVEN** `OCR_LOCAL_BACKENDS=indra,pp-ocrv6-small` and `OCR_LOCAL_CUTS={"pp-ocrv6-small": 0.7}`
+- **WHEN** the effective cuts are resolved
+- **THEN** the cut of `pp-ocrv6-small` SHALL be 0.7
+- **AND** the cut of `indra` SHALL be 0.94
 
 #### Scenario: Override replaces every cut
 
-- **GIVEN** `OCR_LOCAL_BACKENDS=indra,pp-ocrv6-small` and `OCR_LOCAL_MIN_CONFIDENCE=0.7`
+- **GIVEN** `OCR_LOCAL_BACKENDS=indra,pp-ocrv6-small` and `OCR_LOCAL_CUTS={"indra": 0.7, "pp-ocrv6-small": 0.7}`
 - **WHEN** the effective cuts are resolved
-- **THEN** both cuts SHALL be 0.7
+- **THEN** both cuts SHALL be 0.7, because each backend has its own entry
 
 #### Scenario: Cut without an experiment
 
@@ -75,66 +82,29 @@ A backend SHALL register a calibrated cut together with the name of the recorded
 
 #### Scenario: Unset value prints as unset
 
-- **WHEN** `omrs config show` runs with no value for `ocr_local_min_confidence`
-- **THEN** the output SHALL show the value as unset and SHALL NOT print `null`
-
-### Requirement: A backend SHALL declare the output scripts it may keep
-
-A backend SHALL declare either no script filter or a set of output scripts it may keep, named by lower-case Unicode script name. When a backend declares a set, a page whose output script is not in the set, or that gets no script verdict, SHALL NOT be kept by that backend and SHALL get the reason `script_not_kept`.
-
-#### Scenario: Arabic output kept
-
-- **GIVEN** a backend that keeps `arabic` and `devanagari`, with cut 0.90
-- **WHEN** it returns 300 letters of Arabic at confidence 0.93
-- **THEN** the backend SHALL keep the page
-
-#### Scenario: Bengali output passes on
-
-- **GIVEN** a backend that keeps `arabic` and `devanagari`, with cut 0.90
-- **WHEN** it returns 300 letters of Bengali at confidence 0.95
-- **THEN** the page SHALL get the reason `script_not_kept`
-- **AND** the page SHALL pass to the next backend in the list
-
-#### Scenario: Short output gets no verdict
-
-- **GIVEN** a backend that keeps `arabic` and `devanagari`
-- **WHEN** it returns 12 letters
-- **THEN** the page SHALL get the reason `script_not_kept`
-
-### Requirement: The output script SHALL be classified by a fixed, versioned rule
-
-The system SHALL give an output script verdict only when the text holds at least 40 letters and one Unicode script holds at least half of them. The verdict SHALL be that script's lower-case name. The floor and the share SHALL be fixed in code with their own version number, and SHALL NOT be settings. The existing non-Latin detector and its version SHALL NOT change.
-
-#### Scenario: Devanagari verdict
-
-- **WHEN** a text holds 400 letters, 380 of them Devanagari
-- **THEN** the verdict SHALL be `devanagari`
-
-#### Scenario: Mixed text gets no verdict
-
-- **WHEN** a text holds 100 letters, 40 Arabic and 60 split evenly between Latin and Bengali
-- **THEN** there SHALL be no verdict
+- **WHEN** `omrs config show` runs with no value for `ocr_local_cuts`
+- **THEN** the output SHALL show an empty map and SHALL NOT print `null`
 
 ### Requirement: The local tier SHALL try the listed backends in order
 
-The first listed backend SHALL read every page the local tier must read, in one call. A page with no escalation reason SHALL be kept. Every other page SHALL pass to the next backend in one call. A page that the last backend does not keep SHALL escalate to the OCR engine list with the last backend's reasons.
+The first listed backend SHALL read every page the local tier must read, in one call. A page with no escalation reason SHALL be kept. Every other page SHALL pass to the next backend in one call. A page that the last backend does not keep SHALL escalate to the OCR engine list with the last backend's reasons. No backend SHALL refuse a page because of its script.
 
 #### Scenario: Second backend keeps a Latin page
 
 - **GIVEN** `OCR_LOCAL_BACKENDS=indra,pp-ocrv6-small` and a scanned Latin page
-- **WHEN** Indra returns Latin text and PP-OCRv6 returns text at confidence 0.95
+- **WHEN** Indra returns Latin text at confidence 0.80 and PP-OCRv6 returns text at confidence 0.95
 - **THEN** PP-OCRv6 SHALL keep the page
 - **AND** the page producer SHALL be `pdf_inspector_ocr`
 
 #### Scenario: Both backends escalate
 
 - **GIVEN** `OCR_LOCAL_BACKENDS=indra,pp-ocrv6-small` and a scanned Bengali page
-- **WHEN** Indra returns Bengali text and PP-OCRv6 returns text at confidence 0.6
+- **WHEN** Indra returns Bengali text at confidence 0.80 and PP-OCRv6 returns text at confidence 0.6
 - **THEN** the page SHALL escalate to the OCR engine list with the reason `low_confidence`
 
 #### Scenario: Default list behaves as before
 
-- **GIVEN** the default list
+- **GIVEN** the default list and an explicit cut of 0.9 for `pp-ocrv6-small`
 - **WHEN** the golden fixture PDF is ingested under each rule combination
 - **THEN** every page text and every metadata value SHALL equal the snapshot taken before this change
 
@@ -180,12 +150,20 @@ Each backend SHALL declare a producer name. A page kept by a backend SHALL carry
 
 ### Requirement: The local backend list SHALL participate in the source index identity
 
-With the default list, the `local_tier` block SHALL hold the effective cut and, once resolved, the model identity, exactly as before this change. With any other list, the block SHALL name each backend in order with its effective cut, its model identity once resolved and its kept scripts, and SHALL hold the output-script classifier version.
+For every list, the default list included, the PDF `parser` block SHALL name each listed backend in order with its effective cut and its model identity once resolved. The OCR routing block that every source carries SHALL hold no local OCR cut and no local model identity. No block SHALL hold kept scripts or an output-script version. The identity SHALL depend on effective cuts only, so a cut change SHALL re-index PDF sources only.
+
+#### Scenario: The upgrade re-indexes once
+
+- **GIVEN** a collection indexed before this change
+- **WHEN** an explicit ingest runs after the upgrade
+- **THEN** every source SHALL be processed again once
+- **AND** a second explicit ingest with no setting change SHALL process no source
 
 #### Scenario: Default install keeps its digest
 
-- **WHEN** an install with the default list and no value for `ocr_local_min_confidence` computes a source identity
-- **THEN** the digest SHALL equal the digest before this change
+- **GIVEN** an install with the default list and no cut entries, after the upgrade
+- **WHEN** two processes compute the identity of one source
+- **THEN** the two digests SHALL be equal
 
 #### Scenario: A new list re-indexes PDF sources
 
@@ -194,10 +172,31 @@ With the default list, the `local_tier` block SHALL hold the effective cut and, 
 - **THEN** PDF sources SHALL be processed again
 - **AND** other sources SHALL keep their digest
 
+#### Scenario: A cut change re-indexes PDF sources
+
+- **GIVEN** a collection indexed with `OCR_LOCAL_BACKENDS=pp-ocrv6-small,indra` and no cut entries
+- **WHEN** `OCR_LOCAL_CUTS={"indra": 0.96}` is set and an explicit ingest runs
+- **THEN** PDF sources SHALL be processed again
+- **AND** other sources SHALL keep their digest
+
+#### Scenario: A default backend cut change leaves a Markdown source unchanged
+
+- **GIVEN** a collection with one PDF source and one Markdown source, indexed with the default list and no cut entries
+- **WHEN** `OCR_LOCAL_CUTS={"pp-ocrv6-small": 0.95}` is set and an explicit ingest runs
+- **THEN** the PDF source SHALL be processed again
+- **AND** the Markdown source SHALL keep its digest and SHALL NOT be processed
+
+#### Scenario: A resolved local model enters the PDF identity only
+
+- **GIVEN** OCR routing on and the default list
+- **WHEN** the model identity of `pp-ocrv6-small` resolves
+- **THEN** the PDF `parser` block SHALL hold it
+- **AND** the digest of a Markdown source SHALL equal its digest with the model unresolved
+
 #### Scenario: An explicit default cut keeps the digest
 
-- **WHEN** `OCR_LOCAL_MIN_CONFIDENCE=0.9` is set with the default list
-- **THEN** the digest SHALL equal the digest with the value unset
+- **WHEN** `OCR_LOCAL_CUTS={"pp-ocrv6-small": 0.92}` is set with the default list
+- **THEN** the digest SHALL equal the digest with an empty map
 
 ### Requirement: Settings and the Read document step SHALL edit the backend list
 
@@ -216,12 +215,26 @@ Settings › Document reading SHALL show `ocr_local_backends` as an ordered list
 
 ### Requirement: Indra OCR SHALL be an optional backend outside the default list
 
-The system SHALL offer Indra OCR as the backend `indra` behind the optional extra `local-ocr-indra`. It SHALL register cut 0.90 from experiment `46-local-ocr-backends-2026-11-04`, keep the scripts `arabic` and `devanagari`, use producer `indra_ocr`, and name the model `datalab-to/indra-ocr@bd02167fdf2005a19962cc15188f8496a2c87d3b`. It SHALL read weights from `INDRA_OCR_MODEL_DIR` when that is set. It SHALL NOT be in the default list.
+The system SHALL offer Indra OCR as the backend `indra` behind the optional extra `local-ocr-indra`. Its default cut SHALL be 0.94, from experiment `46a-local-ocr-per-backend-cuts-2026-11-06`. It SHALL use producer `indra_ocr` and name the model `datalab-to/indra-ocr@bd02167fdf2005a19962cc15188f8496a2c87d3b`. It SHALL read weights from `INDRA_OCR_MODEL_DIR` when that is set. It SHALL NOT be in the default list.
 
 #### Scenario: Not in the default list
 
 - **WHEN** no source sets `ocr_local_backends`
 - **THEN** the list SHALL NOT contain `indra`
+
+#### Scenario: Indra keeps a Latin page above its cut
+
+- **GIVEN** `OCR_LOCAL_BACKENDS=indra,pp-ocrv6-small` and a scanned Latin page
+- **WHEN** Indra returns 300 Latin letters at confidence 0.95
+- **THEN** Indra SHALL keep the page
+- **AND** the page producer SHALL be `indra_ocr`
+
+#### Scenario: Indra passes on a page below its cut
+
+- **GIVEN** `OCR_LOCAL_BACKENDS=indra,pp-ocrv6-small` and a scanned Arabic page
+- **WHEN** Indra returns Arabic text at confidence 0.93
+- **THEN** the page SHALL get the reason `low_confidence` from Indra
+- **AND** the page SHALL pass to `pp-ocrv6-small`
 
 ### Requirement: Adding Indra SHALL touch only its own part
 
@@ -231,3 +244,59 @@ Adding the Indra backend SHALL change no file under `src/omrs/` other than its o
 
 - **WHEN** the one-file check runs
 - **THEN** the word `indra` SHALL appear under `src/omrs/` only in the Indra backend file, its `register()` line and its descriptor entry
+
+### Requirement: Per-backend cuts SHALL be read from one map
+
+The system SHALL read `ocr_local_cuts` (env `OCR_LOCAL_CUTS`) from the injected settings as a map from backend name to cut. The environment form SHALL be a JSON object. The `omrs.jsonc` form SHALL be an object. Each value SHALL be a number from 0 to 1. Each name SHALL be a backend that `ocr_local_backends` can list. The default SHALL be an empty map. An entry SHALL change the cut of its own backend only.
+
+#### Scenario: Environment map sets one cut
+
+- **GIVEN** `OCR_LOCAL_BACKENDS=pp-ocrv6-small,indra` and `OCR_LOCAL_CUTS={"indra": 0.96}`
+- **WHEN** the effective cuts are resolved
+- **THEN** the cut of `indra` SHALL be 0.96
+- **AND** the cut of `pp-ocrv6-small` SHALL be its default, 0.92
+
+#### Scenario: File map sets one cut
+
+- **GIVEN** no environment value and `omrs.jsonc` holding `"ocr_local_cuts": {"pp-ocrv6-small": 0.88}`
+- **WHEN** the effective cuts are resolved
+- **THEN** the cut of `pp-ocrv6-small` SHALL be 0.88
+
+#### Scenario: Entry for a backend that is not listed
+
+- **GIVEN** the default list and `OCR_LOCAL_CUTS={"indra": 0.96}`
+- **WHEN** the engine starts
+- **THEN** start-up SHALL succeed
+- **AND** the local tier SHALL read with `pp-ocrv6-small` at 0.92 only
+
+### Requirement: A bad cut map from the environment SHALL stop start-up
+
+When `OCR_LOCAL_CUTS` in the environment or `.env` names a backend that cannot be listed, holds a value that is not a number, or holds a number outside 0 to 1, start-up SHALL fail. The message SHALL name the key, the rule and the accepted backend names. It SHALL NOT hold a submitted value.
+
+#### Scenario: Unknown backend name
+
+- **WHEN** `OCR_LOCAL_CUTS={"tesseract": 0.9}` is set and no backend named `tesseract` is registered or discovered
+- **THEN** start-up SHALL fail
+- **AND** the message SHALL name every accepted backend
+
+#### Scenario: Value out of range
+
+- **WHEN** `OCR_LOCAL_CUTS={"pp-ocrv6-small": 1.2}` is set
+- **THEN** start-up SHALL fail
+- **AND** the message SHALL NOT contain `1.2`
+
+### Requirement: The single cut override SHALL be retired
+
+`ocr_local_min_confidence` SHALL NOT be a setting. When `OCR_LOCAL_MIN_CONFIDENCE` or `OCR__LOCAL_MIN_CONFIDENCE` is in the environment or `.env`, start-up SHALL fail with a message that names `OCR_LOCAL_CUTS` as the replacement.
+
+#### Scenario: Old variable in the environment
+
+- **WHEN** `OCR_LOCAL_MIN_CONFIDENCE=0.9` is set and the engine starts
+- **THEN** start-up SHALL fail
+- **AND** the message SHALL name `OCR_LOCAL_MIN_CONFIDENCE` and `OCR_LOCAL_CUTS`
+
+#### Scenario: Nested spelling in .env
+
+- **WHEN** `.env` holds `OCR__LOCAL_MIN_CONFIDENCE=0.9` and the engine starts
+- **THEN** start-up SHALL fail
+- **AND** the message SHALL name `OCR_LOCAL_CUTS`
