@@ -709,7 +709,16 @@ A model with `parallel = 1` handles one request at a time across all OMRS proces
 
 #### Pinned build
 
-OMRS can download llama.cpp build b11941 for macOS arm64, Linux x86-64 (CPU) and Linux x86-64 (CUDA 12.8). It checks the SHA-256 of each archive and places `llama-server` in `$XDG_DATA_HOME/omrs/llamacpp/b11941-<flavour>/`, else `~/.local/share/omrs/llamacpp/b11941-<flavour>/`. The command is `omrs llamacpp install [--flavour cpu|cuda]`. On Linux the default flavour is CUDA when `/proc/driver/nvidia/version` exists, else CPU. Other platforms get reason `not-supported`; set `llamacpp_server_binary` to your own build there.
+OMRS can download llama.cpp build b11941 for macOS arm64, Linux x86-64 (CPU) and Linux x86-64 (CUDA 12.8). It checks the SHA-256 of each archive and places `llama-server` in `$XDG_DATA_HOME/omrs/llamacpp/b11941-<flavour>/`, else `~/.local/share/omrs/llamacpp/b11941-<flavour>/`. Other platforms get reason `not-supported`; set `llamacpp_server_binary` to your own build there.
+
+Run the command once on each machine:
+
+```bash
+omrs llamacpp install                  # the flavour this machine needs
+omrs llamacpp install --flavour cpu    # Linux x86-64: force the CPU build
+```
+
+On Linux the default flavour is CUDA when `/proc/driver/nvidia/version` exists, else CPU. Apple silicon has one build and refuses `--flavour`. The command runs `llama-server --version` on the placed file and, for CUDA, `--list-devices`. A failed check gives reason `binary-check-failed` or `cuda-device-missing`, and no binary stays in place. A build that is already placed and passes its checks is kept with no download. The command starts no server and asks no question, so a headless machine can run it. It records the flavour in `installed.json` in the data folder, and a blank `llamacpp_server_binary` resolves to that build. See [CLI reference](cli-reference.md#llamacpp-install).
 
 #### Runtime state folder
 

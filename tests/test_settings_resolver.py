@@ -240,6 +240,7 @@ def test_env_var_resolves_to_documented_default(
     _OVERRIDES,
     ids=[d[0] for d in _OVERRIDES],
 )
+@pytest.mark.usefixtures("ollama_backend")
 def test_env_var_override_parses_correctly(
     env_name: str,
     field_name: str,

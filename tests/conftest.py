@@ -6,7 +6,7 @@ Provides:
   base install without depending on fixture-order accidents
 - EphemeralClient monkeypatch (no disk I/O for ChromaDB) — active only when
   the optional ``chroma`` extra is installed
-- Mock embedding model (no Ollama server required)
+- Mock embedding model (no llama.cpp router or Ollama server required)
 - MCP server fixture built by the factory over a test Engine
 - Helper context manager for in-memory MCP client sessions
 """
@@ -21,22 +21,27 @@ from collections.abc import Iterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-# ── IMPORTANT: EMBED_MODEL for test execution ─────────────────────────
-# Runtime-startup tests need a complete local provider configuration. Imports
-# and collection do not initialise this runtime.
-# LOCAL_BACKEND is set to ollama (core deps) so tests don't require
-# the llamacpp optional dependency group.
-os.environ.setdefault("EMBED_PROVIDER", "local")
-os.environ.setdefault("LOCAL_BACKEND", "ollama")
-os.environ.setdefault("EMBED_MODEL", "nomic-embed-text")
-os.environ.setdefault("OLLAMA_BASE_URL", "http://localhost:11434")
-os.environ.setdefault("METADATA_LLM_PROVIDER", "local")
-# ────────────────────────────────────────────────────────────────────────
-
 import pytest
 from llama_index.core import Settings
 from llama_index.core.embeddings import MockEmbedding
 from mcp.client import Client
+
+# ── Provider environment for test execution ───────────────────────────
+# Runtime-startup tests need a complete local provider configuration. Imports
+# and collection must not initialise a runtime. Every value equals the shipped
+# default (tests/test_conftest_matches_shipped_defaults.py checks this), so a
+# test sees the configuration a fresh install has. Ollama is opt-in: a test that
+# needs it requests the ``ollama_backend`` fixture below.
+LOCAL_ENV = {
+    "EMBED_PROVIDER": "local",
+    "LOCAL_BACKEND": "llamacpp",
+    "METADATA_LLM_PROVIDER": "local",
+    "LLAMACPP_EMBED_MODEL": "Qwen/Qwen3-Embedding-4B-GGUF:Q8_0",
+    "LLAMACPP_CHAT_MODEL": "Qwen/Qwen3-4B-GGUF:Q8_0",
+}
+for _name, _value in LOCAL_ENV.items():
+    os.environ.setdefault(_name, _value)
+# ────────────────────────────────────────────────────────────────────────
 
 # ── Constants ──────────────────────────────────────────────────────────────
 
@@ -434,11 +439,11 @@ def _install_default_effective_settings(_isolate_env, _reset_default_store, tmp_
 
 @pytest.fixture(autouse=True)
 def _patch_embed_model(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureRequest) -> None:
-    """Replace OllamaEmbedding with MockEmbedding for tests that use runtime setup.
+    """Replace the llama.cpp embedder with MockEmbedding for tests that use runtime setup.
 
     The shared LlamaIndex global remains mocked for the whole suite. CLI
-    tests additionally exercise the real composition-root startup path, so
-    their selected ``ollama`` registry factory is redirected to this mock.
+    tests additionally exercise the real composition-root startup path,
+    so their selected ``llamacpp`` registry factory is redirected to this mock.
     Provider/settings validation still runs unchanged; only the networked
     concrete embedding construction is replaced.
 
@@ -453,16 +458,45 @@ def _patch_embed_model(monkeypatch: pytest.MonkeyPatch, request: pytest.FixtureR
     Settings.embed_model = _patch_embed_model._mock
 
     if request.node.path.name in ("test_cli.py", "test_answer_transport_cli.py"):
-        from omrs.core.providers.embeddings import registry as embed_registry
+        _redirect_embedding_provider(monkeypatch, "llamacpp")
 
-        real_get = embed_registry.get
 
-        def _get_for_test(name: str):
-            if name == "ollama":
-                return lambda _settings: _patch_embed_model._mock
-            return real_get(name)
+def _redirect_embedding_provider(monkeypatch: pytest.MonkeyPatch, provider: str) -> None:
+    """Make the embedding registry hand out the mock for *provider*."""
+    from omrs.core.providers.embeddings import registry as embed_registry
 
-        monkeypatch.setattr(embed_registry, "get", _get_for_test)
+    real_get = embed_registry.get
+
+    def _get_for_test(name: str):
+        if name == provider:
+            return lambda _settings: _patch_embed_model._mock
+        return real_get(name)
+
+    monkeypatch.setattr(embed_registry, "get", _get_for_test)
+
+
+@pytest.fixture
+def ollama_embed_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Opt in to the Ollama embedding model name, which Ollama settings require.
+
+    For a test that picks the Ollama backend itself (by argument or in a file).
+    Request it with ``@pytest.mark.usefixtures("ollama_embed_model")``.
+    """
+    monkeypatch.setenv("EMBED_MODEL", "nomic-embed-text")
+
+
+@pytest.fixture
+def ollama_backend(monkeypatch: pytest.MonkeyPatch, ollama_embed_model: None) -> None:
+    """Opt in to the Ollama backend for one test.
+
+    Sets the Ollama environment that the shipped defaults no longer carry and
+    redirects the ``ollama`` embedding provider to the mock. Request it with
+    ``@pytest.mark.usefixtures("ollama_backend")``.
+    """
+    monkeypatch.setenv("LOCAL_BACKEND", "ollama")
+    monkeypatch.setenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    monkeypatch.setenv("METADATA__OLLAMA_CLASSIFY_MODEL", "qwen3:0.6b")
+    _redirect_embedding_provider(monkeypatch, "ollama")
 
 
 @pytest.fixture(autouse=True)
@@ -551,14 +585,10 @@ def _isolate_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     monkeypatch.setenv("LANCEDB_URI", str(tmp_path / "lancedb"))
     monkeypatch.setenv("CHROMA_PERSIST_DIR", _TEST_PERSIST_DIR)
     monkeypatch.setenv("COLLECTION_NAME", _TEST_COLLECTION)
-    monkeypatch.setenv("EMBED_PROVIDER", "local")
-    monkeypatch.setenv("LOCAL_BACKEND", "ollama")
-    monkeypatch.setenv("OLLAMA_BASE_URL", "http://localhost:11434")
-    monkeypatch.setenv("EMBED_MODEL", "nomic-embed-text")
-    monkeypatch.setenv("METADATA_LLM_PROVIDER", "local")
+    for name, value in LOCAL_ENV.items():
+        monkeypatch.setenv(name, value)
     monkeypatch.setenv("METADATA__EXTRACTION_MODE", "disabled")  # no auto-categorisation in tests
     monkeypatch.setenv("METADATA__KEYWORD_RULES", "")
-    monkeypatch.setenv("METADATA__OLLAMA_CLASSIFY_MODEL", "qwen3:0.6b")
     # Keep retry behaviour out of the default test path so existing
     # tests don't pay 1+2+...=O(2^n) seconds of backoff.  Retry-specific
     # tests opt back in by setting this to 2+.

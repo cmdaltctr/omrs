@@ -14,7 +14,7 @@ from omrs.config import Settings
 
 
 @pytest.fixture
-def settings() -> Settings:
+def settings(ollama_embed_model: None) -> Settings:
     return Settings(_env_file=None, cloud_backend="openrouter", local_backend="ollama")
 
 

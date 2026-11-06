@@ -76,7 +76,7 @@ All jobs live in `.github/workflows/ci.yml`. Each job checks something that no o
 |-----|---------------------------|--------------|
 | `test (ubuntu-latest)`, `test (macos-latest)` | The fast suite on the base install with the `web` extra, the clean-base tripwire, the torch-free install, import-linter, the OpenAPI contract. The macOS entry also runs the slow suite with LiteParse. | Push, pull request, manual run |
 | `Retrieval quality (Tier 1)` | The deterministic retrieval-quality gate. | Push, pull request |
-| `Retrieval quality (Tier 2)` | The retrieval-quality gate with a real Ollama model. | Nightly schedule, manual run |
+| `Retrieval quality (Tier 2)` | The retrieval-quality gate with a real llama.cpp embedding model. | Nightly schedule, manual run |
 | `Floor matrix scope` | Decides which `Floor resolution` entries run. | Every event |
 | `Floor resolution` (base entry) | The fast suite, the clean-base tripwire and the Leiden-free check at the lowest declared versions of the base install. | Every event |
 | `Floor resolution (<extra>)` | The fast suite at the lowest declared versions of one optional extra. The `chroma` entry fails when a test skips for a missing chroma extra. | Push, nightly, manual run, and a pull request that changes `pyproject.toml`, `uv.lock` or `ci.yml` |

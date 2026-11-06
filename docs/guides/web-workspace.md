@@ -346,7 +346,7 @@ Key routes need the `credentials` scope and the browser session. A bearer creden
 
 ### Provider settings
 
-Settings > Providers shows one card for each registered LLM provider. Today these are Ollama, llama.cpp, OpenRouter, OpenAI-compatible and Anthropic. The last two serve Chat answers only. A new provider in the registry gets a card with no web change. Editable fields are the Ollama address, the llama.cpp router address, the OpenRouter key, the OpenAI-compatible address and key, and the Anthropic key. The OpenAI-compatible key is optional, because LM Studio and vLLM need none. Chat is ready without it. The Anthropic key is required. Without it Chat reports `not-configured`. A card whose package is missing shows its install command, for example `uv sync --extra anthropic`. The OpenAI-compatible address can be on this machine or remote. The key goes only to that address, and the card states that text leaves this machine when the address is not on this machine. Embedding addresses and embedding models are shown but cannot be edited here.
+Settings > Providers shows one card for each registered LLM provider. Today these are llama.cpp (the default), OpenRouter, OpenAI-compatible, Anthropic and Ollama (opt-in). The last two serve Chat answers only. A new provider in the registry gets a card with no web change. Editable fields are the Ollama address, the llama.cpp router address, the OpenRouter key, the OpenAI-compatible address and key, and the Anthropic key. The OpenAI-compatible key is optional, because LM Studio and vLLM need none. Chat is ready without it. The Anthropic key is required. Without it Chat reports `not-configured`. A card whose package is missing shows its install command, for example `uv sync --extra anthropic`. The OpenAI-compatible address can be on this machine or remote. The key goes only to that address, and the card states that text leaves this machine when the address is not on this machine. Embedding addresses and embedding models are shown but cannot be edited here.
 
 The llama.cpp card shows one Router panel and a table of the router's models (ADR-115). The panel shows:
 
@@ -448,7 +448,7 @@ To get a model for llama.cpp:
 5. Select Download. The panel shows a bar and the bytes received. Select Cancel to stop.
 6. When the download ends, follow the next step in the panel (see below).
 
-To get a model for Ollama:
+To get a model for Ollama (an opt-in provider):
 
 1. Open the Ollama card and search in the same way. The list shows Ollama library names first, then Hugging Face repos.
 2. Choose a library name, for example `qwen3`, and select Download. Ollama pulls the `latest` tag of a name that has no tag.
@@ -847,8 +847,8 @@ The Local servers section lists each local model server at the address that the 
 
 | Item | Address | Shown |
 |---|---|---|
-| Ollama | `ollama_base_url` | Always |
 | llama.cpp router | `llamacpp_router_url` | Always |
+| Ollama (opt-in) | `ollama_base_url` | Always |
 
 The llama.cpp item is one entry for every role. Its users are every setting whose role runs on the router: `embed_provider`, `metadata_llm_provider` and `answer.provider` while each uses llama.cpp. The item is ready when the router answers at `llamacpp_router_url`, and "Not running at" that address otherwise.
 
@@ -1075,7 +1075,7 @@ Each step on the canvas has a card. A card shows these items, from top to bottom
 2. The node ID in muted text. It shows only when two steps have the same name.
 3. A one-line summary of what the step does. Click the summary to read the whole sentence on the card, and click it again to fold it. Using the summary does not select the card.
 4. A mini card with the settings of the step. It shows up to three main settings with their values, for example "Number of results: 10 (from profile)". When the step has more settings, the mini card ends with a button "+2 more settings". Click it to show the other settings in the same mini card, and click "Show fewer settings" to fold them. The button does not select the card. An expanded card can grow taller than its grid row, so it moves above the cards around it.
-5. Inside the same mini card: "No settings" when the step has no settings. The Embed chunks card shows the embedding model instead: "Model: nomic-embed-text (fixed for collections that already hold vectors)". The model comes from the server connections. You cannot change it on the canvas.
+5. Inside the same mini card: "No settings" when the step has no settings. The Embed chunks card shows the embedding model instead: "Model: Qwen/Qwen3-Embedding-4B-GGUF:Q8_0 (fixed for collections that already hold vectors)". The model comes from the server connections. You cannot change it on the canvas.
 6. The run status, the Bypassed and Unavailable badges, the port names and the issue messages.
 
 The names at the left and right edges are ports: inputs on the left and outputs on the right. The circle beside a port name is its handle. A handle turns green when the port has a connection, and stays neutral when it has none.
@@ -1146,7 +1146,7 @@ Select the "Embed chunks" step of a user profile. Step settings then shows an em
 
 1. A built-in profile shows "Embedding model: <model> (server default, read-only)." To use another model, duplicate the profile first.
 2. A user profile with no lock shows a "Provider" list, a "Model" field and the buttons "Check model" and "Save model". "Check model" shows the vector size, for example "Vector size: 768". "Use server default" appears when the profile has its own choice. It clears the choice.
-3. A locked profile shows only the lock text and no controls: "Locked: papers already holds vectors made with nomic-embed-text. Create a new collection to use another model."
+3. A locked profile shows only the lock text and no controls: "Locked: papers already holds vectors made with Qwen/Qwen3-Embedding-4B-GGUF:Q8_0. Create a new collection to use another model."
 4. When OMRS does not know the model that made the vectors, the text is: "Locked: papers already holds vectors, but the model that made them is not recorded. Create a new collection to use another model."
 
 A save that the server refuses with 409 shows the same lock text. A save that fails the check shows the reason from the check. The Embed chunks card shows "Model: <name>" with the model of the profile.

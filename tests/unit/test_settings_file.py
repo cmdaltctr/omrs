@@ -81,6 +81,7 @@ def test_nested_key_sets_the_nested_setting(folder: Path, tmp_path: Path) -> Non
     assert source_of(settings, "retrieval.top_k") == "config-file"
 
 
+@pytest.mark.usefixtures("ollama_embed_model")
 def test_flat_key_sets_the_flat_setting(folder: Path, tmp_path: Path) -> None:
     write_config(folder, '{ "embed_provider": "local", "local_backend": "ollama" }')
     settings = build(tmp_path)

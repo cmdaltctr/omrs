@@ -213,6 +213,7 @@ def test_chat_on_another_provider_holds_no_router_role() -> None:
     [("llamacpp", "ollama", True), ("local", "llamacpp", True), ("local", "ollama", False)]
     + [("cloud", "llamacpp", False), ("openrouter", "llamacpp", False), ("", "llamacpp", False)],
 )
+@pytest.mark.usefixtures("ollama_backend")
 def test_the_judge_counts_only_while_it_runs_on_llamacpp(
     verify_provider: str, local_backend: str, on: bool
 ) -> None:

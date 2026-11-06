@@ -89,7 +89,9 @@ For each address and key, the server uses the first source it finds, highest fir
 - The CLI and the stdio MCP server read the environment, `.env` and the user config folder. They do not see values saved in the web page.
 - The files in the user config folder are plaintext. The keychain stays the advice on a desktop. See [Configuration](configuration.md#user-config-folder).
 
-### Ollama (alternative local backend)
+### Ollama (opt-in local backend)
+
+Ollama is an opt-in local backend. Run an Ollama server yourself, then set `local_backend` to `ollama` in `omrs.jsonc`. These settings apply:
 
 | Env var                           | Default                  | Purpose                                  |
 | --------------------------------- | ------------------------ | ---------------------------------------- |
@@ -119,7 +121,6 @@ OpenRouter is a cloud provider that implements the OpenAI-compatible API at `htt
 # .env — cloud embeddings with local LLM (cost-efficient)
 EMBED_PROVIDER=cloud
 METADATA_LLM_PROVIDER=local
-LOCAL_BACKEND=ollama
 OPENROUTER_API_KEY=sk-or-v1-...
 OPENROUTER_EMBED_MODEL=text-embedding-3-small
 ```
@@ -286,7 +287,7 @@ Test on the Providers card runs the checks again for one entry (`compose_decisio
 
 ## ChromaDB dimension lock
 
-ChromaDB locks the vector dimension at collection creation time. Switching from `local` + `ollama` (1024-dim for `qwen3-embedding:0.6b`) to `cloud` + `openrouter` (1536-dim for `text-embedding-3-small`) requires re-ingestion:
+ChromaDB locks the vector dimension at collection creation time. Switching from `local` + `llamacpp` (2,560-dim for `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0`) to `cloud` + `openrouter` (1536-dim for `text-embedding-3-small`) requires re-ingestion:
 
 ```bash
 rm -rf chroma_db

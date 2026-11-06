@@ -72,12 +72,11 @@ def test_unrelated_variables_do_not_mark_provider_fields(tmp_path: Path) -> None
     assert Settings(_env_file=dotenv).provider_explicit == frozenset()
 
 
-def test_env_example_leaves_the_chat_address_open_and_the_default_unchanged() -> None:
-    """Task 3.7: the commented example line equals the code default."""
+def test_env_example_leaves_the_router_address_open_and_the_default_unchanged() -> None:
+    """The example file sets no llama.cpp address; the code default stays."""
     root = Path(__file__).resolve().parents[2]
     lines = (root / ".env.example").read_text(encoding="utf-8").splitlines()
-    assert "# LLAMACPP_CHAT_URL=http://localhost:8081/v1" in lines
-    assert not any(line.startswith("LLAMACPP_CHAT_URL=") for line in lines)
+    assert not any("LLAMACPP_" in line and "_URL=" in line for line in lines)
     assert Settings.model_fields["llamacpp_router_url"].default == "http://127.0.0.1:8080/v1"
 
 
