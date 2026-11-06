@@ -89,9 +89,9 @@ Evidence files go in `openspec/changes/one-llamacpp-router/evidence/`. Each spik
 
 ## 11. Tripwire, local CI and validation
 
-- [ ] 11.1 Re-pin `tests/test_clean_base_tripwire.py` by diffing collected test IDs against task 1.0, not per-file counts; update `_BASE_EXECUTED`, `_BASE_DESELECTED` and `_WEB_EXTRA_CASES` with a dated comment under 100 characters. Verify: the tripwire passes on the fast-suite JUnit report.
-- [ ] 11.2 Run `./scripts/local_ci.sh` and read its final line and every `SKIPPED` line. Verify: exit 0.
-- [ ] 11.3 Run `openspec validate one-llamacpp-router --strict` and `openspec validate --all --strict`. Verify: both pass.
+- [x] 11.1 Re-pin `tests/test_clean_base_tripwire.py` by diffing collected test IDs against task 1.0, not per-file counts; update `_BASE_EXECUTED`, `_BASE_DESELECTED` and `_WEB_EXTRA_CASES` with a dated comment under 100 characters. Verify: the tripwire passes on the fast-suite JUnit report.
+- [x] 11.2 Run `./scripts/local_ci.sh` and read its final line and every `SKIPPED` line. Verify: exit 0.
+- [x] 11.3 Run `openspec validate one-llamacpp-router --strict` and `openspec validate --all --strict`. Verify: both pass.
 
 ## 12. Pull request
 

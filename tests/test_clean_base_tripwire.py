@@ -336,7 +336,11 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +36 (2026-11-06, cuts-follow-ups, by test-ID diff against v3 4bf0c206, 36 added,
 # 0 removed): example cut from the descriptor (4), retired key takes its comment (13)
 # and the experiment operator option and warning (19). No fastapi needed.
-_BASE_EXECUTED = 11194
+# +703 (2026-11-06, one-llamacpp-router, by test-ID diff against v3 591e89af, 884 added,
+# 181 removed): router settings, model list and presets, roles, fake router, runtime
+# manager, locks, reload, crash restart, provisioning, install CLI, request-time refusal,
+# live router maps, problems and web routes. Removed: per-role servers and their routes.
+_BASE_EXECUTED = 11897
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -690,13 +694,18 @@ if not _has_qwen_tokenizer:
 # test_web_document_reading.py (3) and test_web_runtimes_decision.py (1).
 # +1 (2026-11-05, fix-managed-chat-classification): one case in test_web_runtimes.py.
 # +22 (2026-11-06, local-ocr-per-backend-cuts): test_document_reading_cuts.py.
-_WEB_EXTRA_CASES = 1960
+# +106 (2026-11-06, one-llamacpp-router, measured with fastapi blocked): 236 added in
+# the router, install, problems, live-map and runtime web routes; 130 removed with the
+# per-role llama.cpp server routes.
+_WEB_EXTRA_CASES = 2066
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)
 # +2 (2026-11-01, managed-llamacpp-runtimes): the 60 s request and 20 s lock-order
 # cases in test_llamacpp_runtime_lease_busy.py are slow. No fastapi needed.
-_BASE_DESELECTED = 23
+# +1 (2026-11-06, one-llamacpp-router): the 20 s router lock-order stress case in
+# test_llamacpp_router_locks.py is slow. No fastapi needed.
+_BASE_DESELECTED = 24
 # +2 (2026-10-19): the two signal tests in test_launch_link.py are slow. That module
 # needs fastapi (module-level importorskip), so a run without it never collects them.
 if find_spec("fastapi") is not None:
