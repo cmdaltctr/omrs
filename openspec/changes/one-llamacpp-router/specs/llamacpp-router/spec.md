@@ -117,7 +117,7 @@ OMRS SHALL write `models.ini` in the router state folder from the list, one sect
 
 #### Scenario: Reserved key refused
 
-- **WHEN** a save sets the preset key `sleep-idle-seconds`, `api-key`, `host` or `port`
+- **WHEN** a save sets the preset key `sleep-idle-seconds`, `api-key`, `host`, `port`, `connect` or `connect-code`
 - **THEN** the server MUST return 400 `preset-key-unknown` and MUST NOT change `omrs.jsonc` or `models.ini`
 
 #### Scenario: Free text refused
@@ -129,6 +129,25 @@ OMRS SHALL write `models.ini` in the router state folder from the list, one sect
 
 - **WHEN** `verify_llamacpp_runtime` reads `GET /v1/models` from the managed router
 - **THEN** each loaded entry's `status.args` MUST hold `-m` or `--model` followed by the entry's `file`
+
+### Requirement: Preset booleans are written exactly
+
+A boolean preset key SHALL take a JSON boolean only and SHALL be written as exactly `true` or `false`, never as a negated key. `embeddings` SHALL accept only `true`; an entry without embeddings leaves the key out.
+
+#### Scenario: Boolean written exactly
+
+- **WHEN** a save sets `kv-unified` to the JSON value `false`
+- **THEN** `models.ini` MUST hold the line `kv-unified = false` and no `no-kv-unified` key
+
+#### Scenario: Boolean as text refused
+
+- **WHEN** a save sets `cache-prompt` to the string `"maybe"` or the number `1`
+- **THEN** the server MUST return 400 and save nothing
+
+#### Scenario: Embeddings false refused
+
+- **WHEN** a save sets `embeddings` to `false`
+- **THEN** the server MUST return 400 and save nothing
 
 ### Requirement: Embedding entries set their pooling and sizes explicitly
 
@@ -263,6 +282,25 @@ On request only, OMRS SHALL download llama.cpp build b11941 for the host platfor
 
 - **WHEN** `llamacpp_server_binary` names a build 11510 binary
 - **THEN** the router MUST be `failed` with `wrong-build` and no process MUST start
+
+### Requirement: A provisioned build is checked before use
+
+Each flavour SHALL unpack into its own folder, and the CUDA runtime files SHALL sit beside `llama-server`. After unpacking, the job SHALL run `llama-server --version` and SHALL fail with `binary-check-failed` and the loader's message unless it reports build 11941. For the CUDA flavour the job SHALL also run `llama-server --list-devices` and SHALL fail with `cuda-device-missing` when no CUDA device is listed. A failed check SHALL leave no binary in place.
+
+#### Scenario: Flavours kept apart
+
+- **WHEN** the CPU flavour is installed and then the CUDA flavour
+- **THEN** each MUST have its own `b11941-<flavour>/` folder, and the CPU `llama-server` MUST be unchanged
+
+#### Scenario: Host too old for the build
+
+- **WHEN** `llama-server --version` fails after unpacking (for example a glibc older than the build needs)
+- **THEN** the job MUST fail with `binary-check-failed`, show the loader's message, and place no binary
+
+#### Scenario: No CUDA device
+
+- **WHEN** the CUDA flavour unpacks and `llama-server --list-devices` exits 0 but lists no CUDA device
+- **THEN** the job MUST fail with `cuda-device-missing` and place no binary
 
 ### Requirement: Shipped local defaults use llama.cpp
 

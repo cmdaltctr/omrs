@@ -27,7 +27,7 @@ llama.cpp b11941 router (`tools/server/server.cpp`, `tools/server/server-models.
 - In router mode every model route, `POST /v1/systemone` included, maps to `proxy_post`, which routes by the `model` field.
 - `GET /models?reload=1` re-reads the preset sources. It unloads only models whose preset changed or that left the file. Unchanged models keep running.
 - `POST /models/load` and `POST /models/unload` exist. `GET /v1/models` reports each model's `status` and, when memory scheduling is on, its `memory`.
-- Each loaded model runs as a child `llama-server` that the router watches. The router also lists every model in the Hugging Face cache (`load_from_cache`).
+- Each loaded model runs as a child `llama-server` that the router watches. The router also lists every model in its Hugging Face cache (`load_from_cache`), unless `LLAMA_CACHE` points elsewhere (D4).
 - The router strips reserved keys from a preset (`api-key`, `models-*`, `host`, `port`, `alias`, `hf-repo` and others).
 - Release b11941 publishes `macos-arm64`, `ubuntu-x64` (CPU only), `ubuntu-cuda-12.8-x64`, `ubuntu-cuda-13.4-x64` and matching `cudart-*` archives.
 
@@ -145,7 +145,7 @@ Allowed preset keys (anything else is refused with 400 `preset-key-unknown`; val
 | `ctx-size` | integer 512 to 262,144 |
 | `batch-size`, `ubatch-size` | integer 32 to 65,536; `ubatch-size` at most `batch-size` |
 | `parallel` | integer 1 to 16 |
-| `embeddings` | boolean |
+| `embeddings` | `true` only. To turn it off, leave the key out: b11941 has no `--no-embeddings` (spike 1.5) |
 | `pooling` | `none`, `mean`, `cls`, `last`, `rank` |
 | `embd-normalize` | -1, 0, 1, 2 |
 | `kv-unified` | boolean |
@@ -157,7 +157,11 @@ Allowed preset keys (anything else is refused with 400 `preset-key-unknown`; val
 | `cache-reuse` | integer 0 to 65,536 |
 | `image-min-tokens`, `image-max-tokens` | integer 1 to 65,536 |
 
-Never written, whatever the source: `host`, `port`, `api-key`, `api-key-file`, `models-*`, `sleep-idle-seconds`, `hf-repo`, `alias`, `log-file`, `ssl-*`, `model-url`. The router argument list is fixed (spec `llamacpp-server`):
+A boolean comes from a JSON boolean only, and the writer writes exactly `true` or `false`. It never writes a negated key such as `no-kv-unified`. Reason: b11941 accepts any word for a boolean key in `models.ini` without an error (`kv-unified = bogus` loads), so OMRS is the only check (spike 1.5).
+
+The `cache-type-k` and `cache-type-v` list is a deliberate subset: b11941 also accepts `q4_1`, `iq4_nl`, `q5_0` and `q5_1`. Adding one needs a code change and a test, like any key.
+
+Never written, whatever the source: `host`, `port`, `api-key`, `api-key-file`, `models-*`, `sleep-idle-seconds`, `hf-repo`, `alias`, `log-file`, `ssl-*`, `model-url`, `connect`, `connect-code`. The allow-list already blocks each of them; the list names them for the reserved-key test. The router argument list is fixed (spec `llamacpp-server`):
 
 ```
 [binary, "--models-preset", <state>/runtimes/router/models.ini,
@@ -165,9 +169,11 @@ Never written, whatever the source: `host`, `port`, `api-key`, `api-key-file`, `
  "--host", "127.0.0.1", "--port", P]
 ```
 
-Adding a key needs a code change and a test. The pipeline sweep presets (`pipeline-sweep-llamacpp` design D6a) use `spec-type` and `chat-template-kwargs`. They are not in the list: `spec-type` values are not confirmed for b11941, and `chat-template-kwargs` is free text. Spike 1.5 reads the accepted values of `spec-type`. The sweep sends the thinking setting per request.
+Adding a key needs a code change and a test. The pipeline sweep presets (`pipeline-sweep-llamacpp` design D6a) use `spec-type` and `chat-template-kwargs`. They are not in the list. Spike 1.5 confirmed the `spec-type` values on b11941 (a comma list of `none`, `draft-simple`, `draft-eagle3`, `draft-mtp`, `draft-dflash`, `draft-dspark`, `ngram-simple`, `ngram-map-k`, `ngram-map-k4v`, `ngram-mod`, `ngram-cache`; default `none`). The sweep needs only `none`, which is the default, so the key stays out until a run needs another value. `chat-template-kwargs` is free text. The sweep sends the thinking setting per request.
 
 This keeps ADR-084's fixed-flag rule: no free-text argument, no shell, a minimal child environment.
+
+Router environment: the router child gets the minimal environment of ADR-084 plus two fixed values, `LLAMA_CACHE=<state>/runtimes/router/empty-cache` and `XDG_CONFIG_HOME=<state>/runtimes/router/empty-config` (both empty folders OMRS creates). It never gets the Hugging Face cache or token variables. Reasons, from spikes 1.2 and 1.5: b11941 lists every model in its Hugging Face cache and autoloads one on request, and `LLAMA_CACHE` pointing at an empty folder removes them all from the list (`evidence/spike-1.2-cache.md`); and b11941 reads `${XDG_CONFIG_HOME:-~/.config}/llama.cpp/config.ini` before its flags, so a user file could change every model without OMRS knowing. Known limit: `/etc/llama.cpp/config.ini` is read too and cannot be redirected; OMRS does not check it.
 
 ### D5. Model rules and file checks
 
@@ -181,7 +187,7 @@ Why per-entry: one changed file must not stop embeddings for every collection.
 
 Every client sends the entry's `model`. A `RuntimeGate` per model takes the router lease, the model's shared client lock, makes the model ready (D8), takes the model's request lock when it is one-slot, and sends to `llamacpp_router_url`. A managed request that names a model outside the list is refused before any contact with reason `model-not-listed`. In external mode OMRS does not check the name.
 
-The router also lists every model in the Hugging Face cache. OMRS ignores those names.
+With the router environment of D4, the router lists only the preset entries. The `model-not-listed` refusal stays for external mode and as the check before any contact.
 
 ### D7. Restart rule: reload one model, restart only for router arguments
 
@@ -190,7 +196,7 @@ The router also lists every model in the Hugging Face cache. OMRS ignores those 
 - Router argument change (`models_max`, memory margin, port, binary): the whole router restarts, with the existing `version-busy` rule.
 - The Router panel shows "Reload pending" per model and "Restart to apply" for router arguments.
 
-Spike 1.2 checks this on b11941. Stop condition: if reload does not unload a changed model, or unloads others, the design falls back to "every preset change restarts the router" with `pending_restart` in the status, and the change is updated with `openspec-update-change` before group 4.
+Spike 1.2 checked this on b11941 (2026-11-06, `evidence/spike-1.2.md`): an edit of one section unloaded only that model, the other model kept its child pid, and the next load showed the new value in `status.args`. A byte-identical rewrite, or a reorder with a comment, unloaded nothing. A removed section unloaded and dropped only that model; an added section listed as `unloaded`. The stop condition did not fire, so this rule stands.
 
 Alternative: restart on every edit. Rejected: it drops every loaded model, so a context size edit for Chat would stall ingestion.
 
@@ -201,6 +207,7 @@ State folder:
 ```
 <state>/runtimes/router/
   start.lock  clients.lock  server.json  server.log  models.ini  hashes.json
+  empty-cache/  empty-config/        (router environment, D4)
   models/<model id>/clients.lock  request.lock
 ```
 
@@ -211,13 +218,19 @@ State folder:
 - Request lock: only for an entry with `parallel = 1`. Requests to other models do not wait. The Clef-Flash entry serialises across processes without blocking embeddings.
 - Readiness: router start waits up to 180 s for `GET /health` 200 (no model loads at start). Before the first request to model X in a lease, OMRS reads `GET /v1/models`. When X is not `loaded`, OMRS sends `POST /models/load` and polls until `loaded` or `failed`, up to `MODEL_LOAD_TIMEOUT_SECONDS = 300` (fixed constant, not a setting). A request timeout (decision 120 s, classification, embeddings) starts after the model is loaded. A failed load gives reason `model-load-failed` for X only.
 
-Spike 1.2 also checks `/models/load` and `/models/unload` responses and status values on b11941.
+Spike 1.2 results on b11941 (`evidence/spike-1.2.md`):
+
+- `/health` answers 200 with no model loaded (0.12 s after start).
+- `status.value` is `unloaded`, `loading` or `loaded`; `status.args` and `status.preset` are present. A `memory` object (`status`, then `min`, `max` and `effective` per device, in bytes) appears only when the memory margin is above 0.
+- Load took 4.5 s to 5.2 s for a 4B Q8_0 model; unload 0.1 s. With a margin above 0 the router first measures each model in a short-lived `--offline` child, so the first load call can wait several seconds. `MODEL_LOAD_TIMEOUT_SECONDS = 300` covers it.
+- Autoload is on by default: a request to an unloaded model loads it. OMRS still makes the model ready with `POST /models/load` first, so the request timeout never includes a load.
+- An unknown name gives 404 on `POST /models/load` and 400 on unload and proxied requests. OMRS refuses unlisted names before any contact (D6), so it never relies on either code.
 
 ### D9. Child processes: stop and memory
 
-Each loaded model is a child `llama-server`. Stop still signals the router's process group (SIGTERM, 10 s, SIGKILL). Memory is the sum of the router's RSS and its direct children's RSS. OMRS reads the direct children of the recorded pid only (Linux `/proc/<pid>/task/*/children`, macOS `proc_listchildpids`) and counts a child only when its command line holds the recorded binary path. It still lists no other process. The per-model row shows the router's own `memory` figure when the router reports it.
+Each loaded model is a child `llama-server`. Stop still signals the router's process group (SIGTERM, 10 s, SIGKILL). Memory is the sum of the router's RSS and its direct children's RSS. OMRS reads the direct children of the recorded pid only (Linux: every `/proc/<pid>/task/*/children` file, because each child hangs under the router thread that spawned it, so the main thread's file alone finds none; macOS `proc_listchildpids`) and counts a child only when its command line holds the recorded binary path. It still lists no other process. The short-lived `--offline` measuring children (about 1 MB each) pass that test and are counted; their size does not matter. The per-model row shows the router's own `memory` figure when the router reports it.
 
-Spike 1.3 checks on b11941, on macOS and on Linux: children share the router's process group; a group stop ends all children within 10 s; after SIGKILL of the router pid alone, children exit (they read state from the router's pipe). Stop condition: if a child survives a group stop, or outlives a killed router, the design adds a stop of each recorded child pid (from the children read above) before group 3 continues.
+Spike 1.3 results on b11941 (`evidence/spike-1.3-macos.md`, `evidence/spike-1.3-linux.md`): children share the router's process group and session on both systems. A group SIGTERM ended every process within 0.14 s. After SIGKILL of the router pid alone, every child exited within 0.03 s: each child exits when its stdin pipe from the router closes (`server-common.cpp`). A kill during a model load left nothing behind. The stop condition did not fire, so no per-child stop is added. The Linux run used an arm64 container; process-group and pipe behaviour is the same on x86-64.
 
 ### D10. Decision models on the router
 
@@ -225,6 +238,8 @@ The b11941 source forwards `POST /v1/systemone` in router mode. Spike 1.1 confir
 
 - Outcome A (expected): a managed decision entry names a list entry with `projector` and `parallel = 1`. The router checks the build floor b11941 when any decision entry is listed (`wrong-build`). `GET /v1/runtimes` shows the decision model as a model of the `router` item.
 - Outcome B (spike fails): decision models keep their own `decision-<name>` runtimes as today. Only their Settings rows move into the Router panel as "Own server". The change is updated before group 5 to restore the removed requirement.
+
+Spike 1.1 result (`evidence/spike-1.1.md`): outcome A. The Clef-Flash Q8_0 entry with its projector and `parallel = 1` loaded in 3.5 s; `status.args` showed `--model`, `--mmproj` and `--parallel 1`. A `POST /v1/systemone` built by OMRS `build_request` returned 200 in 0.67 s. OMRS `run_smoke_test` passed through the router: right text 0.9387, wrong text 0.0195, margin 0.919 against the 0.2 limit.
 
 ### D11. Embeddings preset and shipped defaults
 
@@ -254,6 +269,10 @@ OMRS provisions llama.cpp b11941, the build that ADR-110 and ADR-113 already pin
 
 - The pins (names and SHA-256) live in `integrations/llamacpp_runtime/pins.py`. A test checks that the tag equals the dots-mocr engine's `LLAMA_TAG`.
 - A provisioning job (Integrations card "llama.cpp", `manage` scope, on request only) and a CLI command `omrs llamacpp install [--flavour cpu|cuda]` download, check SHA-256, unpack and place the binary in `$XDG_DATA_HOME/omrs/llamacpp/b11941-<flavour>/` (else `~/.local/share/omrs/...`). The CLI covers headless RunPod pods. Neither starts a server.
+- Each flavour unpacks into its own folder: every archive unpacks to a `llama-b11941/` folder, so two flavours in one parent would overwrite each other (spike 1.4).
+- CUDA layout: the `cudart` files go beside `llama-server`. Every llama.cpp library uses RUNPATH `$ORIGIN`, so they resolve with no `LD_LIBRARY_PATH` (spike 1.4).
+- After unpacking, the job runs `llama-server --version` and checks that it reports build 11941. Any failure is refused with reason `binary-check-failed` and the loader's message. This one check covers a host that is too old (the CUDA build needs glibc 2.38, so Ubuntu 24.04 or newer; the CPU build needs glibc 2.34) and a missing `libgomp1`.
+- For the CUDA flavour the job also runs `llama-server --list-devices` and needs at least one CUDA device in its output, else reason `cuda-device-missing`. The exit code cannot tell: the CUDA build exits 0 and lists no device when the driver is missing (spike 1.4).
 - `llamacpp_server_binary` set means a user path. The program rule still applies, and the router refuses a build below b11941 (`wrong-build`). Homebrew b11960 passes.
 - Flavour default on Linux: CUDA when `/proc/driver/nvidia/version` exists, else CPU. CUDA 12.8 is chosen over 13.4 because it needs an older driver. Decided by the operator on 2026-11-06 (Q4).
 - The flavour is visible and editable in the web GUI. The Integrations llama.cpp card shows the detected flavour as the default and lets the operator choose CPU or CUDA before install (Linux x86-64 only). The install request (`POST /v1/llamacpp/router/install`) carries the chosen flavour, and `GET /v1/llamacpp/router/install` reports the detected one. The CLI keeps `--flavour cpu|cuda` and uses the same detection when the flag is absent. macOS arm64 has one build and shows no choice.
@@ -303,12 +322,13 @@ This change lands before `pipeline-sweep-llamacpp`. That design plans `llama ser
 
 ## Risks / Trade-offs
 
-- [The router reads every Hugging Face cache model and may autoload one on a stray request] → OMRS refuses unlisted names (D6). The router binds loopback only.
+- [The router reads every Hugging Face cache model and may autoload one on a stray request] → The router environment points `LLAMA_CACHE` at an empty folder (D4), and OMRS refuses unlisted names (D6). The router binds loopback only.
+- [`/etc/llama.cpp/config.ini` changes every model] → Known limit (D4). Likelihood 1 (no OMRS step writes it), impact 3.
 - [LRU eviction between the readiness check and the request makes one request carry a load] → Load takes seconds on local disk; the decision timeout is 120 s. Rare (likelihood 2, impact 2).
 - [Two processes with different settings fight over one model's preset] → Per-model `version-busy` (D7). A process rewrites only its own model's section.
 - [One-slot embeddings slow a large ingest] → Batches of 100 inputs per request; measured in the live rollout. Raising `parallel` is one preset edit, at the cost of batch-dependent vectors.
 - [Re-index cost: every collection re-ingests once] → Timed with the `local-ocr-per-backend-cuts` re-index. Release notes say so.
-- [CUDA driver on a pod is older than CUDA 12.8 needs] → The job reports the driver check failure. The user path override stays.
+- [CUDA driver on a pod is older than CUDA 12.8 needs, or the pod image is older than Ubuntu 24.04] → The job refuses with `binary-check-failed` or `cuda-device-missing` (D12). The user path override stays.
 - [Router-mode bug in b11941 (for example #30323, slower Qwen3 embedding mode)] → Spikes measure it. The pin moves only with a new ADR-103 check.
 - [Retirement collides with the tripwire change] → Rebase rule in D2.
 
@@ -327,7 +347,18 @@ This change lands before `pipeline-sweep-llamacpp`. That design plans `llama ser
 - **Q3, memory limits (D15):** `--models-max 4` and `--models-memory-margin 8192` MiB accepted. Added: both are visible and editable in Settings > llama.cpp Router panel as "Models loaded at once" (1 to 16) and "Free memory margin (MiB)" (0 to 262,144).
 - **Q4, Linux flavour (D12):** CUDA 12.8 when an NVIDIA driver is present, else CPU, accepted. Added: the Integrations llama.cpp card shows the detected flavour as the default and lets the operator choose CPU or CUDA before install.
 
+## Spike results (2026-11-06, gate G2)
+
+Evidence in `evidence/`. Build b11941, archives checked against the release SHA-256 values.
+
+- 1.1 decision forwarding: outcome A (D10).
+- 1.2 load, unload and reload: D7 and D8 hold; cache listing fixed by the router environment (D4).
+- 1.3 child processes: no child survives on macOS or Linux; no per-child stop (D9).
+- 1.4 Linux builds, no-GPU part: SHA-256 match, layout and checks in D12. The GPU part (driver version, a CUDA device listed, one load) needs a paid pod and waits for the operator.
+- 1.5 preset keys: D4 corrected (booleans, `embeddings`, reserved keys, `spec-type`, router environment).
+
 ## Open Questions
 
-- Exact `memory` field names in `GET /v1/models` on b11941. Spike 1.2 records them; the row only displays the figure.
-- Whether `cudart` must sit beside the binary or on `LD_LIBRARY_PATH`. Spike 1.4 records the layout; the provisioning job follows it.
+- Spike 1.4 GPU part: does the CUDA 12.8 build list a CUDA device and load a model on a RunPod pod with an Ubuntu 24.04 image? Stop condition as before: if CUDA 12.8 fails on the pod driver, record the driver version and ask the operator to choose 13.4 or the user-path override.
+
+Answered by the spikes: the `memory` field names (D8) and the `cudart` layout (D12).

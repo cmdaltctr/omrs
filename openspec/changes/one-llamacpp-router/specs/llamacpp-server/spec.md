@@ -98,7 +98,7 @@ In managed mode the port SHALL come from `llamacpp_router_url`. The URL MUST use
 
 ### Requirement: The argument list is fixed
 
-The router SHALL be built from fixed flags only: `--models-preset <state root>/runtimes/router/models.ini`, `--models-max <n>`, `--models-memory-margin <n>`, `--host 127.0.0.1` and `--port <n>`. Model files and preset values SHALL reach it only through `models.ini` (capability `llamacpp-router`). It SHALL NOT pass `--sleep-idle-seconds`, `--api-key` or `--models-dir`. The code SHALL start the process with no shell. No API or setting SHALL add a free-text argument. The child SHALL receive a minimal environment that holds no provider API key.
+The router SHALL be built from fixed flags only: `--models-preset <state root>/runtimes/router/models.ini`, `--models-max <n>`, `--models-memory-margin <n>`, `--host 127.0.0.1` and `--port <n>`. Model files and preset values SHALL reach it only through `models.ini` (capability `llamacpp-router`). It SHALL NOT pass `--sleep-idle-seconds`, `--api-key` or `--models-dir`. The code SHALL start the process with no shell. No API or setting SHALL add a free-text argument. The child SHALL receive a minimal environment that holds no provider API key and no Hugging Face cache or token variable. It SHALL set `LLAMA_CACHE` to `<state root>/runtimes/router/empty-cache` and `XDG_CONFIG_HOME` to `<state root>/runtimes/router/empty-config`, two empty folders OMRS creates, so the router lists no cache model and reads no user `config.ini`.
 
 #### Scenario: Exact arguments
 
@@ -122,8 +122,13 @@ The router SHALL be built from fixed flags only: `--models-preset <state root>/r
 
 #### Scenario: Cache variables only for a Hugging Face model
 
-- **WHEN** `HF_TOKEN` and `LLAMA_CACHE` are set and every list entry loads by file path
-- **THEN** the environment of the child MUST hold neither
+- **WHEN** `HF_TOKEN`, `HF_HOME` and `LLAMA_CACHE=/data/cache` are set in the environment of `omrs web`, and every list entry loads by file path
+- **THEN** the environment of the child MUST NOT hold `HF_TOKEN` or `HF_HOME`, and its `LLAMA_CACHE` MUST be `<state root>/runtimes/router/empty-cache`
+
+#### Scenario: No user llama.cpp config file
+
+- **WHEN** `XDG_CONFIG_HOME` is set in the environment of `omrs web`
+- **THEN** the environment of the child MUST set `XDG_CONFIG_HOME` to `<state root>/runtimes/router/empty-config`, and that folder MUST be empty
 
 ### Requirement: Scopes for server control
 
