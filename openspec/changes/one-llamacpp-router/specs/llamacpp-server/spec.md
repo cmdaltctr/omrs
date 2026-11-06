@@ -187,7 +187,7 @@ The router state SHALL be one of `stopped`, `starting`, `running` and `failed`. 
 
 ### Requirement: Start moves to running or to a failed state
 
-Start SHALL move to `starting`, then poll `GET /health` on the owned port until it returns 200, then move to `running`. No model SHALL load at start. The wait SHALL end after 180 seconds with the reason `timeout`. An exit of the process while `starting` or `running` SHALL give `failed` with the reason `exited`. A blank program with no provisioned binary SHALL give `not-provisioned`, whose text names `omrs llamacpp install` and the Get llama.cpp action. A list with no entry SHALL give `not-configured`. A list in which no entry has a file SHALL give `not-downloaded`; its line SHALL read "Models are still downloading." while an automatic download of a listed model is queued or runs, and "No model is downloaded yet." otherwise. The status SHALL compute this line from the download state at the time it is read.
+Start SHALL move to `starting`, then poll `GET /health` on the owned port until it returns 200, then move to `running`. No model SHALL load at start. The wait SHALL end after 180 seconds with the reason `timeout`. An exit of the process while `starting` or `running` SHALL give `failed` with the reason `exited`. A blank program with no provisioned binary SHALL give `not-provisioned`, whose text names `omrs llamacpp install` and the Get llama.cpp action. A list with no entry SHALL give `not-configured`. A list in which no entry has a file SHALL give `not-downloaded` (see "A first start waits for its downloads").
 
 #### Scenario: Nothing provisioned
 
@@ -223,16 +223,6 @@ Start SHALL move to `starting`, then poll `GET /health` on the owned port until 
 
 - **WHEN** the model list has no entry and the user presses Start
 - **THEN** the state MUST be `failed` with the reason `not-configured` and no process MUST start
-
-#### Scenario: No model downloaded
-
-- **WHEN** no listed model has a file and the user presses Start
-- **THEN** the state MUST be `failed` with the reason `not-downloaded` and no process MUST start
-- **AND** the line MUST read "Models are still downloading." while a download of a listed model runs, and "No model is downloaded yet." after it ends
-
-### Requirement: Stop and restart
-
-Stop SHALL send SIGTERM to the process group of the recorded router, wait up to 10 seconds, then send SIGKILL to the group, and SHALL record an operator stop. The stop SHALL end every model child process. Restart SHALL stop the recorded router and start it with the saved values. When `omrs web` exits, the router SHALL stop only when no other OMRS process uses it. A save SHALL NOT stop a running router.
 
 #### Scenario: Graceful stop
 
@@ -373,3 +363,28 @@ OMRS SHALL NOT read `llamacpp_embed_url`, `llamacpp_chat_url`, `llamacpp_classif
 
 - **WHEN** the environment sets `LLAMACPP_CHAT_SERVER=managed`
 - **THEN** start-up MUST fail, and the message MUST name `LLAMACPP_CHAT_SERVER` and `LLAMACPP_ROUTER_SERVER`
+
+### Requirement: A first start waits for its downloads
+
+While an automatic download of a listed model is queued or runs, a Start SHALL give the state `starting` with the reason `not-downloaded` and the line "Models are still downloading.", and SHALL NOT give `failed`. When the last queued download ends, OMRS SHALL start the router and load the models that have files, unless the operator stopped the router or the mode became `external`. OMRS SHALL NOT store `not-downloaded` in the runtime record.
+
+#### Scenario: First start waits then starts by itself
+
+- **WHEN** no listed model has a file and the user confirms Start
+- **THEN** the state MUST be `starting` with the line "Models are still downloading."
+- **AND** when the last download ends the router MUST start without another press
+
+#### Scenario: Stop during the download
+
+- **WHEN** the user presses Stop while the downloads run
+- **THEN** the router MUST stay stopped after the downloads end
+
+#### Scenario: Every download fails
+
+- **WHEN** every queued download fails or is cancelled
+- **THEN** the state MUST be `failed` with `not-downloaded` and the line "No model is downloaded yet."
+
+#### Scenario: Server restart after a wait
+
+- **WHEN** the web server restarts while a router that never started waited for downloads
+- **THEN** the router MUST show `stopped`

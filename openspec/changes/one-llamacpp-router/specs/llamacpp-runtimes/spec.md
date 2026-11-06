@@ -121,7 +121,7 @@ A runtime whose argument list holds `-np 1` SHALL be a one-slot runtime. Each OM
 
 ### Requirement: A route lists the runtimes
 
-`GET /v1/runtimes` SHALL need `read` and SHALL return one item per runtime in force with `id`, `role` (`router` or `ocr`), `mode`, `state` (`running`, `starting`, `stopped` or `failed`), `reason` from a fixed set, `reason_text`, `memory_bytes`, `clients` (`some` or `none`), `used_by`, `address`, `files_checked` and `models`. `models` SHALL be a list for the router (each with `model`, `roles`, `state`, `reason` and `memory_bytes`) and empty for OCR. It SHALL NOT start, stop or write anything. The route SHALL be in `openapi.yaml`. No response SHALL hold server output.
+`GET /v1/runtimes` SHALL need `read` and SHALL return one item per runtime in force with `id`, `role` (`router` or `ocr`), `mode`, `state` (`running`, `starting`, `stopped` or `failed`), `reason` from a fixed set, `reason_text`, `memory_bytes`, `clients` (`some` or `none`: any OMRS process holds the runtime, this one included), `other_clients` (`some` or `none`: a process other than the one that answers holds it), `used_by`, `address`, `files_checked` and `models`. `models` SHALL be a list for the router (each with `model`, `roles`, `state`, `reason` and `memory_bytes`) and empty for OCR. It SHALL NOT start, stop or write anything. The route SHALL be in `openapi.yaml`. No response SHALL hold server output.
 
 #### Scenario: List shape
 

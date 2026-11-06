@@ -735,7 +735,7 @@ own code. They adopt the helper later.
 Every Python module under `src/omrs/integrations/`, classified. A contract
 test fails when a module is missing from this table.
 
-<!-- integration-inventory:start count=84 -->
+<!-- integration-inventory:start count=85 -->
 
 | Module                                   | Availability                                                   | Selector                                                            | Shared contract                               | Fallback owner                                                                    | Disposition                                                         |
 | ---------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
@@ -757,6 +757,7 @@ test fails when a module is missing from this table.
 | `omrs.integrations.llamacpp_runtime` | Native | `LLAMACPP_ROUTER_SERVER`, `LLAMACPP_ROUTER_URL`, `OCR_RUNTIME_URL` | Facade; exports the manager, lease, router lease, spec, state and lock surface of the shared runtime manager | None | One manager for the router and the OCR runtimes; components are clients |
 | `omrs.integrations.llamacpp_runtime.children` | Native | None | `direct_children(pid)` and `tree_rss(pid, binary)`: the router's direct child processes and their resident memory | None; a missing platform call reads as no children | Reads the recorded pid's children only (macOS `proc_listchildpids`, Linux every `/proc/<pid>/task/*/children` file); counts a child only when its command line holds the recorded binary path |
 | `omrs.integrations.llamacpp_runtime.hashes` | Native | None | `hash_file` and `HashCache`: SHA-256 of listed model files cached in `hashes.json` by path, size and `mtime_ns` | A broken cache file reads as empty | Avoids hashing a multi-GiB file at every start; the caller holds `start.lock` |
+| `omrs.integrations.llamacpp_runtime.holders` | Native | None | `hold(folder)` and `other_process_holds(folder)`: one `holder-<pid>.lock` per joined process, so a status read can tell another process's hold from this one's | None | Kernel locks free themselves when a process dies, so a killed process never counts |
 | `omrs.integrations.llamacpp_runtime.lease` | Native | None | `RuntimeLease` (one per runtime per process): join, `request`/`arequest`/`session`, crash restart, leave; `RuntimeUnavailable` and `RuntimeRequestFailed` | Crash restart once; none after an operator stop | Split from `manager.py` at the 500-line ceiling; holds the D4 lock order |
 | `omrs.integrations.llamacpp_runtime.locks` | Native | None | `LockFile`: shared and exclusive `flock` on one descriptor each | None | Kernel locks free themselves when a process dies; `not-supported` on Windows |
 | `omrs.integrations.llamacpp_runtime.manager` | Native | `LLAMACPP_ROUTER_SERVER`, `OCR_RUNTIME_URL` | `RuntimeManager` (one per process): `lease`, `stop` (operator), `sweep`, `status`, `close`; `install_sigterm_exit` | None; an external runtime is never started or stopped | Injected by `compose.py`; `IDLE_STOP_SECONDS = 600`; `atexit` leave |

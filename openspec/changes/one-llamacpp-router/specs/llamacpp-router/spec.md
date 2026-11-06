@@ -387,3 +387,29 @@ When the managed router starts, or a listed entry is first needed, and the entry
 
 - **WHEN** `omrs llamacpp install` runs on a machine with listed models missing
 - **THEN** it MUST download each missing model after the binary and print progress to the log
+
+### Requirement: Start asks before a first download
+
+Before a Start, the Router panel SHALL read `GET /v1/llamacpp/router/downloads-needed`. When one or more listed models have no file, the panel SHALL show one dialog that names the models and their total size, with Download and Cancel. Cancel SHALL start nothing. A Start with every file present SHALL show no dialog. The route SHALL contact the model host only when called, and SHALL need `manage` in a browser session.
+
+#### Scenario: Missing models ask first
+
+- **WHEN** two listed models have no file and the user presses Start
+- **THEN** a dialog MUST name both models and the total size
+- **AND** Cancel MUST start nothing and send no download
+
+#### Scenario: Every file present
+
+- **WHEN** every listed model has a file and the user presses Start
+- **THEN** no dialog MUST show and the router MUST start
+
+#### Scenario: Size unknown
+
+- **WHEN** the model host cannot be read
+- **THEN** the dialog MUST name the models and say that the size is unknown
+
+#### Scenario: Status read sends nothing to the host
+
+- **WHEN** the panel reads `GET /v1/llamacpp/router`
+- **THEN** OMRS MUST NOT contact the model host
+
