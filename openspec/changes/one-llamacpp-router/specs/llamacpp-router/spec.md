@@ -226,7 +226,7 @@ An entry with `parallel` 1 SHALL be a one-slot model. Each OMRS request to it SH
 
 ### Requirement: Decision models run on the router
 
-A `decision_models` entry with kind `llamacpp` and `server` `managed` SHALL name a list entry by `model`. That list entry SHALL hold `projector` for an image model and `parallel` 1. The router SHALL forward `POST /v1/systemone` by model. When any decision entry is listed, a router build below b11941 SHALL be refused with `wrong-build`. The decision fields `model_file`, `projector_file`, `model_sha256` and `projector_sha256` SHALL be reported as moved to `llamacpp_models`.
+A `decision_models` entry with kind `llamacpp` and `server` `managed` SHALL name a list entry by `model`. That list entry SHALL hold `projector` for an image model and `parallel` 1. The router SHALL forward `POST /v1/systemone` by model. The decision fields `model_file`, `projector_file`, `model_sha256` and `projector_sha256` SHALL be reported as moved to `llamacpp_models`.
 
 #### Scenario: Clef-Flash on the router
 
@@ -239,6 +239,20 @@ A `decision_models` entry with kind `llamacpp` and `server` `managed` SHALL name
 
 - **WHEN** `omrs.jsonc` holds `decision_models.clef-local.model_file`
 - **THEN** the problem list MUST name the field and `llamacpp_models` as its new place
+
+### Requirement: A decision entry uses the router address and build floor
+
+A router build below b11941 SHALL be refused with `wrong-build` at every start. A managed decision entry's own `address` SHALL NOT be used: its requests go to the router address.
+
+#### Scenario: Old build refused at start
+
+- **WHEN** the router binary reports build 11510
+- **THEN** the router MUST be `failed` with `wrong-build`, whether or not a decision entry is listed
+
+#### Scenario: Entry address ignored
+
+- **WHEN** a managed decision entry holds `address` `http://127.0.0.1:8091/v1`
+- **THEN** its `POST /v1/systemone` MUST go to the router address
 
 ### Requirement: Memory limits bound the loaded models
 
@@ -282,6 +296,15 @@ On request only, OMRS SHALL download llama.cpp build b11941 for the host platfor
 
 - **WHEN** `llamacpp_server_binary` names a build 11510 binary
 - **THEN** the router MUST be `failed` with `wrong-build` and no process MUST start
+
+### Requirement: A failed download places nothing
+
+A failed download, or an archive that is unsafe or unreadable, SHALL fail with `download-failed` and SHALL place no binary.
+
+#### Scenario: Download failed
+
+- **WHEN** the archive download breaks off or the archive holds a path outside its folder
+- **THEN** the job MUST fail with `download-failed` and MUST NOT place any binary
 
 ### Requirement: A provisioned build is checked before use
 
