@@ -356,11 +356,9 @@ Evidence in `evidence/`. Build b11941, archives checked against the release SHA-
 - 1.1 decision forwarding: outcome A (D10).
 - 1.2 load, unload and reload: D7 and D8 hold; cache listing fixed by the router environment (D4).
 - 1.3 child processes: no child survives on macOS or Linux; no per-child stop (D9).
-- 1.4 Linux builds, no-GPU part: SHA-256 match, layout and checks in D12. The GPU part (driver version, a CUDA device listed, one load) needs a paid pod and waits for the operator.
+- 1.4 Linux builds: SHA-256 match, layout and checks in D12. GPU part on a RunPod RTX A6000 (driver 595.91.07): CUDA device listed, model loaded (`evidence/spike-1.4-gpu.md`).
 - 1.5 preset keys: D4 corrected (booleans, `embeddings`, reserved keys, `spec-type`, router environment).
 
 ## Open Questions
 
-- Spike 1.4 GPU part: does the CUDA 12.8 build list a CUDA device and load a model on a RunPod pod with an Ubuntu 24.04 image? Stop condition as before: if CUDA 12.8 fails on the pod driver, record the driver version and ask the operator to choose 13.4 or the user-path override.
-
-Answered by the spikes: the `memory` field names (D8) and the `cudart` layout (D12).
+None left. Answered by the spikes: the `memory` field names (D8), the `cudart` layout (D12) and the CUDA 12.8 build on a RunPod driver (spike 1.4).
