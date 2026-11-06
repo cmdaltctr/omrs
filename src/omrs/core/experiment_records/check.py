@@ -15,6 +15,8 @@ Codes:
 - ``number-shared`` (error on a record without a migration note, else warning).
 - ``report-status`` (warning, info on converted records): the ``report.md``
   header names another status.
+- ``operator-placeholder`` (warning): the Operator line of ``report.md`` or
+  ``protocol.md`` still holds a placeholder in angle brackets.
 - ``plan-changed`` (warning): ``plan.json`` changed after a recorded run.
 - ``run-records-invalid`` (warning): ``output/run-records.jsonl`` cannot be read.
 - ``edit-log-invalid`` (warning): a line of ``edits.jsonl`` does not load, or the
@@ -52,6 +54,7 @@ from .reserved import RESERVED_FILE, Reservation, load_reservations
 from .run_record import PLAN_FILE, RUN_RECORDS_FILE, plan_sha256, read_run_records
 from .runtime_block import RUNTIME_KEY, load_runtime_block
 from .scan import ExperimentFolder, scan_experiments
+from .templates import OPERATOR_LINE
 
 Severity = Literal["error", "warning", "info"]
 
@@ -63,6 +66,8 @@ REQUIRED_FILES: dict[Size, tuple[str, ...]] = {
 
 _STATUS_LINE = re.compile(r"^\s*(?:[-*]\s+)?\*\*Status(?::\*\*|\*\*:)\s*(?P<value>.*)$")
 _FIRST_WORD = re.compile(r"[A-Za-z]+")
+_PLACEHOLDER = re.compile(r"<[^<>]+>")
+_OPERATOR_FILES = ("report.md", "protocol.md")
 
 
 class Finding(BaseModel):
@@ -182,6 +187,28 @@ def _content_rules(folder: ExperimentFolder, experiments: set[str]) -> Iterator[
                 folder=folder.name,
                 message=f"a {record.size.value} experiment needs {', '.join(missing)}",
             )
+
+
+def _operator_rules(folder: ExperimentFolder) -> Iterator[Finding]:
+    """Warn for each header Operator line that still holds a ``<...>`` placeholder."""
+    for name in _OPERATOR_FILES:
+        path = folder.path / name
+        if not path.is_file():
+            continue
+        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+            if line.startswith("## "):
+                break
+            match = OPERATOR_LINE.match(line)
+            if match:
+                if _PLACEHOLDER.search(match["value"]):
+                    yield Finding(
+                        severity="warning",
+                        code="operator-placeholder",
+                        folder=folder.name,
+                        message=f"{name} still has a placeholder in its Operator line; "
+                        "write who ran the experiment",
+                    )
+                break
 
 
 def _run_rules(folder: ExperimentFolder) -> Iterator[Finding]:
@@ -369,6 +396,7 @@ def check_experiments(root: Path) -> tuple[Finding, ...]:
             continue
         findings.extend(_name_rules(folder))
         findings.extend(_content_rules(folder, experiments))
+        findings.extend(_operator_rules(folder))
         findings.extend(_run_rules(folder))
         findings.extend(_publication_rules(folder))
         findings.extend(_edit_log_rules(folder))

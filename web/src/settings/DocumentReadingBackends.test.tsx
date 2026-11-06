@@ -233,6 +233,16 @@ describe("Document reading retired cut key", () => {
     await waitFor(() => expect(puts(server)).toEqual([{ values: { ocr_local_cuts: { indra: 0.95 } }, revision: "r1" }]));
   });
 
+  it("shows the notice without Remove it when OCR_LOCAL_CUTS locks the cuts, and says to remove the key by hand", async () => {
+    const lock = "Remove OCR_LOCAL_CUTS from the environment or .env to edit it here.";
+    const locked = readingState({ ocr_local_cuts: { source: "env", locked: true, lock_reason: lock } }, { ...TWO, retired_keys: ["ocr_local_min_confidence"] });
+    const { server } = await openSection(savingServer(locked));
+    expect(row()).toHaveTextContent(NOTICE);
+    expect(within(row()).queryByRole("button", { name: "Remove it" })).toBeNull();
+    expect(row()).toHaveTextContent("OCR_LOCAL_CUTS is set in the environment or .env, so this page cannot remove the key. Remove ocr_local_min_confidence from omrs.jsonc by hand.");
+    expect(puts(server)).toEqual([]);
+  });
+
   it("goes away when a save of the cuts removes the key", async () => {
     const { user } = await openSection(savingServer(readingState({}, { ...TWO, retired_keys: ["ocr_local_min_confidence"] })));
     await edit(user);

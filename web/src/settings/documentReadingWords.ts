@@ -62,6 +62,8 @@ export const CUT_WORDS = {
   retiredKey: "ocr_local_min_confidence",
   retiredNotice: "omrs.jsonc holds ocr_local_min_confidence. OMRS ignores it. Each backend now has its own cut.",
   removeRetired: "Remove it",
+  /** Under the retired notice when OCR_LOCAL_CUTS locks the cuts: the page cannot write them, so it cannot remove the key. */
+  retiredLocked: "OCR_LOCAL_CUTS is set in the environment or .env, so this page cannot remove the key. Remove ocr_local_min_confidence from omrs.jsonc by hand.",
 };
 
 export const ROUTING_UNITS = ["page"] as const;

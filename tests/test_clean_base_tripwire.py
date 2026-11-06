@@ -333,7 +333,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # fastapi), Read step cuts (18), identity (17 + 7 re-ingest) and chain, Indra,
 # script routing and pin cases. Removed: the old override (9), output_script (7)
 # and replaced identity, chain and tier cases.
-_BASE_EXECUTED = 11158
+# +36 (2026-11-06, cuts-follow-ups, by test-ID diff against v3 4bf0c206, 36 added,
+# 0 removed): example cut from the descriptor (4), retired key takes its comment (13)
+# and the experiment operator option and warning (19). No fastapi needed.
+_BASE_EXECUTED = 11194
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

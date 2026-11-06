@@ -8,6 +8,7 @@ byte-identical copies; a drift test compares them.
 
 from __future__ import annotations
 
+import re
 from importlib import resources
 
 TEMPLATE_NAMES = (
@@ -19,6 +20,11 @@ TEMPLATE_NAMES = (
     "exp-readme.md",
 )
 """Every packaged template file name."""
+
+OPERATOR_LINE = re.compile(
+    r"^(?P<head>\s*(?:[-*]\s+)?\*\*Operator(?::\*\*|\*\*:)\s*)(?P<value>.*)$", re.MULTILINE
+)
+"""The ``- **Operator**: ...`` header line of ``report.md`` and ``protocol.md``."""
 
 
 def read_template(name: str) -> str:

@@ -114,9 +114,13 @@ export function LocalOcrBackendsRow({ list, cuts, state, onSaved }: LocalOcrBack
       {retired ? (
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-ui">{CUT_WORDS.retiredNotice}</p>
-          <Button type="button" variant="outline" size="sm" disabled={save.isPending} onClick={() => save.mutate({ ocr_local_cuts: cuts.saved ?? null })}>
-            {CUT_WORDS.removeRetired}
-          </Button>
+          {cuts.locked ? (
+            <p className="text-ui">{CUT_WORDS.retiredLocked}</p>
+          ) : (
+            <Button type="button" variant="outline" size="sm" disabled={save.isPending} onClick={() => save.mutate({ ocr_local_cuts: cuts.saved ?? null })}>
+              {CUT_WORDS.removeRetired}
+            </Button>
+          )}
         </div>
       ) : null}
       <div className="flex min-w-0 items-start gap-3">

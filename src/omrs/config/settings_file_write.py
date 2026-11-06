@@ -219,6 +219,14 @@ def _plan(changes: Mapping[str, Any], secrets: Path) -> dict[str, Any]:
     return _with_old_keys_removed(plan)
 
 
+#: Keys that a save removes for the user. Their comment goes with them.
+_RETIRED_KEYS: frozenset[str] = frozenset(
+    key
+    for olds in (*OLD_READING_KEYS.values(), *RETIRED_FILE_KEYS_ON_SAVE.values())
+    for key in olds
+)
+
+
 def _with_old_keys_removed(plan: dict[str, Any]) -> dict[str, Any]:
     """Add the removal of each old key whose list key is in *plan* (a save, or a reset).
 
@@ -248,7 +256,11 @@ def _edit(text: str, plan: Mapping[str, Any]) -> str:
     try:
         for key, value in plan.items():
             path = tuple(key.split("."))
-            text = remove_value(text, path) if value is None else set_value(text, path, value)
+            if value is None:
+                # A retired key takes the comment above it (cuts-follow-ups D3).
+                text = remove_value(text, path, with_comment=key in _RETIRED_KEYS)
+            else:
+                text = set_value(text, path, value)
         parse_jsonc(text)
     except JsoncEditError as exc:
         raise SettingsFileConflict(str(exc)) from exc

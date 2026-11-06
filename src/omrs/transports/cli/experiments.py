@@ -149,6 +149,14 @@ def new(
         Purpose,
         typer.Option("--purpose", help="optimisation tunes this project; publication may be cited"),
     ] = Purpose.OPTIMISATION,
+    operator: Annotated[
+        str | None,
+        typer.Option(
+            "--operator",
+            help="Text for the Operator line of report.md and protocol.md. "
+            "Without it the placeholder stays.",
+        ),
+    ] = None,
 ) -> None:
     """Create an experiment folder with its record and template files, then print its path."""
     planned = _parse_date(day)
@@ -162,6 +170,7 @@ def new(
             day=planned,
             follow_up=follow_up,
             purpose=purpose,
+            operator=operator,
         )
     except (ScaffoldError, RecordError, OSError) as exc:
         _fail(str(exc))

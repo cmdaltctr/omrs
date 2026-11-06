@@ -94,7 +94,9 @@ async def test_large_event_payloads_are_bounded(tmp_path: Path) -> None:
     assert summary["data"]["embedding"] == {"omitted": "vector data", "length": 384}
     full = service.artefacts.read_json(summary["artefact_ref"])
     assert full["data"]["text"] == "z" * 9000
-    assert "0.25" not in str(full)
+    # Check the field itself: the whole record also holds a timestamp, which can
+    # contain "0.25" by chance (Floor resolution, PR 184, 2026-11-06).
+    assert full["data"]["embedding"] == {"omitted": "vector data", "length": 384}
     await service.shutdown()
 
 

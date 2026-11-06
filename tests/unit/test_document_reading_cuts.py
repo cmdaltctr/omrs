@@ -24,10 +24,14 @@ from omrs.core import reading_parts  # noqa: E402
 
 KEY = "ocr_local_cuts"
 OLD_KEY = "ocr_local_min_confidence"
-# A comment above the old key and one after it: both must survive a write.
+# A comment on its own line, a blank line, the old key's own comment, the old
+# key, and a comment after another member. The old key's own comment goes with
+# it (change cuts-follow-ups); the other two survive a write.
 FILE_WITH_OLD_KEY = (
     "{\n"
     "  // keep this comment\n"
+    "\n"
+    "  // old single cut\n"
     f'  "{OLD_KEY}": 0.9,\n'
     '  "ocr_routing_unit": "page" // keep this one too\n'
     "}\n"
@@ -132,6 +136,7 @@ def test_a_save_writes_the_map_keeps_comments_and_removes_the_old_key(
     assert parse_jsonc(text) == {KEY: {"indra": 0.95}, "ocr_routing_unit": "page"}
     assert "// keep this comment" in text and "// keep this one too" in text
     assert OLD_KEY not in text
+    assert "// old single cut" not in text
     body = response.json()
     assert rows(body)[KEY]["saved"] == {"indra": 0.95}
     assert body["retired_keys"] == []

@@ -17,12 +17,15 @@ This module is a leaf: it imports nothing from OMRS.
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
 _SPACE = " \t\r\n"
 _UNIT = "  "  # indent for a layout that offers no hint
+#: A ``//`` line that holds a commented-out member, such as ``// "name": 1,``.
+_COMMENTED_KEY = re.compile(r'//\s*"[^"\n]*"\s*:')
 
 
 class JsoncEditError(ValueError):
@@ -284,11 +287,19 @@ def set_value(text: str, path: Sequence[str], value: Any) -> str:
     return text[: member.value_start] + rendered + text[member.value_end :]
 
 
-def remove_value(text: str, path: Sequence[str]) -> str:
+def remove_value(text: str, path: Sequence[str], *, with_comment: bool = False) -> str:
     """Return *text* without the member at *path*. A missing member changes nothing.
 
     The member's comma goes with it. Comments stay. A nested object that the
     removal leaves empty, with no comment inside, goes too.
+
+    Args:
+        text: JSONC text whose top level is an object.
+        path: Keys from the top level.
+        with_comment: Also remove the ``//`` comment lines directly above the
+            member. The removal stops at a blank line, a line that holds code
+            and a commented-out member line. It reads ``//`` lines only, not
+            ``/* */`` blocks, and acts only when the member starts its own line.
 
     Raises:
         JsoncEditError: As :func:`set_value`.
@@ -305,7 +316,7 @@ def remove_value(text: str, path: Sequence[str]) -> str:
     member = scanner.find(obj, path[-1])
     if member is None:
         return text
-    new = _cut(text, obj, member)
+    new = _cut(text, obj, member, with_comment)
     if len(path) > 1:
         parent = _Scanner(new)
         holder = parent.root()
@@ -322,8 +333,20 @@ def remove_value(text: str, path: Sequence[str]) -> str:
     return new
 
 
-def _cut(text: str, obj: _Object, member: _Member) -> str:
-    """Cut *member* (and one comma) out of *obj*."""
+def _comment_start(text: str, line_start: int) -> int:
+    """Return where the ``//`` comment lines directly above *line_start* begin."""
+    start = line_start
+    while start > 0:
+        above = _line_start(text, start - 1)
+        line = text[above:start].strip()
+        if not line.startswith("//") or _COMMENTED_KEY.match(line):
+            break
+        start = above
+    return start
+
+
+def _cut(text: str, obj: _Object, member: _Member, with_comment: bool = False) -> str:
+    """Cut *member* (and one comma) out of *obj*, and its comment lines when asked."""
     index = obj.members.index(member)
     end = member.value_end if member.comma is None else member.comma + 1
     start = member.start
@@ -340,7 +363,8 @@ def _cut(text: str, obj: _Object, member: _Member) -> str:
     rest = text[end : len(text) if rest_end < 0 else rest_end]
     if before.strip() == "" and rest.strip() == "" and start == member.start:
         stop = len(text) if rest_end < 0 else rest_end + 1
-        ranges.append((_line_start(text, start), stop))
+        first = _line_start(text, start)
+        ranges.append((_comment_start(text, first) if with_comment else first, stop))
     else:
         if member.comma is not None:
             while end < len(text) and text[end] in " \t":

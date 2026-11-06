@@ -48,7 +48,10 @@ that retires a name cannot also be the release that expires it.
 
 from __future__ import annotations
 
+import json
 import os
+
+from ..core.reading_parts import example_local_cuts
 
 # ── Retired env-var tripwire (design.md D9, layer 2) ─────────────────
 #
@@ -136,7 +139,7 @@ _NEVER_SHIPPED_ALIASES: dict[str, str] = {
 _PAGE_UNIT_ONLY = "OCR routing judges every page, so the document-level threshold is gone"
 #: Removed names that nothing replaced, each with the reason the start-up message
 #: and the ``omrs.jsonc`` problem list give.
-_CUTS_REPLACEMENT = 'OCR_LOCAL_CUTS, a JSON object such as {"pp-ocrv6-small": 0.92}'
+_CUTS_REPLACEMENT = f"OCR_LOCAL_CUTS, a JSON object such as {json.dumps(example_local_cuts())}"
 NOTHING_REPLACES: dict[str, str] = {
     "LLAMACPP_IDLE_SLEEP_SECONDS": "OMRS stops an idle llama.cpp server after a fixed 10 minutes",
     "OCR_FALLBACK_PAGE_FRACTION": _PAGE_UNIT_ONLY,

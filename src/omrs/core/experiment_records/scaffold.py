@@ -33,7 +33,7 @@ from .record import (
 )
 from .reserved import Reservation, load_reservations
 from .scan import ExperimentFolder, scan_experiments
-from .templates import read_template
+from .templates import OPERATOR_LINE, read_template
 
 # Output file name -> template file name, per size.
 _QUICK_FILES = {"report.md": "report-quick.md"}
@@ -110,6 +110,7 @@ def create_experiment(
     day: Date,
     follow_up: str | None = None,
     purpose: Purpose = Purpose.OPTIMISATION,
+    operator: str | None = None,
 ) -> Path:
     """Create a new experiment folder with its record and template files.
 
@@ -125,6 +126,9 @@ def create_experiment(
         purpose: Why the experiment runs. It is always written into the
             new record, so a new record never relies on the missing-field
             default.
+        operator: Text for the Operator line of each Markdown template. The
+            creator reads no name from git or the system. Without it the
+            placeholder stays and ``omrs experiments check`` warns about it.
 
     Returns:
         The new folder path.
@@ -136,6 +140,8 @@ def create_experiment(
     """
     if not root.is_dir():
         raise ScaffoldError(f"{root} is not a directory")
+    if operator is not None and (not operator.strip() or "\n" in operator or "\r" in operator):
+        raise ScaffoldError("the operator must be one non-blank line of text")
     if not is_valid_slug(slug):
         raise ScaffoldError(
             f"slug {slug!r} must be lower-case letters and digits joined by single hyphens"
@@ -167,7 +173,10 @@ def create_experiment(
     for target, template in FILES_BY_SIZE[size].items():
         # A title is free text, so it goes into Markdown only, never into JSON.
         text_title = title if target.endswith(".md") else None
-        files[target] = _fill(read_template(template), name=name, number=number, title=text_title)
+        text = _fill(read_template(template), name=name, number=number, title=text_title)
+        if operator is not None and target.endswith(".md"):
+            text = OPERATOR_LINE.sub(lambda m: m["head"] + operator.strip(), text, count=1)
+        files[target] = text
     folder = root / name
     try:
         folder.mkdir()
