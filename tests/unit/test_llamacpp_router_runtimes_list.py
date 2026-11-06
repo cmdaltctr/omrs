@@ -28,7 +28,7 @@ pytestmark = pytest.mark.skipif(sys.platform == "win32", reason="POSIX file lock
 #: The fields of every item (spec llamacpp-runtimes "A route lists the runtimes").
 ITEM_FIELDS = {
     "id", "role", "mode", "state", "reason", "reason_text", "memory_bytes",
-    "clients", "used_by", "address", "files_checked", "models",
+    "clients", "other_clients", "used_by", "address", "files_checked", "models",
 }  # fmt: skip
 MODEL_FIELDS = {"model", "roles", "state", "reason", "memory_bytes"}
 CLEF_DECISION = {

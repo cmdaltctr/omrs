@@ -1,12 +1,12 @@
-"""The ``not-downloaded`` line follows the live download state (one-llamacpp-router).
+"""The ``not-downloaded`` line follows live download state (one-llamacpp-router).
 
-Spec ``llamacpp-server``, "Start moves to a running or failed state": the line
-reads "Models are still downloading." while an automatic download of a listed
-model is queued or runs, and "No model is downloaded yet." otherwise; the status
-computes the line from the download state at the time of the read. A start
-refused while a download ran stores the first line in ``server.json``. After the
-download fails or is cancelled, the status must not show it any more. A fake
-router ``llama-server`` stands in; nothing starts because the start is refused.
+Spec ``llamacpp-server``, "Start moves to running or to a failed state", and the
+operator decision of 2026-11-06 (A). While an automatic download of a listed model is
+queued or runs, a Start that waits for it shows ``starting`` with the reason
+``not-downloaded`` and the line "Models are still downloading.". After the download
+fails or is cancelled, the status is ``failed`` with "No model is downloaded yet.".
+The status is computed from the download state at read time. A fake router
+``llama-server`` stands in; nothing starts because the start is refused.
 """
 
 from __future__ import annotations
@@ -53,8 +53,10 @@ def rig(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[RouterRig]:
 def downloader() -> Iterator[SwitchDownloader]:
     fake = SwitchDownloader()
     install_downloader(fake)
-    yield fake
-    install_downloader(None)
+    try:
+        yield fake
+    finally:
+        install_downloader(None)
 
 
 def _config(rig: RouterRig) -> RouterConfig:
@@ -75,7 +77,7 @@ def test_the_line_changes_when_the_download_ends(
     control = RouterControl(rig.manager())
     first = control.start(config)
     assert (first.state, first.reason, first.reason_text) == (
-        "failed",
+        "starting",
         "not-downloaded",
         DOWNLOADING_LINE,
     )
@@ -89,18 +91,13 @@ def test_the_line_changes_when_the_download_ends(
         "not-downloaded",
         NOT_DOWNLOADED_LINE,
     )
-    other = RouterControl(rig.manager()).status(config)  # reads server.json only
-    assert (other.reason, other.reason_text) == ("not-downloaded", NOT_DOWNLOADED_LINE)
+    other = RouterControl(rig.manager()).status(config)  # another process reads the files only
+    assert (other.state, other.reason, other.reason_text) == ("stopped", None, None)
 
 
-def test_a_download_that_starts_later_shows_the_downloading_line(
+def test_a_start_with_no_download_running_is_failed_at_once(
     rig: RouterRig, downloader: SwitchDownloader
 ) -> None:
-    config = _config(rig)
     downloader.running = False
-    control = RouterControl(rig.manager())
-    assert control.start(config).reason_text == NOT_DOWNLOADED_LINE
-
-    downloader.running = True  # a later request queued the download
-
-    assert control.status(config).reason_text == DOWNLOADING_LINE
+    status = RouterControl(rig.manager()).start(_config(rig))
+    assert (status.state, status.reason_text) == ("failed", NOT_DOWNLOADED_LINE)

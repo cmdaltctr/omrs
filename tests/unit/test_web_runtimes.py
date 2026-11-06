@@ -45,7 +45,7 @@ ORIGIN = edit.ORIGIN
 LIST = "/v1/runtimes"
 FIELDS = {
     "id", "role", "mode", "state", "reason", "reason_text", "memory_bytes",
-    "clients", "used_by", "address", "files_checked", "models",
+    "clients", "other_clients", "used_by", "address", "files_checked", "models",
 }  # fmt: skip
 
 

@@ -5,6 +5,7 @@ import type { Integration } from "../api/integrations";
 import type { LlamacppBuild } from "../api/llamacppInstall";
 import { documentsServer, json } from "../test/fakeDocumentsServer";
 import { startApp } from "../test/startApp";
+import { routerStatus } from "../settings/test/llamacppFixtures";
 import { SESSION_READ_ONLY, SESSION_WITH_MANAGE } from "./test/modelRuntimeFixtures";
 
 const ENTRY: Integration = {
@@ -124,6 +125,28 @@ describe("The Integrations page provisions the pinned llama.cpp build", () => {
     const entry = await card(serve({ ...LINUX_CUDA, installed_path: "/data/omrs/llamacpp/b11941-cuda/llama-server", job: { ...IDLE, state: "succeeded", flavour: "cuda" } }));
     expect(entry).toHaveTextContent("Installed at /data/omrs/llamacpp/b11941-cuda/llama-server");
     expect(within(entry).queryByRole("button", { name: "Get llama.cpp" })).toBeNull();
+  });
+
+  it("Own program set: says it uses that program, with no Not installed line and no Get llama.cpp button", async () => {
+    const own = routerStatus({ program: { path: "/opt/llama/llama-server", source: "user" } });
+    const server = serve(LINUX_CUDA, { "GET /v1/llamacpp/router": () => own });
+    startApp("#/integrations", server);
+    const list = await screen.findByRole("list", { name: "Integrations" });
+    const entry = within(list).getAllByRole("listitem").find((item) => within(item).queryByRole("heading", { name: "llama.cpp provider" }));
+    if (entry === undefined) throw new Error("No llama.cpp card");
+    await waitFor(() => expect(entry).toHaveTextContent("Uses your own program: /opt/llama/llama-server"));
+    expect(entry).not.toHaveTextContent("Not installed");
+    expect(entry).not.toHaveTextContent("llama.cpp build");
+    expect(within(entry).queryByRole("button", { name: "Get llama.cpp" })).toBeNull();
+    expect(within(entry).queryByRole("radiogroup")).toBeNull();
+  });
+
+  it("Provisioned or no program in force: the card keeps the pinned build line and the Get llama.cpp button", async () => {
+    const none = routerStatus({ program: { path: "", source: "none" } });
+    const entry = await card(serve(LINUX_CUDA, { "GET /v1/llamacpp/router": () => none }));
+    expect(entry).toHaveTextContent("Not installed");
+    expect(entry).not.toHaveTextContent("Uses your own program");
+    expect(await within(entry).findByRole("button", { name: "Get llama.cpp" })).toBeEnabled();
   });
 
   it("Read-only session: the card shows no Get llama.cpp button", async () => {

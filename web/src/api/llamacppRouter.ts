@@ -2,7 +2,8 @@
  * Typed client for the llama.cpp router that `omrs web` starts and owns, and
  * for its model list. Shapes follow `openapi.yaml` (`getLlamacppRouter`,
  * `saveLlamacppRouter`, `saveLlamacppRouterModel`, `deleteLlamacppRouterModel`,
- * `startLlamacppRouter`, `stopLlamacppRouter`, `restartLlamacppRouter`).
+ * `startLlamacppRouter`, `stopLlamacppRouter`, `restartLlamacppRouter`,
+ * `getLlamacppRouterDownloads`).
  * No response holds log text or text from a process: a failure is one fixed
  * reason.
  */
@@ -111,6 +112,23 @@ export interface LlamacppRouterStatus {
   problems: RouterProblem[];
 }
 
+/** One list entry with no file, as `GET /v1/llamacpp/router/downloads-needed` names it. */
+export interface RouterDownloadItem {
+  id: string;
+  /** The request name, `org/name:QUANT`. */
+  model: string;
+  /** Bytes to download; `null` when the model host did not give the size. */
+  size_bytes: number | null;
+}
+
+/** The models that a Start would download. Empty when every entry has a file. */
+export interface RouterDownloadsNeeded {
+  status: "ok";
+  models: RouterDownloadItem[];
+  /** The sum of the sizes; `null` when any size is unknown; `0` when nothing is missing. */
+  total_bytes: number | null;
+}
+
 /** Keys of a router save. An absent key stays as it is; `null` clears the saved value. */
 export interface LlamacppRouterChange {
   binary?: string | null;
@@ -149,6 +167,11 @@ export function saveLlamacppRouterModel(api: ApiClient, id: string, change: Rout
 /** Removes entry `id`. The server refuses with 409 `in-use` while the entry holds a role. */
 export function deleteLlamacppRouterModel(api: ApiClient, id: string, options: SaveOptions = {}): Promise<LlamacppRouterStatus> {
   return api.request<LlamacppRouterStatus>("DELETE", `${PATH}/models/${encodeURIComponent(id)}`, { query: options.revision === undefined ? undefined : { revision: options.revision }, signal: options.signal });
+}
+
+/** Lists the entries with no file and their sizes. Reads the model host, so call it only when the user presses Start. */
+export function getLlamacppRouterDownloads(api: ApiClient, options: CallOptions = {}): Promise<RouterDownloadsNeeded> {
+  return api.request<RouterDownloadsNeeded>("GET", `${PATH}/downloads-needed`, { signal: options.signal });
 }
 
 export function startLlamacppRouter(api: ApiClient, options: CallOptions = {}): Promise<LlamacppRouterStatus> {

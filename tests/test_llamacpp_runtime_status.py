@@ -36,6 +36,7 @@ FIELDS = {
     "reason_text",
     "memory_bytes",
     "clients",
+    "other_clients",
     "used_by",
     "address",
     "files_checked",
@@ -122,6 +123,43 @@ def test_a_running_runtime_reports_memory_address_and_clients(runtime_env: Runti
     assert item["clients"] == "some"
     assert item["used_by"] == ["OCR_ENGINE"]
     assert (item["mode"], item["role"], item["files_checked"]) == ("managed", "ocr", True)
+
+
+def test_a_runtime_held_only_by_this_process_has_no_other_client(runtime_env: RuntimeEnv) -> None:
+    fake = runtime_env.fake()
+    spec = fake.ocr()
+    manager = runtime_env.manager()
+    manager.lease(spec).join()
+    item = manager.status([spec])[0]
+    assert (item["state"], item["clients"], item["other_clients"]) == ("running", "some", "none")
+
+
+def test_a_runtime_another_process_holds_has_an_other_client_until_it_leaves(
+    runtime_env: RuntimeEnv,
+) -> None:
+    fake = runtime_env.fake()
+    spec = fake.ocr()
+    manager = runtime_env.manager()
+    manager.lease(spec).join()
+    other = runtime_env.client()
+    assert other.join(spec)["ok"]
+    assert manager.status([spec])[0]["other_clients"] == "some"
+    other.call({"cmd": "leave"})
+    assert wait_until(lambda: manager.status([spec])[0]["other_clients"] == "none")
+    assert manager.status([spec])[0]["clients"] == "some"  # this process still holds it
+
+
+def test_a_killed_process_no_longer_counts_as_an_other_client(runtime_env: RuntimeEnv) -> None:
+    fake = runtime_env.fake()
+    spec = fixed_spec(fake, _free_port())
+    manager = runtime_env.manager()
+    starter = runtime_env.client()
+    assert starter.join(spec)["ok"]
+    assert manager.status([spec])[0]["other_clients"] == "some"
+    starter.send({"cmd": "abandon"})
+    starter.wait()
+    item = manager.status([spec])[0]
+    assert (item["state"], item["clients"], item["other_clients"]) == ("running", "none", "none")
 
 
 def test_an_orphan_reports_no_client(runtime_env: RuntimeEnv) -> None:

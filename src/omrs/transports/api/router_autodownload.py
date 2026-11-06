@@ -15,7 +15,8 @@ app's event loop and downloads one model at a time:
    reload rule, and load the model.
 
 A failed or cancelled download leaves the entry ``not-downloaded``; the next start or
-request asks again. Nothing here raises into the router lease.
+request asks again, and a Start that waits for the downloads ends (``RouterControl.load``).
+Nothing here raises into the router lease.
 """
 
 from __future__ import annotations
@@ -114,6 +115,7 @@ class RouterDownloads:
         await job.wait()  # a download that runs (the user's own) ends first
         planned = await self._plan(runtime, model)
         if planned is None:
+            await self._ended_without_file(runtime, store, model)
             return
         while True:
             await job.wait()
@@ -126,8 +128,22 @@ class RouterDownloads:
         done = job.snapshot()
         if done["state"] != SUCCEEDED or done["model"] != model:
             logger.info("The automatic download of %s ended: %s", model, done["state"])
+            await self._ended_without_file(runtime, store, model)
             return
         await self._record(runtime, store, entry_id, model, done["file_path"], done["sha256"])
+
+    async def _ended_without_file(self, runtime: Any, store: Any, model: str) -> None:
+        """Tell the router that *model* will get no file, so a waiting Start can end.
+
+        The Start waits while any download is queued or runs. When this was the last one,
+        the router starts with the models that did arrive, or the wait ends in a failure.
+        """
+        from .routes.llamacpp_router_view import load_router
+
+        with self._lock:
+            self._active.discard(model)  # it no longer downloads
+        loaded = await run_in_threadpool(load_router, runtime, store)
+        await run_in_threadpool(self.app.state.llamacpp_router.load, loaded.config, model)
 
     async def _plan(self, runtime: Any, model: str) -> Any:
         """Return the checked download request of *model* at its pinned revision, or ``None``."""

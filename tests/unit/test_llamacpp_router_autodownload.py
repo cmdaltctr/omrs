@@ -159,9 +159,11 @@ def test_with_no_file_at_all_both_download_and_the_router_then_serves(
     """No listed model has a file: the start is ``not-downloaded``, never ``timeout``."""
     with rig() as r:
         body = r.post("start").json()
-        assert (body["state"], body["reason"]) == ("failed", "not-downloaded")
+        assert (body["state"], body["reason"]) == ("starting", "not-downloaded")
         assert body["reason_text"] == "Models are still downloading."
         assert wait_until(lambda: bool(hub.downloads), 10)
+        waiting = r.get()
+        assert (waiting["state"], waiting["reason"]) == ("starting", "not-downloaded")
         notes = {m["id"]: m["note"] for m in r.get()["models"]}
         assert notes == {"qwen3-embedding-4b": "Downloading", "qwen3-4b": "Downloading"}
 
@@ -197,3 +199,56 @@ def test_a_request_for_a_listed_model_with_no_file_starts_its_download(
         assert hub.downloads[0][:2] == ("Qwen/Qwen3-1.7B-GGUF", REV)
         hub.gate.set()
         assert wait_until(lambda: r.entry("qwen3-1-7b")["state"] == "loaded", 20)
+
+
+def test_a_stop_while_it_downloads_means_the_router_stays_stopped(rig: Any, hub: FakeHub) -> None:
+    """Decision A: a Stop ends the pending Start, so the finished downloads start nothing."""
+    with rig() as r:
+        assert r.post("start").json()["state"] == "starting"
+        assert wait_until(lambda: bool(hub.downloads), 10)
+        assert r.post("stop").json()["state"] == "stopped"
+
+        hub.gate.set()
+
+        def recorded() -> bool:
+            return {m["state"] for m in r.get()["models"]} == {"unloaded"}
+
+        assert wait_until(recorded, 20), r.get()
+        assert r.get()["state"] == "stopped"
+        assert r.pids() == []
+
+
+@pytest.mark.parametrize("fails", ["the plan is refused", "the transfer is cancelled"])
+def test_the_first_model_arrives_and_the_second_fails_so_the_router_starts_with_the_first(
+    rig: Any, hub: FakeHub, monkeypatch: pytest.MonkeyPatch, fails: str
+) -> None:
+    """Decision A: the wait ends when no download is left, and a model with a file is enough."""
+    real_list, real_download = hub.list_repo_files, hub.download_files
+
+    def refuse_chat(repo: str, *, revision: str | None = None, client: Any = None) -> Any:
+        if repo == "Qwen/Qwen3-4B-GGUF":
+            raise hf.ModelHostError("network")
+        return real_list(repo, revision=revision, client=client)
+
+    def cancel_chat(repo: str, *args: Any, **kwargs: Any) -> str:
+        if repo == "Qwen/Qwen3-4B-GGUF":
+            raise hf.DownloadCancelled
+        return real_download(repo, *args, **kwargs)
+
+    if fails == "the plan is refused":
+        monkeypatch.setattr(hf, "list_repo_files", refuse_chat)
+    else:
+        monkeypatch.setattr(hf, "download_files", cancel_chat)
+    with rig() as r:
+        assert r.post("start").json()["state"] == "starting"
+        assert wait_until(lambda: bool(hub.downloads), 10)
+
+        hub.gate.set()
+
+        def states() -> dict[str, str]:
+            return {m["id"]: m["state"] for m in r.get()["models"]}
+
+        expected = {"qwen3-embedding-4b": "loaded", "qwen3-4b": "not-downloaded"}
+        assert wait_until(lambda: states() == expected, 30), r.get()
+        assert r.get()["state"] == "running"
+        assert hub.downloads[0][0] == "Qwen/Qwen3-Embedding-4B-GGUF"

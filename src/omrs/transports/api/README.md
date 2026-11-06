@@ -305,6 +305,7 @@ bearer credential with `read` can use the two `GET` routes. The old
 | PUT | `/v1/llamacpp/router` | `manage`; `credentials` when the body sets `binary` or `router_server` | The status after the save. Keys `binary`, `router_server`, `router_url`, `models_max`, `memory_margin_mib` and `revision`; `null` clears | 400 for a rule failure, an unknown mode, a managed address that is not loopback, a body that holds `model` ("Models are set in the model table") or the retired `idle_sleep`; 403; 409 for a locked field (the message names the variable) or a stale `revision` |
 | PUT | `/v1/llamacpp/router/models/{id}` | `manage`; `credentials` when the body sets `model`, `file`, `projector` or a SHA-256 | Adds an entry or changes some fields of one; Use this model is `model`, `file`, `sha256`. Answers with the status | 400 (`reason` `preset-key-unknown`, `preset-invalid` or `role-mismatch`); 403; 409 for a stale `revision` |
 | DELETE | `/v1/llamacpp/router/models/{id}?revision=` | `credentials` | Removes an entry that holds no role | 404; 409 `in-use` |
+| GET | `/v1/llamacpp/router/downloads-needed` | `manage` (session only: it contacts the model host) | `models` (`id`, `model`, `size_bytes`: the entries with no file, in list order; `size_bytes` is `null` when the size cannot be read) and `total_bytes` (the sum; `null` when any size is unknown; `0` when none is missing). Reads the host only here, never at a status read | 409 `external-server` |
 | POST | `/v1/llamacpp/router/start` | `manage` | Starts or adopts the router; no model loads | 409 `external-server` |
 | POST | `/v1/llamacpp/router/stop` | `manage` | Operator stop of the owned router | 409 `external-server` |
 | POST | `/v1/llamacpp/router/restart` | `manage` | Stop, then start with the saved values | 409 `external-server` |
@@ -324,9 +325,15 @@ Rules:
    `timeout`, `not-configured`, `not-provisioned`, `not-supported`,
    `version-busy`, `wrong-build`, `file-changed`, `bind-failed` and
    `not-downloaded`. `not-provisioned` means the program path is blank and no
-   pinned build is placed. `not-downloaded` means no listed model has a file;
-   its `reason_text` reads "Models are still downloading." while a download
-   runs, else "No model is downloaded yet." `not-configured` means the list
+   pinned build is placed. `not-downloaded` means no listed model has a file.
+   While an automatic download of a listed model is queued or runs, a Start is not
+   a failure: the state is `starting`, the reason is `not-downloaded` and the
+   `reason_text` reads "Models are still downloading."; OMRS starts the router by
+   itself when the last download ends. A Stop, a change to the mode `external` or
+   a failed or cancelled download ends that wait; a failed or cancelled download
+   then reads `failed` `not-downloaded` with "No model is downloaded yet." The
+   refusal is not stored in `server.json`, so a server restart shows no failure
+   from before. `not-configured` means the list
    holds no usable entry. The web page shows `reason_text` and reads no table of
    its own.
    A model in `models` has a `state` of `not-downloaded`, `unloaded`, `loading`,

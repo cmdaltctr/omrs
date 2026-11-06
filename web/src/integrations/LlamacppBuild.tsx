@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useInstallLlamacppBuild, useLlamacppBuild } from "../api/llamacppInstallHooks";
 import type { InstallJobReason, LlamacppBuild as Build, LlamacppFlavour } from "../api/llamacppInstall";
+import { useLlamacppRouter } from "../api/llamacppRouterHooks";
 import { ErrorNotice } from "../components/ErrorNotice";
 import { Button } from "../components/ui/button";
 import { CONFLICT_SENTENCES, conflictReason } from "../settings/llamacppRouterWords";
@@ -42,14 +43,25 @@ function FlavourChoice({ build, value, onChange }: { build: Build; value: Llamac
  * The pinned llama.cpp build on the llama.cpp card: the pinned tag, whether a
  * program is placed, the flavour choice (Linux x86-64 only) and Get llama.cpp.
  * The button needs `manage`. A failed job shows one reason line and leaves the
- * program unplaced.
+ * program unplaced. A program path the user set is the program in force, so the
+ * card says that and offers no build.
  */
 export function LlamacppBuild() {
   const query = useLlamacppBuild();
   const install = useInstallLlamacppBuild();
   const scopes = useScopes();
+  const router = useLlamacppRouter();
   const [picked, setPicked] = useState<LlamacppFlavour | null>(null);
   const build = query.data;
+  if (router.data?.program.source === "user")
+    return (
+      <p className={META}>
+        {"Uses your own program: "}
+        <code dir="ltr" className="text-code [overflow-wrap:anywhere]">
+          {router.data.program.path}
+        </code>
+      </p>
+    );
   if (build === undefined) return query.isError ? <ErrorNotice error={query.error} onRetry={() => void query.refetch()} /> : null;
 
   const detected = build.detected === "cpu" || build.detected === "cuda" ? build.detected : null;

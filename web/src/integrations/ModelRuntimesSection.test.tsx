@@ -208,27 +208,50 @@ describe("Stop", () => {
     expect(screen.queryByRole("button", { name: /^Stop/ })).toBeNull();
   });
 
-  it("asks first when another OMRS process uses the runtime, and sends nothing until the user confirms", async () => {
+  it("asks first when another OMRS process uses the router, says what fails, and sends nothing until the user confirms", async () => {
     const user = userEvent.setup();
-    const some = [{ ...RUNTIMES[0]!, clients: "some" as const }, ...RUNTIMES.slice(1)];
+    const some = [{ ...RUNTIMES[0]!, clients: "some" as const, other_clients: "some" as const }, ...RUNTIMES.slice(1)];
     const server = serve(some, {
-      "POST /v1/runtimes/router/stop": () => ({ ...some[0], state: "stopped", clients: "none" }),
+      "POST /v1/runtimes/router/stop": () => ({ ...some[0], state: "stopped", clients: "none", other_clients: "none" }),
     });
     startApp("#/integrations/model-runtimes", server);
     await user.click(await within(await row(ROUTER_TITLE)).findByRole("button", { name: `Stop ${ROUTER_TITLE}` }));
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent("Another OMRS process uses this runtime");
     expect(dialog).toHaveTextContent("Requests in progress fail");
-    expect(dialog).toHaveTextContent("OCR uses the fallback engine");
+    expect(dialog).toHaveTextContent("Requests for the router's models fail until it starts again.");
+    expect(dialog).not.toHaveTextContent("OCR");
+    expect(dialog).not.toHaveTextContent("fallback");
     expect(server.exact("POST", "/v1/runtimes/router/stop")).toHaveLength(0);
     await user.click(within(dialog).getByRole("button", { name: "Stop runtime" }));
     await waitFor(() => expect(server.exact("POST", "/v1/runtimes/router/stop")).toHaveLength(1));
     expect(await within(await row(ROUTER_TITLE)).findByText("Stopped", { selector: "[data-slot=badge]" })).toBeInTheDocument();
   });
 
+  it("asks first when another OMRS process uses an OCR runtime, and says OCR uses the fallback engine", async () => {
+    const user = userEvent.setup();
+    const ocr = runtimeItem("ocr-dots-mocr-llamacpp", { state: "running", clients: "some", other_clients: "some", used_by: ["ocr_engine_primary"] });
+    startApp("#/integrations/model-runtimes", serve([ocr]));
+    await user.click(await within(await row("OCR: dots-mocr-llamacpp")).findByRole("button", { name: "Stop OCR: dots-mocr-llamacpp" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(dialog).toHaveTextContent("Another OMRS process uses this runtime");
+    expect(dialog).toHaveTextContent("OCR uses the fallback engine");
+    expect(dialog).not.toHaveTextContent("router's models");
+  });
+
+  it("stops without asking when only this process holds the router", async () => {
+    const user = userEvent.setup();
+    const own = [{ ...RUNTIMES[0]!, clients: "some" as const, other_clients: "none" as const }, ...RUNTIMES.slice(1)];
+    const server = serve(own, { "POST /v1/runtimes/router/stop": () => ({ ...own[0], state: "stopped", clients: "none" }) });
+    startApp("#/integrations/model-runtimes", server);
+    await user.click(await within(await row(ROUTER_TITLE)).findByRole("button", { name: `Stop ${ROUTER_TITLE}` }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await waitFor(() => expect(server.exact("POST", "/v1/runtimes/router/stop")).toHaveLength(1));
+  });
+
   it("sends nothing when the user cancels the confirmation", async () => {
     const user = userEvent.setup();
-    const some = [{ ...RUNTIMES[0]!, clients: "some" as const }, ...RUNTIMES.slice(1)];
+    const some = [{ ...RUNTIMES[0]!, clients: "some" as const, other_clients: "some" as const }, ...RUNTIMES.slice(1)];
     const server = serve(some);
     startApp("#/integrations/model-runtimes", server);
     await user.click(await within(await row(ROUTER_TITLE)).findByRole("button", { name: `Stop ${ROUTER_TITLE}` }));

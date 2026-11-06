@@ -36,6 +36,7 @@ from ..provider_state import EngineRefused, validate_int
 from ..settings_store import refusal_response
 from .experiments import ManageScope
 from .graphs import ok
+from .llamacpp_router_downloads import downloads_needed
 from .llamacpp_router_view import (
     FIELD_IDS,
     INT_SPECS,
@@ -201,6 +202,21 @@ async def save_router(
         except EngineRefused:
             return error_response(409, _REFUSED)
         return await respond(runtime, request)
+
+
+@router.get("/llamacpp/router/downloads-needed", operation_id="getLlamacppRouterDownloads")
+async def get_downloads_needed(_: ManageScope, request: Request, runtime: RuntimeDep) -> Response:
+    """List the models with no file and their download sizes, for the dialog before a Start.
+
+    Reads the model host, so it needs the browser session with ``manage`` (as the model
+    search does). It contacts the host only here, only for an entry with no file, and
+    starts and writes nothing. 409 ``external-server`` when the mode is ``external``.
+    """
+    async with admitted(runtime):
+        loaded = await run_in_threadpool(load_router, runtime, store_of(request))
+        if loaded.config.mode != "managed":
+            return _external_conflict()
+        return ok(await run_in_threadpool(downloads_needed, loaded.config))
 
 
 @router.post("/llamacpp/router/start", operation_id="startLlamacppRouter")

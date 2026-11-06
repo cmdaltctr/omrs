@@ -153,6 +153,7 @@ FAMILIES: dict[str, frozenset[str]] = {
             "restartLlamacppRouter",
             "installLlamacppBuild",
             "getLlamacppBuild",
+            "getLlamacppRouterDownloads",
         }
     ),
     "runtimes": frozenset({"listRuntimes", "stopRuntime"}),

@@ -1,4 +1,4 @@
-import type { LlamacppRouterStatus, RouterField, RouterModel } from "../../api/llamacppRouter";
+import type { LlamacppRouterStatus, RouterDownloadsNeeded, RouterField, RouterModel } from "../../api/llamacppRouter";
 
 /** Fixtures built from the `openapi.yaml` schemas for the llama.cpp router routes. */
 
@@ -95,3 +95,37 @@ export const ROUTER_EXTERNAL = routerStatus(
 
 /** A session with `manage` and `credentials`, which the Router panel's saves need. */
 export const WITH_CREDENTIALS = { "GET /v1/session": () => ({ status: "ok", kind: "session", scopes: ["credentials", "files", "graph", "manage", "read", "run"], workspace: "/home/u/.omrs/workspace" }) };
+
+const GIB = 1024 ** 3;
+
+/** The two shipped entries with no file: 4.0 GiB and 2.5 GiB, 6.5 GiB in all. */
+export const DOWNLOADS_NEEDED_BOTH: RouterDownloadsNeeded = {
+  status: "ok",
+  models: [
+    { id: EMBED_ENTRY.id, model: EMBED_MODEL, size_bytes: 4 * GIB },
+    { id: TEXT_ENTRY.id, model: TEXT_MODEL, size_bytes: 2.5 * GIB },
+  ],
+  total_bytes: 6.5 * GIB,
+};
+
+/** Every list entry has a file: nothing to download. */
+export const DOWNLOADS_NEEDED_NONE: RouterDownloadsNeeded = { status: "ok", models: [], total_bytes: 0 };
+
+/** The model host did not answer: the names, and no size. */
+export const DOWNLOADS_NEEDED_UNKNOWN: RouterDownloadsNeeded = {
+  status: "ok",
+  models: DOWNLOADS_NEEDED_BOTH.models.map((item) => ({ ...item, size_bytes: null })),
+  total_bytes: null,
+};
+
+/** A Start that waits for the automatic downloads: `starting`, reason `not-downloaded`. */
+export const ROUTER_DOWNLOADING = routerStatus({
+  state: "starting",
+  reason: "not-downloaded",
+  reason_text: "Models are still downloading.",
+  program: { path: "/opt/omrs/llama-server", source: "provisioned" },
+  models: [
+    { ...EMBED_ENTRY, note: "Downloading" },
+    { ...TEXT_ENTRY, note: "Downloading" },
+  ],
+});

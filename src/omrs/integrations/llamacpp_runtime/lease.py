@@ -24,8 +24,9 @@ import time
 from collections.abc import Awaitable, Callable, Iterator
 from typing import TYPE_CHECKING, Any, TypeVar
 
-from . import locks, process
+from . import holders, locks, process
 from .locks import LockFile
+from .model_reasons import NOT_DOWNLOADED
 from .rules import OPERATOR_STOP, reason_text
 from .spec import RuntimeSpec
 from .state import ServerRecord, read_server_record, runtime_dir, write_server_record
@@ -107,6 +108,7 @@ class RuntimeLease:
         self.folder = runtime_dir(manager.root, spec.id)
         self._lock = threading.RLock()
         self._clients: LockFile | None = None
+        self._holder: LockFile | None = None
         self._url: str | None = None
         self._generation = 0
         self._operator_stopped = False
@@ -180,6 +182,7 @@ class RuntimeLease:
                     clients.close()
                     continue
                 self._clients = clients
+                self._holder = holders.hold(self.folder)
                 self._adopt(record)
                 self.manager._ensure_timer()
                 return f"http://127.0.0.1:{record.port}"
@@ -237,6 +240,9 @@ class RuntimeLease:
 
     def _fail(self, previous: ServerRecord | None, reason: str, detail: str = "") -> None:
         text = reason_text(reason, detail)
+        # ``not-downloaded`` is not stored: it holds only while a download runs, and a
+        # stored line would show as a failure after the download or a server restart.
+        stored = None if reason == NOT_DOWNLOADED else reason
         write_server_record(
             self.folder,
             ServerRecord(
@@ -247,8 +253,8 @@ class RuntimeLease:
                 build=self.spec.build,
                 state="stopped",
                 generation=previous.generation if previous else 0,
-                reason=reason,
-                reason_text=text,
+                reason=stored,
+                reason_text=None if stored is None else text,
             ),
         )
         raise RuntimeUnavailable(self.spec.id, reason, text)
@@ -303,6 +309,9 @@ class RuntimeLease:
             if clients is None:  # external
                 return
             clients.close()
+            if self._holder is not None:
+                self._holder.close()
+                self._holder = None
             self.manager._stop_if_unused(self.folder, stopped_by)
 
     # ── Requests ────────────────────────────────────────────────────────

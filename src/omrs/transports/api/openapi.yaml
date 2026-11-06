@@ -4461,6 +4461,45 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
+  /llamacpp/router/downloads-needed:
+    get:
+      operationId: getLlamacppRouterDownloads
+      summary: List the router models with no file and their download sizes
+      description: >
+        Returns each list entry that has no file (`id`, `model` and `size_bytes`, in list
+        order) and `total_bytes`, so the Router panel can ask "Download 2 models, 8.6 GB?"
+        before a Start. A size is the size of the quantisation in the Hugging Face file
+        listing, read as the download job reads it. `size_bytes` is null when the size cannot
+        be read (the host does not answer, or the repository has no file with that label);
+        `total_bytes` is then null too. With every file present the list is empty, the total
+        is 0 and the host is not contacted. The server contacts the host only when this route
+        runs, never at a status read or at start-up. The route starts nothing and writes
+        nothing. With the mode `external` it gives 409 with the reason `external-server`.
+        Needs `manage`, because it contacts an outside host. Session only: a bearer credential
+        gets 403.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      responses:
+        "200":
+          description: The models to download and their sizes.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlamacppRouterDownloads"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/LlamacppRouterConflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
   /llamacpp/router/start:
     post:
       operationId: startLlamacppRouter
@@ -4474,11 +4513,15 @@ paths:
         start fails. With the mode `external` the route gives 409 with the reason
         `external-server` and starts nothing. A refusal is state `failed` with one fixed
         reason (`not-provisioned` when no program is set and no pinned build is installed,
-        `not-downloaded` when no listed model has a file, `not-configured` when the model list
-        has no entry, `binary-invalid`, `not-loopback`, `port-in-use`, `wrong-build`,
-        `timeout` or `exited`). The line of `not-downloaded` reads "Models are still
-        downloading." while the automatic download of a listed model is queued or runs, else
-        "No model is downloaded yet.". A router that already runs, with these or other
+        `not-downloaded` when no listed model has a file and no download runs,
+        `not-configured` when the model list has no entry, `binary-invalid`, `not-loopback`,
+        `port-in-use`, `wrong-build`, `timeout` or `exited`). While the automatic download of
+        a listed model is queued or runs, a start with no file is not a failure: the state is
+        `starting` with the reason `not-downloaded` and the line "Models are still
+        downloading.", and OMRS starts the router by itself when the last download ends. A
+        Stop, a change to the mode `external`, or a failed or cancelled download ends that
+        wait; a failed or cancelled download then reads `failed` `not-downloaded` with the
+        line "No model is downloaded yet.". A router that already runs, with these or other
         arguments, is left alone. A server OMRS did not start is never touched. Session only: a
         bearer credential gets 403.
       security:
@@ -4651,7 +4694,8 @@ paths:
         OCR) and one `ocr-<engine>` for each OCR engine that declares a runtime. The `router`
         item lists its `models`; every other item has an empty list. Each item holds the `mode` (`external` or
         `managed`), the `state`, one fixed `reason` with a plain `reason_text`, the memory of
-        the server process, whether another OMRS process uses it (`clients`), the settings that
+        the server process, whether any OMRS process holds it (`clients`) and whether a process
+        other than this one does (`other_clients`), the settings that
         use it (`used_by`), the address and whether OMRS checked the model files. The route
         starts nothing, stops nothing and writes nothing. It never returns the log file or any
         text of a server.
@@ -11410,6 +11454,35 @@ components:
             The saved entry differs from the one in the running router's `models.ini`. Shown
             as "Reload pending" until the reload runs.
 
+    LlamacppRouterDownloads:
+      type: object
+      additionalProperties: false
+      required: [status, models, total_bytes]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        models:
+          type: array
+          description: The list entries that have no file, in list order. Empty when none is missing.
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, model, size_bytes]
+            properties:
+              id:
+                type: string
+              model:
+                type: string
+                description: The request name, `org/name:QUANT`.
+              size_bytes:
+                type: [integer, "null"]
+                minimum: 0
+                description: Size of the quantisation to download, or null when it cannot be read.
+        total_bytes:
+          type: [integer, "null"]
+          minimum: 0
+          description: The sum of the sizes; null when any size is unknown; 0 when no entry is missing.
     LlamacppRouterStatus:
       type: object
       additionalProperties: false
@@ -11457,7 +11530,10 @@ components:
             - not-provisioned
             - not-downloaded
             - null
-          description: One fixed reason when the state is `failed`; never text from the process.
+          description: >
+            One fixed reason when the state is `failed`; never text from the process. The
+            reason `not-downloaded` also shows with the state `starting` while a Start waits
+            for the automatic download of a listed model.
         reason_text:
           type: [string, "null"]
           description: A plain-English line for the reason.
@@ -11714,6 +11790,7 @@ components:
         - reason_text
         - memory_bytes
         - clients
+        - other_clients
         - used_by
         - address
         - files_checked
@@ -11764,7 +11841,13 @@ components:
         clients:
           type: string
           enum: [some, none]
-          description: Whether another OMRS process holds the runtime open.
+          description: Whether any OMRS process, this one included, holds the runtime open.
+        other_clients:
+          type: string
+          enum: [some, none]
+          description: >
+            Whether an OMRS process other than the one that answers holds the runtime open.
+            The Stop confirmation reads it.
         used_by:
           type: array
           items:

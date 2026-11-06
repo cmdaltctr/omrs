@@ -41,8 +41,10 @@ export interface ModelRuntime {
   reason_text: string | null;
   /** Resident memory of the server process, or `null` when it does not run. */
   memory_bytes: number | null;
-  /** `some` when another OMRS process holds the runtime open. */
+  /** `some` when any OMRS process, this one included, holds the runtime open. */
   clients: "some" | "none";
+  /** `some` when an OMRS process other than the one that answers holds the runtime open. */
+  other_clients: "some" | "none";
   /** The settings in force that use the runtime. */
   used_by: string[];
   /** Host and port, or `null`. */

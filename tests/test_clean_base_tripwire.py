@@ -340,7 +340,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # 181 removed): router settings, model list and presets, roles, fake router, runtime
 # manager, locks, reload, crash restart, provisioning, install CLI, request-time refusal,
 # live router maps, problems and web routes. Removed: per-role servers and their routes.
-_BASE_EXECUTED = 11897
+# +36 (2026-11-06, same change, by test-ID diff, 41 added, 5 replaced): first start
+# waits for downloads (13), downloads-needed route (15), other-process holders (3).
+_BASE_EXECUTED = 11933
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -697,7 +699,9 @@ if not _has_qwen_tokenizer:
 # +106 (2026-11-06, one-llamacpp-router, measured with fastapi blocked): 236 added in
 # the router, install, problems, live-map and runtime web routes; 130 removed with the
 # per-role llama.cpp server routes.
-_WEB_EXTRA_CASES = 2066
+# +33 (2026-11-06, same change, measured with fastapi blocked): first start and
+# downloads-needed route cases.
+_WEB_EXTRA_CASES = 2099
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)

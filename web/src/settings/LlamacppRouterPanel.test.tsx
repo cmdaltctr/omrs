@@ -37,6 +37,21 @@ describe("The llama.cpp card shows one Router panel", () => {
     expect(within(panel()).getByRole("button", { name: "Restart" })).toBeEnabled();
   });
 
+  it("Start keeps the accent fill while it is the action to take", async () => {
+    const { panel } = await open();
+    await waitFor(() => expect(within(panel()).getByRole("button", { name: "Start" })).toBeEnabled());
+    expect(within(panel()).getByRole("button", { name: "Start" })).toHaveClass("bg-primary-tint");
+  });
+
+  it("Start takes the outline of Stop while the router runs, so a disabled Start is not accent-filled", async () => {
+    const { panel } = await open({ "GET /v1/llamacpp/router": () => ROUTER_RUNNING });
+    await waitFor(() => expect(within(panel()).getByRole("status")).toHaveTextContent("Running"));
+    const start = within(panel()).getByRole("button", { name: "Start" });
+    expect(start).toBeDisabled();
+    expect(start).not.toHaveClass("bg-primary-tint", "text-primary-label");
+    expect(start.className).toBe(within(panel()).getByRole("button", { name: "Stop" }).className);
+  });
+
   it("External mode: shows the address and the note, and no Start, Stop or Restart", async () => {
     const { panel } = await open({ "GET /v1/llamacpp/router": () => ROUTER_EXTERNAL });
     await waitFor(() => expect(panel()).toHaveTextContent(EXTERNAL_NOTE));

@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-from . import children, locks, process
+from . import children, holders, locks, process
 from .lease import (
     OPERATOR_STOP,
     RuntimeLease,
@@ -214,6 +214,7 @@ class RuntimeManager:
             "reason_text": None,
             "memory_bytes": None,
             "clients": "none",
+            "other_clients": "none",
             "used_by": used_by,
             "address": None,
             "files_checked": False,
@@ -252,6 +253,8 @@ class RuntimeManager:
                 item["clients"] = "none" if probe.acquire(blocking=False) else "some"
             finally:
                 probe.close()
+        if holders.other_process_holds(folder):
+            item["other_clients"] = "some"
         return item
 
     # ── Idle timer and exit ─────────────────────────────────────────────

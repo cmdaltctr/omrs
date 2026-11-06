@@ -1,18 +1,20 @@
-import { useLlamacppRouter, useRestartLlamacppRouter, useStartLlamacppRouter, useStopLlamacppRouter } from "../api/llamacppRouterHooks";
+import { useLlamacppRouter, useRestartLlamacppRouter, useStopLlamacppRouter } from "../api/llamacppRouterHooks";
 import type { LlamacppRouterStatus } from "../api/llamacppRouter";
 import { ErrorNotice } from "../components/ErrorNotice";
 import { Button } from "../components/ui/button";
-import { CONFLICT_SENTENCES, conflictReason, statusLine } from "./llamacppRouterWords";
+import { CONFLICT_SENTENCES, conflictReason } from "./llamacppRouterWords";
 import { PanelDisclosure } from "./PanelDisclosure";
 import { RouterModelTable } from "./RouterModelTable";
 import { RouterProblems } from "./RouterProblems";
 import { RouterRows } from "./RouterRows";
+import { routerStateLine } from "./routerStateLine";
 import { SettingBox } from "./SettingBox";
+import { useRouterStartFlow } from "./useRouterStartFlow";
 import { useScopes } from "./useScopes";
 
 /** State line and Start, Stop and Restart. They show only while OMRS runs the router. */
 function RouterState({ status }: { status: LlamacppRouterStatus }) {
-  const start = useStartLlamacppRouter();
+  const start = useRouterStartFlow();
   const stop = useStopLlamacppRouter();
   const restart = useRestartLlamacppRouter();
   const scopes = useScopes();
@@ -25,11 +27,11 @@ function RouterState({ status }: { status: LlamacppRouterStatus }) {
   return (
     <SettingBox>
       <div role="status" className="text-ui">
-        {statusLine(status)}
+        {routerStateLine(status)}
       </div>
       {status.mode === "managed" ? (
         <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" disabled={!mayManage || busy || live} onClick={() => start.mutate()}>
+          <Button size="sm" variant={live ? "outline" : "default"} disabled={!mayManage || busy || live} onClick={() => start.mutate()}>
             Start
           </Button>
           <Button size="sm" variant="outline" disabled={!mayManage || busy || !live} onClick={() => stop.mutate()}>
@@ -47,6 +49,7 @@ function RouterState({ status }: { status: LlamacppRouterStatus }) {
         </p>
       ) : null}
       {failure !== undefined && conflict === null ? <ErrorNotice error={failure.error} onRetry={() => failure.reset()} /> : null}
+      {start.dialog}
     </SettingBox>
   );
 }
@@ -70,7 +73,7 @@ export function LlamacppRouterPanel() {
     );
   const needsProgram = status.mode === "managed" && status.program.source === "none";
   return (
-    <PanelDisclosure titleId="llamacpp-router-title" title="Router" level={4} summary={statusLine(status)} attention={needsProgram || status.state === "failed" || status.problems.length > 0}>
+    <PanelDisclosure titleId="llamacpp-router-title" title="Router" level={4} summary={routerStateLine(status)} attention={needsProgram || status.state === "failed" || status.problems.length > 0}>
       <RouterProblems problems={status.problems} />
       <RouterRows status={status} />
       <RouterState status={status} />

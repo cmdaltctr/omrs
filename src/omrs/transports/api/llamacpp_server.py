@@ -127,6 +127,13 @@ def program_in_force(saved: str) -> dict[str, str]:
     return {"path": resolved, "source": "provisioned" if resolved else "none"}
 
 
+def _still_downloading(models: Mapping[str, ModelState]) -> bool:
+    """Return whether a listed model with no file has an automatic download queued or running."""
+    return any(
+        m.state == rules.NOT_DOWNLOADED and download_running(name) for name, m in models.items()
+    )
+
+
 def _argument(argv: list[str], flag: str) -> int | None:
     """Return the integer after *flag* in a recorded argument list, or ``None``."""
     try:
@@ -146,6 +153,17 @@ class RouterControl:
         self.manager = manager
         self._router: Any = None
         self._refusal: tuple[str, str] | None = None
+        # A Start waits for the automatic downloads: nothing runs yet, the router is
+        # ``starting``. The last download ends the wait (see ``load``). The wait lives in
+        # this process only, so a server restart shows no failure from before.
+        self._waiting = False
+        self._to_load: set[str] = set()  # downloaded while the Start waited
+
+    def _end_wait(self, refusal: tuple[str, str] | None = None) -> None:
+        """Forget a waiting Start; *refusal* is what the status shows next, if any."""
+        self._waiting = False
+        self._to_load.clear()
+        self._refusal = refusal
 
     # ── Checks ───────────────────────────────────────────────────────────
 
@@ -184,6 +202,7 @@ class RouterControl:
         """Return the state from the runtime files. Starts and writes nothing."""
         program = program_in_force(config.binary)
         if config.mode == "external":
+            self._end_wait()  # a mode change ends a waiting Start
             return self._external(config, program)
         folder = router_dir(self.manager.root)
         record = read_server_record(folder)
@@ -203,18 +222,21 @@ class RouterControl:
             pending = spec is not None and owned.digest != spec.digest
             state: State = "running" if owned.state == "running" else "starting"
             return RouterStatus(state, None, None, running, pending, program, models)
+        if self._waiting:
+            if _still_downloading(models):
+                line = reason_text(rules.NOT_DOWNLOADED, rules.DOWNLOADING)
+                return RouterStatus(
+                    "starting", rules.NOT_DOWNLOADED, line, None, False, program, models
+                )
+            # The downloads ended and the router did not start: one failed or was cancelled.
+            self._end_wait((rules.NOT_DOWNLOADED, reason_text(rules.NOT_DOWNLOADED)))
         reason: tuple[str, str] | None = self._refusal
-        if reason is None and record is not None and record.reason:
-            reason = (record.reason, record.reason_text or reason_text(record.reason))
-        if reason is None and record is not None and record.state != "stopped":
-            reason = ("exited", reason_text("exited"))  # gone with no stop recorded: it crashed
-        if reason is not None and reason[0] == rules.NOT_DOWNLOADED:
-            # The stored line is from the refused start; the download may have ended since.
-            live = any(
-                m.state == rules.NOT_DOWNLOADED and download_running(name)
-                for name, m in models.items()
-            )
-            reason = (reason[0], reason_text(reason[0], rules.DOWNLOADING if live else ""))
+        # A stored ``not-downloaded`` line is stale: only this process knows its downloads.
+        if reason is None and record is not None and record.reason != rules.NOT_DOWNLOADED:
+            if record.reason:
+                reason = (record.reason, record.reason_text or reason_text(record.reason))
+            elif record.state != "stopped":
+                reason = ("exited", reason_text("exited"))  # gone with no stop recorded: it crashed
         if reason is not None:
             return RouterStatus("failed", reason[0], reason[1], None, False, program, models)
         return RouterStatus("stopped", None, None, None, False, program, models)
@@ -265,10 +287,10 @@ class RouterControl:
         them). Every refusal is a ``failed`` status with one fixed reason.
         """
         checked = self.check(config)
+        self._end_wait()
         if not isinstance(checked, RuntimeSpec):
             self._refusal = checked
             return self.status(config)
-        self._refusal = None
         owned = self._owned()
         if owned is not None and owned.digest != checked.digest:
             return self.status(config)  # running with other arguments
@@ -284,16 +306,20 @@ class RouterControl:
         try:
             router.join()
         except RuntimeUnavailable as refused:
-            self._refusal = (refused.reason, refused.reason_text)
+            if refused.reason == rules.NOT_DOWNLOADED:
+                self._waiting = True  # the status says whether a download still runs
+            else:
+                self._refusal = (refused.reason, refused.reason_text)
         return self.status(config)
 
     def stop(self, config: RouterConfig) -> RouterStatus:
         """Operator stop. With no recorded router, nothing is signalled.
 
         The lease stays: a process that joined this router does not start it
-        again until it leaves. Start leaves and joins again.
+        again until it leaves. Start leaves and joins again. A Start that waits for
+        downloads is over: the downloads end without starting the router.
         """
-        self._refusal = None
+        self._end_wait()
         self.manager.stop(ROUTER_ID)
         return self.status(config)
 
@@ -323,22 +349,40 @@ class RouterControl:
         return router.update_entries(entries, config.decision_models)
 
     def load(self, config: RouterConfig, model: str) -> None:
-        """Join the router and load *model* after its automatic download (task 6.2a).
+        """Load *model* after its automatic download, and end a waiting Start (task 6.2a).
 
         A router that runs with other arguments is left alone (Restart applies
-        them); with none running, the router starts. A refusal is logged only:
-        the entry shows its own state.
+        them). With no router running, nothing starts unless a Start still waits and no
+        other listed model still downloads: then the router starts and loads every model
+        that downloaded meanwhile. A mode other than ``managed`` starts nothing and ends
+        the wait. A refusal is logged only: the entry shows its own state.
         """
+        if config.mode != "managed":
+            self._end_wait()
+            return
         checked = self.check(config)
         owned = self._owned()
         if not isinstance(checked, RuntimeSpec) or (owned and owned.digest != checked.digest):
             return
         entries = list(config.entries.values())
+        with_file = {e.model for e in entries if (e.file or "").strip()}  # a failed one has none
+        models = {model} & with_file
+        if owned is None:
+            if not self._waiting:
+                return  # nothing asked for the router to start
+            if _still_downloading(self._models(config, None)):
+                self._to_load |= models  # the last download starts the router
+                return
+            models |= self._to_load & with_file
+            self.start(config)
+            if self._owned() is None:
+                return  # refused again: the status says why
         router = open_router(self.manager, checked, entries, decision_models=config.decision_models)
-        try:
-            router.ensure_ready(model)
-        except (RuntimeUnavailable, ModelUnavailable) as refused:
-            logger.info("The downloaded model was not loaded: %s", refused.reason)
+        for name in sorted(models):
+            try:
+                router.ensure_ready(name)
+            except (RuntimeUnavailable, ModelUnavailable) as refused:
+                logger.info("The downloaded model was not loaded: %s", refused.reason)
 
     def shutdown(self) -> None:
         """Leave the ``router`` lease when ``omrs web`` exits; the last client stops the router."""

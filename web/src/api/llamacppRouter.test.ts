@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { documentsServer } from "../test/fakeDocumentsServer";
 import { ROUTER_STOPPED } from "../settings/test/fixtures";
+import { DOWNLOADS_NEEDED_BOTH } from "../settings/test/llamacppFixtures";
 import { createApiClient } from "./client";
-import { deleteLlamacppRouterModel, getLlamacppRouter, restartLlamacppRouter, saveLlamacppRouter, saveLlamacppRouterModel, startLlamacppRouter, stopLlamacppRouter } from "./llamacppRouter";
+import { deleteLlamacppRouterModel, getLlamacppRouter, getLlamacppRouterDownloads, restartLlamacppRouter, saveLlamacppRouter, saveLlamacppRouterModel, startLlamacppRouter, stopLlamacppRouter } from "./llamacppRouter";
 
 function setup(handlers: Parameters<typeof documentsServer>[0]) {
   const server = documentsServer(handlers);
@@ -15,6 +16,14 @@ describe("llama.cpp router API", () => {
     const status = await getLlamacppRouter(api);
     expect(status).toMatchObject({ state: "stopped", reason: null, mode: "managed" });
     expect(status.models.map((entry) => entry.id)).toEqual(["qwen3-embedding-4b", "qwen3-4b"]);
+  });
+
+  it("reads the downloads a Start needs with GET and no body", async () => {
+    const { api, server } = setup({ "GET /v1/llamacpp/router/downloads-needed": () => DOWNLOADS_NEEDED_BOTH });
+    const needed = await getLlamacppRouterDownloads(api);
+    expect(needed.models.map((item) => item.id)).toEqual(["qwen3-embedding-4b", "qwen3-4b"]);
+    expect(needed.total_bytes).toBe(DOWNLOADS_NEEDED_BOTH.total_bytes);
+    expect(server.find("GET", "/v1/llamacpp/router/downloads-needed")).toHaveLength(1);
   });
 
   it("saves only the keys it is given", async () => {

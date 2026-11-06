@@ -405,7 +405,6 @@ def test_start_leaves_a_router_running_with_other_values_alone(rig: Any) -> None
 @pytest.mark.parametrize(
     ("overrides", "reason"),
     [
-        ({}, "not-downloaded"),  # the shipped list has no file
         ({"llamacpp_server_binary": "/no/such/llama-server"}, "binary-invalid"),
         ({"llamacpp_router_url": "http://192.168.1.20:8080/v1"}, "not-loopback"),
     ],
@@ -414,13 +413,29 @@ def test_a_refused_start_is_failed_with_a_fixed_reason(
     rig: Any, overrides: dict[str, Any], reason: str
 ) -> None:
     with rig(**overrides) as r:
-        if reason != "not-downloaded":
-            r.save_files()
+        r.save_files()
         response = r.post("start")
         assert response.status_code == 200
         body = response.json()
         assert (body["state"], body["reason"]) == ("failed", reason)
         assert body["reason_text"]
+        assert r.pids() == []
+
+
+def test_a_start_with_no_file_whose_download_is_refused_ends_failed_not_downloaded(
+    rig: Any,
+) -> None:
+    """The shipped list has no file and the model host is refused: the wait ends in a failure."""
+    with rig() as r:
+        first = r.post("start").json()
+        assert first["state"] in ("starting", "failed")  # a download may still be queued
+        assert first["reason"] == "not-downloaded"
+        assert wait_until(lambda: r.get()["state"] == "failed", 10), r.get()
+        body = r.get()
+        assert (body["reason"], body["reason_text"]) == (
+            "not-downloaded",
+            "No model is downloaded yet.",
+        )
         assert r.pids() == []
 
 
@@ -531,6 +546,7 @@ def test_the_responses_conform_to_the_contract(rig: Any) -> None:
         "deleteLlamacppRouterModel",
         "installLlamacppBuild",
         "getLlamacppBuild",
+        "getLlamacppRouterDownloads",  # test_web_llamacpp_router_downloads.py
     }
 
 

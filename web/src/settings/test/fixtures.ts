@@ -2,7 +2,7 @@ import type { ChatSettings, Connection, ConnectionList, JudgeSettings, LogRecord
 import { DOCUMENT_READING_KEYS, type DocumentReadingKey, type DocumentReadingSetting, type DocumentReadingState } from "../../api/settingsDocumentReading";
 import { documentsServer, type Handler } from "../../test/fakeDocumentsServer";
 import { IDLE } from "./downloadFixtures";
-import { ROUTER_STOPPED } from "./llamacppFixtures";
+import { DOWNLOADS_NEEDED_NONE, ROUTER_STOPPED } from "./llamacppFixtures";
 import { decisionModels, documentRouters } from "./routerFixtures";
 
 /** Fixtures built from the `openapi.yaml` schemas for the Settings routes. */
@@ -175,6 +175,7 @@ export function settingsServer(handlers: Record<string, Handler> = {}) {
     }),
     "GET /v1/connections": () => CONNECTIONS,
     "GET /v1/llamacpp/router": () => ROUTER_STOPPED,
+    "GET /v1/llamacpp/router/downloads-needed": () => DOWNLOADS_NEEDED_NONE,
     "GET /v1/model-downloads/current": () => IDLE,
     "GET /v1/settings/chat": () => CHAT_READY,
     "GET /v1/settings/judge": () => JUDGE_DEFAULT,

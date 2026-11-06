@@ -17,6 +17,7 @@ export function runtimeItem(id: string, extra: Partial<ModelRuntime> = {}): Mode
     reason_text: null,
     memory_bytes: null,
     clients: "none",
+    other_clients: "none",
     used_by: [],
     address: null,
     files_checked: true,

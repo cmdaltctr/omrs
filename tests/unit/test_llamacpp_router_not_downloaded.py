@@ -97,17 +97,13 @@ def test_no_file_while_a_download_runs_says_so(rig: RouterRig, downloader: FakeD
     assert downloader.asked == [EMBED, CHAT, CLEF]  # the start asked for every model
 
 
-def test_the_failed_record_keeps_the_reason_and_the_line(
+def test_the_refusal_is_not_stored_so_a_restart_shows_no_old_failure(
     rig: RouterRig, downloader: FakeDownloader
 ) -> None:
     _refused(rig, _no_files(rig))
     record = read_server_record(router_dir(state_root()))
     assert record is not None
-    assert (record.state, record.reason, record.reason_text) == (
-        "stopped",
-        "not-downloaded",
-        DOWNLOADING_LINE,
-    )
+    assert (record.state, record.reason, record.reason_text) == ("stopped", None, None)
 
 
 def test_a_list_with_no_entry_stays_not_configured(rig: RouterRig) -> None:
