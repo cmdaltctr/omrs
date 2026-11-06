@@ -27,6 +27,7 @@ from .config import Settings, _resolve_effective_embed_provider
 from .config.provider_sources import PROVIDER_FIELDS, coerce_field
 from .config.rules import SECRET_FIELDS, provider_of
 from .config.user_config import SECRETS_DIR
+from .core.settings import ROUTER_LIVE_MAPS
 
 if TYPE_CHECKING:
     from .config.settings_file import SettingsFile
@@ -59,6 +60,8 @@ class ProviderValues:
             cannot be used: ``keychain-missing`` or ``keychain-unreadable``.
         keychain_available: Whether a usable system keychain exists.
         keychain_reason: Why no keychain is available, when it is not.
+        maps: The live maps (``ROUTER_LIVE_MAPS``) that ``omrs.jsonc`` holds now,
+            or ``None`` to keep the launch maps. A map the file lacks is absent.
     """
 
     values: Mapping[str, str] = field(default_factory=dict)
@@ -68,6 +71,7 @@ class ProviderValues:
     key_problems: Mapping[str, str] = field(default_factory=dict)
     keychain_available: bool = False
     keychain_reason: str | None = None
+    maps: Mapping[str, Mapping[str, Any]] | None = None
 
     def __repr__(self) -> str:
         return f"ProviderValues(fields={sorted(self.values)})"
@@ -176,7 +180,8 @@ def apply_provider_values(
     top["key_file_paths"] = key_paths
     top["config_file_fields"] = frozenset(p for p, w in sources.items() if w == "config-file")
     top["key_file_fields"] = frozenset(p for p, w in sources.items() if w == "key-file")
-    return settings.model_copy(update=top)
+    applied = settings.model_copy(update=top)
+    return applied if values.maps is None else applied.with_live_maps(values.maps)
 
 
 def provider_settings(source: Callable[[], ProviderValues]) -> Settings:
@@ -381,6 +386,7 @@ def provider_values_from_file(
         key_problems=problems,
         keychain_available=available,
         keychain_reason=None if available else _NO_KEYCHAIN,
+        maps={key: dict(file.maps[key]) for key in ROUTER_LIVE_MAPS if key in file.maps},
     )
 
 

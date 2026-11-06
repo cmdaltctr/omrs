@@ -43,7 +43,7 @@ from .integrations.llamacpp_runtime import (
     router_spec,
 )
 from .integrations.llamacpp_runtime.lease import reason_text
-from .integrations.llamacpp_runtime.rules import child_environment, loopback_port
+from .integrations.llamacpp_runtime.rules import NOT_PROVISIONED, child_environment, loopback_port
 
 if TYPE_CHECKING:
     from .compose_providers import ProviderValues
@@ -113,15 +113,15 @@ def router_runtime(settings: Any) -> RuntimeSpec | str:
     """Return the router spec (managed or external), or the reason a managed one cannot be built.
 
     Returns:
-        The spec, or ``not-configured`` (no program set and none provisioned)
-        or ``not-loopback`` (the router address is not a loopback ``http`` URL).
+        The spec, or ``not-provisioned`` (no program set and no pinned build
+        installed) or ``not-loopback`` (the router address is not a loopback ``http`` URL).
     """
     url = str(_setting(settings, "llamacpp_router_url"))
     if _setting(settings, "llamacpp_router_server") != "managed":
         return external_router_spec(url)
     binary = resolve_server_binary(str(_setting(settings, "llamacpp_server_binary") or ""))
     if not binary.strip():
-        return "not-configured"
+        return NOT_PROVISIONED
     port = loopback_port(url)
     if port is None:
         return "not-loopback"

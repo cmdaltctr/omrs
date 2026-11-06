@@ -114,23 +114,6 @@ def test_save_the_settings_then_read_them_with_source_config_file(rig: Any) -> N
         assert saved["models_max"]["locked"] is False
 
 
-@pytest.fixture
-def mode_is_editable(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Let the running Engine take a router mode change.
-
-    ``engine_providers._EDITABLE_TOP`` does not list ``llamacpp_router_server`` yet, so
-    the Engine refuses the change and the route rolls the save back (see the xfail test
-    below). This fixture adds the key, as the fix must, so the route logic is tested.
-    """
-    from omrs import engine_providers
-
-    monkeypatch.setattr(
-        engine_providers,
-        "_EDITABLE_TOP",
-        (*engine_providers._EDITABLE_TOP, "llamacpp_router_server"),
-    )
-
-
 def test_the_program_and_the_address_are_saved(rig: Any) -> None:
     with rig() as r:
         body = {"binary": str(r.binary), "router_url": "http://127.0.0.1:9931/v1"}
@@ -141,7 +124,7 @@ def test_the_program_and_the_address_are_saved(rig: Any) -> None:
         assert saved["router_url"]["source"] == "config-file"
 
 
-def test_the_router_mode_is_saved(rig: Any, mode_is_editable: None) -> None:
+def test_the_router_mode_is_saved(rig: Any) -> None:
     with rig() as r:
         assert r.put({"router_server": "external"}).status_code == 200
         saved = r.get()["saved"]["router_server"]
@@ -149,11 +132,6 @@ def test_the_router_mode_is_saved(rig: Any, mode_is_editable: None) -> None:
         assert r.get()["mode"] == "external"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="engine_providers._EDITABLE_TOP does not list llamacpp_router_server: the Engine "
-    "refuses a mode change and the save is rolled back (409). Delete this test with the fix.",
-)
 def test_the_engine_takes_a_router_mode_change(rig: Any) -> None:
     with rig() as r:
         assert r.put({"router_server": "external"}).status_code == 200
@@ -198,7 +176,7 @@ def test_an_unknown_mode_is_400_and_names_the_accepted_words(rig: Any) -> None:
         assert r.file_text() == ""
 
 
-def test_a_managed_router_needs_a_loopback_address(rig: Any, mode_is_editable: None) -> None:
+def test_a_managed_router_needs_a_loopback_address(rig: Any) -> None:
     with rig() as r:
         response = r.put({"router_url": "http://192.168.1.20:8080/v1"})
         assert response.status_code == 400
@@ -446,7 +424,7 @@ def test_a_refused_start_is_failed_with_a_fixed_reason(
         assert r.pids() == []
 
 
-def test_no_program_set_and_none_provisioned_is_not_configured(
+def test_no_program_set_and_none_provisioned_is_not_provisioned(
     rig: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from omrs.integrations.llamacpp_runtime import provision
@@ -455,7 +433,7 @@ def test_no_program_set_and_none_provisioned_is_not_configured(
     with rig(llamacpp_server_binary="") as r:
         r.save_files()
         body = r.post("start").json()
-        assert (body["state"], body["reason"]) == ("failed", "not-configured")
+        assert (body["state"], body["reason"]) == ("failed", "not-provisioned")
         assert body["program"] == {"path": "", "source": "none"}
 
 

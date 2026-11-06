@@ -27,6 +27,7 @@ from ....config.settings_maps import DECISION_MODELS, DOCUMENT_ROUTERS
 from ....config.settings_maps_write import write_map_entries
 from ..engine_access import ReadScope, require_session
 from ..errors import API_HEADERS, error_response
+from ..live_settings import reload_if_changed
 from ..router_maps import (
     CONFLICT_REASONS,
     NOT_FOUND,
@@ -107,6 +108,15 @@ async def _list(store: Any) -> Response:
     return ok(decision_model_list(file))
 
 
+async def _applied(request: Request, store: Any) -> Response:
+    """Hand the saved map to the Engine and compose at once, then list it.
+
+    The decision models apply without a restart, like the router model list.
+    """
+    await reload_if_changed(request.app)
+    return await _list(store)
+
+
 @router.get("/settings/decision-models", operation_id="listDecisionModels")
 async def list_decision_models(_: ReadScope, request: Request) -> Response:
     """Return the valid decision models of ``omrs.jsonc``. Contacts no model."""
@@ -129,7 +139,7 @@ async def save_decision_model(
         if isinstance(saved, dict) and isinstance(saved.get("key"), str):
             entry["key"] = saved["key"]
     refused = await write(store, {f"{DECISION_MODELS}.{name}": entry}, body.revision)
-    return refused or await _list(store)
+    return refused or await _applied(request, store)
 
 
 @router.delete("/settings/decision-models/{name}", operation_id="deleteDecisionModel")
@@ -149,7 +159,7 @@ async def delete_decision_model(
     if users:
         return conflict("in-use", who=f"The router {', '.join(users)}", what=WHAT)
     refused = await write(store, {f"{DECISION_MODELS}.{name}": None}, body.revision)
-    return refused or await _list(store)
+    return refused or await _applied(request, store)
 
 
 @router.post("/settings/decision-models/{name}/test", operation_id="testDecisionModel")

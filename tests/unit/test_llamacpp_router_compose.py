@@ -181,7 +181,7 @@ def test_an_external_router_gets_no_gate_and_starts_nothing(
 def test_a_managed_router_with_no_program_is_one_plain_refusal(
     rig: RouterRig, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """No program and none provisioned: ``not-configured``, nothing starts, no retry."""
+    """No program and none provisioned: ``not-provisioned``, nothing starts, no retry."""
     from omrs import compose_runtimes
     from omrs.core import runtime_gate
 
@@ -195,7 +195,7 @@ def test_a_managed_router_with_no_program_is_one_plain_refusal(
 
     assert response.status_code == runtime_gate.REFUSED_STATUS
     assert response.headers[runtime_gate.NO_RETRY_HEADER] == "false"
-    assert response.json()["error"]["code"] == "not-configured"
+    assert response.json()["error"]["code"] == "not-provisioned"
     assert rig.starts() == 0
 
 

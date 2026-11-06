@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, Any, TypeVar
 
 from . import locks, process
 from .locks import LockFile
+from .rules import NOT_PROVISIONED, NOT_PROVISIONED_TEXT
 from .spec import RuntimeSpec
 from .state import ServerRecord, read_server_record, runtime_dir, write_server_record
 
@@ -54,6 +55,7 @@ _REASON_TEXTS = {
     "wrong-build": "The llama-server build is not the build the runtime declares.",
     "file-changed": "A model file changed: {name}.",
     "bind-failed": "The server could not open a port after 4 tries.",
+    NOT_PROVISIONED: NOT_PROVISIONED_TEXT,
     OPERATOR_STOP: "An operator stopped this server.",
 }
 

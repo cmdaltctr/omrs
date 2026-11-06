@@ -52,6 +52,13 @@ REASONS = (
     "wrong-build",
     "file-changed",
     "bind-failed",
+    "not-provisioned",
+)
+#: A blank program and no pinned build installed (spec ``llamacpp-server``, D12).
+NOT_PROVISIONED = "not-provisioned"
+NOT_PROVISIONED_TEXT = (
+    "llama.cpp is not installed. Run `omrs llamacpp install` or press Get llama.cpp "
+    "on the Integrations page."
 )
 
 #: Longest accepted program or model text.

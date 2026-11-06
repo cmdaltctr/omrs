@@ -23,6 +23,7 @@ from tests.unit.test_llamacpp_router_worker import free_port
 
 from omrs.config.llamacpp_models import CLASSIFY_MODEL, EMBED_MODEL
 from omrs.core.answer.settings import AnswerSettings
+from omrs.integrations import huggingface_models as hf_models
 from omrs.integrations.llamacpp_runtime import process
 from omrs.integrations.llamacpp_runtime.router_spec import router_dir
 from omrs.integrations.llamacpp_runtime.state import state_root
@@ -121,9 +122,17 @@ def kill_all(rig: Rig) -> None:
 def rig(harness: Any, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Any]:
     """Return a factory: ``with rig(**settings) as r``.
 
-    The app keeps its own runtime manager under this test's ``OMRS_STATE_DIR``.
+    The app keeps its own runtime manager under this test's ``OMRS_STATE_DIR``. A
+    start with an entry that has no file asks for its download (task 6.2a); the model
+    host is refused here, so no test reaches the network unless it fakes the host.
     """
     monkeypatch.setattr(process, "HEALTH_POLL_SECONDS", 0.05)
+
+    def no_network(*_args: Any, **_kwargs: Any) -> Any:
+        raise hf_models.ModelHostError("network")
+
+    for name in ("list_repo_files", "bytes_to_download", "download_files"):
+        monkeypatch.setattr(hf_models, name, no_network)
 
     @contextmanager
     def build(**overrides: Any) -> Iterator[Rig]:

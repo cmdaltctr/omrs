@@ -18,6 +18,7 @@ router adapter only.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator, Callable, Mapping
 from contextlib import asynccontextmanager
@@ -29,6 +30,7 @@ from fastapi.concurrency import run_in_threadpool
 from ...config.llamacpp_models import LlamaCppModelEntry
 from ...integrations.llamacpp_runtime import (
     ROUTER_ID,
+    ModelUnavailable,
     RuntimeManager,
     RuntimeSpec,
     RuntimeUnavailable,
@@ -43,6 +45,11 @@ from ...integrations.llamacpp_runtime import readiness as runtime_readiness
 from ...integrations.llamacpp_runtime.hashes import HashCache
 from ...integrations.llamacpp_runtime.lease import reason_text
 from ...integrations.llamacpp_runtime.preset_writer import plan_preset, read_preset, split_sections
+from ...integrations.llamacpp_runtime.router_lease import (
+    DOWNLOADING_NOTE,
+    download_running,
+    install_downloader,
+)
 from ...integrations.llamacpp_runtime.router_spec import HASHES_FILE, router_dir
 
 logger = logging.getLogger(__name__)
@@ -147,7 +154,7 @@ class RouterControl:
         binary = provision.resolve_server_binary(config.binary)
         refusal = None
         if not binary.strip():
-            refusal = "not-configured"
+            refusal = rules.NOT_PROVISIONED
         elif not rules.check_binary(binary):
             refusal = "binary-invalid"
         port = rules.loopback_port(config.url)
@@ -234,8 +241,11 @@ class RouterControl:
                 pending = running and written.get(outcome.model) != outcome.section
                 found[outcome.model] = ModelState(state, None, None, outcome.note, pending)
             else:
+                note = outcome.note
+                if outcome.state == "not-downloaded" and download_running(outcome.model):
+                    note = DOWNLOADING_NOTE
                 found[outcome.model] = ModelState(
-                    outcome.state, outcome.reason, outcome.reason_text or None, outcome.note
+                    outcome.state, outcome.reason, outcome.reason_text or None, note
                 )
         return found
 
@@ -305,6 +315,24 @@ class RouterControl:
         router = open_router(self.manager, checked, entries, decision_models=config.decision_models)
         return router.update_entries(entries, config.decision_models)
 
+    def load(self, config: RouterConfig, model: str) -> None:
+        """Join the router and load *model* after its automatic download (task 6.2a).
+
+        A router that runs with other arguments is left alone (Restart applies
+        them); with none running, the router starts. A refusal is logged only:
+        the entry shows its own state.
+        """
+        checked = self.check(config)
+        owned = self._owned()
+        if not isinstance(checked, RuntimeSpec) or (owned and owned.digest != checked.digest):
+            return
+        entries = list(config.entries.values())
+        router = open_router(self.manager, checked, entries, decision_models=config.decision_models)
+        try:
+            router.ensure_ready(model)
+        except (RuntimeUnavailable, ModelUnavailable) as refused:
+            logger.info("The downloaded model was not loaded: %s", refused.reason)
+
     def shutdown(self) -> None:
         """Leave the ``router`` lease when ``omrs web`` exits; the last client stops the router."""
         if self._router is not None:
@@ -321,22 +349,31 @@ def owning_lifespan(inner: Callable[[Any], Any]) -> Callable[[Any], Any]:
     """Wrap an app lifespan with the runtime sweep at start and the router leave at shutdown.
 
     At start-up the manager stops every owned server that no OMRS process
-    uses (design D9). At shutdown the adapter leaves its lease. Both read
-    ``app.state`` then, so a test can replace them. A failure is logged and
-    never raised.
+    uses (design D9). While the app runs, the automatic model downloader
+    (task 6.2a) is installed. At shutdown it stops, then the adapter leaves its
+    lease. Both read ``app.state`` then, so a test can replace them. A failure
+    is logged and never raised.
     """
 
     @asynccontextmanager
     async def lifespan(app: Any) -> AsyncIterator[None]:
+        from .router_autodownload import RouterDownloads  # lazy: it imports the routes
+
         manager = getattr(app.state, "runtime_manager", None)
         if manager is not None:
             try:
                 await run_in_threadpool(manager.sweep)
             except Exception:
                 logger.exception("The llama.cpp runtime sweep failed.")
+        downloads = RouterDownloads(app, asyncio.get_running_loop())
+        install_downloader(downloads)
         try:
             async with inner(app):
-                yield
+                try:
+                    yield
+                finally:
+                    install_downloader(None)
+                    await downloads.close()
         finally:
             control = getattr(app.state, "llamacpp_router", None)
             if control is not None:

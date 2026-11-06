@@ -71,10 +71,39 @@ def _write(request: Request, changes: dict[str, Any], revision: str | None) -> N
     write_llamacpp_models(changes, revision=revision, directory=store.directory)
 
 
+def save_entry(
+    runtime: Any, store: Any, entry_id: str, sent: dict[str, Any], revision: str | None
+) -> None:
+    """Merge *sent* into one entry and write the list (this route, Use this model, task 6.2a).
+
+    Blocks; the caller holds the provider state lock.
+
+    Raises:
+        EntryRefused: A rule refuses the change.
+        SettingsFileError: The write was refused.
+    """
+    loaded = load_router(runtime, store)
+    change = EntryChange(sent, managed=loaded.config.mode == "managed")
+    roles = role_arguments(loaded.settings, loaded.file)
+    entry = merge_entry(entry_id, loaded.config.entries, change, roles)
+    write_llamacpp_models({entry_id: entry}, revision=revision, directory=store.directory)
+
+
+def apply_saved(runtime: Any, store: Any, control: Any) -> LoadedRouter:
+    """Hand the saved list to the Engine and compose, then apply the reload rule (D7).
+
+    Blocks; the caller holds the provider state lock. Without the reload here, the
+    next gate request would still hold the old list and write it back to ``models.ini``.
+    """
+    runtime.providers.reload(runtime.engine)
+    loaded = load_router(runtime, store)
+    control.apply_models(loaded.config)
+    return loaded
+
+
 async def _applied(runtime: Any, request: Request) -> Response:
-    """Apply the reload rule to a running router, then answer with the new status."""
-    loaded = await run_in_threadpool(load_router, runtime, store_of(request))
-    await run_in_threadpool(control_of(request).apply_models, loaded.config)
+    """Apply the saved list, then answer with the new status."""
+    await run_in_threadpool(apply_saved, runtime, store_of(request), control_of(request))
     return await respond(runtime, request)
 
 
@@ -100,17 +129,10 @@ async def save_model(
     if state is None:
         return error_response(404, "Provider settings are not available.")
     async with admitted(runtime), state.lock:
-        loaded = await run_in_threadpool(load_router, runtime, store_of(request))
-        change = EntryChange(sent, managed=loaded.config.mode == "managed")
         try:
-            entry = await run_in_threadpool(
-                merge_entry,
-                entry_id,
-                loaded.config.entries,
-                change,
-                role_arguments(loaded.settings, loaded.file),
+            await run_in_threadpool(
+                save_entry, runtime, store_of(request), entry_id, sent, body.revision
             )
-            await run_in_threadpool(_write, request, {entry_id: entry}, body.revision)
         except EntryRefused as refused:
             if refused.reason:
                 return reasoned(400, str(refused), refused.reason)

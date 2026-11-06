@@ -7,14 +7,18 @@ and, for a one-slot entry, request lock:
 
 1. a managed request names a listed model, or it is refused before any
    contact (``model-not-listed``);
-2. the router lease joins the router; a start writes ``models.ini`` from this
+2. a listed model with no file is refused ``not-downloaded`` before any
+   contact, and its download is asked for; a start asks
+   for every such entry and does not wait for them (``omrs web`` installs
+   the downloader, see :func:`install_downloader`);
+3. the router lease joins the router; a start writes ``models.ini`` from this
    process's list first (:mod:`.preset_writer`);
-3. on the first use of model X, under ``start.lock``, X's section in
+4. on the first use of model X, under ``start.lock``, X's section in
    ``models.ini`` must equal this process's section; when it differs and no
    other process uses X, only that section is rewritten and the router
    reloads (:mod:`.reload`), else X gives ``version-busy``;
-4. X is made ready (:mod:`.readiness`), once per lease and router start;
-5. a one-slot X serialises on its ``request.lock``.
+5. X is made ready (:mod:`.readiness`), once per lease and router start;
+6. a one-slot X serialises on its ``request.lock``.
 
 In external mode the lease only holds the URL: no name check, no load.
 """
@@ -24,7 +28,7 @@ from __future__ import annotations
 import contextlib
 import threading
 from collections.abc import Callable, Collection, Iterable, Iterator
-from typing import Any, TypeVar
+from typing import Any, Protocol, TypeVar
 
 from . import readiness
 from .hashes import HashCache
@@ -48,6 +52,52 @@ from .router_spec import HASHES_FILE, ROUTER_ID, router_dir
 from .spec import RuntimeSpec
 
 T = TypeVar("T")
+
+# ── Automatic download (task 6.2a) ──────────────────────────────────────────
+
+#: The note of an entry whose automatic download is queued or runs.
+DOWNLOADING_NOTE = "Downloading"
+
+
+class Downloader(Protocol):
+    """What the router lease needs from the process's model download job."""
+
+    def request(self, model: str) -> None:
+        """Queue a download of *model*, unless one is queued or runs. Never blocks."""
+        ...
+
+    def downloading(self, model: str) -> bool:
+        """Return whether a download of *model* is queued or runs."""
+        ...
+
+
+_downloader_lock = threading.Lock()
+_downloader: Downloader | None = None
+
+
+def install_downloader(downloader: Downloader | None) -> None:
+    """Install this process's downloader; ``None`` removes it.
+
+    With none installed, a listed model with no file is only refused ``not-downloaded``.
+    """
+    global _downloader
+    with _downloader_lock:
+        _downloader = downloader
+
+
+def ask_download(model: str) -> None:
+    """Ask the installed downloader for *model*. Without one, nothing happens."""
+    with _downloader_lock:
+        downloader = _downloader
+    if downloader is not None:
+        downloader.request(model)
+
+
+def download_running(model: str) -> bool:
+    """Return whether the installed downloader has *model* queued or running."""
+    with _downloader_lock:
+        downloader = _downloader
+    return downloader is not None and downloader.downloading(model)
 
 
 def open_router(
@@ -122,6 +172,9 @@ class RouterLease:
         """Write ``models.ini`` before a router start (under ``start.lock``)."""
         with self._lock:
             plan = self._new_plan()
+            for outcome in plan.outcomes:
+                if outcome.state == NOT_DOWNLOADED:
+                    ask_download(outcome.model)  # the start does not wait for it
             if not plan.digests:
                 raise StartRefused("not-configured")
             write_preset(self.folder, plan.text)
@@ -208,6 +261,9 @@ class RouterLease:
         managed = self.spec.mode == "managed"
         if managed and model not in _names(self.entries):
             raise ModelUnavailable(model, "model-not-listed")
+        if managed and not self._has_file(model):
+            ask_download(model)  # refused at once; the download does not hold it
+            raise ModelUnavailable(model, NOT_DOWNLOADED)
         with self.base.session() as url:
             if not managed:
                 yield url
@@ -226,6 +282,10 @@ class RouterLease:
                     ticket.close()
                 with self._lock:
                     self._active[model] -= 1
+
+    def _has_file(self, model: str) -> bool:
+        entry = next(e for e in self.entries if e.model == model)
+        return bool((entry.file or "").strip())
 
     def _make_ready(self, url: str, model: str) -> None:
         generation = self.base.generation

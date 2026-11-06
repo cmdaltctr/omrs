@@ -4469,9 +4469,9 @@ paths:
         route returns when the router answers `/health` (no model loads at start) or the
         start fails. With the mode `external` the route gives 409 with the reason
         `external-server` and starts nothing. A refusal is state `failed` with one fixed
-        reason (`not-configured` when no program is set or provisioned or no listed model
-        has a file, `binary-invalid`, `not-loopback`, `port-in-use`, `wrong-build`,
-        `timeout` or `exited`). A router that already runs, with these or other arguments,
+        reason (`not-provisioned` when no program is set and no pinned build is installed,
+        `not-configured` when no listed model has a file, `binary-invalid`, `not-loopback`,
+        `port-in-use`, `wrong-build`, `timeout` or `exited`). A router that already runs, with these or other arguments,
         is left alone. A server OMRS did not start is never touched. Session only: a
         bearer credential gets 403.
       security:
@@ -11393,7 +11393,10 @@ components:
           description: A plain-English line for the reason; for `file-changed` it names the file.
         note:
           type: [string, "null"]
-          description: For example "File not checked" for an entry with no recorded SHA-256.
+          description: >
+            For example "File not checked" for an entry with no recorded SHA-256, or
+            "Downloading" while the automatic download of an entry with no file is queued or
+            runs (its progress is `GET /v1/model-downloads/current`).
         reload_pending:
           type: boolean
           description: >
@@ -11443,6 +11446,7 @@ components:
             - wrong-build
             - file-changed
             - bind-failed
+            - not-provisioned
             - null
           description: One fixed reason when the state is `failed`; never text from the process.
         reason_text:
@@ -11712,6 +11716,7 @@ components:
             - bind-failed
             - wrong-build
             - file-changed
+            - not-provisioned
             - null
           description: >
             One fixed reason when the state is `failed`, else null. Never text from a server.

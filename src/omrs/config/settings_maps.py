@@ -24,7 +24,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from types import MappingProxyType
-from typing import Any, Literal, get_args
+from typing import Any, Literal, Self, get_args
 
 from pydantic import (
     BaseModel,
@@ -36,6 +36,7 @@ from pydantic import (
     model_validator,
 )
 
+from ..core.settings import ROUTER_LIVE_MAPS
 from .field_rules import KIND_INVALID, KIND_RETIRED, KIND_UNKNOWN, rule_text
 from .llamacpp_models import LLAMACPP_MODELS, SHIPPED_MODELS, LlamaCppModelEntry
 from .rules import ENTRY_NAME_PATTERN, ENTRY_NAME_RULE, address_problem
@@ -260,6 +261,28 @@ class SettingsMapsMixin(BaseModel):
             sources.update(dict.fromkeys((f"{key}.{name}" for name in entries), "config-file"))
         object.__setattr__(self, "setting_sources", sources)
         return self
+
+    def with_live_maps(self, maps: Mapping[str, Mapping[str, Any]]) -> Self:
+        """Return a copy that holds the live maps (``ROUTER_LIVE_MAPS``) of *maps*.
+
+        *maps* is what ``omrs.jsonc`` holds now. A live map it lacks goes back to
+        its default: the shipped list, or no decision model. Other maps stay.
+        """
+        held = {k: v for k, v in self._maps.items() if k not in ROUTER_LIVE_MAPS}
+        sources = {
+            path: word
+            for path, word in getattr(self, "setting_sources", {}).items()
+            if path.split(".", 1)[0] not in ROUTER_LIVE_MAPS
+        }
+        for key in ROUTER_LIVE_MAPS:
+            if key in maps:
+                held[key] = dict(maps[key])
+                names = (f"{key}.{name}" for name in maps[key])
+                sources.update(dict.fromkeys(names, "config-file"))
+        copy = self.model_copy()
+        copy._maps = held
+        object.__setattr__(copy, "setting_sources", sources)
+        return copy
 
     @property
     def decision_models(self) -> Mapping[str, DecisionModelEntry]:
