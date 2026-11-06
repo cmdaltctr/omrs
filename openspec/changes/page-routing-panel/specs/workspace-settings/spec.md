@@ -99,3 +99,33 @@ The three list controls of the Page routing panel SHALL fit a 1280 px window and
 
 - **WHEN** the page renders at 390 px
 - **THEN** every list row and its buttons SHALL be visible without horizontal scrolling
+
+### Requirement: Document reading marks readers and engines that cannot run
+
+The reader choice in step 1 of the Page routing panel SHALL mark each reader that is not installed and SHALL NOT let the user add it to the list until it is installed. The engine choices SHALL list the engines the server reports and SHALL mark each engine that is not provisioned, with the reason.
+
+#### Scenario: Reader not installed
+
+- **WHEN** the server reports `pypdfium2` as not installed
+- **THEN** the reader choice in step 1 MUST show `pypdfium2` as not available with the reason and MUST NOT allow it to be added
+
+#### Scenario: Engine not provisioned
+
+- **WHEN** the server reports `dots-mocr` as not provisioned
+- **THEN** the engine choices MUST mark `dots-mocr` as not available and MUST show the reason with its provision command
+
+### Requirement: Document reading edits the reader list in order
+
+Step 1 of the Page routing panel in Settings › Document reading SHALL show the reader list as ordered rows. The user SHALL be able to add a registered reader, remove a reader, and move a reader up or down. Each row SHALL say what its position does: the first installed reader reads, a later reader retries when the readers before it returned no text. A reader that is not installed SHALL show "Not installed" and a link to Integrations › PDF readers, and SHALL show an "Install" button when the app can install its extra. The page SHALL refuse to save an empty list.
+
+#### Scenario: Move a reader up
+
+- **GIVEN** the list `pdf_inspector, liteparse, pypdf`
+- **WHEN** the user moves pypdf above LiteParse and saves
+- **THEN** `omrs.jsonc` SHALL hold `"pdf_readers": ["pdf_inspector", "pypdf", "liteparse"]`
+- **AND** the row SHALL show "Restart to apply"
+
+#### Scenario: Empty list refused
+
+- **WHEN** the user removes every reader and saves
+- **THEN** the page SHALL show the reason and write nothing

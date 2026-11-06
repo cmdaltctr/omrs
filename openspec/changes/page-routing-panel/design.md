@@ -126,10 +126,10 @@ Rejected:
 
 New folder `web/src/pageRouting/`:
 
-- `PageRoutingPanel.tsx`: the card, the top rows, the five numbered steps, the fixed-order line, the OCR-off line, the "Learn more" link. It renders no control itself. It takes `renderRow(key)` and `renderCuts()` props and the current `ocr_fallback_enabled` value.
-- `pageRoutingWords.ts`: step titles, step intro lines, the fixed-order line, the OCR-off line, the guide address, and the key order of each step (`PANEL_STEPS`). Row labels and help lines stay in `documentReadingWords.ts` (`READING_ROWS`), which both renderers already read.
-- Settings renderer (in `DocumentReadingSection.tsx`): `ReadingSettingRow` for each key, as today; the cut boxes from `local-ocr-per-backend-cuts` in step 4; the workers folder line in step 5.
-- Studio renderer (new `web/src/studio/ReadStepRouting.tsx`): `ParamField` or `ListParam` for each key the step's schema has, `CutsParam` in step 4. `StepSettingsFields.tsx` skips the panel keys in its generic loop for `read.document` and renders `ReadStepRouting` after the other parameters. The old single-value options keep today's rule (hidden when unset, shown when a saved graph sets them).
+- `PageRoutingPanel.tsx`: the card, the top rows, the five numbered steps, the fixed-order line, the OCR-off line. It has no "Learn more" link. It renders no control itself. It takes `renderRow(key)` and `renderCuts()` props and the current `ocr_fallback_enabled` value.
+- `pageRoutingWords.ts`: step titles, step intro lines, the fixed-order line, the OCR-off line, and the key order of each step (`PANEL_STEPS`). Row labels and help lines stay in `documentReadingWords.ts` (`READING_ROWS`), which both renderers already read.
+- Settings renderer (in `DocumentReadingSection.tsx`): `ReadingSettingRow` for each key, as today; the cut boxes from `local-ocr-per-backend-cuts` in step 4; the workers folder line in step 5; the Install button for an optional reader in step 1 (D8).
+- Studio renderer (new `web/src/studio/ReadStepRouting.tsx`): `ParamField` or `ListParam` for each key the step's schema has, `CutsParam` in step 4. `StepSettingsFields.tsx` skips the panel keys in its generic loop for `read.document` and renders `ReadStepRouting` after the other parameters. The old single-value options keep today's rule (hidden when unset, shown when a saved graph sets them). For a reader that is not installed it shows the disabled choice with a link to Settings, and no Install button (D8).
 
 Why props and not two copies: the step order, titles and fixed-order line must be the same in both places, and a test can pin them once. Why not one component with a `mode` flag: the save paths differ (one `PUT` per row in Settings, a draft graph in Studio), and a flag would put both inside one file.
 
@@ -141,9 +141,18 @@ Each new file stays well under 200 lines. `DocumentReadingSection.tsx` gets shor
 - Studio: each Inherit choice reads "Inherit from Settings: <value in force> (<source>)", for example "Inherit from Settings: On (default)". The source comes from the Document reading query that `ListParam` already makes for backends. The panel intro in Studio says: "Inherit uses the value from Settings › Document reading. A value set here applies to this pipeline only." No Studio choice carries the word "default", because there "default" would mean the Settings value, not the code default.
 - The router select in Studio: "Inherit from Settings: <router or No router>", "No router" (saves `none`), then the router names.
 
-### D8. pypdfium2 in step 1
+### D8. pypdfium2 in step 1: show it, and install it from the panel
 
-`pypdfium2` always shows in the add choice of step 1 with the label "pypdfium2 (optional)" when installed and "pypdfium2 (optional, not installed)" with the Integrations link when not. The not-installed choice stays disabled, the existing reader rule ("An uninstalled reader can be listed already but not added"). The step help adds: "pypdfium2 is optional. OMRS also uses it to draw page images for the router and the dots-mocr engine; that is not a reading step." The reader options in the API carry no `extra` field, and adding one would change the contract for one word. So `pageRoutingWords.ts` holds `OPTIONAL_READERS = ["pypdfium2"]`, and `tests/unit/test_reading_parts_drift.py` (which already reads two web files) gains a check that this list equals the PDF reader descriptors whose `extra` is not `None`.
+`pypdfium2` always shows in the add choice of step 1. The label is "pypdfium2 (optional)" when installed and "pypdfium2 (optional, not installed)" when not. A not-installed choice is disabled until the server reports the reader installed. The step help adds: "pypdfium2 is optional. OMRS also uses it to draw page images for the router and the dots-mocr engine; that is not a reading step."
+
+Operator decision, 2026-11-06 (gate G0): the panel can install it. The earlier draft only linked to Integrations.
+
+- **Install button (Settings only).** Under the disabled choice, step 1 shows an "Install" button. It starts the existing extra install job: `POST /v1/integrations/pdf-pypdfium2/install` (`installIntegration` in `web/src/api/integrations.ts`). The job is `src/omrs/transports/api/install_job.py`, "the single job that adds or removes an allowed extra". The panel adds no route and no job. The extra name comes from the `extra` field of the reader item in `GET /v1/integrations` (`pdf_reader_items.py` sets it from the package metadata), so the web code holds no extra name.
+- **Allow-list check (done on this branch, 2026-11-06).** `install_environment.py` keeps a deny-list, not an allow-list: `EXCLUDED_EXTRAS = {"web"}`. `install_reason` refuses an extra only when it is excluded, its availability is `unknown`, it is already installed, it adds no packages, the server is not a `uv-tool` install, or `uv` is missing. `pdf-pypdfium2` is in `pyproject.toml` with one requirement (`pypdfium2>=4.0.0`) and is none of these. So the extra is already allowed and the change needs no backend edit for it. Task 3.5 pins this with a test, and fixes the allow rule only if the test fails.
+- **When the button shows.** It follows `installable` and `install_reason` of the `pdf-pypdfium2` entry of `GET /v1/integrations`. When the entry is not installable (for example `not-uv-tool` on a checkout install), step 1 shows the reason text and the copy command that the Integrations page already shows, and no button. A 409 `install-running` shows the existing refusal text. The running, failed and ready states reuse the wording of `web/src/integrations/InstallControls.tsx`, so both places read the same.
+- **After the job ends.** The panel reads the integrations state again. The job puts every successfully installed extra into `restart_needed`, so the panel shows "Restart to apply" beside the reader row. The reader becomes addable once the readers block reports `pypdfium2` installed. If the block still reports it not installed, the choice stays disabled and the panel says "Installed. Restart OMRS to use it." Task 6.1 tests both outcomes. The saved `pdf_readers` list applies after a restart in any case, like every Document reading key.
+- **Studio.** The Read document step shows the not-installed reader disabled, with a link to Settings › Document reading (where the Install button is). Studio has no Install button. This keeps Studio simple. `readerOptions` gets a Studio variant of its link.
+- **Optional label.** The reader options of the Document reading route carry no `extra` field, and adding one would change the contract for one word. So `pageRoutingWords.ts` holds `OPTIONAL_READERS = ["pypdfium2"]`, and `tests/unit/test_reading_parts_drift.py` (which already reads two web files) gains a check that this list equals the PDF reader descriptors whose `extra` is not `None`.
 
 ### D9. HTTP contract
 
@@ -152,18 +161,21 @@ No new route. `ocr_skip_blank_pages` joins the Document reading key enums in `op
 ### D10. Docs
 
 - New `docs/guides/page-routing.md`, user-facing, plain British English, STE style: the diagram from D1; one section per step with each setting, its default, and what it costs; the defaults (cuts 0.92 and 0.94 from `local-ocr-per-backend-cuts`, router off, non-Latin `off`, maths on, skip blank on); where pypdfium2 sits; Settings against Studio (inherit, step values apply to that pipeline only, Settings values apply after a restart, step values on the next run); when documents re-index (a table: fallback, maths and engines touch every source; readers list, skip blank, non-Latin, router, local backends and cuts touch PDF sources only; verify each row against `source_state.py` at write time); why the rules are not reorderable (D2); evidence: Experiment 33 (blank test calibration on 1,123 pages, routing), 43 (router template and cost), 46 and 46a (local backends and cuts), 47 (router recall 0.52, so the router stays off by default).
-- Links from the `README.md` guides table, `configuration.md` ("Document reading values" and the OCR sections), `ingestion.md` ("Page rules"), `reading-parts.md` ("See also") and the panel's "Learn more".
-- Guide address: `https://github.com/cmdaltctr/omrs/blob/main/docs/guides/page-routing.md`, beside `REPOSITORY_URL` in `web/src/components/NavFoot.tsx`. See Open Questions.
+- Links from the `README.md` guides table, `configuration.md` ("Document reading values" and the OCR sections), `ingestion.md` ("Page rules"), `reading-parts.md` ("See also") and `web-workspace.md`.
+- The panel has no "Learn more" link and no guide address constant (operator decision, 2026-11-06). Nothing is added to `web/src/components/NavFoot.tsx`. The guide is reached from the README and the other guides.
+- The guide has a short section on installing pypdfium2 from step 1 (D8): what the button does, why a restart is needed, and what Studio shows instead.
 - Lint: `python3 ~/.agents/skills/s-documentation/scripts/doc_lint.py docs README.md`.
 
-### D11. No ADR
+### D11. A new ADR records the skip-blank switch and the fixed rule order
 
-The two decisions are recorded here, not in an ADR:
+Operator decision, 2026-11-06 (gate G0). The first draft of this design recorded no ADR. The operator rejected that. The ADR is a task (8.4 and 8.5), not part of this planning update.
 
-- **Fixed rule order** is already ADR-112 decision 3 ("run in a fixed order"). D2 only explains it to the user.
-- **The skip-blank switch** adds one flat setting to an existing rule within the descriptor model. It adds no pattern, dependency or boundary. The earlier "no setting" choice was a non-goal of an OpenSpec change and a `pdf-reader` requirement; the spec delta removes that requirement with its reason, which is the record.
+- **What it records.** The `ocr_skip_blank_pages` switch (D3): a flat plain-`bool` setting, default on, with a PDF-only identity entry when off (D4), and the rejected alternatives. The fixed rule order (D2): the three reasons why no setting reorders the page rules. The reversal of the earlier "no setting" choice of `skip-blank-pages-before-worker`, which lived only in that change and in a spec requirement.
+- **Number.** ADR-116 is expected, with status Proposed until the merge. `docs/adr/` on this branch ends at ADR-113. Other planned changes reserve numbers: `local-ocr-per-backend-cuts` writes ADR-114 (its design D10 and task 8.1), and `one-llamacpp-router` reserves ADR-115 (its proposal and task 10.1). ADR-116 is the next free number. The number is confirmed at apply time: task 8.4 first lists `docs/adr/` and the ADR numbers that open changes name. If another change took 116, use the next free number and update this change's artifacts.
+- **ADR-112 amendment.** ADR-112 is Accepted, so its text stays except for two small edits: a dated one-line note under decision 3 ("Amended by ADR-116: the blank rule gains the `ocr_skip_blank_pages` switch. The rule order stays fixed."), and "Amended by ADR-116" on its status line. This is the shape ADR-110 used. `local-ocr-per-backend-cuts` edits the same status line for ADR-114, so rebase after it merges and keep both entries.
+- **Index.** The new ADR gets a row in `docs/adr/ADR_README.md`.
 
-ADR-112 is not edited. If the operator wants a trace in the ADR, the smallest form is one dated amendment line under decision 3; that is an Open Question, not a task.
+Rejected by the operator: no ADR, with the trace kept only in this design.
 
 ### D12. Dependency on `local-ocr-per-backend-cuts`
 
@@ -177,7 +189,8 @@ This change uses, and does not redefine: the `ocr_local_cuts` key, `LocalBackend
 - [The step value is unhashed] → A reader of the graph fingerprint alone cannot see it. The source identity still moves for PDF sources, which decides re-indexing (the `document_router` precedent).
 - [File size] `core/reading_parts.py` and `core/settings.py` sit near 500 after the cuts change. The blank `SettingField` is about 8 lines; the `EffectiveSettings` field 2 lines. → Each task runs `tests/test_file_size_ceiling.py`. If `reading_parts.py` crosses 500, move the page rule table into a sibling module `core/reading_parts_rules.py` re-exported by `reading_parts.py`, in its own commit, before adding the field.
 - [Spec text of the cuts change names the old location] → D12 and task 0.3.
-- [Learn more points at a branch that lacks the guide until release] → Open Question 2.
+- [The number ADR-116 is taken by another change before apply] → Task 8.4 lists `docs/adr/` and the ADR numbers that open changes name. If 116 is taken, use the next free number and update this change's artifacts with `openspec-update-change`.
+- [The Install button runs `uv pip install` in the server] → It reuses the existing install job and its safeguards (no shell, no request text in the command, redacted output, timeout). On an install that is not a uv tool install, the panel shows the reason and the copy command, and no button.
 
 ## Migration Plan
 
@@ -185,8 +198,15 @@ This change uses, and does not redefine: the `ocr_local_cuts` key, `LocalBackend
 2. Rebase, build, merge this change into `v3`. No digest moves; no re-index on upgrade.
 3. Rollback: revert the merge commit. A saved `ocr_skip_blank_pages` in `omrs.jsonc` is then listed as unknown and ignored; an environment value is ignored as unknown by pydantic. A PDF source indexed with the switch off re-indexes once after the rollback, because the entry leaves its identity.
 
+## Operator decisions (2026-11-06, gate G0)
+
+The operator answered the three Open Questions at gate G0. Each answer is a decision. D6, D8, D10 and D11 hold the detail.
+
+1. **pypdfium2 when not installed: changed.** Step 1 shows "pypdfium2 (optional, not installed)" with an "Install" button. The button starts the existing extra install job for the `pdf-pypdfium2` extra. The extra needs no allow-list change (D8). After the job ends, the reader becomes addable and the panel shows "Restart to apply". Studio shows the reader disabled, with a link to Settings. Studio has no Install button, to keep it simple.
+2. **"Learn more" link: removed.** The panel has no "Learn more" link and no guide address constant. The `NavFoot.tsx` and `REPOSITORY_URL` item is dropped. The guide `docs/guides/page-routing.md` is still written. The README and the other guides link to it (D10).
+3. **ADR trace: add an ADR.** A new ADR records the skip-blank switch and why the page rules keep a fixed order. It amends ADR-112 decision 3 with a dated one-line note. The ADR is a task, written at apply time. The expected number is ADR-116, confirmed at apply time (D11). The first draft said "no ADR". The operator rejected that.
+4. **Every decision is visible in the web GUI.** The Skip blank pages row shows in Settings and in Studio (spec `page-routing-panel`, scenarios "Skip blank pages row in Settings" and "Skip blank pages choices in Studio"). The fixed rule order shows as a line in step 2. The pypdfium2 install shows as a button in step 1. The ADR and the guide are documents, and the guide states each decision in plain words.
+
 ## Open Questions
 
-1. **pypdfium2 when not installed.** D8 keeps it disabled with an install link, like every reader today. The operator wrote "show as addable". If that means "addable even when not installed" (like an unprovisioned engine), D8 changes one rule and one scenario. Default: disabled until installed.
-2. **"Learn more" target.** GitHub `main` gets the guide only at the next release; `v3` has it at merge. A copy served by `omrs web` would always match the installed version but adds a static route. Default: GitHub `main`.
-3. **ADR trace.** D11 records no ADR. Should ADR-112 decision 3 get a one-line dated note naming the switch? Default: no.
+None left (see Operator decisions).
