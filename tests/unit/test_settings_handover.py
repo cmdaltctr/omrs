@@ -108,11 +108,11 @@ def test_every_row_kind_lands_under_its_file_key(rows: WorkspaceSettings, folder
         "answer.model": "vendor/model",
         "ollama_base_url": "http://localhost:11500",
         "ollama_context_window": 32768,
-        "llamacpp_chat_url": "http://localhost:8099/v1",
         "openai_compatible_base_url": "https://example.test/v1",
         "llamacpp_server_binary": "/opt/bin/llama-server",
-        "llamacpp_context_window": 8192,
     }
+    # The per-role address and context window retired (one-llamacpp-router D2): no key lands.
+    assert "llamacpp_chat_url" not in values and "llamacpp_context_window" not in values
     assert count_rows(rows) == 0
 
 

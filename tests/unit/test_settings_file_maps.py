@@ -98,12 +98,7 @@ def test_a_hand_written_router_and_its_model_load_by_name(folder: Path) -> None:
         "clef-flash-q8_0",
         True,
     )
-    assert (model.server, model.key, model.model_sha256, model.projector_sha256) == (
-        "external",
-        None,
-        None,
-        None,
-    )
+    assert (model.server, model.key) == ("external", None)
     assert (router.model, router.threshold, router.images) == ("clef-local", 0.172, True)
     assert (router.max_chars, router.send_off_machine) == (2000, False)
     assert settings.setting_sources["decision_models.clef-local"] == "config-file"
@@ -111,21 +106,15 @@ def test_a_hand_written_router_and_its_model_load_by_name(folder: Path) -> None:
     assert read_settings_file().problems == ()
 
 
-def test_managed_entry_keeps_its_files_and_checksums(folder: Path) -> None:
-    managed = {
-        **CLEF_LOCAL,
-        "server": "managed",
-        "model_file": "~/models/clef-flash-q8_0.gguf",
-        "projector_file": "~/models/clef-flash-mmproj.gguf",
-        "model_sha256": "a" * 64,
-        "projector_sha256": "b" * 64,
-    }
+def test_managed_entry_names_a_model_list_entry_and_holds_no_files(folder: Path) -> None:
+    """The files and their checksums moved to ``llamacpp_models`` (one-llamacpp-router D3)."""
+    managed = {**CLEF_LOCAL, "server": "managed"}
     write_config(folder, {"decision_models": {"clef-managed": managed}})
 
     entry = build().decision_models["clef-managed"]
 
-    assert entry.model_file == "~/models/clef-flash-q8_0.gguf"
-    assert entry.projector_sha256 == "b" * 64
+    assert (entry.server, entry.model) == ("managed", "clef-flash-q8_0")
+    assert not hasattr(entry, "model_file")
 
 
 def test_no_map_means_empty_maps_and_no_router(folder: Path) -> None:
@@ -215,11 +204,9 @@ def test_each_broken_router_field_is_named(
         ({**CLEF_LOCAL, "address": "ftp://127.0.0.1"}, "address"),
         ({**CLEF_LOCAL, "address": "http://user:pw@127.0.0.1"}, "address"),
         ({**CLEF_LOCAL, "server": "cloud"}, "server"),
-        ({**CLEF_LOCAL, "model_sha256": "abc"}, "model_sha256"),
-        ({**CLEF_LOCAL, "projector_sha256": "Z" * 64}, "projector_sha256"),
         ({**CLEF_LOCAL, "images": 1}, "images"),
     ],
-    ids=["kind", "scheme", "user", "server", "short-sha", "bad-sha", "number-flag"],
+    ids=["kind", "scheme", "user", "server", "number-flag"],
 )
 def test_each_broken_decision_model_field_is_named(
     folder: Path, entry: dict[str, Any], field: str

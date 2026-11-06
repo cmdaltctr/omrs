@@ -136,6 +136,21 @@ _NEVER_SHIPPED_ALIASES: dict[str, str] = {
 #
 # page-routing-default: the page unit is the only routing unit, so the document
 # gate thresholds and the document-unit maths page fraction have no reader.
+#
+# one-llamacpp-router D2: one router replaces the per-role llama.cpp servers, so the
+# three addresses collapse into one address and the two server modes into one mode.
+# The context window moved into each model's preset. These are flat names, so they
+# persist under the lifetime rule above.
+#: Retired router names, each with the ``omrs.jsonc`` key that replaced it.
+RETIRED_ROUTER_KEYS: dict[str, str] = {
+    "LLAMACPP_EMBED_URL": "llamacpp_router_url",
+    "LLAMACPP_CHAT_URL": "llamacpp_router_url",
+    "LLAMACPP_CLASSIFY_URL": "llamacpp_router_url",
+    "LLAMACPP_CHAT_SERVER": "llamacpp_router_server",
+    "LLAMACPP_EMBED_SERVER": "llamacpp_router_server",
+    "LLAMACPP_CONTEXT_WINDOW": "llamacpp_models",
+}
+_CTX_SIZE_MOVED = "the ctx-size key of the preset of an entry in llamacpp_models (omrs.jsonc)"
 _PAGE_UNIT_ONLY = "OCR routing judges every page, so the document-level threshold is gone"
 #: Removed names that nothing replaced, each with the reason the start-up message
 #: and the ``omrs.jsonc`` problem list give.
@@ -152,9 +167,11 @@ _REMOVED_ENV_VARS: dict[str, str] = {
     # local-ocr-per-backend-cuts D7: one cut per backend replaces the single override.
     "OCR_LOCAL_MIN_CONFIDENCE": _CUTS_REPLACEMENT,
     "OCR__LOCAL_MIN_CONFIDENCE": _CUTS_REPLACEMENT,
-    "LLAMACPP_SERVER_MODEL": (
-        "ANSWER__PROVIDER=llamacpp with ANSWER__MODEL, and LLAMACPP_CHAT_SERVER=managed"
-    ),
+    "LLAMACPP_SERVER_MODEL": "ANSWER__PROVIDER=llamacpp with ANSWER__MODEL",
+    **{
+        name: _CTX_SIZE_MOVED if key == "llamacpp_models" else key.upper()
+        for name, key in RETIRED_ROUTER_KEYS.items()
+    },
     **{name: f"nothing. {reason}" for name, reason in NOTHING_REPLACES.items()},
 }
 

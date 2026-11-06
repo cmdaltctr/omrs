@@ -80,6 +80,7 @@ def _enable_llamacpp(monkeypatch: pytest.MonkeyPatch) -> None:
     """Point the answer block at the llamacpp provider (never built for real)."""
     monkeypatch.setenv("ANSWER__ENABLED", "true")
     monkeypatch.setenv("ANSWER__PROVIDER", "llamacpp")
+    monkeypatch.setenv("ANSWER__MODEL", "Test/Chat-GGUF:Q8_0")  # no Chat model ships by default
 
 
 def test_builder_missing_package_returns_none(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -197,7 +197,7 @@ class MetadataBlock(BaseModel):
 
     extraction_mode: str = "llamaindex"
     keyword_rules: str | None = None
-    ollama_classify_model: str = "qwen3:0.6b"
+    ollama_classify_model: str = ""
     # Both knobs reject non-positive values outright rather than clamping:
     # silently rewriting an operator's 0 to 1 hides the misconfiguration,
     # and a non-positive timeout reaches httpx as a nonsensical deadline.
@@ -238,8 +238,8 @@ class AnswerBlock(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     enabled: bool = True
-    provider: str = "ollama"
-    model: str = "qwen3:4b"
+    provider: str = "llamacpp"
+    model: str = ""
     timeout: float = Field(default=120.0, gt=0)
     max_rounds: int = Field(default=4, ge=1, le=8)
     context_window: int = Field(default=8192, gt=0)

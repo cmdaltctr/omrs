@@ -21,7 +21,6 @@ This module is a leaf: it imports only ``config/`` modules that do not import it
 
 from __future__ import annotations
 
-import re
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from types import MappingProxyType
@@ -37,7 +36,8 @@ from pydantic import (
     model_validator,
 )
 
-from .field_rules import KIND_INVALID, KIND_UNKNOWN, rule_text
+from .field_rules import KIND_INVALID, KIND_RETIRED, KIND_UNKNOWN, rule_text
+from .llamacpp_models import LLAMACPP_MODELS, SHIPPED_MODELS, LlamaCppModelEntry
 from .rules import ENTRY_NAME_PATTERN, ENTRY_NAME_RULE, address_problem
 from .user_config import REFERENCE_RULE, reference_problem
 
@@ -51,19 +51,18 @@ DECISION_KINDS: tuple[str, ...] = get_args(DecisionKind)
 #: The router name that means "no router". No router entry may take it.
 NO_ROUTER = "none"
 
-_SHA256 = re.compile(r"[0-9a-f]{64}")
 RESERVED_NAME_RULE = 'The name "none" means no router, so no router can take it.'
 MAP_RULE = "This must be an object of named entries."
 ENTRY_RULE = "Each entry must be an object of fields."
 REQUIRED_RULE = "This field is required."
 UNKNOWN_FIELD_RULE = "This is not a field of the entry."
 BLANK_RULE = "The value must not be blank."
-SHA256_RULE = "The value must be 64 lower-case hexadecimal characters."
 
 #: ``(kind, field, rule)``: one problem with one field of an entry.
 FieldProblem = tuple[str, str, str]
-#: Lists one problem: ``(kind, dotted key, rule)``. ``settings_file`` passes its reader's.
-Report = Callable[[str, str, str], None]
+#: Lists one problem: ``(kind, dotted key, rule)``, plus the replacement key for a
+#: retired field. ``settings_file`` passes its reader's.
+Report = Callable[..., None]
 
 
 class _Entry(BaseModel):
@@ -81,11 +80,9 @@ class DecisionModelEntry(_Entry):
         model: Model name the request names.
         images: Whether the model takes a page image.
         key: Key reference (``env://``, ``file://`` or ``keychain://``), never a key.
-        server: ``llamacpp`` only: ``external`` or ``managed``.
-        model_file: Managed ``llamacpp`` only: the GGUF model file.
-        projector_file: Managed ``llamacpp`` only: the projector file.
-        model_sha256: SHA-256 of the model file.
-        projector_sha256: SHA-256 of the projector file.
+        server: ``llamacpp`` only: ``external`` or ``managed``. A managed entry
+            names a ``llamacpp_models`` entry by ``model``; the file, the projector
+            and their SHA-256 values live there (change one-llamacpp-router, D3).
     """
 
     kind: DecisionKind
@@ -94,10 +91,6 @@ class DecisionModelEntry(_Entry):
     images: bool = False
     key: str | None = None
     server: Literal["external", "managed"] | None = None
-    model_file: str | None = None
-    projector_file: str | None = None
-    model_sha256: str | None = None
-    projector_sha256: str | None = None
 
 
 class DocumentRouterEntry(_Entry):
@@ -125,7 +118,13 @@ ENTRY_TYPES: Mapping[str, type[_Entry]] = {
     DOCUMENT_ROUTERS: DocumentRouterEntry,
 }
 _TEXT_FIELDS = frozenset({"address", "model", "question"})
-_SHA_FIELDS = frozenset({"model_sha256", "projector_sha256"})
+#: Decision entry fields that moved to ``llamacpp_models``. A file that still holds
+#: one lists it as retired; the entry loads without it.
+RETIRED_DECISION_FIELDS = frozenset(
+    {"model_file", "projector_file", "model_sha256", "projector_sha256"}
+)
+MOVED_RULE = "This field moved to llamacpp_models. The model list holds the file and its SHA-256."
+MOVED_TO = LLAMACPP_MODELS
 
 
 def entry_name_problem(map_key: str, name: Any) -> str | None:
@@ -154,8 +153,6 @@ def _value_problem(field: str, value: Any) -> str | None:
         return BLANK_RULE
     if field == "address":
         return address_problem(value.strip())
-    if field in _SHA_FIELDS and not _SHA256.fullmatch(value):
-        return SHA256_RULE
     return None
 
 
@@ -183,7 +180,9 @@ def check_entry(
         else:
             fields["key"] = key.strip()
     for name in fields:
-        if name not in entry_type.model_fields:
+        if map_key == DECISION_MODELS and name in RETIRED_DECISION_FIELDS:
+            problems.append((KIND_RETIRED, name, MOVED_RULE))
+        elif name not in entry_type.model_fields:
             problems.append((KIND_UNKNOWN, name, UNKNOWN_FIELD_RULE))
     for name, value in fields.items():
         rule = _value_problem(name, value) if name in entry_type.model_fields else None
@@ -202,7 +201,7 @@ def check_entry(
                     (KIND_INVALID, field, _type_problem(entry_type, field, error["type"]))
                 )
         return None, problems
-    broken = any(field != "key" for _, field, _ in problems)
+    broken = any(kind != KIND_RETIRED and field != "key" for kind, field, _ in problems)
     return (None if broken else entry), problems
 
 
@@ -229,7 +228,8 @@ def read_map(map_key: str, value: Any, secrets: Path, report: Report) -> dict[st
             continue
         entry, problems = check_entry(map_key, data, secrets)
         for kind, field, field_rule in problems:
-            report(kind, f"{path}.{field}", field_rule)
+            extra = (MOVED_TO,) if kind == KIND_RETIRED else ()
+            report(kind, f"{path}.{field}", field_rule, *extra)
         if entry is not None:
             found[name] = entry
     return found
@@ -253,6 +253,8 @@ class SettingsMapsMixin(BaseModel):
         parsed = getattr(type(self), "_user_file", None)
         maps: Mapping[str, Mapping[str, Any]] = getattr(parsed, "maps", None) or {}
         self._maps = {key: dict(maps.get(key, {})) for key in MAP_KEYS}
+        if LLAMACPP_MODELS in maps:  # a map in the file replaces the shipped list whole
+            self._maps[LLAMACPP_MODELS] = dict(maps[LLAMACPP_MODELS])
         sources = dict(getattr(self, "setting_sources", {}))
         for key, entries in self._maps.items():
             sources.update(dict.fromkeys((f"{key}.{name}" for name in entries), "config-file"))
@@ -263,6 +265,12 @@ class SettingsMapsMixin(BaseModel):
     def decision_models(self) -> Mapping[str, DecisionModelEntry]:
         """The valid ``decision_models`` entries of ``omrs.jsonc``, by name."""
         return MappingProxyType(dict(self._maps.get(DECISION_MODELS, {})))
+
+    @property
+    def llamacpp_models(self) -> Mapping[str, LlamaCppModelEntry]:
+        """The router model list: the valid map of ``omrs.jsonc``, else the shipped list."""
+        found = self._maps.get(LLAMACPP_MODELS)
+        return MappingProxyType(dict(SHIPPED_MODELS if found is None else found))
 
     @property
     def document_routers(self) -> Mapping[str, DocumentRouterEntry]:

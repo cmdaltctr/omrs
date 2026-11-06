@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .config import Settings
+    from .config.llamacpp_roles import RoleReport
 
 
 def _level(level: object) -> dict[str, str]:
@@ -79,7 +80,9 @@ def build_answer_llm(settings: Settings | None = None) -> Any:
             f"LLM provider. Available: {', '.join(llm_registry.available())}."
         )
     if not settings.answer.model.strip() and not _has_default_model(name):
-        raise ValueError("Choose a Chat model in Settings > Chat.")
+        raise ValueError(
+            "Choose a Chat model in Settings > Chat. The setting is answer.model, and it is empty."
+        )
     try:
         build = llm_registry.get(name)
         return build(
@@ -129,6 +132,38 @@ def resolve_verify_provider(settings: Settings, raw_provider: str | None) -> str
     if raw == "local":
         return settings.local_backend
     return raw
+
+
+def llamacpp_roles(settings: Settings) -> RoleReport:
+    """Return the router list roles that the role settings in force name (task 2.3).
+
+    Chat counts while ``answer.provider`` is ``llamacpp``, and the judge while its
+    provider resolves to ``llamacpp``; a blank model gives no role (D14). A managed
+    ``llamacpp`` decision entry names its list entry by ``model``. Nothing starts
+    and nothing is sent.
+
+    Args:
+        settings: Resolved settings.
+
+    Returns:
+        The roles by list entry id, and the roles that were refused or have no entry.
+    """
+    from .config.llamacpp_roles import derive_roles
+
+    answer = settings.answer
+    judge_on = resolve_verify_provider(settings, answer.verify_provider) == "llamacpp"
+    return derive_roles(
+        settings.llamacpp_models,
+        embed_model=settings.llamacpp_embed_model.strip(),
+        classify_model=settings.llamacpp_chat_model.strip(),
+        chat_model=answer.model.strip() if answer.provider.strip() == "llamacpp" else "",
+        judge_model=answer.verify_model.strip() if judge_on else "",
+        decision_models=[
+            entry.model
+            for entry in settings.decision_models.values()
+            if entry.kind == "llamacpp" and entry.server == "managed"
+        ],
+    )
 
 
 def validate_verify_provider(settings: Settings) -> None:
@@ -253,7 +288,10 @@ def build_verify_llm(
             f"{', '.join(llm_registry.available())}."
         )
     if not verify_model and not _has_default_model(name):
-        raise ValueError("Choose a judge model in Settings > Chat.")
+        raise ValueError(
+            "Choose a judge model in Settings > Chat. "
+            "The setting is answer.verify_model, and it is empty."
+        )
     try:
         build = llm_registry.get(name)
         return build(

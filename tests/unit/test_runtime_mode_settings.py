@@ -1,9 +1,9 @@
-"""Embedding and OCR runtime mode settings (change managed-llamacpp-runtimes, task 5.3).
+"""OCR runtime mode setting (change managed-llamacpp-runtimes, task 5.3).
 
-``llamacpp_embed_server`` (``external`` or ``managed``, default ``external``)
-and ``ocr_runtime_url`` (blank means managed) are read from the environment,
-``.env`` and ``omrs.jsonc``. The Settings page never writes either key. Every
-test points ``OMRS_CONFIG_DIR`` at a temporary folder; none reads the real one.
+``ocr_runtime_url`` (blank means managed) is read from the environment, ``.env`` and
+``omrs.jsonc``. The Settings page never writes it. ``llamacpp_embed_server`` retired
+with the per-role servers (change one-llamacpp-router, task 2.4). Every test points
+``OMRS_CONFIG_DIR`` at a temporary folder; none reads the real one.
 """
 
 from __future__ import annotations
@@ -17,16 +17,15 @@ from tests.unit.test_web_configuration import URL, Harness
 from tests.unit.test_web_documents_support import ORIGIN
 
 from omrs.config import Settings
-from omrs.config.rules import ACCEPTED, ADDRESS_FIELDS
+from omrs.config.rules import ADDRESS_FIELDS
 from omrs.config.settings_file import KIND_INVALID, read_settings_file
 from omrs.config.settings_file_write import ALLOWED_KEYS, read_only_reason
 
 harness = base.harness
 client = base.client
 
-EMBED = "llamacpp_embed_server"
 OCR = "ocr_runtime_url"
-VARIABLES = ("LLAMACPP_EMBED_SERVER", "OCR_RUNTIME_URL")
+VARIABLES = ("OCR_RUNTIME_URL",)
 
 
 @pytest.fixture(autouse=True)
@@ -47,55 +46,6 @@ def build(tmp_path: Path, dotenv: str = "") -> Settings:
 
 def write_config(folder: Path, text: str) -> None:
     (folder / "omrs.jsonc").write_text(text, encoding="utf-8")
-
-
-# ── llamacpp_embed_server ────────────────────────────────────────────────
-
-
-def test_embed_server_defaults_to_external(tmp_path: Path) -> None:
-    settings = build(tmp_path)
-    assert getattr(settings, EMBED) == "external"
-    assert ACCEPTED[EMBED] == ("external", "managed")
-    assert EMBED not in settings.provider_explicit
-
-
-def test_embed_server_from_the_environment(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    monkeypatch.setenv("LLAMACPP_EMBED_SERVER", "managed")
-    settings = build(tmp_path)
-    assert getattr(settings, EMBED) == "managed"
-    assert settings.setting_sources[EMBED] == "env"
-
-
-def test_embed_server_from_dotenv(tmp_path: Path) -> None:
-    settings = build(tmp_path, "LLAMACPP_EMBED_SERVER=managed\n")
-    assert getattr(settings, EMBED) == "managed"
-    assert settings.setting_sources[EMBED] == "dotenv"
-
-
-def test_embed_server_from_the_config_file(folder: Path, tmp_path: Path) -> None:
-    write_config(folder, '{ "llamacpp_embed_server": "managed" }')
-    settings = build(tmp_path)
-    assert getattr(settings, EMBED) == "managed"
-    assert settings.setting_sources[EMBED] == "config-file"
-    assert EMBED in settings.config_file_fields
-
-
-def test_an_unknown_embed_server_in_the_environment_fails_startup(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    monkeypatch.setenv("LLAMACPP_EMBED_SERVER", "router")
-    with pytest.raises(ValidationError, match="LLAMACPP_EMBED_SERVER"):
-        build(tmp_path)
-
-
-def test_an_unknown_embed_server_in_the_config_file_is_listed_and_ignored(
-    folder: Path, tmp_path: Path
-) -> None:
-    write_config(folder, '{ "llamacpp_embed_server": "router" }')
-    (problem,) = read_settings_file().problems
-    assert (problem.kind, problem.key) == (KIND_INVALID, EMBED)
-    assert "external, managed" in problem.message
-    assert getattr(build(tmp_path), EMBED) == "external"
 
 
 # ── ocr_runtime_url ──────────────────────────────────────────────────────
@@ -159,16 +109,15 @@ def test_ocr_runtime_url_uses_the_address_rule() -> None:
     assert OCR in ADDRESS_FIELDS
 
 
-# ── The Settings page never writes either key ────────────────────────────
+# ── The Settings page never writes the key ───────────────────────────────
 
 
-@pytest.mark.parametrize(("key", "value"), [(EMBED, "managed"), (OCR, "http://127.0.0.1:9100")])
-def test_neither_key_is_writable_by_the_page(key: str, value: str) -> None:
-    assert key not in ALLOWED_KEYS
-    assert read_only_reason(key) == "Set this in the environment, .env or omrs.jsonc."
+def test_the_key_is_not_writable_by_the_page() -> None:
+    assert OCR not in ALLOWED_KEYS
+    assert read_only_reason(OCR) == "Set this in the environment, .env or omrs.jsonc."
 
 
-@pytest.mark.parametrize(("key", "value"), [(EMBED, "managed"), (OCR, "http://127.0.0.1:9100")])
+@pytest.mark.parametrize(("key", "value"), [(OCR, "http://127.0.0.1:9100")])
 def test_the_put_route_refuses_the_key_and_writes_nothing(
     harness: Harness, client: object, key: str, value: str
 ) -> None:
@@ -181,9 +130,10 @@ def test_the_put_route_refuses_the_key_and_writes_nothing(
     assert not (harness.folder / "omrs.jsonc").exists()
 
 
-def test_the_starter_file_lists_both_keys() -> None:
+def test_the_starter_file_lists_the_key_and_no_retired_one() -> None:
     from omrs.transports.cli.config_template import build_template
 
     template = build_template()
-    assert '"llamacpp_embed_server": "external"' in template
     assert '"ocr_runtime_url": ""' in template
+    assert '"llamacpp_embed_server"' not in template
+    assert '"llamacpp_router_server": "managed"' in template

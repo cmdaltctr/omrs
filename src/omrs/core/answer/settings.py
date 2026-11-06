@@ -34,10 +34,9 @@ REASONING_LEVEL_PATTERN = r"^(?:[A-Za-z0-9_-]{1,32})?$"
 class AnswerSettings(BaseModel):
     """Configuration knobs for the grounded answering operation.
 
-    Every value defaults to something that works with the existing
-    local-first provider configuration: the base-install ollama
-    provider, a small local model, and client sampling preferred when
-    the MCP client offers one.
+    Every value defaults to something that works with the local-first
+    provider configuration: the llama.cpp provider with no Chat model
+    chosen, and client sampling preferred when the MCP client offers one.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -51,11 +50,13 @@ class AnswerSettings(BaseModel):
     # Provider name resolved through ``core/providers/llm/registry.py``
     # (the same registry metadata extraction uses); validated at startup
     # by ``compose._resolve_active_strategies`` so a bad name fails fast.
-    provider: str = "ollama"
-    # Model tag handed to the provider builder via the backwards-
+    provider: str = "llamacpp"
+    # Model handed to the provider builder via the backwards-
     # compatible ``answer_model`` override so answering never silently
-    # reuses the metadata classification model.
-    model: str = "qwen3:4b"
+    # reuses the metadata classification model. Empty means no Chat model is
+    # chosen: Chat returns a setup message that names ``answer.model``
+    # (change one-llamacpp-router, D14).
+    model: str = ""
     # Seconds to wait for one completion round.
     timeout: float = Field(default=120.0, gt=0)
 
@@ -84,7 +85,7 @@ class AnswerSettings(BaseModel):
 
     # ── Claim verification (opt-in cloud judge — ADR-059) ──────────
     # Off by default: the judge needs a cloud model (experiment 20
-    # showed a local qwen3:4b judge infeasible on consumer hardware),
+    # showed a local 4B judge infeasible on consumer hardware),
     # which is an explicit opt-in against ADR-024's local-first policy.
     verify_claims: LegacyBool = False
     # Empty string derives the judge model from the provider's default

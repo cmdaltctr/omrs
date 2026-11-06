@@ -33,7 +33,7 @@ def test_saved_values_replace_defaults() -> None:
     values = ProviderValues(
         {
             "ollama_base_url": "http://gpu-box.local:11434",
-            "llamacpp_chat_url": "http://gpu-box.local:8081/v1",
+            "llamacpp_router_url": "http://gpu-box.local:8081/v1",
             "openrouter_api_key": SECRET,
             "answer.provider": "openrouter",
             "answer.model": "openai/gpt-4o-mini",
@@ -41,7 +41,7 @@ def test_saved_values_replace_defaults() -> None:
     )
     result = apply_provider_values(base, values, frozenset())
     assert result.ollama_base_url == "http://gpu-box.local:11434"
-    assert result.llamacpp_chat_url == "http://gpu-box.local:8081/v1"
+    assert result.llamacpp_router_url == "http://gpu-box.local:8081/v1"
     assert result.openrouter_api_key == SECRET
     assert (result.answer.provider, result.answer.model) == ("openrouter", "openai/gpt-4o-mini")
 
@@ -54,12 +54,12 @@ def test_the_input_settings_are_not_changed() -> None:
 
 
 def test_environment_value_wins_and_locks() -> None:
-    base = make_settings(embed_provider="openrouter", llamacpp_chat_url="http://env:8081/v1")
-    values = ProviderValues({"llamacpp_chat_url": "http://saved:8081/v1"})
-    result = apply_provider_values(base, values, frozenset({"llamacpp_chat_url"}))
-    assert result.llamacpp_chat_url == "http://env:8081/v1"
-    assert locked_fields(base, frozenset({"llamacpp_chat_url"})) == {
-        "llamacpp_chat_url": "environment"
+    base = make_settings(embed_provider="openrouter", llamacpp_router_url="http://env:8081/v1")
+    values = ProviderValues({"llamacpp_router_url": "http://saved:8081/v1"})
+    result = apply_provider_values(base, values, frozenset({"llamacpp_router_url"}))
+    assert result.llamacpp_router_url == "http://env:8081/v1"
+    assert locked_fields(base, frozenset({"llamacpp_router_url"})) == {
+        "llamacpp_router_url": "environment"
     }
 
 
@@ -178,11 +178,11 @@ def test_ollama_address_locks_when_a_profile_uses_ollama_embeddings() -> None:
 
 def test_a_config_file_value_does_not_lock() -> None:
     base = make_settings(embed_provider="openrouter")
-    object.__setattr__(base, "config_file_fields", frozenset({"llamacpp_chat_url"}))
-    object.__setattr__(base, "setting_sources", {"llamacpp_chat_url": "config-file"})
-    assert "llamacpp_chat_url" not in locked_fields(base, frozenset())
-    saved = ProviderValues({"llamacpp_chat_url": "http://saved:8081/v1"})
-    assert apply_provider_values(base, saved).llamacpp_chat_url == "http://saved:8081/v1"
+    object.__setattr__(base, "config_file_fields", frozenset({"llamacpp_router_url"}))
+    object.__setattr__(base, "setting_sources", {"llamacpp_router_url": "config-file"})
+    assert "llamacpp_router_url" not in locked_fields(base, frozenset())
+    saved = ProviderValues({"llamacpp_router_url": "http://saved:8081/v1"})
+    assert apply_provider_values(base, saved).llamacpp_router_url == "http://saved:8081/v1"
 
 
 def test_the_chat_choice_locks_as_a_unit_when_the_environment_sets_one() -> None:
@@ -356,11 +356,11 @@ def test_compose_get_settings_without_a_reference_never_loads_the_keychain(
 ) -> None:
     from omrs import compose
 
-    _reference_folder(tmp_path, monkeypatch, '{"llamacpp_chat_url": "http://gpu:8081/v1"}')
+    _reference_folder(tmp_path, monkeypatch, '{"llamacpp_router_url": "http://gpu:8081/v1"}')
     monkeypatch.delitem(sys.modules, "omrs.integrations.keychain", raising=False)
     monkeypatch.setitem(sys.modules, "keyring", None)  # an import now raises ImportError
     settings = compose.get_settings()
-    assert settings.llamacpp_chat_url == "http://gpu:8081/v1"
+    assert settings.llamacpp_router_url == "http://gpu:8081/v1"
     assert "omrs.integrations.keychain" not in sys.modules
     monkeypatch.setattr("omrs.config._settings", None)
 
@@ -395,22 +395,22 @@ def _file(tmp_path: Path, text: str) -> Any:
 def test_values_from_the_file_override_the_launch_settings(tmp_path: Path) -> None:
     from omrs.compose_providers import provider_values_from_file
 
-    text = '{"llamacpp_chat_url": "http://gpu:1/v1", "answer": {"model": "m"}}'
+    text = '{"llamacpp_router_url": "http://gpu:1/v1", "answer": {"model": "m"}}'
     values = provider_values_from_file(make_settings(), _file(tmp_path, text), None)
-    assert values.values["llamacpp_chat_url"] == "http://gpu:1/v1"
+    assert values.values["llamacpp_router_url"] == "http://gpu:1/v1"
     assert values.values["answer.model"] == "m"
-    assert values.sources == {"llamacpp_chat_url": "config-file", "answer.model": "config-file"}
+    assert values.sources == {"llamacpp_router_url": "config-file", "answer.model": "config-file"}
 
 
 def test_a_field_the_file_dropped_goes_back_to_the_code_default(tmp_path: Path) -> None:
     from omrs.compose_providers import provider_values_from_file
 
-    base = make_settings(llamacpp_chat_url="http://old:1/v1")
-    object.__setattr__(base, "setting_sources", {"llamacpp_chat_url": "config-file"})
+    base = make_settings(llamacpp_router_url="http://old:1/v1")
+    object.__setattr__(base, "setting_sources", {"llamacpp_router_url": "config-file"})
     values = provider_values_from_file(base, _file(tmp_path, "{}"), None)
-    default = Settings.model_fields["llamacpp_chat_url"].default
-    assert values.values["llamacpp_chat_url"] == default
-    assert apply_provider_values(base, values).llamacpp_chat_url == default
+    default = Settings.model_fields["llamacpp_router_url"].default
+    assert values.values["llamacpp_router_url"] == default
+    assert apply_provider_values(base, values).llamacpp_router_url == default
 
 
 def test_a_key_the_file_dropped_is_unset(tmp_path: Path) -> None:
@@ -429,11 +429,11 @@ def test_an_environment_field_is_left_to_the_environment(tmp_path: Path) -> None
     from omrs.compose_providers import provider_values_from_file
 
     base = make_settings()
-    object.__setattr__(base, "provider_explicit", frozenset({"llamacpp_chat_url"}))
-    text = '{"llamacpp_chat_url": "http://x:1/v1"}'
+    object.__setattr__(base, "provider_explicit", frozenset({"llamacpp_router_url"}))
+    text = '{"llamacpp_router_url": "http://x:1/v1"}'
     values = provider_values_from_file(base, _file(tmp_path, text), None)
-    assert "llamacpp_chat_url" not in values.values
-    assert apply_provider_values(base, values).llamacpp_chat_url == base.llamacpp_chat_url
+    assert "llamacpp_router_url" not in values.values
+    assert apply_provider_values(base, values).llamacpp_router_url == base.llamacpp_router_url
 
 
 def test_a_keychain_reference_resolves_through_the_given_store(tmp_path: Path) -> None:

@@ -30,7 +30,6 @@ harness = edit.harness  # the web test fixture, reused as is
 
 FIELDS = {
     "ollama_context_window": "OLLAMA_CONTEXT_WINDOW",
-    "llamacpp_context_window": "LLAMACPP_CONTEXT_WINDOW",
 }
 
 
@@ -44,7 +43,7 @@ def folder(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     for variable in (
         *FIELDS.values(),
         *TEXT_FIELDS.values(),
-        "LLAMACPP_CHAT_SERVER",
+        "LLAMACPP_ROUTER_SERVER",
     ):
         monkeypatch.delenv(variable, raising=False)
     root = tmp_path / "omrs-config"
@@ -363,13 +362,13 @@ def test_server_text_fields_take_the_config_file_and_do_not_lock(
 
 
 def test_a_saved_server_value_applies_unless_locked(tmp_path: Path) -> None:
-    saved = ProviderValues(values={"llamacpp_chat_server": "managed"})
-    assert apply_provider_values(build(tmp_path), saved).llamacpp_chat_server == "managed"
-    locked = build(tmp_path, "LLAMACPP_CHAT_SERVER=external\n")
-    assert apply_provider_values(locked, saved).llamacpp_chat_server == "external"
+    saved = ProviderValues(values={"llamacpp_router_server": "external"})
+    assert apply_provider_values(build(tmp_path), saved).llamacpp_router_server == "external"
+    locked = build(tmp_path, "LLAMACPP_ROUTER_SERVER=managed\n")
+    assert apply_provider_values(locked, saved).llamacpp_router_server == "managed"
 
 
 def test_server_values_never_reach_effective_settings(tmp_path: Path) -> None:
-    effective = compose.settings_to_effective(build(tmp_path, "LLAMACPP_CONTEXT_WINDOW=4096\n"))
+    effective = compose.settings_to_effective(build(tmp_path, "LLAMACPP_ROUTER_MODELS_MAX=3\n"))
     assert not hasattr(effective, "llamacpp_server_binary")
-    assert not hasattr(effective, "llamacpp_context_window")
+    assert not hasattr(effective, "llamacpp_router_models_max")

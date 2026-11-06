@@ -63,12 +63,13 @@ def test_the_card_keys_stay_allowed_and_key_fields_are_not() -> None:
     )
     assert set(ALLOWED_KEYS) >= {
         "ollama_base_url",
-        "llamacpp_chat_url",
+        "llamacpp_router_url",
+        "llamacpp_router_server",
         "openai_compatible_base_url",
         "ollama_context_window",
-        "llamacpp_context_window",
+        "llamacpp_router_models_max",
+        "llamacpp_router_memory_margin_mib",
         "llamacpp_server_binary",
-        "llamacpp_classify_url",
         "answer.provider",
         "answer.model",
         "answer.verify_provider",

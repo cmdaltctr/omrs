@@ -21,6 +21,7 @@ from .capabilities import (
     resolve_pdf_readers,
 )
 from .config import Settings, get_settings
+from .config.provider_sources import RETIRED_ADDRESS_FIELDS
 from .core.settings import (
     PROVIDER_ADDRESS_FIELDS,
     PROVIDER_INT_FIELDS,
@@ -208,7 +209,12 @@ def settings_to_effective(settings: Settings | None = None) -> Any:
         metadata_llm_provider=settings.metadata_llm_provider,
         local_backend=settings.local_backend,
         cloud_backend=settings.cloud_backend,
-        llamacpp_embed_url=settings.llamacpp_embed_url,
+        # One router address serves every llama.cpp role (one-llamacpp-router D2).
+        # EffectiveSettings still carries the three per-role address fields until
+        # the runtime wave retires them, so each one follows the router address.
+        llamacpp_embed_url=settings.llamacpp_router_url,
+        llamacpp_chat_url=settings.llamacpp_router_url,
+        llamacpp_classify_url="",
         llamacpp_embed_model=settings.llamacpp_embed_model,
         llamacpp_chat_model=settings.llamacpp_chat_model,
         openrouter_embed_model=settings.openrouter_embed_model,
@@ -216,6 +222,7 @@ def settings_to_effective(settings: Settings | None = None) -> Any:
         **{
             name: getattr(settings, name)
             for name in PROVIDER_ADDRESS_FIELDS + PROVIDER_SECRET_FIELDS + PROVIDER_INT_FIELDS
+            if name not in RETIRED_ADDRESS_FIELDS
         },
         embed_model=settings.embed_model,
         pdf_reader=pdf_reader,

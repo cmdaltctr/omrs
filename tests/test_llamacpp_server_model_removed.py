@@ -20,7 +20,7 @@ def test_a_leftover_variable_fails_and_names_the_replacement() -> None:
     message = str(refused.value)
     for name in ("LLAMACPP_SERVER_MODEL", "ANSWER__PROVIDER", "ANSWER__MODEL"):
         assert name in message
-    assert "LLAMACPP_CHAT_SERVER" in message
+    assert "LLAMACPP_CHAT_SERVER" not in message  # retired itself (one-llamacpp-router D2)
     assert "/models/old.gguf" not in message
 
 

@@ -255,13 +255,13 @@ def test_chat_settings_report_the_config_file_source(harness: Any) -> None:
 
 
 def test_a_dotenv_value_locks_and_reports_dotenv(harness: Any) -> None:
-    sources = {"llamacpp_chat_url": "dotenv"}
-    with harness(explicit=frozenset({"llamacpp_chat_url"}), sources=sources) as h:
+    sources = {"llamacpp_router_url": "dotenv"}
+    with harness(explicit=frozenset({"llamacpp_router_url"}), sources=sources) as h:
         field = h.field("llamacpp", "chat_url")
         assert (field["source"], field["locked"]) == ("dotenv", True)
         response = h.put("llamacpp", {"chat_url": "http://other:8081/v1"})
         assert response.status_code == 409
-        assert "LLAMACPP_CHAT_URL" in response.json()["message"]
+        assert "LLAMACPP_ROUTER_URL" in response.json()["message"]
         assert h.file_text() == ""
 
 
@@ -436,11 +436,11 @@ def test_a_refused_save_names_the_rule_and_never_the_value(
 
 
 def test_a_refused_conflict_names_the_source_and_never_a_value(harness: Any) -> None:
-    sources = {"llamacpp_chat_url": "env"}
-    with harness(explicit=frozenset({"llamacpp_chat_url"}), sources=sources) as h:
+    sources = {"llamacpp_router_url": "env"}
+    with harness(explicit=frozenset({"llamacpp_router_url"}), sources=sources) as h:
         response = h.put("llamacpp", {"chat_url": f"http://{MARKER}:1/v1"})
         assert response.status_code == 409
         assert MARKER not in response.text
-        assert "LLAMACPP_CHAT_URL" in response.json()["message"]
+        assert "LLAMACPP_ROUTER_URL" in response.json()["message"]
         stale = h.put("llamacpp", {"chat_url": f"http://{MARKER}:1/v1"}, revision="deadbeef")
         assert stale.status_code == 409 and MARKER not in stale.text

@@ -35,6 +35,10 @@ def _cli_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     import omrs.transports.cli as cli_module
 
     monkeypatch.setattr(cli_module, "_runtime_details_enabled", False)
+    # No Chat model ships by default (one-llamacpp-router D14). These tests answer with a
+    # fake model, so they opt in to a provider and tag that build without a network.
+    monkeypatch.setenv("ANSWER__PROVIDER", "ollama")
+    monkeypatch.setenv("ANSWER__MODEL", "qwen3:4b")
     use_mock_embedder(monkeypatch)
     return use_home(monkeypatch, tmp_path / "home")
 
