@@ -17,6 +17,7 @@ from pathlib import Path
 
 import pytest
 from tests.fixtures.llamacpp.harness import RuntimeEnv, pid_alive, runtime_env_fixture, wait_until
+from tests.unit.test_llamacpp_router_worker import fixed_spec
 
 from omrs.integrations.llamacpp_runtime.locks import LockFile
 from omrs.integrations.llamacpp_runtime.state import (
@@ -39,14 +40,14 @@ def _free_port() -> int:
         return int(sock.getsockname()[1])
 
 
-def _folder(runtime_id: str = "chat") -> Path:
+def _folder(runtime_id: str = "router") -> Path:
     return runtime_dir(state_root(), runtime_id)
 
 
 def test_two_clients_share_one_server(runtime_env: RuntimeEnv) -> None:
     """3.1: two client processes join one runtime; exactly one server starts."""
     fake = runtime_env.fake()
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     first, second = runtime_env.client(), runtime_env.client()
     assert first.join(spec)["ok"] is True
     assert second.join(spec)["ok"] is True
@@ -58,7 +59,7 @@ def test_two_clients_share_one_server(runtime_env: RuntimeEnv) -> None:
 def test_first_leaves_and_the_server_lives(runtime_env: RuntimeEnv) -> None:
     """3.2: the first client exits; the second's next request needs no start."""
     fake = runtime_env.fake()
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     first, second = runtime_env.client(), runtime_env.client()
     assert first.join(spec)["ok"] and second.join(spec)["ok"]
     assert first.call({"cmd": "exit"})["ok"]
@@ -72,7 +73,7 @@ def test_first_leaves_and_the_server_lives(runtime_env: RuntimeEnv) -> None:
 def test_last_leaves_and_the_server_stops(runtime_env: RuntimeEnv) -> None:
     """3.3: the only client exits; the group is gone and the record says last-client."""
     fake = runtime_env.fake()
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     only = runtime_env.client()
     assert only.join(spec)["ok"]
     assert only.chat()["ok"]
@@ -88,7 +89,7 @@ def test_last_leaves_and_the_server_stops(runtime_env: RuntimeEnv) -> None:
 def test_sigkill_one_of_two_clients_keeps_the_server(runtime_env: RuntimeEnv) -> None:
     """3.4: SIGKILL one client; the server runs on and the other client is served."""
     fake = runtime_env.fake()
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     first, second = runtime_env.client(), runtime_env.client()
     assert first.join(spec)["ok"] and second.join(spec)["ok"]
     first.proc.send_signal(signal.SIGKILL)
@@ -101,7 +102,7 @@ def test_sigkill_one_of_two_clients_keeps_the_server(runtime_env: RuntimeEnv) ->
 def test_sigkill_the_only_client_then_a_new_client_adopts(runtime_env: RuntimeEnv) -> None:
     """3.5: an orphan after SIGKILL is adopted by the next client; one start only."""
     fake = runtime_env.fake()
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     only = runtime_env.client()
     assert only.join(spec)["ok"]
     only.proc.send_signal(signal.SIGKILL)
@@ -115,7 +116,7 @@ def test_sigkill_the_only_client_then_a_new_client_adopts(runtime_env: RuntimeEn
 def test_a_reused_pid_is_never_signalled(runtime_env: RuntimeEnv) -> None:
     """3.7: a recorded pid that runs another command is left alone; a new server starts."""
     fake = runtime_env.fake()
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     sleeper = subprocess.Popen(["sleep", "60"])  # noqa: S603, S607 - fixed argv
     try:
         write_server_record(
@@ -143,7 +144,7 @@ def test_the_lock_descriptor_is_not_inherited(runtime_env: RuntimeEnv) -> None:
     fake = runtime_env.fake()
     fds_file = fake.logs / "fds.json"
     fake.set_env(FAKE_LLAMA_FDS=str(fds_file))
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     starter = runtime_env.client()
     assert starter.join(spec)["ok"]
     starter.send({"cmd": "abandon"})
@@ -166,7 +167,7 @@ def test_the_server_survives_its_starter_and_writes_to_server_log(
     """4.1 (detach): output goes to ``server.log``; the server outlives the starter."""
     fake = runtime_env.fake()
     fake.set_env(FAKE_LLAMA_SPAM_BYTES="500")
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     starter, other = runtime_env.client(), runtime_env.client()
     assert starter.join(spec)["ok"] and other.join(spec)["ok"]
     starter.send({"cmd": "abandon"})

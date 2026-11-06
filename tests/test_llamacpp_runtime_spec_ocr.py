@@ -15,7 +15,7 @@ BINARY = "/b/llama-server"
 
 
 def _spec(argv: tuple[str, ...]) -> RuntimeSpec:
-    return RuntimeSpec(id="chat", role="chat", mode="managed", binary=BINARY, argv=argv)
+    return RuntimeSpec(id="router", role="router", mode="managed", binary=BINARY, argv=argv)
 
 
 def test_the_ocr_argument_list_is_exact() -> None:

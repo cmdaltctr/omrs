@@ -43,7 +43,7 @@ def test_the_autouse_fixture_keeps_the_root_out_of_the_home_folder(
 
 
 def test_runtime_folder_layout_and_id_rule(tmp_path: Path) -> None:
-    assert runtime_dir(tmp_path, "chat") == tmp_path / "runtimes" / "chat"
+    assert runtime_dir(tmp_path, "router") == tmp_path / "runtimes" / "router"
     assert (
         runtime_dir(tmp_path, "ocr-dots-mocr-llamacpp")
         == tmp_path / "runtimes" / "ocr-dots-mocr-llamacpp"
@@ -73,25 +73,25 @@ def _record(**over) -> ServerRecord:
 
 
 def test_write_then_read_round_trip(tmp_path: Path) -> None:
-    folder = runtime_dir(tmp_path, "chat")
+    folder = runtime_dir(tmp_path, "router")
     write_server_record(folder, _record())
     assert read_server_record(folder) == _record()
     assert (folder / SERVER_FILE).exists()
 
 
 def test_a_broken_file_reads_as_no_record(tmp_path: Path) -> None:
-    folder = runtime_dir(tmp_path, "chat")
+    folder = runtime_dir(tmp_path, "router")
     folder.mkdir(parents=True)
     (folder / SERVER_FILE).write_text("{not json", encoding="utf-8")
     assert read_server_record(folder) is None
 
 
 def test_a_missing_file_reads_as_no_record(tmp_path: Path) -> None:
-    assert read_server_record(runtime_dir(tmp_path, "chat")) is None
+    assert read_server_record(runtime_dir(tmp_path, "router")) is None
 
 
 def test_a_write_never_leaves_a_partial_file(tmp_path: Path) -> None:
-    folder = runtime_dir(tmp_path, "chat")
+    folder = runtime_dir(tmp_path, "router")
     write_server_record(folder, _record(state="starting", generation=1))
     write_server_record(folder, _record(state="running", generation=2))
     assert not (folder / f"{SERVER_FILE}.tmp").exists()
@@ -100,7 +100,7 @@ def test_a_write_never_leaves_a_partial_file(tmp_path: Path) -> None:
 
 
 def test_every_record_field_survives_the_round_trip(tmp_path: Path) -> None:
-    folder = runtime_dir(tmp_path, "chat")
+    folder = runtime_dir(tmp_path, "router")
     write_server_record(
         folder,
         _record(
@@ -121,7 +121,7 @@ def test_every_record_field_survives_the_round_trip(tmp_path: Path) -> None:
 
 
 def test_a_crash_during_the_write_keeps_the_old_record(tmp_path: Path, monkeypatch) -> None:
-    folder = runtime_dir(tmp_path, "chat")
+    folder = runtime_dir(tmp_path, "router")
     write_server_record(folder, _record(state="running", generation=4))
     real_write = type(folder / SERVER_FILE).write_text
 

@@ -11,6 +11,7 @@ from pathlib import Path
 import httpx
 import pytest
 from tests.fixtures.llamacpp.harness import RuntimeEnv, pid_alive, runtime_env_fixture, wait_until
+from tests.unit.test_llamacpp_router_worker import fixed_spec
 
 from omrs.integrations.llamacpp_runtime import process
 from omrs.integrations.llamacpp_runtime.manager import RuntimeRequestFailed
@@ -38,7 +39,7 @@ def _chat(base_url: str) -> httpx.Response:
 def test_a_crash_between_requests_restarts_once(runtime_env: RuntimeEnv) -> None:
     fake = runtime_env.fake()
     fake.set_env(FAKE_LLAMA_EXIT_AFTER="1")
-    lease = runtime_env.manager().lease(fake.chat(_free_port()))
+    lease = runtime_env.manager().lease(fixed_spec(fake, _free_port()))
     assert lease.request(_chat).status_code == 200  # the server dies after this answer
     first_pid = int(fake.starts()[0]["pid"])
     assert wait_until(lambda: not pid_alive(first_pid))
@@ -48,7 +49,7 @@ def test_a_crash_between_requests_restarts_once(runtime_env: RuntimeEnv) -> None
 
 def test_a_second_crash_in_the_same_request_ends_it_with_exited(runtime_env: RuntimeEnv) -> None:
     fake = runtime_env.fake()
-    lease = runtime_env.manager().lease(fake.chat(_free_port()))
+    lease = runtime_env.manager().lease(fixed_spec(fake, _free_port()))
     assert lease.request(_chat).status_code == 200
     first_pid = int(fake.starts()[0]["pid"])
     fake.set_env(FAKE_LLAMA_CRASH_ON_REQUEST="1")  # the restarted server dies mid-request
@@ -62,7 +63,7 @@ def test_a_second_crash_in_the_same_request_ends_it_with_exited(runtime_env: Run
 
 def test_a_live_server_is_not_restarted_after_a_failure(runtime_env: RuntimeEnv) -> None:
     fake = runtime_env.fake()
-    lease = runtime_env.manager().lease(fake.chat(_free_port()))
+    lease = runtime_env.manager().lease(fixed_spec(fake, _free_port()))
     lease.join()
 
     def refused(_base_url: str) -> None:
@@ -75,7 +76,7 @@ def test_a_live_server_is_not_restarted_after_a_failure(runtime_env: RuntimeEnv)
 
 def test_another_error_is_passed_through_with_no_restart(runtime_env: RuntimeEnv) -> None:
     fake = runtime_env.fake()
-    lease = runtime_env.manager().lease(fake.chat(_free_port()))
+    lease = runtime_env.manager().lease(fixed_spec(fake, _free_port()))
 
     def broken(_base_url: str) -> None:
         raise ValueError("bad answer")
@@ -94,8 +95,8 @@ def test_a_log_over_the_cap_is_emptied_in_place(
     assert process.LOG_CAP_BYTES == 5 * 1024 * 1024
     fake = runtime_env.fake()
     fake.set_env(FAKE_LLAMA_SPAM_BYTES=str(6 * 1024 * 1024), FAKE_LLAMA_LOG_REQUESTS="1")
-    lease = runtime_env.manager().lease(fake.chat(_free_port()))
-    log = runtime_dir(state_root(), "chat") / "server.log"
+    lease = runtime_env.manager().lease(fixed_spec(fake, _free_port()))
+    log = runtime_dir(state_root(), "router") / "server.log"
     lease.join()
     assert log.stat().st_size > process.LOG_CAP_BYTES
     lease.request(_chat)
@@ -108,8 +109,8 @@ def test_a_log_over_the_cap_is_emptied_in_place(
 def test_a_log_under_the_cap_is_kept(runtime_env: RuntimeEnv) -> None:
     fake = runtime_env.fake()
     fake.set_env(FAKE_LLAMA_LOG_REQUESTS="1")
-    lease = runtime_env.manager().lease(fake.chat(_free_port()))
-    log = runtime_dir(state_root(), "chat") / "server.log"
+    lease = runtime_env.manager().lease(fixed_spec(fake, _free_port()))
+    log = runtime_dir(state_root(), "router") / "server.log"
     lease.request(_chat)
     lease.request(_chat)
     assert wait_until(lambda: log.read_text().count("request /v1/chat/completions") == 2)

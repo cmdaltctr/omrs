@@ -19,6 +19,7 @@ from pathlib import Path
 
 import pytest
 from tests.fixtures.llamacpp.harness import RuntimeEnv, pid_alive, runtime_env_fixture
+from tests.unit.test_llamacpp_router_worker import fixed_spec
 
 from omrs.integrations.llamacpp_runtime.manager import RuntimeUnavailable
 
@@ -41,7 +42,7 @@ def _busy_server_is_adopted(runtime_env: RuntimeEnv, request_seconds: float) -> 
         FAKE_LLAMA_REQUEST_DELAY=str(request_seconds),
         FAKE_LLAMA_HEALTH_SLEEP_FILE=str(sleep_file),
     )
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     first, second = runtime_env.client(), runtime_env.client()
     assert first.join(spec)["ok"]
     server_pid = int(fake.starts()[0]["pid"])
@@ -79,7 +80,7 @@ def test_five_clients_at_once_start_one_server(runtime_env: RuntimeEnv) -> None:
     """3.8: five clients join a stopped runtime at once; one start, five answers."""
     fake = runtime_env.fake()
     fake.set_env(FAKE_LLAMA_HEALTH_DELAY="0.5")
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     clients = [runtime_env.client() for _ in range(5)]
     for client in clients:
         client.send({"cmd": "join", "spec": spec.to_dict()})
@@ -93,7 +94,7 @@ def test_five_clients_at_once_start_one_server(runtime_env: RuntimeEnv) -> None:
 def test_sigint_to_a_cli_group_never_reaches_the_server(runtime_env: RuntimeEnv) -> None:
     """3.9: Ctrl-C in the CLI's group; the server and the web app's requests go on."""
     fake = runtime_env.fake()
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     cli = runtime_env.client(new_group=True)
     web = runtime_env.client()
     assert cli.join(spec)["ok"]
@@ -112,16 +113,16 @@ def test_a_changed_binary_is_refused_while_the_old_server_has_clients(
     old, new = runtime_env.fake("bin-old"), runtime_env.fake("bin-new")
     port = _free_port()
     holder = runtime_env.client()
-    assert holder.join(old.chat(port))["ok"]
+    assert holder.join(fixed_spec(old, port))["ok"]
     old_pid = int(old.starts()[0]["pid"])
     asker = runtime_env.client()
-    refused = asker.join(new.chat(port))
+    refused = asker.join(fixed_spec(new, port))
     assert refused == {"ok": False, "reason": "version-busy", "reason_text": refused["reason_text"]}
     assert pid_alive(old_pid), "the old server was signalled"
     assert holder.chat()["ok"] is True
     holder.send({"cmd": "abandon"})  # the old server now has no client
     holder.wait()
-    assert asker.join(new.chat(port))["ok"] is True
+    assert asker.join(fixed_spec(new, port))["ok"] is True
     assert not pid_alive(old_pid)
     assert len(new.starts()) == 1
     assert asker.chat()["ok"] is True
@@ -129,7 +130,7 @@ def test_a_changed_binary_is_refused_while_the_old_server_has_clients(
 
 def _churn(runtime_env: RuntimeEnv, seconds: float) -> None:
     fake = runtime_env.fake()
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     stop_at = time.monotonic() + seconds
     errors: list[BaseException] = []
 

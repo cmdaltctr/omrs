@@ -147,7 +147,7 @@ def test_close_without_lock_support_only_closes_the_descriptor(
 
 
 def test_the_lock_file_is_private_to_the_owner(tmp_path: Path) -> None:
-    path = tmp_path / "runtimes" / "chat" / "clients.lock"
+    path = tmp_path / "runtimes" / "router" / "clients.lock"
     lock = LockFile(path)
     try:
         assert path.exists()

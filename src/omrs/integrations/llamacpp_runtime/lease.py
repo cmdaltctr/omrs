@@ -141,6 +141,10 @@ class RuntimeLease:
         self._in_progress = 0
         self._last_end = time.monotonic()
         self._idle_hooks: list[Callable[[], None]] = []
+        self._leave_hooks: list[Callable[[], None]] = []
+        #: Called under ``start.lock`` before each start; returns extra record
+        #: fields. The router writes ``models.ini`` here (one-llamacpp-router D4).
+        self.before_start: Callable[[], dict[str, Any]] | None = None
 
     # ── Read-only views ─────────────────────────────────────────────────
 
@@ -170,6 +174,10 @@ class RuntimeLease:
     def on_idle_leave(self, hook: Callable[[], None]) -> None:
         """Run *hook* before an idle leave (the OCR host closes its worker there)."""
         self._idle_hooks.append(hook)
+
+    def on_leave(self, hook: Callable[[], None]) -> None:
+        """Run *hook* at every leave of a joined lease (the router drops model locks)."""
+        self._leave_hooks.append(hook)
 
     # ── Join and leave ──────────────────────────────────────────────────
 
@@ -277,19 +285,25 @@ class RuntimeLease:
         """Start a new server (caller holds ``start.lock``) and record it."""
         generation = (previous.generation if previous else 0) + 1
 
+        extra: dict[str, Any] = {}
+
         def launched(pid: int, port: int) -> None:
-            write_server_record(self.folder, self._record(pid, port, generation, "starting"))
+            record = self._record(pid, port, generation, "starting", extra)
+            write_server_record(self.folder, record)
 
         try:
+            extra = self.before_start() if self.before_start is not None else {}
             pid, port = process.start_server(self.spec, self.folder, self.manager.environ, launched)
         except process.StartRefused as refused:
             self._fail(previous, refused.reason, refused.detail)
             raise  # pragma: no cover - _fail always raises
-        record = self._record(pid, port, generation, "running")
+        record = self._record(pid, port, generation, "running", extra)
         write_server_record(self.folder, record)
         return record
 
-    def _record(self, pid: int, port: int, generation: int, state: Any) -> ServerRecord:
+    def _record(
+        self, pid: int, port: int, generation: int, state: Any, extra: dict[str, Any]
+    ) -> ServerRecord:
         return ServerRecord(
             pid=pid,
             port=port,
@@ -298,6 +312,7 @@ class RuntimeLease:
             build=self.spec.build,
             state=state,
             generation=generation,
+            **extra,
         )
 
     def leave(self, stopped_by: str = "last-client") -> None:
@@ -309,6 +324,8 @@ class RuntimeLease:
             self._operator_stopped = False
             if self._url is None:
                 return
+            for hook in list(self._leave_hooks):
+                hook()
             self._url, self._generation = None, 0
             clients, self._clients = self._clients, None
             if clients is None:  # external

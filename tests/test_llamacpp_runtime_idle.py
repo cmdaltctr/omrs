@@ -10,6 +10,7 @@ from pathlib import Path
 import httpx
 import pytest
 from tests.fixtures.llamacpp.harness import RuntimeEnv, pid_alive, runtime_env_fixture, wait_until
+from tests.unit.test_llamacpp_router_worker import fixed_spec
 
 from omrs.integrations.llamacpp_runtime import manager as manager_module
 from omrs.integrations.llamacpp_runtime.state import read_server_record, runtime_dir, state_root
@@ -62,12 +63,12 @@ def test_the_shipped_idle_stop_is_ten_minutes_and_not_a_setting() -> None:
 @pytest.mark.usefixtures("short_idle")
 def test_the_only_client_leaves_after_the_idle_time(runtime_env: RuntimeEnv) -> None:
     fake = runtime_env.fake()
-    lease = runtime_env.manager().lease(fake.chat(_free_port()))
+    lease = runtime_env.manager().lease(fixed_spec(fake, _free_port()))
     assert lease.request(_chat).status_code == 200
     server_pid = int(fake.starts()[0]["pid"])
     assert pid_alive(server_pid)
     assert wait_until(lambda: not pid_alive(server_pid), timeout=8)
-    folder = runtime_dir(state_root(), "chat")
+    folder = runtime_dir(state_root(), "router")
 
     def stopped_by() -> str | None:
         record = read_server_record(folder)
@@ -80,7 +81,7 @@ def test_the_only_client_leaves_after_the_idle_time(runtime_env: RuntimeEnv) -> 
 @pytest.mark.usefixtures("short_idle")
 def test_a_second_active_client_keeps_the_server(runtime_env: RuntimeEnv) -> None:
     fake = runtime_env.fake()
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     other = runtime_env.client()  # its idle stop stays at 600 s
     assert other.join(spec)["ok"]
     lease = runtime_env.manager().lease(spec)
@@ -94,7 +95,7 @@ def test_a_second_active_client_keeps_the_server(runtime_env: RuntimeEnv) -> Non
 @pytest.mark.usefixtures("short_idle")
 def test_the_next_request_after_an_idle_stop_starts_again(runtime_env: RuntimeEnv) -> None:
     fake = runtime_env.fake()
-    lease = runtime_env.manager().lease(fake.chat(_free_port()))
+    lease = runtime_env.manager().lease(fixed_spec(fake, _free_port()))
     assert lease.request(_chat).status_code == 200
     first_pid = int(fake.starts()[0]["pid"])
     assert wait_until(lambda: not pid_alive(first_pid), timeout=8)
@@ -106,7 +107,7 @@ def test_the_next_request_after_an_idle_stop_starts_again(runtime_env: RuntimeEn
 def test_a_request_in_progress_holds_off_the_idle_stop(runtime_env: RuntimeEnv) -> None:
     fake = runtime_env.fake()
     fake.set_env(FAKE_LLAMA_REQUEST_DELAY="3")
-    lease = runtime_env.manager().lease(fake.chat(_free_port()))
+    lease = runtime_env.manager().lease(fixed_spec(fake, _free_port()))
     lease.join()
     assert lease.request(_chat).status_code == 200  # 3 s, longer than the idle time
     assert len(fake.starts()) == 1
@@ -115,7 +116,7 @@ def test_a_request_in_progress_holds_off_the_idle_stop(runtime_env: RuntimeEnv) 
 @pytest.mark.usefixtures("short_idle")
 def test_an_idle_hook_runs_before_the_leave(runtime_env: RuntimeEnv) -> None:
     fake = runtime_env.fake()
-    lease = runtime_env.manager().lease(fake.chat(_free_port()))
+    lease = runtime_env.manager().lease(fixed_spec(fake, _free_port()))
     seen: list[bool] = []
     lease.on_idle_leave(lambda: seen.append(lease.joined))
     assert lease.request(_chat).status_code == 200

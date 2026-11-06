@@ -1,10 +1,9 @@
-"""A managed decision runtime (change document-reading-routers, task 2.4).
+"""The build floor of a fixed-port runtime (was the managed decision runtime).
 
-A ``llamacpp`` decision model entry with ``server: "managed"`` runs as runtime
-``decision-<entry name>``: role ``decision``, the model file and the projector
-file declared with SHA-256, ``127.0.0.1``, one slot and a build floor. A build
-below the floor is refused with ``wrong-build``, and the reason names the build
-found and the floor.
+The ``decision-<entry name>`` runtime retired (one-llamacpp-router, D10):
+decision models run on the router, which keeps the build floor. A build below
+the floor is refused with ``wrong-build``, and the reason names the build
+found and the floor. The retired builder refuses.
 """
 
 from __future__ import annotations
@@ -23,41 +22,26 @@ from omrs.integrations.llamacpp_runtime.manager import RuntimeUnavailable
 
 BINARY = "/b/llama-server"
 MODEL = DeclaredFile(flag="-m", path="/m/clef-q8_0.gguf", sha256="a" * 64)
-PROJECTOR = DeclaredFile(flag="--mmproj", path="/m/mmproj.gguf", sha256="b" * 64)
 
 
 def _spec(*files: DeclaredFile, port: int = 8091, binary: str = BINARY) -> RuntimeSpec:
-    return decision_spec(
-        name="clef", binary=binary, port=port, files=files or (MODEL,), min_build=11941
-    )
-
-
-def test_the_argument_list_holds_both_files_loopback_and_one_slot() -> None:
-    spec = _spec(MODEL, PROJECTOR)
-
-    assert list(spec.argv) == [
-        BINARY, "-m", MODEL.path, "--mmproj", PROJECTOR.path,
-        "--host", "127.0.0.1", "--port", "8091", "--parallel", "1",
-    ]  # fmt: skip
-    assert (spec.id, spec.role, spec.mode, spec.port_policy) == (
-        "decision-clef", "decision", "managed", "fixed",
+    flags: list[str] = []
+    for declared in files or (MODEL,):
+        flags += [declared.flag, declared.path]
+    argv = (binary, *flags, "--host", "127.0.0.1", "--port", str(port), "--parallel", "1")
+    return RuntimeSpec(
+        id="router", role="router", mode="managed", binary=binary, argv=argv,
+        files=files or (MODEL,), min_build=11941,
     )  # fmt: skip
-    assert spec.one_slot is True
-    assert spec.files == (MODEL, PROJECTOR)
-    assert spec.min_build == 11941
-    assert spec.build is None, "a floor, not an exact build"
-
-
-def test_a_text_entry_has_no_projector_flag() -> None:
-    assert "--mmproj" not in _spec(MODEL).argv
 
 
 def test_the_json_form_keeps_the_floor() -> None:
-    spec = _spec(MODEL, PROJECTOR)
+    spec = _spec(MODEL)
     data = spec.to_dict()
 
     assert json.loads(json.dumps(data)) == data
     assert RuntimeSpec.from_dict(data) == spec
+    assert RuntimeSpec.from_dict(data).min_build == 11941
 
 
 def test_a_blank_entry_name_is_not_a_runtime_id() -> None:
@@ -98,7 +82,7 @@ def test_a_build_below_the_floor_is_refused_and_named(runtime_env: RuntimeEnv) -
     assert fake.starts() == []
     status = manager.status([spec])[0]
     assert (status["role"], status["state"], status["reason"]) == (
-        "decision", "failed", "wrong-build",
+        "router", "failed", "wrong-build",
     )  # fmt: skip
 
 
