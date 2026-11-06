@@ -74,12 +74,22 @@ When `answer.provider` is `llamacpp` and `answer.model` is empty, the Chat secti
 
 ### Requirement: The Chat section warns when Chat shares the classification model
 
-When `answer.provider` is `llamacpp` and `answer.model` equals `llamacpp_chat_model`, the Chat section SHALL show a warning note. The note SHALL say: "Chat and classification share this model. A long Chat answer can slow classification during an ingest. A context size change reloads the model for both." The note SHALL list three ways out: choose another local model on the router; use your own llama.cpp server for Chat through the OpenAI-compatible provider (OMRS does not run it); or use a hosted provider such as OpenRouter. Each way out SHALL link to the control that sets it. The note SHALL NOT block Save. The Router panel row of the shared entry SHALL show the same one-line warning.
+When `answer.provider` is `llamacpp` and `answer.model` equals `llamacpp_chat_model`, the Chat section SHALL show a warning note that lists ways out, each linked to the control that sets it. The note SHALL NOT block Save. The Router panel row of the shared entry SHALL show a one-line warning.
 
 #### Scenario: Chat picks the classification model
 
 - **WHEN** the user saves `answer.model` equal to `llamacpp_chat_model` with provider `llamacpp`
-- **THEN** the save MUST succeed and the Chat section MUST show the warning with the three ways out
+- **THEN** the save MUST succeed and the Chat section MUST say "Chat and classification share this model. A long Chat answer can slow classification during an ingest. A context size change reloads the model for both."
+
+#### Scenario: The note lists three ways out
+
+- **WHEN** the shared-model warning shows
+- **THEN** it MUST offer: choose another local model on the router; use your own llama.cpp server for Chat through the OpenAI-compatible provider (OMRS does not run it); or use a hosted provider such as OpenRouter
+
+#### Scenario: Router panel row
+
+- **WHEN** the shared-model warning shows
+- **THEN** the Router panel row of that entry MUST show "Shared by Chat and classification"
 
 #### Scenario: Chat uses another model
 
