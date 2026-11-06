@@ -73,7 +73,7 @@ Before a local decision model scores any page, the run SHALL record and check th
 
 ### Requirement: Junk rescue text SHALL be defined by the frozen recall labels
 
-The evaluation SHALL score each rescue text against a reference transcription with the Experiment 33 token rule. It SHALL use the thresholds of the frozen page rule. Text with body token recall below 0.50 is `junk`. Text with recall of 0.80 or more is `healthy`. Text between the two is `grey` and is reported, not scored. Pages whose reference has fewer than 10 body tokens, and pages the labels mark `unrecoverable` or `ambiguous`, SHALL be excluded. For Experiment 33 documents the reference is the frozen Experiment 33 transcription. For new documents the reference SHALL be made on the operator's machine and frozen by hash before any candidate scores a page.
+The evaluation SHALL score each rescue text against a reference transcription with the Experiment 33 token rule. It SHALL use the thresholds of the frozen page rule. Text with body token recall below 0.50 is `junk`. Text with recall of 0.80 or more is `healthy`. Text between the two is `grey` and is reported, not scored. Pages whose reference has fewer than 10 body tokens, and pages the labels mark `unrecoverable` or `ambiguous`, SHALL be excluded.
 
 #### Scenario: Handwritten page with a junk text layer
 
@@ -86,10 +86,16 @@ The evaluation SHALL score each rescue text against a reference transcription wi
 - **THEN** `freeze.py --check` for Experiment 33 SHALL pass before any label or transcription is read
 - **AND** no label SHALL be edited
 
+#### Scenario: Reference for an Experiment 33 document
+
+- **WHEN** a page comes from an Experiment 33 document
+- **THEN** the reference SHALL be the frozen Experiment 33 transcription
+
 #### Scenario: New documents are labelled locally
 
 - **WHEN** a confirmatory run labels new documents
-- **THEN** no page text or page image leaves the machine without a dated, operator-approved amendment
+- **THEN** the reference SHALL be made on the operator's machine and frozen by hash before any candidate scores a page
+- **AND** no page text or page image leaves the machine without a dated, operator-approved amendment
 - **AND** the experiment's own `freeze.py --check` passes before any candidate scores a page
 
 ### Requirement: Adoption margin SHALL be fixed before the run
