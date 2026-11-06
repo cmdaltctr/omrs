@@ -14,10 +14,18 @@ from .lease import OPERATOR_STOP, RuntimeLease, RuntimeRequestFailed, RuntimeUna
 from .locks import LockFile, LockNotSupportedError
 from .manager import RuntimeManager, install_sigterm_exit
 from .model_reasons import MODEL_REASONS, MODEL_STATES, ModelUnavailable
+from .provision import (
+    ProvisionedBuild,
+    ProvisionError,
+    detect_flavour,
+    install_pinned_build,
+    llamacpp_data_folder,
+    resolve_server_binary,
+)
 from .readiness import MODEL_LOAD_TIMEOUT_SECONDS
 from .router_lease import RouterLease, open_router
 from .router_spec import ROUTER_ID, external_router_spec, model_id, router_spec
-from .spec import DeclaredFile, RuntimeSpec, chat_spec, decision_spec, embeddings_spec, ocr_spec
+from .spec import DeclaredFile, RuntimeSpec, ocr_spec
 from .state import ServerRecord, read_server_record, runtime_dir, state_root, write_server_record
 
 __all__ = [
@@ -30,6 +38,8 @@ __all__ = [
     "LockFile",
     "LockNotSupportedError",
     "ModelUnavailable",
+    "ProvisionError",
+    "ProvisionedBuild",
     "RouterLease",
     "RuntimeLease",
     "RuntimeManager",
@@ -37,15 +47,16 @@ __all__ = [
     "RuntimeSpec",
     "RuntimeUnavailable",
     "ServerRecord",
-    "chat_spec",
-    "decision_spec",
-    "embeddings_spec",
+    "detect_flavour",
     "external_router_spec",
+    "install_pinned_build",
     "install_sigterm_exit",
+    "llamacpp_data_folder",
     "model_id",
     "ocr_spec",
     "open_router",
     "read_server_record",
+    "resolve_server_binary",
     "router_spec",
     "runtime_dir",
     "state_root",

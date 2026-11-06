@@ -24,9 +24,6 @@ from omrs.integrations.llamacpp_runtime.router_spec import (
 from omrs.integrations.llamacpp_runtime.spec import (
     RUNTIME_ID_RE,
     RuntimeSpec,
-    chat_spec,
-    decision_spec,
-    embeddings_spec,
 )
 from omrs.integrations.llamacpp_runtime.state import runtime_dir
 
@@ -114,16 +111,6 @@ def test_retired_runtime_ids_refused(runtime_id: str) -> None:
     assert RUNTIME_ID_RE.fullmatch(runtime_id) is None
     with pytest.raises(ValueError, match="not a runtime id"):
         RuntimeSpec(id=runtime_id, role="router", mode="external", binary="")
-
-
-def test_retired_builders_refuse() -> None:
-    """The per-role builders stay importable for task 3.7 callers but build nothing."""
-    with pytest.raises(ValueError, match="retired"):
-        chat_spec(mode="managed", binary=BINARY, model="/m/q.gguf", port=8081, window=2048)
-    with pytest.raises(ValueError, match="retired"):
-        embeddings_spec(mode="managed", binary=BINARY, model="/m/e.gguf", port=8080)
-    with pytest.raises(ValueError, match="retired"):
-        decision_spec(name="clef", binary=BINARY, port=8091, files=(), min_build=11941)
 
 
 def test_router_digest_is_binary_and_arguments_only(tmp_path: Path) -> None:

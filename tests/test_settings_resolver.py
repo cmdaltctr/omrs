@@ -72,7 +72,7 @@ _DEFAULTS: list[tuple[str, str, object]] = [
     # Metadata.
     ("METADATA__EXTRACTION_MODE", "metadata.extraction_mode", "llamaindex"),
     ("METADATA__KEYWORD_RULES", "metadata.keyword_rules", None),
-    ("METADATA__OLLAMA_CLASSIFY_MODEL", "metadata.ollama_classify_model", "qwen3:0.6b"),
+    ("METADATA__OLLAMA_CLASSIFY_MODEL", "metadata.ollama_classify_model", ""),
     ("METADATA__CLASSIFY_MAX_ATTEMPTS", "metadata.classify_max_attempts", 3),
     ("METADATA__CLASSIFY_TIMEOUT", "metadata.classify_timeout", 30.0),
     # Codebase map.

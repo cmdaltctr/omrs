@@ -296,9 +296,9 @@ def test_answering_server_is_ready(stub: str, effective_settings: Any) -> None:
 
 def test_closed_port_is_not_running(effective_settings: Any) -> None:
     address = _closed_address()
-    settings = effective_settings(llamacpp_chat_url=f"{address}/v1")
+    settings = effective_settings(llamacpp_router_url=f"{address}/v1")
 
-    item = _servers(settings)[rs.LLAMACPP_CHAT_NAME]
+    item = _servers(settings)[rs.LLAMACPP_ROUTER_NAME]
 
     assert item.status == "not-running"
     assert f"{address}/v1" in (item.reason or "")
@@ -309,8 +309,7 @@ def test_slow_server_is_not_running_within_two_seconds(
 ) -> None:
     settings = effective_settings(
         ollama_base_url=slow_stub,
-        llamacpp_embed_url=f"{slow_stub}/v1",
-        llamacpp_chat_url=f"{slow_stub}/v1",
+        llamacpp_router_url=f"{slow_stub}/v1",
     )
 
     started = time.monotonic()
@@ -374,51 +373,52 @@ def test_an_unreadable_engines_folder_keeps_the_engines_in_force(
     assert "dots-mocr" in names
 
 
-# ── The classification address is its own item (ADR-108 D12) ────────────
+# ── One llama.cpp item: the router address (one-llamacpp-router, task 3.7) ──
 
 
-def _llama_local(effective_settings: Any, **extra: Any) -> Any:
-    return effective_settings(
-        embed_provider="cloud",
-        metadata_llm_provider="local",
-        local_backend="llamacpp",
-        llamacpp_chat_url=f"{_closed_address()}/v1",
-        **extra,
-    )
-
-
-def test_a_separate_classification_address_is_a_third_item(effective_settings: Any) -> None:
-    classify = f"{_closed_address()}/v1"
-    items = _servers(_llama_local(effective_settings, llamacpp_classify_url=classify))
-
-    item = items[rs.LLAMACPP_CLASSIFY_NAME]
-    assert "metadata_llm_provider" in item.used_by
-    assert "metadata_llm_provider" not in items[rs.LLAMACPP_CHAT_NAME].used_by
-    assert classify in (item.reason or "")
-
-
-def test_an_equal_classification_address_adds_no_item(effective_settings: Any) -> None:
-    items = _servers(_llama_local(effective_settings))
-
-    assert rs.LLAMACPP_CLASSIFY_NAME not in items
-    assert "metadata_llm_provider" in items[rs.LLAMACPP_CHAT_NAME].used_by
-
-
-def test_readiness_names_the_classification_address_when_only_it_is_down(
-    stub: str, effective_settings: Any
-) -> None:
-    classify = f"{_closed_address()}/v1"
+def _all_on_llamacpp(effective_settings: Any, router_url: str) -> Any:
+    """Embeddings, classification and Chat all on llama.cpp, one router address."""
     settings = effective_settings(
-        embed_provider="cloud",
+        embed_provider="local",
         metadata_llm_provider="local",
         local_backend="llamacpp",
-        llamacpp_embed_url=f"{stub}/v1",
-        llamacpp_chat_url=f"{stub}/v1",
-        llamacpp_classify_url=classify,
+        llamacpp_router_url=router_url,
     )
+    answer = settings.answer.model_copy(update={"provider": "llamacpp"})
+    return settings.model_copy(update={"answer": answer})
+
+
+def test_one_llamacpp_item_serves_every_role(effective_settings: Any) -> None:
+    """Spec runtime-components "One llama.cpp item for every role"."""
+    settings = _all_on_llamacpp(effective_settings, f"{_closed_address()}/v1")
+
+    items = asyncio.run(rs.local_server_items(settings))
+
+    llama = [item for item in items if item.name != rs.OLLAMA_NAME]
+    assert [item.name for item in llama] == [rs.LLAMACPP_ROUTER_NAME]
+    assert {"embed_provider", "metadata_llm_provider", "answer.provider"} <= set(llama[0].used_by)
+
+
+def test_the_router_item_probes_the_router_address(stub: str, effective_settings: Any) -> None:
+    settings = _all_on_llamacpp(effective_settings, f"{stub}/v1")
+
+    assert _servers(settings)[rs.LLAMACPP_ROUTER_NAME].status == "ready"
+
+
+def test_readiness_names_the_router_address_when_it_is_down(effective_settings: Any) -> None:
+    """Spec workspace-integrations "llama.cpp not running": the line names the router address."""
+    router = f"{_closed_address()}/v1"
+    settings = _all_on_llamacpp(effective_settings, router)
     items = asyncio.run(rs.local_server_items(settings))
 
     assert rs.llamacpp_readiness(items, settings) == {
         "ready": False,
-        "line": f"Not running at {classify}",
+        "line": f"Not running at {router}",
     }
+
+
+def test_readiness_is_ready_when_the_router_answers(stub: str, effective_settings: Any) -> None:
+    settings = _all_on_llamacpp(effective_settings, f"{stub}/v1")
+    items = asyncio.run(rs.local_server_items(settings))
+
+    assert rs.llamacpp_readiness(items, settings) == {"ready": True, "line": "Ready"}

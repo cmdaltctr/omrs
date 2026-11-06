@@ -32,7 +32,7 @@ from .lease import RuntimeLease, _is_connection_failure
 from .locks import LockFile
 from .manager import RuntimeManager
 from .model_locks import ModelHolds, request_lock
-from .model_reasons import ModelUnavailable
+from .model_reasons import NOT_DOWNLOADED, ModelUnavailable
 from .preset_writer import (
     EntryLike,
     EntryOutcome,
@@ -48,9 +48,6 @@ from .router_spec import HASHES_FILE, ROUTER_ID, router_dir
 from .spec import RuntimeSpec
 
 T = TypeVar("T")
-
-#: The line of an entry with no file yet (the download job is task 6.2a).
-NOT_DOWNLOADED_TEXT = "The model file is not downloaded yet."
 
 
 def open_router(
@@ -170,8 +167,8 @@ class RouterLease:
             outcome = self._new_plan().outcome(model)
             if outcome is None:
                 raise ModelUnavailable(model, "model-not-listed")
-            if outcome.state == "not-downloaded":
-                raise ModelUnavailable(model, "model-invalid", NOT_DOWNLOADED_TEXT)
+            if outcome.state == NOT_DOWNLOADED:
+                raise ModelUnavailable(model, NOT_DOWNLOADED)
             if outcome.state == "failed":
                 raise ModelUnavailable(model, str(outcome.reason), outcome.reason_text)
             result = apply_sections(

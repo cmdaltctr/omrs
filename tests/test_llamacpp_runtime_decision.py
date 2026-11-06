@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 from tests.fixtures.llamacpp.harness import RuntimeEnv, runtime_env_fixture
 
-from omrs.integrations.llamacpp_runtime import DeclaredFile, RuntimeSpec, decision_spec
+from omrs.integrations.llamacpp_runtime import DeclaredFile, RuntimeSpec
 from omrs.integrations.llamacpp_runtime.manager import RuntimeUnavailable
 
 BINARY = "/b/llama-server"
@@ -42,11 +42,6 @@ def test_the_json_form_keeps_the_floor() -> None:
     assert json.loads(json.dumps(data)) == data
     assert RuntimeSpec.from_dict(data) == spec
     assert RuntimeSpec.from_dict(data).min_build == 11941
-
-
-def test_a_blank_entry_name_is_not_a_runtime_id() -> None:
-    with pytest.raises(ValueError):
-        decision_spec(name="", binary=BINARY, port=8091, files=(MODEL,), min_build=11941)
 
 
 # ── Start checks with the fake llama-server ─────────────────────────────

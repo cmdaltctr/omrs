@@ -1,14 +1,15 @@
-"""An optional gate in front of a local llama.cpp server (managed-llamacpp-runtimes D1).
+"""An optional gate in front of the local llama.cpp router (one-llamacpp-router D6).
 
-When OMRS manages a llama.cpp runtime, every request to it goes through a
-gate. The gate joins the runtime first (it starts or adopts the server), and
-it restarts a crashed server once. ``compose`` installs one resolver per
-process with :func:`install`; a llama.cpp client in ``core/`` asks
-:func:`gate_for` when it builds its HTTP client. With no resolver, or with a
-role in ``external`` mode, the answer is ``None`` and the client talks to its
-URL as before.
+When OMRS manages the router, every llama.cpp request goes through a gate. The
+gate joins the router first (it starts or adopts it), makes the request's model
+ready, holds the model's request lock when the model is one-slot, and restarts
+a crashed router once. The request's ``model`` field names the model.
+``compose`` installs one resolver per process with :func:`install`; a llama.cpp
+client in ``core/`` asks :func:`gate_for` when it builds its HTTP client. With
+no resolver, or with an ``external`` router, the answer is ``None`` and the
+client talks to its URL as before.
 
-``core/`` never imports the runtime manager. ``compose`` adapts a runtime
+``core/`` never imports the runtime manager. ``compose`` adapts the router
 lease to :class:`RuntimeGate` and turns its refusals into :class:`GateRefused`.
 
 The HTTP transports below put the gate under an ``httpx`` client. A refusal
@@ -20,6 +21,7 @@ streamed answer leaves the gate when its headers arrive.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Awaitable, Callable
 from typing import Literal, Protocol, TypeVar
 
@@ -37,13 +39,13 @@ REFUSED_STATUS = 424
 
 
 class RuntimeGate(Protocol):
-    """Holds a runtime for one request (a runtime lease, adapted by ``compose``)."""
+    """Holds the router and one model for one request (the router lease, adapted by ``compose``)."""
 
-    def request(self, send: Callable[[str], T]) -> T:
-        """Run ``send(base_url)`` with the runtime held; raise :class:`GateRefused`."""
+    def request(self, send: Callable[[str], T], model: str | None = None) -> T:
+        """Run ``send(base_url)`` with the router and *model* held; raise :class:`GateRefused`."""
         ...
 
-    async def arequest(self, send: Callable[[str], Awaitable[T]]) -> T:
+    async def arequest(self, send: Callable[[str], Awaitable[T]], model: str | None = None) -> T:
         """The async form of :meth:`request`."""
         ...
 
@@ -78,6 +80,16 @@ def gate_for(role: Role) -> RuntimeGate | None:
     return _resolver(role) if _resolver is not None else None
 
 
+def request_model(request: httpx.Request) -> str | None:
+    """Return the ``model`` field of a JSON request body, or ``None`` when it has none."""
+    try:
+        body = json.loads(request.content or b"{}")
+    except (ValueError, httpx.RequestNotRead):
+        return None
+    model = body.get("model") if isinstance(body, dict) else None
+    return model if isinstance(model, str) and model else None
+
+
 def refusal_response(request: httpx.Request, refused: GateRefused) -> httpx.Response:
     """Return the answer that stands for a refusal; clients must not retry it."""
     error = {"message": refused.text, "type": "runtime_unavailable", "code": refused.reason}
@@ -101,7 +113,9 @@ class GatedTransport(httpx.BaseTransport):
     def handle_request(self, request: httpx.Request) -> httpx.Response:
         """Send *request* with the runtime held."""
         try:
-            return self._gate.request(lambda _base: self._inner.handle_request(request))
+            return self._gate.request(
+                lambda _base: self._inner.handle_request(request), request_model(request)
+            )
         except GateRefused as refused:
             return refusal_response(request, refused)
 
@@ -124,7 +138,7 @@ class AsyncGatedTransport(httpx.AsyncBaseTransport):
             return await self._inner.handle_async_request(request)
 
         try:
-            return await self._gate.arequest(send)
+            return await self._gate.arequest(send, request_model(request))
         except GateRefused as refused:
             return refusal_response(request, refused)
 

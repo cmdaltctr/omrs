@@ -32,15 +32,15 @@ from omrs.integrations.pdf import page_routing, script_routing
 # ``ocr_routing.local_tier`` gone, ``parser.local_ocr_backends`` added (default
 # backend at cut 0.92). Every pin below moved for those reasons only.
 # Non-Latin routing "detect": guards the mode and detector version in the parser block.
-DETECT_DIGEST = "6f99256dde779932ef8d0ff6b956f304b7ebcd96d4c40a549be583d731ed9eaa"
+DETECT_DIGEST = "4d5741aa650f3cab0e70068fe706325322d614b2f278b42e77089a255ec010b9"
 # Non-Latin routing "always": guards that the mode name alone moves the digest.
-ALWAYS_DIGEST = "70ac715a9c4ad2a2991b3fc042d74ad28df39459dc96227ba98701066de7fe39"
+ALWAYS_DIGEST = "e66860f8b2a87ea1320942dc9e8812d569430894b09119cf0888198a9b097332"
 # A resolved local model: guards the model in ``parser.local_ocr_backends``.
-LOCAL_MODEL_DIGEST = "6f0616a7bf2d0bf8e2b650a5a5f0acb47cab207c37445651d0ad5a27eeb3c55c"
+LOCAL_MODEL_DIGEST = "c95e3a36819cd54a978cab474ab51cc505d1c4669b8fce70a9c3f08797049e6f"
 # Maths routing off (the default is on): guards ``maths_routing.enabled``.
-MATHS_OFF_DIGEST = "f502cc3550e2e085c2ef6d79e3c8ee4fbea5f0fc4e81e22258b8987ea643c80f"
+MATHS_OFF_DIGEST = "15118e467a79571496cbcf720e12ad7bb4715bbabe76f09d0f253bcabbf34198"
 # Three OCR engines: guards the ``ocr_more_fingerprints`` member.
-THIRD_ENGINE_DIGEST = "5347669f6b77e4ef5f168d71930a9e874b1c5cfa379637f0e7443ff7091b1939"
+THIRD_ENGINE_DIGEST = "e1dfec5777ec266cf6b5d7738d14b31cdf0ff761a120b77f5db6961cf1cde082"
 
 _RESOLVED_MODEL = "PP-OCRv6_small@pinned-revision"
 

@@ -25,7 +25,6 @@ from typing import Any
 from omrs.integrations.llamacpp_runtime.spec import (
     DeclaredFile,
     RuntimeSpec,
-    chat_spec,
     ocr_spec,
 )
 
@@ -85,11 +84,26 @@ class FakeRuntime:
         """Return one entry (pid, argv) per server that started."""
         return read_start_log(self.starts_file)
 
-    def chat(self, port: int) -> RuntimeSpec:
-        """Return a managed Chat spec on the fixed *port*."""
-        return chat_spec(
-            mode="managed", binary=str(self.binary), model=str(self.model), port=port, window=2048
+    def single(self, port: int) -> RuntimeSpec:
+        """Return a fixed-port managed single-server spec under the ``router`` id.
+
+        The per-role runtime ids retired (one-llamacpp-router, D1). Lease tests
+        that check id-free rules (join, adopt, crash, idle, stop) run the fake as
+        one plain server under the one fixed-port id left.
+        """
+        binary = str(self.binary)
+        argv = (
+            binary,
+            "-m",
+            str(self.model),
+            "--host",
+            "127.0.0.1",
+            "--port",
+            str(port),
+            "-c",
+            "2048",
         )
+        return RuntimeSpec(id="router", role="router", mode="managed", binary=binary, argv=argv)
 
     def ocr(self, *, flags: tuple[str, ...] = ("-np", "1"), build: int = 11941) -> RuntimeSpec:
         """Return a managed OCR spec on a free port with one declared file."""

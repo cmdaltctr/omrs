@@ -53,18 +53,8 @@ def entry(model: str, file: str, **preset: Any) -> dict[str, Any]:
 
 
 def fixed_spec(fake: Any, port: int) -> Any:
-    """Return a fixed-port managed spec under the ``router`` id (the generic lease tests).
-
-    The ``chat`` runtime id retired (one-llamacpp-router, D1). The lease
-    tests that used it check id-free lease rules (join, adopt, crash, idle,
-    stop), so they keep the old single-server argument list under the one
-    fixed-port id left. The fake then runs as a single server.
-    """
-    from omrs.integrations.llamacpp_runtime.spec import RuntimeSpec
-
-    binary = str(fake.binary)
-    argv = (binary, "-m", str(fake.model), "--host", "127.0.0.1", "--port", str(port), "-c", "2048")
-    return RuntimeSpec(id="router", role="router", mode="managed", binary=binary, argv=argv)
+    """Return the fake's fixed-port single-server spec (see ``FakeLlama.single``)."""
+    return fake.single(port)
 
 
 def as_entries(items: list[dict[str, Any]]) -> list[SimpleNamespace]:

@@ -282,7 +282,7 @@ def test_normaliser_version_and_toggle_change_identity_for_every_source(
 #: Re-pinned on 6 November 2026 for schema 8 (change local-ocr-per-backend-cuts):
 #: the schema number moved 7 to 8 and ``ocr_routing`` lost ``local_tier`` (it had
 #: held the default cut 0.9, which also moved to 0.92). Every source re-indexes once.
-_MD_DIGEST_BEFORE_REVISION = "1e85c9a4672d753f039053d99d075754c05447e94cc71c89d1cd26ac19b69673"
+_MD_DIGEST_BEFORE_REVISION = "c8f54645dcfe9fc3b056492f777db25abdf07f78583cf5672750820e80012cac"
 
 
 def _source_identity(

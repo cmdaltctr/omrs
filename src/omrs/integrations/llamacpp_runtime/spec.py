@@ -175,39 +175,6 @@ class RuntimeSpec:
         )
 
 
-def _retired(name: str) -> ValueError:
-    return ValueError(f"the {name} runtime id is retired: build the router with router_spec")
-
-
-def chat_spec(**_: Any) -> RuntimeSpec:
-    """Refuse: the ``chat`` runtime retired (one-llamacpp-router, D1).
-
-    The name stays so callers rewired in task 3.7 still import. Remove it then.
-
-    Raises:
-        ValueError: Always.
-    """
-    raise _retired("chat")
-
-
-def embeddings_spec(**_: Any) -> RuntimeSpec:
-    """Refuse: the ``embeddings`` runtime retired (one-llamacpp-router, D1).
-
-    Raises:
-        ValueError: Always.
-    """
-    raise _retired("embeddings")
-
-
-def decision_spec(**_: Any) -> RuntimeSpec:
-    """Refuse: the ``decision-<name>`` runtimes retired (one-llamacpp-router, D10).
-
-    Raises:
-        ValueError: Always.
-    """
-    raise _retired("decision")
-
-
 def ocr_spec(
     *,
     engine_folder: str,

@@ -420,10 +420,10 @@ def test_the_protocol_warning_names_the_position_of_each_route(
 #: Re-pinned on 6 November 2026 (change local-ocr-per-backend-cuts): schema 7 to 8,
 #: ``ocr_routing.local_tier`` gone, ``parser.local_ocr_backends`` added (default
 #: backend at cut 0.92, model unresolved). The three keep their relations.
-PRE_CHANGE_TWO_ENGINE_DIGEST = "db21712782e1f1142ba45583564a48490fb251531cfa51fc122ba40e0152c674"
-PRE_CHANGE_ONE_ENGINE_DIGEST = "02e559fa6f01f602d65443566e33745b413229c5b1b67c54cf88d640b885b343"
+PRE_CHANGE_TWO_ENGINE_DIGEST = "7d7c15f7052a40f2818306d3e360d47d0340093dc28403978359021dea29c8ca"
+PRE_CHANGE_ONE_ENGINE_DIGEST = "de860b666b87ef70f78ce37ac722e434192c928f7e6808e632f42106109dec39"
 PRE_CHANGE_SAME_ENGINE_TWICE_DIGEST = (
-    "fbf9a1c53d0197fb33bc945aad635666edd0c16a67009b83dec98e0bc4ee5c69"
+    "4ef09e98b4d67a4ccc733d120cefea7e301fbb845fa9889676d49fcacb19f9a5"
 )
 
 _IDENTITY = {

@@ -82,6 +82,14 @@ def _router(**fields: object) -> dict:
     return {"model": "m", "question": "Is the text right?", "threshold": 0.172, **fields}
 
 
+def _listed(settings: SimpleNamespace, file: str, **fields: object) -> SimpleNamespace:
+    """Add the ``llamacpp_models`` entry a managed ``clef-flash`` entry names (router D3)."""
+    entry = {"model": "clef-flash", "file": file, "projector": None, "sha256": None,
+             "projector_sha256": None, "preset": {"parallel": 1}, **fields}  # fmt: skip
+    settings.llamacpp_models = {"clef": entry}
+    return settings
+
+
 def _build(settings, server: FakeServer, **kwargs):
     return compose_decision.build_page_judge(settings, transport=server.transport, **kwargs)
 
@@ -157,15 +165,17 @@ def test_pydantic_entries_work() -> None:
 
 
 def test_identity_of_an_external_entry() -> None:
-    judge = _build(_settings(_model(model_sha256="a" * 64), _router()), FakeServer())
+    judge = _build(
+        _listed(_settings(_model(), _router()), "/m.gguf", sha256="a" * 64), FakeServer()
+    )
     assert judge.identity == {"kind": "llamacpp", "model": "clef-flash"}
 
 
 def test_identity_of_a_managed_entry(tmp_path) -> None:
     path = tmp_path / "m.gguf"
     path.write_bytes(header_with_type("Q8_0"))
-    entry = _model(server="managed", model_file=str(path), model_sha256="a" * 64)
-    judge = _build(_settings(entry, _router()), FakeServer())
+    settings = _listed(_settings(_model(server="managed"), _router()), str(path), sha256="a" * 64)
+    judge = _build(settings, FakeServer())
     assert judge.identity == {
         "kind": "llamacpp",
         "model": "clef-flash",
@@ -235,22 +245,19 @@ def test_managed_q4_file_is_refused_before_any_request(tmp_path) -> None:
     path = tmp_path / "m.gguf"
     path.write_bytes(header_with_type("Q4_K_M"))
     server = FakeServer()
-    judge = _build(_settings(_model(server="managed", model_file=str(path)), _router()), server)
+    judge = _build(_listed(_settings(_model(server="managed"), _router()), str(path)), server)
     assert judge.status == "quantisation-refused"
     assert "Q4_K_M" in judge.quantisation
     assert server.requests == []
 
 
 def test_managed_q8_file_passes(tmp_path, monkeypatch) -> None:
-    # A managed entry asks through its runtime lease (task 2.4); this lease sends at once.
-    lease = SimpleNamespace(request=lambda send: send(LOCAL))
-    manager = SimpleNamespace(lease=lambda spec: lease)
-    monkeypatch.setattr("omrs.compose_runtime_manager.runtime_manager", lambda: manager)
+    # A managed entry asks through the router (one-llamacpp-router D10); this one sends at once.
+    router = SimpleNamespace(request_model=lambda model, send: send(LOCAL))
+    monkeypatch.setattr("omrs.compose_runtimes.router_lease_for", lambda settings: router)
     path = tmp_path / "m.gguf"
     path.write_bytes(header_with_type("Q8_0"))
-    entry = _model(server="managed", model_file=str(path), model_sha256="a" * 64)
-    settings = _settings(entry, _router())
-    settings.llamacpp_server_binary = "/b/llama-server"
+    settings = _listed(_settings(_model(server="managed"), _router()), str(path), sha256="a" * 64)
     judge = _build(settings, FakeServer())
     assert judge.status is None
 
@@ -278,9 +285,9 @@ def test_image_router_on_a_text_only_entry() -> None:
 def test_managed_image_entry_needs_a_projector_file(tmp_path) -> None:
     path = tmp_path / "m.gguf"
     path.write_bytes(header_with_type("Q8_0"))
-    entry = _model(server="managed", model_file=str(path), images=True)
+    entry = _model(server="managed", images=True)
     server = FakeServer()
-    judge = _build(_settings(entry, _router(images=True)), server)
+    judge = _build(_listed(_settings(entry, _router(images=True)), str(path)), server)
     assert judge.status == "projector-not-loaded"
     assert server.requests == []
 

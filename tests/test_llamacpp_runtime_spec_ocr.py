@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
-
 from omrs.integrations.llamacpp_runtime.spec import (
     DeclaredFile,
     RuntimeSpec,
-    chat_spec,
     ocr_spec,
 )
 
@@ -53,9 +50,3 @@ def test_only_np_1_makes_a_one_slot_runtime() -> None:
     assert _spec((BINARY, "-np", "2")).one_slot is False
     assert _spec((BINARY, "-np", "4")).one_slot is False
     assert _spec((BINARY,)).one_slot is False
-
-
-def test_a_model_that_fails_the_model_rule_is_refused() -> None:
-    for bad in ("-m", "relative.gguf", "/m/not-gguf.bin", "--evil"):
-        with pytest.raises(ValueError):
-            chat_spec(mode="managed", binary=BINARY, model=bad, port=8081, window=4096)

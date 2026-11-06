@@ -36,10 +36,13 @@ class HashCache:
 
     Args:
         path: The cache file; created on the first stored value.
+        save: Whether a new value is written to the file. ``GET /v1/runtimes``
+            reads with ``False``, because a read writes nothing.
     """
 
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: Path, *, save: bool = True) -> None:
         self.path = Path(path)
+        self._save_values = save
         self._items = self._read()
 
     def _read(self) -> dict[str, dict[str, Any]]:
@@ -74,7 +77,8 @@ class HashCache:
         except OSError:
             return None
         self._items[path] = {"size": info.st_size, "mtime_ns": info.st_mtime_ns, "sha256": digest}
-        self._save()
+        if self._save_values:
+            self._save()
         return digest
 
     def _save(self) -> None:

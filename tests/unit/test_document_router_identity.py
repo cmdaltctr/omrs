@@ -43,12 +43,13 @@ LOCAL = {
     "key": None,
     "server": "external",
 }
-MANAGED = {
-    **LOCAL,
-    "server": "managed",
-    "model_file": "~/models/clef-flash-q8_0.gguf",
-    "projector_file": "~/models/mmproj.gguf",
-    "model_sha256": "a" * 64,
+MANAGED = {**LOCAL, "server": "managed"}
+#: The ``llamacpp_models`` entry a managed decision entry names (one-llamacpp-router D3).
+LISTED = {
+    "model": "clef-flash-q8_0",
+    "file": "/models/clef-flash-q8_0.gguf",
+    "projector": "/models/mmproj.gguf",
+    "sha256": "a" * 64,
     "projector_sha256": "b" * 64,
 }
 RECIPE = {
@@ -139,7 +140,9 @@ def test_a_selected_router_adds_its_recipe_and_model_identity() -> None:
 
 
 def test_a_managed_model_adds_its_file_hashes() -> None:
-    entry = document_router_payload(_with_router(model=MANAGED))["document_router"]
+    """The SHA-256 values come from the list entry the decision entry names."""
+    settings = _with_router(model=MANAGED).model_copy(update={"llamacpp_models": {"c": LISTED}})
+    entry = document_router_payload(settings)["document_router"]
 
     assert entry["model"] == {
         "kind": "llamacpp",
@@ -228,7 +231,7 @@ def test_a_recipe_change_moves_pdf_digests_only(change: dict[str, Any]) -> None:
 
 @pytest.mark.parametrize(
     "change",
-    [{"kind": "typesafe"}, {"model": "jev"}, {"server": "managed", "model_sha256": "c" * 64}],
+    [{"kind": "typesafe"}, {"model": "jev"}, {"server": "managed"}],
 )
 def test_a_model_identity_change_moves_the_pdf_digest(change: dict[str, Any]) -> None:
     assert _digest(_with_router(model={**LOCAL, **change})) != _digest(_with_router())
