@@ -304,6 +304,7 @@ from . import (  # noqa: E402,F401
     ingest,
     install_login_watcher,
     list,
+    llamacpp,
     profile,
     search,
     watch,
