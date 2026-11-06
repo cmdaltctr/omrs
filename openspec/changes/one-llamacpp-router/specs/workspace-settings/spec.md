@@ -72,6 +72,20 @@ When `answer.provider` is `llamacpp` and `answer.model` is empty, the Chat secti
 - **WHEN** the user picks `Qwen/Qwen3-4B-GGUF:Q8_0` and saves
 - **THEN** `omrs.jsonc` MUST hold `answer.model` with that value and the entry MUST list the roles Chat and classification
 
+### Requirement: The Chat section warns when Chat shares the classification model
+
+When `answer.provider` is `llamacpp` and `answer.model` equals `llamacpp_chat_model`, the Chat section SHALL show a warning note. The note SHALL say: "Chat and classification share this model. A long Chat answer can slow classification during an ingest. A context size change reloads the model for both." The note SHALL list three ways out: choose another local model on the router; use your own llama.cpp server for Chat through the OpenAI-compatible provider (OMRS does not run it); or use a hosted provider such as OpenRouter. Each way out SHALL link to the control that sets it. The note SHALL NOT block Save. The Router panel row of the shared entry SHALL show the same one-line warning.
+
+#### Scenario: Chat picks the classification model
+
+- **WHEN** the user saves `answer.model` equal to `llamacpp_chat_model` with provider `llamacpp`
+- **THEN** the save MUST succeed and the Chat section MUST show the warning with the three ways out
+
+#### Scenario: Chat uses another model
+
+- **WHEN** `answer.model` differs from `llamacpp_chat_model`, or `answer.provider` is not `llamacpp`
+- **THEN** the Chat section MUST NOT show the warning
+
 ### Requirement: The Router panel lists the models in a table
 
 The panel SHALL show one table row per `llamacpp_models` entry with its roles, model name, file state, context size in tokens and model state. A row SHALL offer Edit (one control per allow-listed preset value), Get this model when it has no file, and Remove when it holds no role. A changed row of a running router SHALL show "Reload pending" until the reload ends. Each role SHALL link to the setting that gives it.
