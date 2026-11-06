@@ -5,7 +5,7 @@ import type { Integration } from "../api/integrations";
 import type { ModelRuntime } from "../api/modelRuntimes";
 import { documentsServer, json } from "../test/fakeDocumentsServer";
 import { startApp } from "../test/startApp";
-import { RUNTIMES, runtimeItem, SESSION_READ_ONLY, SESSION_WITH_MANAGE } from "./test/modelRuntimeFixtures";
+import { GIB, ROUTER_TITLE, RUNTIMES, runtimeItem, SESSION_READ_ONLY, SESSION_WITH_MANAGE } from "./test/modelRuntimeFixtures";
 
 const EXTERNAL_OCR = "External server. Model files are not checked.";
 const NO_CLIENT = "Running, no OMRS process uses it";
@@ -53,12 +53,6 @@ const row = async (title: string) => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("Model runtimes section", () => {
-  it("titles a decision runtime by its entry name and says what it does", async () => {
-    startApp("#/integrations/model-runtimes", serve([runtimeItem("decision-clef", { role: "decision" })]));
-    const found = await row("Decision: clef");
-    expect(found).toHaveTextContent("Judges page text for a document router.");
-  });
-
   it("has a chip on the Integrations page that opens the section", async () => {
     const user = userEvent.setup();
     startApp("#/integrations", serve());
@@ -67,52 +61,51 @@ describe("Model runtimes section", () => {
     expect(window.location.hash).toBe("#/integrations/model-runtimes");
   });
 
-  it("tells where the Chat server is chosen and where embeddings and OCR are set, with a link to Providers", async () => {
+  it("tells where the router is set and where OCR is set, with a link to Providers", async () => {
     startApp("#/integrations/model-runtimes", serve());
     const note = within(await section())
       .getAllByRole("note")
-      .find((element) => /llama\.cpp card/i.test(element.textContent ?? ""));
+      .find((element) => /Router panel/i.test(element.textContent ?? ""));
     if (note === undefined) throw new Error("No Providers note");
     expect(note).toHaveTextContent(
-      "Who runs the Chat server is chosen on the llama.cpp card in Settings › Providers, where you can also start OMRS's own server. The embeddings and OCR runtimes are set in the environment, .env or omrs.jsonc.",
+      "Who runs llama.cpp, its address and its models are set in the Router panel of the llama.cpp card in Settings › Providers, where you can also start OMRS's own router. The OCR runtimes are set in the environment, .env or omrs.jsonc.",
     );
     expect(within(note).getByRole("link", { name: "Settings › Providers" })).toHaveAttribute("href", "#/settings/providers");
     expect(note).toHaveClass("border-status-info");
   });
 
-  it("shows one row for each runtime with its role, mode, status and address", async () => {
+  it("shows one row for the router and one for each OCR runtime, with role, mode, status and address", async () => {
     startApp("#/integrations/model-runtimes", serve());
-    const chat = await row("Chat");
-    expect(within(chat).getByText("Managed", { selector: "[data-slot=badge]" })).toBeInTheDocument();
-    expect(within(chat).getByText("Running", { selector: "[data-slot=badge]" })).toHaveClass("text-status-success-label");
-    expect(chat).toHaveTextContent("127.0.0.1:8081");
-    const embeddings = await row("Embeddings");
-    expect(within(embeddings).getByText("Managed", { selector: "[data-slot=badge]" })).toBeInTheDocument();
+    const router = await row(ROUTER_TITLE);
+    expect(within(router).getByText("Managed", { selector: "[data-slot=badge]" })).toBeInTheDocument();
+    expect(within(router).getByText("Running", { selector: "[data-slot=badge]" })).toHaveClass("text-status-success-label");
+    expect(router).toHaveTextContent("127.0.0.1:8080");
+    expect(router).toHaveTextContent("Serves embeddings, classification and Chat for OMRS.");
     const ocr = await row("OCR: dots-mocr-llamacpp");
     expect(within(ocr).getByText("Failed", { selector: "[data-slot=badge]" })).toHaveClass("text-status-error-label");
     const external = await row("OCR: paddleocr-vl-llamacpp");
     expect(within(external).getByText("External", { selector: "[data-slot=badge]" })).toBeInTheDocument();
-    expect(await within(await section()).findAllByRole("listitem")).toHaveLength(4);
+    expect(await within(await section()).findAllByRole("listitem")).toHaveLength(3);
   });
 
   it("shows memory and what uses the runtime", async () => {
     startApp("#/integrations/model-runtimes", serve());
-    const chat = await row("Chat");
-    expect(chat).toHaveTextContent("6.0 GiB");
-    expect(within(chat).getByText("llamacpp_chat_server")).toBeInTheDocument();
-    expect(await row("Embeddings")).toHaveTextContent("512.0 MiB");
+    const router = await row(ROUTER_TITLE);
+    expect(router).toHaveTextContent("6.0 GiB");
+    expect(within(router).getByText("embed_provider")).toBeInTheDocument();
   });
 
-  it("shows one reason line for a failed runtime and names the changed file", async () => {
+  it("Failed OCR runtime: shows Failed and one reason line that names the changed file", async () => {
     startApp("#/integrations/model-runtimes", serve());
     const ocr = await row("OCR: dots-mocr-llamacpp");
     expect(ocr).toHaveTextContent("dots-mocr-Q8_0.gguf");
     expect(within(ocr).getAllByText(/dots-mocr-Q8_0\.gguf/)).toHaveLength(1);
   });
 
-  it("says an external OCR server's model files are not checked, and shows no Stop button", async () => {
+  it("External OCR runtime: shows External, says model files are not checked, and shows no Stop button", async () => {
     startApp("#/integrations/model-runtimes", serve());
     const external = await row("OCR: paddleocr-vl-llamacpp");
+    expect(within(external).getByText("External", { selector: "[data-slot=badge]" })).toBeInTheDocument();
     expect(external).toHaveTextContent(EXTERNAL_OCR);
     expect(within(external).queryByRole("button", { name: /Stop/ })).toBeNull();
   });
@@ -120,22 +113,52 @@ describe("Model runtimes section", () => {
   it("does not say the model files are not checked for a managed runtime", async () => {
     startApp("#/integrations/model-runtimes", serve());
     expect(await row("OCR: dots-mocr-llamacpp")).not.toHaveTextContent(EXTERNAL_OCR);
+    expect(await row(ROUTER_TITLE)).not.toHaveTextContent(EXTERNAL_OCR);
   });
 
-  it("shows an external Chat runtime without a Stop button", async () => {
-    startApp("#/integrations/model-runtimes", serve([runtimeItem("chat", { mode: "external", state: "running", address: "127.0.0.1:9931" })]));
-    const chat = await row("Chat");
-    expect(within(chat).getByText("External", { selector: "[data-slot=badge]" })).toBeInTheDocument();
-    expect(chat).not.toHaveTextContent(EXTERNAL_OCR);
-    expect(within(chat).queryByRole("button", { name: /Stop/ })).toBeNull();
+  it("External Chat runtime: the router row shows External and no Stop button", async () => {
+    startApp("#/integrations/model-runtimes", serve([runtimeItem("router", { mode: "external", state: "running", address: "127.0.0.1:9931" })]));
+    const router = await row(ROUTER_TITLE);
+    expect(within(router).getByText("External", { selector: "[data-slot=badge]" })).toBeInTheDocument();
+    expect(router).not.toHaveTextContent(EXTERNAL_OCR);
+    expect(within(router).queryByRole("button", { name: /Stop/ })).toBeNull();
+  });
+
+  it("Router models under the row: lists the loaded embedding model and the unloaded Chat model with roles and states", async () => {
+    const models = [
+      { model: "Qwen/Qwen3-Embedding-4B-GGUF:Q8_0", roles: ["embeddings" as const], state: "loaded" as const, reason: null, memory_bytes: 4 * GIB },
+      { model: "Qwen/Qwen3-1.7B-GGUF:Q8_0", roles: ["chat" as const], state: "unloaded" as const, reason: null, memory_bytes: null },
+    ];
+    startApp("#/integrations/model-runtimes", serve([runtimeItem("router", { state: "running", models })]));
+    const group = within(await row(ROUTER_TITLE)).getByRole("group", { name: "Models" });
+    const embedding = within(group).getByText("Qwen/Qwen3-Embedding-4B-GGUF:Q8_0").parentElement as HTMLElement;
+    expect(embedding).toHaveTextContent("Embeddings");
+    expect(embedding).toHaveTextContent("Loaded");
+    expect(embedding).toHaveTextContent("4.0 GiB");
+    const chat = within(group).getByText("Qwen/Qwen3-1.7B-GGUF:Q8_0").parentElement as HTMLElement;
+    expect(chat).toHaveTextContent("Chat");
+    expect(chat).toHaveTextContent("Unloaded");
+  });
+
+  it("shows no model lines under an OCR row", async () => {
+    startApp("#/integrations/model-runtimes", serve());
+    expect(within(await row("OCR: dots-mocr-llamacpp")).queryByRole("group", { name: "Models" })).toBeNull();
   });
 
   it("says a running managed runtime with no client has no OMRS process using it", async () => {
     startApp("#/integrations/model-runtimes", serve());
-    expect(await row("Chat")).toHaveTextContent(NO_CLIENT);
-    expect(await row("Embeddings")).not.toHaveTextContent(NO_CLIENT);
+    expect(await row(ROUTER_TITLE)).toHaveTextContent(NO_CLIENT);
     expect(await row("OCR: dots-mocr-llamacpp")).not.toHaveTextContent(NO_CLIENT);
     expect(await row("OCR: paddleocr-vl-llamacpp")).not.toHaveTextContent(NO_CLIENT);
+  });
+
+  it("Phone width: rows, model lines, reason lines and Stop wrap long text and stack", async () => {
+    startApp("#/integrations/model-runtimes", serve());
+    const router = await row(ROUTER_TITLE);
+    expect(router.className).toContain("grid-cols-1");
+    expect(within(router).getByText("Qwen/Qwen3-Embedding-4B-GGUF:Q8_0").className).toContain("[overflow-wrap:anywhere]");
+    expect(within(router).getByRole("button", { name: `Stop ${ROUTER_TITLE}` })).toBeInTheDocument();
+    expect((await row("OCR: dots-mocr-llamacpp")).querySelector("p.\\[overflow-wrap\\:anywhere\\]")).not.toBeNull();
   });
 });
 
@@ -143,18 +166,18 @@ describe("Stop", () => {
   it("stops a managed running runtime that no other process uses, without asking", async () => {
     const user = userEvent.setup();
     const server = serve(RUNTIMES, {
-      "POST /v1/runtimes/chat/stop": () => ({ ...RUNTIMES[0], state: "stopped", memory_bytes: null }),
+      "POST /v1/runtimes/router/stop": () => ({ ...RUNTIMES[0], state: "stopped", memory_bytes: null }),
     });
     startApp("#/integrations/model-runtimes", server);
-    await user.click(await within(await row("Chat")).findByRole("button", { name: "Stop Chat" }));
+    await user.click(await within(await row(ROUTER_TITLE)).findByRole("button", { name: `Stop ${ROUTER_TITLE}` }));
     expect(screen.queryByRole("dialog")).toBeNull();
-    await waitFor(() => expect(server.exact("POST", "/v1/runtimes/chat/stop")).toHaveLength(1));
-    expect(await within(await row("Chat")).findByText("Stopped", { selector: "[data-slot=badge]" })).toBeInTheDocument();
+    await waitFor(() => expect(server.exact("POST", "/v1/runtimes/router/stop")).toHaveLength(1));
+    expect(await within(await row(ROUTER_TITLE)).findByText("Stopped", { selector: "[data-slot=badge]" })).toBeInTheDocument();
   });
 
   it("offers Stop on a managed runtime that is starting", async () => {
-    startApp("#/integrations/model-runtimes", serve([runtimeItem("chat", { state: "starting" })]));
-    expect(await within(await row("Chat")).findByRole("button", { name: "Stop Chat" })).toBeInTheDocument();
+    startApp("#/integrations/model-runtimes", serve([runtimeItem("router", { state: "starting" })]));
+    expect(await within(await row(ROUTER_TITLE)).findByRole("button", { name: `Stop ${ROUTER_TITLE}` })).toBeInTheDocument();
   });
 
   it("offers no Stop on a managed runtime that is stopped or failed", async () => {
@@ -164,8 +187,8 @@ describe("Stop", () => {
   });
 
   it("offers no Stop on a managed runtime that is stopped", async () => {
-    startApp("#/integrations/model-runtimes", serve([runtimeItem("embeddings", { state: "stopped" })]));
-    const stopped = await row("Embeddings");
+    startApp("#/integrations/model-runtimes", serve([runtimeItem("router", { state: "stopped" })]));
+    const stopped = await row(ROUTER_TITLE);
     expect(within(stopped).getByText("Stopped", { selector: "[data-slot=badge]" })).toBeInTheDocument();
     expect(within(stopped).queryByRole("button", { name: /Stop/ })).toBeNull();
   });
@@ -173,42 +196,44 @@ describe("Stop", () => {
   it("offers no Stop to a session without manage", async () => {
     const server = serve(RUNTIMES, { "GET /v1/session": () => SESSION_READ_ONLY });
     startApp("#/integrations/model-runtimes", server);
-    await row("Chat");
+    await row(ROUTER_TITLE);
     await waitFor(() => expect(server.exact("GET", "/v1/session")).toHaveLength(1));
     await waitFor(() => expect(screen.queryByRole("button", { name: /^Stop/ })).toBeNull());
-    expect(await within(await section()).findAllByRole("listitem")).toHaveLength(4);
+    expect(await within(await section()).findAllByRole("listitem")).toHaveLength(3);
   });
 
   it("offers no Stop until the session read has finished", async () => {
     startApp("#/integrations/model-runtimes", serve(RUNTIMES, { "GET /v1/session": () => json({ status: "error", message: "no" }, 500) }));
-    await row("Chat");
+    await row(ROUTER_TITLE);
     expect(screen.queryByRole("button", { name: /^Stop/ })).toBeNull();
   });
 
   it("asks first when another OMRS process uses the runtime, and sends nothing until the user confirms", async () => {
     const user = userEvent.setup();
-    const server = serve(RUNTIMES, {
-      "POST /v1/runtimes/embeddings/stop": () => ({ ...RUNTIMES[1], state: "stopped", clients: "none" }),
+    const some = [{ ...RUNTIMES[0]!, clients: "some" as const }, ...RUNTIMES.slice(1)];
+    const server = serve(some, {
+      "POST /v1/runtimes/router/stop": () => ({ ...some[0], state: "stopped", clients: "none" }),
     });
     startApp("#/integrations/model-runtimes", server);
-    await user.click(await within(await row("Embeddings")).findByRole("button", { name: "Stop Embeddings" }));
+    await user.click(await within(await row(ROUTER_TITLE)).findByRole("button", { name: `Stop ${ROUTER_TITLE}` }));
     const dialog = await screen.findByRole("dialog");
     expect(dialog).toHaveTextContent("Another OMRS process uses this runtime");
     expect(dialog).toHaveTextContent("Requests in progress fail");
     expect(dialog).toHaveTextContent("OCR uses the fallback engine");
-    expect(server.exact("POST", "/v1/runtimes/embeddings/stop")).toHaveLength(0);
+    expect(server.exact("POST", "/v1/runtimes/router/stop")).toHaveLength(0);
     await user.click(within(dialog).getByRole("button", { name: "Stop runtime" }));
-    await waitFor(() => expect(server.exact("POST", "/v1/runtimes/embeddings/stop")).toHaveLength(1));
-    expect(await within(await row("Embeddings")).findByText("Stopped", { selector: "[data-slot=badge]" })).toBeInTheDocument();
+    await waitFor(() => expect(server.exact("POST", "/v1/runtimes/router/stop")).toHaveLength(1));
+    expect(await within(await row(ROUTER_TITLE)).findByText("Stopped", { selector: "[data-slot=badge]" })).toBeInTheDocument();
   });
 
   it("sends nothing when the user cancels the confirmation", async () => {
     const user = userEvent.setup();
-    const server = serve();
+    const some = [{ ...RUNTIMES[0]!, clients: "some" as const }, ...RUNTIMES.slice(1)];
+    const server = serve(some);
     startApp("#/integrations/model-runtimes", server);
-    await user.click(await within(await row("Embeddings")).findByRole("button", { name: "Stop Embeddings" }));
+    await user.click(await within(await row(ROUTER_TITLE)).findByRole("button", { name: `Stop ${ROUTER_TITLE}` }));
     await user.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Cancel" }));
-    expect(server.exact("POST", "/v1/runtimes/embeddings/stop")).toHaveLength(0);
+    expect(server.exact("POST", "/v1/runtimes/router/stop")).toHaveLength(0);
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
@@ -216,9 +241,9 @@ describe("Stop", () => {
     const user = userEvent.setup();
     startApp(
       "#/integrations/model-runtimes",
-      serve(RUNTIMES, { "POST /v1/runtimes/chat/stop": () => json({ status: "error", message: "raw server text", reason: "external-runtime" }, 409) }),
+      serve(RUNTIMES, { "POST /v1/runtimes/router/stop": () => json({ status: "error", message: "raw server text", reason: "external-runtime" }, 409) }),
     );
-    await user.click(await within(await row("Chat")).findByRole("button", { name: "Stop Chat" }));
+    await user.click(await within(await row(ROUTER_TITLE)).findByRole("button", { name: `Stop ${ROUTER_TITLE}` }));
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("This runtime is an external server. OMRS does not stop it.");
     expect(alert).not.toHaveTextContent("raw server text");
@@ -227,8 +252,8 @@ describe("Stop", () => {
   it("shows one friendly line for any other failure", async () => {
     const user = userEvent.setup();
     vi.spyOn(console, "error").mockImplementation(() => undefined);
-    startApp("#/integrations/model-runtimes", serve(RUNTIMES, { "POST /v1/runtimes/chat/stop": () => json({ status: "error", message: "Traceback boom" }, 500) }));
-    await user.click(await within(await row("Chat")).findByRole("button", { name: "Stop Chat" }));
+    startApp("#/integrations/model-runtimes", serve(RUNTIMES, { "POST /v1/runtimes/router/stop": () => json({ status: "error", message: "Traceback boom" }, 500) }));
+    await user.click(await within(await row(ROUTER_TITLE)).findByRole("button", { name: `Stop ${ROUTER_TITLE}` }));
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent("The local server could not complete that request.");
     expect(alert).not.toHaveTextContent("Traceback");

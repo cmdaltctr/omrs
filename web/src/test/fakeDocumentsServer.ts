@@ -50,6 +50,8 @@ const DEFAULTS: Record<string, Handler> = {
   "GET /v1/profiles": () => ({ status: "ok", profiles: PROFILES }),
   "GET /v1/roots": () => ({ status: "ok", roots: ROOTS }),
   "GET /v1/settings/upload-limit": () => UPLOAD_LIMIT,
+  // The llama.cpp card of the Integrations page reads the pinned build.
+  "GET /v1/llamacpp/router/install": () => ({ status: "ok", build: "b11941", detected: "metal", choices: [], installed_path: null, job: { state: "idle", flavour: null, line: null, reason: null, message: null } }),
   "GET /v1/settings/chat": () => ({ status: "ok", provider: "ollama", model: "qwen3", source: "default", locked: false, lock_reason: null, enabled: true, ready: true, reason: null }),
 };
 

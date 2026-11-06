@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle } from "../components/ui/card";
 import { isLoopback, ROLE_NAMES } from "./connectionWords";
 import { ModelDownloadPanel } from "./ModelDownloadPanel";
 import { IntegrationLink } from "./IntegrationLink";
+import { PROVIDER_EXTRAS } from "./providerExtras";
 import { ProviderFieldGroups } from "./ProviderFieldGroups";
 import { DenseSettingRows } from "./SettingBox";
 import { ProviderTest } from "./ProviderTest";
@@ -18,7 +19,7 @@ interface ProviderCardProps {
   wide?: boolean;
 }
 
-/** The parts of a wide card, by column: the addresses and models left, Chat and its server right. */
+/** The parts of a wide card, by column: the addresses and models left, Chat and Get a model right. */
 const LEFT_PARTS = [null, "embeddings", "metadata"] as const;
 const RIGHT_PARTS = ["answers"] as const;
 
@@ -64,6 +65,12 @@ export function ProviderCard({ connection, keychain, configDir, wide = false }: 
         <ModelDownloadPanel provider={connection.provider} source={connection.model_source} />
       </div>
     ) : null;
+  // The provider's extra panels sit below the fields at full width, such as the llama.cpp Router panel.
+  const panels = (PROVIDER_EXTRAS[connection.provider] ?? []).map(({ Component }, index) => (
+    <div key={index} data-slot="provider-extra" className="flex min-w-0 flex-col gap-3">
+      <Component />
+    </div>
+  ));
   // The card's own notice and Test sit at its foot, outside the setting rows.
   const foot = (
     <div className="mt-auto flex flex-col gap-3">
@@ -117,6 +124,7 @@ export function ProviderCard({ connection, keychain, configDir, wide = false }: 
             {download}
           </>
         )}
+        {panels}
       </DenseSettingRows>
       {foot}
     </Card>

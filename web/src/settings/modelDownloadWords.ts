@@ -60,8 +60,6 @@ export function isListed(models: string[], value: string): boolean {
   return models.includes(value) || models.includes(`${value}:latest`);
 }
 
-export const NEED_RESTART_LINE = "Saved as the Chat model. The server loads it after a restart.";
-
 export const EXTERNAL_SERVER_NOTE =
   "Your own llama.cpp server must load this model. The Llama app lists new models only when it starts, so quit and reopen it, then press Refresh models.";
 
@@ -75,7 +73,7 @@ export interface ListWords {
 export const LLAMACPP_LIST_WORDS: ListWords = {
   holder: "Your server",
   notListed: "Your server does not list it yet. Quit and reopen the Llama app, then press Refresh models again.",
-  noAnswer: "Your server did not answer at the chat address. Check that it runs, then press Refresh models.",
+  noAnswer: "Your server did not answer at the router address. Check that it runs, then press Refresh models.",
 };
 
 export const OLLAMA_LIST_WORDS: ListWords = {

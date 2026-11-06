@@ -460,7 +460,7 @@ describe("The Settings file card", () => {
 describe("After a Configuration save", () => {
   it("marks the other settings reads stale and does not read the configuration again", async () => {
     const queryClient = createQueryClient({ retry: false });
-    const others = [["connections"], ["mcp"], ["settings", "chat"], ["settings", "judge"], ["settings", "document-reading"], ["settings", "upload-limit"], ["settings", "web-port"], ["llamacpp-server"]];
+    const others = [["connections"], ["mcp"], ["settings", "chat"], ["settings", "judge"], ["settings", "document-reading"], ["settings", "upload-limit"], ["settings", "web-port"], ["llamacpp-router"]];
     for (const queryKey of others) await queryClient.prefetchQuery({ queryKey, queryFn: () => ({}) });
     const enabled = setting("answer.enabled", true, { kind: "bool", applies: "live" });
     const saved = () => ({ status: "ok", ...withSettings({ ...enabled, value: false, saved: false, source: "config-file" }), revision: "r2" });

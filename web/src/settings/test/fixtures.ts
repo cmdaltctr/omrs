@@ -1,8 +1,8 @@
-import type { ChatServerChoice, LlamacppServerStatus, ServerField } from "../../api/llamacppServer";
 import type { ChatSettings, Connection, ConnectionList, JudgeSettings, LogRecord, McpState, ProviderField, WebPortState } from "../../api/settings";
 import { DOCUMENT_READING_KEYS, type DocumentReadingKey, type DocumentReadingSetting, type DocumentReadingState } from "../../api/settingsDocumentReading";
 import { documentsServer, type Handler } from "../../test/fakeDocumentsServer";
 import { IDLE } from "./downloadFixtures";
+import { ROUTER_STOPPED } from "./llamacppFixtures";
 import { decisionModels, documentRouters } from "./routerFixtures";
 
 /** Fixtures built from the `openapi.yaml` schemas for the Settings routes. */
@@ -18,47 +18,7 @@ export function intField(id: string, label: string, value: number, source: Provi
   return { id, label, kind: "int", group: null, follows: null, min: 2048, max: 262144, value, source, locked: lock !== undefined, lock_reason: lock ?? null, required: true, set: true, last4: null, state: null };
 }
 
-function serverField(id: string, label: string, kind: ServerField["kind"], value: string | number, source: ServerField["source"] = "default", lock?: string): ServerField {
-  const range = kind === "int" ? { min: 2048, max: 262144 } : { min: null, max: null };
-  return { id, label, kind, value, ...range, source, locked: lock !== undefined, lock_reason: lock ?? null };
-}
-
-type SavedKey = keyof LlamacppServerStatus["saved"];
-const SAVED_KEYS: SavedKey[] = ["binary", "chat_server", "context_window"];
-
-/** The llama.cpp server status with nothing set and nothing running: the Chat server is the user's own (`external`). */
-export const SERVER_STOPPED: LlamacppServerStatus = {
-  status: "ok",
-  revision: "r1",
-  state: "stopped",
-  reason: null,
-  exit_code: null,
-  pid_running: false,
-  running_with: null,
-  pending_restart: false,
-  saved: {
-    binary: serverField("server_binary", "Program path", "text", ""),
-    chat_server: serverField("chat_server", "Who runs the Chat server", "choice", "external"),
-    context_window: serverField("context_window", "Context window (tokens)", "int", 16384),
-  },
-  chat_model: { provider: "ollama", model: "qwen3:4b", usable: false },
-  shared_with_classification: false,
-};
-
-/** A server status built from the stopped one with changed parts. */
-export function serverStatus(change: Partial<LlamacppServerStatus>, saved: Partial<Record<SavedKey, Partial<ServerField>>> = {}): LlamacppServerStatus {
-  const merged = { ...SERVER_STOPPED.saved };
-  for (const key of SAVED_KEYS) merged[key] = { ...merged[key], ...saved[key] };
-  return { ...SERVER_STOPPED, ...change, saved: merged };
-}
-
-/** A server status with the Chat server choice saved in `omrs.jsonc`. */
-export function choiceStatus(choice: ChatServerChoice, change: Partial<LlamacppServerStatus> = {}, saved: Partial<Record<SavedKey, Partial<ServerField>>> = {}): LlamacppServerStatus {
-  return serverStatus(change, { chat_server: { value: choice, source: "config-file" }, ...saved });
-}
-
-/** OMRS runs the Chat server, Chat uses llama.cpp with a Hugging Face id, nothing runs yet. */
-export const SERVER_MANAGED = choiceStatus("managed", { chat_model: { provider: "llamacpp", model: "Qwen/Qwen3-4B-GGUF:Q4_K_M", usable: true } });
+export { EMBED_ENTRY, EMBED_MODEL, ROUTER_EXTERNAL, ROUTER_RUNNING, ROUTER_STOPPED, routerEntry, routerStatus, TEXT_ENTRY, TEXT_MODEL, WITH_CREDENTIALS } from "./llamacppFixtures";
 
 export const OLLAMA: Connection = {
   provider: "ollama",
@@ -79,15 +39,11 @@ export const LLAMACPP: Connection = {
   installed: true,
   install_hint: null,
   model_source: "huggingface-gguf",
-  fields: [
-    { ...urlField("chat_url", "Chat address", "http://127.0.0.1:8082/v1"), group: "answers" },
-    // No source sets the Classification address, so it follows the Chat address.
-    { ...urlField("classify_url", "Classification address", "http://127.0.0.1:8082/v1"), group: "metadata", follows: "chat_url" },
-  ],
+  fields: [urlField("router_url", "Router address", "http://127.0.0.1:8080/v1")],
   read_only: [
-    { label: "Embedding address", value: "http://127.0.0.1:8081/v1", group: "embeddings" },
-    { label: "Embedding model", value: "bge-small", group: "embeddings" },
-    { label: "Text model (classification)", value: "Qwen/Qwen3-0.6B-GGUF:Q8_0", group: "metadata" },
+    { label: "Router mode", value: "managed", group: null },
+    { label: "Embedding model", value: "Qwen/Qwen3-Embedding-4B-GGUF:Q8_0", group: null },
+    { label: "Text model (classification)", value: "Qwen/Qwen3-4B-GGUF:Q8_0", group: null },
   ],
   roles: ["embeddings"],
 };
@@ -218,7 +174,7 @@ export function settingsServer(handlers: Record<string, Handler> = {}) {
       ],
     }),
     "GET /v1/connections": () => CONNECTIONS,
-    "GET /v1/llamacpp/server": () => SERVER_STOPPED,
+    "GET /v1/llamacpp/router": () => ROUTER_STOPPED,
     "GET /v1/model-downloads/current": () => IDLE,
     "GET /v1/settings/chat": () => CHAT_READY,
     "GET /v1/settings/judge": () => JUDGE_DEFAULT,

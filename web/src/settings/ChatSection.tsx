@@ -7,7 +7,9 @@ import { useSetChatSettings } from "../api/settingsMutations";
 import { ErrorNotice } from "../components/ErrorNotice";
 import { Button } from "../components/ui/button";
 import { Card, CardHeader, CardTitle } from "../components/ui/card";
+import { ChatModelChoice, needsChatModel } from "./ChatModelChoice";
 import { ChatModelForm } from "./ChatModelForm";
+import { ChatSharedNote } from "./ChatSharedNote";
 import { ChoiceRow, SOURCE } from "./ChoiceRow";
 import { isEnvironmentSource } from "./connectionWords";
 import { JudgeBlock } from "./JudgeBlock";
@@ -80,6 +82,8 @@ export function ChatSection() {
             <CardHeader>
               <CardTitle id="settings-chat-model">Answer model</CardTitle>
             </CardHeader>
+            {needsChatModel(settings) ? <ChatModelChoice settings={settings} /> : null}
+            <ChatSharedNote settings={settings} onChooseAnother={() => setEditing(true)} />
             {editing ? (
               <ChatForm key={`${settings.provider}|${settings.model}|${settings.reasoning ?? ""}|${settings.source}`} settings={settings} connections={connections} onClose={() => setEditing(false)} />
             ) : (

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { Connection, ConnectionList, ProviderField } from "../api/settings";
 import { json } from "../test/fakeDocumentsServer";
 import { startApp } from "../test/startApp";
-import { CONFIG_DIR, CONNECTIONS, LLAMACPP, OLLAMA, OPENROUTER, SERVER_MANAGED, settingsServer, urlField } from "./test/fixtures";
+import { CONFIG_DIR, CONNECTIONS, LLAMACPP, OLLAMA, OPENROUTER, ROUTER_RUNNING, ROUTER_STOPPED, settingsServer, urlField } from "./test/fixtures";
 
 const KEY = "sk-or-secret-1234567890-wxyz"; // gitleaks:allow
 
@@ -18,8 +18,8 @@ function openrouter(change: Partial<ProviderField>): Connection {
 
 const NO_KEY: Partial<ProviderField> = { set: false, last4: null, source: "none" };
 
-/** OMRS runs the Chat server and its program path is set, so nothing needs attention. */
-const SERVER_READY = { ...SERVER_MANAGED, saved: { ...SERVER_MANAGED.saved, binary: { ...SERVER_MANAGED.saved.binary, value: "/opt/llama/llama-server" } } };
+/** OMRS runs the router and a program is provisioned, so nothing needs attention. */
+const ROUTER_READY = { ...ROUTER_RUNNING, state: "stopped" as const, running_with: null };
 
 const FIVE = () =>
   list(
@@ -43,14 +43,14 @@ function card(name: string) {
 
 describe("Providers", () => {
   it("shows each setting of a provider card as a compact row, with no mini card", async () => {
-    await openProviders({ "GET /v1/llamacpp/server": () => SERVER_READY });
+    await openProviders({ "GET /v1/llamacpp/router": () => ROUTER_READY });
     const row = (element: HTMLElement) => element.closest("[data-slot='setting-row']");
     const ollama = card("Ollama");
     expect(row(within(ollama).getByText("Address"))).not.toBeNull();
     expect(row(within(ollama).getByText("qwen3"))).not.toBeNull();
     expect(row(within(ollama).getByText("Address"))).not.toBe(row(within(ollama).getByText("qwen3")));
     expect(row(within(card("OpenRouter")).getByText(/Key set/))).not.toBeNull();
-    const server = await within(card("llama.cpp")).findByRole("heading", { level: 5, name: "Local server" });
+    const server = await within(card("llama.cpp")).findByRole("heading", { level: 4, name: "Router" });
     expect(server.closest("details")!.querySelectorAll("[data-slot='setting-row']").length).toBeGreaterThan(1);
     for (const region of screen.getAllByRole("region")) expect(region.querySelector("[data-slot='card-inset']")).toBeNull();
   });
@@ -76,23 +76,25 @@ describe("Providers", () => {
     expect(screen.queryByTestId("masonry")).toBeNull();
   });
 
-  it("splits a local card into two columns: addresses and models left, Chat and Get a model right", async () => {
-    await openProviders({ "GET /v1/llamacpp/server": () => SERVER_READY });
+  it("splits a local card into two columns, with the Router panel full width below them", async () => {
+    await openProviders({ "GET /v1/llamacpp/router": () => ROUTER_READY });
     const llamacpp = card("llama.cpp");
-    const [left, right] = Array.from(llamacpp.querySelector("[data-slot='provider-columns']")!.children) as HTMLElement[];
-    expect(within(left!).getByRole("heading", { level: 4, name: "Embeddings" })).toBeInTheDocument();
-    expect(within(left!).getByRole("heading", { level: 4, name: "Classification (metadata)" })).toBeInTheDocument();
-    expect(within(right!).getByRole("heading", { level: 4, name: "Chat" })).toBeInTheDocument();
+    const columns = llamacpp.querySelector("[data-slot='provider-columns']") as HTMLElement;
+    const [left, right] = Array.from(columns.children) as HTMLElement[];
+    expect(within(left!).getByText("Embedding model")).toBeInTheDocument();
     expect(within(right!).getByRole("heading", { level: 4, name: "Get a model" })).toBeInTheDocument();
+    const panel = await within(llamacpp).findByRole("heading", { level: 4, name: "Router" });
+    expect(columns).not.toContainElement(panel);
+    expect(llamacpp.querySelector("[data-slot='provider-extra']")).toContainElement(panel);
     expect(within(llamacpp).getAllByRole("button", { name: "Test" })).toHaveLength(1);
     expect(llamacpp.querySelector("[data-slot='provider-columns'] button[aria-label='Test']")).toBeNull();
     expect(card("OpenRouter").querySelector("[data-slot='provider-columns']")).toBeNull();
   });
 
-  it("starts the Local server and Get a model panels closed, with the server state on the toggle row", async () => {
-    const { user } = await openProviders({ "GET /v1/llamacpp/server": () => SERVER_READY });
+  it("starts the Router and Get a model panels closed, with the router state on the toggle row", async () => {
+    const { user } = await openProviders({ "GET /v1/llamacpp/router": () => ROUTER_READY });
     const llamacpp = card("llama.cpp");
-    const server = (await within(llamacpp).findByRole("heading", { level: 5, name: "Local server" })).closest("details")!;
+    const server = (await within(llamacpp).findByRole("heading", { level: 4, name: "Router" })).closest("details")!;
     const model = within(llamacpp).getByRole("heading", { level: 4, name: "Get a model" }).closest("details")!;
     expect(server.open).toBe(false);
     expect(model.open).toBe(false);
@@ -101,9 +103,9 @@ describe("Providers", () => {
     expect(server.open).toBe(true);
   });
 
-  it("opens the Local server panel by itself while the program path is missing", async () => {
-    await openProviders({ "GET /v1/llamacpp/server": () => SERVER_MANAGED });
-    const server = await within(card("llama.cpp")).findByRole("heading", { level: 5, name: "Local server" });
+  it("opens the Router panel by itself while no program is provisioned", async () => {
+    await openProviders({ "GET /v1/llamacpp/router": () => ROUTER_STOPPED });
+    const server = await within(card("llama.cpp")).findByRole("heading", { level: 4, name: "Router" });
     expect(server.closest("details")!.open).toBe(true);
   });
 
@@ -113,7 +115,7 @@ describe("Providers", () => {
     });
     const llamacpp = card("llama.cpp");
     expect(within(llamacpp).getByText("Embedding model")).toBeInTheDocument();
-    expect(within(llamacpp).getByText("bge-small")).toBeInTheDocument();
+    expect(within(llamacpp).getByText("Qwen/Qwen3-Embedding-4B-GGUF:Q8_0")).toBeInTheDocument();
     expect(within(llamacpp).getAllByText("(Read-only)").length).toBeGreaterThan(0);
     expect(within(llamacpp).getByRole("link", { name: "Install llama.cpp from Integrations" })).toHaveAttribute("href", "#/integrations/llamacpp");
     expect(llamacpp).not.toHaveTextContent(/uv sync/);

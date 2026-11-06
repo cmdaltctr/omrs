@@ -1,4 +1,4 @@
-import { useLlamacppServer } from "../api/llamacppServerHooks";
+import { useLlamacppRouter } from "../api/llamacppRouterHooks";
 import type { ModelDownloadStatus } from "../api/modelDownloads";
 import { CardInset } from "../components/ui/card";
 import { Button } from "../components/ui/button";
@@ -44,7 +44,7 @@ function OllamaDone({ status, value }: { status: ModelDownloadStatus; value: str
   );
 }
 
-/** A Chat server the user runs: name the folder, tell the person what to do, and read the server's list on request. */
+/** A router the user runs (mode `external`): name the folder, tell the person what to do, and read the server's list on request. */
 function ExternalServerDone({ status, value }: { status: ModelDownloadStatus; value: string }) {
   const models = useProviderModels("llamacpp", false);
   return (
@@ -67,11 +67,11 @@ function ExternalServerDone({ status, value }: { status: ModelDownloadStatus; va
 }
 
 function LlamacppDone({ status, value }: { status: ModelDownloadStatus; value: string }) {
-  const query = useLlamacppServer();
-  const server = query.data;
-  // Until the server status is read, the line alone shows. Then the choice cannot flip under the person's cursor.
+  const query = useLlamacppRouter();
+  const router = query.data;
+  // Until the router status is read, the line alone shows. Then the choice cannot flip under the person's cursor.
   if (query.isPending) return <Downloaded status={status} />;
-  // A failed read says nothing about who runs the server, so show the error, not the own-server steps.
+  // A failed read says nothing about who runs the router, so show the error, not the own-router steps.
   if (query.isError)
     return (
       <>
@@ -79,12 +79,12 @@ function LlamacppDone({ status, value }: { status: ModelDownloadStatus; value: s
         <ErrorNotice error={query.error} onRetry={() => void query.refetch()} />
       </>
     );
-  // The saved Chat server choice decides, not the server state: the state is `stopped` after every launch.
-  if (server === undefined || server.saved.chat_server.value !== "managed") return <ExternalServerDone status={status} value={value} />;
+  // The saved mode decides, not the router state: the state is `stopped` after every launch.
+  if (router === undefined || router.mode !== "managed") return <ExternalServerDone status={status} value={value} />;
   return (
     <>
       <Downloaded status={status} />
-      <LlamacppUseModel modelValue={value} server={server} />
+      <LlamacppUseModel status={status} router={router} />
     </>
   );
 }

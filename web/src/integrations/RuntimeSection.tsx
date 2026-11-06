@@ -80,7 +80,7 @@ const WHERE: Record<Section, ReactNode> = {
       <a href={formatRoute({ area: "settings", section: "providers" })} className={LINK}>
         Settings › Providers
       </a>
-      , except the llama.cpp embedding address, which is set in omrs.jsonc.
+      . The llama.cpp router address is in its Router panel.
     </>
   ),
 };

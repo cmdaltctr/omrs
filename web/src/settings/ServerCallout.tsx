@@ -8,7 +8,7 @@ const TONES = {
 
 const ICONS = { info: Info, warning: TriangleAlert } as const;
 
-/** Fixed words, such as the facts of a Chat server choice or a note with a link: `info` for a fact, `warning` for a risk. */
+/** Fixed words, such as the facts of the router mode or a note with a link: `info` for a fact, `warning` for a risk. */
 export function ServerCallout({ text, tone = "info" }: { text: ReactNode; tone?: keyof typeof TONES }) {
   const Icon = ICONS[tone];
   return (

@@ -27,15 +27,15 @@ describe("model runtime hooks", () => {
   });
 
   it("puts the item a stop returned into the list", async () => {
-    const stopped = { ...RUNTIMES[1]!, state: "stopped" as const, memory_bytes: null };
-    const { wrapper, queryClient, server } = setup({ "POST /v1/runtimes/embeddings/stop": () => stopped });
+    const stopped = { ...RUNTIMES[0]!, state: "stopped" as const, memory_bytes: null };
+    const { wrapper, queryClient, server } = setup({ "POST /v1/runtimes/router/stop": () => stopped });
     const { result: list } = renderHook(() => useModelRuntimes(), { wrapper });
     await waitFor(() => expect(list.current.data).toBeDefined());
     const { result } = renderHook(() => useStopModelRuntime(), { wrapper });
-    act(() => result.current.mutate("embeddings"));
-    await waitFor(() => expect(queryClient.getQueryData<typeof RUNTIMES>(modelRuntimesKey)?.find((item) => item.id === "embeddings")?.state).toBe("stopped"));
-    expect(queryClient.getQueryData<typeof RUNTIMES>(modelRuntimesKey)?.find((item) => item.id === "chat")?.state).toBe("running");
-    expect(server.exact("POST", "/v1/runtimes/embeddings/stop")).toHaveLength(1);
+    act(() => result.current.mutate("router"));
+    await waitFor(() => expect(queryClient.getQueryData<typeof RUNTIMES>(modelRuntimesKey)?.find((item) => item.id === "router")?.state).toBe("stopped"));
+    expect(queryClient.getQueryData<typeof RUNTIMES>(modelRuntimesKey)?.find((item) => item.id === "ocr-paddleocr-vl-llamacpp")?.state).toBe("running");
+    expect(server.exact("POST", "/v1/runtimes/router/stop")).toHaveLength(1);
   });
 
   it("polls while a runtime is starting and stops when none is", async () => {
@@ -43,7 +43,7 @@ describe("model runtime hooks", () => {
     const { wrapper } = setup({
       "GET /v1/runtimes": () => {
         reads += 1;
-        return { runtimes: [runtimeItem("chat", { state: reads < 3 ? "starting" : "running" })] };
+        return { runtimes: [runtimeItem("router", { state: reads < 3 ? "starting" : "running" })] };
       },
     });
     const { result } = renderHook(() => useModelRuntimes(), { wrapper });

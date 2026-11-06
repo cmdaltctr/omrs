@@ -1,3 +1,4 @@
+import { Lock } from "lucide-react";
 import { useId, useState, type FormEvent } from "react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -14,6 +15,8 @@ export interface SettingRowProps {
   label: string;
   /** The value in force, as text. Edit opens an input filled with it. */
   value: string;
+  /** What the row shows in place of `value`, such as a number with thousands separators. */
+  shownValue?: string;
   source: string;
   /** A variable name or path that goes after the source words. */
   detail?: string | null;
@@ -44,7 +47,7 @@ export interface SettingRowProps {
  * `.env` has no Edit; the source words say where to change it.
  */
 export function SettingRow(props: SettingRowProps) {
-  const { label, value, source, detail, inputType = "text", min = null, max = null, readOnlyReason, note, pending, error } = props;
+  const { label, value, shownValue, source, detail, inputType = "text", min = null, max = null, readOnlyReason, note, pending, error } = props;
   const { onSave, onClear, onRetry, onTyped, validate } = props;
   const id = useId();
   const [typed, setTyped] = useState<string | null>(null);
@@ -68,7 +71,7 @@ export function SettingRow(props: SettingRowProps) {
       <p className="text-ui">Not set</p>
     ) : (
       <code dir="ltr" className={CODE}>
-        {value}
+        {shownValue ?? value}
       </code>
     );
   const editButton = (variant: "ghost" | "outline") => (
@@ -123,7 +126,7 @@ export function SettingRow(props: SettingRowProps) {
               </span>
               <span className={SOURCE}>{sourceText(source, detail)}</span>
             </div>
-            {readOnlyReason ? <p className={SOURCE}>{readOnlyReason}</p> : null}
+            {readOnlyReason ? <LockedLine text={readOnlyReason} /> : null}
             {note ? <p className={SOURCE}>{note}</p> : null}
           </div>
           {!locked ? editButton("ghost") : null}
@@ -133,13 +136,23 @@ export function SettingRow(props: SettingRowProps) {
           <p className={SOURCE}>{label}</p>
           {shown}
           <p className={SOURCE}>{sourceText(source, detail)}</p>
-          {readOnlyReason ? <p className={SOURCE}>{readOnlyReason}</p> : null}
+          {readOnlyReason ? <LockedLine text={readOnlyReason} /> : null}
           {note ? <p className={SOURCE}>{note}</p> : null}
           {!locked ? <div>{editButton("outline")}</div> : null}
         </>
       )}
       {error ? <SaveErrorNotice error={error} onRetry={onRetry} /> : null}
     </SettingBox>
+  );
+}
+
+/** Why a row cannot be edited, with a lock. */
+function LockedLine({ text }: { text: string }) {
+  return (
+    <p className={SOURCE}>
+      <Lock role="img" aria-label="Locked" className="me-1 inline size-3.5 align-text-bottom" />
+      {text}
+    </p>
   );
 }
 

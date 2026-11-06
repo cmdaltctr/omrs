@@ -13,6 +13,8 @@ export const IDLE: ModelDownloadStatus = {
   bytes_total: null,
   reason: null,
   cache_folder: null,
+  file_path: null,
+  sha256: null,
 };
 
 /** A download status built from the idle one with changed parts. */

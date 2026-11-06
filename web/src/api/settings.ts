@@ -44,9 +44,9 @@ export interface ProviderField {
   kind: "url" | "secret" | "int";
   group: ProviderGroup | null;
   /**
-   * The id of the field whose value applies while this one is not set, such as
-   * `chat_url` for the llama.cpp Classification address. `value` then holds that
-   * field's value and `source` is `default`. `null` when it follows nothing.
+   * The id of the field whose value applies while this one is not set. `value`
+   * then holds that field's value and `source` is `default`. `null` when it
+   * follows nothing.
    */
   follows: string | null;
   /** Smallest allowed value of an `int` field; `null` for other kinds. */

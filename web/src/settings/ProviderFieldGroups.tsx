@@ -55,17 +55,17 @@ function ReadOnlyValues({ values }: { values: ReadOnlyValue[] }) {
 /**
  * The fields and read-only values of a provider card. Values with no group
  * come first, then each block (Embeddings, Classification (metadata), Chat)
- * under its title, with the provider's extra panels for that block at its end.
+ * under its title. A field or value that a provider panel shows itself is left out.
  * A card whose values have no group shows no block titles.
  */
 export function ProviderFieldGroups({ connection, keychain, configDir, onTyped, parts }: ProviderFieldGroupsProps) {
-  const extras = PROVIDER_EXTRAS[connection.provider] ?? [];
+  // A panel that shows a field itself replaces the plain row.
+  const replaced = new Set((PROVIDER_EXTRAS[connection.provider] ?? []).flatMap((extra) => extra.replaces));
 
   const part = (group: ProviderGroup | null) => {
-    const fields = connection.fields.filter((field) => field.group === group);
-    const values = connection.read_only.filter((entry) => entry.group === group);
-    const panels = extras.filter((extra) => extra.group === group);
-    if (fields.length === 0 && values.length === 0 && panels.length === 0) return null;
+    const fields = connection.fields.filter((field) => field.group === group && !replaced.has(field.id));
+    const values = connection.read_only.filter((entry) => entry.group === group && !replaced.has(entry.label));
+    if (fields.length === 0 && values.length === 0) return null;
     return (
       <>
         {fields.map((field) =>
@@ -76,11 +76,6 @@ export function ProviderFieldGroups({ connection, keychain, configDir, onTyped, 
           ),
         )}
         {values.length > 0 ? <ReadOnlyValues values={values} /> : null}
-        {panels.map(({ Component }, index) => (
-          <div key={index} data-slot="provider-extra" className="flex min-w-0 flex-col gap-3">
-            <Component />
-          </div>
-        ))}
       </>
     );
   };
