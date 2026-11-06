@@ -78,9 +78,9 @@ Before the first code task, verify the worktree: `git rev-parse --show-toplevel`
 
 ## 9. Integration checks and pull request
 
-- [ ] 9.1 Re-pin the clean-base tripwire by test-ID diff: collect test IDs on `origin/v3` and on this branch, list added and removed IDs, and set the executed and deselected counts from that diff. Verify `tests/test_clean_base_tripwire.py` passes.
-- [ ] 9.2 Run `./scripts/local_ci.sh` and read the final exit line. Verify it ends with success and no `SKIPPED` step that CI runs.
-- [ ] 9.3 Run `openspec validate --all --strict`. Verify it passes.
+- [x] 9.1 Re-pin the clean-base tripwire by test-ID diff: collect test IDs on `origin/v3` and on this branch, list added and removed IDs, and set the executed and deselected counts from that diff. Verify `tests/test_clean_base_tripwire.py` passes.
+- [x] 9.2 Run `./scripts/local_ci.sh` and read the final exit line. Verify it ends with success and no `SKIPPED` step that CI runs.
+- [x] 9.3 Run `openspec validate --all --strict`. Verify it passes.
 - [ ] 9.4 Ask the operator before committing. Commit with Conventional Commits through `uv run --no-sync git ...` (`feat!:` for the retired key). Push the branch and open one pull request into `v3`. Verify the PR body lists the red runs, the mutation checks, the one-time re-index and that later cut changes re-index PDF sources only.
 - [ ] 9.5 Watch CI until every check ends; fix each failure and push again. Read every CodeRabbit comment, fix valid findings with a reply naming the commit, reply with a reason to invalid ones, and resolve each thread. Verify no open thread is left. Do not merge until the operator says go.
 

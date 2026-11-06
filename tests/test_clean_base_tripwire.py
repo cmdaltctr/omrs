@@ -328,7 +328,12 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # test_llamacpp_runtime_locks_leave.py, close unlock (2). No fastapi needed.
 # +7 (2026-11-05, fix-llamacpp-chat-endpoint, by test-ID diff, 7 added, 0 removed):
 # tests/unit/test_llamacpp_chat_endpoint.py. No fastapi needed.
-_BASE_EXECUTED = 11063
+# +95 (2026-11-06, local-ocr-per-backend-cuts, by test-ID diff against v3 ba4a4795,
+# 133 added, 38 removed): cuts setting (36), retired key (5), route cuts (22, need
+# fastapi), Read step cuts (18), identity (17 + 7 re-ingest) and chain, Indra,
+# script routing and pin cases. Removed: the old override (9), output_script (7)
+# and replaced identity, chain and tier cases.
+_BASE_EXECUTED = 11158
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -681,7 +686,8 @@ if not _has_qwen_tokenizer:
 # test_web_document_routers.py (22), test_web_decision_models.py (20),
 # test_web_document_reading.py (3) and test_web_runtimes_decision.py (1).
 # +1 (2026-11-05, fix-managed-chat-classification): one case in test_web_runtimes.py.
-_WEB_EXTRA_CASES = 1938
+# +22 (2026-11-06, local-ocr-per-backend-cuts): test_document_reading_cuts.py.
+_WEB_EXTRA_CASES = 1960
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)
