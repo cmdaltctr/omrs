@@ -4,6 +4,10 @@ Constructs an ``OpenAILikeEmbedding`` for a llama.cpp server's OpenAI-compatible
 ``/v1`` endpoint. This accepts arbitrary local model identifiers and requires
 ``llama-index-embeddings-openai-like``.
 
+A managed router refuses a request for a model outside its list (``RouterRefused``).
+The embedder checks the list when it is about to send, never when it is built, so an
+install with an unlisted model still starts and the Settings page can fix the list.
+
 The embedder sends text unchanged. LlamaIndex's OpenAI helpers replace every
 line break with a space, which Ollama does not do. With the same model, that
 gives different vectors for the same chunk (cosine down to 0.86 on Markdown)
@@ -12,6 +16,7 @@ and drops the chunk's line structure.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from functools import cache
 from typing import TYPE_CHECKING, Any
 
@@ -29,11 +34,20 @@ def _verbatim_embedding_class(base: type) -> type:
     Cached by base class, so the import in :func:`build` still runs on every
     call and still raises when the package is missing.
     """
+    from llama_index.core.bridge.pydantic import PrivateAttr
 
     class VerbatimOpenAILikeEmbedding(base):  # type: ignore[valid-type,misc]
         """Posts each input to ``/embeddings`` as it is, with the parent's retries."""
 
+        #: Raises ``RouterRefused`` when the router cannot serve the model; set by ``build``.
+        _before_send: Callable[[], None] | None = PrivateAttr(default=None)
+
+        def _guard(self) -> None:
+            if self._before_send is not None:
+                self._before_send()
+
         def _embed(self, texts: list[str]) -> list[list[float]]:
+            self._guard()  # a refusal sends nothing and is not retried
             client = self._get_client()
 
             @self._create_retry_decorator()
@@ -46,6 +60,7 @@ def _verbatim_embedding_class(base: type) -> type:
             return call()
 
         async def _aembed(self, texts: list[str]) -> list[list[float]]:
+            self._guard()
             aclient = self._get_aclient()
 
             @self._create_retry_decorator()
@@ -81,14 +96,16 @@ def _verbatim_embedding_class(base: type) -> type:
 def build(settings: Settings, *, model: str | None = None) -> Any:
     """Construct the llama.cpp embedder from *settings*.
 
+    The embedder raises ``RouterRefused`` on a request when the router is managed
+    and the model is not in its list (``model-not-listed``). Nothing is sent.
+    Building it never refuses.
+
     Args:
         settings: Resolved settings (URL and batch size).
         model: Optional model name that replaces ``llamacpp_embed_model``.
 
     Raises:
         ImportError: If ``llama-index-embeddings-openai-like`` is absent.
-        RouterRefused: The router is managed and the model is not in its list
-            (``model-not-listed``). Nothing is sent.
     """
     try:
         from llama_index.embeddings.openai_like import OpenAILikeEmbedding
@@ -99,8 +116,7 @@ def build(settings: Settings, *, model: str | None = None) -> Any:
         ) from None
 
     name = model or settings.llamacpp_embed_model
-    check_listed(settings, "embeddings", name)
-    return _verbatim_embedding_class(OpenAILikeEmbedding)(
+    embedder = _verbatim_embedding_class(OpenAILikeEmbedding)(
         model_name=name,
         api_base=settings.llamacpp_router_url,
         api_key="no-key",
@@ -108,3 +124,5 @@ def build(settings: Settings, *, model: str | None = None) -> Any:
         # OMRS's own router, when managed: each request joins it first.
         **http_clients("embeddings"),
     )
+    embedder._before_send = lambda: check_listed(settings, "embeddings", name)
+    return embedder

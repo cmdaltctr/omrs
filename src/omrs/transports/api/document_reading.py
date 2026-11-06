@@ -3,8 +3,10 @@
 Settings > Document reading edits server-wide keys in ``omrs.jsonc``. Each
 key applies only at the next launch, so a row shows the value in force since
 launch (the launch ``Settings``), the valid value the file holds now, the
-source, the default and whether a restart is pending. A key that ``env`` or
-``.env`` sets is locked.
+source, the default and whether a restart is pending. The one exception is
+``document_router``, a live value (``ROUTER_LIVE_VALUES``): its row shows the
+file value, which the running server follows. A key that ``env`` or ``.env``
+sets is locked.
 
 The body reads the launch state on ``app.state.configuration`` (the same
 ``ConfigurationState`` the Configuration route reads). When that state is
@@ -35,6 +37,7 @@ from ...config.settings_maps import DOCUMENT_ROUTERS, NO_ROUTER
 from ...config.user_config import display_path
 from ...core import reading_parts
 from ...core.reading_lists import OCR_ENGINES_DEFAULT, expand_ocr_engines, expand_pdf_reader
+from ...core.settings import ROUTER_LIVE_VALUES
 from ..settings_view import plain, source_word
 from .restart_snapshot import capture, pending
 
@@ -142,17 +145,24 @@ def _rows(launch: Settings, file: SettingsFile, snapshot: Mapping[str, Any]) -> 
     for key in DOCUMENT_READING_KEYS:
         source = row_source(launch, key)
         locked = source in _LOCKING_SOURCES
+        saved = _saved(file, key)
+        default = plain(fields[key].default)
+        value = plain(getattr(launch, key))
+        live = key in ROUTER_LIVE_VALUES and not locked
+        if live:  # the running server follows the file, so the file is what is in force
+            value, source = (default, "default") if saved is None else (saved, "config-file")
         rows.append(
             {
                 "key": key,
-                "value": plain(getattr(launch, key)),
-                "saved": _saved(file, key),
+                "value": value,
+                "saved": saved,
                 "source": source,
                 "locked": locked,
                 "lock_reason": lock_reason(key, locking_key(key)) if locked else None,
                 "restart_pending": bool(changed & {key, *OLD_READING_KEYS.get(key, ())})
-                and not locked,
-                "default": plain(fields[key].default),
+                and not locked
+                and not live,
+                "default": default,
             }
         )
     return rows
@@ -278,7 +288,7 @@ def update_refusal(values: Mapping[str, Any], launch: Settings) -> tuple[int, st
 def router_refusal(values: Mapping[str, Any], file: SettingsFile) -> tuple[int, str] | None:
     """Refuse a host ``document_router`` that names no router in *file* (ADR-110, D3).
 
-    The host choice applies at the next launch, so it must name a router that
+    The host choice applies to the next request, so it must name a router that
     ``omrs.jsonc`` holds now, or ``none``. ``null`` removes the key and passes.
 
     Args:

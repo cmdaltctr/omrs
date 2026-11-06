@@ -38,11 +38,16 @@ PROVIDER_SECRET_FIELDS = ("openrouter_api_key", "openai_compatible_api_key", "an
 #: Whole-number editable fields that live in ``EffectiveSettings``: the Ollama
 #: context window (chat and metadata calls only, never embeddings).
 PROVIDER_INT_FIELDS = ("ollama_context_window",)
-#: File-only maps that apply at once in ``omrs web``: the router model list and
-#: the decision models (one-llamacpp-router D3). Compose reads them per request.
-ROUTER_LIVE_MAPS = ("llamacpp_models", "decision_models")
-#: Router fields a running Engine takes from ``omrs.jsonc``: the mode and the maps.
-ROUTER_LIVE_FIELDS = ("llamacpp_router_server", *ROUTER_LIVE_MAPS)
+#: File-only maps that apply at once in ``omrs web``: the router model list, the
+#: decision models and the document routers (one-llamacpp-router D3).
+#: Compose reads them per request.
+ROUTER_LIVE_MAPS = ("llamacpp_models", "decision_models", "document_routers")
+#: Plain values beside those maps that apply at once: the host router name.
+#: ``env`` or ``.env`` locks it, as for any editable field.
+ROUTER_LIVE_VALUES = ("document_router",)
+#: Router fields a running Engine takes from ``omrs.jsonc``: the mode, the host
+#: router name and the maps.
+ROUTER_LIVE_FIELDS = ("llamacpp_router_server", *ROUTER_LIVE_VALUES, *ROUTER_LIVE_MAPS)
 
 
 class ChunkingBlock(BaseModel):

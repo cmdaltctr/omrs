@@ -6,7 +6,8 @@ downloads each listed model that has no file into the Hugging Face cache, at
 the repo's current revision (task 6.2a). It writes no setting: ``omrs web``
 records the cached file in the model list when the router first needs it
 (gotcha 18). It is headless (no prompt), starts no server and reports on
-stderr (gotcha #5). A refusal exits 1 with its reason.
+stderr (gotcha #5). A refusal exits 1 with its reason. A model that fails to download does not stop
+the models after it; the command exits 1 at the end and names each failed model.
 """
 
 from __future__ import annotations
@@ -27,9 +28,15 @@ from . import app, console
 #: Bytes read per step when the downloaded file is hashed.
 _HASH_CHUNK = 1024 * 1024
 
+_DOWNLOAD_NOTE = (
+    "When llamacpp_router_server is managed, it also downloads each listed model "
+    "that has no file, into the Hugging Face cache. It writes no setting."
+)
+_GROUP_HELP = f"Install the pinned llama.cpp build that OMRS runs. {_DOWNLOAD_NOTE}"
+
 llamacpp_app = typer.Typer(
     name="llamacpp",
-    help="Install the pinned llama.cpp build that OMRS runs.",
+    help=_GROUP_HELP,
     no_args_is_help=True,
 )
 app.add_typer(llamacpp_app, name="llamacpp")
@@ -64,7 +71,9 @@ def _check_flavour(flavour: str | None) -> None:
         _fail(f"--flavour must be cpu or cuda, not '{flavour}'.")
 
 
-@llamacpp_app.command()
+@llamacpp_app.command(
+    help=f"Download, check and place the pinned llama.cpp build. No server starts. {_DOWNLOAD_NOTE}"
+)
 def install(
     flavour: Annotated[
         str | None,
@@ -95,13 +104,22 @@ def _download_missing_models() -> None:
     settings = compose.get_settings()
     if settings.llamacpp_router_server != "managed":
         return
-    for entry in settings.llamacpp_models.values():
-        if not (entry.file or "").strip():
-            _download_model(entry.model)
+    failed = [
+        entry.model
+        for entry in settings.llamacpp_models.values()
+        if not (entry.file or "").strip() and not _download_model(entry.model)
+    ]
+    if failed:
+        _fail(f"{len(failed)} model(s) did not download: {', '.join(failed)}.")
 
 
-def _download_model(model: str) -> None:
-    """Download *model* (``org/name:QUANT``) at its repo's current revision and report it."""
+def _download_model(model: str) -> bool:
+    """Download *model* (``org/name:QUANT``) at its repo's current revision and report it.
+
+    Returns:
+        True when the file is cached. False after a failure, which is printed with
+        its reason.
+    """
     console.print(f"Downloading {escape(model)}", soft_wrap=True)
     repo, _, label = model.rpartition(":")
     try:
@@ -109,7 +127,7 @@ def _download_model(model: str) -> None:
         found = model_sources.group_gguf_files(listed.files)
         chosen = next((e for e in found if e.label == label), None)
         if chosen is None:
-            _fail(f"{model}: the repo holds no {label} GGUF file.")
+            return _report_failure(f"{model}: the repo holds no {label} GGUF file.")
         done = [0]
 
         def progress(count: int) -> None:
@@ -127,8 +145,15 @@ def _download_model(model: str) -> None:
             token=os.environ.get("HF_TOKEN") or None,
         )
     except hf_models.ModelHostError as exc:
-        _fail(f"{model}: {exc.reason}")
+        return _report_failure(f"{model}: {exc.reason}")
     console.print(f"  {escape(path)} (SHA-256 {_sha256(path)})", soft_wrap=True)
+    return True
+
+
+def _report_failure(message: str) -> bool:
+    """Print one model failure and return False, so the next model still runs."""
+    console.print(f"[red]Error:[/red] {escape(message)}", soft_wrap=True)
+    return False
 
 
 def _sha256(path: str) -> str:

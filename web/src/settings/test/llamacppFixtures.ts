@@ -70,6 +70,7 @@ export const ROUTER_STOPPED: LlamacppRouterStatus = {
     memory_margin_mib: routerField("llamacpp_router_memory_margin_mib", "Free memory margin (MiB)", "int", 8192, { min: 0, max: 262144 }),
   },
   models: [EMBED_ENTRY, TEXT_ENTRY],
+  problems: [],
 };
 
 /** A router status built from the fresh one with changed parts. */

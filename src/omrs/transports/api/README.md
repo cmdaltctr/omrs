@@ -301,7 +301,7 @@ bearer credential with `read` can use the two `GET` routes. The old
 
 | Method | Path | Scope | Result | Refusals |
 | --- | --- | --- | --- | --- |
-| GET | `/v1/llamacpp/router` | `read` | `state`, `reason`, `mode`, `address`, `running_with`, `pending_restart`, `program`, `saved` (`binary`, `router_server`, `router_url`, `models_max`, `memory_margin_mib`, each with `value`, `default`, `source`, `locked`) and `models` (`id`, `model`, `roles`, `file`, `ctx_size`, `preset`, `state`, `reason`, `reload_pending`) | none |
+| GET | `/v1/llamacpp/router` | `read` | `revision`, `state`, `reason`, `reason_text`, `mode`, `address`, `running_with`, `pending_restart`, `program`, `saved` (`binary`, `router_server`, `router_url`, `models_max`, `memory_margin_mib`, each with `label`, `value`, `default`, `source`, `locked`, `lock_reason`) and `models` (`id`, `model`, `roles`, `file`, `projector`, `ctx_size`, `preset`, `state`, `reason`, `reason_text`, `note`, `reload_pending`) and `problems` (`role`, `reason`, `text`; the roles that no list entry can serve, empty while the mode is `external`) | none |
 | PUT | `/v1/llamacpp/router` | `manage`; `credentials` when the body sets `binary` or `router_server` | The status after the save. Keys `binary`, `router_server`, `router_url`, `models_max`, `memory_margin_mib` and `revision`; `null` clears | 400 for a rule failure, an unknown mode, a managed address that is not loopback, a body that holds `model` ("Models are set in the model table") or the retired `idle_sleep`; 403; 409 for a locked field (the message names the variable) or a stale `revision` |
 | PUT | `/v1/llamacpp/router/models/{id}` | `manage`; `credentials` when the body sets `model`, `file`, `projector` or a SHA-256 | Adds an entry or changes some fields of one; Use this model is `model`, `file`, `sha256`. Answers with the status | 400 (`reason` `preset-key-unknown`, `preset-invalid` or `role-mismatch`); 403; 409 for a stale `revision` |
 | DELETE | `/v1/llamacpp/router/models/{id}?revision=` | `credentials` | Removes an entry that holds no role | 404; 409 `in-use` |
@@ -319,9 +319,22 @@ Rules:
    mode is `external`, so OMRS starts and stops nothing. `in-use` means the
    entry holds a role. `busy` means an install job runs. A 409 for a locked
    field or a stale `revision` has no `reason`.
-2. Start fails with `not-configured` when no program is set or provisioned,
-   or no listed model has a file. Other refusals: `binary-invalid`,
-   `not-loopback`, `port-in-use`, `wrong-build`.
+2. A `failed` router has one `reason` and a plain `reason_text`. The words are
+   `binary-invalid`, `model-invalid`, `not-loopback`, `port-in-use`, `exited`,
+   `timeout`, `not-configured`, `not-provisioned`, `not-supported`,
+   `version-busy`, `wrong-build`, `file-changed`, `bind-failed` and
+   `not-downloaded`. `not-provisioned` means the program path is blank and no
+   pinned build is placed. `not-downloaded` means no listed model has a file;
+   its `reason_text` reads "Models are still downloading." while a download
+   runs, else "No model is downloaded yet." `not-configured` means the list
+   holds no usable entry. The web page shows `reason_text` and reads no table of
+   its own.
+   A model in `models` has a `state` of `not-downloaded`, `unloaded`, `loading`,
+   `loaded` or `failed`. A `failed` model has a `reason`: `model-invalid`,
+   `file-changed`, `preset-invalid`, `model-load-failed`, `model-not-listed`,
+   `role-mismatch` or `version-busy`. `not-downloaded` is a state with no
+   reason. `reason_text` is the plain line, and `note` is `Downloading` or
+   `File not checked`.
 3. `pending_restart` is true when the saved router arguments (program, model
    limit, memory margin, address) differ from the live process. A save keeps
    the router running; Restart applies it.
@@ -329,7 +342,9 @@ Rules:
    entry's section of `models.ini` is rewritten and only that model reloads.
    `reload_pending` is true while the running router holds another value.
 5. The install job calls `provision.install_pinned_build` in a daemon thread,
-   one job at a time, and changes no setting. A failure has one fixed `reason`.
+   one job at a time, and changes no setting. A failure has one fixed `reason`:
+   `not-supported`, `download-failed`, `file-changed`, `binary-check-failed`,
+   `cuda-device-missing` or `failed` (a failure with no cause of its own).
 6. A llama.cpp Chat save changes no model file, so it needs `manage` only.
    With the mode `external`, the Chat test of a llama.cpp model reads the
    server's model list first; with `managed` it skips the list.

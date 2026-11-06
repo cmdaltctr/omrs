@@ -141,6 +141,7 @@ def show() -> None:
     found in omrs.jsonc are listed by key. The command writes nothing and
     prints to stderr only.
     """
+    from ...compose_answer import llamacpp_roles
     from ...compose_providers import resolve_keychain_references
     from ...config import Settings
 
@@ -170,3 +171,11 @@ def show() -> None:
             console.print(escape(f"  {problem.key}: {problem.message}"), soft_wrap=True)
         for note in notes:
             console.print(escape(f"  {note}"), soft_wrap=True)
+    if settings.llamacpp_router_server == "managed":
+        # One source: derive_roles. An external router has no list to check.
+        list_problems = llamacpp_roles(settings).problems
+        if list_problems:
+            console.print("\nProblems with the llama.cpp model list:", soft_wrap=True)
+            for item in list_problems:
+                line = f"  {item.role} ({item.reason}): {item.rule} Configured: {item.model}"
+                console.print(escape(line), soft_wrap=True)

@@ -12,7 +12,8 @@ and, for a one-slot entry, request lock:
    for every such entry and does not wait for them (``omrs web`` installs
    the downloader, see :func:`install_downloader`);
 3. the router lease joins the router; a start writes ``models.ini`` from this
-   process's list first (:mod:`.preset_writer`);
+   process's list first (:mod:`.preset_writer`), but a start after a crash
+   keeps the section of a model another process still uses (rule 4);
 4. on the first use of model X, under ``start.lock``, X's section in
    ``models.ini`` must equal this process's section; when it differs and no
    other process uses X, only that section is rewritten and the router
@@ -41,14 +42,17 @@ from .preset_writer import (
     EntryLike,
     EntryOutcome,
     PresetPlan,
+    join_sections,
     plan_preset,
     read_preset,
+    section_digest,
     split_sections,
     write_preset,
 )
 from .process import StartRefused
-from .reload import apply_sections, running_record
+from .reload import apply_sections, running_record, sections_in_use
 from .router_spec import HASHES_FILE, ROUTER_ID, router_dir
+from .rules import DOWNLOADING
 from .spec import RuntimeSpec
 
 T = TypeVar("T")
@@ -172,14 +176,26 @@ class RouterLease:
         """Write ``models.ini`` before a router start (under ``start.lock``)."""
         with self._lock:
             plan = self._new_plan()
-            for outcome in plan.outcomes:
-                if outcome.state == NOT_DOWNLOADED:
-                    ask_download(outcome.model)  # the start does not wait for it
+            missing = [o.model for o in plan.outcomes if o.state == NOT_DOWNLOADED]
+            for model in missing:
+                ask_download(model)  # the start does not wait for it
             if not plan.digests:
+                if missing:  # no listed model has a file (D-b)
+                    running = any(download_running(model) for model in missing)
+                    raise StartRefused(NOT_DOWNLOADED, DOWNLOADING if running else "")
                 raise StartRefused("not-configured")
-            write_preset(self.folder, plan.text)
+            wanted = {o.model: o.section for o in plan.outcomes if o.section}
+            kept = sections_in_use(self.folder, wanted, self._holds)  # after a crash (D7)
+            for model in wanted:
+                if model in kept:
+                    self._pending.add(model)
+                else:
+                    self._pending.discard(model)
+            sections = {**wanted, **kept}
+            write_preset(self.folder, join_sections(sections.values()))
             self._ready.clear()
-            return {"models": plan.digests, "argv": list(self.spec.argv)}
+            digests = {model: section_digest(text) for model, text in sections.items()}
+            return {"models": digests, "argv": list(self.spec.argv)}
 
     def _on_leave(self) -> None:
         with self._lock:

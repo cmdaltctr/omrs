@@ -181,6 +181,19 @@ def _model_items(loaded: LoadedRouter, status: RouterStatus) -> list[dict[str, A
     return items
 
 
+def _problem_items(loaded: LoadedRouter) -> list[dict[str, str]]:
+    """Return the roles that no list entry can serve; none while an external server runs.
+
+    The text is the rule of ``derive_roles`` and never names the model.
+    """
+    if loaded.config.mode != "managed":
+        return []
+    return [
+        {"role": item.role, "reason": item.reason, "text": item.rule}
+        for item in loaded.roles.problems
+    ]
+
+
 def saved_fields(settings: Settings) -> dict[str, dict[str, Any]]:
     """Return the five saved settings by body key, each with source, default and lock."""
     locks = locked_fields(settings, settings.provider_explicit)
@@ -203,4 +216,5 @@ def status_body(loaded: LoadedRouter, status: RouterStatus) -> dict[str, Any]:
         "program": status.program or program_in_force(loaded.config.binary),
         "saved": saved_fields(loaded.settings),
         "models": _model_items(loaded, status),
+        "problems": _problem_items(loaded),
     }

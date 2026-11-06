@@ -31,6 +31,9 @@ export const LIMIT_HELP: Record<"models_max" | "memory_margin_mib", string> = {
   memory_margin_mib: "Memory that the router leaves free, in MiB.",
 };
 
+/** Said after each problem line. The line itself is the server's own text. */
+export const PROBLEM_ACTION = "Edit the list below or choose another model.";
+
 /** One plain line for each 409 reason of the router routes. */
 export const CONFLICT_SENTENCES: Record<RouterConflictReason, string> = {
   "external-server": "OMRS does not start a router while the mode is Use this address.",

@@ -75,3 +75,85 @@ def test_an_external_router_downloads_no_model(
 
     assert result.exit_code == 0, result.output
     assert calls == [("binary", None)]
+
+
+def _fail_listing(monkeypatch: pytest.MonkeyPatch, reasons: dict[str, str]) -> None:
+    """Make ``list_repo_files`` raise the mapped reason for each named repo."""
+    real = hf.list_repo_files
+
+    def list_files(repo: str, **kwargs: Any) -> Any:
+        if repo in reasons:
+            raise hf.ModelHostError(reasons[repo])
+        return real(repo, **kwargs)
+
+    monkeypatch.setattr(hf, "list_repo_files", list_files)
+
+
+def test_a_failed_model_does_not_stop_the_models_after_it(
+    calls: list[tuple[Any, ...]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _fail_listing(monkeypatch, {"Qwen/Qwen3-Embedding-4B-GGUF": "network"})
+
+    result = CliRunner().invoke(app, ["llamacpp", "install"])
+
+    assert result.exit_code == 1, result.output
+    assert calls == [
+        ("binary", None),
+        ("model", "Qwen/Qwen3-4B-GGUF", REV, ("Qwen3-4B-Q8_0.gguf",)),
+    ]
+    assert f"{EMBED_MODEL}: network" in result.output
+    assert "SHA-256" in result.output
+
+
+def test_each_failure_prints_its_reason_and_the_exit_names_the_failed_models(
+    calls: list[tuple[Any, ...]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _fail_listing(
+        monkeypatch,
+        {"Qwen/Qwen3-Embedding-4B-GGUF": "gated", "Qwen/Qwen3-4B-GGUF": "not-found"},
+    )
+
+    result = CliRunner().invoke(app, ["llamacpp", "install"])
+
+    assert result.exit_code == 1, result.output
+    assert calls == [("binary", None)]
+    assert f"{EMBED_MODEL}: gated" in result.output
+    assert f"{CLASSIFY_MODEL}: not-found" in result.output
+    closing = result.output.rstrip().splitlines()[-1]
+    assert EMBED_MODEL in closing
+    assert CLASSIFY_MODEL in closing
+
+
+def test_a_repo_without_the_gguf_label_fails_and_the_next_model_still_downloads(
+    calls: list[tuple[Any, ...]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    real = hf.list_repo_files
+
+    def list_files(repo: str, **kwargs: Any) -> Any:
+        if repo == "Qwen/Qwen3-Embedding-4B-GGUF":
+            return hf.RepoFiles(repo, REV, False, (("Qwen3-Embedding-4B-F16.gguf", 1000),))
+        return real(repo, **kwargs)
+
+    monkeypatch.setattr(hf, "list_repo_files", list_files)
+
+    result = CliRunner().invoke(app, ["llamacpp", "install"])
+
+    assert result.exit_code == 1, result.output
+    assert [c[1] for c in calls[1:]] == ["Qwen/Qwen3-4B-GGUF"]
+    assert "the repo holds no Q8_0 GGUF file" in result.output
+
+
+def _plain_help(args: list[str]) -> str:
+    result = CliRunner().invoke(app, args)
+    assert result.exit_code == 0, result.output
+    return " ".join(result.output.split())
+
+
+def test_the_group_and_install_help_say_install_also_downloads_the_models() -> None:
+    for text in (
+        _plain_help(["llamacpp", "--help"]),
+        _plain_help(["llamacpp", "install", "--help"]),
+    ):
+        assert "managed" in text
+        assert "Hugging Face cache" in text
+        assert "has no file" in text

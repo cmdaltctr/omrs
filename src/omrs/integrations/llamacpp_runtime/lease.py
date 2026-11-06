@@ -26,7 +26,7 @@ from typing import TYPE_CHECKING, Any, TypeVar
 
 from . import locks, process
 from .locks import LockFile
-from .rules import NOT_PROVISIONED, NOT_PROVISIONED_TEXT
+from .rules import OPERATOR_STOP, reason_text
 from .spec import RuntimeSpec
 from .state import ServerRecord, read_server_record, runtime_dir, write_server_record
 
@@ -37,38 +37,8 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
-#: The reason of a request refused or cut by an operator stop (design D8).
-OPERATOR_STOP = "operator-stop"
 #: Tries to replace another version of a runtime before ``version-busy``.
 _VERSION_TRIES = 3
-
-_REASON_TEXTS = {
-    "binary-invalid": "The llama-server program is missing, cannot run or has another name.",
-    "model-invalid": "The model is not a .gguf file or a Hugging Face id.",
-    "not-loopback": "The server address is not on this computer.",
-    "port-in-use": "Another program uses the port.",
-    "exited": "The server stopped before it was ready.",
-    "timeout": "The server was not ready in time and was stopped.",
-    "not-configured": "No program or model is set.",
-    "not-supported": "Managed servers need file locks, which this system does not have.",
-    "version-busy": "Another OMRS process still uses the older version of this server.",
-    "wrong-build": "The llama-server build is not the build the runtime declares.",
-    "file-changed": "A model file changed: {name}.",
-    "bind-failed": "The server could not open a port after 4 tries.",
-    NOT_PROVISIONED: NOT_PROVISIONED_TEXT,
-    OPERATOR_STOP: "An operator stopped this server.",
-}
-
-
-def reason_text(reason: str, detail: str = "") -> str:
-    """Return the fixed plain-English line of *reason*.
-
-    A detail fills ``{name}``; a line without ``{name}`` gets the detail after a colon.
-    """
-    template = _REASON_TEXTS.get(reason, reason)
-    if detail and "{name}" not in template:
-        return f"{template.rstrip('.')}: {detail}."
-    return template.format(name=detail or "unknown")
 
 
 class RuntimeUnavailable(RuntimeError):

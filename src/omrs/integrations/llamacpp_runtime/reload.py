@@ -36,6 +36,30 @@ def running_record(folder: Path) -> ServerRecord | None:
     return record
 
 
+def sections_in_use(folder: Path, wanted: Mapping[str, str], holds: ModelHolds) -> dict[str, str]:
+    """Return the ``models.ini`` sections a start must keep: ``{model: section}``.
+
+    A start writes the whole file. After a crash, other processes still hold
+    models with the sections in force. A section that differs from *wanted*
+    (``""`` or absent means this process lists no section) stays when another
+    process uses its model, as in :func:`apply_sections`. A section no other
+    process uses is free, and this process's hold on it is kept.
+    """
+    kept: dict[str, str] = {}
+    for model, section in split_sections(read_preset(folder)).items():
+        if wanted.get(model, "") == section:
+            continue
+        was_held = holds.held(model)
+        probe = holds.take_exclusive(model)
+        if probe is None:
+            kept[model] = section
+        elif was_held and wanted.get(model):
+            holds.keep(model, probe)
+        else:
+            probe.close()
+    return kept
+
+
 def apply_sections(
     folder: Path, wanted: Mapping[str, str], holds: ModelHolds, busy: Mapping[str, int]
 ) -> dict[str, str]:

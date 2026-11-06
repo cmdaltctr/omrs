@@ -15,6 +15,7 @@ import pytest
 from typer.testing import CliRunner
 
 from omrs.config import provenance
+from omrs.config.llamacpp_models import EMBED_MODEL
 from omrs.config.settings_file import setting_paths
 from omrs.transports.cli import app as cli_app
 
@@ -224,3 +225,49 @@ def test_a_missing_file_is_said_and_defaults_are_listed(config_dir: Path) -> Non
     assert "not found" in flat(result.stderr)
     assert sorted(parsed(result.stderr)) == sorted(setting_paths())
     assert not (config_dir / "omrs.jsonc").exists()  # show writes nothing
+
+
+# ── Router list problems ─────────────────────────────────────────────────
+
+LIST_HEADER = "Problems with the llama.cpp model list"
+
+
+@pytest.fixture
+def file_roles(config_dir: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Let ``omrs.jsonc`` name the role models: the conftest sets both in the environment."""
+    for variable in ("LLAMACPP_EMBED_MODEL", "LLAMACPP_CHAT_MODEL"):
+        monkeypatch.delenv(variable, raising=False)
+    return config_dir
+
+
+def test_an_unlisted_embeddings_model_is_listed_with_its_reason_and_rule(file_roles: Path) -> None:
+    write_config(file_roles, '{ "llamacpp_embed_model": "qwen3-embedding:0.6b" }')
+    result = show()
+    text = flat(result.stderr)
+    assert result.exit_code == 0
+    assert LIST_HEADER in text
+    assert "embeddings" in text and "model-not-listed" in text
+    assert "The embeddings model is not in the list." in text
+    assert "qwen3-embedding:0.6b" in text  # the operator's own terminal may name it
+
+
+def test_an_embedding_entry_used_for_classification_is_a_role_mismatch(file_roles: Path) -> None:
+    write_config(file_roles, f'{{ "llamacpp_chat_model": "{EMBED_MODEL}" }}')
+    text = flat(show().stderr)
+    assert LIST_HEADER in text
+    assert "classification" in text and "role-mismatch" in text
+    assert "An embedding entry cannot serve the classification role." in text
+
+
+def test_an_external_router_prints_no_list_problem(file_roles: Path) -> None:
+    write_config(
+        file_roles,
+        '{ "llamacpp_router_server": "external", "llamacpp_embed_model": "qwen3-embedding:0.6b" }',
+    )
+    text = flat(show().stderr)
+    assert LIST_HEADER not in text
+    assert "model-not-listed" not in text
+
+
+def test_a_consistent_list_prints_no_list_problem(file_roles: Path) -> None:
+    assert LIST_HEADER not in show().stderr

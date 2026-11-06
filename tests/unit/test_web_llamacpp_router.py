@@ -405,7 +405,7 @@ def test_start_leaves_a_router_running_with_other_values_alone(rig: Any) -> None
 @pytest.mark.parametrize(
     ("overrides", "reason"),
     [
-        ({}, "not-configured"),  # the shipped list has no file
+        ({}, "not-downloaded"),  # the shipped list has no file
         ({"llamacpp_server_binary": "/no/such/llama-server"}, "binary-invalid"),
         ({"llamacpp_router_url": "http://192.168.1.20:8080/v1"}, "not-loopback"),
     ],
@@ -414,7 +414,7 @@ def test_a_refused_start_is_failed_with_a_fixed_reason(
     rig: Any, overrides: dict[str, Any], reason: str
 ) -> None:
     with rig(**overrides) as r:
-        if reason != "not-configured":
+        if reason != "not-downloaded":
             r.save_files()
         response = r.post("start")
         assert response.status_code == 200

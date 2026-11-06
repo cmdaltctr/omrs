@@ -1,11 +1,14 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
+import type { RouterReason } from "../api/llamacppRouter";
 import { json } from "../test/fakeDocumentsServer";
 import { startApp } from "../test/startApp";
 import { ROUTER_EXTERNAL, ROUTER_RUNNING, ROUTER_STOPPED, routerStatus, settingsServer, WITH_CREDENTIALS } from "./test/fixtures";
 
 const EXTERNAL_NOTE = "External server: OMRS does not check model files or presets";
+// A program in force keeps the panel closed unless a problem opens it.
+const HAS_PROGRAM = { path: "/opt/omrs/llama-server", source: "provisioned" } as const;
 const NOTE_PATTERN = /External server: OMRS does not check model files or presets/;
 
 async function open(handlers = {}) {
@@ -132,10 +135,57 @@ describe("The llama.cpp card shows one Router panel", () => {
     await waitFor(() => expect(panel()).toHaveTextContent("/opt/omrs/llama-server (provisioned build)"));
   });
 
+  it("lists each role that no list entry can serve as one plain line at the top, and opens the panel", async () => {
+    const problems = [
+      { role: "embeddings" as const, reason: "model-not-listed" as const, text: "The embeddings model is not in the list." },
+      { role: "classification" as const, reason: "role-mismatch" as const, text: "An embedding entry cannot serve the classification role." },
+    ];
+    const { panel } = await open({ "GET /v1/llamacpp/router": () => routerStatus({ problems, program: HAS_PROGRAM }) });
+    const lines = await within(panel()).findAllByTestId("router-problem");
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toHaveTextContent("The embeddings model is not in the list. Edit the list below or choose another model.");
+    expect(lines[1]).toHaveTextContent("An embedding entry cannot serve the classification role. Edit the list below or choose another model.");
+    expect(panel()).toHaveAttribute("open");
+    // The lines come before the router rows.
+    const text = panel().textContent ?? "";
+    expect(text.indexOf("The embeddings model is not in the list.")).toBeLessThan(text.indexOf("Who runs llama.cpp"));
+  });
+
+  it("shows no problem line when the server sends an empty array", async () => {
+    const { panel } = await open({ "GET /v1/llamacpp/router": () => routerStatus({ program: HAS_PROGRAM }) });
+    await waitFor(() => expect(within(panel()).getByRole("status")).toHaveTextContent("Stopped"));
+    expect(within(panel()).queryByTestId("router-problem")).toBeNull();
+    expect(panel()).not.toHaveAttribute("open");
+  });
+
   it("shows a failed router with one plain reason line", async () => {
     const failed = routerStatus({ state: "failed", reason: "port-in-use", reason_text: "Another program already uses port 8080. OMRS did not touch it." });
     const { panel } = await open({ "GET /v1/llamacpp/router": () => failed });
     await waitFor(() => expect(within(panel()).getByRole("status")).toHaveTextContent("Failed: Another program already uses port 8080. OMRS did not touch it."));
+  });
+
+  // Every word that `rules.REASONS` in the backend can put on a failed router. The page shows the server's own line.
+  const ROUTER_REASONS: RouterReason[] = [
+    "binary-invalid",
+    "model-invalid",
+    "not-loopback",
+    "port-in-use",
+    "exited",
+    "timeout",
+    "not-configured",
+    "not-supported",
+    "version-busy",
+    "wrong-build",
+    "file-changed",
+    "bind-failed",
+    "not-provisioned",
+    "not-downloaded",
+  ];
+
+  it.each(ROUTER_REASONS)("shows the server line for the router reason %s", async (reason) => {
+    const failed = routerStatus({ state: "failed", reason, reason_text: `The line for ${reason}.` });
+    const { panel } = await open({ "GET /v1/llamacpp/router": () => failed });
+    await waitFor(() => expect(within(panel()).getByRole("status")).toHaveTextContent(`Failed: The line for ${reason}.`));
   });
 
   it("starts the router and shows the state the server returned", async () => {

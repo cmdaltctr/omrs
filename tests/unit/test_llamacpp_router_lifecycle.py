@@ -249,8 +249,8 @@ def test_old_build_refused(rig: RouterRig) -> None:
     assert rig.starts() == 0
 
 
-def test_no_usable_entry_is_not_configured(rig: RouterRig) -> None:
-    """Spec "Start moves to running or failed": a list with no usable entry."""
+def test_no_file_in_any_entry_is_not_downloaded(rig: RouterRig) -> None:
+    """Spec "Start moves to running or failed": no listed model has a file (D-b)."""
     from omrs.integrations.llamacpp_runtime.lease import RuntimeUnavailable
 
     entries = rig.entries()
@@ -258,5 +258,5 @@ def test_no_usable_entry_is_not_configured(rig: RouterRig) -> None:
         item["file"] = None
     with pytest.raises(RuntimeUnavailable) as caught:
         open_router(rig.manager(), rig.spec(), as_entries(entries)).join()
-    assert caught.value.reason == "not-configured"
+    assert caught.value.reason == "not-downloaded"
     assert rig.starts() == 0

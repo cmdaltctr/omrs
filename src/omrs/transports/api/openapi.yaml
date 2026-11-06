@@ -4286,7 +4286,11 @@ paths:
         `models`: one item per list entry with its `roles`, file, context size, preset, state
         (`not-downloaded`, `unloaded`, `loading`, `loaded` or `failed`), a fixed `reason` for
         a failed model and `reload_pending` (the saved entry differs from the one the
-        running router holds). A read starts nothing, loads no model and writes no setting.
+        running router holds). `problems` lists each role that no list entry can serve (the
+        model of a role setting is not in the list, an embedding entry holds a text role, or
+        the embeddings entry has no valid preset), as `role`, a fixed `reason` and a plain
+        `text` that never names the model. It is empty while the mode is `external`. A read
+        starts nothing, loads no model and writes no setting.
         The route never returns the log file or any text of the process.
       security:
         - sessionCookie: [read]
@@ -4470,9 +4474,12 @@ paths:
         start fails. With the mode `external` the route gives 409 with the reason
         `external-server` and starts nothing. A refusal is state `failed` with one fixed
         reason (`not-provisioned` when no program is set and no pinned build is installed,
-        `not-configured` when no listed model has a file, `binary-invalid`, `not-loopback`,
-        `port-in-use`, `wrong-build`, `timeout` or `exited`). A router that already runs, with these or other arguments,
-        is left alone. A server OMRS did not start is never touched. Session only: a
+        `not-downloaded` when no listed model has a file, `not-configured` when the model list
+        has no entry, `binary-invalid`, `not-loopback`, `port-in-use`, `wrong-build`,
+        `timeout` or `exited`). The line of `not-downloaded` reads "Models are still
+        downloading." while the automatic download of a listed model is queued or runs, else
+        "No model is downloaded yet.". A router that already runs, with these or other
+        arguments, is left alone. A server OMRS did not start is never touched. Session only: a
         bearer credential gets 403.
       security:
         - sessionCookie: [manage]
@@ -11419,6 +11426,7 @@ components:
         - program
         - saved
         - models
+        - problems
       properties:
         status:
           type: string
@@ -11447,6 +11455,7 @@ components:
             - file-changed
             - bind-failed
             - not-provisioned
+            - not-downloaded
             - null
           description: One fixed reason when the state is `failed`; never text from the process.
         reason_text:
@@ -11504,6 +11513,28 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/LlamacppRouterModel"
+        problems:
+          type: array
+          items:
+            $ref: "#/components/schemas/LlamacppRouterProblem"
+          description: >
+            The roles that no list entry can serve, from the one role derivation. Empty while
+            the mode is `external`.
+
+    LlamacppRouterProblem:
+      type: object
+      additionalProperties: false
+      required: [role, reason, text]
+      properties:
+        role:
+          type: string
+          enum: [embeddings, classification, chat, judge, decision]
+        reason:
+          type: string
+          enum: [model-not-listed, role-mismatch, preset-invalid]
+        text:
+          type: string
+          description: A plain-English line for the role. It never names the model.
 
     LlamacppInstallJob:
       type: object
@@ -11717,6 +11748,7 @@ components:
             - wrong-build
             - file-changed
             - not-provisioned
+            - not-downloaded
             - null
           description: >
             One fixed reason when the state is `failed`, else null. Never text from a server.

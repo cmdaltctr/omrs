@@ -25,7 +25,8 @@ export type RouterReason =
   | "wrong-build"
   | "file-changed"
   | "bind-failed"
-  | "not-provisioned";
+  | "not-provisioned"
+  | "not-downloaded";
 
 /** Who runs the router: `managed` is OMRS's own `llama-server`; `external` is an address the user runs. */
 export type RouterMode = "managed" | "external";
@@ -76,6 +77,13 @@ export interface RouterModel {
   reload_pending: boolean;
 }
 
+/** A role that no list entry can serve. `text` is the server's own plain line and never names the model. */
+export interface RouterProblem {
+  role: RouterRole;
+  reason: "model-not-listed" | "role-mismatch" | "preset-invalid";
+  text: string;
+}
+
 export interface LlamacppRouterStatus {
   status: "ok";
   /** Stamp of `omrs.jsonc` read. A save sends it back. */
@@ -99,6 +107,8 @@ export interface LlamacppRouterStatus {
     memory_margin_mib: RouterField;
   };
   models: RouterModel[];
+  /** Empty while the mode is `external`. */
+  problems: RouterProblem[];
 }
 
 /** Keys of a router save. An absent key stays as it is; `null` clears the saved value. */

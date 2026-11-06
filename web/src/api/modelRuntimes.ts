@@ -27,7 +27,8 @@ export type ModelRuntimeReason =
   | "bind-failed"
   | "wrong-build"
   | "file-changed"
-  | "not-provisioned";
+  | "not-provisioned"
+  | "not-downloaded";
 
 export interface ModelRuntime {
   /** `router`, or `ocr-` and the engine folder name. */

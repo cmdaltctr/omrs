@@ -25,6 +25,7 @@ from ....config.settings_file import SettingsFile
 from ....config.settings_maps import DOCUMENT_ROUTERS, entry_name_problem
 from ..engine_access import ReadScope
 from ..errors import error_response
+from ..live_settings import reload_if_changed
 from ..router_maps import NOT_FOUND, ProfilesUnreadable, profile_routers, router_list
 from .decision_models import (
     EntryName,
@@ -96,6 +97,15 @@ async def _list(request: Request) -> Response:
     return ok(router_list(file, users))
 
 
+async def _applied(request: Request) -> Response:
+    """Hand the saved routers to the Engine and compose at once, then list them.
+
+    The routers apply without a restart, like the decision models.
+    """
+    await reload_if_changed(request.app)
+    return await _list(request)
+
+
 async def _in_use(request: Request, name: str) -> Response | None:
     """Return the 409 that blocks removing router *name*, or ``None``."""
     file: SettingsFile = await run_in_threadpool(store_of(request).read)
@@ -133,7 +143,7 @@ async def save_document_router(
     refused = await write(
         store_of(request), {f"{DOCUMENT_ROUTERS}.{name}": body.entry}, body.revision
     )
-    return refused or await _list(request)
+    return refused or await _applied(request)
 
 
 @router.delete("/settings/document-routers/{name}", operation_id="deleteDocumentRouter")
@@ -149,7 +159,7 @@ async def delete_document_router(
         return blocked
     changes = {f"{DOCUMENT_ROUTERS}.{name}": None}
     refused = await write(store, changes, body.revision, profiles_naming=_naming(request))
-    return refused or await _list(request)
+    return refused or await _applied(request)
 
 
 @router.post("/settings/document-routers/{name}/rename", operation_id="renameDocumentRouter")
@@ -171,4 +181,4 @@ async def rename_document_router(
         return blocked
     changes = {f"{DOCUMENT_ROUTERS}.{name}": None, f"{DOCUMENT_ROUTERS}.{body.new_name}": fields}
     refused = await write(store, changes, body.revision, profiles_naming=_naming(request))
-    return refused or await _list(request)
+    return refused or await _applied(request)

@@ -207,8 +207,9 @@ def test_direct_classification_posts_to_the_router_with_the_text_model(
 def test_an_unlisted_embedding_model_is_refused_before_contact(
     wire: Wire, make: Callable[..., Any]
 ) -> None:
+    embedder = embeddings_llamacpp.build(make(llamacpp_embed_model=OTHER))  # building never refuses
     with pytest.raises(RouterRefused) as refused:
-        embeddings_llamacpp.build(make(llamacpp_embed_model=OTHER))
+        embedder.get_text_embedding("t")
     assert refused.value.reason == "model-not-listed"
     assert wire.seen == []
 

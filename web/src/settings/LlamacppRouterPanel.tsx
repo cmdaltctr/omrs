@@ -5,6 +5,7 @@ import { Button } from "../components/ui/button";
 import { CONFLICT_SENTENCES, conflictReason, statusLine } from "./llamacppRouterWords";
 import { PanelDisclosure } from "./PanelDisclosure";
 import { RouterModelTable } from "./RouterModelTable";
+import { RouterProblems } from "./RouterProblems";
 import { RouterRows } from "./RouterRows";
 import { SettingBox } from "./SettingBox";
 import { useScopes } from "./useScopes";
@@ -69,7 +70,8 @@ export function LlamacppRouterPanel() {
     );
   const needsProgram = status.mode === "managed" && status.program.source === "none";
   return (
-    <PanelDisclosure titleId="llamacpp-router-title" title="Router" level={4} summary={statusLine(status)} attention={needsProgram || status.state === "failed"}>
+    <PanelDisclosure titleId="llamacpp-router-title" title="Router" level={4} summary={statusLine(status)} attention={needsProgram || status.state === "failed" || status.problems.length > 0}>
+      <RouterProblems problems={status.problems} />
       <RouterRows status={status} />
       <RouterState status={status} />
       <RouterModelTable status={status} />

@@ -208,6 +208,13 @@ class RouterControl:
             reason = (record.reason, record.reason_text or reason_text(record.reason))
         if reason is None and record is not None and record.state != "stopped":
             reason = ("exited", reason_text("exited"))  # gone with no stop recorded: it crashed
+        if reason is not None and reason[0] == rules.NOT_DOWNLOADED:
+            # The stored line is from the refused start; the download may have ended since.
+            live = any(
+                m.state == rules.NOT_DOWNLOADED and download_running(name)
+                for name, m in models.items()
+            )
+            reason = (reason[0], reason_text(reason[0], rules.DOWNLOADING if live else ""))
         if reason is not None:
             return RouterStatus("failed", reason[0], reason[1], None, False, program, models)
         return RouterStatus("stopped", None, None, None, False, program, models)

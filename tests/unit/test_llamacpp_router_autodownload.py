@@ -156,10 +156,11 @@ def test_a_slow_download_is_not_timeout_and_requests_do_not_wait(
 def test_with_no_file_at_all_both_download_and_the_router_then_serves(
     rig: Any, hub: FakeHub
 ) -> None:
-    """No listed model has a file: the start is ``not-configured``, never ``timeout``."""
+    """No listed model has a file: the start is ``not-downloaded``, never ``timeout``."""
     with rig() as r:
         body = r.post("start").json()
-        assert (body["state"], body["reason"]) == ("failed", "not-configured")
+        assert (body["state"], body["reason"]) == ("failed", "not-downloaded")
+        assert body["reason_text"] == "Models are still downloading."
         assert wait_until(lambda: bool(hub.downloads), 10)
         notes = {m["id"]: m["note"] for m in r.get()["models"]}
         assert notes == {"qwen3-embedding-4b": "Downloading", "qwen3-4b": "Downloading"}
