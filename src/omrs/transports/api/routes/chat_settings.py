@@ -29,6 +29,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from ....compose_providers import ProviderValues, locked_fields
 from ....compose_providers import provider_settings as _provider_settings
+from ....config.llamacpp_roles import ROLE_MISMATCH
 from ....config.settings_file_write import SettingsFileError
 from ....core.answer.settings import REASONING_LEVEL_PATTERN
 from ....core.llamacpp_router import RouterRefused
@@ -37,6 +38,7 @@ from ..connection_probe import list_models
 from ..engine_access import ReadScope, RuntimeDep, admitted
 from ..errors import error_response
 from ..lifespan import WebRuntime
+from ..llamacpp_chat_rule import chat_role_refusal, reasoned
 from ..provider_state import EngineRefused
 from ..settings_store import refusal_response
 from .chat_reasoning import CHAT_LEVEL, level_changes, level_lock_response, level_view
@@ -253,6 +255,10 @@ async def set_chat_settings(
         settings = await run_in_threadpool(_provider_settings, provider_values_of(runtime))
         if writes_choice and (locked := _locked_response(settings)) is not None:
             return locked
+        if choice is not None:
+            file = await run_in_threadpool(state.store.read)
+            if rule := chat_role_refusal(file, choice[0], choice[1]):
+                return reasoned(400, rule, ROLE_MISMATCH)
         if (
             body.reasoning is not None
             and (locked := level_lock_response(settings, CHAT_LEVEL)) is not None

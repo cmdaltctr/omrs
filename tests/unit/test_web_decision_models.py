@@ -138,7 +138,7 @@ def test_writes_and_test_refuse_a_bearer_credential(harness: Harness, client: Te
 
 def test_add_a_local_entry_keeps_comments(harness: Harness, client: TestClient) -> None:
     harness.write(FILE)
-    entry = {**LOCAL, "server": "managed", "model_file": "/models/clef-q8_0.gguf"}
+    entry = {**LOCAL, "server": "managed"}  # the file lives in llamacpp_models (router D3)
     response = send(
         client, "PUT", f"{URL}/clef-two", {"entry": entry, "revision": harness.revision()}
     )

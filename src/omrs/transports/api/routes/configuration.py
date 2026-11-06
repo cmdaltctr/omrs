@@ -35,7 +35,8 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
 from pydantic import BaseModel, ConfigDict, Field
 
-from ....compose_providers import resolve_keychain_references
+from ....compose_providers import ProviderValues, provider_settings, resolve_keychain_references
+from ....config.llamacpp_roles import ROLE_MISMATCH
 from ....config.settings_file import SettingsFile, read_settings_file
 from ....config.settings_file_write import SettingsFileError
 from ....config.user_config import display_path
@@ -44,7 +45,7 @@ from ..configuration_update import update_refusal
 from ..engine_access import ReadScope, admitted, require_session
 from ..errors import error_response
 from ..live_settings import apply_file_settings
-from ..llamacpp_chat_rule import program_refusal
+from ..llamacpp_chat_rule import chat_role_refusal, mode_refusal, program_refusal, reasoned
 from ..provider_state import EngineRefused
 from ..restart_snapshot import capture, pending
 from ..security import Principal
@@ -205,6 +206,31 @@ def _launch(state: ConfigurationState | None) -> Settings:
 
 
 _PROGRAM_KEY = "llamacpp_server_binary"
+_MODE_KEY = "llamacpp_router_server"
+_CHAT_KEYS = ("answer.provider", "answer.model")
+
+
+async def _chat_role_refusal(request: Request, changes: Mapping[str, Any]) -> str | None:
+    """Return the rule that a llama.cpp Chat choice in *changes* breaks, or ``None``.
+
+    The choice is the provider and model after the write: what *changes* sets, else
+    what is in force. A clear (``null``) names no model, so it passes.
+    """
+    if not any(key in changes for key in _CHAT_KEYS):
+        return None
+    runtime = getattr(request.app.state, "runtime", None)
+    providers = getattr(runtime, "providers", None)
+    http = getattr(request.app.state, "mcp_http", None)
+    store = providers.store if providers is not None else getattr(http, "store", None)
+    if store is None:
+        return None
+    values = providers.source if providers is not None else ProviderValues
+    settings = await run_in_threadpool(provider_settings, values)
+    provider = changes.get("answer.provider", settings.answer.provider)
+    model = changes.get("answer.model", settings.answer.model)
+    if not isinstance(provider, str) or not isinstance(model, str):
+        return None
+    return chat_role_refusal(await run_in_threadpool(store.read), provider, model)
 
 
 async def _save(request: Request, body: ConfigurationUpdate) -> Response | None:
@@ -249,7 +275,11 @@ async def set_configuration(
     refusal = await run_in_threadpool(update_refusal, body.changes, launch, overrides)
     if refusal is None and _PROGRAM_KEY in body.changes:
         refusal = program_refusal(body.changes[_PROGRAM_KEY], principal.scopes)
+    if refusal is None and _MODE_KEY in body.changes:
+        refusal = mode_refusal(principal.scopes)
     if refusal is not None:
         return error_response(*refusal)
+    if rule := await _chat_role_refusal(request, body.changes):
+        return reasoned(400, rule, ROLE_MISMATCH)
     failed = await _save(request, body)
     return failed if failed is not None else await _configuration(request)

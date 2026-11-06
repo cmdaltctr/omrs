@@ -427,3 +427,41 @@ def test_a_llamacpp_chat_save_needs_manage_only_in_both_router_modes(
     response = put(setup, {"provider": "llamacpp", "model": HF_ID})
     assert response.status_code == 200, response.text
     assert setup.chat() == ("llamacpp", HF_ID)
+
+
+# ── An embedding entry cannot chat (one-llamacpp-router, task 7.1) ───────
+
+
+@pytest.mark.parametrize("mode", ["managed", "external"])
+def test_a_chat_save_naming_an_embedding_entry_is_400_role_mismatch(
+    setup: Any, configure: Any, mode: str
+) -> None:
+    from omrs.config.llamacpp_models import EMBED_MODEL
+
+    configure(llamacpp_router_server=mode)
+    response = put(setup, {"provider": "llamacpp", "model": EMBED_MODEL})
+    assert response.status_code == 400, response.text
+    body = response.json()
+    assert body["reason"] == "role-mismatch"
+    assert EMBED_MODEL not in body["message"]
+    assert setup.chat() == (None, None)  # nothing was saved
+
+
+def test_a_text_entry_and_other_providers_may_use_the_embedding_name(setup: Any) -> None:
+    from omrs.config.llamacpp_models import CLASSIFY_MODEL, EMBED_MODEL
+
+    assert put(setup, {"provider": "llamacpp", "model": CLASSIFY_MODEL}).status_code == 200
+    # Another provider names its own model; the router list is not involved.
+    assert put(setup, {"provider": "ollama", "model": EMBED_MODEL}).status_code == 200
+    assert setup.chat() == ("ollama", EMBED_MODEL)
+
+
+def test_the_role_mismatch_follows_the_saved_list(setup: Any) -> None:
+    from omrs.config.llamacpp_models import EMBED_MODEL
+
+    entry = {"model": EMBED_MODEL, "preset": {"ctx-size": 4096}}  # not an embedding entry now
+    setup.store.directory.mkdir(parents=True, exist_ok=True)
+    (setup.store.directory / "omrs.jsonc").write_text(
+        json.dumps({"llamacpp_models": {"plain": entry}}), encoding="utf-8"
+    )
+    assert put(setup, {"provider": "llamacpp", "model": EMBED_MODEL}).status_code == 200

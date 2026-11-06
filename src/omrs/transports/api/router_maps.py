@@ -20,6 +20,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from ...config.llamacpp_models import LLAMACPP_MODELS
 from ...config.settings_file import SettingsFile
 from ...config.settings_maps import DECISION_MODELS, DOCUMENT_ROUTERS
 from ...config.user_config import KEYCHAIN_PREFIX, SECRETS_DIR
@@ -107,6 +108,26 @@ def _entries(file: SettingsFile, map_key: str) -> Mapping[str, Any]:
     return file.maps.get(map_key, {})
 
 
+#: The decision item's file fields, read from the ``llamacpp_models`` entry that a
+#: managed entry names (one-llamacpp-router, D3): ``(item field, list entry field)``.
+_LISTED_FILE_FIELDS = (
+    ("model_file", "file"),
+    ("projector_file", "projector"),
+    ("model_sha256", "sha256"),
+    ("projector_sha256", "projector_sha256"),
+)
+
+
+def _listed_files(file: SettingsFile, entry: Any) -> dict[str, Any]:
+    """Return a decision item's file fields; ``None`` unless a managed entry names a list entry."""
+    listed = None
+    if _field(entry, "server") == "managed":
+        model = _field(entry, "model")
+        models = _entries(file, LLAMACPP_MODELS).values()
+        listed = next((m for m in models if _field(m, "model") == model), None)
+    return {item: _field(listed, name) if listed else None for item, name in _LISTED_FILE_FIELDS}
+
+
 def decision_model_list(file: SettingsFile) -> dict[str, Any]:
     """Return the body of ``GET /v1/settings/decision-models`` without ``status``."""
     untested = set(registry.not_yet_tested())
@@ -119,18 +140,9 @@ def decision_model_list(file: SettingsFile) -> dict[str, Any]:
                 "name": name,
                 **{
                     field: _field(entry, field)
-                    for field in (
-                        "kind",
-                        "address",
-                        "model",
-                        "images",
-                        "server",
-                        "model_file",
-                        "projector_file",
-                        "model_sha256",
-                        "projector_sha256",
-                    )  # fmt: skip
+                    for field in ("kind", "address", "model", "images", "server")
                 },
+                **_listed_files(file, entry),
                 "hosted": not is_loopback(str(_field(entry, "address", ""))),
                 "key_state": key_state(entry, secrets),
                 "not_yet_tested": _field(entry, "kind") in untested,

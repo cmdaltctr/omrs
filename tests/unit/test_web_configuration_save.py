@@ -460,3 +460,50 @@ def test_a_real_program_path_saves(harness: Harness, client: TestClient, tmp_pat
     response = put(client, {"llamacpp_server_binary": str(program.path)})
     assert response.status_code == 200, response.text
     assert data(harness)["llamacpp_server_binary"] == str(program.path)
+
+
+# ── The router mode keeps its scope here too (one-llamacpp-router, 7.1) ──
+
+
+def test_the_router_mode_needs_credentials(
+    harness: Harness, client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from omrs.transports.api import security
+
+    harness.launch()
+    monkeypatch.setattr(security, "SESSION_SCOPES", security.SESSION_SCOPES - {"credentials"})
+    message = refused(put(client, {"llamacpp_router_server": "external"}), 403)
+    assert "credentials" in message
+    assert text(harness) == ""
+    # The address and the two limits need manage only.
+    changes = {"llamacpp_router_models_max": 2, "llamacpp_router_memory_margin_mib": 100}
+    assert put(client, changes).status_code == 200
+
+
+def test_the_router_mode_saves_with_credentials(harness: Harness, client: TestClient) -> None:
+    harness.launch()
+    response = put(client, {"llamacpp_router_server": "external"})
+    assert response.status_code == 200, response.text
+    assert data(harness)["llamacpp_router_server"] == "external"
+
+
+def test_a_chat_choice_naming_an_embedding_entry_is_400_role_mismatch(
+    harness: Harness, client: TestClient
+) -> None:
+    from omrs.config.llamacpp_models import EMBED_MODEL
+
+    harness.launch()
+    changes = {"answer.provider": "llamacpp", "answer.model": EMBED_MODEL}
+    response = put(client, changes)
+    refused(response, 400)
+    assert response.json()["reason"] == "role-mismatch"
+    assert text(harness) == ""
+
+
+def test_the_model_list_is_not_written_by_the_configuration_save(
+    harness: Harness, client: TestClient
+) -> None:
+    harness.launch()
+    response = put(client, {"llamacpp_models": {"x": {"model": "a/b:Q8_0"}}})
+    assert response.status_code == 400
+    assert text(harness) == ""

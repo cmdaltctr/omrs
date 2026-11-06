@@ -37,6 +37,7 @@ def _closed_address() -> str:
 
 @pytest.fixture
 def chat_url() -> str:
+    """The router address (one router serves every llama.cpp role)."""
     return f"{_closed_address()}/v1"
 
 
@@ -44,8 +45,7 @@ def chat_url() -> str:
 def client(tmp_path: Path, effective_settings: Any, chat_url: str):
     settings = effective_settings(
         ollama_base_url=_closed_address(),
-        llamacpp_embed_url=f"{_closed_address()}/v1",
-        llamacpp_chat_url=chat_url,
+        llamacpp_router_url=chat_url,
         openrouter_api_key="",
     )
     app, policy = build_app(tmp_path, make_engine(lance_store(tmp_path), settings))
@@ -90,7 +90,7 @@ def test_llamacpp_card_reports_the_server_down(client: TestClient, chat_url: str
     llamacpp = entries["llamacpp"]
 
     assert llamacpp["readiness"]["ready"] is False
-    assert llamacpp["readiness"]["line"].startswith("Not running at ")
+    assert llamacpp["readiness"]["line"] == f"Not running at {chat_url}"
     assert llamacpp["base"] is True
     assert llamacpp["availability"] in {"available", "not-installed"}
 

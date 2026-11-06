@@ -1,10 +1,11 @@
 """Local server probes for the ``runtime`` block (change integrations-show-runtime-components, D1).
 
-Ollama answers ``GET /api/version``; a llama.cpp server answers
-``GET /health`` at its address without ``/v1``. Each probe sends one
-request with a 1 second timeout, and all probes run at the same time, so
-the block arrives within about 1 second. An address is shown without any
-user name or password.
+Ollama answers ``GET /api/version``; the llama.cpp router answers
+``GET /health`` at ``llamacpp_router_url`` without ``/v1``. One router serves
+every local llama.cpp role, so the list holds one llama.cpp item
+(one-llamacpp-router, D1). Each probe sends one request with a 1 second
+timeout, and all probes run at the same time, so the block arrives within
+about 1 second. An address is shown without any user name or password.
 """
 
 from __future__ import annotations
@@ -16,7 +17,6 @@ from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 
-from ...core.provider_values import classification_url
 from .runtime_components import NOT_RUNNING, READY, UNCHECKED, UNKNOWN, RuntimeItem
 
 logger = logging.getLogger(__name__)
@@ -24,15 +24,11 @@ logger = logging.getLogger(__name__)
 PROBE_TIMEOUT = 1.0
 
 OLLAMA_NAME = "Ollama"
-LLAMACPP_EMBED_NAME = "llama.cpp embedding server"
-LLAMACPP_CHAT_NAME = "llama.cpp chat server"
-LLAMACPP_CLASSIFY_NAME = "llama.cpp classification server"
+LLAMACPP_ROUTER_NAME = "llama.cpp router"
 
 _PURPOSES = {
     OLLAMA_NAME: "Local embedding and chat models served by Ollama.",
-    LLAMACPP_EMBED_NAME: "Local embedding model served by llama.cpp.",
-    LLAMACPP_CHAT_NAME: "Local chat model served by llama.cpp.",
-    LLAMACPP_CLASSIFY_NAME: "Local classification model served by llama.cpp.",
+    LLAMACPP_ROUTER_NAME: "Local embedding, classification and chat models served by llama.cpp.",
 }
 
 
@@ -78,37 +74,13 @@ def _servers(settings: Any) -> list[tuple[str, str, str, tuple[str, ...]]]:
     """Return ``(name, address, health URL, used_by)`` for every local server."""
     users = _users(settings)
     ollama = tuple(key for key, backend in users.items() if backend == "ollama")
-    llama = [key for key, backend in users.items() if backend == "llamacpp"]
-    embed = tuple(key for key in llama if key == "embed_provider")
-    chat = tuple(key for key in llama if key != "embed_provider")
-    classify_url = classification_url(settings)
-    separate = _bare(classify_url) != _bare(settings.llamacpp_chat_url)
-    if separate:  # the metadata user moves to its own item (ADR-108 D12)
-        chat = tuple(key for key in chat if key != "metadata_llm_provider")
+    llama = tuple(key for key, backend in users.items() if backend == "llamacpp")
     ollama_url = settings.ollama_base_url.strip().rstrip("/")
-    servers = [
+    router_url = settings.llamacpp_router_url
+    return [
         (OLLAMA_NAME, ollama_url, f"{ollama_url}/api/version", ollama),
-        (
-            LLAMACPP_EMBED_NAME,
-            settings.llamacpp_embed_url,
-            _health_url(settings.llamacpp_embed_url),
-            embed,
-        ),
-        (
-            LLAMACPP_CHAT_NAME,
-            settings.llamacpp_chat_url,
-            _health_url(settings.llamacpp_chat_url),
-            chat,
-        ),
+        (LLAMACPP_ROUTER_NAME, router_url, _health_url(router_url), llama),
     ]
-    if separate:
-        classify = tuple(key for key in llama if key == "metadata_llm_provider")
-        servers.append((LLAMACPP_CLASSIFY_NAME, classify_url, _health_url(classify_url), classify))
-    return servers
-
-
-def _bare(address: str) -> str:
-    return address.strip().rstrip("/")
 
 
 async def _probe(
@@ -149,26 +121,17 @@ async def local_server_items(settings: Any) -> list[RuntimeItem]:
 
 # ── Provider readiness on two catalogue cards (design D2) ────────────────
 
-LLAMACPP_NAMES = (LLAMACPP_EMBED_NAME, LLAMACPP_CHAT_NAME, LLAMACPP_CLASSIFY_NAME)
-
 
 def llamacpp_readiness(items: list[RuntimeItem], settings: Any) -> dict[str, Any]:
-    """Return the llama.cpp card's readiness from its server items.
+    """Return the llama.cpp card's readiness from the router item.
 
-    The addresses that a setting uses decide. When no setting uses llama.cpp,
-    every llama.cpp address decides, so a module check alone never says "Ready".
+    The router item decides whether or not a setting uses llama.cpp, so a module
+    check alone never says "Ready".
     """
-    addresses = {
-        LLAMACPP_EMBED_NAME: settings.llamacpp_embed_url,
-        LLAMACPP_CHAT_NAME: settings.llamacpp_chat_url,
-        LLAMACPP_CLASSIFY_NAME: classification_url(settings),
-    }
-    servers = [item for item in items if item.name in LLAMACPP_NAMES]
-    relevant = [item for item in servers if item.used_by] or servers
-    down = next((item for item in relevant if item.status != READY), None)
-    if down is None:
+    router = next((item for item in items if item.name == LLAMACPP_ROUTER_NAME), None)
+    if router is not None and router.status == READY:
         return {"ready": True, "line": "Ready"}
-    return {"ready": False, "line": f"Not running at {safe_address(addresses[down.name])}"}
+    return {"ready": False, "line": f"Not running at {safe_address(settings.llamacpp_router_url)}"}
 
 
 def openrouter_readiness(settings: Any) -> dict[str, Any]:

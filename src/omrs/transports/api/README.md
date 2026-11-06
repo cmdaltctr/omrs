@@ -285,49 +285,54 @@ Rules:
    `HF_TOKEN` in the environment of `omrs web`.
 5. The files go to the Hugging Face hub cache (`HF_HUB_CACHE`, else
    `HF_HOME/hub`). An Ollama pull goes to the Ollama address in use. No route
-   changes a setting.
+   changes a setting. A succeeded llama.cpp download also gives `file_path`
+   (the first `.gguf` file) and its `sha256`; Use this model sends both to
+   `PUT /v1/llamacpp/router/models/{id}`.
 
-## llama.cpp server and the Chat model (ADR-084, ADR-108)
+## llama.cpp router (ADR-115, change one-llamacpp-router)
 
-OMRS runs its own `llama-server` only while the Chat server choice
-`llamacpp_chat_server` is `managed`. That server loads the Chat model in
-force: `answer.model` while `answer.provider` is `llamacpp`. It has no model
-setting of its own. The routes below that write or control need the
-browser session; a bearer credential gets 403. A bearer credential with
-`read` can use the two `GET` routes.
+OMRS runs one `llama-server` in router mode while `llamacpp_router_server` is
+`managed`. It serves every local llama.cpp model by name (embeddings,
+classification, Chat, judge and decision models) from the model list
+`llamacpp_models` in `omrs.jsonc`. OCR servers stay apart. The routes that
+write or control need the browser session; a bearer credential gets 403. A
+bearer credential with `read` can use the two `GET` routes. The old
+`/v1/llamacpp/server*` routes are gone (404).
 
-| Method | Path | Scope | Changed body or result | Refusals |
+| Method | Path | Scope | Result | Refusals |
 | --- | --- | --- | --- | --- |
-| GET | `/v1/llamacpp/server` | `read` | `saved` holds `binary`, `chat_server`, and `context_window`, each with its value, `source` and `locked`. `saved.model` is gone. New: `chat_model` (`provider`, `model`, `usable`) and `shared_with_classification` | none |
-| PUT | `/v1/llamacpp/server` | `manage`; `credentials` when the body sets `binary` or `chat_server` | Keys `binary`, `chat_server` (`external`, `managed`, or `null` to clear), `context_window` and `revision` | 400 for a rule failure, an unknown choice, or a body that holds `model` ("Set the Chat model in Settings > Chat.") or the retired `idle_sleep` (OMRS stops an idle server after 10 minutes); 403; 409 for a locked field, a stale `revision`, or `server-running` |
-| POST | `/v1/llamacpp/server/start` | `manage` | Launches with the Chat model in force | 409 `external-server` |
-| POST | `/v1/llamacpp/server/restart` | `manage` | Stop, then start with the saved values and the Chat model in force | 409 `external-server` |
-| GET | `/v1/settings/chat` | `read` | `reason` adds `no-model`: the provider is llama.cpp and the Chat model is empty | none |
-| PUT | `/v1/settings/chat` | `manage`; `credentials` for a llama.cpp choice while the choice is `managed` | No change | 400 when the model fails the model rule while `managed`; 403 without `credentials` while `managed` |
-| POST | `/v1/settings/chat/test` | `manage` | `reason` adds `no-model` and `model-not-listed` | none |
-| PUT | `/v1/settings/configuration` | `manage`; `credentials` for `llamacpp_server_binary`, and for a llama.cpp Chat choice while the choice is `managed` | No change | 400 for `llamacpp_chat_server` ("Set this on the llama.cpp card."), a program path that fails the program rule, or a model that fails the model rule while `managed`; 403 without `credentials` for the program path, or for a llama.cpp Chat choice while `managed` |
+| GET | `/v1/llamacpp/router` | `read` | `state`, `reason`, `mode`, `address`, `running_with`, `pending_restart`, `program`, `saved` (`binary`, `router_server`, `router_url`, `models_max`, `memory_margin_mib`, each with `value`, `default`, `source`, `locked`) and `models` (`id`, `model`, `roles`, `file`, `ctx_size`, `preset`, `state`, `reason`, `reload_pending`) | none |
+| PUT | `/v1/llamacpp/router` | `manage`; `credentials` when the body sets `binary` or `router_server` | The status after the save. Keys `binary`, `router_server`, `router_url`, `models_max`, `memory_margin_mib` and `revision`; `null` clears | 400 for a rule failure, an unknown mode, a managed address that is not loopback, a body that holds `model` ("Models are set in the model table") or the retired `idle_sleep`; 403; 409 for a locked field (the message names the variable) or a stale `revision` |
+| PUT | `/v1/llamacpp/router/models/{id}` | `manage`; `credentials` when the body sets `model`, `file`, `projector` or a SHA-256 | Adds an entry or changes some fields of one; Use this model is `model`, `file`, `sha256`. Answers with the status | 400 (`reason` `preset-key-unknown`, `preset-invalid` or `role-mismatch`); 403; 409 for a stale `revision` |
+| DELETE | `/v1/llamacpp/router/models/{id}?revision=` | `credentials` | Removes an entry that holds no role | 404; 409 `in-use` |
+| POST | `/v1/llamacpp/router/start` | `manage` | Starts or adopts the router; no model loads | 409 `external-server` |
+| POST | `/v1/llamacpp/router/stop` | `manage` | Operator stop of the owned router | 409 `external-server` |
+| POST | `/v1/llamacpp/router/restart` | `manage` | Stop, then start with the saved values | 409 `external-server` |
+| POST | `/v1/llamacpp/router/install` | `manage` | 202 with the build and the job. Body `{flavour: "cpu" or "cuda"}`, optional | 400 for a flavour on macOS; 409 `busy` |
+| GET | `/v1/llamacpp/router/install` | `read` | Pinned `build`, `detected` flavour, `choices`, `installed_path` and the install `job` | none |
+| PUT | `/v1/settings/chat` | `manage` | A llama.cpp choice that names an embedding entry is refused | 400 `role-mismatch` |
+| PUT | `/v1/settings/configuration` | `manage`; `credentials` for `llamacpp_router_server` and `llamacpp_server_binary` | `llamacpp_models` is not written here | 400 for `llamacpp_models`, a program path that fails the program rule, or a Chat choice that names an embedding entry (`role-mismatch`); 403 without `credentials` |
 
 Rules:
 
-1. A 409 from the llama.cpp server routes has a `reason`.
-   `external-server` means the choice is `external`, so OMRS starts nothing.
-   `server-running` means a change to `external` while the owned server is
-   `starting` or `running`; the server keeps running. A 409 for a locked
+1. A 409 from the router routes has a `reason`. `external-server` means the
+   mode is `external`, so OMRS starts and stops nothing. `in-use` means the
+   entry holds a role. `busy` means an install job runs. A 409 for a locked
    field or a stale `revision` has no `reason`.
-2. Start fails with `not-configured` when no program is set, the Chat
-   provider is not `llamacpp`, or the Chat model is empty. The model rule
-   (an existing `.gguf` file or `org/name[:tag]`) runs before every launch.
-3. `pending_restart` is true when the saved program or window,
-   or the Chat model in force, differ from the running process.
-4. `shared_with_classification` is true when the choice is `managed` and
-   classification uses the Chat address. The owned server then answers
-   classification with the Chat model.
-5. With the choice `external`, the Chat test of a llama.cpp model reads
-   `{llamacpp_chat_url}/models` first. A name that the list does not hold
-   gives `model-not-listed`, and no prompt is sent. With `managed`, the test
-   skips the list.
-6. Upgrade steps for an install that used `llamacpp_server_model` are in
-   `docs/guides/configuration.md` (Upgrade notes).
+2. Start fails with `not-configured` when no program is set or provisioned,
+   or no listed model has a file. Other refusals: `binary-invalid`,
+   `not-loopback`, `port-in-use`, `wrong-build`.
+3. `pending_restart` is true when the saved router arguments (program, model
+   limit, memory margin, address) differ from the live process. A save keeps
+   the router running; Restart applies it.
+4. A saved entry change reaches a router that runs with the saved arguments: the
+   entry's section of `models.ini` is rewritten and only that model reloads.
+   `reload_pending` is true while the running router holds another value.
+5. The install job calls `provision.install_pinned_build` in a daemon thread,
+   one job at a time, and changes no setting. A failure has one fixed `reason`.
+6. A llama.cpp Chat save changes no model file, so it needs `manage` only.
+   With the mode `external`, the Chat test of a llama.cpp model reads the
+   server's model list first; with `managed` it skips the list.
 
 ## Experiment library and notebooks
 
