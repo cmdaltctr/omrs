@@ -17,9 +17,14 @@ FIXTURE_DIR = Path(__file__).resolve().parent
 
 SHEBANG = "#!/usr/bin/env python3\n"
 
+#: Router mode modules the program imports from its own folder (design D16).
+ROUTER_MODULES = ("fake_router.py", "fake_router_child.py")
+
 
 def install_fake_server(folder: Path) -> Path:
     """Copy the fake server into *folder* as an executable ``llama-server``.
+
+    The router mode modules (``fake_router*.py``) are copied beside it.
 
     Args:
         folder: Destination folder; created when missing.
@@ -31,6 +36,9 @@ def install_fake_server(folder: Path) -> Path:
     target = folder / "llama-server"
     source = FIXTURE_DIR / "fake_llama_server.py"
     target.write_text(SHEBANG + source.read_text(encoding="utf-8"), encoding="utf-8")
+    for name in ROUTER_MODULES:
+        text = (FIXTURE_DIR / name).read_text(encoding="utf-8")
+        (folder / name).write_text(text, encoding="utf-8")
     mode = target.stat().st_mode
     target.chmod(mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     return target
