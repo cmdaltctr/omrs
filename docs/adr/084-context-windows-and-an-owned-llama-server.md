@@ -6,6 +6,7 @@
 - **Related:** [ADR-083](083-llm-provider-settings-in-the-web-workspace.md) (provider settings, sources and locks), TDR-036 (Ollama failures became an "Empty Response" answer)
 - **Change:** `openspec/changes/add-llm-provider-settings/` (design D11 and D12, task groups 17 and 18)
 - **Amended by:** [ADR-108](108-local-chat-and-classification-stay-apart.md) (decision 4: the model setting is retired and the Chat server choice is added)
+- **Amended by:** [ADR-115](115-one-llamacpp-router.md) (2026-11-06; proposed: the owned server, its settings and its argument list move from one Chat server to the router, and the idle sleep stays retired)
 
 ## Context
 

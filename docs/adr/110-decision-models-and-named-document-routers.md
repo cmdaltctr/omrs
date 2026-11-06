@@ -6,6 +6,7 @@
 - **Amends:** [ADR-112](112-reading-parts-descriptor-pipeline-and-discovery.md) decision 3 (the page rule outcome gains `add`, the rule context gains `claimed` and `judge`, and the descriptor gains `adds_pages`). Page routing (`page-routing-default`) already replaced the [TDR-024](../tdr/024-pdf-inspector-silent-empty-extraction-on-legacy-winansi-fonts.md) zero as the routing input. This change adds a note to TDR-024 that says so.
 - **Related:** [ADR-066](066-tiered-reader-fallback-chain.md) (rescue tiers), [ADR-069](069-page-level-ocr-routing-and-the-pdfium-runtime.md) (page routing), [ADR-112](112-reading-parts-descriptor-pipeline-and-discovery.md) (a router is a page rule), [ADR-074](074-run-local-decision-models-through-llama-cpp-q8-0-gguf.md) (8-bit decision models), [ADR-087](087-settings-live-in-omrg-jsonc.md) (`omrs.jsonc`), [ADR-105](105-pipeline-steps-own-their-ocr-settings.md) (step OCR settings), [ADR-108](108-local-chat-and-classification-stay-apart.md) (classification address), [ADR-109](109-omrs-owns-local-model-runtimes-components-are-clients.md) (managed runtimes), root `AGENTS.md` gotchas 16 and 18
 - **Change:** `openspec/changes/document-reading-routers/`
+- **Amended by:** [ADR-115](115-one-llamacpp-router.md) (2026-11-06; proposed: decision 4, a managed decision model runs on the router and not on its own `decision-<name>` runtime)
 
 ## Context
 

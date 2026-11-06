@@ -528,56 +528,93 @@ outside worktrees.
 
 ### Local model runtimes
 
-OMRS owns the local `llama-server` processes. Chat, embeddings and OCR
-engines are clients of a runtime. They do not start or stop one
+OMRS owns the local `llama-server` processes. Embeddings, classification,
+Chat, the claim-check judge, decision models and OCR engines are clients of a
+runtime. They do not start or stop one
 ([ADR-109](../adr/109-omrs-owns-local-model-runtimes-components-are-clients.md)).
+One router serves every local llama.cpp model except OCR
+([ADR-115](../adr/115-one-llamacpp-router.md)). Each OCR engine keeps its own
+pinned server ([ADR-113](../adr/113-dots-mocr-runs-on-llama-cpp.md)).
 
-One manager does this for every OMRS process: `omrs web`, the CLI, the stdio
-MCP server and the watcher. It lives in `integrations/llamacpp_runtime/`:
+One manager serves every OMRS process: `omrs web`, the CLI, the stdio MCP
+server and the watcher. It lives in `integrations/llamacpp_runtime/`:
 
-| Module       | Job                                                                                   |
-| ------------ | ------------------------------------------------------------------------------------- |
-| `rules.py`   | Launch checks: program, model, loopback port, argument lists, child environment, fixed reasons |
-| `spec.py`    | `RuntimeSpec`: id, role, mode, binary, arguments, declared files, build, port policy, slots |
-| `state.py`   | The state folder and the atomic read and write of `server.json`                       |
-| `locks.py`   | `flock` helpers for the lock files                                                    |
-| `process.py` | Detached start, build and file checks, command-line check, stop                       |
-| `manager.py` | `RuntimeManager` (one per process) and `RuntimeLease` (one per runtime per process)   |
+| Module | Job |
+| --- | --- |
+| `rules.py` | Launch checks: program, model, loopback port, argument lists, child environment, fixed reasons |
+| `spec.py` | `RuntimeSpec`: id, role, mode, binary, arguments, declared files, build, port policy, slots |
+| `router_spec.py` | The router spec, its fixed argument list, the router child environment and the router state folder layout |
+| `state.py` | The state folder and the atomic read and write of `server.json` |
+| `locks.py` | `flock` helpers for the lock files |
+| `process.py` | Detached start, build and file checks, command-line check, stop |
+| `manager.py` | `RuntimeManager` (one per process) and `RuntimeLease` (one per runtime per process) |
+| `router_lease.py` | `RouterLease`: this process's per-model use of the router (name check, preset check, readiness, request lock) |
+| `preset_writer.py` | The `models.ini` of the router, from the model list |
+| `hashes.py` | SHA-256 of listed model files, cached in `hashes.json` |
+| `model_locks.py` | The per-model `clients.lock` and `request.lock` |
+| `model_reasons.py` | The states and fixed reasons of one router model |
+| `readiness.py` | Makes a model `loaded` before its request is timed |
+| `reload.py` | Rewrites changed preset sections and asks the router to reload |
+| `children.py` | The router's direct child processes and their memory |
+| `pins.py` | The pinned llama.cpp build: archives and SHA-256 values per platform |
+| `provision.py`, `provision_checks.py` | Download, check and unpack the pinned build, on request only |
 
-The code is synchronous and uses threads, so the CLI and the watcher need no
-event loop. The web routes call it through `run_in_threadpool`.
+The library has no event loop. The CLI and the watcher need none. Web routes
+call it through `run_in_threadpool`.
 
-**Roles and modes.** The runtime ids are `chat`, `embeddings`,
-`ocr-<engine folder>` and `decision-<entry name>`. Each role is `external`
-(you run the server and give a URL) or `managed` (OMRS starts or adopts it).
-Chat and embeddings default to `external`. An OCR runtime is managed unless
-`ocr_runtime_url` is set. A decision runtime exists only for a `llamacpp`
-decision model entry with `server: "managed"`. It declares the model and
-projector files with SHA-256, binds `127.0.0.1` with one slot, and refuses a
-build below `BUILD_FLOOR` with `wrong-build` (change `document-reading-routers`).
+**Roles and modes.** The runtime ids are `router` and
+`ocr-<engine folder>`. The router has two modes
+(`llamacpp_router_server`). `managed`: OMRS starts or adopts one upstream
+`llama-server` in router mode. `external`: OMRS connects to the address of a
+server you run, such as the Llama app, and starts, adopts and stops nothing.
+An OCR runtime is managed unless `ocr_runtime_url` is set.
 
-**Where it sits in the import contracts.** The manager is an integration, so
+**One router, one model list.** The router serves the models of
+`llamacpp_models` by name. An entry becomes one section of
+`<state root>/runtimes/router/models.ini`, written from the allow-listed
+preset keys of `config/llamacpp_preset.py`. The router argument list is fixed:
+`--models-preset`, `--models-max`, `--models-memory-margin`, `--host` and
+`--port`. A decision model (`llamacpp` kind, `server: "managed"`) names a list
+entry. That entry holds the projector and `parallel = 1`. The router refuses a
+build below the pinned build (b11941) with `wrong-build`.
+
+Roles are derived and never stored. `config/llamacpp_roles.py` gives each
+entry the roles of the settings that name its `model`. `core/llamacpp_router.py`
+is the check that every llama.cpp client makes before it contacts a managed
+router: an unlisted model or an embedding entry used for a text role is
+refused before any request. The checks live in `config/` and `core/`. They
+start nothing.
+
+**Where it sits in import contracts.** The manager is an integration, so
 `integrations-are-leaves` applies: it does not import `core`, `transports` or
 `daemon`. `compose.py` builds one `RuntimeManager` per process. It hands a
-lease to the llama.cpp Chat, classification and embedding clients in `core/`
-by injection. `core/` never imports the package. The field list for the
-llama.cpp card (`LLAMACPP_SERVER_FIELDS`) stays in
-`core/providers/llm/llamacpp_rules.py` because it is settings data.
-`transports/api/llamacpp_server.py` is a thin adapter: it keeps the web
-lifespan hook and maps the manager's status to the route body.
+lease to the llama.cpp embedding, classification, Chat, judge and decision
+clients in `core/` by injection. `core/` never imports the package. The field
+list for the llama.cpp card stays in `core/providers/llm/llamacpp_rules.py`
+because it is settings data. `transports/api/llamacpp_server.py` is a thin
+adapter: it keeps the web lifespan hook and maps the manager's status to the
+route body.
 
-**State folder.** Each runtime has `<state root>/runtimes/<runtime id>/`. The
-state root is `OMRS_STATE_DIR`, else `$XDG_STATE_HOME/omrs`, else
-`~/.local/state/omrs`. It must be on a local disk. Every OMRS process writes
-there. It holds no settings and no secrets. The folder holds:
+**State folder.** The router has `<state root>/runtimes/router/`. Each OCR
+runtime has `<state root>/runtimes/<runtime id>/`. The state root is
+`OMRS_STATE_DIR`, else `$XDG_STATE_HOME/omrs`, else `~/.local/state/omrs`. It
+must be on a local disk. Every OMRS process writes there. It holds no settings
+and no secrets. The folder holds:
 
 - `start.lock`: held exclusive while one process decides to adopt, start or
   stop the server.
 - `clients.lock`: held shared by every process that uses the runtime.
-- `request.lock`: held exclusive for one request on a one-slot runtime.
+- `request.lock`: held exclusive for one request on a one-slot OCR runtime.
 - `server.json`: pid, port, binary path, argument digest, build, state,
-  `stopped_by`, generation and the last failure reason.
+  `stopped_by`, generation and the last failure reason. For the router it also
+  holds a digest of each model section.
 - `server.log`: the server output.
+
+The router folder adds `models.ini`, `hashes.json`, the empty folders
+`empty-cache/` and `empty-config/`, and `models/<model id>/` with a
+`clients.lock` and, for a one-slot model, a `request.lock`. The model id is the
+first 16 hex characters of the SHA-256 of the model name, so every process
+finds the same folder.
 
 **The lease.** A process joins a runtime on its first request. It takes a
 shared lock on `clients.lock`, then `start.lock`, then reads `server.json`.
@@ -587,20 +624,64 @@ shared lock and tries an exclusive, non-blocking lock on `clients.lock`. If
 that works, no other client exists, and it stops the server. The kernel frees
 a lock when its process dies, so a killed process never blocks the others.
 
+**The router lease.** On top of the runtime lease, each model has its own
+client lock, readiness check and, for a one-slot model, request lock. In
+order, a request to model X:
+
+1. is refused before any contact when the router is managed and X is not in
+   the list (`model-not-listed`);
+2. joins the router (a start writes `models.ini` first);
+3. checks X's section. When it differs from this process's section and no
+   other process uses X, only that section is rewritten and the router
+   reloads. Otherwise X gives `version-busy` and the other models keep
+   running;
+4. makes X ready: it reads `GET /v1/models`, calls `POST /models/load` when X
+   is not `loaded`, and polls up to 300 seconds. The request timeout starts
+   after X is loaded;
+5. takes X's `request.lock` when X runs one slot.
+
+A preset edit is not a new router version. The router digest covers the
+binary path and the argument list only. A change of a router argument (model
+limit, memory margin, port or binary) restarts the whole router.
+
 **Lock order rule.** A process blocks on `clients.lock` only while it holds no
 other lock. While it holds `start.lock`, it makes only non-blocking attempts
-on `clients.lock`. No wait cycle can form.
+on `clients.lock` and on a model's `clients.lock`. No wait cycle can form.
 
 **Stale rule.** A server is stale only when its pid is gone or its command
 line does not hold the recorded binary path. A slow `/health` answer, a 503
 or a long request never makes a server stale. `/health` is read during a
-start only.
+start only. The router answers `/health` with no model loaded, so a start
+loads no model.
+
+**Router environment.** The router child gets the minimal environment
+(`HOME`, `PATH`, `LANG`, `TMPDIR`) plus `LLAMA_CACHE` and `XDG_CONFIG_HOME`.
+Both point at empty folders in the router state folder that OMRS empties at
+every start. The router then lists no model from a Hugging Face cache and
+reads no user `config.ini`. The router also reads `/etc/llama.cpp/config.ini`.
+OMRS cannot redirect that file and does not check it.
+
+**Stop, children and memory.** Each loaded model runs as a child
+`llama-server`. A stop sends SIGTERM to the process group, waits 10 seconds,
+then sends SIGKILL, so every child ends with the router. The router item's
+memory is the router's resident size plus that of its direct children whose
+command line holds the recorded binary path. `children.py` reads the children
+of the recorded pid only: `proc_listchildpids` on macOS, and every
+`/proc/<pid>/task/*/children` file on Linux. It lists no other process.
 
 **Idle stop and exit.** A runtime with no request for 10 minutes stops. This
 is a fixed constant (`IDLE_STOP_SECONDS = 600`), not a setting. OMRS does not
 pass `--sleep-idle-seconds` to `llama-server`. After SIGKILL of the last
 client, an orphan server can stay up. The next OMRS process adopts it, and
 `omrs web` stops it at start-up when no process uses it.
+
+**Pinned build.** `pins.py` holds the llama.cpp build OMRS provisions
+(b11941): macOS arm64, Linux x86-64 CPU and Linux x86-64 CUDA 12.8 with its
+`cudart` archive. `omrs llamacpp install` and the Integrations card download
+the archives, check their SHA-256, unpack each flavour into its own folder
+and run `--version` and, for CUDA, `--list-devices`. A blank
+`llamacpp_server_binary` means the provisioned binary. The OCR engine pins the
+same build in its own `pins.py`, and a test compares the two.
 
 **OCR engines.** An engine declares its server in `[tool.omrs-ocr.runtime]`
 in its `pyproject.toml`. The host reads the block through
@@ -611,7 +692,7 @@ adopts the runtime, and gives the worker its address in
 runtime serialises requests across processes with `request.lock`.
 
 Operator detail, including the failure reasons:
-[Configuration](configuration.md#local-llamacpp-server).
+[Configuration](configuration.md#local-llamacpp-router).
 
 ### A new setting
 
@@ -654,7 +735,7 @@ own code. They adopt the helper later.
 Every Python module under `src/omrs/integrations/`, classified. A contract
 test fails when a module is missing from this table.
 
-<!-- integration-inventory:start count=72 -->
+<!-- integration-inventory:start count=84 -->
 
 | Module                                   | Availability                                                   | Selector                                                            | Shared contract                               | Fallback owner                                                                    | Disposition                                                         |
 | ---------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
@@ -673,13 +754,25 @@ test fails when a module is missing from this table.
 | `omrs.integrations.ocr_worker.routes` | Native | `OCR_WORKERS_DIR`, `OCR_ENGINES` | `OcrRoutes` (one route per listed engine) and `select()` | Unknown or unprovisioned engine → stable unavailable fingerprint | Resolves engines by folder name; a later engine only before dispatch; per-page timeout scaling |
 | `omrs.integrations.ocr_worker.runtime` | Native | Engine `[tool.omrs-ocr.runtime]` block, `OCR_RUNTIME_URL` | Runtime spec per engine (`ocr-<engine folder>`) and lease use around one worker parse with `OMRS_OCR_RUNTIME_URL` | Runtime unavailable makes the route unavailable before dispatch | Host never names an engine; ADR-109 |
 | `omrs.integrations.ocr_worker.validation` | Native                                                    | None                                                                | Protocol violation codes and payload checks    | None                                                                              | Split from `protocol.py` at the 500-line ceiling; byte-identical twin in `ocr-workers/core/` |
-| `omrs.integrations.llamacpp_runtime` | Native | `LLAMACPP_CHAT_SERVER`, `LLAMACPP_EMBED_SERVER`, `OCR_RUNTIME_URL` | Facade; exports the manager, lease, spec, state and lock surface of the shared runtime manager | None | One manager for every local llama.cpp runtime; components are clients |
+| `omrs.integrations.llamacpp_runtime` | Native | `LLAMACPP_ROUTER_SERVER`, `LLAMACPP_ROUTER_URL`, `OCR_RUNTIME_URL` | Facade; exports the manager, lease, router lease, spec, state and lock surface of the shared runtime manager | None | One manager for the router and the OCR runtimes; components are clients |
+| `omrs.integrations.llamacpp_runtime.children` | Native | None | `direct_children(pid)` and `tree_rss(pid, binary)`: the router's direct child processes and their resident memory | None; a missing platform call reads as no children | Reads the recorded pid's children only (macOS `proc_listchildpids`, Linux every `/proc/<pid>/task/*/children` file); counts a child only when its command line holds the recorded binary path |
+| `omrs.integrations.llamacpp_runtime.hashes` | Native | None | `hash_file` and `HashCache`: SHA-256 of listed model files cached in `hashes.json` by path, size and `mtime_ns` | A broken cache file reads as empty | Avoids hashing a multi-GiB file at every start; the caller holds `start.lock` |
 | `omrs.integrations.llamacpp_runtime.lease` | Native | None | `RuntimeLease` (one per runtime per process): join, `request`/`arequest`/`session`, crash restart, leave; `RuntimeUnavailable` and `RuntimeRequestFailed` | Crash restart once; none after an operator stop | Split from `manager.py` at the 500-line ceiling; holds the D4 lock order |
 | `omrs.integrations.llamacpp_runtime.locks` | Native | None | `LockFile`: shared and exclusive `flock` on one descriptor each | None | Kernel locks free themselves when a process dies; `not-supported` on Windows |
-| `omrs.integrations.llamacpp_runtime.manager` | Native | `LLAMACPP_CHAT_SERVER`, `LLAMACPP_EMBED_SERVER`, `OCR_RUNTIME_URL` | `RuntimeManager` (one per process): `lease`, `stop` (operator), `sweep`, `status`, `close`; `install_sigterm_exit` | None; an external runtime is never started or stopped | Injected by `compose.py`; `IDLE_STOP_SECONDS = 600`; `atexit` leave |
+| `omrs.integrations.llamacpp_runtime.manager` | Native | `LLAMACPP_ROUTER_SERVER`, `OCR_RUNTIME_URL` | `RuntimeManager` (one per process): `lease`, `stop` (operator), `sweep`, `status`, `close`; `install_sigterm_exit` | None; an external runtime is never started or stopped | Injected by `compose.py`; `IDLE_STOP_SECONDS = 600`; `atexit` leave |
+| `omrs.integrations.llamacpp_runtime.model_locks` | Native | None | `ModelHolds` (per-model `clients.lock`) and `request_lock` (per-model `request.lock` of a one-slot model) | None | A request to one model never waits for another model; lock order follows the manager rule |
+| `omrs.integrations.llamacpp_runtime.model_reasons` | Native | None | `MODEL_STATES`, `MODEL_REASONS`, `ModelUnavailable` and `model_reason_text` | None | Fixed states and plain-English reason lines of one router model; no server output enters a line |
+| `omrs.integrations.llamacpp_runtime.pins` | Native | None | `pinned_build(flavour)`: the b11941 archives and SHA-256 values for macOS arm64, Linux CPU and Linux CUDA 12.8 | `NotSupported` (`not-supported`) for an unpinned platform | Pure data; a test compares it with the dots-mocr engine's own pin |
+| `omrs.integrations.llamacpp_runtime.preset_writer` | Native | None | `plan_preset`, `format_section`, `split_sections`, `replace_section`, `write_preset`: the `models.ini` of the router | An entry with a failed check is left out with a fixed reason | Writes allow-listed keys only, in the order of `config/llamacpp_preset.py`; temporary file and rename |
 | `omrs.integrations.llamacpp_runtime.process` | Native | None | Detached start, build check (`--version`), SHA-256 file check, `ps` command-line check, SIGTERM/SIGKILL stop | None; a failed check gives a fixed reason | Only module that starts or stops a runtime process; no shell |
+| `omrs.integrations.llamacpp_runtime.provision` | Native | `LLAMACPP_SERVER_BINARY` (blank means the provisioned binary) | `install_pinned_build`, `resolve_server_binary`, `detect_flavour`: download, SHA-256 check and unpack of the pinned build into `b11941-<flavour>/` | `not-supported` for an unpinned platform; a failed step places no binary | On request only (Integrations card, `omrs llamacpp install`); starts no server |
+| `omrs.integrations.llamacpp_runtime.provision_checks` | Native | None | `check_version` (build 11941) and `check_cuda_device`; `ProvisionError` | `binary-check-failed` and `cuda-device-missing`; no binary stays in place | Runs the unpacked `llama-server` with `--version` and `--list-devices` only |
+| `omrs.integrations.llamacpp_runtime.readiness` | Native | None | `ensure_loaded(url, model)`, `model_state`, `reload_presets`; `MODEL_LOAD_TIMEOUT_SECONDS = 300` | `model-load-failed` for that model only | Makes a model `loaded` before its request timeout starts |
+| `omrs.integrations.llamacpp_runtime.reload` | Native | None | `apply_sections`: rewrite the changed sections and call `GET /models?reload=1` | `version-busy` for a model another process uses | Runs under `start.lock`; router arguments never change here |
+| `omrs.integrations.llamacpp_runtime.router_lease` | Native | `LLAMACPP_ROUTER_SERVER` | `RouterLease` and `open_router`: this process's per-model view of the router (name check, preset check, readiness, request lock) | `model-not-listed` before any contact; external mode checks no name | Wraps the `RuntimeLease` of runtime `router` |
+| `omrs.integrations.llamacpp_runtime.router_spec` | Native | `LLAMACPP_ROUTER_URL`, `LLAMACPP_ROUTER_MODELS_MAX`, `LLAMACPP_ROUTER_MEMORY_MARGIN_MIB` | `router_spec`, `external_router_spec`, `router_environment`, `model_id`, `router_dir`: the fixed argument list and the state folder layout | None | Child environment adds only `LLAMA_CACHE` and `XDG_CONFIG_HOME`, both empty folders |
 | `omrs.integrations.llamacpp_runtime.rules` | Native | None | Launch checks: program rule, model kind, loopback port, argument lists, child environment, fixed reasons | None | Moved from `core/providers/llm/llamacpp_rules.py`; standard-library only |
-| `omrs.integrations.llamacpp_runtime.spec` | Native | None | Frozen `RuntimeSpec` (id, role, mode, argv, files, build, build floor, port policy, slots) | None | Chat and embeddings builders; free-port OCR runtime; fixed-port decision runtime with one slot; no `--sleep-idle-seconds` |
+| `omrs.integrations.llamacpp_runtime.spec` | Native | None | Frozen `RuntimeSpec` (id, role, mode, argv, files, build, build floor, port policy, slots) and `DeclaredFile` | None | Runtime ids are `router` and `ocr-<engine folder>`; free-port OCR runtime; no `--sleep-idle-seconds` |
 | `omrs.integrations.llamacpp_runtime.state` | Native | `OMRS_STATE_DIR`, `$XDG_STATE_HOME` | `server.json` atomic read/write and the state root | Missing or broken file reads as no record | Local-disk runtime state shared by every OMRS process |
 | `omrs.integrations.part_registry` | Native | None | `PartRegistry`: register, describe, names, lazy cached `get`, `probe`, import-free `installed`, per-process `switch_off` and `off_reason` | None | Shared helper for the page-reading registries (change `local-ocr-backends`, ADR-112); imports no part at module level |
 | `omrs.integrations.pdf`               | Native                                                         | None                                                                | `get_pdf_reader(reader)`                      | None                                                                              | Public facade exposing the factory                                  |
