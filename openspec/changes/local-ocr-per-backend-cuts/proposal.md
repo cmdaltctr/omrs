@@ -40,5 +40,5 @@ None.
 - Operators: an `OCR_LOCAL_MIN_CONFIDENCE` value in the environment or `.env` stops start-up until it is removed. Every collection (all source types) re-indexes once on the next ingest after the upgrade, because the identity payload changes. After that, a cut change re-indexes PDF sources only. Operators who list Indra must set `ocr_non_latin_routing` to `off`; under `detect`, Indra's non-Latin pages go to the OCR engine.
 - Saved Studio graphs keep their fingerprint. A step that sets cuts changes the PDF identity of that pipeline only.
 - External parts: a discovered descriptor that passes `keeps_scripts` fails to load and shows as broken. The reading-parts guide states the field change.
-- Evidence: Experiment 46 saved results, re-analysed in `46a`. Limits: 229 pages from 13 documents, reference text from a vision model, and the 0.90 against 0.92 difference is one page. This is a setting choice, not a publication result.
+- Evidence: Experiment 46 saved results, re-analysed in `46a`. Limits: 229 pages from 9 documents, reference text from a vision model, and the 0.90 against 0.92 difference is one page. This is a setting choice, not a publication result.
 - Live app: the rollout after merge is an operator step (tasks group 10). This change touches no live state.
