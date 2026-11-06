@@ -347,6 +347,8 @@ This change lands before `pipeline-sweep-llamacpp`. That design plans `llama ser
 - **Q3, memory limits (D15):** `--models-max 4` and `--models-memory-margin 8192` MiB accepted. Added: both are visible and editable in Settings > llama.cpp Router panel as "Models loaded at once" (1 to 16) and "Free memory margin (MiB)" (0 to 262,144).
 - **Q4, Linux flavour (D12):** CUDA 12.8 when an NVIDIA driver is present, else CPU, accepted. Added: the Integrations llama.cpp card shows the detected flavour as the default and lets the operator choose CPU or CUDA before install.
 
+- **G2, design path (D10):** outcome A confirmed by the operator on 2026-11-06. Decision models run on the router in both modes; the `decision-<name>` runtime path goes (task 5.1).
+
 ## Spike results (2026-11-06, gate G2)
 
 Evidence in `evidence/`. Build b11941, archives checked against the release SHA-256 values.
