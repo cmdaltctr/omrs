@@ -82,6 +82,21 @@ An entry SHALL have the role of each setting that names its `model`: `llamacpp_e
 - **WHEN** a save makes `answer.model` name an entry whose preset has `embeddings` true
 - **THEN** the server MUST return 400 with reason `role-mismatch` and save nothing
 
+### Requirement: Role problems show before a request
+
+While the router is managed, `GET /v1/llamacpp/router` SHALL return `problems`: one item with `role`, `reason` and a plain `text` for each role that no entry can serve. `omrs config show` SHALL list the same items, and the Router panel SHALL show each text as one line above the router rows. The list SHALL be empty while the router is external.
+
+#### Scenario: Unlisted role model shown before a request
+
+- **WHEN** the router is managed and `llamacpp_embed_model` names no entry
+- **THEN** `GET /v1/llamacpp/router` MUST list a problem with role `embeddings` and reason `model-not-listed`, with a text that does not name the model
+- **AND** `omrs config show` MUST list the same problem
+
+#### Scenario: External router lists no problem
+
+- **WHEN** the router is external and a role model names no entry
+- **THEN** `problems` MUST be empty
+
 ### Requirement: Entry files follow fixed rules
 
 `model` SHALL be a Hugging Face id `org/name:QUANT` that does not start with `-`. In managed mode `file` SHALL be an absolute path of an existing regular `.gguf` file whose name holds no `mmproj`, and `projector`, when set, an absolute path of an existing `.gguf` file. A save that breaks a rule SHALL return 400 and save nothing. A launch-time failure SHALL fail that entry only.
@@ -195,6 +210,16 @@ When an entry's file, projector or preset changes while the router runs, OMRS SH
 
 - **WHEN** the user changes `llamacpp_router_models_max` and presses Restart
 - **THEN** the router MUST restart with the new `--models-max` value
+
+### Requirement: A router start keeps a section another process uses
+
+A router start, including a restart after a crash, SHALL write a model's section from the starting process's list only when no other OMRS process uses that model. Otherwise the section in force SHALL stay, and the model SHALL show reload pending and fail with `version-busy` for the starting process only.
+
+#### Scenario: Crash restart keeps a section in use
+
+- **WHEN** the CLI uses the Chat model with one preset, the web app lists another preset for it, and the router crashes and the web app starts it again
+- **THEN** `models.ini` MUST keep the CLI's Chat section
+- **AND** the web app's Chat request MUST fail with `version-busy`, and embedding requests MUST succeed
 
 ### Requirement: A model is made ready before its request is timed
 

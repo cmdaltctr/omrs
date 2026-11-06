@@ -79,13 +79,13 @@ Evidence files go in `openspec/changes/one-llamacpp-router/evidence/`. Each spik
 
 - [x] 9.1 `.env.example`: remove every provider, model and URL key; keep secret notes and commented developer overrides; point to `omrs config init` and `omrs.jsonc`. Verify: a test checks `.env.example` assigns no key from the provider, model or URL set.
 - [x] 9.2 Add `test_conftest_matches_shipped_defaults`: every provider, model and URL value that conftest, `ci.yml` and `local_ci.sh` set equals the shipped default. Verify: it passes, and fails when one conftest value is changed (mutation check).
-- [ ] 9.3 Show the operator a diff for the gitignored repo `.env` (remove provider, model and URL keys; keep secrets). Do not edit it without approval. Verify: the operator confirms.
+- [x] 9.3 Show the operator a diff for the gitignored repo `.env` (remove provider, model and URL keys; keep secrets). Do not edit it without approval. Verify: the operator confirms.
 
 ## 10. Docs and ADR
 
 - [x] 10.1 Write ADR-115 "One llama.cpp router serves every local model" (Proposed): supersede ADR-109's router-mode rejection and its per-role table, amend ADR-084, ADR-108 and ADR-110, relate ADR-103, ADR-106 and ADR-113. Add header notes to the amended ADRs and a row in `ADR_README.md`. Check the next free number again against sibling worktrees before writing. Verify: the ADR README lists it and every link resolves.
 - [x] 10.2 Update `docs/guides/architecture.md` (Local model runtimes), `configuration.md` (router keys, model list, retired keys table, upgrade notes with the one-time re-index), `mcp-tools.md` if a tool text names an address, the folder `AGENTS.md` files that name `llamacpp_chat_server` or `llamacpp_embed_server`, and root `AGENTS.md` Gotcha 17 runtime list. Fix every hit from task 2.5. Verify: a grep for the retired key names in `docs/` and `AGENTS.md` files finds only upgrade notes.
-- [ ] 10.3 Amend change `pipeline-sweep-llamacpp` with the `openspec-update-change` skill (design D17): run on the OMRS router with a scratch `OMRS_CONFIG_DIR` and `OMRS_STATE_DIR`, not `llama serve` (the program rule refuses it); drop the non-goal that keeps live, CI and defaults on Ollama; map its D6a presets onto the allow-list, with `spec-type` per spike 1.5 and the thinking setting per request. Verify: `openspec validate pipeline-sweep-llamacpp --strict` passes and the PR description names the amendment.
+- [x] 10.3 Amend change `pipeline-sweep-llamacpp` with the `openspec-update-change` skill (design D17): run on the OMRS router with a scratch `OMRS_CONFIG_DIR` and `OMRS_STATE_DIR`, not `llama serve` (the program rule refuses it); drop the non-goal that keeps live, CI and defaults on Ollama; map its D6a presets onto the allow-list, with `spec-type` per spike 1.5 and the thinking setting per request. Verify: `openspec validate pipeline-sweep-llamacpp --strict` passes and the PR description names the amendment.
 
 ## 11. Tripwire, local CI and validation
 

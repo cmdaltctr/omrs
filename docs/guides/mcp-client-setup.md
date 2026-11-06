@@ -11,8 +11,6 @@
    - Transport: **Local / stdio**
    - Command (one token per line): `uv` / `run` / `--project` / `/absolute/path/to/omrs` / `omrs`
 4. Environment variables:
-   - `EMBED_MODEL` = `nomic-embed-text`
-   - `OLLAMA_BASE_URL` = `http://localhost:11434`
    - `VECTOR_STORE` = `lancedb`
    - `LANCEDB_URI` = `/absolute/path/to/omrs/lancedb`
 5. Click **Create** — the server should connect immediately (green indicator).
@@ -28,8 +26,6 @@ Add this block to `~/.opencode/opencode.json` (available in all projects) or `<p
       "type": "local",
       "command": ["uv", "run", "--project", "/absolute/path/to/omrs", "omrs"],
       "environment": {
-        "EMBED_MODEL": "nomic-embed-text",
-        "OLLAMA_BASE_URL": "http://localhost:11434",
         "VECTOR_STORE": "lancedb",
         "LANCEDB_URI": "/absolute/path/to/omrs/lancedb"
       },
@@ -65,8 +61,6 @@ Put a per-project `opencode.json` inside each project with its own `LANCEDB_URI`
       "type": "local",
       "command": ["uv", "run", "--project", "/absolute/path/to/omrs", "omrs"],
       "environment": {
-        "EMBED_MODEL": "nomic-embed-text",
-        "OLLAMA_BASE_URL": "http://localhost:11434",
         "VECTOR_STORE": "lancedb",
         "LANCEDB_URI": "/absolute/path/to/my-project/rag-store/lancedb"
       },
@@ -110,19 +104,13 @@ If you are an AI agent setting this server up for a user, follow these steps:
 # Install uv
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Install Ollama (macOS)
-brew install ollama
-# Install Ollama (Linux)
-curl -fsSL https://ollama.com/install.sh | sh
-
-# Start Ollama and pull the embedding model
-ollama serve &
-ollama pull nomic-embed-text
-
 # Set up the server
 cd /path/to/omrs
 cp .env.example .env
 uv sync
+
+# Place the pinned llama.cpp build and download the two default models
+uv run omrs llamacpp install
 
 # Verify
 uv run omrs

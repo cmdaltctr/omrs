@@ -129,6 +129,46 @@ The Router panel and its model table SHALL fit at 1,280 px and 390 px without si
 - **WHEN** the page is 390 px wide and the table holds three entries
 - **THEN** every row, its Edit button and the Start, Stop and Restart buttons MUST fit without sideways page scroll
 
+## MODIFIED Requirements
+
+### Requirement: Document reading shows the reading settings and their state
+
+The Document reading section SHALL show one row for each of `pdf_readers`, `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engines`, `ocr_maths_routing_enabled` and `ocr_non_latin_routing`. Each row SHALL show the value in force since launch, its source and the default. When the saved file value differs from the value in force, the row SHALL show the saved value and "Restart to apply". The host router row (`document_router`) SHALL show the value in force now, read from `omrs.jsonc`, and SHALL NOT show "Restart to apply", because a saved router choice applies to the next request.
+
+#### Scenario: Value saved but not yet in force
+
+- **WHEN** the server launched with `pdf_reader` `auto` and `omrs.jsonc` now holds `"pdf_reader": "liteparse"`
+- **THEN** the PDF reader row MUST show `auto` in force, `liteparse` saved and "Restart to apply"
+
+#### Scenario: Host router saved
+
+- **WHEN** the user saves `handwriting` as the host router in a running `omrs web`
+- **THEN** the host router row MUST show `handwriting` in force and MUST NOT show "Restart to apply"
+
+### Requirement: A Document reading save goes to omrs.jsonc for the next launch
+
+A save in the Document reading section SHALL write the changed keys into `omrs.jsonc` with the file revision the page last read. A save SHALL NOT change the value in force, except a save of `document_router`, which SHALL apply to the next request in `omrs web` and SHALL NOT offer the restart dialog. After a save that leaves a key waiting for a restart, the page SHALL offer the restart dialog and SHALL repeat the index identity note. "Use default" on a row SHALL remove the key from the file. A refused save SHALL show the server message and SHALL leave the row unchanged.
+
+#### Scenario: Save a boolean
+
+- **WHEN** the user turns maths routing off and presses Save
+- **THEN** `omrs.jsonc` MUST hold `"ocr_maths_routing_enabled": false`, the row MUST show "Restart to apply", and the restart dialog MUST open
+
+#### Scenario: Return to the default
+
+- **WHEN** the file holds `"ocr_engine_fallback": "my-engine"` and the user presses "Use default" on that row
+- **THEN** `omrs.jsonc` MUST no longer hold `ocr_engine_fallback`
+
+#### Scenario: File edited while the page is open
+
+- **WHEN** the user edits `omrs.jsonc` in an editor and then saves a row in Document reading
+- **THEN** the page MUST show "omrs.jsonc changed on disk. Reload to see the new values." and MUST offer Reload
+
+#### Scenario: Host router save applies at once
+
+- **WHEN** the user saves a new host router and then ingests a file in the same running `omrs web`
+- **THEN** the ingest MUST use the new router, and the restart dialog MUST NOT open
+
 ## REMOVED Requirements
 
 ### Requirement: The llama.cpp card shows a Local server panel

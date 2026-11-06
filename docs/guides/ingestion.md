@@ -882,7 +882,7 @@ extension is admitted.
 
 ## Embedding models
 
-The default embedding model is `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0`. It makes 2,560-dimension vectors and runs on the local llama.cpp router. OMRS downloads it the first time a command needs it. `llamacpp_embed_model` in `omrs.jsonc` names it, and the same name must be an entry in `llamacpp_models`. See [Local llama.cpp router](configuration.md#local-llamacpp-router).
+The default embedding model is `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0`. It makes 2,560-dimension vectors and runs on the local llama.cpp router. In `omrs web`, OMRS downloads it the first time the router needs it. `omrs llamacpp install` downloads it too. `llamacpp_embed_model` in `omrs.jsonc` names it, and the same name must be an entry in `llamacpp_models`. See [Local llama.cpp router](configuration.md#local-llamacpp-router).
 
 To use another GGUF model, add an entry for it to `llamacpp_models`, set `llamacpp_embed_model` to its `model` value, and ingest into a fresh collection. To use OpenRouter, set `embed_provider` to `cloud` and `openrouter_embed_model` to a cloud embedding model, for example `text-embedding-3-small`. See [Providers](providers.md) for setup.
 
@@ -1012,4 +1012,4 @@ Progress bars appear automatically in TTY terminals (Rich). In non-TTY contexts 
 | Embedding                          | Embedding model (default `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0`) | Converts text to vectors     | ~50–500ms per chunk     |
 | Search (rerank)                    | Cross-encoder (ms-marco-MiniLM-L-6-v2)      | Re-scores top results        | ~10–50ms per query pair |
 
-The embedding model and the classification model are **separate** entries in the router list (`llamacpp_models`). OMRS downloads each file the first time the router needs it.
+The embedding model and the classification model are **separate** entries in the router list (`llamacpp_models`). In `omrs web`, OMRS downloads each file the first time the router needs it. `omrs llamacpp install` downloads them too.

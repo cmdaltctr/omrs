@@ -34,7 +34,7 @@ The LlamaIndex OpenAI-like packages are in the base install. The `llamacpp` and 
 | Env var                 | Default                              | Purpose                         |
 | ----------------------- | ------------------------------------ | ------------------------------- |
 | `LLAMACPP_EMBED_MODEL` | `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0` | Embedding model: the `model` of an entry in `llamacpp_models` |
-| `LLAMACPP_CHAT_MODEL` | `Qwen/Qwen3-4B-GGUF:Q8_0` | Text model (classification): the model for metadata extraction. Chat never uses it |
+| `LLAMACPP_CHAT_MODEL` | `Qwen/Qwen3-4B-GGUF:Q8_0` | Classification model: the model for metadata extraction. Chat never uses it |
 | `LLAMACPP_ROUTER_SERVER` | `managed` | Who runs the router: `managed` (the `llama-server` that OMRS starts) or `external` (the Llama app or another server you run) |
 | `LLAMACPP_ROUTER_URL` | `http://127.0.0.1:8080/v1` | Address of the llama.cpp router. Embeddings, classification, Chat, the judge and decision models all use it |
 | `LLAMACPP_ROUTER_MODELS_MAX` | `4` | Models loaded at once, 1 to 16 |
@@ -186,7 +186,7 @@ Two more descriptor flags say how an answer role uses the provider (ADR-108). Th
 
 | Flag | Default | llama.cpp and Ollama | What it does |
 | --- | --- | --- | --- |
-| `default_answer_model` | `True` | `False` | Whether the provider has a model setting of its own that an empty judge model may use. With `False`, an empty judge model or Chat model is refused, never filled with a classification model (the llama.cpp Text model or `metadata.ollama_classify_model`). The claim check is skipped with "Choose a judge model in Settings > Chat." Chat refuses with "Choose a Chat model in Settings > Chat.", and `GET /v1/settings/chat` gives the reason `no-model`. OpenRouter keeps `True` and its documented default. |
+| `default_answer_model` | `True` | `False` | Whether the provider has a model setting of its own that an empty judge model may use. With `False`, an empty judge model or Chat model is refused, never filled with a classification model (the llama.cpp classification model or `metadata.ollama_classify_model`). The claim check is skipped with "Choose a judge model in Settings > Chat." Chat refuses with "Choose a Chat model in Settings > Chat.", and `GET /v1/settings/chat` gives the reason `no-model`. OpenRouter keeps `True` and its documented default. |
 | `test_checks_model_list` | `False` | `True` (llama.cpp only) | With `True` and the router mode `external`, the Chat test reads the provider's model list (`{LLAMACPP_ROUTER_URL}/models`) first. A model that the list does not hold gives reason `model-not-listed`, and no prompt is sent. A list that cannot be read gives the usual reasons (`refused`, `timeout`, `http-NNN`). With `managed`, the test skips the list, because OMRS checks the name against its own model list. |
 
 The card layout comes from the descriptor too. `ConnectionField` and `ReadOnlyValue` have an optional `group`: `embeddings` (title "Embeddings"), `metadata` ("Classification (metadata)") or `answers` ("Chat"). The card shows the fields without a group first, then each group under its title, in that order. Only llama.cpp sets a group, so the other cards show one block with no titles. `ConnectionField` also has an optional `follows`: the id of the field whose value applies while this field is not set. The llama.cpp Classification address (`classify_url`) follows the Chat address (`chat_url`). `GET /v1/connections` then reports the Chat address as its value, with the source `default`.

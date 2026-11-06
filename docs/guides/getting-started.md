@@ -31,7 +31,9 @@
 
    The command starts no server. On Linux, add `--flavour cpu` or `--flavour cuda` to choose the build. See [CLI reference](cli-reference.md#llamacpp-install).
 
-4. Run the first command that needs a model, for example the verify step below. OMRS starts the router and downloads the two shipped models: `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0` for embeddings and `Qwen/Qwen3-4B-GGUF:Q8_0` for classification. The first run waits for the download. Chat has no model until you choose one in Settings > Chat.
+4. Start the web workspace with `uv run omrs web`. In `omrs web`, OMRS starts the router and downloads the two shipped models when the router first needs them: `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0` for embeddings and `Qwen/Qwen3-4B-GGUF:Q8_0` for classification. The Router panel on the llama.cpp card in Settings > Providers shows "Downloading" on each row. The first run waits for the download. Chat has no model until you choose one in Settings > Chat.
+
+   The CLI and the stdio MCP server download no model by themselves. Run `uv run omrs llamacpp install` to download the two models into the Hugging Face cache too. `omrs web` records the cached files in the model list when the router first needs them.
 
 ## Verify it works
 

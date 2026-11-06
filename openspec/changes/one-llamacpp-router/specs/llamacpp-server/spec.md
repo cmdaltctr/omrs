@@ -178,7 +178,7 @@ Every router route SHALL need a browser session. Changing the program path, the 
 
 ### Requirement: Lifecycle states and fixed reasons
 
-The router state SHALL be one of `stopped`, `starting`, `running` and `failed`. A `failed` state SHALL carry one reason from `binary-invalid`, `not-loopback`, `port-in-use`, `exited`, `timeout`, `not-configured`, `not-provisioned`, `not-supported`, `version-busy` and `wrong-build`. A model's state SHALL be one of `not-downloaded`, `unloaded`, `loading`, `loaded` and `failed`, and a failed model SHALL carry one reason from `model-invalid`, `file-changed`, `preset-invalid`, `model-load-failed`, `model-not-listed`, `role-mismatch` and `version-busy`. A request to a `not-downloaded` model SHALL be refused with the reason `not-downloaded` before any contact.
+The router state SHALL be one of `stopped`, `starting`, `running` and `failed`. A `failed` state SHALL carry one reason from `binary-invalid`, `file-changed`, `not-loopback`, `port-in-use`, `bind-failed`, `exited`, `timeout`, `not-configured`, `not-downloaded`, `not-provisioned`, `not-supported`, `version-busy` and `wrong-build`. A model's state SHALL be one of `not-downloaded`, `unloaded`, `loading`, `loaded` and `failed`, and a failed model SHALL carry one reason from `model-invalid`, `file-changed`, `preset-invalid`, `model-load-failed`, `model-not-listed`, `role-mismatch` and `version-busy`. A request to a `not-downloaded` model SHALL be refused with the reason `not-downloaded` before any contact.
 
 #### Scenario: Reasons are fixed
 
@@ -187,7 +187,7 @@ The router state SHALL be one of `stopped`, `starting`, `running` and `failed`. 
 
 ### Requirement: Start moves to running or to a failed state
 
-Start SHALL move to `starting`, then poll `GET /health` on the owned port until it returns 200, then move to `running`. No model SHALL load at start. The wait SHALL end after 180 seconds with the reason `timeout`. An exit of the process while `starting` or `running` SHALL give `failed` with the reason `exited`. A blank program with no provisioned binary SHALL give `not-provisioned`, whose text names `omrs llamacpp install` and the Get llama.cpp action. A list with no usable entry SHALL give `not-configured`.
+Start SHALL move to `starting`, then poll `GET /health` on the owned port until it returns 200, then move to `running`. No model SHALL load at start. The wait SHALL end after 180 seconds with the reason `timeout`. An exit of the process while `starting` or `running` SHALL give `failed` with the reason `exited`. A blank program with no provisioned binary SHALL give `not-provisioned`, whose text names `omrs llamacpp install` and the Get llama.cpp action. A list with no entry SHALL give `not-configured`. A list in which no entry has a file SHALL give `not-downloaded`; its line SHALL read "Models are still downloading." while an automatic download of a listed model is queued or runs, and "No model is downloaded yet." otherwise. The status SHALL compute this line from the download state at the time it is read.
 
 #### Scenario: Nothing provisioned
 
@@ -221,8 +221,14 @@ Start SHALL move to `starting`, then poll `GET /health` on the owned port until 
 
 #### Scenario: Not configured
 
-- **WHEN** no program is set and none is provisioned, and the user presses Start
+- **WHEN** the model list has no entry and the user presses Start
 - **THEN** the state MUST be `failed` with the reason `not-configured` and no process MUST start
+
+#### Scenario: No model downloaded
+
+- **WHEN** no listed model has a file and the user presses Start
+- **THEN** the state MUST be `failed` with the reason `not-downloaded` and no process MUST start
+- **AND** the line MUST read "Models are still downloading." while a download of a listed model runs, and "No model is downloaded yet." after it ends
 
 ### Requirement: Stop and restart
 

@@ -50,7 +50,7 @@ ollama pull qwen3:0.6b
 
 This tiny 0.6B model is purpose-built for fast classification and receives a bounded file prefix rather than the complete document.
 
-> **Other sub-providers:** When `LOCAL_BACKEND=llamacpp`, this mode routes to the `/v1/chat/completions` endpoint of the llama.cpp router (`LLAMACPP_ROUTER_URL`), with `LLAMACPP_CHAT_MODEL` (the Text model) as the model name. The `llamaindex` mode builds `OpenAILike` in chat mode (`is_chat_model=True`) with the same address and model, so it also calls `/v1/chat/completions` and never the legacy `/v1/completions` endpoint. Neither mode uses the Chat model (`ANSWER__MODEL`). When `METADATA_LLM_PROVIDER=cloud` and `CLOUD_BACKEND=openrouter`, it routes to OpenRouter's chat API using `OPENROUTER_API_KEY` and `OPENROUTER_LLM_MODEL`. See [Providers](providers.md) for setup.
+> **Other sub-providers:** When `LOCAL_BACKEND=llamacpp`, this mode routes to the `/v1/chat/completions` endpoint of the llama.cpp router (`LLAMACPP_ROUTER_URL`), with `LLAMACPP_CHAT_MODEL` (the classification model) as the model name. The `llamaindex` mode builds `OpenAILike` in chat mode (`is_chat_model=True`) with the same address and model, so it also calls `/v1/chat/completions` and never the legacy `/v1/completions` endpoint. Neither mode uses the Chat model (`ANSWER__MODEL`). When `METADATA_LLM_PROVIDER=cloud` and `CLOUD_BACKEND=openrouter`, it routes to OpenRouter's chat API using `OPENROUTER_API_KEY` and `OPENROUTER_LLM_MODEL`. See [Providers](providers.md) for setup.
 
 Rich metadata output example:
 
