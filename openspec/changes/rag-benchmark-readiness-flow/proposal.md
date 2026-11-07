@@ -14,7 +14,7 @@ Without one recorded order, two branches can touch the same specs at once, the l
 ## What Changes
 
 - A task order only (tasks.md groups 0 to 7) with gates. No code and no capability deltas.
-- The order (operator decisions 2026-11-06): cuts, then router, then one live switch with one re-index, then the pipeline sweep on RunPod, then Experiment 35. The page routing panel follows the router and can run beside the sweep, because it touches no runtime and no result.
+- The order (operator decisions 2026-11-06): cuts, then router, then one live switch (no re-index: the live collections are test data, operator 2026-11-07), then the pipeline sweep on RunPod, then Experiment 35. The page routing panel follows the router and can run beside the sweep, because it touches no runtime and no result.
 
 ## Capabilities
 

@@ -28,7 +28,7 @@ G0 preflight
    |
    +--------------------------------------+
    v                                      v
-4. live switch + one re-index (G5)   3. page-routing-panel -- apply, PR, merge (G4)
+4. live switch (G5)                  3. page-routing-panel -- apply, PR, merge (G4)
    |                                    (can run beside 5)
    v
 5. pipeline sweep on RunPod (G6)
@@ -39,9 +39,9 @@ G0 preflight
 
 The cuts change goes first because both other changes build on it (the panel shows its cut boxes; the router change lands after it and shares the re-index). The router goes before the panel because it is on the benchmark's critical path and both touch `workspace-settings` and `settings-file`: never two of these branches at once (rule of the archived master flow, task 4.4). The panel changes no result with defaults, so it may run beside the sweep.
 
-### D2. One re-index
+### D2. No re-index
 
-The cuts change and the router change each force a full re-index. The live app switches once, after both merge (group 4), so the library re-indexes once.
+The cuts change and the router change each change the index identity. The operator decided on 2026-11-07 not to re-index: the live collections are test data. A collection used later is re-ingested when it is needed.
 
 ### D3. Gates
 
@@ -52,7 +52,7 @@ The cuts change and the router change each force a full re-index. The live app s
 | G2 | 2.2 | Spike results of `one-llamacpp-router` (design path A or B) |
 | G3 | 2.5 | Merge `one-llamacpp-router` |
 | G4 | 3.4 | Merge `page-routing-panel` |
-| G5 | 4.1 | Touch the live app and re-index everything |
+| G5 | 4.1 | Touch the live app |
 | G6 | 5.3 | RunPod budget and start of the sweep |
 | G7 | 6.2 | Freeze and start Experiment 35 |
 

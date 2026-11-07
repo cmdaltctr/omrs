@@ -105,7 +105,7 @@ Evidence files go in `openspec/changes/one-llamacpp-router/evidence/`. Each spik
 - [ ] 13.1 Provision the router on the live Mac (`omrs llamacpp install`) and download the models: Qwen3-Embedding-4B Q8_0, Qwen3-4B Q8_0, Clef-Flash Q8_0 with its projector (projector placed by hand, since downloads leave projectors out). Verify: each file's SHA-256 is recorded in `omrs.jsonc`.
 - [ ] 13.2 Set the live list: embedding 4B (`ctx-size` 8192, `pooling` last, batch and ubatch 8192), Qwen3-4B (`ctx-size` 32768), Clef-Flash with projector and `parallel` 1. Switch live `omrs.jsonc` to `llamacpp_router_server` `managed` and one `llamacpp_router_url`. Remove stale keys (`embed_model` `qwen3-embedding:0.6b`, `metadata.ollama_classify_model`, the retired URL and server keys). Back up the file first. Verify: `omrs config show` lists no problem.
 - [ ] 13.3 Stop relying on the Llama app for OMRS (quit it or leave it on its own port). Verify: `GET /v1/runtimes` shows the router running with the three models and the dots.mocr runtime apart.
-- [ ] 13.4 Re-ingest every collection once, together with the re-index of `local-ocr-per-backend-cuts`. Verify: each collection's identity stamp shows `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0`, categories are filled, and a known-answer search per collection finds its source.
+- [ ] 13.4 No re-index (operator, 2026-11-07): the live collections are test data. A collection used later is re-ingested when needed; its identity stamp then shows `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0`.
 - [ ] 13.5 Copy gitignored evidence out before the worktree is removed (root `AGENTS.md` Gotcha 15). Verify: copy receipt recorded.
 
 ## Workflow follow-up

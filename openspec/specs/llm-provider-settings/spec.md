@@ -735,31 +735,6 @@ A provider card under Settings > Providers whose package is not installed SHALL 
 - **WHEN** the provider package is installed
 - **THEN** the card MUST NOT show the link
 
-### Requirement: The llama.cpp provider has a classification address
-
-The llama.cpp provider SHALL have the address `llamacpp_classify_url` (env `LLAMACPP_CLASSIFY_URL`) for classification. When no source sets it, classification SHALL use `llamacpp_chat_url`. The sources SHALL follow the provider source order: the environment and `.env` (both lock), then `omrs.jsonc`, then the Chat address. The address SHALL follow the provider address rules. A saved change SHALL apply from the next request with no restart.
-
-#### Scenario: Upgrade keeps classification where it was
-
-- **WHEN** `omrs.jsonc` sets `llamacpp_chat_url` to `http://127.0.0.1:9931/v1` and no source sets `llamacpp_classify_url`
-- **THEN** classification requests MUST go to `http://127.0.0.1:9931/v1`
-- **AND** `GET /v1/connections` MUST report the classification address `http://127.0.0.1:9931/v1` with the source `default`
-
-#### Scenario: Separate addresses
-
-- **WHEN** `llamacpp_classify_url` is `http://127.0.0.1:9931/v1` and `llamacpp_chat_url` is `http://127.0.0.1:8081/v1`
-- **THEN** classification requests MUST go to port 9931 and llama.cpp Chat answers MUST go to port 8081
-
-#### Scenario: Environment locks the address
-
-- **WHEN** `LLAMACPP_CLASSIFY_URL` is in the environment and the user saves another classification address
-- **THEN** the server MUST return 409 and name the variable
-
-#### Scenario: Wrong scheme
-
-- **WHEN** the user saves the classification address `file:///etc/passwd`
-- **THEN** the server MUST return 400, save nothing and send no request
-
 ### Requirement: A llama.cpp answer role needs its own model
 
 When the Chat provider is `llamacpp` and the Chat model in force is empty, Chat SHALL refuse with a reason that says "Choose a Chat model" and SHALL send no request to any llama.cpp server. A llama.cpp answer role SHALL NOT use `llamacpp_chat_model`, which is the classification model. Classification SHALL keep `llamacpp_chat_model`.
@@ -792,3 +767,40 @@ When the Chat provider is `llamacpp` and the Chat server choice is `external`, a
 
 - **WHEN** the choice is `managed` and the user tests the llama.cpp Chat model
 - **THEN** the test MUST NOT read the model list before the prompt
+
+### Requirement: The shipped Chat default is local llama.cpp with no model chosen
+
+With no source set, `answer.provider` SHALL be `llamacpp` and `answer.model` SHALL be empty. Classification SHALL keep `llamacpp_chat_model` `Qwen/Qwen3-4B-GGUF:Q8_0`. Chat SHALL NOT share the classification model unless the user picks it. No shipped default SHALL name Ollama as a provider or an Ollama model tag. `metadata.ollama_classify_model` SHALL default to an empty value. The Ollama provider SHALL stay registered and usable when a user chooses it.
+
+#### Scenario: Fresh install Chat choice
+
+- **WHEN** OMRS starts with no `omrs.jsonc`, no `.env` and no environment value
+- **THEN** `GET /v1/settings/chat` MUST report provider `llamacpp` and model `""`
+- **AND** the classification model MUST be `Qwen/Qwen3-4B-GGUF:Q8_0`
+
+#### Scenario: Chat with no model
+
+- **WHEN** a user asks a question while `answer.provider` is `llamacpp` and `answer.model` is empty
+- **THEN** the answer MUST be a plain setup message that names the setting `answer.model`
+- **AND** no request MUST go to the router, and the classification model MUST NOT answer
+
+### Requirement: A llama.cpp judge with no model is not built
+
+When the claim-check judge provider resolves to llama.cpp and `answer.verify_model` is empty, the judge SHALL NOT be built. `GET /v1/settings/judge` SHALL report ready false with reason `no-model`. The judge SHALL NOT use `llamacpp_chat_model` as a fallback.
+
+#### Scenario: Judge on llama.cpp with no model
+
+- **WHEN** `answer.verify_provider` is `llamacpp` and `answer.verify_model` is empty
+- **THEN** `GET /v1/settings/judge` MUST report ready false with reason `no-model`
+- **AND** a claim check MUST report a setup message that names `answer.verify_model` and MUST NOT send a request to `Qwen/Qwen3-4B-GGUF:Q8_0`
+
+#### Scenario: No Ollama default
+
+- **WHEN** a test reads every shipped default of `Settings` and `defaults.yaml`
+- **THEN** no provider default MUST be `ollama` and no model default MUST be an Ollama tag such as `qwen3:4b`
+- **AND** the `answer.model` default MUST be empty
+
+#### Scenario: Ollama still opt-in
+
+- **WHEN** the user saves Chat provider `ollama` with model `qwen3:4b`
+- **THEN** the save MUST succeed and the next answer MUST go to `ollama_base_url`
