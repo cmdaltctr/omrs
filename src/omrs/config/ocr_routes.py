@@ -31,6 +31,9 @@ class OcrRouteSettingsMixin(BaseModel):
     # Design D5/D6: maths pages route to OCR. The document-unit maths page
     # fraction went with the document unit (change page-routing-default).
     ocr_maths_routing_enabled: LegacyBool = True
+    # Change page-routing-panel, design D3: a plain bool, so a typo such as
+    # ``ture`` stops start-up instead of turning the blank drop off silently.
+    ocr_skip_blank_pages: bool = True
     # Change non-latin-script-routing: off, detect or always. The value feeds
     # the index identity, so an unknown one stops start-up (no fallback).
     ocr_non_latin_routing: str = "off"

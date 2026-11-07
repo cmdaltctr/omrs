@@ -19,7 +19,7 @@ from omrs.compose_embedding import (
     server_default_identity,
 )
 from omrs.config import Settings
-from omrs.core.settings import EmbeddingSettings
+from omrs.config.embedding import EmbeddingSettings
 
 KEY = "sk-or-fake-key"
 

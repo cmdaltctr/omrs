@@ -173,6 +173,10 @@ class ReadParams(BaseModel):
             inherits the host list.
         ocr_engine_primary: Engine folder name of the primary route.
         ocr_engine_fallback: Engine folder name of the fallback route.
+        ocr_skip_blank_pages: Whether flagged pages with no ink keep their
+            native text and skip OCR. ``None`` inherits the host value. A set
+            value enters the PDF ``parser`` block only (change
+            page-routing-panel).
         ocr_maths_routing_enabled: Whether maths pages go to the OCR engine.
         ocr_non_latin_routing: ``off``, ``detect`` or ``always``: whether pages
             in a non-Latin script skip the local OCR tier.
@@ -197,6 +201,7 @@ class ReadParams(BaseModel):
     ocr_engines: Annotated[tuple[str, ...] | None, _reading_rule("ocr_engines")] = None
     ocr_engine_primary: Annotated[str | None, _reading_rule("ocr_engine_primary")] = None
     ocr_engine_fallback: Annotated[str | None, _reading_rule("ocr_engine_fallback")] = None
+    ocr_skip_blank_pages: Annotated[bool | None, _reading_rule("ocr_skip_blank_pages")] = None
     ocr_maths_routing_enabled: Annotated[
         bool | None, _reading_rule("ocr_maths_routing_enabled")
     ] = None
@@ -307,6 +312,7 @@ READ = OperationDescriptor(
         "ocr_engines": "ocr_engines",
         "ocr_engine_primary": "ocr_engine_primary",
         "ocr_engine_fallback": "ocr_engine_fallback",
+        "ocr_skip_blank_pages": "ocr_skip_blank_pages",
         "ocr_non_latin_routing": "ocr_non_latin_routing",
         "ocr_local_backends": "ocr_local_backends",
         "ocr_local_cuts": "ocr_local_cuts",

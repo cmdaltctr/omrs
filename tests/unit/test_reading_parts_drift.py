@@ -22,6 +22,7 @@ _ROOT = Path(__file__).resolve().parents[2]
 _CONTRACT = _ROOT / "src" / "omrs" / "transports" / "api" / "openapi.yaml"
 _WEB_KEYS = _ROOT / "web" / "src" / "api" / "settingsDocumentReading.ts"
 _WEB_WORDS = _ROOT / "web" / "src" / "settings" / "documentReadingWords.ts"
+_WEB_PANEL = _ROOT / "web" / "src" / "pageRouting" / "pageRoutingWords.ts"
 
 #: The old single-value keys. They stay valid in requests, so the request
 #: copies hold them beside the list keys.
@@ -134,6 +135,20 @@ def test_the_web_script_modes_follow_the_non_latin_descriptor() -> None:
     accepted = list(rule.settings[0].accepted or ())
     copy = _ts_array(_WEB_WORDS, "SCRIPT_MODES")
     assert _differs(copy, accepted, "documentReadingWords.ts SCRIPT_MODES") == ""
+
+
+def test_the_page_routing_panel_words_follow_the_descriptors() -> None:
+    """Change page-routing-panel, task 5.3, design D2 and D8."""
+    optional = _ts_array(_WEB_PANEL, "OPTIONAL_READERS")
+    with_extra = [reader.name for reader in reading_parts.PDF_READERS if reader.extra is not None]
+    assert _differs(optional, with_extra, "pageRoutingWords.ts OPTIONAL_READERS") == ""
+    text = _WEB_PANEL.read_text(encoding="utf-8")
+    steps = re.search(r"export const PANEL_STEPS\b.*?=\s*\[(?P<body>.*?)\n\]", text, re.S)
+    assert steps is not None, "PANEL_STEPS not found in pageRoutingWords.ts"
+    step_keys = re.findall(r"keys:\s*\[(?P<keys>[^\]]*)\]", steps["body"])
+    rules_step = re.findall(r'"([^"]+)"', step_keys[1])
+    expected = [key for key in rules.PAGE_RULE_KEYS if key != "document_router"]
+    assert _differs(rules_step, expected, "pageRoutingWords.ts PANEL_STEPS step 2") == ""
 
 
 def test_the_web_old_keys_are_the_python_old_keys() -> None:

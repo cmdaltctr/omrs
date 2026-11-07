@@ -123,16 +123,17 @@ def part_options_problem(options: Mapping[str, Mapping[str, Any]]) -> str | None
     The rule names the part and the key, never the value.
     """
     from .core import reading_parts as parts
+    from .core.reading_part_options import RULE_ENABLED_OPTION, parts_named
 
     for name, values in options.items():
-        found = parts.parts_named(name)
+        found = parts_named(name)
         if not found and name in parts.broken():
             continue  # A broken part has no descriptor to check; it is off (finding 4).
         if not found:
             return f"{name!r} is not a reading part."
         known = {option.name: option for part in found for option in part.options}
         if any(part.kind == parts.KIND_PAGE_RULE for part in found):
-            known.setdefault(parts.RULE_ENABLED_OPTION.name, parts.RULE_ENABLED_OPTION)
+            known.setdefault(RULE_ENABLED_OPTION.name, RULE_ENABLED_OPTION)
         for key, value in values.items():
             option = known.get(key)
             if option is None:
@@ -239,6 +240,7 @@ def settings_to_effective(settings: Settings | None = None) -> Any:
         ocr_engine_fallback=settings.ocr_engine_fallback,
         ocr_engines=settings.ocr_engines,
         ocr_maths_routing_enabled=settings.ocr_maths_routing_enabled,
+        ocr_skip_blank_pages=settings.ocr_skip_blank_pages,
         # Settings checked the value against OCR_NON_LATIN_MODES at start-up.
         ocr_non_latin_routing=cast(OcrNonLatinMode, settings.ocr_non_latin_routing),
         ocr_worker_seconds_per_page=settings.ocr_worker_seconds_per_page,

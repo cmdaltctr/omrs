@@ -33,6 +33,7 @@ DEFAULTS = {
     "ocr_fallback_enabled": True,
     "ocr_routing_unit": "page",
     "ocr_engines": ["dots-mocr", "paddleocr-vl"],
+    "ocr_skip_blank_pages": True,  # page-routing-panel
     "ocr_maths_routing_enabled": True,
     "ocr_non_latin_routing": "off",
     "document_router": "",

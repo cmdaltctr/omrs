@@ -41,7 +41,8 @@ REMOVED_KEYS = (
     "ocr_fallback_page_fraction",
     "ocr_maths_page_fraction",
 )
-BOOLEANS = ("ocr_fallback_enabled", "ocr_maths_routing_enabled")
+# page-routing-panel adds the skip-blank switch.
+BOOLEANS = ("ocr_fallback_enabled", "ocr_skip_blank_pages", "ocr_maths_routing_enabled")
 ENGINES = ("ocr_engine_primary", "ocr_engine_fallback")
 
 
@@ -72,6 +73,8 @@ def test_the_key_order_is_the_contract_order() -> None:
         "ocr_fallback_enabled",
         "ocr_routing_unit",
         "ocr_engines",
+        # page-routing-panel: the blank rule key comes first, in rule order.
+        "ocr_skip_blank_pages",
         "ocr_maths_routing_enabled",
         "ocr_non_latin_routing",
         "document_router",

@@ -30,11 +30,12 @@ from ..core.chunking.settings import ChunkingSettings
 from ..core.ingestion.settings import IngestionSettings
 from ..core.metadata.settings import MetadataSettings
 from ..core.retrieval.settings import RetrievalSettings
-from ..core.settings import OCR_ROUTING_UNITS, EmbeddingSettings
+from ..core.settings import OCR_ROUTING_UNITS
 from . import provenance  # noqa: E402
 
 provenance.load_project_dotenv()  # the working directory's .env, as env_file reads
 
+from .embedding import EmbeddingSettings  # noqa: E402
 from .llamacpp_models import CLASSIFY_MODEL, EMBED_MODEL  # noqa: E402
 from .ocr_routes import OcrRouteSettingsMixin  # noqa: E402
 from .provider_sources import (  # noqa: E402

@@ -248,7 +248,7 @@ class _Checker:
             if option_set is None or value is None:
                 continue
             # A list parameter (pdf_readers, ocr_engines) checks every entry it names.
-            for choice in [value] if isinstance(value, str) else value:
+            for choice in [value] if isinstance(value, (str, bool)) else value:
                 if choice not in option_set.unavailable:
                     continue
                 self.add(

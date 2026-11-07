@@ -254,6 +254,7 @@ def test_all_five_keys_in_one_save(harness: Harness, client: TestClient) -> None
         "ocr_local_backends": None,
         "document_router": None,
         "ocr_local_cuts": None,
+        "ocr_skip_blank_pages": None,  # page-routing-panel: not in this save
     }
 
 
@@ -295,7 +296,11 @@ def test_a_list_save_with_a_file_that_holds_one_old_key_removes_only_that_list_o
         {"values": {"pdf_readers": ["pypdf"]}, "revision": "absent", "extra": 1},
         {"values": ["pdf_readers"], "revision": "absent"},
         {"values": {}, "revision": "absent"},
-        {"values": {f"k{i}": 1 for i in range(10)}, "revision": "absent"},
+        # One key more than the route takes (page-routing-panel: the count follows the keys).
+        {
+            "values": {f"k{i}": 1 for i in range(len(DOCUMENT_READING_KEYS) + 1)},
+            "revision": "absent",
+        },
         {"values": {"pdf_readers": ["pypdf"]}, "revision": "r" * 129},
     ],
 )

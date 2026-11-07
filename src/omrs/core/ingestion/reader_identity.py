@@ -11,19 +11,19 @@ from __future__ import annotations
 from typing import Any
 
 from ..reading_lists import AUTO_READERS, PDF_READERS_DEFAULT, reader_list
+from ..reading_part_options import RULE_ENABLED_OPTION, parts_named
 from ..reading_parts import (
     KIND_LOCAL_OCR_BACKEND,
     KIND_PAGE_RULE,
     KIND_PDF_READER,
-    RULE_ENABLED_OPTION,
     SOURCE_BUILT_IN,
     PartDescriptor,
-    parts_named,
 )
 from .ocr_identity import (
     document_router_payload,
     local_backends_payload,
     non_latin_routing_payload,
+    skip_blank_payload,
 )
 
 #: Every list that some single ``pdf_reader`` value expands to (see
@@ -103,9 +103,10 @@ def pdf_parser_payload(
     The reader list (D5), the non-Latin routing block (change
     non-latin-script-routing), the local OCR backend list with each cut and
     model (change local-ocr-per-backend-cuts, every list included), the part
-    options (change local-ocr-backends) and the selected router (change
-    document-reading-routers). The reader list, the non-Latin block, the part
-    options and the router are empty on a default install.
+    options (change local-ocr-backends), the selected router (change
+    document-reading-routers) and the skip-blank switch when it is off (change
+    page-routing-panel). The reader list, the non-Latin block, the part
+    options, the router and the skip-blank entry are empty on a default install.
 
     Args:
         settings: Settings the entries read.
@@ -117,6 +118,7 @@ def pdf_parser_payload(
     return {
         **reader_list_payload(settings),
         **non_latin_routing_payload(settings),
+        **skip_blank_payload(settings),
         **local_ocr_backends,
         **part_options_payload(settings),
         **document_router_payload(settings),
