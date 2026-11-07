@@ -15,16 +15,16 @@ The order is the operator's (2026-11-06, design D1). Do not reorder groups. Stop
 - [x] 1.1 Rebase onto current `v3`. Confirm toplevel and branch. `uv sync --frozen --extra web`.
 - [x] 1.2 Apply the change (`/opsx:apply local-ocr-per-backend-cuts`), its tasks in order, tests first. Subagents only on non-colliding files; commit only after every agent stops.
 - [x] 1.3 `./scripts/local_ci.sh`, `openspec validate --all --strict`, browser check at 1280 px and 390 px (Settings and Studio), PR into `v3`, CI green, CodeRabbit handled.
-- [ ] 1.4 GATE G1: the operator says merge. Merge, archive (sync specs), remove worktree after the Gotcha 15 copy. Do not touch the live app here (group 4).
+- [x] 1.4 GATE G1: the operator says merge. Merge, archive (sync specs), remove worktree after the Gotcha 15 copy. Do not touch the live app here (group 4).
 
 ## 2. Apply `one-llamacpp-router` (worktree `omrs-feat-one-llamacpp-router`)
 
 - [x] 2.1 Rebase onto `v3` with group 1 merged. Check `tripwire-retirement-and-provider-symmetry` for overlap with the keys this change retires; follow its policy or record the conflict.
   - Done 2026-11-06: PR #184 merged (`d382a763`), `cuts-follow-ups` archived (`591e89af`), worktree removed. Router branch rebased onto `591e89af` with no conflict. Overlap: every key the router retires is flat, so under the tripwire policy (now in `config/legacy.py`) its entries persist; no conflict.
-- [ ] 2.2 Run the change's spike group (systemone forwarding, `/models?reload=1`, child processes, Linux CPU and CUDA builds) in scratch only. GATE G2: report results and the design path (decision models on the router, or on their own servers); the operator confirms.
-- [ ] 2.3 Apply the remaining tasks in order, tests first, including the automatic model download (task 6.2a) and the `.env` / conftest alignment.
-- [ ] 2.4 `./scripts/local_ci.sh`, strict validation, browser check (Router panel, Model runtimes, Get a model) at 1280 px and 390 px, PR, CI, CodeRabbit.
-- [ ] 2.5 GATE G3: the operator says merge. Merge, archive, remove worktree after Gotcha 15. Amend the pipeline sweep's design note only as a task in group 5.
+- [x] 2.2 Run the change's spike group (systemone forwarding, `/models?reload=1`, child processes, Linux CPU and CUDA builds) in scratch only. GATE G2: report results and the design path (decision models on the router, or on their own servers); the operator confirms.
+- [x] 2.3 Apply the remaining tasks in order, tests first, including the automatic model download (task 6.2a) and the `.env` / conftest alignment.
+- [x] 2.4 `./scripts/local_ci.sh`, strict validation, browser check (Router panel, Model runtimes, Get a model) at 1280 px and 390 px, PR, CI, CodeRabbit.
+- [x] 2.5 GATE G3: the operator says merge. Merge, archive, remove worktree after Gotcha 15. Amend the pipeline sweep's design note only as a task in group 5.
 
 ## 3. Apply `page-routing-panel` (worktree `omrs-feat-page-routing-panel`; may run beside group 5)
 
