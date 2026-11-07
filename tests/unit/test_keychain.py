@@ -108,15 +108,17 @@ def test_an_unreadable_entry_reports_keychain_unreadable(
 def test_a_slow_keychain_call_times_out(
     backend: MemoryBackend, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # The call takes far longer than the limit, so the bound below separates
+    # "cut short" from "waited for the call" even on a loaded CI runner.
     def slow(service: str, username: str) -> str:
-        time.sleep(1.0)
+        time.sleep(5.0)
         return KEY
 
     monkeypatch.setattr(backend, "get_password", slow)
     quick = KeychainStore(timeout=0.05)
     started = time.monotonic()
     assert quick.state("openrouter", saved=True) == "keychain-unreadable"
-    assert time.monotonic() - started < 0.8
+    assert time.monotonic() - started < 2.5
 
 
 def test_repr_of_the_store_and_the_secret_hides_the_key(
