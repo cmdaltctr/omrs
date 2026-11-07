@@ -71,7 +71,7 @@ describe("Document reading: Page routing panel", () => {
     }
     expect(screen.getAllByRole("heading", { level: 4 }).map((heading) => heading.textContent)).toEqual([
       "1 PDF readers",
-      "2 Pages with no usable text",
+      "2 Pages decided by their content",
       "3 Pages that look fine",
       "4 Local OCR backends",
       "5 OCR engines",

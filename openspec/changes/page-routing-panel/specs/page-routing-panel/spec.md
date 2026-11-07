@@ -6,12 +6,12 @@ One panel that shows how OMRS routes each PDF page, laid out as the real page fl
 
 ### Requirement: The Page routing panel shows the page flow in five steps
 
-The panel SHALL show, top to bottom: the OCR fallback switch and the routing unit; step 1 "PDF readers" (`pdf_readers`); step 2 "Pages with no usable text" (Skip blank pages, Maths pages, Non-Latin pages); step 3 "Pages that look fine" (`document_router`); step 4 "Local OCR backends" (`ocr_local_backends` with its cut boxes); step 5 "OCR engines" (`ocr_engines`). Each step SHALL carry its number and title.
+The panel SHALL show, top to bottom: the OCR fallback switch and the routing unit; step 1 "PDF readers" (`pdf_readers`); step 2 "Pages decided by their content" (Skip blank pages, Maths pages, Non-Latin pages); step 3 "Pages that look fine" (`document_router`); step 4 "Local OCR backends" (`ocr_local_backends` with its cut boxes); step 5 "OCR engines" (`ocr_engines`). Each step SHALL carry its number and title.
 
 #### Scenario: Steps in flow order
 
 - **WHEN** Settings › Document reading renders
-- **THEN** the Page routing panel MUST show the steps "PDF readers", "Pages with no usable text", "Pages that look fine", "Local OCR backends" and "OCR engines", numbered 1 to 5 in that order
+- **THEN** the Page routing panel MUST show the steps "PDF readers", "Pages decided by their content", "Pages that look fine", "Local OCR backends" and "OCR engines", numbered 1 to 5 in that order
 - **AND** the OCR fallback and routing unit rows MUST show above step 1
 
 #### Scenario: Each key in its step

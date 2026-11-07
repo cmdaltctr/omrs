@@ -565,7 +565,7 @@ The Page routing panel shows the path of a page from top to bottom. Two rows sit
 | Top | OCR fallback | `ocr_fallback_enabled` | A switch. |
 | Top | OCR routing unit | `ocr_routing_unit` | A select. `page` is the only unit. |
 | Step 1, PDF readers | PDF readers | `pdf_readers` | An ordered list. Add, remove, move up and move down. |
-| Step 2, Pages with no usable text | Skip blank pages | `ocr_skip_blank_pages` | A switch. On by default. Off sends blank pages to OCR like any flagged page. |
+| Step 2, Pages decided by their content | Skip blank pages | `ocr_skip_blank_pages` | A switch. On by default. Off sends blank pages to OCR like any flagged page. |
 | Step 2 | Maths routing | `ocr_maths_routing_enabled` | A switch. |
 | Step 2 | Non-Latin routing | `ocr_non_latin_routing` | A select: "off (default)", `detect` or `always`. `detect` does not catch scanned pages. Use `always` for a collection you know is non-Latin. |
 | Step 3, Pages that look fine | Host router | `document_router` | A select: "No router" or a router name. A link under the row goes to the Router card. |

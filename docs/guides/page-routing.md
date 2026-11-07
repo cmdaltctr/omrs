@@ -109,7 +109,7 @@ Check: the PDF readers row shows `pypdfium2` in the value in force.
 
 Studio has no Install button. In a Read document step, the not-installed reader is disabled and shows a link to Settings > Document reading. Install it there, then return to Studio.
 
-## Step 2: pages with no usable text
+## Step 2: pages decided by their content
 
 Step 2 holds three page rules. They run in a fixed order. The panel says: "These checks run in a fixed order. Blank pages are checked first."
 

@@ -25,8 +25,8 @@ export const PANEL_STEPS = [
     keys: ["pdf_readers"],
   },
   {
-    title: "Pages with no usable text",
-    intro: "These rules decide what happens to each flagged page before local OCR.",
+    title: "Pages decided by their content",
+    intro: "These rules look at what is on a page. Blank and non-Latin checks act on flagged pages. The maths check also sends unflagged pages with maths fonts to OCR.",
     keys: ["ocr_skip_blank_pages", "ocr_maths_routing_enabled", "ocr_non_latin_routing"],
   },
   {

@@ -56,7 +56,7 @@ The Document reading section SHALL show one row for each of `pdf_readers`, `ocr_
 
 ### Requirement: Document reading shows non-Latin routing
 
-Settings › Document reading SHALL show `ocr_non_latin_routing` in step 2 "Pages with no usable text" of the Page routing panel as a choice of `off`, `detect` and `always`, with `off` labelled as the default. The row SHALL say that `detect` sees only text that already exists and does not catch scanned pages, and that `always` suits a collection known to be non-Latin. It SHALL follow the restart, lock and identity rules of the other Document reading rows.
+Settings › Document reading SHALL show `ocr_non_latin_routing` in step 2 "Pages decided by their content" of the Page routing panel as a choice of `off`, `detect` and `always`, with `off` labelled as the default. The row SHALL say that `detect` sees only text that already exists and does not catch scanned pages, and that `always` suits a collection known to be non-Latin. It SHALL follow the restart, lock and identity rules of the other Document reading rows.
 
 #### Scenario: Row explains what detect cannot see
 

@@ -12,7 +12,7 @@ This change builds on the planned change `local-ocr-per-backend-cuts` (artifacts
 
 - **One "Page routing" panel** replaces the OCR card blocks "When to use OCR", "Maths pages", "Local OCR" and "Engines", the PDF reading card, and the host router row of the Router card. The panel shows the page flow top to bottom:
   1. **PDF readers**: the ordered `pdf_readers` list. The optional reader `pypdfium2` shows in the add menu, marked optional. When it is not installed, step 1 shows an "Install" button that starts the existing extra install job for `pdf-pypdfium2`. Studio shows the reader disabled, with a link to Settings.
-  2. **Pages with no usable text**: switches for Skip blank pages (new), Maths pages (`ocr_maths_routing_enabled`) and a choice for Non-Latin pages (`ocr_non_latin_routing`, `off` labelled as the default).
+  2. **Pages decided by their content**: switches for Skip blank pages (new), Maths pages (`ocr_maths_routing_enabled`) and a choice for Non-Latin pages (`ocr_non_latin_routing`, `off` labelled as the default).
   3. **Pages that look fine**: the router picker (`document_router`: no router or a named router), with a link to the Router section where routers are defined.
   4. **Local OCR backends**: the ordered `ocr_local_backends` list with the per-backend cut boxes of `local-ocr-per-backend-cuts`.
   5. **OCR engines**: the ordered `ocr_engines` list, with the OCR engines folder line under it.

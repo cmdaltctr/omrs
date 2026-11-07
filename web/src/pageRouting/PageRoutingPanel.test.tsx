@@ -5,7 +5,7 @@ import { PageRoutingPanel } from "./PageRoutingPanel";
 import type { PanelKey } from "./pageRoutingWords";
 
 // The expected flow is typed out here, not read from PANEL_STEPS, so a change to the step order fails these tests.
-const STEP_HEADINGS = ["1 PDF readers", "2 Pages with no usable text", "3 Pages that look fine", "4 Local OCR backends", "5 OCR engines"];
+const STEP_HEADINGS = ["1 PDF readers", "2 Pages decided by their content", "3 Pages that look fine", "4 Local OCR backends", "5 OCR engines"];
 const STEP_KEYS: readonly (readonly string[])[] = [
   ["pdf_readers"],
   ["ocr_skip_blank_pages", "ocr_maths_routing_enabled", "ocr_non_latin_routing"],

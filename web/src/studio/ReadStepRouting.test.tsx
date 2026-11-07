@@ -84,7 +84,7 @@ describe("Read document step, Page routing panel", () => {
   it("shows the OCR options in the five steps, in order, and keeps the other parameters outside the panel", async () => {
     setup(undefined);
     await screen.findAllByRole("radio", { name: "Inherit from Settings: On (default)" });
-    expect(stepHeadings().map((heading) => heading.textContent)).toEqual(["1 PDF readers", "2 Pages with no usable text", "3 Pages that look fine", "4 Local OCR backends", "5 OCR engines"]);
+    expect(stepHeadings().map((heading) => heading.textContent)).toEqual(["1 PDF readers", "2 Pages decided by their content", "3 Pages that look fine", "4 Local OCR backends", "5 OCR engines"]);
     expect(legendsIn(step(1))).toEqual(["PDF readers"]);
     expect(legendsIn(step(2))).toEqual(["Skip blank pages", "Maths page routing", "Non-Latin routing"]);
     expect(legendsIn(step(3))).toEqual(["Router"]);

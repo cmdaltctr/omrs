@@ -3,7 +3,7 @@
 Run on 2026-11-07 in Orca against a scratch `omrs web` (scratch config folder, `ocr_skip_blank_pages: false`, empty library, port 8911). The server is stopped.
 
 ## Settings, Document reading
-- One "Page routing" card holds the fallback and routing unit rows, then five numbered steps in flow order: PDF readers, Pages with no usable text, Pages that look fine, Local OCR backends, OCR engines.
+- One "Page routing" card holds the fallback and routing unit rows, then five numbered steps in flow order: PDF readers, Pages decided by their content, Pages that look fine, Local OCR backends, OCR engines.
 - Step 1 on a checkout install shows the reason and the copy command, with no Install button.
 - Step 2 shows the fixed-order line. Skip blank pages shows Off with source "Saved in settings (omrs.jsonc)" and default On.
 - Step 3 holds the host router row and the "Define routers in Router section" link.
