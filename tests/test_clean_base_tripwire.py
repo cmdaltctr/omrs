@@ -336,7 +336,16 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +36 (2026-11-06, cuts-follow-ups, by test-ID diff against v3 4bf0c206, 36 added,
 # 0 removed): example cut from the descriptor (4), retired key takes its comment (13)
 # and the experiment operator option and warning (19). No fastapi needed.
-_BASE_EXECUTED = 11194
+# +703 (2026-11-06, one-llamacpp-router, by test-ID diff against v3 591e89af, 884 added,
+# 181 removed): router settings, model list and presets, roles, fake router, runtime
+# manager, locks, reload, crash restart, provisioning, install CLI, request-time refusal,
+# live router maps, problems and web routes. Removed: per-role servers and their routes.
+# +36 (2026-11-06, same change, by test-ID diff, 41 added, 5 replaced): first start
+# waits for downloads (13), downloads-needed route (15), other-process holders (3).
+# +8 (2026-11-06, same change): a failed download asks once per Start (needs fastapi).
+# +23 (2026-11-07, PR 185 review fixes, by test-ID diff against f56e209c, 23 added,
+# 0 removed): failed load, no re-ask, lock order, held reload, second crash, hashes.
+_BASE_EXECUTED = 11964
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -690,13 +699,25 @@ if not _has_qwen_tokenizer:
 # test_web_document_reading.py (3) and test_web_runtimes_decision.py (1).
 # +1 (2026-11-05, fix-managed-chat-classification): one case in test_web_runtimes.py.
 # +22 (2026-11-06, local-ocr-per-backend-cuts): test_document_reading_cuts.py.
-_WEB_EXTRA_CASES = 1960
+# +106 (2026-11-06, one-llamacpp-router, measured with fastapi blocked): 236 added in
+# the router, install, problems, live-map and runtime web routes; 130 removed with the
+# per-role llama.cpp server routes.
+# +33 (2026-11-06, same change, measured with fastapi blocked): first start and
+# downloads-needed route cases.
+# +8 (2026-11-06, same change): test_llamacpp_router_download_failure.py.
+# +11 (2026-11-07, PR 185 review fixes): failed-state panel and no-re-ask route cases.
+# +19 (2026-11-07, correction): the 19 test_keychain.py cases need keyring, which only
+# the web extra installs; the router re-pins blocked fastapi alone and missed them.
+# 2137 is measured in a real base install at the floors (PR 185 CI).
+_WEB_EXTRA_CASES = 2137
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)
 # +2 (2026-11-01, managed-llamacpp-runtimes): the 60 s request and 20 s lock-order
 # cases in test_llamacpp_runtime_lease_busy.py are slow. No fastapi needed.
-_BASE_DESELECTED = 23
+# +1 (2026-11-06, one-llamacpp-router): the 20 s router lock-order stress case in
+# test_llamacpp_router_locks.py is slow. No fastapi needed.
+_BASE_DESELECTED = 24
 # +2 (2026-10-19): the two signal tests in test_launch_link.py are slow. That module
 # needs fastapi (module-level importorskip), so a run without it never collects them.
 if find_spec("fastapi") is not None:

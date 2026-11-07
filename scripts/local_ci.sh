@@ -107,21 +107,11 @@ junit="$(mktemp)"
 
 step "fast suite (CI env${parallel:+, parallel})"
 PDF_READER=pypdf \
-EMBED_PROVIDER=local \
-LOCAL_BACKEND=ollama \
-EMBED_MODEL=nomic-embed-text \
-OLLAMA_BASE_URL=http://localhost:11434 \
-METADATA_LLM_PROVIDER=local \
   uv run --no-sync pytest -m "not slow" --tb=short -q ${parallel[@]+"${parallel[@]}"} \
     --deselect tests/test_clean_base_tripwire.py --junitxml="$junit"
 
 step "clean-base tripwire (CI env)"
 PDF_READER=pypdf \
-EMBED_PROVIDER=local \
-LOCAL_BACKEND=ollama \
-EMBED_MODEL=nomic-embed-text \
-OLLAMA_BASE_URL=http://localhost:11434 \
-METADATA_LLM_PROVIDER=local \
 OMRS_TRIPWIRE_JUNIT="$junit" \
   uv run --no-sync pytest tests/test_clean_base_tripwire.py --tb=short -q
 

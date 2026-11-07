@@ -8,89 +8,36 @@ runtime gets a free port at start time. No argument list ever holds
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
+from omrs.integrations.llamacpp_runtime.router_spec import external_router_spec, router_spec
 from omrs.integrations.llamacpp_runtime.spec import (
     DeclaredFile,
     RuntimeSpec,
-    chat_spec,
-    embeddings_spec,
     ocr_spec,
 )
 
 BINARY = "/b/llama-server"
 
 
-def test_chat_argument_list_is_exact() -> None:
-    spec = chat_spec(
-        mode="managed", binary=BINARY, model="/m/q.gguf", port=8081, window=16384, kind="file"
-    )
-    assert list(spec.argv) == [
-        BINARY,
-        "-m",
-        "/m/q.gguf",
-        "--host",
-        "127.0.0.1",
-        "--port",
-        "8081",
-        "-c",
-        "16384",
-    ]
-    assert spec.id == "chat"
-    assert spec.role == "chat"
-    assert spec.port_policy == "fixed"
-    assert spec.port == 8081
-
-
-def test_embeddings_argument_list_matches_the_spec_scenario() -> None:
-    spec = embeddings_spec(mode="managed", binary=BINARY, model="/m/e.gguf", port=8080, kind="file")
-    assert list(spec.argv) == [
-        BINARY,
-        "-m",
-        "/m/e.gguf",
-        "--host",
-        "127.0.0.1",
-        "--port",
-        "8080",
-        "--embedding",
-    ]
-    assert spec.id == "embeddings"
-    assert spec.role == "embeddings"
-
-
-def test_no_argument_list_holds_the_idle_sleep_flag() -> None:
-    chat = chat_spec(
-        mode="managed", binary=BINARY, model="/m/q.gguf", port=8081, window=2048, kind="file"
-    )
-    embed = embeddings_spec(
-        mode="managed", binary=BINARY, model="/m/e.gguf", port=8080, kind="file"
-    )
-    for spec in (chat, embed):
-        assert "--sleep-idle-seconds" not in spec.argv
-        assert "--sleep-idle-seconds" not in spec.launch_argv(spec.port or 0)
-
-
-def test_a_hugging_face_model_uses_hf() -> None:
-    spec = chat_spec(mode="managed", binary=BINARY, model="org/model:tag", port=8081, window=16384)
-    assert spec.argv[1:3] == ("-hf", "org/model:tag")
+def test_no_argument_list_holds_the_idle_sleep_flag(tmp_path: Path) -> None:
+    spec = router_spec(binary=BINARY, root=tmp_path, port=8080, models_max=4, memory_margin_mib=0)
+    assert "--sleep-idle-seconds" not in spec.argv
+    assert "--sleep-idle-seconds" not in spec.launch_argv(spec.port or 0)
 
 
 def test_external_mode_keeps_the_url_and_no_port_launch() -> None:
-    spec = chat_spec(
-        mode="external", binary=BINARY, model="/m/q.gguf", port=8081, window=16384, kind="file"
-    )
-    spec = spec.with_url_base("http://127.0.0.1:8081/v1")
+    spec = external_router_spec("http://127.0.0.1:8081/v1")
     assert spec.mode == "external"
     assert spec.url_base == "http://127.0.0.1:8081/v1"
 
 
-def test_slot_count_comes_from_np() -> None:
-    chat = chat_spec(
-        mode="managed", binary=BINARY, model="/m/q.gguf", port=8081, window=16384, kind="file"
-    )
-    assert chat.slots == 0
-    assert chat.one_slot is False
+def test_slot_count_comes_from_np(tmp_path: Path) -> None:
+    router = router_spec(binary=BINARY, root=tmp_path, port=8080, models_max=4, memory_margin_mib=0)
+    assert router.slots == 0
+    assert router.one_slot is False
     ocr = ocr_spec(
         engine_folder="dots-mocr-llamacpp",
         binary=BINARY,
@@ -120,19 +67,16 @@ def test_launch_argv_replaces_the_free_port() -> None:
     assert launched.count("--port") == 1
 
 
-def test_digest_is_stable_for_a_free_port_and_strict_for_a_fixed_port() -> None:
-    chat = chat_spec(
-        mode="managed", binary=BINARY, model="/m/q.gguf", port=8081, window=16384, kind="file"
-    )
-    other_port = chat_spec(
-        mode="managed", binary=BINARY, model="/m/q.gguf", port=8082, window=16384, kind="file"
-    )
-    other_model = chat_spec(
-        mode="managed", binary=BINARY, model="/m/q2.gguf", port=8081, window=16384, kind="file"
-    )
-    assert chat.digest == chat.digest
-    assert chat.digest != other_port.digest
-    assert chat.digest != other_model.digest
+def test_digest_is_stable_for_a_free_port_and_strict_for_a_fixed_port(tmp_path: Path) -> None:
+    def router(port: int, models_max: int = 4) -> RuntimeSpec:
+        return router_spec(
+            binary=BINARY, root=tmp_path, port=port, models_max=models_max, memory_margin_mib=0
+        )
+
+    chat = router(8081)
+    assert chat.digest == router(8081).digest
+    assert chat.digest != router(8082).digest
+    assert chat.digest != router(8081, models_max=2).digest
     ocr_a = ocr_spec(
         engine_folder="dots-mocr-llamacpp",
         binary=BINARY,
@@ -174,8 +118,8 @@ def test_a_bad_runtime_id_is_refused() -> None:
 def test_an_argument_list_with_the_idle_sleep_flag_is_refused() -> None:
     with pytest.raises(ValueError):
         RuntimeSpec(
-            id="chat",
-            role="chat",
+            id="router",
+            role="router",
             mode="managed",
             binary=BINARY,
             argv=(BINARY, "--sleep-idle-seconds", "300"),

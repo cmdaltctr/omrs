@@ -20,7 +20,7 @@ from .bind_address import validate_bind_host
 from .errors import install_error_handlers
 from .lifespan import RunServiceFactory, WebConfig, build_lifespan, default_engine_factory
 from .live_settings import LiveSettingsMiddleware
-from .llamacpp_server import LlamacppServer, owning_lifespan
+from .llamacpp_server import RouterControl, owning_lifespan
 from .log_buffer import LogBuffer
 from .mcp_http import build_mcp_http
 from .middleware import GuardMiddleware
@@ -47,7 +47,9 @@ from .routes.integration_tools import router as integration_tools_router
 from .routes.integrations import router as integrations_router
 from .routes.jobs import router as jobs_router
 from .routes.judge_settings import router as judge_settings_router
-from .routes.llamacpp_server import router as llamacpp_server_router
+from .routes.llamacpp_router import router as llamacpp_router_router
+from .routes.llamacpp_router_install import router as llamacpp_router_install_router
+from .routes.llamacpp_router_models import router as llamacpp_router_models_router
 from .routes.logs import router as logs_router
 from .routes.mcp import router as mcp_router
 from .routes.model_downloads import router as model_downloads_router
@@ -93,7 +95,9 @@ API_ROUTERS: tuple[APIRouter, ...] = (
     integrations_router,
     integration_tools_router,
     connections_router,
-    llamacpp_server_router,
+    llamacpp_router_router,
+    llamacpp_router_models_router,
+    llamacpp_router_install_router,
     runtimes_router,
     model_downloads_router,
     logs_router,
@@ -186,7 +190,7 @@ def create_app(
     app.state.keychain = keychain if keychain is not None else KeychainStore()
     # One runtime manager per process (managed-llamacpp-runtimes D1); the routes use it.
     app.state.runtime_manager = runtime_manager()
-    app.state.llamacpp_server = LlamacppServer(app.state.runtime_manager)
+    app.state.llamacpp_router = RouterControl(app.state.runtime_manager)
     install_error_handlers(app)
     for router in API_ROUTERS:
         app.include_router(router)

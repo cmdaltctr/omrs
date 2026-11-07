@@ -58,6 +58,12 @@ def test_every_settings_field_is_either_live_or_restart() -> None:
     assert applies("answer.model") == "live"
 
 
+def test_the_host_router_choice_applies_live() -> None:
+    # one-llamacpp-router D-c: a saved document_router serves the next request.
+    assert applies("document_router") == "live"
+    assert "document_router" not in restart_only_keys()
+
+
 def test_capture_holds_only_restart_only_keys(folder: Path) -> None:
     write_config(
         folder,

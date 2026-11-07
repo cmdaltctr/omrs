@@ -29,14 +29,16 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from ....compose_providers import ProviderValues, locked_fields
 from ....compose_providers import provider_settings as _provider_settings
+from ....config.llamacpp_roles import ROLE_MISMATCH
 from ....config.settings_file_write import SettingsFileError
 from ....core.answer.settings import REASONING_LEVEL_PATTERN
+from ....core.llamacpp_router import RouterRefused
 from ....core.providers.llm import registry as llm_registry
 from ..connection_probe import list_models
 from ..engine_access import ReadScope, RuntimeDep, admitted
 from ..errors import error_response
 from ..lifespan import WebRuntime
-from ..llamacpp_chat_rule import chat_choice_refusal
+from ..llamacpp_chat_rule import chat_role_refusal, reasoned
 from ..provider_state import EngineRefused
 from ..settings_store import refusal_response
 from .chat_reasoning import CHAT_LEVEL, level_changes, level_lock_response, level_view
@@ -219,7 +221,7 @@ async def get_chat_settings(_: ReadScope, runtime: RuntimeDep) -> Response:
 
 @router.put("/settings/chat", operation_id="setChatSettings")
 async def set_chat_settings(
-    principal: ManageScope,
+    _: ManageScope,
     runtime: RuntimeDep,
     body: Annotated[ChatSaveBody | None, Body()] = None,
 ) -> Response:
@@ -230,9 +232,8 @@ async def set_chat_settings(
     `reasoning`, or no body, clears the choice and its level. The Engine uses
     the choice from the next answer. 400 for an unknown provider, a bad model
     name or a bad level; 409 when the environment sets what the body writes,
-    the file changed since `revision`, or the Engine refuses it. While OMRS runs
-    the llama.cpp Chat server, a llama.cpp choice needs `credentials` (403) and a
-    model that passes the model rule (400). The answer carries the new `revision`.
+    the file changed since `revision`, or the Engine refuses it. The answer
+    carries the new `revision`.
     """
     body = body or ChatSaveBody()
     choice = None
@@ -254,15 +255,15 @@ async def set_chat_settings(
         settings = await run_in_threadpool(_provider_settings, provider_values_of(runtime))
         if writes_choice and (locked := _locked_response(settings)) is not None:
             return locked
+        if choice is not None:
+            file = await run_in_threadpool(state.store.read)
+            if rule := chat_role_refusal(file, choice[0], choice[1]):
+                return reasoned(400, rule, ROLE_MISMATCH)
         if (
             body.reasoning is not None
             and (locked := level_lock_response(settings, CHAT_LEVEL)) is not None
         ):
             return locked
-        if choice is not None and (
-            refusal := chat_choice_refusal(settings.llamacpp_chat_server, *choice, principal.scopes)
-        ):
-            return error_response(*refusal)
         changes: dict[str, str | None] = {}
         if writes_choice:
             provider, model = choice if choice is not None else (None, None)
@@ -298,6 +299,11 @@ def reason_for(exc: BaseException) -> str:
     """Map an exception to a fixed reason by type and ``status_code``, never by text."""
     chain = _chain(exc)
     for node in chain:
+        # Only this reason is in the OpenAPI contract of the Chat test; any other
+        # router refusal reads as a plain failure.
+        if isinstance(node, RouterRefused) and node.reason == "model-not-listed":
+            return node.reason
+    for node in chain:
         if isinstance(node, TimeoutError) or any("Timeout" in n for n in _mro_names(node)):
             return "timeout"
     for node in chain:
@@ -317,13 +323,13 @@ async def _listed_reason(candidate: Any, provider: str, model: str) -> str | Non
     """Return why the server's model list refuses *model*, or ``None`` (ADR-108 D7).
 
     Only a provider whose descriptor sets ``test_checks_model_list`` is read, and
-    only while the llama.cpp Chat server is one the user runs: OMRS's own server
-    loads the Chat model by rule. A list that cannot be read gives its own reason.
+    only while the llama.cpp router is one the user runs: OMRS's own router checks
+    the name against its model list. A list that cannot be read gives its own reason.
     """
     descriptor = llm_registry.describe(provider)
     if descriptor is None or not descriptor.test_checks_model_list:
         return None
-    if getattr(candidate, "llamacpp_chat_server", "external") == "managed":
+    if candidate.llamacpp_router_server == "managed":
         return None
     target = descriptor.models_target(candidate)
     listed = await list_models(target.urls, target.headers, descriptor.parse_models)

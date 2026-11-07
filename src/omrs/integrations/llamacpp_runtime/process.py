@@ -296,18 +296,19 @@ def stop(pid: int, binary: str) -> bool:
 BIND_RETRIES = 3
 
 
-def _check(spec: RuntimeSpec) -> rules.ModelKind:
-    """Apply the checks before a start, in design order; return the model kind."""
+def _environment(spec: RuntimeSpec, folder: Path, environ: Mapping[str, str]) -> dict[str, str]:
+    """Apply the program rule and return the child environment.
+
+    An OCR runtime loads declared files only. The router loads models from
+    ``models.ini`` and gets its own environment (design D4).
+    """
     if not rules.check_binary(spec.binary):
         raise StartRefused("binary-invalid")
-    kind: rules.ModelKind = "file"
-    if spec.role != "ocr":
-        flag = "-hf" if "-hf" in spec.argv else "-m"
-        model = spec.argv[spec.argv.index(flag) + 1] if flag in spec.argv else ""
-        if rules.model_kind(model) is None:
-            raise StartRefused("model-invalid")
-        kind = "hf" if flag == "-hf" else "file"
-    return kind
+    if spec.role == "router":
+        from .router_spec import router_environment
+
+        return router_environment(environ, folder)
+    return rules.child_environment(environ, "file")
 
 
 def start_server(
@@ -331,8 +332,7 @@ def start_server(
             ``wrong-build``, ``file-changed``, ``port-in-use``, ``exited``,
             ``timeout`` or ``bind-failed``. Nothing runs after a refusal.
     """
-    kind = _check(spec)
-    env = rules.child_environment(environ, kind)
+    env = _environment(spec, folder, environ)
     if spec.build is not None and read_build(spec.binary, env) != spec.build:
         raise StartRefused("wrong-build")
     if spec.min_build is not None:

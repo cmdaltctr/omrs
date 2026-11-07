@@ -40,7 +40,8 @@ KEYCHAIN_PREFIX = "keychain://"
 #: same range binds the environment, the saved web value and the descriptors.
 INT_KEY_BOUNDS: dict[str, tuple[int, int]] = {
     "ollama_context_window": (2048, 262144),
-    "llamacpp_context_window": (2048, 262144),
+    "llamacpp_router_models_max": (1, 16),
+    "llamacpp_router_memory_margin_mib": (0, 262144),
 }
 #: Keys that also read ``secrets/<provider>.key`` when ``omrs.jsonc`` holds no
 #: reference. The provider name is the key minus ``_api_key``.

@@ -24,8 +24,10 @@ import time
 from collections.abc import Awaitable, Callable, Iterator
 from typing import TYPE_CHECKING, Any, TypeVar
 
-from . import locks, process
+from . import holders, locks, process
 from .locks import LockFile
+from .model_reasons import NOT_DOWNLOADED
+from .rules import OPERATOR_STOP, reason_text
 from .spec import RuntimeSpec
 from .state import ServerRecord, read_server_record, runtime_dir, write_server_record
 
@@ -36,37 +38,8 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
-#: The reason of a request refused or cut by an operator stop (design D8).
-OPERATOR_STOP = "operator-stop"
 #: Tries to replace another version of a runtime before ``version-busy``.
 _VERSION_TRIES = 3
-
-_REASON_TEXTS = {
-    "binary-invalid": "The llama-server program is missing, cannot run or has another name.",
-    "model-invalid": "The model is not a .gguf file or a Hugging Face id.",
-    "not-loopback": "The server address is not on this computer.",
-    "port-in-use": "Another program uses the port.",
-    "exited": "The server stopped before it was ready.",
-    "timeout": "The server was not ready in time and was stopped.",
-    "not-configured": "No program or model is set.",
-    "not-supported": "Managed servers need file locks, which this system does not have.",
-    "version-busy": "Another OMRS process still uses the older version of this server.",
-    "wrong-build": "The llama-server build is not the build the runtime declares.",
-    "file-changed": "A model file changed: {name}.",
-    "bind-failed": "The server could not open a port after 4 tries.",
-    OPERATOR_STOP: "An operator stopped this server.",
-}
-
-
-def reason_text(reason: str, detail: str = "") -> str:
-    """Return the fixed plain-English line of *reason*.
-
-    A detail fills ``{name}``; a line without ``{name}`` gets the detail after a colon.
-    """
-    template = _REASON_TEXTS.get(reason, reason)
-    if detail and "{name}" not in template:
-        return f"{template.rstrip('.')}: {detail}."
-    return template.format(name=detail or "unknown")
 
 
 class RuntimeUnavailable(RuntimeError):
@@ -135,12 +108,17 @@ class RuntimeLease:
         self.folder = runtime_dir(manager.root, spec.id)
         self._lock = threading.RLock()
         self._clients: LockFile | None = None
+        self._holder: LockFile | None = None
         self._url: str | None = None
         self._generation = 0
         self._operator_stopped = False
         self._in_progress = 0
         self._last_end = time.monotonic()
         self._idle_hooks: list[Callable[[], None]] = []
+        self._leave_hooks: list[Callable[[], None]] = []
+        #: Called under ``start.lock`` before each start; returns extra record
+        #: fields. The router writes ``models.ini`` here (one-llamacpp-router D4).
+        self.before_start: Callable[[], dict[str, Any]] | None = None
 
     # ── Read-only views ─────────────────────────────────────────────────
 
@@ -171,6 +149,10 @@ class RuntimeLease:
         """Run *hook* before an idle leave (the OCR host closes its worker there)."""
         self._idle_hooks.append(hook)
 
+    def on_leave(self, hook: Callable[[], None]) -> None:
+        """Run *hook* at every leave of a joined lease (the router drops model locks)."""
+        self._leave_hooks.append(hook)
+
     # ── Join and leave ──────────────────────────────────────────────────
 
     def join(self) -> str:
@@ -200,6 +182,7 @@ class RuntimeLease:
                     clients.close()
                     continue
                 self._clients = clients
+                self._holder = holders.hold(self.folder)
                 self._adopt(record)
                 self.manager._ensure_timer()
                 return f"http://127.0.0.1:{record.port}"
@@ -257,6 +240,9 @@ class RuntimeLease:
 
     def _fail(self, previous: ServerRecord | None, reason: str, detail: str = "") -> None:
         text = reason_text(reason, detail)
+        # ``not-downloaded`` is not stored: it holds only while a download runs, and a
+        # stored line would show as a failure after the download or a server restart.
+        stored = None if reason == NOT_DOWNLOADED else reason
         write_server_record(
             self.folder,
             ServerRecord(
@@ -267,8 +253,8 @@ class RuntimeLease:
                 build=self.spec.build,
                 state="stopped",
                 generation=previous.generation if previous else 0,
-                reason=reason,
-                reason_text=text,
+                reason=stored,
+                reason_text=None if stored is None else text,
             ),
         )
         raise RuntimeUnavailable(self.spec.id, reason, text)
@@ -277,19 +263,25 @@ class RuntimeLease:
         """Start a new server (caller holds ``start.lock``) and record it."""
         generation = (previous.generation if previous else 0) + 1
 
+        extra: dict[str, Any] = {}
+
         def launched(pid: int, port: int) -> None:
-            write_server_record(self.folder, self._record(pid, port, generation, "starting"))
+            record = self._record(pid, port, generation, "starting", extra)
+            write_server_record(self.folder, record)
 
         try:
+            extra = self.before_start() if self.before_start is not None else {}
             pid, port = process.start_server(self.spec, self.folder, self.manager.environ, launched)
         except process.StartRefused as refused:
             self._fail(previous, refused.reason, refused.detail)
             raise  # pragma: no cover - _fail always raises
-        record = self._record(pid, port, generation, "running")
+        record = self._record(pid, port, generation, "running", extra)
         write_server_record(self.folder, record)
         return record
 
-    def _record(self, pid: int, port: int, generation: int, state: Any) -> ServerRecord:
+    def _record(
+        self, pid: int, port: int, generation: int, state: Any, extra: dict[str, Any]
+    ) -> ServerRecord:
         return ServerRecord(
             pid=pid,
             port=port,
@@ -298,6 +290,7 @@ class RuntimeLease:
             build=self.spec.build,
             state=state,
             generation=generation,
+            **extra,
         )
 
     def leave(self, stopped_by: str = "last-client") -> None:
@@ -309,11 +302,16 @@ class RuntimeLease:
             self._operator_stopped = False
             if self._url is None:
                 return
+            for hook in list(self._leave_hooks):
+                hook()
             self._url, self._generation = None, 0
             clients, self._clients = self._clients, None
             if clients is None:  # external
                 return
             clients.close()
+            if self._holder is not None:
+                self._holder.close()
+                self._holder = None
             self.manager._stop_if_unused(self.folder, stopped_by)
 
     # ── Requests ────────────────────────────────────────────────────────
@@ -397,7 +395,7 @@ class RuntimeLease:
             try:
                 return send(self._url or url)
             except Exception as error:
-                raise self._second_failure(error) from error
+                raise self.second_failure(error) from error
         finally:
             self._end(ticket)
 
@@ -415,11 +413,16 @@ class RuntimeLease:
             try:
                 return await send(self._url or url)
             except Exception as error:
-                raise self._second_failure(error) from error
+                raise self.second_failure(error) from error
         finally:
             await asyncio.to_thread(self._end, ticket)
 
-    def _second_failure(self, error: Exception) -> Exception:
+    def second_failure(self, error: Exception) -> Exception:
+        """Return what a send that failed after a crash restart raises.
+
+        A lost connection becomes :class:`RuntimeRequestFailed` (``exited``,
+        or ``OPERATOR_STOP``); any other error stays as it is.
+        """
         if not _is_connection_failure(error):
             return error
         if self._stopped_by_operator_now():

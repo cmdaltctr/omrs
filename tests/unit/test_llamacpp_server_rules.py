@@ -293,7 +293,7 @@ def test_make_program_helper_is_executable(tmp_path: Path) -> None:
 
 def test_the_card_has_no_idle_sleep_field() -> None:
     ids = [f.id for f in LLAMACPP_SERVER_FIELDS]
-    assert ids == ["server_binary", "chat_server", "context_window"]
+    assert ids == ["server_binary", "router_server"]
     assert all(
         "idle" not in f.settings_field and "IDLE" not in f.env_var for f in LLAMACPP_SERVER_FIELDS
     )

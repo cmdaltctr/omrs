@@ -1,11 +1,12 @@
 /**
- * Typed client for the local model runtimes (Chat, embeddings and OCR).
+ * Typed client for the local model runtimes (the llama.cpp router and OCR).
  * Shapes follow `openapi.yaml` (`listRuntimes`, `stopRuntime`). No response
  * holds log text or text from a server: a failure is one fixed reason.
  */
 import type { ApiClient, CallOptions } from "./client";
+import type { RouterModelState, RouterRole } from "./llamacppRouter";
 
-export type ModelRuntimeRole = "chat" | "embeddings" | "ocr" | "decision";
+export type ModelRuntimeRole = "router" | "ocr";
 
 /** `external` is a server the user runs. `managed` is a `llama-server` that OMRS starts and stops. */
 export type ModelRuntimeMode = "external" | "managed";
@@ -25,10 +26,12 @@ export type ModelRuntimeReason =
   | "version-busy"
   | "bind-failed"
   | "wrong-build"
-  | "file-changed";
+  | "file-changed"
+  | "not-provisioned"
+  | "not-downloaded";
 
 export interface ModelRuntime {
-  /** `chat`, `embeddings` or `ocr-` and the engine folder name. */
+  /** `router`, or `ocr-` and the engine folder name. */
   id: string;
   role: ModelRuntimeRole;
   mode: ModelRuntimeMode;
@@ -38,14 +41,28 @@ export interface ModelRuntime {
   reason_text: string | null;
   /** Resident memory of the server process, or `null` when it does not run. */
   memory_bytes: number | null;
-  /** `some` when another OMRS process holds the runtime open. */
+  /** `some` when any OMRS process, this one included, holds the runtime open. */
   clients: "some" | "none";
+  /** `some` when an OMRS process other than the one that answers holds the runtime open. */
+  other_clients: "some" | "none";
   /** The settings in force that use the runtime. */
   used_by: string[];
   /** Host and port, or `null`. */
   address: string | null;
   /** False for an external OCR runtime: OMRS cannot check the model files of a server it did not start. */
   files_checked: boolean;
+  /** For the `router` item, one row per list entry. Empty for any other runtime. */
+  models: RuntimeModel[];
+}
+
+/** One model of the router as `GET /v1/runtimes` lists it. */
+export interface RuntimeModel {
+  model: string;
+  roles: RouterRole[];
+  state: RouterModelState;
+  reason: string | null;
+  /** The router's own memory figure for the model, when it reports one. */
+  memory_bytes: number | null;
 }
 
 export function listModelRuntimes(api: ApiClient, options: CallOptions = {}): Promise<ModelRuntime[]> {

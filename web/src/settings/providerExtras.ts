@@ -1,23 +1,18 @@
 import type { ComponentType } from "react";
-import type { ProviderGroup } from "../api/settings";
-import { LlamacppChatBlock } from "./LlamacppChatBlock";
-import { LlamacppSharedWarning } from "./LlamacppSharedWarning";
+import { LlamacppRouterPanel } from "./LlamacppRouterPanel";
 
-/** A panel a provider card shows at the end of one block. */
+/** A panel a provider card shows below its fields, at full width. */
 export interface ProviderExtra {
-  group: ProviderGroup;
   Component: ComponentType;
+  /** Field ids and read-only labels that the panel shows itself, so the card leaves them out. */
+  replaces: readonly string[];
 }
 
 /**
- * Extra panels of a provider card, by provider id, each in the block of its
- * group. The llama.cpp Classification block warns when classification shares
- * OMRS's own Chat server; its Chat block shows the Chat model and the server
- * that `omrs web` can start and own. A card with no entry shows nothing extra.
+ * Extra panels of a provider card, by provider id. The llama.cpp card shows one
+ * Router panel: who runs llama.cpp, its address, its limits and its model list.
+ * A card with no entry shows nothing extra.
  */
 export const PROVIDER_EXTRAS: Record<string, readonly ProviderExtra[] | undefined> = {
-  llamacpp: [
-    { group: "metadata", Component: LlamacppSharedWarning },
-    { group: "answers", Component: LlamacppChatBlock },
-  ],
+  llamacpp: [{ Component: LlamacppRouterPanel, replaces: ["router_url", "Router mode"] }],
 };

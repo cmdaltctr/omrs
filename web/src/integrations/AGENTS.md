@@ -4,7 +4,7 @@ The page that lists optional integrations and installs or uninstalls an extra. I
 
 ## What belongs here
 
-- `IntegrationsView.tsx`: the shell, as `settings/SettingsView.tsx`. One file per section: `ExtrasSection.tsx`, `ToolsSection.tsx`, `RuntimeSection.tsx`, `PdfReadersSection.tsx`, `ReadingPartsSection.tsx` (reads `reading_parts` from `GET /v1/integrations`: local OCR backends, page rules, discovered parts). `SectionChips.tsx`, `SectionFrame.tsx`, `CardTitleRow.tsx` and `EntryList.tsx` are shared (each section is one full-width card with a row per entry, `EntryList` and `EntryRow`); `sections.ts` maps addresses to sections.
+- `IntegrationsView.tsx`: the shell, as `settings/SettingsView.tsx`. One file per section: `ExtrasSection.tsx`, `ToolsSection.tsx`, `RuntimeSection.tsx`, `PdfReadersSection.tsx`, `ReadingPartsSection.tsx` (reads `reading_parts` from `GET /v1/integrations`: local OCR backends, page rules, discovered parts). `ModelRuntimesSection.tsx` (`ModelRuntimeRow.tsx`, `StopRuntime.tsx`): one row per runtime from `GET /v1/runtimes`; Stop only for a managed runtime that runs or starts, with `manage`. `LlamacppBuild.tsx`: the Get llama.cpp card (`POST /v1/llamacpp/router/install`, one line per reason in `INSTALL_SENTENCES`). `SectionChips.tsx`, `SectionFrame.tsx`, `CardTitleRow.tsx` and `EntryList.tsx` are shared (each section is one full-width card with a row per entry, `EntryList` and `EntryRow`); `sections.ts` maps addresses to sections.
 - `InstallControls.tsx`, `UninstallControls.tsx` and `UninstallDialog.tsx`: the actions of one card.
 - `InstallRefusal.tsx`: the line for a refused start (409).
 - `useIntegrationInstall.ts`: the job state and the start actions. The API client is `../api/integrations.ts`.

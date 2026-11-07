@@ -7,6 +7,7 @@ network, a real cache or a real Ollama. The stall test uses a fake clock.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import threading
 import time
@@ -36,6 +37,8 @@ STATUS_KEYS = {
     "bytes_total",
     "reason",
     "cache_folder",
+    "file_path",
+    "sha256",
 }
 
 
@@ -456,14 +459,16 @@ async def test_an_error_after_cancel_still_reports_cancelled() -> None:
 
 
 async def test_the_hugging_face_adapter_passes_the_pinned_files_and_the_token(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Any
 ) -> None:
     calls: list[dict[str, Any]] = []
+    first = tmp_path / "a-00001-of-00002.gguf"
+    first.write_bytes(b"GGUF part one")
 
     def download_files(repo: str, revision: str, filenames: Any, **kwargs: Any) -> str:
         calls.append({"repo": repo, "revision": revision, "files": tuple(filenames), **kwargs})
         kwargs["on_bytes"](7)
-        return "/cache/x"
+        return str(first)
 
     monkeypatch.setattr(huggingface_models, "download_files", download_files)
     job = ModelDownloadJob()
@@ -474,6 +479,8 @@ async def test_the_hugging_face_adapter_passes_the_pinned_files_and_the_token(
     assert calls[0]["files"] == ("a-00001-of-00002.gguf", "a-00002-of-00002.gguf")
     assert calls[0]["token"] == HF_VALUE
     assert isinstance(calls[0]["cancel"], threading.Event)
+    assert done["file_path"] == str(first)  # the first file, as download_files returned it
+    assert done["sha256"] == hashlib.sha256(b"GGUF part one").hexdigest()
 
 
 async def test_the_ollama_adapter_passes_the_address_and_the_name(

@@ -33,6 +33,7 @@ from pydantic_settings import BaseSettings, PydanticBaseSettingsSource
 from .field_rules import KIND_BROKEN, KIND_INVALID, KIND_RETIRED, KIND_UNKNOWN, field_bounds
 from .field_rules import rule_text as _rule_text
 from .legacy import NOTHING_REPLACES
+from .llamacpp_models import LLAMACPP_MODELS, read_model_map
 from .rules import (
     FILE_ONLY,
     INTERNAL_FIELDS,
@@ -185,10 +186,12 @@ _REMOVED_FILE_KEYS = {
 
 def _replacement(env_name: str) -> str | None:
     """Return the file key that replaced the retired environment name, if any."""
-    from .legacy import _NEVER_SHIPPED_ALIASES, _RETIRED_ENV_VARS
+    from .legacy import _NEVER_SHIPPED_ALIASES, _RETIRED_ENV_VARS, RETIRED_ROUTER_KEYS
 
     if env_name in _REMOVED_FILE_KEYS:
         return _REMOVED_FILE_KEYS[env_name]
+    if env_name in RETIRED_ROUTER_KEYS:
+        return RETIRED_ROUTER_KEYS[env_name]
     new = _RETIRED_ENV_VARS.get(env_name) or _NEVER_SHIPPED_ALIASES.get(env_name)
     return None if new is None else new.lower().replace("__", ".")
 
@@ -325,6 +328,9 @@ class _Reader:
         for key, value in data.items():
             if key in MAP_KEYS:
                 self.maps[key] = read_map(key, value, self.secrets_dir, self.problem)
+            elif key == LLAMACPP_MODELS:
+                if (models := read_model_map(value, self.problem)) is not None:
+                    self.maps[key] = models
             elif key in FILE_ONLY:
                 rule = file_only_problem(key, value)
                 if rule is None:

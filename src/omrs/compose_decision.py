@@ -17,9 +17,12 @@ provider.
   lock. A pass is kept for the process, a failure for ``FAILED_CHECK_SECONDS``
   only, so a server started later is found. :func:`reset_decision_checks`
   clears them.
-- A managed ``llamacpp`` entry sends every request through the lease of its
-  runtime ``decision-<name>``, which starts ``llama-server`` on the first
-  request. A build below the floor reads ``wrong-build``.
+- A managed ``llamacpp`` entry names a ``llamacpp_models`` entry by ``model``
+  and asks through the one router (one-llamacpp-router, D10, outcome A): each
+  request goes through the router lease to ``/v1/systemone`` with the model
+  name, so the first request starts the router and loads the model. The
+  quantisation check reads the list entry's file. A router build below the
+  floor reads ``wrong-build``.
 - Logs hold fixed reasons and counts only: never page text, images, keys or
   reply bodies.
 """
@@ -40,7 +43,11 @@ import httpx
 
 from .compose_decision_keys import resolve_key_reference
 from .core.providers.decision import base, checks, registry
-from .integrations.llamacpp_runtime import RuntimeRequestFailed, RuntimeUnavailable
+from .integrations.llamacpp_runtime import (
+    ModelUnavailable,
+    RuntimeRequestFailed,
+    RuntimeUnavailable,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -106,24 +113,35 @@ def _field(entry: Any, name: str, default: Any = None) -> Any:
     return getattr(entry, name, default)
 
 
-def _identity(entry: Any) -> dict[str, Any]:
-    """Return the kind and model identity of *entry* (design D9)."""
+def listed_entry(settings: Any, entry: Any) -> Any:
+    """Return the ``llamacpp_models`` entry a managed decision *entry* names, else ``None``."""
+    if entry is None or _field(entry, "server") != "managed":
+        return None
+    model = _field(entry, "model")
+    models = (getattr(settings, "llamacpp_models", None) or {}).values()
+    return next((item for item in models if _field(item, "model") == model), None)
+
+
+def _identity(entry: Any, listed: Any) -> dict[str, Any]:
+    """Return the kind and model identity of *entry*, with *listed*'s SHA-256 values (D9)."""
     identity = {"kind": _field(entry, "kind"), "model": _field(entry, "model")}
     if _field(entry, "server") == "managed":
-        identity["model_sha256"] = _field(entry, "model_sha256")
-        identity["projector_sha256"] = _field(entry, "projector_sha256")
+        identity["model_sha256"] = _field(listed, "sha256")
+        identity["projector_sha256"] = _field(listed, "projector_sha256")
     return identity
 
 
-_FINGERPRINT_FIELDS = (
-    "kind", "address", "model", "images", "key", "server",
-    "model_file", "projector_file", "model_sha256", "projector_sha256",
-)  # fmt: skip
+_FINGERPRINT_FIELDS = ("kind", "address", "model", "images", "key", "server")
+_LISTED_FIELDS = ("file", "projector", "sha256", "projector_sha256")
 
 
-def _fingerprint(entry: Any, images: bool) -> str:
-    """Return the cache key of the checks: the entry fields (a key reference, never a key)."""
+def _fingerprint(entry: Any, images: bool, listed: Any = None) -> str:
+    """Return the cache key of the checks: the entry fields (a key reference, never a key).
+
+    A managed entry adds its list entry's files, so a new file is checked again.
+    """
     data = {name: _field(entry, name) for name in _FINGERPRINT_FIELDS}
+    data["listed"] = {name: _field(listed, name) for name in _LISTED_FIELDS}
     data["router_images"] = images
     return hashlib.sha256(json.dumps(data, sort_keys=True, default=str).encode()).hexdigest()
 
@@ -152,11 +170,13 @@ class PageJudge:
         key: str | None = None,
         transport: httpx.BaseTransport | None = None,
         runtime: Any = None,
+        listed: Any = None,
     ) -> None:
         """Hold the router recipe, the entry and a fixed reason when it cannot run.
 
-        *runtime* is the managed entry's ``RuntimeSpec``, the reason it cannot
-        be built, or ``None`` for an entry OMRS does not start.
+        *runtime* is the router lease a managed entry asks through, the reason
+        it cannot be built, or ``None`` for an entry OMRS does not run.
+        *listed* is the ``llamacpp_models`` entry a managed entry names.
         """
         self.name = name
         self.question = str(_field(router, "question", ""))
@@ -165,12 +185,12 @@ class PageJudge:
         self.max_chars = int(_field(router, "max_chars", 2000))
         address = str(_field(entry, "address", "") or "")
         self.hosted = bool(address) and not base.is_loopback(address)
-        self.identity = _identity(entry) if entry is not None else {}
+        self.identity = _identity(entry, listed) if entry is not None else {}
         # The adapter is None only with a fixed reason, and then nothing is sent.
         self._adapter: Any = adapter
         self._entry, self._address = entry, address
         self._static_status, self._key, self._transport = status, key, transport
-        self._runtime = runtime
+        self._runtime, self._listed = runtime, listed
 
     def __repr__(self) -> str:
         """Show the router name and kind only."""
@@ -202,13 +222,17 @@ class PageJudge:
     # ── Requests ────────────────────────────────────────────────────────
 
     def _post(self, question: str, text: str, image: bytes | None) -> Any:
-        """Send one request (through the runtime lease of a managed entry). Raises on failure."""
+        """Send one request (through the router for a managed entry). Raises on failure.
+
+        A managed entry sends to the router address with its model name; the
+        router lease makes the model ready first and holds its request lock.
+        """
         if self._runtime is None:
             return self._send(self._address, question, text, image)
-        from .compose_runtime_manager import runtime_manager
-
-        lease = runtime_manager().lease(self._runtime)
-        return lease.request(lambda address: self._send(address, question, text, image))
+        model = str(_field(self._entry, "model", ""))
+        return self._runtime.request_model(
+            model, lambda address: self._send(address, question, text, image)
+        )
 
     def _send(self, address: str, question: str, text: str, image: bytes | None) -> Any:
         request = self._adapter.build_request(
@@ -242,7 +266,7 @@ class PageJudge:
     def _check(self) -> CheckResult:
         if self._static_status is not None:
             return CheckResult(self._static_status, checks.NOT_CHECKED_TEXT)
-        fingerprint = _fingerprint(self._entry, self.images)
+        fingerprint = _fingerprint(self._entry, self.images, self._listed)
         result, lock = _kept(fingerprint)
         if result is None:
             with lock:
@@ -260,20 +284,20 @@ class PageJudge:
         local = bool(getattr(self._adapter, "LOCAL_RUNTIME", False))
         managed = local and _field(self._entry, "server") == "managed"
         quant = checks.QuantisationResult(checks.NOT_CHECKED, None, checks.NOT_CHECKED_TEXT)
-        if managed and _field(self._entry, "model_file"):
-            quant = checks.quantisation_from_file(str(_field(self._entry, "model_file")))
+        if managed and _field(self._listed, "file"):
+            quant = checks.quantisation_from_file(str(_field(self._listed, "file")))
         if quant.status == checks.REFUSED:
             return CheckResult(checks.QUANTISATION_REFUSED, quant.message)
         if self.images and not _field(self._entry, "images", False):
             return CheckResult(checks.PROJECTOR_NOT_LOADED, quant.message)
-        if self.images and managed and not _field(self._entry, "projector_file"):
+        if self.images and managed and not _field(self._listed, "projector"):
             return CheckResult(checks.PROJECTOR_NOT_LOADED, quant.message)
-        if isinstance(self._runtime, str):  # the managed runtime cannot be built
+        if isinstance(self._runtime, str):  # the router cannot be built
             return CheckResult(UNREACHABLE, quant.message)
         try:
             reply = self._post(PROBE_QUESTION, PROBE_TEXT, None)
             self._adapter.read_reply(reply)
-        except RuntimeUnavailable as error:
+        except (RuntimeUnavailable, ModelUnavailable) as error:
             reason = WRONG_BUILD if error.reason == WRONG_BUILD else UNREACHABLE
             return CheckResult(reason, quant.message)
         except (httpx.TransportError, RuntimeRequestFailed):
@@ -330,16 +354,17 @@ def build_page_judge(
         return None
     model = _field(router, "model")
     entry = (getattr(settings, "decision_models", None) or {}).get(model)
-    runtime = _runtime_of(settings, str(model), entry)
     opt_in = bool(_field(router, "send_off_machine", False))
-    return _make_judge(name, router, entry, transport, opt_in=opt_in, runtime=runtime)
+    return _make_judge(name, router, entry, transport, opt_in, _runtime_of(settings, entry))
 
 
-def _runtime_of(settings: Any, model: str, entry: Any) -> Any:
-    """Return the runtime of a managed ``llamacpp`` entry (spec or reason), else ``None``."""
-    from .compose_runtimes import decision_runtime_for
+def _runtime_of(settings: Any, entry: Any) -> tuple[Any, Any]:
+    """Return the router lease (or reason, or ``None``) and the list entry of *entry*."""
+    if entry is None:
+        return None, None
+    from .compose_runtimes import decision_router_for
 
-    return decision_runtime_for(settings, model, entry)
+    return decision_router_for(settings, entry), listed_entry(settings, entry)
 
 
 def _make_judge(
@@ -347,14 +372,18 @@ def _make_judge(
     router: Any,
     entry: Any,
     transport: httpx.BaseTransport | None,
-    *,
     opt_in: bool,
-    runtime: Any = None,
+    runs_on: tuple[Any, Any] = (None, None),
 ) -> PageJudge:
-    """Build a judge of *entry* for *router*; a hosted entry needs *opt_in* to send."""
+    """Build a judge of *entry* for *router*; a hosted entry needs *opt_in* to send.
+
+    *runs_on* is ``(runtime, listed)`` from :func:`_runtime_of`.
+    """
+    runtime, listed = runs_on
     kind = _field(entry, "kind") if entry is not None else None
     adapter = registry.get(kind) if kind in registry.kinds() else None
     common = {"name": name, "router": router, "entry": entry, "transport": transport}
+    common["listed"] = listed
     if adapter is None:
         return PageJudge(adapter=None, status=UNKNOWN_MODEL, **common)
     judge = PageJudge(adapter=adapter, status=None, **common)
@@ -376,7 +405,8 @@ def _judge_key(settings: Any, name: str) -> str:
     model = _field(router, "model") if router is not None else None
     entry = (getattr(settings, "decision_models", None) or {}).get(model) if model else None
     recipe = {f: _field(router, f) for f in _ROUTER_FIELDS} if router is not None else None
-    data = {"name": name, "router": recipe, "entry": _fingerprint(entry, False)}
+    listed = listed_entry(settings, entry)
+    data = {"name": name, "router": recipe, "entry": _fingerprint(entry, False, listed)}
     return json.dumps(data, sort_keys=True, default=str)
 
 
@@ -437,15 +467,15 @@ def test_decision_model(
     """
     entry = (getattr(settings, "decision_models", None) or {}).get(name)
     images = bool(_field(entry, "images", False)) if entry is not None else False
+    runtime, listed = _runtime_of(settings, entry)
     with _checks_lock:
         for flag in (False, True):
-            _checks.pop(_fingerprint(entry, flag), None)
-        used = _fingerprint(entry, False)
+            _checks.pop(_fingerprint(entry, flag, listed), None)
+        used = _fingerprint(entry, False, listed)
         for key in [k for k in _judges if json.loads(k)["entry"] == used]:
             del _judges[key]
     recipe = {"question": PROBE_QUESTION, "threshold": 0.0, "images": images}
-    runtime = _runtime_of(settings, name, entry)
-    judge = _make_judge(name, recipe, entry, transport, opt_in=True, runtime=runtime)
+    judge = _make_judge(name, recipe, entry, transport, True, (runtime, listed))
     result = judge._check()
     projector = None
     if images:
@@ -454,18 +484,14 @@ def test_decision_model(
             projector = PROJECTOR_PASSED
         elif result.status == checks.PROJECTOR_NOT_LOADED:
             projector = PROJECTOR_FAILED
+    from .compose_runtimes import decision_build_line
+
     return {
         "status": result.status or "ok",
         "quantisation": result.quantisation,
         "projector": projector,
-        "build": _build_line(runtime),
+        "build": decision_build_line(runtime),
     }
-
-
-def _build_line(runtime: Any) -> str | None:
-    from .compose_runtimes import decision_build_line
-
-    return decision_build_line(runtime)
 
 
 # The name starts with "test"; this keeps pytest from collecting it where it is imported.

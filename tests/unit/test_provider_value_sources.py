@@ -16,7 +16,7 @@ from omrs.config import Settings
 #: Editable provider fields (design D2) and the variable that sets each.
 VARIABLES = {
     "ollama_base_url": "OLLAMA_BASE_URL",
-    "llamacpp_chat_url": "LLAMACPP_CHAT_URL",
+    "llamacpp_router_url": "LLAMACPP_ROUTER_URL",
     "openrouter_api_key": "OPENROUTER_API_KEY",
     "openai_compatible_base_url": "OPENAI_COMPATIBLE_BASE_URL",
     "openai_compatible_api_key": "OPENAI_COMPATIBLE_API_KEY",
@@ -72,13 +72,12 @@ def test_unrelated_variables_do_not_mark_provider_fields(tmp_path: Path) -> None
     assert Settings(_env_file=dotenv).provider_explicit == frozenset()
 
 
-def test_env_example_leaves_the_chat_address_open_and_the_default_unchanged() -> None:
-    """Task 3.7: the commented example line equals the code default."""
+def test_env_example_leaves_the_router_address_open_and_the_default_unchanged() -> None:
+    """The example file sets no llama.cpp address; the code default stays."""
     root = Path(__file__).resolve().parents[2]
     lines = (root / ".env.example").read_text(encoding="utf-8").splitlines()
-    assert "# LLAMACPP_CHAT_URL=http://localhost:8081/v1" in lines
-    assert not any(line.startswith("LLAMACPP_CHAT_URL=") for line in lines)
-    assert Settings.model_fields["llamacpp_chat_url"].default == "http://localhost:8081/v1"
+    assert not any("LLAMACPP_" in line and "_URL=" in line for line in lines)
+    assert Settings.model_fields["llamacpp_router_url"].default == "http://127.0.0.1:8080/v1"
 
 
 def test_a_value_only_in_defaults_yaml_or_a_profile_is_a_default(
@@ -98,9 +97,9 @@ def test_a_value_only_in_defaults_yaml_or_a_profile_is_a_default(
     monkeypatch.setattr(
         sources._ProfileYamlSettingsSource,
         "_load_profile",
-        lambda self: {"llamacpp_chat_url": "http://profile:2/v1"},
+        lambda self: {"llamacpp_router_url": "http://profile:2/v1"},
     )
     settings = Settings(_env_file=tmp_path / "absent.env")
     assert settings.ollama_base_url == "http://yaml-defaults:1"
-    assert settings.llamacpp_chat_url == "http://profile:2/v1"
+    assert settings.llamacpp_router_url == "http://profile:2/v1"
     assert settings.provider_explicit == frozenset()

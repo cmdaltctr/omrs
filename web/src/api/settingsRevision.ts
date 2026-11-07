@@ -11,7 +11,7 @@ const KEY = ["settings-revision"] as const;
 const CONFIGURATION_KEY = ["settings", "configuration"] as const;
 
 /** Query keys (first element) whose data comes from `omrs.jsonc`. */
-const SETTINGS_ROOTS: readonly unknown[] = ["settings", "connections", "mcp", "llamacpp-server"];
+const SETTINGS_ROOTS: readonly unknown[] = ["settings", "connections", "mcp", "llamacpp-router"];
 
 export function currentRevision(queryClient: QueryClient): string | undefined {
   return queryClient.getQueryData<string>(KEY);

@@ -1,8 +1,8 @@
-"""The settings view of OMRS's own llama.cpp server (ADR-108 D4, D5, D6).
+"""The settings view of the llama.cpp router (ADR-108 D4 to D6, one-llamacpp-router D2, D14).
 
-A pure function over resolved ``Settings`` and saved values. It shows the Chat
-server choice instead of a server model, the Chat model in force and whether
-classification shares the owned server.
+A pure function over resolved ``Settings`` and saved values. It shows the router mode
+instead of a server model, the Chat model in force and whether Chat shares the
+classification model.
 """
 
 from __future__ import annotations
@@ -14,13 +14,13 @@ import pytest
 from omrs.compose_llamacpp import build_llamacpp_server_view
 from omrs.compose_providers import ProviderValues
 from omrs.config import Settings
+from omrs.config.llamacpp_models import CLASSIFY_MODEL
 from omrs.core.answer.settings import AnswerSettings
 
 HF_ID = "Qwen/Qwen3-4B-GGUF:Q4_K_M"
 
 
 def settings(provider: str = "llamacpp", model: str = HF_ID, **extra: Any) -> Settings:
-    extra.setdefault("llamacpp_chat_url", "http://127.0.0.1:8081/v1")
     return Settings(
         _env_file=None,
         answer=AnswerSettings(enabled=True, provider=provider, model=model),
@@ -28,30 +28,35 @@ def settings(provider: str = "llamacpp", model: str = HF_ID, **extra: Any) -> Se
     )
 
 
-def test_the_view_has_the_chat_server_choice_and_no_model() -> None:
+def test_the_view_has_the_router_mode_and_no_model() -> None:
     view = build_llamacpp_server_view(settings())
     assert "model" not in view
-    choice = view["chat_server"]
+    choice = view["router_server"]
     assert (choice["value"], choice["kind"], choice["source"], choice["locked"]) == (
-        "external",
+        "managed",
         "choice",
         "default",
         False,
     )
 
 
+def test_the_view_shows_the_router_address() -> None:
+    view = build_llamacpp_server_view(settings(llamacpp_router_url="http://127.0.0.1:9931/v1"))
+    assert view["router_url"] == "http://127.0.0.1:9931/v1"
+
+
 def test_a_saved_choice_applies() -> None:
-    saved = ProviderValues(values={"llamacpp_chat_server": "managed"})
-    choice = build_llamacpp_server_view(settings(), saved)["chat_server"]
-    assert choice["value"] == "managed"
+    saved = ProviderValues(values={"llamacpp_router_server": "external"})
+    choice = build_llamacpp_server_view(settings(), saved)["router_server"]
+    assert choice["value"] == "external"
 
 
 def test_a_choice_from_the_environment_is_locked() -> None:
-    base = settings(llamacpp_chat_server="managed")
-    object.__setattr__(base, "provider_explicit", frozenset({"llamacpp_chat_server"}))
-    choice = build_llamacpp_server_view(base)["chat_server"]
+    base = settings(llamacpp_router_server="external")
+    object.__setattr__(base, "provider_explicit", frozenset({"llamacpp_router_server"}))
+    choice = build_llamacpp_server_view(base)["router_server"]
     assert choice["locked"] is True
-    assert "LLAMACPP_CHAT_SERVER" in (choice["lock_reason"] or "")
+    assert "LLAMACPP_ROUTER_SERVER" in (choice["lock_reason"] or "")
 
 
 @pytest.mark.parametrize(
@@ -76,26 +81,16 @@ def test_the_launch_model_is_the_chat_model_only_for_llamacpp() -> None:
 
 
 @pytest.mark.parametrize(
-    ("classify", "shared"),
+    ("provider", "model", "shared"),
     [
-        ("", True),
-        ("http://127.0.0.1:8081/v1/", True),
-        ("http://127.0.0.1:9931/v1", False),
+        ("llamacpp", CLASSIFY_MODEL, True),
+        ("llamacpp", HF_ID, False),
+        ("llamacpp", "", False),
+        ("openrouter", CLASSIFY_MODEL, False),
     ],
 )
-def test_a_shared_address_is_reported_while_managed(classify: str, shared: bool) -> None:
-    view = build_llamacpp_server_view(
-        settings(llamacpp_chat_server="managed", llamacpp_classify_url=classify)
-    )
+def test_chat_on_the_classification_model_is_reported_as_shared(
+    provider: str, model: str, shared: bool
+) -> None:
+    view = build_llamacpp_server_view(settings(provider, model))
     assert view["shared_with_classification"] is shared
-
-
-def test_an_external_server_shares_nothing_with_omrs() -> None:
-    view = build_llamacpp_server_view(settings(llamacpp_chat_server="external"))
-    assert view["shared_with_classification"] is False
-
-
-def test_nothing_is_shared_while_managed_chat_is_not_on_llamacpp() -> None:
-    """Issue 177: OMRS's server loads no model then, so classification goes to the Chat address."""
-    view = build_llamacpp_server_view(settings("openrouter", llamacpp_chat_server="managed"))
-    assert view["shared_with_classification"] is False

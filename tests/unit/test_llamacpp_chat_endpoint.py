@@ -22,7 +22,8 @@ BASE = "http://127.0.0.1:9931/v1"
 @pytest.fixture
 def _settings(effective_settings: Callable[..., Any]) -> Any:
     return effective_settings(
-        llamacpp_chat_url=BASE,
+        llamacpp_router_url=BASE,
+        llamacpp_router_server="external",
         llamacpp_chat_model="Qwen/Qwen3-0.6B-GGUF:Q8_0",
         **{"metadata.classify_timeout": 30.0},
     )

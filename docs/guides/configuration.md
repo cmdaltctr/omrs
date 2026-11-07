@@ -82,7 +82,7 @@ chunking:
   chunk_size: 512
 
 # cross-cutting settings stay at the top level
-EMBED_MODEL: qwen3-embedding:0.6b
+COLLECTION_NAME: documents
 ```
 
 ### Upgrading from v1
@@ -207,9 +207,7 @@ COLLECTION_NAME=documents
 # then keep CHROMA_PERSIST_DIR pointed at its existing directory.
 CHROMA_PERSIST_DIR=./chroma_db
 
-# Which embedding model, and where to reach it
-EMBED_MODEL=qwen3-embedding:0.6b
-OLLAMA_BASE_URL=http://localhost:11434
+# Provider, model and address settings live in omrs.jsonc (run `omrs config init`)
 
 # Secrets
 HF_TOKEN=...
@@ -402,11 +400,11 @@ Two Chat providers serve answering only. They are not valid for `EMBED_PROVIDER`
 | `EMBED_MODEL` | — | Model name for embeddings |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama endpoint |
 | `OLLAMA_CONTEXT_WINDOW` | `16384` | Ollama context window in tokens, 2,048 to 262,144. See [Context windows](#context-windows) |
-| `LLAMACPP_CONTEXT_WINDOW` | `16384` | Context window (`-c`) for the llama.cpp chat server that OMRS starts, 2,048 to 262,144 |
-| `LLAMACPP_SERVER_BINARY` | unset | Absolute path to `llama-server`, for the servers that OMRS starts (Chat and managed embeddings). See [Local llama.cpp server](#local-llamacpp-server) |
-| `LLAMACPP_CHAT_SERVER` | `external` | Who runs the llama.cpp Chat server: `external` (the Llama app or another server you run) or `managed` (the `llama-server` that OMRS starts) |
-| `LLAMACPP_EMBED_SERVER` | `external` | Who runs the llama.cpp embedding server: `external` (the Llama app or another server you run) or `managed` (the `llama-server` that OMRS starts, with `--embedding`). Set in the environment, `.env` or `omrs.jsonc`. The Settings page does not write it. See [Local llama.cpp server](#local-llamacpp-server) |
-| `LLAMACPP_CLASSIFY_URL` | `""` (unset) | Address for llama.cpp classification. Unset or blank: classification uses `LLAMACPP_CHAT_URL`. See [llama.cpp Chat and classification](#llamacpp-chat-and-classification) |
+| `LLAMACPP_SERVER_BINARY` | blank | Absolute path of `llama-server`. Blank means the pinned build that `omrs llamacpp install` places. See [Local llama.cpp router](#local-llamacpp-router) |
+| `LLAMACPP_ROUTER_SERVER` | `managed` | Who runs the llama.cpp router: `managed` (the `llama-server` that OMRS starts) or `external` (the Llama app or another server you run) |
+| `LLAMACPP_ROUTER_URL` | `http://127.0.0.1:8080/v1` | Address of the llama.cpp router. A loopback `http` address when `managed` |
+| `LLAMACPP_ROUTER_MODELS_MAX` | `4` | Models loaded at once, 1 to 16 |
+| `LLAMACPP_ROUTER_MEMORY_MARGIN_MIB` | `8192` | Free memory margin in MiB, 0 to 262,144 |
 
 An unrecognised value for any of the four provider selections above
 (`EMBED_PROVIDER`, `METADATA_LLM_PROVIDER`, `LOCAL_BACKEND`,
@@ -431,37 +429,31 @@ The LlamaIndex OpenAI-like packages are in the base install. The llama.cpp, Open
 
 Connection details for each: [Providers](providers.md).
 
-#### llama.cpp Chat and classification
+#### llama.cpp roles
 
-llama.cpp serves two text roles. Classification (metadata extraction) uses the Text model. Chat uses the Chat model that Settings > Chat sets (`answer.provider` `llamacpp`, `answer.model`). Each role has its own address (ADR-108).
+One llama.cpp router serves embeddings, classification (metadata extraction), Chat, the claim-check judge and decision models ([ADR-115](../adr/115-one-llamacpp-router.md)). Every request goes to `llamacpp_router_url` and names its model. A setting gives a model its role.
 
 | `omrs.jsonc` key | Env | Role | Default |
 |---|---|---|---|
-| `llamacpp_chat_model` | `LLAMACPP_CHAT_MODEL` | Text model (classification) | `""` |
-| `llamacpp_classify_url` | `LLAMACPP_CLASSIFY_URL` | Classification address | `""`: use the Chat address |
-| `llamacpp_chat_url` | `LLAMACPP_CHAT_URL` | Chat address | `http://localhost:8081/v1` |
-| `llamacpp_chat_server` | `LLAMACPP_CHAT_SERVER` | Who runs the Chat server: `external` or `managed` | `external` |
+| `llamacpp_embed_model` | `LLAMACPP_EMBED_MODEL` | Embeddings | `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0` |
+| `llamacpp_chat_model` | `LLAMACPP_CHAT_MODEL` | Classification | `Qwen/Qwen3-4B-GGUF:Q8_0` |
+| `answer.model`, with `answer.provider` set to `llamacpp` | `ANSWER__MODEL` | Chat | `""` (no Chat model chosen) |
+| `answer.verify_model`, with the judge provider set to `llamacpp` | `ANSWER__VERIFY_MODEL` | Claim-check judge | `""` |
+| `model` of a managed `llamacpp` decision entry | n/a | Decision | none |
 
-The keys keep their old names, so an existing install needs no change. The labels on the llama.cpp card carry the meaning.
-
-Sources for `llamacpp_classify_url` and `llamacpp_chat_server`, highest first (ADR-087):
-
-1. The process environment, then `.env`. Each sets the value and locks the field.
-2. `omrs.jsonc`. It sets the value and does not lock the field.
-3. The default. For `llamacpp_classify_url`, the default is the Chat address in use. The card shows that address with the source `default`.
+Each value names an entry of `llamacpp_models` by its `model` value. The roles are not stored. The Router panel shows them for each entry.
 
 Rules:
 
-- While no source sets `llamacpp_classify_url`, classification follows the Chat address. A change of `llamacpp_chat_url` then moves classification too. Set `llamacpp_classify_url` to keep classification where it is.
-- `llamacpp_classify_url` follows the provider address rules (`http` or `https`). A change applies to the next request, with no restart.
-- `llamacpp_chat_server` accepts `external` and `managed` only. The file reader ignores any other value and names both.
-- Chat on llama.cpp never uses `llamacpp_chat_model`. Classification never uses `answer.model`.
-- While `llamacpp_chat_server` is `managed` and the Chat provider is not llama.cpp, OMRS's server has no Chat model to load. Classification then goes to the Chat address as an external server and uses the Text model. Start a server there, or set `llamacpp_classify_url`.
-- The Llama app router with `--models-max 1` reloads a model each time Chat and classification ask for different models on the same port. Move Chat to another server, for example OMRS's own `llama-server`, to stop the reloads.
+- Sources, highest first (ADR-087): process environment and `.env` (both lock the field), `omrs.jsonc` (does not lock), default.
+- With the router in `managed` mode, a request for a model that is not in the list fails before any contact, with reason `model-not-listed`. With `external` mode, OMRS does not check the name.
+- Chat on llama.cpp never uses `llamacpp_chat_model`. Classification never uses `answer.model`. An empty `answer.model` gives the setup message "Choose a Chat model in Settings > Chat." and OMRS sends nothing. An empty `answer.verify_model` skips the claim check with "Choose judge model in Settings > Chat."
+- An entry with `embeddings = true` cannot hold the Chat, classification or judge role. A save that names one gets reason `role-mismatch`.
+- When Chat and classification name the same entry, they share its slots, its context size and its reload. Settings > Chat and the Router panel show a warning. The warning does not block Save. It suggests another router model, your own llama.cpp server through the OpenAI-compatible provider, or a hosted provider such as OpenRouter.
 
 #### Change provider values in the web workspace
 
-In `omrs web`, Settings > Providers saves these values in `omrs.jsonc`: `OLLAMA_BASE_URL`, `OLLAMA_CONTEXT_WINDOW`, `LLAMACPP_CHAT_URL`, `LLAMACPP_CLASSIFY_URL`, `LLAMACPP_CHAT_SERVER`, `LLAMACPP_SERVER_BINARY`, `LLAMACPP_CONTEXT_WINDOW`, `OPENROUTER_API_KEY`, `OPENAI_COMPATIBLE_BASE_URL`, `OPENAI_COMPATIBLE_API_KEY` and `ANTHROPIC_API_KEY`. The server uses the first source it finds, highest first:
+In `omrs web`, Settings > Providers saves these values in `omrs.jsonc`: `OLLAMA_BASE_URL`, `OLLAMA_CONTEXT_WINDOW`, `LLAMACPP_ROUTER_SERVER`, `LLAMACPP_ROUTER_URL`, `LLAMACPP_ROUTER_MODELS_MAX`, `LLAMACPP_ROUTER_MEMORY_MARGIN_MIB`, `LLAMACPP_SERVER_BINARY`, `OPENROUTER_API_KEY`, `OPENAI_COMPATIBLE_BASE_URL`, `OPENAI_COMPATIBLE_API_KEY` and `ANTHROPIC_API_KEY`. The server uses the first source it finds, highest first:
 
 | Rank | Source | Shown as | Locks the field |
 |---|---|---|---|
@@ -569,11 +561,11 @@ These keys stay read-only. The row shows the reason and no Edit:
 
 | Keys | Reason on the row |
 |---|---|
-| `embed_provider`, `embed_model`, `local_backend`, `cloud_backend`, `llamacpp_embed_url`, `llamacpp_embed_model`, `openrouter_embed_model`, every `embedding.*` key | The embedding model is part of every collection. Change it in omrs.jsonc and re-ingest. |
+| `embed_provider`, `embed_model`, `local_backend`, `cloud_backend`, `llamacpp_embed_model`, `openrouter_embed_model`, every `embedding.*` key | The embedding model is part of every collection. Change it in omrs.jsonc and re-ingest. |
 | `vector_store`, `lancedb_uri`, `chroma_persist_dir`, `chroma_mode`, `collection_name` | Existing collections stay where they are. Change it in omrs.jsonc and restart. |
 | Every key field (`*_api_key`, `*_key`) | Keys are set on the provider cards as references. |
 | `ingestion.ingest_extensions`, `metadata.keyword_rules` | Edit this in omrs.jsonc. |
-| `llamacpp_chat_server` | Set this on the llama.cpp card. |
+| `ocr_runtime_url` | Set this in the environment, .env or omrs.jsonc. |
 
 More rules:
 
@@ -582,7 +574,7 @@ More rules:
 - A chunking key is part of the index identity. After a restart, the next ingest can read existing files again.
 - A restart-only key shows "Restart to apply" after a save. The row keeps the launch value until the restart.
 - The Providers cards still write key references (`keychain://`, `env://`, `file://`). The Configuration save refuses key fields.
-- While `llamacpp_chat_server` is `managed`, a save that makes the Chat choice llama.cpp (`answer.provider` or `answer.model`) needs the `credentials` scope (403 otherwise). The model must be an existing `.gguf` file or a Hugging Face id (400 otherwise), because OMRS's own server loads it.
+- A save of `llamacpp_router_server` or `llamacpp_server_binary` needs the `credentials` scope (403 otherwise). A program path must be an executable file named `llama-server` (400 otherwise). A retired llama.cpp key, such as `llamacpp_embed_server`, is refused.
 
 ##### Problems in the file
 
@@ -611,54 +603,127 @@ Ollama chat calls need an explicit context window. Without one, LlamaIndex read 
 - The first source wins, highest first: environment and `.env` (both lock), `omrs.jsonc`, the default. A page save writes `omrs.jsonc`.
 - The Chat answer model and metadata extraction use it. A saved or hand-edited value applies to the next call. Ollama reloads the model at the new size.
 - Embedding models are not covered. A different window can change how text is cut, and so the vectors.
-- `LLAMACPP_CONTEXT_WINDOW` has the same range and default. It applies only to the llama.cpp Chat server that OMRS starts.
+- A llama.cpp model takes its context window from `ctx-size` in its entry of `llamacpp_models` (512 to 262,144). See [Local llama.cpp router](#local-llamacpp-router).
 
-### Local llama.cpp server
+### Local llama.cpp router
 
-OMRS can start, stop and adopt its own `llama-server` for each local model role. One runtime manager does this for every OMRS process: `omrs web`, the CLI, the stdio MCP server and the watcher. Each role has two modes.
+OMRS can start, stop and adopt its own `llama-server` in router mode. One router serves every local llama.cpp model except OCR. One runtime manager serves every OMRS process: `omrs web`, the CLI, the stdio MCP server and the watcher. The router has two modes.
 
-- `external`: OMRS starts nothing. You run the server and give its address. This is the default for Chat and for embeddings.
-- `managed`: OMRS starts the server, or adopts one that is already running, with a fixed argument list.
+- `managed`: OMRS starts the router, or adopts one already running, with a fixed argument list. This is the default.
+- `external`: OMRS starts, adopts and stops nothing. You run the server and give its address, for example the Llama app on `http://127.0.0.1:9931/v1`. OMRS does not check model files or presets on an external server.
 
-| Role | Mode setting | Default | Address |
+| Setting | Env | `omrs.jsonc` key | Default | Range |
+|---|---|---|---|---|
+| Who runs the router | `LLAMACPP_ROUTER_SERVER` | `llamacpp_router_server` | `managed` | `managed` or `external` |
+| Router address | `LLAMACPP_ROUTER_URL` | `llamacpp_router_url` | `http://127.0.0.1:8080/v1` | Loopback `http` address when `managed`. Any `http` or `https` address when `external` |
+| Models loaded at once | `LLAMACPP_ROUTER_MODELS_MAX` | `llamacpp_router_models_max` | `4` | 1 to 16 |
+| Free memory margin (MiB) | `LLAMACPP_ROUTER_MEMORY_MARGIN_MIB` | `llamacpp_router_memory_margin_mib` | `8192` | 0 to 262,144 |
+| Program path | `LLAMACPP_SERVER_BINARY` | `llamacpp_server_binary` | blank | Absolute path of a file named `llama-server` |
+| Model list | none | `llamacpp_models` | The shipped list below | File only |
+| OCR | `OCR_RUNTIME_URL` | `ocr_runtime_url` | blank, which means managed | A free loopback port that OMRS picks |
+
+A blank program path means the pinned llama.cpp build (b11941) that `omrs llamacpp install` places in the OMRS data folder. A path you set keeps the program rule and must be build b11941 or newer, else the router fails with `wrong-build`.
+
+The model limit becomes `--models-max`. The memory margin becomes `--models-memory-margin`. The router unloads the least recently used model when a new one needs the room. A change to the model limit, the margin, the address or the program needs a router restart. The Router panel shows "Restart to apply".
+
+With `external`, Start, Stop and Restart return 409 with reason `external-server`. Use the llama.cpp card in Settings > Providers, or set values in the environment or in `omrs.jsonc`.
+
+#### The model list
+
+`llamacpp_models` is a named map in `omrs.jsonc`. No environment variable sets it. Only `omrs web` writes it. A map you save replaces the shipped list as a whole. The first edit in the Router panel writes the shipped list plus your edit.
+
+| Field | Rule |
+|---|---|
+| Key | 1 to 40 characters from `a-z`, `0-9` and `-` |
+| `model` | A Hugging Face id with a quantisation tag, such as `org/name:Q8_0`. It is unique in the map and does not start with `-` |
+| `file` | Managed only. An absolute path of an existing `.gguf` file. Its name does not hold `mmproj` |
+| `projector` | Optional. An absolute path of a `.gguf` file, for an image model |
+| `sha256`, `projector_sha256` | The SHA-256 that the page records when you add the entry |
+| `preset` | An object of the allowed keys below |
+
+The shipped list holds two entries with no file. The Router panel shows "Not downloaded" for an entry with no file. In `omrs web`, OMRS downloads the file with the Get a model job when the router first needs it. `omrs llamacpp install` also downloads it.
+
+| Id | `model` | Preset | Role |
 |---|---|---|---|
-| Chat | `llamacpp_chat_server` | `external` | `llamacpp_chat_url` |
-| Embeddings | `llamacpp_embed_server` | `external` | `llamacpp_embed_url` |
-| OCR | `ocr_runtime_url` | blank, which means managed | A free loopback port that OMRS picks |
+| `qwen3-embedding-4b` | `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0` | `embeddings = true`, `pooling = last`, `embd-normalize = 2`, `ctx-size = 8192`, `batch-size = 8192`, `ubatch-size = 8192`, `parallel = 1`, `kv-unified = false` | Embeddings |
+| `qwen3-4b` | `Qwen/Qwen3-4B-GGUF:Q8_0` | `ctx-size = 32768`, `parallel = 2` | Classification |
 
-With `external`, Start and Restart for Chat return 409 with the reason `external-server`. Use the llama.cpp card in Settings > Providers for Chat, or set the values in the environment or in `omrs.jsonc`. The Settings page does not write `llamacpp_embed_server`. Set it in the environment, `.env` or `omrs.jsonc`.
+An entry for embeddings must set `embeddings`, `pooling`, `ctx-size`, `batch-size` and `ubatch-size`. `ubatch-size` must not be larger than `batch-size`. A save that breaks this gets reason `preset-invalid`. `ctx-size = 32768` with two slots gives 16,384 tokens for each slot.
 
-| Setting | Env | `omrs.jsonc` key |
-|---|---|---|
-| Who runs the Chat server | `LLAMACPP_CHAT_SERVER` | `llamacpp_chat_server` |
-| Who runs the embedding server | `LLAMACPP_EMBED_SERVER` | `llamacpp_embed_server` |
-| Program path | `LLAMACPP_SERVER_BINARY` | `llamacpp_server_binary` |
-| Context window | `LLAMACPP_CONTEXT_WINDOW` | `llamacpp_context_window` |
-| Chat port | `LLAMACPP_CHAT_URL` | `llamacpp_chat_url` |
-| Embedding port | `LLAMACPP_EMBED_URL` | `llamacpp_embed_url` |
-| External OCR server | `OCR_RUNTIME_URL` | `ocr_runtime_url` |
+Example entry in `omrs.jsonc`:
 
-The sources and locks are the same as for other provider values.
+```jsonc
+{
+  "llamacpp_models": {
+    "chat-8b": {
+      "model": "Qwen/Qwen3-8B-GGUF:Q8_0",
+      "file": "/models/Qwen3-8B-Q8_0.gguf",
+      "sha256": "<64 hex characters>",
+      "preset": { "ctx-size": 16384, "parallel": 1 },
+    },
+  },
+  "answer": { "provider": "llamacpp", "model": "Qwen/Qwen3-8B-GGUF:Q8_0" },
+}
+```
 
-The Chat server has no model setting of its own. It loads the Chat model in force: `answer.model` while `answer.provider` is `llamacpp`. Set it in Settings > Chat, or with `ANSWER__PROVIDER` and `ANSWER__MODEL`. A Chat save while the server runs does not restart it. The card then says "Restart to apply". The embedding server loads `llamacpp_embed_model`. Chat and embeddings use the same program path.
+#### Preset keys
 
-Guardrails:
+OMRS writes `models.ini` from the `preset` object of each entry. It writes only these keys. Any other key gets 400 with reason `preset-key-unknown`. That includes `host`, `port`, `api-key`, `sleep-idle-seconds`, `hf-repo`, `connect` and `connect-code`.
 
-1. The program is an absolute path to an executable file named exactly `llama-server`. OMRS checks it at save and before every launch.
-2. The model is an existing `.gguf` file or a Hugging Face id `org/name[:tag]`. OMRS checks it at a Chat save and before every launch. A name such as `qwen3:4b` fails.
-3. The port comes from `llamacpp_chat_url` or `llamacpp_embed_url`. The URL must be `http` on a loopback host. The server binds to `127.0.0.1`.
-4. The arguments are fixed. Chat uses `-m` or `-hf`, `--host 127.0.0.1`, `--port` and `-c`. Embeddings use `-m` or `-hf`, `--host 127.0.0.1`, `--port` and `--embedding`. No shell runs. You cannot add other arguments.
-5. The process gets a minimal environment with no API key.
-6. OMRS starts and stops only the servers it records. It never touches a server you started yourself. It never finds or stops a process by name or port.
-7. The output of each server goes to `server.log` in its runtime folder (see [Runtime state folder](#runtime-state-folder)). OMRS empties the file at each start and again when it passes 5 MiB. The page and the routes never show it.
+| Key | Accepted value |
+|---|---|
+| `ctx-size` | Whole number, 512 to 262,144 |
+| `batch-size`, `ubatch-size` | Whole number, 32 to 65,536 |
+| `parallel` | Whole number, 1 to 16 |
+| `embeddings` | `true` only. To turn it off, leave the key out |
+| `pooling` | `none`, `mean`, `cls`, `last` or `rank` |
+| `embd-normalize` | -1, 0, 1 or 2 |
+| `kv-unified` | `true` or `false` |
+| `flash-attn` | `on`, `off` or `auto` |
+| `n-gpu-layers` | Whole number, 0 to 999, or `all` or `auto` |
+| `fit` | `on` or `off` |
+| `cache-type-k`, `cache-type-v` | `f32`, `f16`, `bf16`, `q8_0` or `q4_0` |
+| `cache-prompt` | `true` or `false` |
+| `cache-reuse` | Whole number, 0 to 65,536 |
+| `image-min-tokens`, `image-max-tokens` | Whole number, 1 to 65,536 |
 
-States are `stopped`, `starting`, `running` and `failed`. A failed start gives one reason: `binary-invalid`, `model-invalid`, `not-loopback`, `port-in-use`, `exited`, `timeout`, `not-configured`, `not-supported` or `version-busy`. `not-configured` means that no program path is set, or that the Chat provider is not `llamacpp`, or that the Chat model is empty. `not-supported` means that managed mode does not run on this platform (Windows). `version-busy` means that another OMRS process uses a server with a different program or arguments, so OMRS does not replace it. The start waits up to 180 seconds for `GET /health`.
+A boolean must be a JSON `true` or `false`. A string or a number gets 400. llama.cpp accepts any word for a boolean in `models.ini` without an error, so this check is the only one.
 
-A change of the Chat choice to `external` while the managed server is `starting` or `running` returns 409 with the reason `server-running`. Stop the server first. The choice survives a launch of `omrs web`. The server state stays `stopped` until an OMRS process sends a request to it or you press Start.
+A preset edit reloads only the changed model. The other loaded models keep running. If another OMRS process uses the changed model, the change fails for that model with `version-busy`, and the Router panel shows "Reload pending".
+
+#### Launch checks
+
+1. The program is an absolute path of an executable regular file named exactly `llama-server`, both as given and after links resolve. OMRS checks it at save and before every launch.
+2. Each model name follows the Hugging Face id rule with a tag. Each file is an absolute, readable `.gguf` path.
+3. When a file has a recorded `sha256`, OMRS compares it before each router start and before each preset rewrite. A changed file leaves its entry out of `models.ini` with reason `file-changed`. Other entries keep working. An entry with no recorded value runs with the note "File not checked". A decision entry with no recorded value is refused.
+4. In `managed` mode the address is an `http` address on a loopback host. The router binds `127.0.0.1`.
+5. The arguments are fixed: `--models-preset`, `--models-max`, `--models-memory-margin`, `--host 127.0.0.1` and `--port`. No shell runs. You cannot add an argument. OMRS never passes `--sleep-idle-seconds`.
+6. The router gets a minimal environment (`PATH`, `HOME`, `LANG`, `TMPDIR`) and no API key. It also gets `LLAMA_CACHE` and `XDG_CONFIG_HOME`, both set to empty folders in the router state folder. The router then lists no model from a Hugging Face cache and reads no `config.ini` of your user. The router also reads `/etc/llama.cpp/config.ini`. OMRS cannot redirect that file and does not check it.
+7. OMRS starts and stops only the servers it records. It never touches a server you started. It never finds or stops a process by name or port.
+8. The router output goes to `server.log` in the router folder (see [Runtime state folder](#runtime-state-folder)). OMRS empties the file at each start and again past 5 MiB. The page and the routes never show it.
+
+The router state is `stopped`, `starting`, `running` or `failed`. A failed router has one reason: `binary-invalid`, `model-invalid`, `not-loopback`, `port-in-use`, `exited`, `timeout`, `not-configured`, `not-provisioned`, `not-supported`, `version-busy`, `wrong-build`, `file-changed`, `bind-failed` or `not-downloaded`. `not-provisioned` means no program path is set and no pinned build is placed. The line names `omrs llamacpp install` and Get llama.cpp. `not-downloaded` means no listed model has a file. The line reads "Models are still downloading." while a download runs, else "No model is downloaded yet." `not-configured` means the list holds no usable entry. `not-supported` means managed mode does not run on this platform (Windows). `bind-failed` means the router could not open a port after 4 tries. `version-busy` means another OMRS process uses the router with other arguments. `timeout` means `GET /health` did not answer 200 in 180 seconds. No model loads at start.
+
+Each model has its own state: `not-downloaded`, `unloaded`, `loading`, `loaded` or `failed`. A failed model has one reason: `model-invalid`, `file-changed`, `preset-invalid`, `model-load-failed`, `model-not-listed`, `role-mismatch` or `version-busy`. A failed model does not stop the other models. Before its first request, OMRS asks the router to load the model and waits up to 300 seconds. The request timeout starts after the model is loaded.
+
+A model with `parallel = 1` handles one request at a time across all OMRS processes. A request to another model does not wait for it.
+
+#### Pinned build
+
+OMRS can download llama.cpp build b11941 for macOS arm64, Linux x86-64 (CPU) and Linux x86-64 (CUDA 12.8). It checks the SHA-256 of each archive and places `llama-server` in `$XDG_DATA_HOME/omrs/llamacpp/b11941-<flavour>/`, else `~/.local/share/omrs/llamacpp/b11941-<flavour>/`. Other platforms get reason `not-supported`; set `llamacpp_server_binary` to your own build there.
+
+Run the command once on each machine:
+
+```bash
+omrs llamacpp install                  # the flavour this machine needs
+omrs llamacpp install --flavour cpu    # Linux x86-64: force the CPU build
+```
+
+On Linux the default flavour is CUDA when `/proc/driver/nvidia/version` exists, else CPU. Apple silicon has one build and refuses `--flavour`. The command runs `llama-server --version` on the placed file and, for CUDA, `--list-devices`. A failed check gives reason `binary-check-failed` or `cuda-device-missing`, and no binary stays in place. A build that is already placed and passes its checks is kept with no download. The command starts no server and asks no question, so a headless machine can run it. It records the flavour in `installed.json` in the data folder, and a blank `llamacpp_server_binary` resolves to that build. When `llamacpp_router_server` is `managed`, the command then downloads each model of the list that has no file, into the Hugging Face cache. See [CLI reference](cli-reference.md#llamacpp-install).
 
 #### Runtime state folder
 
-Every runtime keeps its state in `<state folder>/runtimes/<runtime id>/`. The runtime id is `chat`, `embeddings` or `ocr-<engine folder>`. The state folder is the first of these that exists:
+Every runtime keeps its state in `<state folder>/runtimes/<runtime id>/`. The runtime id is `router` or `ocr-<engine folder>`. The router folder also holds `models.ini`, `hashes.json`, the empty folders `empty-cache` and `empty-config`, and one `models/<model id>/` folder for each listed model with its own lock files. The state folder is the first of these that exists:
 
 1. `$OMRS_STATE_DIR`.
 2. `$XDG_STATE_HOME/omrs`.
@@ -671,16 +736,16 @@ Put the state folder on a local disk. The locks use `flock`, which is not reliab
 #### Sharing, idle stop and exit
 
 - Several OMRS processes share one server. A process that needs a runtime joins it. The first process starts the server. Later processes adopt it.
-- The last process to leave stops the server. A server stays up while any other OMRS process uses it. So `omrs web` can exit while a CLI ingest still uses the Chat server, and the server keeps running.
+- The last process to leave stops the server. A server stays up while any other OMRS process uses it. So `omrs web` can exit while a CLI ingest still uses the router, and the router keeps running.
 - A runtime with no request for 10 minutes stops. This idle stop is a fixed value. No setting changes it. The next request starts the server again.
 - A server counts as stale only when its process is gone or runs another command. A slow `/health` answer never makes it stale.
 - If a process dies without a clean exit (SIGKILL), the server can stay up with no client. The next OMRS process adopts it. `omrs web` also stops such a server at start-up. The Integrations page shows it as "Running, no OMRS process uses it", with a Stop button.
-- Stop on the Chat card, or on a row of the Model runtimes section, stops a managed server. It sends SIGTERM, waits 10 seconds, then sends SIGKILL. An external server has no Stop.
+- Stop on the llama.cpp card, or on a row of the Model runtimes section, stops a managed server. It sends SIGTERM, waits 10 seconds, then sends SIGKILL. An external server has no Stop.
 - On Windows, managed mode fails with `not-supported`. External mode works.
 
 #### Retired: idle sleep
 
-`LLAMACPP_IDLE_SLEEP_SECONDS` and `llamacpp_idle_sleep_seconds` no longer exist. OMRS does not pass `--sleep-idle-seconds` to `llama-server`, because that flag has an open race (llama.cpp issue #29689). If the environment or `.env` sets `LLAMACPP_IDLE_SLEEP_SECONDS`, start-up fails with a message that names it and the fixed 10-minute idle stop. Remove the variable. A `llamacpp_idle_sleep_seconds` key in `omrs.jsonc` is ignored and listed in the problem list. `PUT /v1/llamacpp/server` with `idle_sleep` returns 400.
+`LLAMACPP_IDLE_SLEEP_SECONDS` and `llamacpp_idle_sleep_seconds` no longer exist. OMRS does not pass `--sleep-idle-seconds` to `llama-server`, because that flag has an open race (llama.cpp issue #29689). If the environment or `.env` sets `LLAMACPP_IDLE_SLEEP_SECONDS`, start-up fails with a message that names it and the fixed 10-minute idle stop. Remove the variable. A `llamacpp_idle_sleep_seconds` key in `omrs.jsonc` is ignored and listed in the problem list. A body of `PUT /v1/llamacpp/router` with `idle_sleep` returns 400. The old `/v1/llamacpp/server` routes are gone and return 404.
 
 #### OCR runtimes
 
@@ -688,21 +753,7 @@ An OCR engine can declare the `llama-server` it needs in its `pyproject.toml` (s
 
 To use a server that you run yourself, set `OCR_RUNTIME_URL` (or `ocr_runtime_url`) to its address. OMRS then starts nothing and passes the address to every engine that declares a runtime. The build check still runs. OMRS cannot check model files on an external server. The Integrations page says so: "External server. Model files are not checked." One external address serves one llama.cpp engine at a time, so use it with one engine only.
 
-Example `omrs.jsonc`:
-
-```jsonc
-{
-  "llamacpp_chat_url": "http://localhost:8081/v1",
-  "llamacpp_chat_server": "managed",
-  "llamacpp_server_binary": "/opt/homebrew/bin/llama-server",
-  "llamacpp_context_window": 16384,
-  "answer": { "provider": "llamacpp", "model": "Qwen/Qwen3-0.6B-GGUF:Q8_0" },
-}
-```
-
-Limits. The program path is editable in the GUI by choice. The guardrails limit what can run to a file named `llama-server`. Anyone with the browser session and the `credentials` scope can still point the setting at any file with that name. The Chat server choice needs the `credentials` scope. While the choice is `managed`, a llama.cpp Chat save on any route needs the `credentials` scope too. OMRS runs no server for classification. The CLI, the stdio MCP server and the watcher start and adopt managed servers as clients. They have no Stop.
-
-Shared address. When the choice is `managed` and classification follows the Chat address, classification goes to the owned server. That server loads only the Chat model and ignores the model name in a request, so classification uses the Chat model and the Text model is not used. The card warns about it. Set `llamacpp_classify_url` to another server, for example the Llama app, to keep the two models apart.
+Limits. The program path is editable in the GUI. The guardrails limit what can run to a file named `llama-server`. Anyone with a browser session and the `credentials` scope can still point the setting at any file with that name. Changing the router mode, the program path, or the `model`, `file` or `projector` of an entry needs the `credentials` scope. Changing preset values, the address, the model limit or the memory margin, and Start, Stop and Restart, need `manage`. A bearer token never passes a route that writes or controls. The CLI, the stdio MCP server and the watcher start and adopt the router as clients. They have no Stop.
 
 ### Get a model (search and download)
 
@@ -716,7 +767,7 @@ The llama.cpp and Ollama cards in Settings > Providers can search for a model an
 
 1. The server contacts `huggingface.co` only when you search, open a file list or start a download. It sends no request at start-up.
 2. Before a llama.cpp download the server checks the disk. It needs the size still to download plus 1 GiB spare. If the free space is smaller, the start gives the reason `no-space` and names both sizes. A file already in the cache counts as 0 bytes.
-3. A managed `llama-server` reads the same cache. An external server that reads another folder does not see the file. Point that server at the folder the panel shows.
+3. A managed router loads the file that the `file` field of the list entry names. Use this model records the path of the cached file there. The router never reads the Hugging Face cache by itself. An external server reads its own folder and does not see the file. Point that server at the folder the panel shows.
 4. A download that gets no byte for 60 seconds ends with the reason `stalled`. A cancelled download leaves its partial file in the cache, and a later download of the same file continues from it.
 5. An Ollama download is a pull request to the Ollama address in use. Ollama keeps its own files. The space check does not run for it.
 
@@ -831,8 +882,8 @@ query time. See [MCP tools](mcp-tools.md#answer_documents) and
 | Field | Default | What it does |
 |---|---|---|
 | `enabled` | `true` | Master switch. `false` makes the server model resolve to `None`; the answering tools then return an actionable error |
-| `provider` | `ollama` | LLM provider, resolved through the same registry as metadata extraction. Unknown names fail startup. Besides `ollama`, `llamacpp` and `openrouter`, the registry holds `openai_compatible` and `anthropic` for answering only |
-| `model` | `qwen3:4b` | Model tag, passed to the provider builder as an `answer_model` override so answering never reuses the small metadata-classification model |
+| `provider` | `llamacpp` | LLM provider, resolved through the same registry as metadata extraction. Unknown names fail startup. Besides `llamacpp`, `ollama` and `openrouter`, the registry holds `openai_compatible` and `anthropic` for answering only |
+| `model` | `""` | Model name, passed to the provider builder as an `answer_model` override so answering never reuses the small metadata-classification model. Empty means no Chat model is chosen: Chat answers "Choose a Chat model in Settings > Chat." and sends nothing. With `llamacpp`, the name is the `model` of an entry in `llamacpp_models` |
 | `timeout` | `120.0` | Seconds to wait for one completion round |
 | `max_rounds` | `4` | Maximum COMPACT refinement rounds (1–8; the client-sampling path caps at 4). Later rounds widen the per-round budget up to a hard character ceiling (262,144); overflow evidence is dropped lowest-ranked first |
 | `context_window` | `8192` | Per-round context budget in **characters** — a deterministic count, not a token estimate |
@@ -840,7 +891,7 @@ query time. See [MCP tools](mcp-tools.md#answer_documents) and
 | `prefer_client_sampling` | `true` | Prefer the MCP client's model over the server model when the client advertises the sampling capability |
 | `allow_legacy_sampling` | `true` | Allow the deprecated sampling back-channel only on a negotiated pre-2026-07-28 session. Never on a modern session |
 | `verify_claims` | `false` | Opt-in claim-verification judge ([ADR-059](../adr/059-claim-verification-stage.md)). `true` adds one configured-judge call per cited prose sentence (~3.3 s P95 each on the tested GLM-5.3 cloud judge, experiment 20). An unavailable provider degrades to `verification_skipped`; the answer is never blocked |
-| `verify_model` | `""` | Judge model. Empty derives it from the provider's default model (e.g. `OPENROUTER_LLM_MODEL`). The default cloud provider has no default model, so claim checks are skipped until you set one. Settings > Chat can set it; applies at once in `omrs web` |
+| `verify_model` | `""` | Judge model. Empty derives it from the provider's default model (e.g. `OPENROUTER_LLM_MODEL`). The default cloud provider has no default model, so claim checks are skipped until you set one. A llama.cpp judge with an empty `verify_model` is not built and the status reason is `no-model`. Settings > Chat can set it; applies at once in `omrs web` |
 | `verify_provider` | `cloud` | Judge provider. Aliases: `cloud` (or empty) resolves to the cloud backend, `local` to the local backend; anything else is a literal LLM-registry name. Unknown names fail startup. Settings > Chat can set it; applies at once in `omrs web` |
 | `reasoning` | `""` | Reasoning level for the Chat model, for example `low`, `high` or `none`. Empty sends no reasoning field, so the provider default applies. 1 to 32 letters, digits, `-` and `_`. Settings > Chat can set it; applies at once in `omrs web` |
 | `verify_reasoning` | `""` | Reasoning level for the claim check judge. Same rules as `reasoning`, set apart so the judge can think less than the Chat model. Settings > Chat can set it; applies at once in `omrs web` |
@@ -890,7 +941,7 @@ no cited prose sentence to check. See
 | `extraction_mode` | `llamaindex` | `disabled`, `keyword`, `local`, `llamaindex`, `ollama`, `llamacpp`, or `openrouter` |
 | `keyword_rules` | — | JSON array of custom `{pattern, category}` rules |
 | `taxonomy_mode` | `category` | `category` or `file_type`. **Profile-owned** |
-| `ollama_classify_model` | `qwen3:0.6b` | Ollama model used for classification |
+| `ollama_classify_model` | `""` (none; choose one when the Ollama provider is picked) | Ollama model used for classification |
 | `classify_max_attempts` | `3` | Maximum attempts **including** the initial request (all metadata LLM backends) |
 | `classify_timeout` | `30.0` | Seconds per attempt (all metadata LLM backends) |
 | `pipeline_timeout` | `180.0` | Seconds for the llamaindex pipeline (one attempt, three extractors per chunk) |
@@ -1056,7 +1107,7 @@ dots-mocr needs explicit model-licence acceptance. It runs on llama.cpp
 - **Runtime.** The engine declares a pinned `llama-server`, build 11941, in
   its `pyproject.toml`. OMRS starts it, checks the build and the model file
   hashes, and stops it after 10 minutes with no request. See
-  [Local llama.cpp server](#local-llamacpp-server).
+  [Local llama.cpp router](#local-llamacpp-router).
 - **Pins.** Provisioning downloads `dots-mocr-Q8_0.gguf`,
   `dots-mocr-mmproj-bf16.gguf` and the llama.cpp `b11941` release, and
   checks the SHA-256 of each. The values live in the engine's `pins.py`.
@@ -1384,9 +1435,9 @@ Fields of a `decision_models` entry:
 | `model` | yes | The model name that the request names. |
 | `images` | no | `true` when the model takes a page image. Default `false`. |
 | `key` | no | A key reference: `env://NAME`, `file://<path in secrets/>` or `keychain://<provider>`. Never the key itself. |
-| `server` | no | `llamacpp` only: `external` or `managed`. |
-| `model_file`, `projector_file` | no | Managed `llamacpp` only: the GGUF model file and the projector file. |
-| `model_sha256`, `projector_sha256` | no | The SHA-256 of each file: 64 lower-case hexadecimal characters. |
+| `server` | no | `llamacpp` only: `external` or `managed`. A managed entry runs on the llama.cpp router, and its `model` names an entry of `llamacpp_models`. |
+
+The model file, the projector and their SHA-256 values live in `llamacpp_models` as `file`, `projector`, `sha256` and `projector_sha256`, not in the decision entry. A decision entry that still holds `model_file`, `projector_file`, `model_sha256` or `projector_sha256` is listed in the problem list. See [The model list](#the-model-list).
 
 Fields of a `document_routers` entry:
 
@@ -1602,46 +1653,72 @@ OMRS does not convert the old value. The old key meant "every backend", and that
 
 ### Local Chat and classification stay apart (ADR-108)
 
-Classification and llama.cpp Chat each get their own address. The server that OMRS runs loads the Chat model, so the server model setting is retired. See [llama.cpp Chat and classification](#llamacpp-chat-and-classification) and [Local llama.cpp server](#local-llamacpp-server).
+Classification and llama.cpp Chat each get their own address. The server that OMRS runs loads the Chat model, so the server model setting is retired. The router note below (ADR-115) replaces the addresses and the Chat server choice named here. See [llama.cpp roles](#llamacpp-roles).
 
 | Before the upgrade | After the upgrade | What to do |
 |---|---|---|
-| `llamacpp_chat_url` set, no classification address | Classification uses the same address and the same Text model. | Nothing. While classification follows the Chat address, a change of the Chat address moves classification too. Set `llamacpp_classify_url` to keep it apart. |
-| `llamacpp_chat_model` set | Only the label changes: the card shows "Text model (classification)". The index identity is the same, so no re-ingest. | Nothing. |
-| Chat on llama.cpp with a model, server run by you | No change. The default Chat server choice is `external`. | Nothing. |
+| `llamacpp_chat_url` set, no classification address | `llamacpp_chat_url` and `llamacpp_classify_url` are retired. Classification and Chat use `llamacpp_router_url`. | Follow the router note below. |
+| `llamacpp_chat_model` set | The key stays. It names the classification model of the router list. The index identity is the same, so no re-ingest. | Nothing. |
+| Chat on llama.cpp with a model, server run by you | `llamacpp_chat_server` is retired. The router note below applies. | Set `llamacpp_router_server` to `external` and `llamacpp_router_url` to the address of your server. |
 | Chat on llama.cpp with a blank `answer.model` | Chat refuses with "Choose a Chat model". `GET /v1/settings/chat` gives the reason `no-model`. Before, the server answered with the model it had loaded. | Choose a Chat model in Settings > Chat. |
-| llama.cpp claim check judge with a blank `answer.verify_model` | The claim check is skipped with "Choose a judge model in Settings > Chat." Before, the judge used the Text model. | Choose a judge model in Settings > Chat. |
+| llama.cpp claim check judge with a blank `answer.verify_model` | The claim check is skipped with "Choose a judge model in Settings > Chat." Before, the judge used the classification model. | Choose a judge model in Settings > Chat. |
 | Ollama claim check judge with a blank `answer.verify_model` | The claim check is skipped with "Choose a judge model in Settings > Chat." Before, the judge used `metadata.ollama_classify_model`. | Choose a judge model in Settings > Chat. |
 | Chat on Ollama with a blank `answer.model` | Chat refuses with "Choose a Chat model" and sends nothing. Before, Chat sent a request with no model name. | Choose a Chat model in Settings > Chat. |
-| `llamacpp_server_model` in `omrs.jsonc` | Ignored and listed in the problem list, with the replacement `answer.model`. The old value never becomes the Chat model. The Local server panel hides until you choose `managed`. | Follow the steps below. |
-| `LLAMACPP_SERVER_MODEL` in the environment or `.env` | Start-up fails. The message names the replacement: `ANSWER__PROVIDER=llamacpp` and `ANSWER__MODEL`, with `LLAMACPP_CHAT_SERVER=managed`. | Remove the variable. Set the replacement, or follow the steps below. |
+| `llamacpp_server_model` in `omrs.jsonc` | Ignored and listed in the problem list, with the replacement `answer.model`. The old value never becomes the Chat model. | Follow the steps below. |
+| `LLAMACPP_SERVER_MODEL` in the environment or `.env` | Start-up fails. The message names the replacement: `ANSWER__PROVIDER=llamacpp` with `ANSWER__MODEL`. | Remove the variable. Set the replacement, or follow the steps below. |
 
 An install that used OMRS's own server:
 
-1. On the llama.cpp card, set "Who runs the Chat server" to "OMRS's own llama-server" (`managed`).
-2. In Settings > Chat, choose the provider llama.cpp.
-3. Paste the old `llamacpp_server_model` value as the Chat model, then save.
+1. On the llama.cpp card in Settings > Providers, set "Who runs llama.cpp" to "OMRS runs llama.cpp" (`managed`).
+2. In the Router panel, check that the router list holds the old model. Add it with Get a model and Use this model if it is not there.
+3. In Settings > Chat, choose the provider llama.cpp, paste the old `llamacpp_server_model` value as the Chat model, then save. When Chat already uses llama.cpp with no model, "Choose a Chat model" offers the same choice from the router list.
 
-Then press Start in the Local server panel. Steps 1 and 3 need a browser session with the `credentials` scope.
+Then press Start in the Router panel. Step 1 and the Use this model button need a browser session with the `credentials` scope.
 
 Rollback is a revert of the merge commit. The older build ignores `llamacpp_classify_url` and `llamacpp_chat_server` and lists them as unknown keys. It reads `llamacpp_server_model` again if you kept it.
 
 ### Managed llama.cpp runtimes (ADR-109)
 
-One runtime manager now starts and stops every local `llama-server` for all OMRS processes. See [Local llama.cpp server](#local-llamacpp-server).
+One runtime manager now starts and stops every local `llama-server` for all OMRS processes. The router note below (ADR-115) replaces the `chat` and `embeddings` runtimes named here. See [Local llama.cpp router](#local-llamacpp-router).
 
 | Before upgrade | After upgrade | What to do |
 |---|---|---|
 | `LLAMACPP_IDLE_SLEEP_SECONDS` in the environment or `.env` | Start-up fails. The message names the variable and the fixed 10-minute idle stop. | Remove the variable. |
 | `llamacpp_idle_sleep_seconds` in `omrs.jsonc` | Ignored and listed in the problem list. | Remove the key. |
-| `PUT /v1/llamacpp/server` with `idle_sleep` | Returns 400. | Remove the field from the request. |
-| The managed Chat server stopped when `omrs web` exited | It stops when the last OMRS process leaves. A CLI process that still uses it keeps it running. | Nothing. Press Stop on the card to stop it at once. |
+| `PUT /v1/llamacpp/router` with `idle_sleep` | Returns 400. The old `PUT /v1/llamacpp/server` route is gone (404). | Remove the field from the request. |
+| The managed Chat server stopped when `omrs web` exited | It stops when the last OMRS process leaves. A CLI process that still uses it keeps it running. | Nothing. Press Stop in the Router panel to stop it at once. |
 | The managed Chat server freed its model after 300 idle seconds and kept running | The server stops after 10 idle minutes and starts again on the next request. | Nothing. |
 | `llamacpp-server.log` in the workspace folder | `server.log` in the runtime folder, under the state folder. | Nothing. |
-| Embeddings on a server you run | No change. `LLAMACPP_EMBED_SERVER` defaults to `external`. | Nothing. |
+| Embeddings on a server you run | `LLAMACPP_EMBED_SERVER` and `LLAMACPP_EMBED_URL` are retired. | Follow the router note below: set `llamacpp_router_server` to `external` and `llamacpp_router_url` to the address. |
 | An OCR engine started its own `llama-server` | The engine declares a runtime and OMRS starts it. `OCR_RUNTIME_URL` stays blank. | Nothing. |
 
 Rollback: revert the merge commit. The state folder holds no settings, so you can delete it.
+
+### One llama.cpp router (ADR-115)
+
+One router serves every local llama.cpp model except OCR. It has one address and one mode. Each model has an entry in `llamacpp_models` with its own context size. See [Local llama.cpp router](#local-llamacpp-router).
+
+Six keys are retired. An environment or `.env` value stops start-up, and the message names the replacement. An `omrs.jsonc` key is ignored and listed in the problem list with its replacement.
+
+| Retired | Replacement |
+|---|---|
+| `llamacpp_embed_url` (`LLAMACPP_EMBED_URL`), `llamacpp_chat_url` (`LLAMACPP_CHAT_URL`), `llamacpp_classify_url` (`LLAMACPP_CLASSIFY_URL`) | `llamacpp_router_url` (`LLAMACPP_ROUTER_URL`) |
+| `llamacpp_chat_server` (`LLAMACPP_CHAT_SERVER`), `llamacpp_embed_server` (`LLAMACPP_EMBED_SERVER`) | `llamacpp_router_server` (`LLAMACPP_ROUTER_SERVER`) |
+| `llamacpp_context_window` (`LLAMACPP_CONTEXT_WINDOW`) | `ctx-size` in the preset of the model's entry in `llamacpp_models` |
+| Decision entry fields `model_file`, `projector_file`, `model_sha256`, `projector_sha256` | The entry in `llamacpp_models` that the decision entry names with `model` |
+
+| Before upgrade | After upgrade | What to do |
+|---|---|---|
+| The Llama app on port 9931 serves embeddings and classification | Set `llamacpp_router_server` to `external` and `llamacpp_router_url` to `http://127.0.0.1:9931/v1`. | List the models that the app serves in `llamacpp_models`. OMRS does not check their files. |
+| OMRS ran a managed Chat server | The router runs every model. | Add the Chat model to `llamacpp_models`, then choose it in Settings > Chat. |
+| `answer.provider` was `ollama` by default | The default is `llamacpp` with no Chat model chosen. | Choose a Chat model in Settings > Chat, or set the provider you use. An install that saved its provider keeps it. |
+| The default embedding model was `qwen3-embedding:0.6b` (1,024 dimensions) | The default is `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0` (2,560 dimensions). | Plan one re-index of every collection (see One-time re-index in this section). |
+
+**One-time re-index.** The embedding identity changes when a collection moves to Qwen3-Embedding-4B, because the vectors grow from 1,024 to 2,560 dimensions. A collection holds vectors of one size from one embedding model, so each collection re-indexes once. Re-ingest every collection after the router serves the new model. The change `local-ocr-per-backend-cuts` forces a re-index too, so one pass covers both. After the pass, run a known-answer search in each collection.
+
+In `omrs web`, the first managed start downloads each listed model that has no file, through the Get a model job. A 4B model at Q8_0 is about 4.3 GB. The Router panel shows the note "Downloading" on the row. The CLI, the stdio MCP server and the watcher download nothing by themselves. `omrs llamacpp install` downloads each missing model into the Hugging Face cache (see [CLI reference](cli-reference.md#llamacpp-install)).
+
+Rollback is a revert of the merge commit. The state folder holds no settings, so you can delete it. The older build reads the retired keys again. Rollback re-indexes once more, because the embedding identity changes back.
 
 ---
 

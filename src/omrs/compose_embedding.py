@@ -133,7 +133,7 @@ def _llamacpp_refusal(
     settings: Settings, model: str, lister: ModelLister, redact: Callable[[str], str]
 ) -> dict[str, Any] | None:
     """Return a failed result when the llama.cpp server does not list the model."""
-    url = settings.llamacpp_embed_url
+    url = settings.llamacpp_router_url
     try:
         served = lister(url)
     except Exception as exc:

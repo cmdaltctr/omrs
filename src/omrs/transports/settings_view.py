@@ -33,6 +33,7 @@ from ..config.rules import FILE_ONLY, SECRET_FIELDS
 from ..config.setting_shapes import setting_shape
 from ..config.settings_file import SettingsFile, setting_paths
 from ..config.settings_file_write import read_only_reason
+from ..core.settings import ROUTER_LIVE_VALUES
 
 if TYPE_CHECKING:
     from ..config import Settings
@@ -41,7 +42,9 @@ APPLIES_LIVE = "live"
 APPLIES_RESTART = "restart"
 
 #: Settings that apply at once, with no restart.
-LIVE_KEYS: frozenset[str] = frozenset({*PROVIDER_FIELDS, "web_max_upload_mib", "mcp_http_enabled"})
+LIVE_KEYS: frozenset[str] = frozenset(
+    {*PROVIDER_FIELDS, *ROUTER_LIVE_VALUES, "web_max_upload_mib", "mcp_http_enabled"}
+)
 #: Values of the file-only keys when neither the file nor the launch sets them.
 #: ``tests/unit/test_settings_view.py`` pins them to ``cli/web.py`` and ``uploads.py``.
 FILE_ONLY_DEFAULTS: Mapping[str, Any] = {

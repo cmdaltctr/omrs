@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 PROVIDER_INT_FIELDS: tuple[str, ...] = tuple(INT_KEY_BOUNDS)
 #: Settings of the llama.cpp server that ``omrs web`` manages: the program and
 #: who runs the Chat server (ADR-108). The server loads the Chat model.
-PROVIDER_SERVER_FIELDS: tuple[str, ...] = ("llamacpp_server_binary", "llamacpp_chat_server")
+PROVIDER_SERVER_FIELDS: tuple[str, ...] = ("llamacpp_server_binary", "llamacpp_router_server")
 
 #: Editable provider fields, as ``Settings`` paths. ``answer.*`` live in the
 #: nested answer block: the Chat choice, the claim check judge choice and the
@@ -49,6 +49,12 @@ PROVIDER_FIELDS: tuple[str, ...] = (
     "answer.reasoning",
     "answer.verify_reasoning",
 )
+
+
+def _bounded(default: int, key: str) -> Any:
+    """Return a ``Field`` for *default* bounded by the range ``INT_KEY_BOUNDS`` holds for *key*."""
+    low, high = INT_KEY_BOUNDS[key]
+    return Field(default, ge=low, le=high)
 
 
 def coerce_field(path: str, value: str) -> str | int | None:
@@ -136,18 +142,18 @@ class ProviderSourceMixin(BaseModel):
     anthropic_api_key: str = ""
     #: Tokens sent as ``num_ctx`` to Ollama chat and metadata calls (not embeddings).
     ollama_context_window: int = Field(16384, ge=2048, le=262144)
-    #: Tokens passed as ``-c`` to the llama.cpp server that ``omrs web`` starts.
-    llamacpp_context_window: int = Field(16384, ge=2048, le=262144)
-    #: Program of the managed llama.cpp server (empty means not set).
+    #: Program of the managed llama.cpp router (empty means the provisioned build).
     llamacpp_server_binary: str = ""
-    #: Classification address; blank follows ``llamacpp_chat_url`` (ADR-108).
-    llamacpp_classify_url: str = ""
-    #: Who runs the llama.cpp Chat server: ``external`` (the Llama app or another
-    #: server you run) or ``managed`` (OMRS's own ``llama-server``).
-    llamacpp_chat_server: str = "external"
-    #: Who runs the llama.cpp embedding server: ``external`` or ``managed``
-    #: (``llama-server --embedding``). The Settings page never writes it.
-    llamacpp_embed_server: str = "external"
+    #: Who runs the one llama.cpp router (change one-llamacpp-router, D2):
+    #: ``managed`` (OMRS's own ``llama-server``) or ``external`` (the Llama app or
+    #: another server you run). The ranges live in ``user_config.INT_KEY_BOUNDS``.
+    llamacpp_router_server: str = "managed"
+    #: The router address every llama.cpp role sends to.
+    llamacpp_router_url: str = "http://127.0.0.1:8080/v1"
+    #: Models the router keeps loaded at once (``--models-max``).
+    llamacpp_router_models_max: int = _bounded(4, "llamacpp_router_models_max")
+    #: Free memory the router keeps, in MiB (``--models-memory-margin``).
+    llamacpp_router_memory_margin_mib: int = _bounded(8192, "llamacpp_router_memory_margin_mib")
 
     #: Fields ``omrs.jsonc`` set (an ``env://`` key reference counts).
     config_file_fields: frozenset[str] = frozenset()
@@ -168,13 +174,10 @@ class ProviderSourceMixin(BaseModel):
     @model_validator(mode="after")
     def _check_server_choices(self) -> Settings:
         _validate_provider_value(
-            self, "llamacpp_chat_server", ACCEPTED["llamacpp_chat_server"], "LLAMACPP_CHAT_SERVER"
-        )
-        _validate_provider_value(
             self,
-            "llamacpp_embed_server",
-            ACCEPTED["llamacpp_embed_server"],
-            "LLAMACPP_EMBED_SERVER",
+            "llamacpp_router_server",
+            ACCEPTED["llamacpp_router_server"],
+            "LLAMACPP_ROUTER_SERVER",
         )
         return self  # type: ignore[return-value]
 

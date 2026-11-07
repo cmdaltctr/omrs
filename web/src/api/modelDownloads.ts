@@ -71,6 +71,10 @@ export interface ModelDownloadStatus {
   reason: DownloadReason | null;
   /** For llama.cpp, the folder that holds the files, with `~` for home. */
   cache_folder: string | null;
+  /** For a succeeded llama.cpp download, the absolute path of the first downloaded `.gguf` file. */
+  file_path: string | null;
+  /** For a succeeded llama.cpp download, the SHA-256 of `file_path`. */
+  sha256: string | null;
 }
 
 /** `llamacpp`: repo, revision and label. `ollama`: repo and label, or a library name alone. */

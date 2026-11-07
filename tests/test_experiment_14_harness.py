@@ -499,6 +499,7 @@ def _seed_malformed_rebuild_harness(
     )
 
 
+@pytest.mark.usefixtures("ollama_backend")
 def test_malformed_embedder_batch_fails_before_destructive_rebuild(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

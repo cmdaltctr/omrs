@@ -94,7 +94,7 @@ development of OMRG — Opinionated Modular RAG.
 | [081](./081-per-profile-embedding-models.md) | Per-Profile Embedding Models | 2026-10-17 | Accepted |
 | [082](./082-chats-live-in-the-workspace-database.md) | Chats Live in the Workspace Database | 2026-10-18 | Accepted |
 | [083](./083-llm-provider-settings-in-the-web-workspace.md) | LLM Provider Settings in the Web Workspace | 2026-10-18 | Proposed |
-| [084](./084-context-windows-and-an-owned-llama-server.md) | Context Windows and a llama.cpp Server omrg Owns | 2026-10-18 | Proposed |
+| [084](./084-context-windows-and-an-owned-llama-server.md) | Context Windows and a llama.cpp Server omrg Owns | 2026-10-18 | Proposed (amended by ADR-115) |
 | [085](./085-web-login-item.md) | Web Login Item | 2026-10-19 | Proposed |
 | [086](./086-web-power-menu.md) | Web Power Menu | 2026-10-19 | Proposed |
 | [087](./087-settings-live-in-omrg-jsonc.md) | Settings Live in omrg.jsonc | 2026-10-19 | Accepted |
@@ -116,13 +116,14 @@ development of OMRG — Opinionated Modular RAG.
 | [105](./105-pipeline-steps-own-their-ocr-settings.md) | Pipeline Steps Own Their OCR Settings | 2026-10-28 | Accepted (2026-10-28; built and merged to v3 at PR #137) |
 | [106](./106-app-searches-and-downloads-local-models.md) | The App Searches and Downloads Local Models | 2026-10-29 | Accepted (2026-10-29; built and merged to v3 at PR #148) |
 | [107](./107-ci-keeps-one-job-per-distinct-check.md) | CI Keeps One Job per Distinct Check | 2026-10-29 | Accepted (2026-10-29; built and merged to v3 at PR #146) |
-| [108](./108-local-chat-and-classification-stay-apart.md) | Local Chat and Classification Stay Apart | 2026-10-29 | Accepted (ADR-108 amends ADR-084 decision 4 and ADR-106 decision 4) |
-| [109](./109-omrs-owns-local-model-runtimes-components-are-clients.md) | OMRS Owns Local Model Runtimes; Components Are Clients | 2026-11-01 | Proposed (ADR-109 amends ADR-084 and ADR-108 decision 4) |
-| [110](./110-decision-models-and-named-document-routers.md) | Decision Models and Named Document-Reading Routers | 2026-11-02 | Proposed (2026-11-02; revised 2026-11-05 for the page-rule form; not accepted) |
+| [108](./108-local-chat-and-classification-stay-apart.md) | Local Chat and Classification Stay Apart | 2026-10-29 | Accepted (ADR-108 amends ADR-084 decision 4 and ADR-106 decision 4; amended by ADR-115) |
+| [109](./109-omrs-owns-local-model-runtimes-components-are-clients.md) | OMRS Owns Local Model Runtimes; Components Are Clients | 2026-11-01 | Proposed (ADR-109 amends ADR-084 and ADR-108 decision 4; superseded in part by ADR-115) |
+| [110](./110-decision-models-and-named-document-routers.md) | Decision Models and Named Document-Reading Routers | 2026-11-02 | Proposed (2026-11-02; revised 2026-11-05 for the page-rule form; not accepted; amended by ADR-115) |
 | [111](./111-the-web-workspace-renders-maths-with-bundled-katex.md) | The Web Workspace Renders Maths with Bundled KaTeX | 2026-11-03 | Accepted (2026-11-03; built and merged in PR #165) |
 | [112](./112-reading-parts-descriptor-pipeline-and-discovery.md) | Reading Parts: One Descriptor, an Ordered Page-Rule Pipeline, Ordered Fallback Lists and Entry-Point Discovery | 2026-11-04 | Accepted (2026-11-04; built and merged to v3 in PR #168; amends ADR-037, ADR-066, ADR-069 and ADR-105) |
 | [113](./113-dots-mocr-runs-on-llama-cpp.md) | dots.mocr Runs on llama.cpp | 2026-11-05 | Proposed (2026-11-05; supersedes the PyTorch runtime of ADR-072) |
 | [114](./114-per-backend-local-ocr-cuts.md) | Per-Backend Local OCR Cuts, No Script Filter, and Cuts in the PDF Identity | 2026-11-06 | Proposed (2026-11-06; amends ADR-112 decision 4) |
+| [115](./115-one-llamacpp-router.md) | One llama.cpp Router Serves Every Local Model | 2026-11-06 | Proposed (2026-11-06; supersedes ADR-109's router-mode rejection and per-role table; amends ADR-084, ADR-108 and ADR-110) |
 
 ## Convention
 

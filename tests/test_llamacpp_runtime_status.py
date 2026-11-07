@@ -14,6 +14,7 @@ from pathlib import Path
 import httpx
 import pytest
 from tests.fixtures.llamacpp.harness import RuntimeEnv, runtime_env_fixture, wait_until
+from tests.unit.test_llamacpp_router_worker import fixed_spec
 
 from omrs.integrations.llamacpp_runtime import locks
 from omrs.integrations.llamacpp_runtime.manager import RuntimeUnavailable
@@ -35,6 +36,7 @@ FIELDS = {
     "reason_text",
     "memory_bytes",
     "clients",
+    "other_clients",
     "used_by",
     "address",
     "files_checked",
@@ -97,7 +99,7 @@ def _start_fake(runtime_env: RuntimeEnv, port: int, **env: str) -> subprocess.Po
 def test_a_stopped_runtime_reads_without_starting_or_writing(runtime_env: RuntimeEnv) -> None:
     fake = runtime_env.fake()
     before = _snapshot(state_root())
-    items = runtime_env.manager().status([fake.chat(_free_port()), fake.ocr()])
+    items = runtime_env.manager().status([fixed_spec(fake, _free_port()), fake.ocr()])
     assert _snapshot(state_root()) == before
     assert fake.starts() == []
     assert [set(item) for item in items] == [FIELDS, FIELDS]
@@ -123,9 +125,46 @@ def test_a_running_runtime_reports_memory_address_and_clients(runtime_env: Runti
     assert (item["mode"], item["role"], item["files_checked"]) == ("managed", "ocr", True)
 
 
+def test_a_runtime_held_only_by_this_process_has_no_other_client(runtime_env: RuntimeEnv) -> None:
+    fake = runtime_env.fake()
+    spec = fake.ocr()
+    manager = runtime_env.manager()
+    manager.lease(spec).join()
+    item = manager.status([spec])[0]
+    assert (item["state"], item["clients"], item["other_clients"]) == ("running", "some", "none")
+
+
+def test_a_runtime_another_process_holds_has_an_other_client_until_it_leaves(
+    runtime_env: RuntimeEnv,
+) -> None:
+    fake = runtime_env.fake()
+    spec = fake.ocr()
+    manager = runtime_env.manager()
+    manager.lease(spec).join()
+    other = runtime_env.client()
+    assert other.join(spec)["ok"]
+    assert manager.status([spec])[0]["other_clients"] == "some"
+    other.call({"cmd": "leave"})
+    assert wait_until(lambda: manager.status([spec])[0]["other_clients"] == "none")
+    assert manager.status([spec])[0]["clients"] == "some"  # this process still holds it
+
+
+def test_a_killed_process_no_longer_counts_as_an_other_client(runtime_env: RuntimeEnv) -> None:
+    fake = runtime_env.fake()
+    spec = fixed_spec(fake, _free_port())
+    manager = runtime_env.manager()
+    starter = runtime_env.client()
+    assert starter.join(spec)["ok"]
+    assert manager.status([spec])[0]["other_clients"] == "some"
+    starter.send({"cmd": "abandon"})
+    starter.wait()
+    item = manager.status([spec])[0]
+    assert (item["state"], item["clients"], item["other_clients"]) == ("running", "none", "none")
+
+
 def test_an_orphan_reports_no_client(runtime_env: RuntimeEnv) -> None:
     fake = runtime_env.fake()
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     starter = runtime_env.client()
     assert starter.join(spec)["ok"]
     starter.send({"cmd": "abandon"})
@@ -137,7 +176,7 @@ def test_an_orphan_reports_no_client(runtime_env: RuntimeEnv) -> None:
 
 def test_a_crashed_server_reads_failed_exited(runtime_env: RuntimeEnv) -> None:
     fake = runtime_env.fake()
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     gone = subprocess.Popen(["true"])  # noqa: S603, S607 - a pid that is gone
     gone.wait()
     folder = runtime_dir(state_root(), spec.id)
@@ -203,11 +242,11 @@ def test_external_ocr_with_another_build_is_refused(runtime_env: RuntimeEnv) -> 
 
 def test_external_chat_is_never_started_or_stopped(runtime_env: RuntimeEnv) -> None:
     port = _free_port()
-    spec = _external(port, role="chat", build=None)
+    spec = _external(port, role="router", build=None)
     manager = runtime_env.manager()
     assert manager.lease(spec).join() == f"http://127.0.0.1:{port}"
     assert manager.status([spec])[0]["state"] == "stopped"
-    assert manager.stop("chat") is False
+    assert manager.stop("router") is False
 
 
 def test_managed_mode_without_file_locks_is_not_supported(
@@ -215,12 +254,12 @@ def test_managed_mode_without_file_locks_is_not_supported(
 ) -> None:
     monkeypatch.setattr(locks, "LOCKS_SUPPORTED", False)
     fake = runtime_env.fake()
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     with pytest.raises(RuntimeUnavailable) as caught:
         runtime_env.manager().lease(spec).join()
     assert caught.value.reason == "not-supported"
     assert fake.starts() == []
     item = runtime_env.manager().status([spec])[0]
     assert (item["state"], item["reason"]) == ("failed", "not-supported")
-    external = _external(_free_port(), role="chat", build=None)
+    external = _external(_free_port(), role="router", build=None)
     assert runtime_env.manager().lease(external).join().startswith("http://127.0.0.1:")

@@ -1,10 +1,13 @@
 import type { ModelRuntime } from "../../api/modelRuntimes";
 
-const GIB = 1024 ** 3;
+export const GIB = 1024 ** 3;
+
+/** The title of the router row. */
+export const ROUTER_TITLE = "llama.cpp router";
 
 /** One runtime item as `GET /v1/runtimes` sends it. A test overrides the fields it cares about. */
 export function runtimeItem(id: string, extra: Partial<ModelRuntime> = {}): ModelRuntime {
-  const role = id === "chat" ? "chat" : id === "embeddings" ? "embeddings" : "ocr";
+  const role = id === "router" ? "router" : "ocr";
   return {
     id,
     role,
@@ -14,17 +17,27 @@ export function runtimeItem(id: string, extra: Partial<ModelRuntime> = {}): Mode
     reason_text: null,
     memory_bytes: null,
     clients: "none",
+    other_clients: "none",
     used_by: [],
     address: null,
     files_checked: true,
+    models: [],
     ...extra,
   };
 }
 
-/** Chat running with no other client, embeddings running with a client, one failed OCR runtime and one external OCR runtime. */
+/** The router running with no other client, one failed OCR runtime and one external OCR runtime. */
 export const RUNTIMES: ModelRuntime[] = [
-  runtimeItem("chat", { state: "running", memory_bytes: 6 * GIB, used_by: ["llamacpp_chat_server"], address: "127.0.0.1:8081" }),
-  runtimeItem("embeddings", { state: "running", memory_bytes: GIB / 2, clients: "some", used_by: ["llamacpp_embed_server"], address: "127.0.0.1:8080" }),
+  runtimeItem("router", {
+    state: "running",
+    memory_bytes: 6 * GIB,
+    used_by: ["embed_provider", "metadata_llm_provider", "answer.provider"],
+    address: "127.0.0.1:8080",
+    models: [
+      { model: "Qwen/Qwen3-Embedding-4B-GGUF:Q8_0", roles: ["embeddings"], state: "loaded", reason: null, memory_bytes: 4 * GIB },
+      { model: "Qwen/Qwen3-4B-GGUF:Q8_0", roles: ["classification"], state: "unloaded", reason: null, memory_bytes: null },
+    ],
+  }),
   runtimeItem("ocr-dots-mocr-llamacpp", {
     state: "failed",
     reason: "file-changed",

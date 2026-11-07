@@ -250,19 +250,24 @@ def _entry_value(entry: Any, key: str, default: Any = None) -> Any:
     return getattr(entry, key, default)
 
 
-def _decision_model_identity(entry: Any) -> dict[str, Any]:
+def _decision_model_identity(entry: Any, models: Any) -> dict[str, Any]:
     """Return the kind and model identity of a decision model entry (design D9).
 
-    A managed entry adds the SHA-256 of its model and projector files. The
-    address, the key and the file paths say where the model lives, not what
-    it is, so they stay out.
+    A managed entry adds the SHA-256 of its model and projector files, from the
+    ``llamacpp_models`` entry it names (one-llamacpp-router, D3). The address,
+    the key and the file paths say where the model lives, not what it is, so
+    they stay out.
     """
     if entry is None:
         return {}
-    identity = {"kind": _entry_value(entry, "kind"), "model": _entry_value(entry, "model")}
+    model = _entry_value(entry, "model")
+    identity = {"kind": _entry_value(entry, "kind"), "model": model}
     if _entry_value(entry, "server") == "managed":
-        identity["model_sha256"] = _entry_value(entry, "model_sha256")
-        identity["projector_sha256"] = _entry_value(entry, "projector_sha256")
+        listed = next(
+            (m for m in (models or {}).values() if _entry_value(m, "model") == model), None
+        )
+        identity["model_sha256"] = _entry_value(listed, "sha256", None)
+        identity["projector_sha256"] = _entry_value(listed, "projector_sha256", None)
     return identity
 
 
@@ -289,7 +294,7 @@ def document_router_payload(settings: Any) -> dict[str, Any]:
             "threshold": _entry_value(router, "threshold"),
             "images": bool(_entry_value(router, "images", False)),
             "max_chars": _entry_value(router, "max_chars", 2000),
-            "model": _decision_model_identity(model),
+            "model": _decision_model_identity(model, getattr(settings, "llamacpp_models", None)),
             "version": rule.version,
             "runnable": _router_runnable(settings),
         }

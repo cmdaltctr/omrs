@@ -8,6 +8,7 @@ on a gate so a test can read the running state, then lets it finish.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import threading
 import time
@@ -40,6 +41,8 @@ from omrs.transports.api import security  # noqa: E402
 from omrs.transports.api.routes import model_downloads as routes  # noqa: E402
 
 REV = "a" * 40
+MODEL_BYTES = b"GGUF the bytes of a small test model"
+MODEL_SHA256 = hashlib.sha256(MODEL_BYTES).hexdigest()
 HF_VALUE = "hf_test_secret"  # gitleaks:allow
 GB = 1000**3
 FILES = (
@@ -78,6 +81,7 @@ class Net:
         self.free = 100 * GB
         self.pull_error: Exception | None = None
         self.download_error: Exception | None = None
+        self.downloaded = "/cache/model.gguf"  # the harness replaces it with a real file
 
     def calls(self) -> int:
         return len(self.searches) + len(self.listings) + len(self.sizes) + len(self.downloads)
@@ -119,7 +123,7 @@ class Net:
             time.sleep(0.005)
         if self.download_error:
             raise self.download_error
-        return "/cache/model.gguf"
+        return self.downloaded
 
     def pull_model(self, base_url: str, name: str, *, on_progress: Any, cancel: Any) -> None:
         self.pulls.append((base_url, name))
@@ -172,6 +176,9 @@ def harness(
     settings = make_settings()
     monkeypatch.setattr(compose, "get_settings", lambda: settings)
     net = Net(str(Path.home() / ".cache" / "huggingface" / "hub"))
+    cached = tmp_path / "Qwen3-4B-Q4_K_M.gguf"
+    cached.write_bytes(MODEL_BYTES)
+    net.downloaded = str(cached)
     monkeypatch.setattr(hf, "search_models", net.search_models)
     monkeypatch.setattr(hf, "list_repo_files", net.list_repo_files)
     monkeypatch.setattr(hf, "bytes_to_download", net.bytes_to_download)
@@ -656,6 +663,8 @@ def test_the_status_of_a_new_server_is_idle_with_every_key(harness: Harness) -> 
         "bytes_total": None,
         "reason": None,
         "cache_folder": None,
+        "file_path": None,
+        "sha256": None,
     }
 
 
@@ -728,3 +737,43 @@ def test_model_download_responses_conform(harness: Harness) -> None:
     check.check(c.get(CURRENT, headers=read), 403)
     check.check(c.get(CURRENT), 401)
     assert check.operations >= FAMILIES["model_downloads"]
+
+
+# ── The status names the file and its SHA-256 (task 7.2) ─────────────────
+
+
+def test_a_llamacpp_download_gives_the_cache_path_and_the_sha256(harness: Harness) -> None:
+    assert harness.start(**harness.llama()).status_code == 202
+    assert harness.net.started.wait(5)
+    running = harness.client.get(CURRENT).json()
+    assert (running["file_path"], running["sha256"]) == (None, None)  # not yet known
+    harness.net.gate.set()
+    done = harness.settle()
+    assert done["state"] == "succeeded"
+    assert done["file_path"] == harness.net.downloaded
+    assert Path(done["file_path"]).is_absolute() and done["file_path"].endswith(".gguf")
+    assert done["sha256"] == MODEL_SHA256 and len(done["sha256"]) == 64
+    assert not (harness.cfg / "omrs.jsonc").exists(), "a download changed a setting"
+
+
+def test_a_cancelled_or_failed_download_gives_no_path_or_hash(harness: Harness) -> None:
+    harness.net.download_error = hf.ModelHostError("network")
+    harness.net.gate.set()
+    harness.start(**harness.llama())
+    failed = harness.settle()
+    assert (failed["state"], failed["file_path"], failed["sha256"]) == ("failed", None, None)
+
+
+def test_a_file_that_cannot_be_read_after_the_download_fails_the_job(harness: Harness) -> None:
+    harness.net.downloaded = "/no/such/dir/model.gguf"
+    harness.net.gate.set()
+    harness.start(**harness.llama())
+    done = harness.settle()
+    assert (done["state"], done["reason"], done["sha256"]) == ("failed", "failed", None)
+
+
+def test_an_ollama_pull_has_no_path_or_hash(harness: Harness) -> None:
+    harness.net.gate.set()
+    assert harness.start(provider="ollama", name="qwen3:4b").status_code == 202
+    done = harness.settle()
+    assert (done["state"], done["file_path"], done["sha256"]) == ("succeeded", None, None)

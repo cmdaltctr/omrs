@@ -7,29 +7,33 @@
   ```bash
   curl -LsSf https://astral.sh/uv/install.sh | sh
   ```
-- **[Ollama](https://ollama.com)** — local model runner:
-  ```bash
-  # macOS
-  brew install ollama
-  # Linux
-  curl -fsSL https://ollama.com/install.sh | sh
-  ```
+- A Linux x86-64 machine or an Apple silicon Mac. OMRS places its own pinned llama.cpp build, so you install no model server.
 
 ## Install
 
-```bash
-# 1. Start Ollama
-ollama serve &
+1. Copy the example config. It holds storage settings and secret notes only.
 
-# 2. Pull the embedding model used by .env.example
-ollama pull qwen3-embedding:0.6b
+   ```bash
+   cp .env.example .env
+   ```
 
-# 3. Copy the example config
-cp .env.example .env
+2. Install the Python dependencies. The llama.cpp backend needs no extra.
 
-# 4. Install Python dependencies
-uv sync
-```
+   ```bash
+   uv sync
+   ```
+
+3. Place the pinned llama.cpp build. The command downloads it once, checks it and prints the path.
+
+   ```bash
+   uv run omrs llamacpp install
+   ```
+
+   The command starts no server. On Linux, add `--flavour cpu` or `--flavour cuda` to choose the build. See [CLI reference](cli-reference.md#llamacpp-install).
+
+4. Start the web workspace with `uv run omrs web`. In `omrs web`, OMRS starts the router and downloads the two shipped models when the router first needs them: `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0` for embeddings and `Qwen/Qwen3-4B-GGUF:Q8_0` for classification. The Router panel on the llama.cpp card in Settings > Providers shows "Downloading" on each row. The first run waits for the download. Chat has no model until you choose one in Settings > Chat.
+
+   The CLI and the stdio MCP server download no model by themselves. Run `uv run omrs llamacpp install` to download the two models into the Hugging Face cache too. `omrs web` records the cached files in the model list when the router first needs them.
 
 ## Verify it works
 
@@ -59,7 +63,13 @@ See [Reranker](reranker.md) for details.
 
 ## Alternative providers
 
-llama.cpp is the default, but you can also use [Ollama](https://ollama.com) for convenience or [OpenRouter](https://openrouter.ai) for cloud embeddings. See [Providers](providers.md) for setup instructions.
+The llama.cpp router is the default. Ollama and OpenRouter are opt-in providers: [Ollama](https://ollama.com) for a local server you run yourself, [OpenRouter](https://openrouter.ai) for cloud embeddings. See [Providers](providers.md) for setup instructions.
+
+### Ollama (opt-in)
+
+Ollama is an opt-in local backend. Install and start Ollama yourself, pull an embedding model, then set `local_backend` to `ollama` and `embed_model` to that model in `omrs.jsonc`. See [Ollama](providers.md#ollama-opt-in-local-backend) for every setting.
+
+### Hybrid search
 
 For rare terms, citations, error codes, and exact identifiers, try opt-in hybrid retrieval:
 
@@ -75,7 +85,8 @@ See [MCP Client Setup](mcp-client-setup.md) to connect the server to OpenChamber
 
 ## Verification checklist
 
-- [ ] `ollama ps` shows `qwen3-embedding:0.6b` loaded
+- [ ] `uv run omrs llamacpp install` reports that the pinned build is ready
+- [ ] After your first ingest, `curl http://127.0.0.1:8080/v1/models` lists `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0`
 - [ ] `uv run omrs` starts without errors and waits on stdin
 - [ ] MCP Inspector can discover and call all five tools
 - [ ] Your MCP client shows `rag-docs` as connected (green)

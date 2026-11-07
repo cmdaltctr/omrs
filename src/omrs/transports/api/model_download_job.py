@@ -27,6 +27,7 @@ The state is kept in memory, so a restart shows ``idle``.
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import threading
 import time
@@ -46,6 +47,9 @@ STALL_SECONDS = 60.0
 WATCH_INTERVAL_SECONDS = 5.0
 #: Seconds the job waits for the adapter to stop after a cancel.
 CANCEL_GRACE_SECONDS = 3.0
+
+#: Bytes read per step when the downloaded file is hashed.
+_HASH_CHUNK = 1024 * 1024
 
 IDLE = "idle"
 RUNNING = "running"
@@ -115,6 +119,7 @@ class Progress:
         self._reason: str | None = None
         self._done = 0
         self._total = request.bytes_total
+        self._file: tuple[str, str] | None = None
         self._last = clock()
 
     def add(self, count: int) -> None:
@@ -129,6 +134,12 @@ class Progress:
             self._done = max(done, 0)
             if total is not None:
                 self._total = total
+            self._last = self._clock()
+
+    def set_file(self, path: str, sha256: str) -> None:
+        """Record the downloaded file and its SHA-256 (Use this model sends both)."""
+        with self._lock:
+            self._file = (path, sha256)
             self._last = self._clock()
 
     def seconds_quiet(self) -> float:
@@ -160,6 +171,8 @@ class Progress:
                 "bytes_total": self._total,
                 "reason": self._reason,
                 "cache_folder": request.cache_folder,
+                "file_path": self._file[0] if self._file and self._state == SUCCEEDED else None,
+                "sha256": self._file[1] if self._file and self._state == SUCCEEDED else None,
             }
 
 
@@ -167,8 +180,25 @@ class Progress:
 Adapter = Callable[[DownloadRequest, Progress, threading.Event], None]
 
 
+def _sha256(path: str, progress: Progress, cancel: threading.Event) -> str:
+    """Return the SHA-256 of *path*. Each chunk is a sign of life, so a big file does not stall.
+
+    Raises:
+        huggingface_models.DownloadCancelled: *cancel* was set while hashing.
+        OSError: The file cannot be read.
+    """
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        while chunk := handle.read(_HASH_CHUNK):
+            if cancel.is_set():
+                raise huggingface_models.DownloadCancelled
+            digest.update(chunk)
+            progress.add(0)
+    return digest.hexdigest()
+
+
 def _hugging_face(request: DownloadRequest, progress: Progress, cancel: threading.Event) -> None:
-    huggingface_models.download_files(
+    first = huggingface_models.download_files(
         request.repo,
         request.revision,
         request.files,
@@ -176,6 +206,7 @@ def _hugging_face(request: DownloadRequest, progress: Progress, cancel: threadin
         cancel=cancel,
         token=request.token or None,
     )
+    progress.set_file(first, _sha256(first, progress, cancel))
 
 
 def _ollama(request: DownloadRequest, progress: Progress, cancel: threading.Event) -> None:
@@ -236,6 +267,8 @@ class ModelDownloadJob:
                 "bytes_total": None,
                 "reason": None,
                 "cache_folder": None,
+                "file_path": None,
+                "sha256": None,
             }
         return self._current.snapshot()
 

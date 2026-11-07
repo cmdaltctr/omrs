@@ -17,6 +17,7 @@ The `omrs` command doubles as an MCP server and a CLI tool. With no arguments it
 | `omrs delete`                | Delete documents by file path, metadata filter, or drop a collection             |
 | `omrs set-profile`           | Bind a built-in profile (`documents` or `codebase`) to a collection              |
 | `omrs benchmark`             | Benchmark embedding throughput without vector-store writes                       |
+| `omrs llamacpp install`      | Download, check and place the pinned llama.cpp build and the missing router models; starts no server |
 | `omrs config init`           | Write a commented starter `omrs.jsonc` in the user config folder                 |
 | `omrs config show`           | Print every setting with its value and source, and the problems in `omrs.jsonc`  |
 | `omrs experiments check`     | Report problems in the experiment folders; writes no file                        |
@@ -351,6 +352,31 @@ Bind user profiles in Knowledge Base > Profile, or through the MCP endpoint of `
 The collection tag stays unchanged. A user profile is bound in the web server only, so a delete and
 a bind cannot cross in two processes. See [User profiles](configuration.md#user-profiles).
 
+### llamacpp install
+
+```bash
+omrs llamacpp install                  # the flavour this machine needs
+omrs llamacpp install --flavour cpu    # Linux x86-64: force the CPU build
+omrs llamacpp install --flavour cuda   # Linux x86-64: force the CUDA 12.8 build
+```
+
+The command downloads the pinned llama.cpp build (b11941), checks the SHA-256 of each archive and places `llama-server` in `$XDG_DATA_HOME/omrs/llamacpp/b11941-<flavour>/`, else `~/.local/share/omrs/llamacpp/b11941-<flavour>/`. It then runs `llama-server --version` and, for the CUDA build, `llama-server --list-devices`. It starts no server and asks no question, so it runs on a headless machine. All output goes to stderr.
+
+When `llamacpp_router_server` is `managed`, the command then downloads each model of the router list (`llamacpp_models`) that has no `file`. It downloads each model at the current revision of its Hugging Face repo, into the Hugging Face cache (`HF_HUB_CACHE`, else `HF_HOME/hub`). It prints the progress, the path and the SHA-256 of each file. Set `HF_TOKEN` in the environment to download from a gated repo. A file that is in the cache already at that revision is not downloaded again. When the mode is `external`, the command downloads no model.
+
+The command writes no setting. `omrs web` records the file path and the SHA-256 in `llamacpp_models` the first time the router needs the model. See [The model list](configuration.md#the-model-list).
+
+Run it again to see the check pass with no download: a build already placed that passes its checks is kept. A blank `llamacpp_server_binary` then resolves to the build placed last. See [Pinned build](configuration.md#pinned-build).
+
+| Flag | Default | Description |
+| --- | --- | --- |
+| `--flavour` | CUDA when an NVIDIA driver is loaded, else CPU | Linux x86-64 build: `cpu` or `cuda`. Apple silicon has one build (`metal`) and refuses the flag. |
+
+| Exit code | When |
+| --- | --- |
+| 0 | The build is placed and passes its checks, and each missing model is downloaded |
+| 1 | A refusal. The message starts with the reason: `not-supported`, `download-failed`, `file-changed`, `binary-check-failed` or `cuda-device-missing`. A model download that fails exits 1 with the model name and `network`, `not-found` or `gated`. A repo with no GGUF file of the listed quantisation also exits 1 |
+
 ### config init
 
 ```bash
@@ -386,6 +412,8 @@ Prints every setting with its value and the source that set it. The command writ
 Each line reads `key = value  (source)`. The source is one of `env` (the process environment), `dotenv` (a `.env` line), `config-file` (`omrs.jsonc`), `key-file` (`secrets/<provider>.key`), `keychain` (a `keychain://` reference that resolved) or `default`. A key field shows `set, ending <last four>` or `not set`, never the key. A key shorter than eight characters shows only `set`.
 
 Below the list, a `Problems in` section names each key in `omrs.jsonc` that was ignored: a file that cannot be read, a value that breaks its rule, an unknown key, or a retired name with its replacement. The section never repeats a value. It also says when a `keychain://` reference found no key.
+
+When `llamacpp_router_server` is `managed`, a section `Problems with the llama.cpp model list` follows. It has one line for each role whose model no list entry can serve: the role, the reason (`model-not-listed` or `role-mismatch`), the rule and the configured model. With `external`, the section does not show.
 
 A `keychain://` reference makes the command read the system keychain. macOS may ask you to allow access. A file with no such reference never opens the keychain.
 

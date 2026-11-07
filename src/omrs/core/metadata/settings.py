@@ -30,7 +30,7 @@ class MetadataSettings(BaseModel):
     keyword_rules: str | None = None
 
     # Chat model used for Ollama-based classification.
-    ollama_classify_model: str = "qwen3:0.6b"
+    ollama_classify_model: str = ""
 
     # Bounded retry count for metadata classification (all backends).
     # Rejected rather than clamped when non-positive: silently rewriting an

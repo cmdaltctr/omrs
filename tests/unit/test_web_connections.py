@@ -161,44 +161,32 @@ def _llamacpp(client: TestClient) -> dict[str, Any]:
     return next(c for c in body["connections"] if c["provider"] == "llamacpp")
 
 
-def test_the_llamacpp_card_has_three_blocks(setup: Any, configure: Any) -> None:
-    """ADR-108 D8: fields and read-only rows carry their card block."""
+def test_the_llamacpp_card_shows_one_router_address_and_the_mode(
+    setup: Any, configure: Any
+) -> None:
+    """One-llamacpp-router D2: one editable address, no card blocks, the mode read-only."""
     client, _ = setup
     configure()
     entry = _llamacpp(client)
     fields = {f["id"]: (f["group"], f["follows"]) for f in entry["fields"]}
-    assert fields == {"chat_url": ("answers", None), "classify_url": ("metadata", "chat_url")}
+    assert fields == {"router_url": (None, None)}
     assert [(r["label"], r["group"]) for r in entry["read_only"]] == [
-        ("Embedding address", "embeddings"),
-        ("Embedding model", "embeddings"),
-        ("Text model (classification)", "metadata"),
+        ("Router mode", None),
+        ("Embedding model", None),
+        ("Text model (classification)", None),
     ]
     others = [c for c in client.get("/v1/connections").json()["connections"] if c is not entry]
     for other in others:
-        if other["provider"] == "llamacpp":
-            continue
         assert {f["group"] for f in other["fields"]} <= {None}
         assert {f["follows"] for f in other["fields"]} <= {None}
         assert {r["group"] for r in other["read_only"]} <= {None}
 
 
-def test_a_following_classification_address_shows_the_chat_address(
-    setup: Any, configure: Any
-) -> None:
+def test_the_router_address_is_the_one_llamacpp_field(setup: Any, configure: Any) -> None:
     client, _ = setup
-    configure(llamacpp_chat_url="http://127.0.0.1:9931/v1")
-    field = next(f for f in _llamacpp(client)["fields"] if f["id"] == "classify_url")
-    assert (field["value"], field["source"], field["set"]) == (
-        "http://127.0.0.1:9931/v1",
-        "default",
-        False,
-    )
-    configure(
-        llamacpp_chat_url="http://127.0.0.1:8081/v1",
-        llamacpp_classify_url="http://127.0.0.1:9931/v1",
-    )
-    field = next(f for f in _llamacpp(client)["fields"] if f["id"] == "classify_url")
-    assert (field["value"], field["set"]) == ("http://127.0.0.1:9931/v1", True)
+    configure(llamacpp_router_url="http://127.0.0.1:9931/v1")
+    field = next(f for f in _llamacpp(client)["fields"] if f["id"] == "router_url")
+    assert (field["value"], field["kind"]) == ("http://127.0.0.1:9931/v1", "url")
 
 
 def test_no_key_value_in_any_response(setup: Any, configure: Any, fake: FakeProvider) -> None:
@@ -317,24 +305,20 @@ def test_a_redirect_is_an_http_error_not_followed(
     assert run_test(client, "ollama").json()["reason"] == "http-302"
 
 
-def test_llamacpp_tests_each_configured_url(setup: Any, configure: Any, fake: FakeProvider) -> None:
+def test_llamacpp_tests_the_router_address(setup: Any, configure: Any, fake: FakeProvider) -> None:
     client, _ = setup
-    configure(llamacpp_embed_url=fake.url + "/v1", llamacpp_chat_url=fake.url + "/chat/v1")
+    configure(llamacpp_router_url=fake.url + "/v1")
     fake.responses["/v1/models"] = (200, 0.0)
-    fake.responses["/chat/v1/models"] = (200, 0.0)
     assert run_test(client, "llamacpp").json()["reachable"] is True
-    assert [path for path, _ in fake.seen] == ["/v1/models", "/chat/v1/models"]
-    fake.responses["/chat/v1/models"] = (503, 0.0)
+    assert [path for path, _ in fake.seen] == ["/v1/models"]
+    fake.responses["/v1/models"] = (503, 0.0)
     failed = run_test(client, "llamacpp").json()
     assert (failed["reachable"], failed["reason"]) == (False, "http-503")
 
 
-def test_llamacpp_with_one_url_down_is_refused(
-    setup: Any, configure: Any, fake: FakeProvider
-) -> None:
+def test_llamacpp_with_the_router_down_is_refused(setup: Any, configure: Any) -> None:
     client, _ = setup
-    configure(llamacpp_embed_url=fake.url + "/v1", llamacpp_chat_url=refused_url() + "/v1")
-    fake.responses["/v1/models"] = (200, 0.0)
+    configure(llamacpp_router_url=refused_url() + "/v1")
     body = run_test(client, "llamacpp").json()
     assert (body["reachable"], body["reason"]) == (False, "refused")
 
@@ -360,7 +344,7 @@ def test_openrouter_sends_the_key_to_the_fixed_base_and_never_returns_it(
     [
         ("openrouter", {}),
         ("ollama", {"ollama_base_url": "   "}),
-        ("llamacpp", {"llamacpp_embed_url": "", "llamacpp_chat_url": " "}),
+        ("llamacpp", {"llamacpp_router_url": " "}),
     ],
 )
 def test_not_configured_sends_nothing(

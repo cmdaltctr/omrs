@@ -1,24 +1,25 @@
-"""The runtime manager of this process and the leases it injects (managed-llamacpp-runtimes D1).
+"""The runtime manager process and the router gates it injects (one-llamacpp-router D1, D6).
 
-``compose`` builds one :class:`RuntimeManager` per process and installs a gate
-resolver (:mod:`omrs.core.runtime_gate`). The llama.cpp Chat, classification
-and embedding clients in ``core/`` ask the resolver for a gate; this module
-answers with an adapted lease of the ``chat`` or ``embeddings`` runtime, or
-``None`` when the role is ``external``. Classification shares the Chat
-runtime only when ``llamacpp_classify_url`` is blank and the managed Chat
-server has a model to load (Chat is on llama.cpp).
+``compose`` builds one :class:`RuntimeManager` per process and installs the gate
+resolver (:mod:`omrs.core.runtime_gate`). Every llama.cpp client in ``core/``
+(embeddings, classification, Chat, judge) asks the resolver for a gate. One
+router serves every model by name: the gate takes the router lease, makes the
+request's model ready and takes the model's request lock when the entry is
+one-slot. The answer is ``None`` while the router is ``external``.
 
-The module also lists the runtimes in force for ``GET /v1/runtimes``: Chat,
-embeddings, one OCR runtime for each engine in the OCR engine list that declares one,
-and one decision runtime for each managed ``llamacpp`` decision model entry.
+The module lists the runtimes in force for ``GET /v1/runtimes``: the router,
+with one row per listed model, and one OCR runtime for each engine in the OCR
+engine list that declares one. OCR runtimes do not change.
 """
 
 from __future__ import annotations
 
+import asyncio
 import os
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterator, Mapping
 from dataclasses import replace
 from pathlib import Path
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, TypeVar
 
 from .compose_runtime_manager import close_runtime_manager, runtime_manager
@@ -26,20 +27,23 @@ from .core import runtime_gate
 from .core.reading_lists import engine_list
 from .core.runtime_gate import GateRefused, Role, RuntimeGate
 from .integrations.llamacpp_runtime import (
+    ROUTER_ID,
     DeclaredFile,
-    RuntimeLease,
+    ModelUnavailable,
+    RouterLease,
     RuntimeManager,
     RuntimeRequestFailed,
     RuntimeSpec,
     RuntimeUnavailable,
-    chat_spec,
-    decision_spec,
-    embeddings_spec,
+    external_router_spec,
     ocr_spec,
+    open_router,
     process,
+    resolve_server_binary,
+    router_spec,
 )
 from .integrations.llamacpp_runtime.lease import reason_text
-from .integrations.llamacpp_runtime.rules import child_environment, loopback_port, model_kind
+from .integrations.llamacpp_runtime.rules import NOT_PROVISIONED, child_environment, loopback_port
 
 if TYPE_CHECKING:
     from .compose_providers import ProviderValues
@@ -69,134 +73,151 @@ def current_settings(values: ProviderValues | None = None) -> Settings:
     return apply_provider_values(settings, values) if values is not None else settings
 
 
-def _chat_on_llamacpp(settings: Any) -> bool:
-    return str(settings.answer.provider).strip() == "llamacpp"
+def _setting(settings: Any, name: str) -> Any:
+    """Return router setting *name*; ``EffectiveSettings`` lacks some, so the process gives them."""
+    value = getattr(settings, name, None)
+    return value if value is not None else getattr(current_settings(), name)
 
 
-def _chat_model(settings: Any) -> str:
-    """The model OMRS's Chat server loads: the Chat model while Chat is llama.cpp (ADR-108)."""
-    return str(settings.answer.model) if _chat_on_llamacpp(settings) else ""
+def _field(entry: Any, name: str) -> Any:
+    """Return field *name* of a settings map entry given as a mapping or an object."""
+    return entry.get(name) if isinstance(entry, Mapping) else getattr(entry, name, None)
 
 
-def _classification_uses_chat_runtime(settings: Any) -> bool:
-    """Whether classification shares the ``chat`` runtime (ADR-108 decisions 2 and 6).
+def managed_decision_models(settings: Any) -> list[str]:
+    """Return the ``model`` of each managed ``llamacpp`` decision entry (the decision role)."""
+    return [
+        str(_field(entry, "model"))
+        for entry in (getattr(settings, "decision_models", None) or {}).values()
+        if _field(entry, "kind") == "llamacpp" and _field(entry, "server") == "managed"
+    ]
 
-    False when classification has its own address. False too while OMRS's managed
-    Chat server has no model to load because Chat is not on llama.cpp (decision 5):
-    classification then goes to the Chat address as an external server.
+
+_ENTRY_FIELDS = ("model", "file", "projector", "sha256", "projector_sha256", "preset")
+
+
+def _entry(entry: Any) -> SimpleNamespace:
+    """Return one ``llamacpp_models`` entry as the object the preset writer reads."""
+    return SimpleNamespace(**{name: _field(entry, name) for name in _ENTRY_FIELDS})
+
+
+def _entries(settings: Any) -> list[SimpleNamespace]:
+    """Return the ``llamacpp_models`` entries in force, in list order."""
+    return [_entry(e) for e in (getattr(settings, "llamacpp_models", None) or {}).values()]
+
+
+# ── The router ───────────────────────────────────────────────────────────
+
+
+def router_runtime(settings: Any) -> RuntimeSpec | str:
+    """Return the router spec (managed or external), or the reason a managed one cannot be built.
+
+    Returns:
+        The spec, or ``not-provisioned`` (no program set and no pinned build
+        installed) or ``not-loopback`` (the router address is not a loopback ``http`` URL).
     """
-    if str(settings.llamacpp_classify_url or "").strip():
-        return False
-    return not (settings.llamacpp_chat_server == "managed" and not _chat_on_llamacpp(settings))
-
-
-def chat_runtime(settings: Any) -> RuntimeSpec | str:
-    """Return the ``chat`` spec, or the reason a managed one cannot be built."""
-    if settings.llamacpp_chat_server != "managed":
-        return RuntimeSpec(
-            id="chat", role="chat", mode="external", binary="", url_base=settings.llamacpp_chat_url
-        )
-    return _managed(
-        lambda kind, port: chat_spec(
-            mode="managed",
-            binary=settings.llamacpp_server_binary,
-            model=_chat_model(settings),
-            port=port,
-            window=int(settings.llamacpp_context_window),
-            kind=kind,
-        ),
-        settings.llamacpp_server_binary,
-        _chat_model(settings),
-        settings.llamacpp_chat_url,
-    )
-
-
-def embeddings_runtime(settings: Any) -> RuntimeSpec | str:
-    """Return the ``embeddings`` spec, or the reason a managed one cannot be built."""
-    if settings.llamacpp_embed_server != "managed":
-        url = settings.llamacpp_embed_url
-        return RuntimeSpec(
-            id="embeddings", role="embeddings", mode="external", binary="", url_base=url
-        )
-    return _managed(
-        lambda kind, port: embeddings_spec(
-            mode="managed",
-            binary=settings.llamacpp_server_binary,
-            model=settings.llamacpp_embed_model,
-            port=port,
-            kind=kind,
-        ),
-        settings.llamacpp_server_binary,
-        settings.llamacpp_embed_model,
-        settings.llamacpp_embed_url,
-    )
-
-
-def _managed(build: Callable[[Any, int], RuntimeSpec], binary: str, model: str, url: str) -> Any:
-    if not binary.strip() or not model.strip():
-        return "not-configured"
-    kind = model_kind(model)
-    if kind is None:
-        return "model-invalid"
+    url = str(_setting(settings, "llamacpp_router_url"))
+    if _setting(settings, "llamacpp_router_server") != "managed":
+        return external_router_spec(url)
+    binary = resolve_server_binary(str(_setting(settings, "llamacpp_server_binary") or ""))
+    if not binary.strip():
+        return NOT_PROVISIONED
     port = loopback_port(url)
     if port is None:
         return "not-loopback"
-    return build(kind, port)
+    return router_spec(
+        binary=binary,
+        root=runtime_manager().root,
+        port=port,
+        models_max=int(_setting(settings, "llamacpp_router_models_max")),
+        memory_margin_mib=int(_setting(settings, "llamacpp_router_memory_margin_mib")),
+    )
 
 
-# ── Gates for the clients in core/ ───────────────────────────────────────
+def router_lease_for(settings: Any) -> RouterLease | str:
+    """Return this process's router lease under *settings*, or the reason it cannot be built.
+
+    Building the lease starts nothing; the first request joins the router.
+    """
+    spec = router_runtime(settings)
+    if isinstance(spec, str):
+        return spec
+    decision = managed_decision_models(settings)
+    return open_router(runtime_manager(), spec, _entries(settings), decision_models=decision)
 
 
-class LeaseGate:
-    """A runtime lease seen through :class:`~omrs.core.runtime_gate.RuntimeGate`."""
+def _refusal(error: Exception) -> GateRefused:
+    if isinstance(error, (ModelUnavailable, RuntimeUnavailable)):
+        return GateRefused(error.reason, error.reason_text)
+    reason = str(getattr(error, "reason", "exited"))
+    return GateRefused(reason, reason_text(reason))
 
-    def __init__(self, lease: RuntimeLease) -> None:
-        self.lease = lease
 
-    def request(self, send: Callable[[str], T]) -> T:
-        """Run ``send(base_url)`` through the lease; a refusal becomes ``GateRefused``."""
+_REFUSALS = (ModelUnavailable, RuntimeUnavailable, RuntimeRequestFailed)
+
+
+class RouterGate:
+    """The router lease seen through :class:`~omrs.core.runtime_gate.RuntimeGate`."""
+
+    def __init__(self, router: RouterLease) -> None:
+        self.router = router
+
+    @staticmethod
+    def _named(model: str | None) -> str:
+        if not model:  # nothing names the model: no entry can serve it
+            raise GateRefused("model-not-listed", reason_text("model-not-listed"))
+        return model
+
+    def request(self, send: Callable[[str], T], model: str | None = None) -> T:
+        """Run ``send(base_url)`` for *model*; a refusal becomes ``GateRefused``."""
+        name = self._named(model)
         try:
-            return self.lease.request(send)
-        except RuntimeUnavailable as exc:
-            raise GateRefused(exc.reason, exc.reason_text) from exc
-        except RuntimeRequestFailed as exc:
-            raise GateRefused(exc.reason, reason_text(exc.reason)) from exc
+            return self.router.request_model(name, send)
+        except _REFUSALS as error:
+            raise _refusal(error) from error
 
-    async def arequest(self, send: Callable[[str], Awaitable[T]]) -> T:
-        """The async form of :meth:`request`."""
+    async def arequest(self, send: Callable[[str], Awaitable[T]], model: str | None = None) -> T:
+        """The async form of :meth:`request`.
+
+        The lock, load and crash-restart work runs in a thread; *send* runs on
+        this event loop, which is free while the thread waits for it.
+        """
+        name = self._named(model)
+        loop = asyncio.get_running_loop()
+
+        def send_on_loop(url: str) -> T:
+            return asyncio.run_coroutine_threadsafe(send(url), loop).result()  # type: ignore[arg-type]
+
         try:
-            return await self.lease.arequest(send)
-        except RuntimeUnavailable as exc:
-            raise GateRefused(exc.reason, exc.reason_text) from exc
-        except RuntimeRequestFailed as exc:
-            raise GateRefused(exc.reason, reason_text(exc.reason)) from exc
+            return await asyncio.to_thread(self.router.request_model, name, send_on_loop)
+        except _REFUSALS as error:
+            raise _refusal(error) from error
 
 
 class RefusedGate:
-    """A managed role whose spec cannot be built: every request is refused at once."""
+    """A managed router whose spec cannot be built: every request is refused at once."""
 
     def __init__(self, reason: str) -> None:
         self.reason = reason
 
-    def request(self, send: Callable[[str], T]) -> T:
+    def request(self, send: Callable[[str], T], model: str | None = None) -> T:
         """Refuse."""
         raise GateRefused(self.reason, reason_text(self.reason))
 
-    async def arequest(self, send: Callable[[str], Awaitable[T]]) -> T:
+    async def arequest(self, send: Callable[[str], Awaitable[T]], model: str | None = None) -> T:
         """Refuse."""
         raise GateRefused(self.reason, reason_text(self.reason))
 
 
 def gate(role: Role, settings: Any) -> RuntimeGate | None:
-    """Return the gate of *role* under *settings*, or ``None`` for an external role."""
-    if role == "classification" and not _classification_uses_chat_runtime(settings):
-        return None  # its own address, or Chat is not on llama.cpp: not OMRS's Chat server
-    spec = embeddings_runtime(settings) if role == "embeddings" else chat_runtime(settings)
-    if isinstance(spec, str):
-        return RefusedGate(spec)
-    if spec.mode == "external":
-        return None
-    return LeaseGate(runtime_manager().lease(spec))
+    """Return the gate of *role* under *settings*, or ``None`` for an external router.
+
+    Every role uses the one router; the request's model name picks the model.
+    """
+    router = router_lease_for(settings)
+    if isinstance(router, str):
+        return RefusedGate(router)
+    return None if router.spec.mode == "external" else RouterGate(router)
 
 
 def install_gates(provider_source: Callable[[], ProviderValues] | None) -> None:
@@ -204,7 +225,7 @@ def install_gates(provider_source: Callable[[], ProviderValues] | None) -> None:
 
     The OCR routes take each settings' document router judge from the factory
     (change document-reading-routers, design D12); a managed decision model
-    asks through its ``decision-<name>`` runtime lease.
+    asks through the router (one-llamacpp-router, D10).
 
     Args:
         provider_source: Returns the saved web values (``omrs web``); ``None``
@@ -220,6 +241,33 @@ def install_gates(provider_source: Callable[[], ProviderValues] | None) -> None:
     from .integrations.ocr_worker.routes import install_judge_factory
 
     install_judge_factory(page_judge_for)
+
+
+def decision_router_for(settings: Any, entry: Any) -> RouterLease | str | None:
+    """Return the router lease a decision *entry* asks through, a reason, or ``None``.
+
+    ``None`` for an entry OMRS does not run (not ``llamacpp``, or not ``managed``).
+    """
+    if _field(entry, "kind") != "llamacpp" or _field(entry, "server") != "managed":
+        return None
+    return router_lease_for(settings)
+
+
+def decision_build_line(router: RouterLease | str | None) -> str | None:
+    """Return the llama.cpp build line of the router a decision entry uses, ``None`` for none."""
+    if router is None:
+        return None
+    if isinstance(router, str):
+        return reason_text(router)
+    if router.spec.mode != "managed":
+        return None
+    floor = router.spec.min_build
+    found = process.read_build(router.spec.binary, child_environment(os.environ, "file"))
+    if found is None:
+        return f"llama.cpp build not found; it needs b{floor} or later."
+    if floor is not None and found < floor:
+        return f"llama.cpp build b{found} is below the floor b{floor}."
+    return f"llama.cpp build b{found}."
 
 
 # ── The runtimes list (GET /v1/runtimes) ─────────────────────────────────
@@ -261,109 +309,93 @@ def _ocr_runtimes(settings: Any) -> dict[str, tuple[RuntimeSpec, list[str]]]:
     return found
 
 
-def _entry_field(entry: Any, name: str) -> Any:
-    """Return field *name* of a decision model entry given as a mapping or an object."""
-    return entry.get(name) if isinstance(entry, dict) else getattr(entry, name, None)
+#: The setting that gives each router role (``config.llamacpp_roles``).
+_ROLE_SETTINGS = {
+    "embeddings": "llamacpp_embed_model",
+    "classification": "llamacpp_chat_model",
+    "chat": "answer.model",
+    "judge": "answer.verify_model",
+    "decision": "decision_models",
+}
 
 
-def decision_runtime(binary: str, name: str, entry: Any) -> RuntimeSpec | str | None:
-    """Return the runtime of decision model entry *name* (change document-reading-routers).
+def _roles(settings: Any) -> Any:
+    from .compose_answer import llamacpp_roles
 
-    Args:
-        binary: The ``llama-server`` program (``llamacpp_server_binary``).
-        name: The entry name.
-        entry: The decision model entry.
-
-    Returns:
-        ``None`` for an entry OMRS does not start (not ``llamacpp``, or not
-        ``managed``), the spec, or ``not-configured`` (no program, a missing
-        file or SHA-256, or an image entry without a projector file) or
-        ``not-loopback`` (the entry address is not a loopback ``http`` address).
-    """
-    from .core.providers.decision.checks import BUILD_FLOOR
-
-    if _entry_field(entry, "kind") != "llamacpp" or _entry_field(entry, "server") != "managed":
-        return None
-    pairs = [("-m", "model_file", "model_sha256")]
-    if _entry_field(entry, "images"):
-        pairs.append(("--mmproj", "projector_file", "projector_sha256"))
-    files = []
-    for flag, path_field, sha_field in pairs:
-        path, sha256 = _entry_field(entry, path_field), _entry_field(entry, sha_field)
-        if not path or not sha256:
-            return "not-configured"
-        files.append(DeclaredFile(flag, str(Path(str(path)).expanduser()), str(sha256)))
-    if not binary.strip():
-        return "not-configured"
-    port = loopback_port(str(_entry_field(entry, "address") or ""))
-    if port is None:
-        return "not-loopback"
-    return decision_spec(
-        name=name, binary=binary.strip(), port=port, files=files, min_build=BUILD_FLOOR
-    )
-
-
-def decision_runtime_for(settings: Any, model: str, entry: Any) -> RuntimeSpec | str | None:
-    """Return :func:`decision_runtime` of *entry*, with the program from *settings*.
-
-    ``EffectiveSettings`` has no program field, so the process settings give it.
-    An entry OMRS does not start reads no settings.
-    """
-    if _entry_field(entry, "kind") != "llamacpp" or _entry_field(entry, "server") != "managed":
-        return None
-    binary = getattr(settings, "llamacpp_server_binary", None)
-    if binary is None:
-        binary = current_settings().llamacpp_server_binary
-    return decision_runtime(str(binary or ""), model, entry)
-
-
-def decision_build_line(runtime: RuntimeSpec | str | None) -> str | None:
-    """Return the llama.cpp build line of a decision runtime, ``None`` for no runtime."""
-    if runtime is None:
-        return None
-    if isinstance(runtime, str):
-        return reason_text(runtime)
-    floor = runtime.min_build
-    found = process.read_build(runtime.binary, child_environment(os.environ, "file"))
-    if found is None:
-        return f"llama.cpp build not found; it needs b{floor} or later."
-    if floor is not None and found < floor:
-        return f"llama.cpp build b{found} is below the floor b{floor}."
-    return f"llama.cpp build b{found}."
-
-
-def _decision_runtimes(settings: Any) -> list[tuple[RuntimeSpec, list[str]]]:
-    """Return the runtime of each managed ``llamacpp`` decision model entry."""
-    rows = []
-    binary = str(getattr(settings, "llamacpp_server_binary", "") or "")
-    for name, entry in (getattr(settings, "decision_models", None) or {}).items():
-        spec = decision_runtime(binary, name, entry)
-        if spec is not None:
-            rows.append((_listed(f"decision-{name}", spec, "decision"), ["decision_models"]))
-    return rows
+    return llamacpp_roles(settings)
 
 
 def runtime_specs(settings: Any) -> list[tuple[RuntimeSpec, list[str]]]:
-    """Return each runtime in force with the settings that use it."""
-    chat = chat_runtime(settings)
-    embed = embeddings_runtime(settings)
-    chat_users = ["llamacpp_chat_url"]
-    if _classification_uses_chat_runtime(settings):
-        chat_users.append("llamacpp_classify_url")
-    rows = [
-        (_listed("chat", chat), chat_users),
-        (_listed("embeddings", embed), ["llamacpp_embed_url"]),
-    ]
-    rows += list(_ocr_runtimes(settings).values())
-    rows += _decision_runtimes(settings)
-    return rows
+    """Return each runtime in force with the settings that use it: the router, then OCR."""
+    spec = router_runtime(settings)
+    if isinstance(spec, str):  # a managed router that cannot be built keeps its id
+        spec = RuntimeSpec(id=ROUTER_ID, role="router", mode="managed", binary="")
+    held = {role for roles in _roles(settings).roles.values() for role in roles}
+    users = sorted(_ROLE_SETTINGS[role] for role in held)
+    return [(spec, users), *_ocr_runtimes(settings).values()]
 
 
-def _listed(runtime_id: str, spec: RuntimeSpec | str, role: str | None = None) -> RuntimeSpec:
-    """A spec for the status read; a managed role that cannot be built keeps its id."""
-    if isinstance(spec, RuntimeSpec):
-        return spec
-    return RuntimeSpec(id=runtime_id, role=role or runtime_id, mode="managed", binary="")  # type: ignore[arg-type]
+def model_memory_bytes(status: Mapping[str, Any]) -> int | None:
+    """Return the router's own memory figure of one model, ``None`` when it reports none.
+
+    The figure is the sum of ``model``, ``context`` and ``compute`` over every
+    device of the ``memory.effective`` object (spike 1.2).
+    """
+    memory = status.get("memory")
+    effective = memory.get("effective") if isinstance(memory, Mapping) else None
+    if not isinstance(effective, Mapping):
+        return None
+    total = 0
+    for device in effective.get("devices") or []:
+        for key in ("model", "context", "compute"):
+            value = device.get(key) if isinstance(device, Mapping) else None
+            total += value if isinstance(value, int) else 0
+    return total
+
+
+def _live_models(spec: RuntimeSpec, item: Mapping[str, Any]) -> dict[str, dict[str, Any]]:
+    """Return the router's own model table while it runs, else ``{}`` (a read only)."""
+    from .integrations.llamacpp_runtime import readiness
+
+    if item.get("state") != "running":
+        return {}
+    if spec.mode == "managed":
+        return readiness.router_models(f"http://{item['address']}") if item.get("address") else {}
+    return readiness.router_models(spec.url_base.rstrip("/").removesuffix("/v1"))
+
+
+def _model_rows(
+    settings: Any, spec: RuntimeSpec, item: Mapping[str, Any]
+) -> Iterator[dict[str, Any]]:
+    """Yield one ``models`` row per listed entry. Starts nothing and writes nothing.
+
+    A managed entry that cannot serve shows its own state (``not-downloaded``,
+    or ``failed`` with a fixed reason). Otherwise the row shows the router's
+    state of the model while it runs, else ``unloaded``.
+    """
+    from .integrations.llamacpp_runtime import readiness
+    from .integrations.llamacpp_runtime.hashes import HashCache
+    from .integrations.llamacpp_runtime.preset_writer import plan_entry
+    from .integrations.llamacpp_runtime.router_spec import HASHES_FILE, router_dir
+
+    report = _roles(settings)
+    hashes = HashCache(router_dir(runtime_manager().root) / HASHES_FILE, save=False)
+    decision = set(managed_decision_models(settings))
+    live = _live_models(spec, item)
+    for name, entry in (getattr(settings, "llamacpp_models", None) or {}).items():
+        model = str(_field(entry, "model"))
+        row: dict[str, Any] = {"model": model, "roles": list(report.roles.get(name, ()))}
+        row.update(state="unloaded", reason=None, memory_bytes=None)
+        if spec.mode == "managed":
+            outcome = plan_entry(_entry(entry), decision=model in decision, hashes=hashes)
+            if outcome.state != "listed":
+                row.update(state=outcome.state, reason=outcome.reason)
+                yield row
+                continue
+        if model in live:
+            row["state"] = readiness.status_word(live[model])
+            row["memory_bytes"] = model_memory_bytes(live[model])
+        yield row
 
 
 def list_runtimes(
@@ -375,10 +407,17 @@ def list_runtimes(
         values: The saved web values, applied over the resolved settings.
         manager: The runtime manager to read with; this process's by default.
     """
-    rows = runtime_specs(current_settings(values))
+    settings = current_settings(values)
+    rows = runtime_specs(settings)
     used_by = {spec.id: users for spec, users in rows}
     reader = manager if manager is not None else runtime_manager()
-    return reader.status([spec for spec, _ in rows], used_by)
+    items = reader.status([spec for spec, _ in rows], used_by)
+    for (spec, _), item in zip(rows, items, strict=True):
+        item["models"] = list(_model_rows(settings, spec, item)) if spec.id == ROUTER_ID else []
+    refusal = router_runtime(settings)
+    if isinstance(refusal, str) and items[0]["state"] == "stopped":
+        items[0].update(state="failed", reason=refusal, reason_text=reason_text(refusal))
+    return items
 
 
 def find_runtime(runtime_id: str, values: ProviderValues | None = None) -> RuntimeSpec | None:

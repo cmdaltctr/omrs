@@ -35,6 +35,7 @@ from . import provenance  # noqa: E402
 
 provenance.load_project_dotenv()  # the working directory's .env, as env_file reads
 
+from .llamacpp_models import CLASSIFY_MODEL, EMBED_MODEL  # noqa: E402
 from .ocr_routes import OcrRouteSettingsMixin  # noqa: E402
 from .provider_sources import (  # noqa: E402
     ProviderSourceMixin,
@@ -137,10 +138,8 @@ class Settings(
     cloud_backend: str = "openrouter"
 
     # ── Provider connection ───────────────────────────────────────
-    llamacpp_embed_url: str = "http://localhost:8080/v1"
-    llamacpp_embed_model: str = ""
-    llamacpp_chat_url: str = "http://localhost:8081/v1"
-    llamacpp_chat_model: str = ""
+    llamacpp_embed_model: str = EMBED_MODEL
+    llamacpp_chat_model: str = CLASSIFY_MODEL
     openrouter_api_key: str = ""
     openrouter_embed_model: str = ""
     openrouter_llm_model: str = ""

@@ -263,21 +263,23 @@ Confirm the ordinary selector collects no slow quality case with:
 uv run pytest tests/quality -m "not slow" --collect-only -q
 ```
 
-Tier 2 requires a running Ollama service with the exact
-`qwen3-embedding:0.6b` tag already pulled:
+Tier 2 requires a running llama.cpp server that serves
+`Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0`. Start it as the `retrieval-quality-tier2`
+job in `.github/workflows/ci.yml` does (see `docs/guides/testing.md` for the
+local command), then run:
 
 ```bash
-ollama pull qwen3-embedding:0.6b
-uv run pytest tests/quality/test_retrieval_quality_tier2.py -m slow --tb=short -q -s
+TIER2_LLAMACPP_URL=http://127.0.0.1:8080 \
+  uv run pytest tests/quality/test_retrieval_quality_tier2.py -m slow --tb=short -q -s
 ```
 
 For baseline work, run the Tier 2 command at least three times and preserve each
 printed `TIER2_MEASUREMENT` record. Use a second architecture when available.
-The test fails, rather than skips, when Ollama is absent, the model tag or
-recorded digest differs, a fixture identity differs, or the baseline is invalid
-or still pending. The Ollama version, OS, and architecture are recorded as
-measurement evidence; the nightly job runs a different pinned Ollama build on a
-different platform, and the floor margin absorbs that ranking variation.
+The test fails, rather than skips, when the server is absent, the model tag or
+model size differs, a fixture identity differs, or the baseline is invalid or
+still pending. The llama.cpp build, OS, and architecture are recorded as
+measurement evidence; the nightly job runs the pinned CPU build on a different
+platform, and the floor margin absorbs that ranking variation.
 
 This gate detects regressions in dense score conversion, reciprocal rank
 fusion, threshold handling, and final ranking over the small fixed corpus. It

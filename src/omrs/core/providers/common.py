@@ -24,7 +24,7 @@ def get_embed_endpoint(settings: Settings) -> tuple[str, str, str]:
     if provider == "ollama":
         return (settings.ollama_base_url, settings.embed_model, "")
     if provider == "llamacpp":
-        return (settings.llamacpp_embed_url, settings.llamacpp_embed_model, "no-key")
+        return (settings.llamacpp_router_url, settings.llamacpp_embed_model, "no-key")
     if provider == "openrouter":
         return (
             "https://openrouter.ai/api/v1",

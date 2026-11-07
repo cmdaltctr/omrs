@@ -142,13 +142,18 @@ FAMILIES: dict[str, frozenset[str]] = {
     "chat_settings": frozenset({"getChatSettings", "setChatSettings", "testChatModel"}),
     "judge_settings": frozenset({"getJudgeSettings", "setJudgeSettings"}),
     "reasoning_usage": frozenset({"getReasoningLevels", "getUsageCredit"}),
-    "llamacpp_server": frozenset(
+    "llamacpp_router": frozenset(
         {
-            "getLlamacppServer",
-            "saveLlamacppServer",
-            "startLlamacppServer",
-            "stopLlamacppServer",
-            "restartLlamacppServer",
+            "getLlamacppRouter",
+            "saveLlamacppRouter",
+            "saveLlamacppRouterModel",
+            "deleteLlamacppRouterModel",
+            "startLlamacppRouter",
+            "stopLlamacppRouter",
+            "restartLlamacppRouter",
+            "installLlamacppBuild",
+            "getLlamacppBuild",
+            "getLlamacppRouterDownloads",
         }
     ),
     "runtimes": frozenset({"listRuntimes", "stopRuntime"}),

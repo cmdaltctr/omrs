@@ -20,8 +20,8 @@ Source file (PDF, DOCX, TXT, ...)
       |  chunk_overlap = 100 chars
       |
       v
-[3] Embed each chunk --> Ollama embedding model (EMBED_MODEL)
-      |                     Produces a fixed-dimension vector (768, 1024, etc.)
+[3] Embed each chunk --> embedding model (llamacpp_embed_model on the router)
+      |                     Produces a fixed-dimension vector (2,560 by default)
       |
       v
 [4] Store in the selected vector store
@@ -882,52 +882,53 @@ extension is admitted.
 
 ## Embedding models
 
-Set `EMBED_MODEL` in `.env` to any Ollama embedding model:
+The default embedding model is `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0`. It makes 2,560-dimension vectors and runs on the local llama.cpp router. In `omrs web`, OMRS downloads it the first time the router needs it. `omrs llamacpp install` downloads it too. `llamacpp_embed_model` in `omrs.jsonc` names it, and the same name must be an entry in `llamacpp_models`. See [Local llama.cpp router](configuration.md#local-llamacpp-router).
+
+To use another GGUF model, add an entry for it to `llamacpp_models`, set `llamacpp_embed_model` to its `model` value, and ingest into a fresh collection. To use OpenRouter, set `embed_provider` to `cloud` and `openrouter_embed_model` to a cloud embedding model, for example `text-embedding-3-small`. See [Providers](providers.md) for setup.
+
+Each model makes vectors of its own size. The selected vector store locks the vector dimension when it creates a collection, so a new model needs a fresh collection. Run `omrs ingest /path/to/docs/ --collection <new name>`.
+
+### Ollama embedding models (opt-in)
+
+Ollama is an opt-in local backend. Set `local_backend` to `ollama` and `embed_model` to an Ollama embedding model in `omrs.jsonc`:
 
 | Model                    | Params | Dims  | Context | MTEB | Pull command                       | Notes                                                                    |
 | ------------------------ | ------ | ----- | ------- | ---- | ---------------------------------- | ------------------------------------------------------------------------ |
-| **qwen3-embedding:0.6b** | ~600M  | 1,024 | 32,768  | —    | `ollama pull qwen3-embedding:0.6b` | **Default** — 100% Hit@1 in experiments, practical ingest times          |
+| qwen3-embedding:0.6b     | ~600M  | 1,024 | 32,768  | n/a  | `ollama pull qwen3-embedding:0.6b` | 100% Hit@1 in experiments, practical ingest times                        |
 | nomic-embed-text         | 137M   | 768   | 8,192   | 62.4 | `ollama pull nomic-embed-text`     | Fastest query latency (~36ms), but lower retrieval quality (94.1% Hit@1) |
 | mxbai-embed-large        | 334M   | 1,024 | 512     | 64.7 | `ollama pull mxbai-embed-large`    | Highest MTEB score for short chunks                                      |
 | all-minilm               | 23M    | 384   | 256     | ~58  | `ollama pull all-minilm`           | Blazing fast, tiny footprint                                             |
 
-See [ADR-009](../adr/009-switch-to-qwen3-embedding-0-6b.md) for the full evidence behind the default model choice.
+See [ADR-009](../adr/009-switch-to-qwen3-embedding-0-6b.md) for the evidence behind `qwen3-embedding:0.6b` on Ollama.
 
-> **llama.cpp provider:** When `EMBED_PROVIDER=local` and `LOCAL_BACKEND=llamacpp`, set `LLAMACPP_EMBED_MODEL` to the GGUF filename instead of `EMBED_MODEL`. The same models are available in GGUF format from HuggingFace. When `EMBED_PROVIDER=cloud` and `CLOUD_BACKEND=openrouter`, set `OPENROUTER_EMBED_MODEL` to a cloud embedding model (e.g., `text-embedding-3-small`). See [Providers](providers.md) for setup.
+#### How long will ingestion take?
 
-### How long will ingestion take?
-
-Practical timings on Apple Silicon (M-series) with `qwen3-embedding:0.6b`, default settings (`INGESTION__EMBED_CONCURRENCY=2`, `INGESTION__EMBED_BATCH_SIZE=100`, `CHUNKING__CHUNK_SIZE=512`):
+Practical timings on Apple Silicon (M-series) with Ollama and `qwen3-embedding:0.6b`, default settings (`INGESTION__EMBED_CONCURRENCY=2`, `INGESTION__EMBED_BATCH_SIZE=100`, `CHUNKING__CHUNK_SIZE=512`). The default llama.cpp model is larger, so expect longer times. Run `uv run omrs benchmark` to measure your own hardware and model.
 
 | Scenario                                     | Time        |
 | -------------------------------------------- | ----------- |
-| 1 PDF (~117 chunks)                          | ~14 seconds |
-| 5 PDFs (~585 chunks)                         | ~70 seconds |
-| 20 PDFs (~2,340 chunks)                      | ~5 minutes  |
-| Full Zotero library (57 PDFs, ~6,600 chunks) | ~13 minutes |
+| 1 PDF (~117 chunks)                          |  14 seconds |
+| 5 PDFs (~585 chunks)                         |  70 seconds |
+| 20 PDFs (~2,340 chunks)                      |  5 minutes  |
+| Full Zotero library (57 PDFs, ~6,600 chunks) |  13 minutes |
 
-For comparison, the larger `qwen3-embedding:8b` model (4,096-dim vectors) takes ~3 hours for the same Zotero library — the 0.6b model is **13× faster** with identical retrieval quality in our tests.
+For comparison, the larger `qwen3-embedding:8b` model (4,096-dim vectors) takes ~3 hours for the same Zotero library. The 0.6b model is **13× faster** with identical retrieval quality in our tests.
 
 > **Apple Silicon note:** Ollama serialises `/api/embed` requests internally on Apple Silicon, so `INGESTION__EMBED_CONCURRENCY > 2` yields diminishing returns. Setting it to 2 overlaps network round-trips with embedding computation; beyond that, requests queue up in Ollama's internal pipeline.
 
-File reading is sequential. Tune throughput with `INGESTION__EMBED_BATCH_SIZE` and `INGESTION__EMBED_CONCURRENCY` rather than file-reader worker settings.
-
-Run `uv run omrs benchmark` to measure throughput on your own hardware.
-
-### Switching models
+#### Switching Ollama models
 
 ```bash
 # 1. Pull the new model
 ollama pull mxbai-embed-large
 
-# 2. Update .env
-EMBED_MODEL=mxbai-embed-large
+# 2. Update omrs.jsonc: "embed_model": "mxbai-embed-large"
 
 # 3. Re-index your documents into a fresh collection
-omrs ingest /path/to/docs/
+omrs ingest /path/to/docs/ --collection <new name>
 ```
 
-> **Why re-index?** The selected vector store locks the vector dimension at collection creation time. Each model produces a different dimension (nomic=768, mxbai=1024, minilm=384). Switching models requires a fresh collection.
+File reading is sequential. Tune throughput with `INGESTION__EMBED_BATCH_SIZE` and `INGESTION__EMBED_CONCURRENCY` rather than file-reader worker settings.
 
 ## Chunk size guide
 
@@ -941,7 +942,8 @@ non-Markdown sources. The embedding model has a **context length** in **tokens**
 
 | Model                | Context (tokens) | Max safe chunk-size | Default 512 safe? |
 | -------------------- | ---------------- | ------------------- | ----------------- |
-| qwen3-embedding:0.6b | 32,768           | ~130,000 chars      | Yes               |
+| Qwen/Qwen3-Embedding-4B-GGUF:Q8_0 | 8,192 | ~32,000 chars | Yes |
+| qwen3-embedding:0.6b (Ollama) | 32,768 | ~130,000 chars | Yes |
 | nomic-embed-text     | 8,192            | ~32,000 chars       | Yes               |
 | mxbai-embed-large    | 512              | ~1,500 chars        | Yes               |
 | all-minilm           | 256              | ~1,000 chars        | Yes               |
@@ -1005,9 +1007,9 @@ Progress bars appear automatically in TTY terminals (Rich). In non-TTY contexts 
 
 | Stage                              | Model type                                  | What it does                 | Speed impact            |
 | ---------------------------------- | ------------------------------------------- | ---------------------------- | ----------------------- |
-| Metadata extraction (local mode)   | Chat/LLM (e.g. qwen3:0.6b)                  | Classifies document category | ~2s per file            |
+| Metadata extraction (local mode)   | Classification model (default `Qwen/Qwen3-4B-GGUF:Q8_0`) | Classifies document category | ~2s per file            |
 | Metadata extraction (keyword mode) | None (regex)                                | Pattern matching             | Instant                 |
-| Embedding                          | Embedding model (e.g. qwen3-embedding:0.6b) | Converts text to vectors     | ~50–500ms per chunk     |
+| Embedding                          | Embedding model (default `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0`) | Converts text to vectors     | ~50–500ms per chunk     |
 | Search (rerank)                    | Cross-encoder (ms-marco-MiniLM-L-6-v2)      | Re-scores top results        | ~10–50ms per query pair |
 
-The embedding model and chat/classification model are **separate** — each pulled independently via Ollama.
+The embedding model and the classification model are **separate** entries in the router list (`llamacpp_models`). In `omrs web`, OMRS downloads each file the first time the router needs it. `omrs llamacpp install` downloads them too.

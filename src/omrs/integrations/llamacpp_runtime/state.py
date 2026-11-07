@@ -45,6 +45,8 @@ class ServerRecord:
         "generation",
         "reason",
         "reason_text",
+        "models",
+        "argv",
     )
 
     def __init__(
@@ -60,6 +62,8 @@ class ServerRecord:
         generation: int = 1,
         reason: str | None = None,
         reason_text: str | None = None,
+        models: dict[str, str] | None = None,
+        argv: list[str] | None = None,
     ) -> None:
         self.pid = pid
         self.port = port
@@ -71,6 +75,10 @@ class ServerRecord:
         self.generation = generation
         self.reason = reason
         self.reason_text = reason_text
+        #: Router only: ``{model: digest of its models.ini section}`` (design D8).
+        self.models = dict(models or {})
+        #: Router only: the argument list the running process started with.
+        self.argv = list(argv or [])
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-safe dict of the record."""
@@ -85,6 +93,8 @@ class ServerRecord:
             "generation": self.generation,
             "reason": self.reason,
             "reason_text": self.reason_text,
+            "models": dict(self.models),
+            "argv": list(self.argv),
         }
 
     @classmethod
@@ -101,6 +111,8 @@ class ServerRecord:
             generation=int(data.get("generation", 1)),
             reason=data.get("reason"),
             reason_text=data.get("reason_text"),
+            models={str(k): str(v) for k, v in dict(data.get("models") or {}).items()},
+            argv=[str(a) for a in data.get("argv") or []],
         )
 
     def __eq__(self, other: object) -> bool:

@@ -46,6 +46,8 @@ def test_a_sibling_settings_read_accepts_a_discovered_backend(
 ) -> None:
     backend_distribution(fake_parts)
     monkeypatch.setenv("OCR_LOCAL_BACKENDS", "fake-ocr,pp-ocrv6-small")
+    # The shipped Chat provider is llamacpp with no model, so an enabled answer build refuses.
+    monkeypatch.setenv("ANSWER__ENABLED", "false")
     monkeypatch.setattr(config, "_settings", None)
 
     read()

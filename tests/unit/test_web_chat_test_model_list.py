@@ -3,8 +3,9 @@
 A server you run (the Llama app) answers an unknown name with an error, and a
 single-model server answers any name with the model it loaded. So with the
 choice ``external`` the test reads ``/models`` first and refuses a name the
-server does not list. With ``managed``, OMRS's server loads the Chat model by
-rule, so the test skips the list. An in-process fake server records each path.
+server does not list. With ``managed``, OMRS's router checks the name against its
+model list (one-llamacpp-router D6), so the test skips the server's list and refuses an
+unlisted name before any contact. An in-process fake server records each path.
 """
 
 from __future__ import annotations
@@ -22,6 +23,8 @@ pytest.importorskip("fastapi")
 from tests.unit import test_web_chat_settings as chat  # noqa: E402
 
 LISTED = "Qwen/Qwen3-0.6B-GGUF:Q8_0"
+#: The shipped router list holds this text model.
+ROUTER_TEXT = "Qwen/Qwen3-4B-GGUF:Q8_0"
 configure = chat.configure
 setup = chat.setup
 
@@ -97,7 +100,7 @@ def run(client: Any, model: str) -> dict[str, Any]:
 def test_a_name_the_server_does_not_list_is_refused_without_a_prompt(
     setup: Any, configure: Any, fake: FakeLlamacpp
 ) -> None:
-    configure(llamacpp_chat_url=fake.url, llamacpp_chat_server="external")
+    configure(llamacpp_router_url=fake.url, llamacpp_router_server="external")
     body = run(setup, "qwen3:4b")
     assert (body["ok"], body["reason"]) == (False, "model-not-listed")
     assert fake.paths == ["/v1/models"]
@@ -105,7 +108,7 @@ def test_a_name_the_server_does_not_list_is_refused_without_a_prompt(
 
 
 def test_a_listed_name_gets_the_prompt(setup: Any, configure: Any, fake: FakeLlamacpp) -> None:
-    configure(llamacpp_chat_url=fake.url, llamacpp_chat_server="external")
+    configure(llamacpp_router_url=fake.url, llamacpp_router_server="external")
     body = run(setup, LISTED)
     assert (body["ok"], body["reason"]) == (True, None)
     assert fake.paths[0] == "/v1/models"
@@ -113,8 +116,17 @@ def test_a_listed_name_gets_the_prompt(setup: Any, configure: Any, fake: FakeLla
 
 
 def test_managed_skips_the_list(setup: Any, configure: Any, fake: FakeLlamacpp) -> None:
-    configure(llamacpp_chat_url=fake.url, llamacpp_chat_server="managed")
-    body = run(setup, "Qwen/Qwen3-4B-GGUF:Q4_K_M")
+    configure(llamacpp_router_url=fake.url, llamacpp_router_server="managed")
+    body = run(setup, ROUTER_TEXT)
     assert (body["ok"], body["reason"]) == (True, None)
     assert "/v1/models" not in fake.paths
     assert len(fake.completions()) == 1
+
+
+def test_managed_refuses_an_unlisted_name_before_any_contact(
+    setup: Any, configure: Any, fake: FakeLlamacpp
+) -> None:
+    configure(llamacpp_router_url=fake.url, llamacpp_router_server="managed")
+    body = run(setup, "Qwen/Qwen3-4B-GGUF:Q4_K_M")
+    assert (body["ok"], body["reason"]) == (False, "model-not-listed")
+    assert fake.paths == []

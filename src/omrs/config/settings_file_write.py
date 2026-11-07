@@ -81,7 +81,6 @@ READ_ONLY_KEYS: Mapping[str, str] = {
     "embed_model": _EMBEDDING,
     "local_backend": _EMBEDDING,
     "cloud_backend": _EMBEDDING,
-    "llamacpp_embed_url": _EMBEDDING,
     "llamacpp_embed_model": _EMBEDDING,
     "openrouter_embed_model": _EMBEDDING,
     "embedding.": _EMBEDDING,
@@ -92,13 +91,11 @@ READ_ONLY_KEYS: Mapping[str, str] = {
     "collection_name": _STORAGE,
     "ingestion.ingest_extensions": EDIT_BY_HAND,
     "metadata.keyword_rules": EDIT_BY_HAND,
-    "llamacpp_chat_server": "Set this on the llama.cpp card.",
-    "llamacpp_embed_server": RUNTIME_MODE,
     "ocr_runtime_url": RUNTIME_MODE,
 }
 #: Read-only on the Settings page, but written by a provider card route through
 #: :func:`write_settings`, which checks its own scope rule (ADR-108 D11).
-CARD_ONLY_KEYS: tuple[str, ...] = ("llamacpp_chat_server",)
+CARD_ONLY_KEYS: tuple[str, ...] = ()
 
 
 def read_only_reason(key: str) -> str | None:

@@ -23,6 +23,7 @@ from .core.settings import (
     PROVIDER_ADDRESS_FIELDS,
     PROVIDER_INT_FIELDS,
     PROVIDER_SECRET_FIELDS,
+    ROUTER_LIVE_FIELDS,
 )
 
 if TYPE_CHECKING:
@@ -32,7 +33,12 @@ if TYPE_CHECKING:
     from .core.settings import EffectiveSettings
 
 #: Server-default settings a provider update may change.
-_EDITABLE_TOP = (*PROVIDER_ADDRESS_FIELDS, *PROVIDER_SECRET_FIELDS, *PROVIDER_INT_FIELDS)
+_EDITABLE_TOP = (
+    *PROVIDER_ADDRESS_FIELDS,
+    *PROVIDER_SECRET_FIELDS,
+    *PROVIDER_INT_FIELDS,
+    *ROUTER_LIVE_FIELDS,
+)
 _EDITABLE_ANSWER = (
     "provider",
     "model",

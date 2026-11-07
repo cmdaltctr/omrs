@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ..provider_values import classification_url
+from ..llamacpp_router import RouterRefused, check_listed
 from ..runtime_gate import NO_RETRY_HEADER, AsyncGatedTransport, gate_for
 from ..settings import resolve_effective_settings
 from ._common import (
@@ -59,6 +59,14 @@ async def _extract_llamacpp_chat_async(
     fallback = {"category": "uncategorised", "keywords": [], "summary": ""}
 
     try:
+        check_listed(resolved, "classification", resolved.llamacpp_chat_model)
+    except RouterRefused as refused:
+        # The managed router cannot serve this model: nothing is sent.
+        logger.warning("llama.cpp classification refused (%s) - falling back", refused.reason)
+        _signal_degraded()
+        return fallback
+
+    try:
         prompt = _build_ollama_prompt(text, resolved, store=store)
     except Exception as exc:
         logger.warning(
@@ -84,12 +92,12 @@ async def _extract_llamacpp_chat_async(
         # remains the fallback for servers that ignore the field.
         "response_format": {"type": "json_object"},
     }
-    url = f"{classification_url(resolved)}/chat/completions"
+    url = f"{resolved.llamacpp_router_url}/chat/completions"
 
     max_attempts = _get_classify_max_attempts(resolved)
     timeout_s = _resolve_classify_timeout(resolved, "llamacpp")
     last_error: Exception | None = None
-    # OMRS's own Chat server, when managed and classification has no address of its own.
+    # OMRS's own router, when managed: each request joins it first.
     gate = gate_for("classification")
 
     for attempt in range(max_attempts):

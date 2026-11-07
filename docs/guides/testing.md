@@ -76,7 +76,7 @@ All jobs live in `.github/workflows/ci.yml`. Each job checks something that no o
 |-----|---------------------------|--------------|
 | `test (ubuntu-latest)`, `test (macos-latest)` | The fast suite on the base install with the `web` extra, the clean-base tripwire, the torch-free install, import-linter, the OpenAPI contract. The macOS entry also runs the slow suite with LiteParse. | Push, pull request, manual run |
 | `Retrieval quality (Tier 1)` | The deterministic retrieval-quality gate. | Push, pull request |
-| `Retrieval quality (Tier 2)` | The retrieval-quality gate with a real Ollama model. | Nightly schedule, manual run |
+| `Retrieval quality (Tier 2)` | The retrieval-quality gate with the OMRS llama.cpp embedding client and `Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0` on the pinned CPU build. | Nightly schedule, manual run |
 | `Floor matrix scope` | Decides which `Floor resolution` entries run. | Every event |
 | `Floor resolution` (base entry) | The fast suite, the clean-base tripwire and the Leiden-free check at the lowest declared versions of the base install. | Every event |
 | `Floor resolution (<extra>)` | The fast suite at the lowest declared versions of one optional extra. The `chroma` entry fails when a test skips for a missing chroma extra. | Push, nightly, manual run, and a pull request that changes `pyproject.toml`, `uv.lock` or `ci.yml` |
@@ -87,6 +87,29 @@ All jobs live in `.github/workflows/ci.yml`. Each job checks something that no o
 | `Coverage (Codecov)` | The fast suite with most extras, in parallel, and the coverage upload. It fails when a test skips for a missing chroma extra, so it runs every Chroma-gated case. | Push, pull request, manual run |
 
 The nightly schedule runs from the workflow file on `main`. A manual run targets the branch that you select. The Run workflow button appears when this workflow file exists on `main`.
+
+### Tier 2: real llama.cpp embeddings
+
+Tier 2 uses the 0.6B build of the embedding family. The shipped default is the 4B build. The CI runner has no GPU, so the job keeps the small model.
+
+The test is `tests/quality/test_retrieval_quality_tier2.py`. It runs the real `llamacpp` embedding client of OMRS against one llama.cpp server. The server runs outside OMRS (`llamacpp_router_server = "external"`). The job does not use router mode, because one model needs no router.
+
+The job does these steps:
+
+1. Install the pinned llama.cpp build: `omrs llamacpp install --flavour cpu`.
+2. Download `Qwen3-Embedding-0.6B-Q8_0.gguf` with `hf download`. The job does not use `llama-server -hf`, because no spike proves `-hf` on the Linux build.
+3. Start `llama-server` on port 8080 with `--alias Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0`, `--embeddings --pooling last --embd-normalize 2` and the context and batch sizes of the shipped embedding entry.
+4. Run the test.
+
+The test fails with a message that names llama.cpp when the server does not answer. It never falls back to another provider. It reads `GET /props` (build) and `GET /v1/models` (model name and file size). The model name and file size must equal `tier2.model_tag` and `tier2.model_size_bytes` in `tests/quality/baseline.json`. The build, the operating system and the architecture are recorded evidence only.
+
+To run Tier 2 on your machine, start a server in the same way. Then run the test:
+
+```bash
+uv run --no-sync pytest tests/quality/test_retrieval_quality_tier2.py -m slow -s
+```
+
+Set `TIER2_LLAMACPP_URL` (for example `http://127.0.0.1:8081`) when the server is not at `http://127.0.0.1:8080`. The test prints one `TIER2_MEASUREMENT=` line. After a model or server change, copy its values into `tests/quality/baseline.json`.
 
 ---
 

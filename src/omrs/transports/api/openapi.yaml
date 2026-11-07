@@ -4270,19 +4270,28 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
-  # ── Managed llama.cpp server (started and owned by omrs web) ────────
-  /llamacpp/server:
+  # ── The llama.cpp router (started and owned by omrs web) ────────────
+  /llamacpp/router:
     get:
-      operationId: getLlamacppServer
-      summary: Read the state of the llama.cpp server that omrs owns
+      operationId: getLlamacppRouter
+      summary: Read the state of the llama.cpp router and its model list
       description: >
-        Returns the `state` (`stopped`, `starting`, `running` or `failed`), a
-        `reason` from a fixed set when the state is `failed`, the `exit_code`
-        when the process ended, `running_with` (the context window and model
-        kind the process started with), `pending_restart` (the saved program,
-        model or window differ from the running process) and the `saved`
-        program, model and context window with their source and lock. The
-        route never returns the log file or any text of the process.
+        Returns the router `state` (`stopped`, `starting`, `running` or `failed`), a `reason`
+        from a fixed set when the state is `failed`, the `mode` (`managed`: OMRS runs
+        `llama-server`; `external`: the address is another server), the `address` (host and
+        port), `running_with` (the model limit and memory margin the live process started
+        with), `pending_restart` (the saved router arguments differ from the live ones), the
+        `program` in force (a user path, the provisioned build or none), the `saved` program,
+        mode, address, model limit and memory margin with their source, default and lock, and
+        `models`: one item per list entry with its `roles`, file, context size, preset, state
+        (`not-downloaded`, `unloaded`, `loading`, `loaded` or `failed`), a fixed `reason` for
+        a failed model and `reload_pending` (the saved entry differs from the one the
+        running router holds). `problems` lists each role that no list entry can serve (the
+        model of a role setting is not in the list, an embedding entry holds a text role, or
+        the embeddings entry has no valid preset), as `role`, a fixed `reason` and a plain
+        `text` that never names the model. It is empty while the mode is `external`. A read
+        starts nothing, loads no model and writes no setting.
+        The route never returns the log file or any text of the process.
       security:
         - sessionCookie: [read]
         - bearerToken: [read]
@@ -4293,7 +4302,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/LlamacppServerStatus"
+                $ref: "#/components/schemas/LlamacppRouterStatus"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -4305,23 +4314,25 @@ paths:
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
     put:
-      operationId: saveLlamacppServer
-      summary: Save the program, the Chat server choice and the context window
+      operationId: saveLlamacppRouter
+      summary: Save the program, the router mode, the address and the two limits
       description: >
-        Body keys `binary`, `chat_server` and `context_window`, all optional; a key
-        that is absent stays as it is and `null` clears the saved value. No other
-        key is accepted; a body with `model` gets 400 with "Set the Chat model in Settings >
-        Chat." A body with `idle_sleep` gets 400 with a line that says OMRS stops an idle
-        server after 10 minutes. The program must be an absolute path to an executable
-        file named exactly `llama-server`, both as given and after links are
-        resolved. `chat_server` is `external` or `managed`. A change to `external` while the
-        owned server is starting or running gives 409 with the reason `server-running`, and the
-        server keeps running. The context window is a whole number from 2,048 to 262,144. 400 names
-        the rule and never the value. Changing the program or the Chat server choice needs
-        the `credentials` scope of the browser session; 403 otherwise. 409 for
-        a field set by the environment or `.env`, or when `omrs.jsonc` changed since the
-        `revision` in the body. The values are written to `omrs.jsonc`. A running server
-        keeps running.
+        Body keys `binary`, `router_server`, `router_url`, `models_max` and
+        `memory_margin_mib`, all optional; a key that is absent stays as it is and `null`
+        clears the saved value. No other key is accepted. A body with `model` gets 400 with
+        "Models are set in the model table, not here." A body with `idle_sleep` gets 400 with
+        a line that says OMRS stops an idle server after 10 minutes. The program must be an
+        absolute path to an executable file named exactly `llama-server`, both as given and
+        after links are resolved. `router_server` is `external` or `managed`. A managed
+        router needs an `http` address on this machine (`127.0.0.1`, `localhost` or `::1`);
+        the rule is checked when the mode or the address is saved. `models_max` is a whole
+        number from 1 to 16 and `memory_margin_mib` a whole number from 0 to 262,144. 400
+        names the rule and never the value. Changing the program or the router mode needs
+        the `credentials` scope of the browser session; 403 otherwise, and none of the keys
+        is saved. The address and the two limits need `manage`. 409 for a field set by the
+        environment or `.env` (the message names the variable), or when `omrs.jsonc` changed
+        since the `revision` in the body. The values are written to `omrs.jsonc`. A running
+        router keeps running; `pending_restart` tells that Restart applies the change.
       security:
         - sessionCookie: [manage]
       x-omrs-scopes: [manage]
@@ -4330,14 +4341,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SaveLlamacppServerRequest"
+              $ref: "#/components/schemas/SaveLlamacppRouterRequest"
       responses:
         "200":
           description: Saved. The body is the new state.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/LlamacppServerStatus"
+                $ref: "#/components/schemas/LlamacppRouterStatus"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -4347,28 +4358,172 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
         "409":
-          $ref: "#/components/responses/LlamacppServerConflict"
+          $ref: "#/components/responses/LlamacppRouterConflict"
         "500":
           $ref: "#/components/responses/InternalError"
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
-  /llamacpp/server/start:
-    post:
-      operationId: startLlamacppServer
-      summary: Start the llama.cpp server with the saved values
+  /llamacpp/router/models/{id}:
+    put:
+      operationId: saveLlamacppRouterModel
+      summary: Add a router list entry or change some fields of one
       description: >
-        Checks the Chat server choice, the program, the Chat model and the chat address again,
-        then starts one process with a fixed argument list (`-m` or `-hf`, `--host
-        127.0.0.1`, `--port`, `-c`). The port is the port of
-        `llamacpp_chat_url`, which must be a loopback `http` URL. Returns at
-        once with state `starting`; the state moves to `running` when
-        `/health` returns 200. The model is the Chat model in force (`answer.model` with the
-        provider `llamacpp`). With the Chat server choice `external` the route gives 409 with the
-        reason `external-server` and starts nothing. A refusal is state `failed` with one fixed
-        reason (`not-configured` when the Chat provider is not `llamacpp` or the model is empty,
-        `binary-invalid`, `model-invalid`, `not-loopback` or `port-in-use`). A server that is
-        already starting or running is left alone. A server omrs did not start is never touched.
+        Sets some fields of the `llamacpp_models` entry `{id}` (1 to 40 characters from `a-z`,
+        `0-9` and `-`). A field that is absent stays; `null` removes it (`model` cannot be
+        removed). A new `id` adds an entry, which needs `model`. Use this model after a
+        download is one such request: `model`, `file` and the `sha256` of the download
+        status; it replaces the entry's file and keeps its preset. A `file` without a
+        `sha256` is hashed by the server. `preset` replaces the whole preset. The first
+        save writes the shipped list plus the change. The entry must pass the entry rules:
+        a Hugging Face id with a quantisation tag, an absolute `.gguf` file that exists
+        (managed mode), and an allow-listed preset with typed, range-checked values. 400
+        names the field and the rule; `reason` is `preset-key-unknown` for a key outside the
+        allow-list, `preset-invalid` when an entry used for embeddings loses its pooling or
+        sizes, and `role-mismatch` when the change gives an embedding entry a text role.
+        Changing `model`, `file`, `projector`, `sha256` or `projector_sha256` needs the
+        `credentials` scope (403 otherwise); a change of `preset` needs `manage`. 409 when
+        `omrs.jsonc` changed since `revision`. A save sets no role setting. A router that
+        runs with the saved arguments rewrites the entry's section and reloads that one
+        model; the others keep running. Session only: a bearer credential gets 403.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      parameters:
+        - $ref: "#/components/parameters/LlamacppModelId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveLlamacppRouterModelRequest"
+      responses:
+        "200":
+          description: Saved. The body is the new router state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlamacppRouterStatus"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/LlamacppRouterConflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+    delete:
+      operationId: deleteLlamacppRouterModel
+      summary: Remove a router list entry that holds no role
+      description: >
+        Removes the entry `{id}` from `llamacpp_models`. Needs the `credentials` scope (403
+        otherwise). An entry that holds a role (embeddings, classification, Chat, judge or
+        decision) gets 409 with `reason` `in-use`; choose another model for the role first.
+        An unknown id gets 404. A stale `revision` gets 409 with no `reason`. Session only:
+        a bearer credential gets 403.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      parameters:
+        - $ref: "#/components/parameters/LlamacppModelId"
+        - name: revision
+          in: query
+          required: false
+          description: The `revision` last read. A file that changed since gives 409.
+          schema:
+            type: string
+            maxLength: 128
+      responses:
+        "200":
+          description: Removed. The body is the new router state.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlamacppRouterStatus"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/LlamacppRouterConflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /llamacpp/router/downloads-needed:
+    get:
+      operationId: getLlamacppRouterDownloads
+      summary: List the router models with no file and their download sizes
+      description: >
+        Returns each list entry that has no file (`id`, `model` and `size_bytes`, in list
+        order) and `total_bytes`, so the Router panel can ask "Download 2 models, 8.6 GB?"
+        before a Start. A size is the size of the quantisation in the Hugging Face file
+        listing, read as the download job reads it. `size_bytes` is null when the size cannot
+        be read (the host does not answer, or the repository has no file with that label);
+        `total_bytes` is then null too. With every file present the list is empty, the total
+        is 0 and the host is not contacted. The server contacts the host only when this route
+        runs, never at a status read or at start-up. The route starts nothing and writes
+        nothing. With the mode `external` it gives 409 with the reason `external-server`.
+        Needs `manage`, because it contacts an outside host. Session only: a bearer credential
+        gets 403.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      responses:
+        "200":
+          description: The models to download and their sizes.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlamacppRouterDownloads"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/LlamacppRouterConflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /llamacpp/router/start:
+    post:
+      operationId: startLlamacppRouter
+      summary: Start the llama.cpp router with the saved values
+      description: >
+        Checks the program, the model list and the router address again, then starts one
+        `llama-server` in router mode with a fixed argument list (`--models-preset`,
+        `--models-max`, `--models-memory-margin`, `--host 127.0.0.1`, `--port`). The port is
+        the port of `llamacpp_router_url`, which must be a loopback `http` address. The
+        route returns when the router answers `/health` (no model loads at start) or the
+        start fails. With the mode `external` the route gives 409 with the reason
+        `external-server` and starts nothing. A refusal is state `failed` with one fixed
+        reason (`not-provisioned` when no program is set and no pinned build is installed,
+        `not-downloaded` when no listed model has a file and no download runs,
+        `not-configured` when the model list has no entry, `binary-invalid`, `not-loopback`,
+        `port-in-use`, `wrong-build`, `timeout` or `exited`). While the automatic download of
+        a listed model is queued or runs, a start with no file is not a failure: the state is
+        `starting` with the reason `not-downloaded` and the line "Models are still
+        downloading.", and OMRS starts the router by itself when the last download ends. A
+        Stop, a change to the mode `external`, or a failed or cancelled download ends that
+        wait; a failed or cancelled download then reads `failed` `not-downloaded` with the
+        line "No model is downloaded yet.". A router that already runs, with these or other
+        arguments, is left alone. A server OMRS did not start is never touched. Session only: a
+        bearer credential gets 403.
       security:
         - sessionCookie: [manage]
       x-omrs-scopes: [manage]
@@ -4378,7 +4533,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/LlamacppServerStatus"
+                $ref: "#/components/schemas/LlamacppRouterStatus"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -4386,19 +4541,21 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
         "409":
-          $ref: "#/components/responses/LlamacppServerConflict"
+          $ref: "#/components/responses/LlamacppRouterConflict"
         "500":
           $ref: "#/components/responses/InternalError"
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
 
-  /llamacpp/server/stop:
+  /llamacpp/router/stop:
     post:
-      operationId: stopLlamacppServer
-      summary: Stop the llama.cpp server that omrs started
+      operationId: stopLlamacppRouter
+      summary: Stop the llama.cpp router that omrs started
       description: >
-        Sends SIGTERM to the process group of the owned process, waits up to 10
-        seconds, then sends SIGKILL. With no owned process nothing is signalled.
+        Sends SIGTERM to the process group of the owned router, waits up to 10 seconds,
+        then sends SIGKILL. Every model process ends with it. With no owned router nothing
+        is signalled. With the mode `external` the route gives 409 with the reason
+        `external-server`. Session only: a bearer credential gets 403.
       security:
         - sessionCookie: [manage]
       x-omrs-scopes: [manage]
@@ -4408,7 +4565,72 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/LlamacppServerStatus"
+                $ref: "#/components/schemas/LlamacppRouterStatus"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/LlamacppRouterConflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /llamacpp/router/restart:
+    post:
+      operationId: restartLlamacppRouter
+      summary: Stop the owned llama.cpp router and start it with the saved values
+      description: >
+        Stop, then start, as the two routes above do. With the mode `external` the route
+        gives 409 with the reason `external-server` and stops and starts nothing. Session
+        only: a bearer credential gets 403.
+      security:
+        - sessionCookie: [manage]
+      x-omrs-scopes: [manage]
+      responses:
+        "200":
+          description: The state after the restart.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlamacppRouterStatus"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/LlamacppRouterConflict"
+        "500":
+          $ref: "#/components/responses/InternalError"
+        "503":
+          $ref: "#/components/responses/ServiceUnavailable"
+
+  /llamacpp/router/install:
+    get:
+      operationId: getLlamacppBuild
+      summary: Read the pinned llama.cpp build, the detected flavour and the install job
+      description: >
+        Returns the pinned build tag, the flavour that fits this host (`metal` on macOS
+        arm64; `cuda` on Linux x86-64 when an NVIDIA driver is loaded, else `cpu`; null when
+        no build is pinned for the platform), the `choices` the user may pick (`cpu` and
+        `cuda` on Linux x86-64, none elsewhere), the program that is provisioned (null when
+        none) and the state of the install job. A read installs nothing.
+      security:
+        - sessionCookie: [read]
+        - bearerToken: [read]
+      x-omrs-scopes: [read]
+      responses:
+        "200":
+          description: The build and the job.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LlamacppBuild"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -4419,24 +4641,36 @@ paths:
           $ref: "#/components/responses/InternalError"
         "503":
           $ref: "#/components/responses/ServiceUnavailable"
-
-  /llamacpp/server/restart:
     post:
-      operationId: restartLlamacppServer
-      summary: Stop the owned llama.cpp server and start it with the saved values
+      operationId: installLlamacppBuild
+      summary: Download, check and place the pinned llama.cpp build
       description: >
-        Stop, then start, as the two routes above do. With the Chat server choice `external`
-        the route gives 409 with the reason `external-server` and stops and starts nothing.
+        Starts the one install job and answers 202 with the build and the job. The job
+        downloads the pinned archives for this host, checks their SHA-256, unpacks them into
+        a folder of their own, runs `llama-server --version` (and `--list-devices` for the
+        CUDA flavour) and places the program in the OMRS data folder. It starts no server and
+        changes no setting. The body may name the `flavour` (`cpu` or `cuda`, Linux x86-64
+        only); without one the detected flavour is used. A flavour on macOS gets 400. A job
+        that ends in failure has one fixed `reason` (`not-supported`, `download-failed`,
+        `file-changed`, `binary-check-failed`, `cuda-device-missing` or `failed`) and a plain
+        line, and leaves no binary in place. One job runs at a time; a second request gets
+        409 with `reason` `busy`. Needs `manage`. Session only: a bearer credential gets 403.
       security:
         - sessionCookie: [manage]
       x-omrs-scopes: [manage]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InstallLlamacppBuildRequest"
       responses:
-        "200":
-          description: The state after the restart.
+        "202":
+          description: The job started.
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/LlamacppServerStatus"
+                $ref: "#/components/schemas/LlamacppBuild"
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
@@ -4444,7 +4678,7 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
         "409":
-          $ref: "#/components/responses/LlamacppServerConflict"
+          $ref: "#/components/responses/LlamacppRouterConflict"
         "500":
           $ref: "#/components/responses/InternalError"
         "503":
@@ -4456,10 +4690,12 @@ paths:
       operationId: listRuntimes
       summary: List the local model runtimes
       description: >
-        Returns one item per runtime in force: `chat`, `embeddings` and one `ocr-<engine>` for
-        each OCR engine that declares a runtime. Each item holds the `mode` (`external` or
+        Returns one item per runtime in force: `router` (every local llama.cpp model except
+        OCR) and one `ocr-<engine>` for each OCR engine that declares a runtime. The `router`
+        item lists its `models`; every other item has an empty list. Each item holds the `mode` (`external` or
         `managed`), the `state`, one fixed `reason` with a plain `reason_text`, the memory of
-        the server process, whether another OMRS process uses it (`clients`), the settings that
+        the server process, whether any OMRS process holds it (`clients`) and whether a process
+        other than this one does (`other_clients`), the settings that
         use it (`used_by`), the address and whether OMRS checked the model files. The route
         starts nothing, stops nothing and writes nothing. It never returns the log file or any
         text of a server.
@@ -4505,7 +4741,7 @@ paths:
           required: true
           schema:
             type: string
-            pattern: "^(chat|embeddings|ocr-[A-Za-z0-9._-]+|decision-[A-Za-z0-9._-]+)$"
+            pattern: "^(router|ocr-[A-Za-z0-9._-]+)$"
             maxLength: 128
           description: A runtime id from `listRuntimes`.
       responses:
@@ -4668,8 +4904,9 @@ paths:
         1 GiB; the message gives both sizes; `llamacpp` only) or `gated` (the repo is gated
         and `HF_TOKEN` is not set in the environment of `omrs web`; `llamacpp` only). The
         route never stores, returns or logs the token and never changes a setting. The
-        files go to the Hugging Face hub cache that the managed llama.cpp server reads,
-        or to Ollama at the address in use. Session only: a bearer credential gets 403.
+        files go to the Hugging Face hub cache, or to Ollama at the address in use. A
+        `llamacpp` status that succeeded holds the absolute `file_path` of the first file and
+        its `sha256`, which Use this model sends to `saveLlamacppRouterModel`. Session only: a bearer credential gets 403.
       security:
         - sessionCookie: [manage]
       x-omrs-scopes: [manage]
@@ -4818,10 +5055,10 @@ paths:
         level outside `^[A-Za-z0-9_-]{1,32}$`, and 409 when the environment or `.env` sets
         the choice (for a body that writes it) or `ANSWER__REASONING` sets the level (for a
         body that sends `reasoning`), `omrs.jsonc` changed since `revision`, or the Engine
-        refuses it. While the llama.cpp Chat server choice is `managed`, a body that chooses
-        `llamacpp` needs the `credentials` scope (403 otherwise) and a model that is an existing
-        `.gguf` file or a Hugging Face id (400 otherwise), because OMRS's own server loads it.
-        Browser session only.
+        refuses it. A body that chooses `llamacpp` and names a router list entry that is an
+        embedding entry (its preset has `embeddings` true) gets 400 with `reason`
+        `role-mismatch`, and nothing is saved. A llama.cpp Chat save changes no model file, so
+        it needs `manage` only. Browser session only.
       security:
         - sessionCookie: [manage]
       x-omrs-scopes: [manage]
@@ -5218,13 +5455,12 @@ paths:
         `mcp_http_enabled` apply at once; any other saved key shows
         `restart_pending` true and the source `config-file`, and `value` keeps
         the launch value. No message holds a submitted value. Session only: a
-        bearer credential gets 403. While the llama.cpp Chat server choice is `managed`, a write
-        that makes the Chat choice `llamacpp` (by `answer.provider` or `answer.model`) needs the
-        `credentials` scope (403 otherwise) and a model that is an existing `.gguf` file or a
-        Hugging Face id (400 otherwise). `llamacpp_chat_server` is read-only here (400, "Set
-        this on the llama.cpp card."). A change of `llamacpp_server_binary`, a clear included,
-        needs the `credentials` scope (403 otherwise), and a new path must be an executable file
-        named `llama-server` (400 otherwise).
+        bearer credential gets 403. A write that makes the Chat choice `llamacpp` (by
+        `answer.provider` or `answer.model`) and names an embedding entry of the router list
+        gets 400 with `reason` `role-mismatch`. `llamacpp_models` is not written here (400); the
+        router routes write it. A change of `llamacpp_router_server` or `llamacpp_server_binary`,
+        a clear included, needs the `credentials` scope (403 otherwise), and a new program path
+        must be an executable file named `llama-server` (400 otherwise).
       security:
         - sessionCookie: [manage]
       x-omrs-scopes: [manage]
@@ -5774,6 +6010,14 @@ components:
       schema:
         type: string
         pattern: "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"
+    LlamacppModelId:
+      name: id
+      in: path
+      required: true
+      description: A router list entry id.
+      schema:
+        type: string
+        pattern: "^[a-z0-9-]{1,40}$"
     CollectionName:
       name: collection
       in: path
@@ -5950,16 +6194,16 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
-    LlamacppServerConflict:
+    LlamacppRouterConflict:
       description: >
-        The llama.cpp server route refused the request. `reason` `external-server` means the
-        Chat server choice is `external`; `server-running` means a change to `external` while
-        the owned server runs. A save refused for a locked field or a stale `revision` has no
-        `reason`.
+        The llama.cpp router route refused the request. `reason` `external-server` means the
+        mode is `external`, so OMRS starts and stops nothing; `in-use` means the entry holds
+        a role; `busy` means an install job runs. A save refused for a locked field or a
+        stale `revision` has no `reason`.
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/LlamacppServerRefused"
+            $ref: "#/components/schemas/LlamacppRouterRefused"
     ModelRuntimeConflict:
       description: >
         `stopRuntime` refused a valid request. `reason` is `external-runtime`: the runtime is
@@ -10218,7 +10462,7 @@ components:
             $ref: "#/components/schemas/RuntimeItem"
         local_servers:
           type: array
-          description: Ollama and the llama.cpp embedding and chat servers.
+          description: Ollama and the llama.cpp router.
           items:
             $ref: "#/components/schemas/RuntimeItem"
 
@@ -11105,24 +11349,27 @@ components:
             Stamp of `omrs.jsonc` (SHA-256 of its bytes, or `absent`). A save may send it back;
             a file that changed since gives 409.
 
-    # ── Managed llama.cpp server ────────────────────────────────────────
-    LlamacppServerField:
+    # ── The llama.cpp router ────────────────────────────────────────────
+    LlamacppRouterField:
       type: object
       additionalProperties: false
-      required: [id, label, kind, value, min, max, source, locked, lock_reason]
+      required: [id, label, kind, value, default, min, max, source, locked, lock_reason]
       properties:
         id:
           type: string
+          description: The `omrs.jsonc` key, for example `llamacpp_router_models_max`.
         label:
           type: string
         kind:
           type: string
-          enum: [text, int, choice]
-          description: "`choice` is the Chat server choice: `external` or `managed`."
+          enum: [text, url, int, choice]
+          description: "`choice` is the router mode: `external` or `managed`."
         value:
           type: [string, integer]
-          description: >
-            The program path (empty when not set), the Chat server choice or the context window.
+          description: The value in force. An unset program is the empty string.
+        default:
+          type: [string, integer]
+          description: The code default, for the Use default control.
         min:
           type: [integer, "null"]
         max:
@@ -11134,24 +11381,125 @@ components:
           type: boolean
         lock_reason:
           type: [string, "null"]
+          description: Names the environment variable that locks the field.
 
-    LlamacppServerStatus:
+    LlamacppRouterModel:
       type: object
       additionalProperties: false
       required:
-        [
-          status,
-          revision,
-          state,
-          reason,
-          exit_code,
-          pid_running,
-          running_with,
-          pending_restart,
-          saved,
-          chat_model,
-          shared_with_classification,
-        ]
+        - id
+        - model
+        - roles
+        - file
+        - projector
+        - ctx_size
+        - preset
+        - state
+        - reason
+        - reason_text
+        - note
+        - reload_pending
+      properties:
+        id:
+          type: string
+          pattern: "^[a-z0-9-]{1,40}$"
+        model:
+          type: string
+          description: The request name and preset section name, `org/name:QUANT`.
+        roles:
+          type: array
+          items:
+            type: string
+            enum: [embeddings, classification, chat, judge, decision]
+          description: The roles the role settings give this entry. Never stored.
+        file:
+          type: [string, "null"]
+          description: The absolute path of the model file; null until downloaded.
+        projector:
+          type: [string, "null"]
+        ctx_size:
+          type: [integer, "null"]
+          description: The `ctx-size` preset value, in tokens.
+        preset:
+          type: object
+          additionalProperties: true
+          description: The allow-listed preset keys with their values.
+        state:
+          type: string
+          enum: [not-downloaded, unloaded, loading, loaded, failed]
+        reason:
+          type: [string, "null"]
+          enum:
+            - model-invalid
+            - file-changed
+            - preset-invalid
+            - model-load-failed
+            - model-not-listed
+            - role-mismatch
+            - version-busy
+            - null
+          description: One fixed reason when the state is `failed`. Never text from a server.
+        reason_text:
+          type: [string, "null"]
+          description: A plain-English line for the reason; for `file-changed` it names the file.
+        note:
+          type: [string, "null"]
+          description: >
+            For example "File not checked" for an entry with no recorded SHA-256, or
+            "Downloading" while the automatic download of an entry with no file is queued or
+            runs (its progress is `GET /v1/model-downloads/current`).
+        reload_pending:
+          type: boolean
+          description: >
+            The saved entry differs from the one in the running router's `models.ini`. Shown
+            as "Reload pending" until the reload runs.
+
+    LlamacppRouterDownloads:
+      type: object
+      additionalProperties: false
+      required: [status, models, total_bytes]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        models:
+          type: array
+          description: The list entries that have no file, in list order. Empty when none is missing.
+          items:
+            type: object
+            additionalProperties: false
+            required: [id, model, size_bytes]
+            properties:
+              id:
+                type: string
+              model:
+                type: string
+                description: The request name, `org/name:QUANT`.
+              size_bytes:
+                type: [integer, "null"]
+                minimum: 0
+                description: Size of the quantisation to download, or null when it cannot be read.
+        total_bytes:
+          type: [integer, "null"]
+          minimum: 0
+          description: The sum of the sizes; null when any size is unknown; 0 when no entry is missing.
+    LlamacppRouterStatus:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - revision
+        - state
+        - reason
+        - reason_text
+        - mode
+        - address
+        - running_with
+        - pending_restart
+        - program
+        - saved
+        - models
+        - problems
       properties:
         status:
           type: string
@@ -11176,65 +11524,259 @@ components:
             - not-configured
             - not-supported
             - version-busy
+            - wrong-build
+            - file-changed
+            - bind-failed
+            - not-provisioned
+            - not-downloaded
             - null
-          description: One fixed reason when the state is `failed`; never text from the process.
-        exit_code:
-          type: [integer, "null"]
-          description: The exit code when the reason is `exited`.
-        pid_running:
-          type: boolean
-          description: Whether the owned process is alive. The process id is never returned.
+          description: >
+            One fixed reason when the state is `failed`; never text from the process. The
+            reason `not-downloaded` also shows with the state `starting` while a Start waits
+            for the automatic download of a listed model.
+        reason_text:
+          type: [string, "null"]
+          description: A plain-English line for the reason.
+        mode:
+          type: string
+          enum: [managed, external]
+        address:
+          type: [string, "null"]
+          description: Host and port of the router address. No user name and no path.
         running_with:
           type:
             - object
             - "null"
           additionalProperties: false
-          required: [context_window, model_kind]
+          required: [models_max, memory_margin_mib]
           properties:
-            context_window:
+            models_max:
               type: integer
-            model_kind:
-              type: string
-              enum: [file, hf]
-          description: What the live process was started with, or null when none is owned.
+            memory_margin_mib:
+              type: integer
+          description: What the live process started with, or null when none is owned.
         pending_restart:
           type: boolean
           description: >
-            The saved program or window, or the Chat model in force, differ from the
-            live process.
+            The saved router arguments differ from the live process. Restart applies them.
+        program:
+          type: object
+          additionalProperties: false
+          required: [path, source]
+          properties:
+            path:
+              type: string
+              description: The program a start uses; empty when none.
+            source:
+              type: string
+              enum: [user, provisioned, none]
         saved:
           type: object
           additionalProperties: false
-          required: [binary, chat_server, context_window]
+          required: [binary, router_server, router_url, models_max, memory_margin_mib]
           properties:
             binary:
-              $ref: "#/components/schemas/LlamacppServerField"
-            chat_server:
-              $ref: "#/components/schemas/LlamacppServerField"
-            context_window:
-              $ref: "#/components/schemas/LlamacppServerField"
-        chat_model:
-          type: object
-          additionalProperties: false
-          required: [provider, model, usable]
+              $ref: "#/components/schemas/LlamacppRouterField"
+            router_server:
+              $ref: "#/components/schemas/LlamacppRouterField"
+            router_url:
+              $ref: "#/components/schemas/LlamacppRouterField"
+            models_max:
+              $ref: "#/components/schemas/LlamacppRouterField"
+            memory_margin_mib:
+              $ref: "#/components/schemas/LlamacppRouterField"
+        models:
+          type: array
+          items:
+            $ref: "#/components/schemas/LlamacppRouterModel"
+        problems:
+          type: array
+          items:
+            $ref: "#/components/schemas/LlamacppRouterProblem"
           description: >
-            The Chat choice in force (`answer.provider`, `answer.model`). OMRS's own server loads
-            this model while the Chat server choice is `managed`.
-          properties:
-            provider:
-              type: string
-            model:
-              type: string
-            usable:
-              type: boolean
-              description: >
-                True when the provider is `llamacpp` and the model is an existing `.gguf` file or
-                a Hugging Face id.
-        shared_with_classification:
-          type: boolean
+            The roles that no list entry can serve, from the one role derivation. Empty while
+            the mode is `external`.
+
+    LlamacppRouterProblem:
+      type: object
+      additionalProperties: false
+      required: [role, reason, text]
+      properties:
+        role:
+          type: string
+          enum: [embeddings, classification, chat, judge, decision]
+        reason:
+          type: string
+          enum: [model-not-listed, role-mismatch, preset-invalid]
+        text:
+          type: string
+          description: A plain-English line for the role. It never names the model.
+
+    LlamacppInstallJob:
+      type: object
+      additionalProperties: false
+      required: [state, flavour, line, reason, message]
+      properties:
+        state:
+          type: string
+          enum: [idle, running, succeeded, failed]
+        flavour:
+          type: [string, "null"]
+          enum: [cpu, cuda, null]
+          description: The flavour the job was asked for; null for the detected one.
+        line:
+          type: [string, "null"]
+          description: The last progress line, for example "Downloading <archive name>".
+        reason:
+          type: [string, "null"]
+          enum:
+            - not-supported
+            - download-failed
+            - file-changed
+            - binary-check-failed
+            - cuda-device-missing
+            - failed
+            - null
+          description: One fixed reason when the state is `failed`.
+        message:
+          type: [string, "null"]
+          description: A plain-English line of the failure; null otherwise.
+
+    LlamacppBuild:
+      type: object
+      additionalProperties: false
+      required: [status, build, detected, choices, installed_path, job]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        build:
+          type: string
+          description: The pinned llama.cpp build tag, for example `b11941`.
+        detected:
+          type: [string, "null"]
+          enum: [metal, cpu, cuda, null]
+          description: The flavour that fits this host; null when no build is pinned for it.
+        choices:
+          type: array
+          items:
+            type: string
+            enum: [cpu, cuda]
+          description: The flavours the user may pick. Empty on macOS and on an unpinned platform.
+        installed_path:
+          type: [string, "null"]
+          description: The provisioned `llama-server`; null when none is placed.
+        job:
+          $ref: "#/components/schemas/LlamacppInstallJob"
+
+    InstallLlamacppBuildRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        flavour:
+          oneOf:
+            - type: string
+              enum: [cpu, cuda]
+            - type: "null"
           description: >
-            True when the choice is `managed` and classification uses the Chat address, so the
-            owned server answers classification with the Chat model.
+            The Linux x86-64 build to install. Left out or null takes the detected flavour. A
+            flavour on macOS gets 400.
+
+    LlamacppRouterRefused:
+      type: object
+      additionalProperties: false
+      required: [status, message]
+      properties:
+        status:
+          type: string
+          enum: [error]
+        message:
+          type: string
+          description: A plain-English line.
+        reason:
+          type: string
+          enum: [external-server, in-use, busy]
+          description: >
+            `external-server`: the mode is `external`, so OMRS starts and stops nothing.
+            `in-use`: the entry holds a role. `busy`: an install job runs. Absent on a save
+            refused for a locked field or a stale `revision`.
+
+    SaveLlamacppRouterRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        binary:
+          type: [string, "null"]
+          maxLength: 2048
+        model:
+          type: [string, "null"]
+          maxLength: 2048
+          deprecated: true
+          description: >
+            Retired. A body that holds `model` gets 400 with "Models are set in the model
+            table, not here."
+        router_server:
+          type: [string, "null"]
+          enum: [external, managed, null]
+          maxLength: 16
+          description: >
+            Who runs the router: `external` (the Llama app or another server you run) or
+            `managed` (OMRS's own llama-server). `null` clears the saved value.
+        router_url:
+          type: [string, "null"]
+          maxLength: 2048
+          description: >
+            The router address, an absolute `http` or `https` URL. A managed router needs an
+            `http` address on this machine.
+        models_max:
+          type: [integer, number, string, boolean, "null"]
+          description: A whole number from 1 to 16 (or a string of digits).
+        memory_margin_mib:
+          type: [integer, number, string, boolean, "null"]
+          description: A whole number from 0 to 262,144 (or a string of digits).
+        revision:
+          type: [string, "null"]
+          maxLength: 128
+          description: >
+            The `revision` last read. A file that changed since gives 409 with
+            "omrs.jsonc changed on disk. Reload to see the new values." and nothing is written.
+
+    SaveLlamacppRouterModelRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        model:
+          type: [string, "null"]
+          maxLength: 200
+          description: A Hugging Face id with a quantisation tag, `org/name:QUANT`.
+        file:
+          type: [string, "null"]
+          maxLength: 2048
+          description: >
+            The absolute path of an existing `.gguf` file whose name holds no `mmproj`. A new
+            file without `sha256` is hashed by the server.
+        projector:
+          type: [string, "null"]
+          maxLength: 2048
+        sha256:
+          type: [string, "null"]
+          maxLength: 64
+          description: The 64-character SHA-256 of `file`, for example from the download status.
+        projector_sha256:
+          type: [string, "null"]
+          maxLength: 64
+        preset:
+          type: [object, "null"]
+          description: >
+            The whole preset. Allowed keys: `ctx-size`, `batch-size`, `ubatch-size`,
+            `parallel`, `embeddings` (true only), `pooling`, `embd-normalize`, `kv-unified`,
+            `flash-attn`, `n-gpu-layers`, `fit`, `cache-type-k`, `cache-type-v`,
+            `cache-prompt`, `cache-reuse`, `image-min-tokens` and `image-max-tokens`.
+        revision:
+          type: [string, "null"]
+          maxLength: 128
+          description: The `revision` last read. A file that changed since gives 409.
 
     ModelRuntimeItem:
       type: object
@@ -11248,17 +11790,19 @@ components:
         - reason_text
         - memory_bytes
         - clients
+        - other_clients
         - used_by
         - address
         - files_checked
+        - models
       properties:
         id:
           type: string
-          pattern: "^(chat|embeddings|ocr-[A-Za-z0-9._-]+|decision-[A-Za-z0-9._-]+)$"
-          description: "`chat`, `embeddings` or `ocr-` and the engine folder name."
+          pattern: "^(router|ocr-[A-Za-z0-9._-]+)$"
+          description: "`router` or `ocr-` and the engine folder name."
         role:
           type: string
-          enum: [chat, embeddings, ocr, decision]
+          enum: [router, ocr]
         mode:
           type: string
           enum: [external, managed]
@@ -11280,6 +11824,8 @@ components:
             - bind-failed
             - wrong-build
             - file-changed
+            - not-provisioned
+            - not-downloaded
             - null
           description: >
             One fixed reason when the state is `failed`, else null. Never text from a server.
@@ -11295,7 +11841,13 @@ components:
         clients:
           type: string
           enum: [some, none]
-          description: Whether another OMRS process holds the runtime open.
+          description: Whether any OMRS process, this one included, holds the runtime open.
+        other_clients:
+          type: string
+          enum: [some, none]
+          description: >
+            Whether an OMRS process other than the one that answers holds the runtime open.
+            The Stop confirmation reads it.
         used_by:
           type: array
           items:
@@ -11309,6 +11861,33 @@ components:
           description: >
             False for an external OCR runtime, because OMRS cannot check the model files of a
             server it did not start.
+        models:
+          type: array
+          description: >
+            For the `router` item, one row per `llamacpp_models` entry. Empty for any other
+            runtime.
+          items:
+            type: object
+            additionalProperties: false
+            required: [model, roles, state, reason, memory_bytes]
+            properties:
+              model:
+                type: string
+              roles:
+                type: array
+                items:
+                  type: string
+                  enum: [embeddings, classification, chat, judge, decision]
+              state:
+                type: string
+                enum: [not-downloaded, unloaded, loading, loaded, failed]
+              reason:
+                type: [string, "null"]
+                description: One fixed reason when the state is `failed`.
+              memory_bytes:
+                type: [integer, "null"]
+                minimum: 0
+                description: The router's own memory figure for the model, when it reports one.
 
     ModelRuntimeList:
       type: object
@@ -11334,59 +11913,6 @@ components:
         reason:
           type: string
           enum: [external-runtime]
-
-    LlamacppServerRefused:
-      type: object
-      additionalProperties: false
-      required: [status, message]
-      properties:
-        status:
-          type: string
-          enum: [error]
-        message:
-          type: string
-          description: A plain-English line.
-        reason:
-          type: string
-          enum: [external-server, server-running]
-          description: >
-            `external-server`: the Chat server choice is `external`, so OMRS starts nothing.
-            `server-running`: a change to `external` while the owned server is starting or
-            running; stop it first. Absent on a save refused for a locked field or a stale
-            `revision`.
-
-    SaveLlamacppServerRequest:
-      type: object
-      additionalProperties: false
-      minProperties: 1
-      properties:
-        binary:
-          type: [string, "null"]
-          maxLength: 2048
-        model:
-          type: [string, "null"]
-          maxLength: 2048
-          deprecated: true
-          description: >
-            Retired. A body that holds `model` gets 400 with "Set the Chat model in Settings >
-            Chat." OMRS's own server loads the Chat model.
-        chat_server:
-          type: [string, "null"]
-          enum: [external, managed, null]
-          maxLength: 16
-          description: >
-            Who runs the Chat server: `external` (the Llama app or another server you run) or
-            `managed` (OMRS's own llama-server). `null` clears the saved value, so `external`
-            applies.
-        context_window:
-          type: [integer, number, string, "null"]
-          description: A whole number from 2,048 to 262,144 (or a string of digits).
-        revision:
-          type: [string, "null"]
-          maxLength: 128
-          description: >
-            The `revision` last read. A file that changed since gives 409 with
-            "omrs.jsonc changed on disk. Reload to see the new values." and nothing is written.
 
     # ── Model search and download ───────────────────────────────────────
     ModelSearchResult:
@@ -11547,7 +12073,19 @@ components:
       type: object
       additionalProperties: false
       required:
-        [status, state, provider, model, model_value, bytes_done, bytes_total, reason, cache_folder]
+        [
+          status,
+          state,
+          provider,
+          model,
+          model_value,
+          bytes_done,
+          bytes_total,
+          reason,
+          cache_folder,
+          file_path,
+          sha256,
+        ]
       properties:
         status:
           type: string
@@ -11600,6 +12138,17 @@ components:
           description: >
             For `llamacpp`, the folder that holds the files, written with `~` for the home
             folder. Null for `ollama` and when idle.
+        file_path:
+          type: [string, "null"]
+          description: >
+            For a succeeded `llamacpp` download, the absolute path of the first downloaded
+            `.gguf` file in the cache. Use this model sends it as `file`. Null otherwise.
+        sha256:
+          type: [string, "null"]
+          pattern: "^[0-9a-f]{64}$"
+          description: >
+            For a succeeded `llamacpp` download, the SHA-256 of `file_path`. Use this model
+            sends it as `sha256`. Null otherwise.
 
     ModelDownloadRefused:
       type: object

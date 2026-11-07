@@ -27,6 +27,7 @@ from .config import Settings, _resolve_effective_embed_provider
 from .config.provider_sources import PROVIDER_FIELDS, coerce_field
 from .config.rules import SECRET_FIELDS, provider_of
 from .config.user_config import SECRETS_DIR
+from .core.settings import ROUTER_LIVE_MAPS, ROUTER_LIVE_VALUES
 
 if TYPE_CHECKING:
     from .config.settings_file import SettingsFile
@@ -44,7 +45,7 @@ class ProviderValues:
     """Provider values read from ``omrs.jsonc`` and held in memory.
 
     Keys are ``Settings`` field paths (``ollama_base_url``,
-    ``llamacpp_chat_url``, ``openrouter_api_key``, ``answer.provider``,
+    ``llamacpp_router_url``, ``openrouter_api_key``, ``answer.provider``,
     ``answer.model``). A blank value counts as unset. ``repr`` shows the
     field names only, because a value can be an API key.
 
@@ -59,6 +60,8 @@ class ProviderValues:
             cannot be used: ``keychain-missing`` or ``keychain-unreadable``.
         keychain_available: Whether a usable system keychain exists.
         keychain_reason: Why no keychain is available, when it is not.
+        maps: The live maps (``ROUTER_LIVE_MAPS``) that ``omrs.jsonc`` holds now,
+            or ``None`` to keep the launch maps. A map the file lacks is absent.
     """
 
     values: Mapping[str, str] = field(default_factory=dict)
@@ -68,6 +71,7 @@ class ProviderValues:
     key_problems: Mapping[str, str] = field(default_factory=dict)
     keychain_available: bool = False
     keychain_reason: str | None = None
+    maps: Mapping[str, Mapping[str, Any]] | None = None
 
     def __repr__(self) -> str:
         return f"ProviderValues(fields={sorted(self.values)})"
@@ -77,6 +81,22 @@ class ProviderValues:
 _CHAT_FIELDS = ("answer.provider", "answer.model")
 #: The claim check judge choice locks as one unit too (add-judge-model-setting D1).
 _JUDGE_FIELDS = ("answer.verify_provider", "answer.verify_model")
+
+
+#: Every field a saved value may replace: the provider fields and the live router values.
+_EDITABLE = (*PROVIDER_FIELDS, *ROUTER_LIVE_VALUES)
+#: Source words that lock a field (the process environment and ``.env``).
+_LOCKING_WORDS = frozenset({"env", "dotenv"})
+
+
+def _live_value_locks(settings: Settings) -> frozenset[str]:
+    """Return the live router values that ``env`` or ``.env`` set in *settings*.
+
+    ``Settings.provider_explicit`` holds the provider fields only, so these read
+    the source word of the value instead.
+    """
+    words = settings.setting_sources
+    return frozenset(path for path in ROUTER_LIVE_VALUES if words.get(path) in _LOCKING_WORDS)
 
 
 def _widen_lock_units(explicit: frozenset[str]) -> frozenset[str]:
@@ -106,8 +126,8 @@ def locked_fields(
         (``env`` or ``dotenv``) is in ``settings.setting_sources``. A value
         from ``omrs.jsonc`` is not a reason.
     """
-    explicit = _widen_lock_units(explicit)
-    locked = {path: "environment" for path in PROVIDER_FIELDS if path in explicit}
+    explicit = _widen_lock_units(explicit) | _live_value_locks(settings)
+    locked = {path: "environment" for path in _EDITABLE if path in explicit}
     uses_ollama = profiles_ollama or _resolve_effective_embed_provider(settings) == "ollama"
     if "ollama_base_url" not in locked and uses_ollama:
         locked["ollama_base_url"] = "embeddings"
@@ -142,7 +162,7 @@ def apply_provider_values(
     answer: dict[str, str] = {}
     sources = dict(settings.setting_sources)
     key_paths = dict(settings.key_file_paths)
-    for path in PROVIDER_FIELDS:
+    for path in _EDITABLE:
         if path in locked:
             continue
         if path in values.unset:
@@ -176,7 +196,8 @@ def apply_provider_values(
     top["key_file_paths"] = key_paths
     top["config_file_fields"] = frozenset(p for p, w in sources.items() if w == "config-file")
     top["key_file_fields"] = frozenset(p for p, w in sources.items() if w == "key-file")
-    return settings.model_copy(update=top)
+    applied = settings.model_copy(update=top)
+    return applied if values.maps is None else applied.with_live_maps(values.maps)
 
 
 def provider_settings(source: Callable[[], ProviderValues]) -> Settings:
@@ -317,7 +338,8 @@ def _secret_from_file(path: str, file: SettingsFile) -> tuple[str, str, str | No
 
 
 def _explicit(base: Settings) -> frozenset[str]:
-    return _widen_lock_units(frozenset(getattr(base, "provider_explicit", ())))
+    held = frozenset(getattr(base, "provider_explicit", ())) | _live_value_locks(base)
+    return _widen_lock_units(held)
 
 
 def provider_values_from_file(
@@ -341,7 +363,7 @@ def provider_values_from_file(
     key_paths: dict[str, str] = {}
     unset: set[str] = set()
     references: dict[str, str] = {}
-    for path in PROVIDER_FIELDS:
+    for path in _EDITABLE:
         if path in explicit:
             continue
         secret = path in SECRET_FIELDS
@@ -381,6 +403,7 @@ def provider_values_from_file(
         key_problems=problems,
         keychain_available=available,
         keychain_reason=None if available else _NO_KEYCHAIN,
+        maps={key: dict(file.maps[key]) for key in ROUTER_LIVE_MAPS if key in file.maps},
     )
 
 

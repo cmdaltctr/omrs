@@ -4,6 +4,7 @@ import type { Integration, IntegrationAvailability, InstallType } from "../api/i
 import { CopyCommand } from "./CopyCommand";
 import { EntryRow } from "./EntryList";
 import { InstallControls, installPhase } from "./InstallControls";
+import { LlamacppBuild } from "./LlamacppBuild";
 import { LastingUninstallCommand, UninstallControls, uninstallActive, uninstallPhase } from "./UninstallControls";
 import type { InstallControl } from "./useIntegrationInstall";
 
@@ -65,6 +66,7 @@ export function IntegrationCard({ integration, installType, control }: Integrati
             // A module check alone never says "Ready": the server checks the address or the key reference.
             <p className={integration.readiness.ready ? "text-meta text-status-success-label" : "text-meta text-muted-foreground"}>{integration.readiness.line}</p>
           ) : null}
+          {integration.id === "llamacpp" ? <LlamacppBuild /> : null}
           {integration.availability === "unknown" && <p className="text-meta text-muted-foreground">The server could not check this integration.</p>}
           {caution && <InstallCaution text={integration.install_caution ?? ""} />}
         </>

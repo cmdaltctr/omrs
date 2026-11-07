@@ -312,7 +312,7 @@ def run_test(client: TestClient, body: Any = None) -> Any:
 
 
 def test_model_replies(setup: Any, fake_llm: Any, configure: Any) -> None:
-    configure(llamacpp_chat_server="managed")  # no model list read before the prompt
+    configure(llamacpp_router_server="managed")  # no model list read before the prompt
     built = fake_llm(REPLY)
     response = run_test(setup, {"provider": "llamacpp", "model": "cand"})
     body = response.json()
@@ -411,43 +411,57 @@ def test_chat_settings_responses_conform(setup: Any, configure: Any) -> None:
     assert check.operations >= FAMILIES["chat_settings"]
 
 
-# ── OMRS's own llama.cpp server loads the Chat model (ADR-108 D5) ────────
+# ── A llama.cpp Chat save changes no model file (one-llamacpp-router) ────
 
 HF_ID = "Qwen/Qwen3-4B-GGUF:Q4_K_M"
 
 
-def test_a_llamacpp_chat_save_needs_credentials_while_managed(
-    setup: Any, configure: Any, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("mode", ["managed", "external"])
+def test_a_llamacpp_chat_save_needs_manage_only_in_both_router_modes(
+    setup: Any, configure: Any, monkeypatch: pytest.MonkeyPatch, mode: str
 ) -> None:
     from omrs.transports.api import security
 
-    configure(llamacpp_chat_server="managed")
+    configure(llamacpp_router_server=mode)
     monkeypatch.setattr(security, "SESSION_SCOPES", security.SESSION_SCOPES - {"credentials"})
     response = put(setup, {"provider": "llamacpp", "model": HF_ID})
-    assert response.status_code == 403
-    assert "credentials" in response.json()["message"]
-    assert setup.chat() == (None, None)
-
-
-def test_a_llamacpp_chat_model_must_pass_the_model_rule_while_managed(
-    setup: Any, configure: Any
-) -> None:
-    configure(llamacpp_chat_server="managed")
-    response = put(setup, {"provider": "llamacpp", "model": "qwen3:4b"})
-    assert response.status_code == 400
-    assert "gguf" in response.json()["message"]
-    assert "qwen3:4b" not in response.json()["message"]
-    assert setup.chat() == (None, None)
-    assert put(setup, {"provider": "llamacpp", "model": HF_ID}).status_code == 200
-
-
-def test_an_external_server_takes_any_llamacpp_name_with_manage_only(
-    setup: Any, configure: Any, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from omrs.transports.api import security
-
-    configure(llamacpp_chat_server="external")
-    monkeypatch.setattr(security, "SESSION_SCOPES", security.SESSION_SCOPES - {"credentials"})
-    response = put(setup, {"provider": "llamacpp", "model": "my-model"})
     assert response.status_code == 200, response.text
-    assert setup.chat() == ("llamacpp", "my-model")
+    assert setup.chat() == ("llamacpp", HF_ID)
+
+
+# ── An embedding entry cannot chat (one-llamacpp-router, task 7.1) ───────
+
+
+@pytest.mark.parametrize("mode", ["managed", "external"])
+def test_a_chat_save_naming_an_embedding_entry_is_400_role_mismatch(
+    setup: Any, configure: Any, mode: str
+) -> None:
+    from omrs.config.llamacpp_models import EMBED_MODEL
+
+    configure(llamacpp_router_server=mode)
+    response = put(setup, {"provider": "llamacpp", "model": EMBED_MODEL})
+    assert response.status_code == 400, response.text
+    body = response.json()
+    assert body["reason"] == "role-mismatch"
+    assert EMBED_MODEL not in body["message"]
+    assert setup.chat() == (None, None)  # nothing was saved
+
+
+def test_a_text_entry_and_other_providers_may_use_the_embedding_name(setup: Any) -> None:
+    from omrs.config.llamacpp_models import CLASSIFY_MODEL, EMBED_MODEL
+
+    assert put(setup, {"provider": "llamacpp", "model": CLASSIFY_MODEL}).status_code == 200
+    # Another provider names its own model; the router list is not involved.
+    assert put(setup, {"provider": "ollama", "model": EMBED_MODEL}).status_code == 200
+    assert setup.chat() == ("ollama", EMBED_MODEL)
+
+
+def test_the_role_mismatch_follows_the_saved_list(setup: Any) -> None:
+    from omrs.config.llamacpp_models import EMBED_MODEL
+
+    entry = {"model": EMBED_MODEL, "preset": {"ctx-size": 4096}}  # not an embedding entry now
+    setup.store.directory.mkdir(parents=True, exist_ok=True)
+    (setup.store.directory / "omrs.jsonc").write_text(
+        json.dumps({"llamacpp_models": {"plain": entry}}), encoding="utf-8"
+    )
+    assert put(setup, {"provider": "llamacpp", "model": EMBED_MODEL}).status_code == 200

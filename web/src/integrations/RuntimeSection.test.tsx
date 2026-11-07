@@ -51,7 +51,7 @@ function entry(id: string, name: string, readiness?: Integration["readiness"]): 
 }
 
 const CATALOGUE = [
-  entry("llamacpp", "llama.cpp provider", { ready: false, line: "Not running at http://localhost:8081/v1" }),
+  entry("llamacpp", "llama.cpp provider", { ready: false, line: "Not running at http://127.0.0.1:8080/v1" }),
   entry("openrouter", "OpenRouter provider", { ready: false, line: "No key set" }),
 ];
 
@@ -168,7 +168,7 @@ describe("Runtime groups", () => {
     startApp("#/integrations/local-servers", serve());
     const note = noteWith(await group("Local servers"), /addresses/i);
     expect(note).toHaveTextContent(
-      "The addresses these rows check are set in Settings › Providers, except the llama.cpp embedding address, which is set in omrs.jsonc.",
+      "The addresses these rows check are set in Settings › Providers. The llama.cpp router address is in its Router panel.",
     );
     expect(within(note).getByRole("link", { name: "Settings › Providers" })).toHaveAttribute("href", "#/settings/providers");
     expect(note).toHaveClass("border-status-info");
@@ -246,15 +246,21 @@ describe("OCR workers folder", () => {
 });
 
 describe("Provider readiness", () => {
-  it("shows the readiness line on the llama.cpp and OpenRouter cards next to Base default", async () => {
+  async function cardOf(name: string) {
     startApp("#/integrations", serve());
     const list = await screen.findByRole("list", { name: "Integrations" });
-    const llama = within(list).getAllByRole("listitem").find((entry) => within(entry).queryByRole("heading", { name: "llama.cpp provider" }));
-    const openrouter = within(list).getAllByRole("listitem").find((entry) => within(entry).queryByRole("heading", { name: "OpenRouter provider" }));
-    expect(llama).toHaveTextContent("Not running at http://localhost:8081/v1");
+    return within(list).getAllByRole("listitem").find((entry) => within(entry).queryByRole("heading", { name }));
+  }
+
+  it("llama.cpp not running: the card shows Base default and the router address, and does not show Ready", async () => {
+    const llama = await cardOf("llama.cpp provider");
+    expect(llama).toHaveTextContent("Not running at http://127.0.0.1:8080/v1");
     expect(llama).toHaveTextContent("Base default");
     expect(llama).not.toHaveTextContent(/^Ready$/);
-    expect(openrouter).toHaveTextContent("No key set");
+  });
+
+  it("OpenRouter without a key: the card shows No key set", async () => {
+    expect(await cardOf("OpenRouter provider")).toHaveTextContent("No key set");
   });
 });
 

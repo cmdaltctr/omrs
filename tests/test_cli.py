@@ -1784,6 +1784,7 @@ class TestBenchmarkCLI:
         assert "Model" in result.output
         assert "Chunks/sec" in result.output
 
+    @pytest.mark.usefixtures("ollama_backend")
     def test_benchmark_text_json_success(self) -> None:
         """--text --json produces valid JSON with expected keys."""
         result = runner.invoke(

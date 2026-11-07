@@ -53,21 +53,11 @@ jobs:
       - name: Run tests (fast)
         env:
           PDF_READER: pypdf
-          EMBED_PROVIDER: local
-          LOCAL_BACKEND: ollama
-          EMBED_MODEL: nomic-embed-text
-          OLLAMA_BASE_URL: http://localhost:11434
-          METADATA_LLM_PROVIDER: local
         run: uv run --no-sync pytest -m "not slow" --tb=short -q -n auto --maxprocesses=8 --deselect tests/test_clean_base_tripwire.py --junitxml=${{ runner.temp }}/fast-junit.xml
 
       - name: Run clean-base tripwire
         env:
           PDF_READER: pypdf
-          EMBED_PROVIDER: local
-          LOCAL_BACKEND: ollama
-          EMBED_MODEL: nomic-embed-text
-          OLLAMA_BASE_URL: http://localhost:11434
-          METADATA_LLM_PROVIDER: local
           OMRS_TRIPWIRE_JUNIT: ${{ runner.temp }}/fast-junit.xml
         run: uv run --no-sync pytest tests/test_clean_base_tripwire.py --tb=short -q
 
@@ -99,12 +89,16 @@ jobs:
         if: matrix.os == 'macos-latest'
         env:
           PDF_READER: liteparse
-        # Gate strictly when an Ollama server is reachable; skip visibly
-        # otherwise. The old `|| echo` swallowed genuine slow-suite
-        # failures along with Ollama-unavailability.
+        # Gate strictly on a llama.cpp router answering at its default address
+        # with the default embedding model listed; skip visibly otherwise. The
+        # old `|| echo` swallowed genuine slow-suite failures along with
+        # router-unavailability. The model name is read from the code, so the
+        # gate follows the shipped default.
         run: |
-          if ! curl -s --max-time 5 http://localhost:11434/api/tags > /dev/null 2>&1; then
-            echo "Slow tests skipped: no Ollama server at localhost:11434"
+          model="$(uv run --no-sync python -c 'from omrs.config.llamacpp_models import EMBED_MODEL; print(EMBED_MODEL)')"
+          if ! curl -fsS --max-time 5 http://127.0.0.1:8080/health > /dev/null 2>&1 \
+            || ! curl -fsS --max-time 5 http://127.0.0.1:8080/v1/models | grep -qF "\"$model\""; then
+            echo "Slow tests skipped: no llama.cpp router at 127.0.0.1:8080"
             exit 0
           fi
           uv run --no-sync pytest -m "slow" --tb=short -q
@@ -150,11 +144,6 @@ jobs:
       - name: Run deterministic Tier 1 gate
         env:
           PDF_READER: pypdf
-          EMBED_PROVIDER: local
-          LOCAL_BACKEND: ollama
-          EMBED_MODEL: nomic-embed-text
-          OLLAMA_BASE_URL: http://localhost:11434
-          METADATA_LLM_PROVIDER: local
         run: |
           set -euo pipefail
           uv run --no-sync pytest tests/quality/test_metrics.py tests/quality/test_retrieval_quality_tier1.py -m slow --tb=short -q -s
@@ -186,30 +175,53 @@ jobs:
           UV_LINK_MODE: copy
         run: uv sync --frozen
 
-      - name: Install pinned Ollama
-        run: |
-          set -euo pipefail
-          curl -fsSL https://github.com/ollama/ollama/releases/download/v0.33.2/install.sh -o /tmp/install-ollama.sh
-          echo "25f64b810b947145095956533e1bdf56eacea2673c55a7e586be4515fc882c9f  /tmp/install-ollama.sh" | sha256sum --check --strict
-          OLLAMA_VERSION=0.33.2 sh /tmp/install-ollama.sh
+      # This job serves a smaller embedding model than the shipped default
+      # (Qwen3-Embedding-4B). The runner has CPU cores and no GPU, and the 0.6B
+      # model is the family of the old Ollama gate model. Operator decision
+      # 2026-11-06: keep 0.6B for this job only. The thresholds in
+      # tests/quality/baseline.json came from the Ollama model. The first run on
+      # llama.cpp re-measures them, and records the new model identity
+      # (model_tag, model_size_bytes, llamacpp_build) beside them.
+      # `external` stops the install from downloading the shipped 4B models,
+      # which this job does not serve.
+      - name: Install the pinned llama.cpp build (CPU)
+        env:
+          LLAMACPP_ROUTER_SERVER: external
+        run: uv run --no-sync omrs llamacpp install --flavour cpu
 
-      - name: Start Ollama and pull reference model
+      # The model file comes from `hf download`, not `llama-server -hf`: no
+      # spike proves `-hf` on the Linux build (the spikes load local files).
+      - name: Download the reference model
         run: |
           set -euo pipefail
-          ollama serve > /tmp/ollama.log 2>&1 &
-          for attempt in {1..30}; do
-            if curl -fsS http://127.0.0.1:11434/api/version > /dev/null; then
+          uv run --no-sync hf download Qwen/Qwen3-Embedding-0.6B-GGUF \
+            Qwen3-Embedding-0.6B-Q8_0.gguf --local-dir "$RUNNER_TEMP/tier2-model"
+          test -s "$RUNNER_TEMP/tier2-model/Qwen3-Embedding-0.6B-Q8_0.gguf"
+
+      # One model, no router: the OMRS embedding client names the model in each
+      # request and a single-model server serves it under this alias. The
+      # embedding flags match the shipped embedding entry (config/llamacpp_models.py).
+      - name: Start llama.cpp and load the reference model
+        run: |
+          set -euo pipefail
+          binary="$(uv run --no-sync python -c 'from omrs.integrations.llamacpp_runtime import provision; print(provision.resolve_server_binary(""))')"
+          "$binary" --model "$RUNNER_TEMP/tier2-model/Qwen3-Embedding-0.6B-Q8_0.gguf" \
+            --alias Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0 \
+            --embeddings --pooling last --embd-normalize 2 \
+            --ctx-size 8192 --batch-size 8192 --ubatch-size 8192 --parallel 1 \
+            --host 127.0.0.1 --port 8080 > /tmp/llama-server.log 2>&1 &
+          for attempt in {1..120}; do
+            if curl -fsS http://127.0.0.1:8080/health > /dev/null 2>&1; then
               break
             fi
-            if [ "$attempt" -eq 30 ]; then
-              cat /tmp/ollama.log
+            if [ "$attempt" -eq 120 ]; then
+              cat /tmp/llama-server.log
               exit 1
             fi
-            sleep 1
+            sleep 2
           done
-          ollama pull qwen3-embedding:0.6b
 
-      - name: Run real-Ollama Tier 2 gate
+      - name: Run real-llama.cpp Tier 2 gate
         run: |
           set -euo pipefail
           uv run --no-sync pytest tests/quality/test_retrieval_quality_tier2.py -m slow --tb=short -q -s
@@ -318,11 +330,6 @@ jobs:
       - name: Run tests (fast) at floors
         env:
           PDF_READER: pypdf
-          EMBED_PROVIDER: local
-          LOCAL_BACKEND: ollama
-          EMBED_MODEL: nomic-embed-text
-          OLLAMA_BASE_URL: http://localhost:11434
-          METADATA_LLM_PROVIDER: local
         # The exact skip/count manifest is a clean-base assertion. Optional
         # extras intentionally activate additional tests, so those matrix
         # entries exercise the suite without the base-only tripwire module.
@@ -352,11 +359,6 @@ jobs:
         if: matrix.extra == ''
         env:
           PDF_READER: pypdf
-          EMBED_PROVIDER: local
-          LOCAL_BACKEND: ollama
-          EMBED_MODEL: nomic-embed-text
-          OLLAMA_BASE_URL: http://localhost:11434
-          METADATA_LLM_PROVIDER: local
           OMRS_TRIPWIRE_JUNIT: ${{ runner.temp }}/fast-junit.xml
         run: uv run --no-sync pytest tests/test_clean_base_tripwire.py --tb=short -q
 
@@ -404,11 +406,6 @@ jobs:
       - name: Run community strategy contracts
         env:
           PDF_READER: pypdf
-          EMBED_PROVIDER: local
-          LOCAL_BACKEND: ollama
-          EMBED_MODEL: nomic-embed-text
-          OLLAMA_BASE_URL: http://localhost:11434
-          METADATA_LLM_PROVIDER: local
         run: uv run --no-sync pytest tests/test_community_baseline.py tests/test_community_strategies.py tests/test_strategy_registration_inventory.py --tb=short -q
 
   # ── Torch-extra CI job (ADR-038, task 11.5) ───────────────────────────
@@ -446,11 +443,6 @@ jobs:
       - name: Run torch-backend and cross-backend contract tests
         env:
           PDF_READER: pypdf
-          EMBED_PROVIDER: local
-          LOCAL_BACKEND: ollama
-          EMBED_MODEL: nomic-embed-text
-          OLLAMA_BASE_URL: http://localhost:11434
-          METADATA_LLM_PROVIDER: local
         run: uv run --no-sync pytest -m "slow" -k "torch or backend_contract" --tb=short -v
 
   # The web workspace frontend (web/) is a separate Node project. Its
@@ -575,11 +567,6 @@ jobs:
       - name: Run tests with coverage
         env:
           PDF_READER: pypdf
-          EMBED_PROVIDER: local
-          LOCAL_BACKEND: ollama
-          EMBED_MODEL: nomic-embed-text
-          OLLAMA_BASE_URL: http://localhost:11434
-          METADATA_LLM_PROVIDER: local
         # This job deliberately installs optional extras to maximise coverage;
         # the exact clean-base skip manifest is asserted in the base jobs.
         # pytest-cov combines the worker data under xdist, and --dist loadfile

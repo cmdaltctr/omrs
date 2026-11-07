@@ -14,15 +14,14 @@ import re
 from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
-from .rules import ModelKind, model_kind
-
-Role = Literal["chat", "embeddings", "ocr", "decision"]
+Role = Literal["router", "ocr"]
 Mode = Literal["external", "managed"]
 PortPolicy = Literal["fixed", "free"]
 
-#: Runtime ids: a role, ``ocr-<engine folder name>`` (design D11) or
-#: ``decision-<decision model entry name>`` (change document-reading-routers).
-RUNTIME_ID_RE = re.compile(r"^(chat|embeddings|ocr-[A-Za-z0-9._-]+|decision-[A-Za-z0-9._-]+)$")
+#: Runtime ids: ``router`` (change one-llamacpp-router, design D1) or
+#: ``ocr-<engine folder name>`` (design D11). The ``chat``, ``embeddings`` and
+#: ``decision-<name>`` ids are retired.
+RUNTIME_ID_RE = re.compile(r"^(router|ocr-[A-Za-z0-9._-]+)$")
 
 _PORT_FLAG = "--port"
 _HOST_BLOCK = ("--host", "127.0.0.1")
@@ -48,7 +47,7 @@ class RuntimeSpec:
     """One managed runtime as a process wants it.
 
     Attributes:
-        id: ``chat``, ``embeddings``, ``ocr-<engine folder>`` or ``decision-<entry>``.
+        id: ``router`` or ``ocr-<engine folder>``.
         role: The role the runtime serves.
         mode: ``managed`` starts or adopts a server; ``external`` only holds
             a URL.
@@ -59,8 +58,8 @@ class RuntimeSpec:
             manager picks a loopback port at each start).
         url_base: Base URL in external mode, else ``""``.
         build: Required llama.cpp build of an OCR runtime, else ``None``.
-        files: Declared model files with SHA-256 (OCR, decision), else empty.
-        min_build: Lowest llama.cpp build a decision runtime accepts, else ``None``.
+        files: Declared model files with SHA-256 (OCR), else empty.
+        min_build: Lowest llama.cpp build the router accepts, else ``None``.
     """
 
     id: str
@@ -176,41 +175,6 @@ class RuntimeSpec:
         )
 
 
-def _model_flag(model: str, kind: ModelKind | None) -> tuple[str, str]:
-    resolved = kind if kind is not None else model_kind(model)
-    if resolved is None:
-        raise ValueError(f"not an allowed model: {model!r}")
-    return ("-m" if resolved == "file" else "-hf"), model
-
-
-def chat_spec(
-    *, mode: Mode, binary: str, model: str, port: int, window: int, kind: ModelKind | None = None
-) -> RuntimeSpec:
-    """Return the Chat runtime: fixed port of the chat URL, ``-c`` window."""
-    flag, model_value = _model_flag(model, kind)
-    return RuntimeSpec(
-        id="chat",
-        role="chat",
-        mode=mode,
-        binary=binary,
-        argv=(binary, flag, model_value, *_HOST_BLOCK, _PORT_FLAG, str(port), "-c", str(window)),
-    )
-
-
-def embeddings_spec(
-    *, mode: Mode, binary: str, model: str, port: int, kind: ModelKind | None = None
-) -> RuntimeSpec:
-    """Return the embeddings runtime: fixed port of the embed URL, ``--embedding``."""
-    flag, model_value = _model_flag(model, kind)
-    return RuntimeSpec(
-        id="embeddings",
-        role="embeddings",
-        mode=mode,
-        binary=binary,
-        argv=(binary, flag, model_value, *_HOST_BLOCK, _PORT_FLAG, str(port), "--embedding"),
-    )
-
-
 def ocr_spec(
     *,
     engine_folder: str,
@@ -236,39 +200,4 @@ def ocr_spec(
         port_policy="free",
         build=build,
         files=tuple(files),
-    )
-
-
-def decision_spec(
-    *,
-    name: str,
-    binary: str,
-    port: int,
-    files: tuple[DeclaredFile, ...] | list[DeclaredFile],
-    min_build: int,
-) -> RuntimeSpec:
-    """Return a managed decision runtime (change document-reading-routers, task 2.4).
-
-    The fixed port is the port of the entry's loopback address. The server
-    binds ``127.0.0.1`` and serves one request at a time (``--parallel 1``).
-
-    Args:
-        name: The decision model entry name; the runtime id is ``decision-<name>``.
-        binary: Absolute path of ``llama-server``.
-        port: The port of the entry address.
-        files: The model file (``-m``) and, for an image entry, the projector
-            file (``--mmproj``), each with its SHA-256.
-        min_build: The lowest llama.cpp build that serves the request with images.
-    """
-    file_flags: list[str] = []
-    for declared in files:
-        file_flags += [declared.flag, declared.path]
-    return RuntimeSpec(
-        id=f"decision-{name}",
-        role="decision",
-        mode="managed",
-        binary=binary,
-        argv=(binary, *file_flags, *_HOST_BLOCK, _PORT_FLAG, str(port), "--parallel", "1"),
-        files=tuple(files),
-        min_build=min_build,
     )

@@ -22,11 +22,11 @@ from omrs.integrations.pdf import page_routing
 # moved every digest. The text pin also lost ``ocr_routing.local_tier`` (default
 # cut 0.9). The PDF pins also gained ``parser.local_ocr_backends`` (the default
 # backend at cut 0.92, model left unresolved by the fixture below).
-CODE_DEFAULT_PDF = "be86b42e3153d7ad09710bdf17bb6cfaa84b56fe747b0537ef83b0352049e494"
-PDF_INSPECTOR_PDF = "2da39acb3a7781989f510e165ff6f4b3344859b1f2c6fdc93f5892d3387009e6"
-PDF_INSPECTOR_TEXT = "d73adaba8611d4289c40313c34a1cb8f3d74a2e7b3093aaffe7a417a417c811c"
-LITEPARSE_PDF = "0eea2f64a894b3f2671ac6575fb0656ffacad9d0b7dca34793c0d14a62425383"
-PYPDF_PDF = "74aff94e4d38cd024c221077de5313134690842e3f1ba8b5b02752b1434f2e8b"
+CODE_DEFAULT_PDF = "4d85e2bc8cd38ff499a1aafab0c9b03c87c02809526f61a40394a89bee3f8481"
+PDF_INSPECTOR_PDF = "32d853b7c5225cc35bfcc722e098a77b30507f43ec8030c0cdd8b6674323b3a2"
+PDF_INSPECTOR_TEXT = "8e491a7193cce2ff3b410cba6e30c74d2eef0e1c21b07098a1a743d69a6ab71b"
+LITEPARSE_PDF = "e75b96822657b201674fafada926c2b9acb7436c43565ad6de6dce45017bf947"
+PYPDF_PDF = "ce6d05740ab9fd8208bd1368ce83f38af2c27193d4ac17bcc9f6a6021b8d6c0a"
 
 DEFAULT_LIST = ("pdf_inspector", "liteparse", "pypdf")
 

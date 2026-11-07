@@ -403,48 +403,24 @@ def test_responses_conform_to_the_contract(
     assert check.operations >= FAMILIES["configuration_save"]
 
 
-# ── OMRS's own llama.cpp server loads the Chat model (ADR-108 D5, D11) ───
+# ── A llama.cpp Chat choice changes no model file (one-llamacpp-router) ──
 
 HF_ID = "Qwen/Qwen3-4B-GGUF:Q4_K_M"
 
 
-def test_a_llamacpp_chat_choice_needs_credentials_while_managed(
-    harness: Harness, client: TestClient, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("mode", ["managed", "external"])
+def test_a_llamacpp_chat_choice_needs_manage_only_in_both_router_modes(
+    harness: Harness, client: TestClient, monkeypatch: pytest.MonkeyPatch, mode: str
 ) -> None:
     from omrs.transports.api import security
 
-    harness.write('{ "llamacpp_chat_server": "managed" }')
-    before = text(harness)
+    harness.write(f'{{ "llamacpp_router_server": "{mode}" }}')
     harness.launch()
     monkeypatch.setattr(security, "SESSION_SCOPES", security.SESSION_SCOPES - {"credentials"})
     changes = {"answer.provider": "llamacpp", "answer.model": HF_ID}
-    message = refused(put(client, changes, file_revision(harness.folder)), 403)
-    assert "credentials" in message
-    assert text(harness) == before
-
-
-def test_a_llamacpp_chat_model_must_pass_the_model_rule_while_managed(
-    harness: Harness, client: TestClient
-) -> None:
-    harness.write('{ "llamacpp_chat_server": "managed", "answer": { "provider": "llamacpp" } }')
-    before = text(harness)
-    harness.launch()
-    response = put(client, {"answer.model": "qwen3:4b"}, file_revision(harness.folder))
-    message = refused(response, 400)
-    assert "gguf" in message and "qwen3:4b" not in message
-    assert text(harness) == before
-
-
-def test_an_external_server_takes_any_llamacpp_name_with_manage_only(
-    harness: Harness, client: TestClient, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    from omrs.transports.api import security
-
-    harness.launch()
-    monkeypatch.setattr(security, "SESSION_SCOPES", security.SESSION_SCOPES - {"credentials"})
-    response = put(client, {"answer.provider": "llamacpp", "answer.model": "my-model"})
+    response = put(client, changes, file_revision(harness.folder))
     assert response.status_code == 200, response.text
-    assert data(harness)["answer"] == {"provider": "llamacpp", "model": "my-model"}
+    assert data(harness)["answer"] == {"provider": "llamacpp", "model": HF_ID}
 
 
 # ── The program path keeps its rule here too (ADR-108 D15) ───────────────
@@ -484,3 +460,50 @@ def test_a_real_program_path_saves(harness: Harness, client: TestClient, tmp_pat
     response = put(client, {"llamacpp_server_binary": str(program.path)})
     assert response.status_code == 200, response.text
     assert data(harness)["llamacpp_server_binary"] == str(program.path)
+
+
+# ── The router mode keeps its scope here too (one-llamacpp-router, 7.1) ──
+
+
+def test_the_router_mode_needs_credentials(
+    harness: Harness, client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from omrs.transports.api import security
+
+    harness.launch()
+    monkeypatch.setattr(security, "SESSION_SCOPES", security.SESSION_SCOPES - {"credentials"})
+    message = refused(put(client, {"llamacpp_router_server": "external"}), 403)
+    assert "credentials" in message
+    assert text(harness) == ""
+    # The address and the two limits need manage only.
+    changes = {"llamacpp_router_models_max": 2, "llamacpp_router_memory_margin_mib": 100}
+    assert put(client, changes).status_code == 200
+
+
+def test_the_router_mode_saves_with_credentials(harness: Harness, client: TestClient) -> None:
+    harness.launch()
+    response = put(client, {"llamacpp_router_server": "external"})
+    assert response.status_code == 200, response.text
+    assert data(harness)["llamacpp_router_server"] == "external"
+
+
+def test_a_chat_choice_naming_an_embedding_entry_is_400_role_mismatch(
+    harness: Harness, client: TestClient
+) -> None:
+    from omrs.config.llamacpp_models import EMBED_MODEL
+
+    harness.launch()
+    changes = {"answer.provider": "llamacpp", "answer.model": EMBED_MODEL}
+    response = put(client, changes)
+    refused(response, 400)
+    assert response.json()["reason"] == "role-mismatch"
+    assert text(harness) == ""
+
+
+def test_the_model_list_is_not_written_by_the_configuration_save(
+    harness: Harness, client: TestClient
+) -> None:
+    harness.launch()
+    response = put(client, {"llamacpp_models": {"x": {"model": "a/b:Q8_0"}}})
+    assert response.status_code == 400
+    assert text(harness) == ""

@@ -10,7 +10,7 @@ import { ModelRuntimeRow } from "./ModelRuntimeRow";
 import { SectionFrame } from "./SectionFrame";
 
 const PROVIDERS = formatRoute({ area: "settings", section: "providers" });
-const SUMMARY = "The local model servers that Chat, embeddings and OCR use. OMRS starts and stops a managed server. It never stops an external one.";
+const SUMMARY = "The local model servers that OMRS uses: the llama.cpp router and the OCR engines. OMRS starts and stops a managed server. It never stops an external one.";
 
 /**
  * Model runtimes: one row for each local runtime in force. The list comes
@@ -28,11 +28,11 @@ export function ModelRuntimesSection() {
       <ServerCallout
         text={
           <>
-            Who runs the Chat server is chosen on the llama.cpp card in{" "}
+            Who runs llama.cpp, its address and its models are set in the Router panel of the llama.cpp card in{" "}
             <a href={PROVIDERS} className="underline underline-offset-4">
               Settings › Providers
             </a>
-            , where you can also start OMRS&apos;s own server. The embeddings and OCR runtimes are set in the environment, .env or omrs.jsonc.
+            , where you can also start OMRS&apos;s own router. The OCR runtimes are set in the environment, .env or omrs.jsonc.
           </>
         }
       />

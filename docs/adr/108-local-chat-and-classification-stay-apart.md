@@ -6,6 +6,7 @@
 - **Amends:** [ADR-084](084-context-windows-and-an-owned-llama-server.md) (decision 4, the server settings: the model setting goes and the Chat server choice comes in), [ADR-106](106-app-searches-and-downloads-local-models.md) (decision 4, who runs the Chat server and what Use this model saves)
 - **Related:** [ADR-083](083-llm-provider-settings-in-the-web-workspace.md) (provider addresses apply live), [ADR-087](087-settings-live-in-omrg-jsonc.md) (source order), [ADR-095](095-page-writes-every-scalar-setting.md) (the Configuration page writes scalar settings), [ADR-059](059-claim-verification-stage.md) (the claim check judge)
 - **Change:** `openspec/changes/separate-local-chat-and-classification/` (design D1 to D13)
+- **Amended by:** [ADR-115](115-one-llamacpp-router.md) (2026-11-06; proposed: the classification address, the Chat address and the Chat server choice are retired, and the managed Chat-only server goes)
 
 ## Context
 

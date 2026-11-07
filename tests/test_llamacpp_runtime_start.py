@@ -14,6 +14,7 @@ from pathlib import Path
 import pytest
 from tests.fixtures.llamacpp.harness import RuntimeEnv, pid_alive, runtime_env_fixture
 from tests.fixtures.llamacpp.install import touch_count_file
+from tests.unit.test_llamacpp_router_worker import fixed_spec
 
 from omrs.integrations.llamacpp_runtime import process
 from omrs.integrations.llamacpp_runtime.manager import RuntimeUnavailable
@@ -86,7 +87,7 @@ def test_a_missing_model_file_is_refused(runtime_env: RuntimeEnv) -> None:
 
 def test_a_program_that_breaks_the_rule_is_refused(runtime_env: RuntimeEnv) -> None:
     fake = runtime_env.fake()
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     fake.binary.chmod(0o644)  # no longer executable
     assert _refused(runtime_env, spec).reason == "binary-invalid"
     assert fake.starts() == []
@@ -97,7 +98,7 @@ def test_a_port_held_by_another_process_gives_port_in_use(runtime_env: RuntimeEn
     with socket.socket() as holder:
         holder.bind(("127.0.0.1", 0))
         holder.listen()
-        spec = fake.chat(int(holder.getsockname()[1]))
+        spec = fixed_spec(fake, int(holder.getsockname()[1]))
         assert _refused(runtime_env, spec).reason == "port-in-use"
     assert fake.starts() == []
 
@@ -108,11 +109,11 @@ def test_health_timeout_stops_the_process(
     monkeypatch.setattr(process, "HEALTH_TIMEOUT_SECONDS", 1.0)
     fake = runtime_env.fake()
     fake.set_env(FAKE_LLAMA_NEVER_HEALTHY="1")
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     assert _refused(runtime_env, spec).reason == "timeout"
     assert len(fake.starts()) == 1
     assert not pid_alive(int(fake.starts()[0]["pid"]))
-    record = read_server_record(runtime_dir(state_root(), "chat"))
+    record = read_server_record(runtime_dir(state_root(), "router"))
     assert record is not None and record.reason == "timeout"
 
 
@@ -120,12 +121,12 @@ def test_the_child_has_no_pipe_and_writes_to_server_log(runtime_env: RuntimeEnv)
     fake = runtime_env.fake()
     fds_file = fake.logs / "fds.json"
     fake.set_env(FAKE_LLAMA_FDS=str(fds_file), FAKE_LLAMA_SPAM_BYTES="300")
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     runtime_env.manager().lease(spec).join()
     fds = json.loads(fds_file.read_text(encoding="utf-8"))
     assert "fifo" not in fds.values()
     assert fds == {"0": "chr", "1": "reg", "2": "reg"}
-    log = runtime_dir(state_root(), "chat") / "server.log"
+    log = runtime_dir(state_root(), "router") / "server.log"
     assert "x" * 99 in log.read_text(encoding="utf-8")
 
 
@@ -163,7 +164,7 @@ def test_a_fixed_port_gets_no_bind_retry(runtime_env: RuntimeEnv) -> None:
     fake = runtime_env.fake()
     fails = touch_count_file(fake.logs, "bind-fails.txt", 10)
     fake.set_env(FAKE_LLAMA_BIND_FAILS=str(fails))
-    assert _refused(runtime_env, fake.chat(_free_port())).reason == "port-in-use"
+    assert _refused(runtime_env, fixed_spec(fake, _free_port())).reason == "port-in-use"
     assert fails.read_text().strip() == "9"
 
 
@@ -176,7 +177,7 @@ def test_a_starting_record_whose_starter_died_is_adopted_after_health(
 
     fake = runtime_env.fake()
     fake.set_env(FAKE_LLAMA_HEALTH_DELAY="1")
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     port = spec.port or 0
     orphan = subprocess.Popen(  # noqa: S603 - the server a dead starter left
         list(spec.launch_argv(port)),
@@ -184,7 +185,7 @@ def test_a_starting_record_whose_starter_died_is_adopted_after_health(
         stderr=subprocess.DEVNULL,
         start_new_session=True,
     )
-    folder = runtime_dir(state_root(), "chat")
+    folder = runtime_dir(state_root(), "router")
     write_server_record(
         folder,
         ServerRecord(

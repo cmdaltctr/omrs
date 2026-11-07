@@ -19,19 +19,10 @@ LLAMACPP_SERVER_FIELDS: tuple[ConnectionField, ...] = (
         "server_binary", "Program path", "text", "llamacpp_server_binary", "LLAMACPP_SERVER_BINARY"
     ),
     ConnectionField(
-        "chat_server",
-        "Who runs the Chat server",
+        "router_server",
+        "Who runs the llama.cpp router",
         "choice",
-        "llamacpp_chat_server",
-        "LLAMACPP_CHAT_SERVER",
-    ),
-    ConnectionField(
-        "context_window",
-        "Context window (tokens)",
-        "int",
-        "llamacpp_context_window",
-        "LLAMACPP_CONTEXT_WINDOW",
-        minimum=2048,
-        maximum=262144,
+        "llamacpp_router_server",
+        "LLAMACPP_ROUTER_SERVER",
     ),
 )

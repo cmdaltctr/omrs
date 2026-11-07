@@ -143,15 +143,15 @@ def test_non_yaml_field_resolves_from_field_default(
 ) -> None:
     """A field absent from defaults.yaml SHALL fall back to its field default.
 
-    LLAMACPP_EMBED_URL is not in defaults.yaml, so the model's declared
+    LLAMACPP_ROUTER_URL is not in defaults.yaml, so the model's declared
     field default applies.
     """
-    monkeypatch.delenv("LLAMACPP_EMBED_URL", raising=False)
+    monkeypatch.delenv("LLAMACPP_ROUTER_URL", raising=False)
     data = _load_packaged_yaml()
-    assert "LLAMACPP_EMBED_URL" not in data
-    field_default = Settings.model_fields["llamacpp_embed_url"].default
+    assert "LLAMACPP_ROUTER_URL" not in data
+    field_default = Settings.model_fields["llamacpp_router_url"].default
     settings = _fresh_settings()
-    assert settings.llamacpp_embed_url == field_default
+    assert settings.llamacpp_router_url == field_default
 
 
 # ── CWD independence (installed-wheel behaviour) ────────────────────────

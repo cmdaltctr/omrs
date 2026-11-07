@@ -67,7 +67,6 @@ def test_a_scalar_engine_setting_is_allowed(key: str) -> None:
         ("embed_model", EMBEDDING),
         ("embed_provider", EMBEDDING),
         ("local_backend", EMBEDDING),
-        ("llamacpp_embed_url", EMBEDDING),
         ("openrouter_embed_model", EMBEDDING),
         ("embedding.tokenizer_model", EMBEDDING),
         ("embedding.norm_tolerance", EMBEDDING),
@@ -110,12 +109,14 @@ def test_allowed_keys_are_every_other_setting_and_the_file_only_keys() -> None:
 
 def test_the_card_keys_other_than_keys_stay_allowed() -> None:
     cards = {key for key in PROVIDER_FIELDS if key not in SECRET_FIELDS}
-    assert cards - {"llamacpp_chat_server"} <= set(ALLOWED_KEYS)
+    assert cards <= set(ALLOWED_KEYS)
 
 
-def test_the_chat_server_choice_is_set_on_the_llamacpp_card_only() -> None:
-    assert "llamacpp_chat_server" not in ALLOWED_KEYS
-    assert read_only_reason("llamacpp_chat_server") == "Set this on the llama.cpp card."
+def test_the_router_settings_are_plain_allowed_keys() -> None:
+    """One router replaced the Chat server card key, so no key is card-only now."""
+    for key in ("llamacpp_router_server", "llamacpp_router_url", "llamacpp_router_models_max"):
+        assert key in ALLOWED_KEYS
+    assert read_only_reason("llamacpp_chat_server") == "This is not a setting."
 
 
 def test_a_provider_key_reference_is_still_written(folder: Path) -> None:

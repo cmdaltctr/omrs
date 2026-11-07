@@ -208,7 +208,10 @@ def settings_to_effective(settings: Settings | None = None) -> Any:
         metadata_llm_provider=settings.metadata_llm_provider,
         local_backend=settings.local_backend,
         cloud_backend=settings.cloud_backend,
-        llamacpp_embed_url=settings.llamacpp_embed_url,
+        # One router serves every llama.cpp role (one-llamacpp-router D2). Its address
+        # comes with PROVIDER_ADDRESS_FIELDS below.
+        llamacpp_router_server=settings.llamacpp_router_server,
+        llamacpp_models=dict(settings.llamacpp_models),
         llamacpp_embed_model=settings.llamacpp_embed_model,
         llamacpp_chat_model=settings.llamacpp_chat_model,
         openrouter_embed_model=settings.openrouter_embed_model,

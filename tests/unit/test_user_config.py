@@ -36,7 +36,7 @@ POSIX_ONLY = pytest.mark.skipif(sys.platform == "win32", reason="POSIX file mode
 
 VARIABLES = (
     "OLLAMA_BASE_URL",
-    "LLAMACPP_CHAT_URL",
+    "LLAMACPP_ROUTER_URL",
     "OPENAI_COMPATIBLE_BASE_URL",
     "OPENROUTER_API_KEY",
     "OPENAI_COMPATIBLE_API_KEY",
@@ -155,7 +155,7 @@ def test_jsonc_sets_addresses_and_chat_choice(folder: Path) -> None:
         """{
           // comment
           "ollama_base_url": "http://ollama.cfg:11434",
-          "llamacpp_chat_url": "http://llama.cfg:8081/v1",
+          "llamacpp_router_url": "http://llama.cfg:8081/v1",
           "openai_compatible_base_url": "http://oai.cfg/v1",
           "answer": {"provider": "anthropic", "model": "claude-x",},
           "unknown_key": "ignored",
@@ -164,7 +164,7 @@ def test_jsonc_sets_addresses_and_chat_choice(folder: Path) -> None:
     config = load_user_config()
     assert config.values == {
         "ollama_base_url": "http://ollama.cfg:11434",
-        "llamacpp_chat_url": "http://llama.cfg:8081/v1",
+        "llamacpp_router_url": "http://llama.cfg:8081/v1",
         "openai_compatible_base_url": "http://oai.cfg/v1",
         "answer.provider": "anthropic",
         "answer.model": "claude-x",
@@ -265,9 +265,9 @@ def test_broken_json_gives_no_values_and_one_warning(
 def test_a_wrong_type_is_ignored_with_one_warning_and_the_rest_stay(
     folder: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
-    write_config(folder, '{"ollama_base_url": 12, "llamacpp_chat_url": "http://ok/v1"}')
+    write_config(folder, '{"ollama_base_url": 12, "llamacpp_router_url": "http://ok/v1"}')
     with caplog.at_level(logging.WARNING):
-        assert load_user_config().values == {"llamacpp_chat_url": "http://ok/v1"}
+        assert load_user_config().values == {"llamacpp_router_url": "http://ok/v1"}
     messages = warnings_of(caplog)
     assert len(messages) == 1
     assert "ollama_base_url" in messages[0]
@@ -415,13 +415,13 @@ def test_address_precedence(folder: Path, tmp_path: Path, monkeypatch: pytest.Mo
 
 
 def test_jsonc_address_does_not_lock_a_saved_address(folder: Path, tmp_path: Path) -> None:
-    saved = ProviderValues(values={"llamacpp_chat_url": "http://saved:4"})
-    write_config(folder, '{"llamacpp_chat_url": "http://from-jsonc:1"}')
+    saved = ProviderValues(values={"llamacpp_router_url": "http://saved:4"})
+    write_config(folder, '{"llamacpp_router_url": "http://from-jsonc:1"}')
     file_set = build(tmp_path)
-    assert "llamacpp_chat_url" not in locked_fields(file_set, file_set.provider_explicit)
-    assert apply_provider_values(file_set, saved).llamacpp_chat_url == "http://saved:4"
-    dotenv_set = build(tmp_path, "LLAMACPP_CHAT_URL=http://from-dotenv:2/v1\n")
-    assert apply_provider_values(dotenv_set, saved).llamacpp_chat_url == "http://from-dotenv:2/v1"
+    assert "llamacpp_router_url" not in locked_fields(file_set, file_set.provider_explicit)
+    assert apply_provider_values(file_set, saved).llamacpp_router_url == "http://saved:4"
+    dotenv_set = build(tmp_path, "LLAMACPP_ROUTER_URL=http://from-dotenv:2/v1\n")
+    assert apply_provider_values(dotenv_set, saved).llamacpp_router_url == "http://from-dotenv:2/v1"
 
 
 def test_key_precedence(folder: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -493,10 +493,10 @@ def test_dotenv_chat_model_locks_both_chat_fields(folder: Path, tmp_path: Path) 
 def test_stdio_and_cli_settings_see_the_jsonc_values(
     folder: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    write_config(folder, '{"llamacpp_chat_url": "http://cli.cfg:8081/v1"}')
+    write_config(folder, '{"llamacpp_router_url": "http://cli.cfg:8081/v1"}')
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr("omrs.config._settings", None)
-    assert compose.get_settings().llamacpp_chat_url == "http://cli.cfg:8081/v1"
+    assert compose.get_settings().llamacpp_router_url == "http://cli.cfg:8081/v1"
     monkeypatch.setattr("omrs.config._settings", None)
 
 

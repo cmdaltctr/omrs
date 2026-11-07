@@ -32,6 +32,8 @@ from pathlib import Path
 from typing import Literal
 from urllib.parse import urlsplit
 
+from .model_reasons import NOT_DOWNLOADED
+
 #: Whether file names follow Windows rules. Tests set this to check ``.exe``.
 IS_WINDOWS = os.name == "nt"
 
@@ -52,7 +54,57 @@ REASONS = (
     "wrong-build",
     "file-changed",
     "bind-failed",
+    "not-provisioned",
+    NOT_DOWNLOADED,
 )
+#: A blank program and no pinned build installed (spec ``llamacpp-server``, D12).
+NOT_PROVISIONED = "not-provisioned"
+NOT_PROVISIONED_TEXT = (
+    "llama.cpp is not installed. Run `omrs llamacpp install` or press Get llama.cpp "
+    "on the Integrations page."
+)
+
+#: A router start with no downloaded model (D-b). The detail ``downloading`` is set
+#: while one of the listed models downloads, and picks the second line.
+DOWNLOADING = "downloading"
+NOT_DOWNLOADED_TEXT = "No model is downloaded yet."
+DOWNLOADING_TEXT = "Models are still downloading."
+
+#: The reason of a request refused or cut by an operator stop (design D8).
+OPERATOR_STOP = "operator-stop"
+
+_REASON_TEXTS = {
+    "binary-invalid": "The llama-server program is missing, cannot run or has another name.",
+    "model-invalid": "The model is not a .gguf file or a Hugging Face id.",
+    "not-loopback": "The server address is not on this computer.",
+    "port-in-use": "Another program uses the port.",
+    "exited": "The server stopped before it was ready.",
+    "timeout": "The server was not ready in time and was stopped.",
+    "not-configured": "No program or model is set.",
+    "not-supported": "Managed servers need file locks, which this system does not have.",
+    "version-busy": "Another OMRS process still uses the older version of this server.",
+    "wrong-build": "The llama-server build is not the build the runtime declares.",
+    "file-changed": "A model file changed: {name}.",
+    "bind-failed": "The server could not open a port after 4 tries.",
+    NOT_PROVISIONED: NOT_PROVISIONED_TEXT,
+    NOT_DOWNLOADED: NOT_DOWNLOADED_TEXT,
+    OPERATOR_STOP: "An operator stopped this server.",
+}
+
+
+def reason_text(reason: str, detail: str = "") -> str:
+    """Return the fixed plain-English line of *reason*.
+
+    A detail fills ``{name}``; a line without ``{name}`` gets the detail after a colon.
+    ``not-downloaded`` has two fixed lines; the detail ``downloading`` picks the second.
+    """
+    if reason == NOT_DOWNLOADED:
+        return DOWNLOADING_TEXT if detail == DOWNLOADING else NOT_DOWNLOADED_TEXT
+    template = _REASON_TEXTS.get(reason, reason)
+    if detail and "{name}" not in template:
+        return f"{template.rstrip('.')}: {detail}."
+    return template.format(name=detail or "unknown")
+
 
 #: Longest accepted program or model text.
 MAX_TEXT_CHARS = 2048

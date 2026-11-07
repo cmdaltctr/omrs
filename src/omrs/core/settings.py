@@ -31,14 +31,23 @@ OCR_NON_LATIN_MODES: tuple[str, ...] = get_args(OcrNonLatinMode)
 #: a new field adds its name here and nowhere else.
 PROVIDER_ADDRESS_FIELDS = (
     "ollama_base_url",
-    "llamacpp_chat_url",
-    "llamacpp_classify_url",
+    "llamacpp_router_url",
     "openai_compatible_base_url",
 )
 PROVIDER_SECRET_FIELDS = ("openrouter_api_key", "openai_compatible_api_key", "anthropic_api_key")
 #: Whole-number editable fields that live in ``EffectiveSettings``: the Ollama
 #: context window (chat and metadata calls only, never embeddings).
 PROVIDER_INT_FIELDS = ("ollama_context_window",)
+#: File-only maps that apply at once in ``omrs web``: the router model list, the
+#: decision models and the document routers (one-llamacpp-router D3).
+#: Compose reads them per request.
+ROUTER_LIVE_MAPS = ("llamacpp_models", "decision_models", "document_routers")
+#: Plain values beside those maps that apply at once: the host router name.
+#: ``env`` or ``.env`` locks it, as for any editable field.
+ROUTER_LIVE_VALUES = ("document_router",)
+#: Router fields a running Engine takes from ``omrs.jsonc``: the mode, the host
+#: router name and the maps.
+ROUTER_LIVE_FIELDS = ("llamacpp_router_server", *ROUTER_LIVE_VALUES, *ROUTER_LIVE_MAPS)
 
 
 class ChunkingBlock(BaseModel):
@@ -197,7 +206,7 @@ class MetadataBlock(BaseModel):
 
     extraction_mode: str = "llamaindex"
     keyword_rules: str | None = None
-    ollama_classify_model: str = "qwen3:0.6b"
+    ollama_classify_model: str = ""
     # Both knobs reject non-positive values outright rather than clamping:
     # silently rewriting an operator's 0 to 1 hides the misconfiguration,
     # and a non-positive timeout reaches httpx as a nonsensical deadline.
@@ -238,8 +247,8 @@ class AnswerBlock(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     enabled: bool = True
-    provider: str = "ollama"
-    model: str = "qwen3:4b"
+    provider: str = "llamacpp"
+    model: str = ""
     timeout: float = Field(default=120.0, gt=0)
     max_rounds: int = Field(default=4, ge=1, le=8)
     context_window: int = Field(default=8192, gt=0)
@@ -303,12 +312,12 @@ class EffectiveSettings(BaseModel):
     cloud_backend: str = "openrouter"
 
     # ── Provider connection ───────────────────────────────────────
-    llamacpp_embed_url: str = "http://localhost:8080/v1"
+    #: The one llama.cpp router address, mode and model list (one-llamacpp-router D2, D3).
+    llamacpp_router_url: str = "http://127.0.0.1:8080/v1"
+    llamacpp_router_server: str = "managed"
+    llamacpp_models: dict[str, Any] = Field(default_factory=dict)
     llamacpp_embed_model: str = ""
-    llamacpp_chat_url: str = "http://localhost:8081/v1"
     llamacpp_chat_model: str = ""
-    #: Classification address; blank follows ``llamacpp_chat_url`` (ADR-108).
-    llamacpp_classify_url: str = ""
     openrouter_api_key: str = ""
     openai_compatible_base_url: str = "https://api.openai.com/v1"
     openai_compatible_api_key: str = ""

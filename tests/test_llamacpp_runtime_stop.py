@@ -11,6 +11,7 @@ from pathlib import Path
 
 import pytest
 from tests.fixtures.llamacpp.harness import RuntimeEnv, pid_alive, runtime_env_fixture
+from tests.unit.test_llamacpp_router_worker import fixed_spec
 
 from omrs.integrations.llamacpp_runtime.state import (
     ServerRecord,
@@ -32,7 +33,7 @@ def _free_port() -> int:
         return int(sock.getsockname()[1])
 
 
-def _record(runtime_id: str = "chat"):  # type: ignore[no-untyped-def]
+def _record(runtime_id: str = "router"):  # type: ignore[no-untyped-def]
     return read_server_record(runtime_dir(state_root(), runtime_id))
 
 
@@ -42,13 +43,13 @@ def _record(runtime_id: str = "chat"):  # type: ignore[no-untyped-def]
 def test_operator_stop_while_a_client_uses_the_runtime(runtime_env: RuntimeEnv) -> None:
     fake = runtime_env.fake()
     fake.set_env(FAKE_LLAMA_REQUEST_DELAY="3")
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     cli = runtime_env.client()
     assert cli.join(spec)["ok"]
     server_pid = int(fake.starts()[0]["pid"])
     cli.send({"cmd": "request", "path": "/v1/chat/completions", "body": {}, "timeout": 30})
     time.sleep(0.5)  # the request is in progress
-    assert runtime_env.manager().stop("chat") is True
+    assert runtime_env.manager().stop("router") is True
     assert not pid_alive(server_pid)
     record = _record()
     assert record is not None and record.stopped_by == "operator"
@@ -63,17 +64,17 @@ def test_operator_stop_while_a_client_uses_the_runtime(runtime_env: RuntimeEnv) 
 
 
 def test_operator_stop_of_a_stopped_runtime_signals_nothing(runtime_env: RuntimeEnv) -> None:
-    assert runtime_env.manager().stop("chat") is False
+    assert runtime_env.manager().stop("router") is False
     assert _record() is None
 
 
 def test_the_same_process_starts_again_after_its_lease_left(runtime_env: RuntimeEnv) -> None:
     fake = runtime_env.fake()
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     manager = runtime_env.manager()
     lease = manager.lease(spec)
     lease.join()
-    assert manager.stop("chat") is True
+    assert manager.stop("router") is True
     lease.leave()
     lease.join()
     assert len(fake.starts()) == 2
@@ -86,7 +87,7 @@ def test_sigterm_to_the_only_client_stops_the_server_before_it_exits(
     runtime_env: RuntimeEnv,
 ) -> None:
     fake = runtime_env.fake()
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     only = runtime_env.client()
     assert only.join(spec)["ok"]
     server_pid = int(fake.starts()[0]["pid"])
@@ -100,7 +101,7 @@ def test_sigterm_to_the_only_client_stops_the_server_before_it_exits(
 def test_close_leaves_every_lease(runtime_env: RuntimeEnv) -> None:
     fake = runtime_env.fake()
     manager = runtime_env.manager()
-    manager.lease(fake.chat(_free_port())).join()
+    manager.lease(fixed_spec(fake, _free_port())).join()
     manager.lease(fake.ocr()).join()
     pids = [int(entry["pid"]) for entry in fake.starts()]
     manager.close()
@@ -109,20 +110,20 @@ def test_close_leaves_every_lease(runtime_env: RuntimeEnv) -> None:
 
 def test_sweep_stops_an_owned_server_with_no_client(runtime_env: RuntimeEnv) -> None:
     fake = runtime_env.fake()
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     starter = runtime_env.client()
     assert starter.join(spec)["ok"]
     starter.send({"cmd": "abandon"})  # an orphan, as after SIGKILL
     starter.wait()
     server_pid = int(fake.starts()[0]["pid"])
     assert pid_alive(server_pid)
-    assert runtime_env.manager().sweep() == ["chat"]
+    assert runtime_env.manager().sweep() == ["router"]
     assert not pid_alive(server_pid)
 
 
 def test_sweep_leaves_a_server_that_a_client_holds(runtime_env: RuntimeEnv) -> None:
     fake = runtime_env.fake()
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     holder = runtime_env.client()
     assert holder.join(spec)["ok"]
     assert runtime_env.manager().sweep() == []
@@ -132,11 +133,11 @@ def test_sweep_leaves_a_server_that_a_client_holds(runtime_env: RuntimeEnv) -> N
 
 def test_sweep_never_signals_a_reused_pid(runtime_env: RuntimeEnv) -> None:
     fake = runtime_env.fake()
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     sleeper = subprocess.Popen(["sleep", "60"])  # noqa: S603, S607 - fixed argv
     try:
         write_server_record(
-            runtime_dir(state_root(), "chat"),
+            runtime_dir(state_root(), "router"),
             ServerRecord(pid=sleeper.pid, port=1, binary=spec.binary, digest=spec.digest),
         )
         assert runtime_env.manager().sweep() == []
@@ -148,14 +149,14 @@ def test_sweep_never_signals_a_reused_pid(runtime_env: RuntimeEnv) -> None:
 
 def test_operator_stop_never_signals_a_reused_pid(runtime_env: RuntimeEnv) -> None:
     fake = runtime_env.fake()
-    spec = fake.chat(_free_port())
+    spec = fixed_spec(fake, _free_port())
     sleeper = subprocess.Popen(["sleep", "60"])  # noqa: S603, S607 - fixed argv
     try:
         write_server_record(
-            runtime_dir(state_root(), "chat"),
+            runtime_dir(state_root(), "router"),
             ServerRecord(pid=sleeper.pid, port=1, binary=spec.binary, digest=spec.digest),
         )
-        assert runtime_env.manager().stop("chat") is False
+        assert runtime_env.manager().stop("router") is False
         assert sleeper.poll() is None
     finally:
         sleeper.kill()
@@ -167,12 +168,16 @@ def test_an_external_lease_never_stops_the_recorded_server(runtime_env: RuntimeE
 
     fake = runtime_env.fake()
     port = _free_port()
-    runtime_env.manager().lease(fake.chat(port)).join()
+    runtime_env.manager().lease(fixed_spec(fake, port)).join()
     external = runtime_env.manager()
     external.lease(
         RuntimeSpec(
-            id="chat", role="chat", mode="external", binary="", url_base=f"http://127.0.0.1:{port}"
+            id="router",
+            role="router",
+            mode="external",
+            binary="",
+            url_base=f"http://127.0.0.1:{port}",
         )
     )
-    assert external.stop("chat") is False
+    assert external.stop("router") is False
     assert pid_alive(int(fake.starts()[0]["pid"]))

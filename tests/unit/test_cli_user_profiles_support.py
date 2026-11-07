@@ -72,13 +72,13 @@ def count_graph_runs(monkeypatch: pytest.MonkeyPatch) -> list[str]:
 
 
 def use_mock_embedder(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Make the composition root build the shared mock embedder instead of Ollama."""
+    """Make the composition root build the shared mock embedder instead of the llama.cpp router."""
     from omrs.core.providers.embeddings import registry as embed_registry
 
     real_get = embed_registry.get
 
     def _get(name: str) -> Any:
-        if name == "ollama":
+        if name == "llamacpp":
             return lambda _settings: LlamaIndexSettings.embed_model
         return real_get(name)
 

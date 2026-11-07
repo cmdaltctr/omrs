@@ -35,6 +35,12 @@ from ... import compose
 _JSON_HELP = "Output results as JSON."
 _runtime_details_enabled = False
 _JSON_META = "omrs.json_output"
+_HELP_META = "omrs.help_requested"
+#: Subcommands that build no embedding runtime. ``web`` and bare ``omrs`` (MCP over
+#: stdio) each own one Engine. ``experiments`` reads only files. ``config`` and
+#: ``llamacpp`` read Settings themselves and must work while the embedding model is
+#: not in the llama.cpp model list, because they are how a user fixes the list.
+_NO_RUNTIME_COMMANDS = ("web", "experiments", "config", "llamacpp")
 
 
 class _DropRecords(logging.Filter):
@@ -81,17 +87,20 @@ def _mute_terminal_logging() -> Callable[[], None]:
 
 
 class _JsonAwareGroup(TyperGroup):
-    """Records whether the subcommand got ``--json`` before the callback runs.
+    """Records what the subcommand's arguments hold before the callback runs.
 
     ``--json`` output goes to stderr, so a log line there breaks the JSON.
+    A help option must not build the runtime, which can refuse to start.
     Click resolves the subcommand before it runs the group callback, but it
-    keeps the subcommand's arguments in a local variable; this keeps the
-    answer in ``ctx.meta`` for the callback.
+    keeps the subcommand's arguments in a local variable (Click 8.4 also
+    clears them before the callback); this keeps both answers in
+    ``ctx.meta`` for the callback.
     """
 
     def resolve_command(self, ctx: click.Context, args: list[str]) -> Any:
         name, command, rest = super().resolve_command(ctx, args)
         ctx.meta[_JSON_META] = "--json" in rest
+        ctx.meta[_HELP_META] = any(option in rest for option in ctx.help_option_names)
         return name, command, rest
 
 
@@ -266,10 +275,9 @@ def callback(
     """Run with no arguments to start the MCP stdio server."""
     if ctx.meta.get(_JSON_META):
         ctx.call_on_close(_mute_terminal_logging())
-    if ctx.invoked_subcommand not in ("web", "experiments", None):
-        # ``omrs web`` and bare ``omrs`` (MCP over stdio) each own one
-        # Engine and must not install the legacy process default.
-        # ``omrs experiments`` reads only files and needs no Engine.
+    if ctx.invoked_subcommand not in (*_NO_RUNTIME_COMMANDS, None) and not ctx.meta.get(_HELP_META):
+        # Only a command that sends a request builds the runtime. Bare
+        # ``omrs`` and ``omrs web`` must not install the legacy process default.
         _initialise_runtime()
     if ctx.invoked_subcommand is None:
         from ..mcp import main as mcp_main
@@ -304,6 +312,7 @@ from . import (  # noqa: E402,F401
     ingest,
     install_login_watcher,
     list,
+    llamacpp,
     profile,
     search,
     watch,

@@ -94,10 +94,8 @@ def test_every_row_kind_lands_under_its_file_key(rows: WorkspaceSettings, folder
     rows.set_chat_choice("openrouter", "vendor/model")
     rows.set(provider_key("ollama", "base_url"), "http://localhost:11500")
     rows.set(provider_key("ollama", "context_window"), "32768")
-    rows.set(provider_key("llamacpp", "chat_url"), "http://localhost:8099/v1")
     rows.set(provider_key("openai_compatible", "base_url"), "https://example.test/v1")
     rows.set(provider_key("llamacpp", "server_binary"), "/opt/bin/llama-server")
-    rows.set(provider_key("llamacpp", "context_window"), "8192")
     handover(rows, folder)
     values = dict(read_settings_file(folder).values)
     assert values == {
@@ -108,10 +106,8 @@ def test_every_row_kind_lands_under_its_file_key(rows: WorkspaceSettings, folder
         "answer.model": "vendor/model",
         "ollama_base_url": "http://localhost:11500",
         "ollama_context_window": 32768,
-        "llamacpp_chat_url": "http://localhost:8099/v1",
         "openai_compatible_base_url": "https://example.test/v1",
         "llamacpp_server_binary": "/opt/bin/llama-server",
-        "llamacpp_context_window": 8192,
     }
     assert count_rows(rows) == 0
 
@@ -236,7 +232,6 @@ def test_a_file_reference_wins_over_the_saved_key(rows: WorkspaceSettings, folde
 def test_a_row_that_breaks_its_rule_is_not_copied(rows: WorkspaceSettings, folder: Path) -> None:
     rows.set(provider_key("ollama", "base_url"), "file:///etc/passwd")
     rows.set(provider_key("ollama", "context_window"), "12")
-    rows.set(provider_key("llamacpp", "context_window"), "soon")
     rows.set("chat.provider", "not a name!")
     handover(rows, folder)
     assert read_settings_file(folder).values == {}

@@ -11,6 +11,12 @@ nothing, when:
 - a deleted (or renamed) router is named by a saved profile. The caller passes
   the profile check, because ``config/`` cannot read the workspace.
 
+:func:`write_llamacpp_models` does the same for the router model list
+``llamacpp_models`` (change one-llamacpp-router, D3): it sets or deletes entries by
+id, checks each with ``llamacpp_models.check_model_entry``, refuses a second entry
+with the same ``model``, and, when the file holds no list yet, writes the shipped
+list plus the change in the same replace (the first page edit).
+
 Only ``omrs web`` calls this. No message holds a value.
 
 This module is a leaf: it imports only ``config/`` modules.
@@ -22,6 +28,18 @@ from collections.abc import Callable, Collection, Mapping
 from pathlib import Path
 from typing import Any
 
+from .llamacpp_models import (
+    DUPLICATE_RULE,
+    ID_PATTERN,
+    ID_RULE,
+    LLAMACPP_MODELS,
+    SHIPPED_MODELS,
+    check_model_entry,
+)
+from .llamacpp_models import (
+    ENTRY_RULE as MODEL_ENTRY_RULE,
+)
+from .settings_file import read_settings_file
 from .settings_file_write import SettingsFileRefused, WriteResult, commit_plan
 from .settings_maps import (
     DECISION_MODELS,
@@ -143,3 +161,67 @@ def write_map_entries(
         map_key, _ = _split(key)
         plan[key] = None if value is None else _checked(key, map_key, value, folder / SECRETS_DIR)
     return commit_plan(folder, plan, revision, _guard(plan, profiles_naming))
+
+
+def _dump(entry: Any) -> dict[str, Any]:
+    """Return an entry as the file holds it: no empty field and no empty preset."""
+    data: dict[str, Any] = entry.model_dump(exclude_none=True)
+    if not data.get("preset"):
+        data.pop("preset", None)
+    return data
+
+
+def _model_entry(entry_id: str, value: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the entry as the file will hold it, or refuse naming the broken field."""
+    entry, problems = check_model_entry(value)
+    if problems or entry is None:
+        rules = "; ".join(f"{LLAMACPP_MODELS}.{entry_id}.{p.field}: {p.rule}" for p in problems)
+        raise SettingsFileRefused(rules or f"{LLAMACPP_MODELS}.{entry_id}: {MODEL_ENTRY_RULE}")
+    return _dump(entry)
+
+
+def write_llamacpp_models(
+    changes: Mapping[str, Mapping[str, Any] | None],
+    *,
+    revision: str | None,
+    directory: Path | None = None,
+) -> WriteResult:
+    """Set or delete entries of ``llamacpp_models`` in ``omrs.jsonc``. All land in one replace.
+
+    Args:
+        changes: Entry id to the whole entry, or ``None`` to delete it. An entry
+            replaces the saved one as a whole, so the caller merges fields first.
+        revision: The revision the caller read (``absent`` for no file). The
+            write refuses when the file differs. ``None`` skips the check.
+        directory: The user config folder (default: the resolved one).
+
+    Returns:
+        The revision after the write.
+
+    Raises:
+        SettingsFileRefused: An id or an entry breaks a rule, or two entries
+            would list the same ``model``.
+        SettingsFileConflict: The file changed or cannot be parsed.
+        SettingsFileWriteError: The disk refused the write.
+    """
+    folder = directory or user_config_dir()
+    file = read_settings_file(folder)
+    saved = file.maps.get(LLAMACPP_MODELS)
+    held: dict[str, Any] = {
+        name: _dump(entry) for name, entry in (SHIPPED_MODELS if saved is None else saved).items()
+    }
+    plan: dict[str, Any] = {}
+    for entry_id, value in changes.items():
+        if not ID_PATTERN.fullmatch(entry_id):
+            raise SettingsFileRefused(f"{LLAMACPP_MODELS}.{entry_id}: {ID_RULE}")
+        if value is None:
+            held.pop(entry_id, None)
+            plan[f"{LLAMACPP_MODELS}.{entry_id}"] = None
+        else:
+            held[entry_id] = plan[f"{LLAMACPP_MODELS}.{entry_id}"] = _model_entry(entry_id, value)
+    models = [str(entry.get("model")) for entry in held.values()]
+    if len(models) != len(set(models)):
+        raise SettingsFileRefused(f"{LLAMACPP_MODELS}: {DUPLICATE_RULE}")
+    if saved is None:  # the first page edit writes the shipped list plus the change
+        plan = {f"{LLAMACPP_MODELS}.{name}": entry for name, entry in held.items()}
+    return commit_plan(folder, plan, revision)

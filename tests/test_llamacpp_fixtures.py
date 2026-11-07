@@ -299,7 +299,7 @@ def test_two_client_processes_join_one_fake_server_through_the_manager(
     env = RuntimeEnv(tmp_path)
     try:
         fake = env.fake()
-        spec = fake.chat(_free_port())
+        spec = fake.single(_free_port())
         first, second = env.client(), env.client()
         assert first.join(spec)["ok"] is True
         assert second.join(spec)["ok"] is True

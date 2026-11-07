@@ -75,8 +75,9 @@ def test_fields_name_the_setting_and_environment_variable() -> None:
     assert fields["ollama"]["base_url"] == ConnectionField(
         "base_url", "Address", "url", "ollama_base_url", "OLLAMA_BASE_URL"
     )
-    assert fields["llamacpp"]["chat_url"].settings_field == "llamacpp_chat_url"
-    assert fields["llamacpp"]["chat_url"].env_var == "LLAMACPP_CHAT_URL"
+    assert set(fields["llamacpp"]) == {"router_url"}
+    assert fields["llamacpp"]["router_url"].settings_field == "llamacpp_router_url"
+    assert fields["llamacpp"]["router_url"].env_var == "LLAMACPP_ROUTER_URL"
     key = fields["openrouter"]["api_key"]
     assert (key.kind, key.settings_field, key.env_var) == (
         "secret",
@@ -96,39 +97,18 @@ def test_extras_and_required_modules() -> None:
 def test_test_targets_follow_the_design() -> None:
     settings = make_settings(
         ollama_base_url="http://ollama.test:11434/",
-        llamacpp_embed_url="http://llama.test:8080/v1",
-        llamacpp_chat_url="http://llama.test:8081/v1",
+        llamacpp_router_url="http://llama.test:8080/v1",
         openrouter_api_key=SECRET,
     )
     described = registry.describe_all()
     assert described["ollama"].test_targets(settings).urls == ("http://ollama.test:11434/api/tags",)
     assert described["llamacpp"].test_targets(settings).urls == (
         "http://llama.test:8080/v1/models",
-        "http://llama.test:8081/v1/models",
     )
     openrouter = described["openrouter"].test_targets(settings)
     assert openrouter.urls == ("https://openrouter.ai/api/v1/key",)
     assert openrouter.headers == {"Authorization": f"Bearer {SECRET}"}
     assert SECRET not in repr(openrouter)
-
-
-def test_the_llamacpp_test_holds_the_classification_address_once() -> None:
-    targets = registry.describe_all()["llamacpp"].test_targets
-    separate = make_settings(
-        llamacpp_embed_url="http://llama.test:8080/v1",
-        llamacpp_chat_url="http://llama.test:8081/v1",
-        llamacpp_classify_url="http://llama.test:9931/v1",
-    )
-    assert targets(separate).urls == (
-        "http://llama.test:8080/v1/models",
-        "http://llama.test:8081/v1/models",
-        "http://llama.test:9931/v1/models",
-    )
-    following = make_settings(
-        llamacpp_embed_url="http://llama.test:8080/v1",
-        llamacpp_chat_url="http://llama.test:8081/v1",
-    )
-    assert len(targets(following).urls) == 2
 
 
 def test_openrouter_without_a_key_has_no_target() -> None:
@@ -141,7 +121,7 @@ def test_openrouter_without_a_key_has_no_target() -> None:
 def test_models_targets() -> None:
     settings = make_settings(
         ollama_base_url="http://ollama.test:11434",
-        llamacpp_chat_url="http://llama.test:8081/v1",
+        llamacpp_router_url="http://llama.test:8080/v1",
         openrouter_api_key=SECRET,
     )
     described = registry.describe_all()
@@ -149,7 +129,7 @@ def test_models_targets() -> None:
         "http://ollama.test:11434/api/tags",
     )
     assert described["llamacpp"].models_target(settings).urls == (
-        "http://llama.test:8081/v1/models",
+        "http://llama.test:8080/v1/models",
     )
     assert described["openrouter"].models_target(settings).urls == (
         "https://openrouter.ai/api/v1/models",
@@ -158,13 +138,14 @@ def test_models_targets() -> None:
 
 def test_read_only_rows_hold_embedding_values() -> None:
     settings = make_settings(
-        embed_model="nomic", llamacpp_embed_url="http://e:1/v1", llamacpp_embed_model="gguf"
+        embed_model="nomic", llamacpp_router_server="external", llamacpp_embed_model="gguf"
     )
     described = registry.describe_all()
     ollama = {r.label: r.value for r in described["ollama"].read_only(settings)}
     assert ollama["Embedding model"] == "nomic"
     llama = {r.label: r.value for r in described["llamacpp"].read_only(settings)}
-    assert llama["Embedding address"] == "http://e:1/v1"
+    assert llama["Router mode"] == "external"
+    assert llama["Embedding model"] == "gguf"
     openrouter = {r.label: r.value for r in described["openrouter"].read_only(settings)}
     assert openrouter["Address"] == "https://openrouter.ai/api/v1"
 

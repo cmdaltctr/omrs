@@ -6,6 +6,7 @@
 - **Amends:** [ADR-084](084-context-windows-and-an-owned-llama-server.md) (the owned `llama-server` moves from the web transport to a shared manager, and the idle sleep flag goes), [ADR-108](108-local-chat-and-classification-stay-apart.md) (decision 4: the managed Chat server runs for every OMRS process, not for `omrs web` only)
 - **Related:** [ADR-087](087-settings-live-in-omrg-jsonc.md) (source order, `omrs.jsonc`), [ADR-105](105-pipeline-steps-own-their-ocr-settings.md) (OCR routes by engine folder), [ADR-106](106-app-searches-and-downloads-local-models.md), [ADR-103](103-experiments-run-local-models-through-llama-cpp-gguf.md) (llama.cpp for local models), root `AGENTS.md` Gotcha 17
 - **Change:** `openspec/changes/managed-llamacpp-runtimes/`
+- **Superseded in part by:** [ADR-115](115-one-llamacpp-router.md) (2026-11-06; proposed: router mode replaces the per-role `chat` and `embeddings` runtimes and the decision runtime; the OCR runtime, the lease, the locks and the state folder stay)
 
 ## Context
 

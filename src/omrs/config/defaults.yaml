@@ -56,7 +56,7 @@ retrieval:
 metadata:
   extraction_mode: llamaindex
   taxonomy_mode: category
-  ollama_classify_model: "qwen3:0.6b"
+  ollama_classify_model: ""
   classify_max_attempts: 3
   classify_timeout: 30.0
   # pipeline_timeout defaults to 180.0 in the settings model (not listed
@@ -73,12 +73,13 @@ metadata:
 # Server-level configuration for the answering operation (answer_documents
 # tool, `omrs answer` CLI command). ANSWER__PROVIDER resolves through
 # the LLM provider registry (ollama, llamacpp, openrouter) and is
-# validated at startup. context_window is a per-round context budget in
-# CHARACTERS (deterministic character count, not a token estimate).
+# validated at startup. No Chat model is chosen on a fresh install: an empty
+# ANSWER__MODEL makes Chat answer with a setup message. context_window is a
+# per-round context budget in CHARACTERS (deterministic character count, not a token estimate).
 answer:
   enabled: true
-  provider: ollama
-  model: "qwen3:4b"
+  provider: llamacpp
+  model: ""
   timeout: 120.0
   max_rounds: 4
   context_window: 8192

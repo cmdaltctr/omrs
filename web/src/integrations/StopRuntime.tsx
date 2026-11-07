@@ -18,10 +18,15 @@ function isExternalRefusal(error: unknown): boolean {
   return (error.body as { reason?: unknown } | null | undefined)?.reason === "external-runtime";
 }
 
+/** What a stop costs the other process, by runtime: OCR falls back, the router's models stay unreachable until a start. */
+function consequence(item: ModelRuntime): string {
+  return item.role === "ocr" ? "OCR uses the fallback engine." : "Requests for the router's models fail until it starts again.";
+}
+
 /**
  * The Stop button of one managed runtime. When another OMRS process uses the
- * runtime, it asks first: a stop fails the requests in progress and OCR then
- * uses the fallback engine.
+ * runtime, it asks first: a stop fails the requests in progress and then
+ * costs that process what `consequence` says. This process alone does not ask.
  */
 export function StopRuntime({ item, title }: { item: ModelRuntime; title: string }) {
   const [confirming, setConfirming] = useState(false);
@@ -37,7 +42,7 @@ export function StopRuntime({ item, title }: { item: ModelRuntime; title: string
   return (
     <div className="flex min-w-0 flex-col gap-2">
       <div>
-        <Button type="button" variant="outline" size="sm" aria-label={`Stop ${title}`} disabled={stop.isPending} onClick={() => (item.clients === "some" ? setConfirming(true) : send())}>
+        <Button type="button" variant="outline" size="sm" aria-label={`Stop ${title}`} disabled={stop.isPending} onClick={() => (item.other_clients === "some" ? setConfirming(true) : send())}>
           {stop.isPending ? <LoaderCircle aria-hidden="true" className="motion-safe:animate-spin" /> : <Square aria-hidden="true" />}
           Stop
         </Button>
@@ -57,7 +62,7 @@ export function StopRuntime({ item, title }: { item: ModelRuntime; title: string
         <DialogContent {...returnFocus}>
           <DialogHeader>
             <DialogTitle>{`Stop ${title}?`}</DialogTitle>
-            <DialogDescription>Another OMRS process uses this runtime. Requests in progress fail, and OCR uses the fallback engine.</DialogDescription>
+            <DialogDescription>{`Another OMRS process uses this runtime. Requests in progress fail. ${consequence(item)}`}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setConfirming(false)}>

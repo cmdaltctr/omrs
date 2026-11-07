@@ -154,9 +154,11 @@ def test_stored_field_ids_match_the_provider_descriptors() -> None:
     # The table stopped taking settings at ADR-087, so the list is frozen: fields added
     # since then were never stored, and the retired server model may still be in an
     # old table (ADR-108 D5), and so may the retired idle sleep (change
-    # managed-llamacpp-runtimes D12).
-    never_stored = {"classify_url", "chat_server"}
-    assert PROVIDER_FIELD_IDS == (
-        url_ids | managed_server_ids | {KEY_SAVED_AT} | {"server_model", "idle_sleep"}
-    ) - (never_stored)
+    # managed-llamacpp-runtimes D12). The per-role address and window retired with the
+    # router (one-llamacpp-router D2); an old table may still hold them.
+    never_stored = {"router_url", "router_server"}
+    old_rows = {"server_model", "idle_sleep", "chat_url", "context_window"}
+    assert PROVIDER_FIELD_IDS == (url_ids | managed_server_ids | {KEY_SAVED_AT} | old_rows) - (
+        never_stored
+    )
     assert not secret_ids & PROVIDER_FIELD_IDS

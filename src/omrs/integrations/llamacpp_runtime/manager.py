@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
-from . import locks, process
+from . import children, holders, locks, process
 from .lease import (
     OPERATOR_STOP,
     RuntimeLease,
@@ -214,6 +214,7 @@ class RuntimeManager:
             "reason_text": None,
             "memory_bytes": None,
             "clients": "none",
+            "other_clients": "none",
             "used_by": used_by,
             "address": None,
             "files_checked": False,
@@ -234,7 +235,11 @@ class RuntimeManager:
         if record is not None and process.owns(record.pid, record.binary):
             item["state"] = "running" if record.state == "running" else "starting"
             item["address"] = f"127.0.0.1:{record.port}"
-            item["memory_bytes"] = process.rss_bytes(record.pid)
+            item["memory_bytes"] = (
+                children.tree_rss(record.pid, record.binary)
+                if spec.role == "router"
+                else process.rss_bytes(record.pid)
+            )
         elif record is not None and record.reason:
             item["state"], item["reason"] = "failed", record.reason
             item["reason_text"] = record.reason_text or reason_text(record.reason)
@@ -248,6 +253,8 @@ class RuntimeManager:
                 item["clients"] = "none" if probe.acquire(blocking=False) else "some"
             finally:
                 probe.close()
+        if holders.other_process_holds(folder):
+            item["other_clients"] = "some"
         return item
 
     # ── Idle timer and exit ─────────────────────────────────────────────

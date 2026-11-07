@@ -72,20 +72,25 @@ Both collections then behave correctly in the same running engine. See
 
 ## Install
 
-You need [uv](https://docs.astral.sh/uv/) and one of
-[llama.cpp](https://github.com/ggml-org/llama.cpp) (default),
-[Ollama](https://ollama.com), or an [OpenRouter](https://openrouter.ai) key. `omrs web` can also start and stop its own llama.cpp chat server and set the Ollama context window (see [Configuration](docs/guides/configuration.md#local-llamacpp-server)).
+You need [uv](https://docs.astral.sh/uv/). OMRS runs one local
+[llama.cpp](https://github.com/ggml-org/llama.cpp) router for every local
+model, so it needs no other model server. `omrs llamacpp install` places the
+pinned llama.cpp build. [Ollama](#ollama-opt-in) and
+[OpenRouter](#openrouter-opt-in) are opt-in providers. `omrs web` can also set
+the router and the Ollama context window (see
+[Configuration](docs/guides/configuration.md#local-llamacpp-router)).
 
 ```bash
-cp .env.example .env      # then edit it — see below
-uv sync                   # the llama.cpp backend needs no extra
-
-# start llama-server (downloads the GGUF models automatically)
-llama-server -hf Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0 --port 8080 --embeddings &
-llama-server -hf Qwen/Qwen3-0.6B-GGUF:Q8_0 --port 8081 &
-
-uv run omrs            # Ctrl-C to stop
+cp .env.example .env              # optional: storage and secrets only
+uv sync                           # the llama.cpp backend needs no extra
+uv run omrs llamacpp install      # places the pinned llama.cpp build, once
+uv run omrs                       # Ctrl-C to stop
 ```
+
+OMRS starts the router when a command first needs a model. It downloads the
+two shipped models then: `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0` for embeddings
+and `Qwen/Qwen3-4B-GGUF:Q8_0` for classification. Chat has no model until you
+choose one in Settings > Chat.
 
 No output means it is working — it waits silently for MCP messages on stdin.
 
@@ -93,18 +98,17 @@ Then register it with your AI client: [MCP client setup](docs/guides/mcp-client-
 
 ### What goes in `.env`
 
-Connection details, vector-store selection, and secrets.
+Vector-store selection and secrets.
 
 ```bash
 VECTOR_STORE=lancedb
 LANCEDB_URI=./lancedb
 COLLECTION_NAME=documents
-EMBED_MODEL=qwen3-embedding:0.6b
-LLAMACPP_EMBED_URL=http://localhost:8080/v1
-LLAMACPP_CHAT_URL=http://localhost:8081/v1
-OLLAMA_BASE_URL=http://localhost:11434
 # plus any API keys
 ```
+
+Provider, model and address settings live in `omrs.jsonc`, not in `.env`.
+Run `uv run omrs config init` to write a commented starter file.
 
 Tuning belongs in `src/omrs/config/defaults.yaml`; per-collection behaviour
 belongs in a profile. Putting tuning in `.env` silently overrides your
@@ -203,21 +207,29 @@ default in the `codebase` profile.
 uv run omrs search "What fixes MCP-1138?" --hybrid
 ```
 
-**Ollama instead of llama.cpp** — simpler model management.
+### Ollama (opt-in)
+
+Ollama is an opt-in local backend. Install it from [ollama.com](https://ollama.com),
+start it, then pull one embedding model and one classification model.
 
 ```bash
-uv sync                            # no extra needed
 ollama pull qwen3-embedding:0.6b
 ollama pull qwen3:0.6b
 ```
 
-```bash
-# .env
-LOCAL_BACKEND=ollama
-EMBED_MODEL=qwen3-embedding:0.6b
+Choose it in `omrs.jsonc`:
+
+```jsonc
+{
+  "local_backend": "ollama",
+  "embed_model": "qwen3-embedding:0.6b",
+  "metadata": { "ollama_classify_model": "qwen3:0.6b" }
+}
 ```
 
-**OpenRouter for cloud embeddings or LLM** — no local model servers. It needs no extra.
+### OpenRouter (opt-in)
+
+OpenRouter gives cloud embeddings or LLM calls with no local model server. It needs no extra.
 
 ```bash
 uv sync
@@ -225,20 +237,24 @@ uv sync
 
 Chat answers can also use any OpenAI-compatible server (OpenAI, Together, vLLM, LM Studio) with no extra, or Anthropic with `uv sync --extra anthropic`. Set them in `omrs web` under Settings > Providers, or in the read-only user config folder (`~/.config/omrs/omrs.jsonc` and `secrets/<provider>.key`, also read by the CLI and the stdio server; see [Configuration](docs/guides/configuration.md#user-config-folder)). See also [Providers](docs/guides/providers.md).
 
-```bash
-# .env
-EMBED_PROVIDER=cloud
-CLOUD_BACKEND=openrouter
-OPENROUTER_API_KEY=sk-or-v1-...
-OPENROUTER_EMBED_MODEL=text-embedding-3-small
+```jsonc
+// omrs.jsonc
+{
+  "embed_provider": "cloud",
+  "cloud_backend": "openrouter",
+  "openrouter_api_key": "env://OPENROUTER_API_KEY",
+  "openrouter_embed_model": "text-embedding-3-small"
+}
 ```
 
 Switching embedding provider can change the vector dimension. Both supported
 stores lock their collection dimension on first write. Re-ingest source
 files into a fresh collection after a dimension change.
 
-**Azure Document Intelligence** for complex PDFs (`uv sync --extra azure`).
-Opt-in, and falls back to local parsing if unreachable.
+### Azure Document Intelligence (opt-in)
+
+Azure Document Intelligence reads complex PDFs (`uv sync --extra azure`).
+It is opt-in, and falls back to local parsing if unreachable.
 
 Full setup for each: [Providers](docs/guides/providers.md).
 

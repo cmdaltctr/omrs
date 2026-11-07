@@ -128,7 +128,7 @@ def test_every_settings_read_returns_a_revision(harness: Any) -> None:
             "/v1/connections",
             "/v1/settings/chat",
             "/v1/mcp",
-            "/v1/llamacpp/server",
+            "/v1/llamacpp/router",
             "/v1/settings/web-port",
             "/v1/settings/upload-limit",
         ):
@@ -255,13 +255,13 @@ def test_chat_settings_report_the_config_file_source(harness: Any) -> None:
 
 
 def test_a_dotenv_value_locks_and_reports_dotenv(harness: Any) -> None:
-    sources = {"llamacpp_chat_url": "dotenv"}
-    with harness(explicit=frozenset({"llamacpp_chat_url"}), sources=sources) as h:
-        field = h.field("llamacpp", "chat_url")
+    sources = {"llamacpp_router_url": "dotenv"}
+    with harness(explicit=frozenset({"llamacpp_router_url"}), sources=sources) as h:
+        field = h.field("llamacpp", "router_url")
         assert (field["source"], field["locked"]) == ("dotenv", True)
-        response = h.put("llamacpp", {"chat_url": "http://other:8081/v1"})
+        response = h.put("llamacpp", {"router_url": "http://other:8081/v1"})
         assert response.status_code == 409
-        assert "LLAMACPP_CHAT_URL" in response.json()["message"]
+        assert "LLAMACPP_ROUTER_URL" in response.json()["message"]
         assert h.file_text() == ""
 
 
@@ -408,10 +408,11 @@ BAD_REQUESTS = [
     ("PUT", "/v1/connections/openrouter/key", {"api_key": f"has space {MARKER}"}, 400),
     ("PUT", "/v1/settings/chat", {"provider": MARKER, "model": "m"}, 400),
     ("PUT", "/v1/settings/chat", {"provider": "ollama", "model": f"{MARKER}\nbad"}, 400),
-    ("PUT", "/v1/llamacpp/server", {"binary": f"/no/such/{MARKER}/llama-server"}, 400),
-    ("PUT", "/v1/llamacpp/server", {"model": f"--{MARKER}"}, 400),
-    ("PUT", "/v1/llamacpp/server", {"context_window": MARKER}, 400),
-    ("PUT", "/v1/llamacpp/server", {"idle_sleep": MARKER}, 400),
+    ("PUT", "/v1/llamacpp/router", {"binary": f"/no/such/{MARKER}/llama-server"}, 400),
+    ("PUT", "/v1/llamacpp/router", {"model": f"--{MARKER}"}, 400),
+    ("PUT", "/v1/llamacpp/router", {"models_max": MARKER}, 400),
+    ("PUT", "/v1/llamacpp/router", {"router_server": MARKER}, 400),
+    ("PUT", "/v1/llamacpp/router", {"idle_sleep": MARKER}, 400),
     ("PUT", "/v1/mcp", {"enabled": MARKER}, 400),
     ("PUT", "/v1/settings/web-port", {"port": 70000}, 400),
     ("PUT", "/v1/settings/web-port", {"port": MARKER}, 400),
@@ -436,11 +437,11 @@ def test_a_refused_save_names_the_rule_and_never_the_value(
 
 
 def test_a_refused_conflict_names_the_source_and_never_a_value(harness: Any) -> None:
-    sources = {"llamacpp_chat_url": "env"}
-    with harness(explicit=frozenset({"llamacpp_chat_url"}), sources=sources) as h:
-        response = h.put("llamacpp", {"chat_url": f"http://{MARKER}:1/v1"})
+    sources = {"llamacpp_router_url": "env"}
+    with harness(explicit=frozenset({"llamacpp_router_url"}), sources=sources) as h:
+        response = h.put("llamacpp", {"router_url": f"http://{MARKER}:1/v1"})
         assert response.status_code == 409
         assert MARKER not in response.text
-        assert "LLAMACPP_CHAT_URL" in response.json()["message"]
-        stale = h.put("llamacpp", {"chat_url": f"http://{MARKER}:1/v1"}, revision="deadbeef")
+        assert "LLAMACPP_ROUTER_URL" in response.json()["message"]
+        stale = h.put("llamacpp", {"router_url": f"http://{MARKER}:1/v1"}, revision="deadbeef")
         assert stale.status_code == 409 and MARKER not in stale.text

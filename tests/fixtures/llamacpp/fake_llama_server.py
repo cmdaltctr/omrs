@@ -64,6 +64,11 @@ inherits from the test:
 ``-np 1`` on the command line makes the fake answer one POST at a time, as a
 one-slot llama-server queues a second request until the first ends.
 
+``--models-preset <ini>`` on the command line starts router mode (design D16):
+the program serves the b11941 router routes and starts one real child
+process per loaded model. See :mod:`fake_router`. ``--router-child`` starts
+one such child; the router uses it, a test does not.
+
 The manager gives the child a minimal environment (``PATH``, ``HOME``,
 ``LANG``, ``TMPDIR``), so the variables above cannot travel from the test
 through it. Tests therefore also write them to ``fake-llama.json`` beside the
@@ -73,6 +78,7 @@ fake reads that file first.
 
 from __future__ import annotations
 
+import importlib
 import json
 import os
 import socketserver
@@ -81,6 +87,7 @@ import sys
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from typing import Any
 
 #: The ``GET /props`` field that holds the build. A real llama-server reports
 #: ``build_info`` on b11671 and on b11941 (task 6.4, 2026-11-01).
@@ -180,6 +187,18 @@ class _FastBindServer(ThreadingHTTPServer):
         self.server_name, self.server_port = self.server_address[:2]
 
 
+def _sibling(name: str) -> Any:
+    """Import router module *name* from the folder of this program.
+
+    The install helper copies the router modules beside the program, so
+    single-server mode needs none of them.
+    """
+    folder = os.path.dirname(os.path.abspath(sys.argv[0]))
+    if folder not in sys.path:
+        sys.path.insert(0, folder)
+    return importlib.import_module(name)
+
+
 def main() -> int:
     """Run the fake server (or print its version)."""
     fds = _descriptor_types()
@@ -188,6 +207,10 @@ def main() -> int:
         build = os.environ.get("FAKE_LLAMA_BUILD", "11941")
         print(f"version: 0.7.0-dev (build {build}, commit fake)")
         return 0
+    if "--router-child" in sys.argv:
+        return _sibling("fake_router_child").run_child(
+            sys.argv[1:], EMBEDDING_VECTOR, _FastBindServer
+        )
     if os.environ.get("FAKE_LLAMA_FDS"):
         with open(os.environ["FAKE_LLAMA_FDS"], "w", encoding="utf-8") as handle:
             json.dump(fds, handle)
@@ -209,6 +232,16 @@ def main() -> int:
         print("x" * 99, file=sys.stderr, flush=True)
     ready_at = time.monotonic() + float(os.environ.get("FAKE_LLAMA_HEALTH_DELAY", "0"))
     never = bool(os.environ.get("FAKE_LLAMA_NEVER_HEALTHY"))
+    if "--models-preset" in sys.argv:
+        build = int(os.environ.get("FAKE_LLAMA_BUILD", "11941"))
+        return _sibling("fake_router").run_router(
+            sys.argv[1:],
+            ready_at,
+            never,
+            {PROPS_BUILD_FIELD: f"b{build}-fake"},
+            EMBEDDING_VECTOR,
+            _FastBindServer,
+        )
     exit_after = int(os.environ.get("FAKE_LLAMA_EXIT_AFTER", "0") or "0")
     served = 0
     served_lock = threading.Lock()
