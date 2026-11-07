@@ -7,9 +7,10 @@ import { CutsParam, isCutsField } from "./CutsParam";
 import { EngineSelect, isEngineField } from "./EngineSelect";
 import { isListField, ListParam } from "./ListParam";
 import { optionLabel } from "./labels";
+import { isRouterField, RouterParam } from "./RouterParam";
 import { checkValue, type ParamField as Field } from "./schema";
 
-interface ParamFieldProps {
+export interface ParamFieldProps {
   field: Field;
   value: JsonValue | undefined;
   /** Where the value in use comes from, for example "Value in use: 10 (from profile)". `null` names no source. */
@@ -19,6 +20,10 @@ interface ParamFieldProps {
   disabled?: boolean;
   /** The local OCR backends of the step, for the cuts option. */
   backends?: string[];
+  /** The words of the Inherit choice, such as "Inherit from Settings: On (default)". Without it the choice reads "Inherit". */
+  inheritLabel?: string;
+  /** One plain line on what the setting does, under the name. */
+  help?: string;
 }
 
 const INHERIT = "__inherit__";
@@ -40,16 +45,17 @@ function inheritedText(value: JsonValue): string | null {
   return pairs.length === 0 ? null : pairs.join(", ");
 }
 
-function InheritNote({ field, note }: { field: Field; note: string | null }) {
+function InheritNote({ field, note, named }: { field: Field; note: string | null; /** The Inherit choice names the value, so the note does not say it again. */ named: boolean }) {
+  if (named) return note === null ? null : <p className="text-meta text-muted-foreground">{note}</p>;
   const host = field.inheritedValue == null ? null : inheritedText(field.inheritedValue);
   const inherited = host === null ? null : `Inherit uses the host value: ${host}.`;
   const text = note ?? inherited ?? (field.nullable ? "Inherit uses the operation default." : null);
   return text === null ? null : <p className="text-meta text-muted-foreground">{text}</p>;
 }
 
-function TriState({ value, onChange, disabled, name }: ParamFieldProps & { name: string }) {
+function TriState({ value, onChange, disabled, name, inheritLabel = "Inherit" }: ParamFieldProps & { name: string }) {
   const options: [string, JsonValue][] = [
-    ["Inherit", null],
+    [inheritLabel, null],
     ["On", true],
     ["Off", false],
   ];
@@ -167,7 +173,7 @@ function JsonInput({ field, value, onChange, disabled, name }: ParamFieldProps &
   );
 }
 
-function EnumSelect({ field, value, onChange, disabled }: ParamFieldProps) {
+function EnumSelect({ field, value, onChange, disabled, inheritLabel = "Inherit" }: ParamFieldProps) {
   const current = value == null ? INHERIT : String(value);
   return (
     <Select value={current} disabled={disabled} onValueChange={(next) => onChange(next === INHERIT ? null : next)}>
@@ -175,7 +181,7 @@ function EnumSelect({ field, value, onChange, disabled }: ParamFieldProps) {
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        {field.nullable && <SelectItem value={INHERIT}>Inherit</SelectItem>}
+        {field.nullable && <SelectItem value={INHERIT}>{inheritLabel}</SelectItem>}
         {field.options.map((option) => (
           <SelectItem key={String(option)} value={String(option)} disabled={String(option) in field.unavailableOptions}>
             {optionLabel(field, option)}
@@ -203,7 +209,8 @@ export function ParamField(props: ParamFieldProps) {
   else if (field.kind === "enum") control = <EnumSelect {...props} />;
   else if (isCutsField(field)) control = <CutsParam field={field} value={value} backends={props.backends ?? []} onChange={onChange} disabled={props.disabled} />;
   else if (field.kind === "json") control = <JsonInput {...props} name={name} />;
-  else if (isListField(field)) control = <ListParam field={field} value={value} onChange={onChange} disabled={props.disabled} />;
+  else if (isListField(field)) control = <ListParam field={field} value={value} onChange={onChange} disabled={props.disabled} inheritLabel={props.inheritLabel} />;
+  else if (isRouterField(field)) control = <RouterParam value={value} onChange={onChange} disabled={props.disabled} inheritLabel={props.inheritLabel} />;
   else if (isEngineField(field)) control = <EngineSelect {...props} />;
   else if (field.kind === "string") {
     control = (
@@ -220,8 +227,9 @@ export function ParamField(props: ParamFieldProps) {
   return (
     <fieldset className="flex min-w-0 flex-col gap-2 rounded-control border border-border p-3">
       <legend className="px-1 text-ui font-medium">{field.label}</legend>
+      {props.help === undefined ? null : <p className="text-meta text-muted-foreground">{props.help}</p>}
       {control}
-      <InheritNote field={field} note={props.note} />
+      <InheritNote field={field} note={props.note} named={props.inheritLabel !== undefined} />
       {Object.entries(field.unavailableOptions).map(([option, reason]) => (
         <p key={option} className="text-meta text-muted-foreground">
           {reason}

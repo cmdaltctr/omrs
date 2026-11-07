@@ -173,7 +173,11 @@ def test_page_rule_values() -> None:
 
     assert blank.import_path == "omrs.integrations.pdf.page_rules.blank:RULE"
     assert (blank.drops_pages, blank.sends_direct) == (True, False)
-    assert blank.settings == ()
+    # page-routing-panel: the blank rule gains its on/off switch.
+    (blank_setting,) = blank.settings
+    assert blank_setting.name == "ocr_skip_blank_pages"
+    assert blank_setting.env == "OCR_SKIP_BLANK_PAGES"
+    assert (blank_setting.default, blank_setting.enters_identity) == (True, True)
     assert blank.identity is not None
     assert (blank.identity.block, blank.identity.keys) == ("ocr_routing", ("blank_page_test",))
     assert blank.identity.presence == "always"

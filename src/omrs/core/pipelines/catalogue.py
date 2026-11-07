@@ -327,7 +327,7 @@ def option_reports(
         value = option_set.inherited
         if value is None:
             continue
-        if isinstance(value, str):
+        if isinstance(value, (str, bool)):
             inherited[param] = value
         elif isinstance(value, Mapping):
             inherited[param] = dict(value)

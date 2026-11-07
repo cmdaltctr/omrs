@@ -345,7 +345,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +8 (2026-11-06, same change): a failed download asks once per Start (needs fastapi).
 # +23 (2026-11-07, PR 185 review fixes, by test-ID diff against f56e209c, 23 added,
 # 0 removed): failed load, no re-ask, lock order, held reload, second crash, hashes.
-_BASE_EXECUTED = 11964
+# +43 (2026-11-07, page-routing-panel, by test-ID diff, 43 added, 0 removed): skip-blank
+# setting (11), rule switch (4), identity (8), step option (9), API (5, needs fastapi),
+# pypdfium2 install (4, needs fastapi), drift (1), single source (1).
+_BASE_EXECUTED = 12007
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -709,7 +712,8 @@ if not _has_qwen_tokenizer:
 # +19 (2026-11-07, correction): the 19 test_keychain.py cases need keyring, which only
 # the web extra installs; the router re-pins blocked fastapi alone and missed them.
 # 2137 is measured in a real base install at the floors (PR 185 CI).
-_WEB_EXTRA_CASES = 2137
+# +9 (2026-11-07, page-routing-panel): the API (5) and pypdfium2 install (4) cases.
+_WEB_EXTRA_CASES = 2146
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)

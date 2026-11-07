@@ -150,6 +150,7 @@ def graph_host(engine: Engine, collection: str | None) -> Any:
         "pdf_reader": readers,
         "pdf_readers": reader_lists,
         "ocr_non_latin_routing": HostOptionSet(inherited=settings.ocr_non_latin_routing),
+        "ocr_skip_blank_pages": HostOptionSet(inherited=settings.ocr_skip_blank_pages),
         "ocr_local_backends": local_backend_option_set(settings),
         "ocr_local_cuts": HostOptionSet(inherited=dict(settings.ocr_local_cuts)),
         "document_router": router_option_set(settings),

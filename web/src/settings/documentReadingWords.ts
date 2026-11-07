@@ -1,5 +1,7 @@
+import type { InstallReason } from "../api/integrations";
 import type { DocumentReadingKey, DocumentReadingState, DocumentReadingValue, LocalBackendOption, OcrEngineOption, ReaderOption } from "../api/settingsDocumentReading";
 import { formatRoute } from "../lib/routes";
+import { OPTIONAL_READERS } from "../pageRouting/pageRoutingWords";
 import type { ListOption } from "./OrderedListControl";
 
 /** How a row edits its value: an ordered list of readers, engines or local backends, a select of units, script modes or routers, or a switch. */
@@ -31,6 +33,11 @@ export const READING_ROWS: Partial<Record<DocumentReadingKey, ReadingRowWords>> 
   ocr_fallback_enabled: { label: "OCR fallback", kind: "switch", help: "Off means no PDF goes to an OCR engine." },
   ocr_routing_unit: { label: "OCR routing unit", kind: "unit", help: "Page is the only unit. OCR reads only the flagged pages." },
   ocr_engines: { label: "OCR engines", kind: "engines", help: "The first available engine reads. A later engine runs only when every engine above is unavailable before the request starts." },
+  ocr_skip_blank_pages: {
+    label: "Skip blank pages",
+    kind: "switch",
+    help: "On: a flagged page with no ink keeps its native text and costs no OCR. Off: blank pages go to OCR like any flagged page.",
+  },
   ocr_maths_routing_enabled: { label: "Maths routing", kind: "switch", help: "Finds maths fonts and sends those pages to OCR." },
   ocr_non_latin_routing: {
     label: "Non-Latin routing",
@@ -96,19 +103,29 @@ export interface ReadingChoice {
   disabled: boolean;
 }
 
-/** The options of a select row: the routing units, the script modes, or No router and the router names. Lists and switches have none. */
-export function readingChoices(kind: ReadingKind, routers: readonly string[] = []): ReadingChoice[] {
+/**
+ * The options of a select row: the routing units, the script modes, or No router and the router names. Lists and switches have none.
+ * A script mode that equals the server's `defaultValue` reads "<mode> (default)".
+ */
+export function readingChoices(kind: ReadingKind, routers: readonly string[] = [], defaultValue?: DocumentReadingValue | null): ReadingChoice[] {
   if (kind === "router") return [{ ...NO_ROUTER, disabled: false }, ...routers.map((name) => ({ value: name, label: name, disabled: false }))];
   const values: readonly string[] = kind === "unit" ? ROUTING_UNITS : kind === "script" ? SCRIPT_MODES : [];
-  return values.map((value) => ({ value, label: value, disabled: false }));
+  return values.map((value) => ({ value, label: kind === "script" && value === defaultValue ? `${value} (default)` : value, disabled: false }));
 }
 
-/** The reader names a list can hold. `auto` is not a name for a list. An uninstalled reader can be listed already but not added. */
-export function readerOptions(readers: ReaderOption[]): ListOption[] {
+/**
+ * The reader names a list can hold. `auto` is not a name for a list. An uninstalled reader can be listed already but not added.
+ * With `markOptional`, a reader that needs an optional extra reads "<name> (optional)" or "<name> (optional, not installed)".
+ */
+export function readerOptions(readers: ReaderOption[], markOptional = false): ListOption[] {
   const link = { href: formatRoute({ area: "integrations", entry: LIST_WORDS.readers.integrations.entry }), text: LIST_WORDS.readers.integrations.text };
   return readers
     .filter((reader) => reader.name !== "auto")
-    .map(({ name, available }) => ({ value: name, label: available ? name : `${name} (not installed)`, disabled: !available, note: available ? null : "Not installed.", link: available ? null : link }));
+    .map(({ name, available }) => {
+      const optional = markOptional && (OPTIONAL_READERS as readonly string[]).includes(name);
+      const state = [optional ? "optional" : null, available ? null : "not installed"].filter((part) => part !== null).join(", ");
+      return { value: name, label: state === "" ? name : `${name} (${state})`, disabled: !available, note: available ? null : "Not installed.", link: available ? null : link };
+    });
 }
 
 /** The engine names a list can hold. An engine that is not provisioned can be added, because a later engine only runs when the ones above cannot. */
@@ -132,7 +149,7 @@ export function backendOptions(backends: LocalBackendOption[]): ListOption[] {
 /** The options of a list row, from what the server reports. */
 export function listOptions(kind: ListKind, state: DocumentReadingState): ListOption[] {
   if (kind === "backends") return backendOptions(state.local_ocr_backends ?? []);
-  return kind === "readers" ? readerOptions(state.pdf_readers) : engineOptions(state.ocr.engines);
+  return kind === "readers" ? readerOptions(state.pdf_readers, true) : engineOptions(state.ocr.engines);
 }
 
 /** True for a kind that holds a list. */
@@ -207,3 +224,13 @@ export function draftValue(kind: ReadingKind, draft: ReadingDraft): DocumentRead
   if (kind === "router" && draft === NO_ROUTER.value) return null;
   return kind === "switch" ? draft === "true" : draft;
 }
+
+/** Why the app cannot install a reader's extra, as one line. The copy command sits under it. Same lines as the Integrations refusals. */
+export const INSTALL_REASON_LINES: Record<InstallReason, string> = {
+  "not-installable-here": "This integration cannot be installed from the app. Run its command instead.",
+  "not-uv-tool": "This server was not installed with uv tool, so it cannot install from the app. Run the command instead.",
+  "status-unknown": "The server could not check this integration, so it cannot install it. Run the command instead.",
+  "uv-not-found": "The server cannot find uv, so it cannot install from the app. Run the command instead.",
+  "already-installed": "This integration is already installed. Restart the server to use it.",
+  "no-requirements": "This integration adds no packages, so there is nothing to install.",
+};

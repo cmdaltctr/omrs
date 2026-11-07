@@ -243,6 +243,20 @@ def non_latin_routing_payload(settings: Any) -> dict[str, Any]:
     return {"non_latin_routing": {"mode": mode, "detector_version": SCRIPT_DETECTOR_VERSION}}
 
 
+def skip_blank_payload(settings: Any) -> dict[str, Any]:
+    """Return the ``parser`` entry of the skip-blank switch, empty while it is on.
+
+    Change page-routing-panel, design D4. Off, no page is dropped as blank, so
+    PDF text can change: the PDF ``parser`` block gains
+    ``skip_blank_pages: false``. On (the default) adds nothing, so every digest
+    from before the change stays the same. The entry is PDF-only, so turning
+    the switch off re-indexes PDF sources and no other source.
+    """
+    if getattr(settings, "ocr_skip_blank_pages", True):
+        return {}
+    return {"skip_blank_pages": False}
+
+
 def _entry_value(entry: Any, key: str, default: Any = None) -> Any:
     """Return *key* of a settings map entry given as a mapping or as an object."""
     if isinstance(entry, Mapping):

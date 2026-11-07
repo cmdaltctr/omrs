@@ -68,7 +68,9 @@ _ADDED_PARAMS = frozenset(
 #: ``ocr_local_cuts`` joins them (change local-ocr-per-backend-cuts, D11): the
 #: effective cuts enter the PDF ``parser`` block only, so a step cut change
 #: re-indexes PDF sources and a Markdown-only collection keeps its digests.
-_UNHASHED_OPTIONS = frozenset({"document_router", "ocr_local_cuts"})
+#: ``ocr_skip_blank_pages`` joins them for the same reason (change
+#: page-routing-panel, D5): off enters the PDF ``parser`` block only.
+_UNHASHED_OPTIONS = frozenset({"document_router", "ocr_local_cuts", "ocr_skip_blank_pages"})
 
 
 @dataclass(frozen=True)

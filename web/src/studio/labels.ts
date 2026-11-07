@@ -35,10 +35,12 @@ const FIELD_LABELS: Record<string, string> = {
   ocr_engine_primary: "Primary OCR engine",
   ocr_engine_fallback: "Fallback OCR engine",
   ocr_engines: "OCR engines",
+  ocr_skip_blank_pages: "Skip blank pages",
   ocr_maths_routing_enabled: "Maths page routing",
   ocr_non_latin_routing: "Non-Latin routing",
   ocr_local_backends: "Local OCR backends",
   ocr_local_cuts: "Confidence cuts",
+  document_router: "Router",
   expand_window: "Neighbour chunks to add",
   include_diagnostics: "Include diagnostics",
 };

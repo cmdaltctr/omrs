@@ -119,3 +119,5 @@ normalise vectors and do not change the store metric.**
 - Guard-disabled deployments are visible in the startup log; a quiet
   `norm_guard: disabled` diagnostic was deliberately rejected (diagnostics
   report what ran, not what did not).
+
+**Addendum (2026-11-07):** `EmbeddingSettings` now lives in `config/embedding.py`. It moved out of `core/settings.py` to keep that file under 500 lines (change `page-routing-panel`). The reasoning above about import contracts still holds.

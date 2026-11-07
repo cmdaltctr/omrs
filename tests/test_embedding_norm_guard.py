@@ -504,7 +504,7 @@ class TestGuardConfiguration:
         assert settings.embedding.norm_tolerance == 0.05
 
     def test_defaults(self) -> None:
-        from omrs.core.settings import EmbeddingSettings
+        from omrs.config.embedding import EmbeddingSettings
 
         block = EmbeddingSettings()
         assert block.norm_guard_enabled is True
@@ -513,7 +513,7 @@ class TestGuardConfiguration:
     def test_tolerance_must_be_positive(self) -> None:
         from pydantic import ValidationError
 
-        from omrs.core.settings import EmbeddingSettings
+        from omrs.config.embedding import EmbeddingSettings
 
         with pytest.raises(ValidationError):
             EmbeddingSettings(norm_tolerance=0)

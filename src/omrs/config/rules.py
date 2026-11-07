@@ -170,7 +170,9 @@ ENTRY_NAME_RULE = (
     "An entry name must start with a letter or digit, hold only letters, digits, "
     "hyphens and underscores, and be at most 64 characters."
 )
-_READING_BOOLEANS = frozenset({"ocr_fallback_enabled", "ocr_maths_routing_enabled"})
+_READING_BOOLEANS = frozenset(
+    {"ocr_fallback_enabled", "ocr_skip_blank_pages", "ocr_maths_routing_enabled"}
+)
 _READING_ENGINES = frozenset({"ocr_engine_primary", "ocr_engine_fallback"})
 BLANK_RULE = "The value must not be blank. Send null to use the default."
 BOOL_RULE = "The value must be true or false."

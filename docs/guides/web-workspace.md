@@ -556,18 +556,25 @@ A cloud judge sends each claim and its cited passages off this machine. The bloc
 
 ### Document reading
 
-Settings > Document reading (`#/settings/document-reading`) sets how OMRS reads documents. It has one row for each of these eight keys:
+Settings > Document reading (`#/settings/document-reading`) sets how OMRS reads documents. The page has two cards: the Page routing panel and the Router card.
 
-| Row | Key | Control |
-| --- | --- | --- |
-| PDF readers | `pdf_readers` | An ordered list. Add, remove, move up and move down. |
-| OCR fallback | `ocr_fallback_enabled` | A switch. |
-| OCR routing unit | `ocr_routing_unit` | A select. `page` is the only unit. |
-| OCR engines | `ocr_engines` | An ordered list. Add, remove, move up and move down. |
-| Maths routing | `ocr_maths_routing_enabled` | A switch. |
-| Non-Latin routing | `ocr_non_latin_routing` | A select: `off`, `detect` or `always`. `detect` does not catch scanned pages. Use `always` for a collection you know is non-Latin. |
-| Host router | `document_router` | A select: "No router" or a router name. The row is in the Router card. |
-| Local OCR backends | `ocr_local_backends` | An ordered list. Add, remove, move up and move down. |
+The Page routing panel shows the path of a page from top to bottom. Two rows sit at the top. Five numbered steps follow, in the order that a page meets them. For the full flow, the defaults and the cost of each step, see [Page routing](page-routing.md).
+
+| Place | Row | Key | Control |
+| --- | --- | --- | --- |
+| Top | OCR fallback | `ocr_fallback_enabled` | A switch. |
+| Top | OCR routing unit | `ocr_routing_unit` | A select. `page` is the only unit. |
+| Step 1, PDF readers | PDF readers | `pdf_readers` | An ordered list. Add, remove, move up and move down. |
+| Step 2, Pages decided by their content | Skip blank pages | `ocr_skip_blank_pages` | A switch. On by default. Off sends blank pages to OCR like any flagged page. |
+| Step 2 | Maths routing | `ocr_maths_routing_enabled` | A switch. |
+| Step 2 | Non-Latin routing | `ocr_non_latin_routing` | A select: "off (default)", `detect` or `always`. `detect` does not catch scanned pages. Use `always` for a collection you know is non-Latin. |
+| Step 3, Pages that look fine | Host router | `document_router` | A select: "No router" or a router name. A link under the row goes to the Router card. |
+| Step 4, Local OCR backends | Local OCR backends | `ocr_local_backends` and `ocr_local_cuts` | An ordered list. Each backend row has a "Confidence cut" input. |
+| Step 5, OCR engines | OCR engines | `ocr_engines` | An ordered list. A line under the list shows the OCR engines folder. |
+
+The PDF reading card and the OCR card no longer exist. The blocks "When to use OCR", "Maths pages", "Local OCR" and "Engines" no longer exist either. Every key keeps its row and sits in its step. The Router card keeps the named routers. It has no host router row.
+
+Step 2 has no move buttons. Its rules run in a fixed order, and blank pages are checked first. When OCR fallback is off, a line above step 2 says that steps 2 to 5 have no effect. Every row stays editable.
 
 Each row shows the value in force, where it comes from and the default. To change a value:
 
@@ -589,6 +596,8 @@ Select "Use default" to remove the key from `omrs.jsonc`. The default then appli
 
 The buttons carry labels such as "Move pypdf up" and "Remove pypdf" for screen readers. The page refuses an empty list: the Remove button of the last name stays disabled. A reader that is not installed shows "Not installed" with a link to Integrations › PDF readers, and you cannot add it. An engine that is not provisioned shows the reason and a link to Integrations › OCR engines. You can add it, for example before you provision it. A local OCR backend that is not installed shows "Not installed" with a link to Integrations › Reading parts, and you cannot add it.
 
+**Install pypdfium2.** The add control of step 1 always lists the optional reader pypdfium2, as "pypdfium2 (optional)" or "pypdfium2 (optional, not installed)". OMRS also uses it to draw page images for the router and the dots-mocr engine. When it is not installed, step 1 shows an Install button. The button starts the same install job as the Integrations page, for the `pdf-pypdfium2` extra. Select Install, then confirm. While the job runs, step 1 shows its progress. When the job ends, step 1 shows "Restart to apply". Restart OMRS to use the reader. When the server cannot install from the app, for example on a source checkout, step 1 shows the reason and a command to copy, and no button. When another install runs, the server refuses the request and step 1 says so.
+
 A list of one engine turns the fallback engine off. Remove the second engine and save. A save writes the list key and removes the matching old keys (`pdf_reader`, `ocr_engine_primary`, `ocr_engine_fallback`) from `omrs.jsonc` in the same write. The page never writes an old key.
 
 These rules also apply:
@@ -598,13 +607,13 @@ These rules also apply:
 - A Read document step in a pipeline can choose its own reader list, engine list and local OCR backend list.
 - The page has no row for `reading_part_options`. Edit that key in `omrs.jsonc` (see [Reading part options](configuration.md#reading-part-options)).
 
-The seven OCR and reader keys are part of the index identity. After a restart, the next ingest can read existing files again. For `document_router`, the recipe of the selected router enters the index identity, but its name does not. A failed save shows the server message. When `omrs.jsonc` changed on disk, select Reload to read the new values, then save again.
+The OCR and reader keys are part of the index identity (Skip blank pages only while it is Off). After a restart, the next ingest can read existing files again. For `document_router`, the recipe of the selected router enters the index identity, but its name does not. A failed save shows the server message. When `omrs.jsonc` changed on disk, select Reload to read the new values, then save again.
 
 #### Router
 
 The Router card asks a decision model, page by page, whether the page text can stay ([ADR-110](../adr/110-decision-models-and-named-document-routers.md)). A "yes" keeps the page text. A "no" sends that page alone to OCR. A page gets "no" when its yes score is below the threshold. The router judges every unflagged page with text: about 3.6 s per judged page with the local model. In Experiment 43 it sent about 2.7% of healthy pages (15 of 565) to OCR.
 
-The Host router row selects the router that reading uses. "No router" is the default. Select "No router" and Save to remove the key from `omrs.jsonc`. The choice applies to the next request in `omrs web`. The CLI, the stdio MCP server and the watcher read it when they next start. `DOCUMENT_ROUTER` in the environment or `.env` makes the row read-only.
+The Host router row sits in step 3 of the Page routing panel, with a link to this card. It selects the router that reading uses. "No router" is the default. Select "No router" and Save to remove the key from `omrs.jsonc`. The choice applies to the next request in `omrs web`. The CLI, the stdio MCP server and the watcher read it when they next start. `DOCUMENT_ROUTER` in the environment or `.env` makes the row read-only.
 
 Each router row shows the decision model, the question, the threshold, the character limit and the image flag. It also shows "Host router" when the host setting names it, and the saved profiles that use it.
 

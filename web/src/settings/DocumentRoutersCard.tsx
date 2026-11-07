@@ -3,37 +3,28 @@ import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useApi } from "../api/ApiProvider";
 import { decisionModelsQuery, documentRoutersQuery } from "../api/routerMapsHooks";
-import type { DocumentReadingState } from "../api/settingsDocumentReading";
 import { ErrorNotice } from "../components/ErrorNotice";
 import { Button } from "../components/ui/button";
 import { Card, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
-import { READING_ROWS, readingChoices, ROUTER_COST } from "./documentReadingWords";
+import { ROUTER_COST } from "./documentReadingWords";
 import { DocumentRouterForm } from "./DocumentRouterForm";
 import { DocumentRouterRow } from "./DocumentRouterRow";
-import { ReadingSettingRow } from "./ReadingSettingRow";
 import { BLANK_ROUTER, TEMPLATE, templateDraft } from "./routerWords";
 
 /** What is open: the edit form or rename field of a router, a new router (blank or from the template), or nothing. */
 type Open = { router: string; part: "edit" | "rename" } | { router: null; part: "blank" | "template" } | null;
 
-interface DocumentRoutersCardProps {
-  state: DocumentReadingState;
-  /** Called with the state the server returned after the host choice is saved. */
-  onSaved: (state: DocumentReadingState) => void;
-}
-
 /**
- * Settings › Document reading › Router (ADR-110): the host router choice and
- * the named routers of `omrs.jsonc`. A router asks a decision model, page by
- * page, whether the page text can stay; a "no" sends that page to OCR.
+ * Settings › Document reading › Router (ADR-110): the named routers of
+ * `omrs.jsonc`. A router asks a decision model, page by page, whether the
+ * page text can stay; a "no" sends that page to OCR. The host router choice
+ * sits in step 3 of the Page routing panel.
  */
-export function DocumentRoutersCard({ state, onSaved }: DocumentRoutersCardProps) {
+export function DocumentRoutersCard() {
   const api = useApi();
   const routers = useQuery(documentRoutersQuery(api));
   const models = useQuery(decisionModelsQuery(api));
   const [open, setOpen] = useState<Open>(null);
-  const host = state.settings.find((setting) => setting.key === "document_router");
-  const words = READING_ROWS.document_router;
   const list = routers.data?.routers ?? [];
   const modelList = models.data?.models ?? [];
 
@@ -43,9 +34,6 @@ export function DocumentRoutersCard({ state, onSaved }: DocumentRoutersCardProps
         <CardTitle id="reading-router">Router</CardTitle>
         <CardDescription>{ROUTER_COST}</CardDescription>
       </CardHeader>
-      {host !== undefined && words !== undefined ? (
-        <ReadingSettingRow setting={host} words={words} choices={readingChoices(words.kind, list.map((item) => item.name))} options={[]} notes={[]} onSaved={onSaved} />
-      ) : null}
       {routers.isError ? <ErrorNotice error={routers.error} onRetry={() => void routers.refetch()} /> : null}
       {models.isError ? <ErrorNotice error={models.error} onRetry={() => void models.refetch()} /> : null}
       {routers.isPending ? (

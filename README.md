@@ -273,6 +273,7 @@ Full setup for each: [Providers](docs/guides/providers.md).
 | [Providers](docs/guides/providers.md)                     | llama.cpp, Ollama, OpenRouter                    |
 | [Ingestion](docs/guides/ingestion.md)                     | How chunking and embedding work                  |
 | [Reading parts](docs/guides/reading-parts.md)             | PDF readers, local OCR backends, page rules      |
+| [Page routing](docs/guides/page-routing.md) | How a PDF page is routed, with every setting in order |
 | [Metadata extraction](docs/guides/metadata-extraction.md) | Auto-categorisation and filtering                |
 | [Reranker](docs/guides/reranker.md)                       | When reranking helps, and when it does not       |
 | [Testing](docs/guides/testing.md)                         | Running the suite, writing tests                 |

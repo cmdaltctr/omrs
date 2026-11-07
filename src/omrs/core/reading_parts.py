@@ -338,6 +338,16 @@ PAGE_RULES: tuple[PageRuleDescriptor, ...] = (
         import_path="omrs.integrations.pdf.page_rules.blank:RULE",
         label="Blank pages",
         help_key="page_rule.blank",
+        # Change page-routing-panel, design D3 and D4: off adds
+        # ``skip_blank_pages: false`` to the PDF ``parser`` block only.
+        settings=(
+            SettingField(
+                name="ocr_skip_blank_pages",
+                env="OCR_SKIP_BLANK_PAGES",
+                default=True,
+                enters_identity=True,
+            ),
+        ),
         identity=IdentitySpec(block="ocr_routing", keys=("blank_page_test",), presence="always"),
         order=10,
         drops_pages=True,
@@ -408,11 +418,6 @@ check_table(PAGE_RULES)
 #: Default ``ocr_local_backends``: the first backend of the table (design D8).
 DEFAULT_LOCAL_OCR_BACKENDS: tuple[str, ...] = (LOCAL_OCR_BACKENDS[0].name,)
 
-
-#: The implicit option of every page rule (design D12). A discovered rule runs
-#: only when it is ``true``; a built-in rule ignores it.
-RULE_ENABLED_OPTION = SettingField(name="enabled", env="", default=False)
-
 #: The descriptors that discovery accepted, set by :func:`install_discovered`.
 _discovered: tuple[PartDescriptor, ...] = ()
 #: ``(kind, name) -> problem`` of the discovered parts that failed to load.
@@ -449,12 +454,6 @@ def broken(kind: str | None = None) -> dict[str, str]:
 def discovered(kind: str | None = None) -> tuple[PartDescriptor, ...]:
     """Return the discovered descriptors, of one *kind* when it is given."""
     return tuple(d for d in _discovered if kind is None or d.kind == kind)
-
-
-def parts_named(name: str) -> tuple[PartDescriptor, ...]:
-    """Return every built-in and discovered descriptor called *name*, of any kind."""
-    table = (*PDF_READERS, *LOCAL_OCR_BACKENDS, *PAGE_RULES, *_discovered)
-    return tuple(d for d in table if d.name == name)
 
 
 def local_backend(name: str) -> LocalOcrBackendDescriptor:

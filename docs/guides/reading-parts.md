@@ -337,6 +337,7 @@ An OCR engine is not a reading part. It runs as a separate process in its own en
 - [Experiment 46](../../experiments/46-local-ocr-backends-2026-11-04/report.md): the evidence for the Indra backend.
 - [Experiment 46a](../../experiments/46a-local-ocr-per-backend-cuts-2026-11-06/report.md): the evidence for the default cuts.
 - [ADR-114](../adr/114-per-backend-local-ocr-cuts.md): the decision on per-backend cuts and the removal of the script filter.
+- [Page routing](page-routing.md): the page flow, its settings and when documents re-index.
 - [Architecture](architecture.md): the registry rules and the integration inventory.
 - [Ingestion](ingestion.md): OCR routing, page-level routing and the routing identity.
 - [Configuration](configuration.md): the settings that name the parts.

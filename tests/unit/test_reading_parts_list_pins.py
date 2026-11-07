@@ -35,6 +35,8 @@ def test_document_reading_keys_keep_value_and_order() -> None:
         "ocr_fallback_enabled",
         "ocr_routing_unit",
         "ocr_engines",
+        # page-routing-panel: the blank rule key comes first, in rule order.
+        "ocr_skip_blank_pages",
         "ocr_maths_routing_enabled",
         "ocr_non_latin_routing",
         "document_router",
@@ -51,6 +53,8 @@ def test_read_ocr_keys_keep_value_and_order() -> None:
         "ocr_engines",
         "ocr_engine_primary",
         "ocr_engine_fallback",
+        # page-routing-panel: the blank rule key comes first, in rule order.
+        "ocr_skip_blank_pages",
         "ocr_maths_routing_enabled",
         "ocr_non_latin_routing",
         "document_router",
@@ -68,6 +72,8 @@ def test_read_step_ocr_keys_keep_value_and_order() -> None:
         "ocr_engines",
         "ocr_engine_primary",
         "ocr_engine_fallback",
+        # page-routing-panel: the blank rule key comes first, in rule order.
+        "ocr_skip_blank_pages",
         "ocr_maths_routing_enabled",
         "ocr_non_latin_routing",
         "document_router",

@@ -11,7 +11,8 @@ def test_tokenizer_fields_default_to_the_promoted_qwen_identity() -> None:
     frozen block still rejects mutation."""
     from pydantic import ValidationError
 
-    from omrs.core.settings import EmbeddingBlock, EmbeddingSettings
+    from omrs.config.embedding import EmbeddingSettings
+    from omrs.core.settings import EmbeddingBlock
 
     settings = EmbeddingSettings()
     block = EmbeddingBlock()

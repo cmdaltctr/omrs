@@ -3,6 +3,7 @@ import { DOCUMENT_READING_KEYS, type DocumentReadingKey, type DocumentReadingSet
 import { documentsServer, type Handler } from "../../test/fakeDocumentsServer";
 import { IDLE } from "./downloadFixtures";
 import { DOWNLOADS_NEEDED_NONE, ROUTER_STOPPED } from "./llamacppFixtures";
+import { IDLE_INSTALL, integrationsBody } from "./pdfReaderFixtures";
 import { decisionModels, documentRouters } from "./routerFixtures";
 
 /** Fixtures built from the `openapi.yaml` schemas for the Settings routes. */
@@ -112,6 +113,7 @@ const READING_DEFAULTS: Partial<Record<DocumentReadingKey, DocumentReadingSettin
   ocr_fallback_enabled: true,
   ocr_routing_unit: "page",
   ocr_engines: ["dots-mocr", "paddleocr-vl"],
+  ocr_skip_blank_pages: true,
   ocr_maths_routing_enabled: true,
   ocr_non_latin_routing: "off",
   document_router: "",
@@ -185,6 +187,8 @@ export function settingsServer(handlers: Record<string, Handler> = {}) {
     "GET /v1/settings/document-reading": () => DOCUMENT_READING,
     "GET /v1/settings/decision-models": () => decisionModels([]),
     "GET /v1/settings/document-routers": () => documentRouters([]),
+    "GET /v1/integrations": () => integrationsBody(),
+    "GET /v1/integrations/install": () => ({ status: "ok", install: IDLE_INSTALL }),
     ...handlers,
   });
 }

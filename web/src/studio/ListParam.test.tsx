@@ -91,8 +91,8 @@ describe("Read document step lists", () => {
     await user.click(screen.getByRole("button", { name: "Move pypdf up" }));
     expect(onChange).toHaveBeenLastCalledWith(["pypdf", "pdf_inspector"]);
     await user.click(screen.getByRole("combobox", { name: "Add reader" }));
-    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["liteparse", "pypdfium2 (not installed)"]);
-    expect(screen.getByRole("option", { name: "pypdfium2 (not installed)" })).toHaveAttribute("aria-disabled", "true");
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["liteparse", "pypdfium2 (optional, not installed)"]);
+    expect(screen.getByRole("option", { name: "pypdfium2 (optional, not installed)" })).toHaveAttribute("aria-disabled", "true");
   });
 
   it("refuses to empty the step's list", async () => {

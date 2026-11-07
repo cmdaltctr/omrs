@@ -5497,7 +5497,8 @@ paths:
       description: >
         Lists the document-reading keys in a fixed order (`pdf_readers`,
         `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engines`,
-        `ocr_maths_routing_enabled`, `ocr_non_latin_routing`, `document_router`,
+        `ocr_skip_blank_pages`, `ocr_maths_routing_enabled`,
+        `ocr_non_latin_routing`, `document_router`,
         `ocr_local_backends`, `ocr_local_cuts`). `pdf_readers`, `ocr_engines` and
         `ocr_local_backends` hold an ordered list of names. `ocr_local_cuts` holds a map from
         a local OCR backend name to its confidence cut, a number from 0 to 1. The old single-value keys `pdf_reader`,
@@ -12371,8 +12372,8 @@ components:
             Send it back on a save; a file that changed since gives 409.
         settings:
           type: array
-          minItems: 9
-          maxItems: 9
+          minItems: 10
+          maxItems: 10
           description: >
             One row per key, in the fixed key order. The old single-value keys
             have no row: a list row holds the value that they mean.
@@ -12437,6 +12438,7 @@ components:
             - ocr_fallback_enabled
             - ocr_routing_unit
             - ocr_engines
+            - ocr_skip_blank_pages
             - ocr_maths_routing_enabled
             - ocr_non_latin_routing
             - document_router
@@ -12557,14 +12559,14 @@ components:
         values:
           type: object
           minProperties: 1
-          maxProperties: 12
+          maxProperties: 13
           description: >
-            One or more of the twelve keys. Each value has the key's JSON type
+            One or more of the thirteen keys. Each value has the key's JSON type
             (an array of names for `pdf_readers`, `ocr_engines` and
             `ocr_local_backends`, an object from backend name to cut for
             `ocr_local_cuts`), or is null to remove the key so the default
             applies. `document_router` names a router of `document_routers` in
-            `omrs.jsonc` now, or `none`. A key outside the twelve gets 400.
+            `omrs.jsonc` now, or `none`. A key outside the thirteen gets 400.
           propertyNames:
             enum:
               - pdf_readers
@@ -12574,6 +12576,7 @@ components:
               - ocr_engines
               - ocr_engine_primary
               - ocr_engine_fallback
+              - ocr_skip_blank_pages
               - ocr_maths_routing_enabled
               - ocr_non_latin_routing
               - document_router

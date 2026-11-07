@@ -382,11 +382,11 @@ share one client. Startup logs name the resolved routes and availability.
 
 A page rule decides what happens to flagged pages before any OCR tier reads
 them. Rules run in ascending order. Each built-in rule has a descriptor in
-`core/reading_parts.py`. See [Reading parts](reading-parts.md).
+`core/reading_parts.py`. See [Reading parts](reading-parts.md) and [Page routing](page-routing.md).
 
 | Order | Rule | Setting | What it does |
 |---|---|---|---|
-| 10 | `blank` | None (always on) | Drops a flagged page that the blank test finds blank. The page keeps its native text. |
+| 10 | `blank` | `OCR_SKIP_BLANK_PAGES` | Drops a flagged page that the blank test finds blank. The page keeps its native text. |
 | 20 | `maths` | `OCR_MATHS_ROUTING_ENABLED` | Sends a page with a maths font direct to the OCR engines. |
 | 30 | `non_latin` | `OCR_NON_LATIN_ROUTING` | Sends non-Latin pages direct, and checks the output of the local backends under `detect`. |
 
@@ -455,6 +455,10 @@ whole PDF. They sum to `page_count`:
 | `ocr_pages_worker` | Pages whose text is the worker's |
 | `ocr_pages_blank` | Flagged pages the blank test removed before any OCR tier; they keep their native text |
 | `ocr_pages_unresolved` | Flagged, non-blank pages no tier produced text for: an escalation came back empty, or no OCR route was available. They keep their best available text |
+
+With `OCR_SKIP_BLANK_PAGES=false` the blank test does not run. Each blank
+flagged page then follows the local tier and the escalation path, and
+`ocr_pages_blank` is 0. The default is `true`.
 
 Before local OCR runs, the blank test renders each flagged page and
 measures stroke ink. A page below the fixed threshold (1.5e-4 of its
@@ -567,6 +571,13 @@ This holds for the default list too. A cut change therefore reads PDF sources
 again and leaves Markdown and code sources unchanged. The same holds for a cut
 that a Read document step sets (see
 [Local OCR cuts on Read document step](pipelines.md#local-ocr-cuts-on-read-document-step)).
+
+The skip-blank switch is not in the routing payload either. While
+`OCR_SKIP_BLANK_PAGES` is `true` (the default), it adds nothing, so no digest
+moves on upgrade. While it is `false`, the PDF `parser` block holds
+`skip_blank_pages: false`. Turning the switch off therefore re-indexes PDF
+sources only. Markdown and code sources keep their digest. The same holds for
+the value that a Read document step sets.
 
 The move to schema 8 reindexes every existing source once on its next ingestion. After that,
 a second ingest with the same settings processes no source. Later
