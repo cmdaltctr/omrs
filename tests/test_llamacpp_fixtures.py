@@ -163,11 +163,26 @@ def test_version_reports_the_build_and_it_changes(tmp_path: Path) -> None:
     assert "(build 11960" in other.stdout
 
 
+def _first_answer(url: str) -> httpx.Response:
+    """Return the first answer from *url*, retrying while the port is not yet open."""
+    deadline = time.monotonic() + 10
+    while True:
+        try:
+            return httpx.get(url, timeout=2)
+        except httpx.ConnectError:
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(0.05)
+
+
 def test_health_delay_holds_the_503_answer(tmp_path: Path) -> None:
-    fake = FakeServer(tmp_path, FAKE_LLAMA_HEALTH_DELAY="1.5")
+    # The delay counts from the fake's start, before its port opens; a slow runner
+    # (macOS CI) can take seconds to bind, so the window is wide and the first
+    # request waits for the port instead of a fixed sleep.
+    fake = FakeServer(tmp_path, FAKE_LLAMA_HEALTH_DELAY="5")
     fake.start(wait_healthy=False)
     try:
-        first = httpx.get(fake.url("/health"), timeout=2)
+        first = _first_answer(fake.url("/health"))
         assert first.status_code == 503
         deadline = time.monotonic() + 10
         while time.monotonic() < deadline:
