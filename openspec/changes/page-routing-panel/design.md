@@ -59,6 +59,7 @@ page scan: flag the pages that need OCR
   |
   +--> unflagged pages with text
          |
+         |  maths font? (step 2) -> straight to [5]
          v
        [3] router (optional): a "no" sends the page to [5]
 ```
@@ -70,7 +71,7 @@ Placement:
 | `ocr_fallback_enabled` | Top of the panel, above step 1 | It decides whether steps 2 to 5 act at all. |
 | `ocr_routing_unit` | Top of the panel, under the fallback row | One legal value (`page`); it describes the whole flow, not a step. The row stays so its lock and source still show. |
 | `pdf_readers` | Step 1 | Readers act before the scan. |
-| `ocr_skip_blank_pages`, `ocr_maths_routing_enabled`, `ocr_non_latin_routing` | Step 2, in rule order | They decide flagged pages. |
+| `ocr_skip_blank_pages`, `ocr_maths_routing_enabled`, `ocr_non_latin_routing` | Step 2, in rule order | They decide pages by their content. Blank and non-Latin act on flagged pages; the maths rule also acts on unflagged pages (checked in `pipeline.py` on 2026-11-07). |
 | `document_router` | Step 3 | It judges unflagged pages with text. |
 | `ocr_local_backends` + cut boxes | Step 4 | Local OCR reads the flagged pages no rule claimed. |
 | `ocr_engines` + workers folder line | Step 5 | The folder line explains why no engine can run. |
@@ -138,7 +139,7 @@ Each new file stays well under 200 lines. `DocumentReadingSection.tsx` gets shor
 ### D7. Inherit wording in Studio, default wording in Settings
 
 - Settings: the non-Latin select reads "off (default)", "detect", "always". Switches show the default in the source line, as every row does today.
-- Studio: each Inherit choice reads "Inherit from Settings: <value in force> (<source>)", for example "Inherit from Settings: On (default)". The source comes from the Document reading query that `ListParam` already makes for backends. The panel intro in Studio says: "Inherit uses the value from Settings › Document reading. A value set here applies to this pipeline only." No Studio choice carries the word "default", because there "default" would mean the Settings value, not the code default.
+- Studio: each Inherit choice reads "Inherit from Settings: <value in force> (<source>)", for example "Inherit from Settings: On (default)". The source comes from the Document reading query that `ListParam` already makes for backends. The panel intro in Studio says: "Inherit uses the value from Settings › Document reading. A value set here applies to this pipeline only." No Studio choice carries the word "default" except as the source inside an Inherit choice, so "default" never names a Studio value.
 - The router select in Studio: "Inherit from Settings: <router or No router>", "No router" (saves `none`), then the router names.
 
 ### D8. pypdfium2 in step 1: show it, and install it from the panel
@@ -156,11 +157,11 @@ Operator decision, 2026-11-06 (gate G0): the panel can install it. The earlier d
 
 ### D9. HTTP contract
 
-No new route. `ocr_skip_blank_pages` joins the Document reading key enums in `openapi.yaml` (request and answer) and the `DocumentReadingValue` boolean group. The Read document operation schema comes from `ReadParams`, so the Studio catalogue shows the option with no contract edit beyond what the conformance tests ask for. Order in the enums follows `DOCUMENT_READING_KEYS`.
+No new route. `ocr_skip_blank_pages` joins the Document reading key enums in `openapi.yaml` (request and answer). The Read document operation schema comes from `ReadParams`, so the Studio catalogue shows the option with no contract edit beyond what the conformance tests ask for. Order in the enums follows `DOCUMENT_READING_KEYS`.
 
 ### D10. Docs
 
-- New `docs/guides/page-routing.md`, user-facing, plain British English, STE style: the diagram from D1; one section per step with each setting, its default, and what it costs; the defaults (cuts 0.92 and 0.94 from `local-ocr-per-backend-cuts`, router off, non-Latin `off`, maths on, skip blank on); where pypdfium2 sits; Settings against Studio (inherit, step values apply to that pipeline only, Settings values apply after a restart, step values on the next run); when documents re-index (a table: fallback, maths and engines touch every source; readers list, skip blank, non-Latin, router, local backends and cuts touch PDF sources only; verify each row against `source_state.py` at write time); why the rules are not reorderable (D2); evidence: Experiment 33 (blank test calibration on 1,123 pages, routing), 43 (router template and cost), 46 and 46a (local backends and cuts), 47 (router recall 0.52, so the router stays off by default).
+- New `docs/guides/page-routing.md`, user-facing, plain British English, STE style: the diagram from D1; one section per step with each setting, its default, and what it costs; the defaults (cuts 0.92 and 0.94 from `local-ocr-per-backend-cuts`, router off, non-Latin `off`, maths on, skip blank on); where pypdfium2 sits; Settings against Studio (inherit, step values apply to that pipeline only, Settings values apply after a restart, step values on the next run); when documents re-index (a table: fallback, maths and engines touch every source; skip blank, non-Latin, router, local backends and cuts touch PDF sources only; the readers list touches PDF sources only, except that a change of the first installed reader touches every source; verify each row against `source_state.py` at write time); why the rules are not reorderable (D2); evidence: Experiment 33 (blank test calibration on 1,123 pages, routing), 43 (router template and cost), 46 and 46a (local backends and cuts), 47 (router recall 0.52, so the router stays off by default).
 - Links from the `README.md` guides table, `configuration.md` ("Document reading values" and the OCR sections), `ingestion.md` ("Page rules"), `reading-parts.md` ("See also") and `web-workspace.md`.
 - The panel has no "Learn more" link and no guide address constant (operator decision, 2026-11-06). Nothing is added to `web/src/components/NavFoot.tsx`. The guide is reached from the README and the other guides.
 - The guide has a short section on installing pypdfium2 from step 1 (D8): what the button does, why a restart is needed, and what Studio shows instead.
@@ -179,7 +180,7 @@ Rejected by the operator: no ADR, with the trace kept only in this design.
 
 ### D12. Dependency on `local-ocr-per-backend-cuts`
 
-This change uses, and does not redefine: the `ocr_local_cuts` key, `LocalBackendCutInput`, `CutsParam`, the `default_cut` field of each backend option, the schema 8 identity and the defaults 0.92 and 0.94. Task 0 rebases on `v3` with that change merged. That change's two placement requirements name the old location ("Settings › Document reading › Local OCR" and the Studio step list). If its specs are archived before this change archives, task 0.3 turns this change's placement into MODIFIED blocks of those requirements; until then the `page-routing-panel` requirement "The Page routing panel shows the page flow in five steps" carries the new placement.
+This change uses, and does not redefine: the `ocr_local_cuts` key, `LocalBackendCutInput`, `CutsParam`, the `default_cut` field of each backend option, the schema 8 identity and the defaults 0.92 and 0.94. `local-ocr-per-backend-cuts` is merged and archived (PRs #183 and #184, archive `4bf0c206`). Its two placement requirements in the main specs named the old location. Task 0.3 is done: this change carries a MODIFIED block of each, "Document reading edits the confidence cut of each local OCR backend" (workspace-settings) and "Studio shows a cut box beside each backend of the Read document step" (pipeline-graphs), which name panel step 4.
 
 ## Risks / Trade-offs
 
@@ -187,7 +188,7 @@ This change uses, and does not redefine: the `ocr_local_cuts` key, `LocalBackend
 - [Existing Vitest tests find rows by block title or card] → Expected churn. Tests that assert behaviour keep their assertions and change only the query. Each changed test is listed in the PR.
 - [Turning skip blank off costs OCR time] → Default on; the help line and the guide state the cost.
 - [The step value is unhashed] → A reader of the graph fingerprint alone cannot see it. The source identity still moves for PDF sources, which decides re-indexing (the `document_router` precedent).
-- [File size] `core/reading_parts.py` and `core/settings.py` sit near 500 after the cuts change. The blank `SettingField` is about 8 lines; the `EffectiveSettings` field 2 lines. → Each task runs `tests/test_file_size_ceiling.py`. If `reading_parts.py` crosses 500, move the page rule table into a sibling module `core/reading_parts_rules.py` re-exported by `reading_parts.py`, in its own commit, before adding the field.
+- [File size] `core/reading_parts.py` and `core/settings.py` sit near 500 after the cuts change. The blank `SettingField` is about 8 lines; the `EffectiveSettings` field 2 lines. → Each task runs `tests/test_file_size_ceiling.py`. If `reading_parts.py` crosses 500, move helpers that are not part of the descriptor table into a sibling module that callers import directly (a re-export cannot work: `test_module_imports_nothing_from_omrs` bars `reading_parts.py` from importing the package), in its own commit, before adding the field.
 - [Spec text of the cuts change names the old location] → D12 and task 0.3.
 - [The number ADR-116 is taken by another change before apply] → Task 8.4 lists `docs/adr/` and the ADR numbers that open changes name. If 116 is taken, use the next free number and update this change's artifacts with `openspec-update-change`.
 - [The Install button runs `uv pip install` in the server] → It reuses the existing install job and its safeguards (no shell, no request text in the command, redacted output, timeout). On an install that is not a uv tool install, the panel shows the reason and the copy command, and no button.

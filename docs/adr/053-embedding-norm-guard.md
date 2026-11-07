@@ -60,7 +60,7 @@ normalise vectors and do not change the store metric.**
    positive). Disabling the guard logs a startup warning naming the
    setting. The tolerance default gives three orders of headroom over the
    observed ~1e-7 float32 rounding band. The config-facing
-   `EmbeddingSettings` lives in `core/settings.py` beside its
+   `EmbeddingSettings` lives in `config/embedding.py` (moved out of `core/settings.py` on 2026-11-07 to keep that file under 500 lines) beside its
    `EmbeddingBlock` twin: placing it under `core/providers/embeddings/`
    would transitively leak the quarantined providers package into every
    module that imports `config` (import-linter contracts forbid that).

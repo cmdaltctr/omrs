@@ -84,3 +84,36 @@ The `read.document` operation SHALL accept these optional settings: `ocr_fallbac
 
 - **WHEN** a graph sets `overrides.ocr_skip_blank_pages`
 - **THEN** validation SHALL fail with issue code `host_owned_setting`
+
+### Requirement: Studio shows a cut box beside each backend of the Read document step
+
+The Read document step in Studio SHALL show, in panel step 4 (Local OCR backends), the `ocr_local_cuts` option as one "Confidence cut" number input beside each backend of the step's effective local OCR list (the step's own list, else the inherited host list). An empty input SHALL show the inherited cut: the host entry when there is one, else the backend's default. An empty input SHALL mean "inherit". A value outside 0 to 1 SHALL show the reason and SHALL NOT be saved.
+
+#### Scenario: Inherited cuts shown
+
+- **GIVEN** the host map `{"indra": 0.96}` and a Read document step whose list inherits `pp-ocrv6-small, indra`
+- **WHEN** the user opens the step in Studio
+- **THEN** the PP-OCRv6 small input SHALL be empty and show 0.92
+- **AND** the Indra input SHALL be empty and show 0.96
+
+#### Scenario: Set a step cut
+
+- **WHEN** the user types 0.88 in the PP-OCRv6 small input of the step and saves the pipeline
+- **THEN** the saved step SHALL hold `"ocr_local_cuts": {"pp-ocrv6-small": 0.88}`
+
+#### Scenario: Clear every step cut
+
+- **GIVEN** a step that holds `"ocr_local_cuts": {"pp-ocrv6-small": 0.88}`
+- **WHEN** the user empties the input and saves the pipeline
+- **THEN** the saved step SHALL NOT hold `ocr_local_cuts`, so it inherits the host map like every other cleared step option
+
+#### Scenario: Value out of range
+
+- **WHEN** the user types 1.4 in a step cut input
+- **THEN** the step SHALL show "The cut must be a number from 0 to 1." beside the input
+- **AND** the pipeline save SHALL NOT send the value
+
+#### Scenario: Built-in profile is read-only
+
+- **WHEN** the user opens the Read document step of a built-in profile
+- **THEN** every cut input SHALL be read-only

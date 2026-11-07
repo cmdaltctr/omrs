@@ -124,6 +124,7 @@ development of OMRG — Opinionated Modular RAG.
 | [113](./113-dots-mocr-runs-on-llama-cpp.md) | dots.mocr Runs on llama.cpp | 2026-11-05 | Proposed (2026-11-05; supersedes the PyTorch runtime of ADR-072) |
 | [114](./114-per-backend-local-ocr-cuts.md) | Per-Backend Local OCR Cuts, No Script Filter, and Cuts in the PDF Identity | 2026-11-06 | Proposed (2026-11-06; amends ADR-112 decision 4) |
 | [115](./115-one-llamacpp-router.md) | One llama.cpp Router Serves Every Local Model | 2026-11-06 | Proposed (2026-11-06; supersedes ADR-109's router-mode rejection and per-role table; amends ADR-084, ADR-108 and ADR-110) |
+| [116](./116-skip-blank-switch-and-fixed-page-rule-order.md) | A Switch for the Blank Page Rule, and a Fixed Page-Rule Order | 2026-11-07 | Proposed (2026-11-07; amends ADR-112 decision 3) |
 
 ## Convention
 

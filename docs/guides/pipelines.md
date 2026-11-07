@@ -102,6 +102,15 @@ The Read document step has an `ocr_non_latin_routing` setting. It takes `off`, `
 - The stored source identity names the step value. A PDF source that was indexed with the node on `off` is processed again on the next explicit ingest after the node sets `always`. A node that inherits every OCR setting keeps the identity of the standard ingest path.
 - A graph-wide `overrides.ocr_non_latin_routing` stays refused (`host_owned_setting`). Set the value on the Read document step instead.
 
+### Skip blank pages on Read document step
+
+The Read document step has an `ocr_skip_blank_pages` setting. It takes `true` or `false`. The values mean the same as on Settings › Document reading.
+
+- `null` (Inherit) uses the host value from `OCR_SKIP_BLANK_PAGES`.
+- `false` enters the PDF `parser` block only. A PDF source indexed with the switch on is processed again on the next explicit ingest after the node sets `false`. Markdown and code sources keep their digest. The value never enters the graph fingerprint, and a node that sets the host value keeps the standard identity.
+- Text such as `"no"` fails validation with `invalid_parameter`.
+- A graph-wide `overrides.ocr_skip_blank_pages` stays refused (`host_owned_setting`). Set the value on the Read document step instead.
+
 ### Local OCR backends on Read document step
 
 Read document step has an `ocr_local_backends` setting. It is an ordered list of local OCR backend names for the step. See [Local OCR backends](configuration.md#local-ocr-backends) for the names and the reading order.

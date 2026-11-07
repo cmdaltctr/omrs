@@ -1166,6 +1166,7 @@ under it (change `page-level-ocr-routing`,
 | Variable | Default | What it does |
 |---|---|---|
 | `OCR_ROUTING_UNIT` | `page` | `page` is the only legal value. `document` fails start-up with a message that names `page`. In `omrs.jsonc`, `"ocr_routing_unit": "document"` is listed as a settings-file problem and ignored, so `page` applies |
+| `OCR_SKIP_BLANK_PAGES` | `true` | Skip blank pages. On, a flagged page with no ink keeps its native text and costs no OCR. Off, blank pages go to OCR like any flagged page. Accepts `true`/`false`, `1`/`0`, `yes`/`no` and `on`/`off`. Other text stops start-up and names `ocr_skip_blank_pages`. In `omrs.jsonc`, a value that is not a boolean is listed as invalid and ignored. Off re-indexes PDF sources only |
 | `OCR_NON_LATIN_ROUTING` | `off` | `off`, `detect` or `always`. Sends non-Latin pages past the local tier to the OCR engines. See [Non-Latin page routing](#non-latin-page-routing). Any other value fails start-up and names the three |
 | `OCR_LOCAL_BACKENDS` | `pp-ocrv6-small` | The local OCR backends, in the order they read. Comma-separated in the environment; a JSON array in `omrs.jsonc`. Accepted names: `pp-ocrv6-small`, `indra`. An unknown name fails start-up and lists the accepted names. See [Local OCR backends](#local-ocr-backends) |
 | `OCR_LOCAL_CUTS` | `{}` | A JSON object that sets the confidence cut of a backend, one entry per backend name, for example `{"indra": 0.96}`. Each value is a number from 0 to 1. A backend with no entry uses its own default cut. A page below the cut goes to the next backend or to the worker. A page with no reported confidence goes on too. An unknown name, a value outside 0 to 1, or a value that is not a number fails start-up. In `omrs.jsonc` the key is `ocr_local_cuts`. See [Local OCR backends](#local-ocr-backends) |
@@ -1592,7 +1593,9 @@ A launch value (step 1 or 2) locks the limit for that run. Settings then shows t
 
 ### Document reading values
 
-Settings > Document reading edits eight keys in `omrs.jsonc`: `pdf_readers`, `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engines`, `ocr_maths_routing_enabled`, `ocr_non_latin_routing`, `ocr_local_backends` and `ocr_local_cuts`. The three list keys hold an array of names, and the page shows each as an ordered list with add, remove, move up and move down. The key `ocr_local_cuts` holds an object, and the page shows it as a "Confidence cut" input in each backend row. See [PDF reading](#pdf-reading), [OCR fallback and isolated engines](#ocr-fallback-and-isolated-engines) and [Local OCR backends](#local-ocr-backends).
+The [Page routing guide](page-routing.md) shows where each key acts in the page flow.
+
+Settings > Document reading edits ten keys in `omrs.jsonc`: `pdf_readers`, `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engines`, `ocr_skip_blank_pages`, `ocr_maths_routing_enabled`, `ocr_non_latin_routing`, `document_router`, `ocr_local_backends` and `ocr_local_cuts`. The three list keys hold an array of names, and the page shows each as an ordered list with add, remove, move up and move down. The key `ocr_local_cuts` holds an object, and the page shows it as a "Confidence cut" input in each backend row. See [PDF reading](#pdf-reading), [OCR fallback and isolated engines](#ocr-fallback-and-isolated-engines) and [Local OCR backends](#local-ocr-backends).
 
 - Each key applies after a restart only. Until then, the row shows the value in force and the saved value with "Restart to apply".
 - Each key is part of the [index identity](#index-identity-and-re-ingestion). After the restart, the next ingest can read existing files again. A change to `ocr_local_cuts` or `ocr_local_backends` reads PDF sources only.
@@ -1739,6 +1742,7 @@ These settings are part of the index identity:
 | `OCR_FALLBACK_ENABLED` | It decides which reader produced the text |
 | `OCR_ROUTING_UNIT` and the blank-page test | They decide which engine reads each page; recorded for every source |
 | The resolved OCR route fingerprints (the first two engines; a third engine and later add their own) | Availability, protocol version, every package and exact version, pipeline identity and revision, model identity and revision, output-schema identity and version, and backend identifier |
+| `OCR_SKIP_BLANK_PAGES` (only when `false`) | Off, no flagged page is dropped as blank, so PDF text can change. The PDF `parser` block gains `skip_blank_pages: false`. Turning it off re-indexes PDF sources only. The default (`true`) adds nothing, so no digest moves on upgrade |
 | `OCR_MATHS_ROUTING_ENABLED` and the detector version | They decide whether maths pages reach OCR; recorded for every source |
 | `OCR_NON_LATIN_ROUTING` (when not `off`) and its detector version | They decide which flagged pages skip the local tier; recorded for PDF sources only |
 | `OCR_LOCAL_BACKENDS`, `OCR_LOCAL_CUTS` and the resolved local model | The `parser` block of PDF sources names each listed backend in list order with its effective cut and its resolved model identity. This holds for the default list too. Only effective cuts count, so an entry equal to the default cut gives the same digest as no entry. A cut change, from the environment, `omrs.jsonc`, the Settings page or a Read document step, reads PDF sources again. Markdown and code sources keep their digest |

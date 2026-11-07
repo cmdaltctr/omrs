@@ -132,7 +132,7 @@ In Settings, step 1 SHALL show an "Install" button for a reader that is not inst
 #### Scenario: Another install is running
 
 - **WHEN** the user presses "Install" while another install runs and the server answers 409 `install-running`
-- **THEN** the panel MUST show "Another install is running. Wait until it finishes, then try again."
+- **THEN** the panel MUST show "Another install is running. Wait for it to finish, then try again."
 
 ### Requirement: The panel says when OCR is off
 
@@ -147,7 +147,7 @@ When the OCR fallback is off, the panel SHALL say above step 2 that no page goes
 
 ### Requirement: The Studio Read document step shows the same panel with inherit states
 
-The Studio Read document step SHALL show its OCR read options in the Page routing panel, in the same steps and order. Each row SHALL offer "Inherit" and SHALL name the inherited Settings value and its source. The panel SHALL say that "Inherit" uses the value from Settings › Document reading.
+The Studio Read document step SHALL show its OCR read options in the Page routing panel, in the same steps and order. Each row SHALL offer "Inherit" and SHALL name the inherited Settings value and its source (the router row names the value only). The panel SHALL say that "Inherit" uses the value from Settings › Document reading.
 
 #### Scenario: Inherited switch
 
@@ -177,7 +177,7 @@ The Studio Read document step SHALL show its OCR read options in the Page routin
 #### Scenario: Non-Latin inherit wording
 
 - **WHEN** the user opens the Non-Latin pages choice of a step
-- **THEN** the first choice MUST read "Inherit from Settings: off" and no choice MUST carry the word "default"
+- **THEN** the first choice MUST read "Inherit from Settings: off" and no other choice MUST carry the word "default" (only the source in an Inherit choice may)
 
 #### Scenario: Built-in profile
 

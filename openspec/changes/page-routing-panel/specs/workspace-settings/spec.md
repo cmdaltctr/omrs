@@ -129,3 +129,44 @@ Step 1 of the Page routing panel in Settings › Document reading SHALL show the
 
 - **WHEN** the user removes every reader and saves
 - **THEN** the page SHALL show the reason and write nothing
+
+### Requirement: Document reading edits the confidence cut of each local OCR backend
+
+Settings › Document reading › Page routing, step 4 "Local OCR backends" SHALL give each listed backend row a "Confidence cut" number input from 0 to 1. An empty input SHALL show the backend's default cut and SHALL mean "use the default". A save SHALL write `ocr_local_cuts` with one entry for each filled input and SHALL keep the entries of backends that are not listed. A save with no entries SHALL remove the key.
+
+#### Scenario: Default shown when unset
+
+- **GIVEN** the list `pp-ocrv6-small` and no `ocr_local_cuts` in any source
+- **WHEN** page routing step 4 renders
+- **THEN** the PP-OCRv6 small row MUST show an empty "Confidence cut" input with the default 0.92 shown in it
+
+#### Scenario: Set a cut and save
+
+- **GIVEN** the list `pp-ocrv6-small, indra`
+- **WHEN** the user types 0.95 in the Indra row and presses Save
+- **THEN** `omrs.jsonc` MUST hold `"ocr_local_cuts": {"indra": 0.95}`
+- **AND** step 4 MUST show "Restart to apply"
+
+#### Scenario: Clear the last cut
+
+- **GIVEN** `omrs.jsonc` holds `"ocr_local_cuts": {"indra": 0.95}` and the list `pp-ocrv6-small, indra`
+- **WHEN** the user empties the Indra input and presses Save
+- **THEN** `omrs.jsonc` MUST no longer hold `ocr_local_cuts`
+
+#### Scenario: Value out of range
+
+- **WHEN** the user types 1.5 in a cut input
+- **THEN** the page MUST show "The cut must be a number from 0 to 1." beside the input
+- **AND** Save MUST send nothing
+
+#### Scenario: Locked by the environment
+
+- **GIVEN** `OCR_LOCAL_CUTS` is set in the environment
+- **WHEN** page routing step 4 renders
+- **THEN** every cut input MUST be read-only and step 4 MUST show "Remove OCR_LOCAL_CUTS from the environment or .env to edit it here."
+
+#### Scenario: Phone width
+
+- **WHEN** the page renders at 390 px
+- **THEN** every backend row, its cut input and its buttons MUST be visible without horizontal scrolling
+- **AND** each cut input MUST have a label that names its backend
