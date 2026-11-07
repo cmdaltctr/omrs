@@ -77,7 +77,7 @@ Settings › Document reading SHALL have a Router section. It SHALL show one row
 
 - **WHEN** the user picks `handwriting` as the host router in step 3 and saves
 - **THEN** `omrs.jsonc` SHALL hold `"document_router": "handwriting"`
-- **AND** the row SHALL show "Restart to apply"
+- **AND** the row SHALL show the saved value without "Restart to apply", because the running server follows the host router
 
 #### Scenario: Locked by the environment
 

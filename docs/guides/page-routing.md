@@ -44,10 +44,10 @@ The same path in words:
 
 1. The first installed PDF reader reads the file and gives each page its native text. Native text is the text layer that is already in the PDF.
 2. The page scan flags each page whose native text is missing or not usable. A flagged page needs OCR (optical character recognition: reading the text from the page image).
-3. The page rules look at the flagged pages in a fixed order. A blank page keeps its native text and costs no OCR. A maths page or a non-Latin page goes straight to the OCR engines.
+3. The page rules look at pages in a fixed order. Blank and non-Latin checks act on flagged pages. A blank page keeps its native text and costs no OCR. A maths page or a non-Latin page goes straight to the OCR engines.
 4. The maths rule also looks at the unflagged pages. An unflagged page with a maths font goes straight to the OCR engines.
 5. The router, when you choose one, judges each other unflagged page with text. A "no" sends that page to the OCR engines.
-6. The local OCR backends read the flagged pages that no rule claimed. A page that no backend reads well enough goes to the OCR engines.
+6. The local OCR backends read the flagged pages that no rule claimed. A page that no backend reads well enough goes to the OCR engines. Step 4 lists what "not well enough" means.
 7. The OCR engines read every page that reaches them.
 
 The panel shows two rows above step 1:
@@ -159,7 +159,7 @@ Cost: about 3.6 s for each judged page with the local model. The default is "No 
 
 The local OCR backends read the flagged pages that no rule claimed. They run on this machine. The list order decides which backend reads first.
 
-Each backend has a confidence cut. A backend keeps a page when its confidence is at or above its cut. A page that a backend does not keep goes to the next backend. A page below every cut goes to the OCR engines.
+Each backend has a confidence cut. A backend keeps a page when its confidence is at or above its cut. A page goes to the next backend when the backend returns blank text, reports confidence below its cut, or flags the page as better read by a hosted engine (`hosted_recommended`). The [ingestion guide](ingestion.md) lists these tests. A page below every cut goes to the OCR engines.
 
 Each listed backend has a cut box beside it. A backend with no cut set uses its default cut.
 

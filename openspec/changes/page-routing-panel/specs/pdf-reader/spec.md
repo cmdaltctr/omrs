@@ -15,7 +15,7 @@ The setting `ocr_skip_blank_pages` (environment `OCR_SKIP_BLANK_PAGES`, `omrs.js
 - **GIVEN** `OCR_SKIP_BLANK_PAGES=false`
 - **WHEN** a PDF with a blank flagged page is ingested
 - **THEN** the blank test SHALL NOT render any page
-- **AND** the page SHALL go to the local tier and escalation path like any flagged page
+- **AND** the page SHALL follow the other flagged-page rules and then the local tier and escalation path, like any flagged page
 - **AND** `ocr_pages_blank` SHALL be 0
 
 #### Scenario: Environment text that is not a boolean
