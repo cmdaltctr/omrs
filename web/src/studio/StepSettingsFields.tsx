@@ -3,8 +3,9 @@ import type { EffectiveControl, JsonValue, OperationDescriptor } from "../api/pi
 import { isCutsField } from "./CutsParam";
 import { setEnabled, setParam, type Draft } from "./graph";
 import { isHiddenOldOption, replacedOptions } from "./ListParam";
-import { ParamField } from "./ParamField";
-import { paramFields } from "./schema";
+import { ParamField, type ParamFieldProps } from "./ParamField";
+import { isPanelField, ReadStepRouting } from "./ReadStepRouting";
+import { paramFields, type ParamField as Field } from "./schema";
 import { controlFor, valueNote } from "./stepSummary";
 
 interface StepSettingsFieldsProps {
@@ -18,6 +19,9 @@ interface StepSettingsFieldsProps {
   /** Shown between the bypass switch and the parameters, for example the embedding model. */
   children?: ReactNode;
 }
+
+/** The operation whose OCR options show in the Page routing panel. */
+const READ_OPERATION = "read.document";
 
 const names = (value: JsonValue | undefined): string[] => (Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : []);
 
@@ -42,6 +46,27 @@ export function StepSettingsFields({ draft, nodeId, operation, controls, onChang
   // The cuts option sets one cut for each backend of the list the step reads with.
   const own = node.params?.ocr_local_backends;
   const backends = names(own == null ? fields.find((field) => field.name === "ocr_local_backends")?.inheritedValue : own);
+  const panel = operation.operation_id === READ_OPERATION;
+
+  /** One control of the step, wired to the draft. A set list replaces its old options in the same update: a step may not set both forms. */
+  const renderField = (field: Field, extra: Partial<ParamFieldProps> = {}) => (
+    <ParamField
+      key={`${nodeId}:${field.name}`}
+      field={field}
+      disabled={readOnly}
+      backends={isCutsField(field) ? backends : undefined}
+      value={node.params?.[field.name]}
+      note={valueNote(field, node, controlFor(field, controls[nodeId]), draft.graph)}
+      onChange={(value) =>
+        onChange((current) => {
+          const next = setParam(current, nodeId, field.name, value);
+          if (value == null) return next;
+          return replacedOptions(field.name).reduce((draft, old) => setParam(draft, nodeId, old, null), next);
+        })
+      }
+      {...extra}
+    />
+  );
   return (
     <>
       {operation.bypass && (
@@ -55,26 +80,8 @@ export function StepSettingsFields({ draft, nodeId, operation, controls, onChang
         </>
       )}
       {children}
-      {fields
-        .filter((field) => !isHiddenOldOption(field, fields, node.params?.[field.name]))
-        .map((field) => (
-          <ParamField
-            key={`${nodeId}:${field.name}`}
-            field={field}
-            disabled={readOnly}
-            backends={isCutsField(field) ? backends : undefined}
-            value={node.params?.[field.name]}
-            note={valueNote(field, node, controlFor(field, controls[nodeId]), draft.graph)}
-            onChange={(value) =>
-              onChange((current) => {
-                const next = setParam(current, nodeId, field.name, value);
-                // A set list replaces its old options in the same update: a step may not set both forms.
-                if (value == null) return next;
-                return replacedOptions(field.name).reduce((draft, old) => setParam(draft, nodeId, old, null), next);
-              })
-            }
-          />
-        ))}
+      {fields.filter((field) => !(panel && isPanelField(field)) && !isHiddenOldOption(field, fields, node.params?.[field.name])).map((field) => renderField(field))}
+      {panel ? <ReadStepRouting fields={fields} params={node.params} renderField={renderField} /> : null}
     </>
   );
 }

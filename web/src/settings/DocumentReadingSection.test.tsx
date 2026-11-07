@@ -51,20 +51,6 @@ describe("Document reading", () => {
     expect(section.querySelector("[data-slot='card-inset']")).toBeNull();
   });
 
-  it("groups the OCR settings into When to use OCR, Maths pages and Engines, with the engines folder under Engines", async () => {
-    const { section } = await openSection();
-    const ocr = within(section).getByRole("region", { name: "OCR" });
-    const block = (name: string) => within(ocr).getByRole("group", { name });
-    const names = (name: string) => within(block(name)).getAllByRole("group").map((group) => group.getAttribute("aria-label"));
-    expect(names("When to use OCR")).toEqual(["OCR fallback", "OCR routing unit", "Non-Latin routing"]);
-    expect(names("Maths pages")).toEqual(["Maths routing"]);
-    expect(names("Engines")).toEqual(["OCR engines"]);
-    expect(block("Engines")).toHaveTextContent(/OCR engines folder|OCR_WORKERS_DIR/);
-    const [left, right] = Array.from(ocr.querySelector("[data-slot='reading-columns']")!.children) as HTMLElement[];
-    expect(within(left!).getByRole("group", { name: "When to use OCR" })).toBeInTheDocument();
-    expect(within(right!).getByRole("group", { name: "Engines" })).toBeInTheDocument();
-  });
-
   it("opens from its address with its chip selected, straight before Configuration", async () => {
     await openSection();
     const chips = within(screen.getByRole("group", { name: "Sections" })).getAllByRole("button").map((button) => button.textContent);
@@ -150,9 +136,9 @@ describe("Document reading", () => {
     await openSection({
       "GET /v1/settings/document-reading": () => ({ ...base, settings: [...base.settings, old("pdf_reader", "pypdf"), old("ocr_engine_primary", "dots-mocr"), old("ocr_engine_fallback", "paddleocr-vl")] }),
     });
-    const ocr = screen.getByRole("region", { name: "OCR" });
-    const rows = within(ocr).getAllByRole("group").flatMap((group) => group.getAttribute("aria-label") ?? []);
-    expect(rows).toEqual(["OCR fallback", "OCR routing unit", "Non-Latin routing", "Maths routing", "Local OCR backends", "OCR engines"]);
+    const panel = screen.getByRole("region", { name: "Page routing" });
+    const rows = within(panel).getAllByRole("group").flatMap((group) => group.getAttribute("aria-label") ?? []);
+    expect(rows).toEqual(["OCR fallback", "OCR routing unit", "PDF readers", "Skip blank pages", "Maths routing", "Non-Latin routing", "Host router", "Local OCR backends", "OCR engines"]);
     for (const name of ["PDF reader", "Primary engine", "Fallback engine"]) expect(screen.queryByRole("group", { name })).toBeNull();
   });
 
@@ -179,7 +165,7 @@ describe("Document reading", () => {
     const { user } = await openSection(savingServer(readingState({ pdf_readers: { value: ["pdf_inspector"] } })));
     await user.click(within(row("PDF readers")).getByRole("button", { name: "Edit PDF readers" }));
     await user.click(within(row("PDF readers")).getByRole("combobox", { name: "Add reader" }));
-    expect(await screen.findByRole("option", { name: "pypdfium2 (not installed)" })).toHaveAttribute("aria-disabled", "true");
+    expect(await screen.findByRole("option", { name: "pypdfium2 (optional, not installed)" })).toHaveAttribute("aria-disabled", "true");
   });
 
   it("refuses an empty reader list", async () => {
@@ -266,7 +252,7 @@ describe("Document reading", () => {
     expect(routing).toHaveTextContent("Use always for a collection you know is non-Latin.");
     await user.click(within(routing).getByRole("button", { name: "Edit Non-Latin routing" }));
     await user.click(within(routing).getByRole("combobox", { name: "Non-Latin routing" }));
-    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["off", "detect", "always"]);
+    expect((await screen.findAllByRole("option")).map((option) => option.textContent)).toEqual(["off (default)", "detect", "always"]);
   });
 
   it("saves always for Non-Latin routing and asks for a restart", async () => {

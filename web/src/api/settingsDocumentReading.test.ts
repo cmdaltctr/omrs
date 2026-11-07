@@ -20,6 +20,7 @@ describe("document reading API", () => {
       "ocr_engines",
       "ocr_engine_primary",
       "ocr_engine_fallback",
+      "ocr_skip_blank_pages",
       "ocr_maths_routing_enabled",
       "ocr_non_latin_routing",
       "document_router",

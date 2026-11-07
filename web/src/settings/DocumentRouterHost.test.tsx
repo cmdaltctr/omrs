@@ -32,7 +32,7 @@ function savingServer(start: DocumentReadingState) {
 async function openHost(handlers = {}) {
   const server = settingsServer({ "GET /v1/settings/document-routers": () => documentRouters([HANDWRITING, HOSTED]), ...handlers });
   startApp("#/settings/document-reading", server);
-  const card = await screen.findByRole("region", { name: "Router" });
+  const card = await screen.findByRole("region", { name: "Page routing" });
   const host = await within(card).findByRole("group", { name: "Host router" });
   return { server, card, host, user: userEvent.setup() };
 }

@@ -49,6 +49,8 @@ export function OrderedListControl({ label, noun, value, options, positionNote, 
   const known = new Map(options.map((option) => [option.value, option]));
   const addable = options.filter((option) => !value.includes(option.value));
   const last = value.length === 1;
+  // A name that cannot be added yet points to where to fix it, once for each place.
+  const fixLinks = [...new Map(addable.filter((option) => option.disabled && option.link !== null).map((option) => [option.link!.href, option.link!])).values()];
   return (
     <div className="flex min-w-0 flex-col gap-2">
       <ol aria-label={label} className="flex min-w-0 flex-col gap-1.5">
@@ -103,6 +105,11 @@ export function OrderedListControl({ label, noun, value, options, positionNote, 
           </SelectContent>
         </Select>
       ) : null}
+      {fixLinks.map((link) => (
+        <a key={link.href} href={link.href} className="text-meta text-primary-label underline underline-offset-4">
+          {link.text}
+        </a>
+      ))}
     </div>
   );
 }

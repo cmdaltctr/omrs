@@ -3,6 +3,7 @@ import { useId } from "react";
 import { useApi } from "../api/ApiProvider";
 import type { JsonValue } from "../api/pipelines";
 import { documentReadingQuery, integrationsQuery } from "../api/queries";
+import { formatRoute } from "../lib/routes";
 import { backendOptions, engineOptions, LIST_WORDS, readerListWarning, readerOptions, type ListKind } from "../settings/documentReadingWords";
 import { OrderedListControl, type ListOption } from "../settings/OrderedListControl";
 import type { ParamField } from "./schema";
@@ -12,6 +13,9 @@ const LIST_KINDS: Record<string, ListKind> = { pdf_readers: "readers", ocr_engin
 const SUPERSEDED: Record<string, string> = { pdf_reader: "pdf_readers", ocr_engine_primary: "ocr_engines", ocr_engine_fallback: "ocr_engines" };
 /** The local tier sits in the OCR engines group but is not a worker engine a step can name. */
 const LOCAL_TIER = "local OCR tier";
+
+/** Where a reader that is not installed gets fixed. Studio has no Install button, so the link goes to Settings. */
+const SETTINGS_LINK = { href: formatRoute({ area: "settings", section: "document-reading" }), text: "Install it in Settings › Document reading" };
 
 /** True for the three list options of the Read document step. */
 export function isListField(field: ParamField): boolean {
@@ -38,6 +42,8 @@ interface ListParamProps {
   value: JsonValue | undefined;
   onChange: (value: JsonValue) => void;
   disabled?: boolean;
+  /** The words of the Inherit choice. Without it the choice reads "Inherit". */
+  inheritLabel?: string;
 }
 
 const names = (value: JsonValue | undefined): string[] => (Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string") : []);
@@ -46,7 +52,7 @@ const names = (value: JsonValue | undefined): string[] => (Array.isArray(value) 
  * A Read document list option: Inherit, or the step's own ordered list in the same control
  * as Settings. Setting a list starts from the host list, so the step begins as a copy of what it inherits.
  */
-export function ListParam({ field, value, onChange, disabled = false }: ListParamProps) {
+export function ListParam({ field, value, onChange, disabled = false, inheritLabel = "Inherit" }: ListParamProps) {
   const group = useId();
   const kind = LIST_KINDS[field.name]!;
   const words = LIST_WORDS[kind];
@@ -58,7 +64,7 @@ export function ListParam({ field, value, onChange, disabled = false }: ListPara
     kind === "backends"
       ? backendOptions(reading?.local_ocr_backends ?? [])
       : kind === "readers"
-        ? readerOptions((data?.pdf_readers ?? []).map(({ name, installed }) => ({ name, available: installed, reason: null })))
+        ? readerOptions((data?.pdf_readers ?? []).map(({ name, installed }) => ({ name, available: installed, reason: null })), true).map((option) => (option.link === null ? option : { ...option, link: SETTINGS_LINK }))
         : engineOptions((data?.runtime?.ocr_engines ?? []).filter((engine) => engine.name !== LOCAL_TIER).map(({ name, status, reason }) => ({ name, available: status === "ready", reason })));
   const own = value == null ? null : names(value);
   const warning = kind === "readers" && own !== null ? readerListWarning(own) : null;
@@ -74,7 +80,7 @@ export function ListParam({ field, value, onChange, disabled = false }: ListPara
       <div className="flex flex-wrap gap-x-4 gap-y-1">
         <label className="flex items-center gap-2 text-ui">
           <input type="radio" name={group} checked={own === null} disabled={disabled} className="size-4 accent-primary" onChange={() => onChange(null)} />
-          Inherit
+          {inheritLabel}
         </label>
         <label className="flex items-center gap-2 text-ui">
           <input type="radio" name={group} checked={own !== null} disabled={disabled} className="size-4 accent-primary" onChange={setOwn} />

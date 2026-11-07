@@ -1,30 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { useApi } from "../api/ApiProvider";
 import { documentReadingQuery } from "../api/queries";
-import type { DocumentReadingKey, DocumentReadingSetting, DocumentReadingState } from "../api/settingsDocumentReading";
+import type { DocumentReadingKey, DocumentReadingState } from "../api/settingsDocumentReading";
 import { ErrorNotice } from "../components/ErrorNotice";
-import { Card, CardHeader, CardTitle } from "../components/ui/card";
+import { DocumentReadingPanel, type ReadingSaved } from "./DocumentReadingPanel";
 import { DocumentRoutersCard } from "./DocumentRoutersCard";
-import { isListKind, listOptions, READING_ROWS, readingChoices } from "./documentReadingWords";
-import { LocalOcrBackendsRow } from "./LocalOcrBackendsRow";
-import { ReadingSettingRow } from "./ReadingSettingRow";
+import { READING_ROWS } from "./documentReadingWords";
 import { RestartDialog } from "./RestartDialog";
 import { DenseSettingRows } from "./SettingBox";
 
-export const IDENTITY_NOTE = "These settings are part of the index identity. After a restart, the next ingest can read existing files again.";
 
-const PDF_KEYS: readonly DocumentReadingKey[] = ["pdf_readers"];
+export const IDENTITY_NOTE = "These settings are part of the index identity. After a restart, the next ingest can read existing files again.";
 
 interface RestartRequest {
   change: string;
   plural: boolean;
-}
-
-/** The lines a row shows under its value: the reader the engine resolved, when it is not the first in the list. */
-function rowNotes(setting: DocumentReadingSetting, state: DocumentReadingState): string[] {
-  if (setting.key === "pdf_readers" && Array.isArray(setting.value) && state.pdf_reader_in_use !== null && state.pdf_reader_in_use !== setting.value[0]) return [`In use: ${state.pdf_reader_in_use}`];
-  return [];
 }
 
 /** After a save, the restart prompt for what waits: the row that was saved, or the section when other keys wait too. A row can hold more than one key. */
@@ -35,98 +26,12 @@ function restartFor(state: DocumentReadingState, key: DocumentReadingKey, rowKey
   return { change: "Document reading settings", plural: true };
 }
 
-/** The OCR blocks in their columns: when to use OCR and maths pages left, the local backends and the engines right. */
-const OCR_BLOCKS: { title: string; keys: readonly DocumentReadingKey[] }[][] = [
-  [
-    { title: "When to use OCR", keys: ["ocr_fallback_enabled", "ocr_routing_unit", "ocr_non_latin_routing"] },
-    { title: "Maths pages", keys: ["ocr_maths_routing_enabled"] },
-  ],
-  [
-    { title: "Local OCR", keys: ["ocr_local_backends"] },
-    { title: "Engines", keys: ["ocr_engines"] },
-  ],
-];
-
-type Saved = (state: DocumentReadingState, key: DocumentReadingKey, rowKeys?: readonly DocumentReadingKey[]) => void;
-
-function ReadingRows({ state, keys, onSaved }: { state: DocumentReadingState; keys: readonly DocumentReadingKey[]; onSaved: Saved }) {
-  return state.settings
-    .filter((setting) => keys.includes(setting.key))
-    .sort((a, b) => keys.indexOf(a.key) - keys.indexOf(b.key))
-    .flatMap((setting) => {
-      const words = READING_ROWS[setting.key];
-      if (words === undefined) return [];
-      // The local backends row edits the cuts map with the list, so it takes the cuts setting too.
-      const cuts = setting.key === "ocr_local_backends" ? state.settings.find((other) => other.key === "ocr_local_cuts") : undefined;
-      if (cuts !== undefined) return [<LocalOcrBackendsRow key={setting.key} list={setting} cuts={cuts} state={state} onSaved={(next) => onSaved(next, setting.key, [setting.key, cuts.key])} />];
-      return [
-        <ReadingSettingRow
-          key={setting.key}
-          setting={setting}
-          words={words}
-          choices={readingChoices(words.kind)}
-          options={isListKind(words.kind) ? listOptions(words.kind, state) : []}
-          notes={rowNotes(setting, state)}
-          onSaved={(next) => onSaved(next, setting.key)}
-        />,
-      ];
-    });
-}
-
-/** Where the OCR engines live, or why none can run. */
-function WorkersFolder({ dir }: { dir: string | null }) {
-  if (dir === null) return <p className="pt-2 text-meta text-muted-foreground">OCR_WORKERS_DIR is not set, so no OCR engine can run.</p>;
-  return (
-    <p className="pt-2 text-meta text-muted-foreground">
-      {"OCR engines folder: "}
-      <code dir="ltr" className="text-code font-mono [overflow-wrap:anywhere]">
-        {dir}
-      </code>
-    </p>
-  );
-}
-
-function OcrBlock({ title, children }: { title: string; children: ReactNode }) {
-  const id = `reading-${title.toLowerCase().replaceAll(" ", "-")}`;
-  return (
-    <div role="group" aria-labelledby={id} className="flex min-w-0 flex-col">
-      <h4 id={id} className="pb-1 text-ui font-semibold">
-        {title}
-      </h4>
-      {children}
-    </div>
-  );
-}
-
-/** The OCR card: titled blocks, in two columns from 768 px of card width. */
-function OcrCard({ state, onSaved }: { state: DocumentReadingState; onSaved: Saved }) {
-  return (
-    <Card role="region" aria-labelledby="reading-ocr" className="@container">
-      <CardHeader>
-        <CardTitle id="reading-ocr">OCR</CardTitle>
-      </CardHeader>
-      <div data-slot="reading-columns" className="grid min-w-0 grid-cols-1 gap-x-6 gap-y-4 @3xl:grid-cols-2">
-        {OCR_BLOCKS.map((column, index) => (
-          <div key={index} className="flex min-w-0 flex-col gap-4">
-            {column.map(({ title, keys }) => (
-              <OcrBlock key={title} title={title}>
-                <ReadingRows state={state} keys={keys} onSaved={onSaved} />
-                {title === "Engines" ? <WorkersFolder dir={state.ocr.workers_dir} /> : null}
-              </OcrBlock>
-            ))}
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-}
-
-/** The PDF reader and the OCR settings, saved to `omrs.jsonc` for the next launch of `omrs web`. */
+/** The Page routing panel and the Router card, saved to `omrs.jsonc` for the next launch of `omrs web`. */
 export function DocumentReadingSection() {
   const query = useQuery(documentReadingQuery(useApi()));
   const [restart, setRestart] = useState<RestartRequest | null>(null);
   const state = query.data;
-  const saved: Saved = (next, key, rowKeys = [key]) => setRestart(restartFor(next, key, rowKeys));
+  const saved: ReadingSaved = (next, key, rowKeys = [key]) => setRestart(restartFor(next, key, rowKeys));
 
   return (
     <section aria-labelledby="settings-document-reading" className="flex flex-col gap-4">
@@ -147,20 +52,10 @@ export function DocumentReadingSection() {
           </p>
         )
       ) : (
-        <>
-          <DenseSettingRows>
-            <Card role="region" aria-labelledby="reading-pdf">
-              <CardHeader>
-                <CardTitle id="reading-pdf">PDF reading</CardTitle>
-              </CardHeader>
-              <div className="flex min-w-0 flex-col">
-                <ReadingRows state={state} keys={PDF_KEYS} onSaved={saved} />
-              </div>
-            </Card>
-            <OcrCard state={state} onSaved={saved} />
-            <DocumentRoutersCard state={state} onSaved={(next) => saved(next, "document_router")} />
-          </DenseSettingRows>
-        </>
+        <DenseSettingRows>
+          <DocumentReadingPanel state={state} onSaved={saved} />
+          <DocumentRoutersCard />
+        </DenseSettingRows>
       )}
       <RestartDialog change={restart?.change ?? null} plural={restart?.plural} note={IDENTITY_NOTE} onLater={() => setRestart(null)} />
     </section>

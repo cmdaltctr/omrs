@@ -102,6 +102,19 @@ describe("OrderedListControl", () => {
     expect(await screen.findByRole("option", { name: "pypdfium2 (not installed)" })).toHaveAttribute("aria-disabled", "true");
   });
 
+  it("links to where to fix a name that cannot be added, under the add choice and once", () => {
+    const second: ListOption = { value: "other", label: "other (not installed)", disabled: true, note: "Not installed.", link: OPTIONS[3]!.link };
+    render(<Harness start={["pdf_inspector"]} options={[...OPTIONS, second]} />);
+    const links = screen.getAllByRole("link", { name: "See PDF readers in Integrations" });
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveAttribute("href", "#/integrations/pdf-readers");
+  });
+
+  it("shows no link under the add choice when every name that can be added can run", () => {
+    render(<Harness start={["pdf_inspector"]} options={OPTIONS.slice(0, 3)} />);
+    expect(screen.queryByRole("link")).toBeNull();
+  });
+
   it("hides the add choice when every name is in the list", () => {
     render(<Harness start={OPTIONS.map((option) => option.value)} />);
     expect(screen.queryByRole("combobox", { name: "Add reader" })).toBeNull();

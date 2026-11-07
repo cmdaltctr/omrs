@@ -46,10 +46,10 @@ const TWO = readingState({}, {
 });
 
 describe("Document reading local OCR backends", () => {
-  it("shows the list in its own Local OCR block, before the engines", async () => {
+  it("shows the list in step 4 of the Page routing panel, before the engines", async () => {
     const { section } = await openSection();
-    const ocr = within(section).getByRole("region", { name: "OCR" });
-    const block = within(ocr).getByRole("group", { name: "Local OCR" });
+    const panel = within(section).getByRole("region", { name: "Page routing" });
+    const block = within(panel).getByRole("heading", { level: 4, name: "4 Local OCR backends" }).closest<HTMLElement>("[data-slot='page-routing-step']")!;
     expect(within(block).getAllByRole("group").map((group) => group.getAttribute("aria-label"))).toEqual(["Local OCR backends"]);
     expect(within(row()).getByText("pp-ocrv6-small", { selector: "code" })).toBeInTheDocument();
     expect(row()).toHaveTextContent("Default: pp-ocrv6-small");
