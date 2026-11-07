@@ -65,7 +65,7 @@ Each setting SHALL come from the first of these sources, highest first: an expli
 
 #### Scenario: .env wins over the file
 
-- **WHEN** `.env` sets `LLAMACPP_CHAT_URL` and `omrs.jsonc` sets `llamacpp_chat_url` to another address
+- **WHEN** `.env` sets `LLAMACPP_ROUTER_URL` and `omrs.jsonc` sets `llamacpp_router_url` to another address
 - **THEN** the `.env` address MUST be used and the field MUST report the source `dotenv`
 
 #### Scenario: Process environment named apart from .env
@@ -386,7 +386,7 @@ The keys the Settings page may write SHALL include every setting of the Settings
 
 ### Requirement: Identity, storage, secret and internal keys are read-only on the page
 
-The read-only keys SHALL be `embed_provider`, `embed_model`, `local_backend`, `cloud_backend`, `llamacpp_embed_url`, `llamacpp_embed_model`, `openrouter_embed_model`, every key under `embedding.`, `vector_store`, `lancedb_uri`, `chroma_persist_dir`, `chroma_mode`, `collection_name`, every secret field, every internal field, `ingestion.ingest_extensions` and `metadata.keyword_rules`.
+The read-only keys SHALL be `embed_provider`, `embed_model`, `local_backend`, `cloud_backend`, `llamacpp_embed_model`, `openrouter_embed_model`, every key under `embedding.`, `vector_store`, `lancedb_uri`, `chroma_persist_dir`, `chroma_mode`, `collection_name`, every secret field, every internal field, `ingestion.ingest_extensions` and `metadata.keyword_rules`. `llamacpp_models` SHALL be written only through the Router panel routes, not through the configuration save.
 
 #### Scenario: Identity key refused
 
@@ -402,6 +402,11 @@ The read-only keys SHALL be `embed_provider`, `embed_model`, `local_backend`, `c
 
 - **WHEN** a request asks the server to write `ocr_workers_dir` with a folder that holds `engines/`
 - **THEN** the server MUST write the key and MUST NOT answer 400 for a read-only key
+
+#### Scenario: Model list not written by the configuration save
+
+- **WHEN** a request to `PUT /v1/settings/configuration` holds `llamacpp_models`
+- **THEN** the server MUST answer 400 and MUST NOT change the file
 
 ### Requirement: A scalar setting write is checked against the setting's rule
 

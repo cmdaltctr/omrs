@@ -33,12 +33,12 @@ The order is the operator's (2026-11-06, design D1). Do not reorder groups. Stop
 - [ ] 3.3 `./scripts/local_ci.sh`, strict validation, browser check at 1280 px and 390 px (Settings and Studio), PR, CI, CodeRabbit.
 - [ ] 3.4 GATE G4: the operator says merge. Merge, archive, remove worktree.
 
-## 4. Live switch and one re-index (operator approval needed)
+## 4. Live switch (operator approval needed)
 
-- [ ] 4.1 GATE G5: the operator approves touching the live app and re-indexing every collection.
+- [ ] 4.1 GATE G5: the operator approves touching the live app. No re-index: the live collections are test data (operator, 2026-11-07).
 - [ ] 4.2 Back up `~/.omrs/lancedb`, `~/.omrs/workspace/workspace.db` and `~/.config/omrs/omrs.jsonc` (dated copies). Reinstall the live app from `v3` with lock constraints and the `local-ocr-indra` extra.
 - [ ] 4.3 Router setup per `one-llamacpp-router` task group 13: provision the pinned router, model list (Qwen3-Embedding-4B, Qwen3-4B, Clef-Flash if a router is wanted), one router URL in `omrs.jsonc`, remove stale keys (`embed_model`, `ollama_classify_model`, old role URLs, `llamacpp_chat_server`). Local OCR: list `[pp-ocrv6-small, indra]`, cuts default, `ocr_non_latin_routing` off, Indra weights and `INDRA_OCR_MODEL_DIR`. Remove `OCR_LOCAL_MIN_CONFIDENCE` from the environment, `.env` and the login plist first (it now stops start-up), and press "Remove it" for `ocr_local_min_confidence` in Settings (archived `local-ocr-per-backend-cuts` group 10).
-- [ ] 4.4 Restart, check Integrations (router and models Ready, both local OCR backends Ready with cuts 0.92 and 0.94), then re-ingest every collection once. Verify: categories are model-chosen (not keyword fallback), search finds a known phrase per collection, no Ollama process is needed.
+- [ ] 4.4 Restart, check Integrations (router and models Ready, both local OCR backends Ready with cuts 0.92 and 0.94). Verify: one small test ingest gets model-chosen categories (not keyword fallback), a search finds its known phrase, and no Ollama process is needed.
 - [ ] 4.5 Delete the backups once verified (operator preference), record the new live state in agent memory.
 
 ## 5. Pipeline sweep on RunPod (worktree `omrs-v3-feat-pipeline-sweep-llamacpp`)

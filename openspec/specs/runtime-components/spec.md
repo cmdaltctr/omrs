@@ -81,9 +81,9 @@ The model file list SHALL hold the chunking tokenizer at its pinned revision, th
 - **THEN** the tokenizer item MUST be `missing`
 - **AND** its reason MUST say that Markdown chunking falls back to the legacy splitter
 
-### Requirement: Local server items probe the configured address
+### Requirement: Local server items probe the router address
 
-The local server list SHALL hold Ollama at `ollama_base_url` and llama.cpp at `llamacpp_embed_url` and `llamacpp_chat_url`, and at the classification address when it differs from `llamacpp_chat_url`. An item SHALL be `ready` when its health request succeeds, and `not-running` when it fails. An item that no setting in force uses SHALL still be listed, with an empty `used_by`. The response SHALL NOT show a user name or password from an address.
+The local server list SHALL hold Ollama at `ollama_base_url` and one llama.cpp item at `llamacpp_router_url`. An item SHALL be `ready` when its health request succeeds, and `not-running` when it fails. An item that no setting in force uses SHALL still be listed, with an empty `used_by`. The llama.cpp item's `used_by` SHALL name every setting whose role runs on the router. The response SHALL NOT show a user name or password from an address.
 
 #### Scenario: Ollama running and used
 
@@ -92,16 +92,15 @@ The local server list SHALL hold Ollama at `ollama_base_url` and llama.cpp at `l
 
 #### Scenario: llama.cpp not running
 
-- **WHEN** no process listens at `llamacpp_chat_url`
-- **THEN** the llama.cpp chat item MUST be `not-running` with the address in its reason
+- **WHEN** no process listens at `llamacpp_router_url`
+- **THEN** the llama.cpp item MUST be `not-running` with the address in its reason
 
-#### Scenario: Separate classification address
+#### Scenario: One llama.cpp item for every role
 
-- **WHEN** `llamacpp_classify_url` is `http://127.0.0.1:9931/v1`, `llamacpp_chat_url` is `http://127.0.0.1:8081/v1` and metadata extraction uses llama.cpp
-- **THEN** the list MUST hold a llama.cpp classification item at port 9931 whose `used_by` holds `metadata_llm_provider`
-- **AND** the `used_by` of the llama.cpp chat item MUST NOT hold `metadata_llm_provider`
+- **WHEN** embeddings, classification and Chat all run on llama.cpp
+- **THEN** the list MUST hold one llama.cpp item, and its `used_by` MUST hold `embed_provider`, `metadata_llm_provider` and `answer.provider`
 
-#### Scenario: Classification follows the Chat address
+#### Scenario: Ollama unused
 
-- **WHEN** no source sets `llamacpp_classify_url` and metadata extraction uses llama.cpp
-- **THEN** the list MUST hold no classification item, and the `used_by` of the llama.cpp chat item MUST hold `metadata_llm_provider`
+- **WHEN** no setting in force uses Ollama
+- **THEN** the Ollama item MUST still be listed with an empty `used_by`

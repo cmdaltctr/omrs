@@ -226,72 +226,6 @@ The Ollama card SHALL show "Context window (tokens)" as a setting row with its v
 - **WHEN** the field reports source `env` or `dotenv`
 - **THEN** the card MUST show where it is set and MUST NOT offer Edit
 
-### Requirement: The llama.cpp card shows a Local server panel
-
-When the Chat server choice is `managed`, the Chat block SHALL show a "Local server" panel with: the state as text and a badge (`stopped`, `starting`, `running` or `failed`); the fixed reason when the state is `failed`; setting rows for program path, context window and idle sleep, each with its value and source; the Chat model as a read-only row; and the buttons Start, Stop and Restart. The panel SHALL NOT show output of the server. With `external`, the card SHALL NOT show the panel.
-
-#### Scenario: Failed with a reason
-
-- **WHEN** a start ends with reason `port-in-use`
-- **THEN** the panel MUST show the state `failed` and a friendly line for the reason, and MUST NOT show any process output
-
-#### Scenario: External choice hides the panel
-
-- **WHEN** the choice is `external`
-- **THEN** the llama.cpp card MUST NOT show the Local server panel or its Start button
-
-#### Scenario: No model row to edit
-
-- **WHEN** the choice is `managed`
-- **THEN** the panel MUST NOT offer a Model row with Edit, and its read-only Chat model row MUST link to Settings > Chat
-
-### Requirement: The Local server panel states ownership and pending restarts
-
-The panel SHALL say: "omrs starts and stops only this server. It never touches a server you started yourself." The panel SHALL show "Restart to apply" when the values in force differ from the values of the running server.
-
-#### Scenario: Ownership text
-
-- **WHEN** the user opens the panel
-- **THEN** it MUST show "omrs starts and stops only this server. It never touches a server you started yourself."
-
-#### Scenario: Restart to apply
-
-- **WHEN** the server is running and the user saves a new model
-- **THEN** the server MUST keep running and the panel MUST show "Restart to apply"
-
-### Requirement: The Local server panel buttons and rows follow the state and locks
-
-Start SHALL be disabled while the state is `starting` or `running`. Stop SHALL be disabled while the state is `stopped`. A locked field SHALL be read-only and SHALL state its lock.
-
-#### Scenario: Stopped
-
-- **WHEN** no server is running
-- **THEN** the panel MUST show the state `stopped`, Start enabled and Stop disabled
-
-#### Scenario: Program and model need a credentials session
-
-- **WHEN** the session lacks the `credentials` scope
-- **THEN** the program path row and the Chat server choice MUST be read-only and MUST state that the scope is needed, and the Chat model row MUST stay read-only
-
-#### Scenario: Locked field
-
-- **WHEN** `LLAMACPP_SERVER_BINARY` is in the environment
-- **THEN** the program path row MUST say where it is set and MUST NOT offer Edit
-
-### Requirement: The Local server panel names what it does not manage and what is missing
-
-The panel SHALL state that the embedding server is not managed. When Start fails because a value is not set, the panel SHALL name the missing value and where to set it.
-
-#### Scenario: Not configured
-
-- **WHEN** no program path is set and the user presses Start
-- **THEN** the panel MUST show the state `failed` and the line "Set the program path first."
-
-#### Scenario: No llama.cpp Chat model
-
-- **WHEN** a program path is set, the Chat provider is not `llamacpp` and the user presses Start
-- **THEN** the panel MUST show the state `failed` and the line "Choose llama.cpp and a Chat model in Settings > Chat first."
-
 ### Requirement: Every setting is shown as a value and source row
 
 Each editable setting on the Settings page SHALL show one row with its label, the value in force and its source in plain words ("Saved in settings (omrs.jsonc)", "Set in .env", "Set in the environment", "default"). Edit SHALL open an input filled with the value in force, with Save and Cancel. The page SHALL NOT show an empty input for a field that has a value.
@@ -500,6 +434,15 @@ The Document reading section SHALL show one row for each of `pdf_readers`, `ocr_
 - **WHEN** the server launched with `pdf_reader` `auto` and `omrs.jsonc` now holds `"pdf_reader": "liteparse"`
 - **THEN** the PDF reader row MUST show `auto` in force, `liteparse` saved and "Restart to apply"
 
+### Requirement: The host router row shows the value in force without a restart
+
+The host router row (`document_router`) SHALL show the value in force now, read from `omrs.jsonc`, and SHALL NOT show "Restart to apply", because a saved router choice applies to the next request.
+
+#### Scenario: Host router saved
+
+- **WHEN** the user saves `handwriting` as the host router in a running `omrs web`
+- **THEN** the host router row MUST show `handwriting` in force and MUST NOT show "Restart to apply"
+
 ### Requirement: Document reading states locks and when settings apply
 
 A key set in the environment or `.env` SHALL be read-only and SHALL show "Remove <ENV_NAME> from the environment or .env to edit it here." The section SHALL state that the settings apply after a restart, and that they are part of the index identity, so the next ingest after a restart can read existing files again.
@@ -633,106 +576,6 @@ The only provider request outside a test or a model list SHALL be the local serv
 - **THEN** the server MUST send one health request without a key to each configured Ollama and llama.cpp address
 - **AND** the server MUST NOT send a model-list or key-check request to any provider
 
-### Requirement: The llama.cpp card shows three blocks
-
-The llama.cpp card SHALL group its values in three blocks, in this order: Embeddings (the embedding address and model, read-only), Classification (metadata) (the classification address, editable, and "Text model (classification)", read-only) and Chat (the Chat address, editable, the Chat model line and the Chat server choice). The card SHALL NOT label the classification model "Chat model". Other provider cards SHALL keep one block.
-
-#### Scenario: Block titles
-
-- **WHEN** the user opens Settings > Providers
-- **THEN** the llama.cpp card MUST show the titles "Embeddings", "Classification (metadata)" and "Chat", in that order
-
-#### Scenario: Text model label
-
-- **WHEN** `llamacpp_chat_model` is `Qwen/Qwen3-0.6B-GGUF:Q8_0`
-- **THEN** the Classification block MUST show "Text model (classification)" with that value
-- **AND** no row outside the Chat block MUST be labelled "Chat model"
-
-#### Scenario: Other cards
-
-- **WHEN** the user opens the OpenRouter card
-- **THEN** the card MUST show no block titles
-
-### Requirement: The Chat block names the Chat model and links to Settings > Chat
-
-The Chat block SHALL show the Chat model read-only, with a link to Settings > Chat, where it is set. When the Chat provider is `llamacpp`, the block SHALL show the row "Chat model" with `answer.model`. Otherwise the block SHALL show "Chat uses <provider name> (<model>)". The card SHALL NOT offer an edit control for the Chat model.
-
-#### Scenario: Chat on OpenRouter
-
-- **WHEN** the Chat provider is `openrouter` and the Chat model is `deepseek/deepseek-v4-flash-0731`
-- **THEN** the Chat block MUST show "Chat uses OpenRouter (deepseek/deepseek-v4-flash-0731)" and a link to Settings > Chat
-
-#### Scenario: Chat on llama.cpp
-
-- **WHEN** the Chat provider is `llamacpp` and the Chat model is `Qwen/Qwen3-4B-GGUF:Q4_K_M`
-- **THEN** the Chat block MUST show the read-only row "Chat model" with `Qwen/Qwen3-4B-GGUF:Q4_K_M`, a link to Settings > Chat, and no Edit action
-
-### Requirement: The Chat block offers who runs the Chat server
-
-The Chat block SHALL offer the choice "Who runs the Chat server" with two options: "The Llama app or another server you run" (`external`) and "OMRS's own llama-server" (`managed`). The choice SHALL show its source. A save SHALL write `llamacpp_chat_server` to `omrs.jsonc`. A locked choice, or a session without the `credentials` scope, SHALL make the choice read-only and SHALL state why.
-
-#### Scenario: Choose OMRS's own server
-
-- **WHEN** the user selects "OMRS's own llama-server"
-- **THEN** `omrs.jsonc` MUST hold `"llamacpp_chat_server": "managed"` and the Chat block MUST show the Local server panel
-
-#### Scenario: Locked choice
-
-- **WHEN** `LLAMACPP_CHAT_SERVER` is in `.env`
-- **THEN** the choice MUST be read-only and MUST name the variable and `.env`
-
-#### Scenario: Switch refused while running
-
-- **WHEN** the owned server runs and the user selects "The Llama app or another server you run"
-- **THEN** the block MUST show one plain line that says to stop the server first, and the choice MUST stay `managed`
-
-### Requirement: The Llama app choice warns about context size changes
-
-While the choice is `external`, the Chat block SHALL show this callout: "Context size: set ctx-size for this model in the Llama app's models.user.ini, then relaunch the Llama app. The relaunch pauses embeddings and anything else on that port. OMRS does not edit this file or restart the app." The block SHALL offer no context window row for that server.
-
-#### Scenario: Llama app callout
-
-- **WHEN** the choice is `external`
-- **THEN** the Chat block MUST show the callout that names `models.user.ini`, the relaunch of the Llama app, and the pause of embeddings and anything else on that port
-- **AND** the block MUST NOT show a context window row
-
-### Requirement: The OMRS server choice names the program it needs
-
-While the choice is `managed`, the Chat block SHALL show this callout: "OMRS's own server needs a program named exactly llama-server. The Llama app's own llama program does not qualify. Install one with Homebrew: brew install llama.cpp. Then set the program path, for example /opt/homebrew/bin/llama-server." The panel SHALL show it again above the program path row while that path is not set or fails the program rule.
-
-#### Scenario: OMRS server callout
-
-- **WHEN** the user selects "OMRS's own llama-server"
-- **THEN** the Chat block MUST show the callout that names `llama-server`, says that the Llama app's own `llama` program does not qualify, and gives `brew install llama.cpp`
-
-#### Scenario: Program path not set
-
-- **WHEN** the choice is `managed` and no program path is set
-- **THEN** the Local server panel MUST show the same callout above the program path row
-
-### Requirement: A classification address that follows the Chat address says so
-
-While no source sets the classification address, the Classification block SHALL show the Chat address as the address in use, with the source `default` and the line "Uses the Chat address until you set one." Edit SHALL open with that address filled in.
-
-#### Scenario: Follows the Chat address
-
-- **WHEN** no source sets `llamacpp_classify_url` and the Chat address is `http://127.0.0.1:9931/v1`
-- **THEN** the Classification block MUST show `http://127.0.0.1:9931/v1`, the source `default` and the line "Uses the Chat address until you set one."
-
-### Requirement: A shared address on OMRS's server warns that the Text model is not used
-
-When the choice is `managed` and the classification address in use equals the Chat address, the Classification block and the Local server panel SHALL show: "Classification goes to OMRS's own Chat server, which loads only the Chat model. The Text model is not used. Set a Classification address, for example the Llama app, to keep them apart."
-
-#### Scenario: Shared address
-
-- **WHEN** the choice is `managed` and no source sets `llamacpp_classify_url`
-- **THEN** both places MUST show the warning that the Text model is not used
-
-#### Scenario: Separate address
-
-- **WHEN** the choice is `managed` and `llamacpp_classify_url` differs from `llamacpp_chat_url`
-- **THEN** the card MUST NOT show the warning
-
 ### Requirement: The Chat form empties the model name when the provider changes
 
 When the user changes the provider in the Chat form or the judge form, the model name field SHALL become empty. Save SHALL stay disabled until a model is typed or picked, and the field SHALL show the hint "Choose a model for this provider."
@@ -744,22 +587,35 @@ When the user changes the provider in the Chat form or the judge form, the model
 
 ### Requirement: A Document reading save goes to omrs.jsonc for the next launch
 
-A save in the Document reading section SHALL write the changed keys into `omrs.jsonc` with the file revision the page last read. A save SHALL NOT change the value in force. After a save that leaves a key waiting for a restart, the page SHALL offer the restart dialog and SHALL repeat the index identity note. "Use default" on a row SHALL remove the key from the file. A refused save SHALL show the server message and SHALL leave the row unchanged.
+A save in the Document reading section SHALL write the changed keys into `omrs.jsonc` with the file revision the page last read. A save SHALL NOT change the value in force, except a save of `document_router`, which SHALL apply to the next request in `omrs web` and SHALL NOT offer the restart dialog. A refused save SHALL show the server message and SHALL leave the row unchanged.
+
+#### Scenario: File edited while the page is open
+
+- **WHEN** the user edits `omrs.jsonc` in an editor and then saves a row in Document reading
+- **THEN** the page MUST show "omrs.jsonc changed on disk. Reload to see the new values." and MUST offer Reload
+
+#### Scenario: Host router save applies at once
+
+- **WHEN** the user saves a new host router and then ingests a file in the same running `omrs web`
+- **THEN** the ingest MUST use the new router, and the restart dialog MUST NOT open
+
+### Requirement: A save that leaves a key waiting offers a restart dialog
+
+After a save that leaves a key waiting for a restart, the page SHALL offer the restart dialog and SHALL repeat the index identity note.
 
 #### Scenario: Save a boolean
 
 - **WHEN** the user turns maths routing off and presses Save
 - **THEN** `omrs.jsonc` MUST hold `"ocr_maths_routing_enabled": false`, the row MUST show "Restart to apply", and the restart dialog MUST open
 
+### Requirement: Use default removes a key from the file
+
+"Use default" on a row SHALL remove the key from the file.
+
 #### Scenario: Return to the default
 
 - **WHEN** the file holds `"ocr_engine_fallback": "my-engine"` and the user presses "Use default" on that row
 - **THEN** `omrs.jsonc` MUST no longer hold `ocr_engine_fallback`
-
-#### Scenario: File edited while the page is open
-
-- **WHEN** the user edits `omrs.jsonc` in an editor and then saves a row in Document reading
-- **THEN** the page MUST show "omrs.jsonc changed on disk. Reload to see the new values." and MUST offer Reload
 
 ### Requirement: Document reading edits the reader list in order
 
@@ -953,3 +809,132 @@ When `omrs.jsonc` holds `ocr_local_min_confidence` and `OCR_LOCAL_CUTS` locks th
 - **WHEN** the Local OCR group renders
 - **THEN** the notice MUST show without a "Remove it" button
 - **AND** it MUST name `OCR_LOCAL_CUTS` and tell the operator to remove the key from `omrs.jsonc` by hand
+
+### Requirement: The llama.cpp card shows one Router panel
+
+The llama.cpp card SHALL show one Router panel. It SHALL show the choice "OMRS runs llama.cpp" (`managed`) or "Use this address" (`external`), the router address, the program in force (provisioned build or user path), the router state with one plain reason line, and Start, Stop and Restart. Start, Stop and Restart SHALL show only in managed mode, follow the state, and need `manage`. Locked fields SHALL show a lock and the variable name.
+
+#### Scenario: Managed and stopped
+
+- **WHEN** the mode is `managed` and the router is `stopped`
+- **THEN** the panel MUST show Start enabled and Stop and Restart disabled
+
+#### Scenario: External mode
+
+- **WHEN** the mode is `external` with address `http://127.0.0.1:9931/v1`
+- **THEN** the panel MUST show the address, the note "External server: OMRS does not check model files or presets", and no Start, Stop or Restart
+
+#### Scenario: Restart to apply
+
+- **WHEN** the saved model limit differs from the running router's
+- **THEN** the panel MUST show "Restart to apply" beside Restart
+
+#### Scenario: Locked address
+
+- **WHEN** `LLAMACPP_ROUTER_URL` is set in the environment
+- **THEN** the address row MUST show a lock and name the variable, and MUST offer no edit
+
+#### Scenario: Mode and address rows
+
+- **WHEN** the Router panel opens with no source set
+- **THEN** it MUST show the mode row with "OMRS runs llama.cpp" selected and the address row with `http://127.0.0.1:8080/v1`
+
+### Requirement: The Router panel shows and edits the model limit and the memory margin
+
+The Router panel SHALL show two rows: "Models loaded at once" (`llamacpp_router_models_max`, 1 to 16) and "Free memory margin (MiB)" (`llamacpp_router_memory_margin_mib`, 0 to 262,144). Each row SHALL show the value in force, its source, its default and one plain help line, and SHALL offer Edit, Save and Use default. A saved value that differs from the running router's SHALL show "Restart to apply". A save SHALL need `manage`. A locked row SHALL show the variable name and offer no edit.
+
+#### Scenario: Defaults shown
+
+- **WHEN** no source sets either value
+- **THEN** "Models loaded at once" MUST show 4 with source default, and "Free memory margin (MiB)" MUST show 8,192 with source default, each with its default and help line
+
+#### Scenario: Edit and save the model limit
+
+- **WHEN** the user edits "Models loaded at once" to 2 and saves
+- **THEN** `omrs.jsonc` MUST hold `llamacpp_router_models_max` 2, the row MUST show source `omrs.jsonc`, and the panel MUST show "Restart to apply"
+
+#### Scenario: Use default
+
+- **WHEN** the user presses Use default on "Free memory margin (MiB)" that holds 16,384 from `omrs.jsonc`
+- **THEN** the key MUST leave `omrs.jsonc` and the row MUST show 8,192 with source default
+
+#### Scenario: Out of range refused
+
+- **WHEN** the user saves 17 for "Models loaded at once" or 262,145 for "Free memory margin (MiB)"
+- **THEN** the page MUST show the accepted range, the server MUST return 400 and nothing MUST be saved
+
+#### Scenario: Locked by environment
+
+- **WHEN** `LLAMACPP_ROUTER_MODELS_MAX` is set in the environment
+- **THEN** the "Models loaded at once" row MUST show a lock and name the variable, and MUST offer no edit
+
+### Requirement: The Chat section asks for a Chat model when none is chosen
+
+When `answer.provider` is `llamacpp` and `answer.model` is empty, the Chat section SHALL show "Choose a Chat model" with a picker of the router list entries and "Get this model" for an entry that has no file. It SHALL NOT pick the classification model for the user. An entry that holds `embeddings` true SHALL NOT be offered.
+
+#### Scenario: Fresh install Chat page
+
+- **WHEN** OMRS starts with no `omrs.jsonc` and the user opens Settings > Chat
+- **THEN** the page MUST show "Choose a Chat model" and a picker that lists the shipped entries without the embedding entry
+
+#### Scenario: Pick a model
+
+- **WHEN** the user picks `Qwen/Qwen3-4B-GGUF:Q8_0` and saves
+- **THEN** `omrs.jsonc` MUST hold `answer.model` with that value and the entry MUST list the roles Chat and classification
+
+### Requirement: The Chat section warns when Chat shares the classification model
+
+When `answer.provider` is `llamacpp` and `answer.model` equals `llamacpp_chat_model`, the Chat section SHALL show a warning note that lists ways out, each linked to the control that sets it. The note SHALL NOT block Save. The Router panel row of the shared entry SHALL show a one-line warning.
+
+#### Scenario: Chat picks the classification model
+
+- **WHEN** the user saves `answer.model` equal to `llamacpp_chat_model` with provider `llamacpp`
+- **THEN** the save MUST succeed and the Chat section MUST say "Chat and classification share this model. A long Chat answer can slow classification during an ingest. A context size change reloads the model for both."
+
+#### Scenario: The note lists three ways out
+
+- **WHEN** the shared-model warning shows
+- **THEN** it MUST offer: choose another local model on the router; use your own llama.cpp server for Chat through the OpenAI-compatible provider (OMRS does not run it); or use a hosted provider such as OpenRouter
+
+#### Scenario: Router panel row
+
+- **WHEN** the shared-model warning shows
+- **THEN** the Router panel row of that entry MUST show "Shared by Chat and classification"
+
+#### Scenario: Chat uses another model
+
+- **WHEN** `answer.model` differs from `llamacpp_chat_model`, or `answer.provider` is not `llamacpp`
+- **THEN** the Chat section MUST NOT show the warning
+
+### Requirement: The Router panel lists the models in a table
+
+The panel SHALL show one table row per `llamacpp_models` entry with its roles, model name, file state, context size in tokens and model state. A row SHALL offer Edit (one control per allow-listed preset value), Get this model when it has no file, and Remove when it holds no role. A changed row of a running router SHALL show "Reload pending" until the reload ends. Each role SHALL link to the setting that gives it.
+
+#### Scenario: Shipped list on a fresh install
+
+- **WHEN** OMRS starts with no `omrs.jsonc`
+- **THEN** the table MUST show `Qwen/Qwen3-Embedding-4B-GGUF:Q8_0` with the role Embeddings and `Qwen/Qwen3-4B-GGUF:Q8_0` with the role Classification only, both "Not downloaded"
+
+#### Scenario: Edit context size
+
+- **WHEN** the user edits the Chat row's context size to 16,384 and saves
+- **THEN** `omrs.jsonc` MUST hold `ctx-size` 16384 in that entry's preset and the row MUST show 16,384
+
+#### Scenario: Remove refused for a used entry
+
+- **WHEN** an entry holds the role Chat
+- **THEN** its row MUST NOT offer Remove
+
+#### Scenario: Unit is stated
+
+- **WHEN** the table shows the context size column
+- **THEN** the column heading MUST say "Context size (tokens)"
+
+### Requirement: Router panel controls render at desktop and phone widths
+
+The Router panel and its model table SHALL fit at 1,280 px and 390 px without sideways page scroll. At 390 px each table row SHALL stack its fields, and every button SHALL stay reachable.
+
+#### Scenario: Phone width
+
+- **WHEN** the page is 390 px wide and the table holds three entries
+- **THEN** every row, its Edit button and the Start, Stop and Restart buttons MUST fit without sideways page scroll

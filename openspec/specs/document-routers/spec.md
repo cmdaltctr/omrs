@@ -38,6 +38,16 @@ The operator SHALL be able to create, rename and delete routers. The host defaul
 - **WHEN** the user deletes `handwriting`
 - **THEN** the delete SHALL be refused and the message SHALL name the profile
 
+### Requirement: A saved router applies to the next request
+
+A router or host default saved through `omrs web` SHALL apply to the next request in that process, as `decision_models` and `llamacpp_models` do. A value set by `env` or `dotenv` SHALL stay locked. Other OMRS processes (CLI, stdio MCP server, watcher) SHALL read the file at launch.
+
+#### Scenario: Saved router applies to the next request
+
+- **GIVEN** `omrs web` runs and `DOCUMENT_ROUTER` is not set in the environment
+- **WHEN** the user saves a change to router `handwriting` and then ingests a file
+- **THEN** the ingest SHALL use the saved router without a restart
+
 ### Requirement: The router is a page rule at order 40
 
 The router SHALL be a built-in page rule named `document_router` with order 40, registered through one descriptor entry and one `register()` line. It SHALL run after the blank, maths and non-Latin rules. The page unit SHALL contain no call to it. With no router selected, the rule SHALL return an empty outcome without reading a page or calling a decision model, and SHALL stamp nothing.

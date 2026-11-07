@@ -171,39 +171,25 @@ The search and the file list SHALL show whether a repo is gated. A download from
 
 ### Requirement: A llama.cpp download lands where the managed server reads
 
-A llama.cpp download SHALL put the files in the cache that the managed `llama-server` reads for a Hugging Face id. On success the status SHALL give the model value `org/name:LABEL`, and the server SHALL start the managed server with that value without a new download.
+A llama.cpp download SHALL put the files in the Hugging Face cache. On success the status SHALL give the model value `org/name:LABEL`, the absolute path of the downloaded `.gguf` file in the cache, and its SHA-256. The managed router SHALL load that file by path through a list entry, without a new download.
 
 #### Scenario: Start after download
 
-- **WHEN** the download of `unsloth/Qwen3-4B-GGUF:Q4_K_M` succeeds and the user saves that model as the Chat model and restarts OMRS's own server
-- **THEN** the managed server MUST reach `running` without a new download
+- **WHEN** the download of `Qwen/Qwen3-4B-GGUF:Q8_0` succeeds and the user adds it to the router list
+- **THEN** the router MUST load the model from the cache path without a new download
 
-### Requirement: Use this model keeps the model rules
+#### Scenario: Status gives path and hash
 
-After a llama.cpp download, when the Chat server choice is `managed`, Use this model SHALL save the model value as the Chat model, with the provider `llamacpp`, through the Chat save route, with its model rule and the `credentials` scope. It SHALL then offer Restart. The download routes SHALL NOT change any setting.
-
-#### Scenario: Saves the Chat model
-
-- **WHEN** the choice is `managed` and the user presses Use this model after a download of `unsloth/Qwen3-4B-GGUF:Q4_K_M`
-- **THEN** `omrs.jsonc` MUST hold `answer.provider` `llamacpp` and `answer.model` `unsloth/Qwen3-4B-GGUF:Q4_K_M`, and MUST NOT hold `llamacpp_server_model`
-
-#### Scenario: No credentials
-
-- **WHEN** a session with `manage` but not `credentials` presses Use this model
-- **THEN** the server MUST refuse the save and keep the old Chat model
-
-#### Scenario: Download changes no setting
-
-- **WHEN** a download succeeds
-- **THEN** `omrs.jsonc` MUST be unchanged until the user presses Use this model
+- **WHEN** a llama.cpp download succeeds
+- **THEN** the status MUST hold the model value, an absolute `.gguf` path inside the cache and a 64-character SHA-256
 
 ### Requirement: An external llama.cpp server is told, not controlled
 
-When the Chat server choice is `external`, the panel SHALL NOT offer Use this model. It SHALL show the cache folder of the file and a Refresh models action that re-reads the existing model list. OMRS SHALL NOT edit the files of the user's server or send a signal to it. The saved choice, not the server state, SHALL decide what the panel offers.
+When `llamacpp_router_server` is `external`, the panel SHALL NOT offer Use this model. It SHALL show the cache folder of the file and a Refresh models action that re-reads the server's model list. OMRS SHALL NOT edit the files of the user's server or send a signal to it. The saved mode, not the server state, SHALL decide what the panel offers.
 
 #### Scenario: Llama app after a download
 
-- **WHEN** a llama.cpp download succeeds and the choice is `external`
+- **WHEN** a llama.cpp download succeeds and the router mode is `external`
 - **THEN** the panel MUST show the cache folder and Refresh models, and no Use this model
 
 #### Scenario: New model shows after the server lists it
@@ -213,8 +199,8 @@ When the Chat server choice is `external`, the panel SHALL NOT offer Use this mo
 
 #### Scenario: Managed choice with a stopped server
 
-- **WHEN** a llama.cpp download succeeds, the choice is `managed` and the owned server is `stopped`
-- **THEN** the panel MUST offer Use this model, and its Restart MUST stay disabled until the server runs
+- **WHEN** a llama.cpp download succeeds, the mode is `managed` and the router is `stopped`
+- **THEN** the panel MUST offer Use this model, and the entry MUST load on the next request
 
 ### Requirement: An Ollama pull goes to the configured Ollama
 
@@ -243,3 +229,27 @@ Every model download route SHALL need the browser session with the `manage` scop
 
 - **WHEN** the OpenAPI contract test runs
 - **THEN** the search, file list, start, status and cancel routes MUST be present and match the responses
+
+### Requirement: Use this model adds or replaces a router list entry
+
+After a llama.cpp download, when the router is `managed`, Use this model SHALL add a router list entry, or replace the file of the entry the user picks, through the router model route with its entry rules and the `credentials` scope. It SHALL record the file's SHA-256. It SHALL NOT change `answer.model` or any other role setting. The download routes SHALL NOT change any setting.
+
+#### Scenario: Adds a list entry
+
+- **WHEN** the router is `managed` and the user presses Use this model after a download of `Qwen/Qwen3-1.7B-GGUF:Q8_0` and picks Add as a new model
+- **THEN** `omrs.jsonc` MUST hold a `llamacpp_models` entry with that model, its cache path and its SHA-256, and `answer.model` MUST be unchanged
+
+#### Scenario: Replaces an entry's file
+
+- **WHEN** the user picks the existing entry `qwen3-4b` as the target
+- **THEN** that entry's `model`, `file` and `sha256` MUST change, and its preset MUST stay
+
+#### Scenario: No credentials
+
+- **WHEN** a session with `manage` but not `credentials` presses Use this model
+- **THEN** the server MUST refuse the save and keep the old list
+
+#### Scenario: Download changes no setting
+
+- **WHEN** a download succeeds
+- **THEN** `omrs.jsonc` MUST be unchanged until the user presses Use this model
