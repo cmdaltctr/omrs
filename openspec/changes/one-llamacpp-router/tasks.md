@@ -95,9 +95,9 @@ Evidence files go in `openspec/changes/one-llamacpp-router/evidence/`. Each spik
 
 ## 12. Pull request
 
-- [ ] 12.1 Ask the operator before pushing. Push `feat/one-llamacpp-router` and open one PR into `v3`, with the job times, the spike evidence and the sweep note. Verify: the PR exists and names the tested commit.
-- [ ] 12.2 Watch CI until every check ends; fix each failure and push again. Verify: every check is green.
-- [ ] 12.3 Read the CodeRabbit comments, check each against the code, fix valid ones with a commit reply, answer invalid ones with a reason, and resolve every thread. Verify: no open thread.
+- [x] 12.1 Ask the operator before pushing. Push `feat/one-llamacpp-router` and open one PR into `v3`, with the job times, the spike evidence and the sweep note. Verify: the PR exists and names the tested commit.
+- [x] 12.2 Watch CI until every check ends; fix each failure and push again. Verify: every check is green.
+- [x] 12.3 Read the CodeRabbit comments, check each against the code, fix valid ones with a commit reply, answer invalid ones with a reason, and resolve every thread. Verify: no open thread.
 - [ ] 12.4 Do not merge. Wait for the operator's go. Verify: the operator merges or says go.
 
 ## 13. Live rollout (operator steps, after merge and after `local-ocr-per-backend-cuts` merges)
