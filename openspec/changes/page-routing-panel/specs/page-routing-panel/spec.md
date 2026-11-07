@@ -6,7 +6,7 @@ One panel that shows how OMRS routes each PDF page, laid out as the real page fl
 
 ### Requirement: The Page routing panel shows the page flow in five steps
 
-The panel SHALL show, top to bottom: the OCR fallback switch and the routing unit; step 1 "PDF readers" (`pdf_readers`); step 2 "Pages decided by their content" (Skip blank pages, Maths pages, Non-Latin pages); step 3 "Pages that look fine" (`document_router`); step 4 "Local OCR backends" (`ocr_local_backends` with its cut boxes); step 5 "OCR engines" (`ocr_engines`). Each step SHALL carry its number and title.
+The panel SHALL show, top to bottom: the OCR fallback switch and the routing unit; step 1 "PDF readers" (`pdf_readers`); step 2 "Pages decided by their content" (Skip blank pages, Maths routing, Non-Latin routing); step 3 "Pages that look fine" (`document_router`); step 4 "Local OCR backends" (`ocr_local_backends` with its cut boxes); step 5 "OCR engines" (`ocr_engines`). Each step SHALL carry its number and title.
 
 #### Scenario: Steps in flow order
 
@@ -28,7 +28,7 @@ The panel SHALL show, top to bottom: the OCR fallback switch and the routing uni
 
 ### Requirement: Order-sensitive settings are lists and the others are switches or choices
 
-The readers, the local OCR backends and the OCR engines SHALL be ordered lists with move up, move down, add and remove. Skip blank pages and Maths pages SHALL be switches. Non-Latin pages and the router SHALL be single choices. The page rules SHALL have no move control.
+The readers, the local OCR backends and the OCR engines SHALL be ordered lists with move up, move down, add and remove. Skip blank pages and Maths routing SHALL be switches. Non-Latin routing and the router SHALL be single choices. The page rules SHALL have no move control.
 
 #### Scenario: Rules cannot be reordered
 
@@ -49,7 +49,7 @@ Each row SHALL show a short plain help line. In Settings each row SHALL also sho
 
 - **GIVEN** `omrs.jsonc` holds `"ocr_maths_routing_enabled": false`
 - **WHEN** the panel renders in Settings
-- **THEN** the Maths pages row MUST show the help line, the source `omrs.jsonc` and the default On
+- **THEN** the Maths routing row MUST show the help line, the source `omrs.jsonc` and the default On
 
 #### Scenario: Locked row
 
@@ -66,11 +66,11 @@ Each row SHALL show a short plain help line. In Settings each row SHALL also sho
 
 ### Requirement: The non-Latin choice labels its default
 
-The Non-Latin pages choice SHALL label `off` as the default in Settings. Its help line SHALL say that `detect` sees only text that already exists and does not catch scanned pages, and that `always` suits a collection known to be non-Latin.
+The Non-Latin routing choice SHALL label `off` as the default in Settings. Its help line SHALL say that `detect` sees only text that already exists and does not catch scanned pages, and that `always` suits a collection known to be non-Latin.
 
 #### Scenario: Default labelled
 
-- **WHEN** the user opens the Non-Latin pages choice in Settings
+- **WHEN** the user opens the Non-Latin routing choice in Settings
 - **THEN** the choices MUST read "off (default)", "detect" and "always"
 
 ### Requirement: The panel links to the router definitions and carries no guide link
@@ -96,7 +96,7 @@ Step 1 SHALL offer `pypdfium2` in its add choice and SHALL mark it optional. Whe
 - **GIVEN** the `pdf-pypdfium2` extra is not installed and its entry in `GET /v1/integrations` is installable
 - **WHEN** the user opens Settings › Document reading
 - **THEN** the add choice of step 1 MUST show "pypdfium2 (optional, not installed)" as disabled, with a link to PDF readers in Integrations
-- **AND** step 1 MUST show an "Install" button
+- **AND** step 1 MUST show an "Install PDF reader: pypdfium2" button
 
 #### Scenario: pypdfium2 installed
 
@@ -107,13 +107,13 @@ Step 1 SHALL offer `pypdfium2` in its add choice and SHALL mark it optional. Whe
 
 ### Requirement: The panel installs pypdfium2 on request
 
-In Settings, step 1 SHALL show an "Install" button for a reader that is not installed, when the entry of its extra in `GET /v1/integrations` is installable. The button SHALL start the existing extra install job. When the entry is not installable, step 1 SHALL show the reason and the copy command, and no button. When the job ends, the panel SHALL show "Restart to apply" beside the reader row and SHALL let the user add the reader once the server reports it installed.
+In Settings, step 1 SHALL show an "Install PDF reader: pypdfium2" button for a reader that is not installed, when the entry of its extra in `GET /v1/integrations` is installable. The button SHALL start the existing extra install job. When the entry is not installable, step 1 SHALL show the reason and the copy command, and no button. When the job ends, the panel SHALL show "Restart to apply" beside the reader row and SHALL let the user add the reader once the server reports it installed.
 
 #### Scenario: Install starts the job
 
-- **WHEN** the user presses "Install"
+- **WHEN** the user presses "Install PDF reader: pypdfium2" and confirms the dialog
 - **THEN** the panel MUST send `POST /v1/integrations/pdf-pypdfium2/install` and MUST show the running state
-- **AND** the "Install" button MUST be disabled while the job runs
+- **AND** the "Install PDF reader: pypdfium2" button MUST be disabled while the job runs
 
 #### Scenario: Install ends
 
@@ -127,11 +127,11 @@ In Settings, step 1 SHALL show an "Install" button for a reader that is not inst
 
 - **GIVEN** the entry of `pdf-pypdfium2` is not installable, for example because the server does not run as a uv tool install
 - **WHEN** step 1 renders
-- **THEN** it MUST show the reason and the copy command and MUST NOT show an "Install" button
+- **THEN** it MUST show the reason and the copy command and MUST NOT show an "Install PDF reader: pypdfium2" button
 
 #### Scenario: Another install is running
 
-- **WHEN** the user presses "Install" while another install runs and the server answers 409 `install-running`
+- **WHEN** the user presses "Install PDF reader: pypdfium2" and confirms the dialog while another install runs and the server answers 409 `install-running`
 - **THEN** the panel MUST show "Another install is running. Wait for it to finish, then try again."
 
 ### Requirement: The panel says when OCR is off
@@ -172,11 +172,11 @@ The Studio Read document step SHALL show its OCR read options in the Page routin
 - **GIVEN** the `pdf-pypdfium2` extra is not installed
 - **WHEN** the user opens the readers list of a Read document step in Studio
 - **THEN** the choice MUST show "pypdfium2 (optional, not installed)" as disabled, with a link to Settings › Document reading
-- **AND** Studio MUST NOT show an "Install" button
+- **AND** Studio MUST NOT show an "Install PDF reader: pypdfium2" button
 
 #### Scenario: Non-Latin inherit wording
 
-- **WHEN** the user opens the Non-Latin pages choice of a step
+- **WHEN** the user opens the Non-Latin routing choice of a step
 - **THEN** the first choice MUST read "Inherit from Settings: off" and no other choice MUST carry the word "default" (only the source in an Inherit choice may)
 
 #### Scenario: Built-in profile

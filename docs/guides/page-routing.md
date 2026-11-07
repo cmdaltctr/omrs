@@ -65,8 +65,8 @@ This table shows the value of each row when no source sets it.
 | OCR routing unit | `ocr_routing_unit` | `page` |
 | PDF readers | `pdf_readers` | `pdf_inspector`, `liteparse`, `pypdf` |
 | Skip blank pages | `ocr_skip_blank_pages` | On |
-| Maths pages | `ocr_maths_routing_enabled` | On |
-| Non-Latin pages | `ocr_non_latin_routing` | `off` |
+| Maths routing | `ocr_maths_routing_enabled` | On |
+| Non-Latin routing | `ocr_non_latin_routing` | `off` |
 | Router | `document_router` | No router |
 | Local OCR backends | `ocr_local_backends` | `pp-ocrv6-small` |
 | Confidence cuts | `ocr_local_cuts` | 0.92 for `pp-ocrv6-small`, 0.94 for `indra` |
@@ -99,7 +99,7 @@ Prerequisites:
 Procedure:
 
 1. Open Settings > Document reading.
-2. In step 1, select Install under the pypdfium2 choice.
+2. In step 1, select Install under the pypdfium2 choice (the button reads "Install PDF reader: pypdfium2"), then confirm the dialog.
 3. Wait until the install job ends. The button stays disabled while the job runs.
 4. Restart OMRS. Select "Restart now" in the restart dialog, or restart `omrs web` yourself.
 5. In step 1, select Edit and add pypdfium2 to the list.
@@ -121,13 +121,13 @@ Off: blank pages go to OCR like any flagged page. The blank test then renders no
 
 The blank test never reads unflagged pages. It has no threshold setting.
 
-### Maths pages
+### Maths routing
 
 On: a page that uses a maths font goes straight to the OCR engines. It skips the local OCR backends. This applies to flagged and unflagged pages. The test reads the font names of each page. It renders no page and calls no model.
 
 Off: maths pages follow the normal route.
 
-### Non-Latin pages
+### Non-Latin routing
 
 This choice sends pages in a non-Latin script, for example Arabic or Devanagari, past the local OCR backends.
 
@@ -191,11 +191,11 @@ Each source has an index identity. It is a digest of the settings that shape its
 | Row | Sources that re-index when you change it |
 | --- | --- |
 | OCR fallback | Every source |
-| Maths pages | Every source |
+| Maths routing | Every source |
 | OCR engines | Every source |
 | PDF readers | PDF sources. When the change gives a different first installed reader, every source. |
 | Skip blank pages | PDF sources. Only Off adds an entry, so a default install keeps every digest. |
-| Non-Latin pages | PDF sources |
+| Non-Latin routing | PDF sources |
 | Router | PDF sources. The router recipe enters the digest. Its name does not, so a rename re-indexes nothing. |
 | Local OCR backends | PDF sources |
 | Confidence cuts | PDF sources |
@@ -210,8 +210,8 @@ Settings > Document reading had separate cards before the panel. This table maps
 | --- | --- | --- |
 | PDF reading | PDF readers | Step 1 |
 | When to use OCR | OCR fallback, OCR routing unit | Top of the panel, above step 1 |
-| When to use OCR | Non-Latin routing | Step 2, Non-Latin pages |
-| Maths pages | Maths routing | Step 2, Maths pages |
+| When to use OCR | Non-Latin routing | Step 2, Non-Latin routing |
+| Maths pages | Maths routing | Step 2, Maths routing |
 | Local OCR | Local OCR backends and cut boxes | Step 4 |
 | Engines | OCR engines and the workers folder line | Step 5 |
 | Router card | Host router row | Step 3 |
