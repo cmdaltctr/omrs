@@ -406,7 +406,7 @@ The host SHALL keep one lazy worker client per engine name, shared by every node
 
 ### Requirement: The Read document step sets its OCR options
 
-The `read.document` operation SHALL accept these optional settings: `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engines`, `ocr_maths_routing_enabled`, `ocr_non_latin_routing`, and the older `ocr_engine_primary` and `ocr_engine_fallback`. `null` SHALL inherit the host value. Each set value SHALL pass the same rule as the matching key on Settings › Document reading. A graph-wide override of any of these keys SHALL remain a host-owned setting.
+The `read.document` operation SHALL accept these optional settings: `ocr_fallback_enabled`, `ocr_routing_unit`, `ocr_engines`, `ocr_skip_blank_pages`, `ocr_maths_routing_enabled`, `ocr_non_latin_routing`, and the older `ocr_engine_primary` and `ocr_engine_fallback`. `null` SHALL inherit the host value. Each set value SHALL pass the same rule as the matching key on Settings › Document reading. A graph-wide override of any of these keys SHALL remain a host-owned setting.
 
 #### Scenario: Engine not provisioned
 
@@ -446,6 +446,22 @@ The `read.document` operation SHALL accept these optional settings: `ocr_fallbac
 
 - **WHEN** a node sets `ocr_non_latin_routing` to `arabic`
 - **THEN** validation SHALL fail with issue code `invalid_parameter` before any node runs
+
+#### Scenario: Step turns the blank drop off
+
+- **WHEN** a Read document node sets `ocr_skip_blank_pages` to `false`
+- **THEN** that node SHALL send blank flagged pages along the local tier and escalation path
+- **AND** other pipelines SHALL keep the host value
+
+#### Scenario: Skip-blank value not a boolean
+
+- **WHEN** a node sets `ocr_skip_blank_pages` to the text `"no"`
+- **THEN** validation SHALL fail with issue code `invalid_parameter` before any node runs
+
+#### Scenario: Graph-wide skip-blank override stays host-owned
+
+- **WHEN** a graph sets `overrides.ocr_skip_blank_pages`
+- **THEN** validation SHALL fail with issue code `host_owned_setting`
 
 ### Requirement: Read document step accepts a reader list
 
@@ -548,7 +564,7 @@ Graph ingestion SHALL compute each source's index identity with the effective cu
 
 ### Requirement: Studio shows a cut box beside each backend of the Read document step
 
-The Read document step in Studio SHALL show the `ocr_local_cuts` option as one "Confidence cut" number input beside each backend of the step's effective local OCR list (the step's own list, else the inherited host list). An empty input SHALL show the inherited cut: the host entry when there is one, else the backend's default. An empty input SHALL mean "inherit". A value outside 0 to 1 SHALL show the reason and SHALL NOT be saved.
+The Read document step in Studio SHALL show, in panel step 4 (Local OCR backends), the `ocr_local_cuts` option as one "Confidence cut" number input beside each backend of the step's effective local OCR list (the step's own list, else the inherited host list). An empty input SHALL show the inherited cut: the host entry when there is one, else the backend's default. An empty input SHALL mean "inherit". A value outside 0 to 1 SHALL show the reason and SHALL NOT be saved.
 
 #### Scenario: Inherited cuts shown
 
@@ -578,3 +594,27 @@ The Read document step in Studio SHALL show the `ocr_local_cuts` option as one "
 
 - **WHEN** the user opens the Read document step of a built-in profile
 - **THEN** every cut input SHALL be read-only
+
+### Requirement: A step skip-blank value enters the PDF identity only
+
+A Read document step value of `ocr_skip_blank_pages` SHALL NOT enter the graph fingerprint or the `graph_shape` block. It SHALL reach the identify step with the other step options and SHALL enter the PDF `parser` block the same way the host value does. A saved graph without the option SHALL keep its fingerprint.
+
+#### Scenario: Step off re-indexes PDF sources only
+
+- **GIVEN** a user profile that has indexed one PDF source and one Markdown source
+- **WHEN** its Read document step sets `ocr_skip_blank_pages` to `false` and the profile ingests again
+- **THEN** the PDF source digest SHALL change and the PDF source SHALL be re-indexed
+- **AND** the Markdown source digest SHALL NOT change
+- **AND** the graph fingerprint SHALL NOT change
+
+#### Scenario: Step repeats the host value
+
+- **GIVEN** the host value is `true`
+- **WHEN** a Read document step sets `ocr_skip_blank_pages` to `true`
+- **THEN** every source digest SHALL equal the digest with the option unset
+
+#### Scenario: Saved graph keeps its fingerprint
+
+- **GIVEN** a graph saved before this change
+- **WHEN** its fingerprint is computed after the change
+- **THEN** the fingerprint SHALL equal the saved value

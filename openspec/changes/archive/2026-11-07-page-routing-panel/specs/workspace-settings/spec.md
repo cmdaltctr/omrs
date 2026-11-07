@@ -116,7 +116,7 @@ The reader choice in step 1 of the Page routing panel SHALL mark each reader tha
 
 ### Requirement: Document reading edits the reader list in order
 
-Step 1 of the Page routing panel in Settings › Document reading SHALL show the reader list as ordered rows. The user SHALL be able to add a registered reader, remove a reader, and move a reader up or down. Each row SHALL say what its position does: the first installed reader reads, a later reader retries when the readers before it returned no text. A reader that is not installed SHALL show "Not installed" and a link to Integrations › PDF readers, and SHALL show an "Install" button when the app can install its extra. The page SHALL refuse to save an empty list.
+Step 1 of the Page routing panel in Settings › Document reading SHALL show the reader list as ordered rows. The user SHALL be able to add a registered reader, remove a reader, and move a reader up or down. Each row SHALL say what its position does: the first installed reader reads, a later reader retries when the readers before it returned no text. A reader that is not installed SHALL show "Not installed" and a link to Integrations › PDF readers,. The page SHALL refuse to save an empty list.
 
 #### Scenario: Move a reader up
 
