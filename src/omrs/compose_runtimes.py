@@ -373,6 +373,7 @@ def _model_rows(
     or ``failed`` with a fixed reason). Otherwise the row shows the router's
     state of the model while it runs, else ``unloaded``.
     """
+    from .integrations.llamacpp_runtime import readiness
     from .integrations.llamacpp_runtime.hashes import HashCache
     from .integrations.llamacpp_runtime.preset_writer import plan_entry
     from .integrations.llamacpp_runtime.router_spec import HASHES_FILE, router_dir
@@ -392,7 +393,7 @@ def _model_rows(
                 yield row
                 continue
         if model in live:
-            row["state"] = str(live[model].get("value", "unloaded"))
+            row["state"] = readiness.status_word(live[model])
             row["memory_bytes"] = model_memory_bytes(live[model])
         yield row
 

@@ -123,11 +123,17 @@ class Router:
 
     def entry(self, model: Model) -> dict[str, Any]:
         """Return the ``GET /v1/models`` item of *model* (call under the lock)."""
-        status: dict[str, Any] = {"value": model.state, "args": self._args(model)}
+        failed = model.state == "failed"
+        # b11941 has no ``failed`` value: a failed load is ``unloaded`` with ``failed: true``
+        # and the child's ``exit_code`` (server-models.cpp ~2162, ``is_failed()`` in the header).
+        status: dict[str, Any] = {
+            "value": "unloaded" if failed else model.state,
+            "args": self._args(model),
+        }
         status["preset"] = f"[{model.name}]\n" + "".join(
             f"{k} = {v}\n" for k, v in model.options.items()
         )
-        if model.state == "failed":
+        if failed:
             status["failed"] = True
             status["exit_code"] = model.exit_code
         return {

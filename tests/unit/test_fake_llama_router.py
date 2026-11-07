@@ -126,7 +126,7 @@ class FakeRouter:
     def children(self) -> dict[str, int]:
         """Return ``{model name: pid}`` of the router's direct children."""
         out = subprocess.run(  # noqa: S603 - fixed argv
-            ["ps", "-A", "-o", "pid=,ppid=,args="],  # noqa: S607 - ps on PATH
+            ["ps", "-A", "-ww", "-o", "pid=,ppid=,args="],  # noqa: S607 - ps on PATH
             capture_output=True,
             text=True,
             check=True,
@@ -331,8 +331,10 @@ def test_a_slow_load_shows_loading_first(make_router: Any) -> None:
 def test_a_failing_load_shows_failed_for_that_model_only(make_router: Any) -> None:
     router = make_router(FAKE_LLAMA_LOAD_FAIL=CHAT)
     assert router.post("/models/load", {"model": CHAT}).status_code == 200
-    assert wait_until(lambda: router.status(CHAT) == "failed", 15)
+    assert wait_until(lambda: router.item(CHAT)["status"].get("failed") is True, 15)
 
+    # b11941 reports a failed load as ``unloaded`` plus ``failed: true``, never ``failed``.
+    assert router.status(CHAT) == "unloaded"
     assert router.item(CHAT)["status"]["exit_code"] == 1
     assert router.post("/v1/chat/completions", {"model": CHAT}).status_code == 500
     router.load(EMBED)

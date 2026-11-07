@@ -15,6 +15,7 @@ from pathlib import Path
 import httpx
 import pytest
 from tests.fixtures.llamacpp.harness import pid_alive
+from tests.unit.test_llamacpp_router_lock_order import within
 from tests.unit.test_llamacpp_router_worker import (
     CHAT,
     CLEF,
@@ -24,7 +25,7 @@ from tests.unit.test_llamacpp_router_worker import (
     rig_fixture,
 )
 
-from omrs.integrations.llamacpp_runtime import children
+from omrs.integrations.llamacpp_runtime import children, readiness
 from omrs.integrations.llamacpp_runtime.lease import RuntimeUnavailable
 from omrs.integrations.llamacpp_runtime.model_reasons import ModelUnavailable
 from omrs.integrations.llamacpp_runtime.preset_writer import read_preset, split_sections
@@ -157,3 +158,66 @@ def test_restart_pending_false_when_args_match(rig: RouterRig) -> None:
     router = open_router(rig.manager(), rig.spec(), as_entries(rig.entries()))
     router.join()
     assert router.restart_pending() is False
+
+
+def test_held_model_gets_its_new_preset_once_no_other_process_uses_it(rig: RouterRig) -> None:
+    """Spec scenario "Model in use elsewhere", after the web app used Chat first."""
+
+    def body() -> None:
+        web = open_router(rig.manager(), rig.spec(), as_entries(rig.entries(chat_ctx=8192)))
+        with web.model_session(CHAT):  # the web app holds Chat from now on
+            pass
+        cli = rig.worker(entries=rig.entries(chat_ctx=8192))
+        assert cli.call("request", model=CHAT)["ok"]  # the CLI holds Chat too
+
+        assert web.update_entries(as_entries(rig.entries(chat_ctx=4096)))[CHAT] == "version-busy"
+        with pytest.raises(ModelUnavailable) as caught:
+            with web.model_session(CHAT):
+                pass
+        assert caught.value.reason == "version-busy"  # never served with the old preset
+        assert "ctx-size = 8192" in _sections()[CHAT]
+        with web.model_session(EMBED) as url:
+            assert httpx.post(f"{url}/v1/embeddings", json={"model": EMBED}).status_code == 200
+        assert cli.call("request", model=CHAT)["ok"]
+
+        assert cli.call("leave")["ok"]
+        with web.model_session(CHAT) as url:
+            args = _args(url, CHAT)
+        assert args[args.index("--ctx-size") + 1] == "4096"
+        status = {item["model"]: item for item in web.model_status()}
+        assert status[CHAT]["reload_pending"] is False
+
+    within(rig, body)
+
+
+def test_edit_during_own_request_applies_on_the_next_request(rig: RouterRig) -> None:
+    def body() -> None:
+        web = open_router(rig.manager(), rig.spec(), as_entries(rig.entries(chat_ctx=8192)))
+        with web.model_session(CHAT):
+            result = web.update_entries(as_entries(rig.entries(chat_ctx=4096)))
+            assert result[CHAT] == "version-busy"  # not changed under its own request
+        assert "ctx-size = 8192" in _sections()[CHAT]
+
+        with web.model_session(CHAT) as url:
+            args = _args(url, CHAT)
+        assert args[args.index("--ctx-size") + 1] == "4096"
+        assert "ctx-size = 4096" in _sections()[CHAT]
+        assert rig.starts() == 1
+
+    within(rig, body)
+
+
+def test_model_status_shows_a_failed_load_as_failed(
+    rig: RouterRig, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """b11941 reports a failed load as ``unloaded`` with ``failed: true``."""
+    monkeypatch.setattr(readiness, "MODEL_LOAD_TIMEOUT_SECONDS", 6)
+    rig.set_env(FAKE_LLAMA_LOAD_FAIL=CLEF)
+    router = open_router(rig.manager(), rig.spec(), as_entries(rig.entries()))
+    with pytest.raises(ModelUnavailable):
+        with router.model_session(CLEF):
+            pass
+
+    status = {item["model"]: item["state"] for item in router.model_status()}
+    assert status[CLEF] == "failed"
+    assert status[CHAT] == "unloaded"

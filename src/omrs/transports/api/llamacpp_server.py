@@ -59,7 +59,7 @@ State = Literal["stopped", "starting", "running", "failed"]
 _PROBE_SECONDS = 1.0
 #: ``GET /health`` answers of a router that is still loading.
 _HEALTH_LOADING = 503
-_LIVE_STATES = ("loaded", "loading", "unloaded")
+_LIVE_STATES = ("loaded", "loading", "unloaded", "failed")
 
 
 @dataclass(frozen=True)
@@ -158,6 +158,9 @@ class RouterControl:
         # this process only, so a server restart shows no failure from before.
         self._waiting = False
         self._to_load: set[str] = set()  # downloaded while the Start waited
+        # The app's automatic downloader (set in ``owning_lifespan``): the user's Start
+        # clears its list of failed downloads, so only a Start asks for them again.
+        self.downloads: Any = None
 
     def _end_wait(self, refusal: tuple[str, str] | None = None) -> None:
         """Forget a waiting Start; *refusal* is what the status shows next, if any."""
@@ -290,6 +293,8 @@ class RouterControl:
         """
         checked = self.check(config)
         self._end_wait()
+        if ask_downloads and self.downloads is not None:
+            self.downloads.clear_failed()  # the user's own Start asks again
         if not isinstance(checked, RuntimeSpec):
             self._refusal = checked
             return self.status(config)
@@ -399,9 +404,13 @@ class RouterControl:
 
 
 def _live_state(status: Mapping[str, object] | None) -> str:
-    """Map the router's own ``status.value`` to a model state; an unknown word is ``unloaded``."""
-    value = None if status is None else status.get("value")
-    return str(value) if value in _LIVE_STATES else "unloaded"
+    """Map the router's own ``status`` to a model state; an unknown word is ``unloaded``.
+
+    A failed load is ``unloaded`` with ``failed: true`` on the router (see
+    :func:`~omrs.integrations.llamacpp_runtime.readiness.status_word`), which is ``failed`` here.
+    """
+    value = None if status is None else runtime_readiness.status_word(dict(status))
+    return value if value in _LIVE_STATES else "unloaded"
 
 
 def owning_lifespan(inner: Callable[[Any], Any]) -> Callable[[Any], Any]:
@@ -426,6 +435,9 @@ def owning_lifespan(inner: Callable[[Any], Any]) -> Callable[[Any], Any]:
                 logger.exception("The llama.cpp runtime sweep failed.")
         downloads = RouterDownloads(app, asyncio.get_running_loop())
         install_downloader(downloads)
+        started = getattr(app.state, "llamacpp_router", None)
+        if started is not None:
+            started.downloads = downloads
         try:
             async with inner(app):
                 try:

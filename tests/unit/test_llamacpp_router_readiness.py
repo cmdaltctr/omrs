@@ -88,7 +88,7 @@ def test_ready_once_per_lease(rig: RouterRig, monkeypatch: pytest.MonkeyPatch) -
 
 def test_load_failure_isolated(rig: RouterRig, monkeypatch: pytest.MonkeyPatch) -> None:
     """Spec scenario "Load failure isolated"; the failure shows at once, not after the wait."""
-    monkeypatch.setattr(readiness, "MODEL_LOAD_TIMEOUT_SECONDS", 20)
+    monkeypatch.setattr(readiness, "MODEL_LOAD_TIMEOUT_SECONDS", 6)
     rig.set_env(FAKE_LLAMA_LOAD_FAIL=CLEF)
     router = open_router(rig.manager(), rig.spec(), as_entries(rig.entries()))
     router.join()
@@ -97,7 +97,7 @@ def test_load_failure_isolated(rig: RouterRig, monkeypatch: pytest.MonkeyPatch) 
         with router.model_session(CLEF):
             pass
     assert (caught.value.model, caught.value.reason) == (CLEF, "model-load-failed")
-    assert time.monotonic() - began < 10
+    assert time.monotonic() - began < 3  # the router reports b11941's ``failed: true`` at once
     with router.model_session(EMBED) as url:
         reply = httpx.post(f"{url}/v1/embeddings", json={"model": EMBED, "input": "x"})
     assert reply.status_code == 200
@@ -144,3 +144,49 @@ def test_external_router_checks_no_name_and_loads_nothing(rig: RouterRig) -> Non
     with router.model_session("any/model:Q8_0") as url:
         assert url == "http://127.0.0.1:9/v1"
     assert rig.starts() == 0
+
+
+def _stub_router(monkeypatch: pytest.MonkeyPatch, statuses: list[dict[str, object]]) -> list[str]:
+    """Answer each status read with the next of *statuses* (the last repeats); log load posts."""
+    posts: list[str] = []
+    reads = iter(statuses)
+    last: dict[str, object] = {}
+
+    def listing(_url: str) -> dict[str, dict[str, object]]:
+        nonlocal last
+        last = next(reads, last)
+        return {CLEF: last}
+
+    monkeypatch.setattr(readiness, "router_models", listing)
+    monkeypatch.setattr(readiness, "_post_load", lambda _url, model: posts.append(model) or 200)
+    monkeypatch.setattr(readiness, "LOAD_POLL_SECONDS", 0.01)
+    monkeypatch.setattr(readiness, "MODEL_LOAD_TIMEOUT_SECONDS", 2)
+    return posts
+
+
+def test_a_failed_flag_after_the_load_was_asked_is_refused_at_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """b11941 reports a failed load as ``unloaded`` with ``failed: true``, never ``failed``."""
+    failed = {"value": "unloaded", "failed": True, "exit_code": 1}
+    posts = _stub_router(monkeypatch, [{"value": "unloaded"}, failed])
+    began = time.monotonic()
+
+    with pytest.raises(ModelUnavailable) as caught:
+        readiness.ensure_loaded("http://127.0.0.1:1", CLEF)
+
+    assert (caught.value.model, caught.value.reason) == (CLEF, "model-load-failed")
+    assert posts == [CLEF]
+    assert time.monotonic() - began < 1.0
+
+
+def test_a_failure_left_from_an_earlier_load_does_not_block_a_new_load(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The flag stays on the router until the next load; only a read after the ask counts."""
+    old = {"value": "unloaded", "failed": True, "exit_code": 1}
+    posts = _stub_router(monkeypatch, [old, {"value": "loading"}, {"value": "loaded"}])
+
+    readiness.ensure_loaded("http://127.0.0.1:1", CLEF)
+
+    assert posts == [CLEF]

@@ -36,10 +36,24 @@ def router_models(url: str) -> dict[str, dict[str, object]]:
     return found
 
 
+def status_word(status: dict[str, object]) -> str:
+    """Return the state word of one router ``status`` object.
+
+    llama.cpp b11941 has no ``failed`` value. A load that failed reads ``unloaded``
+    with ``failed: true`` and the child's ``exit_code`` (``server-models.cpp``,
+    ``is_failed()`` in ``server-models.h``). The flag stays until the next load
+    starts, and a load that starts sets ``loading`` first, so a read after a load
+    was asked never shows an old failure.
+    """
+    if status.get("failed") is True:
+        return "failed"
+    return str(status.get("value"))
+
+
 def model_state(url: str, model: str) -> str | None:
-    """Return the router's ``status.value`` of *model*, ``None`` when not listed."""
+    """Return the state word of *model* (see :func:`status_word`), ``None`` when not listed."""
     status = router_models(url).get(model)
-    return None if status is None else str(status.get("value"))
+    return None if status is None else status_word(status)
 
 
 def _post_load(url: str, model: str) -> int:

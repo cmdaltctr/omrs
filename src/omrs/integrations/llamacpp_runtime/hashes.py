@@ -4,7 +4,8 @@ Hashing a 4 GiB file takes seconds, so the router folder keeps
 ``hashes.json``: one item per path with the file's size, ``mtime_ns`` and
 SHA-256. A cached value counts only while size and ``mtime_ns`` still match.
 The file holds no settings; a broken file reads as empty. Callers hold the
-router's ``start.lock``, so two processes do not write it at once.
+router's ``start.lock``; a status read does not, so each save writes its own
+temporary file and the last whole file wins.
 """
 
 from __future__ import annotations
@@ -12,6 +13,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -83,6 +85,15 @@ class HashCache:
 
     def _save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = self.path.with_name(f"{self.path.name}.tmp")
-        temporary.write_text(json.dumps(self._items, sort_keys=True), encoding="utf-8")
-        os.replace(temporary, self.path)
+        # One temporary file per writer: a status read and a load can save at
+        # once, and a shared name lets one move the other's file away (PR 185).
+        handle, name = tempfile.mkstemp(
+            dir=self.path.parent, prefix=f"{self.path.name}.", suffix=".tmp"
+        )
+        try:
+            with os.fdopen(handle, "w", encoding="utf-8") as stream:
+                stream.write(json.dumps(self._items, sort_keys=True))
+            os.replace(name, self.path)
+        except BaseException:
+            Path(name).unlink(missing_ok=True)
+            raise

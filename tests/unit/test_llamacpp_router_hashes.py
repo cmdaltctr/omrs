@@ -145,3 +145,34 @@ def test_broken_cache_file_reads_as_empty(tmp_path: Path, cache: HashCache) -> N
 
 def test_missing_file_hashes_to_none(tmp_path: Path, cache: HashCache) -> None:
     assert cache.sha256(str(tmp_path / "gone.gguf")) is None
+
+
+def test_two_writers_never_move_each_others_temporary_file(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A status read and a load save at once (CI, PR 185): both saves succeed.
+
+    The second cache saves inside the first one's replace step, the overlap
+    seen when ``GET /v1/llamacpp/router`` and ``RouterControl.load`` both hash
+    a model that a download has just recorded.
+    """
+    first_file = tmp_path / "a.gguf"
+    second_file = tmp_path / "b.gguf"
+    first_file.write_bytes(b"first")
+    second_file.write_bytes(b"second")
+    store = tmp_path / "hashes.json"
+    first, second = HashCache(store), HashCache(store)
+    real_replace = os.replace
+    nested = {"done": False}
+
+    def replace_after_the_other_writer(src: Any, dst: Any) -> None:
+        if not nested["done"]:
+            nested["done"] = True
+            second.sha256(str(second_file))
+        real_replace(src, dst)
+
+    monkeypatch.setattr(hashes_module.os, "replace", replace_after_the_other_writer)
+
+    assert first.sha256(str(first_file)) == hashlib.sha256(b"first").hexdigest()
+    assert json.loads(store.read_text(encoding="utf-8"))  # a whole file, never torn
+    assert not list(tmp_path.glob("hashes.json*.tmp"))

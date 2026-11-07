@@ -343,7 +343,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +36 (2026-11-06, same change, by test-ID diff, 41 added, 5 replaced): first start
 # waits for downloads (13), downloads-needed route (15), other-process holders (3).
 # +8 (2026-11-06, same change): a failed download asks once per Start (needs fastapi).
-_BASE_EXECUTED = 11941
+# +23 (2026-11-07, PR 185 review fixes, by test-ID diff against f56e209c, 23 added,
+# 0 removed): failed load, no re-ask, lock order, held reload, second crash, hashes.
+_BASE_EXECUTED = 11964
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -703,7 +705,8 @@ if not _has_qwen_tokenizer:
 # +33 (2026-11-06, same change, measured with fastapi blocked): first start and
 # downloads-needed route cases.
 # +8 (2026-11-06, same change): test_llamacpp_router_download_failure.py.
-_WEB_EXTRA_CASES = 2107
+# +11 (2026-11-07, PR 185 review fixes): failed-state panel and no-re-ask route cases.
+_WEB_EXTRA_CASES = 2118
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)

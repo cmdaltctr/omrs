@@ -221,6 +221,16 @@ A router start, including a restart after a crash, SHALL write a model's section
 - **THEN** `models.ini` MUST keep the CLI's Chat section
 - **AND** the web app's Chat request MUST fail with `version-busy`, and embedding requests MUST succeed
 
+### Requirement: A pending reload reaches a model this process holds
+
+A model whose reload is pending SHALL get the new section on this process's next request once no other OMRS process uses the model. Until then that request SHALL fail with `version-busy`. While this process's own requests to the model run, its new requests SHALL keep the old section; the reload SHALL happen on the next request after they end.
+
+#### Scenario: Held model gets its new preset
+
+- **WHEN** the web app used Chat, the CLI also uses Chat, and the web app edits Chat's preset
+- **THEN** the web app's next Chat request MUST fail with `version-busy`
+- **AND** after the CLI leaves, its next Chat request MUST use the new preset
+
 ### Requirement: A model is made ready before its request is timed
 
 Before the first request to a model in a lease, OMRS SHALL read the model's status and, when it is not loaded, ask the router to load it and wait up to 300 seconds for `loaded`. 300 seconds SHALL be a fixed constant. The request's own timeout SHALL start after the model is loaded. A failed load SHALL give reason `model-load-failed` for that model only.
@@ -234,6 +244,11 @@ Before the first request to a model in a lease, OMRS SHALL read the model's stat
 
 - **WHEN** the decision model fails to load
 - **THEN** its requests MUST fail with `model-load-failed` and embedding requests MUST succeed
+
+#### Scenario: Failed load reported as unloaded
+
+- **WHEN** the router reports a model as `unloaded` with `failed: true` after a load
+- **THEN** OMRS MUST treat the model as `failed`, refuse the request at once with `model-load-failed`, and show `failed` in the panel
 
 ### Requirement: One-slot models wait for their own request lock
 
@@ -387,6 +402,12 @@ When the managed router starts, or a listed entry is first needed, and the entry
 
 - **WHEN** `omrs llamacpp install` runs on a machine with listed models missing
 - **THEN** it MUST download each missing model after the binary and print progress to the log
+
+#### Scenario: A failed download is not asked again by requests
+
+- **WHEN** an automatic download of a model failed or was cancelled
+- **THEN** later requests for that model MUST queue no download
+- **AND** the user's next Start, or a Get a model download of that model, MUST ask again
 
 ### Requirement: Start asks before a first download
 

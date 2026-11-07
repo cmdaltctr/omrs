@@ -15,8 +15,10 @@ app's event loop and downloads one model at a time:
    reload rule, and load the model.
 
 A failed or cancelled download leaves the entry ``not-downloaded``, and a Start that waits
-for the downloads ends (``RouterControl.load``). Only the user's next Start asks again.
-Nothing here raises into the router lease.
+for the downloads ends (``RouterControl.load``). The model is then on a failed list: a
+request for it queues nothing (``RouterLease.model_session`` asks on every request). Only the
+user's next Start (:meth:`RouterDownloads.clear_failed`) or a Get a model download of that
+model asks again. Nothing here raises into the router lease.
 """
 
 from __future__ import annotations
@@ -32,7 +34,7 @@ from fastapi.responses import Response
 from ...config.settings_file_write import SettingsFileError
 from ...integrations import huggingface_models as hf_models
 from .llamacpp_chat_rule import model_list
-from .model_download_job import SUCCEEDED, DownloadBusy
+from .model_download_job import RUNNING, SUCCEEDED, DownloadBusy
 
 logger = logging.getLogger(__name__)
 
@@ -62,20 +64,42 @@ class RouterDownloads:
         self.loop = loop
         self._lock = threading.Lock()
         self._active: set[str] = set()
+        self._failed: set[str] = set()  # automatic download failed or was cancelled
         self._queue: list[str] = []
         self._worker: asyncio.Task[None] | None = None
 
     def request(self, model: str) -> None:
-        """Queue *model* unless it is queued or runs. Safe from any thread; never blocks."""
+        """Queue *model* unless it is queued, runs or failed. Safe from any thread; never blocks.
+
+        A model on the failed list is skipped until the user asks again: their Start
+        (:meth:`clear_failed`) or a Get a model download of that model that runs.
+        """
         with self._lock:
             if model in self._active:
                 return
+            if model in self._failed:
+                if not self._manual_download_runs(model):
+                    return
+                self._failed.discard(model)
             self._active.add(model)
         try:
             self.loop.call_soon_threadsafe(self._enqueue, model)
         except RuntimeError:  # the loop closed: the app is gone
             with self._lock:
                 self._active.discard(model)
+
+    def clear_failed(self) -> None:
+        """Forget every failed or cancelled download: the user pressed Start."""
+        with self._lock:
+            self._failed.clear()
+
+    def _manual_download_runs(self, model: str) -> bool:
+        """Return whether the Get a model job runs a download of *model* (the user's own)."""
+        runtime = getattr(self.app.state, "runtime", None)
+        if runtime is None:
+            return False
+        shown = runtime.model_downloads.snapshot()
+        return bool(shown["state"] == RUNNING and shown["model"] == model)
 
     def downloading(self, model: str) -> bool:
         """Return whether *model* is queued or runs."""
@@ -101,6 +125,8 @@ class RouterDownloads:
                 await self._one(model)
             except Exception:  # noqa: BLE001 - one failed download must not stop the queue
                 logger.exception("The automatic download of %s failed.", model)
+                with self._lock:
+                    self._failed.add(model)
             finally:
                 with self._lock:
                     self._active.discard(model)
@@ -142,6 +168,7 @@ class RouterDownloads:
 
         with self._lock:
             self._active.discard(model)  # it no longer downloads
+            self._failed.add(model)  # and a request does not queue it again
         loaded = await run_in_threadpool(load_router, runtime, store)
         await run_in_threadpool(self.app.state.llamacpp_router.load, loaded.config, model)
 
@@ -180,6 +207,8 @@ class RouterDownloads:
                 await run_in_threadpool(save_entry, runtime, store, entry_id, sent, None)
             except (EntryRefused, SettingsFileError) as refused:
                 logger.info("The downloaded file of %s was not recorded: %s", model, refused)
+                with self._lock:
+                    self._failed.add(model)
                 return
             loaded = await run_in_threadpool(apply_saved, runtime, store, control)
         await run_in_threadpool(control.load, loaded.config, model)

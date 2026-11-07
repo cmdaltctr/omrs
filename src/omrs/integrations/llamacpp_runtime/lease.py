@@ -395,7 +395,7 @@ class RuntimeLease:
             try:
                 return send(self._url or url)
             except Exception as error:
-                raise self._second_failure(error) from error
+                raise self.second_failure(error) from error
         finally:
             self._end(ticket)
 
@@ -413,11 +413,16 @@ class RuntimeLease:
             try:
                 return await send(self._url or url)
             except Exception as error:
-                raise self._second_failure(error) from error
+                raise self.second_failure(error) from error
         finally:
             await asyncio.to_thread(self._end, ticket)
 
-    def _second_failure(self, error: Exception) -> Exception:
+    def second_failure(self, error: Exception) -> Exception:
+        """Return what a send that failed after a crash restart raises.
+
+        A lost connection becomes :class:`RuntimeRequestFailed` (``exited``,
+        or ``OPERATOR_STOP``); any other error stays as it is.
+        """
         if not _is_connection_failure(error):
             return error
         if self._stopped_by_operator_now():

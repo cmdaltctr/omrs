@@ -22,6 +22,19 @@ and, for a one-slot entry, request lock:
 6. a one-slot X serialises on its ``request.lock``.
 
 In external mode the lease only holds the URL: no name check, no load.
+
+Lock order inside one process (threads included: ``flock`` blocks between
+two descriptors of one process, so ``start.lock`` serialises threads too):
+
+1. the runtime lease lock (``RuntimeLease._lock``);
+2. the router ``start.lock``;
+3. the router lease lock (``RouterLease._lock``).
+
+A thread takes a later lock while it holds an earlier one, never the other
+way. Code that holds ``RouterLease._lock`` never waits on ``start.lock`` or
+on the runtime lease lock; :meth:`RouterLease._locked` takes ``start.lock``
+first and this lease's lock second. Model ``request.lock`` files come last,
+with none of these held (see :mod:`.model_locks`).
 """
 
 from __future__ import annotations
@@ -134,13 +147,31 @@ def open_router(
     if router is None:
         router = RouterLease(base, entries, decision_models)
         base.router_view = router  # type: ignore[attr-defined]
-    elif router.entries != entries or router.decision_models != frozenset(decision_models):
+    elif _values(router.entries) != _values(entries) or router.decision_models != frozenset(
+        decision_models
+    ):
         router.update_entries(entries, decision_models)
     return router
 
 
 def _names(entries: Iterable[EntryLike]) -> list[str]:
     return [entry.model for entry in entries]
+
+
+def _values(entries: Iterable[EntryLike]) -> list[dict[str, Any]]:
+    """Return the field values of *entries*, so entries of different types compare equal.
+
+    The gate passes plain objects and the router panel passes typed entries;
+    two such lists with the same values must not count as a change.
+    """
+    fields = tuple(EntryLike.__annotations__)
+    return [
+        {
+            name: dict(entry.preset or {}) if name == "preset" else getattr(entry, name)
+            for name in fields
+        }
+        for entry in entries
+    ]
 
 
 class RouterLease:
@@ -222,38 +253,56 @@ class RouterLease:
         return outcome
 
     def _locked(self, work: Callable[[], T]) -> T:
+        """Run *work* under ``start.lock``, then this lease's lock (the lock order).
+
+        The caller must not hold this lease's lock.
+        """
         start = LockFile(self.folder / "start.lock")
         start.acquire()
         try:
-            return work()
+            with self._lock:
+                return work()
         finally:
             start.close()
 
     def _join_model(self, model: str) -> None:
-        """Hold *model* with this process's section in force (caller holds ``self._lock``)."""
-        if self._holds.held(model):
-            return
+        """Hold *model* with this process's section in force; count one request.
+
+        A held model with a pending reload checks its section again under
+        ``start.lock``: the reload happens once no other process uses the
+        model, else the request gets ``version-busy``. While this process's
+        own requests to the model run, the reload waits for them to end.
+        The caller must not hold this lease's lock.
+        """
+        with self._lock:
+            if self._holds.held(model) and model not in self._pending:
+                self._active[model] = self._active.get(model, 0) + 1
+                return
 
         def under_start() -> None:
-            outcome = self._new_plan().outcome(model)
-            if outcome is None:
-                raise ModelUnavailable(model, "model-not-listed")
-            if outcome.state == NOT_DOWNLOADED:
-                raise ModelUnavailable(model, NOT_DOWNLOADED)
-            if outcome.state == "failed":
-                raise ModelUnavailable(model, str(outcome.reason), outcome.reason_text)
-            result = apply_sections(
-                self.folder, {model: outcome.section}, self._holds, self._active
-            )
-            if result[model] == "version-busy":
-                self._pending.add(model)
-                raise ModelUnavailable(model, "version-busy")
-            self._pending.discard(model)
-            self._ready.pop(model, None)
-            if not self._holds.hold(model):  # pragma: no cover - start.lock prevents it
-                raise ModelUnavailable(model, "version-busy")
+            if not (self._holds.held(model) and self._active.get(model, 0) > 0):
+                self._apply_own_section(model)
+            self._active[model] = self._active.get(model, 0) + 1
 
         self._locked(under_start)
+
+    def _apply_own_section(self, model: str) -> None:
+        """Put this process's section of *model* in force and hold it (under both locks)."""
+        outcome = self._new_plan().outcome(model)
+        if outcome is None:
+            raise ModelUnavailable(model, "model-not-listed")
+        if outcome.state == NOT_DOWNLOADED:
+            raise ModelUnavailable(model, NOT_DOWNLOADED)
+        if outcome.state == "failed":
+            raise ModelUnavailable(model, str(outcome.reason), outcome.reason_text)
+        result = apply_sections(self.folder, {model: outcome.section}, self._holds, self._active)
+        if result[model] == "version-busy":
+            self._pending.add(model)
+            raise ModelUnavailable(model, "version-busy")
+        self._pending.discard(model)
+        self._ready.pop(model, None)
+        if not self._holds.hold(model):  # pragma: no cover - start.lock prevents it
+            raise ModelUnavailable(model, "version-busy")
 
     def ensure_ready(self, model: str) -> str:
         """Join the router and make *model* loaded; return the router base URL.
@@ -286,9 +335,7 @@ class RouterLease:
             if not managed:
                 yield url
                 return
-            with self._lock:
-                self._join_model(model)
-                self._active[model] = self._active.get(model, 0) + 1
+            self._join_model(model)  # counts this request in ``_active``
             ticket: LockFile | None = None
             try:
                 self._make_ready(url, model)
@@ -319,6 +366,8 @@ class RouterLease:
         Raises:
             ModelUnavailable: Before dispatch, for *model* only.
             RuntimeUnavailable: The router cannot serve; nothing was sent.
+            RuntimeRequestFailed: The connection was lost again after the
+                restart (``exited``), or an operator stopped the router.
         """
         with self.model_session(model) as url:
             try:
@@ -329,7 +378,10 @@ class RouterLease:
                 if not self.base.restart_if_crashed():
                     raise
             self._make_ready(self.base.base_url or url, model)
-            return send(self.base.base_url or url)
+            try:
+                return send(self.base.base_url or url)
+            except Exception as error:
+                raise self.base.second_failure(error) from error
 
     # ── Reload rule and status ──────────────────────────────────────────
 
@@ -351,24 +403,24 @@ class RouterLease:
             if self.spec.mode != "managed":
                 return {entry.model: "saved" for entry in self.entries}
 
-            def under_start() -> dict[str, str]:
-                plan = self._new_plan()
-                if running_record(self.folder) is None:
-                    return {o.model: "saved" for o in plan.outcomes}
-                wanted = {o.model: o.section for o in plan.outcomes}
-                for name in split_sections(read_preset(self.folder)):
-                    wanted.setdefault(name, "")
-                result = apply_sections(self.folder, wanted, self._holds, self._active)
-                for model, outcome in result.items():
-                    if outcome == "version-busy":
-                        self._pending.add(model)
-                    else:
-                        self._pending.discard(model)
-                        if outcome != "unchanged":
-                            self._ready.pop(model, None)
-                return result
+        def under_start() -> dict[str, str]:
+            plan = self._new_plan()
+            if running_record(self.folder) is None:
+                return {o.model: "saved" for o in plan.outcomes}
+            wanted = {o.model: o.section for o in plan.outcomes}
+            for name in split_sections(read_preset(self.folder)):
+                wanted.setdefault(name, "")
+            result = apply_sections(self.folder, wanted, self._holds, self._active)
+            for model, outcome in result.items():
+                if outcome == "version-busy":
+                    self._pending.add(model)
+                else:
+                    self._pending.discard(model)
+                    if outcome != "unchanged":
+                        self._ready.pop(model, None)
+            return result
 
-            return self._locked(under_start)
+        return self._locked(under_start)
 
     def restart_pending(self) -> bool:
         """Whether the running router started with other router arguments ("Restart to apply")."""
@@ -383,8 +435,8 @@ class RouterLease:
         else ``unloaded``. Reading starts nothing and writes nothing but the
         ``hashes.json`` cache.
         """
+        plan = self._plan if self._plan is not None else self._locked(self._new_plan)
         with self._lock:
-            plan = self._plan if self._plan is not None else self._locked(self._new_plan)
             pending = set(self._pending)
         record = running_record(self.folder) if self.spec.mode == "managed" else None
         live = readiness.router_models(f"http://127.0.0.1:{record.port}") if record else {}
@@ -392,7 +444,8 @@ class RouterLease:
         for outcome in plan.outcomes:
             state: str = outcome.state
             if state == "listed":
-                state = str(live.get(outcome.model, {}).get("value", "unloaded"))
+                found = live.get(outcome.model)
+                state = "unloaded" if found is None else readiness.status_word(found)
             items.append(
                 {
                     "model": outcome.model,
