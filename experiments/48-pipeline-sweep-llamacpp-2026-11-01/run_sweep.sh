@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Run the whole Experiment 43 sweep overnight (change tasks 5.1 to 5.5).
+# Run the whole Experiment 48 sweep overnight (change tasks 5.1 to 5.5).
 #
 # One command, from the experiment folder:
 #   nohup ./run_sweep.sh > output/sweep.log 2>&1 &

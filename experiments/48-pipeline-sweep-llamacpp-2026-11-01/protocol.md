@@ -1,6 +1,6 @@
-# Experiment 43: Pipeline sweep on llama.cpp
+# Experiment 48: Pipeline sweep on llama.cpp
 
-- **Folder**: `43-pipeline-sweep-llamacpp-2026-11-01`
+- **Folder**: `48-pipeline-sweep-llamacpp-2026-11-01` (numbered 43 until 2026-11-07; see Amendments)
 - **Record**: [experiment.json](experiment.json) holds the category, size and status.
 - **Operator**: Aizat, with the a-build agent.
 - **Related**: change `pipeline-sweep-llamacpp`; ADR-103 (llama.cpp GGUF runtime), ADR-074. Feeds Experiment 35 (tasks 1.4 and 1.5) and its RunPod edition 35a. Baseline references: Experiments 2 and 3.
@@ -21,7 +21,7 @@ Experiment 35 freezes its plan only after this sweep passes. The Part B timing f
 
 | Changes (one thing) | Primary metric | Guardrail metric | Fixed |
 | --- | --- | --- | --- |
-| Ollama (Experiments 2 and 3) against llama.cpp GGUF through one `llama serve` router | Hit@1 on 17 questions | MRR; zero stage errors; deterministic repeat | The fixed set below, build 11941, the D6a presets, seed 20261101 |
+| Ollama (Experiments 2 and 3) against llama.cpp GGUF through one router (OMRS-managed `llama-server` since amendment A3; was `llama serve`) | Hit@1 on 17 questions | MRR; zero stage errors; deterministic repeat | The fixed set below, build 11941, the D6a presets, seed 20261101 |
 
 Parts: **A** the end-to-end sweep (ingest 11 documents, three search modes, answers with claim checking off and on, determinism repeat, 0.6B and 8B comparison arms). **B** embedding timing of the three models on one slice per corpus, extrapolated to the three Experiment 35 corpora. **C** fast mode against exact mode on the 4B model (lowest cosine at least 0.9999 and no top-10 ranking change, or Experiment 35 uses exact mode).
 
@@ -43,6 +43,8 @@ Every input SHA-256 sits in the `frozen` list of [plan.json](plan.json), written
 ## 5. Steps
 
 Run from this folder. The router preset file is `router.json`; the heavy-run rule applies: tell the user before each server start.
+
+Amendment A3 (2026-11-07) replaces steps 2 and 6 to 8 where they name `llama serve` or `router.json`: the run takes place on one RunPod RTX 4090 pod, `omrs llamacpp install --flavour cuda` places build b11941 first, and OMRS's managed router starts from the scratch `omrs.jsonc` in `output/`. Change task 3.5 rewires the scripts; the commands below change only in how the router starts.
 
 1. Prepare: `uv run --no-sync python prepare_financebench.py` (already run; freezes the 5 PDFs and the 25 questions).
 2. Start the router: `llama serve --config-file router.json` (port 18080, one preset per model).
@@ -88,3 +90,15 @@ Files live in `DATA/omrs/benchmarks/gguf/`. The embedding tokenizer (`Qwen/Qwen3
 - **Hosted references**: none.
 - **Tolerance**: Hit@1 0.059 (one question in 17) and MRR 0.06 — the largest change that still counts as the same result on a rerun.
 - **Live check**: every run calls `verify_llamacpp_runtime` against the router and stores `found.as_run_record()` in its run record. Part B checks one model per plan block against its own router start.
+
+## 8. Amendments
+
+Each amendment is also in the `amendments` list of [plan.json](plan.json). Text above that an amendment replaces is kept and marked.
+
+- **A1 (2026-11-01).** Metadata extraction runs disabled in every stage. Full text in `plan.json`.
+- **A2 (2026-11-07).** Renumbered from 43 to 48. The merged Experiment 43 (`43-image-rescue-gate-2026-11-02`) holds 43; 48 is the next free number on `v3` at `c498a439`. No input, model, gate or metric changes. Earlier commits and the 1 November dry-run outputs still name the 43 folder.
+- **A3 (2026-11-07).** Runtime and machine, from the master flow `rag-benchmark-readiness-flow` (tasks 5.2 and 5.3).
+  - Router: OMRS's own managed router (`llama-server`, pinned build b11941), not the Llama app's `llama serve`, which OMRS refuses (`one-llamacpp-router` design D17). Scratch `OMRS_CONFIG_DIR` and `OMRS_STATE_DIR` inside `output/`. One `llamacpp_models` entry per model, its preset equal to the `server_args` in `plan.json`.
+  - Machine: one RunPod on-demand RTX 4090 pod (Linux x86-64, the machine class of Experiment 35a), not the measurement Mac. Build: the b11941 `cuda` flavour (CUDA 12.8), placed by `omrs llamacpp install --flavour cuda`, which checks the archive SHA-256, the reported build and a CUDA device. Section 7's Mac and Metal lines describe the 1 November dry run only.
+  - Consequence: Part B and Part C rates describe the RTX 4090 pod. Experiment 35a may reuse them when its pod class, GGUF files and build match. The Mac edition (Experiment 35) may not.
+  - Unchanged: the four GGUF files and their SHA-256, build 11941, every preset value, the fixed set, the seed, the gates and the tolerances. The baseline embedding model stays Qwen3-Embedding-4B Q8_0.

@@ -1,5 +1,5 @@
 {
-  "experiment_id": "43-pipeline-sweep-llamacpp-2026-11-01",
+  "experiment_id": "48-pipeline-sweep-llamacpp-2026-11-01",
   "protocol_version": 1,
   "question": "Does every OMRS pipeline stage run without error with every local model on llama.cpp GGUF files, and at what embedding rate do 0.6B, 4B and 8B run on the measurement Mac?",
   "decision": "Experiment 35 freezes its protocol only when every stage passes and retrieval stays at the stated bounds; Part B timing feeds its local-or-cloud decision and task 1.4 reuse.",
@@ -241,6 +241,14 @@
     {
       "date": "2026-11-01",
       "change": "Metadata extraction runs disabled in every stage, not at the llamaindex default. The thinking-mode Qwen3-4B spends about 40 s per chunk on metadata generation (measured in the 1 November dry run: 735 s for 19 chunks), which would add 6 to 9 hours to Part A and measure the thinking preamble rather than the pipeline. Experiment 35 already resolved metadata to disabled in every arm (its design, open question 7), so the sweep matches the configuration it rehearses. The per-chunk metadata cost is reported from the dry-run measurement instead."
+    },
+    {
+      "date": "2026-11-07",
+      "change": "A2. Renumbered from 43 to 48. The merged Experiment 43 (43-image-rescue-gate-2026-11-02) holds number 43, and 48 is the next free number on v3 at c498a439 (highest 47, reserved 40). The folder, experiment_id, experiment.json number and the .gitleaksignore paths change; no input, model, gate or metric changes. Earlier commits and the 1 November dry-run outputs still name the 43 folder."
+    },
+    {
+      "date": "2026-11-07",
+      "change": "A3. Runtime and machine (master flow rag-benchmark-readiness-flow tasks 5.2 and 5.3, operator decisions 2026-11-06). (1) Every local model runs on OMRS's own managed llama.cpp router (llama-server, pinned build b11941), not the Llama app's llama serve, which OMRS refuses (one-llamacpp-router design D17). Settings live in a scratch OMRS_CONFIG_DIR and runtime state in a scratch OMRS_STATE_DIR, both inside output/. Each model is one llamacpp_models entry whose preset holds its server_args below; the router address is 127.0.0.1 on a scratch port. (2) The run moves from the measurement Mac (Metal) to one RunPod on-demand RTX 4090 pod (Linux x86-64, the same machine class as Experiment 35a). The router build is the b11941 cuda flavour (CUDA 12.8), placed by omrs llamacpp install --flavour cuda, which checks the archive SHA-256, the --version build and a CUDA device. (3) Part B and Part C rates therefore describe the RTX 4090 pod. Experiment 35a may reuse them when its pod class, GGUF files and build match; the Mac edition (Experiment 35) may not. (4) Unchanged: the four GGUF files and their SHA-256, build 11941, every server_args value, the fixed set, the seed, the gates and the tolerances. The baseline embedding model stays Qwen3-Embedding-4B Q8_0. Recorded before any non-dry run."
     }
   ]
 }

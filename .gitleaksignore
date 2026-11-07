@@ -110,6 +110,6 @@ web/src/runs/test/runServer.ts:generic-api-key:5
 tests/unit/test_restart_snapshot.py:generic-api-key:125
 tests/unit/test_cli_config_show.py:generic-api-key:22
 tests/unit/test_web_configuration.py:generic-api-key:36
-experiments/43-pipeline-sweep-llamacpp-2026-11-01/run_part_a.py:generic-api-key:49
-experiments/43-pipeline-sweep-llamacpp-2026-11-01/run_timing.py:generic-api-key:55
+experiments/48-pipeline-sweep-llamacpp-2026-11-01/run_part_a.py:generic-api-key:49
+experiments/48-pipeline-sweep-llamacpp-2026-11-01/run_timing.py:generic-api-key:55
 openspec/changes/pipeline-sweep-llamacpp/evidence/test-ids-before.txt:aws-access-token:9211

@@ -1,6 +1,6 @@
-# Experiment 43: Pipeline sweep on llama.cpp
+# Experiment 48: Pipeline sweep on llama.cpp
 
-- **Folder**: `43-pipeline-sweep-llamacpp-2026-11-01`
+- **Folder**: `48-pipeline-sweep-llamacpp-2026-11-01`
 - **Record**: [experiment.json](experiment.json) holds the category, size and status.
 - **Date run**: <YYYY-MM-DD>
 - **Operator**: <who ran it>

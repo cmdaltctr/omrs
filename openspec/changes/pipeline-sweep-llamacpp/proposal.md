@@ -8,6 +8,8 @@ A failure found inside a frozen Confirmatory run costs a plan amendment or a res
 
 Experiment 35 must also choose: run locally on the measurement Mac, or rent cloud hardware. No one has timed Qwen3-Embedding 0.6B, 4B and 8B GGUF on that Mac. The proposal lists "index building on 40K abstracts takes too long on the Mac" as a risk, with "time the pipeline sweep first" as the response.
 
+Amended 2026-11-07 (design D9): the operator chose to run Experiment 35 on RunPod (master flow `rag-benchmark-readiness-flow`, 2026-11-06), so the sweep runs on one RunPod RTX 4090 pod, the machine class of Experiment 35a, and its timing feeds that edition. Where this proposal says "the measurement Mac", read "the sweep pod".
+
 ## What Changes
 
 - Plan one new experiment, purpose `optimisation`, size Standard, category `runtime`. `omrs experiments new` gives it the next free number at apply time. No folder is created by this proposal.

@@ -166,7 +166,22 @@ Created at apply time with:
 
 The command takes the next free number and skips the reserved numbers. Standard size gives `experiment.json`, `protocol.md`, `plan.json` and `report.md`. The `runtime` block in `plan.json` is a guide rule for `optimisation` (ADR-103 decision 9), but this sweep fills it in full, because it tests that path for Experiment 35.
 
+### D9. Machine: the RunPod edition (amended 2026-11-07)
+
+The operator chose to run Experiment 35 on RunPod (master flow `rag-benchmark-readiness-flow`, 2026-11-06). The sweep must rehearse the machine that the benchmark uses, so it moves off the measurement Mac. This amendment overrides the Mac wording in Context, Goals, D6 and D7.
+
+- One RunPod on-demand RTX 4090 pod (24 GB VRAM, Linux x86-64), the machine class of Experiment 35a. The pod class and the GPU name go in every run record.
+- `omrs llamacpp install --flavour cuda` places the pinned b11941 `cuda` flavour (CUDA 12.8). The command checks the archive SHA-256, the build that `--version` reports and a CUDA device in `--list-devices`. The router then starts as in D2, managed, from the scratch `omrs.jsonc` in `output/`.
+- The four GGUF files, their SHA-256, build 11941 and every D6a preset value do not change. The hash check (D4 step 1) runs on the pod before any server starts.
+- Peak memory (D6): on CUDA the model sits in GPU memory, so the resident memory of the server is not the useful number. The timing step records the peak GPU memory of the server process (from `nvidia-smi`, every 0.5 s) beside the resident memory.
+- D7 changes: Experiment 35a reuses the Part B numbers when its pod class, GGUF files and build match. The Mac edition (Experiment 35) does not reuse them.
+- Experiment folder: the dry run of 1 November used folder number 43, which the merged Experiment 43 holds. The folder is now `48-pipeline-sweep-llamacpp-2026-11-01` (plan amendment A2). This amendment is plan amendment A3.
+
+Alternative: keep the sweep on the Mac. Rejected, because a CUDA-only fault (the build, a preset value, GPU memory for the 8B model) would then first show inside the frozen 35a run.
+
 ## Risks / Trade-offs
+
+- [The sweep pod costs money] → Gate G6 of the master flow: the operator approves the hourly price and the total estimate before a pod starts. The pod and its volume are deleted after the outputs are copied.
 
 - [A local 4B judge is slow; Experiment 20 found a local `qwen3:4b` judge not practical] → The sweep only checks that claim checking runs and records its time. Experiment 35 decides whether to keep a local judge.
 - [The 5 FinanceBench PDFs are long and slow to read] → The 200-page cap in D1. Reader time per file goes in the output.

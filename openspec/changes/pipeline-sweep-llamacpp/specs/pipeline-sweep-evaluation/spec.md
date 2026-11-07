@@ -85,12 +85,18 @@ After the scored run, the sweep SHALL repeat retrieval once for every question a
 
 ### Requirement: The sweep SHALL time local embedding on a fixed slice of each corpus
 
-The sweep SHALL embed a fixed slice of each benchmark corpus with each of Qwen3-Embedding 0.6B, 4B and 8B GGUF on the measurement Mac, one model at a time. The slices are 200 FreshStack documents, 200 BioASQ abstracts and the 5 FinanceBench PDFs of the fixed set. For each model and slice it SHALL record wall time, input tokens and peak server memory.
+The sweep SHALL embed a fixed slice of each benchmark corpus with each of Qwen3-Embedding 0.6B, 4B and 8B GGUF on the sweep machine, one model at a time. The sweep machine is one RunPod RTX 4090 pod (design D9). The slices are 200 FreshStack documents, 200 BioASQ abstracts and the 5 FinanceBench PDFs of the fixed set. For each model and slice it SHALL record wall time, input tokens and peak server memory.
 
 #### Scenario: Timing row for each model
 
 - **WHEN** the timing part finishes
 - **THEN** the output holds one row per model and slice with wall time, tokens, tokens per second and peak memory
+
+#### Scenario: Peak memory on a CUDA machine
+
+- **WHEN** the timing part runs on a CUDA machine
+- **THEN** each row SHALL hold the peak GPU memory of the server process beside its peak resident memory
+- **AND** a run that cannot read the GPU memory SHALL stop with an error that names `nvidia-smi`
 
 ### Requirement: The sweep SHALL extrapolate embedding time to the benchmark corpora
 
