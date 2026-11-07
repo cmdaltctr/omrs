@@ -1,8 +1,8 @@
 """Part B timing, token counts and Part C mode comparison (change tasks 4.2, 4.3, 5.5).
 
 Stages (each resumes via its own output file):
-- ``--model 0.6b|4b|8b``  time one embedding model on the three slices. The
-  caller starts the router with the matching single-model preset first.
+- ``--model 0.6b|4b|8b``  time one embedding model on the three slices, on a
+  fresh router that loads one model at a time (``llamacpp_router_models_max`` 1).
 - ``--tokenize``  count tokens of the full FreshStack and BioASQ corpora with
   the production chunker and the server's ``/tokenize``; count FinanceBench
   pages of every PDF the 150 open questions cite.
@@ -11,7 +11,12 @@ Stages (each resumes via its own output file):
   through the router (concurrency 1 or 8). ``--part-c --stage compare``
   compares the two vector sets and rankings.
 
-Heavy-run rule: the caller starts and stops the router between models.
+Router (task 3.5): each stage that sends requests writes the scratch
+``output/config/omrs.jsonc`` (``router_config``) and starts OMRS's managed
+router in this process; it stops when the process exits. ``SWEEP_GGUF_DIR``
+names the GGUF folder. ``--dry-run`` writes and loads the file, then exits
+before any router start or request. Heavy-run rule: tell the user before a
+run without ``--dry-run``.
 """
 
 from __future__ import annotations
@@ -20,9 +25,7 @@ import argparse
 import asyncio
 import json
 import math
-import os
 import re
-import subprocess
 import sys
 import threading
 import time
@@ -33,31 +36,28 @@ from pathlib import Path
 EXP_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = EXP_DIR.parent.parent
 OUTPUT = EXP_DIR / "output"
-ROUTER = "http://127.0.0.1:18080"
 DATA = Path.home() / "Development/DATA/omrs"
-GGUF = DATA / "benchmarks/gguf"
 SLICE_SIZE = 200
 MODELS = {"0.6b": "Qwen3-Embedding-0.6B-Q8_0.gguf", "4b": "Qwen3-Embedding-4B-Q8_0.gguf",
           "8b": "Qwen3-Embedding-8B-Q8_0.gguf"}
 
-os.environ.update(
+sys.path.insert(0, str(PROJECT_ROOT))
+sys.path.insert(0, str(PROJECT_ROOT / "experiments"))
+
+import router_config  # noqa: E402
+from gpu_memory import GpuMemorySampler  # noqa: E402
+
+router_config.prepare_environment(
     {
-        "OMRS_CONFIG_DIR": str(OUTPUT / "config"),
         "VECTOR_STORE": "lancedb",
         "LANCEDB_URI": str(OUTPUT / "lancedb"),
-        "EMBED_PROVIDER": "llamacpp",
-        "LOCAL_BACKEND": "llamacpp",
-        "LLAMACPP_EMBED_URL": f"{ROUTER}/v1",
-        "LLAMACPP_EMBED_MODEL": MODELS["4b"],
-        "LLAMACPP_CHAT_URL": f"{ROUTER}/v1",
-        "LLAMACPP_CHAT_MODEL": "Qwen3-4B-Q8_0.gguf",
         "EMBEDDING__TOKENIZER_MODEL": "Qwen/Qwen3-Embedding-4B",
         "EMBEDDING__TOKENIZER_REVISION": "5cf2132abc99cad020ac570b19d031efec650f2b",
         "METADATA__EXTRACTION_MODE": "disabled",
     }
 )
-sys.path.insert(0, str(PROJECT_ROOT))
-sys.path.insert(0, str(PROJECT_ROOT / "experiments"))
+#: The router base the direct requests (/tokenize, /v1/embeddings) and the live check use.
+ROUTER = router_config.ROUTER_URL.removesuffix("/v1")
 
 from _lib.llamacpp_runtime import verify_llamacpp_runtime  # noqa: E402
 from _lib.run_record import record_run_start  # noqa: E402
@@ -82,16 +82,11 @@ def http_json(path: str, payload: dict | None = None, timeout: float = 600.0) ->
         return json.loads(response.read().decode())
 
 
-def server_pids() -> list[int]:
-    """PIDs of the running llama server processes."""
-    out = subprocess.run(["/usr/bin/pgrep", "-f", "llama-server|llama serve"], capture_output=True,
-                         text=True, check=False).stdout
-    own = os.getpid()
-    return [int(line) for line in out.split() if line.isdigit() and int(line) != own]
-
-
 class RssSampler(threading.Thread):
-    """Sample the server's peak resident memory every 0.5 s (design D6)."""
+    """Sample the server's peak resident memory every 0.5 s (design D6).
+
+    The figure is the recorded router plus its model children (macOS and Linux).
+    """
 
     def __init__(self) -> None:
         super().__init__(daemon=True)
@@ -100,14 +95,7 @@ class RssSampler(threading.Thread):
 
     def run(self) -> None:
         while not self.stop_event.is_set():
-            for pid in server_pids():
-                try:
-                    ps_args = ["/bin/ps", "-o", "rss=", "-p", str(pid)]
-                    out = subprocess.run(  # noqa: S603 - fixed argv, own PIDs only
-                        ps_args, capture_output=True, text=True, check=False).stdout
-                    self.peak_bytes = max(self.peak_bytes, int(out.strip() or 0) * 1024)
-                except (ValueError, subprocess.SubprocessError, OSError):
-                    pass
+            self.peak_bytes = max(self.peak_bytes, router_config.router_memory_bytes() or 0)
             time.sleep(0.5)
 
 
@@ -151,8 +139,25 @@ def store_texts(collection: str) -> list[dict]:
     return [{"id": str(row[id_col]), "text": str(row[text_col])} for row in table.to_pylist()]
 
 
+def check_runtime(plan: dict, files: Sequence[str]) -> None:
+    """Live-server check of *files* against ``llamacpp_router_url``, then the run record."""
+    from omrs.compose import get_settings
+    from omrs.core.experiment_records.runtime_block import RuntimeBlock
+
+    block = json.loads(json.dumps(plan["runtime"]))
+    block["models"] = [m for m in block["models"] if m["file"] in files]
+    preset_has_parallel(block["models"])
+    found = verify_llamacpp_runtime(
+        RuntimeBlock.model_validate(block), base_url=router_config.verify_url(get_settings())
+    )
+    record_run_start(EXP_DIR, runtime=found.as_run_record())
+
+
 def tokenize_count(texts: Sequence[str], model: str) -> int:
-    """Count tokens with the server's tokenizer, one request per text."""
+    """Count tokens with the server's tokenizer, one request per text.
+
+    *model* is the router name; hold it with ``router_config.held`` first.
+    """
     import concurrent.futures
 
     def one(text: str) -> int:
@@ -166,19 +171,10 @@ def tokenize_count(texts: Sequence[str], model: str) -> int:
         return sum(pool.map(one, texts))
 
 
-def stage_model(model_key: str, plan: dict, limit: int | None) -> None:
-    """Time one model on the three slices (task 4.2)."""
+def stage_model(model_key: str, plan: dict, limit: int | None, router) -> None:
+    """Time one model on the three slices (task 4.2); this process's router serves it only."""
     model_file = MODELS[model_key]
-    os.environ["LLAMACPP_EMBED_MODEL"] = model_file
-    block = json.loads(json.dumps(plan["runtime"]))
-    block["models"] = [m for m in block["models"] if m["file"] == model_file]
-    preset_has_parallel(block["models"])  # noqa: S101 - experiment preset check
-    found = verify_llamacpp_runtime(
-        __import__("omrs.core.experiment_records.runtime_block", fromlist=["RuntimeBlock"])
-        .RuntimeBlock.model_validate(block),
-        base_url=ROUTER,
-    )
-    record_run_start(EXP_DIR, runtime=found.as_run_record())
+    check_runtime(plan, [model_file])
 
     from omrs.compose import build_engine, ensure_runtime_setup
     from omrs.core.ingestion import ingest_path_async
@@ -223,14 +219,20 @@ def stage_model(model_key: str, plan: dict, limit: int | None) -> None:
         collection = f"sweep43_timing_{model_key.replace('.', '')}_{slice_name}"
         sampler = RssSampler()
         sampler.start()
+        # Linux means the RunPod CUDA pod (plan amendment A3); macOS is Metal, no GPU value.
+        gpu = GpuMemorySampler(cuda=sys.platform.startswith("linux"),
+                               pid_source=router_config.router_pids)
+        gpu.start()
         started = time.perf_counter()
         embedding_seconds, parse_seconds, errors = asyncio.run(
             ingest_slice(files, collection))
         wall = time.perf_counter() - started
         sampler.stop_event.set()
         sampler.join(timeout=2)
+        peak_gpu_mb = gpu.stop()
         chunks = store_texts(collection)
-        tokens = tokenize_count([chunk["text"] for chunk in chunks], model_file)
+        with router_config.held(router, plan, model_file) as name:
+            tokens = tokenize_count([chunk["text"] for chunk in chunks], name)
         row = {"model": model_key, "slice": slice_name, "files": len(files),
                "chunks": len(chunks), "wall_seconds": round(wall, 1),
                "embedding_seconds": round(embedding_seconds, 1),
@@ -238,7 +240,8 @@ def stage_model(model_key: str, plan: dict, limit: int | None) -> None:
                "tokens": tokens,
                "tokens_per_second": (round(tokens / embedding_seconds, 1)
                                      if embedding_seconds else 0.0),
-               "peak_rss_mb": round(sampler.peak_bytes / 1e6, 1), "errors": errors}
+               "peak_rss_mb": round(sampler.peak_bytes / 1e6, 1), "peak_gpu_mb": peak_gpu_mb,
+               "errors": errors}
         with rows_file.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(row) + "\n")
         if model_key == "4b":
@@ -270,12 +273,21 @@ def chunk_texts_markdown(paths: Sequence[Path]) -> list[str]:
     return texts
 
 
-def stage_tokenize(plan: dict, limit: int | None) -> None:
-    """Count tokens of the full corpora; no embedding (task 4.3)."""
+def stage_tokenize(plan: dict, limit: int | None, router) -> None:
+    """Count tokens of the full corpora; no embedding (task 4.3).
+
+    The router lease is held for the whole stage, so the idle stop cannot
+    fire while the chunker runs between two token counts.
+    """
     target = OUTPUT / "token-counts.json"
     if target.exists():
         print("[tokenize] already done", flush=True)
         return
+    with router_config.held(router, plan, MODELS["4b"]) as name:
+        _tokenize_corpora(target, limit, name)
+
+
+def _tokenize_corpora(target: Path, limit: int | None, model: str) -> None:
     manifest = DATA / "experiments/freshstack-corpus/langchain_manifest.jsonl"
     rows = [json.loads(line) for line in manifest.read_text().split("\n") if line.strip()]
     if limit is not None:
@@ -286,7 +298,7 @@ def stage_tokenize(plan: dict, limit: int | None) -> None:
         name = re.sub(r"[^A-Za-z0-9_.-]", "_", row["freshstack_id"]) + ".md"
         (scratch / name).write_text(row["text"], encoding="utf-8")
     fresh_texts = chunk_texts_markdown(sorted(scratch.glob("*.md")))
-    fresh_tokens = tokenize_count(fresh_texts, MODELS["4b"])
+    fresh_tokens = tokenize_count(fresh_texts, model)
 
     import pyarrow.parquet as pq
 
@@ -295,7 +307,7 @@ def stage_tokenize(plan: dict, limit: int | None) -> None:
     if limit is not None:
         passages = passages[:limit]
     bio_texts = chunk_texts_markdown([_write_temp(p, i) for i, p in enumerate(passages)])
-    bio_tokens = tokenize_count(bio_texts, MODELS["4b"])
+    bio_tokens = tokenize_count(bio_texts, model)
 
     from pypdf import PdfReader
 
@@ -379,26 +391,22 @@ def cosine_rank(vector: Sequence[float], vectors: Sequence[Sequence[float]]) -> 
     return sorted(range(len(scores)), key=lambda i: -scores[i])
 
 
-def stage_part_c(stage: str, plan: dict) -> None:
+def stage_part_c(stage: str, plan: dict, router=None) -> None:
     """Exact against fast mode on the 4B slices (design D6a)."""
     model = MODELS["4b"]
     if stage in {"exact", "fast"}:
-        block = json.loads(json.dumps(plan["runtime"]))
-        block["models"] = [m for m in block["models"] if m["file"] == model]
-        found = verify_llamacpp_runtime(
-            __import__("omrs.core.experiment_records.runtime_block", fromlist=["RuntimeBlock"])
-            .RuntimeBlock.model_validate(block), base_url=ROUTER)
-        record_run_start(EXP_DIR, runtime=found.as_run_record())
+        check_runtime(plan, [model])
         concurrency = 1 if stage == "exact" else 8
-        for slice_name in ("freshstack", "bioasq", "financebench"):
-            chunks_file = OUTPUT / "slices" / f"{slice_name}-chunks.jsonl"
-            chunks = [json.loads(line) for line in chunks_file.read_text().splitlines()]
-            vectors = embed_direct([c["text"] for c in chunks], model, concurrency)
-            target = OUTPUT / f"part-c-{stage}-{slice_name}.jsonl"
-            with target.open("w", encoding="utf-8") as handle:
-                for chunk, vector in zip(chunks, vectors, strict=True):
-                    handle.write(json.dumps({"id": chunk["id"], "vector": vector}) + "\n")
-            print(f"[part-c {stage}] {slice_name}: {len(vectors)} vectors", flush=True)
+        with router_config.held(router, plan, model) as name:
+            for slice_name in ("freshstack", "bioasq", "financebench"):
+                chunks_file = OUTPUT / "slices" / f"{slice_name}-chunks.jsonl"
+                chunks = [json.loads(line) for line in chunks_file.read_text().splitlines()]
+                vectors = embed_direct([c["text"] for c in chunks], name, concurrency)
+                target = OUTPUT / f"part-c-{stage}-{slice_name}.jsonl"
+                with target.open("w", encoding="utf-8") as handle:
+                    for chunk, vector in zip(chunks, vectors, strict=True):
+                        handle.write(json.dumps({"id": chunk["id"], "vector": vector}) + "\n")
+                print(f"[part-c {stage}] {slice_name}: {len(vectors)} vectors", flush=True)
         return
 
     report = {}
@@ -425,22 +433,42 @@ def main() -> None:
     parser.add_argument("--part-c", action="store_true")
     parser.add_argument("--stage", choices=["exact", "fast", "compare"])
     parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument("--dry-run", action="store_true",
+                        help="write and load the scratch omrs.jsonc, then exit")
     args = parser.parse_args()
 
     OUTPUT.mkdir(exist_ok=True)
     plan = json.loads((EXP_DIR / "plan.json").read_text(encoding="utf-8"))
-    if args.model:
-        stage_model(args.model, plan, args.limit)
-    elif args.tokenize:
-        stage_tokenize(plan, args.limit)
-    elif args.extrapolate:
-        stage_extrapolate()
-    elif args.part_c:
-        if not args.stage:
-            raise SystemExit("--part-c needs --stage exact|fast|compare")
-        stage_part_c(args.stage, plan)
-    else:
+    if args.part_c and not args.stage:
+        raise SystemExit("--part-c needs --stage exact|fast|compare")
+    if not (args.model or args.tokenize or args.extrapolate or args.part_c):
         parser.error("choose --model, --tokenize, --extrapolate or --part-c")
+    uses_router = bool(args.model or args.tokenize or (args.part_c and args.stage != "compare"))
+    if not uses_router:
+        if args.dry_run:
+            raise SystemExit("[dry-run] this stage starts no router; nothing to check")
+        if args.extrapolate:
+            stage_extrapolate()
+        else:
+            stage_part_c(args.stage, plan)
+        return
+    embed_file = MODELS[args.model] if args.model else MODELS["4b"]
+    config_path = router_config.configure(
+        plan,
+        embed_file=embed_file,
+        part_b=bool(args.model),
+        fast=args.part_c and args.stage == "fast",
+    )
+    if args.dry_run:
+        router_config.dry_run(config_path)
+    # D6: a fresh router per run; it serves this stage's one embedding model.
+    router = router_config.start_router([embed_file], plan)
+    if args.model:
+        stage_model(args.model, plan, args.limit, router)
+    elif args.tokenize:
+        stage_tokenize(plan, args.limit, router)
+    else:
+        stage_part_c(args.stage, plan, router)
 
 
 if __name__ == "__main__":

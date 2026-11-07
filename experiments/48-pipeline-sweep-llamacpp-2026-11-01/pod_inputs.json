@@ -1,0 +1,115 @@
+{
+  "about": "Every input the RunPod pod needs (change task 3.6, design D9). pod_setup.sh reads this file and plan.json. plan.json stays the source of each SHA-256 and revision it records; this file holds only what plan.json does not: the source, the place on the pod, the GGUF revisions and the SHA-256 of inputs outside the frozen list. Path prefixes: REPO/ is the repository root, EXP/ is this folder, DATA/ is ~/Development/DATA/omrs on the pod (the runners read that path).",
+  "gguf_dir": "DATA/benchmarks/gguf",
+  "gguf": [
+    {
+      "file": "Qwen3-Embedding-0.6B-Q8_0.gguf",
+      "revision": "370f27d7550e0def9b39c1f16d3fbaa13aa67728",
+      "bytes": 639150592
+    },
+    {
+      "file": "Qwen3-Embedding-4B-Q8_0.gguf",
+      "revision": "f4602530db1d980e16da9d7d3a70294cf5c190be",
+      "bytes": 4279660224
+    },
+    {
+      "file": "Qwen3-Embedding-8B-Q8_0.gguf",
+      "revision": "69d0e58a13e463cd99a9b83e3f5fee7c10265fab",
+      "bytes": 8047105824
+    },
+    {
+      "file": "Qwen3-4B-Q8_0.gguf",
+      "revision": "bc640142c66e1fdd12af0bd68f40445458f3869b",
+      "bytes": 4280404704
+    }
+  ],
+  "gguf_source": "Revisions and sizes from ~/Development/DATA/omrs/benchmarks/GGUF_MANIFEST.json on the measurement Mac (task 2.4).",
+  "inputs": [
+    {
+      "id": "exp3-corpus",
+      "how": "repo",
+      "from": "REPO/experiments/3-e2e-smoke-test-metadata-2026-05-20/corpus",
+      "to": "EXP/corpus",
+      "frozen_prefix": "corpus/",
+      "bytes": 3554647
+    },
+    {
+      "id": "exp2-ground-truth",
+      "how": "repo",
+      "from": "REPO/experiments/2-embedding-model-comparison-2026-05-19/ground-truth.json",
+      "to": "EXP/ground-truth.json",
+      "frozen": "ground-truth.json",
+      "bytes": 4533
+    },
+    {
+      "id": "freshstack-manifest",
+      "how": "operator",
+      "from": "freshstack/langchain_manifest.jsonl",
+      "mac_source": "~/Development/DATA/omrs/experiments/freshstack-corpus/langchain_manifest.jsonl",
+      "to": "DATA/experiments/freshstack-corpus/langchain_manifest.jsonl",
+      "sha256": "f1e97574229ba474e5b77a338eecbb3c756071f630c312757e0d0aebc702e20e",
+      "frozen": "freshstack/langchain id list (seed 20260530)",
+      "frozen_kind": "id-list",
+      "frozen_rule": "SHA-256 of the sorted freshstack_id values joined by a newline, no final newline; count equals plan.json documents",
+      "bytes": 52388956,
+      "why_operator": "Built on the Mac by prepare_freshstack.py from freshstack/queries-oct-2024 and freshstack/corpus-oct-2024 with no pinned dataset revision, so a rebuild on the pod could differ."
+    },
+    {
+      "id": "financebench-pdfs-manifest",
+      "how": "operator",
+      "from": "financebench/PDFS_MANIFEST.json",
+      "mac_source": "~/Development/DATA/omrs/benchmarks/financebench/PDFS_MANIFEST.json",
+      "to": "DATA/benchmarks/financebench/PDFS_MANIFEST.json",
+      "sha256": "871478cee4d9ee5001b33e4a981015a95c0cca780f5d75051123685886e5c74d",
+      "bytes": 12097,
+      "why_operator": "Written on the Mac (task 2.3); no host serves it. It holds the SHA-256 of each FinanceBench PDF, and prepare_financebench.py reads it."
+    },
+    {
+      "id": "financebench-questions",
+      "how": "hf-dataset",
+      "repository": "PatronusAI/financebench",
+      "revision": "e04404e3a97f69f79c14d42f24981a1c9c3bcd18",
+      "file": "financebench_merged.jsonl",
+      "to": "DATA/benchmarks/financebench/financebench_merged.jsonl",
+      "sha256": "7a1c81789e0fd2f1c37057a7ec0097756d726b05e7228e68e57db8e18c54fd0b",
+      "bytes": 958087,
+      "source": "Revision and SHA-256 from ~/Development/DATA/omrs/benchmarks/MANIFEST.json on the Mac."
+    },
+    {
+      "id": "financebench-pdfs",
+      "how": "github",
+      "repository": "patronus-ai/financebench",
+      "revision": "cc39aeb4afdf33909ee1412188bf89035950c2eb",
+      "folder": "pdfs",
+      "to": "DATA/benchmarks/financebench/pdfs",
+      "hashes_from": "financebench-pdfs-manifest",
+      "bytes": 165527662
+    },
+    {
+      "id": "bioasq-corpus",
+      "how": "hf-dataset",
+      "repository": "enelpol/rag-mini-bioasq",
+      "file": "text-corpus/test-00000-of-00001.parquet",
+      "to": "DATA/benchmarks/bioasq/text-corpus/test-00000-of-00001.parquet",
+      "frozen": "bioasq/text-corpus test parquet",
+      "bytes": 35304894
+    },
+    {
+      "id": "embedding-tokenizer",
+      "how": "hf-cache",
+      "repository": "Qwen/Qwen3-Embedding-4B",
+      "file": "tokenizer.json",
+      "to": "Hugging Face cache (HF_HUB_CACHE, else HF_HOME/hub)",
+      "frozen": "embedding tokenizer (Qwen/Qwen3-Embedding-4B tokenizer.json)",
+      "bytes": 11422947
+    },
+    {
+      "id": "financebench-selection",
+      "how": "script",
+      "script": "EXP/prepare_financebench.py",
+      "to": "EXP/output/financebench/pdfs",
+      "frozen_prefix": "financebench/",
+      "bytes": 0
+    }
+  ]
+}

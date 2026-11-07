@@ -27,7 +27,7 @@
 - [x] 3.3 Write the determinism repeat as a separate process on the same index. Verify: run twice on the `--limit 1` index gives identical output.
 - [x] 3.4 Write the comparison-arm step: dense index of the 6 Experiment 3 documents with 0.6B and 8B, 17 questions, reranker off. Verify: `--limit 1` writes one row per model.
 - [ ] 3.5 After `one-llamacpp-router` merges, rebase on `v3`. Rewire `run_part_a.py`, `run_timing.py`, `run_sweep.sh` and `plan.json` from `llama serve` and the retired `LLAMACPP_*` keys onto the OMRS managed router: scratch `OMRS_CONFIG_DIR` and `OMRS_STATE_DIR` in `output/`, one `llamacpp_models` entry per model with its D6a preset (design D2, D6a). Verify: `--limit 1` runs one document and one question with no error, and the found runtime names b11941. On the pod, the router runs the b11941 `cuda` flavour that `omrs llamacpp install --flavour cuda` places (design D9).
-- [ ] 3.6 Write `pod_setup.sh` in the experiment folder (design D9): check the commit, `uv sync --frozen --extra web --extra llamacpp`, `omrs llamacpp install --flavour cuda`, fetch the four GGUF files and the FinanceBench, BioASQ and FreshStack inputs, then run the hash check. Verify: `bash -n` passes, and `--dry-run` on the Mac prints every step and every expected SHA-256 with no download.
+- [x] 3.6 Write `pod_setup.sh` in the experiment folder (design D9): check the commit, `uv sync --frozen --extra web --extra llamacpp`, `omrs llamacpp install --flavour cuda`, fetch the four GGUF files and the FinanceBench, BioASQ and FreshStack inputs, then run the hash check. Verify: `bash -n` passes, and `--dry-run` on the Mac prints every step and every expected SHA-256 with no download.
 
 ## 4. Part B timing (design D6)
 
@@ -36,7 +36,7 @@
 - [x] 4.1 Write tests first for the extrapolation: tokens divided by tokens per second gives hours; the FinanceBench estimate uses tokens per page times total pages; a missing count raises an error that names the corpus. Verify: the tests fail before the code exists.
 - [x] 4.2 Write the timing runner: one model loaded at a time in the router, live-server check with a plan block for that model, one run record per model, one warm-up batch, then the three slices of D6 (FreshStack, BioASQ, FinanceBench chunks). Record wall time, `usage.prompt_tokens` and peak resident memory sampled every 0.5 s. Verify: a 5-document dry run writes one row per model and slice.
 - [ ] 4.3 Write the token count step for FreshStack and BioASQ (chunk with the 3.1 chunking guard, then `/tokenize`, no embedding) and the FinanceBench page count. Verify: the FreshStack count covers 10,024 documents and the BioASQ count covers every passage in the test split corpus.
-- [ ] 4.4 Write tests first for the GPU memory sampler (design D9): it reads the server's used memory from `nvidia-smi --query-compute-apps`; a CUDA run without `nvidia-smi` stops with an error that names it; a Metal run records no GPU value. Then add it to the timing runner beside the resident memory. Verify: the tests fail before the code exists, then pass.
+- [x] 4.4 Write tests first for the GPU memory sampler (design D9): it reads the server's used memory from `nvidia-smi --query-compute-apps`; a CUDA run without `nvidia-smi` stops with an error that names it; a Metal or CPU run records no GPU value. Then add it to the timing runner beside the resident memory. Verify: the tests fail before the code exists, then pass.
 
 ## 5. Run (heavy: on the RunPod pod after gate G6 of the master flow; tell the user before each server starts)
 

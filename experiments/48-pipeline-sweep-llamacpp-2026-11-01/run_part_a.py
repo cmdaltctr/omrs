@@ -12,8 +12,11 @@ Modes:
 Every stage writes one JSONL file in ``output/`` and a done-marker it checks
 on ``--resume``. One failed item is recorded and the run continues.
 
-Heavy-run rule: the caller must have started the router (``llama serve
---config-file router.json``) before this script runs.
+Router (task 3.5): the script writes the scratch ``output/config/omrs.jsonc``
+(``router_config``) and OMRS's managed router starts in this process and
+stops when it exits. ``SWEEP_GGUF_DIR`` names the GGUF folder. ``--dry-run``
+writes and loads the file, then exits before any router start or request.
+Heavy-run rule: tell the user before a run without ``--dry-run``.
 """
 
 from __future__ import annotations
@@ -29,30 +32,25 @@ from pathlib import Path
 EXP_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = EXP_DIR.parent.parent
 OUTPUT = EXP_DIR / "output"
-ROUTER = "http://127.0.0.1:18080"
 COLLECTION = "sweep43"
 ARM_MODELS = {"0.6b": "Qwen3-Embedding-0.6B-Q8_0.gguf", "8b": "Qwen3-Embedding-8B-Q8_0.gguf"}
 BASELINE_MODEL = "Qwen3-Embedding-4B-Q8_0.gguf"
 
-os.environ.update(
+sys.path.insert(0, str(PROJECT_ROOT))
+sys.path.insert(0, str(PROJECT_ROOT / "experiments"))
+
+import router_config  # noqa: E402
+
+router_config.prepare_environment(
     {
-        "OMRS_CONFIG_DIR": str(OUTPUT / "config"),
         "VECTOR_STORE": "lancedb",
         "LANCEDB_URI": str(OUTPUT / "lancedb"),
-        "EMBED_PROVIDER": "llamacpp",
-        "LOCAL_BACKEND": "llamacpp",
-        "LLAMACPP_EMBED_URL": f"{ROUTER}/v1",
-        "LLAMACPP_EMBED_MODEL": BASELINE_MODEL,
-        "LLAMACPP_CHAT_URL": f"{ROUTER}/v1",
-        "LLAMACPP_CHAT_MODEL": "Qwen3-4B-Q8_0.gguf",
         "EMBEDDING__TOKENIZER_MODEL": "Qwen/Qwen3-Embedding-4B",
         "EMBEDDING__TOKENIZER_REVISION": "5cf2132abc99cad020ac570b19d031efec650f2b",
         "METADATA__EXTRACTION_MODE": "disabled",
         "ANSWER__VERIFY_CLAIMS": "false",
     }
 )
-sys.path.insert(0, str(PROJECT_ROOT))
-sys.path.insert(0, str(PROJECT_ROOT / "experiments"))
 
 from _lib.llamacpp_runtime import verify_llamacpp_runtime  # noqa: E402
 from _lib.run_record import record_run_start  # noqa: E402
@@ -132,8 +130,13 @@ def score_row(row: dict, expected_source: str) -> dict:
     }
 
 
-def preflight(plan: dict, models: list[str] | None = None) -> dict:
-    """Hash check, chunking guard, live-server check, run record."""
+def preflight(plan: dict, load: list[str], models: list[str] | None = None) -> dict:
+    """Hash check, chunking guard, router start, live-server check, run record.
+
+    The router loads *load*, the models this mode sends requests to. The check
+    reads *models* (all plan models by default): the router lists every entry
+    with its ``--model`` path, loaded or not.
+    """
     from omrs.compose import get_settings
 
     maps = frozen_paths(plan)
@@ -143,10 +146,13 @@ def preflight(plan: dict, models: list[str] | None = None) -> dict:
 
     settings = get_settings()
     chunking_guard(settings)
+    router_config.start_router(load, plan)
     block = json.loads(json.dumps(plan["runtime"]))
     if models is not None:
         block["models"] = [m for m in block["models"] if m["file"] in models]
-    found = verify_llamacpp_runtime(_load_block(block), base_url=ROUTER)
+    found = verify_llamacpp_runtime(
+        _load_block(block), base_url=router_config.verify_url(settings)
+    )
     record_run_start(EXP_DIR, runtime=found.as_run_record())
     return found.as_run_record()
 
@@ -314,18 +320,24 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=None,
                         help="cap documents and questions (dry run)")
     parser.add_argument("--resume", action="store_true", help="skip stages with a done-marker")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="write and load the scratch omrs.jsonc, then exit")
     args = parser.parse_args()
 
     OUTPUT.mkdir(exist_ok=True)
     plan = json.loads((EXP_DIR / "plan.json").read_text(encoding="utf-8"))
+    if args.mode == "arms" and not args.model:
+        raise SystemExit("arms mode needs --model 0.6b or 8b")
+    embed_file = ARM_MODELS[args.model] if args.mode == "arms" else BASELINE_MODEL
+    config_path = router_config.configure(plan, embed_file=embed_file)
+    if args.dry_run:
+        router_config.dry_run(config_path)
+    chat_file = router_config.chat_model(plan)["file"]
     questions, financebench = load_questions(), load_financebench()
 
     if args.mode == "arms":
-        if not args.model:
-            raise SystemExit("arms mode needs --model 0.6b or 8b")
-        os.environ["LLAMACPP_EMBED_MODEL"] = ARM_MODELS[args.model]
         collection = f"sweep43_{args.model.replace('.', '')}"
-        preflight(plan, models=[ARM_MODELS[args.model], "Qwen3-4B-Q8_0.gguf"])
+        preflight(plan, load=[embed_file, chat_file], models=[embed_file, chat_file])
         if not (args.resume and stage_done(f"arms-{args.model}-ingest")):
             rows = ingest_documents(engine_factory(collection), args.limit, collection)
             write_jsonl(f"arms-{args.model}-ingest.jsonl", rows)
@@ -374,7 +386,7 @@ def main() -> None:
         print(f"[determinism] {len(mismatches)} mismatches -> output/determinism.jsonl", flush=True)
         return
 
-    preflight(plan)
+    preflight(plan, load=[BASELINE_MODEL, chat_file])
     if not (args.resume and stage_done("ingest")):
         rows = ingest_documents(engine_factory(), args.limit)
         write_jsonl("ingest.jsonl", rows)

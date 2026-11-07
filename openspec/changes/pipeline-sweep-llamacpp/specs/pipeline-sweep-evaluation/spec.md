@@ -95,7 +95,7 @@ The sweep SHALL embed a fixed slice of each benchmark corpus with each of Qwen3-
 #### Scenario: Peak memory on a CUDA machine
 
 - **WHEN** the timing part runs on a CUDA machine
-- **THEN** each row SHALL hold the peak GPU memory of the server process beside its peak resident memory
+- **THEN** each row SHALL hold the peak GPU memory of the server processes (the router and its model servers) beside its peak resident memory
 - **AND** a run that cannot read the GPU memory SHALL stop with an error that names `nvidia-smi`
 
 ### Requirement: The sweep SHALL extrapolate embedding time to the benchmark corpora

@@ -173,7 +173,7 @@ The operator chose to run Experiment 35 on RunPod (master flow `rag-benchmark-re
 - One RunPod on-demand RTX 4090 pod (24 GB VRAM, Linux x86-64), the machine class of Experiment 35a. The pod class and the GPU name go in every run record.
 - `omrs llamacpp install --flavour cuda` places the pinned b11941 `cuda` flavour (CUDA 12.8). The command checks the archive SHA-256, the build that `--version` reports and a CUDA device in `--list-devices`. The router then starts as in D2, managed, from the scratch `omrs.jsonc` in `output/`.
 - The four GGUF files, their SHA-256, build 11941 and every D6a preset value do not change. The hash check (D4 step 1) runs on the pod before any server starts.
-- Peak memory (D6): on CUDA the model sits in GPU memory, so the resident memory of the server is not the useful number. The timing step records the peak GPU memory of the server process (from `nvidia-smi`, every 0.5 s) beside the resident memory.
+- Peak memory (D6): on CUDA the model sits in GPU memory, so the resident memory of the server is not the useful number. The timing step records the peak GPU memory of the server processes, the router and its model servers (from `nvidia-smi`, every 0.5 s) beside the resident memory.
 - D7 changes: Experiment 35a reuses the Part B numbers when its pod class, GGUF files and build match. The Mac edition (Experiment 35) does not reuse them.
 - Experiment folder: the dry run of 1 November used folder number 43, which the merged Experiment 43 holds. The folder is now `48-pipeline-sweep-llamacpp-2026-11-01` (plan amendment A2). This amendment is plan amendment A3.
 
