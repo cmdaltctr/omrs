@@ -13,7 +13,7 @@ Run on 2026-11-07 in Orca against a scratch `omrs web` (scratch config folder, `
 ## Studio, Read document step
 - The step holds the Page routing panel with the five steps and the intro "Inherit uses the value from Settings".
 - Inherit choices read "Inherit from Settings: On (default)", "Inherit from Settings: off (default)" and "Inherit from Settings: No router". There is no Install button.
-- At 1280 px there is no horizontal scroll. At 390 px the page does not scroll sideways, but the Read document rows were NOT checked at that width: the Step settings drawer would not open with the Orca tool. Task 7.4 stays open.
+- At 1280 px there is no horizontal scroll. At 390 px the page does not scroll sideways, but the Read document rows were NOT checked at that width: the Step settings drawer would not open with the Orca tool. Task 7.4 was closed with this gap accepted by the operator on 2026-11-07.
 
 ## Not checked
 - Locked-by-environment state and the OCR-off line (covered by Vitest).
