@@ -28,10 +28,10 @@ The order is the operator's (2026-11-06, design D1). Do not reorder groups. Stop
 
 ## 3. Apply `page-routing-panel` (worktree `omrs-feat-page-routing-panel`; may run beside group 5)
 
-- [ ] 3.1 Rebase onto `v3` with groups 1 and 2 merged. Task 0.3 of the change: update the cut-box wording to step 4 of the panel.
-- [ ] 3.2 Apply its tasks in order, tests first, including `docs/guides/page-routing.md`.
-- [ ] 3.3 `./scripts/local_ci.sh`, strict validation, browser check at 1280 px and 390 px (Settings and Studio), PR, CI, CodeRabbit.
-- [ ] 3.4 GATE G4: the operator says merge. Merge, archive, remove worktree.
+- [x] 3.1 Rebase onto `v3` with groups 1 and 2 merged. Task 0.3 of the change: update the cut-box wording to step 4 of the panel.
+- [x] 3.2 Apply its tasks in order, tests first, including `docs/guides/page-routing.md`.
+- [x] 3.3 `./scripts/local_ci.sh`, strict validation, browser check at 1280 px and 390 px (Settings and Studio), PR, CI, CodeRabbit.
+- [x] 3.4 GATE G4: the operator says merge. Merge, archive, remove worktree.
 
 ## 4. Live switch (operator approval needed)
 
