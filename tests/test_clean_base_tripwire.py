@@ -706,7 +706,10 @@ if not _has_qwen_tokenizer:
 # downloads-needed route cases.
 # +8 (2026-11-06, same change): test_llamacpp_router_download_failure.py.
 # +11 (2026-11-07, PR 185 review fixes): failed-state panel and no-re-ask route cases.
-_WEB_EXTRA_CASES = 2118
+# +19 (2026-11-07, correction): the 19 test_keychain.py cases need keyring, which only
+# the web extra installs; the router re-pins blocked fastapi alone and missed them.
+# 2137 is measured in a real base install at the floors (PR 185 CI).
+_WEB_EXTRA_CASES = 2137
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)
