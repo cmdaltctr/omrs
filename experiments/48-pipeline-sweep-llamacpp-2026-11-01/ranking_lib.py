@@ -26,9 +26,7 @@ def result_id(item: Mapping[str, Any]) -> str:
     """
     value = item.get("chunk_id") or item.get("id")
     if not value:
-        raise EmptyResultIdError(
-            f"search result has no chunk_id or id; keys: {sorted(item)}"
-        )
+        raise EmptyResultIdError(f"search result has no chunk_id or id; keys: {sorted(item)}")
     return str(value)
 
 
@@ -65,3 +63,28 @@ def neighbour_mismatches(
         for n, (a, b) in enumerate(zip(left, right, strict=True))
         if a != b
     ]
+
+
+def server_snapshot(
+    model_names: Sequence[str],
+    get: Any,
+    environ: Mapping[str, str],
+) -> dict[str, Any]:
+    """Return the router's ``/props`` per model and the ``LLAMA_ARG_*`` names set.
+
+    *get* takes a router path and returns its JSON. Only call it for models the
+    router already loaded: ``/props`` on an unloaded model may load it.
+
+    Raises:
+        ValueError: ``/props`` answered with nothing for a model.
+    """
+    from urllib.parse import quote
+
+    props: dict[str, Any] = {}
+    for name in model_names:
+        answer = get(f"/props?model={quote(name, safe='')}")
+        if not answer:
+            raise ValueError(f"/props returned nothing for {name}")
+        props[name] = answer
+    llama_args = sorted(k for k in environ if k.startswith("LLAMA_ARG_"))
+    return {"props": props, "llama_arg_env": llama_args}

@@ -54,7 +54,7 @@ router_config.prepare_environment(
 
 from _lib.llamacpp_runtime import verify_llamacpp_runtime  # noqa: E402
 from _lib.run_record import record_run_start  # noqa: E402
-from ranking_lib import result_id  # noqa: E402
+from ranking_lib import result_id, server_snapshot  # noqa: E402
 from sweep_lib import chunking_guard, compare_rankings, verify_input_hashes  # noqa: E402
 
 SEARCH_MODES = {
@@ -155,7 +155,26 @@ def preflight(plan: dict, load: list[str], models: list[str] | None = None) -> d
         _load_block(block), base_url=router_config.verify_url(settings)
     )
     record_run_start(EXP_DIR, runtime=found.as_run_record())
+    _write_props_snapshot(plan, load)
     return found.as_run_record()
+
+
+def _write_props_snapshot(plan: dict, load: list[str]) -> None:
+    """Append the router's /props for each loaded model (spec: pin server arguments)."""
+    import urllib.request
+
+    base = f"http://127.0.0.1:{router_config.ROUTER_PORT}"
+
+    def get(path: str) -> dict:
+        # S310: the URL is the fixed local router address, never caller input.
+        with urllib.request.urlopen(base + path, timeout=60) as response:  # noqa: S310
+            return json.loads(response.read().decode())
+
+    names = [router_config.model_name(router_config.plan_model(plan, f)) for f in load]
+    snap = server_snapshot(names, get, os.environ)
+    snap["argv"] = sys.argv
+    with (OUTPUT / "server-props.jsonl").open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(snap) + "\n")
 
 
 def _load_block(block: dict):

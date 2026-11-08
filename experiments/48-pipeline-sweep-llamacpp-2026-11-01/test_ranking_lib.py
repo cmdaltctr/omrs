@@ -53,3 +53,26 @@ def test_a_moved_vector_names_the_query_and_both_lists():
 def test_different_id_sets_are_refused():
     with pytest.raises(ValueError, match="same chunk ids"):
         neighbour_mismatches(VECTORS, {"a": VECTORS["a"]}, k=2)
+
+
+# --- /props snapshot (spec: pin every server argument; review finding 4) ------
+
+from ranking_lib import server_snapshot  # noqa: E402
+
+
+def test_snapshot_reads_props_per_model_and_lists_llama_arg_names():
+    calls = []
+
+    def fake_get(path):
+        calls.append(path)
+        return {"build_info": "b11941", "default_generation_settings": {"speculative": False}}
+
+    snap = server_snapshot(["m:Q8_0"], fake_get, environ={"LLAMA_ARG_CTX_SIZE": "9", "PATH": "x"})
+    assert calls == ["/props?model=m%3AQ8_0"]
+    assert snap["props"]["m:Q8_0"]["build_info"] == "b11941"
+    assert snap["llama_arg_env"] == ["LLAMA_ARG_CTX_SIZE"]
+
+
+def test_snapshot_refuses_an_empty_props_answer():
+    with pytest.raises(ValueError, match="/props"):
+        server_snapshot(["m"], lambda path: {}, environ={})
