@@ -16,7 +16,7 @@ Issue #161 (severity high, likelihood 3 x impact 8 = 24). Some scanned old print
   1. **Refit router threshold**: the existing Clef-Flash router with a threshold fitted on a set of old prints, confirmed on a separate held-out set.
   2. **Cheap text signal**: a deterministic old-print text score (for example the share of tokens found in a word list for the page's language, or character n-gram plausibility) with no model call.
 - Production change only if a signal passes the gates on the held-out set. That follow-up (a default change, a new page rule through the reading-parts registry, Settings exposure) is written as its own change after the result.
-- G7 (reversed Arabic) and table-loss pages are recorded as known limits, out of scope here.
+- G7 (reversed Arabic, issue #196) and table-loss pages (issue #197) are recorded as known limits, out of scope here.
 
 ## Capabilities
 
