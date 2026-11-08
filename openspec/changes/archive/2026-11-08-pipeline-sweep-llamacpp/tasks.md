@@ -51,7 +51,7 @@
 - [x] 6.1 Write `report.md`: Answer box, the D5 exit table with the Experiment 2 and 3 values beside each result, the determinism result, the timing and estimate table, and the known differences (LanceDB, runtime). Every number names its `output/` file. Verify: `uv run --no-sync omrs experiments check` passes. (2026-11-08: Experiment 2 and 3 values added after the second review.)
 - [x] 6.2 Set `status` (`PASS` or `FAIL`) and `finding` in `experiment.json`, then run `uv run --no-sync omrs experiments index --write`. Verify: the index row matches the record.
 - [x] 6.3 For each failed stage, write one line in the report with the fix and whether it needs its own change. Verify: no failed stage is left without a line.
-- [ ] 6.4 Tell the user that Part B gives the numbers Experiment 35 task 1.4 reuses, with the machine, GGUF hashes and build they hold (design D7). Do not edit that change. Verify: the message names the output file and the build.
+- [x] 6.4 Tell the user that Part B gives the numbers Experiment 35 task 1.4 reuses, with the machine, GGUF hashes and build they hold (design D7). Do not edit that change. Verify: the message names the output file and the build.
 
 ## 7. Integration checks
 

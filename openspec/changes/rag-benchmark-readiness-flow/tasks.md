@@ -46,7 +46,7 @@ The order is the operator's (2026-11-06, design D1). Do not reorder groups. Stop
 - [x] 5.1 Rebase the branch onto `v3` (222 commits behind on 2026-11-06). Renumber its experiment folder from `43-...` to the next free number (`omrs experiments new` rule); keep its frozen plan history honest with an amendment.
 - [x] 5.2 Update the change's design and protocol: OMRS-managed router (`llama-server`, pinned b11941), not the Llama app's `llama serve`; Qwen3-Embedding-4B; RunPod edition (Linux CUDA build, `omrs llamacpp install`). Record as a dated amendment before any run.
 - [x] 5.3 GATE G6: the operator approves the RunPod budget (load the `runpod` skills first; state the hourly price before creating any pod).
-- [ ] 5.4 Run the sweep, check its exit rule, copy outputs to `~/Development/DATA/omrs/`, write the report, PR, merge on the operator's word, archive.
+- [x] 5.4 Run the sweep, check its exit rule, copy outputs to `~/Development/DATA/omrs/`, write the report, PR, merge on the operator's word, archive.
 
 ## 6. Experiment 35
 
