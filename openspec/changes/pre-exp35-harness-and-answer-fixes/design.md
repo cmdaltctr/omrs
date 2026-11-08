@@ -176,6 +176,8 @@ Outside the pod:
 5. GLM-5.3 runs the same full split through the Z.AI API from the Mac (about $11), so the paper has its number.
 6. Experiment 20's 120 claim triples run again on GLM-5.3 at reasoning `low` (Experiment 20 left reasoning at the host default). Keep `low` if unsupported recall is 0.95 or more and false rejection is 0.05 or less. Otherwise use `high` and re-price.
 
+5. Arm smoke run, after steps 3 and 4 pass. Run every 35a arm end to end on a fixed, seeded set of 5 questions per dataset: ingest, retrieval, answer, Ragas judging, and the claim check through all three judge strategies (`clef_flash`, `granite_guardian`, `chat` with GLM-5.3). Run each arm twice. Pass rule: zero errors; every claim has a verdict from each strategy; every call record has model id, host or file SHA-256, prompt-format version and settings; the second run gives the same verdicts and the same ranked ids. A failure stops the session and goes to the operator. Nothing in 35a is frozen until this step passes.
+
 Dataset terms: the set is gated (the operator has accepted the terms) and licensed CC-BY-ND-4.0. Use it for evaluation only, never publish a changed copy, and keep it out of git (store under `~/Development/DATA/omrs/`, with its SHA-256 in `DATA_LOCATIONS.md`). If Clef-Flash misses step 4, D10's fallback applies. If Granite misses step 4, the 35a report drops it from the panel and says why; the operator decides whether to replace it.
 
 ## Risks / Trade-offs
