@@ -35,17 +35,17 @@ The order is the operator's (2026-11-06, design D1). Do not reorder groups. Stop
 
 ## 4. Live switch (operator approval needed)
 
-- [ ] 4.1 GATE G5: the operator approves touching the live app. No re-index: the live collections are test data (operator, 2026-11-07).
-- [ ] 4.2 Back up `~/.omrs/lancedb`, `~/.omrs/workspace/workspace.db` and `~/.config/omrs/omrs.jsonc` (dated copies). Reinstall the live app from `v3` with lock constraints and the `local-ocr-indra` extra.
-- [ ] 4.3 Router setup per `one-llamacpp-router` task group 13: provision the pinned router, model list (Qwen3-Embedding-4B, Qwen3-4B, Clef-Flash if a router is wanted), one router URL in `omrs.jsonc`, remove stale keys (`embed_model`, `ollama_classify_model`, old role URLs, `llamacpp_chat_server`). Local OCR: list `[pp-ocrv6-small, indra]`, cuts default, `ocr_non_latin_routing` off, Indra weights and `INDRA_OCR_MODEL_DIR`. Remove `OCR_LOCAL_MIN_CONFIDENCE` from the environment, `.env` and the login plist first (it now stops start-up), and press "Remove it" for `ocr_local_min_confidence` in Settings (archived `local-ocr-per-backend-cuts` group 10).
-- [ ] 4.4 Restart, check Integrations (router and models Ready, both local OCR backends Ready with cuts 0.92 and 0.94). Verify: one small test ingest gets model-chosen categories (not keyword fallback), a search finds its known phrase, and no Ollama process is needed.
-- [ ] 4.5 Delete the backups once verified (operator preference), record the new live state in agent memory.
+- [x] 4.1 GATE G5: the operator approves touching the live app. No re-index: the live collections are test data (operator, 2026-11-07).
+- [x] 4.2 Back up `~/.omrs/lancedb`, `~/.omrs/workspace/workspace.db` and `~/.config/omrs/omrs.jsonc` (dated copies). Reinstall the live app from `v3` with lock constraints and the `local-ocr-indra` extra.
+- [x] 4.3 Router setup per `one-llamacpp-router` task group 13: provision the pinned router, model list (Qwen3-Embedding-4B, Qwen3-4B, Clef-Flash if a router is wanted), one router URL in `omrs.jsonc`, remove stale keys (`embed_model`, `ollama_classify_model`, old role URLs, `llamacpp_chat_server`). Local OCR: list `[pp-ocrv6-small, indra]`, cuts default, `ocr_non_latin_routing` off, Indra weights and `INDRA_OCR_MODEL_DIR`. Remove `OCR_LOCAL_MIN_CONFIDENCE` from the environment, `.env` and the login plist first (it now stops start-up), and press "Remove it" for `ocr_local_min_confidence` in Settings (archived `local-ocr-per-backend-cuts` group 10).
+- [x] 4.4 Restart, check Integrations (router and models Ready, both local OCR backends Ready with cuts 0.92 and 0.94). Verify: one small test ingest gets model-chosen categories (not keyword fallback), a search finds its known phrase, and no Ollama process is needed.
+- [x] 4.5 Delete the backups once verified (operator preference), record the new live state in agent memory.
 
 ## 5. Pipeline sweep on RunPod (worktree `omrs-v3-feat-pipeline-sweep-llamacpp`)
 
-- [ ] 5.1 Rebase the branch onto `v3` (222 commits behind on 2026-11-06). Renumber its experiment folder from `43-...` to the next free number (`omrs experiments new` rule); keep its frozen plan history honest with an amendment.
-- [ ] 5.2 Update the change's design and protocol: OMRS-managed router (`llama-server`, pinned b11941), not the Llama app's `llama serve`; Qwen3-Embedding-4B; RunPod edition (Linux CUDA build, `omrs llamacpp install`). Record as a dated amendment before any run.
-- [ ] 5.3 GATE G6: the operator approves the RunPod budget (load the `runpod` skills first; state the hourly price before creating any pod).
+- [x] 5.1 Rebase the branch onto `v3` (222 commits behind on 2026-11-06). Renumber its experiment folder from `43-...` to the next free number (`omrs experiments new` rule); keep its frozen plan history honest with an amendment.
+- [x] 5.2 Update the change's design and protocol: OMRS-managed router (`llama-server`, pinned b11941), not the Llama app's `llama serve`; Qwen3-Embedding-4B; RunPod edition (Linux CUDA build, `omrs llamacpp install`). Record as a dated amendment before any run.
+- [x] 5.3 GATE G6: the operator approves the RunPod budget (load the `runpod` skills first; state the hourly price before creating any pod).
 - [ ] 5.4 Run the sweep, check its exit rule, copy outputs to `~/Development/DATA/omrs/`, write the report, PR, merge on the operator's word, archive.
 
 ## 6. Experiment 35
