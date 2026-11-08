@@ -2,7 +2,7 @@
 
 - **Folder**: `48-pipeline-sweep-llamacpp-2026-11-01` (numbered 43 until 2026-11-07; see Amendments)
 - **Record**: [experiment.json](experiment.json) holds the category, size and status.
-- **Operator**: Aizat, with the a-build agent.
+- **Operator**: the project operator, with the a-build agent.
 - **Related**: change `pipeline-sweep-llamacpp`; ADR-103 (llama.cpp GGUF runtime), ADR-074. Feeds Experiment 35 (tasks 1.4 and 1.5) and its RunPod edition 35a. Baseline references: Experiments 2 and 3.
 
 ## 1. Question
@@ -51,9 +51,9 @@ Amendment A3 (2026-11-07) replaces steps 2 and 6 to 8 where they name `llama ser
 3. Part A: `uv run --no-sync python run_part_a.py --resume` (hash check, chunking guard, live-server check, run record, ingest, three search modes, answers with and without claim checking).
 4. Determinism: `uv run --no-sync python run_part_a.py --mode determinism --resume` (new process, same index).
 5. Comparison arms: `uv run --no-sync python run_part_a.py --mode arms --resume` (0.6B and 8B dense indexes, 17 questions, reranker off).
-6. Part B: `uv run --no-sync python run_timing.py --model 0.6b|4b|8b --resume` (one model at a time; restart the router per model).
-7. Token counts: `uv run --no-sync python run_timing.py --tokenize --resume`, then the extrapolation.
-8. Part C: `uv run --no-sync python run_timing.py --part-c --resume` (exact against fast, fresh router starts).
+6. Part B: `uv run --no-sync python run_timing.py --model 0.6b|4b|8b` (one model at a time; restart the router per model).
+7. Token counts: `uv run --no-sync python run_timing.py --tokenize`, then `--extrapolate`.
+8. Part C: `uv run --no-sync python run_timing.py --part-c --stage exact`, then `--stage fast`, then `--stage compare` (fresh router starts).
 
 Each step appends one line per run to `output/run-records.jsonl` and writes one JSONL file per stage in `output/`. A failed item is recorded and the run continues.
 

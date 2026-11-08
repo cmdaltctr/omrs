@@ -54,7 +54,12 @@ router_config.prepare_environment(
 
 from _lib.llamacpp_runtime import verify_llamacpp_runtime  # noqa: E402
 from _lib.run_record import record_run_start  # noqa: E402
-from ranking_lib import result_id, server_snapshot  # noqa: E402
+from ranking_lib import (  # noqa: E402
+    answer_fields,
+    result_id,
+    source_matches,
+    write_props_snapshot,
+)
 from sweep_lib import chunking_guard, compare_rankings, verify_input_hashes  # noqa: E402
 
 SEARCH_MODES = {
@@ -121,7 +126,7 @@ def mark_done(stage: str, payload: dict) -> None:
 def score_row(row: dict, expected_source: str) -> dict:
     """Hit@1 and MRR contribution for one question against its gold source."""
     sources = [str(item.get("source", "")) for item in row.get("results", [])]
-    hits = [expected_source.lower() in source.lower() for source in sources]
+    hits = [source_matches(source, expected_source) for source in sources]
     return {
         "question": row["question"],
         "mode": row["mode"],
@@ -155,26 +160,15 @@ def preflight(plan: dict, load: list[str], models: list[str] | None = None) -> d
         _load_block(block), base_url=router_config.verify_url(settings)
     )
     record_run_start(EXP_DIR, runtime=found.as_run_record())
-    _write_props_snapshot(plan, load)
-    return found.as_run_record()
-
-
-def _write_props_snapshot(plan: dict, load: list[str]) -> None:
-    """Append the router's /props for each loaded model (spec: pin server arguments)."""
-    import urllib.request
-
-    base = f"http://127.0.0.1:{router_config.ROUTER_PORT}"
-
-    def get(path: str) -> dict:
-        # S310: the URL is the fixed local router address, never caller input.
-        with urllib.request.urlopen(base + path, timeout=60) as response:  # noqa: S310
-            return json.loads(response.read().decode())
-
     names = [router_config.model_name(router_config.plan_model(plan, f)) for f in load]
-    snap = server_snapshot(names, get, os.environ)
-    snap["argv"] = sys.argv
-    with (OUTPUT / "server-props.jsonl").open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(snap) + "\n")
+    write_props_snapshot(
+        f"http://127.0.0.1:{router_config.ROUTER_PORT}",
+        names,
+        os.environ,
+        OUTPUT / "server-props.jsonl",
+        sys.argv,
+    )
+    return found.as_run_record()
 
 
 def _load_block(block: dict):
@@ -274,8 +268,8 @@ def _one_search(engine, query, mode, overrides, collection, expected, gold_pages
         for item in results
     ]
     row = {"qid": qid or query[:40], "question": query, "mode": mode, "expected": expected,
-           "gold_pages": gold_pages or [], "seconds": round(time.perf_counter() - started, 2),
-           "error": error, "results": slim}
+           "collection": collection, "gold_pages": gold_pages or [],
+           "seconds": round(time.perf_counter() - started, 2), "error": error, "results": slim}
     if expected and not error:
         hit = score_row(row, expected)
         row["hit_at_1"], row["reciprocal_rank"] = hit["hit_at_1"], hit["reciprocal_rank"]
@@ -306,9 +300,10 @@ def run_answers(engine_factory, questions: list[dict], financebench: list[dict],
                                              collection_name=COLLECTION)
             except Exception as exc:  # noqa: BLE001 - record and continue (D4)
                 error = f"{type(exc).__name__}: {exc}"
+            fields = answer_fields(answer, verify)
             stage.append({"qid": question["qid"], "verify_claims": verify,
                           "seconds": round(time.perf_counter() - started, 2),
-                          "error": error,
+                          **fields, "error": error or fields["error"],
                           "answer": str(answer.get("answer", ""))[:500],
                           "citations": len(answer.get("citations", []) or [])})
             print(f"[answer verify={verify}] {question['qid']}: {stage[-1]['seconds']}s"
@@ -375,6 +370,7 @@ def main() -> None:
         return
 
     if args.mode == "determinism":
+        preflight(plan, load=[BASELINE_MODEL], models=[BASELINE_MODEL])
         if args.limit is not None:
             questions = questions[: args.limit]
             financebench = financebench[: args.limit]

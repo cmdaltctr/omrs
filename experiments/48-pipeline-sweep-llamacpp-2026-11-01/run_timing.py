@@ -7,7 +7,7 @@ Stages (each resumes via its own output file):
   the production chunker and the server's ``/tokenize``; count FinanceBench
   pages of every PDF the 150 open questions cite.
 - ``--extrapolate``  turn timing rows and token counts into hours per corpus.
-- ``--part-c --stage exact|fast``  embed the 4B slice chunks and the questions
+- ``--part-c --stage exact|fast``  embed the 4B slice chunks
   through the router (concurrency 1 or 8). ``--part-c --stage compare``
   compares the two vector sets and rankings.
 
@@ -25,6 +25,7 @@ import argparse
 import asyncio
 import json
 import math
+import os
 import re
 import sys
 import threading
@@ -61,7 +62,11 @@ ROUTER = router_config.ROUTER_URL.removesuffix("/v1")
 
 from _lib.llamacpp_runtime import verify_llamacpp_runtime  # noqa: E402
 from _lib.run_record import record_run_start  # noqa: E402
-from ranking_lib import neighbour_mismatches  # noqa: E402
+from ranking_lib import (  # noqa: E402
+    neighbour_mismatches,
+    require_empty_collection,
+    write_props_snapshot,
+)
 from sweep_lib import (  # noqa: E402
     compare_vectors,
     extrapolate,
@@ -139,6 +144,13 @@ def store_texts(collection: str) -> list[dict]:
     return [{"id": str(row[id_col]), "text": str(row[text_col])} for row in table.to_pylist()]
 
 
+def collection_chunk_count(collection: str) -> int:
+    """Count the chunks of a scratch collection; 0 when it does not exist."""
+    from omrs.core.vectordb.lancedb.store import LanceVectorStore
+
+    return LanceVectorStore(uri=str(OUTPUT / "lancedb")).count(collection)
+
+
 def check_runtime(plan: dict, files: Sequence[str]) -> None:
     """Live-server check of *files* against ``llamacpp_router_url``, then the run record."""
     from omrs.compose import get_settings
@@ -151,6 +163,8 @@ def check_runtime(plan: dict, files: Sequence[str]) -> None:
         RuntimeBlock.model_validate(block), base_url=router_config.verify_url(get_settings())
     )
     record_run_start(EXP_DIR, runtime=found.as_run_record())
+    names = [router_config.model_name(router_config.plan_model(plan, f)) for f in files]
+    write_props_snapshot(ROUTER, names, os.environ, OUTPUT / "server-props.jsonl", sys.argv)
 
 
 def tokenize_count(texts: Sequence[str], model: str) -> int:
@@ -217,6 +231,7 @@ def stage_model(model_key: str, plan: dict, limit: int | None, router) -> None:
         if limit is not None:
             files = files[:limit]
         collection = f"sweep43_timing_{model_key.replace('.', '')}_{slice_name}"
+        require_empty_collection(collection, collection_chunk_count(collection))
         sampler = RssSampler()
         sampler.start()
         # Linux means the RunPod CUDA pod (plan amendment A3); macOS is Metal, no GPU value.

@@ -41,15 +41,15 @@
 ## 5. Run (heavy: on the RunPod pod after gate G6 of the master flow; tell the user before each server starts)
 
 - [x] 5.1 Run Part A. Verify: `output/run-records.jsonl` has a line with `runtime` holding one build and both model hashes, and every stage file exists.
-- [x] 5.2 Run the determinism repeat and the comparison arms. Verify: their output files exist and name the index they read.
+- [x] 5.2 Run the determinism repeat and the comparison arms. Verify: their output files exist and name the index they read. (2026-11-08: the run's rows carry no collection name; the harness now writes `collection` on every row; deviation D10.)
 - [x] 5.3 Run Part B for 0.6B, 4B and 8B, one at a time. Verify: three run-record lines, one per model, and nine timing rows (three models by three slices).
 - [ ] 5.4 Run the token counts and the extrapolation. Verify: one estimate per model and corpus.
 - [ ] 5.5 Run Part C (design D6a): 4B exact mode, then fast mode, on the Part B slices. Verify: one output row per vector pair, the lowest and median cosine, the top-10 ranking comparison and both speeds are written to `output/`.
 
 ## 6. Report
 
-- [x] 6.1 Write `report.md`: Answer box, the D5 exit table with the Experiment 2 and 3 values beside each result, the determinism result, the timing and estimate table, and the known differences (LanceDB, runtime). Every number names its `output/` file. Verify: `uv run --no-sync omrs experiments check` passes.
-- [ ] 6.2 Set `status` (`PASS` or `FAIL`) and `finding` in `experiment.json`, then run `uv run --no-sync omrs experiments index --write`. Verify: the index row matches the record.
+- [x] 6.1 Write `report.md`: Answer box, the D5 exit table with the Experiment 2 and 3 values beside each result, the determinism result, the timing and estimate table, and the known differences (LanceDB, runtime). Every number names its `output/` file. Verify: `uv run --no-sync omrs experiments check` passes. (2026-11-08: Experiment 2 and 3 values added after the second review.)
+- [x] 6.2 Set `status` (`PASS` or `FAIL`) and `finding` in `experiment.json`, then run `uv run --no-sync omrs experiments index --write`. Verify: the index row matches the record.
 - [x] 6.3 For each failed stage, write one line in the report with the fix and whether it needs its own change. Verify: no failed stage is left without a line.
 - [ ] 6.4 Tell the user that Part B gives the numbers Experiment 35 task 1.4 reuses, with the machine, GGUF hashes and build they hold (design D7). Do not edit that change. Verify: the message names the output file and the build.
 

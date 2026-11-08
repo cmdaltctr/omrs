@@ -5,9 +5,9 @@
   "date": "2026-11-01",
   "category": "runtime",
   "size": "Standard",
-  "status": "INCONCLUSIVE",
+  "status": "PASS",
   "superseded_by": null,
-  "finding": "G1 and G2 pass on the OMRS llama.cpp router (b11941, CUDA, RTX 4090): 0 errors; 0.6B 16/17 MRR 0.971, 8B 17/17 MRR 1.000, 4B+reranker 16/17. G3 not tested (harness stored blank ids). Fast mode refused (lowest cosine 0.9989; top-10 neighbours change). CPU chunking dominates wall time.",
+  "finding": "All three gates pass on the OMRS llama.cpp router (b11941, CUDA, RTX 4090): 0 errors; 0.6B 16/17 MRR 0.971, 8B 17/17 MRR 1.000, 4B+reranker 16/17; G3 rerun 0 ranking changes over 168 searches. Fast mode refused (lowest cosine 0.9989; neighbours reorder). CPU chunking dominates wall time.",
   "purpose": "optimisation",
   "refs": {
     "adrs": [],
