@@ -1,6 +1,6 @@
 ## Purpose
 
-Let the operator fix the temperature and seed that OMRS sends to the Chat model and the claim judge, so answers can repeat, and record what each request carried.
+Let the operator fix the temperature, seed and OpenRouter hosts that OMRS uses for the Chat model and the claim judge, so answers can repeat, and record what each request carried and which host served it.
 
 ## ADDED Requirements
 
@@ -52,7 +52,7 @@ A provider with no mapping for temperature or seed SHALL send nothing for that v
 
 ### Requirement: Settings shows and saves the values
 
-The Chat panel SHALL show and save `answer.temperature` and `answer.seed`. The Judge panel SHALL show and save `answer.verify_temperature` and `answer.verify_seed`. Saves SHALL write `omrs.jsonc` with the revision check, as the other Chat and Judge values do. A value locked by `env` or `dotenv` SHALL show as locked and SHALL NOT be saved.
+The Chat panel SHALL show and save `answer.temperature`, `answer.seed` and `answer.allowed_hosts`. The Judge panel SHALL show and save `answer.verify_temperature`, `answer.verify_seed` and `answer.verify_allowed_hosts`. Saves SHALL write `omrs.jsonc` with the revision check, as the other Chat and Judge values do. A value locked by `env` or `dotenv` SHALL show as locked and SHALL NOT be saved.
 
 #### Scenario: Save from the Chat panel
 
@@ -66,7 +66,7 @@ The Chat panel SHALL show and save `answer.temperature` and `answer.seed`. The J
 
 ### Requirement: Each answer records what its requests carried
 
-Each answer result SHALL hold a `sampling` record that gives, for the Chat role and for the claim judge when it ran, the temperature and seed the requests carried, or that none was sent. A temperature added by a library default SHALL be recorded as that value.
+Each answer result SHALL hold a `sampling` record that gives, for the Chat role and for the claim judge when it ran, the temperature and seed the requests carried, or that none was sent. A temperature added by a library default SHALL be recorded as that value. The record SHALL also give the host that served the request and that host's published support for each value the request set. A provider that does not report its host SHALL record host and support as unknown.
 
 #### Scenario: Library default recorded
 
@@ -77,3 +77,60 @@ Each answer result SHALL hold a `sampling` record that gives, for the Chat role 
 
 - **WHEN** `answer.temperature` is `0` and `answer.seed` is `20261101`
 - **THEN** the answer result MUST record temperature 0 and seed 20261101 for the Chat role
+
+#### Scenario: Host and support recorded
+
+- **WHEN** an answer runs on OpenRouter and the reply names host `Fireworks`, and the endpoint list shows that host takes `temperature` and `seed`
+- **THEN** the answer result MUST record host `Fireworks` and `accepted` true for both values
+
+### Requirement: The answer contract declares the new result fields
+
+The `AnswerResponse` schema in `openapi.yaml` SHALL declare `sampling`, `judge_calls`, `usage` and `reasoning` and SHALL NOT allow other undeclared properties.
+
+#### Scenario: Contract declares the record
+
+- **WHEN** the contract test compares every key a completed answer result can hold with the `AnswerResponse` properties
+- **THEN** every key MUST be declared, and `additionalProperties` MUST be false
+
+### Requirement: Allowed hosts are settings for each role
+
+`answer.allowed_hosts` (Chat) and `answer.verify_allowed_hosts` (judge) SHALL each hold OpenRouter host names separated by commas, or be empty. A list SHALL resolve through the normal source order (ADR-087), with `ANSWER__ALLOWED_HOSTS` and `ANSWER__VERIFY_ALLOWED_HOSTS` as the environment names. An empty list SHALL leave the request as it was. A provider other than OpenRouter SHALL send nothing for the list and the settings read SHALL report that it ignores it.
+
+#### Scenario: Empty list keeps the request
+
+- **WHEN** both lists are empty and an answer runs on OpenRouter
+- **THEN** the request MUST carry no `provider` routing field
+
+#### Scenario: Provider without host routing
+
+- **WHEN** the Chat provider is `llamacpp` and `answer.allowed_hosts` is `Fireworks`
+- **THEN** the request MUST carry no host field, and `GET /v1/settings/chat` MUST report that the provider ignores the list
+
+#### Scenario: Locked list
+
+- **WHEN** `ANSWER__ALLOWED_HOSTS` is set in the process environment
+- **THEN** the Chat panel MUST show the list as locked and a save of it MUST be refused with 409
+
+### Requirement: A set host list pins OpenRouter calls to hosts that take the values
+
+When a list is set on OpenRouter, every request for that role SHALL be limited to the listed hosts, with no fallback to another host, and to hosts that take every value the request sets. Before the first call of that role in a process, OMRS SHALL read the model's endpoint list. When no listed host supports every set value, OMRS SHALL make no call and SHALL refuse with a message that names the model, the hosts and the missing values.
+
+#### Scenario: Host that drops the seed
+
+- **WHEN** `answer.seed` is `20261101`, `answer.allowed_hosts` is `Relace` and the endpoint list shows `Relace` without `seed`
+- **THEN** OMRS MUST make no request and MUST return an error that names the model, `Relace` and `seed`
+
+#### Scenario: Listed host takes the values
+
+- **WHEN** `answer.allowed_hosts` is `Fireworks` and the endpoint list shows `Fireworks` with `temperature` and `seed`
+- **THEN** the request MUST carry `provider.only` of `Fireworks`, `allow_fallbacks` false and `require_parameters` true, and MUST carry the temperature and seed
+
+#### Scenario: Judge list is separate
+
+- **WHEN** `answer.verify_claims` is true, `answer.allowed_hosts` is `Fireworks` and `answer.verify_allowed_hosts` is empty
+- **THEN** judge requests MUST NOT carry a host limit, and Chat requests MUST carry it
+
+#### Scenario: Reply names a host outside the list
+
+- **WHEN** the reply names a host that is not in the list
+- **THEN** the `sampling` record MUST hold that host and the answer MUST report the mismatch

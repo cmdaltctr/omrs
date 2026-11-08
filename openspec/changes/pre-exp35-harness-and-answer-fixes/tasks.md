@@ -1,14 +1,14 @@
 # Tasks
 
-Rules for every group: tests first and shown to fail on the current code; one mutation check per behaviour; keep files under 500 lines; re-pin the tripwire only by test-ID diff; work in `omrs-v3-feat-pre-exp35-harness-and-answer-fixes`; no live app, no pod.
+Rules for every group: tests first and shown to fail on the current code; one mutation check per behaviour; keep files under 500 lines; re-pin the tripwire only by test-ID diff; work in `omrs-v3-feat-pre-exp35-harness-and-answer-fixes`; no live app; no pod in groups 1 to 9. Group 10 is the only group that spends money, and only with the operator's go.
 
 ## 1. Answer sampling settings (spec `answer-sampling`, design D1 to D3)
 
 - [ ] 1.1 Check each provider's request field for temperature and seed with Context7 (llama.cpp server, OpenRouter, OpenAI, Ollama, Anthropic). Record the table in design D2 if it differs. Verify: design D2 matches the docs.
-- [ ] 1.2 Add `temperature`, `seed`, `verify_temperature`, `verify_seed` to `AnswerSettings` and `AnswerBlock` with range checks. Tests: values read from `omrs.jsonc` and env; out-of-range refused. Verify: new tests fail before, pass after.
+- [ ] 1.2 Add `temperature`, `seed`, `verify_temperature`, `verify_seed` to `AnswerSettings` and `AnswerBlock` with range checks. Add a test that `AnswerSettings` and `AnswerBlock` hold the same field names and defaults (the Metadata pair has one; today `AnswerBlock(**settings.answer.model_dump())` alone guards the mirror, `test_provider_symmetry.py:191`). Tests: values read from `omrs.jsonc` and env; out-of-range refused; the mirror test fails when one model gains a field the other lacks. Verify: new tests fail before, pass after; mutation check on the mirror test.
 - [ ] 1.3 Add `sampling_kwargs` to each provider module, `temperature=` and `seed=` keywords to each provider's `build()`, and `ignored_sampling` to the LLM registry; pass the values from `compose_answer.py` for the Chat and judge roles. Tests per provider: request body carries the set values, empty values leave the request as before (temperature 0.1 on OpenAI-like), Chat values never reach judge requests, Anthropic reports the seed ignored, and on OpenRouter and OpenAI-compatible a set reasoning level and a set seed both reach the body. Verify: tests plus one mutation per mapping.
 - [ ] 1.4 Record the sampling values each request carried in the answer result (read from the built LLM). Tests: library default recorded as 0.1; set values recorded; judge record only when the judge ran. Verify: the new tests fail before the change, pass after.
-- [ ] 1.5 Contract first: `openapi.yaml` gains the four values on the Chat and Judge settings reads and saves, the "ignores" list, and the answer-result `sampling` record. Then `chat_settings.py` and `judge_settings.py`. Tests: OpenAPI conformance, out-of-range save refused with 400, save writes `omrs.jsonc` with the revision check, locked value refused with 409. Verify: the new tests fail before the change, pass after.
+- [ ] 1.5 Contract first: `openapi.yaml` gains the four values on the Chat and Judge settings reads and saves, the "ignores" list, and the answer-result `sampling` record. `AnswerResponse` (`openapi.yaml:7133`) gains `sampling`, `judge_calls`, `usage` and `reasoning` and is closed with `additionalProperties: false`. Then `chat_settings.py` and `judge_settings.py`. Tests: OpenAPI conformance; a test that every key the result builders and `engine_answer.py` (`usage`, `reasoning`) emit is declared on `AnswerResponse`; out-of-range save refused with 400; save writes `omrs.jsonc` with the revision check; locked value refused with 409. Verify: the new tests fail before the change, pass after.
 - [ ] 1.6 Web: Chat panel and Judge panel show and save the values, with the "ignored by this provider" note and the lock state. Vitest tests; browser check at 1280 px and 390 px on a scratch config and a free port. Verify: Vitest fails before, passes after; screenshots saved.
 - [ ] 1.7 Docs: `docs/guides/configuration.md` and `docs/guides/mcp-tools.md` name the four settings, their env names, the 0.1 library default and the answer-result record. Verify: grep both guides for the four env names.
 
@@ -26,24 +26,55 @@ Rules for every group: tests first and shown to fail on the current code; one mu
 - [ ] 3.5 GGUF folder resolved to an absolute path on read; a missing folder refused with the variable and path named. Tests for relative path (working folder changed after the read) and missing folder (no router launch). Verify: both fail on the copied code.
 - [ ] 3.6 Carry the review lessons into the new tests (blank result ids, empty comparisons, `--limit` smoke runs, tuple JSON keys, env overrides). Verify: one test per lesson, each mutation-checked.
 
-## 4. Login item keeps the OCR variables (spec `web-login-item`, design D7)
+## 4. Login item keeps the OCR folder (spec `web-login-item`, design D7)
 
-- [ ] 4.1 Tests for the four scenarios (re-install keeps, shell wins, others not carried, nothing to carry) and the printed line. Verify: they fail on current `render_plist`.
-- [ ] 4.2 Implement the allow-list in `_web_login_item.py` (`build_plan` and `render_plist`). Verify: tests pass; mutation check on the allow-list.
-- [ ] 4.3 Update `docs/guides/cli-reference.md` (`omrs web install`) and verify the carried variables are named there; comment on issue #175 that PR #176 fixed the two library paths and this change fixes the Indra folder; close it after merge.
+- [ ] 4.1 Tests for the four scenarios (re-install keeps, shell wins, others not carried including the two library paths, nothing to carry) and the printed line. Verify: they fail on current `render_plist`.
+- [ ] 4.2 Split first: move `_installed_plan`, `_read_link`, `_current_port` and the body of `status` out of `transports/cli/web_login_item.py` (493 lines) into `_web_login_item_status.py`, and move test patch targets with the functions (root gotcha 8b). Then implement the one-entry allow-list (`INDRA_OCR_MODEL_DIR`) in `_web_login_item.py` (`build_plan` and `render_plist`). Verify: the size-ceiling test passes with `web_login_item.py` under 480 lines; the existing login item tests pass unchanged apart from patch targets; the 4.1 tests pass; mutation check on the allow-list.
+- [ ] 4.3 Update `docs/guides/cli-reference.md` (`omrs web install`) and verify `INDRA_OCR_MODEL_DIR` is named there as the one carried variable; comment on issue #175 that PR #176 fixed the two library paths and this change fixes the Indra folder; close it after merge.
 
-## 5. Records and follow-ups (design D6, D9)
+## 5. Records and follow-ups (design D6, D9, D12, D13)
 
-- [ ] 5.1 State in the PR body that Experiment 48 tasks 4.3, 5.4 and 5.5 stay open and that 35a's first timing step produces the Part C speeds and token counts. Verify: PR body.
-- [ ] 5.2 Carry the D9 RunPod recommendation and the D6 timing step to master task 6.1 (note in `rag-benchmark-readiness-flow/tasks.md` under 6.1). Verify: note present; `openspec validate --all --strict` passes.
+- [ ] 5.1 State in the PR body that Experiment 48 tasks 4.3, 5.4 and 5.5 stay open and that the pre-freeze session (D13) produces the Part C speeds and token counts. Verify: PR body.
+- [ ] 5.2 Carry the D9 RunPod recommendation, the D12 model matrix and the D13 pre-freeze session (which holds the D6 timing step) to master task 6.1 (note in `rag-benchmark-readiness-flow/tasks.md` under 6.1). Verify: note present; `openspec validate --all --strict` passes.
 
 ## 6. Flaky router tests (design D8)
 
 - [ ] 6.1 Router state race: regression test that injects the delay between Start's flag and its status read and fails on current code; then one re-entrant lock around `start`, `load`, `stop` and `status` in `RouterControl`. Verify: the new test and `test_every_download_failing_ends_failed_with_one_attempt_per_model` pass 200 times, including under `-n 8`; mutation check (remove the lock).
 - [ ] 6.2 Cut-off reply: test that a reply closed after the headers gives "unreachable" `(0, {})`, failing on current code; catch `http.client.HTTPException` in `process.http_get_json`. Fake router binds port 0 and reports its port. Verify: test passes; 200 runs of `test_changed_file_refused_and_others_serve` pass under `-n 8`.
 
-## 7. Close
+## 7. Allowed OpenRouter hosts (spec `answer-sampling`, design D11)
 
-- [ ] 7.1 Re-pin the tripwire by test-ID diff; `./scripts/local_ci.sh` passes; `openspec validate --all --strict` passes.
-- [ ] 7.2 Independent review subagent on the full diff; fix findings scored 4 or more.
-- [ ] 7.3 Scan `git diff origin/v3...HEAD` for `/Users/` paths and email addresses; PR into `v3`; CI green; CodeRabbit read, threads replied and resolved. Do not merge without the operator's word.
+- [ ] 7.1 Check with Context7 and the OpenRouter docs: the `provider` request fields (`only`, `allow_fallbacks`, `require_parameters`), the endpoint-list route and its `provider_name` and `supported_parameters`, and the field in the reply that names the serving host. Correct design D11 and the spec if they differ. Verify: D11 matches the docs.
+- [ ] 7.2 Add `allowed_hosts` and `verify_allowed_hosts` to `AnswerSettings` and `AnswerBlock` (comma-separated text, empty by default; the 1.2 mirror test covers them). Tests: read from `omrs.jsonc` and env; blank entries dropped. Verify: tests fail before, pass after.
+- [ ] 7.3 OpenRouter `build()` takes `allowed_hosts=` and merges `provider` into the same `extra_body` as the reasoning field; other providers report the list as ignored (`ignored_sampling`). Tests: request body with and without a list; reasoning, seed and list together; Chat list never reaches judge requests. Verify: tests plus one mutation per mapping.
+- [ ] 7.4 Endpoint check before the first call of a role: refuse with no request when no listed host supports every set value; an unexpected endpoint shape counts as "support unknown" and refuses. Tests: host without `seed` refused (message names model, host, value); host with both accepted; changed shape refused. Verify: tests fail before, pass after; mutation check (skip the check).
+- [ ] 7.5 Record `host` and `accepted` in the `sampling` record (design D3); a host outside the list is recorded and reported. Tests per scenario of the spec. Verify: tests fail before, pass after.
+- [ ] 7.6 Contract and web: `openapi.yaml` gains the two settings on the Chat and Judge reads and saves and the `sampling` fields; the Chat and Judge panels show and save them with the lock state and the "ignored" note. Vitest tests; browser check at 1280 px and 390 px on a scratch config and a free port. Verify: Vitest fails before, passes after; screenshots saved.
+- [ ] 7.7 Docs: `docs/guides/configuration.md` names `ANSWER__ALLOWED_HOSTS` and `ANSWER__VERIFY_ALLOWED_HOSTS`. Verify: grep the guide for both names.
+
+## 8. Claim-judge strategies (spec `claim-judge-strategies`, design D10)
+
+- [ ] 8.1 Read the Granite Guardian 3.3 model card (prompt format, `groundedness` criterion, `think` option, how `llama-server` takes the guardian template) and the Clef-Flash card (typed question form). Correct design D10 and the spec where they differ. Verify: D10 matches both cards.
+- [ ] 8.2 Registry and protocol: `core/answer/judges/` with `base.py`, `registry.py` and the `chat` strategy wrapping today's seam, prompt and parser. `verify_claims()` takes a `ClaimJudge`. Tests: every existing verify test passes unchanged with `chat`; unknown name refused at startup; a scratch fourth strategy runs with no dispatch change. Verify: new tests fail before, pass after; the architecture tests (no strategy import at module level) pass.
+- [ ] 8.3 Setting `answer.verify_judge` (default `chat`) in `AnswerSettings` and `AnswerBlock`, profile-overlaid, validated at startup; Judge panel shows and saves it; `openapi.yaml`, docs. Tests: env and `omrs.jsonc` read; default leaves verdicts unchanged; lock state. Verify: tests fail before, pass after; browser check at 1280 px and 390 px.
+- [ ] 8.4 `clef_flash` strategy: one `noul` question per claim through the decision adapter, threshold 0.5, 8-bit check reused from `core/providers/decision/checks.py`. Tests: P(yes) 0.92 gives `supported`, 0.12 gives `unsupported`, malformed gives `unparseable`, 4-bit file sends no request. Verify: tests fail before, pass after; mutation check on the threshold.
+- [ ] 8.5 `granite_guardian` strategy: guardian prompt with `groundedness`, mapping `yes` to `unsupported`. Tests: one per direction and one unreadable reply. Verify: tests fail before, pass after; mutation check that flips the mapping.
+- [ ] 8.6 Construction in `compose_judges.py` (transport injected; no provider import in `core/answer/judges/`); router lease and `hashes.json` SHA-256 read for local calls. Tests: import-linter contracts pass with no new `ignore_imports`; a judge that cannot start gives `verification_skipped` with a fixed reason. Verify: `uv run lint-imports` passes.
+- [ ] 8.7 `judge_calls` in the answer result: strategy, model id, host or SHA-256, prompt-format version, settings, P(yes). Tests: local and hosted entry; no claim or evidence text in the serialised result; the version string is pinned by a test so a prompt change forces a bump. Verify: tests fail before, pass after.
+- [ ] 8.8 Docs: `docs/guides/configuration.md` and `docs/guides/mcp-tools.md` name `answer.verify_judge`, the three strategies and `judge_calls`. Verify: grep both guides.
+
+## 9. Close
+
+- [ ] 9.1 Re-pin the tripwire by test-ID diff; `./scripts/local_ci.sh` passes; `openspec validate --all --strict` passes.
+- [ ] 9.2 Independent review subagent on the full diff; fix findings scored 4 or more.
+- [ ] 9.3 Scan `git diff origin/v3...HEAD` for `/Users/` paths and email addresses; PR into `v3`; CI green; CodeRabbit read, threads replied and resolved. Do not merge without the operator's word.
+
+## 10. After merge: pre-freeze RunPod session (design D13; operator-gated, spends money)
+
+Do not start before group 9 is merged, the operator has seen the quoted price, and the operator says go.
+
+- [ ] 10.1 Live reads at create time: `get-gpu-type` and `get-capacity` for the RTX 4090 (secure cloud), the Z.AI and OpenRouter keys present, the LLM-AggreFact terms accepted on the Hugging Face account. Quote the hourly price and wait for the go.
+- [ ] 10.2 One chained pod-side script: Part C timing step, the 20-answer measurement with Ragas judging (host recorded per call), then the full LLM-AggreFact test split on Clef-Flash and, after it, on Granite Guardian 3.3 8B through the router. Print the first-200 timing and ETA, and run the full set even past 2 hours. Checkpoint after each model (`--resume`), write outputs atomically.
+- [ ] 10.3 Copy every output back, check the copy, then delete the pod at once. Do not end a turn while the pod runs.
+- [ ] 10.4 From the Mac: GLM-5.3 on the same full split through the Z.AI API (about $11). Experiment 20's 120 claim triples on GLM-5.3 at reasoning `low`; keep `low` if unsupported recall is 0.95 or more and false rejection is 0.05 or less, else `high`.
+- [ ] 10.5 Score by leaderboard rules (balanced accuracy per dataset, then the plain mean). Apply the pass rule (each model within 1 point of Clef-Flash 76.6 and 83.2, Granite 76.5 and 82.2). Put the measured numbers, the fixed threshold, the agreement margin and the pinned hosts into the 35a plan through master task 6.1. Store the dataset and outputs under `~/Development/DATA/omrs/` with SHA-256, never in git.
