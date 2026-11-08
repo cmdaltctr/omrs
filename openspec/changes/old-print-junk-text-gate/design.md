@@ -4,7 +4,7 @@
 
 - The page scan (`page-routing-default`) judges a page by its text layer alone. A garbled old-print layer has plausible length and character mix, so it passes.
 - The document router (ADR-112 page rule, off by default) shows Clef-Flash each unflagged page image and text, and sends the page to OCR when P(yes) is under the threshold. Experiment 43 fitted 0.172 on a mixed junk set; Experiment 47 showed it does not transfer to old prints.
-- Experiment 47 labels: junk recall per label 0.0 to 0.42 on old prints; healthy false-reject 2 of 54 at 0.172.
+- Experiment 47 labels: old-print junk pages have text-layer token recall 0.0 to 0.42 against the local reference (junk below 0.50); healthy false-reject 2 of 54 at 0.172.
 
 ## Goals / Non-Goals
 

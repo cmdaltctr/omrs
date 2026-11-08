@@ -7,7 +7,7 @@
 Issue #161 (severity high, likelihood 3 x impact 8 = 24). Some scanned old printed books (1588 to 1765: German Fraktur, Polish, Dutch blackletter, Latin italic) carry a garbled OCR text layer from the digitiser. The page scan accepts that layer as healthy, so OMRS indexes junk text with no warning and search cannot find the real content.
 
 - Handwritten scans (`rf06`, `rf07`) are already fixed by default (page routing, the local OCR tier, dots-mocr on llama.cpp).
-- Experiment 47 (37 unseen documents) showed the page scan sent none of 9 garbled old prints to OCR. The optional document router (Clef-Flash Q8_0, threshold 0.172 from Experiment 43) caught 28 of 54 junk pages (recall 0.52, gate 0.70): FAIL. Most missed old-print pages scored just above the threshold (for example J6 0.13 to 0.28, J15 0.16 to 0.37). Hosted Jev caught 18 of 54.
+- Experiment 47 (32 unseen documents) showed the page scan sent none of 9 garbled old prints to OCR. The optional document router (Clef-Flash Q8_0, threshold 0.172 from Experiment 43) caught 28 of 54 junk pages (recall 0.52, gate 0.70): FAIL. Most missed old-print pages scored just above the threshold (for example J6 0.13 to 0.28, J15 0.16 to 0.37). Hosted Jev caught 18 of 54.
 - Two other misses are not old print: G7 (born-digital Arabic, reversed letter order) and G8 page 11 (born-digital table page). They scored high (0.72 to 0.87), so a threshold change will not catch them.
 
 ## What Changes
