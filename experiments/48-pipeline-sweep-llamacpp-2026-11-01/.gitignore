@@ -1,0 +1,5 @@
+# Derived data stays local (CC BY-NC 4.0 PDFs, indexes, traces, run records).
+output/
+analysis.ipynb
+__pycache__/
+router*.ini

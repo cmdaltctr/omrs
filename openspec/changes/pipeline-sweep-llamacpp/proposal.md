@@ -8,6 +8,8 @@ A failure found inside a frozen Confirmatory run costs a plan amendment or a res
 
 Experiment 35 must also choose: run locally on the measurement Mac, or rent cloud hardware. No one has timed Qwen3-Embedding 0.6B, 4B and 8B GGUF on that Mac. The proposal lists "index building on 40K abstracts takes too long on the Mac" as a risk, with "time the pipeline sweep first" as the response.
 
+Amended 2026-11-07 (design D9): the operator chose to run Experiment 35 on RunPod (master flow `rag-benchmark-readiness-flow`, 2026-11-06), so the sweep runs on one RunPod RTX 4090 pod, the machine class of Experiment 35a, and its timing feeds that edition. Where this proposal says "the measurement Mac", read "the sweep pod".
+
 ## What Changes
 
 - Plan one new experiment, purpose `optimisation`, size Standard, category `runtime`. `omrs experiments new` gives it the next free number at apply time. No folder is created by this proposal.
@@ -19,10 +21,10 @@ Experiment 35 must also choose: run locally on the measurement Mac, or rent clou
   5. Write one run record per run, with the runtime that the live-server check found.
 - **Part B, embedding timing.** Embed a fixed slice of each benchmark corpus (200 FreshStack documents, 200 BioASQ abstracts, the 5 FinanceBench PDFs of Part A) with Qwen3-Embedding 0.6B, 4B and 8B GGUF on the measurement Mac. Record wall time, tokens and peak memory. Extrapolate to the three Experiment 35 corpora: the FinanceBench PDFs, FreshStack (10,024 documents) and BioASQ (40.2K abstracts).
 - **Part C, fast mode against exact mode.** Embed the same slices twice with the 4B model: exact mode (`--parallel 1`, one request at a time) and fast mode (`--parallel 8 --kv-unified`, 8 requests at a time). Compare every vector pair (lowest cosine) and the retrieval rankings. If the drift is within the stated tolerance, Experiment 35 may use fast mode and states the tolerance in its plan. Record the speed gain.
-- Pin every llama.cpp server argument in full, including the values that default to auto, and switch off the settings that change results: speculative decoding (`--spec-type none`) and the chat prompt cache.
+- Pin every llama.cpp server argument in full, including the values that default to auto, and switch off the settings that change results: the chat prompt cache in the preset, and speculative decoding, which the pinned build b11941 turns off by default (`spec-type` `none`, recorded in the `/props` snapshot).
 - Small fixed set: Experiment 3's 6 documents and the 17 questions in Experiment 2's `ground-truth.json`, plus 5 FinanceBench PDFs with their open-sample questions.
 - Exit rule: every stage runs without error; Hit@1 and MRR on the 17 questions stay close to the earlier Ollama numbers; one repeat of retrieval gives identical results.
-- Serve the embedding and chat models from one llama.cpp router (`llama serve`), so the existing live-server check covers both in one call.
+- Serve the embedding and chat models from OMRS's own llama.cpp router (managed, with scratch `OMRS_CONFIG_DIR` and `OMRS_STATE_DIR`), so the existing live-server check covers both in one call. Amended 2026-11-06 by `one-llamacpp-router` D17: the earlier plan used `llama serve`.
 
 Out of scope: the benchmark itself (Experiment 35), Ragas, the publication rules, and any change to production defaults. The ONNX reranker and the OCR engines stay on their current runtimes, because llama.cpp cannot run them (ADR-103, Neutral).
 

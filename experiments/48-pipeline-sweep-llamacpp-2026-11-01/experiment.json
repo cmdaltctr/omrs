@@ -1,0 +1,19 @@
+{
+  "format": "omrs-experiment/1",
+  "number": "48",
+  "title": "Pipeline sweep on llama.cpp",
+  "date": "2026-11-01",
+  "category": "runtime",
+  "size": "Standard",
+  "status": "PASS",
+  "superseded_by": null,
+  "finding": "All three gates pass on the OMRS llama.cpp router (b11941, CUDA, RTX 4090): 0 errors; 0.6B 16/17 MRR 0.971, 8B 17/17 MRR 1.000, 4B+reranker 16/17; G3 rerun 0 ranking changes over 168 searches. Fast mode refused (lowest cosine 0.9989; neighbours reorder). Embedding is a small share of wall time: per-file overhead (location unknown) takes most of it on FreshStack and BioASQ, PDF reading on FinanceBench.",
+  "purpose": "optimisation",
+  "refs": {
+    "adrs": [],
+    "changes": [
+      "pipeline-sweep-llamacpp"
+    ],
+    "tasks": []
+  }
+}
