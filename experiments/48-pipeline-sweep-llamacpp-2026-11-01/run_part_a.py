@@ -54,6 +54,7 @@ router_config.prepare_environment(
 
 from _lib.llamacpp_runtime import verify_llamacpp_runtime  # noqa: E402
 from _lib.run_record import record_run_start  # noqa: E402
+from ranking_lib import result_id  # noqa: E402
 from sweep_lib import chunking_guard, compare_rankings, verify_input_hashes  # noqa: E402
 
 SEARCH_MODES = {
@@ -245,7 +246,7 @@ def _one_search(engine, query, mode, overrides, collection, expected, gold_pages
         results, error = [], f"{type(exc).__name__}: {exc}"
     slim = [
         {
-            "id": item.get("id", ""),
+            "id": result_id(item),
             "source": item.get("source", item.get("file", "")),
             "page_labels": item.get("page_labels")
             or ([item["page_label"]] if item.get("page_label") else []),
@@ -361,6 +362,7 @@ def main() -> None:
         baseline = read_jsonl("search.jsonl")
         engine = engine_factory()()
         repeat: dict[str, dict[str, list]] = {}
+        repeat_rows: list[dict] = []
         try:
             for mode, overrides in SEARCH_MODES.items():
                 for question in questions + financebench:
@@ -368,6 +370,7 @@ def main() -> None:
                     row = _one_search(engine, text, mode, overrides, COLLECTION,
                                       expected=question.get("expected_source", "")
                                       or question.get("doc_name", ""))
+                    repeat_rows.append(row)
                     ids = [r["id"] for r in row["results"]]
                     repeat.setdefault(text, {})[mode] = ids
         finally:
@@ -382,6 +385,7 @@ def main() -> None:
             left = {q: first.get(q, {}).get(mode, []) for q in repeat}
             right = {q: repeat[q].get(mode, []) for q in repeat}
             mismatches += compare_rankings(mode, left, right)
+        write_jsonl("determinism-repeat.jsonl", repeat_rows)
         write_jsonl("determinism.jsonl", mismatches)
         print(f"[determinism] {len(mismatches)} mismatches -> output/determinism.jsonl", flush=True)
         return

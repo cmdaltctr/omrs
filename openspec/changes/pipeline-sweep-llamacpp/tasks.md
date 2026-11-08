@@ -26,7 +26,7 @@
 - [x] 3.2 Write the Part A runner: hash check, chunking guard (stop unless the splitter resolves to `model_token_aware`), live-server check of the router, `record_run_start` with `found.as_run_record()`, ingest, three search modes, answers with claim checking off and on, and one JSONL file per step in `output/`. Use a scratch `OMRS_CONFIG_DIR` inside `output/`. Verify: 3.1 tests pass, and `--limit 1` runs one document and one question with no error.
 - [x] 3.3 Write the determinism repeat as a separate process on the same index. Verify: run twice on the `--limit 1` index gives identical output.
 - [x] 3.4 Write the comparison-arm step: dense index of the 6 Experiment 3 documents with 0.6B and 8B, 17 questions, reranker off. Verify: `--limit 1` writes one row per model.
-- [ ] 3.5 After `one-llamacpp-router` merges, rebase on `v3`. Rewire `run_part_a.py`, `run_timing.py`, `run_sweep.sh` and `plan.json` from `llama serve` and the retired `LLAMACPP_*` keys onto the OMRS managed router: scratch `OMRS_CONFIG_DIR` and `OMRS_STATE_DIR` in `output/`, one `llamacpp_models` entry per model with its D6a preset (design D2, D6a). Verify: `--limit 1` runs one document and one question with no error, and the found runtime names b11941. On the pod, the router runs the b11941 `cuda` flavour that `omrs llamacpp install --flavour cuda` places (design D9).
+- [x] 3.5 After `one-llamacpp-router` merges, rebase on `v3`. Rewire `run_part_a.py`, `run_timing.py`, `run_sweep.sh` and `plan.json` from `llama serve` and the retired `LLAMACPP_*` keys onto the OMRS managed router: scratch `OMRS_CONFIG_DIR` and `OMRS_STATE_DIR` in `output/`, one `llamacpp_models` entry per model with its D6a preset (design D2, D6a). Verify: `--limit 1` runs one document and one question with no error, and the found runtime names b11941. On the pod, the router runs the b11941 `cuda` flavour that `omrs llamacpp install --flavour cuda` places (design D9).
 - [x] 3.6 Write `pod_setup.sh` in the experiment folder (design D9): check the commit, `uv sync --frozen --extra web --extra llamacpp`, `omrs llamacpp install --flavour cuda`, fetch the four GGUF files and the FinanceBench, BioASQ and FreshStack inputs, then run the hash check. Verify: `bash -n` passes, and `--dry-run` on the Mac prints every step and every expected SHA-256 with no download.
 
 ## 4. Part B timing (design D6)
@@ -40,24 +40,24 @@
 
 ## 5. Run (heavy: on the RunPod pod after gate G6 of the master flow; tell the user before each server starts)
 
-- [ ] 5.1 Run Part A. Verify: `output/run-records.jsonl` has a line with `runtime` holding one build and both model hashes, and every stage file exists.
-- [ ] 5.2 Run the determinism repeat and the comparison arms. Verify: their output files exist and name the index they read.
-- [ ] 5.3 Run Part B for 0.6B, 4B and 8B, one at a time. Verify: three run-record lines, one per model, and nine timing rows (three models by three slices).
+- [x] 5.1 Run Part A. Verify: `output/run-records.jsonl` has a line with `runtime` holding one build and both model hashes, and every stage file exists.
+- [x] 5.2 Run the determinism repeat and the comparison arms. Verify: their output files exist and name the index they read.
+- [x] 5.3 Run Part B for 0.6B, 4B and 8B, one at a time. Verify: three run-record lines, one per model, and nine timing rows (three models by three slices).
 - [ ] 5.4 Run the token counts and the extrapolation. Verify: one estimate per model and corpus.
 - [ ] 5.5 Run Part C (design D6a): 4B exact mode, then fast mode, on the Part B slices. Verify: one output row per vector pair, the lowest and median cosine, the top-10 ranking comparison and both speeds are written to `output/`.
 
 ## 6. Report
 
-- [ ] 6.1 Write `report.md`: Answer box, the D5 exit table with the Experiment 2 and 3 values beside each result, the determinism result, the timing and estimate table, and the known differences (LanceDB, runtime). Every number names its `output/` file. Verify: `uv run --no-sync omrs experiments check` passes.
+- [x] 6.1 Write `report.md`: Answer box, the D5 exit table with the Experiment 2 and 3 values beside each result, the determinism result, the timing and estimate table, and the known differences (LanceDB, runtime). Every number names its `output/` file. Verify: `uv run --no-sync omrs experiments check` passes.
 - [ ] 6.2 Set `status` (`PASS` or `FAIL`) and `finding` in `experiment.json`, then run `uv run --no-sync omrs experiments index --write`. Verify: the index row matches the record.
-- [ ] 6.3 For each failed stage, write one line in the report with the fix and whether it needs its own change. Verify: no failed stage is left without a line.
+- [x] 6.3 For each failed stage, write one line in the report with the fix and whether it needs its own change. Verify: no failed stage is left without a line.
 - [ ] 6.4 Tell the user that Part B gives the numbers Experiment 35 task 1.4 reuses, with the machine, GGUF hashes and build they hold (design D7). Do not edit that change. Verify: the message names the output file and the build.
 
 ## 7. Integration checks
 
-- [ ] 7.1 Re-pin the tripwire: collect the fast-suite IDs again, diff them with `evidence/test-ids-before.txt`, save `evidence/test-ids-diff.txt`, and change `_BASE_EXECUTED` in `tests/test_clean_base_tripwire.py` by the counted difference, with a dated comment under 100 characters. Verify: `uv run --no-sync pytest tests/test_clean_base_tripwire.py -q` passes.
-- [ ] 7.2 Run `./scripts/local_ci.sh`. Verify: every step passes and no step prints `SKIPPED`, or the skip is named in the PR body.
-- [ ] 7.3 Run `openspec validate pipeline-sweep-llamacpp --strict` and `openspec validate --all --strict`. Verify: both pass.
+- [x] 7.1 Re-pin the tripwire: collect the fast-suite IDs again, diff them with `evidence/test-ids-before.txt`, save `evidence/test-ids-diff.txt`, and change `_BASE_EXECUTED` in `tests/test_clean_base_tripwire.py` by the counted difference, with a dated comment under 100 characters. Verify: `uv run --no-sync pytest tests/test_clean_base_tripwire.py -q` passes.
+- [x] 7.2 Run `./scripts/local_ci.sh`. Verify: every step passes and no step prints `SKIPPED`, or the skip is named in the PR body.
+- [x] 7.3 Run `openspec validate pipeline-sweep-llamacpp --strict` and `openspec validate --all --strict`. Verify: both pass.
 
 ## Workflow follow-up
 

@@ -61,8 +61,8 @@ ROUTER = router_config.ROUTER_URL.removesuffix("/v1")
 
 from _lib.llamacpp_runtime import verify_llamacpp_runtime  # noqa: E402
 from _lib.run_record import record_run_start  # noqa: E402
+from ranking_lib import neighbour_mismatches  # noqa: E402
 from sweep_lib import (  # noqa: E402
-    compare_rankings,
     compare_vectors,
     extrapolate,
     preset_has_parallel,
@@ -410,13 +410,15 @@ def stage_part_c(stage: str, plan: dict, router=None) -> None:
         return
 
     report = {}
+    vector_pairs = {}
     for slice_name in ("freshstack", "bioasq", "financebench"):
         exact = {json.loads(line)["id"]: json.loads(line)["vector"] for line
                  in (OUTPUT / f"part-c-exact-{slice_name}.jsonl").read_text().splitlines()}
         fast = {json.loads(line)["id"]: json.loads(line)["vector"] for line
                 in (OUTPUT / f"part-c-fast-{slice_name}.jsonl").read_text().splitlines()}
         report[slice_name] = compare_vectors(exact, fast)
-    mismatches = compare_rankings("exact-vs-fast", {}, {})
+        vector_pairs[slice_name] = (exact, fast)
+    mismatches = {name: neighbour_mismatches(*pair) for name, pair in vector_pairs.items()}
     target = OUTPUT / "part-c.json"
     target.write_text(json.dumps({"slices": report, "ranking_mismatches": mismatches,
                                   "rule": "fast mode allowed when lowest cosine >= 0.9999 "
