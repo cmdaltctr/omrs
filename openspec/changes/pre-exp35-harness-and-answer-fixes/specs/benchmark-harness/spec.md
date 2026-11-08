@@ -33,7 +33,7 @@ Every output file the timing and fast-mode steps write SHALL be written to a tem
 
 #### Scenario: Stop during a vector file write
 
-- **WHEN** the fast-mode step is stopped while it writes a vector file
+- **WHEN** the fast-mode step fails while it writes a vector file
 - **THEN** the target path MUST hold either the earlier complete file or nothing
 
 ### Requirement: The determinism comparison covers every question of both runs
@@ -44,6 +44,11 @@ The ranking comparison SHALL compare the union of the questions in run 1 and run
 
 - **WHEN** run 2 holds a ranking for question `q9` and run 1 holds none
 - **THEN** the comparison MUST report a mismatch for `q9`
+
+#### Scenario: Question only in run 1
+
+- **WHEN** run 1 holds a ranking for question `q4` and run 2 holds none
+- **THEN** the comparison MUST report a mismatch for `q4`
 
 ### Requirement: A relative model folder is resolved at once
 

@@ -3,8 +3,8 @@
 ## Context
 
 - Experiment 48 is closed (PASS). Its report lists the gaps this change closes: no answer temperature or seed (known difference), about 0.88 s per file of unexplained ingest time (Part B), harness bugs scored 3 or below, and missing Part C speeds and token counts (D1, D5).
-- `answer.reasoning` and `answer.verify_reasoning` already flow from settings through `compose_answer.py` to each provider's `reasoning_kwargs` (spec `answer-reasoning-and-usage`). Temperature and seed follow the same path.
-- LlamaIndex's OpenAI classes default to `temperature: 0.1` and put it on every request (`OpenAILike._get_model_kwargs()`, checked 2026-11-08). So "no setting" today means 0.1 on llama.cpp, OpenRouter and OpenAI-compatible, not "no temperature".
+- `answer.reasoning` and `answer.verify_reasoning` already flow from settings through `compose_answer._level()` as a `reasoning=` keyword to each provider's `build()`, which maps it with its own module-level `reasoning_kwargs` (spec `answer-reasoning-and-usage`). OpenRouter and OpenAI-compatible put the result in `additional_kwargs`; Ollama passes it to the constructor as `thinking=`; llama.cpp and Anthropic ignore it. The registry's `reasoning_kwargs(name, level)` has no caller; only `ignores_reasoning` is used (`routes/chat_reasoning.py`). Chat reads its values from `Settings.answer`; the judge (`build_verify_llm`) reads them from the `AnswerBlock`. Temperature and seed follow the same path.
+- LlamaIndex's OpenAI classes default to `temperature: 0.1` and put it on every request (`OpenAI._get_model_kwargs()`, inherited by `OpenAILike`; checked 2026-11-08). So "no setting" today means 0.1 on llama.cpp, OpenRouter and OpenAI-compatible, not "no temperature". LlamaIndex `Ollama` defaults to `None`, so the Ollama server uses the model's own default. The Anthropic default was not checked (package not installed in the dev environment).
 - `experiments/CLAUDE.md`: in a finished experiment only `experiment.json`, `protocol.md` and the report may change. The Experiment 48 harness files are therefore frozen.
 - Issue #175: PR #176 (merged 2026-11-05) made the `pp-ocrv6-small` backend set `PDFIUM_LIB_PATH` and `ORT_DYLIB_PATH` itself in every process. What is left is `INDRA_OCR_MODEL_DIR`: the live login item has it by hand, and `omrs web install` drops it (`render_plist` writes only `PATH`).
 - Issue #177 was closed on 2026-11-08 (fixed by `b62605f8`, then by the router change). Issue #180 was closed (fixed by PR #181, `da15df97`).
@@ -36,7 +36,7 @@ Alternatives: one shared pair for both roles (rejected: the judge and Chat are d
 
 ### D2. Provider mapping through the registry, no branching on names
 
-Each provider module may export `sampling_kwargs(temperature, seed) -> dict | None` and the builder passes the result to the LLM constructor (`temperature=`) and `additional_kwargs` (`seed`). The registry gets `sampling_kwargs(name, ...)` and `ignored_sampling(name) -> set[str]`, like `reasoning_kwargs` and `ignores_reasoning`. Known mappings (verify each in the apply step against the provider's API docs through Context7):
+Following the reasoning precedent, `compose_answer.py` passes `temperature=` and `seed=` keywords to each provider's `build()`, and each provider module maps them with its own `sampling_kwargs(temperature, seed) -> dict | None`. The mapping is per provider, not one generic split: OpenRouter and OpenAI-compatible already fill `additional_kwargs` with the reasoning field, so the seed must merge with it; LlamaIndex `Ollama` merges `additional_kwargs` into `options`. The registry gets `ignored_sampling(name) -> set[str]`, like `ignores_reasoning`. Known mappings (verify each in the apply step against the provider's API docs through Context7):
 
 | Provider | Temperature | Seed |
 | --- | --- | --- |
@@ -44,9 +44,11 @@ Each provider module may export `sampling_kwargs(temperature, seed) -> dict | No
 | openrouter | `temperature` | `seed` |
 | openai_compatible | `temperature` | `seed` |
 | ollama | `temperature` | `seed` (options) |
-| anthropic | `temperature` | ignored (API has no seed) |
+| anthropic | `temperature` (0 to 1, not 0 to 2; some newer models refuse a non-default value, check per model in task 1.1) | ignored (API has no seed) |
 
 Empty values return nothing, so the constructor keeps its library default (spec: empty leaves the request unchanged).
+
+Notes from the review (2026-11-08): llama.cpp holds the seed as an unsigned 32-bit number and `-1` means random, so the 0 to 2^31 - 1 range fits. OpenAI marks `seed` as best effort. On OpenRouter the seed reaches the model only if the serving host supports it: a public read of `deepseek/deepseek-v4.1-flash-1017` endpoints showed several hosts without `seed`, including the cheapest (Relace, fp4).
 
 ### D3. Record what the request carried
 
@@ -54,7 +56,7 @@ The answer result gets a `sampling` record per role: `{"temperature": float | No
 
 ### D4. Shared harness in `experiments/_lib/`
 
-New modules `experiments/_lib/ranking.py` (ranking and neighbour comparison, result-id and source matching), `experiments/_lib/timing.py` (timing rows, atomic writes) and `experiments/_lib/router_env.py` (GGUF folder and router config from the environment), each with its test file beside it. They start as copies of the Experiment 48 functions plus the four fixes, and keep the review lessons already in that code: blank result ids refused, empty comparisons reported as incomplete, a `--limit` smoke run never writes resumable outputs, tuple keys never used as JSON keys, `omrs.jsonc` values not beaten by stray environment overrides.
+New modules `experiments/_lib/ranking.py` (ranking and neighbour comparison, result-id and source matching), `experiments/_lib/timing.py` (timing rows, atomic writes) and `experiments/_lib/router_env.py` (GGUF folder and router config from the environment), each with a test file under `tests/` (for example `tests/test_experiment_lib_ranking.py`), as the existing `_lib` tests are. pytest collects only `testpaths = ["tests"]`, so a test beside the module would not run in CI or count in the tripwire. They start as copies of the Experiment 48 functions plus the four fixes, and keep the review lessons already in that code: blank result ids refused, empty comparisons reported as incomplete, a `--limit` smoke run never writes resumable outputs, tuple keys never used as JSON keys, `omrs.jsonc` values not beaten by stray environment overrides.
 
 Alternative: patch Experiment 48 in place (rejected: breaks the frozen-folder rule and changes the code the PASS was measured with). Alternative: copy into the 35a folder (rejected: the next experiment would copy again).
 
@@ -80,7 +82,7 @@ Experiment 48 tasks 4.3, 5.4 and 5.5 stay open in its archive. 35a's first timin
 Two router tests failed once each in CI on `v3`: `test_llamacpp_router_download_failure.py::test_every_download_failing_ends_failed_with_one_attempt_per_model[plan]` (ubuntu, run 42509580109) and `test_llamacpp_router_readiness.py::test_changed_file_refused_and_others_serve` (macOS, run 42516121302, `IncompleteRead`). Diagnosis (2026-11-08, read-only subagent):
 
 - Test 1 is a product race. A user Start sets a "waiting" flag (`transports/api/llamacpp_server.py:318`) and then reads status (`:228`). A fast-failing download calls `load()` (`router_autodownload.py:173`), which starts the router again (`llamacpp_server.py:390`) and clears the flag (`:295`). Nothing locks this state, so the Start reply can say `stopped` with no reason. Reproduced 5 of 5 with injected delays. It also caused run 42393529772. Score: likelihood 3 x impact 2 = 6. Fix: one re-entrant lock around `start`, `load`, `stop` and `status` in `RouterControl` (re-entrant because `load` calls `start`), with a delay-injected regression test.
-- Test 2: the fake router sends headers and closes before the body. `integrations/llamacpp_runtime/process.py:183-186` catches only `OSError` and `ValueError`, so `http.client.IncompleteRead` escapes as a crash instead of "unreachable" `(0, {})`. Trigger not proven; likely `free_port()` in `tests/unit/test_llamacpp_router_worker.py:36-40` frees its port before the fake binds, and macOS hands ports out in order. Score: CI 5 x 2 = 10; product 2 x 3 = 6. Fix: catch `http.client.HTTPException` there (product), and let the fake bind port 0 and report its port (test).
+- Test 2: the fake router sends headers and closes before the body. `integrations/llamacpp_runtime/process.py:181-187` catches only `OSError` and `ValueError`, so `http.client.IncompleteRead` escapes as a crash instead of "unreachable" `(0, {})`. Trigger not proven; likely `free_port()` in `tests/unit/test_llamacpp_router_worker.py:36-40` frees its port before the fake binds, and macOS hands ports out in order. Score: CI 5 x 2 = 10; product 2 x 3 = 6. Fix: catch `http.client.HTTPException` there (product), and let the fake bind port 0 and report its port (test).
 
 ### D9. RunPod machine for 35a (recommendation, no pod created)
 
@@ -94,11 +96,11 @@ Live catalogue reads on 2026-11-08 (`get-gpu-type`, `get-capacity`, secure cloud
 
 Recommendation: **RTX 4090, secure cloud, $0.89/h, host CUDA 13.2, data centres EUR-IS-1 then EU-CZ-1 then US-IL-1, `minVcpuCountPerGpu: 16`, `minRamPerGpu: 64`, falling back to the 12-vCPU floor if no host matches.** Why:
 
-- Same GPU, cloud and CUDA as both sweep pods (`aixzxy2y2h6zb9`, `3b3vfm9qez83fn`, 12 vCPU, about 100 GB RAM), so Part B timings carry over.
+- Same GPU, cloud and CUDA as both sweep pods (`aixzxy2y2h6zb9`, `3b3vfm9qez83fn`, 12 vCPU; pod RAM is not in the Experiment 48 records), so Part B timings carry over.
 - `minVcpuCountPerGpu` is a placement filter, not a paid extra: the price stays $0.89/h, and the API returns the real count in `gpu.vcpuCount`. A create that finds no matching host fails without a charge, so trying 16 first costs nothing.
 - More vCPUs help only if the work runs in parallel. The sweep showed single-core chunking and per-file overhead dominate. D5 decides whether ingest can use more cores; until then, 16 is a cheap hedge, not a promise of speed.
 - RTX 5090 costs 34% more for 3 more floor vCPUs and a faster GPU the run does not need, and breaks timing carry-over. A40 is cheaper and in stock but its 9-vCPU floor is slower where it matters (CPU) and is a different GPU.
-- The sweep's data centre (EUR-IS-2) shows no 4090 stock today; EUR-IS-1 is the nearest listed.
+- The sweep's data centre (EUR-IS-2) showed no 4090 stock in the first read; EUR-IS-1 was the nearest listed. A review re-read later on 2026-11-08 (`get-gpu-type`, secure, pods) gave the same price and floors ($0.89/h, 12 vCPU, 31 GB, CUDA 13.2) but stock Low in EU-RO-1, EUR-IS-2 and US-IL-1 only. Stock moves within hours, so pick the data-centre order from the live read at create time, and prefer EUR-IS-2 when it has stock.
 
 This also corrects the 35a protocol section 7, which still says 6 vCPU and 41 GB RAM (task 1.5, 2026-11-01). Master task 6.1 writes the amendment; stock and price are re-read live before any create.
 
@@ -107,5 +109,5 @@ This also corrects the 35a protocol section 7, which still says 6 vCPU and 41 GB
 - [The profile shows the time is spread thinly with no single cause] → record it, keep per-file ingest, and size 35a on the measured rate. No speculative optimisation.
 - [A provider rejects `seed` (HTTP 400)] → the mapping test for each provider checks the request body; an apply-time check with Context7 confirms each API. A provider that rejects it is marked "ignores seed".
 - [Changing the shared harness later shifts 35a after its freeze] → 35a's plan pins the commit; a later change to `_lib` needs a 35a amendment (existing rule).
-- [Recording sampling values adds fields to answer results and the OpenAPI contract] → contract first; `additionalProperties: false` tests catch drift.
+- [Recording sampling values adds fields to answer results and the OpenAPI contract] → contract first. The Chat and Judge settings schemas set `additionalProperties: false`, so their tests catch drift. `AnswerResponse` (`openapi.yaml`) does not, and it already omits `usage` and `reasoning`, so task 1.5 adds `sampling` there by hand and a test checks it.
 - [Carrying plist variables could carry a stale path] → `install` prints each carried variable and its source; the Integrations page already shows an OCR backend that is not ready.

@@ -38,7 +38,7 @@ A set temperature or seed SHALL go to the provider on every completion request f
 
 #### Scenario: Judge values are separate
 
-- **WHEN** `answer.seed` is `7` and `answer.verify_seed` is empty
+- **WHEN** `answer.verify_claims` is true, `answer.seed` is `7` and `answer.verify_seed` is empty
 - **THEN** claim-judge requests MUST NOT carry the seed 7, and Chat requests MUST carry it
 
 ### Requirement: A provider that cannot take a value says so
@@ -62,11 +62,11 @@ The Chat panel SHALL show and save `answer.temperature` and `answer.seed`. The J
 #### Scenario: Locked value
 
 - **WHEN** `ANSWER__SEED` is set in the process environment
-- **THEN** the Chat panel MUST show the seed as locked and a save of the seed MUST be refused
+- **THEN** the Chat panel MUST show the seed as locked and a save of the seed MUST be refused with 409
 
 ### Requirement: Each answer records what its requests carried
 
-Each answer result SHALL record, for the Chat role and for the claim judge when it ran, the temperature and seed the requests carried, or that none was sent. A temperature added by a library default SHALL be recorded as that value.
+Each answer result SHALL hold a `sampling` record that gives, for the Chat role and for the claim judge when it ran, the temperature and seed the requests carried, or that none was sent. A temperature added by a library default SHALL be recorded as that value.
 
 #### Scenario: Library default recorded
 
