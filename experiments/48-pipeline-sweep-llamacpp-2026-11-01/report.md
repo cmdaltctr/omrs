@@ -3,7 +3,7 @@
 - **Folder**: `48-pipeline-sweep-llamacpp-2026-11-01` (numbered 43 until 2026-11-07, amendment A2)
 - **Record**: [experiment.json](experiment.json) holds the category, size and status.
 - **Date run**: 2026-11-08
-- **Operator**: the project operator, with the orchestrator agent.
+- **Operator**: Aizat, with the orchestrator agent.
 - **Plan**: [protocol.md](protocol.md) · [plan.json](plan.json)
 - **Source of every number**: the per-stage JSONL files in `output/` and `output/g3-rerun/`. `output/summary.json` collects them; it was written by hand from those files (no script) and was rechecked by an independent review.
 

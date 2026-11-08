@@ -2,7 +2,7 @@
 
 - **Folder**: `48-pipeline-sweep-llamacpp-2026-11-01` (numbered 43 until 2026-11-07; see Amendments)
 - **Record**: [experiment.json](experiment.json) holds the category, size and status.
-- **Operator**: the project operator, with the a-build agent.
+- **Operator**: Aizat, with the a-build agent.
 - **Related**: change `pipeline-sweep-llamacpp`; ADR-103 (llama.cpp GGUF runtime), ADR-074. Feeds Experiment 35 (tasks 1.4 and 1.5) and its RunPod edition 35a. Baseline references: Experiments 2 and 3.
 
 ## 1. Question
