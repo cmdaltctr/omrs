@@ -101,3 +101,19 @@ A judge that cannot start, fails its model check, or raises SHALL give `verifica
 
 - **WHEN** `answer.verify_judge` is `clef_flash` and the router does not start
 - **THEN** the answer MUST be returned with `verification_skipped` naming a fixed reason and no claim text
+
+### Requirement: A profile can choose its judge in Studio
+
+Studio SHALL offer `answer.verify_judge` as a profile lever beside Check claims. The options SHALL come from the judge registry. A save SHALL be refused, with a plain message, when the name is unknown or the strategy's model is not set up on this host.
+
+#### Scenario: Profile picks Clef-Flash
+
+- **WHEN** a user profile sets `answer.verify_judge` to `clef_flash` and the router lists the Clef-Flash model
+- **THEN** Studio saves the override and claim checks for collections on that profile use `clef_flash`
+- **AND** other profiles keep their own judge
+
+#### Scenario: Strategy not ready on this host
+
+- **WHEN** a user picks `granite_guardian` and no Granite model is set up
+- **THEN** Studio shows the option as not ready
+- **AND** the save is refused with a message that names the missing model setting
