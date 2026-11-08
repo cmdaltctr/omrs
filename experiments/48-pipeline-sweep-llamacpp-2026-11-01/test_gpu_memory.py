@@ -156,6 +156,24 @@ def test_cuda_error_inside_thread_is_raised_by_stop():
         sampler.stop()
 
 
+def test_cuda_pid_source_failure_inside_thread_is_raised_by_stop():
+    calls = []
+
+    def pids() -> set[int]:
+        calls.append(1)
+        if len(calls) > 1:
+            raise OSError("state file gone")
+        return {101}
+
+    sampler = GpuMemorySampler(
+        cuda=True, pid_source=pids, runner=_Outputs("101, 10\n"), interval_s=0.001
+    )
+    sampler.start()
+    sampler.join(timeout=5)  # the thread ends on the error
+    with pytest.raises(GpuMemoryError, match=r"state file gone"):
+        sampler.stop()
+
+
 def test_cuda_stop_refuses_when_no_server_pid_was_ever_listed():
     # A container PID namespace can hide the server: no silent zero.
     runner = _Outputs("999, 7000\n")

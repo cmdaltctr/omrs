@@ -19,7 +19,7 @@ from collections import Counter
 from pathlib import Path
 
 from pypdf import PdfReader
-from sweep_lib import convert_evidence_page, file_sha256, select_financebench
+from sweep_lib import convert_evidence_page, file_sha256, select_financebench, stray_files
 
 HERE = Path(__file__).resolve().parent
 SOURCE = Path.home() / "Development/DATA/omrs/benchmarks/financebench"
@@ -64,6 +64,12 @@ def main() -> None:
     chosen_names = {doc["doc_name"] for doc in chosen}
 
     out_dir = HERE / "output" / "financebench" / "pdfs"
+    strays = stray_files(out_dir, [f"{doc['doc_name']}.pdf" for doc in chosen])
+    if strays:
+        raise SystemExit(
+            f"{out_dir} holds files outside the selection: {', '.join(strays)}. "
+            "Both runners would ingest them. Remove them and run again."
+        )
     out_dir.mkdir(parents=True, exist_ok=True)
     for doc in chosen:
         shutil.copy2(PDFS / f"{doc['doc_name']}.pdf",

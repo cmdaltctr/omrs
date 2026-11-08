@@ -69,9 +69,12 @@ from ranking_lib import (  # noqa: E402
 )
 from sweep_lib import (  # noqa: E402
     compare_vectors,
-    extrapolate,
+    ingest_failure,
     preset_has_parallel,
+    require_same_limit,
+    speed_summary,
 )
+from timing_lib import estimates, read_speed  # noqa: E402
 
 
 def http_json(path: str, payload: dict | None = None, timeout: float = 600.0) -> dict:
@@ -199,8 +202,12 @@ def stage_model(model_key: str, plan: dict, limit: int | None, router) -> None:
 
     slices = prepare_slices()
     rows_file = OUTPUT / f"timing-{model_key}.jsonl"
-    done: set[str] = {json.loads(line)["slice"] for line in rows_file.read_text().splitlines()} \
-        if rows_file.exists() else set()
+    done: set[str] = set()
+    for line in rows_file.read_text().splitlines() if rows_file.exists() else []:
+        earlier = json.loads(line)
+        what = f"timing row {model_key}/{earlier['slice']}"
+        require_same_limit(earlier.get("limit"), limit, what)
+        done.add(earlier["slice"])
 
     warmup = OUTPUT / "slices" / "warmup.txt"
     warmup.parent.mkdir(parents=True, exist_ok=True)
@@ -216,6 +223,9 @@ def stage_model(model_key: str, plan: dict, limit: int | None, router) -> None:
             try:
                 result = await ingest_path_async(str(source), collection_name=collection)
                 stats = result if isinstance(result, dict) else {}
+                failure = ingest_failure(stats)  # a failed file may return, not raise
+                if failure:
+                    errors.append(f"{source.name}: {failure}")
                 timings = stats.get("timings", {})
                 embedding_seconds += float(timings.get("embedding_seconds", 0.0))
                 parse_seconds += float(timings.get("parse_chunk_seconds", 0.0))
@@ -256,7 +266,7 @@ def stage_model(model_key: str, plan: dict, limit: int | None, router) -> None:
                "tokens_per_second": (round(tokens / embedding_seconds, 1)
                                      if embedding_seconds else 0.0),
                "peak_rss_mb": round(sampler.peak_bytes / 1e6, 1), "peak_gpu_mb": peak_gpu_mb,
-               "errors": errors}
+               "errors": errors, "limit": limit}
         with rows_file.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(row) + "\n")
         if model_key == "4b":
@@ -296,6 +306,8 @@ def stage_tokenize(plan: dict, limit: int | None, router) -> None:
     """
     target = OUTPUT / "token-counts.json"
     if target.exists():
+        recorded = json.loads(target.read_text(encoding="utf-8")).get("limit")
+        require_same_limit(recorded, limit, "token-counts.json")
         print("[tokenize] already done", flush=True)
         return
     with router_config.held(router, plan, MODELS["4b"]) as name:
@@ -328,7 +340,8 @@ def _tokenize_corpora(target: Path, limit: int | None, model: str) -> None:
 
     pages = {pdf.name: len(PdfReader(str(pdf)).pages)
              for pdf in sorted((DATA / "benchmarks/financebench/pdfs").glob("*.pdf"))}
-    counts = {"freshstack": {"documents": len(rows), "chunks": len(fresh_texts),
+    counts = {"limit": limit,
+              "freshstack": {"documents": len(rows), "chunks": len(fresh_texts),
                              "tokens": fresh_tokens},
               "bioasq": {"passages": len(passages), "chunks": len(bio_texts),
                          "tokens": bio_tokens},
@@ -352,35 +365,14 @@ def _write_temp(text: str, index: int) -> Path:
 def stage_extrapolate() -> None:
     """One estimate per model and corpus (task 5.4)."""
     counts = json.loads((OUTPUT / "token-counts.json").read_text())
-    timing = {}
-    for path in sorted(OUTPUT.glob("timing-*.jsonl")):
-        for line in path.read_text().splitlines():
-            row = json.loads(line)
-            timing[(row["model"], row["slice"])] = row
-    rates = {}
-    for (model, slice_name), row in timing.items():
-        rates.setdefault(model, {})[slice_name] = row["tokens_per_second"]
-    fb_slice = timing.get(("4b", "financebench"))
-    estimates = {}
-    for model, per_slice in rates.items():
-        fb_rate = per_slice.get("financebench", fb_slice["tokens_per_second"] if fb_slice else 0)
-        fb_row = timing.get((model, "financebench")) or fb_slice
-        tokens_per_page = None
-        if fb_row and counts["financebench"]["total_pages"]:
-            tokens_per_page = fb_row["tokens"] / max(fb_row["chunks"], 1)
-        estimates[model] = {
-            "freshstack_hours": extrapolate(corpus_tokens=counts["freshstack"]["tokens"],
-                                            tokens_per_second=per_slice["freshstack"]),
-            "bioasq_hours": extrapolate(corpus_tokens=counts["bioasq"]["tokens"],
-                                        tokens_per_second=per_slice["bioasq"]),
-            "financebench_hours": extrapolate(
-                tokens_per_second=fb_rate, tokens_per_page=tokens_per_page,
-                total_pages=counts["financebench"]["total_pages"]),
-            "peak_rss_mb": {s: r["peak_rss_mb"] for s, r in timing.items() if r["model"] == model},
-        }
+    rows = [json.loads(line)
+            for path in sorted(OUTPUT.glob("timing-*.jsonl"))
+            for line in path.read_text().splitlines()]
+    selection = json.loads((OUTPUT / "financebench-selection.json").read_text())
+    result = estimates(counts, rows, sum(int(doc["pages"]) for doc in selection))
     target = OUTPUT / "estimates.json"
-    target.write_text(json.dumps(estimates, indent=2) + "\n", encoding="utf-8")
-    print(json.dumps(estimates, indent=2), flush=True)
+    target.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
+    print(json.dumps(result, indent=2), flush=True)
 
 
 def embed_direct(texts: Sequence[str], model: str, concurrency: int) -> list[list[float]]:
@@ -413,15 +405,23 @@ def stage_part_c(stage: str, plan: dict, router=None) -> None:
         check_runtime(plan, [model])
         concurrency = 1 if stage == "exact" else 8
         with router_config.held(router, plan, model) as name:
+            speeds = {}
             for slice_name in ("freshstack", "bioasq", "financebench"):
                 chunks_file = OUTPUT / "slices" / f"{slice_name}-chunks.jsonl"
                 chunks = [json.loads(line) for line in chunks_file.read_text().splitlines()]
+                started = time.perf_counter()
                 vectors = embed_direct([c["text"] for c in chunks], name, concurrency)
+                speeds[slice_name] = {"seconds": time.perf_counter() - started,
+                                      "vectors": len(vectors)}
                 target = OUTPUT / f"part-c-{stage}-{slice_name}.jsonl"
                 with target.open("w", encoding="utf-8") as handle:
                     for chunk, vector in zip(chunks, vectors, strict=True):
                         handle.write(json.dumps({"id": chunk["id"], "vector": vector}) + "\n")
                 print(f"[part-c {stage}] {slice_name}: {len(vectors)} vectors", flush=True)
+            speed_file = OUTPUT / f"part-c-{stage}-speed.json"
+            tmp = speed_file.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps(speeds, indent=2) + "\n", encoding="utf-8")
+            tmp.replace(speed_file)
         return
 
     report = {}
@@ -434,8 +434,10 @@ def stage_part_c(stage: str, plan: dict, router=None) -> None:
         report[slice_name] = compare_vectors(exact, fast)
         vector_pairs[slice_name] = (exact, fast)
     mismatches = {name: neighbour_mismatches(*pair) for name, pair in vector_pairs.items()}
+    speed = speed_summary(read_speed(OUTPUT, "exact"), read_speed(OUTPUT, "fast"))
     target = OUTPUT / "part-c.json"
     target.write_text(json.dumps({"slices": report, "ranking_mismatches": mismatches,
+                                  "speed": speed,
                                   "rule": "fast mode allowed when lowest cosine >= 0.9999 "
                                           "and no top-10 ranking changes"}, indent=2) + "\n",
                       encoding="utf-8")

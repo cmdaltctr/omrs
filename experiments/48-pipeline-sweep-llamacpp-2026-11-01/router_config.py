@@ -268,7 +268,48 @@ def configure(
     values = build_settings(plan, gguf_dir(), embed_file=embed_file, part_b=part_b, fast=fast)
     path = write_settings(values, config_dir)
     check_settings_file(config_dir)
+    check_resolved(load_settings(), values)
     return path
+
+
+def resolved_conflicts(settings: Any, values: Mapping[str, Any]) -> list[str]:
+    """Name each value in *values* that OMRS resolved to something else.
+
+    An environment variable or ``.env`` entry beats ``omrs.jsonc``, so the file
+    alone does not fix the provider. Preset entries (``llamacpp_models``) are
+    checked by OMRS's own file reader.
+    """
+    found: list[str] = []
+    for key, want in values.items():
+        if key == "llamacpp_models":
+            continue
+        pairs = (
+            [
+                (f"{key}.{sub}", getattr(getattr(settings, key), sub), value)
+                for sub, value in want.items()
+            ]
+            if isinstance(want, Mapping)
+            else [(key, getattr(settings, key), want)]
+        )
+        found += [
+            f"{name}: the sweep needs {w!r}, OMRS resolved {r!r}" for name, r, w in pairs if r != w
+        ]
+    return found
+
+
+def check_resolved(settings: Any, values: Mapping[str, Any]) -> None:
+    """Stop when an environment variable or ``.env`` entry overrides the scratch file.
+
+    Raises:
+        RouterConfigError: The message names each key, the wanted and the resolved value.
+    """
+    problems = resolved_conflicts(settings, values)
+    if problems:
+        raise RouterConfigError(
+            "the environment overrides the sweep settings: "
+            + "; ".join(problems)
+            + ". Unset the variable, or remove it from .env, and run again."
+        )
 
 
 # --- OMRS settings and the router ----------------------------------------------

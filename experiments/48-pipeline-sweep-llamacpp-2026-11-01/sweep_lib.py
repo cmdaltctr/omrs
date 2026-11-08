@@ -7,6 +7,7 @@ the engine and the output files. Tests live in ``test_sweep_lib.py``.
 from __future__ import annotations
 
 import hashlib
+import statistics
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,10 @@ class ChangedInputError(RuntimeError):
 
 class ChunkingGuardError(RuntimeError):
     """Markdown chunking did not resolve to the model-token-aware path."""
+
+
+class LimitMismatchError(RuntimeError):
+    """A resumed artefact came from a run with a different ``--limit``."""
 
 
 # --- input hashes (task 3.1) -----------------------------------------------
@@ -54,6 +59,49 @@ def verify_input_hashes(directory: Path, recorded: Mapping[str, str]) -> None:
             raise ChangedInputError(f"{name}: SHA-256 changed; recorded {expected}, found {found}")
 
 
+def require_same_limit(recorded: int | None, current: int | None, what: str) -> None:
+    """Refuse to reuse *what* when its ``--limit`` differs from this run's.
+
+    A smoke run (``--limit 1``) writes the same markers and files as a full
+    run. Without this check a later ``--resume`` skips the stage and reports
+    the full run complete.
+
+    Args:
+        recorded: The ``limit`` stored with the artefact (``None`` for a full run).
+        current: The ``--limit`` of this run (``None`` for a full run).
+        what: Name of the artefact, for the message.
+
+    Raises:
+        LimitMismatchError: The two limits differ. Names both and the fix.
+    """
+    if recorded != current:
+        raise LimitMismatchError(
+            f"{what} came from a run with --limit {recorded}; this run has --limit {current}. "
+            "Move the old output and the scratch index aside, then run again."
+        )
+
+
+def stray_files(folder: Path, wanted: Sequence[str]) -> list[str]:
+    """Return the names in *folder* that are not in *wanted*, sorted; empty if it is missing."""
+    if not folder.is_dir():
+        return []
+    return sorted(p.name for p in folder.iterdir() if p.name not in set(wanted))
+
+
+def ingest_failure(result: Mapping[str, Any]) -> str:
+    """Return a message when an ingest result shows a failure, else an empty string.
+
+    ``ingest_path_async`` returns ``status: "error"`` without raising when
+    every file fails, and ``warnings`` when some fail.
+    """
+    if result.get("status") == "error":
+        return f"ingest status error: {result.get('message') or result.get('error_type') or ''}"
+    warnings = result.get("warnings")
+    if warnings:
+        return "ingest warnings: " + "; ".join(str(w) for w in warnings)
+    return ""
+
+
 # --- FinanceBench page conversion (D1) --------------------------------------
 
 
@@ -77,6 +125,32 @@ def compare_rankings(
         if left != right:
             mismatches.append({"question": question, "mode": mode, "run1": left, "run2": right})
     return mismatches
+
+
+def incomplete_comparisons(
+    baseline: Sequence[Mapping[str, Any]], repeat: Sequence[Mapping[str, Any]]
+) -> list[dict[str, Any]]:
+    """List the (question, mode) pairs a determinism check could not compare.
+
+    A search that failed in either run leaves an empty ranking, and two empty
+    rankings compare equal. Each such pair, and each repeat row with no
+    baseline row, becomes a row with an ``incomplete`` reason, so it cannot
+    pass as a match.
+    """
+    first = {(row["question"], row["mode"]): row for row in baseline}
+    found: list[dict[str, Any]] = []
+    for row in repeat:
+        key = (row["question"], row["mode"])
+        reason = ""
+        if row.get("error"):
+            reason = f"repeat search failed: {row['error']}"
+        elif key not in first:
+            reason = "no baseline row"
+        elif first[key].get("error"):
+            reason = f"baseline search failed: {first[key]['error']}"
+        if reason:
+            found.append({"question": key[0], "mode": key[1], "incomplete": reason})
+    return found
 
 
 # --- FinanceBench selection (D1, task 2.3) ----------------------------------
@@ -112,6 +186,35 @@ def extrapolate(
     return corpus_tokens / tokens_per_second / 3600.0
 
 
+def speed_summary(
+    exact: Mapping[str, Mapping[str, float]], fast: Mapping[str, Mapping[str, float]]
+) -> dict[str, dict[str, float]]:
+    """Vectors per second of each mode and the gain, per slice (design D6a step 5).
+
+    Args:
+        exact: Slice name to ``{"seconds", "vectors"}`` for exact mode.
+        fast: The same for fast mode.
+
+    Raises:
+        ValueError: The two modes did not time the same slices.
+    """
+    if set(exact) != set(fast):
+        raise ValueError(
+            f"exact timed {sorted(exact)} but fast timed {sorted(fast)}; "
+            "run both modes on the same slices"
+        )
+    summary = {}
+    for name in sorted(exact):
+        slow = exact[name]["vectors"] / exact[name]["seconds"]
+        quick = fast[name]["vectors"] / fast[name]["seconds"]
+        summary[name] = {
+            "exact_vectors_per_second": slow,
+            "fast_vectors_per_second": quick,
+            "speed_gain": quick / slow,
+        }
+    return summary
+
+
 # --- Part C vector comparison (task 4.0) ------------------------------------
 
 
@@ -136,8 +239,7 @@ def compare_vectors(
         cosines.append(cosine)
         if cosine < threshold:
             failed.append(chunk_id)
-    ordered = sorted(cosines)
-    median = ordered[len(ordered) // 2] if ordered else 1.0
+    median = statistics.median(cosines) if cosines else 1.0
     return {
         "pairs": len(cosines),
         "lowest_cosine": min(cosines) if cosines else 1.0,

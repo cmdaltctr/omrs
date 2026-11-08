@@ -9,13 +9,18 @@ import pytest
 from sweep_lib import (
     ChangedInputError,
     ChunkingGuardError,
+    LimitMismatchError,
     chunking_guard,
     compare_rankings,
     compare_vectors,
     convert_evidence_page,
     extrapolate,
+    incomplete_comparisons,
+    ingest_failure,
     preset_has_parallel,
+    require_same_limit,
     select_financebench,
+    speed_summary,
     verify_input_hashes,
 )
 
@@ -200,3 +205,93 @@ def test_preset_check_fails_without_parallel():
 def test_preset_check_passes_with_parallel():
     model = {"role": "embedding", "file": "x.gguf", "server_args": {"parallel": 1}}
     preset_has_parallel([model])
+
+
+# --- review fixes, 2026-11-08 (CodeRabbit on PR 195) -------------------------
+
+
+def test_median_of_an_even_count_is_the_mean_of_the_two_middle_cosines():
+    # Cosines 1.0, 0.9, 0.8, 0.6 (unit vectors against [1, 0]). The median is 0.85.
+    import math
+
+    exact = {f"c{i}": [1.0, 0.0] for i in range(4)}
+    fast = {
+        f"c{i}": [math.cos(a), math.sin(a)]
+        for i, a in enumerate([0.0, math.acos(0.9), math.acos(0.8), math.acos(0.6)])
+    }
+    report = compare_vectors(exact, fast)
+    assert report["median_cosine"] == pytest.approx(0.85)
+
+
+def test_ingest_failure_is_empty_for_a_clean_result():
+    assert ingest_failure({"status": "ok", "timings": {}}) == ""
+
+
+def test_ingest_failure_reports_a_returned_error_status():
+    result = {"status": "error", "message": "All 1 file(s) failed to index."}
+    found = ingest_failure(result)
+    assert "error" in found and "All 1 file(s) failed" in found
+
+
+def test_ingest_failure_reports_warnings_of_an_ok_result():
+    found = ingest_failure({"status": "ok", "warnings": ["a.pdf: boom"]})
+    assert "a.pdf: boom" in found
+
+
+def test_same_limit_passes_when_both_are_none_or_equal():
+    require_same_limit(None, None, "stage ingest")
+    require_same_limit(3, 3, "stage ingest")
+
+
+@pytest.mark.parametrize(("recorded", "current"), [(1, None), (None, 1), (1, 2)])
+def test_a_different_limit_is_refused_and_names_both(recorded, current):
+    with pytest.raises(LimitMismatchError) as exc:
+        require_same_limit(recorded, current, "stage ingest")
+    text = str(exc.value)
+    assert "stage ingest" in text and str(recorded) in text and str(current) in text
+
+
+def _row(question, mode, ids, error=""):
+    return {"question": question, "mode": mode, "error": error, "results": [{"id": i} for i in ids]}
+
+
+def test_a_failed_repeat_search_is_an_incomplete_comparison():
+    baseline = [_row("q1", "dense", ["a"])]
+    repeat = [_row("q1", "dense", [], error="boom")]
+    found = incomplete_comparisons(baseline, repeat)
+    assert [(r["question"], r["mode"]) for r in found] == [("q1", "dense")]
+    assert "boom" in found[0]["incomplete"]
+
+
+def test_a_failed_baseline_search_is_an_incomplete_comparison():
+    found = incomplete_comparisons(
+        [_row("q1", "dense", [], error="down")], [_row("q1", "dense", [])]
+    )
+    assert len(found) == 1 and "down" in found[0]["incomplete"]
+
+
+def test_a_missing_baseline_row_is_an_incomplete_comparison():
+    found = incomplete_comparisons([], [_row("q1", "dense", ["a"])])
+    assert len(found) == 1 and "baseline" in found[0]["incomplete"]
+
+
+def test_complete_rows_give_no_incomplete_comparison():
+    rows = [_row("q1", "dense", ["a"])]
+    assert incomplete_comparisons(rows, rows) == []
+
+
+def test_speed_summary_gives_vectors_per_second_and_the_gain():
+    exact = {"freshstack": {"seconds": 10.0, "vectors": 100}}
+    fast = {"freshstack": {"seconds": 2.0, "vectors": 100}}
+    summary = speed_summary(exact, fast)["freshstack"]
+    assert summary["exact_vectors_per_second"] == pytest.approx(10.0)
+    assert summary["fast_vectors_per_second"] == pytest.approx(50.0)
+    assert summary["speed_gain"] == pytest.approx(5.0)
+
+
+def test_speed_summary_refuses_slices_that_differ():
+    with pytest.raises(ValueError, match="bioasq"):
+        speed_summary(
+            {"freshstack": {"seconds": 1.0, "vectors": 1}},
+            {"bioasq": {"seconds": 1.0, "vectors": 1}},
+        )

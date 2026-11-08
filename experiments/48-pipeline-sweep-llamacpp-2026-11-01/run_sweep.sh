@@ -10,12 +10,25 @@
 # resumes every stage and never deletes an output. Stop it with the word
 # RUNSTOP:  touch output/RUNSTOP  (checked between stages). Runs on macOS and
 # Linux; it holds a caffeinate assertion only where caffeinate exists.
+#
+# A failed stage stops the sweep with a nonzero exit (set -e). Output that
+# came from a --limit smoke run stops it before the first stage: the file
+# existence checks below would otherwise skip stages the smoke run only
+# sampled. Move that output aside and run again.
 
-set -u
+set -euo pipefail
 cd "$(dirname "$0")" || exit 1
 mkdir -p output/logs
 
 log() { printf '[%s] %s\n' "$(date +%H:%M:%S)" "$*"; }
+
+limited="$(grep -lE '"limit": [0-9]+' output/.done-*.json output/timing-*.jsonl \
+  output/token-counts.json 2>/dev/null || true)"
+if [[ -n "$limited" ]]; then
+  log "FATAL: these files came from a --limit run: $(echo "$limited" | tr '\n' ' ')"
+  log "Move output/ aside (and its scratch index), then run again."
+  exit 1
+fi
 
 check_stop() {
   if [[ -e output/RUNSTOP ]]; then log "RUNSTOP found; exiting cleanly."; exit 0; fi
@@ -25,7 +38,7 @@ CAFFEINATE=""
 if command -v caffeinate > /dev/null 2>&1; then
   caffeinate -dimsu &
   CAFFEINATE=$!
-  trap 'kill "$CAFFEINATE" 2>/dev/null' EXIT
+  trap 'kill "$CAFFEINATE" 2>/dev/null || true' EXIT
 fi
 
 # Stop before any router start when OMRS refuses the scratch settings.
@@ -64,4 +77,4 @@ check_stop
 [[ -e output/part-c.json ]] || uv run --no-sync python run_timing.py --part-c --stage compare
 
 log "sweep complete; outputs:"
-ls -la output/*.jsonl output/*.json 2>/dev/null
+ls -la output/*.jsonl output/*.json 2>/dev/null || true

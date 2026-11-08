@@ -6,8 +6,8 @@ Modes:
 - determinism   rerun the four search modes in this new process on the same
             index and compare rankings exactly (task 3.3).
 - arms      rebuild a dense index with one comparison embedding model
-            (--model 0.6b or 8b) and answer the 17 questions, reranker off
-            (task 3.4).
+            (--model 0.6b or 8b) and run dense search for the 17 questions,
+            reranker off (task 3.4). It writes search results, not answers.
 
 Every stage writes one JSONL file in ``output/`` and a done-marker it checks
 on ``--resume``. One failed item is recorded and the run continues.
@@ -60,7 +60,14 @@ from ranking_lib import (  # noqa: E402
     source_matches,
     write_props_snapshot,
 )
-from sweep_lib import chunking_guard, compare_rankings, verify_input_hashes  # noqa: E402
+from sweep_lib import (  # noqa: E402
+    chunking_guard,
+    compare_rankings,
+    incomplete_comparisons,
+    ingest_failure,
+    require_same_limit,
+    verify_input_hashes,
+)
 
 SEARCH_MODES = {
     "dense": {"hybrid": False, "rerank": False},
@@ -113,13 +120,24 @@ def read_jsonl(name: str) -> list[dict]:
         return [json.loads(line) for line in handle if line.strip()]
 
 
-def stage_done(stage: str) -> bool:
-    return (OUTPUT / f".done-{stage}.json").exists()
+def stage_done(stage: str, limit: int | None) -> bool:
+    """True when the stage has a done-marker from a run with the same ``--limit``.
+
+    Raises:
+        LimitMismatchError: The marker came from a run with another ``--limit``.
+    """
+    marker = OUTPUT / f".done-{stage}.json"
+    if not marker.exists():
+        return False
+    recorded = json.loads(marker.read_text(encoding="utf-8")).get("limit")
+    require_same_limit(recorded, limit, f"done-marker of stage {stage}")
+    return True
 
 
-def mark_done(stage: str, payload: dict) -> None:
+def mark_done(stage: str, payload: dict, limit: int | None) -> None:
+    """Write the stage's done-marker with the ``--limit`` of this run."""
     tmp = OUTPUT / f".done-{stage}.json.tmp"
-    tmp.write_text(json.dumps(payload, default=str), encoding="utf-8")
+    tmp.write_text(json.dumps({**payload, "limit": limit}, default=str), encoding="utf-8")
     tmp.replace(OUTPUT / f".done-{stage}.json")
 
 
@@ -177,12 +195,25 @@ def _load_block(block: dict):
     return RuntimeBlock.model_validate(block)
 
 
-def ingest_documents(build, limit: int | None, collection: str = COLLECTION) -> list[dict]:
+def fixed_set_documents(plan: dict) -> list[Path]:
+    """The frozen documents only: Experiment 3 corpus files, then FinanceBench PDFs.
+
+    A stray file in either folder (``.DS_Store``, an earlier PDF) is not
+    hash-checked, so it must not reach the index.
+    """
+    maps = frozen_paths(plan)
+    docs = [EXP_DIR / "corpus" / name for name in sorted(maps["corpus"])]
+    docs += [OUTPUT / "financebench/pdfs" / name for name in sorted(maps["pdfs"])]
+    return docs
+
+
+def ingest_documents(
+    build, limit: int | None, collection: str = COLLECTION, *, plan: dict
+) -> list[dict]:
     """Ingest each fixed-set document separately; record per-file stats."""
     from omrs.core.ingestion import ingest_path_async
 
-    docs = sorted(p for p in (EXP_DIR / "corpus").iterdir() if p.is_file())
-    docs += sorted((OUTPUT / "financebench/pdfs").glob("*.pdf"))
+    docs = fixed_set_documents(plan)
     if limit is not None:
         docs = docs[:limit]
     rows = []
@@ -205,6 +236,7 @@ def ingest_documents(build, limit: int | None, collection: str = COLLECTION) -> 
             try:
                 result = await ingest_path_async(str(doc), collection_name=collection)
                 summary = json.dumps(result, default=str)[:2000]
+                error = ingest_failure(result)  # a failed file may return, not raise
             except Exception as exc:  # noqa: BLE001 - record and continue (D4)
                 result, summary, error = None, "", f"{type(exc).__name__}: {exc}"
             stage.append({"file": doc.name, "seconds": round(time.perf_counter() - started, 2),
@@ -353,10 +385,10 @@ def main() -> None:
     if args.mode == "arms":
         collection = f"sweep43_{args.model.replace('.', '')}"
         preflight(plan, load=[embed_file, chat_file], models=[embed_file, chat_file])
-        if not (args.resume and stage_done(f"arms-{args.model}-ingest")):
-            rows = ingest_documents(engine_factory(collection), args.limit, collection)
+        if not (args.resume and stage_done(f"arms-{args.model}-ingest", args.limit)):
+            rows = ingest_documents(engine_factory(collection), args.limit, collection, plan=plan)
             write_jsonl(f"arms-{args.model}-ingest.jsonl", rows)
-            mark_done(f"arms-{args.model}-ingest", {"files": len(rows)})
+            mark_done(f"arms-{args.model}-ingest", {"files": len(rows)}, args.limit)
         engine = engine_factory(collection)()
         out = []
         try:
@@ -400,27 +432,28 @@ def main() -> None:
             left = {q: first.get(q, {}).get(mode, []) for q in repeat}
             right = {q: repeat[q].get(mode, []) for q in repeat}
             mismatches += compare_rankings(mode, left, right)
+        mismatches += incomplete_comparisons(baseline, repeat_rows)
         write_jsonl("determinism-repeat.jsonl", repeat_rows)
         write_jsonl("determinism.jsonl", mismatches)
         print(f"[determinism] {len(mismatches)} mismatches -> output/determinism.jsonl", flush=True)
         return
 
     preflight(plan, load=[BASELINE_MODEL, chat_file])
-    if not (args.resume and stage_done("ingest")):
-        rows = ingest_documents(engine_factory(), args.limit)
+    if not (args.resume and stage_done("ingest", args.limit)):
+        rows = ingest_documents(engine_factory(), args.limit, plan=plan)
         write_jsonl("ingest.jsonl", rows)
-        mark_done("ingest", {"files": len(rows)})
-    if not (args.resume and stage_done("search")):
+        mark_done("ingest", {"files": len(rows)}, args.limit)
+    if not (args.resume and stage_done("search", args.limit)):
         rows = run_searches(engine_factory, questions, financebench, args.limit)
-        mark_done("search", {"rows": len(rows)})
-    if not (args.resume and stage_done("answers-plain")):
+        mark_done("search", {"rows": len(rows)}, args.limit)
+    if not (args.resume and stage_done("answers-plain", args.limit)):
         rows = run_answers(engine_factory, questions, financebench, args.limit, verify=False)
         write_jsonl("answers.jsonl", rows)
-        mark_done("answers-plain", {"rows": len(rows)})
-    if not (args.resume and stage_done("answers-verify")):
+        mark_done("answers-plain", {"rows": len(rows)}, args.limit)
+    if not (args.resume and stage_done("answers-verify", args.limit)):
         rows = run_answers(engine_factory, questions, financebench, args.limit, verify=True)
         write_jsonl("answers-verify.jsonl", rows)
-        mark_done("answers-verify", {"rows": len(rows)})
+        mark_done("answers-verify", {"rows": len(rows)}, args.limit)
     print("[part_a] complete", flush=True)
 
 

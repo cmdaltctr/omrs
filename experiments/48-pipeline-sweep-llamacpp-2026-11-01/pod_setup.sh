@@ -24,7 +24,8 @@ repository root. Steps, in order:
   1. Check that `git rev-parse HEAD` equals --commit. Stop if not.
   2. uv sync --frozen --extra web --extra llamacpp
   3. omrs llamacpp install --flavour cuda (pinned b11941 CUDA build). Stop on failure.
-  4. Check that nvidia-smi lists a GPU. Print its name and memory.
+  4. Check that nvidia-smi lists exactly one GPU and that it is an RTX 4090.
+     Print its name and memory.
   5. Fetch the four GGUF files at their pinned revisions into SWEEP_GGUF_DIR.
      Check each SHA-256 against plan.json.
   6. Place the other inputs: Experiment 3 corpus and Experiment 2 ground truth
@@ -86,6 +87,10 @@ problem() {
 }
 run() {
   if [ "$DRY_RUN" -eq 1 ]; then say "  [dry-run] would run: $*"; else say "  \$ $*"; "$@"; fi
+}
+# Succeeds when the nvidia-smi listing ($1) holds exactly one GPU and it is an RTX 4090.
+gpu_is_single_4090() {
+  [ "$(printf '%s\n' "$1" | grep -c .)" -eq 1 ] && printf '%s\n' "$1" | grep -q 'RTX 4090'
 }
 
 # --- Python helper (stdlib, plus huggingface_hub for downloads and the cache) ---
@@ -324,6 +329,7 @@ else
   command -v nvidia-smi >/dev/null 2>&1 || die "nvidia-smi not found. This pod has no NVIDIA driver; pick an RTX 4090 pod."
   GPUS="$(nvidia-smi --query-gpu=name,memory.total --format=csv,noheader)" || die "nvidia-smi failed."
   [ -n "$GPUS" ] || die "nvidia-smi lists no GPU."
+  gpu_is_single_4090 "$GPUS" || die "nvidia-smi lists: $GPUS. The plan measures one RTX 4090 pod (amendment A3); pick that pod class."
   say "  GPU: $GPUS"
 fi
 

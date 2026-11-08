@@ -162,6 +162,11 @@ class GpuMemorySampler(threading.Thread):
             except GpuMemoryError as exc:
                 self.error = exc
                 return
+            except Exception as exc:  # noqa: BLE001 - the PID source is caller code; stop() raises it
+                self.error = GpuMemoryError(
+                    f"GPU memory sampling stopped: {type(exc).__name__}: {exc}"
+                )
+                return
 
     def stop(self) -> float | None:
         """Stop sampling and return the peak GPU memory.

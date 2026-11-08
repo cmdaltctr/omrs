@@ -302,3 +302,46 @@ def test_router_pids_holds_the_router_and_its_children(tmp_path, monkeypatch):
     write_server_record(folder, record)
     monkeypatch.setattr(children, "direct_children", lambda pid: [901, 902])
     assert rc.router_pids(tmp_path) == {os.getpid(), 901, 902}
+
+
+# --- review fix: the resolved providers must be the sweep's (PR 195) -------------
+
+_ROUTING_ENV = (
+    "EMBED_PROVIDER",
+    "EMBED_MODEL",
+    "LOCAL_BACKEND",
+    "METADATA_LLM_PROVIDER",
+    "ANSWER__PROVIDER",
+    "ANSWER__MODEL",
+    "ANSWER__VERIFY_PROVIDER",
+    "ANSWER__VERIFY_MODEL",
+)
+
+
+@pytest.fixture
+def clean_env(gguf_dir, tmp_path, monkeypatch):
+    """Scratch folders and none of the environment names the sweep file pins."""
+    monkeypatch.setenv("OMRS_CONFIG_DIR", str(tmp_path / "config"))
+    monkeypatch.setenv("OMRS_STATE_DIR", str(tmp_path / "state"))
+    for name in [k for k in os.environ if k.startswith("LLAMACPP_")] + list(_ROUTING_ENV):
+        monkeypatch.delenv(name, raising=False)
+    return tmp_path / "config"
+
+
+def test_configure_passes_when_nothing_overrides_the_file(clean_env):
+    rc.configure(PLAN, embed_file=BASELINE_FILE, config_dir=clean_env)
+
+
+def test_an_environment_embed_provider_stops_the_run_and_names_the_key(clean_env, monkeypatch):
+    monkeypatch.setenv("EMBED_PROVIDER", "ollama")
+    monkeypatch.setenv("EMBED_MODEL", "qwen3-embedding:8b")  # OMRS needs it with ollama
+    with pytest.raises(rc.RouterConfigError) as exc:
+        rc.configure(PLAN, embed_file=BASELINE_FILE, config_dir=clean_env)
+    text = str(exc.value)
+    assert "embed_provider" in text and "ollama" in text and "llamacpp" in text
+
+
+def test_an_environment_answer_provider_stops_the_run_and_names_the_key(clean_env, monkeypatch):
+    monkeypatch.setenv("ANSWER__PROVIDER", "openrouter")
+    with pytest.raises(rc.RouterConfigError, match=r"answer\.provider"):
+        rc.configure(PLAN, embed_file=BASELINE_FILE, config_dir=clean_env)

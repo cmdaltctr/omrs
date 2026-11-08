@@ -8,10 +8,8 @@ ingest, and none writes to ``output/``.
 
 from __future__ import annotations
 
-import importlib
 import io
 import json
-import os
 import sys
 import types
 import urllib.request
@@ -23,30 +21,6 @@ import router_config as rc
 EXP_DIR = Path(__file__).resolve().parent
 PLAN = json.loads((EXP_DIR / "plan.json").read_text(encoding="utf-8"))
 BASELINE = "Qwen3-Embedding-4B-Q8_0.gguf"
-
-
-def _import(name, monkeypatch):
-    monkeypatch.setattr(os, "environ", dict(os.environ))
-    monkeypatch.setattr(sys, "path", list(sys.path))
-    sys.modules.pop(name, None)
-    module = importlib.import_module(name)
-    monkeypatch.setitem(sys.modules, name, module)
-    return module
-
-
-@pytest.fixture
-def part_a(monkeypatch, tmp_path):
-    module = _import("run_part_a", monkeypatch)
-    monkeypatch.setattr(module, "OUTPUT", tmp_path / "output")
-    return module
-
-
-@pytest.fixture
-def timing(monkeypatch, tmp_path):
-    module = _import("run_timing", monkeypatch)
-    monkeypatch.setattr(module, "OUTPUT", tmp_path / "output")
-    (tmp_path / "output").mkdir()
-    return module
 
 
 class FakeEngine:
@@ -170,8 +144,14 @@ def test_timing_live_check_appends_a_props_snapshot(timing, monkeypatch):
 # --- gap 5: a resumed slice with chunks already in its collection is refused -----
 
 
-def _stage_model(timing, monkeypatch, tmp_path, *, done, counts):
-    """Run ``stage_model`` with fakes; return the collections ingested into."""
+def _stage_model(
+    timing, monkeypatch, tmp_path, *, done, counts, result=None, limit=None, done_limit=None
+):
+    """Run ``stage_model`` with fakes; return the collections ingested into.
+
+    *result* is what the fake ``ingest_path_async`` returns. *done_limit*, when
+    given, is the ``limit`` stored in each already-done row.
+    """
     ingested = []
     slices = {}
     for name in ("freshstack", "bioasq", "financebench"):
@@ -180,12 +160,16 @@ def _stage_model(timing, monkeypatch, tmp_path, *, done, counts):
         (folder / "doc.txt").write_text("x", encoding="utf-8")
         slices[name] = folder
     (timing.OUTPUT / "timing-4b.jsonl").write_text(
-        "".join(json.dumps({"slice": s}) + "\n" for s in done), encoding="utf-8"
+        "".join(
+            json.dumps({"slice": s, **({} if done_limit is None else {"limit": done_limit})}) + "\n"
+            for s in done
+        ),
+        encoding="utf-8",
     )
 
     async def fake_ingest(path, collection_name):
         ingested.append(collection_name)
-        return {"timings": {}}
+        return {"timings": {}} if result is None else result
 
     monkeypatch.setattr(timing, "check_runtime", lambda *a: None)
     monkeypatch.setattr(timing, "prepare_slices", lambda: slices)
@@ -204,7 +188,7 @@ def _stage_model(timing, monkeypatch, tmp_path, *, done, counts):
     monkeypatch.setattr(timing.router_config, "router_pids", lambda: set())
     monkeypatch.setattr(timing, "GpuMemorySampler", _FakeGpu)
     monkeypatch.setattr(timing, "RssSampler", _FakeRss)
-    timing.stage_model("4b", PLAN, None, object())
+    timing.stage_model("4b", PLAN, limit, object())
     return ingested
 
 
