@@ -40,15 +40,28 @@ def _record(runtime_id: str = "router"):  # type: ignore[no-untyped-def]
 # ── 4.6 Operator stop ───────────────────────────────────────────────────
 
 
-def test_operator_stop_while_a_client_uses_the_runtime(runtime_env: RuntimeEnv) -> None:
+def test_operator_stop_while_a_client_uses_the_runtime(
+    runtime_env: RuntimeEnv, tmp_path: Path
+) -> None:
     fake = runtime_env.fake()
-    fake.set_env(FAKE_LLAMA_REQUEST_DELAY="3")
+    requests_log = tmp_path / "in-flight-request.log"
+    # One call: set_env replaces the whole behaviour file.
+    fake.set_env(FAKE_LLAMA_REQUESTS=str(requests_log), FAKE_LLAMA_REQUEST_DELAY="3")
     spec = fixed_spec(fake, _free_port())
     cli = runtime_env.client()
     assert cli.join(spec)["ok"]
     server_pid = int(fake.starts()[0]["pid"])
     cli.send({"cmd": "request", "path": "/v1/chat/completions", "body": {}, "timeout": 30})
-    time.sleep(0.5)  # the request is in progress
+    # The model server writes the request line before its delay sleep, so this
+    # waits until the request is truly in hand. A fixed 0.5 s sleep raced the
+    # load of a shared runner and read the stop as happening "before" it.
+    deadline = time.monotonic() + 10.0
+    while time.monotonic() < deadline:
+        if requests_log.exists() and requests_log.read_text().splitlines():
+            break
+        time.sleep(0.05)
+    else:
+        pytest.fail("the request never reached the model server")
     assert runtime_env.manager().stop("router") is True
     assert not pid_alive(server_pid)
     record = _record()
