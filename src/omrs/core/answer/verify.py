@@ -457,7 +457,7 @@ async def run_verification_stage(
     try:
         outcome = await verify_claims(text, evidence, verify_complete)
     except JudgeUnavailable as refused:  # A fixed reason; nothing was sent.
-        return VerificationFields(skipped_reason=refused.reason, ran=True)
+        return VerificationFields(skipped_reason=refused.reason, ran=False)
     except Exception as exc:  # Judge failure never fails the answer.
         return VerificationFields(
             skipped_reason=(f"verification failed: {type(exc).__name__}: {error_detail(exc)}"),

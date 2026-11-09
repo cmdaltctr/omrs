@@ -363,7 +363,8 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # Generation builds each lazy resource once (2).
 # +1 (2026-11-09, drift found while pinning): one base case added without a pin
 # bump after the CPU-affinity denial fix (a6ffbc39).
-_BASE_EXECUTED = 12418
+# +1 (2026-11-09, issue 204): judge-refused verification reports ran=False.
+_BASE_EXECUTED = 12419
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

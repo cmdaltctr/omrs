@@ -261,6 +261,26 @@ async def test_verify_answer_degrades_with_its_actual_reason(
     assert fields.failing == ()
 
 
+async def test_verify_answer_reports_not_ran_when_the_judge_never_started() -> None:
+    """A refused judge sent nothing; diagnostics must not say the stage ran (issue 204)."""
+    from omrs.core.answer.judges import registry as judge_registry
+    from omrs.core.answer.judges.base import JudgeResources
+
+    refused = judge_registry.get("clef_flash").build(JudgeResources(model="m", refusal="no model"))
+    fields = await verify_answer(
+        "Tall [1].",
+        prepare_evidence([_ROW]),
+        grounded=True,
+        answer_block=AnswerBlock(verify_claims=True),
+        verify_complete=refused,
+        unavailable_reason=None,
+        error_detail=_redact,
+    )
+
+    assert fields.skipped_reason == "claim judge clef_flash cannot run: no model"
+    assert fields.ran is False
+
+
 def test_answer_status_mapping() -> None:
     """Status taxonomy: failing claims, then grounded, then unverified."""
     failing = VerificationFields(failing=({"claim": "x"},), ran=True)
