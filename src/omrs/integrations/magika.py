@@ -177,7 +177,29 @@ def _get_magika_instance() -> Any:
             if _MAGIKA_INSTANCE is None:
                 from magika import Magika
 
-                _MAGIKA_INSTANCE = Magika()
+                class _ThreadCappedMagika(Magika):
+                    """Build Magika's session with bounded ONNX worker pools."""
+
+                    def _init_onnx_session(self) -> Any:
+                        import onnxruntime as rt
+
+                        # Magika 1.0.3 accepts no SessionOptions constructor argument.
+                        affinity = getattr(os, "sched_getaffinity", None)
+                        try:
+                            visible_cpus = len(affinity(0)) if affinity else (os.cpu_count() or 1)
+                        except OSError:
+                            visible_cpus = os.cpu_count() or 1
+                        options = rt.SessionOptions()
+                        options.intra_op_num_threads = min(visible_cpus, 8)
+                        options.inter_op_num_threads = 1
+                        rt.disable_telemetry_events()
+                        return rt.InferenceSession(
+                            self._model_path,
+                            sess_options=options,
+                            providers=["CPUExecutionProvider"],
+                        )
+
+                _MAGIKA_INSTANCE = _ThreadCappedMagika()
     return _MAGIKA_INSTANCE
 
 

@@ -358,7 +358,8 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # test_magika_api_label_equality.py adds 6 (label equality, process cache, concurrent
 # cold cache, symlink walk, empty dir, identify failure) and the Magika Python API
 # rework removes 2 moot JSONL tests from parser_boundaries.
-_BASE_EXECUTED = 12408
+# +4 (2026-11-09, onnx-pod-thread-cap, by test-ID diff): CPU affinity ceiling and fallback.
+_BASE_EXECUTED = 12413
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
