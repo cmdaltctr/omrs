@@ -70,7 +70,7 @@ Rules for every group: tests first and shown to fail on the current code; one mu
 ## 9. Close
 
 - [x] 9.1 Re-pin the tripwire by test-ID diff; `./scripts/local_ci.sh` passes; `openspec validate --all --strict` passes.
-- [ ] 9.2 Independent review subagent on the full diff; fix findings scored 4 or more.
+- [x] 9.2 Independent review subagent on the full diff; fix findings scored 4 or more.
 - [x] 9.3 Scan `git diff origin/v3...HEAD` for `/Users/` paths and email addresses; PR into `v3`; CI green; CodeRabbit read, threads replied and resolved. Do not merge without the operator's word.
 
 ## 10. After merge: pre-freeze RunPod session (design D13; operator-gated, spends money)
