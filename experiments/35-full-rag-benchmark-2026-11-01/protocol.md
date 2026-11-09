@@ -41,7 +41,7 @@ Measured: Recall@10, MRR@10, nDCG@10, hit@page (FinanceBench only), Ragas 0.4.3 
 | Item | FinanceBench (open sample) | FreshStack (LangChain slice) | BioASQ (`enelpol/rag-mini-bioasq`, test split) |
 | --- | --- | --- | --- |
 | Questions | 150 | 223 | 707 (or the frozen subset) |
-| Corpus | Real 10-K and similar filings, full PDF path | About 10,024 parent documents | 40.2K PubMed abstracts |
+| Corpus | Real 10-K and similar filings, full PDF path | 10,025 parent documents (10,024 from the 9a export plus one overlay file, section 4.1) | 40.2K PubMed abstracts |
 | Gold labels | Gold document and gold page (`evidence_page_num`, zero-indexed) | Gold documents | Gold passage IDs and reference answers |
 | Unit | Question | Query | Question |
 | Licence | CC BY-NC 4.0 | CC BY-SA 4.0 | CC BY 2.5 |
@@ -52,52 +52,40 @@ Measured: Recall@10, MRR@10, nDCG@10, hit@page (FinanceBench only), Ragas 0.4.3 
 - Fallback for BioASQ: NFCorpus (`BeIR/nfcorpus`), retrieval scores only. Task 1.8 checks its academic-use terms first.
 - A question stays in its denominator even when its pipeline stage fails.
 
-## 5. Steps
+### 4.1 Data provenance (step 6.1, checked 2026-11-09)
 
-Run every command from the repository root. The harness scripts are built by change tasks 2.1 to 2.10 before the freeze.
+All three datasets were already on disk under `~/Development/DATA/omrs/benchmarks/` (FinanceBench, BioASQ) and `~/Development/DATA/omrs/experiments/freshstack-corpus/` (FreshStack). Step 6.1 downloaded nothing. It rechecked hashes, counts and licences. Nothing here goes in git. The worker reports are in `~/Development/DATA/omrs/handoffs/pre-exp35-session/step6.1/`.
 
-1. Prepare the data: `uv run --no-sync python experiments/35-full-rag-benchmark-2026-11-01/prepare_data.py` (FinanceBench download, FreshStack export seed 20260530, BioASQ download; records revisions and hashes).
-2. Start one `llama serve` router on `127.0.0.1` (scratch port) with one preset per model of the runtime table.
-3. Run: `uv run --no-sync python experiments/35-full-rag-benchmark-2026-11-01/run_arm.py --arm NAME --dataset DATASET --run N --resume` (six arms, three datasets, 3 runs each; appends the run record and writes JSONL traces).
-4. Determinism and rebuild checks: `uv run --no-sync python experiments/35-full-rag-benchmark-2026-11-01/check_determinism.py` (runs 2 and 3 against run 1; one 4B baseline rebuild per dataset in a fresh process).
-5. Summarise: `uv run --no-sync python experiments/35-full-rag-benchmark-2026-11-01/summarise.py` (expert statistics from `plan.json`; writes `output/summary.json` and the report tables).
-
-The smoke subset (task 4.1) runs a small slice of each dataset through every arm before the freeze and is never scored as a result.
-
-## 6. Analysis
-
-- **Stats level**: expert.
-- **Tests**: paired permutation test on per-question nDCG@10 (10,000 shuffles, seed 20261101), averaged over the 3 runs per question first. McNemar's exact test for hit@page hit or miss. Wilson intervals for rates, paired bootstrap (10,000 resamples) for differences and means. `holm` correction across the arms of one dataset, on nDCG@10 only. Functions come from `.agents/skills/s-experiment/references/stats.py` and `experiments/_lib/stats.py`; no new statistics code.
-- **Minimum detectable effect**: about 4 points at 150 to 223 questions; about 2 points at 707 questions. Stated before the run; recorded per dataset in the report.
-- **Sensitivity**: re-test the 0.05 cut-off at 0.045 and 0.055 and report whether any arm's verdict changes.
-- **Gates**:
-
-| Gate | Pass when | Why it matters |
+| Dataset | Source and revision | Check result |
 | --- | --- | --- |
-| G1 | Runs 2 and 3 retrieve exactly what run 1 retrieved on the fixed index, every arm and dataset | A mismatch breaks the paired design and is itself a finding |
-| G2 | The 4B baseline index rebuilt once per dataset in a fresh process gives run 1's retrieved lists | Shows index building is repeatable |
-| G3 | `verify_llamacpp_runtime` passes before the first score of every run | A wrong build or file hash invalidates every score |
+| FinanceBench | HF `PatronusAI/financebench` revision `e04404e3a97f69f79c14d42f24981a1c9c3bcd18`; PDFs from GitHub `patronus-ai/financebench` commit `cc39aeb4afdf33909ee1412188bf89035950c2eb` | 150 questions, 189 evidence items, 84 PDFs (165,527,662 bytes). Every PDF hash matches `PDFS_MANIFEST.json` (SHA-256 `871478cee4d9ee5001b33e4a981015a95c0cca780f5d75051123685886e5c74d`). Every gold `evidence_doc_name` has a PDF, and every PDF is gold for a question. Questions file `financebench_merged.jsonl` SHA-256 `7a1c81789e0fd2f1c37057a7ec0097756d726b05e7228e68e57db8e18c54fd0b`. |
+| FreshStack, LangChain slice | HF `freshstack/queries-oct-2024` and `freshstack/corpus-oct-2024`, config `langchain`. The 9a export did not record a revision. The current revisions (queries `023ac3a14caf9d6ebb13d01adcfb8fa05e5a9630`, corpus `069f66dc323e163b48b10d08408d282733d4393b`) date from 2025-04-21, before the export on 2026-05-30, so they are very probably the ones used (an inference). | 223 queries: 203 FreshStack plus 20 continuity queries from Experiment 9. Manifest has 10,024 rows (10,009 FreshStack, 15 continuity); 10,015 unique ids because two upstream ids repeat. 2,237 qrels pairs. Every FreshStack query has gold documents and none is missing. Manifest SHA-256 `f1e97574229ba474e5b77a338eecbb3c756071f630c312757e0d0aebc702e20e`. Experiment 22 `freshstack-qrels.json` SHA-256 `ccd3bc5732d69a3715a322c8557261f4f7c46ca72951ac6dce160e666e4b2c57`; `ground-truth.json` SHA-256 `3860314c74a5c0be4d10f7cdd4d9d55d1daea4cfedf9dcd60d8fbe20d43b4fe8`. Tree hash of `freshstack-corpus/` (10,025 files, sorted `relpath sha256` lines) `62edae1c601b3f11094c7ef0aaf5a4ce1e16bbfbc5c629e617faef462208af2a`. |
+| BioASQ | HF `enelpol/rag-mini-bioasq` revision `8a845907dc1cff31d42fa6f7bb9c6eef5f3ae6f6` | All 5 files match `benchmarks/MANIFEST.json`. 707 test questions, none without gold. 6,125 gold references, 6,081 distinct passage ids, all present in the test corpus of 40,181 passages (no duplicate ids or texts, none empty). Use only `text-corpus/test`; the `text-corpus/train` file holds the same rows plus 40 duplicate texts and the dataset card does not declare it. |
 
-- **Stop rule**: the run is complete when every arm and dataset has 3 runs, the determinism and rebuild checks, and the Ragas pass. Stop early when the preflight fails, a gate fails, or the smoke subset exceeds the task 1.11 budget on extrapolation. A determinism mismatch is recorded and reported, never swapped for another run.
-- **What each outcome means**:
-  - Pass: gates hold; the report states each arm's difference or "no difference larger than the minimum detectable effect".
-  - Fail: a gate failed; investigate before any number is cited in the paper.
-  - Unclear: an interval crosses zero; report it as not shown, not as no effect.
+**FreshStack overlay (one added document).** Continuity query 009 names `continuity/zzqj-9097-runbook.md` as gold. The 9a export skipped that file because it was untracked in the main checkout, so Experiments 9a and 22 ran with one unanswerable query. Exp 35 adds the file as the 10,025th document from `~/Development/DATA/omrs/benchmarks/freshstack/overlay/zzqj-9097-runbook.md` (SHA-256 `0473106c84f1f7bf1750e6ed03d294cf77c0464347104f64a8b93cf8afa87e0f`, the text holds the gold answer "rotate the amber token"). The existing export is not edited. All 223 queries are then answerable. The 9a and 22 numbers stay as they were and are reference only.
 
-## 7. Runtime
+**BioASQ passage length (characters).** Minimum 3, median 1,455, 95th percentile 2,356, maximum 33,420. Estimated tokens (characters divided by 4, an estimate only): median about 364, 95th percentile about 589, maximum about 8,355, total about 14.9 million. The 4B baseline runs with `--ctx-size 8192`, so the longest passages are cut by the embedder; the pod's Part C count (step B) gives the exact figure.
 
-- **Purpose**: publication. **Runtime under test**: no.
-- **Local models**: every one runs through llama.cpp (`llama serve` router, one preset per model). No Ollama, no MLX. Build 11671 exactly; another build needs a plan amendment first.
+**NFCorpus fallback (task 1.8).** BioASQ passed every check, so the fallback is not used and no NFCorpus terms check was made.
 
-| Role | Repository | File | SHA-256 | Build | Server arguments |
-| --- | --- | --- | --- | --- | --- |
-| Embedding baseline 4B | `Qwen/Qwen3-Embedding-4B-GGUF` | `Qwen3-Embedding-4B-Q8_0.gguf` | `b60ae5ce2dd6a0b77f82cadf21def1f310a3e10cde380ad0081b07a9d416949d` | 11671 | `--embeddings --pooling last --ctx-size 8192 --ubatch-size 8192` |
-| Embedding 0.6B | `Qwen/Qwen3-Embedding-0.6B-GGUF` | `Qwen3-Embedding-0.6B-Q8_0.gguf` | `06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439` | 11671 | as baseline |
-| Embedding 8B | `Qwen/Qwen3-Embedding-8B-GGUF` | `Qwen3-Embedding-8B-Q8_0.gguf` | `d20ddc71e8a5c4344f2343481e242233a997dc5eaff442427a945836c97b4deb` | 11671 | as baseline |
-| Answer | `Qwen/Qwen3-4B-GGUF` | `Qwen3-4B-Q8_0.gguf` | `8c2f07f26af9747e41988551106f149b03eb9b5cb6df636027b6bf6278473300` | 11671 | `--ctx-size 16384`; temperature 0 and seed 20261101 per request |
+### 4.2 Licences (task 1.3, checked 2026-11-09)
 
-The ONNX reranker and the OCR engines do not run through llama.cpp. The freeze records them under the runtime manifest with name, revision and file hash. The embedding tokenizer (`Qwen/Qwen3-Embedding-4B`, `tokenizer.json`, revision `5cf2132a`) is the token-aware chunking tokenizer, cached and hash-checked by sweep task 2.4a.
+| Dataset | Licence as written | Source checked |
+| --- | --- | --- |
+| FinanceBench | CC BY-NC 4.0 | HF dataset tag `license:cc-by-nc-4.0`. The GitHub repo has no licence file at the pinned commit (`gh api` licence call returns 404; the tree lists `README.md`, `data`, `pdfs`, `results`, `vectorstores`). Keep PDFs and derived text out of git and out of any CC BY release. |
+| FreshStack | CC BY-SA 4.0 for data, Apache-2.0 for code | Both HF dataset cards, and the upstream README at `github.com/fresh-stack/freshstack`. Paper: arXiv:2504.13128. Derived files carry the share-alike term. |
+| BioASQ | CC BY 2.5 | HF cards of `enelpol/rag-mini-bioasq` and `rag-datasets/rag-mini-bioasq`, and the BioASQ data page ("The BioASQ data are distributed under CC BY 2.5 license"). The CC BY 2.5 legal code section 3 grants the right to create and distribute derivative works with attribution. The BioASQ page adds that the source data were "accessed courtesy of the U.S. National Library of Medicine" and links the NLM terms. Those terms ask a redistributor to keep the current data or to say clearly that it may not be current. Neither HF card mentions PubMed abstract copyright. This is a record of the text, not legal advice. |
 
-- **Hosted references**: main Ragas judge `deepseek/deepseek-v4.1-flash-1017` (OpenRouter, temperature 0, fixed seed, one pinned upstream provider); cross-check judge `openai/gpt-6.1-terra` (OpenRouter, fixed seed, 50 hand-checked items). A judge never scores its own model family.
-- **Tolerance**: 0.005 absolute on each primary metric (Recall@10, MRR@10, nDCG@10, hit@page). The largest change that still counts as the same result on another back end. Confirm or change at freeze.
-- **Live check**: the runner calls `verify_llamacpp_runtime` before the first score of each run and passes `runtime=found.as_run_record()` to `record_run_start`. A mismatch stops the run.
+### 4.3 FinanceBench table-text loss (task 1.2a, issue 197)
+
+Method: for each PDF, count pages where table areas hold words (from LiteParse word boxes, OCR off) and fewer than 50 percent of those words reach the reader's page text. Table areas come from a numeric-row heuristic (row tolerance 3.0, cell gap 12.0, at least 3 rows and 10 words per table). Three readers were measured: `pdf-inspector` 1.17.0 (the OMRS default, `pdf_reader` in `src/omrs/config/__init__.py`), LiteParse (what `auto` picks) and `pypdf` 6.16.2. The benchmark uses the default, `pdf-inspector`. A control that assigns each table to the wrong page flagged 3,964 pages, so the measure can detect loss. Script: `~/Development/DATA/omrs/benchmarks/financebench/table_loss.py` (SHA-256 `2e9ac3e45e70314d6cb7fe8b218095bcb763e2c41b8f06507dd741f89e9de175`). Full per-PDF results: `~/Development/DATA/omrs/benchmarks/financebench/table-loss.json` (SHA-256 `eb927523cb7f004183c4cbbe101b7043c04e8db0c41dc23f2f55d30c75f08ccf`).
+
+| Reader | Affected pages | Share of 12,013 pages | Share of 4,328 pages with tables |
+| --- | ---: | ---: | ---: |
+| `pdf-inspector` (default) | 17 | 0.14% | 0.39% |
+| LiteParse | 0 | 0.00% | 0.00% |
+| `pypdf` | 15 | 0.12% | 0.35% |
+
+**Decision: no OCR of source pages during corpus prep.** The default reader, `pdf-inspector`, flags 0.14 percent of pages, about 35 times below the 5 percent rule. None of the 168 gold evidence pages is flagged (136 of them hold tables). Most of the 17 flagged pages are false alarms: LiteParse (the word source) attaches footnote markers such as "(d)" to row labels. One real loss: `JPMORGAN_2022_10K` page 2 (table of contents) comes out empty in `pdf-inspector` while `pypdf` reads 5,248 characters. Worst `pdf-inspector` counts: `PFIZER_2021_10K` 3 of 143 pages, `CVSHEALTH_2022_10K` 2 of 213, `JOHNSON_JOHNSON_2023Q2_EARNINGS` 1 of 24.
+
+72 pages (0.60%) have no text layer. Only 3 look like scans (`AMERICANWATERWORKS_2021_10K` pages 151, 153 and 155). The rest look blank. None is a gold page, and none is table loss, so they stay as the reader returns them. The largest counts are `WALMART_2019_10K` 29 of 155 pages, `AMCOR_2020_10K` 10 of 195 and `GENERALMILLS_2022_10K` 8 of 127. Per-PDF counts for the three readers are in `table-loss.json`.

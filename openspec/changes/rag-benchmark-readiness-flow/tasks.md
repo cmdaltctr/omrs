@@ -54,8 +54,10 @@ Follow the steps in order (design D5). "Exp 35 task N" means a task in `experime
 
 ### A. Mac, free: get the data
 
-- [ ] 6.0 Preflight: GitHub CI is green on the `v3` head; `openspec validate --all --strict` passes; `git worktree list` shows no stale Exp 35 worktree.
-- [ ] 6.1 Exp 35 tasks 1.1, 1.2, 1.2a, 1.3, 1.6, 1.7 and 1.8: the sweep report path, the FinanceBench, FreshStack and BioASQ downloads with hashes, the table-loss count and its OCR choice, and the licences. Store the corpora under `~/Development/DATA/omrs/` with SHA-256. Verify: each corpus loads with the count its task names. The pod in step B needs all three corpora.
+- [x] 6.0 Preflight: GitHub CI is green on the `v3` head; `openspec validate --all --strict` passes; `git worktree list` shows no stale Exp 35 worktree.
+  - Done 2026-11-09. `v3` at `4324475b`, in sync, clean. CI run 42660413729 success. Validate 105 passed, 0 failed. Worktrees: `omrs` (main), `omrs-v3`, `omrs-v4`; none for Exp 35.
+- [x] 6.1 Exp 35 tasks 1.1, 1.2, 1.2a, 1.3, 1.6, 1.7 and 1.8: the sweep report path, the FinanceBench, FreshStack and BioASQ downloads with hashes, the table-loss count and its OCR choice, and the licences. Store the corpora under `~/Development/DATA/omrs/` with SHA-256. Verify: each corpus loads with the count its task names. The pod in step B needs all three corpora.
+  - Done 2026-11-09. All three datasets were already on disk, so nothing was downloaded; hashes, counts and licences were rechecked (protocol 4.1 to 4.3). FinanceBench table loss 0.14% with the default reader, no OCR. FreshStack: one missing gold document added as an overlay (judgement log 17 and 18). HF revisions of the FreshStack export were never recorded (inference stated in the protocol).
 
 ### B. Pre-freeze pod session (archived group 10, design D13 of that change)
 
