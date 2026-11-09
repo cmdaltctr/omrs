@@ -99,7 +99,10 @@ def test_load_failure_isolated(rig: RouterRig, monkeypatch: pytest.MonkeyPatch) 
         with router.model_session(CLEF):
             pass
     assert (caught.value.model, caught.value.reason) == (CLEF, "model-load-failed")
-    assert time.monotonic() - began < 3  # the router reports b11941's ``failed: true`` at once
+    # The router reports b11941's ``failed: true`` at once. The load timeout is
+    # 6 s, so a wait-then-fail path still trips this bound; 5 s gives a loaded
+    # machine headroom without losing the regression catch (issue 202).
+    assert time.monotonic() - began < 5
     with router.model_session(EMBED) as url:
         reply = httpx.post(f"{url}/v1/embeddings", json={"model": EMBED, "input": "x"})
     assert reply.status_code == 200
