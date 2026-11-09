@@ -14,7 +14,8 @@ Engine, its lifecycle helpers and its tests already use.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+import threading
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any
 
 from .core.profiles.catalogue import uses_ollama_embeddings
@@ -80,6 +81,9 @@ class Generation:
     verify_llm_factory: Callable[[Any], Any] | None = None
     snapshot_source: Callable[[], Any] | None = None
     raw_factories: tuple[Any, Any, Any] = (None, None, None)
+    _build_lock: threading.Lock = field(
+        default_factory=threading.Lock, init=False, repr=False, compare=False
+    )
 
     @classmethod
     def start(
@@ -113,15 +117,19 @@ class Generation:
         )
 
     def get_answer_llm(self) -> Any:
-        """Build the answer LLM on first use and keep it."""
+        """Build the answer LLM on first use and keep it (one build under the lock)."""
         if self.answer_llm is None and self.answer_llm_factory is not None:
-            self.answer_llm = self.answer_llm_factory()
+            with self._build_lock:
+                if self.answer_llm is None:
+                    self.answer_llm = self.answer_llm_factory()
         return self.answer_llm
 
     def get_resolver(self) -> Any:
-        """Return the profile resolver, built from its factory on first use."""
+        """Return the profile resolver, built from its factory on first use (one build)."""
         if self.resolver is None and self.resolver_factory is not None:
-            self.resolver = self.resolver_factory()
+            with self._build_lock:
+                if self.resolver is None:
+                    self.resolver = self.resolver_factory()
         return self.resolver
 
 

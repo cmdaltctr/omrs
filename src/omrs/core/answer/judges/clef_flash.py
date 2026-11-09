@@ -25,6 +25,9 @@ NAME = "clef_flash"
 THRESHOLD = 0.5
 QUESTION = "Does the evidence fully support the claim, with nothing in the claim missing from it?"
 SETTINGS = {"temperature": None, "seed": None, "reasoning": None, "threshold": THRESHOLD}
+#: The decision request carries no sampling values; the judge settings read
+#: reports these so the panel does not show a saved value as effective.
+IGNORED_SAMPLING = ("temperature", "seed")
 
 
 def state_text(claim: str, evidence_texts: Sequence[str]) -> str:

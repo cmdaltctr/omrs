@@ -33,6 +33,7 @@ Settings come only from ``context.settings``. ``retrieval_ms`` is
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Mapping
 from typing import Annotated, Any, cast
 
@@ -156,7 +157,11 @@ def _as_seam(target: Any) -> CompletionSeam | None:
 
 
 def _answer_seam(context: NodeContext) -> CompletionSeam | None:
-    """Resolve the answer model now; a missing resource means no model."""
+    """Resolve the answer model now; a missing resource means no model.
+
+    The build runs in a worker thread (see ``synthesise_adapter``): the first
+    build may read the OpenRouter endpoint list with a blocking call.
+    """
     try:
         factory = context.resource(ANSWER_LLM_RESOURCE)
     except LookupError:
@@ -165,7 +170,11 @@ def _answer_seam(context: NodeContext) -> CompletionSeam | None:
 
 
 def _judge_seam(context: NodeContext) -> tuple[CompletionSeam | None, str | None]:
-    """Resolve the judge now; return ``(seam, unavailable_reason)``."""
+    """Resolve the judge now; return ``(seam, unavailable_reason)``.
+
+    The build runs in a worker thread (see ``verify_claims_adapter``): the
+    first build may read the OpenRouter endpoint list with a blocking call.
+    """
     try:
         factory = context.resource(VERIFY_LLM_RESOURCE)
     except LookupError:
@@ -244,7 +253,7 @@ async def synthesise_adapter(
     no_generation = zero_generation_diagnostics(0.0) if options.include_diagnostics else None
     if not evidence:
         return _output(no_evidence_result(query, COMPLETION_SOURCE, diagnostics=no_generation))
-    complete = _answer_seam(context)
+    complete = await asyncio.to_thread(_answer_seam, context)
     if complete is None:
         return _output(
             no_provider_result(query, COMPLETION_SOURCE, evidence, diagnostics=no_generation)
@@ -346,7 +355,7 @@ async def verify_claims_adapter(
     runs = _has_answer_text(result) and not _is_verified(result)
     if not (runs and grounded and getattr(block, "verify_claims", False)):
         return _output(result, verification=_verification_label(result))
-    judge, reason = _judge_seam(context)
+    judge, reason = await asyncio.to_thread(_judge_seam, context)
     verification = await verify_answer(
         result["answer"],
         result["evidence"],

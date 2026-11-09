@@ -146,6 +146,12 @@ def test_reason_disabled(setup: Any, configure: Any) -> None:
     assert (body["enabled"], body["ready"], body["reason"]) == (False, False, "disabled")
 
 
+def test_clef_flash_reports_judge_sampling_values_as_ignored(setup: Any, configure: Any) -> None:
+    configure(answer={"verify_model": "m", "verify_judge": "clef_flash"})
+    body = setup.get(URL).json()
+    assert body["sampling_ignored"] == ["temperature", "seed"]
+
+
 def test_reason_unknown_provider(setup: Any, configure: Any) -> None:
     configure(verify_provider="gemini", verify_model="m")
     assert setup.get(URL).json()["reason"] == "unknown-provider"

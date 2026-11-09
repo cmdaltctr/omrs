@@ -5111,7 +5111,9 @@ paths:
         `answer.verify_reasoning` like the Chat route, with the lock variable
         `ANSWER__VERIFY_REASONING` and `reasoning_ignored` for the resolved provider. `temperature`, `seed` and `allowed_hosts` report
         `answer.verify_temperature`, `answer.verify_seed` and `answer.verify_allowed_hosts`
-        the same way, with the `ANSWER__VERIFY_*` lock variables.
+        the same way, with the `ANSWER__VERIFY_*` lock variables. `sampling_ignored`
+        also names values the judge strategy in force drops (`clef_flash` sends
+        no temperature or seed).
         It does not say whether claim checks are on: a profile
         decides that per collection. This route sends no request to any provider.
       security:

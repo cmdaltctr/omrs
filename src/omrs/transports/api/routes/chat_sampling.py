@@ -55,13 +55,20 @@ def _locked(settings: Any, paths: dict[str, str]) -> list[str]:
     return [name for name, path in paths.items() if path in held]
 
 
-def sampling_view(settings: Any, paths: dict[str, str], provider: str) -> dict[str, Any]:
+def sampling_view(
+    settings: Any,
+    paths: dict[str, str],
+    provider: str,
+    extra_ignored: tuple[str, ...] = (),
+) -> dict[str, Any]:
     """Return the sampling fields of a settings ``GET`` body.
 
     Args:
         settings: Settings in use.
         paths: :data:`CHAT_SAMPLING` or :data:`JUDGE_SAMPLING`.
         provider: The registry provider the values go to.
+        extra_ignored: Values another layer drops, for example the claim-judge
+            strategy in force on the judge read.
     """
     locked = _locked(settings, paths)
     ignored = llm_registry.ignored_sampling(provider)
@@ -76,7 +83,9 @@ def sampling_view(settings: Any, paths: dict[str, str], provider: str) -> dict[s
         **values,
         "sampling_locked": locked,
         "sampling_lock_reason": reason,
-        "sampling_ignored": [name for name in SAMPLING_NAMES if name in ignored],
+        "sampling_ignored": [
+            name for name in SAMPLING_NAMES if name in ignored or name in extra_ignored
+        ],
     }
 
 

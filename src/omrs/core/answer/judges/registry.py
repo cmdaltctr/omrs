@@ -50,6 +50,19 @@ def names() -> list[str]:
     return sorted(_registry)
 
 
+def ignored_sampling(name: str) -> tuple[str, ...]:
+    """Return the sampling values strategy *name* sends nothing for.
+
+    A strategy module declares them as ``IGNORED_SAMPLING``. A strategy
+    without the attribute, or an unknown name, ignores nothing.
+    """
+    try:
+        module = get(name)
+    except KeyError:
+        return ()
+    return tuple(getattr(module, "IGNORED_SAMPLING", ()))
+
+
 def as_judge(target: object, block: object = None, facts: object = None) -> object:
     """Return *target* when it is a claim judge, else the default strategy over the seam.
 

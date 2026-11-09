@@ -110,6 +110,11 @@ def _status(runtime: WebRuntime) -> dict[str, Any]:
     provider = str(settings.answer.verify_provider or "").strip() or "cloud"
     model = str(settings.answer.verify_model or "")
     resolved = resolve_verify_provider(settings, provider)
+    # A typed strategy may drop values the provider would take (clef_flash
+    # sends no temperature or seed); the read must say so (post-review fix).
+    strategy_ignores = judge_registry.ignored_sampling(
+        str(settings.answer.verify_judge or "") or "chat"
+    )
     reason = _reason(settings, resolved, model)
     state = runtime.providers
     return {
@@ -124,7 +129,7 @@ def _status(runtime: WebRuntime) -> dict[str, Any]:
         "ready": reason is None,
         "reason": reason,
         **level_view(settings, JUDGE_LEVEL, resolved),
-        **sampling_view(settings, JUDGE_SAMPLING, resolved),
+        **sampling_view(settings, JUDGE_SAMPLING, resolved, extra_ignored=strategy_ignores),
         **_judge_view(settings, locked),
     }
 

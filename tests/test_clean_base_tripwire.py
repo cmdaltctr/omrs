@@ -359,7 +359,11 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # cold cache, symlink walk, empty dir, identify failure) and the Magika Python API
 # rework removes 2 moot JSONL tests from parser_boundaries.
 # +4 (2026-11-09, onnx-pod-thread-cap, by test-ID diff): CPU affinity ceiling and fallback.
-_BASE_EXECUTED = 12413
+# +4 (2026-11-09, post-merge review fixes): graph models built off the loop (2),
+# Generation builds each lazy resource once (2).
+# +1 (2026-11-09, drift found while pinning): one base case added without a pin
+# bump after the CPU-affinity denial fix (a6ffbc39).
+_BASE_EXECUTED = 12418
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -728,7 +732,9 @@ if not _has_qwen_tokenizer:
 # (37), test_web_judge_settings.py (6), test_web_verify_judge_save.py (2) and
 # test_llamacpp_router_download_failure.py (1).
 # +1 (2026-11-09, same change, review fix): router status during start (fastapi).
-_WEB_EXTRA_CASES = 2193
+# +1 (2026-11-09, post-merge review fixes): clef_flash reports judge sampling
+# values as ignored (test_web_judge_settings.py, fastapi).
+_WEB_EXTRA_CASES = 2194
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)
