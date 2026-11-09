@@ -47,6 +47,7 @@ const PROFILE_LEVERS: Record<string, JsonValue> = {
   "chunking.code_chunk_lines": 60,
   "metadata.taxonomy_mode": "category",
   "answer.verify_claims": false,
+  "answer.verify_judge": "chat",
 };
 
 /**

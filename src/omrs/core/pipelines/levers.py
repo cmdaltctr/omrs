@@ -62,6 +62,9 @@ ALLOWED_LEVERS: Mapping[str, LeverSpec] = {
         _lever("retrieval.similarity_threshold", _UNIT_FLOAT, "Dense similarity floor."),
         _lever("retrieval.rerank_fetch_multiplier", _POSITIVE_INT, "Rerank candidate factor."),
         _lever("answer.verify_claims", bool, "Run opt-in claim verification."),
+        # A str, not a Literal: the judge registry (core/answer/judges) is the one
+        # source of names; the Verify claims step and the host check them.
+        _lever("answer.verify_judge", str, "Claim-judge strategy for the claim check."),
         _lever("chunking.chunk_size", _POSITIVE_INT, "Sentence chunk size.", shaping=True),
         _lever(
             "chunking.chunk_overlap", Annotated[int, Field(ge=0)], "Chunk overlap.", shaping=True

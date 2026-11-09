@@ -218,6 +218,9 @@ def answered_result(
         result["verification_skipped"] = verification.skipped_reason
     if verification.failing:
         result["unverified_claims"] = list(verification.failing)
+    if verification.judge_calls:
+        # What produced each verdict; no claim or evidence text (design D10).
+        result["judge_calls"] = [dict(call) for call in verification.judge_calls]
     _with_diagnostics(result, diagnostics)
     if diagnostics is not None and verification.ran:
         # The judge's cost is reported separately from retrieval and

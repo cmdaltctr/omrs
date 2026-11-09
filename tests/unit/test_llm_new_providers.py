@@ -256,8 +256,15 @@ def test_provider_fields_match_the_descriptors() -> None:
         "answer.model",
         "answer.verify_provider",
         "answer.verify_model",
+        "answer.verify_judge",
         "answer.reasoning",
         "answer.verify_reasoning",
+        "answer.temperature",
+        "answer.seed",
+        "answer.verify_temperature",
+        "answer.verify_seed",
+        "answer.allowed_hosts",
+        "answer.verify_allowed_hosts",
     }
     ints = {
         f.settings_field

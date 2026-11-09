@@ -5018,7 +5018,10 @@ paths:
         `not-installed` or `not-configured`. `reasoning` is the saved reasoning level
         (`""` means the provider default), `reasoning_locked` and `reasoning_lock_reason`
         say whether `ANSWER__REASONING` sets it, and `reasoning_ignored` says whether the
-        provider sends no level to the model. This route sends no request to
+        provider sends no level to the model. `temperature`, `seed` and `allowed_hosts` are
+        `answer.temperature`, `answer.seed` and `answer.allowed_hosts`; `sampling_locked`
+        lists those the environment sets (`ANSWER__TEMPERATURE`, `ANSWER__SEED`,
+        `ANSWER__ALLOWED_HOSTS`) and `sampling_ignored` those the provider sends nothing for. This route sends no request to
         any provider.
       security:
         - sessionCookie: [read]
@@ -5045,6 +5048,10 @@ paths:
       operationId: setChatSettings
       summary: Save or clear the Chat provider and model
       description: >
+        `temperature`, `seed` and `allowed_hosts` write `answer.temperature`, `answer.seed` and `answer.allowed_hosts` in
+        the same write: left out keeps the saved value, `null` (or `""` for the host list)
+        removes it, a value out of range is 400 and a value its environment variable sets
+        is 409. A body with only these values keeps the choice.
         Body `{provider, model, reasoning?, revision?}` writes `answer.provider`,
         `answer.model` and `answer.reasoning` to `omrs.jsonc` in one write. `reasoning`
         left out keeps the saved level, and `""` removes it. A body with only `reasoning`
@@ -5102,7 +5109,9 @@ paths:
         `unknown-provider`, `not-installed`, `not-configured` or `no-model` (the judge
         model in force is empty). The four `reasoning*` fields report
         `answer.verify_reasoning` like the Chat route, with the lock variable
-        `ANSWER__VERIFY_REASONING` and `reasoning_ignored` for the resolved provider.
+        `ANSWER__VERIFY_REASONING` and `reasoning_ignored` for the resolved provider. `temperature`, `seed` and `allowed_hosts` report
+        `answer.verify_temperature`, `answer.verify_seed` and `answer.verify_allowed_hosts`
+        the same way, with the `ANSWER__VERIFY_*` lock variables.
         It does not say whether claim checks are on: a profile
         decides that per collection. This route sends no request to any provider.
       security:
@@ -5130,6 +5139,10 @@ paths:
       operationId: setJudgeSettings
       summary: Save or clear the claim check judge provider and model
       description: >
+        `temperature`, `seed` and `allowed_hosts` write `answer.verify_temperature`, `answer.verify_seed` and `answer.verify_allowed_hosts` in
+        the same write: left out keeps the saved value, `null` (or `""` for the host list)
+        removes it, a value out of range is 400 and a value its environment variable sets
+        is 409. A body with only these values keeps the choice.
         Body `{provider, model, reasoning?, revision?}` writes `answer.verify_provider` and
         `answer.verify_model` to `omrs.jsonc` as one unit, with `answer.verify_reasoning` in
         the same write. `provider` is a registry name; an alias (`cloud`, `local`) is
@@ -7132,6 +7145,7 @@ components:
 
     AnswerResponse:
       type: object
+      additionalProperties: false
       required:
         - status
         - query
@@ -7239,6 +7253,146 @@ components:
             not run (provider unavailable, call failure, every verdict
             unparseable, or no cited prose sentence to check). Names the
             reason; the referential-only ok guarantee is retained.
+        usage:
+          $ref: "#/components/schemas/AnswerUsage"
+        reasoning:
+          type: string
+          description: >
+            The model's reasoning text, kept apart from the answer, joined in call order and
+            capped at 64 KB with a `[reasoning truncated]` marker. Present only when the
+            provider returned reasoning. Judge reasoning is not included.
+        sampling:
+          type: object
+          additionalProperties: false
+          properties:
+            chat:
+              $ref: "#/components/schemas/AnswerSamplingRecord"
+            judge:
+              $ref: "#/components/schemas/AnswerSamplingRecord"
+          description: >
+            What the server-side requests carried, per role. `chat` is present when the
+            server's Chat model ran (not for a client-sampled answer); `judge` only when the
+            claim judge ran. Present only when at least one server-side model call ran.
+        judge_calls:
+          type: array
+          items:
+            $ref: "#/components/schemas/JudgeCall"
+          description: >
+            One record per judged claim, in claim order: what produced each verdict
+            (`answer.verify_judge`, pre-exp35 D10). Present only when the claim check ran.
+            It holds no claim text, no evidence text and no key.
+        unused_request_values:
+          type: array
+          items:
+            type: string
+          description: >
+            With diagnostics on a user-profile collection: the request values the saved
+            pipeline did not use.
+
+
+    JudgeCall:
+      type: object
+      additionalProperties: false
+      required: [strategy, model, host, sha256, version, settings, p_yes, error]
+      description: >
+        The record of one claim-judge call. No claim text, evidence text or key.
+      properties:
+        strategy:
+          type: string
+          description: The registered strategy (`chat`, `clef_flash`, `granite_guardian`).
+        model:
+          type: string
+          description: The model id the call named. `""` when the provider default served it.
+        host:
+          type: [string, "null"]
+          description: The host a hosted reply names (OpenRouter), else null.
+        sha256:
+          type: [string, "null"]
+          description: >
+            The SHA-256 of the local GGUF file, read from the router's `hashes.json`
+            (or the `llamacpp_models` entry), else null.
+        version:
+          type: string
+          description: >
+            The prompt-format version (`chat-oneword/1`, `clef-flash-claim/1`,
+            `granite-guardian-3.3-groundedness/1`). It changes with the prompt or the reply reading.
+        settings:
+          type: object
+          additionalProperties: false
+          required: [temperature, seed, reasoning, threshold, think]
+          properties:
+            temperature:
+              type: [number, "null"]
+            seed:
+              type: [integer, "null"]
+            reasoning:
+              type: [string, "null"]
+            threshold:
+              type: [number, "null"]
+              description: The P(yes) cut of a decision model (0.5 for `clef_flash`).
+            think:
+              type: [boolean, "null"]
+              description: Granite Guardian's thinking flag (false); null for other strategies.
+        p_yes:
+          type: [number, "null"]
+          description: P(yes) of a decision model; null for other strategies or an unreadable reply.
+        error:
+          type: [string, "null"]
+          description: A fixed reason when the request for this claim failed (for example `unreachable`).
+
+    AnswerUsage:
+      type: object
+      additionalProperties: false
+      required: [input_tokens, output_tokens, reasoning_tokens, cost_usd, calls]
+      description: >
+        Totals over the server-side model calls of one answer, the judge included. A figure
+        is null unless every call reported it.
+      properties:
+        input_tokens:
+          type: [integer, "null"]
+        output_tokens:
+          type: [integer, "null"]
+        reasoning_tokens:
+          type: [integer, "null"]
+        cost_usd:
+          type: [number, "null"]
+        calls:
+          type: integer
+          minimum: 0
+
+    AnswerSamplingRecord:
+      type: object
+      additionalProperties: false
+      required: [temperature, seed, host, accepted, host_in_list]
+      properties:
+        temperature:
+          type: [number, "null"]
+          description: >
+            The temperature the requests carried, read from the built model, so a library
+            default (0.1 on the OpenAI-like providers) shows. null when none was sent.
+        seed:
+          type: [integer, "null"]
+          description: The seed the requests carried, or null when none was sent.
+        host:
+          type: [string, "null"]
+          description: The host that served the call, as the reply names it (OpenRouter). null when the reply names none.
+        accepted:
+          type: [object, "null"]
+          additionalProperties: false
+          required: [temperature, seed]
+          properties:
+            temperature:
+              type: boolean
+            seed:
+              type: boolean
+          description: >
+            The host's published support for each value, from the OpenRouter endpoint list.
+            null when support is unknown (no host list set, or the list does not name the host).
+        host_in_list:
+          type: [boolean, "null"]
+          description: >
+            Whether the serving host is in the allowed host list. false is a mismatch and must
+            be treated as a failure. null when no list is set.
 
     AnswerCitation:
       type: object
@@ -11008,6 +11162,27 @@ components:
           description: >
             The reasoning level, written in the same save. `""` removes the saved level, so
             the provider default applies. Left out, the saved level stays.
+        temperature:
+          type: [number, "null"]
+          minimum: 0
+          maximum: 2
+          description: >
+            `answer.temperature` for the Chat model, written in the same save. `null` removes it, so the
+            request keeps the library default. Left out, the saved value stays.
+        seed:
+          type: [integer, "null"]
+          minimum: 0
+          maximum: 2147483647
+          description: >
+            `answer.seed` for the Chat model. `null` removes it, so no seed is sent. Left out,
+            the saved value stays.
+        allowed_hosts:
+          type: [string, "null"]
+          maxLength: 1100
+          description: >
+            `answer.allowed_hosts`: OpenRouter hosts separated by commas (at most 16; a name such as
+            `Fireworks` or a slug such as `deepinfra/fp8`). Blank entries are dropped. `""` or
+            `null` removes the list. Left out, the saved list stays.
         revision:
           type: [string, "null"]
           maxLength: 128
@@ -11033,6 +11208,12 @@ components:
         - reasoning_locked
         - reasoning_lock_reason
         - reasoning_ignored
+        - temperature
+        - seed
+        - allowed_hosts
+        - sampling_locked
+        - sampling_lock_reason
+        - sampling_ignored
       properties:
         status:
           type: string
@@ -11074,6 +11255,32 @@ components:
         reasoning_ignored:
           type: boolean
           description: True when the provider sends no reasoning level to the model.
+        temperature:
+          type: [number, "null"]
+          description: The saved temperature. `null` means none is set, so the request keeps the library default.
+        seed:
+          type: [integer, "null"]
+          description: The saved seed. `null` means no seed is sent.
+        allowed_hosts:
+          type: string
+          description: The saved OpenRouter hosts, separated by commas. `""` means no host limit.
+        sampling_locked:
+          type: array
+          items:
+            type: string
+            enum: [temperature, seed, allowed_hosts]
+          description: The values the environment or `.env` sets. A save that sends one gives 409.
+        sampling_lock_reason:
+          type: [string, "null"]
+          description: Names the variables that lock the values in `sampling_locked`.
+        sampling_ignored:
+          type: array
+          items:
+            type: string
+            enum: [temperature, seed, allowed_hosts]
+          description: >
+            The values the provider sends nothing for. Only OpenRouter reads `allowed_hosts`;
+            Anthropic sends neither temperature nor seed.
 
     JudgeSaveRequest:
       type: [object, "null"]
@@ -11095,6 +11302,35 @@ components:
           description: >
             The reasoning level, written in the same save. `""` removes the saved level, so
             the provider default applies. Left out, the saved level stays.
+        temperature:
+          type: [number, "null"]
+          minimum: 0
+          maximum: 2
+          description: >
+            `answer.verify_temperature` for the claim judge, written in the same save. `null` removes it, so the
+            request keeps the library default. Left out, the saved value stays.
+        seed:
+          type: [integer, "null"]
+          minimum: 0
+          maximum: 2147483647
+          description: >
+            `answer.verify_seed` for the claim judge. `null` removes it, so no seed is sent. Left out,
+            the saved value stays.
+        allowed_hosts:
+          type: [string, "null"]
+          maxLength: 1100
+          description: >
+            `answer.verify_allowed_hosts`: OpenRouter hosts separated by commas (at most 16; a name such as
+            `Fireworks` or a slug such as `deepinfra/fp8`). Blank entries are dropped. `""` or
+            `null` removes the list. Left out, the saved list stays.
+        judge:
+          type: [string, "null"]
+          minLength: 1
+          maxLength: 64
+          description: >
+            `answer.verify_judge`, the claim-judge strategy: a name from `judges`. A body
+            with only `judge` keeps the provider and model. An unknown name is 400; a
+            strategy set by `ANSWER__VERIFY_JUDGE` is 409. Left out, the saved strategy stays.
         revision:
           type: [string, "null"]
           maxLength: 128
@@ -11121,6 +11357,16 @@ components:
         - reasoning_locked
         - reasoning_lock_reason
         - reasoning_ignored
+        - temperature
+        - seed
+        - allowed_hosts
+        - sampling_locked
+        - sampling_lock_reason
+        - sampling_ignored
+        - judge
+        - judges
+        - judge_locked
+        - judge_lock_reason
       properties:
         status:
           type: string
@@ -11130,6 +11376,19 @@ components:
           description: >
             Stamp of `omrs.jsonc` (SHA-256 of its bytes, or `absent`). A save may send it back;
             a file that changed since gives 409.
+        judge:
+          type: string
+          description: The claim-judge strategy in force (`answer.verify_judge`). `chat` is the default.
+        judges:
+          type: array
+          items:
+            type: string
+          description: The registered claim-judge strategies, from the judge registry.
+        judge_locked:
+          type: boolean
+          description: True when `ANSWER__VERIFY_JUDGE` sets the strategy. A save that sends `judge` gives 409.
+        judge_lock_reason:
+          type: [string, "null"]
         provider:
           type: string
           description: The judge provider as set, a registry name or the alias `cloud` or `local`.
@@ -11164,6 +11423,32 @@ components:
         reasoning_ignored:
           type: boolean
           description: True when the provider sends no reasoning level to the model.
+        temperature:
+          type: [number, "null"]
+          description: The saved temperature. `null` means none is set, so the request keeps the library default.
+        seed:
+          type: [integer, "null"]
+          description: The saved seed. `null` means no seed is sent.
+        allowed_hosts:
+          type: string
+          description: The saved OpenRouter hosts, separated by commas. `""` means no host limit.
+        sampling_locked:
+          type: array
+          items:
+            type: string
+            enum: [temperature, seed, allowed_hosts]
+          description: The values the environment or `.env` sets. A save that sends one gives 409.
+        sampling_lock_reason:
+          type: [string, "null"]
+          description: Names the variables that lock the values in `sampling_locked`.
+        sampling_ignored:
+          type: array
+          items:
+            type: string
+            enum: [temperature, seed, allowed_hosts]
+          description: >
+            The values the provider sends nothing for. Only OpenRouter reads `allowed_hosts`;
+            Anthropic sends neither temperature nor seed.
 
     ReasoningLevels:
       oneOf:

@@ -44,8 +44,15 @@ _EDITABLE_ANSWER = (
     "model",
     "verify_provider",
     "verify_model",
+    "verify_judge",
     "reasoning",
     "verify_reasoning",
+    "temperature",
+    "seed",
+    "verify_temperature",
+    "verify_seed",
+    "allowed_hosts",
+    "verify_allowed_hosts",
 )
 
 

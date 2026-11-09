@@ -7,7 +7,9 @@ claim checks are on: a profile decides that per collection.
 ``PUT /v1/settings/judge`` writes or clears ``answer.verify_provider`` and
 ``answer.verify_model`` in ``omrs.jsonc`` as one unit, with
 ``answer.verify_reasoning`` in the same write (add-chat-reasoning-and-usage D4),
-and the Engine takes the choice from the next answer.
+and the Engine takes the choice from the next answer. ``judge`` reads and
+writes ``answer.verify_judge``, the claim-judge strategy (pre-exp35 D10),
+which locks on its own variable.
 Both routes carry the file ``revision`` (ADR-087).
 A judge test reuses ``POST /v1/settings/chat/test`` (design D5).
 """
@@ -20,12 +22,13 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Body
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import Response
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from ....compose_answer import resolve_verify_provider
 from ....compose_providers import locked_fields
 from ....compose_providers import provider_settings as _provider_settings
 from ....config.settings_file_write import SettingsFileError
+from ....core.answer.judges import registry as judge_registry
 from ....core.providers.llm import registry as llm_registry
 from ..engine_access import ReadScope, RuntimeDep, admitted
 from ..errors import error_response
@@ -33,6 +36,14 @@ from ..lifespan import WebRuntime
 from ..provider_state import EngineRefused
 from ..settings_store import refusal_response
 from .chat_reasoning import JUDGE_LEVEL, level_changes, level_lock_response, level_view
+from .chat_sampling import (
+    JUDGE_SAMPLING,
+    SamplingFields,
+    sampling_changes,
+    sampling_lock_response,
+    sampling_view,
+    sent,
+)
 from .chat_settings import (
     MAX_MODEL_CHARS,
     ReasoningLevel,
@@ -52,14 +63,18 @@ _VARIABLES = {
     "answer.verify_provider": "ANSWER__VERIFY_PROVIDER",
     "answer.verify_model": "ANSWER__VERIFY_MODEL",
 }
+_JUDGE_PATH = "answer.verify_judge"
+_JUDGE_VARIABLE = "ANSWER__VERIFY_JUDGE"
 
 
-class JudgeSaveBody(BaseModel):
+class JudgeSaveBody(SamplingFields):
     """Body of ``PUT /v1/settings/judge``.
 
     A choice has both ``provider`` (a registry name, never an alias) and
-    ``model``. A body with neither (only an optional ``revision``), or no
-    body, clears the choice.
+    ``model``. ``temperature``, ``seed`` and ``allowed_hosts`` write the
+    ``verify_*`` values (:class:`SamplingFields`). A body with only the level
+    or sampling values keeps the choice. A body with none of them (only an
+    optional ``revision``), or no body, clears the choice and those values.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -67,6 +82,7 @@ class JudgeSaveBody(BaseModel):
     provider: Annotated[str, Field(min_length=1, max_length=64)] | None = None
     model: Annotated[str, Field(min_length=1, max_length=MAX_MODEL_CHARS)] | None = None
     reasoning: ReasoningLevel = None
+    judge: Annotated[str, Field(min_length=1, max_length=64)] | None = None
     revision: Annotated[str, Field(max_length=128)] | None = None
 
 
@@ -108,7 +124,28 @@ def _status(runtime: WebRuntime) -> dict[str, Any]:
         "ready": reason is None,
         "reason": reason,
         **level_view(settings, JUDGE_LEVEL, resolved),
+        **sampling_view(settings, JUDGE_SAMPLING, resolved),
+        **_judge_view(settings, locked),
     }
+
+
+def _judge_view(settings: Any, locked: Any) -> dict[str, Any]:
+    """Return the strategy fields: the one in force, the registered ones and the lock."""
+    held = _JUDGE_PATH in locked
+    return {
+        "judge": str(settings.answer.verify_judge or "") or "chat",
+        "judges": judge_registry.names(),
+        "judge_locked": held,
+        "judge_lock_reason": _lock_reason([_JUDGE_VARIABLE]) if held else None,
+    }
+
+
+def _unknown_judge(body: JudgeSaveBody) -> Response | None:
+    """Return a 400 for a strategy name the registry does not hold, else ``None``."""
+    if body.judge is None or body.judge in judge_registry.names():
+        return None
+    names = ", ".join(judge_registry.names())
+    return error_response(400, f"Unknown claim judge. Choose one of: {names}.")
 
 
 def _choice(body: JudgeSaveBody) -> tuple[str, str] | Response | None:
@@ -155,7 +192,13 @@ async def set_judge_settings(
     Engine refuses it. The answer carries the new `revision`.
     """
     body = body or JudgeSaveBody()
-    writes_choice = body.reasoning is None or body.provider is not None or body.model is not None
+    values = sent(body)
+    if (refused := _unknown_judge(body)) is not None:
+        return refused
+    only_judge = body.judge is not None
+    writes_choice = body.reasoning is None and not values and not only_judge
+    writes_choice = writes_choice or body.provider is not None
+    writes_choice = writes_choice or body.model is not None
     choice = _choice(body) if writes_choice else None
     if isinstance(choice, Response):
         return choice
@@ -173,12 +216,21 @@ async def set_judge_settings(
             and (refused := level_lock_response(settings, JUDGE_LEVEL)) is not None
         ):
             return refused
-        changes: dict[str, str | None] = {}
+        if (refused := sampling_lock_response(settings, JUDGE_SAMPLING, values)) is not None:
+            return refused
+        if body.judge is not None and _JUDGE_PATH in locked:
+            return error_response(409, _lock_reason([_JUDGE_VARIABLE]) or "The judge is locked.")
+        changes: dict[str, Any] = {}
         if writes_choice:
             provider, model = choice if choice is not None else (None, None)
             changes = dict(zip(_VARIABLES, (provider, model), strict=True))
         clearing = writes_choice and choice is None
         changes |= level_changes(settings, JUDGE_LEVEL, body.reasoning, clearing)
+        changes |= sampling_changes(settings, JUDGE_SAMPLING, values, clearing)
+        if body.judge is not None:
+            changes[_JUDGE_PATH] = body.judge
+        elif clearing and _JUDGE_PATH not in locked:
+            changes[_JUDGE_PATH] = None
         try:
             await run_in_threadpool(state.save_fields, runtime.engine, changes, body.revision)
         except SettingsFileError as exc:

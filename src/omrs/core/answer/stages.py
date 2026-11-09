@@ -18,12 +18,13 @@ from __future__ import annotations
 import time
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 
 from pydantic import ValidationError as PydanticValidationError
 
 from .citations import build_citations, parse_citation_ordinals
 from .evidence import _evidence_rows, _labelled_nodes
+from .judges.registry import as_judge
 from .progress import AnswerStage, report_stage
 from .synthesis import CompletionSeam, SeamCompletionError, run_synthesis
 from .verify import VerificationFields, run_verification_stage
@@ -287,6 +288,9 @@ async def verify_answer(
     if verify_complete is not None:
         # No judge model means no judge call, so no stage (design D3).
         report_stage(AnswerStage.VERIFYING)
+    if verify_complete is not None:
+        # A plain seam runs as the ``chat`` strategy; its records name the block's judge.
+        verify_complete = cast(CompletionSeam, as_judge(verify_complete, answer_block))
     return await run_verification_stage(
         text,
         evidence,

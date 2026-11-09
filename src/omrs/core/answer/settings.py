@@ -13,6 +13,7 @@ MetadataSettings/MetadataBlock pair established the convention.
 
 from __future__ import annotations
 
+import re
 from typing import Annotated
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
@@ -29,6 +30,36 @@ LegacyBool = Annotated[bool, BeforeValidator(_parse_legacy_bool)]
 
 #: A reasoning level: empty, or 1 to 32 letters, digits, ``-`` and ``_``.
 REASONING_LEVEL_PATTERN = r"^(?:[A-Za-z0-9_-]{1,32})?$"
+
+#: Highest seed. llama.cpp holds the seed as an unsigned 32-bit number and
+#: ``-1`` means random, so 0 to 2^31 - 1 fits every provider (design D2).
+SEED_MAX = 2**31 - 1
+#: Highest temperature any provider takes (OpenRouter and OpenAI: 0 to 2).
+TEMPERATURE_MAX = 2.0
+#: One OpenRouter host: a provider name (``Fireworks``) or slug (``deepinfra/fp8``).
+HOST_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._/-]{0,63}$")
+#: Most hosts in one allowed list.
+MAX_HOSTS = 16
+
+
+def normalise_hosts(value: object) -> object:
+    """Return a comma-separated host list with blank entries dropped (design D11).
+
+    Raises:
+        ValueError: An entry is not a host name, or the list is too long.
+    """
+    if not isinstance(value, str):
+        return value
+    hosts = [part.strip() for part in value.split(",") if part.strip()]
+    if len(hosts) > MAX_HOSTS:
+        raise ValueError(f"at most {MAX_HOSTS} hosts")
+    if any(not HOST_PATTERN.match(host) for host in hosts):
+        raise ValueError("a host is 1 to 64 letters, digits, spaces, '.', '_', '/' or '-'")
+    return ",".join(hosts)
+
+
+#: An OpenRouter host list as one text value, normalised on read.
+HostList = Annotated[str, BeforeValidator(normalise_hosts)]
 
 
 class AnswerSettings(BaseModel):
@@ -95,6 +126,10 @@ class AnswerSettings(BaseModel):
     # → the cloud backend, "local" → the local backend, anything else
     # is a literal LLM-registry name validated at startup.
     verify_provider: str = "cloud"
+    # The claim-judge strategy (pre-exp35 D10): a name in
+    # core/answer/judges/registry.py, validated at startup. ``chat`` is
+    # today's judge. Profile-overlaid like the verify fields above.
+    verify_judge: str = "chat"
 
     # ── Reasoning levels (add-chat-reasoning-and-usage D4) ─────────
     # Empty sends no reasoning field, so the provider uses its own
@@ -102,3 +137,15 @@ class AnswerSettings(BaseModel):
     # provider maps it to its own request field (design D2).
     reasoning: str = Field(default="", pattern=REASONING_LEVEL_PATTERN)
     verify_reasoning: str = Field(default="", pattern=REASONING_LEVEL_PATTERN)
+
+    # ── Sampling (pre-exp35-harness-and-answer-fixes D1, D11) ───────
+    # Empty sends nothing, so the request stays as it was: the OpenAI-like
+    # providers then send LlamaIndex's temperature 0.1. Chat and judge values
+    # never mix. Each provider maps the values to its own request fields.
+    temperature: float | None = Field(default=None, ge=0, le=TEMPERATURE_MAX)
+    seed: int | None = Field(default=None, ge=0, le=SEED_MAX)
+    verify_temperature: float | None = Field(default=None, ge=0, le=TEMPERATURE_MAX)
+    verify_seed: int | None = Field(default=None, ge=0, le=SEED_MAX)
+    # OpenRouter hosts, separated by commas; only OpenRouter reads them.
+    allowed_hosts: HostList = ""
+    verify_allowed_hosts: HostList = ""

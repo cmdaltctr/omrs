@@ -10,7 +10,9 @@ import { Card, CardHeader, CardTitle } from "../components/ui/card";
 import { ChatModelForm } from "./ChatModelForm";
 import { ChoiceRow, SOURCE } from "./ChoiceRow";
 import { isEnvironmentSource } from "./connectionWords";
+import { JudgeStrategyField } from "./JudgeStrategyField";
 import { ReasoningLine, reasoningState } from "./ReasoningField";
+import { SamplingLines, samplingState } from "./SamplingField";
 import { SaveErrorNotice } from "./SaveErrorNotice";
 
 const CLOUD_NOTE = "Claims and cited passages are sent off this machine";
@@ -32,7 +34,9 @@ function JudgeChoice({ judge, connections, onEdit }: { judge: JudgeSettings; con
     <div className="flex flex-col gap-3">
       <ChoiceRow label="Judge provider" value={providerText(judge, connections)} source={judge.source} />
       <ChoiceRow label="Judge model" value={judge.model} source={judge.source} />
+      <JudgeStrategyField judge={judge} />
       <ReasoningLine settings={judge} />
+      <SamplingLines settings={judge} />
       {judge.reason === "no-model" ? <p className="text-ui">Claim checks are skipped until you set a judge model.</p> : null}
       {locked ? (
         <div className="flex flex-col gap-1">
@@ -64,6 +68,7 @@ function JudgeForm({ judge, connections, onClose }: { judge: JudgeSettings; conn
     <ChatModelForm
       initial={{ provider: judge.resolved_provider, model: judge.model }}
       reasoning={reasoningState(judge)}
+      sampling={samplingState(judge)}
       connections={connections}
       save={save}
       label="Judge provider and model"
@@ -93,7 +98,7 @@ export function JudgeBlock({ connections }: { connections: Connection[] }) {
           <p className="text-meta text-muted-foreground">Loading the claim check judge.</p>
         )
       ) : editing ? (
-        <JudgeForm key={`${judge.provider}|${judge.model}|${judge.reasoning ?? ""}|${judge.source}`} judge={judge} connections={connections} onClose={() => setEditing(false)} />
+        <JudgeForm key={`${judge.provider}|${judge.model}|${judge.reasoning ?? ""}|${judge.temperature ?? ""}|${judge.seed ?? ""}|${judge.allowed_hosts ?? ""}|${judge.source}`} judge={judge} connections={connections} onClose={() => setEditing(false)} />
       ) : (
         <JudgeChoice judge={judge} connections={connections} onEdit={() => setEditing(true)} />
       )}

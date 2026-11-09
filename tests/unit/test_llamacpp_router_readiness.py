@@ -9,7 +9,9 @@ for X only.
 
 from __future__ import annotations
 
+import socket
 import sys
+import threading
 import time
 from collections.abc import Iterator
 from pathlib import Path
@@ -25,7 +27,7 @@ from tests.unit.test_llamacpp_router_worker import (
     rig_fixture,
 )
 
-from omrs.integrations.llamacpp_runtime import readiness
+from omrs.integrations.llamacpp_runtime import process, readiness
 from omrs.integrations.llamacpp_runtime.model_reasons import ModelUnavailable
 from omrs.integrations.llamacpp_runtime.router_lease import open_router
 
@@ -190,3 +192,20 @@ def test_a_failure_left_from_an_earlier_load_does_not_block_a_new_load(
     readiness.ensure_loaded("http://127.0.0.1:1", CLEF)
 
     assert posts == [CLEF]
+
+
+def test_a_reply_cut_after_its_headers_is_unreachable() -> None:
+    """Design D8: a body that never arrives reads as "unreachable", not as a crash."""
+    with socket.socket() as server:
+        server.bind(("127.0.0.1", 0))
+        server.listen(1)
+
+        def answer_headers_only() -> None:
+            conn, _ = server.accept()
+            with conn:
+                conn.recv(4096)
+                conn.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 1898\r\n\r\n")
+
+        threading.Thread(target=answer_headers_only, daemon=True).start()
+        url = f"http://127.0.0.1:{server.getsockname()[1]}/v1/models"
+        assert process.http_get_json(url, timeout=5.0) == (0, {})

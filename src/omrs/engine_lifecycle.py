@@ -13,6 +13,7 @@ import logging
 from collections.abc import Iterator, Mapping
 from typing import TYPE_CHECKING, Any
 
+from .compose_judges import judge_option_set
 from .compose_pipelines import build_graph_host
 from .core.reading_lists import engine_list, reader_list
 from .engine_answer import judge_provider_of, recording_answer_llm, recording_judge
@@ -154,6 +155,7 @@ def graph_host(engine: Engine, collection: str | None) -> Any:
         "ocr_local_backends": local_backend_option_set(settings),
         "ocr_local_cuts": HostOptionSet(inherited=dict(settings.ocr_local_cuts)),
         "document_router": router_option_set(settings),
+        "verify_judge": judge_option_set(settings),
         **engine_option_sets(settings),
     }
     return replace(graph, host=replace(graph.host, options=options))

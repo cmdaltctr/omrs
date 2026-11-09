@@ -13,6 +13,7 @@ path, ``hold`` seconds inside the model session), ``update`` (entries),
 
 from __future__ import annotations
 
+import itertools
 import json
 import os
 import queue
@@ -33,11 +34,27 @@ CHAT = "Qwen/Qwen3-4B-GGUF:Q8_0"
 CLEF = "Clef/Flash-GGUF:Q8_0"
 
 
+#: Rig ports sit below the automatic port range of macOS (49152) and Linux (32768).
+#: A ``bind(0)`` or an outgoing connection elsewhere then never takes one before the
+#: fake router binds it (design D8). Each process cycles through its own block of 100,
+#: so parallel workers do not hand out the same port.
+_RIG_BLOCK = 10000 + os.getpid() % 220 * 100
+_RIG_PORTS = itertools.cycle(range(_RIG_BLOCK, _RIG_BLOCK + 100))
+
+
 def free_port() -> int:
-    """Return a loopback port that was free a moment ago."""
-    with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
-        return int(sock.getsockname()[1])
+    """Return a free loopback port that the system never hands out by itself.
+
+    The router spec holds a fixed port, so the fake cannot pick its own.
+    """
+    for port in _RIG_PORTS:
+        with socket.socket() as sock:
+            try:
+                sock.bind(("127.0.0.1", port))
+            except OSError:
+                continue
+        return port
+    raise AssertionError("unreachable: the cycle never ends")
 
 
 def entry(model: str, file: str, **preset: Any) -> dict[str, Any]:

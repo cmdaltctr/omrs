@@ -14,6 +14,7 @@ import os
 from rich.markup import escape
 
 from . import _launchagent, console
+from . import _web_login_item_status as login_status
 from . import web_login_item as wl
 from .web import web_app
 
@@ -28,12 +29,12 @@ def start() -> None:
     """
     if not wl._is_macos():
         wl._fail("Login items are macOS-only. 'omrs web start' needs macOS.")
-    _, plan = wl._installed_plan()
+    _, plan = login_status.installed_plan()
     if plan is None:
         wl._fail("The login item is not installed. Run 'omrs web install' first.")
 
     uid = os.getuid()
-    if wl.core.fetch_health(wl._HOST, wl._current_port(plan)) is not None:
+    if wl.core.fetch_health(wl._HOST, login_status.current_port(plan)) is not None:
         wl._say("The app is running. Nothing to start.")
         return
 
@@ -45,7 +46,7 @@ def start() -> None:
         console.print(f"[green]✓[/green] Loaded into gui/{uid}.")
 
     wl._say(f"Waiting up to {int(wl.START_TIMEOUT)} seconds for the app to answer...")
-    body = wl._wait_for_health(lambda: wl._current_port(plan))
+    body = wl._wait_for_health(lambda: login_status.current_port(plan))
     if body is None:
         wl._fail(
             f"The app did not answer within {int(wl.START_TIMEOUT)} seconds. "

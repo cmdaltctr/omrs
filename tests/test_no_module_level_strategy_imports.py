@@ -108,6 +108,10 @@ _FORBIDDEN_STRATEGY_MODULES = {
     # never a module-level import of either concrete backend.
     "omrs.core.ingestion.backends.local",
     "omrs.integrations.azure",
+    # pre-exp35 D10: claim-judge strategies resolve through the judge registry.
+    "omrs.core.answer.judges.chat",
+    "omrs.core.answer.judges.clef_flash",
+    "omrs.core.answer.judges.granite_guardian",
 }
 
 
@@ -128,6 +132,11 @@ _CHECKED_MODULES = [
     "core/ingestion/graph_adapters_catalogue.py",
     "core/ingestion/graph_adapters_values.py",
     "core/answer/graph_adapters.py",
+    # pre-exp35 D10: the claim check and the judge construction dispatch judges.
+    "core/answer/verify.py",
+    "core/answer/stages.py",
+    "core/answer/judges/registry.py",
+    "compose_judges.py",
 ]
 
 

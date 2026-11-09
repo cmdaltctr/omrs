@@ -225,10 +225,23 @@ class AnswerBlock(BaseModel):
     verify_claims: bool = False
     verify_model: str = ""
     verify_provider: str = "cloud"
+    # Claim-judge strategy (pre-exp35 D10), profile-overlaid like the
+    # verify fields above. Keep in sync with AnswerSettings.
+    verify_judge: str = "chat"
     # Reasoning levels (add-chat-reasoning-and-usage D4). Server-level, not
     # profile-overlaid. Keep in sync with AnswerSettings.
     reasoning: str = Field(default="", pattern=r"^(?:[A-Za-z0-9_-]{1,32})?$")
     verify_reasoning: str = Field(default="", pattern=r"^(?:[A-Za-z0-9_-]{1,32})?$")
+    # Sampling (pre-exp35-harness-and-answer-fixes D1, D11). Server-level, not
+    # profile-overlaid. The host lists arrive normalised from AnswerSettings.
+    # Keep in sync with AnswerSettings (the ranges repeat SEED_MAX and
+    # TEMPERATURE_MAX, which this pure-data module may not import).
+    temperature: float | None = Field(default=None, ge=0, le=2.0)
+    seed: int | None = Field(default=None, ge=0, le=2**31 - 1)
+    verify_temperature: float | None = Field(default=None, ge=0, le=2.0)
+    verify_seed: int | None = Field(default=None, ge=0, le=2**31 - 1)
+    allowed_hosts: str = ""
+    verify_allowed_hosts: str = ""
 
 
 class EffectiveSettings(BaseModel):

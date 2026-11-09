@@ -95,6 +95,12 @@ def test_get_default_choice(setup: Any) -> None:
         "reasoning_locked": False,
         "reasoning_lock_reason": None,
         "reasoning_ignored": False,
+        "temperature": None,
+        "seed": None,
+        "allowed_hosts": "",
+        "sampling_locked": [],
+        "sampling_lock_reason": None,
+        "sampling_ignored": ["allowed_hosts"],
     }
 
 

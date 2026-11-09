@@ -152,6 +152,7 @@ class LocalOcrBackendDescriptor(PartDescriptor):
         calibrated_by: Experiment folder that measured the cut. Required with a cut.
         producer: ``ocr_backend`` value of the pages the backend keeps.
         model: Expected model identity as ``name@revision``, or ``None``.
+        carried_env: Environment names a re-installed login item keeps (design D7).
     """
 
     kind: str = field(default=KIND_LOCAL_OCR_BACKEND, init=False)
@@ -159,6 +160,7 @@ class LocalOcrBackendDescriptor(PartDescriptor):
     calibrated_by: str | None = None
     producer: str
     model: str | None = None
+    carried_env: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         _require_kind(self, KIND_LOCAL_OCR_BACKEND)
@@ -328,6 +330,7 @@ LOCAL_OCR_BACKENDS: tuple[LocalOcrBackendDescriptor, ...] = (
         min_confidence=0.94,
         calibrated_by="46a-local-ocr-per-backend-cuts-2026-11-06",
         producer="indra_ocr",
+        carried_env=("INDRA_OCR_MODEL_DIR",),
         model="datalab-to/indra-ocr@bd02167fdf2005a19962cc15188f8496a2c87d3b",
     ),
 )

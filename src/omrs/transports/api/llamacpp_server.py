@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 from collections.abc import AsyncIterator, Callable, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
@@ -51,6 +52,8 @@ from ...integrations.llamacpp_runtime.router_lease import (
     install_downloader,
 )
 from ...integrations.llamacpp_runtime.router_spec import HASHES_FILE, router_dir
+from .router_status_lock import locked as _locked
+from .router_status_lock import wait_section
 
 logger = logging.getLogger(__name__)
 
@@ -151,6 +154,8 @@ class RouterControl:
 
     def __init__(self, manager: RuntimeManager) -> None:
         self.manager = manager
+        # Re-entrant: ``load`` calls ``start``, and ``start`` calls ``status``.
+        self._lock = threading.RLock()
         self._router: Any = None
         self._refusal: tuple[str, str] | None = None
         # A Start waits for the automatic downloads: nothing runs yet, the router is
@@ -200,12 +205,13 @@ class RouterControl:
         return None
 
     # ── Status ───────────────────────────────────────────────────────────
-
     def status(self, config: RouterConfig) -> RouterStatus:
         """Return the state from the runtime files. Starts and writes nothing."""
         program = program_in_force(config.binary)
         if config.mode == "external":
-            self._end_wait()  # a mode change ends a waiting Start
+            with wait_section(self._lock) as acquired:
+                if acquired:
+                    self._end_wait()  # a mode change ends a waiting Start
             return self._external(config, program)
         folder = router_dir(self.manager.root)
         record = read_server_record(folder)
@@ -225,15 +231,19 @@ class RouterControl:
             pending = spec is not None and owned.digest != spec.digest
             state: State = "running" if owned.state == "running" else "starting"
             return RouterStatus(state, None, None, running, pending, program, models)
-        if self._waiting:
-            if _still_downloading(models):
-                line = reason_text(rules.NOT_DOWNLOADED, rules.DOWNLOADING)
-                return RouterStatus(
-                    "starting", rules.NOT_DOWNLOADED, line, None, False, program, models
-                )
-            # The downloads ended and the router did not start: one failed or was cancelled.
-            self._end_wait((rules.NOT_DOWNLOADED, reason_text(rules.NOT_DOWNLOADED)))
-        reason: tuple[str, str] | None = self._refusal
+        # A busy lock belongs to a Start, so this poll reads but does not clear.
+        with wait_section(self._lock) as acquired:
+            reason: tuple[str, str] | None = self._refusal
+            if self._waiting:
+                if _still_downloading(models):
+                    line = reason_text(rules.NOT_DOWNLOADED, rules.DOWNLOADING)
+                    return RouterStatus(
+                        "starting", rules.NOT_DOWNLOADED, line, None, False, program, models
+                    )
+                # The downloads ended and the router did not start: one failed or was cancelled.
+                reason = (rules.NOT_DOWNLOADED, reason_text(rules.NOT_DOWNLOADED))
+                if acquired:
+                    self._end_wait(reason)
         # A stored ``not-downloaded`` line is stale: only this process knows its downloads.
         if reason is None and record is not None and record.reason != rules.NOT_DOWNLOADED:
             if record.reason:
@@ -283,6 +293,7 @@ class RouterControl:
 
     # ── Control ──────────────────────────────────────────────────────────
 
+    @_locked
     def start(self, config: RouterConfig, *, ask_downloads: bool = True) -> RouterStatus:
         """Join the ``router`` runtime with *config*; it starts the router when none runs.
 
@@ -322,6 +333,7 @@ class RouterControl:
             router.ask_downloads = True
         return self.status(config)
 
+    @_locked
     def stop(self, config: RouterConfig) -> RouterStatus:
         """Operator stop. With no recorded router, nothing is signalled.
 
@@ -368,34 +380,44 @@ class RouterControl:
         the wait. The start that follows a download asks for no download, so when every
         download has ended and no model has a file the status reads ``not-downloaded`` and
         nothing is asked for again until the user presses Start. A refusal is logged only:
-        the entry shows its own state.
+        the entry shows its own state. The models load outside the lock, so a status
+        read does not wait for a model load.
         """
-        if config.mode != "managed":
-            self._end_wait()
+        ready = self._start_for_load(config, model)
+        if ready is None:
             return
-        checked = self.check(config)
-        owned = self._owned()
-        if not isinstance(checked, RuntimeSpec) or (owned and owned.digest != checked.digest):
-            return
-        entries = list(config.entries.values())
-        with_file = {e.model for e in entries if (e.file or "").strip()}  # a failed one has none
-        models = {model} & with_file
-        if owned is None:
-            if not self._waiting:
-                return  # nothing asked for the router to start
-            if _still_downloading(self._models(config, None)):
-                self._to_load |= models  # the last download starts the router
-                return
-            models |= self._to_load & with_file
-            self.start(config, ask_downloads=False)
-            if self._owned() is None:
-                return  # refused again: the status says why
-        router = open_router(self.manager, checked, entries, decision_models=config.decision_models)
+        router, models = ready
         for name in sorted(models):
             try:
                 router.ensure_ready(name)
             except (RuntimeUnavailable, ModelUnavailable) as refused:
                 logger.info("The downloaded model was not loaded: %s", refused.reason)
+
+    @_locked
+    def _start_for_load(self, config: RouterConfig, model: str) -> tuple[Any, set[str]] | None:
+        """Return the router lease and the models ``load`` loads, or ``None`` for none."""
+        if config.mode != "managed":
+            self._end_wait()
+            return None
+        checked = self.check(config)
+        owned = self._owned()
+        if not isinstance(checked, RuntimeSpec) or (owned and owned.digest != checked.digest):
+            return None
+        entries = list(config.entries.values())
+        with_file = {e.model for e in entries if (e.file or "").strip()}  # a failed one has none
+        models = {model} & with_file
+        if owned is None:
+            if not self._waiting:
+                return None  # nothing asked for the router to start
+            if _still_downloading(self._models(config, None)):
+                self._to_load |= models  # the last download starts the router
+                return None
+            models |= self._to_load & with_file
+            self.start(config, ask_downloads=False)
+            if self._owned() is None:
+                return None  # refused again: the status says why
+        router = open_router(self.manager, checked, entries, decision_models=config.decision_models)
+        return router, models
 
     def shutdown(self) -> None:
         """Leave the ``router`` lease when ``omrs web`` exits; the last client stops the router."""

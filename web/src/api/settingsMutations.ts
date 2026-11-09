@@ -20,6 +20,7 @@ import {
   setUploadLimit,
   setWebPort,
   type ChatChoice,
+  type JudgeStrategyChoice,
 } from "./settings";
 import { saveDocumentReadingSettings, type DocumentReadingValues } from "./settingsDocumentReading";
 
@@ -159,6 +160,20 @@ export function useSetJudgeSettings() {
   const { options, remember } = useRevision();
   return useMutation({
     mutationFn: (choice: ChatChoice | null) => setJudgeSettings(api, choice, options()),
+    onSuccess: (response) => {
+      remember(response);
+      return queryClient.invalidateQueries({ queryKey: queryKeys.judgeSettings() });
+    },
+  });
+}
+
+/** Saves the claim-judge strategy alone; the provider and model stay. */
+export function useSetJudgeStrategy() {
+  const api = useApi();
+  const queryClient = useQueryClient();
+  const { options, remember } = useRevision();
+  return useMutation({
+    mutationFn: (choice: JudgeStrategyChoice) => setJudgeSettings(api, choice, options()),
     onSuccess: (response) => {
       remember(response);
       return queryClient.invalidateQueries({ queryKey: queryKeys.judgeSettings() });

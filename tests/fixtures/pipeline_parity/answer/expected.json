@@ -605,6 +605,24 @@
       "error": null,
       "completion_source": "server",
       "verified": true,
+      "judge_calls": [
+        {
+          "strategy": "chat",
+          "model": "",
+          "host": null,
+          "sha256": null,
+          "version": "chat-oneword/1",
+          "settings": {
+            "temperature": null,
+            "seed": null,
+            "reasoning": null,
+            "threshold": null,
+            "think": null
+          },
+          "p_yes": null,
+          "error": null
+        }
+      ],
       "diagnostics": {
         "completion_calls": 1,
         "verification_calls": 1
@@ -620,6 +638,7 @@
       "error",
       "completion_source",
       "verified",
+      "judge_calls",
       "diagnostics"
     ],
     "model_calls": 1,
@@ -700,6 +719,40 @@
           ]
         }
       ],
+      "judge_calls": [
+        {
+          "strategy": "chat",
+          "model": "",
+          "host": null,
+          "sha256": null,
+          "version": "chat-oneword/1",
+          "settings": {
+            "temperature": null,
+            "seed": null,
+            "reasoning": null,
+            "threshold": null,
+            "think": null
+          },
+          "p_yes": null,
+          "error": null
+        },
+        {
+          "strategy": "chat",
+          "model": "",
+          "host": null,
+          "sha256": null,
+          "version": "chat-oneword/1",
+          "settings": {
+            "temperature": null,
+            "seed": null,
+            "reasoning": null,
+            "threshold": null,
+            "think": null
+          },
+          "p_yes": null,
+          "error": null
+        }
+      ],
       "diagnostics": {
         "completion_calls": 1,
         "verification_calls": 2
@@ -715,6 +768,7 @@
       "error",
       "completion_source",
       "unverified_claims",
+      "judge_calls",
       "diagnostics"
     ],
     "model_calls": 1,
@@ -760,6 +814,24 @@
       "error": null,
       "completion_source": "server",
       "verification_skipped": "unparseable verdict rate 100.0%",
+      "judge_calls": [
+        {
+          "strategy": "chat",
+          "model": "",
+          "host": null,
+          "sha256": null,
+          "version": "chat-oneword/1",
+          "settings": {
+            "temperature": null,
+            "seed": null,
+            "reasoning": null,
+            "threshold": null,
+            "think": null
+          },
+          "p_yes": null,
+          "error": null
+        }
+      ],
       "diagnostics": {
         "completion_calls": 1,
         "verification_calls": 1
@@ -775,6 +847,7 @@
       "error",
       "completion_source",
       "verification_skipped",
+      "judge_calls",
       "diagnostics"
     ],
     "model_calls": 1,

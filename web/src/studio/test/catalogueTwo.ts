@@ -231,9 +231,15 @@ export const CATALOGUE_PART_TWO: OperationDescriptor[] = [
  },
  {
   "operation_id": "verify.claims",
-  "option_params": {},
-  "unavailable_options": {},
-  "inherited_values": {},
+  "option_params": {
+   "verify_judge": "verify_judge"
+  },
+  "unavailable_options": {
+   "verify_judge": {}
+  },
+  "inherited_values": {
+   "verify_judge": "chat"
+  },
   "version": 1,
   "title": "Verify claims",
   "family": "verify",
@@ -252,6 +258,23 @@ export const CATALOGUE_PART_TWO: OperationDescriptor[] = [
      ],
      "default": null,
      "title": "Verify Claims"
+    },
+    "verify_judge": {
+     "anyOf": [
+      {
+       "enum": [
+        "chat",
+        "clef_flash",
+        "granite_guardian"
+       ],
+       "type": "string"
+      },
+      {
+       "type": "null"
+      }
+     ],
+     "default": null,
+     "title": "Verify Judge"
     }
    },
    "title": "VerifyClaimsParams",
@@ -297,7 +320,8 @@ export const CATALOGUE_PART_TWO: OperationDescriptor[] = [
   },
   "collection_param": null,
   "lever_params": {
-   "verify_claims": "answer.verify_claims"
+   "verify_claims": "answer.verify_claims",
+   "verify_judge": "answer.verify_judge"
   },
   "free_text_params": [],
   "index_shaping": false,

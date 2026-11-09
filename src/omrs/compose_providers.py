@@ -167,7 +167,8 @@ def apply_provider_values(
             continue
         if path in values.unset:
             if path.startswith("answer."):  # an answer field lives in the nested block
-                answer[path.removeprefix("answer.")] = ""
+                leaf = path.removeprefix("answer.")
+                answer[leaf] = type(settings.answer).model_fields[leaf].default
             else:
                 top[path] = ""
             sources.pop(path, None)
@@ -177,7 +178,10 @@ def apply_provider_values(
         if not value:
             continue
         if path.startswith("answer."):
-            answer[path.removeprefix("answer.")] = value
+            leaf = path.removeprefix("answer.")
+            if (typed_answer := _answer_value(settings, leaf, value)) is None:
+                continue
+            answer[leaf] = typed_answer
         elif (typed := coerce_field(path, value)) is not None:
             top[path] = typed
         else:
@@ -198,6 +202,18 @@ def apply_provider_values(
     top["key_file_fields"] = frozenset(p for p, w in sources.items() if w == "key-file")
     applied = settings.model_copy(update=top)
     return applied if values.maps is None else applied.with_live_maps(values.maps)
+
+
+def _answer_value(settings: Settings, leaf: str, value: str) -> Any:
+    """Return the saved text *value* typed for the answer field *leaf*, or ``None`` when unusable.
+
+    ``model_copy`` does not validate, so a number (temperature, seed) and a
+    host list are checked here, as the answer block model reads them.
+    """
+    try:
+        return getattr(type(settings.answer).model_validate({leaf: value}), leaf)
+    except ValueError:  # pydantic's ValidationError is a ValueError
+        return None
 
 
 def provider_settings(source: Callable[[], ProviderValues]) -> Settings:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any
 
 from llama_index.core.schema import MetadataMode, TextNode
@@ -157,13 +158,19 @@ def split_markdown_documents(
     return nodes
 
 
+@lru_cache(maxsize=32)
 def _markdown_splitter(
     splitter_type: Any,
     tokenizer: Any,
     capacity: int,
     overlap: int,
 ) -> Any:
-    """Build a Markdown splitter with the configured tokenizer-unit overlap."""
+    """Return a Markdown splitter with the configured tokenizer-unit overlap.
+
+    Building a splitter from a Hugging Face tokenizer costs about 0.1 s, so one
+    splitter is kept for each splitter class, tokenizer, capacity and overlap.
+    The splitter holds no per-document state.
+    """
     return splitter_type.from_huggingface_tokenizer(
         tokenizer,
         capacity,

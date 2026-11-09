@@ -179,6 +179,9 @@ def _bundle_to_effective(
             answer.get("verify_provider", base.answer.verify_provider),
         )
     )
+    verify_judge = str(
+        env.get("ANSWER__VERIFY_JUDGE", answer.get("verify_judge", base.answer.verify_judge))
+    )
 
     return base.model_copy(
         update={
@@ -202,6 +205,7 @@ def _bundle_to_effective(
                     "verify_claims": verify_claims,
                     "verify_model": verify_model,
                     "verify_provider": verify_provider,
+                    "verify_judge": verify_judge,
                 }
             ),
         }

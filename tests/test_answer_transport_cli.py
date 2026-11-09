@@ -480,3 +480,26 @@ def test_answer_verification_build_failure_degrades_to_skipped(
     assert "Verification skipped: verification provider unavailable: no such provider" in (
         result.output
     )
+
+
+def test_answer_uses_the_typed_claim_judge(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """``answer.verify_judge`` picks the judge on the CLI too (pre-exp35 D10)."""
+    from omrs.core.answer.judges.base import JudgeUnavailable
+
+    class _TypedJudge:
+        name, version = "clef_flash", "clef-flash-claim/1"
+
+        async def judge(self, claim: str, evidence_texts: Any) -> Any:
+            raise JudgeUnavailable("claim judge clef_flash cannot run: quantisation-refused")
+
+    _ingest(tmp_path)
+    _install_llm(monkeypatch, _FakeLLM())
+    monkeypatch.setattr("omrs.compose.build_verify_llm", lambda *a, **k: pytest.fail("chat"))
+    monkeypatch.setattr("omrs.compose_judges.build_judge_target", lambda *a, **k: _TypedJudge())
+    monkeypatch.setenv("ANSWER__VERIFY_CLAIMS", "true")
+    monkeypatch.setenv("ANSWER__VERIFY_JUDGE", "clef_flash")
+
+    result = runner.invoke(app, ["answer", "lantern calibration", "--collection", _COLLECTION])
+
+    assert result.exit_code == 0, result.output
+    assert "claim judge clef_flash cannot run: quantisation-refused" in result.output

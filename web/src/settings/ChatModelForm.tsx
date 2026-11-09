@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { cloudHost, isKnownReason, reasonSentence } from "./connectionWords";
 import { notReady, ProviderFixLines } from "./ProviderFixLines";
 import { ReasoningField, type ReasoningState } from "./ReasoningField";
+import { SamplingField, samplingChanges, samplingErrors, type SamplingState } from "./SamplingField";
 import { SaveErrorNotice } from "./SaveErrorNotice";
 
 /** A write of a provider and model choice, or a clear with `null`. */
@@ -22,6 +23,8 @@ interface ChatModelFormProps {
   initial: ChatChoice;
   /** The saved reasoning level, its lock and whether the saved provider ignores it. */
   reasoning: ReasoningState;
+  /** The saved temperature, seed and allowed hosts, their locks and what the saved provider ignores. */
+  sampling: SamplingState;
   connections: Connection[];
   save: ChoiceSave;
   /** The label above the provider select, such as "Chat provider and model". */
@@ -35,7 +38,7 @@ interface ChatModelFormProps {
 }
 
 /** The provider select, the model name, the reasoning level, List models, Test, Save, Cancel and Clear. Only Save and Clear write. */
-export function ChatModelForm({ initial, reasoning, connections, save, label, cloudNote, canClear, onClose }: ChatModelFormProps) {
+export function ChatModelForm({ initial, reasoning, sampling, connections, save, label, cloudNote, canClear, onClose }: ChatModelFormProps) {
   const api = useApi();
   const providerId = useId();
   const modelId = useId();
@@ -43,8 +46,9 @@ export function ChatModelForm({ initial, reasoning, connections, save, label, cl
   const [provider, setProvider] = useState(initial.provider);
   const [model, setModel] = useState(initial.model);
   const [level, setLevel] = useState(reasoning.value);
+  const [values, setValues] = useState({ temperature: sampling.temperature, seed: sampling.seed, allowed_hosts: sampling.allowed_hosts });
   const choice = { provider, model: model.trim() };
-  const ready = provider !== "" && choice.model !== "";
+  const ready = provider !== "" && choice.model !== "" && Object.keys(samplingErrors(values)).length === 0;
   const needsModel = provider !== "" && choice.model === "";
   const selected = connections.find((connection) => connection.provider === provider);
 
@@ -65,8 +69,9 @@ export function ChatModelForm({ initial, reasoning, connections, save, label, cl
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    // A locked level is left out: sending it gives 409.
-    if (ready) save.mutate(reasoning.locked ? choice : { ...choice, reasoning: level }, { onSuccess: onClose });
+    // A locked level or value is left out: sending it gives 409. Only changed values are sent.
+    const withLevel = reasoning.locked ? choice : { ...choice, reasoning: level };
+    if (ready) save.mutate({ ...withLevel, ...samplingChanges(values, sampling) }, { onSuccess: onClose });
   }
 
   return (
@@ -110,6 +115,7 @@ export function ChatModelForm({ initial, reasoning, connections, save, label, cl
         <p className="text-meta text-muted-foreground">Type the model name exactly as the provider spells it, or use List models.</p>
       </div>
       <ReasoningField provider={provider} model={choice.model} value={level} onChange={setLevel} state={reasoning} savedProvider={initial.provider} />
+      <SamplingField values={values} onChange={setValues} state={sampling} sameProvider={provider === initial.provider} />
       <div className="flex flex-wrap items-center gap-2">
         <Button type="button" variant="outline" size="sm" disabled={provider === "" || list.isPending} onClick={() => list.mutate()}>
           <List aria-hidden="true" />

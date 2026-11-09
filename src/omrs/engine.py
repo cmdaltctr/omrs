@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Any
 from . import engine_profiles
 from .compose_pipelines import EnginePipelines
 from .core.vectordb.identity import RedactionSecrets
-from .engine_answer import ClientCompletion, CompletionLedger, build_verifier, select_completion
+from .engine_answer import ClientCompletion, CompletionLedger, prepare_models
 from .engine_embedders import EngineEmbedders, definition_collection, embedding_for
 from .engine_lifecycle import (
     graph_host,
@@ -319,12 +319,8 @@ class Engine(EngineProviders):
                 )
             embed_model, identity = embedding_for(self, collection_name, binding)
             ledger = CompletionLedger() if client_completion is None else None
-            complete, effective, source = select_completion(
-                effective, client_completion, self._get_answer_llm, ledger
-            )
-            verify_complete, verify_unavailable_reason = build_verifier(
-                effective, self._verify_llm_factory, self.redact, ledger
-            )
+            prepared = await prepare_models(self, effective, client_completion, ledger)
+            complete, effective, source, verify_complete, verify_unavailable_reason = prepared
 
             result = await core_answer(
                 question,

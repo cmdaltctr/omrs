@@ -102,7 +102,10 @@ def test_descriptors_publish_safe_schemas_and_the_verify_lever() -> None:
     listing = json.loads(json.dumps(CATALOGUE.describe({})))
     assert all(entry["available"] for entry in listing)
     verify = CATALOGUE.get(VERIFY).descriptor
-    assert verify.lever_params == {"verify_claims": "answer.verify_claims"}
+    assert verify.lever_params == {
+        "verify_claims": "answer.verify_claims",
+        "verify_judge": "answer.verify_judge",  # pre-exp35 task 8.3a
+    }
     assert verify.bypass is not None
     for entry in CATALOGUE.descriptors():
         assert entry.free_text_params == frozenset()

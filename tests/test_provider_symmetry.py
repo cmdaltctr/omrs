@@ -222,3 +222,30 @@ class TestMetadataSettingsParity:
                     f"{model.__name__}.{name} default must be None, "
                     f"got {model.model_fields[name].default!r}"
                 )
+
+
+class TestAnswerSettingsParity:
+    """``AnswerSettings`` and ``AnswerBlock`` must declare identical fields (task 1.2).
+
+    ``AnswerSettings`` (core/answer/settings.py) is the config-side model and
+    ``AnswerBlock`` (core/settings.py) the frozen runtime block. Before this
+    pin only ``AnswerBlock(**settings.answer.model_dump())`` guarded the
+    mirror, and it misses a field that ``AnswerBlock`` gains alone.
+    """
+
+    def test_field_names_match(self) -> None:
+        from omrs.core.answer.settings import AnswerSettings
+        from omrs.core.settings import AnswerBlock
+
+        assert set(AnswerSettings.model_fields) == set(AnswerBlock.model_fields)
+
+    def test_field_defaults_match(self) -> None:
+        from omrs.core.answer.settings import AnswerSettings
+        from omrs.core.settings import AnswerBlock
+
+        for name, field in AnswerSettings.model_fields.items():
+            other = AnswerBlock.model_fields[name]
+            assert field.default == other.default, (
+                f"AnswerSettings.{name} default {field.default!r} != "
+                f"AnswerBlock.{name} default {other.default!r}"
+            )

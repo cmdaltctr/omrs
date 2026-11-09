@@ -7,7 +7,6 @@ live here; plan and plist mechanics live in ``_web_login_item``.
 
 from __future__ import annotations
 
-import json
 import os
 import socket
 import subprocess
@@ -23,6 +22,7 @@ from rich.markup import escape
 from . import _launchagent, console
 from . import _web_login_item as core
 from . import _web_login_item_settings as settings_text
+from . import _web_login_item_status as login_status
 from . import _web_login_item_stop as stop
 from .web import resolve_port, saved_web_port, web_app
 
@@ -143,7 +143,7 @@ def _wait_for_login_item(plan: core.WebLoginItemPlan, port: int) -> tuple[bool, 
     while True:
         if core.fetch_health(_HOST, port) is not None:
             answered = True
-            info = _read_link(plan)
+            info = login_status.read_link(plan)
             if info is not None and info.port == port:
                 return True, True
         if _clock() >= deadline:
@@ -183,6 +183,8 @@ def _print_plan(plan: core.WebLoginItemPlan, warnings: list[str], *, dry_run: bo
     _say(f"  Stdout log:   {plan.stdout_log}")
     _say(f"  Stderr log:   {plan.stderr_log}")
     _say("\n".join(settings_text.plan_rows(settings_text.config_file(), plan.home)))
+    for name, _, source in plan.carried:
+        _say(f"  Carries:      {name} ({source})")
     for warning in warnings:
         console.print(f"[yellow]Warning:[/yellow] {escape(warning)}", soft_wrap=True)
     if dry_run:
@@ -343,44 +345,6 @@ def uninstall(
     console.print("[green]✓[/green] Login item removed. Your workspace and logs are kept.")
 
 
-def _installed_plan() -> tuple[Path, core.WebLoginItemPlan | None]:
-    """Return the plist path and the plan that its content describes.
-
-    The plan is ``None`` when no plist exists. A plist that ``install``
-    did not write stops the command.
-    """
-    plist_path, _, _ = _launchagent.compute_paths(core.LABEL)
-    if not plist_path.exists():
-        return plist_path, None
-    item = core.read_installed(plist_path)
-    try:
-        if item is None:
-            raise _launchagent.InstallerError(
-                f"{plist_path} was not written by 'omrs web install'. "
-                "Remove it by hand, then run 'omrs web install'."
-            )
-        plan = core.build_plan(
-            workspace=item.workspace, port=item.port, command_path=item.command_path
-        )
-    except _launchagent.InstallerError as exc:
-        _fail(str(exc))
-    return plist_path, plan
-
-
-def _read_link(plan: core.WebLoginItemPlan) -> core.LinkInfo | None:
-    """Parse the sign-in link file of the running server, if it exists."""
-    try:
-        return core.parse_link(core.link_file(plan).read_text(encoding="utf-8"))
-    except OSError:
-        return None
-
-
-def _current_port(plan: core.WebLoginItemPlan) -> int:
-    """Return the port of the running server (design D6): the link file, else the saved rule."""
-    info = _read_link(plan)
-    return info.port if info is not None else _target_port(plan)
-
-
 @web_app.command()
 def status(
     json_output: Annotated[
@@ -391,46 +355,7 @@ def status(
 
     Exits 0 when the app answers and 1 otherwise.
     """
-    plist_path, plan = _installed_plan()
-    if plan is None:
-        if json_output:
-            typer.echo(json.dumps({"installed": False, "plist": str(plist_path)}), err=True)
-        else:
-            _say("The login item is not installed. Run 'omrs web install' to install it.")
-        raise typer.Exit(code=1)
-
-    uid = os.getuid()
-    loaded = _launchctl(_launchagent.print_command(uid, plan.label)).returncode == 0
-    port = _current_port(plan)
-    body = core.fetch_health(_HOST, port)
-    running_version = None if body is None else body.get("version")
-    installed_version = core.installed_version(plan.command_path)
-    restart_needed = (
-        running_version is not None
-        and installed_version is not None
-        and running_version != installed_version
-    )
-    facts = {
-        "installed": True,
-        "loaded": loaded,
-        "running": body is not None,
-        "running_version": running_version,
-        "installed_version": installed_version,
-        "restart_needed": restart_needed,
-        "workspace": str(core.workspace_dir(plan)),
-        "port": port,
-        "address": f"http://{_HOST}:{port}/",
-        "plist": str(plan.plist_path),
-        "stdout_log": str(plan.stdout_log),
-        "stderr_log": str(plan.stderr_log),
-    }
-    if json_output:
-        typer.echo(json.dumps(facts, indent=2), err=True)
-    else:
-        console.print("[bold]Web login item[/bold]")
-        for line in core.status_lines(facts):
-            _say(line)
-    raise typer.Exit(code=0 if body is not None else 1)
+    login_status.show_status(json_output)
 
 
 @web_app.command()
@@ -439,11 +364,11 @@ def restart() -> None:
 
     Open tabs sign in again by themselves when the app is back.
     """
-    _, plan = _installed_plan()
+    _, plan = login_status.installed_plan()
     if plan is None:
         _fail("The login item is not installed. Run 'omrs web install' first.")
     uid = os.getuid()
-    port = _current_port(plan)
+    port = login_status.current_port(plan)
     old = _agent_pid(uid)
     running = core.fetch_health(_HOST, port) is not None or old is not None
     if not (running and _stop_and_settle(plan, uid, port, old)):
@@ -453,7 +378,7 @@ def restart() -> None:
             _report_launchctl_failure("kickstart", done)
 
     _say(f"Waiting up to {int(START_TIMEOUT)} seconds for the app to answer...")
-    body = _wait_for_health(lambda: _current_port(plan))
+    body = _wait_for_health(lambda: login_status.current_port(plan))
     if body is None:
         _fail(
             f"The app did not answer within {int(START_TIMEOUT)} seconds. "
@@ -480,8 +405,8 @@ def open_app(
     starts a server. It prints the address without the secret; use --print
     for a browser that this command cannot reach.
     """
-    _, plan = _installed_plan()
-    info = None if plan is None else _read_link(plan)
+    _, plan = login_status.installed_plan()
+    info = None if plan is None else login_status.read_link(plan)
     # A crash leaves an old link file behind, so check that the app answers.
     if info is None or core.fetch_health(info.host, info.port) is None:
         _fail("The login item is not running. Run 'omrs web status' to see why.")

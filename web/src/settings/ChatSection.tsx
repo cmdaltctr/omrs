@@ -14,6 +14,7 @@ import { ChoiceRow, SOURCE } from "./ChoiceRow";
 import { isEnvironmentSource } from "./connectionWords";
 import { JudgeBlock } from "./JudgeBlock";
 import { ReasoningLine, reasoningState } from "./ReasoningField";
+import { SamplingLines, samplingState } from "./SamplingField";
 
 /** The provider and the model as two rows with their source, and Edit unless the environment or `.env` sets them. */
 function Choice({ settings, connections, onEdit }: { settings: ChatSettings; connections: Connection[]; onEdit: () => void }) {
@@ -24,6 +25,7 @@ function Choice({ settings, connections, onEdit }: { settings: ChatSettings; con
       <ChoiceRow label="Chat provider" value={name} source={settings.source} />
       <ChoiceRow label="Chat model" value={settings.model ?? "Not chosen"} source={settings.source} />
       <ReasoningLine settings={settings} />
+      <SamplingLines settings={settings} />
       {locked ? (
         <p className={SOURCE}>{settings.lock_reason ?? "Read-only here."}</p>
       ) : (
@@ -44,6 +46,7 @@ function ChatForm({ settings, connections, onClose }: { settings: ChatSettings; 
     <ChatModelForm
       initial={{ provider: settings.provider ?? "", model: settings.model ?? "" }}
       reasoning={reasoningState(settings)}
+      sampling={samplingState(settings)}
       connections={connections}
       save={save}
       label="Chat provider and model"
@@ -85,7 +88,7 @@ export function ChatSection() {
             {needsChatModel(settings) ? <ChatModelChoice settings={settings} /> : null}
             <ChatSharedNote settings={settings} onChooseAnother={() => setEditing(true)} />
             {editing ? (
-              <ChatForm key={`${settings.provider}|${settings.model}|${settings.reasoning ?? ""}|${settings.source}`} settings={settings} connections={connections} onClose={() => setEditing(false)} />
+              <ChatForm key={`${settings.provider}|${settings.model}|${settings.reasoning ?? ""}|${settings.temperature ?? ""}|${settings.seed ?? ""}|${settings.allowed_hosts ?? ""}|${settings.source}`} settings={settings} connections={connections} onClose={() => setEditing(false)} />
             ) : (
               <Choice settings={settings} connections={connections} onEdit={() => setEditing(true)} />
             )}

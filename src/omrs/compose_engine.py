@@ -273,12 +273,14 @@ def _build_answer_llm(settings: Any) -> Any:
 
 
 def _build_verify_llm(settings: Any, answer_block: Any) -> Any:
-    """Build the verify LLM without swallowing configuration errors.
+    """Build the claim judge without swallowing configuration errors.
 
-    The ENGINE converts a construction failure into a redacted
-    ``verification_skipped`` reason (ADR-059: the answer itself must
-    never fail behind an unconfigured judge).
+    The judge is the verify LLM for a chat strategy, else the typed claim
+    judge that ``answer.verify_judge`` names (pre-exp35 D10). The ENGINE
+    converts a construction failure into a redacted ``verification_skipped``
+    reason (ADR-059: the answer itself must never fail behind an
+    unconfigured judge).
     """
-    from .compose_answer import build_verify_llm
+    from .compose_judges import build_judge_target
 
-    return build_verify_llm(settings, answer_block=answer_block)
+    return build_judge_target(settings, answer_block)

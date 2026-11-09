@@ -17,6 +17,8 @@ from .connection import (
 )
 from .reply import NO_FACTS, ReplyFacts
 from .reply_read import count, field, text
+from .sampling import constructor_kwargs as sampling_kwargs
+from .sampling import merge_kwargs
 
 if TYPE_CHECKING:
     from ....config import Settings
@@ -58,6 +60,9 @@ def build(
     timeout: float | None = None,
     answer_model: str | None = None,
     reasoning: str = "",
+    temperature: float | None = None,
+    seed: int | None = None,
+    allowed_hosts: tuple[str, ...] = (),
 ) -> Any:
     """Construct an ``Ollama`` LLM from *settings*.
 
@@ -73,6 +78,10 @@ def build(
             metadata-classification model (existing callers).
         reasoning: Reasoning level (add-chat-reasoning-and-usage D2), sent as
             the top-level ``think`` field. Empty sends nothing.
+        temperature: Sent in ``options`` when set (pre-exp35 D2). Empty sends
+            no value, so the model's own default applies.
+        seed: Sent in ``options`` when set. Empty sends no seed.
+        allowed_hosts: Accepted and ignored: only OpenRouter pins hosts.
 
     Returns:
         A configured ``Ollama`` LLM.
@@ -93,6 +102,9 @@ def build(
         # ``think`` is a top-level request field. ``additional_kwargs`` would put
         # it in ``options``, where Ollama ignores it, so it goes in ``thinking``.
         **({"thinking": think["think"]} if (think := reasoning_kwargs(reasoning)) else {}),
+        # Ollama puts ``additional_kwargs`` in ``options``, where it reads the seed (D2).
+        # ``allowed_hosts`` is OpenRouter's alone, so it is accepted and ignored.
+        **merge_kwargs(sampling_kwargs(temperature, seed)),
     )
 
 
