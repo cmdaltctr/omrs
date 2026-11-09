@@ -115,12 +115,19 @@ def _direct_runner(
     verify_complete: Any = None
     verify_unavailable_reason: str | None = None
     if getattr(effective.answer, "verify_claims", False):
+        from ... import compose_judges
+
         try:
-            verify_llm = compose.build_verify_llm(answer_block=effective.answer)
+            if compose_judges.uses_llm(effective.answer):
+                verify_llm = compose.build_verify_llm(answer_block=effective.answer)
+            else:  # a typed claim judge (pre-exp35 D10)
+                verify_llm = compose_judges.build_judge_target(None, effective.answer)
         except (ValueError, ImportError) as exc:
             verify_unavailable_reason = f"verification provider unavailable: {exc}"
         else:
-            if verify_llm is not None:
+            if verify_llm is not None and not hasattr(verify_llm, "acomplete"):
+                verify_complete = verify_llm
+            elif verify_llm is not None:
                 verify_complete = _server_seam(verify_llm)
             else:
                 verify_unavailable_reason = (

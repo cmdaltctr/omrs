@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import http.client
 import json
+import os
 import plistlib
 import re
 import subprocess
@@ -24,6 +25,7 @@ from typing import Any
 from urllib.parse import urlsplit
 from xml.parsers.expat import ExpatError
 
+from ...core.reading_parts import LOCAL_OCR_BACKENDS
 from ._launchagent import InstallerError, compute_paths, resolve_command_path
 
 #: One web app per user, so one fixed label.
@@ -34,6 +36,13 @@ LINK_FILE_NAME = "launch-link"
 #: launchd gives agents a sparse ``PATH``; the app starts tools such as
 #: ``llama-server``.
 LAUNCH_PATH = "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+#: The only variables a new plist carries (design D7, issue #175). launchd passes no
+#: shell variable, so a hand-added folder would be lost at each re-install. Each
+#: local OCR backend descriptor names its own, so the list has one source.
+CARRIED_VARIABLES = tuple(name for part in LOCAL_OCR_BACKENDS for name in part.carried_env)
+#: Where a carried value came from, as ``install`` prints it.
+FROM_SHELL = "from the installing shell"
+FROM_OLD_PLIST = "kept from the old plist"
 #: Seconds launchd waits between starts, so a start that fails at once
 #: (port in use, workspace locked) retries once a minute.
 THROTTLE_SECONDS = 60
@@ -64,6 +73,8 @@ class WebLoginItemPlan:
     port: int | None = None
     roots: tuple[Path, ...] = ()
     experiment_roots: tuple[Path, ...] = ()
+    #: ``(name, value, source)`` of each carried variable (design D7).
+    carried: tuple[tuple[str, str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -98,6 +109,26 @@ def _absolute(path: Path) -> Path:
     return Path(path).expanduser().resolve()
 
 
+def _carried(plist_path: Path) -> tuple[tuple[str, str, str], ...]:
+    """Return each variable of :data:`CARRIED_VARIABLES` with its value and source.
+
+    The installing shell wins; else the plist being replaced gives the value. A
+    variable set in neither place is left out.
+    """
+    try:
+        old = plistlib.loads(plist_path.read_bytes()).get("EnvironmentVariables")
+    except (OSError, AttributeError, ValueError, ExpatError):
+        old = None
+    old = old if isinstance(old, dict) else {}
+    found: list[tuple[str, str, str]] = []
+    for name in CARRIED_VARIABLES:
+        if os.environ.get(name):
+            found.append((name, os.environ[name], FROM_SHELL))
+        elif isinstance(old.get(name), str) and old[name]:
+            found.append((name, old[name], FROM_OLD_PLIST))
+    return tuple(found)
+
+
 def build_plan(
     *,
     workspace: Path | None = None,
@@ -127,6 +158,7 @@ def build_plan(
         port=port,
         roots=tuple(_absolute(root) for root in roots),
         experiment_roots=tuple(_absolute(root) for root in experiment_roots),
+        carried=_carried(plist_path),
     )
 
 
@@ -154,7 +186,10 @@ def render_plist(plan: WebLoginItemPlan) -> bytes:
             # Restart after a crash or kill; a clean exit stays stopped.
             "KeepAlive": {"SuccessfulExit": False},
             "ThrottleInterval": THROTTLE_SECONDS,
-            "EnvironmentVariables": {"PATH": LAUNCH_PATH},
+            "EnvironmentVariables": {
+                "PATH": LAUNCH_PATH,
+                **{name: value for name, value, _ in plan.carried},
+            },
             # Settings come from the .env in the working folder (D7).
             "WorkingDirectory": str(plan.working_directory),
             "StandardOutPath": str(plan.stdout_log),
@@ -307,6 +342,7 @@ def status_lines(facts: dict[str, Any]) -> list[str]:
 
 
 __all__ = [
+    "CARRIED_VARIABLES",
     "HEALTH_TIMEOUT",
     "LABEL",
     "LAUNCH_PATH",
