@@ -33,5 +33,5 @@ test_load_failure_isolated ceiling is issue #202.
 
 ## 5. Close
 
-- [ ] 5.1 `./scripts/local_ci.sh` passes. `openspec validate --all --strict` passes.
-- [ ] 5.2 PR into `v3`; CI green; CodeRabbit handled. Do not merge without the operator's word.
+- [x] 5.1 `./scripts/local_ci.sh` passes. `openspec validate --all --strict` passes.
+- [x] 5.2 PR into `v3`; CI green; CodeRabbit handled. Do not merge without the operator's word.

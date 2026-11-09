@@ -32,11 +32,11 @@ Rules for every group: tests first and shown to fail on the current code; one mu
 
 - [x] 4.1 Tests for the four scenarios (re-install keeps, shell wins, others not carried including the two library paths, nothing to carry) and the printed line. Verify: they fail on current `render_plist`.
 - [x] 4.2 Split first: move `_installed_plan`, `_read_link`, `_current_port` and the body of `status` out of `transports/cli/web_login_item.py` (493 lines) into `_web_login_item_status.py`, and move test patch targets with the functions (root gotcha 8b). Then implement the one-entry allow-list (`INDRA_OCR_MODEL_DIR`) in `_web_login_item.py` (`build_plan` and `render_plist`). Verify: the size-ceiling test passes with `web_login_item.py` under 480 lines; the existing login item tests pass unchanged apart from patch targets; the 4.1 tests pass; mutation check on the allow-list.
-- [ ] 4.3 Update `docs/guides/cli-reference.md` (`omrs web install`) and verify `INDRA_OCR_MODEL_DIR` is named there as the one carried variable; comment on issue #175 that PR #176 fixed the two library paths and this change fixes the Indra folder; close it after merge.
+- [x] 4.3 Update `docs/guides/cli-reference.md` (`omrs web install`) and verify `INDRA_OCR_MODEL_DIR` is named there as the one carried variable; comment on issue #175 that PR #176 fixed the two library paths and this change fixes the Indra folder; close it after merge.
 
 ## 5. Records and follow-ups (design D6, D9, D12, D13)
 
-- [ ] 5.1 State in the PR body that Experiment 48 tasks 4.3, 5.4 and 5.5 stay open and that the pre-freeze session (D13) produces the Part C speeds and token counts. Verify: PR body.
+- [x] 5.1 State in the PR body that Experiment 48 tasks 4.3, 5.4 and 5.5 stay open and that the pre-freeze session (D13) produces the Part C speeds and token counts. Verify: PR body.
 - [x] 5.2 Carry the D9 RunPod recommendation, the D12 model matrix and the D13 pre-freeze session (which holds the D6 timing step) to master task 6.1 (note in `rag-benchmark-readiness-flow/tasks.md` under 6.1). Verify: note present; `openspec validate --all --strict` passes.
 
 ## 6. Flaky router tests (design D8)
@@ -71,7 +71,7 @@ Rules for every group: tests first and shown to fail on the current code; one mu
 
 - [x] 9.1 Re-pin the tripwire by test-ID diff; `./scripts/local_ci.sh` passes; `openspec validate --all --strict` passes.
 - [ ] 9.2 Independent review subagent on the full diff; fix findings scored 4 or more.
-- [ ] 9.3 Scan `git diff origin/v3...HEAD` for `/Users/` paths and email addresses; PR into `v3`; CI green; CodeRabbit read, threads replied and resolved. Do not merge without the operator's word.
+- [x] 9.3 Scan `git diff origin/v3...HEAD` for `/Users/` paths and email addresses; PR into `v3`; CI green; CodeRabbit read, threads replied and resolved. Do not merge without the operator's word.
 
 ## 10. After merge: pre-freeze RunPod session (design D13; operator-gated, spends money)
 
