@@ -91,6 +91,7 @@ def _direct_runner(
         typer.Exit: With code 1 when the answer model cannot be built.
     """
     from ...core.answer import answer as do_answer
+    from ...core.providers.llm.sampling import HostRefused
 
     if top_k is None:
         top_k = effective.top_k
@@ -102,7 +103,7 @@ def _direct_runner(
     # actionable provider-missing error (task 5.3).
     try:
         llm = compose.build_answer_llm()
-    except (ValueError, ImportError) as exc:
+    except (ValueError, ImportError, HostRefused) as exc:
         _emit_failure(query, str(exc), json_output)
         raise typer.Exit(code=1) from None
     complete = _server_seam(llm) if llm is not None else None
@@ -122,7 +123,7 @@ def _direct_runner(
                 verify_llm = compose.build_verify_llm(answer_block=effective.answer)
             else:  # a typed claim judge (pre-exp35 D10)
                 verify_llm = compose_judges.build_judge_target(None, effective.answer)
-        except (ValueError, ImportError) as exc:
+        except (ValueError, ImportError, HostRefused) as exc:
             verify_unavailable_reason = f"verification provider unavailable: {exc}"
         else:
             if verify_llm is not None and not hasattr(verify_llm, "acomplete"):

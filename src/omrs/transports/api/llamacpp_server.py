@@ -19,13 +19,12 @@ router adapter only.
 from __future__ import annotations
 
 import asyncio
-import functools
 import logging
 import threading
 from collections.abc import AsyncIterator, Callable, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from typing import Any, Literal, TypeVar
+from typing import Any, Literal
 
 from fastapi.concurrency import run_in_threadpool
 
@@ -53,6 +52,8 @@ from ...integrations.llamacpp_runtime.router_lease import (
     install_downloader,
 )
 from ...integrations.llamacpp_runtime.router_spec import HASHES_FILE, router_dir
+from .router_status_lock import locked as _locked
+from .router_status_lock import wait_section
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +63,6 @@ _PROBE_SECONDS = 1.0
 #: ``GET /health`` answers of a router that is still loading.
 _HEALTH_LOADING = 503
 _LIVE_STATES = ("loaded", "loading", "unloaded", "failed")
-_T = TypeVar("_T")
 
 
 @dataclass(frozen=True)
@@ -145,22 +145,6 @@ def _argument(argv: list[str], flag: str) -> int | None:
         return None
 
 
-def _locked(method: Callable[..., _T]) -> Callable[..., _T]:
-    """Run *method* while the control holds its lock (design D8).
-
-    A user's Start and the start that follows a failed download share the wait
-    state. Without the lock, the second clears the wait between the first's flag
-    and its status read, and the Start reply says ``stopped`` with no reason.
-    """
-
-    @functools.wraps(method)
-    def run(self: RouterControl, *args: Any, **kwargs: Any) -> _T:
-        with self._lock:
-            return method(self, *args, **kwargs)
-
-    return run
-
-
 class RouterControl:
     """Start, stop and status of the router over the shared runtime manager.
 
@@ -221,13 +205,13 @@ class RouterControl:
         return None
 
     # ── Status ───────────────────────────────────────────────────────────
-
-    @_locked
     def status(self, config: RouterConfig) -> RouterStatus:
         """Return the state from the runtime files. Starts and writes nothing."""
         program = program_in_force(config.binary)
         if config.mode == "external":
-            self._end_wait()  # a mode change ends a waiting Start
+            with wait_section(self._lock) as acquired:
+                if acquired:
+                    self._end_wait()  # a mode change ends a waiting Start
             return self._external(config, program)
         folder = router_dir(self.manager.root)
         record = read_server_record(folder)
@@ -247,15 +231,19 @@ class RouterControl:
             pending = spec is not None and owned.digest != spec.digest
             state: State = "running" if owned.state == "running" else "starting"
             return RouterStatus(state, None, None, running, pending, program, models)
-        if self._waiting:
-            if _still_downloading(models):
-                line = reason_text(rules.NOT_DOWNLOADED, rules.DOWNLOADING)
-                return RouterStatus(
-                    "starting", rules.NOT_DOWNLOADED, line, None, False, program, models
-                )
-            # The downloads ended and the router did not start: one failed or was cancelled.
-            self._end_wait((rules.NOT_DOWNLOADED, reason_text(rules.NOT_DOWNLOADED)))
-        reason: tuple[str, str] | None = self._refusal
+        # A busy lock belongs to a Start, so this poll reads but does not clear.
+        with wait_section(self._lock) as acquired:
+            reason: tuple[str, str] | None = self._refusal
+            if self._waiting:
+                if _still_downloading(models):
+                    line = reason_text(rules.NOT_DOWNLOADED, rules.DOWNLOADING)
+                    return RouterStatus(
+                        "starting", rules.NOT_DOWNLOADED, line, None, False, program, models
+                    )
+                # The downloads ended and the router did not start: one failed or was cancelled.
+                reason = (rules.NOT_DOWNLOADED, reason_text(rules.NOT_DOWNLOADED))
+                if acquired:
+                    self._end_wait(reason)
         # A stored ``not-downloaded`` line is stale: only this process knows its downloads.
         if reason is None and record is not None and record.reason != rules.NOT_DOWNLOADED:
             if record.reason:

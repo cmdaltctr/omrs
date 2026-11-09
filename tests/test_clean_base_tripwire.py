@@ -353,7 +353,8 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # fastapi), shared experiment harness (85), login item and router races (10, 1 needs
 # fastapi), claim-judge strategies and Studio picker (87, 8 need fastapi), splitter
 # reuse (5).
-_BASE_EXECUTED = 12400
+# +3 (2026-11-09, same change, review fixes): CLI host refusal (2), event-loop check (1).
+_BASE_EXECUTED = 12404
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -721,7 +722,8 @@ if not _has_qwen_tokenizer:
 # +46 (2026-11-09, pre-exp35-harness-and-answer-fixes): test_web_sampling_settings.py
 # (37), test_web_judge_settings.py (6), test_web_verify_judge_save.py (2) and
 # test_llamacpp_router_download_failure.py (1).
-_WEB_EXTRA_CASES = 2192
+# +1 (2026-11-09, same change, review fix): router status during start (fastapi).
+_WEB_EXTRA_CASES = 2193
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)

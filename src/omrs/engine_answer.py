@@ -13,6 +13,7 @@ Engine attaches the totals to the answer result (design D3).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
@@ -301,6 +302,42 @@ def build_verifier(
         provider,
         lambda llm: server_seam(llm, ledger, read, keep_reasoning=False),
     ), None
+
+
+async def prepare_models(
+    engine: Any,
+    effective: EffectiveSettings,
+    client_completion: ClientCompletion | None,
+    ledger: CompletionLedger | None = None,
+) -> tuple[CompletionSeam | None, EffectiveSettings, str, CompletionSeam | None, str | None]:
+    """Run :func:`select_completion` and :func:`build_verifier` off the event loop.
+
+    The first use of a role builds its model, and an OpenRouter host check
+    reads the model's endpoint list with a blocking call (pre-exp35 D11).
+    ``Engine.answer`` is awaited on a server's event loop, so both builds run
+    in one worker thread. Sync callers keep the two functions as they were.
+
+    Args:
+        engine: The :class:`omrs.Engine`; its lazy answer LLM, judge factory and
+            ``redact`` feed the two builds.
+        effective: Settings resolved for the collection.
+        client_completion: The caller's completion, or ``None``.
+        ledger: Records the server model's calls, or ``None``.
+
+    Returns:
+        ``(complete, settings, source, verify_complete, verify_unavailable_reason)``.
+    """
+
+    def build() -> tuple[Any, ...]:
+        complete, settings, source = select_completion(
+            effective, client_completion, engine._get_answer_llm, ledger
+        )
+        verify_complete, reason = build_verifier(
+            settings, engine._verify_llm_factory, engine.redact, ledger
+        )
+        return complete, settings, source, verify_complete, reason
+
+    return await asyncio.to_thread(build)  # type: ignore[return-value]
 
 
 def _judge_provider(effective: EffectiveSettings) -> str:
