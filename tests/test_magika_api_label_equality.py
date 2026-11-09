@@ -10,6 +10,7 @@ lands in a later step; these tests pin the contract first.
 from __future__ import annotations
 
 import json
+import logging
 import shutil
 import subprocess
 from pathlib import Path
@@ -316,6 +317,8 @@ def test_walk_skips_directory_symlinks_and_unlistable_dirs_fail_closed(
     # .venv subtree under a clean name; both are skipped as symlinks.
     (tmp_path / "tools").symlink_to(real_dir)
     (tmp_path / "clean-name").symlink_to(tmp_path / ".venv")
+    # A broken symlink is neither dir nor file: skipped without error.
+    (tmp_path / "broken").symlink_to(tmp_path / "absent-target")
 
     rows: dict[str, SimpleNamespace] = {
         "inside.md": SimpleNamespace(group="text", label="markdown", is_text=True),
@@ -338,6 +341,55 @@ def test_walk_skips_directory_symlinks_and_unlistable_dirs_fail_closed(
 
     entries = scan_with_magika(str(tmp_path), settings=effective_settings())
     assert [entry.path for entry in entries] == ["real/inside.md"]
+
+
+def test_scan_of_empty_directory_returns_no_entries(
+    tmp_path: Path,
+    effective_settings,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An empty directory yields an empty scan without calling the API."""
+    called = {"identify": 0}
+
+    def fake_identify_paths(files: list) -> list:  # pragma: no cover - must not run
+        called["identify"] += 1
+        return []
+
+    monkeypatch.setattr(omrs_magika, "_is_magika_available", lambda settings=None: True)
+    monkeypatch.setattr(
+        omrs_magika,
+        "_get_magika_instance",
+        lambda: SimpleNamespace(identify_paths=fake_identify_paths),
+    )
+
+    assert scan_with_magika(str(tmp_path), settings=effective_settings()) == []
+    assert called["identify"] == 0
+
+
+def test_identify_paths_failure_fails_the_scan_to_suffix_fallback(
+    tmp_path: Path,
+    effective_settings,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A raising identify_paths fails the whole scan with a warned ValueError."""
+    (tmp_path / "note.md").write_text("# Note\n", encoding="utf-8")
+
+    def exploding_identify(files: list) -> list:
+        raise RuntimeError("onnx session exploded")
+
+    monkeypatch.setattr(omrs_magika, "_is_magika_available", lambda settings=None: True)
+    monkeypatch.setattr(
+        omrs_magika,
+        "_get_magika_instance",
+        lambda: SimpleNamespace(identify_paths=exploding_identify),
+    )
+
+    with caplog.at_level(logging.WARNING, logger="omrs.integrations.magika"):
+        with pytest.raises(ValueError, match="identify_paths failed"):
+            scan_with_magika(str(tmp_path), settings=effective_settings())
+
+    assert any("falling back to suffix detection" in r.getMessage() for r in caplog.records)
 
     # Fail-closed: one unlistable directory invalidates the whole scan.
     poisoned = tmp_path / "poisoned"

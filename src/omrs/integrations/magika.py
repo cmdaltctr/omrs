@@ -273,10 +273,8 @@ def scan_with_magika(path: str, settings: Any | None = None) -> list:
             raise ValueError(f"Magika result has a non-boolean is_text for {file_path}")
 
         normalised_group, normalised_label = _normalise_detected(group, label, is_text)
-        try:
-            rel_path = str(file_path.relative_to(root))
-        except ValueError:
-            rel_path = str(file_path)
+        # The walk only collects paths under *root*, so this cannot fail.
+        rel_path = str(file_path.relative_to(root))
         entries.append(
             FileEntry(
                 path=rel_path,
