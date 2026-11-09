@@ -219,9 +219,7 @@ def test_scan_with_magika_builds_one_magika_instance_per_process(
                 )
             return rows
 
-    cache = getattr(omrs_magika, "_get_magika_instance", None)
-    if cache is not None and hasattr(cache, "cache_clear"):
-        cache.cache_clear()
+    omrs_magika.reset_magika_cache()
     try:
         monkeypatch.setattr("magika.Magika", FakeMagika)
         monkeypatch.setattr(omrs_magika, "_is_magika_available", lambda settings=None: True)
@@ -253,5 +251,104 @@ def test_scan_with_magika_builds_one_magika_instance_per_process(
             "plain.txt": ("document", "text"),
         }, f"alias normalisation not applied to fake labels: {observed}"
     finally:
-        if cache is not None and hasattr(cache, "cache_clear"):
-            cache.cache_clear()
+        omrs_magika.reset_magika_cache()
+
+
+def test_concurrent_cold_calls_construct_magika_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Concurrent first calls build exactly one instance (ADR-117 decision 1).
+
+    ``functools.lru_cache`` permits two cold callers to run the wrapped
+    function twice, which here would build two ONNX sessions. The lock with
+    a double check closes that. The fake constructor sleeps to hold the
+    race window open while four threads race the cold path.
+    """
+    import threading
+    import time as time_module
+
+    counts = {"constructed": 0}
+
+    class SlowFakeMagika:
+        def __init__(self) -> None:
+            counts["constructed"] += 1
+            time_module.sleep(0.05)
+
+    omrs_magika.reset_magika_cache()
+    try:
+        monkeypatch.setattr("magika.Magika", SlowFakeMagika)
+        results: list[object] = []
+        threads = [
+            threading.Thread(target=lambda: results.append(omrs_magika._get_magika_instance()))
+            for _ in range(4)
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        assert counts["constructed"] == 1, (
+            f"concurrent cold calls built {counts['constructed']} instances"
+        )
+        assert len(results) == 4 and all(result is results[0] for result in results)
+    finally:
+        omrs_magika.reset_magika_cache()
+
+
+def test_walk_skips_directory_symlinks_and_unlistable_dirs_fail_closed(
+    tmp_path: Path,
+    effective_settings,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ADR-117 decision 2: no symlink escape, and no silent partial scans.
+
+    A symlinked directory (to a sibling folder and to one whose name is
+    excluded) must not add files to the scan. A directory that cannot be
+    listed fails the whole scan with ``ValueError`` so the caller falls
+    back to suffix detection instead of missing files silently.
+    """
+    real_dir = tmp_path / "real"
+    real_dir.mkdir()
+    (real_dir / "inside.md").write_text("# Inside\n", encoding="utf-8")
+    (tmp_path / ".venv").mkdir()
+    (tmp_path / ".venv" / "vended.md").write_text("# Venv\n", encoding="utf-8")
+    # Following either link would duplicate inside.md or admit the excluded
+    # .venv subtree under a clean name; both are skipped as symlinks.
+    (tmp_path / "tools").symlink_to(real_dir)
+    (tmp_path / "clean-name").symlink_to(tmp_path / ".venv")
+
+    rows: dict[str, SimpleNamespace] = {
+        "inside.md": SimpleNamespace(group="text", label="markdown", is_text=True),
+    }
+
+    def fake_identify_paths(files: list) -> list:
+        for file in files:
+            assert Path(file).name in rows, f"symlink or excluded file reached the API: {file}"
+        return [
+            SimpleNamespace(ok=True, status="ok", path=file, output=rows[Path(file).name])
+            for file in files
+        ]
+
+    monkeypatch.setattr(omrs_magika, "_is_magika_available", lambda settings=None: True)
+    monkeypatch.setattr(
+        omrs_magika,
+        "_get_magika_instance",
+        lambda: SimpleNamespace(identify_paths=fake_identify_paths),
+    )
+
+    entries = scan_with_magika(str(tmp_path), settings=effective_settings())
+    assert [entry.path for entry in entries] == ["real/inside.md"]
+
+    # Fail-closed: one unlistable directory invalidates the whole scan.
+    poisoned = tmp_path / "poisoned"
+    poisoned.mkdir()
+    real_iterdir = Path.iterdir
+
+    def raising_iterdir(self: Path):
+        if self.name == "poisoned":
+            raise PermissionError("simulated listing failure")
+        return real_iterdir(self)
+
+    monkeypatch.setattr(Path, "iterdir", raising_iterdir)
+    with pytest.raises(ValueError, match="poisoned"):
+        scan_with_magika(str(tmp_path), settings=effective_settings())

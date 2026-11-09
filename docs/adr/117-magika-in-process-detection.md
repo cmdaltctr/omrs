@@ -26,12 +26,18 @@ This ADR supersedes decisions 2 and 6 of ADR-068. Every other decision stays
 governed by ADR-068: the pin (1), validation strictness (3 and 4), boundary
 normalisation (5), and index identity (7).
 
-1. Construct `magika.Magika()` once per process, lazily, through a
-   module-level `functools.lru_cache(maxsize=1)` wrapper in
-   `src/omrs/integrations/magika.py`. The lazy import of the magika package
-   stays inside that wrapper so importing the module never loads ONNX Runtime.
+1. Construct `magika.Magika()` once per process, lazily, in
+   `src/omrs/integrations/magika.py`, guarded by a module-level lock with a
+   double check so concurrent cold callers build exactly one ONNX session
+   (`functools.lru_cache` alone permits duplicate construction from threads).
+   The lazy import of the magika package stays inside that function so
+   importing the module never loads ONNX Runtime. Tests reset the instance
+   through `reset_magika_cache()`.
 2. `scan_with_magika` walks the directory itself, skipping `_EXCLUDED_DIRS`
-   during the walk. A single-file root yields the `.` key. It then calls
+   during the walk; directory symlinks are skipped too, so excluded folders
+   and targets outside the scan root cannot re-enter the walk. A directory
+   that cannot be listed fails the whole scan with `ValueError` (no silent
+   partial file lists). A single-file root yields the `.` key. It then calls
    `m.identify_paths(files)` once for the whole scan, where `m` is the cached
    instance. A failed status, or a result with an empty or non-string
    `group`/`label` or a non-boolean `is_text`, raises `ValueError` for the
@@ -81,6 +87,7 @@ normalisation (5), and index identity (7).
 | Keep the subprocess | Measured at 0.071 s per call on the Mac profile. |
 | One batched subprocess per directory | Still pays process spawn and keeps the parsing layer. |
 | A worker thread pool around the CLI | Complexity for no measured need. |
+| A terminable worker process to keep a detection deadline | It reintroduces the per-call process cost this change removes; a hang of local ONNX inference has no observed occurrence. |
 
 ## Gate evidence
 

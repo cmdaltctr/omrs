@@ -24,11 +24,11 @@ test patches) keep resolving.
 
 from __future__ import annotations
 
-import functools
 import logging
 import os
 import shutil
 import sysconfig
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -147,22 +147,66 @@ def _normalise_detected(group: str, label: str, is_text: bool) -> tuple[str, str
     return group, label
 
 
-@functools.lru_cache(maxsize=1)
+_MAGIKA_INSTANCE: Any = None
+_MAGIKA_LOCK = threading.Lock()
+
+
+def reset_magika_cache() -> None:
+    """Drop the cached Magika instance (test seam, mirrors the reranker)."""
+    global _MAGIKA_INSTANCE
+    _MAGIKA_INSTANCE = None
+
+
 def _get_magika_instance() -> Any:
-    """Construct the in-process Magika client once per process (ADR-117).
+    """Return the process-wide Magika client, constructing it at most once.
 
     The ``magika`` import and ``Magika()`` construction stay inside this
-    cached wrapper so importing this module never loads the magika package
-    or ONNX Runtime. The first scan pays the one-time model load; every
-    later scan reuses the same client.
+    function so importing this module never loads the magika package or
+    ONNX Runtime. A lock with a double check guards the cold path:
+    ``functools.lru_cache`` alone permits concurrent cold callers to run
+    the wrapped function twice, which here would build two ONNX sessions.
+    Tests call ``reset_magika_cache()`` instead of poking the cache.
 
     Returns:
         A ``magika.Magika`` instance (``Any`` because the package is only
         imported lazily here).
     """
-    from magika import Magika
+    global _MAGIKA_INSTANCE
+    if _MAGIKA_INSTANCE is None:
+        with _MAGIKA_LOCK:
+            if _MAGIKA_INSTANCE is None:
+                from magika import Magika
 
-    return Magika()
+                _MAGIKA_INSTANCE = Magika()
+    return _MAGIKA_INSTANCE
+
+
+def _collect_files(root: Path) -> list[Path]:
+    """Walk *root* (no depth limit) and return the files to identify.
+
+    ``_EXCLUDED_DIRS`` are skipped during the walk. Directory symlinks are
+    skipped as well: following them would let excluded folders and targets
+    outside the scan root re-enter the walk. A directory that cannot be
+    listed fails the whole scan with ``ValueError`` so the caller falls
+    back to suffix detection instead of silently missing files.
+    """
+    files: list[Path] = []
+
+    def _collect(directory: Path) -> None:
+        try:
+            children = sorted(directory.iterdir())
+        except OSError as exc:
+            raise ValueError(f"Magika walk cannot list {directory}: {exc}") from exc
+        for child in children:
+            if child.is_dir():
+                if child.name in _EXCLUDED_DIRS or child.is_symlink():
+                    continue
+                _collect(child)
+            elif child.is_file():
+                files.append(child)
+
+    _collect(root)
+    return files
 
 
 def scan_with_magika(path: str, settings: Any | None = None) -> list:
@@ -198,24 +242,7 @@ def scan_with_magika(path: str, settings: Any | None = None) -> list:
     if root.is_file():
         files: list[Path] = [root]
     else:
-        files = []
-
-        # Mirrors the ``_walk`` shape of ``scan_with_suffix`` but with no
-        # depth limit: the old CLI recursion never had one either.
-        def _collect(directory: Path) -> None:
-            try:
-                children = sorted(directory.iterdir())
-            except OSError:
-                return
-            for child in children:
-                if child.is_dir():
-                    if child.name in _EXCLUDED_DIRS:
-                        continue
-                    _collect(child)
-                elif child.is_file():
-                    files.append(child)
-
-        _collect(root)
+        files = _collect_files(root)
 
     if not files:
         return []
