@@ -48,7 +48,7 @@ A provider with no mapping for temperature or seed SHALL send nothing for that v
 #### Scenario: Provider without a seed
 
 - **WHEN** the Chat provider is `anthropic` and `answer.seed` is `20261101`
-- **THEN** the request MUST NOT carry a seed, and `GET /v1/settings/chat` MUST report that the provider ignores the seed
+- **THEN** the request MUST NOT carry a seed or a temperature, and `GET /v1/settings/chat` MUST report that the provider ignores both
 
 ### Requirement: Settings shows and saves the values
 
@@ -77,6 +77,11 @@ Each answer result SHALL hold a `sampling` record that gives, for the Chat role 
 
 - **WHEN** `answer.temperature` is `0` and `answer.seed` is `20261101`
 - **THEN** the answer result MUST record temperature 0 and seed 20261101 for the Chat role
+
+#### Scenario: Client-sampled answer has no Chat record
+
+- **WHEN** the MCP client writes the answer through client sampling
+- **THEN** the answer result MUST NOT hold a Chat `sampling` record, because OMRS sees no Chat request
 
 #### Scenario: Host and support recorded
 
@@ -133,4 +138,4 @@ When a list is set on OpenRouter, every request for that role SHALL be limited t
 #### Scenario: Reply names a host outside the list
 
 - **WHEN** the reply names a host that is not in the list
-- **THEN** the `sampling` record MUST hold that host and the answer MUST report the mismatch
+- **THEN** the `sampling` record MUST hold that host and the answer MUST report the mismatch (`host_in_list` false)

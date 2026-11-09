@@ -51,6 +51,7 @@ The order is the operator's (2026-11-06, design D1). Do not reorder groups. Stop
 ## 6. Experiment 35
 
 - [ ] 6.1 Update `experiment-35-full-document-rag-benchmark` for the router, Qwen3-Embedding-4B and the sweep's findings.
+  - Note (2026-11-08, from `pre-exp35-harness-and-answer-fixes`): also carry into the 35a plan the RunPod machine recommendation (that change's design D9: RTX 4090 secure, re-read price and stock at create time; corrects protocol section 7's 6 vCPU and 41 GB), the model matrix (design D12, including the answer model in `protocol.md:35`), and the one pre-freeze pod session (design D13, which holds the D6 timing step: Part C speeds and full-corpus token counts). Pin the commit of `experiments/_lib/` that 35a uses.
 - [ ] 6.2 GATE G7: the operator approves the freeze and the run. Freeze `protocol.md` and `plan.json`, then run per its own tasks.
 
 ## 7. Close

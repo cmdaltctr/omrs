@@ -29,7 +29,7 @@ The setting `answer.verify_judge` SHALL default to `chat`. With `chat` selected,
 
 ### Requirement: Clef-Flash judges a claim through the decision interface
 
-The `clef_flash` strategy SHALL send one yes/no question per claim to `/v1/systemone` through the decision adapter, with the claim and its cited evidence as the state, and SHALL read P(yes). A P(yes) of 0.5 or more SHALL give `supported`. A lower value SHALL give `unsupported`. A reply without a usable P(yes) SHALL give `unparseable`. The strategy SHALL run only on a model that passes the 8-bit check of root gotcha 16, and SHALL NOT use the chat interface.
+The `clef_flash` strategy SHALL send one yes/no (`noul`) question per claim to `/v1/systemone` through the decision adapter, with the claim and its cited evidence as the state, and SHALL read P(yes) (probability of true). A P(yes) of 0.5 or more SHALL give `supported`. A lower value SHALL give `unsupported`. A reply without a usable P(yes) SHALL give `unparseable`. The strategy SHALL run only on a model that passes the 8-bit check of root gotcha 16, and SHALL NOT use the chat interface.
 
 #### Scenario: Supported claim
 
@@ -53,7 +53,12 @@ The `clef_flash` strategy SHALL send one yes/no question per claim to `/v1/syste
 
 ### Requirement: Granite Guardian judges a claim by groundedness
 
-The `granite_guardian` strategy SHALL send the guardian prompt with the criterion `groundedness`, the cited evidence as context and the claim as the assistant message, through the llama.cpp chat interface. The guardian answers `yes` when the risk is present, so a `yes` SHALL give `unsupported` and a `no` SHALL give `supported`. A reply with neither SHALL give `unparseable`.
+The `granite_guardian` strategy SHALL send the guardian prompt with the criterion `groundedness`, the cited evidence as the template's documents and the claim as the only message (role `assistant`), with thinking off. It SHALL render the prompt as the model's chat template does and send it to the router's `/v1/completions` (design D10). It SHALL read the last `<score>` tag. A `yes` (risk present) SHALL give `unsupported`, a `no` SHALL give `supported`, and neither SHALL give `unparseable`.
+
+#### Scenario: Prompt from the model's template
+
+- **WHEN** the strategy judges one claim with two evidence texts
+- **THEN** the request MUST go to `/v1/completions` with two `document` turns, the claim as the `assistant` turn, the groundedness criterion and the `judge{no_think}` turn
 
 #### Scenario: Risk present
 
@@ -72,7 +77,7 @@ The `granite_guardian` strategy SHALL send the guardian prompt with the criterio
 
 ### Requirement: Every judge call records what produced the verdict
 
-The answer result SHALL hold a `judge_calls` list with one entry per judged claim. Each entry SHALL hold the strategy, the model id, the host for a hosted call or the SHA-256 of the GGUF file for a local call, the prompt-format version, and the settings of the call (temperature, seed, reasoning, threshold and, for Granite, the think flag).
+The answer result SHALL hold a `judge_calls` list with one entry per judged claim. Each entry SHALL hold the strategy, the model id, the host for a hosted call or the SHA-256 of the GGUF file for a local call, the prompt-format version, the settings of the call (temperature, seed, reasoning, threshold and, for Granite, the think flag), P(yes) for a decision model, and a fixed `error` reason when the request for that claim failed.
 
 #### Scenario: Local call
 
