@@ -2,16 +2,16 @@
 
 ## 1. New ADR and spec gate
 
-- [ ] 1.1 Write the new ADR superseding ADR-068 decisions 2 and 6. Use `s-adr`. Record the label-equality test requirement, the process-level cache, and the profile evidence. Set status Proposed. Verify `openspec validate --strict` passes.
-- [ ] 1.2 Create the feature worktree from the current `v3` HEAD: `omrs-v3-feat-ingest-per-file-overhead-reduction`, branch `feat/ingest-per-file-overhead-reduction`.
+- [x] 1.1 Write the new ADR superseding ADR-068 decisions 2 and 6. Use `s-adr`. Record the label-equality test requirement, the process-level cache, and the profile evidence. Set status Proposed. Verify `openspec validate --strict` passes.
+- [x] 1.2 Create the feature worktree from the current `v3` HEAD: `omrs-v3-feat-ingest-per-file-overhead-reduction`, branch `feat/ingest-per-file-overhead-reduction`.
 
 ## 2. Replace Magika subprocess with the Python API
 
-- [ ] 2.1 Write a label-equality test first (`tests/test_magika_api_label_equality.py`). It runs both paths on the frozen acceptance corpus from ADR-068 (`scripts/magika_label_smoke.py` fixture set or a small inline copy). Verify it fails when the API path is not yet wired.
-- [ ] 2.2 Add a process-level cache test: two `detect_content_types` calls in the same process construct `magika.Magika()` at most once. Verify it fails before the change.
-- [ ] 2.3 Implement: in `integrations/magika.py`, add a module-level `_get_magika_instance()` using `functools.lru_cache(maxsize=1)`. Replace the `subprocess.run` block in `scan_with_magika` with `m.identify_paths(files)`, keeping the suffix fallback, the `_EXCLUDED_DIRS` filter, and the boundary normalisation from ADR-068 decision 5. Remove the JSONL parsing block. Keep `_magika_binary` and `_resolve_magika` for `_is_magika_available` only.
-- [ ] 2.4 Run the label-equality test and the cache test; confirm both pass. Run the existing Magika tests (`tests/test_magika*.py` if any). Mutation check: remove the `lru_cache`; the cache test must fail. Mutation check: skip the suffix normalisation; the label-equality test must catch it.
-- [ ] 2.5 Update the ADR status to Accepted, record the gate evidence (label-equality test pass, profile before/after), and commit.
+- [x] 2.1 Write a label-equality test first (`tests/test_magika_api_label_equality.py`). It runs both paths on the frozen acceptance corpus from ADR-068 (`scripts/magika_label_smoke.py` fixture set or a small inline copy). Verify it fails when the API path is not yet wired.
+- [x] 2.2 Add a process-level cache test: two `detect_content_types` calls in the same process construct `magika.Magika()` at most once. Verify it fails before the change.
+- [x] 2.3 Implement: in `integrations/magika.py`, add a module-level `_get_magika_instance()` using `functools.lru_cache(maxsize=1)`. Replace the `subprocess.run` block in `scan_with_magika` with `m.identify_paths(files)`, keeping the suffix fallback, the `_EXCLUDED_DIRS` filter, and the boundary normalisation from ADR-068 decision 5. Remove the JSONL parsing block. Keep `_magika_binary` and `_resolve_magika` for `_is_magika_available` only.
+- [x] 2.4 Run the label-equality test and the cache test; confirm both pass. Run the existing Magika tests (`tests/test_magika*.py` if any). Mutation check: remove the `lru_cache`; the cache test must fail. Mutation check: skip the suffix normalisation; the label-equality test must catch it.
+- [x] 2.5 Update the ADR status to Accepted, record the gate evidence (label-equality test pass, profile before/after), and commit.
 
 ## 3. Pod measurement (operator-gated)
 

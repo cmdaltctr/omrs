@@ -69,14 +69,32 @@ def test_a_configured_path_is_used_as_given(scripts: Path, tmp_path: Path) -> No
     assert magika._resolve_magika(_settings(str(tmp_path / "absent"))) is None
 
 
-def test_scan_runs_the_program_it_found(scripts: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    program = _program(scripts, "magika")
-    calls: list[list[str]] = []
+def test_scan_uses_python_api_when_program_found_via_scripts_folder(
+    scripts: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _program(scripts, "magika")  # availability signal only, never executed
+    scan_dir = tmp_path / "scan"
+    scan_dir.mkdir()
+    (scan_dir / "probe.txt").write_text("placeholder content\n", encoding="utf-8")
 
-    def fake_run(argv: list[str], **_: object) -> types.SimpleNamespace:
-        calls.append(argv)
-        return types.SimpleNamespace(stdout="", returncode=0)
+    def fake_identify_paths(files: list) -> list:
+        return [
+            types.SimpleNamespace(
+                ok=True,
+                status="ok",
+                path=file,
+                # A label the suffix map cannot produce: it proves the
+                # entries came from the faked in-process detection.
+                output=types.SimpleNamespace(group="text", label="yaml", is_text=True),
+            )
+            for file in files
+        ]
 
-    monkeypatch.setattr(magika.subprocess, "run", fake_run)
-    magika.scan_with_magika(os.fspath(scripts), _settings())
-    assert calls and calls[0][0] == str(program)
+    fake = types.SimpleNamespace(identify_paths=fake_identify_paths)
+    monkeypatch.setattr(magika, "_get_magika_instance", lambda: fake)
+
+    entries = magika.scan_with_magika(os.fspath(scan_dir), _settings())
+
+    assert [(e.path, e.group, e.label, e.is_text, e.suffix) for e in entries] == [
+        ("probe.txt", "text", "yaml", True, ".txt")
+    ]

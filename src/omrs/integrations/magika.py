@@ -1,12 +1,21 @@
-"""Magika file-type detection — wraps the Magika CLI binary.
+"""Magika file-type detection — in-process Python API transport.
 
 Extracted from ``codebase_map.py`` in Phase 5. Owns the detection data
 primitives (``FileEntry``, ``_EXCLUDED_DIRS``) so that ``codebase_map.py``
 imports them from here rather than the reverse. Provides:
 - ``FileEntry`` — dataclass for a single detected file
 - ``_EXCLUDED_DIRS`` — directory names skipped during scanning
-- ``_is_magika_available()`` — check if the Magika CLI is on $PATH or next to the running Python
+- ``_is_magika_available()`` — availability gate for detection
 - ``scan_with_magika(path)`` — scan a directory and return typed file entries
+
+Detection runs in process through ``magika.Magika().identify_paths``
+(ADR-117): one model load per process, cached in ``_get_magika_instance``.
+The ``magika`` import stays lazy inside that wrapper so importing this
+module never loads the magika package or ONNX Runtime.
+``_magika_binary``, ``_resolve_magika`` and ``_is_magika_available`` remain
+the availability gate and keep the ``MAGIKA_BINARY`` settings injection
+(TDR-025): the bundled CLI binary is the availability signal and the smoke
+tool's ground truth.
 
 ``codebase_map.py`` re-exports ``_is_magika_available`` and ``scan_with_magika``
 as thin wrappers so existing ``omrs.codebase_map.*`` references (including
@@ -15,11 +24,10 @@ test patches) keep resolving.
 
 from __future__ import annotations
 
-import json
+import functools
 import logging
 import os
 import shutil
-import subprocess
 import sysconfig
 from dataclasses import dataclass
 from pathlib import Path
@@ -139,65 +147,37 @@ def _normalise_detected(group: str, label: str, is_text: bool) -> tuple[str, str
     return group, label
 
 
-def _parse_magika_row(line: str) -> tuple[str, str, str, bool]:
-    """Validate one Magika CLI JSONL row and return its entry fields.
+@functools.lru_cache(maxsize=1)
+def _get_magika_instance() -> Any:
+    """Construct the in-process Magika client once per process (ADR-117).
 
-    The Magika CLI emits one JSON object per line. A successful row nests
-    the public label at ``result.value.output``; the sibling ``dl`` field
-    holds raw model details that must never be read as the label.
+    The ``magika`` import and ``Magika()`` construction stay inside this
+    cached wrapper so importing this module never loads the magika package
+    or ONNX Runtime. The first scan pays the one-time model load; every
+    later scan reuses the same client.
 
     Returns:
-        ``(path, group, label, is_text)`` with boundary normalisation
-        already applied.
-
-    Raises:
-        ValueError: The row is not JSON, the status is not ``ok``, the
-            successful envelope is malformed, or a required field is
-            invalid (``group``/``label`` must be non-empty strings,
-            ``is_text`` a boolean). One bad row invalidates the whole
-            scan so production falls back to suffix detection instead
-            of reporting partial results.
+        A ``magika.Magika`` instance (``Any`` because the package is only
+        imported lazily here).
     """
-    try:
-        obj = json.loads(line)
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"Magika returned a non-JSON row: {line[:80]!r}") from exc
+    from magika import Magika
 
-    result = obj.get("result") if isinstance(obj, dict) else None
-    if not isinstance(result, dict) or result.get("status") != "ok":
-        raise ValueError(f"Magika row status is not 'ok': {line[:80]!r}")
-
-    value = result.get("value")
-    output = value.get("output") if isinstance(value, dict) else None
-    if not isinstance(output, dict):
-        raise ValueError(f"Magika 'ok' row lacks result.value.output: {line[:80]!r}")
-
-    group = output.get("group")
-    label = output.get("label")
-    is_text = output.get("is_text")
-    if not isinstance(group, str) or not group:
-        raise ValueError(f"Magika row has an invalid group: {line[:80]!r}")
-    if not isinstance(label, str) or not label:
-        raise ValueError(f"Magika row has an invalid label: {line[:80]!r}")
-    if not isinstance(is_text, bool):
-        raise ValueError(f"Magika row has a non-boolean is_text: {line[:80]!r}")
-
-    file_path = obj.get("path", "")
-    normalised_group, normalised_label = _normalise_detected(group, label, is_text)
-    return file_path, normalised_group, normalised_label, is_text
+    return Magika()
 
 
 def scan_with_magika(path: str, settings: Any | None = None) -> list:
-    """Scan a directory using the Magika CLI binary.
+    """Scan a directory through the in-process Magika Python API.
 
-    Runs ``magika -r <path> --jsonl`` and parses each JSONL line. Only
-    rows with ``result.status == "ok"`` are accepted; the label is read
-    from ``result.value.output`` and boundary-normalised. Any invalid
-    row fails the whole scan with ``ValueError`` so the caller falls
+    Walks the directory itself (no depth limit, skipping
+    ``_EXCLUDED_DIRS``) and runs one ``identify_paths`` call for every
+    collected file. Each result must report success with a non-empty
+    string ``group``/``label`` and a boolean ``is_text``; one invalid
+    result fails the whole scan with ``ValueError`` so the caller falls
     back to suffix detection instead of trusting partial results.
+    Boundary normalisation is applied per entry (ADR-068 decision 5).
 
     Args:
-        path: Directory path to scan.
+        path: Directory path to scan, or a single file (keyed ``"."``).
         settings: Injected effective settings carrying ``magika_binary``;
             ``None`` keeps the legacy process-global resolution.
 
@@ -205,52 +185,78 @@ def scan_with_magika(path: str, settings: Any | None = None) -> list:
         List of ``FileEntry`` objects for each detected file.
 
     Raises:
-        FileNotFoundError: If the Magika binary is not on $PATH or the
-            scan times out.
-        subprocess.CalledProcessError: If the Magika process fails.
-        ValueError: If any CLI row is invalid (non-JSON, non-``ok``
-            status, malformed envelope, or bad required field).
+        FileNotFoundError: If the availability gate finds no Magika
+            program (``_resolve_magika`` returned ``None``).
+        ValueError: If ``Magika()`` construction or ``identify_paths``
+            raises, or any result fails validation.
     """
     program = _resolve_magika(settings)
     if program is None:
         raise FileNotFoundError(f"Magika CLI binary not found: {_magika_binary(settings)}")
 
+    root = Path(path)
+    if root.is_file():
+        files: list[Path] = [root]
+    else:
+        files = []
+
+        # Mirrors the ``_walk`` shape of ``scan_with_suffix`` but with no
+        # depth limit: the old CLI recursion never had one either.
+        def _collect(directory: Path) -> None:
+            try:
+                children = sorted(directory.iterdir())
+            except OSError:
+                return
+            for child in children:
+                if child.is_dir():
+                    if child.name in _EXCLUDED_DIRS:
+                        continue
+                    _collect(child)
+                elif child.is_file():
+                    files.append(child)
+
+        _collect(root)
+
+    if not files:
+        return []
+
     try:
-        result = subprocess.run(  # noqa: S603
-            [program, "-r", path, "--jsonl"],
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=30,
+        results = _get_magika_instance().identify_paths(files)
+    except Exception as exc:
+        logger.warning(
+            "Magika in-process detection failed (%s), falling back to suffix detection", exc
         )
-    except subprocess.TimeoutExpired:
-        logger.warning("Magika scan timed out after 30s, falling back to suffix detection")
-        raise FileNotFoundError("Magika scan timed out") from None
+        raise ValueError(f"Magika identify_paths failed: {exc}") from exc
 
     entries: list[FileEntry] = []
-    project_root = Path(path)
-    for line in result.stdout.splitlines():
-        if not line.strip():
-            continue  # Blank JSONL lines are inert, not detector failures.
+    for file_path, result in zip(files, results, strict=True):
+        if not (getattr(result, "ok", False) or getattr(result, "status", None) == "ok"):
+            raise ValueError(f"Magika result status is not 'ok' for {file_path}")
+        output = getattr(result, "output", None)
+        if output is None:
+            raise ValueError(f"Magika result lacks an output object for {file_path}")
+        group = getattr(output, "group", None)
+        label = getattr(output, "label", None)
+        is_text = getattr(output, "is_text", None)
+        if not isinstance(group, str) or not group:
+            raise ValueError(f"Magika result has an invalid group for {file_path}")
+        if not isinstance(label, str) or not label:
+            raise ValueError(f"Magika result has an invalid label for {file_path}")
+        if not isinstance(is_text, bool):
+            raise ValueError(f"Magika result has a non-boolean is_text for {file_path}")
 
-        file_path, group, label, is_text = _parse_magika_row(line)
-
-        if any(part in _EXCLUDED_DIRS for part in Path(file_path).parts):
-            continue
-
+        normalised_group, normalised_label = _normalise_detected(group, label, is_text)
         try:
-            rel_path = str(Path(file_path).relative_to(project_root))
+            rel_path = str(file_path.relative_to(root))
         except ValueError:
-            rel_path = file_path
-
-        suffix = Path(file_path).suffix.lower()
+            rel_path = str(file_path)
         entries.append(
             FileEntry(
                 path=rel_path,
-                group=group,
-                label=label,
+                group=normalised_group,
+                label=normalised_label,
                 is_text=is_text,
-                suffix=suffix,
+                suffix=file_path.suffix.lower(),
             )
         )
 

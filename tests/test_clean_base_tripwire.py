@@ -354,6 +354,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # fastapi), claim-judge strategies and Studio picker (87, 8 need fastapi), splitter
 # reuse (5).
 # +3 (2026-11-09, same change, review fixes): CLI host refusal (2), event-loop check (1).
+# Net 0 (2026-11-09, ingest-per-file-overhead-reduction, by collect diff): the new
+# test_magika_api_label_equality.py adds 2 (label equality, process cache) and the
+# Magika Python API rework removes 2 moot JSONL tests from parser_boundaries.
 _BASE_EXECUTED = 12404
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean

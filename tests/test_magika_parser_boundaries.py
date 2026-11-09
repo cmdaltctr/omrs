@@ -1,15 +1,14 @@
 """Fail-first regressions for the pinned Magika parser and ingestion boundary.
 
 Each test maps to tasks 1.3 through 1.5 of the ``pin-magika-detection``
-OpenSpec change. The CLI is always faked. No test needs a live detector,
+OpenSpec change. The in-process Python API detector is always faked
+through the ``_get_magika_instance`` seam. No test needs a live detector,
 reader, embedder, store, or network service.
 """
 
 from __future__ import annotations
 
-import json
 import logging
-import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
@@ -25,140 +24,100 @@ from omrs.core.ingestion import chunker, pipeline
 from omrs.integrations import magika
 
 
-def _magika_row(path: Path, *, group: str, label: str, is_text: bool) -> str:
-    """Build one verified Magika 1.0.3 JSONL row."""
-    return json.dumps(
-        {
-            "path": str(path),
-            "result": {
-                "status": "ok",
-                "value": {
-                    "dl": {"label": "ignored-model-output"},
-                    "output": {
-                        "group": group,
-                        "label": label,
-                        "is_text": is_text,
-                    },
-                    "score": 0.96,
-                },
-            },
-        }
+def _api_row(path: Path, *, group: str, label: str, is_text: bool) -> SimpleNamespace:
+    """Build one verified Magika Python API result row."""
+    return SimpleNamespace(
+        ok=True,
+        status="ok",
+        path=path,
+        output=SimpleNamespace(group=group, label=label, is_text=is_text),
     )
 
 
-def _scan_jsonl(
+def _invalid_api_row(shape: str, path: Path) -> SimpleNamespace:
+    """Build one invalid Magika API result row of the named shape."""
+    if shape == "non-ok status":
+        return SimpleNamespace(
+            ok=False,
+            status="error",
+            path=path,
+            output=SimpleNamespace(group="text", label="txt", is_text=True),
+        )
+    if shape == "empty group":
+        return SimpleNamespace(
+            ok=True,
+            status="ok",
+            path=path,
+            output=SimpleNamespace(group="", label="txt", is_text=True),
+        )
+    if shape == "empty label":
+        return SimpleNamespace(
+            ok=True,
+            status="ok",
+            path=path,
+            output=SimpleNamespace(group="text", label="", is_text=True),
+        )
+    if shape == "non-boolean is_text":
+        return SimpleNamespace(
+            ok=True,
+            status="ok",
+            path=path,
+            output=SimpleNamespace(group="text", label="txt", is_text=1),
+        )
+    if shape == "missing output":
+        return SimpleNamespace(ok=True, status="ok", path=path)
+    if shape == "none output":
+        return SimpleNamespace(ok=True, status="ok", path=path, output=None)
+    raise AssertionError(f"unknown invalid API result shape: {shape}")
+
+
+def _scan_with_fake(
     monkeypatch: pytest.MonkeyPatch,
     root: Path,
-    stdout: str,
+    row_for: Any,
     settings: object,
 ) -> list[FileEntry]:
-    """Run the Magika parser against deterministic CLI JSONL."""
-    monkeypatch.setattr(magika, "_is_magika_available", lambda settings: True)
-    monkeypatch.setattr(
-        magika.subprocess,
-        "run",
-        lambda *args, **kwargs: subprocess.CompletedProcess(args[0], 0, stdout=stdout, stderr=""),
-    )
+    """Run the Magika scan against deterministic in-process API rows.
+
+    ``row_for`` maps each walked file to one fake ``identify_paths``
+    result; patching ``_get_magika_instance`` bypasses the lru_cache, so
+    no cache clearing is needed.
+    """
+    monkeypatch.setattr(magika, "_is_magika_available", lambda settings=None: True)
+
+    def fake_identify_paths(files: list[Path]) -> list[SimpleNamespace]:
+        return [row_for(Path(file)) for file in files]
+
+    fake = SimpleNamespace(identify_paths=fake_identify_paths)
+    monkeypatch.setattr(magika, "_get_magika_instance", lambda: fake)
     return magika.scan_with_magika(str(root), settings=settings)
 
 
-def test_scan_reads_nested_output_instead_of_model_details(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-    effective_settings,
-) -> None:
-    """Task 1.3: only ``result.value.output`` supplies the public label."""
-    source = tmp_path / "probe.txt"
-    source.write_text("def answer() -> int:\n    return 42\n", encoding="utf-8")
-
-    entries = _scan_jsonl(
-        monkeypatch,
-        tmp_path,
-        _magika_row(source, group="code", label="python", is_text=True),
-        effective_settings(),
-    )
-
-    assert [(entry.path, entry.group, entry.label, entry.is_text) for entry in entries] == [
-        ("probe.txt", "code", "python", True)
-    ]
-
-
 @pytest.mark.parametrize(
-    ("case", "row"),
+    "shape",
     [
-        (
-            "non-ok status",
-            {
-                "path": "/ignored/probe.txt",
-                "result": {"status": "error", "value": {"output": {}}},
-            },
-        ),
-        ("non-json row", "this is not JSONL"),
-        (
-            "missing output",
-            {"path": "/ignored/probe.txt", "result": {"status": "ok", "value": {}}},
-        ),
-        (
-            "empty group",
-            {
-                "path": "/ignored/probe.txt",
-                "result": {
-                    "status": "ok",
-                    "value": {"output": {"group": "", "label": "txt", "is_text": True}},
-                },
-            },
-        ),
-        (
-            "empty label",
-            {
-                "path": "/ignored/probe.txt",
-                "result": {
-                    "status": "ok",
-                    "value": {"output": {"group": "text", "label": "", "is_text": True}},
-                },
-            },
-        ),
-        (
-            "non-boolean is_text",
-            {
-                "path": "/ignored/probe.txt",
-                "result": {
-                    "status": "ok",
-                    "value": {"output": {"group": "text", "label": "txt", "is_text": 1}},
-                },
-            },
-        ),
+        "non-ok status",
+        "empty group",
+        "empty label",
+        "non-boolean is_text",
+        "missing output",
+        "none output",
     ],
 )
-def test_scan_rejects_invalid_cli_rows(
+def test_scan_rejects_invalid_api_results(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     effective_settings,
-    case: str,
-    row: dict[str, object] | str,
+    shape: str,
 ) -> None:
     """Task 1.3: one invalid record invalidates the whole detector scan."""
-    stdout = row if isinstance(row, str) else json.dumps(row)
+    probe = tmp_path / "probe.txt"
+    probe.write_text("placeholder content\n", encoding="utf-8")
 
     with pytest.raises(ValueError, match="Magika"):
-        _scan_jsonl(monkeypatch, tmp_path, stdout, effective_settings())
-
-
-def test_scan_ignores_blank_lines_without_omitting_valid_records(
-    monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
-    effective_settings,
-) -> None:
-    """Task 1.3: blank JSONL lines are inert, not detector failures."""
-    source = tmp_path / "note.md"
-    source.write_text("# Note\n", encoding="utf-8")
-    stdout = f"\n   \n{_magika_row(source, group='text', label='markdown', is_text=True)}\n\n"
-
-    entries = _scan_jsonl(monkeypatch, tmp_path, stdout, effective_settings())
-
-    assert [(entry.path, entry.group, entry.label) for entry in entries] == [
-        ("note.md", "document", "markdown")
-    ]
+        _scan_with_fake(
+            monkeypatch, tmp_path, lambda f: _invalid_api_row(shape, f), effective_settings()
+        )
 
 
 def test_scan_applies_only_the_specified_boundary_and_alias_rules(
@@ -167,17 +126,21 @@ def test_scan_applies_only_the_specified_boundary_and_alias_rules(
     effective_settings,
 ) -> None:
     """Task 1.4: preserve readable groups and change only two text aliases."""
-    rows = [
-        _magika_row(tmp_path / "archive.pdf", group="unknown", label="unknown", is_text=False),
-        _magika_row(tmp_path / "paper.pdf", group="document", label="pdf", is_text=False),
-        _magika_row(tmp_path / "binary.py", group="code", label="python", is_text=False),
-        _magika_row(tmp_path / "opaque.txt", group="text", label="txt", is_text=False),
-        _magika_row(tmp_path / "note.md", group="text", label="markdown", is_text=True),
-        _magika_row(tmp_path / "plain.txt", group="text", label="txt", is_text=True),
-        _magika_row(tmp_path / "data.csv", group="text", label="csv", is_text=True),
-    ]
+    rows = {
+        "archive.pdf": {"group": "unknown", "label": "unknown", "is_text": False},
+        "paper.pdf": {"group": "document", "label": "pdf", "is_text": False},
+        "binary.py": {"group": "code", "label": "python", "is_text": False},
+        "opaque.txt": {"group": "text", "label": "txt", "is_text": False},
+        "note.md": {"group": "text", "label": "markdown", "is_text": True},
+        "plain.txt": {"group": "text", "label": "txt", "is_text": True},
+        "data.csv": {"group": "text", "label": "csv", "is_text": True},
+    }
+    for name in rows:
+        (tmp_path / name).write_text("placeholder content\n", encoding="utf-8")
 
-    entries = _scan_jsonl(monkeypatch, tmp_path, "\n".join(rows), effective_settings())
+    entries = _scan_with_fake(
+        monkeypatch, tmp_path, lambda f: _api_row(f, **rows[f.name]), effective_settings()
+    )
     observed = {entry.path: (entry.group, entry.label, entry.is_text) for entry in entries}
 
     assert observed == {
@@ -243,14 +206,15 @@ def _configure_pipeline_fakes(monkeypatch: pytest.MonkeyPatch) -> Any:
     return fake_store
 
 
-def _enable_cli_jsonl(monkeypatch: pytest.MonkeyPatch, stdout: str) -> None:
-    """Configure the production parser's subprocess boundary only."""
-    monkeypatch.setattr(magika, "_is_magika_available", lambda settings: True)
-    monkeypatch.setattr(
-        magika.subprocess,
-        "run",
-        lambda *args, **kwargs: subprocess.CompletedProcess(args[0], 0, stdout=stdout, stderr=""),
-    )
+def _enable_api_rows(monkeypatch: pytest.MonkeyPatch, rows: dict[str, dict[str, Any]]) -> None:
+    """Configure the production in-process detection seam only."""
+    monkeypatch.setattr(magika, "_is_magika_available", lambda settings=None: True)
+
+    def fake_identify_paths(files: list[Path]) -> list[SimpleNamespace]:
+        return [_api_row(Path(file), **rows[Path(file).name]) for file in files]
+
+    fake = SimpleNamespace(identify_paths=fake_identify_paths)
+    monkeypatch.setattr(magika, "_get_magika_instance", lambda: fake)
 
 
 @pytest.mark.asyncio
@@ -262,9 +226,9 @@ async def test_binary_content_renamed_pdf_skips_before_reader(
     """Task 1.4: unreadable non-document content bypasses every reader."""
     source = tmp_path / "archive.pdf"
     source.write_bytes(b"PK\x03\x04" + b"zip payload")
-    _enable_cli_jsonl(
+    _enable_api_rows(
         monkeypatch,
-        _magika_row(source, group="unknown", label="unknown", is_text=False),
+        {"archive.pdf": {"group": "unknown", "label": "unknown", "is_text": False}},
     )
     fake_store = _configure_pipeline_fakes(monkeypatch)
     reader = AsyncMock(side_effect=AssertionError("binary content reached a reader"))
@@ -291,8 +255,9 @@ async def test_pdf_detection_preserves_document_type_for_stub_reader(
     """Task 1.4: a detected PDF remains readable with ``is_text=False``."""
     source = tmp_path / "paper.pdf"
     source.write_bytes(b"%PDF-1.4\nminimal test fixture\n")
-    _enable_cli_jsonl(
-        monkeypatch, _magika_row(source, group="document", label="pdf", is_text=False)
+    _enable_api_rows(
+        monkeypatch,
+        {"paper.pdf": {"group": "document", "label": "pdf", "is_text": False}},
     )
     fake_store = _configure_pipeline_fakes(monkeypatch)
     reader = AsyncMock(return_value=[TextNode(text="stub reader output")])
@@ -338,7 +303,10 @@ async def test_substantial_misnamed_python_uses_ast_splitter_with_injected_setti
         ),
         encoding="utf-8",
     )
-    _enable_cli_jsonl(monkeypatch, _magika_row(source, group="code", label="python", is_text=True))
+    _enable_api_rows(
+        monkeypatch,
+        {"module.txt": {"group": "code", "label": "python", "is_text": True}},
+    )
     fake_store = _configure_pipeline_fakes(monkeypatch)
     observed: dict[str, object] = {}
 
