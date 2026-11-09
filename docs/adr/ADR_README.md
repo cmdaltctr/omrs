@@ -126,6 +126,7 @@ development of OMRG — Opinionated Modular RAG.
 | [115](./115-one-llamacpp-router.md) | One llama.cpp Router Serves Every Local Model | 2026-11-06 | Proposed (2026-11-06; supersedes ADR-109's router-mode rejection and per-role table; amends ADR-084, ADR-108 and ADR-110) |
 | [116](./116-skip-blank-switch-and-fixed-page-rule-order.md) | A Switch for the Blank Page Rule, and a Fixed Page-Rule Order | 2026-11-07 | Proposed (2026-11-07; amends ADR-112 decision 3) |
 | [117](./117-magika-in-process-detection.md) | Run Magika Detection In Process | 2026-11-09 | Accepted (2026-11-09; supersedes ADR-068 decisions 2 and 6) |
+| [118](./118-cap-magika-onnx-threads.md) | Cap Magika ONNX Threads | 2026-11-09 | Proposed (pod gate passed 2026-11-09) |
 
 ## Convention
 
