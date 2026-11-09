@@ -17,6 +17,7 @@ def _construct_with_fakes(
     *,
     visible_cpus: int,
     affinity: bool = True,
+    affinity_error: bool = False,
 ) -> dict[str, Any]:
     """Drive the lazy constructor with fake optional runtime modules."""
     calls: dict[str, Any] = {}
@@ -52,7 +53,14 @@ def _construct_with_fakes(
             disable_telemetry_events=lambda: None,
         ),
     )
-    if affinity:
+    if affinity_error:
+
+        def fail_affinity(_pid: int) -> range:
+            raise OSError("affinity denied")
+
+        monkeypatch.setattr(magika.os, "sched_getaffinity", fail_affinity, raising=False)
+        monkeypatch.setattr(magika.os, "cpu_count", lambda: visible_cpus)
+    elif affinity:
         monkeypatch.setattr(
             magika.os, "sched_getaffinity", lambda _pid: range(visible_cpus), raising=False
         )
@@ -87,6 +95,15 @@ def test_constructor_falls_back_to_cpu_count_without_affinity(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls = _construct_with_fakes(monkeypatch, visible_cpus=6, affinity=False)
+
+    assert calls["intra"] == 6
+    assert calls["inter"] == 1
+
+
+def test_constructor_uses_cpu_count_when_affinity_is_denied(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = _construct_with_fakes(monkeypatch, visible_cpus=6, affinity_error=True)
 
     assert calls["intra"] == 6
     assert calls["inter"] == 1

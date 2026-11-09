@@ -185,7 +185,10 @@ def _get_magika_instance() -> Any:
 
                         # Magika 1.0.3 accepts no SessionOptions constructor argument.
                         affinity = getattr(os, "sched_getaffinity", None)
-                        visible_cpus = len(affinity(0)) if affinity else (os.cpu_count() or 1)
+                        try:
+                            visible_cpus = len(affinity(0)) if affinity else (os.cpu_count() or 1)
+                        except OSError:
+                            visible_cpus = os.cpu_count() or 1
                         options = rt.SessionOptions()
                         options.intra_op_num_threads = min(visible_cpus, 8)
                         options.inter_op_num_threads = 1
