@@ -15,7 +15,7 @@
 ## 3. Integration gates and review
 
 - [x] 3.1 Run `./scripts/local_ci.sh` and `openspec validate --all --strict`. Verify all checks pass and tick completed tasks with evidence.
-- [ ] 3.2 Scan changed tracked files for the old project identity. Commit, push and open a PR into `v3` that closes #201. Verify CI completes and handle every CodeRabbit thread. Leave the PR unmerged.
+- [x] 3.2 Scan changed tracked files for the old project identity. Commit, push and open a PR into `v3` that closes #201. Verify CI completes and handle every CodeRabbit thread. Leave the PR unmerged.
 
 ## Workflow follow-up
 
