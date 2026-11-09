@@ -26,6 +26,7 @@ from tests.unit import test_web_llamacpp_router_support as support  # noqa: E402
 
 from omrs import compose_runtimes  # noqa: E402
 from omrs.integrations import huggingface_models as hf  # noqa: E402
+from omrs.transports.api.llamacpp_server import RouterControl  # noqa: E402
 from omrs.transports.api.routes import model_downloads as download_routes  # noqa: E402
 
 harness = support.harness
@@ -218,3 +219,53 @@ def test_the_first_model_arrives_and_the_second_fails_so_it_is_asked_for_once(
         assert _settled(hub) == 2  # the embedding model once, the chat model once
         assert hub.listed.count(CHAT_REPO) == 1
         assert r.get()["state"] == "running"
+
+
+def test_a_download_that_fails_during_the_start_reply_keeps_the_reason(
+    rig: Any, hub: Hub, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Design D8: the start of a failed download must not clear the user's Start mid-reply.
+
+    The delays force the order CI hit once: the user's Start sets its wait flag, the
+    downloads fail, ``load`` starts again and lowers the flag, and only then does the
+    user's Start read its status.
+    """
+    _fail_both(hub, "plan")
+    real_start, real_status, real_owned = (
+        RouterControl.start,
+        RouterControl.status,
+        RouterControl._owned,
+    )
+    caller = threading.local()  # ``True`` in the user's Start, ``False`` in a download's
+
+    def start(self: Any, config: Any, *, ask_downloads: bool = True) -> Any:
+        caller.user = ask_downloads
+        try:
+            return real_start(self, config, ask_downloads=ask_downloads)
+        finally:
+            caller.user = None
+
+    def status(self: Any, config: Any) -> Any:
+        if getattr(caller, "user", None) is True:
+            time.sleep(0.5)  # the downloads fail and their start lowers the flag meanwhile
+        return real_status(self, config)
+
+    def owned(self: Any) -> Any:
+        if getattr(caller, "user", None) is False:
+            time.sleep(1.0)  # the download's own start holds the flag down
+        return real_owned(self)
+
+    monkeypatch.setattr(RouterControl, "start", start)
+    monkeypatch.setattr(RouterControl, "status", status)
+    monkeypatch.setattr(RouterControl, "_owned", owned)
+    with rig() as r:
+        first = r.post("start").json()
+        assert (first["state"], first["reason"]) in {
+            ("starting", "not-downloaded"),
+            ("failed", "not-downloaded"),
+        }, first
+        assert wait_until(lambda: _attempts(hub) >= 2, 10), hub.listed
+        assert wait_until(lambda: r.get()["state"] == "failed", 10), r.get()
+        assert _settled(hub) == 2
+        body = r.get()
+        assert (body["state"], body["reason"]) == ("failed", "not-downloaded")

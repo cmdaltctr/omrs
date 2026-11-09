@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
+import http.client
 import json
 import os
 import re
@@ -183,7 +184,7 @@ def http_get_json(url: str, timeout: float) -> tuple[int, object]:
             status, raw = int(answer.status), answer.read()
     except urllib.error.HTTPError as error:
         status, raw = int(error.code), b""
-    except (OSError, ValueError):
+    except (OSError, ValueError, http.client.HTTPException):  # a reply cut short counts too
         return 0, {}
     try:
         return status, json.loads(raw or b"{}")

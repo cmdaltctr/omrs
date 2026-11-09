@@ -19,11 +19,13 @@ router adapter only.
 from __future__ import annotations
 
 import asyncio
+import functools
 import logging
+import threading
 from collections.abc import AsyncIterator, Callable, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any, Literal, TypeVar
 
 from fastapi.concurrency import run_in_threadpool
 
@@ -60,6 +62,7 @@ _PROBE_SECONDS = 1.0
 #: ``GET /health`` answers of a router that is still loading.
 _HEALTH_LOADING = 503
 _LIVE_STATES = ("loaded", "loading", "unloaded", "failed")
+_T = TypeVar("_T")
 
 
 @dataclass(frozen=True)
@@ -142,6 +145,22 @@ def _argument(argv: list[str], flag: str) -> int | None:
         return None
 
 
+def _locked(method: Callable[..., _T]) -> Callable[..., _T]:
+    """Run *method* while the control holds its lock (design D8).
+
+    A user's Start and the start that follows a failed download share the wait
+    state. Without the lock, the second clears the wait between the first's flag
+    and its status read, and the Start reply says ``stopped`` with no reason.
+    """
+
+    @functools.wraps(method)
+    def run(self: RouterControl, *args: Any, **kwargs: Any) -> _T:
+        with self._lock:
+            return method(self, *args, **kwargs)
+
+    return run
+
+
 class RouterControl:
     """Start, stop and status of the router over the shared runtime manager.
 
@@ -151,6 +170,8 @@ class RouterControl:
 
     def __init__(self, manager: RuntimeManager) -> None:
         self.manager = manager
+        # Re-entrant: ``load`` calls ``start``, and ``start`` calls ``status``.
+        self._lock = threading.RLock()
         self._router: Any = None
         self._refusal: tuple[str, str] | None = None
         # A Start waits for the automatic downloads: nothing runs yet, the router is
@@ -201,6 +222,7 @@ class RouterControl:
 
     # ── Status ───────────────────────────────────────────────────────────
 
+    @_locked
     def status(self, config: RouterConfig) -> RouterStatus:
         """Return the state from the runtime files. Starts and writes nothing."""
         program = program_in_force(config.binary)
@@ -283,6 +305,7 @@ class RouterControl:
 
     # ── Control ──────────────────────────────────────────────────────────
 
+    @_locked
     def start(self, config: RouterConfig, *, ask_downloads: bool = True) -> RouterStatus:
         """Join the ``router`` runtime with *config*; it starts the router when none runs.
 
@@ -322,6 +345,7 @@ class RouterControl:
             router.ask_downloads = True
         return self.status(config)
 
+    @_locked
     def stop(self, config: RouterConfig) -> RouterStatus:
         """Operator stop. With no recorded router, nothing is signalled.
 
@@ -368,34 +392,44 @@ class RouterControl:
         the wait. The start that follows a download asks for no download, so when every
         download has ended and no model has a file the status reads ``not-downloaded`` and
         nothing is asked for again until the user presses Start. A refusal is logged only:
-        the entry shows its own state.
+        the entry shows its own state. The models load outside the lock, so a status
+        read does not wait for a model load.
         """
-        if config.mode != "managed":
-            self._end_wait()
+        ready = self._start_for_load(config, model)
+        if ready is None:
             return
-        checked = self.check(config)
-        owned = self._owned()
-        if not isinstance(checked, RuntimeSpec) or (owned and owned.digest != checked.digest):
-            return
-        entries = list(config.entries.values())
-        with_file = {e.model for e in entries if (e.file or "").strip()}  # a failed one has none
-        models = {model} & with_file
-        if owned is None:
-            if not self._waiting:
-                return  # nothing asked for the router to start
-            if _still_downloading(self._models(config, None)):
-                self._to_load |= models  # the last download starts the router
-                return
-            models |= self._to_load & with_file
-            self.start(config, ask_downloads=False)
-            if self._owned() is None:
-                return  # refused again: the status says why
-        router = open_router(self.manager, checked, entries, decision_models=config.decision_models)
+        router, models = ready
         for name in sorted(models):
             try:
                 router.ensure_ready(name)
             except (RuntimeUnavailable, ModelUnavailable) as refused:
                 logger.info("The downloaded model was not loaded: %s", refused.reason)
+
+    @_locked
+    def _start_for_load(self, config: RouterConfig, model: str) -> tuple[Any, set[str]] | None:
+        """Return the router lease and the models ``load`` loads, or ``None`` for none."""
+        if config.mode != "managed":
+            self._end_wait()
+            return None
+        checked = self.check(config)
+        owned = self._owned()
+        if not isinstance(checked, RuntimeSpec) or (owned and owned.digest != checked.digest):
+            return None
+        entries = list(config.entries.values())
+        with_file = {e.model for e in entries if (e.file or "").strip()}  # a failed one has none
+        models = {model} & with_file
+        if owned is None:
+            if not self._waiting:
+                return None  # nothing asked for the router to start
+            if _still_downloading(self._models(config, None)):
+                self._to_load |= models  # the last download starts the router
+                return None
+            models |= self._to_load & with_file
+            self.start(config, ask_downloads=False)
+            if self._owned() is None:
+                return None  # refused again: the status says why
+        router = open_router(self.manager, checked, entries, decision_models=config.decision_models)
+        return router, models
 
     def shutdown(self) -> None:
         """Leave the ``router`` lease when ``omrs web`` exits; the last client stops the router."""
