@@ -17,7 +17,7 @@ Profile artefacts: `~/Development/DATA/omrs/experiments/pre-exp35-ingest-profile
 New ADR (supersedes ADR-068 decisions 2 and 6):
 
 - `magika.Magika()` is constructed once per process, lazily, via a module-level `functools.lru_cache(maxsize=1)` wrapper. The instance is kept alive; ONNX Runtime loads the model once.
-- `scan_with_magika` calls `m.identify_path(path)` for each file under the root (the existing suffix-based fallback if Magika is unavailable stays in place). The JSONL parsing contract is replaced by reading `.output.label`, `.output.group`, `.output.is_text`, and `.status` from `MagikaResult`. Label equality with the CLI is verified by a test that runs both paths on a small fixture set (same labels required; ADR-068 frozen acceptance corpus reused).
+- `scan_with_magika` walks the directory itself (skipping `_EXCLUDED_DIRS`) and calls `m.identify_paths(files)` once for all files under the root; a single-file root yields the `.` key (the existing suffix-based fallback if Magika is unavailable stays in place). The JSONL parsing contract is replaced by reading `.output.label`, `.output.group`, `.output.is_text`, and `.status` from each `MagikaResult`. Label equality with the CLI is verified by a test that runs both paths on the ADR-068 frozen acceptance corpus (same labels required).
 - The `MAGIKA_BINARY` injectable is still read for the existing `_is_magika_available` check (ADR-068 decision 7 boundary normalisation stays in the Python path).
 - File size: `magika.py` is 257 lines. The JSONL parsing block removed and `identify_paths` added keeps it under 500 lines.
 

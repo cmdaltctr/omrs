@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 from omrs.core.codebase.codebase_map import (
@@ -262,89 +262,71 @@ class TestFormatCodebaseMap:
         assert "## File Types" in text
 
 
-# ── Magika parsing tests (mocked) ────────────────────────────────────────
+# ── Magika parsing tests (in-process API seam) ───────────────────────────
 
 
 class TestMagikaParsing:
-    """Tests for Magika JSONL output parsing (mocked subprocess)."""
+    """Tests for Magika detection through the faked in-process API seam."""
 
-    def test_magika_jsonl_parsing(self, tmp_path: Path) -> None:
-        """Magika JSONL output is correctly parsed."""
+    def test_magika_result_parsing(self, tmp_path: Path) -> None:
+        """Magika Python API results are parsed and alias-normalised."""
         (tmp_path / "app.py").write_text("x = 1")
         (tmp_path / "README.md").write_text("# Test")
 
-        mock_output = (
-            json.dumps(
-                {
-                    "path": str(tmp_path / "app.py"),
-                    "result": {
-                        "status": "ok",
-                        "value": {"output": {"group": "code", "label": "python", "is_text": True}},
-                    },
-                }
-            )
-            + "\n"
-            + json.dumps(
-                {
-                    "path": str(tmp_path / "README.md"),
-                    "result": {
-                        "status": "ok",
-                        "value": {
-                            # Raw 1.0.3 shape: markdown arrives in the
-                            # text group and the boundary normalises the
-                            # alias to document/markdown.
-                            "output": {"group": "text", "label": "markdown", "is_text": True}
-                        },
-                    },
-                }
-            )
-            + "\n"
-        )
+        rows = {
+            "app.py": SimpleNamespace(group="code", label="python", is_text=True),
+            # Raw 1.0.3 shape: markdown arrives in the text group and the
+            # boundary normalises the alias to document/markdown.
+            "README.md": SimpleNamespace(group="text", label="markdown", is_text=True),
+        }
+
+        def fake_identify_paths(files: list) -> list:
+            return [
+                SimpleNamespace(ok=True, status="ok", path=file, output=rows[Path(file).name])
+                for file in files
+            ]
 
         with (
             patch("omrs.integrations.magika._is_magika_available", return_value=True),
-            patch("subprocess.run") as mock_run,
+            patch(
+                "omrs.integrations.magika._get_magika_instance",
+                return_value=SimpleNamespace(identify_paths=fake_identify_paths),
+            ),
         ):
-            mock_run.return_value = MagicMock(stdout=mock_output, returncode=0)
             from omrs.core.codebase.codebase_map import scan_with_magika
 
             entries = scan_with_magika(str(tmp_path))
 
-        assert len(entries) == 2
-        assert entries[0].group == "code"
-        assert entries[0].label == "python"
-        assert entries[1].group == "document"
+        observed = {entry.path: (entry.group, entry.label) for entry in entries}
+        assert observed == {
+            "app.py": ("code", "python"),
+            "README.md": ("document", "markdown"),
+        }
 
     def test_magika_binary_detection(self, tmp_path: Path) -> None:
         """Magika correctly flags binary files."""
         (tmp_path / "app.bin").write_bytes(b"\x00\x01\x02")
 
-        mock_output = (
-            json.dumps(
-                {
-                    "path": str(tmp_path / "app.bin"),
-                    "result": {
-                        "status": "ok",
-                        "value": {
-                            # Non-readable group outside document/code/
-                            # text: the boundary normalises it to binary.
-                            "output": {
-                                "group": "executable",
-                                "label": "elf",
-                                "is_text": False,
-                            }
-                        },
-                    },
-                }
-            )
-            + "\n"
-        )
+        def fake_identify_paths(files: list) -> list:
+            return [
+                SimpleNamespace(
+                    ok=True,
+                    status="ok",
+                    path=file,
+                    # Non-readable group outside document/code/text: the
+                    # boundary normalises it to binary.
+                    output=SimpleNamespace(group="executable", label="elf", is_text=False),
+                )
+                for file in files
+            ]
 
         with (
             patch("omrs.integrations.magika._is_magika_available", return_value=True),
-            patch("subprocess.run") as mock_run,
+            patch(
+                "omrs.integrations.magika._get_magika_instance",
+                return_value=SimpleNamespace(identify_paths=fake_identify_paths),
+            ),
         ):
-            mock_run.return_value = MagicMock(stdout=mock_output, returncode=0)
             from omrs.core.codebase.codebase_map import scan_with_magika
 
             entries = scan_with_magika(str(tmp_path))

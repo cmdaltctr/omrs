@@ -1569,7 +1569,7 @@ the document-backend registry instead of a fixed config-time list.
 
 | Variable | Default | What it does |
 |---|---|---|
-| `MAGIKA_BINARY` | `magika` | File-type detection binary. A bare name is looked up on `PATH`, then next to the Python that runs omrs (where an install puts it). |
+| `MAGIKA_BINARY` | `magika` | Availability probe for file-type detection. Detection runs in process through the Python API; the binary is the availability signal and the smoke tool's ground truth. A bare name is looked up on `PATH`, then next to the Python that runs omrs (where an install puts it). |
 | `CODEBASE_MAP_CACHE_DIR` | `.opencode` | Cache location |
 | `CODEBASE_MAP_MAX_FILES` | `5000` | File limit |
 | `CODEBASE_MAP_MAX_DEPTH` | `10` | Directory depth limit |
