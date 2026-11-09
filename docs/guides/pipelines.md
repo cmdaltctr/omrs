@@ -228,6 +228,7 @@ Graph overrides accept these levers only:
 |---|---|
 | `retrieval.top_k`, `retrieval.rerank_enabled`, `retrieval.hybrid_enabled`, `retrieval.hybrid_rrf_k`, `retrieval.similarity_threshold`, `retrieval.rerank_fetch_multiplier` | No |
 | `answer.verify_claims` | No |
+| `answer.verify_judge` | No |
 | `chunking.chunk_size`, `chunking.chunk_overlap`, `chunking.markdown_chunk_size`, `chunking.code_chunk_lines`, `chunking.strategy_fallback` | Yes |
 | `metadata.taxonomy_mode` | Yes |
 

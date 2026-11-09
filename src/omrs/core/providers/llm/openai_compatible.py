@@ -20,6 +20,8 @@ from .connection import (
 )
 from .reply import ReplyFacts
 from .reply_read import read_openai_reply
+from .sampling import constructor_kwargs as sampling_kwargs
+from .sampling import merge_kwargs
 
 if TYPE_CHECKING:
     from ....config import Settings
@@ -44,6 +46,9 @@ def build(
     timeout: float | None = None,
     answer_model: str | None = None,
     reasoning: str = "",
+    temperature: float | None = None,
+    seed: int | None = None,
+    allowed_hosts: tuple[str, ...] = (),
 ) -> Any:
     """Construct an ``OpenAILike`` chat LLM for the saved address from *settings*.
 
@@ -56,6 +61,10 @@ def build(
             its own, so the Chat model is required.
         reasoning: Reasoning level (add-chat-reasoning-and-usage D2), sent as
             ``reasoning_effort``. Empty sends nothing.
+        temperature: Sent as ``temperature`` when set (pre-exp35 D2). Empty keeps
+            the library default (0.1 on the OpenAI-like classes).
+        seed: Sent as ``seed`` when set. Empty sends no seed.
+        allowed_hosts: Accepted and ignored: only OpenRouter pins hosts.
 
     Returns:
         A configured ``OpenAILike`` LLM.
@@ -75,8 +84,12 @@ def build(
         # OpenAILike names this ``timeout``; ``request_timeout`` is the Ollama
         # spelling and is silently dropped, leaving the 60s default in place.
         timeout=(timeout if timeout is not None else settings.metadata.classify_timeout),
-        # An empty level adds nothing, so the request stays as it was.
-        **({"additional_kwargs": extra} if (extra := reasoning_kwargs(reasoning)) else {}),
+        # Empty values add nothing, so the request stays as it was (D2).
+        # ``allowed_hosts`` is OpenRouter's alone, so it is accepted and ignored.
+        **merge_kwargs(
+            {"additional_kwargs": reasoning_kwargs(reasoning) or {}},
+            sampling_kwargs(temperature, seed),
+        ),
     )
 
 

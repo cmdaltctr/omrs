@@ -26,6 +26,7 @@ _ALLOWED_TOP_LEVEL = {
     "compose_connections.py": "composition root: provider connection summary and test targets",
     "compose_decision.py": "composition root: page judge of a document router",
     "compose_decision_keys.py": "composition root: key reference of a decision model",
+    "compose_judges.py": "composition root: claim judges and their transports",
     "compose_llamacpp.py": "composition root: settings view of the managed llama.cpp server",
     "compose_embedding.py": "composition root: embedding providers and Check model",
     "compose_engine.py": "composition root: build_engine",

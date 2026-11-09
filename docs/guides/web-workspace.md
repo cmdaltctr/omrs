@@ -502,9 +502,10 @@ To set the Chat model and its reasoning level:
 4. Read the lines under the select. Each line gives the fix for one provider that is not ready: a link to its entry on the Integrations page when it is not installed, or a link to the provider card under Settings > Providers for a missing key. A provider card under Settings > Providers that is not installed shows "Not installed" with the same Integrations link. All providers ready shows no lines.
 5. Type the model name, or press List models and pick one.
 6. Set Reasoning. When the provider catalogue knows the model, Reasoning is a dropdown: "Provider default" first, then the levels the model accepts. "Provider default (max)" names the default level when the catalogue gives one. Otherwise Reasoning is a text box. Leave it empty for the provider default.
-7. Press Save. Save writes the provider, the model and the level in one write.
+7. Optional: set Temperature (0 to 2), Seed (a whole number) and Allowed hosts (OpenRouter host slugs, separated by commas). Leave a box empty to send nothing. A note under a box says when the provider ignores that value.
+8. Press Save. Save writes the provider, the model, the level and the changed values in one write.
 
-The card then shows `Reasoning: low`, or `Reasoning: Provider default` when no level is saved. A note under the control says when the provider ignores the level. `ANSWER__REASONING` in the environment or `.env` locks the level: the control is read-only and names the variable. The judge card has its own Reasoning control, stored as `answer.verify_reasoning` and locked by `ANSWER__VERIFY_REASONING`.
+The card then shows `Reasoning: low`, or `Reasoning: Provider default` when no level is saved. A note under the control says when the provider ignores the level. `ANSWER__REASONING` in the environment or `.env` locks the level: the control is read-only and names the variable. The judge card has its own Reasoning control, stored as `answer.verify_reasoning` and locked by `ANSWER__VERIFY_REASONING`. The card also shows Temperature, Seed and Allowed hosts. `ANSWER__TEMPERATURE`, `ANSWER__SEED` and `ANSWER__ALLOWED_HOSTS` each lock their own box. The judge card has its own three boxes, stored as `answer.verify_temperature`, `answer.verify_seed` and `answer.verify_allowed_hosts`. See [Configuration](configuration.md) for what each provider sends.
 
 The page reads the levels from `GET /v1/settings/chat/reasoning-levels?provider=<provider>&model=<model>` when the form opens and when the provider or model changes.
 

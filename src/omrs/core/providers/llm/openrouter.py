@@ -19,8 +19,11 @@ from .connection import (
     models_from,
 )
 from .openrouter_catalogue import parse_credit, parse_reasoning_levels
+from .openrouter_hosts import PIN, routing_kwargs
 from .reply import ReplyFacts
 from .reply_read import read_openai_reply
+from .sampling import constructor_kwargs as sampling_kwargs
+from .sampling import merge_kwargs
 
 if TYPE_CHECKING:
     from ....config import Settings
@@ -29,6 +32,9 @@ if TYPE_CHECKING:
 # The endpoint moves from an inline literal in llamaindex.py to the provider
 # definition, which is where the other providers already keep theirs.
 _OPENROUTER_API_BASE = "https://openrouter.ai/api/v1"
+
+#: Limits calls to listed hosts and records the host that served each one (D11).
+HOST_PIN = PIN
 
 
 def reasoning_kwargs(level: str) -> dict[str, Any] | None:
@@ -51,6 +57,9 @@ def build(
     timeout: float | None = None,
     answer_model: str | None = None,
     reasoning: str = "",
+    temperature: float | None = None,
+    seed: int | None = None,
+    allowed_hosts: tuple[str, ...] = (),
 ) -> Any:
     """Construct an ``OpenAILike`` LLM for OpenRouter from *settings*.
 
@@ -66,6 +75,11 @@ def build(
             ``openrouter_llm_model`` (existing callers).
         reasoning: Reasoning level (add-chat-reasoning-and-usage D2). Empty
             sends nothing, so the model default applies.
+        temperature: Sent as ``temperature`` when set (pre-exp35 D2). Empty keeps
+            the library default (0.1 on the OpenAI-like classes).
+        seed: Sent as ``seed`` when set. Empty sends no seed.
+        allowed_hosts: OpenRouter hosts the call may use (D11). Sent as
+            ``provider: {only, allow_fallbacks: false, require_parameters: true}``.
 
     Returns:
         A configured ``OpenAILike`` LLM.
@@ -82,8 +96,12 @@ def build(
         # OpenAILike names this ``timeout``; ``request_timeout`` is the Ollama
         # spelling and is silently dropped, leaving the 60s default in place.
         timeout=(timeout if timeout is not None else settings.metadata.classify_timeout),
-        # An empty level adds nothing, so the request stays as it was.
-        **({"additional_kwargs": extra} if (extra := reasoning_kwargs(reasoning)) else {}),
+        # Empty values add nothing, so the request stays as it was (D2, D11).
+        **merge_kwargs(
+            {"additional_kwargs": reasoning_kwargs(reasoning) or {}},
+            sampling_kwargs(temperature, seed),
+            routing_kwargs(allowed_hosts),
+        ),
     )
 
 

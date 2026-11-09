@@ -99,6 +99,16 @@ def test_default_judge_has_no_model(setup: Any) -> None:
         "reasoning_locked": False,
         "reasoning_lock_reason": None,
         "reasoning_ignored": False,
+        "temperature": None,
+        "seed": None,
+        "allowed_hosts": "",
+        "sampling_locked": [],
+        "sampling_lock_reason": None,
+        "sampling_ignored": [],
+        "judge": "chat",
+        "judges": ["chat", "clef_flash", "granite_guardian"],
+        "judge_locked": False,
+        "judge_lock_reason": None,
     }
 
 
@@ -294,3 +304,59 @@ def test_judge_settings_responses_conform(setup: Any) -> None:
     setup.app.state.runtime.providers = None  # provider settings not loaded
     check.check(put(setup, {"provider": "ollama", "model": "m"}), 404)
     assert check.operations >= FAMILIES["judge_settings"]
+
+
+# ── The claim-judge strategy (pre-exp35 task 8.3, spec claim-judge-strategies) ──
+# GET reports ``judge`` (the strategy in force), ``judges`` (from the registry)
+# and the lock; PUT saves ``judge`` alone; ANSWER__VERIFY_JUDGE locks it (409).
+
+
+def test_the_panel_reports_the_strategy_and_the_registry(setup: Any) -> None:
+    body = setup.get(URL).json()
+    assert body["judge"] == "chat"
+    assert body["judges"] == ["chat", "clef_flash", "granite_guardian"]
+    assert (body["judge_locked"], body["judge_lock_reason"]) == (False, None)
+
+
+def test_a_saved_strategy_is_written_alone(setup: Any) -> None:
+    put(setup, {"provider": "ollama", "model": "m"})
+    response = put(setup, {"judge": "clef_flash"})
+    assert response.status_code == 200, response.text
+    assert response.json()["judge"] == "clef_flash"
+    assert setup.store.read().values.get("answer.verify_judge") == "clef_flash"
+    assert setup.judge() == ("ollama", "m"), "a strategy save keeps the provider and model"
+
+
+def test_an_unknown_strategy_is_400_naming_the_registered_ones(setup: Any) -> None:
+    before = file_bytes(setup)
+    response = put(setup, {"judge": "foo"})
+    assert response.status_code == 400
+    assert all(name in response.text for name in ("chat", "clef_flash", "granite_guardian"))
+    assert file_bytes(setup) == before
+
+
+def test_the_environment_locks_the_strategy(setup: Any, configure: Any) -> None:
+    configure(
+        answer={"verify_judge": "granite_guardian"}, explicit=frozenset({"answer.verify_judge"})
+    )
+    body = setup.get(URL).json()
+    assert body["judge"] == "granite_guardian"
+    assert body["judge_locked"] is True and "ANSWER__VERIFY_JUDGE" in body["judge_lock_reason"]
+    assert body["locked"] is False, "the strategy lock leaves the provider and model editable"
+    before = file_bytes(setup)
+    response = put(setup, {"judge": "chat"})
+    assert response.status_code == 409 and "ANSWER__VERIFY_JUDGE" in response.text
+    assert file_bytes(setup) == before
+
+
+def test_clearing_the_choice_removes_the_strategy(setup: Any) -> None:
+    assert put(setup, {"judge": "clef_flash"}).status_code == 200
+    assert put(setup, None).status_code == 200
+    assert setup.store.read().values.get("answer.verify_judge") is None
+
+
+def test_strategy_responses_conform(setup: Any) -> None:
+    check = ContractChecker()
+    check.check(setup.get(URL), 200)
+    check.check(put(setup, {"judge": "granite_guardian"}), 200)
+    check.check(put(setup, {"judge": "foo"}), 400)

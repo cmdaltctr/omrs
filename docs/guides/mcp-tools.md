@@ -219,6 +219,40 @@ The text is capped at 64 KB with a `[reasoning truncated]` marker. The HTTP
 answer route always returns `reasoning`, and a saved Chat turn keeps both
 fields.
 
+When a server-side model call ran, the result also carries `sampling`: what
+the requests sent, for `chat` (the server's Chat model) and for `judge` (only
+when the claim judge ran). A client-sampled answer has no `chat` record,
+because OMRS sees no Chat request. Each record has:
+
+| Field          | Meaning                                                                                                         |
+| -------------- | --------------------------------------------------------------------------------------------------------------- |
+| `temperature`  | The temperature the requests carried, read from the built model. With `ANSWER__TEMPERATURE` empty, this is the library default (`0.1` on llama.cpp, OpenRouter and OpenAI-compatible). `null` when none was sent |
+| `seed`         | The seed the requests carried (`ANSWER__SEED`, or `ANSWER__VERIFY_SEED` for the judge). `null` when none was sent |
+| `host`         | The host that served the call, as the OpenRouter reply names it. `null` for other providers                      |
+| `accepted`     | `{temperature, seed}`: the host's published support for each value, from the OpenRouter endpoint list. `null` when unknown (no host list set) |
+| `host_in_list` | `false` when the host is outside `ANSWER__ALLOWED_HOSTS` (or `ANSWER__VERIFY_ALLOWED_HOSTS`): treat it as a failure. `null` when no list is set |
+
+`ANSWER__VERIFY_TEMPERATURE` sets the judge temperature. See
+[Configuration](configuration.md) for the four sampling settings and the two
+host lists. The HTTP answer contract (`AnswerResponse`) declares `usage`,
+`reasoning`, `sampling` and `judge_calls` and allows no other field.
+
+`judge_calls` is present when the claim check ran. It holds one record per
+judged claim, in claim order:
+
+| Field      | Meaning                                                                                                      |
+| ---------- | ------------------------------------------------------------------------------------------------------------ |
+| `strategy` | The claim-judge strategy (`answer.verify_judge`): `chat`, `clef_flash` or `granite_guardian`                  |
+| `model`    | The model id the call named                                                                                    |
+| `host`     | The host a hosted reply names (OpenRouter), else `null`                                                        |
+| `sha256`   | The SHA-256 of the local GGUF file, read from the router's `hashes.json`, else `null`                          |
+| `version`  | The prompt-format version: `chat-oneword/1`, `clef-flash-claim/1` or `granite-guardian-3.3-groundedness/1`     |
+| `settings` | `temperature`, `seed`, `reasoning`, `threshold` (0.5 for `clef_flash`) and `think` (Granite, `false`)          |
+| `p_yes`    | P(yes) from `clef_flash`, else `null`                                                                          |
+| `error`    | A fixed reason when the request for that claim failed (for example `unreachable`), else `null`                 |
+
+A record never holds the claim text, the evidence text or a key.
+
 Citations and evidence rows carry `ordinal`, `chunk_id`, `chunk_ids`,
 `source_id`, `source_version`, `source`, `source_chunk_index`, `score`, and
 `score_kind`. Evidence rows also carry `text`. Citations and evidence rows
@@ -330,8 +364,10 @@ Configuration: `ANSWER__VERIFY_CLAIMS` (default `false`),
 `ANSWER__VERIFY_MODEL` (default empty — the provider's default model),
 `ANSWER__VERIFY_PROVIDER` (default `cloud`; aliases `cloud`/`local`
 resolve to the configured backends, anything else is a literal registry
-name validated at startup). Profile bundles may override the three keys
-per collection; environment variables still win over the profile. In
+name validated at startup) and `ANSWER__VERIFY_JUDGE` (default `chat`; the
+claim-judge strategy, `chat`, `clef_flash` or `granite_guardian`, validated
+at startup). Profile bundles may override the four keys per collection;
+environment variables still win over the profile. In
 `omrs web`, Settings > Chat can also set the judge provider and model; see
 [Web workspace](web-workspace.md#claim-check-judge). See
 [Configuration](configuration.md#answering--answer__).

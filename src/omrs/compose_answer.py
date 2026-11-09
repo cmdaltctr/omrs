@@ -37,7 +37,39 @@ def _level(level: object) -> dict[str, str]:
     return {"reasoning": text} if text else {}
 
 
-def build_answer_llm(settings: Settings | None = None) -> Any:
+def _sampling(temperature: object, seed: object, hosts: object) -> dict[str, Any]:
+    """Return the ``build()`` keywords for the set sampling values of one role.
+
+    An empty value passes nothing, so the request stays as it was and a
+    provider ``build()`` without the keyword still works (pre-exp35 D2, D11).
+    """
+    from .core.providers.llm.sampling import split_hosts
+
+    found: dict[str, Any] = {}
+    if temperature is not None:
+        found["temperature"] = temperature
+    if seed is not None:
+        found["seed"] = seed
+    if pinned := split_hosts(str(hosts or "")):
+        found["allowed_hosts"] = pinned
+    return found
+
+
+def _pin_hosts(name: str, settings: Any, llm: Any, kwargs: dict[str, Any], fetch: Any) -> Any:
+    """Run the provider's host check once for a freshly built *llm*, then return it (D11).
+
+    Raises:
+        HostRefused: No allowed host takes every value the request sets.
+    """
+    from .core.providers.llm import registry as llm_registry
+
+    pin = llm_registry.host_pin(name)
+    if pin is not None and kwargs.get("allowed_hosts"):
+        pin.check(settings, llm, kwargs["allowed_hosts"], fetch)
+    return llm
+
+
+def build_answer_llm(settings: Settings | None = None, *, fetch_endpoints: Any = None) -> Any:
     """Construct the answer language model from the answer settings block.
 
     Resolves through the existing LLM provider registry
@@ -85,11 +117,14 @@ def build_answer_llm(settings: Settings | None = None) -> Any:
         )
     try:
         build = llm_registry.get(name)
-        return build(
+        answer = settings.answer
+        sampling = _sampling(answer.temperature, answer.seed, answer.allowed_hosts)
+        llm = build(
             settings,
-            timeout=settings.answer.timeout,
-            answer_model=settings.answer.model,
-            **_level(settings.answer.reasoning),
+            timeout=answer.timeout,
+            answer_model=answer.model,
+            **_level(answer.reasoning),
+            **sampling,
         )
     except ModuleNotFoundError:
         # Missing optional package. The optional SDK import happens
@@ -102,6 +137,7 @@ def build_answer_llm(settings: Settings | None = None) -> Any:
         # A retrieval-only deployment remains usable; the answering
         # tools return the actionable error.
         return None
+    return _pin_hosts(name, settings, llm, sampling, fetch_endpoints)
 
 
 def _has_default_model(name: str) -> bool:
@@ -186,8 +222,11 @@ def validate_verify_provider(settings: Settings) -> None:
         ValueError: When an alias-resolved provider name is not in the
             LLM registry, listing the registered names.
     """
+    from .compose_judges import validate_verify_judge
     from .core.profiles.resolver import OPERATIONAL_PROFILES
     from .core.providers.llm import registry as llm_registry
+
+    validate_verify_judge(settings)  # always: an unknown strategy name never starts
 
     def _validate(raw_provider: str, origin: str) -> None:
         name = resolve_verify_provider(settings, raw_provider)
@@ -230,6 +269,7 @@ def build_verify_llm(
     settings: Settings | None = None,
     *,
     answer_block: Any | None = None,
+    fetch_endpoints: Any = None,
 ) -> Any:
     """Construct the claim-verification judge LLM (ADR-059).
 
@@ -294,14 +334,21 @@ def build_verify_llm(
         )
     try:
         build = llm_registry.get(name)
-        return build(
+        sampling = _sampling(
+            getattr(block, "verify_temperature", None),
+            getattr(block, "verify_seed", None),
+            getattr(block, "verify_allowed_hosts", ""),
+        )
+        llm = build(
             settings,
             timeout=settings.answer.timeout,
             answer_model=(verify_model or None),
             **_level(getattr(block, "verify_reasoning", "")),
+            **sampling,
         )
     except ModuleNotFoundError:
         # Missing optional package — same policy as build_answer_llm:
         # the judge silently does not exist, verification degrades to
         # verification_skipped, retrieval-only startup stays usable.
         return None
+    return _pin_hosts(name, settings, llm, sampling, fetch_endpoints)

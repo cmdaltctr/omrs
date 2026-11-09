@@ -42,6 +42,14 @@ from ..llamacpp_chat_rule import chat_role_refusal, reasoned
 from ..provider_state import EngineRefused
 from ..settings_store import refusal_response
 from .chat_reasoning import CHAT_LEVEL, level_changes, level_lock_response, level_view
+from .chat_sampling import (
+    CHAT_SAMPLING,
+    SamplingFields,
+    sampling_changes,
+    sampling_lock_response,
+    sampling_view,
+    sent,
+)
 from .experiments import ManageScope
 from .graphs import ok
 
@@ -71,14 +79,15 @@ class ChatChoice(BaseModel):
 ReasoningLevel = Annotated[str, Field(max_length=32, pattern=REASONING_LEVEL_PATTERN)] | None
 
 
-class ChatSaveBody(BaseModel):
+class ChatSaveBody(SamplingFields):
     """Body of ``PUT /v1/settings/chat``.
 
     A choice has both ``provider`` and ``model``. ``reasoning`` is optional:
-    left out keeps the saved level, ``""`` removes it. A body with only
-    ``reasoning`` sets the level and keeps the choice. A body with none of
-    the three (only an optional ``revision``), or no body, clears the choice
-    and its level.
+    left out keeps the saved level, ``""`` removes it. ``temperature``,
+    ``seed`` and ``allowed_hosts`` follow :class:`SamplingFields`. A body with
+    only the level or sampling values sets them and keeps the choice. A body
+    with none of them (only an optional ``revision``), or no body, clears the
+    choice, its level and its sampling values.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -182,6 +191,7 @@ def _status(runtime: WebRuntime) -> dict[str, Any]:
         "ready": reason is None,
         "reason": reason,
         **level_view(settings, CHAT_LEVEL, provider),
+        **sampling_view(settings, CHAT_SAMPLING, provider),
     }
 
 
@@ -237,7 +247,9 @@ async def set_chat_settings(
     """
     body = body or ChatSaveBody()
     choice = None
-    writes_choice = body.reasoning is None or body.provider is not None or body.model is not None
+    values = sent(body)
+    writes_choice = (body.reasoning is None and not values) or body.provider is not None
+    writes_choice = writes_choice or body.model is not None
     if body.provider is not None or body.model is not None:
         if body.provider is None or body.model is None:
             return error_response(400, "Send both provider and model, or neither to clear.")
@@ -264,12 +276,15 @@ async def set_chat_settings(
             and (locked := level_lock_response(settings, CHAT_LEVEL)) is not None
         ):
             return locked
-        changes: dict[str, str | None] = {}
+        if (locked := sampling_lock_response(settings, CHAT_SAMPLING, values)) is not None:
+            return locked
+        changes: dict[str, Any] = {}
         if writes_choice:
             provider, model = choice if choice is not None else (None, None)
             changes = {_PROVIDER_PATH: provider, _MODEL_PATH: model}
         clearing = writes_choice and choice is None
         changes |= level_changes(settings, CHAT_LEVEL, body.reasoning, clearing)
+        changes |= sampling_changes(settings, CHAT_SAMPLING, values, clearing)
         try:
             await run_in_threadpool(state.save_fields, runtime.engine, changes, body.revision)
         except SettingsFileError as exc:

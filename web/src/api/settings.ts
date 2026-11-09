@@ -128,6 +128,33 @@ export interface ChatChoice {
   model: string;
   /** The reasoning level, written in the same save. `""` means the provider default. Left out, the saved level stays. */
   reasoning?: string;
+  /** 0 to 2, written in the same save. `null` removes it. Left out, the saved value stays. */
+  temperature?: number | null;
+  /** 0 to 2147483647. `null` removes it. Left out, the saved value stays. */
+  seed?: number | null;
+  /** OpenRouter hosts separated by commas. `""` removes the list. Left out, the saved list stays. */
+  allowed_hosts?: string;
+}
+
+/** A sampling value name, as the settings routes report it. */
+export type SamplingName = "temperature" | "seed" | "allowed_hosts";
+
+/**
+ * The temperature, seed and allowed hosts of a Chat or judge choice. Optional,
+ * because a server before the sampling change does not send them.
+ */
+export interface SamplingSetting {
+  /** `null` means none is set, so the request keeps the library default. */
+  temperature?: number | null;
+  /** `null` means no seed is sent. */
+  seed?: number | null;
+  /** `""` means no host limit. */
+  allowed_hosts?: string;
+  /** The values the environment or `.env` sets. A save that sends one gives 409. */
+  sampling_locked?: SamplingName[];
+  sampling_lock_reason?: string | null;
+  /** The values the provider sends nothing for. */
+  sampling_ignored?: SamplingName[];
 }
 
 /**
@@ -144,7 +171,7 @@ export interface ReasoningSetting {
   reasoning_ignored?: boolean;
 }
 
-export interface ChatSettings extends ReasoningSetting {
+export interface ChatSettings extends ReasoningSetting, SamplingSetting {
   status: "ok";
   revision: string;
   provider: string | null;
@@ -183,7 +210,7 @@ export type UsageCredit = { available: false } | { available: true; limit_usd: n
 export type JudgeNotReadyReason = "disabled" | "unknown-provider" | "not-installed" | "not-configured" | "no-model";
 
 /** The claim check judge. A profile decides per collection whether claims are checked, so this holds no on/off state. */
-export interface JudgeSettings extends ReasoningSetting {
+export interface JudgeSettings extends ReasoningSetting, SamplingSetting {
   status: "ok";
   revision: string;
   /** The provider as set: a registry name, or the alias `cloud` or `local`. */
@@ -199,6 +226,18 @@ export interface JudgeSettings extends ReasoningSetting {
   ready: boolean;
   /** Why the judge is not ready, or `null` when it is ready. */
   reason: JudgeNotReadyReason | null;
+  /** The claim-judge strategy in force (`answer.verify_judge`). Optional: a server before the judge registry sends none. */
+  judge?: string;
+  /** The registered strategies, from the server's judge registry. The web holds no list. */
+  judges?: string[];
+  /** True when `ANSWER__VERIFY_JUDGE` sets the strategy. A save that sends `judge` gives 409. */
+  judge_locked?: boolean;
+  judge_lock_reason?: string | null;
+}
+
+/** A save of the claim-judge strategy alone: it keeps the provider and model. */
+export interface JudgeStrategyChoice {
+  judge: string;
 }
 
 export interface ChatTestResult {
@@ -322,7 +361,7 @@ export function getChatSettings(api: ApiClient, options: CallOptions = {}): Prom
 }
 
 /** A clear sends only the revision, so the server can tell it from a choice. With no revision a clear sends `null`. */
-function chatBody(choice: ChatChoice | null, revision: string | undefined): unknown {
+function chatBody(choice: ChatChoice | JudgeStrategyChoice | null, revision: string | undefined): unknown {
   if (choice === null && revision === undefined) return null;
   return { ...choice, revision };
 }
@@ -352,7 +391,7 @@ export function getJudgeSettings(api: ApiClient, options: CallOptions = {}): Pro
 }
 
 /** Saves the judge provider and model as one unit, or clears both with `null`. A save never writes an alias. */
-export function setJudgeSettings(api: ApiClient, choice: ChatChoice | null, options: SaveOptions = {}): Promise<unknown> {
+export function setJudgeSettings(api: ApiClient, choice: ChatChoice | JudgeStrategyChoice | null, options: SaveOptions = {}): Promise<unknown> {
   return api.request<unknown>("PUT", "/v1/settings/judge", { body: chatBody(choice, options.revision), signal: options.signal });
 }
 

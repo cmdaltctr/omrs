@@ -21,6 +21,8 @@ from .connection import (
 )
 from .reply import ReplyFacts
 from .reply_read import read_openai_reply
+from .sampling import constructor_kwargs as sampling_kwargs
+from .sampling import merge_kwargs
 
 if TYPE_CHECKING:
     from ....config import Settings
@@ -43,6 +45,9 @@ def build(
     timeout: float | None = None,
     answer_model: str | None = None,
     reasoning: str = "",
+    temperature: float | None = None,
+    seed: int | None = None,
+    allowed_hosts: tuple[str, ...] = (),
 ) -> Any:
     """Construct an ``OpenAILike`` LLM for llama.cpp from *settings*.
 
@@ -59,6 +64,10 @@ def build(
             router address (one-llamacpp-router D2).
         reasoning: Accepted and ignored: llama.cpp has no stable request
             field for a level (add-chat-reasoning-and-usage D2).
+        temperature: Sent as ``temperature`` when set (pre-exp35 D2). Empty keeps
+            the library default (0.1 on the OpenAI-like classes).
+        seed: Sent as ``seed`` when set. Empty sends no seed.
+        allowed_hosts: Accepted and ignored: only OpenRouter pins hosts.
 
     Returns:
         A configured ``OpenAILike`` LLM.
@@ -92,6 +101,8 @@ def build(
         timeout=(timeout if timeout is not None else settings.metadata.classify_timeout),
         # OMRS's own server, when managed: each request joins the runtime first.
         **http_clients(role),
+        # Empty values add nothing (D2). ``allowed_hosts`` is accepted and ignored.
+        **merge_kwargs(sampling_kwargs(temperature, seed)),
     )
 
 

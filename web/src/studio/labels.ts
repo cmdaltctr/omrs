@@ -25,6 +25,7 @@ const FIELD_LABELS: Record<string, string> = {
   "chunking.code_chunk_lines": "Lines per code chunk",
   "metadata.taxonomy_mode": "Metadata categories",
   "answer.verify_claims": "Check claims",
+  "answer.verify_judge": "Claim judge",
   collection: "Collection",
   fetch_k: "Candidates to fetch",
   metadata_filter: "Metadata filter",
@@ -48,7 +49,12 @@ const FIELD_LABELS: Record<string, string> = {
 const OPTION_LABELS: Record<string, Record<string, string>> = {
   "chunking.strategy_fallback": { markdown: "Markdown", code: "Code", sentence: "Sentences" },
   "metadata.taxonomy_mode": { category: "Category", file_type: "File type" },
+  // Words for the judge registry's names. The names themselves come from the server.
+  "answer.verify_judge": { chat: "Chat model", clef_flash: "Clef-Flash decision model", granite_guardian: "Granite Guardian" },
 };
+
+/** Words for a choice the host cannot run, by lever. Others read "not installed". */
+const UNAVAILABLE_WORDS: Record<string, string> = { "answer.verify_judge": "not ready" };
 
 /** The label from the map, or `undefined` when the field has none. */
 export function mappedFieldLabel(field: Labelled): string | undefined {
@@ -61,6 +67,16 @@ function sentenceCase(text: string): string {
 
 export function fieldLabel(field: Labelled): string {
   return mappedFieldLabel(field) ?? sentenceCase(field.title);
+}
+
+/** The word after an option the host cannot run, for example "not installed". */
+export function unavailableWord(field: Labelled): string {
+  return (field.lever !== undefined ? UNAVAILABLE_WORDS[field.lever] : undefined) ?? "not installed";
+}
+
+/** The plain name of a claim-judge strategy; a name the web has no words for shows as sent. */
+export function judgeLabel(name: string): string {
+  return OPTION_LABELS["answer.verify_judge"]?.[name] ?? name;
 }
 
 /** A readable label for one enum option. An option without a label shows its raw value. */

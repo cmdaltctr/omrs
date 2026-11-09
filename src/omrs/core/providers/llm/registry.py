@@ -13,6 +13,7 @@ from typing import Any
 
 from .connection import ConnectionDescriptor
 from .reply import NO_FACTS, ReplyFacts
+from .sampling import HostPin
 
 _registry: dict[str, str] = {}
 _cache: dict[str, Callable[..., Any]] = {}
@@ -113,6 +114,27 @@ def ignores_reasoning(name: str) -> bool:
     """Return whether provider *name* sends nothing for any reasoning level."""
     mapper = _module_attr(name, "reasoning_kwargs")
     return mapper is None or mapper("low") is None
+
+
+def host_pin(name: str) -> HostPin | None:
+    """Return provider *name*'s ``HOST_PIN``, or ``None`` when it cannot limit hosts."""
+    pin = _module_attr(name, "HOST_PIN")
+    return pin if isinstance(pin, HostPin) else None
+
+
+def ignored_sampling(name: str) -> set[str]:
+    """Return the sampling values provider *name* sends nothing for (pre-exp35 D2, D11).
+
+    A provider without ``sampling_kwargs`` ignores the temperature and the
+    seed; one without ``HOST_PIN`` ignores ``allowed_hosts``. An unknown name
+    ignores all three.
+    """
+    ignored: set[str] = set()
+    if _module_attr(name, "sampling_kwargs") is None:
+        ignored |= {"temperature", "seed"}
+    if host_pin(name) is None:
+        ignored.add("allowed_hosts")
+    return ignored
 
 
 def reply_reader(name: str) -> Callable[[Any], ReplyFacts]:

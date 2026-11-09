@@ -893,11 +893,19 @@ query time. See [MCP tools](mcp-tools.md#answer_documents) and
 | `verify_claims` | `false` | Opt-in claim-verification judge ([ADR-059](../adr/059-claim-verification-stage.md)). `true` adds one configured-judge call per cited prose sentence (~3.3 s P95 each on the tested GLM-5.3 cloud judge, experiment 20). An unavailable provider degrades to `verification_skipped`; the answer is never blocked |
 | `verify_model` | `""` | Judge model. Empty derives it from the provider's default model (e.g. `OPENROUTER_LLM_MODEL`). The default cloud provider has no default model, so claim checks are skipped until you set one. A llama.cpp judge with an empty `verify_model` is not built and the status reason is `no-model`. Settings > Chat can set it; applies at once in `omrs web` |
 | `verify_provider` | `cloud` | Judge provider. Aliases: `cloud` (or empty) resolves to the cloud backend, `local` to the local backend; anything else is a literal LLM-registry name. Unknown names fail startup. Settings > Chat can set it; applies at once in `omrs web` |
+| `verify_judge` | `chat` | Claim-judge strategy (`ANSWER__VERIFY_JUDGE`): `chat`, `clef_flash` or `granite_guardian` (see "Claim-judge strategies" below). Unknown names fail startup, and the message names the registered strategies. Profile-overlaid like `verify_model`. Settings > Chat ("Judge type") can set it; the environment or `.env` locks it on its own |
 | `reasoning` | `""` | Reasoning level for the Chat model, for example `low`, `high` or `none`. Empty sends no reasoning field, so the provider default applies. 1 to 32 letters, digits, `-` and `_`. Settings > Chat can set it; applies at once in `omrs web` |
 | `verify_reasoning` | `""` | Reasoning level for the claim check judge. Same rules as `reasoning`, set apart so the judge can think less than the Chat model. Settings > Chat can set it; applies at once in `omrs web` |
+| `temperature` | empty | Temperature for the Chat model, 0 to 2 (`ANSWER__TEMPERATURE`). Empty sends nothing, so the request keeps the library default: LlamaIndex sends `0.1` on `llamacpp`, `openrouter` and `openai_compatible`, and Ollama uses the model default. Settings > Chat can set it |
+| `seed` | empty | Seed for the Chat model, a whole number from 0 to 2147483647 (`ANSWER__SEED`). Empty sends no seed. Settings > Chat can set it |
+| `verify_temperature` | empty | Temperature for the claim check judge (`ANSWER__VERIFY_TEMPERATURE`). Same rules as `temperature`. Chat values never reach the judge |
+| `verify_seed` | empty | Seed for the claim check judge (`ANSWER__VERIFY_SEED`). Same rules as `seed` |
+| `allowed_hosts` | `""` | OpenRouter hosts the Chat model may use, separated by commas (`ANSWER__ALLOWED_HOSTS`), for example `fireworks` or `deepinfra/fp8`. Blank entries are dropped; at most 16. Only OpenRouter reads it. See "Temperature, seed and allowed hosts" below |
+| `verify_allowed_hosts` | `""` | OpenRouter hosts the claim check judge may use (`ANSWER__VERIFY_ALLOWED_HOSTS`). Same rules as `allowed_hosts` |
 
-The three `verify_*` fields are the one answer-block group a profile
-bundle may override per collection — a `documents` collection can opt
+The `verify_claims`, `verify_model`, `verify_provider` and `verify_judge`
+fields are the one answer-block group a profile bundle may override per
+collection — a `documents` collection can opt
 into the configured judge while a `codebase` collection stays
 speed-first. The default judge provider is the cloud backend (the only
 tested path); a local judge can be selected but is unmeasured.
@@ -905,6 +913,22 @@ tested path); a local judge can be selected but is unmeasured.
 In `omrs web`, Settings > Chat can save `provider` and `model` for Chat and for MCP clients of that server that cannot supply their own model. `ANSWER__PROVIDER` or `ANSWER__MODEL` in the environment or `.env` wins and locks the choice. A saved choice goes in `omrs.jsonc` as `answer.provider` and `answer.model`, and applies at once, with no restart. Metadata extraction keeps its own model. The judge has its own choice. The stdio MCP server and the CLI read the choice from `omrs.jsonc` when they start.
 
 Settings > Chat also has a "Claim check judge" block. It saves `verify_provider` and `verify_model` together in `omrs.jsonc` as `answer.verify_provider` and `answer.verify_model`. Both apply at once in `omrs web`, with no restart. A hand edit of either key also applies at once. `ANSWER__VERIFY_PROVIDER` or `ANSWER__VERIFY_MODEL` in the environment or `.env` wins and locks the block. The page saves a registry name only, never the alias `cloud` or `local`. It refuses an empty model. The block sets the judge only. `verify_claims` stays a profile lever ("Check claims" in Studio), so the judge runs only for collections whose profile turns it on. A profile that sets its own judge overrides the saved choice. A cloud judge sends each claim and its cited passages off this machine.
+
+### Claim-judge strategies
+
+`answer.verify_judge` picks how OMRS checks each cited claim (design D10 of `pre-exp35-harness-and-answer-fixes`). Each strategy is one file in `core/answer/judges/` and one line in its registry.
+
+| Strategy | What it sends | Prompt-format version |
+|---|---|---|
+| `chat` (default) | The chat judge prompt to the judge LLM (`answer.verify_provider`, `answer.verify_model`). It reads a one-word reply; the last word wins. This is the judge of earlier releases. | `chat-oneword/1` |
+| `clef_flash` | One yes/no (`noul`) question per claim to `/v1/systemone` on the llama.cpp router. The claim and its evidence go in the state. P(yes) of 0.5 or more is `supported`. | `clef-flash-claim/1` |
+| `granite_guardian` | The Granite Guardian 3.3 groundedness prompt to the router's `/v1/completions`, with thinking off. The guardian answers `yes` when the claim is not grounded, so `yes` is `unsupported`. | `granite-guardian-3.3-groundedness/1` |
+
+For `clef_flash` and `granite_guardian`, set `answer.verify_provider` to `llamacpp` and `answer.verify_model` to the `model` of a `llamacpp_models` entry. Use the Q8_0 file: a model file below 8-bit is refused before any request (root gotcha 16). A judge that cannot start reports `verification_skipped` with a fixed reason, and the answer is still returned. An unreadable reply counts as `unparseable`, never as a pass.
+
+A profile can pick its own judge in Studio: the Verify claims step has a "Claim judge" choice beside "Check claims". The choices come from the registry. A strategy whose model is not set up on this host shows as not ready, and a save that picks it is refused with a message that names the missing setting.
+
+Each answer that ran the claim check carries `judge_calls`: one record per claim with the strategy, the model id, the host (hosted) or the SHA-256 of the GGUF file (local, read from the router's `hashes.json`), the prompt-format version, the call settings and P(yes). The record holds no claim text and no evidence text. See [MCP tools](mcp-tools.md).
 
 Each provider sends the reasoning level in its own request field:
 
@@ -916,6 +940,24 @@ Each provider sends the reasoning level in its own request field:
 | `llamacpp`, `anthropic` | Nothing. The level is saved, and Settings > Chat says the provider ignores it |
 
 `ANSWER__REASONING` in the environment or `.env` wins and locks `answer.reasoning`. `ANSWER__VERIFY_REASONING` locks `answer.verify_reasoning`. Each level locks on its own; it does not lock the provider or model. A level is a server setting. A profile cannot change it.
+
+#### Temperature, seed and allowed hosts
+
+Each provider sends the temperature and the seed in its own request field:
+
+| Provider | Temperature | Seed |
+|---|---|---|
+| `llamacpp`, `openrouter`, `openai_compatible` | `temperature` | `seed` |
+| `ollama` | `options.temperature` | `options.seed` |
+| `anthropic` | Nothing | Nothing |
+
+Settings > Chat names each value a provider ignores. Anthropic ignores both, because current Claude models do not use sampling values and the Messages API has no seed. The seed is best effort on hosted APIs. On OpenRouter it reaches the model only when the serving host supports it.
+
+`answer.allowed_hosts` fixes which OpenRouter hosts may serve the Chat model. When it is set, the request carries `provider: {"only": [...], "allow_fallbacks": false, "require_parameters": true}`. Before the first call, OMRS reads the model's endpoint list from OpenRouter once per process. When no listed host supports every value the request sets, OMRS makes no call. The answer is a generation error that names the model, the hosts and the missing values. For the judge, the same refusal gives `verification_skipped`. The library default temperature counts as a set value. Use the host slugs that the OpenRouter model page copies.
+
+Each answer result records what was sent in `sampling` (see [MCP tools](mcp-tools.md#answer_documents)).
+
+`ANSWER__TEMPERATURE`, `ANSWER__SEED`, `ANSWER__ALLOWED_HOSTS`, `ANSWER__VERIFY_TEMPERATURE`, `ANSWER__VERIFY_SEED` and `ANSWER__VERIFY_ALLOWED_HOSTS` each lock their own value in Settings > Chat. These values are server settings. A profile cannot change them.
 
 With the defaults the judge cannot run. `verify_provider: cloud` resolves to OpenRouter, and `OPENROUTER_LLM_MODEL` is empty by default. An empty `verify_model` then leaves the judge with no model, and the answer reports `verification_skipped`. Set a judge model to turn claim checks on. Settings > Chat shows "Not set" and says that claim checks are skipped until you set one.
 Environment variables still win over the profile:

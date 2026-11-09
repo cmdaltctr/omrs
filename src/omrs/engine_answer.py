@@ -58,6 +58,22 @@ class CompletionLedger:
 
     _facts: list[ReplyFacts] = field(default_factory=list)
     _reasoning: list[str] = field(default_factory=list)
+    _providers: dict[str, str] = field(default_factory=dict)
+    _sampling: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+    def watch(self, role: str, provider: str) -> None:
+        """Name the registry provider whose calls *role* (``chat`` or ``judge``) makes."""
+        self._providers[role] = provider
+
+    def observe(self, role: str, llm: Any, raw: Any) -> None:
+        """Record what one call of *role* carried and which host served it (pre-exp35 D3).
+
+        The first call sets the record. A later call replaces it only when
+        its host is outside the allowed list, so a mismatch never hides.
+        """
+        record = sampling_record(llm, self._providers.get(role, ""), raw)
+        if role not in self._sampling or record.get("host_in_list") is False:
+            self._sampling[role] = record
 
     def record(self, facts: ReplyFacts, *, keep_reasoning: bool = True) -> None:
         """Add the facts of one completion call."""
@@ -92,6 +108,8 @@ class CompletionLedger:
         if not self._facts:
             return result
         extra: dict[str, Any] = {"usage": self.usage()}
+        if self._sampling:
+            extra["sampling"] = {role: dict(rec) for role, rec in self._sampling.items()}
         reasoning = self.reasoning()
         if reasoning is not None:
             extra["reasoning"] = reasoning
@@ -132,13 +150,36 @@ def server_seam(
             reasoning text (``False`` for the judge).
     """
 
+    role = "chat" if keep_reasoning else "judge"
+
     async def seam(prompt: str) -> str:
         completion = await llm.acomplete(prompt)
         if ledger is not None:
             ledger.record(_facts(completion, read_reply), keep_reasoning=keep_reasoning)
+            ledger.observe(role, llm, getattr(completion, "raw", None))
         return completion.text
 
     return seam
+
+
+def sampling_record(llm: Any, provider: str, raw: Any) -> dict[str, Any]:
+    """Return the ``sampling`` record of one call; it never raises (pre-exp35 D3, D11).
+
+    Temperature and seed come from the built LLM, so a library default
+    shows. The host part comes from the provider's ``HOST_PIN``; a provider
+    without one reports no host.
+    """
+    from .core.providers.llm.registry import host_pin
+    from .core.providers.llm.sampling import NO_HOST, sent_values
+
+    temperature, seed = sent_values(llm)
+    try:
+        pin = host_pin(provider) if provider else None
+        host = pin.record(llm, raw) if pin is not None else dict(NO_HOST)
+    except Exception as exc:  # A changed reply shape must never fail the answer.
+        logger.warning("Could not read the serving host: %s", type(exc).__name__)
+        host = dict(NO_HOST)
+    return {"temperature": temperature, "seed": seed, **host}
 
 
 def _facts(completion: Any, read_reply: Callable[[Any], ReplyFacts] | None) -> ReplyFacts:
@@ -180,11 +221,39 @@ def select_completion(
             effective.model_copy(update={"answer": capped}),
             client_completion.source,
         )
-    llm = get_server_llm()
+    llm = _built_or_refused(get_server_llm)
     if llm is None:
         return None, effective, "server"
-    read = reply_reader(effective.answer.provider.strip()) if ledger is not None else None
+    provider = effective.answer.provider.strip()
+    read = reply_reader(provider) if ledger is not None else None
+    if ledger is not None:
+        ledger.watch("chat", provider)
     return server_seam(llm, ledger, read), effective, "server"
+
+
+class _RefusedLLM:
+    """Stands in for an LLM whose host check refused (pre-exp35 D11).
+
+    Its one call raises the refusal, so the answer becomes a generation
+    failure that names the model, the hosts and the missing values, with
+    the evidence kept. No request reaches the provider.
+    """
+
+    def __init__(self, refusal: Exception) -> None:
+        self.refusal = refusal
+
+    async def acomplete(self, prompt: str, **kwargs: Any) -> Any:
+        raise self.refusal
+
+
+def _built_or_refused(build: Callable[[], Any]) -> Any:
+    """Return ``build()``, or a :class:`_RefusedLLM` when its host check refuses."""
+    from .core.providers.llm.sampling import HostRefused
+
+    try:
+        return build()
+    except HostRefused as refusal:
+        return _RefusedLLM(refusal)
 
 
 def build_verifier(
@@ -218,8 +287,20 @@ def build_verifier(
         )
     if verify_llm is None:
         return None, "verification provider unavailable (no judge configured)"
-    read = reply_reader(_judge_provider(effective)) if ledger is not None else None
-    return server_seam(verify_llm, ledger, read, keep_reasoning=False), None
+    if not hasattr(verify_llm, "acomplete"):  # a typed claim judge (design D10)
+        return verify_llm, None
+    from .compose_judges import chat_judge
+
+    provider = _judge_provider(effective)
+    read = reply_reader(provider) if ledger is not None else None
+    if ledger is not None:
+        ledger.watch("judge", provider)
+    return chat_judge(
+        verify_llm,
+        effective.answer,
+        provider,
+        lambda llm: server_seam(llm, ledger, read, keep_reasoning=False),
+    ), None
 
 
 def _judge_provider(effective: EffectiveSettings) -> str:
@@ -249,6 +330,12 @@ class _RecordingLLM:
         self._llm = llm
         self._provider = provider
         self._keep_reasoning = keep_reasoning
+        self._last_raw: Any = None
+
+    def call_facts(self) -> dict[str, Any]:
+        """Return the host, temperature and seed of the latest call (a judge record, D10)."""
+        record = sampling_record(self._llm, self._provider, self._last_raw)
+        return {key: record.get(key) for key in ("host", "temperature", "seed")}
 
     def __getattr__(self, name: str) -> Any:
         # Every other public attribute (model name, metadata) is the wrapped LLM's.
@@ -258,10 +345,14 @@ class _RecordingLLM:
 
     async def acomplete(self, prompt: str, **kwargs: Any) -> Any:
         completion = await self._llm.acomplete(prompt, **kwargs)
+        self._last_raw = getattr(completion, "raw", None)
         ledger = _ACTIVE_LEDGER.get()
         if ledger is not None:
             facts = _facts(completion, reply_reader(self._provider))
             ledger.record(facts, keep_reasoning=self._keep_reasoning)
+            role = "chat" if self._keep_reasoning else "judge"
+            ledger.watch(role, self._provider)
+            ledger.observe(role, self._llm, getattr(completion, "raw", None))
         return completion
 
 
@@ -277,7 +368,7 @@ def recording_answer_llm(
     """Return the graph ``answer_llm`` resource with ledger recording added."""
     if factory is None:
         return None
-    return lambda: _wrap(factory(), provider, keep_reasoning=True)
+    return lambda: _wrap(_built_or_refused(factory), provider, keep_reasoning=True)
 
 
 def recording_judge(

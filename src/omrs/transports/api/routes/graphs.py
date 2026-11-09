@@ -22,6 +22,7 @@ from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
 
+from ....compose_judges import judge_save_problem
 from ....compose_profiles import ProfileDeletedError, ProfileNotReadyError
 from ....core.pipelines import PipelineValidationError, parse_definition
 from ....core.workspace import TASK_LAYOUT_KEY, content_hash
@@ -203,6 +204,9 @@ async def save_pipeline_revision(
     except PipelineValidationError as exc:
         return validation_failure(exc, runtime.engine.redact)
     document = graph.model_dump(mode="json")
+    problem = await run_in_threadpool(_judge_problem, runtime.engine, document)
+    if problem is not None:
+        return error_response(400, problem, error_type="validation")
     try:
         async with admitted(runtime):
             revision, created, affected = await run_in_threadpool(
@@ -224,6 +228,11 @@ async def save_pipeline_revision(
     if affected is not None:
         payload["affected_collections"] = affected
     return ok(payload, 201 if created else 200)
+
+
+def _judge_problem(engine: Any, document: dict[str, Any]) -> str | None:
+    """Return why the graph's claim-judge choice cannot be saved here (pre-exp35 D10)."""
+    return judge_save_problem(engine.resolve_settings(), document)
 
 
 def _store_revision(

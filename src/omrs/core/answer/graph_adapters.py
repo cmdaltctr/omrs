@@ -34,9 +34,9 @@ Settings come only from ``context.settings``. ``retrieval_ms`` is
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Any, cast
+from typing import Annotated, Any, cast
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from ..pipelines import (
     BypassSpec,
@@ -50,6 +50,7 @@ from ..pipelines import (
     PortType,
     Provenance,
 )
+from .judges.registry import as_judge, names
 from .results import (
     answered_result,
     disabled_result,
@@ -112,6 +113,10 @@ class CiteParams(_Params):
     """``answer.cite`` has no parameters."""
 
 
+#: A claim-judge name; the schema lists the registry's names, so Studio offers them.
+_JudgeName = Annotated[str, Field(json_schema_extra=lambda schema: schema.update(enum=names()))]
+
+
 class VerifyClaimsParams(_Params):
     """Parameters of ``verify.claims``.
 
@@ -119,9 +124,20 @@ class VerifyClaimsParams(_Params):
         verify_claims: Node override of the ``answer.verify_claims``
             lever. ``None`` inherits. Admission applies the value to the
             node settings, so the adapter reads only ``context.settings``.
+        verify_judge: Node override of the ``answer.verify_judge`` lever, a
+            name the judge registry holds. ``None`` inherits.
     """
 
     verify_claims: bool | None = None
+    verify_judge: _JudgeName | None = None
+
+    @field_validator("verify_judge")
+    @classmethod
+    def _registered(cls, value: str | None) -> str | None:
+        """Refuse a strategy name the judge registry does not hold (design D10)."""
+        if value is not None and value not in names():
+            raise ValueError(f"Unknown claim judge {value!r}. Registered: {', '.join(names())}.")
+        return value
 
 
 def _as_seam(target: Any) -> CompletionSeam | None:
@@ -162,7 +178,11 @@ def _judge_seam(context: NodeContext) -> tuple[CompletionSeam | None, str | None
         detail = safe_error_detail(exc, context.settings)
         return None, f"verification provider unavailable: {type(exc).__name__}: {detail}"
     seam = _as_seam(target)
-    return (seam, None) if seam is not None else (None, NO_JUDGE_REASON)
+    if seam is None:
+        return None, NO_JUDGE_REASON
+    # The host's recording wrapper reports each call's host and sent values (design D10).
+    facts = getattr(target, "call_facts", None)
+    return cast(CompletionSeam, as_judge(seam, context.settings.answer, facts)), None
 
 
 def _output(result: dict[str, Any], **summary: Any) -> NodeOutput:
@@ -412,7 +432,8 @@ VERIFY_CLAIMS = OperationDescriptor(
     outputs=(_port("answer", _CITED, "Answer result with verification labels."),),
     effect=EffectClass.MODEL_CALL,
     bypass=BypassSpec(input_port="answer", output_port="answer"),
-    lever_params={"verify_claims": "answer.verify_claims"},
+    lever_params={"verify_claims": "answer.verify_claims", "verify_judge": "answer.verify_judge"},
+    option_params={"verify_judge": "verify_judge"},
 )
 
 

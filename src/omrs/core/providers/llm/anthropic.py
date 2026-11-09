@@ -62,6 +62,9 @@ def build(
     timeout: float | None = None,
     answer_model: str | None = None,
     reasoning: str = "",
+    temperature: float | None = None,
+    seed: int | None = None,
+    allowed_hosts: tuple[str, ...] = (),
 ) -> Any:
     """Construct an Anthropic chat LLM from *settings*.
 
@@ -74,6 +77,10 @@ def build(
             its own, so the Chat model is required.
         reasoning: Accepted and ignored: Anthropic needs a token budget, not
             a level (add-chat-reasoning-and-usage D2).
+        temperature: Accepted and ignored. Current Claude models do not use
+            sampling values (pre-exp35 D2), so nothing is sent.
+        seed: Accepted and ignored: the Messages API has no seed.
+        allowed_hosts: Accepted and ignored: only OpenRouter pins hosts.
 
     Returns:
         A configured ``llama_index.llms.anthropic.Anthropic`` LLM.

@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { CutsParam, isCutsField } from "./CutsParam";
 import { EngineSelect, isEngineField } from "./EngineSelect";
 import { isListField, ListParam } from "./ListParam";
-import { optionLabel } from "./labels";
+import { optionLabel, unavailableWord } from "./labels";
 import { isRouterField, RouterParam } from "./RouterParam";
 import { checkValue, type ParamField as Field } from "./schema";
 
@@ -185,7 +185,7 @@ function EnumSelect({ field, value, onChange, disabled, inheritLabel = "Inherit"
         {field.options.map((option) => (
           <SelectItem key={String(option)} value={String(option)} disabled={String(option) in field.unavailableOptions}>
             {optionLabel(field, option)}
-            {String(option) in field.unavailableOptions && " (not installed)"}
+            {String(option) in field.unavailableOptions && ` (${unavailableWord(field)})`}
           </SelectItem>
         ))}
       </SelectContent>

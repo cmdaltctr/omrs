@@ -29,6 +29,8 @@ from collections.abc import Awaitable, Callable, Iterator, Sequence
 from dataclasses import dataclass
 
 from .citations import parse_citation_ordinals
+from .judges.base import ClaimJudge, JudgeCall, JudgeUnavailable, shared_error
+from .judges.registry import as_judge
 from .synthesis import CompletionSeam
 
 #: Structured verdicts the judge may return.
@@ -75,12 +77,14 @@ class ClaimVerdict:
         ordinals: The evidence ordinals the claim's citation referenced.
         verdict: One of the :data:`VERDICT_*` constants.
         evidence_texts: The cited evidence texts the judge saw.
+        call: What produced the verdict (design D10), or ``None``.
     """
 
     claim: str
     ordinals: tuple[int, ...]
     verdict: str
     evidence_texts: tuple[str, ...]
+    call: JudgeCall | None = None
 
 
 @dataclass(frozen=True)
@@ -327,19 +331,20 @@ def parse_verdict(reply: str) -> str:
 async def verify_claims(
     text: str,
     evidence: list[dict],
-    complete: CompletionSeam,
+    complete: ClaimJudge | CompletionSeam,
 ) -> VerificationOutcome:
     """Verify each cited claim of an answer against its cited evidence.
 
-    One judge call per claim through the injected seam.  The judge never
-    sees answer context — only the claim and the text of the evidence
-    its ordinal cites.
+    One judge call per claim through the injected claim judge (design
+    D10).  The judge never sees answer context — only the claim and the
+    text of the evidence its ordinal cites.
 
     Args:
         text: The synthesised answer text.
         evidence: The evidence rows supplied as context (each carrying
             ``ordinal`` and ``text``).
-        complete: Injected async judge seam (``prompt -> reply``).
+        complete: The claim judge, or a plain async seam (``prompt ->
+            reply``), which runs as the default ``chat`` strategy.
 
     Returns:
         The aggregate :class:`VerificationOutcome`.  All supported →
@@ -351,25 +356,21 @@ async def verify_claims(
         ``verification_skipped`` for both).
 
     Raises:
-        Exception: Whatever the seam raises (network/timeout errors).
+        Exception: Whatever the seam raises (network/timeout errors), or
+        ``JudgeUnavailable`` when the judge cannot start.
         The caller catches and reports ``verification_skipped`` naming
         the error — verification must never block or fail the answer.
     """
+    judge: ClaimJudge = as_judge(complete)  # type: ignore[assignment]
     by_ordinal = {row.get("ordinal"): row for row in evidence}
     verdicts: list[ClaimVerdict] = []
     for claim, ordinals in split_claims(text, len(evidence)):
         evidence_texts = tuple(
             str(by_ordinal.get(ordinal, {}).get("text") or "") for ordinal in ordinals
         )
-        reply = await complete(build_judge_prompt(claim, evidence_texts))
-        verdict = parse_verdict(reply)
+        judgement = await judge.judge(claim, evidence_texts)
         verdicts.append(
-            ClaimVerdict(
-                claim=claim,
-                ordinals=ordinals,
-                verdict=verdict,
-                evidence_texts=evidence_texts,
-            )
+            ClaimVerdict(claim, ordinals, judgement.verdict, evidence_texts, judgement.call)
         )
     failing = tuple(v for v in verdicts if v.verdict != VERDICT_SUPPORTED)
     skipped_reason: str | None = None
@@ -377,7 +378,8 @@ async def verify_claims(
         # Zero judge calls is not a pass: report the skip honestly.
         skipped_reason = _NO_CLAIMS_REASON
     elif all(v.verdict == VERDICT_UNPARSEABLE for v in verdicts):
-        skipped_reason = "unparseable verdict rate 100.0%"
+        shared = shared_error([v.call for v in verdicts])
+        skipped_reason = shared or "unparseable verdict rate 100.0%"
     return VerificationOutcome(
         verified=not failing and not skipped_reason,
         verdicts=tuple(verdicts),
@@ -403,6 +405,7 @@ class VerificationFields:
             ``verification_ms``/``verification_calls`` diagnostics.
         ms: Wall-time the stage took.
         calls: Judge completions made.
+        judge_calls: One call record per judged claim (no claim text).
     """
 
     verified: bool = False
@@ -411,13 +414,14 @@ class VerificationFields:
     ran: bool = False
     ms: float = 0.0
     calls: int = 0
+    judge_calls: tuple[dict, ...] = ()
 
 
 async def run_verification_stage(
     text: str,
     evidence: list[dict],
     *,
-    verify_complete: CompletionSeam | None,
+    verify_complete: ClaimJudge | CompletionSeam | None,
     unavailable_reason: str | None,
     error_detail: Callable[[BaseException], str],
 ) -> VerificationFields:
@@ -452,6 +456,8 @@ async def run_verification_stage(
     start = time.perf_counter()
     try:
         outcome = await verify_claims(text, evidence, verify_complete)
+    except JudgeUnavailable as refused:  # A fixed reason; nothing was sent.
+        return VerificationFields(skipped_reason=refused.reason, ran=True)
     except Exception as exc:  # Judge failure never fails the answer.
         return VerificationFields(
             skipped_reason=(f"verification failed: {type(exc).__name__}: {error_detail(exc)}"),
@@ -474,4 +480,5 @@ async def run_verification_stage(
         ran=True,
         ms=(time.perf_counter() - start) * 1000.0,
         calls=outcome.calls,
+        judge_calls=tuple(v.call.as_dict() for v in outcome.verdicts if v.call is not None),
     )

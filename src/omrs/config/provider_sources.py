@@ -46,8 +46,16 @@ PROVIDER_FIELDS: tuple[str, ...] = (
     "answer.model",
     "answer.verify_provider",
     "answer.verify_model",
+    "answer.verify_judge",
     "answer.reasoning",
     "answer.verify_reasoning",
+    # Sampling values, each locked on its own (pre-exp35-harness-and-answer-fixes D1, D11).
+    "answer.temperature",
+    "answer.seed",
+    "answer.verify_temperature",
+    "answer.verify_seed",
+    "answer.allowed_hosts",
+    "answer.verify_allowed_hosts",
 )
 
 
