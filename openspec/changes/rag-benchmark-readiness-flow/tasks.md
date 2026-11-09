@@ -50,9 +50,44 @@ The order is the operator's (2026-11-06, design D1). Do not reorder groups. Stop
 
 ## 6. Experiment 35
 
-- [ ] 6.1 Update `experiment-35-full-document-rag-benchmark` for the router, Qwen3-Embedding-4B and the sweep's findings.
+Follow the steps in order (design D5). "Exp 35 task N" means a task in `experiment-35-full-document-rag-benchmark/tasks.md`. "Archived 10.N" means a task of group 10 in `archive/2026-11-09-pre-exp35-harness-and-answer-fixes/tasks.md`. That group was archived unfinished, so this group now owns it. Tick both places when a step is done.
+
+### A. Mac, free: get the data
+
+- [ ] 6.0 Preflight: GitHub CI is green on the `v3` head; `openspec validate --all --strict` passes; `git worktree list` shows no stale Exp 35 worktree.
+- [ ] 6.1 Exp 35 tasks 1.1, 1.2, 1.2a, 1.3, 1.6, 1.7 and 1.8: the sweep report path, the FinanceBench, FreshStack and BioASQ downloads with hashes, the table-loss count and its OCR choice, and the licences. Store the corpora under `~/Development/DATA/omrs/` with SHA-256. Verify: each corpus loads with the count its task names. The pod in step B needs all three corpora.
+
+### B. Pre-freeze pod session (archived group 10, design D13 of that change)
+
+- [ ] 6.2 GATE G7a: archived 10.1. Load the `runpod` skills, do the live price and stock read, check the keys and the LLM-AggreFact terms, quote the hourly price, and wait for the operator's go.
+- [ ] 6.3 Archived 10.2 and 10.3: one chained pod-side script (Part C timing on the three corpora, the 20-answer measurement, the full LLM-AggreFact split on Clef-Flash and then Granite Guardian). Copy the outputs back, check the copy, and delete the pod at once. Do not end a turn while the pod runs.
+- [ ] 6.4 Archived 10.4, from the Mac while the pod runs: GLM-5.3 on the full split (about $11) and the 120 Experiment 20 triples at reasoning `low`.
+- [ ] 6.5 Archived 10.5: score by leaderboard rules and apply the pass rule. If a model misses it, stop and report to the operator (D10 fallback of that change for Clef-Flash).
+
+### C. Mac, free: finish the inputs
+
+- [ ] 6.6 Exp 35 tasks 1.4, 1.5, 1.9, 1.10 and 1.11. Use the step B timings for 1.4 and 1.5. Task 1.5 names the run machine.
+- [ ] 6.7 Update `experiment-35-full-document-rag-benchmark` with `openspec-update-change`: the router, Qwen3-Embedding-4B, the sweep's findings, and the step B numbers (measured scores, fixed threshold, agreement margin, pinned hosts).
   - Note (2026-11-08, from `pre-exp35-harness-and-answer-fixes`): also carry into the 35a plan the RunPod machine recommendation (that change's design D9: RTX 4090 secure, re-read price and stock at create time; corrects protocol section 7's 6 vCPU and 41 GB), the model matrix (design D12, including the answer model in `protocol.md:35`), and the one pre-freeze pod session (design D13, which holds the D6 timing step: Part C speeds and full-corpus token counts). Pin the commit of `experiments/_lib/` that 35a uses.
-- [ ] 6.2 GATE G7: the operator approves the freeze and the run. Freeze `protocol.md` and `plan.json`, then run per its own tasks.
+
+### D. Harness code
+
+- [ ] 6.8 Exp 35 section 2 (tasks 2.1 to 2.10) in its own worktree, tests first, `./scripts/local_ci.sh`, PR into `v3`, CI and CodeRabbit. GATE G7b: the operator says merge.
+- [ ] 6.9 Exp 35 task 3.4: the shareable example set. Verify: the release check from task 2.10 passes on it.
+
+### E. Smoke run on the run machine
+
+- [ ] 6.10 One arm smoke run that does archived 10.6 and Exp 35 task 4.1 together: every arm, 5 seeded questions per dataset, twice, through `clef_flash`, `granite_guardian` and `chat`. Run it on the machine that task 1.5 names. On a pod, quote the price first, and stop the pod after the smoke run (only its disk bills) until G7. Verify: zero errors, a verdict per strategy for every claim, complete call records, an identical second run, and the 1.11 budget not exceeded on extrapolation.
+
+### F. Freeze
+
+- [ ] 6.11 GATE G7: the operator approves the freeze and the run budget. Exp 35 tasks 4.2 and 4.3: commit `protocol.md` and `plan.json`, then remove the DRAFT status.
+
+### G. Run and report
+
+- [ ] 6.12 Exp 35 section 5 (tasks 5.1 to 5.6): every arm, 3 runs each. Restart the stopped pod from step E. Delete it when the runs and the copy are done.
+- [ ] 6.13 Exp 35 section 6 (tasks 6.1 to 6.3): statistics, `report.md`, `experiment.json` status.
+- [ ] 6.14 Exp 35 section 7 (tasks 7.1 to 7.5): split, copy to `DATA/omrs/`, Zenodo, identifier search. Merge and archive Exp 35 on the operator's word.
 
 ## 7. Close
 

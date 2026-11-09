@@ -34,7 +34,8 @@ G0 preflight
 5. pipeline sweep on RunPod (G6)
    |
    v
-6. Experiment 35 freeze and run (G7)
+6. Experiment 35: data, pre-freeze pod (G7a), harness (G7b),
+   smoke run, freeze (G7), run, report (design D5)
 ```
 
 The cuts change goes first because both other changes build on it (the panel shows its cut boxes; the router change lands after it and shares the re-index). The router goes before the panel because it is on the benchmark's critical path and both touch `workspace-settings` and `settings-file`: never two of these branches at once (rule of the archived master flow, task 4.4). The panel changes no result with defaults, so it may run beside the sweep.
@@ -54,7 +55,9 @@ The cuts change and the router change each change the index identity. The operat
 | G4 | 3.4 | Merge `page-routing-panel` |
 | G5 | 4.1 | Touch the live app |
 | G6 | 5.3 | RunPod budget and start of the sweep |
-| G7 | 6.2 | Freeze and start Experiment 35 |
+| G7a | 6.2 | Pre-freeze pod session: quoted price, go |
+| G7b | 6.8 | Merge the Exp 35 harness PR |
+| G7 | 6.11 | Freeze Experiment 35 and approve the run budget |
 
 ### D4. Rules every group follows
 
@@ -66,6 +69,33 @@ The cuts change and the router change each change the index identity. The operat
 - `./scripts/local_ci.sh` before every PR; PR into `v3`; watch CI; CodeRabbit (CLI when the hosted review skips); never merge without the operator's word.
 - Before `git worktree remove`, copy preserve-class gitignored data to `~/Development/DATA/omrs/` with SHA-256 values (Gotcha 15).
 - Plain British English, short sentences, no em dashes, no personal identifiers or `/Users/` paths in anything pushed.
+
+### D5. Experiment 35 order (operator, 2026-11-09)
+
+Group 6 runs in seven steps, A to G:
+
+```
+A. Mac: section 1 downloads, licences, table-loss count
+   |
+B. Pre-freeze pod (G7a): Part C timing, 20 answers, LLM-AggreFact
+   |   (Mac at the same time: GLM-5.3 split)
+C. Mac: rest of section 1; write the pod numbers into Exp 35 (6.7)
+   |
+D. Section 2 harness, PR (G7b)
+   |
+E. Arm smoke run on the run machine; pod stopped after it
+   |
+F. Freeze (G7)
+   |
+G. Section 5 runs (3 per arm), section 6 report, section 7 release
+```
+
+Reasons:
+
+- The downloads go before the pod. The pod's Part C timing counts tokens on all three corpora, so it needs them.
+- The arm smoke run goes after the harness. Every arm needs the section 2 code. Archived task 10.6 and Exp 35 task 4.1 are the same check, so one run does both.
+- The smoke run uses the run machine. Corpus and indexes stay in place for section 5. A stopped pod bills only its disk while the operator decides at G7.
+- `pre-exp35-harness-and-answer-fixes` was archived with group 10 open. This group owns those tasks now. The detail stays in that change's design D13.
 
 ## Risks
 
