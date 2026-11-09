@@ -199,3 +199,14 @@ The script MUST fail clearly for empty input, invalid records, unavailable or ti
 - **WHEN** the same smoke tool runs on the diagnostics separately
 - **THEN** each residual mismatch SHALL exit non-zero and be recorded as a limitation
 - **AND** a file inside the frozen acceptance corpus MUST NOT be moved or excluded after output is known
+
+### Requirement: Content detection does not over-allocate ONNX threads
+
+Ingestion's in-process content detector SHALL limit ONNX intra-operation workers to the smaller of the visible CPU count and eight. It SHALL use one inter-operation worker. The limit SHALL apply before the process-wide detector instance is reused.
+
+#### Scenario: Detection on a host with many visible CPUs
+
+- **WHEN** ingestion detects content on a container exposing more than eight CPUs
+- **THEN** its ONNX session SHALL use at most eight intra-operation workers
+- **AND** it SHALL use one inter-operation worker
+- **AND** subsequent detections SHALL reuse the bounded session
