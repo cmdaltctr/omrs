@@ -17,14 +17,19 @@
 
 Do not start this group until group 2 is merged, the operator has seen the quoted price and said go.
 
-- [ ] 3.1 Live reads at create time: `get-gpu-type` and `get-capacity` for the RTX 4090 (secure cloud). Quote the hourly price. Wait for the operator's go.
-- [ ] 3.2 Create a pod. On the pod, in one chained script: run `nproc`, `os.cpu_count()`, `time magika -r <file> --jsonl` (one FreshStack file). Then run the profile control pass (10 FreshStack files, spans only) with the subprocess code, then reinstall with the new Python API code and run the same 10-file pass again. Write outputs atomically to `/workspace/pod-profile/`. Copy outputs back, verify checksums, delete the pod in the same turn. Never end a turn while the pod runs.
-- [ ] 3.3 Save outputs under `~/Development/DATA/omrs/experiments/pre-exp35-ingest-profile-2026-11-08/pod/` with SHA-256. Write a one-page `pod-summary.md` naming the largest per-file cost on Linux, before and after.
-- [ ] 3.4 If ONNX thread count is confirmed as the pod-only cause, open a GitHub issue: "ONNX Runtime on pod uses all host vCPUs instead of the floor (affects ingestion time)" and record it in the PR.
+- [x] 3.1 Live reads at create time: `get-gpu-type` and `get-capacity` for the RTX 4090 (secure cloud). Quote the hourly price. Wait for the operator's go.
+- [x] 3.2 Create a pod. On the pod, in one chained script: run `nproc`, `os.cpu_count()`, `time magika -r <file> --jsonl` (one FreshStack file). Then run the profile control pass (10 FreshStack files, spans only) with the subprocess code, then reinstall with the new Python API code and run the same 10-file pass again. Write outputs atomically to `/workspace/pod-profile/`. Copy outputs back, verify checksums, delete the pod in the same turn. Never end a turn while the pod runs.
+- [x] 3.3 Save outputs under `~/Development/DATA/omrs/experiments/pre-exp35-ingest-profile-2026-11-08/pod/` with SHA-256. Write a one-page `pod-summary.md` naming the largest per-file cost on Linux, before and after.
+- [x] 3.4 If ONNX thread count is confirmed as the pod-only cause, open a GitHub issue: "ONNX Runtime on pod uses all host vCPUs instead of the floor (affects ingestion time)" and record it in the PR.
 
 ## 4. LanceDB proposed issue
 
-- [ ] 4.1 Open a GitHub issue: "LanceDB store reopens the collection about 12 times per ingested file (0.022 s each)". Link to the profile artefacts. Record score likelihood 10 x impact 1 = 10.
+- [x] 4.1 Open a GitHub issue: "LanceDB store reopens the collection about 12 times per ingested file (0.022 s each)". Link to the profile artefacts. Record score likelihood 10 x impact 1 = 10.
+
+Operator go for group 3: the operator pre-authorised the session under a $3
+ceiling (quoted $0.89/h secure cloud, live reads 2026-11-09). Pod evidence:
+issues #201 (ONNX threads) and #200 (LanceDB reopens); the score-2
+test_load_failure_isolated ceiling is issue #202.
 
 ## 5. Close
 

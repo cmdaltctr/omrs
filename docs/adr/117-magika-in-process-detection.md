@@ -100,7 +100,12 @@ Gate results (2026-11-09, task 2.4 and 2.5):
   boundary normalisation fails the label-equality test.
 - Mac bench (FreshStack slice, `magika_bench.py`): CLI subprocess
   52.2 ms/file; in-process 1.86 ms/file after a 6 ms one-time model load.
-- Pod before/after: recorded separately in the change's pod step.
+- Pod before/after (RTX 4090, Linux, 2026-11-09): whole call 1.41 s to
+  0.62 s per file; the Magika stage 1.125 s to 0.026 s. The pod-only
+  0.79 s was the per-call CLI subprocess: the container exposes all 96
+  host CPUs with no cgroup quota, so every CLI start paid about a second
+  of thread spin-up. Artefacts:
+  `~/Development/DATA/omrs/experiments/pre-exp35-ingest-profile-2026-11-08/pod/`.
 
 ## References
 
