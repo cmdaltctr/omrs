@@ -22,9 +22,9 @@ from omrs.integrations.magika import _resolve_magika, scan_with_magika
 
 _REPO_ROOT = Path(__file__).resolve().parent.parent
 
-# The frozen 16-file acceptance corpus of ADR-068, paths updated after the
-# omrg to omrs rename. Detection is content-based, so copies of these files
-# are valid probes.
+# The frozen 16-file acceptance corpus of ADR-068, with repository paths
+# updated after the project rename. Detection is content-based, so copies of
+# these files are valid probes.
 _CORPUS: tuple[str, ...] = (
     "experiments/2-embedding-model-comparison-2026-05-19/corpus/Ghazali-Mustasfa.pdf",
     "experiments/2-embedding-model-comparison-2026-05-19/corpus/"
