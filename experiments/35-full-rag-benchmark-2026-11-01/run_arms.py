@@ -22,7 +22,7 @@ no router, no model, no request. ``--arm all`` runs each arm in table order in
 its own process and stops at the first failure.
 
 Exit codes: 0 done; 2 setup or input error (nothing scored); 3 the determinism
-check found a difference; 4 a judge could not start.
+check found a retrieval difference; 4 a judge could not start.
 Heavy-run rule: tell the operator before a run without ``--dry-run``.
 """
 
@@ -86,6 +86,15 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     if args.out_dir is None:
         args.out_dir = SMOKE_OUT if args.smoke else DEFAULT_OUT
     return args
+
+
+def determinism_exit(report: dict[str, Any]) -> int:
+    """Return 3 only when retrieval differs between runs.
+
+    Answers and judge verdicts may differ: runs 2 and 3 exist to measure that
+    variation (spec "Each arm runs three times"), and the report records it.
+    """
+    return 0 if report["retrieval"]["ok"] else EXIT_MISMATCH
 
 
 def main(argv: Sequence[str] | None = None, *, deps: Any = None) -> int:
@@ -194,13 +203,7 @@ def run_one(args: argparse.Namespace, deps: Any) -> int:
     arm = arms.ARMS[args.arm]
     layout = outputs35.Layout(args.out_dir)
     if args.stage == "determinism":
-        report = stages35.determinism_stage(layout, args.dataset, arm.name)
-        parts = [
-            report["retrieval"],
-            report["answers"] or {"ok": True},
-            *report["verdicts"].values(),
-        ]
-        return 0 if all(part["ok"] for part in parts) else EXIT_MISMATCH
+        return determinism_exit(stages35.determinism_stage(layout, args.dataset, arm.name))
     if args.stage == "ingest" and not arm.owns_index:
         say(f"[ingest] {arm.name} searches the {arm.index_of} index; nothing to ingest")
         return 0

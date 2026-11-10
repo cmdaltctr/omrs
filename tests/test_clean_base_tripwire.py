@@ -368,7 +368,8 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # and one router_env case. No fastapi needed.
 # +3 (2026-11-10, reranker ONNX thread cap): test_reranker_thread_cap.py.
 # +1 (2026-11-10, PR 205 review): a corpus sample without --limit is a smoke run.
-_BASE_EXECUTED = 12574
+# +1 (2026-11-10, smoke run): determinism exit fails only on retrieval.
+_BASE_EXECUTED = 12575
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

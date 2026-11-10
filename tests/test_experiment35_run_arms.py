@@ -437,3 +437,13 @@ def test_arm_all_stops_at_the_first_failed_arm(env: Path) -> None:
     code = run_arms.main(["--dataset", "bioasq", "--arm", "all", "--stage", "ingest"], deps=stub)
     assert code == 2
     assert len(stub.log) == 1
+
+
+def test_determinism_exit_fails_only_on_a_retrieval_difference() -> None:
+    """Spec: runs 2 and 3 measure answer and judge variation; only retrieval must match."""
+    same = {"ok": True}
+    differs = {"ok": False}
+    varied = {"retrieval": same, "answers": differs, "verdicts": {"chat": differs}}
+    assert run_arms.determinism_exit(varied) == 0
+    moved = {"retrieval": differs, "answers": same, "verdicts": {}}
+    assert run_arms.determinism_exit(moved) == run_arms.EXIT_MISMATCH
