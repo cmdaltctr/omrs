@@ -139,11 +139,11 @@ Decision (task 1.5): run on one rented RTX 4090, secure cloud (archived change `
 
 Run every command from the repository root. The harness scripts are built by change tasks 2.1 to 2.10 before the freeze.
 
-1. Prepare the data: `uv run --no-sync python experiments/35-full-rag-benchmark-2026-11-01/prepare_data.py` (FinanceBench download, FreshStack export seed 20260530, BioASQ download; records revisions and hashes).
+1. Prepare the data: not a script. The datasets are already on disk and checked (section 4.1); the pod setup copies them and checks their SHA-256.
 2. Start OMRS's managed router (`llama-server`) on `127.0.0.1` (scratch port) with one preset per model of the runtime table.
-3. Run: `uv run --no-sync python experiments/35-full-rag-benchmark-2026-11-01/run_arm.py --arm NAME --dataset DATASET --run N --resume` (six arms, three datasets, 3 runs each; appends the run record and writes JSONL traces).
-4. Determinism and rebuild checks: `uv run --no-sync python experiments/35-full-rag-benchmark-2026-11-01/check_determinism.py` (runs 2 and 3 against run 1; one 4B baseline rebuild per dataset in a fresh process).
-5. Summarise: `uv run --no-sync python experiments/35-full-rag-benchmark-2026-11-01/summarise.py` (expert statistics from `plan.json`; writes `output/summary.json` and the report tables).
+3. Run, per dataset and stage in order (`ingest`, `search`, `answer`): `uv run --no-sync python experiments/35-full-rag-benchmark-2026-11-01/run_arms.py --dataset DATASET --arm all --stage STAGE --run N --resume --answer-host HOST --judges clef_flash,granite_guardian,chat` (six arms, three datasets, 3 runs; `ingest` runs once per index; appends the run record and writes JSONL traces).
+4. Determinism check: the same command with `--stage determinism` (runs 2 and 3 against run 1; only a retrieval difference fails it). The 4B rebuild check per dataset is not built yet; it is built before the freeze (Exp 35 task 4.2).
+5. Summarise: not built yet. Before the freeze, a summary script applies the `plan.json` statistics with `experiments/_lib/stats_d6.py` and writes `output/summary.json` and the report tables (Exp 35 task 4.2).
 
 The smoke subset (task 4.1) runs a small slice of each dataset through every arm before the freeze and is never scored as a result.
 
