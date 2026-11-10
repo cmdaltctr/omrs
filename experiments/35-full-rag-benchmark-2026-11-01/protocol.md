@@ -32,7 +32,7 @@ Six arms run on the same questions. Each ablation changes one component against 
 | Token-aware chunking off | Legacy Markdown chunking against model-token-aware (ADR-063) | Experiment 25 |
 | Hybrid search | Hybrid (BM25 + dense, RRF) in place of dense, reranker on, reuses the baseline index | Experiment 22 |
 
-Fixed in every arm: the datasets and question order, the answer model (Qwen3-4B Q8_0 through llama.cpp, temperature 0, seed 20261101, thinking setting pinned at freeze), metadata extraction `disabled`, 3 repetitions per arm, and one index per arm (the hybrid and reranker arms reuse the baseline index).
+Fixed in every arm: the datasets and question order, the answer model (`deepseek/deepseek-v4.1-flash-1017` through OpenRouter, temperature 0, seed 20261101, one upstream host pinned at freeze; ADR-119), the Ragas judge (`openai/gpt-oss-120b`, reasoning `low`) and the claim checker (GLM-5.3, section 4.4), metadata extraction `disabled`, 3 repetitions per arm, and one index per arm (the hybrid and reranker arms reuse the baseline index).
 
 Measured: Recall@10, MRR@10, nDCG@10, hit@page (FinanceBench only), Ragas 0.4.3 secondary metrics, latency p50 and p95 per query, and the ingestion diagnostics of design D4.
 
@@ -89,3 +89,48 @@ Method: for each PDF, count pages where table areas hold words (from LiteParse w
 **Decision: no OCR of source pages during corpus prep.** The default reader, `pdf-inspector`, flags 0.14 percent of pages, about 35 times below the 5 percent rule. None of the 168 gold evidence pages is flagged (136 of them hold tables). Most of the 17 flagged pages are false alarms: LiteParse (the word source) attaches footnote markers such as "(d)" to row labels. One real loss: `JPMORGAN_2022_10K` page 2 (table of contents) comes out empty in `pdf-inspector` while `pypdf` reads 5,248 characters. Worst `pdf-inspector` counts: `PFIZER_2021_10K` 3 of 143 pages, `CVSHEALTH_2022_10K` 2 of 213, `JOHNSON_JOHNSON_2023Q2_EARNINGS` 1 of 24.
 
 72 pages (0.60%) have no text layer. Only 3 look like scans (`AMERICANWATERWORKS_2021_10K` pages 151, 153 and 155). The rest look blank. None is a gold page, and none is table loss, so they stay as the reader returns them. The largest counts are `WALMART_2019_10K` 29 of 155 pages, `AMCOR_2020_10K` 10 of 195 and `GENERALMILLS_2022_10K` 8 of 127. Per-PDF counts for the three readers are in `table-loss.json`.
+
+### 4.4 Claim checker and judges (steps 6.2 to 6.5, measured 2026-11-10)
+
+Decision record: ADR-119. Change design D3 and D4.
+
+LLM-AggreFact test split, 29,320 rows (the earlier figure of 29,300 was wrong). Gated, CC BY-ND 4.0: evaluation only, kept out of git, never published in changed form. Scored by the leaderboard rule: balanced accuracy per dataset, then the plain mean. 25 rows are longer than 60,000 characters and overflow the 32,768-token context; they count as wrong and stay in the denominator.
+
+| Checker | Average | RAGTruth | Published pair | Speed | Outputs |
+| --- | ---: | ---: | --- | --- | --- |
+| GLM-5.3, Z.AI, `chat`, reasoning `low`, temperature 0, seed 20261109 | 76.9 | 85.1 | none | about 2.8 rows/s | `DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/prefreeze-glm/` |
+| Granite Guardian 3.3 8B Q8_0, `granite_guardian` | 75.7 | 83.2 | 76.5 / 82.2 | 2.3 rows/s | `.../prefreeze-pod/35-full-rag-benchmark-2026-11-01/output/prefreeze/` |
+| Clef-Flash 9B Q8_0, `clef_flash` | 67.8 | 71.9 | 76.6 / 83.2 | 7.5 rows/s | same folder |
+
+Each folder holds a `SHA256SUMS` file. Local models ran on llama.cpp b11941 on one RTX 4090.
+
+- **Reproduction check (each local model within 1 point of its published pair).** Granite: 0.8 below on the average, 1.0009 above on RAGTruth. The script reports "fail" only from that rounding; treated as reproduced. Clef-Flash: 8.8 and 11.3 points below, not reproduced.
+- **Selection rule (fixed before the main run).** The main claim checker is the candidate with the highest LLM-AggreFact average balanced accuracy on the full test split, scored by the leaderboard rule. A local checker replaces it only if it lands within 2 points of it on both the average and RAGTruth. Today this selects GLM-5.3. Its figure is our own measurement (outputs published); it may have seen LLM-AggreFact data in training.
+- **Main checker: GLM-5.3.** On the Experiment 20 set of 120 triples, reasoning `low` gave recall 1.0 and false rejection 0.0.
+- **Second checker and fallback: Granite Guardian.** It takes over if GLM-5.3 is unavailable.
+- **Reported as data: Clef-Flash.** A 1,000-row run on the original weights decides whether a question fix and a full re-run are worth doing. It becomes main only by the selection rule (average 74.9 or higher and RAGTruth 83.1 or higher, full split, after the fix).
+- **No sampling.** All three checkers judge every claim in every arm and every run (`run_arms.py --judges clef_flash,granite_guardian,chat`). If Granite's speed strains the budget, the freeze adds pod time or a second pod; coverage is never cut. The report gives each checker's faithfulness per arm and Cohen's kappa of Granite and of Clef-Flash against GLM-5.3 on all claims.
+- **Why 2 points.** The claim checker sets the faithfulness scores. Its shortfall against the reference checker (GLM-5.3) must stay well below the minimum detectable effect between arms (about 4 points), or it could hide or invent a difference between arms. We set the bar at 2 points (half the MDE) on both the average and RAGTruth balanced accuracy, on the full split, where sampling noise is well under 1 point. 1 point was rejected: leaderboard models treated as equivalent already differ by about 1 point (Clef-Flash 76.6, Granite 76.5, gpt-4o 75.9), and our Granite reproduction landed 0.8 below and 1.0 above its published pair. 3 points was rejected: it approaches the MDE and spans a full leaderboard tier (gpt-4o 75.9, gpt-4o-mini 74.0). The report says "on par" only at a gap of about 1 point or less (as MiniCheck, EMNLP 2024); for a gap between 1 and 2 points it says "slightly lower accuracy" with the numbers. It gives every checker's balanced accuracy beside speed and cost: GLM-5.3 76.9 at about 2.8 rows/s, hosted; Granite 75.7 at 2.3 rows/s, local; Clef-Flash 67.8 at 7.5 rows/s, local, about $0.95 of pod time per full split.
+- **Ragas hand check (task 1.10).** The operator scores each of 50 items per metric as supported or not, blind to the judge. Agreement: Cohen's kappa between the operator and each judge, judge score cut at 0.5, with a 95% bootstrap interval over items. Fit for use: kappa 0.6 or higher. Below that, the report keeps the Ragas numbers and states the shortfall.
+
+### 4.5 Embedding timing and machine (tasks 1.4 and 1.5, 2026-11-10)
+
+Machine: RunPod secure cloud RTX 4090 (24 GB), llama.cpp b11941, Q8_0 GGUF files from `plan.json`. Slices: 200 FreshStack files, 200 BioASQ passages, 5 FinanceBench PDFs (568 pages). Sources: 4B rows from this pod session (`prefreeze-pod/48-pipeline-sweep-llamacpp-2026-11-01/output/timing-4b.jsonl`); 0.6B and 8B rows from Experiment 48 on the same machine type, slices and token counts (`DATA/omrs/experiments/48-pipeline-sweep-llamacpp-2026-11-01/output/`). The 4B embedding rate of the two sessions agrees within 4 percent on every slice.
+
+| Model | Corpus | Slice tokens | Embed tokens/s | Peak GPU MB | Full-corpus tokens | Full build (h) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| 0.6B | FreshStack | 264,317 | 24,741 | 2,617 | 12.0M | 0.77 |
+| 0.6B | BioASQ | 50,784 | 12,384 | 2,617 | 14.4M | 1.87 |
+| 0.6B | FinanceBench | 415,929 | 42,223 | 2,617 | 8.8M | 0.30 |
+| 4B | FreshStack | 264,317 | 12,671 | 7,390 | 12.0M | 0.90 |
+| 4B | BioASQ | 50,784 | 7,664 | 7,390 | 14.4M | 2.07 |
+| 4B | FinanceBench | 415,929 | 15,188 | 7,390 | 8.8M | 0.40 |
+| 8B | FreshStack | 264,317 | 8,846 | 11,618 | 12.0M | 1.01 |
+| 8B | BioASQ | 50,784 | 5,966 | 11,618 | 14.4M | 2.21 |
+| 8B | FinanceBench | 415,929 | 10,392 | 11,618 | 8.8M | 0.48 |
+
+Method: full-corpus tokens come from Part C (`token-counts.json`; FinanceBench scaled from the slice by page count, 12,013 pages). Embedding time is full tokens divided by the slice rate. Parsing and per-file overhead come from the 4B rows of this session only (Experiment 48 ran before the in-process Magika change, ADR-117) and scale by file or page count. Estimate only; the smoke run's ingest timings refine it.
+
+Total per full index build of the three corpora: 0.6B 2.9 h, 4B 3.4 h, 8B 3.7 h. Per-file overhead, not embedding, is the largest share. Four index builds (4B baseline, 0.6B, 8B, chunking off) plus one 4B rebuild check need about 17 h before answers and judging.
+
+Decision (task 1.5): run on one rented RTX 4090, secure cloud (archived change `pre-exp35-harness-and-answer-fixes`, design D9). The local judges need the GPU, and every arm of one dataset runs on one machine. The 4B fits, so the hosted `qwen/qwen3-embedding-4b` fallback is not used. The Mac was not timed.

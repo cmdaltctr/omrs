@@ -61,10 +61,10 @@ Follow the steps in order (design D5). "Exp 35 task N" means a task in `experime
 
 ### B. Pre-freeze pod session (archived group 10, design D13 of that change)
 
-- [ ] 6.2 GATE G7a: archived 10.1. Load the `runpod` skills, do the live price and stock read, check the keys and the LLM-AggreFact terms, quote the hourly price, and wait for the operator's go.
-- [ ] 6.3 Archived 10.2 and 10.3: one chained pod-side script (Part C timing on the three corpora, the 20-answer measurement, the full LLM-AggreFact split on Clef-Flash and then Granite Guardian). Copy the outputs back, check the copy, and delete the pod at once. Do not end a turn while the pod runs.
-- [ ] 6.4 Archived 10.4, from the Mac while the pod runs: GLM-5.3 on the full split (about $11) and the 120 Experiment 20 triples at reasoning `low`.
-- [ ] 6.5 Archived 10.5: score by leaderboard rules and apply the pass rule. If a model misses it, stop and report to the operator (D10 fallback of that change for Clef-Flash).
+- [x] 6.2 GATE G7a: archived 10.1. Load the `runpod` skills, do the live price and stock read, check the keys and the LLM-AggreFact terms, quote the hourly price, and wait for the operator's go. Done 2026-11-10: operator said go; secure RTX 4090 walsi2c5gfb8xc at $0.89/h, created 14:56 UTC.
+- [ ] 6.3 Archived 10.2 and 10.3: one chained pod-side script (Part C timing on the three corpora, the 20-answer measurement, the full LLM-AggreFact split on Clef-Flash and then Granite Guardian). Copy the outputs back, check the copy, and delete the pod at once. Do not end a turn while the pod runs. Status 2026-11-10 22:00 UTC: Part C and both AggreFact runs done and copied back (prefreeze-pod/, SHA256SUMS); 20-answer measure still queued. Operator overrides "delete the pod": keep it, never idle (operator, 2026-11-10).
+- [x] 6.4 Archived 10.4, from the Mac while the pod runs: GLM-5.3 on the full split (about $11) and the 120 Experiment 20 triples at reasoning `low`. Done 2026-11-10: GLM-5.3 76.9/85.1 on 29,320 rows (Z.AI Coding Plan); 120 triples at `low` recall 1.0, false rejection 0.0. Outputs in DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/prefreeze-glm/.
+- [x] 6.5 Archived 10.5: score by leaderboard rules and apply the pass rule. If a model misses it, stop and report to the operator (D10 fallback of that change for Clef-Flash). Done 2026-11-10: GLM-5.3 76.9/85.1, Granite 75.7/83.2 (reproduced), Clef-Flash 67.8/71.9 (not reproduced); operator chose GLM-5.3 main, Granite second and fallback, Clef-Flash as data, no sampling (judgement items 40, 44-47; ADR-119).
 
 ### C. Mac, free: finish the inputs
 

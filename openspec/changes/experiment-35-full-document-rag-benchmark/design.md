@@ -96,9 +96,8 @@ Notes:
 - The `documents` profile sets `rerank_enabled: true`, so the reranker arm turns it off.
 - Token-aware chunking is on when `EMBEDDING__TOKENIZER_MODEL` and its revision resolve (ADR-063). The off arm leaves them unset, so the legacy Markdown path runs. Before freeze, check which documents of each dataset route through the Markdown splitter. If the arm changes no chunk on a dataset, record the cell as "not applicable" and do not run it. BioASQ abstracts are short and may be such a case.
 - Each arm uses the arm's own embedding model for the tokenizer. The Qwen3 embedding family shares one tokenizer.
-- Answers come from one pinned answer model for all arms (decided 2026-10-27): `Qwen/Qwen3-4B-GGUF` Q8_0 through llama.cpp, temperature 0, fixed seed, thinking setting pinned.
-- Fallback: if the pipeline sweep shows that Qwen3-4B answers would not fit the time budget, the answer model becomes `deepseek/deepseek-v4.1-flash-1017` through OpenRouter, a named hosted arm, for every arm. The freeze records which model and why.
-- A judge never scores answers from its own model family. If the fallback is used, the main judge `deepseek/deepseek-v4.1-flash-1017` cannot stay. It becomes `google/gemini-3.8-flash` through OpenRouter (decided 2026-10-27), with temperature 0, a fixed seed and one pinned upstream provider. GPT-6.1 Terra stays the cross-check. No earlier experiment tested Gemini 3.8 Flash as a judge (Experiments 33 and 42 used it to transcribe pages), so the hand check is its evidence too.
+- Answers come from one pinned answer model for all arms: `deepseek/deepseek-v4.1-flash-1017` through OpenRouter, a named hosted reference (ADR-103), temperature 0, seed 20261101, one upstream host that honours `seed` (operator, 2026-11-08; replaces the 2026-10-27 choice of local Qwen3-4B). The answer model is the same in every arm, so it is not a variable of the comparison. The freeze names the pinned host.
+- A judge never scores answers from its own model family. Answers are DeepSeek. The Ragas judges (D4) are OpenAI models and the claim checkers (D4) are GLM, IBM Granite and Clef-Flash, so the rule holds. The earlier fallback judge `google/gemini-3.8-flash` is not needed and is dropped.
 
 ## D4. Metrics
 
@@ -111,9 +110,20 @@ Notes:
 ### Secondary (LLM judge)
 
 - Ragas 0.4.3: faithfulness, answer relevancy, context precision, context recall.
-- Main judge (decided 2026-10-27): `deepseek/deepseek-v4.1-flash-1017` through OpenRouter, a hosted reference arm (ADR-103). The date in the ID pins the version. Temperature 0 and a fixed seed, both supported. Pin the OpenRouter upstream provider so one host serves every call. Different family from the answer model.
-- Cross-check judge: `openai/gpt-6.1-terra` through OpenRouter on the 50 hand-checked items. It takes a fixed seed but no temperature setting. A third family. Report agreement between the main judge, the cross-check judge and the hand check.
-- No earlier experiment tested `deepseek-v4.1-flash-1017` as a judge (Experiment 20 used `deepseek-v4-flash-0731`). The hand check and the cross-check are therefore the evidence that the judge is fit for use.
+- Main Ragas judge (operator, 2026-11-08): `openai/gpt-oss-120b` through OpenRouter, a hosted reference (ADR-103), reasoning `low`, temperature 0, fixed seed, one pinned upstream host that honours `seed`. Different family from the answer model. Evidence: Judge's Verdict (arXiv 2510.09738), kappa 0.756, human-like tier.
+- Cross-check judge: `openai/gpt-6.1-terra` through OpenRouter on the 50 hand-checked items. It takes a fixed seed but no temperature setting. It is the same vendor family as the main judge, so it checks run-to-run and model-size effects, not family bias. The hand check is the independent evidence. Report agreement between the main judge, the cross-check judge and the hand check.
+- Hand-check agreement measure (fixed before the check): the operator scores each of the 50 items blind to the judge, per metric, as supported or not supported. Agreement is Cohen's kappa between the operator and each judge, with a 95% bootstrap interval over items, after the judge score is cut at 0.5. Fit for use: kappa 0.6 or higher (substantial). Below that, the report keeps the Ragas numbers and states the shortfall.
+
+### Faithfulness claim check (OMRS answer verification)
+
+- Every answer's claims are checked against the retrieved context by the OMRS claim checker. Its score is a secondary faithfulness metric beside Ragas.
+- Selection rule (fixed before the main run, operator 2026-11-10): the main claim checker is the candidate with the highest LLM-AggreFact average balanced accuracy on the full test split (29,320 rows, leaderboard rule: balanced accuracy per dataset, then the plain mean). A local checker replaces it only if it lands within 2 points of it on both the average and RAGTruth.
+- Main checker, by that rule: GLM-5.3 through the Z.AI API, strategy `chat`, reasoning `low` set explicitly, temperature 0, seed 20261109: 76.9 average, 85.1 RAGTruth. On the Experiment 20 set of 120 triples, reasoning `low` gave recall 1.0 and false rejection 0.0. The GLM-5.3 figure is our own measurement (outputs published); the report notes that the model may have seen LLM-AggreFact data in training.
+- Second checker and fallback if GLM-5.3 is unavailable: IBM Granite Guardian 3.3 8B Q8_0 (local, strategy `granite_guardian`): 75.7 and 83.2, which reproduces its published 76.5 and 82.2 within about 1 point.
+- Reported as data: Clef-Flash 9B Q8_0 (local, strategy `clef_flash`): 67.8 and 71.9, far below its published 76.6 and 83.2. A run on the original weights decides whether a question fix is worth a full re-run. It replaces GLM-5.3 only by the selection rule (74.9 or higher and 83.1 or higher, on the full split after the fix). Its interest is speed and cost (about 7.5 rows per second, no API cost), not a better score.
+- No sampling (operator, firm): all three checkers judge every claim in every arm and every run, so each has equal data. The arm runner runs them per claim (`--judges clef_flash,granite_guardian,chat`). If Granite's speed (2.3 rows per second) strains the budget, add pod time or a second pod at the freeze; never cut coverage.
+- Report each checker's faithfulness score per arm, Cohen's kappa of Granite and of Clef-Flash against GLM-5.3 on all claims, and each checker's balanced accuracy beside speed and cost.
+- Why 2 points: the claim checker sets the faithfulness scores. Its shortfall against the reference checker must stay well below the minimum detectable effect between arms (about 4 points, D6), or it could hide or invent a difference between arms. 2 points is half the MDE, measured on the full split, where sampling noise is well under 1 point. 1 point was rejected: leaderboard models treated as equivalent already differ by about 1 point (Clef-Flash 76.6, Granite 76.5, gpt-4o 75.9), and the Granite reproduction landed 0.8 below and 1.0 above its published pair. 3 points was rejected: it nears the MDE and spans a full leaderboard tier (gpt-4o 75.9, gpt-4o-mini 74.0). The report calls two checkers "on par" only at a gap of about 1 point or less, as MiniCheck (EMNLP 2024) does. For a gap between 1 and 2 points it writes "slightly lower accuracy" with the numbers, speed and cost.
 - Record per call: model ID, upstream provider, temperature, seed, reasoning setting, prompt and completion tokens. Record the Ragas version and the run dates.
 - A metric that needs a reference answer runs only where the dataset has one (FinanceBench, BioASQ). Check FreshStack at freeze. Otherwise report "not measured".
 - Check about 50 judged items by hand. Define the agreement measure in the protocol before the check. Report the agreement.
@@ -161,6 +171,8 @@ One table per dataset:
 - Fallback: if local 4B does not fit the time budget, the reference arm becomes OpenRouter `qwen/qwen3-embedding-4b`, named as hosted (ADR-103).
 - The run may be local (the 64 GB M5 Pro MacBook Pro) or on rented cloud hardware. Rule (decided 2026-10-27): start on the Mac. If the extrapolated embedding time for all arms exceeds about 48 hours on the Mac, embed on a rented GPU; answers and judging stay where they are. Either way: the same GGUF files, the same build, and the D1 tolerance. Run all arms of one dataset on the same machine and back end, so the paired comparisons stay fair.
 - Record the hardware (chip or GPU, memory, back end) in every run record.
+- Result of task 1.4 (2026-11-10, RTX 4090, llama.cpp b11941, Q8_0): one full index build of all three corpora takes about 2.9 h (0.6B), 3.4 h (4B) and 3.7 h (8B). Per-file parsing and overhead, not embedding, is the largest share (BioASQ about 1.6 h). Protocol section 4.5 holds the rows and the method.
+- Machine (task 1.5): the run uses one rented RTX 4090 on RunPod secure cloud (archived change `pre-exp35-harness-and-answer-fixes`, design D9), because the local judges (Granite, Clef-Flash) need the GPU and every arm of one dataset must run on one machine. The Mac was not timed. Price and stock are read again at create time.
 
 ## D8. Observability
 
@@ -204,7 +216,7 @@ Ragas goes in a separate `uv` dependency group (for example `eval`), not in a pu
 
 ## Open questions (resolve at freeze)
 
-1. Which answer model? Judges resolved 2026-10-27 (D4 Secondary).
+1. Resolved 2026-11-08 to 2026-11-10: answer model, Ragas judges and claim checkers (D3, D4).
 2. What wall-time, memory and paid-provider budget applies? The local-or-rented rule is in D7.
 3. Does BioASQ fit in full, or is a corpus sample needed (D2)?
 4. Does FreshStack carry reference answers that Ragas context recall can use?
