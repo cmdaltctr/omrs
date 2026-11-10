@@ -758,7 +758,7 @@ select = ["E", "F", "I", "UP", "B", "S"]
 # Experiment 35 Ragas judge (design D9). Never in a plain `uv sync`: install with
 # `uv sync --no-group dev --group ragas`. It conflicts with `dev` so uv resolves it in
 # its own fork; Ragas needs older rich and jiter, and the base keeps its own versions.
-ragas = ["ragas==0.4.3"]
+ragas = ["ragas==0.4.3", "langchain-community==0.3.31"]
 dev = [
     "import-linter>=2.13",
     "ipywidgets>=8.1.8",
