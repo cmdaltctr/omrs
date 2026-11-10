@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import math
 import statistics
+from collections.abc import Collection, Mapping, Sequence
+from typing import Any
 
 K_VALUES = (1, 3, 5, 10, 20, 50)
 
@@ -100,3 +102,57 @@ def _aggregate(rows: list[dict], *, rounded: bool = True) -> dict:
         agg["p95_latency_ms"] = round(p95, 2) if rounded else p95
         out[cat] = agg
     return out
+
+
+def ndcg_at_k(ranked_ids: Sequence[str], relevant: Collection[str], k: int = 10) -> float:
+    """Plain nDCG@k with binary relevance from gold labels.
+
+    A relevant ID earns its gain once, at its first rank, so a parent that
+    appears in several chunks does not inflate the score. The ideal list holds
+    ``min(len(relevant), k)`` relevant IDs. Experiment 35's primary endpoint.
+
+    Args:
+        ranked_ids: Retrieved IDs, best first.
+        relevant: Gold IDs for the question.
+        k: Cut-off rank.
+
+    Returns:
+        A value in [0, 1]; 0.0 when the question has no gold IDs.
+    """
+    gold = set(relevant)
+    if not gold:
+        return 0.0
+    seen: set[str] = set()
+    dcg = 0.0
+    for rank, doc_id in enumerate(ranked_ids[:k], start=1):
+        if doc_id in gold and doc_id not in seen:
+            seen.add(doc_id)
+            dcg += 1.0 / math.log2(rank + 1)
+    ideal = sum(1.0 / math.log2(rank + 1) for rank in range(1, min(len(gold), k) + 1))
+    return dcg / ideal
+
+
+def _row_pages(row: Mapping[str, Any]) -> list[str]:
+    """Pages of one result row: ``page_labels``, else ``page_label``."""
+    labels = row.get("page_labels")
+    if not labels:
+        labels = [row.get("page_label")]
+    return [str(label) for label in labels if label is not None]
+
+
+def hit_at_page(
+    rows: Sequence[Mapping[str, Any]], gold_pages: Collection[str], k: int = 10
+) -> bool:
+    """True when any of the top-k rows covers any gold page.
+
+    A merged row lists every page it spans in ``page_labels``; a row without
+    that list falls back to ``page_label``. Matching the gold document is the
+    caller's job: pass only rows from the gold source.
+
+    Args:
+        rows: Result rows, best first.
+        gold_pages: Gold page labels in the numbering OMRS stores.
+        k: Cut-off rank.
+    """
+    gold = {str(page) for page in gold_pages}
+    return any(gold.intersection(_row_pages(row)) for row in rows[:k])
