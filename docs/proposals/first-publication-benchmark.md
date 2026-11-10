@@ -1,6 +1,6 @@
 # First publication: a reproducible local RAG benchmark of OMRS
 
-Draft 3, 9 November 2026 (adds an external-system comparison). Plan only. Nothing here is built or run yet.
+Draft 4, 9 November 2026 (adds the official external-comparison protocol). Plan only. Nothing here is built or run yet.
 
 This is the first paper of the fellowship programme. The manṭiq work in `v4` (authority-aware retrieval and reasoning gates) comes after it. This paper does not wait for that work.
 
@@ -81,7 +81,15 @@ Fixed choices (decided 27 October 2026):
 
 Run the frozen OMRS baseline once on the full EnterpriseRAG-Bench corpus. Do not repeat the six OMRS ablations on this corpus. Record the corpus and leaderboard revisions, question IDs, gold-label revision and evaluation date. Check the release's scored-question count: the paper describes 500 questions, while the leaderboard category counts inspected on 9 November 2026 total 470.
 
-Save each question's answer and retrieved document IDs. Calculate document recall from the gold labels without a language-model judge. Use GPT-5.4 for answer correctness and completeness under the official protocol, or ask Onyx to judge the saved submission. GPT-5.4 judges this comparison only; it does not replace the answer model or the judges used for RQ1 and RQ2. Confirm the judging and submission procedure with Onyx before the run.
+Save each question's answer and retrieved document IDs as one JSONL row: `{"question_id":"qst_0001","answer":"...","document_ids":["dsid_abc","dsid_def"]}`. Map every retrieved chunk to its source `dsid_*` identifier and deduplicate the identifiers. Both fields are required for complete evaluation. Use the main 500-question `questions.jsonl`; exclude the 100 metadata-dependent questions in `extra_questions.jsonl`.
+
+Run the official `src.scripts.answer_evaluation.metrics_based_eval` script at a pinned benchmark commit and record every argument. Use GPT-5.4 for answer correctness and completeness under the official protocol, or ask Onyx to judge the saved submission. GPT-5.4 judges this comparison only; it does not replace the answer model or the judges used for RQ1 and RQ2. Confirm the judging and submission procedure with Onyx before the run.
+
+Keep the default citation stripping and document-correction flow. Do not use `--skip-citation-stripping` or `--no-correction`. Three LLM judgements classify candidate and gold documents as `required`, `valid` or `invalid`. The flow may revise gold documents, answers and answer facts before scoring. Preserve `questions_updated.jsonl`, report the corrected questions and record the gold-label revision used for each score.
+
+The code samples at most 20 non-gold candidate documents for correction review. This is not a limit on the submitted result set. Every submitted document ID affects document recall and invalid-extra-document scoring. Keep document recall and invalid-extra-document averages to questions with expected documents; High Level and Info Not Found questions have none. The overall score is `mean(completeness_pct when answer_correct else 0)`.
+
+Use `--limit` and `--resume` only for harness checks and resumable execution. A limited run is not a leaderboard result. For leaderboard submission, provide Onyx with a reproduction guide containing the OMRS commit, frozen configuration, model identities, corpus revision, commands and saved outputs. Onyx verifies and publishes the result.
 
 RAGFlow is the closest published complete-system reference. PageIndex and FreshStack leaderboard scores are supporting references for their own datasets and protocols, not extra arms of this experiment. Each external comparison reports the complete system configuration, including its answer model. A difference between configurations does not isolate the effect of OMRS's retrieval architecture.
 
@@ -236,6 +244,6 @@ The journal's own author guide covers ORCID, CRediT, the funding wording, confli
 - RAGPerf, arXiv 2603.10765.
 - BERGEN, arXiv 2407.01102. Its DOI did not resolve in CrossRef, so check it before citing.
 - Hugging Face cards: `enelpol/rag-mini-bioasq`, `BeIR/nfcorpus`, `PatronusAI/financebench`, `freshstack/corpus-oct-2024`, `onyx-dot-app/EnterpriseRAG-Bench`.
-- EnterpriseRAG-Bench, arXiv 2605.05253, `github.com/onyx-dot-app/EnterpriseRAG-Bench`, and its Hugging Face leaderboard (checked 9 November 2026).
+- EnterpriseRAG-Bench, arXiv 2605.05253, `github.com/onyx-dot-app/EnterpriseRAG-Bench`, its Hugging Face leaderboard, `quickstart.md`, `methodology.md` and `src/scripts/answer_evaluation/metrics_based_eval.py` (checked 9 November 2026).
 - Taylor & Francis: <https://editorresources.taylorandfrancis.com/welcome-to-tf/policies-guidelines/streamlining-how-we-describe-research-outputs/>.
 - Edinburgh Napier: <https://libguides.napier.ac.uk/c.php?g=685910&p=5352291>, the linked open access policy pages, and Open Access Policy v3.0.
