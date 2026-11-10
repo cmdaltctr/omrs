@@ -140,7 +140,7 @@ Decision (task 1.5): run on one rented RTX 4090, secure cloud (archived change `
 Run every command from the repository root. The harness scripts are built by change tasks 2.1 to 2.10 before the freeze.
 
 1. Prepare the data: `uv run --no-sync python experiments/35-full-rag-benchmark-2026-11-01/prepare_data.py` (FinanceBench download, FreshStack export seed 20260530, BioASQ download; records revisions and hashes).
-2. Start one `llama serve` router on `127.0.0.1` (scratch port) with one preset per model of the runtime table.
+2. Start OMRS's managed router (`llama-server`) on `127.0.0.1` (scratch port) with one preset per model of the runtime table.
 3. Run: `uv run --no-sync python experiments/35-full-rag-benchmark-2026-11-01/run_arm.py --arm NAME --dataset DATASET --run N --resume` (six arms, three datasets, 3 runs each; appends the run record and writes JSONL traces).
 4. Determinism and rebuild checks: `uv run --no-sync python experiments/35-full-rag-benchmark-2026-11-01/check_determinism.py` (runs 2 and 3 against run 1; one 4B baseline rebuild per dataset in a fresh process).
 5. Summarise: `uv run --no-sync python experiments/35-full-rag-benchmark-2026-11-01/summarise.py` (expert statistics from `plan.json`; writes `output/summary.json` and the report tables).
@@ -170,17 +170,18 @@ The smoke subset (task 4.1) runs a small slice of each dataset through every arm
 ## 7. Runtime
 
 - **Purpose**: publication. **Runtime under test**: no.
-- **Local models**: every one runs through llama.cpp (`llama serve` router, one preset per model). No Ollama, no MLX. Build 11671 exactly; another build needs a plan amendment first.
+- **Local models**: every one runs through llama.cpp on OMRS's managed router (`llama-server`, one preset per model). No Ollama, no MLX. Build b11941 exactly (readiness flow task 5.2); another build needs a plan amendment first. `plan.json` holds the same rows.
 
 | Role | Repository | File | SHA-256 | Build | Server arguments |
 | --- | --- | --- | --- | --- | --- |
-| Embedding baseline 4B | `Qwen/Qwen3-Embedding-4B-GGUF` | `Qwen3-Embedding-4B-Q8_0.gguf` | `b60ae5ce2dd6a0b77f82cadf21def1f310a3e10cde380ad0081b07a9d416949d` | 11671 | `--embeddings --pooling last --ctx-size 8192 --ubatch-size 8192` |
-| Embedding 0.6B | `Qwen/Qwen3-Embedding-0.6B-GGUF` | `Qwen3-Embedding-0.6B-Q8_0.gguf` | `06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439` | 11671 | as baseline |
-| Embedding 8B | `Qwen/Qwen3-Embedding-8B-GGUF` | `Qwen3-Embedding-8B-Q8_0.gguf` | `d20ddc71e8a5c4344f2343481e242233a997dc5eaff442427a945836c97b4deb` | 11671 | as baseline |
-| Answer | `Qwen/Qwen3-4B-GGUF` | `Qwen3-4B-Q8_0.gguf` | `8c2f07f26af9747e41988551106f149b03eb9b5cb6df636027b6bf6278473300` | 11671 | `--ctx-size 16384`; temperature 0 and seed 20261101 per request |
+| Embedding baseline 4B | `Qwen/Qwen3-Embedding-4B-GGUF` | `Qwen3-Embedding-4B-Q8_0.gguf` | `b60ae5ce2dd6a0b77f82cadf21def1f310a3e10cde380ad0081b07a9d416949d` | 11941 | `--embeddings --pooling last --ctx-size 8192 --batch-size 8192 --ubatch-size 8192` |
+| Embedding 0.6B | `Qwen/Qwen3-Embedding-0.6B-GGUF` | `Qwen3-Embedding-0.6B-Q8_0.gguf` | `06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439` | 11941 | as baseline |
+| Embedding 8B | `Qwen/Qwen3-Embedding-8B-GGUF` | `Qwen3-Embedding-8B-Q8_0.gguf` | `d20ddc71e8a5c4344f2343481e242233a997dc5eaff442427a945836c97b4deb` | 11941 | as baseline |
+| Claim checker, Clef-Flash | `ggml-org/Clef-Flash-GGUF` | `Clef-Flash-Q8_0.gguf` | `25f801e2a27610b0ccc0cb1558d7eda3d7a304e34e2c4a04e3079357ff7d906e` | 11941 | `--ctx-size 32768 --batch-size 32768 --ubatch-size 32768 --parallel 1` |
+| Claim checker, Granite Guardian | `ibm-granite/granite-guardian-3.3-8b-GGUF` | `granite-guardian-3.3-8b-Q8_0.gguf` | `356fc80d343a699a3d12316de161d4341ee2d11f7057123dabb158804e876bc5` | 11941 | as Clef-Flash |
 
 The ONNX reranker and the OCR engines do not run through llama.cpp. The freeze records them under the runtime manifest with name, revision and file hash. The embedding tokenizer (`Qwen/Qwen3-Embedding-4B`, `tokenizer.json`, revision `5cf2132a`) is the token-aware chunking tokenizer, cached and hash-checked by sweep task 2.4a.
 
-- **Hosted references**: main Ragas judge `deepseek/deepseek-v4.1-flash-1017` (OpenRouter, temperature 0, fixed seed, one pinned upstream provider); cross-check judge `openai/gpt-6.1-terra` (OpenRouter, fixed seed, 50 hand-checked items). A judge never scores its own model family.
+- **Hosted references** (section 3, ADR-119): answer model `deepseek/deepseek-v4.1-flash-1017` (OpenRouter, temperature 0, seed 20261101, one pinned upstream host); main Ragas judge `openai/gpt-oss-120b` (OpenRouter, reasoning `low`, temperature 0, fixed seed, one pinned upstream host); cross-check judge `openai/gpt-6.1-terra` (OpenRouter, fixed seed, 50 hand-checked items); main claim checker GLM-5.3 (Z.AI, section 4.4). A judge never scores its own model family.
 - **Tolerance**: 0.005 absolute on each primary metric (Recall@10, MRR@10, nDCG@10, hit@page). The largest change that still counts as the same result on another back end. Confirm or change at freeze.
 - **Live check**: the runner calls `verify_llamacpp_runtime` before the first score of each run and passes `runtime=found.as_run_record()` to `record_run_start`. A mismatch stops the run.
