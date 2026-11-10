@@ -367,7 +367,8 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +151 (2026-11-10, exp35 shared harness, by test-ID diff): 11 new files (150)
 # and one router_env case. No fastapi needed.
 # +3 (2026-11-10, reranker ONNX thread cap): test_reranker_thread_cap.py.
-_BASE_EXECUTED = 12573
+# +1 (2026-11-10, PR 205 review): a corpus sample without --limit is a smoke run.
+_BASE_EXECUTED = 12574
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

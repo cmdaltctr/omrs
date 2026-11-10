@@ -81,8 +81,10 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
         parser.error("--limit must be 1 or more")
     if args.corpus_sample is not None and args.corpus_sample < 0:
         parser.error("--corpus-sample must be 0 or more")
+    # A question limit or a sampled corpus both make a smoke run: never a run record.
+    args.smoke = args.limit is not None or args.corpus_sample is not None
     if args.out_dir is None:
-        args.out_dir = SMOKE_OUT if args.limit is not None else DEFAULT_OUT
+        args.out_dir = SMOKE_OUT if args.smoke else DEFAULT_OUT
     return args
 
 
@@ -249,7 +251,7 @@ def run_one(args: argparse.Namespace, deps: Any) -> int:
     runtime_path = (
         layout.root / "runtime" / f"{args.dataset}-{arm.name}-{args.stage}-run{args.run}.json"
     )
-    deps.guard(block, base_url=base_url, smoke=args.limit is not None, runtime_path=runtime_path)
+    deps.guard(block, base_url=base_url, smoke=args.smoke, runtime_path=runtime_path)
     return asyncio.run(
         _run_stage(args, arm, plan, settings, models, judges, questions, key, files, layout, deps)
     )

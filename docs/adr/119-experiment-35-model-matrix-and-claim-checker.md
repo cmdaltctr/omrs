@@ -47,13 +47,20 @@ question wording or the GGUF conversion.
 3. **Selection rule, fixed before the main run:** the main claim checker is
    the candidate with the highest LLM-AggreFact average balanced accuracy on
    the full test split, by the leaderboard rule. A local checker replaces it
-   only if it lands within 2 points of it on both the average and RAGTruth.
+   only if it lands within 2 points of it on both the average and RAGTruth
+   and also judges more rows per second. Both conditions must hold. The
+   2-point allowance exists only to buy speed and cost. Granite Guardian is
+   within 2 points (1.2 and 1.9) but slower (2.3 against about 2.8 rows per
+   second), so it does not replace GLM-5.3.
 4. **Main claim checker, by that rule:** GLM-5.3 through Z.AI, strategy
    `chat`, reasoning `low` set explicitly, temperature 0, seed 20261109.
    Reasoning `low` gave recall 1.0 and false rejection 0.0 on the
    Experiment 20 set of 120 triples.
-5. **Second checker and fallback:** Granite Guardian 3.3 8B Q8_0. It takes
-   over if GLM-5.3 is unavailable.
+5. **Second checker and fallback:** Granite Guardian 3.3 8B Q8_0. If
+   GLM-5.3 calls fail, the run stops and resumes (`--resume`) when Z.AI is
+   back; the runner never switches checker by itself. If GLM-5.3 is
+   withdrawn for good, the operator names Granite main in a dated amendment.
+   Granite has already judged every claim, so nothing is re-run.
 6. **Clef-Flash as data:** Clef-Flash 9B Q8_0 is reported beside the others.
    It becomes main only by the selection rule (74.9 or higher and 83.1 or
    higher, full split, after a fix). A fix to its question goes into

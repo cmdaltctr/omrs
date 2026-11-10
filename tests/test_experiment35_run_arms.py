@@ -232,6 +232,18 @@ def test_every_scored_stage_runs_the_guard_on_the_models_it_loads(env: Path) -> 
     assert stub.log.index(guards[0]) < stub.log.index("engine")
 
 
+def test_a_corpus_sample_without_limit_is_a_smoke_run(env: Path) -> None:
+    """A sampled corpus must never write a measured-run record or use the runs folder."""
+    args = run_arms.parse_args(
+        ["--dataset", "bioasq", "--arm", arms.BASELINE, "--stage", "ingest", "--corpus-sample", "5"]
+    )
+    assert args.out_dir == run_arms.SMOKE_OUT
+    stub = Stub()
+    common = ("--dataset", "bioasq", "--corpus-sample", "5", "--arm", arms.BASELINE)
+    assert _main(stub, env / "out", *common, "--stage", "ingest") == 0
+    assert [line for line in stub.log if line.startswith("guard")][0].endswith("smoke=True")
+
+
 def test_smoke_runs_record_the_runtime_in_the_out_dir_and_full_runs_use_guard_run(
     tmp_path: Path,
 ) -> None:

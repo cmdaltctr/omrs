@@ -105,9 +105,9 @@ LLM-AggreFact test split, 29,320 rows (the earlier figure of 29,300 was wrong). 
 Each folder holds a `SHA256SUMS` file. Local models ran on llama.cpp b11941 on one RTX 4090.
 
 - **Reproduction check (each local model within 1 point of its published pair).** Granite: 0.8 below on the average, 1.0009 above on RAGTruth. The script reports "fail" only from that rounding; treated as reproduced. Clef-Flash: 8.8 and 11.3 points below, not reproduced.
-- **Selection rule (fixed before the main run).** The main claim checker is the candidate with the highest LLM-AggreFact average balanced accuracy on the full test split, scored by the leaderboard rule. A local checker replaces it only if it lands within 2 points of it on both the average and RAGTruth. Today this selects GLM-5.3. Its figure is our own measurement (outputs published); it may have seen LLM-AggreFact data in training.
+- **Selection rule (fixed before the main run).** The main claim checker is the candidate with the highest LLM-AggreFact average balanced accuracy on the full test split, scored by the leaderboard rule. A local checker replaces it only if it lands within 2 points of it on both the average and RAGTruth and also judges more rows per second; both conditions must hold, because the 2-point allowance exists only to buy speed and cost. Today this selects GLM-5.3: Granite is within 2 points but slower (2.3 against about 2.8 rows per second). Its figure is our own measurement (outputs published); it may have seen LLM-AggreFact data in training.
 - **Main checker: GLM-5.3.** On the Experiment 20 set of 120 triples, reasoning `low` gave recall 1.0 and false rejection 0.0.
-- **Second checker and fallback: Granite Guardian.** It takes over if GLM-5.3 is unavailable.
+- **Second checker and fallback: Granite Guardian.** If GLM-5.3 calls fail, the run stops and resumes with `--resume` when Z.AI is back; the runner never switches checker by itself. If GLM-5.3 is withdrawn for good, the operator names Granite main in a dated amendment. Granite has already judged every claim, so nothing is re-run.
 - **Reported as data: Clef-Flash.** A 1,000-row run on the original weights decides whether a question fix and a full re-run are worth doing. It becomes main only by the selection rule (average 74.9 or higher and RAGTruth 83.1 or higher, full split, after the fix).
 - **No sampling.** All three checkers judge every claim in every arm and every run (`run_arms.py --judges clef_flash,granite_guardian,chat`). If Granite's speed strains the budget, the freeze adds pod time or a second pod; coverage is never cut. The report gives each checker's faithfulness per arm and Cohen's kappa of Granite and of Clef-Flash against GLM-5.3 on all claims.
 - **Why 2 points.** The claim checker sets the faithfulness scores. Its shortfall against the reference checker (GLM-5.3) must stay well below the minimum detectable effect between arms (about 4 points), or it could hide or invent a difference between arms. We set the bar at 2 points (half the MDE) on both the average and RAGTruth balanced accuracy, on the full split, where sampling noise is well under 1 point. 1 point was rejected: leaderboard models treated as equivalent already differ by about 1 point (Clef-Flash 76.6, Granite 76.5, gpt-4o 75.9), and our Granite reproduction landed 0.8 below and 1.0 above its published pair. 3 points was rejected: it approaches the MDE and spans a full leaderboard tier (gpt-4o 75.9, gpt-4o-mini 74.0). The report says "on par" only at a gap of about 1 point or less (as MiniCheck, EMNLP 2024); for a gap between 1 and 2 points it says "slightly lower accuracy" with the numbers. It gives every checker's balanced accuracy beside speed and cost: GLM-5.3 76.9 at about 2.8 rows/s, hosted; Granite 75.7 at 2.3 rows/s, local; Clef-Flash 67.8 at 7.5 rows/s, local, about $0.95 of pod time per full split.
@@ -134,3 +134,53 @@ Method: full-corpus tokens come from Part C (`token-counts.json`; FinanceBench s
 Total per full index build of the three corpora: 0.6B 2.9 h, 4B 3.4 h, 8B 3.7 h. Per-file overhead, not embedding, is the largest share. Four index builds (4B baseline, 0.6B, 8B, chunking off) plus one 4B rebuild check need about 17 h before answers and judging.
 
 Decision (task 1.5): run on one rented RTX 4090, secure cloud (archived change `pre-exp35-harness-and-answer-fixes`, design D9). The local judges need the GPU, and every arm of one dataset runs on one machine. The 4B fits, so the hosted `qwen/qwen3-embedding-4b` fallback is not used. The Mac was not timed.
+
+## 5. Steps
+
+Run every command from the repository root. The harness scripts are built by change tasks 2.1 to 2.10 before the freeze.
+
+1. Prepare the data: `uv run --no-sync python experiments/35-full-rag-benchmark-2026-11-01/prepare_data.py` (FinanceBench download, FreshStack export seed 20260530, BioASQ download; records revisions and hashes).
+2. Start one `llama serve` router on `127.0.0.1` (scratch port) with one preset per model of the runtime table.
+3. Run: `uv run --no-sync python experiments/35-full-rag-benchmark-2026-11-01/run_arm.py --arm NAME --dataset DATASET --run N --resume` (six arms, three datasets, 3 runs each; appends the run record and writes JSONL traces).
+4. Determinism and rebuild checks: `uv run --no-sync python experiments/35-full-rag-benchmark-2026-11-01/check_determinism.py` (runs 2 and 3 against run 1; one 4B baseline rebuild per dataset in a fresh process).
+5. Summarise: `uv run --no-sync python experiments/35-full-rag-benchmark-2026-11-01/summarise.py` (expert statistics from `plan.json`; writes `output/summary.json` and the report tables).
+
+The smoke subset (task 4.1) runs a small slice of each dataset through every arm before the freeze and is never scored as a result.
+
+## 6. Analysis
+
+- **Stats level**: expert.
+- **Tests**: paired permutation test on per-question nDCG@10 (10,000 shuffles, seed 20261101), averaged over the 3 runs per question first. McNemar's exact test for hit@page hit or miss. Wilson intervals for rates, paired bootstrap (10,000 resamples) for differences and means. `holm` correction across the arms of one dataset, on nDCG@10 only. Functions come from `.agents/skills/s-experiment/references/stats.py` and `experiments/_lib/stats.py`; no new statistics code.
+- **Minimum detectable effect**: about 4 points at 150 to 223 questions; about 2 points at 707 questions. Stated before the run; recorded per dataset in the report.
+- **Sensitivity**: re-test the 0.05 cut-off at 0.045 and 0.055 and report whether any arm's verdict changes.
+- **Gates**:
+
+| Gate | Pass when | Why it matters |
+| --- | --- | --- |
+| G1 | Runs 2 and 3 retrieve exactly what run 1 retrieved on the fixed index, every arm and dataset | A mismatch breaks the paired design and is itself a finding |
+| G2 | The 4B baseline index rebuilt once per dataset in a fresh process gives run 1's retrieved lists | Shows index building is repeatable |
+| G3 | `verify_llamacpp_runtime` passes before the first score of every run | A wrong build or file hash invalidates every score |
+
+- **Stop rule**: the run is complete when every arm and dataset has 3 runs, the determinism and rebuild checks, and the Ragas pass. Stop early when the preflight fails, a gate fails, or the smoke subset exceeds the task 1.11 budget on extrapolation. A determinism mismatch is recorded and reported, never swapped for another run.
+- **What each outcome means**:
+  - Pass: gates hold; the report states each arm's difference or "no difference larger than the minimum detectable effect".
+  - Fail: a gate failed; investigate before any number is cited in the paper.
+  - Unclear: an interval crosses zero; report it as not shown, not as no effect.
+
+## 7. Runtime
+
+- **Purpose**: publication. **Runtime under test**: no.
+- **Local models**: every one runs through llama.cpp (`llama serve` router, one preset per model). No Ollama, no MLX. Build 11671 exactly; another build needs a plan amendment first.
+
+| Role | Repository | File | SHA-256 | Build | Server arguments |
+| --- | --- | --- | --- | --- | --- |
+| Embedding baseline 4B | `Qwen/Qwen3-Embedding-4B-GGUF` | `Qwen3-Embedding-4B-Q8_0.gguf` | `b60ae5ce2dd6a0b77f82cadf21def1f310a3e10cde380ad0081b07a9d416949d` | 11671 | `--embeddings --pooling last --ctx-size 8192 --ubatch-size 8192` |
+| Embedding 0.6B | `Qwen/Qwen3-Embedding-0.6B-GGUF` | `Qwen3-Embedding-0.6B-Q8_0.gguf` | `06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439` | 11671 | as baseline |
+| Embedding 8B | `Qwen/Qwen3-Embedding-8B-GGUF` | `Qwen3-Embedding-8B-Q8_0.gguf` | `d20ddc71e8a5c4344f2343481e242233a997dc5eaff442427a945836c97b4deb` | 11671 | as baseline |
+| Answer | `Qwen/Qwen3-4B-GGUF` | `Qwen3-4B-Q8_0.gguf` | `8c2f07f26af9747e41988551106f149b03eb9b5cb6df636027b6bf6278473300` | 11671 | `--ctx-size 16384`; temperature 0 and seed 20261101 per request |
+
+The ONNX reranker and the OCR engines do not run through llama.cpp. The freeze records them under the runtime manifest with name, revision and file hash. The embedding tokenizer (`Qwen/Qwen3-Embedding-4B`, `tokenizer.json`, revision `5cf2132a`) is the token-aware chunking tokenizer, cached and hash-checked by sweep task 2.4a.
+
+- **Hosted references**: main Ragas judge `deepseek/deepseek-v4.1-flash-1017` (OpenRouter, temperature 0, fixed seed, one pinned upstream provider); cross-check judge `openai/gpt-6.1-terra` (OpenRouter, fixed seed, 50 hand-checked items). A judge never scores its own model family.
+- **Tolerance**: 0.005 absolute on each primary metric (Recall@10, MRR@10, nDCG@10, hit@page). The largest change that still counts as the same result on another back end. Confirm or change at freeze.
+- **Live check**: the runner calls `verify_llamacpp_runtime` before the first score of each run and passes `runtime=found.as_run_record()` to `record_run_start`. A mismatch stops the run.
