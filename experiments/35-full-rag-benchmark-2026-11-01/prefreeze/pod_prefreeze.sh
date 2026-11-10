@@ -77,7 +77,7 @@ fetch_judges() {
     return 0
   fi
   mkdir -p "$DATA_ROOT/benchmarks/gguf"
-  PYTHONDONTWRITEBYTECODE=1 python3 - "$DATA_ROOT/benchmarks/gguf" <<'PY'
+  cd "$REPO" && PYTHONDONTWRITEBYTECODE=1 uv run --no-sync python - "$DATA_ROOT/benchmarks/gguf" <<'PY'
 import hashlib, sys
 from huggingface_hub import hf_hub_download
 
