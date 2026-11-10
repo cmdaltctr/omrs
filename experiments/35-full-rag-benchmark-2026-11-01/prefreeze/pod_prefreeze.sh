@@ -161,7 +161,7 @@ stage_measure() {
   if [ ! -x "$venv/bin/python" ]; then
     version="$(.venv/bin/python -c 'import sys; print(".".join(map(str, sys.version_info[:3])))')"
     run uv venv "$venv" --python "$version" || return 1
-    run uv pip install --python "$venv/bin/python" "ragas==0.4.3" || return 1
+    run uv pip install --python "$venv/bin/python" "ragas==0.4.3" "langchain-community==0.3.31" || return 1
   fi
   run mkdir -p "$OUT"
   run uv run --no-sync python "$HERE/measure_answers.py" --resume \

@@ -71,6 +71,9 @@ JUDGES: Mapping[str, Mapping[str, Any]] = {
 #: The router preset of the judge entry: Experiment 48's chat preset, one slot.
 SERVER_ARGS: Mapping[str, Any] = {
     "ctx-size": 32768,
+    # A decision model on /v1/systemone takes its whole input in one physical batch.
+    "batch-size": 32768,
+    "ubatch-size": 32768,
     "parallel": 1,
     "flash-attn": True,
     "n-gpu-layers": "all",
