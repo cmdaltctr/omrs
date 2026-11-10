@@ -364,7 +364,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +1 (2026-11-09, drift found while pinning): one base case added without a pin
 # bump after the CPU-affinity denial fix (a6ffbc39).
 # +1 (2026-11-09, issue 204): judge-refused verification reports ran=False.
-_BASE_EXECUTED = 12419
+# +151 (2026-11-10, exp35 shared harness, by test-ID diff): 11 new files (150)
+# and one router_env case. No fastapi needed.
+_BASE_EXECUTED = 12570
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
