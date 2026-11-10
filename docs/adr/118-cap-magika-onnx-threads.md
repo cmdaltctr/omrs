@@ -97,11 +97,25 @@ Pod `2bdjprmfnv46x4` ran at a quoted $0.89/hour and was deleted after the
 verified outputs were copied. The account's temporary SSH key was removed.
 The billing API had not posted the final amount when checked.
 
+## Addendum 2026-11-10: the reranker gets the same cap
+
+The Experiment 35 smoke run on a 96-CPU RTX 4090 pod showed the ONNX
+cross-encoder reranker had no cap. A search with the reranker on took about
+20 s; with the reranker off it took 0.2 s. On the same pod, 50 query-passage
+pairs of `cross-encoder/ms-marco-MiniLM-L-6-v2` took 24.1 to 26.7 s with the
+default session and 1.2 to 1.3 s with eight intra-op threads and one inter-op
+thread.
+
+The cap now has one source, `src/omrs/integrations/onnx_threads.py`
+(`capped_session_options`). Magika and the reranker both build their CPU
+session options there. Test: `tests/unit/test_reranker_thread_cap.py`.
+
 ## References
 
 - [ADR-117](117-magika-in-process-detection.md)
 - [ADR-068](068-pin-magika-content-detection.md)
 - `src/omrs/integrations/magika.py`
+- `src/omrs/integrations/onnx_threads.py`
 - `tests/unit/test_magika_thread_cap.py`
 - `openspec/changes/onnx-pod-thread-cap/`
 - [ONNX Runtime threading management](https://onnxruntime.ai/docs/performance/tune-performance/threading.html)

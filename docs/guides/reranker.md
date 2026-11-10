@@ -59,6 +59,8 @@ The first time you call `search_documents` with `rerank=True`, the ~23 MB quanti
 
 > **Note:** CoreML is disabled by default (ADR-029) — it doesn't support the dynamic sequence lengths that cross-encoder tokenisation produces. CPU-only inference is used instead. Override with `RERANK_ONNX_PROVIDER=coreml` to experiment.
 
+> **Note:** The ONNX session uses at most 8 intra-op threads and 1 inter-op thread (ADR-118). A container can show more CPUs than it may use; without the cap, a search on a 96-CPU pod took about 20 s instead of about 1 s.
+
 ## Backends
 
 The reranker has two interchangeable inference backends. Both produce scores on the same `(0, 1)` scale via a shared sigmoid transform, so the calibrated threshold stays valid whichever backend runs (ADR-038).
