@@ -755,6 +755,10 @@ select = ["E", "F", "I", "UP", "B", "S"]
 "experiments/*/build_corpus.py" = ["E501", "S311"]
 
 [dependency-groups]
+# Experiment 35 Ragas judge (design D9). Never in a plain `uv sync`: install with
+# `uv sync --no-group dev --group ragas`. It conflicts with `dev` so uv resolves it in
+# its own fork; Ragas needs older rich and jiter, and the base keeps its own versions.
+ragas = ["ragas==0.4.3"]
 dev = [
     "import-linter>=2.13",
     "ipywidgets>=8.1.8",
@@ -829,3 +833,6 @@ exclude = [
 venvPath = "."
 venv = ".venv"
 pythonVersion = "3.11"
+
+[tool.uv]
+conflicts = [[{ group = "ragas" }, { group = "dev" }]]
