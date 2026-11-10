@@ -220,8 +220,13 @@ class Wiring:
             return await engine().answer(text, top_k=10, collection_name=self.collection)
 
         def ingest() -> list[dict]:
-            return self.part_a.ingest_documents(
-                self.part_a.engine_factory(self.collection), None, self.collection, plan=self.plan
+            return run_ingest_off_loop(
+                lambda: self.part_a.ingest_documents(
+                    self.part_a.engine_factory(self.collection),
+                    None,
+                    self.collection,
+                    plan=self.plan,
+                )
             )
 
         deps = deps_type(
@@ -235,3 +240,15 @@ class Wiring:
         finally:
             if "engine" in holder:
                 holder["engine"].close()
+
+
+def run_ingest_off_loop(fn: Callable[[], list[dict]]) -> list[dict]:
+    """Run *fn* in its own thread and wait for it.
+
+    Experiment 48's ``ingest_documents`` calls ``asyncio.run()``, which refuses to start
+    inside the event loop the measure stages already run in (pod run 2026-11-10).
+    """
+    import concurrent.futures
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(fn).result()

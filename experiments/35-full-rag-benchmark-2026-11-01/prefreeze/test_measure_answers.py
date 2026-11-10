@@ -377,3 +377,23 @@ def test_measure_parse_stages_rejects_unknown_names() -> None:
     assert measure_answers.parse_stages("answers,summary") == ("answers", "summary")
     with pytest.raises(SystemExit):
         measure_answers.parse_stages("answers,judge")
+
+
+def test_live_ingest_runs_inside_the_running_event_loop() -> None:
+    """Pod run 2026-11-10: the ingest dep called Exp 48's ingest_documents, which calls
+    asyncio.run(), from inside run_stages' event loop. It must run off that loop."""
+    import asyncio
+
+    import measure_live
+
+    def part_a_ingest() -> list[dict]:
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return [{"file": "a.pdf", "seconds": 1.0, "error": None}]
+        raise RuntimeError("asyncio.run() cannot be called from a running event loop")
+
+    async def from_a_running_loop() -> list[dict]:
+        return measure_live.run_ingest_off_loop(part_a_ingest)
+
+    assert asyncio.run(from_a_running_loop()) == [{"file": "a.pdf", "seconds": 1.0, "error": None}]
