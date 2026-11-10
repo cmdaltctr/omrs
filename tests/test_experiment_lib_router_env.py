@@ -353,3 +353,22 @@ def test_configure_with_a_missing_gguf_folder_stops_before_any_settings_are_writ
     with pytest.raises(rc.RouterConfigError, match="SWEEP_GGUF_DIR"):
         rc.configure(PLAN, embed_file=BASELINE_FILE, config_dir=config)
     assert not config.exists()
+
+
+# --- a key reference is never compared or printed (2026-11-10) ---
+
+
+def test_resolved_conflicts_never_names_a_resolved_key_value() -> None:
+    from types import SimpleNamespace
+
+    from experiments._lib.router_env import resolved_conflicts
+
+    secret = "resolved-secret-value-1234"  # noqa: S105 - test value, not a key
+    settings = SimpleNamespace(
+        openai_compatible_api_key=secret,
+        answer=SimpleNamespace(verify_model="other-model"),
+    )
+    values = {"openai_compatible_api_key": "env://SOME_KEY", "answer": {"verify_model": "m"}}
+    problems = resolved_conflicts(settings, values)
+    assert problems == ["answer.verify_model: the sweep needs 'm', OMRS resolved 'other-model'"]
+    assert all(secret not in p for p in problems)

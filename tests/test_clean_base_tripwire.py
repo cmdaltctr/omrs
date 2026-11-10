@@ -364,7 +364,12 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +1 (2026-11-09, drift found while pinning): one base case added without a pin
 # bump after the CPU-affinity denial fix (a6ffbc39).
 # +1 (2026-11-09, issue 204): judge-refused verification reports ran=False.
-_BASE_EXECUTED = 12419
+# +151 (2026-11-10, exp35 shared harness, by test-ID diff): 11 new files (150)
+# and one router_env case. No fastapi needed.
+# +3 (2026-11-10, reranker ONNX thread cap): test_reranker_thread_cap.py.
+# +1 (2026-11-10, PR 205 review): a corpus sample without --limit is a smoke run.
+# +1 (2026-11-10, smoke run): determinism exit fails only on retrieval.
+_BASE_EXECUTED = 12575
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -738,6 +743,11 @@ if not _has_qwen_tokenizer:
 _WEB_EXTRA_CASES = 2194
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
+# test_experiment_stats_d6.py compares the copy with the s-experiment skill
+# file. CI runners have no skill folder, so those 2 cases skip there.
+_SKILL_STATS_CASES = 2
+if not (Path.home() / ".agents/skills/s-experiment/references/stats.py").exists():
+    _BASE_EXECUTED -= _SKILL_STATS_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)
 # +2 (2026-11-01, managed-llamacpp-runtimes): the 60 s request and 20 s lock-order
 # cases in test_llamacpp_runtime_lease_busy.py are slow. No fastapi needed.

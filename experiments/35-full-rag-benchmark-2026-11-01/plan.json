@@ -65,8 +65,8 @@
         "file": "Qwen3-Embedding-4B-Q8_0.gguf",
         "sha256": "b60ae5ce2dd6a0b77f82cadf21def1f310a3e10cde380ad0081b07a9d416949d",
         "runtime": "llama.cpp",
-        "build": 11671,
-        "server_args": {"embeddings": true, "pooling": "last", "ctx-size": 8192, "ubatch-size": 8192}
+        "build": 11941,
+        "server_args": {"embeddings": true, "pooling": "last", "ctx-size": 8192, "batch-size": 8192, "ubatch-size": 8192}
       },
       {
         "role": "embedding-0.6b",
@@ -74,8 +74,8 @@
         "file": "Qwen3-Embedding-0.6B-Q8_0.gguf",
         "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
         "runtime": "llama.cpp",
-        "build": 11671,
-        "server_args": {"embeddings": true, "pooling": "last", "ctx-size": 8192, "ubatch-size": 8192}
+        "build": 11941,
+        "server_args": {"embeddings": true, "pooling": "last", "ctx-size": 8192, "batch-size": 8192, "ubatch-size": 8192}
       },
       {
         "role": "embedding-8b",
@@ -83,22 +83,33 @@
         "file": "Qwen3-Embedding-8B-Q8_0.gguf",
         "sha256": "d20ddc71e8a5c4344f2343481e242233a997dc5eaff442427a945836c97b4deb",
         "runtime": "llama.cpp",
-        "build": 11671,
-        "server_args": {"embeddings": true, "pooling": "last", "ctx-size": 8192, "ubatch-size": 8192}
+        "build": 11941,
+        "server_args": {"embeddings": true, "pooling": "last", "ctx-size": 8192, "batch-size": 8192, "ubatch-size": 8192}
       },
       {
-        "role": "answer",
-        "repository": "Qwen/Qwen3-4B-GGUF",
-        "file": "Qwen3-4B-Q8_0.gguf",
-        "sha256": "8c2f07f26af9747e41988551106f149b03eb9b5cb6df636027b6bf6278473300",
+        "role": "judge-clef-flash",
+        "repository": "ggml-org/Clef-Flash-GGUF",
+        "file": "Clef-Flash-Q8_0.gguf",
+        "sha256": "25f801e2a27610b0ccc0cb1558d7eda3d7a304e34e2c4a04e3079357ff7d906e",
         "runtime": "llama.cpp",
-        "build": 11671,
-        "server_args": {"ctx-size": 16384}
+        "build": 11941,
+        "server_args": {"ctx-size": 32768, "batch-size": 32768, "ubatch-size": 32768, "parallel": 1}
+      },
+      {
+        "role": "judge-granite-guardian",
+        "repository": "ibm-granite/granite-guardian-3.3-8b-GGUF",
+        "file": "granite-guardian-3.3-8b-Q8_0.gguf",
+        "sha256": "356fc80d343a699a3d12316de161d4341ee2d11f7057123dabb158804e876bc5",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {"ctx-size": 32768, "batch-size": 32768, "ubatch-size": 32768, "parallel": 1}
       }
     ],
     "references": [
-      {"role": "judge-main", "provider": "openrouter", "model": "deepseek/deepseek-v4.1-flash-1017"},
-      {"role": "judge-crosscheck", "provider": "openrouter", "model": "openai/gpt-6.1-terra"}
+      {"role": "answer", "provider": "openrouter", "model": "deepseek/deepseek-v4.1-flash-1017"},
+      {"role": "ragas-judge", "provider": "openrouter", "model": "openai/gpt-oss-120b"},
+      {"role": "judge-crosscheck", "provider": "openrouter", "model": "openai/gpt-6.1-terra"},
+      {"role": "judge-glm", "provider": "zai-coding-plan", "model": "glm-5.3"}
     ],
     "tolerance": [
       {"metric": "Recall@10", "max_abs_change": 0.005},

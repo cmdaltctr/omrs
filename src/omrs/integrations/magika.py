@@ -34,6 +34,7 @@ from pathlib import Path
 from typing import Any
 
 from ..core.settings import get_default_effective_settings
+from .onnx_threads import capped_session_options
 
 logger = logging.getLogger(__name__)
 
@@ -184,14 +185,7 @@ def _get_magika_instance() -> Any:
                         import onnxruntime as rt
 
                         # Magika 1.0.3 accepts no SessionOptions constructor argument.
-                        affinity = getattr(os, "sched_getaffinity", None)
-                        try:
-                            visible_cpus = len(affinity(0)) if affinity else (os.cpu_count() or 1)
-                        except OSError:
-                            visible_cpus = os.cpu_count() or 1
-                        options = rt.SessionOptions()
-                        options.intra_op_num_threads = min(visible_cpus, 8)
-                        options.inter_op_num_threads = 1
+                        options = capped_session_options(rt)
                         rt.disable_telemetry_events()
                         return rt.InferenceSession(
                             self._model_path,

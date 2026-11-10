@@ -924,6 +924,16 @@ Settings > Chat also has a "Claim check judge" block. It saves `verify_provider`
 | `clef_flash` | One yes/no (`noul`) question per claim to `/v1/systemone` on the llama.cpp router. The claim and its evidence go in the state. P(yes) of 0.5 or more is `supported`. | `clef-flash-claim/1` |
 | `granite_guardian` | The Granite Guardian 3.3 groundedness prompt to the router's `/v1/completions`, with thinking off. The guardian answers `yes` when the claim is not grounded, so `yes` is `unsupported`. | `granite-guardian-3.3-groundedness/1` |
 
+Measured accuracy (2026-11-10, full LLM-AggreFact test split, 29,320 rows, balanced accuracy, leaderboard rule; ADR-119):
+
+| Strategy and model | Average | RAGTruth | Rows per second |
+|---|---:|---:|---:|
+| `chat` with GLM-5.3 (Z.AI, reasoning `low`) | 76.9 | 85.1 | about 2.8 (hosted) |
+| `granite_guardian` with Granite Guardian 3.3 8B Q8_0 | 75.7 | 83.2 | 2.3 (RTX 4090) |
+| `clef_flash` with Clef-Flash 9B Q8_0 | 67.8 | 71.9 | 7.5 (RTX 4090) |
+
+`clef_flash` (`clef-flash-claim/1`) scores far below the model's published 76.6 and 83.2. Use `chat` or `granite_guardian` when accuracy matters. Experiment 35 uses GLM-5.3 as its main checker.
+
 For `clef_flash` and `granite_guardian`, set `answer.verify_provider` to `llamacpp` and `answer.verify_model` to the `model` of a `llamacpp_models` entry. Use the Q8_0 file: a model file below 8-bit is refused before any request (root gotcha 16). A judge that cannot start reports `verification_skipped` with a fixed reason, and the answer is still returned. An unreadable reply counts as `unparseable`, never as a pass.
 
 A profile can pick its own judge in Studio: the Verify claims step has a "Claim judge" choice beside "Check claims". The choices come from the registry. A strategy whose model is not set up on this host shows as not ready, and a save that picks it is refused with a message that names the missing setting.

@@ -34,6 +34,7 @@ import os
 import platform
 from typing import Any
 
+from ...integrations.onnx_threads import capped_session_options
 from ._reranker_cache import (  # noqa: F401
     _CACHE_LOCK,
     _MODEL_CACHE,
@@ -314,6 +315,7 @@ class CrossEncoderReranker:
                     providers = ["CPUExecutionProvider"]
                 self._session = ort.InferenceSession(
                     onnx_path,
+                    sess_options=capped_session_options(ort),
                     providers=providers,
                 )
                 self._loaded = True
