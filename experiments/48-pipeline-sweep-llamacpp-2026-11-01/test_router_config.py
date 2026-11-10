@@ -345,3 +345,20 @@ def test_an_environment_answer_provider_stops_the_run_and_names_the_key(clean_en
     monkeypatch.setenv("ANSWER__PROVIDER", "openrouter")
     with pytest.raises(rc.RouterConfigError, match=r"answer\.provider"):
         rc.configure(PLAN, embed_file=BASELINE_FILE, config_dir=clean_env)
+
+
+# --- a key reference is never compared or printed (Exp 35 task 6.4 leak, 2026-11-10) ---
+
+
+def test_resolved_conflicts_never_names_a_resolved_key_value() -> None:
+    from types import SimpleNamespace
+
+    secret = "resolved-secret-value-1234"  # noqa: S105 - test value, not a key
+    settings = SimpleNamespace(
+        openai_compatible_api_key=secret,
+        answer=SimpleNamespace(verify_model="other-model"),
+    )
+    values = {"openai_compatible_api_key": "env://SOME_KEY", "answer": {"verify_model": "m"}}
+    problems = rc.resolved_conflicts(settings, values)
+    assert problems == ["answer.verify_model: the sweep needs 'm', OMRS resolved 'other-model'"]
+    assert all(secret not in p for p in problems)
