@@ -741,6 +741,11 @@ if not _has_qwen_tokenizer:
 _WEB_EXTRA_CASES = 2194
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
+# test_experiment_stats_d6.py compares the copy with the s-experiment skill
+# file. CI runners have no skill folder, so those 2 cases skip there.
+_SKILL_STATS_CASES = 2
+if not (Path.home() / ".agents/skills/s-experiment/references/stats.py").exists():
+    _BASE_EXECUTED -= _SKILL_STATS_CASES
 # -m "not slow": existing 14, four quality gates and the profile latency check (2026-10-17)
 # +2 (2026-11-01, managed-llamacpp-runtimes): the 60 s request and 20 s lock-order
 # cases in test_llamacpp_runtime_lease_busy.py are slow. No fastapi needed.
