@@ -40,7 +40,7 @@ GLM_REASONING = "low"
 #: The token-aware tokenizer (ADR-063). The Qwen3 embedding family shares it, so
 #: every arm keeps this identity and only ``chunking-off`` empties it.
 TOKENIZER_MODEL = "Qwen/Qwen3-Embedding-4B"
-TOKENIZER_REVISION = "5cf2132abc99cad020ac570b19d031efec650f2b"  # gitleaks:allow - a Hugging Face revision hash, not a key
+TOKENIZER_REVISION = "5cf2132abc99cad020ac570b19d031efec650f2b"  # gitleaks:allow (HF revision)
 #: One router model at a time: the two judges never load together on 24 GB (D13).
 ROUTER_MODELS_MAX = 1
 
