@@ -932,7 +932,7 @@ Measured accuracy (2026-11-10, full LLM-AggreFact test split, 29,320 rows, balan
 | `granite_guardian` with Granite Guardian 3.3 8B Q8_0 | 75.7 | 83.2 | 2.3 (RTX 4090) |
 | `clef_flash` with Clef-Flash 9B Q8_0 | 67.8 | 71.9 | 7.5 (RTX 4090) |
 
-`clef_flash` (`clef-flash-claim/1`) scores far below the model's published 76.6 and 83.2. Use `chat` or `granite_guardian` when accuracy matters. Experiment 35 uses GLM-5.3 as its main checker.
+`clef_flash` (`clef-flash-claim/1`) scores far below the model's published 76.6 and 83.2. Use `chat` when accuracy matters. `granite_guardian` scores well on the benchmark but rejected most claims on code and financial-table answers in Experiment 35 smoke runs (94% and 69%, against 26% and 22% for `chat`), so check it on your own documents first. Experiment 35 uses GLM-5.3 as its main checker.
 
 For `clef_flash` and `granite_guardian`, set `answer.verify_provider` to `llamacpp` and `answer.verify_model` to the `model` of a `llamacpp_models` entry. Use the Q8_0 file: a model file below 8-bit is refused before any request (root gotcha 16). A judge that cannot start reports `verification_skipped` with a fixed reason, and the answer is still returned. An unreadable reply counts as `unparseable`, never as a pass.
 
