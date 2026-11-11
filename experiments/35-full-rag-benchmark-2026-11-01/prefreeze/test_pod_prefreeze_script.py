@@ -39,3 +39,18 @@ def test_judge_download_starts_after_setup_builds_the_environment() -> None:
     stage_setup builds; started earlier it failed on a fresh pod (2026-11-10)."""
     body = SCRIPT[SCRIPT.index("main() {") :]
     assert body.index("stage setup 1 stage_setup") < body.index("fetch_judges && mark judges")
+
+
+def test_aggrefact_refuses_to_start_when_the_cap_is_used_up() -> None:
+    """GNU timeout treats 0 as no limit, so a spent cap must stop the stage."""
+    body = SCRIPT[SCRIPT.index("stage_aggrefact() {") :]
+    body = body[: body.index("\n}\n")]
+    assert '[ "$left" -gt 0 ]' in body
+    assert body.index('[ "$left" -gt 0 ]') < body.index('timeout "$left"')
+
+
+def test_token_count_is_its_own_stage_so_a_timeout_is_retried() -> None:
+    partc = SCRIPT[SCRIPT.index("stage_partc() {") :]
+    partc = partc[: partc.index("\n}\n")]
+    assert "--tokenize" not in partc
+    assert "stage partc-tokenize 0 stage_partc_tokenize" in SCRIPT

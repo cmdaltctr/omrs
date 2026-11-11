@@ -122,8 +122,18 @@ def check_fresh(path: Path, resume: bool) -> None:
 
 
 def append_row(path: Path, row: Mapping[str, Any]) -> None:
-    """Append one row to *path* and flush it to disk."""
+    """Append one row to *path* and flush it to disk.
+
+    A torn last line (a crash mid-write) has no newline. :func:`read_rows` already
+    ignores it, so it is cut off first; the new row then starts its own line and
+    every later row stays readable.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists() and path.stat().st_size:
+        data = path.read_bytes()
+        if not data.endswith(b"\n"):
+            with path.open("r+b") as handle:
+                handle.truncate(data.rfind(b"\n") + 1)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(row, sort_keys=True) + "\n")
         handle.flush()

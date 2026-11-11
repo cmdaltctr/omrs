@@ -94,3 +94,11 @@ def test_failed_rows_never_count_as_caught_or_rejected() -> None:
     assert summary["false_rejection"] == 0.0
     assert summary["errors"] == 2
     assert summary["keep_low"] is False
+
+
+def test_score_refuses_a_partial_file(tmp_path: Path, triples: Path) -> None:
+    assert run(tmp_path) == 0
+    path = tmp_path / "out" / "exp20-chat-low.jsonl"
+    lines = path.read_text(encoding="utf-8").splitlines()
+    path.write_text("\n".join(lines[:-1]) + "\n", encoding="utf-8")
+    assert run(tmp_path, "--score") == 2

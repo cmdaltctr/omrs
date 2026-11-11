@@ -144,12 +144,17 @@ stage_partc() {
   run mkdir -p "$OUT/partc"
   run cp -p output/part-c.json output/part-c-exact-speed.json output/part-c-fast-speed.json \
     output/timing-4b.jsonl "$OUT/partc/"
-  # The full-corpus token count comes last and has its own limit: on 8 Nov the
-  # FreshStack chunking alone ran 71 minutes without ending. It resumes from its file.
+}
+
+# The full-corpus token count has its own stage and limit, so a timeout is retried on
+# the next run: on 8 Nov the FreshStack chunking alone ran 71 minutes without ending.
+# It resumes from its file.
+stage_partc_tokenize() {
+  cd "$EXP48" || return 1
+  export SWEEP_GGUF_DIR="${SWEEP_GGUF_DIR:-$DATA_ROOT/benchmarks/gguf}"
   run timeout 5400 uv run --no-sync python run_timing.py --tokenize || {
     log "   token count did not finish in 90 min; Part C speeds are kept"
-    FAILED+=("partc-tokenize")
-    return 0
+    return 1
   }
   run cp -p output/token-counts.json "$OUT/partc/"
 }
@@ -175,6 +180,8 @@ stage_aggrefact() {
   cd "$REPO" || return 1
   export SWEEP_GGUF_DIR="${SWEEP_GGUF_DIR:-$DATA_ROOT/benchmarks/gguf}"
   left="$(remaining)"
+  # GNU timeout treats 0 as no limit, so a spent cap must stop the stage here.
+  [ "$left" -gt 0 ] || { log "   $strategy: time cap used up, skipped"; return 1; }
   run timeout "$left" uv run --no-sync python "$HERE/run_aggrefact.py" \
     --strategy "$strategy" --resume --out-dir "$OUT"
   local code=$?
@@ -217,6 +224,7 @@ main() {
     cat "$WORK/judges.log"
   fi
   stage partc 0 stage_partc
+  stage partc-tokenize 0 stage_partc_tokenize
   stage measure 0 stage_measure
   if done_marker judges || [ "$DRY_RUN" = 1 ]; then
     stage clef 0 stage_aggrefact clef_flash

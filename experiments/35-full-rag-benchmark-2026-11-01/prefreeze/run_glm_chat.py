@@ -217,7 +217,8 @@ def result_path(args: argparse.Namespace) -> Path:
 def score(args: argparse.Namespace) -> dict[str, Any]:
     """Score the finished result file; write ``<file>-scores.json`` atomically."""
     path = result_path(args)
-    _header, _facts, rows = aggrefact_lib.read_results(path)
+    header, _facts, rows = aggrefact_lib.read_results(path)
+    aggrefact_lib.check_complete(rows, int(header["rows_total"]))
     summary = (aggrefact_lib.leaderboard(rows) if args.set == "aggrefact"
                else exp20_summary(rows))  # fmt: skip
     target = path.with_name(path.stem + "-scores.json")

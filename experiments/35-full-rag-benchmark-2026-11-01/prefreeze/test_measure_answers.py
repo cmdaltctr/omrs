@@ -397,3 +397,12 @@ def test_live_ingest_runs_inside_the_running_event_loop() -> None:
         return measure_live.run_ingest_off_loop(part_a_ingest)
 
     assert asyncio.run(from_a_running_loop()) == [{"file": "a.pdf", "seconds": 1.0, "error": None}]
+
+
+def test_append_after_a_torn_last_line_keeps_every_later_row_readable(tmp_path: Path) -> None:
+    """A crash mid-write leaves a line with no newline; the next append must not join it."""
+    path = tmp_path / "rows.jsonl"
+    path.write_text('{"qid": "a"}\n{"qid": "b", "ans', encoding="utf-8")
+    measure_lib.append_row(path, {"qid": "b"})
+    measure_lib.append_row(path, {"qid": "c"})
+    assert [row["qid"] for row in measure_lib.read_rows(path)] == ["a", "b", "c"]
