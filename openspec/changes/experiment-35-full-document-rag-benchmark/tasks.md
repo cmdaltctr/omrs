@@ -39,7 +39,7 @@
 
 ## 4. Freeze
 
-- [ ] 4.1 Run a small smoke subset of each dataset through every arm. Do not score it as a result. Verify: every stage writes traces without error and the budget in 1.11 is not exceeded on extrapolation. Smoke run done 2026-11-11: pod run, traces in DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/prefreeze-final/smoke-out/; nothing scored. Open: task 1.11 has no budget yet, so the extrapolation check cannot pass. Tick this task after 1.11 and the check.
+- [ ] 4.1 Run a small smoke subset of each dataset through every arm. Do not score it as a result. Verify: every stage writes traces without error and the budget in 1.11 is not exceeded on extrapolation. Smoke run done 2026-11-11: pod run, traces in DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/prefreeze-final/smoke-out/; nothing scored. Open: (a) task 1.11 has no budget yet, so the extrapolation check cannot pass; (b) the FreshStack-only smoke rerun and its own-claims guard result are not done (ADR-119 A2). If the guard fails, record a new fallback decision before the freeze. Tick this task after both.
 - [ ] 4.2 Commit `protocol.md` and `plan.json`. Verify: the commit exists before the first line of `output/run-records.jsonl`.
 - [ ] 4.3 Remove DRAFT status from this change. Verify: the status line names the freeze commit.
 
@@ -55,7 +55,7 @@
 ## 6. Analyse and report
 
 - [ ] 6.1 Compute the design D6 statistics per dataset and arm, averaging 3 runs per question first. Verify: every number in the result tables comes from a named `output/` file.
-- [ ] 6.1a Test the secondary hypothesis H-CC (protocol 4.4): per-question unsupported-rate gap, Granite minus GLM-5.3, with a question-level bootstrap per dataset. Exclude the 15 smoke questions. Then the operator labels 100 disagreement claims blind, shuffled, from both directions (25 per direction from each of FreshStack and FinanceBench). A question with no claims leaves the bootstrap, and a dataset with fewer than 30 questions left is inconclusive (protocol 4.4). Verify: the gap intervals and the hand-label share come from named `output/` files, and no smoke question ID appears in the input.
+- [ ] 6.1a Test the secondary hypothesis H-CC (protocol 4.4): per-question unsupported-rate gap, Granite minus GLM-5.3, with a question-level bootstrap per dataset. Exclude the 15 smoke questions. Then the operator labels 100 disagreement claims blind, shuffled, from both directions (25 per direction from each of FreshStack and FinanceBench), at most one claim per question. A question with no claims leaves the bootstrap, and a dataset with fewer than 30 questions left is inconclusive (protocol 4.4). Verify: the gap intervals and the hand-label share come from named `output/` files, and no smoke question ID appears in the input.
 - [ ] 6.2 Write `report.md` with the Answer box, one table per dataset in the proposal layout, the determinism result, run-to-run SD, hand-check agreement and limitations. Report Experiment 22 as a reference only. Verify: `omrs experiments check` passes and every number names its source file.
 - [ ] 6.3 Update `status` and `finding` in `experiment.json`, then rebuild the index with `omrs experiments index --write`. Verify: the index row shows the new status.
 

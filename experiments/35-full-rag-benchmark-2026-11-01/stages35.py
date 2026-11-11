@@ -359,9 +359,9 @@ async def judge_stage(ctx: Ctx, name: str, judge: Any, verify: Callable[..., Any
                 if name == arms.MAIN_JUDGE:
                     # Protocol 4.4: a failed GLM-5.3 call stops the run before this answer is
                     # saved, so `--resume` retries it. No checker takes over by itself.
+                    say(f"[judge {name}] {answer['qid']}: call failed ({type(exc).__name__})")
                     raise JudgeUnavailable(
-                        f"claim judge {name} call failed, run again with --resume: "
-                        f"{_error(ctx, exc)}"
+                        f"claim judge {name} call failed, run again with --resume"
                     ) from exc
                 row["error"] = _error(ctx, exc)
         row["seconds"] = round(time.perf_counter() - started, 3)

@@ -7973,7 +7973,7 @@ components:
       properties:
         position: {type: integer, minimum: 1}
         collection: {type: string}
-        question: {type: string, minLength: 1, maxLength: 10000}
+        question: {type: string, minLength: 1, maxLength: 16384}
         answer:
           type: object
           description: The finished answer exactly as the answer route returned it.
@@ -8076,7 +8076,7 @@ components:
       required: [collection, question, answer]
       properties:
         collection: {type: string, minLength: 1, maxLength: 512}
-        question: {type: string, minLength: 1, maxLength: 10000}
+        question: {type: string, minLength: 1, maxLength: 16384}
         answer:
           type: object
           description: The finished answer. The encoded JSON may be at most 2 MiB.

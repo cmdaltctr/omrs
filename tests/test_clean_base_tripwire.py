@@ -374,7 +374,8 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # HTTP answer body limit (1, needs fastapi).
 # +1 (2026-11-11, PR 207 review): a failed GLM-5.3 call stops the judge stage
 # (test_experiment35_stages.py).
-_BASE_EXECUTED = 12581
+# +1 (2026-11-11, PR 207 review): chat turn question limit 16384 (test_web_chats.py, fastapi).
+_BASE_EXECUTED = 12582
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -747,7 +748,8 @@ if not _has_qwen_tokenizer:
 # values as ignored (test_web_judge_settings.py, fastapi).
 # +1 (2026-11-11, answer query limit 16384): HTTP answer body boundary
 # (test_web_answer_stream.py, fastapi).
-_WEB_EXTRA_CASES = 2195
+# +1 (2026-11-11, PR 207 review): chat turn question limit 16384 (test_web_chats.py).
+_WEB_EXTRA_CASES = 2196
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # test_experiment_stats_d6.py compares the copy with the s-experiment skill

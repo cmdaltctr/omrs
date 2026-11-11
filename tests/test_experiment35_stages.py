@@ -282,7 +282,7 @@ def test_a_failed_main_checker_call_stops_the_stage_and_resume_retries_that_answ
                 raise TimeoutError("z.ai timed out")
             return await super().judge(claim, evidence_texts)
 
-    with pytest.raises(JudgeUnavailable, match="TimeoutError"):
+    with pytest.raises(JudgeUnavailable, match="call failed"):
         asyncio.run(stages35.judge_stage(ctx, "chat", Failing(), verify_claims))
     assert not (run_dir / ".done-judge-chat.json").exists()
     assert "q2" not in {r["qid"] for r in _rows(run_dir / "judge-chat.jsonl")}

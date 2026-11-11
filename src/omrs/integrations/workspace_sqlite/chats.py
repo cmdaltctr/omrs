@@ -22,7 +22,7 @@ from omrs.integrations.workspace_sqlite.pipeline_sql import (
 
 MAX_TITLE = 200
 MAX_FOLDER_NAME = 100
-MAX_QUESTION = 10_000
+MAX_QUESTION = 16_384
 MAX_ANSWER_BYTES = 2 * 1024 * 1024
 
 

@@ -15,7 +15,7 @@ MAX_TITLE = 200
 #: Longest folder name, in characters.
 MAX_FOLDER_NAME = 100
 #: Longest question, in characters.
-MAX_QUESTION = 10_000
+MAX_QUESTION = 16_384
 #: Largest encoded answer, in bytes (2 MiB).
 MAX_ANSWER_BYTES = 2 * 1024 * 1024
 #: Most chats one bulk delete may name.

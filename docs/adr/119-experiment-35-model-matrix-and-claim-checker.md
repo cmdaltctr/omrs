@@ -147,8 +147,9 @@ and the report gives both results.
 
 - Granite Guardian fails it on FinanceBench and on kappa. It is also slower
   (2.3 against about 2.8 rows per second).
-- Clef-Flash passes it on BioASQ and FinanceBench (32% and 12% unsupported;
-  kappa 0.56). It fails the 2-point condition, so it does not replace GLM-5.3.
+- Clef-Flash passes it on BioASQ and FinanceBench (FinanceBench 32% against
+  GLM-5.3's 22%, a 10-point gap; BioASQ 12% against 10%, a 2-point gap; kappa
+  0.56). It fails the 2-point condition, so it does not replace GLM-5.3.
 - The guard needs a result on every dataset. The Clef-Flash pass is
   provisional until the FreshStack rerun meets the guard. The freeze records a
   pass only after that. If the rerun fails the guard, Clef-Flash is not a
