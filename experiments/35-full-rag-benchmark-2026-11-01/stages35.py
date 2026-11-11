@@ -355,7 +355,14 @@ async def judge_stage(ctx: Ctx, name: str, judge: Any, verify: Callable[..., Any
                 row["verified"], row["skipped_reason"] = outcome.verified, outcome.skipped_reason
             except JudgeUnavailable:
                 raise
-            except Exception as exc:  # noqa: BLE001 - keep the row (D8)
+            except Exception as exc:  # noqa: BLE001 - keep the row (D8), except for the main checker
+                if name == arms.MAIN_JUDGE:
+                    # Protocol 4.4: a failed GLM-5.3 call stops the run before this answer is
+                    # saved, so `--resume` retries it. No checker takes over by itself.
+                    raise JudgeUnavailable(
+                        f"claim judge {name} call failed, run again with --resume: "
+                        f"{_error(ctx, exc)}"
+                    ) from exc
                 row["error"] = _error(ctx, exc)
         row["seconds"] = round(time.perf_counter() - started, 3)
         log.append(row)

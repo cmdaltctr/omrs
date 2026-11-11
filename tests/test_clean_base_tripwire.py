@@ -372,7 +372,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +2 (2026-11-11, FreshStack gold guard): missing gold files stop the run (2 cases).
 # +3 (2026-11-11, answer query limit 16384): pasted-post queries 6185 and 13586 pass (2),
 # HTTP answer body limit (1, needs fastapi).
-_BASE_EXECUTED = 12580
+# +1 (2026-11-11, PR 207 review): a failed GLM-5.3 call stops the judge stage
+# (test_experiment35_stages.py).
+_BASE_EXECUTED = 12581
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

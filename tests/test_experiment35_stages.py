@@ -267,6 +267,33 @@ def test_a_judge_that_cannot_start_stops_the_stage_before_more_rows(tmp_path: Pa
     ).exists()
 
 
+def test_a_failed_main_checker_call_stops_the_stage_and_resume_retries_that_answer(
+    tmp_path: Path,
+) -> None:
+    ctx = _ctx(tmp_path)
+    asyncio.run(stages35.answer_stage(ctx, _answer_stub([])))
+    run_dir = ctx.layout.run_dir("bioasq", ctx.arm.name, 1)
+
+    class Failing(_Judge):
+        name = "chat"
+
+        async def judge(self, claim: str, evidence_texts: Sequence[str]) -> Judgement:
+            if "second" in claim:
+                raise TimeoutError("z.ai timed out")
+            return await super().judge(claim, evidence_texts)
+
+    with pytest.raises(JudgeUnavailable, match="TimeoutError"):
+        asyncio.run(stages35.judge_stage(ctx, "chat", Failing(), verify_claims))
+    assert not (run_dir / ".done-judge-chat.json").exists()
+    assert "q2" not in {r["qid"] for r in _rows(run_dir / "judge-chat.jsonl")}
+
+    resumed = _ctx(tmp_path, resume=True)
+    asyncio.run(stages35.judge_stage(resumed, "chat", _Judge(), verify_claims))
+    rows = {r["qid"]: r for r in _rows(run_dir / "judge-chat.jsonl")}
+    assert rows["q2"]["error"] is None
+    assert rows["q2"]["verdicts"]
+
+
 # --- determinism -------------------------------------------------------------------------
 
 

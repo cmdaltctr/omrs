@@ -1,7 +1,7 @@
 # ADR-119: Experiment 35 Model Matrix and Claim Checker
 
 - **Date:** 2026-11-10
-- **Status:** Proposed (accepted at the Experiment 35 freeze, gate G7)
+- **Status:** Proposed (accepted at the Experiment 35 freeze, gate G7). Amended 2026-11-11, see the end of this record.
 - **Deciders:** Dr Muhammad Aizat Bin Md Hawari
 - **Related:** [ADR-103](103-experiments-run-local-models-through-llama-cpp-gguf.md), change
   `experiment-35-full-document-rag-benchmark` (design D3, D4),
@@ -47,54 +47,29 @@ question wording or the GGUF conversion.
 3. **Selection rule, fixed before the main run:** the main claim checker is
    the candidate with the highest LLM-AggreFact average balanced accuracy on
    the full test split, by the leaderboard rule. A local checker replaces it
-   only if all three conditions hold:
-   - It lands within 2 points of it on both the average and RAGTruth.
-   - It judges more rows per second. The 2-point allowance exists only to
-     buy speed and cost.
-   - **Own-claims guard (amendment 2026-11-11).** On the smoke-run claims
-     (all arms, both runs), its unsupported rate is within 15 points of the
-     main checker's on every dataset, and its Cohen's kappa against the
-     main checker is 0.4 or higher. A benchmark score does not show how a
-     checker behaves on our datasets (code, financial tables), so this
-     condition checks it on our own claims.
-
-   Granite Guardian fails two conditions. It is slower (2.3 against about
-   2.8 rows per second). It also fails the guard on FinanceBench: on 143
-   smoke claims it called 70% unsupported (GLM-5.3: 22%), a 48-point gap.
-   On 278 BioASQ claims it called 23% unsupported (GLM-5.3: 10%). Its
-   kappa against GLM-5.3 on these 421 claims is 0.40. Clef-Flash passes
-   the guard (32% and 12%; kappa 0.56) but fails the 2-point condition.
-   The FreshStack smoke claims do not count: the smoke pod had no
-   FreshStack documents except the overlay runbook, so every answer said
-   the sources did not cover the question (fixed in `datasets35.py`, which
-   now stops when a gold document is missing). A FreshStack-only smoke
-   rerun checks the guard on FreshStack before the freeze. The 15-point
-   and 0.4 limits were set after we saw the smoke data. The main run
-   checks the guard again on all claims, and the report gives both.
+   only if it lands within 2 points of it on both the average and RAGTruth
+   and also judges more rows per second. Both conditions must hold. The
+   2-point allowance exists only to buy speed and cost. Granite Guardian is
+   within 2 points (1.2 and 1.9) but slower (2.3 against about 2.8 rows per
+   second), so it does not replace GLM-5.3.
 4. **Main claim checker, by that rule:** GLM-5.3 through Z.AI, strategy
    `chat`, reasoning `low` set explicitly, temperature 0, seed 20261109.
    Reasoning `low` gave recall 1.0 and false rejection 0.0 on the
    Experiment 20 set of 120 triples.
-5. **Second checker and fallback (amended 2026-11-11):** Clef-Flash 9B
-   Q8_0. It agrees best with GLM-5.3 on our own claims (kappa 0.56, 88%
-   same verdict), and its unsupported rate stays within 10 points of
-   GLM-5.3 on every dataset. If GLM-5.3 calls fail, the run stops and
-   resumes (`--resume`) when Z.AI is back; the runner never switches
-   checker by itself. If GLM-5.3 is withdrawn for good, the operator names
-   Clef-Flash main in a dated amendment. Clef-Flash has already judged
-   every claim, so nothing is re-run. The report then states its
-   LLM-AggreFact gap (67.8 and 71.9 against 76.9 and 85.1). A fix to its
-   question goes into `core/answer/judges/clef_flash.py` as a new
-   prompt-format version. It becomes main by the selection rule only after
-   such a fix (74.9 or higher and 83.1 or higher, full split).
-6. **Granite Guardian as data (amended 2026-11-11):** Granite Guardian 3.3
-   8B Q8_0 is reported beside the others. It is never fallback or main in
-   Experiment 35, because it fails the own-claims guard.
+5. **Second checker and fallback:** Granite Guardian 3.3 8B Q8_0. If
+   GLM-5.3 calls fail, the run stops and resumes (`--resume`) when Z.AI is
+   back; the runner never switches checker by itself. If GLM-5.3 is
+   withdrawn for good, the operator names Granite main in a dated amendment.
+   Granite has already judged every claim, so nothing is re-run.
+6. **Clef-Flash as data:** Clef-Flash 9B Q8_0 is reported beside the others.
+   It becomes main only by the selection rule (74.9 or higher and 83.1 or
+   higher, full split, after a fix). A fix to its question goes into
+   `core/answer/judges/clef_flash.py` as a new prompt-format version.
 7. **No sampling:** all three checkers judge every claim in every arm and
    every run, so each has equal data. If Granite's speed strains the budget,
    the freeze adds pod time or a second pod; coverage is never cut. The
-   report gives Cohen's kappa of Clef-Flash and of Granite against GLM-5.3
-   on all claims, and each checker's unsupported rate per dataset.
+   report gives Cohen's kappa of Granite and of Clef-Flash against GLM-5.3
+   on all claims.
 
 Why 2 points: the claim checker sets the faithfulness scores. Its shortfall
 against the reference checker must stay well below the protocol's minimum
@@ -124,12 +99,6 @@ accuracy beside speed and cost.
   data in training.
 - Three checkers on every claim cost more pod time than one main checker
   plus a sample. Granite is the slowest (2.3 rows per second).
-- The fallback (Clef-Flash) scores about 9 points below GLM-5.3 on
-  LLM-AggreFact. If GLM-5.3 is withdrawn, the faithfulness scores come
-  from a checker with a lower benchmark score. Its agreement on our own
-  claims is the reason it was chosen.
-- The own-claims guard limits (15 points, kappa 0.4) were set after the
-  smoke data was seen, on 15 questions and 2 runs.
 - The Ragas cross-check is the same vendor family as the main judge, so the
   hand check is the only independent check of the Ragas judge.
 
@@ -144,12 +113,93 @@ accuracy beside speed and cost.
 | Option | Rejected Because |
 |--------|-----------------|
 | Clef-Flash as main checker (archived D12) | 67.8 / 71.9 on the full split, about 9 points below GLM-5.3 |
-| Granite Guardian as main checker | 1.2 and 1.9 points below GLM-5.3, slower, and fails the own-claims guard |
-| Granite Guardian as fallback (plan of 2026-11-10) | Rejects 70% of FinanceBench smoke claims (GLM-5.3: 22%); kappa 0.40 against GLM-5.3 |
+| Granite Guardian as main checker | 1.2 and 1.9 points below GLM-5.3, and slower; kept as second checker and fallback |
 | Panel checkers on a sample of about 200 claims per arm | Unequal data between checkers; operator requires every claim |
 | 1-point bar for Clef-Flash | Equivalent leaderboard models already differ by about 1 point |
 | 3-point bar for Clef-Flash | Nears the 4-point MDE and spans a leaderboard tier (gpt-4o 75.9, gpt-4o-mini 74.0) |
 | Local Qwen3-4B answers (2026-10-27 plan) | Operator chose hosted answers on 2026-11-08 |
+
+## Amendment 2026-11-11: own-claims guard, Clef-Flash as second checker
+
+The decisions above stay as written on 2026-11-10. This amendment replaces
+decision 5, decision 6 and the Granite Guardian parts of decision 3 where it
+says so. The operator accepted it on 2026-11-11, before the freeze.
+
+**Why.** The pre-freeze smoke run (15 questions, 2 runs, all three checkers)
+showed that a benchmark score does not predict how a checker behaves on our
+datasets. On 143 FinanceBench claims Granite Guardian called 70% unsupported
+(GLM-5.3: 22%). On 278 BioASQ claims it called 23% unsupported (GLM-5.3: 10%).
+Its kappa against GLM-5.3 on these 421 claims is 0.40. The FreshStack smoke
+claims do not count: the smoke pod had no FreshStack documents except the
+overlay runbook, so every answer said the sources did not cover the question
+(`datasets35.py` now stops when a gold document is missing). A FreshStack-only
+rerun checks the guard on FreshStack before the freeze.
+
+**A1. Own-claims guard (third condition of decision 3).** A local checker
+replaces the main checker only if it also passes this guard. On the smoke-run
+claims (all arms, both runs), its unsupported rate is within 15 points of the
+main checker's on every dataset, and its Cohen's kappa against the main
+checker is 0.4 or higher. The limits (15 points, kappa 0.4) were set after
+the smoke data was seen. The main run checks the guard again on all claims,
+and the report gives both results.
+
+**A2. Result of the guard today.**
+
+- Granite Guardian fails it on FinanceBench and on kappa. It is also slower
+  (2.3 against about 2.8 rows per second).
+- Clef-Flash passes it on BioASQ and FinanceBench (32% and 12% unsupported;
+  kappa 0.56). It fails the 2-point condition, so it does not replace GLM-5.3.
+- The guard needs a result on every dataset. The Clef-Flash pass is
+  provisional until the FreshStack rerun meets the guard. The freeze records a
+  pass only after that. If the rerun fails the guard, Clef-Flash is not a
+  fallback and the freeze must record a new decision on the fallback.
+
+**A3. Second checker and fallback: Clef-Flash 9B Q8_0 (replaces decision 5).**
+It agrees best with GLM-5.3 on our own claims (kappa 0.56, 88% same verdict).
+Its unsupported rate stays within 10 points of GLM-5.3 on the two datasets
+measured. If GLM-5.3 calls fail, the run stops and resumes (`--resume`) when
+Z.AI is back. The runner never switches checker by itself.
+
+**A4. Withdrawal of GLM-5.3 for good.**
+
+- *After every arm and run has finished.* The operator names Clef-Flash main
+  in a dated amendment. Clef-Flash has already judged every claim, so nothing
+  is re-run. The report states its LLM-AggreFact gap (67.8 and 71.9 against
+  76.9 and 85.1).
+- *Before every arm and run has finished.* The operator names Clef-Flash main
+  in a dated amendment. The runner then judges the remaining arms and runs, and
+  the arm that stopped, with `--judges clef_flash,granite_guardian` (no
+  `chat`). Every arm's faithfulness is then computed from Clef-Flash, so the
+  arms stay comparable. The report lists each arm and run that has no GLM-5.3
+  verdict. Any comparison with GLM-5.3 (kappa, unsupported rate) uses only the
+  claims that both checkers judged.
+- A fix to the Clef-Flash question goes into `core/answer/judges/clef_flash.py`
+  as a new prompt-format version. It becomes main by the selection rule only
+  after such a fix (74.9 or higher and 83.1 or higher, full split).
+
+**A5. Granite Guardian as data (replaces decision 6).** It is reported beside
+the others. It is never fallback or main in Experiment 35, because it fails
+the guard.
+
+**A6. Report (adds to decision 7).** The report gives Cohen's kappa of
+Clef-Flash and of Granite against GLM-5.3 on all claims, and each checker's
+unsupported rate per dataset.
+
+**Consequences added.**
+
+- The fallback scores about 9 points below GLM-5.3 on LLM-AggreFact. If
+  GLM-5.3 is withdrawn, the faithfulness scores come from a checker with a
+  lower benchmark score. Its agreement on our own claims is the reason it was
+  chosen.
+- The guard limits were set on 15 questions and 2 runs, after the data was
+  seen.
+
+**Alternatives added.**
+
+| Option | Rejected Because |
+|--------|-----------------|
+| Granite Guardian as main checker | Also fails the own-claims guard (decision 3 rejected it on speed) |
+| Granite Guardian as fallback (plan of 2026-11-10) | Rejects 70% of FinanceBench smoke claims (GLM-5.3: 22%); kappa 0.40 against GLM-5.3 |
 
 ## References
 

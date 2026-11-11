@@ -79,7 +79,7 @@ Follow the steps in order (design D5). "Exp 35 task N" means a task in `experime
 
 ### E. Smoke run on the run machine
 
-- [x] 6.10 One arm smoke run that does archived 10.6 and Exp 35 task 4.1 together: every arm, 5 seeded questions per dataset, twice, through `clef_flash`, `granite_guardian` and `chat`. Run it on the machine that task 1.5 names. On a pod, quote the price first, and stop the pod after the smoke run (only its disk bills) until G7. Verify: zero errors, a verdict per strategy for every claim, complete call records, an identical second run, and the 1.11 budget not exceeded on extrapolation. Done 2026-11-10/11 on pod walsi2c5gfb8xc: all 6 arms, 3 datasets, 5 questions, 2 runs, all three checkers; retrieval identical in 18 of 18 pairs. Report: DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/prefreeze-report-2026-11-11.md. Pod deleted.
+- [ ] 6.10 One arm smoke run that does archived 10.6 and Exp 35 task 4.1 together: every arm, 5 seeded questions per dataset, twice, through `clef_flash`, `granite_guardian` and `chat`. Run it on the machine that task 1.5 names. On a pod, quote the price first, and stop the pod after the smoke run (only its disk bills) until G7. Verify: zero errors, a verdict per strategy for every claim, complete call records, an identical second run, and the 1.11 budget not exceeded on extrapolation. Smoke run done 2026-11-10/11 on pod walsi2c5gfb8xc: all 6 arms, 3 datasets, 5 questions, 2 runs, all three checkers; retrieval identical in 18 of 18 pairs. Report: DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/prefreeze-report-2026-11-11.md. Pod deleted. Open: Exp 35 task 1.11 has no budget yet, so the extrapolation check cannot pass. Tick this task after 1.11 and the check.
 
 ### F. Freeze
 
@@ -87,7 +87,7 @@ Follow the steps in order (design D5). "Exp 35 task N" means a task in `experime
 
 ### G. Run and report
 
-- [ ] 6.12 Exp 35 section 5 (tasks 5.1 to 5.6): every arm, 3 runs each. Restart the stopped pod from step E. Delete it when the runs and the copy are done.
+- [ ] 6.12 Exp 35 section 5 (tasks 5.1 to 5.6): every arm, 3 runs each. The step E pod was deleted, so create a new pod on the machine type that task 1.5 names, and quote the hourly price first. Restore the models, corpora and pod scripts from `DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/` and check each file against its `SHA256SUMS` before the first arm. Delete the pod when the runs and the copy are done.
 - [ ] 6.13 Exp 35 section 6 (tasks 6.1 to 6.3): statistics, `report.md`, `experiment.json` status.
 - [ ] 6.14 Exp 35 section 7 (tasks 7.1 to 7.5): split, copy to `DATA/omrs/`, Zenodo, identifier search. Merge and archive Exp 35 on the operator's word.
 
