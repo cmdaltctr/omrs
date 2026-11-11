@@ -98,6 +98,19 @@ def test_a_corpus_sample_keeps_every_gold_document_plus_seeded_others(
     assert len(parents - gold) == 1
 
 
+@pytest.mark.parametrize("sample", [1, None])
+def test_freshstack_stops_when_gold_documents_are_missing_on_disk(
+    root: Path, tmp_path: Path, sample: int | None
+) -> None:
+    # Pre-freeze smoke, 2026-11-10: the pod had the manifest but no LangChain .md
+    # files, so each index held only the overlay runbook and FreshStack scored 0.
+    for path in (root / "experiments" / "freshstack-corpus" / "langchain").glob("*.md"):
+        path.unlink()
+    questions = datasets35.select(datasets35.load_questions("freshstack", root), None, seed=1)
+    with pytest.raises(datasets35.DatasetError, match="gold documents are missing"):
+        datasets35.corpus_files("freshstack", root, questions, sample, tmp_path / "work")
+
+
 def test_freshstack_full_corpus_adds_the_overlay_runbook(root: Path, tmp_path: Path) -> None:
     files = datasets35.corpus_files("freshstack", root, [], None, tmp_path / "work")
     assert len(files) == 9
