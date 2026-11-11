@@ -138,7 +138,7 @@ def test_turn_limits(chats: SqliteChatRepository) -> None:
     with pytest.raises(ValueError):
         chats.append_turn(chat_id, "docs", "", ANSWER)
     with pytest.raises(ValueError):
-        chats.append_turn(chat_id, "docs", "q" * 10_001, ANSWER)
+        chats.append_turn(chat_id, "docs", "q" * 16_385, ANSWER)
     with pytest.raises(ValueError):
         chats.append_turn(chat_id, "docs", "q", {"answer": "x" * (2 * 1024 * 1024)})
 
