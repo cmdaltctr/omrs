@@ -281,7 +281,9 @@ def resolved_conflicts(settings: Any, values: Mapping[str, Any]) -> list[str]:
     """
     found: list[str] = []
     for key, want in values.items():
-        if key == "llamacpp_models":
+        # A key field holds a reference (``env://``, ``file://``) that OMRS resolves to the
+        # secret itself, so a comparison means nothing and its message would print the key.
+        if key == "llamacpp_models" or key.endswith("_api_key"):
             continue
         pairs = (
             [
