@@ -12,6 +12,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from omrs.core.answer import answer
 from omrs.core.ingestion import ingest_path_async
 from omrs.core.retrieval import search
@@ -440,17 +442,28 @@ def test_max_rounds_is_bounded_in_both_settings_models() -> None:
 
 
 async def test_query_length_boundary_passes_and_one_over_fails() -> None:
-    """A 4096-character query passes; 4097 is a structured error."""
+    """A 16384-character query passes; 16385 is a structured error."""
     seam = RecordingSeam("unused [1].")
     kwargs = _answer_kwargs(collection_name="never_ingested_collection")
 
-    ok = await answer("q" * 4096, complete=seam, **kwargs)
+    ok = await answer("q" * 16384, complete=seam, **kwargs)
     assert ok["status"] == "no_evidence"
 
-    too_long = await answer("q" * 4097, complete=seam, **kwargs)
+    too_long = await answer("q" * 16385, complete=seam, **kwargs)
     assert too_long["status"] == "error"
-    assert "4096" in (too_long["error"] or "")
+    assert "16384" in (too_long["error"] or "")
     assert seam.prompts == []
+
+
+@pytest.mark.parametrize("length", [6185, 13586])
+async def test_pasted_post_length_query_is_accepted(length: int) -> None:
+    """Experiment 35 questions are pasted Stack Overflow posts (up to 13,586 characters)."""
+    seam = RecordingSeam("unused [1].")
+    kwargs = _answer_kwargs(collection_name="never_ingested_collection")
+
+    result = await answer("q" * length, complete=seam, **kwargs)
+
+    assert result["status"] == "no_evidence"
 
 
 async def test_top_k_boundary_passes_and_one_over_fails() -> None:

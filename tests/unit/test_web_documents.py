@@ -271,7 +271,7 @@ def test_answer_forwards_controls_and_validates_bounds(
         login(client, policy)
         ok = client.post(ANSWER, json={"query": "q", "top_k": 4}, headers=ORIGIN)
         too_wide = client.post(ANSWER, json={"query": "q", "expand_window": 11}, headers=ORIGIN)
-        too_long = client.post(ANSWER, json={"query": "x" * 4097}, headers=ORIGIN)
+        too_long = client.post(ANSWER, json={"query": "x" * 16385}, headers=ORIGIN)
     assert ok.status_code == 200
     ((name, args, kwargs),) = engine.calls
     assert (name, args, kwargs["collection_name"], kwargs["top_k"]) == (

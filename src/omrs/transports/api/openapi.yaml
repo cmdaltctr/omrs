@@ -7090,7 +7090,7 @@ components:
       properties:
         query:
           type: string
-          maxLength: 4096
+          maxLength: 16384
           description: Natural language question to answer.
         top_k:
           type:

@@ -258,11 +258,11 @@ def test_answer_query_length_limit(effective_settings) -> None:
     answer = Factory(FakeLLM())
     engine = build_engine(effective_settings(), store, answer_llm_factory=answer)
     with pytest.raises(PipelineValidationError) as caught:
-        asyncio.run(engine.run_pipeline(answer_graph(), inputs={"query": "x" * 4097}))
+        asyncio.run(engine.run_pipeline(answer_graph(), inputs={"query": "x" * 16385}))
     assert caught.value.codes == ("invalid_parameter",)
-    assert "4096" in caught.value.issues[0].message
+    assert "16384" in caught.value.issues[0].message
     assert store.counted == [] and answer.calls == 0
-    engine.validate_pipeline(answer_graph(), inputs={"query": "x" * 4096})
+    engine.validate_pipeline(answer_graph(), inputs={"query": "x" * 16384})
 
 
 def test_answer_top_k_limit_on_node_and_graph_override(effective_settings) -> None:

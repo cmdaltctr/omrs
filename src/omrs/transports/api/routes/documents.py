@@ -48,7 +48,7 @@ class AnswerBody(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    query: str = Field(max_length=4096)
+    query: str = Field(max_length=16384)
     top_k: int | None = Field(default=None, ge=1, le=100)
     similarity_threshold: float | None = Field(default=None, ge=0.0, le=1.0)
     rerank: bool | None = None

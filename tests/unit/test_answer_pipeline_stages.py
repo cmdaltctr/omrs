@@ -146,7 +146,7 @@ async def test_master_switch_off_reports_nothing(effective_settings: Any) -> Non
 
 async def test_request_over_limit_reports_nothing(effective_settings: Any) -> None:
     result, seen = await _run(
-        effective_settings(), query="x" * 4097, complete=_Seam(_GROUNDED_ANSWER)
+        effective_settings(), query="x" * 16385, complete=_Seam(_GROUNDED_ANSWER)
     )
     assert result["status"] == "error", result
     assert seen == []
