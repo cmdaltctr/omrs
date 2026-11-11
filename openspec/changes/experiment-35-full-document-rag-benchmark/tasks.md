@@ -55,6 +55,7 @@
 ## 6. Analyse and report
 
 - [ ] 6.1 Compute the design D6 statistics per dataset and arm, averaging 3 runs per question first. Verify: every number in the result tables comes from a named `output/` file.
+- [ ] 6.1a Test the secondary hypothesis H-CC (protocol 4.4): per-question unsupported-rate gap, Granite minus GLM-5.3, with a question-level bootstrap per dataset. Exclude the 15 smoke questions. Then the operator labels 40 disagreement claims blind. Verify: the gap intervals and the hand-label share come from named `output/` files, and no smoke question ID appears in the input.
 - [ ] 6.2 Write `report.md` with the Answer box, one table per dataset in the proposal layout, the determinism result, run-to-run SD, hand-check agreement and limitations. Report Experiment 22 as a reference only. Verify: `omrs experiments check` passes and every number names its source file.
 - [ ] 6.3 Update `status` and `finding` in `experiment.json`, then rebuild the index with `omrs experiments index --write`. Verify: the index row shows the new status.
 
