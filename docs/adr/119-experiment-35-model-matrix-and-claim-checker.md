@@ -59,13 +59,18 @@ question wording or the GGUF conversion.
      condition checks it on our own claims.
 
    Granite Guardian fails two conditions. It is slower (2.3 against about
-   2.8 rows per second). It also fails the guard: on 513 smoke claims it
-   called 94% of FreshStack claims unsupported (GLM-5.3: 26%), 69% of
-   FinanceBench claims (GLM-5.3: 22%) and 23% of BioASQ claims (GLM-5.3:
-   9%), with kappa 0.33 against GLM-5.3. Clef-Flash passes the guard (gaps
-   2, 10 and 10 points; kappa 0.56) but fails the 2-point condition. The
-   15-point and 0.4 limits were set after we saw the smoke data. The main
-   run checks the guard again on all claims, and the report gives both.
+   2.8 rows per second). It also fails the guard on FinanceBench: on 143
+   smoke claims it called 70% unsupported (GLM-5.3: 22%), a 48-point gap.
+   On 278 BioASQ claims it called 23% unsupported (GLM-5.3: 10%). Its
+   kappa against GLM-5.3 on these 421 claims is 0.40. Clef-Flash passes
+   the guard (32% and 12%; kappa 0.56) but fails the 2-point condition.
+   The FreshStack smoke claims do not count: the smoke pod had no
+   FreshStack documents except the overlay runbook, so every answer said
+   the sources did not cover the question (fixed in `datasets35.py`, which
+   now stops when a gold document is missing). A FreshStack-only smoke
+   rerun checks the guard on FreshStack before the freeze. The 15-point
+   and 0.4 limits were set after we saw the smoke data. The main run
+   checks the guard again on all claims, and the report gives both.
 4. **Main claim checker, by that rule:** GLM-5.3 through Z.AI, strategy
    `chat`, reasoning `low` set explicitly, temperature 0, seed 20261109.
    Reasoning `low` gave recall 1.0 and false rejection 0.0 on the
@@ -140,7 +145,7 @@ accuracy beside speed and cost.
 |--------|-----------------|
 | Clef-Flash as main checker (archived D12) | 67.8 / 71.9 on the full split, about 9 points below GLM-5.3 |
 | Granite Guardian as main checker | 1.2 and 1.9 points below GLM-5.3, slower, and fails the own-claims guard |
-| Granite Guardian as fallback (plan of 2026-11-10) | Rejects 94% of FreshStack and 69% of FinanceBench smoke claims; kappa 0.33 against GLM-5.3 |
+| Granite Guardian as fallback (plan of 2026-11-10) | Rejects 70% of FinanceBench smoke claims (GLM-5.3: 22%); kappa 0.40 against GLM-5.3 |
 | Panel checkers on a sample of about 200 claims per arm | Unequal data between checkers; operator requires every claim |
 | 1-point bar for Clef-Flash | Equivalent leaderboard models already differ by about 1 point |
 | 3-point bar for Clef-Flash | Nears the 4-point MDE and spans a leaderboard tier (gpt-4o 75.9, gpt-4o-mini 74.0) |
