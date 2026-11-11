@@ -32,3 +32,10 @@ def test_judge_preset_fits_a_whole_input_in_one_batch() -> None:
     args = ra.SERVER_ARGS
     assert args["ubatch-size"] >= args["ctx-size"]
     assert args["batch-size"] >= args["ubatch-size"]
+
+
+def test_judge_download_starts_after_setup_builds_the_environment() -> None:
+    """fetch_judges uses `uv run --no-sync` in the repo, so it needs the venv that
+    stage_setup builds; started earlier it failed on a fresh pod (2026-11-10)."""
+    body = SCRIPT[SCRIPT.index("main() {") :]
+    assert body.index("stage setup 1 stage_setup") < body.index("fetch_judges && mark judges")

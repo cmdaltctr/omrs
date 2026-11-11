@@ -171,16 +171,24 @@ async def run_concurrent(
 
 
 def exp20_summary(rows: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
-    """Return unsupported recall and false rejection of an Experiment 20 run."""
-    unsupported = [r for r in rows if r["label"] == 0]
-    supported = [r for r in rows if r["label"] == 1]
+    """Return unsupported recall and false rejection of an Experiment 20 run.
+
+    A failed row has no verdict: it counts in ``errors`` only, never as caught or
+    rejected, and any failed row blocks ``keep_low``.
+    """
+    judged = [r for r in rows if not r["error"]]
+    unsupported = [r for r in judged if r["label"] == 0]
+    supported = [r for r in judged if r["label"] == 1]
     caught = sum(not aggrefact_lib.predicted_supported(r["verdict"]) for r in unsupported)
     rejected = sum(not aggrefact_lib.predicted_supported(r["verdict"]) for r in supported)
     recall = caught / len(unsupported) if unsupported else None
     false_rejection = rejected / len(supported) if supported else None
-    keep_low = recall is not None and recall >= 0.95 and (false_rejection or 0) <= 0.05
+    errors = len(rows) - len(judged)
+    keep_low = (
+        errors == 0 and recall is not None and recall >= 0.95 and (false_rejection or 0) <= 0.05
+    )
     return {"n": len(rows), "unsupported_recall": recall, "false_rejection": false_rejection,
-            "errors": sum(1 for r in rows if r["error"]), "keep_low": keep_low}  # fmt: skip
+            "errors": errors, "keep_low": keep_low}  # fmt: skip
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:

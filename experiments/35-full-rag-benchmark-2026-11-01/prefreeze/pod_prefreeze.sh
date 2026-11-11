@@ -204,12 +204,12 @@ main() {
   need COMMIT INPUTS_DIR OPENROUTER_API_KEY ANSWER_HOST JUDGE_HOST
   mkdir -p "$DONE" "$OUT"
   log "pre-freeze chain: cap ${TIME_CAP_H} h, work $WORK, dry-run $DRY_RUN"
-  # The two judge downloads run beside the setup, which is network bound too.
+  stage setup 1 stage_setup
+  # The judge downloads use the repo venv that setup builds, then run beside the data stage.
   if ! done_marker judges; then
     (fetch_judges && mark judges) >"$WORK/judges.log" 2>&1 &
     JUDGES_PID=$!
   fi
-  stage setup 1 stage_setup
   stage data 1 stage_data
   if [ -n "${JUDGES_PID:-}" ]; then
     log "waiting for the judge downloads"

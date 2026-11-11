@@ -80,3 +80,17 @@ def test_resume_judges_only_missing_rows(tmp_path: Path, triples: Path) -> None:
 def test_existing_file_without_resume_is_refused(tmp_path: Path, triples: Path) -> None:
     assert run(tmp_path) == 0
     assert run(tmp_path) == 2
+
+
+def test_failed_rows_never_count_as_caught_or_rejected() -> None:
+    rows = [
+        {"label": 0, "verdict": "unsupported", "error": None},
+        {"label": 0, "verdict": None, "error": "timeout"},
+        {"label": 1, "verdict": "supported", "error": None},
+        {"label": 1, "verdict": None, "error": "timeout"},
+    ]
+    summary = glm.exp20_summary(rows)
+    assert summary["unsupported_recall"] == 1.0
+    assert summary["false_rejection"] == 0.0
+    assert summary["errors"] == 2
+    assert summary["keep_low"] is False
