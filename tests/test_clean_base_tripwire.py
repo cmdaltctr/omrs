@@ -375,7 +375,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +1 (2026-11-11, PR 207 review): a failed GLM-5.3 call stops the judge stage
 # (test_experiment35_stages.py).
 # +1 (2026-11-11, PR 207 review): chat turn question limit 16384 (test_web_chats.py, fastapi).
-_BASE_EXECUTED = 12582
+# +3 (2026-11-11, PR 207): long question plus long draft fits a synthesis round
+# (test_synthesis_long_query.py).
+_BASE_EXECUTED = 12585
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

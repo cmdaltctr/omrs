@@ -1,7 +1,7 @@
 # ADR-119: Experiment 35 Model Matrix and Claim Checker
 
 - **Date:** 2026-11-10
-- **Status:** Proposed (accepted at the Experiment 35 freeze, gate G7). Amended 2026-11-11, see the end of this record.
+- **Status:** Proposed (accepted at the Experiment 35 freeze, gate G7). Amended 2026-11-11 twice (A1 to A6, then A7), see the end of this record.
 - **Deciders:** Dr Muhammad Aizat Bin Md Hawari
 - **Related:** [ADR-103](103-experiments-run-local-models-through-llama-cpp-gguf.md), change
   `experiment-35-full-document-rag-benchmark` (design D3, D4),
@@ -201,6 +201,36 @@ unsupported rate per dataset.
 |--------|-----------------|
 | Granite Guardian as main checker | Also fails the own-claims guard (decision 3 rejected it on speed) |
 | Granite Guardian as fallback (plan of 2026-11-10) | Rejects 70% of FinanceBench smoke claims (GLM-5.3: 22%); kappa 0.40 against GLM-5.3 |
+
+## Amendment 2026-11-11 (later): FreshStack rerun result
+
+This amendment completes A2. The text above stays as written.
+
+**A7. Guard result on FreshStack.** A FreshStack-only smoke rerun ran on
+2026-11-11 (pod `2elh5ji2og6d74`, commit `215835e2`). Each arm index held
+66 FreshStack files. It used 5 questions, 6 arms and 2 runs. All three
+checkers judged 383 claims (363 content claims, 20 abstentions).
+
+| Claims | n | GLM-5.3 | Clef-Flash | Granite | Clef-Flash gap, kappa | Granite gap, kappa |
+|--------|--:|--------:|-----------:|--------:|-----------------------|--------------------|
+| All | 383 | 39.4% | 34.7% | 58.7% | -4.7 points, 0.62 | +19.3 points, 0.52 |
+| Content only | 363 | 40.8% | 35.5% | 57.0% | -5.2 points, 0.62 | +16.3 points, 0.56 |
+
+- Clef-Flash passes the guard on FreshStack. It now passes on all three
+  datasets, so the pass in A2 is no longer provisional. Clef-Flash is the
+  second checker and fallback (A3).
+- Granite Guardian fails the guard on FreshStack too (gap above 15 points).
+  A5 stays as written.
+- The guard values are point estimates on 5 questions. Claims from one
+  question repeat across arms and runs, so they are not independent. The
+  main run checks the guard again on all claims (A1).
+- One question (`77536364`) failed in 5 of 12 arm-runs. The answer step
+  gave the question and the draft answer no room in a refine round. The
+  fix is in `core/answer/synthesis.py` (PR #207). It does not change the
+  evidence that each round receives.
+
+Data: `DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/fs-rerun/`
+(`fs_analyse.py`, `results/`).
 
 ## References
 

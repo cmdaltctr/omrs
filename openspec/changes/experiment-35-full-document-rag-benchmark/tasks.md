@@ -39,7 +39,7 @@
 
 ## 4. Freeze
 
-- [ ] 4.1 Run a small smoke subset of each dataset through every arm. Do not score it as a result. Verify: every stage writes traces without error and the budget in 1.11 is not exceeded on extrapolation. Smoke run done 2026-11-11: pod run, traces in DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/prefreeze-final/smoke-out/; nothing scored. Open: (a) task 1.11 has no budget yet, so the extrapolation check cannot pass; (b) the FreshStack-only smoke rerun and its own-claims guard result are not done (ADR-119 A2). If the guard fails, record a new fallback decision before the freeze. Tick this task after both.
+- [ ] 4.1 Run a small smoke subset of each dataset through every arm. Do not score it as a result. Verify: every stage writes traces without error and the budget in 1.11 is not exceeded on extrapolation. Smoke run done 2026-11-11: pod run, traces in DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/prefreeze-final/smoke-out/; nothing scored. Open: (a) task 1.11 has no budget yet, so the extrapolation check cannot pass; (b) done 2026-11-11: the FreshStack-only smoke rerun passed the guard for Clef-Flash (ADR-119 A7, data in fs-rerun/). Its two harness errors are fixed: question 77762811 (query limit, `32c42c16`) and question 77536364 (no room for question and draft in a refine round, `core/answer/synthesis.py`, PR #207). Tick this task after (a).
 - [ ] 4.2 Commit `protocol.md` and `plan.json`. Verify: the commit exists before the first line of `output/run-records.jsonl`.
 - [ ] 4.3 Remove DRAFT status from this change. Verify: the status line names the freeze commit.
 
