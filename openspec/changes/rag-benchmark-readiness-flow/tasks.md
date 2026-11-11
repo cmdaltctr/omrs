@@ -62,24 +62,24 @@ Follow the steps in order (design D5). "Exp 35 task N" means a task in `experime
 ### B. Pre-freeze pod session (archived group 10, design D13 of that change)
 
 - [x] 6.2 GATE G7a: archived 10.1. Load the `runpod` skills, do the live price and stock read, check the keys and the LLM-AggreFact terms, quote the hourly price, and wait for the operator's go. Done 2026-11-10: operator said go; secure RTX 4090 walsi2c5gfb8xc at $0.89/h, created 14:56 UTC.
-- [ ] 6.3 Archived 10.2 and 10.3: one chained pod-side script (Part C timing on the three corpora, the 20-answer measurement, the full LLM-AggreFact split on Clef-Flash and then Granite Guardian). Copy the outputs back, check the copy, and delete the pod at once. Do not end a turn while the pod runs. Status 2026-11-10 22:00 UTC: Part C and both AggreFact runs done and copied back (prefreeze-pod/, SHA256SUMS); 20-answer measure still queued. Operator overrides "delete the pod": keep it, never idle (operator, 2026-11-10).
+- [x] 6.3 Archived 10.2 and 10.3: one chained pod-side script (Part C timing on the three corpora, the 20-answer measurement, the full LLM-AggreFact split on Clef-Flash and then Granite Guardian). Copy the outputs back, check the copy, and delete the pod at once. Do not end a turn while the pod runs. Status 2026-11-10 22:00 UTC: Part C and both AggreFact runs done and copied back (prefreeze-pod/, SHA256SUMS); 20-answer measure still queued. Operator overrides "delete the pod": keep it, never idle (operator, 2026-11-10). Done 2026-11-11: all pod stages ran; outputs copied with SHA-256; pod deleted 00:51 UTC (operator kept it alive until then, then asked for deletion).
 - [x] 6.4 Archived 10.4, from the Mac while the pod runs: GLM-5.3 on the full split (about $11) and the 120 Experiment 20 triples at reasoning `low`. Done 2026-11-10: GLM-5.3 76.9/85.1 on 29,320 rows (Z.AI Coding Plan); 120 triples at `low` recall 1.0, false rejection 0.0. Outputs in DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/prefreeze-glm/.
 - [x] 6.5 Archived 10.5: score by leaderboard rules and apply the pass rule. If a model misses it, stop and report to the operator (D10 fallback of that change for Clef-Flash). Done 2026-11-10: GLM-5.3 76.9/85.1, Granite 75.7/83.2 (reproduced), Clef-Flash 67.8/71.9 (not reproduced); operator chose GLM-5.3 main, Granite second and fallback, Clef-Flash as data, no sampling (judgement items 40, 44-47; ADR-119).
 
 ### C. Mac, free: finish the inputs
 
 - [ ] 6.6 Exp 35 tasks 1.4, 1.5, 1.9, 1.10 and 1.11. Use the step B timings for 1.4 and 1.5. Task 1.5 names the run machine.
-- [ ] 6.7 Update `experiment-35-full-document-rag-benchmark` with `openspec-update-change`: the router, Qwen3-Embedding-4B, the sweep's findings, and the step B numbers (measured scores, fixed threshold, agreement margin, pinned hosts).
+- [x] 6.7 Update `experiment-35-full-document-rag-benchmark` with `openspec-update-change`: the router, Qwen3-Embedding-4B, the sweep's findings, and the step B numbers (measured scores, fixed threshold, agreement margin, pinned hosts). Done 2026-11-10: design D3, D4, D7, protocol 4.4 and 4.5, ADR-119 (PR #205).
   - Note (2026-11-08, from `pre-exp35-harness-and-answer-fixes`): also carry into the 35a plan the RunPod machine recommendation (that change's design D9: RTX 4090 secure, re-read price and stock at create time; corrects protocol section 7's 6 vCPU and 41 GB), the model matrix (design D12, including the answer model in `protocol.md:35`), and the one pre-freeze pod session (design D13, which holds the D6 timing step: Part C speeds and full-corpus token counts). Pin the commit of `experiments/_lib/` that 35a uses.
 
 ### D. Harness code
 
-- [ ] 6.8 Exp 35 section 2 (tasks 2.1 to 2.10) in its own worktree, tests first, `./scripts/local_ci.sh`, PR into `v3`, CI and CodeRabbit. GATE G7b: the operator says merge.
+- [x] 6.8 Exp 35 section 2 (tasks 2.1 to 2.10) in its own worktree, tests first, `./scripts/local_ci.sh`, PR into `v3`, CI and CodeRabbit. GATE G7b: the operator says merge. Done 2026-11-11: PR #205 merged into v3 (3b0f3026) on the operator's instruction; pod scripts in PR #206 (e2b997ac).
 - [ ] 6.9 Exp 35 task 3.4: the shareable example set. Verify: the release check from task 2.10 passes on it.
 
 ### E. Smoke run on the run machine
 
-- [ ] 6.10 One arm smoke run that does archived 10.6 and Exp 35 task 4.1 together: every arm, 5 seeded questions per dataset, twice, through `clef_flash`, `granite_guardian` and `chat`. Run it on the machine that task 1.5 names. On a pod, quote the price first, and stop the pod after the smoke run (only its disk bills) until G7. Verify: zero errors, a verdict per strategy for every claim, complete call records, an identical second run, and the 1.11 budget not exceeded on extrapolation.
+- [x] 6.10 One arm smoke run that does archived 10.6 and Exp 35 task 4.1 together: every arm, 5 seeded questions per dataset, twice, through `clef_flash`, `granite_guardian` and `chat`. Run it on the machine that task 1.5 names. On a pod, quote the price first, and stop the pod after the smoke run (only its disk bills) until G7. Verify: zero errors, a verdict per strategy for every claim, complete call records, an identical second run, and the 1.11 budget not exceeded on extrapolation. Done 2026-11-10/11 on pod walsi2c5gfb8xc: all 6 arms, 3 datasets, 5 questions, 2 runs, all three checkers; retrieval identical in 18 of 18 pairs. Report: DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/prefreeze-report-2026-11-11.md. Pod deleted.
 
 ### F. Freeze
 

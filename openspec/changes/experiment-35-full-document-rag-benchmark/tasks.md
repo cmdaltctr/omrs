@@ -39,7 +39,7 @@
 
 ## 4. Freeze
 
-- [ ] 4.1 Run a small smoke subset of each dataset through every arm. Do not score it as a result. Verify: every stage writes traces without error and the budget in 1.11 is not exceeded on extrapolation.
+- [x] 4.1 Run a small smoke subset of each dataset through every arm. Do not score it as a result. Verify: every stage writes traces without error and the budget in 1.11 is not exceeded on extrapolation. Done 2026-11-11: smoke run on the pod, traces in DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/prefreeze-final/smoke-out/; nothing scored.
 - [ ] 4.2 Commit `protocol.md` and `plan.json`. Verify: the commit exists before the first line of `output/run-records.jsonl`.
 - [ ] 4.3 Remove DRAFT status from this change. Verify: the status line names the freeze commit.
 
