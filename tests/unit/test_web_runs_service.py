@@ -140,14 +140,18 @@ def test_jobs_and_graph_runs_share_one_bounded_queue(tmp_path: Path, engine: Any
     app, policy = build_app(tmp_path, engine, roots=(root,))
     with TestClient(app, base_url=BASE) as client:
         login(client, policy)
-        gate = engine.hold()
-        revision = save_revision(client)
-        submit(client, revision["revision_id"])
-        assert engine.started.wait(5)
-        for _ in range(16):
-            assert submit(client, revision["revision_id"]).status_code == 202
-        job = client.post("/v1/ingestions", json={"path": str(root)}, headers=ORIGIN)
-        gate.set()
+        # A slow runner can take over 10 s for the 16 submits; a held run that
+        # gave up then freed a queue slot and the job got 202 instead of 429.
+        gate = engine.hold(seconds=120)
+        try:
+            revision = save_revision(client)
+            submit(client, revision["revision_id"])
+            assert engine.started.wait(5)
+            for _ in range(16):
+                assert submit(client, revision["revision_id"]).status_code == 202
+            job = client.post("/v1/ingestions", json={"path": str(root)}, headers=ORIGIN)
+        finally:
+            gate.set()
     assert job.status_code == 429
     assert job.json()["status"] == "error"
 
