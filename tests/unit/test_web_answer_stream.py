@@ -144,7 +144,7 @@ def test_bad_body_gets_the_blocking_error_and_no_stream(
     app, policy = build_app(tmp_path, engine)
     with TestClient(app, base_url=BASE) as client:
         login(client, policy)
-        for body in ({"query": "q", "bogus": 1}, {"query": "x" * 4097}):
+        for body in ({"query": "q", "bogus": 1}, {"query": "x" * 16385}):
             blocking = client.post(ANSWER, json=body, headers=ORIGIN)
             streamed = client.post(STREAM, json=body, headers=ORIGIN)
             assert streamed.status_code == blocking.status_code == 400
@@ -241,3 +241,12 @@ def test_text_passed_as_a_stage_never_reaches_a_frame(tmp_path: Path, engine: St
     assert "the question text" not in response.text
     stages = [data["stage"] for event, _, data in split_frames(response.text) if event == "stage"]
     assert stages == ["searching", "writing"]
+
+
+def test_answer_body_query_limit_matches_the_core_limit() -> None:
+    """The HTTP body accepts 16384 characters and refuses one more."""
+    from omrs.transports.api.routes.documents import AnswerBody
+
+    assert len(AnswerBody(query="q" * 16384).query) == 16384
+    with pytest.raises(ValueError, match="at most 16384"):
+        AnswerBody(query="q" * 16385)

@@ -369,7 +369,15 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +3 (2026-11-10, reranker ONNX thread cap): test_reranker_thread_cap.py.
 # +1 (2026-11-10, PR 205 review): a corpus sample without --limit is a smoke run.
 # +1 (2026-11-10, smoke run): determinism exit fails only on retrieval.
-_BASE_EXECUTED = 12575
+# +2 (2026-11-11, FreshStack gold guard): missing gold files stop the run (2 cases).
+# +3 (2026-11-11, answer query limit 16384): pasted-post queries 6185 and 13586 pass (2),
+# HTTP answer body limit (1, needs fastapi).
+# +1 (2026-11-11, PR 207 review): a failed GLM-5.3 call stops the judge stage
+# (test_experiment35_stages.py).
+# +1 (2026-11-11, PR 207 review): chat turn question limit 16384 (test_web_chats.py, fastapi).
+# +3 (2026-11-11, PR 207): long question plus long draft fits a synthesis round
+# (test_synthesis_long_query.py).
+_BASE_EXECUTED = 12585
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -740,7 +748,10 @@ if not _has_qwen_tokenizer:
 # +1 (2026-11-09, same change, review fix): router status during start (fastapi).
 # +1 (2026-11-09, post-merge review fixes): clef_flash reports judge sampling
 # values as ignored (test_web_judge_settings.py, fastapi).
-_WEB_EXTRA_CASES = 2194
+# +1 (2026-11-11, answer query limit 16384): HTTP answer body boundary
+# (test_web_answer_stream.py, fastapi).
+# +1 (2026-11-11, PR 207 review): chat turn question limit 16384 (test_web_chats.py).
+_WEB_EXTRA_CASES = 2196
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # test_experiment_stats_d6.py compares the copy with the s-experiment skill

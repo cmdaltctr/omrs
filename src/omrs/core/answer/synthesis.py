@@ -56,6 +56,14 @@ _TEMPLATE_SLACK = 1536
 #: the ceiling is dropped lowest-ranked-first and marked in the prompt.
 _PROMPT_CHAR_CEILING = 262_144
 
+#: Room (characters) for the question and the draft answer in one round,
+#: on top of the evidence budget and the template slack.  A refine round
+#: carries both, so without this room a long question plus a long draft
+#: made the prompt helper's evidence room negative and the answer failed
+#: (Experiment 35, FreshStack question 77536364).  The evidence per round
+#: stays capped by ``chunk_size_limit``, so this room never adds evidence.
+_QUERY_AND_DRAFT_ROOM = _PROMPT_CHAR_CEILING
+
 #: Inline observability marker appended to the prompt when evidence was
 #: dropped or trimmed to respect ``_PROMPT_CHAR_CEILING``.  Diagnostics
 #: plumbing is owned elsewhere, so the marker lives in the prompt text.
@@ -310,8 +318,9 @@ def build_synthesiser(
     per_round_budget = _widen_for_round_bound(
         total_context_chars, context_window, max_output_tokens, max_rounds
     )
+    window = per_round_budget + max_output_tokens + _TEMPLATE_SLACK + _QUERY_AND_DRAFT_ROOM
     adapter = SeamLLM(
-        context_window=per_round_budget + max_output_tokens + _TEMPLATE_SLACK,
+        context_window=window,
         num_output=max_output_tokens,
         model_name="answer-seam",
         max_rounds=max_rounds,
@@ -320,7 +329,7 @@ def build_synthesiser(
         last_reply="",
     )
     helper = PromptHelper(
-        context_window=per_round_budget + max_output_tokens + _TEMPLATE_SLACK,
+        context_window=window,
         num_output=max_output_tokens,
         chunk_size_limit=per_round_budget,
         tokenizer=_char_tokenizer,

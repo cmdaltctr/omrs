@@ -72,6 +72,15 @@ def test_answer_over_two_mib_is_413(web: Any) -> None:
     assert _turn(client, chat_id, {"answer": "x" * (2 * 1024 * 1024)}).status_code == 413
 
 
+def test_a_question_up_to_the_answer_limit_is_saved_in_a_turn(web: Any) -> None:
+    client = web[0]
+    chat_id = _chat(client)
+    body = {"collection": "docs", "question": "q" * 16384, "answer": ANSWER}
+    assert client.post(f"/v1/chats/{chat_id}/turns", json=body, headers=ORIGIN).status_code == 201
+    body["question"] = "q" * 16385
+    assert client.post(f"/v1/chats/{chat_id}/turns", json=body, headers=ORIGIN).status_code == 400
+
+
 def test_folder_move_rename_and_delete_counts(web: Any) -> None:
     client = web[0]
     folder = client.post("/v1/chat-folders", json={"name": "Work"}, headers=ORIGIN).json()

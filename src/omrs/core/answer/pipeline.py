@@ -55,9 +55,9 @@ __all__ = ["ResolvedRetrieval", "answer", "disabled_result", "evidence_rows", "l
 
 #: Hard input limits enforced at the core entry so every transport
 #: (MCP, CLI, HTTP) inherits them (review F7).  Frozen for the OpenAPI
-#: mirror: query <= 4096 characters, top_k in 1..100, expand_window in
+#: mirror: query <= 16384 characters, top_k in 1..100, expand_window in
 #: 0..10.
-_QUERY_MAX_CHARS = 4096
+_QUERY_MAX_CHARS = 16384
 _TOP_K_MAX = 100
 _EXPAND_WINDOW_MAX = 10
 

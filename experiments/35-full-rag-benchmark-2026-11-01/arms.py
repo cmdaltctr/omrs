@@ -45,6 +45,8 @@ TOKENIZER_REVISION = "5cf2132abc99cad020ac570b19d031efec650f2b"  # gitleaks:allo
 ROUTER_MODELS_MAX = 1
 
 JUDGE_NAMES = ("clef_flash", "granite_guardian", "chat")
+#: The main claim checker (GLM-5.3). A failed call stops the run; the others keep an error row.
+MAIN_JUDGE = "chat"
 #: Plan ``runtime`` role of each local judge model. ``chat`` is hosted.
 JUDGE_ROLES: Mapping[str, str] = {
     "clef_flash": "judge-clef-flash",

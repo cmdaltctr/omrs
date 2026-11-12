@@ -264,7 +264,15 @@ def corpus_files(
         gold = {p for q in questions for p in q.relevant}
         names = [f.name for f in files if id_map.get(f.name) in gold]
         keep = set(_sample([f.name for f in files], set(names), corpus_sample, seed))
-        return [f for f in files if f.name in keep]
+        kept = [f for f in files if f.name in keep]
+        missing = sorted(gold - {id_map.get(f.name) for f in kept})
+        if missing:
+            raise DatasetError(
+                f"{len(missing)} FreshStack gold documents are missing under {corpus} "
+                f"(first: {missing[0]}); copy the whole freshstack-corpus folder, not "
+                "only its manifest"
+            )
+        return kept
     return _bioasq_files(root, questions, corpus_sample, work_dir, seed)
 
 
