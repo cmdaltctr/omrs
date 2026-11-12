@@ -38,10 +38,6 @@ ORIGIN = {"Origin": BASE}
 TERMINAL = {"succeeded", "failed", "cancelled", "interrupted"}
 
 
-#: Upper bound on how long a held graph run waits for its test to open the gate.
-_GATE_SECONDS = 120
-
-
 class GatedEngine(Engine):
     """A real Engine whose graph runs are counted and can wait on a gate.
 
@@ -53,10 +49,18 @@ class GatedEngine(Engine):
         super().__init__(*args, **kwargs)
         self.runs: list[Any] = []
         self.gate: threading.Event | None = None
+        self.gate_seconds = 10.0
         self.started = threading.Event()
 
-    def hold(self) -> threading.Event:
-        """Make the following runs wait until the returned gate is set."""
+    def hold(self, seconds: float = 10.0) -> threading.Event:
+        """Make the following runs wait until the returned gate is set.
+
+        Args:
+            seconds: Longest wait before a held run gives up. A test that
+                needs many requests while a run is held asks for more, and
+                opens the gate in a ``finally`` block.
+        """
+        self.gate_seconds = seconds
         self.gate = threading.Event()
         return self.gate
 
@@ -64,10 +68,7 @@ class GatedEngine(Engine):
         self.runs.append(definition)
         self.started.set()
         if self.gate is not None:
-            # Long enough for a slow CI runner to fill the queue before the test
-            # opens the gate: at 10 s a held run timed out on macOS, freed a
-            # queue slot and the bounded-queue test got 202 instead of 429.
-            assert await asyncio.to_thread(self.gate.wait, _GATE_SECONDS), (
+            assert await asyncio.to_thread(self.gate.wait, self.gate_seconds), (
                 "test gate was never opened"
             )
         return await super().run_pipeline(definition, **kwargs)
