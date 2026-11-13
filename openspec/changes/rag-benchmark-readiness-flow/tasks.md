@@ -1,6 +1,6 @@
 # Tasks
 
-The order is the operator's (2026-11-06, design D1). Do not reorder groups. Stop at every gate (design D3). Each group names the change whose own `tasks.md` carries the detail. Rules: design D4.
+The order is the operator's (2026-11-06, design D1). Do not reorder groups. Exception: steps 7.1 and 7.2 run before task 6.11 (the freeze), as group 7 states. Stop at every gate (design D3). Each group names the change whose own `tasks.md` carries the detail. Rules: design D4.
 
 ## 0. Preflight
 
@@ -87,7 +87,7 @@ Follow the steps in order (design D5). "Exp 35 task N" means a task in `experime
 
 ### G. Run and report
 
-- [ ] 6.12 Exp 35 search and answer stages (tasks 4A.6 to 4A.8, which replace the old section 5 text): 72 search setups per dataset, run once each, then the 15 answer setups (12 crossed plus 3 token-matched, A3), 3 runs each. The step E pod was deleted, so create a new pod on the machine type that task 1.5 names, and quote the hourly price first. Restore the models, corpora and pod scripts from `DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/` and check each file against its `SHA256SUMS` before the first arm. Delete the pod when the runs and the copy are done.
+- [ ] 6.12 Exp 35 search and answer stages (tasks 4A.6 to 4A.8, which replace the old section 5 text): 72 search setups per dataset, run once each, then the 15 answer setups (12 crossed plus 3 token-matched, A3), 3 runs each. The step E pod was deleted, so create nine index pods (task 4A.6) and three replicate pods (task 4A.7) on the machine type that task 1.5 names. For each pod, quote the hourly price first, restore the models, corpora and pod scripts from `DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/`, check each file against its `SHA256SUMS` before the first arm, and delete the pod when its runs and its copy are done.
 - [ ] 6.13 Exp 35 section 6 (tasks 6.1 to 6.3): statistics, `report.md`, `experiment.json` status.
 - [ ] 6.14 Exp 35 section 7 (tasks 7.1 to 7.5): split, copy to `DATA/omrs/`, Zenodo, identifier search. Merge and archive Exp 35 on the operator's word.
 

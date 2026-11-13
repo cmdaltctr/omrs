@@ -117,6 +117,11 @@ The harness SHALL build setups from four factors (embedder, chunk size, reranker
 - **THEN** the stage MUST save no row for that query, MUST stop with a setup error that names the query and the reason, and MUST write no done-marker
 - **AND** `--resume` MUST send that query again
 
+#### Scenario: Answer retrieval reranker falls back
+
+- **WHEN** the retrieval of a reranker-on answer setup returns a result with `_reranked` false
+- **THEN** the stage MUST stop with a setup error that names the question and the reason, and MUST write no answer from the un-reranked rows
+
 ### Requirement: The answer setups come from a fixed selection rule
 
 A selection step SHALL read the saved half-A search scores of FinanceBench, FreshStack and BioASQ only (amendment A3). It SHALL choose the embedder size, then the reranker size: the smallest size whose pooled nDCG@10 (mean of the three dataset means) is within 0.01 of the best, inclusive; equal scores go to the smaller size. It SHALL write every pooled score and each choice. The answer stage SHALL refuse to start without that file.
@@ -152,7 +157,7 @@ At the chosen embedder and reranker size, the selection step SHALL pick chunk si
 
 ### Requirement: The answer stage has a token-matched setup for each chunk size
 
-The answer stage SHALL run 15 setups: the 12 crossed setups on 10 chunks each, and three token-matched setups, `c512-t20k`, `c1024-t20k` and `c2048-t20k`, at the chosen embedder and reranker size with reranker on and hybrid on. A token-matched setup SHALL cut its evidence at 20,480 real Qwen3 tokens. The `c2048` x 10 factorial cell SHALL keep its 10-chunk evidence.
+The answer stage SHALL run 15 setups: the 12 crossed setups on 10 chunks each and three token-matched setups (`c512-t20k`, `c1024-t20k` and `c2048-t20k`) at the chosen embedder and reranker size with reranker on and hybrid on. A token-matched setup SHALL cut its evidence at a hard limit of 20,480 real Qwen3 tokens. The chunk that crosses the limit SHALL be truncated at the limit, and the truncation SHALL be recorded per question. The `c2048` x 10 factorial cell SHALL keep its 10-chunk evidence.
 
 #### Scenario: Setup table
 
@@ -162,11 +167,11 @@ The answer stage SHALL run 15 setups: the 12 crossed setups on 10 chunks each, a
 #### Scenario: Factorial cell unchanged
 
 - **WHEN** the chosen embedder and reranker retrieve short 2,048-token chunks
-- **THEN** `c2048` x 10 MUST send exactly 10 chunks, and `c2048-t20k` MUST send chunks until the 20,480-token cut
+- **THEN** `c2048` x 10 MUST send exactly 10 chunks, and `c2048-t20k` MUST send chunks until the 20,480-token limit, truncating the chunk that crosses it and recording the truncation
 
 ### Requirement: Parallel and serial runs write the same row files
 
-A stage SHALL write its row file and its trace rows in frozen question order, whatever order the calls finish in. With a fixed clock, a run at any concurrency SHALL give a row file with the same bytes as a run at concurrency 1. Its trace file SHALL be the same after the concurrency values in the trace settings are removed; the trace keeps the value each role used.
+A stage SHALL write its row file and its trace rows in frozen question order, whatever order the calls finish in. With a fixed clock and deterministic call results (stub calls), a run at any concurrency SHALL give a row file with the same bytes as a run at concurrency 1. Its trace file SHALL be the same after the concurrency values in the trace settings are removed; the trace keeps the value each role used.
 
 #### Scenario: Calls finish out of order
 
@@ -178,6 +183,11 @@ A stage SHALL write its row file and its trace rows in frozen question order, wh
 - **WHEN** one stage runs on stub calls with a fixed clock, once at concurrency 8 and once at concurrency 1
 - **THEN** the two row files MUST be byte-identical, and the two trace files MUST be byte-identical after the concurrency values are removed from their trace settings
 - **AND** each trace MUST still record the concurrency value of its own run
+
+#### Scenario: Live hosted calls
+
+- **WHEN** a stage runs on live hosted calls at two concurrency values
+- **THEN** row content MAY differ, and the row order and keys MUST still match
 
 ### Requirement: A finished result survives a stop
 
@@ -191,6 +201,6 @@ A result that finishes before an earlier item SHALL be kept on disk at once. A s
 #### Scenario: Stop after a paid call returns and before its result is saved
 
 - **WHEN** a worker's paid call for question 4 returns, the pod stops before the result reaches the pending file, and `--resume` runs
-- **THEN** `--resume` MUST send the call for question 4 again, because no row and no pending result exist for it
+- **THEN** a dispatch record for question 4 MUST have been flushed and fsynced before the call, and `--resume` MUST send the call for question 4 again, because that record exists and no row and no pending result exist for it
 - **AND** it MUST send at most one such call per worker for that stop, and MUST NOT choose to send again from the content of any answer
 - **AND** the stage trace MUST count each resent call in `resent_calls`

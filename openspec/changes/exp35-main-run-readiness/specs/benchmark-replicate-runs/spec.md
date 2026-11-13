@@ -128,7 +128,7 @@ Each replicate machine SHALL append its run records to its own file. The join st
 
 ### Requirement: The join step gates determinism and statistics
 
-The join step SHALL check that run 1 of every search setup and dataset has a finished search stage (search runs once per setup), that runs 1, 2 and 3 of every answer setup and dataset have finished answer, judge, `ragas` and `claimkinds` stages, that every run has the same run key, that every run has a run record, and that every stage found the index fingerprint unchanged. It SHALL write a join report. Determinism and statistics SHALL refuse to start without a passing join report.
+The join step SHALL check that run 1 of every search setup and dataset has a finished search stage (search runs once per setup), that runs 1, 2 and 3 of every answer setup and dataset have finished answer, judge, `ragas` and `claimkinds` stages, that, within each dataset and answer setup, every run has the same run key, that every run has a run record, and that no stage found the index changed. It SHALL write a join report. Determinism and statistics SHALL refuse to start without a passing one.
 
 #### Scenario: One stage missing
 
