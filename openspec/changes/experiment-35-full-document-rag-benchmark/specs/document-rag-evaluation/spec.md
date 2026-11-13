@@ -89,15 +89,31 @@ Each search setup SHALL save the top 100 chunks, with a rerank pool of exactly 1
 
 ### Requirement: The answer stage uses a selection rule fixed before the run
 
-On half A (seed 20261115), the harness SHALL choose the smallest embedder, then reranker size, within 0.01 pooled nDCG@10 of the best (ties to the smaller). The answer stage SHALL run 14 setups (12 crossed, two equal-text), 3 runs each, plus closed-book and oracle runs. H8 SHALL use all questions; descriptive headlines half B.
+On half A (seed 20261115), the harness SHALL choose the smallest embedder, then reranker size, within 0.01 pooled nDCG@10 of the best (ties to the smaller). The pooled score SHALL be the mean over the three core datasets (FinanceBench, FreshStack, BioASQ); Legal RAG Bench SHALL take no part. The answer stage SHALL run 14 setups (12 crossed, two equal-text), 3 runs each, plus closed-book and oracle runs. H8 SHALL use all questions; descriptive headlines half B.
 
 #### Scenario: Two sizes within the margin
 - **WHEN** the 4B embedder pools 0.612 and the 8B embedder pools 0.619
 - **THEN** the rule SHALL choose 4B
 
+#### Scenario: Legal excluded from the pool
+- **WHEN** the harness pools the per-dataset nDCG@10 means for a size
+- **THEN** it SHALL average the FinanceBench, FreshStack and BioASQ means and SHALL NOT include the Legal RAG Bench mean
+
 #### Scenario: Selection recorded before answers
 - **WHEN** a replicate pod starts an answer stage
 - **THEN** `protocol.md` SHALL already hold a dated note with the pooled scores and the chosen sizes
+
+### Requirement: Half A also fixes the OMRS setup for Part 2
+
+At the chosen embedder and reranker size, the harness SHALL pick chunk size, reranker on or off and hybrid on or off by the pooled half-A mean nDCG@10 over the three core datasets. Cells within 0.01 of the best SHALL tie, and ties SHALL resolve in this order: reranker off, hybrid off, lowest index cost, smaller chunk size. The configuration hash of the chosen cell SHALL go to `protocol.md` before half B opens for Part 2.
+
+#### Scenario: Tie goes to the cheaper cell
+- **WHEN** the best cell has reranker on and a cell with reranker off scores 0.008 lower
+- **THEN** the rule SHALL choose the cell with reranker off
+
+#### Scenario: Hash recorded before half B opens
+- **WHEN** Part 2 is about to read half B
+- **THEN** `protocol.md` SHALL already hold a dated note with the cell scores, the chosen cell and its configuration hash
 
 ### Requirement: Every answer is one synthesis round
 

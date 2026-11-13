@@ -6,7 +6,7 @@ DRAFT. Measured execution must not begin until the protocol and plan are committ
 
 Source of the agreed decisions: `docs/proposals/first-publication-benchmark.md` (Draft 1, 27 October 2026). Where that document and an earlier version of this change disagree, that document wins.
 
-**Pre-freeze amendments A2c (D0.13) and A2 (D0.12), both 2026-11-13, win over A1 where they differ; A2c wins over A2. Pre-freeze amendment A1 (2026-11-12) wins over every older section.** Section D0 below holds the full-factorial redesign agreed with the operator on 2026-11-12. Sections D1 to D10 keep the earlier plan for history. Where they disagree with D0, D0 wins. No measured run had started when A1 was written: only smoke runs, which are never scored.
+**Pre-freeze amendments A3 (D0.14), A2c (D0.13) and A2 (D0.12), all 2026-11-13, win over A1 where they differ; A3 wins over A2c on the selection rule, and A2c wins over A2. Pre-freeze amendment A1 (2026-11-12) wins over every older section.** Section D0 below holds the full-factorial redesign agreed with the operator on 2026-11-12. Sections D1 to D10 keep the earlier plan for history. Where they disagree with D0, D0 wins. No measured run had started when A1 was written: only smoke runs, which are never scored.
 
 ## D0. Pre-freeze amendment A1: full-factorial redesign (2026-11-12)
 
@@ -91,7 +91,7 @@ Code: `paired_permutation`, `paired_bootstrap`, `holm`, `wilson` and `min_detect
 
 **Selection rule (fixed before the run).** After the search stage, choose one embedder size, then one reranker size:
 
-1. Pooled score: the plain mean of the four per-dataset mean nDCG@10 values, so BioASQ's 707 questions do not dominate. For the embedder, average over every chunk size, reranker level and hybrid level. For the reranker size, use the chosen embedder and average over chunk size and hybrid, reranker-on setups only.
+1. Pooled score (amended A3, D0.14: the mean over the three core datasets only, Legal excluded; the earlier four-dataset wording is kept for history): the plain mean of the four per-dataset mean nDCG@10 values, so BioASQ's 707 questions do not dominate. For the embedder, average over every chunk size, reranker level and hybrid level. For the reranker size, use the chosen embedder and average over chunk size and hybrid, reranker-on setups only.
 2. Pick the smallest size whose pooled score is within 0.01 of the best size's pooled score (a gap of exactly 0.01 counts as within).
 3. Ties: equal pooled scores pick the smaller size.
 
@@ -240,7 +240,7 @@ Experiment 35 becomes that experiment.
 ## Non-Goals
 
 - No production default changes from this experiment. A finding that suggests one goes to a separate proposal.
-- No comparison with LlamaIndex, Haystack, LangChain or other frameworks.
+- No framework comparison inside Experiment 35 (LlamaIndex, Haystack, LangChain, RAGFlow or others). Part 2 compares OMRS with RAGFlow on half B, as `docs/proposals/first-publication-benchmark.md` states (amendment A3, D0.14).
 - No RepoProbe answer scoring. It moves to a later paper (see "RepoProbe moved out").
 - No Ragas, OpenTelemetry or other evaluation tooling in the base runtime dependency path.
 - No decision here on local or cloud hardware. The timing in task 1.4 informs it.
@@ -458,3 +458,13 @@ Resolved on 2026-10-27 by the publication proposal: datasets and sizes, the base
 - **N5. H8 on all questions.** The selection rule averages over chunk size, so choosing on half A barely biases the chunk-size contrasts. H8 is tested on all questions. Descriptive headline answer numbers stay on half B.
 - **Minor.** Only nDCG@10 is primary (the tolerance line names the others as secondary). FreshStack's reference answer is `answer_text` of `freshstack/queries-oct-2024`, config `langchain` (the accepted Stack Overflow answer). Oracle evidence is capped at 20,480 Qwen3 tokens for every dataset (FinanceBench, BioASQ and FreshStack; a Legal passage is at most 512), with truncation recorded. The one-round test covers the oracle and closed-book stages too. Floor (closed-book) and ceiling (oracle) are single runs, while main setups average 3 runs; the report says so. The report adds a per-question cross-table on retrieval misses: closed-book correct or not against RAG correct or not. Oracle retrieval is now part of the plan (an oracle run, approved 2026-11-13).
 - **Cost.** N1 to N5 add no pod hours or calls (the pool stays 100). Final estimate: about **$650** (pods and network volume about $354 for about 382 pod hours, hosted calls about $298), ceiling **$975** (1.5 x).
+
+### D0.14 Pre-freeze amendment A3: selection rule and hand-off to Part 2 (2026-11-13)
+
+Decision (operator, 2026-11-13). The master plan is `docs/proposals/first-publication-benchmark.md`. This section wins over D0.5 and D0.12 where they differ. The full text is `protocol.md` section 0.12.
+
+- **Pooled score.** The embedder and the reranker size are chosen on half A by the mean of the per-dataset mean nDCG@10 over FinanceBench, FreshStack and BioASQ. Legal RAG Bench takes no part. Reason: Legal is exploratory with 100 questions, and a selection input should come from confirmatory sets only.
+- **Four-factor pick for Part 2.** At the chosen embedder and reranker size, choose chunk size, reranker on or off and hybrid on or off by the pooled half-A mean nDCG@10 of the 12 cells. Cells within 0.01 of the best tie. Tie order: reranker off, hybrid off, lowest index cost, smaller chunk size. The configuration hash of the chosen cell goes to OSF before half B opens.
+- **Hand-off.** Part 2 runs on half B only, once per system. Experiment 35 does not run Part 2, does not run RAGFlow, and does not draw labels from RAGFlow answers. Part 2 has its own protocol (C1, C2, fairness rules, labels).
+- **No change to Experiment 35 counts.** The 14 answer setups, the 3 runs and the 400 L1 labels stay as in D0.12.
+- **Framework comparison.** Out of Experiment 35 scope. Part 2 holds it.

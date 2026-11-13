@@ -57,7 +57,7 @@
   "stats": "expert",
   "seed": 20261101,
   "baseline": "none: full factorial of embedder x chunk size x reranker x hybrid (72 search setups per dataset); e4b-c1024-roff-hoff is the reference cell of the G2 rebuild check only",
-  "candidate": "72 search setups e<0.6b|4b|8b>-c<512|1024|2048>-r<off|0.6b|4b|8b>-h<off|on>; 14 answer setups (12 crossed plus token-matched 512x40 and 1024x20), chosen on half A, at the embedder and reranker sizes chosen by the pre-registered selection rule",
+  "candidate": "72 search setups e<0.6b|4b|8b>-c<512|1024|2048>-r<off|0.6b|4b|8b>-h<off|on>; 14 answer setups (12 crossed plus token-matched 512x40 and 1024x20), chosen on half A, at the embedder and reranker sizes chosen by the pre-registered selection rule (pooled over the three core datasets, amendment A3)",
   "metrics": [
     {
       "name": "Recall@10",
@@ -303,6 +303,13 @@
       "before_first_run": true,
       "summary": "Second methods review: fetch_k 100 keeps the rerank pool at 100 at depth 100 (it would be 300); equal-evidence metric and equal-text answer setups cut by the running total of real Qwen3 tokens up to 20,480 (the crossing chunk included whole), setups c512-t20k and c1024-t20k; H6 on FinanceBench uses evidence_recall_20k, page-rule nDCG@10 as sensitivity with sign agreement reported; contrast p-values from GEE with cluster-robust errors (MixedLM for estimates), permutation or grouped bootstrap as sensitivity; H8 on all questions, descriptive headlines on half B; oracle contexts capped at 20,480 tokens on every dataset; one-round test covers oracle and closed-book; floor and ceiling marked single-run; closed-book vs RAG cross-table on retrieval misses. Final budget estimate $650, ceiling $975.",
       "where": "protocol.md section 0.11; change design D0.13; readiness design D37 and tasks 15.2, 15.3, 15.6, 15.12, 15.14-15.16"
+    },
+    {
+      "id": "A3",
+      "date": "2026-11-13",
+      "before_first_run": true,
+      "summary": "Selection rule amended: the pooled score for embedder and reranker-size choice uses the three core datasets only (Legal excluded). Adds a four-factor pick on half A for Part 2 (chunk size, reranker on or off, hybrid on or off; pooled mean nDCG@10 over the three core datasets; ties within 0.01 go to reranker off, then hybrid off, then lowest index cost, then smaller chunk). The cell's configuration hash goes to OSF before half B opens. Part 2 (RAGFlow) runs on half B only, once per system, with its own protocol (C1, C2) and its own human labels. Experiment 35 label counts are unchanged.",
+      "where": "protocol.md section 0.12; docs/proposals/first-publication-benchmark.md; change experiment-35-full-document-rag-benchmark design D0.14"
     }
   ]
 }

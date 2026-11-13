@@ -41,7 +41,7 @@ This change turns Experiment 35 into the benchmark for the first fellowship pape
 - Add the publication rules that change the experiment: a shareable example set, a split between shareable and restricted outputs, licence-aware release, Zenodo archives, and removal of personal identifiers.
 - Run locally or on rented cloud hardware. Decide after the embedding timing. Both options use the same GGUF files, the same build and the ADR-103 tolerance.
 - Move RepoProbe (old 35B-1) to a later paper. It has no retrieval labels and needs an LLM judge for every score.
-- Keep: no production default changes, Ragas and observability tooling outside the base install, per-stage JSONL traces, no framework comparisons.
+- Keep: no production default changes, Ragas and observability tooling outside the base install, per-stage JSONL traces, no framework comparison inside this experiment (the RAGFlow comparison is Part 2, amendment A3).
 
 ## Dependency
 

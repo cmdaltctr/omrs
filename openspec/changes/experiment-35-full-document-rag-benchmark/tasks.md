@@ -56,7 +56,7 @@ The full-factorial redesign (design D0) replaces the six arms. Tasks 5.1 to 5.4 
 - [ ] 4A.4b Record the context length of `deepseek/deepseek-v4.1-flash-1017` on the pinned OpenRouter host. Verify: `protocol.md` states it with the date, and it is at least 65,536 tokens; otherwise the freeze stops and the operator decides.
 - [ ] 4A.5a Choose the GPU type by the rule in `protocol.md` section 0.8a, from the timing job on the RTX 4090, L40S and H100 (readiness task 9.3). Verify: `protocol.md` holds the rule in a commit dated before the first measurement, then the measurements, prices and choice.
 - [ ] 4A.6 Build the 9 indexes on 9 parallel pods of the chosen GPU type, each sealing its index and running its 8 search setups (72 setups, run 1), copy the scores to the Mac, and apply the selection rule (design D0.5). Verify: `protocol.md` holds a dated note with the pooled scores and the chosen embedder and reranker sizes before any replicate pod starts.
-- [ ] 4A.7 Run the 12 answer setups x 3 runs on the three replicate pods. Verify: the join passes and G1 holds or its mismatches are recorded.
+- [ ] 4A.7 Run the 14 answer setups (12 plus 2 token-matched, amendment A2) x 3 runs on the three replicate pods. Verify: the join passes and G1 holds or its mismatches are recorded.
 - [ ] 4A.8 Compute H1 to H7 on the search scores and H8 on the answer scores (design D0.4, D0.5). Label every Legal RAG Bench figure exploratory. Verify: each number names its `output/` file.
 
 ## 4B. Pre-freeze amendment A2: methods review (2026-11-13)
@@ -73,6 +73,14 @@ Design D0.12. The code work is readiness task group 15. Where 4A tasks differ, 4
 - [ ] 4B.7 Write the limitations into `report.md`: one answer model, English only, the web-search reranker instruction applied to finance and legal text, 3 runs that measure hosted-API nondeterminism, chunk size confounded with context length in the answer stage. Verify: the report's limitations section names each.
 
 - [x] 4B.8 Write amendment A2c (second methods review, design D0.13) into this change, `protocol.md` section 0.11 and `plan.json`. Verify: both strict validations and `omrs experiments check` pass. Done 2026-11-13.
+
+## 4C. Pre-freeze amendment A3: selection rule and hand-off to Part 2 (2026-11-13)
+
+Design D0.14. Protocol section 0.12.
+
+- [x] 4C.1 Write amendment A3 into this change (design D0.14, spec), `protocol.md` (section 0.12, with a pointer in section 0.5) and `plan.json` (amendment A3). Verify: both `openspec validate --strict` runs and `omrs experiments check` pass. Done 2026-11-13.
+- [ ] 4C.2 After the search stage is scored, apply the A3 rule on half A. Write a dated note into `protocol.md` section 0.12 with the inputs, the chosen cell and its configuration hash. Verify: the note exists before anyone opens half B for Part 2.
+- [ ] 4C.3 Draw correctness labels from RAGFlow answers. This task does not belong here. Part 2 owns it (master flow group 7). Verify: no Experiment 35 label count changes.
 
 ## 5. Run
 

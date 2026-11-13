@@ -1,5 +1,7 @@
 # Experiment 35a: Reproducible local RAG benchmark of OMRS (RunPod)
 
+> Superseded (2026-11-13) by Experiment 35 (`35-full-rag-benchmark-2026-11-01`) and its amendments A1 to A3. Experiment 35 now runs on RunPod. This file is kept for history. Do not run it.
+
 - **Folder**: `35a-full-rag-benchmark-runpod-2026-11-01`
 - **Record**: [experiment.json](experiment.json) holds the category, size and status.
 - **Operator**: Dr Muhammad Aizat Bin Md Hawari, with AI agent (plan draft; the operator confirms the open values at freeze).

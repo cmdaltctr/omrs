@@ -1,166 +1,219 @@
 # First publication: a reproducible local RAG benchmark of OMRS
 
-Draft 4, 9 November 2026 (adds the official external-comparison protocol). Plan only. Nothing here is built or run yet.
+Draft 6, 13 November 2026 (proposal becomes the master plan; Part 1 aligned with Experiment 35 amendments A1–A3; RAGFlow as the single controlled competitor on held-out half B; haiku.rag dropped). Draft 5, 12 November 2026, added a controlled comparison and parked PipesHub for v4. Draft 4, 9 November 2026, added the EnterpriseRAG-Bench protocol. Plan only. No measured run has started.
 
 This is the first paper of the fellowship programme. The manṭiq work in `v4` (authority-aware retrieval and reasoning gates) comes after it. This paper does not wait for that work.
 
+## Master plan and source of truth
+
+This proposal is the master plan for the first OMRS publication. It holds what the paper claims and why. Each experiment protocol holds how its part runs: counts, seeds, models, statistical models, gates and costs.
+
+- Part 1 is Experiment 35. Its protocol is `experiments/35-full-rag-benchmark-2026-11-01/protocol.md`. Section 0 (amendments A1, A2, A2c and A3) is the current design.
+- Part 2 (controlled comparison with RAGFlow) gets its own protocol before the freeze, and E1 (EnterpriseRAG-Bench context run) gets one before its run. Until then, this proposal is their only record.
+
+Rule: where this proposal and a protocol disagree, this proposal wins. Fix the protocol with a dated amendment (A3 is the first). Do not copy protocol numbers into this file. This file names datasets, factors and factor levels only, so the two cannot drift.
+
 Related records:
 
+- `experiments/35-full-rag-benchmark-2026-11-01/protocol.md` and `plan.json`: Part 1 design and runtime pins.
+- `openspec/changes/experiment-35-full-document-rag-benchmark/`: Part 1 design decisions and their sources.
+- `openspec/changes/exp35-main-run-readiness/`: Part 1 harness code.
+- `openspec/changes/rag-benchmark-readiness-flow/`: task order and gates for the whole benchmark.
+- `openspec/changes/archive/2026-11-08-pipeline-sweep-llamacpp/`: Step 1.
 - `openspec/changes/archive/2026-10-27-reproducible-experiment-runtime/carry-forward.md`: which past experiments go forward.
-- `openspec/changes/pipeline-sweep-llamacpp/`: Step 1.
-- `openspec/changes/experiment-35-full-document-rag-benchmark/`: Step 2, updated to match this proposal on 27 October 2026.
-- ADR-103: local models in experiments run through llama.cpp with a public GGUF file.
+- ADR-103 (local models run through llama.cpp with a public GGUF file) and ADR-119 (Experiment 35 model matrix and claim checker).
 
 ## Summary
 
-OMRS is a local-first, modular RAG framework. The paper reports one Confirmatory benchmark of the full pipeline on three public datasets from three domains: finance, software and biomedicine. A fourth dataset, EnterpriseRAG-Bench, compares the frozen OMRS configuration with published complete RAG systems. Every local language and embedding model runs through llama.cpp with a pinned GGUF file and build, so another group can repeat the run on another machine. The ONNX reranker and the OCR engines keep their own runtimes, recorded in the runtime manifest (ADR-103). The paper also reports which pipeline choices help, using ablations: we switch one component on or off and measure the change.
+OMRS is a local-first, modular RAG framework. The paper reports one Confirmatory benchmark of the full pipeline on three public datasets from three domains: finance (FinanceBench), software (FreshStack, LangChain slice) and biomedicine (BioASQ). A fourth dataset, Legal RAG Bench, is exploratory.
+
+Part 1 (Experiment 35) crosses four pipeline choices in a full factorial: embedder size, chunk size, reranker and hybrid search. It then measures how chunk size changes answer faithfulness and correctness. Part 2 runs RAGFlow, a widely used open-source RAG application, against one OMRS setup on held-out questions, with the shared models fixed. E1 runs OMRS on EnterpriseRAG-Bench as descriptive context beside its public leaderboard.
+
+What runs where:
+
+- Local: ingestion, chunking, embedding, indexing, reranking and search. Every model runs through a pinned llama.cpp GGUF build, so another group can rebuild each index and repeat each search on its own machine. The second claim checker, Clef-Flash, also runs locally.
+- Hosted: answer generation, the main claim checker and the Ragas judge. Each is pinned by model ID, and every call records the returned model ID and provider.
+
+One hosted answer model is used throughout. This is a stated limitation.
 
 The paper answers three research questions:
 
-- **RQ1 (absolute performance):** what retrieval and answer quality does OMRS achieve on FinanceBench, the FreshStack LangChain slice and BioASQ with pinned models?
-- **RQ2 (component effects):** how do embedding size, the reranker, token-aware chunking and hybrid search change that performance?
-- **RQ3 (external comparison):** how does the frozen OMRS configuration perform relative to published complete RAG systems on EnterpriseRAG-Bench under its official evaluation protocol?
+- **RQ1 (absolute performance):** what retrieval and answer quality does OMRS reach on FinanceBench, FreshStack, BioASQ and (exploratory) Legal RAG Bench under stated models and settings?
+- **RQ2 (component effects):** how do embedder size, chunk size, reranker size and hybrid search, and their interactions, change retrieval quality? How does chunk size change answer faithfulness and correctness?
+- **RQ3 (external comparison):** with the shared models fixed, how does an OMRS setup chosen on half A compare with RAGFlow on half B (Part 2)? Where does OMRS sit beside published systems on EnterpriseRAG-Bench (E1, descriptive)?
 
-The claims stay testable: OMRS reaches stated scores under stated conditions, named pipeline choices change those scores by measured amounts, and OMRS differs from selected external systems by measured amounts where the evidence supports that comparison.
+The claims stay testable. OMRS reaches stated scores under stated conditions. Named pipeline choices change those scores by measured amounts. OMRS and RAGFlow differ by measured amounts only where the paired tests support it.
 
 ## Why now
 
 - Past experiments (1 to 42) were optimisation runs. Many used Ollama, small question sets (for example 17 queries) or remain unfinished. They cannot be cited as they are.
-- ADR-103 now gives a reproducible runtime and a `publication` purpose that the checker enforces.
-- A systems paper with honest, pinned results is achievable in this fellowship period. It also gives the manṭiq papers a tested base to build on.
+- ADR-103 gives a reproducible runtime, and the checker enforces the `publication` purpose.
+- A systems paper with honest, pinned results fits the fellowship period. It also gives the manṭiq papers a tested base.
 
-## Work in two steps
+## Order and gates
 
-### Step 1: pipeline sweep (optimisation, Standard)
+1. Freeze Part 1. The operator approves the Experiment 35 protocol, `plan.json` and the run budget (master flow gate G7). Amendment A3 and the Part 2 protocol exist before this point (A3 is written; the Part 2 protocol is not).
+2. Deposit on OSF in one deposit: the Experiment 35 protocol and plan, the Part 2 protocol (C1, C2) and amendment A3. Record the link and the commit hash.
+3. Run Experiment 35 as its protocol states.
+4. Apply the A3 rule on half A as soon as the search stage is scored. Freeze the chosen OMRS setup. Record its configuration hash on OSF before anyone opens half B for Part 2.
+5. Run Part 2 on half B, once per system.
+6. Run E1 if the budget allows. E1 is the first item to drop when the budget is short.
 
-A trial run on llama.cpp only, before the main run. One llama.cpp router serves every model, so the existing live-server check covers them in one call. Three parts:
+The master flow `openspec/changes/rag-benchmark-readiness-flow` holds group 7 for Part 2 and E1.
 
-- **Part A, every stage works.** On Experiment 3's 6 documents, its 17 questions and 5 FinanceBench PDFs: ingest (reader, OCR routing, normalisation, metadata extraction), chunk, embed with 4B, write to LanceDB, search (dense, hybrid, each with and without the reranker), answer with and without claim checking, and write run records with the found runtime. A repeat of retrieval must give identical rankings.
-- **Part B, how long the real run takes.** Time 0.6B, 4B and 8B embedding on 200 FreshStack documents, 200 BioASQ abstracts and the 5 PDFs. Time metadata extraction per chunk. Extrapolate to the full corpora. This decides local or rented hardware.
-- **Part C, whether fast mode is safe.** Embed the same slices with 4B in exact mode (one slot) and fast mode (8 slots, concurrent requests). Fast mode is allowed in Step 2 only when every vector pair has cosine at least 0.9999 and no top-10 ranking changes.
+## Step 1: pipeline sweep (done)
 
-Exit rule: every stage runs without error, the scores stay close to the earlier Ollama numbers where those exist, and repeated retrieval is identical. Any failure is fixed before Step 2.
+Done and archived on 8 November 2026 (Experiment 48, `openspec/changes/archive/2026-11-08-pipeline-sweep-llamacpp/`). It checked that every pipeline stage runs on the llama.cpp router and timed the embedders. Its findings fed the Experiment 35 plan.
 
-### Step 2: Experiment 35 as a `publication` experiment (Confirmatory)
+## Step 2: Part 1, Experiment 35 (Confirmatory)
 
-| Dataset | Domain | Questions | Corpus | Gold labels | Licence |
+The protocol is the authority for every number in this part. Read section 0 first; it wins over the older sections of that file.
+
+| Dataset | Domain | Questions | Gold unit | Licence | Status |
 |---|---|---|---|---|---|
-| FinanceBench (open sample) | Finance, real PDFs | 150 | 10-K and similar filings | Gold document and page | CC BY-NC 4.0 |
-| FreshStack, LangChain slice | Software | 223 | 10,024 documents | Gold documents | CC BY-SA 4.0 |
-| BioASQ (`enelpol/rag-mini-bioasq`, test split) | Biomedicine | 707 | 40.2K PubMed abstracts | Gold passages and reference answers | CC BY 2.5 |
-| EnterpriseRAG-Bench | Enterprise, external-system comparison | 500 in the released set; freeze the scored count from the pinned release | 511,962 synthetic documents across nine source types | Gold documents and reference answers | MIT |
+| FinanceBench (open sample) | Finance, real PDFs | 150 | Document and page | CC BY-NC 4.0 | Confirmatory |
+| FreshStack, LangChain slice | Software | 203 | Document | CC BY-SA 4.0 | Confirmatory |
+| BioASQ (`enelpol/rag-mini-bioasq`, test split) | Biomedicine | 707 | Passage | CC BY 2.5 | Confirmatory |
+| Legal RAG Bench (`isaacus/legal-rag-bench`) | Law | 100 | Passage | CC BY-NC-SA 4.0 | Exploratory |
 
-The first three datasets answer RQ1 and RQ2. EnterpriseRAG-Bench answers RQ3. Its full corpus and official evaluation are required for a comparison with the public leaderboard. A subset would be a separate result and could not be compared directly with that leaderboard.
+BioASQ passed every data check, so the NFCorpus fallback is retired. RepoProbe moves to a later paper because it has no retrieval labels. No open medical dataset has real PDFs with page-level gold evidence, so FinanceBench is the only PDF dataset. EnterpriseRAG-Bench is not part of Experiment 35 (see E1).
 
-RepoProbe (code answers judged by an LLM) moves to a later paper. It has no retrieval labels.
+### Search stage: full factorial, no baseline
 
-Fallback for the medical arm: NFCorpus (retrieval scores only). Check its academic-use terms first.
+| Factor | Levels |
+|---|---|
+| Embedder | Qwen3-Embedding 0.6B, 4B, 8B |
+| Chunk size | 512, 1,024, 2,048 Qwen3 tokens, 15% overlap |
+| Reranker | Off, Qwen3-Reranker 0.6B, 4B, 8B |
+| Hybrid search | Off, or BM25 plus dense |
 
-Gap: no open medical dataset has real PDFs with page-level gold evidence. FinanceBench is the PDF arm.
+Every combination runs on every dataset. No setup is the baseline: each hypothesis is a planned contrast across the grid. Chunk size replaces the old token-aware chunking arm. The ONNX MiniLM reranker is gone; every reranker runs on llama.cpp.
 
-#### Arms
+The primary metric is nDCG@10 at unit level. Each setup saves its top 100 chunks. The chunks collapse to documents, pages or passages in rank order, and the list is cut at 10 units. Without this, bigger chunks would score higher only because each one covers more units.
 
-| Arm | What changes | Past evidence it carries forward |
-|---|---|---|
-| Baseline | `documents` profile defaults (dense search, reranker on, top_k 10), with Qwen3-Embedding-4B (local GGUF) | Experiment 3; Experiment 22 used 4B through OpenRouter |
-| Embedding size | 0.6B in place of the 4B baseline | Experiments 2 and 22 |
-| Embedding size, upper | 8B in place of the 4B baseline | Experiment 2 (0.6B and 8B tied on an easy 17-query set) |
-| Reranker | Off against on | Experiments 10b and 15 (the reranker hurt technical retrieval) |
-| Chunking | Token-aware chunking off against on | Experiment 25 |
-| Hybrid search | Hybrid (BM25 and dense) in place of dense; reuses the baseline index | Experiment 22 (hybrid raised FreshStack Recall@5 from 22.7% to 25.6%) |
+### Answer stage
 
-Each ablation changes one component against the baseline. All arms run on the same questions. Everything else is held fixed across arms and datasets: the PDF reader (the production default, `pdf_inspector`), the answer model, the judge, the metadata extraction mode and the machine.
+The answer stage varies chunk size, reranker on or off and hybrid on or off. The embedder and reranker size are chosen on half A by the protocol's selection rule. Token-matched setups hold the evidence at one token budget. A closed-book run (no retrieval) and an oracle run (gold evidence given directly) frame the results.
 
-Fixed choices (decided 27 October 2026):
+- Faithfulness: claim checks. GLM-5.3 is the main checker; Clef-Flash (local) is the second.
+- Correctness: Ragas `AnswerCorrectness` with `openai/gpt-oss-120b` as judge, plus a number match on FinanceBench.
+- Human check: two labellers score samples blind. Each checker and the correctness judge must pass its agreement gate before its scores count.
+- Other Ragas metrics are secondary. Ragas is not the main faithfulness measure.
 
-- Answer model: `Qwen/Qwen3-4B-GGUF` Q8_0 through llama.cpp. If Step 1 shows it is too slow, `deepseek/deepseek-v4.1-flash-1017` through OpenRouter for every arm. A judge never scores its own family, so that fallback also changes the main judge to `google/gemini-3.8-flash` (temperature 0, fixed seed).
-- Metadata extraction: off in every arm. Step 1 still times it.
-- Hardware: start on the Mac. If embedding all arms would take more than about 48 hours, embed on a rented GPU.
+### Hypotheses H1 to H8
 
-#### External-system comparison (RQ3)
+Full wording, contrasts and decision rules: protocol section 0.4, restated by A2 (section 0.10) and A2c (section 0.11).
 
-Run the frozen OMRS baseline once on the full EnterpriseRAG-Bench corpus. Do not repeat the six OMRS ablations on this corpus. Record the corpus and leaderboard revisions, question IDs, gold-label revision and evaluation date. Check the release's scored-question count: the paper describes 500 questions, while the leaderboard category counts inspected on 9 November 2026 total 470.
+- **H1:** a bigger embedder finds better evidence.
+- **H2:** the reranker helps.
+- **H3:** hybrid search helps.
+- **H4:** reranker plus hybrid beats either alone.
+- **H5:** a bigger reranker ranks better.
+- **H6:** chunk size changes search quality (FinanceBench and FreshStack).
+- **H7:** bigger embedders gain more from bigger chunks.
+- **H8:** chunk size changes answer faithfulness and correctness.
 
-Save each question's answer and retrieved document IDs as one JSONL row: `{"question_id":"qst_0001","answer":"...","document_ids":["dsid_abc","dsid_def"]}`. Map every retrieved chunk to its source `dsid_*` identifier and deduplicate the identifiers. Both fields are required for complete evaluation. Use the main 500-question `questions.jsonl`; exclude the 100 metadata-dependent questions in `extra_questions.jsonl`.
+### Methods in short
 
-Run the official `src.scripts.answer_evaluation.metrics_based_eval` script at a pinned benchmark commit and record every argument. Use GPT-5.4 for answer correctness and completeness under the official protocol, or ask Onyx to judge the saved submission. GPT-5.4 judges this comparison only; it does not replace the answer model or the judges used for RQ1 and RQ2. Confirm the judging and submission procedure with Onyx before the run.
+Detail for each item is in protocol sections 0.3 to 0.11.
 
-Keep the default citation stripping and document-correction flow. Do not use `--skip-citation-stripping` or `--no-correction`. Three LLM judgements classify candidate and gold documents as `required`, `valid` or `invalid`. The flow may revise gold documents, answers and answer facts before scoring. Preserve `questions_updated.jsonl`, report the corrected questions and record the gold-label revision used for each score.
+- Search runs once per setup on a sealed index. A rebuild check and a repeat check confirm determinism. Answer setups repeat to measure drift in the hosted API.
+- Each dataset gets one model of per-question scores with planned contrasts. P-values use cluster-robust errors, clustered by document on FinanceBench. Holm correction runs across the contrasts of each dataset. Cross-dataset rules decide when a hypothesis holds overall.
+- Minimum detectable effects come from pilot data before the freeze. No equivalence claim is made.
+- Every main-run pod uses one RunPod GPU type, chosen by a timing job before the freeze. The Mac scores the results.
+- The budget has an estimate and a hard ceiling. The hosted-call key carries a credit limit, so an overrun stops cleanly.
+- Pre-registration: the protocol and `plan.json` go to OSF at the freeze commit, with Part 2 and A3.
 
-The code samples at most 20 non-gold candidate documents for correction review. This is not a limit on the submitted result set. Every submitted document ID affects document recall and invalid-extra-document scoring. Keep document recall and invalid-extra-document averages to questions with expected documents; High Level and Info Not Found questions have none. The overall score is `mean(completeness_pct when answer_correct else 0)`.
+### Runtime and hosted models
 
-Use `--limit` and `--resume` only for harness checks and resumable execution. A limited run is not a leaderboard result. For leaderboard submission, provide Onyx with a reproduction guide containing the OMRS commit, frozen configuration, model identities, corpus revision, commands and saved outputs. Onyx verifies and publishes the result.
+- Local models: llama.cpp only. `plan.json` pins the repository, file, SHA-256, build and server arguments of each one. The live-server check passes before the first score.
+- Answer model: `deepseek/deepseek-v4.1-flash-1017`, through the API only, with one pinned upstream host. The open-weight model is too large for one pod, and smaller open models answer worse (protocol A2).
+- Main claim checker GLM-5.3 and Ragas judge `openai/gpt-oss-120b`: hosted, pinned by model ID.
+- Limitation: results describe OMRS retrieval with one hosted answer model. Clef-Flash gives a local path for the faithfulness check. The answer step has no local path in this paper.
 
-RAGFlow is the closest published complete-system reference. PageIndex and FreshStack leaderboard scores are supporting references for their own datasets and protocols, not extra arms of this experiment. Each external comparison reports the complete system configuration, including its answer model. A difference between configurations does not isolate the effect of OMRS's retrieval architecture.
+## Step 3: Part 2, controlled comparison with RAGFlow (Confirmatory)
 
-#### Hypotheses
+A separate experiment with its own number and protocol, deposited at the Experiment 35 freeze. It reuses the Experiment 35 corpora, question IDs, half split, prompt, answer model, checkers and judges.
 
-The existing H1 to H5 answer RQ2. Each ablation arm has one hypothesis per dataset, with nDCG@10 as its primary endpoint: the arm's score differs from the OMRS baseline. The null is equality within the minimum detectable effect. The decision rule under "Statistics" applies to these comparisons.
+### Why RAGFlow alone
 
-RQ3 adds **H6 (external comparison)**: OMRS's document recall, answer correctness, answer completeness and overall score on EnterpriseRAG-Bench differ from those of the selected published RAG systems. The null is equality for each selected comparison. H6 makes no claim that OMRS is superior.
+RAGFlow is the only controlled competitor. It has wide adoption and an Apache-2.0 licence. It accepts our llama.cpp models through OpenAI-compatible endpoints, and it returns the chunks it retrieved, so gold-label metrics apply. haiku.rag is dropped: its adoption is low, and one competitor cuts cost and the number of tests. For the wider field, the E1 context table lists the 39 systems on the EnterpriseRAG-Bench leaderboard.
 
-For H6, use paired question-level tests when public results provide aligned per-question scores. Use McNemar's exact test for answer correctness and paired tests or paired bootstrap intervals for the other metrics. Correct for the selected comparison family with Holm's method. When only aggregate published scores exist, report descriptive differences without a significance claim. Leaderboard rank is descriptive and never substitutes for a paired comparison.
+Systems left out, and why:
 
-#### Metrics
+- PipesHub (#1 on the leaderboard, entered by its own team). It runs an agent loop with several model calls per question and needs four extra databases. It moves to the v4 comparison, where agentic retrieval is in scope. When it runs, report its tokens and latency per question beside its score.
+- GraphRAG and LightRAG. Building them needs a language model to read every document.
+- Hosted-only and closed commercial systems. We cannot fix their models, and nobody can repeat the run.
+- LlamaIndex and LangChain on default settings. These are libraries, not complete applications, and a default build would be a weak opponent.
 
-Primary (gold labels, no judge):
+### Which OMRS setup
 
-- Recall@10, MRR@10, nDCG@10.
-- Hit@page (FinanceBench only): a retrieved chunk comes from the gold page of the gold document.
+The main comparison uses one OMRS setup chosen on half A of the Experiment 35 split. A pre-registered rule fixes all four factors: embedder, chunk size, reranker level and hybrid. The exact rule is Experiment 35 protocol amendment A3 (section 0.12, 13 November 2026). It runs in two steps. First, pooled over the three core datasets on half A, it picks the embedder and the reranker size (the Experiment 35 selection rule, amended). Then, at that embedder and reranker size, it picks chunk size, reranker on or off and hybrid on or off by the pooled mean nDCG@10 on half A. Its principles:
 
-Secondary (LLM judge): Ragas 0.4.3, with faithfulness, answer relevancy, context precision and context recall. Ragas never replaces the primary metrics. Metrics that need a reference answer run only on FinanceBench and BioASQ; FreshStack has gold documents but is checked for reference answers at freeze.
+- Choose on the three core datasets pooled. Legal RAG Bench takes no part in selection.
+- Setups within 0.01 of the best tie. Ties go to the cheaper setup in this order: reranker off, hybrid off, lowest index cost, then smaller chunk size.
+- Record the configuration hash on OSF before half B is opened for Part 2.
 
-- Main judge: `deepseek/deepseek-v4.1-flash-1017` through OpenRouter, temperature 0, fixed seed, one pinned upstream provider. Cheap enough to judge all 3 runs of every arm.
-- Cross-check judge: `openai/gpt-6.1-terra` through OpenRouter, on the 50 hand-checked items.
-- Check about 50 judged items by hand. Report agreement between the main judge, the cross-check judge and the hand check. No earlier experiment tested this DeepSeek version as a judge, so this check is its evidence.
-- Pin the Ragas version and every judge setting, and record tokens per call.
+A **defaults row** sits beside the main comparison: OMRS shipped defaults against RAGFlow documented defaults. Both use the embedder chosen on half A and the same answer model. Each keeps its own shipped retrieval settings. It names the tuning gap, which is the part of any OMRS lead that comes from choosing a setup on half A. The defaults row is secondary. It gets paired confidence intervals and no confirmatory claim. RAGFlow runs at its documented defaults in both rows.
 
-Latency: median (p50) and 95th percentile (p95) per query, without warm-up.
+A **search-cost figure** plots the best half-A score against the number of setups tried (expected validation performance). It shows how much of the OMRS score comes from selection over the grid.
 
-#### Repetitions
+### Which questions
 
-Each arm builds its index once and runs 3 times on it.
+Half B only. No selection step in Part 1 or Part 2 reads half B. Each system runs once. The three core datasets are confirmatory; Legal RAG Bench is exploratory. Half B is about half of each dataset, so power is lower than in Part 1. Report the minimum detectable effect computed from the data for each dataset and hypothesis.
 
-- Retrieval with a fixed index gives the same result each run. Run 1 is scored. Runs 2 and 3 must match it exactly. This is the determinism check, and the paper reports it.
-- Rebuild check: for each dataset, rebuild the 4B baseline index once in a fresh process and compare its retrieval with run 1.
-- The 3 runs measure the stages that can change between runs: the generated answer, the Ragas judge and latency. Report the run-to-run standard deviation for these.
-- Embedding uses exact or fast mode, as Step 1 Part C decides. The plan states the mode and its tolerance.
-- Statistical tests compare arms question by question. Average the 3 runs for each question first.
+### Rules that keep the comparison fair
 
-#### Statistics (basic set)
+1. **Shared parts are fixed.** Both systems use the embedder chosen on half A, the same answer model and prompt, the same checkers and judges, the same corpus snapshot and the same question IDs. Each system keeps its own parser, chunker and retrieval method. Those are what the comparison measures.
+2. **Equal evidence.** Request retrieval depth 100 from RAGFlow. Score nDCG@10 on the same units as Experiment 35, after the same collapse. Both systems answer from evidence cut to the same 20,480-token budget. Report mean context tokens per question for each system.
+3. **FinanceBench pages.** Before the freeze, check that RAGFlow's PDF parser records a page for each chunk. Map each chunk to its first page, as for OMRS. Where a chunk has no page, score that question at document level only, and report how many questions this affects.
+4. **Answers.** Each system's retrieved evidence goes through the common OMRS answer harness, with the same prompt, the answer model `deepseek/deepseek-v4.1-flash-1017` and the same 20,480-token budget. The answer difference then comes from parsing, chunking and retrieval only. RAGFlow's own chat pipeline output may be reported descriptively, and it never enters C1 or C2.
+5. **Determinism.** Search runs once per system. Before the run, repeat RAGFlow retrieval on a small seeded sample and report whether the ranked lists match. Rerun OMRS search for the chosen setup on its sealed Experiment 35 index and check that the lists equal the saved ones.
+6. **Pin and disclose.** Pin the RAGFlow release and container digest. Record the full configuration, parser settings included. Send the configuration to the RAGFlow maintainers before the run and log every reply. Use RAGFlow's documented defaults for every setting that is not shared. Do not tune it below them.
+7. **Human labels.** Part 2 adds its own correctness labels and human-agreement sample, drawn from the answers of both systems, so checker and judge agreement covers RAGFlow answers. They run in Part 2. The Experiment 35 label counts do not change.
+8. **Report.** Map every retrieved chunk to the dataset's unit ID. Give one table per dataset, separate from the Experiment 35 tables.
 
-For each dataset and arm:
+### Hypotheses C1 and C2
 
-1. Mean, with a 95% confidence interval. Use a bootstrap over questions for scores, and a Wilson interval for hit rates.
-2. Difference from the baseline, with a paired 95% confidence interval. This is the main number.
-3. One paired test for each comparison:
-   - a permutation test for scores;
-   - McNemar's exact test for hit or miss.
-4. Holm correction across the arms of one dataset.
-5. Wins, losses and ties per question, as a plain effect size.
-6. The minimum detectable effect, stated before the run. An estimate from Experiment 25's FreshStack spread gives about 4 points at 150 to 223 questions and about 2 points at 707. Recompute it per dataset before freeze.
+- **C1:** OMRS and RAGFlow differ in retrieval nDCG@10. Two-sided, per core dataset.
+- **C2:** OMRS and RAGFlow differ in answer correctness. Two-sided, per core dataset.
 
-All of these exist in `.agents/skills/s-experiment/references/stats.py` and `experiments/_lib/stats.py`. Plain nDCG@10 and hit@page are new.
+C1 and C2 form their own Holm family, separate from H1 to H8: Holm runs per dataset across C1 and C2 (two tests per dataset). The cross-dataset rule is the one of Part 1: a hypothesis holds when it holds on at least 2 of the 3 core datasets (FinanceBench, FreshStack, BioASQ). Each test pairs the two systems question by question:
 
-One table for each dataset:
+- Continuous metrics: paired permutation test, with a paired bootstrap 95% interval.
+- Binary correctness: McNemar's exact test, or another exact paired test.
+- FinanceBench: questions share documents, so p-values come from GEE with errors clustered by document, as in the protocol.
 
-| Arm | n | Recall@10 [CI] | MRR@10 [CI] | nDCG@10 [CI] | Hit@page % [CI] | Δ nDCG@10 [paired CI] | p (Holm) | W/L/T | Faithfulness ± run SD | Answer relevancy ± SD | Context P / R ± SD | Latency p50 / p95 |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
+C2 uses the correctness measure that passes its human-agreement gate (kappa 0.60, as in the Experiment 35 protocol). If none passes, C2 becomes exploratory. Legal RAG Bench and the defaults row get paired intervals and no confirmatory test.
 
-#### Runtime and models
+The paper claims superiority only where the tests support it. No TOST margin is planned, so the paper makes no equivalence claim. A non-significant result means no difference was detected at this sample size.
 
-Embedding model: Qwen3-Embedding-4B is the baseline, from the public `Qwen/Qwen3-Embedding-4B-GGUF` file. The 0.6B model is the ablation arm. Reasons:
+What this comparison can claim: with the shared models fixed, the measured difference between two complete systems on held-out questions. Han et al. 2025 (RAG against GraphRAG) fixed the answer model, chunk size, embedding model and retrieval budget in the same way. BERGEN and FlashRAG fix shared parts inside one toolkit. The half split answers the selection-bias risk (Cawley and Talbot 2010). The defaults row and the maintainer review answer the weak-baseline risk (Yang et al. 2019).
 
-- The evidence that 0.6B matches 8B (Experiment 2, ADR-009) comes from 17 queries on 6 documents. Both models scored 100% Hit@1, so that test could not separate them.
-- No experiment yet compares 0.6B and 4B under the same conditions. Experiment 22 (4B) and Experiment 9a (0.6B) differ in model, width, store and chunking.
-- No experiment compares 4B with 8B. An 8B arm on all three datasets measures that gap, so the three sizes are compared on equal terms. The paper claims only what this arm shows.
-- Step 1 Part B times 0.6B, 4B and 8B on the measurement Mac. If local 4B does not fit the time budget on the Mac or on rented hardware, OpenRouter `qwen/qwen3-embedding-4b` becomes the reference arm, named as hosted (ADR-103).
+### Pre-registration
 
-Other runtime rules:
+Part 2 (C1, C2) and the A3 rule go to OSF at the same freeze as Experiment 35, before any half-B score exists.
 
-- All local language and embedding models through llama.cpp, with every server argument written out (Step 1 Part C). Pin the repository, file, SHA-256, build and server arguments in the `runtime` block of `plan.json`.
-- The live-server check runs before the first score of each run.
-- Hosted models only as named reference arms.
+## Step 4: EnterpriseRAG-Bench context run (E1, descriptive)
+
+**E1:** OMRS's document recall, answer correctness, completeness and overall score on EnterpriseRAG-Bench, shown beside published systems. E1 is descriptive only. It has no significance test.
+
+- Run the A3 setup once on the full corpus (511,962 synthetic documents). A subset would not be comparable with the leaderboard.
+- Rerun the benchmark's published BM25 and vector-search baselines in our pipeline as a calibration anchor. If the reruns land near the published baseline scores, our pipeline and scoring match theirs.
+- The benchmark uses GPT-5.4 as answer model and judge. Leaderboard entries mostly do not state their answer model. Each difference therefore compares whole configurations, not OMRS retrieval alone.
+- E1 answer model: GPT-5.4, the same as the EnterpriseRAG-Bench baselines, because E1 only sits beside the leaderboard as context. All E1 runs in our pipeline (the A3 setup and the two baseline reruns) use GPT-5.4. This differs from Parts 1 and 2, which use `deepseek/deepseek-v4.1-flash-1017`.
+- Put leaderboard scores in a separate context table. Give each score its label revision, the date checked and the answer model where stated.
+- Cost: E1 needs its own estimate and ceiling before any E1 run. E1 stays descriptive and is dropped first if the budget is short.
+
+Evaluation procedure:
+
+1. Pin the benchmark commit and the corpus revision. Record the gold-label revision for each score.
+2. Use the main `questions.jsonl`. Exclude the metadata-dependent `extra_questions.jsonl`. Check the scored-question count: the paper describes 500 questions; the leaderboard categories summed to 470 on 9 November 2026.
+3. Save one JSONL row per question: `{"question_id":"qst_0001","answer":"...","document_ids":["dsid_abc","dsid_def"]}`. Map each retrieved chunk to its `dsid_*` identifier and remove duplicates.
+4. Run the official `src.scripts.answer_evaluation.metrics_based_eval` with GPT-5.4 and record every argument.
+5. Keep the default citation stripping and document-correction flow. Do not use `--skip-citation-stripping` or `--no-correction`. Keep `questions_updated.jsonl` and report the corrected questions.
+6. Use `--limit` and `--resume` only for harness checks and resumed runs. A limited run is not a leaderboard result.
+7. Confirm the judging and submission procedure with Onyx before the run. For a leaderboard entry, give Onyx the OMRS commit, frozen configuration, model identities, corpus revision, commands and saved outputs.
 
 ## Publication rules
 
@@ -204,6 +257,7 @@ The journal's own author guide covers ORCID, CRediT, the funding wording, confli
    - FinanceBench is CC BY-NC. Do not release its text or derived files under CC BY.
    - FreshStack is CC BY-SA. Release derived files under CC BY-SA.
    - BioASQ is CC BY 2.5.
+   - Legal RAG Bench is CC BY-NC-SA 4.0. Do not release its text or derived files under CC BY. Release derived files under CC BY-NC-SA.
    - EnterpriseRAG-Bench is MIT.
    - Publish scores, question IDs and scripts that rebuild the data. Do not publish the corpus text.
 4. Archive code and outputs on Zenodo with a DOI. Keep each dataset's derived files in their own archive with their own licence.
@@ -213,26 +267,35 @@ The journal's own author guide covers ORCID, CRediT, the funding wording, confli
 
 | Risk | Response |
 |---|---|
-| A small difference between llama.cpp back ends (Metal, CUDA, CPU) | The plan states a tolerance per metric (ADR-103) |
-| The Ragas judge disagrees with people | Report hand-check agreement. Keep Ragas secondary. |
-| Index building on 40K abstracts takes too long on the Mac | Time it in Step 1 first. Then use rented hardware, or every gold passage plus a seeded sample of the other abstracts, stated in the report. A smaller question set does not help: the corpus is the cost, and the split has no question-type field. |
-| FinanceBench chunks carry no page number | The default reader `pdf_inspector` records no pages today. The change `pdf-inspector-page-provenance` makes it emit one document per page. Every dataset and arm then uses the same default reader, so the reader is never a hidden variable. Step 1 checks that every PDF chunk has a page number. |
-| Metadata extraction costs more than embedding | The default calls the language model per chunk. Step 1 times it; Step 2 chooses one mode for all arms. |
+| A small difference between llama.cpp back ends | Every main-run pod uses one GPU type. The plan states a tolerance per metric (ADR-103). |
+| A checker or the correctness judge disagrees with people | Human labels gate each one before its scores count. A measure that fails its gate becomes exploratory. |
+| The run costs more than planned | The protocol ceiling stops the run at the next stage, and the operator decides. |
 | The reranker result changes on llama.cpp | Report it as found. A negative result is still a result. |
+| Choosing the OMRS setup inflates its score | Choose on half A by a pre-registered rule, test on half B only, and publish the search-cost figure. |
+| Half B is too small to detect a difference | Report the minimum detectable effect from the data. Make no equivalence claim. |
+| The single hosted answer model changes behind its ID | Pin one upstream host. Record the returned model ID and provider per call. State it as a limitation. |
+| RAGFlow cannot use our models, or hides its retrieved chunks | Record the blocker and report it. Do not substitute another model. |
+| RAGFlow chunks carry no page number | Score the affected FinanceBench questions at document level only, and report the count. |
+| RAGFlow indexing costs too much GPU time | Time one RAGFlow index per dataset before the freeze. Report the cost. |
+| A reviewer says we set up RAGFlow badly | Use its documented defaults, pin the release, publish the full configuration, send it to the maintainers and report the defaults row. |
+| E1 indexing exceeds the budget | E1 is dropped first. Report the measured cost. |
+| Public leaderboard results lack per-question scores | E1 is descriptive. Do not infer significance from rank or aggregate scores. |
 | The journal deal does not cover the article type | Ask the library before writing. Research Article is the fallback. |
-| Indexing 511,962 EnterpriseRAG-Bench documents exceeds the budget | Measure download size and embedding time before freeze. Report the cost; omit RQ3 if the budget cannot cover the full corpus and official evaluation. |
-| Public leaderboard results lack aligned per-question scores | Report descriptive differences only. Do not infer significance from rank or aggregate scores. |
 
 ## Next steps
 
-1. Done: `pipeline-sweep-llamacpp` proposed.
-2. Done: `experiment-35-full-document-rag-benchmark` updated (publication, BioASQ, the arms, the run policy, the statistics, the data-sharing split, RepoProbe moved out).
-3. Ask the Napier library to confirm the article type and the deal.
-4. Merge `pdf-inspector-page-provenance` (page numbers from the default reader).
-5. Run Step 1. Then confirm the answer model and the hardware from its timings and freeze the Step 2 protocol and plan before the first measured run.
-6. Before freeze, time EnterpriseRAG-Bench indexing, pin its corpus and leaderboard revisions, and confirm the GPT-5.4 judging or submission procedure with Onyx.
+1. Done: pipeline sweep (Step 1), archived 8 November 2026.
+2. Done: `pdf-inspector-page-provenance` (page numbers from the default reader).
+3. Done: Experiment 35 amendments A1, A2 and A2c.
+4. Ask the Napier library to confirm the article type and the deal.
+5. Done: Experiment 35 amendment A3 (protocol section 0.12) holds the selection rule for Part 2.
+6. Reserve an experiment number for Part 2. Write its protocol: C1, C2, the fairness rules and A3 as reference.
+7. Before the freeze, pin the RAGFlow release and container digest and connect it to the llama.cpp models. Time one index per dataset. Check page provenance and retrieval repeatability. Send the configuration to the RAGFlow maintainers.
+8. Done: group 7 (Part 2 and E1) is in `rag-benchmark-readiness-flow`.
+9. Freeze Part 1. Deposit Experiment 35, Part 2 and A3 on OSF together.
+10. Before any E1 run, estimate its cost and ceiling. Pin the corpus and leaderboard revisions. Confirm the GPT-5.4 judging or submission procedure with Onyx.
 
-## Sources checked on 27 October 2026 and 9 November 2026
+## Sources checked on 27 October, 9 November, 12 November and 13 November 2026
 
 - FinanceBench, arXiv 2311.11944.
 - FreshStack, arXiv 2504.13128.
@@ -240,10 +303,20 @@ The journal's own author guide covers ORCID, CRediT, the funding wording, confli
 - BEIR, arXiv 2104.08663.
 - Ragas, arXiv 2309.15217. Version 0.4.3 on PyPI is dated 13 January 2026.
 - Miller 2024, "Adding Error Bars to Evals", arXiv 2411.00640.
-- Smucker, Allan and Carterette 2007, CIKM, doi:10.1145/1321440.1321528.
+- Smucker, Allan and Carterette 2007, CIKM, doi:10.1145/1321440.1321528 (to verify).
+- Urbano, Lima and Hanjalic 2019, SIGIR, arXiv 1905.11096 (choice of statistical test in IR evaluation).
+- Cawley and Talbot 2010, JMLR, "On over-fitting in model selection and subsequent selection bias in performance evaluation".
+- Yang, Lu, Yang and Lin 2019, SIGIR, doi:10.1145/3331184.3331340 (weak baselines).
+- Dodge et al. 2019, EMNLP, "Show your work", arXiv 1909.03004 (expected validation performance; to verify).
 - RAGPerf, arXiv 2603.10765.
-- BERGEN, arXiv 2407.01102. Its DOI did not resolve in CrossRef, so check it before citing.
-- Hugging Face cards: `enelpol/rag-mini-bioasq`, `BeIR/nfcorpus`, `PatronusAI/financebench`, `freshstack/corpus-oct-2024`, `onyx-dot-app/EnterpriseRAG-Bench`.
+- BERGEN, arXiv 2407.01102.
+- FlashRAG, arXiv 2405.13576 and doi:10.1145/3701716.3715313.
+- TREC 2024 RAG Track, arXiv 2411.09607.
+- Hugging Face cards: `enelpol/rag-mini-bioasq`, `PatronusAI/financebench`, `freshstack/corpus-oct-2024`, `isaacus/legal-rag-bench`, `onyx-dot-app/EnterpriseRAG-Bench`.
 - EnterpriseRAG-Bench, arXiv 2605.05253, `github.com/onyx-dot-app/EnterpriseRAG-Bench`, its Hugging Face leaderboard, `quickstart.md`, `methodology.md` and `src/scripts/answer_evaluation/metrics_based_eval.py` (checked 9 November 2026).
+- EnterpriseRAG-Bench leaderboard, checked 12 November 2026 (last updated 3 November 2026, 39 systems): PipesHub #1 at 93.24, RAGFlow #26 at 50.24. Onyx does not list itself.
+- RAGFlow, `github.com/infiniflow/ragflow` (Apache-2.0).
+- Han et al. 2025, "RAG vs. GraphRAG: a systematic evaluation", arXiv 2502.11371.
+- LightRAG, arXiv 2410.05779. RAGLAB, doi:10.18653/v1/2024.emnlp-demo.43.
 - Taylor & Francis: <https://editorresources.taylorandfrancis.com/welcome-to-tf/policies-guidelines/streamlining-how-we-describe-research-outputs/>.
 - Edinburgh Napier: <https://libguides.napier.ac.uk/c.php?g=685910&p=5352291>, the linked open access policy pages, and Open Access Policy v3.0.
