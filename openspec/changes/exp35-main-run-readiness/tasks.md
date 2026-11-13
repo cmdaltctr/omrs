@@ -93,7 +93,7 @@ These tasks change `src/omrs/` and `web/`, so the benchmark measures the shipped
 
 - [ ] 3.1 Write failing tests in `tests/test_experiment_ordered_rows.py`:
   - results that finish in the order 3, 1, 2 are committed to the row file and the trace file as 1, 2, 3;
-  - a result finished ahead of an unfinished item is in `<stage>.pending.jsonl` at once, flushed;
+  - a result finished ahead of an unfinished item is in `<stage>.pending.jsonl` at once, flushed and fsynced before it counts as saved;
   - after a simulated stop, a resume commits pending results in order and asks for calls only for items with neither a row nor a pending result;
   - the done-marker is written after the last commit, and the pending file is then removed;
   - the stage writes and fsyncs a dispatch record (`<stage>.dispatch.jsonl`, item id) before each paid call; a stub stopped after its call returned and before the pending write has a dispatch record and no result, so it is called again once on resume, and the stage trace counts one resent call (`resent_calls` 1); a stub whose result reached the pending file is not called again, and its `resent_calls` stays 0; no resend depends on the answer content.
