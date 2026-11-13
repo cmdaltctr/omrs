@@ -5,9 +5,9 @@
   "date": "2026-11-01",
   "category": "retrieval",
   "size": "Confirmatory",
-  "status": "PLANNED",
-  "superseded_by": null,
-  "finding": "",
+  "status": "SUPERSEDED",
+  "superseded_by": "35-full-rag-benchmark-2026-11-01",
+  "finding": "Superseded by Experiment 35, which now runs the full-factorial benchmark on RunPod (amendments A1 to A3).",
   "purpose": "publication",
   "refs": {
     "adrs": [],

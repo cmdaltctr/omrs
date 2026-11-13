@@ -36,6 +36,10 @@ G0 preflight
    v
 6. Experiment 35: data, pre-freeze pod (G7a), harness (G7b),
    smoke run, freeze (G7), run, report (design D5)
+   |
+   v
+7. Part 2 (RAGFlow on half B) and E1: protocol and RAGFlow set-up before
+   the freeze, OSF deposit at G7, A3 on half A, run on half B, E1 last
 ```
 
 The cuts change goes first because both other changes build on it (the panel shows its cut boxes; the router change lands after it and shares the re-index). The router goes before the panel because it is on the benchmark's critical path and both touch `workspace-settings` and `settings-file`: never two of these branches at once (rule of the archived master flow, task 4.4). The panel changes no result with defaults, so it may run beside the sweep.
@@ -57,7 +61,7 @@ The cuts change and the router change each change the index identity. The operat
 | G6 | 5.3 | RunPod budget and start of the sweep |
 | G7a | 6.2 | Pre-freeze pod session: quoted price, go |
 | G7b | 6.8 | Merge the Exp 35 harness PR |
-| G7 | 6.11 | Freeze Experiment 35 and approve the run budget |
+| G7 | 6.11 and 7.3 | Freeze Experiment 35, approve the run budget, and deposit Exp 35, A3 and the Part 2 protocol on OSF together |
 
 ### D4. Rules every group follows
 

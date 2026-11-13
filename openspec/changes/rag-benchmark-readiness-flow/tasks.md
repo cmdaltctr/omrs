@@ -1,6 +1,6 @@
 # Tasks
 
-The order is the operator's (2026-11-06, design D1). Do not reorder groups. Stop at every gate (design D3). Each group names the change whose own `tasks.md` carries the detail. Rules: design D4.
+The order is the operator's (2026-11-06, design D1). Do not reorder groups. Exception: steps 7.1 and 7.2 run before task 6.11 (the freeze), as group 7 states. Stop at every gate (design D3). Each group names the change whose own `tasks.md` carries the detail. Rules: design D4.
 
 ## 0. Preflight
 
@@ -79,18 +79,29 @@ Follow the steps in order (design D5). "Exp 35 task N" means a task in `experime
 
 ### E. Smoke run on the run machine
 
-- [ ] 6.10 One arm smoke run that does archived 10.6 and Exp 35 task 4.1 together: every arm, 5 seeded questions per dataset, twice, through `clef_flash`, `granite_guardian` and `chat`. Run it on the machine that task 1.5 names. On a pod, quote the price first, and stop the pod after the smoke run (only its disk bills) until G7. Verify: zero errors, a verdict per strategy for every claim, complete call records, an identical second run, and the 1.11 budget not exceeded on extrapolation. Smoke run done 2026-11-10/11 on pod walsi2c5gfb8xc: all 6 arms, 3 datasets, 5 questions, 2 runs, all three checkers; retrieval identical in 18 of 18 pairs. Report: DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/prefreeze-report-2026-11-11.md. Pod deleted. Open: Exp 35 task 1.11 has no budget yet, so the extrapolation check cannot pass, The FreshStack-only smoke rerun is done (2026-11-11, pod 2elh5ji2og6d74, deleted): Clef-Flash passes the guard (ADR-119 A7), and its two harness errors are fixed in PR #207. Tick this task after 1.11 and the zero-error recheck of FreshStack questions 77536364 and 77762811 (Exp 35 task 4.1 (c)).
+- [ ] 6.10 One smoke run that does archived 10.6 and Exp 35 task 4.1 together: a seeded sample of the factorial setups (Exp 35 amendment A1), 5 seeded questions per dataset, twice, through the claim checkers GLM-5.3 (main) and Clef-Flash (second), and `chat`. Granite Guardian is dropped. Run it on the machine that task 1.5 names. On a pod, quote the price first, and stop the pod after the smoke run (only its disk bills) until G7. Verify: zero errors, a verdict per strategy for every claim, complete call records, an identical second run, and the budget of Exp 35 task 4A.5 (ceiling $975) not exceeded on extrapolation. History: the first smoke run, under the old six-arm design, was done 2026-11-10/11 on pod walsi2c5gfb8xc: all 6 arms, 3 datasets, 5 questions, 2 runs, all three checkers; retrieval identical in 18 of 18 pairs. Report: DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/prefreeze-report-2026-11-11.md. Pod deleted. Open: the extrapolation check needs the budget of Exp 35 task 4A.5. The FreshStack-only smoke rerun is done (2026-11-11, pod 2elh5ji2og6d74, deleted): Clef-Flash passes the guard (ADR-119 A7), and its two harness errors are fixed in PR #207. Tick this task only when the factorial smoke run above passes every Verify check, and after 4A.5 and the zero-error recheck of FreshStack questions 77536364 and 77762811 (Exp 35 task 4.1 (c)). The old six-arm smoke run does not count for the factorial setups (PR 209 review, 2026-11-13).
 
 ### F. Freeze
 
-- [ ] 6.11 GATE G7: the operator approves the freeze and the run budget. Exp 35 tasks 4.2 and 4.3: commit `protocol.md` and `plan.json`, then remove the DRAFT status.
+- [ ] 6.11 GATE G7: the operator approves the freeze and the run budget. Exp 35 tasks 4.2 and 4.3: commit `protocol.md` and `plan.json`, then remove the DRAFT status. The OSF deposit (Exp 35 task 4B.6) is shared with group 7 step 7.3: one deposit holds Exp 35, A3 and the Part 2 protocol. Do not deposit before step 7.1 is done.
 
 ### G. Run and report
 
-- [ ] 6.12 Exp 35 section 5 (tasks 5.1 to 5.6): every arm, 3 runs each. The step E pod was deleted, so create a new pod on the machine type that task 1.5 names, and quote the hourly price first. Restore the models, corpora and pod scripts from `DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/` and check each file against its `SHA256SUMS` before the first arm. Delete the pod when the runs and the copy are done.
+- [ ] 6.12 Exp 35 search and answer stages (tasks 4A.6 to 4A.8, which replace the old section 5 text): 72 search setups per dataset, run once each, then the 15 answer setups (12 crossed plus 3 token-matched, A3), 3 runs each. The step E pod was deleted, so create nine index pods (task 4A.6) and three replicate pods (task 4A.7) on the machine type that task 1.5 names. For each pod, quote the hourly price first, restore the models, corpora and pod scripts from `DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/`, check each file against its `SHA256SUMS` before the first arm, and delete the pod when its runs and its copy are done.
 - [ ] 6.13 Exp 35 section 6 (tasks 6.1 to 6.3): statistics, `report.md`, `experiment.json` status.
 - [ ] 6.14 Exp 35 section 7 (tasks 7.1 to 7.5): split, copy to `DATA/omrs/`, Zenodo, identifier search. Merge and archive Exp 35 on the operator's word.
 
-## 7. Close
+## 7. Part 2 (RAGFlow on half B) and E1
 
-- [ ] 7.1 Archive this change once groups 0 to 6 are done or explicitly parked by the operator.
+Master plan: `docs/proposals/first-publication-benchmark.md`, "Order and gates", Step 3 and Step 4. "A3" means Exp 35 protocol section 0.12. Part 2 needs its own experiment number and protocol. Steps 7.1 and 7.2 run before the freeze (6.11). Steps 7.4 to 7.6 run after Exp 35 starts.
+
+- [ ] 7.1 Reserve the Part 2 experiment number with `omrs experiments new`. Write its protocol: hypotheses C1 and C2 (Holm per dataset across C1 and C2, then 2 of 3 core datasets; Legal exploratory; C2 exploratory if no correctness measure passes kappa 0.60), the fairness rules of the proposal Step 3, the defaults row, the human labels drawn from both systems, and a pointer to A3. Verify: `omrs experiments check` and `openspec validate --all --strict` pass.
+- [ ] 7.2 Prepare RAGFlow before the freeze. Pin the release and the container digest. Connect it to the llama.cpp models through OpenAI-compatible endpoints. Time one index per dataset and record the GPU cost. Check that each FinanceBench chunk carries a page number on a seeded FinanceBench sample (the page-level gate of the Part 2 relevance unit: if RAGFlow returns no page for a chunk, the Part 2 primary unit falls back to the document for every question and both systems; the page-level result becomes a labelled sensitivity analysis). Repeat RAGFlow retrieval on a small seeded sample and report whether the ranked lists match. Send the configuration to the RAGFlow maintainers and log every reply. Verify: `protocol.md` of Part 2 holds each result. A blocker is recorded and reported, and no other model is substituted.
+- [ ] 7.3 GATE G7 (shared with 6.11): OSF deposit at the Exp 35 freeze. One deposit holds the Exp 35 protocol and `plan.json`, amendment A3 and the Part 2 protocol (C1, C2). The operator does the deposit. Verify: the OSF link and the commit hash are in both protocols.
+- [ ] 7.4 After the Exp 35 search stage is scored, apply A3 on half A: the embedder and reranker size from the three core datasets, then chunk size, reranker on or off and hybrid on or off. Freeze the chosen cell. Record its configuration hash on OSF before half B opens. Verify: the dated note in Exp 35 protocol section 0.12 exists before any half-B score for Part 2.
+- [ ] 7.5 Run Part 2 on half B, once per system: the A3 cell and RAGFlow on the same shared models. RAGFlow evidence goes through the common OMRS answer harness (same prompt, answer model, 20,480-token budget). Run the defaults row beside it. Quote the pod price first and delete the pod when the copy is done. Verify: one table per dataset, separate from the Exp 35 tables, with paired confidence intervals.
+- [ ] 7.6 E1: estimate the cost and set a ceiling for the full 511,962-document corpus. Pin the benchmark commit, the corpus revision and the leaderboard revision. Confirm the GPT-5.4 judging and submission procedure with Onyx. Run E1 only if the budget allows; E1 is the first item to drop. The answer model is GPT-5.4, as in the benchmark's own baselines, and E1 stays descriptive. Verify: the cost note and the ceiling exist before any E1 run.
+
+## 8. Close
+
+- [ ] 8.1 Archive this change once groups 0 to 7 are done or explicitly parked by the operator.

@@ -23,22 +23,30 @@ Experiment 35 SHALL have purpose `publication` and size Confirmatory. Its `proto
 - **THEN** it SHALL use the same GGUF files and build, and SHALL apply the planned tolerance
 - **AND** all arms of one dataset SHALL run on the same machine and back end
 
-### Requirement: Each arm runs three times with a determinism check
+### Requirement: Answer setups run three times with a determinism check
 
-Each arm SHALL build its index once and run 3 times on it. Run 1 SHALL give the scored retrieval result, and runs 2 and 3 SHALL be compared with it. For each dataset, the 4B baseline index SHALL be rebuilt once in a fresh process and its retrieval compared with run 1. The report SHALL state the result of the determinism check and the run-to-run standard deviation of answers, judge scores and latency.
+Each index SHALL be built once, and each search setup SHALL run once (run 1) for the scored retrieval result. Each answer setup SHALL run 3 times, and each answer run's retrieval SHALL be compared with the search stage. Per dataset, the `e4b-c1024` index SHALL be rebuilt once in a fresh process and compared. The report SHALL state the determinism result and the run-to-run standard deviation of answers, judge scores and latency.
 
 #### Scenario: Retrieval differs between runs
-- **WHEN** run 2 or run 3 retrieves a different ranked list from run 1 for any question
+- **WHEN** an answer run retrieves a different ranked list from the search stage for any question
 - **THEN** the report SHALL record the mismatch and its size
 - **AND** another run SHALL NOT replace run 1 as the scored result
 
 #### Scenario: Paired tests use repeated runs
-- **WHEN** an arm is compared with the baseline
+- **WHEN** two answer setups are compared
 - **THEN** the 3 runs SHALL be averaged per question before questions are paired
+
+### Requirement: Spending stops at a stated ceiling
+
+The protocol SHALL state a cost estimate and a ceiling of 1.5 times the estimate, for pods and hosted calls together. The projected total SHALL be checked before the freeze, on the build pod after the search stage, and while the replicate pods run. When the projected or actual total reaches the ceiling, the run SHALL stop before the next stage, and the operator SHALL decide.
+
+#### Scenario: Projection above the ceiling
+- **WHEN** the build pod's projection, with the measured index and search hours, exceeds the ceiling
+- **THEN** the replicate pods SHALL NOT start until the operator decides
 
 ### Requirement: Statistics follow the frozen basic set
 
-For each dataset and arm the report SHALL give the mean with a 95% interval, the paired difference from the baseline with a 95% interval, a paired permutation test for scores, McNemar's exact test for hit or miss, Holm correction across arms, and wins, losses and ties. The minimum detectable effect SHALL be stated before the run.
+For each dataset and setup the report SHALL give the mean with a 95% interval. For each registered contrast it SHALL give the paired difference with a 95% interval, a paired permutation test for scores, McNemar's exact test for hit or miss, Holm correction across the primary contrasts of one dataset, and wins, losses and ties. The minimum detectable effect SHALL be stated before the run.
 
 #### Scenario: No difference is found
 - **WHEN** the Holm-adjusted p is 0.05 or more, or the paired interval includes zero
@@ -102,3 +110,19 @@ The release SHALL include a small shareable example input set with expected outp
 #### Scenario: A home-folder path is found in a release
 - **WHEN** the pre-release search finds a home-folder path or a personal name
 - **THEN** the release SHALL NOT be uploaded until it is removed
+
+### Requirement: Hosted calls record the model that answered
+
+Every hosted call SHALL record the model id and provider that the reply returns, beside the requested ones. The report SHALL count differences per role, and the raw verdicts SHALL be released where the licence allows.
+
+#### Scenario: Provider routes to another model
+- **WHEN** a reply names another model than the one requested
+- **THEN** the row SHALL keep both names, and the join SHALL count it
+
+### Requirement: The protocol is publicly pre-registered
+
+The `protocol.md` and `plan.json` of the freeze commit SHALL be deposited on OSF. A later commit, made before the first measured run, SHALL record the OSF link and the freeze commit hash in `protocol.md`; the freeze commit cannot hold its own hash.
+
+#### Scenario: Run before the deposit
+- **WHEN** the first measured run starts and `protocol.md` holds no OSF link
+- **THEN** the freeze SHALL count as incomplete

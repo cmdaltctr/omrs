@@ -2,6 +2,23 @@
 
 > Status: DRAFT. Purpose `publication`, size Confirmatory. Commit `protocol.md` and `plan.json` before the first measured run.
 
+## Pre-freeze amendment A1 (2026-11-12)
+
+The operator and the agent agreed a full redesign before the freeze. It wins over the older text below, which stays for history. Design section D0 holds the detail.
+
+- **Datasets (English only, 1,160 questions):** FinanceBench (`PatronusAI/financebench`, 150), FreshStack LangChain (203 public queries, not 223; the 20 Experiment 9 continuity queries leave), BioASQ mini (707) and Legal RAG Bench (`isaacus/legal-rag-bench`, 100 expert questions, one gold passage each, 4,876 passages, CC BY-NC-SA 4.0; exploratory because of low power). LegalBench-RAG and LLeQA are out. FinanceBench answers also get a number-match check.
+- **Search stage, full factorial on all four datasets:** embedder (Qwen3-Embedding 0.6B, 4B, 8B) x chunk size (512, 1,024, 2,048 Qwen3 tokens, overlap 15%: 77, 154, 307, the same for Markdown and plain text) x reranker (off, Qwen3-Reranker 0.6B, 4B, 8B) x hybrid (off, on with BM25 pinned). That is 9 indexes per dataset and 72 search setups. Setups are named by their settings, never by a profile name.
+- **Dropped:** the six one-factor arms, the `chunking-off` arm, MiniLM (it truncates at 512 tokens), Granite Guardian, hypothesis H-CC, the $250 cap. Isnad moved to v4.
+- **Hypotheses H1 to H7** (search) and **H8** (answer stage, chunk size against faithfulness and correctness), each with a paired test and Holm correction.
+- **Answer stage:** one embedder and one reranker size, chosen by a rule fixed before the run; then chunk size x reranker on or off x hybrid on or off = 12 crossed setups (plus 3 token-matched setups from A2 and A3, 15 in all) x 3 runs x 1,160 questions. Answer model, Ragas judge and claim checkers GLM-5.3 (main) and Clef-Flash (second) as before. The refusal rule stays.
+- **Budget:** re-estimated at about $650, with a stop rule at a ceiling of $975 (1.5 x the estimate).
+- **Hardware:** one GPU type for every main-run pod, chosen before the freeze from a 10-minute timing job on RTX 4090, L40S and H100 by a rule written before measuring. The 9 indexes build on parallel pods of that type.
+- **New OMRS code:** a llama.cpp reranker backend (one new file and one `register()` line) in change `exp35-main-run-readiness`.
+
+## Pre-freeze amendment A2 (2026-11-13)
+
+An independent methods review ran; the operator approved every fix (design D0.12): unit-level scoring after collapsing the top 100 chunks; token-matched controls; H6 confirmatory on FinanceBench and FreshStack only, Legal exploratory throughout; one mixed model per dataset with a 2-of-3 cross-dataset rule; MDE from data; split-half selection; two labellers; a closed-book run; returned-model provenance; reranker rank checks; OSF pre-registration. Budget about $650, ceiling $975.
+
 ## Why
 
 OMRS needs one benchmark of the full pipeline that a paper can cite. Past experiments (1 to 43) were optimisation runs. Many used Ollama, small question sets or remain unfinished, so they cannot be cited as they are.
@@ -24,7 +41,7 @@ This change turns Experiment 35 into the benchmark for the first fellowship pape
 - Add the publication rules that change the experiment: a shareable example set, a split between shareable and restricted outputs, licence-aware release, Zenodo archives, and removal of personal identifiers.
 - Run locally or on rented cloud hardware. Decide after the embedding timing. Both options use the same GGUF files, the same build and the ADR-103 tolerance.
 - Move RepoProbe (old 35B-1) to a later paper. It has no retrieval labels and needs an LLM judge for every score.
-- Keep: no production default changes, Ragas and observability tooling outside the base install, per-stage JSONL traces, no framework comparisons.
+- Keep: no production default changes, Ragas and observability tooling outside the base install, per-stage JSONL traces, no framework comparison inside this experiment (the RAGFlow comparison is Part 2, amendment A3).
 
 ## Dependency
 

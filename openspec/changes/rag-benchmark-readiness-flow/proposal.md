@@ -13,7 +13,7 @@ Without one recorded order, two branches can touch the same specs at once, the l
 
 ## What Changes
 
-- A task order only (tasks.md groups 0 to 7) with gates. No code and no capability deltas.
+- A task order only (tasks.md groups 0 to 8) with gates. No code and no capability deltas.
 - The order (operator decisions 2026-11-06): cuts, then router, then one live switch (no re-index: the live collections are test data, operator 2026-11-07), then the pipeline sweep on RunPod, then Experiment 35. The page routing panel follows the router and can run beside the sweep, because it touches no runtime and no result.
 
 ## Capabilities
@@ -30,5 +30,5 @@ None.
 
 - No code. Each group names the change or experiment whose own tasks carry the detail.
 - Live state: group 4 changes the live app (`~/.omrs`, `~/.config/omrs/omrs.jsonc`, the Llama app) and re-indexes every collection once. It needs the operator's word (gate G5).
-- Cost: group 5 runs on RunPod and needs the operator's word on budget (gate G6). Group 6 spends money at the pre-freeze pod and GLM-5.3 run (gate G7a, about 2 to 4 hours of pod plus about $11) and at the smoke and section 5 runs (gate G7).
+- Cost: group 5 runs on RunPod and needs the operator's word on budget (gate G6). Group 6 spends money at the pre-freeze pod and GLM-5.3 run (gate G7a, about 2 to 4 hours of pod plus about $11) and at the smoke and section 5 runs (gate G7). Group 7 adds the Part 2 RAGFlow run on half B and the descriptive E1 run; E1 is dropped first when the budget is short.
 - Parked, not in this flow: `paddleocr-vl-llamacpp-backend`, `tripwire-retirement-and-provider-symmetry` (watch its overlap with the router's key retirements), issue #161 old-print follow-up, an Indra-on-Latin follow-up, issues #173 and #174.
