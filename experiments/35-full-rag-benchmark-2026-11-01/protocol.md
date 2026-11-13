@@ -75,7 +75,7 @@ Numbers from the reference answer must appear in the generated answer after unit
 
 ### 0.8 Budget and stop rule (replaces task 1.11 and the $250 cap)
 
-Estimate about $650 on an RTX 4090 (final, after A2c; pods and network volume about $354 for about 382 pod hours, hosted calls about $298; method in change `exp35-main-run-readiness`, design D23). **Ceiling $975 (1.5 x the estimate)**, pods and hosted calls together. Checked before the freeze (test pod extrapolation), on the build pod after the search stage, and while the replicate pods run. At the ceiling the run stops before the next stage and the operator decides. The OpenRouter key carries a credit limit equal to the hosted share of the ceiling, so an overrun ends as a clean `out_of_credit` stop.
+Estimate about $650 on an RTX 4090 (after A2c; about $690 after A3, section 0.12; pods and network volume about $354 for about 382 pod hours, hosted calls about $298; method in change `exp35-main-run-readiness`, design D23). **Ceiling $975 (1.5 x the estimate)**, pods and hosted calls together. Checked before the freeze (test pod extrapolation), on the build pod after the search stage, and while the replicate pods run. At the ceiling the run stops before the next stage and the operator decides. The OpenRouter key carries a credit limit equal to the hosted share of the ceiling, so an overrun ends as a clean `out_of_credit` stop.
 
 ### 0.8a GPU choice and parallel index builds (operator instruction, 2026-11-12)
 
@@ -109,7 +109,7 @@ An independent methods review ran on 2026-11-13; the operator approved every fix
 - **Dropped.** The 0.045 and 0.055 sensitivity re-test of the 0.05 cut-off (section 6).
 - **Answer model (decided 2026-11-13).** The answer model stays `deepseek/deepseek-v4.1-flash-1017` on the OpenRouter API. Reason: the open-weights DeepSeek V4.1 Flash has 552B parameters, about 508 GB at 8-bit, which no single pod can host; smaller open models answer worse; the API costs about $127 for all answers. A single answer model is a stated limitation. Oracle retrieval was added later the same day as an oracle run (section 0.10).
 - **Limitations.** One answer model; English only; the reranker's default instruction is a web-search instruction applied to finance and legal text.
-- **Budget.** Final figures in section 0.11: about $650, ceiling $975.
+- **Budget.** Final figures in section 0.11: about $650, ceiling $975 (about $690 after A3, section 0.12).
 
 ### 0.11 Pre-freeze amendment A2c: second methods review (2026-11-13)
 
@@ -121,7 +121,7 @@ This section wins over sections 0.3 to 0.10 where they differ. Detail: change de
 - **N4. p-values from cluster-robust errors.** The mixed model with a random intercept per question stays for estimates and description. Each planned contrast's p-value comes from a GEE with the same mean model (`statsmodels` `GEE`, Gaussian, exchangeable working correlation) and cluster-robust standard errors clustered by question; on FinanceBench clustered by document. Holm runs across the contrasts of each dataset. The paired permutation test, or on FinanceBench the document-grouped bootstrap, is the pre-registered sensitivity check.
 - **N5. H8 on all questions.** The selection rule averages over chunk size, so choosing on half A barely biases the chunk-size contrasts. H8 is tested on all questions. Descriptive headline answer numbers stay on half B.
 - **Minor.** Only nDCG@10 is primary (the tolerance line names the others as secondary). FreshStack's reference answer is `answer_text` of `freshstack/queries-oct-2024`, config `langchain` (the accepted Stack Overflow answer). Oracle evidence is capped at 20,480 Qwen3 tokens for every dataset (FinanceBench, BioASQ and FreshStack; a Legal passage is at most 512), with truncation recorded. The one-round test covers the oracle and closed-book stages too. Floor (closed-book) and ceiling (oracle) are single runs, while main setups average 3 runs; the report says so. The report adds a per-question cross-table on retrieval misses: closed-book correct or not against RAG correct or not. Oracle retrieval is now part of the plan (an oracle run, approved 2026-11-13).
-- **Cost.** N1 to N5 add no pod hours or calls (the pool stays 100). Final estimate: about **$650** (pods and network volume about $354 for about 382 pod hours, hosted calls about $298), ceiling **$975** (1.5 x).
+- **Cost.** N1 to N5 add no pod hours or calls (the pool stays 100). Estimate after A2c: about **$650** (about $690 after A3, section 0.12) (pods and network volume about $354 for about 382 pod hours, hosted calls about $298), ceiling **$975** (1.5 x).
 
 ### 0.12 Pre-freeze amendment A3: selection rule and hand-off to Part 2 (2026-11-13)
 
