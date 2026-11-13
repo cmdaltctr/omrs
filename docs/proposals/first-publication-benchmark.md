@@ -93,7 +93,7 @@ The primary metric is nDCG@10 at unit level. Each setup saves its top 100 chunks
 
 ### Answer stage
 
-The answer stage varies chunk size, reranker on or off and hybrid on or off. The embedder and reranker size are chosen on half A by the protocol's selection rule. Token-matched setups hold the evidence at one token budget. A closed-book run (no retrieval) and an oracle run (gold evidence given directly) frame the results.
+The answer stage varies chunk size, reranker on or off and hybrid on or off. The embedder and reranker size are chosen on half A by the protocol's selection rule. Token-matched setups, one per chunk size (`c512-t20k`, `c1024-t20k`, `c2048-t20k`), hold the evidence at one token budget. A closed-book run (no retrieval) and an oracle run (gold evidence given directly) frame the results.
 
 - Faithfulness: claim checks. GLM-5.3 is the main checker; Clef-Flash (local) is the second.
 - Correctness: Ragas `AnswerCorrectness` with `openai/gpt-oss-120b` as judge, plus a number match on FinanceBench.
@@ -165,8 +165,8 @@ Half B only. No selection step in Part 1 or Part 2 reads half B. Each system run
 ### Rules that keep the comparison fair
 
 1. **Shared parts are fixed.** Both systems use the embedder chosen on half A, the same answer model and prompt, the same checkers and judges, the same corpus snapshot and the same question IDs. Each system keeps its own parser, chunker and retrieval method. Those are what the comparison measures.
-2. **Equal evidence.** Request retrieval depth 100 from RAGFlow. Score nDCG@10 on the same units as Experiment 35, after the same collapse. Both systems answer from evidence cut to the same 20,480-token budget. Report mean context tokens per question for each system.
-3. **FinanceBench pages.** Before the freeze, check that RAGFlow's PDF parser records a page for each chunk. Map each chunk to its first page, as for OMRS. Where a chunk has no page, score that question at document level only, and report how many questions this affects.
+2. **Equal evidence.** Request retrieval depth 100 from RAGFlow. Score nDCG@10 on the same units as Experiment 35, after the same collapse. Both systems answer from evidence cut to the same 20,480-token budget. Report mean context tokens per question for each system. On FinanceBench the relevance unit is the one fixed in rule 3.
+3. **FinanceBench relevance unit.** One unit, fixed before the run, applies to every FinanceBench question and to both systems. The primary unit is the page, as in Part 1 (a chunk counts for its first page). Pre-freeze gate: on a seeded FinanceBench sample, confirm that RAGFlow returns a page number for each chunk. Pre-registered fallback: if the gate fails, the primary unit becomes the document for every question and both systems. The other unit is reported as a labelled sensitivity analysis. No question is dropped, and no question changes unit, because of one system's output.
 4. **Answers.** Each system's retrieved evidence goes through the common OMRS answer harness, with the same prompt, the answer model `deepseek/deepseek-v4.1-flash-1017` and the same 20,480-token budget. The answer difference then comes from parsing, chunking and retrieval only. RAGFlow's own chat pipeline output may be reported descriptively, and it never enters C1 or C2.
 5. **Determinism.** Search runs once per system. Before the run, repeat RAGFlow retrieval on a small seeded sample and report whether the ranked lists match. Rerun OMRS search for the chosen setup on its sealed Experiment 35 index and check that the lists equal the saved ones.
 6. **Pin and disclose.** Pin the RAGFlow release and container digest. Record the full configuration, parser settings included. Send the configuration to the RAGFlow maintainers before the run and log every reply. Use RAGFlow's documented defaults for every setting that is not shared. Do not tune it below them.
@@ -275,7 +275,7 @@ The journal's own author guide covers ORCID, CRediT, the funding wording, confli
 | Half B is too small to detect a difference | Report the minimum detectable effect from the data. Make no equivalence claim. |
 | The single hosted answer model changes behind its ID | Pin one upstream host. Record the returned model ID and provider per call. State it as a limitation. |
 | RAGFlow cannot use our models, or hides its retrieved chunks | Record the blocker and report it. Do not substitute another model. |
-| RAGFlow chunks carry no page number | Score the affected FinanceBench questions at document level only, and report the count. |
+| RAGFlow chunks carry no page number | The pre-freeze gate checks this on a FinanceBench sample. If it fails, the primary unit is the document for every question and both systems. The page-level result is reported as a labelled sensitivity analysis. No question is dropped. |
 | RAGFlow indexing costs too much GPU time | Time one RAGFlow index per dataset before the freeze. Report the cost. |
 | A reviewer says we set up RAGFlow badly | Use its documented defaults, pin the release, publish the full configuration, send it to the maintainers and report the defaults row. |
 | E1 indexing exceeds the budget | E1 is dropped first. Report the measured cost. |
@@ -290,7 +290,7 @@ The journal's own author guide covers ORCID, CRediT, the funding wording, confli
 4. Ask the Napier library to confirm the article type and the deal.
 5. Done: Experiment 35 amendment A3 (protocol section 0.12) holds the selection rule for Part 2.
 6. Reserve an experiment number for Part 2. Write its protocol: C1, C2, the fairness rules and A3 as reference.
-7. Before the freeze, pin the RAGFlow release and container digest and connect it to the llama.cpp models. Time one index per dataset. Check page provenance and retrieval repeatability. Send the configuration to the RAGFlow maintainers.
+7. Before the freeze, pin the RAGFlow release and container digest and connect it to the llama.cpp models. Time one index per dataset. Check page provenance on a seeded FinanceBench sample (the rule 3 gate: if RAGFlow returns no page for a chunk, the primary unit falls back to the document for both systems) and retrieval repeatability. Send the configuration to the RAGFlow maintainers.
 8. Done: group 7 (Part 2 and E1) is in `rag-benchmark-readiness-flow`.
 9. Freeze Part 1. Deposit Experiment 35, Part 2 and A3 on OSF together.
 10. Before any E1 run, estimate its cost and ceiling. Pin the corpus and leaderboard revisions. Confirm the GPT-5.4 judging or submission procedure with Onyx.

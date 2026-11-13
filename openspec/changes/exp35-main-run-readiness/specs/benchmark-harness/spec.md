@@ -150,6 +150,20 @@ At the chosen embedder and reranker size, the selection step SHALL pick chunk si
 - **WHEN** the best cell has reranker on and hybrid on, and a cell with reranker off and hybrid on pools 0.008 lower
 - **THEN** the selection MUST choose the cell with reranker off
 
+### Requirement: The answer stage has a token-matched setup for each chunk size
+
+The answer stage SHALL run 15 setups: the 12 crossed setups on 10 chunks each, and three token-matched setups, `c512-t20k`, `c1024-t20k` and `c2048-t20k`, at the chosen embedder and reranker size with reranker on and hybrid on. A token-matched setup SHALL cut its evidence at 20,480 real Qwen3 tokens. The `c2048` x 10 factorial cell SHALL keep its 10-chunk evidence.
+
+#### Scenario: Setup table
+
+- **WHEN** the answer setup table is built
+- **THEN** it MUST hold 15 setups, and the three `-t20k` setups MUST use the token cut
+
+#### Scenario: Factorial cell unchanged
+
+- **WHEN** the chosen embedder and reranker retrieve short 2,048-token chunks
+- **THEN** `c2048` x 10 MUST send exactly 10 chunks, and `c2048-t20k` MUST send chunks until the 20,480-token cut
+
 ### Requirement: Parallel and serial runs write the same row files
 
 A stage SHALL write its row file and its trace rows in frozen question order, whatever order the calls finish in. With a fixed clock, a run at any concurrency SHALL give a row file with the same bytes as a run at concurrency 1. Its trace file SHALL be the same after the concurrency values in the trace settings are removed; the trace keeps the value each role used.
@@ -173,3 +187,10 @@ A result that finishes before an earlier item SHALL be kept on disk at once. A s
 
 - **WHEN** question 3 has finished, question 2 is still in flight, and the stage stops
 - **THEN** `--resume` MUST write the row of question 3 from disk without a new call for question 3
+
+#### Scenario: Stop after a paid call returns and before its result is saved
+
+- **WHEN** a worker's paid call for question 4 returns, the pod stops before the result reaches the pending file, and `--resume` runs
+- **THEN** `--resume` MUST send the call for question 4 again, because no row and no pending result exist for it
+- **AND** it MUST send at most one such call per worker for that stop, and MUST NOT choose to send again from the content of any answer
+- **AND** the stage trace MUST count each resent call in `resent_calls`

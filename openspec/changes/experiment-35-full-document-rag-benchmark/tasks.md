@@ -56,7 +56,7 @@ The full-factorial redesign (design D0) replaces the six arms. Tasks 5.1 to 5.4 
 - [ ] 4A.4b Record the context length of `deepseek/deepseek-v4.1-flash-1017` on the pinned OpenRouter host. Verify: `protocol.md` states it with the date, and it is at least 65,536 tokens; otherwise the freeze stops and the operator decides.
 - [ ] 4A.5a Choose the GPU type by the rule in `protocol.md` section 0.8a, from the timing job on the RTX 4090, L40S and H100 (readiness task 9.3). Verify: `protocol.md` holds the rule in a commit dated before the first measurement, then the measurements, prices and choice.
 - [ ] 4A.6 Build the 9 indexes on 9 parallel pods of the chosen GPU type, each sealing its index and running its 8 search setups (72 setups, run 1), copy the scores to the Mac, and apply the selection rule (design D0.5). Verify: `protocol.md` holds a dated note with the pooled scores and the chosen embedder and reranker sizes before any replicate pod starts.
-- [ ] 4A.7 Run the 14 answer setups (12 plus 2 token-matched, amendment A2) x 3 runs on the three replicate pods. Verify: the join passes and G1 holds or its mismatches are recorded.
+- [ ] 4A.7 Run the 15 answer setups (12 plus 3 token-matched, amendments A2 and A3) x 3 runs on the three replicate pods. Verify: the join passes and G1 holds or its mismatches are recorded.
 - [ ] 4A.8 Compute H1 to H7 on the search scores and H8 on the answer scores (design D0.4, D0.5). Label every Legal RAG Bench figure exploratory. Verify: each number names its `output/` file.
 
 ## 4B. Pre-freeze amendment A2: methods review (2026-11-13)

@@ -89,7 +89,7 @@ Each search setup SHALL save the top 100 chunks, with a rerank pool of exactly 1
 
 ### Requirement: The answer stage uses a selection rule fixed before the run
 
-On half A (seed 20261115), the harness SHALL choose the smallest embedder, then reranker size, within 0.01 pooled nDCG@10 of the best (ties to the smaller). The pooled score SHALL be the mean over the three core datasets (FinanceBench, FreshStack, BioASQ); Legal RAG Bench SHALL take no part. The answer stage SHALL run 14 setups (12 crossed, two equal-text), 3 runs each, plus closed-book and oracle runs. H8 SHALL use all questions; descriptive headlines half B.
+On half A (seed 20261115), the harness SHALL choose the smallest embedder, then reranker size, within 0.01 pooled nDCG@10 of the best (ties to the smaller). The pooled score SHALL be the mean over the three core datasets (FinanceBench, FreshStack, BioASQ); Legal RAG Bench SHALL take no part. The answer stage SHALL run 15 setups (12 crossed, 3 token-matched; A3), 3 runs each, plus closed-book and oracle runs. H8 SHALL use all questions; descriptive headlines half B.
 
 #### Scenario: Two sizes within the margin
 - **WHEN** the 4B embedder pools 0.612 and the 8B embedder pools 0.619
