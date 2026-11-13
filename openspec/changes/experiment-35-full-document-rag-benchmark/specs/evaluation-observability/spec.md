@@ -121,7 +121,7 @@ Every hosted call SHALL record the model id and provider that the reply returns,
 
 ### Requirement: The protocol is publicly pre-registered
 
-At the freeze commit, `protocol.md` and `plan.json` SHALL be deposited on OSF, and `protocol.md` SHALL record the link and the commit hash.
+The `protocol.md` and `plan.json` of the freeze commit SHALL be deposited on OSF. A later commit, made before the first measured run, SHALL record the OSF link and the freeze commit hash in `protocol.md`; the freeze commit cannot hold its own hash.
 
 #### Scenario: Run before the deposit
 - **WHEN** the first measured run starts and `protocol.md` holds no OSF link

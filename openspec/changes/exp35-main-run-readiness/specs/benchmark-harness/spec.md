@@ -26,17 +26,22 @@ The harness SHALL limit the number of hosted calls in flight for each role: answ
 
 ### Requirement: A rate-limit reply is retried and never saved
 
-A hosted call that ends with HTTP 429 or HTTP 402 SHALL be sent again. The harness SHALL wait the `Retry-After` time when the error carries one, else a bounded exponential backoff with random jitter. A rate-limit error SHALL NOT be written as an answer, a verdict or a score.
+A hosted call that ends with HTTP 429, or with HTTP 402 that carries `Retry-After`, SHALL be sent again. An HTTP 402 without `Retry-After` means out of credit and SHALL follow the out-of-credit rule below. The harness SHALL wait the `Retry-After` time when the error carries one, else a bounded exponential backoff with random jitter. A rate-limit error SHALL NOT be written as an answer, a verdict or a score.
 
 #### Scenario: Retry-After honoured
 
 - **WHEN** a judge call fails with HTTP 429 and `Retry-After: 7`
 - **THEN** the harness MUST wait at least 7 seconds before it sends the call again, and the saved row MUST hold the later result
 
-#### Scenario: Spend limit without a header
+#### Scenario: Rate limit without a header
 
-- **WHEN** an OpenRouter call fails with HTTP 402 and no `Retry-After` header
+- **WHEN** an OpenRouter call fails with HTTP 429 and no `Retry-After` header
 - **THEN** the harness MUST wait a backoff time and send the call again
+
+#### Scenario: Spend limit with a header
+
+- **WHEN** an OpenRouter call fails with HTTP 402 and `Retry-After: 20`
+- **THEN** the harness MUST wait at least 20 seconds and send the call again
 
 #### Scenario: Rate limit inside an answer result
 
@@ -106,9 +111,20 @@ The harness SHALL build setups from four factors (embedder, chunk size, reranker
 - **WHEN** a reranker-on search stage runs
 - **THEN** the router MUST list the embedder and the reranker and allow both loaded at once, so no query swaps a model
 
+#### Scenario: Reranker falls back
+
+- **WHEN** a query of a reranker-on search stage returns results with `_reranked` false or a `last_failure_reason`
+- **THEN** the stage MUST save no row for that query, MUST stop with a setup error that names the query and the reason, and MUST write no done-marker
+- **AND** `--resume` MUST send that query again
+
 ### Requirement: The answer setups come from a fixed selection rule
 
-A selection step SHALL read the saved search scores and SHALL choose the embedder size and then the reranker size: the smallest size whose pooled nDCG@10 (the plain mean of the per-dataset means) is within 0.01 of the best, inclusive, with equal scores going to the smaller size. It SHALL write every pooled score and the choice. The answer stage SHALL refuse to start without that file.
+A selection step SHALL read the saved half-A search scores of FinanceBench, FreshStack and BioASQ only (amendment A3). It SHALL choose the embedder size, then the reranker size: the smallest size whose pooled nDCG@10 (mean of the three dataset means) is within 0.01 of the best, inclusive; equal scores go to the smaller size. It SHALL write every pooled score and each choice. The answer stage SHALL refuse to start without that file.
+
+#### Scenario: Legal scores do not change the choice
+
+- **WHEN** only the Legal RAG Bench scores change between two selection runs
+- **THEN** both runs MUST choose the same embedder size, reranker size and cell
 
 #### Scenario: Selection reads half A only
 
@@ -122,12 +138,21 @@ A selection step SHALL read the saved search scores and SHALL choose the embedde
 
 #### Scenario: Search setup missing
 
-- **WHEN** a search setup of any dataset has no scores
+- **WHEN** a search setup of any core dataset has no scores
 - **THEN** the selection step MUST stop and name the setup
+
+### Requirement: The selection step picks one cell for Part 2
+
+At the chosen embedder and reranker size, the selection step SHALL pick chunk size, reranker on or off and hybrid on or off from the 12 cells by the same three-dataset pooled half-A score. Cells within 0.01 of the best, inclusive, SHALL tie. Ties SHALL go to reranker off, then hybrid off, then the chunk size with the lowest index cost, then the smaller chunk size (amendment A3). It SHALL write the cell scores and the chosen cell to the selection file.
+
+#### Scenario: Four-factor tie
+
+- **WHEN** the best cell has reranker on and hybrid on, and a cell with reranker off and hybrid on pools 0.008 lower
+- **THEN** the selection MUST choose the cell with reranker off
 
 ### Requirement: Parallel and serial runs write the same row files
 
-A stage SHALL write its row file and its trace rows in frozen question order, whatever order the calls finish in. With a fixed clock, a run at any concurrency SHALL give row and trace files with the same bytes as a run at concurrency 1.
+A stage SHALL write its row file and its trace rows in frozen question order, whatever order the calls finish in. With a fixed clock, a run at any concurrency SHALL give a row file with the same bytes as a run at concurrency 1. Its trace file SHALL be the same after the concurrency values in the trace settings are removed; the trace keeps the value each role used.
 
 #### Scenario: Calls finish out of order
 
@@ -137,7 +162,8 @@ A stage SHALL write its row file and its trace rows in frozen question order, wh
 #### Scenario: Same bytes as serial
 
 - **WHEN** one stage runs on stub calls with a fixed clock, once at concurrency 8 and once at concurrency 1
-- **THEN** the two row files MUST be byte-identical, and the two trace files MUST be byte-identical
+- **THEN** the two row files MUST be byte-identical, and the two trace files MUST be byte-identical after the concurrency values are removed from their trace settings
+- **AND** each trace MUST still record the concurrency value of its own run
 
 ### Requirement: A finished result survives a stop
 

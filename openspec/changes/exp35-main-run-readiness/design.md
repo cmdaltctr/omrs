@@ -53,11 +53,11 @@ See proposal.md (Why) for the motivation and specs/ for the requirements. This s
 
 **Goals:**
 
-- Send hosted calls in parallel with bounded, recorded limits. Keep every output byte-identical to a serial run.
+- Send hosted calls in parallel with bounded, recorded limits. Keep every row file byte-identical to a serial run, and every trace file identical apart from the recorded concurrency values.
 - Never lose or repeat a paid result across a stop and `--resume`.
 - Run three repetitions on three pods against one index that no replicate pod writes.
 - Make Ragas, the claim-kind classifier and the refusal figures part of the main harness.
-- Run every experiment stage in one environment: the standard RTX 4090 pod (D19).
+- Run every experiment stage in one environment: a pod of the one GPU type chosen by the D24 rule (D19).
 - Measure the shipped app: fix the rate-limit result (D25) and the full-text write on search (D26) in OMRS, before the freeze, not with a harness workaround.
 
 **Non-Goals:**
@@ -113,7 +113,7 @@ Alternatives considered:
 - Append in finishing order, then sort at the end. Rejected: `traces.jsonl` mixes stages, so a stage's rows cannot be sorted in place, and the file is out of order while a run is open.
 - Keep finished results in memory only. Rejected: a stop would repeat their paid calls.
 
-The byte-identity test injects a fixed clock into the stage context, because rows hold `seconds`.
+The byte-identity test injects a fixed clock into the stage context, because rows hold `seconds`. Row files must be byte-identical. Trace files must be identical after the test removes the concurrency values from the trace settings, because the trace records the concurrency that each role used (`benchmark-harness` spec).
 
 ### D4. Answers: serial retrieval, parallel generation
 
@@ -188,7 +188,8 @@ A new option `--index-from PATH` gives `Layout` a separate index root for `lance
 
 `join35.py --out-dir <out> --records <pod1.jsonl> <pod2.jsonl> <pod3.jsonl>` checks, for each dataset, arm and run 1 to 3:
 
-- the done-markers of `search`, `answer` and `judge-{clef_flash,chat}` (Granite Guardian dropped on 2026-11-12);
+- the `search` done-marker of run 1 only, for each of the 72 search setups (D34: search runs once; the answer stage of runs 2 and 3 does its own retrieval);
+- the done-markers of `answer` and `judge-{clef_flash,chat}` for runs 1 to 3 of each answer setup (Granite Guardian dropped on 2026-11-12);
 - equal `*.key.json` contents across runs;
 - clean fingerprint checks in each done-marker;
 - a passing `rebuild.json` for each dataset (D20);
@@ -301,7 +302,7 @@ Ragas runs on each replicate pod on its own run, right after the answer and judg
 
 ### D20. Rebuild comparison (G2, Exp 35 task 4.2 brought into this change)
 
-**Revision (redesign, 2026-11-12).** The rebuilt index is `e4b-c1024` (Qwen3-Embedding-4B at 1,024 tokens), the middle cell of the factorial, and the comparison search runs the setup `e4b-c1024-roff-hoff` (no reranker, no hybrid, so the check isolates index building). Everything else below holds, with "setup" for "arm".
+**Revision (redesign, 2026-11-12).** The rebuilt index is `e4b-c1024` (Qwen3-Embedding-4B at 1,024 tokens), the middle cell of the factorial, and the comparison search runs the setup `e4b-c1024-roff-hoff` (no reranker, no hybrid, so the check isolates index building). Everything else below holds, with "setup" for "arm". Order (PR 209 review, 2026-11-13): the check runs after the `e4b-c1024` seal and before any canonical search writes into the shared output folder (D32).
 
 On the build pod, after the 9 index builds per dataset and the seal:
 
@@ -479,7 +480,7 @@ Fact check (2026-11-12):
 
 Decision: the smallest change that keeps architecture invariant 11 (one new file plus one `register()` line, no branch on strategy names):
 
-1. New file `src/omrs/core/retrieval/reranker_llamacpp.py`, class `LlamaCppReranker`, `backend_name = "llamacpp"`. Same public surface as the ONNX and torch backends: `rerank(query, results, top_k)` and `last_failure_reason`. It sends one `POST {router}/v1/rerank` per query with the model name, the query and the candidate texts, reads `results[].index` and `relevance_score`, sorts, truncates to `top_k` and sets `_reranked`. Scores are mapped to (0, 1] as the `reranker-backend-selection` spec requires; whether the server returns a probability or a raw logit is pinned by a test from the pod check. An unreachable router, an unknown model or a bad reply returns the inputs un-reranked with `_reranked` false and a reason, and never raises.
+1. New file `src/omrs/core/retrieval/reranker_llamacpp.py`, class `LlamaCppReranker`, `backend_name = "llamacpp"`. Same public surface as the ONNX and torch backends: `rerank(query, results, top_k)` and `last_failure_reason`. It sends one `POST {router}/v1/rerank` per query with the model name, the query and the candidate texts, reads `results[].index` and `relevance_score`, sorts, truncates to `top_k` and sets `_reranked`. Scores are mapped to (0, 1] as the `reranker-backend-selection` spec requires; whether the server returns a probability or a raw logit is read from the b11941 server source and pinned by a test; the pod check (D24 item 1) then confirms it as an acceptance gate. An unreachable router, an unknown model or a bad reply returns the inputs un-reranked with `_reranked` false and a reason, and never raises.
 2. One line in `registry.py`: `register("reranker_llamacpp", "omrs.core.retrieval.reranker_llamacpp:LlamaCppReranker")`.
 3. `backend.py`: the map gains `"llamacpp": "reranker_llamacpp"`. `build_reranker_from_settings` calls `reranker_cls.from_settings(settings)` when the class has that class method, else today's `reranker_cls(model_id=...)`. Only the new class has it; it reads `retrieval.rerank_model` (the router model name) and `llamacpp_router_url`. This is duck typing, not a branch on names.
 4. `src/omrs/config/rules.py:41`: accepted values `("onnx", "torch", "llamacpp")`.
@@ -528,7 +529,7 @@ Each of the 72 search setups runs once (run 1). Query-time retrieval on a sealed
 
 ### D31. Selection rule and factorial analysis (redesign, 2026-11-12)
 
-- `select35.py` reads the saved search scores (Mac only, saved files) and applies the pre-registered rule: pooled score = plain mean of the four per-dataset mean nDCG@10; smallest embedder within 0.01 of the best (inclusive), then smallest reranker size within 0.01 at that embedder; equal scores pick the smaller size. It writes `selection.json` with every pooled score. Tests cover a gap of exactly 0.01, a tie and a missing setup (refused).
+- `select35.py` reads the saved search scores (Mac only, saved files, half A only) and applies the pre-registered rule of protocol section 0.12 (amendment A3): pooled score = plain mean of the per-dataset mean nDCG@10 over the three core datasets (FinanceBench, FreshStack, BioASQ); Legal RAG Bench takes no part in selection. Smallest embedder within 0.01 of the best (inclusive), then smallest reranker size within 0.01 at that embedder; equal scores pick the smaller size. A second step, at the chosen embedder and reranker size, picks chunk size, reranker on or off and hybrid on or off from the 12 cells by the same pooled score; cells within 0.01 of the best (inclusive) tie, and ties go to reranker off, then hybrid off, then the chunk size with the lowest index cost, then the smaller chunk size. It writes `selection.json` with every pooled score, the chosen sizes and the chosen cell. Tests cover a gap of exactly 0.01, a tie, a missing setup (refused), the four-factor tie order, and Legal scores that change neither choice.
 - `factorial35.py` builds per-question marginal scores and runs the contrasts of H1 to H8 with the existing `paired_permutation`, `paired_bootstrap`, `holm`, `wilson`, `mcnemar_exact` and `min_detectable_effect`. It adds no statistics function. Tests plant a known effect in a fixture and check that only that contrast counts, that Holm runs within one dataset, and that a wrong-sign result does not count.
 
 ### D32. Parallel index builds and search (operator instruction, 2026-11-12)
@@ -537,7 +538,7 @@ The 9 indexes (3 embedders x 3 chunk sizes) are independent, so they build on 9 
 
 - Each index pod builds one index for all four datasets. It writes to its own LanceDB store on the network volume, `<out>/stores/<index>/lancedb`, so no two pods ever write one store (each store has its own metadata). Router state and scratch settings go to the pod's `--local-dir` (D7).
 - After its ingest, the pod seals its own index: the fingerprint moves from `<out>/<dataset>/index-fingerprint.json` to `<out>/<dataset>/<index>/index-fingerprint.json`, one per index. Then the same pod runs its index's 8 search setups (4 reranker levels x 2 hybrid levels), read-only, as run 1.
-- The rebuild check (D20) runs on a tenth pod, or on the `e4b-c1024` pod after its search, into a separate store.
+- The rebuild check (D20) runs as soon as the shared `e4b-c1024` index is sealed: on a tenth pod, or on the `e4b-c1024` pod after its seal and before its search, into a separate store. Its two searches use `--index-from` and separate output folders, so the D20 guard does not block them. No pod runs its 8 canonical searches into the shared output folder until the dataset's `rebuild.json` passes (D20 guard); a pod that seals earlier waits for it.
 - The GGUF files sit on the network volume once, so each pod loads them without a new download.
 - Wall time on a 4090: about 4 h for the slowest build (8B, all four corpora) plus up to about 14 h of search on a 2,048-token index (three reranker sizes, both hybrid levels): about 18 h for the whole build and search phase, against about 133 h on one pod. Pod hours stay about the same, plus about 0.5 h of start-up per pod (D23).
 - Then on the Mac: score the search stage and apply the selection rule (D31). Then the three replicate pods (about 65 h each, D22). End to end, about 4 days of pod wall time.
@@ -599,7 +600,8 @@ Harness consequences: `run_arms.py` passes `fetch_k=100` on every search and ans
 - [The harness depends on the shape of the OMRS `rate_limited` record] → The record is in the OpenAPI contract and its test (D25). The harness test builds its 429 result through the real OMRS result builder, so a change of shape fails a test before a run.
 - [The app fixes change shipped behaviour that other users see] → Both keep their old outcome on the common path: a rate limit is still status `error`, and a native query still serves fresh results or falls back to BM25. The live app is reinstalled after the merge (proposal Impact), and the docs drift check (task 0.8) updates the guides.
 - [An existing collection loses its native ranking until the next ingest] → A collection that relied on the first query to build its index now gets BM25 with a warning that names the ingest remedy. The default backend is `bm25` and the live app sets none, so no live collection is affected today.
-- [A `RateLimitStop` in the middle of one answer's claims repeats that answer's earlier claim calls on resume] → At most one answer per worker is affected. Its row is written only after the repeat, so no row mixes calls from two attempts.
+- [A `RateLimitStop` in the middle of one answer's claims repeats that answer's earlier claim calls on resume] → At most one answer per worker is affected. Its row is written only after the repeat, so no row mixes calls from two attempts. The Ragas stage follows the same rule (D6): a rate limit in a later metric discards the row, so `--resume` repeats that answer's earlier metric calls, at most one answer per worker.
+- [The llama.cpp reranker falls back to un-reranked results in a reranker-on search setup] → The search stage stops with a setup error that names the question and the `last_failure_reason` when a result has `_reranked` false, and writes no done-marker, as a hybrid-on stage refuses a BM25 fallback. `--resume` continues after the cause is fixed. An un-reranked ranking never counts as a reranker-on result.
 - [Concurrency raises the paid spend rate and can trip OpenRouter's spend budget] → 402 is retried with backoff and then stops cleanly. The test pod session measures the 402 count. The budget ceiling checks (D23 revision, D35) bound the total.
 - [Z.AI 5-hour usage window runs out mid-stage] → The bounded attempts stop the stage with code 5. `--resume` continues when the window resets.
 - [Three pods read one network volume at the same time] → Read speed can drop. Retrieval is a small part of the stage time. The build pod times the recheck's search stage on the volume before the replicate pods start.
@@ -621,7 +623,7 @@ Harness consequences: `run_arms.py` passes `fetch_k=100` on every search and ans
 4. Pre-freeze test pod session (task 9.2, D24): calibration and the first budget check against the $975 ceiling, reranker file checks and throughput, the VRAM check, build time per chunk size, the FreshStack recheck, and every new stage end to end once. Delete the pod. Then the GPU-choice timing on the L40S and the H100 (task 9.3), each after a price quote and the operator's go.
 5. Write the procedure, the measured values, the GPU choice, the G2 stop rule and the budget with its ceiling into `protocol.md` (group 10).
 6. At G7, freeze `protocol.md` and `plan.json` with the measured values.
-7. Index pods (D32, 9 in parallel on the chosen GPU type): each builds one index for all four datasets, seals it and runs its 8 search setups. The `e4b-c1024` rebuild check (D20) runs beside them. A failed check stops here: find the cause, fix, build again. Then the FreshStack recheck on the real indexes with zero errors in every answer setup, scoring and the selection rule on the Mac (D31), and the budget re-check (D23). Above $975, stop and ask the operator.
+7. Index pods (D32, 9 in parallel on the chosen GPU type): each builds one index for all four datasets and seals it. The `e4b-c1024` rebuild check (D20) runs after that seal, and each pod then runs its 8 search setups once `rebuild.json` passes. A failed check stops here: find the cause, fix, build again. Then the FreshStack recheck on the real indexes with zero errors in every answer setup, scoring and the selection rule on the Mac (D31), and the budget re-check (D23). Above $975, stop and ask the operator.
 8. Replicate pods: run 1, run 2 and run 3 of the 12 answer setups at the same time. Each pod runs answer (with its own retrieval), the two judges (`clef_flash`, `chat`), `ragas` and `claimkinds` on its own run.
 9. Copy back, then on the Mac run only steps on saved files: `join35.py`, determinism, the refusal report and statistics.
 

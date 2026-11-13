@@ -56,9 +56,9 @@ When the Ragas stage scores several answers at once, each answer's row SHALL hol
 - **WHEN** two answers are scored at the same time and their calls interleave
 - **THEN** each row MUST list only its own calls, each with the metric it belongs to
 
-### Requirement: Ragas resume never repeats a paid call
+### Requirement: Ragas resume never repeats a saved answer's calls
 
-A Ragas row SHALL be saved only when every metric of the answer has a score or an error that is not a rate limit. With `--resume`, the stage SHALL skip each answer that has a saved row. A rate-limit error SHALL NOT be saved as a metric result.
+A Ragas row SHALL be saved only when every metric of the answer has a score or an error that is not a rate limit. With `--resume`, the stage SHALL skip each answer that has a saved row. A rate-limit error SHALL NOT be saved as a metric result. An answer whose row was not saved SHALL be scored again in full on resume, so its earlier metric calls repeat; this affects at most one answer per worker per stop, the same bound as the claim judge (design risks).
 
 #### Scenario: Resume after a stop
 
@@ -69,6 +69,7 @@ A Ragas row SHALL be saved only when every metric of the answer has a score or a
 
 - **WHEN** a metric call fails with HTTP 429 on every attempt
 - **THEN** no row for that answer MUST be saved, and the stage MUST stop with the rate-limit exit code
+- **AND** `--resume` MUST score that answer again with every metric
 
 ### Requirement: Claim sentences are sorted by a frozen classifier
 

@@ -128,12 +128,17 @@ Each replicate machine SHALL append its run records to its own file. The join st
 
 ### Requirement: The join step gates determinism and statistics
 
-The join step SHALL check that runs 1, 2 and 3 of every answer setup and dataset have finished answer, judge, `ragas` and `claimkinds` stages, that every run has the same run key, that every run has a run record, and that every stage found the index fingerprint unchanged. It SHALL write a join report. Determinism and statistics SHALL refuse to start without a passing join report.
+The join step SHALL check that run 1 of every search setup and dataset has a finished search stage (search runs once per setup), that runs 1, 2 and 3 of every answer setup and dataset have finished answer, judge, `ragas` and `claimkinds` stages, that every run has the same run key, that every run has a run record, and that every stage found the index fingerprint unchanged. It SHALL write a join report. Determinism and statistics SHALL refuse to start without a passing join report.
 
 #### Scenario: One stage missing
 
 - **WHEN** run 3 of the answer setup `e4b-c1024-r0.6b-hon` on FinanceBench has no finished `chat` judge stage
 - **THEN** the join report MUST fail and MUST name the dataset, arm, run and stage
+
+#### Scenario: Search checked on run 1 only
+
+- **WHEN** every search setup has a finished `search` stage in run 1 and none in runs 2 and 3
+- **THEN** the join MUST NOT fail for a missing search stage, because search runs once per setup
 
 #### Scenario: Ragas rows incomplete
 

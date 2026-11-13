@@ -8,31 +8,31 @@
       "id": "H1",
       "role": "primary",
       "statement": "a bigger embedder finds better documents: marginal nDCG@10 rises from 0.6B to 4B and from 4B to 8B",
-      "null": "no embedder contrast differs by more than the minimum detectable effect"
+      "null": "each embedder contrast is zero"
     },
     {
       "id": "H2",
       "role": "primary",
       "statement": "the reranker helps: marginal nDCG@10 with the reranker on (mean of three sizes) exceeds reranker off",
-      "null": "reranker on and off do not differ by more than the minimum detectable effect"
+      "null": "reranker on and off do not differ (zero effect)"
     },
     {
       "id": "H3",
       "role": "primary",
       "statement": "hybrid search helps: marginal nDCG@10 with hybrid on exceeds hybrid off",
-      "null": "hybrid on and off do not differ by more than the minimum detectable effect"
+      "null": "hybrid on and off do not differ (zero effect)"
     },
     {
       "id": "H4",
       "role": "primary",
       "statement": "reranker and hybrid together beat either alone: both on exceeds reranker only and exceeds hybrid only",
-      "null": "at least one of the two contrasts shows no difference larger than the minimum detectable effect"
+      "null": "at least one of the two contrasts is zero"
     },
     {
       "id": "H5",
       "role": "primary",
       "statement": "a bigger reranker ranks better: marginal nDCG@10 rises from 0.6B to 4B and from 4B to 8B (reranker-on setups)",
-      "null": "no reranker-size contrast differs by more than the minimum detectable effect"
+      "null": "each reranker-size contrast is zero"
     },
     {
       "id": "H6",
@@ -44,13 +44,13 @@
       "id": "H7",
       "role": "primary",
       "statement": "bigger embedders gain more from bigger chunks: the 8B gain from 512 to 2048 tokens exceeds the 0.6B gain",
-      "null": "the two gains do not differ by more than the minimum detectable effect"
+      "null": "the two gains do not differ (zero effect)"
     },
     {
       "id": "H8",
       "role": "answer-stage",
       "statement": "chunk size changes GLM-5.3 faithfulness on factual claims and answer correctness (Ragas AnswerCorrectness on all four datasets, FinanceBench number match); faithfulness is expected to fall as chunks grow; tested on all questions",
-      "null": "no chunk-size contrast differs by more than the minimum detectable effect"
+      "null": "each chunk-size contrast is zero"
     }
   ],
   "decision_rule": "Per dataset, a linear mixed model (statsmodels MixedLM, REML: ndcg10 ~ C(embedder)*C(chunk)*C(reranker)*C(hybrid) + (1|question)) gives estimates; each planned contrast's p-value comes from a GEE with the same mean model and cluster-robust errors by question (by document on FinanceBench). Search scoring uses the top 100 chunks (rerank pool fixed at 100 with fetch_k 100) collapsed to distinct units and cut at 10. H6 on FinanceBench uses evidence_recall_20k (gold pages within 20,480 real Qwen3 tokens of evidence) as its endpoint, with first-page and any-page nDCG@10 as sensitivity; H6 on FreshStack uses nDCG@10. H8 uses all questions, 3 runs averaged per question. Holm across every H1-H8 contrast of the dataset. A contrast counts when the Holm-adjusted p is below 0.05 and its sign matches. A hypothesis holds overall when supported on at least 2 of the 3 confirmatory datasets (FinanceBench, FreshStack, BioASQ); H6 needs both FinanceBench and FreshStack. Legal RAG Bench is exploratory. Paired permutation (or the document-grouped bootstrap on FinanceBench) is the pre-registered sensitivity check.",
@@ -308,7 +308,7 @@
       "id": "A3",
       "date": "2026-11-13",
       "before_first_run": true,
-      "summary": "Selection rule amended: the pooled score for embedder and reranker-size choice uses the three core datasets only (Legal excluded). Adds a four-factor pick on half A for Part 2 (chunk size, reranker on or off, hybrid on or off; pooled mean nDCG@10 over the three core datasets; ties within 0.01 go to reranker off, then hybrid off, then lowest index cost, then smaller chunk). The cell's configuration hash goes to OSF before half B opens. Part 2 (RAGFlow) runs on half B only, once per system, with its own protocol (C1, C2) and its own human labels. Experiment 35 label counts are unchanged.",
+      "summary": "Selection rule amended: the pooled score for embedder and reranker-size choice uses the three core datasets only (Legal excluded). Adds a four-factor pick on half A for Part 2 (chunk size, reranker on or off, hybrid on or off; pooled mean nDCG@10 over the three core datasets; ties within 0.01 go to reranker off, then hybrid off, then lowest index cost, then smaller chunk). The cell's configuration hash goes to OSF before half B opens. Part 2 (RAGFlow) runs on half B only, once per system, with its own protocol (C1, C2) and its own human labels. Experiment 35 label counts are unchanged. Clarified after the PR 209 review (2026-11-13, no change of design): H1 to H8 nulls are zero effects, the minimum detectable effect is for power planning only; the G2 rebuild check runs before any search writes into the shared output folder.",
       "where": "protocol.md section 0.12; docs/proposals/first-publication-benchmark.md; change experiment-35-full-document-rag-benchmark design D0.14"
     }
   ]
