@@ -1,59 +1,162 @@
 {
   "experiment_id": "35-full-rag-benchmark-2026-11-01",
-  "protocol_version": 1,
-  "question": "What retrieval and answer quality does the full OMRS pipeline reach on FinanceBench, the FreshStack LangChain slice and BioASQ with pinned local models, and how much do embedding size, the reranker, token-aware chunking and hybrid search change it?",
+  "protocol_version": 2,
+  "question": "How do embedder size, chunk size, the reranker and hybrid search, and their interactions, change retrieval quality on FinanceBench, the FreshStack LangChain slice, BioASQ and Legal RAG Bench with pinned local models, and how does chunk size change answer faithfulness and correctness at the best-value search settings?",
   "decision": "The first fellowship paper cites these numbers; the experiment changes no production default, and any setting change it suggests goes to a separate proposal.",
   "hypotheses": [
     {
       "id": "H1",
       "role": "primary",
-      "statement": "on at least one dataset, the embedding-0.6b arm's nDCG@10 differs from the baseline's",
-      "null": "the arm's nDCG@10 equals the baseline's on every dataset, within the minimum detectable effect"
+      "statement": "a bigger embedder finds better documents: marginal nDCG@10 rises from 0.6B to 4B and from 4B to 8B",
+      "null": "no embedder contrast differs by more than the minimum detectable effect"
     },
     {
       "id": "H2",
       "role": "primary",
-      "statement": "on at least one dataset, the embedding-8b arm's nDCG@10 differs from the baseline's",
-      "null": "the arm's nDCG@10 equals the baseline's on every dataset, within the minimum detectable effect"
+      "statement": "the reranker helps: marginal nDCG@10 with the reranker on (mean of three sizes) exceeds reranker off",
+      "null": "reranker on and off do not differ by more than the minimum detectable effect"
     },
     {
       "id": "H3",
       "role": "primary",
-      "statement": "on at least one dataset, the reranker-off arm's nDCG@10 differs from the baseline's",
-      "null": "the arm's nDCG@10 equals the baseline's on every dataset, within the minimum detectable effect"
+      "statement": "hybrid search helps: marginal nDCG@10 with hybrid on exceeds hybrid off",
+      "null": "hybrid on and off do not differ by more than the minimum detectable effect"
     },
     {
       "id": "H4",
       "role": "primary",
-      "statement": "on at least one dataset, the token-aware-chunking-off arm's nDCG@10 differs from the baseline's",
-      "null": "the arm's nDCG@10 equals the baseline's on every dataset, within the minimum detectable effect"
+      "statement": "reranker and hybrid together beat either alone: both on exceeds reranker only and exceeds hybrid only",
+      "null": "at least one of the two contrasts shows no difference larger than the minimum detectable effect"
     },
     {
       "id": "H5",
       "role": "primary",
-      "statement": "on at least one dataset, the hybrid-search arm's nDCG@10 differs from the baseline's",
-      "null": "the arm's nDCG@10 equals the baseline's on every dataset, within the minimum detectable effect"
+      "statement": "a bigger reranker ranks better: marginal nDCG@10 rises from 0.6B to 4B and from 4B to 8B (reranker-on setups)",
+      "null": "no reranker-size contrast differs by more than the minimum detectable effect"
+    },
+    {
+      "id": "H6",
+      "role": "primary",
+      "statement": "chunk size changes retrieval on FinanceBench (endpoint evidence_recall_20k) and FreshStack (endpoint nDCG@10); both must support it; BioASQ is a sanity check and Legal RAG Bench is exploratory",
+      "null": "no chunk-size contrast counts on FinanceBench or on FreshStack"
+    },
+    {
+      "id": "H7",
+      "role": "primary",
+      "statement": "bigger embedders gain more from bigger chunks: the 8B gain from 512 to 2048 tokens exceeds the 0.6B gain",
+      "null": "the two gains do not differ by more than the minimum detectable effect"
+    },
+    {
+      "id": "H8",
+      "role": "answer-stage",
+      "statement": "chunk size changes GLM-5.3 faithfulness on factual claims and answer correctness (Ragas AnswerCorrectness on all four datasets, FinanceBench number match); faithfulness is expected to fall as chunks grow; tested on all questions",
+      "null": "no chunk-size contrast differs by more than the minimum detectable effect"
     }
   ],
-  "decision_rule": "An arm shows a difference on a dataset when the Holm-adjusted p of the paired permutation test on per-question nDCG@10 (3 runs averaged per question first) is below 0.05 and the paired 95% bootstrap interval excludes zero. Otherwise the report says no difference larger than the minimum detectable effect was found.",
+  "decision_rule": "Per dataset, a linear mixed model (statsmodels MixedLM, REML: ndcg10 ~ C(embedder)*C(chunk)*C(reranker)*C(hybrid) + (1|question)) gives estimates; each planned contrast's p-value comes from a GEE with the same mean model and cluster-robust errors by question (by document on FinanceBench). Search scoring uses the top 100 chunks (rerank pool fixed at 100 with fetch_k 100) collapsed to distinct units and cut at 10. H6 on FinanceBench uses evidence_recall_20k (gold pages within 20,480 real Qwen3 tokens of evidence) as its endpoint, with first-page and any-page nDCG@10 as sensitivity; H6 on FreshStack uses nDCG@10. H8 uses all questions, 3 runs averaged per question. Holm across every H1-H8 contrast of the dataset. A contrast counts when the Holm-adjusted p is below 0.05 and its sign matches. A hypothesis holds overall when supported on at least 2 of the 3 confirmatory datasets (FinanceBench, FreshStack, BioASQ); H6 needs both FinanceBench and FreshStack. Legal RAG Bench is exploratory. Paired permutation (or the document-grouped bootstrap on FinanceBench) is the pre-registered sensitivity check.",
   "stats": "expert",
   "seed": 20261101,
-  "baseline": "documents-profile-4b",
-  "candidate": "one of embedding-0.6b, embedding-8b, reranker-off, chunking-off, hybrid",
+  "baseline": "none: full factorial of embedder x chunk size x reranker x hybrid (72 search setups per dataset); e4b-c1024-roff-hoff is the reference cell of the G2 rebuild check only",
+  "candidate": "72 search setups e<0.6b|4b|8b>-c<512|1024|2048>-r<off|0.6b|4b|8b>-h<off|on>; 14 answer setups (12 crossed plus token-matched 512x40 and 1024x20), chosen on half A, at the embedder and reranker sizes chosen by the pre-registered selection rule",
   "metrics": [
-    {"name": "Recall@10", "binary": false, "primary": true},
-    {"name": "MRR@10", "binary": false, "primary": true},
-    {"name": "nDCG@10", "binary": false, "primary": true},
-    {"name": "hit@page", "binary": true, "primary": true},
-    {"name": "ragas_faithfulness", "binary": false, "primary": false},
-    {"name": "ragas_answer_relevancy", "binary": false, "primary": false},
-    {"name": "ragas_context_precision", "binary": false, "primary": false},
-    {"name": "ragas_context_recall", "binary": false, "primary": false}
+    {
+      "name": "Recall@10",
+      "binary": false,
+      "primary": false
+    },
+    {
+      "name": "MRR@10",
+      "binary": false,
+      "primary": false
+    },
+    {
+      "name": "nDCG@10",
+      "binary": false,
+      "primary": true
+    },
+    {
+      "name": "hit@page",
+      "binary": true,
+      "primary": false
+    },
+    {
+      "name": "faithfulness_glm_factual",
+      "binary": false,
+      "primary": false
+    },
+    {
+      "name": "financebench_number_match",
+      "binary": true,
+      "primary": false
+    },
+    {
+      "name": "refusal_rate",
+      "binary": false,
+      "primary": false
+    },
+    {
+      "name": "ragas_faithfulness",
+      "binary": false,
+      "primary": false
+    },
+    {
+      "name": "ragas_answer_relevancy",
+      "binary": false,
+      "primary": false
+    },
+    {
+      "name": "ragas_context_precision",
+      "binary": false,
+      "primary": false
+    },
+    {
+      "name": "ragas_context_recall",
+      "binary": false,
+      "primary": false
+    },
+    {
+      "name": "ragas_answer_correctness",
+      "binary": false,
+      "primary": false
+    },
+    {
+      "name": "evidence_recall_20k",
+      "binary": false,
+      "primary": false
+    },
+    {
+      "name": "closed_book_correctness",
+      "binary": false,
+      "primary": false
+    },
+    {
+      "name": "oracle_correctness",
+      "binary": false,
+      "primary": false
+    }
   ],
   "gates": [
-    {"id": "G1", "metric": "determinism_mismatches", "value": "count", "op": "<=", "threshold": 0},
-    {"id": "G2", "metric": "rebuild_mismatches", "value": "count", "op": "<=", "threshold": 0},
-    {"id": "G3", "metric": "preflight_failures", "value": "count", "op": "<=", "threshold": 0}
+    {
+      "id": "G1",
+      "metric": "determinism_mismatches",
+      "value": "count",
+      "op": "<=",
+      "threshold": 0
+    },
+    {
+      "id": "G2",
+      "metric": "rebuild_mismatches",
+      "value": "count",
+      "op": "<=",
+      "threshold": 0
+    },
+    {
+      "id": "G3",
+      "metric": "preflight_failures",
+      "value": "count",
+      "op": "<=",
+      "threshold": 0
+    }
   ],
   "frozen": [],
   "runtime": {
@@ -66,7 +169,13 @@
         "sha256": "b60ae5ce2dd6a0b77f82cadf21def1f310a3e10cde380ad0081b07a9d416949d",
         "runtime": "llama.cpp",
         "build": 11941,
-        "server_args": {"embeddings": true, "pooling": "last", "ctx-size": 8192, "batch-size": 8192, "ubatch-size": 8192}
+        "server_args": {
+          "embeddings": true,
+          "pooling": "last",
+          "ctx-size": 8192,
+          "batch-size": 8192,
+          "ubatch-size": 8192
+        }
       },
       {
         "role": "embedding-0.6b",
@@ -75,7 +184,13 @@
         "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
         "runtime": "llama.cpp",
         "build": 11941,
-        "server_args": {"embeddings": true, "pooling": "last", "ctx-size": 8192, "batch-size": 8192, "ubatch-size": 8192}
+        "server_args": {
+          "embeddings": true,
+          "pooling": "last",
+          "ctx-size": 8192,
+          "batch-size": 8192,
+          "ubatch-size": 8192
+        }
       },
       {
         "role": "embedding-8b",
@@ -84,7 +199,13 @@
         "sha256": "d20ddc71e8a5c4344f2343481e242233a997dc5eaff442427a945836c97b4deb",
         "runtime": "llama.cpp",
         "build": 11941,
-        "server_args": {"embeddings": true, "pooling": "last", "ctx-size": 8192, "batch-size": 8192, "ubatch-size": 8192}
+        "server_args": {
+          "embeddings": true,
+          "pooling": "last",
+          "ctx-size": 8192,
+          "batch-size": 8192,
+          "ubatch-size": 8192
+        }
       },
       {
         "role": "judge-clef-flash",
@@ -93,30 +214,95 @@
         "sha256": "25f801e2a27610b0ccc0cb1558d7eda3d7a304e34e2c4a04e3079357ff7d906e",
         "runtime": "llama.cpp",
         "build": 11941,
-        "server_args": {"ctx-size": 32768, "batch-size": 32768, "ubatch-size": 32768, "parallel": 1}
-      },
-      {
-        "role": "judge-granite-guardian",
-        "repository": "ibm-granite/granite-guardian-3.3-8b-GGUF",
-        "file": "granite-guardian-3.3-8b-Q8_0.gguf",
-        "sha256": "356fc80d343a699a3d12316de161d4341ee2d11f7057123dabb158804e876bc5",
-        "runtime": "llama.cpp",
-        "build": 11941,
-        "server_args": {"ctx-size": 32768, "batch-size": 32768, "ubatch-size": 32768, "parallel": 1}
+        "server_args": {
+          "ctx-size": 32768,
+          "batch-size": 32768,
+          "ubatch-size": 32768,
+          "parallel": 1
+        }
       }
     ],
     "references": [
-      {"role": "answer", "provider": "openrouter", "model": "deepseek/deepseek-v4.1-flash-1017"},
-      {"role": "ragas-judge", "provider": "openrouter", "model": "openai/gpt-oss-120b"},
-      {"role": "judge-crosscheck", "provider": "openrouter", "model": "openai/gpt-6.1-terra"},
-      {"role": "judge-glm", "provider": "zai-coding-plan", "model": "glm-5.3"}
+      {
+        "role": "answer",
+        "provider": "openrouter",
+        "model": "deepseek/deepseek-v4.1-flash-1017"
+      },
+      {
+        "role": "ragas-judge",
+        "provider": "openrouter",
+        "model": "openai/gpt-oss-120b"
+      },
+      {
+        "role": "claim-classifier",
+        "provider": "openrouter",
+        "model": "openai/gpt-oss-120b"
+      },
+      {
+        "role": "judge-crosscheck",
+        "provider": "openrouter",
+        "model": "openai/gpt-6.1-terra"
+      },
+      {
+        "role": "judge-glm",
+        "provider": "zai-coding-plan",
+        "model": "glm-5.3"
+      }
     ],
     "tolerance": [
-      {"metric": "Recall@10", "max_abs_change": 0.005},
-      {"metric": "MRR@10", "max_abs_change": 0.005},
-      {"metric": "nDCG@10", "max_abs_change": 0.005},
-      {"metric": "hit@page", "max_abs_change": 0.005}
+      {
+        "metric": "Recall@10",
+        "max_abs_change": 0.005
+      },
+      {
+        "metric": "MRR@10",
+        "max_abs_change": 0.005
+      },
+      {
+        "metric": "nDCG@10",
+        "max_abs_change": 0.005
+      },
+      {
+        "metric": "hit@page",
+        "max_abs_change": 0.005
+      }
     ]
   },
-  "amendments": []
+  "amendments": [
+    {
+      "id": "A1",
+      "date": "2026-11-12",
+      "before_first_run": true,
+      "summary": "Full-factorial redesign agreed with the operator before the freeze. Replaces the six one-factor arms (documents-profile-4b, embedding-0.6b, embedding-8b, reranker-off, chunking-off, hybrid) with embedder (0.6B, 4B, 8B) x chunk size (512, 1024, 2048, overlap 15%) x reranker (off, Qwen3-Reranker 0.6B, 4B, 8B) x hybrid (off, BM25 on): 72 search setups per dataset. Adds Legal RAG Bench (100 questions, exploratory) and uses the 203 public FreshStack queries (was 223). Drops MiniLM, the chunking-off arm, Granite Guardian (runtime entry judge-granite-guardian removed) and hypothesis H-CC. Hypotheses H1 to H7 (search) and H8 (answer stage) replace the five per-arm hypotheses. Answer stage: 12 setups at the embedder and reranker sizes chosen by a pre-registered rule, 3 runs each. Budget: the $250 cap is replaced by an estimate of about $555 and a ceiling of $830. The three Qwen3-Reranker GGUF files are pinned in the runtime block after the test pod check (Exp 35 task 4A.3). One GPU type for every main-run pod, chosen before the freeze from a fixed timing job on RTX 4090, L40S and H100 by the rule in protocol.md section 0.8a; the 9 indexes build on parallel pods of that type.",
+      "where": "protocol.md section 0; change experiment-35-full-document-rag-benchmark design D0; change exp35-main-run-readiness"
+    },
+    {
+      "id": "A1b",
+      "date": "2026-11-13",
+      "before_first_run": true,
+      "summary": "Operator answers to the A1 questions: FreshStack corpus without the 15 continuity documents and the overlay runbook; BioASQ and Legal passages written as .md so all four datasets count the pinned Qwen3 tokenizer; Ragas 0.4.3 AnswerCorrectness on all four datasets against reference answers, validated on 100 operator-labelled answers (seed 20261113, counts for H8 at pooled kappa >= 0.60), plus the FinanceBench number match; one answer round (answer.context_window 131072 characters, answer.max_rounds 1); one search run per setup. Budget estimate $555, ceiling $830.",
+      "where": "protocol.md sections 0.3, 0.5, 0.8 and 0.9"
+    },
+    {
+      "id": "A2",
+      "date": "2026-11-13",
+      "before_first_run": true,
+      "summary": "Methods review fixes approved by the operator: unit-level scoring (top 100 chunks collapsed to distinct units, cut at 10; FinanceBench page credit by first page); token-matched control (512x40, 1024x20 vs 2048x10) in search (evidence_recall_20k) and answer stage (2 extra setups, 14 in all); H6 confirmatory on FinanceBench and FreshStack only, BioASQ sanity check, Legal exploratory throughout; one linear mixed model per dataset (statsmodels MixedLM) with planned contrasts and Holm across H1-H8, cross-dataset rule 2 of 3 confirmatory datasets, FinanceBench bootstrap by document; MDE from data before the freeze; split-half selection (seed 20261115, select on half A, answer headlines on half B); human validation by labellers L1 and L2 (400 L1 items, 30% by L2, kappa with intervals); closed-book run on all 1,160 questions; returned model and provider recorded per hosted call; reranker SHA-256 pins after a Spearman >= 0.95 check on 200 seeded pairs per size; OSF pre-registration at the freeze; only nDCG@10 primary; 0.045/0.055 sensitivity re-test dropped. Budget estimate $640, ceiling $960.",
+      "where": "protocol.md section 0.10; change experiment-35-full-document-rag-benchmark design D0.12; change exp35-main-run-readiness design D35 and task group 15"
+    },
+    {
+      "id": "A2b",
+      "date": "2026-11-13",
+      "before_first_run": true,
+      "summary": "Oracle run approved: one run on all 1,160 questions with gold units as evidence (Legal gold passage, FinanceBench gold page texts, BioASQ gold passages, FreshStack gold documents capped at 20,480 tokens with truncation recorded), same answer prompt and settings, scored like the main runs; reported with closed-book as ceiling and floor, descriptive only. Answer model stays deepseek/deepseek-v4.1-flash-1017 on the API; statsmodels in the stats dependency group. Budget estimate $650, ceiling $975.",
+      "where": "protocol.md section 0.10; change design D0.12 and readiness D36"
+    },
+    {
+      "id": "A2c",
+      "date": "2026-11-13",
+      "before_first_run": true,
+      "summary": "Second methods review: fetch_k 100 keeps the rerank pool at 100 at depth 100 (it would be 300); equal-evidence metric and equal-text answer setups cut by the running total of real Qwen3 tokens up to 20,480 (the crossing chunk included whole), setups c512-t20k and c1024-t20k; H6 on FinanceBench uses evidence_recall_20k, page-rule nDCG@10 as sensitivity with sign agreement reported; contrast p-values from GEE with cluster-robust errors (MixedLM for estimates), permutation or grouped bootstrap as sensitivity; H8 on all questions, descriptive headlines on half B; oracle contexts capped at 20,480 tokens on every dataset; one-round test covers oracle and closed-book; floor and ceiling marked single-run; closed-book vs RAG cross-table on retrieval misses. Final budget estimate $650, ceiling $975.",
+      "where": "protocol.md section 0.11; change design D0.13; readiness design D37 and tasks 15.2, 15.3, 15.6, 15.12, 15.14-15.16"
+    }
+  ]
 }

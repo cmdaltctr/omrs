@@ -5,6 +5,128 @@
 - **Operator**: Aizat, with the a-build agent (plan draft; the operator confirms the open values at freeze).
 - **Related**: ADR-103 (llama.cpp GGUF runtime), ADR-018 (documents profile), ADR-063 (token-aware chunking), change `experiment-35-full-document-rag-benchmark`, `docs/proposals/first-publication-benchmark.md`. Carries forward Experiments 2, 3, 10b, 15, 22 and 25. Experiment 22 is a reference only, not a baseline.
 
+## 0. Pre-freeze amendment A1: full-factorial redesign (2026-11-12)
+
+Written before the freeze. No measured run had started; only smoke runs, which are never scored. **This section wins over sections 1 to 7 wherever they differ.** Those sections keep the earlier plan for history. Rationale, fact checks and sources: change `experiment-35-full-document-rag-benchmark`, design D0. Implementation: change `exp35-main-run-readiness`.
+
+### 0.1 Question
+
+How do embedder size, chunk size, the reranker and hybrid search, and their interactions, change retrieval quality on four public benchmarks, and how does chunk size change answer faithfulness and correctness at the best-value search settings?
+
+### 0.2 Datasets (English only, 1,160 questions)
+
+| Dataset | Questions | Gold unit | Status |
+| --- | ---: | --- | --- |
+| FinanceBench open sample (`PatronusAI/financebench`) | 150 | Document and page | Confirmatory |
+| FreshStack LangChain slice | 203 (the 20 Experiment 9 continuity queries leave) | Documents; nuggets for context recall | Confirmatory |
+| BioASQ mini (`enelpol/rag-mini-bioasq`, test split) | 707 | Passages | Confirmatory |
+| Legal RAG Bench (`isaacus/legal-rag-bench`, CC BY-NC-SA 4.0) | 100 (one gold passage each, 4,876 passages) | Passage | Exploratory (low power) |
+
+LegalBench-RAG and LLeQA are out. FinanceBench answers also get a number-match check (0.6).
+
+### 0.3 Search stage: full factorial
+
+| Factor | Levels |
+| --- | --- |
+| Embedder | Qwen3-Embedding 0.6B, 4B, 8B |
+| Chunk size | 512, 1,024, 2,048 tokens; overlap 77, 154, 307 (15%) |
+| Reranker | Off, Qwen3-Reranker 0.6B, 4B, 8B (llama.cpp `/v1/rerank`) |
+| Hybrid | Off, or BM25 plus dense with RRF (`retrieval.hybrid_sparse_backend: bm25`) |
+
+9 indexes and 72 search setups per dataset, each run once on its sealed index. Setup names come from the settings: `e<embedder>-c<chunk size>-r<reranker>-h<hybrid>`, index names `e<embedder>-c<chunk size>`. MiniLM, the `chunking-off` arm and every profile-named arm are dropped. Every setup sets `chunking.chunk_size` and `chunking.markdown_chunk_size` to the level and `chunking.chunk_overlap` to 15% of it. All four datasets go through the Markdown splitter and count tokens with the pinned Qwen3 tokenizer: FinanceBench (read as Markdown by `pdf_inspector`), FreshStack (`.md`), and BioASQ and Legal passages, written as `.md` (decision 2026-11-13; they hold no headings, so the only change from `.txt` is the token counter). The FreshStack corpus is the public LangChain slice, without the 15 Experiment 9 continuity documents and the overlay runbook (decision 2026-11-13); its new tree hash is recorded at the freeze.
+
+Search runs once per setup (decision 2026-11-13). Query-time retrieval on a sealed index is deterministic (the FreshStack smoke rerun, ADR-119 `fs-rerun/`, matched; G1 checks it again for the answer setups). Index-time determinism is covered by the G2 rebuild check. Fixed: `top_k` 10, reranker candidate pool 100, `similarity_threshold` 0.0, metadata extraction `disabled`, Qwen3 tokenizer revision `5cf2132a`, the default Qwen3-Reranker instruction that llama-server applies.
+
+Metrics: nDCG@10 is the only primary metric; Recall@10, MRR@10 and hit@page (FinanceBench) are secondary. Scoring counts documents, pages or passages, never chunks, after the unit collapse of section 0.10 (A2).
+
+### 0.4 Hypotheses (pre-registered)
+
+Per-question marginal nDCG@10 (mean over every cell of the other factors at that level). Paired permutation test (10,000 shuffles, seed 20261101), paired 95% bootstrap interval, Holm across the 11 primary contrasts of one dataset. A contrast counts when the Holm-adjusted p is below 0.05, the interval excludes zero and the sign matches the direction.
+
+- **H1** A bigger embedder finds better documents: 4B vs 0.6B, 8B vs 4B.
+- **H2** The reranker helps: reranker on (mean of three sizes) vs off.
+- **H3** Hybrid helps: on vs off.
+- **H4** Reranker plus hybrid beats either alone: both vs reranker only, both vs hybrid only. Holds when both count.
+- **H5** A bigger reranker ranks better: 4B vs 0.6B, 8B vs 4B (reranker-on setups).
+- **H6** (restated by A2, section 0.10, and A2c, section 0.11; the earlier short-set clause is superseded) Chunk size changes unit-level search quality on FinanceBench and FreshStack: 1,024 vs 512, 2,048 vs 1,024. Holds when at least one contrast counts on both. BioASQ chunk-size results are a reported sanity check, not evidence; Legal is exploratory.
+- **H7** Bigger embedders gain more from bigger chunks: per question, (8B at 2,048 minus 8B at 512) vs (0.6B at 2,048 minus 0.6B at 512).
+- **Null (each)**: no difference larger than the minimum detectable effect. The earlier guesses (about 4, 2 and 5 points) are withdrawn; the MDE table computed from data is in section 0.10 (A2).
+- **Test (A2 wins over the paragraph above).** One linear mixed model per dataset, planned contrasts, Holm across all H1 to H8 contrasts of the dataset, cross-dataset rule 2 of 3 confirmatory datasets. See section 0.10.
+
+### 0.5 Answer stage
+
+- **Selection rule.** Pooled score = plain mean of the four per-dataset mean nDCG@10 values. Embedder: averaged over all other factors. Reranker size: at the chosen embedder, reranker-on setups, averaged over chunk size and hybrid. Choose the smallest size within 0.01 of the best (a gap of exactly 0.01 counts as within); equal scores go to the smaller size. The inputs and the choice go into a dated note here before the replicate pods start.
+- **Setups.** Chunk size (3) x reranker on or off x hybrid on or off = 12 setups x 3 runs x 1,160 questions = 41,760 answers.
+- **Fixed.** Answer model `deepseek/deepseek-v4.1-flash-1017` (OpenRouter, one pinned host, temperature 0, seed 20261101). Ragas 0.4.3, judge `openai/gpt-oss-120b`. Claim checkers GLM-5.3 (main, Z.AI Coding Plan endpoint) and Clef-Flash (second, local). Granite Guardian is dropped, and so is H-CC (section 4.4 keeps its history).
+- **Refusal rule.** `openai/gpt-oss-120b` sorts claims as fact, refusal or mixed. Primary faithfulness uses fact and mixed claims; refusals are reported apart. Gate: agreement of at least 0.90 and refusal recall of at least 0.90 on 100 operator-labelled claims, seed 20261112. GLM-5.3 against Clef-Flash kappa is reported.
+- **Answer correctness (decision 2026-11-13).** The Ragas stage adds `AnswerCorrectness` (Ragas 0.4.3, `ragas.metrics.collections`, default weights: factual 0.75, similarity 0.25; judge `openai/gpt-oss-120b`, local 4B embedder) against each dataset's reference answer, on all four datasets. Validation before it counts: the operator labels 100 seeded answers (seed 20261113; 25 per dataset, even over chunk sizes; from the test pod session), blind to the score, correct or not. Ragas scores are binarised at 0.5. Pooled Cohen's kappa of at least 0.60: correctness is an H8 outcome. Below 0.60: exploratory only. The FinanceBench number match stays.
+- **H8** Chunk size changes faithfulness (GLM-5.3, factual claims) and correctness (Ragas `AnswerCorrectness` on all four datasets; FinanceBench number match). Expected direction: faithfulness falls as chunks grow (Wang et al., EMNLP 2024: 97.6 at 512, 94.3 at 1,024, 80.4 at 2,048). Contrasts per dataset: 1,024 vs 512, 2,048 vs 1,024, marginal over reranker and hybrid, 3 runs averaged per question first, Holm within the dataset.
+- **Context budget: one round (decision 2026-11-13).** At 2,048 tokens x `top_k` 10, the evidence is about 20,000 tokens (at most about 92,000 characters). Every answer setup sets `answer.context_window` to 131,072 characters and `answer.max_rounds` to 1: a round budget of 127,488 characters, so every answer is one call with no refine round (prompt about 35,000 tokens at most). The context length of `deepseek/deepseek-v4.1-flash-1017` on the pinned host is read from the OpenRouter models API and recorded here before the freeze; it must be at least 65,536 tokens. A test fails if any setup needs a second round. Every answer row still records its rounds, evidence characters and any truncation. Truncation is data, never silent.
+
+### 0.6 FinanceBench number match
+
+Numbers from the reference answer must appear in the generated answer after unit normalisation (thousands, millions, billions, currency and percent signs, parentheses for negatives), equal after rounding to the reference's decimal places or within 1% relative difference. Secondary correctness outcome, no judge.
+
+### 0.7 Gates
+
+- **G1**: for the answer setups (14 after A2), the retrieval of runs 1, 2 and 3 equals the search-stage result.
+- **G2**: the `e4b-c1024` index of each dataset, rebuilt in a fresh process, retrieves the same ranked lists with `e4b-c1024-roff-hoff`.
+- **G3**: `verify_llamacpp_runtime` passes for every pinned GGUF file, the three reranker files included, before the first score.
+
+### 0.8 Budget and stop rule (replaces task 1.11 and the $250 cap)
+
+Estimate about $650 on an RTX 4090 (final, after A2c; pods and network volume about $354 for about 382 pod hours, hosted calls about $298; method in change `exp35-main-run-readiness`, design D23). **Ceiling $975 (1.5 x the estimate)**, pods and hosted calls together. Checked before the freeze (test pod extrapolation), on the build pod after the search stage, and while the replicate pods run. At the ceiling the run stops before the next stage and the operator decides. The OpenRouter key carries a credit limit equal to the hosted share of the ceiling, so an overrun ends as a clean `out_of_credit` stop.
+
+### 0.8a GPU choice and parallel index builds (operator instruction, 2026-11-12)
+
+- **Timing job.** On an RTX 4090 (24 GB), an L40S (48 GB) and an H100 (80 GB), the same fixed job of about 10 minutes: embed 2,000 fixed FinanceBench and FreshStack chunks at 1,024 and 2,048 Qwen3 tokens with Qwen3-Embedding-8B Q8_0, and rerank a fixed set of query-passage pairs with Qwen3-Reranker-8B Q8_0. Record chunks per second, pairs per second, peak VRAM, whether the 8B embedder and the 8B reranker load together without swapping, the llama.cpp build, the driver and the image digest. Re-check the live price and stock before each pod; the operator gives the go.
+- **Decision rule (fixed here, before any measurement).** Among the GPUs that hold the 8B embedder and the 8B reranker together without swapping, choose the one with the lowest projected total GPU cost for the main build and search work (9 index builds per dataset plus 72 search setups), from the measured rates and the live hourly price. When two GPUs are within 10% on that cost, choose the faster one. The measurements, the prices with their date and the choice go into a dated note here.
+- **One GPU type.** Every main-run pod (index build pods, search and replicate pods) uses the chosen GPU type, and every stage runs on it. GPU types are never mixed. The earlier 4090 pre-freeze runs (smoke runs, LLM-AggreFact runs, timing in section 4.5) were preparation, not results.
+- **Parallel index builds.** The 9 indexes build on 9 parallel pods of the chosen GPU type, each into its own store on the RunPod network volume. Each pod seals its index and runs its 8 search setups. The `e4b-c1024` rebuild check runs beside them. Then the Mac scores the search stage and applies the selection rule, and the three replicate pods start.
+
+### 0.10 Pre-freeze amendment A2: methods review (2026-11-13)
+
+An independent methods review ran on 2026-11-13; the operator approved every fix. **This section wins over sections 0.3 to 0.9 where they differ.** Detail: change `experiment-35-full-document-rag-benchmark`, design D0.12; code: change `exp35-main-run-readiness`, design D35 and task group 15.
+
+- **Unit scoring.** Every search setup saves the top 100 chunks (the reranker returns its whole 100-candidate pool in order). Chunks map to units (FreshStack document, FinanceBench page, BioASQ or Legal passage); the first occurrence of each unit is kept in rank order; the list is cut at 10 units. A FinanceBench chunk counts for its first page; "any page" credit is a sensitivity column only. Reason: cutting 10 chunks before mapping lets bigger chunks cover more units and raises nDCG@10 by construction.
+- **Token-matched control.** (Superseded in part by A2c N2, section 0.11: evidence is cut by the real Qwen3 token total up to 20,480, not by chunk count; the answer setups are `c512-t20k` and `c1024-t20k`.) Search: evidence recall at 20,480 tokens (first 40, 20 or 10 chunks at 512, 1,024 or 2,048). Answer: two extra setups, 512 x 40 and 1,024 x 20 chunks at the chosen sizes, reranker on and hybrid on, compared with 2,048 x 10 at the same levels. 14 answer setups.
+- **Confirmatory sets.** FinanceBench, FreshStack and BioASQ. H6 is confirmatory on FinanceBench and FreshStack only; BioASQ chunk-size results are a sanity check. Legal RAG Bench is exploratory throughout and in no confirmatory hypothesis.
+- **Model and tests.** Per dataset, one linear mixed model, `ndcg10 ~ C(embedder) * C(chunk) * C(reranker) * C(hybrid) + (1 | question)`, fitted with `statsmodels` `MixedLM` (REML, version pinned in `uv.lock`; installed from the `stats` dependency group, never in the app install). Planned contrasts for H1 to H7 from the model; Holm across every H1 to H8 contrast of the dataset. Paired permutation and bootstrap stay as robustness checks; FinanceBench bootstraps resample whole documents. A hypothesis holds overall when supported on at least 2 of the 3 confirmatory datasets; H6 needs both long-document sets.
+- **Minimum detectable effect.** Before the freeze: the SD of per-question paired differences per dataset and contrast, from Experiment 22 (FreshStack) and the smoke and test-pod rows; MDE at alpha 0.05 / contrasts per dataset, power 0.80; a separate power figure for the H7 interaction. No equivalence claim remains, so no TOST. Table (filled before the freeze):
+
+  | Dataset | Contrast | SD of paired differences | Source | MDE |
+  | --- | --- | --- | --- | --- |
+  | (to fill, task 4B.2) | | | | |
+
+- **Split halves.** Each dataset's questions are split into halves A and B (seed 20261115). The embedder and reranker size for the answer stage are chosen on half A. Answer-stage headlines are reported on half B. Search hypotheses use all questions.
+- **Human validation.** Labellers L1 (operator) and L2 (second labeller); no names in public records. L1 labels 400 items: claim kinds 100 (smoke, seed 20261112), faithfulness verdicts 200 (main run, seed 20261116, stratified by dataset and chunk size), correctness 100 (main run, half B, seed 20261113, 25 per dataset). L2 labels 30% of each set. Reports: kappa of GLM-5.3 and Clef-Flash against L1 with 95% bootstrap intervals; correctness kappa per dataset with intervals (the 0.60 rule of 0.5 applies to this sample); L1 against L2 kappa per set. Disagreement rule: L1 and L2 discuss and agree one label; if they cannot, the item is "can't tell", left out of the judge kappa and counted. Labellers never see scores or verdicts.
+- **Answer stage reading.** Chunk-size effects in the answer stage are reported as "chunk size / context length". Checker agreement is reported per chunk size. The 3 runs at temperature 0 with a fixed seed measure hosted-API nondeterminism, not sampling variance.
+- **Closed-book run.** One run, all 1,160 questions, no retrieval; correctness reported beside RAG correctness split by retrieval hit or miss.
+- **Oracle run (approved by the operator, 2026-11-13).** One oracle answer run (run 1 only) on all 1,160 questions: the answer model `deepseek/deepseek-v4.1-flash-1017` with the same prompt and settings as the main answer setups, and the gold units given directly as evidence, with no retrieval. Sources: Legal RAG Bench, the gold passage; FinanceBench, the gold evidence page text(s) from the PDF as read by `pdf_inspector`; BioASQ, the gold passages (the corpus abstracts named by the question's relevant passage ids), because these are the units retrieval is scored on and they come from the same text the index holds, while snippets are fragments that a real retriever never returns; FreshStack, the gold documents. Every oracle context, on every dataset, is capped at the token budget of the largest main answer setup (20,480 Qwen3 tokens), with any truncation recorded per question as data (A2c). It is scored with the same Ragas `AnswerCorrectness`, GLM-5.3 and Clef-Flash claim checks and FinanceBench number match. Reported beside the closed-book run as floor (closed-book) and ceiling (oracle), descriptive only, no hypothesis test. Caveat: the oracle evidence has no distractor passages, so it is an upper bound, not a fair comparison with retrieval. Cost: about $8 hosted and about 4 pod hours on replicate pod 1. New estimate about **$650**, ceiling **$975** (1.5 x).
+- **Provenance.** Every hosted call records the returned model id and provider. Raw verdicts are released where the licence allows. The local Clef-Flash rerun is the reproducible path without a hosted model.
+- **Reranker pins.** Every reranker GGUF is pinned with its SHA-256 in `plan.json` after a Spearman check of at least 0.95 against the transformers reference on 200 seeded pairs per size (seed 20261117).
+- **Pre-registration.** At the freeze commit the operator deposits this file and `plan.json` on OSF; the link and the commit hash go here.
+- **Dropped.** The 0.045 and 0.055 sensitivity re-test of the 0.05 cut-off (section 6).
+- **Answer model (decided 2026-11-13).** The answer model stays `deepseek/deepseek-v4.1-flash-1017` on the OpenRouter API. Reason: the open-weights DeepSeek V4.1 Flash has 552B parameters, about 508 GB at 8-bit, which no single pod can host; smaller open models answer worse; the API costs about $127 for all answers. A single answer model is a stated limitation. Oracle retrieval was added later the same day as an oracle run (section 0.10).
+- **Limitations.** One answer model; English only; the reranker's default instruction is a web-search instruction applied to finance and legal text.
+- **Budget.** Final figures in section 0.11: about $650, ceiling $975.
+
+### 0.11 Pre-freeze amendment A2c: second methods review (2026-11-13)
+
+This section wins over sections 0.3 to 0.10 where they differ. Detail: change design D0.13; code: readiness design D37, tasks 15.2, 15.3, 15.6, 15.12, 15.14 to 15.16.
+
+- **N1. Rerank pool stays 100.** With `top_k` 100 for depth-100 scoring, OMRS would size the rerank pool as max(`rerank_max_fetch`, `top_k` x `rerank_fetch_multiplier`) = max(100, 300) = 300 (`src/omrs/core/retrieval/policy.py:63-67`, `settings.py:61-62`). The harness passes `fetch_k=100` to `Engine.search` (it reaches the existing `fetch_k_override`, `pipeline.py:279-284`), so every reranker setup scores a pool of exactly 100 and returns all 100 in order. Dense and hybrid setups also fetch 100.
+- **N2. Equal evidence by real tokens.** The equal-evidence metric `evidence_recall_20k` and the two equal-text answer setups no longer cut by chunk count. They take chunks in rank order and add each chunk's real Qwen3 token count to a running total; a chunk is included when the total before it is below 20,480; the chunk that crosses the limit is included whole (so the evidence is at most one chunk over 20,480), and no later chunk is. Short documents and short last chunks therefore no longer under-fill the budget. The setup names become `c512-t20k` and `c1024-t20k`; the `c2048` x 10 comparison is cut by the same rule.
+- **N3. H6 endpoint on FinanceBench.** First-page credit penalises big chunks. H6 on FinanceBench is tested on `evidence_recall_20k` (gold pages within the 20,480-token evidence), its confirmatory endpoint for H6. nDCG@10 with first-page credit and with any-page credit are sensitivity results. H6 counts on FinanceBench only if the 20k measure supports it, and the report gives whether the two page rules agree in sign per contrast. FreshStack keeps unit-level nDCG@10 for H6.
+- **N4. p-values from cluster-robust errors.** The mixed model with a random intercept per question stays for estimates and description. Each planned contrast's p-value comes from a GEE with the same mean model (`statsmodels` `GEE`, Gaussian, exchangeable working correlation) and cluster-robust standard errors clustered by question; on FinanceBench clustered by document. Holm runs across the contrasts of each dataset. The paired permutation test, or on FinanceBench the document-grouped bootstrap, is the pre-registered sensitivity check.
+- **N5. H8 on all questions.** The selection rule averages over chunk size, so choosing on half A barely biases the chunk-size contrasts. H8 is tested on all questions. Descriptive headline answer numbers stay on half B.
+- **Minor.** Only nDCG@10 is primary (the tolerance line names the others as secondary). FreshStack's reference answer is `answer_text` of `freshstack/queries-oct-2024`, config `langchain` (the accepted Stack Overflow answer). Oracle evidence is capped at 20,480 Qwen3 tokens for every dataset (FinanceBench, BioASQ and FreshStack; a Legal passage is at most 512), with truncation recorded. The one-round test covers the oracle and closed-book stages too. Floor (closed-book) and ceiling (oracle) are single runs, while main setups average 3 runs; the report says so. The report adds a per-question cross-table on retrieval misses: closed-book correct or not against RAG correct or not. Oracle retrieval is now part of the plan (an oracle run, approved 2026-11-13).
+- **Cost.** N1 to N5 add no pod hours or calls (the pool stays 100). Final estimate: about **$650** (pods and network volume about $354 for about 382 pod hours, hosted calls about $298), ceiling **$975** (1.5 x).
+
+### 0.9 Questions decided on 2026-11-13
+
+The operator chose: (1) FreshStack corpus without the continuity documents and the overlay runbook; (2) BioASQ and Legal passages as `.md` with Qwen3 counting; (3) Ragas `AnswerCorrectness` on all four datasets with a 100-answer hand-label check, plus the FinanceBench number match; (4) one answer round, `answer.context_window` 131,072 characters; (5) one search run per setup. Still open: the 4B and 8B Qwen3-Reranker GGUF repositories, chosen by the test pod check.
+
 ## 1. Question
 
 What retrieval and answer quality does the full OMRS pipeline reach on three public benchmarks with pinned local models, and how much do four pipeline choices change it (embedding size, reranker, token-aware chunking, hybrid search)?
@@ -167,18 +289,18 @@ The smoke subset (task 4.1) runs a small slice of each dataset through every arm
 ## 6. Analysis
 
 - **Stats level**: expert.
-- **Tests**: paired permutation test on per-question nDCG@10 (10,000 shuffles, seed 20261101), averaged over the 3 runs per question first. McNemar's exact test for hit@page hit or miss. Wilson intervals for rates, paired bootstrap (10,000 resamples) for differences and means. `holm` correction across the arms of one dataset, on nDCG@10 only. Functions come from `.agents/skills/s-experiment/references/stats.py` and `experiments/_lib/stats.py`; no new statistics code.
-- **Minimum detectable effect**: about 4 points at 150 to 223 questions; about 2 points at 707 questions. Stated before the run; recorded per dataset in the report.
-- **Sensitivity**: re-test the 0.05 cut-off at 0.045 and 0.055 and report whether any arm's verdict changes.
+- **Tests** (amended by A2, section 0.10): one linear mixed model per dataset with planned contrasts and Holm across all H1 to H8 contrasts of the dataset; paired permutation test (10,000 shuffles, seed 20261101) and paired bootstrap (10,000 resamples; FinanceBench by document) as robustness checks. Search scores come from one run per setup; answer scores average the 3 runs per question first. McNemar's exact test for hit@page hit or miss. Wilson intervals for rates. Functions come from `experiments/_lib/stats.py`, `stats_d6.py` and the `statsmodels` wrapper `stats_mixed.py`; no new estimator code.
+- **Minimum detectable effect**: computed from data before the freeze (section 0.10). The earlier figures (about 4 and 2 points) are withdrawn.
+- **Sensitivity**: dropped by A2 (2026-11-13). The 0.045 and 0.055 re-test of the cut-off is not run.
 - **Gates**:
 
 | Gate | Pass when | Why it matters |
 | --- | --- | --- |
-| G1 | Runs 2 and 3 retrieve exactly what run 1 retrieved on the fixed index, every arm and dataset | A mismatch breaks the paired design and is itself a finding |
-| G2 | The 4B baseline index rebuilt once per dataset in a fresh process gives run 1's retrieved lists | Shows index building is repeatable |
+| G1 | For the 14 answer setups, the retrieval of answer runs 1, 2 and 3 equals the single search-stage run of the same setup (section 0.7; search runs once per setup) | A mismatch breaks the paired design and is itself a finding |
+| G2 | The `e4b-c1024` index rebuilt once per dataset in a fresh process gives the shared index's lists with `e4b-c1024-roff-hoff` | Shows index building is repeatable |
 | G3 | `verify_llamacpp_runtime` passes before the first score of every run | A wrong build or file hash invalidates every score |
 
-- **Stop rule**: the run is complete when every arm and dataset has 3 runs, the determinism and rebuild checks, and the Ragas pass. Stop early when the preflight fails, a gate fails, or the smoke subset exceeds the task 1.11 budget on extrapolation. A determinism mismatch is recorded and reported, never swapped for another run.
+- **Stop rule**: the run is complete when every search setup has its one run, every answer setup and dataset has 3 runs, the closed-book run, the determinism and rebuild checks, and the Ragas pass. Stop early when the preflight fails, a gate fails, or the projected spend reaches the ceiling of section 0.10. A determinism mismatch is recorded and reported, never swapped for another run.
 - **What each outcome means**:
   - Pass: gates hold; the report states each arm's difference or "no difference larger than the minimum detectable effect".
   - Fail: a gate failed; investigate before any number is cited in the paper.
@@ -200,5 +322,5 @@ The smoke subset (task 4.1) runs a small slice of each dataset through every arm
 The ONNX reranker and the OCR engines do not run through llama.cpp. The freeze records them under the runtime manifest with name, revision and file hash. The embedding tokenizer (`Qwen/Qwen3-Embedding-4B`, `tokenizer.json`, revision `5cf2132a`) is the token-aware chunking tokenizer, cached and hash-checked by sweep task 2.4a.
 
 - **Hosted references** (section 3, ADR-119): answer model `deepseek/deepseek-v4.1-flash-1017` (OpenRouter, temperature 0, seed 20261101, one pinned upstream host); main Ragas judge `openai/gpt-oss-120b` (OpenRouter, reasoning `low`, temperature 0, fixed seed, one pinned upstream host); cross-check judge `openai/gpt-6.1-terra` (OpenRouter, fixed seed, 50 hand-checked items); main claim checker GLM-5.3 (Z.AI, section 4.4). A judge never scores its own model family.
-- **Tolerance**: 0.005 absolute on each primary metric (Recall@10, MRR@10, nDCG@10, hit@page). The largest change that still counts as the same result on another back end. Confirm or change at freeze.
+- **Tolerance**: 0.005 absolute on nDCG@10, the only primary metric, and on the secondary Recall@10, MRR@10 and hit@page (A2; nDCG@10 only is primary). The largest change that still counts as the same result on another back end. Confirm or change at freeze.
 - **Live check**: the runner calls `verify_llamacpp_runtime` before the first score of each run and passes `runtime=found.as_run_record()` to `record_run_start`. A mismatch stops the run.

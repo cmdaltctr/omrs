@@ -43,6 +43,37 @@
 - [ ] 4.2 Commit `protocol.md` and `plan.json`. Verify: the commit exists before the first line of `output/run-records.jsonl`.
 - [ ] 4.3 Remove DRAFT status from this change. Verify: the status line names the freeze commit.
 
+## 4A. Pre-freeze amendment A1 (2026-11-12)
+
+The full-factorial redesign (design D0) replaces the six arms. Tasks 5.1 to 5.4 and 6.1a below keep their old text for history; where they name arms, `chunking-off`, Granite Guardian, H-CC or the $250 cap, read them through these tasks. The code work lives in change `exp35-main-run-readiness` (task groups 12 to 14).
+
+- [x] 4A.1 Write amendment A1 into this change (proposal, design D0, specs), `protocol.md` (section 0) and `plan.json` (`amendments`, hypotheses, metrics, runtime). Verify: `openspec validate experiment-35-full-document-rag-benchmark --strict` passes. Done 2026-11-12.
+- [x] 4A.2 Resolve the A1 open questions (design D0.11) with the operator. Done 2026-11-13: all five proposed answers chosen (corpus without continuity files, `.md` passages, Ragas `AnswerCorrectness` plus number match, one answer round, one search run per setup); only the 4B and 8B reranker repositories wait for the test pod. Verify: `protocol.md` section 0 records each answer with the date.
+- [ ] 4A.3 Pin the three Qwen3-Reranker GGUF files in the `plan.json` `runtime` block (repository, file, SHA-256, build 11941, server arguments) after the test pod check (readiness task 9.2). Verify: `load_runtime_block` accepts the block and `omrs experiments check` reports no error.
+- [ ] 4A.4 Prepare Legal RAG Bench and the 203-query FreshStack set: record the HF revision, the SHA-256 of each file and the licence. Verify: protocol section 4.1 holds one line per file, and the questions load with every gold passage present.
+- [ ] 4A.5 Replace task 1.11 (budget): the estimate and the $975 ceiling of design D0.9. Verify: `protocol.md` states the estimate, the ceiling, the three checks and the date.
+- [ ] 4A.4a Validate answer correctness (design D0.5): the operator labels 100 seeded answers (seed 20261113, 25 per dataset, even over chunk sizes) from the test pod session, blind to the Ragas score. Verify: `protocol.md` records the threshold (0.5) and the kappa rule (pooled kappa of at least 0.60) in a commit before labelling, then the kappa per dataset and pooled, and whether correctness counts for H8.
+- [ ] 4A.4b Record the context length of `deepseek/deepseek-v4.1-flash-1017` on the pinned OpenRouter host. Verify: `protocol.md` states it with the date, and it is at least 65,536 tokens; otherwise the freeze stops and the operator decides.
+- [ ] 4A.5a Choose the GPU type by the rule in `protocol.md` section 0.8a, from the timing job on the RTX 4090, L40S and H100 (readiness task 9.3). Verify: `protocol.md` holds the rule in a commit dated before the first measurement, then the measurements, prices and choice.
+- [ ] 4A.6 Build the 9 indexes on 9 parallel pods of the chosen GPU type, each sealing its index and running its 8 search setups (72 setups, run 1), copy the scores to the Mac, and apply the selection rule (design D0.5). Verify: `protocol.md` holds a dated note with the pooled scores and the chosen embedder and reranker sizes before any replicate pod starts.
+- [ ] 4A.7 Run the 12 answer setups x 3 runs on the three replicate pods. Verify: the join passes and G1 holds or its mismatches are recorded.
+- [ ] 4A.8 Compute H1 to H7 on the search scores and H8 on the answer scores (design D0.4, D0.5). Label every Legal RAG Bench figure exploratory. Verify: each number names its `output/` file.
+
+## 4B. Pre-freeze amendment A2: methods review (2026-11-13)
+
+Design D0.12. The code work is readiness task group 15. Where 4A tasks differ, 4B wins: 4A.4a now draws its 100 answers from the main run (half B), not the test pod.
+
+- [x] 4B.1 Write amendment A2 into this change (design D0.12, specs), `protocol.md` (section 0.10) and `plan.json` (amendment A2, metrics, hypotheses). Verify: both `openspec validate --strict` runs and `omrs experiments check` pass. Done 2026-11-13.
+- [ ] 4B.2 Compute the minimum detectable effects from data (M1, readiness task 15.11) and write the table with its sources into `protocol.md` section 0.10. Verify: the table is in a commit before the freeze commit.
+- [ ] 4B.3 Pin every reranker GGUF with its SHA-256 (M8) only after its Spearman check (at least 0.95 on 200 seeded pairs) passes on the test pod. Verify: `plan.json` runtime holds three reranker entries, `load_runtime_block` accepts them, and `protocol.md` lists each correlation.
+- [ ] 4B.4 Label the four human-validation sets (M4): refusal gate 100, faithfulness 200, correctness 100 (L1), and 30% of each by L2. Write the disagreement rule into `protocol.md` before the first label. Verify: the kappa tables with intervals name their `output/` files, and no labeller name appears in any record.
+- [ ] 4B.5 Run the closed-book run (M6) on replicate pod 1 and report correctness by retrieval hit or miss. Verify: the report table names its `output/` file.
+- [ ] 4B.5a Run the oracle run (design D0.12, readiness tasks 15.12 and 15.13) on replicate pod 1 and report it beside closed-book as ceiling and floor, descriptive only. Verify: the table names its `output/` file and states the no-distractor caveat.
+- [ ] 4B.6 Deposit `protocol.md` and `plan.json` on OSF at the freeze commit (M9; the operator does the deposit). Verify: `protocol.md` holds the OSF link and the freeze commit hash, and the deposit holds no personal data beyond the operator name.
+- [ ] 4B.7 Write the limitations into `report.md`: one answer model, English only, the web-search reranker instruction applied to finance and legal text, 3 runs that measure hosted-API nondeterminism, chunk size confounded with context length in the answer stage. Verify: the report's limitations section names each.
+
+- [x] 4B.8 Write amendment A2c (second methods review, design D0.13) into this change, `protocol.md` section 0.11 and `plan.json`. Verify: both strict validations and `omrs experiments check` pass. Done 2026-11-13.
+
 ## 5. Run
 
 - [ ] 5.1 Run the six arms (or fewer, where 1.9 marks a cell not applicable) on FinanceBench, 3 runs each. Verify: one run record per run, each with a passed live-server check.
