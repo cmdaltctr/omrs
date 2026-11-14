@@ -184,12 +184,12 @@ Written before the freeze. No measured run has started. A publication-grade meth
 | --- | --- | --- |
 | C1 | OSF category "registration before analysis of the outcome data"; pilot scores on half A are main-run outcome data for the pilot cells | 1 |
 | C2 | Pilot: at most the 4 H7 corner indexes per core dataset, not reused; stand-in SD for adjacent levels; cost projected from P2 and approved before the pod; registered fallback without a pilot | 10, 17, 23 (P5) |
-| C3 | BioASQ rows 12 to 19 become sanity checks; families 19 / 19 / 8, 46 contrasts; BioASQ MDE alpha 0.05/8; open item O6 | 7, 8, 10, 23 |
+| C3 | BioASQ rows 12 to 19 become sanity checks; families 19 / 19 / 8, 46 contrasts; BioASQ MDE alpha 0.05/8; open item O6, decided by the owner on 2026-11-14 | 7, 8, 10, 23 |
 | C4 | Two-sided hypotheses hold only when the same row counts with the same sign on every dataset the rule needs (H6, H8a, H8b, C1, C2) | 7, 18 |
 | C5 | One gate interval method: percentile bootstrap, 10,000 resamples by question, own seed; differential-error rule on GLM-5.3, either direction | 11.2 |
 | C6 | Drop order without E1 (E1 has its own ceiling); contamination check falls back to the own-knowledge run; "complete with registered drops" | 13, 17 |
 | C7 | Half-A rule covers samples drawn after `halves.json` exists; earlier samples listed in section 5 | 4 |
-| C8 | `statsmodels` pin marked missing: RDY task 15.6 adds the `stats` group | 16 |
+| C8 | `statsmodels` 0.15.0 added to the `stats` dependency group and `uv.lock` on 2026-11-14; the closed form was checked against its GEE (match to 1e-10) | 16 |
 | C12 | Search-cost figure: RAGFlow curve only if its matched search runs; "adapted from Dodge et al. 2019", ascending sort | 14.3 |
 | C13 | Sign-flip interval assumes a constant additive shift | 9 |
 | C14 | Seeds table, one row per seed; new seeds 20261121 to 20261135 wait for P9 | 16, 23 |
@@ -215,7 +215,7 @@ C9, C10, C11, C20 and C23 change only the OpenSpec changes and the proposal (A4 
 | Part 2 C2: section 12 rules for both systems, complete pairs, unjudged-as-0 sensitivity | 18 |
 | Contamination subset falls back to the own-knowledge run when the RAG-prompt run is dropped | 13 |
 | Pilot seed confirmed before the pilot | 23 (P9) |
-| OpenSpec only: half-B guard checks the hash of the current selection file; budget check uses 52,200 answers (15 setups x 3 runs x 1,160); pilot-declined path; labelling and closed-book run tasks moved out of the pre-freeze section; Holm family size follows the recorded O6 answer | none |
+| OpenSpec only: half-B guard checks the hash of the current selection file; budget check uses 52,200 answers (15 setups x 3 runs x 1,160); pilot-declined path; labelling and closed-book run tasks moved out of the pre-freeze section; Holm family sizes are 19 / 19 / 8 (O6, decided by the owner on 2026-11-14) | none |
 
 Cost: estimate about $730 (was about $690) plus the pilot, projected from P2 before the freeze; ceiling $975 unchanged (pre-registration section 17).
 

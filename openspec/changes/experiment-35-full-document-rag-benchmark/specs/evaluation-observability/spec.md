@@ -93,7 +93,7 @@ The analysis SHALL follow `preregistration.md` section 9 and SHALL fit no mixed 
 
 ### Requirement: Holm families are fixed before the run
 
-Holm correction (alpha 0.05) SHALL run within families of fixed size: FinanceBench 19 rows, FreshStack 19 rows and BioASQ 8 rows (rows 1 to 8; rows 9 to 19 are sanity checks, pending open item O6), 46 in all. Legal RAG Bench SHALL have no family. No gate decided on main-run labels SHALL change a family size.
+Holm correction (alpha 0.05) SHALL run within families of fixed size: FinanceBench 19 rows, FreshStack 19 rows and BioASQ 8 rows (rows 1 to 8; rows 9 to 19 are sanity checks), 46 in all. Legal RAG Bench SHALL have no family. No gate decided on main-run labels SHALL change a family size.
 
 #### Scenario: A gate fails
 - **WHEN** the faithfulness gate of GLM-5.3 fails

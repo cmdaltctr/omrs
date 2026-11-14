@@ -25,7 +25,7 @@ A publication-grade methods review gave 30 findings, F1 to F30. The operator app
 
 - FreshStack indexes use the full public LangChain corpus (49,514 documents). The 10,000-document subset is retired.
 - H8 splits into H8a (12 crossed setups) and H8b (3 token-matched setups), both confirmatory. Every hypothesis is scoped, with numbered rows and a holds rule. Legal RAG Bench is exploratory everywhere.
-- No mixed model. Per-question contrasts with GEE, and a document-level sign-flip test on FinanceBench. Holm families fixed at 19, 19 and 8 (second round C3; BioASQ rows 9 to 19 are sanity checks, pending open item O6).
+- No mixed model. Per-question contrasts with GEE, and a document-level sign-flip test on FinanceBench. Holm families fixed at 19, 19 and 8 (second round C3; BioASQ rows 9 to 19 are sanity checks).
 - Faithfulness and correctness gates on the kappa point estimate and its lower bound. L1 labels 750 items and L2 labels 225.
 - `evidence_recall_20k` gives any-page credit. A second closed-book run uses the RAG prompt. FinanceBench is split by document.
 - The `openai/gpt-6.1-terra` cross-check is removed. Budget about $730 plus the pilot, ceiling $975, with a results-blind drop order that no longer holds E1 (E1 has its own ceiling).

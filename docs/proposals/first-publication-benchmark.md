@@ -122,7 +122,7 @@ Full wording, contrast rows and "holds" rules: pre-registration sections 7 and 8
 - **H5:** a bigger reranker ranks better.
 - **H6:** chunk size changes retrieval (the same row, same sign, on FinanceBench and FreshStack).
 - **H7:** a bigger embedder gains more from bigger chunks (FinanceBench and FreshStack; expected to be underpowered).
-- **H8a:** chunk size changes faithfulness and correctness in the crossed setups, where context length grows with chunk size (the same row, same sign, on FinanceBench and FreshStack; open item O6).
+- **H8a:** chunk size changes faithfulness and correctness in the crossed setups, where context length grows with chunk size (the same row, same sign, on FinanceBench and FreshStack).
 - **H8b:** chunk size changes faithfulness and correctness when evidence is held at 20,480 tokens. The paper says "chunk size itself changes X" only when H8b holds for X.
 
 ### Methods in short
@@ -131,7 +131,7 @@ Detail for each item is in the pre-registration section named.
 
 - Search runs once per setup on a sealed index, and each index is built once. A rebuild check and a repeat check confirm determinism (section 15). Answer setups repeat to measure drift in the hosted API.
 - Analysis: no mixed model. One clustered method gives every estimate, interval and p-value: GEE with bias-reduced covariance on question clusters for FreshStack, BioASQ and Legal, and a document-level sign-flip permutation test on FinanceBench (section 9).
-- Holm families are fixed now: 19 contrasts on FinanceBench, 19 on FreshStack, 8 on BioASQ (46 in all; BioASQ rows 9 to 19 are sanity checks, open item O6); Legal is exploratory. No gate changes a family size (section 8). H1 to H5 hold on at least 2 of 3 core datasets. H6, H7, H8a and H8b hold only on FinanceBench and FreshStack. A two-sided hypothesis holds only when the same row counts with the same sign on every dataset its rule needs (section 7).
+- Holm families are fixed now: 19 contrasts on FinanceBench, 19 on FreshStack, 8 on BioASQ (46 in all; BioASQ rows 9 to 19 are sanity checks); Legal is exploratory. No gate changes a family size (section 8). H1 to H5 hold on at least 2 of 3 core datasets. H6, H7, H8a and H8b hold only on FinanceBench and FreshStack. A two-sided hypothesis holds only when the same row counts with the same sign on every dataset its rule needs (section 7).
 - Missing outcomes: every question stays in its denominator, with a rule per outcome (section 12).
 - Power: a retrieval-only pilot on 40 seeded half-A questions per core dataset fills the minimum detectable effect table before the freeze. It builds at most the four H7 corner indexes per core dataset and does not reuse them. Its cost is projected from the P2 timing and approved before the pod starts; if the user declines, the table is filled from assumed SDs and labelled so. The smallest effect of interest is 0.02 nDCG@10 (open item O2). No equivalence claim is made (section 10).
 - Every main-run pod uses one RunPod GPU type, chosen by a timing job before the freeze. The Mac scores the results.

@@ -182,6 +182,8 @@ def _declared_floors() -> list[tuple[str, str, tuple[int, ...]]]:
 
     for group, reqs in pyproject.get("dependency-groups", {}).items():
         for req in reqs:
+            if not isinstance(req, str):
+                continue  # PEP 735 `{include-group = "..."}` table, no floor to read
             parsed = _extract_floor(req)
             if parsed:
                 name, version = parsed
