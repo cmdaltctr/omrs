@@ -91,7 +91,7 @@ E. Arm smoke run on the run machine; pod stopped after it
    |
 E2. A4 pre-freeze items: FreshStack full corpus pin and timing,
    |   halves and MDE pilot on half A, P1 to P16,
-   |   open items O2, O3 and O4 (O1, O5, O6, O7 decided)
+   |   owner decisions O1 to O7 recorded (none open)
    |   (with Part 2 steps 7.1, 7.2 and 7.2a)
 F. Freeze (G7)
    |

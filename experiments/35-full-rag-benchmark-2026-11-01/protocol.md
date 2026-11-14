@@ -152,12 +152,12 @@ Written before the freeze. No measured run has started. A publication-grade meth
 | F3 | Faithfulness gate per checker (kappa at least 0.60, lower bound at least 0.40), 450 claims by chunk size from answers to all questions, differential-error rule, length-controlled check | 11.2 |
 | F4 | Numbered contrast table; Holm families fixed at 19 (FinanceBench), 19 (FreshStack), 8 (BioASQ; was 16, changed by C3 below); gated rows stay in with p = 1 | 8 |
 | F5 | H8 split into H8a (crossed) and H8b (token-matched), both confirmatory | 7, 8 |
-| F6 | Retrieval-only pilot on 40 half-A questions per core dataset; SESOI 0.02 nDCG@10 (open); underpowered rows named | 10 |
+| F6 | Retrieval-only pilot on 40 half-A questions per core dataset; SESOI 0.02 nDCG@10 (O2, decided by the owner on 2026-11-14); underpowered rows named | 10 |
 | F7 | MixedLM dropped; one clustered method for estimates, intervals and p-values | 9 |
 | F8 | Correctness gate per core dataset, 50 items each, point estimate and lower bound; continuous score validated by AUC | 11.2 |
 | F9 | Missing-outcome rules per outcome, Part 1 and Part 2 | 12, 18 |
 | F10 | Decision test defined by its closed form (Mancl and DeRouen bias-reduced variance, t on n minus 1), `statsmodels` GEE as the checked implementation; FinanceBench document-level sign-flip; C2 fixed as continuous correctness, no McNemar | 9, 18 |
-| F11 | Unjudged share at 10 and condensed-list sensitivity; blind audit optional (open) | 21, 11.3 |
+| F11 | Unjudged share at 10 and condensed-list sensitivity; blind audit only if the unjudged-share trigger fires (O3, decided by the owner on 2026-11-14) | 21, 11.3 |
 | F12 | `evidence_recall_20k` gives any-page credit; first-page credit is sensitivity | 6 |
 | F13 | Second closed-book run with the RAG prompt; H8a and H8b correctness re-run on closed-book-wrong questions | 13 |
 | F14 | RQ1 headline is the A3 cell on half B; 72-setup table descriptive | 14.3 |
@@ -165,7 +165,7 @@ Written before the freeze. No measured run has started. A publication-grade meth
 | F16 | Existing data declared | 5 |
 | F17 | Results-blind drop order at the ceiling: (1) Legal RAG Bench answer generation, (2) the length-controlled check, (3) the closed-book run with the RAG prompt, then stop (E1 left the order, C6 below); "complete with registered drops" defined; "the operator decides" removed; Part 2 budget a pre-freeze task | 17 |
 | F18 | Release table per artefact and licence, re-judge kit | 19 |
-| F19 | Label guidelines per set, hidden system identity in Part 2, L2 primary in Part 2, conflict of interest; L2 open; no ethics query (O5, decided 2026-11-14) | 11.3 |
+| F19 | Label guidelines per set, hidden system identity in Part 2, L2 primary in Part 2, conflict of interest; L2 counts set (O4, decided 2026-11-14); no ethics query (O5, decided 2026-11-14) | 11.3 |
 | F20 | Pins table; index cost and configuration hash defined | 14.1, 16 |
 | F21 | FinanceBench split by document; pre-freeze samples from half A; order: score half A, hash, score half B | 4, 14.2 |
 | F22 | "Holds" defined per hypothesis; H7 confirmatory on FinanceBench and FreshStack, as H6; H4 named as simple effects | 7 |
@@ -224,15 +224,18 @@ C9, C10, C11, C20 and C23 change only the OpenSpec changes and the proposal (A4 
 | Row 11 (H7) uses coefficients +1, -1, -1, +1 on the four corner cells after averaging over reranker and hybrid; the general mean-minus-mean recipe does not apply to it; known-answer fixture case (0.8, 0.2, 0.3, 0.7 gives 1.0); MDE on the same scale | 7, 9, 10 |
 | Short evidence pools: all 100 chunks are kept when they hold fewer than 20,480 tokens, and the realised token total is recorded per question and setup. Every question stays in H8b. "Chunk size itself" also needs a registered sensitivity on questions where all three `-t20k` setups reach at least 19,456 tokens (95%), with the count kept per dataset | 3, 7, 21 |
 | Every undefined resample is never drawn again and is counted once, whichever chunk-size level it lacks, also when the full sample is defined; the over-5% failure rule stays separate | 11.2 |
-| Drop step 1 removes the 50 Legal correctness labels: correctness 150, L1 700, L2 210; Legal has no gate, so no confirmatory row changes | 11.2, 16, 17 |
+| Drop step 1 removes the 50 Legal correctness labels: correctness 150, L1 700, L2 210 (O4 later set L2 to 315); Legal has no gate, so no confirmatory row changes | 11.2, 16, 17 |
 | OpenSpec only: O2 (SESOI) is asked in readiness flow step 6.10b, before any pilot result is read | none |
 | Rejected: move O5 before classifier-gate labelling. O5 was decided on 2026-11-14 (no ethics query), so the answer is already recorded before any label | none |
 
-**Owner decisions (2026-11-14).** Three open items are closed before the freeze. O2, O3 and O4 stay open.
+**Owner decisions (2026-11-14).** Six open items are closed before the freeze (O6 is in the table above). No owner decision is open; the pre-freeze tasks P1 to P16 remain.
 
 | Item | Decision | Pre-registration section |
 | --- | --- | --- |
 | O1 | A file upload to the registered OSF project time-stamps the A3 configuration hash | 14.2, 23 |
+| O2 | SESOI 0.02 nDCG@10, with a written justification (user terms, design lower bound, cost, published Qwen3 effect sizes, not set by power, sensitivity at 0.01 and 0.05). Recorded before any pilot result is read | 10, 23 |
+| O3 | No blind relevance audit by default. It runs only if the mean unjudged share in the top 10 differs by more than 5 points: hybrid on against off on FreshStack, or OMRS against RAGFlow on a core dataset in Part 2 | 11.3, 23 |
+| O4 | L2 (author or colleague) labels every correctness answer and every Part 2 label, and 30% of the faithfulness (135) and claim-kind (30) sets. L2 365, or 315 after drop step 1. Seed 20261124 retired. The name goes in the run record only | 11.3, 16, 23 |
 | O5 | No ethics query: the study has no human participants, and the labellers are members of the research team. The question reopens as a deviation if a paid external annotator is used | 11.3, 23 |
 | O7 | The primary faithfulness measure stays faithfulness of cited factual claims, because OMRS answers are built to cite their evidence. `uncited_segment_share` stays a co-outcome. The uncited-segment version stays a sensitivity analysis only | 6, 23 |
 
