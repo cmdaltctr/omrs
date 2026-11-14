@@ -1,6 +1,6 @@
 # Experiment 35: Reproducible Local RAG Benchmark of OMRS
 
-> Status: DRAFT. Purpose `publication`, size Confirmatory. Commit `protocol.md` and `plan.json` before the first measured run.
+> Status: DRAFT. Purpose `publication`, size Confirmatory. Commit `protocol.md` and `plan.json` before the first measured run. From amendment A4 (2026-11-14), `experiments/35-full-rag-benchmark-2026-11-01/preregistration.md` governs the live design; where this change differs, it wins.
 
 ## Pre-freeze amendment A1 (2026-11-12)
 
@@ -9,15 +9,26 @@ The operator and the agent agreed a full redesign before the freeze. It wins ove
 - **Datasets (English only, 1,160 questions):** FinanceBench (`PatronusAI/financebench`, 150), FreshStack LangChain (203 public queries, not 223; the 20 Experiment 9 continuity queries leave), BioASQ mini (707) and Legal RAG Bench (`isaacus/legal-rag-bench`, 100 expert questions, one gold passage each, 4,876 passages, CC BY-NC-SA 4.0; exploratory because of low power). LegalBench-RAG and LLeQA are out. FinanceBench answers also get a number-match check.
 - **Search stage, full factorial on all four datasets:** embedder (Qwen3-Embedding 0.6B, 4B, 8B) x chunk size (512, 1,024, 2,048 Qwen3 tokens, overlap 15%: 77, 154, 307, the same for Markdown and plain text) x reranker (off, Qwen3-Reranker 0.6B, 4B, 8B) x hybrid (off, on with BM25 pinned). That is 9 indexes per dataset and 72 search setups. Setups are named by their settings, never by a profile name.
 - **Dropped:** the six one-factor arms, the `chunking-off` arm, MiniLM (it truncates at 512 tokens), Granite Guardian, hypothesis H-CC, the $250 cap. Isnad moved to v4.
-- **Hypotheses H1 to H7** (search) and **H8** (answer stage, chunk size against faithfulness and correctness), each with a paired test and Holm correction.
+- **Hypotheses H1 to H7** (search) and **H8** (answer stage, chunk size against faithfulness and correctness), each with a paired test and Holm correction. (Superseded by A4: H8 splits into H8a and H8b; the tests and Holm families are in `preregistration.md` sections 7 to 9.)
 - **Answer stage:** one embedder and one reranker size, chosen by a rule fixed before the run; then chunk size x reranker on or off x hybrid on or off = 12 crossed setups (plus 3 token-matched setups from A2 and A3, 15 in all) x 3 runs x 1,160 questions. Answer model, Ragas judge and claim checkers GLM-5.3 (main) and Clef-Flash (second) as before. The refusal rule stays.
-- **Budget:** re-estimated at about $650, with a stop rule at a ceiling of $975 (1.5 x the estimate).
+- **Budget:** re-estimated at about $650, with a stop rule at a ceiling of $975 (1.5 x the estimate). (Superseded by A4: about $730, ceiling $975, results-blind drop order.)
 - **Hardware:** one GPU type for every main-run pod, chosen before the freeze from a 10-minute timing job on RTX 4090, L40S and H100 by a rule written before measuring. The 9 indexes build on parallel pods of that type.
 - **New OMRS code:** a llama.cpp reranker backend (one new file and one `register()` line) in change `exp35-main-run-readiness`.
 
 ## Pre-freeze amendment A2 (2026-11-13)
 
-An independent methods review ran; the operator approved every fix (design D0.12): unit-level scoring after collapsing the top 100 chunks; token-matched controls; H6 confirmatory on FinanceBench and FreshStack only, Legal exploratory throughout; one mixed model per dataset with a 2-of-3 cross-dataset rule; MDE from data; split-half selection; two labellers; a closed-book run; returned-model provenance; reranker rank checks; OSF pre-registration. Budget about $650, ceiling $975.
+An independent methods review ran; the operator approved every fix (design D0.12): unit-level scoring after collapsing the top 100 chunks; token-matched controls; H6 confirmatory on FinanceBench and FreshStack only, Legal exploratory throughout; one mixed model per dataset (dropped by A2c and A4) with a 2-of-3 cross-dataset rule; MDE from data; split-half selection; two labellers; a closed-book run; returned-model provenance; reranker rank checks; OSF pre-registration. Budget about $650, ceiling $975.
+
+## Pre-freeze amendment A4 (2026-11-14)
+
+A publication-grade methods review gave 30 findings, F1 to F30. The operator approved every recommended fix (design D0.15, `protocol.md` section 0.13, `plan.json` amendment A4). The live design now sits in one file, `preregistration.md`, which is the main file of the OSF deposit. Main changes:
+
+- FreshStack indexes use the full public LangChain corpus (49,514 documents). The 10,000-document subset is retired.
+- H8 splits into H8a (12 crossed setups) and H8b (3 token-matched setups), both confirmatory. Every hypothesis is scoped, with numbered rows and a holds rule. Legal RAG Bench is exploratory everywhere.
+- No mixed model. Per-question contrasts with GEE, and a document-level sign-flip test on FinanceBench. Holm families fixed at 19, 19 and 8 (second round C3; BioASQ rows 9 to 19 are sanity checks).
+- Faithfulness and correctness gates on the kappa point estimate and its lower bound. L1 labels 750 items and L2 labels 225.
+- `evidence_recall_20k` gives any-page credit. A second closed-book run uses the RAG prompt. FinanceBench is split by document.
+- The `openai/gpt-6.1-terra` cross-check is removed. Budget about $730 plus the pilot, ceiling $975, with a results-blind drop order that no longer holds E1 (E1 has its own ceiling).
 
 ## Why
 
@@ -52,7 +63,7 @@ The pipeline sweep (`openspec/changes/pipeline-sweep-llamacpp/`, optimisation, S
 | Dataset | Domain | Questions | Corpus | Gold labels | Licence |
 |---|---|---|---|---|---|
 | FinanceBench (open sample) | Finance, real PDFs | 150 | 10-K and similar filings | Gold document and page | CC BY-NC 4.0 |
-| FreshStack, LangChain slice | Software | 223 | 10,024 documents | Gold documents | CC BY-SA 4.0 |
+| FreshStack, LangChain slice (history; A4 uses the full corpus of 49,514 documents and 203 queries) | Software | 223 | 10,024 documents | Gold documents | CC BY-SA 4.0 |
 | BioASQ (`enelpol/rag-mini-bioasq`, test split) | Biomedicine | 707 | 40.2K PubMed abstracts | Gold passages and reference answers | CC BY 2.5 |
 | NFCorpus (fallback for BioASQ) | Biomedicine | (check) | (check) | Graded relevance | Check the academic-use terms first |
 

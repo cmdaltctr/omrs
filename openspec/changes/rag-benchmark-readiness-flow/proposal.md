@@ -15,6 +15,7 @@ Without one recorded order, two branches can touch the same specs at once, the l
 
 - A task order only (tasks.md groups 0 to 8) with gates. No code and no capability deltas.
 - The order (operator decisions 2026-11-06): cuts, then router, then one live switch (no re-index: the live collections are test data, operator 2026-11-07), then the pipeline sweep on RunPod, then Experiment 35. The page routing panel follows the router and can run beside the sweep, because it touches no runtime and no result.
+- Amendment A4 (2026-11-14): `experiments/35-full-rag-benchmark-2026-11-01/preregistration.md` governs Experiment 35. Group 6 gains the pre-freeze items of its section 23 (the FreshStack full-corpus pin and timing, the halves and the MDE pilot on half A, P1 to P16, and the user's open items O1 to O7) and follows its order of work (score half A, time-stamp the selection hash on OSF, then score half B). Group 7 lists what the Part 2 protocol must hold and adds step 7.2a, the matched RAGFlow search decision (design D6).
 
 ## Capabilities
 
@@ -30,5 +31,5 @@ None.
 
 - No code. Each group names the change or experiment whose own tasks carry the detail.
 - Live state: group 4 changes the live app (`~/.omrs`, `~/.config/omrs/omrs.jsonc`, the Llama app) and re-indexes every collection once. It needs the operator's word (gate G5).
-- Cost: group 5 runs on RunPod and needs the operator's word on budget (gate G6). Group 6 spends money at the pre-freeze pod and GLM-5.3 run (gate G7a, about 2 to 4 hours of pod plus about $11) and at the smoke and section 5 runs (gate G7). Group 7 adds the Part 2 RAGFlow run on half B and the descriptive E1 run; E1 is dropped first when the budget is short.
+- Cost: group 5 runs on RunPod and needs the operator's word on budget (gate G6). Group 6 spends money at the pre-freeze pod and GLM-5.3 run (gate G7a, about 2 to 4 hours of pod plus about $11) and at the smoke and section 5 runs (gate G7). Group 6 adds the FreshStack full-corpus builds and the MDE pilot (estimate about $730 in all, ceiling $975, with a results-blind drop order). Group 7 adds the Part 2 RAGFlow run on half B and the descriptive E1 run, each with its own estimate and ceiling; E1 is dropped first when the budget is short.
 - Parked, not in this flow: `paddleocr-vl-llamacpp-backend`, `tripwire-retirement-and-provider-symmetry` (watch its overlap with the router's key retirements), issue #161 old-print follow-up, an Indra-on-Latin follow-up, issues #173 and #174.

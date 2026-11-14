@@ -115,6 +115,12 @@ A `claimkinds` stage SHALL give each judged claim of one run folder one kind fro
 - **WHEN** the classification stopped part-way and runs again with `--resume`
 - **THEN** it MUST classify only the claims without a saved kind
 
+#### Scenario: Claim still unclassified after resume
+
+- **WHEN** the classifier still fails on a claim after `--resume`
+- **THEN** the claim MUST count as a factual claim, stay in the faithfulness denominator and be counted
+- **AND** a sensitivity analysis MUST leave such claims out
+
 ### Requirement: The classifier passes a hand-label gate before the freeze
 
 Before the freeze, the operator SHALL label a seeded sample of about 100 smoke claims from the three smoke datasets, blind to the classifier's output and to every verdict. The pass thresholds SHALL be fixed before labelling starts. The classifier SHALL be frozen only when it passes; a failed gate SHALL block the freeze of the classifier.
@@ -143,6 +149,15 @@ Primary faithfulness, per answer setup and per checker (GLM-5.3 and Clef-Flash),
 - **WHEN** an answer setup has refusal claims
 - **THEN** its primary faithfulness MUST leave them out
 
+### Requirement: Uncited segments are reported and tested in a sensitivity analysis
+
+Primary faithfulness SHALL cover cited factual claims only. The report SHALL give, per setup and dataset, the share of prose segments with no valid ordinal. The classifier SHALL also sort uncited segments, with the question and segment only. A registered sensitivity analysis SHALL count uncited fact and mixed segments as unsupported (pre-registration section 6; open item O7).
+
+#### Scenario: One cited and one uncited fact
+
+- **WHEN** an answer holds one cited fact the checker calls supported and one uncited segment the classifier calls fact
+- **THEN** primary faithfulness MUST be 1.0, the sensitivity MUST be 0.5, and the uncited share MUST be 0.5
+
 ### Requirement: Refusals are reported separately
 
 A refusal report step SHALL read a joined main run and SHALL refuse to start without a passing join report. It SHALL give the refusal rate per answer setup and dataset as a primary descriptive outcome. For refusal claims only, it SHALL give each checker's unsupported rate and the Cohen's kappa of Clef-Flash against GLM-5.3. For factual claims, it SHALL give the Cohen's kappa of Clef-Flash against GLM-5.3 per dataset.
@@ -170,28 +185,144 @@ For each checker separately, the report SHALL recompute faithfulness on all clai
 - **WHEN** the bounds run for Clef-Flash
 - **THEN** only Clef-Flash's refusal verdicts MUST change, and the report MUST give the lowest and highest faithfulness per answer setup and dataset from the two settings
 
-### Requirement: Answer correctness is checked against hand labels
+### Requirement: Answer correctness passes a gate per core dataset
 
-A sampling step SHALL draw 100 answers with seed 20261113, 25 per dataset, even over the chunk sizes, and SHALL write them without any Ragas score. An agreement step SHALL binarise `AnswerCorrectness` at 0.5 and SHALL give Cohen's kappa against the operator labels per dataset and pooled, and whether the pooled kappa reaches 0.60.
+A sampling step SHALL draw 50 half-B questions per dataset with seed 20261113, each with the run-1 answer of an answer setup the seed picks uniformly, with no Ragas score shown. A core dataset passes only when Cohen's kappa of `AnswerCorrectness` cut at 0.5 against the human labels has a point estimate of at least 0.60 and a lower 95% bound of at least 0.40, with "can't tell" scored both ways (both must pass), and the AUC of the continuous score has a lower 95% bound above 0.5.
 
 #### Scenario: Same sample twice
 
 - **WHEN** the sample is drawn twice with the same seed
 - **THEN** both samples MUST hold the same answers in the same order, with no score shown
 
-#### Scenario: Kappa below the rule
+#### Scenario: Gate interval method
 
-- **WHEN** the pooled kappa is 0.55
-- **THEN** the agreement report MUST mark answer correctness exploratory
+- **WHEN** the agreement step computes any gate interval (kappa, AUC or specificity difference)
+- **THEN** it MUST use a percentile bootstrap with 10,000 resamples by question and the seed listed for that interval in pre-registration section 16
 
-### Requirement: A closed-book run checks contamination
+#### Scenario: Statistic undefined on the full sample
 
-A `closedbook` stage SHALL answer every question once with no retrieval and SHALL score it with `AnswerCorrectness` and the FinanceBench number match. The report SHALL show RAG correctness split by retrieval hit or miss beside closed-book correctness.
+- **WHEN** the labelled sample of a dataset holds only one human class, so the AUC or kappa is undefined
+- **THEN** the gate MUST fail on that dataset
+
+#### Scenario: Undefined resamples
+
+- **WHEN** a resample holds only one class
+- **THEN** the step MUST NOT draw it again, MUST give it kappa 0 or AUC 0.5, and MUST count it
+- **AND** the gate MUST fail when more than 500 of the 10,000 resamples are undefined
+
+#### Scenario: Point estimate passes but lower bound fails
+
+- **WHEN** kappa on FinanceBench is 0.65 with a lower 95% bound of 0.35
+- **THEN** the gate MUST fail on FinanceBench
+
+#### Scenario: Continuous score fails
+
+- **WHEN** kappa on FreshStack passes and the lower 95% bound of the AUC is 0.48
+- **THEN** the gate MUST fail on FreshStack
+
+### Requirement: A failed correctness gate keeps its rows in the family
+
+A failed correctness gate SHALL mark rows 14, 15, 18 and 19 "not testable" on that dataset, with p = 1 in its Holm family. Legal RAG Bench labels SHALL be reported with no gate. Prevalence, raw agreement and PABAK SHALL be reported beside kappa. The gate SHALL be recorded with its time before any H8a or H8b contrast result is computed.
+
+#### Scenario: Gate fails on one dataset only
+
+- **WHEN** the gate fails on BioASQ and passes on FinanceBench and FreshStack
+- **THEN** rows 14, 15, 18 and 19 MUST stay testable on FinanceBench and FreshStack, and the BioASQ result MUST change no family, because BioASQ rows 12 to 19 are sanity checks
+
+### Requirement: Faithfulness checkers pass a gate per checker
+
+A sampling step SHALL draw 450 claims from crossed-setup answers to all questions (both halves) with seed 20261116: 150 per chunk size, 50 per core dataset within each, at most one claim per answer, with no verdict shown. A checker's gate SHALL pass when Cohen's kappa against the human label, with "can't tell" as not supported, has a point estimate of at least 0.60 and a lower 95% bound of at least 0.40. If GLM-5.3 fails, rows 12, 13, 16 and 17 SHALL be "not testable" on every dataset.
+
+#### Scenario: Faithfulness sample spans both halves
+
+- **WHEN** the sampling step draws the faithfulness sample
+- **THEN** it MUST draw from answers to questions in both half A and half B, because H8a and H8b are tested on all questions
+- **AND** the correctness sample MUST still come from half B only
+
+#### Scenario: Second checker fails its gate
+
+- **WHEN** Clef-Flash fails its kappa gate
+- **THEN** its results MUST be reported as not validated and MUST change no confirmatory row
+
+#### Scenario: Kappa also without can't tell
+
+- **WHEN** the agreement step reports a checker's kappa
+- **THEN** it MUST also report kappa with the "can't tell" items left out, and that value MUST NOT decide the gate
+
+### Requirement: A differential-error rule guards H8a and H8b faithfulness
+
+The agreement step SHALL give each checker's specificity (the share of human-supported claims it calls supported) and sensitivity per chunk size. When the 95% interval of the GLM-5.3 specificity difference (2,048 minus 512) excludes zero in either direction, rows 12, 13, 16 and 17 SHALL be "not testable", with p = 1 in their families. The gate record SHALL carry its time, and no H8a and H8b faithfulness row SHALL be computed before it exists.
+
+#### Scenario: Specificity differs by chunk size
+
+- **WHEN** GLM-5.3 passes its kappa gate and the 95% interval of its specificity difference (2,048 minus 512) excludes zero, whether the difference is below or above zero
+- **THEN** rows 12, 13, 16 and 17 MUST be "not testable", and the family sizes MUST NOT change
+
+#### Scenario: Second checker specificity differs
+
+- **WHEN** only the Clef-Flash specificity difference excludes zero
+- **THEN** it MUST be reported only and MUST NOT change any row
+
+#### Scenario: Specificity difference undefined
+
+- **WHEN** a chunk-size level of the full sample, or of more than 500 of the 10,000 resamples, holds no human-supported claim
+- **THEN** rows 12, 13, 16 and 17 MUST be "not testable"
+- **AND** a resample with no human-supported claim at a level MUST NOT be drawn again, MUST be left out of the interval and MUST be counted
+
+#### Scenario: Gate decided before H8a and H8b results
+
+- **WHEN** the analysis starts an H8a or H8b faithfulness row and no gate record with a time exists
+- **THEN** it MUST refuse and MUST name the gate step
+
+### Requirement: A length-controlled check reruns long-chunk claims
+
+A `lengthcheck` stage SHALL draw 300 claims from the `c2048` crossed answers with seed 20261119. It SHALL split each cited chunk into consecutive 512-token windows, keep the window that shares the most distinct lower-case claim words, and have GLM-5.3 and Clef-Flash judge the claim again against it. The report SHALL give the verdict change rate with a Wilson interval, as a registered sensitivity analysis with no gate.
+
+#### Scenario: Window choice tie
+
+- **WHEN** two windows share the same number of claim words
+- **THEN** the stage MUST keep the earlier window
+
+### Requirement: Closed-book runs check contamination
+
+A `closedbook` stage SHALL answer every question once with no retrieval under two prompts: an own-knowledge prompt (the floor) and the main RAG answer prompt with an empty evidence block. It SHALL score both with `AnswerCorrectness` and the FinanceBench number match. Closed-book results SHALL be descriptive, with no hypothesis test.
 
 #### Scenario: No search call
 
-- **WHEN** the closed-book stage runs
+- **WHEN** either closed-book run runs
 - **THEN** it MUST send no search call and MUST pass an empty evidence list
+
+#### Scenario: RAG prompt with empty evidence
+
+- **WHEN** the closed-book RAG-prompt run builds its prompt
+- **THEN** the prompt MUST equal the main answer prompt with an empty evidence block, and its template hash MUST be recorded
+
+### Requirement: A contamination sensitivity re-runs the correctness rows
+
+The report SHALL show closed-book correctness per dataset beside every correctness table, and a per-question cross-table on retrieval misses (closed-book correct or not against RAG correct or not). A registered sensitivity analysis SHALL re-run rows 14, 15, 18 and 19 on the questions that both closed-book runs answer wrongly (Ragas correctness below 0.5).
+
+#### Scenario: Contamination subset
+
+- **WHEN** a question is answered correctly by one closed-book run and wrongly by the other
+- **THEN** it MUST NOT enter the contamination subset
+
+### Requirement: Missing answers and unjudged rows keep every question
+
+The analysis SHALL keep every question in its dataset's denominator and SHALL count every exclusion per setup and row. An answer still missing when its run closes SHALL score 0 for correctness and number match and SHALL count as an answer with no factual claim. A Ragas or checker row still unjudged when its run closes SHALL leave that row's complete cases, SHALL be counted, and SHALL be scored 0 in a sensitivity analysis.
+
+#### Scenario: Answer missing at run close
+
+- **WHEN** an answer is still missing when its run closes
+- **THEN** its correctness and number match MUST be 0 and it MUST count as an answer with no factual claim
+
+### Requirement: Faithfulness uses complete cases with registered bounds
+
+Faithfulness per question and setup SHALL be the mean over the runs with at least one factual claim. A question SHALL enter a faithfulness row only when every cell the row uses has a value. Two sensitivity analyses SHALL keep every question, with no-claim answers scored 1 and scored 0. The refusal rate per setup SHALL be reported as a co-outcome.
+
+#### Scenario: Answer with no factual claim
+
+- **WHEN** a question's answers in one cell of a faithfulness row have no factual claim in any run
+- **THEN** the question MUST leave that row's complete cases, the exclusion MUST be counted, and both sensitivity analyses MUST include it
 
 ### Requirement: Every answer is one synthesis round
 
