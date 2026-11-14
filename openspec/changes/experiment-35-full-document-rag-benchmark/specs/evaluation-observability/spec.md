@@ -153,7 +153,11 @@ Each faithfulness checker SHALL pass when Cohen's kappa against the human label 
 
 ### Requirement: Human labels follow the registered counts
 
-L1 SHALL label 750 items (claim kinds 100, faithfulness 450 from all questions, correctness 200 from half B), and L2 SHALL label 30% of claim kinds and faithfulness and all correctness answers (365 items); after drop step 1, correctness 150, L1 700 and L2 315. The claim classifier SHALL reach agreement of at least 0.90 and refusal recall of at least 0.90 on 100 L1-labelled smoke claims before the freeze.
+L1 SHALL label 750 items (claim kinds 100, faithfulness 450, correctness 200). By default L2 SHALL label every item L1 labels. In a staged fallback, chosen and dated before the freeze from L2's availability alone, L2 SHALL label a seeded 30% of claim kinds and faithfulness first (365 items in all), then the rest of a set when kappa on its subset is below 0.70. The claim classifier SHALL reach agreement and refusal recall of at least 0.90 on 100 L1-labelled smoke claims before the freeze.
+
+#### Scenario: L2 cannot commit the time for the full plan
+- **WHEN** the owner records the staged plan before the freeze
+- **THEN** L2 SHALL label a seeded 30% of claim kinds and faithfulness first, and every correctness and Part 2 item
 
 #### Scenario: A label file is released
 - **WHEN** human labels are released

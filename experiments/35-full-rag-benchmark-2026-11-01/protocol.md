@@ -165,7 +165,7 @@ Written before the freeze. No measured run has started. A publication-grade meth
 | F16 | Existing data declared | 5 |
 | F17 | Results-blind drop order at the ceiling: (1) Legal RAG Bench answer generation, (2) the length-controlled check, (3) the closed-book run with the RAG prompt, then stop (E1 left the order, C6 below); "complete with registered drops" defined; "the operator decides" removed; Part 2 budget a pre-freeze task | 17 |
 | F18 | Release table per artefact and licence, re-judge kit | 19 |
-| F19 | Label guidelines per set, hidden system identity in Part 2, L2 primary in Part 2, conflict of interest; L2 counts set (O4, decided 2026-11-14); no ethics query (O5, decided 2026-11-14) | 11.3 |
+| F19 | Label guidelines per set, hidden system identity in Part 2, L2 primary in Part 2, conflict of interest; L2 counts set (O4, decided and revised 2026-11-14); no ethics query (O5, decided 2026-11-14) | 11.3 |
 | F20 | Pins table; index cost and configuration hash defined | 14.1, 16 |
 | F21 | FinanceBench split by document; pre-freeze samples from half A; order: score half A, hash, score half B | 4, 14.2 |
 | F22 | "Holds" defined per hypothesis; H7 confirmatory on FinanceBench and FreshStack, as H6; H4 named as simple effects | 7 |
@@ -224,7 +224,7 @@ C9, C10, C11, C20 and C23 change only the OpenSpec changes and the proposal (A4 
 | Row 11 (H7) uses coefficients +1, -1, -1, +1 on the four corner cells after averaging over reranker and hybrid; the general mean-minus-mean recipe does not apply to it; known-answer fixture case (0.8, 0.2, 0.3, 0.7 gives 1.0); MDE on the same scale | 7, 9, 10 |
 | Short evidence pools: all 100 chunks are kept when they hold fewer than 20,480 tokens, and the realised token total is recorded per question and setup. Every question stays in H8b. "Chunk size itself" also needs a registered sensitivity on questions where all three `-t20k` setups reach at least 19,456 tokens (95%), with the count kept per dataset | 3, 7, 21 |
 | Every undefined resample is never drawn again and is counted once, whichever chunk-size level it lacks, also when the full sample is defined; the over-5% failure rule stays separate | 11.2 |
-| Drop step 1 removes the 50 Legal correctness labels: correctness 150, L1 700, L2 210 (O4 later set L2 to 315); Legal has no gate, so no confirmatory row changes | 11.2, 16, 17 |
+| Drop step 1 removes the 50 Legal correctness labels: correctness 150, L1 700, L2 210 (O4 later set L2 to 315, then to 700 in the full plan); Legal has no gate, so no confirmatory row changes | 11.2, 16, 17 |
 | OpenSpec only: O2 (SESOI) is asked in readiness flow step 6.10b, before any pilot result is read | none |
 | Rejected: move O5 before classifier-gate labelling. O5 was decided on 2026-11-14 (no ethics query), so the answer is already recorded before any label | none |
 
@@ -235,7 +235,8 @@ C9, C10, C11, C20 and C23 change only the OpenSpec changes and the proposal (A4 
 | O1 | A file upload to the registered OSF project time-stamps the A3 configuration hash | 14.2, 23 |
 | O2 | SESOI 0.02 nDCG@10, with a written justification (user terms, design lower bound, cost, published Qwen3 effect sizes, not set by power, sensitivity at 0.01 and 0.05). Recorded before any pilot result is read | 10, 23 |
 | O3 | No blind relevance audit by default. It runs only if the mean unjudged share in the top 10 differs by more than 5 points: hybrid on against off on FreshStack, or OMRS against RAGFlow on a core dataset in Part 2. The trigger applies only where the qrels list judged non-relevant units; for positives-only datasets the owner decides at P4 between a fixed small audit and no audit | 11.3, 23 |
-| O4 | L2 (author or colleague) labels every correctness answer and every Part 2 label, and 30% of the faithfulness (135) and claim-kind (30) sets. L2 365, or 315 after drop step 1. Seed 20261124 retired. The name goes in the run record only | 11.3, 16, 23 |
+| O4 (first decision) | Replaced by the revision below. L2 labelled every correctness answer and every Part 2 label, and 30% of the faithfulness (135) and claim-kind (30) sets. Seed 20261124 retired | 11.3, 16, 23 |
+| O4 (revised the same day) | Full plan (default): L2 labels every item L1 labels and every Part 2 label (L1 750, L2 750; 700 each after drop step 1). Reason: faithfulness is analysed per chunk size (45 per size at 30%), correctness gates are per dataset on 50 answers, refusal claims are rare, and agreed labels are more reusable. Staged fallback, only if L2 cannot commit the time: L2 first labels a seeded 30% of the faithfulness (135, seed 20261123) and claim-kind (30, seed 20261122) sets (L2 365, or 315 after drop step 1), then the rest of a set when kappa on its subset is below 0.70 overall or, for faithfulness, within any chunk-size level (0.70 is a judgement value, not a cited standard). Correctness and Part 2 stay at 100% in both plans. The plan is chosen and dated before the freeze from L2's availability alone, never from results. Seed 20261124 stays retired. The name goes in the run record only | 11.3, 16, 23 |
 | O5 | No ethics query: the study has no human participants, and the labellers are members of the research team. The question reopens as a deviation if a paid external annotator is used | 11.3, 23 |
 | O7 | The primary faithfulness measure stays faithfulness of cited factual claims, because OMRS answers are built to cite their evidence. `uncited_segment_share` stays a co-outcome. The uncited-segment version stays a sensitivity analysis only | 6, 23 |
 
