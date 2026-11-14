@@ -263,11 +263,20 @@ The agreement step SHALL give each checker's specificity (the share of human-sup
 - **WHEN** only the Clef-Flash specificity difference excludes zero
 - **THEN** it MUST be reported only and MUST NOT change any row
 
-#### Scenario: Specificity difference undefined
+#### Scenario: Specificity difference undefined on the full sample
 
-- **WHEN** a chunk-size level of the full sample, or of more than 500 of the 10,000 resamples, holds no human-supported claim
+- **WHEN** the 512 or the 2,048 level of the full labelled sample holds no human-supported claim
 - **THEN** rows 12, 13, 16 and 17 MUST be "not testable"
-- **AND** a resample with no human-supported claim at a level MUST NOT be drawn again, MUST be left out of the interval and MUST be counted
+
+#### Scenario: Every undefined difference resample is left out and counted
+
+- **WHEN** a resample holds no human-supported claim at the 512 level, at the 2,048 level or at both, whether or not the full sample is defined
+- **THEN** the step MUST NOT draw it again, MUST leave it out of the interval and MUST count it once
+
+#### Scenario: Too many undefined difference resamples
+
+- **WHEN** more than 500 of the 10,000 resamples are undefined, each counted once whichever level lacks a human-supported claim
+- **THEN** rows 12, 13, 16 and 17 MUST be "not testable"
 
 #### Scenario: Gate decided before H8a and H8b results
 

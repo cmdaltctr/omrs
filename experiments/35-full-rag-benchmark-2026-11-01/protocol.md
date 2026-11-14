@@ -217,6 +217,17 @@ C9, C10, C11, C20 and C23 change only the OpenSpec changes and the proposal (A4 
 | Pilot seed confirmed before the pilot | 23 (P9) |
 | OpenSpec only: half-B guard checks the hash of the current selection file; budget check uses 52,200 answers (15 setups x 3 runs x 1,160); pilot-declined path; labelling and closed-book run tasks moved out of the pre-freeze section; Holm family sizes are 19 / 19 / 8 (O6, decided by the owner on 2026-11-14) | none |
 
+**CodeRabbit round 2 (PR 210, 2026-11-14).** Seven findings in six threads on commit 3bf3d876. Six are fixed before the freeze. One is rejected.
+
+| Change | Pre-registration section |
+| --- | --- |
+| Row 11 (H7) uses coefficients +1, -1, -1, +1 on the four corner cells after averaging over reranker and hybrid; the general mean-minus-mean recipe does not apply to it; known-answer fixture case (0.8, 0.2, 0.3, 0.7 gives 1.0); MDE on the same scale | 7, 9, 10 |
+| Short evidence pools: all 100 chunks are kept when they hold fewer than 20,480 tokens, and the realised token total is recorded per question and setup. Every question stays in H8b. "Chunk size itself" also needs a registered sensitivity on questions where all three `-t20k` setups reach at least 19,456 tokens (95%), with the count kept per dataset | 3, 7, 21 |
+| Every undefined resample is never drawn again and is counted once, whichever chunk-size level it lacks, also when the full sample is defined; the over-5% failure rule stays separate | 11.2 |
+| Drop step 1 removes the 50 Legal correctness labels: correctness 150, L1 700, L2 210; Legal has no gate, so no confirmatory row changes | 11.2, 16, 17 |
+| OpenSpec only: O2 (SESOI) is asked in readiness flow step 6.10b, before any pilot result is read | none |
+| Rejected: move O5 before classifier-gate labelling. O5 was decided on 2026-11-14 (no ethics query), so the answer is already recorded before any label | none |
+
 **Owner decisions (2026-11-14).** Three open items are closed before the freeze. O2, O3 and O4 stay open.
 
 | Item | Decision | Pre-registration section |

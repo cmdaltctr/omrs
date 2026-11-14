@@ -87,6 +87,14 @@ The protocol SHALL register H1 to H7, H8a and H8b before the run, each within sc
 - **WHEN** H8a holds for an outcome and H8b does not
 - **THEN** the report SHALL claim only that chunk size together with context length changes that outcome
 
+#### Scenario: Chunk size itself
+- **WHEN** H8b holds for an outcome
+- **THEN** the report SHALL claim that chunk size itself changes it only when the registered sensitivity, on the questions where all three `-t20k` setups reach at least 19,456 tokens, gives the same sign on FinanceBench and FreshStack, and SHALL give the questions kept per dataset
+
+#### Scenario: H7 contrast scale
+- **WHEN** row 11 is computed
+- **THEN** each question's score SHALL use coefficients +1, -1, -1, +1 on e8b-c2048, e8b-c512, e0.6b-c2048 and e0.6b-c512 after averaging over reranker and hybrid, not the mean-minus-mean recipe
+
 #### Scenario: FinanceBench interval
 - **WHEN** a decision p-value or 95% interval is computed on FinanceBench
 - **THEN** it SHALL come from the document-level sign-flip permutation test, so questions that share a document move together
@@ -178,6 +186,10 @@ Every answer setup SHALL use `answer.context_window` 131,072 characters and `ans
 ### Requirement: Answer correctness is judged against reference answers and gated per dataset
 
 The Ragas stage SHALL score every answer with Ragas 0.4.3 `AnswerCorrectness` against the reference answer, and the judge SHALL never see the retrieved contexts. L1 SHALL label 50 half-B questions per core dataset (seed 20261113), each with one answer from run 1 of an answer setup the seed picks uniformly at random, and 50 Legal RAG Bench answers drawn the same way and reported without a gate.
+
+#### Scenario: Legal answers dropped
+- **WHEN** drop step 1 removes Legal RAG Bench answer generation
+- **THEN** no Legal answer SHALL be drawn, the correctness sample SHALL be 150 and no confirmatory row SHALL change
 
 #### Scenario: Gate passes on a dataset
 - **WHEN** Cohen's kappa between the score cut at 0.5 and the human label has a point estimate of at least 0.60 and a lower 95% bound of at least 0.40, with "can't tell" items scored both ways, and the AUC of the continuous score has a lower 95% bound above 0.5

@@ -108,7 +108,7 @@ The answer stage uses the embedder and reranker size chosen on half A (pre-regis
 
 - Faithfulness of cited factual claims: claim checks. GLM-5.3 is the main checker; Clef-Flash (local) is the second. The share of answer segments with no valid citation is a co-outcome, and a sensitivity analysis counts uncited factual segments as unsupported (pre-registration section 6; O7, decided by the owner on 2026-11-14: the primary measure stays cited factual claims, because OMRS answers are built to cite their evidence).
 - Correctness: Ragas `AnswerCorrectness` with `openai/gpt-oss-120b` as judge, plus a number match on FinanceBench. There is no cross-check judge: `openai/gpt-6.1-terra` is removed, because no cost estimate includes it.
-- Human check: two labellers score samples blind (L1 750 labels, L2 225). Each checker must pass a faithfulness gate, and the correctness judge must pass a gate on each core dataset: kappa point estimate at least 0.60 and lower 95% bound at least 0.40. A row whose measure fails its gate stays in its Holm family as "not testable". Every gate interval is a percentile bootstrap (10,000 resamples by question). A differential-error rule makes H8a and H8b faithfulness exploratory if GLM-5.3 specificity differs between 512 and 2,048 chunks in either direction. If Clef-Flash fails its gate, its results are reported as not validated and change no confirmatory row (pre-registration section 11).
+- Human check: two labellers score samples blind (L1 750 labels, L2 225; L1 700 and L2 210 if drop step 1 removes Legal answers). Each checker must pass a faithfulness gate, and the correctness judge must pass a gate on each core dataset: kappa point estimate at least 0.60 and lower 95% bound at least 0.40. A row whose measure fails its gate stays in its Holm family as "not testable". Every gate interval is a percentile bootstrap (10,000 resamples by question). A differential-error rule makes H8a and H8b faithfulness exploratory if GLM-5.3 specificity differs between 512 and 2,048 chunks in either direction. If Clef-Flash fails its gate, its results are reported as not validated and change no confirmatory row (pre-registration section 11).
 - Other Ragas metrics are secondary. Ragas is not the main faithfulness measure.
 
 ### Hypotheses H1 to H8b
@@ -121,9 +121,9 @@ Full wording, contrast rows and "holds" rules: pre-registration sections 7 and 8
 - **H4:** reranker plus hybrid beats each alone (simple effects, not an interaction test).
 - **H5:** a bigger reranker ranks better.
 - **H6:** chunk size changes retrieval (the same row, same sign, on FinanceBench and FreshStack).
-- **H7:** a bigger embedder gains more from bigger chunks (FinanceBench and FreshStack; expected to be underpowered).
+- **H7:** a bigger embedder gains more from bigger chunks (FinanceBench and FreshStack; expected to be underpowered). Row 11 is a difference of differences with coefficients +1, -1, -1, +1 on the four corner cells, after averaging over reranker and hybrid.
 - **H8a:** chunk size changes faithfulness and correctness in the crossed setups, where context length grows with chunk size (the same row, same sign, on FinanceBench and FreshStack).
-- **H8b:** chunk size changes faithfulness and correctness when evidence is held at 20,480 tokens. The paper says "chunk size itself changes X" only when H8b holds for X.
+- **H8b:** chunk size changes faithfulness and correctness when evidence is held at 20,480 tokens. The paper says "chunk size itself changes X" only when H8b holds for X and a registered sensitivity agrees: the same row, on the questions where all three `-t20k` setups reach at least 95% of 20,480 tokens, has the same sign on FinanceBench and FreshStack. Every question stays in H8b, and realised evidence token totals are reported per setup.
 
 ### Methods in short
 

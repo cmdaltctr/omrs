@@ -251,6 +251,11 @@ The answer stage SHALL run 15 setups: the 12 crossed setups on 10 chunks each an
 - **WHEN** the chosen embedder and reranker retrieve short 2,048-token chunks
 - **THEN** `c2048` x 10 MUST send exactly 10 chunks, and `c2048-t20k` MUST send chunks until the 20,480-token limit, truncating the chunk that crosses it and recording the truncation
 
+#### Scenario: Short evidence pool
+
+- **WHEN** the top 100 chunks of a `-t20k` setup hold fewer than 20,480 Qwen3 tokens
+- **THEN** the setup MUST keep all 100 chunks and MUST record the realised evidence token total for that question and setup
+
 ### Requirement: FreshStack uses the full public corpus at a pinned revision
 
 The FreshStack loader SHALL load the full public `freshstack/corpus-oct-2024` corpus, config `langchain`, at the revision pinned in `plan.json`, and the 203 public queries. It SHALL refuse a corpus whose revision or row count differs from the pin. It SHALL NOT sample a subset, add distractors, load the 20 continuity queries or the continuity documents, or append the overlay runbook.
