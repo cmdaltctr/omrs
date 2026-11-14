@@ -84,6 +84,10 @@ Estimate about $650 on an RTX 4090 (after A2c; about $690 after A3, section 0.12
 - **One GPU type.** Every main-run pod (index build pods, search and replicate pods) uses the chosen GPU type, and every stage runs on it. GPU types are never mixed. The earlier 4090 pre-freeze runs (smoke runs, LLM-AggreFact runs, timing in section 4.5) were preparation, not results.
 - **Parallel index builds.** The 9 indexes build on 9 parallel pods of the chosen GPU type, each into its own store on the RunPod network volume. Each pod seals its index and runs its 8 search setups. The `e4b-c1024` rebuild check runs beside them (amended A3, section 0.12 clarification 2: it runs after that seal and before any search into the shared output folder). Then the Mac scores the search stage and applies the selection rule, and the three replicate pods start.
 
+### 0.9 Questions decided on 2026-11-13
+
+The operator chose: (1) FreshStack corpus without the continuity documents and the overlay runbook; (2) BioASQ and Legal passages as `.md` with Qwen3 counting; (3) Ragas `AnswerCorrectness` on all four datasets with a 100-answer hand-label check, plus the FinanceBench number match; (4) one answer round, `answer.context_window` 131,072 characters; (5) one search run per setup. Still open: the 4B and 8B Qwen3-Reranker GGUF repositories, chosen by the test pod check.
+
 ### 0.10 Pre-freeze amendment A2: methods review (2026-11-13)
 
 An independent methods review ran on 2026-11-13; the operator approved every fix. **This section wins over sections 0.3 to 0.9 where they differ.** Detail: change `experiment-35-full-document-rag-benchmark`, design D0.12; code: change `exp35-main-run-readiness`, design D35 and task group 15.
@@ -137,9 +141,70 @@ Written before the freeze. No measured run has started. The operator approved th
 - **Scope.** Comparison with other frameworks is outside Experiment 35. Part 2 compares OMRS with RAGFlow only.
 - **Clarifications (PR 209 review, 2026-11-13; items 1, 2 and 4 change no Experiment 35 design, item 3 adds one answer setup).** (1) Each null of H1 to H8 is a zero effect, as A2 dropped equivalence tests: a contrast counts by the decision rule (Holm-adjusted p below 0.05, sign matches). The minimum detectable effect is for power planning and reporting only. This replaces the "Null (each)" line in section 0.4 and the null texts in `plan.json`. (2) G2 order: the `e4b-c1024` rebuild check runs after that index is sealed and before any search writes into the shared output folder. A search stage refuses to start without a passing `rebuild.json` for its dataset, so index pods wait for it. This replaces "runs beside them" in section 0.8a. (3) Token-matched control: the factorial cell `c2048` x 10 keeps its 10-chunk evidence, so the control does not change a factorial cell. A separate 15th answer setup, `c2048-t20k`, cuts the evidence at 20,480 real Qwen3 tokens (the section 0.11 N2 rule) at 2,048-token chunks, at the chosen embedder and reranker size, reranker on and hybrid on. It sits beside `c512-t20k` and `c1024-t20k`, so each chunk size has a token-matched cell, and the token-matched comparison of H8 uses the three `-t20k` setups. The answer stage runs 15 setups (12 crossed plus 3 token-matched), 3 runs each, and G1 covers all 15. The setup is registered before the freeze. Cost: the answer stage grows by about 1/14 (about 7%). Counted from the readiness design D35 table (two token-matched setups: +36 pod hours, +$47 hosted), one more setup adds about $24 of hosted calls (answers, five Ragas metrics, judges and classifier) and about 18 pod hours (about $16 at $0.89 per hour, about 6 hours per replicate pod), so about $40 in all. The estimate moves from about $650 to about $690. The ceiling stays $975 (1.5 x the old estimate, 1.4 x the new one). At 3 times slower reranking the total is about $910, still under it. (4) FinanceBench unit in Part 2 (decided 2026-11-13): Part 2 scores FinanceBench C1 at page level for every question and for both systems, the unit of this protocol (a chunk counts for its first page). Pre-freeze gate: RAGFlow returns a page number for each chunk on a seeded FinanceBench sample. Pre-registered fallback: if the gate fails, the primary unit is the document for every question and both systems. The other unit is a labelled sensitivity analysis. It is required only when both systems provide page provenance; otherwise the report states it is unavailable and gives the count of questions affected. No question is dropped because of a system's output. The master plan, Step 3 rule 3, holds the text.
 
-### 0.9 Questions decided on 2026-11-13
+### 0.13 Pre-freeze amendment A4: publication review fixes (2026-11-14)
 
-The operator chose: (1) FreshStack corpus without the continuity documents and the overlay runbook; (2) BioASQ and Legal passages as `.md` with Qwen3 counting; (3) Ragas `AnswerCorrectness` on all four datasets with a 100-answer hand-label check, plus the FinanceBench number match; (4) one answer round, `answer.context_window` 131,072 characters; (5) one search run per setup. Still open: the 4B and 8B Qwen3-Reranker GGUF repositories, chosen by the test pod check.
+Written before the freeze. No measured run has started. A publication-grade methods review (2026-11-13) gave 30 findings, F1 to F30; the operator approved the recommended fix for each on 2026-11-14. **From A4 on, `preregistration.md` in this folder is the governing live design of Experiment 35.** It wins over this file, `plan.json` and the OpenSpec changes wherever they differ. Sections 0.1 to 0.13 and 1 to 7 of this file are history. The proposal stays the master plan for scope, order and Part 2; pre-registration section 18 wins over it on the Part 2 points it fixes, and the frozen Part 2 protocol governs the rest after its freeze. Section 0.9 now sits after 0.8a, so section 0 reads in number order; its text is unchanged.
+
+| Finding | Change | Pre-registration section |
+| --- | --- | --- |
+| F1 | FreshStack indexes rebuilt on the full 49,514-document public corpus; the 10,000-document subset retired; alpha-nDCG@10 secondary if nugget labels allow | 4, 6, 17, 23 (P1 to P3) |
+| F2 | Part 2: reranker shared, RAGFlow cut-off 0 and depth 100, three-column settings table, matched RAGFlow search only if at most $50; the step 7.2a decision fixes the estimand ("selected OMRS against selected RAGFlow" if the search runs, else "against default RAGFlow"); default RAGFlow defined as one run | 18 |
+| F3 | Faithfulness gate per checker (kappa at least 0.60, lower bound at least 0.40), 450 claims by chunk size from answers to all questions, differential-error rule, length-controlled check | 11.2 |
+| F4 | Numbered contrast table; Holm families fixed at 19 (FinanceBench), 19 (FreshStack), 8 (BioASQ; was 16, changed by C3 below); gated rows stay in with p = 1 | 8 |
+| F5 | H8 split into H8a (crossed) and H8b (token-matched), both confirmatory | 7, 8 |
+| F6 | Retrieval-only pilot on 40 half-A questions per core dataset; SESOI 0.02 nDCG@10 (open); underpowered rows named | 10 |
+| F7 | MixedLM dropped; one clustered method for estimates, intervals and p-values | 9 |
+| F8 | Correctness gate per core dataset, 50 items each, point estimate and lower bound; continuous score validated by AUC | 11.2 |
+| F9 | Missing-outcome rules per outcome, Part 1 and Part 2 | 12, 18 |
+| F10 | Decision test defined by its closed form (Mancl and DeRouen bias-reduced variance, t on n minus 1), `statsmodels` GEE as the checked implementation; FinanceBench document-level sign-flip; C2 fixed as continuous correctness, no McNemar | 9, 18 |
+| F11 | Unjudged share at 10 and condensed-list sensitivity; blind audit optional (open) | 21, 11.3 |
+| F12 | `evidence_recall_20k` gives any-page credit; first-page credit is sensitivity | 6 |
+| F13 | Second closed-book run with the RAG prompt; H8a and H8b correctness re-run on closed-book-wrong questions | 13 |
+| F14 | RQ1 headline is the A3 cell on half B; 72-setup table descriptive | 14.3 |
+| F15 | One governing file; conflicts settled there (token cut truncates, zero-effect nulls, Legal exploratory in H8a and H8b, `openai/gpt-6.1-terra` cross-check removed, frozen pins) | 1, 3, 7, 8, 11.1, 16 |
+| F16 | Existing data declared | 5 |
+| F17 | Results-blind drop order at the ceiling: (1) Legal RAG Bench answer generation, (2) the length-controlled check, (3) the closed-book run with the RAG prompt, then stop (E1 left the order, C6 below); "complete with registered drops" defined; "the operator decides" removed; Part 2 budget a pre-freeze task | 17 |
+| F18 | Release table per artefact and licence, re-judge kit | 19 |
+| F19 | Label guidelines per set, hidden system identity in Part 2, L2 primary in Part 2, conflict of interest; L2 and ethics open | 11.3 |
+| F20 | Pins table; index cost and configuration hash defined | 14.1, 16 |
+| F21 | FinanceBench split by document; pre-freeze samples from half A; order: score half A, hash, score half B | 4, 14.2 |
+| F22 | "Holds" defined per hypothesis; H7 confirmatory on FinanceBench and FreshStack, as H6; H4 named as simple effects | 7 |
+| F23 | Every hypothesis scoped (scope S); limitations extended | 2, 22 |
+| F24 | nDCG@10, Recall@10 and MRR@10 formulas (trec_eval convention) | 6 |
+| F25 | One-build-per-cell assumption stated; optional `e8b-c2048` rebuild | 15 |
+| F26 | Checker 2-point tolerance restated against the MDE table | 11.1, 23 (P7) |
+| F27 | Expected-maximum estimator for the search-cost figure | 14.3 |
+| F28 | Compute table in the report, pre-freeze pods included | 21 |
+| F29 | Deviation policy; OSF file upload time-stamps the A3 hash (open) | 20, 14.2 |
+| F30 | Reference fixes | 24 |
+
+**Second round (C1 to C24).** A post-fix consistency review (2026-11-14) gave 24 findings, C1 to C24. The orchestrator ruled on each the same day.
+
+| Finding | Change | Pre-registration section |
+| --- | --- | --- |
+| C1 | OSF category "registration before analysis of the outcome data"; pilot scores on half A are main-run outcome data for the pilot cells | 1 |
+| C2 | Pilot: at most the 4 H7 corner indexes per core dataset, not reused; stand-in SD for adjacent levels; cost projected from P2 and approved before the pod; registered fallback without a pilot | 10, 17, 23 (P5) |
+| C3 | BioASQ rows 12 to 19 become sanity checks; families 19 / 19 / 8, 46 contrasts; BioASQ MDE alpha 0.05/8; open item O6 | 7, 8, 10, 23 |
+| C4 | Two-sided hypotheses hold only when the same row counts with the same sign on every dataset the rule needs (H6, H8a, H8b, C1, C2) | 7, 18 |
+| C5 | One gate interval method: percentile bootstrap, 10,000 resamples by question, own seed; differential-error rule on GLM-5.3, either direction | 11.2 |
+| C6 | Drop order without E1 (E1 has its own ceiling); contamination check falls back to the own-knowledge run; "complete with registered drops" | 13, 17 |
+| C7 | Half-A rule covers samples drawn after `halves.json` exists; earlier samples listed in section 5 | 4 |
+| C8 | `statsmodels` pin marked missing: RDY task 15.6 adds the `stats` group | 16 |
+| C12 | Search-cost figure: RAGFlow curve only if its matched search runs; "adapted from Dodge et al. 2019", ascending sort | 14.3 |
+| C13 | Sign-flip interval assumes a constant additive shift | 9 |
+| C14 | Seeds table, one row per seed; new seeds 20261121 to 20261135 wait for P9 | 16, 23 |
+| C15 | Task prefixes RDY, C35 and FLOW defined; pointers name the change and task | 1, 16, 18 |
+| C16 | P15 is now a check that no file names the cross-check judge | 23 |
+| C17 | Clef-Flash gate failure, unclassified claims, correctness sample draw | 11.1, 11.2, 12 |
+| C18 | References cited where used; Angelopoulos 2023, Barr 2013 and Kapoor 2024 deleted | 24 |
+| C19 | Matched RAGFlow cell list fixed before the FLOW step 7.2 cost measurement | 18 |
+| C21 | Where claims and citations come from | 6 |
+| C22 | Four fixed search settings added to `plan.json` `decision_rule` | 16 |
+| C24 | Why the faithfulness gate is pooled; per-dataset kappa descriptive | 11.2 |
+
+C9, C10, C11, C20 and C23 change only the OpenSpec changes and the proposal (A4 markers, RQ3 wording, OSF deposit list).
+
+Cost: estimate about $730 (was about $690) plus the pilot, projected from P2 before the freeze; ceiling $975 unchanged (pre-registration section 17).
 
 ## 1. Question
 
@@ -316,7 +381,7 @@ The smoke subset (task 4.1) runs a small slice of each dataset through every arm
 
 - **Stop rule**: the run is complete when every search setup has its one run, every answer setup and dataset has 3 runs, the closed-book run, the determinism and rebuild checks, and the Ragas pass. Stop early when the preflight fails, a gate fails, or the projected spend reaches the ceiling of section 0.10. A determinism mismatch is recorded and reported, never swapped for another run.
 - **What each outcome means**:
-  - Pass: gates hold; the report states each arm's difference or "no difference larger than the minimum detectable effect".
+  - Pass: gates hold; the report states each arm's difference or "no difference larger than the minimum detectable effect". (Superseded by A3 and A4: a non-significant result means no difference was detected at this sample size.)
   - Fail: a gate failed; investigate before any number is cited in the paper.
   - Unclear: an interval crosses zero; report it as not shown, not as no effect.
 
@@ -331,10 +396,10 @@ The smoke subset (task 4.1) runs a small slice of each dataset through every arm
 | Embedding 0.6B | `Qwen/Qwen3-Embedding-0.6B-GGUF` | `Qwen3-Embedding-0.6B-Q8_0.gguf` | `06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439` | 11941 | as baseline |
 | Embedding 8B | `Qwen/Qwen3-Embedding-8B-GGUF` | `Qwen3-Embedding-8B-Q8_0.gguf` | `d20ddc71e8a5c4344f2343481e242233a997dc5eaff442427a945836c97b4deb` | 11941 | as baseline |
 | Claim checker, Clef-Flash | `ggml-org/Clef-Flash-GGUF` | `Clef-Flash-Q8_0.gguf` | `25f801e2a27610b0ccc0cb1558d7eda3d7a304e34e2c4a04e3079357ff7d906e` | 11941 | `--ctx-size 32768 --batch-size 32768 --ubatch-size 32768 --parallel 1` |
-| Claim checker, Granite Guardian | `ibm-granite/granite-guardian-3.3-8b-GGUF` | `granite-guardian-3.3-8b-Q8_0.gguf` | `356fc80d343a699a3d12316de161d4341ee2d11f7057123dabb158804e876bc5` | 11941 | as Clef-Flash |
+| Claim checker, Granite Guardian (superseded by A1: dropped) | `ibm-granite/granite-guardian-3.3-8b-GGUF` | `granite-guardian-3.3-8b-Q8_0.gguf` | `356fc80d343a699a3d12316de161d4341ee2d11f7057123dabb158804e876bc5` | 11941 | as Clef-Flash |
 
-The ONNX reranker and the OCR engines do not run through llama.cpp. The freeze records them under the runtime manifest with name, revision and file hash. The embedding tokenizer (`Qwen/Qwen3-Embedding-4B`, `tokenizer.json`, revision `5cf2132a`) is the token-aware chunking tokenizer, cached and hash-checked by sweep task 2.4a.
+(Superseded by A1: the ONNX reranker is gone; every reranker runs on llama.cpp.) The ONNX reranker and the OCR engines do not run through llama.cpp. The freeze records them under the runtime manifest with name, revision and file hash. The embedding tokenizer (`Qwen/Qwen3-Embedding-4B`, `tokenizer.json`, revision `5cf2132a`) is the token-aware chunking tokenizer, cached and hash-checked by sweep task 2.4a.
 
-- **Hosted references** (section 3, ADR-119): answer model `deepseek/deepseek-v4.1-flash-1017` (OpenRouter, temperature 0, seed 20261101, one pinned upstream host); main Ragas judge `openai/gpt-oss-120b` (OpenRouter, reasoning `low`, temperature 0, fixed seed, one pinned upstream host); cross-check judge `openai/gpt-6.1-terra` (OpenRouter, fixed seed, 50 hand-checked items); main claim checker GLM-5.3 (Z.AI, section 4.4). A judge never scores its own model family.
+- **Hosted references** (section 3, ADR-119): answer model `deepseek/deepseek-v4.1-flash-1017` (OpenRouter, temperature 0, seed 20261101, one pinned upstream host); main Ragas judge `openai/gpt-oss-120b` (OpenRouter, reasoning `low`, temperature 0, fixed seed, one pinned upstream host); cross-check judge `openai/gpt-6.1-terra` (OpenRouter, fixed seed, 50 hand-checked items; superseded by A4: removed); main claim checker GLM-5.3 (Z.AI, section 4.4). A judge never scores its own model family.
 - **Tolerance**: 0.005 absolute on nDCG@10, the only primary metric, and on the secondary Recall@10, MRR@10 and hit@page (A2; nDCG@10 only is primary). The largest change that still counts as the same result on another back end. Confirm or change at freeze.
 - **Live check**: the runner calls `verify_llamacpp_runtime` before the first score of each run and passes `runtime=found.as_run_record()` to `record_run_start`. A mismatch stops the run.

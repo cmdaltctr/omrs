@@ -4,11 +4,16 @@
 
 ### Requirement: The benchmark is a Confirmatory publication experiment
 
-Experiment 35 SHALL have purpose `publication` and size Confirmatory. Its `protocol.md` and `plan.json` SHALL be committed before the first measured run. Later changes SHALL be recorded only as plan amendments.
+Experiment 35 SHALL have purpose `publication` and size Confirmatory. `preregistration.md`, `protocol.md` and `plan.json` SHALL be committed before the first measured run. From amendment A4 (2026-11-14), `preregistration.md` SHALL govern the live design: where another file of the experiment or this change differs from it, `preregistration.md` SHALL win. After the freeze, every change SHALL be a dated, numbered deviation, added to the `plan.json` `amendments` list and uploaded to OSF.
 
 #### Scenario: A measured run starts before the plan is committed
 - **WHEN** the run record shows a plan file that differs from the committed `plan.json`
 - **THEN** the run SHALL NOT count as a measured result
+
+#### Scenario: Two files disagree on a design fact
+- **WHEN** `design.md` or `plan.json` states a design fact that differs from `preregistration.md`
+- **THEN** the `preregistration.md` value SHALL apply
+- **AND** the other file SHALL be corrected before the freeze
 
 ### Requirement: Local models are pinned and checked before scoring
 
@@ -36,25 +41,64 @@ Each index SHALL be built once, and each search setup SHALL run once (run 1) for
 - **WHEN** two answer setups are compared
 - **THEN** the 3 runs SHALL be averaged per question before questions are paired
 
-### Requirement: Spending stops at a stated ceiling
+### Requirement: Spending stops at a stated ceiling with a results-blind drop order
 
-The protocol SHALL state a cost estimate and a ceiling of 1.5 times the estimate, for pods and hosted calls together. The projected total SHALL be checked before the freeze, on the build pod after the search stage, and while the replicate pods run. When the projected or actual total reaches the ceiling, the run SHALL stop before the next stage, and the operator SHALL decide.
+The protocol SHALL state a cost estimate and a ceiling, pods and hosted calls together (about $730 and $975, `preregistration.md` section 17). Projections SHALL use billing and measured rates only, never scores, before the freeze, after the search stage and while the replicate pods run. At the ceiling, work SHALL be dropped in a results-blind order fixed before the run, and no confirmatory item SHALL be dropped by choice.
 
 #### Scenario: Projection above the ceiling
-- **WHEN** the build pod's projection, with the measured index and search hours, exceeds the ceiling
-- **THEN** the replicate pods SHALL NOT start until the operator decides
+- **WHEN** a projection, from measured index and search hours, reaches the ceiling
+- **THEN** the run SHALL drop the next step in this order and compute the projection again: (1) Legal RAG Bench answer generation, (2) the length-controlled check, (3) the closed-book run with the RAG prompt
+- **AND** E1 SHALL NOT be in this order, because it has its own ceiling
+- **AND** the run record SHALL name the projection that triggered each step
 
-### Requirement: Statistics follow the frozen basic set
+#### Scenario: Drop order exhausted
+- **WHEN** the projection still reaches the ceiling after step (3)
+- **THEN** the run SHALL stop
+- **AND** no operator choice SHALL select what is dropped
 
-For each dataset and setup the report SHALL give the mean with a 95% interval. For each registered contrast it SHALL give the paired difference with a 95% interval, a paired permutation test for scores, McNemar's exact test for hit or miss, Holm correction across the primary contrasts of one dataset, and wins, losses and ties. The minimum detectable effect SHALL be stated before the run.
+#### Scenario: Run finishes after drop steps
+- **WHEN** every confirmatory item is done after one or more drop steps
+- **THEN** the run SHALL be reported as "complete with registered drops", and each drop SHALL be a numbered deviation
+- **AND** a run SHALL be reported as incomplete only when a confirmatory item is missing
 
-#### Scenario: No difference is found
-- **WHEN** the Holm-adjusted p is 0.05 or more, or the paired interval includes zero
-- **THEN** the report SHALL state that no difference larger than the minimum detectable effect was found
+#### Scenario: Closed-book RAG-prompt run dropped
+- **WHEN** step (3) drops the closed-book run with the RAG prompt
+- **THEN** the contamination sensitivity SHALL use the own-knowledge closed-book run alone, and the report SHALL say so
+
+### Requirement: Statistics follow the pre-registered analysis
+
+The analysis SHALL follow `preregistration.md` section 9 and SHALL fit no mixed model. Each contrast row SHALL use per-question contrast scores (cells weighted equally, answer scores averaged over 3 runs first), and the estimate SHALL be their plain mean. The report SHALL give unadjusted 95% intervals beside each decision, marked against the SESOI and the minimum detectable effect.
+
+#### Scenario: Test on FreshStack, BioASQ or Legal RAG Bench
+- **WHEN** a row's p-value and interval are computed on FreshStack, BioASQ or Legal RAG Bench
+- **THEN** they SHALL come from the closed form of pre-registration section 9 point 3: the mean of the contrast scores, the Mancl and DeRouen bias-reduced variance (sum of squared residuals times (n / (n minus 1)) squared, divided by n squared) and a t reference on n minus 1 degrees of freedom
+- **AND** the `statsmodels` GEE implementation (intercept only, independence working correlation, question clusters, `cov_type="bias_reduced"`) SHALL be checked against that closed form by a known-answer test, and the closed form SHALL be used if they differ
+
+#### Scenario: Test on FinanceBench
+- **WHEN** a row's p-value and interval are computed on FinanceBench
+- **THEN** they SHALL come from a document-level sign-flip permutation test with 100,000 draws and seed 20261101
+
+#### Scenario: No difference found
+- **WHEN** the Holm-adjusted p is 0.05 or more
+- **THEN** the report SHALL state that no difference was detected at this sample size
+- **AND** the report SHALL NOT claim equivalence, and no TOST SHALL run
+
+#### Scenario: Decision and sensitivity check disagree
+- **WHEN** a row counts under the decision test but not under its sensitivity check (paired permutation by question on FreshStack and BioASQ, GEE with document clusters on FinanceBench), or the other way
+- **THEN** the report SHALL list the row in one disagreement table, and the decision test SHALL decide
 
 #### Scenario: New statistics code is written
 - **WHEN** the analysis needs a statistic
-- **THEN** it SHALL use the functions in `experiments/_lib/stats.py` or the s-experiment reference `stats.py`
+- **THEN** it SHALL use the functions in `experiments/_lib/stats.py` or the s-experiment reference `stats.py`, or a tested function added for this analysis
+
+### Requirement: Holm families are fixed before the run
+
+Holm correction (alpha 0.05) SHALL run within families of fixed size: FinanceBench 19 rows, FreshStack 19 rows and BioASQ 8 rows (rows 1 to 8; rows 9 to 19 are sanity checks, pending open item O6), 46 in all. Legal RAG Bench SHALL have no family. No gate decided on main-run labels SHALL change a family size.
+
+#### Scenario: A gate fails
+- **WHEN** the faithfulness gate of GLM-5.3 fails
+- **THEN** rows 12, 13, 16 and 17 SHALL stay in every Holm family with p = 1 and be reported as not testable
+- **AND** the other rows SHALL keep the same number of comparisons
 
 ### Requirement: The benchmark emits structured stage traces
 
@@ -87,21 +131,41 @@ Ragas 0.4.3 MAY score faithfulness, answer relevancy, context precision and cont
 - **THEN** primary retrieval metrics SHALL remain runnable
 - **AND** Ragas metrics SHALL be reported as not measured
 
-### Requirement: Judge scores are checked by hand
+### Requirement: Faithfulness checkers pass a registered gate
 
-About 50 Ragas-judged items SHALL be checked by hand, with the agreement measure defined in the protocol before the check. The report SHALL state the agreement. The judge SHALL run through llama.cpp when possible.
+Each faithfulness checker SHALL pass when Cohen's kappa against the human label has a point estimate of at least 0.60 and a lower 95% bound of at least 0.40, on 450 claims (150 per chunk size) from answers to all questions, pooled over the core datasets. Each gate interval SHALL be a percentile bootstrap (10,000 resamples by question, own seed). Gate decisions SHALL be recorded, with their time, before any H8 contrast result is computed. There SHALL be no cross-check judge.
 
 #### Scenario: The judge configuration changes
 - **WHEN** the judge model, its settings or the Ragas version changes
 - **THEN** the resulting scores SHALL belong to a new evaluation revision
 
+#### Scenario: Checker specificity differs by chunk size
+- **WHEN** the 95% interval of the GLM-5.3 specificity difference (2,048 minus 512) excludes zero in either direction
+- **THEN** H8a and H8b faithfulness rows 12, 13, 16 and 17 SHALL be exploratory and reported as not testable
+
+#### Scenario: The second checker fails its gate
+- **WHEN** Clef-Flash fails its faithfulness gate
+- **THEN** its results SHALL be reported as not validated and SHALL change no confirmatory row
+
+### Requirement: Human labels follow the registered counts
+
+L1 SHALL label 750 items (claim kinds 100, faithfulness 450 from all questions, correctness 200 from half B), and L2 SHALL label a 30% subset of each set (225 items). The claim classifier SHALL reach agreement of at least 0.90 and refusal recall of at least 0.90 on 100 L1-labelled smoke claims before the freeze.
+
+#### Scenario: A label file is released
+- **WHEN** human labels are released
+- **THEN** they SHALL carry the roles L1 and L2 only, and no labeller name SHALL appear
+
 ### Requirement: Outputs respect dataset licences
 
-`output/` SHALL be split into shareable and restricted parts. Releases SHALL hold scores, question IDs and rebuild scripts, not corpus text. FinanceBench-derived files SHALL NOT be released under CC BY. Each dataset's derived files SHALL go in their own Zenodo archive with their own licence.
+`output/` SHALL be split into shareable and restricted parts. Releases SHALL follow the release table of `preregistration.md` section 19, each artefact under its dataset's licence, and SHALL NOT hold corpus text, PDFs or derived text. FinanceBench-derived files SHALL NOT be released under CC BY. Each dataset's derived files SHALL go in their own Zenodo archive with their own licence.
 
 #### Scenario: Corpus text reaches a shareable folder
 - **WHEN** a file under the shareable part of `output/` contains corpus text
 - **THEN** the release check SHALL fail before any upload
+
+#### Scenario: A reader judges the answers again
+- **WHEN** a reader wants to judge the released answers with a newer model
+- **THEN** the re-judge kit SHALL rebuild the evidence text from the pinned dataset revisions and the released IDs
 
 ### Requirement: Public releases carry an example set and no personal identifiers
 
@@ -121,8 +185,12 @@ Every hosted call SHALL record the model id and provider that the reply returns,
 
 ### Requirement: The protocol is publicly pre-registered
 
-The `protocol.md` and `plan.json` of the freeze commit SHALL be deposited on OSF. A later commit, made before the first measured run, SHALL record the OSF link and the freeze commit hash in `protocol.md`; the freeze commit cannot hold its own hash.
+`preregistration.md` (main file), `protocol.md`, `plan.json`, the proposal and the Part 2 protocol of the freeze commit SHALL be deposited on OSF. A later commit, made before the first measured run, SHALL record the OSF link and the freeze commit hash in the `plan.json` `frozen` list with the other pins of `preregistration.md` section 16; the freeze commit cannot hold its own hash. The A3 configuration hash SHALL be time-stamped on the registered OSF project before any half-B score is computed.
 
 #### Scenario: Run before the deposit
-- **WHEN** the first measured run starts and `protocol.md` holds no OSF link
+- **WHEN** the first measured run starts and `plan.json` `frozen` holds no OSF link
 - **THEN** the freeze SHALL count as incomplete
+
+#### Scenario: Half-B score before the time stamp
+- **WHEN** a half-B score is computed before the A3 configuration hash is time-stamped on OSF
+- **THEN** the run SHALL record a deviation, and the RQ1 headline SHALL state it

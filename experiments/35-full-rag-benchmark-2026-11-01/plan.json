@@ -1,63 +1,69 @@
 {
   "experiment_id": "35-full-rag-benchmark-2026-11-01",
   "protocol_version": 2,
-  "question": "How do embedder size, chunk size, the reranker and hybrid search, and their interactions, change retrieval quality on FinanceBench, the FreshStack LangChain slice, BioASQ and Legal RAG Bench with pinned local models, and how does chunk size change answer faithfulness and correctness at the best-value search settings?",
+  "question": "How do embedder size, chunk size, the reranker and hybrid search, and their interactions, change retrieval quality on FinanceBench, FreshStack LangChain (full public corpus), BioASQ and Legal RAG Bench (exploratory) with pinned local models, and how does chunk size change answer faithfulness and correctness at the embedder and reranker sizes chosen on half A? preregistration.md governs (amendment A4).",
   "decision": "The first fellowship paper cites these numbers; the experiment changes no production default, and any setting change it suggests goes to a separate proposal.",
   "hypotheses": [
     {
       "id": "H1",
       "role": "primary",
-      "statement": "a bigger embedder finds better documents: marginal nDCG@10 rises from 0.6B to 4B and from 4B to 8B",
-      "null": "each embedder contrast is zero"
+      "statement": "within scope S (preregistration.md section 2), a bigger embedder ranks gold units higher: rows 1 (4B minus 0.6B) and 2 (8B minus 4B), nDCG@10, directional; a step holds when its row counts on at least 2 of 3 core datasets; H1 holds in full when both steps hold, in part when one does",
+      "null": "each contrast is zero"
     },
     {
       "id": "H2",
       "role": "primary",
-      "statement": "the reranker helps: marginal nDCG@10 with the reranker on (mean of three sizes) exceeds reranker off",
-      "null": "reranker on and off do not differ (zero effect)"
+      "statement": "within scope S (preregistration.md section 2), the reranker raises nDCG@10: row 3 (mean of the three reranker sizes minus off), directional; holds when row 3 counts on at least 2 of 3 core datasets",
+      "null": "the contrast is zero"
     },
     {
       "id": "H3",
       "role": "primary",
-      "statement": "hybrid search helps: marginal nDCG@10 with hybrid on exceeds hybrid off",
-      "null": "hybrid on and off do not differ (zero effect)"
+      "statement": "within scope S (preregistration.md section 2), hybrid search raises nDCG@10: row 4 (hybrid on minus off), directional; holds as H2",
+      "null": "the contrast is zero"
     },
     {
       "id": "H4",
       "role": "primary",
-      "statement": "reranker and hybrid together beat either alone: both on exceeds reranker only and exceeds hybrid only",
-      "null": "at least one of the two contrasts is zero"
+      "statement": "within scope S (preregistration.md section 2), reranker plus hybrid beats each alone (simple effects, not an interaction test): rows 5 (both on minus reranker only) and 6 (both on minus hybrid only), nDCG@10, directional; holds on a dataset when both rows count there, and overall on at least 2 of 3 core datasets; the interaction is reported descriptively with its interval",
+      "null": "each contrast is zero"
     },
     {
       "id": "H5",
       "role": "primary",
-      "statement": "a bigger reranker ranks better: marginal nDCG@10 rises from 0.6B to 4B and from 4B to 8B (reranker-on setups)",
-      "null": "each reranker-size contrast is zero"
+      "statement": "within scope S (preregistration.md section 2), a bigger reranker ranks better: rows 7 (4B minus 0.6B) and 8 (8B minus 4B), reranker-on setups, nDCG@10, directional; holds as H1",
+      "null": "each contrast is zero"
     },
     {
       "id": "H6",
       "role": "primary",
-      "statement": "chunk size changes retrieval on FinanceBench (endpoint evidence_recall_20k) and FreshStack (endpoint nDCG@10); both must support it; BioASQ is a sanity check and Legal RAG Bench is exploratory",
-      "null": "no chunk-size contrast counts on FinanceBench or on FreshStack"
+      "statement": "within scope S (preregistration.md section 2), chunk size changes retrieval: rows 9 (1,024 minus 512) and 10 (2,048 minus 1,024), two-sided; endpoint evidence_recall_20k with any-page credit on FinanceBench and nDCG@10 on FreshStack; holds when the same row (9 or 10) counts with the same sign on FinanceBench and on FreshStack; opposite signs are reported as a dataset-dependent effect; BioASQ is a sanity check and Legal RAG Bench is exploratory",
+      "null": "each contrast is zero"
     },
     {
       "id": "H7",
       "role": "primary",
-      "statement": "bigger embedders gain more from bigger chunks: the 8B gain from 512 to 2048 tokens exceeds the 0.6B gain",
-      "null": "the two gains do not differ (zero effect)"
+      "statement": "within scope S (preregistration.md section 2), a bigger embedder gains more from bigger chunks: row 11, (8B at 2,048 minus 8B at 512) minus (0.6B at 2,048 minus 0.6B at 512), marginal over reranker and hybrid, directional, on the H6 endpoints; holds when row 11 counts on both FinanceBench and FreshStack; BioASQ is a sanity check and Legal RAG Bench is exploratory; expected to be underpowered",
+      "null": "the difference of differences is zero"
     },
     {
-      "id": "H8",
+      "id": "H8a",
       "role": "answer-stage",
-      "statement": "chunk size changes GLM-5.3 faithfulness on factual claims and answer correctness (Ragas AnswerCorrectness on all four datasets, FinanceBench number match); faithfulness is expected to fall as chunks grow; tested on all questions",
-      "null": "each chunk-size contrast is zero"
+      "statement": "within scope S (preregistration.md section 2), chunk size changes GLM-5.3 faithfulness on factual claims and Ragas AnswerCorrectness in the 12 crossed setups, where context length grows with chunk size: rows 12 to 13 (faithfulness) and 14 to 15 (correctness), 1,024 minus 512 and 2,048 minus 1,024, marginal over reranker and hybrid, two-sided, all questions, 3 runs averaged per question; per outcome, holds when the same row counts with the same sign on FinanceBench and on FreshStack (open item O6); BioASQ rows are sanity checks; faithfulness is expected to fall as chunks grow; Legal RAG Bench is exploratory; FinanceBench number match is secondary; confirmatory",
+      "null": "each contrast is zero"
+    },
+    {
+      "id": "H8b",
+      "role": "answer-stage",
+      "statement": "within scope S (preregistration.md section 2), chunk size changes faithfulness and correctness when evidence is held at 20,480 Qwen3 tokens: rows 16 to 17 (faithfulness) and 18 to 19 (correctness), c1024-t20k minus c512-t20k and c2048-t20k minus c1024-t20k, two-sided, at reranker on and hybrid on with the chosen sizes (conditional on that cell); holds as H8a (same row, same sign, on FinanceBench and on FreshStack); 'chunk size itself changes X' is claimed only when H8b holds for outcome X; confirmatory",
+      "null": "each contrast is zero"
     }
   ],
-  "decision_rule": "Per dataset, a linear mixed model (statsmodels MixedLM, REML: ndcg10 ~ C(embedder)*C(chunk)*C(reranker)*C(hybrid) + (1|question)) gives estimates; each planned contrast's p-value comes from a GEE with the same mean model and cluster-robust errors by question (by document on FinanceBench). Search scoring uses the top 100 chunks (rerank pool fixed at 100 with fetch_k 100) collapsed to distinct units and cut at 10. H6 on FinanceBench uses evidence_recall_20k (gold pages within 20,480 real Qwen3 tokens of evidence) as its endpoint, with first-page and any-page nDCG@10 as sensitivity; H6 on FreshStack uses nDCG@10. H8 uses all questions, 3 runs averaged per question. Holm across every H1-H8 contrast of the dataset. A contrast counts when the Holm-adjusted p is below 0.05 and its sign matches. A hypothesis holds overall when supported on at least 2 of the 3 confirmatory datasets (FinanceBench, FreshStack, BioASQ); H6 needs both FinanceBench and FreshStack. Legal RAG Bench is exploratory. Paired permutation (or the document-grouped bootstrap on FinanceBench) is the pre-registered sensitivity check.",
+  "decision_rule": "preregistration.md sections 7 to 9 govern. No mixed model. For row k and question q, the contrast score d_qk is the mean of q's scores over the cells at the first level minus the mean over the cells at the second level (equal cell weights; answer scores averaged over 3 runs first); the estimate is the plain mean of d_qk over questions. FreshStack, BioASQ and Legal: the decision test is defined by its closed form (preregistration.md section 9 point 3): estimate = mean of d_qk; variance = sum of squared residuals x (n / (n minus 1)) squared / n squared (Mancl and DeRouen bias-reduced sandwich, intercept only, one row per cluster); t reference on n minus 1 degrees of freedom for the p-value and interval. Implementation: statsmodels GEE of d_qk on an intercept (Gaussian, identity link, independence working correlation, clusters = questions, cov_type bias_reduced); a known-answer test checks it against the closed form, and the closed form is used if they differ. FinanceBench: the decision p-value and 95% interval come from a document-level sign-flip permutation test (100,000 draws, seed 20261101). Holm (alpha 0.05) within families fixed now: FinanceBench 19 rows, FreshStack 19 rows, BioASQ 8 rows (rows 1 to 8; rows 9 to 19 are sanity checks, rows 12 to 19 pending open item O6); Legal RAG Bench has no family and is exploratory. A row whose measure fails its gate, or that the differential-error rule makes exploratory, stays in its family with p = 1 and is reported as not testable. A directional row counts when the Holm-adjusted p is below 0.05 and the estimate has the predicted sign; a two-sided row counts when the Holm-adjusted p is below 0.05. Hypotheses hold by the rule in each statement (H1 to H5: 2 of 3 core datasets; H6, H7, H8a and H8b: FinanceBench and FreshStack). A two-sided hypothesis holds only when the same row counts with the same sign on every dataset its rule needs; opposite signs are reported as a dataset-dependent effect and the hypothesis does not hold. Fixed search settings: similarity_threshold 0.0, metadata extraction disabled, exact dense search with no approximate vector index, chunk overlap 15% (77, 154 and 307 tokens). Search scoring: top 100 chunks (rerank pool 100, fetch_k 100) collapsed to distinct units and cut at 10; FinanceBench nDCG@10 gives a chunk its first page (any-page credit is a sensitivity); evidence_recall_20k gives any-page credit (first-page credit is a sensitivity). Registered sensitivity checks, never decisive: paired permutation by question (10,000 shuffles, seed 20261101) on FreshStack and BioASQ; GEE with document clusters on FinanceBench. A non-significant result means no difference was detected; there is no equivalence claim and no TOST.",
   "stats": "expert",
   "seed": 20261101,
   "baseline": "none: full factorial of embedder x chunk size x reranker x hybrid (72 search setups per dataset); e4b-c1024-roff-hoff is the reference cell of the G2 rebuild check only",
-  "candidate": "72 search setups e<0.6b|4b|8b>-c<512|1024|2048>-r<off|0.6b|4b|8b>-h<off|on>; 15 answer setups (12 crossed plus token-matched c512-t20k, c1024-t20k and c2048-t20k; the third added by A3), chosen on half A, at the embedder and reranker sizes chosen by the pre-registered selection rule (pooled over the three core datasets, amendment A3)",
+  "candidate": "72 search setups e<0.6b|4b|8b>-c<512|1024|2048>-r<off|0.6b|4b|8b>-h<off|on>; 15 answer setups (12 crossed plus token-matched c512-t20k, c1024-t20k and c2048-t20k; the third added by A3), chosen on half A, at the embedder and reranker sizes chosen by the pre-registered selection rule (pooled over the three core datasets, amendment A3); index cost and configuration hash as defined in preregistration.md section 14.1",
   "metrics": [
     {
       "name": "Recall@10",
@@ -122,10 +128,20 @@
     {
       "name": "evidence_recall_20k",
       "binary": false,
+      "primary": true
+    },
+    {
+      "name": "alpha-nDCG@10",
+      "binary": false,
       "primary": false
     },
     {
       "name": "closed_book_correctness",
+      "binary": false,
+      "primary": false
+    },
+    {
+      "name": "closed_book_rag_prompt_correctness",
       "binary": false,
       "primary": false
     },
@@ -156,6 +172,55 @@
       "value": "count",
       "op": "<=",
       "threshold": 0
+    },
+    {
+      "id": "classifier-agreement",
+      "metric": "claim_classifier_agreement",
+      "value": "share on 100 L1 smoke claims",
+      "op": ">=",
+      "threshold": 0.9
+    },
+    {
+      "id": "classifier-refusal-recall",
+      "metric": "claim_classifier_refusal_recall",
+      "value": "share on 100 L1 smoke claims",
+      "op": ">=",
+      "threshold": 0.9
+    },
+    {
+      "id": "faithfulness-kappa",
+      "metric": "checker_vs_human_kappa",
+      "value": "point estimate, per checker, 450 claims from answers to all questions (both halves)",
+      "op": ">=",
+      "threshold": 0.6
+    },
+    {
+      "id": "faithfulness-kappa-lower",
+      "metric": "checker_vs_human_kappa",
+      "value": "lower 95% bound, per checker",
+      "op": ">=",
+      "threshold": 0.4
+    },
+    {
+      "id": "correctness-kappa",
+      "metric": "ragas_correctness_vs_human_kappa",
+      "value": "point estimate, per core dataset, 50 half-B answers",
+      "op": ">=",
+      "threshold": 0.6
+    },
+    {
+      "id": "correctness-kappa-lower",
+      "metric": "ragas_correctness_vs_human_kappa",
+      "value": "lower 95% bound, per core dataset",
+      "op": ">=",
+      "threshold": 0.4
+    },
+    {
+      "id": "correctness-auc-lower",
+      "metric": "ragas_correctness_auc",
+      "value": "lower 95% bound, per core dataset",
+      "op": ">",
+      "threshold": 0.5
     }
   ],
   "frozen": [],
@@ -239,11 +304,6 @@
         "model": "openai/gpt-oss-120b"
       },
       {
-        "role": "judge-crosscheck",
-        "provider": "openrouter",
-        "model": "openai/gpt-6.1-terra"
-      },
-      {
         "role": "judge-glm",
         "provider": "zai-coding-plan",
         "model": "glm-5.3"
@@ -310,6 +370,13 @@
       "before_first_run": true,
       "summary": "Selection rule amended: the pooled score for embedder and reranker-size choice uses the three core datasets only (Legal excluded). Adds a four-factor pick on half A for Part 2 (chunk size, reranker on or off, hybrid on or off; pooled mean nDCG@10 over the three core datasets; ties within 0.01 go to reranker off, then hybrid off, then lowest index cost, then smaller chunk). The cell's configuration hash goes to OSF before half B opens. Part 2 (RAGFlow) runs on half B only, once per system, with its own protocol (C1, C2) and its own human labels. Experiment 35 label counts are unchanged. Clarified after the PR 209 review (2026-11-13, no change of design): H1 to H8 nulls are zero effects, the minimum detectable effect is for power planning only; the G2 rebuild check runs before any search writes into the shared output folder. PR 209 clarification (2026-11-13): (a) token-matched control: a 15th answer setup c2048-t20k (20,480-token cut at 2,048-token chunks, reranker on, hybrid on) sits beside c512-t20k and c1024-t20k; the c2048 x 10 factorial cell is unchanged; H8 token-matched comparison uses the three -t20k setups; 15 answer setups x 3 runs; G1 covers 15; answer stage cost rises about 1/14 (about $40: $24 hosted plus about 18 pod hours), estimate about $690, ceiling stays $975. (b) Part 2 FinanceBench C1 unit: page level for every question and both systems; gate that RAGFlow returns page numbers on a seeded sample; fallback document level for every question and both systems if the gate fails; other unit as labelled sensitivity.",
       "where": "protocol.md section 0.12; docs/proposals/first-publication-benchmark.md; change experiment-35-full-document-rag-benchmark design D0.14"
+    },
+    {
+      "id": "A4",
+      "date": "2026-11-14",
+      "before_first_run": true,
+      "summary": "Publication review fixes F1 to F30, approved by the operator on 2026-11-14, and the second-round fixes C1 to C24 ruled on the same day. From A4 on, preregistration.md governs the live design and wins over protocol.md, this file and the OpenSpec changes; earlier amendments are history. Hypotheses: H1 to H7 scoped (scope S) with numbered rows and a holds rule each; H4 named as simple effects; H6, H7, H8a and H8b hold only on FinanceBench and FreshStack (H8a and H8b by open item O6), and a two-sided hypothesis needs the same row with the same sign on every dataset its rule needs; H8 split into H8a (12 crossed setups) and H8b (3 token-matched setups), both confirmatory; every null is a zero effect; Legal RAG Bench exploratory everywhere, H8a and H8b correctness included. Analysis: the mixed model is dropped; per-question contrast scores with an intercept-only GEE (bias-reduced covariance, t on G minus 1) on FreshStack, BioASQ and Legal, and a document-level sign-flip test (100,000 draws, seed 20261101) on FinanceBench; Holm families fixed at 19 (FinanceBench), 19 (FreshStack) and 8 (BioASQ; rows 9 to 19 are sanity checks there), 46 contrasts; a gated row stays in its family with p = 1. Metrics: nDCG@10 is the primary metric of the study; evidence_recall_20k is the confirmatory endpoint for H6 and H7 on FinanceBench (rows 9 to 11) with any-page credit, so both carry primary: true in metrics (first-page credit is a sensitivity); alpha-nDCG@10 is secondary on FreshStack if its nugget labels allow (P3). FreshStack: all 9 indexes rebuilt on the full public LangChain corpus (49,514 documents, pinned revision, P1); the 10,000-document subset is retired. Labels and gates: L1 750 (claim kinds 100, faithfulness 450 at 150 per chunk size from answers to all questions, correctness 200 at 50 per dataset), L2 225 (30%); faithfulness gate per checker (pooled over the core datasets) and correctness gate per core dataset on kappa point estimate (at least 0.60) and lower 95% bound (at least 0.40), plus an AUC check on the continuous correctness score; every gate interval a percentile bootstrap with 10,000 resamples by question and its own seed; differential-error rule on GLM-5.3 in either direction; a length-controlled check on 300 claims. Runs: two closed-book runs (own-knowledge prompt, and the RAG prompt with empty evidence) beside the oracle run; H8a and H8b correctness rows re-run on questions both closed-book runs answer wrongly. Halves and order: FinanceBench split by document, the other datasets by question (seed 20261115); score half A, write selection.json, time-stamp the A3 configuration hash on OSF, then score half B; the RQ1 retrieval headline is the A3 cell on half B. Selection terms: index cost is stored vector values (chunks times embedding dimension) summed over the three core datasets; the configuration hash is the SHA-256 of the canonical JSON of the selected cell's resolved settings plus the halves.json SHA-256. The openai/gpt-6.1-terra cross-check is removed, because no cost estimate included it; its reference entry is deleted. New seeds 20261118 (pilot), 20261119 (length-controlled check) and 20261121 to 20261135 (smoke sample, L2 subsets, gate bootstraps, RAGFlow samples, Part 2 labels; preregistration.md section 16) wait for confirmation (P9); 20261120 (audit) is used only if open item O3 is yes. Budget: estimate about $730 plus the pilot (the full FreshStack build is not timed yet, P2; the pilot cost is projected from P2 and approved before the pod starts), ceiling $975 unchanged. Results-blind drop order at the ceiling: (1) Legal RAG Bench answer generation, (2) the length-controlled check, (3) the closed-book run with the RAG prompt, then stop; E1 has its own ceiling; a run that finishes every confirmatory item after drops is complete with registered drops, each a numbered deviation; no operator choice. Part 2 and E1 get their own estimate and ceiling (P16). The frozen list stays empty until the freeze; the pins table in preregistration.md section 16 fills it (answer-model host, reasoning mode, output cap and context length; judge, classifier and GLM-5.3 settings; query instruction, reranker instruction and hybrid settings; FreshStack and Legal revisions; halves.json and prompt template hashes; the evidence_recall_20k tolerance; the freeze commit and OSF link). These are pre-freeze tasks P1 to P16 (open items O1 to O6 also close before the freeze) and are not filled here. After the freeze, every change is a dated, numbered deviation, added to this list and uploaded to OSF.",
+      "where": "preregistration.md (governs from A4); protocol.md section 0.13; change experiment-35-full-document-rag-benchmark design D0.15 and tasks 4D"
     }
   ]
 }

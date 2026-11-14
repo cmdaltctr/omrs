@@ -61,7 +61,7 @@ The cuts change and the router change each change the index identity. The operat
 | G6 | 5.3 | RunPod budget and start of the sweep |
 | G7a | 6.2 | Pre-freeze pod session: quoted price, go |
 | G7b | 6.8 | Merge the Exp 35 harness PR |
-| G7 | 6.11 and 7.3 | Freeze Experiment 35, approve the run budget, and deposit Exp 35, A3 and the Part 2 protocol on OSF together |
+| G7 | 6.11 and 7.3 | Freeze Experiment 35, approve the run budget, and deposit the pre-registration (main file), the proposal, `protocol.md`, `plan.json` and the Part 2 protocol on OSF together |
 
 ### D4. Rules every group follows
 
@@ -89,9 +89,13 @@ D. Section 2 harness, PR (G7b)
    |
 E. Arm smoke run on the run machine; pod stopped after it
    |
+E2. A4 pre-freeze items: FreshStack full corpus pin and timing,
+   |   halves and MDE pilot on half A, P1 to P16, open items O1 to O6
+   |   (with Part 2 steps 7.1, 7.2 and 7.2a)
 F. Freeze (G7)
    |
-G. Section 5 runs (3 per arm), section 6 report, section 7 release
+G. Search stage; score half A; selection.json; OSF time-stamp of the
+   hash; score half B; replicate pods; section 6 report; section 7 release
 ```
 
 Reasons:
@@ -100,6 +104,15 @@ Reasons:
 - The arm smoke run goes after the harness. Every arm needs the section 2 code. Archived task 10.6 and Exp 35 task 4.1 are the same check, so one run does both.
 - The smoke run uses the run machine. Corpus and indexes stay in place for section 5. A stopped pod bills only its disk while the operator decides at G7.
 - `pre-exp35-harness-and-answer-fixes` was archived with group 10 open. This group owns those tasks now. The detail stays in that change's design D13.
+- Step E2 (added 2026-11-14, amendment A4) holds the pre-freeze items of `preregistration.md` section 23. The pilot and every pre-freeze sample drawn after the halves exist come from half A, so the halves are written first; earlier samples are listed with their halves (P12). Step G follows the order of work of pre-registration section 14.2: no half-B score exists before the configuration hash is time-stamped on OSF.
+
+### D6. Amendment A4: the pre-registration governs; deviation policy (2026-11-14)
+
+A publication-grade methods review (2026-11-13) gave 30 findings, F1 to F30. The user approved every recommended fix on 2026-11-14. The file `experiments/35-full-rag-benchmark-2026-11-01/preregistration.md` governs Experiment 35 and is the main file of the OSF deposit. The proposal stays the master plan for scope, order of work, Part 2 and E1. For Part 2 and E1, pre-registration section 18 wins over the proposal on the points it fixes; the proposal governs every other fact until the Part 2 protocol is frozen, and then the Part 2 protocol governs. The step 7.2a cost decision, recorded before any half-B score, fixes the Part 2 estimand: "selected OMRS against selected RAGFlow" if the matched search runs, else "selected OMRS against default RAGFlow". `exp35-main-run-readiness` design D38 and its task group 16 build the design; group 6 (steps 6.10a to 6.10d and 6.12 to 6.14) and group 7 (steps 7.1 to 7.6, with 7.2a added) of this change order it.
+
+- **Deviation policy.** After the freeze, every change is a dated, numbered deviation. The report lists each with its reason, its time (before or after seeing the affected data) and its effect on each claim. Each goes into `plan.json` `amendments` and is uploaded to the OSF project. A run on another llama.cpp build needs a deviation first. Part 2 states the same policy in its protocol.
+- **Budget.** Experiment 35: about $730 (estimate), ceiling $975, with the results-blind drop order of pre-registration section 17: (1) Legal RAG Bench answer generation, (2) the length-controlled check, (3) the closed-book run with the RAG prompt; then stop. A run with every confirmatory item done is "complete with registered drops". Part 2 and E1 get their own estimates and ceilings at step 7.2a; E1 is not in the Experiment 35 drop order.
+- **Reporting.** The Experiment 35 report holds the items of pre-registration section 21 (decisions with "not testable" marks, unjudged share, sensitivity tables, compute table with every pre-freeze pod, returned model IDs, deviation log). The Part 2 report holds its own release table and maintainer correspondence log.
 
 ## Risks
 

@@ -148,12 +148,89 @@ A selection step SHALL read the saved half-A search scores of FinanceBench, Fres
 
 ### Requirement: The selection step picks one cell for Part 2
 
-At the chosen embedder and reranker size, the selection step SHALL pick chunk size, reranker on or off and hybrid on or off from the 12 cells by the same three-dataset pooled half-A score. Cells within 0.01 of the best, inclusive, SHALL tie. Ties SHALL go to reranker off, then hybrid off, then the chunk size with the lowest index cost, then the smaller chunk size (amendment A3). It SHALL write the cell scores and the chosen cell to the selection file.
+At the chosen embedder and reranker size, the selection step SHALL pick chunk size, reranker on or off and hybrid on or off from the 12 cells by the same three-dataset pooled half-A score. Cells within 0.01 of the best, inclusive, SHALL tie. Ties SHALL go to reranker off, then hybrid off, then the chunk size with the lowest index cost, then the smaller chunk size (amendment A3). Index cost SHALL be chunks times embedding dimension over the three core datasets (A4).
 
 #### Scenario: Four-factor tie
 
 - **WHEN** the best cell has reranker on and hybrid on, and a cell with reranker off and hybrid on pools 0.008 lower
 - **THEN** the selection MUST choose the cell with reranker off
+
+#### Scenario: Index cost decides a chunk-size tie
+
+- **WHEN** two tied cells differ only in chunk size and the 512-token indexes store more vector values than the 1,024-token indexes
+- **THEN** the selection MUST choose the 1,024-token cell
+
+### Requirement: The selection file holds a configuration hash
+
+The selection step SHALL write the cell scores, the chosen cell and the configuration hash: the SHA-256 of the canonical JSON (keys sorted, no spaces, UTF-8) of the selected cell's resolved settings, with the SHA-256 of `halves.json` as one field. A sensitivity step SHALL repeat the cell choice with any-page nDCG@10 on FinanceBench and SHALL record whether the cell changes; the registered cell SHALL NOT change.
+
+#### Scenario: Same hash twice
+
+- **WHEN** the selection runs twice on the same scores and the same `halves.json`
+- **THEN** both selection files MUST hold the same configuration hash
+
+### Requirement: Half B is scored only after the hash is time-stamped
+
+The harness SHALL follow pre-registration section 14.2: score half A only; apply the selection rule and write the selection file; time-stamp the configuration hash with a file upload to the registered OSF project; then score half B and start the replicate pods. A scoring step SHALL refuse any half-B score while the selection file or the time-stamp record is missing. A replicate pod's first stage SHALL refuse to start under the same condition.
+
+#### Scenario: Half-B score before the time-stamp
+
+- **WHEN** the scoring step is asked for half-B scores and no time-stamp record exists
+- **THEN** it MUST stop before it computes any half-B score and MUST name the missing record
+
+#### Scenario: Half-A scoring
+
+- **WHEN** the scoring step is asked for half-A scores and no selection file exists
+- **THEN** it MUST compute them
+
+### Requirement: Halves keep FinanceBench documents apart
+
+A split step SHALL write `halves.json` with seed 20261115. It SHALL split FinanceBench by document: documents are shuffled with the seed and each goes, with all its questions, to the half that has fewer questions so far, ties to half A. It SHALL split FreshStack, BioASQ and Legal RAG Bench by question: questions are shuffled with the seed and the first half, rounded up, is half A.
+
+#### Scenario: No FinanceBench document in both halves
+
+- **WHEN** the split runs on FinanceBench
+- **THEN** every document's questions MUST sit in one half only
+
+#### Scenario: Same halves twice
+
+- **WHEN** the split runs twice with the same seed
+- **THEN** both `halves.json` files MUST be byte-identical
+
+### Requirement: Planned contrasts use one clustered method
+
+The analysis SHALL compute rows 1 to 19 of pre-registration section 8 from per-question contrast scores. On FreshStack, BioASQ and Legal RAG Bench it SHALL use the closed-form test of pre-registration section 9 point 3 (mean, bias-reduced variance, t on n minus 1), computed through GEE and checked against the closed form. On FinanceBench it SHALL use a document-level sign-flip permutation test (100,000 draws, seed 20261101). It SHALL NOT fit a mixed model or use a McNemar or equivalence test.
+
+#### Scenario: GEE matches the closed form
+
+- **WHEN** the analysis runs on a fixed known-answer fixture of n contrast scores
+- **THEN** the estimate MUST equal their mean, and the variance MUST equal the sum of squared residuals times (n / (n minus 1)) squared, divided by n squared
+- **AND** the p-value and 95% interval MUST use t on n minus 1 degrees of freedom, whatever reference the library reports by default
+- **AND** if the `statsmodels` GEE output differs from the closed form, the analysis MUST use the closed form and record the difference
+
+#### Scenario: FinanceBench document clusters
+
+- **WHEN** two FinanceBench questions share a document
+- **THEN** the sign-flip test MUST flip their contrast scores together, as one document sum, and the 95% interval MUST come from inverting the same test on the same draws
+
+#### Scenario: Type I error under the null
+
+- **WHEN** the analysis runs on 200 simulated datasets with no planted effect and unequal error variance across cells
+- **THEN** the share of rejections at 0.05 MUST stay near 0.05 for the GEE and for the sign-flip test
+
+#### Scenario: Sensitivity check disagrees
+
+- **WHEN** the paired permutation test by question on FreshStack disagrees with the GEE on whether a row counts
+- **THEN** the decision MUST follow the GEE, and the row MUST appear in the disagreement table
+
+### Requirement: Holm families are fixed before the run
+
+The analysis SHALL apply Holm within each dataset over families fixed at 19 rows (FinanceBench), 19 (FreshStack) and 8 (BioASQ, rows 1 to 8). BioASQ rows 9 to 19 SHALL be sanity checks with unadjusted intervals. Legal RAG Bench SHALL have no family. A row that fails a gate SHALL stay in its family with p = 1 and SHALL be reported "not testable".
+
+#### Scenario: Gated row keeps the family size
+
+- **WHEN** rows 12, 13, 16 and 17 are "not testable" on FreshStack
+- **THEN** Holm MUST still run over 19 rows on FreshStack, with those rows at p = 1
 
 ### Requirement: The answer stage has a token-matched setup for each chunk size
 
@@ -168,6 +245,29 @@ The answer stage SHALL run 15 setups: the 12 crossed setups on 10 chunks each an
 
 - **WHEN** the chosen embedder and reranker retrieve short 2,048-token chunks
 - **THEN** `c2048` x 10 MUST send exactly 10 chunks, and `c2048-t20k` MUST send chunks until the 20,480-token limit, truncating the chunk that crosses it and recording the truncation
+
+### Requirement: FreshStack uses the full public corpus at a pinned revision
+
+The FreshStack loader SHALL load the full public `freshstack/corpus-oct-2024` corpus, config `langchain`, at the revision pinned in `plan.json`, and the 203 public queries. It SHALL refuse a corpus whose revision or row count differs from the pin. It SHALL NOT sample a subset, add distractors, load the 20 continuity queries or the continuity documents, or append the overlay runbook.
+
+#### Scenario: Subset on disk
+
+- **WHEN** the corpus folder holds the 10,000-document subset of Experiments 9a and 22
+- **THEN** the loader MUST stop before any ingest and MUST name the expected and the found row counts
+
+### Requirement: Evidence recall gives any-page credit on FinanceBench
+
+`evidence_recall_20k` SHALL be the share of a question's gold units covered by the evidence that the token cut takes from the top 100 chunks. On FinanceBench a whole chunk SHALL cover every gold page it overlaps, and the truncated crossing chunk only its first page; first-page credit SHALL be a sensitivity column. Elsewhere a chunk SHALL cover its one unit. nDCG@10, Recall@10, MRR@10 and hit@page SHALL keep first-page credit as primary.
+
+#### Scenario: Chunk across two pages
+
+- **WHEN** a whole FinanceBench chunk spans pages 41 and 42 and the gold page is 42
+- **THEN** `evidence_recall_20k` MUST count page 42 as covered, and the first-page column MUST NOT
+
+#### Scenario: Truncated chunk across two pages
+
+- **WHEN** the crossing chunk spans pages 41 and 42, is truncated, and the gold page is 42
+- **THEN** `evidence_recall_20k` MUST NOT count page 42 as covered by that chunk
 
 ### Requirement: Parallel and serial runs write the same row files
 
