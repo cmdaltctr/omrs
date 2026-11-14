@@ -55,11 +55,11 @@ The claims stay testable. OMRS reaches stated scores under stated conditions. Na
 
 ## Order and gates
 
-1. Freeze Part 1. The operator approves the pre-registration, `plan.json` and the run budget (master flow gate G7). The open items O1 to O7 and the pre-freeze tasks P1 to P16 (pre-registration section 23) close first. The Part 2 protocol exists before this point (it is not written yet).
+1. Freeze Part 1. The operator approves the pre-registration, `plan.json` and the run budget (master flow gate G7). The open items O2, O3 and O4 and the pre-freeze tasks P1 to P16 (pre-registration section 23) close first. The owner decided O1, O5, O6 and O7 on 2026-11-14. The Part 2 protocol exists before this point (it is not written yet).
 2. Deposit on OSF in one deposit: the pre-registration as main file, this proposal, the protocol history, `plan.json` and the Part 2 protocol (C1, C2). Record the link and the commit hash.
 3. Build and seal the 9 indexes per dataset. The rebuild gate G2 passes before any search writes output. Then run the 72 search setups on all questions (pre-registration section 14.2).
 4. Score half A only. Apply the A3 rule. Write `selection.json`.
-5. Time-stamp the A3 configuration hash by a file upload to the registered OSF project (open item O1: the user confirms the mechanism).
+5. Time-stamp the A3 configuration hash by a file upload to the registered OSF project (O1, decided by the owner on 2026-11-14).
 6. Only then score half B and start the answer stage. "Sealed" means the indexes only: half-B ranked lists exist on disk before step 5, but no half-B score is computed before it.
 7. Run Part 2 on half B, once per system.
 8. Run E1 if the budget allows. E1 is the first item to drop when the budget is short.
@@ -106,7 +106,7 @@ The primary metric is nDCG@10 at unit level, with the trec_eval formulas written
 
 The answer stage uses the embedder and reranker size chosen on half A (pre-registration section 14.1). It has 15 setups, each run 3 times on all 1,160 questions: 12 crossed setups (chunk size x reranker on or off x hybrid on or off, 10 chunks of evidence each) and 3 token-matched setups (`c512-t20k`, `c1024-t20k`, `c2048-t20k`, reranker and hybrid on, evidence cut at 20,480 Qwen3 tokens). Two closed-book runs (own-knowledge prompt, and the RAG prompt with an empty evidence block) and an oracle run (gold evidence given directly) frame the results (pre-registration section 13).
 
-- Faithfulness of cited factual claims: claim checks. GLM-5.3 is the main checker; Clef-Flash (local) is the second. The share of answer segments with no valid citation is a co-outcome, and a sensitivity analysis counts uncited factual segments as unsupported (pre-registration section 6; open item O7 decides before the freeze whether it becomes primary).
+- Faithfulness of cited factual claims: claim checks. GLM-5.3 is the main checker; Clef-Flash (local) is the second. The share of answer segments with no valid citation is a co-outcome, and a sensitivity analysis counts uncited factual segments as unsupported (pre-registration section 6; O7, decided by the owner on 2026-11-14: the primary measure stays cited factual claims, because OMRS answers are built to cite their evidence).
 - Correctness: Ragas `AnswerCorrectness` with `openai/gpt-oss-120b` as judge, plus a number match on FinanceBench. There is no cross-check judge: `openai/gpt-6.1-terra` is removed, because no cost estimate includes it.
 - Human check: two labellers score samples blind (L1 750 labels, L2 225). Each checker must pass a faithfulness gate, and the correctness judge must pass a gate on each core dataset: kappa point estimate at least 0.60 and lower 95% bound at least 0.40. A row whose measure fails its gate stays in its Holm family as "not testable". Every gate interval is a percentile bootstrap (10,000 resamples by question). A differential-error rule makes H8a and H8b faithfulness exploratory if GLM-5.3 specificity differs between 512 and 2,048 chunks in either direction. If Clef-Flash fails its gate, its results are reported as not validated and change no confirmatory row (pre-registration section 11).
 - Other Ragas metrics are secondary. Ragas is not the main faithfulness measure.
@@ -171,7 +171,7 @@ The main comparison uses one OMRS setup chosen on half A of the Experiment 35 sp
 
 - Choose on the three core datasets pooled. Legal RAG Bench takes no part in selection.
 - Setups within 0.01 of the best tie. Ties go to the cheaper setup in this order: reranker off, hybrid off, lowest index cost, then smaller chunk size. Index cost is the number of stored vector values (chunks times embedding dimension) summed over the three core datasets, known before any score.
-- The configuration hash is the SHA-256 of the canonical JSON of the selected cell's resolved settings plus the SHA-256 of `halves.json`. A file upload to the registered OSF project time-stamps it before any half-B score is computed (open item O1).
+- The configuration hash is the SHA-256 of the canonical JSON of the selected cell's resolved settings plus the SHA-256 of `halves.json`. A file upload to the registered OSF project time-stamps it before any half-B score is computed (O1, decided by the owner on 2026-11-14).
 
 A **defaults row** sits beside the main comparison: OMRS shipped defaults against default RAGFlow. Both use the embedder chosen on half A and the same answer model. OMRS keeps its own shipped retrieval settings. Default RAGFlow is one RAGFlow run: its defaults read from the pinned release, plus the shared parts (the embedder, and the reranker when the A3 cell has it on) and the two measurement settings (cut-off 0, depth 100) of rule 1. When the matched search does not run, the RAGFlow side of the main row and of the defaults row is this same run, and the table shows its scores once. The row names the tuning gap, which is the part of any OMRS lead that comes from choosing a setup on half A. The defaults row is secondary. It gets paired confidence intervals and no confirmatory claim.
 
@@ -358,7 +358,7 @@ The Experiment 35 limitations are in pre-registration section 22. The paper repe
 4. Ask the Napier library to confirm the article type and the deal.
 5. Done: Experiment 35 amendment A3 (protocol section 0.12) holds the selection rule for Part 2.
 6. Done: amendment A4 (protocol section 0.13) and the pre-registration, after the methods review of 13 November 2026.
-7. Close the open items O1 to O7 and the pre-freeze tasks P1 to P16 of pre-registration section 23.
+7. Close the open items O2, O3 and O4 and the pre-freeze tasks P1 to P16 of pre-registration section 23.
 8. Reserve an experiment number for Part 2. Write its protocol, covering every item of "What the Part 2 protocol must hold before its freeze".
 9. Before the freeze, pin the RAGFlow release and container digests and connect it to the llama.cpp models. Read the RAGFlow defaults from the pinned release. Time one index per dataset (corpus only). Measure the projected pod cost of the matched search at master flow step 7.2 and record the decision at step 7.2a; it fixes the Part 2 estimand. Check page provenance on a seeded half-A FinanceBench sample (the rule 3 gate: if RAGFlow returns no page for a chunk, the primary unit falls back to the document for both systems) and retrieval repeatability on half A. Send the settings table to the RAGFlow maintainers.
 10. Write the Part 2 estimate and ceiling, and the E1 estimate and ceiling (pre-freeze task P16; no figure exists yet).

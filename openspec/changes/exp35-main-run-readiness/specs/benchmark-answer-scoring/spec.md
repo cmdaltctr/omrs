@@ -151,7 +151,7 @@ Primary faithfulness, per answer setup and per checker (GLM-5.3 and Clef-Flash),
 
 ### Requirement: Uncited segments are reported and tested in a sensitivity analysis
 
-Primary faithfulness SHALL cover cited factual claims only. The report SHALL give, per setup and dataset, the share of prose segments with no valid ordinal. The classifier SHALL also sort uncited segments, with the question and segment only. A registered sensitivity analysis SHALL count uncited fact and mixed segments as unsupported (pre-registration section 6; open item O7).
+Primary faithfulness SHALL cover cited factual claims only. The report SHALL give, per setup and dataset, the share of prose segments with no valid ordinal. The classifier SHALL also sort uncited segments, with the question and segment only. A registered sensitivity analysis SHALL count uncited fact and mixed segments as unsupported (pre-registration section 6; O7, decided by the owner on 2026-11-14: sensitivity only).
 
 #### Scenario: One cited and one uncited fact
 

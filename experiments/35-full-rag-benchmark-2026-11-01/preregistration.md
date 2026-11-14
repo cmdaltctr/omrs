@@ -78,7 +78,7 @@ For question q with gold set G_q (size R_q) and unit list L_q of up to 10 units,
 **Answer metrics.** Per answer, then averaged over the 3 runs per question, then over questions.
 
 - **Faithfulness of cited factual claims** (`faithfulness_glm_factual`): share of the answer's cited factual claims (classifier kinds fact and mixed) that GLM-5.3 calls supported. Refusal claims are reported apart. Claims and citations come from the answer itself: the answer model cites evidence by ordinal (for example `[1]`), the saved answer is split into claims, only prose segments with at least one valid ordinal go to the checker, and the checker sees one claim with the text of the evidence its ordinals cite (OpenSpec specs `grounded-answer-synthesis` and `benchmark-answer-scoring`). A prose segment with no valid ordinal (an uncited segment) is not a claim and is not checked, because it names no evidence to check against.
-- **Uncited segments.** Co-outcome, reported per setup and dataset: `uncited_segment_share`, the share of the answer's prose segments that carry no valid ordinal. Registered sensitivity analysis: the classifier also sorts the uncited segments (it sees only the question and the segment, section 11.1); uncited segments it calls fact or mixed count as unsupported, and faithfulness is computed again over cited and uncited factual segments together. Open item O7 decides before the freeze whether this version becomes the primary measure.
+- **Uncited segments.** Co-outcome, reported per setup and dataset: `uncited_segment_share`, the share of the answer's prose segments that carry no valid ordinal. Registered sensitivity analysis: the classifier also sorts the uncited segments (it sees only the question and the segment, section 11.1); uncited segments it calls fact or mixed count as unsupported, and faithfulness is computed again over cited and uncited factual segments together. Decided by the owner on 2026-11-14 (O7): the primary measure stays faithfulness of cited factual claims, and this version stays a sensitivity analysis only. Reason: OMRS answers are built to cite their evidence, so cited claims are the product's claims.
 - **Correctness** (`ragas_answer_correctness`): Ragas 0.4.3 (Es et al. 2023) `AnswerCorrectness`, default weights (factual 0.75, similarity 0.25), judge `openai/gpt-oss-120b`, local 4B embedder. The judge sees the question, the answer and the reference answer, never the contexts. FreshStack's reference is `answer_text` (the accepted Stack Overflow answer).
 - **Secondary**: Clef-Flash faithfulness, FinanceBench number match (`protocol.md` section 0.6 rule), refusal rate, the four other Ragas metrics, closed-book and oracle correctness.
 
@@ -192,7 +192,7 @@ Why: a chance value makes an undefined resample count against a pass, and point 
 - **Counts.** L1: claim kinds 100, faithfulness 450, correctness 200; 750 in all. L2: 225.
 - **Guidelines.** One written guideline per set (claim kinds, faithfulness, correctness, and Part 2 correctness), with worked examples drawn from outside every sample, fixed before the first label and released (P8). Faithfulness follows the LLM-AggreFact task definition (MiniCheck): a claim is supported if and only if the cited passages support it, judged as the checker sees it, on meaning not grammar.
 - **Blinding.** Labellers never see scores, verdicts, setup names or chunk sizes. Cited passage length can still hint at chunk size; the report says so. A training round on practice items comes first and is not evidence.
-- **Ethics.** An ethics query goes to the university before the first label (OPEN item O5); the answer is recorded.
+- **Ethics.** The study has no human participants. It uses public datasets, and the labellers are members of the research team, not study subjects, so no ethics review is sought (O5, decided by the owner on 2026-11-14). This holds while every labeller is an author or colleague. If a paid external annotator is ever used, the question is reopened as a deviation (section 20).
 - **Conflict of interest.** The authors built OMRS. Safeguards: this pre-registration and its deviation log; selection on half A only; Holm families fixed now; blind labels with L2 as primary labeller in Part 2; published RAGFlow settings and maintainer correspondence; release of every output (section 19). The paper states the conflict.
 - **Optional blind relevance audit** for H3 and C1 (about 300 to 400 L1 labels on unjudged top-3 units, seed 20261120): runs only if the user approves (OPEN item O3). It would be descriptive.
 
@@ -235,7 +235,7 @@ Pooled score = plain mean of the per-dataset mean nDCG@10 over FinanceBench, Fre
 1. Build and seal the 9 indexes; G2 passes before any search writes into the shared output folder.
 2. Run the 72 search setups on all questions.
 3. Score half A only. Apply 14.1. Write `selection.json`.
-4. Time-stamp the configuration hash with a file upload to the registered OSF project (OPEN item O1: the user confirms the mechanism).
+4. Time-stamp the configuration hash with a file upload to the registered OSF project (O1, decided by the owner on 2026-11-14).
 5. Only then score half B, and start the replicate pods (answer stage).
 
 The word "sealed" applies to indexes only. Half B is held out from every selection step; its search lists exist on disk before step 4, but no half-B score is computed before it.
@@ -394,13 +394,13 @@ After the freeze, every change is a dated, numbered deviation. The report lists 
 
 **OPEN (the user decides):**
 
-- O1. The OSF mechanism that time-stamps the A3 configuration hash (proposed: a file upload to the registered project).
+- O1. Decided by the owner on 2026-11-14: a file upload to the registered OSF project time-stamps the A3 configuration hash.
 - O2. The SESOI value, 0.02 nDCG@10.
 - O3. Whether the optional blind relevance audit for H3 and C1 runs.
 - O4. L2's name, role and relation to the project.
-- O5. The ethics query to the university and its answer.
+- O5. Decided by the owner on 2026-11-14: no ethics query (section 11.3).
 - O6. Decided by the owner on 2026-11-14: BioASQ rows 12 to 19 are sanity checks (families 19 / 19 / 8, 46 contrasts); H8a and H8b hold on FinanceBench and FreshStack only.
-- O7. Whether the sensitivity version of faithfulness (uncited factual segments count as unsupported, section 6) becomes the primary measure. Until the user decides, the primary measure stays faithfulness of cited factual claims.
+- O7. Decided by the owner on 2026-11-14: the primary measure stays faithfulness of cited factual claims; the uncited-segment version is a sensitivity analysis only (section 6).
 
 **Pre-freeze tasks:**
 

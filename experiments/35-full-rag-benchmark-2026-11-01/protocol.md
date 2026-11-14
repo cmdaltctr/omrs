@@ -165,7 +165,7 @@ Written before the freeze. No measured run has started. A publication-grade meth
 | F16 | Existing data declared | 5 |
 | F17 | Results-blind drop order at the ceiling: (1) Legal RAG Bench answer generation, (2) the length-controlled check, (3) the closed-book run with the RAG prompt, then stop (E1 left the order, C6 below); "complete with registered drops" defined; "the operator decides" removed; Part 2 budget a pre-freeze task | 17 |
 | F18 | Release table per artefact and licence, re-judge kit | 19 |
-| F19 | Label guidelines per set, hidden system identity in Part 2, L2 primary in Part 2, conflict of interest; L2 and ethics open | 11.3 |
+| F19 | Label guidelines per set, hidden system identity in Part 2, L2 primary in Part 2, conflict of interest; L2 open; no ethics query (O5, decided 2026-11-14) | 11.3 |
 | F20 | Pins table; index cost and configuration hash defined | 14.1, 16 |
 | F21 | FinanceBench split by document; pre-freeze samples from half A; order: score half A, hash, score half B | 4, 14.2 |
 | F22 | "Holds" defined per hypothesis; H7 confirmatory on FinanceBench and FreshStack, as H6; H4 named as simple effects | 7 |
@@ -175,7 +175,7 @@ Written before the freeze. No measured run has started. A publication-grade meth
 | F26 | Checker 2-point tolerance restated against the MDE table | 11.1, 23 (P7) |
 | F27 | Expected-maximum estimator for the search-cost figure | 14.3 |
 | F28 | Compute table in the report, pre-freeze pods included | 21 |
-| F29 | Deviation policy; OSF file upload time-stamps the A3 hash (open) | 20, 14.2 |
+| F29 | Deviation policy; OSF file upload time-stamps the A3 hash (O1, decided 2026-11-14) | 20, 14.2 |
 | F30 | Reference fixes | 24 |
 
 **Second round (C1 to C24).** A post-fix consistency review (2026-11-14) gave 24 findings, C1 to C24. The orchestrator ruled on each the same day.
@@ -208,7 +208,7 @@ C9, C10, C11, C20 and C23 change only the OpenSpec changes and the proposal (A4 
 
 | Change | Pre-registration section |
 | --- | --- |
-| Primary measure named "faithfulness of cited factual claims", definition unchanged; uncited-segment share as co-outcome; sensitivity with uncited factual segments as unsupported; open item O7; limitation added | 6, 11.1, 21, 22, 23 |
+| Primary measure named "faithfulness of cited factual claims", definition unchanged; uncited-segment share as co-outcome; sensitivity with uncited factual segments as unsupported; O7 decided by the owner on 2026-11-14 (primary stays cited claims); limitation added | 6, 11.1, 21, 22, 23 |
 | Undefined gate statistics fail closed (one-class sample fails; undefined resample takes kappa 0 or AUC 0.5, or is left out for the specificity difference; over 5% undefined fails) | 11.2 |
 | Early stop only on preflight, G1 to G3 or the ceiling after the last drop step; a failed outcome gate leaves its rows not testable | 17 |
 | One same-sign rule: both-datasets rules need both; 2-of-3 rules (C1, C2) need 2 of 3, and an opposite third is reported | 7, 18 |
@@ -216,6 +216,14 @@ C9, C10, C11, C20 and C23 change only the OpenSpec changes and the proposal (A4 
 | Contamination subset falls back to the own-knowledge run when the RAG-prompt run is dropped | 13 |
 | Pilot seed confirmed before the pilot | 23 (P9) |
 | OpenSpec only: half-B guard checks the hash of the current selection file; budget check uses 52,200 answers (15 setups x 3 runs x 1,160); pilot-declined path; labelling and closed-book run tasks moved out of the pre-freeze section; Holm family sizes are 19 / 19 / 8 (O6, decided by the owner on 2026-11-14) | none |
+
+**Owner decisions (2026-11-14).** Three open items are closed before the freeze. O2, O3 and O4 stay open.
+
+| Item | Decision | Pre-registration section |
+| --- | --- | --- |
+| O1 | A file upload to the registered OSF project time-stamps the A3 configuration hash | 14.2, 23 |
+| O5 | No ethics query: the study has no human participants, and the labellers are members of the research team. The question reopens as a deviation if a paid external annotator is used | 11.3, 23 |
+| O7 | The primary faithfulness measure stays faithfulness of cited factual claims, because OMRS answers are built to cite their evidence. `uncited_segment_share` stays a co-outcome. The uncited-segment version stays a sensitivity analysis only | 6, 23 |
 
 Cost: estimate about $730 (was about $690) plus the pilot, projected from P2 before the freeze; ceiling $975 unchanged (pre-registration section 17).
 
