@@ -228,6 +228,15 @@ C9, C10, C11, C20 and C23 change only the OpenSpec changes and the proposal (A4 
 | OpenSpec only: O2 (SESOI) is asked in readiness flow step 6.10b, before any pilot result is read | none |
 | Rejected: move O5 before classifier-gate labelling. O5 was decided on 2026-11-14 (no ethics query), so the answer is already recorded before any label | none |
 
+**CodeRabbit round 3 (PR 210, 2026-11-14).** Four threads on commit 3a7e1f56, all fixed before the freeze:
+
+| Change | Pre-registration section |
+| --- | --- |
+| Staged fallback: an undefined subset kappa (for example, both labellers mark all 30 claim kinds as fact) counts as below 0.70, so L2 labels the rest of that set | 11.3, 23 |
+| OpenSpec only: the evaluation-observability spec states the per-chunk-size escalation and the undefined case as scenarios, matching section 11.3 | none |
+| OpenSpec only: task 4D.9 and the readiness proposal state the full plan (L2 750) as the default and 365 only as the staged first stage | none |
+| OpenSpec only: the readiness flow deletes the factorial smoke pod and its disk at G7 at the latest (task 6.11), with a check that no smoke pod or volume remains | none |
+
 **Owner decisions (2026-11-14).** Six open items are closed before the freeze (O6 is in the table above). No owner decision is open; the pre-freeze tasks P1 to P16 remain.
 
 | Item | Decision | Pre-registration section |
@@ -236,7 +245,7 @@ C9, C10, C11, C20 and C23 change only the OpenSpec changes and the proposal (A4 
 | O2 | SESOI 0.02 nDCG@10, with a written justification (user terms, design lower bound, cost, published Qwen3 effect sizes, not set by power, sensitivity at 0.01 and 0.05). Recorded before any pilot result is read | 10, 23 |
 | O3 | No blind relevance audit by default. It runs only if the mean unjudged share in the top 10 differs by more than 5 points: hybrid on against off on FreshStack, or OMRS against RAGFlow on a core dataset in Part 2. The trigger applies only where the qrels list judged non-relevant units; for positives-only datasets the owner decides at P4 between a fixed small audit and no audit | 11.3, 23 |
 | O4 (first decision) | Replaced by the revision below. L2 labelled every correctness answer and every Part 2 label, and 30% of the faithfulness (135) and claim-kind (30) sets. Seed 20261124 retired | 11.3, 16, 23 |
-| O4 (revised the same day) | Full plan (default): L2 labels every item L1 labels and every Part 2 label (L1 750, L2 750; 700 each after drop step 1). Reason: faithfulness is analysed per chunk size (45 per size at 30%), correctness gates are per dataset on 50 answers, refusal claims are rare, and agreed labels are more reusable. Staged fallback, only if L2 cannot commit the time: L2 first labels a seeded 30% of the faithfulness (135, seed 20261123) and claim-kind (30, seed 20261122) sets (L2 365, or 315 after drop step 1), then the rest of a set when kappa on its subset is below 0.70 overall or, for faithfulness, within any chunk-size level (0.70 is a judgement value, not a cited standard). Correctness and Part 2 stay at 100% in both plans. The plan is chosen and dated before the freeze from L2's availability alone, never from results. Seed 20261124 stays retired. The name goes in the run record only | 11.3, 16, 23 |
+| O4 (revised the same day) | Full plan (default): L2 labels every item L1 labels and every Part 2 label (L1 750, L2 750; 700 each after drop step 1). Reason: faithfulness is analysed per chunk size (45 per size at 30%), correctness gates are per dataset on 50 answers, refusal claims are rare, and agreed labels are more reusable. Staged fallback, only if L2 cannot commit the time: L2 first labels a seeded 30% of the faithfulness (135, seed 20261123) and claim-kind (30, seed 20261122) sets (L2 365, or 315 after drop step 1), then the rest of a set when kappa on its subset is below 0.70 overall or, for faithfulness, within any chunk-size level, or is undefined (it then counts as below 0.70; 0.70 is a judgement value, not a cited standard). Correctness and Part 2 stay at 100% in both plans. The plan is chosen and dated before the freeze from L2's availability alone, never from results. Seed 20261124 stays retired. The name goes in the run record only | 11.3, 16, 23 |
 | O5 | No ethics query: the study has no human participants, and the labellers are members of the research team. The question reopens as a deviation if a paid external annotator is used | 11.3, 23 |
 | O7 | The primary faithfulness measure stays faithfulness of cited factual claims, because OMRS answers are built to cite their evidence. `uncited_segment_share` stays a co-outcome. The uncited-segment version stays a sensitivity analysis only | 6, 23 |
 

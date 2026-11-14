@@ -103,7 +103,7 @@ Reasons:
 
 - The downloads go before the pod. The pod's Part C timing counts tokens on all three corpora, so it needs them.
 - The arm smoke run goes after the harness. Every arm needs the section 2 code. Archived task 10.6 and Exp 35 task 4.1 are the same check, so one run does both.
-- The smoke run uses the run machine. Corpus and indexes stay in place for section 5. A stopped pod bills only its disk while the operator decides at G7.
+- The smoke run uses the run machine. A stopped pod still bills its disk, so the smoke pod and its disk are deleted once their outputs are copied and checked, at G7 at the latest (task 6.11). Section 5 builds its indexes on new pods (task 6.12).
 - `pre-exp35-harness-and-answer-fixes` was archived with group 10 open. This group owns those tasks now. The detail stays in that change's design D13.
 - Step E2 (added 2026-11-14, amendment A4) holds the pre-freeze items of `preregistration.md` section 23. The pilot and every pre-freeze sample drawn after the halves exist come from half A, so the halves are written first; earlier samples are listed with their halves (P12). Step G follows the order of work of pre-registration section 14.2: no half-B score exists before the configuration hash is time-stamped on OSF.
 

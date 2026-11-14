@@ -153,11 +153,19 @@ Each faithfulness checker SHALL pass when Cohen's kappa against the human label 
 
 ### Requirement: Human labels follow the registered counts
 
-L1 SHALL label 750 items (claim kinds 100, faithfulness 450, correctness 200). By default L2 SHALL label every item L1 labels. In a staged fallback, chosen and dated before the freeze from L2's availability alone, L2 SHALL label a seeded 30% of claim kinds and faithfulness first (365 items in all), then the rest of a set when kappa on its subset is below 0.70. The claim classifier SHALL reach agreement and refusal recall of at least 0.90 on 100 L1-labelled smoke claims before the freeze.
+L1 SHALL label 750 items (claim kinds 100, faithfulness 450, correctness 200); by default L2 SHALL label all 750. A staged fallback, dated before the freeze from L2's availability alone, SHALL have L2 label a seeded 30% of claim kinds and faithfulness first (365), then the rest of a set when its subset kappa is below 0.70 overall or in any faithfulness chunk-size level. Before the freeze the claim classifier SHALL reach at least 0.90 agreement and refusal recall on 100 L1-labelled smoke claims.
 
 #### Scenario: L2 cannot commit the time for the full plan
 - **WHEN** the owner records the staged plan before the freeze
 - **THEN** L2 SHALL label a seeded 30% of claim kinds and faithfulness first, and every correctness and Part 2 item
+
+#### Scenario: Subset kappa is low in one chunk-size level only
+- **WHEN** in the staged plan the human kappa on the faithfulness subset is 0.70 or more overall but below 0.70 within one chunk-size level
+- **THEN** L2 SHALL label the remaining 315 faithfulness claims
+
+#### Scenario: Subset kappa is undefined
+- **WHEN** in the staged plan the human kappa on a subset is undefined, for example because both labellers mark all 30 claim kinds as fact
+- **THEN** the kappa SHALL count as below 0.70, and L2 SHALL label the rest of that set (70 claim kinds or 315 faithfulness claims)
 
 #### Scenario: A label file is released
 - **WHEN** human labels are released
