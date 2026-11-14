@@ -234,7 +234,7 @@ C9, C10, C11, C20 and C23 change only the OpenSpec changes and the proposal (A4 
 | --- | --- | --- |
 | O1 | A file upload to the registered OSF project time-stamps the A3 configuration hash | 14.2, 23 |
 | O2 | SESOI 0.02 nDCG@10, with a written justification (user terms, design lower bound, cost, published Qwen3 effect sizes, not set by power, sensitivity at 0.01 and 0.05). Recorded before any pilot result is read | 10, 23 |
-| O3 | No blind relevance audit by default. It runs only if the mean unjudged share in the top 10 differs by more than 5 points: hybrid on against off on FreshStack, or OMRS against RAGFlow on a core dataset in Part 2 | 11.3, 23 |
+| O3 | No blind relevance audit by default. It runs only if the mean unjudged share in the top 10 differs by more than 5 points: hybrid on against off on FreshStack, or OMRS against RAGFlow on a core dataset in Part 2. The trigger applies only where the qrels list judged non-relevant units; for positives-only datasets the owner decides at P4 between a fixed small audit and no audit | 11.3, 23 |
 | O4 | L2 (author or colleague) labels every correctness answer and every Part 2 label, and 30% of the faithfulness (135) and claim-kind (30) sets. L2 365, or 315 after drop step 1. Seed 20261124 retired. The name goes in the run record only | 11.3, 16, 23 |
 | O5 | No ethics query: the study has no human participants, and the labellers are members of the research team. The question reopens as a deviation if a paid external annotator is used | 11.3, 23 |
 | O7 | The primary faithfulness measure stays faithfulness of cited factual claims, because OMRS answers are built to cite their evidence. `uncited_segment_share` stays a co-outcome. The uncited-segment version stays a sensitivity analysis only | 6, 23 |
