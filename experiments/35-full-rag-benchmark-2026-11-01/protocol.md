@@ -56,7 +56,7 @@ Per-question marginal nDCG@10 (mean over every cell of the other factors at that
 ### 0.5 Answer stage
 
 - **Selection rule (amended A3, section 0.12: the pool is the three core datasets, Legal excluded; the sentence below is kept for history).** Pooled score = plain mean of the four per-dataset mean nDCG@10 values. Embedder: averaged over all other factors. Reranker size: at the chosen embedder, reranker-on setups, averaged over chunk size and hybrid. Choose the smallest size within 0.01 of the best (a gap of exactly 0.01 counts as within); equal scores go to the smaller size. The inputs and the choice go into a dated note here before the replicate pods start.
-- **Setups.** Chunk size (3) x reranker on or off x hybrid on or off = 12 setups x 3 runs x 1,160 questions = 41,760 answers.
+- **Setups.** Chunk size (3) x reranker on or off x hybrid on or off = 12 setups x 3 runs x 1,160 questions = 41,760 answers. (A2 and A3 add 3 token-matched setups: 15 setups, 52,200 answers.)
 - **Fixed.** Answer model `deepseek/deepseek-v4.1-flash-1017` (OpenRouter, one pinned host, temperature 0, seed 20261101). Ragas 0.4.3, judge `openai/gpt-oss-120b`. Claim checkers GLM-5.3 (main, Z.AI Coding Plan endpoint) and Clef-Flash (second, local). Granite Guardian is dropped, and so is H-CC (section 4.4 keeps its history).
 - **Refusal rule.** `openai/gpt-oss-120b` sorts claims as fact, refusal or mixed. Primary faithfulness uses fact and mixed claims; refusals are reported apart. Gate: agreement of at least 0.90 and refusal recall of at least 0.90 on 100 operator-labelled claims, seed 20261112. GLM-5.3 against Clef-Flash kappa is reported.
 - **Answer correctness (decision 2026-11-13).** The Ragas stage adds `AnswerCorrectness` (Ragas 0.4.3, `ragas.metrics.collections`, default weights: factual 0.75, similarity 0.25; judge `openai/gpt-oss-120b`, local 4B embedder) against each dataset's reference answer, on all four datasets. Validation before it counts: the operator labels 100 seeded answers (seed 20261113; 25 per dataset, even over chunk sizes; from the test pod session), blind to the score, correct or not. Ragas scores are binarised at 0.5. Pooled Cohen's kappa of at least 0.60: correctness is an H8 outcome. Below 0.60: exploratory only. The FinanceBench number match stays.
@@ -203,6 +203,19 @@ Written before the freeze. No measured run has started. A publication-grade meth
 | C24 | Why the faithfulness gate is pooled; per-dataset kappa descriptive | 11.2 |
 
 C9, C10, C11, C20 and C23 change only the OpenSpec changes and the proposal (A4 markers, RQ3 wording, OSF deposit list).
+
+**CodeRabbit round 1 (PR 210, 2026-11-14).** Twelve review threads, all fixed before the freeze:
+
+| Change | Pre-registration section |
+| --- | --- |
+| Primary measure named "faithfulness of cited factual claims", definition unchanged; uncited-segment share as co-outcome; sensitivity with uncited factual segments as unsupported; open item O7; limitation added | 6, 11.1, 21, 22, 23 |
+| Undefined gate statistics fail closed (one-class sample fails; undefined resample takes kappa 0 or AUC 0.5, or is left out for the specificity difference; over 5% undefined fails) | 11.2 |
+| Early stop only on preflight, G1 to G3 or the ceiling after the last drop step; a failed outcome gate leaves its rows not testable | 17 |
+| One same-sign rule: both-datasets rules need both; 2-of-3 rules (C1, C2) need 2 of 3, and an opposite third is reported | 7, 18 |
+| Part 2 C2: section 12 rules for both systems, complete pairs, unjudged-as-0 sensitivity | 18 |
+| Contamination subset falls back to the own-knowledge run when the RAG-prompt run is dropped | 13 |
+| Pilot seed confirmed before the pilot | 23 (P9) |
+| OpenSpec only: half-B guard checks the hash of the current selection file; budget check uses 52,200 answers (15 setups x 3 runs x 1,160); pilot-declined path; labelling and closed-book run tasks moved out of the pre-freeze section; Holm family size follows the recorded O6 answer | none |
 
 Cost: estimate about $730 (was about $690) plus the pilot, projected from P2 before the freeze; ceiling $975 unchanged (pre-registration section 17).
 

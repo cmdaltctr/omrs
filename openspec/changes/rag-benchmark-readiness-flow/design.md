@@ -90,7 +90,7 @@ D. Section 2 harness, PR (G7b)
 E. Arm smoke run on the run machine; pod stopped after it
    |
 E2. A4 pre-freeze items: FreshStack full corpus pin and timing,
-   |   halves and MDE pilot on half A, P1 to P16, open items O1 to O6
+   |   halves and MDE pilot on half A, P1 to P16, open items O1 to O7
    |   (with Part 2 steps 7.1, 7.2 and 7.2a)
 F. Freeze (G7)
    |

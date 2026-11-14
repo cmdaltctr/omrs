@@ -171,12 +171,17 @@ The selection step SHALL write the cell scores, the chosen cell and the configur
 
 ### Requirement: Half B is scored only after the hash is time-stamped
 
-The harness SHALL follow pre-registration section 14.2: score half A only; apply the selection rule and write the selection file; time-stamp the configuration hash with a file upload to the registered OSF project; then score half B and start the replicate pods. A scoring step SHALL refuse any half-B score while the selection file or the time-stamp record is missing. A replicate pod's first stage SHALL refuse to start under the same condition.
+The harness SHALL follow pre-registration section 14.2: score half A; write the selection file; time-stamp its configuration hash by an OSF upload; then score half B and start the replicate pods. A scoring step SHALL refuse any half-B score unless the selection file exists and a time-stamp record holds its current configuration hash. A replicate pod's first stage SHALL refuse to start under the same condition.
 
 #### Scenario: Half-B score before the time-stamp
 
 - **WHEN** the scoring step is asked for half-B scores and no time-stamp record exists
 - **THEN** it MUST stop before it computes any half-B score and MUST name the missing record
+
+#### Scenario: Time-stamp of an earlier selection
+
+- **WHEN** the scoring step is asked for half-B scores and the time-stamp record holds a hash that differs from the configuration hash in the selection file
+- **THEN** it MUST stop before it computes any half-B score and MUST name both hashes
 
 #### Scenario: Half-A scoring
 

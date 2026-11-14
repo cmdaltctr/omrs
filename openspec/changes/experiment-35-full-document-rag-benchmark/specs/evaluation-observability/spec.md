@@ -143,6 +143,10 @@ Each faithfulness checker SHALL pass when Cohen's kappa against the human label 
 - **WHEN** the 95% interval of the GLM-5.3 specificity difference (2,048 minus 512) excludes zero in either direction
 - **THEN** H8a and H8b faithfulness rows 12, 13, 16 and 17 SHALL be exploratory and reported as not testable
 
+#### Scenario: A gate statistic is undefined
+- **WHEN** kappa, the AUC or the specificity difference is undefined on the full labelled sample, or on more than 500 of the 10,000 resamples
+- **THEN** the gate SHALL fail closed by the rule of `preregistration.md` section 11.2, and its rows SHALL be reported as not testable
+
 #### Scenario: The second checker fails its gate
 - **WHEN** Clef-Flash fails its faithfulness gate
 - **THEN** its results SHALL be reported as not validated and SHALL change no confirmatory row

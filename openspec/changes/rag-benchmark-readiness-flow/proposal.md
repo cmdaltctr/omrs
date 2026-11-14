@@ -15,7 +15,7 @@ Without one recorded order, two branches can touch the same specs at once, the l
 
 - A task order only (tasks.md groups 0 to 8) with gates. No code and no capability deltas.
 - The order (operator decisions 2026-11-06): cuts, then router, then one live switch (no re-index: the live collections are test data, operator 2026-11-07), then the pipeline sweep on RunPod, then Experiment 35. The page routing panel follows the router and can run beside the sweep, because it touches no runtime and no result.
-- Amendment A4 (2026-11-14): `experiments/35-full-rag-benchmark-2026-11-01/preregistration.md` governs Experiment 35. Group 6 gains the pre-freeze items of its section 23 (the FreshStack full-corpus pin and timing, the halves and the MDE pilot on half A, P1 to P16, and the user's open items O1 to O6) and follows its order of work (score half A, time-stamp the selection hash on OSF, then score half B). Group 7 lists what the Part 2 protocol must hold and adds step 7.2a, the matched RAGFlow search decision (design D6).
+- Amendment A4 (2026-11-14): `experiments/35-full-rag-benchmark-2026-11-01/preregistration.md` governs Experiment 35. Group 6 gains the pre-freeze items of its section 23 (the FreshStack full-corpus pin and timing, the halves and the MDE pilot on half A, P1 to P16, and the user's open items O1 to O7) and follows its order of work (score half A, time-stamp the selection hash on OSF, then score half B). Group 7 lists what the Part 2 protocol must hold and adds step 7.2a, the matched RAGFlow search decision (design D6).
 
 ## Capabilities
 

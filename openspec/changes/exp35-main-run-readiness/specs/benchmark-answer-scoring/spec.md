@@ -149,6 +149,15 @@ Primary faithfulness, per answer setup and per checker (GLM-5.3 and Clef-Flash),
 - **WHEN** an answer setup has refusal claims
 - **THEN** its primary faithfulness MUST leave them out
 
+### Requirement: Uncited segments are reported and tested in a sensitivity analysis
+
+Primary faithfulness SHALL cover cited factual claims only. The report SHALL give, per setup and dataset, the share of prose segments with no valid ordinal. The classifier SHALL also sort uncited segments, with the question and segment only. A registered sensitivity analysis SHALL count uncited fact and mixed segments as unsupported (pre-registration section 6; open item O7).
+
+#### Scenario: One cited and one uncited fact
+
+- **WHEN** an answer holds one cited fact the checker calls supported and one uncited segment the classifier calls fact
+- **THEN** primary faithfulness MUST be 1.0, the sensitivity MUST be 0.5, and the uncited share MUST be 0.5
+
 ### Requirement: Refusals are reported separately
 
 A refusal report step SHALL read a joined main run and SHALL refuse to start without a passing join report. It SHALL give the refusal rate per answer setup and dataset as a primary descriptive outcome. For refusal claims only, it SHALL give each checker's unsupported rate and the Cohen's kappa of Clef-Flash against GLM-5.3. For factual claims, it SHALL give the Cohen's kappa of Clef-Flash against GLM-5.3 per dataset.
@@ -189,6 +198,17 @@ A sampling step SHALL draw 50 half-B questions per dataset with seed 20261113, e
 
 - **WHEN** the agreement step computes any gate interval (kappa, AUC or specificity difference)
 - **THEN** it MUST use a percentile bootstrap with 10,000 resamples by question and the seed listed for that interval in pre-registration section 16
+
+#### Scenario: Statistic undefined on the full sample
+
+- **WHEN** the labelled sample of a dataset holds only one human class, so the AUC or kappa is undefined
+- **THEN** the gate MUST fail on that dataset
+
+#### Scenario: Undefined resamples
+
+- **WHEN** a resample holds only one class
+- **THEN** the step MUST NOT draw it again, MUST give it kappa 0 or AUC 0.5, and MUST count it
+- **AND** the gate MUST fail when more than 500 of the 10,000 resamples are undefined
 
 #### Scenario: Point estimate passes but lower bound fails
 
@@ -242,6 +262,12 @@ The agreement step SHALL give each checker's specificity (the share of human-sup
 
 - **WHEN** only the Clef-Flash specificity difference excludes zero
 - **THEN** it MUST be reported only and MUST NOT change any row
+
+#### Scenario: Specificity difference undefined
+
+- **WHEN** a chunk-size level of the full sample, or of more than 500 of the 10,000 resamples, holds no human-supported claim
+- **THEN** rows 12, 13, 16 and 17 MUST be "not testable"
+- **AND** a resample with no human-supported claim at a level MUST NOT be drawn again, MUST be left out of the interval and MUST be counted
 
 #### Scenario: Gate decided before H8a and H8b results
 

@@ -1,6 +1,6 @@
 # Tasks: Experiment 35 Reproducible Local RAG Benchmark
 
-> DRAFT. Do not start a measured run until section 4 is complete and committed. Section 1 starts only after `pipeline-sweep-llamacpp` passes its exit rule.
+> DRAFT. Do not start a measured run until the pre-freeze tasks of section 4 are complete and committed (tasks 4A.4a, 4A.6 to 4A.8, 4B.4, 4B.5, 4B.5a, 4B.7 and 4C.2 run during or after the measured run and stay beside their amendment). Section 1 starts only after `pipeline-sweep-llamacpp` passes its exit rule.
 
 ## 1. Prepare the protocol inputs
 
@@ -61,13 +61,13 @@ The full-factorial redesign (design D0) replaces the six arms. Tasks 5.1 to 5.4 
 
 ## 4B. Pre-freeze amendment A2: methods review (2026-11-13)
 
-Design D0.12. The code work is readiness task group 15. Where 4A tasks differ, 4B wins: 4A.4a now draws its 100 answers from the main run (half B), not the test pod. (A4: 200 answers, see 4D.6.)
+Design D0.12. The code work is readiness task group 15. Where 4A tasks differ, 4B wins: 4A.4a now draws its 100 answers from the main run (half B), not the test pod. (A4: 200 answers, see 5.7.)
 
 - [x] 4B.1 Write amendment A2 into this change (design D0.12, specs), `protocol.md` (section 0.10) and `plan.json` (amendment A2, metrics, hypotheses). Verify: both `openspec validate --strict` runs and `omrs experiments check` pass. Done 2026-11-13.
 - [ ] 4B.2 Compute the minimum detectable effects from data (M1, readiness task 15.11) and write the table with its sources into `protocol.md` section 0.10. Verify: the table is in a commit before the freeze commit. (Amended by A4: the table lives in `preregistration.md` section 10; see 4D.5.)
 - [ ] 4B.3 Pin every reranker GGUF with its SHA-256 (M8) only after its Spearman check (at least 0.95 on 200 seeded pairs) passes on the test pod. Verify: `plan.json` runtime holds three reranker entries, `load_runtime_block` accepts them, and `protocol.md` lists each correlation.
-- [ ] 4B.4 Label the four human-validation sets (M4): refusal gate 100, faithfulness 200, correctness 100 (L1), and 30% of each by L2. Write the disagreement rule into `protocol.md` before the first label. Verify: the kappa tables with intervals name their `output/` files, and no labeller name appears in any record. (Superseded by A4: L1 750 and L2 225; see 4D.6.)
-- [ ] 4B.5 Run the closed-book run (M6) on replicate pod 1 and report correctness by retrieval hit or miss. Verify: the report table names its `output/` file. (Amended by A4: two closed-book runs; see 4D.7.)
+- [ ] 4B.4 Label the four human-validation sets (M4): refusal gate 100, faithfulness 200, correctness 100 (L1), and 30% of each by L2. Write the disagreement rule into `protocol.md` before the first label. Verify: the kappa tables with intervals name their `output/` files, and no labeller name appears in any record. (Superseded by A4: L1 750 and L2 225; see 5.7.)
+- [ ] 4B.5 Run the closed-book run (M6) on replicate pod 1 and report correctness by retrieval hit or miss. Verify: the report table names its `output/` file. (Amended by A4: two closed-book runs; see 5.8.)
 - [ ] 4B.5a Run the oracle run (design D0.12, readiness tasks 15.12 and 15.13) on replicate pod 1 and report it beside closed-book as ceiling and floor, descriptive only. Verify: the table names its `output/` file and states the no-distractor caveat.
 - [ ] 4B.6 Deposit `protocol.md` and `plan.json` on OSF at the freeze commit (M9; the operator does the deposit). Verify: a commit after the freeze, before the first measured run, adds the OSF link and the freeze commit hash to `protocol.md`, and the deposit holds no personal data beyond the operator name. (Amended by A4: `preregistration.md` is the main file of the deposit; the OSF link and freeze commit go into `plan.json` `frozen`.)
 - [ ] 4B.7 Write the limitations into `report.md`: one answer model, English only, the web-search reranker instruction applied to finance and legal text, 3 runs that measure hosted-API nondeterminism, chunk size confounded with context length in the answer stage. Verify: the report's limitations section names each. (Amended by A4: add scope S and the limitations of `preregistration.md` section 22.)
@@ -91,10 +91,10 @@ Design D0.15. Protocol section 0.13. `preregistration.md` governs; P and O numbe
 - [ ] 4D.3 Time one full-corpus FreshStack index build and update the estimate (P2). Verify: the estimate in `preregistration.md` section 17 names the measured hours.
 - [ ] 4D.4 Check whether the FreshStack nugget labels allow alpha-nDCG@10 with the benchmark's scorer (P3), and whether each dataset's qrels list judged non-relevant units (P4). Verify: the scorer is pinned or recorded as "not available", and each dataset has one line.
 - [ ] 4D.5 Fix the pilot cell list (at most the four H7 corner indexes per core dataset, not reused), project the pilot cost from the P2 timing and get the operator's approval, run the retrieval-only pilot on 40 seeded half-A questions per core dataset, and fill the MDE table (P5, P6); if the operator declines, fill it from assumed SDs of 0.15 to 0.25, labelled as assumed. Restate the checker 2-point tolerance against the table (P7). Verify: the MDE table has one row per dataset and row group, with its SD source.
-- [ ] 4D.6 Write the label guidelines for each set with worked examples from outside every sample (P8). Label L1 750 items (claim kinds 100, faithfulness 450 from answers to all questions, correctness 200 from half B) and L2 225. Verify: the guidelines are committed before the first label, and the gate results are recorded with their time before any H8a or H8b contrast result.
-- [ ] 4D.7 Run the second closed-book run (RAG prompt, empty evidence) beside the first, and the length-controlled check on 300 claims. Verify: each table names its `output/` file and is marked descriptive or sensitivity.
+- [ ] 4D.6 Write the label guidelines for each set with worked examples from outside every sample (P8). Verify: the guidelines are committed before the freeze. (The labelling itself is task 5.7.)
+- [ ] 4D.7 Fix the second closed-book run (RAG prompt, empty evidence) and the length-controlled check (300 claims) in `plan.json` and the pre-registration. Verify: both are listed before the freeze. (The runs are task 5.8.)
 - [ ] 4D.8 Fill the pins (P9 to P14): confirm the new seeds of the `preregistration.md` section 16 seeds table (20261120 only if O3 is yes); record answer-model host, reasoning mode, output cap and context length; judge, classifier and GLM-5.3 settings; query instruction, reranker instruction and hybrid settings; `halves.json` and its SHA-256 with every pre-freeze question ID and half; prompt template hashes; the `evidence_recall_20k` tolerance. Verify: every "Missing" row of `preregistration.md` section 16 has a value, and `plan.json` `frozen` lists them at the freeze.
-- [ ] 4D.9 Get the operator's answers to O1 to O6 (OSF time-stamp mechanism, SESOI value, optional blind audit, L2 identity, ethics query, BioASQ rows 12 to 19 as sanity checks). Verify: each answer is recorded with its date before the freeze, and no L2 name appears in a public file.
+- [ ] 4D.9 Get the operator's answers to O1 to O7 (OSF time-stamp mechanism, SESOI value, optional blind audit, L2 identity, ethics query, BioASQ rows 12 to 19 as sanity checks, uncited-segment faithfulness as primary). Verify: each answer is recorded with its date before the freeze, and no L2 name appears in a public file.
 - [ ] 4D.10 Check before the freeze that no live text in this change, `protocol.md` section 0 or `plan.json` contradicts `preregistration.md`. Verify: every hit for "MixedLM", "included whole", "gpt-6.1-terra", "operator decides" and "equivalence" is marked superseded or removed.
 
 ## 5. Run
@@ -105,6 +105,8 @@ Design D0.15. Protocol section 0.13. `preregistration.md` governs; P and O numbe
 - [ ] 5.4 Run the determinism check for every arm, and the rebuild check (4B baseline index rebuilt once per dataset in a fresh process). Verify: the output states match or mismatch per arm and dataset, and for each rebuild.
 - [ ] 5.5 Run Ragas on each arm where the dataset supports each metric. Verify: unsupported metrics show "not measured".
 - [ ] 5.6 Check about 50 judged items by hand. Verify: the agreement is computed with the measure frozen in 1.10.
+- [ ] 5.7 (A4, moved from 4D.6.) Label L1 750 items (claim kinds 100, faithfulness 450 from answers to all questions, correctness 200 from half B) and L2 225, with the guidelines of task 4D.6. Verify: the gate results are recorded with their time before any H8a or H8b contrast result.
+- [ ] 5.8 (A4, moved from 4D.7.) Run the second closed-book run (RAG prompt, empty evidence) beside the first, and the length-controlled check on 300 claims. Verify: each table names its `output/` file and is marked descriptive or sensitivity.
 
 ## 6. Analyse and report
 
