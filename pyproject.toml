@@ -759,7 +759,12 @@ select = ["E", "F", "I", "UP", "B", "S"]
 # `uv sync --no-group dev --group ragas`. It conflicts with `dev` so uv resolves it in
 # its own fork; Ragas needs older rich and jiter, and the base keeps its own versions.
 ragas = ["ragas==0.4.3", "langchain-community==0.3.31"]
+# Experiment 35 clustered analysis (statsmodels GEE, readiness task 15.6). It is
+# experiment-only and never in the app install; `uv.lock` records the exact version.
+# `dev` includes it so the fast suite runs the analysis tests.
+stats = ["statsmodels>=0.15.0"]
 dev = [
+    {include-group = "stats"},
     "import-linter>=2.13",
     "ipywidgets>=8.1.8",
     "jupytext>=1.19.4",
