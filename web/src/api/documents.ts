@@ -137,6 +137,13 @@ export interface AnswerUsage {
 
 export type AnswerStatus = "ok" | "no_evidence" | "generation_unverified" | "unverified_claims" | "error";
 
+/** A provider rate limit: `rate_limit` means wait, `out_of_credit` means top up the account. */
+export interface AnswerRateLimit {
+  kind: "rate_limit" | "out_of_credit";
+  http_status: 429 | 402;
+  retry_after_seconds: number | null;
+}
+
 export interface AnswerResult {
   status: AnswerStatus;
   query: string;
@@ -149,6 +156,10 @@ export interface AnswerResult {
   verified?: boolean;
   unverified_claims?: { claim: string; verdict: string; ordinals: number[] }[];
   verification_skipped?: string;
+  /** Present only when generation failed because the answer model's provider replied HTTP 429 or 402. */
+  rate_limited?: AnswerRateLimit;
+  /** Present only when claim verification stopped because the judge's provider replied HTTP 429 or 402. */
+  verification_rate_limited?: AnswerRateLimit;
   diagnostics?: AnswerDiagnostics;
   /** The model's reasoning text, calls joined by a blank line. Present only when a call returned some. */
   reasoning?: string;

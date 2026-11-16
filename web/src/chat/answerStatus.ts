@@ -49,6 +49,8 @@ export function answerStatus(result: AnswerResult): StatusText {
 /** One friendly line for an answer the engine reported as failed. The raw message goes to the console only. */
 export function failureLine(result: AnswerResult): string {
   console.error(result.error ?? "The answer failed.", result);
+  if (result.rate_limited?.kind === "out_of_credit") return "The model provider account is out of credit. Top up the provider account, then select Retry.";
+  if (result.rate_limited?.kind === "rate_limit") return "The model provider is limiting requests. Wait a moment, then select Retry.";
   if (result.failure_stage === "retrieval") return "The knowledge base could not search for evidence.";
   if (result.failure_stage === "generation") return "The model could not write an answer from the evidence.";
   return "The answer could not be completed.";

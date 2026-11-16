@@ -24,8 +24,10 @@ from pydantic import ValidationError as PydanticValidationError
 
 from .citations import build_citations, parse_citation_ordinals
 from .evidence import _evidence_rows, _labelled_nodes
+from .judges.base import ClaimJudge
 from .judges.registry import as_judge
 from .progress import AnswerStage, report_stage
+from .rate_limits import classify_rate_limit, generation_message, with_short_402_retry
 from .synthesis import CompletionSeam, SeamCompletionError, run_synthesis
 from .verify import VerificationFields, run_verification_stage
 
@@ -109,12 +111,15 @@ class SynthesisOutcome:
             failure when generation failed).
         ms: Wall-time of the synthesis run.
         error: Redacted, actionable message when generation failed.
+        rate_limited: The rate-limit record when the provider replied
+            HTTP 429 or 402 (design D25), else ``None``.
     """
 
     text: str | None
     completion_calls: int
     ms: float
     error: str | None = None
+    rate_limited: dict[str, Any] | None = None
 
     @property
     def failure_stage(self) -> str | None:
@@ -150,13 +155,15 @@ async def synthesise_answer(
     report_stage(AnswerStage.WRITING)
     nodes = _labelled_nodes(evidence)
     attempts = 0
+    retrying = with_short_402_retry(complete)
 
     async def _counting_complete(prompt: str) -> str:
-        # Counts every seam invocation so a failure reports the attempts
-        # made before it (review F11); the count survives exceptions.
+        # Counts every round so a failure reports the attempts made
+        # before it (review F11); the count survives exceptions. A short
+        # HTTP 402 retry stays inside one round (design D25).
         nonlocal attempts
         attempts += 1
-        return await complete(prompt)
+        return await retrying(prompt)
 
     start = time.perf_counter()
     try:
@@ -175,15 +182,19 @@ async def synthesise_answer(
         if isinstance(exc, SeamCompletionError) and exc.__cause__ is not None:
             exc = exc.__cause__  # Report the provider's own error.
         malformed = isinstance(exc, PydanticValidationError)
+        limit = classify_rate_limit(exc)
+        if limit is not None:
+            error = generation_message(limit)
+        elif malformed:
+            error = MALFORMED_REPLY_ERROR
+        else:
+            error = f"Generation failed: {type(exc).__name__}: {error_detail(exc)}"
         return SynthesisOutcome(
             text=None,
             completion_calls=attempts,
             ms=(time.perf_counter() - start) * 1000.0,
-            error=(
-                MALFORMED_REPLY_ERROR
-                if malformed
-                else f"Generation failed: {type(exc).__name__}: {error_detail(exc)}"
-            ),
+            error=error,
+            rate_limited=limit.as_dict() if limit is not None else None,
         )
     if not text.strip():
         # Spec: ``generation_unverified`` needs a non-empty answer, so
@@ -289,6 +300,9 @@ async def verify_answer(
         # No judge model means no judge call, so no stage (design D3).
         report_stage(AnswerStage.VERIFYING)
     if verify_complete is not None:
+        if not isinstance(verify_complete, ClaimJudge):
+            # A plain seam gets the short HTTP 402 retry (design D25).
+            verify_complete = with_short_402_retry(verify_complete)
         # A plain seam runs as the ``chat`` strategy; its records name the block's judge.
         verify_complete = cast(CompletionSeam, as_judge(verify_complete, answer_block))
     return await run_verification_stage(

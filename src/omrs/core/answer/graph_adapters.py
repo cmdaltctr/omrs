@@ -279,6 +279,7 @@ async def synthesise_adapter(
             error=synthesis.error or "Generation failed: no answer text",
             evidence=evidence,
             diagnostics=diagnostics,
+            rate_limited=synthesis.rate_limited,
         )
         return _output(failed, **calls)
     draft = answered_result(

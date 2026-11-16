@@ -307,6 +307,7 @@ async def answer(
             error=synthesis.error or "Generation failed: no answer text",
             evidence=evidence,
             diagnostics=diagnostics,
+            rate_limited=synthesis.rate_limited,
         )
 
     # ── Deterministic citations from the supplied evidence.  Citation

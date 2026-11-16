@@ -7290,6 +7290,36 @@ components:
           description: >
             With diagnostics on a user-profile collection: the request values the saved
             pipeline did not use.
+        rate_limited:
+          $ref: "#/components/schemas/AnswerRateLimit"
+          description: >
+            Present only when generation failed because the answer model's provider replied
+            HTTP 429 or HTTP 402 (status error, failure_stage generation). `error` then holds
+            a fixed message for the kind.
+        verification_rate_limited:
+          $ref: "#/components/schemas/AnswerRateLimit"
+          description: >
+            Present only when claim verification stopped because the judge's provider
+            replied HTTP 429 or HTTP 402. The answer keeps its status; `verification_skipped`
+            holds a fixed reason for the kind.
+
+    AnswerRateLimit:
+      type: object
+      additionalProperties: false
+      required: [kind, http_status, retry_after_seconds]
+      description: >
+        A provider rate limit. rate_limit = HTTP 429, or HTTP 402 with a Retry-After (wait,
+        then ask again). out_of_credit = HTTP 402 with no Retry-After (top up the account).
+      properties:
+        kind:
+          type: string
+          enum: [rate_limit, out_of_credit]
+        http_status:
+          type: integer
+          enum: [429, 402]
+        retry_after_seconds:
+          type: [number, "null"]
+          description: The wait the provider asked for, in seconds, else null.
 
 
     JudgeCall:
