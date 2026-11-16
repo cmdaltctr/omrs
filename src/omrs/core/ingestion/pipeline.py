@@ -455,4 +455,20 @@ async def ingest_path_async(
         }
     if errors:
         result["warnings"] = errors
+    if resolved_settings.retrieval.hybrid_sparse_backend == "native":
+        _prepare_native_sparse(resolved_store, collection_name)
     return result
+
+
+def _prepare_native_sparse(store: VectorStore, collection_name: str) -> None:
+    """Prepare the native sparse index; a failure only warns (design D26)."""
+    try:
+        store.prepare_native_sparse(collection_name)
+    except Exception as exc:
+        logger.warning(
+            "Could not prepare the full-text index of collection '%s' (%s: %s). "
+            "Native sparse queries fall back to BM25 until the next ingest succeeds.",
+            collection_name,
+            type(exc).__name__,
+            exc,
+        )

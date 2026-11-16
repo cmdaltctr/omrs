@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 _BACKEND_REGISTRY_NAME: dict[str, str] = {
     "onnx": "reranker_onnx",
     "torch": "reranker_torch",
+    "llamacpp": "reranker_llamacpp",
 }
 
 
@@ -51,7 +52,7 @@ def resolve_reranker_backend(backend: str) -> Any:
     """Resolve the reranker class for the given backend name.
 
     Args:
-        backend: The settings value (``"onnx"`` or ``"torch"``).
+        backend: The settings value (``"onnx"``, ``"torch"`` or ``"llamacpp"``).
 
     Returns:
         The resolved reranker class (callable).  When the torch extra
@@ -122,4 +123,9 @@ def build_reranker_from_settings(
     if not backend:
         backend = "onnx"
     reranker_cls = resolve_reranker_backend(backend)
+    # A backend that needs more than the model ID builds itself from the
+    # settings (design D27). Duck typing, not a branch on backend names.
+    from_settings = getattr(reranker_cls, "from_settings", None)
+    if from_settings is not None:
+        return from_settings(settings)
     return reranker_cls(model_id=settings.retrieval.rerank_model)

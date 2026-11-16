@@ -170,15 +170,16 @@ class TestNativeSparseQueries:
     def test_query_ranks_text_matches(self, tmp_path) -> None:
         store = _lance_store(tmp_path)
         _write_rows(store, "docs", _CORPUS)
+        store.prepare_native_sparse("docs")
         rows = store.query_native_sparse("docs", "colosseum", 5)
         assert [row["id"] for row in rows] == ["history-1"]
 
-    def test_first_use_creates_fts_index_additively(self, tmp_path) -> None:
-        """A collection without an index gains one on first native use."""
+    def test_prepare_creates_fts_index_additively(self, tmp_path) -> None:
+        """A collection without an index gains one when the ingest prepares it (D26)."""
         store = _lance_store(tmp_path)
         _write_rows(store, "docs", _CORPUS)
         assert store.native_sparse_coverage("docs") is None
-        store.query_native_sparse("docs", "colosseum", 5)
+        store.prepare_native_sparse("docs")
         coverage = store.native_sparse_coverage("docs")
         # Creation indexes pre-existing rows synchronously.
         assert coverage == {"indexed": 3, "unindexed": 0, "total": 3}
@@ -187,6 +188,7 @@ class TestNativeSparseQueries:
         store = _lance_store(tmp_path)
         _write_rows(store, "docs", _CORPUS)
         _write_rows(store, "docs", [("science-2", "stadium sized quantum array", "science")])
+        store.prepare_native_sparse("docs")
         rows = store.query_native_sparse("docs", "stadium", 5, where={"category": "sport"})
         assert [row["id"] for row in rows] == ["sport-1"]
 
@@ -200,6 +202,7 @@ class TestNativeSparseQueries:
 
         store = _lance_store(tmp_path)
         _write_rows(store, "docs", _CORPUS)
+        store.prepare_native_sparse("docs")
         row = store.query_native_sparse("docs", "colosseum", 5)[0]
         assert set(row) == {"id", "document", "metadata", "score", "score_kind"}
         assert row["document"] == "the colosseum of ancient rome"
@@ -211,6 +214,7 @@ class TestNativeSparseQueries:
         """The FTS path never touches the BM25 cache counter (PR #63)."""
         store = _lance_store(tmp_path)
         _write_rows(store, "docs", _CORPUS)
+        store.prepare_native_sparse("docs")
         before = store.get_generation("docs")
         store.query_native_sparse("docs", "colosseum", 5)
         assert store.get_generation("docs") == before
@@ -245,19 +249,22 @@ class TestFTSLifecycle:
     def test_write_after_index_is_served_after_refresh(self, tmp_path) -> None:
         """Post-index writes surface in the next native query.
 
-        The durable stats show staleness first; the query-triggered
-        refresh folds the rows, then the ranking serves them.
+        The query scans the unindexed row without a refresh (D26); the
+        next ingest's prepare folds it into the index.
         """
         store = _lance_store(tmp_path)
         _write_rows(store, "docs", _CORPUS)
-        store.query_native_sparse("docs", "colosseum", 5)  # creates the index
+        store.prepare_native_sparse("docs")  # creates the index
         _write_rows(store, "docs", [("late-1", "zephyr unique late token", "science")])
         # Durable staleness is observable before the next query...
         coverage = store.native_sparse_coverage("docs")
         assert coverage == {"indexed": 3, "unindexed": 1, "total": 4}
-        # ...and the next native query refreshes and serves the new row.
+        # ...the next native query serves the new row unchanged...
         rows = store.query_native_sparse("docs", "zephyr", 5)
         assert [row["id"] for row in rows] == ["late-1"]
+        assert store.native_sparse_coverage("docs") == coverage
+        # ...and the prepare refreshes the index.
+        store.prepare_native_sparse("docs")
         assert store.native_sparse_coverage("docs") == {
             "indexed": 4,
             "unindexed": 0,
@@ -268,7 +275,7 @@ class TestFTSLifecycle:
         """Deleted rows never return from the native path."""
         store = _lance_store(tmp_path)
         _write_rows(store, "docs", _CORPUS)
-        store.query_native_sparse("docs", "colosseum", 5)
+        store.prepare_native_sparse("docs")
         store.delete_where("docs", {"category": "history"})
         assert store.query_native_sparse("docs", "colosseum", 5) == []
 
@@ -276,7 +283,7 @@ class TestFTSLifecycle:
         """Upserting an existing id replaces its indexed text."""
         store = _lance_store(tmp_path)
         _write_rows(store, "docs", _CORPUS)
-        store.query_native_sparse("docs", "colosseum", 5)
+        store.prepare_native_sparse("docs")
         _write_rows(store, "docs", [("history-1", "replaced theta content", "history")])
         rows = store.query_native_sparse("docs", "theta", 5)
         assert [row["id"] for row in rows] == ["history-1"]
@@ -288,7 +295,7 @@ class TestFTSLifecycle:
         """Engine failures raise so the retrieval layer can fall back."""
         store = _lance_store(tmp_path)
         _write_rows(store, "docs", _CORPUS)
-        store.query_native_sparse("docs", "colosseum", 5)  # ensure index exists
+        store.prepare_native_sparse("docs")  # ensure index exists
 
         def _boom(*_args, **_kwargs):
             raise RuntimeError("engine exploded")
@@ -299,7 +306,7 @@ class TestFTSLifecycle:
             store.query_native_sparse("docs", "colosseum", 5)
 
     def test_index_creation_failure_propagates_for_fallback(self, tmp_path, monkeypatch) -> None:
-        """First-use creation failure raises (the BM25 fallback signal)."""
+        """Creation failure raises from the prepare (the ingest warns)."""
         from omrs.core.vectordb.lancedb import fts as lance_fts
 
         store = _lance_store(tmp_path)
@@ -310,15 +317,15 @@ class TestFTSLifecycle:
 
         monkeypatch.setattr(lance_fts, "ensure_fts_index", _boom)
         with pytest.raises(RuntimeError, match="cannot create index"):
-            store.query_native_sparse("docs", "colosseum", 5)
+            store.prepare_native_sparse("docs")
 
     def test_refresh_failure_propagates_for_fallback(self, tmp_path, monkeypatch) -> None:
-        """Refresh failure on a stale index raises (lifecycle fallback)."""
+        """Refresh failure on a stale index raises from the prepare."""
         from omrs.core.vectordb.lancedb import fts as lance_fts
 
         store = _lance_store(tmp_path)
         _write_rows(store, "docs", _CORPUS)
-        store.query_native_sparse("docs", "colosseum", 5)  # creates the index
+        store.prepare_native_sparse("docs")  # creates the index
         _write_rows(store, "docs", [("late-1", "zephyr late token", "science")])
 
         def _boom(_table):
@@ -326,7 +333,7 @@ class TestFTSLifecycle:
 
         monkeypatch.setattr(lance_fts, "refresh_fts_index", _boom)
         with pytest.raises(RuntimeError, match="optimize failed"):
-            store.query_native_sparse("docs", "zephyr", 5)
+            store.prepare_native_sparse("docs")
 
 
 class TestNativeFTSProbe:
@@ -382,6 +389,7 @@ class TestHybridNativePipeline:
 
         store = _lance_store(tmp_path)
         _write_rows(store, "docs", _CORPUS)
+        store.prepare_native_sparse("docs")
         self._patch_dense_query(monkeypatch)
         reset_warning_state()
         results = retrieval.search(
@@ -453,7 +461,7 @@ class TestHybridNativePipeline:
         store = _lance_store(tmp_path)
         _write_rows(store, "docs", _CORPUS)
         # Create the index, then leave a durable unindexed row.
-        store.query_native_sparse("docs", "colosseum", 5)
+        store.prepare_native_sparse("docs")
         _write_rows(store, "docs", [("late-1", "zephyr late token", "science")])
         self._patch_dense_query(monkeypatch)
         reset_warning_state()
@@ -489,7 +497,7 @@ class TestHybridNativePipeline:
 
         store = _lance_store(tmp_path)
         _write_rows(store, "docs", _CORPUS)
-        store.query_native_sparse("docs", "colosseum", 5)
+        store.prepare_native_sparse("docs")
         _write_rows(store, "docs", [("late-1", "zephyr late token", "science")])
         self._patch_dense_query(monkeypatch)
         reset_warning_state()
@@ -515,6 +523,7 @@ class TestHybridNativePipeline:
         store = _lance_store(tmp_path)
         _write_rows(store, "docs", _CORPUS)
         _write_rows(store, "docs", [("science-2", "stadium sized quantum array", "science")])
+        store.prepare_native_sparse("docs")
         self._patch_dense_query(monkeypatch)
         reset_warning_state()
         results = retrieval.search(

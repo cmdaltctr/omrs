@@ -153,6 +153,13 @@ class VectorStore(ABC):
         """
         raise NotImplementedError(f"{type(self).__name__} does not support native sparse queries")
 
+    def prepare_native_sparse(self, collection_name: str) -> None:  # noqa: B027
+        """Prepare the native sparse index of *collection_name* at ingest.
+
+        A store without a native sparse engine has nothing to prepare,
+        so the default does nothing (design D26).
+        """
+
     # Reads.
 
     @abstractmethod

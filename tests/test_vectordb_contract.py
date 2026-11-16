@@ -873,6 +873,7 @@ class TestQuerySuppliesEmbeddingIdentity:
     def test_native_sparse_query_checks_the_supplied_identity(self, tmp_path: Path) -> None:
         store = LanceVectorStore(uri=str(tmp_path / "lancedb"), embedding_identity=_IDENTITY_A)
         _write_stamped(store, "fts-b", _IDENTITY_B)
+        store.prepare_native_sparse("fts-b")  # the ingest builds the index (D26)
         assert store.query_native_sparse("fts-b", "alpha", 3, embedding_identity=_IDENTITY_B)
         with pytest.raises(ValueError, match="model-b"):
             _write_stamped(store, "fts-a", _IDENTITY_A)
