@@ -87,9 +87,10 @@ The protocol SHALL register H1 to H7, H8a and H8b before the run, each within sc
 - **WHEN** H8a holds for an outcome and H8b does not
 - **THEN** the report SHALL claim only that chunk size together with context length changes that outcome
 
-#### Scenario: Chunk size itself
+#### Scenario: Chunk size at a fixed pre-assembly budget
 - **WHEN** H8b holds for an outcome
-- **THEN** the report SHALL claim that chunk size itself changes it only when the registered sensitivity, on the questions where all three `-t20k` setups reach at least 19,456 tokens, gives the same sign on FinanceBench and FreshStack, and SHALL give the questions kept per dataset
+- **THEN** the report SHALL claim that chunk size changes it at a fixed pre-assembly evidence budget only when the registered sensitivity, on the questions where all three `-t20k` setups reach a cut total of at least 19,456 tokens, gives the same sign on FinanceBench and FreshStack, and SHALL give the questions kept per dataset
+- **AND** the report SHALL give the realised (assembled) token total per setup beside the result, and SHALL NOT claim that H8b separates chunk size from context length
 
 #### Scenario: H7 contrast scale
 - **WHEN** row 11 is computed
@@ -219,7 +220,7 @@ nDCG@10 on distinct units SHALL be the primary metric of the study. `evidence_re
 
 ### Requirement: FinanceBench hits are scored at the gold page
 
-A FinanceBench hit SHALL be a retrieved unit on the gold document and the gold page. One frozen, tested function SHALL convert the zero-indexed `evidence_page_num` to stored page numbers. A retrieved unit SHALL be a stored chunk, and a FinanceBench stored chunk SHALL cover its one page (amendment A5, 2026-11-14: a stored chunk never spans pages, so the first-page rule of A2 and any-page credit give the same number).
+A FinanceBench hit SHALL be a retrieved unit on the gold document and the gold page. One frozen, tested function SHALL convert the zero-indexed `evidence_page_num` to stored page numbers. A retrieved candidate SHALL be a stored chunk, and the scoring unit SHALL stay the page, after the collapse to distinct units. A FinanceBench stored chunk SHALL cover its one page (amendment A5, 2026-11-14: a stored chunk never spans pages, so the first-page rule of A2 and any-page credit give the same number).
 
 #### Scenario: A chunk comes from the gold page
 - **WHEN** a retrieved chunk comes from the gold document and its page equals the converted gold page

@@ -311,17 +311,23 @@ The FreshStack loader SHALL load the full public `freshstack/corpus-oct-2024` co
 
 ### Requirement: The FreshStack export writes row text only, with code fenced
 
-The indexed file SHALL hold the published row text only; IDs, URLs and byte offsets SHALL go in the manifest. A `.md` or `.mdx` row SHALL be written unchanged. Every other row SHALL be wrapped in a backtick fence one backtick longer than its longest backtick run, and at least three, unless the fallback of pre-registration section 4 applies. The manifest SHALL record each row's extension and whether it was fenced. The query text SHALL be the title, a blank line, then the body (amendment A5).
+The indexed file SHALL hold the published row text byte for byte; the exporter's IDs, URLs and byte offsets SHALL go in the manifest, never in the text. A `.md` or `.mdx` row SHALL stay unchanged. Every other row SHALL sit in a backtick fence one longer than its longest backtick run (at least three), unless the pre-registration section 4 fallback applies. The manifest SHALL record each row's extension and fence state. The query SHALL be the title, a blank line and the body (amendment A5).
 
 #### Scenario: Python row with comments
 
 - **WHEN** a `.py` row holds lines that start with `#`
 - **THEN** the written file MUST hold the row inside one fence, and no `#` line MUST be read as a heading
 
-#### Scenario: No metadata in the indexed text
+#### Scenario: No exporter metadata in the indexed text
 
 - **WHEN** a row is written
-- **THEN** the file MUST hold no front matter, no source URL and no byte offset
+- **THEN** the file MUST hold no front matter, source URL, ID or byte offset that the exporter added
+- **AND** apart from the fence of a non-Markdown row, the file text MUST equal the published row text byte for byte
+
+#### Scenario: Published row holds its own front matter
+
+- **WHEN** a published `.md` row starts with its own front matter and holds a URL
+- **THEN** the written file MUST equal the row text byte for byte, front matter and URL included
 
 #### Scenario: Row holding a three-backtick line
 
@@ -351,21 +357,31 @@ A "chunk" SHALL be a stored chunk, one row of the index (amendment A5). The sear
 
 ### Requirement: An unmapped chunk keeps its rank as a placeholder
 
-A chunk with no page label, or a chunk that maps to no unit, SHALL map to a placeholder unit that keeps its rank and counts as not relevant. The count of such chunks SHALL be reported per setup (amendment A5).
+On FinanceBench, the only dataset scored by page, a chunk with no page label SHALL map to a placeholder unit. On every dataset, a chunk that maps to no unit SHALL map to a placeholder unit. A placeholder unit SHALL keep its rank and count as not relevant. The count of such chunks SHALL be reported per setup and dataset (amendment A5).
 
 #### Scenario: Chunk with no page label
 
 - **WHEN** a FinanceBench chunk with no page label sits at rank 2
 - **THEN** rank 2 MUST hold a placeholder unit that is not relevant, the unit at rank 3 MUST stay at rank 3, and the setup's unmapped count MUST be 1
 
+#### Scenario: FreshStack chunk with no page label
+
+- **WHEN** a FreshStack chunk with no page label maps to its gold document
+- **THEN** it MUST count as a hit, and the unmapped count MUST NOT change
+
 ### Requirement: The search stage computes no score
 
-The search stage SHALL save per question only the ranked stored chunk IDs, their scores, file stems, page labels and timings. It SHALL read no gold label, SHALL compute no metric, and its summary SHALL hold counts and timings only. A separate scorer SHALL score saved lists one half at a time, half B only behind the half-B guard. A summary SHALL refuse a question count that differs from the frozen count. The loader SHALL refuse a question with no gold unit.
+Per question, the search stage SHALL save only the ranked stored chunk IDs, scores, file stems, page labels, pinned Qwen3 token counts and timings, never chunk text. It SHALL read no gold label, compute no metric and summarise counts and timings only. A separate scorer SHALL score one half at a time, half B behind the half-B guard. A summary SHALL refuse a question count unlike the frozen count; the loader SHALL refuse a question with no gold unit.
 
 #### Scenario: No gold file during search
 
 - **WHEN** the search stage runs and the gold labels are not on the machine
 - **THEN** the stage MUST finish and MUST write no metric
+
+#### Scenario: Token cut from saved counts
+
+- **WHEN** the scorer reads a saved ranked list whose token counts cross 20,480 at rank 7
+- **THEN** `evidence_recall_20k` MUST use ranks 1 to 7, with rank 7 covering its unit, and MUST read no chunk text
 
 #### Scenario: Half-B metric before the guard opens
 
@@ -436,7 +452,7 @@ The stage key and the ingest done-marker SHALL hold a configuration hash of the 
 
 ### Requirement: A main stage refuses an unfrozen plan or a dirty tree
 
-A main stage SHALL refuse to start while `plan.json` `frozen` is empty, and SHALL refuse a dirty working tree. A pre-freeze run SHALL need an explicit flag and SHALL write its run record to its own folder, never to the main run-record file. Every run record SHALL hold the SHA-256 of `preregistration.md` (amendment A5).
+A main stage SHALL refuse to start while `plan.json` `frozen` is empty, and SHALL refuse a dirty working tree. A pre-freeze run SHALL need an explicit flag. Like every run, it SHALL append one line to `output/run-records.jsonl`, and that line SHALL carry `prefreeze: true`. The join step and every main-run check SHALL ignore lines with that field. Every run record SHALL hold the SHA-256 of `preregistration.md` (amendment A5).
 
 #### Scenario: Plan not frozen
 
@@ -451,7 +467,8 @@ A main stage SHALL refuse to start while `plan.json` `frozen` is empty, and SHAL
 #### Scenario: Pre-freeze run
 
 - **WHEN** a test-pod stage runs with the pre-freeze flag
-- **THEN** it MUST run, and MUST write its run record to its own folder and not to `output/run-records.jsonl`
+- **THEN** it MUST run, and MUST append one line to `output/run-records.jsonl` that carries `prefreeze: true`
+- **AND** the join step MUST NOT count that line as a main-run record
 
 #### Scenario: Pre-registration hash recorded
 

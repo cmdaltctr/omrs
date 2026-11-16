@@ -6,9 +6,10 @@ The search entry points SHALL accept one additive option, off by default, that s
 
 #### Scenario: Exactly top_k stored chunks
 
-- **GIVEN** a collection with at least 100 stored chunks
+- **GIVEN** a collection where at least 100 stored chunks qualify under the search's other settings (for example a similarity threshold)
 - **WHEN** a search runs with the option on, `top_k` 100 and `fetch_k` 100
 - **THEN** it SHALL return exactly 100 rows, one per stored chunk, in rank order
+- **AND** when fewer than 100 chunks qualify, it SHALL return only the qualifying chunks, because the option changes assembly only
 
 #### Scenario: Fewer chunks than top_k
 

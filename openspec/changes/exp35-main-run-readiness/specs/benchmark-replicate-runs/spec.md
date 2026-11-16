@@ -181,7 +181,7 @@ Each answer run SHALL save its ranked list of 100 stored chunk IDs per question.
 
 #### Scenario: Same lists
 
-- **WHEN** runs 1, 2 and 3 of `e4b-c1024-r4b-hon-t20k` save the same list as the search run of `e4b-c1024-r4b-hon` for every question
+- **WHEN** runs 1, 2 and 3 of `e4b-c1024-r4b-hon-t20k` save the same list as the search run of `e4b-c1024-r4b-hon` for every question, and every answer's evidence chunk IDs equal the head of that list under the token cut
 - **THEN** G1 MUST pass for that answer setup
 
 #### Scenario: One run differs
@@ -201,7 +201,7 @@ Each answer run SHALL save its ranked list of 100 stored chunk IDs per question.
 
 ### Requirement: Passage files are prepared once outside the output folder
 
-BioASQ and Legal RAG Bench passage files SHALL be written once, before any index build, into one fixed folder outside the output folder, with a recorded tree hash, and SHALL be read at the same absolute path on every pod. An ingest SHALL refuse a passage folder whose tree hash differs from the recorded one, and SHALL never write into it (amendment A5).
+BioASQ and Legal RAG Bench passage files SHALL be written once, before any index build, into one fixed folder outside the output folder, with a recorded tree hash, and SHALL be read at the same absolute path on every pod. An ingest SHALL read the passage files to verify the tree hash before it ingests any file, SHALL refuse a passage folder whose tree hash differs from the recorded one, and SHALL never write into it (amendment A5).
 
 #### Scenario: Two pods read the folder
 
@@ -211,7 +211,7 @@ BioASQ and Legal RAG Bench passage files SHALL be written once, before any index
 #### Scenario: Changed passage file
 
 - **WHEN** one passage file differs from the recorded tree hash
-- **THEN** the ingest MUST stop before it reads any file and MUST name the file
+- **THEN** the ingest MAY read the passage files only to compute the tree hash, MUST stop before it ingests any file, and MUST name the file
 
 ### Requirement: The seal refuses an index with failed files or unpaged FinanceBench chunks
 
