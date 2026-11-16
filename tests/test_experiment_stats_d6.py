@@ -107,6 +107,40 @@ def test_existing_lib_functions_are_reexported() -> None:
     assert stats_d6.cell_record is lib_stats.cell_record
 
 
+def _table(yy: int, yn: int, ny: int, nn: int) -> tuple[list[str], list[str]]:
+    """Two label lists from a 2 x 2 table (rows: first rater, columns: second rater)."""
+    a = ["y"] * (yy + yn) + ["n"] * (ny + nn)
+    b = ["y"] * yy + ["n"] * yn + ["y"] * ny + ["n"] * nn
+    return a, b
+
+
+def test_cohen_kappa_known_answer() -> None:
+    """Task 8.8: 20, 5, 10, 15 gives observed 0.70, chance 0.50, kappa 0.40."""
+    a, b = _table(20, 5, 10, 15)
+    assert stats_d6.cohen_kappa(a, b) == pytest.approx(0.40)
+
+
+def test_cohen_kappa_perfect_agreement_is_one() -> None:
+    assert stats_d6.cohen_kappa(["y", "n", "m", "y"], ["y", "n", "m", "y"]) == pytest.approx(1.0)
+
+
+def test_cohen_kappa_chance_level_agreement_is_zero() -> None:
+    """Observed agreement equal to chance agreement (0.50) gives kappa 0."""
+    a, b = _table(10, 10, 10, 10)
+    assert stats_d6.cohen_kappa(a, b) == pytest.approx(0.0)
+
+
+@pytest.mark.parametrize(("a", "b"), [([], []), (["y"], ["y", "n"])])
+def test_cohen_kappa_empty_or_unequal_raises(a: list[str], b: list[str]) -> None:
+    with pytest.raises(ValueError):
+        stats_d6.cohen_kappa(a, b)
+
+
+def test_cohen_kappa_one_label_only_is_nan() -> None:
+    """Chance agreement of 1 (both raters give one and the same label) is undefined."""
+    assert math.isnan(stats_d6.cohen_kappa(["y", "y", "y"], ["y", "y", "y"]))
+
+
 @pytest.mark.skipif(not SKILL_STATS.exists(), reason="s-experiment skill file absent (CI)")
 def test_copy_is_identical_to_skill_source() -> None:
     """Each copied function has the same source text as the skill original."""

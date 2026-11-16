@@ -87,8 +87,10 @@ def folder(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     _git(tmp_path, "init", "-q")
     path = tmp_path / "experiments" / "35-full-rag-benchmark-2026-11-10"
     path.mkdir(parents=True)
-    (path / "plan.json").write_text('{"hypothesis": "x"}\n', encoding="utf-8")
-    (tmp_path / ".gitignore").write_text("output/\n", encoding="utf-8")
+    # A frozen plan: since task 5.7 a main stage refuses an empty ``frozen``.
+    plan = '{"hypothesis": "x", "frozen": [{"item": "plan", "sha256": "0"}]}\n'
+    (path / "plan.json").write_text(plan, encoding="utf-8")
+    (tmp_path / ".gitignore").write_text("output/\nsnapshots/\n", encoding="utf-8")
     _git(tmp_path, "add", ".")
     _git(tmp_path, "commit", "-q", "--no-verify", "-m", "start")
     return path

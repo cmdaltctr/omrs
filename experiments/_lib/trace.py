@@ -22,17 +22,27 @@ A key that names a secret (an API key, a token, an authorisation header, a
 password) anywhere in a row or in the run context raises ``ValueError``.
 Token counts such as ``prompt_tokens`` are allowed. The caller removes
 secrets before it passes settings in.
+
+Crash safety (task 3.3): on open, a last line that a stop cut part-way is
+dropped and logged, so the next line starts on a fresh line. Each line is
+flushed and synced. :meth:`TraceWriter.row` builds a row without writing it,
+so ``ordered_rows.OrderedRows`` can keep it with its result row and write
+both in order.
 """
 
 from __future__ import annotations
 
 import json
+import logging
+import os
 import re
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
 __all__ = ["D8_FIELDS", "STATUSES", "TraceWriter"]
+
+_LOG = logging.getLogger(__name__)
 
 D8_FIELDS: tuple[str, ...] = (
     "benchmark_revision",
@@ -55,8 +65,14 @@ D8_FIELDS: tuple[str, ...] = (
     "judge_model",
     "status",
     "error",
+    "resent_calls",
 )
-"""Every key in each trace row. A field that does not apply holds ``None``."""
+"""Every key in each trace row. A field that does not apply holds ``None``.
+
+``resent_calls`` is the number of harness resends of the row's call, set by
+``ordered_rows.OrderedRows`` (task 2.4); a stage summed over its rows gives the
+stage count.
+"""
 
 STATUSES: frozenset[str] = frozenset({"ok", "degraded", "error"})
 
@@ -110,6 +126,7 @@ class TraceWriter:
         _refuse_secret_keys(effective_settings, "effective_settings")
         _refuse_secret_keys(model_identities, "model_identities")
         self._path = path
+        self._drop_partial_last_line()
         self._context: dict[str, Any] = {
             "benchmark_revision": benchmark_revision,
             "run_id": run_id,
@@ -119,7 +136,51 @@ class TraceWriter:
             "model_identities": dict(model_identities),
         }
 
-    def write(
+    @property
+    def path(self) -> Path:
+        """The JSONL file."""
+        return self._path
+
+    def _drop_partial_last_line(self) -> None:
+        if not self._path.exists():
+            return
+        text = self._path.read_text(encoding="utf-8")
+        if not text or text.endswith("\n"):
+            return
+        keep = text[: text.rfind("\n") + 1]
+        _LOG.warning(
+            "%s: dropped a cut last line of %d characters", self._path.name, len(text) - len(keep)
+        )
+        tmp = self._path.with_name(self._path.name + ".tmp")
+        tmp.write_text(keep, encoding="utf-8")
+        tmp.replace(self._path)
+
+    def write(self, **fields: Any) -> None:
+        """Append one row built by :meth:`row` from *fields*."""
+        self.append(self.row(**fields))
+
+    def append(self, row: Mapping[str, Any]) -> None:
+        """Append one row as one line; flush and sync it.
+
+        Raises:
+            ValueError: A key in the row names a secret.
+        """
+        _refuse_secret_keys(row, "row")
+        line = json.dumps(dict(row), ensure_ascii=False)
+        self._path.parent.mkdir(parents=True, exist_ok=True)
+        with self._path.open("a", encoding="utf-8") as handle:
+            handle.write(line + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+
+    def contains(self, row: Mapping[str, Any]) -> bool:
+        """Return True when the file already holds *row* as a line."""
+        if not self._path.exists():
+            return False
+        line = json.dumps(dict(row), ensure_ascii=False)
+        return line in self._path.read_text(encoding="utf-8").splitlines()
+
+    def row(
         self,
         *,
         stage: str,
@@ -136,8 +197,9 @@ class TraceWriter:
         token_counts: Mapping[str, int] | None = None,
         answer_model: str | None = None,
         judge_model: str | None = None,
-    ) -> None:
-        """Append one row.
+        resent_calls: int | None = None,
+    ) -> dict[str, Any]:
+        """Build one row with every D8 field, without writing it.
 
         Args:
             stage: The pipeline stage, such as ``retrieve`` or ``answer``.
@@ -154,6 +216,10 @@ class TraceWriter:
             token_counts: Token counts, where the model reports them.
             answer_model: The answer model identity.
             judge_model: The judge model identity.
+            resent_calls: Harness resends of this call (``OrderedRows`` sets it).
+
+        Returns:
+            The row, keys in D8 order.
 
         Raises:
             ValueError: *status* is unknown, or a key in the row names a secret.
@@ -176,9 +242,7 @@ class TraceWriter:
             "judge_model": judge_model,
             "status": status,
             "error": error,
+            "resent_calls": resent_calls,
         }
         _refuse_secret_keys(row, "row")
-        line = json.dumps({name: row[name] for name in D8_FIELDS}, ensure_ascii=False)
-        self._path.parent.mkdir(parents=True, exist_ok=True)
-        with self._path.open("a", encoding="utf-8") as handle:
-            handle.write(line + "\n")
+        return {name: row[name] for name in D8_FIELDS}
