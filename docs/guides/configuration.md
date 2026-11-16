@@ -650,6 +650,8 @@ The shipped list holds two entries with no file. The Router panel shows "Not dow
 
 An entry for embeddings must set `embeddings`, `pooling`, `ctx-size`, `batch-size` and `ubatch-size`. `ubatch-size` must not be larger than `batch-size`. A save that breaks this gets reason `preset-invalid`. `ctx-size = 32768` with two slots gives 16,384 tokens for each slot.
 
+A reranker entry for `retrieval.rerank_backend` `llamacpp` sets `embeddings = true` and `pooling = rank`, and no role uses it. OMRS lists the entry in the router `models.ini` and raises no role problem. Set `retrieval.rerank_model` to the `model` of the entry. See [Reranker](reranker.md#llamacpp-backend).
+
 Example entry in `omrs.jsonc`:
 
 ```jsonc
@@ -866,8 +868,8 @@ what the evaluated candidate instruction actually did on this workload.
 | `hard_technical_threshold` | `0.3` | Above this "technical" score, skip reranking |
 | `rerank_fetch_multiplier` | `3` | Fetch `top_k × 3` candidates before reranking |
 | `rerank_max_fetch` | `100` | Cap on that candidate pool |
-| `rerank_model` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Reranker model |
-| `rerank_backend` | `onnx` | Reranker inference backend (`onnx` or `torch`). `torch` requires `uv sync --extra torch`. See [ADR-038](../adr/038-pluggable-reranker-backend.md) |
+| `rerank_model` | `cross-encoder/ms-marco-MiniLM-L-6-v2` | Reranker model. With `rerank_backend` `llamacpp`, the `model` of a `llamacpp_models` entry |
+| `rerank_backend` | `onnx` | Reranker inference backend (`onnx`, `torch` or `llamacpp`). `torch` requires `uv sync --extra torch`. `llamacpp` scores through the llama.cpp router; see [Reranker](reranker.md#llamacpp-backend). See [ADR-038](../adr/038-pluggable-reranker-backend.md) |
 | `hybrid_enabled` | `false` | Combine keyword and embedding search. **Profile-owned** |
 | `hybrid_rrf_k` | `60` | Rank-fusion constant ([ADR-017](../adr/017-hybrid-retrieval-rrf.md)) |
 | `hybrid_sparse_backend` | `bm25` | Sparse backend for hybrid search: `bm25`, `native`, or `auto`. Registry-owned validation at the composition boundary; unknown names fail startup listing `auto` plus the registered backends. See [Reranker](reranker.md#sparse-retrieval-backends-hybrid-search) |

@@ -171,7 +171,11 @@ output; pipeline chatter is suppressed so the JSON stream stays clean.
 The JSON result carries `status`, `query`, `answer`, `citations`, `evidence`,
 `failure_stage`, `error`, and `completion_source`. With `--diagnostics`, a
 `diagnostics` object adds `retrieval_ms`, `generation_ms`, and
-`completion_calls`.
+`completion_calls`. When the answer model's provider replies HTTP 429 or
+HTTP 402, the result also carries `rate_limited`, with `kind` (`rate_limit` or
+`out_of_credit`), `http_status` and `retry_after_seconds`. When the claim
+judge's provider does, it carries `verification_rate_limited` with the same
+fields. See [MCP tools](mcp-tools.md#result-shape) for the fixed texts.
 
 Statuses:
 
@@ -183,7 +187,9 @@ Statuses:
   (`ANSWER__VERIFY_CLAIMS=true`) and one or more cited claims failed the
   judge. The answer, citations, and evidence are all retained; `--json`
   output lists the failing claims under `unverified_claims`.
-- `error` — prints the message and exits 1.
+- `error` — prints the message and exits 1. A rate-limited generation is an
+  `error` with `failure_stage` `generation` and a fixed message that tells you
+  to wait or to top up the provider account.
 
 Claim verification is **settings-only**: there is deliberately no
 `--verify` flag. Control it with `ANSWER__VERIFY_CLAIMS` (or a profile

@@ -71,11 +71,19 @@ result = await engine.ingest("./docs", collection_name="documents")
 
 **`search` (sync)** — run a semantic similarity search. Each hit is a
 dict with score, text and metadata. Optional arguments: `rerank`,
-`hybrid`, `metadata_filter`, `include_diagnostics`:
+`hybrid`, `metadata_filter`, `include_diagnostics`, `unassembled`:
 
 ```python
 hits = engine.search("how does caching work?", top_k=10)
 ```
+
+`unassembled=True` is a keyword of `Engine.search` only. No MCP tool, CLI
+command or HTTP route has it. It skips only the context-assembly stage.
+Ranking, reranking, fusion, the threshold and the `top_k` cut run as usual.
+Each hit is then one stored chunk, in final rank order. It carries `chunk_id`
+and no `chunk_ids` or `page_labels`. The call raises `ValueError` when
+`expand_window` is above 0. It also raises `ValueError` on a collection that
+follows a user profile, because the saved graph decides its own assembly.
 
 `metadata_filter` is a ChromaDB-compatible `where` clause, for example
 `{"category": "AI"}`. On LanceDB, a filter value can be a `str`, an `int`,
