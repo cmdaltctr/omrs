@@ -6,7 +6,7 @@ Defines how a benchmark run scores its answers: parallel hosted answers over ser
 
 ### Requirement: Parallel answers keep serial retrieval
 
-The answer stage SHALL retrieve the evidence of each question one question at a time, with the same search arguments as the search stage. Only the hosted answer call SHALL run in parallel. The evidence of an answer SHALL NOT depend on the answer concurrency.
+The answer stage SHALL retrieve the evidence of each question one question at a time, with the same search arguments as the search stage and the ranked-stored-chunks option on (amendment A5). Only the hosted answer call SHALL run in parallel. The evidence of an answer SHALL NOT depend on the answer concurrency.
 
 #### Scenario: Same evidence at any concurrency
 
@@ -16,11 +16,11 @@ The answer stage SHALL retrieve the evidence of each question one question at a 
 #### Scenario: Retrieval failure
 
 - **WHEN** retrieval fails for one question
-- **THEN** the stage MUST keep that question's row with the error and MUST NOT send an answer call for it
+- **THEN** the stage MUST save no answer row for it, MUST NOT send an answer call for it, and MUST keep it pending so that `--resume` retrieves it again under the resend rule
 
 ### Requirement: Ragas is a stage of the main harness
 
-The harness SHALL have a `ragas` stage that scores the answers of one run folder on the machine that ran that run. It SHALL use the pre-freeze Ragas version, judge and settings, the four pre-freeze metrics plus `AnswerCorrectness` against the reference answer, with embeddings from the local llama.cpp server and the plan's pinned 4B embedding file. It SHALL need the finished answer stage of that run, and SHALL write one row per answer in frozen question order.
+The harness SHALL have a `ragas` stage that scores the answers of one run folder on the machine that ran that run. It SHALL use the pre-freeze Ragas version and judge, the four pre-freeze metrics plus `AnswerCorrectness` against the reference answer, with embeddings from the local llama.cpp server and the plan's pinned 4B embedding file. It SHALL need the finished answer stage of that run, and SHALL write one row per answer in frozen question order.
 
 #### Scenario: One run folder
 
@@ -44,8 +44,27 @@ The harness SHALL have a `ragas` stage that scores the answers of one run folder
 
 #### Scenario: Failed answer
 
-- **WHEN** an answer row holds an error or no answer text
+- **WHEN** an answer row is marked missing (closed after the resend cap)
 - **THEN** the Ragas row of that question MUST record that it was not judged, and the stage MUST send no call for it
+
+### Requirement: Ragas settings come from the plan and the router stays held
+
+The `ragas` stage SHALL read every judge setting and seed from `plan.json` and SHALL refuse a built judge that differs (amendment A5). It SHALL hold one router session for its whole run, so the router's idle stop cannot end it mid-stage. Every metric call SHALL record the returned model ID and provider.
+
+#### Scenario: Judge settings differ from the plan
+
+- **WHEN** the built Ragas judge has another seed or setting than `plan.json`
+- **THEN** the stage MUST stop before any paid call and MUST name the setting
+
+#### Scenario: Long stage keeps the router
+
+- **WHEN** the stage runs longer than the router's idle stop
+- **THEN** one router session MUST stay open from before the first embedding call to after the last
+
+#### Scenario: Returned model recorded
+
+- **WHEN** a metric call returns
+- **THEN** its call record MUST hold the returned model ID and provider
 
 ### Requirement: Concurrent Ragas answers keep their own call records
 
@@ -58,7 +77,7 @@ When the Ragas stage scores several answers at once, each answer's row SHALL hol
 
 ### Requirement: Ragas resume never repeats a saved answer's calls
 
-A Ragas row SHALL be saved only when every metric of the answer has a score or an error that is not a rate limit. With `--resume`, the stage SHALL skip each answer that has a saved row. A rate-limit error SHALL NOT be saved as a metric result. An answer whose row was not saved SHALL be scored again in full on resume, so its earlier metric calls repeat; this affects at most one answer per worker per stop, the same bound as the claim judge (design risks).
+A Ragas row SHALL be saved only when every metric of the answer has a score or an error that is not a rate limit. With `--resume`, the stage SHALL skip each answer whose saved row has no unjudged metric. A rate-limit error SHALL NOT be saved as a metric result. An answer whose row was not saved SHALL be scored again in full on resume, so its earlier metric calls repeat; this affects at most one answer per worker per stop, the same bound as the claim judge (design risks).
 
 #### Scenario: Resume after a stop
 
@@ -70,6 +89,22 @@ A Ragas row SHALL be saved only when every metric of the answer has a score or a
 - **WHEN** a metric call fails with HTTP 429 on every attempt
 - **THEN** no row for that answer MUST be saved, and the stage MUST stop with the rate-limit exit code
 - **AND** `--resume` MUST score that answer again with every metric
+
+### Requirement: A failed Ragas metric is unjudged and re-run on resume
+
+A metric error that is not a rate limit SHALL NOT be a score. The row SHALL list that metric as unjudged, and `--resume` SHALL re-run only the unjudged metrics, never a scored one. After 3 such errors on one metric (the first send plus 2 resends, across resumes) the metric SHALL be closed as unjudged, and the stage SHALL go on (amendment A5).
+
+#### Scenario: Third error closes the metric
+
+- **WHEN** one metric of an answer has failed with a connection error three times across two resumes
+- **THEN** the row MUST mark that metric closed as unjudged, and a later `--resume` MUST send no call for it
+
+#### Scenario: Connection error on one metric
+
+- **WHEN** `AnswerCorrectness` fails with a connection error and the other metrics score
+- **THEN** the row MUST hold the other scores and list `AnswerCorrectness` as unjudged
+- **AND** `--resume` MUST send calls for `AnswerCorrectness` only
+- **AND** the stage summary MUST count the unjudged metric and MUST NOT report 0 errors
 
 ### Requirement: Claim sentences are sorted by a frozen classifier
 
@@ -198,6 +233,7 @@ A sampling step SHALL draw 50 half-B questions per dataset with seed 20261113, e
 
 - **WHEN** the agreement step computes any gate interval (kappa, AUC or specificity difference)
 - **THEN** it MUST use a percentile bootstrap with 10,000 resamples by question and the seed listed for that interval in pre-registration section 16
+- **AND** after the fail-closed rule of pre-registration section 11.2, it MUST sort the resampled values ascending and take the values at zero-based indexes int(0.025 x m) and int(0.975 x m) - 1 as the bounds, where m is the number of kept values (250 and 9,749 when m is 10,000), with no interpolation (amendment A5)
 
 #### Scenario: Statistic undefined on the full sample
 

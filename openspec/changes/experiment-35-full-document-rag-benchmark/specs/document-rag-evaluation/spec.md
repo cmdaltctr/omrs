@@ -101,23 +101,19 @@ The protocol SHALL register H1 to H7, H8a and H8b before the run, each within sc
 
 ### Requirement: Retrieval is scored on distinct units after collapse
 
-Each search setup SHALL save its top 100 chunks, with a rerank pool of exactly 100. The scorer SHALL collapse chunks to units (FreshStack document, FinanceBench page, BioASQ or Legal passage) in rank order, keep the first occurrence of each unit and cut at 10 units. `evidence_recall_20k` SHALL take chunks in rank order up to 20,480 real Qwen3 tokens and truncate the chunk that crosses the limit.
+Each search setup SHALL save its top 100 stored chunks (taken before OMRS context assembly, amendment A5), with a rerank pool of exactly 100. The scorer SHALL collapse chunks to units (FreshStack document, FinanceBench page, BioASQ or Legal passage) in rank order, keep the first occurrence of each unit and cut at 10 units. `evidence_recall_20k` SHALL take chunks in rank order up to 20,480 real Qwen3 tokens and truncate the chunk that crosses the limit.
 
 #### Scenario: Big chunks gain nothing by construction
 - **WHEN** two setups give the same unit order but one uses 2,048-token chunks
 - **THEN** both SHALL score the same nDCG@10
 
-#### Scenario: Spanning page in nDCG@10
-- **WHEN** a FinanceBench chunk spans pages 41 and 42 and the gold page is 42
-- **THEN** for nDCG@10, Recall@10, MRR@10 and hit@page the chunk SHALL count for page 41, and any-page credit SHALL appear only in the sensitivity column
-
-#### Scenario: Spanning page in evidence_recall_20k
-- **WHEN** a whole chunk inside the 20,480-token evidence spans pages 41 and 42 and the gold page is 42
-- **THEN** `evidence_recall_20k` SHALL count gold page 42 as covered (any-page credit), and first-page credit SHALL appear only in the sensitivity column
+#### Scenario: Neighbouring chunks on two pages
+- **WHEN** a FinanceBench stored chunk on page 42 ranks 1, its neighbour on page 41 ranks 3, and the gold page is 42
+- **THEN** for nDCG@10, Recall@10, MRR@10, hit@page and `evidence_recall_20k` the page-42 chunk SHALL count as a hit at rank 1, and no page-rule sensitivity column SHALL exist (amendment A5)
 
 #### Scenario: Truncated crossing chunk
-- **WHEN** the chunk that crosses 20,480 tokens spans pages 7 and 8 and is truncated
-- **THEN** it SHALL cover only page 7, because the reader stores no page offsets inside a chunk
+- **WHEN** the chunk that crosses 20,480 tokens is on the gold page and is truncated
+- **THEN** it SHALL cover its one page
 
 ### Requirement: The answer stage uses the selection rule fixed before the run
 
@@ -223,7 +219,7 @@ nDCG@10 on distinct units SHALL be the primary metric of the study. `evidence_re
 
 ### Requirement: FinanceBench hits are scored at the gold page
 
-A FinanceBench hit SHALL be a retrieved unit on the gold document and the gold page. One frozen, tested function SHALL convert the zero-indexed `evidence_page_num` to stored page numbers. A chunk spanning pages SHALL count for its first page (amendment A2, 2026-11-13).
+A FinanceBench hit SHALL be a retrieved unit on the gold document and the gold page. One frozen, tested function SHALL convert the zero-indexed `evidence_page_num` to stored page numbers. A retrieved unit SHALL be a stored chunk, and a FinanceBench stored chunk SHALL cover its one page (amendment A5, 2026-11-14: a stored chunk never spans pages, so the first-page rule of A2 and any-page credit give the same number).
 
 #### Scenario: A chunk comes from the gold page
 - **WHEN** a retrieved chunk comes from the gold document and its page equals the converted gold page
