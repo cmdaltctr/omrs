@@ -165,3 +165,21 @@ def test_matching_hash_records_the_runtime_then_scoring_proceeds(
     assert record["command"] == "run-exp35"
     assert record["runtime"] == {"build": _BUILD, "models": [{"file": _FILE, "sha256": sha}]}
     assert (folder / "output" / "scores.json").exists()
+
+
+def test_prefreeze_run_on_an_unfrozen_plan_appends_a_flagged_line(
+    fake: tuple[_Fake, str], folder: Path, tmp_path: Path
+) -> None:
+    state, url = fake
+    weights = tmp_path / "snapshots" / _FILE
+    weights.parent.mkdir()
+    weights.write_bytes(b"gguf weights")
+    _serve(state, weights)
+    (folder / "plan.json").write_text('{"hypothesis": "x", "frozen": []}\n', encoding="utf-8")
+    sha = hashlib.sha256(b"gguf weights").hexdigest()
+    guard_run(folder, _block(sha), base_url=url, command="run-exp35 --prefreeze", prefreeze=True)
+    (line,) = (folder / "output" / "run-records.jsonl").read_text(encoding="utf-8").splitlines()
+    record = json.loads(line)
+    assert record["prefreeze"] is True
+    assert record["git_dirty"] is True
+    assert "preregistration_sha256" not in record

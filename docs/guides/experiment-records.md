@@ -225,6 +225,9 @@ Each run appends one line to `output/run-records.jsonl` when it starts. A resume
 | `plan_sha256` | The SHA-256 of `plan.json`, or an empty string when there is no plan |
 | `command` | The command that started the run |
 | `runtime` | Optional. The llama.cpp `build` and one `{file, sha256}` for each model, from the live-server check. `unchecked` lists the planned arms on another runtime, when there are any |
+| `prefreeze` | Optional. `true` for a pre-freeze run (the `--prefreeze` flag). A main-run line leaves it out. A main-run check ignores a line with this key |
+| `smoke` | Optional. `true` for a smoke run on a few questions (the `--qids` option). A main-run line leaves it out. A main-run check ignores a line with this key |
+| `preregistration_sha256` | Optional. The SHA-256 of `preregistration.md` when the run started. Experiment 35 writes it on every line |
 
 To add run records to a runner:
 

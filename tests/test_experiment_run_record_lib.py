@@ -84,3 +84,15 @@ def test_folder_outside_a_repository_is_refused(tmp_path: Path) -> None:
     with pytest.raises(RuntimeError, match="git"):
         record_run_start(folder, command="x")
     assert not (folder / "output").exists()
+
+
+def test_flags_and_preregistration_hash_are_passed_on(repo: Path) -> None:
+    folder = repo / "experiments" / "43-ocr-text-quality-2026-10-26"
+    record = record_run_start(
+        folder, command="run", prefreeze=True, smoke=True, preregistration_sha256="cd" * 32
+    )
+    assert (record.prefreeze, record.smoke) == (True, True)
+    (line,) = _lines(folder)
+    assert line["prefreeze"] is True
+    assert line["smoke"] is True
+    assert line["preregistration_sha256"] == "cd" * 32

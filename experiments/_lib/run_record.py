@@ -39,6 +39,9 @@ def record_run_start(
     *,
     command: str | None = None,
     runtime: Mapping[str, Any] | None = None,
+    prefreeze: bool = False,
+    smoke: bool = False,
+    preregistration_sha256: str | None = None,
 ) -> RunRecord:
     """Append a run record for the experiment in *folder*.
 
@@ -49,6 +52,9 @@ def record_run_start(
         runtime: The value of ``FoundRuntime.as_run_record()`` from the
             live-server check (``_lib.llamacpp_runtime``). None leaves the
             ``runtime`` key out of the line.
+        prefreeze: True for a pre-freeze run (the line carries ``prefreeze: true``).
+        smoke: True for a smoke run on a few questions (``smoke: true``).
+        preregistration_sha256: The SHA-256 of ``preregistration.md``, or None.
 
     Returns:
         The record that was written.
@@ -66,5 +72,12 @@ def record_run_start(
     if command is None:
         command = shlex.join(sys.argv)
     return append_run_record(
-        folder, git_commit=commit, git_dirty=dirty, command=command, runtime=runtime
+        folder,
+        git_commit=commit,
+        git_dirty=dirty,
+        command=command,
+        runtime=runtime,
+        prefreeze=prefreeze,
+        smoke=smoke,
+        preregistration_sha256=preregistration_sha256,
     )

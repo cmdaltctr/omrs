@@ -1,8 +1,9 @@
 """Experiment 35 run guard: unfrozen plan, dirty tree and server arguments (tasks 5.7, 5.8).
 
 ``guard_run`` (``experiments/_lib/run_guard.py``) refuses a main stage while
-``plan.json`` ``frozen`` is empty or the tree is dirty; a pre-freeze run needs
-its own folder. ``verify_llamacpp_runtime(..., check_args=True)`` compares the
+``plan.json`` ``frozen`` is empty or the tree is dirty; a pre-freeze or smoke
+run passes both and appends a flagged line to ``output/run-records.jsonl``.
+``verify_llamacpp_runtime(..., check_args=True)`` compares the
 planned ``server_args`` with the router's ``status.args``. The router reply is
 injected in place of the HTTP read; a temporary git repository gives the guard
 a commit.
@@ -141,27 +142,60 @@ def test_main_stage_refuses_a_dirty_tree(folder: Path, router: dict[str, Any]) -
     assert not _records(folder).exists()
 
 
+def _prereg_sha(folder: Path) -> str:
+    return hashlib.sha256((folder / "preregistration.md").read_bytes()).hexdigest()
+
+
 def test_clean_frozen_main_stage_passes_and_records(folder: Path, router: dict[str, Any]) -> None:
     guard_run(folder, _block({}), base_url="http://127.0.0.1:9", command="run")
     (line,) = _records(folder).read_text(encoding="utf-8").splitlines()
-    assert json.loads(line)["git_dirty"] is False
+    record = json.loads(line)
+    assert record["git_dirty"] is False
+    assert record["preregistration_sha256"] == _prereg_sha(folder)
+    assert "prefreeze" not in record
+    assert "smoke" not in record
 
 
-def test_prefreeze_run_passes_and_writes_its_record_to_its_own_folder(
-    folder: Path, router: dict[str, Any], tmp_path: Path
-) -> None:
+def _dirty_and_unfrozen(folder: Path) -> None:
     _unfreeze(folder)
     (folder / "stages35.py").write_text("# an uncommitted change\n", encoding="utf-8")
-    own = tmp_path / "prefreeze-out"
-    guard_run(folder, _block({}), base_url="http://127.0.0.1:9", command="run", prefreeze_dir=own)
-    assert not _records(folder).exists()
-    (line,) = (own / "run-records.jsonl").read_text(encoding="utf-8").splitlines()
+
+
+def test_prefreeze_run_passes_and_appends_a_flagged_line_to_the_run_records(
+    folder: Path, router: dict[str, Any]
+) -> None:
+    _dirty_and_unfrozen(folder)
+    guard_run(folder, _block({}), base_url="http://127.0.0.1:9", command="run", prefreeze=True)
+    (line,) = _records(folder).read_text(encoding="utf-8").splitlines()
     record = json.loads(line)
+    assert record["prefreeze"] is True
+    assert "smoke" not in record
     assert record["git_dirty"] is True
     assert record["command"] == "run"
     assert record["runtime"]["build"] == BUILD
-    expected = hashlib.sha256((folder / "preregistration.md").read_bytes()).hexdigest()
-    assert record["preregistration_sha256"] == expected
+    assert record["preregistration_sha256"] == _prereg_sha(folder)
+
+
+def test_smoke_run_passes_and_appends_a_flagged_line_to_the_run_records(
+    folder: Path, router: dict[str, Any]
+) -> None:
+    _dirty_and_unfrozen(folder)
+    guard_run(folder, _block({}), base_url="http://127.0.0.1:9", command="run", smoke=True)
+    (line,) = _records(folder).read_text(encoding="utf-8").splitlines()
+    record = json.loads(line)
+    assert record["smoke"] is True
+    assert "prefreeze" not in record
+    assert record["preregistration_sha256"] == _prereg_sha(folder)
+
+
+def test_flagged_run_still_refuses_a_wrong_server_and_writes_nothing(
+    folder: Path, router: dict[str, Any]
+) -> None:
+    _dirty_and_unfrozen(folder)
+    block = _block({**PLANNED, "ctx-size": 8192})
+    with pytest.raises(PreflightError, match="ctx-size"):
+        guard_run(folder, block, base_url="http://127.0.0.1:9", prefreeze=True, check_args=True)
+    assert not _records(folder).exists()
 
 
 # --- 5.8 server-argument check ---------------------------------------------------------
