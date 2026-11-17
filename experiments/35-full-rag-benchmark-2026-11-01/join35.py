@@ -28,9 +28,13 @@ checks and is listed under ``dropped``; drop step 1 removes Legal answers.
 
 ``--smoke --runs 1`` checks run 1 of the setups on disk, counts any record
 line and writes a report marked ``smoke``; G1 and the statistics refuse it.
-A main join that passes writes ``<out>/answer-scores.jsonl`` (one record per
-dataset, setup, run and question, ``joinscores35.answer_scores``) through
-``scoring35.write_scores`` (half-B guard). ``join.json`` also holds
+A main join calls the half-B guard (``scoring35.require_half_b``) before it
+reads or writes anything, so it writes no ``join.json`` while half B is
+locked. A main join that passes writes ``<out>/answer-scores.jsonl`` (one
+record per dataset, setup, run and question, ``joinscores35.answer_scores``)
+through ``scoring35.write_scores``. A FinanceBench record takes its
+``doc_id`` from the search score records (:func:`question_documents`), which
+hold the gold document of every question. ``join.json`` also holds
 ``uncited_segment_share`` per dataset and setup, ``returned_model`` per role,
 ``traces_rebuilt`` and ``records_merged``.
 """
@@ -199,6 +203,18 @@ class _Join:
                 self.failures.append(f"{dataset}/{setup}: {name} differs across runs in {where}")
 
 
+def question_documents(out: Path) -> dict[str, str]:
+    """Return the FinanceBench gold document per question, from the search score records.
+
+    ``score35.py`` writes ``doc_id`` from the gold table into every record, so
+    a closed-missing answer row (which has none) still gets its document.
+    """
+    found: dict[str, str] = {}
+    for path in sorted(out.glob("scores/*/financebench/*.jsonl")):
+        found.update({str(r["qid"]): str(r["doc_id"]) for r in read_rows(path)})
+    return found
+
+
 def _on_disk(out: Path, kind: str) -> list[str]:
     return sorted({p.name for p in out.glob(f"*/{kind}/*") if p.is_dir()})
 
@@ -215,7 +231,14 @@ def join(
     smoke: bool = False,
     requested: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Merge the pod records, check the output folder and write ``join.json``; return it."""
+    """Merge the pod records, check the output folder and write ``join.json``; return it.
+
+    Raises:
+        scoring35.HalfBLocked: A main (not smoke) join before half B is open;
+            nothing is merged or written.
+    """
+    if not smoke:
+        scoring35.require_half_b(out)
     merged = merge_records(experiment, records)
     steps = budget35.read_drops(out)
     kept = budget35.answer_datasets(steps)
@@ -234,7 +257,10 @@ def join(
             answer_dirs += [
                 (dataset, setup, r, state.layout.run_dir(dataset, "answer", setup, r)) for r in runs
             ]
-    scores = [s for d, st, r, f in answer_dirs for s in joinscores35.answer_scores(f, d, st, r)]
+    docs = question_documents(out)
+    scores = [
+        s for d, st, r, f in answer_dirs for s in joinscores35.answer_scores(f, d, st, r, docs)
+    ]
     report = {
         "ok": not state.failures,
         "smoke": smoke,
@@ -244,6 +270,11 @@ def join(
         "records_merged": merged,
         "traces_rebuilt": state.traces_rebuilt,
         "uncited_segment_share": joinscores35.uncited_share(scores),
+        # Section 12: every unjudged and every undefined run is counted per setup.
+        "unjudged": joinscores35.marked_runs(
+            scores, "unjudged", (*joinscores35.FAITH_KEYS, joinscores35.CORRECT)
+        ),
+        "not_defined": joinscores35.marked_runs(scores, "not_defined", (joinscores35.CORRECT,)),
         "returned_model": joinscores35.returned_models(
             [f for *_, f in answer_dirs], requested or {}
         ),

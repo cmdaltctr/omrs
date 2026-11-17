@@ -336,7 +336,8 @@ def sign_flip_test(
     """
     n_documents = len(set(documents))
     rng = np.random.default_rng(seed)
-    signs = rng.integers(0, 2, size=(n_draws, n_documents), dtype=np.int8) * 2 - 1
+    # The registered call (default integer type); another dtype draws another stream.
+    signs = rng.integers(0, 2, size=(n_draws, n_documents)) * 2 - 1
     flip = SignFlip(d, documents, signs)
     low, high = flip.interval()
     return SignFlipResult(

@@ -375,6 +375,8 @@ _NUMBER = re.compile(
     + r")s?\b)?(?P<close>\))?",
     re.IGNORECASE,
 )
+#: A whole-word fiscal-year label and its four-digit year (FY2022 reads as 2022).
+_FISCAL_YEAR = re.compile(r"\bFY(?=\d{4}(?!\d))", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -390,12 +392,25 @@ def extract_numbers(text: str) -> list[Number]:
     """Return the numbers in *text*, with thousands separators, scale words and signs read.
 
     Parentheses round a number, or a leading minus, make it negative. ``%``
-    and ``percent`` are dropped, so ``12.5%`` reads as 12.5.
+    and ``percent`` are dropped, so ``12.5%`` reads as 12.5. A fiscal-year
+    label reads as its year (``FY2022`` is 2022). A one-letter scale (m, b or
+    k) counts only when the number has a currency sign: without one, a number
+    joined to the letter is not read (a name such as 3M), and a number with a
+    space before the letter reads without the scale. A number joined on its
+    right to any other letter is not read (777X, 1x).
     """
     numbers = []
+    text = _FISCAL_YEAR.sub("FY ", text)
     for match in _NUMBER.finditer(text):
+        if text[match.end() : match.end() + 1].isalpha():
+            continue  # joined on its right to a letter that is no scale word (777X, 1x)
         written = match["num"].replace(",", "")
-        scale = Decimal(10) ** _SCALES[match["scale"].lower()] if match["scale"] else Decimal(1)
+        word = match["scale"]
+        if word and len(word) == 1 and "$" not in match[0]:
+            if match.end("num") == match.start("scale"):
+                continue
+            word = None
+        scale = Decimal(10) ** _SCALES[word.lower()] if word else Decimal(1)
         negative = bool(match["sign"]) or bool(match["open"] and match["close"])
         value = Decimal(written) * scale * (-1 if negative else 1)
         decimals = len(written.partition(".")[2])

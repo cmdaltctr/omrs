@@ -29,7 +29,7 @@ def _write(path: Path, rows: list[dict]) -> None:
     path.write_text("".join(json.dumps(r) + "\n" for r in rows))
 
 
-def _build(out: Path, n: int = 4, datasets=("bioasq", "legal")) -> None:
+def _build(out: Path, n: int = 4, datasets=("bioasq",)) -> None:
     for dataset in datasets:
         for setup in SETUPS:
             folder = out / dataset / "answer" / setup / "run1"
@@ -76,10 +76,15 @@ def _ctx(out: Path, judges: dict, *, resume: bool = False) -> SimpleNamespace:
     )
 
 
-def test_pool_holds_cited_claims_of_c2048_crossed_core_answers_only(tmp_path: Path) -> None:
+def test_pool_holds_cited_claims_of_every_c2048_crossed_answer(tmp_path: Path) -> None:
+    # Section 11.2: "300 claims from c2048 crossed answers", no dataset limit, so Legal
+    # answers enter too (drop step 1 removes them by removing the answers).
     _build(tmp_path, datasets=("bioasq", "legal"))
     pool = lengthcheck35.pool(tmp_path)
-    assert {(p["dataset"], p["setup"]) for p in pool} == {("bioasq", "e4b-c2048-roff-hoff")}
+    assert {(p["dataset"], p["setup"]) for p in pool} == {
+        ("bioasq", "e4b-c2048-roff-hoff"),
+        ("legal", "e4b-c2048-roff-hoff"),
+    }
     assert pool[0]["original"] == {"chat": "supported", "clef_flash": "supported"}
 
 

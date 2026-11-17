@@ -8,21 +8,40 @@ A score record is a mapping with ``dataset``, ``setup``, ``qid``,
 ``doc_id`` (FinanceBench), ``run`` (answer records) and metric keys:
 ``ndcg_at_10``, ``evidence_recall_20k``, ``faithfulness_glm_factual``,
 ``ragas_answer_correctness``; ``-t20k`` answer records also carry
-``cut_tokens`` (the kept stored chunks before assembly). A missing or None
-metric means "no value" (section 12): the cell mean uses the runs that have
-one, and a question enters a row only when every cell of the row has a value.
+``cut_tokens`` (the kept stored chunks before assembly), and an ``unjudged``
+list of metric keys whose checker or Ragas row closed missing. A missing or
+None metric means "no value" (section 12): the cell mean uses the runs that
+have one, and a question enters a row only when every cell of the row has a
+value. An unjudged run drops its whole cell (``cells35``). Each row counts
+the questions it left out (``excluded``), split into ``excluded_unjudged``,
+``excluded_not_defined`` (a Ragas NaN) and ``excluded_no_value``, against
+every question of the dataset (the questions of its search records). After
+drop step 1 (Legal answers removed) Legal answer rows 12 to 19 are marked
+``dropped``.
 """
 
 from __future__ import annotations
 
 import math
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import budget35
 import labels35
+import scoring35
 import select35
+from cells35 import (
+    Cells,
+    cell_means,
+    contrast,
+    documents,
+    excluded_counts,
+    h8b_questions,
+    no_cut_total,
+    unjudged_cells,
+)
 from experiments._lib import stats_cluster
 from experiments._lib.stats_d6 import holm, paired_permutation
 from outputs35 import write_json
@@ -34,16 +53,12 @@ NDCG = "ndcg_at_10"
 EVIDENCE = "evidence_recall_20k"
 FAITH = "faithfulness_glm_factual"
 CORRECT = "ragas_answer_correctness"
-CUT_TOKENS = "cut_tokens"
-CUT_MIN = 19_456  # 95% of 20,480 tokens
 ALPHA = 0.05
 PERM_SEED = 20261101
 PERM_SHUFFLES = 10_000
 FAMILIES = {FB: tuple(range(1, 20)), FS: tuple(range(1, 20)), BQ: tuple(range(1, 9))}
 STAGE_SIZES = {"search": 72, "crossed": 12, "t20k": 3}
 ON = ("0.6b", "4b", "8b")
-
-Cells = Mapping[str, Mapping[str, float]]
 
 
 @dataclass(frozen=True)
@@ -102,59 +117,6 @@ def endpoint(row: Row, dataset: str) -> str:
     if row.outcome == "correctness":
         return CORRECT
     return EVIDENCE if dataset == FB and row.number in (9, 10, 11) else NDCG
-
-
-def cell_means(
-    records: Iterable[Mapping[str, Any]], metric: str
-) -> dict[str, dict[str, dict[str, float]]]:
-    """Return per dataset, setup and question the mean of ``metric`` over runs that have it."""
-    values: dict[tuple[str, str, str], list[float]] = {}
-    for row in records:
-        key = (row["dataset"], row["setup"], str(row["qid"]))
-        bucket = values.setdefault(key, [])
-        if row.get(metric) is not None:
-            bucket.append(float(row[metric]))
-    cells: dict[str, dict[str, dict[str, float]]] = {}
-    for (dataset, setup, qid), found in values.items():
-        per_setup = cells.setdefault(dataset, {}).setdefault(setup, {})
-        if found:
-            per_setup[qid] = math.fsum(found) / len(found)
-    return cells
-
-
-def _stage_setups(row: Row, cells: Cells) -> list[str]:
-    if row.stage == "search":
-        return sorted(cells)
-    want = row.stage == "t20k"
-    return sorted(s for s in cells if select35.parse_setup(s).t20k == want)
-
-
-def contrast(row: Row, cells: Cells) -> tuple[dict[str, float], int]:
-    """Return the per-question contrast scores d of ``row`` and the excluded count.
-
-    A question enters only when every cell the row uses has a value.
-    """
-    setups = _stage_setups(row, cells)
-    grid = {s: select35.parse_setup(s) for s in setups}
-    groups = []
-    for coefficient, levels in row.terms:
-        match = [s for s in setups if all(getattr(grid[s], k) in v for k, v in levels.items())]
-        groups.append((coefficient, match))
-    used = sorted({s for _, match in groups for s in match})
-    every = set().union(*(cells[s] for s in setups)) if setups else set()
-    entered = [q for q in sorted(every) if all(q in cells[s] for s in used)]
-    d = {
-        q: math.fsum(c * math.fsum(cells[s][q] for s in m) / len(m) for c, m in groups)
-        for q in entered
-    }
-    return d, len(every) - len(entered)
-
-
-def _documents(records: Iterable[Mapping[str, Any]]) -> dict[str, dict[str, str]]:
-    docs: dict[str, dict[str, str]] = {}
-    for row in records:
-        docs.setdefault(row["dataset"], {})[str(row["qid"])] = str(row.get("doc_id"))
-    return docs
 
 
 def _test(
@@ -228,27 +190,40 @@ def _check_stage(dataset: str, stage: str, cells: Cells) -> None:
         raise ValueError(f"{dataset}: {count} {stage} answer setups, expected {STAGE_SIZES[stage]}")
 
 
+def _marks(tables: Mapping[str, Any], metric: str, dataset: str) -> dict[str, Any]:
+    return {k: v.get(dataset, {}) for k, v in tables["marks"][metric].items()}
+
+
+def _dropped(row: Row, metric: str) -> dict[str, Any]:
+    """Return an answer row of a dataset whose answers drop step 1 removed (section 17)."""
+    return {"row": row.number, "hypothesis": row.hypothesis, "metric": metric, "dropped": True}
+
+
 def _dataset_rows(
     dataset: str,
-    search: Mapping[str, Cells],
-    answers: Mapping[str, Cells],
+    tables: Mapping[str, Any],
     docs: Mapping[str, str],
     gated: set[int],
     n_draws: int,
     n_perm: int,
 ) -> list[dict[str, Any]]:
     family = FAMILIES.get(dataset, ())
+    questions = tables["questions"][dataset]
     results = []
     for row in ROWS:
         metric = endpoint(row, dataset)
-        cells = (search if row.stage == "search" else answers)[metric].get(dataset, {})
-        d, excluded = contrast(row, cells)
+        if row.stage != "search" and dataset in tables["dropped"]:
+            results.append(_dropped(row, metric))
+            continue
+        cells = tables[metric].get(dataset, {})
+        d, excluded = contrast(row, cells, questions)
         result = {
             "row": row.number,
             "hypothesis": row.hypothesis,
             "metric": metric,
             "n": len(d),
             "excluded": excluded,
+            **excluded_counts(row, cells, d, questions, _marks(tables, metric, dataset)),
             **_test(dataset, d, docs, n_draws),
             "not_testable": row.number in gated,
             "holm_p": None,
@@ -273,32 +248,28 @@ def _dataset_rows(
     return results
 
 
-def h8b_questions(answers: Iterable[Mapping[str, Any]]) -> dict[str, set[str]]:
-    """Return per dataset the questions with a cut total of at least 19,456 in every t20k record."""
-    seen: dict[str, dict[str, bool]] = {}
-    for row in answers:
-        if select35.parse_setup(row["setup"]).t20k:
-            per = seen.setdefault(row["dataset"], {})
-            qid = str(row["qid"])
-            per[qid] = per.get(qid, True) and row[CUT_TOKENS] >= CUT_MIN
-    return {d: {q for q, ok in per.items() if ok} for d, per in seen.items()}
-
-
 def _h8b_sensitivity(
-    answers: Sequence[Mapping[str, Any]], tables: Mapping[str, Mapping[str, Cells]]
+    answers: Sequence[Mapping[str, Any]], tables: Mapping[str, Any]
 ) -> dict[str, Any]:
     kept = h8b_questions(answers)
     out: dict[str, Any] = {}
     for dataset in sorted(kept):
-        estimates = {}
+        estimates, n = {}, {}
         for row in ROWS[15:]:
             cells = tables[endpoint(row, dataset)].get(dataset, {})
             subset = {
                 s: {q: v for q, v in c.items() if q in kept[dataset]} for s, c in cells.items()
             }
-            d, _ = contrast(row, subset)
+            d, _ = contrast(row, subset, sorted(kept[dataset]))
             estimates[row.number] = math.fsum(d.values()) / len(d) if d else math.nan
-        out[dataset] = {"questions_kept": len(kept[dataset]), "estimates": estimates}
+            n[row.number] = len(d)
+        out[dataset] = {
+            "questions": len(tables["questions"][dataset]),
+            "questions_kept": len(kept[dataset]),
+            "no_cut_total": no_cut_total(answers, dataset),
+            "n": n,
+            "estimates": estimates,
+        }
     fb, fs = out.get(FB, {}).get("estimates", {}), out.get(FS, {}).get("estimates", {})
     out["agrees"] = {r: _sign(fb.get(r, 0.0)) * _sign(fs.get(r, 0.0)) > 0 for r in range(16, 20)}
     out["sign"] = {r: _sign(fb.get(r, 0.0)) if out["agrees"][r] else 0 for r in range(16, 20)}
@@ -313,14 +284,23 @@ def _claims(hypotheses: Mapping[str, Any], sensitivity: Mapping[str, Any]) -> di
             sensitivity["sign"][r] != 0 and sensitivity["sign"][r] == h8b["sign"]
             for r in h8b["rows"]
         )
+        # Protocol 0.14 item 26: the registered claim names the fixed pre-assembly budget.
         claims[outcome] = (
-            "chunk size itself changes it"
+            f"chunk size changes {outcome} at a fixed pre-assembly evidence budget"
             if h8b["holds"] and itself
-            else "chunk size together with context length changes it"
+            else f"chunk size together with context length changes {outcome}"
             if h8a["holds"] and not h8b["holds"]
             else None
         )
     return claims
+
+
+def _questions(search_records: Sequence[Mapping[str, Any]]) -> dict[str, list[str]]:
+    """Return per dataset every question: a missing search scores 0 and keeps its record."""
+    found: dict[str, set[str]] = {}
+    for row in search_records:
+        found.setdefault(row["dataset"], set()).add(str(row["qid"]))
+    return {d: sorted(q) for d, q in found.items()}
 
 
 def analyse(
@@ -330,6 +310,7 @@ def analyse(
     not_testable: Mapping[str, set[int]] | None = None,
     n_draws: int = stats_cluster.SIGN_FLIP_DRAWS,
     n_perm: int = PERM_SHUFFLES,
+    dropped: Collection[str] = (),
 ) -> dict[str, Any]:
     """Run the factorial analysis on all questions.
 
@@ -340,6 +321,8 @@ def analyse(
             rule makes "not testable" (p = 1, kept in the family).
         n_draws: FinanceBench sign-flip draws (100,000 registered).
         n_perm: Paired permutation shuffles of the sensitivity check (10,000 registered).
+        dropped: Datasets whose answers drop step 1 removed (``budget35``); their
+            answer rows are marked ``dropped`` and their search rows still run.
 
     Returns:
         Per dataset rows, hypothesis verdicts, the decision and sensitivity
@@ -351,20 +334,29 @@ def analyse(
     gated = not_testable or {}
     search = {m: cell_means(search_records, m) for m in (NDCG, EVIDENCE)}
     answers = {m: cell_means(answer_records, m) for m in (FAITH, CORRECT)}
-    docs = _documents([*search_records, *answer_records])
+    # Search records come from the gold table, so they win over answer rows.
+    docs = documents([*answer_records, *search_records])
     datasets = sorted(set(search[NDCG]) | set(answers[FAITH]))
     for dataset in datasets:
         _check_stage(dataset, "search", search[NDCG].get(dataset, {}))
-        for stage in ("crossed", "t20k"):
+        for stage in ("crossed", "t20k") if dataset not in dropped else ():
             _check_stage(dataset, stage, answers[FAITH].get(dataset, {}))
+    tables: dict[str, Any] = {
+        **search,
+        **answers,
+        "questions": _questions(search_records),
+        "marks": {
+            m: {k: unjudged_cells(answer_records, m, k) for k in ("unjudged", "not_defined")}
+            for m in (FAITH, CORRECT, *search)
+        },
+        "dropped": frozenset(dropped),
+    }
     by_dataset = {
-        d: _dataset_rows(
-            d, search, answers, docs.get(d, {}), set(gated.get(d, ())), n_draws, n_perm
-        )
+        d: _dataset_rows(d, tables, docs.get(d, {}), set(gated.get(d, ())), n_draws, n_perm)
         for d in datasets
     }
     counted = {
-        d: {r["row"]: _sign(r["estimate"]) if r["counts"] else 0 for r in rows}
+        d: {r["row"]: _sign(r["estimate"]) if r.get("counts") else 0 for r in rows}
         for d, rows in by_dataset.items()
         if d in FAMILIES
     }
@@ -379,7 +371,7 @@ def analyse(
         }
         for d, rows in by_dataset.items()
         for r in rows
-        if r["counts"] is not None and r["counts"] != r["sensitivity_counts"]
+        if r.get("counts") is not None and r["counts"] != r["sensitivity_counts"]
     ]
     h6_fb = []
     if FB in by_dataset:
@@ -395,7 +387,6 @@ def analyse(
                     "sign_agrees": _sign(test["estimate"]) == _sign(main[row.number]["estimate"]),
                 }
             )
-    tables = {**search, **answers}
     sensitivity = _h8b_sensitivity(answer_records, tables)
     return {
         "datasets": by_dataset,
@@ -413,20 +404,32 @@ def write_confirmatory(
     answer_records: Sequence[Mapping[str, Any]],
     *,
     label_dir: Path,
+    root: Path,
     n_draws: int = stats_cluster.SIGN_FLIP_DRAWS,
     n_perm: int = PERM_SHUFFLES,
 ) -> dict[str, Any]:
-    """Write the confirmatory result to *path*, only after both gate files exist.
+    """Write the confirmatory result to *path*, only after half B opens and both gate files exist.
 
-    The gate rows of ``labels35.require_gates`` become "not testable" (p = 1).
-    *path* also records them under ``gates``.
+    The result holds half-B scores, so the half-B guard (section 14.2) runs
+    first on the run output folder *root*. The gate rows of
+    ``labels35.require_gates`` become "not testable" (p = 1); *path* also
+    records them under ``gates``. Drop step 1 in ``<root>/drops.json`` marks
+    the Legal answer rows ``dropped``.
 
     Raises:
+        scoring35.HalfBLocked: Half B is not open; nothing is computed or written.
         labels35.GateMissing: A gate file is missing; nothing is computed or written.
     """
+    scoring35.require_half_b(root)
     gated = labels35.require_gates(label_dir)
+    kept = budget35.answer_datasets(budget35.read_drops(root))
     result = analyse(
-        search_records, answer_records, not_testable=gated, n_draws=n_draws, n_perm=n_perm
+        search_records,
+        answer_records,
+        not_testable=gated,
+        n_draws=n_draws,
+        n_perm=n_perm,
+        dropped=[d for d in budget35.QUESTIONS if d not in kept],
     )
     write_json(path, {**result, "gates": {d: sorted(rows) for d, rows in gated.items()}})
     return result
@@ -447,7 +450,7 @@ def headline(
     """
     rows = list(records)
     cells = cell_means(rows, metric)
-    docs = _documents(rows)
+    docs = documents(rows)
     out = {}
     for dataset in select35.CORE:
         scores = {

@@ -118,6 +118,29 @@ def test_sign_flip_same_seed_same_result() -> None:
     assert first.seed == 20261101
 
 
+def test_sign_flip_draws_the_registered_matrix(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Section 9 point 4, protocol 0.14 item 32: the matrix is
+    # numpy.random.default_rng(20261101).integers(0, 2, size=(draws, documents)) with the
+    # default integer type, mapped 0 -> -1 and 1 -> +1. These rows are that call's values
+    # for 4 draws and 6 documents (an 8-bit draw gives other rows).
+    registered = [
+        [1, 1, 1, 0, 0, 0],
+        [0, 1, 0, 0, 1, 0],
+        [0, 1, 0, 0, 0, 0],
+        [0, 0, 0, 0, 0, 0],
+    ]
+    seen: list[np.ndarray] = []
+    real = sc.SignFlip
+
+    def spy(d, documents, signs):  # noqa: ANN001, ANN202
+        seen.append(np.asarray(signs))
+        return real(d, documents, signs)
+
+    monkeypatch.setattr(sc, "SignFlip", spy)
+    sc.sign_flip_test([0.1, 0.2, 0.3, 0.4, 0.5, 0.6], list("fedcba"), n_draws=4)
+    assert seen[0].tolist() == [[2 * v - 1 for v in row] for row in registered]
+
+
 def test_sign_flip_zero_data_gives_p_one() -> None:
     result = sc.sign_flip_test([0.0] * 10, [f"d{i}" for i in range(10)], n_draws=2000)
     assert result.p_value == 1.0

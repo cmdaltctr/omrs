@@ -19,7 +19,7 @@ from typing import Any
 
 import pytest
 from experiments._lib.stats_d6 import wilson
-from tests._exp35_fixtures import load
+from tests._exp35_fixtures import load, open_half_b
 from tests._exp35_label_fixtures import answer_row, judge_row, write_rows
 
 report = load("refusalreport35")
@@ -60,7 +60,7 @@ VERDICT = {"s": "supported", "u": "unsupported"}
 
 def _build(tmp_path: Path, *, kinds_version: str = "v1", drop_kind: tuple | None = None) -> Path:
     out = tmp_path / "out"
-    (out).mkdir(parents=True)
+    open_half_b(out)
     (out / "join.json").write_text(json.dumps({"ok": True}))
     for setup, runs in SPEC.items():
         for run, per_q in runs.items():
@@ -125,6 +125,32 @@ def test_refuses_kinds_from_another_classifier_version(tmp_path: Path) -> None:
     out = _build(tmp_path, kinds_version="v0")
     with pytest.raises(report.ReportError, match="version"):
         report.write_report(out, gate_path=tmp_path / "gate.json", n_boot=200)
+
+
+def test_refuses_while_half_b_is_locked(tmp_path: Path) -> None:
+    # Section 14.2: every half-B score write goes through the guard (review R3-12).
+    out = _build(tmp_path)
+    (out / "osf-timestamp.json").unlink()
+    with pytest.raises(load("scoring35").HalfBLocked):
+        report.write_report(out, gate_path=tmp_path / "gate.json", n_boot=200)
+    assert not (out / "refusals.json").exists()
+
+
+def test_an_unparseable_verdict_counts_not_supported_as_in_the_join(tmp_path: Path) -> None:
+    # Section 12: returned content is final, so an unparseable verdict is a verdict
+    # (not supported), never an unjudged row (review R3-08).
+    out = _build(tmp_path)
+    path = out / "bioasq" / "answer" / S2 / "run2" / "judge-chat.jsonl"
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
+    rows[0]["verdicts"][0]["verdict"] = "unparseable"  # q1, claim F1
+    write_rows(path, rows)
+    report.write_report(out, gate_path=tmp_path / "gate.json", n_boot=200)
+    r = json.loads((out / "refusals.json").read_text())
+    # chat S2: q1 (1 + 0) / 2 = 0.5; q2 1; q3 unjudged (no chat row) -> out.
+    s2 = _cell(r, "primary", "chat", S2)
+    assert s2["mean"] == pytest.approx(0.75)
+    assert (s2["n"], s2["excluded_unjudged"], s2["unparseable_verdicts"]) == (2, 1, 1)
+    assert _cell(r, "primary", "chat", S1)["unparseable_verdicts"] == 0
 
 
 # --- kinds per run ---------------------------------------------------------------------------

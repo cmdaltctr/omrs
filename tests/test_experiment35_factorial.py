@@ -11,7 +11,7 @@ from typing import Any
 
 import numpy as np
 import pytest
-from tests._exp35_fixtures import load
+from tests._exp35_fixtures import load, open_half_b
 
 select35 = load("select35")
 factorial35 = load("factorial35")
@@ -367,9 +367,12 @@ def test_setup_table_is_descriptive_on_all_questions() -> None:
 
 def test_confirmatory_result_refuses_before_the_gate_files(tmp_path) -> None:
     labels35 = load("labels35")
+    open_half_b(tmp_path)
     out = tmp_path / "factorial.json"
     with pytest.raises(labels35.GateMissing, match="faithfulness-gate.json"):
-        factorial35.write_confirmatory(out, _search(), _answers(), label_dir=tmp_path, **FAST)
+        factorial35.write_confirmatory(
+            out, _search(), _answers(), label_dir=tmp_path, root=tmp_path, **FAST
+        )
     assert not out.exists()
 
 
@@ -380,8 +383,11 @@ def test_confirmatory_result_applies_the_gate_rows(tmp_path) -> None:
     (tmp_path / "correctness-gate.json").write_text(
         json.dumps({"result": {"not_testable_rows": {"freshstack": [14]}}})
     )
+    open_half_b(tmp_path)
     out = tmp_path / "factorial.json"
-    result = factorial35.write_confirmatory(out, _search(), _answers(), label_dir=tmp_path, **FAST)
+    result = factorial35.write_confirmatory(
+        out, _search(), _answers(), label_dir=tmp_path, root=tmp_path, **FAST
+    )
     rows = _rows(result, "freshstack")
     assert rows[12]["not_testable"] and rows[14]["not_testable"]
     assert not _rows(result, "bioasq")[14]["not_testable"]

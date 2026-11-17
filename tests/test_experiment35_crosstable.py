@@ -5,7 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from tests._exp35_fixtures import load
+import pytest
+from tests._exp35_fixtures import load, open_half_b
 
 crosstable35 = load("crosstable35")
 
@@ -84,6 +85,9 @@ def test_miss_crosstable_counts_closed_book_against_rag_on_misses(tmp_path) -> N
     cross = crosstable35.build_tables(tmp_path)["miss_crosstable"]["bioasq"]
     # RAG setup misses q1, q2 and q4 (head_recall_10 == 0).
     assert cross[RAG] == {
+        "misses_total": 3,
+        "no_rag_score": 0,
+        "no_closed_book_score": 0,
         "misses": 3,
         "closed_book_correct_rag_correct": 1,
         "closed_book_correct_rag_wrong": 1,
@@ -94,8 +98,49 @@ def test_miss_crosstable_counts_closed_book_against_rag_on_misses(tmp_path) -> N
     assert cross[T20K]["misses"] == 2
 
 
+def test_misses_without_a_score_are_counted(tmp_path) -> None:
+    # Review R3-13: q1 has no RAG correctness (every run unjudged) and q2 no closed-book
+    # score; both are misses, leave the table and are counted.
+    _build(tmp_path)
+    rows = [
+        json.loads(line) for line in (tmp_path / "answer-scores.jsonl").read_text().splitlines()
+    ]
+    for row in rows:
+        if row["qid"] == "q1":
+            row["ragas_answer_correctness"] = None
+    _write(tmp_path / "answer-scores.jsonl", rows)
+    _single(tmp_path, "closedbook-own", {"q1": 0.9, "q3": 0.1, "q4": 0.1})
+    cross = crosstable35.build_tables(tmp_path)["miss_crosstable"]["bioasq"][RAG]
+    assert cross["misses_total"] == 3
+    assert (cross["no_rag_score"], cross["no_closed_book_score"]) == (1, 1)
+    assert cross["misses"] == 1  # q4 only
+
+
+def test_an_unjudged_run_drops_the_rag_cell_as_in_the_analysis(tmp_path) -> None:
+    # Section 12: an unjudged run (Ragas closed missing) leaves the complete cases;
+    # the other runs do not stand in for it (review R3-03).
+    _build(tmp_path)
+    rows = [
+        json.loads(line) for line in (tmp_path / "answer-scores.jsonl").read_text().splitlines()
+    ]
+    for row in rows:
+        if row["qid"] == "q4" and row["setup"] == RAG and row["run"] == 2:
+            row.update(ragas_answer_correctness=None, unjudged=["ragas_answer_correctness"])
+    _write(tmp_path / "answer-scores.jsonl", rows)
+    cross = crosstable35.build_tables(tmp_path)["miss_crosstable"]["bioasq"][RAG]
+    assert (cross["misses"], cross["no_rag_score"]) == (2, 1)
+
+
+def test_main_refuses_while_half_b_is_locked(tmp_path) -> None:
+    _build(tmp_path)
+    with pytest.raises(load("scoring35").HalfBLocked):
+        crosstable35.main(["--out-dir", str(tmp_path)])
+    assert not (tmp_path / "crosstable.json").exists()
+
+
 def test_main_writes_the_table(tmp_path) -> None:
     _build(tmp_path)
+    open_half_b(tmp_path)
     assert crosstable35.main(["--out-dir", str(tmp_path)]) == 0
     saved = json.loads((tmp_path / "crosstable.json").read_text())
     assert saved["cut"] == 0.5 and "bioasq" in saved["miss_crosstable"]

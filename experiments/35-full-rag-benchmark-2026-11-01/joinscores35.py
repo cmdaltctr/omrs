@@ -12,13 +12,22 @@ Scoring rules (pre-registration sections 6 and 12):
 
 - ``faithfulness_glm_factual``: GLM-5.3 (``judge-chat``) supported share of the
   answer's cited claims whose saved kind is not ``refusal`` (an unclassified
-  claim counts as factual). ``None`` when the answer has no such claim, or
-  its checker row is missing (unjudged).
+  claim counts as factual). An ``unparseable`` verdict is returned content, so
+  it counts not supported; ``unparseable_verdicts`` counts them. ``None``
+  when the answer has no such claim, or its checker row is missing.
 - ``faithfulness_glm_factual_uncited`` (sensitivity): the same supported
   count over cited factual claims plus uncited segments whose saved kind
   (``claim-kinds.jsonl`` rows with ``uncited: true``) is not ``refusal``.
 - ``ragas_answer_correctness``: ``metrics.ragas_answer_correctness.score`` of
-  the Ragas row. An answer still missing scores 0.
+  the Ragas row. An answer still missing, or with no text, scores 0.
+- ``unjudged``: the metric keys whose checker row or Ragas metric closed
+  missing on an answer that exists. Such a value is ``None`` but is not a
+  no-claim run: the analysis drops the whole question-setup cell and counts it.
+- ``not_defined``: ``ragas_answer_correctness`` when its Ragas call returned no
+  defined score (NaN or no number; ``not_defined`` in the Ragas row). That is
+  returned content, so it is neither unjudged nor 0: the run has no value and
+  is left out of the run mean, as a no-claim run is for faithfulness.
+- ``doc_id``: the question's gold document (FinanceBench), from the caller.
 """
 
 from __future__ import annotations
@@ -50,6 +59,9 @@ TRACED = {
     "judge-clef_flash.jsonl": "judge-clef_flash",
 }
 REFUSAL = "refusal"
+UNPARSEABLE = "unparseable"
+CORRECT = "ragas_answer_correctness"
+FAITH_KEYS = ("faithfulness_glm_factual", "faithfulness_glm_factual_uncited")
 
 
 def _share(supported: int, total: int) -> float | None:
@@ -57,10 +69,9 @@ def _share(supported: int, total: int) -> float | None:
 
 
 def _faithfulness(
-    answer: Mapping[str, Any], judge: Mapping[str, Any] | None, kinds: Mapping[str, Any]
-) -> tuple[float | None, float | None]:
-    if judge is None or judge.get("missing"):
-        return None, None
+    answer: Mapping[str, Any], judge: Mapping[str, Any], kinds: Mapping[str, Any]
+) -> tuple[float | None, float | None, int]:
+    """Return the two faithfulness values and the count of unparseable verdicts."""
     qid = str(answer["qid"])
     evidence = len(answer.get("evidence") or [])
     claims = split_claims(answer.get("answer") or "", evidence)
@@ -70,22 +81,66 @@ def _faithfulness(
         for i, (text, _) in enumerate(claims)
         if kinds.get((claimkinds35.claim_key(qid, text), False)) != REFUSAL
     ]
+    # Returned content is final (section 12): an unparseable verdict counts not supported.
     supported = sum(verdicts.get(i) == "supported" for i in factual)
+    unparseable = sum(verdicts.get(i) == UNPARSEABLE for i in factual)
     uncited = [
         t
         for t in segments35.uncited_segments(answer.get("answer") or "", evidence)
         if kinds.get((claimkinds35.claim_key(qid, t), True)) != REFUSAL
     ]
-    return _share(supported, len(factual)), _share(supported, len(factual) + len(uncited))
+    shares = _share(supported, len(factual)), _share(supported, len(factual) + len(uncited))
+    return *shares, unparseable
 
 
-def _correctness(row: Mapping[str, Any] | None) -> float | None:
-    metric = ((row or {}).get("metrics") or {}).get("ragas_answer_correctness") or {}
+def _correctness(answer: Mapping[str, Any], row: Mapping[str, Any] | None) -> float | None:
+    """Return the correctness, or None when no score was saved (see ``_unjudged``).
+
+    An answer with no text scores 0: Ragas gets no text, as for a missing answer.
+    """
+    if answer.get("missing") or not answer.get("answer"):
+        return 0.0
+    metric = ((row or {}).get("metrics") or {}).get(CORRECT) or {}
     return metric.get("score")
 
 
-def answer_scores(run_dir: Path, dataset: str, setup: str, run: int) -> list[dict[str, Any]]:
-    """Return the answer-score records of one answer run, in answer order."""
+def _unjudged(answer: Mapping[str, Any], judge: Any, ragas: Any) -> list[str]:
+    """Return the metrics whose checker or Ragas call closed missing (section 12)."""
+    if answer.get("missing"):
+        return []
+    found = []
+    if judge is None or judge.get("missing"):
+        found += list(FAITH_KEYS)
+    closed = {u["metric"] for u in (ragas or {}).get("unjudged") or [] if u.get("closed")}
+    if answer.get("answer") and (ragas is None or CORRECT in closed):
+        found.append(CORRECT)
+    return found
+
+
+def _not_defined(ragas: Mapping[str, Any] | None) -> list[str]:
+    """Return the metric keys whose Ragas call returned no defined score (NaN or no number)."""
+    metric = ((ragas or {}).get("metrics") or {}).get(CORRECT) or {}
+    return [CORRECT] if metric.get("not_defined") else []
+
+
+def answer_scores(
+    run_dir: Path,
+    dataset: str,
+    setup: str,
+    run: int,
+    documents: Mapping[str, str] | None = None,
+) -> list[dict[str, Any]]:
+    """Return the answer-score records of one answer run, in answer order.
+
+    Args:
+        run_dir: The answer run folder.
+        dataset: Dataset name.
+        setup: Answer setup name.
+        run: Run number.
+        documents: FinanceBench only: question ID to its gold document. The
+            record's ``doc_id`` comes from here, never from the answer row (a
+            closed-missing row has none).
+    """
     judges = {str(r["qid"]): r for r in read_rows(run_dir / "judge-chat.jsonl")}
     ragas = {str(r["qid"]): r for r in read_rows(run_dir / "ragas.jsonl")}
     kinds = {
@@ -95,9 +150,11 @@ def answer_scores(run_dir: Path, dataset: str, setup: str, run: int) -> list[dic
     records = []
     for answer in read_rows(run_dir / "answer.jsonl"):
         qid = str(answer["qid"])
-        missing = bool(answer.get("missing"))
-        faith, sensitivity = (
-            (None, None) if missing else _faithfulness(answer, judges.get(qid), kinds)
+        judge = judges.get(qid)
+        unjudged = _unjudged(answer, judge, ragas.get(qid))
+        judged = not answer.get("missing") and FAITH_KEYS[0] not in unjudged
+        faith, sensitivity, unparseable = (
+            _faithfulness(answer, judge, kinds) if judged else (None, None, 0)
         )
         segments, uncited = segments35.segment_counts(
             answer.get("answer") or "", len(answer.get("evidence") or [])
@@ -108,16 +165,31 @@ def answer_scores(run_dir: Path, dataset: str, setup: str, run: int) -> list[dic
                 "setup": setup,
                 "run": run,
                 "qid": qid,
-                "doc_id": answer.get("doc_id"),
+                "doc_id": (documents or {}).get(qid),
                 "cut_tokens": answer.get("cut_tokens"),
                 "faithfulness_glm_factual": faith,
                 "faithfulness_glm_factual_uncited": sensitivity,
-                "ragas_answer_correctness": 0.0 if missing else _correctness(ragas.get(qid)),
+                CORRECT: _correctness(answer, ragas.get(qid)),
+                "unjudged": unjudged,
+                "not_defined": [] if answer.get("missing") else _not_defined(ragas.get(qid)),
+                "unparseable_verdicts": unparseable,
                 "segments": segments,
                 "uncited_segments": uncited,
             }
         )
     return records
+
+
+def marked_runs(
+    records: Sequence[Mapping[str, Any]], field: str, metrics: Sequence[str]
+) -> dict[str, dict[str, dict[str, int]]]:
+    """Return per dataset, setup and metric the runs whose ``field`` list names the metric."""
+    out: dict[str, dict[str, dict[str, int]]] = {}
+    for r in records:
+        per = out.setdefault(r["dataset"], {}).setdefault(r["setup"], dict.fromkeys(metrics, 0))
+        for metric in r.get(field) or ():
+            per[metric] += 1
+    return out
 
 
 def uncited_share(records: Sequence[Mapping[str, Any]]) -> dict[str, dict[str, float | None]]:

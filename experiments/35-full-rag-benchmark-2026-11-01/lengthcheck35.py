@@ -1,11 +1,12 @@
 """Length-controlled check of Experiment 35 (task 16.19; pre-registration section 11.2).
 
 A registered sensitivity analysis with no gate. ``--stage lengthcheck`` draws
-300 cited claims from the ``c2048`` crossed answers of the core datasets
-(seed 20261119; refusal claims left out, as in the faithfulness pool). Each
-cited evidence text is split into consecutive 512-token windows (pinned Qwen3
-tokenizer); the window that shares the most distinct lower-case claim words
-is kept, ties to the earlier window. GLM-5.3 (``chat``) and Clef-Flash judge
+300 cited claims from the ``c2048`` crossed answers of every dataset with
+answers, Legal too unless drop step 1 removed them (seed 20261119; refusal
+claims left out, as in the faithfulness pool). Each cited evidence text is
+split into consecutive 512-token windows (pinned Qwen3 tokenizer); the window
+that shares the most distinct lower-case claim words is kept, ties to the
+earlier window. GLM-5.3 (``chat``) and Clef-Flash judge
 the claim again on those windows. The report gives, per checker, the share of
 claims whose verdict changed against the saved verdict, with a Wilson interval.
 
@@ -72,10 +73,10 @@ def _verdicts(folder: Path, checker: str, answer: Mapping[str, Any]) -> dict[int
 
 
 def pool(out: Path) -> list[dict[str, Any]]:
-    """Return the cited non-refusal claims of the ``c2048`` crossed answers, core datasets."""
+    """Return the cited non-refusal claims of the ``c2048`` crossed answers of every dataset."""
     claims: list[dict[str, Any]] = []
     for dataset, setup, run, folder in outputs35.Layout(out).need_runs("answer", "answer.jsonl"):
-        if dataset not in correct35.CORE or arms.parse_setup(setup).t20k:
+        if arms.parse_setup(setup).t20k:
             continue
         if chunk_size(setup) != CHUNK:
             continue

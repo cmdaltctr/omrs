@@ -395,6 +395,37 @@ def test_numbers_read_scale_sign_and_separators() -> None:
     assert values == [Decimal(v) for v in expected]
 
 
+def _values(text: str) -> list[Decimal]:
+    return [n.value for n in scoring35.extract_numbers(text)]
+
+
+def test_a_fiscal_year_label_reads_as_its_year() -> None:
+    # Protocol 0.14 item 37: a year written alone is a number; FY2022 is the year 2022.
+    # These four FinanceBench references (01163, 01009, 01474, 00521) hold only such labels.
+    assert _values("cash flow from operations was the highest for Nike in FY2023.") == [2023]
+    ulta = "Ulta Beauty did not make any acquisitions in FY2023 and FY2022."
+    assert _values(ulta) == [2023, 2022]
+    assert scoring35.number_match(ulta, "No acquisitions in FY2023 or in FY2022.") is True
+    assert scoring35.number_match(ulta, "No acquisitions in either year.") is False
+    assert _values("fy2021 and FY22 and XFY2020") == [2021]  # four digits after a whole FY only
+
+
+def test_a_company_name_such_as_3m_is_not_a_number() -> None:
+    # A one-letter scale (m, b, k) is read only with a currency sign.
+    assert _values("The quick ratio for 3M was 0.96") == [Decimal("0.96")]
+    assert _values("registered under 3M's name") == []
+    assert _values("$3M, -$1561M and $2,018mn") == [3_000_000, -1_561_000_000, 2_018_000_000]
+    assert _values("top 3 m of sales, 2 b and 7bn") == [3, 2, 7_000_000_000]
+    assert scoring35.number_match("3M and 65 units", "65 units") is True
+
+
+def test_a_number_joined_on_its_right_to_a_letter_is_not_read() -> None:
+    # The right-hand twin of the registered left-join rule: a letter that is no scale
+    # word (FinanceBench 00494 "777X", 00807 "1x"). Percent and spelt-out scales still read.
+    assert _values("the 737, 777X and 787 and the 1x mark") == [737, 787]
+    assert _values("12.5percent, 5mn and 2Bn") == [Decimal("12.5"), 5_000_000, 2_000_000_000]
+
+
 def test_head_recall_counts_only_the_units_of_the_first_ten_stored_chunks() -> None:
     # Chunks 1 to 11 come from two documents; the gold document is first at chunk 12.
     chunks = [_c(f"c{i}", stem="A" if i % 2 else "B") for i in range(11)]

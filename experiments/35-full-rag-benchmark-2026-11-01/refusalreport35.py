@@ -28,7 +28,10 @@ Missing outcomes (pre-registration section 12): every question stays in the
 denominator. A run's faithfulness is undefined when the answer has no counted
 claim; a missing answer counts as an answer with no factual claim. Per
 question and setup, faithfulness is the mean over runs with a value. A cell
-with an unjudged run leaves the complete cases and is counted.
+with an unjudged run leaves the complete cases and is counted. An
+``unparseable`` verdict is returned content: it counts not supported, as in
+the join, and ``unparseable_verdicts`` counts it per setup. The report holds
+half-B scores, so it runs behind the half-B guard.
 """
 
 from __future__ import annotations
@@ -44,6 +47,7 @@ from pathlib import Path
 from typing import Any
 
 import claimkinds35
+import scoring35
 from bootstrap35 import bootstrap_by_question
 from experiments._lib.stats_d6 import cohen_kappa, paired_bootstrap
 from outputs35 import Layout, read_rows, write_json
@@ -53,6 +57,8 @@ CHECKERS = ("chat", "clef_flash")
 FACTUAL = ("factual", "mixed")
 NO_CLAIM = "no_claim"
 UNJUDGED = "unjudged"
+UNPARSEABLE = "unparseable"
+VERDICTS = ("supported", "unsupported", UNPARSEABLE)
 STATUS = {
     "primary": "primary",
     "no_claim_scored_1": "sensitivity",
@@ -86,7 +92,13 @@ class RunAnswer:
 
 
 def _verdict(v: dict[str, Any]) -> str | None:
-    return v.get("verdict") if v.get("verdict") in ("supported", "unsupported") else None
+    # Returned content is final (section 12): an unparseable verdict is a verdict.
+    return v.get("verdict") if v.get("verdict") in VERDICTS else None
+
+
+def _binary(verdict: str) -> str:
+    """Return the benchmark's binary scale: unparseable counts not supported."""
+    return "supported" if verdict == "supported" else "unsupported"
 
 
 def _load_run(folder: Path, version: str) -> dict[str, RunAnswer]:
@@ -192,11 +204,20 @@ def faithfulness(
         for q in qids
     ]
     numbers = [c for c in cells if not isinstance(c, str)]
+    unparseable = sum(
+        c.verdicts[checker] == UNPARSEABLE
+        for answers in runs.values()
+        for q in qids
+        if answers.get(q) is not None
+        for c in answers[q].claims
+        if keep(c)
+    )
     return {
         "mean": sum(numbers) / len(numbers) if numbers else None,
         "n": len(numbers),
         "excluded_no_claim": cells.count(NO_CLAIM),
         "excluded_unjudged": cells.count(UNJUDGED),
+        "unparseable_verdicts": unparseable,
         "values": numbers,
     }
 
@@ -321,7 +342,7 @@ def build(data: dict, *, n_boot: int) -> dict[str, Any]:
         on_refusals = {}
         for c in CHECKERS:
             judged = [
-                (x.qid, x.verdicts[c] == "unsupported")
+                (x.qid, _binary(x.verdicts[c]) == "unsupported")
                 for x in claims
                 if x.kind == "refusal" and x.verdicts[c] is not None
             ]
@@ -331,7 +352,7 @@ def build(data: dict, *, n_boot: int) -> dict[str, Any]:
                 **_rate(judged, qids[dataset], n_boot),
             }
         both = [
-            (x.verdicts["clef_flash"], x.verdicts["chat"])
+            (_binary(x.verdicts["clef_flash"]), _binary(x.verdicts["chat"]))
             for x in claims
             if x.verdicts["clef_flash"] is not None and x.verdicts["chat"] is not None
         ]
@@ -374,9 +395,12 @@ def write_report(out_dir: Path, *, gate_path: Path, n_boot: int = 10_000) -> Pat
     """Check the inputs, build the report and write ``refusals.json``; return its path.
 
     Raises:
+        scoring35.HalfBLocked: Half B is not open (the report holds half-B
+            scores, section 14.2); nothing is read or written.
         ReportError: No passing join, no frozen classifier version, or a kind
             from another version.
     """
+    scoring35.require_half_b(out_dir)
     join = out_dir / "join.json"
     if not join.exists() or json.loads(join.read_text(encoding="utf-8")).get("ok") is not True:
         raise ReportError(f"{join}: no passing join")

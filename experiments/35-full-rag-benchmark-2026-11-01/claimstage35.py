@@ -159,7 +159,9 @@ async def claimkinds_stage(
     """
     stagekit35.require_half_b_open(ctx)
     if not (ctx.run_dir / ".done-answer.json").exists():
-        raise StageOrderError(f"the claimkinds stage needs a finished answer stage in {ctx.run_dir}")
+        raise StageOrderError(
+            f"the claimkinds stage needs a finished answer stage in {ctx.run_dir}"
+        )
     call, version, prompt = _classifier(ctx)
     questions = {str(q.qid): q.text for q in ctx.questions}
     with outputs35.RowFile(ctx.run_dir, STAGE, ctx.key, resume=ctx.resume) as log:
