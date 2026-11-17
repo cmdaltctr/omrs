@@ -199,6 +199,15 @@ Primary faithfulness SHALL cover cited factual claims only. The report SHALL giv
 - **WHEN** an answer holds one cited fact the checker calls supported and one uncited segment the classifier calls fact
 - **THEN** primary faithfulness MUST be 1.0, the sensitivity MUST be 0.5, and the uncited share MUST be 0.5
 
+### Requirement: An uncited segment the classifier could not sort counts as factual
+
+In the uncited-segment sensitivity analysis, an uncited segment that the classifier could not sort SHALL count as factual, as an unclassified claim does, so it SHALL count as unsupported (pre-registration section 12; A5 item 53).
+
+#### Scenario: Uncited segment the classifier could not sort
+
+- **WHEN** an answer holds one cited fact the checker calls supported and one uncited segment whose classifier call was closed as missing
+- **THEN** the sensitivity MUST be 0.5
+
 ### Requirement: Refusals are reported separately
 
 A refusal report step SHALL read a joined main run and SHALL refuse to start without a passing join report. It SHALL give the refusal rate per answer setup and dataset as a primary descriptive outcome. For refusal claims only, it SHALL give each checker's unsupported rate and the Cohen's kappa of Clef-Flash against GLM-5.3. For factual claims, it SHALL give the Cohen's kappa of Clef-Flash against GLM-5.3 per dataset.
@@ -374,6 +383,24 @@ The report SHALL show closed-book correctness per dataset beside every correctne
 
 - **WHEN** a question is answered correctly by one closed-book run and wrongly by the other
 - **THEN** it MUST NOT enter the contamination subset
+
+### Requirement: Closed-book prompts are sent as one direct call
+
+The own-knowledge prompt SHALL be the text registered in pre-registration section 13. Each closed-book prompt SHALL be sent as one direct completion call to the OMRS answer model with the frozen answer settings, because the OMRS answer path never calls the model on empty evidence (A5 item 49). The judge and Ragas stages SHALL read the closed-book and oracle answers through `--answers` (A5 item 50).
+
+#### Scenario: One direct call with the frozen settings
+
+- **WHEN** the closed-book RAG-prompt run answers a question
+- **THEN** it MUST make exactly one completion call to the answer model, with the frozen answer settings, and MUST NOT go through `Engine.answer`
+
+### Requirement: A retrieval miss is judged on the evidence the model saw
+
+A retrieval miss in the closed-book cross-table SHALL be a question with no gold unit among the units of the evidence the answer model saw: the 10 head stored chunks for a 10-chunk setup, or the token cut for a `-t20k` setup (pre-registration section 13; A5 item 52).
+
+#### Scenario: Gold unit below the evidence head
+
+- **WHEN** a 10-chunk setup's only gold unit is among the first 10 units of its list but first appears at stored chunk rank 11
+- **THEN** the question MUST count as a retrieval miss
 
 ### Requirement: Missing answers and unjudged rows keep every question
 
