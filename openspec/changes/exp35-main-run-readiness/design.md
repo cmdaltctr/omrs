@@ -223,7 +223,7 @@ Each stage that runs a model, sends a model call or reads the index appends one 
 
 ### D12. Named questions
 
-`--qids a,b` selects those questions in frozen order and makes the run a smoke run (`run_arms.py:84-85`). An unknown ID raises `DatasetError` before any call.
+`--qids a,b` selects those questions in frozen order and makes the run a smoke run (`run_arms.py:84-85`). A smoke run appends one run-record line that carries `smoke: true`; the join step and every main-run check ignore it, as they ignore `prefreeze: true` lines (protocol 0.14 item 44). An unknown ID raises `DatasetError` before any call.
 
 ### D13. Claim kinds: what counts where (pre-freeze amendment, 2026-11-12)
 

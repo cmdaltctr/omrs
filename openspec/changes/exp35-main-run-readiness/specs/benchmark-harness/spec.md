@@ -452,7 +452,7 @@ The stage key and the ingest done-marker SHALL hold a configuration hash of the 
 
 ### Requirement: A main stage refuses an unfrozen plan or a dirty tree
 
-A main stage SHALL refuse to start while `plan.json` `frozen` is empty, and SHALL refuse a dirty working tree. A pre-freeze run SHALL need an explicit flag. Like every run, it SHALL append one line to `output/run-records.jsonl`, and that line SHALL carry `prefreeze: true`. The join step and every main-run check SHALL ignore lines with that field. Every run record SHALL hold the SHA-256 of `preregistration.md` (amendment A5).
+A main stage SHALL refuse to start while `plan.json` `frozen` is empty, and SHALL refuse a dirty working tree. A pre-freeze run SHALL need an explicit flag. Like every run, it SHALL append one line to `output/run-records.jsonl`, and that line SHALL carry `prefreeze: true`. A smoke run's line SHALL carry `smoke: true`. The join step and every main-run check SHALL ignore lines with either field. Every run record SHALL hold the SHA-256 of `preregistration.md` (amendment A5).
 
 #### Scenario: Plan not frozen
 
