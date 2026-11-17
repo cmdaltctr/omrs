@@ -74,7 +74,8 @@ def mde_row(
         row: Contrast table row (section 8).
         sd: SD of the per-question contrast scores.
         source: Where the SD comes from.
-        design_effect: FinanceBench design effect; None leaves n undivided.
+        design_effect: FinanceBench design effect; None leaves n undivided. A value
+            below 1 is floored at 1 before n is divided; the row keeps the raw value.
         stand_in: The extreme-level contrast used for an adjacent-level row.
         rough: True for answer-stage rows from smoke and test-pod files.
         pilot_n: Questions behind the SD.
@@ -84,7 +85,7 @@ def mde_row(
     """
     metric = factorial35.endpoint(factorial35.ROWS[row - 1], dataset)
     n = QUESTIONS[dataset]
-    n_effective = n / design_effect if design_effect else n
+    n_effective = n if design_effect is None else n / max(1.0, design_effect)
     alpha = 0.05 / FAMILY_SIZE[dataset]
     mde = min_detectable_effect(sd, n_effective, alpha=alpha, power=POWER)
     on_ndcg = metric == factorial35.NDCG

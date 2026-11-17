@@ -52,6 +52,42 @@ def test_faithfulness_sample_is_450_stratified_one_claim_per_answer(tmp_path: Pa
     assert {int(i["qid"][1:]) % 2 for i in items} == {0, 1}  # both halves
 
 
+def _kind_pool(tmp_path: Path, kind_of: Any) -> list[dict[str, Any]]:
+    out = tmp_path / "out"
+    questions = fx.build(out)
+    fx.write_kinds(out, kind_of)
+    return labels35.draw_faithfulness(labels35.faithfulness_claims(out, questions))
+
+
+def test_refusal_claims_are_left_out_of_the_faithfulness_pool(tmp_path: Path) -> None:
+    # The first claim of every answer is a refusal; the second is factual.
+    items = _kind_pool(tmp_path, lambda q, i: "refusal" if i == 0 else "factual")
+    assert len(items) == 450
+    assert {i["index"] for i in items} == {1}
+
+
+def test_pool_keeps_factual_mixed_and_unclassified_claims(tmp_path: Path) -> None:
+    kinds = {0: "factual", 1: "mixed"}
+    items = _kind_pool(tmp_path, lambda q, i: kinds[i] if int(q[1:]) < 50 else None)
+    assert {i["index"] for i in items} == {0, 1}
+    assert any(int(i["qid"][1:]) >= 50 for i in items)  # no saved kind: unclassified, kept
+    unreadable = _kind_pool(tmp_path / "u", lambda q, i: "unreadable")
+    assert {i["index"] for i in unreadable} == {0, 1}  # the classifier failed: kept
+
+
+def test_pool_uses_each_runs_own_saved_kinds(tmp_path: Path) -> None:
+    out = tmp_path / "out"
+    questions = fx.build(out)
+    fx.write_kinds(out, lambda q, i: "factual")
+    # In run 2 every claim is a refusal: only run 1 claims can be drawn.
+    for path in out.glob("*/*/run2/claim-kinds.jsonl"):
+        rows = [json.loads(x) for x in path.read_text().splitlines()]
+        path.write_text("".join(json.dumps({**r, "kind": "refusal"}) + "\n" for r in rows))
+    items = labels35.draw_faithfulness(labels35.faithfulness_claims(out, questions))
+    assert len(items) == 450
+    assert {i["run"] for i in items} == {1}
+
+
 def test_faithfulness_items_are_shuffled_across_cells(tmp_path: Path) -> None:
     sizes = [i["chunk_size"] for i in _faith(tmp_path)]
     assert sizes != sorted(sizes)

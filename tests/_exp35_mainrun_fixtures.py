@@ -11,9 +11,11 @@ an ``answer_correctness`` score.
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from tests._exp35_fixtures import load
 from tests._exp35_label_fixtures import answer_row, judge_row, write_rows
 
 DATASETS = ("bioasq", "financebench", "freshstack", "legal")
@@ -41,7 +43,10 @@ def build(out: Path) -> dict[str, Any]:
                     write_rows(
                         folder / "ragas.jsonl",
                         [
-                            {"qid": q, "metrics": {"answer_correctness": {"score": (i % 10) / 10}}}
+                            {
+                                "qid": q,
+                                "metrics": {"ragas_answer_correctness": {"score": (i % 10) / 10}},
+                            }
                             for i, q in enumerate(QIDS)
                         ],
                     )
@@ -51,6 +56,31 @@ def build(out: Path) -> dict[str, Any]:
         d: {q: {"question": f"{d} question {q}?", "reference": f"reference {q}"} for q in QIDS}
         for d in DATASETS
     }
+
+
+def write_kinds(out: Path, kind_of: Callable[[str, int], str | None]) -> None:
+    """Write ``claim-kinds.jsonl`` in every run folder from ``kind_of(qid, claim index)``.
+
+    A claim for which *kind_of* returns None gets no row (it is unclassified).
+    """
+    claimkinds35 = load("claimkinds35")
+    for path in sorted(out.glob("*/*/run*/answer.jsonl")):
+        rows = []
+        for answer in map(json.loads, path.read_text().splitlines()):
+            for index, text in enumerate(claimkinds35.answer_claims(answer)):
+                kind = kind_of(answer["qid"], index)
+                if kind is not None:
+                    key = claimkinds35.claim_key(answer["qid"], text)
+                    rows.append(
+                        {
+                            "claim_key": key,
+                            "qid": answer["qid"],
+                            "index": index,
+                            "kind": kind,
+                            "version": "v1",
+                        }
+                    )
+        write_rows(path.parent / "claim-kinds.jsonl", rows)
 
 
 def drop_legal(out: Path) -> None:

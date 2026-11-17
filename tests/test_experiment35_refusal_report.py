@@ -18,10 +18,12 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from experiments._lib.stats_d6 import wilson
 from tests._exp35_fixtures import load
 from tests._exp35_label_fixtures import answer_row, judge_row, write_rows
 
 report = load("refusalreport35")
+bootstrap35 = load("bootstrap35")
 claimkinds35 = load("claimkinds35")
 
 TEXT = {
@@ -98,7 +100,7 @@ def _build(tmp_path: Path, *, kinds_version: str = "v1", drop_kind: tuple | None
 
 def _run(tmp_path: Path, **kw: Any) -> dict[str, Any]:
     out = _build(tmp_path, **kw)
-    report.write_report(out, gate_path=tmp_path / "gate.json", seed=5, n_boot=200)
+    report.write_report(out, gate_path=tmp_path / "gate.json", n_boot=200)
     return json.loads((out / "refusals.json").read_text())
 
 
@@ -109,20 +111,20 @@ def test_refuses_without_a_passing_join(tmp_path: Path) -> None:
     out = _build(tmp_path)
     (out / "join.json").write_text(json.dumps({"ok": False}))
     with pytest.raises(report.ReportError, match="join"):
-        report.write_report(out, gate_path=tmp_path / "gate.json", seed=5, n_boot=200)
+        report.write_report(out, gate_path=tmp_path / "gate.json", n_boot=200)
 
 
 def test_refuses_without_a_frozen_classifier_version(tmp_path: Path) -> None:
     out = _build(tmp_path)
     (tmp_path / "gate.json").write_text(json.dumps({"pass": False, "version": "v1"}))
     with pytest.raises(report.ReportError, match="classifier"):
-        report.write_report(out, gate_path=tmp_path / "gate.json", seed=5, n_boot=200)
+        report.write_report(out, gate_path=tmp_path / "gate.json", n_boot=200)
 
 
 def test_refuses_kinds_from_another_classifier_version(tmp_path: Path) -> None:
     out = _build(tmp_path, kinds_version="v0")
     with pytest.raises(report.ReportError, match="version"):
-        report.write_report(out, gate_path=tmp_path / "gate.json", seed=5, n_boot=200)
+        report.write_report(out, gate_path=tmp_path / "gate.json", n_boot=200)
 
 
 # --- kinds per run ---------------------------------------------------------------------------
@@ -204,6 +206,7 @@ def test_refusal_rate_per_setup_is_primary_descriptive(tmp_path: Path) -> None:
     assert (rate[S2]["refusals"], rate[S2]["claims"]) == (0, 5)
     assert rate[S1]["status"] == "primary descriptive"
     assert rate[S1]["low"] < 0.5 < rate[S1]["high"]
+    assert rate[S1]["testable"] is True
 
 
 def test_checker_unsupported_rate_on_refusals_and_kappa_against_glm(tmp_path: Path) -> None:
@@ -223,3 +226,65 @@ def test_unclassified_claim_counts_as_factual_and_is_counted(tmp_path: Path) -> 
     assert _cell(r, "primary", "chat", S1)["mean"] == pytest.approx((0.75 + 0.5) / 2)
     # Left out in the sensitivity table: back to the first value.
     assert _cell(r, "unclassified_left_out", "chat", S1)["mean"] == pytest.approx(0.75)
+
+
+# --- bootstrap intervals by question (pre-registration sections 6 and 11.2) -------------------
+
+
+def _ratio(sample: list[tuple[int, int]]) -> float:
+    total = sum(t for _, t in sample)
+    return sum(h for h, _ in sample) / total if total else float("nan")
+
+
+def _expected(per_question: list[tuple[str, tuple[int, int]]], n: int = 200) -> Any:
+    return bootstrap35.bootstrap_by_question(per_question, _ratio, n=n, seed=20261136, fill=None)
+
+
+def test_seed_is_a_named_constant_and_the_command_line_has_no_seed_option(tmp_path: Path) -> None:
+    assert report.SEED == 20261136
+    result = _run(tmp_path)
+    assert result["seed"] == 20261136
+    out, gate = tmp_path / "out", tmp_path / "gate.json"
+    with pytest.raises(SystemExit):
+        report.main(["--out-dir", str(out), "--gate", str(gate), "--seed", "5"])
+
+
+def test_refusal_rate_interval_is_a_bootstrap_by_question(tmp_path: Path) -> None:
+    rate = _run(tmp_path)["refusal_rate"]["bioasq"][S1]
+    # S1 over both runs: q1 4 claims 2 refusals, q2 2 claims 0, q3 2 claims 2.
+    expected = _expected([("q1", (2, 4)), ("q2", (0, 2)), ("q3", (2, 2))])
+    assert rate["low"] == pytest.approx(expected.lower)
+    assert rate["high"] == pytest.approx(expected.upper)
+    assert rate["undefined"] == expected.undefined
+    assert (rate["low"], rate["high"]) != pytest.approx(wilson(4, 8))  # not Wilson over claims
+
+
+def test_unsupported_rate_on_refusals_is_a_bootstrap_by_question(tmp_path: Path) -> None:
+    out = _build(tmp_path)
+    report.write_report(out, gate_path=tmp_path / "gate.json")  # the default is 10,000 resamples
+    result = json.loads((out / "refusals.json").read_text())
+    assert result["n_boot"] == 10_000
+    checks = result["refusal_checks"]["bioasq"]["unsupported_on_refusals"]
+    # Refusal claims sit in q1 (R1, twice) and q3 (R2, twice); q2 has none but is a question.
+    chat = _expected([("q1", (2, 2)), ("q2", (0, 0)), ("q3", (2, 2))], n=10_000)
+    assert chat.testable
+    assert checks["chat"]["rate"] == pytest.approx(1.0)
+    assert checks["chat"]["low"] == pytest.approx(chat.lower)
+    assert checks["chat"]["high"] == pytest.approx(chat.upper)
+    clef = _expected([("q1", (0, 2)), ("q2", (0, 0)), ("q3", (0, 2))], n=10_000)
+    assert checks["clef_flash"]["rate"] == pytest.approx(0.0)
+    assert checks["clef_flash"]["high"] == pytest.approx(clef.upper)
+    assert checks["chat"]["undefined"] == chat.undefined
+
+
+def test_rate_interval_fails_closed() -> None:
+    qids = ["q1", "q2", "q3"]
+    # One question holds the only hit: a third of the resamples miss it (over 5%): not testable.
+    thin = report._rate([("q1", True)], qids, n_boot=200)
+    assert thin["testable"] is False
+    assert (thin["low"], thin["high"]) == (None, None)
+    assert thin["rate"] == pytest.approx(1.0)
+    # No claim at all: the rate is undefined.
+    empty = report._rate([], qids, n_boot=200)
+    assert (empty["rate"], empty["low"], empty["high"]) == (None, None, None)
+    assert empty["testable"] is False

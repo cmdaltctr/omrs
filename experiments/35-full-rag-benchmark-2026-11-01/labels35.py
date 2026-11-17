@@ -31,6 +31,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
+import claimkinds35
 import correct35
 import labelpage35
 from bootstrap35 import BootResult, bootstrap_by_question
@@ -75,18 +76,31 @@ def chunk_size(setup: str) -> int:
 def faithfulness_claims(
     out_dir: Path, questions: Mapping[str, Mapping[str, Mapping[str, str]]]
 ) -> list[dict[str, Any]]:
-    """Return every claim of the crossed setups on the core datasets, all runs and questions."""
+    """Return the faithfulness gate pool: crossed setups, core datasets, all runs and questions.
+
+    A claim whose saved kind (``claim-kinds.jsonl`` of its own run folder) is
+    ``refusal`` is left out. A claim of kind factual or mixed stays, and so
+    does a claim the classifier left unclassified (no saved row, or kind
+    ``unreadable``): section 12 treats it as factual (section 11.2).
+    """
     claims: list[dict[str, Any]] = []
     for path in sorted(out_dir.glob("*/*/run*/answer.jsonl")):
         dataset, setup, run = path.parts[-4], path.parts[-3], int(path.parts[-2][3:])
         if dataset not in CORE or "t20k" in setup:
             continue
+        refusals = {
+            r["claim_key"]
+            for r in read_rows(path.parent / "claim-kinds.jsonl")
+            if r["kind"] == "refusal"
+        }
         for row in read_rows(path):
             evidence = row.get("evidence") or []
             texts = {e["ordinal"]: e["text"] for e in evidence}
             for index, (claim, ordinals) in enumerate(
                 split_claims(row.get("answer") or "", len(evidence))
             ):
+                if claimkinds35.claim_key(row["qid"], claim) in refusals:
+                    continue
                 claims.append(
                     {
                         "item_id": correct35.item_id(
@@ -406,8 +420,6 @@ def write_page(label_dir: Path, set_name: str, *, only: Sequence[str] | None = N
 
 def saved_verdicts(out_dir: Path, items: Sequence[Mapping[str, Any]]) -> dict[str, dict[str, str]]:
     """Read each checker's saved verdict for every sample claim from its run folder."""
-    import claimkinds35
-
     out: dict[str, dict[str, str]] = {c: {} for c in CHECKERS}
     for item in items:
         folder = out_dir / item["dataset"] / item["setup"] / f"run{item['run']}"

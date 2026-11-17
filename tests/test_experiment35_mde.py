@@ -78,6 +78,14 @@ def test_financebench_n_divided_by_design_effect() -> None:
     assert entry["mde"] == pytest.approx((norm.ppf(1 - alpha / 2) + norm.ppf(0.8)) * 0.2 / 75**0.5)
 
 
+def test_design_effect_below_one_leaves_n_undivided() -> None:
+    entry = mde35.mde_row("financebench", 4, 0.2, source="pilot", design_effect=0.8)
+    assert entry["design_effect"] == 0.8  # the raw value stays in the row
+    assert entry["n_effective"] == 150
+    alpha = 0.05 / 19
+    assert entry["mde"] == pytest.approx((norm.ppf(1 - alpha / 2) + norm.ppf(0.8)) * 0.2 / 150**0.5)
+
+
 def test_pilot_table_sd_stand_ins_and_sesoi() -> None:
     table = mde35.pilot_table(_pilot())
     assert {(r["dataset"], r["row"]) for r in table} == {

@@ -2,7 +2,7 @@
 
 Usage (reads saved files only, runs on the Mac)::
 
-    refusalreport35.py --out-dir OUT --gate GATE_JSON --seed SEED
+    refusalreport35.py --out-dir OUT --gate GATE_JSON
 
 It refuses without a passing join (``OUT/join.json`` with ``ok: true``) and
 without a frozen classifier version (``gate.json`` with ``pass: true``), and
@@ -18,7 +18,10 @@ kinds. It writes ``OUT/refusals.json``:
   verdicts change to all supported (high) and all unsupported (low).
 - ``refusal_rate`` (primary descriptive), each checker's unsupported rate on
   refusal claims, and the Clef-Flash against GLM-5.3 kappa on refusal and on
-  factual and mixed claims, per dataset.
+  factual and mixed claims, per dataset. The two rates take their 95% interval
+  from ``bootstrap35.bootstrap_by_question`` (10,000 resamples by question,
+  seed ``SEED``), because the claims of one question are not independent. An
+  interval that is not testable (fail closed, section 11.2) is written as null.
 - ``kind_disagreements``: claim texts with different kinds in different runs.
 
 Missing outcomes (pre-registration section 12): every question stays in the
@@ -35,15 +38,17 @@ import json
 import math
 import sys
 from collections import defaultdict
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import claimkinds35
-from experiments._lib.stats_d6 import cohen_kappa, paired_bootstrap, wilson
+from bootstrap35 import bootstrap_by_question
+from experiments._lib.stats_d6 import cohen_kappa, paired_bootstrap
 from outputs35 import read_rows, write_json
 
+SEED = 20261136  # pre-registration section 16: refusal report bootstrap (owner confirms at P9)
 CHECKERS = ("chat", "clef_flash")
 FACTUAL = ("factual", "mixed")
 NO_CLAIM = "no_claim"
@@ -64,8 +69,9 @@ class ReportError(RuntimeError):
 
 @dataclass
 class Claim:
-    """One claim of one answer run: its key, saved kind and each checker's verdict."""
+    """One claim of one answer run: its question, key, saved kind and each checker's verdict."""
 
+    qid: str
     key: str
     kind: str | None
     verdicts: dict[str, str | None]
@@ -106,7 +112,7 @@ def _load_run(folder: Path, version: str) -> dict[str, RunAnswer]:
             verdicts[c] = [_verdict(v) for _, v in pairs] if judged[c] else [None] * len(texts)
         keys = [claimkinds35.claim_key(qid, t) for t in texts]
         claims = [
-            Claim(k, kinds.get(k), {c: verdicts[c][i] for c in CHECKERS})
+            Claim(qid, k, kinds.get(k), {c: verdicts[c][i] for c in CHECKERS})
             for i, k in enumerate(keys)
         ]
         out[qid] = RunAnswer(missing=False, claims=claims)
@@ -207,9 +213,37 @@ _EXTRA: dict[str, dict[str, float]] = {
 }
 
 
-def _rate(hits: int, total: int) -> dict[str, Any]:
-    low, high = wilson(hits, total)
-    return {"rate": hits / total if total else None, "low": low, "high": high}
+def _ratio(sample: list[tuple[int, int]]) -> float:
+    total = sum(t for _, t in sample)
+    return sum(h for h, _ in sample) / total if total else math.nan
+
+
+def _rate(flags: Iterable[tuple[str, bool]], qids: Sequence[str], n_boot: int) -> dict[str, Any]:
+    """Return a claim rate with its bootstrap-by-question interval.
+
+    Args:
+        flags: ``(question, hit)`` for each claim of the rate's denominator.
+        qids: Every question of the dataset; a question with no claim still
+            counts as a resampling unit.
+        n_boot: Number of resamples.
+
+    Returns:
+        ``rate``, ``low``, ``high`` (None when not testable), ``undefined``
+        resamples and ``testable``. The rate is None when there is no claim.
+    """
+    counts = {q: (0, 0) for q in qids}
+    for q, hit in flags:
+        hits, total = counts[q]
+        counts[q] = (hits + hit, total + 1)
+    boot = bootstrap_by_question(sorted(counts.items()), _ratio, n=n_boot, seed=SEED, fill=None)
+    out = boot.as_dict()
+    return {
+        "rate": out["estimate"],
+        "low": out["lower"],
+        "high": out["upper"],
+        "undefined": out["undefined"],
+        "testable": out["testable"],
+    }
 
 
 def _kappa(pairs: list[tuple[str, str]]) -> float | None:
@@ -227,7 +261,7 @@ def _instances(data: dict, dataset: str):
                     yield from ans.claims
 
 
-def build(data: dict, *, seed: int, n_boot: int) -> dict[str, Any]:
+def build(data: dict, *, n_boot: int) -> dict[str, Any]:
     """Return the ``refusals.json`` record from loaded runs."""
     datasets = sorted({d for d, _ in data})
     qids = {
@@ -249,7 +283,7 @@ def build(data: dict, *, seed: int, n_boot: int) -> dict[str, Any]:
                 values = row.pop("values")
                 if table == "primary" and values:
                     _, row["low"], row["high"] = paired_bootstrap(
-                        [0.0] * len(values), values, n_boot=n_boot, seed=seed
+                        [0.0] * len(values), values, n_boot=n_boot, seed=SEED
                     )
                 tables[table][checker][dataset][setup] = row
                 if table == "primary":
@@ -273,7 +307,7 @@ def build(data: dict, *, seed: int, n_boot: int) -> dict[str, Any]:
         rates[dataset][setup] = {
             "refusals": refusals,
             "claims": len(claims),
-            **_rate(refusals, len(claims)),
+            **_rate([(c.qid, c.kind == "refusal") for c in claims], qids[dataset], n_boot),
             "status": "primary descriptive",
         }
         unclassified[dataset][setup] = sum(_unclassified(c.kind) for c in claims)
@@ -284,13 +318,14 @@ def build(data: dict, *, seed: int, n_boot: int) -> dict[str, Any]:
         on_refusals = {}
         for c in CHECKERS:
             judged = [
-                x.verdicts[c] for x in claims if x.kind == "refusal" and x.verdicts[c] is not None
+                (x.qid, x.verdicts[c] == "unsupported")
+                for x in claims
+                if x.kind == "refusal" and x.verdicts[c] is not None
             ]
-            unsupported = sum(v == "unsupported" for v in judged)
             on_refusals[c] = {
-                "unsupported": unsupported,
+                "unsupported": sum(hit for _, hit in judged),
                 "claims": len(judged),
-                **_rate(unsupported, len(judged)),
+                **_rate(judged, qids[dataset], n_boot),
             }
         both = [
             (x.verdicts["clef_flash"], x.verdicts["chat"])
@@ -332,7 +367,7 @@ def _kind_disagreements(data: dict, dataset: str) -> int:
     return sum(1 for kinds in seen.values() if len(kinds) > 1)
 
 
-def write_report(out_dir: Path, *, gate_path: Path, seed: int, n_boot: int = 10_000) -> Path:
+def write_report(out_dir: Path, *, gate_path: Path, n_boot: int = 10_000) -> Path:
     """Check the inputs, build the report and write ``refusals.json``; return its path.
 
     Raises:
@@ -347,9 +382,9 @@ def write_report(out_dir: Path, *, gate_path: Path, seed: int, n_boot: int = 10_
         raise ReportError(f"{gate_path}: no frozen classifier version (gate not passed)")
     record = {
         "classifier_version": gate["version"],
-        "seed": seed,
+        "seed": SEED,
         "n_boot": n_boot,
-        **build(load(out_dir, gate["version"]), seed=seed, n_boot=n_boot),
+        **build(load(out_dir, gate["version"]), n_boot=n_boot),
     }
     path = out_dir / "refusals.json"
     write_json(path, record)
@@ -361,9 +396,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="refusalreport35.py")
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--gate", type=Path, required=True)
-    parser.add_argument("--seed", type=int, required=True)
     args = parser.parse_args(argv)
-    print(write_report(args.out_dir, gate_path=args.gate, seed=args.seed), flush=True)
+    print(write_report(args.out_dir, gate_path=args.gate), flush=True)
     return 0
 
 

@@ -237,7 +237,7 @@ def _scores(out_dir: Path, items: Sequence[Mapping[str, Any]]) -> dict[str, floa
             r["qid"]: r
             for r in read_rows(out_dir / item["dataset"] / item["setup"] / "run1" / "ragas.jsonl")
         }
-        metric = rows.get(item["qid"], {}).get("metrics", {}).get("answer_correctness") or {}
+        metric = rows.get(item["qid"], {}).get("metrics", {}).get("ragas_answer_correctness") or {}
         scores[item["item_id"]] = metric.get("score")
     return scores
 
