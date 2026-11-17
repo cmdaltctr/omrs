@@ -77,7 +77,7 @@ When the Ragas stage scores several answers at once, each answer's row SHALL hol
 
 ### Requirement: Ragas resume never repeats a saved answer's calls
 
-A Ragas row SHALL be saved only when every metric of the answer has a score or an error that is not a rate limit. With `--resume`, the stage SHALL skip each answer whose saved row has no unjudged metric. A rate-limit error SHALL NOT be saved as a metric result. An answer whose row was not saved SHALL be scored again in full on resume, so its earlier metric calls repeat; this affects at most one answer per worker per stop, the same bound as the claim judge (design risks).
+A final Ragas row SHALL be saved only when every metric of the answer has a score, or is closed as unjudged after the error cap. With `--resume`, the stage SHALL skip each answer that has a final row. A rate-limit error SHALL NOT be saved as a metric result. An answer whose row was not saved SHALL be scored again in full on resume, so its earlier metric calls repeat; this affects at most one answer per worker per stop, the same bound as the claim judge (design risks).
 
 #### Scenario: Resume after a stop
 
@@ -92,7 +92,7 @@ A Ragas row SHALL be saved only when every metric of the answer has a score or a
 
 ### Requirement: A failed Ragas metric is unjudged and re-run on resume
 
-A metric error that is not a rate limit SHALL NOT be a score. The row SHALL list that metric as unjudged, and `--resume` SHALL re-run only the unjudged metrics, never a scored one. After 3 such errors on one metric (the first send plus 2 resends, across resumes) the metric SHALL be closed as unjudged, and the stage SHALL go on (amendment A5).
+A metric error that is not a rate limit SHALL NOT be a score or give a final row. A partial row SHALL list that metric as unjudged; `--resume` SHALL re-run only unjudged metrics. The third such error on one metric (across resumes) SHALL close it as unjudged, and the stage SHALL go on (amendment A5). A stage that ends with a metric open SHALL exit with code 6.
 
 #### Scenario: Third error closes the metric
 
@@ -102,9 +102,15 @@ A metric error that is not a rate limit SHALL NOT be a score. The row SHALL list
 #### Scenario: Connection error on one metric
 
 - **WHEN** `AnswerCorrectness` fails with a connection error and the other metrics score
-- **THEN** the row MUST hold the other scores and list `AnswerCorrectness` as unjudged
+- **THEN** the partial row MUST hold the other scores and list `AnswerCorrectness` as unjudged, and no final row MUST be saved for that answer
 - **AND** `--resume` MUST send calls for `AnswerCorrectness` only
 - **AND** the stage summary MUST count the unjudged metric and MUST NOT report 0 errors
+
+#### Scenario: Metric still open at the end of the stage
+
+- **WHEN** the stage reaches its last answer and one metric is still open, below the error cap
+- **THEN** the stage MUST write no `.done-ragas.json` and MUST exit with code 6
+- **AND** `--resume` MUST continue the open metric
 
 ### Requirement: Claim sentences are sorted by a frozen classifier
 
@@ -286,6 +292,12 @@ A sampling step SHALL draw 450 claims from crossed-setup answers to all question
 - **WHEN** the sampling step builds the faithfulness pool
 - **THEN** the pool MUST hold only cited claims of kind fact, mixed or unclassified, from all 3 runs
 - **AND** no refusal claim MUST enter the sample
+
+#### Scenario: Run folder with no saved claim kinds
+
+- **WHEN** `labels35.py sample` builds the faithfulness pool and a run folder in the pool has no saved `claim-kinds.jsonl`
+- **THEN** it MUST refuse before it writes a sample, and MUST name that run folder
+- **AND** it MUST NOT treat the claims of that run folder as unclassified
 
 #### Scenario: Second checker fails its gate
 

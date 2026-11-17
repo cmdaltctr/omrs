@@ -311,7 +311,7 @@ The word "sealed" applies to indexes only. Half B is held out from every selecti
 | Seeds | One seed per use (table below) | This file; `plan.json` `seed` holds 20261101 |
 | Freeze commit and OSF link | At the freeze | `plan.json` `frozen` (empty today) |
 
-**Seeds.** Each seed has one use, except 20261101. That seed has five independent uses: the answer model's hosted seed, the FinanceBench sign-flip test, the FreshStack and BioASQ permutation check, the frozen question order and the smoke corpus sample. This is safe: the hosted seed goes to the provider and feeds no local random draw, the two tests run on different datasets, the question order changes no score, and the smoke sample is never scored as a result, so no draw feeds two results. The Ragas judge and classifier seeds are pins still to record (P10). New seeds wait for the user (P9).
+**Seeds.** Each seed has one use, except 20261101. That seed has five independent uses: the answer model's hosted seed, the FinanceBench sign-flip test, the FreshStack and BioASQ permutation check, the frozen question order and the smoke corpus sample. This is safe: the hosted seed goes to the provider and feeds no local random draw, the two tests run on different datasets, the question order changes no score, and the smoke sample is never scored as a result, so no draw feeds two results. The Ragas judge and classifier seeds are pins still to record (P10). New seeds wait for the user (P9). The run harness reads its seeds and pins only from the `plan.json` blocks `seeds` and `pins` (`protocol.md` section 0.14 item 45), and a key that is missing or `null` stops the stage until its pre-freeze task records it.
 
 | Seed | Use |
 | --- | --- |
