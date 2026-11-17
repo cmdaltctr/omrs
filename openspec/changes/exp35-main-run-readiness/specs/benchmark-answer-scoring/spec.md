@@ -361,6 +361,11 @@ A `lengthcheck` stage SHALL draw 300 claims from the `c2048` crossed answers wit
 - **WHEN** two windows share the same number of claim words
 - **THEN** the stage MUST keep the earlier window
 
+#### Scenario: Sampling frame
+
+- **WHEN** the stage draws its 300 claims
+- **THEN** the frame MUST be the cited non-refusal claims of every dataset with answers, Legal RAG Bench included unless drop step 1 removed its answers
+
 ### Requirement: Closed-book runs check contamination
 
 A `closedbook` stage SHALL answer every question once with no retrieval under two prompts: an own-knowledge prompt (the floor) and the main RAG answer prompt with an empty evidence block. It SHALL score both with `AnswerCorrectness` and the FinanceBench number match. Closed-book results SHALL be descriptive, with no hypothesis test.
@@ -410,6 +415,31 @@ The analysis SHALL keep every question in its dataset's denominator and SHALL co
 
 - **WHEN** an answer is still missing when its run closes
 - **THEN** its correctness and number match MUST be 0 and it MUST count as an answer with no factual claim
+
+#### Scenario: Unjudged run removes the whole cell
+
+- **WHEN** one of three runs of a question and setup has its checker row, one of its claims, or its Ragas correctness metric closed missing
+- **THEN** that question-setup cell MUST have no value for that outcome, the other runs MUST NOT stand in for it, and the question MUST count under `excluded_unjudged` in every row that uses the cell
+
+#### Scenario: Empty answer
+
+- **WHEN** an answer is returned with no text
+- **THEN** its correctness and number match MUST be 0, it MUST count as a no-claim run for faithfulness, and it MUST NOT be unjudged
+
+#### Scenario: Not-defined Ragas score
+
+- **WHEN** a Ragas correctness call returns NaN or no number for one run
+- **THEN** the score MUST be saved as `null` with `not_defined` and never resent, the run MUST leave the run mean, the question MUST count under `excluded_not_defined` when its cell has no value, and the unjudged-scored-0 sensitivity analysis MUST score the run 0
+
+#### Scenario: Unparseable verdict
+
+- **WHEN** the checker returns an `unparseable` verdict for a factual claim
+- **THEN** the join and the refusal report MUST both count it as not supported, and both MUST count it under `unparseable_verdicts`
+
+#### Scenario: Question with no value in any cell
+
+- **WHEN** a question has no value in any cell that a contrast row uses
+- **THEN** the row's `excluded` count MUST include it, under `excluded_no_value` unless an unjudged or not-defined run caused it
 
 ### Requirement: Faithfulness uses complete cases with registered bounds
 

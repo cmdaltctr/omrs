@@ -175,6 +175,11 @@ The join step SHALL read the drop record. A dataset or stage removed by a record
 - **THEN** the join MUST NOT fail for the missing Legal stages and MUST list them as dropped
 - **AND** without that drop record, the same folder MUST fail and name the missing stages
 
+#### Scenario: Answer stage after drop step 1
+
+- **WHEN** the drop record holds drop step 1 and the answer stage starts on Legal RAG Bench
+- **THEN** it MUST send nothing, write no file and exit with code 0, and the analysis MUST write Legal rows 12 to 19 as dropped and still compute Legal rows 1 to 11
+
 ### Requirement: G1 compares each answer run's ranked list with the search run
 
 Each answer run SHALL save its ranked list of 100 stored chunk IDs per question. G1 SHALL pass for an answer setup when, for every question, the lists of runs 1, 2 and 3 equal the list of the search run of the matching search setup (a `-t20k` setup maps to its `e?-c?-r?-hon` setup). Each answer's evidence chunk IDs SHALL equal the head of that list under the setup's rule. A failed search on either side SHALL be incomplete, never a match (amendment A5).
