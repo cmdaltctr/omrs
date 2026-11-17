@@ -1,360 +1,375 @@
-"""Experiment 35 stage functions with stub search, answer and judge (no Engine, no router).
+"""Experiment 35 index stages with a stub engine and a temporary LanceDB store.
 
-Rules under test: a failed question or file keeps its row and its trace row;
-``--resume`` skips done work and refuses a run with other inputs; the answer
-stage records text, citations, tokens and cost; every claim gets a verdict per
-judge with its call record; the determinism stage reports a difference.
+Rules under test: the ingest failure rule (task 5.4b), the ``seal`` stage and
+its fingerprint (tasks 5.4, 5.4a), and the machine and environment record
+(task 5.6). No router, no model and no network.
 """
 
 from __future__ import annotations
 
 import asyncio
 import json
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
+import lancedb
+import pyarrow as pa
 import pytest
 from experiments._lib.trace import TraceWriter
 from tests._exp35_fixtures import load
 
-from omrs.core.answer.judges.base import JudgeCall, Judgement, JudgeUnavailable
-from omrs.core.answer.verify import verify_claims
+from omrs.core.vectordb.lancedb.fts import ensure_fts_index
 
 arms = load("arms")
-datasets35 = load("datasets35")
 outputs35 = load("outputs35")
 stages35 = load("stages35")
 
-Q = datasets35.Question
+INDEX = "e4b-c1024"
+ENV = {
+    "gpu": "NVIDIA GeForce RTX 4090",
+    "image": "runpod/base@sha256:" + "1" * 64,
+    "llama_cpp_build": 11941,
+    "gguf_sha256": {"Qwen3-Embedding-4B-Q8_0.gguf": "a" * 64},
+}
 
 
-def _questions() -> list[Any]:
-    return [
-        Q("q1", "first?", ("1001",), "ref one"),
-        Q("q2", "second?", ("1002",), "ref two"),
-        Q("q3", "third?", ("1003",), "ref three"),
-    ]
+def _settings(backend: str = "bm25") -> Any:
+    return SimpleNamespace(retrieval=SimpleNamespace(hybrid_sparse_backend=backend))
 
 
-def _ctx(tmp_path: Path, *, run: int = 1, resume: bool = False, limit: int | None = 3) -> Any:
+class _Engine:
+    """Stub engine: ``ingest`` returns the planned result of each file name."""
+
+    def __init__(self, results: Mapping[str, Any] | None = None) -> None:
+        self.results = dict(results or {})
+        self.calls: list[str] = []
+
+    async def ingest(self, path: str, *, collection_name: str) -> dict[str, Any]:
+        name = Path(path).name
+        self.calls.append(name)
+        result = self.results.get(name, "ok")
+        if isinstance(result, Exception):
+            raise result
+        if result == "failed":
+            return {
+                "status": "error",
+                "message": "All 1 file(s) failed to index.",
+                "chunks_created": 0,
+                "file_details": [{"file": name, "status": "failed", "chunks": 0, "error": "x"}],
+                "warnings": [f"{name}: x"],
+            }
+        return {
+            "status": "ok",
+            "chunks_created": 3,
+            "file_details": [{"file": name, "status": "indexed", "chunks": 3}],
+            **({"warnings": [result]} if result != "ok" else {}),
+        }
+
+
+def _ctx(
+    tmp_path: Path,
+    stage: str,
+    *,
+    dataset: str = "bioasq",
+    index: str = INDEX,
+    engine: Any = None,
+    files: Sequence[Path] = (),
+    resume: bool = False,
+    backend: str = "bm25",
+    environment: Mapping[str, Any] | None = None,
+) -> Any:
     layout = outputs35.Layout(tmp_path / "out")
-    arm = arms.ARMS[arms.BASELINE]
-    questions = _questions()
-    key = outputs35.run_key(limit, None, 20261101, [q.qid for q in questions])
+    folder = layout.index_dir(dataset, index)
     trace = TraceWriter(
-        layout.run_dir("bioasq", arm.name, run) / "traces.jsonl",
+        folder / "traces.jsonl",
         benchmark_revision="test",
-        run_id=f"bioasq/{arm.name}/run{run}",
-        arm=arm.name,
-        repetition=run,
-        effective_settings={"arm": arm.name},
+        run_id=f"{dataset}/{index}/run1",
+        arm=index,
+        repetition=1,
+        effective_settings={"setup": index},
         model_identities={},
     )
-    return stages35.Ctx("bioasq", arm, run, questions, layout, key, resume, trace)
-
-
-def _rows(path: Path) -> list[dict[str, Any]]:
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
-
-
-def _search_stub(calls: list[str], fail: str = "") -> Any:
-    def search(text: str) -> list[dict[str, Any]]:
-        calls.append(text)
-        if text == fail:
-            raise RuntimeError("store unreachable")
-        number = text.split("?")[0]
-        gold = {"first": "1001", "second": "1999", "third": "1003"}[number]
-        return [
-            {"chunk_id": f"c-{gold}", "source": f"/c/{gold}.txt", "score": 0.9},
-            {"chunk_id": "c-5", "source": "/c/5.txt", "score": 0.1},
-        ]
-
-    return search
-
-
-# --- search ------------------------------------------------------------------------------
-
-
-def test_search_writes_ids_scores_and_metrics_per_question(tmp_path: Path) -> None:
-    ctx = _ctx(tmp_path)
-    summary = stages35.search_stage(ctx, _search_stub([]), {})
-    rows = _rows(ctx.layout.run_dir("bioasq", ctx.arm.name, 1) / "search.jsonl")
-    assert [r["qid"] for r in rows] == ["q1", "q2", "q3"]
-    assert rows[0]["ranked_ids"] == ["c-1001", "c-5"]
-    assert rows[0]["results"][0]["score"] == 0.9
-    assert rows[0]["metrics"]["recall_at_10"] == 1.0
-    assert summary["recall_at_10"] == pytest.approx(2 / 3)
-
-
-def test_a_failed_question_keeps_its_row_and_trace_and_stays_in_the_denominator(
-    tmp_path: Path,
-) -> None:
-    ctx = _ctx(tmp_path)
-    summary = stages35.search_stage(ctx, _search_stub([], fail="second?"), {})
-    run_dir = ctx.layout.run_dir("bioasq", ctx.arm.name, 1)
-    rows = {r["qid"]: r for r in _rows(run_dir / "search.jsonl")}
-    assert rows["q2"]["failed"] is True
-    assert "store unreachable" in rows["q2"]["error"]
-    assert summary["n"] == 3
-    assert summary["failed"] == 1
-    traces = {r["question_id"]: r for r in _rows(run_dir / "traces.jsonl")}
-    assert traces["q2"]["status"] == "error"
-    assert traces["q1"]["retrieved"]["ids"] == ["c-1001", "c-5"]
-
-
-def test_resume_skips_a_finished_stage_without_calling_search(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    stages35.search_stage(_ctx(tmp_path), _search_stub([]), {})
-    capsys.readouterr()
-    calls: list[str] = []
-    stages35.search_stage(_ctx(tmp_path, resume=True), _search_stub(calls), {})
-    assert calls == []
-    assert capsys.readouterr().out.strip().endswith("done earlier, skipped")
-
-
-def test_resume_continues_a_stopped_stage_with_the_missing_questions_only(
-    tmp_path: Path,
-) -> None:
-    ctx = _ctx(tmp_path)
-    stages35.search_stage(ctx, _search_stub([]), {})
-    run_dir = ctx.layout.run_dir("bioasq", ctx.arm.name, 1)
-    (run_dir / ".done-search.json").unlink()
-    lines = (run_dir / "search.jsonl").read_text(encoding="utf-8").splitlines(keepends=True)
-    # A killed run: one row kept, the second half-written.
-    (run_dir / "search.jsonl").write_text(lines[0] + lines[1][:15], encoding="utf-8")
-    calls: list[str] = []
-    stages35.search_stage(_ctx(tmp_path, resume=True), _search_stub(calls), {})
-    assert calls == ["second?", "third?"]
-    assert [r["qid"] for r in _rows(run_dir / "search.jsonl")] == ["q1", "q2", "q3"]
-
-
-def test_a_stage_file_without_resume_is_refused(tmp_path: Path) -> None:
-    stages35.search_stage(_ctx(tmp_path), _search_stub([]), {})
-    with pytest.raises(outputs35.StageFileExistsError, match="--resume"):
-        stages35.search_stage(_ctx(tmp_path), _search_stub([]), {})
-
-
-def test_resume_with_another_limit_is_refused(tmp_path: Path) -> None:
-    stages35.search_stage(_ctx(tmp_path, limit=3), _search_stub([]), {})
-    with pytest.raises(outputs35.ResumeMismatchError, match="limit"):
-        stages35.search_stage(_ctx(tmp_path, resume=True, limit=None), _search_stub([]), {})
-
-
-# --- ingest ------------------------------------------------------------------------------
-
-
-def test_a_failed_file_keeps_its_row_and_the_others_still_ingest(tmp_path: Path) -> None:
-    ctx = _ctx(tmp_path)
-    files = [tmp_path / f"{n}.txt" for n in ("a", "b", "c")]
-
-    async def ingest(path: Path) -> dict[str, Any]:
-        if path.name == "b.txt":
-            raise OSError("disk full")
-        if path.name == "c.txt":
-            return {"status": "error", "message": "unsupported"}
-        return {"status": "success", "chunks_created": 2, "files_indexed": 1}
-
-    summary = asyncio.run(stages35.ingest_stage(ctx, files, ingest))
-    rows = _rows(ctx.layout.index_dir("bioasq", ctx.arm.name) / "ingest.jsonl")
-    assert [r["status"] for r in rows] == ["ok", "error", "error"]
-    assert summary == {"files": 3, "failed": 2, "chunks_created": 2}
-
-
-# --- answers and judges ------------------------------------------------------------------
-
-
-def _answer_stub(calls: list[str]) -> Any:
-    async def answer(text: str) -> dict[str, Any]:
-        calls.append(text)
-        if text == "third?":
-            raise TimeoutError("host timed out")
-        return {
-            "status": "grounded",
-            "answer": f"Claim A about {text.rstrip('?')} [1]. Claim B [2].",
-            "citations": [{"ordinal": 1}, {"ordinal": 2}],
-            "evidence": [
-                {"ordinal": 1, "text": "evidence one", "chunk_id": "c1", "source": "/c/1.txt"},
-                {"ordinal": 2, "text": "evidence two", "chunk_id": "c2", "source": "/c/2.txt"},
-            ],
-            "usage": {"input_tokens": 120, "output_tokens": 30, "cost_usd": 0.0004},
-            "sampling": {
-                "chat": {
-                    "temperature": 0.0,
-                    "seed": 20261101,
-                    "host": "DeepInfra",
-                    "host_in_list": True,
-                }
-            },
-        }
-
-    return answer
-
-
-class _Judge:
-    name = "clef_flash"
-    version = "clef-flash-claim/1"
-
-    def __init__(self) -> None:
-        self.claims: list[str] = []
-
-    async def judge(self, claim: str, evidence_texts: Sequence[str]) -> Judgement:
-        self.claims.append(claim)
-        verdict = "supported" if "Claim A" in claim else "unsupported"
-        call = JudgeCall(
-            strategy=self.name,
-            model="ggml-org/Clef-Flash-GGUF:Q8_0",
-            host=None,
-            sha256="b" * 64,
-            version=self.version,
-            settings={"threshold": 0.5},
-            p_yes=0.9 if verdict == "supported" else 0.1,
-        )
-        return Judgement(verdict, call)
-
-
-def test_answer_stage_records_text_citations_tokens_cost_and_host(tmp_path: Path) -> None:
-    ctx = _ctx(tmp_path)
-    asyncio.run(stages35.answer_stage(ctx, _answer_stub([])))
-    rows = {
-        r["qid"]: r for r in _rows(ctx.layout.run_dir("bioasq", ctx.arm.name, 1) / "answer.jsonl")
-    }
-    first = rows["q1"]
-    assert first["answer"].startswith("Claim A about first")
-    assert first["citations"] == [{"ordinal": 1}, {"ordinal": 2}]
-    assert first["evidence"][0]["text"] == "evidence one"
-    assert (first["input_tokens"], first["output_tokens"], first["cost_usd"]) == (120, 30, 0.0004)
-    assert (first["host"], first["host_in_list"], first["seed"]) == ("DeepInfra", True, 20261101)
-    assert rows["q3"]["error"].startswith("TimeoutError")
-    assert len(rows) == 3
-
-
-def test_every_claim_gets_a_verdict_and_call_record_and_failed_answers_keep_a_row(
-    tmp_path: Path,
-) -> None:
-    ctx = _ctx(tmp_path)
-    asyncio.run(stages35.answer_stage(ctx, _answer_stub([])))
-    judge = _Judge()
-    asyncio.run(stages35.judge_stage(ctx, "clef_flash", judge, verify_claims))
-    path = ctx.layout.run_dir("bioasq", ctx.arm.name, 1) / "judge-clef_flash.jsonl"
-    rows = {r["qid"]: r for r in _rows(path)}
-    assert [v["verdict"] for v in rows["q1"]["verdicts"]] == ["supported", "unsupported"]
-    call = rows["q1"]["verdicts"][0]["call"]
-    assert (call["strategy"], call["sha256"], call["version"]) == (
-        "clef_flash",
-        "b" * 64,
-        "clef-flash-claim/1",
+    key = outputs35.run_key(None, None, 20261101, ["q1"], config={"harness_commit": "c"})
+    return stages35.Ctx(
+        dataset=dataset,
+        setup=index,
+        kind="index",
+        run=1,
+        questions=[],
+        layout=layout,
+        key=key,
+        resume=resume,
+        trace=trace,
+        engine=engine,
+        settings=_settings(backend),
+        files=list(files),
+        environment=dict(environment or ENV),
     )
-    assert rows["q1"]["verdicts"][1]["ordinals"] == [2]
-    assert rows["q3"]["error"] == "no answer to judge"
-    assert rows["q3"]["verdicts"] == []
-    assert len(judge.claims) == 4
 
 
-def test_a_judge_that_cannot_start_stops_the_stage_before_more_rows(tmp_path: Path) -> None:
-    ctx = _ctx(tmp_path)
-    asyncio.run(stages35.answer_stage(ctx, _answer_stub([])))
-
-    class Refusing(_Judge):
-        async def judge(self, claim: str, evidence_texts: Sequence[str]) -> Judgement:
-            raise JudgeUnavailable("judge model is not Q8_0")
-
-    with pytest.raises(JudgeUnavailable):
-        asyncio.run(stages35.judge_stage(ctx, "clef_flash", Refusing(), verify_claims))
-    assert not (
-        ctx.layout.run_dir("bioasq", ctx.arm.name, 1) / ".done-judge-clef_flash.json"
-    ).exists()
+def _files(tmp_path: Path, *names: str) -> list[Path]:
+    folder = tmp_path / "passages"
+    folder.mkdir(exist_ok=True)
+    for name in names:
+        (folder / name).write_text(name, encoding="utf-8")
+    return [folder / name for name in names]
 
 
-def test_a_failed_main_checker_call_stops_the_stage_and_resume_retries_that_answer(
-    tmp_path: Path,
-) -> None:
-    ctx = _ctx(tmp_path)
-    asyncio.run(stages35.answer_stage(ctx, _answer_stub([])))
-    run_dir = ctx.layout.run_dir("bioasq", ctx.arm.name, 1)
-
-    class Failing(_Judge):
-        name = "chat"
-
-        async def judge(self, claim: str, evidence_texts: Sequence[str]) -> Judgement:
-            if "second" in claim:
-                raise TimeoutError("z.ai timed out")
-            return await super().judge(claim, evidence_texts)
-
-    with pytest.raises(JudgeUnavailable, match="call failed"):
-        asyncio.run(stages35.judge_stage(ctx, "chat", Failing(), verify_claims))
-    assert not (run_dir / ".done-judge-chat.json").exists()
-    assert "q2" not in {r["qid"] for r in _rows(run_dir / "judge-chat.jsonl")}
-
-    resumed = _ctx(tmp_path, resume=True)
-    asyncio.run(stages35.judge_stage(resumed, "chat", _Judge(), verify_claims))
-    rows = {r["qid"]: r for r in _rows(run_dir / "judge-chat.jsonl")}
-    assert rows["q2"]["error"] is None
-    assert rows["q2"]["verdicts"]
+def _ingest(ctx: Any) -> Any:
+    return asyncio.run(stages35.ingest_stage(ctx))
 
 
-# --- determinism -------------------------------------------------------------------------
+def _marker(ctx: Any) -> dict[str, Any]:
+    return json.loads((ctx.folder / ".done-ingest.json").read_text(encoding="utf-8"))
 
 
-def _two_runs(tmp_path: Path, second: Any) -> Any:
-    stages35.search_stage(_ctx(tmp_path, run=1), _search_stub([]), {})
-    stages35.search_stage(_ctx(tmp_path, run=2), second, {})
-    return stages35.determinism_stage(outputs35.Layout(tmp_path / "out"), "bioasq", arms.BASELINE)
+# --- ingest failure rule (task 5.4b) ------------------------------------------------------
 
 
-def test_identical_runs_pass_the_determinism_check(tmp_path: Path) -> None:
-    report = _two_runs(tmp_path, _search_stub([]))
-    assert report["retrieval"]["ok"] is True
-    assert report["runs"] == [1, 2]
+def test_a_clean_ingest_writes_the_marker_with_per_file_chunks_and_warnings(tmp_path: Path) -> None:
+    files = _files(tmp_path, "a.md", "b.md")
+    engine = _Engine({"b.md": "page 3 is empty"})
+    ctx = _ctx(tmp_path, "ingest", engine=engine, files=files)
+    assert _ingest(ctx) == 0
+    marker = _marker(ctx)
+    assert marker["files"] == {"a.md": 3, "b.md": 3}
+    assert marker["warnings"] == {"b.md": ["page 3 is empty"]}
+    assert marker["failed"] == []
+    assert engine.calls == ["a.md", "b.md"]
+    trace = [json.loads(line) for line in ctx.trace.path.read_text().splitlines()]
+    assert [row["question_id"] for row in trace] == ["a.md", "b.md"]
 
 
-def test_a_changed_ranking_is_reported_with_its_first_differing_rank(tmp_path: Path) -> None:
-    def swapped(text: str) -> list[dict[str, Any]]:
-        rows = _search_stub([])(text)
-        return list(reversed(rows)) if text == "third?" else rows
+def test_a_failed_file_writes_no_marker_and_resume_retries_only_that_file(tmp_path: Path) -> None:
+    files = _files(tmp_path, "a.md", "b.md", "c.md")
+    first = _Engine({"b.md": "failed", "c.md": RuntimeError("store unreachable")})
+    with pytest.raises(stages35.StageIncomplete, match=r"b\.md, c\.md"):
+        _ingest(_ctx(tmp_path, "ingest", engine=first, files=files))
+    assert not (_ctx(tmp_path, "ingest").folder / ".done-ingest.json").exists()
+    again = _Engine()
+    ctx = _ctx(tmp_path, "ingest", engine=again, files=files, resume=True)
+    assert _ingest(ctx) == 0
+    assert again.calls == ["b.md", "c.md"]
+    assert _marker(ctx)["files"] == {"a.md": 3, "b.md": 3, "c.md": 3}
 
-    report = _two_runs(tmp_path, swapped)
-    assert report["retrieval"]["ok"] is False
-    assert report["retrieval"]["mismatches"] == [
+
+def test_a_warning_alone_is_not_a_failure(tmp_path: Path) -> None:
+    files = _files(tmp_path, "a.md")
+    ctx = _ctx(tmp_path, "ingest", engine=_Engine({"a.md": "empty page"}), files=files)
+    assert _ingest(ctx) == 0
+    rows = [json.loads(line) for line in (ctx.folder / "ingest.jsonl").read_text().splitlines()]
+    assert rows[0]["status"] == "ok"
+    assert rows[0]["warnings"] == ["empty page"]
+
+
+def test_a_finished_ingest_is_skipped_on_resume(tmp_path: Path) -> None:
+    files = _files(tmp_path, "a.md")
+    assert _ingest(_ctx(tmp_path, "ingest", engine=_Engine(), files=files)) == 0
+    engine = _Engine()
+    assert _ingest(_ctx(tmp_path, "ingest", engine=engine, files=files, resume=True)) == 0
+    assert engine.calls == []
+
+
+# --- seal (tasks 5.4, 5.4a, 5.4b) ---------------------------------------------------------
+
+
+def _table(store: Path, name: str, labels: Sequence[str | None], epoch: str = "ep-1") -> None:
+    schema = pa.schema(
+        [
+            pa.field("id", pa.string()),
+            pa.field("doc_id", pa.string()),
+            pa.field("vector", pa.list_(pa.float32(), 4)),
+            pa.field("text", pa.string()),
+            pa.field(
+                "metadata",
+                pa.struct(
+                    [pa.field("file_name", pa.string()), pa.field("page_label", pa.string())]
+                ),
+            ),
+        ],
+        metadata={"omrs_dataset_epoch": json.dumps(epoch)},
+    )
+    rows = [
         {
-            "question_id": "q3",
-            "first_differing_rank": 1,
-            "differing_runs": [2],
-            "missing_in_runs": [],
+            "id": f"{name}-{i}",
+            "doc_id": "d",
+            "vector": [0.1, 0.2, 0.3, 0.4],
+            "text": f"chunk {i}",
+            "metadata": {"file_name": "f.md", "page_label": label},
         }
+        for i, label in enumerate(labels)
     ]
-    written = json.loads(
-        (
-            outputs35.Layout(tmp_path / "out").arm_dir("bioasq", arms.BASELINE) / "determinism.json"
-        ).read_text()
+    lancedb.connect(str(store)).create_table(name, data=pa.Table.from_pylist(rows, schema=schema))
+
+
+def _ingested(tmp_path: Path, dataset: str, index: str = INDEX, **marker: Any) -> Path:
+    layout = outputs35.Layout(tmp_path / "out")
+    folder = layout.index_dir(dataset, index)
+    body = {"files": {"f.md": 3}, "warnings": {}, "failed": [], **marker}
+    outputs35.write_json(folder / ".done-ingest.json", body)
+    return layout.store(index)
+
+
+def _seal(ctx: Any) -> int:
+    return asyncio.run(stages35.seal_stage(ctx))
+
+
+def _version(store: Path, name: str) -> int:
+    return lancedb.connect(str(store)).open_table(name).version
+
+
+def test_seal_writes_the_fingerprint_and_changes_no_table(tmp_path: Path) -> None:
+    store = _ingested(tmp_path, "bioasq")
+    _table(store, "exp35_bioasq_e4b_c1024", ["1", "1", None])
+    _table(store, "exp35_freshstack_e4b_c1024", ["1"])
+    before = _version(store, "exp35_bioasq_e4b_c1024")
+    ctx = _ctx(tmp_path, "seal")
+    assert _seal(ctx) == 0
+    assert _version(store, "exp35_bioasq_e4b_c1024") == before
+    found = json.loads(ctx.layout.fingerprint("bioasq", INDEX).read_text(encoding="utf-8"))
+    assert found["collection"] == "exp35_bioasq_e4b_c1024"
+    assert found["table_version"] == before
+    assert found["dataset_epoch"] == "ep-1"
+    assert found["chunks"] == 3
+    assert found["embedding_dimension"] == 4
+    assert found["sparse_backend"] == "bm25"
+    assert found["fts"] is None
+    assert (ctx.folder / ".done-seal.json").exists()
+
+
+def test_seal_refuses_an_index_without_its_ingest_marker(tmp_path: Path) -> None:
+    with pytest.raises(stages35.StageOrderError, match=r"e4b-c1024.*bioasq"):
+        _seal(_ctx(tmp_path, "seal"))
+
+
+def test_seal_refuses_native_without_a_full_text_index(tmp_path: Path) -> None:
+    store = _ingested(tmp_path, "bioasq")
+    _table(store, "exp35_bioasq_e4b_c1024", ["1"])
+    with pytest.raises(stages35.SealRefused, match="full-text index"):
+        _seal(_ctx(tmp_path, "seal", backend="native"))
+
+
+def test_seal_refuses_native_with_unindexed_rows(tmp_path: Path) -> None:
+    store = _ingested(tmp_path, "bioasq")
+    _table(store, "exp35_bioasq_e4b_c1024", ["1"])
+    table = lancedb.connect(str(store)).open_table("exp35_bioasq_e4b_c1024")
+    ensure_fts_index(table)
+    table.add(
+        [
+            {
+                "id": "late",
+                "doc_id": "d",
+                "vector": [0.1] * 4,
+                "text": "late",
+                "metadata": {"file_name": "g.md", "page_label": "1"},
+            }
+        ]
     )
-    assert written["retrieval"]["questions_differing"] == 1
+    with pytest.raises(stages35.SealRefused, match="1 unindexed"):
+        _seal(_ctx(tmp_path, "seal", backend="native"))
 
 
-def test_changed_verdicts_between_runs_are_reported_per_judge(tmp_path: Path) -> None:
-    for run, flip in ((1, False), (2, True)):
-        ctx = _ctx(tmp_path, run=run)
-        stages35.search_stage(ctx, _search_stub([]), {})
-        asyncio.run(stages35.answer_stage(ctx, _answer_stub([])))
-
-        class Flipping(_Judge):
-            flips = flip
-
-            async def judge(self, claim: str, evidence_texts: Sequence[str]) -> Judgement:
-                result = await super().judge(claim, evidence_texts)
-                if self.flips and "second" in claim:
-                    return Judgement("unsupported", result.call)
-                return result
-
-        asyncio.run(stages35.judge_stage(ctx, "clef_flash", Flipping(), verify_claims))
-    report = stages35.determinism_stage(outputs35.Layout(tmp_path / "out"), "bioasq", arms.BASELINE)
-    assert report["retrieval"]["ok"] is True
-    assert report["verdicts"]["clef_flash"]["questions_differing"] == 1
-    assert report["answers"]["ok"] is True
+def test_seal_refuses_a_financebench_index_with_unpaged_chunks(tmp_path: Path) -> None:
+    store = _ingested(tmp_path, "financebench")
+    _table(store, "exp35_financebench_e4b_c1024", ["1", None, ""])
+    with pytest.raises(stages35.SealRefused, match="2 chunks with no page label"):
+        _seal(_ctx(tmp_path, "seal", dataset="financebench"))
 
 
-def test_determinism_needs_two_runs(tmp_path: Path) -> None:
-    stages35.search_stage(_ctx(tmp_path, run=1), _search_stub([]), {})
-    with pytest.raises(ValueError, match="two runs"):
-        stages35.determinism_stage(outputs35.Layout(tmp_path / "out"), "bioasq", arms.BASELINE)
+def test_seal_passes_a_financebench_index_where_every_chunk_has_a_page(tmp_path: Path) -> None:
+    store = _ingested(tmp_path, "financebench")
+    _table(store, "exp35_financebench_e4b_c1024", ["1", "2"])
+    ctx = _ctx(tmp_path, "seal", dataset="financebench")
+    assert _seal(ctx) == 0
+    found = json.loads(ctx.layout.fingerprint("financebench", INDEX).read_text("utf-8"))
+    assert found["unpaged_chunks"] == 0
+
+
+def test_seal_refuses_chunk_counts_that_differ_across_embedders(tmp_path: Path) -> None:
+    store = _ingested(tmp_path, "bioasq", files={"f.md": 3, "g.md": 2})
+    _ingested(tmp_path, "bioasq", "e0.6b-c1024", files={"f.md": 3, "g.md": 4})
+    _table(store, "exp35_bioasq_e4b_c1024", ["1"])
+    with pytest.raises(stages35.SealRefused, match=r"g\.md.*e0\.6b-c1024"):
+        _seal(_ctx(tmp_path, "seal"))
+
+
+def test_seal_refuses_warning_lists_that_differ_across_embedders(tmp_path: Path) -> None:
+    store = _ingested(tmp_path, "bioasq", warnings={"f.md": ["empty page"]})
+    _ingested(tmp_path, "bioasq", "e8b-c1024", warnings={})
+    _table(store, "exp35_bioasq_e4b_c1024", ["1"])
+    with pytest.raises(stages35.SealRefused, match=r"f\.md"):
+        _seal(_ctx(tmp_path, "seal"))
+
+
+def test_seal_records_the_embedders_it_compared(tmp_path: Path) -> None:
+    store = _ingested(tmp_path, "bioasq")
+    _ingested(tmp_path, "bioasq", "e8b-c1024")
+    _ingested(tmp_path, "bioasq", "e8b-c512", files={"other.md": 9})
+    _table(store, "exp35_bioasq_e4b_c1024", ["1"])
+    ctx = _ctx(tmp_path, "seal")
+    assert _seal(ctx) == 0
+    found = json.loads(ctx.layout.fingerprint("bioasq", INDEX).read_text("utf-8"))
+    assert found["compared_with"] == ["e8b-c1024"]
+
+
+# --- machine and environment record (task 5.6) --------------------------------------------
+
+
+def _machine(**over: Any) -> dict[str, Any]:
+    return {"host": "pod-a", "pod_id": "abc", "gpu": ENV["gpu"], "image": ENV["image"], **over}
+
+
+def _found() -> Any:
+    model = {"file": "Qwen3-Embedding-4B-Q8_0.gguf", "sha256": "a" * 64}
+    return SimpleNamespace(build=11941, models=[model])
+
+
+def test_the_environment_record_holds_gpu_image_build_and_gguf_hashes() -> None:
+    assert stages35.environment_record(_machine(), _found()) == ENV
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "named"),
+    [("gpu", None, "gpu"), ("image", None, "image"), ("image", "runpod/base:1.6.0", "sha256")],
+)
+def test_check_machine_refuses_a_missing_field_or_an_undigested_image(
+    field: str, value: Any, named: str
+) -> None:
+    with pytest.raises(stages35.EnvironmentMismatch, match=named):
+        stages35.check_machine(_machine(**{field: value}))
+
+
+def test_seal_writes_the_build_environment_record(tmp_path: Path) -> None:
+    store = _ingested(tmp_path, "bioasq")
+    _table(store, "exp35_bioasq_e4b_c1024", ["1"])
+    ctx = _ctx(tmp_path, "seal")
+    assert _seal(ctx) == 0
+    assert json.loads(ctx.layout.environment.read_text(encoding="utf-8")) == ENV
+
+
+def test_a_stage_appends_its_machine_line_and_matches_the_build_record(tmp_path: Path) -> None:
+    ctx = _ctx(tmp_path, "ingest")
+    outputs35.write_json(ctx.layout.environment, ENV)
+    stages35.record_machine(ctx, _machine(), ENV)
+    stages35.record_machine(ctx, _machine(host="pod-b", pod_id=None), ENV)
+    lines = [json.loads(x) for x in (ctx.folder / "machine.jsonl").read_text().splitlines()]
+    assert [(x["host"], x["pod_id"]) for x in lines] == [("pod-a", "abc"), ("pod-b", None)]
+    assert lines[0]["environment"] == ENV
+
+
+def test_a_stage_on_another_gpu_refuses_and_names_the_field(tmp_path: Path) -> None:
+    ctx = _ctx(tmp_path, "ingest")
+    outputs35.write_json(ctx.layout.environment, ENV)
+    other = {**ENV, "gpu": "NVIDIA A40"}
+    with pytest.raises(stages35.EnvironmentMismatch, match="gpu"):
+        stages35.record_machine(ctx, _machine(gpu="NVIDIA A40"), other)
+    assert not (ctx.folder / "machine.jsonl").exists()
+
+
+def test_a_search_kind_stage_refuses_without_the_build_record(tmp_path: Path) -> None:
+    ctx = _ctx(tmp_path, "ingest")
+    ctx.kind = "search"
+    with pytest.raises(stages35.EnvironmentMismatch, match="environment.json"):
+        stages35.record_machine(ctx, _machine(), ENV)

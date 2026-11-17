@@ -3,12 +3,18 @@
 Layout under the output folder (default ``output/restricted/...``: answers and
 evidence hold corpus text, design D10)::
 
-    <out>/<dataset>/<index arm>/index/ingest.jsonl    one row per file
-    <out>/<dataset>/<arm>/run<n>/search.jsonl         one row per question
-    <out>/<dataset>/<arm>/run<n>/answer.jsonl
-    <out>/<dataset>/<arm>/run<n>/judge-<name>.jsonl
-    <out>/<dataset>/<arm>/run<n>/traces.jsonl         D8 trace rows
-    <out>/<dataset>/<arm>/determinism.json
+    <out>/stores/<index>/lancedb/                         one store per index (D32)
+    <out>/environment.json                                build environment (seal, D19)
+    <out>/<dataset>/<index>/ingest.jsonl                  one row per file attempt
+    <out>/<dataset>/<index>/index-fingerprint.json        seal fingerprint (D8)
+    <out>/<dataset>/<index>/machine.jsonl                 one line per stage start (D11)
+    <out>/<dataset>/search/<setup>/run1/...               search setup outputs
+    <out>/<dataset>/answer/<setup>/run<n>/...             answer setup outputs
+    <local>/config/<dataset>-<name>-<stage>/omrs.jsonc    scratch settings (--local-dir)
+    <local>/state/                                        router state (--local-dir)
+
+``--index-from`` reads ``stores/``, the index folders and ``environment.json``
+from another folder; run outputs still go to ``<out>``.
 
 Each row file is appended one line at a time, flushed and synced, so a stopped
 run loses at most the line it was writing. ``<stage>.key.json`` holds the run
@@ -48,40 +54,58 @@ class ResumeMismatchError(RuntimeError):
 
 @dataclass(frozen=True)
 class Layout:
-    """Paths of one output folder."""
+    """Paths of one output folder (design D7, D9, D32).
+
+    Attributes:
+        root: The output folder (``--out-dir``). Every run output goes here.
+        local: The folder of the scratch settings and router state
+            (``--local-dir``); the output folder when ``None``.
+        index_root: The folder the stores, index markers, fingerprints and the
+            build environment record are read from (``--index-from``); the
+            output folder when ``None``.
+    """
 
     root: Path
-
-    def arm_dir(self, dataset: str, arm: str) -> Path:
-        """Return the folder of one dataset and arm."""
-        return self.root / dataset / arm
-
-    def index_dir(self, dataset: str, owner: str) -> Path:
-        """Return the ingest folder of the arm that owns an index."""
-        return self.arm_dir(dataset, owner) / "index"
-
-    def run_dir(self, dataset: str, arm: str, run: int) -> Path:
-        """Return the folder of one repetition."""
-        return self.arm_dir(dataset, arm) / f"run{run}"
+    local: Path | None = None
+    index_root: Path | None = None
 
     @property
-    def lancedb(self) -> Path:
-        """The LanceDB store of every index."""
-        return self.root / "lancedb"
+    def _index(self) -> Path:
+        return self.index_root or self.root
+
+    def store(self, index: str) -> Path:
+        """Return the LanceDB store of one index: ``stores/<index>/lancedb``."""
+        return self._index / "stores" / index / "lancedb"
+
+    def index_dir(self, dataset: str, index: str) -> Path:
+        """Return the ingest and seal folder of one index on one dataset."""
+        return self._index / dataset / index
+
+    def fingerprint(self, dataset: str, index: str) -> Path:
+        """Return the seal fingerprint of one index on one dataset."""
+        return self.index_dir(dataset, index) / "index-fingerprint.json"
+
+    @property
+    def environment(self) -> Path:
+        """The build environment record that ``seal`` writes (design D19)."""
+        return self._index / "environment.json"
+
+    def setup_dir(self, dataset: str, kind: str, setup: str) -> Path:
+        """Return the folder of one setup; *kind* is ``search`` or ``answer``."""
+        return self.root / dataset / kind / setup
+
+    def run_dir(self, dataset: str, kind: str, setup: str, run: int) -> Path:
+        """Return the folder of one repetition of one setup."""
+        return self.setup_dir(dataset, kind, setup) / f"run{run}"
 
     @property
     def state_dir(self) -> Path:
         """The router state folder (``OMRS_STATE_DIR``)."""
-        return self.root / "state"
+        return (self.local or self.root) / "state"
 
-    @property
-    def work_dir(self) -> Path:
-        """Prepared corpus files (BioASQ passages)."""
-        return self.root / "work"
-
-    def config_dir(self, dataset: str, arm: str, stage: str) -> Path:
+    def config_dir(self, dataset: str, name: str, stage: str) -> Path:
         """The scratch ``omrs.jsonc`` folder of one process."""
-        return self.root / "config" / f"{dataset}-{arm}-{stage}"
+        return (self.local or self.root) / "config" / f"{dataset}-{name}-{stage}"
 
 
 def run_key(

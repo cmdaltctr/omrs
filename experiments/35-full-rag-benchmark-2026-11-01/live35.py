@@ -1,74 +1,79 @@
-"""Live wiring of the Experiment 35 arm runner: router, runtime guard, Engine and judges.
+"""Live wiring of the Experiment 35 stage runner: router, run guard, machine, Engine and judges.
 
-``run_arms.py`` takes these through one object, so the tests pass a stub and
-nothing here runs under test except :func:`guard_stage`.
+``run_arms.py`` reaches the outside world only through one ``LiveDeps``
+object; tests pass a stub with the same methods.
 
 * Router: Experiment 48's ``router_config.start_router`` joins OMRS's managed
   router (``llamacpp_router_server: managed`` in the scratch ``omrs.jsonc``)
   and loads the named files. The router stops when the process exits.
-* Guard: before any stage, the live server is checked against the plan
-  (build and GGUF SHA-256). A full run calls ``run_guard.guard_run``, which
-  appends the experiment's run record. A smoke run (``--limit``) checks the
-  same way but writes the found runtime into its output folder: it is not a
-  measured run, and the Confirmatory rule needs the freeze commit before the
-  first line of ``output/run-records.jsonl`` (task 4.2).
-* Judges: one claim judge per strategy, from a copy of the answer block
-  (archived change D10), built by ``compose_judges``. ``chat`` wraps the
-  GLM-5.3 LLM in OMRS's production chat strategy, as the pre-freeze runner did.
+* Guard: every stage calls ``run_guard.guard_run`` with ``check_args=True``
+  (task 5.8), the pre-freeze and smoke flags, and the command with every
+  resolved concurrency value (design D7). The guard checks the live server
+  against the plan (build, GGUF SHA-256, server arguments) and appends one
+  line to ``output/run-records.jsonl``. A main stage refuses an empty
+  ``frozen`` or a dirty tree.
+* Machine: the host name, ``RUNPOD_POD_ID``, the GPU model from ``nvidia-smi``
+  and the image from ``EXP35_POD_IMAGE`` (design D19). A field that cannot be
+  read is ``None``, and the stage then refuses.
+* Judges: one claim judge per strategy, on a copy of the answer block, built
+  by ``compose_judges``. ``chat`` wraps GLM-5.3 in OMRS's production chat
+  strategy.
 """
 
 from __future__ import annotations
 
 import json
+import os
+import socket
 import subprocess
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
 import arms
 import datasets35
 from experiments._lib import run_guard
-from experiments._lib.llamacpp_runtime import verify_llamacpp_runtime
+from experiments._lib.manifest import git_commit
 
 EXP_DIR = Path(__file__).resolve().parent
 EXP48_DIR = EXP_DIR.parent / "48-pipeline-sweep-llamacpp-2026-11-01"
 
 
-def guard_stage(
-    block: Any,
-    *,
-    base_url: str,
-    smoke: bool,
-    runtime_path: Path,
-    verify: Callable[..., Any] = verify_llamacpp_runtime,
-    guard_run: Callable[..., Any] = run_guard.guard_run,
-) -> Any:
-    """Check the live server against the plan; record the found runtime.
-
-    Raises:
-        PreflightError: The build or a GGUF hash differs. Nothing is written.
-    """
-    if smoke:
-        found = verify(block, base_url=base_url)
-        runtime_path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = runtime_path.with_name(runtime_path.name + ".tmp")
-        tmp.write_text(json.dumps(found.as_run_record(), indent=2) + "\n", encoding="utf-8")
-        tmp.replace(runtime_path)
-        return found
-    return guard_run(EXP_DIR, block, base_url=base_url, command=None)
+def _gpu() -> str | None:
+    try:
+        found = subprocess.run(  # noqa: S603 - fixed command, no shell
+            ["nvidia-smi", "--query-gpu=name", "--format=csv,noheader"],  # noqa: S607
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    names = sorted({line.strip() for line in found.stdout.splitlines() if line.strip()})
+    return ", ".join(names) or None
 
 
 class LiveDeps:
-    """The real outside world of one runner process."""
+    """The outside world of one runner process."""
 
     def plan(self) -> dict[str, Any]:
         """Return the parsed ``plan.json``."""
         return json.loads((EXP_DIR / "plan.json").read_text(encoding="utf-8"))
 
-    def verify_inputs(self, root: Path, dataset: str, files: Sequence[Path]) -> None:
-        """Check the recorded input hashes, and each FinanceBench PDF against its manifest."""
-        datasets35.verify_inputs(root, datasets35.EXPECTED_SHA256[dataset])
+    def commit(self) -> str:
+        """Return the harness commit (``git rev-parse HEAD``)."""
+        found = git_commit(EXP_DIR)
+        if found is None:
+            raise arms.ArmConfigError("git cannot report the harness commit; run inside the repo")
+        return found
+
+    def verify_inputs(
+        self, root: Path, dataset: str, files: Sequence[Path], plan: Mapping[str, Any]
+    ) -> None:
+        """Check the recorded input hashes, and the FinanceBench PDFs against their manifest."""
+        datasets35.verify_inputs(root, datasets35.input_hashes(dataset, plan))
         if dataset == "financebench":
             datasets35.verify_inputs(root, datasets35.pdf_hashes(root, files))
 
@@ -86,21 +91,39 @@ class LiveDeps:
 
         return router_config.start_router(list(files), plan)
 
-    def guard(self, block: Any, *, base_url: str, smoke: bool, runtime_path: Path) -> Any:
-        """Validate the runtime block, then run :func:`guard_stage`."""
+    def guard(
+        self, block: Any, *, base_url: str, command: str, prefreeze: bool, smoke: bool
+    ) -> Any:
+        """Validate the runtime block and run ``guard_run`` with ``check_args=True``."""
         from omrs.core.experiment_records.runtime_block import RuntimeBlock
 
-        model = RuntimeBlock.model_validate(block)
-        return guard_stage(model, base_url=base_url, smoke=smoke, runtime_path=runtime_path)
+        return run_guard.guard_run(
+            EXP_DIR,
+            RuntimeBlock.model_validate(block),
+            base_url=base_url,
+            command=command,
+            check_args=True,
+            prefreeze=prefreeze,
+            smoke=smoke,
+        )
+
+    def machine(self) -> dict[str, Any]:
+        """Return the host name, pod ID, GPU model and pinned image of this machine."""
+        return {
+            "host": socket.gethostname(),
+            "pod_id": os.environ.get("RUNPOD_POD_ID") or None,
+            "gpu": _gpu(),
+            "image": os.environ.get("EXP35_POD_IMAGE") or None,
+        }
 
     def engine(self) -> Any:
-        """Build an Engine from the scratch settings."""
+        """Build an Engine on the scratch settings."""
         from omrs.compose import build_engine
 
         return build_engine()
 
     def judge(self, name: str, settings: Any, plan: Any) -> Any:
-        """Build OMRS's claim judge *name* from a copy of the answer block.
+        """Build OMRS's claim judge *name* on a copy of the answer block.
 
         Raises:
             ArmConfigError: OMRS says the strategy cannot run, or builds no judge.
@@ -124,6 +147,6 @@ class LiveDeps:
         return target
 
     def spawn(self, argv: Sequence[str]) -> int:
-        """Run this script again in a new process; return its exit code."""
+        """Run the runner again in a new process; return its exit code."""
         script = EXP_DIR / "run_arms.py"
         return subprocess.run([sys.executable, str(script), *argv], check=False).returncode  # noqa: S603

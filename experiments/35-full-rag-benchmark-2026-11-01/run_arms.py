@@ -1,39 +1,45 @@
-"""Experiment 35 arm runner: one dataset, one arm (or all), one stage, one repetition.
+"""Experiment 35 stage runner: one dataset, one stage, one setup or index, one repetition.
 
-Stages (design D4, D5):
+The command line lives in ``cli35.py`` (``--help`` lists every option). Stages
+are named in :data:`STAGE_TABLE`; each is ``async def stage(ctx: stages35.Ctx)
+-> int``. Today: ``ingest`` (one index into its own store) and ``seal`` (the
+index fingerprint and the build environment record).
 
-* ``ingest``       build the arm's index, one file at a time. The reranker-off
-                   and hybrid arms search the baseline index and skip this.
-* ``search``       top-10 search per question; IDs, scores and the primary
-                   metrics (Recall@10, MRR@10, nDCG@10, hit@page).
-* ``answer``       one hosted answer per question (claim checks off), then
-                   each ``--judges`` strategy judges every cited claim.
-* ``determinism``  compare runs 1 to 3 of the arm (IDs, answers, verdicts).
+Per process the runner, in this order and before any paid call:
 
-Settings: each process writes ``<out>/config/<dataset>-<arm>-<stage>/omrs.jsonc``
-(``arms.settings_values``), points ``OMRS_CONFIG_DIR`` and ``OMRS_STATE_DIR``
-there, and OMRS's managed router serves the plan's GGUF files from
-``SWEEP_GGUF_DIR``. ``EXP35_DATA_DIR`` names the dataset folder. Keys come only
-from ``OPENROUTER_API_KEY`` and ``OMRS_EXP35_ZAI_KEY`` through ``env://``
-references; no key is printed.
+1. writes ``<local>/config/<dataset>-<name>-<stage>/omrs.jsonc``
+   (``arms.settings_values``), points ``OMRS_CONFIG_DIR``, ``OMRS_STATE_DIR``
+   and ``LANCEDB_URI`` (the index's own store) there, and stops with exit code
+   2 when OMRS resolves any written value otherwise (an environment variable or
+   ``.env`` entry), or the PDF reader resolves to another reader;
+2. selects the questions in frozen order (``--limit`` or ``--qids``);
+3. for an ingest, checks the prepared passage folder against ``plan.json``;
+4. builds the stage key with the configuration hash, and refuses a
+   ``--resume`` with another key before it skips a stage done earlier;
+5. checks the machine (GPU and pinned image), the input hashes, starts the
+   router, and runs ``guard_run`` with ``check_args=True``, the pre-freeze and
+   smoke flags, and the command with every resolved concurrency value;
+6. builds the engine, appends the machine line and runs the stage.
 
-``--dry-run`` writes and loads the scratch settings, prints the plan and exits:
-no router, no model, no request. ``--arm all`` runs each arm in table order in
-its own process and stops at the first failure.
+``--dry-run`` stops after step 4 and prints the plan: no router, no model, no
+request. ``--setup all`` or an index with a search stage runs each unit in its
+own process, in table order, and stops at the first non-zero exit code.
 
-Exit codes: 0 done; 2 setup or input error (nothing scored); 3 the determinism
-check found a retrieval difference; 4 a judge could not start.
-Heavy-run rule: tell the operator before a run without ``--dry-run``.
+Exit codes: 0 done; 2 setup or input error (nothing scored); 3 a check found a
+difference; 4 a judge could not start; 5 rate-limited past the attempt limit or
+out of credit (finished rows kept, no done-marker); 6 items still open (no
+done-marker; run again with ``--resume``). Heavy-run rule: tell the operator
+before a run without ``--dry-run``.
 """
 
 from __future__ import annotations
 
-import argparse
 import asyncio
 import json
 import os
+import shlex
 import sys
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -44,131 +50,145 @@ for _folder in (PROJECT_ROOT, EXP_DIR):
         sys.path.insert(0, str(_folder))
 
 import arms  # noqa: E402
+import cli35  # noqa: E402
 import datasets35  # noqa: E402
 import outputs35  # noqa: E402
 import stages35  # noqa: E402
 from experiments._lib import router_env  # noqa: E402
+from experiments._lib.hosted_calls import RateLimitStop  # noqa: E402
 from experiments._lib.preflight import PreflightError  # noqa: E402
 from experiments._lib.trace import TraceWriter  # noqa: E402
 
+from omrs.capabilities import resolve_pdf_reader  # noqa: E402
+
 say = outputs35.say
-DEFAULT_OUT = EXP_DIR / "output" / "restricted" / "runs"
-SMOKE_OUT = EXP_DIR / "output" / "restricted" / "smoke"
-EXIT_SETUP, EXIT_MISMATCH, EXIT_JUDGE = 2, 3, 4
-#: Not a run blocker: metadata extraction is off, so no classification request is sent,
-#: and the router refuses an unlisted model per request only.
+EXIT_SETUP, EXIT_MISMATCH, EXIT_JUDGE, EXIT_RATE_LIMIT, EXIT_OPEN = 2, 3, 4, 5, 6
+#: Not a run blocker: metadata extraction is off, so no classification request is sent.
 IGNORED_ROLES = ("classification",)
 
+#: Stage name to stage function. A later stage adds one line here and one line
+#: to ``arms.STAGE_KINDS``.
+STAGE_TABLE: dict[str, Callable[[stages35.Ctx], Awaitable[int]]] = {
+    "ingest": stages35.ingest_stage,
+    "seal": stages35.seal_stage,
+}
 
-def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
-    """Return the checked command line."""
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--dataset", required=True, choices=datasets35.DATASETS)
-    parser.add_argument("--arm", required=True, choices=[*arms.ARMS, "all"])
-    parser.add_argument("--stage", required=True, choices=arms.STAGES)
-    parser.add_argument("--run", type=int, default=1, choices=(1, 2, 3))
-    parser.add_argument("--limit", type=int, help="first N questions of the frozen order")
-    parser.add_argument(
-        "--corpus-sample", type=int, help="ingest gold documents plus N seeded others (smoke)"
-    )
-    parser.add_argument("--judges", default="", help="comma list: clef_flash,granite_guardian,chat")
-    parser.add_argument("--answer-host", default="", help="the one OpenRouter host for answers")
-    parser.add_argument("--resume", action="store_true")
-    parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--out-dir", type=Path)
-    args = parser.parse_args(argv)
-    if args.limit is not None and args.limit < 1:
-        parser.error("--limit must be 1 or more")
-    if args.corpus_sample is not None and args.corpus_sample < 0:
-        parser.error("--corpus-sample must be 0 or more")
-    # A question limit or a sampled corpus both make a smoke run: never a run record.
-    args.smoke = args.limit is not None or args.corpus_sample is not None
-    if args.out_dir is None:
-        args.out_dir = SMOKE_OUT if args.smoke else DEFAULT_OUT
-    return args
+SETUP_ERRORS = (
+    arms.ArmConfigError,
+    datasets35.DatasetError,
+    router_env.RouterConfigError,
+    PreflightError,
+    outputs35.StageFileExistsError,
+    outputs35.ResumeMismatchError,
+    stages35.StageOrderError,
+    stages35.SealRefused,
+    stages35.EnvironmentMismatch,
+    ValueError,
+)
 
 
-def determinism_exit(report: dict[str, Any]) -> int:
-    """Return 3 only when retrieval differs between runs.
+def plan_units(kind: str, *, setup: str | None, index: str | None) -> list[tuple[str, str]]:
+    """Return the ``(kind, name)`` units one command runs, in table order.
 
-    Answers and judge verdicts may differ: runs 2 and 3 exist to measure that
-    variation (spec "Each arm runs three times"), and the report records it.
+    An index stage runs on index names: ``--index NAME``, the index of
+    ``--setup NAME``, or all 9 for ``--setup all``. A search or answer stage
+    runs on setup names: ``--setup NAME``, all 72 for ``--setup all``, or the 8
+    setups of ``--index NAME``.
     """
-    return 0 if report["retrieval"]["ok"] else EXIT_MISMATCH
+    if kind == "index":
+        if index is not None:
+            return [(kind, index)]
+        if setup == "all":
+            return [(kind, name) for name in arms.INDEXES]
+        return [(kind, arms.parse_setup(str(setup)).index)]
+    if index is not None:
+        return [(kind, s.name) for s in arms.index_setups(index)]
+    if setup == "all":
+        return [(kind, name) for name in arms.SEARCH_SETUPS]
+    return [(kind, str(setup))]
 
 
 def main(argv: Sequence[str] | None = None, *, deps: Any = None) -> int:
-    """Run the command line; return the exit code. *deps* replaces the live world (tests)."""
-    args = parse_args(argv)
+    """Run one command line; return the exit code. *deps* replaces the live world (tests)."""
+    argv = list(argv if argv is not None else sys.argv[1:])
+    args = cli35.parse_args(argv)
     if deps is None:
         from live35 import LiveDeps
 
         deps = LiveDeps()
-    if args.arm == "all":
-        return run_all(list(argv if argv is not None else sys.argv[1:]), deps)
+    kind = arms.STAGE_KINDS[args.stage]
+    units = plan_units(kind, setup=args.setup, index=args.index)
+    if len(units) > 1:
+        return run_all(argv, units, deps)
     from omrs.core.answer.judges.base import JudgeUnavailable
 
     try:
-        return run_one(args, deps)
+        return run_one(args, argv, kind, units[0][1], deps)
     except JudgeUnavailable as refused:
-        say(f"[error] a judge cannot start: {refused.reason}")
+        say(f"[error] judge cannot start: {refused.reason}")
         return EXIT_JUDGE
-    except (
-        arms.ArmConfigError,
-        datasets35.DatasetError,
-        router_env.RouterConfigError,
-        PreflightError,
-        outputs35.StageFileExistsError,
-        outputs35.ResumeMismatchError,
-        stages35.StageOrderError,
-        ValueError,
-    ) as error:
+    except RateLimitStop as stop:
+        say(f"[stop] {stop}; finished rows are kept, no done-marker. Run again with --resume.")
+        return EXIT_RATE_LIMIT
+    except stages35.StageIncomplete as open_items:
+        say(f"[open] {open_items}")
+        return EXIT_OPEN
+    except SETUP_ERRORS as error:
         say(f"[error] {error}")
         return EXIT_SETUP
 
 
-def run_all(argv: list[str], deps: Any) -> int:
-    """Run each arm in table order, one process each; stop at the first failure."""
-    at = argv.index("--arm")
-    for name in arms.ARMS:
-        child = [*argv[:at], "--arm", name, *argv[at + 2 :]]
+def run_all(argv: list[str], units: Sequence[tuple[str, str]], deps: Any) -> int:
+    """Run each unit in its own process, in order; stop at the first non-zero exit code."""
+    rest, skip = [], False
+    for arg in argv:
+        if skip:
+            skip = False
+        elif arg in ("--setup", "--index"):
+            skip = True
+        else:
+            rest.append(arg)
+    for kind, name in units:
+        flag = "--index" if kind == "index" else "--setup"
         say(f"[all] {name}")
-        code = deps.spawn(child)
+        code = deps.spawn([*rest, flag, name])
         if code != 0:
-            say(f"[all] {name} stopped with exit code {code}; later arms not run")
+            say(f"[all] {name} stopped with exit code {code}; later units not run")
             return code
     return 0
 
 
-def _stage_folder(layout: outputs35.Layout, args: argparse.Namespace, arm: arms.Arm) -> Path:
-    if args.stage == "ingest":
-        return layout.index_dir(args.dataset, arm.name)
-    return layout.run_dir(args.dataset, arm.name, args.run)
-
-
-def _stage_done(layout: outputs35.Layout, args: argparse.Namespace, arm: arms.Arm) -> bool:
-    folder = _stage_folder(layout, args, arm)
-    names = [args.stage] + [f"judge-{j}" for j in arms.parse_judges(args.judges)]
-    return all((folder / f".done-{name}.json").exists() for name in names)
-
-
-def _configure(args: argparse.Namespace, arm: arms.Arm, plan: Any, layout: Any) -> tuple:
-    """Write, check and load the scratch settings; return (values, settings, path, judges)."""
-    judges = arms.parse_judges(args.judges) if args.stage == "answer" else ()
-    if args.stage == "answer" and not args.answer_host.strip():
-        raise arms.ArmConfigError("the answer stage needs --answer-host (one OpenRouter host)")
-    config_dir = layout.config_dir(args.dataset, arm.name, args.stage)
-    extra = {"VECTOR_STORE": "lancedb", "LANCEDB_URI": str(layout.lancedb)}
-    router_env.prepare_environment(
-        {**extra, **arms.env_overrides(arm)}, config_dir=config_dir, state_dir=layout.state_dir
+def _layout(args: Any, kind: str) -> outputs35.Layout:
+    if kind == "index" and args.index_from is not None:
+        raise arms.ArmConfigError(
+            "an index stage writes its index; --index-from is only for search and answer stages"
+        )
+    return outputs35.Layout(
+        args.out_dir.absolute(),
+        local=args.local_dir.absolute() if args.local_dir else None,
+        index_root=args.index_from.absolute() if args.index_from else None,
     )
+
+
+def _configure(args: Any, setup: arms.Setup, name: str, plan: Any, layout: Any) -> tuple:
+    """Write, check and load the scratch settings; return (values, settings, path, judges)."""
+    judges = arms.parse_judges(args.judges)
+    config_dir = layout.config_dir(args.dataset, name, args.stage)
+    extra = {"VECTOR_STORE": "lancedb", "LANCEDB_URI": str(layout.store(setup.index))}
+    router_env.prepare_environment(extra, config_dir=config_dir, state_dir=layout.state_dir)
     values = arms.settings_values(
-        arm, plan, router_env.gguf_dir(), answer_host=args.answer_host.strip(), judges=judges
+        setup, plan, router_env.gguf_dir(), answer_host=args.answer_host.strip(), judges=judges
     )
     path = router_env.write_settings(values, config_dir)
     router_env.check_settings_file(config_dir)
     settings = router_env.load_settings()
     router_env.check_resolved(settings, arms.without_keys(values))
+    reader = resolve_pdf_reader(settings)
+    if reader != values["pdf_reader"]:
+        raise arms.ArmConfigError(
+            f"pdf_reader resolves to {reader!r} on this machine; the plan pins "
+            f"{values['pdf_reader']!r}. Install it, or remove the PDF_READER override."
+        )
     return values, settings, path, judges
 
 
@@ -180,7 +200,8 @@ def _role_problems(settings: Any) -> list[list[str]]:
 
 
 def _resolved(settings: Any) -> dict[str, Any]:
-    answer = settings.answer
+    """Return the resolved values a trace records (no key fields)."""
+    answer, retrieval = settings.answer, settings.retrieval
     return {
         "embed_model": settings.llamacpp_embed_model,
         "router_url": settings.llamacpp_router_url,
@@ -188,89 +209,169 @@ def _resolved(settings: Any) -> dict[str, Any]:
         "rag_profile": settings.rag_profile,
         "tokenizer_model": settings.embedding.tokenizer_model,
         "tokenizer_revision": settings.embedding.tokenizer_revision,
+        "query_instruction": settings.embedding.query_instruction,
         "metadata_extraction": settings.metadata.extraction_mode,
+        "pdf_reader": settings.pdf_reader,
+        "chunk_size": settings.chunking.chunk_size,
+        "markdown_chunk_size": settings.chunking.markdown_chunk_size,
+        "chunk_overlap": settings.chunking.chunk_overlap,
+        "rerank_backend": retrieval.rerank_backend,
+        "rerank_model": retrieval.rerank_model,
+        "hybrid_sparse_backend": retrieval.hybrid_sparse_backend,
+        "hybrid_rrf_k": retrieval.hybrid_rrf_k,
         "answer_provider": answer.provider,
         "answer_model": answer.model,
         "answer_temperature": answer.temperature,
         "answer_seed": answer.seed,
         "answer_allowed_hosts": answer.allowed_hosts,
+        "answer_reasoning": answer.reasoning,
+        "answer_max_output_tokens": answer.max_output_tokens,
+        "answer_context_window": answer.context_window,
+        "answer_max_rounds": answer.max_rounds,
         "verify_claims": answer.verify_claims,
     }
 
 
-def run_one(args: argparse.Namespace, deps: Any) -> int:
-    """Run one stage of one arm; return the exit code."""
-    arm = arms.ARMS[args.arm]
-    layout = outputs35.Layout(args.out_dir)
-    if args.stage == "determinism":
-        return determinism_exit(stages35.determinism_stage(layout, args.dataset, arm.name))
-    if args.stage == "ingest" and not arm.owns_index:
-        say(f"[ingest] {arm.name} searches the {arm.index_of} index; nothing to ingest")
-        return 0
-    if args.resume and _stage_done(layout, args, arm):
-        say(f"[{args.stage}] {args.dataset}/{arm.name}/run{args.run}: done earlier, skipped")
-        return 0
-    started = _stage_folder(layout, args, arm) / f"{args.stage}.key.json"
-    if started.exists() and not args.resume and not args.dry_run:
-        raise outputs35.StageFileExistsError(
-            f"{args.stage} started earlier in {started.parent}; "
-            "pass --resume, or use another --out-dir"
+def _concurrency(args: Any) -> dict[str, int]:
+    return {name: int(getattr(args, name)) for name in cli35.CONCURRENCY_OPTIONS}
+
+
+def _command(argv: Sequence[str], args: Any) -> str:
+    """Return the command for the run record, with every resolved concurrency value (D7)."""
+    flags = [x for n, v in _concurrency(args).items() for x in (f"--{n.replace('_', '-')}", str(v))]
+    return shlex.join(["run_arms.py", *argv, *flags])
+
+
+def _config(plan: Any, values: Mapping[str, Any], commit: str) -> dict[str, Any]:
+    """Return the configuration fields of the key (task 3.4): settings, runtime, prompts, commit.
+
+    The GGUF entries carry machine paths; the runtime hash covers the models.
+    """
+    hashed = {k: v for k, v in arms.without_keys(values).items() if k != "llamacpp_models"}
+    hashed["recorded_pins"] = arms.recorded_pins(plan)
+    return outputs35.config_fields(
+        settings=hashed,
+        runtime=plan["runtime"],
+        prompts=(plan.get("pins") or {}).get("prompts") or {},
+        commit=commit,
+    )
+
+
+def _ingest_files(args: Any, plan: Any, root: Path, questions: Sequence[Any]) -> list[Path]:
+    seed = arms.plan_seed(plan, "smoke_sample")
+    if args.dataset == "financebench":
+        return datasets35.corpus_files(
+            "financebench", root, questions, args.corpus_sample, Path(), seed=seed
         )
-    if args.stage != "ingest" and not args.dry_run:
-        marker = layout.index_dir(args.dataset, arm.index_of) / ".done-ingest.json"
-        if not marker.exists():
-            raise stages35.StageOrderError(f"the {arm.index_of} index is not built: no {marker}")
+    if args.passages_dir is None:
+        raise arms.ArmConfigError(f"ingest of {args.dataset} needs --passages-dir (prepare35.py)")
+    passages = args.passages_dir.absolute()
+    datasets35.check_passages(passages, args.dataset, plan)
+    return datasets35.corpus_files(
+        args.dataset, root, questions, args.corpus_sample, passages, seed=seed
+    )
+
+
+def run_one(args: Any, argv: Sequence[str], kind: str, name: str, deps: Any) -> int:
+    """Run one stage of one setup or index; return its exit code."""
     plan = deps.plan()
-    values, settings, path, judges = _configure(args, arm, plan, layout)
+    setup = arms.index_setup(name) if kind == "index" else arms.parse_setup(name)
+    layout = _layout(args, kind)
+    values, settings, path, judges = _configure(args, setup, name, plan, layout)
+    problems = _role_problems(settings)
     root = datasets35.data_root()
     questions = datasets35.select(
-        datasets35.load_questions(args.dataset, root), args.limit, seed=arms.SEED
+        datasets35.load_questions(args.dataset, root),
+        args.limit,
+        seed=arms.plan_seed(plan, "question_order"),
+        qids=args.qids,
     )
-    roles = arms.stage_roles(arm, args.stage, judges)
-    problems = _role_problems(settings)
+    files = _ingest_files(args, plan, root, questions) if args.stage == "ingest" else []
+    key = outputs35.run_key(
+        args.limit,
+        args.corpus_sample,
+        arms.plan_seed(plan, "question_order"),
+        [q.qid for q in questions],
+        config=_config(plan, values, deps.commit()),
+    )
+    folder = (
+        layout.index_dir(args.dataset, name)
+        if kind == "index"
+        else layout.run_dir(args.dataset, kind, name, args.run)
+    )
+    if args.resume and (folder / f".done-{args.stage}.json").exists():
+        outputs35.check_stage_key(folder, args.stage, key)
+        say(f"[{args.stage}] {args.dataset}/{name}/run{args.run}: done earlier, skipped")
+        return 0
+    if (folder / f"{args.stage}.key.json").exists() and not args.resume and not args.dry_run:
+        raise outputs35.StageFileExistsError(
+            f"{args.stage} started earlier in {folder}; pass --resume, or use another --out-dir"
+        )
+    roles = arms.stage_roles(setup, args.stage, judges)
     if args.dry_run:
-        return _print_plan(args, arm, settings, path, roles, judges, questions, problems, deps)
+        return _print_plan(args, setup, name, settings, path, layout, roles, questions, problems)
     if problems:
         raise arms.ArmConfigError(f"OMRS lists router role problems: {problems}")
     _require_keys(args.stage, judges)
-    if args.stage == "ingest" and deps.chunking_token_aware(settings) != arm.token_aware:
+    if not deps.chunking_token_aware(settings):
         raise arms.ArmConfigError(
-            f"{arm.name} needs token-aware chunking {arm.token_aware}; OMRS resolved the other "
-            "path (is the tokenizer revision cached on this machine?)"
+            f"{name}: OMRS does not resolve the model-token-aware Markdown path "
+            "(is the tokenizer revision cached on this machine?)"
         )
-    key = outputs35.run_key(args.limit, args.corpus_sample, arms.SEED, [q.qid for q in questions])
-    files = (
-        datasets35.corpus_files(
-            args.dataset, root, questions, args.corpus_sample, layout.work_dir, seed=arms.SEED
-        )
-        if args.stage == "ingest"
-        else []
-    )
-    deps.verify_inputs(root, args.dataset, files)
+    machine = deps.machine()
+    stages35.check_machine(machine)
+    deps.verify_inputs(root, args.dataset, files, plan)
     models = [arms.plan_role(plan, role) for role in roles]
-    deps.start_router([models[0]["file"]], {"runtime": {"models": models}})
     block = {**plan["runtime"], "models": models}
+    deps.start_router([m["file"] for m in models], {"runtime": {"models": models}})
     base_url = str(settings.llamacpp_router_url).rstrip("/").removesuffix("/v1")
-    runtime_path = (
-        layout.root / "runtime" / f"{args.dataset}-{arm.name}-{args.stage}-run{args.run}.json"
+    found = deps.guard(
+        block,
+        base_url=base_url,
+        command=_command(argv, args),
+        prefreeze=args.prefreeze,
+        smoke=args.smoke,
     )
-    deps.guard(block, base_url=base_url, smoke=args.smoke, runtime_path=runtime_path)
-    return asyncio.run(
-        _run_stage(args, arm, plan, settings, models, judges, questions, key, files, layout, deps)
-    )
+    environment = stages35.environment_record(machine, found)
+    trace = _trace(args, name, plan, settings, models, folder)
+    engine = deps.engine()
+    try:
+        ctx = stages35.Ctx(
+            dataset=args.dataset,
+            setup=name,
+            kind=kind,
+            run=args.run,
+            questions=questions,
+            layout=layout,
+            key=key,
+            resume=args.resume,
+            trace=trace,
+            engine=engine,
+            settings=settings,
+            plan=plan,
+            args=args,
+            files=files,
+            environment=environment,
+            redact=engine.redact,
+        )
+        stages35.record_machine(ctx, machine, environment)
+        code = asyncio.run(STAGE_TABLE[args.stage](ctx))
+    finally:
+        engine.close()
+    say(f"[{args.stage}] {args.dataset}/{name}/run{args.run}: exit {code}")
+    return code
 
 
 def _require_keys(stage: str, judges: Sequence[str]) -> None:
     needed = ["OPENROUTER_API_KEY"] if stage == "answer" else []
     needed += [arms.GLM_KEY_ENV] if "chat" in judges else []
-    missing = [name for name in needed if not os.environ.get(name)]
+    missing = [n for n in needed if not os.environ.get(n)]
     if missing:
         raise arms.ArmConfigError(f"set {', '.join(missing)} before this stage (never in a file)")
 
 
-def _trace(args: Any, arm: arms.Arm, plan: Any, settings: Any, models: Any, layout: Any) -> Any:
-    folder = _stage_folder(layout, args, arm)
-    smoke = f"/limit{args.limit}" if args.limit is not None else ""
+def _trace(args: Any, name: str, plan: Any, settings: Any, models: Any, folder: Path) -> Any:
+    smoke = "/smoke" if args.smoke else ""
     identities: dict[str, Any] = {
         m["role"]: {"file": m["file"], "sha256": m["sha256"]} for m in models
     }
@@ -278,102 +379,56 @@ def _trace(args: Any, arm: arms.Arm, plan: Any, settings: Any, models: Any, layo
         "model": arms.ANSWER_MODEL,
         "allowed_hosts": settings.answer.allowed_hosts,
     }
+    setup = arms.index_setup(name) if args.stage in arms.INDEX_STAGES else arms.parse_setup(name)
     return TraceWriter(
         folder / "traces.jsonl",
         benchmark_revision=f"exp35-protocol-{plan.get('protocol_version')}",
-        run_id=f"{args.dataset}/{arm.name}/run{args.run}{smoke}",
-        arm=arm.name,
+        run_id=f"{args.dataset}/{name}/run{args.run}{smoke}",
+        arm=name,
         repetition=args.run,
         effective_settings={
-            "arm": arm.name,
-            **arms.search_kwargs(arm),
+            "setup": name,
+            "stage": args.stage,
+            "rerank": setup.rerank,
+            "hybrid": setup.hybrid_on,
             "top_k": arms.TOP_K,
-            "token_aware": arm.token_aware,
+            "prefreeze": args.prefreeze,
+            **_concurrency(args),
             **_resolved(settings),
+            "recorded_pins": arms.recorded_pins(plan),
         },
         model_identities=identities,
     )
 
 
-async def _run_stage(
-    args: Any,
-    arm: arms.Arm,
-    plan: Any,
-    settings: Any,
-    models: Any,
-    judges: Sequence[str],
-    questions: list[Any],
-    key: Any,
-    files: list[Path],
-    layout: Any,
-    deps: Any,
-) -> int:
-    from omrs.core.answer.verify import verify_claims
-
-    engine = deps.engine()
-    try:
-        ctx = stages35.Ctx(
-            args.dataset,
-            arm,
-            args.run,
-            questions,
-            layout,
-            key,
-            args.resume,
-            _trace(args, arm, plan, settings, models, layout),
-            engine.redact,
-        )
-        collection = arms.collection(args.dataset, arm)
-        call = {"top_k": arms.TOP_K, "collection_name": collection, **arms.search_kwargs(arm)}
-        if args.stage == "ingest":
-            await stages35.ingest_stage(
-                ctx, files, lambda path: engine.ingest(str(path), collection_name=collection)
-            )
-        elif args.stage == "search":
-            id_map = (
-                datasets35.freshstack_id_map(datasets35.data_root())
-                if args.dataset == "freshstack"
-                else {}
-            )
-            stages35.search_stage(ctx, lambda text: engine.search(text, **call), id_map)
-        else:
-            await stages35.answer_stage(ctx, lambda text: engine.answer(text, **call))
-            for name in judges:
-                judge = deps.judge(name, settings, plan)
-                await stages35.judge_stage(ctx, name, judge, verify_claims)
-    finally:
-        engine.close()
-    say(f"[{args.stage}] {args.dataset}/{arm.name}/run{args.run}: complete")
-    return 0
-
-
 def _print_plan(
     args: Any,
-    arm: arms.Arm,
+    setup: arms.Setup,
+    name: str,
     settings: Any,
     path: Path,
+    layout: Any,
     roles: Sequence[str],
-    judges: Sequence[str],
     questions: Sequence[Any],
     problems: list,
-    deps: Any,
 ) -> int:
     plan = {
         "nothing_started": True,
         "settings_file": str(path),
         "out_dir": str(args.out_dir),
         "dataset": args.dataset,
-        "arm": arm.name,
         "stage": args.stage,
+        "name": name,
         "run": args.run,
-        "collection": arms.collection(args.dataset, arm),
-        "index_of": arm.index_of,
-        "search": arms.search_kwargs(arm),
-        "token_aware": arm.token_aware,
+        "collection": setup.collection(args.dataset),
+        "store": str(layout.store(setup.index)),
+        "search": {"rerank": setup.rerank, "hybrid": setup.hybrid_on},
         "models": list(roles),
-        "judges": list(judges),
         "corpus_sample": args.corpus_sample,
         "questions": [q.qid for q in questions],
+        "prefreeze": args.prefreeze,
+        "smoke": args.smoke,
+        "concurrency": _concurrency(args),
         "keys_set": {n: bool(os.environ.get(n)) for n in ("OPENROUTER_API_KEY", arms.GLM_KEY_ENV)},
         "resolved": _resolved(settings),
         "role_problems": problems,
