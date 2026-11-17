@@ -160,14 +160,92 @@ The join step SHALL check that run 1 of every search setup and dataset has a fin
 - **WHEN** run 2 of an arm has another run key than run 1
 - **THEN** the join report MUST fail and MUST name the differing fields
 
+### Requirement: The join reads the drop record and repairs trace lines
+
+The join step SHALL read the drop record. A dataset or stage removed by a recorded drop step SHALL NOT be required and SHALL be listed as dropped. The join SHALL rebuild a missing trace line from its saved row and count it (amendment A5).
+
+#### Scenario: Missing trace line
+
+- **WHEN** a saved answer row has no trace line
+- **THEN** the join MUST write the trace line from the row and MUST count it in the join report
+
+#### Scenario: Recorded drop of Legal answers
+
+- **WHEN** the drop record holds drop step 1 and no Legal RAG Bench answer stage exists
+- **THEN** the join MUST NOT fail for the missing Legal stages and MUST list them as dropped
+- **AND** without that drop record, the same folder MUST fail and name the missing stages
+
+#### Scenario: Answer stage after drop step 1
+
+- **WHEN** the drop record holds drop step 1 and the answer stage starts on Legal RAG Bench
+- **THEN** it MUST send nothing, write no file and exit with code 0, and the analysis MUST write Legal rows 12 to 19 as dropped and still compute Legal rows 1 to 11
+
+### Requirement: G1 compares each answer run's ranked list with the search run
+
+Each answer run SHALL save its ranked list of 100 stored chunk IDs per question. G1 SHALL pass for an answer setup when, for every question, the lists of runs 1, 2 and 3 equal the list of the search run of the matching search setup (a `-t20k` setup maps to its `e?-c?-r?-hon` setup). Each answer's evidence chunk IDs SHALL equal the head of that list under the setup's rule. A failed search on either side SHALL be incomplete, never a match (amendment A5).
+
+#### Scenario: Same lists
+
+- **WHEN** runs 1, 2 and 3 of `e4b-c1024-r4b-hon-t20k` save the same list as the search run of `e4b-c1024-r4b-hon` for every question, and every answer's evidence chunk IDs equal the head of that list under the token cut
+- **THEN** G1 MUST pass for that answer setup
+
+#### Scenario: One run differs
+
+- **WHEN** run 2 saves another order for one question
+- **THEN** G1 MUST fail and MUST name the setup, run and question
+
+#### Scenario: Evidence is not the head of the list
+
+- **WHEN** an answer's evidence chunk IDs differ from the first 10 IDs of its saved list in a 10-chunk setup
+- **THEN** the second check MUST fail and MUST name the question
+
+#### Scenario: Failed search on one side
+
+- **WHEN** a question's search failed in run 3
+- **THEN** G1 MUST count that question as incomplete and MUST NOT pass on it
+
+### Requirement: Passage files are prepared once outside the output folder
+
+BioASQ and Legal RAG Bench passage files SHALL be written once, before any index build, into one fixed folder outside the output folder, with a recorded tree hash, and SHALL be read at the same absolute path on every pod. An ingest SHALL read the passage files to verify the tree hash before it ingests any file, SHALL refuse a passage folder whose tree hash differs from the recorded one, and SHALL never write into it (amendment A5).
+
+#### Scenario: Two pods read the folder
+
+- **WHEN** two index pods ingest BioASQ from the prepared folder at the same time
+- **THEN** neither MUST write into the folder, and both MUST record the same tree hash
+
+#### Scenario: Changed passage file
+
+- **WHEN** one passage file differs from the recorded tree hash
+- **THEN** the ingest MAY read the passage files only to compute the tree hash, MUST stop before it ingests any file, and MUST name the file
+
+### Requirement: The seal refuses an index with failed files or unpaged FinanceBench chunks
+
+An ingest with a failed file SHALL write no done-marker, and `--resume` SHALL retry only the failed files. A warning SHALL be recorded in its own field and SHALL NOT count as a failure. The seal step SHALL refuse an index with a failed file, SHALL refuse when the per-file chunk counts or the warning lists differ across the three embedders at one chunk size, and SHALL refuse a FinanceBench index that holds any chunk with no page label (amendment A5).
+
+#### Scenario: One failed file
+
+- **WHEN** one FinanceBench PDF fails during the `e8b-c1024` ingest
+- **THEN** no done-marker MUST be written, and `--resume` MUST ingest only that file
+
+#### Scenario: Chunk counts differ across embedders
+
+- **WHEN** one file has 12 chunks in `e4b-c1024` and 11 in `e8b-c1024`
+- **THEN** the seal MUST refuse and MUST name the file
+
+#### Scenario: Unpaged FinanceBench chunk
+
+- **WHEN** a FinanceBench index holds one chunk with no page label
+- **THEN** the seal MUST refuse, MUST name the index and MUST record the count
+
 ### Requirement: A smoke run can name its questions
 
-The harness SHALL accept a list of question IDs. A run with that list SHALL use only those questions, in frozen order, and SHALL count as a smoke run: it SHALL write no line to the experiment's run-record file. An ID that is not in the dataset SHALL stop the run before any call.
+The harness SHALL accept a list of question IDs. A run with that list SHALL use only those questions, in frozen order, and SHALL count as a smoke run. Like every run, it SHALL append one line to the run-record file, with `smoke: true`. The main join and every main-run check SHALL ignore that line, as they ignore a `prefreeze: true` line; a smoke join SHALL count it as its run's record. An ID that is not in the dataset SHALL stop the run before any call.
 
 #### Scenario: Two named questions
 
 - **WHEN** the operator runs the answer stage of FreshStack with the IDs `77536364` and `77762811`
-- **THEN** the stage MUST answer only those two questions and MUST write no run record
+- **THEN** the stage MUST answer only those two questions and MUST append one line to `output/run-records.jsonl` that carries `smoke: true`
+- **AND** the main join MUST NOT count that line as a main-run record, and a smoke join of that folder MUST count it as the run's record
 
 #### Scenario: Unknown question ID
 
@@ -201,6 +279,20 @@ The build machine SHALL build the baseline index of each dataset a second time, 
 
 - **WHEN** a question has a search row from only one of the two indexes
 - **THEN** the rebuild report MUST count it as a mismatch
+
+### Requirement: The rebuild uses the prepared passages and never passes on empty lists
+
+The rebuild SHALL ingest the same prepared passage folder as the shared index. A question whose search failed on both sides SHALL count as incomplete, never as a match (amendment A5).
+
+#### Scenario: Two failed searches
+
+- **WHEN** a question's search failed on both indexes and both lists are empty
+- **THEN** the rebuild report MUST count it as incomplete and MUST NOT pass on it
+
+#### Scenario: Rebuild into another output folder
+
+- **WHEN** the BioASQ rebuild ingests the prepared passage folder from another output folder than the shared index
+- **THEN** both indexes MUST hold the same chunk IDs, so identical ranking passes the check
 
 #### Scenario: Failed rebuild check stops the replicate runs
 

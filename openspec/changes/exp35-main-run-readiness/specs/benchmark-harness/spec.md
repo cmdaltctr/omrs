@@ -124,7 +124,7 @@ The harness SHALL build setups from four factors (embedder, chunk size, reranker
 
 ### Requirement: The answer setups come from a fixed selection rule
 
-A selection step SHALL read the saved half-A search scores of FinanceBench, FreshStack and BioASQ only (amendment A3). It SHALL choose the embedder size, then the reranker size: the smallest size whose pooled nDCG@10 (mean of the three dataset means) is within 0.01 of the best, inclusive; equal scores go to the smaller size. It SHALL write every pooled score and each choice. The answer stage SHALL refuse to start without that file.
+A selection step SHALL read the saved half-A search scores of FinanceBench, FreshStack and BioASQ only (amendment A3). It SHALL choose the embedder size, then the reranker size: the smallest size whose pooled nDCG@10 (mean of the three dataset means) is within 0.01 of the best, inclusive; equal scores go to the smaller size; "within" allows 1e-9 on unrounded scores (A5). It SHALL write every pooled score and each choice. The answer stage SHALL refuse to start without that file.
 
 #### Scenario: Legal scores do not change the choice
 
@@ -138,8 +138,13 @@ A selection step SHALL read the saved half-A search scores of FinanceBench, Fres
 
 #### Scenario: Gap of exactly 0.01
 
-- **WHEN** the 0.6B reranker pools 0.010 below the best reranker size
+- **WHEN** the 0.6B reranker pools 0.010 below the best reranker size, and the gap computes as 0.010000000000000009
 - **THEN** the selection MUST choose 0.6B
+
+#### Scenario: Gap just above the tolerance
+
+- **WHEN** the 0.6B reranker pools 0.0100001 below the best reranker size
+- **THEN** the selection MUST NOT choose 0.6B on that gap
 
 #### Scenario: Search setup missing
 
@@ -162,7 +167,7 @@ At the chosen embedder and reranker size, the selection step SHALL pick chunk si
 
 ### Requirement: The selection file holds a configuration hash
 
-The selection step SHALL write the cell scores, the chosen cell and the configuration hash: the SHA-256 of the canonical JSON (keys sorted, no spaces, UTF-8) of the selected cell's resolved settings, with the SHA-256 of `halves.json` as one field. A sensitivity step SHALL repeat the cell choice with any-page nDCG@10 on FinanceBench and SHALL record whether the cell changes; the registered cell SHALL NOT change.
+The selection step SHALL write the cell scores, the chosen cell and the configuration hash: the SHA-256 of the canonical JSON (keys sorted, no spaces, UTF-8) of the selected cell's resolved settings, with the SHA-256 of `halves.json` as one field. No page-rule repeat of the cell choice SHALL run, because a FinanceBench stored chunk has one page and such a repeat would give the same cell by construction (amendment A5).
 
 #### Scenario: Same hash twice
 
@@ -187,6 +192,11 @@ The harness SHALL follow pre-registration section 14.2: score half A; write the 
 
 - **WHEN** the scoring step is asked for half-A scores and no selection file exists
 - **THEN** it MUST compute them
+
+#### Scenario: Join with half B locked
+
+- **WHEN** the main join runs and the half-B guard refuses
+- **THEN** the join MUST stop before it reads or writes anything, and no `join.json` MUST exist
 
 ### Requirement: Halves keep FinanceBench documents apart
 
@@ -220,7 +230,7 @@ The analysis SHALL compute rows 1 to 19 of pre-registration section 8 from per-q
 
 #### Scenario: Type I error under the null
 
-- **WHEN** the analysis runs on 200 simulated datasets with no planted effect and unequal error variance across cells
+- **WHEN** the analysis runs on 2,000 simulated datasets with no planted effect and unequal error variance across cells
 - **THEN** the share of rejections at 0.05 MUST stay near 0.05 for the GEE and for the sign-flip test
 
 #### Scenario: Sensitivity check disagrees
@@ -228,14 +238,43 @@ The analysis SHALL compute rows 1 to 19 of pre-registration section 8 from per-q
 - **WHEN** the paired permutation test by question on FreshStack disagrees with the GEE on whether a row counts
 - **THEN** the decision MUST follow the GEE, and the row MUST appear in the disagreement table
 
+### Requirement: The sign-flip test and its interval follow fixed rules
+
+The sign-flip test SHALL draw its signs with the call in pre-registration section 9. The sign-flip test SHALL count a draw as "at least as large" with a 1e-12 tie tolerance, as part of the registered test. Its 95% interval SHALL run from the lowest to the highest shift not rejected at 0.05 on the same draws, each end found by bisection to 0.0001. The FinanceBench GEE sensitivity check with document clusters SHALL use t on the number of documents minus 1 (amendment A5).
+
+#### Scenario: Interval ends
+
+- **WHEN** the interval is computed on a known-answer fixture
+- **THEN** each end MUST be within 0.0001 of the boundary between rejected and not rejected shifts on the same draws
+
+#### Scenario: Registered sign matrix
+
+- **WHEN** the sign matrix is drawn for 4 draws and 6 documents
+- **THEN** it MUST come from `numpy.random.default_rng(20261101).integers(0, 2, size=(4, 6))` with the default integer type, its first row MUST be 1, 1, 1, 0, 0, 0 before 0 maps to -1 and 1 to +1, and its columns MUST follow sorted document IDs taken from the gold table
+
+#### Scenario: Document clusters
+
+- **WHEN** the GEE sensitivity check runs on 84 FinanceBench documents
+- **THEN** its p-value and interval MUST use t on 83 degrees of freedom
+
 ### Requirement: Holm families are fixed before the run
 
-The analysis SHALL apply Holm within each dataset over families fixed at 19 rows (FinanceBench), 19 (FreshStack) and 8 (BioASQ, rows 1 to 8). BioASQ rows 9 to 19 SHALL be sanity checks with unadjusted intervals. Legal RAG Bench SHALL have no family. A row that fails a gate SHALL stay in its family with p = 1 and SHALL be reported "not testable".
+The analysis SHALL apply Holm within each dataset over families fixed at 19 rows (FinanceBench), 19 (FreshStack) and 8 (BioASQ, rows 1 to 8). BioASQ rows 9 to 19 SHALL be sanity checks with unadjusted intervals. Legal RAG Bench SHALL have no family. A row that fails a gate SHALL stay in its family with p = 1 and SHALL be reported "not testable". A row with zero estimate and zero variance SHALL get p = 1. A NaN p-value SHALL stop the analysis before Holm and name the row (amendment A5).
 
 #### Scenario: Gated row keeps the family size
 
 - **WHEN** rows 12, 13, 16 and 17 are "not testable" on FreshStack
 - **THEN** Holm MUST still run over 19 rows on FreshStack, with those rows at p = 1
+
+#### Scenario: NaN p-value
+
+- **WHEN** one row of a family has a NaN p-value
+- **THEN** the analysis MUST stop before Holm and MUST name the row, whatever the input order
+
+#### Scenario: Zero variance
+
+- **WHEN** a row has zero estimate and zero variance
+- **THEN** its p-value MUST be 1
 
 ### Requirement: The answer stage has a token-matched setup for each chunk size
 
@@ -256,6 +295,21 @@ The answer stage SHALL run 15 setups: the 12 crossed setups on 10 chunks each an
 - **WHEN** the top 100 chunks of a `-t20k` setup hold fewer than 20,480 Qwen3 tokens
 - **THEN** the setup MUST keep all 100 chunks and MUST record the realised evidence token total for that question and setup
 
+### Requirement: Answer evidence is cut on stored chunks, then assembled
+
+The answer evidence SHALL be the head of the run's ranked list of stored chunks: 10 chunks, or the chunks kept by the 20,480-token cut. OMRS assembly SHALL then run on the kept whole chunks only, with no neighbour expansion; a truncated crossing chunk SHALL be its own item. Each item SHALL record its stored chunk IDs. The row SHALL record the assembled token total and the pre-assembly total (amendment A5).
+
+#### Scenario: Two adjacent chunks in the head
+
+- **WHEN** chunks 5 and 6 of one source are both in the head of the list and overlap
+- **THEN** the answer model MUST receive one assembled item that records both chunk IDs
+- **AND** the row MUST record both the assembled and the pre-assembly token totals
+
+#### Scenario: Truncated crossing chunk
+
+- **WHEN** a `-t20k` cut truncates a chunk adjacent to a kept chunk
+- **THEN** the truncated chunk MUST reach the answer model as its own item
+
 ### Requirement: FreshStack uses the full public corpus at a pinned revision
 
 The FreshStack loader SHALL load the full public `freshstack/corpus-oct-2024` corpus, config `langchain`, at the revision pinned in `plan.json`, and the 203 public queries. It SHALL refuse a corpus whose revision or row count differs from the pin. It SHALL NOT sample a subset, add distractors, load the 20 continuity queries or the continuity documents, or append the overlay runbook.
@@ -265,19 +319,196 @@ The FreshStack loader SHALL load the full public `freshstack/corpus-oct-2024` co
 - **WHEN** the corpus folder holds the 10,000-document subset of Experiments 9a and 22
 - **THEN** the loader MUST stop before any ingest and MUST name the expected and the found row counts
 
-### Requirement: Evidence recall gives any-page credit on FinanceBench
+### Requirement: The FreshStack export writes row text only, with code fenced
 
-`evidence_recall_20k` SHALL be the share of a question's gold units covered by the evidence that the token cut takes from the top 100 chunks. On FinanceBench a whole chunk SHALL cover every gold page it overlaps, and the truncated crossing chunk only its first page; first-page credit SHALL be a sensitivity column. Elsewhere a chunk SHALL cover its one unit. nDCG@10, Recall@10, MRR@10 and hit@page SHALL keep first-page credit as primary.
+The indexed file SHALL hold the published row text byte for byte; the exporter's IDs, URLs and byte offsets SHALL go in the manifest, never in the text. A `.md` or `.mdx` row SHALL stay unchanged. Every other row SHALL sit in a backtick fence one longer than its longest backtick run (at least three), unless the pre-registration section 4 fallback applies. The manifest SHALL record each row's extension and fence state. The query SHALL be the title, a blank line and the body (amendment A5).
 
-#### Scenario: Chunk across two pages
+#### Scenario: Python row with comments
 
-- **WHEN** a whole FinanceBench chunk spans pages 41 and 42 and the gold page is 42
-- **THEN** `evidence_recall_20k` MUST count page 42 as covered, and the first-page column MUST NOT
+- **WHEN** a `.py` row holds lines that start with `#`
+- **THEN** the written file MUST hold the row inside one fence, and no `#` line MUST be read as a heading
 
-#### Scenario: Truncated chunk across two pages
+#### Scenario: No exporter metadata in the indexed text
 
-- **WHEN** the crossing chunk spans pages 41 and 42, is truncated, and the gold page is 42
-- **THEN** `evidence_recall_20k` MUST NOT count page 42 as covered by that chunk
+- **WHEN** a row is written
+- **THEN** the file MUST hold no front matter, source URL, ID or byte offset that the exporter added
+- **AND** apart from the fence of a non-Markdown row, the file text MUST equal the published row text byte for byte
+
+#### Scenario: Published row holds its own front matter
+
+- **WHEN** a published `.md` row starts with its own front matter and holds a URL
+- **THEN** the written file MUST equal the row text byte for byte, front matter and URL included
+
+#### Scenario: Row holding a three-backtick line
+
+- **WHEN** a non-Markdown row holds a line of three backticks
+- **THEN** the written file MUST wrap it in a fence of at least four backticks, so it stays one fenced block
+
+#### Scenario: Fence tests fail and the fallback applies
+
+- **WHEN** the fence tests of the export fail and the fallback of pre-registration section 4 is used
+- **THEN** every row MUST be written as it is, with no fence
+- **AND** the manifest MUST record that the row was not fenced, and the report MUST state the heading effect as a limitation
+
+### Requirement: Retrieval is scored on stored chunks, one page per FinanceBench chunk
+
+A "chunk" SHALL be a stored chunk, one row of the index (amendment A5). The search stage SHALL save the top 100 stored chunks in rank order, before OMRS assembly. Scoring, the depth and the token cut SHALL use that list and each chunk's own token count. A FinanceBench stored chunk SHALL cover its one page for every metric; no page-rule sensitivity column SHALL exist. `evidence_recall_20k` SHALL be the share of gold units covered by the stored chunks the token cut keeps.
+
+#### Scenario: Merged neighbours are not the scored item
+
+- **WHEN** OMRS assembly would merge a chunk on gold page 42 at rank 1 with a chunk on page 41 at rank 3
+- **THEN** the scored list MUST hold the page-42 chunk at rank 1 and the page-41 chunk at rank 3 as two items
+- **AND** the page-42 chunk MUST count as a hit
+
+#### Scenario: Truncated crossing chunk
+
+- **WHEN** the chunk that crosses 20,480 tokens is on the gold page and is truncated
+- **THEN** `evidence_recall_20k` MUST count that page as covered
+
+### Requirement: An unmapped chunk keeps its rank as a placeholder
+
+On FinanceBench, the only dataset scored by page, a chunk with no page label SHALL map to a placeholder unit. On every dataset, a chunk that maps to no unit SHALL map to a placeholder unit. A placeholder unit SHALL keep its rank and count as not relevant. The count of such chunks SHALL be reported per setup and dataset (amendment A5).
+
+#### Scenario: Chunk with no page label
+
+- **WHEN** a FinanceBench chunk with no page label sits at rank 2
+- **THEN** rank 2 MUST hold a placeholder unit that is not relevant, the unit at rank 3 MUST stay at rank 3, and the setup's unmapped count MUST be 1
+
+#### Scenario: FreshStack chunk with no page label
+
+- **WHEN** a FreshStack chunk with no page label maps to its gold document
+- **THEN** it MUST count as a hit, and the unmapped count MUST NOT change
+
+### Requirement: The search stage computes no score
+
+Per question, the search stage SHALL save only the ranked stored chunk IDs, scores, file stems, page labels, pinned Qwen3 token counts and timings, never chunk text. It SHALL read no gold label, compute no metric and summarise counts and timings only. A separate scorer SHALL score one half at a time, half B behind the half-B guard. A summary SHALL refuse a question count unlike the frozen count; the loader SHALL refuse a question with no gold unit.
+
+#### Scenario: No gold file during search
+
+- **WHEN** the search stage runs and the gold labels are not on the machine
+- **THEN** the stage MUST finish and MUST write no metric
+
+#### Scenario: Token cut from saved counts
+
+- **WHEN** the scorer reads a saved ranked list whose token counts cross 20,480 at rank 7
+- **THEN** `evidence_recall_20k` MUST use ranks 1 to 7, with rank 7 covering its unit, and MUST read no chunk text
+
+#### Scenario: Half-B metric before the guard opens
+
+- **WHEN** the search stage has run on every question and no time-stamp record exists
+- **THEN** no file under the output folder MUST hold a half-B metric
+
+#### Scenario: Question with no gold unit
+
+- **WHEN** a question in the dataset has no gold unit
+- **THEN** the loader MUST stop before any score and MUST name the question
+
+### Requirement: A failed call is resent on resume, up to a cap
+
+A call result SHALL count as saved only when an answer text, verdict or score was saved. An error with no content SHALL stay pending, and `--resume` SHALL send it again. A checker call that returns with an error SHALL be a failed call, never a verdict. Returned content SHALL be final, a refusal or an empty answer included. After 3 errors that are not a rate limit and not out of credit, the item SHALL be closed as missing and the stage SHALL go on (amendment A5).
+
+#### Scenario: Empty reply from the answer model
+
+- **WHEN** `Engine.answer` returns no answer text with the error `EMPTY_REPLY_ERROR`
+- **THEN** the answer stage MUST save an answer row with empty text, and `--resume` MUST NOT send that question again (protocol 0.14 item 66)
+
+#### Scenario: Error row is pending
+
+- **WHEN** an answer call returns an error result with no answer text
+- **THEN** no answer row MUST be saved for it, and `--resume` MUST send it again and count one resend
+
+#### Scenario: Failed search row
+
+- **WHEN** a search fails for one question
+- **THEN** no search row MUST be saved for it, and `--resume` MUST search it again
+
+#### Scenario: Checker error is not a verdict
+
+- **WHEN** a Clef-Flash call returns with its call error set
+- **THEN** no verdict MUST be saved for that claim, and `--resume` MUST send it again
+
+#### Scenario: Third error closes the call
+
+- **WHEN** a call has returned an error that is not a rate limit three times across two resumes
+- **THEN** the item MUST be closed as missing, the stage MUST go on, and the summary MUST name it
+
+#### Scenario: Checker cap per claim call
+
+- **WHEN** one claim of a ten-claim answer fails three times across resumes and the other nine return verdicts
+- **THEN** only that claim MUST be closed, the nine verdicts MUST be kept and never sent again, and the answer MUST be saved with `missing: true` and `closed_claims` so the analysis counts it as unjudged
+
+#### Scenario: Ragas NaN is returned content
+
+- **WHEN** a Ragas metric call returns NaN or no number
+- **THEN** the score MUST be saved as `null` with `not_defined`, MUST NOT be sent again, and MUST NOT count toward the cap
+
+#### Scenario: Refusal is final
+
+- **WHEN** an answer call returns a refusal
+- **THEN** the refusal MUST be saved and MUST NOT be sent again
+
+### Requirement: Only harness errors count toward the resend cap
+
+Rate-limit attempts, the short OMRS 402 retry, the `out_of_credit` stop and a call cut off before its result was saved SHALL NOT count toward the cap. Every harness resend SHALL be counted per setup and role in `resent_calls`. Transport retries inside client libraries SHALL NOT be counted, and the report SHALL state that limitation (amendment A5).
+
+#### Scenario: Rate limits do not count
+
+- **WHEN** a call is rate-limited five times and then returns an answer
+- **THEN** its cap count MUST stay 0 and its answer MUST be saved
+
+#### Scenario: Resends counted
+
+- **WHEN** one answer is resent twice and then returns
+- **THEN** `resent_calls` for that setup and role MUST be 2
+
+### Requirement: A resume refuses a changed configuration
+
+The stage key and the ingest done-marker SHALL hold a configuration hash of the resolved settings without keys, the plan `runtime` block, the prompt template hashes and the harness commit. A resume whose hash differs SHALL refuse before any call and name each differing field. The check SHALL run before a finished stage is skipped. Only one runner SHALL hold a stage folder at a time (amendment A5).
+
+#### Scenario: Settings changed before resume
+
+- **WHEN** the reranker file hash in the plan changes and the operator resumes a finished stage
+- **THEN** the stage MUST refuse before any call and MUST name the changed field
+
+#### Scenario: Second runner on one folder
+
+- **WHEN** a second runner opens a stage folder that a first runner holds
+- **THEN** the second runner MUST stop before it reads the row file or sends a call, and MUST name the lock
+
+#### Scenario: Another run mode
+
+- **WHEN** a main run resumes a stage folder whose key holds `run_mode` `prefreeze` or `smoke`
+- **THEN** the stage MUST refuse with exit code 2 and MUST name `run_mode`
+
+#### Scenario: Index built with another configuration
+
+- **WHEN** a search, answer or judge stage opens an index whose ingest done-marker differs from the `index_config` in its own key
+- **THEN** the stage MUST refuse with exit code 2 before the first query and MUST name each differing field
+
+### Requirement: A main stage refuses an unfrozen plan or a dirty tree
+
+A main stage SHALL refuse to start while `plan.json` `frozen` is empty, and SHALL refuse a dirty working tree. A pre-freeze run SHALL need an explicit flag. Like every run, it SHALL append one line to `output/run-records.jsonl`, and that line SHALL carry `prefreeze: true`. A smoke run's line SHALL carry `smoke: true`. The main join and every main-run check SHALL ignore lines with either field. Every run record SHALL hold the SHA-256 of `preregistration.md` (amendment A5).
+
+#### Scenario: Plan not frozen
+
+- **WHEN** a main stage starts and `plan.json` `frozen` is empty
+- **THEN** the stage MUST refuse before any call and MUST name the field
+
+#### Scenario: Dirty tree
+
+- **WHEN** a main stage starts from a checkout with uncommitted changes
+- **THEN** the stage MUST refuse before any call
+
+#### Scenario: Pre-freeze run
+
+- **WHEN** a test-pod stage runs with the pre-freeze flag
+- **THEN** it MUST run, and MUST append one line to `output/run-records.jsonl` that carries `prefreeze: true`
+- **AND** the join step MUST NOT count that line as a main-run record
+
+#### Scenario: Pre-registration hash recorded
+
+- **WHEN** any stage writes a run record
+- **THEN** the record MUST hold the SHA-256 of `preregistration.md`
 
 ### Requirement: Parallel and serial runs write the same row files
 

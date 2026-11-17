@@ -6,7 +6,7 @@ Defines how a benchmark run scores its answers: parallel hosted answers over ser
 
 ### Requirement: Parallel answers keep serial retrieval
 
-The answer stage SHALL retrieve the evidence of each question one question at a time, with the same search arguments as the search stage. Only the hosted answer call SHALL run in parallel. The evidence of an answer SHALL NOT depend on the answer concurrency.
+The answer stage SHALL retrieve the evidence of each question one question at a time, with the same search arguments as the search stage and the ranked-stored-chunks option on (amendment A5). Only the hosted answer call SHALL run in parallel. The evidence of an answer SHALL NOT depend on the answer concurrency.
 
 #### Scenario: Same evidence at any concurrency
 
@@ -16,11 +16,11 @@ The answer stage SHALL retrieve the evidence of each question one question at a 
 #### Scenario: Retrieval failure
 
 - **WHEN** retrieval fails for one question
-- **THEN** the stage MUST keep that question's row with the error and MUST NOT send an answer call for it
+- **THEN** the stage MUST save no answer row for it, MUST NOT send an answer call for it, and MUST keep it pending so that `--resume` retrieves it again under the resend rule
 
 ### Requirement: Ragas is a stage of the main harness
 
-The harness SHALL have a `ragas` stage that scores the answers of one run folder on the machine that ran that run. It SHALL use the pre-freeze Ragas version, judge and settings, the four pre-freeze metrics plus `AnswerCorrectness` against the reference answer, with embeddings from the local llama.cpp server and the plan's pinned 4B embedding file. It SHALL need the finished answer stage of that run, and SHALL write one row per answer in frozen question order.
+The harness SHALL have a `ragas` stage that scores the answers of one run folder on the machine that ran that run. It SHALL use the pre-freeze Ragas version and judge, the four pre-freeze metrics plus `AnswerCorrectness` against the reference answer, with embeddings from the local llama.cpp server and the plan's pinned 4B embedding file. It SHALL need the finished answer stage of that run, and SHALL write one row per answer in frozen question order.
 
 #### Scenario: One run folder
 
@@ -44,8 +44,27 @@ The harness SHALL have a `ragas` stage that scores the answers of one run folder
 
 #### Scenario: Failed answer
 
-- **WHEN** an answer row holds an error or no answer text
+- **WHEN** an answer row is marked missing (closed after the resend cap)
 - **THEN** the Ragas row of that question MUST record that it was not judged, and the stage MUST send no call for it
+
+### Requirement: Ragas settings come from the plan and the router stays held
+
+The `ragas` stage SHALL read every judge setting and seed from `plan.json` and SHALL refuse a built judge that differs (amendment A5). It SHALL hold one router session for its whole run, so the router's idle stop cannot end it mid-stage. Every metric call SHALL record the returned model ID and provider.
+
+#### Scenario: Judge settings differ from the plan
+
+- **WHEN** the built Ragas judge has another seed or setting than `plan.json`
+- **THEN** the stage MUST stop before any paid call and MUST name the setting
+
+#### Scenario: Long stage keeps the router
+
+- **WHEN** the stage runs longer than the router's idle stop
+- **THEN** one router session MUST stay open from before the first embedding call to after the last
+
+#### Scenario: Returned model recorded
+
+- **WHEN** a metric call returns
+- **THEN** its call record MUST hold the returned model ID and provider
 
 ### Requirement: Concurrent Ragas answers keep their own call records
 
@@ -58,7 +77,12 @@ When the Ragas stage scores several answers at once, each answer's row SHALL hol
 
 ### Requirement: Ragas resume never repeats a saved answer's calls
 
-A Ragas row SHALL be saved only when every metric of the answer has a score or an error that is not a rate limit. With `--resume`, the stage SHALL skip each answer that has a saved row. A rate-limit error SHALL NOT be saved as a metric result. An answer whose row was not saved SHALL be scored again in full on resume, so its earlier metric calls repeat; this affects at most one answer per worker per stop, the same bound as the claim judge (design risks).
+A final Ragas row SHALL be saved only when every metric of the answer has a score, is not defined (`null` with `not_defined`, or `not_judged` for a missing reference), or is closed as unjudged after the error cap. With `--resume`, the stage SHALL skip each answer that has a final row. A rate-limit or out-of-credit error SHALL NOT be saved as a metric result. A stop SHALL keep the answer's last partial row, and `--resume` SHALL NOT resend a metric saved in it.
+
+#### Scenario: Not-defined metric in the final row
+
+- **WHEN** one metric of an answer returns NaN and every other metric scores
+- **THEN** the stage MUST save a final row with that metric as `null` with `not_defined`, and `--resume` MUST send no call for that answer
 
 #### Scenario: Resume after a stop
 
@@ -68,8 +92,35 @@ A Ragas row SHALL be saved only when every metric of the answer has a score or a
 #### Scenario: Rate limit during a metric
 
 - **WHEN** a metric call fails with HTTP 429 on every attempt
-- **THEN** no row for that answer MUST be saved, and the stage MUST stop with the rate-limit exit code
-- **AND** `--resume` MUST score that answer again with every metric
+- **THEN** no new row for that answer MUST be saved, its last partial row (if any) MUST stay unchanged, and the stage MUST stop with the rate-limit exit code
+- **AND** `--resume` MUST send every metric of that answer except the metrics saved in its partial row, so the calls of the interrupted attempt repeat for at most one answer per worker per stop, the same bound as the claim judge (design risks)
+
+#### Scenario: Out of credit during a metric
+
+- **WHEN** a metric call gets an out-of-credit reply (HTTP 402 with no `Retry-After`)
+- **THEN** the stage MUST stop with the rate-limit exit code, the metric MUST stay open, and the error MUST NOT count toward the cap
+
+### Requirement: A failed Ragas metric is unjudged and re-run on resume
+
+An out-of-credit error SHALL stop the stage and SHALL NOT count toward the cap. Any other metric error that is not a rate limit SHALL NOT be a score or give a final row. A partial row SHALL list that metric as unjudged; `--resume` SHALL re-run only unjudged metrics. The third such error on one metric (across resumes) SHALL close it as unjudged, and the stage SHALL go on (amendment A5). A stage that ends with a metric open SHALL exit with code 6.
+
+#### Scenario: Third error closes the metric
+
+- **WHEN** one metric of an answer has failed with a connection error three times across two resumes
+- **THEN** the row MUST mark that metric closed as unjudged, and a later `--resume` MUST send no call for it
+
+#### Scenario: Connection error on one metric
+
+- **WHEN** `AnswerCorrectness` fails with a connection error and the other metrics score
+- **THEN** the partial row MUST hold the other scores and list `AnswerCorrectness` as unjudged, and no final row MUST be saved for that answer
+- **AND** `--resume` MUST send calls for `AnswerCorrectness` only
+- **AND** the stage summary MUST count the unjudged metric and MUST NOT report 0 errors
+
+#### Scenario: Metric still open at the end of the stage
+
+- **WHEN** the stage reaches its last answer and one metric is still open, below the error cap
+- **THEN** the stage MUST write no `.done-ragas.json` and MUST exit with code 6
+- **AND** `--resume` MUST continue the open metric
 
 ### Requirement: Claim sentences are sorted by a frozen classifier
 
@@ -158,6 +209,15 @@ Primary faithfulness SHALL cover cited factual claims only. The report SHALL giv
 - **WHEN** an answer holds one cited fact the checker calls supported and one uncited segment the classifier calls fact
 - **THEN** primary faithfulness MUST be 1.0, the sensitivity MUST be 0.5, and the uncited share MUST be 0.5
 
+### Requirement: An uncited segment the classifier could not sort counts as factual
+
+In the uncited-segment sensitivity analysis, an uncited segment that the classifier could not sort SHALL count as factual, as an unclassified claim does, so it SHALL count as unsupported (pre-registration section 12; A5 item 53).
+
+#### Scenario: Uncited segment the classifier could not sort
+
+- **WHEN** an answer holds one cited fact the checker calls supported and one uncited segment whose classifier call was closed as missing
+- **THEN** the sensitivity MUST be 0.5
+
 ### Requirement: Refusals are reported separately
 
 A refusal report step SHALL read a joined main run and SHALL refuse to start without a passing join report. It SHALL give the refusal rate per answer setup and dataset as a primary descriptive outcome. For refusal claims only, it SHALL give each checker's unsupported rate and the Cohen's kappa of Clef-Flash against GLM-5.3. For factual claims, it SHALL give the Cohen's kappa of Clef-Flash against GLM-5.3 per dataset.
@@ -166,6 +226,12 @@ A refusal report step SHALL read a joined main run and SHALL refuse to start wit
 
 - **WHEN** the refusal report runs on a joined main run
 - **THEN** it MUST write a refusal-rate table with one row per answer setup and dataset, and a refusal-verdict table with one row per checker and dataset
+
+#### Scenario: Refusal rate and its interval
+
+- **WHEN** the refusal report computes a refusal rate
+- **THEN** the rate MUST be refusal claims over all claims, pooled over questions and runs
+- **AND** its 95% interval MUST be a percentile bootstrap by question with 10,000 resamples and seed 20261136
 
 ### Requirement: All-claims robustness check
 
@@ -198,6 +264,7 @@ A sampling step SHALL draw 50 half-B questions per dataset with seed 20261113, e
 
 - **WHEN** the agreement step computes any gate interval (kappa, AUC or specificity difference)
 - **THEN** it MUST use a percentile bootstrap with 10,000 resamples by question and the seed listed for that interval in pre-registration section 16
+- **AND** after the fail-closed rule of pre-registration section 11.2, it MUST sort the resampled values ascending and take the values at zero-based indexes int(0.025 x m) and int(0.975 x m) - 1 as the bounds, where m is the number of kept values (250 and 9,749 when m is 10,000), with no interpolation (amendment A5)
 
 #### Scenario: Statistic undefined on the full sample
 
@@ -238,6 +305,18 @@ A sampling step SHALL draw 450 claims from crossed-setup answers to all question
 - **WHEN** the sampling step draws the faithfulness sample
 - **THEN** it MUST draw from answers to questions in both half A and half B, because H8a and H8b are tested on all questions
 - **AND** the correctness sample MUST still come from half B only
+
+#### Scenario: Faithfulness sample leaves out refusal claims
+
+- **WHEN** the sampling step builds the faithfulness pool
+- **THEN** the pool MUST hold only cited claims of kind fact, mixed or unclassified, from all 3 runs
+- **AND** no refusal claim MUST enter the sample
+
+#### Scenario: Run folder with no saved claim kinds
+
+- **WHEN** `labels35.py sample` builds the faithfulness pool and a run folder in the pool has no saved `claim-kinds.jsonl`
+- **THEN** it MUST refuse before it writes a sample, and MUST name that run folder
+- **AND** it MUST NOT treat the claims of that run folder as unclassified
 
 #### Scenario: Second checker fails its gate
 
@@ -292,6 +371,11 @@ A `lengthcheck` stage SHALL draw 300 claims from the `c2048` crossed answers wit
 - **WHEN** two windows share the same number of claim words
 - **THEN** the stage MUST keep the earlier window
 
+#### Scenario: Sampling frame
+
+- **WHEN** the stage draws its 300 claims
+- **THEN** the frame MUST be the cited non-refusal claims of every dataset with answers, Legal RAG Bench included unless drop step 1 removed its answers
+
 ### Requirement: Closed-book runs check contamination
 
 A `closedbook` stage SHALL answer every question once with no retrieval under two prompts: an own-knowledge prompt (the floor) and the main RAG answer prompt with an empty evidence block. It SHALL score both with `AnswerCorrectness` and the FinanceBench number match. Closed-book results SHALL be descriptive, with no hypothesis test.
@@ -315,6 +399,24 @@ The report SHALL show closed-book correctness per dataset beside every correctne
 - **WHEN** a question is answered correctly by one closed-book run and wrongly by the other
 - **THEN** it MUST NOT enter the contamination subset
 
+### Requirement: Closed-book prompts are sent as one direct call
+
+The own-knowledge prompt SHALL be the text registered in pre-registration section 13. Each closed-book prompt SHALL be sent as one direct completion call to the OMRS answer model with the frozen answer settings, because the OMRS answer path never calls the model on empty evidence (A5 item 49). The judge and Ragas stages SHALL read the closed-book and oracle answers through `--answers` (A5 item 50).
+
+#### Scenario: One direct call with the frozen settings
+
+- **WHEN** the closed-book RAG-prompt run answers a question
+- **THEN** it MUST make exactly one completion call to the answer model, with the frozen answer settings, and MUST NOT go through `Engine.answer`
+
+### Requirement: A retrieval miss is judged on the evidence the model saw
+
+A retrieval miss in the closed-book cross-table SHALL be a question with no gold unit among the units of the evidence the answer model saw: the 10 head stored chunks for a 10-chunk setup, or the token cut for a `-t20k` setup (pre-registration section 13; A5 item 52).
+
+#### Scenario: Gold unit below the evidence head
+
+- **WHEN** a 10-chunk setup's only gold unit is among the first 10 units of its list but first appears at stored chunk rank 11
+- **THEN** the question MUST count as a retrieval miss
+
 ### Requirement: Missing answers and unjudged rows keep every question
 
 The analysis SHALL keep every question in its dataset's denominator and SHALL count every exclusion per setup and row. An answer still missing when its run closes SHALL score 0 for correctness and number match and SHALL count as an answer with no factual claim. A Ragas or checker row still unjudged when its run closes SHALL leave that row's complete cases, SHALL be counted, and SHALL be scored 0 in a sensitivity analysis.
@@ -323,6 +425,31 @@ The analysis SHALL keep every question in its dataset's denominator and SHALL co
 
 - **WHEN** an answer is still missing when its run closes
 - **THEN** its correctness and number match MUST be 0 and it MUST count as an answer with no factual claim
+
+#### Scenario: Unjudged run removes the whole cell
+
+- **WHEN** one of three runs of a question and setup has its checker row, one of its claims, or its Ragas correctness metric closed missing
+- **THEN** that question-setup cell MUST have no value for that outcome, the other runs MUST NOT stand in for it, and the question MUST count under `excluded_unjudged` in every row that uses the cell
+
+#### Scenario: Empty answer
+
+- **WHEN** an answer is returned with no text
+- **THEN** its correctness and number match MUST be 0, it MUST count as a no-claim run for faithfulness, and it MUST NOT be unjudged
+
+#### Scenario: Not-defined Ragas score
+
+- **WHEN** a Ragas correctness call returns NaN or no number for one run
+- **THEN** the score MUST be saved as `null` with `not_defined` and never resent, the run MUST leave the run mean, the question MUST count under `excluded_not_defined` when its cell has no value, and the unjudged-scored-0 sensitivity analysis MUST score the run 0
+
+#### Scenario: Unparseable verdict
+
+- **WHEN** the checker returns an `unparseable` verdict for a factual claim
+- **THEN** the join and the refusal report MUST both count it as not supported, and both MUST count it under `unparseable_verdicts`
+
+#### Scenario: Question with no value in any cell
+
+- **WHEN** a question has no value in any cell that a contrast row uses
+- **THEN** the row's `excluded` count MUST include it, under `excluded_no_value` unless an unjudged or not-defined run caused it
 
 ### Requirement: Faithfulness uses complete cases with registered bounds
 
