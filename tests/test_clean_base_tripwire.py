@@ -377,7 +377,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +1 (2026-11-11, PR 207 review): chat turn question limit 16384 (test_web_chats.py, fastapi).
 # +3 (2026-11-11, PR 207): long question plus long draft fits a synthesis round
 # (test_synthesis_long_query.py).
-_BASE_EXECUTED = 12585
+# +792 (2026-11-17, Exp 35 harness rebuild and app fixes (+793 tests), by test-ID
+# diff against v3 2c8fb731, 862 added, 69 removed): one new case in
+# test_native_sparse_prepare_at_ingest.py skips without the chroma extra. No fastapi.
+_BASE_EXECUTED = 13377
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -782,6 +785,8 @@ _CHROMA_GATED_FILES = frozenset(
         "test_lancedb_store.py",
         "test_metadata_extractor.py",
         "test_native_sparse_backend.py",
+        # 2026-11-17, Exp 35 rebuild: the Chroma prepare case skips without the extra.
+        "test_native_sparse_prepare_at_ingest.py",
         "test_vectordb_contract.py",
     }
 )
