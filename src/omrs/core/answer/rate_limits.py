@@ -2,8 +2,8 @@
 
 A provider error is a rate limit when it carries ``status_code`` 429 or 402.
 The wait comes from ``retry-after-ms`` or ``retry-after`` in
-``response.headers``. The module reads these by duck typing, so core imports
-no provider library.
+``response.headers``. ``retry-after`` may be seconds or an HTTP-date. The
+module reads these by duck typing, so core imports no provider library.
 
 ``kind`` is ``rate_limit`` for HTTP 429 and for HTTP 402 with a wait (a spend
 budget in flight). It is ``out_of_credit`` for HTTP 402 with no wait.
@@ -18,6 +18,8 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from typing import Any
 
 #: The sleep the 402 retry waits with; tests replace it.
@@ -63,7 +65,18 @@ def _retry_after(exc: BaseException) -> float | None:
             return float(lowered[name]) / scale
         except (KeyError, TypeError, ValueError):
             continue
-    return None
+    return _http_date_wait(lowered.get("retry-after"))
+
+
+def _http_date_wait(value: object) -> float | None:
+    """Return the seconds from now to an HTTP-date ``Retry-After`` (RFC 9110), else ``None``."""
+    try:
+        when = parsedate_to_datetime(str(value))
+    except (TypeError, ValueError):
+        return None
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=UTC)
+    return max(0.0, (when - datetime.now(UTC)).total_seconds())
 
 
 def classify_rate_limit(exc: BaseException) -> RateLimit | None:

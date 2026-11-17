@@ -159,6 +159,10 @@ class CrossEncoderReranker:
     # (``rerank_backend``).  Matches the registry name suffix.
     backend_name: str = "onnx"
 
+    # Duck-typed flag for the Settings runtime page: this backend loads ONNX
+    # files from the local Hugging Face cache, so the page may check them.
+    reads_onnx_model_cache: bool = True
+
     def __init__(
         self,
         model_id: str | None = None,

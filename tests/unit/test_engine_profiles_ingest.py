@@ -22,6 +22,7 @@ from tests.unit.test_engine_profiles_support import (
 )
 from tests.unit.test_ingestion_graph_adapters_support import offline_settings
 
+from omrs.core.vectordb.lancedb.fts import fts_index_stats
 from omrs.core.vectordb.lancedb.store import LanceVectorStore
 from omrs.engine import Engine
 
@@ -29,11 +30,13 @@ from omrs.engine import Engine
 class World:
     """An Engine over a LanceDB store with a plain and a user-profile collection."""
 
-    def __init__(self, tmp_path: Path, effective_settings: Any, monkeypatch: Any) -> None:
+    def __init__(
+        self, tmp_path: Path, effective_settings: Any, monkeypatch: Any, **overrides: Any
+    ) -> None:
         pin_detection(monkeypatch)
         self.root = copy_sources(tmp_path)
         self.env = make_env(tmp_path, effective_settings)
-        settings = offline_settings(effective_settings)
+        settings = offline_settings(effective_settings, **overrides)
         self.store = LanceVectorStore(uri=str(tmp_path / "lancedb"))
         self.engine = Engine(
             settings,
@@ -131,3 +134,13 @@ async def test_a_missing_path_returns_the_built_in_error(world: World, tmp_path:
 async def test_built_in_ingest_never_runs_a_graph(world: World) -> None:
     await world.ingest("standard")
     assert world.runs == []
+
+
+async def test_a_native_ingest_on_a_user_profile_builds_the_full_text_index(
+    tmp_path: Path, effective_settings: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The saved graph path prepares the native index, as the built-in path does (issue 213)."""
+    world = World(tmp_path, effective_settings, monkeypatch, hybrid_sparse_backend="native")
+    await world.ingest("graph")
+    stats = fts_index_stats(world.store._open_table("graph"))
+    assert stats is not None and stats[0] > 0 and stats[1] == 0

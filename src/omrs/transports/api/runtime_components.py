@@ -202,10 +202,19 @@ def _tokenizer_item(settings: Any) -> RuntimeItem:
 
 
 def _reranker_item(settings: Any) -> RuntimeItem:
+    from ...core.retrieval.backend import resolve_reranker_backend
     from ...core.retrieval.reranker import _select_onnx_variant
 
     model = settings.retrieval.rerank_model.strip()
     used_by = ("retrieval.rerank_enabled",) if settings.retrieval.rerank_enabled else ()
+    backend = settings.retrieval.rerank_backend or "onnx"
+    # Duck typing, not a branch on backend names (registry rule): only a
+    # backend that reads the ONNX cache gets the cache check.
+    if not getattr(resolve_reranker_backend(backend), "reads_onnx_model_cache", False):
+        reason = (
+            f"The {backend} backend loads {model} itself. This page checks the ONNX cache only."
+        )
+        return RuntimeItem(RERANKER_NAME, RERANKER_PURPOSE, UNKNOWN, reason, None, used_by)
     candidates = _select_onnx_variant(model)
     if _cached(model, "tokenizer.json") and any(_cached(model, name) for name in candidates):
         return RuntimeItem(RERANKER_NAME, RERANKER_PURPOSE, READY, used_by=used_by)

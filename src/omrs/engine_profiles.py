@@ -21,6 +21,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, TypeVar
 
 from .core.answer.progress import AnswerStage, report_stage
+from .core.ingestion.pipeline import prepare_native_sparse
 from .core.pipelines import EventKind, RunStatus
 from .core.profiles.readiness import slot_title
 from .engine_answer import CompletionLedger, collecting
@@ -388,6 +389,9 @@ async def ingest(
     if result.status is not RunStatus.SUCCEEDED and not result.units:
         raise _failure(binding, "ingest", result)
     summary = ingest_summary(result, collection)
+    if engine._resolve_settings(collection).retrieval.hybrid_sparse_backend == "native":
+        # Same step as the built-in ingest, which no graph adapter performs (design D26).
+        await asyncio.to_thread(prepare_native_sparse, engine._store, collection)
     if progress_callback is not None:
         total = len(result.units)
         for index in range(total):

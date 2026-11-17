@@ -459,12 +459,15 @@ async def ingest_path_async(
     if resolved_settings.retrieval.hybrid_sparse_backend == "native":
         # The index build is slow, synchronous store work: run it in a
         # thread so the server's event loop stays responsive.
-        await asyncio.to_thread(_prepare_native_sparse, resolved_store, collection_name)
+        await asyncio.to_thread(prepare_native_sparse, resolved_store, collection_name)
     return result
 
 
-def _prepare_native_sparse(store: VectorStore, collection_name: str) -> None:
-    """Prepare the native sparse index; a failure only warns (design D26)."""
+def prepare_native_sparse(store: VectorStore, collection_name: str) -> None:
+    """Prepare the native sparse index; a failure only warns (design D26).
+
+    The saved-graph ingest of a user profile calls this too (``engine_profiles``).
+    """
     try:
         store.prepare_native_sparse(collection_name)
     except Exception as exc:

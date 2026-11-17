@@ -13,6 +13,8 @@ a real ``openai`` error built on a local ``httpx.Response``.
 from __future__ import annotations
 
 import importlib
+from datetime import UTC, datetime, timedelta
+from email.utils import format_datetime
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
@@ -114,6 +116,23 @@ def test_the_wait_comes_from_the_headers(
 )
 def test_the_kind(rate_limits: ModuleType, status: int, headers: dict[str, str], kind: str) -> None:
     assert rate_limits.classify_rate_limit(_StubStatusError(status, headers)).kind == kind
+
+
+def test_a_date_form_retry_after_on_a_402_is_a_wait_not_out_of_credit(
+    rate_limits: ModuleType,
+) -> None:
+    """RFC 9110 lets Retry-After be an HTTP-date; a 402 with one is a wait (issue 214)."""
+    when = datetime.now(UTC) + timedelta(seconds=600)
+    header = {"Retry-After": format_datetime(when, usegmt=True)}
+    record = rate_limits.classify_rate_limit(_StubStatusError(402, header))
+    assert record.kind == "rate_limit"
+    assert 590 <= record.retry_after_seconds <= 600
+
+
+def test_a_past_date_form_retry_after_is_a_zero_wait(rate_limits: ModuleType) -> None:
+    past = format_datetime(datetime.now(UTC) - timedelta(hours=1), usegmt=True)
+    record = rate_limits.classify_rate_limit(_StubStatusError(402, {"Retry-After": past}))
+    assert (record.kind, record.retry_after_seconds) == ("rate_limit", 0.0)
 
 
 def test_real_openai_errors_classify(rate_limits: ModuleType) -> None:
