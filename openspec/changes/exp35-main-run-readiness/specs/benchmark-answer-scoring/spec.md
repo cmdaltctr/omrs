@@ -77,7 +77,7 @@ When the Ragas stage scores several answers at once, each answer's row SHALL hol
 
 ### Requirement: Ragas resume never repeats a saved answer's calls
 
-A Ragas row SHALL be saved only when every metric of the answer has a score or an error that is not a rate limit. With `--resume`, the stage SHALL skip each answer whose saved row has no unjudged metric. A rate-limit error SHALL NOT be saved as a metric result. An answer whose row was not saved SHALL be scored again in full on resume, so its earlier metric calls repeat; this affects at most one answer per worker per stop, the same bound as the claim judge (design risks).
+A final Ragas row SHALL be saved only when every metric of the answer has a score, or is closed as unjudged after the error cap. With `--resume`, the stage SHALL skip each answer that has a final row. A rate-limit error SHALL NOT be saved as a metric result. An answer whose row was not saved SHALL be scored again in full on resume, so its earlier metric calls repeat; this affects at most one answer per worker per stop, the same bound as the claim judge (design risks).
 
 #### Scenario: Resume after a stop
 
@@ -92,7 +92,7 @@ A Ragas row SHALL be saved only when every metric of the answer has a score or a
 
 ### Requirement: A failed Ragas metric is unjudged and re-run on resume
 
-A metric error that is not a rate limit SHALL NOT be a score. The row SHALL list that metric as unjudged, and `--resume` SHALL re-run only the unjudged metrics, never a scored one. After 3 such errors on one metric (the first send plus 2 resends, across resumes) the metric SHALL be closed as unjudged, and the stage SHALL go on (amendment A5).
+A metric error that is not a rate limit SHALL NOT be a score or give a final row. A partial row SHALL list that metric as unjudged; `--resume` SHALL re-run only unjudged metrics. The third such error on one metric (across resumes) SHALL close it as unjudged, and the stage SHALL go on (amendment A5). A stage that ends with a metric open SHALL exit with code 6.
 
 #### Scenario: Third error closes the metric
 
@@ -102,9 +102,15 @@ A metric error that is not a rate limit SHALL NOT be a score. The row SHALL list
 #### Scenario: Connection error on one metric
 
 - **WHEN** `AnswerCorrectness` fails with a connection error and the other metrics score
-- **THEN** the row MUST hold the other scores and list `AnswerCorrectness` as unjudged
+- **THEN** the partial row MUST hold the other scores and list `AnswerCorrectness` as unjudged, and no final row MUST be saved for that answer
 - **AND** `--resume` MUST send calls for `AnswerCorrectness` only
 - **AND** the stage summary MUST count the unjudged metric and MUST NOT report 0 errors
+
+#### Scenario: Metric still open at the end of the stage
+
+- **WHEN** the stage reaches its last answer and one metric is still open, below the error cap
+- **THEN** the stage MUST write no `.done-ragas.json` and MUST exit with code 6
+- **AND** `--resume` MUST continue the open metric
 
 ### Requirement: Claim sentences are sorted by a frozen classifier
 
@@ -192,6 +198,15 @@ Primary faithfulness SHALL cover cited factual claims only. The report SHALL giv
 
 - **WHEN** an answer holds one cited fact the checker calls supported and one uncited segment the classifier calls fact
 - **THEN** primary faithfulness MUST be 1.0, the sensitivity MUST be 0.5, and the uncited share MUST be 0.5
+
+### Requirement: An uncited segment the classifier could not sort counts as factual
+
+In the uncited-segment sensitivity analysis, an uncited segment that the classifier could not sort SHALL count as factual, as an unclassified claim does, so it SHALL count as unsupported (pre-registration section 12; A5 item 53).
+
+#### Scenario: Uncited segment the classifier could not sort
+
+- **WHEN** an answer holds one cited fact the checker calls supported and one uncited segment whose classifier call was closed as missing
+- **THEN** the sensitivity MUST be 0.5
 
 ### Requirement: Refusals are reported separately
 
@@ -287,6 +302,12 @@ A sampling step SHALL draw 450 claims from crossed-setup answers to all question
 - **THEN** the pool MUST hold only cited claims of kind fact, mixed or unclassified, from all 3 runs
 - **AND** no refusal claim MUST enter the sample
 
+#### Scenario: Run folder with no saved claim kinds
+
+- **WHEN** `labels35.py sample` builds the faithfulness pool and a run folder in the pool has no saved `claim-kinds.jsonl`
+- **THEN** it MUST refuse before it writes a sample, and MUST name that run folder
+- **AND** it MUST NOT treat the claims of that run folder as unclassified
+
 #### Scenario: Second checker fails its gate
 
 - **WHEN** Clef-Flash fails its kappa gate
@@ -362,6 +383,24 @@ The report SHALL show closed-book correctness per dataset beside every correctne
 
 - **WHEN** a question is answered correctly by one closed-book run and wrongly by the other
 - **THEN** it MUST NOT enter the contamination subset
+
+### Requirement: Closed-book prompts are sent as one direct call
+
+The own-knowledge prompt SHALL be the text registered in pre-registration section 13. Each closed-book prompt SHALL be sent as one direct completion call to the OMRS answer model with the frozen answer settings, because the OMRS answer path never calls the model on empty evidence (A5 item 49). The judge and Ragas stages SHALL read the closed-book and oracle answers through `--answers` (A5 item 50).
+
+#### Scenario: One direct call with the frozen settings
+
+- **WHEN** the closed-book RAG-prompt run answers a question
+- **THEN** it MUST make exactly one completion call to the answer model, with the frozen answer settings, and MUST NOT go through `Engine.answer`
+
+### Requirement: A retrieval miss is judged on the evidence the model saw
+
+A retrieval miss in the closed-book cross-table SHALL be a question with no gold unit among the units of the evidence the answer model saw: the 10 head stored chunks for a 10-chunk setup, or the token cut for a `-t20k` setup (pre-registration section 13; A5 item 52).
+
+#### Scenario: Gold unit below the evidence head
+
+- **WHEN** a 10-chunk setup's only gold unit is among the first 10 units of its list but first appears at stored chunk rank 11
+- **THEN** the question MUST count as a retrieval miss
 
 ### Requirement: Missing answers and unjudged rows keep every question
 
