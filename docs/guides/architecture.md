@@ -216,6 +216,7 @@ that the runner knows no domain, and each domain owns its own operations.
 | `core/retrieval/operations.py` | Sizing, rerank policy, filtering and fallback rules that `search()` and the adapters share. |
 | `core/answer/graph_adapters.py` | Answer and Verify operations. |
 | `core/answer/stages.py`, `core/answer/results.py` | Evidence, synthesis, citation and verification stages, and the result shapes, that `answer()` and the adapters share. |
+| `core/answer/rate_limits.py` | Reads a provider HTTP 429 or 402 into the `rate_limited` and `verification_rate_limited` records, and retries a short HTTP 402 wait. |
 | `core/workspace/` | Workspace records, the repository contract and the local run service. It imports no web framework and no SQLite. |
 | `compose_pipelines.py` | Builds the catalogue from the three domain registrars, describes the Engine to preflight, plans runs and leases Engine resources. |
 | `pipeline_templates.py` | The canonical `ingestion`, `search` and `answer` graphs. |
@@ -311,8 +312,9 @@ backend code lands there. Supporting modules keep each store under the
 - `core/vectordb/lancedb/paged.py` — the LanceDB paged-read mixin (scanner
   pages plus `strip_internal_metadata`)
 - `core/vectordb/lancedb/fts.py` — the native full-text-search seam: additive
-  FTS index lifecycle, native sparse queries, coverage diagnostics, and the
-  capability probe
+  FTS index lifecycle (the ingest creates and refreshes the index through
+  `prepare_native_sparse`; a native query only reads), native sparse queries,
+  coverage diagnostics, and the capability probe
 - `core/vectordb/validation.py` — the fail-closed embedding write contract
   (`validate_embedding_batch` and
   `materialise_and_validate_node_embeddings`), shared by every backend
@@ -844,7 +846,7 @@ The same rule applied to every name-dispatched family, inside and outside
 | Embedding providers | `EMBED_PROVIDER`                                                                                         | `core/providers/embeddings/registry.py`                             | Already a registry                                                                                                                                               | None      |
 | LLM providers       | `LOCAL_BACKEND` / `CLOUD_BACKEND`                                                                        | `core/providers/llm/registry.py`                                    | Already a registry                                                                                                                                               | None      |
 | Sparse retrieval    | `RETRIEVAL__HYBRID_SPARSE_BACKEND`                                                                       | `core/retrieval/sparse_registry.py` (`bm25`, `native`)              | Both concrete backends registered; `auto` stays an unregistered policy resolved at the composition boundary                                                      | None      |
-| Reranking           | `RETRIEVAL__RERANK_BACKEND`, resolved by `core/retrieval/backend.py`                                     | `core/retrieval/registry.py` (`reranker_onnx`, `reranker_torch`)    | Already registered strategies                                                                                                                                    | None      |
+| Reranking           | `RETRIEVAL__RERANK_BACKEND`, resolved by `core/retrieval/backend.py`                                     | `core/retrieval/registry.py` (`reranker_onnx`, `reranker_torch`, `reranker_llamacpp`) | Already registered strategies                                                                                                                                    | None      |
 | Vector store        | `VECTOR_STORE`                                                                                           | `core/vectordb/registry.py`                                         | `chroma` and `lancedb` registered                                                                                                                                | None      |
 | Document backends   | `DOCUMENT_BACKEND`                                                                                       | `core/ingestion/backends/registry.py`                               | Registered by `register-document-backend-strategies`: `local` native, `azure` optional via `integrations/azure.py`; retry and fallback owned by the orchestrator | None      |
 
@@ -900,7 +902,7 @@ Live registry contents, kept in step with the code by contract tests:
 
 <!-- registry-names:retrieval -->
 
-`bm25` `dense` `fusion` `reranker_onnx` `reranker_torch`
+`bm25` `dense` `fusion` `reranker_llamacpp` `reranker_onnx` `reranker_torch`
 
 <!-- /registry-names:retrieval -->
 

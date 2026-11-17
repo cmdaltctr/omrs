@@ -1,6 +1,6 @@
 # Reranker
 
-The server includes an optional **cross-encoder reranker** that re-scores vector search results for significantly better retrieval precision. It uses `cross-encoder/ms-marco-MiniLM-L-6-v2` — a ~23 MB quantised ONNX model that runs locally via pure ONNX Runtime. The default install has no PyTorch; a torch-backed backend is available as an opt-in extra (see [Backends](#backends) below).
+The server includes an optional **cross-encoder reranker** that re-scores vector search results for significantly better retrieval precision. It uses `cross-encoder/ms-marco-MiniLM-L-6-v2` — a ~23 MB quantised ONNX model that runs locally via pure ONNX Runtime. The default install has no PyTorch; a torch-backed backend is available as an opt-in extra, and a llama.cpp backend scores through the router (see [Backends](#backends) below).
 
 ## How it works
 
@@ -63,18 +63,35 @@ The first time you call `search_documents` with `rerank=True`, the ~23 MB quanti
 
 ## Backends
 
-The reranker has two interchangeable inference backends. Both produce scores on the same `(0, 1)` scale via a shared sigmoid transform, so the calibrated threshold stays valid whichever backend runs (ADR-038).
+The reranker has three interchangeable inference backends. The ONNX and torch backends produce scores on the same `(0, 1)` scale via a shared sigmoid transform, so the calibrated threshold stays valid whichever of them runs (ADR-038). The llama.cpp backend returns a probability from the router instead (see [llama.cpp backend](#llamacpp-backend)).
 
 | Backend | Settings value | Install | Torch loaded? |
 |---------|---------------|---------|---------------|
 | ONNX Runtime (default) | `RETRIEVAL__RERANK_BACKEND=onnx` | Base install | No |
 | sentence-transformers | `RETRIEVAL__RERANK_BACKEND=torch` | `uv sync --extra torch` (~200 MB on macOS ARM) | Yes — only when this backend is selected |
+| llama.cpp router | `RETRIEVAL__RERANK_BACKEND=llamacpp` | A running llama.cpp router with a reranker model entry | No |
 
 The ONNX backend tokenises with the pure-Rust `tokenizers` package, which cannot pull `torch`. The torch backend imports `sentence_transformers` lazily inside its model-load method, so simply installing the extra does not change the default path.
 
 **Sigmoid parity**: `CrossEncoder.predict()` applies `nn.Sigmoid()` by default for `num_labels=1` models. The torch backend overrides this with `nn.Identity()` and applies the shared `_sigmoid` once — otherwise the logits would be double-sigmoided, compressing scores to roughly `[0.5, 0.73]` and silently breaking the ÷30 threshold (ADR-038, design decision 3). The cross-backend contract test (`tests/test_reranker_backend_contract.py`) compares score *values*, not just ranking, to catch this.
 
 **Fallback**: if `RETRIEVAL__RERANK_BACKEND=torch` is set but the extra is not installed, the server logs an error naming `uv sync --extra torch` and falls back to the ONNX backend. If the ONNX backend also fails, the search returns un-reranked results truncated to `top_k`.
+
+### llama.cpp backend
+
+`RETRIEVAL__RERANK_BACKEND=llamacpp` sends one `POST {LLAMACPP_ROUTER_URL}/rerank` per query. The body holds the model name, the query and the candidate texts in input order. The router URL ends in `/v1`. The call waits up to 600 seconds.
+
+Set up the model in three steps:
+
+1. Add an entry to `llamacpp_models` for a Qwen3-Reranker GGUF file. The preset sets `embeddings = true` and `pooling = rank`. Assign the entry to no role. See [Configuration](configuration.md#the-model-list).
+2. Set `RETRIEVAL__RERANK_MODEL` to the `model` of that entry.
+3. Set `RETRIEVAL__RERANK_BACKEND=llamacpp`.
+
+The prompt comes from the `rerank` chat template stored in the GGUF file. It uses the model card's fixed default instruction: "Given a web search query, retrieve relevant passages that answer the query". OMRS offers no setting for another instruction.
+
+Scores: llama.cpp applies a softmax to the Qwen3 classifier output in rank pooling. `relevance_score` is therefore a probability in `[0, 1]`, and OMRS keeps it unchanged. A score of exactly `0.0` becomes the smallest positive float. A score outside `[0, 1]`, or a reply that does not score every candidate once, counts as a bad reply. The `÷30` threshold scaling was calibrated on the ONNX model and applies to these scores unchanged. It is not calibrated for them.
+
+Any failure (router not running, HTTP error, unknown model, bad reply) returns the rows un-reranked, in input order, truncated to `top_k`, with `reranked` false. The reason starts with `llama.cpp rerank failed:`. The backend never raises. The call does not use the managed-router start gate. With `LLAMACPP_ROUTER_SERVER=managed`, the router must already run when a search reranks.
 
 ## When to use
 
@@ -93,7 +110,7 @@ If the reranker model fails to load (no internet for first download, corrupt cac
 
 **Diagnostics**: when `include_diagnostics=True`, each result carries:
 - `rerank_reason` — the policy decision or the reranker's own failure reason (e.g. `"inference failed: ..."` or `"model load failed: ..."`)
-- `rerank_backend` — the backend that performed the re-scoring (`"onnx"` or `"torch"`), which may differ from the settings value when the torch extra is missing and the helper fell back to ONNX
+- `rerank_backend` — the backend that performed the re-scoring (`"onnx"`, `"torch"` or `"llamacpp"`), which may differ from the settings value when the torch extra is missing and the helper fell back to ONNX
 
 So a broken reranker is distinguishable from a policy-driven skip without grepping logs, and the active backend is observable alongside it (ADR-029 deferred item 2).
 
@@ -126,22 +143,22 @@ At the 53-chunk corpus the experiment measured, native warm latency is far above
 
 ### Fallback and diagnostics
 
-Selecting `native` on a store without the capability logs a WARNING at composition and falls back to `bm25`. At query time, a native failure (index creation, refresh, or query) emits a one-shot WARNING per collection and serves BM25 results through the same contract. With `include_diagnostics=True`, each result carries `sparse_backend`: the backend that actually ran. Fallback results are never labelled `native`.
+Selecting `native` on a store without the capability logs a WARNING at composition and falls back to `bm25`. At query time, a native failure (a missing index or a query error) emits a one-shot WARNING per collection and serves BM25 results through the same contract. With `include_diagnostics=True`, each result carries `sparse_backend`: the backend that actually ran. Fallback results are never labelled `native`.
 
 ### FTS lifecycle (LanceDB)
 
 The native path owns one full-text-search index per collection. The contract lives in `core/vectordb/lancedb/fts.py` and is pinned by `tests/test_lancedb_native_fts_contract.py`:
 
-- **Creation** is additive and triggered on the first native query, indexing existing rows synchronously. A collection without an index keeps working through every other operation.
+- **Creation** is additive and happens at ingest. Every ingest run whose resolved sparse backend is `native` calls `prepare_native_sparse` once at the end, also when the run wrote nothing. It creates the index when absent and indexes existing rows synchronously. If it fails, the ingest logs a WARNING and the result stays unchanged. A native query never creates an index. On a collection with no index it raises, and the hybrid pipeline warns with "Ingest the collection again to build it." and serves BM25. A collection without an index keeps working through every other operation.
 - **Staleness** is a durable property: writes by any process show as `num_unindexed_rows > 0` in `list_indices()` statistics. The process-local generation counter is not used for this. BM25 cache validity uses the store's durable data version where one exists ([ADR-056](../adr/056-lineage-navigation-replaces-a-document-store.md)); the process-local counter is the fallback.
-- **Refresh** (`table.optimize()`) runs before serving a native query when the statistics show lag. Engine queries are fresh-by-construction regardless: unindexed rows are scanned and deletions are tombstoned.
-- **Mixed coverage** (`0 < indexed < total`) emits a one-shot WARNING naming the collection with a remediation hint. Coverage is reported separately from freshness via `native_sparse_coverage()`.
+- **Refresh** (`table.optimize()`) runs in the same ingest-time prepare when the statistics show lag. A native query never refreshes, so a read never commits a table version. Engine queries are fresh-by-construction regardless: unindexed rows are scanned and deletions are tombstoned. Deletes do not refresh; the next ingest folds them in.
+- **Mixed coverage** (`0 < indexed < total`) emits a one-shot WARNING naming the collection. Queries still find the unindexed chunks; the next ingest of the collection refreshes the index. Coverage is reported separately from freshness via `native_sparse_coverage()`.
 
 The BM25 path never emits these warnings; it indexes every chunk it sees.
 
 ### Migration
 
-Existing collections need no re-ingestion: the first native query creates the FTS index additively and indexes existing rows synchronously. FTS indexes add per-collection disk footprint. To roll back, set `RETRIEVAL__HYBRID_SPARSE_BACKEND=bm25`; stored data and any FTS indexes are left untouched. An unused index is inert.
+An existing collection has no FTS index until the next ingest of that collection with the `native` backend selected. Until then a native query warns and serves BM25. The ingest then creates the FTS index additively and indexes existing rows synchronously. FTS indexes add per-collection disk footprint. To roll back, set `RETRIEVAL__HYBRID_SPARSE_BACKEND=bm25`; stored data and any FTS indexes are left untouched. An unused index is inert.
 
 ## Retrieval stages as graph operations
 

@@ -131,6 +131,7 @@ _CALL = {
     },
     "p_yes": 0.92,
     "error": None,
+    "model_returned": None,
 }
 
 
@@ -228,3 +229,74 @@ def test_a_real_claim_check_record_conforms(contract: dict[str, Any]) -> None:
     )  # fmt: skip
     assert result["judge_calls"][0]["version"] == "chat-oneword/1"
     _validate(contract, result)
+
+
+# ── Rate-limit records (Exp 35 task 0.4, design D25) ─────────────────────
+
+
+class _Limited(Exception):
+    """A provider error with a status code and headers, read by duck typing."""
+
+    def __init__(self, status: int, headers: dict[str, str]) -> None:
+        super().__init__(f"HTTP {status}")
+        self.status_code = status
+        self.response = types.SimpleNamespace(headers=headers)
+
+
+async def _raise_429(prompt: str) -> str:
+    raise _Limited(429, {"Retry-After": "7"})
+
+
+def _rate_limited_generation() -> dict[str, Any]:
+    """Return a rate-limited generation result from the real seam and builder."""
+    from omrs.core.answer.stages import synthesise_answer
+
+    outcome = asyncio.run(
+        synthesise_answer(
+            "q", [_EVIDENCE], complete=_raise_429, answer_block=AnswerBlock(), error_detail=str
+        )
+    )
+    return results.stage_failure_result(
+        "q", "server", failure_stage="generation", error=outcome.error, evidence=[_EVIDENCE],
+        rate_limited=outcome.rate_limited,
+    )  # fmt: skip
+
+
+def _rate_limited_judge() -> dict[str, Any]:
+    """Return an answer whose judge was out of credit, from the real stage and builder."""
+    from omrs.core.answer.verify import run_verification_stage
+
+    async def judge(prompt: str) -> str:
+        raise _Limited(402, {})
+
+    fields = asyncio.run(
+        run_verification_stage(
+            "The sky is blue [1].", [_EVIDENCE], verify_complete=judge,
+            unavailable_reason=None, error_detail=str,
+        )
+    )  # fmt: skip
+    return results.answered_result(
+        "q", "server", text="The sky is blue [1].", citations=[_CITATION], grounded=True,
+        evidence=[_EVIDENCE], verification=fields, diagnostics=_DIAGNOSTICS,
+    )  # fmt: skip
+
+
+def test_rate_limit_records_conform(contract: dict[str, Any]) -> None:
+    generation, judged = _rate_limited_generation(), _rate_limited_judge()
+    assert generation["rate_limited"]["kind"] == "rate_limit"
+    assert judged["verification_rate_limited"]["kind"] == "out_of_credit"
+    _validate(contract, generation)
+    _validate(contract, judged)
+
+
+@pytest.mark.parametrize("key", ["rate_limited", "verification_rate_limited"])
+@pytest.mark.parametrize(
+    "change", [{"extra": 1}, {"kind": "throttled"}, {"http_status": 500}], ids=str
+)
+def test_a_bad_rate_limit_record_is_refused(
+    contract: dict[str, Any], key: str, change: dict[str, Any]
+) -> None:
+    result = _rate_limited_generation()
+    result[key] = {**result.pop("rate_limited"), **change}
+    with pytest.raises(jsonschema.ValidationError):
+        _validate(contract, result)

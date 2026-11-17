@@ -620,7 +620,8 @@
             "think": null
           },
           "p_yes": null,
-          "error": null
+          "error": null,
+          "model_returned": null
         }
       ],
       "diagnostics": {
@@ -734,7 +735,8 @@
             "think": null
           },
           "p_yes": null,
-          "error": null
+          "error": null,
+          "model_returned": null
         },
         {
           "strategy": "chat",
@@ -750,7 +752,8 @@
             "think": null
           },
           "p_yes": null,
-          "error": null
+          "error": null,
+          "model_returned": null
         }
       ],
       "diagnostics": {
@@ -829,7 +832,8 @@
             "think": null
           },
           "p_yes": null,
-          "error": null
+          "error": null,
+          "model_returned": null
         }
       ],
       "diagnostics": {

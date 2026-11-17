@@ -178,7 +178,7 @@ notice.
 | `no_evidence`           | Retrieval found nothing. Returned before any model call — no completion runs, whatever the provider configuration |
 | `generation_unverified` | The model produced a non-empty answer with no valid citation. Never reported as `ok`. The evidence is still returned |
 | `unverified_claims`     | Verification was enabled and one or more cited claims failed the judge. The answer, citations, and evidence are all retained; `unverified_claims` in the result lists the failing claims. Opt-in only — see [Claim verification](#claim-verification-optional) |
-| `error`                 | A stage failed. `failure_stage` separates `retrieval` from `generation`; `error` carries the message. The tool never raises |
+| `error`                 | A stage failed. `failure_stage` separates `retrieval` from `generation`; `error` carries the message. The tool never raises. A provider rate limit adds a `rate_limited` record (see [Result shape](#result-shape)) |
 
 ### Result shape
 
@@ -194,6 +194,42 @@ ran and passed, the result carries `verified: true`; when the judge could
 not run or had no cited prose sentence to check, the result carries
 `verification_skipped` with the reason (see
 [Claim verification](#claim-verification-optional)).
+
+A provider rate limit adds one record to the result. It has two forms:
+
+- The answer model's provider replies HTTP 429 or HTTP 402. The result has
+  `status` `error`, `failure_stage` `generation`, `answer` `null` and the
+  evidence kept. It also carries `rate_limited`.
+- The claim judge's provider replies HTTP 429 or HTTP 402. The answer keeps
+  its status. The result carries `verification_rate_limited` and a fixed
+  `verification_skipped` reason.
+
+Both keys hold the same record. The key is absent when no rate limit happened.
+
+| Field                 | Meaning                                                                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `kind`                | `rate_limit` for HTTP 429, and for HTTP 402 with a `Retry-After` header. `out_of_credit` for HTTP 402 with no `Retry-After` header   |
+| `http_status`         | `429` or `402`                                                                                                                       |
+| `retry_after_seconds` | The wait the provider asked for, in seconds, as a number. `null` when the provider gave none. `retry-after-ms` wins over `retry-after` |
+
+The `error` text of a rate-limited generation is fixed for each kind. The
+number in it is the real HTTP status:
+
+- `rate_limit`: `Generation failed: the answer model's provider is limiting requests (HTTP 429). Wait, then ask again.`
+- `out_of_credit`: `Generation failed: the answer model's provider account is out of credit (HTTP 402). Top up the account, then ask again.`
+
+The `verification_skipped` reason of a rate-limited judge is also fixed:
+`verification failed: the judge model's provider is limiting requests (HTTP <status>). Wait, then ask again.`
+for `rate_limit`, and
+`verification failed: the judge model's provider account is out of credit (HTTP 402). Top up the judge provider account, then ask again.`
+for `out_of_credit`.
+
+OMRS waits and sends the answer model call again when the provider replies
+HTTP 402 with a wait of 30 seconds or less. It makes at most 2 more
+attempts. It does not retry HTTP 429, because the provider client libraries
+already retry it, and it does not retry `out_of_credit`. The claim judge that
+the MCP tool and the HTTP route build follows the same rule for each judge
+call. A retried call counts as one round in `completion_calls`.
 
 When the server's own model answers (`completion_source` is `server`) and at
 least one model call ran, the result carries `usage`:
@@ -231,11 +267,13 @@ because OMRS sees no Chat request. Each record has:
 | `host`         | The host that served the call, as the OpenRouter reply names it. `null` for other providers                      |
 | `accepted`     | `{temperature, seed}`: the host's published support for each value, from the OpenRouter endpoint list. `null` when unknown (no host list set) |
 | `host_in_list` | `false` when the host is outside `ANSWER__ALLOWED_HOSTS` (or `ANSWER__VERIFY_ALLOWED_HOSTS`): treat it as a failure. `null` when no list is set |
+| `model_returned` | The model ID the reply names (its `model` field). It can differ from the requested model. `null` when the reply names none |
 
 `ANSWER__VERIFY_TEMPERATURE` sets the judge temperature. See
 [Configuration](configuration.md) for the four sampling settings and the two
 host lists. The HTTP answer contract (`AnswerResponse`) declares `usage`,
-`reasoning`, `sampling` and `judge_calls` and allows no other field.
+`reasoning`, `sampling`, `judge_calls`, `rate_limited` and
+`verification_rate_limited` and allows no other field.
 
 `judge_calls` is present when the claim check ran. It holds one record per
 judged claim, in claim order:
@@ -250,6 +288,7 @@ judged claim, in claim order:
 | `settings` | `temperature`, `seed`, `reasoning`, `threshold` (0.5 for `clef_flash`) and `think` (Granite, `false`)          |
 | `p_yes`    | P(yes) from `clef_flash`, else `null`                                                                          |
 | `error`    | A fixed reason when the request for that claim failed (for example `unreachable`), else `null`                 |
+| `model_returned` | The model ID a hosted reply names, else `null`                                                         |
 
 A record never holds the claim text, the evidence text or a key.
 
@@ -346,6 +385,9 @@ Outcomes:
   unparseable → status stays `ok` (the referential-only guarantee) with a
   `verification_skipped` field naming the reason. The answer is never
   blocked behind an unconfigured cloud dependency.
+- Judge provider replies HTTP 429 or HTTP 402 → the same, and the result
+  also carries `verification_rate_limited` (see
+  [Result shape](#result-shape)).
 - No cited prose sentence to check (for example, the only citation sits
   on a heading) → no judge call. Status stays `ok`, the result has no
   `verified` field, and `verification_skipped` is

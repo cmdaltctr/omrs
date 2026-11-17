@@ -53,6 +53,7 @@ class JudgeCall:
         settings: The call settings, one value per :data:`SETTING_KEYS`.
         p_yes: P(yes) of a decision model, else ``None``.
         error: A fixed reason when the request for this claim failed.
+        model_returned: The model ID a hosted reply names, else ``None``.
     """
 
     strategy: str
@@ -63,6 +64,7 @@ class JudgeCall:
     settings: Mapping[str, Any]
     p_yes: float | None = None
     error: str | None = None
+    model_returned: str | None = None
 
     def as_dict(self) -> dict[str, Any]:
         """Return the record as the answer result's ``judge_calls`` entry."""
@@ -75,6 +77,7 @@ class JudgeCall:
             "settings": {key: self.settings.get(key) for key in SETTING_KEYS},
             "p_yes": self.p_yes,
             "error": self.error,
+            "model_returned": self.model_returned,
         }
 
 
@@ -120,7 +123,7 @@ class JudgeResources:
         generate: Raw completion: ``(prompt, options)`` in, generated text
             out. Raises :class:`JudgeRequestFailed` when the request fails.
         call_facts: Facts of the latest call (``host``, ``sha256``,
-            ``temperature``, ``seed``), read after the call.
+            ``temperature``, ``seed``, ``model_returned``), read after the call.
         refusal: A fixed reason the judge cannot start, else ``None``.
     """
 
@@ -159,6 +162,7 @@ def make_call(
         settings=settings,
         p_yes=p_yes,
         error=error,
+        model_returned=facts.get("model_returned"),
     )
 
 

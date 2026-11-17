@@ -9,26 +9,29 @@ Lifecycle contract (feasibility-verified on lancedb 0.37.1 and
 0.40.0 with pylance 10.0.0; see the change's ``feasibility-notes.md`` and the
 raw-API pins in ``tests/test_lancedb_native_fts_contract.py``):
 
-- **Creation** is additive and explicitly triggered on first native
-  use: ``create_index("text", config=FTS())`` indexes existing rows
+- **Creation** is additive and runs at ingest:
+  :meth:`LanceFTSMixin.prepare_native_sparse` calls
+  ``create_index("text", config=FTS())``, which indexes existing rows
   synchronously and leaves the collection queryable throughout.
-  Collections without an index keep working through every other
-  operation; only the native sparse query creates one.
+  The ingest calls it once per run when the resolved sparse backend
+  is ``native`` (design D26). A native query never creates an index:
+  on a collection without one it raises, and the retrieval layer
+  warns and serves BM25.
 - **Staleness** is a durable property observed through
   ``list_indices()`` statistics: rows written after the last index
   refresh appear as ``num_unindexed_rows > 0`` regardless of which
   process wrote them.  The process-local generation counter is NOT
   consulted here — it invalidates the in-memory BM25 cache only
   (PR #63 semantics, preserved untouched).
-- **Refresh** runs before serving a native query whenever the
+- **Refresh** runs in the same ingest-time prepare whenever the
   durable statistics show lag (``table.optimize()`` folds unindexed
-  rows into the index and compacts delete tombstones).  Engine
-  queries are fresh-by-construction regardless — unindexed rows are
-  scanned at query time and deletions are tombstoned — so a served
-  native ranking never misses post-index writes; the refresh keeps
-  the durable index tracking and the diagnostics honest.  Refresh
-  failures raise here so the retrieval layer can warn and fall back
-  to BM25 (the lifecycle failure path).
+  rows into the index and compacts delete tombstones). The query
+  path never refreshes, so a read never commits a table version.
+  Engine queries are fresh-by-construction regardless: unindexed
+  rows are scanned at query time and deletions are tombstoned, so a
+  served native ranking never misses post-index writes. Deletes do
+  not refresh; the next ingest folds them in. A prepare failure
+  raises here, and the ingest logs a warning.
 - **Coverage** (indexed versus unindexed rows) is reported
   separately from freshness via
   :meth:`LanceFTSMixin.native_sparse_coverage`.
@@ -80,9 +83,8 @@ def ensure_fts_index(table: Any) -> None:
     call replaces the earlier index with an equivalent one).
 
     Raises:
-        Exception: Whatever the engine raises on creation failure —
-            the retrieval layer's fallback path catches it, warns, and
-            serves BM25 results instead.
+        Exception: Whatever the engine raises on creation failure.
+            The ingest catches it and logs a warning.
     """
     if fts_index_stats(table) is not None:
         return
@@ -95,8 +97,8 @@ def refresh_fts_index(table: Any) -> None:
 
     This is the durable refresh operation: afterwards
     ``num_unindexed_rows`` is zero and deletion tombstones are
-    compacted.  Raises whatever the engine raises on failure so the
-    retrieval layer can fall back to BM25.
+    compacted.  Raises whatever the engine raises on failure; the
+    ingest logs a warning.
     """
     table.optimize()
 
@@ -147,11 +149,9 @@ class LanceFTSMixin:
         """Return canonical higher-is-better native FTS result rows.
 
         Guard order mirrors :meth:`~LanceVectorStore.query_dense`: an
-        absent collection reads as empty, the embedding-identity guard
-        runs before any lifecycle work (a store whose identity
-        conflicts with the collection must not query it OR mutate it
-        by creating/refreshing an FTS index), and lifecycle
-        maintenance happens only when the table exists.
+        absent collection reads as empty, and the embedding-identity
+        guard runs before the index check. The query never writes:
+        it creates no index and runs no refresh (design D26).
 
         Args:
             collection_name: Collection (table) to query.
@@ -168,28 +168,24 @@ class LanceFTSMixin:
             fields (``id``, ``document``, ``metadata``).
 
         Raises:
-            Exception: On identity conflict, index-creation, refresh,
-                or query failure — the retrieval layer catches, warns,
-                and falls back to BM25 (spec: "Native fails safely at
-                query time").
+            ValueError: When the collection has no FTS index. The
+                message names the ingest remedy.
+            Exception: On identity conflict or query failure. The
+                retrieval layer catches it, warns and falls back to
+                BM25 (spec: "Native fails safely at query time").
         """
         table = self._open_table(collection_name)
         if table is None:
             return []
         self._guard_query_identity(collection_name, embedding_identity)
-        ensure_fts_index(table)
-        stats = fts_index_stats(table)
-        if stats is not None and stats[1] > 0:
-            # Durable staleness (rows written since the last refresh,
-            # by any process). Results are engine-fresh regardless;
-            # this refresh keeps the durable index tracking so the
-            # stale state is transient, observed, and reportable.
-            logger.debug(
-                "Refreshing stale FTS index on %r (%d unindexed rows)",
-                collection_name,
-                stats[1],
+        # The read path never writes (design D26): the engine scans
+        # unindexed rows and honours tombstones at query time, and the
+        # ingest prepares the index (prepare_native_sparse).
+        if fts_index_stats(table) is None:
+            raise ValueError(
+                f"Collection '{collection_name}' has no full-text index. "
+                "Ingest the collection again to build it."
             )
-            refresh_fts_index(table)
         builder = table.search(query, query_type="fts").limit(n_results)
         if where:
             builder = builder.where(
@@ -213,6 +209,23 @@ class LanceFTSMixin:
                 }
             )
         return results
+
+    def prepare_native_sparse(self, collection_name: str) -> None:
+        """Create the FTS index when absent, then fold in unindexed rows.
+
+        The ingest calls this once per run (design D26). An absent
+        collection is left alone. Failures raise; the ingest warns.
+        """
+        table = self._open_table(collection_name)
+        if table is None:
+            return
+        ensure_fts_index(table)
+        stats = fts_index_stats(table)
+        if stats is not None and stats[1] > 0:
+            logger.debug(
+                "Refreshing FTS index on %r (%d unindexed rows)", collection_name, stats[1]
+            )
+            refresh_fts_index(table)
 
     def native_sparse_coverage(self, collection_name: str) -> dict | None:
         """Return FTS coverage statistics, or ``None`` when undefined.

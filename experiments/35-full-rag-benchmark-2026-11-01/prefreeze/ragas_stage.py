@@ -67,6 +67,10 @@ class ChatReply:
     host_in_list: bool | None
     temperature: float | None
     seed: int | None
+    # Added for the main run (Experiment 35 task 15.9): the model ID and the
+    # provider the reply names, read from the reply itself.
+    model_returned: str | None = None
+    provider_returned: str | None = None
 
 
 ChatSeam = Callable[[str], Awaitable[ChatReply]]
@@ -80,15 +84,17 @@ class RecordingSeam:
         send: Sends one chat request.
         metric: The metric the next calls belong to.
         calls: One record per call.
+        clock: Gives the seconds of each call (the main run's tests fix it).
     """
 
     send: ChatSeam
     metric: str = ""
     calls: list[dict[str, Any]] = field(default_factory=list)
+    clock: Callable[[], float] = time.perf_counter
 
     async def __call__(self, prompt: str) -> str:
         """Send *prompt*, record the call and return the reply text."""
-        started = time.perf_counter()
+        started = self.clock()
         try:
             reply = await self.send(prompt)
         except Exception as exc:
@@ -97,7 +103,7 @@ class RecordingSeam:
                 {
                     "metric": self.metric,
                     "error": type(exc).__name__,
-                    "seconds": round(time.perf_counter() - started, 3),
+                    "seconds": round(self.clock() - started, 3),
                 }
             )
             raise
@@ -105,7 +111,7 @@ class RecordingSeam:
             {
                 "metric": self.metric,
                 "error": "",
-                "seconds": round(time.perf_counter() - started, 3),
+                "seconds": round(self.clock() - started, 3),
                 "input_tokens": reply.input_tokens,
                 "output_tokens": reply.output_tokens,
                 "reasoning_tokens": reply.reasoning_tokens,
@@ -114,6 +120,8 @@ class RecordingSeam:
                 "host_in_list": reply.host_in_list,
                 "temperature": reply.temperature,
                 "seed": reply.seed,
+                "model_returned": reply.model_returned,
+                "provider_returned": reply.provider_returned,
             }
         )
         return reply.text
@@ -143,9 +151,17 @@ def omrs_chat_seam(llm: Any, provider: str = "openrouter") -> ChatSeam:
             host_in_list=record.get("host_in_list"),
             temperature=record.get("temperature"),
             seed=record.get("seed"),
+            model_returned=_reply_field(raw, "model"),
+            provider_returned=_reply_field(raw, "provider"),
         )
 
     return send
+
+
+def _reply_field(raw: Any, name: str) -> str | None:
+    """Return the text field *name* of a raw reply (a mapping or an object), or None."""
+    value = raw.get(name) if isinstance(raw, Mapping) else getattr(raw, name, None)
+    return value if isinstance(value, str) else None
 
 
 # --- structured replies ---------------------------------------------------------

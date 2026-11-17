@@ -2,9 +2,10 @@
 
 The main ``search()`` entry point that ties together dense vector search,
 sparse BM25/native retrieval, Reciprocal Rank Fusion, and cross-encoder
-reranking.  Also hosts ``list_collections()`` and the hybrid query
-machinery.  Extracted from the original ``retrieval.py`` monolith as
-part of Phase 1; rewired through the vector store ABC in Phase 3.
+reranking, and the hybrid query machinery.  ``list_collections()``
+lives in ``listing.py`` and is re-exported here.  Extracted from the
+original ``retrieval.py`` monolith as part of Phase 1; rewired through
+the vector store ABC in Phase 3.
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ from ..vectordb.base import VectorStore
 from ..vectordb.identity import EmbeddingIdentity
 from . import operations as ops
 from .assembly import ASSEMBLY_INTERNAL_FIELDS, assemble, promote_assembly_diagnostics
+from .listing import list_collections  # noqa: F401 (re-exported for callers/tests)
 from .operations import RERANK_SCORE_KIND  # noqa: F401 (re-exported for callers/tests)
 from .registry import get as _retrieval_get
 from .sparse_dispatch import (  # noqa: F401  (re-exported for callers/tests)
@@ -154,6 +156,7 @@ def search(
     embed_model: Any = None,
     query_cache: Any | None = None,
     embedding_identity: EmbeddingIdentity | None = None,
+    unassembled: bool = False,
 ) -> list[dict]:
     """Run a semantic similarity search over every indexed document.
 
@@ -218,6 +221,9 @@ def search(
             When provided, its Tier 2 levers (``top_k``, ``reranker_enabled``,
             ``hybrid_enabled``) supply the defaults for omitted parameters,
             taking precedence over the global ``settings`` singleton.
+        unassembled: If True, skip only the context-assembly stage and
+            return the ranked stored chunks, one row per chunk, in rank
+            order (design D39). Default False keeps the assembled rows.
 
     Returns:
         A list of dicts sorted by descending relevance score, each with:
@@ -234,10 +240,16 @@ def search(
 
     Raises:
         ValueError: If ``metadata_filter`` is rejected by the store
-            (unsupported operator, type mismatch, etc.).  Other
+            (unsupported operator, type mismatch, etc.), or when
+            ``unassembled`` is set with ``expand_window`` above 0.  Other
             store-side failures propagate as their original exception
             types so the MCP layer can classify them.
     """
+    if unassembled and expand_window > 0:
+        raise ValueError(
+            "unassembled=True returns stored chunks with no context assembly, "
+            f"so expand_window must be 0 (got {expand_window})."
+        )
     # Resolve the settings ONCE at the entry-point boundary. An explicitly
     # passed instance always wins; otherwise the composition root's default
     # is used. Nothing below this line consults any other source.
@@ -403,17 +415,18 @@ def search(
     # evidence — overlap merging plus opt-in neighbour expansion — runs
     # exactly once, after truncation so retrieved rows are never dropped to
     # honour ``top_k``, and before diagnostics attachment. It never
-    # re-ranks or re-scores.
-    t0 = time.perf_counter()
-    results = assemble(
-        results,
-        chunk_overlap=resolved_settings.chunking.chunk_overlap,
-        expand_window=expand_window,
-        store=resolved_store,
-        collection=collection_name,
-    )
-    t1 = time.perf_counter()
-    timing_report["assembly_seconds"] = timing_report.get("assembly_seconds", 0.0) + (t1 - t0)
+    # re-ranks or re-scores. ``unassembled`` skips it (design D39).
+    if not unassembled:
+        t0 = time.perf_counter()
+        results = assemble(
+            results,
+            chunk_overlap=resolved_settings.chunking.chunk_overlap,
+            expand_window=expand_window,
+            store=resolved_store,
+            collection=collection_name,
+        )
+        t1 = time.perf_counter()
+        timing_report["assembly_seconds"] = timing_report.get("assembly_seconds", 0.0) + (t1 - t0)
 
     # Attach policy diagnostics when requested.
     if include_diagnostics:
@@ -447,46 +460,3 @@ def search(
     if not include_diagnostics:
         results = [_strip_internal_result_fields(r) for r in results]
     return results
-
-
-def list_collections(
-    store: VectorStore | None = None,
-) -> list[dict]:
-    """List all collections with document and chunk counts.
-
-    Args:
-        store: Optional injected :class:`VectorStore`.
-
-    Returns:
-        A list of dicts, each with:
-        - ``name`` — collection name
-        - ``document_count`` — approximate number of unique source files
-        - ``chunk_count`` — total number of chunks in the collection
-    """
-    resolved_store = _resolve_store(store)
-
-    collections: list[dict] = []
-    for name in resolved_store.list_collections():
-        try:
-            chunk_count = resolved_store.count(name)
-            # Estimate unique documents by counting distinct file_path/file_name
-            # values in metadata.
-            doc_sources: set[str] = set()
-            if chunk_count > 0:
-                for meta in resolved_store.iter_metadatas(name):
-                    if meta is None:
-                        continue
-                    source = meta.get("file_path") or meta.get("file_name") or "unknown"
-                    doc_sources.add(source)
-
-            collections.append(
-                {
-                    "name": name,
-                    "document_count": len(doc_sources),
-                    "chunk_count": chunk_count,
-                }
-            )
-        except Exception:  # noqa: S112
-            # Skip collections that can't be accessed
-            continue
-    return collections

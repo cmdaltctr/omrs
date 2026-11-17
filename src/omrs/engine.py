@@ -212,8 +212,9 @@ class Engine(EngineProviders):
         include_diagnostics: bool = False,
         technical_fraction: float | None = None,
         fetch_k: int | None = None,
+        unassembled: bool = False,
     ) -> list[dict]:
-        """Run a semantic similarity search over indexed documents."""
+        """Run a semantic search; ``unassembled`` returns stored chunks unassembled."""
         self._check_open()
         from .core.retrieval.pipeline import search
 
@@ -225,6 +226,7 @@ class Engine(EngineProviders):
                 query,
                 collection_name,
                 include_diagnostics=include_diagnostics,
+                unassembled=unassembled,
                 values={
                     "top_k": top_k,
                     "similarity_threshold": similarity_threshold,
@@ -255,6 +257,7 @@ class Engine(EngineProviders):
             embed_model=embed_model,
             embedding_identity=identity,
             query_cache=self._query_cache,
+            unassembled=unassembled,
         )
 
     async def answer(

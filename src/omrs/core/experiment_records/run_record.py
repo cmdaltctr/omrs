@@ -4,7 +4,10 @@ Each run start appends one JSON line with the start time in UTC, the git
 commit, whether the working tree had uncommitted changes, the SHA-256 of
 ``plan.json`` and the command. A run that checked a llama.cpp server also
 stores an optional ``runtime`` key: the build and the ``{file, sha256}`` of
-each model it found (reproducible-experiment-runtime, D5). JSON Lines is
+each model it found (reproducible-experiment-runtime, D5). Experiment 35 also
+stores the SHA-256 of ``preregistration.md`` and marks a pre-freeze run
+(``prefreeze``) or a smoke run (``smoke``); a main-run line leaves both flags
+out. JSON Lines is
 append-only, so a resumed run never rewrites history. The checker compares
 the recorded plan hash with the current ``plan.json`` to find a plan that
 changed after a run.
@@ -85,6 +88,10 @@ class RunRecord(BaseModel):
     plan_sha256: str = Field(pattern=r"^(?:[0-9a-f]{64})?$")
     command: str = Field(min_length=1)
     runtime: RunRuntime | None = None
+    # Experiment 35 (task 5.7): a main-run line leaves the two flags out.
+    prefreeze: bool = False
+    smoke: bool = False
+    preregistration_sha256: str | None = Field(default=None, pattern=_SHA256)
 
     @field_validator("started_at")
     @classmethod
@@ -111,6 +118,9 @@ def append_run_record(
     command: str,
     now: datetime | None = None,
     runtime: Mapping[str, Any] | None = None,
+    prefreeze: bool = False,
+    smoke: bool = False,
+    preregistration_sha256: str | None = None,
 ) -> RunRecord:
     """Append one run record line to ``output/run-records.jsonl``.
 
@@ -124,6 +134,10 @@ def append_run_record(
         now: The start time. It must carry a time zone. Defaults to the current time.
         runtime: The build and ``{file, sha256}`` list that the live-server
             check found. Left out of the line when None.
+        prefreeze: True for a pre-freeze run. Left out of the line when False.
+        smoke: True for a smoke run on a few questions. Left out of the line when False.
+        preregistration_sha256: The SHA-256 of ``preregistration.md``. Left
+            out of the line when None.
 
     Returns:
         The record that was written.
@@ -149,11 +163,18 @@ def append_run_record(
         plan_sha256=plan_sha256(folder),
         command=command,
         runtime=found,
+        prefreeze=prefreeze,
+        smoke=smoke,
+        preregistration_sha256=preregistration_sha256,
     )
     output = folder / OUTPUT_DIR
     output.mkdir(exist_ok=True)
     # Leave out empty optional keys, so a line keeps the shape older readers know.
-    exclude: dict[str, Any] = {}
+    exclude: dict[str, Any] = {
+        name: True
+        for name in ("prefreeze", "smoke", "preregistration_sha256")
+        if not getattr(record, name)
+    }
     if record.runtime is None:
         exclude["runtime"] = True
     elif not record.runtime.unchecked:

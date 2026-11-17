@@ -169,6 +169,7 @@ def test_the_chat_record_holds_the_host_and_the_sent_values() -> None:
         },
         "p_yes": None,
         "error": None,
+        "model_returned": None,
     }
 
 

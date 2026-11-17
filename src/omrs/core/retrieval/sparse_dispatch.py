@@ -154,9 +154,9 @@ def _emit_mixed_coverage_warning(collection_name: str, store: VectorStore) -> No
             logger.warning(
                 "Hybrid native sparse retrieval on collection '%s' has "
                 "mixed full-text coverage: %d/%d chunks are indexed by "
-                "the FTS index. The next native query refreshes the "
-                "index; re-ingest or create the FTS index for full "
-                "durable hybrid coverage.",
+                "the FTS index. Queries still find the unindexed "
+                "chunks; the next ingest of the collection refreshes "
+                "the index.",
                 collection_name,
                 stats["indexed"],
                 stats["total"],

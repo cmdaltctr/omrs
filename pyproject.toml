@@ -195,7 +195,7 @@ asyncio_mode = "auto"
 # rely on logging state set up by an earlier test in the same file, so the
 # default per-test distribution fails them. Ignored when -n is not given.
 addopts = "--dist loadfile"
-testpaths = ["tests"]
+testpaths = ["tests", "experiments/_lib", "experiments/35-full-rag-benchmark-2026-11-01/prefreeze"]
 # Root on sys.path so tests can import experiments._lib.* (add-chroma-cloud-backend).
 pythonpath = ["."]
 markers = [

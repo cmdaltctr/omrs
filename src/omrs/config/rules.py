@@ -38,7 +38,7 @@ ACCEPTED: dict[str, tuple[str, ...]] = {
     "metadata.extraction_mode": METADATA_EXTRACTION_MODES,
     "local_backend": ("llamacpp", "ollama"),
     "cloud_backend": ("openrouter",),
-    "retrieval.rerank_backend": ("onnx", "torch"),
+    "retrieval.rerank_backend": ("onnx", "torch", "llamacpp"),
     "chroma_mode": ("local", "cloud"),
     "ocr_routing_unit": OCR_ROUTING_UNITS,
     "ocr_non_latin_routing": OCR_NON_LATIN_MODES,

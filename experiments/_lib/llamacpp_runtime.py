@@ -167,6 +167,79 @@ def _loaded_paths(base_url: str, props: Any) -> list[str]:
     return paths
 
 
+_ON = frozenset({"on", "true", "1", "enabled"})
+_OFF = frozenset({"off", "false", "0", "disabled", "none"})
+
+
+def _parse_args(args: list[Any]) -> dict[str, Any]:
+    """Return ``{key: value}`` from a ``llama-server`` argument list; a bare flag is True."""
+    parsed: dict[str, Any] = {}
+    tokens = [str(arg) for arg in args]
+    for index, token in enumerate(tokens):
+        if not token.startswith("--"):
+            continue
+        name, equals, value = token[2:].partition("=")
+        if equals:
+            parsed[name] = value
+        elif index + 1 < len(tokens) and not tokens[index + 1].startswith("--"):
+            parsed[name] = tokens[index + 1]
+        else:
+            parsed[name] = True
+    return parsed
+
+
+def _same_arg(planned: Any, found: Any, negated: bool) -> bool:
+    """Compare one planned ``server_args`` value with what the router lists.
+
+    A JSON boolean matches a bare flag or an on/off word. A planned ``False``
+    or ``"none"`` also matches a missing argument or a ``--no-<key>`` flag,
+    because the router leaves an unset feature out. A number compares as a
+    number, anything else as text.
+    """
+    if planned is True:
+        return found is True or str(found).lower() in _ON
+    if planned is False or planned == "none":
+        return negated or found is None or str(found).lower() in _OFF
+    if found is None or found is True:
+        return False
+    if isinstance(planned, (int, float)):
+        try:
+            return float(found) == float(planned)
+        except ValueError:
+            return False
+    return str(found) == str(planned)
+
+
+def _args_by_file(base_url: str) -> dict[str, dict[str, Any]]:
+    listing = _get_json(base_url, "/v1/models")
+    entries = listing.get("data") if isinstance(listing, dict) else None
+    found: dict[str, dict[str, Any]] = {}
+    for entry in entries if isinstance(entries, list) else []:
+        status = entry.get("status") if isinstance(entry, dict) else None
+        args = status.get("args") if isinstance(status, dict) else None
+        path = _model_arg(args)
+        if path:
+            found[Path(path).name] = _parse_args(args)
+    return found
+
+
+def _check_server_args(base_url: str, planned: list[Any]) -> None:
+    by_file = _args_by_file(base_url)
+    for model in planned:
+        listed = by_file.get(model.file)
+        if listed is None:
+            raise PreflightError(f"the server lists no server arguments for {model.file}")
+        differ = [
+            f"{key}: the plan records {value!r}, the server runs {listed.get(key)!r}"
+            for key, value in model.server_args.items()
+            if not _same_arg(value, listed.get(key), listed.get(f"no-{key}") is True)
+        ]
+        if differ:
+            raise PreflightError(
+                f"the server arguments of {model.file} differ from the plan: " + "; ".join(differ)
+            )
+
+
 def _sha256(path: Path) -> str:
     digest = hashlib.sha256()
     try:
@@ -178,12 +251,17 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def verify_llamacpp_runtime(block: RuntimeBlock, *, base_url: str) -> FoundRuntime:
+def verify_llamacpp_runtime(
+    block: RuntimeBlock, *, base_url: str, check_args: bool = False
+) -> FoundRuntime:
     """Compare the live llama.cpp server with the ``runtime`` block of the plan.
 
     Args:
         block: The validated ``runtime`` block of ``plan.json``.
         base_url: The server address, for example ``http://127.0.0.1:9931``.
+        check_args: Also compare each planned ``server_args`` entry with the
+            router's ``status.args`` for that file (Experiment 35 only, H-29).
+            Off by default, so other experiments keep today's check.
 
     Returns:
         The build and the ``{file, sha256}`` of each checked model.
@@ -192,6 +270,8 @@ def verify_llamacpp_runtime(block: RuntimeBlock, *, base_url: str) -> FoundRunti
         PreflightError: The address is not a loopback address, the server
             cannot be read, the build differs from the plan, the server does
             not list a planned file, or a file's SHA-256 differs from the plan.
+            With *check_args*, also when a planned server argument differs;
+            the message names the file and each differing argument.
             The message names the expected and the found value.
     """
     base = _require_loopback(base_url)
@@ -220,6 +300,8 @@ def verify_llamacpp_runtime(block: RuntimeBlock, *, base_url: str) -> FoundRunti
                 f"the plan records {model.sha256}, the file has {digest}"
             )
         found.append({"file": model.file, "sha256": digest})
+    if check_args:
+        _check_server_args(base, planned)
     unchecked: list[UncheckedArm] = [
         {
             "role": model.role,

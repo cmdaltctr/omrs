@@ -2,7 +2,7 @@
 
 A release holds scores, question IDs and rebuild scripts. It never holds corpus
 text or personal identifiers (design D10). This module checks a folder against
-two rules and lists every offending file:
+these rules and lists every offending file:
 
 - ``corpus-text``: a file shares a run of ``ngram_words`` consecutive words
   with a document in the corpus folder. Words are lower-cased runs of letters,
@@ -11,6 +11,16 @@ two rules and lists every offending file:
 - ``home-path``: a file names a home folder (``/Users/<name>/``,
   ``/home/<name>/`` or ``C:\\Users\\<name>\\``). A placeholder such as
   ``<name>`` is allowed.
+- ``email``: a file holds an email address.
+- ``login-name``: a file holds, as a whole word in any case, one of the
+  login or personal names the operator passes (``--name``).
+
+Released answers sit in their own folder (pre-registration section 19). They
+may quote evidence, so that folder gets the identifier rules only
+(``home-path``, ``email``, ``login-name``), never the corpus-text rule::
+
+    uv run --no-sync python experiments/_lib/release_check.py \\
+        output/release-answers --answers --name <login>
 
 The check streams the corpus and indexes only the shareable files, so memory
 use follows the size of the shareable folder.
@@ -34,7 +44,7 @@ from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-__all__ = ["DEFAULT_NGRAM_WORDS", "Finding", "check_shareable", "main"]
+__all__ = ["DEFAULT_NGRAM_WORDS", "Finding", "check_answer_release", "check_shareable", "main"]
 
 # Twelve words is longer than a quoted phrase or a title and shorter than a
 # sentence, so a copied sentence fails and a short shared term does not.
@@ -48,6 +58,7 @@ _HOME_PATH = re.compile(
     r"|[A-Za-z]:\\+Users\\+[^\\/\s\"'<>]+",
     re.IGNORECASE,
 )
+_EMAIL = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
 
 
 @dataclass(frozen=True)
@@ -56,7 +67,7 @@ class Finding:
 
     Attributes:
         path: The offending file.
-        rule: ``"corpus-text"`` or ``"home-path"``.
+        rule: ``"corpus-text"``, ``"home-path"``, ``"email"`` or ``"login-name"``.
         line: First offending line (1-based), or None for a JSON file's
             corpus-text finding, which has no line of its own.
         detail: A short description. It never repeats the matched text.
@@ -114,13 +125,19 @@ def _files(folder: Path) -> list[Path]:
     return sorted(p for p in folder.rglob("*") if p.is_file())
 
 
-def _home_path_findings(path: Path) -> list[Finding]:
-    """Return one finding per line of *path* that names a home folder."""
+def _identifier_findings(path: Path, names: Sequence[str]) -> list[Finding]:
+    """Return one finding per rule and line of *path* that names a person or a home folder."""
+    rules = [("home-path", _HOME_PATH, "home-folder path"), ("email", _EMAIL, "email address")]
+    if names:
+        words = "|".join(re.escape(name) for name in names)
+        pattern = re.compile(rf"(?<!\w)(?:{words})(?!\w)", re.IGNORECASE)
+        rules.append(("login-name", pattern, "login or personal name"))
     text = path.read_text(encoding="utf-8", errors="ignore")
     return [
-        Finding(path, "home-path", number, "home-folder path")
+        Finding(path, rule, number, detail)
+        for rule, pattern, detail in rules
         for number, line in enumerate(text.splitlines(), start=1)
-        if _HOME_PATH.search(line)
+        if pattern.search(line)
     ]
 
 
@@ -164,14 +181,19 @@ def _corpus_text_findings(
 
 
 def check_shareable(
-    shareable_dir: Path, corpus_dir: Path, *, ngram_words: int = DEFAULT_NGRAM_WORDS
+    shareable_dir: Path,
+    corpus_dir: Path,
+    *,
+    ngram_words: int = DEFAULT_NGRAM_WORDS,
+    names: Sequence[str] = (),
 ) -> list[Finding]:
-    """Check a shareable folder for corpus text and home-folder paths.
+    """Check a shareable folder for corpus text, home-folder paths, emails and names.
 
     Args:
         shareable_dir: The folder that a release would upload.
         corpus_dir: Folder of the corpus documents (text, JSON or JSON lines).
         ngram_words: A shared run of this many words counts as corpus text.
+        names: Login and personal names that no file may hold.
 
     Returns:
         Every finding, ordered by rule and path. An empty list means clean.
@@ -187,8 +209,28 @@ def check_shareable(
     files = _files(shareable_dir)
     findings = _corpus_text_findings(files, corpus_dir, ngram_words)
     for path in files:
-        findings.extend(_home_path_findings(path))
+        findings.extend(_identifier_findings(path, names))
     return findings
+
+
+def check_answer_release(answers_dir: Path, *, names: Sequence[str] = ()) -> list[Finding]:
+    """Check the answer release folder with the identifier rules only.
+
+    Released answers may quote evidence, so the corpus-text rule does not run.
+
+    Args:
+        answers_dir: The folder of released answers.
+        names: Login and personal names that no file may hold.
+
+    Returns:
+        Every finding, ordered by path. An empty list means clean.
+
+    Raises:
+        FileNotFoundError: *answers_dir* is not a folder.
+    """
+    if not answers_dir.is_dir():
+        raise FileNotFoundError(f"not a folder: {answers_dir}")
+    return [f for path in _files(answers_dir) for f in _identifier_findings(path, names)]
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -202,11 +244,23 @@ def main(argv: Sequence[str] | None = None) -> int:
     """
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("shareable", type=Path, help="folder to release, e.g. output/shareable")
-    parser.add_argument("--corpus", type=Path, required=True, help="folder of corpus documents")
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--corpus", type=Path, help="folder of corpus documents")
+    mode.add_argument(
+        "--answers", action="store_true", help="answer release folder: identifier rules only"
+    )
     parser.add_argument("--ngram-words", type=int, default=DEFAULT_NGRAM_WORDS)
+    parser.add_argument(
+        "--name", action="append", default=[], help="a login or personal name (repeat)"
+    )
     args = parser.parse_args(argv)
     try:
-        findings = check_shareable(args.shareable, args.corpus, ngram_words=args.ngram_words)
+        if args.answers:
+            findings = check_answer_release(args.shareable, names=args.name)
+        else:
+            findings = check_shareable(
+                args.shareable, args.corpus, ngram_words=args.ngram_words, names=args.name
+            )
     except (FileNotFoundError, ValueError) as exc:
         print(f"release check cannot run: {exc}", file=sys.stderr)
         return 2

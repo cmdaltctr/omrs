@@ -31,6 +31,7 @@ from dataclasses import dataclass
 from .citations import parse_citation_ordinals
 from .judges.base import ClaimJudge, JudgeCall, JudgeUnavailable, shared_error
 from .judges.registry import as_judge
+from .rate_limits import classify_rate_limit, judge_reason
 from .synthesis import CompletionSeam
 
 #: Structured verdicts the judge may return.
@@ -406,6 +407,7 @@ class VerificationFields:
         ms: Wall-time the stage took.
         calls: Judge completions made.
         judge_calls: One call record per judged claim (no claim text).
+        rate_limited: The judge's rate-limit record (design D25), else ``None``.
     """
 
     verified: bool = False
@@ -415,6 +417,7 @@ class VerificationFields:
     ms: float = 0.0
     calls: int = 0
     judge_calls: tuple[dict, ...] = ()
+    rate_limited: dict | None = None
 
 
 async def run_verification_stage(
@@ -459,8 +462,14 @@ async def run_verification_stage(
     except JudgeUnavailable as refused:  # A fixed reason; nothing was sent.
         return VerificationFields(skipped_reason=refused.reason, ran=False)
     except Exception as exc:  # Judge failure never fails the answer.
+        limit = classify_rate_limit(exc)
         return VerificationFields(
-            skipped_reason=(f"verification failed: {type(exc).__name__}: {error_detail(exc)}"),
+            skipped_reason=(
+                judge_reason(limit)
+                if limit is not None
+                else f"verification failed: {type(exc).__name__}: {error_detail(exc)}"
+            ),
+            rate_limited=limit.as_dict() if limit is not None else None,
             ran=True,
             ms=(time.perf_counter() - start) * 1000.0,
         )

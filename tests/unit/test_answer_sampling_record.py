@@ -181,4 +181,18 @@ def test_a_reply_without_a_host_records_none() -> None:
 def test_the_record_holds_only_the_declared_keys() -> None:
     settings = _settings()
     chat = _answer(settings, _chat_llm(settings))["sampling"]["chat"]
-    assert set(chat) == {"temperature", "seed", "host", "accepted", "host_in_list"}
+    assert set(chat) == {
+        "temperature",
+        "seed",
+        "host",
+        "accepted",
+        "host_in_list",
+        "model_returned",
+    }
+
+
+def test_the_record_names_the_model_the_reply_names() -> None:
+    """Exp 35 task 15.9: the reply's own model ID, beside the requested one."""
+    settings = _settings()
+    chat = _answer(settings, _chat_llm(settings))["sampling"]["chat"]
+    assert chat["model_returned"] == OPENROUTER_REPLY["model"]

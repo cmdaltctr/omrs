@@ -194,13 +194,24 @@ def search(
     *,
     include_diagnostics: bool,
     values: Mapping[str, Any],
+    unassembled: bool = False,
 ) -> list[dict[str, Any]]:
     """Search through the Search pipeline of a user profile.
 
     Returns:
         The rows of ``Engine.search``: the public shape, or the diagnostic rows.
         With diagnostics, every row lists the request values that had no effect.
+
+    Raises:
+        ValueError: When ``unassembled`` is set. The saved pipeline decides its
+            own assembly, so the option is refused, never ignored (design D39).
     """
+    if unassembled:
+        raise ValueError(
+            f"The Search pipeline profile {binding.name!r} runs its own saved graph, "
+            "so the unassembled search option cannot be used with it. Leave it out, "
+            "or use a collection that follows a built-in profile."
+        )
     result, unused = _run(engine, binding, "search", {"query": query}, collection, values)
     _require_success(binding, "search", result)
     bundle = result.outputs["results"]

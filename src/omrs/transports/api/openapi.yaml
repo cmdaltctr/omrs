@@ -7290,12 +7290,42 @@ components:
           description: >
             With diagnostics on a user-profile collection: the request values the saved
             pipeline did not use.
+        rate_limited:
+          $ref: "#/components/schemas/AnswerRateLimit"
+          description: >
+            Present only when generation failed because the answer model's provider replied
+            HTTP 429 or HTTP 402 (status error, failure_stage generation). `error` then holds
+            a fixed message for the kind.
+        verification_rate_limited:
+          $ref: "#/components/schemas/AnswerRateLimit"
+          description: >
+            Present only when claim verification stopped because the judge's provider
+            replied HTTP 429 or HTTP 402. The answer keeps its status; `verification_skipped`
+            holds a fixed reason for the kind.
+
+    AnswerRateLimit:
+      type: object
+      additionalProperties: false
+      required: [kind, http_status, retry_after_seconds]
+      description: >
+        A provider rate limit. rate_limit = HTTP 429, or HTTP 402 with a Retry-After (wait,
+        then ask again). out_of_credit = HTTP 402 with no Retry-After (top up the account).
+      properties:
+        kind:
+          type: string
+          enum: [rate_limit, out_of_credit]
+        http_status:
+          type: integer
+          enum: [429, 402]
+        retry_after_seconds:
+          type: [number, "null"]
+          description: The wait the provider asked for, in seconds, else null.
 
 
     JudgeCall:
       type: object
       additionalProperties: false
-      required: [strategy, model, host, sha256, version, settings, p_yes, error]
+      required: [strategy, model, host, sha256, version, settings, p_yes, error, model_returned]
       description: >
         The record of one claim-judge call. No claim text, evidence text or key.
       properties:
@@ -7341,6 +7371,9 @@ components:
         error:
           type: [string, "null"]
           description: A fixed reason when the request for this claim failed (for example `unreachable`).
+        model_returned:
+          type: [string, "null"]
+          description: The model ID a hosted reply names (its `model` field), else null.
 
     AnswerUsage:
       type: object
@@ -7365,7 +7398,7 @@ components:
     AnswerSamplingRecord:
       type: object
       additionalProperties: false
-      required: [temperature, seed, host, accepted, host_in_list]
+      required: [temperature, seed, host, accepted, host_in_list, model_returned]
       properties:
         temperature:
           type: [number, "null"]
@@ -7395,6 +7428,9 @@ components:
           description: >
             Whether the serving host is in the allowed host list. false is a mismatch and must
             be treated as a failure. null when no list is set.
+        model_returned:
+          type: [string, "null"]
+          description: The model ID the reply names (its `model` field), else null.
 
     AnswerCitation:
       type: object

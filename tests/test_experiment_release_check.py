@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 
 import pytest
-from experiments._lib.release_check import check_shareable, main
+from experiments._lib.release_check import check_answer_release, check_shareable, main
 
 PASSAGE = (
     "The company reported that net revenue for the fiscal year rose by eleven percent "
@@ -169,3 +169,53 @@ def test_main_exits_non_zero_on_a_finding(
 def test_main_exits_zero_on_a_clean_folder(shareable: Path, corpus: Path) -> None:
     (shareable / "scores.csv").write_text("q1,0.5\n")
     assert main([str(shareable), "--corpus", str(corpus)]) == 0
+
+
+# ------------------------------------------- identifier rules (task 16.21, H-34)
+
+
+def test_email_address_fails(shareable: Path, corpus: Path) -> None:
+    (shareable / "notes.md").write_text("ok\nwrite to jane.doe@example.org for access\n")
+    findings = check_shareable(shareable, corpus)
+    assert _rules(findings) == {"email"}
+    assert findings[0].line == 2
+    assert "jane" not in findings[0].detail
+
+
+def test_login_name_fails_as_a_whole_word_only(shareable: Path, corpus: Path) -> None:
+    (shareable / "run.log").write_text("started by JDoe7 on the pod\n")
+    (shareable / "other.log").write_text("jdoe70 and xjdoe7 are other words\n")
+    findings = check_shareable(shareable, corpus, names=["jdoe7"])
+    assert [(f.path.name, f.rule, f.line) for f in findings] == [("run.log", "login-name", 1)]
+    assert "jdoe7" not in findings[0].detail.lower()
+    assert check_shareable(shareable, corpus) == []
+
+
+def test_answer_release_quoting_evidence_passes(shareable: Path) -> None:
+    (shareable / "answers.jsonl").write_text(json.dumps({"qid": "q1", "answer": PASSAGE}) + "\n")
+    assert check_answer_release(shareable, names=["jdoe7"]) == []
+
+
+@pytest.mark.parametrize(
+    ("text", "rule"),
+    [
+        ("contact jane.doe@example.org", "email"),
+        ("labelled by jdoe7", "login-name"),
+        ("saved to /home/jane/answers.jsonl", "home-path"),
+    ],
+)
+def test_answer_release_keeps_the_identifier_rules(shareable: Path, text: str, rule: str) -> None:
+    (shareable / "answers.jsonl").write_text(json.dumps({"qid": "q1", "answer": text}) + "\n")
+    assert _rules(check_answer_release(shareable, names=["jdoe7"])) == {rule}
+
+
+def test_main_answers_mode_needs_no_corpus(shareable: Path) -> None:
+    (shareable / "answers.jsonl").write_text(json.dumps({"answer": PASSAGE}) + "\n")
+    assert main([str(shareable), "--answers"]) == 0
+    (shareable / "who.txt").write_text("run by jdoe7\n")
+    assert main([str(shareable), "--answers", "--name", "jdoe7"]) == 1
+
+
+def test_main_needs_corpus_or_answers_mode(shareable: Path) -> None:
+    with pytest.raises(SystemExit):
+        main([str(shareable)])

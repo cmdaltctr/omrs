@@ -29,6 +29,7 @@ from .stats import cell_record, paired_bootstrap_ci
 
 __all__ = [
     "cell_record",
+    "cohen_kappa",
     "holm",
     "mcnemar_exact",
     "min_detectable_effect",
@@ -233,3 +234,34 @@ def min_detectable_effect(
 def _check_paired(a: Sequence[object], b: Sequence[object]) -> None:
     if len(a) != len(b):
         raise ValueError(f"paired arms need the same length, got {len(a)} and {len(b)}")
+
+
+# Added for Experiment 35 (task 8.8, approved 2026-11-12). Not a skill copy.
+def cohen_kappa(a: Sequence[object], b: Sequence[object]) -> float:
+    """Return Cohen's kappa for two raters who labelled the same items.
+
+    Args:
+        a: The first rater's label per item.
+        b: The second rater's label per item, same order.
+
+    Returns:
+        Kappa, or NaN when chance agreement is 1 (both raters give one and
+        the same label to every item, so kappa is undefined).
+
+    Raises:
+        ValueError: When the inputs are empty or differ in length.
+    """
+    _check_paired(a, b)
+    if not a:
+        raise ValueError("cohen_kappa needs at least one item")
+    n = len(a)
+    observed = sum(1 for x, y in zip(a, b) if x == y) / n
+    count_a: dict[object, int] = defaultdict(int)
+    count_b: dict[object, int] = defaultdict(int)
+    for x, y in zip(a, b):
+        count_a[x] += 1
+        count_b[y] += 1
+    chance = sum(count_a[label] * count_b[label] for label in count_a) / (n * n)
+    if chance == 1:
+        return math.nan
+    return (observed - chance) / (1 - chance)

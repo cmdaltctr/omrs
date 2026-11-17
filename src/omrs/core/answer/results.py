@@ -139,6 +139,7 @@ def stage_failure_result(
     error: str,
     evidence: list[dict] | None = None,
     diagnostics: dict[str, Any] | None = None,
+    rate_limited: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Build an attributed stage failure (``retrieval`` or ``generation``).
 
@@ -150,6 +151,9 @@ def stage_failure_result(
         evidence: Evidence retrieved before the failure (kept on a
             generation failure; empty on a retrieval failure).
         diagnostics: Optional diagnostics block.
+        rate_limited: The ``{kind, http_status, retry_after_seconds}``
+            record of a rate-limited generation (design D25). The key is
+            added only when it is given.
 
     Returns:
         The standard error result.
@@ -163,6 +167,8 @@ def stage_failure_result(
     )
     if evidence is not None:
         result["evidence"] = evidence
+    if rate_limited is not None:
+        result["rate_limited"] = dict(rate_limited)
     return _with_diagnostics(result, diagnostics)
 
 
@@ -216,6 +222,9 @@ def answered_result(
         result["verified"] = True
     if verification.skipped_reason is not None:
         result["verification_skipped"] = verification.skipped_reason
+    if verification.rate_limited is not None:
+        # The judge was rate-limited; same record shape as ``rate_limited`` (design D25).
+        result["verification_rate_limited"] = dict(verification.rate_limited)
     if verification.failing:
         result["unverified_claims"] = list(verification.failing)
     if verification.judge_calls:
