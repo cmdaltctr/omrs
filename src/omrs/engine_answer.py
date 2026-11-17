@@ -180,7 +180,16 @@ def sampling_record(llm: Any, provider: str, raw: Any) -> dict[str, Any]:
     except Exception as exc:  # A changed reply shape must never fail the answer.
         logger.warning("Could not read the serving host: %s", type(exc).__name__)
         host = dict(NO_HOST)
-    return {"temperature": temperature, "seed": seed, **host}
+    return {"temperature": temperature, "seed": seed, **host, "model_returned": _reply_model(raw)}
+
+
+def _reply_model(raw: Any) -> str | None:
+    """Return the model ID a reply names (``model``), or ``None``; it never raises."""
+    try:
+        found = raw.get("model") if isinstance(raw, dict) else getattr(raw, "model", None)
+    except Exception:  # noqa: BLE001 - a changed reply shape must never fail the answer
+        return None
+    return found if isinstance(found, str) and found.strip() else None
 
 
 def _facts(completion: Any, read_reply: Callable[[Any], ReplyFacts] | None) -> ReplyFacts:

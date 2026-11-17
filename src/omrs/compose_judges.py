@@ -365,7 +365,7 @@ def chat_judge(llm: Any, block: Any, provider: str, make_seam: Callable[[Any], A
 
     def facts() -> dict[str, Any]:
         record = sampling_record(llm, provider, last.raw)
-        return {key: record.get(key) for key in ("host", "temperature", "seed")}
+        return {key: record.get(key) for key in ("host", "temperature", "seed", "model_returned")}
 
     module = registry.get(judge_name(block))
     resources = JudgeResources(

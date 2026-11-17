@@ -204,7 +204,9 @@ class _HostedLLM:
     additional_kwargs = {"seed": 20261101}
 
     async def acomplete(self, prompt: str, **kwargs: Any) -> Any:
-        return SimpleNamespace(text="supported", raw={"provider": "Z.AI"})
+        return SimpleNamespace(
+            text="supported", raw={"provider": "Z.AI", "model": "z-ai/glm-5.3-0901"}
+        )
 
 
 def test_the_chat_record_names_the_host_and_the_sent_values() -> None:
@@ -227,6 +229,7 @@ def test_the_chat_record_names_the_host_and_the_sent_values() -> None:
     call = fields.judge_calls[0]
     assert (call["strategy"], call["model"], call["host"]) == ("chat", "z-ai/glm-5.3", "Z.AI")
     assert call["version"] == "chat-oneword/1"
+    assert call["model_returned"] == "z-ai/glm-5.3-0901"  # Exp 35 task 15.9
     assert call["settings"]["temperature"] == 0.0 and call["settings"]["seed"] == 20261101
     assert call["settings"]["reasoning"] == "low"
 

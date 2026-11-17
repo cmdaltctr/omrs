@@ -267,6 +267,7 @@ because OMRS sees no Chat request. Each record has:
 | `host`         | The host that served the call, as the OpenRouter reply names it. `null` for other providers                      |
 | `accepted`     | `{temperature, seed}`: the host's published support for each value, from the OpenRouter endpoint list. `null` when unknown (no host list set) |
 | `host_in_list` | `false` when the host is outside `ANSWER__ALLOWED_HOSTS` (or `ANSWER__VERIFY_ALLOWED_HOSTS`): treat it as a failure. `null` when no list is set |
+| `model_returned` | The model ID the reply names (its `model` field). It can differ from the requested model. `null` when the reply names none |
 
 `ANSWER__VERIFY_TEMPERATURE` sets the judge temperature. See
 [Configuration](configuration.md) for the four sampling settings and the two
@@ -287,6 +288,7 @@ judged claim, in claim order:
 | `settings` | `temperature`, `seed`, `reasoning`, `threshold` (0.5 for `clef_flash`) and `think` (Granite, `false`)          |
 | `p_yes`    | P(yes) from `clef_flash`, else `null`                                                                          |
 | `error`    | A fixed reason when the request for that claim failed (for example `unreachable`), else `null`                 |
+| `model_returned` | The model ID a hosted reply names, else `null`                                                         |
 
 A record never holds the claim text, the evidence text or a key.
 

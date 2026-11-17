@@ -131,6 +131,7 @@ _CALL = {
     },
     "p_yes": 0.92,
     "error": None,
+    "model_returned": None,
 }
 
 

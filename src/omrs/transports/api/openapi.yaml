@@ -7325,7 +7325,7 @@ components:
     JudgeCall:
       type: object
       additionalProperties: false
-      required: [strategy, model, host, sha256, version, settings, p_yes, error]
+      required: [strategy, model, host, sha256, version, settings, p_yes, error, model_returned]
       description: >
         The record of one claim-judge call. No claim text, evidence text or key.
       properties:
@@ -7371,6 +7371,9 @@ components:
         error:
           type: [string, "null"]
           description: A fixed reason when the request for this claim failed (for example `unreachable`).
+        model_returned:
+          type: [string, "null"]
+          description: The model ID a hosted reply names (its `model` field), else null.
 
     AnswerUsage:
       type: object
@@ -7395,7 +7398,7 @@ components:
     AnswerSamplingRecord:
       type: object
       additionalProperties: false
-      required: [temperature, seed, host, accepted, host_in_list]
+      required: [temperature, seed, host, accepted, host_in_list, model_returned]
       properties:
         temperature:
           type: [number, "null"]
@@ -7425,6 +7428,9 @@ components:
           description: >
             Whether the serving host is in the allowed host list. false is a mismatch and must
             be treated as a failure. null when no list is set.
+        model_returned:
+          type: [string, "null"]
+          description: The model ID the reply names (its `model` field), else null.
 
     AnswerCitation:
       type: object
