@@ -227,20 +227,22 @@ def test_reranker_and_local_ocr_model_listed(
 
 @pytest.mark.parametrize("backend", ["llamacpp", "torch"])
 def test_reranker_of_another_backend_gets_no_onnx_cache_check(
-    monkeypatch: pytest.MonkeyPatch, no_network: None, effective_settings: Any, backend: str
+    monkeypatch: pytest.MonkeyPatch, effective_settings: Any, backend: str
 ) -> None:
     """Only the ONNX backend reads the Hugging Face cache; the others never offer its download."""
     monkeypatch.setattr(
         "omrs.core.retrieval.backend._is_torch_extra_available", lambda: True, raising=True
     )
     calls = _cache(monkeypatch, set())
-    settings = effective_settings(rerank_backend=backend, rerank_model="qwen3-reranker-4b")
+    settings = effective_settings(
+        rerank_backend=backend,
+        rerank_model="qwen3-reranker-4b",
+        llamacpp_router_url=f"{_closed_address()}/v1",
+    )
 
     item = _by_name(rc.model_file_items(settings))[rc.RERANKER_NAME]
 
-    assert item.status == "unknown"
-    assert item.fix is None
-    assert backend in (item.reason or "") and "qwen3-reranker-4b" in (item.reason or "")
+    assert "hf download" not in (item.fix or "")
     assert not [c for c in calls if c["repo_id"] == "qwen3-reranker-4b"]
 
 

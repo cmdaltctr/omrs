@@ -42,6 +42,7 @@ from ._reranker_cache import (  # noqa: F401
     _reset_failure_state,
     reset_model_cache,
 )
+from .runtime_status import CacheProbe, RerankerRuntimeStatus, onnx_cache_status
 
 # Backend name used as the cache-key axis.  Each backend module sets its
 # own so the ``(backend_name, model_id)`` key never collides across
@@ -159,9 +160,20 @@ class CrossEncoderReranker:
     # (``rerank_backend``).  Matches the registry name suffix.
     backend_name: str = "onnx"
 
-    # Duck-typed flag for the Settings runtime page: this backend loads ONNX
-    # files from the local Hugging Face cache, so the page may check them.
-    reads_onnx_model_cache: bool = True
+    @classmethod
+    def runtime_status(cls, settings: Any, cached: CacheProbe) -> RerankerRuntimeStatus:
+        """Report whether the ONNX files are in the local Hugging Face cache.
+
+        This class also runs when ``rerank_backend`` is ``torch`` and the
+        torch extra is missing, so the status says what will actually run.
+
+        Args:
+            settings: Effective settings (``retrieval.rerank_model`` and ``rerank_backend``).
+            cached: The read-only cache probe, given by the caller.
+        """
+        model = settings.retrieval.rerank_model.strip()
+        configured = settings.retrieval.rerank_backend or cls.backend_name
+        return onnx_cache_status(model, _select_onnx_variant(model), cached, configured)
 
     def __init__(
         self,

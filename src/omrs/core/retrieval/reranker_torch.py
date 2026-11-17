@@ -31,6 +31,7 @@ from .reranker import (
     TOKENIZER_MAX_LENGTH,
     _sigmoid,
 )
+from .runtime_status import CacheProbe, RerankerRuntimeStatus
 
 # Backend name used as the cache-key axis — see ``_reranker_cache.py``.
 _BACKEND_NAME = "torch"
@@ -59,6 +60,26 @@ class SentenceTransformerReranker:
     # Backend name surfaced through pipeline diagnostics
     # (``rerank_backend``).  Matches the registry name suffix.
     backend_name: str = "torch"
+
+    @classmethod
+    def runtime_status(cls, settings: Any, cached: CacheProbe) -> RerankerRuntimeStatus:
+        """Report that the files of the torch model are not checked.
+
+        Only a configured torch backend with the extra installed reaches this
+        class (``resolve_reranker_backend`` falls back to ONNX otherwise).
+        ``sentence-transformers`` picks the weight files itself, so the cache
+        file names are not known here.
+
+        Args:
+            settings: Effective settings (``retrieval.rerank_model``).
+            cached: The read-only cache probe. Not used.
+        """
+        model = settings.retrieval.rerank_model.strip()
+        reason = (
+            f"The torch backend loads {model} through sentence-transformers. "
+            "This page does not check its files."
+        )
+        return RerankerRuntimeStatus("unknown", reason)
 
     def __init__(
         self,
