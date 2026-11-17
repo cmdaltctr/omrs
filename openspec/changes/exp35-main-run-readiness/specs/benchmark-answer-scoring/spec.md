@@ -202,6 +202,12 @@ A refusal report step SHALL read a joined main run and SHALL refuse to start wit
 - **WHEN** the refusal report runs on a joined main run
 - **THEN** it MUST write a refusal-rate table with one row per answer setup and dataset, and a refusal-verdict table with one row per checker and dataset
 
+#### Scenario: Refusal rate and its interval
+
+- **WHEN** the refusal report computes a refusal rate
+- **THEN** the rate MUST be refusal claims over all claims, pooled over questions and runs
+- **AND** its 95% interval MUST be a percentile bootstrap by question with 10,000 resamples and seed 20261136
+
 ### Requirement: All-claims robustness check
 
 The report SHALL give, as a secondary robustness result, faithfulness per answer setup and dataset on all claims, refusals included. These figures SHALL NOT replace the primary figures.
@@ -274,6 +280,12 @@ A sampling step SHALL draw 450 claims from crossed-setup answers to all question
 - **WHEN** the sampling step draws the faithfulness sample
 - **THEN** it MUST draw from answers to questions in both half A and half B, because H8a and H8b are tested on all questions
 - **AND** the correctness sample MUST still come from half B only
+
+#### Scenario: Faithfulness sample leaves out refusal claims
+
+- **WHEN** the sampling step builds the faithfulness pool
+- **THEN** the pool MUST hold only cited claims of kind fact, mixed or unclassified, from all 3 runs
+- **AND** no refusal claim MUST enter the sample
 
 #### Scenario: Second checker fails its gate
 
