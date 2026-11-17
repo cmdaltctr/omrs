@@ -7,6 +7,7 @@ a replacement attempt has been written and verified.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
 from collections.abc import Callable
@@ -456,7 +457,9 @@ async def ingest_path_async(
     if errors:
         result["warnings"] = errors
     if resolved_settings.retrieval.hybrid_sparse_backend == "native":
-        _prepare_native_sparse(resolved_store, collection_name)
+        # The index build is slow, synchronous store work: run it in a
+        # thread so the server's event loop stays responsive.
+        await asyncio.to_thread(_prepare_native_sparse, resolved_store, collection_name)
     return result
 
 

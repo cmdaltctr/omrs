@@ -31,6 +31,7 @@ import httpx
 
 from .core.answer.judges import registry
 from .core.answer.judges.base import DEFAULT_JUDGE, JudgeRequestFailed, JudgeResources
+from .core.answer.rate_limits import with_short_402_retry
 
 logger = logging.getLogger(__name__)
 
@@ -374,7 +375,8 @@ def chat_judge(llm: Any, block: Any, provider: str, make_seam: Callable[[Any], A
             "seed": getattr(block, "verify_seed", None),
             "reasoning": str(getattr(block, "verify_reasoning", "") or "") or None,
         },
-        complete=make_seam(last),
+        # A typed judge skips the retry in ``verify_answer``, so add it here (design D25).
+        complete=with_short_402_retry(make_seam(last)),
         call_facts=facts,
     )
     return module.build(resources)

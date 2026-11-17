@@ -7,9 +7,11 @@ resolved sparse backend is ``native``.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import math
 import shutil
+import threading
 from pathlib import Path
 
 import pytest
@@ -109,6 +111,33 @@ async def test_prepare_failure_warns_and_keeps_the_result(
     assert result["status"] == "ok" and result["files_indexed"] == 1
     assert "warnings" not in result
     assert any("index build exploded" in r.getMessage() for r in caplog.records)
+
+
+async def test_prepare_runs_off_the_event_loop(
+    tmp_path: Path, corpus: Path, native, monkeypatch
+) -> None:
+    """A slow index build must not freeze the server's event loop (R1-02)."""
+    store = LanceVectorStore(uri=str(tmp_path / "lancedb"))
+    started, release = threading.Event(), threading.Event()
+    outcome: dict[str, bool] = {}
+
+    def _slow_prepare(_collection_name: str) -> None:
+        started.set()
+        # Another coroutine sets ``release``. It can do that only while the
+        # loop runs, so a timeout here means the loop was blocked.
+        outcome["released"] = release.wait(timeout=2)
+
+    async def _other_work() -> None:
+        while not started.is_set():
+            await asyncio.sleep(0.01)
+        release.set()
+
+    monkeypatch.setattr(store, "prepare_native_sparse", _slow_prepare)
+    await asyncio.wait_for(
+        asyncio.gather(_ingest(corpus, store, native), _other_work()), timeout=10
+    )
+
+    assert outcome == {"released": True}
 
 
 def test_base_store_prepare_is_a_no_op() -> None:

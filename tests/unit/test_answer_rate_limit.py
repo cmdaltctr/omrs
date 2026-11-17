@@ -318,3 +318,34 @@ async def test_a_plain_judge_seam_follows_the_402_rule(
     result = await _core_answer(effective_settings, _Script(_REPLY), judge)
     assert result.get("verified") is True and "verification_rate_limited" not in result
     assert (waits, len(judge.prompts)) == ([5.0], 2)
+
+
+class _JudgeLLM:
+    """A judge LLM whose ``acomplete`` follows a :class:`_Script`."""
+
+    model = "z-ai/glm-5.3"
+
+    def __init__(self, script: _Script) -> None:
+        self.script = script
+
+    async def acomplete(self, prompt: str, **_kwargs: Any) -> Any:
+        return SimpleNamespace(text=await self.script(prompt), raw=None)
+
+
+async def test_the_server_judge_follows_the_402_rule(
+    waits: list[float], effective_settings: Any
+) -> None:
+    """The ``chat`` judge that ``Engine.answer`` builds is a typed judge (R1-01)."""
+    from omrs.engine_answer import build_verifier
+
+    script = _Script(_openai_error(402, {"Retry-After": "5"}), "supported")
+    base = effective_settings()
+    effective = base.model_copy(
+        update={"answer": base.answer.model_copy(update={"verify_claims": True})}
+    )
+    judge, reason = build_verifier(effective, lambda _block: _JudgeLLM(script), str)
+    assert reason is None
+
+    result = await _core_answer(effective_settings, _Script(_REPLY), judge)
+    assert result.get("verified") is True and "verification_rate_limited" not in result
+    assert (waits, len(script.prompts)) == ([5.0], 2)

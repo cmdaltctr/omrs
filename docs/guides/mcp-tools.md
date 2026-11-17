@@ -228,8 +228,8 @@ OMRS waits and sends the answer model call again when the provider replies
 HTTP 402 with a wait of 30 seconds or less. It makes at most 2 more
 attempts. It does not retry HTTP 429, because the provider client libraries
 already retry it, and it does not retry `out_of_credit`. The claim judge that
-the MCP tool and the HTTP route build does not retry. A retried call counts as
-one round in `completion_calls`.
+the MCP tool and the HTTP route build follows the same rule for each judge
+call. A retried call counts as one round in `completion_calls`.
 
 When the server's own model answers (`completion_source` is `server`) and at
 least one model call ran, the result carries `usage`:
