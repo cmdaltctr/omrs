@@ -75,6 +75,25 @@ def test_pool_keeps_factual_mixed_and_unclassified_claims(tmp_path: Path) -> Non
     assert {i["index"] for i in unreadable} == {0, 1}  # the classifier failed: kept
 
 
+def test_a_cited_claim_stays_when_an_uncited_refusal_segment_has_the_same_text(
+    tmp_path: Path,
+) -> None:
+    out = tmp_path / "out"
+    questions = fx.build(out)
+    fx.write_kinds(out, lambda q, i: "factual")
+    claimkinds35 = load("claimkinds35")
+    before = [c for c in labels35.faithfulness_claims(out, questions) if c["qid"] == "q000"]
+    assert before
+    key = claimkinds35.claim_key("q000", before[0]["claim"])
+    # The uncited segment shares the cited claim's text and key; only its uncited flag differs.
+    for path in out.glob("*/answer/*/run*/claim-kinds.jsonl"):
+        rows = [json.loads(x) for x in path.read_text().splitlines()]
+        rows.append({"claim_key": key, "qid": "q000", "kind": "refusal", "uncited": True})
+        path.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    after = [c for c in labels35.faithfulness_claims(out, questions) if c["qid"] == "q000"]
+    assert after == before
+
+
 def test_pool_uses_each_runs_own_saved_kinds(tmp_path: Path) -> None:
     out = tmp_path / "out"
     questions = fx.build(out)

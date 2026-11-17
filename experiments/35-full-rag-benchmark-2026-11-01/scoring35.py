@@ -353,8 +353,16 @@ def evidence_by_tokens(
         tokens = count_tokens(text)
         cut = total + tokens > budget
         if cut:
-            text = truncate(text, budget - total)
+            left = budget - total
+            text = truncate(text, left)
             tokens = count_tokens(text)
+            # A cut inside a multi-token character (emoji, CJK) takes the whole character,
+            # so the text can run over *left*: cut shorter until it fits.
+            shorter = left
+            while tokens > left and shorter > 0:
+                shorter -= 1
+                text = truncate(text, shorter)
+                tokens = count_tokens(text)
         items.append(EvidenceItem(result_id(row), text, tokens, cut))
         total += tokens
     last = items[-1] if items and items[-1].truncated else None

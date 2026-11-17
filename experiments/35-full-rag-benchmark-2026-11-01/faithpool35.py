@@ -77,8 +77,9 @@ def faithfulness_claims(
     """
     claims: list[dict[str, Any]] = []
     for dataset, setup, run, folder in _pool_answers(out_dir):
+        # An uncited segment can share a cited claim's text and key: key on the flag too.
         refusals = {
-            r["claim_key"]
+            (r["claim_key"], bool(r.get("uncited")))
             for r in read_rows(folder / "claim-kinds.jsonl")
             if r["kind"] == "refusal"
         }
@@ -88,7 +89,7 @@ def faithfulness_claims(
             for index, (claim, ordinals) in enumerate(
                 split_claims(row.get("answer") or "", len(evidence))
             ):
-                if claimkinds35.claim_key(row["qid"], claim) in refusals:
+                if (claimkinds35.claim_key(row["qid"], claim), False) in refusals:
                     continue
                 claims.append(
                     {

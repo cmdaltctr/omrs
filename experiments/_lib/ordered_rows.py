@@ -21,8 +21,9 @@ Files in the stage folder, each appended one synced line at a time:
 - ``<stage>.dispatch.jsonl``: one ``id`` line before each send. An item with
   more than one line was resent; ``resent_calls`` counts those resends.
 - ``<stage>.errors.jsonl``: one line per error that is not a rate limit and
-  not out of credit (``id``, ``error``). The third such error of an item
-  closes it as missing (pre-registration section 12).
+  not out of credit (``id``, ``error``, ``trace``). The third such error of an
+  item closes it as missing (pre-registration section 12). A stop before that
+  closing row is written is completed in :meth:`OrderedRows.todo`.
 
 Resend rule. A result with content is final, a refusal or an empty answer
 included; the class never reads the content. An error with no content saves
@@ -105,8 +106,10 @@ class OrderedRows:
         self._pending = {str(e["id"]): e for e in read_lines(self._pending_path)}
         self._sends = Counter(str(e["id"]) for e in read_lines(self._dispatch_path))
         self._errors: dict[str, list[str]] = {}
+        self._last_error_trace: dict[str, Mapping[str, Any] | None] = {}
         for entry in read_lines(self._errors_path):
             self._errors.setdefault(str(entry["id"]), []).append(str(entry["error"]))
+            self._last_error_trace[str(entry["id"])] = entry.get("trace")
 
     @property
     def resent_calls(self) -> int:
@@ -126,9 +129,17 @@ class OrderedRows:
         """Commit the pending results in order; return the items to send.
 
         A pending result whose row reached the row file before a stop gets its
-        missing trace line here. The returned items, in frozen order, have no
-        row and no pending result.
+        missing trace line here. An item with :data:`ERROR_CAP` errors and no
+        result (a stop hit between its last error and its missing row) gets that
+        row here, so it is never sent again. The returned items, in frozen
+        order, have no row and no pending result.
         """
+        for item in self._order:
+            if item in self._committed or item in self._pending:
+                continue
+            errors = self._errors.get(item, [])
+            if len(errors) >= ERROR_CAP:
+                self._close_missing(item, errors[-1], self._last_error_trace.get(item))
         if self._trace is not None:
             for item, entry in self._pending.items():
                 if item in self._committed and entry.get("trace"):
@@ -173,13 +184,21 @@ class OrderedRows:
         Returns:
             True when this error closed the item as missing.
         """
-        append_line(self._errors_path, {"id": item, "error": error})
+        append_line(
+            self._errors_path,
+            {"id": item, "error": error, **({} if trace is None else {"trace": dict(trace)})},
+        )
         errors = self._errors.setdefault(item, [])
         errors.append(error)
+        self._last_error_trace[item] = trace
         if len(errors) < ERROR_CAP:
             return False
-        self.submit(item, {self._id_field: item, "missing": True, "error": error}, trace)
+        self._close_missing(item, error, trace)
         return True
+
+    def _close_missing(self, item: str, error: str, trace: Mapping[str, Any] | None) -> None:
+        """Save the missing row of *item*; the one place that writes it."""
+        self.submit(item, {self._id_field: item, "missing": True, "error": error}, trace)
 
     def commit(self) -> None:
         """Write the longest run of finished results that follows the committed rows."""
