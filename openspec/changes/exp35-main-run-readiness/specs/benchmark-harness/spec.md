@@ -193,6 +193,11 @@ The harness SHALL follow pre-registration section 14.2: score half A; write the 
 - **WHEN** the scoring step is asked for half-A scores and no selection file exists
 - **THEN** it MUST compute them
 
+#### Scenario: Join with half B locked
+
+- **WHEN** the main join runs and the half-B guard refuses
+- **THEN** the join MUST stop before it reads or writes anything, and no `join.json` MUST exist
+
 ### Requirement: Halves keep FinanceBench documents apart
 
 A split step SHALL write `halves.json` with seed 20261115. It SHALL split FinanceBench by document: documents are shuffled with the seed and each goes, with all its questions, to the half that has fewer questions so far, ties to half A. It SHALL split FreshStack, BioASQ and Legal RAG Bench by question: questions are shuffled with the seed and the first half, rounded up, is half A.
@@ -235,12 +240,17 @@ The analysis SHALL compute rows 1 to 19 of pre-registration section 8 from per-q
 
 ### Requirement: The sign-flip test and its interval follow fixed rules
 
-The sign-flip test SHALL count a draw as "at least as large" with a 1e-12 tie tolerance, as part of the registered test. Its 95% interval SHALL run from the lowest to the highest shift not rejected at 0.05 on the same draws, each end found by bisection to 0.0001. The FinanceBench GEE sensitivity check with document clusters SHALL use t on the number of documents minus 1 (amendment A5).
+The sign-flip test SHALL draw its signs with the call in pre-registration section 9. The sign-flip test SHALL count a draw as "at least as large" with a 1e-12 tie tolerance, as part of the registered test. Its 95% interval SHALL run from the lowest to the highest shift not rejected at 0.05 on the same draws, each end found by bisection to 0.0001. The FinanceBench GEE sensitivity check with document clusters SHALL use t on the number of documents minus 1 (amendment A5).
 
 #### Scenario: Interval ends
 
 - **WHEN** the interval is computed on a known-answer fixture
 - **THEN** each end MUST be within 0.0001 of the boundary between rejected and not rejected shifts on the same draws
+
+#### Scenario: Registered sign matrix
+
+- **WHEN** the sign matrix is drawn for 4 draws and 6 documents
+- **THEN** it MUST come from `numpy.random.default_rng(20261101).integers(0, 2, size=(4, 6))` with the default integer type, its first row MUST be 1, 1, 1, 0, 0, 0 before 0 maps to -1 and 1 to +1, and its columns MUST follow sorted document IDs taken from the gold table
 
 #### Scenario: Document clusters
 
@@ -417,6 +427,16 @@ A call result SHALL count as saved only when an answer text, verdict or score wa
 - **WHEN** a call has returned an error that is not a rate limit three times across two resumes
 - **THEN** the item MUST be closed as missing, the stage MUST go on, and the summary MUST name it
 
+#### Scenario: Checker cap per claim call
+
+- **WHEN** one claim of a ten-claim answer fails three times across resumes and the other nine return verdicts
+- **THEN** only that claim MUST be closed, the nine verdicts MUST be kept and never sent again, and the answer MUST be saved with `missing: true` and `closed_claims` so the analysis counts it as unjudged
+
+#### Scenario: Ragas NaN is returned content
+
+- **WHEN** a Ragas metric call returns NaN or no number
+- **THEN** the score MUST be saved as `null` with `not_defined`, MUST NOT be sent again, and MUST NOT count toward the cap
+
 #### Scenario: Refusal is final
 
 - **WHEN** an answer call returns a refusal
@@ -449,6 +469,16 @@ The stage key and the ingest done-marker SHALL hold a configuration hash of the 
 
 - **WHEN** a second runner opens a stage folder that a first runner holds
 - **THEN** the second runner MUST stop before it reads the row file or sends a call, and MUST name the lock
+
+#### Scenario: Another run mode
+
+- **WHEN** a main run resumes a stage folder whose key holds `run_mode` `prefreeze` or `smoke`
+- **THEN** the stage MUST refuse with exit code 2 and MUST name `run_mode`
+
+#### Scenario: Index built with another configuration
+
+- **WHEN** a search, answer or judge stage opens an index whose ingest done-marker differs from the `index_config` in its own key
+- **THEN** the stage MUST refuse with exit code 2 before the first query and MUST name each differing field
 
 ### Requirement: A main stage refuses an unfrozen plan or a dirty tree
 
