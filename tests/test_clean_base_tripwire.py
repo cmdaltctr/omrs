@@ -382,7 +382,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # test_native_sparse_prepare_at_ingest.py skips without the chroma extra. No fastapi.
 # +53 (2026-11-17, Exp 35 review fixes (+53 tests), by test-ID diff against e38446a1,
 # 56 added, 3 removed): every new case runs without the chroma extra. No fastapi.
-_BASE_EXECUTED = 13430
+# +5 (2026-11-17, returned-model record and smoke-join guard, by test-ID diff
+# against cbc43952, 6 added, 1 removed): no new case needs chroma or fastapi.
+_BASE_EXECUTED = 13435
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
