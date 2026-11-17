@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import arms
+import outputs35
 import scoring35
 import stages35
 
@@ -41,8 +42,8 @@ class RerankFailed(RuntimeError):
 def require_half_b_open(ctx: Any) -> None:
     """Refuse a main-run replicate stage until half B is open (task 16.17; protocol 0.14 item 54).
 
-    The answer, judge, Ragas and claim-kind stages call it before any model
-    call. A pre-freeze or smoke run writes its own folder and skips it.
+    The answer, closed-book, oracle, judge, Ragas and claim-kind stages call
+    it before any model call. A pre-freeze or smoke run writes its own folder and skips it.
 
     Raises:
         scoring35.HalfBLocked: ``scoring35.require_half_b`` refuses the output folder.
@@ -199,9 +200,13 @@ def open_checks(ctx: Any) -> dict[str, Any]:
             sparse backend than the fingerprint; ``native`` with no full-text
             index; a table version other than the sealed one; or a shared
             output folder with no passing ``rebuild.json``.
+        outputs35.ResumeMismatchError: The ingest done-marker of the index
+            holds another configuration than ``ctx.key["index_config"]``
+            (task 3.4, review R2-05); the message names each field.
     """
     _rebuild_gate(ctx)
     sealed = _fingerprint(ctx)
+    outputs35.check_index_config(ctx.index_dir, ctx.key["index_config"])
     backend = ctx.settings.retrieval.hybrid_sparse_backend
     if ctx.factors.hybrid_on and sealed.get("sparse_backend") != backend:
         raise FingerprintError(

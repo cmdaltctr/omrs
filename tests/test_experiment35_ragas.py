@@ -7,8 +7,10 @@ Stub metrics and a scripted seam; no Ragas, no router, no network.
 from __future__ import annotations
 
 import json
+import math
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 from tests._exp35_ragas_fixtures import (
@@ -24,6 +26,7 @@ from tests._exp35_ragas_fixtures import (
     ragas_stage,
     rows,
     run,
+    stub_metrics,
     write_answers,
 )
 
@@ -74,9 +77,8 @@ def test_a_wrong_ragas_version_stops_before_any_call_and_names_both(
     assert script.prompts == [] and router.opened == 0
 
 
-def test_an_answer_with_an_error_or_no_text_is_not_judged_and_sends_no_call(
-    tmp_path: Path,
-) -> None:
+def test_an_answer_with_an_error_is_not_judged_and_an_empty_answer_is(tmp_path: Path) -> None:
+    # Review R2-03: a returned empty answer is a final answer (section 12) and gets scores.
     run_dir = tmp_path / "run1"
     answers = [answer_row("q0", error="generation failed"), answer_row("q1"), answer_row("q2")]
     answers[2]["answer"] = ""
@@ -84,8 +86,18 @@ def test_an_answer_with_an_error_or_no_text_is_not_judged_and_sends_no_call(
     script, router = Script(), Router()
     assert run(ctx(run_dir, ["q0", "q1", "q2"], router), parts(script, router)) == 0
     saved = {r["qid"]: r for r in rows(run_dir)}
-    assert saved["q0"]["not_judged"] == saved["q2"]["not_judged"] == "no answer text"
+    assert saved["q0"]["not_judged"] == "no answer text"
     assert saved["q0"]["metrics"] == {} and saved["q0"]["calls"] == []
+    assert saved["q2"]["not_judged"] is None and sorted(saved["q2"]["metrics"]) == sorted(FIVE)
+    assert {p.split("|")[1] for p in script.prompts} == {"q1", "q2"}
+
+
+def test_a_missing_answer_row_is_not_judged(tmp_path: Path) -> None:
+    run_dir = tmp_path / "run1"
+    write_answers(run_dir, [{"qid": "q0", "missing": True, "error": "x"}, answer_row("q1")])
+    script, router = Script(), Router()
+    assert run(ctx(run_dir, ["q0", "q1"], router), parts(script, router)) == 0
+    assert rows(run_dir)[0]["not_judged"] == "no answer text"
     assert {p.split("|")[1] for p in script.prompts} == {"q1"}
 
 
@@ -217,3 +229,45 @@ def test_the_summary_never_reports_zero_errors_when_a_row_is_unjudged(tmp_path: 
     summary = json.loads((run_dir / "ragas-summary.json").read_text())
     assert summary["setup"] == "e4b-c512-roff-hoff"
     assert summary["errors"] >= 1 and summary["unjudged_open"] == {"ragas_context_recall": 1}
+
+
+def _nan_metrics(seam: Any, embeddings: Any) -> tuple[dict[str, Any], dict[str, Any]]:
+    """The stub metrics, with faithfulness returning NaN for ``q1``."""
+    fns, weights = stub_metrics(seam, embeddings)
+    real = fns["ragas_faithfulness"]
+
+    async def faith(sample: dict[str, Any]) -> float:
+        score = await real(sample)
+        return math.nan if sample["qid"] == "q1" else score
+
+    return {**fns, "ragas_faithfulness": faith}, weights
+
+
+def test_a_nan_score_is_final_undefined_and_never_resent(tmp_path: Path) -> None:
+    # Review R2-14: a NaN from a call that returned is returned content.
+    run_dir = _setup(tmp_path, ["q1", "q2"])
+    script, router = Script(), Router()
+    assert run(ctx(run_dir, ["q1", "q2"], router), parts(script, router, metrics=_nan_metrics)) == 0
+    row = rows(run_dir)[0]
+    metric = row["metrics"]["ragas_faithfulness"]
+    assert metric["score"] is None and metric["not_defined"] == "score is NaN"
+    assert row["unjudged"] == [] and not (run_dir / "ragas.metric-errors.jsonl").exists()
+    summary = json.loads((run_dir / "ragas-summary.json").read_text())
+    assert summary["errors"] == 0 and summary["not_defined"] == {"ragas_faithfulness": 1}
+
+
+def test_cut_last_lines_of_the_ragas_side_files_are_repaired_on_resume(tmp_path: Path) -> None:
+    # Review R2-09: a stop part-way through an append must not block --resume.
+    run_dir = _setup(tmp_path, ["q1", "q2"])
+    failing = Script({("ragas_answer_correctness", "q1"): APIConnectionError})
+    router = Router()
+    assert run(ctx(run_dir, ["q1", "q2"], router), parts(failing, router)) == ragas35.EXIT_OPEN
+    for name in ("ragas.partial.jsonl", "ragas.metric-errors.jsonl"):
+        path = run_dir / name
+        path.write_text(path.read_text(encoding="utf-8") + '{"qid": "q1", "met', encoding="utf-8")
+    c = ctx(run_dir, ["q1", "q2"], router)
+    c.resume = True
+    assert run(c, parts(Script(), router)) == 0
+    assert [r["qid"] for r in rows(run_dir)] == ["q1", "q2"]
+    errors = (run_dir / "ragas.metric-errors.jsonl").read_text(encoding="utf-8")
+    assert errors.endswith("\n") and len(errors.splitlines()) == 1

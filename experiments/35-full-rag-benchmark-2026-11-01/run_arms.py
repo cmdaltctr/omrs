@@ -21,8 +21,8 @@ are named in :data:`STAGE_TABLE`; each is ``async def stage(ctx: stages35.Ctx)
 * ``lengthcheck`` (``lengthcheck35``): the length-controlled check over the
   whole output folder into ``<out>/lengthcheck`` (``--judges chat,clef_flash``).
 
-The answer, judge, Ragas and claim-kind stages refuse a main run while half B
-is locked (``stagekit35.require_half_b_open``).
+The answer, closed-book, oracle, judge, Ragas and claim-kind stages refuse a
+main run while half B is locked (``stagekit35.require_half_b_open``).
 
 ``--answers closedbook-own|closedbook-rag|oracle`` points the judge and Ragas
 stages at those folders. Options of note: ``--answer-concurrency``,
@@ -50,7 +50,8 @@ request. ``--setup all`` or an index with a search stage runs each unit in its
 own process, in table order, and stops at the first non-zero exit code.
 
 Exit codes: 0 done; 2 setup or input error (nothing scored); 3 a check found a
-difference; 4 a judge could not start; 5 rate-limited past the attempt limit or
+difference; 4 a judge could not start, or a ``chat`` claim call failed (the
+message names it; ``--resume`` sends it again); 5 rate-limited past the attempt limit or
 out of credit (finished rows kept, no done-marker); 6 items still open (no
 done-marker; run again with ``--resume``). Heavy-run rule: tell the operator
 before a run without ``--dry-run``.
@@ -59,7 +60,6 @@ before a run without ``--dry-run``.
 from __future__ import annotations
 
 import asyncio
-import json
 import os
 import shlex
 import sys
@@ -180,6 +180,9 @@ def main(argv: Sequence[str] | None = None, *, deps: Any = None) -> int:
     except JudgeUnavailable as refused:
         say(f"[error] judge cannot start: {refused.reason}")
         return EXIT_JUDGE
+    except judges35.ClaimCallStop as stop:
+        say(f"[stop] {stop}")
+        return EXIT_JUDGE
     except RateLimitStop as stop:
         say(f"[stop] {stop}; finished rows are kept, no done-marker. Run again with --resume.")
         return EXIT_RATE_LIMIT
@@ -252,39 +255,6 @@ def _role_problems(settings: Any) -> list[list[str]]:
     return [list(p) for p in problems if p[0] not in IGNORED_ROLES]
 
 
-def _resolved(settings: Any) -> dict[str, Any]:
-    """Return the resolved values a trace records (no key fields)."""
-    answer, retrieval = settings.answer, settings.retrieval
-    return {
-        "embed_model": settings.llamacpp_embed_model,
-        "router_url": settings.llamacpp_router_url,
-        "router_models_max": settings.llamacpp_router_models_max,
-        "rag_profile": settings.rag_profile,
-        "tokenizer_model": settings.embedding.tokenizer_model,
-        "tokenizer_revision": settings.embedding.tokenizer_revision,
-        "query_instruction": settings.embedding.query_instruction,
-        "metadata_extraction": settings.metadata.extraction_mode,
-        "pdf_reader": settings.pdf_reader,
-        "chunk_size": settings.chunking.chunk_size,
-        "markdown_chunk_size": settings.chunking.markdown_chunk_size,
-        "chunk_overlap": settings.chunking.chunk_overlap,
-        "rerank_backend": retrieval.rerank_backend,
-        "rerank_model": retrieval.rerank_model,
-        "hybrid_sparse_backend": retrieval.hybrid_sparse_backend,
-        "hybrid_rrf_k": retrieval.hybrid_rrf_k,
-        "answer_provider": answer.provider,
-        "answer_model": answer.model,
-        "answer_temperature": answer.temperature,
-        "answer_seed": answer.seed,
-        "answer_allowed_hosts": answer.allowed_hosts,
-        "answer_reasoning": answer.reasoning,
-        "answer_max_output_tokens": answer.max_output_tokens,
-        "answer_context_window": answer.context_window,
-        "answer_max_rounds": answer.max_rounds,
-        "verify_claims": answer.verify_claims,
-    }
-
-
 def _concurrency(args: Any) -> dict[str, int]:
     return {name: int(getattr(args, name)) for name in cli35.CONCURRENCY_OPTIONS}
 
@@ -295,10 +265,11 @@ def _command(argv: Sequence[str], args: Any) -> str:
     return shlex.join(["run_arms.py", *argv, *flags])
 
 
-def _config(plan: Any, values: Mapping[str, Any], commit: str) -> dict[str, Any]:
+def _config(plan: Any, values: Mapping[str, Any], commit: str, mode: str) -> dict[str, Any]:
     """Return the configuration fields of the key (task 3.4): settings, runtime, prompts, commit.
 
     The GGUF entries carry machine paths; the runtime hash covers the models.
+    *mode* is the run mode (review R2-01).
     """
     hashed = {k: v for k, v in arms.without_keys(values).items() if k != "llamacpp_models"}
     hashed["recorded_pins"] = arms.recorded_pins(plan)
@@ -307,7 +278,30 @@ def _config(plan: Any, values: Mapping[str, Any], commit: str) -> dict[str, Any]
         runtime=plan["runtime"],
         prompts=arms.pinned(plan, "pins", "prompts"),
         commit=commit,
+        mode=mode,
     )
+
+
+def _run_mode(args: Any) -> str:
+    return "prefreeze" if args.prefreeze else ("smoke" if args.smoke else "main")
+
+
+def _key_config(args: Any, plan: Any, setup: arms.Setup, values: Any, commit: str) -> dict:
+    """Return the key's configuration fields; a stage that reads an index adds ``index_config``.
+
+    The index fields hash the settings of ``<index>-roff-hon`` with no answer host
+    and no judge, as the ingest key does (review R2-05). A main run also asks for
+    an index built by a main run; other modes leave the index run mode out.
+    """
+    mode = _run_mode(args)
+    index = arms.index_setup(setup.index)
+    found = arms.settings_values(index, plan, router_env.gguf_dir(), answer_host="", judges=())
+    built = _config(plan, found, commit, mode)
+    if args.stage in arms.INDEX_STAGES:
+        return built
+    if mode != "main":
+        built.pop("run_mode")
+    return {**_config(plan, values, commit, mode), "index_config": built}
 
 
 def _ingest_files(args: Any, plan: Any, root: Path, questions: Sequence[Any]) -> list[Path]:
@@ -373,7 +367,7 @@ def run_one(args: Any, argv: Sequence[str], kind: str, name: str, deps: Any) -> 
         args.corpus_sample,
         arms.plan_seed(plan, "question_order"),
         [q.qid for q in questions],
-        config=_config(plan, values, deps.commit()),
+        config=_key_config(args, plan, setup, values, deps.commit()),
     )
     folder = layout.stage_dir(args.dataset, kind, name, args.run)
     if args.resume and (folder / f".done-{args.stage}.json").exists():
@@ -396,7 +390,7 @@ def run_one(args: Any, argv: Sequence[str], kind: str, name: str, deps: Any) -> 
             questions,
             problems,
             concurrency=_concurrency(args),
-            resolved=_resolved(settings),
+            resolved=cli35.resolved(settings),
         )
     if problems:
         raise arms.ArmConfigError(f"OMRS lists router role problems: {problems}")
@@ -486,7 +480,7 @@ def _trace(args: Any, name: str, plan: Any, settings: Any, models: Any, folder: 
             "top_k": arms.TOP_K,
             "prefreeze": args.prefreeze,
             **_concurrency(args),
-            **_resolved(settings),
+            **cli35.resolved(settings),
             "recorded_pins": arms.recorded_pins(plan),
         },
         model_identities=identities,

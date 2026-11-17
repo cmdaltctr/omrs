@@ -17,6 +17,11 @@ Resend rule (pre-registration section 12, ruling R-3). A failed metric is never 
 score. ``--resume`` runs only the open metrics of an answer again and never a
 scored one. The third error of a metric (first send plus 2 resends, across
 resumes) closes it: the final row keeps it in ``unjudged`` with ``closed: true``.
+A metric call that returns NaN (or no number) returned content: the score is
+saved as ``null`` with ``not_defined``, counted in the summary, never resent and
+never counted toward the cap (review R2-14). A returned empty answer is judged
+like any other answer; only a missing or error row gets ``not_judged`` (R2-03).
+Side files drop a cut last line on read (R2-09).
 A rate-limit stop (the hosted gate) saves nothing for the answer in flight and
 returns :data:`EXIT_RATE_LIMIT`.
 
@@ -28,9 +33,7 @@ Ragas lives in a separate environment and is imported only inside the builders.
 from __future__ import annotations
 
 import asyncio
-import json
 import math
-import os
 import sys
 from collections import Counter
 from collections.abc import Awaitable, Callable, Mapping, Sequence
@@ -45,7 +48,12 @@ import outputs35  # noqa: E402
 import ragas_stage as ragas_stage_lib  # noqa: E402
 import stagekit35  # noqa: E402
 from experiments._lib.hosted_calls import HostedGate, RateLimitStop  # noqa: E402
-from experiments._lib.ordered_rows import ERROR_CAP, OrderedRows  # noqa: E402
+from experiments._lib.ordered_rows import (  # noqa: E402
+    ERROR_CAP,
+    OrderedRows,
+    append_line,
+    read_lines,
+)
 from experiments._lib.router_env import model_name  # noqa: E402
 from ragas35_judge import (  # noqa: E402
     RagasParts,
@@ -102,17 +110,9 @@ def add_arguments(parser: Any) -> None:
 # --- files -----------------------------------------------------------------------
 
 
-def _read(path: Path) -> list[dict[str, Any]]:
-    if not path.exists():
-        return []
-    return [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines() if x.strip()]
-
-
-def _append(path: Path, record: Mapping[str, Any]) -> None:
-    with path.open("a", encoding="utf-8") as handle:
-        handle.write(json.dumps(record, ensure_ascii=False) + "\n")
-        handle.flush()
-        os.fsync(handle.fileno())
+#: A cut last line (a stop part-way through an append) is dropped (review R2-09).
+_read = read_lines
+_append = append_line
 
 
 # --- one answer -----------------------------------------------------------------
@@ -177,12 +177,12 @@ async def _judge(
                 raise RateLimitStop(f"{name}: rate-limit stop inside Ragas") from exc
             failed.append((name, type(exc).__name__))
             continue
-        if score is None or math.isnan(score):
-            failed.append((name, "score is NaN"))
-            continue
+        undefined = score is None or math.isnan(score)
         records[name] = ragas_stage_lib._metric_record(
-            score, seam.calls[first:], clock() - started, ""
+            None if undefined else score, seam.calls[first:], clock() - started, ""
         )
+        if undefined:  # returned content: final, never resent (review R2-14)
+            records[name]["not_defined"] = f"score is {'NaN' if score is not None else 'None'}"
     return records, failed, seam.calls
 
 
@@ -198,6 +198,9 @@ def _summary(
     still_open: Counter[str] = Counter()
     for row in open_rows:
         still_open.update(u["metric"] for u in row["unjudged"] if not u["closed"])
+    undefined = Counter(
+        m for r in final for m, v in r.get("metrics", {}).items() if v.get("not_defined")
+    )
     return {
         "setup": ctx.setup,
         "answers": len(ctx.questions),
@@ -206,6 +209,7 @@ def _summary(
         "errors": errors,
         "unjudged_open": dict(sorted(still_open.items())),
         "unjudged_closed": dict(sorted(closed.items())),
+        "not_defined": dict(sorted(undefined.items())),
         "calls": sum(len(r.get("calls", [])) for r in final),
         "resent_calls": resent,
     }
@@ -325,8 +329,8 @@ async def _run(
         while not stop and not queue.empty():
             qid = queue.get_nowait()
             answer = answers.get(qid) or {}
-            text = "" if answer.get("error") or answer.get("missing") else answer.get("answer")
-            if not text:
+            text = None if answer.get("error") or answer.get("missing") else answer.get("answer")
+            if text is None:  # no returned answer; an empty one is judged (review R2-03)
                 rows.submit(qid, _row(header, qid, {}, {}, [], NO_ANSWER))
                 continue
             sample = {

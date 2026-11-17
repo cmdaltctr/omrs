@@ -12,7 +12,14 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from tests._exp35_fixtures import FakeTokens, fake_plan, load, make_data_root, stage_ctx
+from tests._exp35_fixtures import (
+    FakeTokens,
+    fake_plan,
+    load,
+    make_data_root,
+    open_half_b,
+    stage_ctx,
+)
 
 from omrs.core.answer.stages import prepare_evidence
 
@@ -25,6 +32,13 @@ stagekit35 = load("stagekit35")
 stages35 = load("stages35")
 
 SETUP = "e4b-c1024-r4b-hon"
+
+
+def _selected(*args: Any, **kwargs: Any) -> Any:
+    """Return a stage context whose ``selection.json`` names the 4B sizes, with half B open."""
+    ctx = stage_ctx(*args, **kwargs)
+    open_half_b(ctx.layout.root, embedder="4b", reranker="4b")
+    return ctx
 
 
 @pytest.fixture(autouse=True)
@@ -80,7 +94,7 @@ def asked(monkeypatch: pytest.MonkeyPatch) -> list[str]:
 def test_closed_book_runs_both_prompts_once_per_question_with_no_search(
     tmp_path: Path, asked: list[str], dataset: str
 ) -> None:
-    ctx = stage_ctx(
+    ctx = _selected(
         tmp_path, "closedbook", SETUP, kind="closedbook", questions=_questions(),
         engine=Engine(), dataset=dataset,
     )  # fmt: skip
@@ -103,7 +117,7 @@ def test_closed_book_runs_both_prompts_once_per_question_with_no_search(
 
 
 def test_a_recorded_drop_step_3_skips_the_rag_prompt_run(tmp_path: Path, asked: list[str]) -> None:
-    ctx = stage_ctx(
+    ctx = _selected(
         tmp_path, "closedbook", SETUP, kind="closedbook", questions=_questions(), engine=Engine()
     )
     outputs35.write_json(ctx.layout.root / "drops.json", {"drops": [{"step": 3}]})
@@ -114,7 +128,7 @@ def test_a_recorded_drop_step_3_skips_the_rag_prompt_run(tmp_path: Path, asked: 
 
 def test_closed_book_and_oracle_refuse_another_run_than_1(tmp_path: Path) -> None:
     for module, stage in ((closedbook35, "closedbook_stage"), (oracle35, "oracle_stage")):
-        ctx = stage_ctx(tmp_path, "x", SETUP, kind="oracle", questions=_questions(), run=2)
+        ctx = _selected(tmp_path, "x", SETUP, kind="oracle", questions=_questions(), run=2)
         with pytest.raises(stages35.StageOrderError, match="run 1"):
             asyncio.run(getattr(module, stage)(ctx))
 
@@ -187,7 +201,7 @@ def test_the_oracle_stage_answers_from_gold_units_once_with_no_search(
     root, passages = prepared
     questions = datasets35.load_questions("bioasq", root)[:3]
     engine = Engine()
-    ctx = stage_ctx(
+    ctx = _selected(
         tmp_path, "oracle", SETUP, kind="oracle", questions=questions, engine=engine,
         args={"passages_dir": passages},
     )  # fmt: skip
@@ -202,7 +216,7 @@ def test_the_oracle_stage_answers_from_gold_units_once_with_no_search(
 
 
 def test_each_closed_book_prompt_writes_its_own_trace(tmp_path: Path, asked: list[str]) -> None:
-    ctx = stage_ctx(
+    ctx = _selected(
         tmp_path, "closedbook", SETUP, kind="closedbook", questions=_questions(), engine=Engine()
     )
     assert asyncio.run(closedbook35.closedbook_stage(ctx)) == 0

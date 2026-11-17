@@ -40,7 +40,13 @@ from typing import Any
 
 from experiments._lib.run_safety import exclusive_lock
 
-CONFIG_FIELDS = ("settings_sha256", "runtime_sha256", "prompt_sha256", "harness_commit")
+CONFIG_FIELDS = (
+    "settings_sha256",
+    "runtime_sha256",
+    "prompt_sha256",
+    "harness_commit",
+    "run_mode",
+)
 """The configuration fields of a stage key, also kept in the done-marker."""
 
 
@@ -188,6 +194,7 @@ def config_fields(
     runtime: Mapping[str, Any],
     prompts: Mapping[str, str],
     commit: str,
+    mode: str,
 ) -> dict[str, Any]:
     """Return the configuration fields of a stage key (H-09, design D39).
 
@@ -198,16 +205,20 @@ def config_fields(
         runtime: The plan ``runtime`` block.
         prompts: The P13 prompt template hashes, by template name.
         commit: The harness commit.
+        mode: The run mode, ``main``, ``prefreeze`` or ``smoke`` (review
+            R2-01), so a main ``--resume`` never accepts rows of another mode.
 
     Returns:
         One SHA-256 of the settings and one of the runtime block, the prompt
-        hashes by name and the commit, under the names of :data:`CONFIG_FIELDS`.
+        hashes by name, the commit and the run mode, under the names of
+        :data:`CONFIG_FIELDS`.
     """
     return {
         "settings_sha256": _sha256(_without_keys(settings)),
         "runtime_sha256": _sha256(runtime),
         "prompt_sha256": dict(sorted(prompts.items())),
         "harness_commit": commit,
+        "run_mode": mode,
     }
 
 

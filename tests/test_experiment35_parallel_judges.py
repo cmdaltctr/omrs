@@ -3,8 +3,9 @@
 Rules under test: the in-flight limits of ``chat`` and ``clef_flash``;
 byte-identical rows and traces at any concurrency; a ``chat`` rate limit
 stops with exit 5 and saves nothing; a ``chat`` failure exits 4 after the
-calls in flight, is resent, and closes after its third error; a Clef-Flash
-call with an error record is a failed call, never a verdict.
+calls in flight, is resent, and closes its claim after the claim's third error
+(review R2-06, R2-08); a Clef-Flash call with an error record is a failed
+call, never a verdict.
 """
 
 from __future__ import annotations
@@ -19,7 +20,7 @@ import pytest
 from experiments._lib.hosted_calls import RateLimitStop
 from tests._exp35_fixtures import load, stage_ctx
 
-from omrs.core.answer.judges.base import JudgeCall, Judgement, JudgeUnavailable
+from omrs.core.answer.judges.base import JudgeCall, Judgement
 
 datasets35 = load("datasets35")
 judges35 = load("judges35")
@@ -148,24 +149,51 @@ def test_a_chat_rate_limit_on_every_attempt_stops_and_saves_no_row(tmp_path: Pat
     assert not (ctx.run_dir / ".done-judge-chat.json").exists()
 
 
-def test_a_chat_failure_exits_4_is_resent_and_closes_after_three(tmp_path: Path) -> None:
+def test_a_chat_failure_exits_4_is_resent_and_closes_only_its_claim_after_three(
+    tmp_path: Path,
+) -> None:
     judge = Judge("chat", {"Claim 1 two.": ["fail", "fail", "fail"]})
     for _ in range(2):
-        with pytest.raises(JudgeUnavailable):
+        with pytest.raises(judges35.ClaimCallStop, match="q1 claim 1"):
             _run(_ctx(tmp_path, judge, resume=True))
     ctx = _ctx(tmp_path, judge, resume=True)
     assert "q1" not in [r["qid"] for r in _lines(ctx.run_dir / "judge-chat.jsonl")]
     assert _run(ctx) == 0
-    rows = _lines(ctx.run_dir / "judge-chat.jsonl")
-    assert rows[1] == {"qid": "q1", "missing": True, "error": "RuntimeError: judge timeout"}
+    row = _lines(ctx.run_dir / "judge-chat.jsonl")[1]
+    assert row["missing"] is True and row["closed_claims"] == [1]
+    assert row["verdicts"][0]["verdict"] == "supported"
+    closed = row["verdicts"][1]
+    assert closed["verdict"] is None and closed["closed"] is True
+    assert closed["error"] == "RuntimeError: judge timeout"
+    assert judge.calls.count("Claim 1 one.") == 1
     marker = json.loads((ctx.run_dir / ".done-judge-chat.json").read_text(encoding="utf-8"))
     assert marker["closed_missing"] == ["q1"] and marker["resent_calls"] == 2
+
+
+def test_errors_count_per_claim_call_and_a_judged_claim_is_never_resent(tmp_path: Path) -> None:
+    # Review R2-06: three errors on different claims of one answer never close it.
+    judge = Judge(
+        "clef_flash", {"Claim 2 one.": ["error", "ok", "error"], "Claim 2 two.": ["error"]}
+    )
+    codes = []
+    for _ in range(3):
+        try:
+            codes.append(_run(_ctx(tmp_path, judge, resume=True)))
+        except stages35.StageIncomplete:
+            codes.append(6)
+        if codes[-1] == 0:
+            break
+    assert codes == [6, 0]
+    row = _lines(_ctx(tmp_path, judge, resume=True).run_dir / "judge-clef_flash.jsonl")[2]
+    assert "missing" not in row
+    assert [v["verdict"] for v in row["verdicts"]] == ["supported", "supported"]
+    assert judge.calls.count("Claim 2 one.") == 2
 
 
 def test_a_chat_failure_lets_the_calls_in_flight_finish_first(tmp_path: Path) -> None:
     judge = Judge("chat", {"Claim 0 one.": ["fail"]})
     ctx = _ctx(tmp_path, judge, chat=4)
-    with pytest.raises(JudgeUnavailable):
+    with pytest.raises(judges35.ClaimCallStop):
         _run(ctx)
     pending = outputs35.read_rows(ctx.run_dir / "judge-chat.pending.jsonl")
     assert {p["id"] for p in pending} == {"q1", "q2", "q3"}
@@ -182,6 +210,12 @@ def test_a_clef_flash_error_record_is_a_failed_call_never_a_verdict(tmp_path: Pa
         assert all(v["verdict"] != "unparseable" for r in rows for v in r["verdicts"])
     assert _run(ctx) == 0
     assert _lines(ctx.run_dir / "judge-clef_flash.jsonl")[3]["missing"] is True
+
+
+def test_a_chat_stop_message_names_the_call_and_the_resume() -> None:
+    text = str(judges35.ClaimCallStop("q7", 2, "RuntimeError: judge timeout"))
+    assert "q7 claim 2" in text and "judge timeout" in text and "--resume" in text
+    assert "cannot start" not in text
 
 
 def test_an_answer_with_no_text_is_not_judged_and_sends_no_call(tmp_path: Path) -> None:

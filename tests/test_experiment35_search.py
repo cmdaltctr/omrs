@@ -172,6 +172,19 @@ def test_a_missing_fingerprint_refuses_before_the_first_query(tmp_path: Path) ->
     assert engine.calls == []
 
 
+def test_an_index_built_with_another_configuration_is_refused_before_the_first_query(
+    tmp_path: Path,
+) -> None:
+    # Review R2-05: the stage checks the ingest done-marker, not only the bare function.
+    engine = Engine()
+    ctx = _ctx(tmp_path, engine)
+    changed = {**ctx.key["index_config"], "settings_sha256": "0" * 64}
+    outputs35.write_json(ctx.index_dir / ".done-ingest.json", {"config": changed})
+    with pytest.raises(outputs35.ResumeMismatchError, match="settings_sha256"):
+        _run(ctx)
+    assert engine.calls == []
+
+
 def test_a_hybrid_setup_with_another_sparse_backend_is_refused_and_names_both(
     tmp_path: Path,
 ) -> None:

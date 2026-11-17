@@ -8,7 +8,8 @@ in its own process, in table order.
 
 Exit codes: 0 done; 2 setup or input error (nothing scored, also an unknown
 name or a value below 1); 3 a determinism or rebuild check found a difference;
-4 a judge could not start; 5 a hosted call was rate-limited past the attempt
+4 a judge could not start, or a ``chat`` claim call failed (``--resume`` sends
+it again); 5 a hosted call was rate-limited past the attempt
 limit or the account is out of credit (finished rows kept, no done-marker);
 6 items are still open after their errors (no done-marker; run again with
 ``--resume``).
@@ -139,6 +140,39 @@ def print_plan(
     say("[dry-run] nothing started, nothing sent")
     say(json.dumps(plan, indent=2, default=str))
     return 1 if problems else 0
+
+
+def resolved(settings: Any) -> dict[str, Any]:
+    """Return the resolved values a trace records (no key fields)."""
+    answer, retrieval = settings.answer, settings.retrieval
+    return {
+        "embed_model": settings.llamacpp_embed_model,
+        "router_url": settings.llamacpp_router_url,
+        "router_models_max": settings.llamacpp_router_models_max,
+        "rag_profile": settings.rag_profile,
+        "tokenizer_model": settings.embedding.tokenizer_model,
+        "tokenizer_revision": settings.embedding.tokenizer_revision,
+        "query_instruction": settings.embedding.query_instruction,
+        "metadata_extraction": settings.metadata.extraction_mode,
+        "pdf_reader": settings.pdf_reader,
+        "chunk_size": settings.chunking.chunk_size,
+        "markdown_chunk_size": settings.chunking.markdown_chunk_size,
+        "chunk_overlap": settings.chunking.chunk_overlap,
+        "rerank_backend": retrieval.rerank_backend,
+        "rerank_model": retrieval.rerank_model,
+        "hybrid_sparse_backend": retrieval.hybrid_sparse_backend,
+        "hybrid_rrf_k": retrieval.hybrid_rrf_k,
+        "answer_provider": answer.provider,
+        "answer_model": answer.model,
+        "answer_temperature": answer.temperature,
+        "answer_seed": answer.seed,
+        "answer_allowed_hosts": answer.allowed_hosts,
+        "answer_reasoning": answer.reasoning,
+        "answer_max_output_tokens": answer.max_output_tokens,
+        "answer_context_window": answer.context_window,
+        "answer_max_rounds": answer.max_rounds,
+        "verify_claims": answer.verify_claims,
+    }
 
 
 def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:

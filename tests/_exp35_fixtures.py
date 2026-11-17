@@ -261,6 +261,9 @@ def make_data_root(root: Path) -> Path:
 
 # --- search, answer and judge stage fixtures (package B2) --------------------------------
 
+#: The configuration the fixture index's ingest done-marker holds (review R2-05).
+INDEX_CONFIG = {"settings_sha256": "1" * 64, "harness_commit": "c0ffee", "run_mode": "main"}
+
 
 def seal_fixture(layout: Any, dataset: str, setup: str, *, backend: str = "bm25") -> Any:
     """Write a small LanceDB table, its fingerprint and a passing ``rebuild.json``.
@@ -291,6 +294,9 @@ def seal_fixture(layout: Any, dataset: str, setup: str, *, backend: str = "bm25"
         {"collection": collection, "table_version": version, "sparse_backend": backend},
     )
     outputs35.write_json(layout.root / dataset / "rebuild.json", {"ok": True})
+    outputs35.write_json(
+        layout.index_dir(dataset, factors.index) / ".done-ingest.json", {"config": INDEX_CONFIG}
+    )
     return factors
 
 
@@ -374,7 +380,9 @@ def stage_ctx(
         run=run,
         questions=list(questions),
         layout=layout,
-        key=outputs35.run_key(None, None, 20261101, [q.qid for q in questions]),
+        key=outputs35.run_key(
+            None, None, 20261101, [q.qid for q in questions], config={"index_config": INDEX_CONFIG}
+        ),
         resume=resume,
         trace=trace,
         engine=engine,

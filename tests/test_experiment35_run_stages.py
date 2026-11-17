@@ -67,7 +67,17 @@ class RunStub(Stub):
 def _sealed(env: Path, stub: RunStub, out: Path, setup: str = RERANK) -> None:
     from types import SimpleNamespace
 
-    seal_fixture(outputs35.Layout(out), "bioasq", setup)
+    factors = seal_fixture(outputs35.Layout(out), "bioasq", setup)
+    # The ingest done-marker a smoke ingest of the index writes (review R2-05).
+    index = arms.index_setup(factors.index)
+    flags = ["--dataset", "bioasq", "--index", index.index, "--stage", "ingest", "--qids", QIDS]
+    values = arms.settings_values(
+        index, stub.plan(), run_arms.router_env.gguf_dir(), answer_host="", judges=()
+    )
+    config = run_arms._key_config(
+        load("cli35").parse_args(flags), stub.plan(), index, values, stub.commit()
+    )
+    outputs35.write_json(out / "bioasq" / index.index / ".done-ingest.json", {"config": config})
     found = SimpleNamespace(build=11941, models=[{"file": "f.gguf", "sha256": "a" * 64}])
     outputs35.write_json(out / "environment.json", stages35.environment_record(MACHINE, found))
 

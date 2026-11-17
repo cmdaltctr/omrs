@@ -24,11 +24,18 @@ reads answer content.
 
 The stage refuses to start without ``<out>/selection.json`` naming this
 setup among the 15 answer setups (task 14.3), and while half B is locked
-(task 16.17), except in a pre-freeze or smoke run.
+(task 16.17), except in a pre-freeze or smoke run. A dataset that drop
+step 1 removed (``drops.json``) gets no answer and no file (review R2-07).
+
+Searches run one at a time, as in the search stage, so G1 never depends on
+batch size; only the paid answer calls run at ``--answer-concurrency`` (R2-02).
+The dispatch record is written just before the paid call, so a failed local
+search is never counted as a resent paid call (R2-10).
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 from collections import Counter
 from collections.abc import Mapping, Sequence
@@ -36,12 +43,13 @@ from pathlib import Path
 from typing import Any
 
 import arms
+import budget35
 import outputs35
 import scoring35
 import stagekit35
 import stages35
 from experiments._lib.hosted_calls import HostedGate, RateLimitStop
-from experiments._lib.ordered_rows import OrderedRows
+from experiments._lib.ordered_rows import OrderedRows, append_line, read_lines
 
 from omrs.core.retrieval.assembly import assemble
 
@@ -143,7 +151,7 @@ class _SplitLog:
         self.path, self.stage = log.path, log.stage
         self._extra = Path(log.path).parent / "retrieval.jsonl"
         done, seen, keep = log.done_ids("qid"), set(), []
-        for line in outputs35.read_rows(self._extra):
+        for line in read_lines(self._extra):
             if line["qid"] in done and line["qid"] not in seen:
                 seen.add(line["qid"])
                 keep.append(line)
@@ -162,8 +170,7 @@ class _SplitLog:
         body = dict(row)
         extra = body.pop("retrieval", None)
         if extra is not None:
-            with self._extra.open("a", encoding="utf-8") as handle:
-                handle.write(json.dumps(extra, ensure_ascii=False) + "\n")
+            append_line(self._extra, extra)
         self._log.append(body)
 
 
@@ -269,6 +276,9 @@ async def answer_stage(ctx: stages35.Ctx) -> int:
         RateLimitStop: Rate-limited past the attempt limit, or out of credit.
         stages35.StageIncomplete: Items stay open after their errors.
     """
+    if ctx.dataset not in budget35.answer_datasets(budget35.read_drops(ctx.layout.root)):
+        say(f"[answer] {ctx.dataset} dropped (drop step 1 in drops.json); no answers")
+        return 0
     require_selection(ctx)
     with outputs35.RowFile(ctx.run_dir, "answer", ctx.key, resume=ctx.resume) as log:
         if log.done:
@@ -280,14 +290,17 @@ async def answer_stage(ctx: stages35.Ctx) -> int:
             "answer", ctx.args.answer_concurrency, attempts=ctx.args.rate_limit_attempts
         )
         by_id = {q.qid: q for q in ctx.questions}
+        # One search at a time, as in the search stage (G1); only the paid calls run in parallel.
+        searching = asyncio.Lock()
 
         async def one(qid: str) -> None:
             question = by_id[qid]
-            kept.dispatch(qid)
             error = None
             try:
-                found, line = await stagekit35.ranked(ctx, question.text)
+                async with searching:
+                    found, line = await stagekit35.ranked(ctx, question.text)
                 rows, cut_tokens = evidence_rows(ctx, found)
+                kept.dispatch(qid)
                 started = stagekit35.clock()
                 result = await gate.call(
                     lambda: ctx.engine.answer(

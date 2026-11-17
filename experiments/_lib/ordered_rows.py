@@ -46,13 +46,13 @@ try:
 except ImportError:  # imported as top-level ``_lib`` from an experiment folder
     from _lib.trace import TraceWriter  # type: ignore[no-redef]
 
-__all__ = ["ERROR_CAP", "OrderedRows"]
+__all__ = ["ERROR_CAP", "OrderedRows", "append_line", "read_lines"]
 
 ERROR_CAP = 3
 """Errors (not rate limits, not out of credit) that close an item as missing."""
 
 
-def _load(path: Path) -> list[dict[str, Any]]:
+def read_lines(path: Path) -> list[dict[str, Any]]:
     """Return the lines of *path*; drop a last line that a stop cut part-way."""
     if not path.exists():
         return []
@@ -65,8 +65,8 @@ def _load(path: Path) -> list[dict[str, Any]]:
     return [json.loads(line) for line in text.splitlines() if line.strip()]
 
 
-def _append(path: Path, record: Mapping[str, Any]) -> None:
-    """Append one line to *path*; flush and sync it before returning."""
+def append_line(path: Path, record: Mapping[str, Any]) -> None:
+    """Append *record* as one JSON line to *path*; flush and sync it before returning."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(record, ensure_ascii=False, default=str) + "\n")
@@ -102,10 +102,10 @@ class OrderedRows:
         self._dispatch_path = folder / f"{log.stage}.dispatch.jsonl"
         self._errors_path = folder / f"{log.stage}.errors.jsonl"
         self._committed = log.done_ids(id_field)
-        self._pending = {str(e["id"]): e for e in _load(self._pending_path)}
-        self._sends = Counter(str(e["id"]) for e in _load(self._dispatch_path))
+        self._pending = {str(e["id"]): e for e in read_lines(self._pending_path)}
+        self._sends = Counter(str(e["id"]) for e in read_lines(self._dispatch_path))
         self._errors: dict[str, list[str]] = {}
-        for entry in _load(self._errors_path):
+        for entry in read_lines(self._errors_path):
             self._errors.setdefault(str(entry["id"]), []).append(str(entry["error"]))
 
     @property
@@ -139,7 +139,7 @@ class OrderedRows:
 
     def dispatch(self, item: str) -> None:
         """Record a send of *item*; synced before the paid call is made."""
-        _append(self._dispatch_path, {"id": item})
+        append_line(self._dispatch_path, {"id": item})
         self._sends[item] += 1
 
     def submit(
@@ -158,7 +158,7 @@ class OrderedRows:
             "row": dict(row),
             "trace": None if trace is None else {**trace, "resent_calls": self.resends(item)},
         }
-        _append(self._pending_path, entry)
+        append_line(self._pending_path, entry)
         self._pending[item] = entry
         self.commit()
 
@@ -173,7 +173,7 @@ class OrderedRows:
         Returns:
             True when this error closed the item as missing.
         """
-        _append(self._errors_path, {"id": item, "error": error})
+        append_line(self._errors_path, {"id": item, "error": error})
         errors = self._errors.setdefault(item, [])
         errors.append(error)
         if len(errors) < ERROR_CAP:
@@ -197,7 +197,9 @@ class OrderedRows:
     def finish(self, summary: Mapping[str, Any]) -> bool:
         """Write the done-marker when every item has a row, then remove the pending file.
 
-        The marker holds *summary*, ``resent_calls`` and ``closed_missing``.
+        The marker holds *summary*, ``resent_calls`` and ``closed_missing``. A
+        stage that counts these per call (the judge stage) gives its own in
+        *summary*, and they win.
 
         Returns:
             False, with no marker, while an item has no row (``--resume`` sends it).
@@ -206,7 +208,7 @@ class OrderedRows:
         if any(item not in self._committed for item in self._order):
             return False
         self._log.mark_done(
-            {**summary, "resent_calls": self.resent_calls, "closed_missing": self.closed_missing}
+            {"resent_calls": self.resent_calls, "closed_missing": self.closed_missing, **summary}
         )
         self._pending_path.unlink(missing_ok=True)
         return True

@@ -32,6 +32,7 @@ def _config(**change: Any) -> dict[str, Any]:
         "runtime": RUNTIME,
         "prompts": PROMPTS,
         "commit": COMMIT,
+        "mode": "main",
     }
     parts.update(change)
     return outputs35.config_fields(**parts)
@@ -92,6 +93,7 @@ def test_key_holds_one_hash_per_part_and_the_commit() -> None:
         "runtime_sha256",
         "prompt_sha256",
         "harness_commit",
+        "run_mode",
     }
     assert len(key["settings_sha256"]) == 64
     assert key["prompt_sha256"] == PROMPTS
@@ -111,6 +113,7 @@ def test_settings_hash_leaves_out_keys() -> None:
         ({"runtime": {"models": [{"file": "r.gguf", "sha256": "e" * 64}]}}, "runtime_sha256"),
         ({"prompts": {**PROMPTS, "answer": "f" * 64}}, "prompt_sha256"),
         ({"commit": "0" * 40}, "harness_commit"),
+        ({"mode": "smoke"}, "run_mode"),
     ],
 )
 def test_resume_with_a_changed_part_refuses_and_names_it(

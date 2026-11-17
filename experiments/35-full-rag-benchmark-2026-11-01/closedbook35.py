@@ -99,12 +99,15 @@ async def closedbook_stage(ctx: stages35.Ctx) -> int:
     """Run the own-knowledge prompt, then the RAG prompt unless dropped; return 0.
 
     Raises:
-        stages35.StageOrderError: A run other than run 1.
+        stages35.StageOrderError: A run other than run 1, or no ``selection.json``
+            naming this answer setup (main run, review R2-04).
+        scoring35.HalfBLocked: A main run while half B is locked.
         RateLimitStop: Rate-limited past the attempt limit, or out of credit.
         stages35.StageIncomplete: Items stay open after their errors.
     """
     if ctx.run != 1:
         raise stages35.StageOrderError("the closed-book stage runs once, as run 1")
+    answers35.require_selection(ctx)
     await _one_prompt(ctx, "own")
     if RAG_PROMPT_DROP in budget35.read_drops(ctx.layout.root):
         say("[closedbook-rag] dropped (drop step 3 in drops.json); one closed-book run")

@@ -109,13 +109,16 @@ async def oracle_stage(ctx: stages35.Ctx, pages: PageReader | None = None) -> in
     """Answer every question once from its gold units; return 0 when every question has a row.
 
     Raises:
-        stages35.StageOrderError: A run other than run 1.
+        stages35.StageOrderError: A run other than run 1, or no ``selection.json``
+            naming this answer setup (main run, review R2-04).
+        scoring35.HalfBLocked: A main run while half B is locked.
         datasets35.DatasetError: A gold unit has no text (before any call).
         RateLimitStop: Rate-limited past the attempt limit, or out of credit.
         stages35.StageIncomplete: Items stay open after their errors.
     """
     if ctx.run != 1:
         raise stages35.StageOrderError("the oracle stage runs once, as run 1")
+    answers35.require_selection(ctx)
     passages = getattr(ctx.args, "passages_dir", None)
     if ctx.dataset == "financebench" and pages is None:
         pages = pdf_pages(ctx.settings, datasets35.data_root())
