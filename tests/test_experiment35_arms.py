@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from tests._exp35_fixtures import FOLDER, fake_plan, load, make_gguf
+from tests._exp35_fixtures import FOLDER, fake_plan, load, make_gguf, unpin
 
 from omrs.core.answer.settings import AnswerSettings
 
@@ -197,6 +197,35 @@ def test_a_missing_seed_or_pin_block_names_the_plan_key(gguf: Path) -> None:
     del plan["pins"]
     with pytest.raises(arms.ArmConfigError, match="pins"):
         _values("e4b-c512-roff-hoff", gguf, plan)
+
+
+# A value a pre-freeze task has not recorded is ``null`` in plan.json and listed in
+# ``pins.pending``. Each reader refuses it by name; a ``null`` is never passed on.
+
+
+def test_a_null_seed_is_refused_and_names_its_key_and_task() -> None:
+    plan = unpin(fake_plan(), "seeds.ragas_judge", "P10")
+    with pytest.raises(arms.ArmConfigError, match=r"seeds\.ragas_judge.*P10"):
+        arms.plan_seed(plan, "ragas_judge")
+
+
+def test_a_null_recorded_pin_is_refused_and_never_reaches_the_trace() -> None:
+    plan = unpin(fake_plan(), "pins.recorded.reranker_instruction", "P11")
+    with pytest.raises(arms.ArmConfigError, match=r"pins\.recorded\.reranker_instruction.*P11"):
+        arms.recorded_pins(plan)
+
+
+def test_a_null_settings_pin_is_never_written_to_the_scratch_settings(gguf: Path) -> None:
+    plan = unpin(fake_plan(), "pins.settings.retrieval.hybrid_rrf_k", "P11")
+    with pytest.raises(arms.ArmConfigError, match=r"pins\.settings\.retrieval\.hybrid_rrf_k.*P11"):
+        _values("e4b-c512-roff-hon", gguf, plan)
+
+
+def test_a_null_pin_without_a_pending_entry_is_still_refused_by_key() -> None:
+    plan = fake_plan()
+    plan["pins"]["recorded"]["hybrid"] = None
+    with pytest.raises(arms.ArmConfigError, match=r"pins\.recorded\.hybrid"):
+        arms.recorded_pins(plan)
 
 
 def test_recorded_pins_hold_the_values_omrs_has_no_setting_for() -> None:

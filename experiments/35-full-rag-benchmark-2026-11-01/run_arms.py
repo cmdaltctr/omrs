@@ -2,8 +2,32 @@
 
 The command line lives in ``cli35.py`` (``--help`` lists every option). Stages
 are named in :data:`STAGE_TABLE`; each is ``async def stage(ctx: stages35.Ctx)
--> int``. Today: ``ingest`` (one index into its own store) and ``seal`` (the
-index fingerprint and the build environment record).
+-> int``:
+
+* ``ingest`` and ``seal``: one index into its own store, then its fingerprint
+  and the build environment record;
+* ``search`` (``search35``): ranked lists of 100 stored chunks, no metric;
+* ``answer`` (``answers35``): search, head, assembly and one answer per
+  question; refuses without ``selection.json`` (main run);
+* ``judge`` (``judges35``): the ``--judges`` claim checks of an answer folder;
+* ``ragas`` (``ragas35``): the five Ragas metrics of an answer folder;
+* ``closedbook`` (``closedbook35``) and ``oracle`` (``oracle35``): the floor
+  and ceiling runs, run 1 only;
+* ``determinism`` (``determinism35``): G1 for one answer setup on saved files
+  after a passing join; it skips every step below (no settings, router,
+  guard, engine or machine line);
+* ``claimkinds`` (``claimstage35``): the claim kinds of an answer run folder
+  (``--classify-examples``, ``--classify-concurrency``);
+* ``lengthcheck`` (``lengthcheck35``): the length-controlled check over the
+  whole output folder into ``<out>/lengthcheck`` (``--judges chat,clef_flash``).
+
+The answer, judge, Ragas and claim-kind stages refuse a main run while half B
+is locked (``stagekit35.require_half_b_open``).
+
+``--answers closedbook-own|closedbook-rag|oracle`` points the judge and Ragas
+stages at those folders. Options of note: ``--answer-concurrency``,
+``--chat-concurrency``, ``--ragas-concurrency`` and ``--rate-limit-attempts``
+(hosted calls through the gate; defaults in ``arms.CONCURRENCY_DEFAULTS``).
 
 Per process the runner, in this order and before any paid call:
 
@@ -49,10 +73,21 @@ for _folder in (PROJECT_ROOT, EXP_DIR):
     if str(_folder) not in sys.path:
         sys.path.insert(0, str(_folder))
 
+import answers35  # noqa: E402
 import arms  # noqa: E402
+import claimstage35  # noqa: E402
 import cli35  # noqa: E402
+import closedbook35  # noqa: E402
 import datasets35  # noqa: E402
+import determinism35  # noqa: E402
+import judges35  # noqa: E402
+import lengthcheck35  # noqa: E402
+import oracle35  # noqa: E402
 import outputs35  # noqa: E402
+import ragas35  # noqa: E402
+import scoring35  # noqa: E402
+import search35  # noqa: E402
+import stagekit35  # noqa: E402
 import stages35  # noqa: E402
 from experiments._lib import router_env  # noqa: E402
 from experiments._lib.hosted_calls import RateLimitStop  # noqa: E402
@@ -71,6 +106,15 @@ IGNORED_ROLES = ("classification",)
 STAGE_TABLE: dict[str, Callable[[stages35.Ctx], Awaitable[int]]] = {
     "ingest": stages35.ingest_stage,
     "seal": stages35.seal_stage,
+    "search": search35.search_stage,
+    "answer": answers35.answer_stage,
+    "judge": judges35.judge_stage,
+    "ragas": lambda ctx: ragas35.ragas_stage(ctx, ctx.plan),
+    "closedbook": closedbook35.closedbook_stage,
+    "oracle": oracle35.oracle_stage,
+    "determinism": determinism35.determinism_stage,
+    "claimkinds": claimstage35.claimkinds_stage,
+    "lengthcheck": lengthcheck35.lengthcheck_stage,
 }
 
 SETUP_ERRORS = (
@@ -83,6 +127,11 @@ SETUP_ERRORS = (
     stages35.StageOrderError,
     stages35.SealRefused,
     stages35.EnvironmentMismatch,
+    stagekit35.FingerprintError,
+    stagekit35.RerankFailed,
+    ragas35.RagasRefused,
+    scoring35.HalfBLocked,
+    outputs35.NoRunFiles,
     ValueError,
 )
 
@@ -95,6 +144,8 @@ def plan_units(kind: str, *, setup: str | None, index: str | None) -> list[tuple
     runs on setup names: ``--setup NAME``, all 72 for ``--setup all``, or the 8
     setups of ``--index NAME``.
     """
+    if kind == "lengthcheck":  # one check over the whole output folder
+        return [(kind, next(iter(arms.SEARCH_SETUPS)) if setup in (None, "all") else str(setup))]
     if kind == "index":
         if index is not None:
             return [(kind, index)]
@@ -118,6 +169,8 @@ def main(argv: Sequence[str] | None = None, *, deps: Any = None) -> int:
         deps = LiveDeps()
     kind = arms.STAGE_KINDS[args.stage]
     units = plan_units(kind, setup=args.setup, index=args.index)
+    if args.stage in ("judge", "ragas"):
+        kind = args.answers
     if len(units) > 1:
         return run_all(argv, units, deps)
     from omrs.core.answer.judges.base import JudgeUnavailable
@@ -252,7 +305,7 @@ def _config(plan: Any, values: Mapping[str, Any], commit: str) -> dict[str, Any]
     return outputs35.config_fields(
         settings=hashed,
         runtime=plan["runtime"],
-        prompts=(plan.get("pins") or {}).get("prompts") or {},
+        prompts=arms.pinned(plan, "pins", "prompts"),
         commit=commit,
     )
 
@@ -272,20 +325,48 @@ def _ingest_files(args: Any, plan: Any, root: Path, questions: Sequence[Any]) ->
     )
 
 
+def _questions(args: Any, plan: Any, root: Path) -> list[Any]:
+    return datasets35.select(
+        datasets35.load_questions(args.dataset, root),
+        args.limit,
+        seed=arms.plan_seed(plan, "question_order"),
+        qids=args.qids,
+    )
+
+
+def run_saved(args: Any, kind: str, name: str, deps: Any) -> int:
+    """Run a stage that reads saved files only: no settings, router, guard, engine or machine."""
+    plan = deps.plan()
+    questions = _questions(args, plan, datasets35.data_root())
+    ctx = stages35.Ctx(
+        dataset=args.dataset,
+        setup=name,
+        kind=kind,
+        run=args.run,
+        questions=questions,
+        layout=_layout(args, kind),
+        key={},
+        resume=args.resume,
+        trace=None,  # type: ignore[arg-type]
+        plan=plan,
+        args=args,
+    )
+    code = asyncio.run(STAGE_TABLE[args.stage](ctx))
+    say(f"[{args.stage}] {args.dataset}/{name}: exit {code}")
+    return code
+
+
 def run_one(args: Any, argv: Sequence[str], kind: str, name: str, deps: Any) -> int:
     """Run one stage of one setup or index; return its exit code."""
+    if args.stage in arms.SAVED_FILE_STAGES:
+        return run_saved(args, kind, name, deps)
     plan = deps.plan()
     setup = arms.index_setup(name) if kind == "index" else arms.parse_setup(name)
     layout = _layout(args, kind)
     values, settings, path, judges = _configure(args, setup, name, plan, layout)
     problems = _role_problems(settings)
     root = datasets35.data_root()
-    questions = datasets35.select(
-        datasets35.load_questions(args.dataset, root),
-        args.limit,
-        seed=arms.plan_seed(plan, "question_order"),
-        qids=args.qids,
-    )
+    questions = _questions(args, plan, root)
     files = _ingest_files(args, plan, root, questions) if args.stage == "ingest" else []
     key = outputs35.run_key(
         args.limit,
@@ -294,11 +375,7 @@ def run_one(args: Any, argv: Sequence[str], kind: str, name: str, deps: Any) -> 
         [q.qid for q in questions],
         config=_config(plan, values, deps.commit()),
     )
-    folder = (
-        layout.index_dir(args.dataset, name)
-        if kind == "index"
-        else layout.run_dir(args.dataset, kind, name, args.run)
-    )
+    folder = layout.stage_dir(args.dataset, kind, name, args.run)
     if args.resume and (folder / f".done-{args.stage}.json").exists():
         outputs35.check_stage_key(folder, args.stage, key)
         say(f"[{args.stage}] {args.dataset}/{name}/run{args.run}: done earlier, skipped")
@@ -309,7 +386,18 @@ def run_one(args: Any, argv: Sequence[str], kind: str, name: str, deps: Any) -> 
         )
     roles = arms.stage_roles(setup, args.stage, judges)
     if args.dry_run:
-        return _print_plan(args, setup, name, settings, path, layout, roles, questions, problems)
+        return cli35.print_plan(
+            args,
+            setup,
+            name,
+            path,
+            layout,
+            roles,
+            questions,
+            problems,
+            concurrency=_concurrency(args),
+            resolved=_resolved(settings),
+        )
     if problems:
         raise arms.ArmConfigError(f"OMRS lists router role problems: {problems}")
     _require_keys(args.stage, judges)
@@ -354,6 +442,9 @@ def run_one(args: Any, argv: Sequence[str], kind: str, name: str, deps: Any) -> 
             environment=environment,
             redact=engine.redact,
         )
+        ctx.judge = lambda judge: deps.judge(judge, settings, plan)
+        ctx.router = getattr(deps, "router", None)
+        ctx.runtime_check = getattr(deps, "runtime_check", None)
         stages35.record_machine(ctx, machine, environment)
         code = asyncio.run(STAGE_TABLE[args.stage](ctx))
     finally:
@@ -363,7 +454,8 @@ def run_one(args: Any, argv: Sequence[str], kind: str, name: str, deps: Any) -> 
 
 
 def _require_keys(stage: str, judges: Sequence[str]) -> None:
-    needed = ["OPENROUTER_API_KEY"] if stage == "answer" else []
+    hosted = ("answer", "closedbook", "oracle", "claimkinds")
+    needed = ["OPENROUTER_API_KEY"] if stage in hosted else []
     needed += [arms.GLM_KEY_ENV] if "chat" in judges else []
     missing = [n for n in needed if not os.environ.get(n)]
     if missing:
@@ -399,43 +491,6 @@ def _trace(args: Any, name: str, plan: Any, settings: Any, models: Any, folder: 
         },
         model_identities=identities,
     )
-
-
-def _print_plan(
-    args: Any,
-    setup: arms.Setup,
-    name: str,
-    settings: Any,
-    path: Path,
-    layout: Any,
-    roles: Sequence[str],
-    questions: Sequence[Any],
-    problems: list,
-) -> int:
-    plan = {
-        "nothing_started": True,
-        "settings_file": str(path),
-        "out_dir": str(args.out_dir),
-        "dataset": args.dataset,
-        "stage": args.stage,
-        "name": name,
-        "run": args.run,
-        "collection": setup.collection(args.dataset),
-        "store": str(layout.store(setup.index)),
-        "search": {"rerank": setup.rerank, "hybrid": setup.hybrid_on},
-        "models": list(roles),
-        "corpus_sample": args.corpus_sample,
-        "questions": [q.qid for q in questions],
-        "prefreeze": args.prefreeze,
-        "smoke": args.smoke,
-        "concurrency": _concurrency(args),
-        "keys_set": {n: bool(os.environ.get(n)) for n in ("OPENROUTER_API_KEY", arms.GLM_KEY_ENV)},
-        "resolved": _resolved(settings),
-        "role_problems": problems,
-    }
-    say("[dry-run] nothing started, nothing sent")
-    say(json.dumps(plan, indent=2, default=str))
-    return 1 if problems else 0
 
 
 if __name__ == "__main__":

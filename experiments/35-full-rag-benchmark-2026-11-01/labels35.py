@@ -24,7 +24,6 @@ import datetime as dt
 import json
 import math
 import random
-import re
 import sys
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
@@ -36,18 +35,23 @@ import correct35
 import labelpage35
 from bootstrap35 import BootResult, bootstrap_by_question
 from experiments._lib.stats_d6 import cohen_kappa
-from outputs35 import read_rows, write_json
-
-from omrs.core.answer.verify import split_claims
+from faithpool35 import (  # noqa: F401 - re-exported names
+    PER_CELL,
+    SEED_FAITH,
+    KindsMissing,
+    chunk_size,
+    draw_faithfulness,
+    faithfulness_claims,
+    require_kinds,
+)
+from outputs35 import Layout, NoRunFiles, read_rows, write_json
 
 CORE = correct35.CORE
 CHECKERS = ("chat", "clef_flash")
-SEED_FAITH = 20261116
 SEED_L2 = {"claim_kinds": 20261122, "faithfulness": 20261123}
 SEED_GATE_KAPPA = 20261125
 SEED_DIFFERENCE = 20261126
 SEED_L1_L2 = 20261129
-PER_CELL = 50
 #: Staged plan: L2's first-stage size per set (pre-registration section 11.3).
 L2_FIRST = {"claim_kinds": 30, "faithfulness": 135}
 L2_PER_CELL = 15
@@ -63,85 +67,6 @@ SAMPLE_FILES = {
 
 class GateMissing(RuntimeError):
     """A gate file the analysis needs does not exist yet."""
-
-
-def chunk_size(setup: str) -> int:
-    """Return the chunk size in a setup name (``e4b-c1024-r4b-hon`` gives 1024)."""
-    found = re.search(r"(?:^|-)c(\d+)(?:-|$)", setup)
-    if found is None:
-        raise ValueError(f"no chunk size in setup name {setup!r}")
-    return int(found.group(1))
-
-
-def faithfulness_claims(
-    out_dir: Path, questions: Mapping[str, Mapping[str, Mapping[str, str]]]
-) -> list[dict[str, Any]]:
-    """Return the faithfulness gate pool: crossed setups, core datasets, all runs and questions.
-
-    A claim whose saved kind (``claim-kinds.jsonl`` of its own run folder) is
-    ``refusal`` is left out. A claim of kind factual or mixed stays, and so
-    does a claim the classifier left unclassified (no saved row, or kind
-    ``unreadable``): section 12 treats it as factual (section 11.2).
-    """
-    claims: list[dict[str, Any]] = []
-    for path in sorted(out_dir.glob("*/*/run*/answer.jsonl")):
-        dataset, setup, run = path.parts[-4], path.parts[-3], int(path.parts[-2][3:])
-        if dataset not in CORE or "t20k" in setup:
-            continue
-        refusals = {
-            r["claim_key"]
-            for r in read_rows(path.parent / "claim-kinds.jsonl")
-            if r["kind"] == "refusal"
-        }
-        for row in read_rows(path):
-            evidence = row.get("evidence") or []
-            texts = {e["ordinal"]: e["text"] for e in evidence}
-            for index, (claim, ordinals) in enumerate(
-                split_claims(row.get("answer") or "", len(evidence))
-            ):
-                if claimkinds35.claim_key(row["qid"], claim) in refusals:
-                    continue
-                claims.append(
-                    {
-                        "item_id": correct35.item_id(
-                            "faithfulness", dataset, setup, run, row["qid"], index
-                        ),
-                        "dataset": dataset,
-                        "setup": setup,
-                        "run": run,
-                        "qid": row["qid"],
-                        "index": index,
-                        "chunk_size": chunk_size(setup),
-                        "question": questions[dataset][row["qid"]]["question"],
-                        "claim": claim,
-                        "passages": [texts[o] for o in ordinals if o in texts],
-                    }
-                )
-    return claims
-
-
-def draw_faithfulness(
-    claims: Sequence[Mapping[str, Any]], *, seed: int = SEED_FAITH, per_cell: int = PER_CELL
-) -> list[dict[str, Any]]:
-    """Draw ``per_cell`` claims per (chunk size, core dataset), at most one per answer, shuffled."""
-    rng = random.Random(seed)  # noqa: S311 - seeded draw, not security
-    cells: dict[tuple[int, str], list[Mapping[str, Any]]] = defaultdict(list)
-    for c in claims:
-        cells[(c["chunk_size"], c["dataset"])].append(c)
-    items: list[dict[str, Any]] = []
-    for cell in sorted(cells):
-        pool = sorted(cells[cell], key=lambda c: c["item_id"])
-        rng.shuffle(pool)
-        used: set[tuple[str, int, str]] = set()
-        picked: list[dict[str, Any]] = []
-        for c in pool:
-            answer = (c["setup"], c["run"], c["qid"])
-            if answer not in used and len(picked) < per_cell:
-                used.add(answer)
-                picked.append(dict(c))
-        items += picked
-    rng.shuffle(items)
-    return items
 
 
 def label_counts(sizes: Mapping[str, int], plan: str) -> dict[str, int]:
@@ -421,8 +346,11 @@ def write_page(label_dir: Path, set_name: str, *, only: Sequence[str] | None = N
 def saved_verdicts(out_dir: Path, items: Sequence[Mapping[str, Any]]) -> dict[str, dict[str, str]]:
     """Read each checker's saved verdict for every sample claim from its run folder."""
     out: dict[str, dict[str, str]] = {c: {} for c in CHECKERS}
+    layout = Layout(out_dir)
     for item in items:
-        folder = out_dir / item["dataset"] / item["setup"] / f"run{item['run']}"
+        folder = layout.run_dir(item["dataset"], "answer", item["setup"], item["run"])
+        if not (folder / "answer.jsonl").exists():
+            raise NoRunFiles(f"{folder} holds no answer.jsonl for sample item {item['item_id']}")
         answer = {r["qid"]: r for r in read_rows(folder / "answer.jsonl")}[item["qid"]]
         for c in CHECKERS:
             judge = {r["qid"]: r for r in read_rows(folder / f"judge-{c}.jsonl")}.get(item["qid"])
@@ -455,6 +383,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     d = args.label_dir
     if args.command == "sample":
+        require_kinds(args.out_dir)
         write_sample(
             d, draw_faithfulness(faithfulness_claims(args.out_dir, correct35._questions(CORE)))
         )

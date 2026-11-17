@@ -13,7 +13,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
-from tests._exp35_fixtures import load
+from tests._exp35_fixtures import load, open_half_b
 
 ragas35 = load("ragas35")
 ragas_stage = ragas35.ragas_stage_lib
@@ -31,7 +31,11 @@ JUDGE = {
 
 
 def plan(**judge: Any) -> dict[str, Any]:
-    """A plan with the Ragas judge reference and the 4B and 8B embedding files."""
+    """A plan with the Ragas judge and the 4B and 8B embedding files.
+
+    The model and provider sit in ``runtime.references``; the host, reasoning and
+    temperature in ``pins.ragas_judge``; the seed in ``seeds.ragas_judge``.
+    """
     models = [
         {
             "role": "embedding-baseline-4b",
@@ -47,7 +51,16 @@ def plan(**judge: Any) -> dict[str, Any]:
             "sha256": "b" * 64,
         },
     ]
-    return {"runtime": {"models": models, "references": [{**JUDGE, **judge}]}}
+    values = {**JUDGE, **judge}
+    reference = {k: values[k] for k in ("role", "provider", "model")}
+    return {
+        "runtime": {"models": models, "references": [reference]},
+        "seeds": {"ragas_judge": values["seed"]},
+        "pins": {
+            "ragas_judge": {k: values[k] for k in ("host", "reasoning", "temperature")},
+            "pending": [],
+        },
+    }
 
 
 class Status429(Exception):
@@ -201,11 +214,15 @@ def ctx(run_dir: Path, qids: list[str], router: Router, **args: Any) -> Any:
         "ragas_concurrency": 1,
         "rate_limit_attempts": 2,
         "dry_run": False,
+        "prefreeze": False,
+        "smoke": False,
     }
     questions = [
         SimpleNamespace(qid=q, text=f"Question {q}?", reference=f"Reference {q}.") for q in qids
     ]
+    open_half_b(run_dir.parent)
     return SimpleNamespace(
+        layout=load("outputs35").Layout(run_dir.parent),
         run_dir=run_dir,
         setup="e4b-c512-roff-hoff",
         questions=questions,

@@ -78,6 +78,13 @@ class Ctx:
         files: The corpus files of an ingest; empty for other stages.
         environment: The stage's environment record (:func:`environment_record`).
         redact: Removes secrets from error text.
+        tokens: The Qwen3 token counter (``count``, ``truncate``); ``None``
+            loads the pinned tokenizer on first use (``search35.tokens_for``).
+        judge: Builds the claim judge of one name (judge stage).
+        router: Context manager on a plan model entry; yields the endpoint
+            URL (Ragas stage, ``ragas35``).
+        runtime_check: Checks one plan model on a running endpoint; returns
+            ``{"build", "sha256"}`` (Ragas stage).
     """
 
     dataset: str
@@ -96,6 +103,10 @@ class Ctx:
     files: list[Path] = field(default_factory=list)
     environment: dict[str, Any] | None = None
     redact: Callable[[str], str] = _same
+    tokens: Any = None
+    judge: Callable[[str], Any] | None = None
+    router: Callable[..., Any] | None = None
+    runtime_check: Callable[..., Any] | None = None
 
     @property
     def factors(self) -> arms.Setup:
@@ -126,8 +137,8 @@ class Ctx:
 
     @property
     def folder(self) -> Path:
-        """The stage folder: the index folder for index stages, else the run folder."""
-        return self.index_dir if self.kind == "index" else self.run_dir
+        """The stage folder (``outputs35.Layout.stage_dir``)."""
+        return self.layout.stage_dir(self.dataset, self.kind, self.setup, self.run)
 
 
 def _error(ctx: Ctx, exc: BaseException) -> str:

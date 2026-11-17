@@ -39,6 +39,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import arms
 from experiments._lib.gold_rules import financebench_page_label
 
 DATA_DIR_ENV = "EXP35_DATA_DIR"
@@ -140,12 +141,7 @@ def verify_inputs(root: Path, expected: Mapping[str, str]) -> None:
 
 
 def _pin(plan: Mapping[str, Any], dataset: str, key: str) -> Any:
-    found = ((plan.get("pins") or {}).get("datasets") or {}).get(dataset) or {}
-    if key not in found:
-        raise DatasetError(
-            f"plan.json has no pins.datasets.{dataset}.{key}; record it before this stage runs"
-        )
-    return found[key]
+    return arms.pinned(plan, "pins", "datasets", dataset, key, error=DatasetError)
 
 
 def input_hashes(dataset: str, plan: Mapping[str, Any]) -> dict[str, str]:

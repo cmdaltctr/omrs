@@ -95,6 +95,14 @@ def test_invalid_first_freshstack_smoke_folder_is_refused(tmp_path: Path) -> Non
         refusals35.smoke_claims(folders, _questions(folders))
 
 
+def test_a_smoke_folder_with_no_answer_files_is_refused(tmp_path: Path) -> None:
+    folders = _folders(tmp_path)
+    folders["bioasq"] = tmp_path / "runner-layout" / "bioasq"  # answer/<setup>/run<n> inside
+    write_run(folders["bioasq"] / "answer" / ARMS[0] / "run1", {"bi0": ["The value is x"]})
+    with pytest.raises(refusals35.SampleError, match="runner-layout/bioasq"):
+        refusals35.smoke_claims(folders, _questions(folders))
+
+
 def test_claims_are_deduplicated_across_arms_and_runs(tmp_path: Path) -> None:
     folders = _folders(tmp_path)
     claims = refusals35.smoke_claims(folders, _questions(folders))

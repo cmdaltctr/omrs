@@ -80,7 +80,7 @@ def test_pool_uses_each_runs_own_saved_kinds(tmp_path: Path) -> None:
     questions = fx.build(out)
     fx.write_kinds(out, lambda q, i: "factual")
     # In run 2 every claim is a refusal: only run 1 claims can be drawn.
-    for path in out.glob("*/*/run2/claim-kinds.jsonl"):
+    for path in out.glob("*/answer/*/run2/claim-kinds.jsonl"):
         rows = [json.loads(x) for x in path.read_text().splitlines()]
         path.write_text("".join(json.dumps({**r, "kind": "refusal"}) + "\n" for r in rows))
     items = labels35.draw_faithfulness(labels35.faithfulness_claims(out, questions))
@@ -359,6 +359,18 @@ def test_analysis_refuses_before_the_gate_files_exist(tmp_path: Path) -> None:
         "financebench": {12, 13, 16, 17},
         "freshstack": {12, 13, 14, 15, 16, 17, 18, 19},
     }
+
+
+def test_sample_cli_refuses_a_run_folder_with_no_saved_claim_kinds(tmp_path: Path) -> None:
+    out = tmp_path / "out"
+    fx.build(out)
+    fx.write_kinds(out, lambda q, i: "factual")
+    gone = out / "bioasq" / "answer" / "e4b-c1024-r4b-hon" / "run2"
+    (gone / "claim-kinds.jsonl").unlink()
+    label_dir = tmp_path / "labels"
+    with pytest.raises(labels35.KindsMissing, match="bioasq/e4b-c1024-r4b-hon/run2"):
+        labels35.main(["sample", "--out-dir", str(out), "--label-dir", str(label_dir)])
+    assert not (label_dir / "faithfulness-sample.json").exists()
 
 
 def test_faithgate_cli_reads_saved_verdicts_and_writes_the_gate(tmp_path: Path) -> None:

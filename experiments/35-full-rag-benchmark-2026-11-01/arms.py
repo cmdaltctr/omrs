@@ -77,9 +77,28 @@ MAIN_JUDGE = "chat"
 JUDGE_ROLES: Mapping[str, str] = {"clef_flash": "judge-clef-flash"}
 
 #: The kind of each stage ``run_arms.py`` can run: ``index`` (one index, shared
-#: by its 8 setups), ``search`` or ``answer`` (one setup, own folder). A later
+#: by its 8 setups), ``search`` or ``answer`` (one setup, own folder), or
+#: ``lengthcheck`` (``<out>/lengthcheck``, the whole output folder). A later
 #: stage adds one line here and one line to ``run_arms.STAGE_TABLE``.
-STAGE_KINDS: Mapping[str, str] = {"ingest": "index", "seal": "index"}
+STAGE_KINDS: Mapping[str, str] = {
+    "ingest": "index",
+    "seal": "index",
+    "search": "search",
+    "answer": "answer",
+    "judge": "answer",
+    "ragas": "answer",
+    "closedbook": "closedbook",
+    "oracle": "oracle",
+    "determinism": "answer",
+    "claimkinds": "answer",
+    "lengthcheck": "lengthcheck",
+}
+#: Answer folders the judge and Ragas stages can read (``--answers``).
+ANSWER_KINDS = ("answer", "closedbook-own", "closedbook-rag", "oracle")
+#: Stages that send no retrieval: they load no reranker.
+NO_RERANK_STAGES = frozenset({"judge", "closedbook", "oracle", "claimkinds", "lengthcheck"})
+#: Stages that read saved files only: no settings, router, guard, engine or machine record.
+SAVED_FILE_STAGES = frozenset({"determinism"})
 STAGES = tuple(STAGE_KINDS)
 INDEX_STAGES = frozenset(s for s, kind in STAGE_KINDS.items() if kind == "index")
 
@@ -221,16 +240,53 @@ def plan_role(plan: Mapping[str, Any], role: str) -> Mapping[str, Any]:
     )
 
 
-def _plan_block(plan: Mapping[str, Any], *path: str) -> Any:
+def _nulls(value: Any, key: str) -> list[str]:
+    """Return the dotted key of every ``null`` in *value*, which sits at *key*."""
+    if value is None:
+        return [key]
+    if isinstance(value, Mapping):
+        return [k for name, item in value.items() for k in _nulls(item, f"{key}.{name}")]
+    return []
+
+
+def pinned(plan: Mapping[str, Any], *path: str, error: type[Exception] = ArmConfigError) -> Any:
+    """Return the ``plan.json`` value at *path*; refuse a missing key or a ``null``.
+
+    A value that a pre-freeze task has not recorded is ``null`` and listed in
+    ``pins.pending`` with its task. The harness never starts a stage on one, in
+    any mode (task 13.1a, protocol 0.14 item 45). A ``null`` inside a returned
+    block is refused too, so it never reaches the scratch settings, a trace or
+    the configuration hash.
+
+    Args:
+        plan: The parsed ``plan.json``.
+        *path: The keys down to the value, for example ``"pins", "recorded"``.
+        error: The refusal to raise; each module keeps its own (exit code 2).
+
+    Raises:
+        Exception: *error*. The message names each missing or ``null`` key and,
+            when ``pins.pending`` lists it, the pre-freeze task.
+    """
     value: Any = plan
     for depth, part in enumerate(path):
         if not isinstance(value, Mapping) or part not in value:
-            raise ArmConfigError(
-                f"plan.json has no {'.'.join(path[: depth + 1])}; record it (P9 to P11) "
-                "before this stage runs"
-            )
+            raise error(_unpinned(plan, [".".join(path)], ".".join(path[: depth + 1])))
         value = value[part]
+    if bad := _nulls(value, ".".join(path)):
+        raise error(_unpinned(plan, bad))
     return value
+
+
+def _unpinned(plan: Mapping[str, Any], keys: Sequence[str], broken: str = "") -> str:
+    """Return the refusal text; the task comes from ``pins.pending`` (an exact or parent key)."""
+    pending = (plan.get("pins") or {}).get("pending") or []
+    tasks = {item.get("key"): item.get("task") for item in pending}
+
+    def task(key: str) -> str | None:
+        return tasks.get(key) or tasks.get(broken)
+
+    named = ", ".join(f"{k} (pre-freeze task {task(k)})" if task(k) else k for k in keys)
+    return f"plan.json holds no value for {named}; record it before this stage runs"
 
 
 def plan_seed(plan: Mapping[str, Any], use: str) -> int:
@@ -240,9 +296,10 @@ def plan_seed(plan: Mapping[str, Any], use: str) -> int:
     ``question_order`` and ``smoke_sample`` (pre-registration section 16).
 
     Raises:
-        ArmConfigError: The plan records no such seed; the message names the key.
+        ArmConfigError: The plan records no such seed, or it is ``null``; the message
+            names the key and its pre-freeze task.
     """
-    return int(_plan_block(plan, "seeds", use))
+    return int(pinned(plan, "seeds", use))
 
 
 def recorded_pins(plan: Mapping[str, Any]) -> dict[str, Any]:
@@ -251,15 +308,22 @@ def recorded_pins(plan: Mapping[str, Any]) -> dict[str, Any]:
     The reranker instruction and the BM25 and fusion parameters are fixed by
     the pinned OMRS and llama.cpp code; the harness records them in each trace.
     """
-    return dict(_plan_block(plan, "pins", "recorded"))
+    return dict(pinned(plan, "pins", "recorded"))
 
 
 def stage_roles(setup: Setup, stage: str, judges: Sequence[str]) -> list[str]:
-    """Return the plan roles a stage loads on the router, in load order."""
+    """Return the plan roles a stage loads on the router, in load order.
+
+    Index stages load the embedder only; search and answer add the reranker of
+    a reranker-on setup; the Ragas stage loads the 4B embedder alone (its
+    embeddings); the judge stage adds the local judges.
+    """
+    if stage == "ragas":
+        return [EMBED_ROLES["4b"]]
     roles = [setup.embed_role]
     if stage in INDEX_STAGES:
         return roles
-    if setup.rerank:
+    if setup.rerank and stage not in NO_RERANK_STAGES:
         roles.append(RERANK_ROLES[setup.reranker])
     return roles + [JUDGE_ROLES[j] for j in judges if j in JUDGE_ROLES]
 
@@ -333,7 +397,7 @@ def settings_values(
     }
     if retrieval:
         values["retrieval"] = retrieval
-    _merge(values, _plan_block(plan, "pins", "settings"))
+    _merge(values, pinned(plan, "pins", "settings"))
     if "chat" in judges:
         values["openai_compatible_base_url"] = GLM_BASE_URL
         values["openai_compatible_api_key"] = f"env://{GLM_KEY_ENV}"

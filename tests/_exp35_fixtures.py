@@ -101,9 +101,26 @@ def fake_plan() -> dict[str, Any]:
                 "reranker_instruction": "Given a web search query, retrieve relevant passages",
                 "hybrid": {"fusion_depth": 100, "bm25_tokeniser": "omrs-default"},
             },
+            "ragas_judge": {"host": "hostj", "reasoning": "low", "temperature": 0.0},
             "datasets": {"freshstack": {"revision": FS_REVISION, "rows": FS_ROWS}},
+            "prompts": {"answer": "b" * 64},
+            "pending": [],
         },
     }
+
+
+def unpin(plan: dict[str, Any], key: str, task: str) -> dict[str, Any]:
+    """Set the plan value at dotted *key* to ``null`` and list it in ``pins.pending``.
+
+    This is how ``plan.json`` holds a value that a pre-freeze task has not recorded yet.
+    """
+    *parents, leaf = key.split(".")
+    node = plan
+    for part in parents:
+        node = node[part]
+    node[leaf] = None
+    plan["pins"]["pending"].append({"key": key, "task": task})
+    return plan
 
 
 def make_gguf(folder: Path) -> Path:
@@ -240,3 +257,129 @@ def make_data_root(root: Path) -> Path:
         },
     )
     return root
+
+
+# --- search, answer and judge stage fixtures (package B2) --------------------------------
+
+
+def seal_fixture(layout: Any, dataset: str, setup: str, *, backend: str = "bm25") -> Any:
+    """Write a small LanceDB table, its fingerprint and a passing ``rebuild.json``.
+
+    Returns the setup's ``arms.Setup``. Nothing reads a model or the network.
+    """
+    import lancedb
+    import pyarrow as pa
+
+    arms = load("arms")
+    outputs35 = load("outputs35")
+    factors = arms.parse_setup(setup)
+    collection = factors.collection(dataset)
+    store = layout.store(factors.index)
+    rows = [{"id": f"c{i}", "text": f"chunk {i}", "vector": [0.1, 0.2]} for i in range(3)]
+    schema = pa.schema(
+        [
+            pa.field("id", pa.string()),
+            pa.field("text", pa.string()),
+            pa.field("vector", pa.list_(pa.float32(), 2)),
+        ]
+    )
+    db = lancedb.connect(str(store))
+    db.create_table(collection, data=pa.Table.from_pylist(rows, schema=schema), exist_ok=True)
+    version = db.open_table(collection).version
+    outputs35.write_json(
+        layout.fingerprint(dataset, factors.index),
+        {"collection": collection, "table_version": version, "sparse_backend": backend},
+    )
+    outputs35.write_json(layout.root / dataset / "rebuild.json", {"ok": True})
+    return factors
+
+
+class FakeTokens:
+    """A whitespace token counter: one token per word."""
+
+    @staticmethod
+    def count(text: str) -> int:
+        return len(text.split())
+
+    @staticmethod
+    def truncate(text: str, n: int) -> str:
+        return " ".join(text.split()[:n])
+
+
+def open_half_b(root: Path, **selection: Any) -> None:
+    """Write ``selection.json`` and an OSF time-stamp of its hash: half B is open (task 16.17)."""
+    digest = "a" * 64
+    root.mkdir(parents=True, exist_ok=True)
+    (root / "selection.json").write_text(json.dumps({**selection, "configuration_hash": digest}))
+    stamp = {"uploaded_at": "t", "file_sha256": "f" * 64, "configuration_hash": digest}
+    (root / "osf-timestamp.json").write_text(json.dumps(stamp))
+
+
+def stage_ctx(
+    tmp_path: Path,
+    stage: str,
+    setup: str,
+    *,
+    kind: str,
+    questions: Any,
+    engine: Any = None,
+    dataset: str = "bioasq",
+    resume: bool = False,
+    overlap: int | None = None,
+    args: Any = None,
+    run: int = 1,
+    judge: Any = None,
+) -> Any:
+    """Return a ``stages35.Ctx`` of one setup on a sealed fixture index."""
+    from types import SimpleNamespace
+
+    from experiments._lib.trace import TraceWriter
+
+    arms = load("arms")
+    outputs35 = load("outputs35")
+    stages35 = load("stages35")
+    layout = outputs35.Layout(tmp_path / "out")
+    open_half_b(layout.root)
+    factors = seal_fixture(layout, dataset, setup)
+    run_dir = layout.run_dir(dataset, kind, setup, run)
+    trace = TraceWriter(
+        run_dir / "traces.jsonl",
+        benchmark_revision="test",
+        run_id=f"{dataset}/{setup}/run{run}",
+        arm=setup,
+        repetition=run,
+        effective_settings={"setup": setup},
+        model_identities={},
+    )
+    settings = SimpleNamespace(
+        retrieval=SimpleNamespace(hybrid_sparse_backend="bm25"),
+        chunking=SimpleNamespace(
+            chunk_overlap=overlap if overlap is not None else arms.OVERLAPS[factors.chunk]
+        ),
+        answer=SimpleNamespace(context_window=131072, max_output_tokens=2048, max_rounds=1),
+    )
+    defaults = {
+        "answer_concurrency": 8,
+        "chat_concurrency": 4,
+        "rate_limit_attempts": 6,
+        "prefreeze": False,
+        "smoke": False,
+        "judges": "",
+        "answers": None,
+    }
+    return stages35.Ctx(
+        dataset=dataset,
+        setup=setup,
+        kind=kind,
+        run=run,
+        questions=list(questions),
+        layout=layout,
+        key=outputs35.run_key(None, None, 20261101, [q.qid for q in questions]),
+        resume=resume,
+        trace=trace,
+        engine=engine,
+        settings=settings,
+        args=SimpleNamespace(**{**defaults, **(args or {})}),
+        tokens=FakeTokens(),
+        judge=judge,
+    )

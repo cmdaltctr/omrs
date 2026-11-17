@@ -360,3 +360,34 @@ def test_setup_table_is_descriptive_on_all_questions() -> None:
     assert table["descriptive"] is True
     assert len(table["scores"]) == 72
     assert table["scores"]["e4b-c512-roff-hoff"]["freshstack"] == pytest.approx(0.5, abs=0.01)
+
+
+# --- step 8 guard: no confirmatory result before the gate files (task 16.18, A6 note) ---------
+
+
+def test_confirmatory_result_refuses_before_the_gate_files(tmp_path) -> None:
+    labels35 = load("labels35")
+    out = tmp_path / "factorial.json"
+    with pytest.raises(labels35.GateMissing, match="faithfulness-gate.json"):
+        factorial35.write_confirmatory(out, _search(), _answers(), label_dir=tmp_path, **FAST)
+    assert not out.exists()
+
+
+def test_confirmatory_result_applies_the_gate_rows(tmp_path) -> None:
+    import json
+
+    (tmp_path / "faithfulness-gate.json").write_text(json.dumps({"not_testable_rows": [12, 13]}))
+    (tmp_path / "correctness-gate.json").write_text(
+        json.dumps({"result": {"not_testable_rows": {"freshstack": [14]}}})
+    )
+    out = tmp_path / "factorial.json"
+    result = factorial35.write_confirmatory(out, _search(), _answers(), label_dir=tmp_path, **FAST)
+    rows = _rows(result, "freshstack")
+    assert rows[12]["not_testable"] and rows[14]["not_testable"]
+    assert not _rows(result, "bioasq")[14]["not_testable"]
+    saved = json.loads(out.read_text())
+    assert saved["gates"] == {
+        "bioasq": [12, 13],
+        "financebench": [12, 13],
+        "freshstack": [12, 13, 14],
+    }

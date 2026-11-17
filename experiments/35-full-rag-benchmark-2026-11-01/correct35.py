@@ -33,7 +33,7 @@ import budget35
 import labelpage35
 from bootstrap35 import BootResult, bootstrap_by_question
 from experiments._lib.stats_d6 import cohen_kappa
-from outputs35 import read_rows, write_json
+from outputs35 import Layout, read_rows, write_json
 
 CORE = ("bioasq", "financebench", "freshstack")
 SEED = 20261113
@@ -68,7 +68,7 @@ def draw(
     """Draw the correctness label sample.
 
     Args:
-        out_dir: The joined output folder (``<dataset>/<setup>/run1/answer.jsonl``).
+        out_dir: The joined output folder (``<dataset>/answer/<setup>/run1/answer.jsonl``).
         halves_path: ``halves.json`` (``{"halves": {dataset: {qid: "A" | "B"}}}``).
         questions: Dataset to (question ID to ``question`` and ``reference``).
         seed: The sample seed (20261113).
@@ -79,16 +79,15 @@ def draw(
         reference and answer text.
     """
     rng = random.Random(seed)  # noqa: S311 - seeded draw, not security
+    layout = Layout(out_dir)
     items: list[dict[str, Any]] = []
     for dataset in sorted(budget35.answer_datasets(budget35.read_drops(out_dir))):
-        setups = sorted(
-            p.parent.parent.name for p in (out_dir / dataset).glob("*/run1/answer.jsonl")
-        )
+        found = layout.need_runs("answer", "answer.jsonl", dataset)
+        setups = sorted(setup for _, setup, run, _ in found if run == 1)
         for qid in rng.sample(_half_b(halves_path, dataset), per_dataset):
             setup = rng.choice(setups)
-            answers = {
-                r["qid"]: r for r in read_rows(out_dir / dataset / setup / "run1" / "answer.jsonl")
-            }
+            folder = layout.run_dir(dataset, "answer", setup, 1)
+            answers = {r["qid"]: r for r in read_rows(folder / "answer.jsonl")}
             q = questions[dataset][qid]
             items.append(
                 {
@@ -232,11 +231,10 @@ def agree(
 
 def _scores(out_dir: Path, items: Sequence[Mapping[str, Any]]) -> dict[str, float | None]:
     scores: dict[str, float | None] = {}
+    layout = Layout(out_dir)
     for item in items:
-        rows = {
-            r["qid"]: r
-            for r in read_rows(out_dir / item["dataset"] / item["setup"] / "run1" / "ragas.jsonl")
-        }
+        folder = layout.run_dir(item["dataset"], "answer", item["setup"], 1)
+        rows = {r["qid"]: r for r in read_rows(folder / "ragas.jsonl")}
         metric = rows.get(item["qid"], {}).get("metrics", {}).get("ragas_answer_correctness") or {}
         scores[item["item_id"]] = metric.get("score")
     return scores

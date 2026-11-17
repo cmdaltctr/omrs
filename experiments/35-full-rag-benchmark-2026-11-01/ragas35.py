@@ -43,6 +43,7 @@ if str(_PREFREEZE) not in sys.path:
 
 import outputs35  # noqa: E402
 import ragas_stage as ragas_stage_lib  # noqa: E402
+import stagekit35  # noqa: E402
 from experiments._lib.hosted_calls import HostedGate, RateLimitStop  # noqa: E402
 from experiments._lib.ordered_rows import ERROR_CAP, OrderedRows  # noqa: E402
 from experiments._lib.router_env import model_name  # noqa: E402
@@ -89,10 +90,13 @@ __all__ = [
 
 
 def add_arguments(parser: Any) -> None:
-    """Add ``--ragas-host``, ``--ragas-venv`` and ``--ragas-concurrency`` to *parser*."""
+    """Add ``--ragas-host`` and ``--ragas-venv`` to *parser*.
+
+    ``--ragas-concurrency`` belongs to the runner (``cli35``, default from
+    ``arms.CONCURRENCY_DEFAULTS``).
+    """
     parser.add_argument("--ragas-host", default="", help="the one pinned Ragas judge host")
     parser.add_argument("--ragas-venv", type=Path, default=None, help="the Ragas environment")
-    parser.add_argument("--ragas-concurrency", type=int, default=8, help="answers judged at once")
 
 
 # --- files -----------------------------------------------------------------------
@@ -231,7 +235,9 @@ async def ragas_stage(
             answer stage, or a built judge that differs from the plan.
         ragas_stage.RagasMissingError: Ragas is missing or not version 0.4.3.
         Exception: The runtime check's error, before any paid call.
+        scoring35.HalfBLocked: A main run while half B is locked.
     """
+    stagekit35.require_half_b_open(ctx)
     parts = parts or RagasParts()
     args = ctx.args
     settings = judge_settings(plan, args.ragas_host)

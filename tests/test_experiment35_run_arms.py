@@ -20,7 +20,7 @@ from typing import Any
 import pytest
 from experiments._lib.hosted_calls import RateLimitStop
 from experiments._lib.preflight import PreflightError
-from tests._exp35_fixtures import fake_plan, load, make_data_root, make_gguf
+from tests._exp35_fixtures import fake_plan, load, make_data_root, make_gguf, unpin
 
 arms = load("arms")
 cli35 = load("cli35")
@@ -414,6 +414,36 @@ def test_a_tree_hash_that_differs_from_the_plan_is_refused(env: Path) -> None:
     assert stub.log == []
 
 
+@pytest.mark.parametrize(
+    ("key", "task"),
+    [
+        ("pins.prompts", "P13"),
+        ("pins.recorded.hybrid", "P11"),
+        ("pins.settings.answer.reasoning", "P10"),
+        ("seeds.question_order", "P10"),
+    ],
+)
+def test_a_null_pin_stops_the_runner_with_code_2_before_any_call_and_names_the_key(
+    env: Path, capsys: pytest.CaptureFixture[str], key: str, task: str
+) -> None:
+    stub = Stub()
+    passages = _prepared(env, stub)
+    unpin(stub._plan, key, task)
+    assert _main(stub, env / "out", *_ingest_args(passages)) == 2
+    assert stub.log == []
+    assert not (env / "out").exists() or not list((env / "out").rglob("*.jsonl"))
+    out = capsys.readouterr().out
+    assert key in out and task in out
+
+
+def test_a_missing_prompts_table_is_not_read_as_an_empty_one(env: Path) -> None:
+    stub = Stub()
+    passages = _prepared(env, stub)
+    del stub._plan["pins"]["prompts"]
+    assert _main(stub, env / "out", *_ingest_args(passages)) == 2
+    assert stub.log == []
+
+
 # --- resume and the configuration hash (task 3.4) ----------------------------------------
 
 
@@ -473,7 +503,20 @@ def test_an_index_stage_refuses_index_from(env: Path) -> None:
 
 
 def test_the_stage_table_names_only_the_stages_that_exist() -> None:
-    assert set(run_arms.STAGE_TABLE) == set(arms.STAGES) == {"ingest", "seal"}
+    assert set(run_arms.STAGE_TABLE) == set(arms.STAGES)
+    assert set(arms.STAGES) == {
+        "ingest",
+        "seal",
+        "search",
+        "answer",
+        "judge",
+        "ragas",
+        "closedbook",
+        "oracle",
+        "determinism",
+        "claimkinds",
+        "lengthcheck",
+    }
 
 
 @pytest.mark.parametrize(

@@ -165,6 +165,7 @@ def score_question(
     hits = [unit in gold.units for unit in top]
     first = hits.index(True) + 1 if any(hits) else None
     evidence, _ = unit_list(dataset, chunks[:evidence_k], unit_map)
+    head, _ = unit_list(dataset, chunks[:K], unit_map)
     record: dict[str, Any] = {
         "dataset": dataset,
         "setup": setup,
@@ -177,6 +178,9 @@ def score_question(
         "recall_at_10": sum(hits) / len(gold.units),
         "mrr_at_10": 1.0 / first if first else 0.0,
         "evidence_recall_20k": len(gold.units.intersection(evidence)) / len(gold.units),
+        # Not a registered metric: the gold share among the units of the first 10
+        # stored chunks, the evidence of a 10-chunk answer setup (crosstable35 misses).
+        "head_recall_10": len(gold.units.intersection(head)) / len(gold.units),
     }
     if dataset == "financebench":
         record["hit_at_page"] = any(hits)
@@ -210,19 +214,76 @@ def summarise(records: Sequence[Mapping[str, Any]], *, expected_n: int) -> dict[
     return summary
 
 
+SELECTION_FILE = "selection.json"
+TIMESTAMP_FILE = "osf-timestamp.json"
+#: Fields of the OSF time-stamp record (task 16.23): upload time, uploaded
+#: file's SHA-256 and the configuration hash the upload holds.
+TIMESTAMP_FIELDS = ("uploaded_at", "file_sha256", "configuration_hash")
+
+
+class HalfBLocked(RuntimeError):
+    """Half B is not open: the selection is not written or not time-stamped (section 14.2)."""
+
+
+def _read(path: Path) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def require_half_b(root: Path | None) -> None:
+    """Refuse until half B is open (pre-registration section 14.2, task 16.17).
+
+    Half B opens when ``<root>/selection.json`` exists and
+    ``<root>/osf-timestamp.json`` records an upload time, a file hash and the
+    configuration hash of that ``selection.json``. The replicate pods' first
+    stage calls it too.
+
+    Raises:
+        HalfBLocked: A file is missing (names each), a record field is missing,
+            or the time-stamp holds another configuration hash (names both).
+    """
+    if root is None:
+        raise HalfBLocked(
+            f"half B is locked: no output folder holds {SELECTION_FILE} and {TIMESTAMP_FILE}"
+        )
+    missing = [n for n in (SELECTION_FILE, TIMESTAMP_FILE) if not (root / n).exists()]
+    if missing:
+        raise HalfBLocked(
+            f"half B is locked: {' and '.join(str(root / n) for n in missing)} missing; "
+            "score half A, write the selection and time-stamp its hash on OSF first"
+        )
+    current = _read(root / SELECTION_FILE).get("configuration_hash")
+    stamp = _read(root / TIMESTAMP_FILE)
+    lacking = [n for n in TIMESTAMP_FIELDS if not stamp.get(n)]
+    if lacking:
+        raise HalfBLocked(f"half B is locked: {TIMESTAMP_FILE} lacks {', '.join(lacking)}")
+    if stamp["configuration_hash"] != current:
+        raise HalfBLocked(
+            f"half B is locked: {SELECTION_FILE} holds configuration hash {current}, but "
+            f"{TIMESTAMP_FILE} time-stamps {stamp['configuration_hash']} (an earlier selection)"
+        )
+
+
 def write_scores(
-    path: Path, content: Sequence[Mapping[str, Any]] | Mapping[str, Any], *, half: str
+    path: Path,
+    content: Sequence[Mapping[str, Any]] | Mapping[str, Any],
+    *,
+    half: str,
+    root: Path | None = None,
 ) -> None:
     """Write scores atomically: a list as JSON lines, a mapping as one JSON file.
 
-    Every score write goes through this function. Task 16.17 adds the half-B
-    guard here: it refuses ``half="B"`` before the selection is time-stamped.
+    Every score write goes through this function. A half-B write first passes
+    :func:`require_half_b` on *root* (the output folder that holds
+    ``selection.json``); half A needs neither file.
 
     Raises:
         ValueError: *half* is not ``A`` or ``B``.
+        HalfBLocked: A half-B write before half B is open; nothing is written.
     """
     if half not in HALVES:
         raise ValueError(f"half must be one of {HALVES}, got {half!r}")
+    if half == "B":
+        require_half_b(root)
     if isinstance(content, Mapping):
         text = json.dumps(content, sort_keys=True, indent=2) + "\n"
     else:

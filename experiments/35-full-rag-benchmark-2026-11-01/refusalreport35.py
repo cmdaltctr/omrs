@@ -46,7 +46,7 @@ from typing import Any
 import claimkinds35
 from bootstrap35 import bootstrap_by_question
 from experiments._lib.stats_d6 import cohen_kappa, paired_bootstrap
-from outputs35 import read_rows, write_json
+from outputs35 import Layout, read_rows, write_json
 
 SEED = 20261136  # pre-registration section 16: refusal report bootstrap (owner confirms at P9)
 CHECKERS = ("chat", "clef_flash")
@@ -95,7 +95,7 @@ def _load_run(folder: Path, version: str) -> dict[str, RunAnswer]:
         raise ReportError(f"{folder}: a saved kind has another classifier version than {version}")
     kinds = {r["claim_key"]: r["kind"] for r in kinds_rows}
     judges = {c: {r["qid"]: r for r in read_rows(folder / f"judge-{c}.jsonl")} for c in CHECKERS}
-    where = "/".join(folder.parts[-3:])
+    where = "/".join(folder.parts[-4:])
     out: dict[str, RunAnswer] = {}
     for row in read_rows(folder / "answer.jsonl"):
         qid = row["qid"]
@@ -120,11 +120,14 @@ def _load_run(folder: Path, version: str) -> dict[str, RunAnswer]:
 
 
 def load(out_dir: Path, version: str) -> dict[tuple[str, str], dict[int, dict[str, RunAnswer]]]:
-    """Return ``(dataset, setup) -> run -> qid -> RunAnswer`` for every run folder."""
+    """Return ``(dataset, setup) -> run -> qid -> RunAnswer`` for every answer run folder.
+
+    Raises:
+        NoRunFiles: The output folder holds no answer run.
+    """
     data: dict[tuple[str, str], dict[int, dict[str, RunAnswer]]] = defaultdict(dict)
-    for path in sorted(out_dir.glob("*/*/run*/answer.jsonl")):
-        dataset, setup, run = path.parts[-4], path.parts[-3], int(path.parts[-2][3:])
-        data[(dataset, setup)][run] = _load_run(path.parent, version)
+    for dataset, setup, run, folder in Layout(out_dir).need_runs("answer", "answer.jsonl"):
+        data[(dataset, setup)][run] = _load_run(folder, version)
     return dict(data)
 
 

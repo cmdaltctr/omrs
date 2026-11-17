@@ -1,7 +1,8 @@
 """Judge settings and Ragas parts of the Experiment 35 Ragas stage (tasks 7.3, 14.5; H-11).
 
-The judge model, provider, host, reasoning, temperature and seed come from
-``plan.json`` (``runtime.references``, role ``ragas-judge``), never from the
+The judge model and provider come from ``plan.json`` ``runtime.references``
+(role ``ragas-judge``), the host, reasoning and temperature from
+``pins.ragas_judge`` and the seed from ``seeds.ragas_judge``, never from the
 pre-freeze ``measure_lib.py``. A built judge whose values differ refuses. Ragas
 lives in a separate environment and is imported only inside :func:`main_metrics`.
 """
@@ -19,10 +20,10 @@ _PREFREEZE = Path(__file__).resolve().parent / "prefreeze"
 if str(_PREFREEZE) not in sys.path:
     sys.path.insert(0, str(_PREFREEZE))
 
+import arms  # noqa: E402
 import ragas_stage as ragas_stage_lib  # noqa: E402
 
 JUDGE_ROLE = "ragas-judge"
-JUDGE_FIELDS = ("model", "provider", "host", "reasoning", "temperature", "seed")
 BUILT_FIELDS = ("model", "host", "reasoning", "temperature", "seed")
 
 
@@ -31,22 +32,31 @@ class RagasRefused(RuntimeError):
 
 
 def judge_settings(plan: Mapping[str, Any], host: str) -> dict[str, Any]:
-    """Return the Ragas judge settings of *plan* (``runtime.references``, role ``ragas-judge``).
+    """Return the Ragas judge settings of *plan*.
+
+    The model and provider come from ``runtime.references`` (role ``ragas-judge``);
+    the host, reasoning and temperature from ``pins.ragas_judge``; the seed from
+    ``seeds.ragas_judge``.
 
     Raises:
-        RagasRefused: *host* is empty, a setting is missing from the plan, or the
-            plan's host differs from *host*.
+        RagasRefused: *host* is empty, a value is missing or ``null`` in the plan
+            (the message names the key and its pre-freeze task), or the plan's
+            host differs from *host*.
     """
     if not host:
         raise RagasRefused("--ragas-host is required for the ragas stage")
     found = [r for r in plan["runtime"]["references"] if r.get("role") == JUDGE_ROLE]
     reference = found[0] if found else {}
-    missing = [name for name in JUDGE_FIELDS if name not in reference]
+    missing = [name for name in ("model", "provider") if name not in reference]
     if missing:
         raise RagasRefused(f"plan.json {JUDGE_ROLE} lacks {', '.join(missing)}")
-    if reference["host"] != host:
-        raise RagasRefused(f"--ragas-host {host} differs from plan.json host {reference['host']}")
-    return {name: reference[name] for name in JUDGE_FIELDS}
+    settings = {name: reference[name] for name in ("model", "provider")}
+    for name in ("host", "reasoning", "temperature"):
+        settings[name] = arms.pinned(plan, "pins", "ragas_judge", name, error=RagasRefused)
+    settings["seed"] = arms.pinned(plan, "seeds", "ragas_judge", error=RagasRefused)
+    if settings["host"] != host:
+        raise RagasRefused(f"--ragas-host {host} differs from plan.json host {settings['host']}")
+    return settings
 
 
 def built_judge_values(llm: Any) -> dict[str, Any]:

@@ -18,11 +18,15 @@ from __future__ import annotations
 import math
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
+import labels35
 import select35
 from experiments._lib import stats_cluster
 from experiments._lib.stats_d6 import holm, paired_permutation
+from outputs35 import write_json
+from verdicts35 import verdicts
 
 FB, FS, BQ = select35.CORE
 LEGAL = "legal"
@@ -269,54 +273,6 @@ def _dataset_rows(
     return results
 
 
-def _two_of_three(counted: Mapping[str, Mapping[int, int]], row: int) -> bool:
-    return sum(counted.get(d, {}).get(row, 0) > 0 for d in select35.CORE) >= 2
-
-
-def _both(counted: Mapping[str, Mapping[int, int]], rows: Sequence[int]) -> dict[str, Any]:
-    fb, fs = counted.get(FB, {}), counted.get(FS, {})
-    holding = [r for r in rows if fb.get(r, 0) != 0 and fb.get(r) == fs.get(r)]
-    signs = {fb[r] for r in holding}
-    return {
-        "holds": bool(holding),
-        "rows": holding,
-        "sign": signs.pop() if len(signs) == 1 else 0,
-        "dataset_dependent": [r for r in rows if fb.get(r, 0) * fs.get(r, 0) < 0],
-    }
-
-
-def verdicts(counted: Mapping[str, Mapping[int, int]]) -> dict[str, Any]:
-    """Apply the per-hypothesis rules of section 7.
-
-    Args:
-        counted: Per dataset and row, the sign of a counted row (+1 or -1), else 0.
-
-    Returns:
-        The verdict of each hypothesis.
-    """
-
-    def steps(rows: Sequence[int]) -> dict[str, Any]:
-        held = {r: _two_of_three(counted, r) for r in rows}
-        n = sum(held.values())
-        return {"holds": "full" if n == len(rows) else "part" if n else "no", "steps": held}
-
-    per_dataset = {
-        d: counted.get(d, {}).get(5, 0) > 0 and counted.get(d, {}).get(6, 0) > 0
-        for d in select35.CORE
-    }
-    return {
-        "H1": steps((1, 2)),
-        "H2": {"holds": _two_of_three(counted, 3)},
-        "H3": {"holds": _two_of_three(counted, 4)},
-        "H4": {"holds": sum(per_dataset.values()) >= 2, "per_dataset": per_dataset},
-        "H5": steps((7, 8)),
-        "H6": _both(counted, (9, 10)),
-        "H7": {"holds": counted.get(FB, {}).get(11, 0) > 0 and counted.get(FS, {}).get(11, 0) > 0},
-        "H8a": {"faithfulness": _both(counted, (12, 13)), "correctness": _both(counted, (14, 15))},
-        "H8b": {"faithfulness": _both(counted, (16, 17)), "correctness": _both(counted, (18, 19))},
-    }
-
-
 def h8b_questions(answers: Iterable[Mapping[str, Any]]) -> dict[str, set[str]]:
     """Return per dataset the questions with a cut total of at least 19,456 in every t20k record."""
     seen: dict[str, dict[str, bool]] = {}
@@ -449,6 +405,31 @@ def analyse(
         "h8b_sensitivity": sensitivity,
         "claims": _claims(hypotheses, sensitivity),
     }
+
+
+def write_confirmatory(
+    path: Path,
+    search_records: Sequence[Mapping[str, Any]],
+    answer_records: Sequence[Mapping[str, Any]],
+    *,
+    label_dir: Path,
+    n_draws: int = stats_cluster.SIGN_FLIP_DRAWS,
+    n_perm: int = PERM_SHUFFLES,
+) -> dict[str, Any]:
+    """Write the confirmatory result to *path*, only after both gate files exist.
+
+    The gate rows of ``labels35.require_gates`` become "not testable" (p = 1).
+    *path* also records them under ``gates``.
+
+    Raises:
+        labels35.GateMissing: A gate file is missing; nothing is computed or written.
+    """
+    gated = labels35.require_gates(label_dir)
+    result = analyse(
+        search_records, answer_records, not_testable=gated, n_draws=n_draws, n_perm=n_perm
+    )
+    write_json(path, {**result, "gates": {d: sorted(rows) for d, rows in gated.items()}})
+    return result
 
 
 def headline(

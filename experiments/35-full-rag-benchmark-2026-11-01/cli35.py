@@ -17,11 +17,17 @@ limit or the account is out of credit (finished rows kept, no done-marker);
 from __future__ import annotations
 
 import argparse
+import json
+import os
 from collections.abc import Sequence
 from pathlib import Path
+from typing import Any
 
 import arms
+import claimstage35
 import datasets35
+import ragas35
+from outputs35 import say
 
 EXP_DIR = Path(__file__).resolve().parent
 DEFAULT_OUT = EXP_DIR / "output" / "restricted" / "runs"
@@ -61,6 +67,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--qids", type=_qids, help="comma list of question IDs: a named-question smoke run"
     )
     parser.add_argument("--judges", default="", help=f"comma list of {', '.join(arms.JUDGE_NAMES)}")
+    parser.add_argument(
+        "--answers",
+        choices=arms.ANSWER_KINDS,
+        default="answer",
+        help="the answer folder the judge and ragas stages read (default answer)",
+    )
     parser.add_argument("--answer-host", default="", help="the one OpenRouter host for answers")
     parser.add_argument("--resume", action="store_true", help="continue a started stage")
     parser.add_argument("--dry-run", action="store_true", help="print the plan; start nothing")
@@ -84,7 +96,49 @@ def build_parser() -> argparse.ArgumentParser:
             default=arms.CONCURRENCY_DEFAULTS[name],
             help=f"default {arms.CONCURRENCY_DEFAULTS[name]}",
         )
+    ragas35.add_arguments(parser)
+    claimstage35.add_arguments(parser)
     return parser
+
+
+def print_plan(
+    args: argparse.Namespace,
+    setup: arms.Setup,
+    name: str,
+    path: Path,
+    layout: Any,
+    roles: Sequence[str],
+    questions: Sequence[Any],
+    problems: list,
+    *,
+    concurrency: dict[str, int],
+    resolved: dict[str, Any],
+) -> int:
+    """Print the ``--dry-run`` plan of one stage; return 1 when OMRS lists role problems."""
+    plan = {
+        "nothing_started": True,
+        "settings_file": str(path),
+        "out_dir": str(args.out_dir),
+        "dataset": args.dataset,
+        "stage": args.stage,
+        "name": name,
+        "run": args.run,
+        "collection": setup.collection(args.dataset),
+        "store": str(layout.store(setup.index)),
+        "search": {"rerank": setup.rerank, "hybrid": setup.hybrid_on},
+        "models": list(roles),
+        "corpus_sample": args.corpus_sample,
+        "questions": [q.qid for q in questions],
+        "prefreeze": args.prefreeze,
+        "smoke": args.smoke,
+        "concurrency": concurrency,
+        "keys_set": {n: bool(os.environ.get(n)) for n in ("OPENROUTER_API_KEY", arms.GLM_KEY_ENV)},
+        "resolved": resolved,
+        "role_problems": problems,
+    }
+    say("[dry-run] nothing started, nothing sent")
+    say(json.dumps(plan, indent=2, default=str))
+    return 1 if problems else 0
 
 
 def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:

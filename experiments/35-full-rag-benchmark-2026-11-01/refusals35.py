@@ -70,21 +70,31 @@ def smoke_claims(
     """Return the distinct smoke claims of the given dataset folders.
 
     Args:
-        folders: Dataset name to its smoke folder (``<dataset>/<setup>/run<n>``).
+        folders: Dataset name to its smoke folder. The saved pre-freeze smoke
+            runs (2026-11-11) hold ``<setup>/run<n>/answer.jsonl`` and
+            ``<setup>/index/ingest.jsonl`` there, the layout before
+            ``outputs35.Layout``; this reader keeps that layout on purpose.
         questions: Dataset name to (question ID to question text).
 
     Returns:
         One record per distinct (question ID, claim text), in folder order.
 
     Raises:
-        SampleError: The FreshStack folder is the invalid first smoke folder.
+        SampleError: The FreshStack folder is the invalid first smoke folder,
+            or a folder holds no answer file (names the folder).
     """
     claims: dict[str, dict[str, Any]] = {}
     for dataset in sorted(folders):
         folder = folders[dataset]
         if dataset == "freshstack":
             _check_freshstack(folder)
-        for answers in sorted(folder.glob("*/run*/answer.jsonl")):
+        found = sorted(folder.glob("*/run*/answer.jsonl"))
+        if not found:
+            raise SampleError(
+                f"{folder}: no <setup>/run<n>/answer.jsonl; pass the dataset folder of a "
+                "pre-freeze smoke run (2026-11-11 layout)"
+            )
+        for answers in found:
             for row in read_rows(answers):
                 for claim in claimkinds35.answer_claims(row):
                     key = claimkinds35.claim_key(row["qid"], claim)

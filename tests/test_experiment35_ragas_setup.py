@@ -9,12 +9,14 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import re
 import sys
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
 import pytest
+from tests._exp35_fixtures import unpin
 from tests._exp35_ragas_fixtures import (
     EMBED_FILE,
     JUDGE,
@@ -42,13 +44,17 @@ def _setup(tmp_path: Path, qids: list[str]) -> Path:
 # --- task 7.3 -----------------------------------------------------------------
 
 
+def test_the_concurrency_option_is_defined_once_in_the_runner_not_here() -> None:
+    parser = argparse.ArgumentParser()
+    ragas35.add_arguments(parser)
+    assert "--ragas-concurrency" not in parser._option_string_actions
+
+
 def test_the_arguments_parse() -> None:
     parser = argparse.ArgumentParser()
     ragas35.add_arguments(parser)
-    args = parser.parse_args(
-        ["--ragas-host", "hostj", "--ragas-venv", "/v", "--ragas-concurrency", "4"]
-    )
-    assert (args.ragas_host, args.ragas_venv, args.ragas_concurrency) == ("hostj", Path("/v"), 4)
+    args = parser.parse_args(["--ragas-host", "hostj", "--ragas-venv", "/v"])
+    assert (args.ragas_host, args.ragas_venv) == ("hostj", Path("/v"))
     assert parser.parse_args([]).ragas_host == ""
 
 
@@ -66,10 +72,37 @@ def test_a_host_or_setting_missing_from_the_plan_refuses(tmp_path: Path) -> None
     with pytest.raises(ragas35.RagasRefused, match="hostk.*hostj|hostj.*hostk"):
         run(ctx(run_dir, ["q1"], router, ragas_host="hostk"), parts(script, router))
     no_seed = plan()
-    del no_seed["runtime"]["references"][0]["seed"]
+    del no_seed["seeds"]["ragas_judge"]
     with pytest.raises(ragas35.RagasRefused, match="seed"):
         run(ctx(run_dir, ["q1"], router), parts(script, router), no_seed)
     assert script.prompts == []
+
+
+def test_a_null_judge_pin_refuses_before_any_call_and_names_its_key_and_task(
+    tmp_path: Path,
+) -> None:
+    run_dir = _setup(tmp_path, ["q1"])
+    for key, task in (("pins.ragas_judge.host", "P10"), ("seeds.ragas_judge", "P10")):
+        p = unpin(plan(), key, task)
+        script, router = Script(), Router()
+        with pytest.raises(ragas35.RagasRefused, match=f"{re.escape(key)}.*{task}"):
+            run(ctx(run_dir, ["q1"], router), parts(script, router), p)
+        assert script.prompts == [] and router.opened == 0
+
+
+def test_the_judge_host_reasoning_temperature_and_seed_are_read_from_the_pin_blocks() -> None:
+    p = plan()
+    assert "host" not in p["runtime"]["references"][0]
+    p["pins"]["ragas_judge"].update(host="hostz", reasoning="high", temperature=0.3)
+    p["seeds"]["ragas_judge"] = 5
+    assert ragas35.judge_settings(p, "hostz") == {
+        "model": "openai/gpt-oss-120b",
+        "provider": "openrouter",
+        "host": "hostz",
+        "reasoning": "high",
+        "temperature": 0.3,
+        "seed": 5,
+    }
 
 
 def test_the_dry_run_prints_the_judge_settings_and_version_and_sends_nothing(

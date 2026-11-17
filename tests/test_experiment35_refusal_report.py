@@ -64,7 +64,7 @@ def _build(tmp_path: Path, *, kinds_version: str = "v1", drop_kind: tuple | None
     (out / "join.json").write_text(json.dumps({"ok": True}))
     for setup, runs in SPEC.items():
         for run, per_q in runs.items():
-            folder = out / "bioasq" / setup / f"run{run}"
+            folder = out / "bioasq" / "answer" / setup / f"run{run}"
             answers, chat, clef, kinds = [], [], [], []
             for qid, claims in per_q.items():
                 if claims is None:

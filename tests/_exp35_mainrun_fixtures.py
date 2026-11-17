@@ -31,7 +31,7 @@ def build(out: Path) -> dict[str, Any]:
     for dataset in DATASETS:
         for setup in SETUPS:
             for run in (1, 2):
-                folder = out / dataset / setup / f"run{run}"
+                folder = out / dataset / "answer" / setup / f"run{run}"
                 answers = [answer_row(q, [f"Claim one of {q}", f"Claim two of {q}"]) for q in QIDS]
                 write_rows(folder / "answer.jsonl", answers)
                 for judge in ("chat", "clef_flash"):
@@ -64,7 +64,7 @@ def write_kinds(out: Path, kind_of: Callable[[str, int], str | None]) -> None:
     A claim for which *kind_of* returns None gets no row (it is unclassified).
     """
     claimkinds35 = load("claimkinds35")
-    for path in sorted(out.glob("*/*/run*/answer.jsonl")):
+    for path in sorted(out.glob("*/answer/*/run*/answer.jsonl")):
         rows = []
         for answer in map(json.loads, path.read_text().splitlines()):
             for index, text in enumerate(claimkinds35.answer_claims(answer)):

@@ -14,7 +14,7 @@ import json
 from pathlib import Path
 
 import pytest
-from tests._exp35_fixtures import FS_ROWS, FS_ROWS_DATA, fake_plan, load, make_data_root
+from tests._exp35_fixtures import FS_ROWS, FS_ROWS_DATA, fake_plan, load, make_data_root, unpin
 
 from omrs.core.chunking.model_token import _heading_positions
 
@@ -51,6 +51,27 @@ def test_a_changed_input_file_stops_and_names_it(root: Path) -> None:
         datasets35.verify_inputs(
             root, {"benchmarks/financebench/financebench_merged.jsonl": "0" * 64}
         )
+
+
+def test_a_null_dataset_pin_is_refused_and_names_its_key_and_task(
+    root: Path, tmp_path: Path
+) -> None:
+    def unpinned(dataset: str, key: str, task: str) -> dict:
+        plan = fake_plan()
+        plan["pins"]["datasets"].setdefault(dataset, {})[key] = "x"
+        return unpin(plan, f"pins.datasets.{dataset}.{key}", task)
+
+    legal = unpinned("legal", "sha256", "RDY 13.4")
+    with pytest.raises(datasets35.DatasetError, match=r"pins\.datasets\.legal\.sha256.*RDY 13.4"):
+        datasets35.input_hashes("legal", legal)
+    fresh = unpinned("freshstack", "revision", "P1")
+    with pytest.raises(datasets35.DatasetError, match=r"pins\.datasets\.freshstack\.revision.*P1"):
+        datasets35.freshstack_pin(fresh)
+    folder = prepare35.prepare("bioasq", root, tmp_path / "passages", plan=fake_plan())
+    assert folder.is_dir()
+    tree = unpinned("bioasq", "passages_tree_sha256", "RDY 5.4c")
+    with pytest.raises(datasets35.DatasetError, match=r"bioasq\.passages_tree_sha256.*RDY 5.4c"):
+        datasets35.check_passages(tmp_path / "passages", "bioasq", tree)
 
 
 def test_legal_input_hashes_come_from_the_plan_and_a_missing_pin_is_named(root: Path) -> None:

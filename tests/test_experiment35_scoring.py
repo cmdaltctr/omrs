@@ -236,6 +236,7 @@ def test_the_record_holds_the_fields_the_statistics_read() -> None:
     assert set(record) == {
         "dataset", "setup", "qid", "doc_id", "units", "unmapped_chunks", "evidence_chunks",
         "ndcg_at_10", "recall_at_10", "mrr_at_10", "evidence_recall_20k", "hit_at_page",
+        "head_recall_10",
     }  # fmt: skip
     other = _score("bioasq", [_c("x", "1")], _gold("a", ["1"]))
     assert "hit_at_page" not in other
@@ -392,3 +393,15 @@ def test_numbers_read_scale_sign_and_separators() -> None:
     values = [n.value for n in scoring35.extract_numbers("$1,577 million, (3.2), -4, 7bn, 12.5%")]
     expected = ["1577000000", "-3.2", "-4", "7000000000", "12.5"]
     assert values == [Decimal(v) for v in expected]
+
+
+def test_head_recall_counts_only_the_units_of_the_first_ten_stored_chunks() -> None:
+    # Chunks 1 to 11 come from two documents; the gold document is first at chunk 12.
+    chunks = [_c(f"c{i}", stem="A" if i % 2 else "B") for i in range(11)]
+    chunks.append(_c("c11", stem="GOLD"))
+    record = _score("bioasq", chunks, _gold("q1", ["GOLD"]))
+    assert record["recall_at_10"] == 1.0  # third distinct unit: a hit for the registered metric
+    assert record["head_recall_10"] == 0.0  # the answer model never saw it
+    assert (
+        _score("bioasq", chunks[-1:] + chunks[:-1], _gold("q1", ["GOLD"]))["head_recall_10"] == 1.0
+    )

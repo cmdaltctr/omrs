@@ -48,6 +48,10 @@ class StageFileExistsError(RuntimeError):
     """A stage file exists and ``--resume`` is not set."""
 
 
+class NoRunFiles(RuntimeError):
+    """A reader found no run file where the plan expects one; nothing was written."""
+
+
 class ResumeMismatchError(RuntimeError):
     """``--resume`` found a stage started with other inputs."""
 
@@ -97,6 +101,40 @@ class Layout:
     def run_dir(self, dataset: str, kind: str, setup: str, run: int) -> Path:
         """Return the folder of one repetition of one setup."""
         return self.setup_dir(dataset, kind, setup) / f"run{run}"
+
+    def stage_dir(self, dataset: str, kind: str, name: str, run: int) -> Path:
+        """Return the folder a stage writes: index folder, ``<out>/lengthcheck`` or run folder."""
+        if kind == "index":
+            return self.index_dir(dataset, name)
+        if kind == "lengthcheck":
+            return self.root / "lengthcheck"
+        return self.run_dir(dataset, kind, name, run)
+
+    def runs(self, kind: str, file: str, dataset: str = "*") -> list[tuple[str, str, int, Path]]:
+        """Return ``(dataset, setup, run, run folder)`` of each :meth:`run_dir` holding *file*.
+
+        Sorted by path. *dataset* ``*`` reads every dataset.
+        """
+        return [
+            (p.parts[-5], p.parts[-3], int(p.parts[-2].removeprefix("run")), p.parent)
+            for p in sorted(self.root.glob(f"{dataset}/{kind}/*/run*/{file}"))
+        ]
+
+    def need_runs(
+        self, kind: str, file: str, dataset: str = "*"
+    ) -> list[tuple[str, str, int, Path]]:
+        """Return :meth:`runs`; refuse when there is none.
+
+        Raises:
+            NoRunFiles: No run folder holds *file*; the message names the folder searched.
+        """
+        found = self.runs(kind, file, dataset)
+        if not found:
+            raise NoRunFiles(
+                f"no {file} in {self.root}/{dataset}/{kind}/<setup>/run<n>; "
+                "is this the output folder the runner wrote?"
+            )
+        return found
 
     @property
     def state_dir(self) -> Path:

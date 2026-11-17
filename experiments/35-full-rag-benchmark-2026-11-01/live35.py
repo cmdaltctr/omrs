@@ -15,6 +15,9 @@ object; tests pass a stub with the same methods.
 * Machine: the host name, ``RUNPOD_POD_ID``, the GPU model from ``nvidia-smi``
   and the image from ``EXP35_POD_IMAGE`` (design D19). A field that cannot be
   read is ``None``, and the stage then refuses.
+* Ragas (``ragas35``): ``router(entry)`` loads one plan model on the managed
+  router and yields its endpoint; ``runtime_check(entry, endpoint)`` checks
+  that model on the live server (build, SHA-256, server arguments).
 * Judges: one claim judge per strategy, on a copy of the answer block, built
   by ``compose_judges``. ``chat`` wraps GLM-5.3 in OMRS's production chat
   strategy.
@@ -27,7 +30,8 @@ import os
 import socket
 import subprocess
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -90,6 +94,26 @@ class LiveDeps:
         import router_config
 
         return router_config.start_router(list(files), plan)
+
+    @contextmanager
+    def router(self, entry: Mapping[str, Any]) -> Iterator[str]:
+        """Load the plan model *entry* on the managed router; yield its endpoint URL."""
+        from experiments._lib import router_env
+
+        self.start_router([entry["file"]], {"runtime": {"models": [dict(entry)]}})
+        yield router_env.ROUTER_URL
+
+    def runtime_check(self, entry: Mapping[str, Any], endpoint: str) -> dict[str, Any]:
+        """Check the model *entry* on the live router; return its build and file SHA-256."""
+        from experiments._lib.llamacpp_runtime import verify_llamacpp_runtime
+
+        from omrs.core.experiment_records.runtime_block import RuntimeBlock
+
+        plan = self.plan()
+        block = RuntimeBlock.model_validate({**plan["runtime"], "models": [dict(entry)]})
+        base_url = endpoint.rstrip("/").removesuffix("/v1")
+        found = verify_llamacpp_runtime(block, base_url=base_url, check_args=True)
+        return {"build": found.build, "sha256": found.models[0]["sha256"]}
 
     def guard(
         self, block: Any, *, base_url: str, command: str, prefreeze: bool, smoke: bool
