@@ -243,14 +243,14 @@ class HostJudge(Judge):
 
     async def judge(self, claim: str, texts: tuple[str, ...]) -> Judgement:
         found = await super().judge(claim, texts)
-        call = JudgeCall("chat", "glm-5.3", "z-ai", None, "1", {}, None, None)
+        call = JudgeCall("chat", "glm-5.3", "z-ai", None, "1", {}, None, None, "glm-5.3-0901")
         return Judgement(found.verdict, call)
 
 
 def test_chat_rows_record_the_returned_provider_and_model(tmp_path: Path) -> None:
-    # Task 15.9: OMRS's judge call record names the host of the reply, not its model.
+    # Task 15.9: OMRS's judge call record names the host and the model of the reply.
     ctx = _ctx(tmp_path, HostJudge("chat"))
     assert _run(ctx) == 0
     row = _lines(ctx.run_dir / "judge-chat.jsonl")[0]
     assert row["provider_returned"] == ["z-ai"]
-    assert row["model_returned"] == []
+    assert row["model_returned"] == ["glm-5.3-0901"]

@@ -211,9 +211,8 @@ def answer_row(
         "cost_usd": usage.get("cost_usd"),
         "host": chat.get("host"),
         "host_in_list": chat.get("host_in_list"),
-        # Task 15.9: OMRS names the reply's serving host but not the model the reply
-        # names, so the join counts this row's model as ``unknown``.
-        "model_returned": None,
+        # Task 15.9: the serving host and the model the reply names.
+        "model_returned": chat.get("model_returned"),
         "provider_returned": chat.get("host"),
         "temperature": chat.get("temperature"),
         "seed": chat.get("seed"),

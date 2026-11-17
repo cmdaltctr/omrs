@@ -402,8 +402,11 @@ def write_report(out_dir: Path, *, gate_path: Path, n_boot: int = 10_000) -> Pat
     """
     scoring35.require_half_b(out_dir)
     join = out_dir / "join.json"
-    if not join.exists() or json.loads(join.read_text(encoding="utf-8")).get("ok") is not True:
+    found = json.loads(join.read_text(encoding="utf-8")) if join.exists() else {}
+    if found.get("ok") is not True:
         raise ReportError(f"{join}: no passing join")
+    if found.get("smoke"):
+        raise ReportError(f"{join}: a smoke join; the report needs the main-run join (task 6.1)")
     gate = json.loads(gate_path.read_text(encoding="utf-8")) if gate_path.exists() else {}
     if gate.get("pass") is not True or not gate.get("version"):
         raise ReportError(f"{gate_path}: no frozen classifier version (gate not passed)")

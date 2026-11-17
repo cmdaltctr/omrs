@@ -365,9 +365,31 @@ def test_setup_table_is_descriptive_on_all_questions() -> None:
 # --- step 8 guard: no confirmatory result before the gate files (task 16.18, A6 note) ---------
 
 
+def _main_join(root, **extra) -> None:
+    import json
+
+    (root / "join.json").write_text(json.dumps({"ok": True, **extra}))
+
+
+@pytest.mark.parametrize("join", [None, {"ok": False}, {"smoke": True}])
+def test_confirmatory_result_refuses_without_a_main_run_join(tmp_path, join) -> None:
+    """Task 6.1: statistics refuse a missing, failed or smoke join."""
+    stages35 = load("stages35")
+    open_half_b(tmp_path)
+    if join is not None:
+        _main_join(tmp_path, **join)
+    out = tmp_path / "factorial.json"
+    with pytest.raises(stages35.StageOrderError, match="join"):
+        factorial35.write_confirmatory(
+            out, _search(), _answers(), label_dir=tmp_path, root=tmp_path, **FAST
+        )
+    assert not out.exists()
+
+
 def test_confirmatory_result_refuses_before_the_gate_files(tmp_path) -> None:
     labels35 = load("labels35")
     open_half_b(tmp_path)
+    _main_join(tmp_path)
     out = tmp_path / "factorial.json"
     with pytest.raises(labels35.GateMissing, match="faithfulness-gate.json"):
         factorial35.write_confirmatory(
@@ -384,6 +406,7 @@ def test_confirmatory_result_applies_the_gate_rows(tmp_path) -> None:
         json.dumps({"result": {"not_testable_rows": {"freshstack": [14]}}})
     )
     open_half_b(tmp_path)
+    _main_join(tmp_path)
     out = tmp_path / "factorial.json"
     result = factorial35.write_confirmatory(
         out, _search(), _answers(), label_dir=tmp_path, root=tmp_path, **FAST

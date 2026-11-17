@@ -141,8 +141,8 @@ def _row(qid: str, name: str, verdicts: list[dict], seconds: float, not_judged: 
         "qid": qid,
         "judge": name,
         "verdicts": verdicts,
-        # Task 15.9: OMRS's call record names the reply's host, not the model it names.
-        "model_returned": [],
+        # Task 15.9: the models and hosts the replies name, from OMRS's call records.
+        "model_returned": sorted({c["model_returned"] for c in calls if c.get("model_returned")}),
         "provider_returned": sorted({c["host"] for c in calls if c.get("host")}),
         "verified": bool(verdicts) and all(v["verdict"] == "supported" for v in verdicts),
         "skipped_reason": None if verdicts or not_judged else "no cited claims",

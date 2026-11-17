@@ -89,7 +89,14 @@ class Engine:
             "citations": [1],
             "evidence": prepare_evidence(rows),
             "usage": {"input_tokens": 10, "output_tokens": 2, "cost_usd": 0.001},
-            "sampling": {"chat": {"host": "h1", "host_in_list": True, "temperature": 0.0}},
+            "sampling": {
+                "chat": {
+                    "host": "h1",
+                    "host_in_list": True,
+                    "temperature": 0.0,
+                    "model_returned": "deepseek/deepseek-v4.1-flash-1017",
+                }
+            },
             "diagnostics": {"completion_calls": 1},
         }
 
@@ -313,12 +320,11 @@ def test_the_answer_stage_refuses_without_selection_json(tmp_path: Path) -> None
     assert _run(ctx) == 0
 
 
-def test_each_row_records_the_returned_provider_and_no_returned_model(tmp_path: Path) -> None:
-    # Task 15.9: OMRS reports the serving host of the reply (``sampling.chat.host``) but
-    # not the model the reply names, so ``model_returned`` is null and the join counts it
-    # under ``unknown``.
+def test_each_row_records_the_returned_provider_and_model(tmp_path: Path) -> None:
+    # Task 15.9: OMRS reports the serving host and the model the reply names
+    # (``sampling.chat.host`` and ``sampling.chat.model_returned``).
     ctx = _ctx(tmp_path, Engine())
     assert _run(ctx) == 0
     row = _lines(ctx.run_dir / "answer.jsonl")[0]
     assert row["provider_returned"] == "h1"
-    assert "model_returned" in row and row["model_returned"] is None
+    assert row["model_returned"] == "deepseek/deepseek-v4.1-flash-1017"

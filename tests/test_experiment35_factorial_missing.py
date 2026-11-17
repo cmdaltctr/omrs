@@ -147,6 +147,7 @@ def test_confirmatory_result_refuses_while_half_b_is_locked(tmp_path: Path) -> N
         factorial35.write_confirmatory(out, [], [], label_dir=tmp_path, root=tmp_path, **base.FAST)
     assert not out.exists()
     open_half_b(tmp_path)
+    (tmp_path / "join.json").write_text(json.dumps({"ok": True}))
     # The drop record of the output folder reaches the analysis (drop step 1).
     (tmp_path / "drops.json").write_text(json.dumps({"drops": [{"step": 1}]}))
     answers = [r for r in base._answers() if r["dataset"] != "legal"]

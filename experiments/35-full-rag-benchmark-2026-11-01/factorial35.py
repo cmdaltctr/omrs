@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import Any
 
 import budget35
+import determinism35
 import labels35
 import scoring35
 import select35
@@ -418,9 +419,11 @@ def write_confirmatory(
 
     Raises:
         scoring35.HalfBLocked: Half B is not open; nothing is computed or written.
+        stages35.StageOrderError: ``<root>/join.json`` is missing, fails or is a smoke join.
         labels35.GateMissing: A gate file is missing; nothing is computed or written.
     """
     scoring35.require_half_b(root)
+    determinism35.require_join(root)
     gated = labels35.require_gates(label_dir)
     kept = budget35.answer_datasets(budget35.read_drops(root))
     result = analyse(

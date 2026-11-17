@@ -114,6 +114,14 @@ def test_refuses_without_a_passing_join(tmp_path: Path) -> None:
         report.write_report(out, gate_path=tmp_path / "gate.json", n_boot=200)
 
 
+def test_refuses_a_smoke_join(tmp_path: Path) -> None:
+    """Task 6.1: a smoke join report is refused by the statistics."""
+    out = _build(tmp_path)
+    (out / "join.json").write_text(json.dumps({"ok": True, "smoke": True}))
+    with pytest.raises(report.ReportError, match="smoke"):
+        report.write_report(out, gate_path=tmp_path / "gate.json", n_boot=200)
+
+
 def test_refuses_without_a_frozen_classifier_version(tmp_path: Path) -> None:
     out = _build(tmp_path)
     (tmp_path / "gate.json").write_text(json.dumps({"pass": False, "version": "v1"}))
