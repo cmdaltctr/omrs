@@ -77,7 +77,12 @@ When the Ragas stage scores several answers at once, each answer's row SHALL hol
 
 ### Requirement: Ragas resume never repeats a saved answer's calls
 
-A final Ragas row SHALL be saved only when every metric of the answer has a score, or is closed as unjudged after the error cap. With `--resume`, the stage SHALL skip each answer that has a final row. A rate-limit error SHALL NOT be saved as a metric result. An answer whose row was not saved SHALL be scored again in full on resume, so its earlier metric calls repeat; this affects at most one answer per worker per stop, the same bound as the claim judge (design risks).
+A final Ragas row SHALL be saved only when every metric of the answer has a score, is not defined (`null` with `not_defined`, or `not_judged` for a missing reference), or is closed as unjudged after the error cap. With `--resume`, the stage SHALL skip each answer that has a final row. A rate-limit or out-of-credit error SHALL NOT be saved as a metric result. A stop SHALL keep the answer's last partial row, and `--resume` SHALL NOT resend a metric saved in it.
+
+#### Scenario: Not-defined metric in the final row
+
+- **WHEN** one metric of an answer returns NaN and every other metric scores
+- **THEN** the stage MUST save a final row with that metric as `null` with `not_defined`, and `--resume` MUST send no call for that answer
 
 #### Scenario: Resume after a stop
 
@@ -87,12 +92,17 @@ A final Ragas row SHALL be saved only when every metric of the answer has a scor
 #### Scenario: Rate limit during a metric
 
 - **WHEN** a metric call fails with HTTP 429 on every attempt
-- **THEN** no row for that answer MUST be saved, and the stage MUST stop with the rate-limit exit code
-- **AND** `--resume` MUST score that answer again with every metric
+- **THEN** no new row for that answer MUST be saved, its last partial row (if any) MUST stay unchanged, and the stage MUST stop with the rate-limit exit code
+- **AND** `--resume` MUST send every metric of that answer except the metrics saved in its partial row, so the calls of the interrupted attempt repeat for at most one answer per worker per stop, the same bound as the claim judge (design risks)
+
+#### Scenario: Out of credit during a metric
+
+- **WHEN** a metric call gets an out-of-credit reply (HTTP 402 with no `Retry-After`)
+- **THEN** the stage MUST stop with the rate-limit exit code, the metric MUST stay open, and the error MUST NOT count toward the cap
 
 ### Requirement: A failed Ragas metric is unjudged and re-run on resume
 
-A metric error that is not a rate limit SHALL NOT be a score or give a final row. A partial row SHALL list that metric as unjudged; `--resume` SHALL re-run only unjudged metrics. The third such error on one metric (across resumes) SHALL close it as unjudged, and the stage SHALL go on (amendment A5). A stage that ends with a metric open SHALL exit with code 6.
+An out-of-credit error SHALL stop the stage and SHALL NOT count toward the cap. Any other metric error that is not a rate limit SHALL NOT be a score or give a final row. A partial row SHALL list that metric as unjudged; `--resume` SHALL re-run only unjudged metrics. The third such error on one metric (across resumes) SHALL close it as unjudged, and the stage SHALL go on (amendment A5). A stage that ends with a metric open SHALL exit with code 6.
 
 #### Scenario: Third error closes the metric
 

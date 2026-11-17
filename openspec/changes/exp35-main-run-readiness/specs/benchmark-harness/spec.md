@@ -407,6 +407,11 @@ Per question, the search stage SHALL save only the ranked stored chunk IDs, scor
 
 A call result SHALL count as saved only when an answer text, verdict or score was saved. An error with no content SHALL stay pending, and `--resume` SHALL send it again. A checker call that returns with an error SHALL be a failed call, never a verdict. Returned content SHALL be final, a refusal or an empty answer included. After 3 errors that are not a rate limit and not out of credit, the item SHALL be closed as missing and the stage SHALL go on (amendment A5).
 
+#### Scenario: Empty reply from the answer model
+
+- **WHEN** `Engine.answer` returns no answer text with the error `EMPTY_REPLY_ERROR`
+- **THEN** the answer stage MUST save an answer row with empty text, and `--resume` MUST NOT send that question again (protocol 0.14 item 66)
+
 #### Scenario: Error row is pending
 
 - **WHEN** an answer call returns an error result with no answer text
@@ -482,7 +487,7 @@ The stage key and the ingest done-marker SHALL hold a configuration hash of the 
 
 ### Requirement: A main stage refuses an unfrozen plan or a dirty tree
 
-A main stage SHALL refuse to start while `plan.json` `frozen` is empty, and SHALL refuse a dirty working tree. A pre-freeze run SHALL need an explicit flag. Like every run, it SHALL append one line to `output/run-records.jsonl`, and that line SHALL carry `prefreeze: true`. A smoke run's line SHALL carry `smoke: true`. The join step and every main-run check SHALL ignore lines with either field. Every run record SHALL hold the SHA-256 of `preregistration.md` (amendment A5).
+A main stage SHALL refuse to start while `plan.json` `frozen` is empty, and SHALL refuse a dirty working tree. A pre-freeze run SHALL need an explicit flag. Like every run, it SHALL append one line to `output/run-records.jsonl`, and that line SHALL carry `prefreeze: true`. A smoke run's line SHALL carry `smoke: true`. The main join and every main-run check SHALL ignore lines with either field. Every run record SHALL hold the SHA-256 of `preregistration.md` (amendment A5).
 
 #### Scenario: Plan not frozen
 

@@ -239,13 +239,13 @@ An ingest with a failed file SHALL write no done-marker, and `--resume` SHALL re
 
 ### Requirement: A smoke run can name its questions
 
-The harness SHALL accept a list of question IDs. A run with that list SHALL use only those questions, in frozen order, and SHALL count as a smoke run. Like every run, it SHALL append one line to the experiment's run-record file, and that line SHALL carry `smoke: true`. The join step and every main-run check SHALL ignore that line, as they ignore a line with `prefreeze: true`. An ID that is not in the dataset SHALL stop the run before any call.
+The harness SHALL accept a list of question IDs. A run with that list SHALL use only those questions, in frozen order, and SHALL count as a smoke run. Like every run, it SHALL append one line to the run-record file, with `smoke: true`. The main join and every main-run check SHALL ignore that line, as they ignore a `prefreeze: true` line; a smoke join SHALL count it as its run's record. An ID that is not in the dataset SHALL stop the run before any call.
 
 #### Scenario: Two named questions
 
 - **WHEN** the operator runs the answer stage of FreshStack with the IDs `77536364` and `77762811`
 - **THEN** the stage MUST answer only those two questions and MUST append one line to `output/run-records.jsonl` that carries `smoke: true`
-- **AND** the join step MUST NOT count that line as a main-run record
+- **AND** the main join MUST NOT count that line as a main-run record, and a smoke join of that folder MUST count it as the run's record
 
 #### Scenario: Unknown question ID
 
