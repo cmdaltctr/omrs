@@ -89,7 +89,8 @@ The protocol SHALL register H1 to H7, H8a and H8b before the run, each within sc
 
 #### Scenario: Chunk size at a fixed pre-assembly budget
 - **WHEN** H8b holds for an outcome
-- **THEN** the report SHALL claim that chunk size changes it at a fixed pre-assembly evidence budget only when the registered sensitivity, on the questions where all three `-t20k` setups reach a cut total of at least 19,456 tokens, gives the same sign on FinanceBench and FreshStack, and SHALL give the questions kept per dataset
+- **THEN** the report SHALL claim that chunk size changes it at a fixed pre-assembly evidence budget only when the registered sensitivity, on the questions where all three `-t20k` setups reach a cut total of at least 19,456 tokens, gives the sign of the row's H8b result on FinanceBench and on FreshStack, and SHALL give the questions kept per dataset
+- **AND** a sensitivity sign reversed on either dataset SHALL count as disagreement, so the report SHALL NOT make that claim
 - **AND** the report SHALL give the realised (assembled) token total per setup beside the result, and SHALL NOT claim that H8b separates chunk size from context length
 
 #### Scenario: H7 contrast scale
