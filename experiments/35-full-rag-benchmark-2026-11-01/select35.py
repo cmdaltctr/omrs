@@ -244,3 +244,73 @@ def expected_max_curve(scores: Sequence[float]) -> list[float]:
         / math.comb(total, n)
         for n in range(1, total + 1)
     ]
+
+
+def _half_a_records(out_dir: Path) -> list[dict[str, Any]]:
+    """Return the half-A score records that ``score35.py`` wrote under *out_dir*."""
+    return [
+        json.loads(line)
+        for path in sorted((out_dir / "scores" / "A").glob("*/*.jsonl"))
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Apply section 14.1 to saved files and write ``selection.json``; return 0, or 2 on a refusal.
+
+    The configuration hash covers the selected cell's settings as the harness
+    resolves them for its search stage (no answer host, no judge, no key field).
+    """
+    import argparse
+
+    import arms
+    import datasets35
+    import outputs35
+    import split35
+    from experiments._lib import router_env
+
+    parser = argparse.ArgumentParser(prog="select35.py", description=__doc__.split("\n")[0])
+    parser.add_argument("--out-dir", type=Path, required=True, help="the run output folder")
+    parser.add_argument("--halves", type=Path, required=True, help="the halves.json file")
+    parser.add_argument("--plan", type=Path, default=Path(__file__).resolve().parent / "plan.json")
+    args = parser.parse_args(argv)
+    layout = outputs35.Layout(args.out_dir)
+    try:
+        chunks: dict[str, dict[str, int]] = {}
+        dimensions: dict[str, int] = {}
+        for index in sorted({parse_setup(s).index for s in SEARCH_SETUPS}):
+            for dataset in CORE:
+                path = layout.fingerprint(dataset, index)
+                seal = json.loads(path.read_text(encoding="utf-8"))
+                chunks.setdefault(index, {})[dataset] = int(seal["chunks"])
+                dimensions[index.split("-")[0][1:]] = int(seal["embedding_dimension"])
+        halves = split35.read_halves(args.halves)
+        chosen = select(_half_a_records(args.out_dir), halves, chunks, dimensions)
+        plan = json.loads(args.plan.read_text(encoding="utf-8"))
+        settings = arms.settings_values(
+            arms.parse_setup(chosen["cell"]), plan, router_env.gguf_dir(), answer_host="", judges=()
+        )
+        digest = write_selection(
+            args.out_dir / "selection.json",
+            chosen,
+            arms.without_keys(settings),
+            datasets35.file_sha256(args.halves),
+        )
+    except (
+        SelectionError,
+        OSError,
+        arms.ArmConfigError,
+        router_env.RouterConfigError,
+    ) as error:
+        print(f"[error] {error}", flush=True)
+        return 2
+    print(f"[select] {chosen['cell']}: configuration hash {digest}", flush=True)
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+
+    sys.path[:0] = [str(Path(__file__).resolve().parents[2])]
+    sys.exit(main())

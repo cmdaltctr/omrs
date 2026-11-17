@@ -333,6 +333,33 @@ def test_h8b_sensitivity_uses_cut_total_not_realised_total() -> None:
     assert result["h8b_sensitivity"]["financebench"]["questions_kept"] == SIZES["financebench"] - 1
 
 
+def test_h8b_sensitivity_agrees_only_with_the_h8b_sign() -> None:
+    """Protocol 0.14 item 65: a sign reversed on both datasets is disagreement."""
+    fb, fs = select35.CORE[0], select35.CORE[1]
+    t20k = {c: select35.Setup("4b", c, "4b", "on", True).name for c in (512, 1024, 2048)}
+    cells = {name: {"q0": -0.1 * c / 512, "q1": -0.1 * c / 512} for c, name in t20k.items()}
+    answers = [
+        {"dataset": d, "setup": name, "qid": q, "run": 1, "cut_tokens": 20_000}
+        for d in (fb, fs)
+        for name in t20k.values()
+        for q in ("q0", "q1")
+    ]
+    tables = {
+        factorial35.FAITH: {fb: cells, fs: cells},
+        factorial35.CORRECT: {fb: cells, fs: cells},
+        "questions": {fb: ["q0", "q1"], fs: ["q0", "q1"]},
+    }
+    against = {"holds": True, "rows": [16, 17], "sign": 1, "dataset_dependent": []}
+    along = {"holds": True, "rows": [18, 19], "sign": -1, "dataset_dependent": []}
+    hypotheses = {"H8b": {"faithfulness": against, "correctness": along}}
+    result = factorial35._h8b_sensitivity(answers, tables, hypotheses)
+    assert result["agrees"] == {16: False, 17: False, 18: True, 19: True}
+    assert result["sign"] == {16: 0, 17: 0, 18: -1, 19: -1}
+    claims = factorial35._claims({**hypotheses, "H8a": hypotheses["H8b"]}, result)
+    assert claims["faithfulness"] is None
+    assert claims["correctness"].startswith("chunk size changes correctness")
+
+
 def test_h6_financebench_sensitivity_table(planted: dict[str, Any]) -> None:
     table = planted["h6_financebench_sensitivity"]
     assert [r["row"] for r in table] == [9, 10]

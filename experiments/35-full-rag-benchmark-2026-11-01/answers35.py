@@ -51,6 +51,7 @@ import stages35
 from experiments._lib.hosted_calls import HostedGate, RateLimitStop
 from experiments._lib.ordered_rows import OrderedRows, append_line, read_lines
 
+from omrs.core.answer.stages import EMPTY_REPLY_ERROR
 from omrs.core.retrieval.assembly import assemble
 
 say = outputs35.say
@@ -310,7 +311,10 @@ async def answer_stage(ctx: stages35.Ctx) -> int:
                     )
                 )
                 seconds = round(stagekit35.clock() - started, 3)
-                if result.get("answer") is None:
+                if result.get("answer") is None and result.get("error") == EMPTY_REPLY_ERROR:
+                    # Protocol 0.14 item 66: a returned empty answer, final and never resent.
+                    result = {**result, "answer": ""}
+                elif result.get("answer") is None:
                     error = ctx.redact(str(result.get("error") or "no answer text"))[:500]
             except (stagekit35.RerankFailed, RateLimitStop):
                 raise

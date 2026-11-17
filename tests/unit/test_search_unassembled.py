@@ -125,6 +125,20 @@ def test_unassembled_with_fewer_chunks_returns_every_chunk(tmp_path: Path) -> No
     engine.close()
 
 
+def test_restrictive_threshold_returns_only_the_qualifying_chunks(tmp_path: Path) -> None:
+    """Task 0.7a: a threshold that leaves fewer than 100 chunks returns those and no other."""
+    engine = _engine(tmp_path, _many_rows(120))
+    ranked = _search(engine, top_k=100, fetch_k=100, unassembled=True)
+    cut = (ranked[39]["score"] + ranked[40]["score"]) / 2
+
+    rows = _search(engine, top_k=100, fetch_k=100, unassembled=True, similarity_threshold=cut)
+
+    assert [row["chunk_id"] for row in rows] == [f"bulk-{i}" for i in range(40)]
+    assert all(row["score"] >= cut for row in rows)
+    assert all("chunk_ids" not in row for row in rows)
+    engine.close()
+
+
 def test_interleaved_ranking_stays_three_rows_in_rank_order(tmp_path: Path) -> None:
     engine = _engine(tmp_path, _interleaved_rows())
 

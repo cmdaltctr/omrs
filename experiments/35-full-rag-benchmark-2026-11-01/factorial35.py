@@ -250,7 +250,7 @@ def _dataset_rows(
 
 
 def _h8b_sensitivity(
-    answers: Sequence[Mapping[str, Any]], tables: Mapping[str, Any]
+    answers: Sequence[Mapping[str, Any]], tables: Mapping[str, Any], hypotheses: Mapping[str, Any]
 ) -> dict[str, Any]:
     kept = h8b_questions(answers)
     out: dict[str, Any] = {}
@@ -272,8 +272,16 @@ def _h8b_sensitivity(
             "estimates": estimates,
         }
     fb, fs = out.get(FB, {}).get("estimates", {}), out.get(FS, {}).get("estimates", {})
-    out["agrees"] = {r: _sign(fb.get(r, 0.0)) * _sign(fs.get(r, 0.0)) > 0 for r in range(16, 20)}
-    out["sign"] = {r: _sign(fb.get(r, 0.0)) if out["agrees"][r] else 0 for r in range(16, 20)}
+    # Protocol 0.14 item 65: each row must have that row's H8b sign on both datasets.
+    target = {}
+    for r in range(16, 20):
+        h8b = hypotheses["H8b"]["faithfulness" if r < 18 else "correctness"]
+        target[r] = h8b["sign"] if r in h8b["rows"] else 0
+    out["agrees"] = {
+        r: target[r] != 0 and _sign(fb.get(r, 0.0)) == _sign(fs.get(r, 0.0)) == target[r]
+        for r in range(16, 20)
+    }
+    out["sign"] = {r: target[r] if out["agrees"][r] else 0 for r in range(16, 20)}
     return out
 
 
@@ -388,7 +396,7 @@ def analyse(
                     "sign_agrees": _sign(test["estimate"]) == _sign(main[row.number]["estimate"]),
                 }
             )
-    sensitivity = _h8b_sensitivity(answer_records, tables)
+    sensitivity = _h8b_sensitivity(answer_records, tables, hypotheses)
     return {
         "datasets": by_dataset,
         "hypotheses": hypotheses,

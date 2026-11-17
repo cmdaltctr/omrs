@@ -17,7 +17,7 @@ import pytest
 from experiments._lib.hosted_calls import RateLimitStop
 from tests._exp35_fixtures import FakeTokens, load, open_half_b, stage_ctx
 
-from omrs.core.answer.stages import prepare_evidence
+from omrs.core.answer.stages import EMPTY_REPLY_ERROR, prepare_evidence
 
 answers35 = load("answers35")
 arms = load("arms")
@@ -80,6 +80,8 @@ class Engine:
             return {"status": "error", "answer": None, "rate_limited": dict(LIMITED)}
         if step == "error":
             return {"status": "error", "answer": None, "error": "Generation failed: timeout"}
+        if step == "empty_reply":
+            return {"status": "error", "answer": None, "error": EMPTY_REPLY_ERROR}
         if isinstance(step, Exception):
             raise step
         answer = "" if step == "empty" else ("I cannot answer." if step == "refusal" else "A [1].")
@@ -281,6 +283,20 @@ def test_a_refusal_or_empty_answer_is_final(tmp_path: Path, step: str) -> None:
     assert [t for t, _ in engine.answers].count("question 0?") == 1
     first = _lines(ctx.run_dir / "answer.jsonl")[0]
     assert first["answer"] == ("" if step == "empty" else "I cannot answer.")
+
+
+def test_an_empty_reply_error_is_a_final_empty_answer(tmp_path: Path) -> None:
+    """Protocol 0.14 item 66: an empty reply is saved, never resent, never capped."""
+    engine = Engine(script={"question 0?": ["empty_reply", "ok"]})
+    ctx = _ctx(tmp_path, engine)
+    assert _run(ctx) == 0
+    first = _lines(ctx.run_dir / "answer.jsonl")[0]
+    assert first["qid"] == "q0" and first["answer"] == "" and not first.get("missing")
+    marker = json.loads((ctx.run_dir / ".done-answer.json").read_text(encoding="utf-8"))
+    assert marker["resent_calls"] == 0 and marker["closed_missing"] == []
+    engine.answers.clear()
+    assert _run(_ctx(tmp_path, engine, resume=True)) == 0
+    assert engine.answers == []
 
 
 # --- evidence measures (task 14.2) and the selection refusal (task 14.3) -----------------
