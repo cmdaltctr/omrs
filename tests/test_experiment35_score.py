@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 
 import pytest
-from tests._exp35_fixtures import load
+from tests._exp35_fixtures import load, make_data_root
 
 score35 = load("score35")
 scoring35 = load("scoring35")
@@ -123,16 +123,31 @@ def test_main_reads_the_loaders_and_writes_half_a(
     assert (tmp_path / "scores" / "A" / "bioasq" / f"{SETUP}.jsonl").exists()
 
 
-def test_main_refuses_freshstack_without_the_passage_folder(tmp_path: Path) -> None:
-    run = tmp_path / "freshstack" / "search" / "e4b-c512-roff-hoff" / "run1"
+def _freshstack_argv(out: Path) -> list[str]:
+    run = out / "freshstack" / "search" / "e4b-c512-roff-hoff" / "run1"
     run.mkdir(parents=True)
     (run / "search.jsonl").write_text("")
-    halves = tmp_path / "halves.json"
+    halves = out / "halves.json"
     halves.write_text(json.dumps({"seed": 1, "halves": {"freshstack": {}}}))
-    argv = ["--out-dir", str(tmp_path), "--half", "A", "--halves", str(halves)]
+    return ["--out-dir", str(out), "--half", "A", "--halves", str(halves)]
+
+
+def test_main_refuses_freshstack_without_the_passage_folder(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("EXP35_DATA_DIR", str(make_data_root(tmp_path / "DATA")))
     with pytest.raises(SystemExit) as caught:
-        score35.main(argv)
+        score35.main(_freshstack_argv(tmp_path / "out"))
     assert caught.value.code == 2
+
+
+def test_main_turns_a_missing_data_folder_into_exit_2(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("EXP35_DATA_DIR", str(tmp_path / "absent"))
+    argv = [*_freshstack_argv(tmp_path / "out"), "--passages-dir", str(tmp_path)]
+    assert score35.main(argv) == 2
+    assert "[error] EXP35_DATA_DIR names" in capsys.readouterr().out
 
 
 def test_main_help_names_the_inputs(capsys: pytest.CaptureFixture[str]) -> None:

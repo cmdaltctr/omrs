@@ -123,7 +123,7 @@ def _questions(dataset: str) -> list[datasets35.Question]:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Score one half of the saved search lists; return 0."""
+    """Score one half of the saved search lists; return 0, or 2 when the data is refused."""
     parser = argparse.ArgumentParser(prog="score35.py", description=__doc__.split("\n")[0])
     parser.add_argument("--out-dir", type=Path, required=True, help="the run output folder")
     parser.add_argument("--half", choices=scoring35.HALVES, required=True)
@@ -138,7 +138,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     halves = split35.read_halves(args.halves)
     saved = {d for d, *_ in Layout(args.out_dir).need_runs("search", "search.jsonl")}
     names = args.dataset or [d for d in datasets35.DATASETS if d in saved]
-    golds = {d: scoring35.gold_table(d, _questions(d)) for d in names}
+    try:
+        golds = {d: scoring35.gold_table(d, _questions(d)) for d in names}
+    except datasets35.DatasetError as error:
+        print(f"[error] {error}", flush=True)
+        return 2
     unit_maps = {}
     if "freshstack" in names:
         if args.passages_dir is None:
