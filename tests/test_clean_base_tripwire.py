@@ -386,7 +386,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # against cbc43952, 6 added, 1 removed): no new case needs chroma or fastapi.
 # +1 (2026-11-17, score35 exit 2 on a missing data folder, by test-ID diff
 # against 6b32cc39, 1 added, 0 removed): needs no extra.
-_BASE_EXECUTED = 13436
+# +8 (2026-11-17, PR 211 round 2 fixes and select35 command, by test-ID diff
+# against a3864727, 8 added, 0 removed): no new case needs chroma or fastapi.
+_BASE_EXECUTED = 13444
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
