@@ -193,3 +193,22 @@ def test_llamacpp_reranker_reads_the_models_layout_too(
     item = _item(effective_settings, router_with_model_in_models_layout)
 
     assert item.status == "ready"
+
+
+@pytest.mark.parametrize("body", [None, [], {"models": 1}, {"data": "x"}])
+def test_llamacpp_reranker_is_unknown_on_a_malformed_model_list(
+    monkeypatch: pytest.MonkeyPatch, effective_settings: Any, body: Any
+) -> None:
+    """A reply that is not a model list says nothing about the model (PR 222 review)."""
+
+    class _Reply:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> Any:
+            return body
+
+    monkeypatch.setattr(reranker_llamacpp.httpx, "get", lambda *_a, **_k: _Reply())
+    item = _item(effective_settings, "http://127.0.0.1:9/v1")
+
+    assert item.status == "unknown"

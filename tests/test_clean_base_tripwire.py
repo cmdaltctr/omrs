@@ -393,9 +393,13 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +8 (2026-11-17, backend-owned reranker runtime status for issue 215, by
 # test-ID diff against 230cff39, 8 added, 0 removed): no new case needs an extra.
 # +2 (2026-11-18, reranker check reads both router model-list layouts, by
-# test-ID diff against 0e3aec38, 2 added, 0 removed; one is the per-file
-# runtime scan case for model_list.py): needs no extra.
-_BASE_EXECUTED = 13465
+# test-ID diff against 0e3aec38, 2 added, 0 removed). The model_list.py case of
+# test_llamacpp_server_lifecycle.py needs fastapi: see _WEB_EXTRA_CASES.
+# +4 (2026-11-18, PR 222 review): malformed /models replies give unknown
+# (test_runtime_components_reranker.py, 4 cases): needs no extra (floors CI ran it).
+# +6 (2026-11-18, PR 222 Codecov patch): test_llamacpp_model_list.py, which
+# imports only the integration module: needs no extra.
+_BASE_EXECUTED = 13475
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -769,7 +773,9 @@ if not _has_qwen_tokenizer:
 # +1 (2026-11-11, answer query limit 16384): HTTP answer body boundary
 # (test_web_answer_stream.py, fastapi).
 # +1 (2026-11-11, PR 207 review): chat turn question limit 16384 (test_web_chats.py).
-_WEB_EXTRA_CASES = 2196
+# +1 (2026-11-18, PR 222): the model_list.py case of the runtime process scan
+# (test_llamacpp_server_lifecycle.py, fastapi); floors CI measured 11258.
+_WEB_EXTRA_CASES = 2197
 if find_spec("fastapi") is None:
     _BASE_EXECUTED -= _WEB_EXTRA_CASES
 # test_experiment_stats_d6.py compares the copy with the s-experiment skill
