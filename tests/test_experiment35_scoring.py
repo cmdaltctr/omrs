@@ -357,15 +357,17 @@ def _emoji_cut(text: str, n: int) -> str:
 def test_a_cut_inside_a_multi_token_character_never_goes_over_the_budget() -> None:
     # Five one-token letters, then emoji of three tokens each: a cut at 7 lands inside an emoji.
     text = "a" * 5 + "\U0001f600" * 3
-    cut = scoring35.evidence_by_tokens(
-        [{"chunk_id": "c0", "text": text}], _emoji_count, _emoji_cut, budget=7
-    )
+    chunks = [{"chunk_id": "c0", "text": text}, {"chunk_id": "c1", "text": "z"}]
+    cut = scoring35.evidence_by_tokens(chunks, _emoji_count, _emoji_cut, budget=7)
     item = cut.items[0]
     assert item.truncated
     assert item.tokens == _emoji_count(item.text) <= 7
     assert cut.cut_total <= 7
-    # The crossing chunk stays in the cut, so the head length agrees with the saved counts.
-    saved = [{"tokens": _emoji_count(text)}]
+    # The trim leaves spare tokens, but nothing after the crossing chunk is taken,
+    # so the head length agrees with the saved counts (PR 221 review).
+    assert [i.chunk_id for i in cut.items] == ["c0"]
+    assert cut.truncated_chunk_id == "c0"
+    saved = [{"tokens": _emoji_count(c["text"])} for c in chunks]
     assert len(cut.items) == load("score35").token_cut_k(saved, budget=7)
 
 

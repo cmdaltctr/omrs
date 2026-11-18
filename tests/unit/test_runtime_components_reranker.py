@@ -9,14 +9,15 @@ from __future__ import annotations
 import json
 import socket
 import threading
-import time
 from collections.abc import Iterator
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
+import httpx
 import pytest
 
 from omrs.core.retrieval import registry as retrieval_registry
+from omrs.core.retrieval import reranker_llamacpp
 from omrs.core.retrieval.runtime_status import RerankerRuntimeStatus
 from omrs.transports.api import runtime_components as rc
 
@@ -25,10 +26,8 @@ MODEL = "qwen3-reranker-4b"
 
 class _Models(BaseHTTPRequestHandler):
     names: tuple[str, ...] = ()
-    delay = 0.0
 
     def do_GET(self) -> None:  # noqa: N802 - http.server API
-        time.sleep(self.delay)
         payload = json.dumps(
             {"data": [{"id": n, "status": {"value": "unloaded"}} for n in self.names]}
         )
@@ -43,8 +42,8 @@ class _Models(BaseHTTPRequestHandler):
         return
 
 
-def _router(names: tuple[str, ...], delay: float = 0.0) -> Iterator[str]:
-    handler = type("Handler", (_Models,), {"names": names, "delay": delay})
+def _router(names: tuple[str, ...]) -> Iterator[str]:
+    handler = type("Handler", (_Models,), {"names": names})
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
     server.daemon_threads = True
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -63,11 +62,6 @@ def router_with_model() -> Iterator[str]:
 @pytest.fixture
 def router_without_model() -> Iterator[str]:
     yield from _router(("qwen3-4b",))
-
-
-@pytest.fixture
-def slow_router() -> Iterator[str]:
-    yield from _router((MODEL,), delay=3.0)
 
 
 def _closed_address() -> str:
@@ -111,13 +105,19 @@ def test_llamacpp_reranker_is_unknown_when_the_router_is_down(effective_settings
 
 
 def test_llamacpp_router_check_gives_up_within_two_seconds(
-    slow_router: str, effective_settings: Any
+    monkeypatch: pytest.MonkeyPatch, effective_settings: Any
 ) -> None:
-    started = time.monotonic()
-    item = _item(effective_settings, slow_router)
+    timeouts: list[float] = []
+
+    def _timed_out(url: str, *, timeout: float) -> None:
+        timeouts.append(timeout)
+        raise httpx.ReadTimeout("router did not answer")
+
+    monkeypatch.setattr(reranker_llamacpp.httpx, "get", _timed_out)
+    item = _item(effective_settings, "http://127.0.0.1:9/v1")
 
     assert item.status == "unknown"
-    assert time.monotonic() - started < 2.0
+    assert timeouts and timeouts[0] < 2.0
 
 
 def test_torch_reranker_without_the_extra_reports_the_onnx_fallback(

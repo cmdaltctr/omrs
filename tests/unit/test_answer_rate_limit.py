@@ -119,14 +119,20 @@ def test_the_kind(rate_limits: ModuleType, status: int, headers: dict[str, str],
 
 
 def test_a_date_form_retry_after_on_a_402_is_a_wait_not_out_of_credit(
-    rate_limits: ModuleType,
+    rate_limits: ModuleType, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """RFC 9110 lets Retry-After be an HTTP-date; a 402 with one is a wait (issue 214)."""
-    when = datetime.now(UTC) + timedelta(seconds=600)
-    header = {"Retry-After": format_datetime(when, usegmt=True)}
+    now = datetime(2026, 11, 18, 10, 0, 0, tzinfo=UTC)
+
+    class _Fixed(datetime):
+        @classmethod
+        def now(cls, tz: Any = None) -> datetime:  # type: ignore[override]
+            return now
+
+    monkeypatch.setattr(rate_limits, "datetime", _Fixed)
+    header = {"Retry-After": format_datetime(now + timedelta(seconds=600), usegmt=True)}
     record = rate_limits.classify_rate_limit(_StubStatusError(402, header))
-    assert record.kind == "rate_limit"
-    assert 590 <= record.retry_after_seconds <= 600
+    assert (record.kind, record.retry_after_seconds) == ("rate_limit", 600.0)
 
 
 def test_a_past_date_form_retry_after_is_a_zero_wait(rate_limits: ModuleType) -> None:

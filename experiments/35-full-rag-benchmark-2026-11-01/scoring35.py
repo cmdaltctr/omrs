@@ -365,6 +365,8 @@ def evidence_by_tokens(
                 tokens = count_tokens(text)
         items.append(EvidenceItem(result_id(row), text, tokens, cut))
         total += tokens
+        if cut:  # the trim can leave spare tokens; nothing after the crossing chunk
+            break
     last = items[-1] if items and items[-1].truncated else None
     return EvidenceCut(tuple(items), total, last.chunk_id if last else None)
 
