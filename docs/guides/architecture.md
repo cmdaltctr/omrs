@@ -737,7 +737,7 @@ own code. They adopt the helper later.
 Every Python module under `src/omrs/integrations/`, classified. A contract
 test fails when a module is missing from this table.
 
-<!-- integration-inventory:start count=86 -->
+<!-- integration-inventory:start count=87 -->
 
 | Module                                   | Availability                                                   | Selector                                                            | Shared contract                               | Fallback owner                                                                    | Disposition                                                         |
 | ---------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
@@ -763,6 +763,7 @@ test fails when a module is missing from this table.
 | `omrs.integrations.llamacpp_runtime.holders` | Native | None | `hold(folder)` and `other_process_holds(folder)`: one `holder-<pid>.lock` per joined process, so a status read can tell another process's hold from this one's | None | Kernel locks free themselves when a process dies, so a killed process never counts |
 | `omrs.integrations.llamacpp_runtime.lease` | Native | None | `RuntimeLease` (one per runtime per process): join, `request`/`arequest`/`session`, crash restart, leave; `RuntimeUnavailable` and `RuntimeRequestFailed` | Crash restart once; none after an operator stop | Split from `manager.py` at the 500-line ceiling; holds the D4 lock order |
 | `omrs.integrations.llamacpp_runtime.locks` | Native | None | `LockFile`: shared and exclusive `flock` on one descriptor each | None | Kernel locks free themselves when a process dies; `not-supported` on Windows |
+| `omrs.integrations.llamacpp_runtime.model_list` | Native | None | `served_model_names`: reads the model names from a `/models` reply in both layouts (`data[].id` and `models[].model` or `name`) | None; a reply that is not an object gives `[]` | One reader for the embedding check and the llama.cpp reranker status |
 | `omrs.integrations.llamacpp_runtime.manager` | Native | `LLAMACPP_ROUTER_SERVER`, `OCR_RUNTIME_URL` | `RuntimeManager` (one per process): `lease`, `stop` (operator), `sweep`, `status`, `close`; `install_sigterm_exit` | None; an external runtime is never started or stopped | Injected by `compose.py`; `IDLE_STOP_SECONDS = 600`; `atexit` leave |
 | `omrs.integrations.llamacpp_runtime.model_locks` | Native | None | `ModelHolds` (per-model `clients.lock`) and `request_lock` (per-model `request.lock` of a one-slot model) | None | A request to one model never waits for another model; lock order follows the manager rule |
 | `omrs.integrations.llamacpp_runtime.model_reasons` | Native | None | `MODEL_STATES`, `MODEL_REASONS`, `ModelUnavailable` and `model_reason_text` | None | Fixed states and plain-English reason lines of one router model; no server output enters a line |
