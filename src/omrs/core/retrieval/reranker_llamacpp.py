@@ -74,14 +74,17 @@ class LlamaCppReranker:
             settings: Effective settings (``retrieval.rerank_model`` and ``llamacpp_router_url``).
             cached: The Hugging Face cache probe. Not used: the router owns the files.
         """
+        # Lazy: the runtime package imports its process manager on load.
+        from ...integrations.llamacpp_runtime.model_list import served_model_names
+
         model = settings.retrieval.rerank_model.strip()
         try:
             response = httpx.get(
                 f"{settings.llamacpp_router_url.rstrip('/')}/models", timeout=_LIST_TIMEOUT_SECONDS
             )
             response.raise_for_status()
-            listed = {str(item.get("id")) for item in response.json().get("data") or []}
-        except (httpx.HTTPError, ValueError, AttributeError):
+            listed = set(served_model_names(response.json()))
+        except (httpx.HTTPError, ValueError):
             return RerankerRuntimeStatus(
                 "unknown", "The llama.cpp router did not answer, so its model list is not known."
             )

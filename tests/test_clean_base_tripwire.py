@@ -392,7 +392,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # 7c421f45, 11 added, 0 removed): no new case needs chroma or fastapi.
 # +8 (2026-11-17, backend-owned reranker runtime status for issue 215, by
 # test-ID diff against 230cff39, 8 added, 0 removed): no new case needs an extra.
-_BASE_EXECUTED = 13463
+# +2 (2026-11-18, reranker check reads both router model-list layouts, by
+# test-ID diff against 0e3aec38, 2 added, 0 removed; one is the per-file
+# runtime scan case for model_list.py): needs no extra.
+_BASE_EXECUTED = 13465
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

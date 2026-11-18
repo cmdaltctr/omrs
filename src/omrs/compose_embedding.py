@@ -99,18 +99,11 @@ def _served_models(url: str) -> list[str]:
     """Return the model names that a llama.cpp server lists at ``{url}/models``."""
     import httpx
 
+    from .integrations.llamacpp_runtime.model_list import served_model_names
+
     response = httpx.get(f"{url.rstrip('/')}/models", timeout=LIST_TIMEOUT_SECONDS)
     response.raise_for_status()
-    body = response.json()
-    names: list[str] = []
-    for entry in body.get("data") or []:
-        if entry.get("id"):
-            names.append(str(entry["id"]))
-    for entry in body.get("models") or []:
-        for key in ("model", "name"):
-            if entry.get(key):
-                names.append(str(entry[key]))
-    return list(dict.fromkeys(names))
+    return served_model_names(response.json())
 
 
 def _is_served(model: str, served: Sequence[str]) -> bool:

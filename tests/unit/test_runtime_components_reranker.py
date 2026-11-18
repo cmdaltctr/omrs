@@ -26,11 +26,15 @@ MODEL = "qwen3-reranker-4b"
 
 class _Models(BaseHTTPRequestHandler):
     names: tuple[str, ...] = ()
+    layout = "data"
 
     def do_GET(self) -> None:  # noqa: N802 - http.server API
-        payload = json.dumps(
-            {"data": [{"id": n, "status": {"value": "unloaded"}} for n in self.names]}
-        )
+        if self.layout == "models":  # the second layout a llama.cpp server can send
+            payload = json.dumps({"models": [{"name": n, "model": n} for n in self.names]})
+        else:
+            payload = json.dumps(
+                {"data": [{"id": n, "status": {"value": "unloaded"}} for n in self.names]}
+            )
         body = payload.encode()
         self.send_response(200)
         self.send_header("Content-Type", "application/json")
@@ -42,8 +46,8 @@ class _Models(BaseHTTPRequestHandler):
         return
 
 
-def _router(names: tuple[str, ...]) -> Iterator[str]:
-    handler = type("Handler", (_Models,), {"names": names})
+def _router(names: tuple[str, ...], layout: str = "data") -> Iterator[str]:
+    handler = type("Handler", (_Models,), {"names": names, "layout": layout})
     server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
     server.daemon_threads = True
     threading.Thread(target=server.serve_forever, daemon=True).start()
@@ -62,6 +66,11 @@ def router_with_model() -> Iterator[str]:
 @pytest.fixture
 def router_without_model() -> Iterator[str]:
     yield from _router(("qwen3-4b",))
+
+
+@pytest.fixture
+def router_with_model_in_models_layout() -> Iterator[str]:
+    yield from _router((MODEL, "qwen3-4b"), layout="models")
 
 
 def _closed_address() -> str:
@@ -172,3 +181,15 @@ def test_a_backend_status_is_shown_as_reported(
 def test_every_registered_reranker_backend_reports_a_status() -> None:
     for name in ("reranker_onnx", "reranker_torch", "reranker_llamacpp"):
         assert callable(getattr(retrieval_registry.get(name), "runtime_status", None))
+
+
+def test_llamacpp_reranker_reads_the_models_layout_too(
+    router_with_model_in_models_layout: str, effective_settings: Any
+) -> None:
+    """A server that lists ``models[].name`` is read like ``data[].id``.
+
+    The embedding check reads both layouts; the reranker check reads the same list.
+    """
+    item = _item(effective_settings, router_with_model_in_models_layout)
+
+    assert item.status == "ready"
