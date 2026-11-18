@@ -22,8 +22,9 @@ saved as ``null`` with ``not_defined``, counted in the summary, never resent and
 never counted toward the cap (review R2-14). A returned empty answer is judged
 like any other answer; only a missing or error row gets ``not_judged`` (R2-03).
 Side files drop a cut last line on read (R2-09).
-A rate-limit stop (the hosted gate) saves nothing for the answer in flight and
-returns :data:`EXIT_RATE_LIMIT`.
+A rate-limit stop (the hosted gate) returns :data:`EXIT_RATE_LIMIT`. The answer
+in flight keeps the metrics it had scored as a partial row, so ``--resume``
+scores only the others; the metric that hit the stop is not saved (issue 217).
 
 The judge settings and seed come from ``plan.json`` (H-11). The embeddings use
 the plan's 4B file through one router session held for the whole stage (H-17).
@@ -150,6 +151,20 @@ def _row(
     }
 
 
+class _JudgeStop(RateLimitStop):
+    """A rate-limit stop inside one answer, with the metrics scored before it."""
+
+    def __init__(
+        self,
+        message: str,
+        records: dict[str, Any],
+        failed: list[tuple[str, str]],
+        calls: list[dict[str, Any]],
+    ) -> None:
+        super().__init__(message)
+        self.records, self.failed, self.calls = records, failed, calls
+
+
 async def _judge(
     sample: Mapping[str, Any],
     prev: Mapping[str, Any] | None,
@@ -174,7 +189,9 @@ async def _judge(
         except Exception as exc:  # noqa: BLE001 - a failed metric stays open (R-3)
             # The seam saw the gate stop, whatever error Ragas wrapped it in.
             if any(c.get("error") == "RateLimitStop" for c in seam.calls[first:]):
-                raise RateLimitStop(f"{name}: rate-limit stop inside Ragas") from exc
+                raise _JudgeStop(
+                    f"{name}: rate-limit stop inside Ragas", records, failed, seam.calls[:first]
+                ) from exc
             failed.append((name, type(exc).__name__))
             continue
         undefined = score is None or math.isnan(score)
@@ -342,13 +359,15 @@ async def _run(
             }
             mine = errors.setdefault(qid, {})
             rows.dispatch(qid)
+            stopped = False
             try:
                 records, failed, calls = await _judge(
                     sample, partial.get(qid), mine, seam, scorers, parts.clock
                 )
-            except RateLimitStop as exc:
+            except _JudgeStop as exc:
                 stop.append(str(exc))
-                return
+                stopped = True
+                records, failed, calls = exc.records, exc.failed, exc.calls
             for name, error in failed:
                 _append(
                     run_dir / f"{STAGE}.metric-errors.jsonl",
@@ -356,6 +375,11 @@ async def _run(
                 )
                 mine.setdefault(name, []).append(error)
             row = _row(header, qid, records, mine, calls)
+            if stopped:  # keep what was scored; the metric that hit the stop is not saved
+                if failed or len(records) > len((partial.get(qid) or {}).get("metrics", {})):
+                    partial[qid] = row
+                    _append(run_dir / f"{STAGE}.partial.jsonl", row)
+                return
             if any(not u["closed"] for u in row["unjudged"]):
                 partial[qid] = row
                 _append(run_dir / f"{STAGE}.partial.jsonl", row)

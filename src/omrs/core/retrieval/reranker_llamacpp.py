@@ -25,11 +25,17 @@ from typing import Any
 
 import httpx
 
+from .runtime_status import CacheProbe, RerankerRuntimeStatus
+
 logger = logging.getLogger(__name__)
 
 #: Seconds for one rerank call. Rerank mode can be slow on llama.cpp (issue
 #: #30422), and a pool of 100 long chunks on the 8B model takes a while.
 _TIMEOUT_SECONDS = 600.0
+
+#: Seconds for the model-list read of the Settings runtime page. It matches the
+#: page's router probe, so a router that does not answer cannot hold the page.
+_LIST_TIMEOUT_SECONDS = 1.0
 
 
 class LlamaCppReranker:
@@ -55,6 +61,36 @@ class LlamaCppReranker:
         return cls(
             model_id=settings.retrieval.rerank_model, router_url=settings.llamacpp_router_url
         )
+
+    @classmethod
+    def runtime_status(cls, settings: Any, cached: CacheProbe) -> RerankerRuntimeStatus:
+        """Report whether the router lists the configured rerank model.
+
+        One ``GET {router}/models`` with a 1 second timeout. A router that
+        does not answer, or answers with an error, gives ``unknown``, because
+        the model may be listed once the router runs.
+
+        Args:
+            settings: Effective settings (``retrieval.rerank_model`` and ``llamacpp_router_url``).
+            cached: The Hugging Face cache probe. Not used: the router owns the files.
+        """
+        model = settings.retrieval.rerank_model.strip()
+        try:
+            response = httpx.get(
+                f"{settings.llamacpp_router_url.rstrip('/')}/models", timeout=_LIST_TIMEOUT_SECONDS
+            )
+            response.raise_for_status()
+            listed = {str(item.get("id")) for item in response.json().get("data") or []}
+        except (httpx.HTTPError, ValueError, AttributeError):
+            return RerankerRuntimeStatus(
+                "unknown", "The llama.cpp router did not answer, so its model list is not known."
+            )
+        if model in listed:
+            return RerankerRuntimeStatus("ready")
+        reason = (
+            f"The llama.cpp router does not list {model}. Add it to llamacpp_models in Settings."
+        )
+        return RerankerRuntimeStatus("missing", reason)
 
     def rerank(self, query: str, results: list[dict], top_k: int = 5) -> list[dict]:
         """Re-score *results* with the router model.

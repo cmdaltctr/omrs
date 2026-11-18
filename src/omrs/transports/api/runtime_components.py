@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
-from collections.abc import Callable, Iterable
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -26,6 +26,7 @@ from huggingface_hub import try_to_load_from_cache
 from ... import capabilities
 from ...config.user_config import display_path
 from ...core import reading_parts
+from ...core.retrieval.runtime_status import hf_download_command
 from ...integrations.ocr_worker.manifest import engine_manifest, licence_gate
 from ...integrations.ocr_worker.routes import (
     _ENGINE_NAME_RE,
@@ -175,9 +176,8 @@ RERANKER_PURPOSE = "Re-scores search results when the reranker is on."
 LOCAL_MODEL_PURPOSE = "The page model of the local OCR tier."
 
 
-def _hf_fix(repo: str, files: Iterable[str], revision: str | None = None) -> str:
-    command = f"uvx --from huggingface_hub hf download {repo} {' '.join(files)}"
-    return f"{command} --revision {revision}" if revision else command
+#: Maps the state a reranker backend reports to the page's status words.
+_RERANKER_STATES = {"ready": READY, "missing": MISSING, "unknown": UNKNOWN}
 
 
 def _cached(repo: str, filename: str, revision: str | None = None) -> bool:
@@ -197,21 +197,30 @@ def _tokenizer_item(settings: Any) -> RuntimeItem:
         f"{model} at revision {revision[:8]} is not in the local cache. "
         "Markdown chunking falls back to the legacy splitter."
     )
-    fix = _hf_fix(model, ["tokenizer.json"], revision)
+    fix = hf_download_command(model, ["tokenizer.json"], revision)
     return RuntimeItem(TOKENIZER_NAME, TOKENIZER_PURPOSE, MISSING, reason, fix, used_by)
 
 
 def _reranker_item(settings: Any) -> RuntimeItem:
-    from ...core.retrieval.reranker import _select_onnx_variant
+    from ...core.retrieval.backend import resolve_reranker_backend
 
-    model = settings.retrieval.rerank_model.strip()
     used_by = ("retrieval.rerank_enabled",) if settings.retrieval.rerank_enabled else ()
-    candidates = _select_onnx_variant(model)
-    if _cached(model, "tokenizer.json") and any(_cached(model, name) for name in candidates):
-        return RuntimeItem(RERANKER_NAME, RERANKER_PURPOSE, READY, used_by=used_by)
-    reason = f"{model} is not in the local cache. The first reranked search downloads it."
-    fix = _hf_fix(model, [candidates[0], "tokenizer.json"])
-    return RuntimeItem(RERANKER_NAME, RERANKER_PURPOSE, MISSING, reason, fix, used_by)
+    backend = settings.retrieval.rerank_backend or "onnx"
+    # Duck typing, not a branch on backend names (registry rule): each backend
+    # class reports its own status, as ``from_settings`` builds its own instance.
+    runtime_status = getattr(resolve_reranker_backend(backend), "runtime_status", None)
+    if runtime_status is None:
+        reason = f"The {backend} backend does not report its runtime status."
+        return RuntimeItem(RERANKER_NAME, RERANKER_PURPOSE, UNKNOWN, reason, None, used_by)
+    status = runtime_status(settings, _cached)
+    return RuntimeItem(
+        RERANKER_NAME,
+        RERANKER_PURPOSE,
+        _RERANKER_STATES[status.state],
+        status.reason,
+        status.fix_command,
+        used_by,
+    )
 
 
 def _platform_cache() -> Path:

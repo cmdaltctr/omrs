@@ -334,6 +334,43 @@ def test_the_cut_counts_with_the_counter_it_is_given() -> None:
     assert seen[:3] == ["t0", "t1", "t2"]
 
 
+def _spans(char: str) -> int:
+    """Tokens of one character: an emoji is three byte tokens, anything else one."""
+    return 3 if ord(char) > 0xFFFF else 1
+
+
+def _emoji_count(text: str) -> int:
+    return sum(_spans(c) for c in text)
+
+
+def _emoji_cut(text: str, n: int) -> str:
+    """Cut at the end offset of token *n*: a character that spans several tokens comes in whole."""
+    out, seen = "", 0
+    for char in text:
+        if seen >= n:
+            break
+        out += char
+        seen += _spans(char)
+    return out
+
+
+def test_a_cut_inside_a_multi_token_character_never_goes_over_the_budget() -> None:
+    # Five one-token letters, then emoji of three tokens each: a cut at 7 lands inside an emoji.
+    text = "a" * 5 + "\U0001f600" * 3
+    chunks = [{"chunk_id": "c0", "text": text}, {"chunk_id": "c1", "text": "z"}]
+    cut = scoring35.evidence_by_tokens(chunks, _emoji_count, _emoji_cut, budget=7)
+    item = cut.items[0]
+    assert item.truncated
+    assert item.tokens == _emoji_count(item.text) <= 7
+    assert cut.cut_total <= 7
+    # The trim leaves spare tokens, but nothing after the crossing chunk is taken,
+    # so the head length agrees with the saved counts (PR 221 review).
+    assert [i.chunk_id for i in cut.items] == ["c0"]
+    assert cut.truncated_chunk_id == "c0"
+    saved = [{"tokens": _emoji_count(c["text"])} for c in chunks]
+    assert len(cut.items) == load("score35").token_cut_k(saved, budget=7)
+
+
 def test_the_cut_refuses_merged_rows() -> None:
     rows = [{"chunk_id": "m", "chunk_ids": ["a", "b"], "text": "x"}]
     with pytest.raises(ValueError, match="merged"):

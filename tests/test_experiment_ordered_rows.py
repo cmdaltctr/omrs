@@ -360,3 +360,37 @@ async def test_one_answer_resent_twice_counts_two(tmp_path: Path) -> None:
     assert st.rows.resent_calls == 2
     trace = [t for t in _lines(tmp_path / "traces.jsonl") if t["question_id"] == "q4"]
     assert [t["resent_calls"] for t in trace] == [2]
+
+
+async def test_stop_between_third_error_and_missing_row_is_not_sent_a_fourth_time(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Issue 216: the stop lands after the third error line, before the missing row."""
+    calls = _Calls({"q2": [TimeoutError("t1"), TimeoutError("t2"), TimeoutError("t3")]})
+    await _run(tmp_path, calls, resume=False)
+    await _run(tmp_path, calls, resume=True)
+
+    def stop_before_the_row(self: OrderedRows, *args: Any, **kwargs: Any) -> None:
+        raise _Stop
+
+    with monkeypatch.context() as patch:
+        patch.setattr(OrderedRows, "submit", stop_before_the_row)
+        with pytest.raises(_Stop):
+            await _run(tmp_path, calls, resume=True)
+    assert len(_lines(tmp_path / "answer.errors.jsonl")) == ERROR_CAP
+    assert _qids(tmp_path / "answer.jsonl") == ["q1"]
+    calls.sent.clear()
+    st = _Stage(tmp_path, resume=True)
+    try:
+        assert st.rows.todo() == []
+    finally:
+        st.close()
+    assert calls.sent == []
+    rows = _lines(tmp_path / "answer.jsonl")
+    assert [r["qid"] for r in rows] == ORDER
+    assert rows[1] == {"qid": "q2", "missing": True, "error": "TimeoutError: t3"}
+    st = await _run(tmp_path, calls, resume=True)
+    assert calls.sent == []
+    assert st.rows.closed_missing == ["q2"]
+    traces = [t for t in _lines(tmp_path / "traces.jsonl") if t["question_id"] == "q2"]
+    assert [t["status"] for t in traces] == ["error"]

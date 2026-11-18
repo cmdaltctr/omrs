@@ -143,7 +143,54 @@ def test_a_429_on_every_attempt_saves_no_row_and_exits_5(tmp_path: Path) -> None
     assert run(ctx(run_dir, ["q1"], router), parts(script, router)) == ragas35.EXIT_RATE_LIMIT
     assert rows(run_dir) == []
     assert not (run_dir / ".done-ragas.json").exists()
-    assert not (run_dir / "ragas.partial.jsonl").exists()
+
+
+def test_a_rate_limit_stop_keeps_the_scored_metrics_and_resume_scores_the_rest(
+    tmp_path: Path,
+) -> None:
+    """Issue 217: metrics scored before the stop are saved; resume sends only the others."""
+    run_dir = _setup(tmp_path, ["q1", "q2"])
+    script, router = Script({("ragas_answer_relevancy", "q1"): Status429}), Router()
+    assert run(ctx(run_dir, ["q1", "q2"], router), parts(script, router)) == (
+        ragas35.EXIT_RATE_LIMIT
+    )
+    partial = [json.loads(x) for x in (run_dir / "ragas.partial.jsonl").read_text().splitlines()]
+    assert [p["qid"] for p in partial] == ["q1"]
+    assert list(partial[0]["metrics"]) == ["ragas_faithfulness"]
+    assert partial[0]["unjudged"] == []
+    assert rows(run_dir) == []
+    summary = json.loads((run_dir / "ragas-summary.json").read_text())
+    assert summary["unjudged_open"] == {}
+    assert not (run_dir / "ragas.metric-errors.jsonl").exists()
+
+    script = Script()
+    c = ctx(run_dir, ["q1", "q2"], router)
+    c.resume = True
+    assert run(c, parts(script, router)) == 0
+    q1 = {p.split("|")[0] for p in script.prompts if p.split("|")[1] == "q1"}
+    assert q1 == set(FIVE) - {"ragas_faithfulness"}
+    assert {p.split("|")[1] for p in script.prompts if p.startswith("ragas_faithfulness")} == {"q2"}
+    assert [r["qid"] for r in rows(run_dir)] == ["q1", "q2"]
+    assert sorted(rows(run_dir)[0]["metrics"]) == sorted(FIVE)
+
+
+def test_a_rate_limit_stop_also_keeps_a_failed_metric_error_of_the_answer(
+    tmp_path: Path,
+) -> None:
+    run_dir = _setup(tmp_path, ["q1"])
+    script = Script(
+        {
+            ("ragas_answer_relevancy", "q1"): APIConnectionError,
+            ("ragas_context_precision", "q1"): Status429,
+        }
+    )
+    router = Router()
+    assert run(ctx(run_dir, ["q1"], router), parts(script, router)) == ragas35.EXIT_RATE_LIMIT
+    partial = [json.loads(x) for x in (run_dir / "ragas.partial.jsonl").read_text().splitlines()]
+    assert list(partial[-1]["metrics"]) == ["ragas_faithfulness"]
+    assert [u["metric"] for u in partial[-1]["unjudged"]] == ["ragas_answer_relevancy"]
+    errors = (run_dir / "ragas.metric-errors.jsonl").read_text().splitlines()
+    assert [json.loads(x)["metric"] for x in errors] == ["ragas_answer_relevancy"]
 
 
 def test_resume_after_a_stop_at_40_of_100_sends_calls_for_the_other_60_only(

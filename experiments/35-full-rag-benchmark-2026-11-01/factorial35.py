@@ -164,10 +164,9 @@ def _family(dataset: str, rows: list[dict[str, Any]], key: str) -> list[float]:
     """Holm over the fixed family; gated rows enter with p = 1; NaN raises first."""
     p_values = []
     for row in rows:
-        p = 1.0 if row["not_testable"] else row[key]
-        if math.isnan(p):
+        if math.isnan(row[key]):  # also a gated row: protocol section 9 point 5 says any NaN
             raise ValueError(f"row {row['row']} on {dataset}: {key} is NaN; stop before Holm")
-        p_values.append(p)
+        p_values.append(1.0 if row["not_testable"] else row[key])
     return holm(p_values)
 
 

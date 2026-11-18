@@ -225,6 +225,13 @@ def test_nan_p_value_raises_before_holm_and_names_row() -> None:
         factorial35.analyse(search, answers, **FAST)
 
 
+def test_nan_p_value_on_a_gated_row_raises_before_holm_and_names_row() -> None:
+    search = [r for r in _search() if r["dataset"] != "freshstack" or r["qid"] == "q00"]
+    answers = [r for r in _answers() if r["dataset"] != "freshstack" or r["qid"] == "q00"]
+    with pytest.raises(ValueError, match="row 1 on freshstack"):
+        factorial35.analyse(search, answers, not_testable={"freshstack": {1}}, **FAST)
+
+
 def test_missing_setup_refused() -> None:
     search = [r for r in _search() if r["setup"] != "e8b-c512-r4b-hon"]
     with pytest.raises(ValueError, match="search setups.*e8b-c512-r4b-hon"):
