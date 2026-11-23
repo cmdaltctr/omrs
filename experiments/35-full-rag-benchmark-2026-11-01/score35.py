@@ -43,20 +43,41 @@ import split35  # noqa: E402
 from outputs35 import Layout, read_rows  # noqa: E402
 
 
+class MissingTokenCounts(ValueError):
+    """A saved ranked list holds a chunk with no ``tokens`` count (protocol 0.14 item 31)."""
+
+
 def token_cut_k(chunks: Sequence[Mapping[str, Any]], budget: int = scoring35.TOKEN_BUDGET) -> int:
     """Return how many head chunks the 20,480-token cut keeps, from the saved token counts.
 
     A chunk is taken while the total before it is below *budget*; the chunk
     that crosses the limit is taken (truncated) and nothing after it.
+
+    Raises:
+        MissingTokenCounts: A chunk read by the cut has no ``tokens`` count.
     """
     total = 0
     k = 0
     for chunk in chunks:
         if total >= budget:
             break
+        if chunk.get("tokens") is None:
+            raise MissingTokenCounts(
+                f"chunk {chunk.get('chunk_id')!r} has no saved 'tokens' count; the scorer reads "
+                "token counts from the saved list and never counts chunk text. Run the search "
+                "stage again (task 15.1a) so every chunk carries its Qwen3 token count."
+            )
         total += min(int(chunk["tokens"]), budget - total)
         k += 1
     return k
+
+
+def _evidence_k(dataset: str, setup: str, row: Mapping[str, Any]) -> int:
+    """Return the token cut of one saved row, naming the question when a count is missing."""
+    try:
+        return token_cut_k(row.get("chunks") or [])
+    except MissingTokenCounts as error:
+        raise MissingTokenCounts(f"{dataset} {setup} question {row['qid']}: {error}") from error
 
 
 def score(
@@ -80,6 +101,7 @@ def score(
 
     Raises:
         scoring35.HalfBLocked: Half B before it is open; nothing read or written.
+        MissingTokenCounts: A saved chunk has no ``tokens`` count; that setup writes no score.
         ValueError: A setup lacks a question of the half, or scores one twice.
         outputs35.NoRunFiles: A dataset holds no saved search list.
     """
@@ -103,7 +125,7 @@ def score(
                     setup,
                     golds[dataset][r["qid"]],
                     r.get("chunks") or [],
-                    evidence_k=token_cut_k(r.get("chunks") or []),
+                    evidence_k=_evidence_k(dataset, setup, r),
                     unit_map=(unit_maps or {}).get(dataset),
                 )
                 for r in rows

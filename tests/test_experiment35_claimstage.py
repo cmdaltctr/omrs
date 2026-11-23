@@ -194,3 +194,66 @@ def test_refuses_a_run_folder_without_a_finished_answer_stage(tmp_path) -> None:
     with pytest.raises(stages35.StageOrderError, match=str(ctx.run_dir)):
         _run(ctx)
     assert not (ctx.run_dir / ".done-claimkinds.json").exists()
+
+
+def _real_path_plan(**classifier) -> dict:
+    """A plan as ``plan.json`` holds it: model and provider in references, rest in pin blocks."""
+    reference = {"role": "claim-classifier", "provider": "openrouter", "model": "m/c"}
+    return {
+        "runtime": {"references": [reference]},
+        "seeds": {"classifier": classifier.get("seed", 77)},
+        "pins": {
+            "ragas_judge": {"host": "hostc", "reasoning": "low", "temperature": 0.0},
+            "pending": [],
+        },
+    }
+
+
+def _real_ctx(tmp_path: Path, plan: dict):
+    examples = tmp_path / "examples.json"
+    examples.write_text(json.dumps([{"question": "q", "claim": "c", "kind": "factual"}]))
+    ctx = _ctx(tmp_path, None)
+    ctx.classifier = None
+    ctx.plan = plan
+    ctx.args.classify_examples = examples
+    return ctx
+
+
+def test_the_real_path_reads_classifier_settings_from_the_plan_pin_blocks(
+    tmp_path, monkeypatch
+) -> None:
+    judge = load("ragas35_judge")
+    built: list[dict] = []
+
+    def build(settings):
+        built.append(dict(settings))
+        return (lambda prompt: None), {}
+
+    monkeypatch.setattr(judge, "build_judge", build)
+    monkeypatch.setattr(judge, "check_built", lambda settings, values: None)
+    ctx = _real_ctx(tmp_path, _real_path_plan())
+    _, version, prompt = claimstage35._classifier(ctx)
+    expected = {
+        "model": "m/c",
+        "provider": "openrouter",
+        "host": "hostc",
+        "reasoning": "low",
+        "temperature": 0.0,
+        "seed": 77,
+    }
+    assert built == [expected]
+    assert version == claimkinds35.classifier_version(
+        prompt, **{k: expected[k] for k in ("model", "host", "reasoning", "temperature", "seed")}
+    )
+
+
+def test_the_real_path_refuses_a_pending_classifier_seed_and_names_it(
+    tmp_path, monkeypatch
+) -> None:
+    arms = load("arms")
+    plan = _real_path_plan()
+    plan["seeds"]["classifier"] = None
+    plan["pins"]["pending"].append({"key": "seeds.classifier", "task": "P10"})
+    ctx = _real_ctx(tmp_path, plan)
+    with pytest.raises(arms.ArmConfigError, match=r"seeds\.classifier.*P10"):
+        claimstage35._classifier(ctx)

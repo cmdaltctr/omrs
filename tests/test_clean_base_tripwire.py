@@ -399,7 +399,11 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # (test_runtime_components_reranker.py, 4 cases): needs no extra (floors CI ran it).
 # +6 (2026-11-18, PR 222 Codecov patch): test_llamacpp_model_list.py, which
 # imports only the integration module: needs no extra.
-_BASE_EXECUTED = 13475
+# +84 (2026-11-23, Exp 35 harness gaps, by test-ID diff against v3 9539f30c,
+# 84 added, 0 removed): no extra needed; one case needs the cached tokenizer.
+# +1 (2026-11-23, factorial35 keeps dropped family rows in Holm at p = 1): no extra.
+# +4 (2026-11-23, Exp 35 answer host pin and P10 values in test_experiment35_arms.py): no extra.
+_BASE_EXECUTED = 13564
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -632,7 +636,9 @@ if sys.platform != "darwin" or not shutil.which("sandbox-exec"):
 # dropped 2858 -> 2855, skipped rose 131 -> 134. The prior value of 2 was
 # latent — the count assertion was unreachable until the docs-reference gate
 # stopped failing the subprocess returncode check first.
-_CACHED_TOKENIZER_CASES = 3
+# 3 -> 4 (2026-11-23, Exp 35 task 13.5b): the four-dataset Qwen3 token-count
+# case in test_experiment35_datasets.py skips without the cached tokenizer.
+_CACHED_TOKENIZER_CASES = 4
 _HF_CACHE = Path.home() / ".cache" / "huggingface" / "hub"
 _has_qwen_tokenizer = bool(
     list(_HF_CACHE.glob("models--Qwen--Qwen3-Embedding-4B/snapshots/*/tokenizer.json"))

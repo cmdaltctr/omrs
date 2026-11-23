@@ -37,6 +37,7 @@ from collections.abc import Awaitable, Callable, Mapping
 from pathlib import Path
 from typing import Any
 
+import arms
 import claimkinds35
 import outputs35
 import segments35
@@ -46,13 +47,43 @@ from experiments._lib.ordered_rows import OrderedRows
 from outputs35 import read_rows, say, write_json
 from stages35 import StageIncomplete, StageOrderError
 
-__all__ = ["EXIT_RATE_LIMIT", "StageIncomplete", "add_arguments", "claimkinds_stage"]
+__all__ = [
+    "EXIT_RATE_LIMIT",
+    "StageIncomplete",
+    "add_arguments",
+    "build_classifier",
+    "claimkinds_stage",
+    "classifier_settings",
+]
 
 EXIT_RATE_LIMIT = 5
 STAGE = "claimkinds"
 ROWS_FILE = "claim-kinds.jsonl"
 ROLE = "claim-classifier"
-FIELDS = ("model", "provider", "host", "reasoning", "temperature", "seed")
+
+
+def classifier_settings(plan: Mapping[str, Any]) -> dict[str, Any]:
+    """Return the classifier settings of *plan*, read where the plan records them.
+
+    The classifier is the Ragas judge model on the same pinned host (design D14), so the
+    model and provider come from ``runtime.references`` (role ``claim-classifier``), the
+    host, reasoning and temperature from ``pins.ragas_judge`` and the seed from
+    ``seeds.classifier`` (task 13.1a).
+
+    Raises:
+        arms.ArmConfigError: The plan has no classifier reference, or a value is missing or
+            ``null``; the message names the key and its pre-freeze task.
+    """
+    found = [r for r in plan["runtime"]["references"] if r.get("role") == ROLE]
+    reference = found[0] if found else {}
+    missing = [name for name in ("model", "provider") if name not in reference]
+    if missing:
+        raise arms.ArmConfigError(f"plan.json {ROLE} lacks {', '.join(missing)}")
+    settings = {name: reference[name] for name in ("model", "provider")}
+    for name in ("host", "reasoning", "temperature"):
+        settings[name] = arms.pinned(plan, "pins", "ragas_judge", name)
+    settings["seed"] = arms.pinned(plan, "seeds", "classifier")
+    return settings
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
@@ -122,19 +153,20 @@ def _row(item_id: str, item: Mapping[str, Any]) -> dict[str, Any]:
     }
 
 
-def _classifier(ctx: Any) -> tuple[Callable[[list[dict[str, str]]], Awaitable[Any]], str, str]:
-    """Return the classifier call, its version and its prompt; tests set ``ctx.classifier``."""
-    if getattr(ctx, "classifier", None) is not None:
-        return ctx.classifier, ctx.classifier_version, claimkinds35.PROMPT
+def build_classifier(
+    plan: Mapping[str, Any], examples: list[Mapping[str, str]]
+) -> tuple[Callable[[list[dict[str, str]]], Awaitable[Any]], str, str]:
+    """Build the real classifier from *plan*; return its call, its version and its prompt.
+
+    Raises:
+        arms.ArmConfigError: A setting is missing or ``null`` in the plan (see
+            :func:`classifier_settings`).
+        ragas35_judge.RagasRefused: The built judge differs from the plan.
+    """
     import ragas35_judge
 
-    examples = json.loads(Path(ctx.args.classify_examples).read_text(encoding="utf-8"))
     prompt = claimkinds35.build_prompt(examples)
-    found = [r for r in ctx.plan["runtime"]["references"] if r.get("role") == ROLE]
-    missing = [f for f in FIELDS if f not in (found[0] if found else {})]
-    if missing:
-        raise ValueError(f"plan.json {ROLE} lacks {', '.join(missing)}")
-    settings = {f: found[0][f] for f in FIELDS}
+    settings = classifier_settings(plan)
     send, built = ragas35_judge.build_judge(settings)
     ragas35_judge.check_built(settings, built)
     version = claimkinds35.classifier_version(
@@ -145,6 +177,14 @@ def _classifier(ctx: Any) -> tuple[Callable[[list[dict[str, str]]], Awaitable[An
         return await send("\n\n".join(m["content"] for m in messages))
 
     return call, version, prompt
+
+
+def _classifier(ctx: Any) -> tuple[Callable[[list[dict[str, str]]], Awaitable[Any]], str, str]:
+    """Return the classifier call, its version and its prompt; tests set ``ctx.classifier``."""
+    if getattr(ctx, "classifier", None) is not None:
+        return ctx.classifier, ctx.classifier_version, claimkinds35.PROMPT
+    examples = json.loads(Path(ctx.args.classify_examples).read_text(encoding="utf-8"))
+    return build_classifier(ctx.plan, examples)
 
 
 async def claimkinds_stage(

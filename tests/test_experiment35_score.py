@@ -106,6 +106,22 @@ def test_token_cut_head_length(tokens: list[int], k: int) -> None:
     assert score35.token_cut_k(chunks) == k
 
 
+def test_a_list_with_no_token_counts_is_refused_by_name() -> None:
+    chunks = [{"chunk_id": "c1", "stem": "p1"}, {"chunk_id": "c2", "stem": "p2", "tokens": 5}]
+    with pytest.raises(score35.MissingTokenCounts, match=r"c1.*tokens"):
+        score35.token_cut_k(chunks)
+
+
+def test_scoring_a_list_with_no_token_counts_stops_and_names_the_question(
+    tmp_path: Path,
+) -> None:
+    rows = [{"qid": "q1", "chunks": [{"chunk_id": "c1", "stem": "p1", "score": 0.5}]}]
+    _build(tmp_path, rows)
+    with pytest.raises(score35.MissingTokenCounts, match=rf"q1.*{SETUP}|{SETUP}.*q1"):
+        score35.score(tmp_path, "A", halves={"bioasq": {"q1": "A"}}, golds=_golds())
+    assert not (tmp_path / "scores").exists()
+
+
 def test_main_reads_the_loaders_and_writes_half_a(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

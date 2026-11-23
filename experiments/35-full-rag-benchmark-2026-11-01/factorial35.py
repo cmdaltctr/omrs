@@ -194,9 +194,15 @@ def _marks(tables: Mapping[str, Any], metric: str, dataset: str) -> dict[str, An
     return {k: v.get(dataset, {}) for k, v in tables["marks"][metric].items()}
 
 
-def _dropped(row: Row, metric: str) -> dict[str, Any]:
-    """Return an answer row of a dataset whose answers drop step 1 removed (section 17)."""
-    return {"row": row.number, "hypothesis": row.hypothesis, "metric": metric, "dropped": True}
+def _dropped(row: Row, metric: str, in_family: bool) -> dict[str, Any]:
+    """Return an answer row of a dataset whose answers drop step 1 removed (section 17).
+
+    A family row stays in its Holm family with p = 1, as a gated row does (section 8).
+    """
+    out = {"row": row.number, "hypothesis": row.hypothesis, "metric": metric, "dropped": True}
+    if in_family:
+        out.update(not_testable=True, p_value=1.0, sensitivity_p=1.0, estimate=0.0)
+    return out
 
 
 def _dataset_rows(
@@ -213,7 +219,7 @@ def _dataset_rows(
     for row in ROWS:
         metric = endpoint(row, dataset)
         if row.stage != "search" and dataset in tables["dropped"]:
-            results.append(_dropped(row, metric))
+            results.append(_dropped(row, metric, row.number in family))
             continue
         cells = tables[metric].get(dataset, {})
         d, excluded = contrast(row, cells, questions)

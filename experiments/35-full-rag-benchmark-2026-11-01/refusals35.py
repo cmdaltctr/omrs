@@ -1,19 +1,22 @@
-"""Claim-kind gate for Experiment 35: sample, labelling page and gate (tasks 8.3, 8.4, 8.6).
+"""Claim-kind gate for Experiment 35: sample, labelling page, classify and gate (8.3 to 8.7).
 
-Usage (reads saved files only, runs on the Mac)::
+Usage (``sample``, ``page`` and ``gate`` read saved files only and run on the Mac;
+``classify`` makes hosted calls and runs on the pod)::
 
     refusals35.py sample --seed 20261112 --n 100 --out-dir OUT \\
         --folder bioasq=PATH --folder financebench=PATH --folder freshstack=PATH
     refusals35.py page --out-dir OUT
+    refusals35.py classify --out-dir OUT --examples EXAMPLES.json
     refusals35.py gate --out-dir OUT --labels L1.json [--labels L2.json] [--resolved FILE]
 
 The sample draws from the valid smoke claims only. It takes about a third from
 each dataset, and inside each dataset half from claims the pre-freeze regular
 expression flags and half from the rest (design D15). A claim that sits in
 several setups or runs counts once (one key per question ID and claim text).
-The classifier run on the sample (:func:`classify_sample`) is a pod stage
-whose hosted call is injected. The report on the main run is in
-``refusalreport35.py``.
+The ``classify`` command (:func:`classify_command`) runs the classifier on the sample through
+the hosted gate and writes ``sample-kinds.jsonl``, which ``gate`` reads. It reads the model,
+host, reasoning, temperature and seed from ``plan.json`` and sends 100 hosted calls. The
+report on the main run is in ``refusalreport35.py``.
 """
 
 from __future__ import annotations
@@ -25,12 +28,13 @@ import math
 import random
 import re
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
 import claimkinds35
 import labelpage35
+from experiments._lib.hosted_calls import HostedGate, RateLimitStop
 from outputs35 import read_rows, write_json
 
 #: The pre-freeze regular expression, copied unchanged from the FreshStack smoke
@@ -301,6 +305,63 @@ def gate(
     }
 
 
+PLAN = Path(__file__).resolve().parent / "plan.json"
+EXIT_RATE_LIMIT = 5
+Builder = Callable[[Mapping[str, Any], list[Mapping[str, str]]], tuple[Any, str, str]]
+
+
+def classify_command(
+    out_dir: Path,
+    examples_file: Path,
+    *,
+    concurrency: int,
+    attempts: int,
+    build_classifier: Builder | None = None,
+) -> int:
+    """Run the classifier on the saved sample through the hosted gate (a pod stage).
+
+    Args:
+        out_dir: The folder holding ``sample.json``; ``sample-kinds.jsonl`` goes there.
+        examples_file: JSON list of prompt examples (``qid``, ``question``, ``claim``, ``kind``).
+        concurrency: Calls in flight (``--classify-concurrency``).
+        attempts: The most sends of one rate-limited call (``--rate-limit-attempts``).
+        build_classifier: Builds ``(call, version, prompt)`` from the plan and the examples.
+            Tests inject a stub; the default builds the real classifier from ``plan.json``.
+
+    Returns:
+        0 after the kinds are saved, or 5 on a rate-limit stop (nothing saved).
+
+    Raises:
+        SystemExit: A prompt example is a sample claim.
+    """
+    items = _sample(out_dir)["items"]
+    examples = json.loads(examples_file.read_text(encoding="utf-8"))
+    try:
+        claimkinds35.check_examples(examples, {i["claim_key"] for i in items})
+    except ValueError as error:
+        raise SystemExit(str(error)) from error
+    if build_classifier is None:
+        import claimstage35
+
+        build_classifier = claimstage35.build_classifier
+    plan = json.loads(PLAN.read_text(encoding="utf-8"))
+    call, version, prompt = build_classifier(plan, examples)
+    gate_ = HostedGate("claim-classifier", concurrency, attempts=attempts)
+
+    async def gated(messages: list[dict[str, str]]) -> str:
+        return str((await gate_.call(lambda: call(messages))).text)
+
+    try:
+        asyncio.run(
+            classify_sample(out_dir, gated, prompt=prompt, version=version, concurrency=concurrency)
+        )
+    except RateLimitStop as stop:
+        print(f"[classify] stopped: {stop}", flush=True)
+        return EXIT_RATE_LIMIT
+    print(f"[classify] {len(items)} kinds saved, version {version}", flush=True)
+    return 0
+
+
 def _gate_cli(out_dir: Path, label_files: Sequence[Path], resolved: Path | None) -> int:
     sample = _sample(out_dir)
     ids = [i["item_id"] for i in sample["items"]]
@@ -328,8 +389,8 @@ def _questions(datasets: Sequence[str]) -> dict[str, dict[str, str]]:
     return {d: {q.qid: q.text for q in datasets35.load_questions(d, root)} for d in datasets}
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    """Run one subcommand: ``sample``, ``page`` or ``gate``."""
+def main(argv: Sequence[str] | None = None, *, build_classifier: Builder | None = None) -> int:
+    """Run one subcommand: ``sample``, ``page``, ``classify`` or ``gate``."""
     parser = argparse.ArgumentParser(prog="refusals35.py")
     sub = parser.add_subparsers(dest="command", required=True)
     s = sub.add_parser("sample")
@@ -339,6 +400,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     s.add_argument("--out-dir", type=Path, required=True)
     p = sub.add_parser("page")
     p.add_argument("--out-dir", type=Path, required=True)
+    c = sub.add_parser("classify")
+    c.add_argument("--out-dir", type=Path, required=True)
+    c.add_argument("--examples", type=Path, required=True)
+    c.add_argument("--classify-concurrency", type=int, default=16)
+    c.add_argument("--rate-limit-attempts", type=int, default=6)
     g = sub.add_parser("gate")
     g.add_argument("--out-dir", type=Path, required=True)
     g.add_argument("--labels", type=Path, action="append", required=True)
@@ -354,6 +420,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "page":
         print(write_claim_page(args.out_dir), flush=True)
         return 0
+    if args.command == "classify":
+        return classify_command(
+            args.out_dir,
+            args.examples,
+            concurrency=args.classify_concurrency,
+            attempts=args.rate_limit_attempts,
+            build_classifier=build_classifier,
+        )
     return _gate_cli(args.out_dir, args.labels, args.resolved)
 
 
