@@ -325,6 +325,20 @@ def test_a_pdf_reader_that_resolves_to_another_reader_is_refused(
     assert "pdf_reader" in capsys.readouterr().out
 
 
+def test_no_token_aware_chunking_stops_before_the_router_engine_or_ingest(
+    env: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A pod without the tokenizer cached must stop, not fall back to the legacy splitter.
+    stub = Stub()
+    passages = _prepared(env, stub)
+    asked: list[Any] = []
+    monkeypatch.setattr(stub, "chunking_token_aware", lambda settings: asked.append(1) or False)
+    assert _main(stub, env / "out", *_ingest_args(passages)) == 2
+    assert asked == [1]
+    assert stub.log == []
+    assert "model-token-aware Markdown path" in capsys.readouterr().out
+
+
 # --- an ingest end to end with the stub world -------------------------------------------
 
 
