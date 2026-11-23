@@ -43,7 +43,12 @@ details.page>summary{flex-wrap:nowrap}
 .qs{flex:1 1 0;min-width:0;color:var(--muted);font-size:.88rem;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap}
 .pstat{white-space:nowrap}
-details.page[data-done] .pstat{color:var(--ok)}
+.pstat:empty{display:none}
+details.page[data-done] .pstat{color:#fff;background:var(--ok);border-radius:999px;
+  padding:.12rem .6rem;font-size:.74rem;font-weight:700}
+details.page[data-done]{border-color:var(--ok)}
+details.page[data-done]>summary{background:color-mix(in srgb,var(--ok) 12%,transparent)}
+details.page[data-done]>summary .pt{color:var(--ok)}
 .stick{top:calc(var(--bar,3.5rem) + .5rem);max-height:calc(100vh - var(--bar,3.5rem) - 1.5rem);
   overflow:auto;padding-right:.2rem}
 .tag{font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
@@ -73,7 +78,7 @@ pre.code.meta{font-size:.72rem;color:var(--muted);padding:.35rem .6rem}
 mark.target{background:#ffe08a;color:inherit;border-radius:3px;padding:0 .1em;
   box-shadow:0 0 0 2px #ffe08a}
 @media (prefers-color-scheme:dark){mark.target{background:#6b5200;box-shadow:0 0 0 2px #6b5200}
-  .bar button.primary,.chip input:checked+span{color:#0b1020}}
+  .bar button.primary{color:#0b1020}}
 .focus{font-size:1.2rem;font-weight:400;line-height:1.55;margin:0 0 1rem;padding:.8rem 1rem;
   background:var(--soft);border:1px solid var(--accent);border-radius:8px}
 .focus strong{font-weight:700}
@@ -81,6 +86,16 @@ mark.target{background:#ffe08a;color:inherit;border-radius:3px;padding:0 .1em;
 fieldset.form{border:1px solid var(--line);border-radius:8px;padding:.8rem;display:grid;gap:.6rem}
 fieldset.form legend{font-weight:600;font-size:.92rem;padding:0 .3rem}
 .judge .chip span{font-size:.95rem;padding:.5rem .95rem}
+.chip{--pick:var(--accent)}
+.chip:has(input[value=factual]),.chip:has(input[value=supported]),
+.chip:has(input[value=correct]){--pick:#1f9d55}
+.chip:has(input[value=refusal]),.chip:has(input[value=not_supported]),
+.chip:has(input[value=not_correct]){--pick:#d64545}
+.chip:has(input[value=mixed]){--pick:#2f6fdb}
+.chip:has(input[value=cant_tell]){--pick:#e07b00}
+.chip:hover span{border-color:var(--pick)}
+.chip input:checked+span{background:var(--pick);border-color:var(--pick);color:#fff}
+.chip input:focus-visible+span{outline:2px solid var(--pick);outline-offset:2px}
 kbd{font:inherit;font-size:.72rem;border:1px solid currentColor;border-radius:4px;
   padding:0 .3rem;margin-right:.3rem;opacity:.75}
 .note{font:inherit;font-size:.85rem;padding:.4rem .55rem;border:1px solid var(--line);

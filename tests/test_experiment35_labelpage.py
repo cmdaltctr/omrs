@@ -273,3 +273,29 @@ def test_passages_that_are_source_code_render_as_code_blocks() -> None:
     doc = '---\nsource_url: "repo/docs/a.mdx"\n--- # Title\nSome **prose**.'
     out = labelrender35.render_passage(doc)
     assert "<h3>Title</h3>" in out and "<strong>prose</strong>" in out
+
+
+def test_each_choice_has_its_own_selected_colour() -> None:
+    # Owner request 2026-11-23: factual green, refusal red, mixed blue, can't tell orange.
+    import labelpage_assets35
+
+    css = labelpage_assets35.CSS
+    for value, colour in (
+        ("factual", "#1f9d55"),
+        ("refusal", "#d64545"),
+        ("mixed", "#2f6fdb"),
+        ("cant_tell", "#e07b00"),
+    ):
+        assert colour in css.split(f"input[value={value}]", 1)[1].split("}", 1)[0]
+    assert "input:checked+span{background:var(--pick)" in css
+
+
+def test_a_labelled_card_turns_green_with_a_status_pill() -> None:
+    # Owner request 2026-11-23: labelled accordion header green, status as a pill.
+    import labelpage_assets35
+
+    css = labelpage_assets35.CSS
+    pill = css.split("details.page[data-done] .pstat{", 1)[1].split("}", 1)[0]
+    assert "background:var(--ok)" in pill and "border-radius:999px" in pill
+    assert "details.page[data-done]{border-color:var(--ok)}" in css
+    assert "details.page[data-done]>summary{background:" in css
