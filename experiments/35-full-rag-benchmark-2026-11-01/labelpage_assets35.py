@@ -37,7 +37,23 @@ CSS = """
   border:1px solid var(--line);border-radius:999px;padding:.25rem .8rem}
 #progress.ok{color:#fff;background:var(--ok);border-color:var(--ok)}
 #autosave{font-size:.8rem;color:var(--prob)}
-.intro b{color:var(--ink)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;margin:.2rem 0 1rem;
+  scroll-margin-top:calc(var(--bar,3.5rem) + .5rem)}
+.panel>summary{cursor:pointer;padding:.7rem 1rem;font-weight:700}
+.panel .pbody{padding:0 1rem 1rem;border-top:1px solid var(--line);font-size:.92rem}
+.panel h2{font-size:.95rem;margin:1rem 0 .3rem}
+.panel ul{margin:.2rem 0;padding-left:1.2rem}
+.rules{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:.55rem 1rem;margin:.8rem 0}
+.rules dt{margin:0}
+.rules dd{margin:0}
+.cn{display:inline-block;padding:.15rem .65rem;border-radius:999px;color:#fff;font-weight:600;
+  font-size:.85rem;background:var(--accent)}
+.cn[data-c=factual],.cn[data-c=supported],.cn[data-c=correct]{background:#1f9d55}
+.cn[data-c=refusal],.cn[data-c=not_supported],.cn[data-c=not_correct]{background:#d64545}
+.cn[data-c=mixed]{background:#2f6fdb}
+.cn[data-c=cant_tell]{background:#e07b00}
+.eg{display:block;color:var(--muted);margin-top:.15rem}
+.keys{color:var(--muted);margin:.8rem 0 0}
 details.page{scroll-margin-top:calc(var(--bar,3.5rem) + .5rem)}
 details.page>summary{flex-wrap:nowrap}
 .qs{flex:1 1 0;min-width:0;color:var(--muted);font-size:.88rem;overflow:hidden;
@@ -233,6 +249,12 @@ nextButton.addEventListener('click', function () {
 });
 document.getElementById('collapse').addEventListener('click', function () {
   cards.forEach(function (card) { card.open = false; });
+});
+
+document.getElementById('instructions-button').addEventListener('click', function () {
+  const panel = document.getElementById('instructions');
+  panel.open = true;
+  panel.scrollIntoView({ block: 'start', behavior: 'smooth' });
 });
 
 document.addEventListener('keydown', function (e) {

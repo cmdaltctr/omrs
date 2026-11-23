@@ -22,6 +22,7 @@ from tests._exp35_fixtures import load
 
 labelpage35 = load("labelpage35")
 labelrender35 = load("labelrender35")
+labelpage_assets35 = load("labelpage_assets35")
 
 SETS = ("claim_kinds", "faithfulness", "correctness")
 ANSWER = (
@@ -64,18 +65,93 @@ def test_page_loads_nothing_from_the_network(tmp_path: Path, set_name: str) -> N
     assert re.search(r"<script[^>]*\ssrc", text) is None
 
 
+def _panel(text: str) -> str:
+    """The Instructions panel of a page."""
+    found = re.search(r'<details class="panel" id="instructions" open>.*?</details>', text, re.S)
+    return found.group(0)
+
+
 @pytest.mark.parametrize("set_name", SETS)
 def test_page_shows_the_guidance_of_its_own_set_only(tmp_path: Path, set_name: str) -> None:
     text = _page(tmp_path, set_name)
-    assert '<p class="intro">' in text
-    for term, meaning in labelpage35.GUIDANCE[set_name]:
-        assert html.escape(term, quote=False) in text
-        assert html.escape(meaning, quote=False) in text
-    own = [meaning for _, meaning in labelpage35.GUIDANCE[set_name]]
+    panel = _panel(text)
+    for _, rule, _ in labelpage35.GUIDANCE[set_name]:
+        assert html.escape(rule, quote=False) in panel
+    own = [rule for _, rule, _ in labelpage35.GUIDANCE[set_name]]
     for other in SETS:
-        for _, meaning in labelpage35.GUIDANCE[other]:
-            if not any(meaning in mine for mine in own):  # shared wording is allowed
-                assert html.escape(meaning, quote=False) not in text
+        for _, rule, _ in labelpage35.GUIDANCE[other]:
+            if not any(rule in mine for mine in own):  # shared wording is allowed
+                assert html.escape(rule, quote=False) not in text
+    assert '<p class="intro">' not in text  # the panel replaces the old intro paragraph
+    assert text.count("Keys: 1 to") == 1
+
+
+@pytest.mark.parametrize("set_name", SETS)
+def test_instructions_panel_sits_above_the_first_card_under_the_bar(
+    tmp_path: Path, set_name: str
+) -> None:
+    text = _page(tmp_path, set_name)
+    panel = text.index('<details class="panel" id="instructions" open>')
+    assert text.index("</header>") < panel < text.index('<details class="page"')
+    assert "<summary>Instructions</summary>" in text
+    assert "Keys: 1 to" in _panel(text)
+    assert "Save labels downloads the file" in _panel(text)
+
+
+@pytest.mark.parametrize("set_name", SETS)
+def test_each_choice_has_a_rule_an_example_and_its_chip_colour(
+    tmp_path: Path, set_name: str
+) -> None:
+    panel = _panel(_page(tmp_path, set_name))
+    choices = dict(labelpage35.CHOICES[set_name])
+    assert [c for c, _, _ in labelpage35.GUIDANCE[set_name]] == list(choices)
+    for value, rule, example in labelpage35.GUIDANCE[set_name]:
+        assert rule.strip() and example.strip()
+        shown = html.escape(choices[value], quote=False)
+        assert f'<span class="cn" data-c="{value}">{shown}</span>' in panel
+        assert html.escape(example, quote=False) in panel
+    assert panel.count("<b>Example.</b>") == len(choices)
+
+
+def test_chip_names_in_the_panel_use_the_chip_colours() -> None:
+    for value, colour in (
+        ("factual", "#1f9d55"),
+        ("refusal", "#d64545"),
+        ("mixed", "#2f6fdb"),
+        ("cant_tell", "#e07b00"),
+    ):
+        rule = rf"\.cn\[data-c={value}\][^{{}}]*\{{background:{colour}\}}"
+        assert re.search(rule, labelpage_assets35.CSS)
+
+
+def test_hard_cases_hold_the_contains_but_lacks_the_answer_rule(tmp_path: Path) -> None:
+    panel = _panel(_page(tmp_path, "claim_kinds"))
+    assert "<h2>Hard cases</h2>" in panel
+    hard = " ".join(labelpage35.HARD_CASES["claim_kinds"])
+    assert "says what a source contains and also says that the source lacks the answer" in hard
+    assert "is Mixed, not Refusal" in hard
+    assert '"Source X lists subsidiaries but no debt securities" is Mixed' in hard
+    assert "No debt securities are listed" in hard  # the negative-answer rule stays
+    assert "Mixed counts as factual in scoring" in hard
+    for item in labelpage35.HARD_CASES["claim_kinds"]:
+        assert f"<li>{html.escape(item, quote=False)}</li>" in panel
+
+
+@pytest.mark.parametrize("set_name", SETS)
+def test_bar_has_an_instructions_button_that_opens_and_scrolls_to_the_panel(
+    tmp_path: Path, set_name: str
+) -> None:
+    text = _page(tmp_path, set_name)
+    bar = text[text.index('<header class="bar"') : text.index("</header>")]
+    assert '<button id="instructions-button" type="button">Instructions</button>' in bar
+    handler = re.search(
+        r"getElementById\('instructions-button'\)\.addEventListener\('click', "
+        r"function \(\) \{(.*?)\n\}\);",
+        text,
+        re.S,
+    ).group(1)
+    assert "panel.open = true" in handler
+    assert "scrollIntoView" in handler
 
 
 @pytest.mark.parametrize("set_name", SETS)
@@ -90,20 +166,21 @@ def test_bar_has_title_progress_pill_and_controls(tmp_path: Path, set_name: str)
 
 
 def test_guidance_words_follow_the_protocol_wording() -> None:
-    claim = dict(labelpage35.GUIDANCE["claim_kinds"])
-    assert "no debt securities are listed" in claim["Factual claim"].lower()
-    assert "only says the sources do not cover" in claim["Refusal"].lower()
-    assert "checkable fact" in claim["Mixed"]
-    assert "rarely" in claim["Can't tell"].lower()
-    assert set(dict(labelpage35.GUIDANCE["faithfulness"])) == {
-        "Supported",
-        "Not supported",
-        "Can't tell",
+    claim = {c: rule for c, rule, _ in labelpage35.GUIDANCE["claim_kinds"]}
+    assert "no debt securities are listed" in claim["factual"].lower()
+    assert "only says that the sources do not cover" in claim["refusal"].lower()
+    assert "checkable fact" in claim["mixed"]
+    assert "counts as factual" in claim["mixed"]
+    assert "rarely" in claim["cant_tell"].lower()
+    assert {c for c, _, _ in labelpage35.GUIDANCE["faithfulness"]} == {
+        "supported",
+        "not_supported",
+        "cant_tell",
     }
-    assert set(dict(labelpage35.GUIDANCE["correctness"])) == {
-        "Correct",
-        "Not correct",
-        "Can't tell",
+    assert {c for c, _, _ in labelpage35.GUIDANCE["correctness"]} == {
+        "correct",
+        "not_correct",
+        "cant_tell",
     }
 
 

@@ -39,8 +39,9 @@ PROMPT = """You sort one sentence from an answer into one of three kinds.
 factual: the sentence states a checkable fact. A negative finding that answers the question
 (for example "no debt securities are listed") is factual.
 refusal: the sentence only says that the sources do not cover something, or that the question
-cannot be answered from them.
-mixed: the sentence states a checkable fact and also a limit of what the sources cover.
+cannot be answered from them. It states no checkable fact, not even about what a source contains.
+mixed: the sentence states a checkable fact and also a limit of what the sources cover. A fact
+about what a source contains, with a statement that it lacks the answer, is mixed.
 
 You see the question and the sentence only. Reply with one word: factual, refusal or mixed.
 

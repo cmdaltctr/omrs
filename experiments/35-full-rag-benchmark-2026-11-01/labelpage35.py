@@ -87,40 +87,88 @@ LAYOUT: dict[str, tuple[tuple[str, str, str], ...]] = {
     ),
 }
 
-#: Guidance shown at the top of each page, as (choice, meaning). The claim-kind text
-#: follows protocol.md ("Three claim kinds"); the faithfulness lines add protocol.md's
-#: labelling rules 1 and 2.
-GUIDANCE: dict[str, tuple[tuple[str, str], ...]] = {
+#: The Instructions panel of each page, per set: (choice value, rule, worked example), in
+#: the order of ``CHOICES``. The claim-kind rules follow protocol.md ("Three claim kinds");
+#: the faithfulness rules are protocol.md's labelling rules 1 and 2. Pre-freeze change
+#: 2026-11-23: one rule and one example per choice, and the owner's decision on a
+#: sentence that states what a source contains and says the source lacks the answer.
+GUIDANCE: dict[str, tuple[tuple[str, str, str], ...]] = {
     "claim_kinds": (
         (
-            "Factual claim",
-            "States something that can be checked against a source. A negative answer counts "
-            '("No debt securities are listed").',
+            "factual",
+            "The sentence states something that can be checked against a source. A negative "
+            'answer that answers the question counts ("No debt securities are listed").',
+            'Sentence: "The company was founded in 1998 and has 300 staff."',
         ),
-        ("Refusal", "Only says the sources do not cover something. It states no fact."),
         (
-            "Mixed",
-            "A checkable fact plus a limit on what the sources cover. It counts as factual.",
+            "refusal",
+            "The sentence only says that the sources do not cover something. It states no "
+            "checkable fact, not even about what a source contains.",
+            'Sentence: "The provided sources do not cover the 2019 audit."',
         ),
-        ("Can't tell", "Use this rarely."),
+        (
+            "mixed",
+            "The sentence states a checkable fact and also says that the sources lack the answer "
+            "or part of it. Mixed counts as factual in scoring.",
+            'Sentence: "The policy page lists three plans but gives no prices."',
+        ),
+        (
+            "cant_tell",
+            "Use this rarely. Choose it only when the sentence is too unclear to sort.",
+            'Sentence: "As noted above." (a fragment you cannot sort)',
+        ),
     ),
     "faithfulness": (
         (
-            "Supported",
+            "supported",
             "Every part of the sentence is stated in the passages or follows directly from them.",
+            'Passage: "Weight: 2 kg." Sentence: "The device weighs 2 kg."',
         ),
-        ("Not supported", "Any part is missing from the passages or is contradicted by them."),
         (
-            "Can't tell",
+            "not_supported",
+            "Any part is missing from the passages or is contradicted by them.",
+            'Passage: "Weight: 2 kg." Sentence: "The device weighs 2 kg and is waterproof."',
+        ),
+        (
+            "cant_tell",
             "Use this rarely. Judge the sentence as written: do not fill in a missing subject "
             "from the question. If the meaning is unclear, choose this.",
+            'Sentence: "It was approved in May." (no subject, so the meaning is unclear)',
         ),
     ),
     "correctness": (
-        ("Correct", "The answer gives the key facts of the reference answer and contradicts none."),
-        ("Not correct", "Any other case."),
-        ("Can't tell", "Use this rarely."),
+        (
+            "correct",
+            "The answer gives the key facts of the reference answer and contradicts none.",
+            'Reference: "Paris." Answer: "The capital is Paris."',
+        ),
+        (
+            "not_correct",
+            "Any other case.",
+            'Reference: "Paris, with 2.1 million people." Answer: "Paris." (a key fact is missing)',
+        ),
+        (
+            "cant_tell",
+            "Use this rarely. Choose it only when you cannot read what the answer claims.",
+            "The answer stops in the middle of a sentence.",
+        ),
     ),
+}
+
+#: Hard cases agreed with the owner, per set. Add each new one after a practice round.
+HARD_CASES: dict[str, tuple[str, ...]] = {
+    "claim_kinds": (
+        "A sentence that says what a source contains and also says that the source lacks the "
+        'answer is Mixed, not Refusal. Example: "Source X lists subsidiaries but no debt '
+        'securities" is Mixed, because the list of subsidiaries is a checkable fact about the '
+        "source.",
+        'A negative answer that answers the question is Factual. Example: "No debt securities '
+        'are listed."',
+        "Refusal needs no checkable fact at all, not even about what a source contains.",
+        "Mixed counts as factual in scoring. Choose Mixed when it fits.",
+    ),
+    "faithfulness": (),
+    "correctness": (),
 }
 
 LABELLERS = ("L1", "L2")
@@ -225,15 +273,23 @@ def write_page(path: Path, set_name: str, items: Sequence[Mapping[str, Any]]) ->
     blob = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
     title = html.escape(TITLES[set_name], quote=False)
     options = "".join(f'<option value="{w}">{w}</option>' for w in LABELLERS)
-    guide = " ".join(
-        f"<b>{html.escape(term, quote=False)}</b>: {html.escape(meaning, quote=False)}"
-        for term, meaning in GUIDANCE[set_name]
-    )
     keys = len(CHOICES[set_name])
-    intro = (
-        "Open an item. The context stays on the left; judge the item on the right and pick "
-        f"one choice. {guide} Keys: 1 to {keys} pick a choice; J and K move to the next or "
+    names = dict(CHOICES[set_name])
+    rules = "".join(
+        f'<dt><span class="cn" data-c="{value}">{html.escape(names[value], quote=False)}</span></dt>'
+        f"<dd>{html.escape(rule, quote=False)}"
+        f'<span class="eg"><b>Example.</b> {html.escape(example, quote=False)}</span></dd>'
+        for value, rule, example in GUIDANCE[set_name]
+    )
+    hard = "".join(f"<li>{html.escape(h, quote=False)}</li>" for h in HARD_CASES[set_name])
+    hard_block = f"<h2>Hard cases</h2><ul>{hard}</ul>" if hard else ""
+    instructions = (
+        '<details class="panel" id="instructions" open><summary>Instructions</summary>'
+        '<div class="pbody"><p>Open an item. The context stays on the left; judge the item on '
+        f'the right and pick one choice.</p><dl class="rules">{rules}</dl>{hard_block}'
+        f'<p class="keys">Keys: 1 to {keys} pick a choice; J and K move to the next or '
         "previous item. Your draft is kept in this browser; Save labels downloads the file."
+        "</p></div></details>"
     )
     cards = "\n".join(_card(set_name, i, item) for i, item in enumerate(shown))
     # The viewport tag is written "name =" because tests ban the text "name=" on this page
@@ -246,12 +302,13 @@ def write_page(path: Path, set_name: str, items: Sequence[Mapping[str, Any]]) ->
         '<span id="progress" role="status" aria-live="polite"></span>'
         '<button id="next" type="button">Next unlabelled</button>'
         '<button id="collapse" type="button">Collapse all</button>'
+        '<button id="instructions-button" type="button">Instructions</button>'
         '<label class="who">Labeller '
         f'<select id="labeller"><option value=""></option>{options}</select></label>'
         '<button id="save" type="button" class="primary">Save labels</button>'
         '<span id="autosave" hidden>Autosave unavailable: save often.</span>'
         "</header>\n<main>\n"
-        f'<p class="intro">{intro}</p>\n{cards}\n</main>\n'
+        f"{instructions}\n{cards}\n</main>\n"
         f'<script type="application/json" id="items">{blob}</script>\n'
         f"<script>{SCRIPT}</script>\n</body></html>\n"
     )
