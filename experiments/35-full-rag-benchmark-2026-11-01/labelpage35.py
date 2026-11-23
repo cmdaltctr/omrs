@@ -1,12 +1,20 @@
 """Blind labelling page and label files for Experiment 35 (tasks 8.4 and 15.8).
 
 One static HTML page per label set: claim kinds, faithfulness verdicts or
-correctness. The page shows only the fields a labeller needs (question and
-claim; cited passages for faithfulness; reference and answer for
-correctness). It never shows a kind, a verdict, a score, a setup name or a
-chunk size, and it loads nothing from the network. The labeller picks `L1`
-or `L2` (no name field). The page keeps a draft in browser storage inside
-``try``/``catch`` and saves the labels as a JSON download.
+correctness. The page follows the Experiment 34 review page: a sticky bar, one
+collapsible card per item, context on the left and the sentence to judge with
+the choice chips on the right. It shows only the fields a labeller needs:
+claim kinds, the question, the full answer with the claim marked and the
+passages the claim cites; faithfulness, the question, the claim and its cited
+passages; correctness, the question, the reference and the answer.
+Pre-freeze change 2026-11-23: the labeller sees the question, the full answer
+with the claim marked, and the passages the claim cites, so the label rests on
+context. The page still shows no kind, verdict, score or setup. It never shows
+a chunk size either, and it loads nothing from the network. Answers and
+passages are rendered from Markdown in Python (``labelrender35``), escaped.
+The labeller picks `L1` or `L2` (no name field). The page keeps a draft in
+browser storage inside ``try``/``catch`` and saves the labels as a JSON
+download (an optional ``notes`` map rides along; :func:`read_labels` ignores it).
 
 This module also reads the saved label files and builds the reference label
 of pre-registration section 11.3.
@@ -20,7 +28,8 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from labelpage_assets35 import CSS, SCRIPT
+from labelpage_assets35 import CSS, SCRIPT, exp34_style
+from labelrender35 import mark_claim, render_inline, render_markdown, render_passage
 
 #: The choices per set, as saved value and shown text.
 CHOICES: dict[str, tuple[tuple[str, str], ...]] = {
@@ -44,7 +53,7 @@ CHOICES: dict[str, tuple[tuple[str, str], ...]] = {
 
 #: The only item fields that reach the page, per set.
 FIELDS: dict[str, tuple[str, ...]] = {
-    "claim_kinds": ("question", "claim"),
+    "claim_kinds": ("question", "claim", "answer", "passages"),
     "faithfulness": ("question", "claim", "passages"),
     "correctness": ("question", "reference", "answer"),
 }
@@ -57,16 +66,19 @@ TITLES: dict[str, str] = {
 }
 
 #: How the page shows each field, per set, in order: field, plain-words label and role.
-#: ``focus`` is the item to judge, ``context`` a muted panel, ``passages`` one box per passage.
+#: ``focus`` is the item to judge (right), ``context`` a short text (left), ``answer``
+#: the full answer with the claim marked (left) and ``passages`` one panel per passage (left).
 LAYOUT: dict[str, tuple[tuple[str, str, str], ...]] = {
     "claim_kinds": (
         ("question", "Question", "context"),
+        ("answer", "Full answer", "answer"),
+        ("passages", "Passage", "passages"),
         ("claim", "Sentence to label", "focus"),
     ),
     "faithfulness": (
         ("question", "Question", "context"),
-        ("claim", "Sentence to label", "focus"),
         ("passages", "Passage", "passages"),
+        ("claim", "Sentence to label", "focus"),
     ),
     "correctness": (
         ("question", "Question", "context"),
@@ -125,6 +137,74 @@ def page_items(set_name: str, items: Sequence[Mapping[str, Any]]) -> list[dict[s
     return [{"item_id": item["item_id"], **{f: item[f] for f in fields}} for item in items]
 
 
+def _toggle(field: str, label: str, body: str, k: int | None = None) -> str:
+    """A rendered block with a Rendered / Raw toggle (raw text is filled by the script)."""
+    index = "" if k is None else f' data-k="{k}"'
+    return (
+        f'<div class="outwrap" data-f="{field}"{index}><div class="viewbar">'
+        f'<p class="tag">{label}</p>'
+        '<button type="button" class="vt on" data-v="md">Rendered</button>'
+        '<button type="button" class="vt" data-v="raw">Raw</button></div>'
+        f'<div class="md">{body}</div><pre class="raw" hidden></pre></div>'
+    )
+
+
+def _passages(field: str, passages: Sequence[Any]) -> str:
+    """One collapsible panel per passage, named by the ordinal the answer cites."""
+    panels = []
+    for k, passage in enumerate(passages):
+        if isinstance(passage, Mapping):
+            name, text = f"Passage [{passage['ordinal']}]", passage["text"]
+        else:
+            name, text = f"Passage {k + 1}", passage
+        panels.append(
+            '<details class="engine psg"><summary>'
+            f'<span class="en">{name}</span></summary>'
+            f"{_toggle(field, 'Text', render_passage(text), k)}</details>"
+        )
+    return "".join(panels) or '<p class="pending">No cited passage.</p>'
+
+
+def _card(set_name: str, i: int, item: Mapping[str, Any]) -> str:
+    """One item card: context left (sticky), sentence and choice chips right."""
+    left: list[str] = []
+    right: list[str] = []
+    for field, label, role in LAYOUT[set_name]:
+        value = item[field]
+        if role == "context":
+            left.append(
+                f'<div class="blk ctx"><p class="tag">{label}</p>'
+                f"<p>{render_inline(value)}</p></div>"
+            )
+        elif role == "answer":
+            body = render_markdown(mark_claim(value, item.get("claim", "")))
+            left.append(f'<div class="ans">{_toggle(field, label, body)}</div>')
+        elif role == "passages":
+            left.append(f'<div class="blk"><p class="tag">{label}s cited</p>')
+            left.append(f"{_passages(field, value)}</div>")
+        elif field == "claim":
+            right.append(f'<p class="tag">{label}</p><p class="focus">{render_inline(value)}</p>')
+        else:
+            right.append(f'<div class="ans">{_toggle(field, label, render_markdown(value))}</div>')
+    chips = "".join(
+        f'<label class="chip"><input type="radio" value="{value}">'
+        f"<span><kbd>{c + 1}</kbd>{html.escape(text, quote=False)}</span></label>"
+        for c, (value, text) in enumerate(CHOICES[set_name])
+    )
+    right.append(
+        f'<fieldset class="form"><legend>Your label</legend><div class="opts">{chips}</div>'
+        '<input type="text" class="note" placeholder="Note (optional)" aria-label="Note">'
+        '<button type="button" class="clear">Clear</button></fieldset>'
+    )
+    question = render_inline(item.get("question", ""))
+    return (
+        f'<details class="page" data-i="{i}"><summary><span class="pt">Item {i + 1}</span>'
+        f'<span class="qs">{question}</span><span class="pstat"></span></summary>'
+        f'<div class="body"><div class="orig"><div class="stick">{"".join(left)}</div></div>'
+        f'<div class="judge">{"".join(right)}</div></div></details>'
+    )
+
+
 def write_page(path: Path, set_name: str, items: Sequence[Mapping[str, Any]]) -> None:
     """Write the static labelling page for one set.
 
@@ -134,46 +214,43 @@ def write_page(path: Path, set_name: str, items: Sequence[Mapping[str, Any]]) ->
         items: Sample items. Each holds ``item_id`` and the set's fields;
             every other field is dropped before it reaches the page.
     """
+    shown = page_items(set_name, items)
     data = {
         "set": set_name,
         "fields": list(FIELDS[set_name]),
-        "layout": [list(row) for row in LAYOUT[set_name]],
         "choices": [list(c) for c in CHOICES[set_name]],
-        "items": page_items(set_name, items),
+        "items": shown,
     }
     blob = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
     title = html.escape(TITLES[set_name], quote=False)
     options = "".join(f'<option value="{w}">{w}</option>' for w in LABELLERS)
-    guide = "".join(
-        f"<dt>{html.escape(term, quote=False)}</dt><dd>{html.escape(meaning, quote=False)}</dd>"
+    guide = " ".join(
+        f"<b>{html.escape(term, quote=False)}</b>: {html.escape(meaning, quote=False)}"
         for term, meaning in GUIDANCE[set_name]
     )
-    hint = (
-        f"Keys: 1 to {len(CHOICES[set_name])} pick a choice. "
-        "J or K, or the Up and Down arrows, move between items."
+    keys = len(CHOICES[set_name])
+    intro = (
+        "Open an item. The context stays on the left; judge the item on the right and pick "
+        f"one choice. {guide} Keys: 1 to {keys} pick a choice; J and K move to the next or "
+        "previous item. Your draft is kept in this browser; Save labels downloads the file."
     )
+    cards = "\n".join(_card(set_name, i, item) for i, item in enumerate(shown))
     # The viewport tag is written "name =" because tests ban the text "name=" on this page
     # (it guards against a name field for the labeller).
     text = (
         '<!doctype html>\n<html lang="en-GB"><head><meta charset="utf-8">'
         '<meta name ="viewport" content="width=device-width, initial-scale=1">'
-        f"<title>{title} labels</title><style>{CSS}</style></head><body>\n"
-        '<header class="bar" id="bar"><div class="bar-inner">'
-        f"<h1>{title}</h1>"
+        f"<title>{title} labels</title><style>{exp34_style()}{CSS}</style></head><body>\n"
+        f'<header class="bar" id="bar"><h1>{title}</h1>'
+        '<span id="progress" role="status" aria-live="polite"></span>'
+        '<button id="next" type="button">Next unlabelled</button>'
+        '<button id="collapse" type="button">Collapse all</button>'
         '<label class="who">Labeller '
         f'<select id="labeller"><option value=""></option>{options}</select></label>'
-        '<button id="next" type="button">Next unlabelled</button>'
         '<button id="save" type="button" class="primary">Save labels</button>'
-        '<div class="progress" id="progress" role="status" aria-live="polite">'
-        f'<span id="progress-text">0 of {len(data["items"])} labelled</span>'
-        '<div class="track" id="track" role="progressbar" aria-label="Labelling progress" '
-        f'aria-valuemin="0" aria-valuemax="{len(data["items"])}" aria-valuenow="0">'
-        '<div class="fill" id="progress-bar"></div></div></div>'
-        "</div></header>\n"
-        '<main class="page">\n'
-        f'<details class="guide"><summary>How to label</summary><dl>{guide}</dl></details>\n'
-        f'<p class="hint">{hint}</p>\n'
-        '<div id="list"></div>\n</main>\n'
+        '<span id="autosave" hidden>Autosave unavailable: save often.</span>'
+        "</header>\n<main>\n"
+        f'<p class="intro">{intro}</p>\n{cards}\n</main>\n'
         f'<script type="application/json" id="items">{blob}</script>\n'
         f"<script>{SCRIPT}</script>\n</body></html>\n"
     )

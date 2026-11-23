@@ -411,7 +411,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # test_experiment35_refusals.py; the two smoke-folder cases are replaced.
 # +15 (2026-11-23, Exp 35 labelling page redesign, by test-ID diff): the new file
 # test_experiment35_labelpage.py holds 15 cases; no case removed or renamed.
-_BASE_EXECUTED = 13592
+# +13 (2026-11-23, Exp 35 labelling page rebuilt on the Exp 34 review layout, by
+# test-ID diff): 21 cases added, 8 removed or renamed (labelpage 18/7, refusals 3/1).
+_BASE_EXECUTED = 13605
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

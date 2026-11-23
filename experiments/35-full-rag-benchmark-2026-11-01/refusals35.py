@@ -38,11 +38,13 @@ from collections.abc import Awaitable, Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
+import claimcontext35
 import claimkinds35
 import labelpage35
 from experiments._lib.hosted_calls import HostedGate, RateLimitStop
 from experiments._lib.ordered_rows import append_line, read_lines
 from experiments._lib.stats_d6 import wilson
+from claimcontext35 import SampleError
 from outputs35 import read_rows, write_json
 
 PARTIAL = "sample-kinds.partial.jsonl"
@@ -63,24 +65,6 @@ PREFREEZE_REGEX = re.compile(
 THRESHOLDS = {"agreement": 0.90, "recall": 0.90, "precision": 0.90}
 
 
-class SampleError(RuntimeError):
-    """An answer folder is not a valid source of gate claims."""
-
-
-def _check_reasoning(run_dir: Path) -> None:
-    """Refuse a run whose trace record does not show the main-run answer reasoning ``none``."""
-    path = run_dir / "traces.jsonl"
-    rows = read_rows(path)
-    if not rows:
-        raise SampleError(f"{run_dir}: no {path.name}; cannot show the answer reasoning is 'none'")
-    found = (rows[0].get("effective_settings") or {}).get("answer_reasoning")
-    if found != "none":
-        raise SampleError(
-            f"{run_dir}: answer reasoning is {found!r}; the main run uses 'none' "
-            "(pre-freeze amendment 2026-11-23)"
-        )
-
-
 def session_claims(
     folders: Mapping[str, Path], questions: Mapping[str, Mapping[str, str]]
 ) -> list[dict[str, Any]]:
@@ -93,7 +77,9 @@ def session_claims(
         questions: Dataset name to (question ID to question text).
 
     Returns:
-        One record per distinct (question ID, claim text), in folder order.
+        One record per distinct (question ID, claim text), in folder order, with
+        the full answer and cited passages of the first answer that holds it
+        (``claimcontext35.claim_contexts``).
 
     Raises:
         SampleError: A folder holds no answer file, or a run folder does not show
@@ -109,9 +95,9 @@ def session_claims(
                 "of the pre-freeze test pod session output"
             )
         for answers in found:
-            _check_reasoning(answers.parent)
+            claimcontext35.check_reasoning(answers.parent)
             for row in read_rows(answers):
-                for claim in claimkinds35.answer_claims(row):
+                for claim, passages in claimcontext35.claim_contexts(row):
                     key = claimkinds35.claim_key(row["qid"], claim)
                     claims.setdefault(
                         key,
@@ -121,6 +107,8 @@ def session_claims(
                             "qid": row["qid"],
                             "question": questions[dataset][row["qid"]],
                             "claim": claim,
+                            "answer": row["answer"],
+                            "passages": passages,
                             "flagged": bool(PREFREEZE_REGEX.search(claim)),
                         },
                     )

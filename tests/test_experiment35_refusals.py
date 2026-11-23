@@ -117,6 +117,40 @@ def test_a_folder_with_no_answer_files_is_refused(tmp_path: Path) -> None:
         refusals35.session_claims(folders, _questions(folders))
 
 
+def test_each_claim_carries_its_first_answer_and_the_passages_it_cites(tmp_path: Path) -> None:
+    folders = _folders(tmp_path)
+    claims = refusals35.session_claims(folders, _questions(folders))
+    first = claims[0]
+    assert first["claim"].rstrip(".") + " [1]." in first["answer"]
+    assert first["passages"] == [{"ordinal": 1, "text": f"passage for {first['qid']}"}]
+    drawn = refusals35.draw_sample(claims, seed=20261112, n=100)
+    assert all("answer" in i and "passages" in i for i in drawn["items"])
+
+
+def test_context_keeps_the_first_answer_and_maps_cited_ordinals(tmp_path: Path) -> None:
+    claimcontext35 = load("claimcontext35")
+    row = {
+        "qid": "q1",
+        "answer": "Alpha is one [2]. Beta is two [1, 3].",
+        "evidence": [
+            {"ordinal": 1, "text": "p1"},
+            {"ordinal": 2, "text": "p2"},
+            {"ordinal": 3, "text": "p3"},
+        ],
+    }
+    pairs = claimcontext35.claim_contexts(row)
+    assert [c for c, _ in pairs] == claimkinds35.answer_claims(row)
+    assert pairs[1][1] == [{"ordinal": 1, "text": "p1"}, {"ordinal": 3, "text": "p3"}]
+    folder = tmp_path / "bioasq"
+    for arm, extra in ((ARMS[0], "First extra"), (ARMS[1], "Second extra")):
+        run_dir = folder / "answer" / arm / "run1"
+        write_run(run_dir, {"bi0": ["Shared claim", extra]})
+        write_rows(run_dir / "traces.jsonl", [{"effective_settings": {"answer_reasoning": "none"}}])
+    found = refusals35.session_claims({"bioasq": folder}, {"bioasq": {"bi0": "q?"}})
+    shared = next(c for c in found if c["claim"] == "Shared claim.")
+    assert "First extra" in shared["answer"]  # sorted folder order: the first answer wins
+
+
 def test_claims_are_deduplicated_across_arms_and_runs(tmp_path: Path) -> None:
     folders = _folders(tmp_path)
     claims = refusals35.session_claims(folders, _questions(folders))
@@ -181,16 +215,23 @@ def _page(tmp_path: Path) -> tuple[str, dict[str, Any]]:
     return text, json.loads(blob.group(1))
 
 
-def test_page_shows_question_and_claim_with_four_choices(tmp_path: Path) -> None:
+def test_page_shows_question_claim_answer_and_passages_with_four_choices(tmp_path: Path) -> None:
     text, data = _page(tmp_path)
     assert len(data["items"]) == 100
-    assert set(data["items"][0]) == {"item_id", "question", "claim"}
+    item = data["items"][0]
+    assert set(item) == {"item_id", "question", "claim", "answer", "passages"}
+    assert item["claim"].rstrip(".") + " [1]." in item["answer"]
+    assert [set(p) for p in item["passages"]] == [{"ordinal", "text"}]
+    assert item["passages"][0]["text"].startswith("passage for ")
     assert [c[0] for c in data["choices"]] == ["factual", "refusal", "mixed", "cant_tell"]
     assert "Can't tell" in text
 
 
 def test_page_holds_no_kind_verdict_stratum_setup_or_network_address(tmp_path: Path) -> None:
-    text, _ = _page(tmp_path)
+    text, data = _page(tmp_path)
+    for item in data["items"]:  # the new context fields carry no hidden key
+        assert [set(p) for p in item["passages"]] == [{"ordinal", "text"}] * len(item["passages"])
+        assert isinstance(item["answer"], str)
     for banned in (
         "verdict",
         "flagged",

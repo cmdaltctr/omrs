@@ -1,269 +1,216 @@
-"""Style sheet and script of the Experiment 35 blind labelling page.
+"""Style sheet and script for the Experiment 35 blind labelling page.
 
-Plain strings that ``labelpage35.write_page`` puts inline. Nothing here loads
-a file, a font or a script from the network: the fonts are the system fonts.
-The words "chunk", "score" and "verdict" stay out of this file, because the
-page tests ban them (the page must stay blind).
+The page follows the Experiment 34 review page: :func:`exp34_style` imports
+that page's style block (imported, not copied, as the review-page pattern
+asks), and ``CSS`` adds the labelling parts on top. Nothing here loads a file,
+a font or a script from the network: fonts are system fonts. The words
+"chunk", "score" and "verdict" stay out of this file, because the page tests
+ban them (the page must stay blind).
 """
 
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+EXP34 = Path(__file__).resolve().parent.parent / "34-worker-sample-review-2026-09-19"
+
+
+def exp34_style() -> str:
+    """Return the CSS of the Experiment 34 review page (``make_review.HTML_HEAD``)."""
+    if str(EXP34) not in sys.path:
+        sys.path.insert(0, str(EXP34))
+    import make_review
+
+    head = make_review.HTML_HEAD
+    return head[head.index("<style>") + len("<style>") : head.index("</style>")]
+
+
 CSS = """
-:root {
-  color-scheme: light dark;
-  --bg: #f4f5f8; --card: #ffffff; --ink: #1b2130; --muted: #4b5468; --panel: #eef0f5;
-  --line: #cfd5e1; --accent: #2a56c6; --on-accent: #ffffff; --done: #2c8f5a;
-  --focus: #1a3fa0; --emphasis: #f3f6ff; --ring: rgba(42, 86, 198, 0.3);
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #12151c; --card: #1a1f29; --ink: #e7eaf1; --muted: #aab3c4; --panel: #232a37;
-    --line: #38414f; --accent: #86abff; --on-accent: #0a1226; --done: #4fc58b;
-    --focus: #b4ccff; --emphasis: #202a3d; --ring: rgba(134, 171, 255, 0.35);
-  }
-}
-* { box-sizing: border-box; }
-body {
-  margin: 0; background: var(--bg); color: var(--ink);
-  font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-}
-.bar {
-  position: sticky; top: 0; z-index: 10; background: var(--card);
-  border-bottom: 1px solid var(--line); box-shadow: 0 1px 6px rgba(0, 0, 0, 0.1);
-}
-.bar-inner {
-  max-width: 820px; margin: 0 auto; padding: 10px 16px;
-  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
-}
-.bar h1 { flex: 1 1 8em; margin: 0; font-size: 1.15rem; }
-.who { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.9rem; }
-select {
-  font: inherit; padding: 5px 8px; border: 1px solid var(--line); border-radius: 6px;
-  background: var(--card); color: var(--ink);
-}
-button {
-  font: inherit; font-weight: 600; min-height: 36px; padding: 6px 14px; cursor: pointer;
-  border: 1px solid var(--accent); border-radius: 8px; background: transparent; color: var(--accent);
-}
-button.primary { background: var(--accent); color: var(--on-accent); }
-button:disabled { opacity: 0.5; cursor: default; }
-button:focus-visible, select:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
-.progress { flex: 1 1 100%; order: 5; }
-#progress-text { display: block; color: var(--muted); font-size: 0.85rem; margin-bottom: 4px; }
-.track { height: 6px; border-radius: 3px; background: var(--panel); overflow: hidden; }
-.fill { height: 100%; width: 0; background: var(--done); transition: width 0.2s; }
-.page { max-width: 820px; margin: 0 auto; padding: 16px; }
-.guide {
-  background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 8px 14px;
-}
-.guide summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
-.guide dt { font-weight: 700; margin-top: 8px; }
-.guide dd { margin: 2px 0 0; color: var(--muted); }
-.hint { margin: 10px 2px 0; color: var(--muted); font-size: 0.85rem; }
-.card {
-  background: var(--card); border: 2px solid var(--line); border-radius: 12px;
-  padding: 16px; margin: 16px 0; scroll-margin-top: calc(var(--bar, 4rem) + 12px);
-}
-.card.done { border-color: var(--done); }
-.card.current { box-shadow: 0 0 0 3px var(--ring); }
-.card-head {
-  margin: 0 0 10px; color: var(--muted); font-size: 0.8rem; font-weight: 700;
-  letter-spacing: 0.05em; text-transform: uppercase;
-}
-.block { border-radius: 8px; padding: 10px 12px; margin: 0 0 10px; }
-.context { background: var(--panel); color: var(--muted); }
-.focus {
-  background: var(--emphasis); border-left: 4px solid var(--accent);
-  color: var(--ink); font-size: 1.15rem; font-weight: 500;
-}
-.tag {
-  margin-bottom: 2px; color: var(--muted); font-size: 0.72rem; font-weight: 700;
-  letter-spacing: 0.06em; text-transform: uppercase;
-}
-.text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.passage {
-  max-height: 16em; overflow: auto; margin: 0 0 10px; padding: 0 12px 10px;
-  border: 1px solid var(--line); border-radius: 8px; background: var(--card);
-  font-size: 0.95rem;
-}
-.passage .tag { position: sticky; top: 0; padding: 8px 0 4px; background: var(--card); }
-.passage:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
-.choices { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 0; padding: 0; border: 0; min-width: 0; }
-.pill { position: relative; flex: 1 1 8em; }
-.pill input {
-  position: absolute; top: 0; left: 0; width: 100%; height: 100%; margin: 0;
-  opacity: 0; cursor: pointer;
-}
-.face {
-  display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px;
-  padding: 8px 14px; border: 2px solid var(--line); border-radius: 999px;
-  background: var(--card); font-weight: 600; text-align: center;
-}
-.pill:hover .face { border-color: var(--accent); }
-.pill input:checked + .face { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
-.pill input:focus-visible + .face { outline: 3px solid var(--focus); outline-offset: 2px; }
-.key { padding: 0 5px; border: 1px solid currentColor; border-radius: 4px; font-size: 0.75rem; opacity: 0.8; }
-.sr {
-  position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-@media (max-width: 560px) {
-  .bar-inner { padding: 8px 12px; }
-  .page { padding: 12px; }
-  .card { padding: 12px; margin: 12px 0; }
-  .focus { font-size: 1.05rem; }
-  .pill { flex-basis: 100%; }
-}
+.bar h1{font-size:1rem;margin:0 auto 0 0}
+.who{font-size:.85rem;color:var(--muted);display:flex;gap:.35rem;align-items:center}
+.who select{font:inherit;padding:.3rem .4rem;border:1px solid var(--line);border-radius:6px;
+  background:var(--card);color:var(--ink)}
+.bar button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.bar button:disabled{opacity:.5;cursor:default}
+#progress{font-size:.95rem;font-weight:700;color:var(--ink);background:var(--soft);
+  border:1px solid var(--line);border-radius:999px;padding:.25rem .8rem}
+#progress.ok{color:#fff;background:var(--ok);border-color:var(--ok)}
+#autosave{font-size:.8rem;color:var(--prob)}
+.intro b{color:var(--ink)}
+details.page{scroll-margin-top:calc(var(--bar,3.5rem) + .5rem)}
+details.page>summary{flex-wrap:nowrap}
+.qs{flex:1 1 0;min-width:0;color:var(--muted);font-size:.88rem;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.pstat{white-space:nowrap}
+details.page[data-done] .pstat{color:var(--ok)}
+.stick{top:calc(var(--bar,3.5rem) + .5rem);max-height:calc(100vh - var(--bar,3.5rem) - 1.5rem);
+  overflow:auto;padding-right:.2rem}
+.tag{font-size:.72rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--muted);margin:0 0 .25rem}
+.blk{margin-bottom:.8rem}
+.ctx p{margin:.15rem 0;max-height:30vh;overflow:auto}
+.ctx p,.focus,.md p,.md li,.qs{overflow-wrap:anywhere}
+main{padding-bottom:60vh}
+.outwrap{padding:0;margin-bottom:.8rem}
+.viewbar{align-items:center}
+.viewbar .tag{margin:0 auto 0 0}
+.md{position:relative}
+.md ul,.md ol{margin:.2rem 0;padding-left:1.3rem;font-size:.88rem}
+.md li{margin:.1rem 0}
+.md hr{border:0;border-top:1px solid var(--line)}
+.ans .md{max-height:50vh}
+details.psg .outwrap{padding:0 .6rem .6rem}
+details.psg .md,details.psg .raw{max-height:40vh}
+.cite{color:var(--muted);font-size:.8em;white-space:nowrap}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.85em;
+  background:var(--soft);border:1px solid var(--line);border-radius:4px;padding:0 .25em}
+pre.code{font:.8rem/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre;
+  overflow-x:auto;background:var(--soft);border:1px solid var(--line);border-radius:6px;
+  padding:.55rem .75rem;margin:.4rem 0;tab-size:4}
+pre.code code{font-size:inherit;background:none;border:0;padding:0}
+pre.code.meta{font-size:.72rem;color:var(--muted);padding:.35rem .6rem}
+mark.target{background:#ffe08a;color:inherit;border-radius:3px;padding:0 .1em;
+  box-shadow:0 0 0 2px #ffe08a}
+@media (prefers-color-scheme:dark){mark.target{background:#6b5200;box-shadow:0 0 0 2px #6b5200}
+  .bar button.primary,.chip input:checked+span{color:#0b1020}}
+.focus{font-size:1.2rem;font-weight:400;line-height:1.55;margin:0 0 1rem;padding:.8rem 1rem;
+  background:var(--soft);border:1px solid var(--accent);border-radius:8px}
+.focus strong{font-weight:700}
+.judge .ans .md{max-height:60vh}
+fieldset.form{border:1px solid var(--line);border-radius:8px;padding:.8rem;display:grid;gap:.6rem}
+fieldset.form legend{font-weight:600;font-size:.92rem;padding:0 .3rem}
+.judge .chip span{font-size:.95rem;padding:.5rem .95rem}
+kbd{font:inherit;font-size:.72rem;border:1px solid currentColor;border-radius:4px;
+  padding:0 .3rem;margin-right:.3rem;opacity:.75}
+.note{font:inherit;font-size:.85rem;padding:.4rem .55rem;border:1px solid var(--line);
+  border-radius:6px;background:var(--card);color:var(--ink)}
+@media (max-width:900px){.body{grid-template-columns:minmax(0,1fr)}
+  .stick{max-height:none;overflow:visible;padding-right:0}}
+@media (max-width:560px){.bar h1{flex-basis:100%}.focus{font-size:1.08rem}
+  .judge .chip{flex:1 1 100%}.judge .chip span{display:block}}
 """
 
 SCRIPT = """
 const data = JSON.parse(document.getElementById('items').textContent);
 const store = 'exp35-draft-' + data.set;
-let labels = {};
-try { labels = JSON.parse(localStorage.getItem(store) || '{}'); } catch (e) { labels = {}; }
-function keep() { try { localStorage.setItem(store, JSON.stringify(labels)); } catch (e) {} }
 const total = data.items.length;
-const root = document.getElementById('list');
+let labels = {};
+let notes = {};
+try { labels = JSON.parse(localStorage.getItem(store) || '{}') || {}; } catch (e) { labels = {}; }
+try { notes = JSON.parse(localStorage.getItem(store + '-notes') || '{}') || {}; } catch (e) { notes = {}; }
+const autosave = document.getElementById('autosave');
+function keep() {
+  try { localStorage.setItem(store, JSON.stringify(labels)); localStorage.setItem(store + '-notes', JSON.stringify(notes)); } catch (e) { autosave.hidden = false; }
+}
+const cards = Array.from(document.querySelectorAll('details.page'));
 const bar = document.getElementById('bar');
-const progressText = document.getElementById('progress-text');
-const fill = document.getElementById('progress-bar');
-const track = document.getElementById('track');
+const progress = document.getElementById('progress');
 const nextButton = document.getElementById('next');
-const cards = [];
 let current = 0;
 
-function el(tag, cls, text) {
-  const node = document.createElement(tag);
-  if (cls) { node.className = cls; }
-  if (text !== undefined) { node.textContent = text; }
-  return node;
-}
-function isLabelled(i) { return Boolean(labels[data.items[i].item_id]); }
-
-function showProgress() {
-  let done = 0;
+function idOf(i) { return data.items[i].item_id; }
+function refresh() {
+  let n = 0;
   cards.forEach(function (card, i) {
-    const has = isLabelled(i);
-    if (has) { done += 1; }
-    card.node.classList.toggle('done', has);
+    const done = Boolean(labels[idOf(i)]);
+    if (done) { n += 1; card.dataset.done = '1'; } else { delete card.dataset.done; }
+    card.querySelector('.pstat').textContent = done ? '\\u2713 labelled' : '';
   });
-  const words = done + ' of ' + total + ' labelled';
-  if (progressText.textContent !== words) { progressText.textContent = words; }
-  fill.style.width = (total ? (100 * done) / total : 0) + '%';
-  track.setAttribute('aria-valuenow', String(done));
-  nextButton.disabled = done === total;
-}
-function showCurrent() {
-  cards.forEach(function (card, i) { card.node.classList.toggle('current', i === current); });
+  progress.textContent = 'Done ' + n + ' / ' + total;
+  progress.classList.toggle('ok', n === total);
+  nextButton.disabled = n === total;
 }
 function pick(i, c) {
-  labels[data.items[i].item_id] = data.choices[c][0];
-  cards[i].inputs[c].checked = true;
-  current = i;
+  labels[idOf(i)] = data.choices[c][0];
+  const inputs = cards[i].querySelectorAll('.chip input');
+  inputs.forEach(function (input, k) { input.checked = k === c; });
   keep();
-  showProgress();
-  showCurrent();
+  refresh();
+}
+function showTarget(card) {
+  const mark = card.querySelector('mark.target');
+  if (!mark) { return; }
+  const pane = mark.closest('.md');
+  pane.scrollTop = Math.max(0, mark.offsetTop - pane.clientHeight / 3);
 }
 function goTo(i) {
-  current = Math.max(0, Math.min(total - 1, i));
-  cards[current].node.scrollIntoView({block: 'start'});
-  showCurrent();
+  const card = cards[Math.max(0, Math.min(total - 1, i))];
+  if (card.open) { card.scrollIntoView({block: 'start'}); } else { card.open = true; }
 }
 
-data.items.forEach(function (item, i) {
-  const node = el('section', 'card');
-  node.id = 'card-' + i;
-  node.dataset.index = String(i);
-  node.setAttribute('aria-labelledby', 'head-' + i);
-  const head = el('h2', 'card-head', 'Item ' + (i + 1) + ' of ' + total);
-  head.id = 'head-' + i;
-  node.appendChild(head);
-  data.layout.forEach(function (row) {
-    const field = row[0];
-    const label = row[1];
-    const kind = row[2];
-    const values = Array.isArray(item[field]) ? item[field] : [item[field]];
-    values.forEach(function (value, k) {
-      const tag = kind === 'passages' ? label + ' ' + (k + 1) : label;
-      const box = el('div', kind === 'passages' ? 'passage' : 'block ' + kind);
-      if (kind === 'passages') {
-        box.tabIndex = 0;
-        box.setAttribute('role', 'region');
-        box.setAttribute('aria-label', tag);
-      }
-      box.appendChild(el('div', 'tag', tag));
-      box.appendChild(el('p', 'text', value));
-      node.appendChild(box);
-    });
-  });
-  const group = el('fieldset', 'choices');
-  group.appendChild(el('legend', 'sr', 'Label for item ' + (i + 1)));
-  const inputs = [];
-  data.choices.forEach(function (choice, c) {
-    const pill = el('label', 'pill');
-    const input = document.createElement('input');
-    input.type = 'radio';
-    input.name = item.item_id;
-    input.value = choice[0];
-    input.checked = labels[item.item_id] === choice[0];
+cards.forEach(function (card, i) {
+  const inputs = card.querySelectorAll('.chip input');
+  inputs.forEach(function (input, c) {
+    input.name = 'pick-' + i;
+    input.checked = labels[idOf(i)] === input.value;
     input.addEventListener('change', function () { pick(i, c); });
-    const face = el('span', 'face');
-    face.appendChild(el('span', 'key', String(c + 1)));
-    face.appendChild(el('span', 'word', choice[1]));
-    pill.appendChild(input);
-    pill.appendChild(face);
-    group.appendChild(pill);
-    inputs.push(input);
   });
-  node.appendChild(group);
-  node.addEventListener('focusin', function () { current = i; showCurrent(); });
-  root.appendChild(node);
-  cards.push({node: node, inputs: inputs});
+  const note = card.querySelector('.note');
+  note.value = notes[idOf(i)] || '';
+  note.addEventListener('input', function () {
+    if (note.value.trim()) { notes[idOf(i)] = note.value; } else { delete notes[idOf(i)]; }
+    keep();
+  });
+  card.querySelector('.clear').addEventListener('click', function () {
+    delete labels[idOf(i)];
+    inputs.forEach(function (input) { input.checked = false; });
+    keep();
+    refresh();
+  });
+  card.addEventListener('toggle', function () {
+    if (!card.open) { return; }
+    current = i;
+    cards.forEach(function (o) { if (o !== card && o.open) { o.open = false; } });
+    card.scrollIntoView({block: 'start'});
+    showTarget(card);
+  });
+});
+
+document.addEventListener('click', function (e) {
+  const button = e.target.closest('.vt');
+  if (!button) { return; }
+  const wrap = button.closest('.outwrap');
+  const raw = wrap.querySelector('.raw');
+  wrap.querySelectorAll('.vt').forEach(function (b) { b.classList.toggle('on', b === button); });
+  if (button.dataset.v === 'raw' && !raw.textContent) {
+    let value = data.items[Number(wrap.closest('details.page').dataset.i)][wrap.dataset.f];
+    if (wrap.dataset.k !== undefined) { value = value[Number(wrap.dataset.k)]; }
+    raw.textContent = typeof value === 'string' ? value : value.text;
+  }
+  wrap.querySelector('.md').hidden = button.dataset.v !== 'md';
+  raw.hidden = button.dataset.v !== 'raw';
 });
 
 nextButton.addEventListener('click', function () {
   for (let n = 1; n <= total; n += 1) {
     const i = (current + n) % total;
-    if (!isLabelled(i)) { goTo(i); return; }
+    if (!labels[idOf(i)]) { goTo(i); return; }
   }
+});
+document.getElementById('collapse').addEventListener('click', function () {
+  cards.forEach(function (card) { card.open = false; });
 });
 
 document.addEventListener('keydown', function (e) {
   if (e.ctrlKey || e.metaKey || e.altKey) { return; }
-  const target = e.target;
-  if (target.tagName === 'SELECT' || target.tagName === 'TEXTAREA') { return; }
+  const tag = e.target.tagName;
+  if (tag === 'SELECT' || tag === 'TEXTAREA' || (tag === 'INPUT' && e.target.type === 'text')) { return; }
   const key = e.key;
   if (key >= '1' && key <= '9') {
     const c = Number(key) - 1;
-    if (c >= data.choices.length) { return; }
-    const host = target.closest ? target.closest('.card') : null;
+    if (c >= data.choices.length || !cards[current].open) { return; }
     e.preventDefault();
-    pick(host ? Number(host.dataset.index) : current, c);
-    return;
-  }
-  const inPassage = target.closest && target.closest('.passage');
-  if (key === 'j' || key === 'J' || (key === 'ArrowDown' && !inPassage)) {
+    pick(current, c);
+  } else if (key === 'j' || key === 'J') {
     e.preventDefault();
     goTo(current + 1);
-  } else if (key === 'k' || key === 'K' || (key === 'ArrowUp' && !inPassage)) {
+  } else if (key === 'k' || key === 'K') {
     e.preventDefault();
     goTo(current - 1);
   }
 });
 
-let waiting = false;
-window.addEventListener('scroll', function () {
-  if (waiting) { return; }
-  waiting = true;
-  requestAnimationFrame(function () {
-    waiting = false;
-    const edge = bar.offsetHeight + 40;
-    for (let i = 0; i < cards.length; i += 1) {
-      if (cards[i].node.getBoundingClientRect().bottom > edge) { current = i; break; }
-    }
-    showCurrent();
-  });
-});
 function sizeBar() { document.documentElement.style.setProperty('--bar', bar.offsetHeight + 'px'); }
 window.addEventListener('resize', sizeBar);
 sizeBar();
@@ -272,18 +219,19 @@ document.getElementById('save').addEventListener('click', function () {
   const who = document.getElementById('labeller').value;
   if (!who) { alert('Choose L1 or L2 first.'); return; }
   const mine = {};
+  const kept = {};
   let open = 0;
   data.items.forEach(function (item) {
     if (labels[item.item_id]) { mine[item.item_id] = labels[item.item_id]; } else { open += 1; }
+    if (notes[item.item_id]) { kept[item.item_id] = notes[item.item_id]; }
   });
   if (open > 0 && !confirm(open + ' of ' + total + ' items are unlabelled. Save anyway?')) { return; }
-  const out = {set: data.set, labeller: who, labels: mine};
+  const out = {set: data.set, labeller: who, labels: mine, notes: kept};
   const blob = new Blob([JSON.stringify(out, null, 2)], {type: 'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   a.download = data.set + '-' + who + '.json';
   a.click();
 });
-showProgress();
-showCurrent();
+refresh();
 """
