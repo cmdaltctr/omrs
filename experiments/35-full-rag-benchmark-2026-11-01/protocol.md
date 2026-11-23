@@ -455,7 +455,7 @@ Each folder holds a `SHA256SUMS` file. Local models ran on llama.cpp b11941 on o
 
 #### Pre-freeze amendment: claim kinds and the classifier gate (2026-11-12)
 
-Written before the freeze. Operator acceptance is pending. ADR-119 has a matching amendment note. `preregistration.md` governs where the two differ.
+Written before the freeze. Accepted by the operator on 2026-11-23, with the 2026-11-23 changes (test-pod sample, refusal precision, Wilson intervals, label context). Label context (2026-11-23): The labeller sees the question, the full answer with the claim marked, and the passages the claim cites. The classifier sees the question and the claim only, as in the main run. The human label is the reference, so it uses the fuller context. The gate measures the classifier on the inputs it receives in the run. ADR-119 has a matching amendment note. `preregistration.md` governs where the two differ.
 
 - **History.** This rule was first written for H-CC (2026-11-11). The redesign of 2026-11-12 dropped H-CC and Granite Guardian (section 0.5). The claim-kind rule now stands on its own. The H-CC text above stays as history only.
 - **Three claim kinds.** Each claim gets one kind: factual claim, refusal or mixed. A mixed sentence (a checkable fact plus a scope limit) counts as a factual claim. A negative finding that answers the question (for example, "no debt securities are listed") is a factual claim. A refusal states only that the sources do not cover something.

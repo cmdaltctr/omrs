@@ -1,7 +1,7 @@
 # ADR-119: Experiment 35 Model Matrix and Claim Checker
 
 - **Date:** 2026-11-10
-- **Status:** Proposed (accepted at the Experiment 35 freeze, gate G7). Amended 2026-11-11 twice (A1 to A6, then A7) and 2026-11-12 (A8 to A10, acceptance pending), see the end of this record.
+- **Status:** Proposed (accepted at the Experiment 35 freeze, gate G7). Amended 2026-11-11 twice (A1 to A6, then A7) and 2026-11-12 (A8 to A10) and 2026-11-23 (A11, label context); A8 to A11 accepted by the operator on 2026-11-23, see the end of this record.
 - **Deciders:** Dr Muhammad Aizat Bin Md Hawari
 - **Related:** [ADR-103](103-experiments-run-local-models-through-llama-cpp-gguf.md), change
   `experiment-35-full-document-rag-benchmark` (design D3, D4),
@@ -240,7 +240,8 @@ Data: `DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/fs-rerun/`
 
 ## Amendment 2026-11-12: claim kinds (pre-freeze)
 
-The text above stays as written. Operator acceptance is pending. The
+The text above stays as written. Accepted by the operator on 2026-11-23,
+with A11 and the label-context line of protocol section 4.4. The
 full rule is in protocol section 4.4, "Pre-freeze amendment: claim
 kinds and the classifier gate (2026-11-12)".
 
