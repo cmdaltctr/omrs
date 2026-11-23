@@ -254,14 +254,21 @@
     {
       "id": "classifier-agreement",
       "metric": "claim_classifier_agreement",
-      "value": "share on 100 L1 smoke claims",
+      "value": "weighted share on 100 L1 test pod session claims (2026-11-23, pre-freeze)",
       "op": ">=",
       "threshold": 0.9
     },
     {
       "id": "classifier-refusal-recall",
       "metric": "claim_classifier_refusal_recall",
-      "value": "share on 100 L1 smoke claims",
+      "value": "weighted share on 100 L1 test pod session claims (2026-11-23, pre-freeze)",
+      "op": ">=",
+      "threshold": 0.9
+    },
+    {
+      "id": "classifier-refusal-precision",
+      "metric": "claim_classifier_refusal_precision",
+      "value": "weighted share of classifier refusals the L1 label also calls refusal, 100 test pod session claims (2026-11-23, pre-freeze)",
       "op": ">=",
       "threshold": 0.9
     },

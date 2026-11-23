@@ -324,6 +324,7 @@ The classifier is the fixed-prompt LLM `openai/gpt-oss-120b`, pinned (operator d
   - the rule that a failed gate blocks the freeze of the classifier.
 
   Verify: the operator accepts the text, and the commit that holds it is dated before the labelling page is first opened.
+  Note (2026-11-23, pre-freeze amendment, owner approved): "smoke" in this task now means the valid claims of the pre-freeze test pod session answers (task 9.2), which use the main-run answer settings (reasoning `none`); the 2026-11-11 smoke runs used the default reasoning. The text also gains a third pass mark (refusal precision at least 0.90, same weights as agreement and recall; undefined precision fails) and a 95% Wilson interval beside agreement, recall and precision (reported only, decides nothing).
 - [x] 8.2 Write failing tests for claim alignment:
   - claims split again from the saved answer with `split_claims` match the judge row's verdict count and order;
   - a count mismatch stops the step and names the dataset, arm, run and question.
@@ -338,6 +339,7 @@ The classifier is the fixed-prompt LLM `openai/gpt-oss-120b`, pinned (operator d
   - it writes the list of smoke claims outside the sample for prompt examples.
 
   Prove they fail, then implement. Verify: the tests pass.
+  Note (2026-11-23, pre-freeze amendment): "smoke" in this task now means the valid claims of the test pod session answers (task 9.2; layout `<dataset>/answer/<setup>/run<n>`; function `session_claims`). The sample refuses a run folder whose `traces.jsonl` does not show answer reasoning `none`. The FreshStack overlay check is removed with the smoke folders. Tests were rewritten for this source; the ticks stay.
 - [ ] 8.4 Write failing tests for `refusals35.py page`. It writes one static HTML file into the restricted output folder with the question and the claim of each sampled item, and four choices: factual claim, refusal, mixed, can't tell. It holds no kind, no verdict and no network address. It saves the labels as a JSON download, and keeps a draft in browser storage inside `try`/`catch`. Prove they fail, then implement. Verify: the tests pass, and the operator opens the page and saves a test label file.
 - [x] 8.5 Write failing tests for the classifier with a stub LLM:
   - the prompt holds the three kinds and examples taken only from the claims outside the sample (a test checks that no example is a sample claim);
@@ -358,6 +360,7 @@ The classifier is the fixed-prompt LLM `openai/gpt-oss-120b`, pinned (operator d
 
   Prove they fail, then implement. Verify: the tests pass.
 - [ ] 8.7 Tell the operator before the paid run (about 100 classifier calls), then run the gate. The operator labels the sample on the page, blind. Run the classifier on the sample as a stage on the 4090 pod (the build pod), copy the saved kinds back, then run `refusals35.py gate` on the Mac. Verify: `gate.json` exists. On a pass, `protocol.md` names the frozen classifier version and the gate figures with the date. On a fail, nothing is frozen and the operator chooses the next step.
+  Note (2026-11-23, pre-freeze amendment): the sample comes from the test pod session answers (task 9.2), not from smoke runs, so this task runs after task 9.2. The gate has three marks (agreement, recall, precision, each at least 0.90) and `gate.json` holds the 95% Wilson intervals, reported only.
 - [x] 8.8 Add `cohen_kappa(a, b)` to `experiments/_lib/stats_d6.py` (approved 2026-11-12). Write the failing tests first in the stats test file:
   - the known-answer test: a 2 x 2 table with 20, 5, 10 and 15 items gives kappa 0.40 (observed agreement 0.70, chance agreement 0.50);
   - perfect agreement gives 1.0;

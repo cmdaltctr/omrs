@@ -9,10 +9,16 @@ Usage (``sample``, ``page`` and ``gate`` read saved files only and run on the Ma
     refusals35.py classify --out-dir OUT --examples EXAMPLES.json
     refusals35.py gate --out-dir OUT --labels L1.json [--labels L2.json] [--resolved FILE]
 
-The sample draws from the valid smoke claims only. It takes about a third from
-each dataset, and inside each dataset half from claims the pre-freeze regular
-expression flags and half from the rest (design D15). A claim that sits in
-several setups or runs counts once (one key per question ID and claim text).
+The sample draws from the valid claims of the pre-freeze test pod session (pre-freeze
+amendment 2026-11-23; task 9.2). Those answers use the main-run answer settings, with
+reasoning ``none``. Before then, the source was the 2026-11-11 smoke runs, which used
+the default reasoning. Pass each ``--folder DATASET=PATH`` as the dataset folder of the
+session output (``<out>/<dataset>``, with ``answer/<setup>/run<n>/answer.jsonl`` inside).
+A run folder whose ``traces.jsonl`` does not show ``answer_reasoning`` ``none`` is refused.
+The sample takes about a third from each dataset, and inside each dataset half from
+claims the pre-freeze regular expression flags and half from the rest (design D15). A
+claim that sits in several setups or runs counts once (one key per question ID and
+claim text).
 The ``classify`` command (:func:`classify_command`) runs the classifier on the sample through
 the hosted gate and writes ``sample-kinds.jsonl``, which ``gate`` reads. It reads the model,
 host, reasoning, temperature and seed from ``plan.json`` and sends 100 hosted calls. The
@@ -36,6 +42,7 @@ import claimkinds35
 import labelpage35
 from experiments._lib.hosted_calls import HostedGate, RateLimitStop
 from experiments._lib.ordered_rows import append_line, read_lines
+from experiments._lib.stats_d6 import wilson
 from outputs35 import read_rows, write_json
 
 PARTIAL = "sample-kinds.partial.jsonl"
@@ -52,57 +59,57 @@ PREFREEZE_REGEX = re.compile(
     r"|unrelated|ZZQJ-9097|no exchange-registered)",
     re.I,
 )
-OVERLAY_FILE = "zzqj-9097-runbook.md"
-#: Pass thresholds of the gate (design D15, approved 2026-11-12).
-THRESHOLDS = {"agreement": 0.90, "recall": 0.90}
+#: Pass marks of the gate (design D15, 2026-11-12; precision added 2026-11-23, pre-freeze).
+THRESHOLDS = {"agreement": 0.90, "recall": 0.90, "precision": 0.90}
 
 
 class SampleError(RuntimeError):
-    """A smoke folder is not a valid source of gate claims."""
+    """An answer folder is not a valid source of gate claims."""
 
 
-def _check_freshstack(folder: Path) -> None:
-    files = {
-        r.get("file") for p in sorted(folder.glob("*/index/ingest.jsonl")) for r in read_rows(p)
-    }
-    if files <= {OVERLAY_FILE}:
+def _check_reasoning(run_dir: Path) -> None:
+    """Refuse a run whose trace record does not show the main-run answer reasoning ``none``."""
+    path = run_dir / "traces.jsonl"
+    rows = read_rows(path)
+    if not rows:
+        raise SampleError(f"{run_dir}: no {path.name}; cannot show the answer reasoning is 'none'")
+    found = (rows[0].get("effective_settings") or {}).get("answer_reasoning")
+    if found != "none":
         raise SampleError(
-            f"{folder}: the index holds only the overlay runbook; this is the invalid "
-            "first FreshStack smoke folder, use the FreshStack rerun"
+            f"{run_dir}: answer reasoning is {found!r}; the main run uses 'none' "
+            "(pre-freeze amendment 2026-11-23)"
         )
 
 
-def smoke_claims(
+def session_claims(
     folders: Mapping[str, Path], questions: Mapping[str, Mapping[str, str]]
 ) -> list[dict[str, Any]]:
-    """Return the distinct smoke claims of the given dataset folders.
+    """Return the distinct claims of the given dataset folders of a test pod session.
 
     Args:
-        folders: Dataset name to its smoke folder. The saved pre-freeze smoke
-            runs (2026-11-11) hold ``<setup>/run<n>/answer.jsonl`` and
-            ``<setup>/index/ingest.jsonl`` there, the layout before
-            ``outputs35.Layout``; this reader keeps that layout on purpose.
+        folders: Dataset name to its dataset folder in the session output
+            (``<out>/<dataset>``). Each holds ``answer/<setup>/run<n>/answer.jsonl``
+            and ``traces.jsonl`` per run folder (``outputs35.Layout``).
         questions: Dataset name to (question ID to question text).
 
     Returns:
         One record per distinct (question ID, claim text), in folder order.
 
     Raises:
-        SampleError: The FreshStack folder is the invalid first smoke folder,
-            or a folder holds no answer file (names the folder).
+        SampleError: A folder holds no answer file, or a run folder does not show
+            answer reasoning ``none`` in its ``traces.jsonl`` (names the folder).
     """
     claims: dict[str, dict[str, Any]] = {}
     for dataset in sorted(folders):
         folder = folders[dataset]
-        if dataset == "freshstack":
-            _check_freshstack(folder)
-        found = sorted(folder.glob("*/run*/answer.jsonl"))
+        found = sorted(folder.glob("answer/*/run*/answer.jsonl"))
         if not found:
             raise SampleError(
-                f"{folder}: no <setup>/run<n>/answer.jsonl; pass the dataset folder of a "
-                "pre-freeze smoke run (2026-11-11 layout)"
+                f"{folder}: no answer/<setup>/run<n>/answer.jsonl; pass the dataset folder "
+                "of the pre-freeze test pod session output"
             )
         for answers in found:
+            _check_reasoning(answers.parent)
             for row in read_rows(answers):
                 for claim in claimkinds35.answer_claims(row):
                     key = claimkinds35.claim_key(row["qid"], claim)
@@ -134,7 +141,7 @@ def draw_sample(claims: Sequence[Mapping[str, Any]], *, seed: int, n: int) -> di
     """Draw the gate sample.
 
     Args:
-        claims: Records from :func:`smoke_claims`.
+        claims: Records from :func:`session_claims`.
         seed: The sample seed (20261112).
         n: The sample size (100).
 
@@ -275,6 +282,21 @@ def _scores(scored: list[tuple[float, bool, bool | None]]) -> dict[str, float]:
     return out
 
 
+def _intervals(scored: list[tuple[float, bool, bool | None]]) -> dict[str, Any]:
+    """95% Wilson intervals on the unweighted counts; None when the count is zero."""
+    counts = {
+        "agreement": [p is not None and p == h for _, h, p in scored],
+        "recall": [p is True for _, h, p in scored if h],
+        "precision": [h for _, h, p in scored if p is True],
+    }
+    out: dict[str, Any] = {"method": "wilson", "confidence": 0.95}
+    for name, hits in counts.items():
+        low, high = wilson(sum(hits), len(hits), 0.95)
+        found = {"successes": sum(hits), "n": len(hits), "low": low, "high": high}
+        out[name] = found if hits else None
+    return out
+
+
 def gate(
     sample: Mapping[str, Any], labels: Mapping[str, str], kinds: Mapping[str, str], *, version: str
 ) -> dict[str, Any]:
@@ -283,8 +305,11 @@ def gate(
     "Can't tell" items are left out and counted. Mixed and factual both count
     as not refusal. An ``unreadable`` kind counts as a miss. Each item weighs
     the inverse of its stratum's sampling fraction. The gate passes only when
-    the weighted agreement and the weighted refusal recall both reach 0.90; an
-    undefined figure (no human refusal) fails.
+    the weighted agreement, the weighted refusal recall and the weighted refusal
+    precision (human label is refusal when the classifier says refusal) all
+    reach 0.90; an undefined figure (no human refusal, or no predicted refusal)
+    fails. The 95% Wilson intervals in ``intervals`` use the unweighted counts.
+    They are reported only and decide nothing.
 
     Args:
         sample: The saved sample (``strata`` and ``items``).
@@ -320,6 +345,7 @@ def gate(
         "version": version,
         "thresholds": THRESHOLDS,
         "classifier": scores,
+        "intervals": _intervals(classifier),
         "baseline_regex": _scores(baseline),
         "labelled": len(sample["items"]),
         "scored": len(classifier),
@@ -402,7 +428,17 @@ def _gate_cli(out_dir: Path, label_files: Sequence[Path], resolved: Path | None)
     result["unresolved_count"] = unresolved
     result["labellers"] = sorted(found)
     write_json(out_dir / "gate.json", result)
-    print(f"gate {'pass' if result['pass'] else 'fail'}: {result['classifier']}", flush=True)
+    box = result["intervals"]
+    spans = {
+        name: [round(box[name]["low"], 3), round(box[name]["high"], 3)] if box[name] else None
+        for name in THRESHOLDS
+    }
+    verdict = "pass" if result["pass"] else "fail"
+    print(
+        f"gate {verdict}: {result['classifier']}; "
+        f"95% wilson intervals (reported only, decide nothing): {spans}",
+        flush=True,
+    )
     return 0
 
 
@@ -437,7 +473,7 @@ def main(argv: Sequence[str] | None = None, *, build_classifier: Builder | None 
     if args.command == "sample":
         folders = {d: Path(p) for d, p in (f.split("=", 1) for f in args.folder)}
         drawn = draw_sample(
-            smoke_claims(folders, _questions(sorted(folders))), seed=args.seed, n=args.n
+            session_claims(folders, _questions(sorted(folders))), seed=args.seed, n=args.n
         )
         write_sample(args.out_dir, drawn)
         return 0

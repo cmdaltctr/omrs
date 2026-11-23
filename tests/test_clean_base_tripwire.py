@@ -406,7 +406,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +5 -1 (2026-11-23, PR 223 review, by test-ID diff against HEAD): 5 regression cases
 # (bounds, contamination, refusals classify x2, searchcost), and the two-process ingest case
 # in test_experiment35_layout.py moves to slow because it boots subprocesses.
-_BASE_EXECUTED = 13568
+# +11 -2 (2026-11-23, Exp 35 classifier gate amendment, by test-ID diff against HEAD):
+# precision mark and Wilson interval cases and the reasoning-none source guard added to
+# test_experiment35_refusals.py; the two smoke-folder cases are replaced.
+_BASE_EXECUTED = 13577
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
