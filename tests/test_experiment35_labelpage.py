@@ -297,5 +297,6 @@ def test_a_labelled_card_turns_green_with_a_status_pill() -> None:
     css = labelpage_assets35.CSS
     pill = css.split("details.page[data-done] .pstat{", 1)[1].split("}", 1)[0]
     assert "background:var(--ok)" in pill and "border-radius:999px" in pill
+    assert "color:#0b1020" in pill  # dark text on the green pill (owner, 2026-11-23)
     assert "details.page[data-done]{border-color:var(--ok)}" in css
     assert "details.page[data-done]>summary{background:" in css

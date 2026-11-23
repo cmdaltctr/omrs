@@ -44,7 +44,7 @@ details.page>summary{flex-wrap:nowrap}
   text-overflow:ellipsis;white-space:nowrap}
 .pstat{white-space:nowrap}
 .pstat:empty{display:none}
-details.page[data-done] .pstat{color:#fff;background:var(--ok);border-radius:999px;
+details.page[data-done] .pstat{color:#0b1020;background:var(--ok);border-radius:999px;
   padding:.12rem .6rem;font-size:.74rem;font-weight:700}
 details.page[data-done]{border-color:var(--ok)}
 details.page[data-done]>summary{background:color-mix(in srgb,var(--ok) 12%,transparent)}
