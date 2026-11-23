@@ -3,7 +3,8 @@
 # pod_prefreeze.sh is the record of the earlier session and does not change.
 #
 # Start it inside the pod under nohup or tmux, so a closed terminal does not end it:
-#   nohup bash pod_test_session.sh > /workspace/test-session.log 2>&1 &
+#   nohup bash experiments/35-full-rag-benchmark-2026-11-01/prefreeze/pod_test_session.sh > /workspace/test-session.log 2>&1 &
+#   (from the repository root)
 #   (or run it in a tmux session)
 #
 # It runs each stage of STAGES_FILE in order, from the Experiment 35 folder. A failed

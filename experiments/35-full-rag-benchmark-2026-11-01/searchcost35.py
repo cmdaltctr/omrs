@@ -102,8 +102,8 @@ def search_cost(
             matched RAGFlow search ran; ``None`` otherwise.
 
     Raises:
-        select35.SelectionError: A setup lacks a half-A score, or the selection
-            does not name 12 cells.
+        select35.SelectionError: A setup lacks a half-A score, the selection
+            does not name 12 cells, or the RAGFlow records hold no half-A cell.
     """
     means = select35.half_a_means(records, halves)
     pooled = {s: math.fsum(means[s][d] for d in select35.CORE) / 3 for s in select35.SEARCH_SETUPS}
@@ -112,7 +112,12 @@ def search_cost(
         raise select35.SelectionError(
             f"selection names {len(cells)} A3 cells of the grid; the figure needs {A3_CELLS}"
         )
-    flow = None if ragflow_records is None else _curve(_pooled_any(ragflow_records, halves))
+    flow = None
+    if ragflow_records is not None:
+        pooled_flow = _pooled_any(ragflow_records, halves)
+        if not pooled_flow:
+            raise select35.SelectionError("RAGFlow scores were given but hold no half-A cell")
+        flow = _curve(pooled_flow)
     return {
         "metric": select35.NDCG,
         "half": "A",

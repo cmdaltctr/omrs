@@ -524,7 +524,7 @@ Run every command from the repository root. The harness scripts are built by cha
 
 The smoke subset (task 4.1) runs a small slice of each dataset through every arm before the freeze and is never scored as a result.
 
-**Pre-freeze test pod session (change task 9.2).** Inside the pod, start `prefreeze/pod_test_session.sh` under `nohup` or in a `tmux` session, so that a closed terminal does not stop it. Example: `nohup bash pod_test_session.sh > /workspace/test-session.log 2>&1 &`.
+**Pre-freeze test pod session (change task 9.2).** Inside the pod, start `prefreeze/pod_test_session.sh` under `nohup` or in a `tmux` session, so that a closed terminal does not stop it. Example, from the repository root: `nohup bash experiments/35-full-rag-benchmark-2026-11-01/prefreeze/pod_test_session.sh > /workspace/test-session.log 2>&1 &`.
 
 **Closed-book and oracle answers (A5, section 0.14 items 49 and 50).** `--stage closedbook` and `--stage oracle` run once, as run 1. Each writes its answers into its own folder: `closedbook-own`, `closedbook-rag` or `oracle`. The judge and Ragas stages read those answers with the option `--answers closedbook-own`, `--answers closedbook-rag` or `--answers oracle`. The default, `--answers answer`, reads the RAG answers.
 

@@ -164,5 +164,8 @@ def test_every_closed_book_prompt_is_one_completion_call(
     result = asyncio.run(closedbook35.ask(Engine(), "c", prompt))
     assert result["answer"] == "Paris"
     assert calls == [prompt]
-    tokens = CharTokens.count(prompt)
+    # ``context_window`` is a budget in characters; the reply head-room is taken off it as in
+    # ``synthesis`` (the template slack is left out, so this is the looser bound).
+    assert len(prompt) + MAX_OUTPUT_TOKENS <= arms.ANSWER_CONTEXT_WINDOW
+    tokens = CharTokens.count(prompt)  # the model's token limit, a separate check
     assert tokens + MAX_OUTPUT_TOKENS <= arms.ANSWER_CONTEXT_WINDOW

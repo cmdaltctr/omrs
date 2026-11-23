@@ -82,6 +82,7 @@ def test_classify_writes_one_saved_kind_per_sample_claim(tmp_path: Path) -> None
         i["claim_key"]: "refusal" if i["qid"] == "q1" else "factual" for i in items
     }
     assert {r["version"] for r in rows} == {VERSION}
+    assert {(r["model_returned"], r["provider_returned"]) for r in rows} == {("m", "p")}
     assert len(sent) == len(items)
     assert all(m[0]["content"] == PROMPT for m in sent)
 
@@ -107,6 +108,52 @@ def test_classify_goes_through_the_hosted_gate_and_a_429_on_every_attempt_exits_
     assert code == 5
     assert calls >= 1
     assert not (out / "sample-kinds.jsonl").exists()
+
+
+def test_a_stop_keeps_the_kinds_already_saved_and_a_rerun_sends_only_the_rest(
+    tmp_path: Path,
+) -> None:
+    out = tmp_path / "gate"
+    items = _sample(out)
+    sent: list[str] = []
+
+    async def stopping(messages):
+        sent.append(messages[-1]["content"])
+        if "Claim 2." in messages[-1]["content"]:
+            raise RateLimited("slow down")
+        return _reply("factual")
+
+    code = refusals35.main(
+        _argv(
+            out, _examples(tmp_path), "--rate-limit-attempts", "1", "--classify-concurrency", "1"
+        ),
+        build_classifier=_builder(stopping),
+    )
+    assert code == 5 and not (out / "sample-kinds.jsonl").exists()
+    sent.clear()
+
+    async def working(messages):
+        sent.append(messages[-1]["content"])
+        return _reply("factual")
+
+    assert refusals35.main(_argv(out, _examples(tmp_path)), build_classifier=_builder(working)) == 0
+    assert len(sent) == 1 and "Claim 2." in sent[0]  # q0 and q1 were saved before the stop
+    rows = [json.loads(line) for line in (out / "sample-kinds.jsonl").read_text().splitlines()]
+    assert {r["claim_key"] for r in rows} == {i["claim_key"] for i in items}
+
+
+def test_a_rerun_refuses_saved_kinds_of_another_classifier_version(tmp_path: Path) -> None:
+    out = tmp_path / "gate"
+    items = _sample(out)
+    (out / "sample-kinds.partial.jsonl").write_text(
+        json.dumps({"claim_key": items[0]["claim_key"], "kind": "factual", "version": "old"}) + "\n"
+    )
+
+    async def call(messages):
+        return _reply("factual")
+
+    with pytest.raises(SystemExit, match="old"):
+        refusals35.main(_argv(out, _examples(tmp_path)), build_classifier=_builder(call))
 
 
 def test_classify_refuses_a_prompt_example_that_is_a_sample_claim(tmp_path: Path) -> None:

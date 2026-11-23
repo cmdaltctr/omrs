@@ -107,6 +107,21 @@ def test_rag_prompt_scores_are_ignored_after_drop_step_3() -> None:
     assert kept["freshstack"]["no_closed_book_score"] == N
 
 
+def test_a_closed_book_wrong_question_with_no_rag_score_stays_in_the_subset() -> None:
+    answers = _answers()
+    for row in answers:
+        if row["qid"] == "q00":
+            row[CORRECT] = None
+            row["unjudged"] = [CORRECT]
+    table = contamination35.contamination(answers, _closed(), frozenset(), n_draws=500)[
+        "freshstack"
+    ]
+    assert table["questions"] == N
+    assert table["questions_kept"] == 6  # q00 stays: only its RAG score is missing
+    assert _rows(table)[14]["n"] == 5
+    assert _rows(table)[14]["excluded"] == 1
+
+
 def _write(path: Path, rows: list[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("".join(json.dumps(r) + "\n" for r in rows))

@@ -28,14 +28,18 @@ import math
 import random
 import re
 import sys
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
 import claimkinds35
 import labelpage35
 from experiments._lib.hosted_calls import HostedGate, RateLimitStop
+from experiments._lib.ordered_rows import append_line, read_lines
 from outputs35 import read_rows, write_json
+
+PARTIAL = "sample-kinds.partial.jsonl"
+ReplyCall = Callable[[list[dict[str, str]]], Awaitable[Any]]
 
 #: The pre-freeze regular expression, copied unchanged from the FreshStack smoke
 #: rerun analysis script (``fs-rerun/fs_analyse.py`` in the Experiment 35 data
@@ -201,32 +205,52 @@ def write_claim_page(out_dir: Path) -> Path:
 
 
 async def classify_sample(
-    out_dir: Path, call: claimkinds35.ModelCall, *, prompt: str, version: str, concurrency: int = 16
+    out_dir: Path, call: ReplyCall, *, prompt: str, version: str, concurrency: int = 16
 ) -> None:
     """Classify each sample claim and write ``sample-kinds.jsonl`` (a pod stage).
 
+    Each finished call is saved at once to ``sample-kinds.partial.jsonl``. A rerun sends only
+    the claims with no saved kind, so a stop keeps the paid calls. The partial file goes
+    away after ``sample-kinds.jsonl`` is written.
+
     Args:
         out_dir: The folder holding ``sample.json``.
-        call: The gated model call.
+        call: The gated model call; it returns the reply (``text``, ``model_returned``,
+            ``provider_returned``).
         prompt: The fixed prompt.
         version: The classifier version.
         concurrency: Calls in flight.
+
+    Raises:
+        SystemExit: The partial file holds a kind of another classifier version.
     """
     items = _sample(out_dir)["items"]
+    partial = out_dir / PARTIAL
+    saved = {r["claim_key"]: r for r in read_lines(partial)}
+    stale = sorted({r["version"] for r in saved.values()} - {version})
+    if stale:
+        raise SystemExit(f"{partial} holds classifier versions {stale}; delete it to start again")
     gate_ = asyncio.Semaphore(concurrency)
 
-    async def one(item: Mapping[str, Any]) -> str:
+    async def one(item: Mapping[str, Any]) -> None:
         async with gate_:
-            return await claimkinds35.classify(call, prompt, item["question"], item["claim"])
+            reply = await call(claimkinds35.messages(prompt, item["question"], item["claim"]))
+            row = {
+                "claim_key": item["claim_key"],
+                "kind": claimkinds35.parse_kind(str(reply.text)),
+                "version": version,
+                "model_returned": getattr(reply, "model_returned", None),
+                "provider_returned": getattr(reply, "provider_returned", None),
+            }
+            append_line(partial, row)
+            saved[item["claim_key"]] = row
 
-    kinds = await asyncio.gather(*(one(i) for i in items))
-    rows = [
-        {"claim_key": i["claim_key"], "kind": k, "version": version}
-        for i, k in zip(items, kinds, strict=True)
-    ]
+    await asyncio.gather(*(one(i) for i in items if i["claim_key"] not in saved))
+    rows = [saved[i["claim_key"]] for i in items]
     tmp = out_dir / "sample-kinds.jsonl.tmp"
     tmp.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
     tmp.replace(out_dir / "sample-kinds.jsonl")
+    partial.unlink(missing_ok=True)
 
 
 def _scores(scored: list[tuple[float, bool, bool | None]]) -> dict[str, float]:
@@ -329,7 +353,7 @@ def classify_command(
             Tests inject a stub; the default builds the real classifier from ``plan.json``.
 
     Returns:
-        0 after the kinds are saved, or 5 on a rate-limit stop (nothing saved).
+        0 after the kinds are saved, or 5 on a rate-limit stop (finished kinds stay in ``sample-kinds.partial.jsonl``).
 
     Raises:
         SystemExit: A prompt example is a sample claim.
@@ -348,8 +372,8 @@ def classify_command(
     call, version, prompt = build_classifier(plan, examples)
     gate_ = HostedGate("claim-classifier", concurrency, attempts=attempts)
 
-    async def gated(messages: list[dict[str, str]]) -> str:
-        return str((await gate_.call(lambda: call(messages))).text)
+    async def gated(messages: list[dict[str, str]]) -> Any:
+        return await gate_.call(lambda: call(messages))
 
     try:
         asyncio.run(

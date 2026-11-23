@@ -90,10 +90,11 @@ def contamination(
     """
     cells = factorial35.cell_means(answer_records, factorial35.CORRECT)
     docs = factorial35.documents(answer_records)
+    every = factorial35._questions(answer_records)
     rag_dropped = RAG_PROMPT_DROP in drops
     out: dict[str, dict[str, Any]] = {}
     for dataset in sorted(cells):
-        questions = sorted({q for per in cells[dataset].values() for q in per})
+        questions = every[dataset]  # the subset needs closed-book scores, not RAG scores
         subset, unscored, runs = wrong_subset(closed_book.get(dataset, {}), questions, rag_dropped)
         kept = sorted(subset)
         rows = []

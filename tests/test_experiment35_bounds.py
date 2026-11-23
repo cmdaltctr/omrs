@@ -106,3 +106,24 @@ def test_the_records_are_not_changed() -> None:
     records = _records()
     bounds35.missing_outcome_bounds(records, n_draws=200)
     assert records == _records()
+
+
+def test_a_question_with_no_cell_value_in_any_setup_is_counted_as_excluded() -> None:
+    records = _records()
+    for setup in _setups():
+        records.append(
+            {
+                "dataset": "freshstack",
+                "setup": setup,
+                "qid": "q9",
+                "run": 1,
+                FAITH: None,
+                CORRECT: None,
+                "unjudged": [FAITH, CORRECT],
+                "not_defined": [],
+            }
+        )
+    out = bounds35.missing_outcome_bounds(records, n_draws=200)
+    for variant, rows in out["freshstack"].items():
+        for row in rows:
+            assert row["n"] + row["excluded"] == len(QIDS) + 1, (variant, row["row"])

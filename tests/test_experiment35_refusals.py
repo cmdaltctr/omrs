@@ -18,6 +18,7 @@ import json
 import re
 import string
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -210,8 +211,9 @@ def test_classify_sample_writes_one_kind_per_item(tmp_path: Path) -> None:
     out = tmp_path / "gate"
     refusals35.write_sample(out, drawn)
 
-    async def call(messages: list[dict[str, str]]) -> str:
-        return "refusal" if "do not cover" in messages[-1]["content"] else "factual"
+    async def call(messages: list[dict[str, str]]) -> SimpleNamespace:
+        text = "refusal" if "do not cover" in messages[-1]["content"] else "factual"
+        return SimpleNamespace(text=text)
 
     asyncio.run(refusals35.classify_sample(out, call, prompt="p", version="v9"))
     rows = [json.loads(line) for line in (out / "sample-kinds.jsonl").read_text().splitlines()]

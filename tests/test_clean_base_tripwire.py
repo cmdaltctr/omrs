@@ -403,7 +403,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # 84 added, 0 removed): no extra needed; one case needs the cached tokenizer.
 # +1 (2026-11-23, factorial35 keeps dropped family rows in Holm at p = 1): no extra.
 # +4 (2026-11-23, Exp 35 answer host pin and P10 values in test_experiment35_arms.py): no extra.
-_BASE_EXECUTED = 13564
+# +5 -1 (2026-11-23, PR 223 review, by test-ID diff against HEAD): 5 regression cases
+# (bounds, contamination, refusals classify x2, searchcost), and the two-process ingest case
+# in test_experiment35_layout.py moves to slow because it boots subprocesses.
+_BASE_EXECUTED = 13568
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -794,7 +797,8 @@ if not (Path.home() / ".agents/skills/s-experiment/references/stats.py").exists(
 # cases in test_llamacpp_runtime_lease_busy.py are slow. No fastapi needed.
 # +1 (2026-11-06, one-llamacpp-router): the 20 s router lock-order stress case in
 # test_llamacpp_router_locks.py is slow. No fastapi needed.
-_BASE_DESELECTED = 24
+_BASE_DESELECTED = 25
+# +1 (2026-11-23, PR 223 review): the two-process ingest case in test_experiment35_layout.py.
 # +2 (2026-10-19): the two signal tests in test_launch_link.py are slow. That module
 # needs fastapi (module-level importorskip), so a run without it never collects them.
 if find_spec("fastapi") is not None:

@@ -96,6 +96,12 @@ def test_a_ragflow_cell_lacking_a_half_a_score_is_refused() -> None:
         searchcost35.search_cost(records, HALVES, _selection(records), ragflow_records=flow)
 
 
+def test_explicit_ragflow_input_with_no_half_a_scores_is_refused() -> None:
+    records = _records(list(select35.SEARCH_SETUPS))
+    with pytest.raises(select35.SelectionError, match="RAGFlow"):
+        searchcost35.search_cost(records, HALVES, _selection(records), ragflow_records=[])
+
+
 def test_a_selection_without_12_cells_is_refused() -> None:
     records = _records(list(select35.SEARCH_SETUPS))
     selection = _selection(records)

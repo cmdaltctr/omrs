@@ -16,6 +16,7 @@ import sys
 from pathlib import Path
 
 import lancedb
+import pytest
 from tests._exp35_fixtures import ROOT, load
 
 arms = load("arms")
@@ -118,6 +119,7 @@ def test_index_from_reads_the_index_and_writes_runs_to_the_output_folder(tmp_pat
     )
 
 
+@pytest.mark.slow
 def test_two_concurrent_ingests_of_different_indexes_write_separate_stores(
     tmp_path: Path,
 ) -> None:

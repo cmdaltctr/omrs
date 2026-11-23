@@ -65,6 +65,7 @@ def missing_outcome_bounds(
         n_draws: FinanceBench sign-flip draws (100,000 registered).
     """
     docs = factorial35.documents(answer_records)
+    every = factorial35._questions(answer_records)  # a question with no cell value counts too
     out: dict[str, dict[str, list[dict[str, Any]]]] = {}
     for variant, (metric, value, kind) in VARIANTS.items():
         records = [_changed(r, metric, value, kind) for r in answer_records]
@@ -73,7 +74,7 @@ def missing_outcome_bounds(
             rows = []
             for number in ROWS[metric]:
                 row = factorial35.ROWS[number - 1]
-                d, excluded = factorial35.contrast(row, cells[dataset])
+                d, excluded = factorial35.contrast(row, cells[dataset], every[dataset])
                 test = (
                     factorial35._test(dataset, d, docs.get(dataset, {}), n_draws)
                     if d
