@@ -399,7 +399,27 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # (test_runtime_components_reranker.py, 4 cases): needs no extra (floors CI ran it).
 # +6 (2026-11-18, PR 222 Codecov patch): test_llamacpp_model_list.py, which
 # imports only the integration module: needs no extra.
-_BASE_EXECUTED = 13475
+# +84 (2026-11-23, Exp 35 harness gaps, by test-ID diff against v3 9539f30c,
+# 84 added, 0 removed): no extra needed; one case needs the cached tokenizer.
+# +1 (2026-11-23, factorial35 keeps dropped family rows in Holm at p = 1): no extra.
+# +4 (2026-11-23, Exp 35 answer host pin and P10 values in test_experiment35_arms.py): no extra.
+# +5 -1 (2026-11-23, PR 223 review, by test-ID diff against HEAD): 5 regression cases
+# (bounds, contamination, refusals classify x2, searchcost), and the two-process ingest case
+# in test_experiment35_layout.py moves to slow because it boots subprocesses.
+# +11 -2 (2026-11-23, Exp 35 classifier gate amendment, by test-ID diff against HEAD):
+# precision mark and Wilson interval cases and the reasoning-none source guard added to
+# test_experiment35_refusals.py; the two smoke-folder cases are replaced.
+# +15 (2026-11-23, Exp 35 labelling page redesign, by test-ID diff): the new file
+# test_experiment35_labelpage.py holds 15 cases; no case removed or renamed.
+# +13 (2026-11-23, Exp 35 labelling page rebuilt on the Exp 34 review layout, by
+# test-ID diff): 21 cases added, 8 removed or renamed (labelpage 18/7, refusals 3/1).
+# +2 (2026-11-23, label page choice colours and labelled-card pill): needs no extra.
+# +1 (2026-11-23, sticky judge column on the label page): needs no extra.
+# +1 (2026-11-23, resizable and expandable answer and passage boxes): needs no extra.
+# +1 (2026-11-23, Noted pill on the label page card header): needs no extra.
+# +11 (2026-11-23, Instructions panel and bar button on the label page, by test-ID diff):
+# 11 cases added, none removed (labelpage 31 to 42).
+_BASE_EXECUTED = 13621
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -632,7 +652,9 @@ if sys.platform != "darwin" or not shutil.which("sandbox-exec"):
 # dropped 2858 -> 2855, skipped rose 131 -> 134. The prior value of 2 was
 # latent — the count assertion was unreachable until the docs-reference gate
 # stopped failing the subprocess returncode check first.
-_CACHED_TOKENIZER_CASES = 3
+# 3 -> 4 (2026-11-23, Exp 35 task 13.5b): the four-dataset Qwen3 token-count
+# case in test_experiment35_datasets.py skips without the cached tokenizer.
+_CACHED_TOKENIZER_CASES = 4
 _HF_CACHE = Path.home() / ".cache" / "huggingface" / "hub"
 _has_qwen_tokenizer = bool(
     list(_HF_CACHE.glob("models--Qwen--Qwen3-Embedding-4B/snapshots/*/tokenizer.json"))
@@ -788,7 +810,8 @@ if not (Path.home() / ".agents/skills/s-experiment/references/stats.py").exists(
 # cases in test_llamacpp_runtime_lease_busy.py are slow. No fastapi needed.
 # +1 (2026-11-06, one-llamacpp-router): the 20 s router lock-order stress case in
 # test_llamacpp_router_locks.py is slow. No fastapi needed.
-_BASE_DESELECTED = 24
+_BASE_DESELECTED = 25
+# +1 (2026-11-23, PR 223 review): the two-process ingest case in test_experiment35_layout.py.
 # +2 (2026-10-19): the two signal tests in test_launch_link.py are slow. That module
 # needs fastapi (module-level importorskip), so a run without it never collects them.
 if find_spec("fastapi") is not None:

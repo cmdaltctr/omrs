@@ -350,12 +350,14 @@ def settings_values(
         setup: The setup.
         plan: The parsed ``plan.json``.
         gguf_folder: The folder that holds the GGUF files (``SWEEP_GGUF_DIR``).
-        answer_host: The one OpenRouter host that serves the answer model.
+        answer_host: The one OpenRouter host that serves the answer model; empty takes the
+            ``plan.json`` pin ``pins.settings.answer.allowed_hosts``; a different host is refused.
         judges: The claim judges the stage runs.
 
     Raises:
         ArmConfigError: The plan pins no model for a role the setup needs, or
-            has no ``seeds.answer`` or ``pins.settings``.
+            has no ``seeds.answer`` or ``pins.settings``, or *answer_host* differs
+            from the pinned answer host.
         RouterConfigError: A GGUF file is missing, or OMRS refuses a preset.
     """
     embed = plan_role(plan, setup.embed_role)
@@ -397,7 +399,13 @@ def settings_values(
     }
     if retrieval:
         values["retrieval"] = retrieval
-    _merge(values, pinned(plan, "pins", "settings"))
+    settings_pins = pinned(plan, "pins", "settings")
+    pinned_host = (settings_pins.get("answer") or {}).get("allowed_hosts")
+    if pinned_host and answer_host and answer_host != pinned_host:
+        raise ArmConfigError(
+            f"--answer-host {answer_host!r} differs from the plan.json answer host {pinned_host!r}"
+        )
+    _merge(values, settings_pins)
     if "chat" in judges:
         values["openai_compatible_base_url"] = GLM_BASE_URL
         values["openai_compatible_api_key"] = f"env://{GLM_KEY_ENV}"

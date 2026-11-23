@@ -1,7 +1,7 @@
 # ADR-119: Experiment 35 Model Matrix and Claim Checker
 
 - **Date:** 2026-11-10
-- **Status:** Proposed (accepted at the Experiment 35 freeze, gate G7). Amended 2026-11-11 twice (A1 to A6, then A7), see the end of this record.
+- **Status:** Proposed (accepted at the Experiment 35 freeze, gate G7). Amended 2026-11-11 twice (A1 to A6, then A7) and 2026-11-12 (A8 to A10) and 2026-11-23 (A11, label context); A8 to A11 accepted by the operator on 2026-11-23, see the end of this record.
 - **Deciders:** Dr Muhammad Aizat Bin Md Hawari
 - **Related:** [ADR-103](103-experiments-run-local-models-through-llama-cpp-gguf.md), change
   `experiment-35-full-document-rag-benchmark` (design D3, D4),
@@ -44,6 +44,12 @@ question wording or the GGUF conversion.
    `low`, temperature 0, fixed seed, one pinned host. Cross-check:
    `openai/gpt-6.1-terra` on the 50 hand-checked items. No judge scores
    answers from its own model family.
+   *Note (2026-11-23):* protocol pre-freeze amendment A4 (2026-11-14,
+   not amendment A4 of this record) removed
+   the `openai/gpt-6.1-terra` cross-check, because no cost estimate
+   includes it (`preregistration.md` section 11.1). No cross-check
+   judge runs. The cross-check text in this decision and in the
+   Negative consequences is history only.
 3. **Selection rule, fixed before the main run:** the main claim checker is
    the candidate with the highest LLM-AggreFact average balanced accuracy on
    the full test split, by the leaderboard rule. A local checker replaces it
@@ -231,6 +237,57 @@ checkers judged 383 claims (363 content claims, 20 abstentions).
 
 Data: `DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/fs-rerun/`
 (`fs_analyse.py`, `results/`).
+
+## Amendment 2026-11-12: claim kinds (pre-freeze)
+
+The text above stays as written. Accepted by the operator on 2026-11-23,
+with A11 and the label-context line of protocol section 4.4. The
+full rule is in protocol section 4.4, "Pre-freeze amendment: claim
+kinds and the classifier gate (2026-11-12)".
+
+**A8. Claim kinds.** Each claim is a factual claim, a refusal or mixed.
+Mixed sentences and negative findings count as factual claims. Primary
+faithfulness per answer setup and checker uses factual claims only.
+Reason: a refusal is a statement about retrieval, and the checkers grade
+refusals very differently. On smoke refusal claims, Granite Guardian
+said unsupported on 67% to 94%. The refusal rate per answer setup and
+dataset is a primary descriptive outcome, with each checker's verdicts
+on refusals. Faithfulness on all claims and per-checker bounds are
+secondary robustness results. Ragas answer scores keep refusals.
+
+**A9. H-CC and Granite Guardian dropped.** The claim-kind rule was
+first written for H-CC (2026-11-11). The redesign of 2026-11-12 dropped
+H-CC and Granite Guardian. The rule now stands on its own. Earlier
+Granite Guardian text in this record stays as history only.
+
+**A10. Classifier.** `openai/gpt-oss-120b` sorts the claims. A gate on
+100 hand-labelled claims (seed 20261112) must pass before the freeze:
+agreement of at least 0.90, refusal recall of at least 0.90 and, from
+2026-11-23, refusal precision of at least 0.90. The claims come from the
+pre-freeze test pod session answers (changed 2026-11-23; see A11). A
+failed gate blocks the freeze of the classifier.
+
+**A11. Gate changes of 2026-11-23 (pre-freeze, owner approved).**
+Operator acceptance of this amendment is still pending, and the freeze
+has not happened, so the text may change. Three changes:
+
+1. Source. The first text took the 100 claims from the 2026-11-11 smoke
+   runs. Those answers used the default reasoning (high). The main run
+   uses reasoning `none`, and so do the test pod session answers (change
+   task 9.2). The sample now comes from the valid claims of the test pod
+   answers. The seed, the dataset quotas and the regular expression
+   strata stay as they were. `refusals35.py sample` refuses a run folder
+   whose `traces.jsonl` does not show answer reasoning `none`.
+2. Third pass mark. Refusal precision, the share of classifier refusals
+   that the human label also calls refusal, must be at least 0.90. Two
+   marks left a gap: a classifier that calls every claim a refusal has
+   perfect recall. Precision uses the same inverse-sampling-fraction
+   weights, with the unweighted value beside it. A classifier that
+   predicts no refusal has no precision, and the gate fails.
+3. Uncertainty. `gate.json` and the report give a 95% Wilson interval
+   beside agreement, recall and precision, from the unweighted counts.
+   The intervals are reported only and decide nothing. The pass rule
+   stays on the weighted point estimates.
 
 ## References
 

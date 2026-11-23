@@ -160,7 +160,13 @@ def routing_kwargs(allowed_hosts: tuple[str, ...]) -> dict[str, Any] | None:
     """Return the ``provider`` routing field for *allowed_hosts*, or ``None`` for an empty list."""
     if not allowed_hosts:
         return None
-    routing = {"only": list(allowed_hosts), "allow_fallbacks": False, "require_parameters": True}
+    routing = {
+        "only": list(allowed_hosts),
+        "allow_fallbacks": False,
+        "require_parameters": True,
+        "zdr": True,
+        "data_collection": "deny",
+    }
     return {"additional_kwargs": {"extra_body": {"provider": routing}}}
 
 

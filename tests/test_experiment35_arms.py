@@ -266,3 +266,63 @@ def test_parse_judges_keeps_order_and_refuses_unknown_names() -> None:
 
 def test_without_keys_drops_every_key_field() -> None:
     assert arms.without_keys({"openrouter_api_key": "env://X", "a": 1}) == {"a": 1}
+
+
+# --- the answer host and the P10 values in plan.json (2026-11-23 owner decisions) -------------
+
+
+def _pin_host(plan: Any, host: str = "deepinfra/fp8") -> Any:
+    plan["pins"]["settings"]["answer"]["allowed_hosts"] = host
+    return plan
+
+
+def test_the_scratch_settings_take_the_answer_host_from_the_plan_pin(gguf: Path) -> None:
+    values = arms.settings_values(
+        arms.parse_setup("e4b-c512-roff-hoff"),
+        _pin_host(fake_plan()),
+        gguf,
+        answer_host="",
+        judges=(),
+    )
+    assert values["answer"]["allowed_hosts"] == "deepinfra/fp8"
+    AnswerSettings.model_validate(values["answer"])
+
+
+def test_an_answer_host_that_differs_from_the_plan_pin_is_refused(gguf: Path) -> None:
+    with pytest.raises(arms.ArmConfigError, match=r"Other.*deepinfra/fp8"):
+        arms.settings_values(
+            arms.parse_setup("e4b-c512-roff-hoff"),
+            _pin_host(fake_plan()),
+            gguf,
+            answer_host="Other",
+            judges=(),
+        )
+
+
+def test_an_answer_host_equal_to_the_plan_pin_is_accepted(gguf: Path) -> None:
+    values = arms.settings_values(
+        arms.parse_setup("e4b-c512-roff-hoff"),
+        _pin_host(fake_plan()),
+        gguf,
+        answer_host="deepinfra/fp8",
+        judges=(),
+    )
+    assert values["answer"]["allowed_hosts"] == "deepinfra/fp8"
+
+
+def test_plan_json_holds_the_p10_values_and_lists_no_p10_key_as_pending() -> None:
+    import json
+
+    from omrs.core.answer.settings import normalise_hosts
+
+    plan = json.loads((FOLDER / "plan.json").read_text(encoding="utf-8"))
+    pins = plan["pins"]
+    assert plan["seeds"]["ragas_judge"] == 20261137
+    assert plan["seeds"]["classifier"] == 20261138
+    assert pins["settings"]["answer"]["reasoning"] == "none"
+    assert pins["settings"]["answer"]["max_output_tokens"] == 2048
+    assert pins["settings"]["answer"]["allowed_hosts"] == normalise_hosts("deepinfra/fp8")
+    assert pins["ragas_judge"]["host"] == normalise_hosts("deepinfra/bf16")
+    assert [p for p in pins["pending"] if p["task"] == "P10"] == []
+    answer = AnswerSettings.model_validate(pins["settings"]["answer"])
+    assert answer.reasoning == "none"

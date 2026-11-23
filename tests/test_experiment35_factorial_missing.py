@@ -118,6 +118,20 @@ def test_analysis_runs_after_drop_step_one() -> None:
     )  # Legal has no family
 
 
+def test_dropped_answer_rows_of_a_family_dataset_stay_in_the_family_with_p_one() -> None:
+    # Pre-registration section 8: no gate changes a family size; a row that cannot be
+    # tested stays in its Holm family with p = 1. The drop order never drops a family
+    # dataset today, so this guards the rule, not a planned run.
+    answers = [r for r in base._answers() if r["dataset"] != "freshstack"]
+    result = factorial35.analyse(base._search(), answers, dropped=("freshstack",), **base.FAST)
+    fs = _rows(result, "freshstack")
+    family = factorial35.FAMILIES["freshstack"]
+    assert all(fs[r]["dropped"] for r in range(12, 20))
+    assert all(fs[r]["not_testable"] and fs[r]["counts"] is False for r in range(12, 20))
+    assert all(fs[r]["holm_p"] is not None for r in family)  # all 19 ranked, none skipped
+    assert all(fs[r]["holm_p"] == 1.0 for r in range(12, 20))
+
+
 def _claims(h8b_sign: int, sensitivity_sign: int) -> dict[str, str | None]:
     held = {"holds": True, "rows": [16], "sign": h8b_sign}
     hypotheses = {

@@ -345,3 +345,118 @@ def test_a_corpus_sample_keeps_every_gold_passage_plus_seeded_others(
 def test_a_missing_prepared_folder_is_refused_and_named(root: Path, tmp_path: Path) -> None:
     with pytest.raises(datasets35.DatasetError, match="prepare35.py"):
         datasets35.corpus_files("legal", root, [], None, tmp_path / "absent", seed=1)
+
+
+# --- Qwen3 token counts on all four datasets (task 13.5b) -------------------------------
+
+_LEVELS = (512, 1024, 2048)
+
+
+def _long_markdown(tag: str, sections: int = 24) -> str:
+    """Return Markdown of several thousand Qwen3 tokens with headings, prose and a table."""
+    parts = []
+    for n in range(sections):
+        words = " ".join(f"{tag}word{n}x{i}" for i in range(60))
+        parts.append(
+            f"## {tag} section {n}\n\n{words}.\n\n| a | b |\n|---|---|\n| {n} | {n * 2} |\n"
+        )
+    return "# " + tag + "\n\n" + "\n".join(parts)
+
+
+def _chunk_all(path: Path, level: int, effective_settings, monkeypatch) -> tuple[list, list[str]]:
+    """Chunk one file at *level* with the pinned Qwen3 tokenizer; return nodes and paths used."""
+    import asyncio
+
+    from omrs.core.chunking import model_token
+    from omrs.core.ingestion import chunker
+    from omrs.core.settings import ChunkingBlock, EmbeddingBlock
+
+    arms = load("arms")
+    resolved: list[str] = []
+    real = model_token.resolve_markdown_chunking
+
+    def spy(settings):
+        resolution = real(settings)
+        resolved.append(resolution.resolved_splitter)
+        return resolution
+
+    monkeypatch.setattr(model_token, "resolve_markdown_chunking", spy)
+    settings = effective_settings(
+        chunking=ChunkingBlock(
+            chunk_size=level, markdown_chunk_size=level, chunk_overlap=arms.OVERLAPS[level]
+        ),
+        embedding=EmbeddingBlock(
+            tokenizer_model=arms.TOKENIZER_MODEL, tokenizer_revision=arms.TOKENIZER_REVISION
+        ),
+    )
+    nodes = asyncio.run(chunker.read_and_chunk_file_async(path, settings=settings))
+    return list(nodes), resolved
+
+
+def test_every_dataset_chunks_in_qwen3_tokens_on_the_model_token_markdown_path(
+    tmp_path: Path, effective_settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from llama_index.core import Document
+
+    from omrs.core.chunking import model_token
+    from omrs.core.ingestion import chunker
+    from omrs.core.ingestion.backends.orchestrator import BackendRead
+    from omrs.integrations.tokenizer import TokenizerUnavailableError, load_tokenizer
+
+    arms = load("arms")
+    try:
+        tokenizer = load_tokenizer(arms.TOKENIZER_MODEL, arms.TOKENIZER_REVISION)
+    except TokenizerUnavailableError:
+        pytest.skip("pinned Qwen3 tokenizer not cached; this test never downloads it")
+
+    # The cl100k path must never run: neither tiktoken nor the legacy splitter.
+    def refuse(*_args, **_kwargs):
+        raise AssertionError("cl100k counter called")
+
+    import tiktoken
+
+    from omrs.core.chunking import sentence
+
+    monkeypatch.setattr(tiktoken, "get_encoding", refuse)
+    monkeypatch.setattr(tiktoken, "encoding_for_model", refuse)
+    monkeypatch.setattr(sentence, "SentenceSplitter", refuse)
+
+    files = tmp_path / "files"
+    files.mkdir()
+    (files / "legal.md").write_text(
+        prepare35.legal_text(
+            {"title": "T", "text": _long_markdown("legal"), "footnotes": "# note"}
+        ),
+        encoding="utf-8",
+    )
+    (files / "bioasq.md").write_text(
+        prepare35.escape_headings(_long_markdown("bio")) + "\n", encoding="utf-8"
+    )
+    code = "\n".join(f"# comment {i}\nvalue_{i} = {i}" for i in range(900))
+    fresh, _, _ = prepare35.export_row("repo/src/app.py_0_900", code)
+    (files / "freshstack.md").write_text(fresh, encoding="utf-8")
+    (files / "financebench.pdf").write_bytes(b"%PDF fixture")
+    pages = [
+        Document(text=_long_markdown(f"fb{p}", 8), metadata={"page_label": str(p)})
+        for p in (1, 2, 3)
+    ]
+
+    real_read = chunker.read_document
+
+    async def read_pdf_as_markdown(path, **kwargs):
+        # Only the PDF is faked (the reader's Markdown text); every other file is read for real.
+        if path.suffix == ".pdf":
+            return BackendRead(pages, False, "markdown")
+        return await real_read(path, **kwargs)
+
+    monkeypatch.setattr(chunker, "read_document", read_pdf_as_markdown)
+
+    for name in ("legal.md", "bioasq.md", "freshstack.md", "financebench.pdf"):
+        for level in _LEVELS:
+            nodes, paths = _chunk_all(files / name, level, effective_settings, monkeypatch)
+            assert paths == [model_token.MODEL_AWARE_PATH], (name, level, paths)
+            assert nodes, (name, level)
+            counts = [len(tokenizer.encode(n.text, add_special_tokens=False).ids) for n in nodes]
+            assert max(counts) <= level, (name, level, max(counts))
+            if level == 512:
+                assert len(nodes) > 1, name
