@@ -265,6 +265,17 @@ def test_freshstack_export_writes_a_manifest_with_extension_and_fence(
     assert datasets35.freshstack_unit_map(folder)[stem] == "repo/src/app.py_0_60"
 
 
+def test_the_manifest_holds_each_row_source_url_and_byte_span_and_the_file_does_not(
+    root: Path, tmp_path: Path
+) -> None:
+    folder = prepare35.prepare("freshstack", root, tmp_path / "passages", plan=fake_plan())
+    manifest = [json.loads(line) for line in (folder / "manifest.jsonl").read_text().splitlines()]
+    row = {r["freshstack_id"]: r for r in manifest}["repo/src/util.py_60_90"]
+    url = "https://github.com/example/repo/src/util.py"
+    assert (row["url"], row["start_byte"], row["end_byte"]) == (url, 60, 90)
+    assert url not in (folder / row["file"]).read_text(encoding="utf-8")
+
+
 def test_preparation_writes_a_tree_hash_and_verify_accepts_it(root: Path, tmp_path: Path) -> None:
     folder = prepare35.prepare("bioasq", root, tmp_path / "passages", plan=fake_plan())
     tree = json.loads((folder / "passages-tree.json").read_text(encoding="utf-8"))

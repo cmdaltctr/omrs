@@ -14,7 +14,7 @@ Mount that folder at the same absolute path on every pod.
   or ``.mdx`` row is written unchanged; every other row is wrapped in a
   backtick fence one backtick longer than its longest backtick run, at least
   three, with no info string. ``manifest.jsonl`` maps each file to its corpus
-  ID, extension and whether it was fenced.
+  ID, source URL, start and end byte, extension and whether it was fenced.
 
 A second run reuses a file whose bytes are equal and refuses a file whose
 bytes differ. Each file is written under a per-process temporary name, then
@@ -46,6 +46,8 @@ _HEADING = re.compile(r"^#", re.MULTILINE)
 _TICKS = re.compile(r"`+")
 _EXTENSION = re.compile(r"(\.[A-Za-z0-9]+)_\d+_\d+$")
 _MARKDOWN = (".md", ".mdx")
+#: The published row fields the manifest records beside the ID (pre-registration section 4).
+_SOURCE = ("url", "start_byte", "end_byte")
 
 
 def escape_headings(text: str) -> str:
@@ -90,10 +92,12 @@ def _files(dataset: str, root: Path, plan: Mapping[str, Any]) -> Iterator[tuple[
         for pid, passage in sorted(datasets35.legal_passages(root).items()):
             yield f"{pid}.md", legal_text(passage), {}
     else:
-        for corpus_id, text in datasets35.freshstack_corpus(root, datasets35.freshstack_pin(plan)):
+        pin = datasets35.freshstack_pin(plan)
+        for corpus_id, text, source in datasets35.freshstack_corpus(root, pin):
             body, extension, fenced = export_row(corpus_id, text)
             name = _freshstack_name(corpus_id)
-            yield name, body, {"freshstack_id": corpus_id, "extension": extension, "fenced": fenced}
+            row = {"freshstack_id": corpus_id, "extension": extension, "fenced": fenced}
+            yield name, body, {**row, **{k: source[k] for k in _SOURCE}}
 
 
 def _write_once(path: Path, data: bytes) -> None:

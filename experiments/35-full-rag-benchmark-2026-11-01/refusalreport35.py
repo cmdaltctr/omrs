@@ -52,7 +52,7 @@ from bootstrap35 import bootstrap_by_question
 from experiments._lib.stats_d6 import cohen_kappa, paired_bootstrap
 from outputs35 import Layout, read_rows, write_json
 
-SEED = 20261136  # pre-registration section 16: refusal report bootstrap (owner confirms at P9)
+SEED = 20261136  # pre-registration section 16: refusal report bootstrap (owner confirmed 2026-11-23, P9)
 CHECKERS = ("chat", "clef_flash")
 FACTUAL = ("factual", "mixed")
 NO_CLAIM = "no_claim"

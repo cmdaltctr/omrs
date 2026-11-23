@@ -280,8 +280,11 @@ def bioasq_passages(root: Path) -> dict[str, str]:
     return {str(r["id"]): str(r["passage"]) for r in _parquet_rows(root / _BIO_C)}
 
 
-def freshstack_corpus(root: Path, pin: Mapping[str, Any]) -> list[tuple[str, str]]:
-    """Return the FreshStack corpus rows ``(id, text)`` in file order, checked against *pin*.
+def freshstack_corpus(root: Path, pin: Mapping[str, Any]) -> list[tuple[str, str, dict]]:
+    """Return the FreshStack rows ``(id, text, metadata)`` in file order, checked against *pin*.
+
+    ``metadata`` is the published row's source URL and byte span (``url``,
+    ``start_byte``, ``end_byte``); it goes in the manifest, never in the text.
 
     Args:
         root: The data folder.
@@ -300,7 +303,7 @@ def freshstack_corpus(root: Path, pin: Mapping[str, Any]) -> list[tuple[str, str
     rows = [row for path in sorted(folder.glob("*.parquet")) for row in _parquet_rows(path)]
     if len(rows) != int(pin["rows"]):
         raise DatasetError(f"FreshStack corpus has {len(rows)} rows; the plan pins {pin['rows']}")
-    return [(str(r["_id"]), str(r["text"])) for r in rows]
+    return [(str(r["_id"]), str(r["text"]), dict(r["metadata"])) for r in rows]
 
 
 def load_questions(dataset: str, root: Path) -> list[Question]:

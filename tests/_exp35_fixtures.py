@@ -155,6 +155,13 @@ FS_ROWS_DATA = [
 ]
 
 
+def fs_source(corpus_id: str) -> dict[str, Any]:
+    """Return the fixture row's published ``metadata``: source URL and byte span from its ID."""
+    path, start, end = corpus_id.rsplit("_", 2)
+    url = f"https://github.com/example/{path}"
+    return {"url": url, "start_byte": int(start), "end_byte": int(end)}
+
+
 def make_data_root(root: Path) -> Path:
     """Write a tiny copy of the four dataset layouts under *root*; return it.
 
@@ -189,7 +196,11 @@ def make_data_root(root: Path) -> Path:
     corpus = root / "benchmarks" / "freshstack" / "corpus-oct-2024" / "langchain"
     _parquet(
         corpus / "train-00000-of-00001.parquet",
-        {"_id": [r[0] for r in FS_ROWS_DATA], "text": [r[1] for r in FS_ROWS_DATA]},
+        {
+            "_id": [r[0] for r in FS_ROWS_DATA],
+            "text": [r[1] for r in FS_ROWS_DATA],
+            "metadata": [fs_source(r[0]) for r in FS_ROWS_DATA],
+        },
     )
     (corpus / "download.json").write_text(
         json.dumps({"repository": "freshstack/corpus-oct-2024", "revision": FS_REVISION}),
