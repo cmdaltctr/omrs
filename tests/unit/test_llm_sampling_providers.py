@@ -156,6 +156,8 @@ def test_an_allowed_host_list_pins_the_openrouter_request() -> None:
         "only": ["Fireworks", "deepinfra/fp8"],
         "allow_fallbacks": False,
         "require_parameters": True,
+        "zdr": True,
+        "data_collection": "deny",
     }
     assert "extra_body" not in body
 
