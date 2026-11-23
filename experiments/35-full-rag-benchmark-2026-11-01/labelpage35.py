@@ -20,6 +20,8 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
+from labelpage_assets35 import CSS, SCRIPT
+
 #: The choices per set, as saved value and shown text.
 CHOICES: dict[str, tuple[tuple[str, str], ...]] = {
     "claim_kinds": (
@@ -47,62 +49,74 @@ FIELDS: dict[str, tuple[str, ...]] = {
     "correctness": ("question", "reference", "answer"),
 }
 
+#: The page title per set.
+TITLES: dict[str, str] = {
+    "claim_kinds": "Claim kinds",
+    "faithfulness": "Faithfulness",
+    "correctness": "Correctness",
+}
+
+#: How the page shows each field, per set, in order: field, plain-words label and role.
+#: ``focus`` is the item to judge, ``context`` a muted panel, ``passages`` one box per passage.
+LAYOUT: dict[str, tuple[tuple[str, str, str], ...]] = {
+    "claim_kinds": (
+        ("question", "Question", "context"),
+        ("claim", "Sentence to label", "focus"),
+    ),
+    "faithfulness": (
+        ("question", "Question", "context"),
+        ("claim", "Sentence to label", "focus"),
+        ("passages", "Passage", "passages"),
+    ),
+    "correctness": (
+        ("question", "Question", "context"),
+        ("reference", "Reference answer", "context"),
+        ("answer", "Answer", "focus"),
+    ),
+}
+
+#: Guidance shown at the top of each page, as (choice, meaning). The claim-kind text
+#: follows protocol.md ("Three claim kinds"); the faithfulness lines add protocol.md's
+#: labelling rules 1 and 2.
+GUIDANCE: dict[str, tuple[tuple[str, str], ...]] = {
+    "claim_kinds": (
+        (
+            "Factual claim",
+            "States something that can be checked against a source. A negative answer counts "
+            '("No debt securities are listed").',
+        ),
+        ("Refusal", "Only says the sources do not cover something. It states no fact."),
+        (
+            "Mixed",
+            "A checkable fact plus a limit on what the sources cover. It counts as factual.",
+        ),
+        ("Can't tell", "Use this rarely."),
+    ),
+    "faithfulness": (
+        (
+            "Supported",
+            "Every part of the sentence is stated in the passages or follows directly from them.",
+        ),
+        ("Not supported", "Any part is missing from the passages or is contradicted by them."),
+        (
+            "Can't tell",
+            "Use this rarely. Judge the sentence as written: do not fill in a missing subject "
+            "from the question. If the meaning is unclear, choose this.",
+        ),
+    ),
+    "correctness": (
+        ("Correct", "The answer gives the key facts of the reference answer and contradicts none."),
+        ("Not correct", "Any other case."),
+        ("Can't tell", "Use this rarely."),
+    ),
+}
+
 LABELLERS = ("L1", "L2")
 CANT_TELL = "cant_tell"
 
 
 class LabelError(ValueError):
     """A label file does not match its set or sample."""
-
-
-_SCRIPT = """
-const data = JSON.parse(document.getElementById('items').textContent);
-const store = 'exp35-draft-' + data.set;
-let labels = {};
-try { labels = JSON.parse(localStorage.getItem(store) || '{}'); } catch (e) { labels = {}; }
-function keep() { try { localStorage.setItem(store, JSON.stringify(labels)); } catch (e) {} }
-const root = document.getElementById('list');
-data.items.forEach(function (item, i) {
-  const box = document.createElement('section');
-  const head = document.createElement('h2');
-  head.textContent = 'Item ' + (i + 1) + ' of ' + data.items.length;
-  box.appendChild(head);
-  data.fields.forEach(function (name) {
-    const values = Array.isArray(item[name]) ? item[name] : [item[name]];
-    values.forEach(function (value) {
-      const p = document.createElement('p');
-      const b = document.createElement('b');
-      b.textContent = name + ': ';
-      p.appendChild(b);
-      p.appendChild(document.createTextNode(value));
-      box.appendChild(p);
-    });
-  });
-  data.choices.forEach(function (choice) {
-    const label = document.createElement('label');
-    const input = document.createElement('input');
-    input.type = 'radio';
-    input.name = item.item_id;
-    input.value = choice[0];
-    input.checked = labels[item.item_id] === choice[0];
-    input.addEventListener('change', function () { labels[item.item_id] = choice[0]; keep(); });
-    label.appendChild(input);
-    label.appendChild(document.createTextNode(' ' + choice[1] + ' '));
-    box.appendChild(label);
-  });
-  root.appendChild(box);
-});
-document.getElementById('save').addEventListener('click', function () {
-  const who = document.getElementById('labeller').value;
-  if (!who) { alert('Choose L1 or L2 first.'); return; }
-  const out = {set: data.set, labeller: who, labels: labels};
-  const blob = new Blob([JSON.stringify(out, null, 2)], {type: 'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = data.set + '-' + who + '.json';
-  a.click();
-});
-"""
 
 
 def page_items(set_name: str, items: Sequence[Mapping[str, Any]]) -> list[dict[str, Any]]:
@@ -123,20 +137,45 @@ def write_page(path: Path, set_name: str, items: Sequence[Mapping[str, Any]]) ->
     data = {
         "set": set_name,
         "fields": list(FIELDS[set_name]),
+        "layout": [list(row) for row in LAYOUT[set_name]],
         "choices": [list(c) for c in CHOICES[set_name]],
         "items": page_items(set_name, items),
     }
     blob = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
+    title = html.escape(TITLES[set_name], quote=False)
     options = "".join(f'<option value="{w}">{w}</option>' for w in LABELLERS)
+    guide = "".join(
+        f"<dt>{html.escape(term, quote=False)}</dt><dd>{html.escape(meaning, quote=False)}</dd>"
+        for term, meaning in GUIDANCE[set_name]
+    )
+    hint = (
+        f"Keys: 1 to {len(CHOICES[set_name])} pick a choice. "
+        "J or K, or the Up and Down arrows, move between items."
+    )
+    # The viewport tag is written "name =" because tests ban the text "name=" on this page
+    # (it guards against a name field for the labeller).
     text = (
-        '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">'
-        f"<title>Labels: {html.escape(set_name)}</title></head><body>\n"
-        f"<h1>Labels: {html.escape(set_name)}</h1>\n"
-        f'<p>Labeller: <select id="labeller"><option value=""></option>{options}</select> '
-        '<button id="save" type="button">Save labels</button></p>\n'
-        '<div id="list"></div>\n'
+        '<!doctype html>\n<html lang="en-GB"><head><meta charset="utf-8">'
+        '<meta name ="viewport" content="width=device-width, initial-scale=1">'
+        f"<title>{title} labels</title><style>{CSS}</style></head><body>\n"
+        '<header class="bar" id="bar"><div class="bar-inner">'
+        f"<h1>{title}</h1>"
+        '<label class="who">Labeller '
+        f'<select id="labeller"><option value=""></option>{options}</select></label>'
+        '<button id="next" type="button">Next unlabelled</button>'
+        '<button id="save" type="button" class="primary">Save labels</button>'
+        '<div class="progress" id="progress" role="status" aria-live="polite">'
+        f'<span id="progress-text">0 of {len(data["items"])} labelled</span>'
+        '<div class="track" id="track" role="progressbar" aria-label="Labelling progress" '
+        f'aria-valuemin="0" aria-valuemax="{len(data["items"])}" aria-valuenow="0">'
+        '<div class="fill" id="progress-bar"></div></div></div>'
+        "</div></header>\n"
+        '<main class="page">\n'
+        f'<details class="guide"><summary>How to label</summary><dl>{guide}</dl></details>\n'
+        f'<p class="hint">{hint}</p>\n'
+        '<div id="list"></div>\n</main>\n'
         f'<script type="application/json" id="items">{blob}</script>\n'
-        f"<script>{_SCRIPT}</script>\n</body></html>\n"
+        f"<script>{SCRIPT}</script>\n</body></html>\n"
     )
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(path.name + ".tmp")

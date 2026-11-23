@@ -409,7 +409,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +11 -2 (2026-11-23, Exp 35 classifier gate amendment, by test-ID diff against HEAD):
 # precision mark and Wilson interval cases and the reasoning-none source guard added to
 # test_experiment35_refusals.py; the two smoke-folder cases are replaced.
-_BASE_EXECUTED = 13577
+# +15 (2026-11-23, Exp 35 labelling page redesign, by test-ID diff): the new file
+# test_experiment35_labelpage.py holds 15 cases; no case removed or renamed.
+_BASE_EXECUTED = 13592
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
