@@ -62,6 +62,7 @@ Per-question marginal nDCG@10 (mean over every cell of the other factors at that
 - **Answer correctness (decision 2026-11-13).** The Ragas stage adds `AnswerCorrectness` (Ragas 0.4.3, `ragas.metrics.collections`, default weights: factual 0.75, similarity 0.25; judge `openai/gpt-oss-120b`, local 4B embedder) against each dataset's reference answer, on all four datasets. Validation before it counts: the operator labels 100 seeded answers (seed 20261113; 25 per dataset, even over chunk sizes; from the test pod session), blind to the score, correct or not. Ragas scores are binarised at 0.5. Pooled Cohen's kappa of at least 0.60: correctness is an H8 outcome. Below 0.60: exploratory only. The FinanceBench number match stays.
 - **H8** Chunk size changes faithfulness (GLM-5.3, factual claims) and correctness (Ragas `AnswerCorrectness` on all four datasets; FinanceBench number match). Expected direction: faithfulness falls as chunks grow (Wang et al., EMNLP 2024: 97.6 at 512, 94.3 at 1,024, 80.4 at 2,048). Contrasts per dataset: 1,024 vs 512, 2,048 vs 1,024, marginal over reranker and hybrid, 3 runs averaged per question first, Holm within the dataset.
 - **Context budget: one round (decision 2026-11-13).** At 2,048 tokens x `top_k` 10, the evidence is about 20,000 tokens (at most about 92,000 characters). Every answer setup sets `answer.context_window` to 131,072 characters and `answer.max_rounds` to 1: a round budget of 127,488 characters, so every answer is one call with no refine round (prompt about 35,000 tokens at most). The context length of `deepseek/deepseek-v4.1-flash-1017` on the pinned host is read from the OpenRouter models API and recorded here before the freeze; it must be at least 65,536 tokens. A test fails if any setup needs a second round. Every answer row still records its rounds, evidence characters and any truncation. Truncation is data, never silent.
+- **Answer and judge settings (owner decision 2026-11-23, plan.json P10).** Answer reasoning `none`; answer output cap 2,048 tokens; answer host DeepInfra fp8 (`deepinfra/fp8`); Ragas judge and claim classifier host DeepInfra bf16 (`deepinfra/bf16`); every OpenRouter call sends `provider.zdr` true and `provider.data_collection` `deny` (zero data retention, no data collection); seeds 20261137 (Ragas judge) and 20261138 (classifier). Context length of `deepseek/deepseek-v4.1-flash-1017` on the pinned host: 1,048,576 tokens, read from the OpenRouter endpoints API on 2026-11-23 (above the 65,536-token minimum; the live `context35.py` run in the test pod session still repeats the check). The smoke timings (section 4.5) were measured with reasoning on (the default, high), so the test pod session measures them again with reasoning `none`.
 
 ### 0.6 FinanceBench number match
 
@@ -417,7 +418,7 @@ Method: for each PDF, count pages where table areas hold words (from LiteParse w
 
 Decision record: ADR-119. Change design D3 and D4.
 
-LLM-AggreFact test split, 29,320 rows (the earlier figure of 29,300 was wrong). Gated, CC BY-ND 4.0: evaluation only, kept out of git, never published in changed form. Scored by the leaderboard rule: balanced accuracy per dataset, then the plain mean. 25 rows are longer than 60,000 characters and overflow the 32,768-token context; they count as wrong and stay in the denominator.
+LLM-AggreFact test split, 29,320 rows (the earlier figure of 29,300 was wrong). Gated, CC BY-ND 4.0: evaluation only, kept out of git, never published in changed form. Scored by the leaderboard rule: balanced accuracy per dataset, then the plain mean. A row with a failed request or an unreadable verdict counts as wrong and stays in the denominator (`prefreeze/aggrefact_lib.py:8`). The saved score files give these counts. Clef-Flash: `rows_counted_wrong` 0 (`DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/prefreeze-pod/35-full-rag-benchmark-2026-11-01/output/prefreeze/aggrefact-clef_flash-scores.json`). Granite Guardian: `rows_counted_wrong` 2 (`aggrefact-granite_guardian-scores.json`, same folder). GLM-5.3: 27 error rows, 24 of them on RAGTruth (`DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/prefreeze-glm/aggrefact-chat-scores.json`, the sum of `datasets.<name>.errors`; this file has no `rows_counted_wrong` key). Correction 2026-11-23 (P18, change task 16.32): an earlier sentence said that 25 rows overflow the 32,768-token context and count as wrong. No saved score file records this, so the sentence is withdrawn.
 
 | Checker | Average | RAGTruth | Published pair | Speed | Outputs |
 | --- | ---: | ---: | --- | --- | --- |
@@ -451,6 +452,26 @@ Each folder holds a `SHA256SUMS` file. Local models ran on llama.cpp b11941 on o
   - **Practice round (not evidence).** On 2026-11-11 a practice labeller labelled 10 smoke claims (5 FinanceBench, 5 BioASQ) where GLM-5.3 said supported and Granite unsupported: 9 supported, 1 "Can't tell" (a claim with no subject). The round fixed rules 1 and 2. Smoke claims are excluded from H-CC, so these labels are not results.
   - **Reporting:** a secondary finding in the paper, kept apart from H1. Each checker's unsupported rate per dataset, the gap intervals and the hand-label share. The smoke figures (section 4.4 above) are labelled exploratory.
 - **Ragas hand check (task 1.10).** The operator scores each of 50 items per metric as supported or not, blind to the judge. Agreement: Cohen's kappa between the operator and each judge, judge score cut at 0.5, with a 95% bootstrap interval over items. Fit for use: kappa 0.6 or higher. Below that, the report keeps the Ragas numbers and states the shortfall.
+
+#### Pre-freeze amendment: claim kinds and the classifier gate (2026-11-12)
+
+Written before the freeze. Operator acceptance is pending. ADR-119 has a matching amendment note. `preregistration.md` governs where the two differ.
+
+- **History.** This rule was first written for H-CC (2026-11-11). The redesign of 2026-11-12 dropped H-CC and Granite Guardian (section 0.5). The claim-kind rule now stands on its own. The H-CC text above stays as history only.
+- **Three claim kinds.** Each claim gets one kind: factual claim, refusal or mixed. A mixed sentence (a checkable fact plus a scope limit) counts as a factual claim. A negative finding that answers the question (for example, "no debt securities are listed") is a factual claim. A refusal states only that the sources do not cover something.
+- **Primary faithfulness.** Faithfulness per answer setup and checker uses factual claims only (kinds fact and mixed). Reason: a refusal is a statement about retrieval, not a fact from a source. The checkers also grade refusals very differently. With refusals in, faithfulness would partly measure refusal grading.
+- **Primary descriptive outcome.** The refusal rate per answer setup and dataset. The report also gives each checker's verdicts on refusals.
+- **Secondary robustness results.** Faithfulness on all claims. Per-checker bounds: one checker's refusal verdicts set to all supported, then to all unsupported, with the other checkers fixed.
+- **Smoke evidence (5 questions per dataset, direction only).** Refusal claims: 15 of 278 on BioASQ, 33 of 143 on FinanceBench and 20 of 383 on the FreshStack rerun. On refusal claims, Granite Guardian (since dropped) said unsupported on 67% to 94%. The 76% figure from the invalid first FreshStack smoke run is not evidence.
+- **Ragas.** Ragas answer scores keep refusals. The Ragas stage scores every answer with no special handling.
+- **Ragas refusal penalty (change task 7.5, checked 2026-11-23).** Source: the Ragas 0.4.3 wheel, SHA-256 `ef1d75f6...4849a38`, equal to the `uv.lock` pin. In `ragas/metrics/collections/answer_relevancy/metric.py`, the judge writes `strictness` questions from the answer (default 3, line 71) with a `noncommittal` flag each (line 124). Line 154 multiplies the mean cosine score by `int(not all_noncommittal)`. Line 130 sets `all_noncommittal` only when every flag is 1. Line 127 gives 0.0 when no question is written. The prompt (`answer_relevancy/util.py:34-36`) calls an answer noncommittal when it is "evasive, vague, or ambiguous", for example "I don't know". The harness keeps the default `strictness` (`prefreeze/ragas_stage.py:280`). Result: `answer_relevancy` is 0 for an answer the judge flags noncommittal on all 3 questions. A partly noncommittal answer keeps its cosine score. The Context7 documentation (`/vibrantlabsai/ragas`) gives only the mean cosine formula and does not state the zero. The source governs.
+- **Classifier gate (change task 8.1).** The classifier `openai/gpt-oss-120b` is gated before any labelling, as `preregistration.md` section 11.1 states:
+  - pass thresholds: agreement on refusal against not refusal of at least 0.90, and refusal recall of at least 0.90 (fact and mixed both count as not refusal);
+  - sample: 100 valid smoke claims, seed 20261112;
+  - strata: dataset, and the pre-freeze regular expression flag;
+  - a failed gate blocks the freeze of the classifier.
+
+  The quota per dataset, the draw, the weights and the "can't tell" rule follow `preregistration.md` section 11.1.
 
 ### 4.5 Embedding timing and machine (tasks 1.4 and 1.5, 2026-11-10)
 
@@ -502,6 +523,8 @@ Run every command from the repository root. The harness scripts are built by cha
 5. Summarise: not built yet. Before the freeze, a summary script applies the `plan.json` statistics with `experiments/_lib/stats_d6.py` and writes `output/summary.json` and the report tables (Exp 35 task 4.2).
 
 The smoke subset (task 4.1) runs a small slice of each dataset through every arm before the freeze and is never scored as a result.
+
+**Pre-freeze test pod session (change task 9.2).** Inside the pod, start `prefreeze/pod_test_session.sh` under `nohup` or in a `tmux` session, so that a closed terminal does not stop it. Example: `nohup bash pod_test_session.sh > /workspace/test-session.log 2>&1 &`.
 
 **Closed-book and oracle answers (A5, section 0.14 items 49 and 50).** `--stage closedbook` and `--stage oracle` run once, as run 1. Each writes its answers into its own folder: `closedbook-own`, `closedbook-rag` or `oracle`. The judge and Ragas stages read those answers with the option `--answers closedbook-own`, `--answers closedbook-rag` or `--answers oracle`. The default, `--answers answer`, reads the RAG answers.
 

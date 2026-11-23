@@ -1,7 +1,7 @@
 # ADR-119: Experiment 35 Model Matrix and Claim Checker
 
 - **Date:** 2026-11-10
-- **Status:** Proposed (accepted at the Experiment 35 freeze, gate G7). Amended 2026-11-11 twice (A1 to A6, then A7), see the end of this record.
+- **Status:** Proposed (accepted at the Experiment 35 freeze, gate G7). Amended 2026-11-11 twice (A1 to A6, then A7) and 2026-11-12 (A8 to A10, acceptance pending), see the end of this record.
 - **Deciders:** Dr Muhammad Aizat Bin Md Hawari
 - **Related:** [ADR-103](103-experiments-run-local-models-through-llama-cpp-gguf.md), change
   `experiment-35-full-document-rag-benchmark` (design D3, D4),
@@ -44,6 +44,12 @@ question wording or the GGUF conversion.
    `low`, temperature 0, fixed seed, one pinned host. Cross-check:
    `openai/gpt-6.1-terra` on the 50 hand-checked items. No judge scores
    answers from its own model family.
+   *Note (2026-11-23):* protocol pre-freeze amendment A4 (2026-11-14,
+   not amendment A4 of this record) removed
+   the `openai/gpt-6.1-terra` cross-check, because no cost estimate
+   includes it (`preregistration.md` section 11.1). No cross-check
+   judge runs. The cross-check text in this decision and in the
+   Negative consequences is history only.
 3. **Selection rule, fixed before the main run:** the main claim checker is
    the candidate with the highest LLM-AggreFact average balanced accuracy on
    the full test split, by the leaderboard rule. A local checker replaces it
@@ -231,6 +237,32 @@ checkers judged 383 claims (363 content claims, 20 abstentions).
 
 Data: `DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/fs-rerun/`
 (`fs_analyse.py`, `results/`).
+
+## Amendment 2026-11-12: claim kinds (pre-freeze)
+
+The text above stays as written. Operator acceptance is pending. The
+full rule is in protocol section 4.4, "Pre-freeze amendment: claim
+kinds and the classifier gate (2026-11-12)".
+
+**A8. Claim kinds.** Each claim is a factual claim, a refusal or mixed.
+Mixed sentences and negative findings count as factual claims. Primary
+faithfulness per answer setup and checker uses factual claims only.
+Reason: a refusal is a statement about retrieval, and the checkers grade
+refusals very differently. On smoke refusal claims, Granite Guardian
+said unsupported on 67% to 94%. The refusal rate per answer setup and
+dataset is a primary descriptive outcome, with each checker's verdicts
+on refusals. Faithfulness on all claims and per-checker bounds are
+secondary robustness results. Ragas answer scores keep refusals.
+
+**A9. H-CC and Granite Guardian dropped.** The claim-kind rule was
+first written for H-CC (2026-11-11). The redesign of 2026-11-12 dropped
+H-CC and Granite Guardian. The rule now stands on its own. Earlier
+Granite Guardian text in this record stays as history only.
+
+**A10. Classifier.** `openai/gpt-oss-120b` sorts the claims. A gate on
+100 hand-labelled smoke claims (seed 20261112) must pass before the
+freeze: agreement of at least 0.90 and refusal recall of at least 0.90.
+A failed gate blocks the freeze of the classifier.
 
 ## References
 

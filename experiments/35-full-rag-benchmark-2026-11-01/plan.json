@@ -67,8 +67,8 @@
     "question_order": 20261101,
     "smoke_sample": 20261101,
     "glm": 20261109,
-    "ragas_judge": null,
-    "classifier": null
+    "ragas_judge": 20261137,
+    "classifier": 20261138
   },
   "pins": {
     "settings": {
@@ -77,8 +77,9 @@
         "query_instruction": ""
       },
       "answer": {
-        "reasoning": null,
-        "max_output_tokens": null
+        "reasoning": "none",
+        "max_output_tokens": 2048,
+        "allowed_hosts": "deepinfra/fp8"
       },
       "retrieval": {
         "similarity_threshold": 0.0,
@@ -90,7 +91,7 @@
       "hybrid": null
     },
     "ragas_judge": {
-      "host": null,
+      "host": "deepinfra/bf16",
       "reasoning": "low",
       "temperature": 0.0
     },
@@ -117,11 +118,6 @@
       "ragas_adapter": null
     },
     "pending": [
-      {"key": "seeds.ragas_judge", "task": "P10"},
-      {"key": "seeds.classifier", "task": "P10"},
-      {"key": "pins.settings.answer.reasoning", "task": "P10"},
-      {"key": "pins.settings.answer.max_output_tokens", "task": "P10"},
-      {"key": "pins.ragas_judge.host", "task": "P10"},
       {"key": "pins.settings.retrieval.hybrid_rrf_k", "task": "P11"},
       {"key": "pins.recorded.reranker_instruction", "task": "P11"},
       {"key": "pins.recorded.hybrid", "task": "P11"},
@@ -365,7 +361,15 @@
           "ctx-size": 32768,
           "batch-size": 32768,
           "ubatch-size": 32768,
-          "parallel": 1
+          "parallel": 1,
+          "flash-attn": true,
+          "n-gpu-layers": "all",
+          "fit": false,
+          "cache-type-k": "f16",
+          "cache-type-v": "f16",
+          "spec-type": "none",
+          "cache-prompt": false,
+          "cache-reuse": 0
         }
       }
     ],

@@ -16,7 +16,7 @@ See proposal.md (Why) for the motivation and specs/ for the requirements. This s
 - OMRS turns a generation exception into an error result: status `error`, `answer` null, `failure_stage` `generation` and the text `Generation failed: <type>: <detail>` in `error` (`src/omrs/core/answer/stages.py:171-185`, built by `results.py:134-166`). Nothing in the result marks a rate limit, so a caller can find one only by reading that text. The harness keeps the error row, so a rate-limit reply on an answer becomes a saved error row today. Before D25, the harness had to parse the text; D25 fixes this in OMRS.
 - A failed GLM-5.3 (`chat`) call raises `JudgeUnavailable`. The run stops before that answer is saved, and `--resume` retries it (`stages35.py:356-365`; `arms.py:49`).
 - The only retries come from the libraries. `llama-index-llms-openai` 0.7.10 retries `RateLimitError` (HTTP 429), connection, timeout and server errors: 3 attempts, random backoff from 1 s to 20 s, stop after 60 s (`llama_index/llms/openai/base.py:112`, `utils.py:350`). It honours `Retry-After` up to 120 s (`utils.py:274`). The `openai` 2.54.0 client retries 429 on its own too. Neither retries HTTP 402.
-- OpenRouter answer calls carry `provider: {only, allow_fallbacks: false, require_parameters: true}` (`src/omrs/core/providers/llm/openrouter_hosts.py:163`).
+- OpenRouter answer calls carry `provider: {only, allow_fallbacks: false, require_parameters: true, zdr: true, data_collection: "deny"}` (zero data retention added 2026-11-23) (`src/omrs/core/providers/llm/openrouter_hosts.py:163`).
 
 **Stages and layout.**
 

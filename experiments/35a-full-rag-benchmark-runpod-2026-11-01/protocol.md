@@ -101,7 +101,7 @@ The smoke subset (task 4.1) runs on the pod, on a small slice of each dataset th
 
 The ONNX reranker and the OCR engines do not run through llama.cpp. The freeze records them under the runtime manifest with name, revision and file hash. The embedding tokenizer (`Qwen/Qwen3-Embedding-4B`, `tokenizer.json`, revision `5cf2132a`) is the token-aware chunking tokenizer, cached and hash-checked by sweep task 2.4a.
 
-- **Hosted references**: main Ragas judge `deepseek/deepseek-v4.1-flash-1017` (OpenRouter, temperature 0, fixed seed, one pinned upstream provider); cross-check judge `openai/gpt-6.1-terra` (OpenRouter, fixed seed, 50 hand-checked items). A judge never scores its own model family.
+- **Hosted references**: main Ragas judge `deepseek/deepseek-v4.1-flash-1017` (OpenRouter, temperature 0, fixed seed, one pinned upstream provider). (2026-11-23: the cross-check judge was removed. Experiment 35 amendment A4 dropped it, and this experiment is superseded.) A judge never scores its own model family.
 - **Tolerance**: 0.005 absolute on each primary metric (Recall@10, MRR@10, nDCG@10, hit@page). The largest change that still counts as the same result on another back end. Confirm or change at freeze.
 - **Live check**: the runner calls `verify_llamacpp_runtime` before the first score of each run and passes `runtime=found.as_run_record()` to `record_run_start`. A mismatch stops the run.
 - **Storage and teardown**: the pod volume holds models, datasets and indexes. After the run, copy `output/` to `DATA/omrs/` with SHA-256 receipts, then destroy the pod and its volume; idle volume storage bills at double the running rate.

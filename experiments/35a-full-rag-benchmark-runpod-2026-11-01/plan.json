@@ -97,8 +97,7 @@
       }
     ],
     "references": [
-      {"role": "judge-main", "provider": "openrouter", "model": "deepseek/deepseek-v4.1-flash-1017"},
-      {"role": "judge-crosscheck", "provider": "openrouter", "model": "openai/gpt-6.1-terra"}
+      {"role": "judge-main", "provider": "openrouter", "model": "deepseek/deepseek-v4.1-flash-1017"}
     ],
     "tolerance": [
       {"metric": "Recall@10", "max_abs_change": 0.005},
