@@ -44,6 +44,10 @@ details.page>summary{flex-wrap:nowrap}
   text-overflow:ellipsis;white-space:nowrap}
 .pstat{white-space:nowrap}
 .pstat:empty{display:none}
+.pnote{white-space:nowrap;color:#0b1020;background:#f2c94c;border-radius:999px;
+  padding:.12rem .6rem;font-size:.74rem;font-weight:700;margin-left:auto}
+.pnote:empty{display:none}
+.pnote:not(:empty)+.pstat{margin-left:.4rem}
 details.page[data-done] .pstat{color:#0b1020;background:var(--ok);border-radius:999px;
   padding:.12rem .6rem;font-size:.74rem;font-weight:700}
 details.page[data-done]{border-color:var(--ok)}
@@ -136,6 +140,7 @@ function refresh() {
     const done = Boolean(labels[idOf(i)]);
     if (done) { n += 1; card.dataset.done = '1'; } else { delete card.dataset.done; }
     card.querySelector('.pstat').textContent = done ? '\\u2713 labelled' : '';
+    card.querySelector('.pnote').textContent = notes[idOf(i)] ? '\\u270E Noted' : '';
   });
   progress.textContent = 'Done ' + n + ' / ' + total;
   progress.classList.toggle('ok', n === total);
@@ -171,6 +176,7 @@ cards.forEach(function (card, i) {
   note.addEventListener('input', function () {
     if (note.value.trim()) { notes[idOf(i)] = note.value; } else { delete notes[idOf(i)]; }
     keep();
+    refresh();
   });
   card.querySelector('.clear').addEventListener('click', function () {
     delete labels[idOf(i)];

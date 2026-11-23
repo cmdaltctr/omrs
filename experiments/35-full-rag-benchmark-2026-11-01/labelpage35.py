@@ -200,7 +200,7 @@ def _card(set_name: str, i: int, item: Mapping[str, Any]) -> str:
     question = render_inline(item.get("question", ""))
     return (
         f'<details class="page" data-i="{i}"><summary><span class="pt">Item {i + 1}</span>'
-        f'<span class="qs">{question}</span><span class="pstat"></span></summary>'
+        f'<span class="qs">{question}</span><span class="pnote"></span><span class="pstat"></span></summary>'
         f'<div class="body"><div class="orig"><div class="stick">{"".join(left)}</div></div>'
         f'<div class="judge">{"".join(right)}</div></div></details>'
     )

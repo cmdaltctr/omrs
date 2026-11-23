@@ -322,3 +322,18 @@ def test_answer_and_passage_boxes_can_be_enlarged() -> None:
     assert ".outwrap.tall .md,.outwrap.tall .raw{max-height:none}" in css
     assert "classList.toggle('tall')" in labelpage_assets35.SCRIPT
     assert 'class="vx"' in labelpage35._toggle("answer", "Full answer", "<p>x</p>")
+
+
+def test_a_card_with_a_note_shows_a_noted_pill() -> None:
+    # Owner request 2026-11-23: the card header shows "Noted" once the note field holds text.
+    import labelpage35
+    import labelpage_assets35
+
+    script = labelpage_assets35.SCRIPT
+    assert "querySelector('.pnote').textContent = notes[idOf(i)]" in script
+    assert "Noted" in script
+    listener = script.split("note.addEventListener('input'", 1)[1].split("});", 1)[0]
+    assert "refresh();" in listener  # the pill appears while typing
+    assert ".pnote:empty{display:none}" in labelpage_assets35.CSS
+    item = {"item_id": "x", "question": "Q?", "claim": "C.", "answer": "C.", "passages": []}
+    assert 'class="pnote"' in labelpage35._card("claim_kinds", 0, item)
