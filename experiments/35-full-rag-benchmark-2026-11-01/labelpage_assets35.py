@@ -67,6 +67,9 @@ main{padding-bottom:60vh}
 .ans .md{max-height:50vh}
 details.psg .outwrap{padding:0 .6rem .6rem}
 details.psg .md,details.psg .raw{max-height:40vh}
+.outwrap .md,.outwrap .raw{resize:vertical;overflow:auto;min-height:4rem}
+.outwrap.tall .md,.outwrap.tall .raw{max-height:none}
+.vx{margin-left:.35rem}
 .cite{color:var(--muted);font-size:.8em;white-space:nowrap}
 code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.85em;
   background:var(--soft);border:1px solid var(--line);border-radius:4px;padding:0 .25em}
@@ -182,6 +185,23 @@ cards.forEach(function (card, i) {
     card.scrollIntoView({block: 'start'});
     showTarget(card);
   });
+});
+
+document.addEventListener('click', function (e) {
+  const grow = e.target.closest('.vx');
+  if (!grow) { return; }
+  const box = grow.closest('.outwrap');
+  const tall = box.classList.toggle('tall');
+  box.querySelectorAll('.md,.raw').forEach(function (el) { el.style.height = ''; });
+  grow.textContent = tall ? 'Shrink' : 'Expand';
+  grow.setAttribute('aria-pressed', String(tall));
+});
+// A drag on the resize corner may pass the default cap: lift the cap at the current height.
+document.addEventListener('pointerdown', function (e) {
+  const el = e.target.closest('.outwrap .md, .outwrap .raw');
+  if (!el || el.style.maxHeight === 'none') { return; }
+  el.style.height = el.offsetHeight + 'px';
+  el.style.maxHeight = 'none';
 });
 
 document.addEventListener('click', function (e) {

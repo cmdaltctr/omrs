@@ -144,7 +144,8 @@ def _toggle(field: str, label: str, body: str, k: int | None = None) -> str:
         f'<div class="outwrap" data-f="{field}"{index}><div class="viewbar">'
         f'<p class="tag">{label}</p>'
         '<button type="button" class="vt on" data-v="md">Rendered</button>'
-        '<button type="button" class="vt" data-v="raw">Raw</button></div>'
+        '<button type="button" class="vt" data-v="raw">Raw</button>'
+        '<button type="button" class="vx" aria-pressed="false">Expand</button></div>'
         f'<div class="md">{body}</div><pre class="raw" hidden></pre></div>'
     )
 

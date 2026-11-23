@@ -310,3 +310,15 @@ def test_the_judge_column_stays_in_view_while_the_context_scrolls() -> None:
     judge = css.split(".judge{", 1)[1].split("}", 1)[0]
     assert "position:sticky" in judge and "align-self:start" in judge
     assert ".stick,.judge{position:static" in css  # one column on narrow screens
+
+
+def test_answer_and_passage_boxes_can_be_enlarged() -> None:
+    # Owner request 2026-11-23: drag to resize, or one click to show a passage in full.
+    import labelpage35
+    import labelpage_assets35
+
+    css = labelpage_assets35.CSS
+    assert ".outwrap .md,.outwrap .raw{resize:vertical" in css
+    assert ".outwrap.tall .md,.outwrap.tall .raw{max-height:none}" in css
+    assert "classList.toggle('tall')" in labelpage_assets35.SCRIPT
+    assert 'class="vx"' in labelpage35._toggle("answer", "Full answer", "<p>x</p>")
