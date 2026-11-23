@@ -82,6 +82,8 @@ mark.target{background:#ffe08a;color:inherit;border-radius:3px;padding:0 .1em;
 .focus{font-size:1.2rem;font-weight:400;line-height:1.55;margin:0 0 1rem;padding:.8rem 1rem;
   background:var(--soft);border:1px solid var(--accent);border-radius:8px}
 .focus strong{font-weight:700}
+.judge{position:sticky;top:calc(var(--bar,3.5rem) + .5rem);align-self:start;
+  max-height:calc(100vh - var(--bar,3.5rem) - 1.5rem);overflow:auto}
 .judge .ans .md{max-height:60vh}
 fieldset.form{border:1px solid var(--line);border-radius:8px;padding:.8rem;display:grid;gap:.6rem}
 fieldset.form legend{font-weight:600;font-size:.92rem;padding:0 .3rem}
@@ -101,7 +103,7 @@ kbd{font:inherit;font-size:.72rem;border:1px solid currentColor;border-radius:4p
 .note{font:inherit;font-size:.85rem;padding:.4rem .55rem;border:1px solid var(--line);
   border-radius:6px;background:var(--card);color:var(--ink)}
 @media (max-width:900px){.body{grid-template-columns:minmax(0,1fr)}
-  .stick{max-height:none;overflow:visible;padding-right:0}}
+  .stick,.judge{position:static;max-height:none;overflow:visible;padding-right:0}}
 @media (max-width:560px){.bar h1{flex-basis:100%}.focus{font-size:1.08rem}
   .judge .chip{flex:1 1 100%}.judge .chip span{display:block}}
 """

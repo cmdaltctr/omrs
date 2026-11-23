@@ -414,7 +414,8 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +13 (2026-11-23, Exp 35 labelling page rebuilt on the Exp 34 review layout, by
 # test-ID diff): 21 cases added, 8 removed or renamed (labelpage 18/7, refusals 3/1).
 # +2 (2026-11-23, label page choice colours and labelled-card pill): needs no extra.
-_BASE_EXECUTED = 13607
+# +1 (2026-11-23, sticky judge column on the label page): needs no extra.
+_BASE_EXECUTED = 13608
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

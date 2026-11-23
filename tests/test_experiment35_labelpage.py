@@ -300,3 +300,13 @@ def test_a_labelled_card_turns_green_with_a_status_pill() -> None:
     assert "color:#0b1020" in pill  # dark text on the green pill (owner, 2026-11-23)
     assert "details.page[data-done]{border-color:var(--ok)}" in css
     assert "details.page[data-done]>summary{background:" in css
+
+
+def test_the_judge_column_stays_in_view_while_the_context_scrolls() -> None:
+    # Owner request 2026-11-23: keep the sentence and chips visible while reading passages.
+    import labelpage_assets35
+
+    css = labelpage_assets35.CSS
+    judge = css.split(".judge{", 1)[1].split("}", 1)[0]
+    assert "position:sticky" in judge and "align-self:start" in judge
+    assert ".stick,.judge{position:static" in css  # one column on narrow screens
