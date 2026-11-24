@@ -114,6 +114,7 @@ class Stub:
 
 def _plan_with_tree(trees: dict[str, str] | None = None) -> dict[str, Any]:
     plan = fake_plan()
+    plan["pins"]["environment"] = {"image": MACHINE["image"]}
     for dataset, tree in (trees or {}).items():
         plan["pins"]["datasets"].setdefault(dataset, {})["passages_tree_sha256"] = tree
     return plan
@@ -397,6 +398,17 @@ def test_a_wrong_gguf_hash_stops_before_any_stage_file_or_engine(env: Path) -> N
     assert _main(stub, out, *_ingest_args(passages)) == 2
     assert "engine" not in stub.log
     assert not any(name.endswith(".jsonl") for name in _files(out))
+
+
+def test_a_pod_image_other_than_the_plan_pin_stops_before_the_router(
+    env: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    stub = Stub()
+    stub._plan["pins"]["environment"]["image"] = "img@sha256:" + "2" * 64
+    passages = _prepared(env, stub)
+    assert _main(stub, env / "out", *_ingest_args(passages)) == 2
+    assert not any(line.startswith("start_router") for line in stub.log)
+    assert "pins.environment.image" in capsys.readouterr().out
 
 
 def test_two_output_folders_ingest_the_same_absolute_passage_paths(env: Path) -> None:

@@ -357,8 +357,10 @@ def _check_index(ctx: Ctx, marker: Mapping[str, Any]) -> dict[str, Any]:
 # --- machine and environment record ------------------------------------------------------
 
 
-def check_machine(machine: Mapping[str, Any]) -> None:
-    """Refuse a machine with no GPU model or image, or an image without a digest.
+def check_machine(machine: Mapping[str, Any], plan: Mapping[str, Any]) -> None:
+    """Refuse a machine with no GPU model or image, or an image other than the plan pin.
+
+    The image must be ``plan.json`` ``pins.environment.image`` exactly (task 9.1).
 
     Raises:
         EnvironmentMismatch: The message names the field.
@@ -372,6 +374,12 @@ def check_machine(machine: Mapping[str, Any]) -> None:
     if "@sha256:" not in str(machine["image"]):
         raise EnvironmentMismatch(
             f"EXP35_POD_IMAGE {machine['image']!r} has no @sha256: digest; pin the image by digest"
+        )
+    pinned = arms.pinned(plan, "pins", "environment", "image", error=EnvironmentMismatch)
+    if machine["image"] != pinned:
+        raise EnvironmentMismatch(
+            f"EXP35_POD_IMAGE {machine['image']!r} is not plan.json pins.environment.image "
+            f"{pinned!r}; create the pod from the pinned image (task 9.1)"
         )
 
 

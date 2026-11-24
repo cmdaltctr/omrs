@@ -321,6 +321,12 @@ def _machine(**over: Any) -> dict[str, Any]:
     return {"host": "pod-a", "pod_id": "abc", "gpu": ENV["gpu"], "image": ENV["image"], **over}
 
 
+def _image_plan(image: Any = ENV["image"]) -> dict[str, Any]:
+    """A plan with only the pod image pin (``null`` is listed as pending, like plan.json)."""
+    pending = [] if image else [{"key": "pins.environment.image", "task": "RDY 9.1"}]
+    return {"pins": {"environment": {"image": image}, "pending": pending}}
+
+
 def _found() -> Any:
     model = {"file": "Qwen3-Embedding-4B-Q8_0.gguf", "sha256": "a" * 64}
     return SimpleNamespace(build=11941, models=[model])
@@ -338,7 +344,20 @@ def test_check_machine_refuses_a_missing_field_or_an_undigested_image(
     field: str, value: Any, named: str
 ) -> None:
     with pytest.raises(stages35.EnvironmentMismatch, match=named):
-        stages35.check_machine(_machine(**{field: value}))
+        stages35.check_machine(_machine(**{field: value}), _image_plan())
+
+
+@pytest.mark.parametrize(
+    "plan",
+    [_image_plan("runpod/base@sha256:" + "2" * 64), _image_plan(None), {"pins": {"pending": []}}],
+)
+def test_check_machine_refuses_an_image_that_is_not_the_plan_pin(plan: dict[str, Any]) -> None:
+    with pytest.raises(stages35.EnvironmentMismatch, match=r"pins\.environment\.image"):
+        stages35.check_machine(_machine(), plan)
+
+
+def test_check_machine_accepts_the_pinned_image() -> None:
+    stages35.check_machine(_machine(), _image_plan())
 
 
 def test_seal_writes_the_build_environment_record(tmp_path: Path) -> None:

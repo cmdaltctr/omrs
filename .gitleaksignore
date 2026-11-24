@@ -113,3 +113,16 @@ tests/unit/test_web_configuration.py:generic-api-key:36
 experiments/48-pipeline-sweep-llamacpp-2026-11-01/run_part_a.py:generic-api-key:49
 experiments/48-pipeline-sweep-llamacpp-2026-11-01/run_timing.py:generic-api-key:55
 openspec/changes/pipeline-sweep-llamacpp/evidence/test-ids-before.txt:aws-access-token:9211
+
+# Gitleaks false positives: Experiment 35 test pod scripts (2026-11-23).
+# Flagged lines hold environment variable NAMES, made-up decoy values that tests
+# use to prove no key is ever printed, and the public SHA-256 of the Qwen3
+# tokenizer file. None is a secret. Each fingerprint is pinned to file and line.
+experiments/35-full-rag-benchmark-2026-11-01/prefreeze/pod_test_session.sh:generic-api-key:136
+experiments/35-full-rag-benchmark-2026-11-01/prefreeze/test_pod_test_session_script.py:generic-api-key:22
+experiments/35-full-rag-benchmark-2026-11-01/prefreeze/test_create_pod35.py:generic-api-key:37
+experiments/35-full-rag-benchmark-2026-11-01/prefreeze/test_launch35_script.py:generic-api-key:20
+experiments/35-full-rag-benchmark-2026-11-01/prefreeze/test_launch35_script.py:generic-api-key:25
+experiments/35-full-rag-benchmark-2026-11-01/prefreeze/test_launch35_script.py:generic-api-key:74
+experiments/35-full-rag-benchmark-2026-11-01/prefreeze/pod_setup35.sh:generic-api-key:115
+experiments/35-full-rag-benchmark-2026-11-01/prefreeze/test_mac_watch35.py:generic-api-key:137
