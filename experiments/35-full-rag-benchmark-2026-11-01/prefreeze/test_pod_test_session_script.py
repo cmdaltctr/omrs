@@ -359,3 +359,30 @@ def test_a_background_process_of_a_stage_is_stopped_before_the_tarball(tmp_path:
     else:
         os.kill(pid, 9)
         pytest.fail(f"background process {pid} still ran after the session")
+
+
+def test_a_timed_out_stage_leaves_no_process_of_its_group(tmp_path: Path) -> None:
+    # The 2026-11-24 t-fb grandchild: it outlived SIGTERM and ran into the next stage.
+    stages = (
+        "slow@1s (trap '' TERM; exec sleep 40) >/dev/null 2>&1 & "
+        'echo $! > "$OUT_DIR/grandchild.pid"; wait\n'
+        'after touch "$OUT_DIR/after"\n'
+    )
+    result, _ = _run(tmp_path, stages)
+    assert result.returncode == 1
+    assert _listed(tmp_path, "failed-stages.txt") == ["slow:timeout"]
+    pid = int((tmp_path / "smoke-out" / "grandchild.pid").read_text())
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return
+    os.kill(pid, 9)
+    pytest.fail(f"process {pid} of the timed-out stage still ran after the session")
+
+
+def test_a_timed_out_stage_leaves_a_python_stack_in_the_log(tmp_path: Path) -> None:
+    # py-spy cannot attach in the pod, so a hung stage must print its own stack.
+    hang = "import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(40)"
+    result, _ = _run(tmp_path, f'slow@1s python3 -c "{hang}" & wait\n')
+    assert result.returncode == 1
+    assert "most recent call first" in result.stdout + result.stderr

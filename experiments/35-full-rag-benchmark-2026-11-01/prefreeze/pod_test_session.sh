@@ -59,6 +59,7 @@ NAME=""
 FATAL=0
 LIMIT=0
 CMD=""
+STAGE_PGID=""
 
 log() { printf '[%s] %s\n' "$(date -u +%H:%M:%S)" "$*"; }
 run() { if [ "$DRY_RUN" = 1 ]; then log "  [dry-run] $*"; else "$@"; fi; }
@@ -167,8 +168,29 @@ time_left() {
   echo "$left"
 }
 
+# attempt <command> <seconds>: run the stage in its own process group (set -m). On a
+# timeout, kill that group: a grandchild that outlives SIGTERM must not run into the
+# next stage (t-fb, 2026-11-24). It gets SIGABRT first, so PYTHONFAULTHANDLER prints
+# its Python stack to the log (py-spy cannot attach in the pod). A stage that ends by
+# itself keeps its background processes (gpulog); stop_background stops them.
 attempt() {
-  (cd "$EXP35" && timeout -k 60 "$2" bash -c "$1" </dev/null)
+  local rc
+  set -m
+  (cd "$EXP35" && exec timeout -k 60 "$2" bash -c "$1" </dev/null) &
+  STAGE_PGID=$!
+  set +m
+  wait "$STAGE_PGID"
+  rc=$?
+  case "$rc" in
+    124 | 137)
+      if kill -ABRT -- "-$STAGE_PGID" 2>/dev/null; then
+        sleep 2
+        kill -KILL -- "-$STAGE_PGID" 2>/dev/null
+      fi
+      ;;
+  esac
+  STAGE_PGID=""
+  return "$rc"
 }
 
 # run_stage: run the parsed stage; status 1 when a "!" stage failed (stop the chain).
@@ -296,6 +318,8 @@ finish() {
   [ "$FINISHED" = 1 ] && return 0
   FINISHED=1
   log "== finish: failed stages: ${FAILED[*]:-none}; skipped: ${SKIPPED[*]:-none}"
+  # A signal stopped the session during a stage: its own process group still runs.
+  [ -z "$STAGE_PGID" ] || kill -KILL -- "-$STAGE_PGID" 2>/dev/null
   stop_background
   if [ "$DRY_RUN" != 1 ]; then
     mkdir -p "$WORK" "$OUT_DIR"
@@ -315,6 +339,7 @@ main() {
   need OUT_DIR STAGES_FILE
   precheck
   export OUT_DIR WORK BACKGROUND_PIDS
+  export PYTHONFAULTHANDLER=1 # a stage stopped at its timeout prints its Python stack
   export SESSION_PID=$$
   if [ "$DRY_RUN" != 1 ]; then
     mkdir -p "$WORK" "$OUT_DIR"

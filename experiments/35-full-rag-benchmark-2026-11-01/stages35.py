@@ -20,7 +20,11 @@ environment record with the build record that ``seal`` writes (task 5.6).
 
 from __future__ import annotations
 
+import faulthandler
 import json
+import os
+import sys
+import threading
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -34,6 +38,28 @@ from experiments._lib.trace import TraceWriter
 say = outputs35.say
 #: The environment fields every stage must have and match (design D19).
 ENV_FIELDS = ("gpu", "image", "llama_cpp_build", "gguf_sha256")
+
+
+#: A file whose ingest gives no result in this time is stuck. The 2026-11-24 t-fb run hung
+#: for 17 min at 0 CPU in the PDF read; the longest pre-freeze file took 42 s.
+FILE_WATCHDOG_SECONDS = 600.0
+#: The exit code of a stuck file: items still open, run again with ``--resume``.
+EXIT_STUCK = 6
+#: The exit that ends a stuck process. A native call cannot be cancelled, and its worker
+#: thread would block a normal exit (the thread pool joins its threads at exit).
+_hard_exit = os._exit
+
+
+def _stuck(name: str, seconds: float) -> None:
+    """Name the stuck file, print every thread's stack and end the process."""
+    say(
+        f"[ingest] {name}: no result after {seconds:.0f} s; the stage stops "
+        f"(exit {EXIT_STUCK}). Every thread's stack follows. Run again with --resume."
+    )
+    sys.stdout.flush()
+    faulthandler.dump_traceback(all_threads=True)
+    sys.stderr.flush()
+    _hard_exit(EXIT_STUCK)
 
 
 class StageOrderError(RuntimeError):
@@ -186,6 +212,11 @@ async def ingest_stage(ctx: Ctx) -> int:
             if path.name in done:
                 continue
             started = time.perf_counter()
+            watchdog = threading.Timer(
+                FILE_WATCHDOG_SECONDS, _stuck, (path.name, FILE_WATCHDOG_SECONDS)
+            )
+            watchdog.daemon = True
+            watchdog.start()
             try:
                 error, chunks, warnings = _outcome(
                     await ctx.engine.ingest(str(path), collection_name=ctx.collection)
@@ -193,6 +224,8 @@ async def ingest_stage(ctx: Ctx) -> int:
                 error = ctx.redact(error)[:500] if error else None
             except Exception as exc:  # noqa: BLE001 - keep the row; --resume retries the file
                 error, chunks, warnings = _error(ctx, exc), 0, []
+            finally:
+                watchdog.cancel()
             seconds = round(time.perf_counter() - started, 3)
             row = {
                 "file": path.name,
