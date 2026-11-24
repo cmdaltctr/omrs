@@ -439,7 +439,11 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +2 (2026-11-24, Exp 35 closed-book Ragas and claim-kinds fixes, by test-ID diff against
 # HEAD bcd11389): test_the_judge_side_files_beside_the_verdicts_are_not_read and
 # test_an_answer_without_passages_skips_the_three_passage_metrics; 0 removed. CI: +2 on all jobs.
-_BASE_EXECUTED = 13847
+# +23 (2026-11-24, Exp 35 fix check session through the chain, by test-ID diff against HEAD
+# 6b6e8ede): new files test_verify35.py (6), test_verify_session_stages.py (6) and
+# test_mac_watch35_verify.py (5); 6 test_session_stages.py cases now run as [test] and
+# [verify] (6 renamed, 6 added); 0 removed. No extra needed.
+_BASE_EXECUTED = 13870
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
