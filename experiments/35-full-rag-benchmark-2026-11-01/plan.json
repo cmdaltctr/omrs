@@ -101,12 +101,31 @@
       },
       "retrieval": {
         "similarity_threshold": 0.0,
-        "hybrid_rrf_k": null
+        "hybrid_rrf_k": 60
       }
     },
     "recorded": {
       "reranker_instruction": "Given a web search query, retrieve relevant passages that answer the query",
-      "hybrid": null
+      "hybrid": {
+        "bm25_backend": "rank_bm25",
+        "rank_bm25_version": "0.2.2",
+        "install": "uv sync --extra hybrid",
+        "per_side_depth": 100,
+        "fused_cut": 100,
+        "tokeniser": "tokenize_english",
+        "k1": 1.5,
+        "b": 0.75,
+        "epsilon": 0.25,
+        "decided": "2026-11-24 by the owner: rank_bm25 reference implementation; RRF k 60 (Cormack et al. 2009, OMRS default)"
+      },
+      "classifier_examples": {
+        "file": "classify-examples.json",
+        "sha256": "98b8ff421e4d83b896ae402442fb4800a137be1001e54188541c3347d6909deb",
+        "count": 7,
+        "question_text": "full",
+        "datasets": "FreshStack only (draft D-A option 1)",
+        "decided": "2026-11-24 by the owner"
+      }
     },
     "ragas_judge": {
       "host": "deepinfra/bf16",
@@ -226,14 +245,10 @@
       "closedbook_own": "ea34b81838b4b133ee672dcd98a25fdbd73e78e3ed77c6d0c54497922990e409",
       "closedbook_rag": "91b68d3515819f5e736b8aa14435246fc4cd2291764f0e2296a361970db8ce8e",
       "oracle": "91b68d3515819f5e736b8aa14435246fc4cd2291764f0e2296a361970db8ce8e",
-      "classifier": null,
+      "classifier": "223fb2a80c85a33bea9a075f232e1c061fa648a6b1f43864f5666b530b033627",
       "ragas_adapter": "5ef00cec2d96d440c827d2d03027b983fd1dbf4eb908212a89e1346821e06386"
     },
-    "pending": [
-      {"key": "pins.settings.retrieval.hybrid_rrf_k", "task": "P11"},
-      {"key": "pins.recorded.hybrid", "task": "P11"},
-      {"key": "pins.prompts.classifier", "task": "P13"}
-    ]
+    "pending": []
   },
   "baseline":"none: full factorial of embedder x chunk size x reranker x hybrid (72 search setups per dataset); e4b-c1024-roff-hoff is the reference cell of the G2 rebuild check only",
   "candidate": "72 search setups e<0.6b|4b|8b>-c<512|1024|2048>-r<off|0.6b|4b|8b>-h<off|on>; 15 answer setups (12 crossed plus token-matched c512-t20k, c1024-t20k and c2048-t20k; the third added by A3), chosen on half A, at the embedder and reranker sizes chosen by the pre-registered selection rule (pooled over the three core datasets, amendment A3); index cost and configuration hash as defined in preregistration.md section 14.1",

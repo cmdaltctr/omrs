@@ -104,7 +104,7 @@ def test_dry_run_prints_every_step_and_calls_no_network_tool(tmp_path: Path) -> 
     result = _run(tmp_path, "--dry-run")
     output = result.stdout + result.stderr
     assert _calls(tmp_path) == ""
-    assert "uv sync --frozen --extra web --extra llamacpp" in output
+    assert "uv sync --frozen --extra web --extra llamacpp --extra hybrid" in output
     assert "omrs llamacpp install --flavour cuda" in output
     for model in MODELS:
         url = re.escape(f"https://huggingface.co/{model['repository']}/resolve/")
@@ -176,7 +176,7 @@ def test_a_gguf_file_with_another_sha256_stops_the_real_run(tmp_path: Path) -> N
     assert first["sha256"] in result.stderr and _sha(WRONG) in result.stderr
     assert all((gguf / m["file"]).read_bytes() == WRONG for m in MODELS)
     calls = _calls(tmp_path)
-    assert "uv sync --frozen --extra web --extra llamacpp" in calls
+    assert "uv sync --frozen --extra web --extra llamacpp --extra hybrid" in calls
     assert "llamacpp install --flavour cuda" in calls
     assert not any(word in calls for word in ("curl", "wget", " pip ", " venv ", " export "))
 
@@ -209,15 +209,15 @@ def _gpu_ok(listing: str, cuda: str) -> bool:
     ("listing", "cuda", "accepted"),
     [
         ("NVIDIA GeForce RTX 4090, 24564 MiB", "13.2", True),
-        ("NVIDIA GeForce RTX 4090, 24564 MiB", "12.8", True),
-        ("NVIDIA GeForce RTX 4090, 24564 MiB", "12.4", False),
+        ("NVIDIA GeForce RTX 4090, 24564 MiB", "13.0", True),
+        ("NVIDIA GeForce RTX 4090, 24564 MiB", "12.8", False),
         ("NVIDIA GeForce RTX 4090, 24564 MiB", "", False),
         ("NVIDIA RTX A6000, 49140 MiB", "13.2", False),
         ("NVIDIA GeForce RTX 4090, 24564 MiB\nNVIDIA GeForce RTX 4090, 24564 MiB", "13.2", False),
         ("", "13.2", False),
     ],
 )
-def test_the_gpu_check_wants_one_rtx_4090_on_cuda_12_8_or_newer(
+def test_the_gpu_check_wants_one_rtx_4090_on_cuda_13_0_or_newer(
     listing: str, cuda: str, accepted: bool
 ) -> None:
     assert _gpu_ok(listing, cuda) is accepted

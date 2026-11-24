@@ -26,9 +26,9 @@ Prepares one RunPod RTX 4090 pod (Linux x86-64) for Experiment 35. Steps, in ord
   0. Check the inputs folder: exp35-inputs.tgz and its .sha256 file, copied from
      the Mac with scp (never through git: the repository is public).
   1. Check that `git rev-parse HEAD` equals --commit.
-  2. Check that nvidia-smi lists exactly one RTX 4090 and host CUDA 12.8 or newer.
+  2. Check that nvidia-smi lists exactly one RTX 4090 and host CUDA 13.0 or newer.
   3. Install uv (pinned version) if it is missing; uv sync --frozen --extra web
-     --extra llamacpp; check that plan.json names the llama.cpp build OMRS installs.
+     --extra llamacpp --extra hybrid; check that plan.json names the llama.cpp build OMRS installs.
   4. omrs llamacpp install --flavour cuda (the pinned CUDA build).
   5. Fetch each plan.json runtime model at its pinned revision into SWEEP_GGUF_DIR,
      then each reranker candidate of prefreeze/rerank_candidates.json at its
@@ -88,9 +88,9 @@ run() {
 gpu_is_single_4090() {
   [ "$(printf '%s\n' "$1" | grep -c .)" -eq 1 ] && printf '%s\n' "$1" | grep -q 'RTX 4090'
 }
-# Succeeds when the host CUDA version ($1, from the nvidia-smi header) is 12.8 or newer.
+# Succeeds when the host CUDA version ($1, from the nvidia-smi header) is 13.0 or newer.
 cuda_at_least() {
-  [ -n "$1" ] && printf '12.8\n%s\n' "$1" | sort -V -C
+  [ -n "$1" ] && printf '13.0\n%s\n' "$1" | sort -V -C
 }
 
 # --- Python helper: plan.json, hashes and downloads (huggingface_hub after uv sync) ---
@@ -278,12 +278,12 @@ say "  HEAD $HEAD_SHA, expected $COMMIT"
 step 2 "check the GPU and the host CUDA version"
 if [ "$DRY_RUN" -eq 1 ]; then
   say "  [dry-run] would run: nvidia-smi --query-gpu=name,memory.total --format=csv,noheader"
-  say "  [dry-run] would read the CUDA version from the nvidia-smi header (12.8 or newer)"
+  say "  [dry-run] would read the CUDA version from the nvidia-smi header (13.0 or newer)"
 else
   GPUS="$(nvidia-smi --query-gpu=name,memory.total --format=csv,noheader)" || die "nvidia-smi failed."
   CUDA="$(nvidia-smi 2>/dev/null | sed -n 's/.*CUDA Version: *\([0-9][0-9.]*\).*/\1/p' | head -n 1 || true)"
   gpu_is_single_4090 "$GPUS" || die "nvidia-smi lists: $GPUS. Experiment 35 runs on exactly one RTX 4090. Delete this pod."
-  cuda_at_least "$CUDA" || die "host CUDA is ${CUDA:-unknown}; the pinned llama.cpp CUDA build needs 12.8 or newer. Delete this pod."
+  cuda_at_least "$CUDA" || die "host CUDA is ${CUDA:-unknown}; the pinned llama.cpp CUDA build needs 13.0 or newer. Delete this pod."
   say "  GPU $GPUS, host CUDA $CUDA"
 fi
 
@@ -294,7 +294,7 @@ if ! command -v uv >/dev/null 2>&1; then
   export PATH="$HOME/.local/bin:$PATH"
 fi
 [ "$DRY_RUN" -eq 1 ] || say "  $(uv --version)"
-run uv sync --frozen --extra web --extra llamacpp || die "uv sync failed (message above)."
+run uv sync --frozen --extra web --extra llamacpp --extra hybrid || die "uv sync failed (message above)."
 pick_python
 if [ "$DRY_RUN" -eq 1 ] && ! "$PY" -c 'import omrs' 2>/dev/null; then
   say "  [dry-run] would check the plan.json llama.cpp build against OMRS after uv sync"

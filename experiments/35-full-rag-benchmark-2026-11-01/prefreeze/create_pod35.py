@@ -7,7 +7,7 @@ Run it on the Mac from the experiment folder:
 
 The request comes from ``plan.json``: the pod image is ``pins.environment.image``
 (pinned by digest), and the same value goes into ``EXP35_POD_IMAGE``. The pod is
-one RTX 4090 on secure cloud, host CUDA 12.8 or newer, SSH on port 22, and a
+one RTX 4090 on secure cloud, host CUDA 13.0 or newer, SSH on port 22, and a
 persistent 40 GB volume at ``/workspace`` so the outputs survive a stop (G10).
 The keys are RunPod secret references; RunPod fills them in at create time, so
 no key value is ever in the request or the output.
@@ -30,7 +30,7 @@ from typing import Any
 
 PLAN = Path(__file__).resolve().parent.parent / "plan.json"
 NAME = "omrs-exp35-test-session"
-GPU = {"id": "NVIDIA GeForce RTX 4090", "count": 1, "minCudaVersion": "12.8"}
+GPU = {"id": "NVIDIA GeForce RTX 4090", "count": 1, "minCudaVersion": "13.0"}
 CLOUD = "SECURE"
 #: Container disk: GGUF files, reference weights, venvs and caches. Lost on a stop.
 CONTAINER_DISK_GB = 120
@@ -142,7 +142,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     print(json.dumps(request, indent=2))
     print(
         f"create_pod35: dry run, no RunPod call. Image and {IMAGE_VARIABLE}: "
-        f"{request['image']}. One RTX 4090, host CUDA 12.8 or newer, {CLOUD} cloud, "
+        f"{request['image']}. One RTX 4090, host CUDA 13.0 or newer, {CLOUD} cloud, "
         f"{CONTAINER_DISK_GB} GB container disk, {VOLUME_GB} GB volume at {VOLUME_PATH}.",
         file=sys.stderr,
     )

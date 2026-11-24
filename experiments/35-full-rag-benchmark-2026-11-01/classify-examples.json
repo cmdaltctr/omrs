@@ -1,0 +1,44 @@
+[
+  {
+    "qid": "78048414",
+    "question": "How to get Retrieval QA to return the exact document that contains the answer from the retrieved top k document?\n\nI'm creating a QA bot with RAG and aiming to provide the specific documents from which the answers are extracted.\nRetrieval QA uses k documents which are semantically similar to query to generate the answer. The answer need not be in all the k documents, how can we know which documents out of the k documents the answer is extracted from?\nHow can we know which of those source documents that LLM extracted the answer from?\n",
+    "claim": "In `RetrievalQAChain`, `_call` retrieves documents via `getRelevantDocuments`, passes them as `input_documents` to `combineDocumentsChain`, and has a `returnSourceDocuments` flag for returning retrieved sources.",
+    "kind": "factual"
+  },
+  {
+    "qid": "78048414",
+    "question": "How to get Retrieval QA to return the exact document that contains the answer from the retrieved top k document?\n\nI'm creating a QA bot with RAG and aiming to provide the specific documents from which the answers are extracted.\nRetrieval QA uses k documents which are semantically similar to query to generate the answer. The answer need not be in all the k documents, how can we know which documents out of the k documents the answer is extracted from?\nHow can we know which of those source documents that LLM extracted the answer from?\n",
+    "claim": "Thus, plain `RetrievalQA` examples do not provide automatic exact-document return; use a source-aware QA chain or custom response component/prompt with labeled retrieved chunks and map the model’s cited IDs back to documents.",
+    "kind": "factual"
+  },
+  {
+    "qid": "77828572",
+    "question": "What is sent to the llm when using a chat model?\n\nI am confused by how multiple messages are combined and sent to a large language model such as ChatOpenAI.\nfrom langchain_core.prompts import ChatPromptTemplate\n\ntemplate = ChatPromptTemplate.from_messages([\n    (\"system\", \"You are a helpful AI bot. Your name is {name}.\"),\n    (\"human\", \"Hello, how are you doing?\"),\n    (\"ai\", \"I'm doing well, thanks!\"),\n    (\"human\", \"{user_input}\"),\n])\n\nmessages = template.format_messages(\n    name=\"Bob\",\n    user_input=\"What is your name?\"\n)\n\nmessages\n\n[SystemMessage(content='You are a helpful AI bot. Your name is Bob.'),\n HumanMessage(content='Hello, how are you doing?'),\n AIMessage(content=\"I'm doing well, thanks!\"),\n HumanMessage(content='What is your name?')]\n\nIs it generating text that looks like this:\nSystem:\nHuman:\nAssistant:\nHuman:\n...\n\nHow can I print the final text sent to the llm?\n",
+    "claim": "The exact `ChatOpenAI` request payload is not described in the provided sources.",
+    "kind": "refusal"
+  },
+  {
+    "qid": "77828572",
+    "question": "What is sent to the llm when using a chat model?\n\nI am confused by how multiple messages are combined and sent to a large language model such as ChatOpenAI.\nfrom langchain_core.prompts import ChatPromptTemplate\n\ntemplate = ChatPromptTemplate.from_messages([\n    (\"system\", \"You are a helpful AI bot. Your name is {name}.\"),\n    (\"human\", \"Hello, how are you doing?\"),\n    (\"ai\", \"I'm doing well, thanks!\"),\n    (\"human\", \"{user_input}\"),\n])\n\nmessages = template.format_messages(\n    name=\"Bob\",\n    user_input=\"What is your name?\"\n)\n\nmessages\n\n[SystemMessage(content='You are a helpful AI bot. Your name is Bob.'),\n HumanMessage(content='Hello, how are you doing?'),\n AIMessage(content=\"I'm doing well, thanks!\"),\n HumanMessage(content='What is your name?')]\n\nIs it generating text that looks like this:\nSystem:\nHuman:\nAssistant:\nHuman:\n...\n\nHow can I print the final text sent to the llm?\n",
+    "claim": "The provided sources do not show a universal method for printing the final `ChatOpenAI` payload.",
+    "kind": "refusal"
+  },
+  {
+    "qid": "77828572",
+    "question": "What is sent to the llm when using a chat model?\n\nI am confused by how multiple messages are combined and sent to a large language model such as ChatOpenAI.\nfrom langchain_core.prompts import ChatPromptTemplate\n\ntemplate = ChatPromptTemplate.from_messages([\n    (\"system\", \"You are a helpful AI bot. Your name is {name}.\"),\n    (\"human\", \"Hello, how are you doing?\"),\n    (\"ai\", \"I'm doing well, thanks!\"),\n    (\"human\", \"{user_input}\"),\n])\n\nmessages = template.format_messages(\n    name=\"Bob\",\n    user_input=\"What is your name?\"\n)\n\nmessages\n\n[SystemMessage(content='You are a helpful AI bot. Your name is Bob.'),\n HumanMessage(content='Hello, how are you doing?'),\n AIMessage(content=\"I'm doing well, thanks!\"),\n HumanMessage(content='What is your name?')]\n\nIs it generating text that looks like this:\nSystem:\nHuman:\nAssistant:\nHuman:\n...\n\nHow can I print the final text sent to the llm?\n",
+    "claim": "For the exact provider HTTP/JSON payload, use LangChain debugging/tracing or provider/client-level logging; the provided source does not cover a dedicated way to print that exact payload.",
+    "kind": "mixed"
+  },
+  {
+    "qid": "78048414",
+    "question": "How to get Retrieval QA to return the exact document that contains the answer from the retrieved top k document?\n\nI'm creating a QA bot with RAG and aiming to provide the specific documents from which the answers are extracted.\nRetrieval QA uses k documents which are semantically similar to query to generate the answer. The answer need not be in all the k documents, how can we know which documents out of the k documents the answer is extracted from?\nHow can we know which of those source documents that LLM extracted the answer from?\n",
+    "claim": "The provided sources do not describe a deterministic way to prove exactly which of the k documents the answer was extracted from; without model citations or an added verification step, top-k retrieval alone cannot identify that single document.",
+    "kind": "mixed"
+  },
+  {
+    "qid": "77828572",
+    "question": "What is sent to the llm when using a chat model?\n\nI am confused by how multiple messages are combined and sent to a large language model such as ChatOpenAI.\nfrom langchain_core.prompts import ChatPromptTemplate\n\ntemplate = ChatPromptTemplate.from_messages([\n    (\"system\", \"You are a helpful AI bot. Your name is {name}.\"),\n    (\"human\", \"Hello, how are you doing?\"),\n    (\"ai\", \"I'm doing well, thanks!\"),\n    (\"human\", \"{user_input}\"),\n])\n\nmessages = template.format_messages(\n    name=\"Bob\",\n    user_input=\"What is your name?\"\n)\n\nmessages\n\n[SystemMessage(content='You are a helpful AI bot. Your name is Bob.'),\n HumanMessage(content='Hello, how are you doing?'),\n AIMessage(content=\"I'm doing well, thanks!\"),\n HumanMessage(content='What is your name?')]\n\nIs it generating text that looks like this:\nSystem:\nHuman:\nAssistant:\nHuman:\n...\n\nHow can I print the final text sent to the llm?\n",
+    "claim": "The cited sources show how to inspect formatted messages, but not how to print the final provider-specific serialized request.",
+    "kind": "mixed"
+  }
+]

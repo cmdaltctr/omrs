@@ -43,7 +43,7 @@ def test_the_request_asks_for_one_rtx_4090_only_on_secure_cloud_with_a_volume(
     code, out, _ = _dry_run(capsys)
     request = json.loads(out)
     assert code == 0
-    assert request["gpu"] == {"id": "NVIDIA GeForce RTX 4090", "count": 1, "minCudaVersion": "12.8"}
+    assert request["gpu"] == {"id": "NVIDIA GeForce RTX 4090", "count": 1, "minCudaVersion": "13.0"}
     assert request["cloud"] == "SECURE"
     assert request["mounts"] == {"persistent": {"size": 40, "path": "/workspace"}}
     assert request["ports"] == ["22/tcp"]
