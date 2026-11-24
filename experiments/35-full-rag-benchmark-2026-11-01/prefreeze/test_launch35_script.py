@@ -12,6 +12,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from _timeout_shim import add_timeout_if_missing
 
 HERE = Path(__file__).parent
 LAUNCH = HERE / "launch35.sh"
@@ -33,6 +34,7 @@ STAGE = (
 def _launch(tmp_path: Path, environ: dict[str, str]) -> subprocess.CompletedProcess[str]:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
+    add_timeout_if_missing(bin_dir)
     for name in ("runpodctl", "curl"):
         stub = bin_dir / name
         stub.write_text(f'#!/usr/bin/env bash\necho "$*" >> "{tmp_path}/{name}.log"\n')

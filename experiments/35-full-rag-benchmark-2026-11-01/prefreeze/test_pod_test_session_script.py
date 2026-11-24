@@ -13,6 +13,7 @@ import time
 from pathlib import Path
 
 import pytest
+from _timeout_shim import add_timeout_if_missing
 
 HERE = Path(__file__).parent
 PATH_SCRIPT = HERE / "pod_test_session.sh"
@@ -74,6 +75,7 @@ def _run(
     bin_dir.mkdir()
     for name, body in (("runpodctl", _RUNPODCTL), ("curl", _CURL), ("run_arms.py", _RUNNER)):
         _stub(bin_dir, name, body, tmp_path)
+    add_timeout_if_missing(bin_dir)
     if stub_sleep:
         _stub(bin_dir, "sleep", _SLEEP, tmp_path)
     stage_file = tmp_path / "stages.txt"
