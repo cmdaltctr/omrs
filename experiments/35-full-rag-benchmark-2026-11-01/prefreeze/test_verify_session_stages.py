@@ -52,7 +52,10 @@ def test_verify_runs_the_sections_cheapest_first_after_the_test_session_setup() 
 
 def test_verify_values_are_the_test_session_questions_with_both_overflow_queries() -> None:
     values = _read(VERIFY_FILE)[1]
-    assert values == {"FS_QIDS": _read()[1]["FS_QIDS"]}
+    test_values = _read()[1]
+    # The verify pod uses the same model folder as the test session: without it every
+    # run_arms stage stops at once (2026-11-24 verify pod: "SWEEP_GGUF_DIR is not set").
+    assert values == {k: test_values[k] for k in ("FS_QIDS", "SWEEP_GGUF_DIR")}
     assert {"76293427", "77759618"} <= set(values["FS_QIDS"].split(","))
 
 

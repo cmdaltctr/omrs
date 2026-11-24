@@ -14,8 +14,10 @@
 # feed the budget. Expected minutes are in the block comments; about 140 min in total
 # (2.3 h). Pass marks are in the runbook.
 
-# Values: exported, literally, to every later stage. The test session's questions.
+# Values: exported, literally, to every later stage. The test session's questions and
+# model folder (setup fetches the GGUF files there; run_arms refuses to start without it).
 FS_QIDS=77557699,78213463,76769872,78165764,77057028,75979420,76473726,76404464,76244938,78552532,76293427,77645110,78216871,76447153,78549270,76813867,78017053,78357062,77164318,77507520,78366661,77533040,76313568,77004853,78153954,78005051,77759618,76669635,77407632,77345121,78429932,77683730,77998898,76292501,76364591,76997109,76407803,77921898,77536364,77762811
+SWEEP_GGUF_DIR=/root/gguf
 
 # Setup stops the chain on failure (G5). The test session's line. About 23 min.
 !setup@60m bash prefreeze/pod_setup35.sh --commit "$COMMIT" --inputs /workspace/inputs --passages-dir /workspace/passages --ragas-venv /workspace/ragas-venv --ref-venv /root/exp35-ref-venv
