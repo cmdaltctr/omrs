@@ -77,6 +77,10 @@ METRICS = (
 REFERENCE_METRICS = frozenset(
     {"ragas_context_precision", "ragas_context_recall", "ragas_answer_correctness"}
 )
+CONTEXT_METRICS = frozenset(
+    {"ragas_faithfulness", "ragas_context_precision", "ragas_context_recall"}
+)
+"""Metrics that read the passages; undefined for closed-book answers, which have none."""
 EMBED_ROLE = "embedding-baseline-4b"
 EXIT_RATE_LIMIT = 5
 """A rate-limit stop: nothing more was sent; ``--resume`` goes on."""
@@ -84,7 +88,9 @@ EXIT_OPEN = 6
 """A metric failed and is still open; run the stage again with ``--resume``."""
 NO_ANSWER = "no answer text"
 NO_REFERENCE = "no reference answer"
+NO_PASSAGES = "no passages"
 __all__ = [
+    "CONTEXT_METRICS",
     "EXIT_OPEN",
     "EXIT_RATE_LIMIT",
     "METRICS",
@@ -182,6 +188,9 @@ async def _judge(
             continue
         if name in REFERENCE_METRICS and not sample["reference"]:
             records[name] = {"score": None, "not_judged": NO_REFERENCE, "calls": 0}
+            continue
+        if name in CONTEXT_METRICS and not sample["contexts"]:
+            records[name] = {"score": None, "not_judged": NO_PASSAGES, "calls": 0}
             continue
         seam.metric, first, started = name, len(seam.calls), clock()
         try:

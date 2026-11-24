@@ -154,7 +154,9 @@ def _todo(run_dir: Path, saved: set[str]) -> list[dict[str, Any]]:
     """Return the claims of a run still to classify, aligned against every judge row."""
     answers = read_rows(run_dir / "answer.jsonl")
     judges = {
-        p.name: {r["qid"]: r for r in read_rows(p)} for p in sorted(run_dir.glob("judge-*.jsonl"))
+        p.name: {r["qid"]: r for r in read_rows(p)}
+        for p in sorted(run_dir.glob("judge-*.jsonl"))
+        if p.name.count(".") == 1  # not the judge's .claims and .dispatch side files
     }
     base = f"{run_dir.parent.parent.name}/{run_dir.parent.name}/{run_dir.name}"
     todo: list[dict[str, Any]] = []
