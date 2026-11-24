@@ -127,13 +127,16 @@ caffeinate -i uv run --no-sync python prefreeze/mac_watch35.py --pod-id <id> \
 
 ### Stages, times and pass marks
 
-The sections run in the order 1, 3, 4, 2: the cheapest and the budget-critical checks first. Times are expected minutes on one RTX 4090.
+The sections run in the order 1, 3, 3b, 4, 2: the cheapest and the budget-critical checks first. Times are expected minutes on one RTX 4090. Section 3b repeats the G2 rebuild check on the final code, because the store fix (bcd11389) changed how chunks are written after the last G2 pass (owner decision, 2026-11-24). Its times come from the same stages in the 2026-11-24 test session.
 
 | Stage | Section | Timeout | Expected | Pass mark |
 | --- | --- | ---: | ---: | --- |
 | `setup` | Setup (as the test session) | 60 min | 23 min | `ok`. A failure stops the chain. |
 | `ocr-walmart-20x` | 1. OCR fix (0bebdb1d) | 105 min | 25 min | `20/20 passes`: 29 pages each, each pass under 300 s. |
 | `fs-rate-1200` | 3. Store speed (bcd11389) | 60 min | 25 min | `ok`. The six `[rate] files` lines stay flat in s/file. |
+| `s-fs-c1024` | 3b. G2 rebuild check: shared index | 25 min | 10 min | `ok`. About 675 files, so compaction runs about ten times. |
+| `g2-fs-build` | 3b. G2 rebuild check: rebuild | 25 min | 10 min | `ok`. |
+| `g2-fs-check` | 3b. G2 rebuild check: compare | 15 min | 2 min | `ok`: `[rebuild] freshstack: 40 questions match`. `s/freshstack/rebuild.json` reports `"ok": true`, with no mismatches and no incomplete questions. A difference exits 3 and fails the stage. |
 | `fb-unpack` | 4. Answers copy | 10 min | 1 min | `ok` (87 files). |
 | `ragas-closedbook-fb` | 4. Closed-book Ragas (b98f536f) | 20 min | 5 min | `ok`, with no exit 6. |
 | `kinds-fb-c512` | 4. Claim kinds (b98f536f) | 15 min | 4 min | `ok`. |
@@ -143,8 +146,8 @@ The sections run in the order 1, 3, 4, 2: the cheapest and the budget-critical c
 | `fs-c2048-r4b` | 2. | 30 min | 8 min | `ok`, as above. |
 | `fs-c2048-r8b` | 2. | 30 min | 14 min | `ok`, as above. |
 
-- Expected total: about 118 min of stages, plus about 10 min for the pod start, the copy, the pull and the stop. That is about 2.2 h, or about $1.96 at $0.89/h.
-- Upper bound: the stage timeouts add up to 425 min (7.1 h). With the start and the pull, that is about 7.3 h, or about $6.50.
+- Expected total: about 140 min of stages, plus about 10 min for the pod start, the copy, the pull and the stop. That is about 2.5 h, or about $2.23 at $0.89/h.
+- Upper bound: the stage timeouts add up to 490 min (8.2 h). With the start and the pull, that is about 8.4 h, or about $7.50.
 - Hosted calls (Ragas on 20 questions, claim kinds on 20 answers) add a few cents of OpenRouter spend.
-- Pass mark of the whole check (2026-11-24 notes): every stage `ok`, and the per-file store time flat.
+- Pass mark of the whole check (2026-11-24 notes): every stage `ok`, the per-file store time flat, and `s/freshstack/rebuild.json` reports identical ranked results (`"ok": true`).
 - Store speed for the budget: the `[rate] files` lines give seconds per file for each block of 200 files. Block 1 includes the engine start. The old rate was about 2 s per file at 3,300 files.

@@ -3,8 +3,8 @@
 pod_test_session.sh runs the file unchanged; launch35.sh reads it from STAGES_FILE.
 test_session_stages.py runs the general checks on it (parsing, scripts and their
 options, no key, a timeout on every stage). These tests check what the fix check
-needs: sections 1, 3, 4 and 2 in that order, the test session setup, and no checkout
-of another commit.
+needs: sections 1, 3, 3b (the G2 rebuild check), 4 and 2 in that order, the test
+session setup, and no checkout of another commit.
 """
 
 from __future__ import annotations
@@ -20,11 +20,14 @@ from test_session_stages import (
     _script,
 )
 
-# Sections 1, 3, 4 and 2 in that order.
+# Section 3b: the G2 rebuild check on the final code (owner decision, 2026-11-24).
+G2_STAGES = ["s-fs-c1024", "g2-fs-build", "g2-fs-check"]
+# Sections 1, 3, 3b, 4 and 2 in that order.
 VERIFY_ORDER = [
     "setup",
     "ocr-walmart-20x",
     "fs-rate-1200",
+    *G2_STAGES,
     "fb-unpack",
     "ragas-closedbook-fb",
     "kinds-fb-c512",
@@ -71,6 +74,53 @@ def test_verify_rate_times_1200_fresh_freshstack_files_in_200_file_blocks() -> N
     assert found == ("freshstack", "e4b-c1024", "ingest", 1200, None, None)
     assert (_folder(args.out_dir), args.index_from) == ("fsrate", None)
     assert call.stage.command.count("run_arms.py ") == 1  # the chain may add --resume
+
+
+def test_verify_rebuilds_the_c1024_freshstack_index_and_compares_both_after_the_rate() -> None:
+    names = [s.name for s in _read(VERIFY_FILE)[0]]
+    at = names.index("fs-rate-1200")
+    assert names[at : at + 5] == ["fs-rate-1200", *G2_STAGES, "fb-unpack"]
+    stages = {s.name: s for s in _read(VERIFY_FILE)[0]}
+    assert [(stages[n].fatal, bool(stages[n].timeout)) for n in G2_STAGES] == [(False, True)] * 3
+    qids = _read(VERIFY_FILE)[1]["FS_QIDS"].split(",")
+    runs = [(c, a) for c, a in _runs(VERIFY_FILE) if c.stage.name in G2_STAGES]
+    for _, a in runs:
+        found = (a.dataset, a.qids, str(a.passages_dir))
+        assert found == ("freshstack", qids, "/workspace/passages")
+        # Gold files plus 300 others (675 files on 2026-11-24): compaction runs every 64 files.
+        assert a.corpus_sample >= 300 and a.limit is None
+    built = [(c.stage.name, a.index, a.stage, _folder(a.out_dir)) for c, a in runs if not a.setup]
+    assert built == [
+        ("s-fs-c1024", "e4b-c1024", "ingest", "s"),
+        ("s-fs-c1024", "e4b-c1024", "seal", "s"),
+        ("g2-fs-build", "e4b-c1024", "ingest", "rb"),
+        ("g2-fs-build", "e4b-c1024", "seal", "rb"),
+    ]
+    searched = [
+        (c.stage.name, a.setup, a.stage, _folder(a.index_from), _folder(a.out_dir))
+        for c, a in runs
+        if a.setup
+    ]
+    assert searched == [
+        ("g2-fs-check", "e4b-c1024-roff-hoff", "search", "s", "chk"),
+        ("g2-fs-check", "e4b-c1024-roff-hoff", "search", "rb", "rbs"),
+    ]
+    check = [c for c in _calls(VERIFY_FILE) if c.stage.name == "g2-fs-check"]
+    assert [c.runner for c in check] == [True, True, False]
+    script, _, words = _script(check[2])
+    assert script == "rebuild35.py"
+    path = "freshstack/search/e4b-c1024-roff-hoff/run1/search.jsonl"
+    assert _opts(words) == {
+        "--a": f"{OUT}/chk/{path}",
+        "--b": f"{OUT}/rbs/{path}",
+        "--out-dir": f"{OUT}/s",
+        "--dataset": "freshstack",
+    }
+    # Only && joins the calls, so a mismatch (rebuild35.py exit 3) fails the stage.
+    for name, joins in zip(G2_STAGES, (1, 1, 2), strict=True):
+        command = stages[name].command
+        assert command.count(" && ") == joins, name
+        assert not any(sep in command for sep in (";", "||", " & ", "|")), name
 
 
 def test_verify_reranker_stages_search_the_fresh_c2048_index_with_each_reranker() -> None:

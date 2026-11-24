@@ -443,7 +443,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # 6b6e8ede): new files test_verify35.py (6), test_verify_session_stages.py (6) and
 # test_mac_watch35_verify.py (5); 6 test_session_stages.py cases now run as [test] and
 # [verify] (6 renamed, 6 added); 0 removed. No extra needed.
-_BASE_EXECUTED = 13870
+# +1 (2026-11-24, G2 rebuild check in the fix check session, by test-ID diff against HEAD
+# 17e9988f): test_verify_rebuilds_the_c1024_freshstack_index_and_compares_both_after_the_rate
+# added; 0 removed or renamed. No extra needed.
+_BASE_EXECUTED = 13871
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

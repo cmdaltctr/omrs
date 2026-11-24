@@ -9,9 +9,10 @@
 # classifier examples), plus --extra-input fb-answers.tgz: the FinanceBench answers of
 # the 2026-11-24 session, cut from its test-session-out.tgz (runbook).
 #
-# Order: sections 1, 3, 4, 2 of verify-fixes.sh, cheapest and budget-critical first.
-# Section 3's lines (one per 200 files) feed the budget. Expected minutes are in the
-# block comments; about 118 min in total (2 h). Pass marks are in the runbook.
+# Order: sections 1, 3, 4, 2 of verify-fixes.sh, cheapest and budget-critical first,
+# with the G2 rebuild check (3b) after section 3. Section 3's lines (one per 200 files)
+# feed the budget. Expected minutes are in the block comments; about 140 min in total
+# (2.3 h). Pass marks are in the runbook.
 
 # Values: exported, literally, to every later stage. The test session's questions.
 FS_QIDS=77557699,78213463,76769872,78165764,77057028,75979420,76473726,76404464,76244938,78552532,76293427,77645110,78216871,76447153,78549270,76813867,78017053,78357062,77164318,77507520,78366661,77533040,76313568,77004853,78153954,78005051,77759618,76669635,77407632,77345121,78429932,77683730,77998898,76292501,76364591,76997109,76407803,77921898,77536364,77762811
@@ -27,6 +28,16 @@ ocr-walmart-20x@105m uv run --no-sync python prefreeze/verify35.py ocr --pdf /ro
 # index, one line per 200 files. The old rate was about 2 s per file at 3,300 files.
 # About 25 min.
 fs-rate-1200@60m uv run --no-sync python prefreeze/verify35.py rate --block 200 -- uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c1024 --stage ingest --corpus-sample 1200 --passages-dir /workspace/passages --out-dir "$OUT_DIR/fsrate" --prefreeze --local-dir /root/exp35-local
+
+# 3b. G2 rebuild check on the final code (owner decision, 2026-11-24): the store fix
+# changed how chunks are written after the last G2 pass. The test session's FreshStack
+# lines: build and seal e4b-c1024 in s, rebuild it in rb, search both with --index-from,
+# compare into s/freshstack/rebuild.json. About 675 files per build, so compaction (every
+# 64 files) runs about ten times. A mismatch exits 3 and fails the stage. About 22 min:
+# builds 10 and 10, check 2.
+s-fs-c1024@25m uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c1024 --stage ingest --qids $FS_QIDS --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c1024 --stage seal --qids $FS_QIDS --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local
+g2-fs-build@25m uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c1024 --stage ingest --qids $FS_QIDS --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/rb" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c1024 --stage seal --qids $FS_QIDS --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/rb" --prefreeze --local-dir /root/exp35-local
+g2-fs-check@15m uv run --no-sync python run_arms.py --dataset freshstack --setup e4b-c1024-roff-hoff --stage search --qids $FS_QIDS --corpus-sample 300 --passages-dir /workspace/passages --index-from "$OUT_DIR/s" --out-dir "$OUT_DIR/chk" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python run_arms.py --dataset freshstack --setup e4b-c1024-roff-hoff --stage search --qids $FS_QIDS --corpus-sample 300 --passages-dir /workspace/passages --index-from "$OUT_DIR/rb" --out-dir "$OUT_DIR/rbs" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python rebuild35.py --a "$OUT_DIR/chk/freshstack/search/e4b-c1024-roff-hoff/run1/search.jsonl" --b "$OUT_DIR/rbs/freshstack/search/e4b-c1024-roff-hoff/run1/search.jsonl" --out-dir "$OUT_DIR/s" --dataset freshstack
 
 # 4. Closed-book Ragas and claim-kinds fixes (b98f536f), on a copy of the FinanceBench
 # answers without their Ragas and claim-kind results. Skipped (exit 77) when

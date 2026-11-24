@@ -31,7 +31,7 @@ EXP35 = HERE.parent
 STAGES_FILE = HERE / "test_session_stages.txt"
 VERIFY_FILE = HERE / "verify_session_stages.txt"
 #: Each stages file with the fewest runner calls it must hold.
-FILES = {STAGES_FILE: 101, VERIFY_FILE: 8}
+FILES = {STAGES_FILE: 101, VERIFY_FILE: 14}
 BOTH = pytest.mark.parametrize("path", list(FILES), ids=["test", "verify"])
 OUT = "/workspace/exp35-test/out"
 #: What the chain and launch35.sh give every stage.
