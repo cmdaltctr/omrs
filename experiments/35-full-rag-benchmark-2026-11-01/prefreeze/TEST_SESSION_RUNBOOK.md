@@ -95,13 +95,13 @@ The fix check session checks the four fixes of 2026-11-24 on a short second pod.
 ### Before the go
 
 1. Do steps 1 to 3 of "Before the go" above.
-2. Cut the FinanceBench answers (about 1 MB) out of the session tarball:
+2. Cut the FinanceBench answers and the seal record (about 1 MB) out of the session tarball:
 
    ```bash
    cd ~/Development/DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/test-session-2026-11-24
    tar -czf "$TMPDIR/fb-answers.tgz" --include 'out/s/financebench/answer' \
      --include 'out/s/financebench/closedbook-rag' --include 'out/s/financebench/rebuild.json' \
-     @test-session-out.tgz
+     --include 'out/s/environment.json' @test-session-out.tgz
    ```
 
 3. Run the dry run with the two extra options:

@@ -142,3 +142,15 @@ def test_unpack_skips_without_its_tarball_and_fails_on_a_tarball_without_answers
     _tarball(other, ELSEWHERE[2:])
     assert verify35.main([*argv, str(other)]) == 1
     assert not (out / "financebench").exists()
+
+
+def test_unpack_also_copies_the_seal_environment_the_answer_stages_read(tmp_path: Path) -> None:
+    # 2026-11-24 verify pod: ragas-closedbook-fb and kinds-fb-c512 stopped with
+    # "out/fb/environment.json is missing" because unpack copied only the answers.
+    tgz = tmp_path / "fb-answers.tgz"
+    _tarball(tgz, [f"out/s/financebench/{n}" for n in KEEP] + ["out/s/environment.json"])
+    out = tmp_path / "fb"
+    argv = ["unpack", "--tarball", str(tgz), "--dataset", "financebench", "--out", str(out)]
+    assert verify35.main(argv) == 0
+    text = (out / "environment.json").read_text(encoding="utf-8")
+    assert text == "data of out/s/environment.json\n"

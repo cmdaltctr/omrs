@@ -35,6 +35,7 @@ print(len(PpOcrV6Small().read_pages(Path(sys.argv[1]), pages, settings=get_setti
 """
 _FILE = re.compile(r"^\[ingest\] .+: (?:ERROR .*|(\d+) chunks)$")
 KEEP = ("answer/", "closedbook-rag/", "rebuild.json")
+SEAL_ENV = "out/s/environment.json"
 DROP = (
     "closedbook-rag/*/run1/ragas*",
     "closedbook-rag/*/run1/.done-ragas*",
@@ -113,6 +114,11 @@ def unpack(args: argparse.Namespace) -> int:
     prefix, copied = f"out/s/{args.dataset}/", 0
     with tarfile.open(args.tarball) as tar:
         for member in tar:
+            if member.name == SEAL_ENV and member.isfile():
+                # The answer stages refuse to start without the seal record beside them.
+                member.name = "environment.json"
+                tar.extract(member, args.out, filter="data")
+                continue
             rel = member.name.removeprefix(prefix)
             wanted = rel != member.name and rel.startswith(KEEP) and member.isfile()
             if not wanted or any(fnmatch.fnmatch(rel, p) for p in DROP):

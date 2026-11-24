@@ -448,7 +448,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # added; 0 removed or renamed. No extra needed.
 # +9 (2026-11-24, work-disk check in pod setup, by test-ID diff against HEAD 6cd82f9c):
 # test_the_disk_check_refuses_a_network_file_system (9 cases) added; 0 removed. No extra.
-_BASE_EXECUTED = 13880
+# +1 (2026-11-24, unpack copies the seal record, by test-ID diff against HEAD 3fdd151f):
+# test_unpack_also_copies_the_seal_environment_the_answer_stages_read added. No extra.
+_BASE_EXECUTED = 13881
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
