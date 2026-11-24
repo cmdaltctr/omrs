@@ -88,3 +88,27 @@ def test_a_sample_without_exclude_records_no_excluded_block(
     out = tmp_path / "gate"
     _main(tmp_path, monkeypatch, out)
     assert "excluded" not in _read(out / "sample.json")
+
+
+def test_a_repeated_folder_adds_a_second_source_for_one_dataset(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Owner decision 2026-11-24: widen the re-gate source with the recheck answers."""
+    folders = _folders(tmp_path / "src")
+    extra = _folders(tmp_path / "extra")
+    monkeypatch.setattr(refusals35, "_questions", lambda _names: _questions(folders))
+    for path in extra.values():
+        for answers in path.glob("answer/*/run*/answer.jsonl"):
+            rows = [json.loads(line) for line in answers.read_text().splitlines()]
+            for row in rows:
+                row["answer"] = row["answer"].replace("[1]", "Wider [1]", 1)
+            answers.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    out = tmp_path / "gate"
+    argv = ["sample", "--seed", "20261142", "--n", "60", "--out-dir", str(out)]
+    argv += [f"--folder={d}={p}" for d, p in folders.items()]
+    one = refusals35.session_claims(folders, _questions(folders))
+    argv += [f"--folder={d}={p}" for d, p in extra.items() if d == "freshstack"]
+    assert refusals35.main(argv) == 0
+    kept = {i["claim_key"] for i in _read(out / "sample.json")["items"]}
+    kept |= {c["claim_key"] for c in _read(out / "examples-pool.json")}
+    assert len(kept) > len(one)

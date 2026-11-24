@@ -67,14 +67,14 @@ THRESHOLDS = {"agreement": 0.90, "recall": 0.90, "precision": 0.90}
 
 
 def session_claims(
-    folders: Mapping[str, Path], questions: Mapping[str, Mapping[str, str]]
+    folders: Mapping[str, Path | Sequence[Path]], questions: Mapping[str, Mapping[str, str]]
 ) -> list[dict[str, Any]]:
     """Return the distinct claims of the given dataset folders of a test pod session.
 
     Args:
         folders: Dataset name to its dataset folder in the session output
-            (``<out>/<dataset>``). Each holds ``answer/<setup>/run<n>/answer.jsonl``
-            and ``traces.jsonl`` per run folder (``outputs35.Layout``).
+            (``<out>/<dataset>``), or a list of them. Each holds
+            ``answer/<setup>/run<n>/answer.jsonl`` and ``traces.jsonl`` per run folder (``outputs35.Layout``).
         questions: Dataset name to (question ID to question text).
 
     Returns:
@@ -88,32 +88,38 @@ def session_claims(
     """
     claims: dict[str, dict[str, Any]] = {}
     for dataset in sorted(folders):
-        folder = folders[dataset]
-        found = sorted(folder.glob("answer/*/run*/answer.jsonl"))
-        if not found:
-            raise SampleError(
-                f"{folder}: no answer/<setup>/run<n>/answer.jsonl; pass the dataset folder "
-                "of the pre-freeze test pod session output"
-            )
-        for answers in found:
-            claimcontext35.check_reasoning(answers.parent)
-            for row in read_rows(answers):
-                for claim, passages in claimcontext35.claim_contexts(row):
-                    key = claimkinds35.claim_key(row["qid"], claim)
-                    claims.setdefault(
-                        key,
-                        {
-                            "claim_key": key,
-                            "dataset": dataset,
-                            "qid": row["qid"],
-                            "question": questions[dataset][row["qid"]],
-                            "claim": claim,
-                            "answer": row["answer"],
-                            "passages": passages,
-                            "flagged": bool(PREFREEZE_REGEX.search(claim)),
-                        },
-                    )
+        given = folders[dataset]
+        for folder in [given] if isinstance(given, Path) else given:
+            _folder_claims(claims, dataset, folder, questions)
     return list(claims.values())
+
+
+def _folder_claims(claims: dict, dataset: str, folder: Path, questions: Mapping) -> None:
+    """Add the claims of one dataset folder to *claims*; the first answer of a claim wins."""
+    found = sorted(folder.glob("answer/*/run*/answer.jsonl"))
+    if not found:
+        raise SampleError(
+            f"{folder}: no answer/<setup>/run<n>/answer.jsonl; pass the dataset folder "
+            "of the pre-freeze test pod session output"
+        )
+    for answers in found:
+        claimcontext35.check_reasoning(answers.parent)
+        for row in read_rows(answers):
+            for claim, passages in claimcontext35.claim_contexts(row):
+                key = claimkinds35.claim_key(row["qid"], claim)
+                claims.setdefault(
+                    key,
+                    {
+                        "claim_key": key,
+                        "dataset": dataset,
+                        "qid": row["qid"],
+                        "question": questions[dataset][row["qid"]],
+                        "claim": claim,
+                        "answer": row["answer"],
+                        "passages": passages,
+                        "flagged": bool(PREFREEZE_REGEX.search(claim)),
+                    },
+                )
 
 
 def _takes(quota: int, flagged: int, plain: int) -> tuple[int, int]:
@@ -462,7 +468,9 @@ def main(argv: Sequence[str] | None = None, *, build_classifier: Builder | None 
     g.add_argument("--resolved", type=Path)
     args = parser.parse_args(argv)
     if args.command == "sample":
-        folders = {d: Path(p) for d, p in (f.split("=", 1) for f in args.folder)}
+        folders: dict[str, list[Path]] = {}
+        for d, p in (f.split("=", 1) for f in args.folder):
+            folders.setdefault(d, []).append(Path(p))
         claims = session_claims(folders, _questions(sorted(folders)))
         banned = claimcontext35.excluded_keys(args.exclude)
         kept = [c for c in claims if c["claim_key"] not in banned]

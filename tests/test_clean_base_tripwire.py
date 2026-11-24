@@ -456,7 +456,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +9 (2026-11-24, Exp 35 classifier re-gate, by test-ID diff against HEAD afdb0d4e): new
 # file test_experiment35_refusals_exclude.py (4); test_experiment35_plan_pins.py (2),
 # test_experiment35_guidelines.py (1), test_p2_session_stages.py (2). 0 removed. No extra.
-_BASE_EXECUTED = 13933
+# +1 (2026-11-24, re-gate source widened, by test-ID diff against HEAD 60f2404f):
+# test_a_repeated_folder_adds_a_second_source_for_one_dataset added. No extra.
+_BASE_EXECUTED = 13934
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
