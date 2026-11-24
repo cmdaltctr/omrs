@@ -436,7 +436,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # new file test_lancedb_compaction.py, 5 added, 0 removed or renamed; no extra needed.
 # +2 (2026-11-24, Exp 35 ingest version cleanup, by test-ID diff against HEAD eb70e807):
 # new file test_experiment35_ingest_versions.py, 2 added, 0 removed or renamed; no extra.
-_BASE_EXECUTED = 13845
+# +2 (2026-11-24, Exp 35 closed-book Ragas and claim-kinds fixes, by test-ID diff against
+# HEAD bcd11389): test_the_judge_side_files_beside_the_verdicts_are_not_read and
+# test_an_answer_without_passages_skips_the_three_passage_metrics; 0 removed. CI: +2 on all jobs.
+_BASE_EXECUTED = 13847
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
