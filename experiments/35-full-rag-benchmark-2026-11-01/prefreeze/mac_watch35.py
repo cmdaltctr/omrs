@@ -24,10 +24,11 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
+from watch_inputs35 import inputs, unsafe
+
 HERE = Path(__file__).resolve().parent
 EXP = HERE.parent
 REPO = EXP.parent.parent
-PLAN = EXP / "plan.json"
 
 WORK = "/workspace"
 INPUTS, REMOTE_REPO, LOG = f"{WORK}/inputs", f"{WORK}/omrs", f"{WORK}/test-session.log"
@@ -35,7 +36,8 @@ TARBALL, OWN_TARBALL = f"{WORK}/test-session-out.tgz", f"{WORK}/watcher-out.tgz"
 OUT_PARENT, OUT_NAME = f"{WORK}/exp35-test", "out"
 PULLED, SESSION_ENV, SESSION = f"{WORK}/PULLED", f"{WORK}/session.env", "exp35"
 INPUTS_TGZ, EXAMPLES, STOP_GRACE_MIN = "exp35-inputs.tgz", "classify-examples.json", 30
-LAUNCH = f"bash {REMOTE_REPO}/experiments/{EXP.name}/prefreeze/launch35.sh > {LOG} 2>&1"
+STAGES, REMOTE_HERE = "test_session_stages.txt", f"{REMOTE_REPO}/experiments/{EXP.name}/prefreeze"
+LAUNCH = f"bash {REMOTE_HERE}/launch35.sh > {LOG} 2>&1"
 
 POLL_S, SSH_POLL_S, STOP_POLL_S = 60, 15, 10
 SSH_WAIT_S, IDLE_S, SSH_LOST_S, IDLE_GRACE_S = 15 * 60, 30 * 60, 10 * 60, 10 * 60
@@ -48,7 +50,6 @@ _SHOWN = re.compile(r"^\[\d\d:\d\d:\d\d\] (==|test pod session|PULLED seen|no .*
 EXIT = {"done": 0, "internal": 1, "refused": 2, "stop-failed": 3, "no-ssh": 4, "setup": 5,
         "stop-line": 6, "session-ended": 7, "idle": 8, "wall-cap": 9, "ssh-lost": 10,
         "pull": 11, "interrupted": 12}  # fmt: skip
-_SECRET_PARTS = (".env", "secrets", ".config", ".ssh")
 _SIGNALS = (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)
 _SSH_OPTIONS = ("BatchMode=yes", "StrictHostKeyChecking=no", "UserKnownHostsFile=/dev/null",
                 "ConnectTimeout=20", "ServerAliveInterval=15", "LogLevel=ERROR")  # fmt: skip
@@ -106,35 +107,6 @@ def sha256(path: Path) -> str:
         return hashlib.file_digest(handle, "sha256").hexdigest()
 
 
-def inputs() -> tuple[Path, list[str]]:
-    """Return the data root and the files pod_setup35.sh checks (Legal stays out, D1)."""
-    sys.path[:0] = [p for p in (str(EXP), str(REPO)) if p not in sys.path]
-    import datasets35 as ds
-
-    root, plan = ds.data_root(), json.loads(PLAN.read_text(encoding="utf-8"))
-    rels = [r for n in ("financebench", "freshstack", "bioasq") for r in ds.input_hashes(n, plan)]
-    manifest = next(r for r in rels if r.endswith("PDFS_MANIFEST.json"))
-    names = json.loads((root / manifest).read_text(encoding="utf-8"))["files"]
-    rels += ds.pdf_hashes(root, [Path(f"{name}.pdf") for name in names])
-    corpus = ds._FS_CORPUS
-    rels += [f"{corpus}/{n}" for n in ["download.json", *ds.freshstack_pin(plan)["corpus_files"]]]
-    return root, sorted(set(rels))
-
-
-def unsafe(rel: str, root: Path) -> str | None:
-    """Return why *rel* must not go into the tarball, or ``None`` when it may."""
-    path = Path(rel)
-    if path.is_absolute() or ".." in path.parts:
-        return "is not a plain relative path"
-    if any(p.startswith(_SECRET_PARTS) for p in path.parts) or path.suffix in (".key", ".pem"):
-        return "looks like a secret"
-    real, home = (root / path).resolve(), Path.home().resolve()
-    private = real.is_relative_to(home / ".config") or real.is_relative_to(home / ".ssh")
-    if private or not real.is_relative_to(root):
-        return f"resolves to {real}: outside the data root, or under ~/.config or ~/.ssh"
-    return None if real.is_file() else "is missing"
-
-
 @dataclass
 class Plan:
     """The checked local side of one session."""
@@ -142,16 +114,27 @@ class Plan:
     commit: str
     key: Path
     examples: Path
+    stages: str = STAGES
+    extra: Path | None = None  # --extra-input: one more file for the pod's inputs folder
     repo_url: str = ""
     root: Path = Path()
     folder: Path = Path()
     rels: list[str] = field(default_factory=list)
 
+    def sent(self) -> list[str]:
+        """Name the inputs that go to the pod and have their SHA-256 checked there."""
+        return [INPUTS_TGZ, EXAMPLES, *([self.extra.name] if self.extra else [])]
+
 
 def prepare(args: argparse.Namespace) -> tuple[list[str], Plan]:
     """Check every local input; return the problems and the plan. Writes nothing."""
-    plan = Plan(args.commit, args.ssh_key.expanduser(), args.examples.expanduser())
+    plan = Plan(args.commit, args.ssh_key.expanduser(), args.examples.expanduser(), args.stages)
+    plan.extra = args.extra_input.expanduser() if args.extra_input else None
     problems = []
+    if not (args.stages.endswith("_stages.txt") and (HERE / Path(args.stages).name).is_file()):
+        problems.append(f"--stages {args.stages} is not a *_stages.txt file in {HERE}")
+    if plan.extra and not plan.extra.is_file():
+        problems.append(f"--extra-input {plan.extra} is not a file")
     if not re.fullmatch(r"[0-9a-f]{40}", args.commit):  # it goes unquoted into pod commands
         problems.append("--commit must be the full 40-character commit SHA")
     if not plan.key.is_file():
@@ -167,8 +150,8 @@ def prepare(args: argparse.Namespace) -> tuple[list[str], Plan]:
         problems.append("no --repo-url, and this checkout has no origin remote")
     try:
         plan.root, plan.rels = inputs()
-        day = f"test-session-{datetime.now(UTC):%Y-%m-%d}"
-        plan.folder = plan.root / "experiments" / EXP.name / day
+        stem = plan.stages.removesuffix("_stages.txt").replace("_", "-")
+        plan.folder = plan.root / "experiments" / EXP.name / f"{stem}-{datetime.now(UTC):%Y-%m-%d}"
     except Exception as error:  # noqa: BLE001 - any failure here is a refusal with its reason
         return [*problems, f"cannot list the inputs: {type(error).__name__}: {error}"], plan
     if plan.folder.exists():
@@ -177,8 +160,8 @@ def prepare(args: argparse.Namespace) -> tuple[list[str], Plan]:
     return problems, plan
 
 
-def build_inputs(plan: Plan) -> tuple[str, str]:
-    """Write the inputs folder (tarball, .sha256, examples); return the two SHA-256 values."""
+def build_inputs(plan: Plan) -> dict[str, str]:
+    """Write the inputs folder (tarball, .sha256, examples, extra); return SHA-256 by name."""
     folder = plan.folder / "inputs"
     folder.mkdir()
     tgz = folder / INPUTS_TGZ
@@ -188,19 +171,23 @@ def build_inputs(plan: Plan) -> tuple[str, str]:
     digest = sha256(tgz)
     (folder / f"{INPUTS_TGZ}.sha256").write_text(f"{digest}  {INPUTS_TGZ}\n", encoding="utf-8")
     shutil.copyfile(plan.examples, folder / EXAMPLES)
+    if plan.extra:
+        shutil.copyfile(plan.extra, folder / plan.extra.name)
     say(f"  {tgz}: {len(plan.rels)} files, {tgz.stat().st_size / 1e6:.1f} MB, SHA-256 {digest}")
-    return digest, sha256(folder / EXAMPLES)
+    return {n: digest if n == INPUTS_TGZ else sha256(folder / n) for n in plan.sent()}
 
 
-def setup_cmds(plan: Plan, tgz_sha: str, examples_sha: str) -> list[str]:
+def setup_cmds(plan: Plan, shas: dict[str, str]) -> list[str]:
     """Step 5: check the inputs, place the repository, write session.env, start the chain."""
-    pairs = f"{tgz_sha} {INPUTS_TGZ} {examples_sha} {EXAMPLES}"
+    pairs = " ".join(f"{sha} {shlex.quote(name)}" for name, sha in shas.items())
+    values = [f"COMMIT={plan.commit}", f"STOP_GRACE_MIN={STOP_GRACE_MIN}"]
+    values.append(f"STAGES_FILE={REMOTE_HERE}/{plan.stages}")
     return [
         f"cd {INPUTS} && printf '%s  %s\\n' {pairs} | sha256sum -c -",
         f"set -e; [ -d {REMOTE_REPO}/.git ] || git clone -q {shlex.quote(plan.repo_url)} "
         f"{REMOTE_REPO}; cd {REMOTE_REPO}; git fetch -q origin; "
         f'git checkout -q --detach {plan.commit}; test "$(git rev-parse HEAD)" = {plan.commit}',
-        f"printf 'COMMIT=%s\\nSTOP_GRACE_MIN=%s\\n' {plan.commit} {STOP_GRACE_MIN} > {SESSION_ENV}",
+        f"printf '%s\\n' {shlex.join(values)} > {SESSION_ENV}",
         LAUNCH_CMD,
     ]
 
@@ -293,7 +280,7 @@ def poll(pod: Pod, w: Watch) -> bool | None:
     return bool(body)
 
 
-def setup(pod: Pod, plan: Plan, tgz_sha: str, examples_sha: str) -> str | None:
+def setup(pod: Pod, plan: Plan, shas: dict[str, str]) -> str | None:
     """Steps 3 to 5; return the EXIT key of a failure, or ``None``."""
     say(f"step 3: wait up to {SSH_WAIT_S // 60} min for SSH on {pod.host}:{pod.port}")
     start = now()
@@ -303,12 +290,12 @@ def setup(pod: Pod, plan: Plan, tgz_sha: str, examples_sha: str) -> str | None:
             return "no-ssh"
         pause(SSH_POLL_S)
     say(f"step 4: copy the inputs to {INPUTS}")
-    names = (INPUTS_TGZ, f"{INPUTS_TGZ}.sha256", EXAMPLES)
+    names = (*shas, f"{INPUTS_TGZ}.sha256")
     files, dest = [str(plan.folder / "inputs" / n) for n in names], pod.remote(f"{INPUTS}/")
     if not pod.ok(f"mkdir -p {INPUTS}") or not (pod.copy(files, dest) or pod.copy(files, dest)):
         return "setup"
     say(f"step 5: check the SHA-256 on the pod; {REMOTE_REPO} at {plan.commit}; launch")
-    commands = setup_cmds(plan, tgz_sha, examples_sha)
+    commands = setup_cmds(plan, shas)
     return None if all(pod.ok(cmd, timeout=900) for cmd in commands) else "setup"
 
 
@@ -418,9 +405,10 @@ def dry_run(args: argparse.Namespace, plan: Plan, problems: list[str]) -> int:
     say(f"  {len(plan.rels)} files, {sum(sizes.values()) / 1e6:.1f} MB before compression")
     remote = [
         f"3 {shlex.join(pod.ssh_base)} true (every {SSH_POLL_S} s, up to {SSH_WAIT_S // 60} min)",
-        f"4 ssh 'mkdir -p {INPUTS}'; {shlex.join([*pod.scp_base, '<3 files>', pod.remote(INPUTS)])}"
-        f" (the tarball, its .sha256 and the examples as {EXAMPLES})",
-        *(f"5 ssh {shlex.quote(c)}" for c in setup_cmds(plan, "<tgz sha>", "<examples sha>")),
+        f"4 ssh 'mkdir -p {INPUTS}'; {shlex.join([*pod.scp_base, '<files>', pod.remote(INPUTS)])}"
+        f" (the tarball, its .sha256 and the examples as {EXAMPLES})"
+        + (f", and {plan.extra} as {plan.extra.name}" if plan.extra else ""),
+        *(f"5 ssh {shlex.quote(c)}" for c in setup_cmds(plan, dict.fromkeys(plan.sent(), "<sha>"))),
         f"6 every {POLL_S} s: ssh {shlex.quote(poll_cmd(0))}; ends: see the runbook",
         f"7 ssh {shlex.quote(WHICH_CMD)}; on 'out': ssh {shlex.quote(PACK_CMD)}",
         f"7 scp {LOG} and the tarball with its .sha256; check; ssh 'printf <verdict> > {PULLED}'",
@@ -448,7 +436,7 @@ def run(args: argparse.Namespace) -> int:
     plan.folder.mkdir(parents=True)
     (plan.folder / "watcher.pid").write_text(f"{os.getpid()}\n", encoding="utf-8")
     pod = Pod(args.ssh_host, args.ssh_port, plan.key)
-    if failed := setup(pod, plan, *build_inputs(plan)):
+    if failed := setup(pod, plan, build_inputs(plan)):
         return EXIT[failed]
     say(f"step 6: watching {LOG} every {POLL_S} s (cap {args.wall_cap_h:g} h)")
     w = Watch()
@@ -475,6 +463,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--ssh-port", required=True, type=int)
     parser.add_argument("--examples", required=True, type=Path, help="classifier examples JSON")
     parser.add_argument("--ssh-key", type=Path, default=Path("~/.ssh/runpod_omrs_measure"))
+    parser.add_argument("--stages", default=STAGES, help="stages file in prefreeze/ for the pod")
+    parser.add_argument("--extra-input", type=Path, help="one more file for /workspace/inputs")
     parser.add_argument("--repo-url", help="default: the origin URL of this checkout")
     parser.add_argument("--wall-cap-h", type=float, default=15.5)
     parser.add_argument("--dry-run", action="store_true", help="print every step, run nothing")

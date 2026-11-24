@@ -78,7 +78,73 @@ Every code ends with `DELETE_POD_NOW <id>`. Delete the pod for every code.
 ## Where the results go
 
 - The watcher writes `~/Development/DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/test-session-<UTC date>/`. It never overwrites an existing folder.
+- The folder name comes from the stages file: `verify_session_stages.txt` gives `verify-session-<UTC date>/`.
 - The folder holds `inputs/`, `watcher.pid`, `test-session.log`, `watch-summary.txt` and the outputs tarball with its `.sha256`.
-- `inputs/` holds the inputs tarball, its `.sha256` and the examples, exactly as sent to the pod.
+- `inputs/` holds the inputs tarball, its `.sha256`, the examples and the `--extra-input` file, exactly as sent to the pod.
 - The outputs tarball is `test-session-out.tgz` from the chain. If the chain wrote none, it is `watcher-out.tgz`, packed from `/workspace/exp35-test/out`.
 - Record the copy and its SHA-256 in `DATA/omrs/DATA_LOCATIONS.md`.
+
+## Fix check variant
+
+The fix check session checks the four fixes of 2026-11-24 on a short second pod. It uses the same machinery: `pod_setup35.sh`, `launch35.sh`, the `pod_test_session.sh` chain and `mac_watch35.py`. The chain stops the pod only after the last check ends and the Mac has pulled the outputs.
+
+- The stages are in `prefreeze/verify_session_stages.txt`. The watcher writes `STAGES_FILE` into `/workspace/session.env`, and `launch35.sh` reads it.
+- Every stage runs at `COMMIT`. No stage checks out another commit.
+- Section 4 needs the FinanceBench answers of the 2026-11-24 session. The watcher sends them as `--extra-input`.
+
+### Before the go
+
+1. Do steps 1 to 3 of "Before the go" above.
+2. Cut the FinanceBench answers (about 1 MB) out of the session tarball:
+
+   ```bash
+   cd ~/Development/DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/test-session-2026-11-24
+   tar -czf "$TMPDIR/fb-answers.tgz" --include 'out/s/financebench/answer' \
+     --include 'out/s/financebench/closedbook-rag' --include 'out/s/financebench/rebuild.json' \
+     @test-session-out.tgz
+   ```
+
+3. Run the dry run with the two extra options:
+
+   ```bash
+   uv run --no-sync python prefreeze/mac_watch35.py --pod-id DRYRUN --ssh-host 203.0.113.1 \
+     --ssh-port 22 --commit "$COMMIT" --examples <examples.json> \
+     --stages verify_session_stages.txt --extra-input "$TMPDIR/fb-answers.tgz" --dry-run
+   ```
+
+4. Make sure the dry run exits 0, lists 91 input files, and shows `fb-answers.tgz` in the SHA-256 check.
+5. Make sure the dry run shows `STAGES_FILE=/workspace/omrs/.../verify_session_stages.txt` and the folder `verify-session-<UTC date>`.
+
+### Session
+
+Do the session order above. In step 9, start the watcher with the two extra options:
+
+```bash
+caffeinate -i uv run --no-sync python prefreeze/mac_watch35.py --pod-id <id> \
+  --ssh-host <publicIp> --ssh-port <port> --commit "$COMMIT" --examples <examples.json> \
+  --stages verify_session_stages.txt --extra-input "$TMPDIR/fb-answers.tgz"
+```
+
+### Stages, times and pass marks
+
+The sections run in the order 1, 3, 4, 2: the cheapest and the budget-critical checks first. Times are expected minutes on one RTX 4090.
+
+| Stage | Section | Timeout | Expected | Pass mark |
+| --- | --- | ---: | ---: | --- |
+| `setup` | Setup (as the test session) | 60 min | 23 min | `ok`. A failure stops the chain. |
+| `ocr-walmart-20x` | 1. OCR fix (0bebdb1d) | 105 min | 25 min | `20/20 passes`: 29 pages each, each pass under 300 s. |
+| `fs-rate-1200` | 3. Store speed (bcd11389) | 60 min | 25 min | `ok`. The six `[rate] files` lines stay flat in s/file. |
+| `fb-unpack` | 4. Answers copy | 10 min | 1 min | `ok` (87 files). |
+| `ragas-closedbook-fb` | 4. Closed-book Ragas (b98f536f) | 20 min | 5 min | `ok`, with no exit 6. |
+| `kinds-fb-c512` | 4. Claim kinds (b98f536f) | 15 min | 4 min | `ok`. |
+| `fs-c2048-ingest` | 2. Reranker fix (eb70e807) | 50 min | 8 min | `ok`. |
+| `fs-c2048-seal` | 2. | 15 min | 2 min | `ok`. |
+| `fs-c2048-r0.6b` | 2. | 30 min | 3 min | `ok`, queries 76293427 and 77759618 included. |
+| `fs-c2048-r4b` | 2. | 30 min | 8 min | `ok`, as above. |
+| `fs-c2048-r8b` | 2. | 30 min | 14 min | `ok`, as above. |
+
+- Expected total: about 118 min of stages, plus about 10 min for the pod start, the copy, the pull and the stop. That is about 2.2 h, or about $1.96 at $0.89/h.
+- Upper bound: the stage timeouts add up to 425 min (7.1 h). With the start and the pull, that is about 7.3 h, or about $6.50.
+- Hosted calls (Ragas on 20 questions, claim kinds on 20 answers) add a few cents of OpenRouter spend.
+- Pass mark of the whole check (2026-11-24 notes): every stage `ok`, and the per-file store time flat.
+- Store speed for the budget: the `[rate] files` lines give seconds per file for each block of 200 files. Block 1 includes the engine start. The old rate was about 2 s per file at 3,300 files.
