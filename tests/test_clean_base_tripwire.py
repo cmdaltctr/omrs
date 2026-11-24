@@ -424,7 +424,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +154 (2026-11-23, Exp 35 test pod prep, by test-ID diff against HEAD d3f8c992): 160 added
 # (pod chain, stages, launch, setup, create, Mac watcher, reranker check, context host, idle
 # repro, live router session, FreshStack repeats and hash pins, plan pins); 6 removed or renamed.
-_BASE_EXECUTED = 13807
+# +9 (2026-11-24, BM25 matches Anserini/Pyserini, by test-ID diff: new file
+# test_bm25_reference_parity.py, 9 added, 0 removed). 3 need rank_bm25: _HYBRID_EXTRA_CASES.
+_BASE_EXECUTED = 13821
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -666,6 +668,10 @@ _has_qwen_tokenizer = bool(
 )
 if not _has_qwen_tokenizer:
     _BASE_EXECUTED -= _CACHED_TOKENIZER_CASES
+# Cases in test_bm25_reference_parity.py that skip without rank_bm25 (the hybrid extra).
+_HYBRID_EXTRA_CASES = 3
+if find_spec("rank_bm25") is None:
+    _BASE_EXECUTED -= _HYBRID_EXTRA_CASES
 # The reference counts assume the optional ``web`` extra (FastAPI) is
 # installed, as in the CI ``test`` job. Without it, each web test module
 # skips at import through ``pytest.importorskip("fastapi")``: its cases do

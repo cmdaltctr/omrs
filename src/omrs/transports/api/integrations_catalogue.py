@@ -179,7 +179,7 @@ _HEAD: tuple[Integration, ...] = (
         "Hybrid search",
         "BM25 keyword scoring that joins vector search results.",
         "hybrid",
-        _modules("rank_bm25"),
+        _modules("rank_bm25", "nltk"),
     ),
 )
 

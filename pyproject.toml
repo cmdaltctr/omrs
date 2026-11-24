@@ -103,6 +103,8 @@ chroma = [
 ]
 hybrid = [
     "rank-bm25>=0.2.2",
+    # Porter stemming in core/retrieval/sparse.py (Anserini/Pyserini reference).
+    "nltk>=3.9",
 ]
 pdf-pypdfium2 = [
     "pypdfium2>=4.0.0",
