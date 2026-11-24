@@ -421,7 +421,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # 11 cases added, none removed (labelpage 31 to 42).
 # +32 (2026-11-23, Exp 35 pre-freeze prep, by test-ID diff against HEAD): guideline
 # files 21, plan pins 9, FreshStack manifest 1, token-aware chunking guard 1; none removed.
-_BASE_EXECUTED = 13653
+# +154 (2026-11-23, Exp 35 test pod prep, by test-ID diff against HEAD d3f8c992): 160 added
+# (pod chain, stages, launch, setup, create, Mac watcher, reranker check, context host, idle
+# repro, live router session, FreshStack repeats and hash pins, plan pins); 6 removed or renamed.
+_BASE_EXECUTED = 13807
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
