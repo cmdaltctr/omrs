@@ -362,3 +362,9 @@ def test_resolved_conflicts_never_names_a_resolved_key_value() -> None:
     problems = rc.resolved_conflicts(settings, values)
     assert problems == ["answer.verify_model: the sweep needs 'm', OMRS resolved 'other-model'"]
     assert all(secret not in p for p in problems)
+
+
+def test_model_name_writes_the_quant_tag_in_capitals_as_llama_cpp_lists_it():
+    """llama.cpp lists ``repo:Q8_0`` even when the file is ``...-q8_0.gguf`` (Exp 35 test pod)."""
+    model = {"repository": "ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF", "file": "qwen3-reranker-0.6b-q8_0.gguf"}
+    assert rc.model_name(model) == "ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF:Q8_0"
