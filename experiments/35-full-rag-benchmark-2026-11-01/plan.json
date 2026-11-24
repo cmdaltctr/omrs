@@ -528,7 +528,8 @@
           "pooling": "rank",
           "ctx-size": 8192,
           "batch-size": 8192,
-          "ubatch-size": 8192
+          "ubatch-size": 8192,
+          "parallel": 1
         }
       },
       {
@@ -543,7 +544,8 @@
           "pooling": "rank",
           "ctx-size": 8192,
           "batch-size": 8192,
-          "ubatch-size": 8192
+          "ubatch-size": 8192,
+          "parallel": 1
         }
       },
       {
@@ -558,7 +560,8 @@
           "pooling": "rank",
           "ctx-size": 8192,
           "batch-size": 8192,
-          "ubatch-size": 8192
+          "ubatch-size": 8192,
+          "parallel": 1
         }
       },
       {

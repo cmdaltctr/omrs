@@ -37,6 +37,9 @@ _TIMEOUT_SECONDS = 600.0
 #: page's router probe, so a router that does not answer cannot hold the page.
 _LIST_TIMEOUT_SECONDS = 1.0
 
+#: Characters of an HTTP error reply kept in the failure reason, so it stays one bounded line.
+_ERROR_BODY_CHARS = 500
+
 
 class LlamaCppReranker:
     """Rerank candidates through the router's ``/v1/rerank`` endpoint.
@@ -137,7 +140,15 @@ class LlamaCppReranker:
         body = {"model": self.model_id, "query": query, "documents": documents}
         with httpx.Client(timeout=_TIMEOUT_SECONDS) as client:
             response = client.post(url, json=body, headers={"Authorization": "Bearer no-key"})
-            response.raise_for_status()
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError as exc:
+                # The status line alone hides the cause (for example a full KV cache).
+                raise httpx.HTTPStatusError(
+                    f"{exc}; server said: {response.text[:_ERROR_BODY_CHARS]}",
+                    request=exc.request,
+                    response=exc.response,
+                ) from None
             reply = response.json()
         scores: dict[int, float] = {}
         for item in reply.get("results") or []:

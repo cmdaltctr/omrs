@@ -243,6 +243,15 @@ def test_each_reranker_is_pinned_with_a_passed_rank_check() -> None:
         assert re.fullmatch(r"[0-9a-f]{40}", check["hf_revision"]), role
 
 
+def test_each_reranker_runs_one_slot_so_a_pair_gets_the_whole_context() -> None:
+    # Four slots share one 8,192-token cache; long FreshStack queries overflow it (protocol 7).
+    models = {m["role"]: m for m in _plan()["runtime"]["models"]}
+    for size in ("0.6b", "4b", "8b"):
+        args = models[f"reranker-{size}"]["server_args"]
+        assert args.get("parallel") == 1, size
+        assert args["ctx-size"] == args["ubatch-size"] == 8192, size
+
+
 # --- P10: tokenizer and GLM-5.3 settings ---------------------------------------------------
 
 

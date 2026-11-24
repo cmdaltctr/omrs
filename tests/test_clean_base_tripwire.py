@@ -430,7 +430,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # HEAD 5ad9e65a): 5 plan-pin cases added; 2 test_pod_setup35 cases renamed, 0 removed.
 # +1 (2026-11-24, pdf-inspector OCR deadlock, by test-ID diff against HEAD 7fce7080):
 # test_pp_ocrv6_reads_one_page_per_library_call added; 0 removed or renamed.
-_BASE_EXECUTED = 13836
+# +2 (2026-11-24, one-slot reranker pins and kept llama.cpp error text, by test-ID diff
+# against HEAD 0bebdb1d): 1 plan-pin case, 1 reranker case added; 0 removed or renamed.
+_BASE_EXECUTED = 13838
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

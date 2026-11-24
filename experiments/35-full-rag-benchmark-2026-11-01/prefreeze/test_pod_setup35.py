@@ -143,9 +143,11 @@ def test_the_reranker_candidates_are_runtime_entries_and_plan_json_pins_them_unc
     tolerance = [{"metric": "spearman", "max_abs_change": 0.0}]
     block = RuntimeBlock.model_validate({"models": entries, "tolerance": tolerance})
     assert {model.build for model in block.models} == {model["build"] for model in MODELS}
-    # Task 15.10 passed on 2026-11-24: plan.json pins each candidate entry as it was checked.
+    # Task 15.10 passed on 2026-11-24: plan.json pins each candidate entry as it was checked,
+    # plus only `parallel: 1` (protocol section 7, one-slot reranker amendment, 2026-11-24).
     pinned = {model["role"]: model for model in MODELS}
-    assert [pinned[entry["role"]] for entry in entries] == entries
+    one_slot = [{**e, "server_args": {**e["server_args"], "parallel": 1}} for e in entries]
+    assert [pinned[entry["role"]] for entry in entries] == one_slot
 
 
 def test_dry_run_lists_each_pinned_reranker_once_with_its_revision_and_sha256(
