@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import tarfile
 import time
 from pathlib import Path
 
@@ -136,6 +137,36 @@ def test_a_killed_run_still_writes_the_tarball_and_stops(tmp_path: Path) -> None
     assert (tmp_path / "work" / "test-session-out.tgz").is_file()
     assert not (tmp_path / "smoke-out" / "x").exists()
     assert _lines(tmp_path / "runpodctl.log") == ["pod stop pod123 tarball=present"]
+
+
+def test_the_tarball_leaves_out_the_index_stores_and_keeps_every_record(tmp_path: Path) -> None:
+    """P2 (2026-11-24): the stores made the tarball 278 MB; the copy took 35 min."""
+    out = tmp_path / "smoke-out"
+    keep = [
+        "environment.json",
+        "s/environment.json",
+        "s/freshstack/rebuild.json",
+        "s/freshstack/e4b-c1024/ingest.jsonl",
+        "s/freshstack/e4b-c1024/index-fingerprint.json",
+        "r/freshstack/answer/e4b-c512-roff-hoff/run1/answer-summary.json",
+        "fsfull/router.log",
+        "fsfull/summary.txt",
+    ]
+    drop = [
+        "stores/e4b-c1024/lancedb/chunks.lance/data/0.lance",
+        "s/stores/e8b-c512/lancedb/chunks.lance/_versions/1.manifest",
+        "fsfull/stores/e8b-c512/lancedb/chunks.lance/_indices/x.json",
+    ]
+    for rel in keep + drop:
+        (out / rel).parent.mkdir(parents=True, exist_ok=True)
+        (out / rel).write_text("x\n", encoding="utf-8")
+    result, _ = _run(tmp_path, "only true\n", make_out=False)
+    assert result.returncode == 0, result.stdout + result.stderr
+    with tarfile.open(tmp_path / "work" / "test-session-out.tgz") as tar:
+        names = {m.name for m in tar.getmembers() if m.isfile()}
+    assert {f"smoke-out/{rel}" for rel in keep} <= names
+    assert {"smoke-out/failed-stages.txt", "smoke-out/skipped-stages.txt"} <= names
+    assert [n for n in names if "/stores/" in n or "lancedb" in n] == []
 
 
 def test_missing_key_stops_before_any_stage(tmp_path: Path) -> None:

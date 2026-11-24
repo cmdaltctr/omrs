@@ -1,7 +1,8 @@
 """Mac side of the Exp 35 test pod session (task 9.2): copy, launch, watch, pull.
 
-Usage and order: TEST_SESSION_RUNBOOK.md. Calls no RunPod API; the last line is always
-``DELETE_POD_NOW <pod id>``. No key is read or printed. Idle = stage timeout + 10 min.
+Usage: TEST_SESSION_RUNBOOK.md. No --ssh-host: runpod_ssh35.py reads the address from RunPod.
+It never stops or deletes a pod; the last line is always ``DELETE_POD_NOW <pod id>``. No key
+is printed. Idle = stage timeout + 10 min.
 Test hook: MAC_WATCH35_FAKE_CLOCK=1 makes every wait move a virtual clock (no sleep).
 """
 
@@ -24,6 +25,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
+import runpod_ssh35
 from watch_inputs35 import inputs, unsafe
 
 HERE = Path(__file__).resolve().parent
@@ -35,13 +37,13 @@ INPUTS, REMOTE_REPO, LOG = f"{WORK}/inputs", f"{WORK}/omrs", f"{WORK}/test-sessi
 TARBALL, OWN_TARBALL = f"{WORK}/test-session-out.tgz", f"{WORK}/watcher-out.tgz"
 OUT_PARENT, OUT_NAME = f"{WORK}/exp35-test", "out"
 PULLED, SESSION_ENV, SESSION = f"{WORK}/PULLED", f"{WORK}/session.env", "exp35"
-INPUTS_TGZ, EXAMPLES, STOP_GRACE_MIN = "exp35-inputs.tgz", "classify-examples.json", 30
+INPUTS_TGZ, EXAMPLES, STOP_GRACE_MIN = "exp35-inputs.tgz", "classify-examples.json", 120
 STAGES, REMOTE_HERE = "test_session_stages.txt", f"{REMOTE_REPO}/experiments/{EXP.name}/prefreeze"
 LAUNCH = f"bash {REMOTE_HERE}/launch35.sh > {LOG} 2>&1"
 
 POLL_S, SSH_POLL_S, STOP_POLL_S = 60, 15, 10
 SSH_WAIT_S, IDLE_S, SSH_LOST_S, IDLE_GRACE_S = 15 * 60, 30 * 60, 10 * 60, 10 * 60
-SETTLE_S, STOP_WAIT_S, BEAT_S = 10 * 60, 5 * 60, 30 * 60
+SETTLE_S, STOP_WAIT_S, BEAT_S, LOG_COPY_S, PULL_COPY_S = 10 * 60, 5 * 60, 30 * 60, 10 * 60, 45 * 60
 
 DONE, STOP = "TEST_SESSION_DONE", "STOP:"
 STOP_FAILED, STOP_SENT = "POD_STOP_FAILED", "pod stop sent with:"
@@ -49,7 +51,7 @@ _STAGE_START = re.compile(r"== \S+: start \(timeout (\d+)s\)")  # idle = timeout
 _SHOWN = re.compile(r"^\[\d\d:\d\d:\d\d\] (==|test pod session|PULLED seen|no .*PULLED)")
 EXIT = {"done": 0, "internal": 1, "refused": 2, "stop-failed": 3, "no-ssh": 4, "setup": 5,
         "stop-line": 6, "session-ended": 7, "idle": 8, "wall-cap": 9, "ssh-lost": 10,
-        "pull": 11, "interrupted": 12}  # fmt: skip
+        "pull": 11, "interrupted": 12, "no-address": 13}  # fmt: skip
 _SIGNALS = (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)
 _SSH_OPTIONS = ("BatchMode=yes", "StrictHostKeyChecking=no", "UserKnownHostsFile=/dev/null",
                 "ConnectTimeout=20", "ServerAliveInterval=15", "LogLevel=ERROR")  # fmt: skip
@@ -66,7 +68,7 @@ WHICH_CMD = (
 )
 # GNU tar exit 1 means a file changed while it was read (the chain may still write).
 PACK_CMD = (
-    f"cd {OUT_PARENT} && {{ tar -czf {OWN_TARBALL} {OUT_NAME}; [ $? -le 1 ]; }} "
+    f"cd {OUT_PARENT} && {{ tar -czf {OWN_TARBALL} --exclude=stores {OUT_NAME}; [ $? -le 1 ]; }} "
     f"&& sha256sum {OWN_TARBALL} > {OWN_TARBALL}.sha256"
 )
 
@@ -137,6 +139,7 @@ def prepare(args: argparse.Namespace) -> tuple[list[str], Plan]:
         problems.append(f"--extra-input {plan.extra} is not a file")
     if not re.fullmatch(r"[0-9a-f]{40}", args.commit):  # it goes unquoted into pod commands
         problems.append("--commit must be the full 40-character commit SHA")
+    problems += runpod_ssh35.arg_problems(args.ssh_host, args.ssh_port)
     if not plan.key.is_file():
         problems.append(f"SSH key {plan.key} not found")
     try:
@@ -216,7 +219,7 @@ def _good(result: subprocess.CompletedProcess[bytes] | None, what: str) -> bool:
 class Pod:
     """SSH and scp to the pod as root; the key goes to ssh by path only."""
 
-    def __init__(self, host: str, port: int, key: Path) -> None:
+    def __init__(self, host: str, port: int | str, key: Path) -> None:
         options = [part for option in _SSH_OPTIONS for part in ("-o", option)]
         self.host, self.port, self.login = host, port, f"root@{host}"
         self.ssh_base = ["ssh", "-i", str(key), "-p", str(port), *options, self.login]
@@ -349,7 +352,7 @@ def wait_for(pod: Pod, w: Watch, met: Callable[[], bool], limit: float, step: fl
 def pull(pod: Pod, folder: Path) -> str:
     """Step 7: copy the log and the outputs; return ok, hash-mismatch, pull-failed or none."""
     say(f"step 7: copy the chain log and the outputs into {folder}")
-    pod.copy([pod.remote(LOG)], str(folder))
+    pod.copy([pod.remote(LOG)], str(folder), LOG_COPY_S)
     which = pod.ssh(WHICH_CMD)
     if which is None or which.returncode != 0:
         return "pull-failed"
@@ -363,7 +366,7 @@ def pull(pod: Pod, folder: Path) -> str:
             return "pull-failed"
         remote = OWN_TARBALL
     tgz, files = folder / Path(remote).name, [pod.remote(remote), pod.remote(f"{remote}.sha256")]
-    if not (pod.copy(files, str(folder)) or pod.copy(files, str(folder))):  # one retry
+    if not any(pod.copy(files, str(folder), PULL_COPY_S) for _ in range(2)):  # one retry
         return "pull-failed"
     want = (folder / f"{tgz.name}.sha256").read_text(encoding="utf-8").split()[:1]
     if want == [found := sha256(tgz)]:
@@ -395,7 +398,7 @@ def end_session(pod: Pod, w: Watch, reason: str, folder: Path) -> tuple[str, str
 
 
 def dry_run(args: argparse.Namespace, plan: Plan, problems: list[str]) -> int:
-    pod = Pod(args.ssh_host, args.ssh_port, plan.key)
+    pod = Pod(args.ssh_host or "<publicIp>", args.ssh_port or "<port>", plan.key)
     say(f"DRY RUN: no ssh, scp or tmux call, no file written. Key {plan.key} is not read.")
     say(f"step 1: create {plan.folder}")
     say(f"step 2: build {plan.folder / 'inputs' / INPUTS_TGZ} from {plan.root} (no Legal, D1):")
@@ -404,6 +407,7 @@ def dry_run(args: argparse.Namespace, plan: Plan, problems: list[str]) -> int:
         say(f"  {sizes.get(rel, 0):>12,}  {rel}")
     say(f"  {len(plan.rels)} files, {sum(sizes.values()) / 1e6:.1f} MB before compression")
     remote = [
+        *([] if args.ssh_host else [f"2b GET {runpod_ssh35.API}{args.pod_id} for 22/tcp"]),
         f"3 {shlex.join(pod.ssh_base)} true (every {SSH_POLL_S} s, up to {SSH_WAIT_S // 60} min)",
         f"4 ssh 'mkdir -p {INPUTS}'; {shlex.join([*pod.scp_base, '<files>', pod.remote(INPUTS)])}"
         f" (the tarball, its .sha256 and the examples as {EXAMPLES})"
@@ -435,8 +439,11 @@ def run(args: argparse.Namespace) -> int:
     say(f"steps 1 and 2: create {plan.folder}; build the inputs tarball (no Legal RAG Bench, D1)")
     plan.folder.mkdir(parents=True)
     (plan.folder / "watcher.pid").write_text(f"{os.getpid()}\n", encoding="utf-8")
-    pod = Pod(args.ssh_host, args.ssh_port, plan.key)
-    if failed := setup(pod, plan, build_inputs(plan)):
+    shas = build_inputs(plan)
+    if not (found := runpod_ssh35.find(args, now=now, pause=pause, say=say)):
+        return EXIT["no-address"]
+    pod = Pod(*found, plan.key)
+    if failed := setup(pod, plan, shas):
         return EXIT[failed]
     say(f"step 6: watching {LOG} every {POLL_S} s (cap {args.wall_cap_h:g} h)")
     w = Watch()
@@ -458,9 +465,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Run the session watch; always end with the DELETE_POD_NOW line."""
     argv = list(sys.argv[1:] if argv is None else argv)
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    for name in ("--pod-id", "--ssh-host", "--commit"):
+    for name in ("--pod-id", "--commit"):
         parser.add_argument(name, required=True)
-    parser.add_argument("--ssh-port", required=True, type=int)
+    parser.add_argument("--ssh-host", help="pod public IP; default: ask RunPod (runpod_ssh35.py)")
+    parser.add_argument("--ssh-port", type=int, help="public port of 22/tcp, with --ssh-host")
     parser.add_argument("--examples", required=True, type=Path, help="classifier examples JSON")
     parser.add_argument("--ssh-key", type=Path, default=Path("~/.ssh/runpod_omrs_measure"))
     parser.add_argument("--stages", default=STAGES, help="stages file in prefreeze/ for the pod")

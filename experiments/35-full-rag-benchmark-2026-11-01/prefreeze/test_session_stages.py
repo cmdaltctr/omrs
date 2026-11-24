@@ -1,5 +1,5 @@
 """Checks on test_session_stages.txt, the content of the test pod session (task 9.2, G6),
-and on verify_session_stages.txt, the fix check session that runs through the same chain.
+and on verify_session_stages.txt and p2_session_stages.txt, which run through the same chain.
 
 No stage runs. The test reads the file as pod_test_session.sh does, parses every
 ``run_arms.py`` call with the runner's own parser, runs ``--help`` of the other
@@ -7,7 +7,7 @@ scripts to check that they start from the Experiment 35 folder and take the opti
 each line gives, and checks the rules of the 2026-11-23 session plan: the rebuild
 check of the three core datasets (G16), own folders for the recheck, throughput and
 VRAM runs (G17), FinanceBench in three chunk sizes (G24), the task stages, and that
-no line holds a key. The general checks run on both files.
+no line holds a key. The general checks run on every file.
 """
 
 from __future__ import annotations
@@ -30,9 +30,10 @@ HERE = Path(__file__).resolve().parent
 EXP35 = HERE.parent
 STAGES_FILE = HERE / "test_session_stages.txt"
 VERIFY_FILE = HERE / "verify_session_stages.txt"
+P2_FILE = HERE / "p2_session_stages.txt"
 #: Each stages file with the fewest runner calls it must hold.
-FILES = {STAGES_FILE: 101, VERIFY_FILE: 14}
-BOTH = pytest.mark.parametrize("path", list(FILES), ids=["test", "verify"])
+FILES = {STAGES_FILE: 101, VERIFY_FILE: 14, P2_FILE: 39}
+BOTH = pytest.mark.parametrize("path", list(FILES), ids=["test", "verify", "p2"])
 OUT = "/workspace/exp35-test/out"
 #: What the chain and launch35.sh give every stage.
 PROVIDED = {

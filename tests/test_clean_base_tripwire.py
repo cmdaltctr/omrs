@@ -450,7 +450,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # test_the_disk_check_refuses_a_network_file_system (9 cases) added; 0 removed. No extra.
 # +1 (2026-11-24, unpack copies the seal record, by test-ID diff against HEAD 3fdd151f):
 # test_unpack_also_copies_the_seal_environment_the_answer_stages_read added. No extra.
-_BASE_EXECUTED = 13881
+# +43 (2026-11-24, Exp 35 P2 session prep, by test-ID diff against HEAD 02fbdd38): new
+# files test_runpod_ssh35.py (22), test_mac_watch35_p2.py (7), test_p2_session_stages.py (7);
+# 6 test_session_stages.py cases also run as [p2]; 1 chain tarball case. 0 removed. No extra.
+_BASE_EXECUTED = 13924
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

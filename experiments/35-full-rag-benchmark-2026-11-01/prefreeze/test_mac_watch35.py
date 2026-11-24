@@ -228,7 +228,7 @@ def test_a_done_session_is_pulled_checked_marked_and_ends_with_the_delete_line(
     stages = (
         f"{s.pod}/workspace/omrs/experiments/{HERE.parent.name}/prefreeze/test_session_stages.txt"
     )
-    assert session_env == f"COMMIT={s.commit}\nSTOP_GRACE_MIN=30\nSTAGES_FILE={stages}\n"
+    assert session_env == f"COMMIT={s.commit}\nSTOP_GRACE_MIN=120\nSTAGES_FILE={stages}\n"
     clone = s.pod / "workspace/omrs"
     head = subprocess.run(["git", "-C", str(clone), "rev-parse", "HEAD"], capture_output=True)
     assert head.stdout.decode().strip() == s.commit

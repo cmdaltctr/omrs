@@ -10,7 +10,9 @@
 # It runs each stage of STAGES_FILE in order, from the Experiment 35 folder. On every
 # exit (the end, a failure, a TERM, HUP or INT signal) the `finish` trap runs once: it
 # stops the background processes of the stages, writes the outputs to
-# $WORK/test-session-out.tgz with its SHA-256, waits up to STOP_GRACE_MIN minutes for
+# $WORK/test-session-out.tgz with its SHA-256 (without the index stores: every stores/
+# folder stays on the volume, so the copy to the Mac is small; P2, 2026-11-24), waits up
+# to STOP_GRACE_MIN minutes for
 # the Mac's $WORK/PULLED marker, then stops this pod, so billing for the GPU ends.
 # Create the pod with a volume disk at /workspace: a stop clears the container disk,
 # the volume keeps the tarball (G10).
@@ -327,7 +329,7 @@ finish() {
     printf '%s\n' ${SKIPPED[@]+"${SKIPPED[@]}"} >"$OUT_DIR/skipped-stages.txt"
     [ -f "$EXP35/output/run-records.jsonl" ] && cp -p "$EXP35/output/run-records.jsonl" "$OUT_DIR/"
   fi
-  run tar -czf "$TARBALL" -C "$(dirname "$OUT_DIR")" "$(basename "$OUT_DIR")" \
+  run tar -czf "$TARBALL" --exclude=stores -C "$(dirname "$OUT_DIR")" "$(basename "$OUT_DIR")" \
     || log "tarball FAILED; the outputs stay in $OUT_DIR"
   [ "$DRY_RUN" = 1 ] || checksum "$TARBALL" >"$TARBALL.sha256"
   log "TEST_SESSION_DONE: copy $TARBALL (+ .sha256) to the Mac, touch $PULLED, then delete the pod"

@@ -42,7 +42,7 @@ def test_a_verify_session_ships_the_extra_input_and_names_its_stages_file(tmp_pa
     assert len(checks) == 1 and f"{_sha(extra)} fb-answers.tgz" in checks[0]
     env = (s.pod / "workspace/session.env").read_text(encoding="utf-8").splitlines()
     remote = REMOTE.replace("/workspace", str(s.pod / "workspace"))
-    assert env == [f"COMMIT={s.commit}", "STOP_GRACE_MIN=30", f"STAGES_FILE={remote}/{VERIFY}"]
+    assert env == [f"COMMIT={s.commit}", "STOP_GRACE_MIN=120", f"STAGES_FILE={remote}/{VERIFY}"]
     assert KEY_BODY not in output
 
 

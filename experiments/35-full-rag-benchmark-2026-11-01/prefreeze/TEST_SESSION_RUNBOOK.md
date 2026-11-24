@@ -33,14 +33,15 @@ This runbook is for the operator's agent. The agent creates and deletes the pod 
 4. Call `create-pod` once with that JSON, unchanged. Write down the pod id.
 5. Read the pod back with `get-pod`. Compare the image digest, GPU, `/workspace` volume and port `22/tcp` with the JSON.
 6. If a value differs, delete the pod at once. Do not start the watcher.
-7. Wait for SSH. Read `get-pod` until it shows `publicIp` and the public port mapped to port 22.
-8. If SSH has no public port after 15 minutes, delete the pod.
-9. Start the watcher as a background task. `caffeinate -i` keeps the Mac awake:
+7. Start the watcher as a background task at once. `caffeinate -i` keeps the Mac awake:
 
    ```bash
    caffeinate -i uv run --no-sync python prefreeze/mac_watch35.py --pod-id <id> \
-     --ssh-host <publicIp> --ssh-port <port> --commit "$COMMIT" --examples <examples.json>
+     --commit "$COMMIT" --examples <examples.json>
    ```
+
+8. The watcher reads the pod from the RunPod API every 15 s (step 2b). It waits for the public IP and the public port of `22/tcp`, up to 15 minutes. It prints `not ready yet` for each wait. The key comes from `RUNPOD_API_KEY`, else from `apikey` in `~/.runpod/config.toml`. The watcher never prints the key.
+9. If no public address comes in 15 minutes, the watcher exits 13. Delete the pod. The RunPod SSH proxy cannot carry `scp`, so the watcher does not use it. To give the address yourself, add `--ssh-host <publicIp> --ssh-port <port>`.
 
 10. Read the watcher output while it runs. It prints one line for each stage start and end.
 11. Read `list-pod-billing` every 2 hours. Add the OpenRouter session spend.
@@ -74,6 +75,7 @@ Every code ends with `DELETE_POD_NOW <id>`. Delete the pod for every code.
 | 10 | No SSH for 10 minutes while watching | Outputs are probably lost. Report it. |
 | 11 | The pull failed, or the SHA-256 differs | Keep the files as they are. Report it. |
 | 12 | Stopped by a signal (SIGTERM, SIGINT or SIGHUP) | Report why you stopped it. |
+| 13 | No public IP for `22/tcp` within 15 minutes (step 2b) | Report it. Nothing was copied. |
 
 ## Where the results go
 
@@ -83,6 +85,8 @@ Every code ends with `DELETE_POD_NOW <id>`. Delete the pod for every code.
 - `inputs/` holds the inputs tarball, its `.sha256`, the examples and the `--extra-input` file, exactly as sent to the pod.
 - The outputs tarball is `test-session-out.tgz` from the chain. If the chain wrote none, it is `watcher-out.tgz`, packed from `/workspace/exp35-test/out`.
 - Record the copy and its SHA-256 in `DATA/omrs/DATA_LOCATIONS.md`.
+- The outputs tarball holds no index store (`stores/` folders). The stores stay on the pod volume and go when you delete the pod. Every JSON, JSONL, log and summary file, `environment.json` and the seal records are in the tarball.
+- The watcher writes `STOP_GRACE_MIN=120` into `session.env`. The chain then waits up to 120 minutes for `PULLED` before it stops the pod. The watcher's pull takes at most 110 minutes (copy time limits of 10 min for the log and 45 min for each of two tarball tries), so a slow copy ends before the stop. A Mac that stops answering costs at most 2 h of GPU time.
 
 ## Fix check variant
 
@@ -117,7 +121,7 @@ The fix check session checks the four fixes of 2026-11-24 on a short second pod.
 
 ### Session
 
-Do the session order above. In step 9, start the watcher with the two extra options:
+Do the session order above. In step 7, start the watcher with the two extra options:
 
 ```bash
 caffeinate -i uv run --no-sync python prefreeze/mac_watch35.py --pod-id <id> \
@@ -151,3 +155,47 @@ The sections run in the order 1, 3, 3b, 4, 2: the cheapest and the budget-critic
 - Hosted calls (Ragas on 20 questions, claim kinds on 20 answers) add a few cents of OpenRouter spend.
 - Pass mark of the whole check (2026-11-24 notes): every stage `ok`, the per-file store time flat, and `s/freshstack/rebuild.json` reports identical ranked results (`"ok": true`).
 - Store speed for the budget: the `[rate] files` lines give seconds per file for each block of 200 files. Block 1 includes the engine start. The old rate was about 2 s per file at 3,300 files.
+
+## P2 session
+
+The P2 session measures the build speed and checks answers before the freeze. It uses the same machinery as the test session. The stages are in `prefreeze/p2_session_stages.txt`. The results folder is `p2-session-<UTC date>/`.
+
+### Before the go
+
+1. Do steps 1 to 3 of "Before the go" above.
+2. Run the dry run:
+
+   ```bash
+   uv run --no-sync python prefreeze/mac_watch35.py --pod-id DRYRUN --commit "$COMMIT" \
+     --examples <examples.json> --stages p2_session_stages.txt --dry-run
+   ```
+
+3. Make sure the dry run exits 0, shows no `PROBLEM:` line and shows the `step 2b: GET` line.
+4. Make sure the dry run shows `STAGES_FILE=/workspace/omrs/.../p2_session_stages.txt` and the folder `p2-session-<UTC date>`.
+
+### Session
+
+Do the session order above. In step 7, start the watcher with the stages file:
+
+```bash
+caffeinate -i uv run --no-sync python prefreeze/mac_watch35.py --pod-id <id> \
+  --commit "$COMMIT" --examples <examples.json> --stages p2_session_stages.txt
+```
+
+### Stages, times and pass marks
+
+The quick checks run first, then the full build. The stage timeouts add up to 900 min, the 15 h session cap, so the cap never cuts a stage short. Times are expected minutes on one RTX 4090.
+
+| Stage | Timeout | Expected | Pass mark |
+| --- | ---: | ---: | --- |
+| `setup` | 60 min | 23 min | `ok`. A failure stops the chain. |
+| `rate-e0.6b-c1024`, `rate-e8b-c1024`, `rate-e4b-c512`, `rate-e4b-c2048` | 40 min each | 13 min each | `ok`. About 2,750 files each (1,200 sampled plus the gold files). The `[rate] files` lines stay flat in s/file. |
+| `seal-e4b-c512`, `seal-e0.6b-c1024`, `seal-e4b-c2048` | 10 min each | under 1 min | `ok`. |
+| `recheck-<shape>` (15 stages) | 10 min each | 2.5 min each | `ok`. In `r/freshstack/answer/<setup>/run1/`, every `answer-summary.json` has `failed` 0 and every judge summary has `errors` 0 (task 10.1). |
+| `fsfull-e8b-c512` | 8 h | about 4 h | `ok`. 49,506 files. The `[rate]` lines give the full-build rate for the budget. |
+| `fsfull-seal` | 20 min | 4 min | `ok`. |
+
+- The recheck covers every answer-setup shape: each chunk size, reranker off and 0.6b, hybrid off and on, and the three `-t20k` setups. Chunk sizes 512 and 2048 read the `e4b` samples. The session builds no `e4b-c1024`, so chunk size 1024 reads the smallest index the session builds at that size, `e0.6b-c1024`.
+- Full-build estimate: `e4b-c1024` ingested 0.25 s per file on 2026-11-24. `e8b-c512` took 1.16 times as long as `e4b-c1024` on the test session's timing slice. That gives about 0.29 s per file, 4.0 h for 49,506 files. The 8 h timeout is twice that figure.
+- Expected total: about 6 h of stages, plus about 15 min for the pod start, the copy, the pull and the stop. That is about $5.60 at $0.89/h. The upper bound is the 15 h cap plus the pull, about $14.
+- Hosted calls: 15 recheck stages, each with answers and two judges on two questions. That is a few cents of OpenRouter spend.
