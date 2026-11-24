@@ -2,14 +2,22 @@
 
 pod_test_session.sh runs the file unchanged. test_session_stages.py runs the general
 checks on it (parsing, scripts and their options, no key, a timeout on every stage).
-These tests check what P2 needs: the test session setup, 1,200-file rate samples of
-four indexes, the zero-error recheck in every answer-setup shape (task 10.1), and the
-timed full-corpus FreshStack build of e8b-c512, in that order, inside the session cap.
+These tests check what P2 needs: the test session setup, the classifier re-gate on the
+new gate sample (task 8.7, owner decision 2026-11-24), 1,200-file rate samples of four
+indexes, the zero-error recheck in every answer-setup shape (task 10.1), and the timed
+full-corpus FreshStack build of e8b-c512, in that order, inside the session cap.
 """
 
 from __future__ import annotations
 
+import hashlib
+import json
+import shlex
+
 from test_session_stages import (
+    EXP35,
+    HERE,
+    OUT,
     P2_FILE,
     RECHECK,
     _calls,
@@ -30,6 +38,7 @@ RECHECK_INDEX = {512: "e4b-c512", 1024: "e0.6b-c1024", 2048: "e4b-c2048"}
 SHAPES = [s.name.removeprefix("e4b-") for s in arms.answer_setups("4b", "0.6b")]
 P2_ORDER = [
     "setup",
+    "gate2-classify",
     *(f"rate-{i}" for i in SAMPLES),
     *(f"seal-{RECHECK_INDEX[c]}" for c in (512, 1024, 2048)),
     *(f"recheck-{shape}" for shape in SHAPES),
@@ -71,7 +80,8 @@ def test_every_timeout_fits_the_session_cap_and_the_full_build_gets_eight_hours(
     assert sum(minutes.values()) <= CAP_MIN  # the cap never cuts the last stage short
     assert minutes["fsfull-e8b-c512"] == 8 * 60  # 2 x the 4.0 h flat projection
     assert minutes["fsfull-seal"] == 20 and minutes["setup"] == 60
-    assert {minutes[f"rate-{i}"] for i in SAMPLES} == {40}
+    assert {minutes[f"rate-{i}"] for i in SAMPLES} == {35}  # 40 until the re-gate (2026-11-24)
+    assert minutes["gate2-classify"] == 15  # 100 hosted calls; the first gate took 2 min
     assert {minutes[n] for n in minutes if n.startswith(("seal-", "recheck-"))} == {10}
 
 
@@ -147,3 +157,32 @@ def test_the_recheck_answers_and_judges_two_questions_in_every_answer_setup_shap
         # Only && joins the two calls, so the judge runs only after a clean answer stage.
         assert command.count(" && ") == 1, name
         assert not any(sep in command for sep in (";", "||", " & ", "|")), name
+
+
+def test_the_regate_classifies_the_sent_sample_into_its_own_folder() -> None:
+    calls = [c for c in _calls(P2_FILE) if c.stage.name == "gate2-classify"]
+    assert [c.words[0] for c in calls] == ["mkdir", "cp", "uv"]
+    assert calls[1].words[1:] == ("/workspace/inputs/sample.json", f"{OUT}/gate2/sample.json")
+    assert _script(calls[2])[:2] == ("refusals35.py", "classify")
+    assert dict(calls[2].env) == {"PYTHONPATH": "../.."}
+    opts = _opts(calls[2].words)
+    assert (opts["--out-dir"], opts["--classify-concurrency"]) == (f"{OUT}/gate2", "16")
+    # The committed examples at the session commit, the file plan.json pins (SHA-256).
+    examples = EXP35 / opts["--examples"]
+    pin = json.loads((EXP35 / "plan.json").read_text(encoding="utf-8"))["pins"]["recorded"]
+    assert hashlib.sha256(examples.read_bytes()).hexdigest() == pin["classifier_examples"]["sha256"]
+    # No other stage touches gate2.
+    assert [c.stage.name for c in _calls(P2_FILE) if "gate2" in shlex.join(c.words)] == [
+        "gate2-classify"
+    ] * 3
+
+
+def test_the_p2_watcher_commands_send_the_regate_sample_as_the_extra_input() -> None:
+    runbook = (HERE / "TEST_SESSION_RUNBOOK.md").read_text(encoding="utf-8")
+    section = runbook.split("\n## P2 session\n", 1)[1].split("\n## ", 1)[0]
+    commands = [b for b in section.split("```")[1::2] if "mac_watch35.py" in b]
+    assert len(commands) == 2  # the dry run and the session
+    for command in commands:
+        assert "--stages p2_session_stages.txt" in command
+        assert '--extra-input "$GATE2/sample.json"' in command
+        assert "--examples classify-examples.json" in command

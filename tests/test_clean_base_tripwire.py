@@ -453,7 +453,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +43 (2026-11-24, Exp 35 P2 session prep, by test-ID diff against HEAD 02fbdd38): new
 # files test_runpod_ssh35.py (22), test_mac_watch35_p2.py (7), test_p2_session_stages.py (7);
 # 6 test_session_stages.py cases also run as [p2]; 1 chain tarball case. 0 removed. No extra.
-_BASE_EXECUTED = 13924
+# +9 (2026-11-24, Exp 35 classifier re-gate, by test-ID diff against HEAD afdb0d4e): new
+# file test_experiment35_refusals_exclude.py (4); test_experiment35_plan_pins.py (2),
+# test_experiment35_guidelines.py (1), test_p2_session_stages.py (2). 0 removed. No extra.
+_BASE_EXECUTED = 13933
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

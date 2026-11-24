@@ -89,6 +89,26 @@ def test_claim_kind_guideline_states_the_mixed_rule_as_registered() -> None:
     assert shared in _norm(claimkinds35.PROMPT) and shared in text
 
 
+#: The two rules the owner added after the classifier gate failed (2026-11-24, pre-freeze).
+CLARIFICATIONS = (
+    "a sentence that says the sources do not state something is refusal, even when it also "
+    "names part of the question or the user's own setup, as long as it states no fact about "
+    "a source",
+    'a sentence that says what a source covers or is about, even "unrelated topics", is '
+    "factual or mixed, never refusal",
+)
+
+
+def test_the_classifier_and_the_labeller_follow_the_two_gate_fail_rules() -> None:
+    prompt = _norm(claimkinds35.PROMPT).lower()
+    hard = [_norm(h).lower() for h in labelpage35.HARD_CASES["claim_kinds"]]
+    text = _norm(_file("claim_kinds")).lower()
+    for rule in CLARIFICATIONS:
+        assert rule in prompt, rule
+        assert any(rule in case for case in hard), rule
+        assert rule in text, rule
+
+
 def test_faithfulness_guideline_follows_the_aggrefact_task_definition() -> None:
     text = _file("faithfulness")
     assert "LLM-AggreFact task definition (MiniCheck)" in text

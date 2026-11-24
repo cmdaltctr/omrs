@@ -160,18 +160,28 @@ The sections run in the order 1, 3, 3b, 4, 2: the cheapest and the budget-critic
 
 The P2 session measures the build speed and checks answers before the freeze. It uses the same machinery as the test session. The stages are in `prefreeze/p2_session_stages.txt`. The results folder is `p2-session-<UTC date>/`.
 
+The session also runs the classifier re-gate (task 8.7, owner decision 2026-11-24). The first gate failed on refusal recall. The re-gate classifies a new sample of 100 claims (seed 20261142) with the re-pinned prompt and examples. The watcher sends the sample as `--extra-input`. It arrives as `/workspace/inputs/sample.json`, and its SHA-256 is checked on the pod. The stage `gate2-classify` copies it to `gate2/` and writes `gate2/sample-kinds.jsonl` there. The output tarball brings it back.
+
 ### Before the go
 
 1. Do steps 1 to 3 of "Before the go" above.
-2. Run the dry run:
+2. Name the re-gate sample folder:
+
+   ```bash
+   GATE2=~/Development/DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/test-session-2026-11-24/gate2
+   ```
+
+3. Run the dry run from the Experiment 35 folder:
 
    ```bash
    uv run --no-sync python prefreeze/mac_watch35.py --pod-id DRYRUN --commit "$COMMIT" \
-     --examples <examples.json> --stages p2_session_stages.txt --dry-run
+     --examples classify-examples.json --stages p2_session_stages.txt \
+     --extra-input "$GATE2/sample.json" --dry-run
    ```
 
-3. Make sure the dry run exits 0, shows no `PROBLEM:` line and shows the `step 2b: GET` line.
-4. Make sure the dry run shows `STAGES_FILE=/workspace/omrs/.../p2_session_stages.txt` and the folder `p2-session-<UTC date>`.
+4. Make sure the dry run exits 0, shows no `PROBLEM:` line and shows the `step 2b: GET` line.
+5. Make sure the dry run shows `STAGES_FILE=/workspace/omrs/.../p2_session_stages.txt` and the folder `p2-session-<UTC date>`.
+6. Make sure the dry run names `sample.json` among the inputs it sends.
 
 ### Session
 
@@ -179,17 +189,21 @@ Do the session order above. In step 7, start the watcher with the stages file:
 
 ```bash
 caffeinate -i uv run --no-sync python prefreeze/mac_watch35.py --pod-id <id> \
-  --commit "$COMMIT" --examples <examples.json> --stages p2_session_stages.txt
+  --commit "$COMMIT" --examples classify-examples.json --stages p2_session_stages.txt \
+  --extra-input "$GATE2/sample.json"
 ```
+
+After the pull, copy `out/gate2/sample-kinds.jsonl` from the session tarball to `$GATE2/`. Then run `refusals35.py gate --out-dir "$GATE2" --labels <claim_kinds-L1.json>` on the Mac.
 
 ### Stages, times and pass marks
 
-The quick checks run first, then the full build. The stage timeouts add up to 900 min, the 15 h session cap, so the cap never cuts a stage short. Times are expected minutes on one RTX 4090.
+The re-gate and the quick checks run first, then the full build. The stage timeouts add up to 895 min, inside the 15 h session cap, so the cap never cuts a stage short. Times are expected minutes on one RTX 4090.
 
 | Stage | Timeout | Expected | Pass mark |
 | --- | ---: | ---: | --- |
 | `setup` | 60 min | 23 min | `ok`. A failure stops the chain. |
-| `rate-e0.6b-c1024`, `rate-e8b-c1024`, `rate-e4b-c512`, `rate-e4b-c2048` | 40 min each | 13 min each | `ok`. About 2,750 files each (1,200 sampled plus the gold files). The `[rate] files` lines stay flat in s/file. |
+| `gate2-classify` | 15 min | 2 min | `ok`. `gate2/sample-kinds.jsonl` holds 100 rows of one classifier version. The first gate took 1 min 40 s. |
+| `rate-e0.6b-c1024`, `rate-e8b-c1024`, `rate-e4b-c512`, `rate-e4b-c2048` | 35 min each | 13 min each | `ok`. About 2,750 files each (1,200 sampled plus the gold files). The `[rate] files` lines stay flat in s/file. |
 | `seal-e4b-c512`, `seal-e0.6b-c1024`, `seal-e4b-c2048` | 10 min each | under 1 min | `ok`. |
 | `recheck-<shape>` (15 stages) | 10 min each | 2.5 min each | `ok`. In `r/freshstack/answer/<setup>/run1/`, every `answer-summary.json` has `failed` 0 and every judge summary has `errors` 0 (task 10.1). |
 | `fsfull-e8b-c512` | 8 h | about 4 h | `ok`. 49,506 files. The `[rate]` lines give the full-build rate for the budget. |
@@ -198,4 +212,5 @@ The quick checks run first, then the full build. The stage timeouts add up to 90
 - The recheck covers every answer-setup shape: each chunk size, reranker off and 0.6b, hybrid off and on, and the three `-t20k` setups. Chunk sizes 512 and 2048 read the `e4b` samples. The session builds no `e4b-c1024`, so chunk size 1024 reads the smallest index the session builds at that size, `e0.6b-c1024`.
 - Full-build estimate: `e4b-c1024` ingested 0.25 s per file on 2026-11-24. `e8b-c512` took 1.16 times as long as `e4b-c1024` on the test session's timing slice. That gives about 0.29 s per file, 4.0 h for 49,506 files. The 8 h timeout is twice that figure.
 - Expected total: about 6 h of stages, plus about 15 min for the pod start, the copy, the pull and the stop. That is about $5.60 at $0.89/h. The upper bound is the 15 h cap plus the pull, about $14.
-- Hosted calls: 15 recheck stages, each with answers and two judges on two questions. That is a few cents of OpenRouter spend.
+- Hosted calls: 15 recheck stages, each with answers and two judges on two questions, and 100 classifier calls in `gate2-classify`. That is a few cents of OpenRouter spend.
+- The rate stages had 40 min each until the re-gate was added (2026-11-24). They took 13 min each, so 35 min still gives more than twice that time.

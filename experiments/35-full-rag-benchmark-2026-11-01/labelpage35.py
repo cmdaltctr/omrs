@@ -165,6 +165,13 @@ HARD_CASES: dict[str, tuple[str, ...]] = {
         'A negative answer that answers the question is Factual. Example: "No debt securities '
         'are listed."',
         "Refusal needs no checkable fact at all, not even about what a source contains.",
+        "A sentence that says the sources do not state something is Refusal, even when it also "
+        "names part of the question or the user's own setup, as long as it states no fact about "
+        'a source. Example: "The sources do not say when the bug was fixed, so they cannot '
+        'confirm whether your version 1.2 is the cause" is Refusal.',
+        'A sentence that says what a source covers or is about, even "unrelated topics", is '
+        'Factual or Mixed, never Refusal. Example: "One source is about tax law and the others '
+        'cover unrelated topics" is Factual.',
         "Mixed counts as factual in scoring. Choose Mixed when it fits.",
     ),
     "faithfulness": (),

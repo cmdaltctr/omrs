@@ -42,6 +42,10 @@ refusal: the sentence only says that the sources do not cover something, or that
 cannot be answered from them. It states no checkable fact, not even about what a source contains.
 mixed: the sentence states a checkable fact and also a limit of what the sources cover. A fact
 about what a source contains, with a statement that it lacks the answer, is mixed.
+A sentence that says the sources do not state something is refusal, even when it also names
+part of the question or the user's own setup, as long as it states no fact about a source.
+A sentence that says what a source covers or is about, even "unrelated topics", is factual or
+mixed, never refusal.
 
 You see the question and the sentence only. Reply with one word: factual, refusal or mixed.
 

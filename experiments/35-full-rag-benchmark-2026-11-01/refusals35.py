@@ -4,7 +4,8 @@ Usage (``sample``, ``page`` and ``gate`` read saved files only and run on the Ma
 ``classify`` makes hosted calls and runs on the pod)::
 
     refusals35.py sample --seed 20261112 --n 100 --out-dir OUT \\
-        --folder bioasq=PATH --folder financebench=PATH --folder freshstack=PATH
+        --folder bioasq=PATH --folder financebench=PATH --folder freshstack=PATH \\
+        [--exclude SAMPLE.json --exclude EXAMPLES.json]
     refusals35.py page --out-dir OUT
     refusals35.py classify --out-dir OUT --examples EXAMPLES.json
     refusals35.py gate --out-dir OUT --labels L1.json [--labels L2.json] [--resolved FILE]
@@ -183,8 +184,9 @@ def draw_sample(claims: Sequence[Mapping[str, Any]], *, seed: int, n: int) -> di
 
 
 def write_sample(out_dir: Path, drawn: Mapping[str, Any]) -> None:
-    """Write ``sample.json`` and the prompt-example pool ``examples-pool.json``."""
-    write_json(out_dir / "sample.json", {k: drawn[k] for k in ("seed", "n", "strata", "items")})
+    """Write ``sample.json`` (with ``excluded`` after ``--exclude``) and ``examples-pool.json``."""
+    keys = ("seed", "n", "strata", "items", "excluded")
+    write_json(out_dir / "sample.json", {k: drawn[k] for k in keys if k in drawn})
     write_json(out_dir / "examples-pool.json", drawn["pool"])
 
 
@@ -446,6 +448,7 @@ def main(argv: Sequence[str] | None = None, *, build_classifier: Builder | None 
     s.add_argument("--n", type=int, required=True)
     s.add_argument("--folder", action="append", required=True, help="DATASET=PATH")
     s.add_argument("--out-dir", type=Path, required=True)
+    s.add_argument("--exclude", type=Path, action="append", default=[], help="sample or examples")
     p = sub.add_parser("page")
     p.add_argument("--out-dir", type=Path, required=True)
     c = sub.add_parser("classify")
@@ -460,9 +463,13 @@ def main(argv: Sequence[str] | None = None, *, build_classifier: Builder | None 
     args = parser.parse_args(argv)
     if args.command == "sample":
         folders = {d: Path(p) for d, p in (f.split("=", 1) for f in args.folder)}
-        drawn = draw_sample(
-            session_claims(folders, _questions(sorted(folders))), seed=args.seed, n=args.n
-        )
+        claims = session_claims(folders, _questions(sorted(folders)))
+        banned = claimcontext35.excluded_keys(args.exclude)
+        kept = [c for c in claims if c["claim_key"] not in banned]
+        drawn = draw_sample(kept, seed=args.seed, n=args.n)
+        if args.exclude:
+            names = [p.name for p in args.exclude]
+            drawn["excluded"] = {"files": names, "claims": len(claims) - len(kept)}
         write_sample(args.out_dir, drawn)
         return 0
     if args.command == "page":

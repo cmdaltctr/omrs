@@ -2,16 +2,18 @@
 
 The claim-kind labelling page shows each claim inside its full answer, with
 the passages the claim cites, so the label rests on context (pre-freeze change
-2026-11-23). This module also holds the reasoning check of the sample source,
-moved here from ``refusals35.py`` to keep that file under 500 lines.
+2026-11-23). This module also holds the reasoning check of the sample source and
+the exclude list of a re-gate sample, kept here so ``refusals35.py`` stays under 500 lines.
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+import json
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
 
+from claimkinds35 import claim_key
 from outputs35 import read_rows
 
 from omrs.core.answer.verify import split_claims
@@ -33,6 +35,28 @@ def check_reasoning(run_dir: Path) -> None:
             f"{run_dir}: answer reasoning is {found!r}; the main run uses 'none' "
             "(pre-freeze amendment 2026-11-23)"
         )
+
+
+def excluded_keys(paths: Iterable[Path]) -> set[str]:
+    """Return the claim keys a re-gate sample leaves out (owner decision 2026-11-24).
+
+    Args:
+        paths: Saved ``sample.json`` files (their items' claim keys) or prompt-example
+            lists (each item's ``qid`` and ``claim``).
+
+    Raises:
+        SampleError: A file is neither shape (names the file).
+    """
+    keys: set[str] = set()
+    for path in paths:
+        found = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(found, dict) and "items" in found:
+            keys |= {item["claim_key"] for item in found["items"]}
+        elif isinstance(found, list):
+            keys |= {claim_key(item["qid"], item["claim"]) for item in found}
+        else:
+            raise SampleError(f"{path}: not a sample.json or a prompt-example list")
+    return keys
 
 
 def claim_contexts(answer: Mapping[str, Any]) -> list[tuple[str, list[dict[str, Any]]]]:

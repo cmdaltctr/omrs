@@ -377,6 +377,25 @@ async def test_each_recorded_prompt_hash_is_the_sha256_of_its_template_text() ->
     assert not pending & {f"pins.prompts.{name}" for name in expected}
 
 
+def test_the_classifier_prompt_and_examples_pins_match_the_committed_files() -> None:
+    # Re-pinned 2026-11-24 after the gate fail: two prompt rules, three examples added.
+    plan, path = _plan(), FOLDER / "classify-examples.json"
+    examples = json.loads(path.read_text(encoding="utf-8"))
+    pin = plan["pins"]["recorded"]["classifier_examples"]
+    assert (pin["file"], pin["count"]) == (path.name, len(examples)) == (path.name, 10)
+    assert pin["sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
+    claimkinds35 = load("claimkinds35")
+    assert {e["kind"] for e in examples} <= set(claimkinds35.KINDS)
+    built = claimkinds35.build_prompt(examples)
+    assert plan["pins"]["prompts"]["classifier"] == _sha(built)
+
+
+def test_the_regate_sample_has_its_own_seed() -> None:
+    # Owner decision 2026-11-24: a new sample with a new seed after the first gate failed.
+    seeds = _plan()["seeds"]
+    assert seeds["classifier_gate_sample_2"] == 20261142 != seeds["classifier_gate_sample"]
+
+
 def test_the_closed_book_prompts_fill_the_hashed_templates() -> None:
     from omrs.core.answer.prompt import GROUND_TEXT_QA_TEMPLATE
 
