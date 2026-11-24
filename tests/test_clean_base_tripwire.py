@@ -432,7 +432,11 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # test_pp_ocrv6_reads_one_page_per_library_call added; 0 removed or renamed.
 # +2 (2026-11-24, one-slot reranker pins and kept llama.cpp error text, by test-ID diff
 # against HEAD 0bebdb1d): 1 plan-pin case, 1 reranker case added; 0 removed or renamed.
-_BASE_EXECUTED = 13838
+# +5 (2026-11-24, LanceDB fragment compaction, by test-ID diff against HEAD eb70e807):
+# new file test_lancedb_compaction.py, 5 added, 0 removed or renamed; no extra needed.
+# +2 (2026-11-24, Exp 35 ingest version cleanup, by test-ID diff against HEAD eb70e807):
+# new file test_experiment35_ingest_versions.py, 2 added, 0 removed or renamed; no extra.
+_BASE_EXECUTED = 13845
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

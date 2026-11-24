@@ -45,6 +45,11 @@ ENV_FIELDS = ("gpu", "image", "llama_cpp_build", "gguf_sha256")
 FILE_WATCHDOG_SECONDS = 600.0
 #: The exit code of a stuck file: items still open, run again with ``--resume``.
 EXIT_STUCK = 6
+#: Delete old table versions after this many ingested files (pre-freeze amendment
+#: 2026-11-24, protocol section 7). Each one-file write adds a version, each of the
+#: about 13 table opens per file lists them all (0.2 ms at 1 version, 2.4 ms at
+#: 6,000 on a Mac), and 64 matches the OMRS fragment compaction threshold.
+VERSION_CLEANUP_EVERY = 64
 #: The exit that ends a stuck process. A native call cannot be cancelled, and its worker
 #: thread would block a normal exit (the thread pool joins its threads at exit).
 _hard_exit = os._exit
@@ -208,6 +213,7 @@ async def ingest_stage(ctx: Ctx) -> int:
             say(f"[ingest] {ctx.dataset}/{ctx.setup}: done earlier, skipped")
             return 0
         done = {name for name, row in _latest(log.rows()).items() if row["status"] == "ok"}
+        written = 0
         for path in ctx.files:
             if path.name in done:
                 continue
@@ -236,6 +242,9 @@ async def ingest_stage(ctx: Ctx) -> int:
                 "seconds": seconds,
             }
             log.append(row)
+            written += 1
+            if written % VERSION_CLEANUP_EVERY == 0:
+                _drop_old_versions(ctx)
             ctx.trace.write(
                 stage="ingest",
                 dataset=ctx.dataset,
@@ -265,6 +274,26 @@ async def ingest_stage(ctx: Ctx) -> int:
             )
         log.mark_done(summary)
     return 0
+
+
+def _drop_old_versions(ctx: Ctx) -> None:
+    """Delete every table version of the index but the latest.
+
+    The rows, their order and ``table.version`` stay the same; only the version
+    history goes. Safe here only: each index is built once by one process, then
+    sealed, and G2 compares a rebuild (protocol section 7).
+    """
+    from datetime import timedelta
+
+    import lancedb
+
+    try:
+        table = lancedb.connect(str(ctx.layout.store(ctx.index))).open_table(ctx.collection)
+    except ValueError as exc:
+        if "was not found" in str(exc):
+            return  # nothing written yet
+        raise
+    table.to_lance().cleanup_old_versions(older_than=timedelta(0))
 
 
 # --- seal --------------------------------------------------------------------------------
