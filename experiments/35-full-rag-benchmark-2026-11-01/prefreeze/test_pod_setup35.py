@@ -25,7 +25,7 @@ SCRIPT = HERE / "pod_setup35.sh"
 REPO = HERE.parents[2]
 PLAN = json.loads((HERE.parent / "plan.json").read_text(encoding="utf-8"))
 MODELS = PLAN["runtime"]["models"]
-#: Reranker test inputs for the task 15.10 check (gap G2); never plan.json pins.
+#: Reranker test inputs for the task 15.10 check (gap G2); plan.json pins them since it passed.
 CANDIDATES = HERE / "rerank_candidates.json"
 CANDIDATE_STATUS = "candidate, not pinned; pinned only after the task 15.10 check"
 CANDIDATE_ROLES = ["reranker-0.6b", "reranker-4b", "reranker-8b"]
@@ -126,7 +126,7 @@ def _candidates() -> list[dict]:
     return json.loads(CANDIDATES.read_text(encoding="utf-8"))["candidates"]
 
 
-def test_the_reranker_candidates_are_runtime_entries_that_stay_out_of_plan_json() -> None:
+def test_the_reranker_candidates_are_runtime_entries_and_plan_json_pins_them_unchanged() -> None:
     data = json.loads(CANDIDATES.read_text(encoding="utf-8"))
     assert data["status"] == CANDIDATE_STATUS
     entries = [candidate["entry"] for candidate in data["candidates"]]
@@ -143,10 +143,12 @@ def test_the_reranker_candidates_are_runtime_entries_that_stay_out_of_plan_json(
     tolerance = [{"metric": "spearman", "max_abs_change": 0.0}]
     block = RuntimeBlock.model_validate({"models": entries, "tolerance": tolerance})
     assert {model.build for model in block.models} == {model["build"] for model in MODELS}
-    assert not {model["role"] for model in MODELS} & set(CANDIDATE_ROLES)
+    # Task 15.10 passed on 2026-11-24: plan.json pins each candidate entry as it was checked.
+    pinned = {model["role"]: model for model in MODELS}
+    assert [pinned[entry["role"]] for entry in entries] == entries
 
 
-def test_dry_run_lists_each_reranker_candidate_with_its_revision_and_sha256(
+def test_dry_run_lists_each_pinned_reranker_once_with_its_revision_and_sha256(
     tmp_path: Path,
 ) -> None:
     result = _run(tmp_path, "--dry-run")
@@ -157,9 +159,10 @@ def test_dry_run_lists_each_reranker_candidate_with_its_revision_and_sha256(
         url = "https://huggingface.co/{}/resolve/{}/{}".format(
             entry["repository"], candidate["revision"], entry["file"]
         )
-        assert url in output, entry["role"]
+        assert output.count(url) == 1, entry["role"]
         assert entry["sha256"] in output, entry["role"]
-    assert output.count("candidate for the task 15.10 check, not pinned") == len(CANDIDATE_ROLES)
+    # A candidate that plan.json pins is fetched as a plan.json model, not as a candidate.
+    assert "candidate for the task 15.10 check, not pinned" not in output
     assert not (tmp_path / "gguf").exists()
 
 

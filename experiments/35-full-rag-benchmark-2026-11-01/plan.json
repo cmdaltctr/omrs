@@ -67,6 +67,10 @@
     "question_order": 20261101,
     "smoke_sample": 20261101,
     "glm": 20261109,
+    "classifier_gate_sample": 20261112,
+    "correctness_sample": 20261113,
+    "halves": 20261115,
+    "faithfulness_sample": 20261116,
     "rerank_check": 20261117,
     "ragas_judge": 20261137,
     "classifier": 20261138,
@@ -86,13 +90,16 @@
     "part2_correctness_sample": 20261133,
     "part2_correctness_kappa": 20261134,
     "part2_correctness_auc": 20261135,
-    "refusal_report": 20261136
+    "refusal_report": 20261136,
+    "bm25_calibration": 20261139
   },
   "pins": {
     "settings": {
       "pdf_reader": "pdf_inspector",
       "embedding": {
-        "query_instruction": ""
+        "query_instruction": "",
+        "tokenizer_model": "Qwen/Qwen3-Embedding-4B",
+        "tokenizer_revision": "5cf2132abc99cad020ac570b19d031efec650f2b"
       },
       "answer": {
         "reasoning": "none",
@@ -132,6 +139,42 @@
       "host": "deepinfra/bf16",
       "reasoning": "low",
       "temperature": 0.0
+    },
+    "glm_judge": {
+      "judge": "chat",
+      "base_url": "https://api.z.ai/api/coding/paas/v4",
+      "reasoning": "low",
+      "temperature": 0.0
+    },
+    "rerank_checks": {
+      "rule": "Spearman at least 0.95 against the transformers reference (bfloat16) on 200 pairs, seed 20261117; anchors relevant at least 0.9 and irrelevant at most 0.1",
+      "pairs": 200,
+      "pairs_sha256": "c9e123fa77cc3da0aec0cf66eab91a2f4d7632160b96675c08a04277dc452fd1",
+      "build": 11941,
+      "seed": 20261117,
+      "gpu": "NVIDIA GeForce RTX 4090",
+      "records": "DATA experiments/35-full-rag-benchmark-2026-11-01/test-session-2026-11-24/rerank-checks/",
+      "reranker-0.6b": {
+        "gguf_revision": "a02f48bb4f057028298c21fa033da2b30d7742d5",
+        "hf_model": "Qwen/Qwen3-Reranker-0.6B",
+        "hf_revision": "e61197ed45024b0ed8a2d74b80b4d909f1255473",
+        "spearman": 0.9975230436009905,
+        "checked_at": "2026-11-24T02:55:26.241670+00:00"
+      },
+      "reranker-4b": {
+        "gguf_revision": "7181641490f486c180be3894760382be354aab24",
+        "hf_model": "Qwen/Qwen3-Reranker-4B",
+        "hf_revision": "22e683669bc0f0bd69640a1354a6d0aebcfeede5",
+        "spearman": 0.9989998421507886,
+        "checked_at": "2026-11-24T01:17:29.501624+00:00"
+      },
+      "reranker-8b": {
+        "gguf_revision": "1a752c69213196777ef126e132a4a679fbb16af3",
+        "hf_model": "Qwen/Qwen3-Reranker-8B",
+        "hf_revision": "77d193c791ed757ca307ee72715aa132723da912",
+        "spearman": 0.9991232195793717,
+        "checked_at": "2026-11-24T01:19:13.742975+00:00"
+      }
     },
     "environment": {
       "image": "runpod/base@sha256:4525a854553d6f3e17e705fd91bb58a80f9a53762210188920dee1b781981020",
@@ -468,6 +511,51 @@
         "server_args": {
           "embeddings": true,
           "pooling": "last",
+          "ctx-size": 8192,
+          "batch-size": 8192,
+          "ubatch-size": 8192
+        }
+      },
+      {
+        "role": "reranker-0.6b",
+        "repository": "ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF",
+        "file": "qwen3-reranker-0.6b-q8_0.gguf",
+        "sha256": "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {
+          "embeddings": true,
+          "pooling": "rank",
+          "ctx-size": 8192,
+          "batch-size": 8192,
+          "ubatch-size": 8192
+        }
+      },
+      {
+        "role": "reranker-4b",
+        "repository": "sinjab/Qwen3-Reranker-4B-Q8_0-GGUF",
+        "file": "Qwen3-Reranker-4B-Q8_0.gguf",
+        "sha256": "143f21b1cba67d328d32dd69daa282d79cb4c1e95398251caa7e48813ec98451",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {
+          "embeddings": true,
+          "pooling": "rank",
+          "ctx-size": 8192,
+          "batch-size": 8192,
+          "ubatch-size": 8192
+        }
+      },
+      {
+        "role": "reranker-8b",
+        "repository": "sinjab/Qwen3-Reranker-8B-Q8_0-GGUF",
+        "file": "Qwen3-Reranker-8B-Q8_0.gguf",
+        "sha256": "b0f8d65d024ad587a9d14ba91f1f0e3fc2ad59e11e46a3b7e00249c5efa11096",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {
+          "embeddings": true,
+          "pooling": "rank",
           "ctx-size": 8192,
           "batch-size": 8192,
           "ubatch-size": 8192

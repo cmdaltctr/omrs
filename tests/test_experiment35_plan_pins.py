@@ -45,6 +45,16 @@ CONFIRMED = {
     "refusal_report": 20261136,
 }
 
+#: Seeds the harness code used before ``plan.json`` named them (added 2026-11-24), with
+#: the BM25 calibration seed that replaced the retired 20261124.
+REGISTERED = {
+    "classifier_gate_sample": 20261112,
+    "correctness_sample": 20261113,
+    "halves": 20261115,
+    "faithfulness_sample": 20261116,
+    "bm25_calibration": 20261139,
+}
+
 
 def _plan() -> dict[str, Any]:
     return json.loads((FOLDER / "plan.json").read_text(encoding="utf-8"))
@@ -187,6 +197,64 @@ def test_every_confirmed_plan_seed_is_a_row_of_the_preregistration_seeds_table()
     seeds = _plan()["seeds"]
     confirmed = {seeds.get(key) for key in (*CONFIRMED, "question_order", "smoke_sample")}
     assert confirmed - table == set()
+
+
+def test_the_seeds_the_code_uses_are_plan_seeds_and_preregistration_rows() -> None:
+    seeds = _plan()["seeds"]
+    assert {key: seeds.get(key) for key in REGISTERED} == REGISTERED
+    text = (FOLDER / "preregistration.md").read_text(encoding="utf-8")
+    table = {int(seed) for seed in re.findall(r"^\| (2026\d{4}) \|", text, re.MULTILINE)}
+    assert set(seeds.values()) - table == set()
+
+
+def test_each_plan_seed_has_one_use_except_20261101() -> None:
+    values = [v for v in _plan()["seeds"].values() if v != 20261101]
+    assert len(values) == len(set(values))
+
+
+def test_the_harness_constants_and_the_stage_file_use_the_registered_plan_seeds() -> None:
+    seeds = _plan()["seeds"]
+    assert load("split35").SEED == seeds["halves"]
+    assert load("correct35").SEED == seeds["correctness_sample"]
+    assert load("faithpool35").SEED_FAITH == seeds["faithfulness_sample"]
+    script = (FOLDER / "prefreeze" / "bm25_calibration35.py").read_text(encoding="utf-8")
+    assert re.findall(r"^SEED = (\d+)$", script, re.MULTILINE) == [str(seeds["bm25_calibration"])]
+    stages = (FOLDER / "prefreeze" / "test_session_stages.txt").read_text(encoding="utf-8")
+    sample = re.findall(r"refusals35\.py sample --seed (\d+)", stages)
+    assert sample == [str(seeds["classifier_gate_sample"])]
+
+
+# --- reranker pins (C35 task 4B.3, RDY task 15.10) ------------------------------------------
+
+
+def test_each_reranker_is_pinned_with_a_passed_rank_check() -> None:
+    plan = _plan()
+    checks = plan["pins"]["rerank_checks"]
+    models = {m["role"]: m for m in plan["runtime"]["models"]}
+    assert checks["pairs"] == 200 and checks["seed"] == plan["seeds"]["rerank_check"]
+    assert re.fullmatch(r"[0-9a-f]{64}", checks["pairs_sha256"])
+    for size in ("0.6b", "4b", "8b"):
+        role = f"reranker-{size}"
+        model, check = models[role], checks[role]
+        assert model["build"] == checks["build"] == 11941, role
+        assert model["server_args"]["pooling"] == "rank", role
+        assert check["spearman"] >= 0.95, role
+        assert re.fullmatch(r"[0-9a-f]{40}", check["gguf_revision"]), role
+        assert re.fullmatch(r"[0-9a-f]{40}", check["hf_revision"]), role
+
+
+# --- P10: tokenizer and GLM-5.3 settings ---------------------------------------------------
+
+
+def test_the_tokenizer_and_glm_pins_equal_the_values_the_harness_sends() -> None:
+    pins = _plan()["pins"]
+    embedding = pins["settings"]["embedding"]
+    assert embedding["tokenizer_model"] == arms.TOKENIZER_MODEL
+    assert embedding["tokenizer_revision"] == arms.TOKENIZER_REVISION
+    assert arms.TOKENIZER_REVISION.startswith("5cf2132a")
+    glm = pins["glm_judge"]
+    assert (glm["reasoning"], glm["temperature"]) == (arms.GLM_REASONING, arms.TEMPERATURE)
+    assert (glm["judge"], glm["base_url"]) == ("chat", arms.GLM_BASE_URL)
 
 
 # --- pod image (task 9.1) -----------------------------------------------------------------

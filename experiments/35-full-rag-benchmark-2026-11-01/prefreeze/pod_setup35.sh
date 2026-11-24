@@ -31,8 +31,8 @@ Prepares one RunPod RTX 4090 pod (Linux x86-64) for Experiment 35. Steps, in ord
      --extra llamacpp --extra hybrid; check that plan.json names the llama.cpp build OMRS installs.
   4. omrs llamacpp install --flavour cuda (the pinned CUDA build).
   5. Fetch each plan.json runtime model at its pinned revision into SWEEP_GGUF_DIR,
-     then each reranker candidate of prefreeze/rerank_candidates.json at its
-     revision (test inputs for the task 15.10 check, not pins). A file already
+     then each reranker candidate of prefreeze/rerank_candidates.json that plan.json
+     does not pin, at its revision (test inputs for the task 15.10 check). A file already
      there is kept when its SHA-256 matches; any other SHA-256 stops the script.
   6. Cache the Qwen3 tokenizer (arms.py model and revision) and check its SHA-256.
   7. Unpack the tarball into EXP35_DATA_DIR; check it with datasets35.py.
@@ -110,6 +110,14 @@ REVISIONS = {
         "69d0e58a13e463cd99a9b83e3f5fee7c10265fab",  # gitleaks:allow (HF revision)
     "ggml-org/Clef-Flash-GGUF/Clef-Flash-Q8_0.gguf":
         "a5a18a6e13bb36573a5f11385a1e7b9a0c868e9e",  # gitleaks:allow (HF revision)
+    # Rerankers pinned on 2026-11-24 after the task 15.10 rank check (revisions as in
+    # prefreeze/rerank_candidates.json).
+    "ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf":
+        "a02f48bb4f057028298c21fa033da2b30d7742d5",  # gitleaks:allow (HF revision)
+    "sinjab/Qwen3-Reranker-4B-Q8_0-GGUF/Qwen3-Reranker-4B-Q8_0.gguf":
+        "7181641490f486c180be3894760382be354aab24",  # gitleaks:allow (HF revision)
+    "sinjab/Qwen3-Reranker-8B-Q8_0-GGUF/Qwen3-Reranker-8B-Q8_0.gguf":
+        "1a752c69213196777ef126e132a4a679fbb16af3",  # gitleaks:allow (HF revision)
 }
 # tokenizer.json at arms.TOKENIZER_REVISION (Experiment 48 plan.json frozen list).
 TOKENIZER_SHA256 = "83cdf8c3a34f68862319cb1810ee7b1e2c0a44e0864ae930194ddb76bb7feb8d"
@@ -154,8 +162,12 @@ elif CMD == "models":
         fail("plan.json runtime models with no pinned revision in pod_setup35.sh: " + ", ".join(missing))
 elif CMD == "candidates":
     # Reranker test inputs for the task 15.10 check; the file holds each revision.
+    # A candidate whose role plan.json pins is fetched as a plan.json model, so it is skipped.
+    pinned = {m["role"] for m in load(ARGS[1])["runtime"]["models"]}
     for c in load(ARGS[0])["candidates"]:
         m, rev = c["entry"], c["revision"]
+        if m["role"] in pinned:
+            continue
         note = "candidate for the task 15.10 check, not pinned"
         print("\t".join([m["file"], m["repository"], rev, m["sha256"], url(m["repository"], rev, m["file"]), note]))
 elif CMD == "build":
@@ -312,7 +324,7 @@ run env OMRS_CONFIG_DIR="$SCRATCH/config" OMRS_STATE_DIR="$SCRATCH/state" LLAMAC
 # --- Step 5: GGUF files ---
 step 5 "fetch the plan.json GGUF files and the reranker candidates at their pinned revisions"
 ROWS="$(py models "$PLAN")" || problem "a plan.json runtime model has no pinned revision (named above)."
-CANDIDATES="$(py candidates "$HERE/rerank_candidates.json")" \
+CANDIDATES="$(py candidates "$HERE/rerank_candidates.json" "$PLAN")" \
   || problem "prefreeze/rerank_candidates.json cannot be read (message above)."
 [ "$DRY_RUN" -eq 1 ] || mkdir -p "$GGUF_DIR"
 while IFS=$'\t' read -r file repo rev sha url note <&3; do

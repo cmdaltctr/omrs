@@ -47,7 +47,9 @@ PYSERINI_FLAT: dict[str, tuple[float, float]] = {
     "cqadupstack-programmers": (0.280, 0.559),
 }
 DATASETS = tuple(PYSERINI_FLAT)
-SEED = 20261124
+#: plan.json ``seeds.bm25_calibration`` (pre-registration section 16). It replaced the
+#: retired seed 20261124 on 2026-11-24.
+SEED = 20261139
 RESAMPLES = 10_000
 _WORD = re.compile(r"\b\w+\b")
 
