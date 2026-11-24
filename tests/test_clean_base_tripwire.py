@@ -668,8 +668,9 @@ _has_qwen_tokenizer = bool(
 )
 if not _has_qwen_tokenizer:
     _BASE_EXECUTED -= _CACHED_TOKENIZER_CASES
-# Cases in test_bm25_reference_parity.py that skip without rank_bm25 (the hybrid extra).
-_HYBRID_EXTRA_CASES = 3
+# Cases that skip without rank_bm25 (the hybrid extra): 3 in test_bm25_reference_parity.py,
+# 1 in the Exp 35 prefreeze test_bm25_calibration35.py.
+_HYBRID_EXTRA_CASES = 4
 if find_spec("rank_bm25") is None:
     _BASE_EXECUTED -= _HYBRID_EXTRA_CASES
 # The reference counts assume the optional ``web`` extra (FastAPI) is

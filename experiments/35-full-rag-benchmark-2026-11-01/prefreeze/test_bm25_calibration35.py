@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import math
+from importlib.util import find_spec
 
 import bm25_calibration35 as cal
 import pytest
@@ -63,6 +64,10 @@ def test_stem_config_is_the_shipped_omrs_bm25_and_reference_is_pyserini():
     assert old.tokens("The Running indexes") == ["running", "indexes"]
 
 
+@pytest.mark.skipif(
+    find_spec("rank_bm25") is None,
+    reason="hybrid extra not installed (uv sync --extra hybrid)",
+)
 def test_a_small_beir_folder_runs_end_to_end(tmp_path):
     beir = tmp_path / "beir"
     (beir / "scifact").mkdir(parents=True)
