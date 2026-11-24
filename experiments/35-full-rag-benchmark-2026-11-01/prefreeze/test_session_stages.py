@@ -1,4 +1,5 @@
-"""Checks on test_session_stages.txt, the content of the test pod session (task 9.2, G6).
+"""Checks on test_session_stages.txt, the content of the test pod session (task 9.2, G6),
+and on verify_session_stages.txt, the fix check session that runs through the same chain.
 
 No stage runs. The test reads the file as pod_test_session.sh does, parses every
 ``run_arms.py`` call with the runner's own parser, runs ``--help`` of the other
@@ -6,7 +7,7 @@ scripts to check that they start from the Experiment 35 folder and take the opti
 each line gives, and checks the rules of the 2026-11-23 session plan: the rebuild
 check of the three core datasets (G16), own folders for the recheck, throughput and
 VRAM runs (G17), FinanceBench in three chunk sizes (G24), the task stages, and that
-no line holds a key.
+no line holds a key. The general checks run on both files.
 """
 
 from __future__ import annotations
@@ -22,11 +23,16 @@ from functools import cache
 from pathlib import Path
 from typing import Any
 
+import pytest
 from tests._exp35_fixtures import load
 
 HERE = Path(__file__).resolve().parent
 EXP35 = HERE.parent
 STAGES_FILE = HERE / "test_session_stages.txt"
+VERIFY_FILE = HERE / "verify_session_stages.txt"
+#: Each stages file with the fewest runner calls it must hold.
+FILES = {STAGES_FILE: 101, VERIFY_FILE: 8}
+BOTH = pytest.mark.parametrize("path", list(FILES), ids=["test", "verify"])
 OUT = "/workspace/exp35-test/out"
 #: What the chain and launch35.sh give every stage.
 PROVIDED = {
@@ -46,9 +52,16 @@ PENDING_FROM_OTHER_AGENTS = frozenset(
 OWNER_VALUES = frozenset({"HF_REV_0_6B", "HF_REV_4B", "HF_REV_8B"})
 #: Scripts whose ``--help`` only parses (argparse); others are checked for presence only.
 HELP_SAFE = frozenset(
-    {"rebuild35.py", "join35.py", "refusals35.py", "rerank_check35.py", "idle_repro35.py"}
+    {
+        "rebuild35.py",
+        "join35.py",
+        "refusals35.py",
+        "rerank_check35.py",
+        "idle_repro35.py",
+        "prefreeze/verify35.py",
+    }
 )
-SUBCOMMANDS = frozenset({"rerank_check35.py", "refusals35.py"})
+SUBCOMMANDS = frozenset({"rerank_check35.py", "refusals35.py", "prefreeze/verify35.py"})
 CORE = ("financebench", "bioasq", "freshstack")
 RECHECK = ("77536364", "77762811")
 CONTROL = frozenset({"&&", "||", ";", "|", "&"})
@@ -77,15 +90,21 @@ class Call:
     words: tuple[str, ...]
 
     @property
+    def start(self) -> int:
+        """Where the runner command starts: 0, after a wrapper's ``--``, or -1 for none."""
+        words = list(self.words)
+        return next((i for i in range(len(words)) if words[i : i + len(RUNNER)] == RUNNER), -1)
+
+    @property
     def runner(self) -> bool:
-        return list(self.words[: len(RUNNER)]) == RUNNER
+        return self.start >= 0
 
 
 @cache
-def _read() -> tuple[tuple[Stage, ...], dict[str, str]]:
+def _read(path: Path = STAGES_FILE) -> tuple[tuple[Stage, ...], dict[str, str]]:
     stages: list[Stage] = []
     values: dict[str, str] = {}
-    for number, line in enumerate(STAGES_FILE.read_text(encoding="utf-8").splitlines(), 1):
+    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
         if not line or line.startswith("#"):
             continue
         if found := _DEF.match(line):
@@ -97,8 +116,8 @@ def _read() -> tuple[tuple[Stage, ...], dict[str, str]]:
     return tuple(stages), values
 
 
-def _expand(text: str) -> tuple[str, set[str]]:
-    known = {**PROVIDED, **_read()[1]}
+def _expand(text: str, path: Path = STAGES_FILE) -> tuple[str, set[str]]:
+    known = {**PROVIDED, **_read(path)[1]}
     unknown: set[str] = set()
 
     def value(match: re.Match[str]) -> str:
@@ -110,8 +129,8 @@ def _expand(text: str) -> tuple[str, set[str]]:
     return _VAR.sub(value, text), unknown
 
 
-def _split(stage: Stage) -> list[Call]:
-    lexer = shlex.shlex(_expand(stage.command)[0], posix=True, punctuation_chars=True)
+def _split(stage: Stage, path: Path = STAGES_FILE) -> list[Call]:
+    lexer = shlex.shlex(_expand(stage.command, path)[0], posix=True, punctuation_chars=True)
     lexer.whitespace_split = True
     calls, current = [], []
     for token in [*lexer, ";"]:
@@ -129,16 +148,16 @@ def _split(stage: Stage) -> list[Call]:
 
 
 @cache
-def _calls() -> tuple[Call, ...]:
-    return tuple(call for stage in _read()[0] for call in _split(stage))
+def _calls(path: Path = STAGES_FILE) -> tuple[Call, ...]:
+    return tuple(call for stage in _read(path)[0] for call in _split(stage, path))
 
 
 @cache
-def _runs() -> tuple[tuple[Call, Any], ...]:
+def _runs(path: Path = STAGES_FILE) -> tuple[tuple[Call, Any], ...]:
     """Every runner call with its parsed arguments (the runner's own parser)."""
     return tuple(
-        (call, cli35.parse_args(list(call.words[len(RUNNER) :])))
-        for call in _calls()
+        (call, cli35.parse_args(list(call.words[call.start + len(RUNNER) :])))
+        for call in _calls(path)
         if call.runner
     )
 
@@ -157,6 +176,7 @@ def _script(call: Call) -> tuple[str, str, tuple[str, ...]] | None:
         if word.endswith((".py", ".sh")) and not word.startswith("-"):
             has_sub = word in SUBCOMMANDS and i + 1 < len(call.words)
             rest = call.words[i + 1 + has_sub :]
+            rest = rest[: rest.index("--")] if "--" in rest else rest  # a wrapped command
             return word, call.words[i + 1] if has_sub else "", rest
     return None
 
@@ -176,8 +196,9 @@ def _help(key: tuple[str, str, tuple[tuple[str, str], ...]]) -> tuple[int, str]:
     return found.returncode, found.stdout + found.stderr
 
 
-def test_every_stage_has_a_unique_name_and_its_own_timeout() -> None:
-    stages = _read()[0]
+@BOTH
+def test_every_stage_has_a_unique_name_and_its_own_timeout(path: Path) -> None:
+    stages = _read(path)[0]
     names = [s.name for s in stages]
     assert len(names) == len(set(names)), "a stage name repeats"
     assert [s.name for s in stages if s.timeout is None] == []
@@ -202,9 +223,10 @@ def test_setup_and_context_run_first_and_only_they_stop_the_chain() -> None:
     assert "context35.py" in stages[1].command and "$OUT_DIR/context35.json" in stages[1].command
 
 
-def test_every_runner_call_parses_and_writes_a_prefreeze_run_under_out_dir() -> None:
-    runs = _runs()
-    assert len(runs) > 100
+@BOTH
+def test_every_runner_call_parses_and_writes_a_prefreeze_run_under_out_dir(path: Path) -> None:
+    runs = _runs(path)
+    assert len(runs) >= FILES[path]
     for call, args in runs:
         where = f"stage {call.stage.name}"
         assert args.prefreeze, where
@@ -213,22 +235,25 @@ def test_every_runner_call_parses_and_writes_a_prefreeze_run_under_out_dir() -> 
         assert "output" not in str(args.out_dir), where
 
 
-def test_no_line_holds_a_key_or_names_one() -> None:
-    text = STAGES_FILE.read_text(encoding="utf-8")
+@BOTH
+def test_no_line_holds_a_key_or_names_one(path: Path) -> None:
+    text = path.read_text(encoding="utf-8")
     for bad in ("API_KEY", "ZAI_KEY", "sk-or-", "rpa_", "Bearer", "RUNPOD_SECRET", "secrets/"):
         assert bad not in text, bad
 
 
-def test_every_variable_is_given_by_the_chain_or_defined_in_the_file() -> None:
-    unknown = {name for stage in _read()[0] for name in _expand(stage.command)[1]}
+@BOTH
+def test_every_variable_is_given_by_the_chain_or_defined_in_the_file(path: Path) -> None:
+    unknown = {name for stage in _read(path)[0] for name in _expand(stage.command, path)[1]}
     assert unknown == set()
 
 
-def test_every_script_exists_or_is_pending_and_takes_its_options() -> None:
+@BOTH
+def test_every_script_exists_or_is_pending_and_takes_its_options(path: Path) -> None:
     keys, problems = {}, []
-    for call in _calls():
+    for call in _calls(path):
         found = _script(call)
-        if found is None or call.runner:
+        if found is None or found[0] == "run_arms.py":
             continue
         script, sub, _ = found
         named = f"{script} {sub}".strip()
@@ -327,9 +352,10 @@ def test_each_core_dataset_answers_in_three_chunk_sizes_through_every_answer_sta
         }
 
 
-def test_each_dataset_uses_one_selection_in_each_folder() -> None:
+@BOTH
+def test_each_dataset_uses_one_selection_in_each_folder(path: Path) -> None:
     seen: dict[tuple[str, str], set[tuple[Any, ...]]] = {}
-    for _, a in _runs():
+    for _, a in _runs(path):
         selection = (a.limit, a.corpus_sample, tuple(a.qids or ()), str(a.passages_dir))
         seen.setdefault((a.dataset, _folder(a.out_dir)), set()).add(selection)
     assert {k: v for k, v in seen.items() if len(v) != 1} == {}
