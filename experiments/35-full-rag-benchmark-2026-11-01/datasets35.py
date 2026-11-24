@@ -156,12 +156,17 @@ def input_hashes(dataset: str, plan: Mapping[str, Any]) -> dict[str, str]:
 
 
 def freshstack_pin(plan: Mapping[str, Any]) -> dict[str, Any]:
-    """Return ``plan.json`` ``pins.datasets.freshstack``: ``revision`` and ``rows``.
+    """Return ``plan.json`` ``pins.datasets.freshstack``: the five keys below.
+
+    ``files`` is the number of distinct pairs of corpus ID and text, one passage
+    file each (owner decision, 2026-11-23). ``corpus_files`` maps each parquet
+    file name to its SHA-256, and ``corpus_tree_sha256`` is their ``tree_hash``.
 
     Raises:
-        DatasetError: The plan records no revision or row count (P1).
+        DatasetError: The plan has no such key, or a ``null`` (P1); names the key.
     """
-    return {key: _pin(plan, "freshstack", key) for key in ("revision", "rows")}
+    keys = ("revision", "rows", "files", "corpus_files", "corpus_tree_sha256")
+    return {key: _pin(plan, "freshstack", key) for key in keys}
 
 
 def check_passages(passages_dir: Path, dataset: str, plan: Mapping[str, Any]) -> Path:
@@ -288,11 +293,12 @@ def freshstack_corpus(root: Path, pin: Mapping[str, Any]) -> list[tuple[str, str
 
     Args:
         root: The data folder.
-        pin: ``plan.json`` ``pins.datasets.freshstack``: ``revision`` and ``rows``.
+        pin: ``freshstack_pin``: ``revision``, ``rows``, ``corpus_files`` and
+            ``corpus_tree_sha256``.
 
     Raises:
-        DatasetError: The downloaded revision or the row count differs from
-            the pin; the message names the field.
+        DatasetError: The downloaded revision, a parquet file's SHA-256 (the
+            file is named), the tree hash or the row count differs from the pin.
     """
     folder = root / _FS_CORPUS
     found = json.loads((folder / "download.json").read_text(encoding="utf-8")).get("revision")
@@ -300,7 +306,12 @@ def freshstack_corpus(root: Path, pin: Mapping[str, Any]) -> list[tuple[str, str
         raise DatasetError(
             f"FreshStack corpus revision is {found}; the plan pins {pin['revision']}"
         )
-    rows = [row for path in sorted(folder.glob("*.parquet")) for row in _parquet_rows(path)]
+    files = pin["corpus_files"]
+    if tree_hash(files) != pin["corpus_tree_sha256"]:
+        raise DatasetError("FreshStack corpus_files do not give the pinned corpus_tree_sha256")
+    # Hash every pinned file before a row is read; read the pinned files only.
+    verify_inputs(root, {f"{_FS_CORPUS}/{name}": sha for name, sha in files.items()})
+    rows = [row for name in sorted(files) for row in _parquet_rows(folder / name)]
     if len(rows) != int(pin["rows"]):
         raise DatasetError(f"FreshStack corpus has {len(rows)} rows; the plan pins {pin['rows']}")
     return [(str(r["_id"]), str(r["text"]), dict(r["metadata"])) for r in rows]

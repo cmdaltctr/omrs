@@ -7,6 +7,8 @@ file or the network.
 
 from __future__ import annotations
 
+import functools
+import hashlib
 import importlib.util
 import json
 import sys
@@ -29,7 +31,11 @@ _RERANK = {
 }
 #: The FreshStack corpus pin of the fake plan (the real one is recorded at P1).
 FS_REVISION = "fixture-revision-0001"
-FS_ROWS = 6
+FS_ROWS = 8
+#: Distinct pairs of corpus ID and text, one passage file each (owner decision, 2026-11-23).
+FS_FILES = 7
+#: The one parquet file of the fixture FreshStack corpus.
+FS_CORPUS_FILE = "train-00000-of-00001.parquet"
 
 
 def load(name: str) -> ModuleType:
@@ -71,6 +77,7 @@ def fake_plan() -> dict[str, Any]:
     rank_args = {"embeddings": True, "pooling": "rank", "ctx-size": 8192}
     models = [_model(r, f, "a", embed_args) for r, f in _EMBED.items()]
     models += [_model(r, f, "d", rank_args) for r, f in _RERANK.items()]
+    corpus = {FS_CORPUS_FILE: hashlib.sha256(fs_corpus_bytes()).hexdigest()}
     models.append(
         {
             **_model("judge-clef-flash", "Clef-Flash-Q8_0.gguf", "b", {"ctx-size": 32768}),
@@ -102,7 +109,15 @@ def fake_plan() -> dict[str, Any]:
                 "hybrid": {"fusion_depth": 100, "bm25_tokeniser": "omrs-default"},
             },
             "ragas_judge": {"host": "hostj", "reasoning": "low", "temperature": 0.0},
-            "datasets": {"freshstack": {"revision": FS_REVISION, "rows": FS_ROWS}},
+            "datasets": {
+                "freshstack": {
+                    "revision": FS_REVISION,
+                    "rows": FS_ROWS,
+                    "files": FS_FILES,
+                    "corpus_files": corpus,
+                    "corpus_tree_sha256": load("datasets35").tree_hash(corpus),
+                }
+            },
             "prompts": {"answer": "b" * 64},
             "pending": [],
         },
@@ -144,13 +159,16 @@ def _parquet(path: Path, columns: dict[str, list[Any]]) -> None:
     pq.write_table(pa.table(columns), path)
 
 
-#: FreshStack corpus rows of the fixture: (corpus ID, text).
+#: FreshStack corpus rows of the fixture: (corpus ID, text). As in the real corpus, one
+#: non-gold ID repeats: once with a second text and once exactly (same ID, same text).
 FS_ROWS_DATA = [
     ("repo/README.md_0_40", "# Title\n\nSome prose.\n"),
     ("repo/docs/guide.mdx_0_20", "Guide text\n"),
     ("repo/src/app.py_0_60", "# a comment\nprint('x')\n```\ninside\n```\n"),
     ("repo/LICENSE_0_10", "MIT licence\n"),
     ("repo/nb/demo.ipynb_0_30", '{"cells": []}\n'),
+    ("repo/src/util.py_60_90", "def f():\n    return 1\n"),
+    ("repo/src/util.py_60_90", "def f():\n    return 2\n"),
     ("repo/src/util.py_60_90", "def f():\n    return 1\n"),
 ]
 
@@ -162,11 +180,31 @@ def fs_source(corpus_id: str) -> dict[str, Any]:
     return {"url": url, "start_byte": int(start), "end_byte": int(end)}
 
 
+@functools.lru_cache(maxsize=1)
+def fs_corpus_bytes() -> bytes:
+    """Return the fixture FreshStack parquet file, built once so that its SHA-256 is fixed.
+
+    ``fake_plan`` pins this SHA-256 in ``corpus_files``; ``make_data_root`` writes the bytes.
+    """
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
+    columns = {
+        "_id": [r[0] for r in FS_ROWS_DATA],
+        "text": [r[1] for r in FS_ROWS_DATA],
+        "metadata": [fs_source(r[0]) for r in FS_ROWS_DATA],
+    }
+    sink = pa.BufferOutputStream()
+    pq.write_table(pa.table(columns), sink)
+    return bytes(sink.getvalue().to_pybytes())
+
+
 def make_data_root(root: Path) -> Path:
     """Write a tiny copy of the four dataset layouts under *root*; return it.
 
     FinanceBench: 6 questions over 4 PDFs. FreshStack: 5 queries plus one
-    continuity query over 6 corpus rows. BioASQ: 6 questions over 12 passages.
+    continuity query over 8 corpus rows (7 distinct pairs of ID and text). BioASQ:
+    6 questions over 12 passages.
     Legal RAG Bench: 100 questions over 101 passages.
     """
     fb = root / "benchmarks" / "financebench"
@@ -194,14 +232,8 @@ def make_data_root(root: Path) -> Path:
     )
 
     corpus = root / "benchmarks" / "freshstack" / "corpus-oct-2024" / "langchain"
-    _parquet(
-        corpus / "train-00000-of-00001.parquet",
-        {
-            "_id": [r[0] for r in FS_ROWS_DATA],
-            "text": [r[1] for r in FS_ROWS_DATA],
-            "metadata": [fs_source(r[0]) for r in FS_ROWS_DATA],
-        },
-    )
+    corpus.mkdir(parents=True)
+    (corpus / FS_CORPUS_FILE).write_bytes(fs_corpus_bytes())
     (corpus / "download.json").write_text(
         json.dumps({"repository": "freshstack/corpus-oct-2024", "revision": FS_REVISION}),
         encoding="utf-8",
