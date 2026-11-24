@@ -428,7 +428,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # test_bm25_reference_parity.py, 9 added, 0 removed). 3 need rank_bm25: _HYBRID_EXTRA_CASES.
 # +5 (2026-11-24, Exp 35 reranker, seed, tokenizer and GLM pins, by test-ID diff against
 # HEAD 5ad9e65a): 5 plan-pin cases added; 2 test_pod_setup35 cases renamed, 0 removed.
-_BASE_EXECUTED = 13835
+# +1 (2026-11-24, pdf-inspector OCR deadlock, by test-ID diff against HEAD 7fce7080):
+# test_pp_ocrv6_reads_one_page_per_library_call added; 0 removed or renamed.
+_BASE_EXECUTED = 13836
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

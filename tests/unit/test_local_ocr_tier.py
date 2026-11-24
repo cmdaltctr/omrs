@@ -87,24 +87,19 @@ def _stub_process(monkeypatch, calls: _Calls):
 
 
 def test_force_mode_ocrs_exactly_the_flagged_pages(monkeypatch, tmp_path, effective_settings):
-    """Force mode with the 1-based page list: the library never re-routes."""
+    """Force mode on 1-based pages, one page per call: the library never re-routes."""
     calls = _Calls(
         [
-            SimpleNamespace(
-                pages=[
-                    _ocr_page(3, "page three", _provenance()),
-                    _ocr_page(7, "page seven", _provenance()),
-                ]
-            )
+            SimpleNamespace(pages=[_ocr_page(3, "page three", _provenance())]),
+            SimpleNamespace(pages=[_ocr_page(7, "page seven", _provenance())]),
         ]
     )
     _stub_process(monkeypatch, calls)
 
     results = local_ocr(tmp_path / "doc.pdf", [7, 3], settings=effective_settings())
 
-    assert len(calls.calls) == 1
-    assert calls.calls[0]["mode"] == "force"
-    assert calls.calls[0]["page_numbers"] == [3, 7]
+    assert [c["mode"] for c in calls.calls] == ["force", "force"]
+    assert [c["page_numbers"] for c in calls.calls] == [[3], [7]]
     assert [r.page for r in results] == [3, 7]
 
 
@@ -263,7 +258,12 @@ def test_missing_confidence_escalates(monkeypatch, tmp_path, effective_settings)
 
 def test_missing_page_in_result_escalates(monkeypatch, tmp_path, effective_settings):
     """A requested page the engine never reported produced nothing: escalate it."""
-    calls = _Calls([SimpleNamespace(pages=[_ocr_page(4, "reported", _provenance())])])
+    calls = _Calls(
+        [
+            SimpleNamespace(pages=[_ocr_page(4, "reported", _provenance())]),
+            SimpleNamespace(pages=[]),
+        ]
+    )
     _stub_process(monkeypatch, calls)
 
     results = {

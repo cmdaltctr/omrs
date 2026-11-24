@@ -75,7 +75,15 @@ class _PdfInspector:
         return SimpleNamespace(pages=pages)
 
     def process_pdf_with_ocr(self, path, **kwargs):
-        result = self._ocr_calls.pop(0)
+        # The backend asks for one page per call: a scripted result serves the
+        # calls that follow until its pages run out.
+        wanted = set(kwargs["page_numbers"])
+        result = {n: v for n, v in self._ocr_calls[0].items() if n in wanted}
+        rest = {n: v for n, v in self._ocr_calls[0].items() if n not in wanted}
+        if rest:
+            self._ocr_calls[0] = rest
+        else:
+            self._ocr_calls.pop(0)
         pages = []
         for number, (text, confidence) in result.items():
             provenance = SimpleNamespace(

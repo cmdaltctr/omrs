@@ -154,13 +154,39 @@ def test_pp_ocrv6_imports_pdf_inspector_inside_read_pages(monkeypatch, tmp_path)
     stub = SimpleNamespace(process_pdf_with_ocr=_process)
     monkeypatch.setitem(sys.modules, "pdf_inspector", stub)
 
-    pages = BACKEND.read_pages(tmp_path / "a.pdf", [5, 2], settings=_settings())
+    pages = BACKEND.read_pages(tmp_path / "a.pdf", [5], settings=_settings())
 
     assert calls[0]["mode"] == "force"
-    assert calls[0]["page_numbers"] == [2, 5]
+    assert calls[0]["page_numbers"] == [5]
     assert calls[0]["model_directory"] is None
     assert calls[0]["offline"] is False
     assert pages == [BackendPage(5, "five", 0.93, "pp-ocrv6-small@r1", hosted_recommended=True)]
+
+
+def test_pp_ocrv6_reads_one_page_per_library_call(monkeypatch, tmp_path) -> None:
+    """Each library call gets one page, so pdf-inspector never uses its page pool.
+
+    With two or more pages in a call, pdf-inspector 1.17 runs pages on its own
+    rayon pool. A worker that holds its recogniser lock can steal another page and
+    then wait for that same lock forever (the Experiment 35 ingest hang).
+    """
+    from omrs.integrations.pdf.local_ocr.pp_ocrv6_small import BACKEND
+
+    calls: list[list[int]] = []
+
+    def _process(path, **kwargs):
+        calls.append(list(kwargs["page_numbers"]))
+        number = kwargs["page_numbers"][0]
+        page = SimpleNamespace(page_number=number, markdown=f"p{number}", provenance=None)
+        return SimpleNamespace(pages=[page])
+
+    stub = SimpleNamespace(process_pdf_with_ocr=_process)
+    monkeypatch.setitem(sys.modules, "pdf_inspector", stub)
+
+    pages = BACKEND.read_pages(tmp_path / "a.pdf", [9, 2, 5], settings=_settings())
+
+    assert calls == [[2], [5], [9]]
+    assert [(p.page, p.text) for p in pages] == [(2, "p2"), (5, "p5"), (9, "p9")]
 
 
 def test_pp_ocrv6_without_pdf_inspector_raises_import_error(monkeypatch, tmp_path) -> None:

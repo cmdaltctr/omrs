@@ -104,8 +104,22 @@ class _EngineCalls:
         self.ocr_calls.append({"path": path, **kwargs})
         if self._ocr_error is not None:
             raise self._ocr_error
-        pages = self._ocr_pages_by_call.pop(0)
-        return SimpleNamespace(pages=list(pages), pages_recommending_hosted=[])
+        # The backend asks for one page per call, so a scripted batch serves the
+        # calls that follow until its pages run out.
+        wanted = set(kwargs["page_numbers"])
+        batch = self._ocr_pages_by_call[0] if self._ocr_pages_by_call else []
+        pages = [page for page in batch if page.page_number in wanted]
+        remaining = [page for page in batch if page.page_number not in wanted]
+        if self._ocr_pages_by_call:
+            if remaining:
+                self._ocr_pages_by_call[0] = remaining
+            else:
+                self._ocr_pages_by_call.pop(0)
+        return SimpleNamespace(pages=pages, pages_recommending_hosted=[])
+
+    def ocr_page_lists(self) -> list[list[int]]:
+        """Return the page list of each OCR call."""
+        return [list(call["page_numbers"]) for call in self.ocr_calls]
 
 
 def _stub_engine(monkeypatch, calls: _EngineCalls) -> None:
