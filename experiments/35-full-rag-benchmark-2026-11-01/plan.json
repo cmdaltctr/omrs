@@ -67,6 +67,7 @@
     "question_order": 20261101,
     "smoke_sample": 20261101,
     "glm": 20261109,
+    "rerank_check": 20261117,
     "ragas_judge": 20261137,
     "classifier": 20261138,
     "mde_pilot": 20261118,
@@ -104,7 +105,7 @@
       }
     },
     "recorded": {
-      "reranker_instruction": null,
+      "reranker_instruction": "Given a web search query, retrieve relevant passages that answer the query",
       "hybrid": null
     },
     "ragas_judge": {
@@ -125,6 +126,7 @@
         },
         "corpus_tree_sha256": "9c0ef05856cbd51cf7ea61a55ba175f30ad492763425b197a5ed9775c8894ab6",
         "unique_ids": 49505,
+        "files": 49506,
         "repository_files": 26332,
         "fenced_rows": 43693,
         "unfenced_rows": 5821,
@@ -206,38 +208,31 @@
           ".tfvars": {"rows": 1, "files": 1},
           ".user": {"rows": 1, "files": 1}
         },
-        "passages_tree_sha256": null
+        "passages_tree_sha256": "f95fab8dba1f3f4291da9dacc806ae8e72cf159a634ac4aea025ae903cc03b3e"
       },
       "bioasq": {
-        "passages_tree_sha256": null
+        "passages_tree_sha256": "0892e4a992767ad531cedbcf247818a2a11b3101401ac4ac7dabcebea2990514"
       },
       "legal": {
-        "sha256": null,
-        "passages_tree_sha256": null
+        "sha256": {
+          "benchmarks/legal-rag-bench/qa/test-00000-of-00001.parquet": "ce5d3d04ae9dd0f98e21f547d41b776ed2864aef23806702234c80f0d9a9e79a",
+          "benchmarks/legal-rag-bench/corpus/test-00000-of-00001.parquet": "0ea543ba4ad9251403a0e06b0aa9fcfbc319c495f6aa133b943d213d8655680b"
+        },
+        "passages_tree_sha256": "ab751df26c6834daa968954f6d83c7b2dc1ceccb9d0e43b7d7912520b0cbc15f"
       }
     },
     "prompts": {
-      "answer": null,
-      "closedbook_own": null,
-      "closedbook_rag": null,
-      "oracle": null,
+      "answer": "91b68d3515819f5e736b8aa14435246fc4cd2291764f0e2296a361970db8ce8e",
+      "closedbook_own": "ea34b81838b4b133ee672dcd98a25fdbd73e78e3ed77c6d0c54497922990e409",
+      "closedbook_rag": "91b68d3515819f5e736b8aa14435246fc4cd2291764f0e2296a361970db8ce8e",
+      "oracle": "91b68d3515819f5e736b8aa14435246fc4cd2291764f0e2296a361970db8ce8e",
       "classifier": null,
-      "ragas_adapter": null
+      "ragas_adapter": "5ef00cec2d96d440c827d2d03027b983fd1dbf4eb908212a89e1346821e06386"
     },
     "pending": [
       {"key": "pins.settings.retrieval.hybrid_rrf_k", "task": "P11"},
-      {"key": "pins.recorded.reranker_instruction", "task": "P11"},
       {"key": "pins.recorded.hybrid", "task": "P11"},
-      {"key": "pins.datasets.legal.sha256", "task": "C35 4A.4, RDY 13.4"},
-      {"key": "pins.datasets.freshstack.passages_tree_sha256", "task": "RDY 5.4c"},
-      {"key": "pins.datasets.bioasq.passages_tree_sha256", "task": "RDY 5.4c"},
-      {"key": "pins.datasets.legal.passages_tree_sha256", "task": "RDY 5.4c"},
-      {"key": "pins.prompts.answer", "task": "P13"},
-      {"key": "pins.prompts.closedbook_own", "task": "P13"},
-      {"key": "pins.prompts.closedbook_rag", "task": "P13"},
-      {"key": "pins.prompts.oracle", "task": "P13"},
-      {"key": "pins.prompts.classifier", "task": "P13"},
-      {"key": "pins.prompts.ragas_adapter", "task": "P13"}
+      {"key": "pins.prompts.classifier", "task": "P13"}
     ]
   },
   "baseline":"none: full factorial of embedder x chunk size x reranker x hybrid (72 search setups per dataset); e4b-c1024-roff-hoff is the reference cell of the G2 rebuild check only",
