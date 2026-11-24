@@ -46,6 +46,14 @@ A sentence that says the sources do not state something is refusal, even when it
 part of the question or the user's own setup, as long as it states no fact about a source.
 A sentence that says what a source covers or is about, even "unrelated topics", is factual or
 mixed, never refusal.
+A trailing citation stub such as "see,,,," or an empty bracket pair does not make
+a sentence factual. A sentence that says the sources do not state, describe or
+contain something, with only a citation stub after it, is refusal.
+A sentence that says the sources lack something and also states what the
+excerpts do contain is mixed, never refusal. Example: "The sources do not show
+the balance sheet line; the excerpts include cash flow and debt" is mixed.
+A sentence that points the user to documentation or a source for more detail is
+factual, not refusal.
 
 You see the question and the sentence only. Reply with one word: factual, refusal or mixed.
 

@@ -366,6 +366,7 @@ The word "sealed" applies to indexes only. Half B is held out from every selecti
 | 20261138 | Claim-kind classifier hosted seed (recorded 2026-11-23, P10) |
 | 20261139 | BM25 calibration on public BEIR sets: paired bootstrap and sign-flip resampling (`prefreeze/bm25_calibration35.py`). Replaced the retired 20261124 on 2026-11-24 |
 | 20261142 | Classifier-gate re-gate sample (100 claims of the same test pod session answers, none from the first sample or the prompt examples; `plan.json` `seeds.classifier_gate_sample_2`). Added on 2026-11-24 by the owner after the first gate failed (pre-freeze) |
+| 20261143 | Classifier-gate third sample (100 claims drawn with `refusals35.py sample` from the answers of the first finished main-run dataset, none from the first or second sample or the prompt examples; `plan.json` `seeds.classifier_gate_sample_3`). Added on 2026-11-24 by the owner after the second gate failed (pre-freeze) |
 
 ## 17. Budget, ceiling, stop rule and drop order
 

@@ -92,7 +92,8 @@
     "part2_correctness_auc": 20261135,
     "refusal_report": 20261136,
     "bm25_calibration": 20261139,
-    "classifier_gate_sample_2": 20261142
+    "classifier_gate_sample_2": 20261142,
+    "classifier_gate_sample_3": 20261143
   },
   "pins": {
     "settings": {
@@ -129,11 +130,11 @@
       },
       "classifier_examples": {
         "file": "classify-examples.json",
-        "sha256": "4612bad4f229e84340b03b736c65235dd373881d18b180ed8fb11e781e299d38",
-        "count": 10,
+        "sha256": "616e60b0ee5df29df9f0433f53856b022511b776961f01228106d99ddc0091fb",
+        "count": 14,
         "question_text": "full",
-        "datasets": "7 FreshStack (draft D-A option 1); 3 sentences of the first gate sample (2 BioASQ, 1 FreshStack)",
-        "decided": "2026-11-24 by the owner; 2026-11-24 by the owner after the gate fail (refusal recall 0.88, 15 of 17; pass mark 0.90; agreement 0.97 and precision 0.94 passed): the three disagreements, all classifier errors under the agreed rules, added as examples with the owner's labels (refusal, refusal, factual), and two prompt rules added (a sentence that says the sources do not state something is refusal even with a clause about the question or the user's own setup; a sentence that says what a source covers or is about is factual or mixed, never refusal). Re-gate on a new sample, seed classifier_gate_sample_2"
+        "datasets": "7 FreshStack (draft D-A option 1); 3 sentences of the first gate sample (2 BioASQ, 1 FreshStack); 4 sentences of the second gate sample (3 FreshStack, 1 FinanceBench)",
+        "decided": "2026-11-24 by the owner; 2026-11-24 by the owner after the gate fail (refusal recall 0.88, 15 of 17; pass mark 0.90; agreement 0.97 and precision 0.94 passed): the three disagreements, all classifier errors under the agreed rules, added as examples with the owner's labels (refusal, refusal, factual), and two prompt rules added (a sentence that says the sources do not state something is refusal even with a clause about the question or the user's own setup; a sentence that says what a source covers or is about is factual or mixed, never refusal). Re-gate on a new sample, seed classifier_gate_sample_2; 2026-11-24 by the owner after the second gate fail (weighted agreement 0.97, recall 0.95, precision 0.65; pass marks 0.90): four disagreements added as examples with the owner's labels (refusal, refusal, mixed, factual), and three prompt rules added (a trailing citation stub does not make a sentence factual; a sentence that says the sources lack X and states what the excerpts contain is mixed; a sentence that points the user to documentation is factual). Gate 3 on a new sample from main-run answers, seed classifier_gate_sample_3"
       }
     },
     "ragas_judge": {
@@ -290,7 +291,7 @@
       "closedbook_own": "ea34b81838b4b133ee672dcd98a25fdbd73e78e3ed77c6d0c54497922990e409",
       "closedbook_rag": "91b68d3515819f5e736b8aa14435246fc4cd2291764f0e2296a361970db8ce8e",
       "oracle": "91b68d3515819f5e736b8aa14435246fc4cd2291764f0e2296a361970db8ce8e",
-      "classifier": "b9d8b3df0074460b394ca59d94a41b3a685ca3278db6c907b50dd6cc2eae5e17",
+      "classifier": "12e72f76ba0fcf764a37977110638fa239e83cf1caf37af41f402e7619e3f9c9",
       "ragas_adapter": "5ef00cec2d96d440c827d2d03027b983fd1dbf4eb908212a89e1346821e06386"
     },
     "pending": []

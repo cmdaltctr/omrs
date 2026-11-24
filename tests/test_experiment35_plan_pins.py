@@ -378,11 +378,11 @@ async def test_each_recorded_prompt_hash_is_the_sha256_of_its_template_text() ->
 
 
 def test_the_classifier_prompt_and_examples_pins_match_the_committed_files() -> None:
-    # Re-pinned 2026-11-24 after the gate fail: two prompt rules, three examples added.
+    # Re-pinned 2026-11-24 after the second gate fail: three prompt rules, four examples added.
     plan, path = _plan(), FOLDER / "classify-examples.json"
     examples = json.loads(path.read_text(encoding="utf-8"))
     pin = plan["pins"]["recorded"]["classifier_examples"]
-    assert (pin["file"], pin["count"]) == (path.name, len(examples)) == (path.name, 10)
+    assert (pin["file"], pin["count"]) == (path.name, len(examples)) == (path.name, 14)
     assert pin["sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
     claimkinds35 = load("claimkinds35")
     assert {e["kind"] for e in examples} <= set(claimkinds35.KINDS)
@@ -394,6 +394,37 @@ def test_the_regate_sample_has_its_own_seed() -> None:
     # Owner decision 2026-11-24: a new sample with a new seed after the first gate failed.
     seeds = _plan()["seeds"]
     assert seeds["classifier_gate_sample_2"] == 20261142 != seeds["classifier_gate_sample"]
+
+
+def test_the_gate2_errors_are_worked_examples_with_the_owner_labels() -> None:
+    # Owner labels 2026-11-24 for the four gate2 disagreements. Each qid is the one in the gate2
+    # sample; the AES restructuring claim is left out because its label is ambiguous.
+    examples = json.loads((FOLDER / "classify-examples.json").read_text(encoding="utf-8"))
+    by_claim = {e["claim"]: (e["qid"], e["kind"]) for e in examples}
+    expected = {
+        '- **Preventing extra information / "not found" behavior:** The provided sources do not '
+        'describe a mechanism for constraining the model to return `"not found"` for missing '
+        "fields; see,,,,.": ("77536364", "refusal"),
+        "The sources do not contain a definitive fix for a `None` query response in this exact "
+        "stack; see,,,,.": ("77762811", "refusal"),
+        "The provided sources do not show the FY2018 net PP&E balance for 3M; the retrieved "
+        "excerpts include cash flow, debt, and cash balances but not the balance sheet line item "
+        "for property, plant and equipment, net.": ("financebench_id_04672", "mixed"),
+        "You may want to consult the `langchain_google_vertexai` documentation referenced in for "
+        "the current, non-deprecated API.": ("77057028", "factual"),
+    }
+    assert {c: by_claim.get(c) for c in expected} == expected
+    assert not any("AES" in e["claim"] for e in examples)
+
+
+def test_the_third_gate_sample_has_its_own_seed_and_a_preregistration_row() -> None:
+    # Owner decision 2026-11-24: gate 3 draws a new sample from main-run answers, new seed.
+    seeds = _plan()["seeds"]
+    assert seeds["classifier_gate_sample_3"] == 20261143
+    gates = ("classifier_gate_sample", "classifier_gate_sample_2", "classifier_gate_sample_3")
+    assert len({seeds[k] for k in gates}) == 3
+    text = (FOLDER / "preregistration.md").read_text(encoding="utf-8")
+    assert "| 20261143 |" in text
 
 
 def test_the_closed_book_prompts_fill_the_hashed_templates() -> None:

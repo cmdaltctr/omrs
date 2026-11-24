@@ -458,7 +458,12 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # test_experiment35_guidelines.py (1), test_p2_session_stages.py (2). 0 removed. No extra.
 # +1 (2026-11-24, re-gate source widened, by test-ID diff against HEAD 60f2404f):
 # test_a_repeated_folder_adds_a_second_source_for_one_dataset added. No extra.
-_BASE_EXECUTED = 13934
+# +3 (2026-11-24, classifier gate 2 fail fix, by test-ID diff against HEAD 0868c308):
+# test_the_classifier_and_the_labeller_follow_the_three_gate2_fail_rules (guidelines),
+# test_the_gate2_errors_are_worked_examples_with_the_owner_labels and
+# test_the_third_gate_sample_has_its_own_seed_and_a_preregistration_row (plan pins).
+# 0 removed or renamed. No extra.
+_BASE_EXECUTED = 13937
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

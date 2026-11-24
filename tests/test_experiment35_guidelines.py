@@ -109,6 +109,28 @@ def test_the_classifier_and_the_labeller_follow_the_two_gate_fail_rules() -> Non
         assert rule in text, rule
 
 
+#: The three rules the owner added after the second classifier gate failed (2026-11-24, pre-freeze).
+GATE2_CLARIFICATIONS = (
+    'a trailing citation stub such as "see,,,," or an empty bracket pair does not make a '
+    "sentence factual. a sentence that says the sources do not state, describe or contain "
+    "something, with only a citation stub after it, is refusal",
+    "a sentence that says the sources lack something and also states what the excerpts do "
+    "contain is mixed, never refusal",
+    "a sentence that points the user to documentation or a source for more detail is factual, "
+    "not refusal",
+)
+
+
+def test_the_classifier_and_the_labeller_follow_the_three_gate2_fail_rules() -> None:
+    prompt = _norm(claimkinds35.PROMPT).lower()
+    hard = [_norm(h).lower() for h in labelpage35.HARD_CASES["claim_kinds"]]
+    text = _norm(_file("claim_kinds")).lower()
+    for rule in GATE2_CLARIFICATIONS:
+        assert rule in prompt, rule
+        assert any(rule in case for case in hard), rule
+        assert rule in text, rule
+
+
 def test_faithfulness_guideline_follows_the_aggrefact_task_definition() -> None:
     text = _file("faithfulness")
     assert "LLM-AggreFact task definition (MiniCheck)" in text
