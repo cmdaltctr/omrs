@@ -114,10 +114,10 @@
         "fused_cut": 100,
         "tokeniser": "tokenize_english",
         "stemmer": "porter, original algorithm as Lucene (nltk 3.10.2)",
-        "k1": 0.9,
-        "b": 0.4,
+        "k1": 1.5,
+        "b": 0.75,
         "epsilon": 0.25,
-        "decided": "2026-11-24 by the owner: rank_bm25 reference implementation; RRF k 60 (Cormack et al. 2009, OMRS default); 2026-11-24 owner: BM25 matches the Anserini/Pyserini reference (k1 0.9, b 0.4, Porter stemming; Lin et al. 2021, Lù 2024)"
+        "decided": "2026-11-24 by the owner: rank_bm25 reference implementation; RRF k 60 (Cormack et al. 2009, OMRS default); 2026-11-24 owner: Porter stemming added; k1 1.5 and b 0.75 kept over the Anserini/Pyserini 0.9 and 0.4 after the BEIR calibration (bm25-calibration-2026-11-24: higher on FiQA and CQADupStack-programmers, level on SciFact and NFCorpus)"
       },
       "classifier_examples": {
         "file": "classify-examples.json",

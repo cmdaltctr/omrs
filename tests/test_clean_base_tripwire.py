@@ -426,7 +426,7 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # repro, live router session, FreshStack repeats and hash pins, plan pins); 6 removed or renamed.
 # +9 (2026-11-24, BM25 matches Anserini/Pyserini, by test-ID diff: new file
 # test_bm25_reference_parity.py, 9 added, 0 removed). 3 need rank_bm25: _HYBRID_EXTRA_CASES.
-_BASE_EXECUTED = 13821
+_BASE_EXECUTED = 13829
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

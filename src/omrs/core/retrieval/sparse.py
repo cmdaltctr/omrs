@@ -18,9 +18,9 @@ guarantee.  A rebuild reads the token before fetching rows and again
 before publishing, and discards any build whose tokens differ, so a
 mutation landing mid-build cannot be cached.
 
-Scoring follows the Anserini/Pyserini reference used by BEIR and
-FreshStack: BM25 with ``k1`` 0.9 and ``b`` 0.4 (:data:`BM25_K1`,
-:data:`BM25_B`) over Porter-stemmed tokens (Lin et al. 2021; Lu 2024).
+Scoring is BM25Okapi with ``k1`` 1.5 and ``b`` 0.75 (:data:`BM25_K1`,
+:data:`BM25_B`) over Porter-stemmed tokens. The 2026-11-24 calibration on four
+BEIR sets (Exp 35 ``prefreeze/bm25_calibration35.py``) chose this setup.
 
 The code is structured around a simple tokeniser function so a future
 env-var-selected tokeniser can be plugged in without changing retrieval.
@@ -41,11 +41,12 @@ from .filters import matches_metadata_filter
 
 logger = logging.getLogger(__name__)
 
-#: BM25 term-frequency saturation and length-normalisation parameters of the
-#: Anserini/Pyserini BEIR reference. The ``rank_bm25`` defaults (1.5 and 0.75)
-#: score about 1.4 nDCG@10 points lower on the BEIR average (bm25s, Table 3).
-BM25_K1 = 0.9
-BM25_B = 0.4
+#: BM25 term-frequency saturation and length-normalisation parameters. The
+#: 2026-11-24 calibration (SciFact, NFCorpus, FiQA, CQADupStack-programmers)
+#: kept these over the Anserini/Pyserini 0.9 and 0.4: with Porter stems they
+#: scored higher on FiQA and CQADupStack and level on SciFact and NFCorpus.
+BM25_K1 = 1.5
+BM25_B = 0.75
 
 
 _STOP_WORDS = frozenset(
@@ -127,7 +128,7 @@ def _stem(token: str) -> str:
 
 
 def tokenize_english(text: str) -> list[str]:
-    """Tokenise text for BM25 like the Anserini/Pyserini reference.
+    """Tokenise text for BM25 with Porter stems, as Lucene's English analysis does.
 
     Lowercases, splits on word boundaries, removes the OMRS stop-word list
     (47 words), then Porter-stems each remaining token with NLTK.
@@ -148,7 +149,7 @@ class _SimpleBM25Okapi:
     Mirrors the IDF formula and epsilon clipping of ``rank_bm25.BM25Okapi``
     so the fallback does not mask scoring divergences on tiny corpora
     (pinned by ``tests/test_bm25_reference_parity.py``). Defaults to the
-    Anserini/Pyserini parameters :data:`BM25_K1` and :data:`BM25_B`.
+    OMRS parameters :data:`BM25_K1` and :data:`BM25_B`.
     """
 
     def __init__(self, corpus: list[list[str]], k1: float = BM25_K1, b: float = BM25_B) -> None:
