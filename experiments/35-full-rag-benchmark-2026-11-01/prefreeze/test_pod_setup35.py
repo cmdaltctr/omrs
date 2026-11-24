@@ -48,6 +48,7 @@ def _stubs(tmp_path: Path, *, linux: bool) -> Path:
         'case "$*" in *--query-gpu*) echo "NVIDIA GeForce RTX 4090, 24564 MiB" ;; '
         '*) echo "| NVIDIA-SMI 580.95   Driver Version: 580.95   CUDA Version: 13.2 |" ;; esac\n'
     )
+    tools["findmnt"] = "echo overlay\n"
     scripts = {name: f'echo "{name} $*" >> "{log}"\n{body}' for name, body in tools.items()}
     if linux:
         scripts["uname"] = "echo Linux\n"
@@ -226,3 +227,32 @@ def test_the_gpu_check_wants_one_rtx_4090_on_cuda_13_0_or_newer(
     listing: str, cuda: str, accepted: bool
 ) -> None:
     assert _gpu_ok(listing, cuda) is accepted
+
+
+def _disk_ok(fstype: str) -> bool:
+    text = SCRIPT.read_text(encoding="utf-8")
+    func = re.search(r"^disk_is_local\(\) \{\n.*?^\}\n", text, flags=re.S | re.M)
+    assert func, "pod_setup35.sh lacks disk_is_local"
+    code = func.group(0) + 'disk_is_local "$1"\n'
+    done = subprocess.run(["bash", "-c", code, "_", fstype], capture_output=True, timeout=30)
+    return done.returncode == 0
+
+
+@pytest.mark.parametrize(
+    ("fstype", "accepted"),
+    [
+        ("overlay", True),
+        ("ext4", True),
+        ("xfs", True),
+        # EU-RO-1 on 2026-11-24: /workspace was mfs#euro-3.runpod.net (a FUSE network
+        # file system); setup wrote 95,000 passage files there and hit its 60 min limit.
+        ("fuse", False),
+        ("fuse.mfs", False),
+        ("fuseblk", False),
+        ("nfs4", False),
+        ("ceph", False),
+        ("", False),
+    ],
+)
+def test_the_disk_check_refuses_a_network_file_system(fstype: str, accepted: bool) -> None:
+    assert _disk_ok(fstype) is accepted

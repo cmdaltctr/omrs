@@ -26,7 +26,8 @@ Prepares one RunPod RTX 4090 pod (Linux x86-64) for Experiment 35. Steps, in ord
   0. Check the inputs folder: exp35-inputs.tgz and its .sha256 file, copied from
      the Mac with scp (never through git: the repository is public).
   1. Check that `git rev-parse HEAD` equals --commit.
-  2. Check that nvidia-smi lists exactly one RTX 4090 and host CUDA 13.0 or newer.
+  2. Check that nvidia-smi lists exactly one RTX 4090 and host CUDA 13.0 or newer,
+     and that the passages folder sits on a local disk, not a network file system.
   3. Install uv (pinned version) if it is missing; uv sync --frozen --extra web
      --extra llamacpp --extra hybrid; check that plan.json names the llama.cpp build OMRS installs.
   4. omrs llamacpp install --flavour cuda (the pinned CUDA build).
@@ -91,6 +92,15 @@ gpu_is_single_4090() {
 # Succeeds when the host CUDA version ($1, from the nvidia-smi header) is 13.0 or newer.
 cuda_at_least() {
   [ -n "$1" ] && printf '13.0\n%s\n' "$1" | sort -V -C
+}
+# Succeeds when the file system type ($1, from findmnt) is a local disk. A network file
+# system (EU-RO-1 /workspace on 2026-11-24 was FUSE) makes the many small passage and
+# store writes so slow that setup overruns its timeout and the store timings are wrong.
+disk_is_local() {
+  case "$1" in
+    ""|fuse|fuse.*|fuseblk|nfs*|cifs|smb*|ceph|glusterfs|lustre|9p) return 1 ;;
+    *) return 0 ;;
+  esac
 }
 
 # --- Python helper: plan.json, hashes and downloads (huggingface_hub after uv sync) ---
@@ -287,16 +297,22 @@ say "  HEAD $HEAD_SHA, expected $COMMIT"
   || die "HEAD is $HEAD_SHA, not $COMMIT. Check out the session commit and run again."
 
 # --- Step 2: GPU and host CUDA ---
-step 2 "check the GPU and the host CUDA version"
+step 2 "check the GPU, the host CUDA version and the work disk"
 if [ "$DRY_RUN" -eq 1 ]; then
   say "  [dry-run] would run: nvidia-smi --query-gpu=name,memory.total --format=csv,noheader"
   say "  [dry-run] would read the CUDA version from the nvidia-smi header (13.0 or newer)"
+  say "  [dry-run] would check that $(dirname "$PASSAGES") is on a local disk (findmnt)"
 else
   GPUS="$(nvidia-smi --query-gpu=name,memory.total --format=csv,noheader)" || die "nvidia-smi failed."
   CUDA="$(nvidia-smi 2>/dev/null | sed -n 's/.*CUDA Version: *\([0-9][0-9.]*\).*/\1/p' | head -n 1 || true)"
   gpu_is_single_4090 "$GPUS" || die "nvidia-smi lists: $GPUS. Experiment 35 runs on exactly one RTX 4090. Delete this pod."
   cuda_at_least "$CUDA" || die "host CUDA is ${CUDA:-unknown}; the pinned llama.cpp CUDA build needs 13.0 or newer. Delete this pod."
   say "  GPU $GPUS, host CUDA $CUDA"
+  WORK_DIR="$(dirname "$PASSAGES")"
+  mkdir -p "$WORK_DIR"
+  FSTYPE="$(findmnt -n -o FSTYPE -T "$WORK_DIR" 2>/dev/null || true)"
+  disk_is_local "$FSTYPE" || die "$WORK_DIR is on file system '${FSTYPE:-unknown}', not a local disk. Delete this pod and create one without a network volume."
+  say "  work disk $WORK_DIR: $FSTYPE"
 fi
 
 # --- Step 3: uv and the locked environment ---

@@ -446,7 +446,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +1 (2026-11-24, G2 rebuild check in the fix check session, by test-ID diff against HEAD
 # 17e9988f): test_verify_rebuilds_the_c1024_freshstack_index_and_compares_both_after_the_rate
 # added; 0 removed or renamed. No extra needed.
-_BASE_EXECUTED = 13871
+# +9 (2026-11-24, work-disk check in pod setup, by test-ID diff against HEAD 6cd82f9c):
+# test_the_disk_check_refuses_a_network_file_system (9 cases) added; 0 removed. No extra.
+_BASE_EXECUTED = 13880
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
