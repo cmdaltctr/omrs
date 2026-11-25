@@ -466,7 +466,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +2 (2026-11-25, compaction leaves full fragments alone, by test-ID diff against HEAD
 # 19bb9968): test_compaction_leaves_full_fragments_and_results_alone and
 # test_full_fragments_do_not_trigger_compaction (test_lancedb_compaction.py). 0 removed.
-_BASE_EXECUTED = 13939
+# +7 (2026-11-25, source-field scalar index, by test-ID diff against HEAD 2a86db11):
+# new file test_lancedb_source_index.py (7). 0 removed or renamed. No extra.
+_BASE_EXECUTED = 13946
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

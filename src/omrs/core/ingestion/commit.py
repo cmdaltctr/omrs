@@ -25,6 +25,7 @@ from .source_state import (
     SOURCE_CHUNK_INDEX_KEY,
     SOURCE_ID_KEY,
     source_attempt_where,
+    source_where,
 )
 
 logger = logging.getLogger(__name__)
@@ -244,12 +245,19 @@ def commit_prepared_source(
 
         cleanup_started = time.perf_counter()
         try:
-            stale_ids = _stale_source_ids(
-                store,
-                collection_name,
-                source_id=source_id,
-                source_attempt=source_attempt,
-            )
+            # When the source holds only the rows just verified, none is stale,
+            # so the row scan is skipped. A count is cheaper than the scan: on
+            # LanceDB it reads only the indexed source_id, while the scan reads
+            # every column of the rows written since the last compaction.
+            if store.count_where(collection_name, source_where(source_id)) == durable_count:
+                stale_ids: list[str] = []
+            else:
+                stale_ids = _stale_source_ids(
+                    store,
+                    collection_name,
+                    source_id=source_id,
+                    source_attempt=source_attempt,
+                )
             if stale_ids:
                 # One call per slice: stores cap the IDs a single delete
                 # accepts (LanceDB: 100 per ``$in`` list).

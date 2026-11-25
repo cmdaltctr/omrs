@@ -277,7 +277,9 @@ def test_commit_holds_the_write_lock_for_write_verify_and_cleanup(
 
     assert outcome.chunks_written == 2
     assert outcome.chunks_removed == 2
-    assert observed == {"write": [True], "verify": [True], "cleanup": [True]}
+    # Two counts: the durability check, then the source count that decides
+    # whether the stale-row scan must run. Both hold the lock.
+    assert observed == {"write": [True], "verify": [True, True], "cleanup": [True]}
     assert not write_lock.locked()
     assert _stored_texts(store) == sorted(node.text for node in nodes)
 
