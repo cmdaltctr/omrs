@@ -11,6 +11,7 @@ stored rows, their order, the table metadata and the search scores unchanged.
 
 from __future__ import annotations
 
+import importlib
 import math
 import random
 from pathlib import Path
@@ -157,6 +158,34 @@ def test_replacement_after_compaction_removes_stale_rows(
         if meta["file_path"].endswith("file_003.md")
     ]
     assert sorted(texts) == ["changed 3 chunk 0", "changed 3 chunk 1"]
+
+
+def test_a_failed_compaction_leaves_the_finished_replacement_in_place(
+    tmp_path: Path,
+    small_threshold: int,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Compaction only tidies rows already written, so its failure must not fail the write.
+
+    A raise from compaction once skipped the stale-row cleanup and left the old and
+    the new attempt of the source side by side.
+    """
+    store = LanceVectorStore(uri=str(tmp_path / "lancedb"), embedding_identity=_IDENTITY)
+    for number in range(small_threshold - 1):
+        _commit_file(store, number)
+
+    def fail(*_args: object, **_kwargs: object) -> None:
+        raise OSError("disk full")
+
+    optimizer = importlib.import_module("lance.dataset").DatasetOptimizer
+    monkeypatch.setattr(optimizer, "compact_files", fail)
+    _commit_file(store, 3, text="changed")  # the eighth small fragment starts a compaction
+
+    texts = sorted(t for t, path in _rows(store) if path.endswith("file_003.md"))
+    assert texts == ["changed 3 chunk 0", "changed 3 chunk 1"]
+    assert store.count(_COLLECTION) == 2 * (small_threshold - 1)
+    assert "disk full" in caplog.text
 
 
 def test_native_fts_index_survives_compaction(

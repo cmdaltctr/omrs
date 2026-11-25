@@ -283,3 +283,17 @@ def test_a_new_source_skips_the_stale_row_scan_and_a_changed_one_runs_it(
     assert scans == [{"source_id": "source-4"}]
     assert store.count(_COLLECTION) == 42
     assert store.count_where(_COLLECTION, {"source_id": "source-4"}) == 2
+
+
+def test_the_field_read_hides_adapter_fields_as_the_document_read_does(tmp_path: Path) -> None:
+    store = _store(tmp_path / "lancedb")
+    _commit_file(store, 1)
+    where = {"source_id": "source-1"}
+    asked = ["_node_content", "_node_type", "doc_id", "file_path"]
+    narrow = dict(store.iter_filtered_fields(_COLLECTION, where, asked))
+    full = {
+        i: {k: m[k] for k in asked if k in m}
+        for i, _t, m in store.iter_filtered_documents(_COLLECTION, where)
+    }
+    assert narrow == full
+    assert all(set(row) == {"file_path"} for row in narrow.values())

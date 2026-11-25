@@ -64,11 +64,16 @@ def compact_if_fragmented(table: Any) -> bool:
     Only fragments under :data:`COMPACTION_TARGET_ROWS` rows count and get
     merged, so the cost of one compaction does not grow with the table.
 
+    Compaction runs after the rows are written and changes none of them, so
+    a failure is logged and the write goes on: the caller still clears the
+    intent and removes the source's stale rows.
+
     Args:
         table: An open LanceDB table at its latest version.
 
     Returns:
-        ``True`` when the table was compacted.
+        ``True`` when the table was compacted; ``False`` when it was not
+        needed or failed.
     """
     dataset = table.to_lance()
     small = sum(
@@ -79,9 +84,15 @@ def compact_if_fragmented(table: Any) -> bool:
     # One thread: with a row target, Lance splits the work into several tasks,
     # and parallel tasks put the new fragments out of row order (pylance 10,
     # 20 of 20 trials). One task at a time keeps the row order.
-    dataset.optimize.compact_files(target_rows_per_fragment=COMPACTION_TARGET_ROWS, num_threads=1)
-    logger.debug("Compacted %d small fragments of table %r", small, table.name)
-    _maintain_source_indexes(dataset)
+    try:
+        dataset.optimize.compact_files(
+            target_rows_per_fragment=COMPACTION_TARGET_ROWS, num_threads=1
+        )
+        logger.debug("Compacted %d small fragments of table %r", small, table.name)
+        _maintain_source_indexes(dataset)
+    except Exception as exc:  # noqa: BLE001 - an optional tidy-up must not fail the write
+        logger.warning("Compaction of table %r failed; rows are unchanged: %s", table.name, exc)
+        return False
     return True
 
 

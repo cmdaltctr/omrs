@@ -174,7 +174,8 @@ class LancePagedReadMixin:
         a scalar index, Lance reads every requested column of the rows not yet
         in the index; a narrow projection keeps that cost flat as vectors
         grow. A field the table has no column for is left out, as a row
-        without the key would be.
+        without the key would be. An adapter-internal field
+        (:func:`strip_internal_metadata`) is left out too.
 
         Args:
             collection_name: Collection (table) to read.
@@ -203,7 +204,8 @@ class LancePagedReadMixin:
             raise ValueError(
                 f"Filter {where!r} on {collection_name!r} translated to no LanceDB predicate."
             )
-        wanted = [field for field in fields if field in known]
+        # The adapter's own fields stay hidden, as in iter_filtered_documents.
+        wanted = [f for f in fields if f in known and f in strip_internal_metadata({f: None})]
         scanner = table.to_lance().scanner(
             columns=["id", *(f"metadata.{field}" for field in wanted)],
             filter=filter_sql,
