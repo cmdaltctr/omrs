@@ -16,6 +16,8 @@ import math
 import random
 from pathlib import Path
 
+import lancedb
+import pyarrow as pa
 import pytest
 from llama_index.core.embeddings import MockEmbedding
 from llama_index.core.schema import NodeRelationship, RelatedNodeInfo, TextNode
@@ -310,3 +312,56 @@ def test_full_fragments_do_not_trigger_compaction(tmp_path: Path, bounded: None)
     version = table.version
     assert not compact.compact_if_fragmented(table)
     assert store._open_table(_COLLECTION).version == version
+
+
+# Commit 784e478c made compaction count and merge only small fragments. Deleted rows
+# inside a full fragment then never raised the count (CodeRabbit, PR 224). Lance
+# rewrites a fragment once more than 10% of its rows are deleted
+# (materialize_deletions_threshold; exactly 10% stays, the threshold is a 32-bit float),
+# so such a fragment now counts as a candidate too.
+
+_FULL = 20  # rows in a full fragment of these tests; 2 deleted rows is exactly 10%
+
+
+def _fragmented_table(tmp_path: Path, deleted_each: int):
+    """Eight full fragments of 20 rows, each with *deleted_each* rows deleted."""
+    table = lancedb.connect(str(tmp_path)).create_table(
+        "plain", data=pa.table({"id": [0], "vector": [[0.0] * _DIM]})
+    )
+    table.delete("id = 0")
+    for part in range(8):
+        ids = list(range(part * _FULL, (part + 1) * _FULL))
+        table.add(pa.table({"id": ids, "vector": [[float(i)] * _DIM for i in ids]}))
+    if deleted_each:
+        for part in range(8):
+            first = part * _FULL
+            table.delete(f"id >= {first} AND id < {first + deleted_each}")
+    return table
+
+
+def _deleted_rows(table) -> int:
+    return sum(f.num_deletions for f in table.to_lance().get_fragments())
+
+
+@pytest.mark.parametrize(
+    ("deleted_each", "compacts"), [(0, False), (1, False), (2, False), (3, True)]
+)
+def test_a_full_fragment_counts_once_over_10_percent_of_its_rows_are_deleted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, deleted_each: int, compacts: bool
+) -> None:
+    """Eight full fragments reach the threshold of 8 only with more than 10% deleted rows."""
+    monkeypatch.setattr(compact, "FRAGMENT_COMPACTION_THRESHOLD", 8)
+    monkeypatch.setattr(compact, "COMPACTION_TARGET_ROWS", _FULL)
+    table = _fragmented_table(tmp_path, deleted_each)
+    live = sorted(row["id"] for row in table.to_arrow().to_pylist())
+    version = table.version
+    assert _deleted_rows(table) == 8 * deleted_each
+
+    assert compact.compact_if_fragmented(table) is compacts
+
+    after = lancedb.connect(str(tmp_path)).open_table("plain")
+    assert sorted(row["id"] for row in after.to_arrow().to_pylist()) == live
+    if compacts:
+        assert _deleted_rows(after) == 0, "the deleted rows were not removed"
+    else:
+        assert after.version == version and _deleted_rows(after) == 8 * deleted_each

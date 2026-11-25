@@ -34,6 +34,7 @@ import pyarrow as pa
 logger = logging.getLogger(__name__)
 
 __all__ = [
+    "DELETION_SHARE_TO_REWRITE",
     "FRAGMENT_COMPACTION_THRESHOLD",
     "SOURCE_INDEX_FIELDS",
     "compact_if_fragmented",
@@ -52,6 +53,14 @@ FRAGMENT_COMPACTION_THRESHOLD = 64
 #: small fragments.
 COMPACTION_TARGET_ROWS = 16_384
 
+#: A full fragment also counts, and is rewritten, when more than this share of
+#: its rows is deleted. 0.1 is the Lance default (``materialize_deletions_threshold``);
+#: it is passed to ``compact_files`` so the count and the rewrite use the same
+#: value. Lance keeps a fragment at exactly this share (it holds the threshold as
+#: a 32-bit float), so the count uses ``>`` too. Without this rule, rows deleted
+#: from a full fragment (a source ingested again) stay in its data file.
+DELETION_SHARE_TO_REWRITE = 0.1
+
 #: Metadata fields with a BTREE index. Change detection filters on
 #: ``file_path`` and ``source_id``; the durability count and the stale-row
 #: scan filter on ``source_id``.
@@ -62,7 +71,9 @@ def compact_if_fragmented(table: Any) -> bool:
     """Merge the table's small data fragments when there are too many of them.
 
     Only fragments under :data:`COMPACTION_TARGET_ROWS` rows count and get
-    merged, so the cost of one compaction does not grow with the table.
+    merged, so the cost of one compaction does not grow with the table. A full
+    fragment with more than :data:`DELETION_SHARE_TO_REWRITE` of its rows deleted
+    counts and gets rewritten too; a table with no deleted rows is not affected.
 
     Compaction runs after the rows are written and changes none of them, so
     a failure is logged and the write goes on: the caller still clears the
@@ -76,9 +87,7 @@ def compact_if_fragmented(table: Any) -> bool:
         needed or failed.
     """
     dataset = table.to_lance()
-    small = sum(
-        1 for fragment in dataset.get_fragments() if fragment.physical_rows < COMPACTION_TARGET_ROWS
-    )
+    small = sum(1 for fragment in dataset.get_fragments() if _is_candidate(fragment))
     if small < FRAGMENT_COMPACTION_THRESHOLD:
         return False
     # One thread: with a row target, Lance splits the work into several tasks,
@@ -86,14 +95,25 @@ def compact_if_fragmented(table: Any) -> bool:
     # 20 of 20 trials). One task at a time keeps the row order.
     try:
         dataset.optimize.compact_files(
-            target_rows_per_fragment=COMPACTION_TARGET_ROWS, num_threads=1
+            target_rows_per_fragment=COMPACTION_TARGET_ROWS,
+            materialize_deletions=True,
+            materialize_deletions_threshold=DELETION_SHARE_TO_REWRITE,
+            num_threads=1,
         )
-        logger.debug("Compacted %d small fragments of table %r", small, table.name)
+        logger.debug("Compacted %d fragments of table %r", small, table.name)
         _maintain_source_indexes(dataset)
     except Exception as exc:  # noqa: BLE001 - an optional tidy-up must not fail the write
         logger.warning("Compaction of table %r failed; rows are unchanged: %s", table.name, exc)
         return False
     return True
+
+
+def _is_candidate(fragment: Any) -> bool:
+    """Say whether compaction counts and rewrites this fragment."""
+    rows = fragment.physical_rows
+    return (
+        rows < COMPACTION_TARGET_ROWS or fragment.num_deletions > DELETION_SHARE_TO_REWRITE * rows
+    )
 
 
 def _maintain_source_indexes(dataset: Any) -> None:
