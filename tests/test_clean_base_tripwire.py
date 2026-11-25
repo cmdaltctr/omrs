@@ -472,7 +472,13 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # 9d111476): test_the_stale_row_scan_reads_no_vectors_text_or_whole_metadata and five
 # test_field_read_* cases in test_vectordb_contract.py (four lancedb, one default).
 # 4 chroma cases skip without the extra. 0 removed or renamed. No extra.
-_BASE_EXECUTED = 13952
+# +11 (2026-11-25, Exp 35 OCR off and answer output cap, by test-ID diff against HEAD
+# 541fbdc8): test_every_setup_writes_the_ocr_fallback_off (3 cases) and
+# test_a_plan_without_the_ocr_pin_is_refused_by_key (arms), the OCR_FALLBACK_ENABLED case
+# of test_an_environment_override_stops_before_any_call_and_names_the_setting (run_arms),
+# test_the_plan_pins_the_ocr_fallback_off_and_the_real_setups_write_it (plan pins), and
+# new file test_experiment35_output_cap.py (5). 0 removed or renamed. No extra.
+_BASE_EXECUTED = 13963
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
