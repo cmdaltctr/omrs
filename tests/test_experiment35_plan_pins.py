@@ -15,6 +15,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel
@@ -461,3 +462,21 @@ def test_the_reranker_instruction_is_the_default_text_that_design_d0_10_names() 
     # The transformers reference of the rank check (task 15.10) sends the same text.
     assert text == load("rerank_scorers35").INSTRUCTION
     assert "pins.recorded.reranker_instruction" not in {i["key"] for i in plan["pins"]["pending"]}
+
+
+# --- OCR off during corpus prep (protocol 4.3; 2026-11-25 pre-freeze note) ------------------
+
+
+def test_the_plan_pins_the_ocr_fallback_off_and_the_real_setups_write_it(tmp_path: Path) -> None:
+    from omrs.config import Settings
+
+    plan = _plan()
+    assert arms.pinned(plan, "pins", "settings", "ocr_fallback_enabled") is False
+    assert "ocr_fallback_enabled" in Settings.model_fields  # the app's own setting key
+    gguf = tmp_path / "gguf"
+    gguf.mkdir()
+    for model in plan["runtime"]["models"]:
+        (gguf / model["file"]).write_bytes(b"")
+    for name in ("e4b-c512-roff-hoff", "e8b-c2048-r8b-hon"):
+        values = arms.settings_values(arms.parse_setup(name), plan, gguf, answer_host="", judges=())
+        assert values["ocr_fallback_enabled"] is False

@@ -293,6 +293,7 @@ def test_dry_run_prints_the_resolved_values_and_starts_nothing(
     assert plan["resolved"]["chunk_overlap"] == 154
     assert plan["resolved"]["hybrid_sparse_backend"] == "bm25"
     assert plan["resolved"]["pdf_reader"] == "pdf_inspector"
+    assert plan["resolved"]["ocr_fallback_enabled"] is False
     assert "sentinel-value-0451" not in printed and "env://" not in printed
 
 
@@ -303,6 +304,7 @@ def test_dry_run_prints_the_resolved_values_and_starts_nothing(
         ("CHUNKING__MARKDOWN_CHUNK_SIZE", "300", "chunking.markdown_chunk_size"),
         ("RETRIEVAL__HYBRID_SPARSE_BACKEND", "native", "retrieval.hybrid_sparse_backend"),
         ("PDF_READER", "pypdf", "pdf_reader"),
+        ("OCR_FALLBACK_ENABLED", "true", "ocr_fallback_enabled"),
     ],
 )
 def test_an_environment_override_stops_before_any_call_and_names_the_setting(

@@ -400,6 +400,8 @@ def settings_values(
     if retrieval:
         values["retrieval"] = retrieval
     settings_pins = pinned(plan, "pins", "settings")
+    # Protocol 4.3: no OCR of source pages. Without the pin the app default (OCR on) would run.
+    pinned(plan, "pins", "settings", "ocr_fallback_enabled")
     pinned_host = (settings_pins.get("answer") or {}).get("allowed_hosts")
     if pinned_host and answer_host and answer_host != pinned_host:
         raise ArmConfigError(

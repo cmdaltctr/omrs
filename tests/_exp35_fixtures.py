@@ -100,6 +100,7 @@ def fake_plan() -> dict[str, Any]:
         "pins": {
             "settings": {
                 "pdf_reader": "pdf_inspector",
+                "ocr_fallback_enabled": False,
                 "embedding": {"query_instruction": ""},
                 "answer": {"reasoning": "low", "max_output_tokens": 2048},
                 "retrieval": {"hybrid_rrf_k": 60},
