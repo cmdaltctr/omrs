@@ -90,11 +90,16 @@ refer to `experiments/35-full-rag-benchmark-2026-11-01/preregistration.md`.
 
    Today a per-collection profile owns only a few levers, such as `top_k`, `rerank_enabled` and
    `hybrid_enabled` (`src/omrs/core/profiles/resolver.py`). The embedder, chunk size, overlap and
-   reranker model and backend come from the server default. So the adoption needs a change that
-   lets `documents.yaml` own these keys, or the adoption ADR states the gap.
-5. **Comparison with today's app default.** A descriptive, retrieval-only arm that runs the current
-   app default on half B is being added to the experiment (owner chose option a; a separate
-   amendment designs it). The adoption ADR reports the winner against that arm.
+   reranker model and backend come from the server default. Owner decision (2026-11-25): a
+   separate OpenSpec change, after the results and before the adoption, lets the profile own
+   these four keys, so `documents.yaml` can hold the adopted values while the `codebase` profile
+   keeps its own.
+5. **Adoption is a suggestion from evidence, not a contest with the current app.** The experiment
+   compares its tested setups with each other. The adopted values are the experiment's
+   recommendation for the `documents` profile, under decisions 1 to 4. The current app default is
+   not a tested setup and is not run in the experiment (owner decision 2026-11-25). The adoption
+   ADR lists today's values beside the adopted ones for reference only, and makes no claim that
+   the new values beat the old.
 6. **Scope.** The adoption holds within scope S (section 2, the "Scope S" paragraph). Non-English
    collections and the `codebase` profile get no evidence from it.
 7. **Hybrid depth.** If a hybrid-on, reranker-off setup is adopted, the app pool rule must change to
