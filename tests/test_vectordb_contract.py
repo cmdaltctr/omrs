@@ -659,6 +659,57 @@ class TestFilteredDocuments:
         with pytest.raises(ValueError, match="non-empty where"):
             list(store.iter_filtered_documents("filtered_docs", {}))
 
+    def test_field_read_returns_ids_with_only_the_named_fields(self, store: VectorStore) -> None:
+        self._seed(store)
+        rows = dict(
+            store.iter_filtered_fields(
+                "filtered_docs", {"source_id": "s1"}, ["source_chunk_index", "never_written"]
+            )
+        )
+        assert rows == {"s1c0": {"source_chunk_index": 0}, "s1c1": {"source_chunk_index": 1}}
+
+    def test_field_read_matches_the_document_read_rows(self, store: VectorStore) -> None:
+        self._seed(store)
+        where = {"source_id": "s2"}
+        full = [
+            row_id for row_id, _text, _meta in store.iter_filtered_documents("filtered_docs", where)
+        ]
+        narrow = [
+            row_id for row_id, _meta in store.iter_filtered_fields("filtered_docs", where, [])
+        ]
+        assert narrow == full == ["s2c0"]
+
+    def test_field_read_absent_collection_and_no_match_yield_nothing(
+        self, store: VectorStore
+    ) -> None:
+        self._seed(store)
+        assert list(store.iter_filtered_fields("nope", {"source_id": "s1"}, ["source_id"])) == []
+        assert (
+            list(
+                store.iter_filtered_fields("filtered_docs", {"source_id": "absent"}, ["source_id"])
+            )
+            == []
+        )
+
+    def test_field_read_empty_filter_rejected(self, store: VectorStore) -> None:
+        self._seed(store)
+        with pytest.raises(ValueError, match="non-empty where"):
+            list(store.iter_filtered_fields("filtered_docs", {}, ["source_id"]))
+
+    def test_field_read_default_builds_on_the_document_read(self) -> None:
+        """A store that only implements the document read still answers the field read."""
+        from types import SimpleNamespace
+
+        def _documents(collection_name, where, page_size=None):
+            yield "a", "text", {"source_attempt": "one", "other": 1}
+            yield "b", "text", {"other": 2}
+
+        fake = SimpleNamespace(iter_filtered_documents=_documents)
+        rows = list(
+            VectorStore.iter_filtered_fields(fake, "c", {"source_id": "s"}, ["source_attempt"])
+        )
+        assert rows == [("a", {"source_attempt": "one"}), ("b", {})]
+
     def test_filter_is_pushed_into_each_backend(self) -> None:
         """Both adapters must hand the filter to the backend engine.
 

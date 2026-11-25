@@ -10,7 +10,7 @@ bounded filtered row-read contract). The concrete store supplies
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Sequence
 from typing import Any
 
 from .filter import translate_where
@@ -159,6 +159,59 @@ class LancePagedReadMixin:
                     str(text) if text is not None else "",
                     strip_internal_metadata(row.get("metadata")),
                 )
+
+    def iter_filtered_fields(
+        self,
+        collection_name: str,
+        where: dict,
+        fields: Sequence[str],
+        page_size: int | None = None,
+    ) -> Iterator[tuple[str, dict]]:
+        """Yield ``(id, metadata)`` rows matching *where*, reading only *fields*.
+
+        The scanner projects the row ID and the named metadata sub-fields, so
+        it never reads the text, the vector or the rest of the metadata. With
+        a scalar index, Lance reads every requested column of the rows not yet
+        in the index; a narrow projection keeps that cost flat as vectors
+        grow. A field the table has no column for is left out, as a row
+        without the key would be.
+
+        Args:
+            collection_name: Collection (table) to read.
+            where: Non-empty ChromaDB-style filter dict.
+            fields: Metadata keys the caller will read.
+            page_size: Optional scanner batch size.
+
+        Yields:
+            ``(id, {field: value})`` tuples for matching rows.
+
+        Raises:
+            ValueError: When *where* is empty.
+        """
+        if not where:
+            raise ValueError(
+                f"iter_filtered_fields on {collection_name!r} requires a "
+                "non-empty where filter; use iter_documents for unfiltered scans."
+            )
+        effective_page_size = self._resolve_page_size(page_size)
+        table = self._open_table(collection_name)
+        if table is None:
+            return
+        known = metadata_field_names(table)
+        filter_sql = translate_where(where, metadata_column="metadata", known_fields=known)
+        if filter_sql is None:
+            raise ValueError(
+                f"Filter {where!r} on {collection_name!r} translated to no LanceDB predicate."
+            )
+        wanted = [field for field in fields if field in known]
+        scanner = table.to_lance().scanner(
+            columns=["id", *(f"metadata.{field}" for field in wanted)],
+            filter=filter_sql,
+            batch_size=effective_page_size,
+        )
+        for batch in scanner.to_batches():
+            for row in batch.to_pylist():
+                yield str(row.get("id")), {field: row[f"metadata.{field}"] for field in wanted}
 
     def fetch_all(
         self,

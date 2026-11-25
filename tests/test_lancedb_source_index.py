@@ -171,6 +171,36 @@ def test_replacement_finds_stale_rows_in_indexed_and_new_fragments(
         ]
 
 
+def test_the_stale_row_scan_reads_no_vectors_text_or_whole_metadata(
+    tmp_path: Path, small: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The scan needs only each row's ID and attempt, so its cost is the same for any vector width.
+
+    With an index, Lance reads every requested column of the rows not yet in
+    it. A changed file near the end of the table is the case that pays.
+    """
+    from lance.dataset import LanceDataset
+
+    store = _store(tmp_path / "lancedb")
+    for number in range(30):
+        _commit_file(store, number)
+    scans: list[list[str]] = []
+    original = LanceDataset.scanner
+
+    def _spy(self, *args, **kwargs):
+        if kwargs.get("filter"):
+            scans.append(list(kwargs.get("columns") or ["<all columns>"]))
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(LanceDataset, "scanner", _spy)
+    _commit_file(store, 29, text="changed")
+
+    assert scans, "the changed file must run the stale-row scan"
+    wide = {"vector", "text", "metadata", "<all columns>"}
+    assert all(not wide & set(columns) for columns in scans), scans
+    assert store.count(_COLLECTION) == 60
+
+
 def test_an_existing_store_without_the_index_gains_it_and_keeps_working(
     tmp_path: Path, small: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -240,13 +270,13 @@ def test_a_new_source_skips_the_stale_row_scan_and_a_changed_one_runs_it(
     for number in range(20):
         _commit_file(store, number)
     scans: list[dict] = []
-    original = store.iter_filtered_documents
+    original = store.iter_filtered_fields
 
-    def _spy(collection_name, where, page_size=None):
+    def _spy(collection_name, where, fields, page_size=None):
         scans.append(where)
-        return original(collection_name, where, page_size)
+        return original(collection_name, where, fields, page_size)
 
-    monkeypatch.setattr(store, "iter_filtered_documents", _spy)
+    monkeypatch.setattr(store, "iter_filtered_fields", _spy)
     _commit_file(store, 20)
     assert scans == []
     _commit_file(store, 4, text="changed")

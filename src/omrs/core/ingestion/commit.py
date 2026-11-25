@@ -118,9 +118,10 @@ def _stale_source_ids(
     """
     return [
         row_id
-        for row_id, _text, metadata in store.iter_filtered_documents(
+        for row_id, metadata in store.iter_filtered_fields(
             collection_name,
             {SOURCE_ID_KEY: source_id},
+            [SOURCE_ATTEMPT_KEY],
         )
         if metadata.get(SOURCE_ATTEMPT_KEY) != source_attempt
     ]

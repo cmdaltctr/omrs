@@ -468,7 +468,11 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # test_full_fragments_do_not_trigger_compaction (test_lancedb_compaction.py). 0 removed.
 # +7 (2026-11-25, source-field scalar index, by test-ID diff against HEAD 2a86db11):
 # new file test_lancedb_source_index.py (7). 0 removed or renamed. No extra.
-_BASE_EXECUTED = 13946
+# +6 (2026-11-25, stale-row scan reads only the attempt, by test-ID diff against HEAD
+# 9d111476): test_the_stale_row_scan_reads_no_vectors_text_or_whole_metadata and five
+# test_field_read_* cases in test_vectordb_contract.py (four lancedb, one default).
+# 4 chroma cases skip without the extra. 0 removed or renamed. No extra.
+_BASE_EXECUTED = 13952
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
