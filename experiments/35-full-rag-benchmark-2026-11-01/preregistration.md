@@ -486,7 +486,7 @@ After the freeze, every change is a dated, numbered deviation. The report lists 
 - P17. On the test pod, reproduce the router idle stop (the router stops after 600 idle seconds during a Ragas stage) before the main run relies on a router session held for the whole Ragas stage. Record the result.
 - P18. Correct the `protocol.md` section 4.4 sentence on overflow rows so that it matches the saved LLM-AggreFact score files. A task reads the files and writes the corrected numbers; no number is changed by hand.
 
-Existing readiness tasks also close before the freeze: reranker pins, GPU choice, classifier gate, Legal revision, answer-model context length, test pod session.
+Existing readiness tasks also close before the freeze: reranker pins, GPU choice, classifier gate, Legal revision, answer-model context length, test pod session. For the classifier gate, the pre-freeze part is the fixed and pinned classifier prompt and examples. Gate 3 runs after the freeze on claims from the first finished main-run dataset (seed 20261143, section 11.1), and no claim-kind result is used until it passes (owner decision 2026-11-24, wording confirmed 2026-11-25).
 
 ## 24. References
 
