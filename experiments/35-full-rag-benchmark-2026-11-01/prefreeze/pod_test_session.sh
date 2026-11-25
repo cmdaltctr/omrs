@@ -170,15 +170,16 @@ time_left() {
   echo "$left"
 }
 
-# attempt <command> <seconds>: run the stage in its own process group (set -m). On a
-# timeout, kill that group: a grandchild that outlives SIGTERM must not run into the
-# next stage (t-fb, 2026-11-24). It gets SIGABRT first, so PYTHONFAULTHANDLER prints
-# its Python stack to the log (py-spy cannot attach in the pod). A stage that ends by
-# itself keeps its background processes (gpulog); stop_background stops them.
+# attempt <command> <seconds>: run the stage in its own process group (set -m). At the
+# timeout the group gets SIGABRT, not SIGTERM, so PYTHONFAULTHANDLER prints each Python
+# stack to the log (py-spy cannot attach in the pod; SIGTERM ends Python with no stack).
+# No core file is written. Then kill the group: a grandchild that outlives the signal
+# must not run into the next stage (t-fb, 2026-11-24). A stage that ends by itself
+# keeps its background processes (gpulog); stop_background stops them.
 attempt() {
   local rc
   set -m
-  (cd "$EXP35" && exec timeout -k 60 "$2" bash -c "$1" </dev/null) &
+  (cd "$EXP35" && ulimit -c 0 && exec timeout -s ABRT -k 60 "$2" bash -c "$1" </dev/null) &
   STAGE_PGID=$!
   set +m
   wait "$STAGE_PGID"

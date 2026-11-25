@@ -2,8 +2,9 @@
 
 The pod image has GNU ``timeout``; some macOS CI runners do not. Tests call
 ``add_timeout_if_missing(bin_dir)`` so the chain scripts find one on ``PATH``.
-It supports the one form the chain uses: ``timeout -k GRACE SECONDS cmd ...``
-and exits 124 when the command runs past SECONDS, as GNU ``timeout`` does.
+It supports the one form the chain uses: ``timeout -s SIGNAL -k GRACE SECONDS cmd ...``
+(both options may be left out) and exits 124 when the command runs past SECONDS, as
+GNU ``timeout`` does. It signals the command only; the chain kills the process group.
 """
 
 from __future__ import annotations
@@ -13,17 +14,21 @@ import sys
 from pathlib import Path
 
 _SHIM = """#!{python}
-import subprocess, sys
+import signal, subprocess, sys
 args = sys.argv[1:]
-grace = 0.0
-if args[:1] == ["-k"]:
-    grace, args = float(args[1]), args[2:]
+grace, sig = 0.0, signal.SIGTERM
+while args[:1] in (["-k"], ["-s"]):
+    if args[0] == "-k":
+        grace = float(args[1])
+    else:
+        sig = getattr(signal, "SIG" + args[1])
+    args = args[2:]
 limit, cmd = float(args[0]), args[1:]
 proc = subprocess.Popen(cmd)
 try:
     sys.exit(proc.wait(timeout=limit))
 except subprocess.TimeoutExpired:
-    proc.terminate()
+    proc.send_signal(sig)
     try:
         proc.wait(timeout=grace or None)
     except subprocess.TimeoutExpired:

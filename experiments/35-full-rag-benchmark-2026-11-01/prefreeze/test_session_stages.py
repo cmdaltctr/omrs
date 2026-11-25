@@ -287,12 +287,13 @@ def test_the_rebuild_check_covers_each_core_dataset_from_both_sides() -> None:
         mine = [(c, a) for c, a in runs if a.dataset == dataset]
         built = {(a.stage, _folder(a.out_dir)) for c, a in mine if a.index == "e4b-c1024"}
         assert {("ingest", "rb"), ("seal", "rb")} <= built, dataset
-        sides = {
-            (_folder(a.index_from), _folder(a.out_dir)): _at(c)
+        searches = [
+            ((_folder(a.index_from), _folder(a.out_dir)), _at(c))
             for c, a in mine
             if a.stage == "search" and a.setup == "e4b-c1024-roff-hoff"
-        }
-        assert set(sides) == {("s", "chk"), ("rb", "rbs")}, dataset
+        ]
+        sides = dict(searches)  # one search per side, so no position is lost here
+        assert sorted(side for side, _ in searches) == [("rb", "rbs"), ("s", "chk")], dataset
         compare = [c for c in _calls() if "rebuild35.py" in c.words and dataset in c.words]
         assert len(compare) == 1, dataset
         opts = _opts(compare[0].words)
@@ -396,7 +397,7 @@ def test_the_task_stages_are_present_in_their_order() -> None:
     ragas_s = [c.stage.index for c, a in runs if a.stage == "ragas" and _folder(a.out_dir) == "s"]
     assert max(ragas_s) < min(c.stage.index for c in idle)
     sample = [c for c in _calls() if "refusals35.py" in c.words and "sample" in c.words]
-    assert {_opts(sample[0].words)[k] for k in ("--seed", "--n")} == {"20261112", "100"}
+    assert (_opts(sample[0].words)["--seed"], _opts(sample[0].words)["--n"]) == ("20261112", "100")
     kinds = [
         c.stage.index for c, a in runs if a.stage == "claimkinds" and _folder(a.out_dir) == "s"
     ]

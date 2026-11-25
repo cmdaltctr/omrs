@@ -143,6 +143,9 @@ def draw_sample(claims: Sequence[Mapping[str, Any]], *, seed: int, n: int) -> di
     Returns:
         ``seed``, ``n``, ``strata`` (size, drawn and fraction each), ``items``
         (shuffled with the seed) and ``pool`` (claims outside the sample).
+
+    Raises:
+        SampleError: A dataset holds fewer claims than its quota.
     """
     datasets = sorted({c["dataset"] for c in claims})
     rng = random.Random(seed)  # noqa: S311 - seeded draw, not security
@@ -161,13 +164,10 @@ def draw_sample(claims: Sequence[Mapping[str, Any]], *, seed: int, n: int) -> di
             )
             for name in ("flagged", "plain")
         }
-        takes = dict(
-            zip(
-                ("flagged", "plain"),
-                _takes(quota, len(pools["flagged"]), len(pools["plain"])),
-                strict=True,
-            )
-        )
+        sizes = (len(pools["flagged"]), len(pools["plain"]))
+        if sum(sizes) < quota:  # a short draw must not be recorded as the registered n
+            raise SampleError(f"{dataset}: {sum(sizes)} claims left, below its quota {quota}")
+        takes = dict(zip(("flagged", "plain"), _takes(quota, *sizes), strict=True))
         for name in ("flagged", "plain"):
             stratum = f"{dataset}/{name}"
             picked = rng.sample(pools[name], takes[name])

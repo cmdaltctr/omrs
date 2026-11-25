@@ -143,6 +143,14 @@ def reproduce(
     return record
 
 
+def managed_router(router_config: Any, files: list[str], plan: Mapping[str, Any]) -> Any:
+    """Start the managed router; raise its refusal as ``router_env.RouterConfigError`` (exit 2)."""
+    try:
+        return router_config.start_router(files, plan)
+    except router_config.RouterConfigError as exc:
+        raise router_env.RouterConfigError(str(exc)) from exc
+
+
 @contextlib.contextmanager
 def start_router(url: str, out: Path, hold: bool) -> Iterator[tuple[str, Any]]:
     """Start or join the scratch managed router with the 4B file; yield name and session."""
@@ -160,7 +168,7 @@ def start_router(url: str, out: Path, hold: bool) -> Iterator[tuple[str, Any]]:
     import router_config
 
     one = {"runtime": {"models": [dict(entry)]}}
-    router = router_config.start_router([entry["file"]], one)
+    router = managed_router(router_config, [entry["file"]], one)
     session = (lambda: router_config.held(router, one, entry["file"])) if hold else None
     yield router_env.model_name(entry), session  # the router stops when the process exits
 

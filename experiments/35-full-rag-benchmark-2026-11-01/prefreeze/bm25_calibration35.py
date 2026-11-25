@@ -8,8 +8,10 @@ Exp 35 dataset, so the choice of BM25 does not depend on the Exp 35 questions.
 - ``stem``: Porter stemming at k1 1.5 and b 0.75. OMRS ships this BM25 since 2026-11-24,
   because it scored highest here (``sparse.BM25_K1`` and ``sparse.BM25_B``).
 - ``reference``: the Anserini/Pyserini BEIR setup (k1 0.9, b 0.4, Porter stems; Lin et al.
-  2021, SIGIR, 10.1145/3404835.3463238). Its scores check this implementation against the
-  published Pyserini "flat" numbers.
+  2021, SIGIR, 10.1145/3404835.3463238). Its scores are compared with the published
+  Pyserini "flat" numbers as a plausibility check, not as proof of parity: ``rank_bm25``
+  computes IDF as log((N - n + 0.5) / (n + 0.5)) with an epsilon floor, and Lucene adds 1
+  inside the log, so the two can rank documents differently.
 
 All four use ``rank_bm25.BM25Okapi`` (epsilon 0.25) and the OMRS list of 47 stop words.
 A document is indexed as its title and text joined by a space, as in the Pyserini "flat"
@@ -93,7 +95,7 @@ def _rows(folder: Path, part: str) -> list[dict]:
     if parquet:
         import pyarrow.parquet as pq
 
-        return pq.read_table(parquet[0]).to_pylist()
+        return [row for shard in parquet for row in pq.read_table(shard).to_pylist()]
     with (folder / f"{part}.jsonl").open(encoding="utf-8") as fh:
         return [json.loads(line) for line in fh if line.strip()]
 
@@ -151,7 +153,9 @@ def run_config(data: Dataset, config: Config, depth: int = 100) -> dict[str, dic
     out: dict[str, dict[str, float]] = {}
     for qid, text in data.queries.items():
         scores = index.get_scores(config.tokens(text))
-        order = sorted(range(len(scores)), key=lambda i: (-scores[i], data.doc_ids[i]))[:depth]
+        # OMRS returns only documents with a score above 0 (sparse.py), so this does too.
+        hits = [i for i in range(len(scores)) if scores[i] > 0]
+        order = sorted(hits, key=lambda i: (-scores[i], data.doc_ids[i]))[:depth]
         ranked = [data.doc_ids[i] for i in order]
         out[qid] = {
             "ndcg10": ndcg_at(ranked, data.qrels[qid]),

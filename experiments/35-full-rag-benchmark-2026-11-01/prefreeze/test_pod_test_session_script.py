@@ -8,6 +8,7 @@ deletes a pod. Gaps G5, G7 to G9, G15, G22 and G23 of the 2026-11-23 session pla
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import tarfile
 import time
@@ -53,6 +54,14 @@ codes=(${{STUB_RUNNER_CODES:-0}})
 exit "${{codes[$((n - 1))]:-0}}"
 """
 
+_TAR = """#!/usr/bin/env bash
+pid="$(cat "{t}/smoke-out/bg.pid")" state=gone
+for _ in 1 2 3 4 5 6 7 8 9 10; do kill -0 "$pid" 2>/dev/null || break; /bin/sleep 0.2; done
+kill -0 "$pid" 2>/dev/null && state=alive
+echo "$state" > "$STUB_TAR"
+exec "$REAL_TAR" "$@"
+"""
+
 
 def _script() -> str:
     return PATH_SCRIPT.read_text(encoding="utf-8")
@@ -79,6 +88,8 @@ def _run(
     add_timeout_if_missing(bin_dir)
     if stub_sleep:
         _stub(bin_dir, "sleep", _SLEEP, tmp_path)
+    if "STUB_TAR" in env:
+        _stub(bin_dir, "tar", _TAR, tmp_path)
     stage_file = tmp_path / "stages.txt"
     stage_file.write_text(stages, encoding="utf-8")
     out = tmp_path / "smoke-out"
@@ -377,8 +388,12 @@ def test_a_background_process_of_a_stage_is_stopped_before_the_tarball(tmp_path:
         'bg sh -c \'sleep 30 >/dev/null 2>&1 & echo $! >> "$BACKGROUND_PIDS"; '
         'echo $! > "$OUT_DIR/bg.pid"\'\n'
     )
-    result, _ = _run(tmp_path, stages)
+    # The tar stub notes whether the process still runs 2 s after tar starts.
+    seen = tmp_path / "bg-at-tar"
+    tar = shutil.which("tar")
+    result, _ = _run(tmp_path, stages, STUB_TAR=f"{seen}", REAL_TAR=f"{tar}")
     assert result.returncode == 0
+    assert seen.read_text().strip() == "gone"
     pid = int((tmp_path / "smoke-out" / "bg.pid").read_text())
     deadline = time.monotonic() + 3
     while time.monotonic() < deadline:
@@ -415,5 +430,12 @@ def test_a_timed_out_stage_leaves_a_python_stack_in_the_log(tmp_path: Path) -> N
     # py-spy cannot attach in the pod, so a hung stage must print its own stack.
     hang = "import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(40)"
     result, _ = _run(tmp_path, f'slow@1s python3 -c "{hang}" & wait\n')
+    assert result.returncode == 1
+    assert "most recent call first" in result.stdout + result.stderr
+
+
+def test_a_timed_out_foreground_python_stage_leaves_its_stack_in_the_log(tmp_path: Path) -> None:
+    # A plain stage that ends at SIGTERM prints nothing, so the first signal must be SIGABRT.
+    result, _ = _run(tmp_path, 'slow@1s python3 -c "import time; time.sleep(40)"\n')
     assert result.returncode == 1
     assert "most recent call first" in result.stdout + result.stderr

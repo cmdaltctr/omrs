@@ -448,6 +448,7 @@ def run(args: argparse.Namespace) -> int:
     say(f"step 6: watching {LOG} every {POLL_S} s (cap {args.wall_cap_h:g} h)")
     w = Watch()
     reason = watch(pod, w, args.wall_cap_h * 3600, start)
+    signal.pthread_sigmask(signal.SIG_BLOCK, _SIGNALS)  # no signal may cut the pull short
     outputs, marker, stop = end_session(pod, w, reason, plan.folder)
     if w.stop_failed:
         code = EXIT["stop-failed"]

@@ -86,6 +86,17 @@ def test_a_small_beir_folder_runs_end_to_end(tmp_path):
     summary = json.loads((out / "bm25-calibration.json").read_text())
     means = summary["means"]["scifact"]
     # Only stemming lets "run" match "Running" and "runners". Without it every score is 0,
-    # so the tie order (document id) puts the cooking page d1 first.
-    assert means["old"]["ndcg10"] == pytest.approx(1 / math.log2(3))
+    # and OMRS returns no document with a score of 0 (sparse.py keeps score > 0 only).
+    assert means["old"] == {"ndcg10": 0.0, "recall100": 0.0}
     assert means["reference"]["ndcg10"] == pytest.approx(1.0)
+
+
+def test_every_parquet_shard_of_a_part_is_read(tmp_path):
+    pq = pytest.importorskip("pyarrow.parquet")
+    import pyarrow as pa
+
+    folder = tmp_path / "corpus"
+    folder.mkdir()
+    pq.write_table(pa.Table.from_pylist([{"_id": "d1"}]), folder / "corpus-00000-of-00002.parquet")
+    pq.write_table(pa.Table.from_pylist([{"_id": "d2"}]), folder / "corpus-00001-of-00002.parquet")
+    assert [r["_id"] for r in cal._rows(tmp_path, "corpus")] == ["d1", "d2"]

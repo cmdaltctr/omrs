@@ -22,6 +22,7 @@ from pathlib import Path
 
 import mac_watch35
 import pytest
+from watch_inputs35 import unsafe
 
 HERE = Path(__file__).parent
 WATCH = HERE / "mac_watch35.py"
@@ -70,7 +71,8 @@ T="@T@"
 printf '%s\n' "$*" >> "$T/scp.log"
 [ -e "$T/ssh.dead" ] && exit 1
 case "$*" in
-  *test-session-out.tgz*) [ -e "$T/scp.fail-once" ] && rm "$T/scp.fail-once" && exit 1 ;;
+  *test-session-out.tgz*) [ -e "$T/scp.fail-once" ] && rm "$T/scp.fail-once" && exit 1
+    [ -e "$T/scp.term" ] && rm "$T/scp.term" && kill -TERM "$PPID" ;;
   *watcher-out.tgz*) [ -e "$T/scp.term" ] && rm "$T/scp.term" && kill -TERM "$PPID" ;;
 esac
 args=()
@@ -371,6 +373,24 @@ def test_the_inputs_tarball_holds_only_the_setup_paths_and_no_secret(tmp_path: P
     record = (tgz.parent / "exp35-inputs.tgz.sha256").read_text(encoding="utf-8")
     assert record == f"{_sha(tgz)}  exp35-inputs.tgz\n"
     assert _sha(s.pod / "workspace/inputs/exp35-inputs.tgz") == _sha(tgz)
+
+
+def test_a_first_signal_during_the_pull_does_not_stop_the_pull(tmp_path: Path) -> None:
+    s = Session(tmp_path, ["done"])
+    (tmp_path / "scp.term").touch()  # the first SIGTERM comes while the tarball is copied
+    result = s.run()
+    assert "RESULT end=done outputs=ok pulled-marker=written" in result.stdout, result.stdout
+    assert result.returncode == 0 and not (tmp_path / "scp.term").exists()
+
+
+def test_an_input_that_links_to_a_secret_inside_the_data_root_is_refused(tmp_path: Path) -> None:
+    root = tmp_path / "root"
+    (root / FB).mkdir(parents=True)
+    (root / ".env").write_text("KEY=value\n", encoding="utf-8")
+    (root / FB / "notes.jsonl").write_text("{}\n", encoding="utf-8")
+    (root / FB / "financebench_merged.jsonl").symlink_to(root / ".env")
+    assert "secret" in (unsafe(f"{FB}/financebench_merged.jsonl", root) or "")
+    assert unsafe(f"{FB}/notes.jsonl", root) is None
 
 
 def test_an_input_that_links_outside_the_data_root_is_refused(tmp_path: Path) -> None:

@@ -13,6 +13,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 
+import pytest
 from tests._exp35_fixtures import load
 
 idle = load("idle_repro35")
@@ -197,3 +198,16 @@ def test_the_router_settings_name_only_the_4b_embedder_on_the_given_url(tmp_path
     assert [e["model"] for e in values["llamacpp_models"].values()] == [MODEL]
     idle.router_env.write_settings(values, tmp_path / "config")
     idle.router_env.check_settings_file(tmp_path / "config")
+
+
+def test_the_router_helper_refusal_becomes_the_exit_2_error() -> None:
+    # Experiment 48's router_config has its own RouterConfigError (no server binary, ...).
+    class HelperError(RuntimeError):
+        pass
+
+    def refuse(files: list[str], plan: dict) -> Any:
+        raise HelperError("no llama-server binary")
+
+    helper = type("router_config", (), {"RouterConfigError": HelperError, "start_router": refuse})
+    with pytest.raises(idle.router_env.RouterConfigError, match="no llama-server binary"):
+        idle.managed_router(helper, ["model.gguf"], {})

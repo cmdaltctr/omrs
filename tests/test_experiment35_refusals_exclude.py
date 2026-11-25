@@ -112,3 +112,14 @@ def test_a_repeated_folder_adds_a_second_source_for_one_dataset(
     kept = {i["claim_key"] for i in _read(out / "sample.json")["items"]}
     kept |= {c["claim_key"] for c in _read(out / "examples-pool.json")}
     assert len(kept) > len(one)
+
+
+def test_a_dataset_too_small_for_its_quota_is_refused_before_any_file(tmp_path: Path) -> None:
+    # 205 claims in all, but BioASQ has 20: the 34-claim quota cannot be met, so no
+    # sample smaller than the registered 100 is written as if it held 100.
+    folders = _folders(tmp_path)
+    claims = refusals35.session_claims(folders, _questions(folders))
+    bioasq = [c for c in claims if c["dataset"] == "bioasq"][20:]
+    kept = [c for c in claims if c not in bioasq]
+    with pytest.raises(claimcontext35.SampleError, match=r"bioasq: 20 claims .* quota 34"):
+        refusals35.draw_sample(kept, seed=20261143, n=100)

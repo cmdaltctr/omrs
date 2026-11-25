@@ -44,4 +44,7 @@ def unsafe(rel: str, root: Path) -> str | None:
     private = real.is_relative_to(home / ".config") or real.is_relative_to(home / ".ssh")
     if private or not real.is_relative_to(root):
         return f"resolves to {real}: outside the data root, or under ~/.config or ~/.ssh"
+    target = real.relative_to(root)  # a link to root/.env passes the name checks above
+    if any(p.startswith(_SECRET_PARTS) for p in target.parts) or target.suffix in (".key", ".pem"):
+        return f"resolves to {real}, which looks like a secret"
     return None if real.is_file() else "is missing"
