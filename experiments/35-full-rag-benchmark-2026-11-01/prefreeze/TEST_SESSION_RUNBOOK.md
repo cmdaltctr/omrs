@@ -77,6 +77,8 @@ Every code ends with `DELETE_POD_NOW <id>`. Delete the pod for every code.
 | 12 | Stopped by a signal (SIGTERM, SIGINT or SIGHUP) | Report why you stopped it. |
 | 13 | No public IP for `22/tcp` within 15 minutes (step 2b) | Report it. Nothing was copied. |
 
+After codes 8, 9 and 12 the watcher first sends `tmux kill-session -t exp35` to the pod. The chain then stops its stage and writes the tarball. The watcher waits up to 3 minutes for the tarball, then pulls. If the stop fails or times out, the watcher pulls anyway.
+
 ## Where the results go
 
 - The watcher writes `~/Development/DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/test-session-<UTC date>/`. It never overwrites an existing folder.

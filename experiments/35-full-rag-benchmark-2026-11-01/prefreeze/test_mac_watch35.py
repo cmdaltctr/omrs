@@ -69,6 +69,7 @@ exec bash -c "${cmd//\/workspace/$T/pod/workspace}"
 _SCP = r"""#!/usr/bin/env bash
 T="@T@"
 printf '%s\n' "$*" >> "$T/scp.log"
+echo "scp $*" >> "$T/order.log"
 [ -e "$T/ssh.dead" ] && exit 1
 case "$*" in
   *test-session-out.tgz*) [ -e "$T/scp.fail-once" ] && rm "$T/scp.fail-once" && exit 1
@@ -89,6 +90,7 @@ _TMUX = r"""#!/usr/bin/env bash
 T="@T@"; P="$T/pod"; W="$P/workspace"; LOG="$W/test-session.log"
 printf '%s\n' "$*" >> "$T/tmux.log"
 case "$1" in
+  kill-session) echo kill >> "$T/order.log"; [ -e "$T/tmux.kill-fails" ] && exit 1; exit 0 ;;
   new-session) for a in "$@"; do last="$a"; done
     printf '%s\n' "$last" > "$P/tmux-cmd"; : > "$LOG"; touch "$P/alive"; exit 0 ;;
   has-session) [ -e "$P/alive" ] || exit 1 ;;

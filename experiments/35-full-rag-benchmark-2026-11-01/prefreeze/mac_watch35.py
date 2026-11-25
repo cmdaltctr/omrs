@@ -2,7 +2,8 @@
 
 Usage: TEST_SESSION_RUNBOOK.md. No --ssh-host: runpod_ssh35.py reads the address from RunPod.
 It never stops or deletes a pod; the last line is always ``DELETE_POD_NOW <pod id>``. No key
-is printed. Idle = stage timeout + 10 min.
+is printed. Idle = stage timeout + 10 min. After idle, the cap or a signal it stops the chain
+(watch_stop35.py) before the pull.
 Test hook: MAC_WATCH35_FAKE_CLOCK=1 makes every wait move a virtual clock (no sleep).
 """
 
@@ -26,6 +27,7 @@ from pathlib import Path
 
 import runpod_ssh35
 from watch_inputs35 import inputs, sha256, unsafe
+from watch_stop35 import stop_chain
 
 HERE = Path(__file__).resolve().parent
 EXP = HERE.parent
@@ -375,6 +377,7 @@ def pull(pod: Pod, folder: Path) -> str:
 
 def end_session(pod: Pod, w: Watch, reason: str, folder: Path) -> tuple[str, str, str]:
     """Pull, write PULLED, then wait for the pod's own stop; return the three verdicts."""
+    stop_chain(pod, reason, session=SESSION, tarball=TARBALL, say=say, now=now, pause=pause)
     if reason == "stop-line" and w.alive and not w.done:
         say(f"STOP: line seen; waiting up to {SETTLE_S // 60} min for {DONE}")
         wait_for(pod, w, lambda: w.done or not w.alive, SETTLE_S, POLL_S)
