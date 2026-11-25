@@ -28,9 +28,20 @@ __all__ = ["FRAGMENT_COMPACTION_THRESHOLD", "compact_if_fragmented"]
 #: per fragment, so the store step stays near its small-table cost.
 FRAGMENT_COMPACTION_THRESHOLD = 64
 
+#: A fragment with this many rows is full: compaction leaves it alone. Lance
+#: otherwise treats every fragment under 1,048,576 rows as small, so each
+#: compaction rewrote the whole table. Experiment 35 pod (4,096-dim vectors):
+#: 12.4 s per compaction at 196,000 rows, about 0.2 s per file at the end.
+#: With this bound a compaction rewrites at most this many rows plus the new
+#: small fragments.
+COMPACTION_TARGET_ROWS = 16_384
+
 
 def compact_if_fragmented(table: Any) -> bool:
-    """Merge the table's data fragments when there are too many of them.
+    """Merge the table's small data fragments when there are too many of them.
+
+    Only fragments under :data:`COMPACTION_TARGET_ROWS` rows count and get
+    merged, so the cost of one compaction does not grow with the table.
 
     Args:
         table: An open LanceDB table at its latest version.
@@ -39,9 +50,14 @@ def compact_if_fragmented(table: Any) -> bool:
         ``True`` when the table was compacted.
     """
     dataset = table.to_lance()
-    fragments = len(dataset.get_fragments())
-    if fragments < FRAGMENT_COMPACTION_THRESHOLD:
+    small = sum(
+        1 for fragment in dataset.get_fragments() if fragment.physical_rows < COMPACTION_TARGET_ROWS
+    )
+    if small < FRAGMENT_COMPACTION_THRESHOLD:
         return False
-    dataset.optimize.compact_files()
-    logger.debug("Compacted %d fragments of table %r", fragments, table.name)
+    # One thread: with a row target, Lance splits the work into several tasks,
+    # and parallel tasks put the new fragments out of row order (pylance 10,
+    # 20 of 20 trials). One task at a time keeps the row order.
+    dataset.optimize.compact_files(target_rows_per_fragment=COMPACTION_TARGET_ROWS, num_threads=1)
+    logger.debug("Compacted %d small fragments of table %r", small, table.name)
     return True

@@ -11,6 +11,8 @@ stored rows, their order, the table metadata and the search scores unchanged.
 
 from __future__ import annotations
 
+import math
+import random
 from pathlib import Path
 
 import pytest
@@ -33,8 +35,13 @@ def _fragments(store: LanceVectorStore) -> int:
     return len(store._open_table(_COLLECTION).to_lance().get_fragments())
 
 
-def _commit_file(store: LanceVectorStore, number: int, *, text: str = "passage") -> None:
-    """Commit one two-chunk source through the production commit seam."""
+def _commit_file(
+    store: LanceVectorStore, number: int, *, text: str = "passage", distinct: bool = False
+) -> None:
+    """Commit one two-chunk source through the production commit seam.
+
+    *distinct* gives each chunk its own unit vector, so search scores have no ties.
+    """
     path = f"/corpus/file_{number:03d}.md"
     nodes = []
     for chunk in range(2):
@@ -42,6 +49,11 @@ def _commit_file(store: LanceVectorStore, number: int, *, text: str = "passage")
         node.relationships[NodeRelationship.SOURCE] = RelatedNodeInfo(node_id=path)
         vector = [0.0] * _DIM
         vector[(number + chunk) % _DIM] = 1.0
+        if distinct:
+            rng = random.Random(number * 2 + chunk)  # noqa: S311
+            raw = [rng.gauss(0.0, 1.0) for _ in range(_DIM)]
+            norm = math.sqrt(sum(x * x for x in raw))
+            vector = [x / norm for x in raw]
         node.embedding = vector
         nodes.append(node)
     attempt = new_source_attempt()
@@ -169,3 +181,103 @@ def test_native_fts_index_survives_compaction(
         for s in twins
     ]
     assert ranked[0] and ranked[0] == ranked[1]
+
+
+# Experiment 35 pod, 2026-11-25: the store step still grew after the fix above.
+# Lance counts every fragment under 1,048,576 rows as small, so each compaction
+# merged the big fragment too and rewrote the whole table: 1 s per compaction
+# at 8,000 rows, 12.4 s at 196,000 rows. A full fragment must stay as it is.
+
+_TARGET = 16  # rows; eight two-row files fill one fragment
+
+
+def _table_rows(store: LanceVectorStore) -> list[dict]:
+    """Every column of every row, in table order: IDs, text, vectors and metadata."""
+    return store._open_table(_COLLECTION).to_arrow().to_pylist()
+
+
+def _fragment_ids(store: LanceVectorStore) -> dict[int, int]:
+    """Fragment ID to row count."""
+    dataset = store._open_table(_COLLECTION).to_lance()
+    return {f.fragment_id: f.physical_rows for f in dataset.get_fragments()}
+
+
+def _results(store: LanceVectorStore) -> list[list[tuple]]:
+    """Dense and full-text results for a fixed query set."""
+    dense = []
+    for seed in range(5):
+        rng = random.Random(1000 + seed)  # noqa: S311
+        query = [rng.gauss(0.0, 1.0) for _ in range(_DIM)]
+        dense.append(
+            [
+                (row["id"], row["document"], row["score"])
+                for row in store.query_dense(_COLLECTION, query, 25)
+            ]
+        )
+    # Full-text scores tie often here; any compaction, bounded or whole-table,
+    # may reorder rows with equal scores, so compare each full result list sorted.
+    sparse = [
+        sorted(
+            (row["score"], row["id"], row["document"])
+            for row in store.query_native_sparse(_COLLECTION, term, 200)
+        )
+        for term in ("7", "chunk", "passage 3")
+    ]
+    return dense + sparse
+
+
+@pytest.fixture
+def bounded(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Threshold 8 small fragments; a fragment of 16 rows is full."""
+    monkeypatch.setattr(compact, "FRAGMENT_COMPACTION_THRESHOLD", 8)
+    # raising=False: before the fix the module had no target to patch.
+    monkeypatch.setattr(compact, "COMPACTION_TARGET_ROWS", _TARGET, raising=False)
+
+
+def test_compaction_leaves_full_fragments_and_results_alone(
+    tmp_path: Path, bounded: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A later compaction rewrites only the small fragments; data and results stay the same."""
+    store = LanceVectorStore(uri=str(tmp_path / "lancedb"), embedding_identity=_IDENTITY)
+    monkeypatch.setattr(compact, "FRAGMENT_COMPACTION_THRESHOLD", 10**9)
+    for number in range(4):
+        _commit_file(store, number, distinct=True)
+    store.prepare_native_sparse(_COLLECTION)
+    for number in range(4, 40):
+        _commit_file(store, number, distinct=True)
+    rows, results = _table_rows(store), _results(store)
+
+    monkeypatch.setattr(compact, "FRAGMENT_COMPACTION_THRESHOLD", 8)
+    assert compact.compact_if_fragmented(store._open_table(_COLLECTION))
+    full = {fid: rows for fid, rows in _fragment_ids(store).items() if rows == _TARGET}
+    assert len(full) >= 3 and max(_fragment_ids(store).values()) <= _TARGET
+    assert _table_rows(store) == rows
+    assert _results(store) == results
+
+    monkeypatch.setattr(compact, "FRAGMENT_COMPACTION_THRESHOLD", 10**9)
+    for number in range(40, 52):
+        _commit_file(store, number, distinct=True)
+    rows, results = _table_rows(store), _results(store)
+    monkeypatch.setattr(compact, "FRAGMENT_COMPACTION_THRESHOLD", 8)
+    assert compact.compact_if_fragmented(store._open_table(_COLLECTION))
+
+    after = _fragment_ids(store)
+    assert {fid: after.get(fid) for fid in full} == full, "a full fragment was rewritten"
+    assert max(after.values()) <= _TARGET
+    assert _table_rows(store) == rows
+    assert _results(store) == results
+
+
+def test_full_fragments_do_not_trigger_compaction(tmp_path: Path, bounded: None) -> None:
+    """Only small fragments count towards the threshold, so no empty compaction runs."""
+    store = LanceVectorStore(uri=str(tmp_path / "lancedb"), embedding_identity=_IDENTITY)
+    for number in range(80):
+        _commit_file(store, number)
+    sizes = _fragment_ids(store)
+    assert sum(1 for rows in sizes.values() if rows >= _TARGET) >= 8
+    assert sum(1 for rows in sizes.values() if rows < _TARGET) < 8
+
+    table = store._open_table(_COLLECTION)
+    version = table.version
+    assert not compact.compact_if_fragmented(table)
+    assert store._open_table(_COLLECTION).version == version

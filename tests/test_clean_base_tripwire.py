@@ -463,7 +463,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # test_the_gate2_errors_are_worked_examples_with_the_owner_labels and
 # test_the_third_gate_sample_has_its_own_seed_and_a_preregistration_row (plan pins).
 # 0 removed or renamed. No extra.
-_BASE_EXECUTED = 13937
+# +2 (2026-11-25, compaction leaves full fragments alone, by test-ID diff against HEAD
+# 19bb9968): test_compaction_leaves_full_fragments_and_results_alone and
+# test_full_fragments_do_not_trigger_compaction (test_lancedb_compaction.py). 0 removed.
+_BASE_EXECUTED = 13939
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
