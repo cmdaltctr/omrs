@@ -491,7 +491,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # (test_mac_watch35_verify) and new file test_mac_watch35_stop.py (15). 0 removed or renamed.
 # +3 (2026-11-25, Exp 35 freeze prep, by test-ID diff against HEAD 7d25cd14): new file
 # test_experiment35_halves_pin.py (3). 0 removed or renamed.
-_BASE_EXECUTED = 13999
+# +1 (2026-11-25, Exp 35 budget A8 and P14, by test-ID diff against HEAD 07f124c9):
+# test_evidence_recall_20k_has_the_tolerance_of_the_other_four_metrics (plan pins).
+# 0 removed or renamed. No extra.
+_BASE_EXECUTED = 14000
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

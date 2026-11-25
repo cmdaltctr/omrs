@@ -3,7 +3,7 @@
 ``budget35.py project`` runs before the freeze, after the search stage and at
 each stage end. It reads provider billing exports and measured rates only,
 never scores and never the pre-freeze cost code. It appends one projection to
-``<out>/budget-check.json``. When the projection reaches the $975 ceiling, it
+``<out>/budget-check.json``. When the projection reaches the $1,716 ceiling, it
 records the next drop step of the registered order in ``<out>/drops.json``,
 one step per call, never a step twice. After the last step, a projection at
 the ceiling stops the run (exit code :data:`EXIT_STOP`).
@@ -33,7 +33,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-CEILING_USD = 975.0
+CEILING_USD = 1716.0  # pre-registration section 17, amended 2026-11-25 (was 975.0)
 ANSWER_SETUPS = 15
 RUNS = 3
 QUESTIONS = {"financebench": 150, "freshstack": 203, "bioasq": 707, "legal": 100}

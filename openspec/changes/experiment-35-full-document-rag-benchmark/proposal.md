@@ -11,7 +11,7 @@ The operator and the agent agreed a full redesign before the freeze. It wins ove
 - **Dropped:** the six one-factor arms, the `chunking-off` arm, MiniLM (it truncates at 512 tokens), Granite Guardian, hypothesis H-CC, the $250 cap. Isnad moved to v4.
 - **Hypotheses H1 to H7** (search) and **H8** (answer stage, chunk size against faithfulness and correctness), each with a paired test and Holm correction. (Superseded by A4: H8 splits into H8a and H8b; the tests and Holm families are in `preregistration.md` sections 7 to 9.)
 - **Answer stage:** one embedder and one reranker size, chosen by a rule fixed before the run; then chunk size x reranker on or off x hybrid on or off = 12 crossed setups (plus 3 token-matched setups from A2 and A3, 15 in all) x 3 runs x 1,160 questions. Answer model, Ragas judge and claim checkers GLM-5.3 (main) and Clef-Flash (second) as before. The refusal rule stays.
-- **Budget:** re-estimated at about $650, with a stop rule at a ceiling of $975 (1.5 x the estimate). (Superseded by A4: about $730, ceiling $975, results-blind drop order.)
+- **Budget:** re-estimated at about $650, with a stop rule at a ceiling of $975 (1.5 x the estimate). (Superseded by A4: about $730, ceiling $975, results-blind drop order; superseded 2026-11-25: estimate $1,122, ceiling $1,716.)
 - **Hardware:** one GPU type for every main-run pod, chosen before the freeze from a 10-minute timing job on RTX 4090, L40S and H100 by a rule written before measuring. The 9 indexes build on parallel pods of that type.
 - **New OMRS code:** a llama.cpp reranker backend (one new file and one `register()` line) in change `exp35-main-run-readiness`.
 
@@ -28,7 +28,7 @@ A publication-grade methods review gave 30 findings, F1 to F30. The operator app
 - No mixed model. Per-question contrasts with GEE, and a document-level sign-flip test on FinanceBench. Holm families fixed at 19, 19 and 8 (second round C3; BioASQ rows 9 to 19 are sanity checks).
 - Faithfulness and correctness gates on the kappa point estimate and its lower bound. L1 labels 750 items. L2 labels the same 750 (full plan, default), or 365 first in a staged fallback (every correctness answer, a seeded 30% of the other two sets, then the rest of a set when kappa on its subset is below 0.70 overall or, for faithfulness, within any chunk-size level, or is undefined; O4).
 - `evidence_recall_20k` gives any-page credit (amendment A5: a stored chunk has one page, so every metric uses "a chunk covers its page" and the page-rule sensitivity analyses are removed). A second closed-book run uses the RAG prompt. FinanceBench is split by document.
-- The `openai/gpt-6.1-terra` cross-check is removed. Budget about $730 plus the pilot, ceiling $975, with a results-blind drop order that no longer holds E1 (E1 has its own ceiling).
+- The `openai/gpt-6.1-terra` cross-check is removed. Budget about $730 plus the pilot, ceiling $975 (superseded 2026-11-25: estimate $1,122, ceiling $1,716), with a results-blind drop order that no longer holds E1 (E1 has its own ceiling).
 
 ## Why
 

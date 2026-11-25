@@ -43,7 +43,7 @@ Each index SHALL be built once, and each search setup SHALL run once (run 1) for
 
 ### Requirement: Spending stops at a stated ceiling with a results-blind drop order
 
-The protocol SHALL state a cost estimate and a ceiling, pods and hosted calls together (about $730 and $975, `preregistration.md` section 17). Projections SHALL use billing and measured rates only, never scores, before the freeze, after the search stage and while the replicate pods run. At the ceiling, work SHALL be dropped in a results-blind order fixed before the run, and no confirmatory item SHALL be dropped by choice.
+The protocol SHALL state a cost estimate and a ceiling, pods and hosted calls together (estimate $1,122 and ceiling $1,716, amended 2026-11-25 from about $730 and $975; `preregistration.md` section 17). Projections SHALL use billing and measured rates only, never scores, before the freeze, after the search stage and while the replicate pods run. At the ceiling, work SHALL be dropped in a results-blind order fixed before the run, and no confirmatory item SHALL be dropped by choice.
 
 #### Scenario: Projection above the ceiling
 - **WHEN** a projection, from measured index and search hours, reaches the ceiling

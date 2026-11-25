@@ -635,6 +635,10 @@
       {
         "metric": "hit@page",
         "max_abs_change": 0.005
+      },
+      {
+        "metric": "evidence_recall_20k",
+        "max_abs_change": 0.005
       }
     ]
   },
@@ -708,6 +712,13 @@
       "before_first_run": true,
       "summary": "Answer output cap sent, approved by the owner on 2026-11-25 after the harness-against-app audit. pins.settings.answer.max_output_tokens 2048 only sized the prompt budget in OMRS; no answer request carried an output limit. On the Exp 35 path only, the Engine's answer model now sends it as max_tokens on every answer, closed-book and oracle request (answers35.cap_answer_output). Each answer row records finish_reasons, one per answer-model reply; a reply cut at the cap has finish reason length, and its text is kept and scored as returned (section 12 of the pre-registration: returned content is final). The report gives the count per setup. The app's own answer path is unchanged. No pin value changes.",
       "where": "protocol.md section 7 (pre-freeze note 2026-11-25, output cap); change exp35-main-run-readiness task 16.10"
+    },
+    {
+      "id": "A8",
+      "date": "2026-11-25",
+      "before_first_run": true,
+      "summary": "Budget amended and evidence_recall_20k tolerance set, both approved by the owner on 2026-11-25. Estimate $1,122: RunPod GPU (RTX 4090) $410; OpenRouter answers (DeepSeek V4.1 Flash) $180; OpenRouter Ragas judge and claim sorter (gpt-oss-120b) $142; OpenRouter claim checks (GLM-5.3) $390. The old $730 assumed GLM-5.3 claim checks at no cost; they now run on the paid API. The RunPod line rests on P2 timing (pod q2pr74unxye0mj, 2026-11-25): the nine FreshStack indexes plus the e4b-c1024 rebuild project to about 45 pod hours. Ceiling $1,716, pods and hosted calls together: the estimate plus a $594 reserve (3 times slower reranking $230; repeat runs, 10%, $64; price changes, about 10%, $150; failed calls rerun, 10%, $150). RunPod share $704; hosted share $1,012. The OpenRouter key carries a credit limit of $1,012, the hosted share of the ceiling. budget35.py CEILING_USD is 1716. Replaces the $730 estimate and $975 ceiling of A4; the checks, run guard, drop order and stop rule are unchanged. runtime.tolerance adds evidence_recall_20k at 0.005 absolute: the same tolerance as the other four metrics (owner, 2026-11-25; P14).",
+      "where": "preregistration.md sections 15 and 17; protocol.md section 0.8 (pre-freeze note 2026-11-25, budget); change exp35-main-run-readiness tasks 10.2 and 16.14; change experiment-35-full-document-rag-benchmark task 4A.5"
     }
   ]
 }
