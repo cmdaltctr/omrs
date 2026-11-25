@@ -12,6 +12,9 @@ conflicts = [[
     { package = "omrs", group = "ragas" },
 ]]
 
+[manifest]
+constraints = [{ name = "fonttools", specifier = "!=4.69.0" }]
+
 [[package]]
 name = "aiohappyeyeballs"
 version = "2.7.1"

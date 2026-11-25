@@ -843,3 +843,7 @@ pythonVersion = "3.11"
 
 [tool.uv]
 conflicts = [[{ group = "ragas" }, { group = "dev" }]]
+# fonttools 4.69.0 (PyPI, 2026-11-25) ships cp311 wheels only and no sdist.
+# A fresh resolve (the Floor resolution CI job) picks it and fails on
+# Python 3.12. Exclude that one release; remove this once a fixed one ships.
+constraint-dependencies = ["fonttools!=4.69.0"]
