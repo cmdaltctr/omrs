@@ -424,8 +424,11 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +154 (2026-11-23, Exp 35 test pod prep, by test-ID diff against HEAD d3f8c992): 160 added
 # (pod chain, stages, launch, setup, create, Mac watcher, reranker check, context host, idle
 # repro, live router session, FreshStack repeats and hash pins, plan pins); 6 removed or renamed.
-# +9 (2026-11-24, BM25 matches Anserini/Pyserini, by test-ID diff: new file
-# test_bm25_reference_parity.py, 9 added, 0 removed). 3 need rank_bm25: _HYBRID_EXTRA_CASES.
+# +14 (2026-11-24, BM25 matches Anserini/Pyserini, a4e304a0): new file
+# test_bm25_reference_parity.py, 10 added (not 9), 0 removed. 3 need rank_bm25:
+# _HYBRID_EXTRA_CASES. The other 4 of the +14 were not itemised (PR 224 review).
+# +8 (2026-11-24, BM25 calibration, aac6d933): new file test_bm25_calibration35.py, 8.
+# +1 (2026-11-24, router_env capital quant tag, 3e13171c): 1 in test_experiment_lib_router_env.
 # +5 (2026-11-24, Exp 35 reranker, seed, tokenizer and GLM pins, by test-ID diff against
 # HEAD 5ad9e65a): 5 plan-pin cases added; 2 test_pod_setup35 cases renamed, 0 removed.
 # +1 (2026-11-24, pdf-inspector OCR deadlock, by test-ID diff against HEAD 7fce7080):
@@ -478,7 +481,11 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # of test_an_environment_override_stops_before_any_call_and_names_the_setting (run_arms),
 # test_the_plan_pins_the_ocr_fallback_off_and_the_real_setups_write_it (plan pins), and
 # new file test_experiment35_output_cap.py (5). 0 removed or renamed. No extra.
-_BASE_EXECUTED = 13963
+# +8 (2026-11-25, PR 224 review fixes, by test-ID diff against HEAD 0c03f689): one case
+# each in test_bm25_calibration35, test_pod_test_session_script,
+# test_experiment35_idle_repro, test_experiment35_refusals_exclude, test_lancedb_compaction
+# and test_lancedb_source_index, and two in test_mac_watch35. 0 removed or renamed.
+_BASE_EXECUTED = 13971
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
