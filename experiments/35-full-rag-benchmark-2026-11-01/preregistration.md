@@ -59,11 +59,22 @@
 | --- | --- | --- |
 | FreshStack queries and qrels in Experiments 9a and 22 | Per-query nDCG@10 of Qwen3-Embedding-4B on the retired 10,000-document subset; 223 queries (203 public) | Queries and gold labels were seen; the full corpus was not. Experiment 22 values do not feed the MDE table. |
 | Experiment 10 reranker result | The reranker then in use lowered technical-workload retrieval by 19 to 27% (repository `AGENTS.md`) | H2 predicts the reranker helps, set with this result known. Experiment 35 uses Qwen3-Reranker on llama.cpp. |
-| Smoke runs (H-CC smoke and FreshStack rerun, 2026-11-11) | Answers and claims for 15 questions: BioASQ 4043, 1372, 604, 2291, 1122; FinanceBench `financebench_id_01476`, `_01964`, `_01484`, `_05718`, `_00476`; FreshStack 76404464, 78048414, 77762811, 77828572, 77536364 | Answers were read; 10 smoke claims were practice-labelled. The classifier gate does not use these claims (changed 2026-11-23, pre-freeze; section 11.1). The half of each ID is listed once `halves.json` exists (P12). |
-| Factorial smoke run (FLOW step 6.10) and test pod session | 5 seeded questions per dataset, answers and retrieval | IDs and halves recorded at the freeze (P12). Never scored as results. The valid claims of the test pod answers are the source of the classifier gate sample (section 11.1; changed 2026-11-23, pre-freeze). |
+| Smoke runs (H-CC smoke and FreshStack rerun, 2026-11-11) | Answers and claims for 15 questions: BioASQ 4043, 1372, 604, 2291, 1122; FinanceBench `financebench_id_01476`, `_01964`, `_01484`, `_05718`, `_00476`; FreshStack 76404464, 78048414, 77762811, 77828572, 77536364 | Answers were read; 10 smoke claims were practice-labelled. The classifier gate does not use these claims (changed 2026-11-23, pre-freeze; section 11.1). The half of each ID is in the table below (recorded 2026-11-25, P12). |
+| Factorial smoke run (FLOW step 6.10) and test pod session | 5 seeded questions per dataset, answers and retrieval | IDs and halves of the factorial smoke run are recorded at the freeze (P12). Never scored as results. The valid claims of the test pod answers are the source of the classifier gate sample (section 11.1; changed 2026-11-23, pre-freeze). |
 | MDE pilot (section 10) | Retrieval scores of 40 seeded half-A questions per core dataset | Half A only. No selection is made from it. |
 | Checker selection runs | LLM-AggreFact test split (external data) and smoke claims | The own-claims guard limits were set after the smoke data were seen (`protocol.md` section 4.4). |
 | Experiment 48 timing | Embedding speed on slices of FreshStack, BioASQ and FinanceBench | Timing only, no scores. |
+
+**Half of each question seen before the freeze (P12, 2026-11-25).** The list holds the 15 smoke questions of the second row and the questions behind the 100-claim second classifier-gate sample (seed 20261142, test pod session of 2026-11-24; this includes the two FreshStack recheck questions 77536364 and 77762811). The factorial smoke run of FLOW step 6.10 has not run; its IDs join this list when it does.
+
+| Dataset | Half | Question IDs |
+| --- | --- | --- |
+| bioasq | A | 1102, 1156, 1243, 1319, 1864, 2291, 3061, 3449, 3495, 384, 4260, 4492 |
+| bioasq | B | 1122, 1372, 1888, 2410, 2915, 3117, 3270, 3510, 374, 4043, 502, 604, 82, 825 |
+| financebench | A | financebench_id_00299, financebench_id_00476, financebench_id_00720, financebench_id_01163, financebench_id_01928, financebench_id_01964, financebench_id_03069, financebench_id_04458, financebench_id_04672, financebench_id_04784 |
+| financebench | B | financebench_id_00684, financebench_id_01319, financebench_id_01476, financebench_id_01484, financebench_id_01912, financebench_id_02024, financebench_id_05718 |
+| freshstack | A | 75979420, 76244938, 77057028, 77536364, 77762811, 77828572, 78165764, 78213463 |
+| freshstack | B | 76404464, 78048414 |
 
 ## 6. Metrics
 
@@ -324,7 +335,7 @@ The word "sealed" applies to indexes only. Half B is held out from every selecti
 | Legal RAG Bench revision and SHA-256 | HF `isaacus/legal-rag-bench`, automatic parquet copy on branch `refs/convert/parquet`, commit `1676450bd957c7ee57ecc3e086291638afa69bda`. Original data revision `f161e321987310bf85cfb1eac07401eed5d36154`; `main` `ed079010242cc3e3279c291bde98e622da5deb2c` has the same data files. CC BY-NC-SA 4.0. Files `qa/test-00000-of-00001.parquet` SHA-256 `ce5d3d04ae9dd0f98e21f547d41b776ed2864aef23806702234c80f0d9a9e79a` and `corpus/test-00000-of-00001.parquet` SHA-256 `0ea543ba4ad9251403a0e06b0aa9fcfbc319c495f6aa133b943d213d8655680b` (recorded 2026-11-23, C35 task 4A.4, RDY task 13.4) | `plan.json` `pins.datasets.legal.sha256`; `protocol.md` section 4.1 |
 | FinanceBench, BioASQ revisions and hashes | Section 4 | `protocol.md` section 4.1 |
 | BioASQ and Legal passage files | Prepared once, before any index build, in one fixed folder outside the run output folder, at the same absolute mount path on every pod. The G2 rebuild reads the same folder | Tree hash recorded at preparation |
-| `halves.json` SHA-256 | Seed 20261115, FinanceBench by document | Missing: P12 |
+| `halves.json` SHA-256 | Seed 20261115, FinanceBench by document | `plan.json` `pins.recorded.halves` (`halves.json` in this folder, SHA-256 `7ccff757d7c04e821d3383e2ead4eb1300e52ee7f579f620f4c35e4f13de1a26`; recorded 2026-11-25, P12) |
 | Prompt template hashes | Answer, both closed-book (the own-knowledge text is in section 13), oracle, classifier, and the text of the Ragas adapter (Ragas 0.4.3 runs through a custom adapter, named in the methods) | `plan.json` `pins.prompts`, one SHA-256 per prompt (`answer`, `closedbook_own`, `closedbook_rag`, `oracle`, `classifier`, `ragas_adapter`); none is pending (recorded 2026-11-24, P13) |
 | Pre-freeze refusal regular expression | Case-insensitive pattern `PREFREEZE_REGEX` in `refusals35.py`, copied unchanged from `ABSTAIN` in the saved FreshStack smoke rerun analysis script `fs-rerun/fs_analyse.py`. SHA-256 of the pattern text (UTF-8, no flags): `bef29bae784ac594786b0df0c283ac0d66c21a4d4e4fb9febfcbaa0eb81f31fa`, checked against both files on 2026-11-17. It sets the classifier-gate strata and the baseline only | Recorded; P13 checks it again |
 | GPU type, image digest, driver, CUDA | Chosen by the `protocol.md` section 0.8a rule. Image `runpod/base@sha256:4525a854553d6f3e17e705fd91bb58a80f9a53762210188920dee1b781981020`, tag `runpod/base:1.6.0-cuda1281-ubuntu2404` (recorded 2026-11-23, RDY task 9.1) | Environment record per pod; image in `plan.json` `pins.environment.image` and `protocol.md` section 7; GPU choice is a readiness task |

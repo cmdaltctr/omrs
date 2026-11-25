@@ -489,7 +489,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # test_a_full_fragment_counts_once_over_10_percent_of_its_rows_are_deleted
 # (test_lancedb_compaction), six of test_an_extra_input_named_like_a_generated_input_is_refused
 # (test_mac_watch35_verify) and new file test_mac_watch35_stop.py (15). 0 removed or renamed.
-_BASE_EXECUTED = 13996
+# +3 (2026-11-25, Exp 35 freeze prep, by test-ID diff against HEAD 7d25cd14): new file
+# test_experiment35_halves_pin.py (3). 0 removed or renamed.
+_BASE_EXECUTED = 13999
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

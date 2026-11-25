@@ -136,6 +136,13 @@
         "question_text": "full",
         "datasets": "7 FreshStack (draft D-A option 1); 3 sentences of the first gate sample (2 BioASQ, 1 FreshStack); 4 sentences of the second gate sample (3 FreshStack, 1 FinanceBench)",
         "decided": "2026-11-24 by the owner; 2026-11-24 by the owner after the gate fail (refusal recall 0.88, 15 of 17; pass mark 0.90; agreement 0.97 and precision 0.94 passed): the three disagreements, all classifier errors under the agreed rules, added as examples with the owner's labels (refusal, refusal, factual), and two prompt rules added (a sentence that says the sources do not state something is refusal even with a clause about the question or the user's own setup; a sentence that says what a source covers or is about is factual or mixed, never refusal). Re-gate on a new sample, seed classifier_gate_sample_2; 2026-11-24 by the owner after the second gate fail (weighted agreement 0.97, recall 0.95, precision 0.65; pass marks 0.90): four disagreements added as examples with the owner's labels (refusal, refusal, mixed, factual), and three prompt rules added (a trailing citation stub does not make a sentence factual; a sentence that says the sources lack X and states what the excerpts contain is mixed; a sentence that points the user to documentation is factual). Gate 3 on a new sample from main-run answers, seed classifier_gate_sample_3"
+      },
+      "halves": {
+        "file": "halves.json",
+        "sha256": "7ccff757d7c04e821d3383e2ead4eb1300e52ee7f579f620f4c35e4f13de1a26",
+        "seed": 20261115,
+        "split": "FinanceBench by document (150 questions: 74 A, 76 B); FreshStack by question (203: 102 A, 101 B); BioASQ by question (707: 354 A, 353 B); Legal RAG Bench by question (100: 50 A, 50 B)",
+        "recorded": "2026-11-25, P12 (RDY task 16.12), run of split35.py with the registered seed; the half of each smoke and pre-freeze question is in preregistration.md section 5"
       }
     },
     "ragas_judge": {
