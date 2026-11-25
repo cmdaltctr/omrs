@@ -1,0 +1,237 @@
+{
+  "experiment_id": "49-ragflow-part2-controlled-comparison-2026-11-25",
+  "protocol_version": 1,
+  "status_note": "DRAFT 2026-11-25. Not frozen. Values that wait for pod timing (FLOW 7.2, 7.2a) or an owner decision are TODO in protocol.md.",
+  "question": "With the shared models fixed, does the OMRS setup selected on half A differ from RAGFlow in retrieval nDCG@10 (C1) and in answer correctness (C2), per core dataset, on held-out half-B questions?",
+  "decision": "Whether the paper may claim a measured difference between OMRS and RAGFlow on FinanceBench, FreshStack and BioASQ, and in which direction.",
+  "hypotheses": [
+    {
+      "id": "C1",
+      "role": "primary",
+      "statement": "selected OMRS and RAGFlow differ in retrieval nDCG@10 on half B, two-sided, per core dataset; holds when it counts with the same sign on at least 2 of the 3 core datasets (Holm family of 2 per dataset)",
+      "null": "zero difference"
+    },
+    {
+      "id": "C2",
+      "role": "primary",
+      "statement": "selected OMRS and RAGFlow differ in continuous Ragas AnswerCorrectness on half B, two-sided, per core dataset; holds when it counts with the same sign on at least 2 of the 3 core datasets; needs its own correctness gate per dataset",
+      "null": "zero difference"
+    }
+  ],
+  "decision_rule": "Each of C1 and C2 holds when it is significant after Holm within its family of 2 on at least 2 of the 3 core datasets with the same sign (a count with the opposite sign on the third dataset is reported as a dataset-dependent effect). A failed correctness gate leaves C2 not testable on that dataset. No equivalence claim is made.",
+  "stats": "expert",
+  "seed": 20261101,
+  "seeds": {
+    "halves": 20261115,
+    "ragflow_page_gate": 20261130,
+    "ragflow_repeatability": 20261131,
+    "part2_label_order": 20261132,
+    "part2_correctness_sample": 20261133,
+    "part2_correctness_kappa": 20261134,
+    "part2_correctness_auc": 20261135
+  },
+  "baseline": "RAGFlow: selected RAGFlow if the matched search runs, else default RAGFlow (TODO FLOW 7.2a decides)",
+  "candidate": "OMRS A3 cell selected on half A of Experiment 35 (TODO FLOW 7.4 selects)",
+  "metrics": [
+    {
+      "name": "nDCG@10",
+      "binary": false,
+      "primary": true
+    },
+    {
+      "name": "AnswerCorrectness",
+      "binary": false,
+      "primary": true
+    },
+    {
+      "name": "financebench_number_match",
+      "binary": true,
+      "primary": false
+    }
+  ],
+  "gates": [
+    {
+      "id": "correctness-kappa",
+      "metric": "cohen_kappa_point_estimate",
+      "value": "per core dataset",
+      "op": ">=",
+      "threshold": 0.6
+    },
+    {
+      "id": "correctness-kappa-lower",
+      "metric": "cohen_kappa_lower_95_bound",
+      "value": "per core dataset",
+      "op": ">=",
+      "threshold": 0.4
+    },
+    {
+      "id": "ragflow-page-gate",
+      "metric": "financebench_chunks_without_page_number",
+      "value": "count on the seeded half-A sample",
+      "op": "<=",
+      "threshold": 0
+    }
+  ],
+  "frozen": [],
+  "runtime": {
+    "runtime_under_test": false,
+    "models": [
+      {
+        "role": "embedding-baseline-4b",
+        "repository": "Qwen/Qwen3-Embedding-4B-GGUF",
+        "file": "Qwen3-Embedding-4B-Q8_0.gguf",
+        "sha256": "b60ae5ce2dd6a0b77f82cadf21def1f310a3e10cde380ad0081b07a9d416949d",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {
+          "embeddings": true,
+          "pooling": "last",
+          "ctx-size": 8192,
+          "batch-size": 8192,
+          "ubatch-size": 8192
+        }
+      },
+      {
+        "role": "embedding-0.6b",
+        "repository": "Qwen/Qwen3-Embedding-0.6B-GGUF",
+        "file": "Qwen3-Embedding-0.6B-Q8_0.gguf",
+        "sha256": "06507c7b42688469c4e7298b0a1e16deff06caf291cf0a5b278c308249c3e439",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {
+          "embeddings": true,
+          "pooling": "last",
+          "ctx-size": 8192,
+          "batch-size": 8192,
+          "ubatch-size": 8192
+        }
+      },
+      {
+        "role": "embedding-8b",
+        "repository": "Qwen/Qwen3-Embedding-8B-GGUF",
+        "file": "Qwen3-Embedding-8B-Q8_0.gguf",
+        "sha256": "d20ddc71e8a5c4344f2343481e242233a997dc5eaff442427a945836c97b4deb",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {
+          "embeddings": true,
+          "pooling": "last",
+          "ctx-size": 8192,
+          "batch-size": 8192,
+          "ubatch-size": 8192
+        }
+      },
+      {
+        "role": "reranker-0.6b",
+        "repository": "ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF",
+        "file": "qwen3-reranker-0.6b-q8_0.gguf",
+        "sha256": "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {
+          "embeddings": true,
+          "pooling": "rank",
+          "ctx-size": 8192,
+          "batch-size": 8192,
+          "ubatch-size": 8192,
+          "parallel": 1
+        }
+      },
+      {
+        "role": "reranker-4b",
+        "repository": "sinjab/Qwen3-Reranker-4B-Q8_0-GGUF",
+        "file": "Qwen3-Reranker-4B-Q8_0.gguf",
+        "sha256": "143f21b1cba67d328d32dd69daa282d79cb4c1e95398251caa7e48813ec98451",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {
+          "embeddings": true,
+          "pooling": "rank",
+          "ctx-size": 8192,
+          "batch-size": 8192,
+          "ubatch-size": 8192,
+          "parallel": 1
+        }
+      },
+      {
+        "role": "reranker-8b",
+        "repository": "sinjab/Qwen3-Reranker-8B-Q8_0-GGUF",
+        "file": "Qwen3-Reranker-8B-Q8_0.gguf",
+        "sha256": "b0f8d65d024ad587a9d14ba91f1f0e3fc2ad59e11e46a3b7e00249c5efa11096",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {
+          "embeddings": true,
+          "pooling": "rank",
+          "ctx-size": 8192,
+          "batch-size": 8192,
+          "ubatch-size": 8192,
+          "parallel": 1
+        }
+      },
+      {
+        "role": "judge-clef-flash",
+        "repository": "ggml-org/Clef-Flash-GGUF",
+        "file": "Clef-Flash-Q8_0.gguf",
+        "sha256": "25f801e2a27610b0ccc0cb1558d7eda3d7a304e34e2c4a04e3079357ff7d906e",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {
+          "ctx-size": 32768,
+          "batch-size": 32768,
+          "ubatch-size": 32768,
+          "parallel": 1,
+          "flash-attn": true,
+          "n-gpu-layers": "all",
+          "fit": false,
+          "cache-type-k": "f16",
+          "cache-type-v": "f16",
+          "spec-type": "none",
+          "cache-prompt": false,
+          "cache-reuse": 0
+        }
+      }
+    ],
+    "references": [
+      {
+        "role": "answer",
+        "provider": "openrouter",
+        "model": "deepseek/deepseek-v4.1-flash-1017"
+      },
+      {
+        "role": "ragas-judge",
+        "provider": "openrouter",
+        "model": "openai/gpt-oss-120b"
+      },
+      {
+        "role": "claim-classifier",
+        "provider": "openrouter",
+        "model": "openai/gpt-oss-120b"
+      },
+      {
+        "role": "judge-glm",
+        "provider": "zai-coding-plan",
+        "model": "glm-5.3"
+      }
+    ],
+    "tolerance": [
+      {
+        "metric": "Recall@10",
+        "max_abs_change": 0.005
+      },
+      {
+        "metric": "MRR@10",
+        "max_abs_change": 0.005
+      },
+      {
+        "metric": "nDCG@10",
+        "max_abs_change": 0.005
+      },
+      {
+        "metric": "hit@page",
+        "max_abs_change": 0.005
+      }
+    ]
+  },
+  "amendments": []
+}
