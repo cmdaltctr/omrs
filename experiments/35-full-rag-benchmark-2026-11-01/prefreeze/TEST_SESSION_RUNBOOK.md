@@ -5,7 +5,7 @@ This runbook is for the operator's agent. The agent creates and deletes the pod 
 ## Caps and the turn rule
 
 - Stop at 15 h after create, or at $18 total spend (RunPod plus OpenRouter). The first cap reached applies.
-- The watcher stops itself at 15.5 h (`--wall-cap-h`). The chain on the pod stops its stages at 15 h.
+- The watcher stops itself at 15.5 h (`--wall-cap-h`). The chain on the pod stops its stages 15 h after the chain starts. The chain starts a few minutes after create (pod start and copy), so the 15 h after create rule above still applies.
 - The watcher cannot see spend. You must read the spend.
 - Stay in your turn from create until `list-pods` shows the pod is gone. Do not end the turn while a pod exists.
 
@@ -102,11 +102,15 @@ The fix check session checks the four fixes of 2026-11-24 on a short second pod.
 2. Cut the FinanceBench answers and the seal record (about 1 MB) out of the session tarball:
 
    ```bash
-   cd ~/Development/DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/test-session-2026-11-24
-   tar -czf "$TMPDIR/fb-answers.tgz" --include 'out/s/financebench/answer' \
-     --include 'out/s/financebench/closedbook-rag' --include 'out/s/financebench/rebuild.json' \
-     --include 'out/s/environment.json' @test-session-out.tgz
+   (
+     cd ~/Development/DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/test-session-2026-11-24
+     tar -czf "$TMPDIR/fb-answers.tgz" --include 'out/s/financebench/answer' \
+       --include 'out/s/financebench/closedbook-rag' --include 'out/s/financebench/rebuild.json' \
+       --include 'out/s/environment.json' @test-session-out.tgz
+   )
    ```
+
+   The subshell keeps the shell in the Experiment 35 checkout for the next command.
 
 3. Run the dry run with the two extra options:
 
