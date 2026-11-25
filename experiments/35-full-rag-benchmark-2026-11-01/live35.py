@@ -152,10 +152,15 @@ class LiveDeps:
         }
 
     def engine(self) -> Any:
-        """Build an Engine on the scratch settings."""
+        """Build an Engine on the scratch settings; its answer model sends the output cap."""
+        import answers35
+
         from omrs.compose import build_engine
 
-        return build_engine()
+        engine = build_engine()
+        # Send the pinned answer output cap (protocol section 7, note of 2026-11-25).
+        answers35.cap_answer_output(engine)
+        return engine
 
     def judge(self, name: str, settings: Any, plan: Any) -> Any:
         """Build OMRS's claim judge *name* on a copy of the answer block.

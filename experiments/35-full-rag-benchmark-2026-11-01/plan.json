@@ -693,7 +693,14 @@
       "date": "2026-11-25",
       "before_first_run": true,
       "summary": "OCR off during corpus prep, approved by the owner on 2026-11-25 after the harness-against-app audit. protocol.md section 4.3 decided no OCR of source pages, but the harness wrote no OCR key, so the OMRS default (ocr_fallback_enabled true, local pp-ocrv6-small) ran during the 2026-11-24 FinanceBench test ingest. pins.settings.ocr_fallback_enabled is now false: every setup writes it into the scratch omrs.jsonc, a plan without the pin stops the stage, the resolved-settings check refuses a run where OMRS resolves OCR on (for example OCR_FALLBACK_ENABLED in the environment), and each trace records the resolved value.",
-      "where": "protocol.md section 7 (pre-freeze note 2026-11-25, OCR off and output cap); preregistration.md section 16; change exp35-main-run-readiness task 16.10"
+      "where": "protocol.md section 7 (pre-freeze note 2026-11-25, OCR off); preregistration.md section 16; change exp35-main-run-readiness task 16.10"
+    },
+    {
+      "id": "A7",
+      "date": "2026-11-25",
+      "before_first_run": true,
+      "summary": "Answer output cap sent, approved by the owner on 2026-11-25 after the harness-against-app audit. pins.settings.answer.max_output_tokens 2048 only sized the prompt budget in OMRS; no answer request carried an output limit. On the Exp 35 path only, the Engine's answer model now sends it as max_tokens on every answer, closed-book and oracle request (answers35.cap_answer_output). Each answer row records finish_reasons, one per answer-model reply; a reply cut at the cap has finish reason length, and its text is kept and scored as returned (section 12 of the pre-registration: returned content is final). The report gives the count per setup. The app's own answer path is unchanged. No pin value changes.",
+      "where": "protocol.md section 7 (pre-freeze note 2026-11-25, output cap); change exp35-main-run-readiness task 16.10"
     }
   ]
 }
