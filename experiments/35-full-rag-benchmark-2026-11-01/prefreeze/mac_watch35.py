@@ -9,7 +9,6 @@ Test hook: MAC_WATCH35_FAKE_CLOCK=1 makes every wait move a virtual clock (no sl
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 import re
@@ -26,7 +25,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import runpod_ssh35
-from watch_inputs35 import inputs, unsafe
+from watch_inputs35 import inputs, sha256, unsafe
 
 HERE = Path(__file__).resolve().parent
 EXP = HERE.parent
@@ -104,11 +103,6 @@ def say(text: str) -> None:
     print(f"[{datetime.now(UTC):%H:%M:%S}] {text}", flush=True)
 
 
-def sha256(path: Path) -> str:
-    with path.open("rb") as handle:
-        return hashlib.file_digest(handle, "sha256").hexdigest()
-
-
 @dataclass
 class Plan:
     """The checked local side of one session."""
@@ -137,6 +131,8 @@ def prepare(args: argparse.Namespace) -> tuple[list[str], Plan]:
         problems.append(f"--stages {args.stages} is not a *_stages.txt file in {HERE}")
     if plan.extra and not plan.extra.is_file():
         problems.append(f"--extra-input {plan.extra} is not a file")
+    elif plan.extra and plan.extra.name.lower() in (INPUTS_TGZ, f"{INPUTS_TGZ}.sha256", EXAMPLES):
+        problems.append(f"--extra-input {plan.extra.name} has the name of a generated input")
     if not re.fullmatch(r"[0-9a-f]{40}", args.commit):  # it goes unquoted into pod commands
         problems.append("--commit must be the full 40-character commit SHA")
     problems += runpod_ssh35.arg_problems(args.ssh_host, args.ssh_port)

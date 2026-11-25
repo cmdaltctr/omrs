@@ -7,6 +7,7 @@ into ~/.config or ~/.ssh, never goes into the inputs tarball.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -16,6 +17,12 @@ EXP = HERE.parent
 REPO = EXP.parent.parent
 PLAN = EXP / "plan.json"
 _SECRET_PARTS = (".env", "secrets", ".config", ".ssh")
+
+
+def sha256(path: Path) -> str:
+    """Return the SHA-256 of a file as lower-case hex."""
+    with path.open("rb") as handle:
+        return hashlib.file_digest(handle, "sha256").hexdigest()
 
 
 def inputs() -> tuple[Path, list[str]]:

@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import mac_watch35
+import pytest
 from test_mac_watch35 import HERE, KEY_BODY, POD, Session, _last, _sha
 
 VERIFY = "verify_session_stages.txt"
@@ -75,6 +76,26 @@ def test_an_unknown_stages_file_or_a_missing_extra_input_is_refused_before_ssh(
         assert _last(result) == f"DELETE_POD_NOW {POD}"
     assert not s.log("ssh.log") and not s.log("scp.log")
     assert not (s.root / "experiments" / HERE.parent.name).exists()
+
+
+@pytest.mark.parametrize(
+    "name", ["exp35-inputs.tgz", "exp35-inputs.tgz.sha256", "classify-examples.json"]
+)
+@pytest.mark.parametrize("dry_run", [False, True])
+def test_an_extra_input_named_like_a_generated_input_is_refused_before_any_work(
+    tmp_path: Path, name: str, dry_run: bool
+) -> None:
+    """A clash would overwrite the generated tarball, its hash file or the examples."""
+    s = Session(tmp_path, ["done"])
+    clash = tmp_path / "elsewhere" / name
+    clash.parent.mkdir()
+    clash.write_bytes(b"would replace a generated input\n")
+    result = s.run("--extra-input", str(clash), *(["--dry-run"] if dry_run else []))
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert name in result.stdout and "generated input" in result.stdout
+    assert not s.log("ssh.log") and not s.log("scp.log")
+    assert not (s.root / "experiments" / HERE.parent.name).exists()
+    assert _last(result).endswith(f"DELETE_POD_NOW {POD}")
 
 
 def test_the_dry_run_names_the_stages_file_and_the_extra_input(tmp_path: Path) -> None:
