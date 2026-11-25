@@ -9,12 +9,15 @@ Mount that folder at the same absolute path on every pod.
 * BioASQ and Legal RAG Bench: one ``<id>.md`` per passage. Legal holds the
   title, the text and the footnotes when present, one blank line apart. A ``#``
   at the start of any line is escaped, so no passage text reads as a heading.
-* FreshStack: one ``.md`` per corpus row, named by a short hash of the corpus
-  ID. The file holds the published row text only (task 13.5, R-4): a ``.md``
-  or ``.mdx`` row is written unchanged; every other row is wrapped in a
-  backtick fence one backtick longer than its longest backtick run, at least
-  three, with no info string. ``manifest.jsonl`` maps each file to its corpus
-  ID, extension and whether it was fenced.
+* FreshStack: one ``.md`` per distinct pair of corpus ID and text (owner
+  decision, 2026-11-23), named by a short hash of the corpus ID. An exact
+  repeat is written once; a second text of an ID adds a short hash of its
+  text to the name. The file holds the published row text only (task 13.5,
+  R-4): a ``.md`` or ``.mdx`` row is written unchanged; every other row is
+  wrapped in a backtick fence one backtick longer than its longest backtick
+  run, at least three, with no info string. ``manifest.jsonl`` maps each file
+  to its corpus ID, source URL, start and end byte, extension, whether it was
+  fenced and the number of corpus rows it stands for.
 
 A second run reuses a file whose bytes are equal and refuses a file whose
 bytes differ. Each file is written under a per-process temporary name, then
@@ -46,6 +49,8 @@ _HEADING = re.compile(r"^#", re.MULTILINE)
 _TICKS = re.compile(r"`+")
 _EXTENSION = re.compile(r"(\.[A-Za-z0-9]+)_\d+_\d+$")
 _MARKDOWN = (".md", ".mdx")
+#: The published row fields the manifest records beside the ID (pre-registration section 4).
+_SOURCE = ("url", "start_byte", "end_byte")
 
 
 def escape_headings(text: str) -> str:
@@ -78,8 +83,57 @@ def export_row(corpus_id: str, text: str) -> tuple[str, str, bool]:
     return f"{fence}\n{_ending(text)}{fence}\n", extension, True
 
 
-def _freshstack_name(corpus_id: str) -> str:
-    return hashlib.sha256(corpus_id.encode("utf-8")).hexdigest()[:16] + ".md"
+def _sha16(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+
+def _freshstack_name(corpus_id: str, text: str | None = None) -> str:
+    """Return the file name of one FreshStack pair of corpus ID and text.
+
+    The first text of an ID, in file order, is named by the first 16 hex digits
+    of the SHA-256 of the ID. A later, different text of the same ID (*text*,
+    owner decision 2026-11-23) adds a hyphen and the first 16 hex digits of the
+    SHA-256 of that row text. Such a name depends on the pair only, not on the
+    row position, and it cannot equal a name of the first form.
+    """
+    return f"{_sha16(corpus_id)}.md" if text is None else f"{_sha16(corpus_id)}-{_sha16(text)}.md"
+
+
+def freshstack_units(
+    rows: Sequence[tuple[str, str, Mapping[str, Any]]], files: int
+) -> list[tuple[str, str, dict[str, Any]]]:
+    """Return one ``(file name, file text, manifest row)`` per distinct pair of ID and text.
+
+    Owner decision of 2026-11-23: an exact repeat (same ID, same text) is
+    written once, and the ``rows`` field of its manifest row counts the corpus
+    rows it stands for. A different text of an ID gets its own file (see
+    ``_freshstack_name``); its manifest row keeps the corpus ID, so both files
+    map to one unit. The list is in the file order of each pair's first row.
+
+    Args:
+        rows: The corpus rows ``(id, text, metadata)`` in file order.
+        files: ``plan.json`` ``pins.datasets.freshstack.files``.
+
+    Raises:
+        DatasetError: The number of distinct pairs differs from *files*.
+    """
+    units: dict[tuple[str, str], tuple[str, str, dict[str, Any]]] = {}
+    seen_ids: set[str] = set()
+    for corpus_id, text, source in rows:
+        if (corpus_id, text) in units:
+            units[(corpus_id, text)][2]["rows"] += 1
+            continue
+        name = _freshstack_name(corpus_id, text if corpus_id in seen_ids else None)
+        seen_ids.add(corpus_id)
+        body, extension, fenced = export_row(corpus_id, text)
+        row = {"freshstack_id": corpus_id, "extension": extension, "fenced": fenced, "rows": 1}
+        units[(corpus_id, text)] = (name, body, {**row, **{k: source[k] for k in _SOURCE}})
+    if len(units) != int(files):
+        raise datasets35.DatasetError(
+            f"FreshStack corpus has {len(units)} distinct pairs of ID and text; "
+            f"the plan pins files {files}"
+        )
+    return list(units.values())
 
 
 def _files(dataset: str, root: Path, plan: Mapping[str, Any]) -> Iterator[tuple[str, str, dict]]:
@@ -90,10 +144,8 @@ def _files(dataset: str, root: Path, plan: Mapping[str, Any]) -> Iterator[tuple[
         for pid, passage in sorted(datasets35.legal_passages(root).items()):
             yield f"{pid}.md", legal_text(passage), {}
     else:
-        for corpus_id, text in datasets35.freshstack_corpus(root, datasets35.freshstack_pin(plan)):
-            body, extension, fenced = export_row(corpus_id, text)
-            name = _freshstack_name(corpus_id)
-            yield name, body, {"freshstack_id": corpus_id, "extension": extension, "fenced": fenced}
+        pin = datasets35.freshstack_pin(plan)
+        yield from freshstack_units(datasets35.freshstack_corpus(root, pin), pin["files"])
 
 
 def _write_once(path: Path, data: bytes) -> None:

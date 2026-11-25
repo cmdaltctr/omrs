@@ -107,6 +107,7 @@ def test_closed_book_runs_both_prompts_once_per_question_with_no_search(
         assert all(
             r["prompt"] == kind and r["evidence"] == [] and r["completion_calls"] == 1 for r in rows
         )
+        assert all(r["finish_reasons"] == [] for r in rows)
         assert (folder / ".done-answer.json").exists()
     assert asked[0] == closedbook35.OWN_PROMPT.format(query="question 0?")
     assert "---------------------\n\n---------------------" in asked[3]
@@ -213,6 +214,7 @@ def test_the_oracle_stage_answers_from_gold_units_once_with_no_search(
     assert (ctx.run_dir / ".done-answer.json").exists()
     assert ctx.run_dir.parts[-3:] == ("oracle", SETUP, "run1")
     assert len(engine.answers) == 3
+    assert all(r["finish_reasons"] == [] for r in rows)
 
 
 def test_each_closed_book_prompt_writes_its_own_trace(tmp_path: Path, asked: list[str]) -> None:

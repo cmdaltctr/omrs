@@ -401,7 +401,7 @@ def run_one(args: Any, argv: Sequence[str], kind: str, name: str, deps: Any) -> 
             "(is the tokenizer revision cached on this machine?)"
         )
     machine = deps.machine()
-    stages35.check_machine(machine)
+    stages35.check_machine(machine, plan)
     deps.verify_inputs(root, args.dataset, files, plan)
     models = [arms.plan_role(plan, role) for role in roles]
     block = {**plan["runtime"], "models": models}

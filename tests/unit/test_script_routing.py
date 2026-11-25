@@ -133,7 +133,7 @@ def test_detect_leaves_a_scanned_page_on_the_local_tier(monkeypatch, tmp_path, e
     docs = _read(effective_settings, tmp_path, scan, engine, worker, mode="detect")
 
     assert worker.calls == []
-    assert engine.ocr_calls[0]["page_numbers"] == [1, 2]
+    assert engine.ocr_page_lists() == [[1], [2]]
     assert _counts(docs[0].metadata)["ocr_pages_local"] == 2
     assert docs[0].metadata[PAGES_NON_LATIN_KEY] == 0
 
@@ -411,7 +411,7 @@ def test_no_engine_falls_back_to_the_local_tier_with_one_warning(
             ocr_engines=("dots-mocr", "paddleocr-vl"),
         )
 
-    assert engine.ocr_calls[0]["page_numbers"] == [1, 2]
+    assert engine.ocr_page_lists() == [[1], [2]]
     meta = docs[0].metadata
     assert _counts(meta)["ocr_pages_local"] == 2
     assert meta[PAGES_NON_LATIN_KEY] == 0

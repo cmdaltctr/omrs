@@ -14,7 +14,15 @@ import json
 from pathlib import Path
 
 import pytest
-from tests._exp35_fixtures import FS_ROWS, FS_ROWS_DATA, fake_plan, load, make_data_root, unpin
+from tests._exp35_fixtures import (
+    FS_CORPUS_FILE,
+    FS_ROWS,
+    FS_ROWS_DATA,
+    fake_plan,
+    load,
+    make_data_root,
+    unpin,
+)
 
 from omrs.core.chunking.model_token import _heading_positions
 
@@ -67,6 +75,9 @@ def test_a_null_dataset_pin_is_refused_and_names_its_key_and_task(
     fresh = unpinned("freshstack", "revision", "P1")
     with pytest.raises(datasets35.DatasetError, match=r"pins\.datasets\.freshstack\.revision.*P1"):
         datasets35.freshstack_pin(fresh)
+    files = unpinned("freshstack", "files", "P1")
+    with pytest.raises(datasets35.DatasetError, match=r"pins\.datasets\.freshstack\.files.*P1"):
+        datasets35.freshstack_pin(files)
     folder = prepare35.prepare("bioasq", root, tmp_path / "passages", plan=fake_plan())
     assert folder.is_dir()
     tree = unpinned("bioasq", "passages_tree_sha256", "RDY 5.4c")
@@ -200,6 +211,37 @@ def test_freshstack_corpus_refuses_another_revision_or_row_count(
         datasets35.freshstack_corpus(root, {**_pin(), field: value})
 
 
+def test_a_one_byte_change_to_a_freshstack_corpus_file_is_refused_and_names_it(
+    root: Path,
+) -> None:
+    import pyarrow.parquet as pq
+
+    path = root / "benchmarks" / "freshstack" / "corpus-oct-2024" / "langchain" / FS_CORPUS_FILE
+    data = path.read_bytes()
+    at = data.index(b"MIT licence")
+    path.write_bytes(data[:at] + b"m" + data[at + 1 :])
+    # Same row count and still readable: only the file hash can see the change.
+    assert pq.read_table(path).num_rows == FS_ROWS
+    with pytest.raises(datasets35.DatasetError, match=FS_CORPUS_FILE):
+        datasets35.freshstack_corpus(root, _pin())
+
+
+@pytest.mark.parametrize("key", ["corpus_files", "corpus_tree_sha256"])
+def test_a_missing_freshstack_corpus_hash_pin_is_refused_and_names_the_key(key: str) -> None:
+    plan = fake_plan()
+    del plan["pins"]["datasets"]["freshstack"][key]
+    with pytest.raises(datasets35.DatasetError, match=rf"pins\.datasets\.freshstack\.{key}"):
+        datasets35.freshstack_pin(plan)
+    plan = unpin(fake_plan(), f"pins.datasets.freshstack.{key}", "P1")
+    with pytest.raises(datasets35.DatasetError, match=rf"freshstack\.{key}.*P1"):
+        datasets35.freshstack_pin(plan)
+
+
+def test_a_corpus_tree_hash_that_does_not_match_the_file_hashes_is_refused(root: Path) -> None:
+    with pytest.raises(datasets35.DatasetError, match="corpus_tree_sha256"):
+        datasets35.freshstack_corpus(root, {**_pin(), "corpus_tree_sha256": "0" * 64})
+
+
 def test_markdown_rows_are_written_unchanged_and_others_are_fenced() -> None:
     assert prepare35.export_row("repo/README.md_0_40", "# Title\n") == ("# Title\n", ".md", False)
     assert prepare35.export_row("repo/guide.mdx_0_9", "x\n")[1:] == (".mdx", False)
@@ -263,6 +305,17 @@ def test_freshstack_export_writes_a_manifest_with_extension_and_fence(
     assert by_id["repo/LICENSE_0_10"]["fenced"] is True
     stem = by_id["repo/src/app.py_0_60"]["file"].removesuffix(".md")
     assert datasets35.freshstack_unit_map(folder)[stem] == "repo/src/app.py_0_60"
+
+
+def test_the_manifest_holds_each_row_source_url_and_byte_span_and_the_file_does_not(
+    root: Path, tmp_path: Path
+) -> None:
+    folder = prepare35.prepare("freshstack", root, tmp_path / "passages", plan=fake_plan())
+    manifest = [json.loads(line) for line in (folder / "manifest.jsonl").read_text().splitlines()]
+    row = {r["freshstack_id"]: r for r in manifest}["repo/src/util.py_60_90"]
+    url = "https://github.com/example/repo/src/util.py"
+    assert (row["url"], row["start_byte"], row["end_byte"]) == (url, 60, 90)
+    assert url not in (folder / row["file"]).read_text(encoding="utf-8")
 
 
 def test_preparation_writes_a_tree_hash_and_verify_accepts_it(root: Path, tmp_path: Path) -> None:

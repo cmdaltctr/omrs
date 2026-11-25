@@ -43,6 +43,7 @@ from ..base import VectorStore
 from ..identity import EmbeddingIdentity, embedding_identity_from_settings, write_identity
 from ..score import DENSE_SCORE_KIND, canonical_score_from_l2
 from ..validation import materialise_and_validate_node_embeddings, validate_embedding_batch
+from .compact import compact_if_fragmented
 from .epoch import LanceDatasetEpochMixin
 from .filter import translate_where
 from .fts import LanceFTSMixin
@@ -242,6 +243,7 @@ class LanceVectorStore(
                 show_progress=False,
                 embed_model=embed_model,
             )
+        compact_if_fragmented(self._open_table(collection_name))
         self._intents.discard(collection_name)
         self._flush_after_write(collection_name, embedding_identity)
         self.bump_generation(collection_name)
@@ -310,6 +312,7 @@ class LanceVectorStore(
             .when_not_matched_insert_all()
             .execute(source)
         )
+        compact_if_fragmented(self._open_table(collection_name))
         self._intents.discard(collection_name)
         self._flush_after_write(collection_name)
         self.bump_generation(collection_name)

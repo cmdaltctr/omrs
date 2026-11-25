@@ -169,6 +169,21 @@ def test_every_p10_and_p11_settings_pin_is_written_from_the_plan(gguf: Path) -> 
     assert values["retrieval"]["hybrid_rrf_k"] == 60
 
 
+@pytest.mark.parametrize(
+    "name", ["e4b-c512-roff-hoff", "e8b-c2048-r4b-hon", "e4b-c1024-r4b-hon-t20k"]
+)
+def test_every_setup_writes_the_ocr_fallback_off(gguf: Path, name: str) -> None:
+    # protocol 4.3: no OCR of source pages during corpus prep (2026-11-25 note, item 1)
+    assert _values(name, gguf)["ocr_fallback_enabled"] is False
+
+
+def test_a_plan_without_the_ocr_pin_is_refused_by_key(gguf: Path) -> None:
+    plan = fake_plan()
+    del plan["pins"]["settings"]["ocr_fallback_enabled"]
+    with pytest.raises(arms.ArmConfigError, match=r"pins\.settings\.ocr_fallback_enabled"):
+        _values("e4b-c512-roff-hoff", gguf, plan)
+
+
 def test_a_changed_plan_pin_changes_the_written_value(gguf: Path) -> None:
     plan = fake_plan()
     plan["pins"]["settings"]["retrieval"]["hybrid_rrf_k"] = 30

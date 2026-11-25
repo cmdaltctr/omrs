@@ -12,7 +12,7 @@ rationale.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from typing import Any
 
 from .identity import EmbeddingIdentity
@@ -221,6 +221,40 @@ class VectorStore(ABC):
                 operation.
         """
         raise NotImplementedError(f"{type(self).__name__} does not support filtered row reads")
+
+    def iter_filtered_fields(
+        self,
+        collection_name: str,
+        where: dict,
+        fields: Sequence[str],
+        page_size: int | None = None,
+    ) -> Iterator[tuple[str, dict]]:
+        """Yield ``(id, metadata)`` rows matching *where*, with only *fields* in metadata.
+
+        Same rows, same filter and same empty-filter rule as
+        :meth:`iter_filtered_documents`. A store may read fewer columns:
+        LanceDB then skips the text, the vector and the other metadata, so
+        the cost does not depend on vector width. A field the row lacks is
+        absent from the returned dict. The default builds the answer from
+        :meth:`iter_filtered_documents`, so a store that only implements
+        that method keeps working.
+
+        Args:
+            collection_name: Collection to read.
+            where: Non-empty ChromaDB-style filter dict.
+            fields: Metadata keys the caller will read.
+            page_size: Optional backend page size for bounded batches.
+
+        Yields:
+            ``(id, {field: value})`` tuples for matching rows.
+
+        Raises:
+            ValueError: When *where* is empty.
+        """
+        for row_id, _text, metadata in self.iter_filtered_documents(
+            collection_name, where, page_size
+        ):
+            yield row_id, {key: metadata[key] for key in fields if key in metadata}
 
     # Counts.
 

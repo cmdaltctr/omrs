@@ -144,11 +144,13 @@ async def oracle_stage(ctx: stages35.Ctx, pages: PageReader | None = None) -> in
             started = stagekit35.clock()
             try:
                 result = await gate.call(
-                    lambda: ctx.engine.answer(
-                        by_id[qid].text,
-                        collection_name=ctx.collection,
-                        rows=rows,
-                        include_diagnostics=True,
+                    lambda: answers35.with_finish_reasons(
+                        lambda: ctx.engine.answer(
+                            by_id[qid].text,
+                            collection_name=ctx.collection,
+                            rows=rows,
+                            include_diagnostics=True,
+                        )
                     )
                 )
                 if result.get("answer") is None:

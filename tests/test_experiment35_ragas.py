@@ -101,6 +101,22 @@ def test_a_missing_answer_row_is_not_judged(tmp_path: Path) -> None:
     assert {p.split("|")[1] for p in script.prompts} == {"q1"}
 
 
+def test_an_answer_without_passages_skips_the_three_passage_metrics(tmp_path: Path) -> None:
+    # Closed-book answers have no evidence: those metrics are undefined (pod 2026-11-24).
+    run_dir = tmp_path / "run1"
+    row = answer_row("q1")
+    row["evidence"] = []
+    write_answers(run_dir, [row])
+    script, router = Script(), Router()
+    assert run(ctx(run_dir, ["q1"], router), parts(script, router)) == 0
+    saved = rows(run_dir)[0]
+    assert saved["unjudged"] == []
+    for name in ragas35.CONTEXT_METRICS:
+        assert saved["metrics"][name] == {"score": None, "not_judged": "no passages", "calls": 0}
+    assert saved["metrics"]["ragas_answer_correctness"]["score"] is not None
+    assert saved["metrics"]["ragas_answer_relevancy"]["score"] is not None
+
+
 def test_a_refusal_answer_is_scored_with_every_metric(tmp_path: Path) -> None:
     run_dir = tmp_path / "run1"
     write_answers(run_dir, [answer_row("q1", text="The evidence does not answer this.")])

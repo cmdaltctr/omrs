@@ -1,7 +1,8 @@
 """The ``pp-ocrv6-small`` local OCR backend: pdf-inspector's selective OCR (design D7).
 
-``read_pages`` is the call Experiment 33 task 6.7 measured: ``force`` mode on the
-1-based page list, so the library re-routes nothing. The model directory and the
+``read_pages`` is the call Experiment 33 task 6.7 measured: ``force`` mode on
+1-based pages, so the library re-routes nothing. It sends one page per call (see
+``read_pages`` for the deadlock this avoids). The model directory and the
 offline mode come from the injected settings; an empty directory means the
 library's default cache. The engine's own ``minimum_confidence`` and
 ``hosted_recommendation_confidence`` stay at the library defaults: the cut is
@@ -90,7 +91,13 @@ class PpOcrV6Small:
     """PP-OCRv6 small through ``pdf_inspector.process_pdf_with_ocr``."""
 
     def read_pages(self, file: Path, pages: list[int], *, settings: Any) -> list[BackendPage]:
-        """OCR *pages* of *file* in one ``force`` call.
+        """OCR *pages* of *file* with one ``force`` call per page.
+
+        One page per call keeps pdf-inspector off its page pool. With two or more
+        pages, pdf-inspector 1.17 runs pages on a rayon pool (8 or more CPUs).
+        A worker that holds its recogniser lock can then steal another page and
+        wait on that lock forever: the Experiment 35 ingest hang. The output is
+        the same; the call takes about 2.5 times longer on CPU.
 
         Args:
             file: Path to the PDF file.
@@ -111,11 +118,16 @@ class PpOcrV6Small:
             raise ImportError("pdf_inspector is not installed. Install with: uv sync") from exc
 
         export_library_paths()
-        result = pdf_inspector.process_pdf_with_ocr(
-            str(file), mode="force", page_numbers=sorted(pages), **_model_options(settings)
-        )
+        options = _model_options(settings)
+        library_pages = [
+            page
+            for number in sorted(pages)
+            for page in pdf_inspector.process_pdf_with_ocr(
+                str(file), mode="force", page_numbers=[number], **options
+            ).pages
+        ]
         read: list[BackendPage] = []
-        for page in result.pages:
+        for page in library_pages:
             provenance = getattr(page, "provenance", None)
             read.append(
                 BackendPage(

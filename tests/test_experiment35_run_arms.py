@@ -114,6 +114,7 @@ class Stub:
 
 def _plan_with_tree(trees: dict[str, str] | None = None) -> dict[str, Any]:
     plan = fake_plan()
+    plan["pins"]["environment"] = {"image": MACHINE["image"]}
     for dataset, tree in (trees or {}).items():
         plan["pins"]["datasets"].setdefault(dataset, {})["passages_tree_sha256"] = tree
     return plan
@@ -292,6 +293,7 @@ def test_dry_run_prints_the_resolved_values_and_starts_nothing(
     assert plan["resolved"]["chunk_overlap"] == 154
     assert plan["resolved"]["hybrid_sparse_backend"] == "bm25"
     assert plan["resolved"]["pdf_reader"] == "pdf_inspector"
+    assert plan["resolved"]["ocr_fallback_enabled"] is False
     assert "sentinel-value-0451" not in printed and "env://" not in printed
 
 
@@ -302,6 +304,7 @@ def test_dry_run_prints_the_resolved_values_and_starts_nothing(
         ("CHUNKING__MARKDOWN_CHUNK_SIZE", "300", "chunking.markdown_chunk_size"),
         ("RETRIEVAL__HYBRID_SPARSE_BACKEND", "native", "retrieval.hybrid_sparse_backend"),
         ("PDF_READER", "pypdf", "pdf_reader"),
+        ("OCR_FALLBACK_ENABLED", "true", "ocr_fallback_enabled"),
     ],
 )
 def test_an_environment_override_stops_before_any_call_and_names_the_setting(
@@ -323,6 +326,20 @@ def test_a_pdf_reader_that_resolves_to_another_reader_is_refused(
     monkeypatch.setattr(run_arms, "resolve_pdf_reader", lambda settings: "pypdf")
     assert _main(stub, env / "out", *_ingest_args(passages)) == 2
     assert "pdf_reader" in capsys.readouterr().out
+
+
+def test_no_token_aware_chunking_stops_before_the_router_engine_or_ingest(
+    env: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A pod without the tokenizer cached must stop, not fall back to the legacy splitter.
+    stub = Stub()
+    passages = _prepared(env, stub)
+    asked: list[Any] = []
+    monkeypatch.setattr(stub, "chunking_token_aware", lambda settings: asked.append(1) or False)
+    assert _main(stub, env / "out", *_ingest_args(passages)) == 2
+    assert asked == [1]
+    assert stub.log == []
+    assert "model-token-aware Markdown path" in capsys.readouterr().out
 
 
 # --- an ingest end to end with the stub world -------------------------------------------
@@ -383,6 +400,17 @@ def test_a_wrong_gguf_hash_stops_before_any_stage_file_or_engine(env: Path) -> N
     assert _main(stub, out, *_ingest_args(passages)) == 2
     assert "engine" not in stub.log
     assert not any(name.endswith(".jsonl") for name in _files(out))
+
+
+def test_a_pod_image_other_than_the_plan_pin_stops_before_the_router(
+    env: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    stub = Stub()
+    stub._plan["pins"]["environment"]["image"] = "img@sha256:" + "2" * 64
+    passages = _prepared(env, stub)
+    assert _main(stub, env / "out", *_ingest_args(passages)) == 2
+    assert not any(line.startswith("start_router") for line in stub.log)
+    assert "pins.environment.image" in capsys.readouterr().out
 
 
 def test_two_output_folders_ingest_the_same_absolute_passage_paths(env: Path) -> None:

@@ -1,0 +1,58 @@
+# Stages of the Experiment 35 fix check session (2026-11-24 notes, "Next pod").
+# pod_test_session.sh runs them unchanged (line format in its header). The Mac starts
+# the chain through mac_watch35.py --stages verify_session_stages.txt, which writes
+# STAGES_FILE into session.env for launch35.sh. Every stage runs at the commit the
+# watcher gives (--commit): no stage checks out another commit. Runbook:
+# TEST_SESSION_RUNBOOK.md, section "Fix check variant".
+#
+# Pod and inputs: as for the test session (create_pod35.py, exp35-inputs.tgz and the
+# classifier examples), plus --extra-input fb-answers.tgz: the FinanceBench answers of
+# the 2026-11-24 session, cut from its test-session-out.tgz (runbook).
+#
+# Order: sections 1, 3, 4, 2 of verify-fixes.sh, cheapest and budget-critical first,
+# with the G2 rebuild check (3b) after section 3. Section 3's lines (one per 200 files)
+# feed the budget. Expected minutes are in the block comments; about 140 min in total
+# (2.3 h). Pass marks are in the runbook.
+
+# Values: exported, literally, to every later stage. The test session's questions and
+# model folder (setup fetches the GGUF files there; run_arms refuses to start without it).
+FS_QIDS=77557699,78213463,76769872,78165764,77057028,75979420,76473726,76404464,76244938,78552532,76293427,77645110,78216871,76447153,78549270,76813867,78017053,78357062,77164318,77507520,78366661,77533040,76313568,77004853,78153954,78005051,77759618,76669635,77407632,77345121,78429932,77683730,77998898,76292501,76364591,76997109,76407803,77921898,77536364,77762811
+SWEEP_GGUF_DIR=/root/gguf
+
+# Setup stops the chain on failure (G5). The test session's line. About 23 min.
+!setup@60m bash prefreeze/pod_setup35.sh --commit "$COMMIT" --inputs /workspace/inputs --passages-dir /workspace/passages --ragas-venv /workspace/ragas-venv --ref-venv /root/exp35-ref-venv
+
+# 1. OCR fix (0bebdb1d): 20 fresh reads of 29 Walmart pages, each in under 300 s.
+# About 25 min. The timeout lets all 20 passes end, so the count is always printed.
+ocr-walmart-20x@105m uv run --no-sync python prefreeze/verify35.py ocr --pdf /root/Development/DATA/omrs/benchmarks/financebench/pdfs/WALMART_2019_10K.pdf --passes 20 --timeout 300
+
+# 3. Store compaction fix (bcd11389): 1,200 FreshStack files into a fresh e4b-c1024
+# index, one line per 200 files. The old rate was about 2 s per file at 3,300 files.
+# About 25 min.
+fs-rate-1200@60m uv run --no-sync python prefreeze/verify35.py rate --block 200 -- uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c1024 --stage ingest --corpus-sample 1200 --passages-dir /workspace/passages --out-dir "$OUT_DIR/fsrate" --prefreeze --local-dir /root/exp35-local
+
+# 3b. G2 rebuild check on the final code (owner decision, 2026-11-24): the store fix
+# changed how chunks are written after the last G2 pass. The test session's FreshStack
+# lines: build and seal e4b-c1024 in s, rebuild it in rb, search both with --index-from,
+# compare into s/freshstack/rebuild.json. About 675 files per build, so compaction (every
+# 64 files) runs about ten times. A mismatch exits 3 and fails the stage. About 22 min:
+# builds 10 and 10, check 2.
+s-fs-c1024@25m uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c1024 --stage ingest --qids $FS_QIDS --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c1024 --stage seal --qids $FS_QIDS --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local
+g2-fs-build@25m uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c1024 --stage ingest --qids $FS_QIDS --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/rb" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c1024 --stage seal --qids $FS_QIDS --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/rb" --prefreeze --local-dir /root/exp35-local
+g2-fs-check@15m uv run --no-sync python run_arms.py --dataset freshstack --setup e4b-c1024-roff-hoff --stage search --qids $FS_QIDS --corpus-sample 300 --passages-dir /workspace/passages --index-from "$OUT_DIR/s" --out-dir "$OUT_DIR/chk" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python run_arms.py --dataset freshstack --setup e4b-c1024-roff-hoff --stage search --qids $FS_QIDS --corpus-sample 300 --passages-dir /workspace/passages --index-from "$OUT_DIR/rb" --out-dir "$OUT_DIR/rbs" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python rebuild35.py --a "$OUT_DIR/chk/freshstack/search/e4b-c1024-roff-hoff/run1/search.jsonl" --b "$OUT_DIR/rbs/freshstack/search/e4b-c1024-roff-hoff/run1/search.jsonl" --out-dir "$OUT_DIR/s" --dataset freshstack
+
+# 4. Closed-book Ragas and claim-kinds fixes (b98f536f), on a copy of the FinanceBench
+# answers without their Ragas and claim-kind results. Skipped (exit 77) when
+# fb-answers.tgz was not sent. About 10 min.
+fb-unpack@10m uv run --no-sync python prefreeze/verify35.py unpack --tarball /workspace/inputs/fb-answers.tgz --dataset financebench --out "$OUT_DIR/fb"
+ragas-closedbook-fb@20m [ -d "$OUT_DIR/fb/financebench" ] || exit 77; uv run --no-sync python run_arms.py --dataset financebench --setup e4b-c1024-r0.6b-hon --stage ragas --answers closedbook-rag --limit 20 --corpus-sample 3 --out-dir "$OUT_DIR/fb" --prefreeze --local-dir /root/exp35-local --ragas-host deepinfra/bf16 --ragas-venv /workspace/ragas-venv --ragas-concurrency 16
+kinds-fb-c512@15m [ -d "$OUT_DIR/fb/financebench" ] || exit 77; uv run --no-sync python run_arms.py --dataset financebench --setup e4b-c512-r0.6b-hon --stage claimkinds --limit 20 --corpus-sample 3 --out-dir "$OUT_DIR/fb" --prefreeze --local-dir /root/exp35-local --classify-examples /workspace/inputs/classify-examples.json --classify-concurrency 16
+
+# 2. Reranker one-slot fix (eb70e807): a FreshStack c2048 index, then the three reranker
+# setups on the test session's questions, with 76293427 and 77759618 (they overflowed
+# the 4-slot context). About 35 min: build 10, searches 3, 8 and 14.
+fs-c2048-ingest@50m uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c2048 --stage ingest --qids $FS_QIDS --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local
+fs-c2048-seal@15m uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c2048 --stage seal --qids $FS_QIDS --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local
+fs-c2048-r0.6b@30m uv run --no-sync python run_arms.py --dataset freshstack --setup e4b-c2048-r0.6b-hon --stage search --qids $FS_QIDS --corpus-sample 300 --passages-dir /workspace/passages --index-from "$OUT_DIR/s" --out-dir "$OUT_DIR/search" --prefreeze --local-dir /root/exp35-local
+fs-c2048-r4b@30m uv run --no-sync python run_arms.py --dataset freshstack --setup e4b-c2048-r4b-hon --stage search --qids $FS_QIDS --corpus-sample 300 --passages-dir /workspace/passages --index-from "$OUT_DIR/s" --out-dir "$OUT_DIR/search" --prefreeze --local-dir /root/exp35-local
+fs-c2048-r8b@30m uv run --no-sync python run_arms.py --dataset freshstack --setup e4b-c2048-r8b-hon --stage search --qids $FS_QIDS --corpus-sample 300 --passages-dir /workspace/passages --index-from "$OUT_DIR/s" --out-dir "$OUT_DIR/search" --prefreeze --local-dir /root/exp35-local

@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import threading
+import time
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from types import SimpleNamespace
@@ -172,6 +174,49 @@ def test_a_finished_ingest_is_skipped_on_resume(tmp_path: Path) -> None:
     assert engine.calls == []
 
 
+class _StuckEngine:
+    """Stub engine whose ``ingest`` waits in a worker thread until *release* is set."""
+
+    def __init__(self, release: Any) -> None:
+        self.release = release
+
+    async def ingest(self, path: str, *, collection_name: str) -> dict[str, Any]:
+        await asyncio.to_thread(self.release.wait)
+        return {"status": "ok", "chunks_created": 1, "file_details": []}
+
+
+def test_a_stuck_file_stops_the_stage_with_its_name_and_the_stacks(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
+) -> None:
+    # The 2026-11-24 t-fb hang: AMCOR_2020_10K.pdf gave no result and no error for 17 min.
+    release, codes = threading.Event(), []
+
+    def hard_exit(code: int) -> None:
+        codes.append(code)
+        release.set()  # the real exit never returns; let the stub finish instead
+
+    monkeypatch.setattr(stages35, "FILE_WATCHDOG_SECONDS", 0.2)
+    monkeypatch.setattr(stages35, "_hard_exit", hard_exit)
+    files = _files(tmp_path, "AMCOR_2020_10K.pdf")
+    _ingest(_ctx(tmp_path, "ingest", engine=_StuckEngine(release), files=files))
+    out, err = capfd.readouterr()
+    assert codes == [stages35.EXIT_STUCK] == [6]
+    assert "AMCOR_2020_10K.pdf: no result after" in out
+    assert "most recent call first" in err
+
+
+def test_the_file_watchdog_does_not_fire_after_the_file_is_done(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    codes: list[int] = []
+    monkeypatch.setattr(stages35, "FILE_WATCHDOG_SECONDS", 0.2)
+    monkeypatch.setattr(stages35, "_hard_exit", codes.append)
+    files = _files(tmp_path, "a.md")
+    assert _ingest(_ctx(tmp_path, "ingest", engine=_Engine(), files=files)) == 0
+    time.sleep(0.4)
+    assert codes == []
+
+
 # --- seal (tasks 5.4, 5.4a, 5.4b) ---------------------------------------------------------
 
 
@@ -321,6 +366,12 @@ def _machine(**over: Any) -> dict[str, Any]:
     return {"host": "pod-a", "pod_id": "abc", "gpu": ENV["gpu"], "image": ENV["image"], **over}
 
 
+def _image_plan(image: Any = ENV["image"]) -> dict[str, Any]:
+    """A plan with only the pod image pin (``null`` is listed as pending, like plan.json)."""
+    pending = [] if image else [{"key": "pins.environment.image", "task": "RDY 9.1"}]
+    return {"pins": {"environment": {"image": image}, "pending": pending}}
+
+
 def _found() -> Any:
     model = {"file": "Qwen3-Embedding-4B-Q8_0.gguf", "sha256": "a" * 64}
     return SimpleNamespace(build=11941, models=[model])
@@ -338,7 +389,20 @@ def test_check_machine_refuses_a_missing_field_or_an_undigested_image(
     field: str, value: Any, named: str
 ) -> None:
     with pytest.raises(stages35.EnvironmentMismatch, match=named):
-        stages35.check_machine(_machine(**{field: value}))
+        stages35.check_machine(_machine(**{field: value}), _image_plan())
+
+
+@pytest.mark.parametrize(
+    "plan",
+    [_image_plan("runpod/base@sha256:" + "2" * 64), _image_plan(None), {"pins": {"pending": []}}],
+)
+def test_check_machine_refuses_an_image_that_is_not_the_plan_pin(plan: dict[str, Any]) -> None:
+    with pytest.raises(stages35.EnvironmentMismatch, match=r"pins\.environment\.image"):
+        stages35.check_machine(_machine(), plan)
+
+
+def test_check_machine_accepts_the_pinned_image() -> None:
+    stages35.check_machine(_machine(), _image_plan())
 
 
 def test_seal_writes_the_build_environment_record(tmp_path: Path) -> None:

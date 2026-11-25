@@ -419,7 +419,77 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +1 (2026-11-23, Noted pill on the label page card header): needs no extra.
 # +11 (2026-11-23, Instructions panel and bar button on the label page, by test-ID diff):
 # 11 cases added, none removed (labelpage 31 to 42).
-_BASE_EXECUTED = 13621
+# +32 (2026-11-23, Exp 35 pre-freeze prep, by test-ID diff against HEAD): guideline
+# files 21, plan pins 9, FreshStack manifest 1, token-aware chunking guard 1; none removed.
+# +154 (2026-11-23, Exp 35 test pod prep, by test-ID diff against HEAD d3f8c992): 160 added
+# (pod chain, stages, launch, setup, create, Mac watcher, reranker check, context host, idle
+# repro, live router session, FreshStack repeats and hash pins, plan pins); 6 removed or renamed.
+# +14 (2026-11-24, BM25 matches Anserini/Pyserini, a4e304a0): new file
+# test_bm25_reference_parity.py, 10 added (not 9), 0 removed. 3 need rank_bm25:
+# _HYBRID_EXTRA_CASES. The other 4 of the +14 were not itemised (PR 224 review).
+# +8 (2026-11-24, BM25 calibration, aac6d933): new file test_bm25_calibration35.py, 8.
+# +1 (2026-11-24, router_env capital quant tag, 3e13171c): 1 in test_experiment_lib_router_env.
+# +5 (2026-11-24, Exp 35 reranker, seed, tokenizer and GLM pins, by test-ID diff against
+# HEAD 5ad9e65a): 5 plan-pin cases added; 2 test_pod_setup35 cases renamed, 0 removed.
+# +1 (2026-11-24, pdf-inspector OCR deadlock, by test-ID diff against HEAD 7fce7080):
+# test_pp_ocrv6_reads_one_page_per_library_call added; 0 removed or renamed.
+# +2 (2026-11-24, one-slot reranker pins and kept llama.cpp error text, by test-ID diff
+# against HEAD 0bebdb1d): 1 plan-pin case, 1 reranker case added; 0 removed or renamed.
+# +5 (2026-11-24, LanceDB fragment compaction, by test-ID diff against HEAD eb70e807):
+# new file test_lancedb_compaction.py, 5 added, 0 removed or renamed; no extra needed.
+# +2 (2026-11-24, Exp 35 ingest version cleanup, by test-ID diff against HEAD eb70e807):
+# new file test_experiment35_ingest_versions.py, 2 added, 0 removed or renamed; no extra.
+# +2 (2026-11-24, Exp 35 closed-book Ragas and claim-kinds fixes, by test-ID diff against
+# HEAD bcd11389): test_the_judge_side_files_beside_the_verdicts_are_not_read and
+# test_an_answer_without_passages_skips_the_three_passage_metrics; 0 removed. CI: +2 on all jobs.
+# +23 (2026-11-24, Exp 35 fix check session through the chain, by test-ID diff against HEAD
+# 6b6e8ede): new files test_verify35.py (6), test_verify_session_stages.py (6) and
+# test_mac_watch35_verify.py (5); 6 test_session_stages.py cases now run as [test] and
+# [verify] (6 renamed, 6 added); 0 removed. No extra needed.
+# +1 (2026-11-24, G2 rebuild check in the fix check session, by test-ID diff against HEAD
+# 17e9988f): test_verify_rebuilds_the_c1024_freshstack_index_and_compares_both_after_the_rate
+# added; 0 removed or renamed. No extra needed.
+# +9 (2026-11-24, work-disk check in pod setup, by test-ID diff against HEAD 6cd82f9c):
+# test_the_disk_check_refuses_a_network_file_system (9 cases) added; 0 removed. No extra.
+# +1 (2026-11-24, unpack copies the seal record, by test-ID diff against HEAD 3fdd151f):
+# test_unpack_also_copies_the_seal_environment_the_answer_stages_read added. No extra.
+# +43 (2026-11-24, Exp 35 P2 session prep, by test-ID diff against HEAD 02fbdd38): new
+# files test_runpod_ssh35.py (22), test_mac_watch35_p2.py (7), test_p2_session_stages.py (7);
+# 6 test_session_stages.py cases also run as [p2]; 1 chain tarball case. 0 removed. No extra.
+# +9 (2026-11-24, Exp 35 classifier re-gate, by test-ID diff against HEAD afdb0d4e): new
+# file test_experiment35_refusals_exclude.py (4); test_experiment35_plan_pins.py (2),
+# test_experiment35_guidelines.py (1), test_p2_session_stages.py (2). 0 removed. No extra.
+# +1 (2026-11-24, re-gate source widened, by test-ID diff against HEAD 60f2404f):
+# test_a_repeated_folder_adds_a_second_source_for_one_dataset added. No extra.
+# +3 (2026-11-24, classifier gate 2 fail fix, by test-ID diff against HEAD 0868c308):
+# test_the_classifier_and_the_labeller_follow_the_three_gate2_fail_rules (guidelines),
+# test_the_gate2_errors_are_worked_examples_with_the_owner_labels and
+# test_the_third_gate_sample_has_its_own_seed_and_a_preregistration_row (plan pins).
+# 0 removed or renamed. No extra.
+# +2 (2026-11-25, compaction leaves full fragments alone, by test-ID diff against HEAD
+# 19bb9968): test_compaction_leaves_full_fragments_and_results_alone and
+# test_full_fragments_do_not_trigger_compaction (test_lancedb_compaction.py). 0 removed.
+# +7 (2026-11-25, source-field scalar index, by test-ID diff against HEAD 2a86db11):
+# new file test_lancedb_source_index.py (7). 0 removed or renamed. No extra.
+# +6 (2026-11-25, stale-row scan reads only the attempt, by test-ID diff against HEAD
+# 9d111476): test_the_stale_row_scan_reads_no_vectors_text_or_whole_metadata and five
+# test_field_read_* cases in test_vectordb_contract.py (four lancedb, one default).
+# 4 chroma cases skip without the extra. 0 removed or renamed. No extra.
+# +11 (2026-11-25, Exp 35 OCR off and answer output cap, by test-ID diff against HEAD
+# 541fbdc8): test_every_setup_writes_the_ocr_fallback_off (3 cases) and
+# test_a_plan_without_the_ocr_pin_is_refused_by_key (arms), the OCR_FALLBACK_ENABLED case
+# of test_an_environment_override_stops_before_any_call_and_names_the_setting (run_arms),
+# test_the_plan_pins_the_ocr_fallback_off_and_the_real_setups_write_it (plan pins), and
+# new file test_experiment35_output_cap.py (5). 0 removed or renamed. No extra.
+# +8 (2026-11-25, PR 224 review fixes, by test-ID diff against HEAD 0c03f689): one case
+# each in test_bm25_calibration35, test_pod_test_session_script,
+# test_experiment35_idle_repro, test_experiment35_refusals_exclude, test_lancedb_compaction
+# and test_lancedb_source_index, and two in test_mac_watch35. 0 removed or renamed.
+# +25 (2026-11-25, PR 224 follow-up, by test-ID diff against HEAD ee0b8d6c): four cases of
+# test_a_full_fragment_counts_once_over_10_percent_of_its_rows_are_deleted
+# (test_lancedb_compaction), six of test_an_extra_input_named_like_a_generated_input_is_refused
+# (test_mac_watch35_verify) and new file test_mac_watch35_stop.py (15). 0 removed or renamed.
+_BASE_EXECUTED = 13996
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -661,6 +731,11 @@ _has_qwen_tokenizer = bool(
 )
 if not _has_qwen_tokenizer:
     _BASE_EXECUTED -= _CACHED_TOKENIZER_CASES
+# Cases that skip without rank_bm25 (the hybrid extra): 3 in test_bm25_reference_parity.py,
+# 1 in the Exp 35 prefreeze test_bm25_calibration35.py.
+_HYBRID_EXTRA_CASES = 4
+if find_spec("rank_bm25") is None:
+    _BASE_EXECUTED -= _HYBRID_EXTRA_CASES
 # The reference counts assume the optional ``web`` extra (FastAPI) is
 # installed, as in the CI ``test`` job. Without it, each web test module
 # skips at import through ``pytest.importorskip("fastapi")``: its cases do

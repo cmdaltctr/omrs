@@ -266,3 +266,14 @@ def test_concurrency_limit_holds(tmp_path: Path) -> None:
 )
 def test_parse_kind(reply: str, kind: str) -> None:
     assert claimkinds35.parse_kind(reply) == kind
+
+
+def test_the_judge_side_files_beside_the_verdicts_are_not_read(tmp_path: Path) -> None:
+    # Pod 2026-11-24: judge-chat.claims.jsonl and judge-chat.dispatch.jsonl have no "qid".
+    call, _ = _stub()
+    run_dir = tmp_path / "run1"
+    write_run(run_dir, ANSWERS)
+    (run_dir / "judge-chat.claims.jsonl").write_text('{"id": "q1", "index": 0}\n')
+    (run_dir / "judge-chat.dispatch.jsonl").write_text('{"id": "q1#0"}\n')
+    assert _stage(tmp_path, call) == 0
+    assert len(_rows(tmp_path)) == 3

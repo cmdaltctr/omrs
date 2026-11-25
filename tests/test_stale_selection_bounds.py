@@ -10,7 +10,7 @@ row reads performed to select stale rows must be proportional to the
 replaced source's own row count, not the collection total. It was
 written red against the unfiltered ``iter_documents`` seam; design D6
 routes selection through the store-neutral filtered read
-(``iter_filtered_documents``, task 2.7), so the spy watches that seam
+(``iter_filtered_fields``, built on the filtered row read, task 2.7), so the spy watches that seam
 and additionally proves the unfiltered scan is no longer used at all.
 """
 
@@ -57,7 +57,7 @@ async def test_stale_selection_reads_rows_proportional_to_the_replaced_source(
 
     GIVEN a collection holding several multi-chunk sources
     WHEN one source is replaced with new content
-    THEN the number of rows read through ``iter_filtered_documents`` to
+    THEN the number of rows read through ``iter_filtered_fields`` to
     select stale rows is proportional to that source's row count
     AND the unfiltered ``iter_documents`` scan is not used at all.
     """
@@ -83,7 +83,7 @@ async def test_stale_selection_reads_rows_proportional_to_the_replaced_source(
     target_file.write_text(_file_text(0, revised=True))
 
     reads = {"rows": 0, "unfiltered_rows": 0}
-    original_filtered = store.iter_filtered_documents
+    original_filtered = store.iter_filtered_fields
     original_iter_documents = store.iter_documents
 
     def _counting_iter_documents(collection_name, page_size=None):
@@ -91,13 +91,13 @@ async def test_stale_selection_reads_rows_proportional_to_the_replaced_source(
             reads["unfiltered_rows"] += 1
             yield row
 
-    def _counting_filtered(collection_name, where, page_size=None):
-        for row in original_filtered(collection_name, where, page_size):
+    def _counting_filtered(collection_name, where, fields, page_size=None):
+        for row in original_filtered(collection_name, where, fields, page_size):
             reads["rows"] += 1
             yield row
 
     monkeypatch.setattr(store, "iter_documents", _counting_iter_documents)
-    monkeypatch.setattr(store, "iter_filtered_documents", _counting_filtered)
+    monkeypatch.setattr(store, "iter_filtered_fields", _counting_filtered)
 
     result = await ingest_path_async(str(target_file))
 

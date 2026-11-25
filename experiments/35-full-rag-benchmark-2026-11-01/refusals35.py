@@ -4,7 +4,8 @@ Usage (``sample``, ``page`` and ``gate`` read saved files only and run on the Ma
 ``classify`` makes hosted calls and runs on the pod)::
 
     refusals35.py sample --seed 20261112 --n 100 --out-dir OUT \\
-        --folder bioasq=PATH --folder financebench=PATH --folder freshstack=PATH
+        --folder bioasq=PATH --folder financebench=PATH --folder freshstack=PATH \\
+        [--exclude SAMPLE.json --exclude EXAMPLES.json]
     refusals35.py page --out-dir OUT
     refusals35.py classify --out-dir OUT --examples EXAMPLES.json
     refusals35.py gate --out-dir OUT --labels L1.json [--labels L2.json] [--resolved FILE]
@@ -66,14 +67,14 @@ THRESHOLDS = {"agreement": 0.90, "recall": 0.90, "precision": 0.90}
 
 
 def session_claims(
-    folders: Mapping[str, Path], questions: Mapping[str, Mapping[str, str]]
+    folders: Mapping[str, Path | Sequence[Path]], questions: Mapping[str, Mapping[str, str]]
 ) -> list[dict[str, Any]]:
     """Return the distinct claims of the given dataset folders of a test pod session.
 
     Args:
         folders: Dataset name to its dataset folder in the session output
-            (``<out>/<dataset>``). Each holds ``answer/<setup>/run<n>/answer.jsonl``
-            and ``traces.jsonl`` per run folder (``outputs35.Layout``).
+            (``<out>/<dataset>``), or a list of them. Each holds
+            ``answer/<setup>/run<n>/answer.jsonl`` and ``traces.jsonl`` per run folder (``outputs35.Layout``).
         questions: Dataset name to (question ID to question text).
 
     Returns:
@@ -87,32 +88,38 @@ def session_claims(
     """
     claims: dict[str, dict[str, Any]] = {}
     for dataset in sorted(folders):
-        folder = folders[dataset]
-        found = sorted(folder.glob("answer/*/run*/answer.jsonl"))
-        if not found:
-            raise SampleError(
-                f"{folder}: no answer/<setup>/run<n>/answer.jsonl; pass the dataset folder "
-                "of the pre-freeze test pod session output"
-            )
-        for answers in found:
-            claimcontext35.check_reasoning(answers.parent)
-            for row in read_rows(answers):
-                for claim, passages in claimcontext35.claim_contexts(row):
-                    key = claimkinds35.claim_key(row["qid"], claim)
-                    claims.setdefault(
-                        key,
-                        {
-                            "claim_key": key,
-                            "dataset": dataset,
-                            "qid": row["qid"],
-                            "question": questions[dataset][row["qid"]],
-                            "claim": claim,
-                            "answer": row["answer"],
-                            "passages": passages,
-                            "flagged": bool(PREFREEZE_REGEX.search(claim)),
-                        },
-                    )
+        given = folders[dataset]
+        for folder in [given] if isinstance(given, Path) else given:
+            _folder_claims(claims, dataset, folder, questions)
     return list(claims.values())
+
+
+def _folder_claims(claims: dict, dataset: str, folder: Path, questions: Mapping) -> None:
+    """Add the claims of one dataset folder to *claims*; the first answer of a claim wins."""
+    found = sorted(folder.glob("answer/*/run*/answer.jsonl"))
+    if not found:
+        raise SampleError(
+            f"{folder}: no answer/<setup>/run<n>/answer.jsonl; pass the dataset folder "
+            "of the pre-freeze test pod session output"
+        )
+    for answers in found:
+        claimcontext35.check_reasoning(answers.parent)
+        for row in read_rows(answers):
+            for claim, passages in claimcontext35.claim_contexts(row):
+                key = claimkinds35.claim_key(row["qid"], claim)
+                claims.setdefault(
+                    key,
+                    {
+                        "claim_key": key,
+                        "dataset": dataset,
+                        "qid": row["qid"],
+                        "question": questions[dataset][row["qid"]],
+                        "claim": claim,
+                        "answer": row["answer"],
+                        "passages": passages,
+                        "flagged": bool(PREFREEZE_REGEX.search(claim)),
+                    },
+                )
 
 
 def _takes(quota: int, flagged: int, plain: int) -> tuple[int, int]:
@@ -136,6 +143,9 @@ def draw_sample(claims: Sequence[Mapping[str, Any]], *, seed: int, n: int) -> di
     Returns:
         ``seed``, ``n``, ``strata`` (size, drawn and fraction each), ``items``
         (shuffled with the seed) and ``pool`` (claims outside the sample).
+
+    Raises:
+        SampleError: A dataset holds fewer claims than its quota.
     """
     datasets = sorted({c["dataset"] for c in claims})
     rng = random.Random(seed)  # noqa: S311 - seeded draw, not security
@@ -154,13 +164,10 @@ def draw_sample(claims: Sequence[Mapping[str, Any]], *, seed: int, n: int) -> di
             )
             for name in ("flagged", "plain")
         }
-        takes = dict(
-            zip(
-                ("flagged", "plain"),
-                _takes(quota, len(pools["flagged"]), len(pools["plain"])),
-                strict=True,
-            )
-        )
+        sizes = (len(pools["flagged"]), len(pools["plain"]))
+        if sum(sizes) < quota:  # a short draw must not be recorded as the registered n
+            raise SampleError(f"{dataset}: {sum(sizes)} claims left, below its quota {quota}")
+        takes = dict(zip(("flagged", "plain"), _takes(quota, *sizes), strict=True))
         for name in ("flagged", "plain"):
             stratum = f"{dataset}/{name}"
             picked = rng.sample(pools[name], takes[name])
@@ -183,8 +190,9 @@ def draw_sample(claims: Sequence[Mapping[str, Any]], *, seed: int, n: int) -> di
 
 
 def write_sample(out_dir: Path, drawn: Mapping[str, Any]) -> None:
-    """Write ``sample.json`` and the prompt-example pool ``examples-pool.json``."""
-    write_json(out_dir / "sample.json", {k: drawn[k] for k in ("seed", "n", "strata", "items")})
+    """Write ``sample.json`` (with ``excluded`` after ``--exclude``) and ``examples-pool.json``."""
+    keys = ("seed", "n", "strata", "items", "excluded")
+    write_json(out_dir / "sample.json", {k: drawn[k] for k in keys if k in drawn})
     write_json(out_dir / "examples-pool.json", drawn["pool"])
 
 
@@ -446,6 +454,7 @@ def main(argv: Sequence[str] | None = None, *, build_classifier: Builder | None 
     s.add_argument("--n", type=int, required=True)
     s.add_argument("--folder", action="append", required=True, help="DATASET=PATH")
     s.add_argument("--out-dir", type=Path, required=True)
+    s.add_argument("--exclude", type=Path, action="append", default=[], help="sample or examples")
     p = sub.add_parser("page")
     p.add_argument("--out-dir", type=Path, required=True)
     c = sub.add_parser("classify")
@@ -459,10 +468,16 @@ def main(argv: Sequence[str] | None = None, *, build_classifier: Builder | None 
     g.add_argument("--resolved", type=Path)
     args = parser.parse_args(argv)
     if args.command == "sample":
-        folders = {d: Path(p) for d, p in (f.split("=", 1) for f in args.folder)}
-        drawn = draw_sample(
-            session_claims(folders, _questions(sorted(folders))), seed=args.seed, n=args.n
-        )
+        folders: dict[str, list[Path]] = {}
+        for d, p in (f.split("=", 1) for f in args.folder):
+            folders.setdefault(d, []).append(Path(p))
+        claims = session_claims(folders, _questions(sorted(folders)))
+        banned = claimcontext35.excluded_keys(args.exclude)
+        kept = [c for c in claims if c["claim_key"] not in banned]
+        drawn = draw_sample(kept, seed=args.seed, n=args.n)
+        if args.exclude:
+            names = [p.name for p in args.exclude]
+            drawn["excluded"] = {"files": names, "claims": len(claims) - len(kept)}
         write_sample(args.out_dir, drawn)
         return 0
     if args.command == "page":

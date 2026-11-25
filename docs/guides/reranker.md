@@ -123,6 +123,8 @@ Hybrid search fuses two rankings: dense embedding similarity and a sparse keywor
 | `bm25` (default) | In-process BM25, cached per store and collection, invalidated on every mutation | Base install, backend-agnostic |
 | `native` | LanceDB native full-text search over the stored `text` column | LanceDB only |
 
+The `bm25` backend scores with k1 1.5 and b 0.75 over Porter-stemmed tokens (NLTK, original algorithm, after the stop-word filter). A calibration on four BEIR sets (2026-11-24, Experiment 35 pre-freeze) chose these values over the Anserini/Pyserini k1 0.9 and b 0.4. Both the `rank_bm25` path and the built-in fallback use these values. The `hybrid` extra declares `rank-bm25` and `nltk`; without NLTK, BM25 stops with an error that names the extra.
+
 The registry (`core/retrieval/sparse_registry.py`) maps backend names to implementations; adding a backend is one new file plus one `register()` line. `auto` is deliberately not a backend: the composition root resolves it before query time through the selected store's capability metadata plus a real native-FTS probe (`omrs.core.vectordb.lancedb.fts:probe_native_fts`). On LanceDB `auto` resolves to `native`. Chroma declares no native capability, so `auto` resolves to `bm25` there. An unknown concrete name fails startup listing `auto` plus the registered names.
 
 Scores are not comparable across backends. Native rows carry `score_kind` `native_fts_v1`, the engine's raw higher-is-better score. Only rank order feeds RRF, so the scale difference never affects fusion.

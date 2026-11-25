@@ -18,6 +18,10 @@ guarantee.  A rebuild reads the token before fetching rows and again
 before publishing, and discards any build whose tokens differ, so a
 mutation landing mid-build cannot be cached.
 
+Scoring is BM25Okapi with ``k1`` 1.5 and ``b`` 0.75 (:data:`BM25_K1`,
+:data:`BM25_B`) over Porter-stemmed tokens. The 2026-11-24 calibration on four
+BEIR sets (Exp 35 ``prefreeze/bm25_calibration35.py``) chose this setup.
+
 The code is structured around a simple tokeniser function so a future
 env-var-selected tokeniser can be plugged in without changing retrieval.
 """
@@ -30,11 +34,19 @@ import re
 import threading
 from collections import Counter
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Any
 
 from .filters import matches_metadata_filter
 
 logger = logging.getLogger(__name__)
+
+#: BM25 term-frequency saturation and length-normalisation parameters. The
+#: 2026-11-24 calibration (SciFact, NFCorpus, FiQA, CQADupStack-programmers)
+#: kept these over the Anserini/Pyserini 0.9 and 0.4: with Porter stems they
+#: scored higher on FiQA and CQADupStack and level on SciFact and NFCorpus.
+BM25_K1 = 1.5
+BM25_B = 0.75
 
 
 _STOP_WORDS = frozenset(
@@ -90,10 +102,42 @@ _STOP_WORDS = frozenset(
 )
 
 
+@lru_cache(maxsize=1)
+def _get_stemmer() -> Any:
+    """Build the Porter stemmer once per process.
+
+    Raises:
+        RuntimeError: If ``nltk`` cannot be imported. Skipping the stemmer
+            would change retrieval results without a sign, so BM25 stops
+            and names the ``hybrid`` extra.
+    """
+    try:
+        from nltk.stem.porter import PorterStemmer
+    except ImportError as exc:
+        raise RuntimeError(
+            "BM25 tokenisation needs nltk for Porter stemming. "
+            'Install the hybrid extra: pip install "omrs[hybrid]" (uv sync --extra hybrid).'
+        ) from exc
+    return PorterStemmer(mode=PorterStemmer.ORIGINAL_ALGORITHM)  # as Lucene PorterStemFilter
+
+
+@lru_cache(maxsize=262_144)
+def _stem(token: str) -> str:
+    """Return the Porter stem of one lowercase token (cached)."""
+    return _get_stemmer().stem(token)
+
+
 def tokenize_english(text: str) -> list[str]:
-    """Lowercase, word-boundary tokenise, and remove common stop words."""
+    """Tokenise text for BM25 with Porter stems, as Lucene's English analysis does.
+
+    Lowercases, splits on word boundaries, removes the OMRS stop-word list
+    (47 words), then Porter-stems each remaining token with NLTK.
+
+    Raises:
+        RuntimeError: If ``nltk`` is not installed (``hybrid`` extra).
+    """
     return [
-        token
+        _stem(token)
         for token in re.findall(r"\b\w+\b", text.lower())
         if token and token not in _STOP_WORDS
     ]
@@ -103,10 +147,12 @@ class _SimpleBM25Okapi:
     """Small BM25Okapi fallback used when ``rank_bm25`` is not installed.
 
     Mirrors the IDF formula and epsilon clipping of ``rank_bm25.BM25Okapi``
-    so the fallback does not mask scoring divergences on tiny corpora.
+    so the fallback does not mask scoring divergences on tiny corpora
+    (pinned by ``tests/test_bm25_reference_parity.py``). Defaults to the
+    OMRS parameters :data:`BM25_K1` and :data:`BM25_B`.
     """
 
-    def __init__(self, corpus: list[list[str]], k1: float = 1.5, b: float = 0.75) -> None:
+    def __init__(self, corpus: list[list[str]], k1: float = BM25_K1, b: float = BM25_B) -> None:
         self.corpus = corpus
         self.k1 = k1
         self.b = b
@@ -154,7 +200,7 @@ def _make_bm25(tokenised_corpus: list[list[str]]):
     try:
         from rank_bm25 import BM25Okapi
 
-        return BM25Okapi(tokenised_corpus)
+        return BM25Okapi(tokenised_corpus, k1=BM25_K1, b=BM25_B)
     except Exception:
         logger.debug("rank_bm25 unavailable; using internal BM25Okapi fallback")
         return _SimpleBM25Okapi(tokenised_corpus)

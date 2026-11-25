@@ -1,0 +1,65 @@
+{
+  "status": "candidate, not pinned; pinned only after the task 15.10 check",
+  "recorded": "2026-11-23",
+  "source": "Primary column (option A) of the reranker candidates draft (DATA/omrs/handoffs/2026-11-23-exp35-reranker-candidates-draft.md, section 1). Revision, file size and SHA-256 read again from the Hugging Face tree API at each revision on 2026-11-23 (metadata only).",
+  "use": "Test inputs for the gap G2 check of the test pod session. pod_setup35.sh fetches each file at its revision and checks its SHA-256. rerank_check35.py llamacpp --entry reads one candidates[].entry object, written to its own JSON file. A reranker role goes into plan.json runtime.models only after its check passes (C35 task 4B.3, RDY task 15.10). Server arguments follow readiness design D27 item 5 (embeddings, pooling rank, ctx-size 8192, equal batch and ubatch sizes).",
+  "candidates": [
+    {
+      "revision": "a02f48bb4f057028298c21fa033da2b30d7742d5",
+      "bytes": 639153184,
+      "entry": {
+        "role": "reranker-0.6b",
+        "repository": "ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF",
+        "file": "qwen3-reranker-0.6b-q8_0.gguf",
+        "sha256": "22c9979ce4fbcdc5acdc310c6641c32797eff1aa980b8f7a2db8a8ea23429a48",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {
+          "embeddings": true,
+          "pooling": "rank",
+          "ctx-size": 8192,
+          "batch-size": 8192,
+          "ubatch-size": 8192
+        }
+      }
+    },
+    {
+      "revision": "7181641490f486c180be3894760382be354aab24",
+      "bytes": 4279678752,
+      "entry": {
+        "role": "reranker-4b",
+        "repository": "sinjab/Qwen3-Reranker-4B-Q8_0-GGUF",
+        "file": "Qwen3-Reranker-4B-Q8_0.gguf",
+        "sha256": "143f21b1cba67d328d32dd69daa282d79cb4c1e95398251caa7e48813ec98451",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {
+          "embeddings": true,
+          "pooling": "rank",
+          "ctx-size": 8192,
+          "batch-size": 8192,
+          "ubatch-size": 8192
+        }
+      }
+    },
+    {
+      "revision": "1a752c69213196777ef126e132a4a679fbb16af3",
+      "bytes": 8047134144,
+      "entry": {
+        "role": "reranker-8b",
+        "repository": "sinjab/Qwen3-Reranker-8B-Q8_0-GGUF",
+        "file": "Qwen3-Reranker-8B-Q8_0.gguf",
+        "sha256": "b0f8d65d024ad587a9d14ba91f1f0e3fc2ad59e11e46a3b7e00249c5efa11096",
+        "runtime": "llama.cpp",
+        "build": 11941,
+        "server_args": {
+          "embeddings": true,
+          "pooling": "rank",
+          "ctx-size": 8192,
+          "batch-size": 8192,
+          "ubatch-size": 8192
+        }
+      }
+    }
+  ]
+}

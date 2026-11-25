@@ -1,0 +1,222 @@
+# Test pod session runbook (Experiment 35, task 9.2)
+
+This runbook is for the operator's agent. The agent creates and deletes the pod with the RunPod MCP tools. `mac_watch35.py` does the work between create and delete. It never creates or deletes a pod.
+
+## Caps and the turn rule
+
+- Stop at 15 h after create, or at $18 total spend (RunPod plus OpenRouter). The first cap reached applies.
+- The watcher stops itself at 15.5 h (`--wall-cap-h`). The chain on the pod stops its stages 15 h after the chain starts. The chain starts a few minutes after create (pod start and copy), so the 15 h after create rule above still applies.
+- The watcher cannot see spend. You must read the spend.
+- Stay in your turn from create until `list-pods` shows the pod is gone. Do not end the turn while a pod exists.
+
+## Before the go
+
+1. Push the session commit `COMMIT` to `origin`. The pod clones it from there.
+2. Check out `COMMIT` in a worktree. Run every command below from its `experiments/35-full-rag-benchmark-2026-11-01` folder.
+3. Put the classifier examples file (JSON) on the Mac. Write down its path.
+4. Run the dry run with a placeholder pod id:
+
+   ```bash
+   uv run --no-sync python prefreeze/mac_watch35.py --pod-id DRYRUN --ssh-host 203.0.113.1 \
+     --ssh-port 22 --commit "$COMMIT" --examples <examples.json> --dry-run
+   ```
+
+5. Make sure the dry run exits 0 and shows no `PROBLEM:` line. Fix each problem on the Mac first.
+6. Make sure the dry run lists 91 input files (about 279 MB before compression). Investigate any other count.
+7. Get the owner's go.
+
+## Session order
+
+1. Read the live price and stock for one RTX 4090 on secure cloud (`get-capacity`). Quote the price.
+2. Do the create within 10 minutes of that read. If the price changed, quote again and wait for the go.
+3. Run `uv run --no-sync python prefreeze/create_pod35.py`. Keep the JSON it prints.
+4. Call `create-pod` once with that JSON, unchanged. Write down the pod id.
+5. Read the pod back with `get-pod`. Compare the image digest, GPU, `/workspace` volume and port `22/tcp` with the JSON.
+6. If a value differs, delete the pod at once. Do not start the watcher.
+7. Start the watcher as a background task at once. `caffeinate -i` keeps the Mac awake:
+
+   ```bash
+   caffeinate -i uv run --no-sync python prefreeze/mac_watch35.py --pod-id <id> \
+     --commit "$COMMIT" --examples <examples.json>
+   ```
+
+8. The watcher reads the pod from the RunPod API every 15 s (step 2b). It waits for the public IP and the public port of `22/tcp`, up to 15 minutes. It prints `not ready yet` for each wait. The key comes from `RUNPOD_API_KEY`, else from `apikey` in `~/.runpod/config.toml`. The watcher never prints the key.
+9. If no public address comes in 15 minutes, the watcher exits 13. Delete the pod. The RunPod SSH proxy cannot carry `scp`, so the watcher does not use it. To give the address yourself, add `--ssh-host <publicIp> --ssh-port <port>`.
+
+10. Read the watcher output while it runs. It prints one line for each stage start and end.
+11. Read `list-pod-billing` every 2 hours. Add the OpenRouter session spend.
+12. If the total spend reaches $18, stop the watcher: `kill -TERM "$(cat <results folder>/watcher.pid)"`.
+    The first output line names the results folder. Do not use `pgrep` or `pkill`: they also match the `caffeinate` and `uv` parents.
+    The watcher then pulls the outputs and prints `DELETE_POD_NOW`. It ignores a second signal, so the pull finishes.
+13. Wait for the watcher to exit. Its last line is `DELETE_POD_NOW <id>`.
+14. Delete the pod with `delete-pod` and that id. Do this for every exit code.
+15. If the watcher process ended without the `DELETE_POD_NOW` line, delete the pod all the same.
+16. Read `list-pods`. Confirm that the pod is gone. If it is not gone, delete it again and read again.
+17. Remove nothing else: no other pod, volume, template, secret or SSH key.
+18. Read `list-pod-billing` for the real cost of the session.
+19. Report the exit code, the `RESULT` line, the results folder and the cost.
+
+## Exit codes
+
+Every code ends with `DELETE_POD_NOW <id>`. Delete the pod for every code.
+
+| Code | Meaning | Extra action |
+| ---: | --- | --- |
+| 0 | `TEST_SESSION_DONE`, outputs pulled, SHA-256 matches | None. |
+| 1 | Internal error in the watcher | Report the error line. |
+| 2 | Refused before any remote step | Fix the `REFUSED:` line on the Mac before the next pod. |
+| 3 | `POD_STOP_FAILED`: the pod did not stop itself | Delete at once. The GPU still bills. |
+| 4 | No SSH within 15 minutes | Report it. |
+| 5 | A pod setup step failed (copy, SHA-256, clone, launch) | Report the `remote step failed` line. |
+| 6 | A `STOP:` line in the chain log | Read the `STOP:` line in the pulled log. Fix on the Mac. |
+| 7 | The tmux session ended without `TEST_SESSION_DONE` | Read the end of the pulled log. |
+| 8 | No new log byte for 30 minutes | Read the last stage in the pulled log. |
+| 9 | Wall-clock cap reached | Report the stages that did not run. |
+| 10 | No SSH for 10 minutes while watching | Outputs are probably lost. Report it. |
+| 11 | The pull failed, or the SHA-256 differs | Keep the files as they are. Report it. |
+| 12 | Stopped by a signal (SIGTERM, SIGINT or SIGHUP) | Report why you stopped it. |
+| 13 | No public IP for `22/tcp` within 15 minutes (step 2b) | Report it. Nothing was copied. |
+
+After codes 8, 9 and 12 the watcher first sends `tmux kill-session -t exp35` to the pod. The chain then stops its stage and writes the tarball. The watcher waits up to 3 minutes for the tarball, then pulls. If the stop fails or times out, the watcher pulls anyway.
+
+## Where the results go
+
+- The watcher writes `~/Development/DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/test-session-<UTC date>/`. It never overwrites an existing folder.
+- The folder name comes from the stages file: `verify_session_stages.txt` gives `verify-session-<UTC date>/`.
+- The folder holds `inputs/`, `watcher.pid`, `test-session.log`, `watch-summary.txt` and the outputs tarball with its `.sha256`.
+- `inputs/` holds the inputs tarball, its `.sha256`, the examples and the `--extra-input` file, exactly as sent to the pod.
+- The outputs tarball is `test-session-out.tgz` from the chain. If the chain wrote none, it is `watcher-out.tgz`, packed from `/workspace/exp35-test/out`.
+- Record the copy and its SHA-256 in `DATA/omrs/DATA_LOCATIONS.md`.
+- The outputs tarball holds no index store (`stores/` folders). The stores stay on the pod volume and go when you delete the pod. Every JSON, JSONL, log and summary file, `environment.json` and the seal records are in the tarball.
+- The watcher writes `STOP_GRACE_MIN=120` into `session.env`. The chain then waits up to 120 minutes for `PULLED` before it stops the pod. The watcher's pull takes at most 110 minutes (copy time limits of 10 min for the log and 45 min for each of two tarball tries), so a slow copy ends before the stop. A Mac that stops answering costs at most 2 h of GPU time.
+
+## Fix check variant
+
+The fix check session checks the four fixes of 2026-11-24 on a short second pod. It uses the same machinery: `pod_setup35.sh`, `launch35.sh`, the `pod_test_session.sh` chain and `mac_watch35.py`. The chain stops the pod only after the last check ends and the Mac has pulled the outputs.
+
+- The stages are in `prefreeze/verify_session_stages.txt`. The watcher writes `STAGES_FILE` into `/workspace/session.env`, and `launch35.sh` reads it.
+- Every stage runs at `COMMIT`. No stage checks out another commit.
+- Section 4 needs the FinanceBench answers of the 2026-11-24 session. The watcher sends them as `--extra-input`.
+
+### Before the go
+
+1. Do steps 1 to 3 of "Before the go" above.
+2. Cut the FinanceBench answers and the seal record (about 1 MB) out of the session tarball:
+
+   ```bash
+   (
+     cd ~/Development/DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/test-session-2026-11-24
+     tar -czf "$TMPDIR/fb-answers.tgz" --include 'out/s/financebench/answer' \
+       --include 'out/s/financebench/closedbook-rag' --include 'out/s/financebench/rebuild.json' \
+       --include 'out/s/environment.json' @test-session-out.tgz
+   )
+   ```
+
+   The subshell keeps the shell in the Experiment 35 checkout for the next command.
+
+3. Run the dry run with the two extra options:
+
+   ```bash
+   uv run --no-sync python prefreeze/mac_watch35.py --pod-id DRYRUN --ssh-host 203.0.113.1 \
+     --ssh-port 22 --commit "$COMMIT" --examples <examples.json> \
+     --stages verify_session_stages.txt --extra-input "$TMPDIR/fb-answers.tgz" --dry-run
+   ```
+
+4. Make sure the dry run exits 0, lists 91 input files, and shows `fb-answers.tgz` in the SHA-256 check.
+5. Make sure the dry run shows `STAGES_FILE=/workspace/omrs/.../verify_session_stages.txt` and the folder `verify-session-<UTC date>`.
+
+### Session
+
+Do the session order above. In step 7, start the watcher with the two extra options:
+
+```bash
+caffeinate -i uv run --no-sync python prefreeze/mac_watch35.py --pod-id <id> \
+  --ssh-host <publicIp> --ssh-port <port> --commit "$COMMIT" --examples <examples.json> \
+  --stages verify_session_stages.txt --extra-input "$TMPDIR/fb-answers.tgz"
+```
+
+### Stages, times and pass marks
+
+The sections run in the order 1, 3, 3b, 4, 2: the cheapest and the budget-critical checks first. Times are expected minutes on one RTX 4090. Section 3b repeats the G2 rebuild check on the final code, because the store fix (bcd11389) changed how chunks are written after the last G2 pass (owner decision, 2026-11-24). Its times come from the same stages in the 2026-11-24 test session.
+
+| Stage | Section | Timeout | Expected | Pass mark |
+| --- | --- | ---: | ---: | --- |
+| `setup` | Setup (as the test session) | 60 min | 23 min | `ok`. A failure stops the chain. |
+| `ocr-walmart-20x` | 1. OCR fix (0bebdb1d) | 105 min | 25 min | `20/20 passes`: 29 pages each, each pass under 300 s. |
+| `fs-rate-1200` | 3. Store speed (bcd11389) | 60 min | 25 min | `ok`. The six `[rate] files` lines stay flat in s/file. |
+| `s-fs-c1024` | 3b. G2 rebuild check: shared index | 25 min | 10 min | `ok`. About 675 files, so compaction runs about ten times. |
+| `g2-fs-build` | 3b. G2 rebuild check: rebuild | 25 min | 10 min | `ok`. |
+| `g2-fs-check` | 3b. G2 rebuild check: compare | 15 min | 2 min | `ok`: `[rebuild] freshstack: 40 questions match`. `s/freshstack/rebuild.json` reports `"ok": true`, with no mismatches and no incomplete questions. A difference exits 3 and fails the stage. |
+| `fb-unpack` | 4. Answers copy | 10 min | 1 min | `ok` (87 files). |
+| `ragas-closedbook-fb` | 4. Closed-book Ragas (b98f536f) | 20 min | 5 min | `ok`, with no exit 6. |
+| `kinds-fb-c512` | 4. Claim kinds (b98f536f) | 15 min | 4 min | `ok`. |
+| `fs-c2048-ingest` | 2. Reranker fix (eb70e807) | 50 min | 8 min | `ok`. |
+| `fs-c2048-seal` | 2. | 15 min | 2 min | `ok`. |
+| `fs-c2048-r0.6b` | 2. | 30 min | 3 min | `ok`, queries 76293427 and 77759618 included. |
+| `fs-c2048-r4b` | 2. | 30 min | 8 min | `ok`, as above. |
+| `fs-c2048-r8b` | 2. | 30 min | 14 min | `ok`, as above. |
+
+- Expected total: about 140 min of stages, plus about 10 min for the pod start, the copy, the pull and the stop. That is about 2.5 h, or about $2.23 at $0.89/h.
+- Upper bound: the stage timeouts add up to 490 min (8.2 h). With the start and the pull, that is about 8.4 h, or about $7.50.
+- Hosted calls (Ragas on 20 questions, claim kinds on 20 answers) add a few cents of OpenRouter spend.
+- Pass mark of the whole check (2026-11-24 notes): every stage `ok`, the per-file store time flat, and `s/freshstack/rebuild.json` reports identical ranked results (`"ok": true`).
+- Store speed for the budget: the `[rate] files` lines give seconds per file for each block of 200 files. Block 1 includes the engine start. The old rate was about 2 s per file at 3,300 files.
+
+## P2 session
+
+The P2 session measures the build speed and checks answers before the freeze. It uses the same machinery as the test session. The stages are in `prefreeze/p2_session_stages.txt`. The results folder is `p2-session-<UTC date>/`.
+
+The session also runs the classifier re-gate (task 8.7, owner decision 2026-11-24). The first gate failed on refusal recall. The re-gate classifies a new sample of 100 claims (seed 20261142) with the re-pinned prompt and examples. The watcher sends the sample as `--extra-input`. It arrives as `/workspace/inputs/sample.json`, and its SHA-256 is checked on the pod. The stage `gate2-classify` copies it to `gate2/` and writes `gate2/sample-kinds.jsonl` there. The output tarball brings it back.
+
+### Before the go
+
+1. Do steps 1 to 3 of "Before the go" above.
+2. Name the re-gate sample folder:
+
+   ```bash
+   GATE2=~/Development/DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01/test-session-2026-11-24/gate2
+   ```
+
+3. Run the dry run from the Experiment 35 folder:
+
+   ```bash
+   uv run --no-sync python prefreeze/mac_watch35.py --pod-id DRYRUN --commit "$COMMIT" \
+     --examples classify-examples.json --stages p2_session_stages.txt \
+     --extra-input "$GATE2/sample.json" --dry-run
+   ```
+
+4. Make sure the dry run exits 0, shows no `PROBLEM:` line and shows the `step 2b: GET` line.
+5. Make sure the dry run shows `STAGES_FILE=/workspace/omrs/.../p2_session_stages.txt` and the folder `p2-session-<UTC date>`.
+6. Make sure the dry run names `sample.json` among the inputs it sends.
+
+### Session
+
+Do the session order above. In step 7, start the watcher with the stages file:
+
+```bash
+caffeinate -i uv run --no-sync python prefreeze/mac_watch35.py --pod-id <id> \
+  --commit "$COMMIT" --examples classify-examples.json --stages p2_session_stages.txt \
+  --extra-input "$GATE2/sample.json"
+```
+
+After the pull, copy `out/gate2/sample-kinds.jsonl` from the session tarball to `$GATE2/`. Then run `refusals35.py gate --out-dir "$GATE2" --labels <claim_kinds-L1.json>` on the Mac.
+
+### Stages, times and pass marks
+
+The re-gate and the quick checks run first, then the full build. The stage timeouts add up to 895 min, inside the 15 h session cap, so the cap never cuts a stage short. Times are expected minutes on one RTX 4090.
+
+| Stage | Timeout | Expected | Pass mark |
+| --- | ---: | ---: | --- |
+| `setup` | 60 min | 23 min | `ok`. A failure stops the chain. |
+| `gate2-classify` | 15 min | 2 min | `ok`. `gate2/sample-kinds.jsonl` holds 100 rows of one classifier version. The first gate took 1 min 40 s. |
+| `rate-e0.6b-c1024`, `rate-e8b-c1024`, `rate-e4b-c512`, `rate-e4b-c2048` | 35 min each | 13 min each | `ok`. About 2,750 files each (1,200 sampled plus the gold files). The `[rate] files` lines stay flat in s/file. |
+| `seal-e4b-c512`, `seal-e0.6b-c1024`, `seal-e4b-c2048` | 10 min each | under 1 min | `ok`. |
+| `recheck-<shape>` (15 stages) | 10 min each | 2.5 min each | `ok`. In `r/freshstack/answer/<setup>/run1/`, every `answer-summary.json` has `failed` 0 and every judge summary has `errors` 0 (task 10.1). |
+| `fsfull-e8b-c512` | 8 h | about 4 h | `ok`. 49,506 files. The `[rate]` lines give the full-build rate for the budget. |
+| `fsfull-seal` | 20 min | 4 min | `ok`. |
+
+- The recheck covers every answer-setup shape: each chunk size, reranker off and 0.6b, hybrid off and on, and the three `-t20k` setups. Chunk sizes 512 and 2048 read the `e4b` samples. The session builds no `e4b-c1024`, so chunk size 1024 reads the smallest index the session builds at that size, `e0.6b-c1024`.
+- Full-build estimate: `e4b-c1024` ingested 0.25 s per file on 2026-11-24. `e8b-c512` took 1.16 times as long as `e4b-c1024` on the test session's timing slice. That gives about 0.29 s per file, 4.0 h for 49,506 files. The 8 h timeout is twice that figure.
+- Expected total: about 6 h of stages, plus about 15 min for the pod start, the copy, the pull and the stop. That is about $5.60 at $0.89/h. The upper bound is the 15 h cap plus the pull, about $14.
+- Hosted calls: 15 recheck stages, each with answers and two judges on two questions, and 100 classifier calls in `gate2-classify`. That is a few cents of OpenRouter spend.
+- The rate stages had 40 min each until the re-gate was added (2026-11-24). They took 13 min each, so 35 min still gives more than twice that time.

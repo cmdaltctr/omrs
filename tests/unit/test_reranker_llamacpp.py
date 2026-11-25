@@ -227,6 +227,19 @@ def test_http_500_returns_inputs_unreranked(stub: _StubRouter, router_url: str) 
     _assert_unreranked(reranker, reranker.rerank("q", _rows(4), top_k=2), 2)
 
 
+def test_http_error_keeps_the_server_message_in_the_failure_reason(
+    stub: _StubRouter, router_url: str
+) -> None:
+    """The status line alone hides the cause, such as a full KV cache."""
+    stub.status = 500
+    stub.reply = lambda body: {"error": {"code": 500, "message": "Context size has been exceeded."}}
+    reranker = _reranker(router_url)
+    reranker.rerank("q", _rows(2), top_k=2)
+    reason = reranker.last_failure_reason or ""
+    assert "500 Internal Server Error" in reason
+    assert "Context size has been exceeded." in reason
+
+
 def test_unknown_model_returns_inputs_unreranked(stub: _StubRouter, router_url: str) -> None:
     stub.status = 400
     stub.reply = lambda body: {"error": {"message": "model not found"}}

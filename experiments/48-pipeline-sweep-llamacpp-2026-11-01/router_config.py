@@ -79,7 +79,7 @@ def model_name(model: Mapping[str, Any]) -> str:
     The quantisation tag is the last ``-`` part of the file stem
     (``Qwen3-4B-Q8_0.gguf`` gives ``Q8_0``).
     """
-    quant = Path(model["file"]).stem.rsplit("-", 1)[-1]
+    quant = Path(model["file"]).stem.rsplit("-", 1)[-1].upper()  # llama.cpp lists Q8_0, even for -q8_0.gguf
     return f"{model['repository']}:{quant}"
 
 

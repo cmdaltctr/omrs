@@ -186,11 +186,12 @@ def test_no_page_carries_the_retired_script_reason(tmp_path) -> None:
 
 def test_only_escalated_pages_pass_on_in_one_call(monkeypatch, tmp_path) -> None:
     _fake(_Backend({1: (ARABIC, 0.95), 2: (LATIN, 0.80), 3: (ARABIC, 0.5)}))
-    pp = _pp(monkeypatch, {2: ("two", 0.95), 3: ("three", 0.95)})
+    pp = _pp(monkeypatch, {2: ("two", 0.95)}, {3: ("three", 0.95)})
 
     pages = _read(_settings(FAKE, PP), [3, 1, 2], tmp_path)
 
-    assert pp.calls == [[2, 3]]
+    # One read of the escalated pages; the backend sends the library one page per call.
+    assert pp.calls == [[2], [3]]
     producers = [pages[n].producer for n in (1, 2, 3)]
     assert producers == [FAKE_PRODUCER, "pdf_inspector_ocr", "pdf_inspector_ocr"]
 
@@ -209,7 +210,7 @@ def test_each_backend_uses_its_own_cut_unless_it_has_an_entry(tmp_path) -> None:
 def test_the_default_backend_keeps_a_page_at_its_cut_and_escalates_one_below(
     monkeypatch, tmp_path
 ) -> None:
-    _pp(monkeypatch, {1: ("kept", 0.92), 2: ("lost", 0.91)})
+    _pp(monkeypatch, {1: ("kept", 0.92)}, {2: ("lost", 0.91)})
 
     pages = _read(_settings(PP), [1, 2], tmp_path)
 

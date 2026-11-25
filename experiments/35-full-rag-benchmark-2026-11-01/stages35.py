@@ -20,7 +20,11 @@ environment record with the build record that ``seal`` writes (task 5.6).
 
 from __future__ import annotations
 
+import faulthandler
 import json
+import os
+import sys
+import threading
 import time
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -34,6 +38,33 @@ from experiments._lib.trace import TraceWriter
 say = outputs35.say
 #: The environment fields every stage must have and match (design D19).
 ENV_FIELDS = ("gpu", "image", "llama_cpp_build", "gguf_sha256")
+
+
+#: A file whose ingest gives no result in this time is stuck. The 2026-11-24 t-fb run hung
+#: for 17 min at 0 CPU in the PDF read; the longest pre-freeze file took 42 s.
+FILE_WATCHDOG_SECONDS = 600.0
+#: The exit code of a stuck file: items still open, run again with ``--resume``.
+EXIT_STUCK = 6
+#: Delete old table versions after this many ingested files (pre-freeze amendment
+#: 2026-11-24, protocol section 7). Each one-file write adds a version, each of the
+#: about 13 table opens per file lists them all (0.2 ms at 1 version, 2.4 ms at
+#: 6,000 on a Mac), and 64 matches the OMRS fragment compaction threshold.
+VERSION_CLEANUP_EVERY = 64
+#: The exit that ends a stuck process. A native call cannot be cancelled, and its worker
+#: thread would block a normal exit (the thread pool joins its threads at exit).
+_hard_exit = os._exit
+
+
+def _stuck(name: str, seconds: float) -> None:
+    """Name the stuck file, print every thread's stack and end the process."""
+    say(
+        f"[ingest] {name}: no result after {seconds:.0f} s; the stage stops "
+        f"(exit {EXIT_STUCK}). Every thread's stack follows. Run again with --resume."
+    )
+    sys.stdout.flush()
+    faulthandler.dump_traceback(all_threads=True)
+    sys.stderr.flush()
+    _hard_exit(EXIT_STUCK)
 
 
 class StageOrderError(RuntimeError):
@@ -182,10 +213,16 @@ async def ingest_stage(ctx: Ctx) -> int:
             say(f"[ingest] {ctx.dataset}/{ctx.setup}: done earlier, skipped")
             return 0
         done = {name for name, row in _latest(log.rows()).items() if row["status"] == "ok"}
+        written = 0
         for path in ctx.files:
             if path.name in done:
                 continue
             started = time.perf_counter()
+            watchdog = threading.Timer(
+                FILE_WATCHDOG_SECONDS, _stuck, (path.name, FILE_WATCHDOG_SECONDS)
+            )
+            watchdog.daemon = True
+            watchdog.start()
             try:
                 error, chunks, warnings = _outcome(
                     await ctx.engine.ingest(str(path), collection_name=ctx.collection)
@@ -193,6 +230,8 @@ async def ingest_stage(ctx: Ctx) -> int:
                 error = ctx.redact(error)[:500] if error else None
             except Exception as exc:  # noqa: BLE001 - keep the row; --resume retries the file
                 error, chunks, warnings = _error(ctx, exc), 0, []
+            finally:
+                watchdog.cancel()
             seconds = round(time.perf_counter() - started, 3)
             row = {
                 "file": path.name,
@@ -203,6 +242,9 @@ async def ingest_stage(ctx: Ctx) -> int:
                 "seconds": seconds,
             }
             log.append(row)
+            written += 1
+            if written % VERSION_CLEANUP_EVERY == 0:
+                _drop_old_versions(ctx)
             ctx.trace.write(
                 stage="ingest",
                 dataset=ctx.dataset,
@@ -232,6 +274,26 @@ async def ingest_stage(ctx: Ctx) -> int:
             )
         log.mark_done(summary)
     return 0
+
+
+def _drop_old_versions(ctx: Ctx) -> None:
+    """Delete every table version of the index but the latest.
+
+    The rows, their order and ``table.version`` stay the same; only the version
+    history goes. Safe here only: each index is built once by one process, then
+    sealed, and G2 compares a rebuild (protocol section 7).
+    """
+    from datetime import timedelta
+
+    import lancedb
+
+    try:
+        table = lancedb.connect(str(ctx.layout.store(ctx.index))).open_table(ctx.collection)
+    except ValueError as exc:
+        if "was not found" in str(exc):
+            return  # nothing written yet
+        raise
+    table.to_lance().cleanup_old_versions(older_than=timedelta(0))
 
 
 # --- seal --------------------------------------------------------------------------------
@@ -357,8 +419,10 @@ def _check_index(ctx: Ctx, marker: Mapping[str, Any]) -> dict[str, Any]:
 # --- machine and environment record ------------------------------------------------------
 
 
-def check_machine(machine: Mapping[str, Any]) -> None:
-    """Refuse a machine with no GPU model or image, or an image without a digest.
+def check_machine(machine: Mapping[str, Any], plan: Mapping[str, Any]) -> None:
+    """Refuse a machine with no GPU model or image, or an image other than the plan pin.
+
+    The image must be ``plan.json`` ``pins.environment.image`` exactly (task 9.1).
 
     Raises:
         EnvironmentMismatch: The message names the field.
@@ -372,6 +436,12 @@ def check_machine(machine: Mapping[str, Any]) -> None:
     if "@sha256:" not in str(machine["image"]):
         raise EnvironmentMismatch(
             f"EXP35_POD_IMAGE {machine['image']!r} has no @sha256: digest; pin the image by digest"
+        )
+    pinned = arms.pinned(plan, "pins", "environment", "image", error=EnvironmentMismatch)
+    if machine["image"] != pinned:
+        raise EnvironmentMismatch(
+            f"EXP35_POD_IMAGE {machine['image']!r} is not plan.json pins.environment.image "
+            f"{pinned!r}; create the pod from the pinned image (task 9.1)"
         )
 
 

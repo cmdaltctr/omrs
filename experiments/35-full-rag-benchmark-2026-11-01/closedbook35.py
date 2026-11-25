@@ -76,7 +76,11 @@ async def _one_prompt(ctx: stages35.Ctx, kind: str) -> None:
             kept.dispatch(qid)
             started = stagekit35.clock()
             try:
-                result = await gate.call(lambda: ask(ctx.engine, ctx.collection, prompt))
+                result = await gate.call(
+                    lambda: answers35.with_finish_reasons(
+                        lambda: ask(ctx.engine, ctx.collection, prompt)
+                    )
+                )
             except RateLimitStop:
                 raise
             except Exception as exc:  # noqa: BLE001 - an error is not a result (section 12)

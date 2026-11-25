@@ -320,6 +320,8 @@ def test_each_row_records_omrs_fit_measures(tmp_path: Path) -> None:
     assert row["truncated_passages"] >= len(nodes) - len(fitted) > 0
     assert row["completion_calls"] == 1
     assert len(row["evidence"]) == len(engine.answers[0][1])
+    # The stub makes no model call; the stage still collects reply finish reasons (output cap).
+    assert row["finish_reasons"] == []
 
 
 def test_the_answer_stage_refuses_without_selection_json(tmp_path: Path) -> None:

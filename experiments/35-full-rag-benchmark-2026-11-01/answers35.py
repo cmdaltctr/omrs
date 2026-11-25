@@ -38,7 +38,8 @@ from __future__ import annotations
 import asyncio
 import json
 from collections import Counter
-from collections.abc import Mapping, Sequence
+from collections.abc import Awaitable, Callable, Mapping, Sequence
+from contextvars import ContextVar
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +58,73 @@ from omrs.core.retrieval.assembly import assemble
 say = outputs35.say
 #: Stored chunks of a crossed setup's evidence.
 HEAD = 10
+#: Finish reasons of the answer-model replies for the question this task answers.
+_FINISH: ContextVar[list[str | None] | None] = ContextVar("exp35_finish_reasons", default=None)
+
+
+class CappedAnswerLLM:
+    """OMRS's built answer model, sending the pinned output cap as ``max_tokens``.
+
+    OMRS uses ``answer.max_output_tokens`` only to size the prompt; it never sends
+    it (audit 2026-11-25, item 3; protocol section 7, note of 2026-11-25). The cap is
+    set on the built model, so every request carries it. Each reply's finish reason
+    is recorded for the saved row. Every other attribute is the wrapped model's, so
+    OMRS's sampling and host records still read the real model.
+    """
+
+    def __init__(self, inner: Any, cap: int) -> None:
+        inner.max_tokens = cap
+        self._inner = inner
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._inner, name)
+
+    async def acomplete(self, prompt: str, **kwargs: Any) -> Any:
+        completion = await self._inner.acomplete(prompt, **kwargs)
+        found = _FINISH.get()
+        if found is not None:
+            found.append(finish_reason(getattr(completion, "raw", None)))
+        return completion
+
+
+def finish_reason(raw: Any) -> str | None:
+    """Return ``choices[0].finish_reason`` of one reply, or ``None``; it never raises."""
+    try:
+        choice = (raw.get("choices") if isinstance(raw, dict) else raw.choices)[0]
+        found = choice.get("finish_reason") if isinstance(choice, dict) else choice.finish_reason
+    except Exception:  # noqa: BLE001 - a changed reply shape must never fail the answer
+        return None
+    return found if isinstance(found, str) else None
+
+
+def cap_answer_output(engine: Any) -> None:
+    """Make the answer model that *engine* builds send ``answer.max_output_tokens``.
+
+    The Engine builds its answer model on first use; the factory is wrapped, so
+    the answer, closed-book and oracle stages all send the cap. Index and search
+    stages never build the model, so they make no endpoint call.
+    """
+    build = engine._answer_llm_factory
+    if build is None:
+        return
+    cap = int(engine._effective_settings.answer.max_output_tokens)
+
+    def capped(*args: Any) -> Any:
+        llm = build(*args)
+        return None if llm is None else CappedAnswerLLM(llm, cap)
+
+    engine._answer_llm_factory = capped
+
+
+async def with_finish_reasons(call: Callable[[], Awaitable[dict[str, Any]]]) -> dict[str, Any]:
+    """Await *call*; return its result with ``finish_reasons``, one per answer-model reply."""
+    reasons: list[str | None] = []
+    token = _FINISH.set(reasons)
+    try:
+        result = await call()
+    finally:
+        _FINISH.reset(token)
+    return {**result, "finish_reasons": reasons}
 
 
 def require_selection(ctx: stages35.Ctx) -> None:
@@ -210,6 +278,8 @@ def answer_row(
         "output_tokens": usage.get("output_tokens"),
         "reasoning_tokens": usage.get("reasoning_tokens"),
         "cost_usd": usage.get("cost_usd"),
+        # A reply cut at the pinned output cap shows as "length"; its text is kept as returned.
+        "finish_reasons": result.get("finish_reasons"),
         "host": chat.get("host"),
         "host_in_list": chat.get("host_in_list"),
         # Task 15.9: the serving host and the model the reply names.
@@ -303,11 +373,13 @@ async def answer_stage(ctx: stages35.Ctx) -> int:
                 kept.dispatch(qid)
                 started = stagekit35.clock()
                 result = await gate.call(
-                    lambda: ctx.engine.answer(
-                        question.text,
-                        collection_name=ctx.collection,
-                        rows=rows,
-                        include_diagnostics=True,
+                    lambda: with_finish_reasons(
+                        lambda: ctx.engine.answer(
+                            question.text,
+                            collection_name=ctx.collection,
+                            rows=rows,
+                            include_diagnostics=True,
+                        )
                     )
                 )
                 seconds = round(stagekit35.clock() - started, 3)

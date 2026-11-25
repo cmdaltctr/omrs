@@ -16,7 +16,8 @@ object; tests pass a stub with the same methods.
   and the image from ``EXP35_POD_IMAGE`` (design D19). A field that cannot be
   read is ``None``, and the stage then refuses.
 * Ragas (``ragas35``): ``router(entry)`` loads one plan model on the managed
-  router and yields its endpoint; ``runtime_check(entry, endpoint)`` checks
+  router, holds one router session for the whole block (task 7.4) and yields
+  its endpoint; ``runtime_check(entry, endpoint)`` checks
   that model on the live server (build, SHA-256, server arguments).
 * Judges: one claim judge per strategy, on a copy of the answer block, built
   by ``compose_judges``. ``chat`` wraps GLM-5.3 in OMRS's production chat
@@ -97,11 +98,21 @@ class LiveDeps:
 
     @contextmanager
     def router(self, entry: Mapping[str, Any]) -> Iterator[str]:
-        """Load the plan model *entry* on the managed router; yield its endpoint URL."""
+        """Load the plan model *entry* on the managed router; yield its endpoint URL.
+
+        One router session (``router_config.held``) spans the whole block: the
+        stage's embedding calls go straight to the router, not through the
+        lease, so without it the 600-second idle stop could end the router
+        mid-stage (task 7.4, A5 R-5, H-17).
+        """
         from experiments._lib import router_env
 
-        self.start_router([entry["file"]], {"runtime": {"models": [dict(entry)]}})
-        yield router_env.ROUTER_URL
+        one = {"runtime": {"models": [dict(entry)]}}
+        router = self.start_router([entry["file"]], one)
+        import router_config  # on sys.path after start_router
+
+        with router_config.held(router, one, entry["file"]):
+            yield router_env.ROUTER_URL
 
     def runtime_check(self, entry: Mapping[str, Any], endpoint: str) -> dict[str, Any]:
         """Check the model *entry* on the live router; return its build and file SHA-256."""
@@ -141,10 +152,15 @@ class LiveDeps:
         }
 
     def engine(self) -> Any:
-        """Build an Engine on the scratch settings."""
+        """Build an Engine on the scratch settings; its answer model sends the output cap."""
+        import answers35
+
         from omrs.compose import build_engine
 
-        return build_engine()
+        engine = build_engine()
+        # Send the pinned answer output cap (protocol section 7, note of 2026-11-25).
+        answers35.cap_answer_output(engine)
+        return engine
 
     def judge(self, name: str, settings: Any, plan: Any) -> Any:
         """Build OMRS's claim judge *name* on a copy of the answer block.

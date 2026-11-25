@@ -42,6 +42,18 @@ refusal: the sentence only says that the sources do not cover something, or that
 cannot be answered from them. It states no checkable fact, not even about what a source contains.
 mixed: the sentence states a checkable fact and also a limit of what the sources cover. A fact
 about what a source contains, with a statement that it lacks the answer, is mixed.
+A sentence that says the sources do not state something is refusal, even when it also names
+part of the question or the user's own setup, as long as it states no fact about a source.
+A sentence that says what a source covers or is about, even "unrelated topics", is factual or
+mixed, never refusal.
+A trailing citation stub such as "see,,,," or an empty bracket pair does not make
+a sentence factual. A sentence that says the sources do not state, describe or
+contain something, with only a citation stub after it, is refusal.
+A sentence that says the sources lack something and also states what the
+excerpts do contain is mixed, never refusal. Example: "The sources do not show
+the balance sheet line; the excerpts include cash flow and debt" is mixed.
+A sentence that points the user to documentation or a source for more detail is
+factual, not refusal.
 
 You see the question and the sentence only. Reply with one word: factual, refusal or mixed.
 
@@ -154,7 +166,9 @@ def _todo(run_dir: Path, saved: set[str]) -> list[dict[str, Any]]:
     """Return the claims of a run still to classify, aligned against every judge row."""
     answers = read_rows(run_dir / "answer.jsonl")
     judges = {
-        p.name: {r["qid"]: r for r in read_rows(p)} for p in sorted(run_dir.glob("judge-*.jsonl"))
+        p.name: {r["qid"]: r for r in read_rows(p)}
+        for p in sorted(run_dir.glob("judge-*.jsonl"))
+        if p.name.count(".") == 1  # not the judge's .claims and .dispatch side files
     }
     base = f"{run_dir.parent.parent.name}/{run_dir.parent.name}/{run_dir.name}"
     todo: list[dict[str, Any]] = []
