@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import json
 import os
+import signal
 import sys
 from typing import Any
 
@@ -94,6 +95,11 @@ def main() -> int:
     )
     from omrs.integrations.llamacpp_runtime.spec import RuntimeSpec
 
+    # Act as a CLI started from a terminal: Ctrl-C raises KeyboardInterrupt.
+    # A shell that runs the tests as a background job (`&`) starts them with
+    # SIGINT ignored, and every child inherits that, so without this line the
+    # client never sees the SIGINT the tests send (task 3.9).
+    signal.signal(signal.SIGINT, signal.default_int_handler)
     install_sigterm_exit()
     manager = RuntimeManager()
     lease = None
