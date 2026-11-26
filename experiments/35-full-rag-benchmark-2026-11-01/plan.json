@@ -740,6 +740,13 @@
       "before_first_run": true,
       "summary": "The owner chose the staged L2 labelling plan (preregistration.md section 11.3, staged fallback), recorded on 2026-11-25 from L2's availability alone. L2 is not yet named; the name, role and relation to the project go in the run record before L2's first label, and in no public file. If L2 later has time, moving to the full plan before any L2 label is a logged deviation that only adds labels. No hypothesis, gate, seed value, number or budget changes.",
       "where": "preregistration.md sections 11.3 and 23 (P8); protocol.md section 0.17; change exp35-main-run-readiness task 16.26"
+    },
+    {
+      "id": "A12",
+      "date": "2026-11-26",
+      "before_first_run": true,
+      "summary": "GPU choice: RTX 4090 only (owner decision, 2026-11-26). This applies the standing owner rule of 2026-11-11: RTX 4090 only, host CUDA 12.8 or newer, no other GPU type, and wait when there is no stock. The decision rule of protocol.md section 0.8a no longer compares L40S and H100 timings, prices or projected costs, and no L40S or H100 timing job runs. Design D22 and D23 rows are already in RTX 4090 terms. No hypothesis, Holm family, gate, seed, number or budget changes.",
+      "where": "protocol.md section 0.8a; change exp35-main-run-readiness task 9.3"
     }
   ]
 }
