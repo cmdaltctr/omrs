@@ -158,13 +158,34 @@ def test_g2_rebuilds_each_index_and_compares_before_the_answer_setup_searches() 
 
 
 def test_the_8b_embedder_and_reranker_search_an_index_built_in_this_session() -> None:
-    runs = [(c, a) for c, a in _runs(FREEZE_FILE) if _folder(a.out_dir) == "vram"]
-    found = [(a.index or a.setup, a.stage, a.index_from) for _, a in runs]
+    runs = _runs(FREEZE_FILE)
+    found = [
+        (a.index or a.setup, a.stage, _folder(a.index_from) if a.index_from else None)
+        for _, a in runs
+        if "vram" in (_folder(a.out_dir), _folder(a.index_from) if a.index_from else None)
+    ]
     assert found == [
         ("e8b-c1024", "ingest", None),
         ("e8b-c1024", "seal", None),
-        ("e8b-c1024-r8b-hon", "search", None),
+        ("e8b-c1024-r8b-hon", "search", "vram"),
     ]
+    (search,) = [a for _, a in runs if a.setup == "e8b-c1024-r8b-hon"]
+    assert _folder(search.out_dir) == "vramq"
+
+
+def test_a_search_or_answer_without_index_from_writes_where_g2_passed() -> None:
+    """The G2 guard refuses a shared out-dir with no passing rebuild.json (2026-11-26 run)."""
+    passed = {
+        _folder(_opts(c.words)["--out-dir"])
+        for c in _calls(FREEZE_FILE)
+        if "rebuild35.py" in c.words
+    }
+    shared = [
+        (c.stage.name, _folder(a.out_dir))
+        for c, a in _runs(FREEZE_FILE)
+        if a.stage in ("search", "answer") and a.index_from is None
+    ]
+    assert shared and all(folder in passed for _, folder in shared), (passed, shared)
 
 
 def test_the_smoke_join_reads_s_and_every_check_runs_after_its_inputs() -> None:

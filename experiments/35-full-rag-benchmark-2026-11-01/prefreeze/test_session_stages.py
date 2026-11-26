@@ -33,9 +33,10 @@ STAGES_FILE = HERE / "test_session_stages.txt"
 VERIFY_FILE = HERE / "verify_session_stages.txt"
 P2_FILE = HERE / "p2_session_stages.txt"
 FREEZE_FILE = HERE / "freeze_check_stages.txt"
+RERUN_FILE = HERE / "freeze_rerun_stages.txt"
 #: Each stages file with the fewest runner calls it must hold.
-FILES = {STAGES_FILE: 101, VERIFY_FILE: 14, P2_FILE: 39, FREEZE_FILE: 52}
-BOTH = pytest.mark.parametrize("path", list(FILES), ids=["test", "verify", "p2", "freeze"])
+FILES = {STAGES_FILE: 101, VERIFY_FILE: 14, P2_FILE: 39, FREEZE_FILE: 52, RERUN_FILE: 3}
+BOTH = pytest.mark.parametrize("path", list(FILES), ids=["test", "verify", "p2", "freeze", "rerun"])
 OUT = "/workspace/exp35-test/out"
 #: What the chain and launch35.sh give every stage.
 PROVIDED = {
