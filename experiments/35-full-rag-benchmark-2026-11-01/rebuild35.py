@@ -3,6 +3,7 @@
 Usage (reads saved files only; runs without the environment record)::
 
     rebuild35.py --a CHECK/search.jsonl --b REBUILD/search.jsonl --out-dir OUT --dataset D
+        [--prefreeze]
 
 ``--a`` is the build pod's search of the shared ``e4b-c1024`` index and
 ``--b`` the search of the index rebuilt in a fresh process, both with the
@@ -15,6 +16,11 @@ A question whose search failed (no row with chunks: an empty list or a row
 closed as missing) on either side is incomplete, never a match (H-21): it is
 taken out before the comparison and listed. A question with a row on one side
 only is a mismatch.
+
+It refuses (exit 2, no ``rebuild.json``) a missing or empty file, a path that
+is not under ``search/e4b-c1024-roff-hoff/``, and a question count other than
+the dataset's frozen count (``budget35.QUESTIONS``). ``--prefreeze`` (a test
+pod subset) skips only the count check and marks the record.
 """
 
 from __future__ import annotations
@@ -30,10 +36,13 @@ for _folder in (EXP_DIR.parent.parent, EXP_DIR):
     if str(_folder) not in sys.path:
         sys.path.insert(0, str(_folder))
 
+import budget35  # noqa: E402
 from experiments._lib.determinism import compare_runs  # noqa: E402
 from outputs35 import read_rows, write_json  # noqa: E402
 
 EXIT_MISMATCH = 3
+SETUP = "e4b-c1024-roff-hoff"  # pre-registration section 15, G2
+FROZEN = budget35.QUESTIONS
 
 
 def ranked_ids(rows: Sequence[Mapping[str, Any]]) -> dict[str, list[str] | None]:
@@ -83,9 +92,34 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--out-dir", type=Path, required=True, help="folder for <dataset>/rebuild.json"
     )
     parser.add_argument("--dataset", required=True)
+    parser.add_argument(
+        "--prefreeze", action="store_true", help="a pre-freeze subset: no frozen-count check"
+    )
     args = parser.parse_args(argv)
-    report = compare({"a": ranked_ids(read_rows(args.a)), "b": ranked_ids(read_rows(args.b))})
-    report.update({"dataset": args.dataset, "a": str(args.a), "b": str(args.b)})
+    sides = {}
+    for label, path in (("a", args.a), ("b", args.b)):
+        if f"/search/{SETUP}/" not in path.absolute().as_posix():
+            parser.error(f"--{label} {path} is not under search/{SETUP}/ (G2 compares that setup)")
+        rows = read_rows(path)
+        if not rows:
+            parser.error(f"--{label} {path} is missing or empty; G2 compares nothing")
+        sides[label] = ranked_ids(rows)
+    report = compare(sides)
+    frozen = FROZEN.get(args.dataset)
+    if not args.prefreeze and report["questions_compared"] != frozen:
+        parser.error(
+            f"{args.dataset}: {report['questions_compared']} questions compared, "
+            f"the frozen count is {frozen}"
+        )
+    report.update(
+        {
+            "dataset": args.dataset,
+            "setup": SETUP,
+            "prefreeze": args.prefreeze,
+            "a": str(args.a),
+            "b": str(args.b),
+        }
+    )
     write_json(args.out_dir / args.dataset / "rebuild.json", report)
     if report["ok"]:
         print(

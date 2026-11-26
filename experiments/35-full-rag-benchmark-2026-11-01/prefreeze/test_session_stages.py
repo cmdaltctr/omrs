@@ -300,6 +300,7 @@ def test_the_rebuild_check_covers_each_core_dataset_from_both_sides() -> None:
         path = f"{dataset}/search/e4b-c1024-roff-hoff/run1/search.jsonl"
         assert (opts["--a"], opts["--b"]) == (f"{OUT}/chk/{path}", f"{OUT}/rbs/{path}")
         assert (opts["--out-dir"], opts["--dataset"]) == (f"{OUT}/s", dataset)
+        assert compare[0].words[-1] == "--prefreeze", dataset  # a subset of the questions
         sealed = max(
             _at(c)
             for c, a in mine

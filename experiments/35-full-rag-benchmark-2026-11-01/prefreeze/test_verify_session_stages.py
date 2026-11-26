@@ -119,6 +119,7 @@ def test_verify_rebuilds_the_c1024_freshstack_index_and_compares_both_after_the_
         "--out-dir": f"{OUT}/s",
         "--dataset": "freshstack",
     }
+    assert words[-1] == "--prefreeze"  # a subset: rebuild35 skips the frozen-count check
     # Only && joins the calls, so a mismatch (rebuild35.py exit 3) fails the stage.
     for name, joins in zip(G2_STAGES, (1, 1, 2), strict=True):
         command = stages[name].command
