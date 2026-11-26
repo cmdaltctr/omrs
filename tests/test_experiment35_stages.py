@@ -8,6 +8,7 @@ its fingerprint (tasks 5.4, 5.4a), and the machine and environment record
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import threading
 import time
@@ -37,8 +38,31 @@ ENV = {
 }
 
 
+TOKENIZER_BYTES = b'{"model": "stub tokenizer"}'
+TOKENIZER_SHA256 = hashlib.sha256(TOKENIZER_BYTES).hexdigest()
+
+
 def _settings(backend: str = "bm25") -> Any:
-    return SimpleNamespace(retrieval=SimpleNamespace(hybrid_sparse_backend=backend))
+    return SimpleNamespace(
+        retrieval=SimpleNamespace(hybrid_sparse_backend=backend),
+        embedding=SimpleNamespace(
+            tokenizer_model=arms.TOKENIZER_MODEL, tokenizer_revision=arms.TOKENIZER_REVISION
+        ),
+    )
+
+
+@pytest.fixture(autouse=True)
+def hf_cache(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Point the Hugging Face cache at a tmp folder that holds the pinned tokenizer.json."""
+    from huggingface_hub import constants
+
+    cache = tmp_path / "hf-cache"
+    repo = "models--" + arms.TOKENIZER_MODEL.replace("/", "--")
+    snapshot = cache / repo / "snapshots" / arms.TOKENIZER_REVISION
+    snapshot.mkdir(parents=True)
+    (snapshot / "tokenizer.json").write_bytes(TOKENIZER_BYTES)
+    monkeypatch.setattr(constants, "HF_HUB_CACHE", str(cache))
+    return snapshot / "tokenizer.json"
 
 
 class _Engine:
@@ -282,6 +306,31 @@ def test_seal_writes_the_fingerprint_and_changes_no_table(tmp_path: Path) -> Non
     assert found["sparse_backend"] == "bm25"
     assert found["fts"] is None
     assert (ctx.folder / ".done-seal.json").exists()
+
+
+def test_seal_records_the_tokenizer_revision_and_sha256(tmp_path: Path) -> None:
+    store = _ingested(tmp_path, "bioasq")
+    _table(store, "exp35_bioasq_e4b_c1024", ["1"])
+    ctx = _ctx(tmp_path, "seal")
+    assert _seal(ctx) == 0
+    found = json.loads(ctx.layout.fingerprint("bioasq", INDEX).read_text(encoding="utf-8"))
+    assert found["tokenizer"] == {
+        "model": arms.TOKENIZER_MODEL,
+        "revision": arms.TOKENIZER_REVISION,
+        "sha256": TOKENIZER_SHA256,
+    }
+
+
+def test_seal_refuses_when_the_pinned_tokenizer_is_not_cached(
+    tmp_path: Path, hf_cache: Path
+) -> None:
+    hf_cache.unlink()
+    store = _ingested(tmp_path, "bioasq")
+    _table(store, "exp35_bioasq_e4b_c1024", ["1"])
+    ctx = _ctx(tmp_path, "seal")
+    with pytest.raises(stages35.SealRefused, match=arms.TOKENIZER_REVISION):
+        _seal(ctx)
+    assert not ctx.layout.fingerprint("bioasq", INDEX).exists()
 
 
 def test_seal_refuses_an_index_without_its_ingest_marker(tmp_path: Path) -> None:

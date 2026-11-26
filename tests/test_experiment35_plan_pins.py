@@ -482,6 +482,25 @@ def test_the_plan_pins_the_ocr_fallback_off_and_the_real_setups_write_it(tmp_pat
         assert values["ocr_fallback_enabled"] is False
 
 
+# --- file-type routing off for prepared passages (amendment A13, 2026-11-26) ---------------
+
+
+def test_the_plan_pins_file_type_routing_off_and_the_real_setups_write_it(tmp_path: Path) -> None:
+    from omrs.core.ingestion.settings import IngestionSettings
+
+    plan = _plan()
+    assert arms.pinned(plan, "pins", "settings", "ingestion", "file_type_routing") is False
+    assert "file_type_routing" in IngestionSettings.model_fields  # the app's own setting key
+    assert "A13" in {a["id"] for a in plan["amendments"]}
+    gguf = tmp_path / "gguf"
+    gguf.mkdir()
+    for model in plan["runtime"]["models"]:
+        (gguf / model["file"]).write_bytes(b"")
+    for name in ("e0.6b-c512-roff-hoff", "e8b-c2048-r8b-hon"):
+        values = arms.settings_values(arms.parse_setup(name), plan, gguf, answer_host="", judges=())
+        assert values["ingestion"]["file_type_routing"] is False
+
+
 # --- reproduction tolerance of evidence_recall_20k (RDY 16.14, P14; owner, 2026-11-25) -------
 
 

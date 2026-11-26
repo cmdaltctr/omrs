@@ -99,6 +99,9 @@
     "settings": {
       "pdf_reader": "pdf_inspector",
       "ocr_fallback_enabled": false,
+      "ingestion": {
+        "file_type_routing": false
+      },
       "embedding": {
         "query_instruction": "",
         "tokenizer_model": "Qwen/Qwen3-Embedding-4B",
@@ -747,6 +750,13 @@
       "before_first_run": true,
       "summary": "GPU choice: RTX 4090 only (owner decision, 2026-11-26). This applies the standing owner rule of 2026-11-11: RTX 4090 only, host CUDA 12.8 or newer, no other GPU type, and wait when there is no stock. The decision rule of protocol.md section 0.8a no longer compares L40S and H100 timings, prices or projected costs, and no L40S or H100 timing job runs. Design D22 and D23 rows are already in RTX 4090 terms. No hypothesis, Holm family, gate, seed, number or budget changes.",
       "where": "protocol.md section 0.8a; change exp35-main-run-readiness task 9.3"
+    },
+    {
+      "id": "A13",
+      "date": "2026-11-26",
+      "before_first_run": true,
+      "summary": "File-type routing off for the prepared passages (owner decision, 2026-11-26, option 1). The 24 Nov and P2 pod ingests ran OMRS Magika file-type routing on the prepared FreshStack passage files: 444 files were classed binary and skipped (38 of the 1,547 gold documents), about 4,900 went to CodeSplitter (40 lines or 1,500 characters, ignoring the chunk size), and about 6,020 fell back to a generic splitter whose chunk count depends on the folder path. pins.settings.ingestion.file_type_routing is now false (new OMRS setting ingestion.file_type_routing, default true, so the app keeps code routing): every file goes through the reader and the token-aware Markdown path with the pinned Qwen3 tokenizer, nothing is skipped, and the count does not depend on the path. Every setup writes the pin, a plan without it stops the stage, the resolved-settings check refuses a run where OMRS resolves routing on (for example INGESTION__FILE_TYPE_ROUTING in the environment), and each trace records the resolved value. Each index seal now records the tokenizer model, revision and tokenizer.json SHA-256, and refuses when the pinned tokenizer is not cached. Expected FreshStack chunk counts with routing off (Mac, pinned tokenizer, 49,506 files, no file with 0 chunks): 182,210 at 512, 113,300 at 1,024 and 61,852 at 2,048 (the routing-on pod e8b-c512 index stored 196,350). The 24 Nov and P2 indexes are test data only and are never used. The P2 timing (section 17) was measured with routing on; on the 600-file check, routing off gives 6.1% fewer chunks and 0.4% fewer embedded tokens, so the estimate still holds as an upper bound. No hypothesis, Holm family, gate, seed, number or budget changes.",
+      "where": "protocol.md section 0.18; preregistration.md sections 16 and 17; ADR-120 harness table row 41; change exp35-main-run-readiness task 16.37"
     }
   ]
 }

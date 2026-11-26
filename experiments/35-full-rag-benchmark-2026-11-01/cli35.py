@@ -156,6 +156,7 @@ def resolved(settings: Any) -> dict[str, Any]:
         "metadata_extraction": settings.metadata.extraction_mode,
         "pdf_reader": settings.pdf_reader,
         "ocr_fallback_enabled": settings.ocr_fallback_enabled,
+        "file_type_routing": settings.ingestion.file_type_routing,
         "chunk_size": settings.chunking.chunk_size,
         "markdown_chunk_size": settings.chunking.markdown_chunk_size,
         "chunk_overlap": settings.chunking.chunk_overlap,

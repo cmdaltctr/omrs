@@ -166,6 +166,8 @@ def test_a_rebuild_gives_the_same_results_version_and_seal(
     rebuild = _build(tmp_path / "rebuild")
     monkeypatch.setattr(stages35, "VERSION_CLEANUP_EVERY", 10**9)
     kept = _build(tmp_path / "history-kept")
+    # The seal's tokenizer record has its own test (test_experiment35_stages.py).
+    monkeypatch.setattr(stages35.arms, "tokenizer_record", lambda settings, error: {})
 
     assert len(_table(kept).list_versions()) > 3 * _EVERY
     assert _ranked(first) == _ranked(rebuild) == _ranked(kept)
