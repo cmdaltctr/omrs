@@ -428,6 +428,20 @@ Owner decision, 2026-11-26. This replaces the two-case reading of A10 (section 0
 
 The reading is descriptive only. It adds no test and no p-value. The hypothesis verdicts stay the Holm-corrected tests. No hypothesis, Holm family, gate, seed, number or budget changes.
 
+### 0.21 Pre-freeze amendment A17: sensitivity power analysis (2026-11-26)
+
+Written before freeze. No measured run started. Owner decision, 2026-11-26. `plan.json` amendment A17 records it. It changes no hypothesis, Holm family, gate, seed value, number or budget of Experiment 35. It partly reverses A10 (section 0.16): it restores the MDE table and nothing else of the MDE plan.
+
+- **What it adds.** A sensitivity power analysis (Lakens 2022; Webber, Moffat and Zobel 2008; Sakai 2016). The datasets are fixed, so no sample size is chosen. The table gives the smallest effect each test detects with power 0.80 (the MDE). Pre-registration section 10 holds the table.
+- **Method.** MDE = (z at 1 minus alpha/2, plus z at 0.80) x SD / square root of n, computed with `mde35.py` (`assumed_table` and `mde_row`). Tests are two-sided. Alpha is 0.05 divided by the family size: 19 (FinanceBench), 19 (FreshStack) and 8 (BioASQ). n is 150, 203 and 707.
+- **SD source.** The registered assumed range 0.15 to 0.25 (`mde35.ASSUMED_SD`) for every row. Three measured SDs from older data are labelled stand-ins, all on FreshStack (n = 203): row 4, hybrid on minus off, SD 0.180 (Experiment 22 cells `dense_only__raw` and `hybrid__raw`, half-A questions, n = 102, the 10,024-document subset, `e4b`, no reranker); row 7, SD 0.167, and row 8, SD 0.113 (the 2026-11-24 verify session, 24 half-A questions, a 675-file sample, the `e4b-c2048` reranker cells).
+- **Design effect.** The document design effect of FinanceBench is not measured before the freeze, so its n is not divided, as `assumed_table` does. The true FinanceBench MDE is larger than the table value.
+- **Table (nDCG@10, retrieval rows).** BioASQ 0.020 to 0.034. FreshStack 0.041 to 0.068. FinanceBench 0.047 to 0.079 before the design effect. Stand-ins: FreshStack row 4 0.049, row 7 0.045, row 8 0.031. FinanceBench `evidence_recall_20k` rows (9 to 11) use the same arithmetic. Answer rows 12 to 19 have no registered SD, so they get no MDE.
+- **Plain reading.** BioASQ detects about 0.02 to 0.03. FreshStack and FinanceBench detect about 0.04 to 0.08. A smaller effect there is read through the four interval cases of A16 (section 0.20).
+- **Descriptive only.** The table changes no test, Holm family, gate, seed, the SESOI of 0.02 or any decision rule. The study never computes observed power from main-run results (Hoenig and Heisey 2001).
+- **What stays removed from A10.** The MDE pilot, pre-freeze tasks P5, P6 and P7, the "at half MDE" checker condition and `reporttables35.py --mde` stay removed. Seed 20261118 stays retired. No pilot cost enters the budget. This analysis costs $0. Nothing in the run path imports `mde35.py`.
+- **Freeze.** A17 is text only. The freeze-check pod (run 2026-11-26 on `847bec95`, a tree equal to `v3` at `0de62e9c`) is not run again. The freeze commit is the commit that includes A17.
+
 ## 1. Question
 
 What retrieval and answer quality does the full OMRS pipeline reach on three public benchmarks with pinned local models, and how much do four pipeline choices change it (embedding size, reranker, token-aware chunking, hybrid search)?
