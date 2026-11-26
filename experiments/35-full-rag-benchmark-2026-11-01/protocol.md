@@ -363,6 +363,39 @@ Written before freeze. No measured run has started. Owner decision, 2026-11-25. 
 - L2 is not yet named. L2's name, role and relation to the project go in the run record before L2's first label. They go in no public file.
 - If L2 later has time, moving to the full plan before any L2 label is a logged deviation (section 20). It only adds labels.
 
+### 0.18 Pre-freeze amendment A13: no file-type routing for the prepared passages (2026-11-26)
+
+Written before freeze. No measured run has started. Owner decision, 2026-11-26 (option 1). `plan.json` amendment A13 records it. It changes no hypothesis, Holm family, gate, seed value, number or budget.
+
+What was wrong. OMRS ingest ran Magika file-type routing on the prepared FreshStack passage files. Each file is Markdown, with code rows in a fence (section 4.1), but Magika classed many of them by their content:
+
+- 444 files were classed binary and skipped. They hold 38 of the 1,547 gold documents.
+- About 15,000 files went to the code path. About 4,900 of them parsed and went to `CodeSplitter` (40 lines or 1,500 characters), which ignores the chunk size.
+- About 6,020 failed the tree-sitter parse and fell back to a generic splitter. It counts with tiktoken `cl100k_base` and subtracts the token length of the full file path, so the chunk count depended on the folder path.
+
+On the Mac, the Markdown path gives 182,210 chunks at 512 tokens. The pod `e8b-c512` index stored 196,350.
+
+What changed.
+
+- OMRS has a new setting, `ingestion.file_type_routing` (`INGESTION__FILE_TYPE_ROUTING`). The default is `true`, so the app keeps code routing for codebase collections. When it is `false`, ingest runs no Magika detection. Every file goes through the reader and the Markdown or text path.
+- `plan.json` pins `pins.settings.ingestion.file_type_routing` to `false`. Every setup writes it into its scratch `omrs.jsonc`. A plan without the pin stops the stage.
+- The resolved-settings check refuses a run where OMRS resolves routing on, for example through `INGESTION__FILE_TYPE_ROUTING` in the environment. Each trace and the dry run record the resolved value.
+- Each index seal (`index-fingerprint.json`) records the tokenizer model, revision and the SHA-256 of its `tokenizer.json`. The seal refuses when the pinned revision is not in the local Hugging Face cache.
+
+Check (Mac, 2026-11-26, pinned tokenizer `5cf2132a`, real ingest pipeline with a stub embedder). The first 600 files of the pod summary give 2,289 chunks at 512, the Markdown-only total. A copy of the same files in a deeper folder gives 2,289 again. No file is skipped and none has 0 chunks.
+
+Expected FreshStack chunk counts with routing off (49,506 files, every file at least 1 chunk):
+
+| Chunk size | Chunks |
+| --- | --- |
+| 512 | 182,210 |
+| 1,024 | 113,300 |
+| 2,048 | 61,852 |
+
+Earlier indexes. The 24 Nov test-session indexes and the P2 pod indexes (pod `q2pr74unxye0mj`) were built with routing on. They are test data only. No main-run stage reads them.
+
+Timing. The P2 build timing (pre-registration section 17) was measured with routing on. On the same 600 files, routing off gives 6.1% fewer chunks (2,289 against 2,438 with Magika on the Mac) and 0.4% fewer embedded Qwen3 tokens (996,708 against 1,001,004). Embedding time follows the token total, so the build takes about the same time or less. The estimate of section 17 still holds as an upper bound.
+
 ## 1. Question
 
 What retrieval and answer quality does the full OMRS pipeline reach on three public benchmarks with pinned local models, and how much do four pipeline choices change it (embedding size, reranker, token-aware chunking, hybrid search)?

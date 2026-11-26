@@ -177,6 +177,7 @@ citation parse, evidence order). File and line evidence is in the audit.
 | 38 | Ragas, claim kinds, length check, determinism, refusals, RAGFlow | Experiment tools | None | Harness-only |
 | 39 | FreshStack query text | Title, blank line, body | What the user types | Paper |
 | 40 | Workspace profiles | Config and state folders moved; workspace not moved | Read-only catalogue | Harness-only |
+| 41 | File-type routing (A13) | Off for the prepared passages: `ingestion.file_type_routing` false, pinned and checked, so every file takes the token-aware Markdown path (fixed 2026-11-26) | On: Magika routes code to the code splitter and skips binary files | Harness-only; Paper. The app keeps routing for codebase collections |
 
 ## Consequences
 
