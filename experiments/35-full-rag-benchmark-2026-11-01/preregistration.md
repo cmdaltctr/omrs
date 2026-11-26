@@ -393,7 +393,6 @@ Measured build rates behind the RunPod line (P2, 2026-11-25; RTX 4090, FreshStac
 | e4b-c2048 | 0.227 | 4.2 h |
 | e8b-c1024 | 0.310 | 5.7 h |
 | e8b-c512 | measured full | 5.65 h |
-- **Separate freeze (owner decision, 2026-11-25).** Part 2 has its own freeze and its own OSF deposit. Experiment 35 freezes alone and does not depend on Part 2: no Experiment 35 stage, gate or file reads a Part 2 result or waits for it. Part 2 is frozen, with its own OSF deposit, before any Experiment 35 half-B score exists. If that cannot be done in time, Part 2 is dropped or re-planned. It never uses half-B results.
 | e0.6b-c512, e0.6b-c2048, e8b-c2048 | scaled by chunk-size ratio | 3.9 h, 3.3 h, 5.2 h |
 | Total, 9 indexes + rebuild | | about 45 h |
 
@@ -401,6 +400,7 @@ Measured build rates behind the RunPod line (P2, 2026-11-25; RTX 4090, FreshStac
 
 Experiment 35 fixes the points below. On these points this section wins over the proposal. The proposal governs every other Part 2 and E1 fact until the Part 2 protocol is frozen; after that, the Part 2 protocol governs them (section 1).
 
+- **Separate freeze (owner decision, 2026-11-25).** Part 2 has its own freeze and its own OSF deposit. Experiment 35 freezes alone and does not depend on Part 2: no Experiment 35 stage, gate or file reads a Part 2 result or waits for it. Part 2 is frozen, with its own OSF deposit, before any Experiment 35 half-B score exists. If that cannot be done in time, Part 2 is dropped or re-planned. It never uses half-B results.
 - **OMRS setup**: the A3 cell (section 14.1), its hash time-stamped on OSF before half B is scored. Part 2 runs on half B only, once per system.
 - **Estimand, fixed before any half-B score.** The cost decision at FLOW step 7.2a fixes which estimand applies. It is recorded before any half-B score exists, so the estimand is never chosen after seeing results.
   - If the matched RAGFlow search runs: C1 and C2 compare "selected OMRS against selected RAGFlow". The RAGFlow cell is chosen on half A by the same selection rule. Its configuration hash is time-stamped on OSF with the OMRS hash, before any half-B score exists. Default RAGFlow is then a secondary, descriptive row.
