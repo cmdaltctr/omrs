@@ -494,7 +494,14 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +1 (2026-11-25, Exp 35 budget A8 and P14, by test-ID diff against HEAD 07f124c9):
 # test_evidence_recall_20k_has_the_tolerance_of_the_other_four_metrics (plan pins).
 # 0 removed or renamed. No extra.
-_BASE_EXECUTED = 14000
+# +31 (2026-11-26, Exp 35 A13, RDY 16.3 and 16.4, by test-ID diff against HEAD ddfc0237):
+# new files test_ingestion_file_type_routing.py (6) and test_experiment35_alphandcg.py (8);
+# test_experiment35_arms (4), test_experiment35_unjudged (5),
+# test_experiment35_report_tables (3), test_experiment35_stages (2),
+# test_experiment35_plan_pins (1), test_experiment35_run_arms (1, the
+# INGESTION__FILE_TYPE_ROUTING override case) and test_experiment35_scoring (1).
+# 0 removed or renamed. No extra.
+_BASE_EXECUTED = 14031
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
