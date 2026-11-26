@@ -522,8 +522,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # prefreeze/test_mac_watch35_zai (5) and prefreeze/test_kinds_recheck35 (3);
 # prefreeze/test_freeze_check_stages (1), _launch35_script (1), _run_glm_chat (1) and
 # _pod_test_session_script (1, the base URL case). 1 renamed: the GLM values test of
-# test_run_glm_chat. No extra.
-_BASE_EXECUTED = 14128
+# test_run_glm_chat; its new ID is one of the 19 and its old ID went, so net +18. No extra.
+# +1 (2026-11-26, PR 229 review, by test-ID diff against HEAD ca5e655b): 1 added:
+# prefreeze/test_kinds_recheck35 (per-kind weights). None removed or renamed. No extra.
+_BASE_EXECUTED = 14129
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

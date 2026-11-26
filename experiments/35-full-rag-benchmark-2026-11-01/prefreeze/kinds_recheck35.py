@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path
@@ -57,30 +58,33 @@ def prepare(gate2: Path, examples_file: Path) -> dict[str, Any]:
     }
 
 
-def _rate(pairs: list[tuple[float, bool]]) -> float | None:
-    total = sum(w for w, _ in pairs)
-    return sum(w for w, hit in pairs if hit) / total if total else None
+def _defined(value: float) -> float | None:
+    return None if math.isnan(value) else value
 
 
 def per_kind(
     sample: Mapping[str, Any], labels: Mapping[str, str], kinds: Mapping[str, str]
 ) -> dict:
-    """Weighted recall and precision of each kind (weight as in ``refusals35.gate``)."""
+    """Weighted recall and precision of each kind, from ``refusals35._scores`` (gate weights)."""
     weight = {s["stratum"]: 1 / s["fraction"] for s in sample["strata"] if s["fraction"]}
     rows = [
         (weight[i["stratum"]], labels[i["item_id"]], kinds[i["claim_key"]])
         for i in sample["items"]
         if labels[i["item_id"]] != labelpage35.CANT_TELL
     ]
-    return {
-        kind: {
-            "recall": _rate([(w, p == kind) for w, h, p in rows if h == kind]),
-            "precision": _rate([(w, h == kind) for w, h, p in rows if p == kind]),
+    out = {}
+    for kind in claimkinds35.KINDS:
+        scored = [
+            (w, h == kind, None if p == claimkinds35.UNREADABLE else p == kind) for w, h, p in rows
+        ]
+        scores = refusals35._scores(scored)
+        out[kind] = {
+            "recall": _defined(scores["weighted_recall"]),
+            "precision": _defined(scores["weighted_precision"]),
             "human": sum(h == kind for _, h, _ in rows),
             "predicted": sum(p == kind for _, _, p in rows),
         }
-        for kind in claimkinds35.KINDS
-    }
+    return out
 
 
 def score(found: Mapping[str, Any], out_dir: Path) -> int:

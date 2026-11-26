@@ -110,3 +110,16 @@ def test_a_claim_with_no_saved_kind_fails_the_check(gate2: Path, tmp_path: Path)
     _kinds(out, {i["claim_key"]: "factual" for i in items[:-1]})
     assert _score(inp, out) == 1
     assert not (out / "recheck-summary.json").exists()
+
+
+def test_per_kind_weights_strata_and_counts_unreadable_as_a_miss() -> None:
+    strata = [{"stratum": "a", "fraction": 0.5}, {"stratum": "b", "fraction": 0.25}]
+    items = [{"item_id": f"i{n}", "claim_key": f"k{n}", "stratum": s}
+             for n, s in enumerate("aabb")]  # fmt: skip
+    labels = {"i0": "refusal", "i1": "factual", "i2": "refusal", "i3": "cant_tell"}
+    kinds = {"k0": "refusal", "k1": "refusal", "k2": "unreadable", "k3": "factual"}
+    got = kr.per_kind({"strata": strata, "items": items}, labels, kinds)
+    # refusal: human i0 (w2, hit) and i2 (w4, unreadable miss); predicted i0 (w2), i1 (w2)
+    assert got["refusal"] == {"recall": 2 / 6, "precision": 0.5, "human": 2, "predicted": 2}
+    assert got["factual"] == {"recall": 0.0, "precision": None, "human": 1, "predicted": 0}
+    assert got["mixed"]["recall"] is None
