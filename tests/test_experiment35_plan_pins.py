@@ -480,3 +480,38 @@ def test_the_plan_pins_the_ocr_fallback_off_and_the_real_setups_write_it(tmp_pat
     for name in ("e4b-c512-roff-hoff", "e8b-c2048-r8b-hon"):
         values = arms.settings_values(arms.parse_setup(name), plan, gguf, answer_host="", judges=())
         assert values["ocr_fallback_enabled"] is False
+
+
+# --- file-type routing off for prepared passages (amendment A13, 2026-11-26) ---------------
+
+
+def test_the_plan_pins_file_type_routing_off_and_the_real_setups_write_it(tmp_path: Path) -> None:
+    from omrs.core.ingestion.settings import IngestionSettings
+
+    plan = _plan()
+    assert arms.pinned(plan, "pins", "settings", "ingestion", "file_type_routing") is False
+    assert "file_type_routing" in IngestionSettings.model_fields  # the app's own setting key
+    assert "A13" in {a["id"] for a in plan["amendments"]}
+    gguf = tmp_path / "gguf"
+    gguf.mkdir()
+    for model in plan["runtime"]["models"]:
+        (gguf / model["file"]).write_bytes(b"")
+    for name in ("e0.6b-c512-roff-hoff", "e8b-c2048-r8b-hon"):
+        values = arms.settings_values(arms.parse_setup(name), plan, gguf, answer_host="", judges=())
+        assert values["ingestion"]["file_type_routing"] is False
+
+
+# --- reproduction tolerance of evidence_recall_20k (RDY 16.14, P14; owner, 2026-11-25) -------
+
+
+def test_evidence_recall_20k_has_the_tolerance_of_the_other_four_metrics() -> None:
+    from omrs.core.experiment_records.runtime_block import load_runtime_block
+
+    plan = _plan()
+    tolerance = {t.metric: t.max_abs_change for t in load_runtime_block(plan).tolerance}
+    assert tolerance == dict.fromkeys(
+        ("Recall@10", "MRR@10", "nDCG@10", "hit@page", "evidence_recall_20k"), 0.005
+    )
+    prereg = (FOLDER / "preregistration.md").read_text(encoding="utf-8")
+    named = "0.005 absolute on nDCG@10, Recall@10, MRR@10, hit@page and `evidence_recall_20k`"
+    assert named in prereg

@@ -90,6 +90,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--passages-dir", type=Path, help="the prepared passage folder (prepare35.py)"
     )
+    parser.add_argument(
+        "--gate",
+        type=Path,
+        help="classifier gate 3 gate.json; lengthcheck uses claim kinds only when it passed",
+    )
     for name in CONCURRENCY_OPTIONS:
         parser.add_argument(
             f"--{name.replace('_', '-')}",
@@ -156,6 +161,7 @@ def resolved(settings: Any) -> dict[str, Any]:
         "metadata_extraction": settings.metadata.extraction_mode,
         "pdf_reader": settings.pdf_reader,
         "ocr_fallback_enabled": settings.ocr_fallback_enabled,
+        "file_type_routing": settings.ingestion.file_type_routing,
         "chunk_size": settings.chunking.chunk_size,
         "markdown_chunk_size": settings.chunking.markdown_chunk_size,
         "chunk_overlap": settings.chunking.chunk_overlap,

@@ -30,6 +30,7 @@ from typing import Any
 
 import budget35
 import determinism35
+import kindgate35
 import labels35
 import scoring35
 import select35
@@ -141,6 +142,7 @@ def _test(
         "ci_low": test.ci_low,
         "ci_high": test.ci_high,
         "method": f"bias-reduced GEE ({test.source})",
+        "library_difference": test.library_difference,  # section 9 point 3
     }
 
 
@@ -419,6 +421,7 @@ def write_confirmatory(
     *,
     label_dir: Path,
     root: Path,
+    kind_gate: Path | None,
     n_draws: int = stats_cluster.SIGN_FLIP_DRAWS,
     n_perm: int = PERM_SHUFFLES,
 ) -> dict[str, Any]:
@@ -428,16 +431,21 @@ def write_confirmatory(
     first on the run output folder *root*. The gate rows of
     ``labels35.require_gates`` become "not testable" (p = 1); *path* also
     records them under ``gates``. Drop step 1 in ``<root>/drops.json`` marks
-    the Legal answer rows ``dropped``.
+    the Legal answer rows ``dropped``. Without a passed classifier gate
+    (*kind_gate*, ``kindgate35``) rows 12, 13, 16 and 17 are "not testable" too.
 
     Raises:
         scoring35.HalfBLocked: Half B is not open; nothing is computed or written.
         stages35.StageOrderError: ``<root>/join.json`` is missing, fails or is a smoke join.
         labels35.GateMissing: A gate file is missing; nothing is computed or written.
+        kindgate35.KindGateError: The join used another claim-kind rule than *kind_gate*.
     """
     scoring35.require_half_b(root)
     determinism35.require_join(root)
-    gated = labels35.require_gates(label_dir)
+    kinds = kindgate35.confirmatory_rows(root, kind_gate)
+    gated = {
+        d: r | set(kinds["not_testable_rows"]) for d, r in labels35.require_gates(label_dir).items()
+    }
     kept = budget35.answer_datasets(budget35.read_drops(root))
     result = analyse(
         search_records,
@@ -447,7 +455,8 @@ def write_confirmatory(
         n_perm=n_perm,
         dropped=[d for d in budget35.QUESTIONS if d not in kept],
     )
-    write_json(path, {**result, "gates": {d: sorted(rows) for d, rows in gated.items()}})
+    gates = {d: sorted(rows) for d, rows in gated.items()}
+    write_json(path, {**result, "gates": gates, "classifier_gate": kinds})
     return result
 
 

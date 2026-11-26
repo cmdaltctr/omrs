@@ -23,6 +23,7 @@ from the plan ``runtime`` block by role.
 
 from __future__ import annotations
 
+import hashlib
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -40,7 +41,8 @@ GLM_MODEL = "glm-5.3"
 GLM_BASE_URL = "https://api.z.ai/api/coding/paas/v4"
 GLM_KEY_ENV = "OMRS_EXP35_ZAI_KEY"  # gitleaks:allow - a variable name, not a key
 GLM_REASONING = "low"
-#: The token-aware tokenizer (ADR-063). Every setup chunks with it.
+#: The token-aware tokenizer (ADR-063). Every setup chunks with it: file-type routing
+#: is off (``pins.settings.ingestion``, amendment A13), so no file takes the code path.
 TOKENIZER_MODEL = "Qwen/Qwen3-Embedding-4B"
 TOKENIZER_REVISION = "5cf2132abc99cad020ac570b19d031efec650f2b"  # gitleaks:allow (HF revision)
 #: Answer budget (design D30): one round, 131,072 characters.
@@ -402,6 +404,9 @@ def settings_values(
     settings_pins = pinned(plan, "pins", "settings")
     # Protocol 4.3: no OCR of source pages. Without the pin the app default (OCR on) would run.
     pinned(plan, "pins", "settings", "ocr_fallback_enabled")
+    # A13: no Magika file-type routing of the prepared passages; every file takes the
+    # token-aware Markdown path. Without the pin the app default (routing on) would run.
+    pinned(plan, "pins", "settings", "ingestion", "file_type_routing")
     pinned_host = (settings_pins.get("answer") or {}).get("allowed_hosts")
     if pinned_host and answer_host and answer_host != pinned_host:
         raise ArmConfigError(
@@ -412,6 +417,29 @@ def settings_values(
         values["openai_compatible_base_url"] = GLM_BASE_URL
         values["openai_compatible_api_key"] = f"env://{GLM_KEY_ENV}"
     return values
+
+
+def tokenizer_record(settings: Any, *, error: type[Exception] = ArmConfigError) -> dict[str, str]:
+    """Return the chunking tokenizer's model, revision and ``tokenizer.json`` SHA-256 (A13).
+
+    Each index seal records it, so the run record names the exact tokenizer file.
+
+    Raises:
+        Exception: *error* when the revision has no ``tokenizer.json`` in the local
+            Hugging Face cache: the index cannot have been chunked with it.
+    """
+    from huggingface_hub import try_to_load_from_cache
+
+    model = settings.embedding.tokenizer_model
+    revision = settings.embedding.tokenizer_revision
+    path = try_to_load_from_cache(repo_id=model, filename="tokenizer.json", revision=revision)
+    if not isinstance(path, str):
+        raise error(
+            f"tokenizer {model} revision {revision} has no cached tokenizer.json; the index "
+            "cannot have been chunked with the pinned tokenizer"
+        )
+    digest = hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    return {"model": model, "revision": revision, "sha256": digest}
 
 
 def without_keys(values: Mapping[str, Any]) -> dict[str, Any]:

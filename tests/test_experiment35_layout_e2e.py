@@ -75,8 +75,8 @@ def test_score35_finds_the_search_rows(out: Path) -> None:
 
 
 def test_the_faithfulness_sampler_finds_the_claims(out: Path) -> None:
-    labels35.require_kinds(out)
-    claims = labels35.faithfulness_claims(out, fx.questions())
+    labels35.require_kinds(out, fx.VERSION)
+    claims = labels35.faithfulness_claims(out, fx.questions(), fx.VERSION)
     expected = len(fx.DATASETS) * len(fx.SETUPS) * len(fx.RUNS) * len(fx.QIDS) * len(fx.CLAIMS)
     assert len(claims) == expected
     items = labels35.draw_faithfulness(claims, per_cell=1)
@@ -115,10 +115,10 @@ def _empty(tmp_path: Path) -> Path:
 @pytest.mark.parametrize(
     "reader",
     [
-        lambda o: labels35.faithfulness_claims(o, fx.questions()),
-        lambda o: labels35.require_kinds(o),
+        lambda o: labels35.faithfulness_claims(o, fx.questions(), fx.VERSION),
+        lambda o: labels35.require_kinds(o, fx.VERSION),
         lambda o: refusalreport35.load(o, fx.VERSION),
-        lambda o: lengthcheck35.pool(o),
+        lambda o: lengthcheck35.pool(o, fx.VERSION),
         lambda o: correct35.draw(o, o.parent / "halves.json", fx.questions(), per_dataset=2),
     ],
 )

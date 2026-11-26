@@ -265,7 +265,7 @@ Granite Guardian text in this record stays as history only.
 agreement of at least 0.90, refusal recall of at least 0.90 and, from
 2026-11-23, refusal precision of at least 0.90. The claims come from the
 pre-freeze test pod session answers (changed 2026-11-23; see A11). A
-failed gate blocks the freeze of the classifier.
+failed gate blocks the freeze of the classifier. (Changed 2026-11-25: only the prompt and examples are fixed before the freeze; gate 3 runs after the freeze on main-run answers, and claim-kind results stay unused until it passes. See pre-registration section 11.1.)
 
 **A11. Gate changes of 2026-11-23 (pre-freeze, owner approved).**
 Operator acceptance of this amendment is still pending, and the freeze

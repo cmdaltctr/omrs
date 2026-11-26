@@ -116,7 +116,8 @@ def _row(number: int, metric: str, low: float, high: float, **extra: Any) -> dic
     }
 
 
-def test_sesoi_and_mde_lines_per_row() -> None:
+def test_sesoi_lines_per_row_carry_no_mde_line() -> None:
+    # A10 removed the MDE table (2026-11-26): the lines hold the SESOI reading and marks only.
     rows = {
         "freshstack": [
             _row(1, "ndcg_at_10", 0.03, 0.08),
@@ -126,30 +127,20 @@ def test_sesoi_and_mde_lines_per_row() -> None:
             {"row": 13, "metric": "faithfulness_glm_factual", "dropped": True},
         ]
     }
-    mde = [
-        {"dataset": "freshstack", "row": 1, "mde": 0.03, "assumed": False, "rough": False},
-        {"dataset": "freshstack", "row": 12, "mde": 0.07, "assumed": False, "rough": True},
-        {
-            "dataset": "freshstack",
-            "row": 2,
-            "mde": None,
-            "mde_low": 0.02,
-            "mde_high": 0.04,
-            "assumed": True,
-            "rough": False,
-        },
-    ]
-    lines = {r["row"]: r for r in reporttables35.sesoi_lines(rows, mde)["freshstack"]}
+    lines = {r["row"]: r for r in reporttables35.sesoi_lines(rows)["freshstack"]}
     assert lines[1]["sesoi"] == 0.02 and lines[1]["sesoi_reading"] == "beyond 0.02"
     assert lines[1]["readings"] == {"0.01": "beyond", "0.02": "beyond", "0.05": "cannot exclude"}
-    assert lines[1]["mde"] == 0.03
     assert lines[2]["sesoi_reading"] == "within 0.02"
-    assert lines[2]["mde_range"] == [0.02, 0.04] and lines[2]["mde_label"] == "assumed"
     assert lines[3]["sesoi_reading"] == "cannot rule out a small effect"
     assert lines[3]["status"] == "not testable"
     assert lines[12]["sesoi"] is None and lines[12]["readings"] is None
-    assert lines[12]["mde"] == 0.07 and lines[12]["mde_label"] == "rough"
-    assert lines[13]["status"] == "dropped" and lines[13]["mde"] is None
+    assert lines[13]["status"] == "dropped"
+    assert not any(k.startswith("mde") for line in lines.values() for k in line)
+
+
+def test_the_report_command_has_no_mde_option() -> None:
+    with pytest.raises(SystemExit):
+        reporttables35.main(["--out-dir", "x", "--mde", "y"])
 
 
 # --- FinanceBench nDCG@10 table for rows 9 and 10 (sign agreement) -------------------
@@ -241,3 +232,45 @@ def test_main_writes_the_report_tables_behind_the_half_b_guard(tmp_path: Path) -
     assert saved["chunk_lengths"]["bioasq"]["512"]["chunks"] == 5
     assert saved["drops"] == [] and saved["sesoi_lines"] is None
     assert saved["sensitivity"] is None  # no factorial result given
+
+
+def test_main_writes_the_unjudged_table_from_the_score_records(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # PR 21: unjudged share and condensed-list nDCG@10 where negatives are judged, else NEITHER.
+    unjudged35 = load("unjudged35")
+    qrels = {"freshstack": {"q0": {"A": 1, "N": 0}}, "bioasq": {"q0": {"P": 1}}}
+    monkeypatch.setattr(reporttables35, "load_qrels", lambda names: {d: qrels[d] for d in names})
+    open_half_b(tmp_path)
+    _write(tmp_path / "answer-scores.jsonl", [])
+    for dataset in ("freshstack", "bioasq"):
+        for setup in select35.SEARCH_SETUPS:  # the full 72-setup grid, as score35 writes it
+            units = ["X", "A"]
+            record = {"dataset": dataset, "setup": setup, "qid": "q0",
+                      "units": units, "ranked_units": units, "ndcg_at_10": 0.6}  # fmt: skip
+            _write(tmp_path / "scores" / "A" / dataset / f"{setup}.jsonl", [record])
+    assert reporttables35.main(["--out-dir", str(tmp_path)]) == 0
+    saved = json.loads((tmp_path / "report-tables.json").read_text())["unjudged"]
+    assert saved["bioasq"] == {"defined": False, "note": unjudged35.NEITHER}
+    assert saved["freshstack"]["unjudged_share"]["e4b-c512-roff-hoff"] == pytest.approx(0.1)
+    assert len(saved["freshstack"]["unjudged_share"]) == 72
+    assert [r["row"] for r in saved["freshstack"]["condensed_ndcg_rows"]] == list(range(1, 9))
+
+
+def test_main_writes_no_unjudged_table_before_any_score(tmp_path: Path) -> None:
+    open_half_b(tmp_path)
+    _write(tmp_path / "answer-scores.jsonl", [])
+    assert reporttables35.main(["--out-dir", str(tmp_path)]) == 0
+    saved = json.loads((tmp_path / "report-tables.json").read_text())
+    assert saved["unjudged"] is None
+    assert saved["alpha_ndcg_freshstack"] == {"status": "not run"}
+
+
+def test_main_carries_the_alpha_ndcg_table_when_alphandcg35_wrote_it(tmp_path: Path) -> None:
+    open_half_b(tmp_path)
+    _write(tmp_path / "answer-scores.jsonl", [])
+    table = {"metric": "alpha-nDCG@10", "descriptive": True, "setups": {"s": {"n": 1}}}
+    (tmp_path / "alpha-ndcg.json").write_text(json.dumps(table))
+    assert reporttables35.main(["--out-dir", str(tmp_path)]) == 0
+    saved = json.loads((tmp_path / "report-tables.json").read_text())
+    assert saved["alpha_ndcg_freshstack"] == table

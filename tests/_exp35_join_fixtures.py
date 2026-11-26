@@ -105,6 +105,7 @@ def _answer_run(out: Path, dataset: str, setup: str, run: int) -> None:
             "answer": ANSWER,
             "evidence": [{"ordinal": 1, "chunk_ids": ["c"], "text": "t"}],
             "cut_tokens": 1000,
+            "evidence_tokens": 900,  # answers35 saves the realised (assembled) total
             "model_returned": REQUESTED["answer"],
         }
         for q in QIDS

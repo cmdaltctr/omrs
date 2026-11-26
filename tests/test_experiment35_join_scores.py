@@ -36,7 +36,7 @@ def _edit(path: Path, qid: str, **change: object) -> None:
 
 
 def _scores(folder: Path, **kw: object) -> dict[str, dict]:
-    records = joinscores35.answer_scores(folder, "bioasq", fx.SETUPS[0], 2, **kw)
+    records = joinscores35.answer_scores(folder, "bioasq", fx.SETUPS[0], 2, kinds_version="v", **kw)
     return {r["qid"]: r for r in records}
 
 
@@ -184,3 +184,35 @@ def test_a_smoke_join_needs_no_time_stamp(tmp_path: Path) -> None:
         requested=fx.REQUESTED,
     )
     assert report["smoke"] is True and (out / "join.json").exists()
+
+
+def test_the_record_carries_the_realised_evidence_total_into_the_h8b_table(built) -> None:
+    # Review B4: the answer stage saves evidence_tokens; the join must copy it, or the
+    # registered cut-against-realised table (prereg section 21) prints nulls.
+    out, _, _ = built
+    folder = _folder(out)
+    t20k = "e4b-c512-r4b-hon-t20k"
+    scores = joinscores35.answer_scores(folder, "bioasq", t20k, 2, kinds_version="v")
+    assert {r["evidence_tokens"] for r in scores} == {900}
+    totals = load("reporttables35").h8b_token_totals(scores)["bioasq"][t20k]
+    assert totals["all"] == {"mean_cut_tokens": 1000, "mean_realised_tokens": 900}
+    assert totals["no_realised_total"] == 0
+
+
+def test_join_counts_unparseable_verdicts_per_dataset_and_setup(built) -> None:
+    # Pre-registration section 12 (Counts): the join counts unparseable verdicts per setup.
+    out, experiment, pods = built
+    folder = _folder(out)
+    verdicts = [{"index": 0, "ordinals": [1], "verdict": "unparseable"}]
+    _edit(folder / "judge-chat.jsonl", "q1", verdicts=verdicts)
+    report = join35.join(
+        out,
+        experiment=experiment,
+        records=pods,
+        search_setups=fx.SETUPS,
+        answer_setups=fx.SETUPS,
+        datasets=fx.DATASETS,
+        requested=fx.REQUESTED,
+    )
+    assert report["unparseable_verdicts"]["bioasq"] == {fx.SETUPS[0]: 1, fx.SETUPS[1]: 0}
+    assert report["unparseable_verdicts"]["legal"] == {fx.SETUPS[0]: 0, fx.SETUPS[1]: 0}

@@ -95,6 +95,13 @@ class IngestionSettings(BaseModel):
     embed_batch_size: int = 100
     normalise_reader_output: bool = True
 
+    # Magika file-type routing (code splitter, config splitter, binary skip).
+    # Off sends every file through the document reader and the Markdown or
+    # text path. Experiment 35 turns it off for its prepared Markdown passages,
+    # where detection sent fenced passages to the code splitter and skipped
+    # some as binary. Env: INGESTION__FILE_TYPE_ROUTING=false.
+    file_type_routing: bool = True
+
     # File extensions ingestion collects (design D4: profile-scoped, not a
     # global constant). The ``codebase`` profile overlays source extensions
     # onto this default; the documents profile inherits it unchanged. The

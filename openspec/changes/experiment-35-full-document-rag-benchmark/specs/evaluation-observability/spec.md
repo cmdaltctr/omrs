@@ -43,7 +43,7 @@ Each index SHALL be built once, and each search setup SHALL run once (run 1) for
 
 ### Requirement: Spending stops at a stated ceiling with a results-blind drop order
 
-The protocol SHALL state a cost estimate and a ceiling, pods and hosted calls together (about $730 and $975, `preregistration.md` section 17). Projections SHALL use billing and measured rates only, never scores, before the freeze, after the search stage and while the replicate pods run. At the ceiling, work SHALL be dropped in a results-blind order fixed before the run, and no confirmatory item SHALL be dropped by choice.
+The protocol SHALL state a cost estimate and a ceiling, pods and hosted calls together (estimate $1,122 and ceiling $1,716, amended 2026-11-25 from about $730 and $975; `preregistration.md` section 17). Projections SHALL use billing and measured rates only, never scores, before the freeze, after the search stage and while the replicate pods run. At the ceiling, work SHALL be dropped in a results-blind order fixed before the run, and no confirmatory item SHALL be dropped by choice.
 
 #### Scenario: Projection above the ceiling
 - **WHEN** a projection, from measured index and search hours, reaches the ceiling
@@ -67,7 +67,7 @@ The protocol SHALL state a cost estimate and a ceiling, pods and hosted calls to
 
 ### Requirement: Statistics follow the pre-registered analysis
 
-The analysis SHALL follow `preregistration.md` section 9 and SHALL fit no mixed model. Each contrast row SHALL use per-question contrast scores (cells weighted equally, answer scores averaged over 3 runs first), and the estimate SHALL be their plain mean. The report SHALL give unadjusted 95% intervals beside each decision, marked against the SESOI and the minimum detectable effect.
+The analysis SHALL follow `preregistration.md` section 9 and SHALL fit no mixed model. Each contrast row SHALL use per-question contrast scores (cells weighted equally, answer scores averaged over 3 runs first), and the estimate SHALL be their plain mean. The report SHALL give unadjusted 95% intervals beside each decision, read against the SESOI (plus and minus 0.02).
 
 #### Scenario: Test on FreshStack, BioASQ or Legal RAG Bench
 - **WHEN** a row's p-value and interval are computed on FreshStack, BioASQ or Legal RAG Bench
@@ -81,7 +81,7 @@ The analysis SHALL follow `preregistration.md` section 9 and SHALL fit no mixed 
 #### Scenario: No difference found
 - **WHEN** the Holm-adjusted p is 0.05 or more
 - **THEN** the report SHALL state that no difference was detected at this sample size
-- **AND** the report SHALL NOT claim equivalence, and no TOST SHALL run
+- **AND** the report SHALL NOT claim equivalence, and no TOST SHALL run (the reading of each interval against plus and minus 0.02, `preregistration.md` section 10, is descriptive and adds no test)
 
 #### Scenario: Decision and sensitivity check disagree
 - **WHEN** a row counts under the decision test but not under its sensitivity check (paired permutation by question on FreshStack and BioASQ, GEE with document clusters on FinanceBench), or the other way
@@ -201,7 +201,11 @@ Every hosted call SHALL record the model id and provider that the reply returns,
 
 ### Requirement: The protocol is publicly pre-registered
 
-`preregistration.md` (main file), `protocol.md`, `plan.json`, the proposal and the Part 2 protocol of the freeze commit SHALL be deposited on OSF. A later commit, made before the first measured run, SHALL record the OSF link and the freeze commit hash in the `plan.json` `frozen` list with the other pins of `preregistration.md` section 16; the freeze commit cannot hold its own hash. The A3 configuration hash SHALL be time-stamped on the registered OSF project before any half-B score is computed.
+`preregistration.md` (main file), `protocol.md`, `plan.json` and the proposal of the freeze commit SHALL be deposited on OSF. A later commit, made before the first measured run, SHALL record the OSF link and the freeze commit hash in the `plan.json` `frozen` list with the other pins of `preregistration.md` section 16; the freeze commit cannot hold its own hash. The A3 configuration hash SHALL be time-stamped on the registered OSF project before any half-B score is computed.
+
+#### Scenario: Part 2 deposit
+- **WHEN** the Part 2 protocol is deposited
+- **THEN** it SHALL be a separate deposit, made before any half-B score is computed (owner decision, 2026-11-25)
 
 #### Scenario: Run before the deposit
 - **WHEN** the first measured run starts and `plan.json` `frozen` holds no OSF link

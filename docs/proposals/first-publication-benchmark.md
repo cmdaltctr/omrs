@@ -9,11 +9,11 @@ This is the first paper of the fellowship programme. The manṭiq work in `v4` (
 This proposal is the master plan for the first OMRS publication. It holds the scope, the order of work, what the paper claims and why, Part 2 and E1. Each experiment's governing file holds how its part runs: counts, seeds, models, statistical methods, gates and costs.
 
 - Part 1 is Experiment 35. Its governing file is the pre-registration `experiments/35-full-rag-benchmark-2026-11-01/preregistration.md` (amendment A4, 14 November 2026). It holds the live design only. `protocol.md` sections 0.1 to 0.13 (amendments A1 to A4) and sections 1 to 7 are history.
-- Part 2 (controlled comparison with RAGFlow) gets its own protocol before the freeze, and E1 (EnterpriseRAG-Bench context run) gets one before its run. Pre-registration section 18 lists what Experiment 35 fixes for them.
+- Part 2 (controlled comparison with RAGFlow) gets its own protocol and its own freeze (owner decision, 2026-11-25): Experiment 35 freezes alone, and Part 2 is frozen later, before any Experiment 35 half-B score exists. E1 (EnterpriseRAG-Bench context run) gets one before its run. Pre-registration section 18 lists what Experiment 35 fixes for them.
 
 Rule: for every Experiment 35 design fact, the pre-registration governs. Where this proposal and the pre-registration disagree on such a fact, the pre-registration wins and this proposal is corrected. For Part 2 and E1, pre-registration section 18 wins over this proposal on the points it fixes: the OMRS setup and its hash, the halves, the shared parts, the measurement settings, the C1 and C2 measures and tests, and the Part 2 missing-outcome rules. This proposal governs every other Part 2 and E1 fact until the Part 2 protocol is frozen. After that, the Part 2 protocol governs them. This proposal also governs scope and order of work. This file states Experiment 35 facts in short form and points to the pre-registration section. It does not copy long tables.
 
-OSF deposit at the freeze: the pre-registration as the main file, with this proposal, the protocol history (`protocol.md`), `plan.json` and the Part 2 protocol.
+OSF deposit at the Experiment 35 freeze: the pre-registration as the main file, with this proposal, the protocol history (`protocol.md`) and `plan.json`. The Part 2 protocol has its own, later deposit (owner decision, 2026-11-25).
 
 Related records:
 
@@ -55,8 +55,8 @@ The claims stay testable. OMRS reaches stated scores under stated conditions. Na
 
 ## Order and gates
 
-1. Freeze Part 1. The operator approves the pre-registration, `plan.json` and the run budget (master flow gate G7). The pre-freeze tasks P1 to P16 (pre-registration section 23) close first. The owner decided O1 to O7 on 2026-11-14, so no owner decision is open. The Part 2 protocol exists before this point (it is not written yet).
-2. Deposit on OSF in one deposit: the pre-registration as main file, this proposal, the protocol history, `plan.json` and the Part 2 protocol (C1, C2). Record the link and the commit hash.
+1. Freeze Part 1. The operator approves the pre-registration, `plan.json` and the run budget (master flow gate G7). The pre-freeze tasks P1 to P15, P17 and P18 (pre-registration section 23) close first. P16 (Part 2 and E1 inputs) closes before the Part 2 freeze (owner decision, 2026-11-25). The owner decided O1 to O7 on 2026-11-14. One owner decision is open: amendment A14 (the classifier gate 3 fallback, pre-registration section 11.1) is an agent recommendation of 2026-11-26, and the owner confirms or replaces it before this freeze. The Part 2 protocol is not needed at this point: Part 2 has its own freeze later (owner decision, 2026-11-25).
+2. Deposit on OSF: the pre-registration as main file, this proposal, the protocol history and `plan.json`. The Part 2 protocol (C1, C2) is not in this deposit (owner decision, 2026-11-25). Record the link and the commit hash.
 3. Build and seal the 9 indexes per dataset. The rebuild gate G2 passes before any search writes output. Then run the 72 search setups on all questions (pre-registration section 14.2).
 4. Score half A only. Apply the A3 rule. Write `selection.json`.
 5. Time-stamp the A3 configuration hash by a file upload to the registered OSF project (O1, decided by the owner on 2026-11-14).
@@ -87,7 +87,7 @@ BioASQ passed every data check, so the NFCorpus fallback is retired. RepoProbe m
 
 - FreshStack: all 9 indexes are built on the full public LangChain corpus at a pinned revision. The 10,000-document subset of Experiments 9a and 22 (every gold document plus random distractors) is retired. No FreshStack result is compared with the public leaderboard unless the same corpus and metric are used. alpha-nDCG@10 is a secondary metric if the nugget labels allow it (pre-registration sections 4 and 6).
 - Halves: seed 20261115. FinanceBench is split by document, so no document sits in both halves. The other datasets are split by question (pre-registration section 4).
-- Existing data: earlier looks at these datasets (Experiments 9a, 10 and 22, smoke runs, the pilot) are declared in pre-registration section 5.
+- Existing data: earlier looks at these datasets (Experiments 9a, 10 and 22, smoke runs) are declared in pre-registration section 5.
 
 ### Search stage: full factorial, no baseline
 
@@ -121,7 +121,7 @@ Full wording, contrast rows and "holds" rules: pre-registration sections 7 and 8
 - **H4:** reranker plus hybrid beats each alone (simple effects, not an interaction test).
 - **H5:** a bigger reranker ranks better.
 - **H6:** chunk size changes retrieval (the same row, same sign, on FinanceBench and FreshStack).
-- **H7:** a bigger embedder gains more from bigger chunks (FinanceBench and FreshStack; expected to be underpowered). Row 11 is a difference of differences with coefficients +1, -1, -1, +1 on the four corner cells, after averaging over reranker and hybrid.
+- **H7:** a bigger embedder gains more from bigger chunks (FinanceBench and FreshStack; expected to have a wide interval). Row 11 is a difference of differences with coefficients +1, -1, -1, +1 on the four corner cells, after averaging over reranker and hybrid.
 - **H8a:** chunk size changes faithfulness and correctness in the crossed setups, where context length grows with chunk size (the same row, same sign, on FinanceBench and FreshStack).
 - **H8b:** chunk size changes faithfulness and correctness at a fixed pre-assembly evidence budget of 20,480 tokens. Assembly can remove different amounts of overlap per setup, so H8b does not separate chunk size from context length. The paper says "chunk size changes X at a fixed pre-assembly evidence budget" only when H8b holds for X and a registered sensitivity agrees: the same row, on the questions where all three `-t20k` setups reach at least 95% of 20,480 tokens, has the sign of the row's H8b result on FinanceBench and FreshStack. Every question stays in H8b, and the realised (assembled) evidence token total per setup is reported beside the result.
 
@@ -133,10 +133,10 @@ Detail for each item is in the pre-registration section named.
 - Analysis: no mixed model. One clustered method gives every estimate, interval and p-value: GEE with bias-reduced covariance on question clusters for FreshStack, BioASQ and Legal, and a document-level sign-flip permutation test on FinanceBench (section 9).
 - Holm families are fixed now: 19 contrasts on FinanceBench, 19 on FreshStack, 8 on BioASQ (46 in all; BioASQ rows 9 to 19 are sanity checks); Legal is exploratory. No gate changes a family size (section 8). H1 to H5 hold on at least 2 of 3 core datasets. H6, H7, H8a and H8b hold only on FinanceBench and FreshStack. A two-sided hypothesis holds only when the same row counts with the same sign on every dataset its rule needs (section 7).
 - Missing outcomes: every question stays in its denominator, with a rule per outcome (section 12).
-- Power: a retrieval-only pilot on 40 seeded half-A questions per core dataset fills the minimum detectable effect table before the freeze. It builds at most the four H7 corner indexes per core dataset and does not reuse them. Its cost is projected from the P2 timing and approved before the pod starts; if the user declines, the table is filled from assumed SDs and labelled so. The smallest effect of interest is 0.02 nDCG@10 (O2, decided by the owner on 2026-11-14, with a written justification in pre-registration section 10). No equivalence claim is made (section 10).
+- Precision (owner decision, 2026-11-26): there is no power analysis, no MDE table and no pilot. The smallest effect of interest is 0.02 nDCG@10 (O2, decided by the owner on 2026-11-14, with a written justification in pre-registration section 10). Each row's 95% interval is read against plus and minus 0.02: an interval inside it means no meaningful difference, and a wider interval means the test could not tell. The reading is descriptive and adds no test. No TOST runs (section 10).
 - Every main-run pod uses one RunPod GPU type, chosen by a timing job before the freeze. The Mac scores the results.
-- Budget: estimate about $730 (an estimate, not measured), ceiling $975, pods and hosted calls together. The hosted-call key carries a credit limit, so an overrun stops cleanly. At the ceiling a results-blind drop order applies: (1) Legal RAG Bench answer generation, (2) the length-controlled check, (3) the closed-book run with the RAG prompt, then stop. E1 has its own ceiling and is not in this order. A run that finishes every confirmatory item after drops is "complete with registered drops", each drop a numbered deviation. No confirmatory item is dropped by choice (section 17).
-- Pre-registration: the pre-registration is the main file of the OSF deposit at the freeze commit, with this proposal, the protocol history, `plan.json` and the Part 2 protocol.
+- Budget: estimate $1,122 (an estimate, not measured), ceiling $1,716 (amended 2026-11-25; was about $730 and $975), pods and hosted calls together. The hosted-call key carries a credit limit, so an overrun stops cleanly. At the ceiling a results-blind drop order applies: (1) Legal RAG Bench answer generation, (2) the length-controlled check, (3) the closed-book run with the RAG prompt, then stop. E1 has its own ceiling and is not in this order. A run that finishes every confirmatory item after drops is "complete with registered drops", each drop a numbered deviation. No confirmatory item is dropped by choice (section 17).
+- Pre-registration: the pre-registration is the main file of the OSF deposit at the freeze commit, with this proposal, the protocol history and `plan.json`. The Part 2 protocol has its own later deposit (owner decision, 2026-11-25).
 
 ### Runtime and hosted models
 
@@ -147,7 +147,7 @@ Detail for each item is in the pre-registration section named.
 
 ## Step 3: Part 2, controlled comparison with RAGFlow (Confirmatory)
 
-A separate experiment with its own number and protocol, deposited at the Experiment 35 freeze. It reuses the Experiment 35 corpora (FreshStack full corpus), question IDs, half split, prompt, answer model, checkers and judges. The points Experiment 35 fixes for Part 2 are in pre-registration section 18, which wins over this section on those points. This proposal governs every other Part 2 fact until the Part 2 protocol is frozen; after that, the Part 2 protocol governs them.
+A separate experiment with its own number, protocol, freeze and OSF deposit (owner decision, 2026-11-25). Part 2 is frozen after the Experiment 35 freeze and before any Experiment 35 half-B score exists. If that cannot be done in time, Part 2 is dropped or re-planned, and it never uses half-B results. Experiment 35 does not depend on Part 2. It reuses the Experiment 35 corpora (FreshStack full corpus), question IDs, half split, prompt, answer model, checkers and judges. The points Experiment 35 fixes for Part 2 are in pre-registration section 18, which wins over this section on those points. This proposal governs every other Part 2 fact until the Part 2 protocol is frozen; after that, the Part 2 protocol governs them.
 
 **Estimand.** The cost decision at master flow step 7.2a (rule 9) fixes which estimand applies, before any half-B score exists. The estimand is never chosen after seeing results. The shared models are fixed in both cases. OMRS is the A3 cell chosen on half A from the 72-setup search.
 
@@ -179,7 +179,7 @@ A **search-cost figure** shows how much of the OMRS score comes from selection o
 
 ### Which questions
 
-Half B only. No selection step in Part 1 or Part 2 reads half B. Every pre-freeze RAGFlow sample (the page-number gate and the repeatability check) comes from half A only, and so does the matched RAGFlow search if it runs. The timing run per dataset indexes the corpus only and sends no question. Each system runs once. The three core datasets are confirmatory; Legal RAG Bench is exploratory. Half B is about half of each dataset, so power is lower than in Part 1. C2 is expected to detect only large correctness differences (pre-registration section 10). The Part 2 protocol states a minimum detectable effect for C1 and C2 per dataset before the freeze, and the report gives it again from the data.
+Half B only. No selection step in Part 1 or Part 2 reads half B. Every RAGFlow sample taken before the Part 2 freeze (the page-number gate and the repeatability check) comes from half A only, and so does the matched RAGFlow search if it runs. The timing run per dataset indexes the corpus only and sends no question. Each system runs once. The three core datasets are confirmatory; Legal RAG Bench is exploratory. Half B is about half of each dataset, so intervals are wider than in Part 1. C2 is expected to have a wide interval (pre-registration section 10). The report gives the interval of each row; there is no MDE table (owner decision, 2026-11-26).
 
 ### Rules that keep the comparison fair
 
@@ -191,7 +191,7 @@ Half B only. No selection step in Part 1 or Part 2 reads half B. Every pre-freez
 6. **Pin and disclose.** Pin the RAGFlow release and container digests. Record the full configuration, parser settings included. Send the configuration to the RAGFlow maintainers before the run and log every reply. Do not tune RAGFlow below its defaults, apart from the settings of rule 1.
 7. **Human labels.** Part 2 adds its own correctness labels and human-agreement sample, drawn from the answers of both systems, so judge agreement covers RAGFlow answers. L2 is the primary Part 2 labeller, so the OMRS authors' labels are the check, not the gate. System identity is hidden: both systems' answers are shuffled into one list. Labellers follow a written Part 2 correctness guideline, with worked examples from outside every sample, fixed before the first label. They run in Part 2. The Experiment 35 label counts do not change.
 8. **Report.** Map every retrieved chunk to the dataset's unit ID. Give one table per dataset, separate from the Experiment 35 tables.
-9. **Matched RAGFlow search (conditional).** A retrieval-only RAGFlow search on half A (the same selection rule, 12 to 24 cells). Its exact cell list (the RAGFlow settings varied and their levels) is fixed and recorded before the cost measurement at master flow step 7.2. It runs only if its projected pod cost, measured at master flow step 7.2, is at most $50. The decision and its cost figure are recorded at master flow step 7.2a, before any half-B score exists. The decision fixes the estimand (see "Estimand" above). If the search runs, the selected RAGFlow cell enters C1 and C2, its configuration hash is time-stamped on OSF with the OMRS hash before any half-B score exists, default RAGFlow becomes a secondary, descriptive row, and the search-cost figure shows a RAGFlow curve.
+9. **Matched RAGFlow search (conditional).** A retrieval-only RAGFlow search on half A (the same selection rule, 12 to 24 cells). Its exact cell list (the RAGFlow settings varied and their levels) is fixed after the OMRS half-A scores are known, because the shared embedder and reranker size come from them, and before any half-B score exists. It is recorded before the cost measurement at master flow step 7.2. It runs only if its projected pod cost, measured at master flow step 7.2, is at most $50. The decision and its cost figure are recorded at master flow step 7.2a, before any half-B score exists. The decision fixes the estimand (see "Estimand" above). If the search runs, the selected RAGFlow cell enters C1 and C2, its configuration hash is time-stamped on OSF with the OMRS hash before any half-B score exists, default RAGFlow becomes a secondary, descriptive row, and the search-cost figure shows a RAGFlow curve.
 10. **Missing outcomes.** Every half-B question stays in both systems' denominators. Retries follow the content-blind resend rule of Part 1 only. A RAGFlow timeout or error that remains scores 0 for C1 and gets an answer from empty evidence for C2. A list shorter than 10 units scores the missing ranks as not relevant. A document RAGFlow fails to parse stays in the corpus count and is reported with the questions it affects. A chunk that does not map to a dataset unit counts as not relevant and is counted. A sensitivity analysis uses the questions where both systems indexed every gold document. The pre-registration section 12 rules apply to both systems alike: an answer still missing after the resend rule, from either system, scores 0 for correctness. A question enters the C2 contrast only when both systems' Ragas rows are judged (complete pairs). Every exclusion is counted per system, and a sensitivity analysis scores unjudged rows 0 and keeps every question (pre-registration section 18).
 11. **Conflict of interest.** The authors built OMRS. The paper states this. The safeguards are: the pre-registration and its deviation log; selection on half A only; Holm families fixed before the run; blind labels with L2 as primary labeller; the published RAGFlow settings table and maintainer correspondence; and release of every output, RAGFlow outputs included.
 
@@ -216,7 +216,7 @@ What this comparison can claim: with the shared models fixed, the measured diffe
 
 ### Pre-registration
 
-The Part 2 protocol (C1, C2) goes to OSF in the same deposit as the Experiment 35 pre-registration, at the freeze, before any half-B score exists. The A3 configuration hash is time-stamped on OSF before any half-B score is computed. After the freeze, Part 2 follows the deviation policy of pre-registration section 20.
+The Part 2 protocol (C1, C2) goes to its own OSF deposit at the Part 2 freeze (owner decision, 2026-11-25). That freeze comes after the Experiment 35 freeze and before any Experiment 35 half-B score exists. The A3 configuration hash is time-stamped on OSF before any half-B score is computed. After the freeze, Part 2 follows the deviation policy of pre-registration section 20.
 
 ### What the Part 2 protocol must hold before its freeze
 
@@ -226,11 +226,11 @@ Until these items exist, Part 2 cannot freeze. Each can be short in the protocol
 2. C1 and C2 with nulls, decision rule, Holm family of 2 per core dataset and the 2-of-3 same-sign rule, as above.
 3. RAGFlow pin: release tag, container digest of every service (RAGFlow, search engine, database, object store, cache), DeepDoc model versions and API version.
 4. Settings table for both systems, three columns (shared and fixed, default kept, set for measurement). Rows cover chunk method and size, tokenizer, parser and layout model, every LLM-based parsing feature (off or stated), embedder, query instruction, reranker and its instruction, keyword and vector weights, similarity cut-off, search depth, page size and depth 100. Defaults are read from the pinned release.
-5. Tuning budget and estimand: the exact matched RAGFlow cell list (settings varied and their levels), fixed before the master flow step 7.2 cost measurement; the matched-search decision at master flow step 7.2a (rule 9), with its cost figure measured at step 7.2, recorded before any half-B score. The decision fixes the estimand: "selected OMRS against selected RAGFlow" if the search runs (the RAGFlow configuration hash time-stamped on OSF with the OMRS hash), else "selected OMRS against default RAGFlow".
+5. Tuning budget and estimand: the exact matched RAGFlow cell list (settings varied and their levels), fixed after the OMRS half-A scores are known and before the master flow step 7.2 cost measurement; the matched-search decision at master flow step 7.2a (rule 9), with its cost figure measured at step 7.2, recorded before any half-B score. The decision fixes the estimand: "selected OMRS against selected RAGFlow" if the search runs (the RAGFlow configuration hash time-stamped on OSF with the OMRS hash), else "selected OMRS against default RAGFlow".
 6. Model serving: RAGFlow calls the same llama.cpp router, build and GGUF files as OMRS, with an environment record and the live-server check before the first call.
 7. Evidence mapping: chunk to unit ID per dataset, the FinanceBench page rule, page gate and fallback, and the unmappable-chunk rule.
 8. Answer harness input: how a RAGFlow chunk becomes an evidence item (text, title, order), Qwen3 token counting for the 20,480-token budget, and truncation records.
-9. Pre-freeze samples from half A only, with their seeds.
+9. Samples taken before the Part 2 freeze, from half A only, with their seeds.
 10. Repeatability check rule, and what a mismatch means for C1 (report and keep, or block).
 11. Missing-outcome rules as rule 10, every half-B question kept in both denominators.
 12. Labels: counts, seeds, guidelines, hidden system identity, L1 and L2 roles (L2 primary), and the per-dataset correctness gate.
@@ -241,7 +241,7 @@ Until these items exist, Part 2 cannot freeze. Each can be short in the protocol
 17. The A3 configuration hash definition and the OSF time-stamp before half B is scored.
 18. The search-cost figure estimator, with the RAGFlow curve if the matched search runs.
 19. Run record and environment record rules, as in Part 1, and the deviation policy.
-20. The minimum detectable effect for C1 and C2 per dataset, from half-A data only.
+20. (Removed, owner decision 2026-11-26: no MDE table.) The intervals of C1 and C2 are read against plus and minus 0.02.
 
 ## Step 4: EnterpriseRAG-Bench context run (E1, descriptive)
 
@@ -313,7 +313,7 @@ The journal's own author guide covers ORCID, CRediT, the funding wording, confli
    - Ship a re-judge kit: a script that rebuilds evidence text from the pinned dataset revisions and the released IDs, so a newer model can judge the answers again without redistributing corpus text.
 4. Archive code and outputs on Zenodo with a DOI. Keep each dataset's derived files in their own archive with their own licence.
 5. Before the repository or a release goes public, remove names and home-folder paths.
-6. Report compute in one table (pre-registration section 21): GPU type, pod hours per stage including every pre-freeze pod (test pod, GPU timing, pilot, smoke runs), hosted tokens and cost per role, an energy estimate (GPU hours times board power), `resent_calls`, error rows per stage and role, and every `out_of_credit` stop (Strubell et al. 2019; Lacoste et al. 2019). Part 2 and E1 add their own rows.
+6. Report compute in one table (pre-registration section 21): GPU type, pod hours per stage including every pre-freeze pod (test pod, GPU timing, smoke runs), hosted tokens and cost per role, an energy estimate (GPU hours times board power), `resent_calls`, error rows per stage and role, and every `out_of_credit` stop (Strubell et al. 2019; Lacoste et al. 2019). Part 2 and E1 add their own rows.
 7. State the conflict of interest (the authors built OMRS) and the AI assistance used to draft the plan.
 
 ## Risks
@@ -322,14 +322,14 @@ The journal's own author guide covers ORCID, CRediT, the funding wording, confli
 |---|---|
 | A small difference between llama.cpp back ends | Every main-run pod uses one GPU type. The plan states a tolerance per metric (ADR-103). |
 | A checker or the correctness judge disagrees with people | Human labels gate each one before its scores count. A row whose measure fails its gate stays in its Holm family and is reported as "not testable". |
-| The run costs more than planned | At the $975 ceiling the results-blind drop order of pre-registration section 17 applies: Legal RAG Bench answer generation, then the length-controlled check, then the closed-book run with the RAG prompt, then stop. A run with every confirmatory item done is "complete with registered drops". No confirmatory item is dropped by choice. Part 2 and E1 get their own estimate and ceiling before their runs; across the project, E1 is dropped first when the budget is short. |
+| The run costs more than planned | At the $1,716 ceiling (amended 2026-11-25; was $975) the results-blind drop order of pre-registration section 17 applies: Legal RAG Bench answer generation, then the length-controlled check, then the closed-book run with the RAG prompt, then stop. A run with every confirmatory item done is "complete with registered drops". No confirmatory item is dropped by choice. Part 2 and E1 get their own estimate and ceiling before their runs; across the project, E1 is dropped first when the budget is short. |
 | The reranker result changes on llama.cpp | Report it as found. A negative result is still a result. |
 | Choosing the OMRS setup inflates its score | Choose on half A by a pre-registered rule, test on half B only, and publish the search-cost figure. |
-| Half B is too small to detect a difference | Report the minimum detectable effect from the data. Make no equivalence claim. |
+| Half B is too small to detect a difference | Report each row's interval, read against plus and minus 0.02 (a descriptive reading, no test). Make no equivalence claim. |
 | The single hosted answer model changes behind its ID | Pin one upstream host. Record the returned model ID and provider per call. State it as a limitation. |
 | RAGFlow cannot use our models, or hides its retrieved chunks | Record the blocker and report it. Do not substitute another model. |
-| RAGFlow chunks carry no page number | The pre-freeze gate checks this on a half-A FinanceBench sample. If it fails, the primary unit is the document for every question and both systems. The page-level result is reported as a labelled sensitivity analysis, or as unavailable (with the count) when a system gives no page provenance. No question is dropped. |
-| RAGFlow indexing costs too much GPU time | Time one RAGFlow index per dataset before the freeze (corpus only, no question). Report the cost. The matched RAGFlow search runs only if its projected pod cost is at most $50. |
+| RAGFlow chunks carry no page number | The gate before the Part 2 freeze checks this on a half-A FinanceBench sample. If it fails, the primary unit is the document for every question and both systems. The page-level result is reported as a labelled sensitivity analysis, or as unavailable (with the count) when a system gives no page provenance. No question is dropped. |
+| RAGFlow indexing costs too much GPU time | Time one RAGFlow index per dataset before the Part 2 freeze (corpus only, no question). Report the cost. The matched RAGFlow search runs only if its projected pod cost is at most $50. |
 | A reviewer says we set up RAGFlow badly | Share the reranker, set cut-off 0 and depth 100, read every other default from the pinned release, publish the three-column settings table, send it to the maintainers, report the defaults row and state the estimand fixed at master flow step 7.2a ("selected OMRS against default RAGFlow", or "against selected RAGFlow" if the matched search runs). |
 | A RAGFlow call fails or a document fails to parse | Rule 10: the question stays in both denominators and the failure is scored and counted, with a sensitivity analysis on questions both systems indexed fully. |
 | The authors' labels favour OMRS | L2 is the primary Part 2 labeller and system identity is hidden. The paper states the conflict of interest. |
@@ -346,7 +346,7 @@ The Experiment 35 limitations are in pre-registration section 22. The paper repe
 - Unjudged units count as not relevant. FreshStack labels came from pools that included BM25 and fusion systems, which can favour hybrid search and keyword-weighted RAGFlow. Neither Part 2 system added to any pool.
 - H8a and H8b faithfulness is checker-measured, and the checker sees longer passages for bigger chunks. The differential-error rule and the length-controlled check address this only in part. H8b holds only at reranker on and hybrid on with the chosen sizes.
 - The answer model may have seen benchmark text in training. The closed-book runs bound this only in part.
-- One index build per cell. H7 and C2 are expected to be underpowered.
+- One index build per cell. H7 and C2 are expected to have wide intervals.
 - L1 is an OMRS author. If the matched RAGFlow search does not run (step 7.2a decision), Part 2 compares selected OMRS with RAGFlow at its defaults, so it does not show that OMRS beats a tuned RAGFlow. If it runs, Part 2 compares selected OMRS with RAGFlow selected on half A over its matched cells only.
 - E1 compares whole configurations with a different answer model (GPT-5.4), so it says nothing about OMRS retrieval alone.
 
@@ -358,12 +358,12 @@ The Experiment 35 limitations are in pre-registration section 22. The paper repe
 4. Ask the Napier library to confirm the article type and the deal.
 5. Done: Experiment 35 amendment A3 (protocol section 0.12) holds the selection rule for Part 2.
 6. Done: amendment A4 (protocol section 0.13) and the pre-registration, after the methods review of 13 November 2026.
-7. Close the pre-freeze tasks P1 to P16 of pre-registration section 23. No owner decision is open (O1 to O7 decided on 2026-11-14).
+7. Close the pre-freeze tasks P1 to P15, P17 and P18 of pre-registration section 23 (P16 closes before the Part 2 freeze). O1 to O7 were decided on 2026-11-14. The owner confirms or replaces amendment A14 (agent recommendation of 2026-11-26) before the freeze.
 8. Reserve an experiment number for Part 2. Write its protocol, covering every item of "What the Part 2 protocol must hold before its freeze".
-9. Before the freeze, pin the RAGFlow release and container digests and connect it to the llama.cpp models. Read the RAGFlow defaults from the pinned release. Time one index per dataset (corpus only). Measure the projected pod cost of the matched search at master flow step 7.2 and record the decision at step 7.2a; it fixes the Part 2 estimand. Check page provenance on a seeded half-A FinanceBench sample (the rule 3 gate: if RAGFlow returns no page for a chunk, the primary unit falls back to the document for both systems) and retrieval repeatability on half A. Send the settings table to the RAGFlow maintainers.
-10. Write the Part 2 estimate and ceiling, and the E1 estimate and ceiling (pre-freeze task P16; no figure exists yet).
+9. Before the Part 2 freeze, pin the RAGFlow release and container digests and connect it to the llama.cpp models. Read the RAGFlow defaults from the pinned release. Time one index per dataset (corpus only). After the Part 1 freeze (step 12) and the OMRS half-A scores, which fix the matched cell list, measure the projected pod cost of the matched search at master flow step 7.2 and record the decision at step 7.2a; it fixes the Part 2 estimand. Check page provenance on a seeded half-A FinanceBench sample (the rule 3 gate: if RAGFlow returns no page for a chunk, the primary unit falls back to the document for both systems) and retrieval repeatability on half A. Send the settings table to the RAGFlow maintainers.
+10. Write the Part 2 estimate and ceiling, and the E1 estimate and ceiling (task P16, before the Part 2 freeze; no figure exists yet).
 11. Done: group 7 (Part 2 and E1) is in `rag-benchmark-readiness-flow`. It must take the Part 2 requirements above.
-12. Freeze Part 1. Deposit the pre-registration (main file), this proposal, the protocol history, `plan.json` and the Part 2 protocol on OSF together.
+12. Freeze Part 1. Deposit the pre-registration (main file), this proposal, the protocol history and `plan.json` on OSF. Freeze Part 2 later, with its own OSF deposit, before any Experiment 35 half-B score exists (owner decision, 2026-11-25).
 13. Before any E1 run, pin the corpus and leaderboard revisions. Confirm the GPT-5.4 judging or submission procedure with Onyx.
 
 ## Sources checked on 27 October, 9, 12, 13 and 14 November 2026

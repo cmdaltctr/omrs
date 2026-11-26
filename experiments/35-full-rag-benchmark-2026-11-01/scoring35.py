@@ -181,6 +181,8 @@ def score_question(
         # Not a registered metric: the gold share among the units of the first 10
         # stored chunks, the evidence of a 10-chunk answer setup (crosstable35 misses).
         "head_recall_10": len(gold.units.intersection(head)) / len(gold.units),
+        # Every distinct unit in rank order: condensed-list nDCG@10 (unjudged35) reads past 10.
+        "ranked_units": units,
     }
     if dataset == "financebench":
         record["hit_at_page"] = any(hits)

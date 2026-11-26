@@ -2,7 +2,8 @@
 
 * :func:`answer_scores`: one answer-score record per dataset, setup, run and
   question, with the keys ``factorial35`` reads (``faithfulness_glm_factual``,
-  ``ragas_answer_correctness``, ``run``, ``cut_tokens``, ``qid``, ``doc_id``)
+  ``ragas_answer_correctness``, ``run``, ``cut_tokens``, ``qid``, ``doc_id``),
+  ``evidence_tokens`` (the realised total ``reporttables35`` reads)
   and the uncited-segment sensitivity value.
 * :func:`returned_models`: per hosted role, rows whose returned model differs
   from the requested one.
@@ -12,9 +13,11 @@ Scoring rules (pre-registration sections 6 and 12):
 
 - ``faithfulness_glm_factual``: GLM-5.3 (``judge-chat``) supported share of the
   answer's cited claims whose saved kind is not ``refusal`` (an unclassified
-  claim counts as factual). An ``unparseable`` verdict is returned content, so
-  it counts not supported; ``unparseable_verdicts`` counts them. ``None``
-  when the answer has no such claim, or its checker row is missing.
+  claim counts as factual). Kinds are used only under a passed classifier gate
+  (``kindgate35``); without one every cited claim counts (registered fallback).
+  An ``unparseable`` verdict is returned content, so it counts not supported;
+  ``unparseable_verdicts`` counts them. ``None`` when the answer has no such
+  claim, or its checker row is missing.
 - ``faithfulness_glm_factual_uncited`` (sensitivity): the same supported
   count over cited factual claims plus uncited segments whose saved kind
   (``claim-kinds.jsonl`` rows with ``uncited: true``) is not ``refusal``.
@@ -39,6 +42,7 @@ from pathlib import Path
 from typing import Any
 
 import claimkinds35
+import kindgate35
 import segments35
 from outputs35 import read_rows
 
@@ -129,6 +133,8 @@ def answer_scores(
     setup: str,
     run: int,
     documents: Mapping[str, str] | None = None,
+    *,
+    kinds_version: str | None,
 ) -> list[dict[str, Any]]:
     """Return the answer-score records of one answer run, in answer order.
 
@@ -140,13 +146,15 @@ def answer_scores(
         documents: FinanceBench only: question ID to its gold document. The
             record's ``doc_id`` comes from here, never from the answer row (a
             closed-missing row has none).
+        kinds_version: The passed classifier gate's version (``kindgate35.gate_version``);
+            None applies the registered fallback: no kind filter.
+
+    Raises:
+        kindgate35.KindGateError: A saved kind has another version.
     """
     judges = {str(r["qid"]): r for r in read_rows(run_dir / "judge-chat.jsonl")}
     ragas = {str(r["qid"]): r for r in read_rows(run_dir / "ragas.jsonl")}
-    kinds = {
-        (r["claim_key"], bool(r.get("uncited"))): r["kind"]
-        for r in read_rows(run_dir / "claim-kinds.jsonl")
-    }
+    kinds = kindgate35.saved_kinds(run_dir, kinds_version)
     records = []
     for answer in read_rows(run_dir / "answer.jsonl"):
         qid = str(answer["qid"])
@@ -167,6 +175,7 @@ def answer_scores(
                 "qid": qid,
                 "doc_id": (documents or {}).get(qid),
                 "cut_tokens": answer.get("cut_tokens"),
+                "evidence_tokens": answer.get("evidence_tokens"),
                 "faithfulness_glm_factual": faith,
                 "faithfulness_glm_factual_uncited": sensitivity,
                 CORRECT: _correctness(answer, ragas.get(qid)),
@@ -189,6 +198,15 @@ def marked_runs(
         per = out.setdefault(r["dataset"], {}).setdefault(r["setup"], dict.fromkeys(metrics, 0))
         for metric in r.get(field) or ():
             per[metric] += 1
+    return out
+
+
+def unparseable_counts(records: Sequence[Mapping[str, Any]]) -> dict[str, dict[str, int]]:
+    """Return per dataset and setup the unparseable verdicts over runs and questions."""
+    out: dict[str, dict[str, int]] = {}
+    for r in records:
+        per = out.setdefault(r["dataset"], {})
+        per[r["setup"]] = per.get(r["setup"], 0) + int(r["unparseable_verdicts"])
     return out
 
 

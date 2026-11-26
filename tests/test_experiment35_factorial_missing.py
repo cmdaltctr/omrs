@@ -158,14 +158,18 @@ def test_confirmatory_result_refuses_while_half_b_is_locked(tmp_path: Path) -> N
     (tmp_path / "correctness-gate.json").write_text(json.dumps(gate))
     out = tmp_path / "factorial.json"
     with pytest.raises(scoring35.HalfBLocked):
-        factorial35.write_confirmatory(out, [], [], label_dir=tmp_path, root=tmp_path, **base.FAST)
+        factorial35.write_confirmatory(
+            out, [], [], label_dir=tmp_path, root=tmp_path, kind_gate=None, **base.FAST
+        )
     assert not out.exists()
     open_half_b(tmp_path)
-    (tmp_path / "join.json").write_text(json.dumps({"ok": True}))
+    # No classifier gate: the join used the registered fallback (kindgate35).
+    kinds = {"pass": False, "version": None}
+    (tmp_path / "join.json").write_text(json.dumps({"ok": True, "claim_kinds": kinds}))
     # The drop record of the output folder reaches the analysis (drop step 1).
     (tmp_path / "drops.json").write_text(json.dumps({"drops": [{"step": 1}]}))
     answers = [r for r in base._answers() if r["dataset"] != "legal"]
     result = factorial35.write_confirmatory(
-        out, base._search(), answers, label_dir=tmp_path, root=tmp_path, **base.FAST
+        out, base._search(), answers, label_dir=tmp_path, root=tmp_path, kind_gate=None, **base.FAST
     )
     assert out.exists() and _rows(result, "legal")[12]["dropped"]

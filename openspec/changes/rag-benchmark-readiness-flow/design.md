@@ -35,11 +35,13 @@ G0 preflight
    |
    v
 6. Experiment 35: data, pre-freeze pod (G7a), harness (G7b),
-   smoke run, freeze (G7), run, report (design D5)
+   smoke run, freeze (G7), search, half-A selection; half-B scoring
+   and report only after G8 or the Part 2 drop (design D5)
    |
    v
-7. Part 2 (RAGFlow on half B) and E1: protocol and RAGFlow set-up before
-   the freeze, OSF deposit at G7, A3 on half A, run on half B, E1 last
+7. Part 2 (RAGFlow on half B) and E1: after the Exp 35 freeze, A3 on half A,
+   RAGFlow set-up, Part 2 freeze and its own OSF deposit at G8 (before any half-B
+   score of Exp 35), run on half B, E1 last
 ```
 
 The cuts change goes first because both other changes build on it (the panel shows its cut boxes; the router change lands after it and shares the re-index). The router goes before the panel because it is on the benchmark's critical path and both touch `workspace-settings` and `settings-file`: never two of these branches at once (rule of the archived master flow, task 4.4). The panel changes no result with defaults, so it may run beside the sweep.
@@ -61,7 +63,8 @@ The cuts change and the router change each change the index identity. The operat
 | G6 | 5.3 | RunPod budget and start of the sweep |
 | G7a | 6.2 | Pre-freeze pod session: quoted price, go |
 | G7b | 6.8 | Merge the Exp 35 harness PR |
-| G7 | 6.11 and 7.3 | Freeze Experiment 35, approve the run budget, and deposit the pre-registration (main file), the proposal, `protocol.md`, `plan.json` and the Part 2 protocol on OSF together |
+| G7 | 6.11 | Freeze Experiment 35, approve the run budget, and deposit the pre-registration (main file), the proposal, `protocol.md` and `plan.json` on OSF (changed 2026-11-25, owner: the Part 2 protocol is not in this deposit) |
+| G8 | 7.3 | Freeze Part 2 and deposit its protocol on OSF in its own deposit, after the Exp 35 freeze and before any Exp 35 half-B score exists (added 2026-11-25, owner) |
 
 ### D4. Rules every group follows
 
@@ -90,12 +93,12 @@ D. Section 2 harness, PR (G7b)
 E. Arm smoke run on the run machine; pod stopped after it
    |
 E2. A4 pre-freeze items: FreshStack full corpus pin and timing,
-   |   halves and MDE pilot on half A, P1 to P18,
+   |   halves, P1 to P18,
    |   owner decisions O1 to O7 recorded (none open)
-   |   (with Part 2 steps 7.1, 7.2 and 7.2a)
 F. Freeze (G7)
    |
-G. Search stage; score half A; selection.json; OSF time-stamp of the
+G. Search stage; score half A; selection.json; Part 2 set-up and freeze
+   (G8, own OSF deposit, before any half-B score); OSF time-stamp of the
    hash; score half B; replicate pods; section 6 report; section 7 release
 ```
 
@@ -105,14 +108,14 @@ Reasons:
 - The arm smoke run goes after the harness. Every arm needs the section 2 code. Archived task 10.6 and Exp 35 task 4.1 are the same check, so one run does both.
 - The smoke run uses the run machine. A stopped pod still bills its disk, so the smoke pod and its disk are deleted once their outputs are copied and checked, at G7 at the latest (task 6.11). Section 5 builds its indexes on new pods (task 6.12).
 - `pre-exp35-harness-and-answer-fixes` was archived with group 10 open. This group owns those tasks now. The detail stays in that change's design D13.
-- Step E2 (added 2026-11-14, amendment A4) holds the pre-freeze items of `preregistration.md` section 23. The pilot and every pre-freeze sample drawn after the halves exist come from half A, so the halves are written first; earlier samples are listed with their halves (P12). Step G follows the order of work of pre-registration section 14.2: no half-B score exists before the configuration hash is time-stamped on OSF.
+- Step E2 (added 2026-11-14, amendment A4) holds the pre-freeze items of `preregistration.md` section 23. The every pre-freeze sample drawn after the halves exist come from half A, so the halves are written first; earlier samples are listed with their halves (P12). Step G follows the order of work of pre-registration section 14.2: no half-B score exists before the configuration hash is time-stamped on OSF.
 
 ### D6. Amendment A4: the pre-registration governs; deviation policy (2026-11-14)
 
 A publication-grade methods review (2026-11-13) gave 30 findings, F1 to F30. The user approved every recommended fix on 2026-11-14. The file `experiments/35-full-rag-benchmark-2026-11-01/preregistration.md` governs Experiment 35 and is the main file of the OSF deposit. The proposal stays the master plan for scope, order of work, Part 2 and E1. For Part 2 and E1, pre-registration section 18 wins over the proposal on the points it fixes; the proposal governs every other fact until the Part 2 protocol is frozen, and then the Part 2 protocol governs. The step 7.2a cost decision, recorded before any half-B score, fixes the Part 2 estimand: "selected OMRS against selected RAGFlow" if the matched search runs, else "selected OMRS against default RAGFlow". `exp35-main-run-readiness` design D38 and its task group 16 build the design; group 6 (steps 6.10a to 6.10d and 6.12 to 6.14) and group 7 (steps 7.1 to 7.6, with 7.2a added) of this change order it.
 
 - **Deviation policy.** After the freeze, every change is a dated, numbered deviation. The report lists each with its reason, its time (before or after seeing the affected data) and its effect on each claim. Each goes into `plan.json` `amendments` and is uploaded to the OSF project. A run on another llama.cpp build needs a deviation first. Part 2 states the same policy in its protocol.
-- **Budget.** Experiment 35: about $730 (estimate), ceiling $975, with the results-blind drop order of pre-registration section 17: (1) Legal RAG Bench answer generation, (2) the length-controlled check, (3) the closed-book run with the RAG prompt; then stop. A run with every confirmatory item done is "complete with registered drops". Part 2 and E1 get their own estimates and ceilings at step 7.2a; E1 is not in the Experiment 35 drop order.
+- **Budget.** Experiment 35: about $730 (estimate), ceiling $975 (superseded 2026-11-25: estimate $1,122, ceiling $1,716), with the results-blind drop order of pre-registration section 17: (1) Legal RAG Bench answer generation, (2) the length-controlled check, (3) the closed-book run with the RAG prompt; then stop. A run with every confirmatory item done is "complete with registered drops". Part 2 and E1 get their own estimates and ceilings at step 7.2a; E1 is not in the Experiment 35 drop order.
 - **Reporting.** The Experiment 35 report holds the items of pre-registration section 21 (decisions with "not testable" marks, unjudged share, sensitivity tables, compute table with every pre-freeze pod, returned model IDs, deviation log). The Part 2 report holds its own release table and maintainer correspondence log.
 
 ## Risks

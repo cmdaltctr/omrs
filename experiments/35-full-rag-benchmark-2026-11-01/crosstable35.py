@@ -67,7 +67,8 @@ def _single_runs(out: Path) -> dict[str, dict[str, dict[str, float]]]:
             if run == 1:
                 first.setdefault(dataset, folder)
         for dataset, folder in sorted(first.items()):
-            records = joinscores35.answer_scores(folder, dataset, kind, 1)
+            # Correctness only: no claim kind is read.
+            records = joinscores35.answer_scores(folder, dataset, kind, 1, kinds_version=None)
             found.setdefault(dataset, {})[kind] = {
                 r["qid"]: r[CORRECT] for r in records if r[CORRECT] is not None
             }

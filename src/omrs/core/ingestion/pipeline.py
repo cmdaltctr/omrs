@@ -198,7 +198,12 @@ async def ingest_path_async(
 
     # Type-aware ingestion: Magika content types with the operation's
     # injected settings; detection failure degrades to extension routing.
-    content_type_map = detect_content_types(path_obj, settings=resolved_settings)
+    # Routing off leaves every file untyped, so the reader path chunks it.
+    content_type_map = (
+        detect_content_types(path_obj, settings=resolved_settings)
+        if resolved_settings.ingestion.file_type_routing
+        else {}
+    )
 
     resolved_store = store if store is not None else get_default_store()
     # Owner-scoped OCR client (task 2.6a): an injected client keeps its

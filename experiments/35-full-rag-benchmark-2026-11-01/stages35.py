@@ -358,7 +358,8 @@ async def seal_stage(ctx: Ctx) -> int:
 
     The fingerprint holds the collection, table version, dataset epoch, chunk
     count, embedding dimension, the resolved sparse backend of the index's
-    hybrid-on setups, the full-text index row counts (or none), the
+    hybrid-on setups, the chunking tokenizer's revision and SHA-256, the
+    full-text index row counts (or none), the
     FinanceBench unpaged chunk count and the embedders compared. The seal also
     writes the build environment record ``environment.json`` (D19).
 
@@ -412,6 +413,7 @@ def _check_index(ctx: Ctx, marker: Mapping[str, Any]) -> dict[str, Any]:
         "collection": ctx.collection,
         "sparse_backend": backend,
         "compared_with": compared,
+        "tokenizer": arms.tokenizer_record(ctx.settings, error=SealRefused),
         **facts,
     }
 

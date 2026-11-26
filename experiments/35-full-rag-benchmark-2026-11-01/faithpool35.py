@@ -2,8 +2,10 @@
 
 Moved out of ``labels35.py`` so that file stays under 500 lines; ``labels35``
 re-exports every name. :func:`require_kinds` is the guard of ``labels35.py
-sample``: the pool leaves out refusal claims, so each run folder it reads
-must hold its saved claim kinds first.
+sample``: under a passed classifier gate the pool leaves out refusal claims,
+so each run folder it reads must hold saved claim kinds of the gate's
+version first. Without a passed gate (version None) no kind is read and the
+pool holds every cited claim (registered fallback, ``kindgate35``).
 """
 
 from __future__ import annotations
@@ -17,6 +19,7 @@ from typing import Any
 
 import claimkinds35
 import correct35
+import kindgate35
 from outputs35 import Layout, read_rows
 
 from omrs.core.answer.verify import split_claims
@@ -51,37 +54,44 @@ def _pool_answers(out_dir: Path) -> list[tuple[str, str, int, Path]]:
     ]
 
 
-def require_kinds(out_dir: Path) -> None:
-    """Refuse when a run folder of the pool has no saved claim kinds.
+def require_kinds(out_dir: Path, version: str | None) -> None:
+    """Refuse when a run folder of the pool has no saved claim kinds of the passed version.
+
+    Args:
+        out_dir: The run output folder.
+        version: The passed classifier gate's version; None (fallback) needs no kinds.
 
     Raises:
         KindsMissing: The message names the first such run folder.
+        kindgate35.KindGateError: A saved kind has another version.
     """
+    if version is None:
+        return
     for dataset, setup, run, folder in _pool_answers(out_dir):
         if not (folder / "claim-kinds.jsonl").exists():
             raise KindsMissing(
                 f"{dataset}/{setup}/run{run} has no claim-kinds.jsonl; "
                 "run the claimkinds stage on it first"
             )
+        kindgate35.check_versions(read_rows(folder / "claim-kinds.jsonl"), version, folder)
 
 
 def faithfulness_claims(
-    out_dir: Path, questions: Mapping[str, Mapping[str, Mapping[str, str]]]
+    out_dir: Path, questions: Mapping[str, Mapping[str, Mapping[str, str]]], version: str | None
 ) -> list[dict[str, Any]]:
     """Return the faithfulness gate pool: crossed setups, core datasets, all runs and questions.
 
     A claim whose saved kind (``claim-kinds.jsonl`` of its own run folder) is
     ``refusal`` is left out. A claim of kind factual or mixed stays, and so
     does a claim the classifier left unclassified (no saved row, or kind
-    ``unreadable``): section 12 treats it as factual (section 11.2).
+    ``unreadable``): section 12 treats it as factual (section 11.2). Kinds
+    are read only under a passed gate (*version*); with None every claim stays.
     """
     claims: list[dict[str, Any]] = []
     for dataset, setup, run, folder in _pool_answers(out_dir):
         # An uncited segment can share a cited claim's text and key: key on the flag too.
         refusals = {
-            (r["claim_key"], bool(r.get("uncited")))
-            for r in read_rows(folder / "claim-kinds.jsonl")
-            if r["kind"] == "refusal"
+            k for k, kind in kindgate35.saved_kinds(folder, version).items() if kind == "refusal"
         }
         for row in read_rows(folder / "answer.jsonl"):
             evidence = row.get("evidence") or []

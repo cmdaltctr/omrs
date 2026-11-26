@@ -172,9 +172,9 @@ A `claimkinds` stage SHALL give each judged claim of one run folder one kind fro
 - **THEN** the claim MUST count as a factual claim, stay in the faithfulness denominator and be counted
 - **AND** a sensitivity analysis MUST leave such claims out
 
-### Requirement: The classifier passes a hand-label gate before the freeze
+### Requirement: The classifier passes a hand-label gate
 
-Before the freeze, the operator SHALL label a seeded sample of about 100 smoke claims from the three smoke datasets, blind to the classifier's output and to every verdict. The pass thresholds SHALL be fixed before labelling starts. The classifier SHALL be frozen only when it passes; a failed gate SHALL block the freeze of the classifier.
+The operator SHALL label a seeded sample of 100 claims, blind to the classifier's output and to every verdict, against pass thresholds fixed before labelling. Before the freeze, only the classifier prompt and its worked examples SHALL be fixed and pinned. Gate 3 SHALL run after the freeze on main-run answers, and no claim-kind result SHALL be used until it passes (owner, 2026-11-25).
 
 #### Scenario: Thresholds fixed first
 

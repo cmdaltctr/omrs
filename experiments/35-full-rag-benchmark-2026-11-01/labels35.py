@@ -32,6 +32,7 @@ from typing import Any
 
 import claimkinds35
 import correct35
+import kindgate35
 import labelpage35
 from bootstrap35 import BootResult, bootstrap_by_question
 from experiments._lib.stats_d6 import cohen_kappa
@@ -360,7 +361,9 @@ def saved_verdicts(out_dir: Path, items: Sequence[Mapping[str, Any]]) -> dict[st
                     judge,
                     where=f"{item['dataset']}/{item['setup']}/run{item['run']}/{item['qid']}",
                 )
-                out[c][item["item_id"]] = pairs[item["index"]][1].get("verdict")
+                verdict = pairs[item["index"]][1].get("verdict")
+                # Section 12: an unparseable verdict is returned content, so not supported.
+                out[c][item["item_id"]] = "unsupported" if verdict == "unparseable" else verdict
     return out
 
 
@@ -373,6 +376,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         p.add_argument("--label-dir", type=Path, required=True)
         if name in ("sample", "faithgate"):
             p.add_argument("--out-dir", type=Path, required=True)
+        if name == "sample":
+            p.add_argument("--gate", type=Path, help="classifier gate 3 gate.json")
         if name == "l2":
             p.add_argument("--plan", choices=("full", "staged"), required=True)
         if name == "page":
@@ -383,10 +388,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     d = args.label_dir
     if args.command == "sample":
-        require_kinds(args.out_dir)
-        write_sample(
-            d, draw_faithfulness(faithfulness_claims(args.out_dir, correct35._questions(CORE)))
-        )
+        version = kindgate35.gate_version(args.gate)  # None: registered fallback, no kinds
+        require_kinds(args.out_dir, version)
+        claims = faithfulness_claims(args.out_dir, correct35._questions(CORE), version)
+        write_sample(d, draw_faithfulness(claims))
     elif args.command == "l2":
         write_json(
             d / "l2-items.json", l2_items(args.plan, {s: read_sample(d, s) for s in SAMPLE_FILES})

@@ -33,7 +33,7 @@ ROWS = [12, 13, 16, 17]
 def _faith(tmp_path: Path, seed: int = 20261116) -> list[dict[str, Any]]:
     out = tmp_path / "out"
     questions = fx.build(out)
-    return labels35.draw_faithfulness(labels35.faithfulness_claims(out, questions), seed=seed)
+    return labels35.draw_faithfulness(labels35.faithfulness_claims(out, questions, "v1"), seed=seed)
 
 
 # --- 15.8 samples and counts -----------------------------------------------------------------
@@ -56,7 +56,7 @@ def _kind_pool(tmp_path: Path, kind_of: Any) -> list[dict[str, Any]]:
     out = tmp_path / "out"
     questions = fx.build(out)
     fx.write_kinds(out, kind_of)
-    return labels35.draw_faithfulness(labels35.faithfulness_claims(out, questions))
+    return labels35.draw_faithfulness(labels35.faithfulness_claims(out, questions, "v1"))
 
 
 def test_refusal_claims_are_left_out_of_the_faithfulness_pool(tmp_path: Path) -> None:
@@ -82,15 +82,16 @@ def test_a_cited_claim_stays_when_an_uncited_refusal_segment_has_the_same_text(
     questions = fx.build(out)
     fx.write_kinds(out, lambda q, i: "factual")
     claimkinds35 = load("claimkinds35")
-    before = [c for c in labels35.faithfulness_claims(out, questions) if c["qid"] == "q000"]
+    before = [c for c in labels35.faithfulness_claims(out, questions, "v1") if c["qid"] == "q000"]
     assert before
     key = claimkinds35.claim_key("q000", before[0]["claim"])
     # The uncited segment shares the cited claim's text and key; only its uncited flag differs.
     for path in out.glob("*/answer/*/run*/claim-kinds.jsonl"):
         rows = [json.loads(x) for x in path.read_text().splitlines()]
-        rows.append({"claim_key": key, "qid": "q000", "kind": "refusal", "uncited": True})
+        row = {"claim_key": key, "qid": "q000", "kind": "refusal", "uncited": True}
+        rows.append({**row, "version": "v1"})
         path.write_text("".join(json.dumps(r) + "\n" for r in rows))
-    after = [c for c in labels35.faithfulness_claims(out, questions) if c["qid"] == "q000"]
+    after = [c for c in labels35.faithfulness_claims(out, questions, "v1") if c["qid"] == "q000"]
     assert after == before
 
 
@@ -102,7 +103,7 @@ def test_pool_uses_each_runs_own_saved_kinds(tmp_path: Path) -> None:
     for path in out.glob("*/answer/*/run2/claim-kinds.jsonl"):
         rows = [json.loads(x) for x in path.read_text().splitlines()]
         path.write_text("".join(json.dumps({**r, "kind": "refusal"}) + "\n" for r in rows))
-    items = labels35.draw_faithfulness(labels35.faithfulness_claims(out, questions))
+    items = labels35.draw_faithfulness(labels35.faithfulness_claims(out, questions, "v1"))
     assert len(items) == 450
     assert {i["run"] for i in items} == {1}
 
@@ -387,8 +388,12 @@ def test_sample_cli_refuses_a_run_folder_with_no_saved_claim_kinds(tmp_path: Pat
     gone = out / "bioasq" / "answer" / "e4b-c1024-r4b-hon" / "run2"
     (gone / "claim-kinds.jsonl").unlink()
     label_dir = tmp_path / "labels"
+    gate = tmp_path / "gate.json"  # a passed classifier gate: the pool needs saved kinds
+    gate.write_text(json.dumps({"pass": True, "version": "v1"}))
     with pytest.raises(labels35.KindsMissing, match="bioasq/e4b-c1024-r4b-hon/run2"):
-        labels35.main(["sample", "--out-dir", str(out), "--label-dir", str(label_dir)])
+        labels35.main(
+            ["sample", "--out-dir", str(out), "--label-dir", str(label_dir), "--gate", str(gate)]
+        )
     assert not (label_dir / "faithfulness-sample.json").exists()
 
 
@@ -419,3 +424,24 @@ def test_faithgate_cli_reads_saved_verdicts_and_writes_the_gate(tmp_path: Path) 
     gate = json.loads((label_dir / "faithfulness-gate.json").read_text())
     assert gate["decided_at"]
     assert gate["checkers"]["chat"]["pass"] is True
+
+
+def test_an_unparseable_verdict_counts_as_unsupported_in_the_gate(tmp_path: Path) -> None:
+    # Pre-registration section 12: an unparseable verdict is returned content, so it
+    # counts as not supported in the gates too (review S7).
+    from tests._exp35_label_fixtures import judge_row, write_rows
+
+    items = _faith(tmp_path)
+    item = next(i for i in items if i["index"] == 0)
+    folder = tmp_path / "out" / item["dataset"] / "answer" / item["setup"] / f"run{item['run']}"
+    rows = [json.loads(line) for line in (folder / "judge-chat.jsonl").read_text().splitlines()]
+    rows = [
+        judge_row(r["qid"], ["unparseable", "unsupported"], "chat")
+        if r["qid"] == item["qid"]
+        else r
+        for r in rows
+    ]
+    write_rows(folder / "judge-chat.jsonl", rows)
+    verdicts = labels35.saved_verdicts(tmp_path / "out", items)
+    assert verdicts["chat"][item["item_id"]] == "unsupported"
+    assert "unparseable" not in set(verdicts["chat"].values())

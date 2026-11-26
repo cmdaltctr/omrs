@@ -9,6 +9,7 @@ flags (tasks 4.1, 5.3, 5.7); resume and the configuration hash (task 3.4);
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shlex
@@ -294,6 +295,7 @@ def test_dry_run_prints_the_resolved_values_and_starts_nothing(
     assert plan["resolved"]["hybrid_sparse_backend"] == "bm25"
     assert plan["resolved"]["pdf_reader"] == "pdf_inspector"
     assert plan["resolved"]["ocr_fallback_enabled"] is False
+    assert plan["resolved"]["file_type_routing"] is False
     assert "sentinel-value-0451" not in printed and "env://" not in printed
 
 
@@ -305,6 +307,7 @@ def test_dry_run_prints_the_resolved_values_and_starts_nothing(
         ("RETRIEVAL__HYBRID_SPARSE_BACKEND", "native", "retrieval.hybrid_sparse_backend"),
         ("PDF_READER", "pypdf", "pdf_reader"),
         ("OCR_FALLBACK_ENABLED", "true", "ocr_fallback_enabled"),
+        ("INGESTION__FILE_TYPE_ROUTING", "true", "ingestion.file_type_routing"),
     ],
 )
 def test_an_environment_override_stops_before_any_call_and_names_the_setting(
@@ -566,10 +569,17 @@ def test_a_rate_limit_stop_exits_5_and_open_items_exit_6(
     assert "close" in stub.log
 
 
-def test_seal_through_the_runner_writes_the_build_environment(env: Path) -> None:
+def test_seal_through_the_runner_writes_the_build_environment(
+    env: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     import lancedb
     import pyarrow as pa
+    from huggingface_hub import constants
 
+    snapshot = env / "hf" / "models--Qwen--Qwen3-Embedding-4B" / "snapshots"
+    (snapshot / arms.TOKENIZER_REVISION).mkdir(parents=True)
+    (snapshot / arms.TOKENIZER_REVISION / "tokenizer.json").write_bytes(b"{}")
+    monkeypatch.setattr(constants, "HF_HUB_CACHE", str(env / "hf"))
     stub = Stub()
     passages = _prepared(env, stub)
     out = env / "out"
@@ -596,3 +606,8 @@ def test_seal_through_the_runner_writes_the_build_environment(env: Path) -> None
     }
     fingerprint = json.loads((out / "bioasq" / "e4b-c1024" / "index-fingerprint.json").read_text())
     assert (fingerprint["chunks"], fingerprint["embedding_dimension"]) == (1, 2)
+    assert fingerprint["tokenizer"] == {
+        "model": arms.TOKENIZER_MODEL,
+        "revision": arms.TOKENIZER_REVISION,
+        "sha256": hashlib.sha256(b"{}").hexdigest(),
+    }

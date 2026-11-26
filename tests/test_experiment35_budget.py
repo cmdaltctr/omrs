@@ -82,29 +82,29 @@ def test_spent_comes_from_the_billing_exports_and_done_answers_leave_the_project
 def test_a_projection_under_the_ceiling_writes_no_drop(tmp_path: Path) -> None:
     assert _project(tmp_path, _rates()) == 0
     check = _checks(tmp_path)[-1]
-    assert check["ceiling_usd"] == 975.0
+    assert check["ceiling_usd"] == 1716.0
     assert check["projection_usd"] == pytest.approx(10 + 20 + 5 + 1.0)
     assert check["drop_step"] is None
     assert _drops(tmp_path) == []
 
 
 def test_over_the_ceiling_the_next_drop_step_is_recorded_once(tmp_path: Path) -> None:
-    rates = _rates(pod_hours_per_answer=0.02)  # 52,200 answers x 0.02 h = 1,044 h
+    rates = _rates(pod_hours_per_answer=0.04)  # 52,200 answers x 0.04 h = 2,088 h
     _project(tmp_path, rates)
     assert _checks(tmp_path)[-1]["drop_step"] == 1
     drops = _drops(tmp_path)
     assert [d["step"] for d in drops] == [1]
     assert drops[0]["time"] == TIME
-    assert drops[0]["projection_usd"] == pytest.approx(1044 + 36)
-    assert "975" in drops[0]["reason"]
-    # Legal answers leave: 45 x 1,060 x 0.02 = 954 h plus 36 h is still over, so step 2.
+    assert drops[0]["projection_usd"] == pytest.approx(2088 + 36)
+    assert "1716" in drops[0]["reason"]
+    # Legal answers leave: 45 x 1,060 x 0.04 = 1,908 h plus 36 h is still over, so step 2.
     _project(tmp_path, rates)
     assert [d["step"] for d in _drops(tmp_path)] == [1, 2]
     assert _checks(tmp_path)[-1]["remaining_answers"].get("legal") is None
 
 
 def test_a_second_call_under_the_ceiling_after_a_drop_adds_nothing(tmp_path: Path) -> None:
-    rates = _rates(pod_hours_per_answer=0.0195)  # 1,017.9 h; without Legal 930.15 h
+    rates = _rates(pod_hours_per_answer=0.034)  # 1,774.8 h; without Legal 1,621.8 h
     _project(tmp_path, rates)
     _project(tmp_path, rates)
     assert [d["step"] for d in _drops(tmp_path)] == [1]
@@ -115,12 +115,12 @@ def test_a_second_call_under_the_ceiling_after_a_drop_adds_nothing(tmp_path: Pat
 def test_drop_steps_two_and_three_remove_their_work_and_then_the_run_stops(
     tmp_path: Path,
 ) -> None:
-    rates = _rates(pod_usd_per_hour=300.0)  # other work alone is 10,501 dollars
+    rates = _rates(pod_usd_per_hour=400.0)  # other work alone is 14,001 dollars
     codes = [_project(tmp_path, rates) for _ in range(4)]
     assert [d["step"] for d in _drops(tmp_path)] == [1, 2, 3]
     assert codes == [0, 0, 0, budget35.EXIT_STOP]
     assert [c["projection_usd"] for c in _checks(tmp_path)] == pytest.approx(
-        [10_501, 10_501, 7_501, 1_501]
+        [14_001, 14_001, 10_001, 2_001]
     )
     last = _checks(tmp_path)[-1]
     assert last["stop"] is True
@@ -142,7 +142,7 @@ def test_no_drop_record_needs_every_answer_dataset(tmp_path: Path) -> None:
 
 
 def test_a_recorded_drop_step_one_removes_legal_answers(tmp_path: Path) -> None:
-    _project(tmp_path, _rates(pod_hours_per_answer=0.02))
+    _project(tmp_path, _rates(pod_hours_per_answer=0.04))
     steps = budget35.read_drops(tmp_path / "out")
     assert steps == frozenset({1})
     assert budget35.answer_datasets(steps) == ("financebench", "freshstack", "bioasq")

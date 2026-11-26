@@ -59,6 +59,7 @@ import arms  # noqa: E402
 import budget35  # noqa: E402
 import datasets35  # noqa: E402
 import joinscores35  # noqa: E402
+import kindgate35  # noqa: E402
 import scoring35  # noqa: E402
 from outputs35 import Layout, read_rows, write_json  # noqa: E402
 
@@ -230,8 +231,12 @@ def join(
     runs: Sequence[int] = (1, 2, 3),
     smoke: bool = False,
     requested: Mapping[str, str] | None = None,
+    gate: Path | None = None,
 ) -> dict[str, Any]:
     """Merge the pod records, check the output folder and write ``join.json``; return it.
+
+    *gate* is classifier gate 3's ``gate.json``: its kinds are used only when it
+    passed (``kindgate35``); ``claim_kinds`` records the rule the scores used.
 
     Raises:
         scoring35.HalfBLocked: A main (not smoke) join before half B is open;
@@ -258,8 +263,17 @@ def join(
                 (dataset, setup, r, state.layout.run_dir(dataset, "answer", setup, r)) for r in runs
             ]
     docs = question_documents(out)
+    kinds = kindgate35.status(gate)
+    if kinds["version"]:  # a missing file would read as "no refusal claims" (PR 227 review)
+        state.failures += [
+            f"{d}/{st}/run{r}: no claim-kinds.jsonl under a passed classifier gate"
+            for d, st, r, f in answer_dirs
+            if not (f / "claim-kinds.jsonl").is_file()
+        ]
     scores = [
-        s for d, st, r, f in answer_dirs for s in joinscores35.answer_scores(f, d, st, r, docs)
+        s
+        for d, st, r, f in answer_dirs
+        for s in joinscores35.answer_scores(f, d, st, r, docs, kinds_version=kinds["version"])
     ]
     report = {
         "ok": not state.failures,
@@ -268,6 +282,7 @@ def join(
         "failures": state.failures,
         "dropped": [{"step": s, "name": budget35.DROP_STEPS[s]} for s in sorted(steps)],
         "records_merged": merged,
+        "claim_kinds": kinds,
         "traces_rebuilt": state.traces_rebuilt,
         "uncited_segment_share": joinscores35.uncited_share(scores),
         # Section 12: every unjudged and every undefined run is counted per setup.
@@ -275,6 +290,7 @@ def join(
             scores, "unjudged", (*joinscores35.FAITH_KEYS, joinscores35.CORRECT)
         ),
         "not_defined": joinscores35.marked_runs(scores, "not_defined", (joinscores35.CORRECT,)),
+        "unparseable_verdicts": joinscores35.unparseable_counts(scores),
         "returned_model": joinscores35.returned_models(
             [f for *_, f in answer_dirs], requested or {}
         ),
@@ -303,6 +319,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument("--runs", type=int, choices=(1, 2, 3), default=3)
     parser.add_argument("--experiment-dir", type=Path, default=EXP_DIR)
+    parser.add_argument("--gate", type=Path, help="classifier gate 3 gate.json (refusals35.py)")
     args = parser.parse_args(argv)
     out = args.out_dir
     if args.smoke:
@@ -323,7 +340,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         runs=tuple(range(1, args.runs + 1)),
         smoke=args.smoke,
         requested=_requested(args.experiment_dir),
+        gate=args.gate,
     )
+    print(f"[join] claim kinds: {report['claim_kinds']['rule']}", flush=True)
     for failure in report["failures"]:
         print(f"[join] {failure}", flush=True)
     print(f"[join] {'passes' if report['ok'] else 'FAILS'}: {out / 'join.json'}", flush=True)

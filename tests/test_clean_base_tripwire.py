@@ -489,7 +489,33 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # test_a_full_fragment_counts_once_over_10_percent_of_its_rows_are_deleted
 # (test_lancedb_compaction), six of test_an_extra_input_named_like_a_generated_input_is_refused
 # (test_mac_watch35_verify) and new file test_mac_watch35_stop.py (15). 0 removed or renamed.
-_BASE_EXECUTED = 13996
+# +3 (2026-11-25, Exp 35 freeze prep, by test-ID diff against HEAD 7d25cd14): new file
+# test_experiment35_halves_pin.py (3). 0 removed or renamed.
+# +1 (2026-11-25, Exp 35 budget A8 and P14, by test-ID diff against HEAD 07f124c9):
+# test_evidence_recall_20k_has_the_tolerance_of_the_other_four_metrics (plan pins).
+# 0 removed or renamed. No extra.
+# +31 (2026-11-26, Exp 35 A13, RDY 16.3 and 16.4, by test-ID diff against HEAD ddfc0237):
+# new files test_ingestion_file_type_routing.py (6) and test_experiment35_alphandcg.py (8);
+# test_experiment35_arms (4), test_experiment35_unjudged (5),
+# test_experiment35_report_tables (3), test_experiment35_stages (2),
+# test_experiment35_plan_pins (1), test_experiment35_run_arms (1, the
+# INGESTION__FILE_TYPE_ROUTING override case) and test_experiment35_scoring (1).
+# 0 removed or renamed. No extra.
+# +41 (2026-11-26, Exp 35 readiness-review fixes, by test-ID diff against HEAD 3abb78bb):
+# 48 added: new files test_experiment35_analyse (6), _kindgate (12), _osf (4) and
+# _report_extra (6); test_experiment35_rebuild (7), _determinism (6), _join_scores (2),
+# _report_tables (2), _factorial (1), _labels (1) and _wiring (1). 7 removed or renamed:
+# 5 in _determinism (G1 per run, no join), test_sesoi_and_mde_lines_per_row and the
+# determinism-without-a-join case of _wiring. No extra.
+# +28 (2026-11-26, Exp 35 freeze check, by test-ID diff against HEAD 0cf9b6c9): 29 added:
+# new file prefreeze/test_freeze_check_stages (10); prefreeze/test_verify35 (7),
+# prefreeze/test_session_stages (6, the freeze file in the shared checks) and
+# test_experiment35_lengthcheck (6, the gate-3 guard). 1 renamed:
+# test_pool_leaves_out_refusal_claims. No extra.
+# +8 (2026-11-26, PR 227 review fixes, by test-ID diff against HEAD 85fde035): 8 added:
+# test_experiment35_analyse (2), _kindgate (2), _lengthcheck (2), _determinism (1) and
+# _rebuild (1). None removed or renamed. No extra.
+_BASE_EXECUTED = 14108
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
