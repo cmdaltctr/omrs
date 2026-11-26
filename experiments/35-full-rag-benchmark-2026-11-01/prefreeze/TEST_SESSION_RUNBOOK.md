@@ -220,3 +220,91 @@ The re-gate and the quick checks run first, then the full build. The stage timeo
 - Expected total: about 6 h of stages, plus about 15 min for the pod start, the copy, the pull and the stop. That is about $5.60 at $0.89/h. The upper bound is the 15 h cap plus the pull, about $14.
 - Hosted calls: 15 recheck stages, each with answers and two judges on two questions, and 100 classifier calls in `gate2-classify`. That is a few cents of OpenRouter spend.
 - The rate stages had 40 min each until the re-gate was added (2026-11-24). They took 13 min each, so 35 min still gives more than twice that time.
+
+## Freeze check
+
+The freeze check runs the final code on the RTX 4090 once before the freeze (readiness review S2). The last pod ran commit `0868c308`. The store fixes, OCR off (A6), the answer cap (A7) and file-type routing off (A13) came later. The check uses the same machinery as the test session. Its stages are in `prefreeze/freeze_check_stages.txt`. The results folder is `freeze-check-<UTC date>/`. It needs no extra input.
+
+### Before the go
+
+1. Do steps 1 to 3 of "Before the go" above. `COMMIT` is the freeze candidate. The examples file is the committed `classify-examples.json`.
+2. Run the dry run from the Experiment 35 folder:
+
+```bash
+uv run --no-sync python prefreeze/mac_watch35.py --pod-id DRYRUN --commit "$COMMIT" \
+  --examples classify-examples.json --stages freeze_check_stages.txt --dry-run
+```
+
+3. Make sure the dry run exits 0, shows no `PROBLEM:` line and lists 91 input files.
+4. Make sure the dry run shows `STAGES_FILE=/workspace/omrs/.../freeze_check_stages.txt` and the folder `freeze-check-<UTC date>`.
+
+### Session
+
+Do the session order above. In step 7, start the watcher with the stages file and a 4.5 h wall cap:
+
+```bash
+caffeinate -i uv run --no-sync python prefreeze/mac_watch35.py --pod-id <id> \
+  --commit "$COMMIT" --examples classify-examples.json --stages freeze_check_stages.txt \
+  --wall-cap-h 4.5
+```
+
+### Stages and times
+
+Times are expected minutes on one RTX 4090, from the 2026-11-24 sessions. The stage timeouts add up to 911 min. The 4.5 h wall cap stops the session first.
+
+| Stages | Expected | What they show |
+| --- | ---: | --- |
+| `setup`, `context`, `gpulog` | 4 to 23 | The freeze candidate sets up. Both setup checks stop the chain on failure. |
+| `dry-resolved`, `check-dry` | 1 | Routing off, OCR off and the 2,048-token cap resolve on the pod. |
+| `fs-rate`, `fs-rate-seal`, `check-fs-rate` | 12 | Build rate on the 2,747-file sample, and the chunk count of every file. |
+| `s-fb`, `s-bio`, `s-fs` | 10 | The smoke indexes: 10 questions per core dataset. |
+| `g2-*-build`, `check-chunks*`, `g2-*-check` | 15 | G2 under the B3 guards. |
+| `search-*` | 5 | The reranker-on, hybrid-on setup `e4b-c1024-r0.6b-hon`. |
+| `answer-*`, `determinism-*` | 6 | Answers with the cap, then G1 before any judge call (S3). |
+| `closedbook-*` | 3 | Both closed-book prompts. |
+| `judge-*` | 6 | GLM-5.3 and Clef-Flash. |
+| `ragas-*` | 35 | Ragas on the RAG answers and on both closed-book sets. |
+| `kinds-*` | 3 | Claim kinds. |
+| `vram8-build`, `vram8-search` | 5 | The 8B embedder and the 8B reranker in one search. |
+| `join`, `check-*`, `collect` | 2 | The smoke join and the pass rule. |
+
+- Expected total: about 105 to 125 min of stages, plus about 15 min for pod start, copy, pull and stop. That is about 2.3 h, or about $2.05 at $0.89/h.
+- Upper bound: the 4.5 h wall cap plus the pull, about 4.8 h, or about $4.30. If the Mac stops answering, the chain waits up to 2 h more for `PULLED` (about $1.80).
+- Hosted calls: 30 RAG answers, 60 closed-book answers, Ragas on 90 answer sets, 30 claim-kind sets and GLM-5.3 on 30 answers. At the section 17 rates per answer this is about $0.80. The 2026-11-24 answers cost about a quarter of the answer rate.
+- `analyse35.py` does not run. It has no smoke or dry-run mode, and it refuses before any read while half B is locked.
+
+### Pass rule
+
+The check passes when every stage ends `ok` and each check below holds. Each `check-*` stage tests its row on the pod and prints one line per finding. Paths are under `out/` in the session tarball.
+
+| # | File | Field and value |
+| ---: | --- | --- |
+| 1 | `dry/freshstack-ingest.txt`, `dry/financebench-ingest.txt` | `resolved.file_type_routing` false, `resolved.ocr_fallback_enabled` false, `resolved.answer_max_output_tokens` 2048, `role_problems` empty |
+| 2 | `fsrate/freshstack/e4b-c1024/ingest-summary.json` | `files` equals `samples.fsrate.files` of `prefreeze/fs_chunks_c1024_expected.json` (2,747 files, 6,696 chunks); `failed` empty; no file with 0 chunks |
+| 3 | `test-session.log`, `[rate] files` lines of `fs-rate` | Blocks 2 to 14 stay within 20% of each other. Record the total s/file. The 2026-11-24 value was 0.25 s/file. |
+| 4 | `s/freshstack/e4b-c1024/ingest-summary.json`, `rb/freshstack/e4b-c1024/ingest-summary.json` | `files` equals `samples.s.files` (386 files, 916 chunks) |
+| 5 | `ingest-summary.json` of FinanceBench and BioASQ in `s` and `rb` | `failed` empty; no file with 0 chunks |
+| 6 | every `*/*/e*-c*/index-fingerprint.json` (8 files) | `tokenizer.sha256` `83cdf8c3a34f68862319cb1810ee7b1e2c0a44e0864ae930194ddb76bb7feb8d`, `tokenizer.revision` `5cf2132a…` |
+| 7 | `s/financebench/e4b-c1024/index-fingerprint.json`, `rb/financebench/e4b-c1024/index-fingerprint.json` | `unpaged_chunks` 0. The seal refused no chunk. |
+| 8 | `s/<dataset>/rebuild.json` (3 files) | `ok` true, `setup` `e4b-c1024-roff-hoff`, `mismatches` empty, `incomplete` empty, `questions_compared` 10 |
+| 9 | `s/<dataset>/search/e4b-c1024-r0.6b-hon/run1/search-summary.json` and `vram/freshstack/search/e8b-c1024-r8b-hon/run1/search-summary.json` | `closed_missing` empty |
+| 10 | `s/<dataset>/{answer,closedbook-own,closedbook-rag}/e4b-c1024-r0.6b-hon/run1/answer-summary.json` (9 files) | `missing` 0, `answered` 10, `closed_missing` empty |
+| 11 | `s/finish-reasons.json` | `ok` true: every answered row has a finish reason for each reply, and no reply is above 2,048 output tokens. Record the counts per file (`stop`, `length`). |
+| 12 | `s/<dataset>/answer/e4b-c1024-r0.6b-hon/run1/determinism.json` (3 files) | `ok` true |
+| 13 | `s/<dataset>/answer/e4b-c1024-r0.6b-hon/run1/judge-chat-summary.json` and `judge-clef_flash-summary.json` (6 files) | `missing` 0, `closed_claims` 0, `not_judged` 0 |
+| 14 | `s/<dataset>/{answer,closedbook-own,closedbook-rag}/e4b-c1024-r0.6b-hon/run1/ragas-summary.json` (9 files) | `errors` 0, `not_judged` 0, `unjudged_open` empty |
+| 15 | `s/<dataset>/answer/e4b-c1024-r0.6b-hon/run1/claimkinds-summary.json` (3 files) | `closed_missing` empty |
+| 16 | `s/join.json` | `ok` true, `smoke` true, `failures` empty |
+| 17 | `gpu.csv` | Record the peak `memory.used` during `vram8-search`. The stage `ok` is the pass. |
+
+### On a failure
+
+Fix forward. Do not re-run the whole check.
+
+1. Read the `STOP:` line or the failed stage in the pulled `test-session.log`.
+2. Fix the cause on the Mac. Write a test that fails first, then make it pass.
+3. Commit and push the fix. The new commit is the freeze candidate.
+4. If only a `check-*` stage failed, and the fix is in the check, run that check on the Mac against the unpacked tarball. Replace `$OUT_DIR` with the unpacked `out` folder. No pod is needed.
+5. Otherwise, copy `freeze_check_stages.txt` to `freeze_rerun_stages.txt`. Keep `setup`, `context`, `gpulog`, the failed stages, the stages they read from, and their `check-*` stages. Delete the other lines. For example, a failed `ragas-fs` needs `s-fs`, `search-fs` and `answer-fs` again, because the pod starts empty.
+6. Add the new file to `FILES` in `prefreeze/test_session_stages.py`, and run the prefreeze tests.
+7. Dry-run it as in "Before the go", with `--stages freeze_rerun_stages.txt`. Then run it on a new pod.

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import inspect
 import io
+import json
 import sys
 import tarfile
 from pathlib import Path
@@ -154,3 +155,121 @@ def test_unpack_also_copies_the_seal_environment_the_answer_stages_read(tmp_path
     assert verify35.main(argv) == 0
     text = (out / "environment.json").read_text(encoding="utf-8")
     assert text == "data of out/s/environment.json\n"
+
+
+# --- the pre-freeze pod check (freeze_check_stages.txt) -----------------------------------
+
+
+def _json(path: Path, value: object) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value), encoding="utf-8")
+    return path
+
+
+def _expected(tmp_path: Path, files: dict[str, int]) -> Path:
+    return _json(tmp_path / "expected.json", {"samples": {"fsrate": {"files": files}}})
+
+
+def test_chunks_passes_only_when_every_file_has_the_mac_count(tmp_path: Path) -> None:
+    expected = _expected(tmp_path, {"a.md": 2, "b.md": 1})
+    good = _json(tmp_path / "good.json", {"files": {"a.md": 2, "b.md": 1}, "failed": []})
+    assert verify35.main(["chunks", str(good), "--expected", str(expected)]) == 0
+    for name, summary in (
+        ("count", {"files": {"a.md": 3, "b.md": 1}, "failed": []}),
+        ("zero", {"files": {"a.md": 2, "b.md": 0}, "failed": []}),
+        ("missing", {"files": {"a.md": 2}, "failed": []}),
+        ("failed", {"files": {"a.md": 2}, "failed": ["b.md"]}),
+        ("extra", {"files": {"a.md": 2, "b.md": 1, "c.md": 1}, "failed": []}),
+    ):
+        path = _json(tmp_path / f"{name}.json", summary)
+        assert verify35.main(["chunks", str(path), "--expected", str(expected)]) == 1, name
+
+
+def test_chunks_names_each_difference(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    expected = _expected(tmp_path, {"a.md": 2, "b.md": 1})
+    summary = _json(tmp_path / "s.json", {"files": {"a.md": 3, "b.md": 0}, "failed": []})
+    verify35.main(["chunks", str(summary), "--expected", str(expected), "--sample", "fsrate"])
+    out = capsys.readouterr().out
+    assert "a.md: 3 chunks, the Mac gives 2" in out and "b.md: 0 chunks" in out
+    assert "[chunks] FAILED: 2 of 2 files differ" in out
+
+
+def test_expect_checks_each_field_of_each_matching_file(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    for name in ("x", "y"):
+        _json(tmp_path / name / "s.json", {"missing": 0, "seal": {"sha": "ab", "list": []}})
+    pattern = str(tmp_path / "*" / "s.json")
+    good = ["expect", pattern, "--count", "2", "missing=0", "seal.sha=ab", "seal.list=[]"]
+    assert verify35.main(good) == 0
+    assert verify35.main(["expect", pattern, "--count", "2", "missing=1"]) == 1
+    assert verify35.main(["expect", pattern, "--count", "3", "missing=0"]) == 1
+    assert verify35.main(["expect", pattern, "--count", "2", "nothing=0"]) == 1
+    out = capsys.readouterr().out
+    assert "missing is 0, expected 1" in out and "2 files match, expected 3" in out
+    assert "nothing is absent" in out
+
+
+def test_expect_reads_the_json_of_a_dry_run_plan_after_its_first_line(tmp_path: Path) -> None:
+    plan = tmp_path / "dry.txt"
+    body = json.dumps({"resolved": {"file_type_routing": False}}, indent=2)
+    plan.write_text("[dry-run] nothing started, nothing sent\n" + body + "\n", encoding="utf-8")
+    assert verify35.main(["expect", str(plan), "resolved.file_type_routing=false"]) == 0
+    assert verify35.main(["expect", str(plan), "resolved.file_type_routing=true"]) == 1
+
+
+def _answers(path: Path, rows: list[dict]) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    return path
+
+
+def test_finish_tallies_the_finish_reasons_and_refuses_a_row_without_them(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    good = _answers(
+        tmp_path / "a" / "answer.jsonl",
+        [
+            {"qid": "1", "finish_reasons": ["stop"], "output_tokens": 300},
+            {"qid": "2", "finish_reasons": ["length"], "output_tokens": 2048},
+            {"qid": "3", "missing": True},
+        ],
+    )
+    out = tmp_path / "finish.json"
+    assert verify35.main(["finish", str(good), "--cap", "2048", "--out", str(out)]) == 0
+    report = json.loads(out.read_text())
+    assert report["files"][str(good)] == {
+        "rows": 3,
+        "missing": 1,
+        "reasons": {"length": 1, "stop": 1},
+    }
+    assert report["ok"] is True
+    for name, row in (
+        ("none", {"qid": "1", "output_tokens": 10}),
+        ("null", {"qid": "1", "finish_reasons": [None], "output_tokens": 10}),
+        ("over", {"qid": "1", "finish_reasons": ["stop"], "output_tokens": 2049}),
+    ):
+        bad = _answers(tmp_path / name / "answer.jsonl", [row])
+        assert verify35.main(["finish", str(bad), "--cap", "2048", "--out", str(out)]) == 1, name
+    assert "no finish reason" in capsys.readouterr().out
+    assert verify35.main(["finish", str(tmp_path / "nope.jsonl"), "--cap", "2048"]) == 1
+
+
+def test_chunks_without_a_mac_count_needs_files_none_failed_and_none_empty(tmp_path: Path) -> None:
+    good = _json(tmp_path / "good.json", {"files": {"a.pdf": 9}, "failed": []})
+    assert verify35.main(["chunks", str(good)]) == 0
+    for name, summary in (
+        ("zero", {"files": {"a.pdf": 9, "b.pdf": 0}, "failed": []}),
+        ("failed", {"files": {"a.pdf": 9}, "failed": ["b.pdf"]}),
+        ("empty", {"files": {}, "failed": []}),
+    ):
+        path = _json(tmp_path / f"{name}.json", summary)
+        assert verify35.main(["chunks", str(path)]) == 1, name
+
+
+def test_chunks_checks_every_summary_it_names(tmp_path: Path) -> None:
+    good = _json(tmp_path / "good.json", {"files": {"a.pdf": 9}, "failed": []})
+    bad = _json(tmp_path / "bad.json", {"files": {"a.pdf": 0}, "failed": []})
+    assert verify35.main(["chunks", str(good), str(good)]) == 0
+    assert verify35.main(["chunks", str(bad), str(good)]) == 1
+    assert verify35.main(["chunks", str(good), str(bad)]) == 1

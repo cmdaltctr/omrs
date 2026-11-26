@@ -1,0 +1,137 @@
+# Stages of the Experiment 35 pre-freeze pod check (readiness review S2, 2026-11-26).
+# pod_test_session.sh runs them unchanged (line format in its header). The Mac starts
+# the chain through mac_watch35.py --stages freeze_check_stages.txt, which writes
+# STAGES_FILE into session.env for launch35.sh. Every stage runs at the commit the
+# watcher gives (--commit, the freeze candidate): no stage checks out another commit.
+# Runbook: TEST_SESSION_RUNBOOK.md, section "Freeze check".
+#
+# Why: the last pod ran commit 0868c308. The store fixes (784e478c, 9d111476, 7a656266,
+# fff0fa14, 2cdbc210), OCR off (90ed89a1, A6), the answer max_tokens cap (786b670c, A7)
+# and file-type routing off (A13) were tested on the Mac only. This is the smallest set
+# that runs them on the RTX 4090 before the freeze.
+#
+# Pod and inputs: as for the test session (create_pod35.py, exp35-inputs.tgz and the
+# committed classify-examples.json). No extra input.
+#
+# Order: setup checks, the resolved-settings dry runs, the FreshStack build rate, then one
+# reranker-on, hybrid-on setup (e4b-c1024-r0.6b-hon) end to end on 10 questions of each
+# core dataset, with the G2 rebuild check and the G1 determinism stage, then the 8B pair,
+# the smoke join and the read-only checks. Expected minutes are in the block comments;
+# about 120 min in total. Pass rule: runbook, section "Freeze check".
+#
+# Not run: analyse35.py has no smoke or dry-run mode. It refuses before any read
+# without half B (scoring35.require_half_b), so it cannot run on smoke outputs. Its
+# guards are covered by the Mac tests (tests/test_experiment35_analyse.py).
+
+# Values: exported, literally, to every later stage. The test session's model folder
+# (setup fetches the GGUF files there; run_arms refuses to start without it).
+SWEEP_GGUF_DIR=/root/gguf
+
+# 1. Setup on the freeze candidate, and the context-length check. Both stop the chain on
+# failure (G5). 4 min on the last two pods (23 min on the first). The GPU log gives the
+# peak VRAM of the 8B pair.
+!setup@60m bash prefreeze/pod_setup35.sh --commit "$COMMIT" --inputs /workspace/inputs --passages-dir /workspace/passages --ragas-venv /workspace/ragas-venv --ref-venv /root/exp35-ref-venv
+!context@5m uv run --no-sync python context35.py > "$OUT_DIR/context35.json"
+gpulog@1m nohup nvidia-smi --query-gpu=timestamp,memory.used,memory.total,utilization.gpu --format=csv -lms 1000 > "$OUT_DIR/gpu.csv" 2>&1 & echo $! >> "$BACKGROUND_PIDS"
+
+# 2. Resolved settings (A13, A6, A7): a FreshStack and a FinanceBench ingest dry run.
+# The check reads file_type_routing false, OCR off and the 2,048-token answer cap. 1 min.
+dry-resolved@10m mkdir -p "$OUT_DIR/dry" && uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c1024 --stage ingest --corpus-sample 1200 --passages-dir /workspace/passages --out-dir "$OUT_DIR/dry" --prefreeze --local-dir /root/exp35-local --dry-run > "$OUT_DIR/dry/freshstack-ingest.txt" && uv run --no-sync python run_arms.py --dataset financebench --index e4b-c1024 --stage ingest --limit 10 --corpus-sample 3 --out-dir "$OUT_DIR/dry" --prefreeze --local-dir /root/exp35-local --dry-run > "$OUT_DIR/dry/financebench-ingest.txt"
+check-dry@5m uv run --no-sync python prefreeze/verify35.py expect "$OUT_DIR/dry/*-ingest.txt" --count 2 resolved.file_type_routing=false resolved.ocr_fallback_enabled=false resolved.answer_max_output_tokens=2048 'role_problems=[]'
+
+# 3. FreshStack build rate after the store fixes: the 2,747-file sample (1,200 sampled
+# plus the gold files of every question) into a fresh e4b-c1024 index, one [rate] line
+# per 200 files, then the seal and the per-file chunk check against the Mac counts
+# (fs_chunks_c1024_expected.json, 6,696 chunks). 0.25 s per file on 2026-11-24, about
+# 12 min.
+fs-rate@35m uv run --no-sync python prefreeze/verify35.py rate --block 200 -- uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c1024 --stage ingest --corpus-sample 1200 --passages-dir /workspace/passages --out-dir "$OUT_DIR/fsrate" --prefreeze --local-dir /root/exp35-local
+fs-rate-seal@10m uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c1024 --stage seal --corpus-sample 1200 --passages-dir /workspace/passages --out-dir "$OUT_DIR/fsrate" --prefreeze --local-dir /root/exp35-local
+check-fs-rate@5m uv run --no-sync python prefreeze/verify35.py chunks "$OUT_DIR/fsrate/freshstack/e4b-c1024/ingest-summary.json" --expected prefreeze/fs_chunks_c1024_expected.json --sample fsrate
+
+# 4. Smoke indexes in s: e4b-c1024 for 10 questions of each core dataset (FinanceBench
+# 11 PDFs with OCR off, BioASQ 394 files, FreshStack 386 files). About 10 min.
+s-fb@25m uv run --no-sync python run_arms.py --dataset financebench --index e4b-c1024 --stage ingest --limit 10 --corpus-sample 3 --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python run_arms.py --dataset financebench --index e4b-c1024 --stage seal --limit 10 --corpus-sample 3 --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local
+s-bio@25m uv run --no-sync python run_arms.py --dataset bioasq --index e4b-c1024 --stage ingest --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python run_arms.py --dataset bioasq --index e4b-c1024 --stage seal --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local
+s-fs@25m uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c1024 --stage ingest --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c1024 --stage seal --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local
+
+# 5. G2 rebuild check under the B3 guards: rebuild each index in rb, search both sides
+# with e4b-c1024-roff-hoff (--index-from), compare into s/<dataset>/rebuild.json.
+# rebuild35.py refuses a missing or empty list and a list outside search/e4b-c1024-roff-hoff/;
+# --prefreeze skips only the frozen-count check (10 questions). A mismatch exits 3 and
+# fails the stage. About 15 min.
+g2-fb-build@25m uv run --no-sync python run_arms.py --dataset financebench --index e4b-c1024 --stage ingest --limit 10 --corpus-sample 3 --out-dir "$OUT_DIR/rb" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python run_arms.py --dataset financebench --index e4b-c1024 --stage seal --limit 10 --corpus-sample 3 --out-dir "$OUT_DIR/rb" --prefreeze --local-dir /root/exp35-local
+g2-bio-build@25m uv run --no-sync python run_arms.py --dataset bioasq --index e4b-c1024 --stage ingest --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/rb" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python run_arms.py --dataset bioasq --index e4b-c1024 --stage seal --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/rb" --prefreeze --local-dir /root/exp35-local
+g2-fs-build@25m uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c1024 --stage ingest --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/rb" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c1024 --stage seal --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/rb" --prefreeze --local-dir /root/exp35-local
+check-chunks@5m uv run --no-sync python prefreeze/verify35.py chunks "$OUT_DIR/s/freshstack/e4b-c1024/ingest-summary.json" "$OUT_DIR/rb/freshstack/e4b-c1024/ingest-summary.json" --expected prefreeze/fs_chunks_c1024_expected.json --sample s
+check-chunks-other@5m uv run --no-sync python prefreeze/verify35.py chunks "$OUT_DIR/s/financebench/e4b-c1024/ingest-summary.json" "$OUT_DIR/rb/financebench/e4b-c1024/ingest-summary.json" "$OUT_DIR/s/bioasq/e4b-c1024/ingest-summary.json" "$OUT_DIR/rb/bioasq/e4b-c1024/ingest-summary.json"
+g2-fb-check@15m uv run --no-sync python run_arms.py --dataset financebench --setup e4b-c1024-roff-hoff --stage search --limit 10 --corpus-sample 3 --index-from "$OUT_DIR/s" --out-dir "$OUT_DIR/chk" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python run_arms.py --dataset financebench --setup e4b-c1024-roff-hoff --stage search --limit 10 --corpus-sample 3 --index-from "$OUT_DIR/rb" --out-dir "$OUT_DIR/rbs" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python rebuild35.py --a "$OUT_DIR/chk/financebench/search/e4b-c1024-roff-hoff/run1/search.jsonl" --b "$OUT_DIR/rbs/financebench/search/e4b-c1024-roff-hoff/run1/search.jsonl" --out-dir "$OUT_DIR/s" --dataset financebench --prefreeze
+g2-bio-check@15m uv run --no-sync python run_arms.py --dataset bioasq --setup e4b-c1024-roff-hoff --stage search --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --index-from "$OUT_DIR/s" --out-dir "$OUT_DIR/chk" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python run_arms.py --dataset bioasq --setup e4b-c1024-roff-hoff --stage search --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --index-from "$OUT_DIR/rb" --out-dir "$OUT_DIR/rbs" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python rebuild35.py --a "$OUT_DIR/chk/bioasq/search/e4b-c1024-roff-hoff/run1/search.jsonl" --b "$OUT_DIR/rbs/bioasq/search/e4b-c1024-roff-hoff/run1/search.jsonl" --out-dir "$OUT_DIR/s" --dataset bioasq --prefreeze
+g2-fs-check@15m uv run --no-sync python run_arms.py --dataset freshstack --setup e4b-c1024-roff-hoff --stage search --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --index-from "$OUT_DIR/s" --out-dir "$OUT_DIR/chk" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python run_arms.py --dataset freshstack --setup e4b-c1024-roff-hoff --stage search --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --index-from "$OUT_DIR/rb" --out-dir "$OUT_DIR/rbs" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python rebuild35.py --a "$OUT_DIR/chk/freshstack/search/e4b-c1024-roff-hoff/run1/search.jsonl" --b "$OUT_DIR/rbs/freshstack/search/e4b-c1024-roff-hoff/run1/search.jsonl" --out-dir "$OUT_DIR/s" --dataset freshstack --prefreeze
+
+# 6. Search with the reranker and hybrid on, in s. About 5 min.
+search-fb@15m uv run --no-sync python run_arms.py --dataset financebench --setup e4b-c1024-r0.6b-hon --stage search --limit 10 --corpus-sample 3 --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local
+search-bio@15m uv run --no-sync python run_arms.py --dataset bioasq --setup e4b-c1024-r0.6b-hon --stage search --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local
+search-fs@15m uv run --no-sync python run_arms.py --dataset freshstack --setup e4b-c1024-r0.6b-hon --stage search --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local
+
+# 7. Answers, every request with max_tokens 2048 (A7); each row records its finish
+# reasons. Then G1 at once, as on a replicate pod (S3): each answer's evidence and
+# ranked list against the search list, before any judge or Ragas call. About 6 min.
+answer-fb@20m uv run --no-sync python run_arms.py --dataset financebench --setup e4b-c1024-r0.6b-hon --stage answer --limit 10 --corpus-sample 3 --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local --answer-host deepinfra/fp8 --answer-concurrency 16
+answer-bio@20m uv run --no-sync python run_arms.py --dataset bioasq --setup e4b-c1024-r0.6b-hon --stage answer --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local --answer-host deepinfra/fp8 --answer-concurrency 16
+answer-fs@20m uv run --no-sync python run_arms.py --dataset freshstack --setup e4b-c1024-r0.6b-hon --stage answer --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local --answer-host deepinfra/fp8 --answer-concurrency 16
+determinism-fb@5m uv run --no-sync python run_arms.py --dataset financebench --setup e4b-c1024-r0.6b-hon --stage determinism --run 1 --limit 10 --corpus-sample 3 --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local
+determinism-bio@5m uv run --no-sync python run_arms.py --dataset bioasq --setup e4b-c1024-r0.6b-hon --stage determinism --run 1 --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local
+determinism-fs@5m uv run --no-sync python run_arms.py --dataset freshstack --setup e4b-c1024-r0.6b-hon --stage determinism --run 1 --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local
+
+# 8. Closed-book answers, both prompts (closedbook-own and closedbook-rag), one direct
+# completion call each, also capped. About 3 min.
+closedbook-fb@10m uv run --no-sync python run_arms.py --dataset financebench --setup e4b-c1024-r0.6b-hon --stage closedbook --limit 10 --corpus-sample 3 --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local --answer-host deepinfra/fp8 --answer-concurrency 16
+closedbook-bio@10m uv run --no-sync python run_arms.py --dataset bioasq --setup e4b-c1024-r0.6b-hon --stage closedbook --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local --answer-host deepinfra/fp8 --answer-concurrency 16
+closedbook-fs@10m uv run --no-sync python run_arms.py --dataset freshstack --setup e4b-c1024-r0.6b-hon --stage closedbook --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local --answer-host deepinfra/fp8 --answer-concurrency 16
+
+# 9. Both claim checkers (GLM-5.3 on Z.AI, Clef-Flash on the pod). About 6 min.
+judge-fb@20m uv run --no-sync python run_arms.py --dataset financebench --setup e4b-c1024-r0.6b-hon --stage judge --judges chat,clef_flash --limit 10 --corpus-sample 3 --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local --chat-concurrency 4
+judge-bio@20m uv run --no-sync python run_arms.py --dataset bioasq --setup e4b-c1024-r0.6b-hon --stage judge --judges chat,clef_flash --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local --chat-concurrency 4
+judge-fs@20m uv run --no-sync python run_arms.py --dataset freshstack --setup e4b-c1024-r0.6b-hon --stage judge --judges chat,clef_flash --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local --chat-concurrency 4
+
+# 10. Ragas on the RAG answers and on both closed-book answer sets (the contamination
+# subset reads both). 16 in flight. About 35 min, the longest block.
+ragas-fb@30m uv run --no-sync python run_arms.py --dataset financebench --setup e4b-c1024-r0.6b-hon --stage ragas --limit 10 --corpus-sample 3 --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local --ragas-host deepinfra/bf16 --ragas-venv /workspace/ragas-venv --ragas-concurrency 16
+ragas-bio@30m uv run --no-sync python run_arms.py --dataset bioasq --setup e4b-c1024-r0.6b-hon --stage ragas --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local --ragas-host deepinfra/bf16 --ragas-venv /workspace/ragas-venv --ragas-concurrency 16
+ragas-fs@30m uv run --no-sync python run_arms.py --dataset freshstack --setup e4b-c1024-r0.6b-hon --stage ragas --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local --ragas-host deepinfra/bf16 --ragas-venv /workspace/ragas-venv --ragas-concurrency 16
+ragas-cbown-fb@20m uv run --no-sync python run_arms.py --dataset financebench --setup e4b-c1024-r0.6b-hon --stage ragas --answers closedbook-own --limit 10 --corpus-sample 3 --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local --ragas-host deepinfra/bf16 --ragas-venv /workspace/ragas-venv --ragas-concurrency 16
+ragas-cbown-bio@20m uv run --no-sync python run_arms.py --dataset bioasq --setup e4b-c1024-r0.6b-hon --stage ragas --answers closedbook-own --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local --ragas-host deepinfra/bf16 --ragas-venv /workspace/ragas-venv --ragas-concurrency 16
+ragas-cbown-fs@20m uv run --no-sync python run_arms.py --dataset freshstack --setup e4b-c1024-r0.6b-hon --stage ragas --answers closedbook-own --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local --ragas-host deepinfra/bf16 --ragas-venv /workspace/ragas-venv --ragas-concurrency 16
+ragas-cbrag-fb@20m uv run --no-sync python run_arms.py --dataset financebench --setup e4b-c1024-r0.6b-hon --stage ragas --answers closedbook-rag --limit 10 --corpus-sample 3 --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local --ragas-host deepinfra/bf16 --ragas-venv /workspace/ragas-venv --ragas-concurrency 16
+ragas-cbrag-bio@20m uv run --no-sync python run_arms.py --dataset bioasq --setup e4b-c1024-r0.6b-hon --stage ragas --answers closedbook-rag --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local --ragas-host deepinfra/bf16 --ragas-venv /workspace/ragas-venv --ragas-concurrency 16
+ragas-cbrag-fs@20m uv run --no-sync python run_arms.py --dataset freshstack --setup e4b-c1024-r0.6b-hon --stage ragas --answers closedbook-rag --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local --ragas-host deepinfra/bf16 --ragas-venv /workspace/ragas-venv --ragas-concurrency 16
+
+# 11. Claim kinds (the committed examples; used in results only after gate 3). 3 min.
+kinds-fb@15m uv run --no-sync python run_arms.py --dataset financebench --setup e4b-c1024-r0.6b-hon --stage claimkinds --limit 10 --corpus-sample 3 --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local --classify-examples /workspace/inputs/classify-examples.json --classify-concurrency 16
+kinds-bio@15m uv run --no-sync python run_arms.py --dataset bioasq --setup e4b-c1024-r0.6b-hon --stage claimkinds --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local --classify-examples /workspace/inputs/classify-examples.json --classify-concurrency 16
+kinds-fs@15m uv run --no-sync python run_arms.py --dataset freshstack --setup e4b-c1024-r0.6b-hon --stage claimkinds --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local --classify-examples /workspace/inputs/classify-examples.json --classify-concurrency 16
+
+# 12. The 8B embedder and the 8B reranker together, one index and one search in vram,
+# built and searched at this commit (the old vram8-search read an index of another
+# commit and stopped). Peak VRAM is in gpu.csv. About 5 min.
+vram8-build@20m uv run --no-sync python run_arms.py --dataset freshstack --index e8b-c1024 --stage ingest --limit 5 --corpus-sample 150 --passages-dir /workspace/passages --out-dir "$OUT_DIR/vram" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python run_arms.py --dataset freshstack --index e8b-c1024 --stage seal --limit 5 --corpus-sample 150 --passages-dir /workspace/passages --out-dir "$OUT_DIR/vram" --prefreeze --local-dir /root/exp35-local
+vram8-search@20m uv run --no-sync python run_arms.py --dataset freshstack --setup e8b-c1024-r8b-hon --stage search --limit 5 --corpus-sample 150 --passages-dir /workspace/passages --out-dir "$OUT_DIR/vram" --prefreeze --local-dir /root/exp35-local
+
+# 13. Smoke join of s (no model call; claim kinds under the fallback, no --gate). 1 min.
+join@10m uv run --no-sync python join35.py --out-dir "$OUT_DIR/s" --smoke --runs 1
+
+# 14. Read-only checks: the pass rule of the runbook, one stage per group. Seconds each.
+check-tokenizer@5m uv run --no-sync python prefreeze/verify35.py expect "$OUT_DIR/*/*/e*-c*/index-fingerprint.json" --count 8 tokenizer.sha256=83cdf8c3a34f68862319cb1810ee7b1e2c0a44e0864ae930194ddb76bb7feb8d tokenizer.revision=5cf2132abc99cad020ac570b19d031efec650f2b
+check-fb-seal@5m uv run --no-sync python prefreeze/verify35.py expect "$OUT_DIR/*/financebench/e4b-c1024/index-fingerprint.json" --count 2 unpaged_chunks=0
+check-rebuild@5m uv run --no-sync python prefreeze/verify35.py expect "$OUT_DIR/s/*/rebuild.json" --count 3 ok=true setup=e4b-c1024-roff-hoff 'mismatches=[]' 'incomplete=[]' questions_compared=10
+check-search@5m uv run --no-sync python prefreeze/verify35.py expect "$OUT_DIR/*/*/search/e*-c1024-r*-hon/run1/search-summary.json" --count 4 'closed_missing=[]'
+check-answers@5m uv run --no-sync python prefreeze/verify35.py expect "$OUT_DIR/s/*/*/e4b-c1024-r0.6b-hon/run1/answer-summary.json" --count 9 missing=0 answered=10 'closed_missing=[]'
+check-finish@5m uv run --no-sync python prefreeze/verify35.py finish "$OUT_DIR/s/*/*/e4b-c1024-r0.6b-hon/run1/answer.jsonl" --cap 2048 --out "$OUT_DIR/s/finish-reasons.json"
+check-determinism@5m uv run --no-sync python prefreeze/verify35.py expect "$OUT_DIR/s/*/answer/e4b-c1024-r0.6b-hon/run1/determinism.json" --count 3 ok=true
+check-judges@5m uv run --no-sync python prefreeze/verify35.py expect "$OUT_DIR/s/*/answer/e4b-c1024-r0.6b-hon/run1/judge-*-summary.json" --count 6 missing=0 closed_claims=0 not_judged=0
+check-ragas@5m uv run --no-sync python prefreeze/verify35.py expect "$OUT_DIR/s/*/*/e4b-c1024-r0.6b-hon/run1/ragas-summary.json" --count 9 errors=0 not_judged=0 'unjudged_open={}'
+check-kinds@5m uv run --no-sync python prefreeze/verify35.py expect "$OUT_DIR/s/*/answer/e4b-c1024-r0.6b-hon/run1/claimkinds-summary.json" --count 3 'closed_missing=[]'
+check-join@5m uv run --no-sync python prefreeze/verify35.py expect "$OUT_DIR/s/join.json" ok=true smoke=true 'failures=[]'
+
+# Router logs of every stage (swaps, idle stops) into the tarball. 1 min.
+collect@5m mkdir -p "$OUT_DIR/router-logs" && cd /root/exp35-local && find . -name server.log -print0 | tar --null -T - -cf - | tar -xf - -C "$OUT_DIR/router-logs"
