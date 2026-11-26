@@ -177,6 +177,14 @@ def test_family_sizes_and_flags(planted: dict[str, Any]) -> None:
     assert all(r["ci_low"] is not None for r in bq.values())
 
 
+def test_a_gee_row_reports_the_library_difference(planted: dict[str, Any]) -> None:
+    # Pre-registration section 9 point 3: the report gives the library difference.
+    fs = _rows(planted, "freshstack")
+    assert all("library_difference" in r for r in fs.values() if not r.get("dropped"))
+    assert fs[1]["library_difference"] < 1e-8  # statsmodels matched the closed form
+    assert "library_difference" not in _rows(planted, "financebench")[1]  # sign-flip rows
+
+
 def test_planted_embedder_effect_only_h1_rows_count(planted: dict[str, Any]) -> None:
     for dataset in ("financebench", "freshstack", "bioasq"):
         counted = {n for n, r in _rows(planted, dataset).items() if r["counts"]}
@@ -399,10 +407,19 @@ def test_setup_table_is_descriptive_on_all_questions() -> None:
 # --- step 8 guard: no confirmatory result before the gate files (task 16.18, A6 note) ---------
 
 
+def _kind_gate(root):
+    import json
+
+    path = root / "gate.json"
+    path.write_text(json.dumps({"pass": True, "version": "v"}))
+    return path
+
+
 def _main_join(root, **extra) -> None:
     import json
 
-    (root / "join.json").write_text(json.dumps({"ok": True, **extra}))
+    kinds = {"pass": True, "version": "v"}  # the join used the passed classifier gate
+    (root / "join.json").write_text(json.dumps({"ok": True, "claim_kinds": kinds, **extra}))
 
 
 @pytest.mark.parametrize("join", [None, {"ok": False}, {"smoke": True}])
@@ -415,7 +432,13 @@ def test_confirmatory_result_refuses_without_a_main_run_join(tmp_path, join) -> 
     out = tmp_path / "factorial.json"
     with pytest.raises(stages35.StageOrderError, match="join"):
         factorial35.write_confirmatory(
-            out, _search(), _answers(), label_dir=tmp_path, root=tmp_path, **FAST
+            out,
+            _search(),
+            _answers(),
+            label_dir=tmp_path,
+            root=tmp_path,
+            kind_gate=_kind_gate(tmp_path),
+            **FAST,
         )
     assert not out.exists()
 
@@ -427,7 +450,13 @@ def test_confirmatory_result_refuses_before_the_gate_files(tmp_path) -> None:
     out = tmp_path / "factorial.json"
     with pytest.raises(labels35.GateMissing, match="faithfulness-gate.json"):
         factorial35.write_confirmatory(
-            out, _search(), _answers(), label_dir=tmp_path, root=tmp_path, **FAST
+            out,
+            _search(),
+            _answers(),
+            label_dir=tmp_path,
+            root=tmp_path,
+            kind_gate=_kind_gate(tmp_path),
+            **FAST,
         )
     assert not out.exists()
 
@@ -443,7 +472,13 @@ def test_confirmatory_result_applies_the_gate_rows(tmp_path) -> None:
     _main_join(tmp_path)
     out = tmp_path / "factorial.json"
     result = factorial35.write_confirmatory(
-        out, _search(), _answers(), label_dir=tmp_path, root=tmp_path, **FAST
+        out,
+        _search(),
+        _answers(),
+        label_dir=tmp_path,
+        root=tmp_path,
+        kind_gate=_kind_gate(tmp_path),
+        **FAST,
     )
     rows = _rows(result, "freshstack")
     assert rows[12]["not_testable"] and rows[14]["not_testable"]
