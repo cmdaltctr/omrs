@@ -35,12 +35,13 @@ G0 preflight
    |
    v
 6. Experiment 35: data, pre-freeze pod (G7a), harness (G7b),
-   smoke run, freeze (G7), run, report (design D5)
+   smoke run, freeze (G7), search, half-A selection; half-B scoring
+   and report only after G8 or the Part 2 drop (design D5)
    |
    v
 7. Part 2 (RAGFlow on half B) and E1: after the Exp 35 freeze, A3 on half A,
    RAGFlow set-up, Part 2 freeze and its own OSF deposit at G8 (before any half-B
-   score), run on half B, E1 last
+   score of Exp 35), run on half B, E1 last
 ```
 
 The cuts change goes first because both other changes build on it (the panel shows its cut boxes; the router change lands after it and shares the re-index). The router goes before the panel because it is on the benchmark's critical path and both touch `workspace-settings` and `settings-file`: never two of these branches at once (rule of the archived master flow, task 4.4). The panel changes no result with defaults, so it may run beside the sweep.
