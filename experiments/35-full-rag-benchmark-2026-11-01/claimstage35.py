@@ -143,6 +143,16 @@ class _KindsLog:
         self._log.mark_done(payload)
 
 
+def _ensure_kinds_file(run_dir: Path) -> None:
+    """Create an empty ``claim-kinds.jsonl`` when the stage saved no row; keep an existing one."""
+    path = run_dir / ROWS_FILE
+    if path.exists():
+        return
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text("", encoding="utf-8")
+    os.replace(tmp, path)
+
+
 def _row(item_id: str, item: Mapping[str, Any]) -> dict[str, Any]:
     return {
         "item": item_id,
@@ -257,6 +267,7 @@ async def claimkinds_stage(
         if stopped:
             say(f"[claimkinds] stopped: {stopped[0]}")
             return EXIT_RATE_LIMIT
+        _ensure_kinds_file(ctx.run_dir)  # a run with no claims still needs the file (PR 227)
         if not rows.finish(summary):
             raise StageIncomplete(f"claimkinds {ctx.run_dir}: items still open")
     say(f"[claimkinds] {ctx.run_dir}: {len(saved)} kinds")

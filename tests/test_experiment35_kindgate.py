@@ -150,6 +150,25 @@ def test_the_claimkinds_stage_writes_its_file_for_a_run_with_no_claims(tmp_path:
     assert code == 0 and (tmp_path / "claim-kinds.jsonl").is_file()
 
 
+def test_a_passed_gate_accepts_empty_kinds_files_from_runs_with_no_claims(tmp_path: Path) -> None:
+    out, experiment = tmp_path / "out", tmp_path / "exp"
+    pods = jfx.build(out, experiment)
+    for path in out.glob("*/answer/*/run*/claim-kinds.jsonl"):
+        path.write_text("")
+    report = join35.join(
+        out,
+        experiment=experiment,
+        records=pods,
+        search_setups=jfx.SETUPS,
+        answer_setups=jfx.SETUPS,
+        datasets=jfx.DATASETS,
+        requested=jfx.REQUESTED,
+        gate=_gate(tmp_path, True),
+    )
+    assert not any("claim-kinds.jsonl" in f for f in report["failures"])
+    assert (out / "answer-scores.jsonl").exists()
+
+
 def _confirm(tmp_path: Path, gate: Path | None, joined_version: str | None) -> dict:
     base = load("factorial35")
     from tests.test_experiment35_factorial import FAST, _answers, _search
