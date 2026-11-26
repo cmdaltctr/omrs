@@ -89,6 +89,7 @@ import scoring35  # noqa: E402
 import search35  # noqa: E402
 import stagekit35  # noqa: E402
 import stages35  # noqa: E402
+import zai35  # noqa: E402
 from experiments._lib import router_env  # noqa: E402
 from experiments._lib.hosted_calls import RateLimitStop  # noqa: E402
 from experiments._lib.preflight import PreflightError  # noqa: E402
@@ -119,6 +120,7 @@ STAGE_TABLE: dict[str, Callable[[stages35.Ctx], Awaitable[int]]] = {
 
 SETUP_ERRORS = (
     arms.ArmConfigError,
+    zai35.EndpointError,
     datasets35.DatasetError,
     router_env.RouterConfigError,
     PreflightError,
@@ -231,6 +233,8 @@ def _configure(args: Any, setup: arms.Setup, name: str, plan: Any, layout: Any) 
     judges = arms.parse_judges(args.judges)
     config_dir = layout.config_dir(args.dataset, name, args.stage)
     extra = {"VECTOR_STORE": "lancedb", "LANCEDB_URI": str(layout.store(setup.index))}
+    if "chat" in judges:  # never in omrs.jsonc: the repository is public (zai35)
+        extra[zai35.OMRS_ENV] = zai35.base_url(plan)
     router_env.prepare_environment(extra, config_dir=config_dir, state_dir=layout.state_dir)
     values = arms.settings_values(
         setup, plan, router_env.gguf_dir(), answer_host=args.answer_host.strip(), judges=judges

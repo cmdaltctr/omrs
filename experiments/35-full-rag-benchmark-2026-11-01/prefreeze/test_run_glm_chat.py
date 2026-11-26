@@ -19,7 +19,7 @@ class StubJudge:
     async def judge(self, claim: str, _evidence: list[str]) -> SimpleNamespace:
         verdict = "unsupported" if "false" in claim else "supported"
         call = SimpleNamespace(error=None, p_yes=None, model="glm-5.3", sha256=None,
-                               version=self.version, host="api.z.ai", settings={})  # fmt: skip
+                               version=self.version, host=None, settings={})  # fmt: skip
         return SimpleNamespace(verdict=verdict, call=call)
 
 
@@ -44,9 +44,9 @@ def run(tmp_path: Path, *extra: str) -> int:
     return glm.main(argv, make_judge=lambda _out, _reasoning: StubJudge())
 
 
-def test_values_point_chat_judge_at_the_coding_plan_with_a_key_reference() -> None:
+def test_values_hold_a_key_reference_and_no_base_url() -> None:
     values = glm.build_values("low")
-    assert values["openai_compatible_base_url"] == "https://api.z.ai/api/coding/paas/v4"
+    assert "openai_compatible_base_url" not in values  # zai35: never in a file
     assert values["openai_compatible_api_key"] == "env://OMRS_EXP35_ZAI_KEY"
     answer = values["answer"]
     assert (answer["verify_judge"], answer["verify_provider"], answer["verify_model"]) == (

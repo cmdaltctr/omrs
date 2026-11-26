@@ -201,3 +201,15 @@ def test_the_pass_checks_use_the_real_summary_fields() -> None:
     finish = checks["check-finish"]
     assert finish[0] == "finish" and _opts(finish)["--cap"] == "2048"
     assert _opts(finish)["--out"] == f"{OUT}/s/finish-reasons.json"
+
+
+def test_the_claim_kind_recheck_classifies_after_the_kinds_and_scores_with_the_checks() -> None:
+    # Owner, 2026-11-26: informational recheck of the fixed prompt on the gate-2 sample.
+    stages = {s.name: s for s in _read(FREEZE_FILE)[0]}
+    recheck, score = stages["kinds-recheck"].command, stages["check-kinds-recheck"].command
+    source = "/workspace/inputs/kinds-recheck-input.json"
+    assert f"kinds_recheck35.py split --input {source}" in recheck
+    assert "refusals35.py classify" in recheck and "examples classify-examples.json" in recheck
+    assert f"kinds_recheck35.py score --input {source}" in score
+    assert _stage_at("kinds-recheck") > _stage_at("kinds-fs")
+    assert _stage_at("check-kinds-recheck") > _stage_at("join")

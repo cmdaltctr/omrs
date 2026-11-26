@@ -155,7 +155,10 @@
     },
     "glm_judge": {
       "judge": "chat",
-      "base_url": "https://api.z.ai/api/coding/paas/v4",
+      "provider": "zai",
+      "base_url_sha256": "143347299031f30ddbf478757683c5c06b6c44e89bb92cb2e990876ecea8e84d",
+      "base_url_source": "OMRS_EXP35_ZAI_BASE_URL, never in a file in the repository (amendment A15)",
+      "precision": "8-bit or better, per the owner (2026-11-26)",
       "reasoning": "low",
       "temperature": 0.0
     },
@@ -636,7 +639,7 @@
       },
       {
         "role": "judge-glm",
-        "provider": "zai-coding-plan",
+        "provider": "zai",
         "model": "glm-5.3"
       }
     ],
@@ -738,7 +741,7 @@
       "id": "A8",
       "date": "2026-11-25",
       "before_first_run": true,
-      "summary": "Budget amended and evidence_recall_20k tolerance set, both approved by the owner on 2026-11-25. Estimate $1,122: RunPod GPU (RTX 4090) $410; OpenRouter answers (DeepSeek V4.1 Flash) $180; OpenRouter Ragas judge and claim sorter (gpt-oss-120b) $142; OpenRouter claim checks (GLM-5.3) $390. The old $730 assumed GLM-5.3 claim checks at no cost; they now run on the paid API. The RunPod line rests on P2 timing (pod q2pr74unxye0mj, 2026-11-25): the nine FreshStack indexes plus the e4b-c1024 rebuild project to about 45 pod hours. Ceiling $1,716, pods and hosted calls together: the estimate plus a $594 reserve (3 times slower reranking $230; repeat runs, 10%, $64; price changes, about 10%, $150; failed calls rerun, 10%, $150). RunPod share $704; hosted share $1,012. The OpenRouter key carries a credit limit of $1,012, the hosted share of the ceiling. budget35.py CEILING_USD is 1716. Replaces the $730 estimate and $975 ceiling of A4; the checks, run guard, drop order and stop rule are unchanged. runtime.tolerance adds evidence_recall_20k at 0.005 absolute: the same tolerance as the other four metrics (owner, 2026-11-25; P14).",
+      "summary": "Budget amended and evidence_recall_20k tolerance set, both approved by the owner on 2026-11-25. Estimate $1,122: RunPod GPU (RTX 4090) $410; OpenRouter answers (DeepSeek V4.1 Flash) $180; OpenRouter Ragas judge and claim sorter (gpt-oss-120b) $142; GLM-5.3 claim checks (Z.ai API) $390. The old $730 assumed GLM-5.3 claim checks at no cost; they now run on the paid API. The RunPod line rests on P2 timing (pod q2pr74unxye0mj, 2026-11-25): the nine FreshStack indexes plus the e4b-c1024 rebuild project to about 45 pod hours. Ceiling $1,716, pods and hosted calls together: the estimate plus a $594 reserve (3 times slower reranking $230; repeat runs, 10%, $64; price changes, about 10%, $150; failed calls rerun, 10%, $150). RunPod share $704; hosted share $1,012. The OpenRouter key carries a credit limit of $1,012, the hosted share of the ceiling. budget35.py CEILING_USD is 1716. Replaces the $730 estimate and $975 ceiling of A4; the checks, run guard, drop order and stop rule are unchanged. runtime.tolerance adds evidence_recall_20k at 0.005 absolute: the same tolerance as the other four metrics (owner, 2026-11-25; P14).",
       "where": "preregistration.md sections 15 and 17; protocol.md section 0.8 (pre-freeze note 2026-11-25, budget); change exp35-main-run-readiness tasks 10.2 and 16.14; change experiment-35-full-document-rag-benchmark task 4A.5"
     },
     {
@@ -783,6 +786,20 @@
       "status": "agent recommendation 2026-11-26, owner to confirm before freeze",
       "summary": "Registered fallback if classifier gate 3 fails (readiness review B2, option 1). No claim-kind result is used until gate 3 passes. If gate 3 fails, faithfulness rows 12, 13, 16 and 17 become not testable on every core dataset (p = 1, kept in their Holm families), and faithfulness over all cited claims (no kind filter) is reported as descriptive only. The code enforces it: kindgate35.py; join35.py --gate, labels35.py sample --gate and analyse35.py --gate read gate.json and use claim kinds only with pass true and a matching version. No hypothesis, family, seed, threshold or budget changes.",
       "where": "preregistration.md sections 1 and 11.1; protocol.md section 0.19; change exp35-main-run-readiness task 8.7"
+    },
+    {
+      "id": "A15",
+      "date": "2026-11-26",
+      "before_first_run": true,
+      "summary": "GLM-5.3 endpoint and OpenRouter limit (owner decision, 2026-11-26). GLM-5.3, the main claim checker, runs on the owner's Z.ai API, 8-bit or better per the owner. The repository is public, so the endpoint is pinned by hash and never printed: pins.glm_judge.base_url_sha256 holds the SHA-256 of the exact base URL string and replaces pins.glm_judge.base_url. The value comes from OMRS_EXP35_ZAI_BASE_URL (on the pod, from the mode-600 file the Mac watcher writes over ssh standard input) or from the owner's mode-600 file on the Mac, and reaches OMRS through the process environment, never a settings file, trace, run record or report (zai35.py). The chat stage refuses a value whose SHA-256 differs from the pin, so the frozen endpoint is still enforced. The $390 budget line reads 'GLM-5.3 claim checks (Z.ai API)'. The OpenRouter key credit limit covers the OpenRouter roles only: the hosted share $1,012 minus $390, $622. GLM-5.3 use is tracked by calls and tokens per run. Model, reasoning low, temperature 0 and seed 20261109 do not change; the provider label is zai. No hypothesis, Holm family, gate, seed, estimate, ceiling or drop order changes.",
+      "where": "preregistration.md sections 11.1, 16 and 17; protocol.md sections 0.5 and 0.8 (pre-freeze note 2026-11-26); plan.json pins.glm_judge and runtime.references; zai35.py; prefreeze/watch_zai35.py and launch35.sh; change exp35-main-run-readiness design D23"
+    },
+    {
+      "id": "A16",
+      "date": "2026-11-26",
+      "before_first_run": true,
+      "summary": "Interval reading fixed (owner decision, 2026-11-26). A10 read each 95% interval against plus and minus 0.02 in two cases only. Each row's 95% confidence interval is now read against the SESOI of 0.02 nDCG@10 in four cases: fully inside -0.02 to +0.02 means no meaningful difference; fully above +0.02 or fully below -0.02 means a meaningful difference; excludes zero but crosses +0.02 or -0.02 means a real difference that can be too small to matter; includes zero and crosses +0.02 or -0.02 means the test cannot tell. The reading is descriptive only; the hypothesis verdicts stay the Holm-corrected tests. No hypothesis, Holm family, gate, seed, number or budget changes.",
+      "where": "preregistration.md section 10; protocol.md section 0.20"
     }
   ]
 }

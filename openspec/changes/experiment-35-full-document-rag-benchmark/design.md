@@ -101,7 +101,7 @@ The rule runs on saved search scores on the Mac. Its inputs and result go into `
 
 **Answer setups.** At the chosen embedder and reranker size: chunk size (3) x reranker on or off x hybrid on or off = 12 setups. Each runs 3 times on 1,160 questions: 41,760 answers. (Amended by A2 and A3: 15 setups.)
 
-Fixed: answer model `deepseek/deepseek-v4.1-flash-1017` (OpenRouter, one pinned host, temperature 0, seed 20261101); Ragas 0.4.3 judge `openai/gpt-oss-120b`; claim checkers GLM-5.3 (main, Z.AI Coding Plan endpoint as in `arms.py`) and Clef-Flash (second, local). No cross-check judge: `openai/gpt-6.1-terra` is removed, because no cost estimate included it (A4, D0.15).
+Fixed: answer model `deepseek/deepseek-v4.1-flash-1017` (OpenRouter, one pinned host, temperature 0, seed 20261101); Ragas 0.4.3 judge `openai/gpt-oss-120b`; claim checkers GLM-5.3 (main, the Z.ai API; endpoint pinned by SHA-256 in `plan.json`, value from `zai35.py`) and Clef-Flash (second, local). No cross-check judge: `openai/gpt-6.1-terra` is removed, because no cost estimate included it (A4, D0.15).
 
 **Refusal rule (kept, no longer tied to H-CC).** `openai/gpt-oss-120b` sorts each claim as fact, refusal or mixed. Primary faithfulness uses factual claims (fact and mixed). Refusals are reported apart. The classifier gate stays: agreement of at least 0.90 and refusal recall of at least 0.90 on 100 operator-labelled claims, seed 20261112. The GLM-5.3 against Clef-Flash kappa report stays.
 

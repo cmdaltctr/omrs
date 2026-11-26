@@ -29,6 +29,8 @@ WATCH = HERE / "mac_watch35.py"
 PLAN = json.loads((HERE.parent / "plan.json").read_text(encoding="utf-8"))
 POD = "pod123abc"
 KEY_BODY = "SECRET_SSH_KEY_BODY_42"
+#: A stand-in GLM-5.3 base URL; the test plan pins its SHA-256 (MAC_WATCH35_PLAN).
+ZAI_URL = "https://fake-zai.example.invalid/api/LEAKCHECK-77"
 FB = "benchmarks/financebench"
 FS = "benchmarks/freshstack/corpus-oct-2024/langchain"
 INPUTS = sorted(
@@ -129,6 +131,12 @@ class Session:
         self.pod = tmp / "pod"
         self.home = tmp / "home"
         self.home.mkdir()
+        self.zai = self.home / ".config/omrs/secrets/zai-exp35.base_url"
+        self._write(self.zai, ZAI_URL + "\n")
+        self.zai.chmod(0o600)
+        self.plan = tmp / "plan.json"
+        pin = {"base_url_sha256": hashlib.sha256(ZAI_URL.encode()).hexdigest()}
+        self._write(self.plan, json.dumps({**PLAN, "pins": {**PLAN["pins"], "glm_judge": pin}}))
         self.key = tmp / "id_test"
         self.key.write_text(f"-----BEGIN OPENSSH PRIVATE KEY-----\n{KEY_BODY}\n", encoding="utf-8")
         self.examples = tmp / "examples.json"
@@ -158,6 +166,7 @@ class Session:
             "HOME": str(self.home),
             "EXP35_DATA_DIR": str(self.root),
             "MAC_WATCH35_FAKE_CLOCK": "1",
+            "MAC_WATCH35_PLAN": str(self.plan),
             "PYTHONDONTWRITEBYTECODE": "1",
             "GIT_CONFIG_NOSYSTEM": "1",
             **extra,
@@ -398,7 +407,7 @@ def test_an_input_that_links_to_a_secret_inside_the_data_root_is_refused(tmp_pat
 def test_an_input_that_links_outside_the_data_root_is_refused(tmp_path: Path) -> None:
     s = Session(tmp_path, ["done"])
     outside = s.home / ".config/omrs/DOC_B.pdf"
-    outside.parent.mkdir(parents=True)
+    outside.parent.mkdir(parents=True, exist_ok=True)  # the Session wrote secrets/ there
     outside.write_text("secret settings\n", encoding="utf-8")
     pdf = s.root / FB / "pdfs/DOC_B.pdf"
     pdf.unlink()

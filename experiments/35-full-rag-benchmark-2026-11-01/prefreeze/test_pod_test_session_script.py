@@ -23,6 +23,7 @@ KEY = "rpa_SECRET_KEY_VALUE_123"
 HOSTED = {
     "OPENROUTER_API_KEY": "sk-or-SECRET_OPENROUTER_456",
     "OMRS_EXP35_ZAI_KEY": "zai-SECRET_GLM_789",
+    "OMRS_EXP35_ZAI_BASE_URL": "https://fake-zai.example.invalid/api/LEAKCHECK-77",
     "EXP35_POD_IMAGE": "runpod/base@sha256:" + "4" * 64,
 }
 

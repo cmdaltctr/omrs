@@ -33,7 +33,8 @@
 #
 # Required environment: OUT_DIR, STAGES_FILE and, checked before any stage, the RunPod
 # values RUNPOD_POD_ID and RUNPOD_API_KEY, the hosted keys OPENROUTER_API_KEY and
-# OMRS_EXP35_ZAI_KEY, and the image pin EXP35_POD_IMAGE. No value is printed.
+# OMRS_EXP35_ZAI_KEY, the GLM-5.3 base URL OMRS_EXP35_ZAI_BASE_URL (from launch35.sh)
+# and the image pin EXP35_POD_IMAGE. No value is printed.
 # Optional: WORK (default /workspace), SESSION_CAP (default 15h), STOP_GRACE_MIN
 # (default 0), PULL_POLL_S (default 10), DRY_RUN=1 (print every command, run none).
 # Exit codes: 0 every stage ok or skipped; 1 a stage failed, timed out or did not
@@ -136,13 +137,14 @@ precheck() {
   check_stages
   if [ "$DRY_RUN" = 1 ]; then
     log "  [dry-run] check timeout, runpodctl or curl, and RUNPOD_API_KEY, RUNPOD_POD_ID," \
-      "OPENROUTER_API_KEY, OMRS_EXP35_ZAI_KEY and EXP35_POD_IMAGE"
+      "OPENROUTER_API_KEY, OMRS_EXP35_ZAI_KEY, OMRS_EXP35_ZAI_BASE_URL and EXP35_POD_IMAGE"
     return 0
   fi
   command -v timeout >/dev/null 2>&1 || refuse "timeout is not on PATH"
   command -v runpodctl >/dev/null 2>&1 || command -v curl >/dev/null 2>&1 \
     || refuse "neither runpodctl nor curl is on PATH, so the pod cannot stop itself"
-  need RUNPOD_API_KEY RUNPOD_POD_ID OPENROUTER_API_KEY OMRS_EXP35_ZAI_KEY EXP35_POD_IMAGE
+  need RUNPOD_API_KEY RUNPOD_POD_ID OPENROUTER_API_KEY OMRS_EXP35_ZAI_KEY OMRS_EXP35_ZAI_BASE_URL \
+    EXP35_POD_IMAGE
 }
 
 # halve <command>: the command with each "--<role>-concurrency N" value halved (at least 1).

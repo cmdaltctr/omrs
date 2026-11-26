@@ -62,9 +62,12 @@ HELP_SAFE = frozenset(
         "rerank_check35.py",
         "idle_repro35.py",
         "prefreeze/verify35.py",
+        "prefreeze/kinds_recheck35.py",
     }
 )
-SUBCOMMANDS = frozenset({"rerank_check35.py", "refusals35.py", "prefreeze/verify35.py"})
+SUBCOMMANDS = frozenset(
+    {"rerank_check35.py", "refusals35.py", "prefreeze/verify35.py", "prefreeze/kinds_recheck35.py"}
+)
 CORE = ("financebench", "bioasq", "freshstack")
 RECHECK = ("77536364", "77762811")
 CONTROL = frozenset({"&&", "||", ";", "|", "&"})
