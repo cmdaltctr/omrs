@@ -24,6 +24,7 @@ zai35 = load("zai35")
 
 FAKE = "https://fake-zai.example.invalid/api/v9-LEAKCHECK"
 FOLDER = "experiments/35-full-rag-benchmark-2026-11-01"
+HOST = "api." + "z.ai"  # split, so this file does not hold the host either
 
 
 def _plan(url: str = FAKE) -> dict[str, Any]:
@@ -110,7 +111,7 @@ def test_a_judge_stage_with_a_fake_url_writes_it_to_no_file(
 
 def test_no_tracked_experiment_35_file_holds_the_zai_host() -> None:
     found = subprocess.run(
-        ["git", "-C", str(ROOT), "grep", "-l", "-F", "api.z.ai", "--", FOLDER],
+        ["git", "-C", str(ROOT), "grep", "-l", "-F", HOST, "--", FOLDER],
         capture_output=True,
         text=True,
         check=False,
