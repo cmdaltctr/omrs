@@ -54,6 +54,7 @@ def _build(out: Path, setup: str = "e4b-c512-r4b-hoff", search: str | None = Non
         _write(folder / "retrieval.jsonl", [_line(q, lists[q]) for q in QIDS])
         _write(folder / "answer.jsonl", [_answer(q, lists[q][:10]) for q in QIDS])
         _write(folder / "machine.jsonl", [{"host": f"pod{run}", "pod_id": f"id{run}"}])
+        (folder / ".done-answer.json").write_text("{}")
 
 
 def _ctx(out: Path, setup: str = "e4b-c512-r4b-hoff", run: int = 1) -> SimpleNamespace:
@@ -138,6 +139,16 @@ def test_a_failed_search_on_either_side_is_incomplete_never_a_match(
     assert code == determinism35.EXIT_MISMATCH
     assert report["ok"] is False
     assert [i["question_id"] for i in report["lists"]["incomplete"]] == ["q2"]
+
+
+def test_refuses_an_answer_stage_with_no_done_marker(tmp_path: Path) -> None:
+    # PR 227 review: a stopped answer stage leaves a partial answer.jsonl; G1 must not pass it.
+    _build(tmp_path)
+    folder = tmp_path / "bioasq" / "answer" / "e4b-c512-r4b-hoff" / "run1"
+    (folder / ".done-answer.json").unlink()
+    with pytest.raises(stages35.StageOrderError, match=".done-answer.json"):
+        asyncio.run(determinism35.determinism_stage(_ctx(tmp_path)))
+    assert not (folder / "determinism.json").exists()
 
 
 @pytest.mark.parametrize(

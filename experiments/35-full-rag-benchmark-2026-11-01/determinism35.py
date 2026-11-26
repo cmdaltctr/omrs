@@ -153,14 +153,14 @@ async def determinism_stage(ctx: Any) -> int:
     """Check G1 for one answer setup and run; write ``run<n>/determinism.json``; return 0 or 3.
 
     Raises:
-        stages35.StageOrderError: The search list or the run's answer file is
-            missing (names it).
+        stages35.StageOrderError: The search list, the run's answer file or its
+            ``.done-answer.json`` (a finished answer stage) is missing (names it).
     """
     qids = [str(q.qid) for q in ctx.questions]
     source = search_setup(ctx.setup)
     search = ctx.layout.run_dir(ctx.dataset, "search", source, 1) / "search.jsonl"
     run_dir = ctx.layout.run_dir(ctx.dataset, "answer", ctx.setup, ctx.run)
-    for path in (search, run_dir / "answer.jsonl"):
+    for path in (search, run_dir / "answer.jsonl", run_dir / ".done-answer.json"):
         if not path.exists():
             raise stages35.StageOrderError(f"G1 needs {path}; it is missing")
     reference = _lists(search, qids)

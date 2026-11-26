@@ -19,7 +19,10 @@ removes the check: the stage then writes nothing.
 
 Files in ``<out>/lengthcheck/``: ``sample.json``, ``lengthcheck.jsonl`` (one row
 per claim and checker: ``id``, ``item_id``, ``checker``, ``original``,
-``windowed``) and ``lengthcheck.json`` (the report).
+``windowed``) and ``lengthcheck.json`` (the report). The stage key holds the
+gate version and a hash of the sorted sample item IDs, so ``--resume`` refuses
+(``ResumeMismatchError``) when either changed; ``sample.json`` is written only
+after that check.
 
 The runner runs it with ``--judges chat,clef_flash`` and builds each checker
 through ``ctx.judge(name)`` (an OMRS claim judge with ``async judge(claim,
@@ -29,6 +32,7 @@ maps text to token character spans; the pinned Qwen3 tokenizer when absent.
 
 from __future__ import annotations
 
+import hashlib
 import random
 import re
 from collections.abc import Callable, Mapping, Sequence
@@ -202,11 +206,14 @@ async def lengthcheck_stage(ctx: Any) -> int:
     folder = out / "lengthcheck"
     folder.mkdir(parents=True, exist_ok=True)
     sample = draw(pool(out, kinds["version"]))
-    write_json(folder / "sample.json", {"seed": SEED, "items": sample})
     offsets = getattr(ctx, "offsets", None) or _qwen3_offsets()
     gate = HostedGate("lengthcheck", 1, attempts=int(ctx.args.rate_limit_attempts))
     by_id = {f"{c['item_id']}|{k}": (c, k) for c in sample for k in CHECKERS}
-    with outputs35.RowFile(folder, "lengthcheck", ctx.key, resume=ctx.resume) as log:
+    # A resume reuses rows only for the same gate state and sample (PR 227 review).
+    ids = "\n".join(sorted(c["item_id"] for c in sample)).encode("utf-8")
+    key = {**ctx.key, "gate_version": kinds["version"], "sample": hashlib.sha256(ids).hexdigest()}
+    with outputs35.RowFile(folder, "lengthcheck", key, resume=ctx.resume) as log:
+        write_json(folder / "sample.json", {"seed": SEED, "items": sample})
         rows = OrderedRows(log, list(by_id), id_field="id")
         for item_id in rows.todo():
             claim, checker = by_id[item_id]

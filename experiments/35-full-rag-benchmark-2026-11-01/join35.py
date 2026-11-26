@@ -264,6 +264,12 @@ def join(
             ]
     docs = question_documents(out)
     kinds = kindgate35.status(gate)
+    if kinds["version"]:  # a missing file would read as "no refusal claims" (PR 227 review)
+        state.failures += [
+            f"{d}/{st}/run{r}: no claim-kinds.jsonl under a passed classifier gate"
+            for d, st, r, f in answer_dirs
+            if not (f / "claim-kinds.jsonl").is_file()
+        ]
     scores = [
         s
         for d, st, r, f in answer_dirs

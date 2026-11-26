@@ -132,6 +132,37 @@ def test_refuses_a_question_not_once_in_a_setup(tmp_path: Path, change: str, cap
     assert not (out / analyse35.RESULT).exists()
 
 
+def test_refuses_a_question_of_halves_json_missing_from_every_setup(tmp_path: Path, capsys) -> None:
+    # PR 227 review: the setups agree with each other, but the frozen list holds one more.
+    out, labels, gate, halves = _build(tmp_path)
+    gone = "q00"
+    for path in (out / "scores").glob("[AB]/freshstack/*.jsonl"):
+        kept = [line for line in path.read_text().splitlines() if json.loads(line)["qid"] != gone]
+        path.write_text("".join(line + "\n" for line in kept))
+    assert _main(out, labels, gate, halves) == 2
+    err = capsys.readouterr().err
+    assert "freshstack" in err and gone in err
+    assert not (out / analyse35.RESULT).exists()
+
+
+def test_a_failed_classifier_gate_gives_a_descriptive_faithfulness_headline(
+    tmp_path: Path, monkeypatch
+) -> None:
+    # Amendment A14: under the fallback, faithfulness is descriptive only (no interval, no p).
+    out, labels, gate, halves = _build(tmp_path)
+    gate.write_text(json.dumps({"pass": False, "version": "v"}))
+    kinds = {"pass": False, "version": None}
+    (out / "join.json").write_text(json.dumps({"ok": True, "claim_kinds": kinds}))
+    assert _main(out, labels, gate, halves) == 0
+    answer = json.loads((out / analyse35.RESULT).read_text())["headline"]["answer"]
+    assert set(answer) == {"faithfulness_glm_factual_descriptive", "ragas_answer_correctness"}
+    faith = answer["faithfulness_glm_factual_descriptive"]["freshstack"]
+    assert faith["descriptive"] is True and faith["setup"] == CELL and faith["n"] == 6
+    assert isinstance(faith["mean"], float) and faith["metric"] == "faithfulness_glm_factual"
+    assert not {"p_value", "ci_low", "ci_high", "estimate"} & set(faith)
+    assert "p_value" in answer["ragas_answer_correctness"]["freshstack"]
+
+
 def test_refuses_without_the_answer_scores(tmp_path: Path, capsys) -> None:
     out, labels, gate, halves = _build(tmp_path)
     (out / "answer-scores.jsonl").unlink()

@@ -115,6 +115,41 @@ def test_the_pool_needs_kinds_of_the_passed_version_only(tmp_path: Path) -> None
 # --- the confirmatory analysis ------------------------------------------------------------
 
 
+def test_a_passed_gate_fails_the_join_of_a_run_without_its_kinds_file(tmp_path: Path) -> None:
+    # PR 227 review: a missing file must not read as "no refusals" under a passed gate.
+    out, experiment = tmp_path / "out", tmp_path / "exp"
+    pods = jfx.build(out, experiment)
+    gone = sorted(out.glob("*/answer/*/run*/claim-kinds.jsonl"))[0]
+    gone.unlink()
+    report = join35.join(
+        out,
+        experiment=experiment,
+        records=pods,
+        search_setups=jfx.SETUPS,
+        answer_setups=jfx.SETUPS,
+        datasets=jfx.DATASETS,
+        requested=jfx.REQUESTED,
+        gate=_gate(tmp_path, True),
+    )
+    assert report["ok"] is False
+    assert any("claim-kinds.jsonl" in f for f in report["failures"])
+    assert not (out / "answer-scores.jsonl").exists()
+
+
+def test_the_claimkinds_stage_writes_its_file_for_a_run_with_no_claims(tmp_path: Path) -> None:
+    # The join check above needs the file even when a run has no claims to classify.
+    import asyncio
+
+    claimkinds35 = load("claimkinds35")
+    (tmp_path / "answer.jsonl").write_text(json.dumps({"qid": "q1", "answer": ""}) + "\n")
+    code = asyncio.run(
+        claimkinds35.claimkinds_stage(
+            tmp_path, {"q1": "Q?"}, None, prompt="p", version="v", env_check=lambda _: None
+        )
+    )
+    assert code == 0 and (tmp_path / "claim-kinds.jsonl").is_file()
+
+
 def _confirm(tmp_path: Path, gate: Path | None, joined_version: str | None) -> dict:
     base = load("factorial35")
     from tests.test_experiment35_factorial import FAST, _answers, _search

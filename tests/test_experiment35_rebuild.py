@@ -128,6 +128,17 @@ def test_refuses_a_missing_file(
     assert "missing or empty" in capsys.readouterr().err
 
 
+def test_a_refused_rerun_removes_an_earlier_passing_report(tmp_path: Path) -> None:
+    # PR 227 review: a refused rerun must not leave the old "ok": true file for join35.py.
+    rows = [_row("q1", ["a"])]
+    a, b = _write(_list(tmp_path, "check"), rows), _write(_list(tmp_path, "rebuild"), rows)
+    old = tmp_path / "out" / "bioasq" / "rebuild.json"
+    old.parent.mkdir(parents=True)
+    old.write_text(json.dumps({"ok": True}))
+    b.write_text("")
+    _refuses(tmp_path, a, b, "--prefreeze")
+
+
 def test_refuses_an_empty_file(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     a = _write(_list(tmp_path, "check"), [_row("q1", ["a"])])
     b = _write(_list(tmp_path, "rebuild"), [])

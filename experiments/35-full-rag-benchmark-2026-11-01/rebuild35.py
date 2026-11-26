@@ -17,7 +17,8 @@ closed as missing) on either side is incomplete, never a match (H-21): it is
 taken out before the comparison and listed. A question with a row on one side
 only is a mismatch.
 
-It refuses (exit 2, no ``rebuild.json``) a missing or empty file, a path that
+It removes an earlier ``<out>/<dataset>/rebuild.json`` first, then refuses
+(exit 2, no ``rebuild.json``) a missing or empty file, a path that
 is not under ``search/e4b-c1024-roff-hoff/``, and a question count other than
 the dataset's frozen count (``budget35.QUESTIONS``). ``--prefreeze`` (a test
 pod subset) skips only the count check and marks the record.
@@ -96,6 +97,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--prefreeze", action="store_true", help="a pre-freeze subset: no frozen-count check"
     )
     args = parser.parse_args(argv)
+    # A refused rerun must not leave an earlier passing report for the join to read.
+    (args.out_dir / args.dataset / "rebuild.json").unlink(missing_ok=True)
     sides = {}
     for label, path in (("a", args.a), ("b", args.b)):
         if f"/search/{SETUP}/" not in path.absolute().as_posix():

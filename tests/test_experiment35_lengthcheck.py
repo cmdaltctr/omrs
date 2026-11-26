@@ -144,6 +144,30 @@ def test_stage_uses_kinds_only_when_the_gate_file_passed(
     assert report["claim_kinds"]["pass"] is passed
 
 
+def test_resume_refuses_when_the_gate_changed_the_sample(tmp_path: Path) -> None:
+    # PR 227 review: rows of the old sample must never mix into the new report.
+    _build(tmp_path)
+    _refusal(tmp_path)
+    ctx = _ctx(tmp_path, {"chat": _Judge(), "clef_flash": _Judge()})
+    ctx.args.gate = _gate(tmp_path, False)
+    assert asyncio.run(lengthcheck35.lengthcheck_stage(ctx)) == 0
+    sample = (tmp_path / "lengthcheck" / "sample.json").read_text()
+    ctx = _ctx(tmp_path, {"chat": _Judge(), "clef_flash": _Judge()}, resume=True)
+    ctx.args.gate = _gate(tmp_path, True)
+    with pytest.raises(outputs35.ResumeMismatchError):
+        asyncio.run(lengthcheck35.lengthcheck_stage(ctx))
+    assert (tmp_path / "lengthcheck" / "sample.json").read_text() == sample
+
+
+def test_resume_with_the_same_inputs_continues(tmp_path: Path) -> None:
+    _build(tmp_path, n=1)
+    chat = _Judge("supported", fail=1)
+    judges = {"chat": chat, "clef_flash": _Judge("supported")}
+    with pytest.raises(lengthcheck35.StageIncomplete):
+        asyncio.run(lengthcheck35.lengthcheck_stage(_ctx(tmp_path, judges)))
+    assert asyncio.run(lengthcheck35.lengthcheck_stage(_ctx(tmp_path, judges, resume=True))) == 0
+
+
 def test_draw_is_seeded_and_capped(tmp_path: Path) -> None:
     pool = [{"item_id": f"i{n:03d}"} for n in range(400)]
     first = lengthcheck35.draw(pool)
