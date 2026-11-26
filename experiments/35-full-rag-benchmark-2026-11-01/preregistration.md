@@ -172,20 +172,21 @@ A non-significant result means no difference was detected at this sample size. T
   4. The interval includes zero and crosses +0.02 or -0.02: the test cannot tell.
 
   The reading is descriptive only: it adds no test and no p-value. The hypothesis verdicts stay the Holm-corrected tests.
-- **Sensitivity power analysis (A17, owner decision, 2026-11-26).** The datasets are fixed, so the study chooses no sample size. The analysis asks which effect each test detects 80% of the time with the questions it has (Lakens 2022; Webber, Moffat and Zobel 2008; Sakai 2016). The table gives the smallest such effect, the MDE.
+- **Sensitivity power analysis (A17, owner decision, 2026-11-26).** The datasets are fixed, so the study chooses no sample size. The analysis asks which effect each test would detect 80% of the time with the questions it has (Lakens 2022; Webber, Moffat and Zobel 2008; Sakai 2016). The table gives an approximate value of that smallest effect, the MDE.
   - Formula: MDE = (z at 1 minus alpha/2, plus z at 0.80) x SD / square root of n. Power is 0.80. Tests are two-sided. Alpha is 0.05 divided by the Holm family size: 19 on FinanceBench, 19 on FreshStack and 8 on BioASQ. The question counts are n = 150, 203 and 707. `mde35.py` computes it (`assumed_table` and `mde_row`). It runs once, before the freeze, on no main-run score. Cost: $0. No pilot runs.
   - Why alpha is 0.05 divided by the family size: it is the first and strictest Holm step. Later Holm steps use a larger alpha, so they detect smaller effects than the table shows. The table is conservative here too.
-  - The formula is the normal approximation to the paired test on per-question differences. With 150 or more questions per dataset it is standard and close to the exact test.
+  - The formula is a normal approximation for a paired test on per-question differences. The registered tests differ: FreshStack and BioASQ use a GEE with a bias-reduced variance and a t reference (section 9), and FinanceBench uses a document-level sign-flip test (section 9). A directional row also needs the predicted sign (section 7). So the table approximates the sensitivity of those tests. It is not their exact power.
   - SD source: the registered assumed range 0.15 to 0.25 (`mde35.ASSUMED_SD`) for every row. Why this range: it was set on 2026-11-16 (`mde35.py`, commit 4de9f2f4), before any SD below was computed. The three measured stand-in SDs (0.113, 0.167 and 0.180) fall in or near it. The one below it (0.113, row 8) gives a smaller MDE (0.031) than the range does, so the table overstates the MDE for that row. That is the conservative direction.
-  - FinanceBench design effect: the 150 questions share 84 filings. The design effect of that grouping is not measured before the freeze, so n is not divided, as `assumed_table` does. The true FinanceBench MDE is larger than the table value. The table is not updated after the run.
+  - FinanceBench design effect: the 150 questions share 84 filings. The design effect of that grouping is not measured before the freeze, so n is not divided, as `assumed_table` does. For the same SD, a design effect above 1 raises the FinanceBench MDE (`mde35.py` floors the design effect at 1). The table is not updated after the run.
   - Rows 9 to 11 on FinanceBench use `evidence_recall_20k`. The same arithmetic and the same SD range apply to them. Row 11 is a difference of differences. The table does not model that scale, so the MDE of row 11 is not known. A16 already expects a wide interval for it.
   - The table covers retrieval rows 1 to 11. Answer rows 12 to 19 have no registered SD before the freeze, so the table gives no MDE for them.
 
-  | Dataset | n | Alpha (Holm family) | SD | MDE (nDCG@10) |
+  | Dataset | n | Alpha (Holm family) | SD | MDE (row endpoint) |
   | --- | ---: | ---: | --- | ---: |
   | BioASQ, rows 1 to 8 | 707 | 0.05 / 8 = 0.00625 | 0.15 to 0.25 (assumed) | 0.020 to 0.034 |
   | FreshStack, rows 1 to 11 | 203 | 0.05 / 19 = 0.00263 | 0.15 to 0.25 (assumed) | 0.041 to 0.068 |
-  | FinanceBench, rows 1 to 11, before the design effect | 150 | 0.05 / 19 = 0.00263 | 0.15 to 0.25 (assumed) | 0.047 to 0.079 |
+  | FinanceBench, rows 1 to 8 (nDCG@10), before the design effect | 150 | 0.05 / 19 = 0.00263 | 0.15 to 0.25 (assumed) | 0.047 to 0.079 |
+  | FinanceBench, rows 9 to 11 (`evidence_recall_20k`), before the design effect | 150 | 0.05 / 19 = 0.00263 | 0.15 to 0.25 (assumed) | 0.047 to 0.079 |
   | FreshStack row 4 (hybrid on minus off), stand-in | 203 | 0.00263 | 0.180 (measured) | 0.049 |
   | FreshStack row 7 (r4b minus r0.6b), stand-in | 203 | 0.00263 | 0.167 (measured) | 0.045 |
   | FreshStack row 8 (r8b minus r4b), stand-in | 203 | 0.00263 | 0.113 (measured) | 0.031 |
