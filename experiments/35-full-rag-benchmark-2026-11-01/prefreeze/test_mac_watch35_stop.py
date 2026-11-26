@@ -10,6 +10,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+import mac_watch35
 import pytest
 import watch_stop35
 from test_mac_watch35 import ENDS, POD, Session, _last
@@ -34,6 +35,13 @@ def test_an_abnormal_end_stops_the_chain_before_the_first_copy(tmp_path: Path, e
     assert pulls and order.index("kill") < min(pulls), order  # the setup copies come before
     assert "kill-session -t exp35" in "\n".join(s.log("tmux.log"))
     assert f"RESULT end={end} outputs=ok pulled-marker=written" in result.stdout
+
+
+def test_the_stop_waits_for_the_tarball_in_the_work_folder(tmp_path: Path) -> None:
+    s = Session(tmp_path, ENDS["idle"][0])
+    assert s.run().returncode == 8
+    waits = [line for line in s.log("ssh.log") if line.startswith("test -f ")]
+    assert waits and set(waits) == {f"test -f {mac_watch35.WORK}/test-session-out.tgz.sha256"}
 
 
 @pytest.mark.parametrize("end", NORMAL)

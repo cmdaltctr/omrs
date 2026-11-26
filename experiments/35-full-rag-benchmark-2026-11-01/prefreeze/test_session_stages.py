@@ -34,16 +34,28 @@ VERIFY_FILE = HERE / "verify_session_stages.txt"
 P2_FILE = HERE / "p2_session_stages.txt"
 FREEZE_FILE = HERE / "freeze_check_stages.txt"
 RERUN_FILE = HERE / "freeze_rerun_stages.txt"
+LAYOUT_FILE = HERE / "freeze_layout_stages.txt"
 #: Each stages file with the fewest runner calls it must hold.
-FILES = {STAGES_FILE: 101, VERIFY_FILE: 14, P2_FILE: 39, FREEZE_FILE: 52, RERUN_FILE: 3}
-BOTH = pytest.mark.parametrize("path", list(FILES), ids=["test", "verify", "p2", "freeze", "rerun"])
-OUT = "/workspace/exp35-test/out"
+FILES = {
+    STAGES_FILE: 101,
+    VERIFY_FILE: 14,
+    P2_FILE: 39,
+    FREEZE_FILE: 52,
+    RERUN_FILE: 3,
+    LAYOUT_FILE: 3,
+}
+BOTH = pytest.mark.parametrize(
+    "path", list(FILES), ids=["test", "verify", "p2", "freeze", "rerun", "layout"]
+)
+#: The work folder on the container disk. launch35.sh and mac_watch35.py hold the same value.
+WORK = "/root/exp35-work"
+OUT = f"{WORK}/exp35-test/out"
 #: What the chain and launch35.sh give every stage.
 PROVIDED = {
     "OUT_DIR": OUT,
-    "WORK": "/workspace",
+    "WORK": WORK,
     "COMMIT": "c" * 40,
-    "BACKGROUND_PIDS": "/workspace/background.pids",
+    "BACKGROUND_PIDS": f"{WORK}/background.pids",
 }
 #: Scripts and subcommands that other agents add for the session (2026-11-23). An
 #: entry passes while it is missing. Remove it when it lands: the check is then strict.
@@ -250,6 +262,15 @@ def test_no_line_holds_a_key_or_names_one(path: Path) -> None:
 
 
 @BOTH
+def test_no_stage_file_holds_a_literal_workspace_path(path: Path) -> None:
+    """The work folder is $WORK on the container disk. The volume path is never a stage input."""
+    text = path.read_text(encoding="utf-8")
+    assert "/workspace" not in text, [
+        n for n, line in enumerate(text.splitlines(), 1) if "/workspace" in line
+    ]
+
+
+@BOTH
 def test_every_variable_is_given_by_the_chain_or_defined_in_the_file(path: Path) -> None:
     unknown = {name for stage in _read(path)[0] for name in _expand(stage.command, path)[1]}
     assert unknown == set()
@@ -417,9 +438,7 @@ def test_legal_stages_skip_when_its_data_is_absent_and_stay_out_of_the_core_fold
     assert legal, "no Legal RAG Bench stage"
     for stage in _read()[0]:
         if stage.name in legal or "/sl" in stage.command:
-            assert stage.command.startswith("[ -d /workspace/passages/legal ] || exit 77; "), (
-                stage.name
-            )
+            assert stage.command.startswith("[ -d $WORK/passages/legal ] || exit 77; "), stage.name
     for _, a in _runs():
         if a.dataset == "legal":
             assert _folder(a.out_dir) in ("sl", "t", "rb", "chk", "rbs")

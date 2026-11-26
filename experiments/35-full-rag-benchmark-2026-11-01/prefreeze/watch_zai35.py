@@ -2,8 +2,9 @@
 
 The watcher reads the owner's mode-600 file on the Mac (``zai35.base_url_file``), checks
 its SHA-256 against ``plan.json`` ``pins.glm_judge.base_url_sha256``, and writes one line
-to the pod's mode-600 file :data:`ZAI_ENV` through ssh standard input. The value is on
-no command line, in no log and in no dry-run line. ``launch35.sh`` sources the file.
+to the pod's mode-600 file ``<WORK>/.zai_env`` through ssh standard input (the caller
+gives the path, which follows ``mac_watch35.WORK``). The value is on no command line, in
+no log and in no dry-run line. ``launch35.sh`` sources the file.
 Test hook: ``MAC_WATCH35_PLAN`` names another ``plan.json``.
 """
 
@@ -24,10 +25,12 @@ if str(EXP) not in sys.path:
     sys.path.insert(0, str(EXP))
 import zai35  # noqa: E402
 
-ZAI_ENV = "/workspace/.zai_env"
-SEND_CMD = (
-    f"umask 077; cat > {ZAI_ENV}.tmp && chmod 600 {ZAI_ENV}.tmp && mv {ZAI_ENV}.tmp {ZAI_ENV}"
-)
+
+def send_cmd(zai_env: str) -> str:
+    """Return the pod command that writes standard input to *zai_env* with mode 600."""
+    return (
+        f"umask 077; cat > {zai_env}.tmp && chmod 600 {zai_env}.tmp && mv {zai_env}.tmp {zai_env}"
+    )
 
 
 def _plan() -> dict:
@@ -49,26 +52,31 @@ def problems() -> list[str]:
     return []
 
 
-def send(ssh_base: Sequence[str], timeout: float = 120) -> bool:
-    """Write the base URL line to :data:`ZAI_ENV` over ssh standard input."""
+def send(ssh_base: Sequence[str], zai_env: str, timeout: float = 120) -> bool:
+    """Write the base URL line to *zai_env* on the pod over ssh standard input."""
     line = f"{zai35.BASE_URL_ENV}={shlex.quote(zai35.base_url(_plan(), environ={}))}\n"
     try:
         found = subprocess.run(  # noqa: S603 - a fixed argument list
-            [*ssh_base, SEND_CMD], input=line.encode("utf-8"), capture_output=True, timeout=timeout
+            [*ssh_base, send_cmd(zai_env)],
+            input=line.encode("utf-8"),
+            capture_output=True,
+            timeout=timeout,
         )
     except subprocess.TimeoutExpired:
         return False
     return found.returncode == 0
 
 
-def run_setup(pod: Any, commands: Sequence[str]) -> bool:
+def run_setup(pod: Any, commands: Sequence[str], zai_env: str) -> bool:
     """Run the setup *commands* on *pod*; send the base URL just before the last (the launch)."""
     ok: Callable[[str], bool] = lambda c: pod.ok(c, timeout=900)  # noqa: E731
-    return all(ok(c) for c in commands[:-1]) and send(pod.ssh_base) and ok(commands[-1])
+    return all(ok(c) for c in commands[:-1]) and send(pod.ssh_base, zai_env) and ok(commands[-1])
 
 
-def dry_lines(commands: Sequence[str]) -> list[str]:
+def dry_lines(commands: Sequence[str], zai_env: str) -> list[str]:
     """Return the step 5 dry-run lines, with the base URL step and no value."""
     lines = [f"5 ssh {shlex.quote(c)}" for c in commands]
-    step = f"5 ssh {shlex.quote(SEND_CMD)} < the {zai35.BASE_URL_ENV} line (value not shown)"
+    step = (
+        f"5 ssh {shlex.quote(send_cmd(zai_env))} < the {zai35.BASE_URL_ENV} line (value not shown)"
+    )
     return [*lines[:-1], step, lines[-1]]

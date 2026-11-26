@@ -13,7 +13,7 @@ import pytest
 from test_mac_watch35 import HERE, KEY_BODY, POD, Session, _last, _sha
 
 VERIFY = "verify_session_stages.txt"
-REMOTE = f"/workspace/omrs/experiments/{HERE.parent.name}/prefreeze"
+REMOTE = f"{mac_watch35.WORK}/omrs/experiments/{HERE.parent.name}/prefreeze"
 
 
 def _answers(tmp: Path) -> Path:
@@ -36,13 +36,13 @@ def test_a_verify_session_ships_the_extra_input_and_names_its_stages_file(tmp_pa
     (folder,) = _folders(s, "verify-session")
     assert _folders(s, "test-session") == []
     assert (folder / "test-session-out.tgz").is_file()
-    sent = s.pod / "workspace/inputs/fb-answers.tgz"
+    sent = s.work / "inputs/fb-answers.tgz"
     assert sent.read_bytes() == extra.read_bytes()
     assert (folder / "inputs/fb-answers.tgz").read_bytes() == extra.read_bytes()  # as sent
     checks = [line for line in s.log("ssh.log") if "sha256sum -c" in line]
     assert len(checks) == 1 and f"{_sha(extra)} fb-answers.tgz" in checks[0]
-    env = (s.pod / "workspace/session.env").read_text(encoding="utf-8").splitlines()
-    remote = REMOTE.replace("/workspace", str(s.pod / "workspace"))
+    env = (s.work / "session.env").read_text(encoding="utf-8").splitlines()
+    remote = REMOTE.replace(mac_watch35.WORK, str(s.work))
     assert env == [f"COMMIT={s.commit}", "STOP_GRACE_MIN=120", f"STAGES_FILE={remote}/{VERIFY}"]
     assert KEY_BODY not in output
 
@@ -54,9 +54,9 @@ def test_the_default_session_names_the_test_session_stages_and_ships_no_extra(
     result = s.run()
     assert result.returncode == 0, result.stdout + result.stderr
     assert len(_folders(s, "test-session")) == 1
-    env = (s.pod / "workspace/session.env").read_text(encoding="utf-8").splitlines()
+    env = (s.work / "session.env").read_text(encoding="utf-8").splitlines()
     assert env[-1].endswith("/prefreeze/test_session_stages.txt")
-    names = sorted(p.name for p in (s.pod / "workspace/inputs").iterdir())
+    names = sorted(p.name for p in (s.work / "inputs").iterdir())
     assert names == ["classify-examples.json", "exp35-inputs.tgz", "exp35-inputs.tgz.sha256"]
 
 
@@ -114,4 +114,4 @@ def test_launch_reads_the_stages_file_from_session_env_before_its_default() -> N
     sourced = launch.index('. "$SESSION_ENV"')
     default = launch.index('STAGES_FILE="${STAGES_FILE:-$HERE/test_session_stages.txt}"')
     assert sourced < default
-    assert (HERE / VERIFY).is_file() and mac_watch35.SESSION_ENV == "/workspace/session.env"
+    assert (HERE / VERIFY).is_file() and mac_watch35.SESSION_ENV == "/root/exp35-work/session.env"

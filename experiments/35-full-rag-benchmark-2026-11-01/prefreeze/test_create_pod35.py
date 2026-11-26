@@ -69,6 +69,8 @@ def _changed(path: tuple[str, ...], value: Any) -> dict[str, Any]:
         (("gpu", "minCudaVersion"), "12.4", "gpu.minCudaVersion"),
         (("cloud",), "COMMUNITY", "cloud"),
         (("mounts", "persistent", "path"), "/root", "mounts.persistent.path"),
+        (("mounts", "persistent", "size"), 10, "mounts.persistent.size"),
+        (("disk",), 60, "disk"),
     ],
 )
 def test_a_saved_request_that_differs_from_the_plan_is_refused(
@@ -112,3 +114,14 @@ def test_a_plan_pin_without_a_digest_is_refused() -> None:
     plan["pins"]["environment"]["image"] = "runpod/base:1.6.0-cuda1281-ubuntu2404"
     with pytest.raises(create_pod35.CreateRefused, match="digest"):
         create_pod35.build_request(plan)
+
+
+def test_the_container_disk_holds_the_work_and_the_volume_is_the_spare_copy(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """All work runs on the 120 GB container disk. The 40 GB volume only keeps spare tarballs."""
+    request = json.loads(_dry_run(capsys)[1])
+    assert request["disk"] == create_pod35.CONTAINER_DISK_GB == 120
+    assert request["mounts"]["persistent"] == {"size": create_pod35.VOLUME_GB, "path": "/workspace"}
+    assert create_pod35.VOLUME_GB == 40
+    assert request["mounts"]["persistent"]["size"] < request["disk"]

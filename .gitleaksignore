@@ -129,4 +129,5 @@ experiments/35-full-rag-benchmark-2026-11-01/prefreeze/test_mac_watch35.py:gener
 experiments/35-full-rag-benchmark-2026-11-01/plan.json:generic-api-key:102
 experiments/35-full-rag-benchmark-2026-11-01/prefreeze/freeze_check_stages.txt:generic-api-key:134
 experiments/35-full-rag-benchmark-2026-11-01/prefreeze/freeze_rerun_stages.txt:generic-api-key:18
-experiments/35-full-rag-benchmark-2026-11-01/prefreeze/test_freeze_check_stages.py:generic-api-key:32
+experiments/35-full-rag-benchmark-2026-11-01/prefreeze/test_freeze_check_stages.py:generic-api-key:33
+experiments/35-full-rag-benchmark-2026-11-01/prefreeze/freeze_layout_stages.txt:generic-api-key:30

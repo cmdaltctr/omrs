@@ -1,47 +1,46 @@
 """Mac side of the Exp 35 test pod session (task 9.2): copy, launch, watch, pull.
 
 Usage: TEST_SESSION_RUNBOOK.md. No --ssh-host: runpod_ssh35.py reads the address from RunPod.
-It never stops or deletes a pod; the last line is always ``DELETE_POD_NOW <pod id>``. No key
-is printed. Idle = stage timeout + 10 min. After idle, the cap or a signal it stops the chain
-(watch_stop35.py) before the pull.
+It never stops or deletes a pod; the last line is ``DELETE_POD_NOW <pod id>``, or ``KEEP_POD``
+when the pod was kept on a failure (--keep-pod-on-fail). No key is printed. Idle = stage
+timeout + 10 min. After idle, the cap or a signal it stops the chain (watch_stop35.py) before
+the pull. Each finished stage is pulled when it appears (watch_stages35.py).
 Test hook: MAC_WATCH35_FAKE_CLOCK=1 makes every wait move a virtual clock (no sleep).
 """
 
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import re
 import shlex
-import shutil
 import signal
 import subprocess
 import sys
-import tarfile
 import time
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
 import runpod_ssh35
+import watch_stages35
 import watch_zai35
-from watch_inputs35 import inputs, sha256, unsafe
+from watch_inputs35 import EXAMPLES, INPUTS_TGZ, STAGES, Plan, build_inputs, prepare, sha256, unsafe
 from watch_stop35 import stop_chain
 
 HERE = Path(__file__).resolve().parent
 EXP = HERE.parent
 REPO = EXP.parent.parent
 
-WORK = "/workspace"
+WORK = "/root/exp35-work"  # the pod's own disk; /workspace (a network mount) is a spare only
 INPUTS, REMOTE_REPO, LOG = f"{WORK}/inputs", f"{WORK}/omrs", f"{WORK}/test-session.log"
 TARBALL, OWN_TARBALL = f"{WORK}/test-session-out.tgz", f"{WORK}/watcher-out.tgz"
 OUT_PARENT, OUT_NAME = f"{WORK}/exp35-test", "out"
 PULLED, SESSION_ENV, SESSION = f"{WORK}/PULLED", f"{WORK}/session.env", "exp35"
-INPUTS_TGZ, EXAMPLES, STOP_GRACE_MIN = "exp35-inputs.tgz", "classify-examples.json", 120
-STAGES, REMOTE_HERE = "test_session_stages.txt", f"{REMOTE_REPO}/experiments/{EXP.name}/prefreeze"
-LAUNCH = f"bash {REMOTE_HERE}/launch35.sh > {LOG} 2>&1"
+ZAI_ENV, STAGE_OUT, STOP_GRACE_MIN = f"{WORK}/.zai_env", f"{WORK}/stage-out", 120
+REMOTE_HERE = f"{REMOTE_REPO}/experiments/{EXP.name}/prefreeze"
+LAUNCH = f"WORK={WORK} bash {REMOTE_HERE}/launch35.sh > {LOG} 2>&1"
 
 POLL_S, SSH_POLL_S, STOP_POLL_S = 60, 15, 10
 SSH_WAIT_S, IDLE_S, SSH_LOST_S, IDLE_GRACE_S = 15 * 60, 30 * 60, 10 * 60, 10 * 60
@@ -53,7 +52,7 @@ _STAGE_START = re.compile(r"== \S+: start \(timeout (\d+)s\)")  # idle = timeout
 _SHOWN = re.compile(r"^\[\d\d:\d\d:\d\d\] (==|test pod session|PULLED seen|no .*PULLED)")
 EXIT = {"done": 0, "internal": 1, "refused": 2, "stop-failed": 3, "no-ssh": 4, "setup": 5,
         "stop-line": 6, "session-ended": 7, "idle": 8, "wall-cap": 9, "ssh-lost": 10,
-        "pull": 11, "interrupted": 12, "no-address": 13}  # fmt: skip
+        "pull": 11, "interrupted": 12, "no-address": 13, "kept": 14}  # fmt: skip
 _SIGNALS = (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)
 _SSH_OPTIONS = ("BatchMode=yes", "StrictHostKeyChecking=no", "UserKnownHostsFile=/dev/null",
                 "ConnectTimeout=20", "ServerAliveInterval=15", "LogLevel=ERROR")  # fmt: skip
@@ -106,91 +105,20 @@ def say(text: str) -> None:
     print(f"[{datetime.now(UTC):%H:%M:%S}] {text}", flush=True)
 
 
-@dataclass
-class Plan:
-    """The checked local side of one session."""
-
-    commit: str
-    key: Path
-    examples: Path
-    stages: str = STAGES
-    extra: Path | None = None  # --extra-input: one more file for the pod's inputs folder
-    repo_url: str = ""
-    root: Path = Path()
-    folder: Path = Path()
-    rels: list[str] = field(default_factory=list)
-
-    def sent(self) -> list[str]:
-        """Name the inputs that go to the pod and have their SHA-256 checked there."""
-        return [INPUTS_TGZ, EXAMPLES, *([self.extra.name] if self.extra else [])]
-
-
-def prepare(args: argparse.Namespace) -> tuple[list[str], Plan]:
-    """Check every local input; return the problems and the plan. Writes nothing."""
-    plan = Plan(args.commit, args.ssh_key.expanduser(), args.examples.expanduser(), args.stages)
-    plan.extra = args.extra_input.expanduser() if args.extra_input else None
-    problems = []
-    if not (args.stages.endswith("_stages.txt") and (HERE / Path(args.stages).name).is_file()):
-        problems.append(f"--stages {args.stages} is not a *_stages.txt file in {HERE}")
-    if plan.extra and not plan.extra.is_file():
-        problems.append(f"--extra-input {plan.extra} is not a file")
-    elif plan.extra and plan.extra.name.lower() in (INPUTS_TGZ, f"{INPUTS_TGZ}.sha256", EXAMPLES):
-        problems.append(f"--extra-input {plan.extra.name} has the name of a generated input")
-    if not re.fullmatch(r"[0-9a-f]{40}", args.commit):  # it goes unquoted into pod commands
-        problems.append("--commit must be the full 40-character commit SHA")
-    problems += runpod_ssh35.arg_problems(args.ssh_host, args.ssh_port)
-    if not plan.key.is_file():
-        problems.append(f"SSH key {plan.key} not found")
-    try:
-        json.loads(plan.examples.read_text(encoding="utf-8"))
-    except (OSError, ValueError) as error:
-        problems.append(f"--examples {plan.examples} is not a JSON file ({type(error).__name__})")
-    git = ["git", "-C", str(REPO), "remote", "get-url", "origin"]
-    origin = subprocess.run(git, capture_output=True, text=True, check=False)  # noqa: S603
-    plan.repo_url = args.repo_url or (origin.stdout.strip() if origin.returncode == 0 else "")
-    if not plan.repo_url:
-        problems.append("no --repo-url, and this checkout has no origin remote")
-    try:
-        plan.root, plan.rels = inputs()
-        stem = plan.stages.removesuffix("_stages.txt").replace("_", "-")
-        plan.folder = plan.root / "experiments" / EXP.name / f"{stem}-{datetime.now(UTC):%Y-%m-%d}"
-    except Exception as error:  # noqa: BLE001 - any failure here is a refusal with its reason
-        return [*problems, f"cannot list the inputs: {type(error).__name__}: {error}"], plan
-    if plan.folder.exists():
-        problems.append(f"results folder {plan.folder} already exists; it is never overwritten")
-    problems += [f"input {rel} {why}" for rel in plan.rels if (why := unsafe(rel, plan.root))]
-    problems += watch_zai35.problems()
-    return problems, plan
-
-
-def build_inputs(plan: Plan) -> dict[str, str]:
-    """Write the inputs folder (tarball, .sha256, examples, extra); return SHA-256 by name."""
-    folder = plan.folder / "inputs"
-    folder.mkdir()
-    tgz = folder / INPUTS_TGZ
-    with tarfile.open(tgz, "w:gz", compresslevel=6) as tar:
-        for rel in plan.rels:
-            tar.add((plan.root / rel).resolve(), arcname=rel, recursive=False)
-    digest = sha256(tgz)
-    (folder / f"{INPUTS_TGZ}.sha256").write_text(f"{digest}  {INPUTS_TGZ}\n", encoding="utf-8")
-    shutil.copyfile(plan.examples, folder / EXAMPLES)
-    if plan.extra:
-        shutil.copyfile(plan.extra, folder / plan.extra.name)
-    say(f"  {tgz}: {len(plan.rels)} files, {tgz.stat().st_size / 1e6:.1f} MB, SHA-256 {digest}")
-    return {n: digest if n == INPUTS_TGZ else sha256(folder / n) for n in plan.sent()}
-
-
 def setup_cmds(plan: Plan, shas: dict[str, str]) -> list[str]:
     """Step 5: check the inputs, place the repository, write session.env, start the chain."""
     pairs = " ".join(f"{sha} {shlex.quote(name)}" for name, sha in shas.items())
     values = [f"COMMIT={plan.commit}", f"STOP_GRACE_MIN={STOP_GRACE_MIN}"]
     values.append(f"STAGES_FILE={REMOTE_HERE}/{plan.stages}")
+    values += ["KEEP_POD_ON_FAIL=1"] * plan.keep + ["RESUME=1"] * plan.resume
+    stale = [TARBALL, f"{TARBALL}.sha256", OWN_TARBALL, f"{OWN_TARBALL}.sha256", PULLED]
     return [
         f"cd {INPUTS} && printf '%s  %s\\n' {pairs} | sha256sum -c -",
         f"set -e; [ -d {REMOTE_REPO}/.git ] || git clone -q {shlex.quote(plan.repo_url)} "
         f"{REMOTE_REPO}; cd {REMOTE_REPO}; git fetch -q origin; "
         f'git checkout -q --detach {plan.commit}; test "$(git rev-parse HEAD)" = {plan.commit}',
         f"printf '%s\\n' {shlex.join(values)} > {SESSION_ENV}",
+        *([watch_stages35.stale_cmd(stale)] if plan.resume else []),  # the chain rewrites them
         LAUNCH_CMD,
     ]
 
@@ -249,6 +177,7 @@ class Watch:
     stop_line: str = ""
     stop_failed: bool = False
     stop_sent: bool = False
+    kept: bool = False  # the chain left the pod running (POD_KEPT, --keep-pod-on-fail)
     last_growth: float = 0.0
     idle_s: int = IDLE_S
 
@@ -259,9 +188,11 @@ class Watch:
         self.done |= DONE in line
         self.stop_failed |= STOP_FAILED in line
         self.stop_sent |= STOP_SENT in line
+        self.kept |= watch_stages35.KEPT in line
         if STOP in line and not self.stop_line:
             self.stop_line = line.strip()
-        if any(m in line for m in (DONE, STOP, STOP_FAILED, STOP_SENT)) or _SHOWN.match(line):
+        marks = (DONE, STOP, STOP_FAILED, STOP_SENT, watch_stages35.KEPT)
+        if any(m in line for m in marks) or _SHOWN.match(line):
             print(f"  pod| {line.rstrip()[:300]}", flush=True)
 
     def feed(self, text: str) -> None:
@@ -292,17 +223,26 @@ def setup(pod: Pod, plan: Plan, shas: dict[str, str]) -> str | None:
             say(f"no SSH after {SSH_WAIT_S // 60} min")
             return "no-ssh"
         pause(SSH_POLL_S)
-    say(f"step 4: copy the inputs to {INPUTS}")
+    check = pod.ssh(watch_stages35.inputs_match_cmd(INPUTS, shas)) if plan.resume else None
+    held = check is not None and check.returncode == 0
+    if held:
+        say("step 4: --resume: the pod holds the inputs with matching SHA-256; no copy")
+    else:
+        say(f"step 4: copy the inputs to {INPUTS}")
     names = (*shas, f"{INPUTS_TGZ}.sha256")
     files, dest = [str(plan.folder / "inputs" / n) for n in names], pod.remote(f"{INPUTS}/")
-    if not pod.ok(f"mkdir -p {INPUTS}") or not (pod.copy(files, dest) or pod.copy(files, dest)):
+    if not held and not (
+        pod.ok(f"mkdir -p {INPUTS}") and (pod.copy(files, dest) or pod.copy(files, dest))
+    ):
         return "setup"
     say(f"step 5: check the SHA-256 on the pod; {REMOTE_REPO} at {plan.commit}; launch")
     commands = setup_cmds(plan, shas)
-    return None if watch_zai35.run_setup(pod, commands) else "setup"
+    return None if watch_zai35.run_setup(pod, commands, ZAI_ENV) else "setup"
 
 
-def watch(pod: Pod, w: Watch, cap_s: float, start: float) -> str:
+def watch(
+    pod: Pod, w: Watch, cap_s: float, start: float, stages: watch_stages35.StagePull | None = None
+) -> str:
     """Step 6: poll until an end condition; return its EXIT key."""
     failing_since: float | None = None
     beat = w.last_growth = now()
@@ -317,6 +257,8 @@ def watch(pod: Pod, w: Watch, cap_s: float, start: float) -> str:
                     return "ssh-lost"
             else:
                 failing_since, w.last_growth = None, at if grew else w.last_growth
+                if stages:  # after a good poll only: a lost link never waits on a copy.
+                    stages.pull_new()  # `at` stays the poll time: a long copy is not idle time
                 if w.stop_line or w.done:
                     return "stop-line" if w.stop_line else "done"
                 if not w.alive:
@@ -377,22 +319,27 @@ def pull(pod: Pod, folder: Path) -> str:
     return "hash-mismatch"
 
 
-def end_session(pod: Pod, w: Watch, reason: str, folder: Path) -> tuple[str, str, str]:
+def end_session(
+    pod: Pod, w: Watch, reason: str, folder: Path, stages: watch_stages35.StagePull, keep: bool
+) -> tuple[str, str, str]:
     """Pull, write PULLED, then wait for the pod's own stop; return the three verdicts."""
     stop_chain(pod, reason, session=SESSION, tarball=TARBALL, say=say, now=now, pause=pause)
     if reason == "stop-line" and w.alive and not w.done:
         say(f"STOP: line seen; waiting up to {SETTLE_S // 60} min for {DONE}")
         wait_for(pod, w, lambda: w.done or not w.alive, SETTLE_S, POLL_S)
+    stages.pull_new()  # the last stage may have ended since the last poll
     outputs = pull(pod, folder)
     marker = "written" if pod.ok(f"printf '%s\\n' {outputs} > {PULLED}") else "not-written"
     say(f"{PULLED}: {marker} ({outputs})")
-    if not w.done:
+    if not (w.done or keep):
         return outputs, marker, "not-expected"
     seen: bool | None = True
-    if not (w.stop_sent or w.stop_failed or not w.alive):
+    ended = lambda: w.stop_sent or w.stop_failed or w.kept or not w.alive  # noqa: E731
+    if not ended():
         say(f"waiting up to {STOP_WAIT_S // 60} min for the pod to stop itself")
-        met = lambda: w.stop_sent or w.stop_failed or not w.alive  # noqa: E731
-        seen = wait_for(pod, w, met, STOP_WAIT_S, STOP_POLL_S)
+        seen = wait_for(pod, w, ended, STOP_WAIT_S, STOP_POLL_S)
+    if w.kept:
+        return outputs, marker, "kept"
     if w.stop_failed or w.stop_sent:
         return outputs, marker, "FAILED" if w.stop_failed else "sent"
     return outputs, marker, "ssh-closed" if seen is None else "not-seen"
@@ -401,7 +348,10 @@ def end_session(pod: Pod, w: Watch, reason: str, folder: Path) -> tuple[str, str
 def dry_run(args: argparse.Namespace, plan: Plan, problems: list[str]) -> int:
     pod = Pod(args.ssh_host or "<publicIp>", args.ssh_port or "<port>", plan.key)
     say(f"DRY RUN: no ssh, scp or tmux call, no file written. Key {plan.key} is not read.")
-    say(f"step 1: create {plan.folder}")
+    verb = "reuse (--resume: old files move aside)" if plan.resume else "create"
+    say(f"step 1: {verb} {plan.folder}")
+    for line in watch_stages35.dry_lines(WORK, STAGE_OUT):
+        say(f"  {line}")
     say(f"step 2: build {plan.folder / 'inputs' / INPUTS_TGZ} from {plan.root} (no Legal, D1):")
     sizes = {r: (plan.root / r).stat().st_size for r in plan.rels if not unsafe(r, plan.root)}
     for rel in plan.rels:
@@ -411,9 +361,10 @@ def dry_run(args: argparse.Namespace, plan: Plan, problems: list[str]) -> int:
         *([] if args.ssh_host else [f"2b GET {runpod_ssh35.API}{args.pod_id} for 22/tcp"]),
         f"3 {shlex.join(pod.ssh_base)} true (every {SSH_POLL_S} s, up to {SSH_WAIT_S // 60} min)",
         f"4 ssh 'mkdir -p {INPUTS}'; {shlex.join([*pod.scp_base, '<files>', pod.remote(INPUTS)])}"
-        f" (the tarball, its .sha256 and the examples as {EXAMPLES})"
+        f" (the tarball, its .sha256 and the examples as {EXAMPLES}"
+        + ("; --resume: only when the pod's copy fails its SHA-256 check)" if plan.resume else ")")
         + (f", and {plan.extra} as {plan.extra.name}" if plan.extra else ""),
-        *watch_zai35.dry_lines(setup_cmds(plan, dict.fromkeys(plan.sent(), "<sha>"))),
+        *watch_zai35.dry_lines(setup_cmds(plan, dict.fromkeys(plan.sent(), "<sha>")), ZAI_ENV),
         f"6 every {POLL_S} s: ssh {shlex.quote(poll_cmd(0))}; ends: see the runbook",
         f"7 ssh {shlex.quote(WHICH_CMD)}; on 'out': ssh {shlex.quote(PACK_CMD)}",
         f"7 scp {LOG} and the tarball with its .sha256; check; ssh 'printf <verdict> > {PULLED}'",
@@ -437,23 +388,34 @@ def run(args: argparse.Namespace) -> int:
         return EXIT["refused"]
     for sig in _SIGNALS:
         signal.signal(sig, _interrupt)
-    say(f"steps 1 and 2: create {plan.folder}; build the inputs tarball (no Legal RAG Bench, D1)")
-    plan.folder.mkdir(parents=True)
+    if plan.resume:
+        say(
+            f"steps 1 and 2: --resume: reuse {plan.folder} and its inputs; move the old files aside"
+        )
+        for name in watch_stages35.aside(plan.folder):
+            say(f"  moved aside: {name}")
+    else:
+        say(f"steps 1 and 2: create {plan.folder}; build the inputs tarball (no Legal, D1)")
+        plan.folder.mkdir(parents=True)
     (plan.folder / "watcher.pid").write_text(f"{os.getpid()}\n", encoding="utf-8")
-    shas = build_inputs(plan)
+    shas = build_inputs(plan, say)
     if not (found := runpod_ssh35.find(args, now=now, pause=pause, say=say)):
         return EXIT["no-address"]
     pod = Pod(*found, plan.key)
     if failed := setup(pod, plan, shas):
         return EXIT[failed]
     say(f"step 6: watching {LOG} every {POLL_S} s (cap {args.wall_cap_h:g} h)")
-    w = Watch()
-    reason = watch(pod, w, args.wall_cap_h * 3600, start)
+    w, stages = Watch(), watch_stages35.StagePull(pod, WORK, plan.folder / "stage-out", say)
+    reason = watch(pod, w, args.wall_cap_h * 3600, start, stages)
     signal.pthread_sigmask(signal.SIG_BLOCK, _SIGNALS)  # no signal may cut the pull short
-    outputs, marker, stop = end_session(pod, w, reason, plan.folder)
+    outputs, marker, stop = end_session(pod, w, reason, plan.folder, stages, plan.keep)
+    say(stages.summary())
     if w.stop_failed:
         code = EXIT["stop-failed"]
         say("!!! POD_STOP_FAILED: the pod did not stop itself and the GPU still bills.")
+    elif w.kept:
+        code = EXIT["kept"]
+        say(f"{watch_stages35.KEPT} the pod still runs and bills. The watcher never deletes it.")
     else:
         code = EXIT[reason] if reason != "done" else EXIT["done" if outputs == "ok" else "pull"]
     result = f"RESULT end={reason} outputs={outputs} pulled-marker={marker} pod-stop={stop}"
@@ -464,7 +426,7 @@ def run(args: argparse.Namespace) -> int:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Run the session watch; always end with the DELETE_POD_NOW line."""
+    """Run the session watch; end with the DELETE_POD_NOW line (KEEP_POD when the pod is kept)."""
     argv = list(sys.argv[1:] if argv is None else argv)
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     for name in ("--pod-id", "--commit"):
@@ -474,9 +436,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--examples", required=True, type=Path, help="classifier examples JSON")
     parser.add_argument("--ssh-key", type=Path, default=Path("~/.ssh/runpod_omrs_measure"))
     parser.add_argument("--stages", default=STAGES, help="stages file in prefreeze/ for the pod")
-    parser.add_argument("--extra-input", type=Path, help="one more file for /workspace/inputs")
+    parser.add_argument("--extra-input", type=Path, help=f"one more file for {INPUTS}")
     parser.add_argument("--repo-url", help="default: the origin URL of this checkout")
     parser.add_argument("--wall-cap-h", type=float, default=15.5)
+    parser.add_argument("--keep-pod-on-fail", action="store_true", help="the chain keeps the pod")
+    parser.add_argument(
+        "--resume", action="store_true", help="re-launch; skip stages done in stage-out"
+    )
     parser.add_argument("--dry-run", action="store_true", help="print every step, run nothing")
     try:
         code = run(parser.parse_args(argv))
@@ -492,6 +458,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         code = EXIT["internal"]
     pod_id = argv[argv.index("--pod-id") + 1] if "--pod-id" in argv[:-1] else "UNKNOWN"
     prefix = "[dry-run] a real run ends with: " if "--dry-run" in argv else ""
+    if code == EXIT["kept"]:  # the owner rule: the pod stays up while the fix is made
+        print(f"KEEP_POD {pod_id}: fix the stage, push the fix, then run again with the same "
+              "arguments and --resume; delete the pod yourself when done", flush=True)  # fmt: skip
+        return code
     print(f"{prefix}DELETE_POD_NOW {pod_id}", flush=True)
     return code
 

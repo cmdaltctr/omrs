@@ -12,6 +12,7 @@ from __future__ import annotations
 from test_session_stages import (
     OUT,
     VERIFY_FILE,
+    WORK,
     _calls,
     _folder,
     _opts,
@@ -89,7 +90,7 @@ def test_verify_rebuilds_the_c1024_freshstack_index_and_compares_both_after_the_
     runs = [(c, a) for c, a in _runs(VERIFY_FILE) if c.stage.name in G2_STAGES]
     for _, a in runs:
         found = (a.dataset, a.qids, str(a.passages_dir))
-        assert found == ("freshstack", qids, "/workspace/passages")
+        assert found == ("freshstack", qids, f"{WORK}/passages")
         # Gold files plus 300 others (675 files on 2026-11-24): compaction runs every 64 files.
         assert a.corpus_sample >= 300 and a.limit is None
     built = [(c.stage.name, a.index, a.stage, _folder(a.out_dir)) for c, a in runs if not a.setup]
@@ -148,7 +149,7 @@ def test_verify_answer_checks_run_on_a_copy_unpacked_from_the_inputs() -> None:
     (unpack,) = [c for c in _calls(VERIFY_FILE) if c.stage.name == "fb-unpack"]
     assert _script(unpack)[1] == "unpack"
     assert _opts(_script(unpack)[2]) == {
-        "--tarball": "/workspace/inputs/fb-answers.tgz",
+        "--tarball": f"{WORK}/inputs/fb-answers.tgz",
         "--dataset": "financebench",
         "--out": f"{OUT}/fb",
     }

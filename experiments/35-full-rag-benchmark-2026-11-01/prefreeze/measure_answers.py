@@ -19,7 +19,7 @@ Run on the pod (heavy-run rule: the operator runs it):
     SWEEP_GGUF_DIR=... OPENROUTER_API_KEY=... uv run --no-sync python \
         experiments/35-full-rag-benchmark-2026-11-01/prefreeze/measure_answers.py \
         --answer-host <slug> --judge-host <slug> --prices prices.json \
-        --ragas-venv /workspace/ragas-venv
+        --ragas-venv $WORK/ragas-venv
 """
 
 from __future__ import annotations

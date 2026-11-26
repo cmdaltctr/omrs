@@ -7,7 +7,7 @@
 #
 # Pod and inputs: as for the test session (create_pod35.py, exp35-inputs.tgz and the
 # classifier examples). One extra input: the re-gate sample (--extra-input
-# .../gate2/sample.json), which arrives as /workspace/inputs/sample.json.
+# .../gate2/sample.json), which arrives as $WORK/inputs/sample.json.
 #
 # Order: the classifier re-gate, then the quick checks (rate samples, then the zero-error
 # recheck on three of them), then the timed full-corpus FreshStack build. The stage
@@ -21,29 +21,29 @@
 SWEEP_GGUF_DIR=/root/gguf
 
 # Setup stops the chain on failure (G5). The test session's line. About 23 min.
-!setup@60m bash prefreeze/pod_setup35.sh --commit "$COMMIT" --inputs /workspace/inputs --passages-dir /workspace/passages --ragas-venv /workspace/ragas-venv --ref-venv /root/exp35-ref-venv
+!setup@60m bash prefreeze/pod_setup35.sh --commit "$COMMIT" --inputs $WORK/inputs --passages-dir $WORK/passages --ragas-venv $WORK/ragas-venv --ref-venv /root/exp35-ref-venv
 
 # Task 8.7 re-gate (owner decision 2026-11-24, after the first gate failed on refusal
 # recall): classify the new gate sample (seed 20261142) with the re-pinned prompt and
 # the committed classify-examples.json (SHA-256 in plan.json). 100 hosted calls; the
 # first gate took 1 min 40 s. sample-kinds.jsonl comes back in gate2/. About 2 min.
-gate2-classify@15m mkdir -p "$OUT_DIR/gate2" && cp /workspace/inputs/sample.json "$OUT_DIR/gate2/sample.json" && PYTHONPATH=../.. uv run --no-sync python refusals35.py classify --out-dir "$OUT_DIR/gate2" --examples classify-examples.json --classify-concurrency 16
+gate2-classify@15m mkdir -p "$OUT_DIR/gate2" && cp $WORK/inputs/sample.json "$OUT_DIR/gate2/sample.json" && PYTHONPATH=../.. uv run --no-sync python refusals35.py classify --out-dir "$OUT_DIR/gate2" --examples classify-examples.json --classify-concurrency 16
 
 # 1. Rate samples for the budget: 1,200 sampled FreshStack files (plus the gold files of
 # every question, about 2,750 files) into a fresh folder per index, one [rate] line per
 # 200 files. e4b-c1024 took 12 min on 2026-11-24 (0.25 s per file). About 13 min each.
 # Timeout 35 min each (40 until the re-gate stage was added, 2026-11-24).
-rate-e0.6b-c1024@35m uv run --no-sync python prefreeze/verify35.py rate --block 200 -- uv run --no-sync python run_arms.py --dataset freshstack --index e0.6b-c1024 --stage ingest --corpus-sample 1200 --passages-dir /workspace/passages --out-dir "$OUT_DIR/rate-e0.6b-c1024" --prefreeze --local-dir /root/exp35-local
-rate-e8b-c1024@35m uv run --no-sync python prefreeze/verify35.py rate --block 200 -- uv run --no-sync python run_arms.py --dataset freshstack --index e8b-c1024 --stage ingest --corpus-sample 1200 --passages-dir /workspace/passages --out-dir "$OUT_DIR/rate-e8b-c1024" --prefreeze --local-dir /root/exp35-local
-rate-e4b-c512@35m uv run --no-sync python prefreeze/verify35.py rate --block 200 -- uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c512 --stage ingest --corpus-sample 1200 --passages-dir /workspace/passages --out-dir "$OUT_DIR/rate-e4b-c512" --prefreeze --local-dir /root/exp35-local
-rate-e4b-c2048@35m uv run --no-sync python prefreeze/verify35.py rate --block 200 -- uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c2048 --stage ingest --corpus-sample 1200 --passages-dir /workspace/passages --out-dir "$OUT_DIR/rate-e4b-c2048" --prefreeze --local-dir /root/exp35-local
+rate-e0.6b-c1024@35m uv run --no-sync python prefreeze/verify35.py rate --block 200 -- uv run --no-sync python run_arms.py --dataset freshstack --index e0.6b-c1024 --stage ingest --corpus-sample 1200 --passages-dir $WORK/passages --out-dir "$OUT_DIR/rate-e0.6b-c1024" --prefreeze --local-dir /root/exp35-local
+rate-e8b-c1024@35m uv run --no-sync python prefreeze/verify35.py rate --block 200 -- uv run --no-sync python run_arms.py --dataset freshstack --index e8b-c1024 --stage ingest --corpus-sample 1200 --passages-dir $WORK/passages --out-dir "$OUT_DIR/rate-e8b-c1024" --prefreeze --local-dir /root/exp35-local
+rate-e4b-c512@35m uv run --no-sync python prefreeze/verify35.py rate --block 200 -- uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c512 --stage ingest --corpus-sample 1200 --passages-dir $WORK/passages --out-dir "$OUT_DIR/rate-e4b-c512" --prefreeze --local-dir /root/exp35-local
+rate-e4b-c2048@35m uv run --no-sync python prefreeze/verify35.py rate --block 200 -- uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c2048 --stage ingest --corpus-sample 1200 --passages-dir $WORK/passages --out-dir "$OUT_DIR/rate-e4b-c2048" --prefreeze --local-dir /root/exp35-local
 
 # 2. Seal the three samples the recheck reads, one per chunk size. This session builds no
 # e4b-c1024, so c1024 uses the smallest index it builds at that size (e0.6b-c1024).
 # About 1 min in all.
-seal-e4b-c512@10m uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c512 --stage seal --corpus-sample 1200 --passages-dir /workspace/passages --out-dir "$OUT_DIR/rate-e4b-c512" --prefreeze --local-dir /root/exp35-local
-seal-e0.6b-c1024@10m uv run --no-sync python run_arms.py --dataset freshstack --index e0.6b-c1024 --stage seal --corpus-sample 1200 --passages-dir /workspace/passages --out-dir "$OUT_DIR/rate-e0.6b-c1024" --prefreeze --local-dir /root/exp35-local
-seal-e4b-c2048@10m uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c2048 --stage seal --corpus-sample 1200 --passages-dir /workspace/passages --out-dir "$OUT_DIR/rate-e4b-c2048" --prefreeze --local-dir /root/exp35-local
+seal-e4b-c512@10m uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c512 --stage seal --corpus-sample 1200 --passages-dir $WORK/passages --out-dir "$OUT_DIR/rate-e4b-c512" --prefreeze --local-dir /root/exp35-local
+seal-e0.6b-c1024@10m uv run --no-sync python run_arms.py --dataset freshstack --index e0.6b-c1024 --stage seal --corpus-sample 1200 --passages-dir $WORK/passages --out-dir "$OUT_DIR/rate-e0.6b-c1024" --prefreeze --local-dir /root/exp35-local
+seal-e4b-c2048@10m uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c2048 --stage seal --corpus-sample 1200 --passages-dir $WORK/passages --out-dir "$OUT_DIR/rate-e4b-c2048" --prefreeze --local-dir /root/exp35-local
 
 # 3. Zero-error recheck (task 10.1): FreshStack 77536364 and 77762811 through the answer
 # stage and both judges, in every answer-setup shape: each chunk size, reranker off and
@@ -71,5 +71,5 @@ recheck-c2048-r0.6b-hon-t20k@10m uv run --no-sync python run_arms.py --dataset f
 # timing slice, so about 0.29 s per file, 4.0 h if the rate stays flat (owner estimate 4
 # to 6 h). The 8 h timeout is twice the flat figure. The seal took 12 s for 2,750 files,
 # so about 4 min here. About 4 h + 4 min.
-fsfull-e8b-c512@8h uv run --no-sync python prefreeze/verify35.py rate --block 200 -- uv run --no-sync python run_arms.py --dataset freshstack --index e8b-c512 --stage ingest --passages-dir /workspace/passages --out-dir "$OUT_DIR/fsfull" --prefreeze --local-dir /root/exp35-local
-fsfull-seal@20m uv run --no-sync python run_arms.py --dataset freshstack --index e8b-c512 --stage seal --passages-dir /workspace/passages --out-dir "$OUT_DIR/fsfull" --prefreeze --local-dir /root/exp35-local
+fsfull-e8b-c512@8h uv run --no-sync python prefreeze/verify35.py rate --block 200 -- uv run --no-sync python run_arms.py --dataset freshstack --index e8b-c512 --stage ingest --passages-dir $WORK/passages --out-dir "$OUT_DIR/fsfull" --prefreeze --local-dir /root/exp35-local
+fsfull-seal@20m uv run --no-sync python run_arms.py --dataset freshstack --index e8b-c512 --stage seal --passages-dir $WORK/passages --out-dir "$OUT_DIR/fsfull" --prefreeze --local-dir /root/exp35-local

@@ -127,7 +127,7 @@ def test_the_pod_waits_longer_for_pulled_than_the_watcher_may_spend_pulling() ->
 
 def test_the_watcher_pack_leaves_out_the_index_stores(tmp_path: Path) -> None:
     s = Session(tmp_path, ["+[00:00:01] == a: start", "dead"])
-    out = s.pod / "workspace/exp35-test/out"
+    out = s.work / "exp35-test/out"
     for rel in ("s/stores/e4b-c1024/lancedb/t.lance/data/0.lance", "stores/e8b-c512/x.json"):
         (out / rel).parent.mkdir(parents=True, exist_ok=True)
         (out / rel).write_bytes(b"vectors")

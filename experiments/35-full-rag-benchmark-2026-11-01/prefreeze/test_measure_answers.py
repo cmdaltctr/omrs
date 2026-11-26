@@ -347,7 +347,7 @@ def test_ragas_missing_stops_with_plain_message_before_any_stage(
     assert code == 2
     err = capsys.readouterr().err
     assert "Ragas 0.4.3 is not installed" in err
-    assert "uv pip install --python /workspace/ragas-venv/bin/python" in err
+    assert "uv pip install --python $WORK/ragas-venv/bin/python" in err
     assert answerer.asked == []
     assert not (tmp_path / "answers20.jsonl").exists()
 
