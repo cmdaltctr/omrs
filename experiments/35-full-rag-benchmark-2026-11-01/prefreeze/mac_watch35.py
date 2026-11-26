@@ -26,6 +26,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import runpod_ssh35
+import watch_zai35
 from watch_inputs35 import inputs, sha256, unsafe
 from watch_stop35 import stop_chain
 
@@ -158,6 +159,7 @@ def prepare(args: argparse.Namespace) -> tuple[list[str], Plan]:
     if plan.folder.exists():
         problems.append(f"results folder {plan.folder} already exists; it is never overwritten")
     problems += [f"input {rel} {why}" for rel in plan.rels if (why := unsafe(rel, plan.root))]
+    problems += watch_zai35.problems()
     return problems, plan
 
 
@@ -297,7 +299,7 @@ def setup(pod: Pod, plan: Plan, shas: dict[str, str]) -> str | None:
         return "setup"
     say(f"step 5: check the SHA-256 on the pod; {REMOTE_REPO} at {plan.commit}; launch")
     commands = setup_cmds(plan, shas)
-    return None if all(pod.ok(cmd, timeout=900) for cmd in commands) else "setup"
+    return None if watch_zai35.run_setup(pod, commands) else "setup"
 
 
 def watch(pod: Pod, w: Watch, cap_s: float, start: float) -> str:
@@ -411,7 +413,7 @@ def dry_run(args: argparse.Namespace, plan: Plan, problems: list[str]) -> int:
         f"4 ssh 'mkdir -p {INPUTS}'; {shlex.join([*pod.scp_base, '<files>', pod.remote(INPUTS)])}"
         f" (the tarball, its .sha256 and the examples as {EXAMPLES})"
         + (f", and {plan.extra} as {plan.extra.name}" if plan.extra else ""),
-        *(f"5 ssh {shlex.quote(c)}" for c in setup_cmds(plan, dict.fromkeys(plan.sent(), "<sha>"))),
+        *watch_zai35.dry_lines(setup_cmds(plan, dict.fromkeys(plan.sent(), "<sha>"))),
         f"6 every {POLL_S} s: ssh {shlex.quote(poll_cmd(0))}; ends: see the runbook",
         f"7 ssh {shlex.quote(WHICH_CMD)}; on 'out': ssh {shlex.quote(PACK_CMD)}",
         f"7 scp {LOG} and the tarball with its .sha256; check; ssh 'printf <verdict> > {PULLED}'",

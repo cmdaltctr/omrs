@@ -11,13 +11,16 @@
 #   tmux new-session -d -s exp35 'bash <repo>/experiments/35-full-rag-benchmark-2026-11-01/prefreeze/launch35.sh > /workspace/test-session.log 2>&1'
 #
 # Optional: SESSION_ENV (default /workspace/session.env: names and plain values, never
-# a key; for example COMMIT and STOP_GRACE_MIN), PROC1_ENVIRON (default /proc/1/environ).
+# a key; for example COMMIT and STOP_GRACE_MIN), ZAI_ENV (default /workspace/.zai_env:
+# the mode-600 file with OMRS_EXP35_ZAI_BASE_URL that the Mac watcher writes over ssh
+# standard input), PROC1_ENVIRON (default /proc/1/environ).
 # Defaults when unset: WORK=/workspace, OUT_DIR=$WORK/exp35-test/out,
 # STAGES_FILE=<this folder>/test_session_stages.txt.
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SESSION_ENV="${SESSION_ENV:-/workspace/session.env}"
+ZAI_ENV="${ZAI_ENV:-/workspace/.zai_env}"
 PROC1_ENVIRON="${PROC1_ENVIRON:-/proc/1/environ}"
 NAMES=(OPENROUTER_API_KEY OMRS_EXP35_ZAI_KEY EXP35_POD_IMAGE RUNPOD_POD_ID RUNPOD_API_KEY)
 
@@ -25,6 +28,12 @@ if [ -f "$SESSION_ENV" ]; then
   set -a
   # shellcheck source=/dev/null
   . "$SESSION_ENV"
+  set +a
+fi
+if [ -f "$ZAI_ENV" ]; then
+  set -a
+  # shellcheck source=/dev/null
+  . "$ZAI_ENV"
   set +a
 fi
 

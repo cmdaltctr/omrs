@@ -1,4 +1,4 @@
-"""Run GLM-5.3 through OMRS's ``chat`` claim judge on the Z.ai Coding Plan (Exp 35, task 6.4).
+"""Run GLM-5.3 through OMRS's ``chat`` claim judge on the Z.ai API (Exp 35, task 6.4).
 
 Two sets, one per call:
 
@@ -15,8 +15,10 @@ Two sets, one per call:
 
 The judge is OMRS's production ``chat`` strategy built by
 ``compose_judges.build_judge_target`` from a scratch ``omrs.jsonc``: provider
-``openai_compatible`` at the Coding Plan address (judgement log 28), the key
-as an ``env://`` reference, filled from the key file and never printed, temperature 0, a
+``openai_compatible`` at the Z.ai API address, the key as an ``env://`` reference,
+filled from the key file and never printed. The address comes from ``zai35`` (the
+environment or the owner's file, checked against the ``plan.json`` hash) and reaches
+OMRS through the process environment, never the scratch file; temperature 0, a
 fixed seed and the reasoning level. The model is hosted, so rows run
 ``--concurrency`` at a time; per-row seconds are not a timing result.
 ``--resume`` skips rows already written; ``<out>/RUNSTOP`` stops between rows.
@@ -36,10 +38,13 @@ from typing import Any
 
 import run_aggrefact as ra
 
+if str(ra.EXP_DIR) not in sys.path:
+    sys.path.insert(0, str(ra.EXP_DIR))
+import zai35  # noqa: E402
+
 aggrefact_lib = ra.lib
 STRATEGY = "chat"
 MODEL = "glm-5.3"
-BASE_URL = "https://api.z.ai/api/coding/paas/v4"
 KEY_ENV = "OMRS_EXP35_ZAI_KEY"  # gitleaks:allow - a variable name, not a key
 KEY_REF = f"env://{KEY_ENV}"
 KEY_FILE = Path.home() / ".config/omrs/secrets/zai-exp35.key"
@@ -53,7 +58,6 @@ DEFAULT_OUT = ra.EXP_DIR / "output" / "prefreeze-glm"
 def build_values(reasoning: str) -> dict[str, Any]:
     """Return the scratch ``omrs.jsonc`` values of the GLM-5.3 ``chat`` judge."""
     return {
-        "openai_compatible_base_url": BASE_URL,
         "openai_compatible_api_key": KEY_REF,
         "answer": {
             "verify_claims": True,
@@ -78,7 +82,13 @@ def build_judge(out_dir: Path, reasoning: str) -> Any:
     from omrs.compose_judges import build_judge_target, chat_judge
     from omrs.engine_answer import server_seam
 
-    router_env.prepare_environment({}, config_dir=out_dir / "config", state_dir=out_dir / "state")
+    plan = json.loads((ra.EXP_DIR / "plan.json").read_text(encoding="utf-8"))
+    try:
+        extra = {zai35.OMRS_ENV: zai35.base_url(plan)}
+    except zai35.EndpointError as error:
+        raise ra.RunError(str(error)) from None
+    config, state = out_dir / "config", out_dir / "state"
+    router_env.prepare_environment(extra, config_dir=config, state_dir=state)
     if not os.environ.get(KEY_ENV):
         if not KEY_FILE.is_file():
             raise ra.RunError(f"no Z.ai key: set {KEY_ENV} or fill {KEY_FILE.name}")
@@ -107,7 +117,7 @@ def make_header(name: str, source_sha256: str, reasoning: str, rows_total: int) 
         "format": "omrs-aggrefact-run/1",
         "strategy": STRATEGY,
         "judge_version": ra.judge_version(STRATEGY),
-        "model": f"zai-coding/{MODEL}@{reasoning or 'default'}",
+        "model": f"zai/{MODEL}@{reasoning or 'default'}",
         "parquet_sha256": source_sha256,
         "seed": aggrefact_lib.SHUFFLE_SEED,
         "limit": None,

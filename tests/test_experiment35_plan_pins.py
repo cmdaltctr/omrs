@@ -264,7 +264,8 @@ def test_the_tokenizer_and_glm_pins_equal_the_values_the_harness_sends() -> None
     assert arms.TOKENIZER_REVISION.startswith("5cf2132a")
     glm = pins["glm_judge"]
     assert (glm["reasoning"], glm["temperature"]) == (arms.GLM_REASONING, arms.TEMPERATURE)
-    assert (glm["judge"], glm["base_url"]) == ("chat", arms.GLM_BASE_URL)
+    assert (glm["judge"], glm["provider"]) == ("chat", "zai")
+    assert re.fullmatch(r"[0-9a-f]{64}", glm["base_url_sha256"]) and "base_url" not in glm
 
 
 # --- pod image (task 9.1) -----------------------------------------------------------------

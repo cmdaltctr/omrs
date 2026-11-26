@@ -24,14 +24,19 @@ VALUES = {
     "RUNPOD_API_KEY": "rpa_SECRET_KEY_VALUE_123",
 }
 SECRETS = ("OPENROUTER_API_KEY", "OMRS_EXP35_ZAI_KEY", "RUNPOD_API_KEY")
+#: A stand-in GLM-5.3 base URL in the watcher's mode-600 file (ZAI_ENV), never printed.
+ZAI_URL = "https://fake-zai.example.invalid/api/LEAKCHECK-77"
 #: The stage writes what the chain's environment holds, so the test can compare.
 STAGE = (
-    "envcheck sh -c 'for n in OPENROUTER_API_KEY OMRS_EXP35_ZAI_KEY EXP35_POD_IMAGE "
+    "envcheck sh -c 'for n in OPENROUTER_API_KEY OMRS_EXP35_ZAI_KEY OMRS_EXP35_ZAI_BASE_URL "
+    "EXP35_POD_IMAGE "
     'RUNPOD_POD_ID RUNPOD_API_KEY; do printenv "$n" > "$OUT_DIR/$n"; done\'\n'
 )
 
 
-def _launch(tmp_path: Path, environ: dict[str, str]) -> subprocess.CompletedProcess[str]:
+def _launch(
+    tmp_path: Path, environ: dict[str, str], zai: str = ZAI_URL
+) -> subprocess.CompletedProcess[str]:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     add_timeout_if_missing(bin_dir)
@@ -54,7 +59,9 @@ def _launch(tmp_path: Path, environ: dict[str, str]) -> subprocess.CompletedProc
         "HOME": str(tmp_path),
         "PROC1_ENVIRON": str(fake),
         "SESSION_ENV": str(session_env),
+        "ZAI_ENV": str(tmp_path / ".zai_env"),
     }
+    (tmp_path / ".zai_env").write_text(f"OMRS_EXP35_ZAI_BASE_URL='{zai}'\n", encoding="utf-8")
     return subprocess.run(
         ["bash", str(LAUNCH)], env=env, capture_output=True, text=True, timeout=60
     )
@@ -68,7 +75,8 @@ def test_the_launch_copies_the_pod_values_from_process_1_and_prints_none(
     assert result.returncode == 0, output
     for name, value in VALUES.items():
         assert (tmp_path / "out" / name).read_text().strip() == value
-    assert not any(VALUES[name] in output for name in SECRETS)
+    assert (tmp_path / "out" / "OMRS_EXP35_ZAI_BASE_URL").read_text().strip() == ZAI_URL
+    assert not any(VALUES[name] in output for name in SECRETS) and ZAI_URL not in output
     assert (tmp_path / "work" / "test-session-out.tgz").is_file()
     assert (tmp_path / "runpodctl.log").read_text().splitlines() == ["pod stop pod123"]
 
@@ -82,3 +90,10 @@ def test_an_empty_value_fails_the_pre_check_by_name_only(tmp_path: Path, missing
     assert not any(VALUES[name] in output for name in SECRETS)
     assert not (tmp_path / "out" / "OPENROUTER_API_KEY").exists()
     assert not (tmp_path / "runpodctl.log").exists()
+
+
+def test_an_empty_base_url_fails_the_pre_check_by_name_only(tmp_path: Path) -> None:
+    result = _launch(tmp_path, VALUES, zai="")
+    assert result.returncode == 2
+    assert "OMRS_EXP35_ZAI_BASE_URL" in result.stdout
+    assert not (tmp_path / "out" / "OPENROUTER_API_KEY").exists()

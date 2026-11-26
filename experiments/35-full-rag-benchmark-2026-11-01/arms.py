@@ -36,9 +36,9 @@ TEMPERATURE = 0.0
 TOP_K = 10
 ANSWER_MODEL = "deepseek/deepseek-v4.1-flash-1017"
 OPENROUTER_KEY_REF = "env://OPENROUTER_API_KEY"
-#: GLM-5.3 on the Z.ai Coding Plan, the ``chat`` claim checker.
+#: GLM-5.3 on the Z.ai API, the ``chat`` claim checker. The base URL is in no file
+#: (``zai35``); ``plan.json`` pins its SHA-256.
 GLM_MODEL = "glm-5.3"
-GLM_BASE_URL = "https://api.z.ai/api/coding/paas/v4"
 GLM_KEY_ENV = "OMRS_EXP35_ZAI_KEY"  # gitleaks:allow - a variable name, not a key
 GLM_REASONING = "low"
 #: The token-aware tokenizer (ADR-063). Every setup chunks with it: file-type routing
@@ -413,8 +413,7 @@ def settings_values(
             f"--answer-host {answer_host!r} differs from the plan.json answer host {pinned_host!r}"
         )
     _merge(values, settings_pins)
-    if "chat" in judges:
-        values["openai_compatible_base_url"] = GLM_BASE_URL
+    if "chat" in judges:  # the base URL reaches OMRS through the environment (zai35)
         values["openai_compatible_api_key"] = f"env://{GLM_KEY_ENV}"
     return values
 

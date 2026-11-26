@@ -223,20 +223,30 @@ The re-gate and the quick checks run first, then the full build. The stage timeo
 
 ## Freeze check
 
-The freeze check runs the final code on the RTX 4090 once before the freeze (readiness review S2). The last pod ran commit `0868c308`. The store fixes, OCR off (A6), the answer cap (A7) and file-type routing off (A13) came later. The check uses the same machinery as the test session. Its stages are in `prefreeze/freeze_check_stages.txt`. The results folder is `freeze-check-<UTC date>/`. It needs no extra input.
+The freeze check runs the final code on the RTX 4090 once before the freeze (readiness review S2). The last pod ran commit `0868c308`. The store fixes, OCR off (A6), the answer cap (A7) and file-type routing off (A13) came later. The check uses the same machinery as the test session. Its stages are in `prefreeze/freeze_check_stages.txt`. The results folder is `freeze-check-<UTC date>/`. It needs one extra input, `kinds-recheck-input.json`, for the claim-kind recheck (owner, 2026-11-26).
 
 ### Before the go
 
 1. Do steps 1 to 3 of "Before the go" above. `COMMIT` is the freeze candidate. The examples file is the committed `classify-examples.json`.
-2. Run the dry run from the Experiment 35 folder:
+2. Make sure the GLM-5.3 base URL file `~/.config/omrs/secrets/zai-exp35.base_url` exists, mode 600, one line (amendment A15). The watcher checks its SHA-256 against `plan.json` and sends it to the pod's mode-600 `/workspace/.zai_env` over ssh standard input. It never prints the value.
+3. Make the recheck input (Mac only, reads the owner's gate-2 labels):
+
+```bash
+D=~/Development/DATA/omrs/experiments/35-full-rag-benchmark-2026-11-01
+uv run --no-sync python prefreeze/kinds_recheck35.py prepare --gate2 "$D/test-session-2026-11-24/gate2" \
+  --examples classify-examples.json --out "$D/freeze-check-inputs/kinds-recheck-input.json"
+```
+
+4. Run the dry run from the Experiment 35 folder:
 
 ```bash
 uv run --no-sync python prefreeze/mac_watch35.py --pod-id DRYRUN --commit "$COMMIT" \
-  --examples classify-examples.json --stages freeze_check_stages.txt --dry-run
+  --examples classify-examples.json --stages freeze_check_stages.txt \
+  --extra-input "$D/freeze-check-inputs/kinds-recheck-input.json" --dry-run
 ```
 
-3. Make sure the dry run exits 0, shows no `PROBLEM:` line and lists 91 input files.
-4. Make sure the dry run shows `STAGES_FILE=/workspace/omrs/.../freeze_check_stages.txt` and the folder `freeze-check-<UTC date>`.
+5. Make sure the dry run exits 0, shows no `PROBLEM:` line, lists 91 input files and shows the `/workspace/.zai_env` step with no value.
+6. Make sure the dry run shows `STAGES_FILE=/workspace/omrs/.../freeze_check_stages.txt` and the folder `freeze-check-<UTC date>`.
 
 ### Session
 
@@ -245,7 +255,7 @@ Do the session order above. In step 7, start the watcher with the stages file an
 ```bash
 caffeinate -i uv run --no-sync python prefreeze/mac_watch35.py --pod-id <id> \
   --commit "$COMMIT" --examples classify-examples.json --stages freeze_check_stages.txt \
-  --wall-cap-h 4.5
+  --extra-input "$D/freeze-check-inputs/kinds-recheck-input.json" --wall-cap-h 4.5
 ```
 
 ### Stages and times
@@ -265,6 +275,7 @@ Times are expected minutes on one RTX 4090, from the 2026-11-24 sessions. The st
 | `judge-*` | 6 | GLM-5.3 and Clef-Flash. |
 | `ragas-*` | 35 | Ragas on the RAG answers and on both closed-book sets. |
 | `kinds-*` | 3 | Claim kinds. |
+| `kinds-recheck`, `check-kinds-recheck` | 2 | The fixed claim-kind prompt on the 96 gate-2 claims that are not prompt examples, against the owner's gate-2 labels (`recheck/recheck-summary.json`). Informational: this sample informed the fix, so a pass is optimistic. Gate 3 runs on fresh labels after the freeze. The check fails only on a missing kind. |
 | `vram8-build`, `vram8-search` | 5 | The 8B embedder and the 8B reranker in one search. |
 | `join`, `check-*`, `collect` | 2 | The smoke join and the pass rule. |
 
@@ -296,6 +307,7 @@ The check passes when every stage ends `ok` and each check below holds. Each `ch
 | 15 | `s/<dataset>/answer/e4b-c1024-r0.6b-hon/run1/claimkinds-summary.json` (3 files) | `closed_missing` empty |
 | 16 | `s/join.json` | `ok` true, `smoke` true, `failures` empty |
 | 17 | `gpu.csv` | Record the peak `memory.used` during `vram8-search`. The stage `ok` is the pass. |
+| 18 | `recheck/recheck-summary.json` | Record the gate figures and the recall and precision per kind. Informational only: the stage `ok` (every claim has a kind) is the pass, never the score. This sample informed the fix, so a pass is optimistic. Gate 3 runs on fresh labels after the freeze. |
 
 ### On a failure
 

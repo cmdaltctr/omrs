@@ -352,7 +352,7 @@ One function `cohen_kappa(a, b)` goes into `experiments/_lib/stats_d6.py`, test-
 | `claimkinds` | about 2 s per call, concurrency 16 | 2.2 |
 | **Sum** | one stage at a time | **about 65** |
 
-GLM-5.3 needs about 179 worker-hours in all (186,700 claims x 3.45 s). Three pods at concurrency 8 each (24 at once on one Z.AI Coding Plan key) finish the `chat` stage in about 7.5 h. The test pod session measures whether Z.AI accepts 24 at once without 429 code 1302; at concurrency 4 the stage takes about 15 h per pod. There is no per-token cost.
+GLM-5.3 needs about 179 worker-hours in all (186,700 claims x 3.45 s). Three pods at concurrency 8 each (24 at once on one Z.ai API key) finish the `chat` stage in about 7.5 h. The test pod session measures whether Z.AI accepts 24 at once without 429 code 1302; at concurrency 4 the stage takes about 15 h per pod. There is no per-token cost.
 
 Older text (six arms, 19,440 answers, three checkers):
 
@@ -386,7 +386,7 @@ These are estimates. The local judge rates come from LLM-AggreFact rows, which h
 | Answers | 41,760 x $0.0029 (measured at about 1,024-token chunks), scaled by evidence size (x0.87 at 512, x1.27 at 2,048 on average) | | $127 |
 | Ragas (five metrics) | 41,760 x $0.0019 for the four pre-freeze metrics plus about $0.0004 for `AnswerCorrectness` (three short calls without the contexts), same scaling | | $100 |
 | Claim classifier | About 186,700 short calls on `openai/gpt-oss-120b` | | $9 |
-| GLM-5.3 claim checks | Z.AI Coding Plan, no per-token cost | | $0 |
+| GLM-5.3 claim checks | the Z.ai API (priced $390 from amendment A8; outside the OpenRouter limit from A15) | | $0 |
 | **Total** | | **about 341** | **about $555** (A1b total; A2 total in D35) |
 
 Rounded estimate after A1b: **$555, ceiling $830** (history). Estimate after A2, the oracle run and A2c: **$650, ceiling $975 (1.5 x)**; see D35 and D37 (history). Live estimate after A4: about **$730**, ceiling **$975**; see D38. Superseded 2026-11-25: estimate **$1,122**, ceiling **$1,716** (pre-registration section 17, `plan.json` amendment A8).

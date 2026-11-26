@@ -65,6 +65,10 @@ def _model(role: str, file: str, digest: str, args: dict[str, Any]) -> dict[str,
     }
 
 
+#: A stand-in GLM-5.3 base URL (the real one is in no tracked file); fake_plan pins its hash.
+FAKE_ZAI_URL = "https://fake-zai.example.invalid/api/v4"
+
+
 def fake_plan() -> dict[str, Any]:
     """Return a plan with three embedders, three rerankers, Clef-Flash, seeds and pins."""
     embed_args = {
@@ -111,6 +115,7 @@ def fake_plan() -> dict[str, Any]:
                 "hybrid": {"fusion_depth": 100, "bm25_tokeniser": "omrs-default"},
             },
             "ragas_judge": {"host": "hostj", "reasoning": "low", "temperature": 0.0},
+            "glm_judge": {"base_url_sha256": hashlib.sha256(FAKE_ZAI_URL.encode()).hexdigest()},
             "datasets": {
                 "freshstack": {
                     "revision": FS_REVISION,

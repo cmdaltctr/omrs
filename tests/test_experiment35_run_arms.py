@@ -21,7 +21,14 @@ from typing import Any
 import pytest
 from experiments._lib.hosted_calls import RateLimitStop
 from experiments._lib.preflight import PreflightError
-from tests._exp35_fixtures import fake_plan, load, make_data_root, make_gguf, unpin
+from tests._exp35_fixtures import (
+    FAKE_ZAI_URL,
+    fake_plan,
+    load,
+    make_data_root,
+    make_gguf,
+    unpin,
+)
 
 arms = load("arms")
 cli35 = load("cli35")
@@ -39,6 +46,7 @@ def env(tmp_path: Path) -> Iterator[Path]:
     saved = dict(os.environ)
     os.environ["EXP35_DATA_DIR"] = str(make_data_root(tmp_path / "DATA"))
     os.environ["SWEEP_GGUF_DIR"] = str(make_gguf(tmp_path / "gguf"))
+    os.environ["OMRS_EXP35_ZAI_BASE_URL"] = FAKE_ZAI_URL  # the chat judge's endpoint (zai35)
     # conftest provider defaults would override the scratch file (the runner stops on that).
     for name in (
         "EMBED_PROVIDER",

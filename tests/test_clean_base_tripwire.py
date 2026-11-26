@@ -517,7 +517,15 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # _rebuild (1). None removed or renamed. No extra.
 # +2 (2026-11-26, empty claim-kinds file, by test-ID diff against HEAD 3f2c4a58): 2 added:
 # test_experiment35_claimstage (1) and _kindgate (1). None removed or renamed. No extra.
-_BASE_EXECUTED = 14110
+# +18 (2026-11-26, Exp 35 Z.ai endpoint, claim-kind recheck and A16, by test-ID diff
+# against HEAD dd890e82): 19 added: new files test_experiment35_zai_endpoint (7),
+# prefreeze/test_mac_watch35_zai (5) and prefreeze/test_kinds_recheck35 (3);
+# prefreeze/test_freeze_check_stages (1), _launch35_script (1), _run_glm_chat (1) and
+# _pod_test_session_script (1, the base URL case). 1 renamed: the GLM values test of
+# test_run_glm_chat; its new ID is one of the 19 and its old ID went, so net +18. No extra.
+# +1 (2026-11-26, PR 229 review, by test-ID diff against HEAD ca5e655b): 1 added:
+# prefreeze/test_kinds_recheck35 (per-kind weights). None removed or renamed. No extra.
+_BASE_EXECUTED = 14129
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

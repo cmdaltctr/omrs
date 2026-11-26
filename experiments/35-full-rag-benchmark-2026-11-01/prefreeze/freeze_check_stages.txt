@@ -11,7 +11,9 @@
 # that runs them on the RTX 4090 before the freeze.
 #
 # Pod and inputs: as for the test session (create_pod35.py, exp35-inputs.tgz and the
-# committed classify-examples.json). No extra input.
+# committed classify-examples.json), plus one extra input (owner, 2026-11-26): the
+# watcher sends kinds-recheck-input.json (--extra-input; kinds_recheck35.py prepare) for
+# the claim-kind recheck.
 #
 # Order: setup checks, the resolved-settings dry runs, the FreshStack build rate, then one
 # reranker-on, hybrid-on setup (e4b-c1024-r0.6b-hon) end to end on 10 questions of each
@@ -111,6 +113,12 @@ kinds-fb@15m uv run --no-sync python run_arms.py --dataset financebench --setup 
 kinds-bio@15m uv run --no-sync python run_arms.py --dataset bioasq --setup e4b-c1024-r0.6b-hon --stage claimkinds --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local --classify-examples /workspace/inputs/classify-examples.json --classify-concurrency 16
 kinds-fs@15m uv run --no-sync python run_arms.py --dataset freshstack --setup e4b-c1024-r0.6b-hon --stage claimkinds --limit 10 --corpus-sample 300 --passages-dir /workspace/passages --out-dir "$OUT_DIR/s" --prefreeze --local-dir /root/exp35-local --classify-examples /workspace/inputs/classify-examples.json --classify-concurrency 16
 
+# 11b. Claim-kind recheck (owner, 2026-11-26): the fixed prompt on the gate-2 sample
+# without the 4 claims that are now prompt examples (about 96 hosted calls, under $0.10).
+# Informational: this sample informed the fix, so a pass is optimistic. Gate 3 runs on
+# fresh labels after the freeze. check-kinds-recheck fails only on a missing kind. 2 min.
+kinds-recheck@15m mkdir -p "$OUT_DIR/recheck" && uv run --no-sync python prefreeze/kinds_recheck35.py split --input /workspace/inputs/kinds-recheck-input.json --out-dir "$OUT_DIR/recheck" && PYTHONPATH=../.. uv run --no-sync python refusals35.py classify --out-dir "$OUT_DIR/recheck" --examples classify-examples.json --classify-concurrency 16
+
 # 12. The 8B embedder and the 8B reranker together, one index and one search in vram,
 # built and searched at this commit (the old vram8-search read an index of another
 # commit and stopped). Peak VRAM is in gpu.csv. About 5 min.
@@ -131,6 +139,7 @@ check-determinism@5m uv run --no-sync python prefreeze/verify35.py expect "$OUT_
 check-judges@5m uv run --no-sync python prefreeze/verify35.py expect "$OUT_DIR/s/*/answer/e4b-c1024-r0.6b-hon/run1/judge-*-summary.json" --count 6 missing=0 closed_claims=0 not_judged=0
 check-ragas@5m uv run --no-sync python prefreeze/verify35.py expect "$OUT_DIR/s/*/*/e4b-c1024-r0.6b-hon/run1/ragas-summary.json" --count 9 errors=0 not_judged=0 'unjudged_open={}'
 check-kinds@5m uv run --no-sync python prefreeze/verify35.py expect "$OUT_DIR/s/*/answer/e4b-c1024-r0.6b-hon/run1/claimkinds-summary.json" --count 3 'closed_missing=[]'
+check-kinds-recheck@5m uv run --no-sync python prefreeze/kinds_recheck35.py score --input /workspace/inputs/kinds-recheck-input.json --out-dir "$OUT_DIR/recheck"
 check-join@5m uv run --no-sync python prefreeze/verify35.py expect "$OUT_DIR/s/join.json" ok=true smoke=true 'failures=[]'
 
 # Router logs of every stage (swaps, idle stops) into the tarball. 1 min.
