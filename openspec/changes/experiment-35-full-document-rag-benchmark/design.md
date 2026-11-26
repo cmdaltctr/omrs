@@ -203,7 +203,7 @@ Reports: Cohen's kappa of GLM-5.3 and of Clef-Flash against L1 on faithfulness, 
 
 **M8. Reranker pins and a rank check.** Every reranker GGUF is pinned in the `plan.json` runtime block with its SHA-256 before the freeze. On the test pod, each size is checked against the model card's transformers recipe on 200 seeded query-passage pairs (seed 20261117): Spearman rank correlation of the scores at least 0.95. A file below the threshold is not pinned.
 
-**M9. Public pre-registration.** (Amended by A4, D0.15: `preregistration.md` is the main file of the OSF deposit.) At the freeze commit (G7), the operator deposits `protocol.md` and `plan.json` on OSF as a public pre-registration. The deposit carries no personal data beyond the operator name already allowed in records.
+**M9. Public pre-registration.** (Amended by A4, D0.15: `preregistration.md` is the main file of the OSF deposit. Amended 2026-11-25, owner decision: the deposit is for Exp 35 alone; the Part 2 protocol has its own, later deposit, made before any half-B score exists.) At the freeze commit (G7), the operator deposits `protocol.md` and `plan.json` on OSF as a public pre-registration. The deposit carries no personal data beyond the operator name already allowed in records.
 
 **Answer model (decided by the operator, 2026-11-13).** The answer model stays `deepseek/deepseek-v4.1-flash-1017` on the OpenRouter API. Reason: the open-weights DeepSeek V4.1 Flash has 552B parameters, about 508 GB at 8-bit, which no single pod can host; smaller open models answer worse; the API costs about $127 for all answers. A single answer model is a stated limitation. Oracle retrieval was not added at this point; the operator approved an oracle run later the same day (see the oracle paragraph and D0.13).
 

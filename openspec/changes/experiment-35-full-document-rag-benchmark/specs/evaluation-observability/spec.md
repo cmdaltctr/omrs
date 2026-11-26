@@ -201,7 +201,11 @@ Every hosted call SHALL record the model id and provider that the reply returns,
 
 ### Requirement: The protocol is publicly pre-registered
 
-`preregistration.md` (main file), `protocol.md`, `plan.json`, the proposal and the Part 2 protocol of the freeze commit SHALL be deposited on OSF. A later commit, made before the first measured run, SHALL record the OSF link and the freeze commit hash in the `plan.json` `frozen` list with the other pins of `preregistration.md` section 16; the freeze commit cannot hold its own hash. The A3 configuration hash SHALL be time-stamped on the registered OSF project before any half-B score is computed.
+`preregistration.md` (main file), `protocol.md`, `plan.json` and the proposal of the freeze commit SHALL be deposited on OSF. A later commit, made before the first measured run, SHALL record the OSF link and the freeze commit hash in the `plan.json` `frozen` list with the other pins of `preregistration.md` section 16; the freeze commit cannot hold its own hash. The A3 configuration hash SHALL be time-stamped on the registered OSF project before any half-B score is computed.
+
+#### Scenario: Part 2 deposit
+- **WHEN** the Part 2 protocol is deposited
+- **THEN** it SHALL be a separate deposit, made before any half-B score is computed (owner decision, 2026-11-25)
 
 #### Scenario: Run before the deposit
 - **WHEN** the first measured run starts and `plan.json` `frozen` holds no OSF link

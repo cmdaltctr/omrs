@@ -9,7 +9,7 @@
 
 This is a draft for FLOW task 7.1. It holds every item that the list "What the Part 2 protocol must hold before its freeze" requires (proposal Step 3, 20 items; FLOW 7.1, items 1 to 16). A value that needs pod timing or an owner decision is a `TODO` with the task that closes it. No such value is invented here. Section 22 lists every TODO.
 
-Part 2 is deposited on OSF at the Experiment 35 freeze (FLOW 7.3, G7), before any half-B score exists. After the freeze, the deviation policy of section 19 applies.
+Part 2 has its own freeze and its own OSF deposit (FLOW 7.3, G8), after the Experiment 35 freeze and before any Experiment 35 half-B score exists (owner decision, 2026-11-25). If that cannot be done in time, Part 2 is dropped or re-planned, and it never uses half-B results. In this file "the freeze" and "before the freeze" mean the Part 2 freeze, unless the text names Experiment 35. After the freeze, the deviation policy of section 19 applies.
 
 ## 1. Question
 

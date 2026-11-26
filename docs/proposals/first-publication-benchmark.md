@@ -9,11 +9,11 @@ This is the first paper of the fellowship programme. The manṭiq work in `v4` (
 This proposal is the master plan for the first OMRS publication. It holds the scope, the order of work, what the paper claims and why, Part 2 and E1. Each experiment's governing file holds how its part runs: counts, seeds, models, statistical methods, gates and costs.
 
 - Part 1 is Experiment 35. Its governing file is the pre-registration `experiments/35-full-rag-benchmark-2026-11-01/preregistration.md` (amendment A4, 14 November 2026). It holds the live design only. `protocol.md` sections 0.1 to 0.13 (amendments A1 to A4) and sections 1 to 7 are history.
-- Part 2 (controlled comparison with RAGFlow) gets its own protocol before the freeze, and E1 (EnterpriseRAG-Bench context run) gets one before its run. Pre-registration section 18 lists what Experiment 35 fixes for them.
+- Part 2 (controlled comparison with RAGFlow) gets its own protocol and its own freeze (owner decision, 2026-11-25): Experiment 35 freezes alone, and Part 2 is frozen later, before any Experiment 35 half-B score exists. E1 (EnterpriseRAG-Bench context run) gets one before its run. Pre-registration section 18 lists what Experiment 35 fixes for them.
 
 Rule: for every Experiment 35 design fact, the pre-registration governs. Where this proposal and the pre-registration disagree on such a fact, the pre-registration wins and this proposal is corrected. For Part 2 and E1, pre-registration section 18 wins over this proposal on the points it fixes: the OMRS setup and its hash, the halves, the shared parts, the measurement settings, the C1 and C2 measures and tests, and the Part 2 missing-outcome rules. This proposal governs every other Part 2 and E1 fact until the Part 2 protocol is frozen. After that, the Part 2 protocol governs them. This proposal also governs scope and order of work. This file states Experiment 35 facts in short form and points to the pre-registration section. It does not copy long tables.
 
-OSF deposit at the freeze: the pre-registration as the main file, with this proposal, the protocol history (`protocol.md`), `plan.json` and the Part 2 protocol.
+OSF deposit at the Experiment 35 freeze: the pre-registration as the main file, with this proposal, the protocol history (`protocol.md`) and `plan.json`. The Part 2 protocol has its own, later deposit (owner decision, 2026-11-25).
 
 Related records:
 
@@ -55,8 +55,8 @@ The claims stay testable. OMRS reaches stated scores under stated conditions. Na
 
 ## Order and gates
 
-1. Freeze Part 1. The operator approves the pre-registration, `plan.json` and the run budget (master flow gate G7). The pre-freeze tasks P1 to P16 (pre-registration section 23) close first. The owner decided O1 to O7 on 2026-11-14, so no owner decision is open. The Part 2 protocol exists before this point (it is not written yet).
-2. Deposit on OSF in one deposit: the pre-registration as main file, this proposal, the protocol history, `plan.json` and the Part 2 protocol (C1, C2). Record the link and the commit hash.
+1. Freeze Part 1. The operator approves the pre-registration, `plan.json` and the run budget (master flow gate G7). The pre-freeze tasks P1 to P15, P17 and P18 (pre-registration section 23) close first. P16 (Part 2 and E1 inputs) closes before the Part 2 freeze (owner decision, 2026-11-25). The owner decided O1 to O7 on 2026-11-14, so no owner decision is open. The Part 2 protocol is not needed at this point: Part 2 has its own freeze later (owner decision, 2026-11-25).
+2. Deposit on OSF: the pre-registration as main file, this proposal, the protocol history and `plan.json`. The Part 2 protocol (C1, C2) is not in this deposit (owner decision, 2026-11-25). Record the link and the commit hash.
 3. Build and seal the 9 indexes per dataset. The rebuild gate G2 passes before any search writes output. Then run the 72 search setups on all questions (pre-registration section 14.2).
 4. Score half A only. Apply the A3 rule. Write `selection.json`.
 5. Time-stamp the A3 configuration hash by a file upload to the registered OSF project (O1, decided by the owner on 2026-11-14).
@@ -136,7 +136,7 @@ Detail for each item is in the pre-registration section named.
 - Power: a retrieval-only pilot on 40 seeded half-A questions per core dataset fills the minimum detectable effect table before the freeze. It builds at most the four H7 corner indexes per core dataset and does not reuse them. Its cost is projected from the P2 timing and approved before the pod starts; if the user declines, the table is filled from assumed SDs and labelled so. The smallest effect of interest is 0.02 nDCG@10 (O2, decided by the owner on 2026-11-14, with a written justification in pre-registration section 10). No equivalence claim is made (section 10).
 - Every main-run pod uses one RunPod GPU type, chosen by a timing job before the freeze. The Mac scores the results.
 - Budget: estimate $1,122 (an estimate, not measured), ceiling $1,716 (amended 2026-11-25; was about $730 and $975), pods and hosted calls together. The hosted-call key carries a credit limit, so an overrun stops cleanly. At the ceiling a results-blind drop order applies: (1) Legal RAG Bench answer generation, (2) the length-controlled check, (3) the closed-book run with the RAG prompt, then stop. E1 has its own ceiling and is not in this order. A run that finishes every confirmatory item after drops is "complete with registered drops", each drop a numbered deviation. No confirmatory item is dropped by choice (section 17).
-- Pre-registration: the pre-registration is the main file of the OSF deposit at the freeze commit, with this proposal, the protocol history, `plan.json` and the Part 2 protocol.
+- Pre-registration: the pre-registration is the main file of the OSF deposit at the freeze commit, with this proposal, the protocol history and `plan.json`. The Part 2 protocol has its own later deposit (owner decision, 2026-11-25).
 
 ### Runtime and hosted models
 
@@ -147,7 +147,7 @@ Detail for each item is in the pre-registration section named.
 
 ## Step 3: Part 2, controlled comparison with RAGFlow (Confirmatory)
 
-A separate experiment with its own number and protocol, deposited at the Experiment 35 freeze. It reuses the Experiment 35 corpora (FreshStack full corpus), question IDs, half split, prompt, answer model, checkers and judges. The points Experiment 35 fixes for Part 2 are in pre-registration section 18, which wins over this section on those points. This proposal governs every other Part 2 fact until the Part 2 protocol is frozen; after that, the Part 2 protocol governs them.
+A separate experiment with its own number, protocol, freeze and OSF deposit (owner decision, 2026-11-25). Part 2 is frozen after the Experiment 35 freeze and before any Experiment 35 half-B score exists. If that cannot be done in time, Part 2 is dropped or re-planned, and it never uses half-B results. Experiment 35 does not depend on Part 2. It reuses the Experiment 35 corpora (FreshStack full corpus), question IDs, half split, prompt, answer model, checkers and judges. The points Experiment 35 fixes for Part 2 are in pre-registration section 18, which wins over this section on those points. This proposal governs every other Part 2 fact until the Part 2 protocol is frozen; after that, the Part 2 protocol governs them.
 
 **Estimand.** The cost decision at master flow step 7.2a (rule 9) fixes which estimand applies, before any half-B score exists. The estimand is never chosen after seeing results. The shared models are fixed in both cases. OMRS is the A3 cell chosen on half A from the 72-setup search.
 
@@ -216,7 +216,7 @@ What this comparison can claim: with the shared models fixed, the measured diffe
 
 ### Pre-registration
 
-The Part 2 protocol (C1, C2) goes to OSF in the same deposit as the Experiment 35 pre-registration, at the freeze, before any half-B score exists. The A3 configuration hash is time-stamped on OSF before any half-B score is computed. After the freeze, Part 2 follows the deviation policy of pre-registration section 20.
+The Part 2 protocol (C1, C2) goes to its own OSF deposit at the Part 2 freeze (owner decision, 2026-11-25). That freeze comes after the Experiment 35 freeze and before any Experiment 35 half-B score exists. The A3 configuration hash is time-stamped on OSF before any half-B score is computed. After the freeze, Part 2 follows the deviation policy of pre-registration section 20.
 
 ### What the Part 2 protocol must hold before its freeze
 
@@ -226,11 +226,11 @@ Until these items exist, Part 2 cannot freeze. Each can be short in the protocol
 2. C1 and C2 with nulls, decision rule, Holm family of 2 per core dataset and the 2-of-3 same-sign rule, as above.
 3. RAGFlow pin: release tag, container digest of every service (RAGFlow, search engine, database, object store, cache), DeepDoc model versions and API version.
 4. Settings table for both systems, three columns (shared and fixed, default kept, set for measurement). Rows cover chunk method and size, tokenizer, parser and layout model, every LLM-based parsing feature (off or stated), embedder, query instruction, reranker and its instruction, keyword and vector weights, similarity cut-off, search depth, page size and depth 100. Defaults are read from the pinned release.
-5. Tuning budget and estimand: the exact matched RAGFlow cell list (settings varied and their levels), fixed before the master flow step 7.2 cost measurement; the matched-search decision at master flow step 7.2a (rule 9), with its cost figure measured at step 7.2, recorded before any half-B score. The decision fixes the estimand: "selected OMRS against selected RAGFlow" if the search runs (the RAGFlow configuration hash time-stamped on OSF with the OMRS hash), else "selected OMRS against default RAGFlow".
+5. Tuning budget and estimand: the exact matched RAGFlow cell list (settings varied and their levels), fixed after the OMRS half-A scores are known and before the master flow step 7.2 cost measurement; the matched-search decision at master flow step 7.2a (rule 9), with its cost figure measured at step 7.2, recorded before any half-B score. The decision fixes the estimand: "selected OMRS against selected RAGFlow" if the search runs (the RAGFlow configuration hash time-stamped on OSF with the OMRS hash), else "selected OMRS against default RAGFlow".
 6. Model serving: RAGFlow calls the same llama.cpp router, build and GGUF files as OMRS, with an environment record and the live-server check before the first call.
 7. Evidence mapping: chunk to unit ID per dataset, the FinanceBench page rule, page gate and fallback, and the unmappable-chunk rule.
 8. Answer harness input: how a RAGFlow chunk becomes an evidence item (text, title, order), Qwen3 token counting for the 20,480-token budget, and truncation records.
-9. Pre-freeze samples from half A only, with their seeds.
+9. Samples taken before the Part 2 freeze, from half A only, with their seeds.
 10. Repeatability check rule, and what a mismatch means for C1 (report and keep, or block).
 11. Missing-outcome rules as rule 10, every half-B question kept in both denominators.
 12. Labels: counts, seeds, guidelines, hidden system identity, L1 and L2 roles (L2 primary), and the per-dataset correctness gate.
@@ -328,8 +328,8 @@ The journal's own author guide covers ORCID, CRediT, the funding wording, confli
 | Half B is too small to detect a difference | Report the minimum detectable effect from the data. Make no equivalence claim. |
 | The single hosted answer model changes behind its ID | Pin one upstream host. Record the returned model ID and provider per call. State it as a limitation. |
 | RAGFlow cannot use our models, or hides its retrieved chunks | Record the blocker and report it. Do not substitute another model. |
-| RAGFlow chunks carry no page number | The pre-freeze gate checks this on a half-A FinanceBench sample. If it fails, the primary unit is the document for every question and both systems. The page-level result is reported as a labelled sensitivity analysis, or as unavailable (with the count) when a system gives no page provenance. No question is dropped. |
-| RAGFlow indexing costs too much GPU time | Time one RAGFlow index per dataset before the freeze (corpus only, no question). Report the cost. The matched RAGFlow search runs only if its projected pod cost is at most $50. |
+| RAGFlow chunks carry no page number | The gate before the Part 2 freeze checks this on a half-A FinanceBench sample. If it fails, the primary unit is the document for every question and both systems. The page-level result is reported as a labelled sensitivity analysis, or as unavailable (with the count) when a system gives no page provenance. No question is dropped. |
+| RAGFlow indexing costs too much GPU time | Time one RAGFlow index per dataset before the Part 2 freeze (corpus only, no question). Report the cost. The matched RAGFlow search runs only if its projected pod cost is at most $50. |
 | A reviewer says we set up RAGFlow badly | Share the reranker, set cut-off 0 and depth 100, read every other default from the pinned release, publish the three-column settings table, send it to the maintainers, report the defaults row and state the estimand fixed at master flow step 7.2a ("selected OMRS against default RAGFlow", or "against selected RAGFlow" if the matched search runs). |
 | A RAGFlow call fails or a document fails to parse | Rule 10: the question stays in both denominators and the failure is scored and counted, with a sensitivity analysis on questions both systems indexed fully. |
 | The authors' labels favour OMRS | L2 is the primary Part 2 labeller and system identity is hidden. The paper states the conflict of interest. |
@@ -358,12 +358,12 @@ The Experiment 35 limitations are in pre-registration section 22. The paper repe
 4. Ask the Napier library to confirm the article type and the deal.
 5. Done: Experiment 35 amendment A3 (protocol section 0.12) holds the selection rule for Part 2.
 6. Done: amendment A4 (protocol section 0.13) and the pre-registration, after the methods review of 13 November 2026.
-7. Close the pre-freeze tasks P1 to P16 of pre-registration section 23. No owner decision is open (O1 to O7 decided on 2026-11-14).
+7. Close the pre-freeze tasks P1 to P15, P17 and P18 of pre-registration section 23 (P16 closes before the Part 2 freeze). No owner decision is open (O1 to O7 decided on 2026-11-14).
 8. Reserve an experiment number for Part 2. Write its protocol, covering every item of "What the Part 2 protocol must hold before its freeze".
-9. Before the freeze, pin the RAGFlow release and container digests and connect it to the llama.cpp models. Read the RAGFlow defaults from the pinned release. Time one index per dataset (corpus only). Measure the projected pod cost of the matched search at master flow step 7.2 and record the decision at step 7.2a; it fixes the Part 2 estimand. Check page provenance on a seeded half-A FinanceBench sample (the rule 3 gate: if RAGFlow returns no page for a chunk, the primary unit falls back to the document for both systems) and retrieval repeatability on half A. Send the settings table to the RAGFlow maintainers.
-10. Write the Part 2 estimate and ceiling, and the E1 estimate and ceiling (pre-freeze task P16; no figure exists yet).
+9. Before the Part 2 freeze, pin the RAGFlow release and container digests and connect it to the llama.cpp models. Read the RAGFlow defaults from the pinned release. Time one index per dataset (corpus only). Measure the projected pod cost of the matched search at master flow step 7.2 and record the decision at step 7.2a; it fixes the Part 2 estimand. Check page provenance on a seeded half-A FinanceBench sample (the rule 3 gate: if RAGFlow returns no page for a chunk, the primary unit falls back to the document for both systems) and retrieval repeatability on half A. Send the settings table to the RAGFlow maintainers.
+10. Write the Part 2 estimate and ceiling, and the E1 estimate and ceiling (task P16, before the Part 2 freeze; no figure exists yet).
 11. Done: group 7 (Part 2 and E1) is in `rag-benchmark-readiness-flow`. It must take the Part 2 requirements above.
-12. Freeze Part 1. Deposit the pre-registration (main file), this proposal, the protocol history, `plan.json` and the Part 2 protocol on OSF together.
+12. Freeze Part 1. Deposit the pre-registration (main file), this proposal, the protocol history and `plan.json` on OSF. Freeze Part 2 later, with its own OSF deposit, before any Experiment 35 half-B score exists (owner decision, 2026-11-25).
 13. Before any E1 run, pin the corpus and leaderboard revisions. Confirm the GPT-5.4 judging or submission procedure with Onyx.
 
 ## Sources checked on 27 October, 9, 12, 13 and 14 November 2026

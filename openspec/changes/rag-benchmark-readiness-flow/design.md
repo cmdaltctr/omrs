@@ -38,8 +38,9 @@ G0 preflight
    smoke run, freeze (G7), run, report (design D5)
    |
    v
-7. Part 2 (RAGFlow on half B) and E1: protocol and RAGFlow set-up before
-   the freeze, OSF deposit at G7, A3 on half A, run on half B, E1 last
+7. Part 2 (RAGFlow on half B) and E1: after the Exp 35 freeze, A3 on half A,
+   RAGFlow set-up, Part 2 freeze and its own OSF deposit at G8 (before any half-B
+   score), run on half B, E1 last
 ```
 
 The cuts change goes first because both other changes build on it (the panel shows its cut boxes; the router change lands after it and shares the re-index). The router goes before the panel because it is on the benchmark's critical path and both touch `workspace-settings` and `settings-file`: never two of these branches at once (rule of the archived master flow, task 4.4). The panel changes no result with defaults, so it may run beside the sweep.
@@ -61,7 +62,8 @@ The cuts change and the router change each change the index identity. The operat
 | G6 | 5.3 | RunPod budget and start of the sweep |
 | G7a | 6.2 | Pre-freeze pod session: quoted price, go |
 | G7b | 6.8 | Merge the Exp 35 harness PR |
-| G7 | 6.11 and 7.3 | Freeze Experiment 35, approve the run budget, and deposit the pre-registration (main file), the proposal, `protocol.md`, `plan.json` and the Part 2 protocol on OSF together |
+| G7 | 6.11 | Freeze Experiment 35, approve the run budget, and deposit the pre-registration (main file), the proposal, `protocol.md` and `plan.json` on OSF (changed 2026-11-25, owner: the Part 2 protocol is not in this deposit) |
+| G8 | 7.3 | Freeze Part 2 and deposit its protocol on OSF in its own deposit, after the Exp 35 freeze and before any Exp 35 half-B score exists (added 2026-11-25, owner) |
 
 ### D4. Rules every group follows
 
@@ -92,10 +94,10 @@ E. Arm smoke run on the run machine; pod stopped after it
 E2. A4 pre-freeze items: FreshStack full corpus pin and timing,
    |   halves and MDE pilot on half A, P1 to P18,
    |   owner decisions O1 to O7 recorded (none open)
-   |   (with Part 2 steps 7.1, 7.2 and 7.2a)
 F. Freeze (G7)
    |
-G. Search stage; score half A; selection.json; OSF time-stamp of the
+G. Search stage; score half A; selection.json; Part 2 set-up and freeze
+   (G8, own OSF deposit, before any half-B score); OSF time-stamp of the
    hash; score half B; replicate pods; section 6 report; section 7 release
 ```
 
