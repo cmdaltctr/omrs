@@ -81,7 +81,7 @@ The analysis SHALL follow `preregistration.md` section 9 and SHALL fit no mixed 
 #### Scenario: No difference found
 - **WHEN** the Holm-adjusted p is 0.05 or more
 - **THEN** the report SHALL state that no difference was detected at this sample size
-- **AND** the report SHALL NOT claim equivalence, and no TOST SHALL run
+- **AND** the report SHALL NOT claim equivalence, and no TOST SHALL run (the reading of each interval against plus and minus 0.02, `preregistration.md` section 10, is descriptive and adds no test)
 
 #### Scenario: Decision and sensitivity check disagree
 - **WHEN** a row counts under the decision test but not under its sensitivity check (paired permutation by question on FreshStack and BioASQ, GEE with document clusters on FinanceBench), or the other way

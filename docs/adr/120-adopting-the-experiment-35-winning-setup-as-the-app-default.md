@@ -155,7 +155,7 @@ citation parse, evidence order). File and line evidence is in the audit.
 | 16 | Metadata extraction | Off | LLM title, keywords and summary, embedded | Paper; Own ADR. App default not measured |
 | 17 | Embedded text | Chunk text plus `file_name` and `header_path` | Same rule | Paper (FinanceBench names hold company and year) |
 | 18 | Embedder | Qwen3-Embedding 0.6B, 4B or 8B, Q8_0, SHA-256 pinned | Qwen3-Embedding-4B Q8_0 | Adopt (winner, file SHA-256); re-ingest rule applies |
-| 19 | Embedder server preset | No `embd-normalize`, `parallel`, `kv-unified` | Adds `embd-normalize 2`, `parallel 1`, `kv-unified false` | Adopt the shipped preset if the check passes: max cosine distance at most 1e-6 on 20 chunks. If it fails, the app takes the harness preset (pre-freeze task 16.36) |
+| 19 | Embedder server preset | No `embd-normalize`, `parallel`, `kv-unified` | Adds `embd-normalize 2`, `parallel 1`, `kv-unified false` | Adopt the shipped preset if the check passes: max cosine distance at most 1e-6 on 20 chunks. If it fails, the app takes the harness preset (post-run task 17.1, was 16.36; owner, 2026-11-25: it runs after the main run, not before the freeze) |
 | 20 | Query instruction | Empty | Empty | Paper |
 | 21 | Search depth | `top_k` 100, `fetch_k` 100, unassembled; first 10 used | `top_k` 10 | Harness-only (`fetch_k`, `unassembled` exist only on the Python Engine); Paper |
 | 22 | BM25 | `rank_bm25` 0.2.2, Porter stems, k1 1.5, b 0.75 | Same code; needs the `hybrid` extra | Adopt the extra in the install if hybrid is adopted |

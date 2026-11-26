@@ -321,7 +321,7 @@ The classifier is the fixed-prompt LLM `openai/gpt-oss-120b`, pinned (operator d
   - the thresholds: agreement on refusal against not refusal of at least 0.90, and refusal recall of at least 0.90;
   - the sample seed 20261112 and its size of 100;
   - the strata: dataset, and the pre-freeze regular expression flag;
-  - the rule that a failed gate blocks the freeze of the classifier.
+  - the rule that a failed gate blocks the freeze of the classifier. (Changed 2026-11-25 (owner decision of 2026-11-24): only the classifier prompt and examples are fixed before the freeze. Gate 3 runs after the freeze on main-run answers, and claim-kind results stay unused until it passes (pre-registration section 11.1).)
 
   Verify: the operator accepts the text, and the commit that holds it is dated before the labelling page is first opened.
   Note (2026-11-23, pre-freeze amendment, owner approved): "smoke" in this task now means the valid claims of the pre-freeze test pod session answers (task 9.2), which use the main-run answer settings (reasoning `none`); the 2026-11-11 smoke runs used the default reasoning. The text also gains a third pass mark (refusal precision at least 0.90, same weights as agreement and recall; undefined precision fails) and a 95% Wilson interval beside agreement, recall and precision (reported only, decides nothing).
