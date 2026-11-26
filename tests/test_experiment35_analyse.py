@@ -92,6 +92,7 @@ def test_writes_one_file_that_the_report_tables_read(tmp_path: Path, monkeypatch
     assert reporttables35.main(["--out-dir", str(out), *factorial]) == 0
     tables = json.loads((out / "report-tables.json").read_text())
     assert tables["sesoi_lines"]["freshstack"][0]["row"] == 1
+    assert "faithfulness_uncited_as_unsupported" in tables["sensitivity"]
 
 
 def test_refuses_while_half_b_is_locked_before_any_read(tmp_path: Path, capsys) -> None:

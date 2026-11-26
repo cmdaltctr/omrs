@@ -2,7 +2,8 @@
 
 Usage (reads saved files only; runs on the Mac)::
 
-    reporttables35.py --out-dir OUT [--factorial FACTORIAL_JSON]
+    reporttables35.py --out-dir OUT [--factorial FACTORIAL_JSON] [--records POD.jsonl ...]
+        [--rates RATES_JSON] [--passages-dir PASSAGES]
 
 Writes ``<out>/report-tables.json`` with:
 
@@ -22,7 +23,13 @@ Writes ``<out>/report-tables.json`` with:
   non-relevant units, else the statement that neither can be computed
   (``unjudged35.report``, over the score records of both halves);
 - ``alpha_ndcg_freshstack``: ``<out>/alpha-ndcg.json`` as ``alphandcg35.py``
-  wrote it (run it first), else "not run".
+  wrote it (run it first), else "not run";
+- ``hybrid_trigger``: audit trigger (a), hybrid on against off on FreshStack
+  (``unjudged35.hybrid_trigger``), "not defined" without FreshStack scores;
+- ``number_match``, ``compute`` (``--records`` pod run-record files and the
+  ``--rates`` budget rates file) and ``fenced_rows`` (``--passages-dir``):
+  ``reportextra35``; "not defined" without their inputs. The sensitivity set
+  adds faithfulness with uncited factual segments as unsupported.
 
 Other inputs it reads when present: ``answer-scores.jsonl``,
 ``contamination.json`` (``contamination35.py``) and
@@ -51,6 +58,7 @@ import bounds35  # noqa: E402
 import budget35  # noqa: E402
 import cells35  # noqa: E402
 import datasets35  # noqa: E402
+import reportextra35  # noqa: E402
 import scoring35  # noqa: E402
 import select35  # noqa: E402
 import unjudged35  # noqa: E402
@@ -68,6 +76,7 @@ SENSITIVITY_TABLES = (
     "length_controlled_check",
     "financebench_ndcg_rows_9_10",
     "h8b_cut_total",
+    "faithfulness_uncited_as_unsupported",
 )
 NOT_RUN = {"status": "not run"}
 
@@ -244,6 +253,7 @@ def sensitivity_set(
     contamination: Mapping[str, Any] | None = None,
     length_check: Mapping[str, Any] | None = None,
     token_totals: Mapping[str, Any] | None = None,
+    uncited: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Return the one sensitivity table set; a table with no input reads "not run"."""
     tables = {
@@ -253,6 +263,7 @@ def sensitivity_set(
         "length_controlled_check": length_check,
         "financebench_ndcg_rows_9_10": financebench_ndcg(result),
         "h8b_cut_total": {**result.get("h8b_sensitivity", {}), "token_totals": token_totals},
+        "faithfulness_uncited_as_unsupported": uncited,
     }
     return {name: NOT_RUN if tables[name] is None else tables[name] for name in SENSITIVITY_TABLES}
 
@@ -263,14 +274,44 @@ def load_qrels(names: Iterable[str]) -> dict[str, dict[str, dict[str, int]]]:
     return {name: datasets35.qrels(name, root) for name in sorted(names)}
 
 
-def unjudged_table(out: Path) -> dict[str, Any] | None:
-    """Return :func:`unjudged35.report` over the search score records of both halves."""
-    records = [
+def _score_records(out: Path) -> list[dict[str, Any]]:
+    return [
         row for path in sorted((out / "scores").glob("[AB]/*/*.jsonl")) for row in read_rows(path)
     ]
+
+
+def unjudged_table(out: Path) -> dict[str, Any] | None:
+    """Return :func:`unjudged35.report` over the search score records of both halves."""
+    records = _score_records(out)
     if not records:
         return None
     return unjudged35.report(records, load_qrels({r["dataset"] for r in records}))
+
+
+def hybrid_trigger_table(out: Path) -> dict[str, Any] | str:
+    """Return audit trigger (a) on all FreshStack questions, else "not defined"."""
+    records = [r for r in _score_records(out) if r["dataset"] == unjudged35.FRESHSTACK]
+    if not records:
+        return reportextra35.NOT_DEFINED
+    return unjudged35.hybrid_trigger(
+        records, load_qrels({unjudged35.FRESHSTACK}).get("freshstack", {})
+    )
+
+
+def number_match(out: Path) -> dict[str, Any] | str:
+    """Return the FinanceBench number match per answer setup, else "not defined"."""
+    if not Layout(out).runs("answer", "answer.jsonl", dataset=reportextra35.FB):
+        return reportextra35.NOT_DEFINED
+    return reportextra35.number_match_table(out, reportextra35.load_references())
+
+
+def compute(records: Sequence[Path], rates: Path | None) -> dict[str, Any] | str:
+    """Return the compute table from the pod run records, else "not defined"."""
+    if not records:
+        return reportextra35.NOT_DEFINED
+    price = (_json(rates) or {}).get("pod_usd_per_hour") if rates else None
+    pods = reportextra35.pod_records(records)
+    return reportextra35.compute_table(pods, None if price is None else float(price))
 
 
 def _json(path: Path) -> Any:
@@ -281,7 +322,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Write ``<out>/report-tables.json``; return 0."""
     parser = argparse.ArgumentParser(prog="reporttables35.py", description=__doc__.split("\n")[0])
     parser.add_argument("--out-dir", type=Path, required=True, help="the joined output folder")
-    parser.add_argument("--factorial", type=Path, help="the confirmatory result (factorial35)")
+    parser.add_argument("--factorial", type=Path, help="confirmatory.json (analyse35.py)")
+    parser.add_argument("--records", type=Path, nargs="*", default=[], help="pod run records")
+    parser.add_argument("--rates", type=Path, help="budget rates file (pod_usd_per_hour)")
+    parser.add_argument("--passages-dir", type=Path, help="the prepared passages folder")
     args = parser.parse_args(argv)
     out = args.out_dir
     scoring35.require_half_b(out)  # the tables hold half-B scores (section 14.2)
@@ -302,10 +346,21 @@ def main(argv: Sequence[str] | None = None) -> int:
             contamination=_json(out / "contamination.json"),
             length_check=_json(out / "lengthcheck" / "lengthcheck.json"),
             token_totals=totals,
+            uncited=reportextra35.uncited_sensitivity(
+                answers, (_json(out / "join.json") or {}).get("uncited_segment_share", {})
+            )
+            if answers
+            else None,
         ),
         "unjudged": unjudged_table(out),
         # alphandcg35.py writes it with the pinned FreshStack scorer (secondary, descriptive).
         "alpha_ndcg_freshstack": _json(out / "alpha-ndcg.json") or NOT_RUN,
+        "hybrid_trigger": hybrid_trigger_table(out),
+        "number_match": number_match(out),
+        "compute": compute(args.records, args.rates),
+        "fenced_rows": reportextra35.fenced_rows(args.passages_dir)
+        if args.passages_dir
+        else reportextra35.NOT_DEFINED,
     }
     write_json(out / "report-tables.json", tables)
     print(f"[report-tables] {out / 'report-tables.json'}", flush=True)
