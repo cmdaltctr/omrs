@@ -121,9 +121,11 @@ kinds-recheck@15m mkdir -p "$OUT_DIR/recheck" && uv run --no-sync python prefree
 
 # 12. The 8B embedder and the 8B reranker together, one index and one search in vram,
 # built and searched at this commit (the old vram8-search read an index of another
-# commit and stopped). Peak VRAM is in gpu.csv. About 5 min.
+# commit and stopped). Peak VRAM is in gpu.csv. About 5 min. The search reads vram with
+# --index-from and writes to vramq: vram has no G2 rebuild check, and the guard refuses a
+# search into a folder without one (fixed 2026-11-26 after the freeze-check run).
 vram8-build@20m uv run --no-sync python run_arms.py --dataset freshstack --index e8b-c1024 --stage ingest --limit 5 --corpus-sample 150 --passages-dir /workspace/passages --out-dir "$OUT_DIR/vram" --prefreeze --local-dir /root/exp35-local && uv run --no-sync python run_arms.py --dataset freshstack --index e8b-c1024 --stage seal --limit 5 --corpus-sample 150 --passages-dir /workspace/passages --out-dir "$OUT_DIR/vram" --prefreeze --local-dir /root/exp35-local
-vram8-search@20m uv run --no-sync python run_arms.py --dataset freshstack --setup e8b-c1024-r8b-hon --stage search --limit 5 --corpus-sample 150 --passages-dir /workspace/passages --out-dir "$OUT_DIR/vram" --prefreeze --local-dir /root/exp35-local
+vram8-search@20m uv run --no-sync python run_arms.py --dataset freshstack --setup e8b-c1024-r8b-hon --stage search --limit 5 --corpus-sample 150 --passages-dir /workspace/passages --index-from "$OUT_DIR/vram" --out-dir "$OUT_DIR/vramq" --prefreeze --local-dir /root/exp35-local
 
 # 13. Smoke join of s (no model call; claim kinds under the fallback, no --gate). 1 min.
 join@10m uv run --no-sync python join35.py --out-dir "$OUT_DIR/s" --smoke --runs 1

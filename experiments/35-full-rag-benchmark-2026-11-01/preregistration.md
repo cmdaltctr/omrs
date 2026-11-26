@@ -2,11 +2,11 @@
 
 ## 1. Status and governing rule
 
-- **Date**: 2026-11-26 (amendments A1 to A14; first written 2026-11-14 at A5; A14 awaits the owner's confirmation). Written before the freeze. No measured run has started.
+- **Date**: 2026-11-26 (amendments A1 to A17; first written 2026-11-14 at A5; A14 awaits the owner's confirmation). Written before the freeze. No measured run has started.
 - **This file governs Experiment 35.** It holds the live design only, with no history. Where it and any other file disagree (`protocol.md`, `plan.json`, the OpenSpec changes, the proposal), this file wins. It is the main file of the OSF deposit.
 - **The proposal** `docs/proposals/first-publication-benchmark.md` stays the master plan for scope, order of work, Part 2 (RAGFlow) and E1 (EnterpriseRAG-Bench). Its Experiment 35 design facts must match this file.
 - **Part 2 and E1.** Section 18 wins over the proposal for the points it fixes: the OMRS setup and its hash, the halves, the shared parts, the measurement settings, the C1 and C2 measures and tests, and the Part 2 missing-outcome rules. The proposal governs every other Part 2 and E1 fact until the Part 2 protocol is frozen. After that, the Part 2 protocol governs them. Part 2 is frozen later than Experiment 35, with its own OSF deposit (section 18).
-- **History**: `protocol.md` sections 0.1 to 0.19 (amendments A1 to A14) and sections 1 to 7 hold earlier plans and their reasons. They are not live design.
+- **History**: `protocol.md` sections 0.1 to 0.21 (amendments A1 to A17) and sections 1 to 7 hold earlier plans and their reasons. They are not live design.
 - **Study type**: confirmatory benchmark, purpose `publication`. OSF data category (OSF Prereg form): registration before analysis of the outcome data. Some outcome data exist before the freeze: smoke and test-pod answers. Section 5 lists every earlier look at the data.
 - **Task pointers.** "RDY task n" is task n of the OpenSpec change `exp35-main-run-readiness`. "C35 task n" is task n of `experiment-35-full-document-rag-benchmark`. "FLOW step n" is step n of `rag-benchmark-readiness-flow`.
 
@@ -164,14 +164,39 @@ A non-significant result means no difference was detected at this sample size. T
 ## 10. Smallest effect of interest and precision
 
 - **Smallest effect of interest (SESOI).** 0.02 nDCG@10, decided by the owner on 2026-11-14 (O2). The concept follows Lakens 2017. It changes no decision: every hypothesis is tested against zero, and each row's interval is read against plus and minus 0.02. No other endpoint has a SESOI; their intervals are reported without one.
-- **Why 0.02.** No IR standard fixes this value; it is the authors' justified choice. (1) User terms: for a question with one gold unit, moving it from rank 2 to rank 1 raises nDCG@10 by 1 minus 1/log2(3), about 0.369. A mean gain of 0.02 is about one question in 18 with its gold unit moved from second to first place (0.02 / 0.369 = 0.054); 0.01 is about one in 37, and 0.05 about one in 7. Bringing a gold unit from outside the top 10 to rank 10 adds 1/log2(11), about 0.289, so 0.02 is about one question in 14. (2) Lower bound from the design: selection treats setups within 0.01 as tied (section 14.1) and the tolerance on another back end is 0.005 (section 15), so the SESOI must be above 0.01. (3) Cost: each factor step costs something real. A 4B to 8B model roughly doubles memory, a reranker scores 100 more pairs per query, and hybrid search adds an index. The authors judge that a gain which changes the top result for fewer than about one question in 20 does not pay for such a step for an OMRS user. (4) Published effects (Zhang et al. 2025; MTEB retrieval scores are nDCG@10 x 100): on MTEB(eng, v2) retrieval the 0.6B, 4B and 8B embedders score 61.83, 68.46 and 69.44 (steps about 0.066 and 0.010). On MTEB-R, from a 61.82 first stage, the 0.6B, 4B and 8B rerankers score 65.80, 69.76 and 69.02 (gains about 0.040, 0.079 and 0.072; size steps 0.040 and minus 0.007). These effects span about 0.01 to 0.08 in size, and 0.02 separates the two smallest steps from the rest. (5) Not set by power: the design likely detects only about 0.05 on the smaller datasets, so 0.02 was not chosen to match what can be detected. A row whose interval cannot exclude 0.02 is reported as "cannot rule out a small effect". (6) Sensitivity: the report also reads every interval against 0.01 and 0.05.
-- **Precision (owner decision, 2026-11-26).** This study has no power analysis, no MDE table and no pilot. Precision is reported through each row's 95% confidence interval. Amended 2026-11-26 (pre-freeze, owner; `plan.json` amendment A16): each interval is read against the SESOI of 0.02 nDCG@10 in four cases:
+- **Why 0.02.** No IR standard fixes this value; it is the authors' justified choice. (1) User terms: for a question with one gold unit, moving it from rank 2 to rank 1 raises nDCG@10 by 1 minus 1/log2(3), about 0.369. A mean gain of 0.02 is about one question in 18 with its gold unit moved from second to first place (0.02 / 0.369 = 0.054); 0.01 is about one in 37, and 0.05 about one in 7. Bringing a gold unit from outside the top 10 to rank 10 adds 1/log2(11), about 0.289, so 0.02 is about one question in 14. (2) Lower bound from the design: selection treats setups within 0.01 as tied (section 14.1) and the tolerance on another back end is 0.005 (section 15), so the SESOI must be above 0.01. (3) Cost: each factor step costs something real. A 4B to 8B model roughly doubles memory, a reranker scores 100 more pairs per query, and hybrid search adds an index. The authors judge that a gain which changes the top result for fewer than about one question in 20 does not pay for such a step for an OMRS user. (4) Published effects (Zhang et al. 2025; MTEB retrieval scores are nDCG@10 x 100): on MTEB(eng, v2) retrieval the 0.6B, 4B and 8B embedders score 61.83, 68.46 and 69.44 (steps about 0.066 and 0.010). On MTEB-R, from a 61.82 first stage, the 0.6B, 4B and 8B rerankers score 65.80, 69.76 and 69.02 (gains about 0.040, 0.079 and 0.072; size steps 0.040 and minus 0.007). These effects span about 0.01 to 0.08 in size, and 0.02 separates the two smallest steps from the rest. (5) Not set by power: the datasets are fixed, so the study chooses no sample size, and 0.02 was not chosen to match what the design can detect. The sensitivity power analysis below (A17) gives the smallest effect each test detects with power 0.80 (the MDE). On FreshStack and FinanceBench the MDE is about 0.04 to 0.08, so a true effect of 0.02 is not reliably detected there. On BioASQ it is about 0.02 to 0.03. A row whose interval cannot exclude 0.02 is reported as "cannot rule out a small effect". (6) Sensitivity: the report also reads every interval against 0.01 and 0.05.
+- **Precision (owner decision, 2026-11-26).** This study has no a priori power analysis, no pilot and no observed power. It reports one sensitivity power analysis (A17, below). Precision is reported through each row's 95% confidence interval. Amended 2026-11-26 (pre-freeze, owner; `plan.json` amendment A16): each interval is read against the SESOI of 0.02 nDCG@10 in four cases:
   1. The interval is fully inside -0.02 to +0.02: no meaningful difference.
   2. The interval is fully above +0.02, or fully below -0.02: a meaningful difference.
   3. The interval excludes zero but crosses +0.02 or -0.02: a real difference that can be too small to matter.
   4. The interval includes zero and crosses +0.02 or -0.02: the test cannot tell.
 
   The reading is descriptive only: it adds no test and no p-value. The hypothesis verdicts stay the Holm-corrected tests.
+- **Sensitivity power analysis (A17, owner decision, 2026-11-26).** The datasets are fixed, so the study chooses no sample size. The analysis asks which effect each test would detect 80% of the time with the questions it has (Lakens 2022; Webber, Moffat and Zobel 2008; Sakai 2016). The table gives an approximate value of that smallest effect, the MDE.
+  - Formula: MDE = (z at 1 minus alpha/2, plus z at 0.80) x SD / square root of n. Power is 0.80. Tests are two-sided. Alpha is 0.05 divided by the Holm family size: 19 on FinanceBench, 19 on FreshStack and 8 on BioASQ. The question counts are n = 150, 203 and 707. `mde35.py` computes it (`assumed_table` and `mde_row`). It runs once, before the freeze, on no main-run score. Cost: $0. No pilot runs.
+  - Why alpha is 0.05 divided by the family size: it is the first and strictest Holm step. Later Holm steps use a larger alpha, so they detect smaller effects than the table shows. The table is conservative here too.
+  - The formula is a normal approximation for a paired test on per-question differences. The registered tests differ: FreshStack and BioASQ use a GEE with a bias-reduced variance and a t reference (section 9), and FinanceBench uses a document-level sign-flip test (section 9). A directional row also needs the predicted sign (section 7). So the table approximates the sensitivity of those tests. It is not their exact power.
+  - SD source: the registered assumed range 0.15 to 0.25 (`mde35.ASSUMED_SD`) for every row. Why this range: it was set on 2026-11-16 (`mde35.py`, commit 4de9f2f4), before any SD below was computed. The three measured stand-in SDs (0.113, 0.167 and 0.180) fall in or near it. The one below it (0.113, row 8) gives a smaller MDE (0.031) than the range does, so the table overstates the MDE for that row. That is the conservative direction.
+  - FinanceBench design effect: the 150 questions share 84 filings. The design effect of that grouping is not measured before the freeze, so n is not divided, as `assumed_table` does. For the same SD, a design effect above 1 raises the FinanceBench MDE (`mde35.py` floors the design effect at 1). The table is not updated after the run.
+  - Rows 9 to 11 on FinanceBench use `evidence_recall_20k`. The same arithmetic and the same SD range apply to them. Row 11 is a difference of differences. The table does not model that scale, so the MDE of row 11 is not known. A16 already expects a wide interval for it.
+  - The table covers retrieval rows 1 to 11. Answer rows 12 to 19 have no registered SD before the freeze, so the table gives no MDE for them.
+
+  | Dataset | n | Alpha (Holm family) | SD | MDE (row endpoint) |
+  | --- | ---: | ---: | --- | ---: |
+  | BioASQ, rows 1 to 8 | 707 | 0.05 / 8 = 0.00625 | 0.15 to 0.25 (assumed) | 0.020 to 0.034 |
+  | FreshStack, rows 1 to 11 | 203 | 0.05 / 19 = 0.00263 | 0.15 to 0.25 (assumed) | 0.041 to 0.068 |
+  | FinanceBench, rows 1 to 8 (nDCG@10), before the design effect | 150 | 0.05 / 19 = 0.00263 | 0.15 to 0.25 (assumed) | 0.047 to 0.079 |
+  | FinanceBench, rows 9 to 11 (`evidence_recall_20k`), before the design effect | 150 | 0.05 / 19 = 0.00263 | 0.15 to 0.25 (assumed) | 0.047 to 0.079 |
+  | FreshStack row 4 (hybrid on minus off), stand-in | 203 | 0.00263 | 0.180 (measured) | 0.049 |
+  | FreshStack row 7 (r4b minus r0.6b), stand-in | 203 | 0.00263 | 0.167 (measured) | 0.045 |
+  | FreshStack row 8 (r8b minus r4b), stand-in | 203 | 0.00263 | 0.113 (measured) | 0.031 |
+
+  - Stand-ins. Each is a measured SD from older data, not from the main corpus. Each is labelled a stand-in.
+    - Row 4: Experiment 22 cells `dense_only__raw` and `hybrid__raw`, half-A questions only (n = 102), the 10,024-document subset, `e4b`, no reranker. SD 0.180 lies inside the assumed range.
+    - Rows 7 and 8: the 2026-11-24 verify session, 24 half-A questions, a 675-file sample, the `e4b-c2048` reranker cells. SD 0.167 (row 7) lies inside the assumed range. SD 0.113 (row 8) lies below it. Both rest on few questions, so read them as rough.
+  - Plain reading. BioASQ detects about 0.02 to 0.03. FreshStack and FinanceBench detect about 0.04 to 0.08. A smaller effect on those two datasets is read through the four interval cases of A16.
+  - The table is descriptive. It changes no test, Holm family, gate, seed, the SESOI of 0.02 or any decision rule. The study never computes observed power from main-run results (Hoenig and Heisey 2001, "The abuse of power", The American Statistician 55(1), doi:10.1198/000313001300339897).
+  - Sources: Lakens 2022, "Sample size justification", Collabra: Psychology 8(1), doi:10.1525/collabra.33267. Webber, Moffat and Zobel 2008, "Statistical power in retrieval experimentation", CIKM, doi:10.1145/1458082.1458158. Sakai 2016, "Topic set size design", Information Retrieval Journal 19, doi:10.1007/s10791-015-9273-z.
 - H7 (a difference of differences over four cells) and Part 2 C2 are expected to have wide intervals. The report states this.
 
 ## 11. Judges, checkers and human labels
@@ -498,8 +523,8 @@ After the freeze, every change is a dated, numbered deviation. The report lists 
 - P2. Time one full-corpus FreshStack index build; update the estimate before relying on it.
 - P3. Check whether FreshStack nugget labels allow alpha-nDCG@10 with the benchmark's scorer; pin the scorer or record "not available".
 - P4. Check, per dataset, whether the qrels list judged non-relevant units. Then, for each dataset with positives only, the owner decides before the freeze between (i) a fixed small audit that runs whatever the results are, and (ii) no audit with the pooling bias stated as a limitation. Record the decision with its date before any main-run score exists (section 11.3).
-- P5. Removed (owner decision, 2026-11-26): no MDE pilot and no MDE table (section 10).
-- P6. Removed (owner decision, 2026-11-26): no MDE table, so no MDE rows to feed.
+- P5. Removed (owner decision, 2026-11-26): no MDE pilot (section 10). A17 restores the MDE table only, from assumed and stand-in SDs.
+- P6. Removed (owner decision, 2026-11-26): no pilot MDE rows to feed. The A17 table needs no pilot data.
 - P7. Removed (owner decision, 2026-11-26): the checker 2-point tolerance stays as set (section 11.1).
 - P8. Write the label guidelines for each set, with worked examples outside every sample. Record L2's name, role and relation to the project in the run record before the first label. Record the chosen L2 plan (full or staged) with its date before the freeze, from L2's availability alone. Recorded 2026-11-25: the staged plan (section 11.3).
 - P9. Confirm or change the new seeds 20261118, 20261119 and 20261121 to 20261136 (seeds table, section 16; 20261124 is retired; 20261122 and 20261123 are used only in the staged L2 plan), and the length-controlled sample size (300). Seed 20261118 is retired with the pilot (section 16). Seed 20261120 (audit) is used only if the audit trigger fires (O3); confirm it then.
@@ -526,8 +551,10 @@ Existing readiness tasks also close before the freeze: reranker pins, GPU choice
 - Feinstein and Cicchetti 1990, "High agreement but low kappa", J. Clin. Epidemiol. doi:10.1016/0895-4356(90)90158-L.
 - FinanceBench, Islam et al. 2023. arXiv 2311.11944.
 - FreshStack, Thakur et al. 2025. arXiv 2504.13128.
+- Hoenig and Heisey 2001, "The abuse of power", American Statistician 55(1). doi:10.1198/000313001300339897.
 - Lacoste et al. 2019, machine learning emissions. arXiv 1910.09700.
 - Lakens 2017, "Equivalence tests", Soc. Psychol. Personal. Sci. doi:10.1177/1948550617697177.
+- Lakens 2022, "Sample size justification", Collabra: Psychology 8(1). doi:10.1525/collabra.33267.
 - Liang and Zeger 1986, Biometrika. doi:10.1093/biomet/73.1.13.
 - Lin 2019, "The neural hype and comparisons against weak baselines", SIGIR Forum. doi:10.1145/3308774.3308781.
 - Liu et al. 2024, "Lost in the middle", TACL. doi:10.1162/tacl_a_00638.
@@ -539,10 +566,12 @@ Existing readiness tasks also close before the freeze: reranker pins, GPU choice
 - Qwen3 Embedding, Zhang et al. 2025. arXiv 2506.05176.
 - Ragas, Es et al. 2023. arXiv 2309.15217.
 - Sakai 2007, "Alternatives to Bpref", SIGIR. doi:10.1145/1277741.1277756.
+- Sakai 2016, "Topic set size design", Information Retrieval Journal 19. doi:10.1007/s10791-015-9273-z.
 - Sim and Wright 2005, "The kappa statistic in reliability studies", Physical Therapy. doi:10.1093/ptj/85.3.257.
 - Smucker, Allan and Carterette 2007, "A comparison of statistical significance tests for information retrieval evaluation", CIKM. doi:10.1145/1321440.1321528.
 - Strubell et al. 2019, energy and policy considerations. arXiv 1906.02243.
 - Urbano, Lima and Hanjalic 2019, "Statistical significance testing in information retrieval: an empirical analysis of type I, type II and type III errors", SIGIR. doi:10.1145/3331184.3331259; arXiv 1905.11096.
 - Wang et al. 2024, "Searching for best practices in retrieval-augmented generation", EMNLP. doi:10.18653/v1/2024.emnlp-main.981.
+- Webber, Moffat and Zobel 2008, "Statistical power in retrieval experimentation", CIKM. doi:10.1145/1458082.1458158.
 - Yang, Lu, Yang and Lin 2019, "Critically examining the 'neural hype'", SIGIR. doi:10.1145/3331184.3331340.
 - Zobel 1998, "How reliable are the results of large-scale information retrieval experiments?", SIGIR. doi:10.1145/290941.291014.

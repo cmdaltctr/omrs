@@ -525,7 +525,10 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # test_run_glm_chat; its new ID is one of the 19 and its old ID went, so net +18. No extra.
 # +1 (2026-11-26, PR 229 review, by test-ID diff against HEAD ca5e655b): 1 added:
 # prefreeze/test_kinds_recheck35 (per-kind weights). None removed or renamed. No extra.
-_BASE_EXECUTED = 14129
+# +7 (2026-11-26, freeze-check vram8-search fix, by test-ID diff against HEAD 077413e1): 7
+# added: prefreeze/test_freeze_check_stages (1, G2 guard rule) and the 6 BOTH-parametrised
+# prefreeze/test_session_stages checks of freeze_rerun_stages.txt. None removed. No extra.
+_BASE_EXECUTED = 14136
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
