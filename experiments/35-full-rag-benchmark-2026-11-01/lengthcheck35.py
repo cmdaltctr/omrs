@@ -3,7 +3,9 @@
 A registered sensitivity analysis with no gate. ``--stage lengthcheck`` draws
 300 cited claims from the ``c2048`` crossed answers of every dataset with
 answers, Legal too unless drop step 1 removed them (seed 20261119; refusal
-claims left out, as in the faithfulness pool). Each cited evidence text is
+claims left out, as in the faithfulness pool, but only when classifier gate 3
+passed: ``--gate`` names its ``gate.json``, ``kindgate35``; otherwise every
+cited claim stays, the registered fallback). Each cited evidence text is
 split into consecutive 512-token windows (pinned Qwen3 tokenizer); the window
 that shares the most distinct lower-case claim words is kept, ties to the
 earlier window. GLM-5.3 (``chat``) and Clef-Flash judge
@@ -37,11 +39,12 @@ import arms
 import budget35
 import claimkinds35
 import correct35
+import kindgate35
 import outputs35
 from experiments._lib.hosted_calls import HostedGate, RateLimitStop
 from experiments._lib.ordered_rows import OrderedRows
 from experiments._lib.stats_d6 import wilson
-from faithpool35 import chunk_size
+from faithpool35 import KindsMissing, chunk_size
 from outputs35 import read_rows, say, write_json
 from stages35 import StageIncomplete, StageOrderError
 
@@ -72,18 +75,32 @@ def _verdicts(folder: Path, checker: str, answer: Mapping[str, Any]) -> dict[int
     }
 
 
-def pool(out: Path) -> list[dict[str, Any]]:
-    """Return the cited non-refusal claims of the ``c2048`` crossed answers of every dataset."""
+def pool(out: Path, version: str | None) -> list[dict[str, Any]]:
+    """Return the cited claims of the ``c2048`` crossed answers of every dataset.
+
+    *version* is the passed classifier gate 3's version (``kindgate35``). Only
+    then are refusal claims left out, and each run folder must hold saved kinds
+    of that version. With None (the registered fallback) every cited claim stays.
+
+    Raises:
+        faithpool35.KindsMissing: A run folder has no ``claim-kinds.jsonl`` under a passed gate.
+        kindgate35.KindGateError: A saved kind has another version.
+    """
     claims: list[dict[str, Any]] = []
     for dataset, setup, run, folder in outputs35.Layout(out).need_runs("answer", "answer.jsonl"):
         if arms.parse_setup(setup).t20k:
             continue
         if chunk_size(setup) != CHUNK:
             continue
+        if version is not None and not (folder / "claim-kinds.jsonl").exists():
+            raise KindsMissing(
+                f"{dataset}/{setup}/run{run} has no claim-kinds.jsonl; "
+                "run the claimkinds stage on it first"
+            )
         refusals = {
-            r["claim_key"]
-            for r in read_rows(folder / "claim-kinds.jsonl")
-            if r.get("kind") == "refusal" and not r.get("uncited")
+            key
+            for (key, uncited), kind in kindgate35.saved_kinds(folder, version).items()
+            if kind == "refusal" and not uncited
         }
         for answer in read_rows(folder / "answer.jsonl"):
             if answer.get("missing"):
@@ -181,9 +198,10 @@ async def lengthcheck_stage(ctx: Any) -> int:
     if DROP_STEP in budget35.read_drops(out):
         say("[lengthcheck] drop step 2 removed the length-controlled check; nothing to do")
         return 0
+    kinds = kindgate35.status(getattr(ctx.args, "gate", None))
     folder = out / "lengthcheck"
     folder.mkdir(parents=True, exist_ok=True)
-    sample = draw(pool(out))
+    sample = draw(pool(out, kinds["version"]))
     write_json(folder / "sample.json", {"seed": SEED, "items": sample})
     offsets = getattr(ctx, "offsets", None) or _qwen3_offsets()
     gate = HostedGate("lengthcheck", 1, attempts=int(ctx.args.rate_limit_attempts))
@@ -218,7 +236,7 @@ async def lengthcheck_stage(ctx: Any) -> int:
             )
         if not rows.finish({"claims": len(sample)}):
             raise StageIncomplete("lengthcheck: judge calls still open")
-        result_report = report(log.rows(), len(sample))
+        result_report = {**report(log.rows(), len(sample)), "claim_kinds": kinds}
     write_json(folder / "lengthcheck.json", result_report)
     say(f"[lengthcheck] {len(sample)} claims judged again on 512-token windows")
     return 0

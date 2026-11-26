@@ -9,7 +9,8 @@ descriptive only, and the confirmatory analysis marks faithfulness rows 12,
 13, 16 and 17 "not testable" (p = 1, kept in their Holm families).
 
 Consumers: ``joinscores35.answer_scores``, ``faithpool35`` (the faithfulness
-gate pool) and ``factorial35.write_confirmatory``. ``refusalreport35`` keeps
+gate pool), ``lengthcheck35.pool`` (the length-controlled check, ``--gate``)
+and ``factorial35.write_confirmatory``. ``refusalreport35`` keeps
 its own check: the refusal report needs a passed gate.
 """
 

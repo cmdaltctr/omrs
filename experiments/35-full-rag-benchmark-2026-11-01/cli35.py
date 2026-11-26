@@ -90,6 +90,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--passages-dir", type=Path, help="the prepared passage folder (prepare35.py)"
     )
+    parser.add_argument(
+        "--gate",
+        type=Path,
+        help="classifier gate 3 gate.json; lengthcheck uses claim kinds only when it passed",
+    )
     for name in CONCURRENCY_OPTIONS:
         parser.add_argument(
             f"--{name.replace('_', '-')}",

@@ -80,7 +80,7 @@ def test_pool_holds_cited_claims_of_every_c2048_crossed_answer(tmp_path: Path) -
     # Section 11.2: "300 claims from c2048 crossed answers", no dataset limit, so Legal
     # answers enter too (drop step 1 removes them by removing the answers).
     _build(tmp_path, datasets=("bioasq", "legal"))
-    pool = lengthcheck35.pool(tmp_path)
+    pool = lengthcheck35.pool(tmp_path, None)
     assert {(p["dataset"], p["setup"]) for p in pool} == {
         ("bioasq", "e4b-c2048-roff-hoff"),
         ("legal", "e4b-c2048-roff-hoff"),
@@ -88,13 +88,60 @@ def test_pool_holds_cited_claims_of_every_c2048_crossed_answer(tmp_path: Path) -
     assert pool[0]["original"] == {"chat": "supported", "clef_flash": "supported"}
 
 
-def test_pool_leaves_out_refusal_claims(tmp_path: Path) -> None:
-    _build(tmp_path)
+def _refusal(out: Path, version: str = "v") -> None:
     claimkinds35 = load("claimkinds35")
-    folder = tmp_path / "bioasq" / "answer" / SETUPS[0] / "run1"
+    folder = out / "bioasq" / "answer" / SETUPS[0] / "run1"
     key = claimkinds35.claim_key("q0", "Alpha beta0.")
-    _write(folder / "claim-kinds.jsonl", [{"claim_key": key, "qid": "q0", "kind": "refusal"}])
-    assert "q0" not in {p["qid"] for p in lengthcheck35.pool(tmp_path)}
+    row = {"claim_key": key, "qid": "q0", "kind": "refusal", "version": version}
+    _write(folder / "claim-kinds.jsonl", [row])
+
+
+def _gate(out: Path, passed: bool, version: str = "v") -> Path:
+    path = out / "gate" / "gate.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"pass": passed, "version": version}))
+    return path
+
+
+def test_pool_leaves_out_refusal_claims_under_a_passed_gate(tmp_path: Path) -> None:
+    _build(tmp_path)
+    _refusal(tmp_path)
+    assert "q0" not in {p["qid"] for p in lengthcheck35.pool(tmp_path, "v")}
+
+
+def test_pool_keeps_every_cited_claim_without_a_passed_gate(tmp_path: Path) -> None:
+    # Review B2, amendment A14: no claim-kind result is used until gate 3 passes.
+    _build(tmp_path)
+    _refusal(tmp_path)
+    assert "q0" in {p["qid"] for p in lengthcheck35.pool(tmp_path, None)}
+
+
+def test_pool_refuses_saved_kinds_of_another_classifier_version(tmp_path: Path) -> None:
+    _build(tmp_path)
+    _refusal(tmp_path, version="old")
+    with pytest.raises(load("kindgate35").KindGateError, match="old"):
+        lengthcheck35.pool(tmp_path, "v")
+
+
+def test_pool_refuses_a_run_without_saved_kinds_under_a_passed_gate(tmp_path: Path) -> None:
+    _build(tmp_path)
+    with pytest.raises(load("faithpool35").KindsMissing, match="claim-kinds.jsonl"):
+        lengthcheck35.pool(tmp_path, "v")
+
+
+@pytest.mark.parametrize(("passed", "kept"), [(True, False), (False, True)])
+def test_stage_uses_kinds_only_when_the_gate_file_passed(
+    tmp_path: Path, passed: bool, kept: bool
+) -> None:
+    _build(tmp_path)
+    _refusal(tmp_path)
+    ctx = _ctx(tmp_path, {"chat": _Judge(), "clef_flash": _Judge()})
+    ctx.args.gate = _gate(tmp_path, passed)
+    assert asyncio.run(lengthcheck35.lengthcheck_stage(ctx)) == 0
+    sample = json.loads((tmp_path / "lengthcheck" / "sample.json").read_text())["items"]
+    assert ("q0" in {c["qid"] for c in sample}) is kept
+    report = json.loads((tmp_path / "lengthcheck" / "lengthcheck.json").read_text())
+    assert report["claim_kinds"]["pass"] is passed
 
 
 def test_draw_is_seeded_and_capped(tmp_path: Path) -> None:

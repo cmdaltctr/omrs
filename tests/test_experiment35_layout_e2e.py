@@ -118,7 +118,7 @@ def _empty(tmp_path: Path) -> Path:
         lambda o: labels35.faithfulness_claims(o, fx.questions(), fx.VERSION),
         lambda o: labels35.require_kinds(o, fx.VERSION),
         lambda o: refusalreport35.load(o, fx.VERSION),
-        lambda o: lengthcheck35.pool(o),
+        lambda o: lengthcheck35.pool(o, fx.VERSION),
         lambda o: correct35.draw(o, o.parent / "halves.json", fx.questions(), per_dataset=2),
     ],
 )
