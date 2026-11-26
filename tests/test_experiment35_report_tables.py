@@ -116,7 +116,8 @@ def _row(number: int, metric: str, low: float, high: float, **extra: Any) -> dic
     }
 
 
-def test_sesoi_and_mde_lines_per_row() -> None:
+def test_sesoi_lines_per_row_carry_no_mde_line() -> None:
+    # A10 removed the MDE table (2026-11-26): the lines hold the SESOI reading and marks only.
     rows = {
         "freshstack": [
             _row(1, "ndcg_at_10", 0.03, 0.08),
@@ -126,30 +127,20 @@ def test_sesoi_and_mde_lines_per_row() -> None:
             {"row": 13, "metric": "faithfulness_glm_factual", "dropped": True},
         ]
     }
-    mde = [
-        {"dataset": "freshstack", "row": 1, "mde": 0.03, "assumed": False, "rough": False},
-        {"dataset": "freshstack", "row": 12, "mde": 0.07, "assumed": False, "rough": True},
-        {
-            "dataset": "freshstack",
-            "row": 2,
-            "mde": None,
-            "mde_low": 0.02,
-            "mde_high": 0.04,
-            "assumed": True,
-            "rough": False,
-        },
-    ]
-    lines = {r["row"]: r for r in reporttables35.sesoi_lines(rows, mde)["freshstack"]}
+    lines = {r["row"]: r for r in reporttables35.sesoi_lines(rows)["freshstack"]}
     assert lines[1]["sesoi"] == 0.02 and lines[1]["sesoi_reading"] == "beyond 0.02"
     assert lines[1]["readings"] == {"0.01": "beyond", "0.02": "beyond", "0.05": "cannot exclude"}
-    assert lines[1]["mde"] == 0.03
     assert lines[2]["sesoi_reading"] == "within 0.02"
-    assert lines[2]["mde_range"] == [0.02, 0.04] and lines[2]["mde_label"] == "assumed"
     assert lines[3]["sesoi_reading"] == "cannot rule out a small effect"
     assert lines[3]["status"] == "not testable"
     assert lines[12]["sesoi"] is None and lines[12]["readings"] is None
-    assert lines[12]["mde"] == 0.07 and lines[12]["mde_label"] == "rough"
-    assert lines[13]["status"] == "dropped" and lines[13]["mde"] is None
+    assert lines[13]["status"] == "dropped"
+    assert not any(k.startswith("mde") for line in lines.values() for k in line)
+
+
+def test_the_report_command_has_no_mde_option() -> None:
+    with pytest.raises(SystemExit):
+        reporttables35.main(["--out-dir", "x", "--mde", "y"])
 
 
 # --- FinanceBench nDCG@10 table for rows 9 and 10 (sign agreement) -------------------

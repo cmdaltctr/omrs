@@ -2,7 +2,7 @@
 
 Usage (reads saved files only; runs on the Mac)::
 
-    reporttables35.py --out-dir OUT [--factorial FACTORIAL_JSON] [--mde MDE_JSON]
+    reporttables35.py --out-dir OUT [--factorial FACTORIAL_JSON]
 
 Writes ``<out>/report-tables.json`` with:
 
@@ -14,8 +14,8 @@ Writes ``<out>/report-tables.json`` with:
 - ``h8b_token_totals``: per dataset and ``-t20k`` setup, the cut total and the
   realised (assembled) evidence token total, over all questions and over the
   H8b sensitivity set (questions kept by cut total, never by realised total);
-- ``sesoi_lines``: per row the SESOI reading (nDCG@10 rows only), the MDE line
-  and the "not testable" and "dropped" marks (needs ``--factorial``);
+- ``sesoi_lines``: per row the SESOI reading (nDCG@10 rows only) and the "not
+  testable" and "dropped" marks (needs ``--factorial``; no MDE line since A10);
 - ``sensitivity``: the one sensitivity table set (needs ``--factorial``);
 - ``unjudged``: per dataset, the unjudged share at 10 per setup and the
   condensed-list nDCG@10 rows 1 to 8 (H1 to H5) where the qrels list judged
@@ -182,25 +182,15 @@ def _reading(low: float, high: float, t: float) -> str:
     return "within" if -t < low and high < t else "beyond"
 
 
-def _mde_line(entry: Mapping[str, Any] | None) -> dict[str, Any]:
-    if entry is None:
-        return {"mde": None, "mde_range": None, "mde_label": "no MDE row"}
-    label = "assumed" if entry.get("assumed") else "rough" if entry.get("rough") else "pilot"
-    span = [entry["mde_low"], entry["mde_high"]] if entry.get("assumed") else None
-    return {"mde": entry.get("mde"), "mde_range": span, "mde_label": label}
-
-
 def sesoi_lines(
     rows_by_dataset: Mapping[str, Sequence[Mapping[str, Any]]],
-    mde_rows: Sequence[Mapping[str, Any]] | None,
 ) -> dict[str, list[dict[str, Any]]]:
-    """Return per row the SESOI reading, the MDE line and its marks (sections 10 and 21).
+    """Return per row the SESOI reading and its marks (sections 10 and 21).
 
     Only nDCG@10 rows have a SESOI (0.02); their interval is read against plus
     and minus 0.01, 0.02 and 0.05. An interval that cannot exclude 0.02 reads
-    "cannot rule out a small effect". Other rows get the MDE line only.
+    "cannot rule out a small effect". Other rows get the marks only.
     """
-    mde = {(r["dataset"], int(r["row"])): r for r in mde_rows or ()}
     out: dict[str, list[dict[str, Any]]] = {}
     for dataset, rows in rows_by_dataset.items():
         for row in rows:
@@ -231,10 +221,6 @@ def sesoi_lines(
                     if main == "cannot exclude"
                     else f"{main} {SESOI}",
                 }
-            dropped = row.get("dropped")
-            line |= _mde_line(None if dropped else mde.get((dataset, int(row["row"]))))
-            if dropped:
-                line["mde_label"] = "dropped"
             out.setdefault(dataset, []).append(line)
     return out
 
@@ -296,22 +282,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="reporttables35.py", description=__doc__.split("\n")[0])
     parser.add_argument("--out-dir", type=Path, required=True, help="the joined output folder")
     parser.add_argument("--factorial", type=Path, help="the confirmatory result (factorial35)")
-    parser.add_argument("--mde", type=Path, help="the MDE table (mde35.py)")
     args = parser.parse_args(argv)
     out = args.out_dir
     scoring35.require_half_b(out)  # the tables hold half-B scores (section 14.2)
     answers = read_rows(out / "answer-scores.jsonl")
     totals = h8b_token_totals(answers)
     result = _json(args.factorial) if args.factorial else None
-    mde = _json(args.mde) if args.mde else None
     tables = {
         "chunk_lengths": chunk_length_table(out),
         "unmapped_chunks": unmapped_counts(out),
         "drops": drop_record(out),
         "h8b_token_totals": totals,
-        "sesoi_lines": None
-        if result is None
-        else sesoi_lines(result["datasets"], (mde or {}).get("rows")),
+        "sesoi_lines": None if result is None else sesoi_lines(result["datasets"]),
         "sensitivity": None
         if result is None
         else sensitivity_set(
