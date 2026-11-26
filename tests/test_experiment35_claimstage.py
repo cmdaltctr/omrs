@@ -96,6 +96,20 @@ def test_classifies_claims_and_uncited_segments_from_question_and_text_only(tmp_
     assert marker["kinds"] == {"factual": 4}
 
 
+def test_a_run_with_no_claims_still_writes_an_empty_kinds_file_before_done(tmp_path) -> None:
+    # PR 227 review: the join needs the file under a passed gate, even with nothing to classify.
+    run_dir = tmp_path / "bioasq" / "answer" / "e4b-c512-roff-hoff" / "run1"
+    run_dir.mkdir(parents=True)
+    rows = [{"qid": q, "answer": "", "evidence": []} for q in ("q1", "q2")]
+    (run_dir / "answer.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
+    (run_dir / ".done-answer.json").write_text("{}")
+    ctx = _ctx(tmp_path, lambda _m: pytest.fail("no claim to classify"))
+    assert _run(ctx) == 0
+    assert (run_dir / ".done-claimkinds.json").exists()
+    assert (run_dir / "claim-kinds.jsonl").is_file()
+    assert _rows(ctx) == []
+
+
 def test_resume_skips_saved_claims(tmp_path) -> None:
     calls = []
 

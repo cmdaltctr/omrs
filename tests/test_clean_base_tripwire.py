@@ -515,7 +515,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +8 (2026-11-26, PR 227 review fixes, by test-ID diff against HEAD 85fde035): 8 added:
 # test_experiment35_analyse (2), _kindgate (2), _lengthcheck (2), _determinism (1) and
 # _rebuild (1). None removed or renamed. No extra.
-_BASE_EXECUTED = 14108
+# +2 (2026-11-26, empty claim-kinds file, by test-ID diff against HEAD 3f2c4a58): 2 added:
+# test_experiment35_claimstage (1) and _kindgate (1). None removed or renamed. No extra.
+_BASE_EXECUTED = 14110
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
