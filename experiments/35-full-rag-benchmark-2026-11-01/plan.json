@@ -305,6 +305,24 @@
       "classifier": "12e72f76ba0fcf764a37977110638fa239e83cf1caf37af41f402e7619e3f9c9",
       "ragas_adapter": "5ef00cec2d96d440c827d2d03027b983fd1dbf4eb908212a89e1346821e06386"
     },
+    "scorers": {
+      "freshstack_alpha_ndcg": {
+        "role": "secondary, descriptive (FreshStack only)",
+        "repo": "https://github.com/fresh-stack/freshstack",
+        "commit": "a1c8c45bb8e6b0d5ec2b61852977b67207f0c9d4",
+        "function": "freshstack/retrieval/metrics.py alpha_ndcg",
+        "metrics_py_sha256": "0f3316491bb6adfcf06c6fbc91bd2734cba0f19575602cd99c0b652c0fb3e0b9",
+        "licence": "Apache-2.0",
+        "pyndeval_version": "0.0.8",
+        "pyndeval_wheel": "pyndeval-0.0.8-cp312-cp312-macosx_10_13_universal2.whl",
+        "pyndeval_wheel_sha256": "e8696282a4c24476aebd47e4d0e9c60f428f9e16e1d5e30543c93c63a31367da",
+        "python": "3.12",
+        "alpha": 0.5,
+        "k": 10,
+        "adapter": "alphandcg35.py (runs alpha_runner35.py in the scorer venv with python -I)",
+        "recorded": "2026-11-26, toy check passed: hand 0.782195, official 0.7822 (RDY 16.3)"
+      }
+    },
     "pending": []
   },
   "baseline":"none: full factorial of embedder x chunk size x reranker x hybrid (72 search setups per dataset); e4b-c1024-roff-hoff is the reference cell of the G2 rebuild check only",

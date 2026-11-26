@@ -20,7 +20,9 @@ Writes ``<out>/report-tables.json`` with:
 - ``unjudged``: per dataset, the unjudged share at 10 per setup and the
   condensed-list nDCG@10 rows 1 to 8 (H1 to H5) where the qrels list judged
   non-relevant units, else the statement that neither can be computed
-  (``unjudged35.report``, over the score records of both halves).
+  (``unjudged35.report``, over the score records of both halves);
+- ``alpha_ndcg_freshstack``: ``<out>/alpha-ndcg.json`` as ``alphandcg35.py``
+  wrote it (run it first), else "not run".
 
 Other inputs it reads when present: ``answer-scores.jsonl``,
 ``contamination.json`` (``contamination35.py``) and
@@ -320,6 +322,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             token_totals=totals,
         ),
         "unjudged": unjudged_table(out),
+        # alphandcg35.py writes it with the pinned FreshStack scorer (secondary, descriptive).
+        "alpha_ndcg_freshstack": _json(out / "alpha-ndcg.json") or NOT_RUN,
     }
     write_json(out / "report-tables.json", tables)
     print(f"[report-tables] {out / 'report-tables.json'}", flush=True)

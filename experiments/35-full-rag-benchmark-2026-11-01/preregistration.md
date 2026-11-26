@@ -88,7 +88,7 @@ For question q with gold set G_q (size R_q) and unit list L_q of up to 10 units,
 - MRR@10 = 1 / (rank of the first gold unit in L_q), else 0.
 - hit@page (FinanceBench) = 1 when any gold page is in L_q.
 - **`evidence_recall_20k`** = share of G_q covered by the evidence taken from the top 100 stored chunks under the token cut of section 3. A stored chunk, whole or truncated, covers its one unit (on FinanceBench, its page). **Confirmatory endpoint for H6 and H7 on FinanceBench (rows 9 to 11).** `plan.json` flags both nDCG@10 and `evidence_recall_20k` as `primary`, because there the flag marks a metric that a primary hypothesis's decision rests on (the guide asks for a tolerance per primary metric); it does not mark a second headline metric.
-- **alpha-nDCG@10** (FreshStack, secondary): computed with the benchmark's own scorer if its nugget labels allow (P3); otherwise reported as not available.
+- **alpha-nDCG@10** (FreshStack, secondary and descriptive): the nugget labels allow it (P3), so it is computed with the benchmark's own scorer, `alpha_ndcg` in `freshstack/retrieval/metrics.py` of `fresh-stack/freshstack` at commit `a1c8c45b` (SHA-256 `0f331649`), with `pyndeval` 0.0.8 at alpha 0.5 and depth 10. Nugget qrels are built as the official loader builds them. Each ranked unit list goes in with strictly falling scores, so the scorer cannot re-sort ties. The value per setup is the official mean over the setup's questions. It has no test, no Holm family and no decision. Full pin in `plan.json` `pins.scorers.freshstack_alpha_ndcg` (recorded 2026-11-26); the report step is `alphandcg35.py`.
 
 **Answer metrics.** Per answer, then averaged over the 3 runs per question, then over questions.
 

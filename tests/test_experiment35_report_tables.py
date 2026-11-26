@@ -270,4 +270,16 @@ def test_main_writes_no_unjudged_table_before_any_score(tmp_path: Path) -> None:
     open_half_b(tmp_path)
     _write(tmp_path / "answer-scores.jsonl", [])
     assert reporttables35.main(["--out-dir", str(tmp_path)]) == 0
-    assert json.loads((tmp_path / "report-tables.json").read_text())["unjudged"] is None
+    saved = json.loads((tmp_path / "report-tables.json").read_text())
+    assert saved["unjudged"] is None
+    assert saved["alpha_ndcg_freshstack"] == {"status": "not run"}
+
+
+def test_main_carries_the_alpha_ndcg_table_when_alphandcg35_wrote_it(tmp_path: Path) -> None:
+    open_half_b(tmp_path)
+    _write(tmp_path / "answer-scores.jsonl", [])
+    table = {"metric": "alpha-nDCG@10", "descriptive": True, "setups": {"s": {"n": 1}}}
+    (tmp_path / "alpha-ndcg.json").write_text(json.dumps(table))
+    assert reporttables35.main(["--out-dir", str(tmp_path)]) == 0
+    saved = json.loads((tmp_path / "report-tables.json").read_text())
+    assert saved["alpha_ndcg_freshstack"] == table
