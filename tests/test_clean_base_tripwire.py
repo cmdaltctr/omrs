@@ -507,7 +507,12 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # _report_tables (2), _factorial (1), _labels (1) and _wiring (1). 7 removed or renamed:
 # 5 in _determinism (G1 per run, no join), test_sesoi_and_mde_lines_per_row and the
 # determinism-without-a-join case of _wiring. No extra.
-_BASE_EXECUTED = 14072
+# +28 (2026-11-26, Exp 35 freeze check, by test-ID diff against HEAD 0cf9b6c9): 29 added:
+# new file prefreeze/test_freeze_check_stages (10); prefreeze/test_verify35 (7),
+# prefreeze/test_session_stages (6, the freeze file in the shared checks) and
+# test_experiment35_lengthcheck (6, the gate-3 guard). 1 renamed:
+# test_pool_leaves_out_refusal_claims. No extra.
+_BASE_EXECUTED = 14100
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
