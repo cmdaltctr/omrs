@@ -795,6 +795,7 @@ splitter regardless of the fallback.
 | `embed_batch_size` | `100` | Documents per embedding call |
 | `ingest_extensions` | the seven document extensions | File extensions ingestion collects. **Profile-owned** — the `codebase` profile adds source extensions. Env form is comma-separated (`.py,.ts`) or a JSON array string |
 | `normalise_reader_output` (`INGESTION__NORMALISE_READER_OUTPUT`) | `true` | Remove reader markup (`<u>`, `<span>`, `<font>`, `<center>`, `<div>`, `<img>`, table styling) from PDF text before chunking, keeping every visible character. Part of the index identity: changing it reprocesses every source once. See [Ingestion guide](ingestion.md#reader-output-normalisation) |
+| `file_type_routing` (`INGESTION__FILE_TYPE_ROUTING`) | `true` | Magika file-type routing: code files go to the code splitter, configuration files to the config splitter, and binary files are skipped. Set `false` to send every file through the document reader and the Markdown or text splitter. Experiment 35 sets `false` for its prepared Markdown passages |
 
 ### Embedding — `EMBEDDING__*`
 

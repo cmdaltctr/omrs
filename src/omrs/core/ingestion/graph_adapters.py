@@ -146,8 +146,9 @@ async def discover_adapter(
             f"Unsupported file extension: {path.suffix}. Supported: {', '.join(sorted(extensions))}"
         )
     files, skipped = await asyncio.to_thread(gather_supported_files, path, extensions=extensions)
+    routed = files and settings.ingestion.file_type_routing
     content_types = (
-        await asyncio.to_thread(detect_content_types, path, settings=settings) if files else {}
+        await asyncio.to_thread(detect_content_types, path, settings=settings) if routed else {}
     )
     units = list(iter_source_units(path, files, content_types))
     return NodeOutput(
