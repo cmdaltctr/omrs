@@ -86,7 +86,7 @@ def test_determinism_reads_saved_files_only(env: Path, monkeypatch) -> None:
     assert not out.exists() or not any(out.rglob("machine.jsonl"))
 
 
-def test_determinism_without_a_join_exits_2_before_any_call(env: Path) -> None:
+def test_determinism_without_its_saved_lists_exits_2_before_any_call(env: Path) -> None:
     stub = RunStub()
     assert _run(stub, env / "out", "--setup", ANSWER, "--stage", "determinism") == 2
     assert stub.log == []

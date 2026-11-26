@@ -1,13 +1,16 @@
 """G1 determinism stage of Experiment 35 (task 6.3; pre-registration section 15; A5 R-2).
 
-``--stage determinism --setup <answer setup>`` reads saved files only and runs
-without the environment record. It refuses until ``<out>/join.json`` passes
-(not a smoke join). Then, for one answer setup:
+``--stage determinism --setup <answer setup> --run <n>`` reads saved files only
+and runs without the environment record. It needs no join (review S3): each
+replicate pod runs it right after its answer stage, on its own
+``run<n>/retrieval.jsonl`` and the search lists, so a G1 failure stops the run
+before the paid judge and Ragas stages. For one answer setup and run:
 
 1. Lists. For every question, the ranked list of 100 stored chunk IDs that
-   answer runs 1, 2 and 3 saved (``run<n>/retrieval.jsonl``) must equal the
-   list of the single search-stage run of the matching search setup
-   (``search/<setup>/run1/search.jsonl``). A ``-t20k`` setup maps to its
+   answer run n saved (``run<n>/retrieval.jsonl``) must equal the list of the
+   single search-stage run of the matching search setup
+   (``search/<setup>/run1/search.jsonl``). Runs 1, 2 and 3 each match that one
+   list, so they also match each other. A ``-t20k`` setup maps to its
    ``e?-c?-r?-hon`` search setup. A question whose search failed on either
    side (an empty list, a row closed as missing, or no row) is incomplete,
    never a match (``experiments/_lib/ranking.incomplete_comparisons``).
@@ -15,10 +18,11 @@ without the environment record. It refuses until ``<out>/join.json`` passes
    the head of that run's list under the setup's rule: 10 chunks, or the
    20,480-token cut on the saved token counts (``score35.token_cut_k``).
 
-It writes ``<out>/<dataset>/answer/<setup>/determinism.json`` with both
-results and the machines of each run (``machine.jsonl``), and returns 0 when
-G1 passes, else :data:`EXIT_MISMATCH`. A mismatch is recorded, never swapped
-for another run.
+It writes ``<out>/<dataset>/answer/<setup>/run<n>/determinism.json`` with both
+results and the run's machines (``machine.jsonl``), and returns 0 when G1
+passes, else :data:`EXIT_MISMATCH`. A mismatch is recorded, never swapped for
+another run. G1 passes for a setup when all three runs pass;
+:func:`require_g1` is the guard of the confirmatory analysis.
 """
 
 from __future__ import annotations
@@ -33,10 +37,34 @@ import score35
 import stages35
 from experiments._lib.determinism import compare_runs
 from experiments._lib.ranking import incomplete_comparisons
-from outputs35 import read_rows, say, write_json
+from outputs35 import Layout, read_rows, say, write_json
 
 EXIT_MISMATCH = 3
 RUNS = (1, 2, 3)
+
+
+class G1NotPassed(RuntimeError):
+    """A run of an answer setup has no passing ``determinism.json``."""
+
+
+def require_g1(root: Path, setups: Mapping[str, Sequence[str]]) -> None:
+    """Refuse unless every run of every answer setup passed G1.
+
+    Args:
+        root: The run output folder.
+        setups: Per dataset with answers, its answer setups.
+
+    Raises:
+        G1NotPassed: Names the first run folder with no passing ``determinism.json``.
+    """
+    layout = Layout(root)
+    for dataset, names in sorted(setups.items()):
+        for setup in names:
+            for run in RUNS:
+                path = layout.run_dir(dataset, "answer", setup, run) / "determinism.json"
+                found = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+                if found.get("ok") is not True:
+                    raise G1NotPassed(f"{path}: G1 has not passed (run --stage determinism)")
 
 
 def require_join(root: Path) -> None:
@@ -122,34 +150,33 @@ def _evidence_mismatches(setup: str, run_dir: Path, run: int) -> list[dict[str, 
 
 
 async def determinism_stage(ctx: Any) -> int:
-    """Check G1 for one answer setup; write ``determinism.json``; return 0 or 3.
+    """Check G1 for one answer setup and run; write ``run<n>/determinism.json``; return 0 or 3.
 
     Raises:
-        stages35.StageOrderError: No passing main-run ``join.json``, or the
-            search list or an answer file of runs 1 to 3 is missing (names it).
+        stages35.StageOrderError: The search list or the run's answer file is
+            missing (names it).
     """
-    require_join(ctx.layout.root)
     qids = [str(q.qid) for q in ctx.questions]
     source = search_setup(ctx.setup)
     search = ctx.layout.run_dir(ctx.dataset, "search", source, 1) / "search.jsonl"
-    run_dirs = {run: ctx.layout.run_dir(ctx.dataset, "answer", ctx.setup, run) for run in RUNS}
-    for path in [search, *(d / "answer.jsonl" for d in run_dirs.values())]:
+    run_dir = ctx.layout.run_dir(ctx.dataset, "answer", ctx.setup, ctx.run)
+    for path in (search, run_dir / "answer.jsonl"):
         if not path.exists():
             raise stages35.StageOrderError(f"G1 needs {path}; it is missing")
     reference = _lists(search, qids)
-    lists = compare_lists(
-        reference, {f"run{n}": _lists(d / "retrieval.jsonl", qids) for n, d in run_dirs.items()}
-    )
-    evidence = [m for n, d in run_dirs.items() for m in _evidence_mismatches(ctx.setup, d, n)]
+    lists = compare_lists(reference, {f"run{ctx.run}": _lists(run_dir / "retrieval.jsonl", qids)})
+    evidence = _evidence_mismatches(ctx.setup, run_dir, ctx.run)
     report = {
         "ok": lists["ok"] and not evidence,
         "dataset": ctx.dataset,
         "setup": ctx.setup,
+        "run": ctx.run,
         "search_setup": source,
         "lists": lists,
         "evidence_mismatches": evidence,
-        "machines": {str(n): read_rows(d / "machine.jsonl") for n, d in run_dirs.items()},
+        "machines": read_rows(run_dir / "machine.jsonl"),
     }
-    write_json(ctx.layout.setup_dir(ctx.dataset, "answer", ctx.setup) / "determinism.json", report)
-    say(f"[determinism] {ctx.dataset}/{ctx.setup}: G1 {'passes' if report['ok'] else 'FAILS'}")
+    write_json(run_dir / "determinism.json", report)
+    verdict = "passes" if report["ok"] else "FAILS"
+    say(f"[determinism] {ctx.dataset}/{ctx.setup}/run{ctx.run}: G1 {verdict}")
     return 0 if report["ok"] else EXIT_MISMATCH
