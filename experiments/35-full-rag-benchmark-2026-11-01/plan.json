@@ -444,21 +444,21 @@
     {
       "id": "classifier-agreement",
       "metric": "claim_classifier_agreement",
-      "value": "weighted share on 100 L1 test pod session claims (2026-11-23, pre-freeze)",
+      "value": "weighted share on 100 L1 main-run claims of gate 3, seed 20261143, from the first finished main-run dataset (2026-11-24, pre-freeze; text corrected 2026-11-26)",
       "op": ">=",
       "threshold": 0.9
     },
     {
       "id": "classifier-refusal-recall",
       "metric": "claim_classifier_refusal_recall",
-      "value": "weighted share on 100 L1 test pod session claims (2026-11-23, pre-freeze)",
+      "value": "weighted share on 100 L1 main-run claims of gate 3, seed 20261143, from the first finished main-run dataset (2026-11-24, pre-freeze; text corrected 2026-11-26)",
       "op": ">=",
       "threshold": 0.9
     },
     {
       "id": "classifier-refusal-precision",
       "metric": "claim_classifier_refusal_precision",
-      "value": "weighted share of classifier refusals the L1 label also calls refusal, 100 test pod session claims (2026-11-23, pre-freeze)",
+      "value": "weighted share of classifier refusals the L1 label also calls refusal, 100 main-run claims of gate 3, seed 20261143, from the first finished main-run dataset (2026-11-24, pre-freeze; text corrected 2026-11-26)",
       "op": ">=",
       "threshold": 0.9
     },
@@ -775,6 +775,14 @@
       "before_first_run": true,
       "summary": "File-type routing off for the prepared passages (owner decision, 2026-11-26, option 1). The 24 Nov and P2 pod ingests ran OMRS Magika file-type routing on the prepared FreshStack passage files: 444 files were classed binary and skipped (38 of the 1,547 gold documents), about 4,900 went to CodeSplitter (40 lines or 1,500 characters, ignoring the chunk size), and about 6,020 fell back to a generic splitter whose chunk count depends on the folder path. pins.settings.ingestion.file_type_routing is now false (new OMRS setting ingestion.file_type_routing, default true, so the app keeps code routing): every file goes through the reader and the token-aware Markdown path with the pinned Qwen3 tokenizer, nothing is skipped, and the count does not depend on the path. Every setup writes the pin, a plan without it stops the stage, the resolved-settings check refuses a run where OMRS resolves routing on (for example INGESTION__FILE_TYPE_ROUTING in the environment), and each trace records the resolved value. Each index seal now records the tokenizer model, revision and tokenizer.json SHA-256, and refuses when the pinned tokenizer is not cached. Expected FreshStack chunk counts with routing off (Mac, pinned tokenizer, 49,506 files, no file with 0 chunks): 182,210 at 512, 113,300 at 1,024 and 61,852 at 2,048 (the routing-on pod e8b-c512 index stored 196,350). The 24 Nov and P2 indexes are test data only and are never used. The P2 timing (section 17) was measured with routing on; on the 600-file check, routing off gives 6.1% fewer chunks and 0.4% fewer embedded tokens, so the estimate still holds as an upper bound. No hypothesis, Holm family, gate, seed, number or budget changes.",
       "where": "protocol.md section 0.18; preregistration.md sections 16 and 17; ADR-120 harness table row 41; change exp35-main-run-readiness task 16.37"
+    },
+    {
+      "id": "A14",
+      "date": "2026-11-26",
+      "before_first_run": true,
+      "status": "agent recommendation 2026-11-26, owner to confirm before freeze",
+      "summary": "Registered fallback if classifier gate 3 fails (readiness review B2, option 1). No claim-kind result is used until gate 3 passes. If gate 3 fails, faithfulness rows 12, 13, 16 and 17 become not testable on every core dataset (p = 1, kept in their Holm families), and faithfulness over all cited claims (no kind filter) is reported as descriptive only. The code enforces it: kindgate35.py; join35.py --gate, labels35.py sample --gate and analyse35.py --gate read gate.json and use claim kinds only with pass true and a matching version. No hypothesis, family, seed, threshold or budget changes.",
+      "where": "preregistration.md sections 1 and 11.1; protocol.md section 0.19; change exp35-main-run-readiness task 8.7"
     }
   ]
 }
