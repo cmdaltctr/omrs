@@ -236,7 +236,7 @@ def test_the_record_holds_the_fields_the_statistics_read() -> None:
     assert set(record) == {
         "dataset", "setup", "qid", "doc_id", "units", "unmapped_chunks", "evidence_chunks",
         "ndcg_at_10", "recall_at_10", "mrr_at_10", "evidence_recall_20k", "hit_at_page",
-        "head_recall_10",
+        "head_recall_10", "ranked_units",
     }  # fmt: skip
     other = _score("bioasq", [_c("x", "1")], _gold("a", ["1"]))
     assert "hit_at_page" not in other
@@ -473,3 +473,11 @@ def test_head_recall_counts_only_the_units_of_the_first_ten_stored_chunks() -> N
     assert (
         _score("bioasq", chunks[-1:] + chunks[:-1], _gold("q1", ["GOLD"]))["head_recall_10"] == 1.0
     )
+
+
+def test_the_record_keeps_every_distinct_unit_past_rank_10_for_the_condensed_list() -> None:
+    # PR 21: condensed-list nDCG@10 removes unjudged units, so it reads ranks past 10.
+    chunks = [_c(f"c{i}", str(i % 13)) for i in range(30)]
+    record = _score("bioasq", chunks, _gold("a", ["12"]))
+    assert record["ranked_units"] == [str(i) for i in range(13)]
+    assert record["units"] == record["ranked_units"][:10]

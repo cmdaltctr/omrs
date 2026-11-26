@@ -241,3 +241,33 @@ def test_main_writes_the_report_tables_behind_the_half_b_guard(tmp_path: Path) -
     assert saved["chunk_lengths"]["bioasq"]["512"]["chunks"] == 5
     assert saved["drops"] == [] and saved["sesoi_lines"] is None
     assert saved["sensitivity"] is None  # no factorial result given
+
+
+def test_main_writes_the_unjudged_table_from_the_score_records(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # PR 21: unjudged share and condensed-list nDCG@10 where negatives are judged, else NEITHER.
+    unjudged35 = load("unjudged35")
+    qrels = {"freshstack": {"q0": {"A": 1, "N": 0}}, "bioasq": {"q0": {"P": 1}}}
+    monkeypatch.setattr(reporttables35, "load_qrels", lambda names: {d: qrels[d] for d in names})
+    open_half_b(tmp_path)
+    _write(tmp_path / "answer-scores.jsonl", [])
+    for dataset in ("freshstack", "bioasq"):
+        for setup in select35.SEARCH_SETUPS:  # the full 72-setup grid, as score35 writes it
+            units = ["X", "A"]
+            record = {"dataset": dataset, "setup": setup, "qid": "q0",
+                      "units": units, "ranked_units": units, "ndcg_at_10": 0.6}  # fmt: skip
+            _write(tmp_path / "scores" / "A" / dataset / f"{setup}.jsonl", [record])
+    assert reporttables35.main(["--out-dir", str(tmp_path)]) == 0
+    saved = json.loads((tmp_path / "report-tables.json").read_text())["unjudged"]
+    assert saved["bioasq"] == {"defined": False, "note": unjudged35.NEITHER}
+    assert saved["freshstack"]["unjudged_share"]["e4b-c512-roff-hoff"] == pytest.approx(0.1)
+    assert len(saved["freshstack"]["unjudged_share"]) == 72
+    assert [r["row"] for r in saved["freshstack"]["condensed_ndcg_rows"]] == list(range(1, 9))
+
+
+def test_main_writes_no_unjudged_table_before_any_score(tmp_path: Path) -> None:
+    open_half_b(tmp_path)
+    _write(tmp_path / "answer-scores.jsonl", [])
+    assert reporttables35.main(["--out-dir", str(tmp_path)]) == 0
+    assert json.loads((tmp_path / "report-tables.json").read_text())["unjudged"] is None

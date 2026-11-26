@@ -16,7 +16,11 @@ Writes ``<out>/report-tables.json`` with:
   H8b sensitivity set (questions kept by cut total, never by realised total);
 - ``sesoi_lines``: per row the SESOI reading (nDCG@10 rows only), the MDE line
   and the "not testable" and "dropped" marks (needs ``--factorial``);
-- ``sensitivity``: the one sensitivity table set (needs ``--factorial``).
+- ``sensitivity``: the one sensitivity table set (needs ``--factorial``);
+- ``unjudged``: per dataset, the unjudged share at 10 per setup and the
+  condensed-list nDCG@10 rows 1 to 8 (H1 to H5) where the qrels list judged
+  non-relevant units, else the statement that neither can be computed
+  (``unjudged35.report``, over the score records of both halves).
 
 Other inputs it reads when present: ``answer-scores.jsonl``,
 ``contamination.json`` (``contamination35.py``) and
@@ -44,8 +48,10 @@ for _folder in (EXP_DIR.parent.parent, EXP_DIR):
 import bounds35  # noqa: E402
 import budget35  # noqa: E402
 import cells35  # noqa: E402
+import datasets35  # noqa: E402
 import scoring35  # noqa: E402
 import select35  # noqa: E402
+import unjudged35  # noqa: E402
 from outputs35 import Layout, read_rows, write_json  # noqa: E402
 
 SESOI = 0.02
@@ -263,6 +269,22 @@ def sensitivity_set(
     return {name: NOT_RUN if tables[name] is None else tables[name] for name in SENSITIVITY_TABLES}
 
 
+def load_qrels(names: Iterable[str]) -> dict[str, dict[str, dict[str, int]]]:
+    """Return the qrels of each dataset in *names* from the data folder (``datasets35.qrels``)."""
+    root = datasets35.data_root()
+    return {name: datasets35.qrels(name, root) for name in sorted(names)}
+
+
+def unjudged_table(out: Path) -> dict[str, Any] | None:
+    """Return :func:`unjudged35.report` over the search score records of both halves."""
+    records = [
+        row for path in sorted((out / "scores").glob("[AB]/*/*.jsonl")) for row in read_rows(path)
+    ]
+    if not records:
+        return None
+    return unjudged35.report(records, load_qrels({r["dataset"] for r in records}))
+
+
 def _json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
 
@@ -297,6 +319,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             length_check=_json(out / "lengthcheck" / "lengthcheck.json"),
             token_totals=totals,
         ),
+        "unjudged": unjudged_table(out),
     }
     write_json(out / "report-tables.json", tables)
     print(f"[report-tables] {out / 'report-tables.json'}", flush=True)

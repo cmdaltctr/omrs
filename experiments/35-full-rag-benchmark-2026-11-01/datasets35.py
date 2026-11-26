@@ -337,6 +337,24 @@ def load_questions(dataset: str, root: Path) -> list[Question]:
     return questions
 
 
+def qrels(dataset: str, root: Path) -> dict[str, dict[str, int]]:
+    """Return per question the judged units and their grade: 1 relevant, 0 judged non-relevant.
+
+    Only FreshStack lists judged non-relevant units: a nugget's
+    ``non_relevant_corpus_ids`` that no nugget of the query marks relevant (the
+    query's relevant units are the union over its nuggets). The other datasets
+    hold positives only (protocol section 4.1, P4).
+    """
+    out = {q.qid: dict.fromkeys(q.relevant, 1) for q in load_questions(dataset, root)}
+    if dataset == "freshstack":
+        for query in json.loads((root / _FS_GT).read_text(encoding="utf-8"))["queries"]:
+            judged = out.get(str(query["query_id"]))
+            for nugget in query.get("nuggets") or () if judged is not None else ():
+                for unit in nugget.get("non_relevant_corpus_ids") or ():
+                    judged.setdefault(str(unit), 0)
+    return out
+
+
 def frozen_order(questions: Sequence[Question], *, seed: int) -> list[Question]:
     """Return the questions sorted by ID, then shuffled with *seed*."""
     ordered = sorted(questions, key=lambda q: q.qid)

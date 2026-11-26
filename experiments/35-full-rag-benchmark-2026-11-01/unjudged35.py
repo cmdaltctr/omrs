@@ -17,10 +17,19 @@ units (a judgement of 0 or less); on a positives-only dataset the share cannot
 be told apart from retrieval quality, so nothing is computed there. The gap is
 absolute, so it is blind to which side scores higher.
 
-Score records are those of ``score35.py`` (``dataset``, ``setup``, ``qid`` and
-``units``, the top 10 units in rank order). Qrels map each question to its
-judged units and their grade. This module computes the trigger values only;
-the audit sample and page (seed 20261120) are built only if it fires.
+Score records are those of ``score35.py`` (``dataset``, ``setup``, ``qid``,
+``units``, the top 10 units in rank order, and ``ranked_units``, every distinct
+unit in rank order). Qrels map each question to its judged units and their
+grade (``datasets35.qrels``). The audit sample and page (seed 20261120) are
+built only if the trigger fires.
+
+Condensed-list nDCG@10 (Sakai 2007; pre-registration section 21, RDY 16.4) is
+the sensitivity of rows 1 to 8 (H1 to H5): each ranked list loses its unjudged
+units, then nDCG@10 is taken on what is left, with the same binary gain and
+ideal list as the primary score. It is descriptive: each row gives its
+estimate and 95% interval by the section 9 method, beside the primary nDCG@10
+estimate, and changes no decision. On a positives-only dataset the report
+states that neither it nor the unjudged share can be computed as defined.
 """
 
 from __future__ import annotations
@@ -29,13 +38,23 @@ import math
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
+import cells35
+import factorial35
 import select35
+from experiments._lib.retrieval_metrics import ndcg_at_k
 
 DEPTH = 10
 GAP = 0.05
 TOLERANCE = 1e-9  # a gap of exactly 5 points must not fire through float error
 FRESHSTACK = "freshstack"
 NOT_DEFINED = "qrels hold positives only: unjudged share not defined, trigger not used"
+NEITHER = (
+    "qrels hold positives only: neither the unjudged share nor condensed-list nDCG@10 "
+    "can be computed as defined"
+)
+CONDENSED = "ndcg_at_10_condensed"
+#: Rows 1 to 8 of the contrast table: H1 to H5 (pre-registration section 21).
+CONDENSED_ROWS = factorial35.ROWS[:8]
 Qrels = Mapping[str, Mapping[str, int]]
 
 
@@ -125,3 +144,68 @@ def system_trigger(
         out[dataset] = _verdict(dataset, "omrs", "ragflow", _mean(a.values()), _mean(b.values()))
     out["fires"] = any(out[d]["fires"] for d in select35.CORE)
     return out
+
+
+def condensed_ndcg(ranked: Sequence[str], judged: Mapping[str, int]) -> float:
+    """Return nDCG@10 of *ranked* after its unjudged units are removed (Sakai 2007)."""
+    relevant = {unit for unit, grade in judged.items() if grade > 0}
+    return ndcg_at_k([unit for unit in ranked if unit in judged], relevant, DEPTH)
+
+
+def condensed_rows(
+    records: Iterable[Mapping[str, Any]], qrels: Mapping[str, Qrels]
+) -> dict[str, dict[str, Any]]:
+    """Return per dataset with judged negatives the rows 1 to 8 on condensed-list nDCG@10.
+
+    Each row holds the contrast estimate and its 95% interval and p-value by the
+    section 9 method (all questions, as in ``factorial35.analyse``), with the
+    primary nDCG@10 estimate of the same row beside it (``plain_estimate``).
+    """
+    rows = list(records)
+    out: dict[str, dict[str, Any]] = {}
+    for dataset, judged in sorted(qrels.items()):
+        if not has_negatives(judged):
+            continue
+        mine = [r for r in rows if r["dataset"] == dataset]
+        scored = [
+            {**r, CONDENSED: condensed_ndcg(r["ranked_units"], judged.get(str(r["qid"]), {}))}
+            for r in mine
+        ]
+        condensed = cells35.cell_means(scored, CONDENSED).get(dataset, {})
+        plain = cells35.cell_means(mine, factorial35.NDCG).get(dataset, {})
+        table = []
+        for row in CONDENSED_ROWS:
+            d, _ = cells35.contrast(row, condensed)
+            base, _ = cells35.contrast(row, plain)
+            # factorial35._test is the section 9 method of the primary rows.
+            test = factorial35._test(dataset, d, {}, 0)
+            plain_test = factorial35._test(dataset, base, {}, 0)
+            table.append(
+                {
+                    "row": row.number,
+                    "hypothesis": row.hypothesis,
+                    "metric": CONDENSED,
+                    "n": len(d),
+                    **test,
+                    "plain_estimate": plain_test["estimate"],
+                }
+            )
+        out[dataset] = {"defined": True, "rows": table}
+    return out
+
+
+def report(records: Iterable[Mapping[str, Any]], qrels: Mapping[str, Qrels]) -> dict[str, Any]:
+    """Return the section 21 table per dataset: unjudged share and condensed rows, or NEITHER."""
+    rows = list(records)
+    shares = share_table(rows, qrels)
+    condensed = condensed_rows(rows, qrels)
+    return {
+        dataset: {
+            "defined": True,
+            "unjudged_share": shares[dataset],
+            "condensed_ndcg_rows": condensed[dataset]["rows"],
+        }
+        if dataset in condensed
+        else {"defined": False, "note": NEITHER}
+        for dataset in sorted(qrels)
+    }
