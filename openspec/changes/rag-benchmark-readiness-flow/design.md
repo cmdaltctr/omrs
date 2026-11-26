@@ -92,7 +92,7 @@ D. Section 2 harness, PR (G7b)
 E. Arm smoke run on the run machine; pod stopped after it
    |
 E2. A4 pre-freeze items: FreshStack full corpus pin and timing,
-   |   halves and MDE pilot on half A, P1 to P18,
+   |   halves, P1 to P18,
    |   owner decisions O1 to O7 recorded (none open)
 F. Freeze (G7)
    |
@@ -107,7 +107,7 @@ Reasons:
 - The arm smoke run goes after the harness. Every arm needs the section 2 code. Archived task 10.6 and Exp 35 task 4.1 are the same check, so one run does both.
 - The smoke run uses the run machine. A stopped pod still bills its disk, so the smoke pod and its disk are deleted once their outputs are copied and checked, at G7 at the latest (task 6.11). Section 5 builds its indexes on new pods (task 6.12).
 - `pre-exp35-harness-and-answer-fixes` was archived with group 10 open. This group owns those tasks now. The detail stays in that change's design D13.
-- Step E2 (added 2026-11-14, amendment A4) holds the pre-freeze items of `preregistration.md` section 23. The pilot and every pre-freeze sample drawn after the halves exist come from half A, so the halves are written first; earlier samples are listed with their halves (P12). Step G follows the order of work of pre-registration section 14.2: no half-B score exists before the configuration hash is time-stamped on OSF.
+- Step E2 (added 2026-11-14, amendment A4) holds the pre-freeze items of `preregistration.md` section 23. The every pre-freeze sample drawn after the halves exist come from half A, so the halves are written first; earlier samples are listed with their halves (P12). Step G follows the order of work of pre-registration section 14.2: no half-B score exists before the configuration hash is time-stamped on OSF.
 
 ### D6. Amendment A4: the pre-registration governs; deviation policy (2026-11-14)
 

@@ -138,7 +138,7 @@ Each dataset SHALL be split into half A and half B with seed 20261115. FinanceBe
 - **THEN** the split SHALL fail its check before any score is computed
 
 #### Scenario: A pre-freeze sample reaches half B
-- **WHEN** the MDE pilot or a RAGFlow pre-freeze check, drawn after `halves.json` exists, draws a half-B question
+- **WHEN** a RAGFlow pre-freeze check, drawn after `halves.json` exists, draws a half-B question
 - **THEN** that sample SHALL NOT be used
 
 #### Scenario: A sample drawn before the halves

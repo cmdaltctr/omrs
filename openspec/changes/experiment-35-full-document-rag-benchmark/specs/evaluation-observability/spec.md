@@ -67,7 +67,7 @@ The protocol SHALL state a cost estimate and a ceiling, pods and hosted calls to
 
 ### Requirement: Statistics follow the pre-registered analysis
 
-The analysis SHALL follow `preregistration.md` section 9 and SHALL fit no mixed model. Each contrast row SHALL use per-question contrast scores (cells weighted equally, answer scores averaged over 3 runs first), and the estimate SHALL be their plain mean. The report SHALL give unadjusted 95% intervals beside each decision, marked against the SESOI and the minimum detectable effect.
+The analysis SHALL follow `preregistration.md` section 9 and SHALL fit no mixed model. Each contrast row SHALL use per-question contrast scores (cells weighted equally, answer scores averaged over 3 runs first), and the estimate SHALL be their plain mean. The report SHALL give unadjusted 95% intervals beside each decision, read against the SESOI (plus and minus 0.02).
 
 #### Scenario: Test on FreshStack, BioASQ or Legal RAG Bench
 - **WHEN** a row's p-value and interval are computed on FreshStack, BioASQ or Legal RAG Bench

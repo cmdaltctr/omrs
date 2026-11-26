@@ -87,7 +87,7 @@ BioASQ passed every data check, so the NFCorpus fallback is retired. RepoProbe m
 
 - FreshStack: all 9 indexes are built on the full public LangChain corpus at a pinned revision. The 10,000-document subset of Experiments 9a and 22 (every gold document plus random distractors) is retired. No FreshStack result is compared with the public leaderboard unless the same corpus and metric are used. alpha-nDCG@10 is a secondary metric if the nugget labels allow it (pre-registration sections 4 and 6).
 - Halves: seed 20261115. FinanceBench is split by document, so no document sits in both halves. The other datasets are split by question (pre-registration section 4).
-- Existing data: earlier looks at these datasets (Experiments 9a, 10 and 22, smoke runs, the pilot) are declared in pre-registration section 5.
+- Existing data: earlier looks at these datasets (Experiments 9a, 10 and 22, smoke runs) are declared in pre-registration section 5.
 
 ### Search stage: full factorial, no baseline
 
@@ -121,7 +121,7 @@ Full wording, contrast rows and "holds" rules: pre-registration sections 7 and 8
 - **H4:** reranker plus hybrid beats each alone (simple effects, not an interaction test).
 - **H5:** a bigger reranker ranks better.
 - **H6:** chunk size changes retrieval (the same row, same sign, on FinanceBench and FreshStack).
-- **H7:** a bigger embedder gains more from bigger chunks (FinanceBench and FreshStack; expected to be underpowered). Row 11 is a difference of differences with coefficients +1, -1, -1, +1 on the four corner cells, after averaging over reranker and hybrid.
+- **H7:** a bigger embedder gains more from bigger chunks (FinanceBench and FreshStack; expected to have a wide interval). Row 11 is a difference of differences with coefficients +1, -1, -1, +1 on the four corner cells, after averaging over reranker and hybrid.
 - **H8a:** chunk size changes faithfulness and correctness in the crossed setups, where context length grows with chunk size (the same row, same sign, on FinanceBench and FreshStack).
 - **H8b:** chunk size changes faithfulness and correctness at a fixed pre-assembly evidence budget of 20,480 tokens. Assembly can remove different amounts of overlap per setup, so H8b does not separate chunk size from context length. The paper says "chunk size changes X at a fixed pre-assembly evidence budget" only when H8b holds for X and a registered sensitivity agrees: the same row, on the questions where all three `-t20k` setups reach at least 95% of 20,480 tokens, has the sign of the row's H8b result on FinanceBench and FreshStack. Every question stays in H8b, and the realised (assembled) evidence token total per setup is reported beside the result.
 
@@ -133,7 +133,7 @@ Detail for each item is in the pre-registration section named.
 - Analysis: no mixed model. One clustered method gives every estimate, interval and p-value: GEE with bias-reduced covariance on question clusters for FreshStack, BioASQ and Legal, and a document-level sign-flip permutation test on FinanceBench (section 9).
 - Holm families are fixed now: 19 contrasts on FinanceBench, 19 on FreshStack, 8 on BioASQ (46 in all; BioASQ rows 9 to 19 are sanity checks); Legal is exploratory. No gate changes a family size (section 8). H1 to H5 hold on at least 2 of 3 core datasets. H6, H7, H8a and H8b hold only on FinanceBench and FreshStack. A two-sided hypothesis holds only when the same row counts with the same sign on every dataset its rule needs (section 7).
 - Missing outcomes: every question stays in its denominator, with a rule per outcome (section 12).
-- Power: a retrieval-only pilot on 40 seeded half-A questions per core dataset fills the minimum detectable effect table before the freeze. It builds at most the four H7 corner indexes per core dataset and does not reuse them. Its cost is projected from the P2 timing and approved before the pod starts; if the user declines, the table is filled from assumed SDs and labelled so. The smallest effect of interest is 0.02 nDCG@10 (O2, decided by the owner on 2026-11-14, with a written justification in pre-registration section 10). No equivalence claim is made (section 10).
+- Precision (owner decision, 2026-11-26): there is no power analysis, no MDE table and no pilot. The smallest effect of interest is 0.02 nDCG@10 (O2, decided by the owner on 2026-11-14, with a written justification in pre-registration section 10). Each row's 95% interval is read against plus and minus 0.02: an interval inside it means no meaningful difference, and a wider interval means the test could not tell. The reading is descriptive and adds no test. No TOST runs (section 10).
 - Every main-run pod uses one RunPod GPU type, chosen by a timing job before the freeze. The Mac scores the results.
 - Budget: estimate $1,122 (an estimate, not measured), ceiling $1,716 (amended 2026-11-25; was about $730 and $975), pods and hosted calls together. The hosted-call key carries a credit limit, so an overrun stops cleanly. At the ceiling a results-blind drop order applies: (1) Legal RAG Bench answer generation, (2) the length-controlled check, (3) the closed-book run with the RAG prompt, then stop. E1 has its own ceiling and is not in this order. A run that finishes every confirmatory item after drops is "complete with registered drops", each drop a numbered deviation. No confirmatory item is dropped by choice (section 17).
 - Pre-registration: the pre-registration is the main file of the OSF deposit at the freeze commit, with this proposal, the protocol history and `plan.json`. The Part 2 protocol has its own later deposit (owner decision, 2026-11-25).
@@ -179,7 +179,7 @@ A **search-cost figure** shows how much of the OMRS score comes from selection o
 
 ### Which questions
 
-Half B only. No selection step in Part 1 or Part 2 reads half B. Every pre-freeze RAGFlow sample (the page-number gate and the repeatability check) comes from half A only, and so does the matched RAGFlow search if it runs. The timing run per dataset indexes the corpus only and sends no question. Each system runs once. The three core datasets are confirmatory; Legal RAG Bench is exploratory. Half B is about half of each dataset, so power is lower than in Part 1. C2 is expected to detect only large correctness differences (pre-registration section 10). The Part 2 protocol states a minimum detectable effect for C1 and C2 per dataset before the freeze, and the report gives it again from the data.
+Half B only. No selection step in Part 1 or Part 2 reads half B. Every RAGFlow sample taken before the Part 2 freeze (the page-number gate and the repeatability check) comes from half A only, and so does the matched RAGFlow search if it runs. The timing run per dataset indexes the corpus only and sends no question. Each system runs once. The three core datasets are confirmatory; Legal RAG Bench is exploratory. Half B is about half of each dataset, so intervals are wider than in Part 1. C2 is expected to have a wide interval (pre-registration section 10). The report gives the interval of each row; there is no MDE table (owner decision, 2026-11-26).
 
 ### Rules that keep the comparison fair
 
@@ -241,7 +241,7 @@ Until these items exist, Part 2 cannot freeze. Each can be short in the protocol
 17. The A3 configuration hash definition and the OSF time-stamp before half B is scored.
 18. The search-cost figure estimator, with the RAGFlow curve if the matched search runs.
 19. Run record and environment record rules, as in Part 1, and the deviation policy.
-20. The minimum detectable effect for C1 and C2 per dataset, from half-A data only.
+20. (Removed, owner decision 2026-11-26: no MDE table.) The intervals of C1 and C2 are read against plus and minus 0.02.
 
 ## Step 4: EnterpriseRAG-Bench context run (E1, descriptive)
 
@@ -313,7 +313,7 @@ The journal's own author guide covers ORCID, CRediT, the funding wording, confli
    - Ship a re-judge kit: a script that rebuilds evidence text from the pinned dataset revisions and the released IDs, so a newer model can judge the answers again without redistributing corpus text.
 4. Archive code and outputs on Zenodo with a DOI. Keep each dataset's derived files in their own archive with their own licence.
 5. Before the repository or a release goes public, remove names and home-folder paths.
-6. Report compute in one table (pre-registration section 21): GPU type, pod hours per stage including every pre-freeze pod (test pod, GPU timing, pilot, smoke runs), hosted tokens and cost per role, an energy estimate (GPU hours times board power), `resent_calls`, error rows per stage and role, and every `out_of_credit` stop (Strubell et al. 2019; Lacoste et al. 2019). Part 2 and E1 add their own rows.
+6. Report compute in one table (pre-registration section 21): GPU type, pod hours per stage including every pre-freeze pod (test pod, GPU timing, smoke runs), hosted tokens and cost per role, an energy estimate (GPU hours times board power), `resent_calls`, error rows per stage and role, and every `out_of_credit` stop (Strubell et al. 2019; Lacoste et al. 2019). Part 2 and E1 add their own rows.
 7. State the conflict of interest (the authors built OMRS) and the AI assistance used to draft the plan.
 
 ## Risks
@@ -325,7 +325,7 @@ The journal's own author guide covers ORCID, CRediT, the funding wording, confli
 | The run costs more than planned | At the $1,716 ceiling (amended 2026-11-25; was $975) the results-blind drop order of pre-registration section 17 applies: Legal RAG Bench answer generation, then the length-controlled check, then the closed-book run with the RAG prompt, then stop. A run with every confirmatory item done is "complete with registered drops". No confirmatory item is dropped by choice. Part 2 and E1 get their own estimate and ceiling before their runs; across the project, E1 is dropped first when the budget is short. |
 | The reranker result changes on llama.cpp | Report it as found. A negative result is still a result. |
 | Choosing the OMRS setup inflates its score | Choose on half A by a pre-registered rule, test on half B only, and publish the search-cost figure. |
-| Half B is too small to detect a difference | Report the minimum detectable effect from the data. Make no equivalence claim. |
+| Half B is too small to detect a difference | Report each row's interval, read against plus and minus 0.02 (a descriptive reading, no test). Make no equivalence claim. |
 | The single hosted answer model changes behind its ID | Pin one upstream host. Record the returned model ID and provider per call. State it as a limitation. |
 | RAGFlow cannot use our models, or hides its retrieved chunks | Record the blocker and report it. Do not substitute another model. |
 | RAGFlow chunks carry no page number | The gate before the Part 2 freeze checks this on a half-A FinanceBench sample. If it fails, the primary unit is the document for every question and both systems. The page-level result is reported as a labelled sensitivity analysis, or as unavailable (with the count) when a system gives no page provenance. No question is dropped. |
@@ -346,7 +346,7 @@ The Experiment 35 limitations are in pre-registration section 22. The paper repe
 - Unjudged units count as not relevant. FreshStack labels came from pools that included BM25 and fusion systems, which can favour hybrid search and keyword-weighted RAGFlow. Neither Part 2 system added to any pool.
 - H8a and H8b faithfulness is checker-measured, and the checker sees longer passages for bigger chunks. The differential-error rule and the length-controlled check address this only in part. H8b holds only at reranker on and hybrid on with the chosen sizes.
 - The answer model may have seen benchmark text in training. The closed-book runs bound this only in part.
-- One index build per cell. H7 and C2 are expected to be underpowered.
+- One index build per cell. H7 and C2 are expected to have wide intervals.
 - L1 is an OMRS author. If the matched RAGFlow search does not run (step 7.2a decision), Part 2 compares selected OMRS with RAGFlow at its defaults, so it does not show that OMRS beats a tuned RAGFlow. If it runs, Part 2 compares selected OMRS with RAGFlow selected on half A over its matched cells only.
 - E1 compares whole configurations with a different answer model (GPT-5.4), so it says nothing about OMRS retrieval alone.
 

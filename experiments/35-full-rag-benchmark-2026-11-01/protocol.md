@@ -331,6 +331,38 @@ Written before the freeze. No measured run has started. A read-only review of th
 
 The other findings change only the OpenSpec readiness change, not the pre-registration: H-09, H-10 (Q5), H-11, H-12, H-16, H-19, H-24, H-25, H-28, H-29, H-31, H-32, H-35 and Q16, the plan texts listed in section 7 of the review, and the type I check at 2,000 simulations. Cost: no change; estimate about $730 plus the pilot, ceiling $975 (pre-registration section 17; superseded 2026-11-25: estimate $1,122, ceiling $1,716).
 
+### 0.15 Pre-freeze amendment A9: Part 2 has its own freeze (2026-11-25)
+
+Written before freeze. No measured run has started. Owner decision, 2026-11-25. `plan.json` amendment A9 records it. It changes no hypothesis, Holm family, gate, seed, number or budget of Experiment 35.
+
+- Part 2 (RAGFlow, `experiments/49-ragflow-part2-controlled-comparison-2026-11-25`) has its own freeze and its own OSF deposit. The Part 2 protocol is not in the Experiment 35 deposit.
+- Experiment 35 freezes alone. It does not depend on Part 2. No Experiment 35 stage, gate or file reads a Part 2 result or waits for it.
+- Part 2 is frozen, with its own OSF deposit, before any Experiment 35 half-B score exists. If this cannot be done in time, Part 2 is dropped or re-planned. Part 2 never uses half-B results.
+- The matched RAGFlow cell list is fixed after the OMRS half-A scores are known. The shared embedder and reranker size come from those scores. The list is fixed before any half-B score exists. It is recorded before the cost measurement at FLOW step 7.2.
+- The cost decision (FLOW step 7.2a) and the estimand are recorded before any half-B score exists.
+- The A3 configuration hash is time-stamped on OSF as before (pre-registration section 14.2). When the matched search runs, the selected RAGFlow configuration hash is time-stamped with it.
+- Where this file says "before freeze" about Part 2 work (RAGFlow pins, samples and protocol items), it means the Part 2 freeze.
+
+### 0.16 Pre-freeze amendment A10: no MDE table and no pilot (2026-11-26)
+
+Written before freeze. No measured run has started. Owner decision, 2026-11-26. `plan.json` amendment A10 records it. It changes no hypothesis, Holm family, gate, seed value, number or budget of Experiment 35. Text about the MDE table, the MDE pilot and the "half the MDE" checker rule in sections 0.4, 0.10 to 0.14 and 1 to 7 is history.
+
+- The MDE table and the MDE pilot are removed from pre-registration section 10. There is no power analysis. No pilot cost is in the budget.
+- The SESOI stays at 0.02 nDCG@10, with its justification (O2).
+- Precision is reported through each row's 95% confidence interval, read against plus and minus 0.02. An interval inside plus and minus 0.02 means no meaningful difference. An interval wider than that means the test could not tell. The reading is descriptive and adds no test and no p-value.
+- H7 (a difference of differences over four cells) and Part 2 C2 are expected to have wide intervals.
+- The checker 2-point tolerance (section 4.4) stays as set. The condition "at most half the MDE" is dropped.
+- Pre-freeze tasks P5, P6 and P7 are removed. Seed 20261118 (the pilot sample) is retired and not used. The seed value stays in `plan.json` `seeds.mde_pilot`.
+- `mde35.py` and `tests/test_experiment35_mde.py` stay in the repository and are unused. Nothing in the run path imports `mde35.py`. `reporttables35.py` reads an MDE table only through its optional `--mde` file. The main run does not pass it, so the report shows "no MDE row".
+
+### 0.17 Pre-freeze amendment A11: L2 labelling plan chosen (2026-11-25)
+
+Written before freeze. No measured run has started. Owner decision, 2026-11-25. `plan.json` amendment A11 records it. It changes no hypothesis, gate, seed value, number or budget.
+
+- The owner chose the staged L2 plan (pre-registration section 11.3, "Staged fallback"). The choice comes from L2's availability alone, not from any result.
+- L2 is not yet named. L2's name, role and relation to the project go in the run record before L2's first label. They go in no public file.
+- If L2 later has time, moving to the full plan before any L2 label is a logged deviation (section 20). It only adds labels.
+
 ## 1. Question
 
 What retrieval and answer quality does the full OMRS pipeline reach on three public benchmarks with pinned local models, and how much do four pipeline choices change it (embedding size, reranker, token-aware chunking, hybrid search)?
@@ -469,7 +501,7 @@ Each folder holds a `SHA256SUMS` file. Local models ran on llama.cpp b11941 on o
 - **Second checker and fallback: Clef-Flash (amended 2026-11-11).** It agrees best with GLM-5.3 on our own claims (kappa 0.56). If GLM-5.3 calls fail, the run stops and resumes with `--resume` when Z.AI is back; the runner never switches checker by itself. A failed GLM-5.3 call stops the judge stage before that answer is saved (`stages35.judge_stage`), so `--resume` retries it. If GLM-5.3 is withdrawn for good, the operator names Clef-Flash main in a dated amendment, and the report states its LLM-AggreFact gap. After all arms and runs have finished, only Clef-Flash rows saved with a call error are judged again (`stages35.judge_stage` saves a failed Clef-Flash or Granite call as a row with an error, and `--resume` skips it). The report gives, per checker, arm and dataset, the count of answers with no verdict because of a call error. H-CC uses only claims that both GLM-5.3 and Granite judged, and is inconclusive when that drops it below 30 questions. Before that, the runner judges the remaining arms and runs, and the arm that stopped, with `--judges clef_flash,granite_guardian`; the report lists each arm and run with no GLM-5.3 verdict, and any comparison with GLM-5.3 uses only claims that both checkers judged. The FreshStack rerun confirmed the Clef-Flash role (kappa 0.62 on 383 claims, ADR-119 amendment A7). The 1,000-row run on the original weights scored the same as our GGUF (70.0 average on both), so the low score is the model on this task, not the conversion. It becomes main by the selection rule only after a question fix (average 74.9 or higher and RAGTruth 83.1 or higher, full split).
 - **Reported as data: Granite Guardian (amended 2026-11-11).** It fails the own-claims guard, so it is never fallback or main in this experiment.
 - **No sampling.** All three checkers judge every claim in every arm and every run (`run_arms.py --judges clef_flash,granite_guardian,chat`). If Granite's speed strains the budget, the freeze adds pod time or a second pod; coverage is never cut. The report gives each checker's faithfulness per arm, its unsupported rate per dataset, and Cohen's kappa of Clef-Flash and of Granite against GLM-5.3 on all claims.
-- **Why 2 points.** The claim checker sets the faithfulness scores. Its shortfall against the reference checker (GLM-5.3) must stay well below the minimum detectable effect between arms (about 4 points), or it could hide or invent a difference between arms. We set the bar at 2 points (half the MDE) on both the average and RAGTruth balanced accuracy, on the full split, where sampling noise is well under 1 point. 1 point was rejected: leaderboard models treated as equivalent already differ by about 1 point (Clef-Flash 76.6, Granite 76.5, gpt-4o 75.9), and our Granite reproduction landed 0.8 below and 1.0 above its published pair. 3 points was rejected: it approaches the MDE and spans a full leaderboard tier (gpt-4o 75.9, gpt-4o-mini 74.0). The report says "on par" only at a gap of about 1 point or less (as MiniCheck, EMNLP 2024); for a gap between 1 and 2 points it says "slightly lower accuracy" with the numbers. It gives every checker's balanced accuracy beside speed and cost: GLM-5.3 76.9 at about 2.8 rows/s, hosted; Granite 75.7 at 2.3 rows/s, local; Clef-Flash 67.8 at 7.5 rows/s, local, about $0.95 of pod time per full split.
+- **Why 2 points.** The claim checker sets the faithfulness scores. Its shortfall against the reference checker (GLM-5.3) must stay well below the minimum detectable effect between arms (about 4 points), or it could hide or invent a difference between arms. We set the bar at 2 points (half the MDE) on both the average and RAGTruth balanced accuracy, on the full split, where sampling noise is well under 1 point. 1 point was rejected: leaderboard models treated as equivalent already differ by about 1 point (Clef-Flash 76.6, Granite 76.5, gpt-4o 75.9), and our Granite reproduction landed 0.8 below and 1.0 above its published pair. 3 points was rejected: it approaches the MDE and spans a full leaderboard tier (gpt-4o 75.9, gpt-4o-mini 74.0). The report says "on par" only at a gap of about 1 point or less (as MiniCheck, EMNLP 2024); for a gap between 1 and 2 points it says "slightly lower accuracy" with the numbers. It gives every checker's balanced accuracy beside speed and cost: GLM-5.3 76.9 at about 2.8 rows/s, hosted; Granite 75.7 at 2.3 rows/s, local; Clef-Flash 67.8 at 7.5 rows/s, local, about $0.95 of pod time per full split. Note, 2026-11-26 (owner): the MDE of about 4 points was an estimate and the MDE table is removed (section 0.16). The 2-point bar stays as set; the comparison with half the MDE is no longer a condition.
 - **Secondary hypothesis H-CC (claim checker transfer, registered 2026-11-11, before the freeze).** The pre-freeze smoke run suggested this hypothesis. The main run tests it on new data.
   - **H-CC:** Granite Guardian's unsupported rate exceeds GLM-5.3's by more than 15 points on FreshStack and on FinanceBench. It does not exceed it by more than 15 points on BioASQ.
   - **H-CC0 (null):** the gap is 15 points or less on FreshStack or on FinanceBench, or it is more than 15 points on BioASQ.
@@ -573,8 +605,8 @@ The smoke subset (task 4.1) runs a small slice of each dataset through every arm
 ## 6. Analysis
 
 - **Stats level**: expert.
-- **Tests** (amended by A2, section 0.10): one linear mixed model per dataset with planned contrasts and Holm across all H1 to H8 contrasts of the dataset; paired permutation test (10,000 shuffles, seed 20261101) and paired bootstrap (10,000 resamples; FinanceBench by document) as robustness checks. Search scores come from one run per setup; answer scores average the 3 runs per question first. McNemar's exact test for hit@page hit or miss. Wilson intervals for rates. Functions come from `experiments/_lib/stats.py`, `stats_d6.py` and the `statsmodels` wrapper `stats_mixed.py`; no new estimator code.
-- **Minimum detectable effect**: computed from data before the freeze (section 0.10). The earlier figures (about 4 and 2 points) are withdrawn.
+- **Tests** (amended by A2, section 0.10; superseded by A4: no mixed model, pre-registration section 9; history only): one linear mixed model per dataset with planned contrasts and Holm across all H1 to H8 contrasts of the dataset; paired permutation test (10,000 shuffles, seed 20261101) and paired bootstrap (10,000 resamples; FinanceBench by document) as robustness checks. Search scores come from one run per setup; answer scores average the 3 runs per question first. McNemar's exact test for hit@page hit or miss. Wilson intervals for rates. Functions come from `experiments/_lib/stats.py`, `stats_d6.py` and the `statsmodels` wrapper `stats_mixed.py`; no new estimator code.
+- **Minimum detectable effect**: none. The MDE table and the pilot were removed on 2026-11-26 (section 0.16). Precision is read through each interval against plus and minus 0.02 (pre-registration section 10). The earlier figures (about 4 and 2 points) are withdrawn.
 - **Sensitivity**: dropped by A2 (2026-11-13). The 0.045 and 0.055 re-test of the cut-off is not run.
 - **Gates**:
 

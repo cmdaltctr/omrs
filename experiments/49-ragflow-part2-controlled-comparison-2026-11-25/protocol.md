@@ -28,7 +28,7 @@ The answer decides which comparison claim the paper may make about OMRS and RAGF
 - **Tests** (pre-registration section 9): FreshStack and BioASQ use a GEE on question clusters with bias-reduced covariance (Mancl and DeRouen 2001) and a t reference distribution. FinanceBench uses the document-level sign-flip permutation test (100,000 draws, seed 20261101, interval by inverting the same test). No McNemar test. Any binary secondary measure is reported descriptively or with a test that allows for clustering.
 - **C2 gate**: C2 needs its own Part 2 correctness gate (pre-registration section 11.2): Cohen's kappa point estimate at least 0.60 and lower 95% bound at least 0.40, per core dataset, on labels from both systems' answers, plus the AUC check on the continuous score. A failed gate leaves C2 in its family as "not testable" on that dataset. Every gate interval is a percentile bootstrap (10,000 resamples of questions) with its own seed (section 11).
 - **No equivalence claim.** A non-significant result means no difference was detected at this sample size. The paper claims superiority only where the tests support it.
-- **Minimum detectable effect (MDE)** for C1 and C2 per dataset, from half-A data only: `TODO(P20, Exp 35 task 4D.5 pilot)`. The pilot (40 seeded half-A questions per core dataset) needs the owner's approval and pod time. Registered fallback if the owner declines the pilot: assumed standard deviations, labelled assumed (pre-registration section 10). Half B holds about half of each dataset, so power is lower than in Part 1. C2 is expected to detect only large correctness differences.
+- **Precision (owner decision, 2026-11-26).** There is no MDE table and no pilot. Each interval of C1 and C2 is read against plus and minus 0.02 (pre-registration section 10). The reading is descriptive and adds no test. Half B holds about half of each dataset, so intervals are wider than in Part 1. C2 is expected to have a wide interval.
 
 ## 3. Estimand and the matched-search decision
 
@@ -230,7 +230,7 @@ The release table follows pre-registration section 19. `TODO(owner)`: confirm th
 
 | Section | TODO | Closed by |
 | --- | --- | --- |
-| 2 | MDE for C1 and C2 per dataset | Exp 35 task 4D.5 (pilot, owner approval, pod time) |
+| 2 | MDE for C1 and C2 per dataset | Removed (owner decision, 2026-11-26): no MDE table |
 | 3 | Matched-search decision, projected pod cost, date, estimand in force | FLOW 7.2a (needs 7.2 timing) |
 | 4 | RAGFlow release tag, container digests, DeepDoc versions, API version | FLOW 7.2 |
 | 5 | "Default kept" column; embedder after selection | FLOW 7.2; FLOW 7.4 |

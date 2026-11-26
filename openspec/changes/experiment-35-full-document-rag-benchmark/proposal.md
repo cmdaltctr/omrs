@@ -28,7 +28,7 @@ A publication-grade methods review gave 30 findings, F1 to F30. The operator app
 - No mixed model. Per-question contrasts with GEE, and a document-level sign-flip test on FinanceBench. Holm families fixed at 19, 19 and 8 (second round C3; BioASQ rows 9 to 19 are sanity checks).
 - Faithfulness and correctness gates on the kappa point estimate and its lower bound. L1 labels 750 items. L2 labels the same 750 (full plan, default), or 365 first in a staged fallback (every correctness answer, a seeded 30% of the other two sets, then the rest of a set when kappa on its subset is below 0.70 overall or, for faithfulness, within any chunk-size level, or is undefined; O4).
 - `evidence_recall_20k` gives any-page credit (amendment A5: a stored chunk has one page, so every metric uses "a chunk covers its page" and the page-rule sensitivity analyses are removed). A second closed-book run uses the RAG prompt. FinanceBench is split by document.
-- The `openai/gpt-6.1-terra` cross-check is removed. Budget about $730 plus the pilot, ceiling $975 (superseded 2026-11-25: estimate $1,122, ceiling $1,716), with a results-blind drop order that no longer holds E1 (E1 has its own ceiling).
+- The `openai/gpt-6.1-terra` cross-check is removed. Budget about $730 (the pilot was removed on 2026-11-26), ceiling $975 (superseded 2026-11-25: estimate $1,122, ceiling $1,716), with a results-blind drop order that no longer holds E1 (E1 has its own ceiling).
 
 ## Why
 
