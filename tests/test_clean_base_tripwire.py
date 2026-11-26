@@ -501,7 +501,13 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # test_experiment35_plan_pins (1), test_experiment35_run_arms (1, the
 # INGESTION__FILE_TYPE_ROUTING override case) and test_experiment35_scoring (1).
 # 0 removed or renamed. No extra.
-_BASE_EXECUTED = 14031
+# +41 (2026-11-26, Exp 35 readiness-review fixes, by test-ID diff against HEAD 3abb78bb):
+# 48 added: new files test_experiment35_analyse (6), _kindgate (12), _osf (4) and
+# _report_extra (6); test_experiment35_rebuild (7), _determinism (6), _join_scores (2),
+# _report_tables (2), _factorial (1), _labels (1) and _wiring (1). 7 removed or renamed:
+# 5 in _determinism (G1 per run, no join), test_sesoi_and_mde_lines_per_row and the
+# determinism-without-a-join case of _wiring. No extra.
+_BASE_EXECUTED = 14072
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
