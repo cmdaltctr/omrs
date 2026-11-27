@@ -45,7 +45,7 @@ exit "${{STUB_CURL_RC:-0}}"
 """
 _SLEEP = """#!/usr/bin/env bash
 n=$(( $(cat "{t}/sleeps" 2>/dev/null || echo 0) + 1 )); echo "$n" > "{t}/sleeps"
-[ "$n" -ge "${{STUB_PULLED_AFTER:-999}}" ] && touch "{t}/work/PULLED"
+[ "$n" -ge "${{STUB_PULLED_AFTER:-999}}" ] && echo "${{STUB_VERDICT-ok}}" > "{t}/work/PULLED"
 exit 0
 """
 _RUNNER = """#!/usr/bin/env bash

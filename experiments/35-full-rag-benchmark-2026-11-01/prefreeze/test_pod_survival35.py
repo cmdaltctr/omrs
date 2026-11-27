@@ -14,6 +14,8 @@ import os
 import shutil
 from pathlib import Path
 
+import mac_watch35
+import pytest
 from test_pod_stage_tarballs import _stage_out
 from test_pod_test_session_script import _lines, _run
 from test_resume_commit35 import Repo, repo  # noqa: F401 - a fixture: an isolated EXP35
@@ -178,3 +180,57 @@ def test_a_spare_restore_sets_the_unpacked_marker(tmp_path: Path) -> None:
     assert (_stage_out(tmp_path) / "01-a.tgz.unpacked").is_file()
     second, _ = _run(tmp_path, RUN, RESUME="1", SPARE_DIR=str(spare))
     assert "unpacked" not in second.stdout and "RESTORED" not in second.stdout
+
+
+# The pod stops itself only when the Mac wrote the verdict "ok" into PULLED.
+def _verdict_run(tmp_path: Path, verdict: str):  # noqa: ANN202
+    return _run(
+        tmp_path,
+        RUN,
+        stub_sleep=True,
+        STOP_GRACE_MIN="1",
+        PULL_POLL_S="10",
+        STUB_PULLED_AFTER="1",
+        STUB_VERDICT=verdict,
+    )
+
+
+def test_a_verified_pull_stops_the_pod(tmp_path: Path) -> None:
+    result, log = _verdict_run(tmp_path, "ok")
+    assert result.returncode == 0, result.stdout
+    assert "POD_KEPT" not in result.stdout
+    assert [x.split(" tarball=")[0] for x in _lines(log)] == ["pod stop pod123"]
+
+
+@pytest.mark.parametrize("verdict", ["hash-mismatch", "pull-failed", "none"])
+def test_an_unverified_pull_keeps_the_pod_and_sends_no_stop_command(
+    tmp_path: Path, verdict: str
+) -> None:
+    result, log = _verdict_run(tmp_path, verdict)
+    assert result.returncode == 0, result.stdout  # the kept path, not exit 3
+    line = f"POD_KEPT: the Mac's copy is not verified ({verdict}); fix, then delete the pod"
+    line += " from the Mac"
+    assert line in result.stdout
+    assert not log.exists() and not (tmp_path / "curl.log").exists()  # no stop command at all
+
+
+def test_an_empty_verdict_keeps_the_pod(tmp_path: Path) -> None:
+    result, log = _verdict_run(tmp_path, "")
+    assert "POD_KEPT: the Mac's copy is not verified ();" in result.stdout
+    assert not log.exists()
+
+
+def test_no_pulled_marker_after_the_grace_still_stops_the_pod(tmp_path: Path) -> None:
+    result, log = _run(
+        tmp_path, RUN, stub_sleep=True, STOP_GRACE_MIN="1", PULL_POLL_S="10"
+    )  # STUB_PULLED_AFTER is unset: the Mac never writes PULLED
+    assert result.returncode == 0, result.stdout
+    assert "no " in result.stdout and "going on" in result.stdout
+    assert "POD_KEPT" not in result.stdout
+    assert [x.split(" tarball=")[0] for x in _lines(log)] == ["pod stop pod123"]
+
+
+def test_the_watcher_reads_the_unverified_line_as_the_kept_verdict() -> None:
+    w = mac_watch35.Watch()
+    w.scan("[00:10:00] POD_KEPT: the Mac's copy is not verified (hash-mismatch); fix, then delete")
+    assert w.kept

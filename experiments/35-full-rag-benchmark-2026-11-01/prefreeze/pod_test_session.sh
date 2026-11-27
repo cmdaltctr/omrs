@@ -24,6 +24,9 @@
 # stage tarballs, so the copy to the Mac is small; P2, 2026-11-24), waits up
 # to STOP_GRACE_MIN minutes for
 # the Mac's $WORK/PULLED marker, then stops this pod, so billing for the GPU ends.
+# The Mac writes a verdict into $PULLED: only "ok" lets the pod stop; any other verdict
+# keeps the pod and logs POD_KEPT. No PULLED after the grace time: the pod stops (the spare
+# and the off-site copy hold the outputs).
 # KEEP_POD_ON_FAIL=1 keeps the pod instead after a failed stage or a signal, and logs
 # POD_KEPT. RESUME=1 (a relaunch on the same pod) skips each stage whose tarball matches
 # its hash, restoring it from SPARE_DIR when only the spare has it. A fresh launch
@@ -389,7 +392,7 @@ spare_final() {
 }
 
 finish() {
-  local why
+  local why verdict
   [ "$FINISHED" = 1 ] && return 0
   FINISHED=1
   log "== finish: failed stages: ${FAILED[*]:-none}; skipped: ${SKIPPED[*]:-none}; resumed: ${RESUMED[*]:-none}"
@@ -416,6 +419,17 @@ finish() {
     [ "${#FAILED[@]}" -eq 0 ] || why="failed stages: ${FAILED[*]}"
     log "POD_KEPT: $why; fix, then relaunch with RESUME=1, or delete the pod from the Mac"
     return 0
+  fi
+  # The Mac writes its verdict (ok, hash-mismatch, pull-failed or none) into PULLED. Only
+  # "ok" lets the pod stop: otherwise the Mac prints KEEP_POD and the pod must stay.
+  if [ "$DRY_RUN" != 1 ] && [ -e "$PULLED" ]; then
+    verdict=""
+    read -r verdict _ <"$PULLED" || true
+    if [ "$verdict" != ok ]; then
+      KEPT=1
+      log "POD_KEPT: the Mac's copy is not verified ($verdict); fix, then delete the pod from the Mac"
+      return 0
+    fi
   fi
   stop_pod
 }
