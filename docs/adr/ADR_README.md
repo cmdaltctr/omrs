@@ -129,6 +129,7 @@ development of OMRG — Opinionated Modular RAG.
 | [118](./118-cap-magika-onnx-threads.md) | Cap Magika ONNX Threads | 2026-11-09 | Proposed (pod gate passed 2026-11-09) |
 | [119](./119-experiment-35-model-matrix-and-claim-checker.md) | Experiment 35 Model Matrix and Claim Checker | 2026-11-10 | Proposed (accepted at the Exp 35 freeze, G7) |
 | [120](./120-adopting-the-experiment-35-winning-setup-as-the-app-default.md) | Adopting the Experiment 35 Winning Setup as the App Default | 2026-11-25 | Proposed (rules accepted at the Exp 35 freeze; adopted values in a later ADR) |
+| [121](./121-cloud-gpu-runs-result-safety-and-pod-lifecycle.md) | Cloud GPU Runs: Result Safety and Pod Lifecycle | 2026-11-27 | Accepted |
 
 ## Convention
 
