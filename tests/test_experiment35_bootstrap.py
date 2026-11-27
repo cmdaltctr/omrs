@@ -164,3 +164,43 @@ def test_input_order_does_not_change_the_result() -> None:
     a = bootstrap35.bootstrap_by_question(items, _kappa, n=500, seed=9, fill=0.0)
     b = bootstrap35.bootstrap_by_question(shuffled, _kappa, n=500, seed=9, fill=0.0)
     assert (a.lower, a.upper) == (b.lower, b.upper)
+
+
+# --- several statistics on one set of resamples (bootstrap_many) -------------------------------
+
+
+def _mean(rows: list[float]) -> float:
+    return sum(rows) / len(rows)
+
+
+def test_many_statistics_see_the_same_resamples() -> None:
+    items = [(f"q{i}", float(i)) for i in range(12)]
+    out = bootstrap35.bootstrap_many(
+        items, {"a": _mean, "b": lambda r: _mean(r) + 100.0}, n=500, seed=20261126, fill=None
+    )
+    # A constant shift keeps the bounds 100 apart only on the very same resamples.
+    assert out["b"].lower - out["a"].lower == pytest.approx(100.0)
+    assert out["b"].upper - out["a"].upper == pytest.approx(100.0)
+
+
+def test_many_statistics_keep_their_own_undefined_count_and_fill() -> None:
+    items = [(f"q{i}", i) for i in range(10)]
+
+    def odd(rows: list[int]) -> float:  # undefined when the draw holds no odd value
+        kept = [r for r in rows if r % 2]
+        return math.nan if len(kept) < 6 else float(len(kept))
+
+    left_out = bootstrap35.bootstrap_many(
+        items, {"len": lambda r: float(len(r)), "odd": odd}, n=400, seed=5, fill=None
+    )
+    filled = bootstrap35.bootstrap_many(items, {"odd": odd}, n=400, seed=5, fill=0.0)
+    assert left_out["len"].undefined == 0 and left_out["len"].kept == 400
+    assert left_out["odd"].undefined == filled["odd"].undefined > 0
+    assert left_out["odd"].kept == 400 - left_out["odd"].undefined
+    assert filled["odd"].kept == 400
+
+
+def test_one_statistic_gives_the_same_result_as_bootstrap_by_question() -> None:
+    items = _kappa_items()
+    many = bootstrap35.bootstrap_many(items, {"k": _kappa}, n=500, seed=9, fill=0.0)["k"]
+    assert many == bootstrap35.bootstrap_by_question(items, _kappa, n=500, seed=9, fill=0.0)

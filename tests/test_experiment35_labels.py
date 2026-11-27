@@ -134,6 +134,8 @@ def test_label_counts_per_plan() -> None:
     assert labels35.label_counts(dropped, "full") == {"L1": 700, "L2": 700}
     assert labels35.label_counts(full, "staged") == {"L1": 750, "L2": 365}
     assert labels35.label_counts(dropped, "staged") == {"L1": 700, "L2": 315}
+    assert labels35.label_counts(full, "faith-full") == {"L1": 750, "L2": 680}
+    assert labels35.label_counts(dropped, "faith-full") == {"L1": 700, "L2": 630}
 
 
 def _kind_items() -> list[dict[str, Any]]:
@@ -162,6 +164,10 @@ def test_l2_items_full_and_staged(tmp_path: Path) -> None:
     chosen = [i for i in faith if i["item_id"] in set(staged["faithfulness"])]
     assert set(Counter((i["chunk_size"], i["dataset"]) for i in chosen).values()) == {15}
     assert staged == labels35.l2_items("staged", samples)  # seeded, same twice
+    mixed = labels35.l2_items("faith-full", samples)  # A18: faithfulness full, kinds staged
+    assert mixed["faithfulness"] == full["faithfulness"]
+    assert mixed["claim_kinds"] == staged["claim_kinds"]
+    assert mixed["correctness"] == full["correctness"]
 
 
 def test_escalation_rule() -> None:
@@ -235,6 +241,21 @@ def test_staged_l2_page_holds_only_the_subset(tmp_path: Path) -> None:
     assert [i["item_id"] for i in data["items"]] == [
         i["item_id"] for i in items if i["item_id"] in set(subset)
     ]
+
+
+def test_model_labeller_page_is_a_separate_copy(tmp_path: Path) -> None:
+    items = _faith(tmp_path)
+    label_dir = tmp_path / "labels"
+    labels35.write_sample(label_dir, items)
+    human = labels35.write_page(label_dir, "faithfulness")
+    model = labels35.write_page(label_dir, "faithfulness", model_labeller=True)
+    assert model != human
+    assert "Model labeller copy" in model.read_text()
+    assert "Model labeller copy" not in human.read_text()
+    labels35.main(
+        ["page", "--label-dir", str(label_dir), "--set", "faithfulness", "--model-labeller"]
+    )
+    assert model.exists()
 
 
 def test_kappa_l1_against_l2_per_set_and_level() -> None:

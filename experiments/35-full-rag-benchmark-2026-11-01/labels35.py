@@ -3,7 +3,7 @@
 Usage (reads saved files only, runs on the Mac; one restricted label folder)::
 
     labels35.py sample --out-dir OUT --label-dir LABELS
-    labels35.py l2 --label-dir LABELS --plan full|staged
+    labels35.py l2 --label-dir LABELS --plan full|staged|faith-full
     labels35.py page --label-dir LABELS --set faithfulness [--l2-subset]
     labels35.py agreement --label-dir LABELS
     labels35.py faithgate --out-dir OUT --label-dir LABELS
@@ -32,6 +32,7 @@ from typing import Any
 
 import claimkinds35
 import correct35
+import differential35
 import kindgate35
 import labelpage35
 from bootstrap35 import BootResult, bootstrap_by_question
@@ -56,6 +57,8 @@ SEED_L1_L2 = 20261129
 #: Staged plan: L2's first-stage size per set (pre-registration section 11.3).
 L2_FIRST = {"claim_kinds": 30, "faithfulness": 135}
 L2_PER_CELL = 15
+# A18 (2026-11-27): L2 labels every faithfulness claim; claim kinds stay staged.
+FULL_SETS = {"full": set(L2_FIRST), "staged": set(), "faith-full": {"faithfulness"}}
 ESCALATE_BELOW = 0.70
 #: Rows a failed GLM-5.3 gate or the differential-error rule makes not testable.
 FAITH_ROWS = [12, 13, 16, 17]
@@ -73,7 +76,8 @@ class GateMissing(RuntimeError):
 def label_counts(sizes: Mapping[str, int], plan: str) -> dict[str, int]:
     """Return the labels L1 and L2 give (L2 in the staged plan: first stage only)."""
     l1 = sum(sizes.values())
-    l2 = l1 if plan == "full" else sum(L2_FIRST.get(s, n) for s, n in sizes.items())
+    full = FULL_SETS[plan]
+    l2 = sum(n if s in full else L2_FIRST.get(s, n) for s, n in sizes.items())
     return {"L1": l1, "L2": l2}
 
 
@@ -87,7 +91,7 @@ def l2_items(plan: str, samples: Mapping[str, Sequence[Mapping[str, Any]]]) -> d
     out: dict[str, list[str]] = {}
     for set_name, items in samples.items():
         ids = [i["item_id"] for i in items]
-        if plan == "full" or set_name not in L2_FIRST:
+        if set_name in FULL_SETS[plan] or set_name not in L2_FIRST:
             out[set_name] = ids
             continue
         rng = random.Random(SEED_L2[set_name])  # noqa: S311
@@ -177,14 +181,16 @@ def _binary(label: str) -> str:
     return "supported" if label == "supported" else "unsupported"
 
 
-def _specificity(rows: list[tuple[int, bool, bool]], level: int) -> float:
-    """Share of human-supported claims at *level* the checker calls supported (NaN when none)."""
-    calls = [checker for c, human, checker in rows if c == level and human]
-    return sum(calls) / len(calls) if calls else math.nan
-
-
-def _difference(rows: list[tuple[int, bool, bool]]) -> float:
-    return _specificity(rows, 2048) - _specificity(rows, 512)
+def _agreement_stats(pairs: Sequence[tuple[str, str]]) -> dict[str, float | None]:
+    """Prevalence of "supported" in the human labels, raw agreement and PABAK (R10)."""
+    if not pairs:
+        return {"prevalence": None, "raw_agreement": None, "pabak": None}
+    agreement = sum(a == b for a, b in pairs) / len(pairs)
+    return {
+        "prevalence": sum(a == "supported" for a, _ in pairs) / len(pairs),
+        "raw_agreement": agreement,
+        "pabak": 2 * agreement - 1,
+    }
 
 
 def checker_passes(kappa: BootResult) -> bool:
@@ -200,19 +206,21 @@ def _checker_gate(
 ) -> dict[str, Any]:
     judged = [i for i in items if verdicts.get(i["item_id"]) in ("supported", "unsupported")]
 
+    def pairs(group: Sequence[Mapping[str, Any]]) -> list[tuple[str, str]]:
+        return [(_binary(reference[i["item_id"]]), verdicts[i["item_id"]]) for i in group]
+
     def boot(group: Sequence[Mapping[str, Any]]):
-        rows = [
-            (_unit(i), (_binary(reference[i["item_id"]]), verdicts[i["item_id"]])) for i in group
-        ]
+        rows = list(zip(map(_unit, group), pairs(group), strict=True))
         return bootstrap_by_question(rows, _kappa, n=n, seed=SEED_GATE_KAPPA, fill=0.0)
 
     kappa = boot(judged)
+    known = [i for i in judged if reference[i["item_id"]] != labelpage35.CANT_TELL]
     return {
         "pass": checker_passes(kappa),
         "kappa": kappa.as_dict(),
-        "kappa_cant_tell_left_out": boot(
-            [i for i in judged if reference[i["item_id"]] != labelpage35.CANT_TELL]
-        ).as_dict(),
+        **_agreement_stats(pairs(judged)),
+        "kappa_cant_tell_left_out": boot(known).as_dict(),
+        "cant_tell_left_out_stats": _agreement_stats(pairs(known)),
         "by_dataset": {
             d: boot([i for i in judged if i["dataset"] == d]).as_dict()
             for d in CORE
@@ -262,9 +270,8 @@ def faithfulness_gate(
             for i in items
             if verdicts[c].get(i["item_id"]) in ("supported", "unsupported")
         ]
-        specificity[c] = {str(lv): _none(_specificity(rows, lv)) for lv in levels}
-        flipped = [(lv, not human, not called) for lv, human, called in rows]
-        sensitivity[c] = {str(lv): _none(_specificity(flipped, lv)) for lv in levels}
+        specificity[c] = {str(lv): _none(differential35.specificity(rows, lv)) for lv in levels}
+        sensitivity[c] = {str(lv): _none(differential35.sensitivity(rows, lv)) for lv in levels}
     glm = [
         (
             _unit(i),
@@ -277,12 +284,21 @@ def faithfulness_gate(
         for i in items
         if verdicts["chat"].get(i["item_id"]) in ("supported", "unsupported")
     ]
-    diff = bootstrap_by_question(
-        glm, lambda r: _difference(list(r)), n=n, seed=SEED_DIFFERENCE, fill=None
+    boot = differential35.paired_bootstrap(
+        glm,
+        {
+            "specificity": differential35.specificity_difference,
+            "sensitivity": differential35.sensitivity_difference,
+        },
+        n=n,
+        seed=SEED_DIFFERENCE,
     )
-    excludes_zero = diff.testable and (diff.lower > 0 or diff.upper < 0)
+    diff, sens_diff = boot["specificity"], boot["sensitivity"]
+    spec_zero = differential35.excludes_zero(diff)
+    sens_zero = differential35.excludes_zero(sens_diff)
+    untestable = not diff.testable or not sens_diff.testable
     rows_out = (
-        FAITH_ROWS if (not checkers["chat"]["pass"] or not diff.testable or excludes_zero) else []
+        FAITH_ROWS if (not checkers["chat"]["pass"] or untestable or spec_zero or sens_zero) else []
     )
     return {
         "decided_at": decided_at,
@@ -293,7 +309,10 @@ def faithfulness_gate(
             "specificity": specificity,
             "sensitivity": sensitivity,
             "difference": diff.as_dict(),
-            "excludes_zero": excludes_zero,
+            "sensitivity_difference": sens_diff.as_dict(),
+            "specificity_excludes_zero": spec_zero,
+            "sensitivity_excludes_zero": sens_zero,
+            "excludes_zero": spec_zero or sens_zero,
         },
         "not_testable_rows": rows_out,
     }
@@ -333,14 +352,24 @@ def read_sample(label_dir: Path, set_name: str) -> list[dict[str, Any]]:
     return found["items"] if isinstance(found, dict) else found
 
 
-def write_page(label_dir: Path, set_name: str, *, only: Sequence[str] | None = None) -> Path:
-    """Write one set's blind page; with *only*, the page holds just those items (L2 subset)."""
+def write_page(
+    label_dir: Path,
+    set_name: str,
+    *,
+    only: Sequence[str] | None = None,
+    model_labeller: bool = False,
+) -> Path:
+    """Write one set's blind page; with *only*, the page holds just those items (L2 subset).
+
+    With *model_labeller*, write the model-labeller copy (own draft storage, A18 item 32).
+    """
     items = read_sample(label_dir, set_name)
     if only is not None:
         keep = set(only)
         items = [i for i in items if i["item_id"] in keep]
-    path = label_dir / f"label-{set_name}{'-L2-subset' if only is not None else ''}.html"
-    labelpage35.write_page(path, set_name, items)
+    suffix = ("-L2-subset" if only is not None else "") + ("-model" if model_labeller else "")
+    path = label_dir / f"label-{set_name}{suffix}.html"
+    labelpage35.write_page(path, set_name, items, model_labeller=model_labeller)
     return path
 
 
@@ -379,10 +408,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         if name == "sample":
             p.add_argument("--gate", type=Path, help="classifier gate 3 gate.json")
         if name == "l2":
-            p.add_argument("--plan", choices=("full", "staged"), required=True)
+            p.add_argument("--plan", choices=tuple(FULL_SETS), required=True)
         if name == "page":
             p.add_argument("--set", choices=tuple(SAMPLE_FILES), required=True)
             p.add_argument("--l2-subset", action="store_true")
+            p.add_argument("--model-labeller", action="store_true")
         if name == "faithgate":
             p.add_argument("--n", type=int, default=10_000)
     args = parser.parse_args(argv)
@@ -402,7 +432,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.l2_subset
             else None
         )
-        print(write_page(d, args.set, only=only), flush=True)
+        print(write_page(d, args.set, only=only, model_labeller=args.model_labeller), flush=True)
     elif args.command == "agreement":
         out: dict[str, Any] = {}
         for s in SAMPLE_FILES:

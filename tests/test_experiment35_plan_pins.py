@@ -27,11 +27,9 @@ prepare35 = load("prepare35")
 
 #: Seeds confirmed by the owner on 2026-11-23 (P9), by ``plan.json`` ``seeds`` key.
 CONFIRMED = {
-    "mde_pilot": 20261118,
     "length_check": 20261119,
     "smoke_setups": 20261121,
     "l2_claim_kinds": 20261122,
-    "l2_faithfulness": 20261123,
     "faithfulness_gate_kappa": 20261125,
     "differential_error": 20261126,
     "correctness_gate_kappa": 20261127,
@@ -181,7 +179,7 @@ def test_the_harness_seed_constants_equal_the_confirmed_plan_seeds() -> None:
     assert (lengthcheck35.SEED, lengthcheck35.CLAIMS) == (seeds["length_check"], 300)
     assert labels35.SEED_L2 == {
         "claim_kinds": seeds["l2_claim_kinds"],
-        "faithfulness": seeds["l2_faithfulness"],
+        "faithfulness": _plan()["retired_seeds"]["l2_faithfulness"],
     }
     assert labels35.SEED_GATE_KAPPA == seeds["faithfulness_gate_kappa"]
     assert labels35.SEED_DIFFERENCE == seeds["differential_error"]

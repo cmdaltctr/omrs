@@ -1,4 +1,4 @@
-"""Unjudged-share audit trigger of Experiment 35 (readiness task 16.25; PR 11.3, 21).
+"""Unjudged-share descriptive gap of Experiment 35 (readiness task 16.25; PR 11.3, 21).
 
 The blind relevance audit runs only if the mean unjudged share in the top 10
 units differs by more than 5 points: (a) hybrid on against off on FreshStack,

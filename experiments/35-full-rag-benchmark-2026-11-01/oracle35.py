@@ -41,6 +41,45 @@ def _read(path: Path, unit: str, dataset: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def unit_text(
+    dataset: str,
+    unit: str,
+    *,
+    passages: Path | None,
+    pages: PageReader | None,
+    stems: Mapping[str, str] | None = None,
+) -> str:
+    """Return the text of one unit from the prepared files (FinanceBench: the page reader).
+
+    Args:
+        dataset: ``financebench``, ``freshstack``, ``bioasq`` or ``legal``.
+        unit: The unit ID.
+        passages: The prepared passages folder (not FinanceBench).
+        pages: The FinanceBench page reader.
+        stems: FreshStack unit ID to file stem (``datasets35.freshstack_unit_map`` inverted).
+
+    Raises:
+        datasets35.DatasetError: The unit has no text; the message names it.
+    """
+    if dataset == "financebench":
+        doc, _, label = unit.rpartition("#p")
+        text = pages(doc, label) if pages is not None else None
+        if not text:
+            raise datasets35.DatasetError(f"financebench: gold page {unit} has no text")
+        return text
+    if dataset == "freshstack":
+        if unit not in (stems or {}):
+            raise datasets35.DatasetError(f"freshstack: gold document {unit} is not prepared")
+        return _read(Path(str(passages)) / dataset / f"{(stems or {})[unit]}.md", unit, dataset)
+    return _read(Path(str(passages)) / dataset / f"{unit}.md", unit, dataset)
+
+
+def freshstack_stems(passages: Path | None) -> dict[str, str]:
+    """Return FreshStack unit ID to prepared file stem."""
+    folder = Path(str(passages)) / "freshstack"
+    return {v: k for k, v in datasets35.freshstack_unit_map(folder).items()}
+
+
 def gold_rows(
     dataset: str, question: Any, *, passages: Path | None, pages: PageReader | None
 ) -> list[dict[str, Any]]:
@@ -49,25 +88,15 @@ def gold_rows(
     Raises:
         datasets35.DatasetError: A gold unit has no text; the message names it.
     """
-    rows = []
-    stems: dict[str, str] = {}
-    if dataset == "freshstack":
-        folder = Path(str(passages)) / dataset
-        stems = {v: k for k, v in datasets35.freshstack_unit_map(folder).items()}
-    for unit in question.relevant:
-        if dataset == "financebench":
-            doc, _, label = unit.rpartition("#p")
-            text = pages(doc, label) if pages is not None else None
-            if not text:
-                raise datasets35.DatasetError(f"financebench: gold page {unit} has no text")
-        elif dataset == "freshstack":
-            if unit not in stems:
-                raise datasets35.DatasetError(f"freshstack: gold document {unit} is not prepared")
-            text = _read(Path(str(passages)) / dataset / f"{stems[unit]}.md", unit, dataset)
-        else:
-            text = _read(Path(str(passages)) / dataset / f"{unit}.md", unit, dataset)
-        rows.append({"chunk_id": unit, "text": text, "source": unit})
-    return rows
+    stems = freshstack_stems(passages) if dataset == "freshstack" else {}
+    return [
+        {
+            "chunk_id": unit,
+            "text": unit_text(dataset, unit, passages=passages, pages=pages, stems=stems),
+            "source": unit,
+        }
+        for unit in question.relevant
+    ]
 
 
 def oracle_context(rows: Sequence[Mapping[str, Any]], tokens: Any) -> tuple[list[dict], dict]:

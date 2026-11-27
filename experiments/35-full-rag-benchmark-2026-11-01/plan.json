@@ -59,7 +59,7 @@
       "null": "each contrast is zero"
     }
   ],
-  "decision_rule": "preregistration.md sections 7 to 9 govern. No mixed model. For row k and question q, the contrast score d_qk is the mean of q's scores over the cells at the first level minus the mean over the cells at the second level (equal cell weights; answer scores averaged over 3 runs first); this recipe does not apply to row 11 (H7): each of its four corner cells is first averaged over reranker and hybrid, then d_q11 = (+1) e8b-c2048 (-1) e8b-c512 (-1) e0.6b-c2048 (+1) e0.6b-c512, so scores 0.8, 0.2, 0.3, 0.7 give 1.0, and its estimate and interval use that scale (known-answer fixture case); the estimate is the plain mean of d_qk over questions. FreshStack, BioASQ and Legal: the decision test is defined by its closed form (preregistration.md section 9 point 3): estimate = mean of d_qk; variance = sum of squared residuals x (n / (n minus 1)) squared / n squared (Mancl and DeRouen bias-reduced sandwich, intercept only, one row per cluster); t reference on n minus 1 degrees of freedom for the p-value and interval. Implementation: statsmodels GEE (version 0.15.0, `stats` dependency group, recorded in uv.lock) of d_qk on an intercept (Gaussian, identity link, independence working correlation, clusters = questions, cov_type bias_reduced); a known-answer test checks it against the closed form, and the closed form is used if they differ. The closed form was checked against statsmodels 0.15.0 on 2026-11-14 and matched to 1e-10. FinanceBench: the decision p-value and 95% interval come from a document-level sign-flip permutation test (100,000 draws, seed 20261101). Holm (alpha 0.05) within families fixed now: FinanceBench 19 rows, FreshStack 19 rows, BioASQ 8 rows (rows 1 to 8; rows 9 to 19 are sanity checks); Legal RAG Bench has no family and is exploratory. A row whose measure fails its gate, or that the differential-error rule makes exploratory, stays in its family with p = 1 and is reported as not testable. A directional row counts when the Holm-adjusted p is below 0.05 and the estimate has the predicted sign; a two-sided row counts when the Holm-adjusted p is below 0.05. Hypotheses hold by the rule in each statement (H1 to H5: 2 of 3 core datasets; H6, H7, H8a and H8b: FinanceBench and FreshStack). A two-sided hypothesis needs the same sign: under the both-datasets rule (H6, H8a, H8b) the row counts with the same sign on FinanceBench and FreshStack, and opposite signs are reported as a dataset-dependent effect and the hypothesis does not hold; under a 2-of-3 rule (Part 2 C1 and C2) the row counts with the same sign on at least 2 of the 3 core datasets, and an opposite-sign count on the third is reported as a dataset-dependent effect and does not stop the hypothesis holding. Fixed search settings: similarity_threshold 0.0, metadata extraction disabled, exact dense search with no approximate vector index, chunk overlap 15% (77, 154 and 307 tokens). Search scoring: top 100 stored chunks, taken before OMRS context assembly (rerank pool 100, fetch_k 100), collapsed to distinct units and cut at 10; on FinanceBench each stored chunk has one page label and covers that page, for nDCG@10 and evidence_recall_20k alike; a chunk with no page label or no corpus unit maps to a placeholder unit that keeps its rank and is not relevant. Registered sensitivity checks, never decisive: paired permutation by question (10,000 shuffles, seed 20261101) on FreshStack and BioASQ; GEE with document clusters on FinanceBench (t on documents minus 1). A non-significant result means no difference was detected; there is no equivalence claim and no TOST. Each interval is also read against plus and minus 0.02 (preregistration.md section 10): a descriptive reading that adds no test.",
+  "decision_rule": "preregistration.md sections 7 to 9 govern. No mixed model. For row k and question q, the contrast score d_qk is the mean of q's scores over the cells at the first level minus the mean over the cells at the second level (equal cell weights; answer scores averaged over 3 runs first); this recipe does not apply to row 11 (H7): each of its four corner cells is first averaged over reranker and hybrid, then d_q11 = (+1) e8b-c2048 (-1) e8b-c512 (-1) e0.6b-c2048 (+1) e0.6b-c512, so scores 0.8, 0.2, 0.3, 0.7 give 1.0, and its estimate and interval use that scale (known-answer fixture case); the estimate is the plain mean of d_qk over questions. FreshStack, BioASQ and Legal: the decision test is defined by its closed form (preregistration.md section 9 point 3): estimate = mean of d_qk; variance = sum of squared residuals x (n / (n minus 1)) squared / n squared (Mancl and DeRouen bias-reduced sandwich, intercept only, one row per cluster); t reference on n minus 1 degrees of freedom for the p-value and interval. Implementation: statsmodels GEE (version 0.15.0, `stats` dependency group, recorded in uv.lock) of d_qk on an intercept (Gaussian, identity link, independence working correlation, clusters = questions, cov_type bias_reduced); a known-answer test checks it against the closed form, and the closed form is used if they differ. The closed form was checked against statsmodels 0.15.0 on 2026-11-14 and matched to 1e-10. FinanceBench: the decision p-value and 95% interval come from a document-level sign-flip permutation test (100,000 draws, seed 20261101). Holm (alpha 0.05) within families fixed now: FinanceBench 19 rows, FreshStack 19 rows, BioASQ 8 rows (rows 1 to 8; rows 9 to 19 are sanity checks); Legal RAG Bench has no family and is exploratory. A row whose measure fails its gate, or that the differential-error rule makes exploratory, stays in its family with p = 1 and is reported as not testable. A directional row counts when the Holm-adjusted p is below 0.05 and the estimate has the predicted sign; a two-sided row counts when the Holm-adjusted p is below 0.05. Hypotheses hold by the rule in each statement (H1 to H5: 2 of 3 core datasets; H6, H7, H8a and H8b: FinanceBench and FreshStack). A two-sided hypothesis needs the same sign: under the both-datasets rule (H6, H8a, H8b) the row counts with the same sign on FinanceBench and FreshStack, and opposite signs are reported as a dataset-dependent effect and the hypothesis does not hold; under a 2-of-3 rule (Part 2 C1 and C2) the row counts with the same sign on at least 2 of the 3 core datasets, and an opposite-sign count on the third is reported as a dataset-dependent effect and does not stop the hypothesis holding. Fixed search settings: similarity_threshold 0.0, metadata extraction disabled, exact dense search with no approximate vector index, chunk overlap 15% (77, 154 and 307 tokens). Search scoring: top 100 stored chunks, taken before OMRS context assembly (rerank pool 100, fetch_k 100), collapsed to distinct units and cut at 10; on FinanceBench each stored chunk has one page label and covers that page, for nDCG@10 and evidence_recall_20k alike; a chunk with no page label or no corpus unit maps to a placeholder unit that keeps its rank and is not relevant. Registered sensitivity checks, never decisive: paired permutation by question (10,000 shuffles, seed 20261101) on FreshStack and BioASQ; GEE with document clusters on FinanceBench (t on documents minus 1). A non-significant result means no difference was detected; there is no equivalence claim and no TOST. Each nDCG@10 interval is also read against plus and minus 0.02 (preregistration.md section 10): a descriptive reading that adds no test.",
   "stats": "expert",
   "seed": 20261101,
   "seeds": {
@@ -74,11 +74,9 @@
     "rerank_check": 20261117,
     "ragas_judge": 20261137,
     "classifier": 20261138,
-    "mde_pilot": 20261118,
     "length_check": 20261119,
     "smoke_setups": 20261121,
     "l2_claim_kinds": 20261122,
-    "l2_faithfulness": 20261123,
     "faithfulness_gate_kappa": 20261125,
     "differential_error": 20261126,
     "correctness_gate_kappa": 20261127,
@@ -93,8 +91,11 @@
     "refusal_report": 20261136,
     "bm25_calibration": 20261139,
     "classifier_gate_sample_2": 20261142,
-    "classifier_gate_sample_3": 20261143
+    "classifier_gate_sample_3": 20261143,
+    "relevance_audit": 20261120,
+    "relevance_audit_bootstrap": 20261145
   },
+  "retired_seeds": {"mde_pilot": 20261118, "l2_faithfulness": 20261123, "l2_correctness": 20261124},
   "pins": {
     "settings": {
       "pdf_reader": "pdf_inspector",
@@ -447,21 +448,21 @@
     {
       "id": "classifier-agreement",
       "metric": "claim_classifier_agreement",
-      "value": "weighted share on 100 L1 main-run claims of gate 3, seed 20261143, from the first finished main-run dataset (2026-11-24, pre-freeze; text corrected 2026-11-26)",
+      "value": "weighted share on 100 main-run claims with a reference label (section 11.3) of gate 3, seed 20261143, from the main-run answers of the three core datasets, 34/33/33 (A18, 2026-11-27) (2026-11-24, pre-freeze; text corrected 2026-11-26)",
       "op": ">=",
       "threshold": 0.9
     },
     {
       "id": "classifier-refusal-recall",
       "metric": "claim_classifier_refusal_recall",
-      "value": "weighted share on 100 L1 main-run claims of gate 3, seed 20261143, from the first finished main-run dataset (2026-11-24, pre-freeze; text corrected 2026-11-26)",
+      "value": "weighted share on 100 main-run claims with a reference label (section 11.3) of gate 3, seed 20261143, from the main-run answers of the three core datasets, 34/33/33 (A18, 2026-11-27) (2026-11-24, pre-freeze; text corrected 2026-11-26)",
       "op": ">=",
       "threshold": 0.9
     },
     {
       "id": "classifier-refusal-precision",
       "metric": "claim_classifier_refusal_precision",
-      "value": "weighted share of classifier refusals the L1 label also calls refusal, 100 main-run claims of gate 3, seed 20261143, from the first finished main-run dataset (2026-11-24, pre-freeze; text corrected 2026-11-26)",
+      "value": "weighted share of classifier refusals the reference label (section 11.3) also calls refusal, 100 main-run claims of gate 3, seed 20261143, from the main-run answers of the three core datasets, 34/33/33 (A18, 2026-11-27) (2026-11-24, pre-freeze; text corrected 2026-11-26)",
       "op": ">=",
       "threshold": 0.9
     },
@@ -783,7 +784,7 @@
       "id": "A14",
       "date": "2026-11-26",
       "before_first_run": true,
-      "status": "agent recommendation 2026-11-26, owner to confirm before freeze",
+      "status": "agent recommendation 2026-11-26; confirmed by the owner on 2026-11-27 (A18)",
       "summary": "Registered fallback if classifier gate 3 fails (readiness review B2, option 1). No claim-kind result is used until gate 3 passes. If gate 3 fails, faithfulness rows 12, 13, 16 and 17 become not testable on every core dataset (p = 1, kept in their Holm families), and faithfulness over all cited claims (no kind filter) is reported as descriptive only. The code enforces it: kindgate35.py; join35.py --gate, labels35.py sample --gate and analyse35.py --gate read gate.json and use claim kinds only with pass true and a matching version. No hypothesis, family, seed, threshold or budget changes.",
       "where": "preregistration.md sections 1 and 11.1; protocol.md section 0.19; change exp35-main-run-readiness task 8.7"
     },
@@ -807,6 +808,13 @@
       "before_first_run": true,
       "summary": "Sensitivity power analysis added (owner decision, 2026-11-26; Lakens 2022; Webber, Moffat and Zobel 2008; Sakai 2016). The datasets are fixed, so no sample size is chosen. Preregistration.md section 10 now gives the smallest effect each test detects with power 0.80 (the MDE): MDE = (z at 1 minus alpha/2, plus z at 0.80) x SD / square root of n, two-sided, alpha 0.05 divided by the family size (19 FinanceBench, 19 FreshStack, 8 BioASQ), n 150, 203 and 707, computed with mde35.py (assumed_table and mde_row). SD source: the registered assumed range 0.15 to 0.25 (mde35.ASSUMED_SD) for every row; three measured stand-ins on FreshStack (row 4 SD 0.180 from Experiment 22, 102 half-A questions, 10,024-document subset; rows 7 and 8 SD 0.167 and 0.113 from the 2026-11-24 verify session, 24 half-A questions, 675-file sample). Nothing is measured in the main run. Table, nDCG@10 retrieval rows: BioASQ 0.020 to 0.034; FreshStack 0.041 to 0.068 (stand-ins row 4 0.049, row 7 0.045, row 8 0.031); FinanceBench 0.047 to 0.079 before the design effect, which is not measured before the freeze, so FinanceBench n is not divided and its true MDE is larger. FinanceBench evidence_recall_20k rows use the same arithmetic. Answer rows 12 to 19 get no MDE. This partly reverses A10: it restores the MDE table only. The MDE pilot, tasks P5, P6 and P7, the half-MDE checker condition and reporttables35.py --mde stay removed, and seed 20261118 stays retired. Cost $0. The table is descriptive: no test, Holm family, gate, seed, SESOI of 0.02 or decision rule changes, and no observed power is ever computed from main-run results (Hoenig and Heisey 2001). Freeze: A17 is text only; the freeze-check pod (run 2026-11-26 on 847bec95, tree equal to v3 0de62e9c) is not run again, and the freeze commit is the commit that includes A17.",
       "where": "preregistration.md section 10; protocol.md section 0.21; mde35.py (assumed_table, mde_row)"
+    },
+    {
+      "id": "A18",
+      "date": "2026-11-27",
+      "before_first_run": true,
+      "summary": "Readiness-review fixes (owner decisions, 2026-11-27). (1) Pooled inverse-variance FinanceBench plus FreshStack estimate for rows 12 to 19, secondary, decides nothing. (2) Classifier: gates 1 and 2 reported as development rounds; A14 confirmed; all-claims faithfulness always reported; gate 3 draws 34/33/33 from the three core datasets. (3) L2 labels all 450 faithfulness claims (labels35.py plan faith-full: claim kinds staged, correctness full); seed 20261123 retired. (4) A fixed blind relevance audit replaces the O3 trigger and closes P4: 300 unjudged top-3 units, 50 per arm (hybrid on only, hybrid off only) per core dataset, seed 20261120, L1 and L2 label all, bootstrap seed 20261145, descriptive; P19 builds it. (5) Part 2: the same audit design replaces trigger (b) for C1. No hypothesis, row, Holm family, test, pass mark or budget changes. (6) Text fixes from the consistency audit and the reviewer, listed as items 6 onwards in protocol.md section 0.22: A1 to A9 and A11 to A15 (A10 applied, item 28) and R1 to R10.",
+      "where": "preregistration.md sections 1, 9, 11.1, 11.3, 16, 18, 21, 22, 23; protocol.md section 0.22; labels35.py"
     }
   ]
 }

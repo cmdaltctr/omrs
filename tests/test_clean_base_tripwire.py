@@ -554,7 +554,17 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +21 (2026-11-27, a kept pod holds then stops; PR 234 review, by test-ID diff against HEAD
 # 29102d52): 20 added in the new file prefreeze/test_pod_keephold35 and 1 in
 # prefreeze/test_watch_podstop35. None removed. No extra.
-_BASE_EXECUTED = 14412
+# +35 (2026-11-27, A18 gate statistics, pooled H8 and report tables, by test-ID diff against
+# HEAD 8d354480): 35 added in the new files test_experiment35_differential (10),
+# test_experiment35_pooled (10), test_experiment35_a18_report (12) and
+# test_experiment35_gate_reference (3). None removed. No extra.
+# +46 (2026-11-27, A18 audit, label page aids and model copy, by test-ID diff against HEAD
+# 8d354480): 16 in test_experiment35_audit, 29 in test_experiment35_labelaids and 1 in
+# test_experiment35_labels. None removed. No extra.
+# +5 (2026-11-27, PR 238 review, by test-ID diff against HEAD 3e357e1d): 9 added, 5 in
+# test_experiment35_audit, 3 in test_experiment35_bootstrap and 1 in
+# test_experiment35_differential; 4 node cases in test_experiment35_labelaids moved to slow.
+_BASE_EXECUTED = 14498
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
@@ -950,7 +960,9 @@ if not (Path.home() / ".agents/skills/s-experiment/references/stats.py").exists(
 # cases in test_llamacpp_runtime_lease_busy.py are slow. No fastapi needed.
 # +1 (2026-11-06, one-llamacpp-router): the 20 s router lock-order stress case in
 # test_llamacpp_router_locks.py is slow. No fastapi needed.
-_BASE_DESELECTED = 25
+# +4 (2026-11-27, PR 238 review, by test-ID diff against HEAD 3e357e1d): the 4 node
+# subprocess cases in test_experiment35_labelaids.py are slow. No fastapi needed.
+_BASE_DESELECTED = 29
 # +1 (2026-11-23, PR 223 review): the two-process ingest case in test_experiment35_layout.py.
 # +2 (2026-10-19): the two signal tests in test_launch_link.py are slow. That module
 # needs fastapi (module-level importorskip), so a run without it never collects them.
