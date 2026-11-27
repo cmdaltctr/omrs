@@ -577,6 +577,33 @@ def test_a_rate_limit_stop_exits_5_and_open_items_exit_6(
     assert "close" in stub.log
 
 
+@pytest.mark.parametrize(
+    ("error", "kind"),
+    [
+        (RateLimitStop("out of credit; top up", kind="out_of_credit"), "out_of_credit"),
+        (RateLimitStop("still rate-limited"), "rate_limit"),
+    ],
+)
+def test_a_rate_limit_stop_is_saved_for_the_compute_table(
+    env: Path, monkeypatch: pytest.MonkeyPatch, error: Any, kind: str
+) -> None:
+    async def stopped(ctx: Any) -> int:
+        raise error
+
+    monkeypatch.setitem(run_arms.STAGE_TABLE, "ingest", stopped)
+    stub = Stub()
+    passages = _prepared(env, stub)
+    assert _main(stub, env / "out", *_ingest_args(passages)) == 5
+    lines = [json.loads(x) for x in (env / "out" / "stops.jsonl").read_text().splitlines()]
+    assert len(lines) == 1
+    assert {k: lines[0][k] for k in ("kind", "stage", "dataset")} == {
+        "kind": kind,
+        "stage": "ingest",
+        "dataset": "bioasq",
+    }
+    assert lines[0]["message"] == str(error) and lines[0]["at"]
+
+
 def test_seal_through_the_runner_writes_the_build_environment(
     env: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

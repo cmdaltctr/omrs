@@ -270,8 +270,9 @@ async def test_attempts_used_up_raise_rate_limit_stop() -> None:
 async def test_402_without_retry_after_stops_at_once_with_top_up_message() -> None:
     gate, sleeps = _gate()
     send, calls = _failing([_StatusError(402)])
-    with pytest.raises(RateLimitStop, match="top up"):
+    with pytest.raises(RateLimitStop, match="top up") as stop:
         await gate.call(send)
+    assert stop.value.kind == "out_of_credit"  # the report lists each credit stop (16.20)
     assert len(calls) == 1
     assert sleeps.waits == []
 
@@ -285,8 +286,9 @@ async def test_out_of_credit_record_stops_at_once_with_top_up_message() -> None:
         record = {"kind": "out_of_credit", "http_status": 402, "retry_after_seconds": None}
         return {"status": "error", "answer": None, "rate_limited": record}
 
-    with pytest.raises(RateLimitStop, match="top up"):
+    with pytest.raises(RateLimitStop, match="top up") as stop:
         await gate.call(send)
+    assert stop.value.kind == "out_of_credit"  # the report lists each credit stop (16.20)
     assert len(calls) == 1
     assert sleeps.waits == []
 
