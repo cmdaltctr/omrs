@@ -61,6 +61,7 @@ pack_stage() {
     read -r hash _ <"$tgz.sha256"
     log "== $NAME: packed $1.tgz $hash"
     spare_copy "$1"
+    offsite_stage "$1"
   else
     rm -f "$tgz.tmp" "$tgz.commit.tmp" "$tgz.sha256.tmp"
     # A failed pack can leave the only copy of a built index unprotected: count the stage
@@ -98,6 +99,7 @@ pack_dry_run() {
     "(only when it ends ok and starts no background process)"
   [ -z "$SPARE_DIR" ] \
     || log "  [dry-run] copy $1.tgz, $1.tgz.commit and $1.tgz.sha256 to $SPARE_DIR"
+  offsite_stage_dry "$1"
 }
 
 # commit_verdict <tgz>: set TAR_COMMIT (the commit in <tgz>.commit; empty without one) and

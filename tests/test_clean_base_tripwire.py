@@ -533,7 +533,12 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # (26), _watch_resume35 (6) and _freeze_layout_stages (5); prefreeze/test_session_stages
 # (12: the layout file's 6 BOTH checks and 6 no-/workspace cases), _pod_setup35 (7),
 # _launch35_script (6), _create_pod35 (3) and _mac_watch35_stop (1). None removed. No extra.
-_BASE_EXECUTED = 14237
+# +86 (2026-11-27, Exp 35 resume commit check, Mac-away survival and R2 off-site copy, by
+# test-ID diff against HEAD f2cc9b7f): 86 added: new files prefreeze/test_offsite35 (19),
+# _resume_commit35 (18), _watch_offsite35 (13), _watch_modes35 (12) and _pod_survival35
+# (11); prefreeze/test_watch_resume35 (9), _create_pod35 (3), _launch35_script (1).
+# None removed or renamed. No extra.
+_BASE_EXECUTED = 14323
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

@@ -34,7 +34,7 @@ class Repo:
         self.env = {**os.environ, "HOME": str(tmp_path), "GIT_CONFIG_NOSYSTEM": "1"}
         folder = self.root / "experiments" / "exp" / "prefreeze"
         folder.mkdir(parents=True)
-        for name in ("pod_test_session.sh", "stage_pack35.sh"):
+        for name in ("pod_test_session.sh", "stage_pack35.sh", "offsite35.sh"):
             shutil.copy(HERE / name, folder / name)
         self.script = folder / "pod_test_session.sh"
         self._git("init", "-q")
@@ -208,7 +208,7 @@ def test_a_chain_outside_a_git_repository_is_refused(
 ) -> None:
     folder = tmp_path / "loose" / "exp" / "prefreeze"
     folder.mkdir(parents=True)
-    for name in ("pod_test_session.sh", "stage_pack35.sh"):
+    for name in ("pod_test_session.sh", "stage_pack35.sh", "offsite35.sh"):
         shutil.copy(HERE / name, folder / name)
     monkeypatch.setattr(session, "PATH_SCRIPT", folder / "pod_test_session.sh")
     result, _ = _run(tmp_path, RUN, GIT_CEILING_DIRECTORIES=str(tmp_path))

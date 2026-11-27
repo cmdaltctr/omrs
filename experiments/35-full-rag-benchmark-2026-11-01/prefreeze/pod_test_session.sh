@@ -100,6 +100,8 @@ VERDICT=""
 
 # shellcheck source=stage_pack35.sh
 . "$HERE/stage_pack35.sh"
+# shellcheck source=offsite35.sh
+. "$HERE/offsite35.sh"
 
 log() { printf '[%s] %s\n' "$(date -u +%H:%M:%S)" "$*"; }
 run() { if [ "$DRY_RUN" = 1 ]; then log "  [dry-run] $*"; else "$@"; fi; }
@@ -400,10 +402,12 @@ finish() {
     printf '%s\n' ${SKIPPED[@]+"${SKIPPED[@]}"} >"$OUT_DIR/skipped-stages.txt"
     [ -f "$EXP35/output/run-records.jsonl" ] && cp -p "$EXP35/output/run-records.jsonl" "$OUT_DIR/"
   fi
+  offsite_retry
   run tar -czf "$TARBALL" --exclude=stores -C "$(dirname "$OUT_DIR")" "$(basename "$OUT_DIR")" \
     || log "tarball FAILED; the outputs stay in $OUT_DIR"
   [ "$DRY_RUN" = 1 ] || checksum "$TARBALL" >"$TARBALL.sha256"
   spare_final
+  offsite_final
   log "TEST_SESSION_DONE: copy $TARBALL (+ .sha256) to the Mac, touch $PULLED, then delete the pod"
   wait_for_pull
   if [ "$KEEP_POD_ON_FAIL" = 1 ] && { [ "${#FAILED[@]}" -gt 0 ] || [ "$SIGNALLED" = 1 ]; }; then
@@ -433,8 +437,9 @@ main() {
   if [ "$DRY_RUN" != 1 ]; then
     mkdir -p "$WORK" "$OUT_DIR" "$STAGE_OUT"
     rm -f "$PULLED" "$BACKGROUND_PIDS"
-    [ "$RESUME" = 1 ] || rm -f "$BG_FILES"
+    [ "$RESUME" = 1 ] || rm -f "$BG_FILES" "$OFFSITE_PENDING"
   fi
+  offsite_setup
   trap finish EXIT
   trap 'SIGNALLED=1; exit 143' TERM HUP INT
   log "test pod session: work $WORK, out $OUT_DIR, cap $SESSION_CAP, dry-run $DRY_RUN"

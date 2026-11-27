@@ -24,6 +24,7 @@ from pathlib import Path
 
 import runpod_ssh35
 import watch_modes35
+import watch_offsite35
 import watch_zai35
 
 HERE = Path(__file__).resolve().parent
@@ -137,6 +138,7 @@ def prepare(args: argparse.Namespace) -> tuple[list[str], Plan]:
         args.resume_from_commit,
     )
     plan.attach, plan.seed_from = args.attach, args.seed_from
+    plan.offsite, plan.pod_id = not args.no_offsite, args.pod_id
     problems = watch_modes35.problems(plan.attach, plan.resume, plan.seed_from)
     if plan.resume_from and not (plan.resume or plan.seed_from):
         problems.append("--resume-from-commit needs --resume (or --seed-from)")
@@ -184,6 +186,7 @@ def prepare(args: argparse.Namespace) -> tuple[list[str], Plan]:
         problems.append(f"results folder {plan.folder} already exists; it is never overwritten")
     problems += [f"input {rel} {why}" for rel in plan.rels if (why := unsafe(rel, plan.root))]
     problems += watch_zai35.problems()
+    problems += watch_offsite35.problems(plan.offsite)
     return problems, plan
 
 

@@ -4,7 +4,8 @@
 # RunPod gives the create-time environment of the pod (the two secrets and the image
 # pin) to process 1 only. A shell that comes in over SSH does not have it. This script
 # copies the named values from /proc/1/environ into its own environment without
-# printing them, then starts pod_test_session.sh. The chain's pre-check names any value
+# printing them, then starts pod_test_session.sh. The three R2 values (off-site copy, see
+# offsite35.sh) are copied the same way and are optional unless OFFSITE_REQUIRED=1. The chain's pre-check names any value
 # that is still empty and stops before the first stage. It never prints a value.
 #
 # The Mac runs it inside tmux, from the repository checked out at COMMIT:
@@ -27,7 +28,8 @@ WORK="${WORK:-/root/exp35-work}"
 SESSION_ENV="${SESSION_ENV:-$WORK/session.env}"
 ZAI_ENV="${ZAI_ENV:-$WORK/.zai_env}"
 PROC1_ENVIRON="${PROC1_ENVIRON:-/proc/1/environ}"
-NAMES=(OPENROUTER_API_KEY OMRS_EXP35_ZAI_KEY EXP35_POD_IMAGE RUNPOD_POD_ID RUNPOD_API_KEY)
+NAMES=(OPENROUTER_API_KEY OMRS_EXP35_ZAI_KEY EXP35_POD_IMAGE RUNPOD_POD_ID RUNPOD_API_KEY
+  R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_ENDPOINT)
 
 if [ -f "$SESSION_ENV" ]; then
   set -a

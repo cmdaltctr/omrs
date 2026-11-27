@@ -26,6 +26,7 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
     """Add ``--attach`` and ``--seed-from`` to the watcher's parser."""
     parser.add_argument("--attach", action="store_true", help="join the chain that still runs")
     parser.add_argument("--seed-from", default="", help="earlier results folder for a NEW pod")
+    parser.add_argument("--no-offsite", action="store_true", help="no R2 copy, no R2 check")
 
 
 def _sha(path: Path) -> str:

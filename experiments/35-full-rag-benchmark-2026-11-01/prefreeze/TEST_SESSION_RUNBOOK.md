@@ -401,3 +401,38 @@ The pod or its volume is lost, and the Mac holds the stage tarballs:
 7. The chain runs the `!` stages again. For each stage that it skips, it unpacks the tarball first and logs `== <stage>: unpacked <tag>.tgz (seeded)`.
 8. To use a newer `--commit`, add `--resume-from-commit <old sha>` only for stages the fix does not touch.
 9. Do not use `--seed-from` with `--resume` or `--attach`.
+
+### Off-site copy in Cloudflare R2
+
+The chain uploads each finished stage and the final outputs to a private R2 bucket. A lost pod or a lost Mac then loses no result.
+
+Policy: by owner decision on 2026-11-27, experiment results go to a private R2 bucket. This protects the main run. The data still never goes to a public host.
+
+Before the go:
+
+1. Make sure these RunPod account secrets exist: `r2-exp35-key-id`, `r2-exp35-secret` and `r2-exp35-endpoint`. `create_pod35.py` gives them to the pod as `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` and `R2_ENDPOINT`.
+2. Make sure the Mac file `~/.config/omrs/secrets/r2-exp35.env` exists, mode 600. It holds three lines: `R2_ACCESS_KEY_ID=`, `R2_SECRET_ACCESS_KEY=` and `R2_ENDPOINT=`. Never type a value in a command or a chat.
+3. Run the dry run. It shows `PROBLEM:` when the file is missing, is not mode 600, or lacks a name.
+
+In the session:
+
+1. The watcher writes `OFFSITE_REQUIRED=1` and `R2_PREFIX=<results folder name>/<pod id>` into `session.env`.
+2. The bucket is `omrs-exp35-results`. After each stage, the chain uploads `<tag>.tgz`, `<tag>.tgz.commit` and `<tag>.tgz.sha256` (last) to `<prefix>/stage-out/`.
+3. At the end, the chain uploads `test-session-out.tgz`, `test-session.log` and `test-session-out.tgz.sha256` (last) to `<prefix>/final/`.
+4. Before the first stage, the chain uploads `<prefix>/probe.txt`. The chain refuses to start (exit 2) when a value is empty or the probe fails. This also proves that `curl` on the pod supports `--aws-sigv4`.
+5. Each upload has 3 tries. A copy that fails 3 times goes to `/root/exp35-work/offsite.pending`. The chain retries the list once at the end. It logs `== <stage>: off-site copy FAILED (kept for a retry at the end)` and `== finish: off-site copies failed: <n>`. The keys that still fail are in `offsite-failed.txt` in the outputs.
+6. At the end, the watcher reads each `.sha256` object of the stage and final tarballs that the Mac holds. It compares each one with the local file.
+7. Read `off-site: <n> stage, <m> final verified in r2://<bucket>/<prefix>`.
+8. If you read `!!! OFFSITE_NOT_VERIFIED: <names>`, the last line is `KEEP_POD`. Do not delete the pod. The pod may hold the only copy.
+9. `--no-offsite` turns the upload and the check off, for a test or a deliberate local-only run. The summary then reads `off-site: OFF (--no-offsite)`.
+
+If the pod and the Mac copies are both lost, fetch an object by hand. Read the key pair from the key file. Do not type it:
+
+```bash
+set -a; . ~/.config/omrs/secrets/r2-exp35.env; set +a
+printf 'user = "%s:%s"\n' "$R2_ACCESS_KEY_ID" "$R2_SECRET_ACCESS_KEY" \
+  | curl -fsS --aws-sigv4 "aws:amz:auto:s3" -K - -o <tag>.tgz \
+    "$R2_ENDPOINT/omrs-exp35-results/<prefix>/stage-out/<tag>.tgz"
+```
+
+Then check the file with its `.sha256` object. The watcher does not restore from R2. Use `--seed-from` for a new pod.

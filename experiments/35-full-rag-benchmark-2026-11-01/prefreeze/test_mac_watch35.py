@@ -129,6 +129,7 @@ class Session:
 
     def __init__(self, tmp: Path, steps: list[str] | None = None) -> None:
         self.tmp = tmp
+        self.base_args = ["--no-offsite"]  # a test of the off-site check sets it to []
         self.root = tmp / "data"
         self.pod = tmp / "pod"
         self.work = self.pod / "root/exp35-work"  # the pod's /root/exp35-work
@@ -193,7 +194,7 @@ class Session:
     def run(self, *args: str, **env: str) -> subprocess.CompletedProcess[str]:
         cmd = [sys.executable, str(WATCH), "--pod-id", POD, "--ssh-host", "203.0.113.7"]
         cmd += ["--ssh-port", "40022", "--commit", self.commit, "--examples", str(self.examples)]
-        cmd += ["--ssh-key", str(self.key), "--repo-url", str(self.url), *args]
+        cmd += ["--ssh-key", str(self.key), "--repo-url", str(self.url), *self.base_args, *args]
         return subprocess.run(
             cmd, env=self._env(**env), capture_output=True, text=True, timeout=120, cwd=self.tmp
         )
@@ -242,7 +243,8 @@ def test_a_done_session_is_pulled_checked_marked_and_ends_with_the_delete_line(
     assert (inputs / "classify-examples.json").read_bytes() == s.examples.read_bytes()
     session_env = (s.work / "session.env").read_text(encoding="utf-8")
     stages = f"{s.work}/omrs/experiments/{HERE.parent.name}/prefreeze/test_session_stages.txt"
-    assert session_env == f"COMMIT={s.commit}\nSTOP_GRACE_MIN=120\nSTAGES_FILE={stages}\n"
+    want = f"COMMIT={s.commit}\nSTOP_GRACE_MIN=120\nSTAGES_FILE={stages}\n"
+    assert session_env == want + "OFFSITE_REQUIRED=0\n"
     clone = s.work / "omrs"
     head = subprocess.run(["git", "-C", str(clone), "rev-parse", "HEAD"], capture_output=True)
     assert head.stdout.decode().strip() == s.commit
@@ -487,9 +489,7 @@ def test_the_watcher_matches_the_chain_launch_and_setup_contract() -> None:
     assert 'TARBALL="$WORK/test-session-out.tgz"' in chain and 'PULLED="$WORK/PULLED"' in chain
     assert mac_watch35.TARBALL == "/root/exp35-work/test-session-out.tgz"
     header = mac_watch35.LAUNCH.replace(mac_watch35.REMOTE_REPO, "<repo>")
-    plain = header.removeprefix(
-        f"WORK={mac_watch35.WORK} "
-    )  # the comment may omit the WORK= prefix
+    plain = header.removeprefix(f"WORK={mac_watch35.WORK} ")  # the comment may omit WORK=
     assert any(f"tmux new-session -d -s exp35 '{h}'" in launch for h in (header, plain))
     assert "$WORK/session.env" in launch and "/workspace/session.env" not in launch
     assert 'OUT_DIR="${OUT_DIR:-$WORK/exp35-test/out}"' in launch

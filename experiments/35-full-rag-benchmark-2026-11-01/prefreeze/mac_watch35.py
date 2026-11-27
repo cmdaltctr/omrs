@@ -23,6 +23,7 @@ from pathlib import Path
 
 import runpod_ssh35
 import watch_modes35
+import watch_offsite35
 import watch_stages35
 import watch_zai35
 from watch_inputs35 import (
@@ -120,7 +121,7 @@ def setup_cmds(plan: Plan, shas: dict[str, str]) -> list[str]:
     pairs = " ".join(f"{sha} {shlex.quote(name)}" for name, sha in shas.items())
     values = [f"COMMIT={plan.commit}", f"STOP_GRACE_MIN={STOP_GRACE_MIN}"]
     values.append(f"STAGES_FILE={REMOTE_HERE}/{plan.stages}")
-    values += watch_stages35.flag_values(plan)
+    values += watch_offsite35.session_values(plan) + watch_stages35.flag_values(plan)
     stale = [TARBALL, f"{TARBALL}.sha256", OWN_TARBALL, f"{OWN_TARBALL}.sha256", PULLED]
     return [
         f"cd {INPUTS} && printf '%s  %s\\n' {pairs} | sha256sum -c -",
@@ -334,6 +335,7 @@ def dry_run(args: argparse.Namespace, plan: Plan, problems: list[str]) -> int:
     for line in [
         *watch_stages35.dry_lines(WORK, STAGE_OUT),
         *watch_modes35.dry_lines(plan.attach, plan.seed_from),
+        *watch_offsite35.dry_lines(plan),
     ]:
         say(f"  {line}")
     say(f"step 2: build {plan.folder / 'inputs' / INPUTS_TGZ} from {plan.root} (no Legal, D1):")
@@ -398,6 +400,8 @@ def run(args: argparse.Namespace) -> int:
     signal.pthread_sigmask(signal.SIG_BLOCK, _SIGNALS)  # no signal may cut the pull short
     outputs, marker, stop = end_session(pod, w, reason, plan.folder, stages, plan.keep)
     say(stages.summary())
+    if hold := watch_offsite35.report(plan, plan.folder, say):
+        _hold.append(hold)  # an object is not in R2: the pod may hold the only copy
     if w.stop_failed:
         code = EXIT["stop-failed"]
         say("!!! POD_STOP_FAILED: the pod did not stop itself and the GPU still bills.")
