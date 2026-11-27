@@ -116,9 +116,9 @@ def test_a_pod_without_a_final_tarball_checks_only_the_stage_tarballs(tmp_path: 
 
 
 def test_the_check_also_runs_when_the_watcher_attaches(tmp_path: Path) -> None:
-    s = _on(tmp_path, ["+[00:00:01] == a: start (timeout 600s)", "term"])
+    s = _on(tmp_path, ["+[00:00:01] == a: start (timeout 600s)", "detach"])
     _stage(s)
-    assert _run(s).returncode == 12  # the Mac leaves
+    assert _run(s).returncode == 15  # the Mac leaves: detached
     _again(s, ["+[00:00:05] == b: start (timeout 600s)", "done"])
     result = _run(s, "--attach")
     assert result.returncode == 0, result.stdout + result.stderr

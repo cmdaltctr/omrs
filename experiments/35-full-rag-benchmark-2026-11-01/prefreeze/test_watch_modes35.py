@@ -35,11 +35,11 @@ def _tmux(s: Session) -> list[str]:
 
 # --attach.
 def _away(tmp_path: Path) -> Session:
-    """A first run that the Mac leaves at once: SIGTERM, with the chain still alive."""
-    s = Session(tmp_path, ["+[00:00:01] == a: start (timeout 600s)", "term"])
+    """A first run that the Mac leaves at once: a bare SIGTERM, with the chain still alive."""
+    s = Session(tmp_path, ["+[00:00:01] == a: start (timeout 600s)", "detach"])
     _stage(s)
     result = s.run()
-    assert result.returncode == 12, result.stdout + result.stderr  # interrupted
+    assert result.returncode == 15, result.stdout + result.stderr  # detached
     assert (s.pod / "alive").exists()  # the chain still runs on the pod
     return s
 
@@ -270,7 +270,7 @@ def test_a_successful_attach_clears_the_hold(tmp_path: Path) -> None:
 # A stale PULLED marker would let the chain stop the pod before the attached watcher pulls.
 def test_attach_removes_a_stale_pulled_marker_after_the_tmux_check(tmp_path: Path) -> None:
     s = _away(tmp_path)
-    assert (s.work / "PULLED").exists()  # the watcher that left wrote it
+    (s.work / "PULLED").write_text("ok\n", encoding="utf-8")  # left by an earlier watcher
     n = len(s.log("ssh.log"))
     _again(s, ["+[00:00:05] == b: start (timeout 600s)", "done"])
     assert s.run("--attach").returncode == 0

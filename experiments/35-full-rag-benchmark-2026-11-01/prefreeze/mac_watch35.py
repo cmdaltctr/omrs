@@ -5,6 +5,8 @@ It never stops or deletes a pod; the last line is ``DELETE_POD_NOW <pod id>``, o
 when the pod was kept on a failure (--keep-pod-on-fail). No key is printed. Idle = stage
 timeout + 10 min. After idle, the cap or a signal it stops the chain (watch_stop35.py) before
 the pull. Each finished stage is pulled when it appears (watch_stages35.py).
+A signal only detaches (exit 15, KEEP_POD, the chain runs on; ``--attach`` rejoins).
+``touch <results folder>/STOP`` before the signal stops the chain instead (exit 12).
 Test hook: MAC_WATCH35_FAKE_CLOCK=1 makes every wait move a virtual clock (no sleep).
 """
 
@@ -63,7 +65,8 @@ _STAGE_START = re.compile(r"== \S+: start \(timeout (\d+)s\)")  # idle = timeout
 _SHOWN = re.compile(r"^\[\d\d:\d\d:\d\d\] (==|test pod session|PULLED seen|no .*PULLED)")
 EXIT = {"done": 0, "internal": 1, "refused": 2, "stop-failed": 3, "no-ssh": 4, "setup": 5,
         "stop-line": 6, "session-ended": 7, "idle": 8, "wall-cap": 9, "ssh-lost": 10,
-        "pull": 11, "interrupted": 12, "no-address": 13, "kept": 14}  # fmt: skip
+        "pull": 11, "interrupted": 12, "no-address": 13, "kept": 14,
+        "detached": 15}  # fmt: skip
 _SIGNALS = (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)
 LAUNCH_CMD = (
     "command -v tmux >/dev/null || { echo 'tmux is not on the pod'; exit 1; }; "
@@ -91,6 +94,7 @@ ATTACH_HOLD = (  # why the last line is KEEP_POD until --attach is on the chain
     "that the Mac lacks. Fix the cause and run --attach (or --resume) again"
 )
 _hold: list[str] = []  # why the last line is KEEP_POD and not DELETE_POD_NOW
+_stop: list[Path] = []  # the STOP file of the results folder: a deliberate stop
 
 
 class Interrupted(Exception):
@@ -260,9 +264,12 @@ def watch(
                 beat, quiet = at, int((at - w.last_growth) // 60)
                 say(f"still watching: log {w.offset} bytes, last new byte {quiet} min ago")
             pause(POLL_S)
-    except Interrupted as stop:
-        say(f"{stop} received: ending the session now")
-        return "interrupted"
+    except Interrupted as sig:
+        if watch_modes35.stop_requested(_stop):
+            say(f"{sig} received and STOP exists: ending the session now")
+            return "interrupted"
+        say(f"{sig} received: detaching, the chain runs on")
+        return "detached"
 
 
 def wait_for(pod: Pod, w: Watch, met: Callable[[], bool], limit: float, step: float) -> bool | None:
@@ -393,6 +400,8 @@ def run(args: argparse.Namespace) -> int:
         say(f"steps 1 and 2: create {plan.folder}; build the inputs tarball (no Legal, D1)")
         plan.folder.mkdir(parents=True)
     (plan.folder / "watcher.pid").write_text(f"{os.getpid()}\n", encoding="utf-8")
+    _stop[:] = [plan.folder / watch_modes35.STOP_FILE]
+    _stop[0].unlink(missing_ok=True)  # a STOP file of an earlier session does not count
     (plan.folder / POD_ID_FILE).write_text(f"{args.pod_id}\n", encoding="utf-8")
     shas = build_inputs(plan, say)
     if not (found := runpod_ssh35.find(args, now=now, pause=pause, say=say)):
@@ -404,6 +413,8 @@ def run(args: argparse.Namespace) -> int:
     w, stages = Watch(), watch_stages35.StagePull(pod, WORK, plan.folder / "stage-out", say)
     reason = watch(pod, w, args.wall_cap_h * 3600, start, stages)
     signal.pthread_sigmask(signal.SIG_BLOCK, _SIGNALS)  # no signal may cut the pull short
+    if reason == "detached":  # a signal without STOP: leave the chain running
+        return watch_modes35.detach(args, plan, stages, say, _hold, EXIT["detached"])
     outputs, marker, stop = end_session(pod, w, reason, plan.folder, stages, plan.keep)
     say(stages.summary())
     if outputs != "ok":  # the final outputs may exist only on the pod
@@ -456,6 +467,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--resume-from-commit", default="", help="with --resume: trust this commit")
     parser.add_argument("--dry-run", action="store_true", help="print every step, run nothing")
     _hold.clear()
+    _stop.clear()
     try:
         code = run(parser.parse_args(argv))
     except SystemExit as error:
@@ -463,8 +475,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise
         code = EXIT["refused"]
     except (Interrupted, KeyboardInterrupt) as error:
-        say(f"stopped by {error or 'SIGINT'} before the end steps finished")
-        code = EXIT["interrupted"]
+        code = EXIT[watch_modes35.early_signal(error, _stop, _hold, say)]
     except Exception as error:  # noqa: BLE001 - the delete line must still come last
         say(f"INTERNAL ERROR: {type(error).__name__}: {error}")
         code = EXIT["internal"]

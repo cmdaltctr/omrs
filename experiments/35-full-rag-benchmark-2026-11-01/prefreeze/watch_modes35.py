@@ -5,6 +5,10 @@ inputs copy, ``session.env`` and the launch. ``--seed-from <results folder>``: t
 and its volume are gone. The new pod gets every stage tarball of the earlier folder (each
 SHA-256 checked on the Mac first) and the chain resumes from them. The record of the seed
 is ``seed-from.txt`` in the new results folder.
+
+A signal (SIGTERM, SIGINT, SIGHUP) only *detaches* the watcher: the chain runs on and
+``--attach`` rejoins it (``detach``). A deliberate stop needs the file ``STOP`` in the
+results folder, made before the signal (``stop_requested``).
 """
 
 from __future__ import annotations
@@ -20,6 +24,7 @@ from typing import Any
 
 _TGZ = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*\.tgz")  # also what the pod's shell accepts
 SEED_RECORD = "seed-from.txt"
+STOP_FILE = "STOP"  # a request to stop the chain on the next signal (runbook step 12)
 
 
 def add_arguments(parser: argparse.ArgumentParser) -> None:
@@ -120,3 +125,54 @@ def seed(pod: Any, plan: Any, remote_dir: str, say: Callable[[str], None]) -> bo
         lines.append(f"{tgz.name} {_sha(tgz)} {word}")
     (plan.folder / SEED_RECORD).write_text("\n".join(lines) + "\n", encoding="utf-8")
     return pod.ok(f"cd {shlex.quote(remote_dir)} && sha256sum -c --quiet *.tgz.sha256")
+
+
+def stop_requested(stop: list[Path]) -> bool:
+    """Whether the STOP file of the results folder exists (*stop* holds its path, or is empty)."""
+    return bool(stop) and stop[0].exists()
+
+
+def attach_command(args: Any) -> str:
+    """Return the command line that rejoins this session: the same pod, commit and inputs."""
+    words = ["uv", "run", "--no-sync", "python", "prefreeze/mac_watch35.py"]
+    words += ["--pod-id", args.pod_id, "--commit", args.commit, "--stages", args.stages]
+    words += ["--examples", str(args.examples)]
+    if args.ssh_host:
+        words += ["--ssh-host", str(args.ssh_host), "--ssh-port", str(args.ssh_port)]
+    words += ["--no-offsite"] * bool(args.no_offsite)
+    words += ["--keep-pod-on-fail"] * bool(args.keep_pod_on_fail) + ["--attach"]
+    return shlex.join(words)
+
+
+def detach(
+    args: Any, plan: Any, stages: Any, say: Callable[[str], None], hold: list[str], code: int
+) -> int:
+    """Say that the watcher detaches; write the summary; return *code*.
+
+    No tmux kill, no final pull, no PULLED: the chain runs on. *hold* gets the reason, so the
+    last line is ``KEEP_POD``.
+    """
+    command = attach_command(args)
+    say("DETACHED: the chain runs on; rejoin with --attach")
+    say(f"pod {args.pod_id} still runs. rejoin: {command}")
+    say(stages.summary())
+    hold.append(f"DETACHED: the chain runs on; rejoin with --attach: {command}")
+    result = (
+        "RESULT end=detached outputs=not-pulled pulled-marker=not-written pod-stop=not-expected"
+    )
+    result += f" exit={code} folder={plan.folder}"
+    (plan.folder / "watch-summary.txt").write_text(result + "\n", encoding="utf-8")
+    print(result, flush=True)
+    return code
+
+
+def early_signal(
+    error: object, stop: list[Path], hold: list[str], say: Callable[[str], None]
+) -> str:
+    """Handle a signal before the watch began; return ``"interrupted"`` or ``"detached"``."""
+    if stop_requested(stop):
+        say(f"stopped by {error or 'SIGINT'} before the end steps finished")
+        return "interrupted"
+    say(f"DETACHED ({error or 'SIGINT'}): the chain may run on; rejoin with --attach")
+    hold.append("DETACHED: the chain may run on; rejoin with --attach (same arguments)")
+    return "detached"

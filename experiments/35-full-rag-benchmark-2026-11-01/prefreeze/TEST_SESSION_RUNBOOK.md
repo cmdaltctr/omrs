@@ -45,9 +45,10 @@ This runbook is for the operator's agent. The agent creates and deletes the pod 
 
 10. Read the watcher output while it runs. It prints one line for each stage start and end.
 11. Read `list-pod-billing` every 2 hours. Add the OpenRouter session spend.
-12. If the total spend reaches $18, stop the watcher: `kill -TERM "$(cat <results folder>/watcher.pid)"`.
+12. If the total spend reaches $18, stop the run on purpose: `touch <results folder>/STOP`, then `kill -TERM "$(cat <results folder>/watcher.pid)"`.
     The first output line names the results folder. Do not use `pgrep` or `pkill`: they also match the `caffeinate` and `uv` parents.
-    The watcher then pulls the outputs and prints `DELETE_POD_NOW`. It ignores a second signal, so the pull finishes.
+    The watcher then stops the chain, pulls the outputs and prints `DELETE_POD_NOW`. It ignores a second signal, so the pull finishes.
+    A signal without the `STOP` file only detaches the watcher. The chain runs on. See exit code 15.
 13. Wait for the watcher to exit. Its last line is `DELETE_POD_NOW <id>`.
 14. Delete the pod with `delete-pod` and that id. Do this for every exit code except 14.
     Exit 14 ends with `KEEP_POD <id>`: the pod stays up for a fix. Follow "Resume after a failure".
@@ -78,11 +79,12 @@ Fix the cause, then resume or attach.
 | 9 | Wall-clock cap reached | Report the stages that did not run. |
 | 10 | No SSH for 10 minutes while watching | Outputs are probably lost. Report it. |
 | 11 | The pull failed, or the SHA-256 differs | Keep the files as they are. Report it. |
-| 12 | Stopped by a signal (SIGTERM, SIGINT or SIGHUP) | Report why you stopped it. |
+| 12 | Stopped on purpose: a signal after `touch <results folder>/STOP` | Report why you stopped it. |
 | 13 | No public IP for `22/tcp` within 15 minutes (step 2b) | Report it. Nothing was copied. |
 | 14 | The chain logged `POD_KEPT:` (`--keep-pod-on-fail`, a stage failed or a signal stopped the chain) | Keep the pod. Follow "Resume after a failure". Delete the pod yourself when you stop. |
+| 15 | Detached: a signal (SIGTERM, SIGINT or SIGHUP) without a `STOP` file. The chain runs on. No pull, no `PULLED`. | Keep the pod. Rejoin with the `--attach` command that the watcher printed. See "When the Mac goes away". |
 
-After codes 8, 9 and 12 the watcher first sends `tmux kill-session -t exp35` to the pod. The chain then stops its stage and writes the tarball. The watcher waits up to 3 minutes for the tarball, then pulls. If the stop fails or times out, the watcher pulls anyway.
+After codes 8, 9 and 12 (not 15) the watcher first sends `tmux kill-session -t exp35` to the pod. The chain then stops its stage and writes the tarball. The watcher waits up to 3 minutes for the tarball, then pulls. If the stop fails or times out, the watcher pulls anyway.
 
 ## Where the work lives
 

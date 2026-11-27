@@ -111,7 +111,8 @@ case "$step" in
   badsha) pack; printf '%064d  %s\n' 0 "$W/test-session-out.tgz" > "$W/test-session-out.tgz.sha256"
     echo "[00:09:00] TEST_SESSION_DONE: copy the tarball" >> "$LOG" ;;
   dead) rm -f "$P/alive" ;;
-  term) kill -TERM "$WATCHER_PID" ;;
+  term) for d in "$T"/data/*/*/*-session-*; do touch "$d/STOP"; done; kill -TERM "$WATCHER_PID" ;;
+  detach) kill -TERM "$WATCHER_PID" ;;
   ssh-off) touch "$T/ssh.dead" ;;
   '') if [ -e "$W/PULLED" ]; then
         if [ -e "$P/stop-fails" ]; then echo "[00:10:00] POD_STOP_FAILED: no stop worked" >> "$LOG"
