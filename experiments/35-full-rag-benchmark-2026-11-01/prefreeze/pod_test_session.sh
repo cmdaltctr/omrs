@@ -81,6 +81,7 @@ DRY_RUN="${DRY_RUN:-0}"
 SESSION_CAP="${SESSION_CAP:-15h}"
 STOP_GRACE_MIN="${STOP_GRACE_MIN:-0}"
 PULL_POLL_S="${PULL_POLL_S:-10}"
+STOP_RETRY_S="${STOP_RETRY_S:-30}"
 REST_V2="https://api.runpod.io/v2"
 REST_V1="https://rest.runpod.io/v1"
 FAILED=()
@@ -346,24 +347,42 @@ rest_stop() {
   printf 'Authorization: Bearer %s\n' "$RUNPOD_API_KEY" | curl "${args[@]}"
 }
 
-# stop_pod: the new runpodctl syntax, then the old one, then the REST API (G8).
+# stop_try <label> <command...>: run one stop method. A failure goes to the log with its exit
+# code and the first stderr line (max 200 chars, the API key removed), because the pane is lost.
+stop_try() {
+  local label="$1" err rc=0
+  shift
+  err="$("$@" 2>&1 >/dev/null)" || rc=$?
+  [ "$rc" -ne 0 ] || return 0
+  [ -z "${RUNPOD_API_KEY:-}" ] || err="${err//"$RUNPOD_API_KEY"/[redacted]}"
+  err="${err%%$'\n'*}"
+  log "pod stop: $label exit $rc: ${err:0:200}"
+  return "$rc"
+}
+
+# stop_pod: the new runpodctl syntax, then the old one, then the REST API (G8). Up to 3 rounds
+# of the whole chain, STOP_RETRY_S apart.
 stop_pod() {
-  local id="${RUNPOD_POD_ID:-<RUNPOD_POD_ID>}" how=""
+  local id="${RUNPOD_POD_ID:-<RUNPOD_POD_ID>}" how="" round
   if [ "$DRY_RUN" = 1 ]; then
     log "  [dry-run] runpodctl pod stop $id; else runpodctl stop pod $id; else POST" \
       "$REST_V2/pods/$id/action, then $REST_V1/pods/$id/stop (key from RUNPOD_API_KEY)"
     STOP_OK=1
     return 0
   fi
-  if runpodctl pod stop "$id"; then
-    how="runpodctl pod stop"
-  elif runpodctl stop pod "$id"; then
-    how="runpodctl stop pod"
-  elif rest_stop "$REST_V2/pods/$id/action" '{"action":"stop"}'; then
-    how="REST $REST_V2"
-  elif rest_stop "$REST_V1/pods/$id/stop"; then
-    how="REST $REST_V1"
-  fi
+  for round in 1 2 3; do
+    if stop_try "runpodctl pod stop" runpodctl pod stop "$id"; then
+      how="runpodctl pod stop"
+    elif stop_try "runpodctl stop pod" runpodctl stop pod "$id"; then
+      how="runpodctl stop pod"
+    elif stop_try "REST $REST_V2" rest_stop "$REST_V2/pods/$id/action" '{"action":"stop"}'; then
+      how="REST $REST_V2"
+    elif stop_try "REST $REST_V1" rest_stop "$REST_V1/pods/$id/stop"; then
+      how="REST $REST_V1"
+    fi
+    [ -z "$how" ] || break
+    [ "$round" -eq 3 ] || sleep "$STOP_RETRY_S"
+  done
   if [ -n "$how" ]; then
     STOP_OK=1
     log "pod stop sent with: $how"

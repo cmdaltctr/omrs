@@ -70,7 +70,7 @@ Fix the cause, then resume or attach.
 | 0 | `TEST_SESSION_DONE`, outputs pulled, SHA-256 matches | None. |
 | 1 | Internal error in the watcher | Report the error line. |
 | 2 | Refused before any remote step | Fix the `REFUSED:` line on the Mac before the next pod. |
-| 3 | `POD_STOP_FAILED`: the pod did not stop itself | Delete at once. The GPU still bills. |
+| 3 | `POD_STOP_FAILED`: the pod did not stop itself after 3 rounds of the stop methods, 30 s apart (`STOP_RETRY_S`). The log holds one `pod stop: <method> exit <code>: <error>` line for each failed try | Delete at once. The GPU still bills. Report the `pod stop:` lines. |
 | 4 | No SSH within 15 minutes | Report it. |
 | 5 | A pod setup step failed (copy, SHA-256, clone, launch) | Report the `remote step failed` line. |
 | 6 | A `STOP:` line in the chain log | Read the `STOP:` line in the pulled log. Fix on the Mac. |

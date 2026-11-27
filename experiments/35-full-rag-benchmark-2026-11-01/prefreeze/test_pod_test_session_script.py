@@ -109,6 +109,7 @@ def _run(
         "STAGES_FILE": str(stage_file),
         "RUNPOD_POD_ID": "pod123",
         "RUNPOD_API_KEY": KEY,
+        "STOP_RETRY_S": "0",
         **HOSTED,
         **env,
     }
