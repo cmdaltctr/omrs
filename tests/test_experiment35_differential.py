@@ -197,3 +197,13 @@ def test_specificity_difference_keeps_seed_20261126_and_the_registered_bounds() 
         expected.upper,
         expected.undefined,
     )
+
+
+def test_paired_bootstrap_is_the_shared_bootstrap_with_undefined_left_out() -> None:
+    bootstrap35 = load("bootstrap35")
+    items = [(f"q{i % 7}", float(i)) for i in range(21)]
+    stats = {"m": lambda r: sum(r) / len(r) if 0.0 in r else float("nan")}  # q0 not drawn
+    got = differential35.paired_bootstrap(items, stats, n=300, seed=20261126)
+    want = bootstrap35.bootstrap_many(items, stats, n=300, seed=20261126, fill=None)
+    assert got["m"].as_dict() == want["m"].as_dict()  # as_dict: NaN never equals NaN
+    assert 0 < got["m"].undefined < 300 and got["m"].kept == 300 - got["m"].undefined

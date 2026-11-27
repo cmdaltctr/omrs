@@ -2,8 +2,10 @@
 
 One function, :func:`bootstrap_by_question`, gives every gate interval of
 pre-registration section 11.2 (kappa, AUC lower bound, specificity
-difference). It is not in ``experiments/_lib/stats.py`` or ``stats_d6.py``
-(task 14.7, design D35 as amended by D39, finding H-16).
+difference). :func:`bootstrap_many` gives several statistics on one set of
+resamples (the specificity and sensitivity differences). They are not in
+``experiments/_lib/stats.py`` or ``stats_d6.py`` (task 14.7, design D35 as
+amended by D39, finding H-16).
 
 The rules:
 
@@ -25,7 +27,7 @@ from __future__ import annotations
 import math
 import random
 from collections import defaultdict
-from collections.abc import Callable, Hashable, Sequence
+from collections.abc import Callable, Hashable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -100,24 +102,58 @@ def bootstrap_by_question(
     Returns:
         The :class:`BootResult`.
     """
+    return bootstrap_many(items, {"value": statistic}, n=n, seed=seed, fill=fill)["value"]
+
+
+def bootstrap_many(
+    items: Sequence[tuple[Hashable, Any]],
+    statistics: Mapping[str, Callable[[list[Any]], float]],
+    *,
+    n: int,
+    seed: int,
+    fill: float | None,
+) -> dict[str, BootResult]:
+    """Return each statistic's bootstrap result on one set of resamples by question.
+
+    Every statistic sees the same drawn questions. Each keeps its own
+    undefined count, and the fail-closed rules apply to each on its own.
+
+    Args:
+        items: As :func:`bootstrap_by_question`.
+        statistics: Name to statistic, each as :func:`bootstrap_by_question`.
+        n: Number of resamples.
+        seed: Seed of the resampling draw.
+        fill: As :func:`bootstrap_by_question`, for every statistic.
+
+    Returns:
+        Name to :class:`BootResult`.
+    """
     groups: dict[Hashable, list[Any]] = defaultdict(list)
     for question, item in items:
         groups[question].append(item)
     questions = sorted(groups)  # never dict or file order
     units = [groups[q] for q in questions]
-    estimate = statistic([item for unit in units for item in unit])
+    full = [item for unit in units for item in unit]
+    estimates = {name: stat(full) for name, stat in statistics.items()}
     rng = random.Random(seed)  # noqa: S311 - seeded draw, not security
-    values: list[float] = []
-    undefined = 0
+    values: dict[str, list[float]] = {name: [] for name in statistics}
+    undefined = dict.fromkeys(statistics, 0)
     for _ in range(n):
         drawn = [item for _ in units for item in rng.choice(units)]
-        value = statistic(drawn)
-        if math.isnan(value):
-            undefined += 1
-            if fill is None:
-                continue
-            value = fill
-        values.append(value)
-    testable = not math.isnan(estimate) and undefined * 20 <= n and bool(values)
-    lower, upper = percentile_bounds(values) if testable else (math.nan, math.nan)
-    return BootResult(estimate, lower, upper, n, undefined, len(values), testable)
+        for name, stat in statistics.items():
+            value = stat(drawn)
+            if math.isnan(value):
+                undefined[name] += 1
+                if fill is None:
+                    continue
+                value = fill
+            values[name].append(value)
+    out = {}
+    for name in statistics:
+        kept = values[name]
+        testable = not math.isnan(estimates[name]) and undefined[name] * 20 <= n and bool(kept)
+        lower, upper = percentile_bounds(kept) if testable else (math.nan, math.nan)
+        out[name] = BootResult(
+            estimates[name], lower, upper, n, undefined[name], len(kept), testable
+        )
+    return out

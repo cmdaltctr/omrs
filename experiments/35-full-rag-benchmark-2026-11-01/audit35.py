@@ -10,8 +10,7 @@ Subcommands (all take ``--out``, the joined run output folder; files go in
   hybrid-on setup and in no hybrid-off setup (arm ``hon_only``), and the reverse
   (arm ``hoff_only``), with no qrels judgement for the question. Reads the score
   records of both halves (``ranked_units``); the 72 setups only (no ``-t20k``).
-  A placeholder unit (an unmapped chunk) has no text to label and is left out.
-  Writes ``frame.json``.
+  Placeholder units (no text) are left out. Writes ``frame.json``.
 - ``sample``: draws 50 pairs per arm per core dataset and writes
   ``audit-sample.json`` (with arm, for the analysis) and
   ``audit-items-blind.json`` (no arm, setup, score or rank, for the label page).
@@ -27,11 +26,9 @@ Subcommands (all take ``--out``, the joined run output folder; files go in
   resamples, seed 20261145), "can't tell" both ways, and the estimated H3 bias.
   Descriptive only: no decision, row or Holm family changes.
 
-The reference label follows ``labelpage35.reference_labels``: the agreed label,
-else the label agreed after discussion, else "can't tell".
-
-Unit text is read as the oracle stage reads it (``oracle35.unit_text``): the search stage
-saves no chunk text (section 14.2). ``sample`` needs ``--passages-dir``.
+Reference label: ``labelpage35.reference_labels``. Unit text comes from the prepared
+passages (``oracle35.unit_text``); the search stage saves none, so ``sample`` needs
+``--passages-dir``.
 """
 
 from __future__ import annotations
@@ -59,7 +56,7 @@ import labels35  # noqa: E402
 import oracle35  # noqa: E402
 import scoring35  # noqa: E402
 import select35  # noqa: E402
-from bootstrap35 import bootstrap_by_question  # noqa: E402
+from bootstrap35 import BootResult, bootstrap_by_question  # noqa: E402
 from experiments._lib.stats_d6 import wilson  # noqa: E402
 from outputs35 import read_rows, write_json  # noqa: E402
 
@@ -119,12 +116,7 @@ def _item_id(dataset: str, qid: str, unit: str) -> str:
 def draw(
     frames: Mapping[str, Mapping[str, Sequence[Pair]]],
 ) -> tuple[list[dict[str, str]], dict[str, dict[str, dict[str, int]]]]:
-    """Draw the audit items, in the order the module docstring fixes.
-
-    Returns:
-        The shuffled items (``dataset``, ``qid``, ``unit``, ``arm``), and per
-        dataset and arm the frame size and the number drawn.
-    """
+    """Draw the audit items in the module docstring's order; return them and the counts."""
     rng = random.Random(SEED_SAMPLE)  # noqa: S311 - registered seed, not security
     items: list[dict[str, str]] = []
     counts: dict[str, dict[str, dict[str, int]]] = {}
@@ -167,7 +159,7 @@ def blind_items(items: Sequence[Mapping[str, str]]) -> list[dict[str, str]]:
             "dataset": i["dataset"],
             "question": i["question"],
             "reference": i["reference"],
-            "passage": i["unit_text"],
+            "unit_text": i["unit_text"],
         }
         for i in items
     ]
@@ -240,11 +232,10 @@ def kappa(
     *,
     n: int = 10_000,
 ) -> dict[str, Any]:
-    """Return kappa L1 against L2 on the raw labels with its bootstrap interval.
-
-    Section 11.3: seed 20261129, method of section 11.2 (resample questions);
-    ``labels35.kappa_l1_l2`` does the work, so the audit follows the other sets.
-    """
+    """Return kappa L1 against L2 (``labels35.kappa_l1_l2``, seed 20261129); undefined if empty."""
+    if not labels35._both(items, l1, l2):
+        undefined = BootResult(math.nan, math.nan, math.nan, 0, 0, 0, False)
+        return {"items": 0, "overall": undefined.as_dict()}
     return labels35.kappa_l1_l2(SET_NAME, items, l1, l2, n=n)
 
 
@@ -336,13 +327,18 @@ def _bias_by_way(
     stats: Mapping[str, Mapping[str, Mapping[str, Any]]],
     gold: Mapping[str, Mapping[str, set[str]]],
 ) -> dict[str, Any]:
+    # An empty arm frame has no unit to correct, so its share is 0. A non-empty
+    # frame without a share leaves the dataset out (undefined).
     out: dict[str, Any] = {}
     for way in WAYS:
-        usable = {
-            d: {arm: per[arm][way]["share"] for arm in per}
-            for d, per in stats.items()
-            if all(per.get(a, {}).get(way, {}).get("share") is not None for a in ARMS)
-        }
+        usable = {}
+        for d, per in frames.items():
+            arm_share = {
+                a: 0.0 if not per.get(a) else stats.get(d, {}).get(a, {}).get(way, {}).get("share")
+                for a in ARMS
+            }
+            if all(v is not None for v in arm_share.values()):
+                usable[d] = arm_share
         out[way] = bias(records, {d: frames[d] for d in usable}, usable, gold)
     return out
 

@@ -65,6 +65,7 @@ def _node(code: str) -> Any:
 # --- Reading aid: matching rules ------------------------------------------------------
 
 
+@pytest.mark.slow  # boots a node subprocess
 def test_shared_words_match_exactly_after_lower_casing() -> None:
     out = _node(
         "console.log(JSON.stringify([...aidShared('The Device WEIGHS 2 kg', "
@@ -73,6 +74,7 @@ def test_shared_words_match_exactly_after_lower_casing() -> None:
     assert out == ["2", "device", "weighs"]
 
 
+@pytest.mark.slow  # boots a node subprocess
 def test_numbers_stay_whole() -> None:
     out = _node(
         "console.log(JSON.stringify([...aidShared('Paid $1,234 in 2019 at 3.5 percent', "
@@ -81,6 +83,7 @@ def test_numbers_stay_whole() -> None:
     assert out == ["$1,234", "2019", "3.5", "percent"]
 
 
+@pytest.mark.slow  # boots a node subprocess
 def test_stop_words_and_short_tokens_are_skipped_but_short_numbers_are_kept() -> None:
     out = _node(
         "console.log(JSON.stringify([...aidShared('the and of an is at 7 ox cat', "
@@ -89,6 +92,7 @@ def test_stop_words_and_short_tokens_are_skipped_but_short_numbers_are_kept() ->
     assert out == ["7", "cat"]
 
 
+@pytest.mark.slow  # boots a node subprocess
 def test_segments_cut_the_text_into_hits_and_gaps_without_losing_a_character() -> None:
     out = _node(
         "const s = new Set(['weighs','2']);"

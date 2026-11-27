@@ -10,12 +10,10 @@ closed as :mod:`bootstrap35` describes. ``Rows`` here are
 from __future__ import annotations
 
 import math
-import random
-from collections import defaultdict
 from collections.abc import Callable, Hashable, Mapping, Sequence
 from typing import Any
 
-from bootstrap35 import BootResult, percentile_bounds
+from bootstrap35 import BootResult, bootstrap_many
 
 Rows = Sequence[tuple[int, bool, bool]]
 
@@ -53,8 +51,8 @@ def paired_bootstrap(
 ) -> dict[str, BootResult]:
     """Return each statistic's percentile bootstrap on one set of resamples by question.
 
-    Every statistic sees the same drawn questions. An undefined resample of a
-    statistic is left out of that statistic and counted once; more than 5%
+    Delegates to :func:`bootstrap35.bootstrap_many`. An undefined resample of a
+    statistic is left out of that statistic and counted; more than 5%
     undefined, or an undefined full sample, makes it not testable.
 
     Args:
@@ -66,31 +64,7 @@ def paired_bootstrap(
     Returns:
         Name to :class:`bootstrap35.BootResult`.
     """
-    groups: dict[Hashable, list[Any]] = defaultdict(list)
-    for question, item in items:
-        groups[question].append(item)
-    units = [groups[q] for q in sorted(groups)]
-    full = [item for unit in units for item in unit]
-    estimates = {name: stat(full) for name, stat in statistics.items()}
-    values: dict[str, list[float]] = {name: [] for name in statistics}
-    undefined = dict.fromkeys(statistics, 0)
-    rng = random.Random(seed)  # noqa: S311 - seeded draw, not security
-    for _ in range(n):
-        drawn = [item for _ in units for item in rng.choice(units)]
-        for name, stat in statistics.items():
-            value = stat(drawn)
-            if math.isnan(value):
-                undefined[name] += 1
-            else:
-                values[name].append(value)
-    out = {}
-    for name in statistics:
-        ok = not math.isnan(estimates[name]) and undefined[name] * 20 <= n and bool(values[name])
-        low, high = percentile_bounds(values[name]) if ok else (math.nan, math.nan)
-        out[name] = BootResult(
-            estimates[name], low, high, n, undefined[name], len(values[name]), ok
-        )
-    return out
+    return bootstrap_many(items, statistics, n=n, seed=seed, fill=None)
 
 
 def excludes_zero(result: BootResult) -> bool:

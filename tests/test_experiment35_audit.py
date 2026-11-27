@@ -110,8 +110,25 @@ def test_sample_holds_arm_and_blind_items_never_do() -> None:
     banned = {"arm", "setup", "score", "rank"}
     assert all(not banned & set(b) for b in blind)
     assert all("hon_only" not in json.dumps(b) and "hoff_only" not in json.dumps(b) for b in blind)
-    assert blind[0]["question"] and blind[0]["reference"] and blind[0]["passage"]
+    assert blind[0]["question"] and blind[0]["reference"] and blind[0]["unit_text"]
     assert counts["bioasq"]["hon_only"]["drawn"] == 3
+
+
+def test_blind_items_go_through_the_audit_label_page_without_an_arm(tmp_path: Path) -> None:
+    labelpage35 = load("labelpage35")
+    items, _ = audit35.draw(_frames(3, 3))
+    questions = {"bioasq": {f"q{i:03d}": _Q(f"Q{i}?", f"ref{i}") for i in range(3)}}
+    questions["financebench"] = {"f1": _Q("fq", "fr")}
+    texts = {(i["dataset"], i["qid"], i["unit"]): f"text {i['unit']}" for i in items}
+    blind = audit35.blind_items(audit35.build_items(items, texts, questions))
+    shown = labelpage35.page_items(audit35.SET_NAME, blind)
+    assert [s["unit_text"] for s in shown] == [b["unit_text"] for b in blind]
+    page = tmp_path / "audit.html"
+    labelpage35.write_page(page, audit35.SET_NAME, blind)
+    text = page.read_text(encoding="utf-8")
+    for arm in audit35.ARMS:
+        assert arm not in text
+    assert "text u0" in text and "text v0" in text
 
 
 def test_reference_label_uses_agreement_then_resolution_then_cant_tell() -> None:
@@ -194,6 +211,28 @@ def test_bias_leaves_ranks_4_and_up_and_idcg_unchanged() -> None:
         records, frame, {"bioasq": {"hon_only": 1.0, "hoff_only": 0.0}}, {"bioasq": {"q1": {"g1"}}}
     )["bioasq"]
     assert out["bias"] == pytest.approx(0.0)
+
+
+def _one_arm_case(hoff_frame: list[tuple[str, str]]) -> dict[str, Any]:
+    records = [_rec(ON, "q1", ["g1", "f1", "z"]), _rec(OFF, "q1", ["g1", "x", "z"])]
+    for r in records:
+        r["ndcg_at_10"] = 1.0
+    items, ref = _labelled({"hon_only": ["relevant", "not_relevant"]})  # hon share 0.5
+    frames = {"bioasq": {"hon_only": [("q1", "f1")], "hoff_only": hoff_frame}}
+    gold = {"bioasq": {"q1": {"g1"}}}
+    return audit35._bias_by_way(records, frames, audit35.shares(items, ref), gold)
+
+
+def test_an_empty_arm_frame_adds_no_correction_and_keeps_the_dataset() -> None:
+    out = _one_arm_case([])  # hoff_only frame empty, hon_only frame labelled
+    for way in audit35.WAYS:
+        assert out[way]["bioasq"]["bias"] == pytest.approx(0.5 / math.log2(3))
+
+
+def test_a_missing_share_for_a_non_empty_frame_stays_undefined() -> None:
+    out = _one_arm_case([("q1", "x")])  # hoff_only frame has a unit but no label
+    for way in audit35.WAYS:
+        assert "bioasq" not in out[way]
 
 
 def _prepared(tmp: Path) -> Path:
@@ -284,7 +323,7 @@ def test_cli_frame_sample_report_round_trip(
     blind = json.loads((tmp_path / "audit" / "audit-items-blind.json").read_text())
     assert {i["arm"] for i in sample["items"]} == {"hon_only", "hoff_only"}
     assert all("arm" not in b for b in blind)
-    assert {b["passage"] for b in blind} == {"passage a", "passage c"}
+    assert {b["unit_text"] for b in blind} == {"passage a", "passage c"}
     ids = [i["item_id"] for i in sample["items"]]
     for who in ("L1", "L2"):
         labels = {i: "relevant" if "a" in i else "not_relevant" for i in ids}
@@ -296,3 +335,38 @@ def test_cli_frame_sample_report_round_trip(
     assert report["shares"]["bioasq"]["hon_only"]["n"] == 1
     assert "bias" in report and "difference" in report
     assert report["kappa"]["items"] == 2 and "overall" in report["kappa"]
+
+
+def test_kappa_with_no_item_labelled_by_both_gives_undefined_not_an_error() -> None:
+    items = [{"item_id": "i0", "dataset": "bioasq", "qid": "q0", "arm": "hon_only"}]
+    got = audit35.kappa(items, {"i0": "relevant"}, {}, n=50)
+    assert got["items"] == 0
+    assert set(got) == {"items", "overall"}
+    overall = got["overall"]
+    assert set(overall) == set(bootstrap35.BootResult(0.0, 0.0, 0.0, 0, 0, 0, True).as_dict())
+    assert (overall["estimate"], overall["lower"], overall["upper"]) == (None, None, None)
+    assert overall["testable"] is False
+
+
+def test_report_is_written_when_the_sample_is_empty(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = tmp_path / "scores" / "B" / "bioasq"
+    path.mkdir(parents=True)
+    for setup in (ON, OFF):  # only the judged unit g1 is ranked: both frames are empty
+        row = {**_rec(setup, "q1", ["g1"]), "ndcg_at_10": 1.0}
+        (path / f"{setup}.jsonl").write_text(json.dumps(row) + "\n", encoding="utf-8")
+    monkeypatch.setattr(audit35.scoring35, "require_half_b", lambda out: None)
+    monkeypatch.setattr(audit35, "load_qrels", lambda names: {"bioasq": {"q1": {"g1": 1}}})
+    monkeypatch.setattr(audit35, "load_questions", lambda names: {"bioasq": {}})
+    monkeypatch.setattr(audit35, "load_gold", lambda names: {"bioasq": {"q1": {"g1"}}})
+    passages = _prepared(tmp_path)
+    assert audit35.main(["frame", "--out", str(tmp_path)]) == 0
+    assert audit35.main(["sample", "--out", str(tmp_path), "--passages-dir", str(passages)]) == 0
+    for who in ("L1", "L2"):
+        (tmp_path / "audit" / f"labels-relevance_audit-{who}.json").write_text(
+            json.dumps({"set": "relevance_audit", "labeller": who, "labels": {}})
+        )
+    assert audit35.main(["report", "--out", str(tmp_path), "--n", "50"]) == 0
+    report = json.loads((tmp_path / "audit" / "audit-report.json").read_text())
+    assert report["kappa"]["items"] == 0 and report["kappa"]["overall"]["estimate"] is None
