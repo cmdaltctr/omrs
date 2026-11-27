@@ -58,7 +58,10 @@ pack_stage() {
     spare_copy "$1"
   else
     rm -f "$tgz.tmp" "$tgz.sha256.tmp"
-    log "== $NAME: PACK FAILED (the stage stays ok and runs again on a resume)"
+    # A failed pack can leave the only copy of a built index unprotected: count the stage
+    # as failed, so the chain exits 1 and KEEP_POD_ON_FAIL keeps the pod.
+    FAILED+=("$NAME:pack")
+    log "== $NAME: PACK FAILED (the stage runs again on a resume)"
   fi
   rm -f "$list"
 }

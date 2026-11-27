@@ -78,3 +78,16 @@ def test_the_resume_check_reads_the_log_line_and_the_tarball_of_the_build_stage(
     assert re.findall(r"\d\d-vram8-build", check.command) == [tag]
     after = [s.name for s in stages[build.index + 1 :]]
     assert after.index("check-resume") > after.index("vram8-search")
+
+
+def test_every_collect_stage_stamps_the_copied_logs_with_the_current_time():
+    """The chain packs only files newer than the stage start: tar -x must not restore mtimes."""
+    from test_session_stages import FILES
+
+    found = 0
+    for path in FILES:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("collect@"):
+                found += 1
+                assert 'tar -xmf - -C "$OUT_DIR/router-logs"' in line, path
+    assert found >= 4

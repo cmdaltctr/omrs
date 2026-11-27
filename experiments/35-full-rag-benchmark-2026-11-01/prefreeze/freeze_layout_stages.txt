@@ -29,4 +29,4 @@ vram8-search@20m uv run --no-sync python run_arms.py --dataset freshstack --setu
 check-search@5m uv run --no-sync python prefreeze/verify35.py expect "$OUT_DIR/vramq/freshstack/search/e8b-c1024-r8b-hon/run1/search-summary.json" --count 1 'closed_missing=[]'
 check-tokenizer@5m uv run --no-sync python prefreeze/verify35.py expect "$OUT_DIR/vram/freshstack/e8b-c1024/index-fingerprint.json" --count 1 tokenizer.sha256=83cdf8c3a34f68862319cb1810ee7b1e2c0a44e0864ae930194ddb76bb7feb8d tokenizer.revision=5cf2132abc99cad020ac570b19d031efec650f2b
 check-resume@2m grep -q '== vram8-build: SKIPPED (resume' "$WORK/test-session.log" && cd "$WORK/stage-out" && sha256sum -c 04-vram8-build.tgz.sha256
-collect@5m mkdir -p "$OUT_DIR/router-logs" && cd /root/exp35-local && find . -name server.log -print0 | tar --null -T - -cf - | tar -xf - -C "$OUT_DIR/router-logs"
+collect@5m mkdir -p "$OUT_DIR/router-logs" && cd /root/exp35-local && find . -name server.log -print0 | tar --null -T - -cf - | tar -xmf - -C "$OUT_DIR/router-logs"

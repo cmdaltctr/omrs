@@ -145,4 +145,4 @@ check-kinds-recheck@5m uv run --no-sync python prefreeze/kinds_recheck35.py scor
 check-join@5m uv run --no-sync python prefreeze/verify35.py expect "$OUT_DIR/s/join.json" ok=true smoke=true 'failures=[]'
 
 # Router logs of every stage (swaps, idle stops) into the tarball. 1 min.
-collect@5m mkdir -p "$OUT_DIR/router-logs" && cd /root/exp35-local && find . -name server.log -print0 | tar --null -T - -cf - | tar -xf - -C "$OUT_DIR/router-logs"
+collect@5m mkdir -p "$OUT_DIR/router-logs" && cd /root/exp35-local && find . -name server.log -print0 | tar --null -T - -cf - | tar -xmf - -C "$OUT_DIR/router-logs"

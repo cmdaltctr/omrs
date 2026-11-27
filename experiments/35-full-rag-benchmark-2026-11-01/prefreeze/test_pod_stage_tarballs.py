@@ -194,21 +194,34 @@ def test_resume_never_skips_a_bang_stage(tmp_path: Path) -> None:
     assert "resumed: a" in result.stdout
 
 
-def test_a_failed_pack_is_logged_and_the_stage_stays_ok(tmp_path: Path) -> None:
+def _failing_pack_path(tmp_path: Path) -> str:
+    """A ``PATH`` whose ``tar`` fails the stage pack (it alone passes --null), not the final one."""
     stub = tmp_path / "tar-bin"
     stub.mkdir()
-    # Only the stage pack passes --null; the final tarball does not.
     real = shutil.which("tar")
     body = f'#!/usr/bin/env bash\ncase "$*" in *--null*) exit 1 ;; esac\nexec {real} "$@"\n'
     (stub / "tar").write_text(body, encoding="utf-8")
     (stub / "tar").chmod(0o755)
-    path = f"{tmp_path / 'bin'}:{stub}:{os.environ['PATH']}"
-    result, _ = _run(tmp_path, TWO, PATH=path)
-    assert result.returncode == 0, result.stdout
+    return f"{tmp_path / 'bin'}:{stub}:{os.environ['PATH']}"
+
+
+def test_a_failed_pack_is_logged_and_counts_as_a_failed_stage(tmp_path: Path) -> None:
+    path = _failing_pack_path(tmp_path)
+    result, log = _run(tmp_path, TWO, PATH=path)
+    assert result.returncode == 1, result.stdout
     assert "== alpha: PACK FAILED" in result.stdout and "== beta: PACK FAILED" in result.stdout
-    assert "== finish: failed stages: none" in result.stdout
+    assert "== finish: failed stages: alpha:pack beta:pack;" in result.stdout
+    assert (tmp_path / "smoke-out" / "b.txt").is_file()  # the chain went on
     assert list(_stage_out(tmp_path).glob("*.tgz*")) == []
     assert (tmp_path / "work" / "test-session-out.tgz").is_file()
+    assert len(_lines(log)) == 1  # no keep rule: the pod stops
+
+
+def test_a_failed_pack_keeps_the_pod_with_keep_pod_on_fail(tmp_path: Path) -> None:
+    path = _failing_pack_path(tmp_path)
+    result, log = _run(tmp_path, TWO, PATH=path, KEEP_POD_ON_FAIL="1")
+    assert "POD_KEPT: failed stages: alpha:pack beta:pack; fix" in result.stdout
+    assert not log.exists()
 
 
 def test_resume_restores_from_the_spare_when_only_the_spare_has_it(tmp_path: Path) -> None:
@@ -328,7 +341,8 @@ def test_dry_run_prints_the_pack_and_spare_steps_and_runs_nothing(tmp_path: Path
 
 # gpulog-style launcher: a loop appends to a file under OUT_DIR for the whole session.
 LOOP = (
-    'bg sh -c \'(while :; do echo x >> "$OUT_DIR/bg.log"; sleep 0.1; done) '
+    'bg sh -c \'echo x > "$OUT_DIR/bg.log"; '
+    '(while :; do echo x >> "$OUT_DIR/bg.log"; sleep 0.1; done) '
     '>/dev/null 2>&1 & echo $! >> "$BACKGROUND_PIDS"\'\n'
 )
 OWN = "ok sh -c 'sleep 0.5; touch \"$OUT_DIR/g.txt\"'\n"

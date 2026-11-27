@@ -528,12 +528,12 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # +7 (2026-11-26, freeze-check vram8-search fix, by test-ID diff against HEAD 077413e1): 7
 # added: prefreeze/test_freeze_check_stages (1, G2 guard rule) and the 6 BOTH-parametrised
 # prefreeze/test_session_stages checks of freeze_rerun_stages.txt. None removed. No extra.
-# +94 (2026-11-26, Exp 35 pod disk layout, by test-ID diff against HEAD 1d33edd7): 94
-# added: new files prefreeze/test_pod_stage_tarballs (34), _watch_stages35 (27) and
-# _freeze_layout_stages (4); prefreeze/test_session_stages (12: the layout file's 6 BOTH
-# checks and 6 no-/workspace cases), _pod_setup35 (7), _launch35_script (6),
-# _create_pod35 (3) and _mac_watch35_stop (1). None removed or renamed. No extra.
-_BASE_EXECUTED = 14230
+# +101 (2026-11-26, Exp 35 pod disk layout and its review, by test-ID diff against HEAD
+# 1d33edd7): 101 added: new files prefreeze/test_pod_stage_tarballs (35), _watch_stages35
+# (26), _watch_resume35 (6) and _freeze_layout_stages (5); prefreeze/test_session_stages
+# (12: the layout file's 6 BOTH checks and 6 no-/workspace cases), _pod_setup35 (7),
+# _launch35_script (6), _create_pod35 (3) and _mac_watch35_stop (1). None removed. No extra.
+_BASE_EXECUTED = 14237
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

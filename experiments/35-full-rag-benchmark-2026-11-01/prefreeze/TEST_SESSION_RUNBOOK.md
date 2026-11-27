@@ -53,6 +53,7 @@ This runbook is for the operator's agent. The agent creates and deletes the pod 
     Exit 14 ends with `KEEP_POD <id>`: the pod stays up for a fix. Follow "Resume after a failure".
 15. If the watcher process ended without the `DELETE_POD_NOW` or `KEEP_POD` line, delete the pod all the same.
 16. Read `list-pods`. Confirm that the pod is gone. If it is not gone, delete it again and read again.
+    Skip this step after exit 14: the pod stays up on purpose for "Resume after a failure".
 17. Remove nothing else: no other pod, volume, template, secret or SSH key.
 18. Read `list-pod-billing` for the real cost of the session.
 19. Report the exit code, the `RESULT` line, the results folder and the cost.

@@ -80,6 +80,7 @@ class StagePull:
         self.remote_dir, self.folder = f"{work}/stage-out", folder
         self.done: dict[str, str] = {}  # tarball name -> hash the Mac holds
         self.bad: dict[str, str] = {}  # tarball name -> hash that failed twice
+        self.listed: set[str] = set()  # the ready tarballs of the last good listing
         for record in sorted(folder.glob("*.tgz.sha256")):  # an earlier try of this session
             tgz = folder / record.name.removesuffix(".sha256")
             want = record.read_text(encoding="utf-8").split()[:1]
@@ -114,7 +115,9 @@ class StagePull:
 
     def pull_new(self) -> None:
         """List the ready stage tarballs once; copy each one the Mac does not hold yet."""
-        for name, digest in sorted(self._listing().items()):
+        ready = self._listing()
+        self.listed |= set(ready)
+        for name, digest in sorted(ready.items()):
             if self.done.get(name) == digest or self.bad.get(name) == digest:
                 continue
             found = self._fetch(name)
@@ -130,7 +133,12 @@ class StagePull:
                     " copies; the final tarball still holds its files. Report it."
                 )
 
+    def unresolved(self) -> list[str]:
+        """Name the ready stage tarballs the Mac does not hold (a bad hash or a failed copy)."""
+        return sorted(self.listed - set(self.done) | set(self.bad))
+
     def summary(self) -> str:
         """Return the count and the names of the stage tarballs the Mac holds."""
-        names = sorted(self.done)
-        return f"stage tarballs pulled: {len(names)} ({', '.join(names) if names else 'none'})"
+        names, lost = sorted(self.done), self.unresolved()
+        text = f"stage tarballs pulled: {len(names)} ({', '.join(names) if names else 'none'})"
+        return text + (f"; not pulled: {', '.join(lost)}" if lost else "")

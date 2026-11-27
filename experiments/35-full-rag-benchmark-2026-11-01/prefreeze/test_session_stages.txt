@@ -205,7 +205,7 @@ fsfull@6h uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c
 fsfull-seal@30m uv run --no-sync python run_arms.py --dataset freshstack --index e4b-c1024 --stage seal --out-dir "$OUT_DIR/fsfull" --prefreeze --local-dir /root/exp35-local --passages-dir $WORK/passages
 
 # Router logs of every stage (swaps, idle stops) into the tarball. 1 min.
-collect@5m mkdir -p "$OUT_DIR/router-logs" && cd /root/exp35-local && find . -name server.log -print0 | tar --null -T - -cf - | tar -xf - -C "$OUT_DIR/router-logs"
+collect@5m mkdir -p "$OUT_DIR/router-logs" && cd /root/exp35-local && find . -name server.log -print0 | tar --null -T - -cf - | tar -xmf - -C "$OUT_DIR/router-logs"
 
 # Task 8.7: the gate classify, about 100 hosted calls, last (owner decision). 3 min.
 gate-classify@20m PYTHONPATH=../.. uv run --no-sync python refusals35.py classify --out-dir "$OUT_DIR/gate" --examples $WORK/inputs/classify-examples.json --classify-concurrency 16

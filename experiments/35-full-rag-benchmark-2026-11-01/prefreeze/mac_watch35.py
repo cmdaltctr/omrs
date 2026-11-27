@@ -26,7 +26,17 @@ from pathlib import Path
 import runpod_ssh35
 import watch_stages35
 import watch_zai35
-from watch_inputs35 import EXAMPLES, INPUTS_TGZ, STAGES, Plan, build_inputs, prepare, sha256, unsafe
+from watch_inputs35 import (
+    EXAMPLES,
+    INPUTS_TGZ,
+    POD_ID_FILE,
+    STAGES,
+    Plan,
+    build_inputs,
+    prepare,
+    sha256,
+    unsafe,
+)
 from watch_stop35 import stop_chain
 
 HERE = Path(__file__).resolve().parent
@@ -72,6 +82,13 @@ PACK_CMD = (
     f"cd {OUT_PARENT} && {{ tar -czf {OWN_TARBALL} --exclude=stores {OUT_NAME}; [ $? -le 1 ]; }} "
     f"&& sha256sum {OWN_TARBALL} > {OWN_TARBALL}.sha256"
 )
+
+
+KEEP_TEXT = (  # the last line when the chain kept the pod after a failure
+    "fix the stage and push the fix, then run again with --resume and the new --commit "
+    "(otherwise the same arguments); delete the pod yourself when done"
+)
+_hold: list[str] = []  # why the last line is KEEP_POD and not DELETE_POD_NOW
 
 
 class Interrupted(Exception):
@@ -398,6 +415,7 @@ def run(args: argparse.Namespace) -> int:
         say(f"steps 1 and 2: create {plan.folder}; build the inputs tarball (no Legal, D1)")
         plan.folder.mkdir(parents=True)
     (plan.folder / "watcher.pid").write_text(f"{os.getpid()}\n", encoding="utf-8")
+    (plan.folder / POD_ID_FILE).write_text(f"{args.pod_id}\n", encoding="utf-8")
     shas = build_inputs(plan, say)
     if not (found := runpod_ssh35.find(args, now=now, pause=pause, say=say)):
         return EXIT["no-address"]
@@ -416,8 +434,15 @@ def run(args: argparse.Namespace) -> int:
     elif w.kept:
         code = EXIT["kept"]
         say(f"{watch_stages35.KEPT} the pod still runs and bills. The watcher never deletes it.")
+        _hold.append(KEEP_TEXT)
     else:
         code = EXIT[reason] if reason != "done" else EXIT["done" if outputs == "ok" else "pull"]
+    if lost := stages.unresolved():  # a stage tarball that only the pod holds (stores included)
+        code = EXIT["pull"] if code == EXIT["done"] else code
+        say(f"!!! STAGE_NOT_PULLED: {', '.join(lost)}")
+        _hold.append(f"{', '.join(lost)} exist only on the pod, in {STAGE_OUT}, and were not "
+                     "pulled. Do not delete the pod yet: copy them with scp, or run again with "
+                     "--resume (same arguments) to retry the pull")  # fmt: skip
     result = f"RESULT end={reason} outputs={outputs} pulled-marker={marker} pod-stop={stop}"
     result += f" exit={code} folder={plan.folder}"
     (plan.folder / "watch-summary.txt").write_text(result + "\n", encoding="utf-8")
@@ -444,6 +469,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--resume", action="store_true", help="re-launch; skip stages done in stage-out"
     )
     parser.add_argument("--dry-run", action="store_true", help="print every step, run nothing")
+    _hold.clear()
     try:
         code = run(parser.parse_args(argv))
     except SystemExit as error:
@@ -458,9 +484,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         code = EXIT["internal"]
     pod_id = argv[argv.index("--pod-id") + 1] if "--pod-id" in argv[:-1] else "UNKNOWN"
     prefix = "[dry-run] a real run ends with: " if "--dry-run" in argv else ""
-    if code == EXIT["kept"]:  # the owner rule: the pod stays up while the fix is made
-        print(f"KEEP_POD {pod_id}: fix the stage, push the fix, then run again with the same "
-              "arguments and --resume; delete the pod yourself when done", flush=True)  # fmt: skip
+    if _hold:  # the pod holds work the Mac lacks, or the owner keeps it: no delete line
+        print(f"KEEP_POD {pod_id}: " + "; ".join(_hold), flush=True)
         return code
     print(f"{prefix}DELETE_POD_NOW {pod_id}", flush=True)
     return code

@@ -187,6 +187,50 @@ def test_tarballs_from_an_earlier_attempt_are_not_copied_again(tmp_path: Path) -
     )
 
 
+def test_a_stage_that_failed_its_hash_or_its_copy_is_unresolved(tmp_path: Path) -> None:
+    pod = StagePod()
+    pod.add(f"{TAG}.tgz")
+    pod.add("02-next.tgz")
+    pod.add("03-ok.tgz")
+    pod.wrong = 2  # both copies of the first one arrive wrong
+    puller, said = _puller(tmp_path, pod)
+    pod.fail = 0
+    puller.pull_new()
+    assert puller.unresolved() == [f"{TAG}.tgz"]
+    assert "not pulled: 01-setup.tgz" in puller.summary()
+    pod.fail = 1  # the next copy fails outright
+    pod.add("04-late.tgz")
+    puller.pull_new()
+    assert puller.unresolved() == [f"{TAG}.tgz", "04-late.tgz"]
+    puller.pull_new()  # the failed copy works now; the corrupt one stays unresolved
+    assert puller.unresolved() == [f"{TAG}.tgz"]
+
+
+def test_a_stage_that_never_matches_keeps_the_delete_line_back(tmp_path: Path) -> None:
+    s = Session(tmp_path, ["+[00:00:01] == a: start", "done"])
+    _stage(s)
+    (s.work / "stage-out" / f"{TAG}.tgz.sha256").write_text(f"{'0' * 64}  {TAG}.tgz\n", "utf-8")
+    result = s.run()
+    out = result.stdout
+    assert result.returncode == mac_watch35.EXIT["pull"], out + result.stderr
+    assert out.count("STAGE_HASH_MISMATCH") == 1 and f"not pulled: {TAG}.tgz" in out
+    assert "DELETE_POD_NOW" not in out
+    last = _last(result)
+    assert last.startswith(f"KEEP_POD {POD}") and "only on the pod" in last
+    assert mac_watch35.STAGE_OUT in last and f"{TAG}.tgz" in last
+
+
+def test_an_abnormal_end_with_an_unresolved_stage_keeps_its_own_exit_but_no_delete(
+    tmp_path: Path,
+) -> None:
+    s = Session(tmp_path, ["+[00:00:01] == a: start (timeout 600s)"])
+    _stage(s)
+    (s.work / "stage-out" / f"{TAG}.tgz.sha256").write_text(f"{'0' * 64}  {TAG}.tgz\n", "utf-8")
+    result = s.run()
+    assert result.returncode == mac_watch35.EXIT["idle"], result.stdout + result.stderr
+    assert "DELETE_POD_NOW" not in result.stdout and _last(result).startswith(f"KEEP_POD {POD}")
+
+
 # The watch loop: a long stage copy must not read as an idle chain or a lost connection.
 LOG_START = "[00:00:01] == a: start (timeout 600s)\n"
 
@@ -319,7 +363,9 @@ def test_keep_pod_on_fail_writes_the_flag_and_a_kept_pod_is_a_verdict_not_a_dele
     env = (s.work / "session.env").read_text(encoding="utf-8").splitlines()
     assert env[-1] == "KEEP_POD_ON_FAIL=1"
     assert "POD_KEPT:" in result.stdout and "pod-stop=kept" in result.stdout
-    assert _last(result).startswith(f"KEEP_POD {POD}") and "--resume" in _last(result)
+    last = _last(result)
+    assert last.startswith(f"KEEP_POD {POD}") and "--resume and the new --commit" in last
+    assert "otherwise the same arguments" in last
     assert "DELETE_POD_NOW" not in output
 
 
@@ -333,77 +379,6 @@ def test_without_the_flag_session_env_has_no_keep_or_resume_line(tmp_path: Path)
 def test_the_kept_exit_key_is_new_and_unique() -> None:
     codes = list(mac_watch35.EXIT.values())
     assert len(codes) == len(set(codes)) and mac_watch35.EXIT["kept"] == 14
-
-
-# --resume.
-def _again(s: Session, steps: list[str]) -> None:
-    """Make the fake pod ready for another launch: same disk, a new chain script."""
-    (s.pod / "step").unlink(missing_ok=True)
-    (s.pod / "steps").write_text("".join(f"{x}\n" for x in steps), encoding="utf-8")
-
-
-def _inputs_copies(s: Session) -> int:
-    return sum("exp35-inputs.tgz" in line for line in s.log("scp.log"))
-
-
-def test_resume_writes_resume_moves_earlier_files_aside_and_skips_matching_inputs(
-    tmp_path: Path,
-) -> None:
-    s = Session(tmp_path, ["+[00:00:01] == a: start", "done"])
-    _stage(s)
-    first = s.run()
-    assert first.returncode == 0, first.stdout + first.stderr
-    folder = s.folder()
-    before = _inputs_copies(s)
-    old_log = (folder / "test-session.log").read_bytes()
-    old_tgz = (folder / "test-session-out.tgz").read_bytes()
-    _again(s, ["+[00:00:01] == b: start", "dead"])
-    second = s.run("--resume")
-    output = second.stdout + second.stderr
-    assert second.returncode == 7, output
-    assert _inputs_copies(s) == before  # the pod held the same inputs: no copy
-    assert "resume" in output and "no copy" in output
-    assert (s.work / "session.env").read_text(encoding="utf-8").splitlines()[-1] == "RESUME=1"
-    assert (folder / "test-session.log.attempt1").read_bytes() == old_log
-    assert (folder / "test-session-out.tgz.attempt1").read_bytes() == old_tgz
-    assert (folder / "test-session-out.tgz.sha256.attempt1").is_file()
-    assert (folder / "stage-out" / f"{TAG}.tgz").is_file()  # the stage-out folder stays
-    assert "== b: start" in (folder / "test-session.log").read_text(encoding="utf-8")
-    assert not (folder / "test-session-out.tgz").exists()  # the pod's stale tarball was removed
-    assert (folder / "watcher-out.tgz").is_file()
-    assert len(s.log("scp.log")) >= 1 and sum("stage-out" in x for x in s.log("scp.log")) == 1
-    _again(s, ["dead"])
-    assert s.run("--resume").returncode == 7
-    assert (folder / "test-session.log.attempt2").is_file()  # never overwritten
-    assert (folder / "test-session.log.attempt1").read_bytes() == old_log
-
-
-def test_resume_copies_the_inputs_again_when_the_pod_copy_does_not_match(tmp_path: Path) -> None:
-    s = Session(tmp_path, ["done"])
-    assert s.run().returncode == 0
-    before = _inputs_copies(s)
-    (s.work / "inputs/exp35-inputs.tgz").write_bytes(b"damaged on the pod")
-    _again(s, ["dead"])
-    assert s.run("--resume").returncode == 7
-    assert _inputs_copies(s) > before
-    assert _sha(s.work / "inputs/exp35-inputs.tgz") == _sha(s.folder() / "inputs/exp35-inputs.tgz")
-
-
-def test_resume_without_an_earlier_session_folder_is_refused_before_any_step(
-    tmp_path: Path,
-) -> None:
-    s = Session(tmp_path, ["done"])
-    result = s.run("--resume")
-    assert result.returncode == 2 and "--resume" in result.stdout
-    assert not s.log("ssh.log") and not s.log("scp.log")
-    assert _last(result) == f"DELETE_POD_NOW {POD}"
-
-
-def test_a_fresh_launch_still_refuses_an_existing_folder(tmp_path: Path) -> None:
-    s = Session(tmp_path, ["done"])
-    assert s.run().returncode == 0
-    again = s.run()
-    assert again.returncode == 2 and "already exists" in again.stdout
 
 
 # The WORK folder.

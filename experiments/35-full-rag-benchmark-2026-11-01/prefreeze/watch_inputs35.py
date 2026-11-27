@@ -30,6 +30,7 @@ EXP = HERE.parent
 REPO = EXP.parent.parent
 PLAN = EXP / "plan.json"
 _SECRET_PARTS = (".env", "secrets", ".config", ".ssh")
+POD_ID_FILE = "pod-id.txt"  # written when a session starts; --resume needs the same pod id
 INPUTS_TGZ, EXAMPLES, STAGES = (
     "exp35-inputs.tgz",
     "classify-examples.json",
@@ -104,6 +105,17 @@ def resume_folder(root: Path, exp: str, stem: str) -> Path | None:
     )
 
 
+def pod_mismatch(folder: Path, pod_id: str) -> str:
+    """Return why *folder* is not the folder of pod *pod_id*, or ``""`` when it is."""
+    record = folder / POD_ID_FILE
+    seen = record.read_text(encoding="utf-8").strip() if record.is_file() else ""
+    if seen == pod_id:
+        return ""
+    return (
+        f"{folder} records pod {seen}, not {pod_id}" if seen else f"{folder} has no {POD_ID_FILE}"
+    )
+
+
 def prepare(args: argparse.Namespace) -> tuple[list[str], Plan]:
     """Check every local input; return the problems and the plan. Writes nothing."""
     plan = Plan(args.commit, args.ssh_key.expanduser(), args.examples.expanduser(), args.stages)
@@ -143,6 +155,8 @@ def prepare(args: argparse.Namespace) -> tuple[list[str], Plan]:
         problems.append(
             f"--resume: no earlier {stem} folder with the inputs {missing} ({plan.folder})"
         )
+    elif plan.resume and (why := pod_mismatch(plan.folder, args.pod_id)):
+        problems.append(f"--resume: {why}")
     elif plan.folder.exists() and not plan.resume:
         problems.append(f"results folder {plan.folder} already exists; it is never overwritten")
     problems += [f"input {rel} {why}" for rel in plan.rels if (why := unsafe(rel, plan.root))]
