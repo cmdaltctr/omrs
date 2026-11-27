@@ -22,12 +22,23 @@ of pre-registration section 11.3.
 
 from __future__ import annotations
 
+import argparse
 import html
 import json
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
+from labelaids35 import (
+    AUDIT_CHOICES,
+    AUDIT_FIELDS,
+    AUDIT_GUIDANCE,
+    AUDIT_LAYOUT,
+    AUDIT_QUESTION,
+    INSTRUCTIONS_HTML,
+    aid_attr,
+    aids_row,
+)
 from labelpage_assets35 import CSS, SCRIPT, exp34_style
 from labelrender35 import mark_claim, render_inline, render_markdown, render_passage
 
@@ -49,6 +60,7 @@ CHOICES: dict[str, tuple[tuple[str, str], ...]] = {
         ("not_correct", "Not correct"),
         ("cant_tell", "Can't tell"),
     ),
+    "relevance_audit": AUDIT_CHOICES,
 }
 
 #: The only item fields that reach the page, per set.
@@ -56,6 +68,7 @@ FIELDS: dict[str, tuple[str, ...]] = {
     "claim_kinds": ("question", "claim", "answer", "passages"),
     "faithfulness": ("question", "claim", "passages"),
     "correctness": ("question", "reference", "answer"),
+    "relevance_audit": AUDIT_FIELDS,
 }
 
 #: The page title per set.
@@ -63,6 +76,7 @@ TITLES: dict[str, str] = {
     "claim_kinds": "Claim kinds",
     "faithfulness": "Faithfulness",
     "correctness": "Correctness",
+    "relevance_audit": "Relevance audit",
 }
 
 #: How the page shows each field, per set, in order: field, plain-words label and role.
@@ -85,6 +99,7 @@ LAYOUT: dict[str, tuple[tuple[str, str, str], ...]] = {
         ("reference", "Reference answer", "context"),
         ("answer", "Answer", "focus"),
     ),
+    "relevance_audit": AUDIT_LAYOUT,
 }
 
 #: The Instructions panel of each page, per set: (choice value, rule, worked example), in
@@ -153,6 +168,7 @@ GUIDANCE: dict[str, tuple[tuple[str, str, str], ...]] = {
             "The answer stops in the middle of a sentence.",
         ),
     ),
+    "relevance_audit": AUDIT_GUIDANCE,
 }
 
 #: Hard cases agreed with the owner, per set. Add each new one after a practice round.
@@ -186,7 +202,11 @@ HARD_CASES: dict[str, tuple[str, ...]] = {
     ),
     "faithfulness": (),
     "correctness": (),
+    "relevance_audit": (),
 }
+
+#: The question above the choice chips when it differs from "Your label".
+QUESTIONS: dict[str, str] = {"relevance_audit": AUDIT_QUESTION}
 
 LABELLERS = ("L1", "L2")
 CANT_TELL = "cant_tell"
@@ -202,11 +222,11 @@ def page_items(set_name: str, items: Sequence[Mapping[str, Any]]) -> list[dict[s
     return [{"item_id": item["item_id"], **{f: item[f] for f in fields}} for item in items]
 
 
-def _toggle(field: str, label: str, body: str, k: int | None = None) -> str:
+def _toggle(field: str, label: str, body: str, k: int | None = None, aid: str = "") -> str:
     """A rendered block with a Rendered / Raw toggle (raw text is filled by the script)."""
     index = "" if k is None else f' data-k="{k}"'
     return (
-        f'<div class="outwrap" data-f="{field}"{index}><div class="viewbar">'
+        f'<div class="outwrap" data-f="{field}"{index}{aid}><div class="viewbar">'
         f'<p class="tag">{label}</p>'
         '<button type="button" class="vt on" data-v="md">Rendered</button>'
         '<button type="button" class="vt" data-v="raw">Raw</button>'
@@ -215,7 +235,7 @@ def _toggle(field: str, label: str, body: str, k: int | None = None) -> str:
     )
 
 
-def _passages(field: str, passages: Sequence[Any]) -> str:
+def _passages(field: str, passages: Sequence[Any], aid: str = "") -> str:
     """One collapsible panel per passage, named by the ordinal the answer cites."""
     panels = []
     for k, passage in enumerate(passages):
@@ -226,7 +246,7 @@ def _passages(field: str, passages: Sequence[Any]) -> str:
         panels.append(
             '<details class="engine psg"><summary>'
             f'<span class="en">{name}</span></summary>'
-            f"{_toggle(field, 'Text', render_passage(text), k)}</details>"
+            f"{_toggle(field, 'Text', render_passage(text), k, aid)}</details>"
         )
     return "".join(panels) or '<p class="pending">No cited passage.</p>'
 
@@ -237,28 +257,37 @@ def _card(set_name: str, i: int, item: Mapping[str, Any]) -> str:
     right: list[str] = []
     for field, label, role in LAYOUT[set_name]:
         value = item[field]
+        aid = aid_attr(set_name, field)
         if role == "context":
             left.append(
                 f'<div class="blk ctx"><p class="tag">{label}</p>'
-                f"<p>{render_inline(value)}</p></div>"
+                f"<p{aid}>{render_inline(value)}</p></div>"
             )
+        elif role == "block":
+            body = render_markdown(value)
+            left.append(f'<div class="ans">{_toggle(field, label, body, None, aid)}</div>')
         elif role == "answer":
             body = render_markdown(mark_claim(value, item.get("claim", "")))
             left.append(f'<div class="ans">{_toggle(field, label, body)}</div>')
         elif role == "passages":
             left.append(f'<div class="blk"><p class="tag">{label}s cited</p>')
-            left.append(f"{_passages(field, value)}</div>")
+            left.append(f"{_passages(field, value, aid)}</div>")
         elif field == "claim":
-            right.append(f'<p class="tag">{label}</p><p class="focus">{render_inline(value)}</p>')
+            focus = f'<p class="focus">{render_inline(value)}</p>'
+            shown = f"<div{aid}>{focus}</div>" if aid else focus
+            right.append(f'<p class="tag">{label}</p>{shown}')
         else:
-            right.append(f'<div class="ans">{_toggle(field, label, render_markdown(value))}</div>')
+            body = (render_passage if role == "unit" else render_markdown)(value)
+            right.append(f'<div class="ans">{_toggle(field, label, body, None, aid)}</div>')
+    right.append(aids_row())
     chips = "".join(
         f'<label class="chip"><input type="radio" value="{value}">'
         f"<span><kbd>{c + 1}</kbd>{html.escape(text, quote=False)}</span></label>"
         for c, (value, text) in enumerate(CHOICES[set_name])
     )
     right.append(
-        f'<fieldset class="form"><legend>Your label</legend><div class="opts">{chips}</div>'
+        f'<fieldset class="form"><legend>{QUESTIONS.get(set_name, "Your label")}</legend>'
+        f'<div class="opts">{chips}</div>'
         '<input type="text" class="note" placeholder="Note (optional)" aria-label="Note">'
         '<button type="button" class="clear">Clear</button></fieldset>'
     )
@@ -271,14 +300,22 @@ def _card(set_name: str, i: int, item: Mapping[str, Any]) -> str:
     )
 
 
-def write_page(path: Path, set_name: str, items: Sequence[Mapping[str, Any]]) -> None:
+def write_page(
+    path: Path,
+    set_name: str,
+    items: Sequence[Mapping[str, Any]],
+    model_labeller: bool = False,
+) -> None:
     """Write the static labelling page for one set.
 
     Args:
         path: The HTML file to write (atomically).
-        set_name: ``claim_kinds``, ``faithfulness`` or ``correctness``.
+        set_name: ``claim_kinds``, ``faithfulness``, ``correctness`` or ``relevance_audit``.
         items: Sample items. Each holds ``item_id`` and the set's fields;
             every other field is dropped before it reaches the page.
+        model_labeller: Build the model-labeller copy. It keeps its browser drafts
+            under a separate key (suffix ``-model``), so it never loads a human draft,
+            and its banner says so.
     """
     shown = page_items(set_name, items)
     data = {
@@ -287,6 +324,8 @@ def write_page(path: Path, set_name: str, items: Sequence[Mapping[str, Any]]) ->
         "choices": [list(c) for c in CHOICES[set_name]],
         "items": shown,
     }
+    if model_labeller:
+        data.update(draft_suffix="-model", model_labeller=True)
     blob = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
     title = html.escape(TITLES[set_name], quote=False)
     options = "".join(f'<option value="{w}">{w}</option>' for w in LABELLERS)
@@ -304,10 +343,12 @@ def write_page(path: Path, set_name: str, items: Sequence[Mapping[str, Any]]) ->
         '<details class="panel" id="instructions" open><summary>Instructions</summary>'
         '<div class="pbody"><p>Open an item. The context stays on the left; judge the item on '
         f'the right and pick one choice.</p><dl class="rules">{rules}</dl>{hard_block}'
+        f"{INSTRUCTIONS_HTML}"
         f'<p class="keys">Keys: 1 to {keys} pick a choice; J and K move to the next or '
         "previous item. Your draft is kept in this browser; Save labels downloads the file."
         "</p></div></details>"
     )
+    banner = '<span class="mlbanner">Model labeller copy</span>' if model_labeller else ""
     cards = "\n".join(_card(set_name, i, item) for i, item in enumerate(shown))
     # The viewport tag is written "name =" because tests ban the text "name=" on this page
     # (it guards against a name field for the labeller).
@@ -315,7 +356,7 @@ def write_page(path: Path, set_name: str, items: Sequence[Mapping[str, Any]]) ->
         '<!doctype html>\n<html lang="en-GB"><head><meta charset="utf-8">'
         '<meta name ="viewport" content="width=device-width, initial-scale=1">'
         f"<title>{title} labels</title><style>{exp34_style()}{CSS}</style></head><body>\n"
-        f'<header class="bar" id="bar"><h1>{title}</h1>'
+        f'<header class="bar" id="bar"><h1>{title}</h1>{banner}'
         '<span id="progress" role="status" aria-live="polite"></span>'
         '<button id="next" type="button">Next unlabelled</button>'
         '<button id="collapse" type="button">Collapse all</button>'
@@ -425,3 +466,19 @@ def set_reference(
         json.loads(resolved_path.read_text(encoding="utf-8")) if resolved_path.exists() else {}
     )
     return reference_labels(l1, l2, resolved)
+
+
+def main(argv: Sequence[str] | None = None) -> None:
+    """Build one page from an items JSON file: ``--model-labeller`` writes the model copy."""
+    parser = argparse.ArgumentParser(description=main.__doc__)
+    parser.add_argument("--set", dest="set_name", required=True, choices=sorted(CHOICES))
+    parser.add_argument("--items", type=Path, required=True, help="JSON list of items")
+    parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--model-labeller", action="store_true", help="separate draft key")
+    args = parser.parse_args(argv)
+    items = json.loads(args.items.read_text(encoding="utf-8"))
+    write_page(args.out, args.set_name, items, model_labeller=args.model_labeller)
+
+
+if __name__ == "__main__":
+    main()

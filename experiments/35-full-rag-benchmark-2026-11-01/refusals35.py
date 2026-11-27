@@ -8,7 +8,7 @@ Usage (``sample``, ``page`` and ``gate`` read saved files only and run on the Ma
         [--exclude SAMPLE.json --exclude EXAMPLES.json]
     refusals35.py page --out-dir OUT
     refusals35.py classify --out-dir OUT --examples EXAMPLES.json
-    refusals35.py gate --out-dir OUT --labels L1.json [--labels L2.json] [--resolved FILE]
+    refusals35.py gate --out-dir OUT --labels L1.json [--labels L2.json --l2-items F] [--resolved F]
 
 The sample draws from the valid claims of the pre-freeze test pod session (pre-freeze
 amendment 2026-11-23; task 9.2). Those answers use the main-run answer settings, with
@@ -41,6 +41,7 @@ from typing import Any
 
 import claimcontext35
 import claimkinds35
+import gateref35
 import labelpage35
 from experiments._lib.hosted_calls import HostedGate, RateLimitStop
 from experiments._lib.ordered_rows import append_line, read_lines
@@ -408,10 +409,10 @@ def classify_command(
     return 0
 
 
-def _gate_cli(out_dir: Path, label_files: Sequence[Path], resolved: Path | None) -> int:
+def _gate_cli(out_dir: Path, files: Sequence[Path], resolved: Path | None, l2: Path | None) -> int:
     sample = _sample(out_dir)
     ids = [i["item_id"] for i in sample["items"]]
-    found = dict(labelpage35.read_labels(p, "claim_kinds", ids) for p in label_files)
+    found = gateref35.read_gate_labels(files, ids, l2)
     resolved_labels = json.loads(resolved.read_text(encoding="utf-8")) if resolved else {}
     labels, unresolved = labelpage35.reference_labels(
         found["L1"], found.get("L2", {}), resolved_labels
@@ -466,6 +467,7 @@ def main(argv: Sequence[str] | None = None, *, build_classifier: Builder | None 
     g.add_argument("--out-dir", type=Path, required=True)
     g.add_argument("--labels", type=Path, action="append", required=True)
     g.add_argument("--resolved", type=Path)
+    g.add_argument("--l2-items", type=Path, help="l2-items.json: the claims L2 labelled")
     args = parser.parse_args(argv)
     if args.command == "sample":
         folders: dict[str, list[Path]] = {}
@@ -491,7 +493,7 @@ def main(argv: Sequence[str] | None = None, *, build_classifier: Builder | None 
             attempts=args.rate_limit_attempts,
             build_classifier=build_classifier,
         )
-    return _gate_cli(args.out_dir, args.labels, args.resolved)
+    return _gate_cli(args.out_dir, args.labels, args.resolved, args.l2_items)
 
 
 if __name__ == "__main__":

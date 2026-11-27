@@ -19,7 +19,9 @@ In this order:
    B) and the descriptive 72-setup table are added to the same file. When
    classifier gate 3 has not passed (amendment A14), the faithfulness headline
    is descriptive only: ``faithfulness_glm_factual_descriptive`` holds the
-   half-B mean and ``n``, with no interval and no p-value.
+   half-B mean and ``n``, with no interval and no p-value. ``pooled_h8`` holds
+   the pooled FinanceBench and FreshStack estimate of rows 12 to 19 (A18,
+   ``pooled35``); it decides nothing.
 
 ``reporttables35.py --factorial OUT/confirmatory.json`` reads that file. Exit
 codes: 0 written; 2 a guard refused (the message names the reason; nothing
@@ -48,6 +50,7 @@ import determinism35  # noqa: E402
 import factorial35  # noqa: E402
 import kindgate35  # noqa: E402
 import labels35  # noqa: E402
+import pooled35  # noqa: E402
 import scoring35  # noqa: E402
 import select35  # noqa: E402
 import stages35  # noqa: E402
@@ -154,6 +157,8 @@ def analyse(
             "answer": answer,
         },
         "setup_table": factorial35.setup_table(search),
+        # A18: secondary pooled H8 estimate; it decides nothing (section 9 point 7).
+        "pooled_h8": pooled35.pooled_h8(answers, saved["datasets"]),
     }
     write_json(path, record)
     return {**result, **record}

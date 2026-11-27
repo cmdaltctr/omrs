@@ -24,12 +24,21 @@ Writes ``<out>/report-tables.json`` with:
   (``unjudged35.report``, over the score records of both halves);
 - ``alpha_ndcg_freshstack``: ``<out>/alpha-ndcg.json`` as ``alphandcg35.py``
   wrote it (run it first), else "not run";
-- ``hybrid_trigger``: audit trigger (a), hybrid on against off on FreshStack
-  (``unjudged35.hybrid_trigger``), "not defined" without FreshStack scores;
+- ``hybrid_trigger``: descriptive unjudged-share gap (a), hybrid on against off on
+  FreshStack (``unjudged35.hybrid_trigger``; the A18 fixed audit, ``audit35.py``,
+  replaces the trigger), "not defined" without FreshStack scores;
 - ``number_match``, ``compute`` (``--records`` pod run-record files and the
   ``--rates`` budget rates file) and ``fenced_rows`` (``--passages-dir``):
   ``reportextra35``; "not defined" without their inputs. The sensitivity set
   adds faithfulness with uncited factual segments as unsupported.
+- ``pooled_h8`` (``--factorial``, A18): the pooled FinanceBench and FreshStack
+  estimate of rows 12 to 19 as ``analyse35.py`` wrote it, beside the
+  per-dataset estimates; it decides nothing.
+- ``h7_corner_cells``, ``freshstack_evidence_recall`` and
+  ``all_claims_faithfulness`` (A18, ``reportextra35``): the four H7 corner
+  means beside row 11, FreshStack ``evidence_recall_20k`` for rows 9 to 11,
+  and faithfulness over all cited claims beside rows 12, 13, 16 and 17;
+  descriptive; "not defined" without their inputs.
 
 Other inputs it reads when present: ``answer-scores.jsonl``,
 ``contamination.json`` (``contamination35.py``) and
@@ -58,6 +67,8 @@ import bounds35  # noqa: E402
 import budget35  # noqa: E402
 import cells35  # noqa: E402
 import datasets35  # noqa: E402
+import factorial35  # noqa: E402
+import join35  # noqa: E402
 import reportextra35  # noqa: E402
 import scoring35  # noqa: E402
 import select35  # noqa: E402
@@ -289,7 +300,7 @@ def unjudged_table(out: Path) -> dict[str, Any] | None:
 
 
 def hybrid_trigger_table(out: Path) -> dict[str, Any] | str:
-    """Return audit trigger (a) on all FreshStack questions, else "not defined"."""
+    """Return the descriptive hybrid gap (a) on all FreshStack questions, else "not defined"."""
     records = [r for r in _score_records(out) if r["dataset"] == unjudged35.FRESHSTACK]
     if not records:
         return reportextra35.NOT_DEFINED
@@ -312,6 +323,31 @@ def compute(records: Sequence[Path], rates: Path | None) -> dict[str, Any] | str
     price = (_json(rates) or {}).get("pod_usd_per_hour") if rates else None
     pods = reportextra35.pod_records(records)
     return reportextra35.compute_table(pods, None if price is None else float(price))
+
+
+def a18_tables(
+    out: Path,
+    result: Mapping[str, Any] | None,
+    *,
+    n_draws: int = factorial35.stats_cluster.SIGN_FLIP_DRAWS,
+) -> dict[str, Any]:
+    """Return the three descriptive tables of amendment A18; "not defined" without inputs."""
+    nd = reportextra35.NOT_DEFINED
+    search = _score_records(out)
+    runs = Layout(out).runs("answer", "judge-chat.jsonl")
+    all_claims: Any = nd
+    if runs:
+        records = reportextra35.all_claims_records(out, join35.question_documents(out))
+        all_claims = reportextra35.all_claims_faithfulness(records, result, n_draws=n_draws)
+    return {
+        "h7_corner_cells": reportextra35.h7_corner_cells(search, result, n_draws=n_draws)
+        if search
+        else nd,
+        "freshstack_evidence_recall": reportextra35.freshstack_evidence_recall(
+            search, n_draws=n_draws
+        ),
+        "all_claims_faithfulness": all_claims,
+    }
 
 
 def _json(path: Path) -> Any:
@@ -361,6 +397,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "fenced_rows": reportextra35.fenced_rows(args.passages_dir)
         if args.passages_dir
         else reportextra35.NOT_DEFINED,
+        "pooled_h8": None if result is None else result.get("pooled_h8", NOT_RUN),
+        **a18_tables(out, result),
     }
     write_json(out / "report-tables.json", tables)
     print(f"[report-tables] {out / 'report-tables.json'}", flush=True)

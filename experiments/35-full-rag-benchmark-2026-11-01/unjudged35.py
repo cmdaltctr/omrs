@@ -1,8 +1,10 @@
-"""Unjudged share and blind-audit trigger of Experiment 35 (task 16.25; PR 11.3 and 21).
+"""Unjudged share and descriptive audit-trigger gap of Experiment 35 (task 16.25; PR 11.3 and 21).
 
-O3 (decided by the owner on 2026-11-14): no blind relevance audit by default.
-The audit runs only if this trigger fires: the mean unjudged share in the top
-10 units differs by more than 5 percentage points (0.5 units per question)
+Descriptive only (A18, owner decision 2026-11-27): the blind relevance audit now
+always runs on every core dataset (``audit35.py``, pre-registration section 11.3),
+so these gaps no longer trigger anything. The "fires" flags below stay as a
+descriptive marker of a mean unjudged-share gap above 5 percentage points (0.5
+units per question):
 
 - (a) between hybrid on and hybrid off on FreshStack, marginal over the other
   factors (:func:`hybrid_trigger`, all questions, after step 5 of section 14.2);
@@ -20,8 +22,8 @@ absolute, so it is blind to which side scores higher.
 Score records are those of ``score35.py`` (``dataset``, ``setup``, ``qid``,
 ``units``, the top 10 units in rank order, and ``ranked_units``, every distinct
 unit in rank order). Qrels map each question to its judged units and their
-grade (``datasets35.qrels``). The audit sample and page (seed 20261120) are
-built only if the trigger fires.
+grade (``datasets35.qrels``). The audit sample and page (seed 20261120) are built by
+``audit35.py`` whatever these gaps are.
 
 Condensed-list nDCG@10 (Sakai 2007; pre-registration section 21, RDY 16.4) is
 the sensitivity of rows 1 to 8 (H1 to H5): each ranked list loses its unjudged
@@ -47,7 +49,7 @@ DEPTH = 10
 GAP = 0.05
 TOLERANCE = 1e-9  # a gap of exactly 5 points must not fire through float error
 FRESHSTACK = "freshstack"
-NOT_DEFINED = "qrels hold positives only: unjudged share not defined, trigger not used"
+NOT_DEFINED = "qrels hold positives only: unjudged share not defined, descriptive gap not computed"
 NEITHER = (
     "qrels hold positives only: neither the unjudged share nor condensed-list nDCG@10 "
     "can be computed as defined"
@@ -103,7 +105,7 @@ def _verdict(dataset: str, left: str, right: str, a: float | None, b: float | No
 
 
 def hybrid_trigger(records: Iterable[Mapping[str, Any]], qrels: Qrels) -> dict[str, Any]:
-    """Return trigger (a): hybrid on against off on FreshStack, marginal over the other factors.
+    """Return descriptive gap (a): hybrid on against off on FreshStack, marginal over other factors.
 
     Args:
         records: Search score records of every setup (other datasets are skipped).
@@ -125,7 +127,7 @@ def system_trigger(
     ragflow_records: Iterable[Mapping[str, Any]],
     qrels: Mapping[str, Qrels],
 ) -> dict[str, Any]:
-    """Return trigger (b): OMRS against RAGFlow per core dataset (Part 2), and ``fires`` overall.
+    """Return descriptive gap (b): OMRS against RAGFlow per core dataset (Part 2), and ``fires``.
 
     Each side's share is its mean over its setups (one selected cell per system in Part 2).
     """

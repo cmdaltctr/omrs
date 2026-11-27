@@ -13,6 +13,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+from labelaids35 import CSS_AIDS, SCRIPT_AIDS
+
 EXP34 = Path(__file__).resolve().parent.parent / "34-worker-sample-review-2026-09-19"
 
 
@@ -26,7 +28,7 @@ def exp34_style() -> str:
     return head[head.index("<style>") + len("<style>") : head.index("</style>")]
 
 
-CSS = """
+CSS = CSS_AIDS + """
 .bar h1{font-size:1rem;margin:0 auto 0 0}
 .who{font-size:.85rem;color:var(--muted);display:flex;gap:.35rem;align-items:center}
 .who select{font:inherit;padding:.3rem .4rem;border:1px solid var(--line);border-radius:6px;
@@ -133,7 +135,7 @@ kbd{font:inherit;font-size:.72rem;border:1px solid currentColor;border-radius:4p
 
 SCRIPT = """
 const data = JSON.parse(document.getElementById('items').textContent);
-const store = 'exp35-draft-' + data.set;
+const store = 'exp35-draft-' + data.set + (data.draft_suffix || '');
 const total = data.items.length;
 let labels = {};
 let notes = {};
@@ -291,12 +293,14 @@ document.getElementById('save').addEventListener('click', function () {
     if (notes[item.item_id]) { kept[item.item_id] = notes[item.item_id]; }
   });
   if (open > 0 && !confirm(open + ' of ' + total + ' items are unlabelled. Save anyway?')) { return; }
-  const out = {set: data.set, labeller: who, labels: mine, notes: kept};
+  const base = {set: data.set, labeller: who, labels: mine, notes: kept};
+  const out = Object.assign(base, extraSave(mine));
   const blob = new Blob([JSON.stringify(out, null, 2)], {type: 'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = data.set + '-' + who + '.json';
+  a.download = (data.model_labeller ? 'model-' : '') + data.set + '-' + who + '.json';
   a.click();
 });
 refresh();
 """
+SCRIPT += SCRIPT_AIDS
