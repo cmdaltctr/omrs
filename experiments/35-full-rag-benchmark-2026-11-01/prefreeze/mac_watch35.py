@@ -1,8 +1,9 @@
 """Mac side of the Exp 35 test pod session (task 9.2): copy, launch, watch, pull.
 
 Usage: TEST_SESSION_RUNBOOK.md. No --ssh-host: runpod_ssh35.py reads the address from RunPod.
-It never stops or deletes a pod; the last line is ``DELETE_POD_NOW <pod id>``, or ``KEEP_POD``
-when the pod was kept on a failure (--keep-pod-on-fail). No key is printed. Idle = stage
+It never deletes a pod; after a clean end it stops the pod through the RunPod API
+(watch_podstop35.py). The last line is ``DELETE_POD_NOW <pod id>``, or ``KEEP_POD`` when the
+pod was kept (--keep-pod-on-fail, a hold). No key is printed. Idle = stage
 timeout + 10 min. After idle, the cap or a signal it stops the chain (watch_stop35.py) before
 the pull. Each finished stage is pulled when it appears (watch_stages35.py).
 A signal only detaches (exit 15, KEEP_POD, the chain runs on; ``--attach`` rejoins).
@@ -26,6 +27,7 @@ from pathlib import Path
 import runpod_ssh35
 import watch_modes35
 import watch_offsite35
+import watch_podstop35
 import watch_stages35
 import watch_zai35
 from watch_inputs35 import (
@@ -55,9 +57,9 @@ ZAI_ENV, STAGE_OUT, STOP_GRACE_MIN = f"{WORK}/.zai_env", f"{WORK}/stage-out", 12
 REMOTE_HERE = f"{REMOTE_REPO}/experiments/{EXP.name}/prefreeze"
 LAUNCH = f"WORK={WORK} bash {REMOTE_HERE}/launch35.sh > {LOG} 2>&1"
 
-POLL_S, SSH_POLL_S, STOP_POLL_S = 60, 15, 10
+POLL_S, SSH_POLL_S = 60, 15
 SSH_WAIT_S, IDLE_S, SSH_LOST_S, IDLE_GRACE_S = 15 * 60, 30 * 60, 10 * 60, 10 * 60
-SETTLE_S, STOP_WAIT_S, BEAT_S, LOG_COPY_S, PULL_COPY_S = 10 * 60, 5 * 60, 30 * 60, 10 * 60, 45 * 60
+SETTLE_S, BEAT_S, LOG_COPY_S, PULL_COPY_S = 10 * 60, 30 * 60, 10 * 60, 45 * 60
 
 DONE, STOP = "TEST_SESSION_DONE", "STOP:"
 STOP_FAILED, STOP_SENT = "POD_STOP_FAILED", "pod stop sent with:"
@@ -159,6 +161,7 @@ class Watch:
     stop_failed: bool = False
     stop_sent: bool = False
     kept: bool = False  # the chain left the pod running (POD_KEPT, --keep-pod-on-fail)
+    failed_stages: bool = False  # the chain's finish line names a failed stage
     last_growth: float = 0.0
     idle_s: int = IDLE_S
 
@@ -170,6 +173,7 @@ class Watch:
         self.stop_failed |= STOP_FAILED in line
         self.stop_sent |= STOP_SENT in line
         self.kept |= watch_stages35.KEPT in line
+        self.failed_stages |= "== finish: failed stages: " in line and "stages: none;" not in line
         if STOP in line and not self.stop_line:
             self.stop_line = line.strip()
         marks = (DONE, STOP, STOP_FAILED, STOP_SENT, watch_stages35.KEPT)
@@ -315,7 +319,7 @@ def pull(pod: Pod, folder: Path) -> str:
 def end_session(
     pod: Pod, w: Watch, reason: str, folder: Path, stages: watch_stages35.StagePull, keep: bool
 ) -> tuple[str, str, str]:
-    """Pull, write PULLED, then wait for the pod's own stop; return the three verdicts."""
+    """Pull and write PULLED; return the verdicts. ``pending``: run() finishes the pod stop."""
     stop_chain(pod, reason, session=SESSION, tarball=TARBALL, say=say, now=now, pause=pause)
     if reason == "stop-line" and w.alive and not w.done:
         say(f"STOP: line seen; waiting up to {SETTLE_S // 60} min for {DONE}")
@@ -324,18 +328,7 @@ def end_session(
     outputs = pull(pod, folder)
     marker = "written" if pod.ok(f"printf '%s\\n' {outputs} > {PULLED}") else "not-written"
     say(f"{PULLED}: {marker} ({outputs})")
-    if not (w.done or keep):
-        return outputs, marker, "not-expected"
-    seen: bool | None = True
-    ended = lambda: w.stop_sent or w.stop_failed or w.kept or not w.alive  # noqa: E731
-    if not ended():
-        say(f"waiting up to {STOP_WAIT_S // 60} min for the pod to stop itself")
-        seen = wait_for(pod, w, ended, STOP_WAIT_S, STOP_POLL_S)
-    if w.kept:
-        return outputs, marker, "kept"
-    if w.stop_failed or w.stop_sent:
-        return outputs, marker, "FAILED" if w.stop_failed else "sent"
-    return outputs, marker, "ssh-closed" if seen is None else "not-seen"
+    return outputs, marker, "pending" if (w.done or keep) else "not-expected"
 
 
 def dry_run(args: argparse.Namespace, plan: Plan, problems: list[str]) -> int:
@@ -365,6 +358,8 @@ def dry_run(args: argparse.Namespace, plan: Plan, problems: list[str]) -> int:
         f"6 every {POLL_S} s: ssh {shlex.quote(poll_cmd(0))}; ends: see the runbook",
         f"7 ssh {shlex.quote(WHICH_CMD)}; on 'out': ssh {shlex.quote(PACK_CMD)}",
         f"7 scp {LOG} and the tarball with its .sha256; check; ssh 'printf <verdict> > {PULLED}'",
+        f"7b clean end only: POST {runpod_ssh35.API}{args.pod_id}/action "
+        f"{watch_podstop35.STOP_BODY}, then GET until {watch_podstop35.STOPPED} (3 min max)",
     ]
     if plan.attach:  # no inputs copy, no session.env, no launch
         remote = [x for x in remote if not x.startswith(("4 ", "5 "))]
@@ -423,6 +418,16 @@ def run(args: argparse.Namespace) -> int:
         )
     if hold := watch_offsite35.report(plan, plan.folder, say):
         _hold.append(hold)  # an object is not in R2: the pod may hold the only copy
+    if lost := stages.unresolved():  # a stage tarball that only the pod holds (stores included)
+        _hold.append(f"{', '.join(lost)} exist only on the pod, in {STAGE_OUT}, and were not "
+                     "pulled. Do not delete the pod yet: copy them with scp, or run again with "
+                     "--resume (same arguments) to retry the pull")  # fmt: skip
+    if stop == "pending":  # every hold is known now: the Mac stops the pod after a clean end
+        wait = lambda met, limit, step: wait_for(pod, w, met, limit, step)  # noqa: E731
+        clean = reason == "done" and outputs == "ok" and not _hold
+        stop = watch_podstop35.finish(
+            args.pod_id, w, wait, clean=clean, keep=plan.keep, say=say, now=now, pause=pause
+        )
     if w.stop_failed:
         code = EXIT["stop-failed"]
         say("!!! POD_STOP_FAILED: the pod did not stop itself and the GPU still bills.")
@@ -432,12 +437,9 @@ def run(args: argparse.Namespace) -> int:
         _hold.append(KEEP_TEXT)
     else:
         code = EXIT[reason] if reason != "done" else EXIT["done" if outputs == "ok" else "pull"]
-    if lost := stages.unresolved():  # a stage tarball that only the pod holds (stores included)
+    if lost:
         code = EXIT["pull"] if code == EXIT["done"] else code
         say(f"!!! STAGE_NOT_PULLED: {', '.join(lost)}")
-        _hold.append(f"{', '.join(lost)} exist only on the pod, in {STAGE_OUT}, and were not "
-                     "pulled. Do not delete the pod yet: copy them with scp, or run again with "
-                     "--resume (same arguments) to retry the pull")  # fmt: skip
     result = f"RESULT end={reason} outputs={outputs} pulled-marker={marker} pod-stop={stop}"
     result += f" exit={code} folder={plan.folder}"
     (plan.folder / "watch-summary.txt").write_text(result + "\n", encoding="utf-8")

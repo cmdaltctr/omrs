@@ -50,6 +50,7 @@ This runbook is for the operator's agent. The agent creates and deletes the pod 
     The watcher then stops the chain, pulls the outputs and prints `DELETE_POD_NOW`. It ignores a second signal, so the pull finishes.
     A signal without the `STOP` file only detaches the watcher. The chain runs on. See exit code 15.
 13. Wait for the watcher to exit. Its last line is `DELETE_POD_NOW <id>`.
+    After a clean end the watcher stops the pod itself. See "Pod stop" below. Look for `pod-stop=mac-api` in the `RESULT` line.
 14. Delete the pod with `delete-pod` and that id. Do this for every exit code except 14.
     Exit 14 ends with `KEEP_POD <id>`: the pod stays up for a fix. Follow "Resume after a failure".
 15. If the watcher process ended without the `DELETE_POD_NOW` or `KEEP_POD` line, delete the pod all the same.
@@ -67,10 +68,10 @@ Fix the cause, then resume or attach.
 
 | Code | Meaning | Extra action |
 | ---: | --- | --- |
-| 0 | `TEST_SESSION_DONE`, outputs pulled, SHA-256 matches | None. |
+| 0 | `TEST_SESSION_DONE`, outputs pulled, SHA-256 matches, off-site verified. The watcher stopped the pod (`pod-stop=mac-api`), or the pod stopped itself (`pod-stop=sent`) | None. Delete the pod. |
 | 1 | Internal error in the watcher | Report the error line. |
 | 2 | Refused before any remote step | Fix the `REFUSED:` line on the Mac before the next pod. |
-| 3 | `POD_STOP_FAILED`: the pod did not stop itself after 3 rounds of the stop methods, 30 s apart (`STOP_RETRY_S`). The log holds one `pod stop: <method> exit <code>: <error>` line for each failed try | Delete at once. The GPU still bills. Report the `pod stop:` lines. |
+| 3 | `POD_STOP_FAILED`: the Mac stop failed or was not confirmed, and the pod did not stop itself after 3 rounds of the stop methods, 30 s apart (`STOP_RETRY_S`). The log holds one `pod stop: <method> exit <code>: <error>` line for each failed try | Delete at once. The GPU still bills. Report the `pod stop:` lines. |
 | 4 | No SSH within 15 minutes | Report it. |
 | 5 | A pod setup step failed (copy, SHA-256, clone, launch) | Report the `remote step failed` line. |
 | 6 | A `STOP:` line in the chain log | Read the `STOP:` line in the pulled log. Fix on the Mac. |
@@ -85,6 +86,33 @@ Fix the cause, then resume or attach.
 | 15 | Detached: a signal (SIGTERM, SIGINT or SIGHUP) without a `STOP` file. The chain runs on. No pull, no `PULLED`. | Keep the pod. Rejoin with the `--attach` command that the watcher printed. See "When the Mac goes away". |
 
 After codes 8, 9 and 12 (not 15) the watcher first sends `tmux kill-session -t exp35` to the pod. The chain then stops its stage and writes the tarball. The watcher waits up to 3 minutes for the tarball, then pulls. If the stop fails or times out, the watcher pulls anyway.
+
+## Pod stop
+
+The `RESULT` line ends with `pod-stop=<value>`.
+
+| Value | Meaning |
+| --- | --- |
+| `mac-api` | The watcher sent the stop and read the pod status `EXITED`. |
+| `sent` | The pod stopped itself. The Mac stop was skipped (no API key) or not confirmed. |
+| `FAILED` | Exit 3. No stop worked. Delete the pod at once. |
+| `kept` | The chain kept the pod (exit 14). |
+| `ssh-closed`, `not-seen` | The watcher did not see the pod stop. Read `list-pods`. |
+| `not-expected` | The end was not a clean `TEST_SESSION_DONE`. The pod stop was not waited for. |
+
+The watcher stops the pod only after all of these are true:
+
+1. The end is `TEST_SESSION_DONE` with exit code 0 (not a `STOP:` line, idle, the cap or a signal).
+2. The final pull ended `ok` (SHA-256 matches).
+3. The off-site copy is verified, or `--no-offsite` is set.
+4. No stage tarball is missing on the Mac.
+5. The chain did not keep the pod. With `--keep-pod-on-fail`, no stage failed.
+
+If any condition fails, the watcher sends no stop. The watcher writes `PULLED` with the verdict `ok` before the off-site check. The pod can therefore still stop itself when only the off-site check or a stage tarball failed. This pod behaviour did not change.
+
+The watcher sends `POST https://api.runpod.io/v2/pods/<id>/action` with `{"action":"stop"}`. It then reads the pod status every 10 s for up to 3 minutes. It reads the key as in step 8 and never prints it.
+It never deletes or terminates a pod. If the POST or the status check fails, the watcher waits up to 5 minutes for the pod's own stop. The pod still writes its own stop after it sees `PULLED`. That stop is the path when the Mac is away.
+A stopped pod still exists. Delete it as in step 14.
 
 ## Where the work lives
 

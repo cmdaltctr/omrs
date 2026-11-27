@@ -549,7 +549,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # HEAD aacf1ae3): 1 added in prefreeze/test_watch_detach35. None removed. No extra.
 # +4 (2026-11-27, pod self-stop retries and logs each failure, by test-ID diff against HEAD
 # 1482af8a): 4 added in the new file prefreeze/test_pod_stop35. None removed. No extra.
-_BASE_EXECUTED = 14369
+# +22 (2026-11-27, the Mac stops the pod through the API, by test-ID diff against HEAD
+# 39c57adf): 22 added in the new file prefreeze/test_watch_podstop35. None removed. No extra.
+_BASE_EXECUTED = 14391
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.
