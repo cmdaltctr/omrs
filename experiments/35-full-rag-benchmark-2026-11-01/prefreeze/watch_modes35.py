@@ -169,9 +169,19 @@ def detach(
 def early_signal(
     error: object, stop: list[Path], hold: list[str], say: Callable[[str], None]
 ) -> str:
-    """Handle a signal before the watch began; return ``"interrupted"`` or ``"detached"``."""
+    """Handle a signal before the watch began; return ``"interrupted"`` or ``"detached"``.
+
+    With the STOP file the watcher stops, but it has not stopped the chain or pulled the
+    outputs, so *hold* gets a manual recovery step and the last line is ``KEEP_POD``.
+    """
     if stop_requested(stop):
-        say(f"stopped by {error or 'SIGINT'} before the end steps finished")
+        signal_name = error or "SIGINT"
+        say(f"stopped by {signal_name} before the end steps finished")
+        hold.append(
+            f"stopped by {signal_name} before the watch began: the chain may still run; "
+            "stop it with tmux kill-session -t exp35 on the pod, then run again with "
+            "--resume (or --attach) to pull the outputs"
+        )
         return "interrupted"
     say(f"DETACHED ({error or 'SIGINT'}): the chain may run on; rejoin with --attach")
     hold.append("DETACHED: the chain may run on; rejoin with --attach (same arguments)")

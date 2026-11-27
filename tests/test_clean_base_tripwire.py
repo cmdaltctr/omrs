@@ -545,7 +545,9 @@ _CHROMA_DISTS = ("chromadb", "llama-index-vector-stores-chroma")
 # d97e5d01): 7 added in prefreeze/test_pod_survival35. None removed. No extra.
 # +12 (2026-11-27, a signal only detaches the watcher, by test-ID diff against HEAD
 # b7d1ff74): 12 added in the new file prefreeze/test_watch_detach35. None removed. No extra.
-_BASE_EXECUTED = 14364
+# +1 (2026-11-27, PR 234 review: an early STOP signal keeps the pod, by test-ID diff against
+# HEAD aacf1ae3): 1 added in prefreeze/test_watch_detach35. None removed. No extra.
+_BASE_EXECUTED = 14365
 # Re-baselined check-embedding-stamp-before-dimension (2026-10-18): 10 new cases
 # (store stamp-first tests and graph embed-step tests). Measured in two clean
 # venvs: 5741 with the web extra, 5091 without; the web extra still adds 650.

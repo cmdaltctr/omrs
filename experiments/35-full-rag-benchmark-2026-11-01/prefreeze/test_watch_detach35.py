@@ -124,6 +124,27 @@ def test_a_signal_before_the_watch_also_detaches(monkeypatch: pytest.MonkeyPatch
     assert out.splitlines()[-1].startswith(f"KEEP_POD {POD}: DETACHED")
 
 
+def test_a_stop_signal_before_the_watch_keeps_the_pod(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys,  # noqa: ANN001
+) -> None:
+    flag = tmp_path / "STOP"
+
+    def boom(_args: object) -> int:
+        flag.touch()  # run() sets the STOP path early; the owner made the file
+        mac_watch35._stop[:] = [flag]
+        raise mac_watch35.Interrupted("SIGTERM")
+
+    monkeypatch.setattr(mac_watch35, "run", boom)
+    code = mac_watch35.main(["--pod-id", POD, "--commit", "c" * 40, "--examples", "x.json"])
+    out = capsys.readouterr().out
+    last = out.splitlines()[-1]
+    assert code == mac_watch35.EXIT["interrupted"]
+    assert last.startswith(f"KEEP_POD {POD}") and "DELETE_POD_NOW" not in out
+    assert "tmux kill-session -t exp35" in last and "--resume" in last
+
+
 def test_the_attach_command_repeats_the_arguments() -> None:
     args = SimpleNamespace(
         pod_id=POD, commit="c" * 40, stages="verify_session_stages.txt",
