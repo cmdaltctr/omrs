@@ -82,7 +82,7 @@ Fix the cause, then resume or attach.
 | 11 | The pull failed, or the SHA-256 differs | Keep the files as they are. Report it. |
 | 12 | Stopped on purpose: a signal after `touch <results folder>/STOP` | Report why you stopped it. |
 | 13 | No public IP for `22/tcp` within 15 minutes (step 2b) | Report it. Nothing was copied. |
-| 14 | The chain logged `POD_KEPT:` (`--keep-pod-on-fail`, a stage failed or a signal stopped the chain) | Keep the pod. Follow "Resume after a failure". Delete the pod yourself when you stop. |
+| 14 | The chain logged `POD_KEPT:` (`--keep-pod-on-fail`, a stage failed or a signal stopped the chain, or the final pull was not `ok`) | Keep the pod. Follow "Resume after a failure". The pod stops itself after `KEEP_HOLD_MIN` minutes (see "Kept pod hold"). Delete the pod yourself when you stop. |
 | 15 | Detached: a signal (SIGTERM, SIGINT or SIGHUP) without a `STOP` file. The chain runs on. No pull, no `PULLED`. | Keep the pod. Rejoin with the `--attach` command that the watcher printed. See "When the Mac goes away". |
 
 After codes 8, 9 and 12 (not 15) the watcher first sends `tmux kill-session -t exp35` to the pod. The chain then stops its stage and writes the tarball. The watcher waits up to 3 minutes for the tarball, then pulls. If the stop fails or times out, the watcher pulls anyway.
@@ -96,7 +96,7 @@ The `RESULT` line ends with `pod-stop=<value>`.
 | `mac-api` | The watcher sent the stop and read the pod status `EXITED`. |
 | `sent` | The pod stopped itself. The Mac stop was skipped (no API key) or not confirmed. |
 | `FAILED` | Exit 3. No stop worked. Delete the pod at once. |
-| `kept` | The chain kept the pod (exit 14). |
+| `kept` | The chain kept the pod (exit 14). It holds for `KEEP_HOLD_MIN` minutes, then stops the pod. |
 | `ssh-closed`, `not-seen` | The watcher did not see the pod stop. Read `list-pods`. |
 | `not-expected` | The end was not a clean `TEST_SESSION_DONE`. The pod stop was not waited for. |
 
@@ -369,12 +369,28 @@ Fix forward. Do not re-run the whole check.
 7. Dry-run it as in "Before the go", with `--stages freeze_rerun_stages.txt`. Then run it on a new pod.
 8. To fix on the same pod and keep the finished stages, use "Resume after a failure" below.
 
+### Kept pod hold
+
+A kept pod bills until someone stops it. The chain therefore holds a kept pod for a limited time.
+
+1. Two cases keep the pod: `KEEP_POD_ON_FAIL=1` with a failed stage or a signal, and a `PULLED` verdict other than `ok`.
+2. After the `POD_KEPT:` line, the chain logs `POD_KEPT: holding up to <N> min for the Mac, then the pod stops itself (the volume and R2 copies stay)`.
+3. `KEEP_HOLD_MIN` sets `<N>`. The default is 120. Write another value in `session.env` or in the environment. `0` means no hold and no stop: the pod runs on.
+4. The chain checks every `PULL_POLL_S` seconds (default 10) whether the Mac took over.
+5. The Mac took over when `$WORK/HOLD_RELEASED` exists, or when `session.env` is newer than `$WORK/HOLDING`. The watcher writes `HOLD_RELEASED` before each relaunch (`--resume`, `--seed-from`). Then the chain ends and the pod keeps running.
+6. `--attach` does not take over. The hold runs on and stops the pod at its end.
+7. At the end of the time, the chain logs `POD_KEPT: no Mac after <N> min: stopping the pod`. It then stops the pod. It never terminates the pod.
+8. The `/workspace` volume and the R2 copies stay. The container disk is cleared. The Mac holds the pulled stage tarballs.
+9. To keep a pod for longer, start the watcher again with `--resume` before the time ends. Or set a larger `KEEP_HOLD_MIN` in `session.env` before the launch.
+10. If the stop fails, the chain logs `POD_STOP_FAILED` and exits with code 3. Delete the pod from the console.
+11. A relaunch works because the watcher releases the hold first. The launch refuses while the held chain's tmux session `exp35` runs.
+
 ### Resume after a failure
 
 Use this when a stage failed, the cause is fixable, and the pod must keep its finished stages.
 
 1. Start the first launch with `--keep-pod-on-fail`. The watcher writes `KEEP_POD_ON_FAIL=1` into `session.env`.
-2. Wait for the `POD_KEPT:` line in the chain log. The chain stops without stopping the pod.
+2. Wait for the `POD_KEPT:` line in the chain log. The chain does not stop the pod at once. It holds for `KEEP_HOLD_MIN` minutes (see "Kept pod hold").
 3. Check that the watcher pulled every stage tarball of the finished stages. Look for `stage tarball <tag>.tgz pulled` lines.
 4. Fix the cause on the Mac. Write a test that fails first, then make it pass.
 5. Commit and push the fix. Use the new commit as `COMMIT`.
@@ -398,11 +414,13 @@ Use this when a stage failed, the cause is fixable, and the pod must keep its fi
 11. If the pod was deleted, its spare copy is gone. Start a new pod and use `--seed-from` (see "When the Mac goes away").
 12. A fresh launch refuses to start when `stage-out/` holds tarballs. Move the folder aside, or use `--resume`.
 13. Delete the pod yourself when the run is done or you give up. The watcher never deletes a pod.
+    A pod that the hold stopped is only stopped. Start it again from the console, or delete it.
 14. The layout test `freeze_layout_stages.txt` proves this procedure. It stops once on purpose at `resume-probe` and resumes. About 45 min and $0.70.
 
 ### When the Mac goes away
 
 The chain keeps running when the Mac is off. Each finished stage stays on the pod as a tarball. The chain stops the pod after `STOP_GRACE_MIN` minutes without a pull.
+A kept pod (`POD_KEPT:`) stops itself after `KEEP_HOLD_MIN` minutes without the Mac. See "Kept pod hold".
 
 1. When the chain ends, it copies three files to the spare folder `/workspace/exp35-stage-out`: `test-session-out.tgz`, `test-session.log` and `test-session-out.tgz.sha256`. The `.sha256` file is last. The spare folder exists only when `/workspace` is a mount.
 2. The chain log path is `SESSION_LOG`. The default is `$WORK/test-session.log`.

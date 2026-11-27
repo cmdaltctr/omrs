@@ -14,7 +14,7 @@
 # All work stays on the container disk, in WORK (default /root/exp35-work). /workspace is
 # network storage on many hosts, so it holds only a spare copy of the stage tarballs.
 # Optional: SESSION_ENV (default $WORK/session.env: names and plain values, never
-# a key; for example COMMIT, STOP_GRACE_MIN, RESUME and KEEP_POD_ON_FAIL), ZAI_ENV
+# a key; for example COMMIT, STOP_GRACE_MIN, KEEP_HOLD_MIN, RESUME and KEEP_POD_ON_FAIL), ZAI_ENV
 # (default $WORK/.zai_env: the mode-600 file with OMRS_EXP35_ZAI_BASE_URL that the Mac
 # watcher writes over ssh standard input), PROC1_ENVIRON (default /proc/1/environ).
 # Defaults when unset: WORK=/root/exp35-work, OUT_DIR=$WORK/exp35-test/out,

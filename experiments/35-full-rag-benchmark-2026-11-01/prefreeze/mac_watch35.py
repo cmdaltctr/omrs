@@ -134,6 +134,7 @@ def setup_cmds(plan: Plan, shas: dict[str, str]) -> list[str]:
     values += watch_offsite35.session_values(plan) + watch_stages35.flag_values(plan)
     stale = [TARBALL, f"{TARBALL}.sha256", OWN_TARBALL, f"{OWN_TARBALL}.sha256", PULLED]
     return [
+        watch_stages35.release_hold_cmd(WORK, SESSION),  # first: a held chain must end before git
         f"cd {INPUTS} && printf '%s  %s\\n' {pairs} | sha256sum -c -",
         f"set -e; [ -d {REMOTE_REPO}/.git ] || git clone -q {shlex.quote(plan.repo_url)} "
         f"{REMOTE_REPO}; cd {REMOTE_REPO}; git fetch -q origin; "

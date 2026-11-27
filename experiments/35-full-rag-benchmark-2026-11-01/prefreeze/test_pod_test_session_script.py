@@ -110,6 +110,7 @@ def _run(
         "RUNPOD_POD_ID": "pod123",
         "RUNPOD_API_KEY": KEY,
         "STOP_RETRY_S": "0",
+        "KEEP_HOLD_MIN": "0",  # the old rule: a kept pod runs on. test_pod_keephold35.py holds.
         **HOSTED,
         **env,
     }

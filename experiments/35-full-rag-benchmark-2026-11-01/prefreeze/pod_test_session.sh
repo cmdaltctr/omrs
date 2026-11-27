@@ -28,7 +28,8 @@
 # keeps the pod and logs POD_KEPT. No PULLED after the grace time: the pod stops (the spare
 # and the off-site copy hold the outputs).
 # KEEP_POD_ON_FAIL=1 keeps the pod instead after a failed stage or a signal, and logs
-# POD_KEPT. RESUME=1 (a relaunch on the same pod) skips each stage whose tarball matches
+# POD_KEPT. After either POD_KEPT the chain holds up to KEEP_HOLD_MIN minutes for the Mac,
+# then stops the pod (keep_hold35.sh). RESUME=1 (a relaunch on the same pod) skips each stage whose tarball matches
 # its hash, restoring it from SPARE_DIR when only the spare has it. A fresh launch
 # (RESUME unset) refuses when $WORK/stage-out already holds a tarball (G10).
 #
@@ -53,7 +54,7 @@
 # WORK is required, with no default: the chain refuses when it is unset, and never falls
 # back to /workspace. Optional: SPARE_DIR (default empty: no spare copy), RESUME=1,
 # KEEP_POD_ON_FAIL=1, SESSION_CAP (default 15h), STOP_GRACE_MIN
-# (default 0), PULL_POLL_S (default 10), DRY_RUN=1 (print every command, run none).
+# (default 0), KEEP_HOLD_MIN (default 120; 0 = hold nothing), PULL_POLL_S (default 10), DRY_RUN=1 (print every command, run none).
 # Each stage tarball has a <tag>.tgz.commit file: the full SHA of the commit this chain runs
 # from (git -C <Experiment 35 folder> rev-parse HEAD, read once at the start). A resume skips
 # a stage only when that commit is the current one. RESUME_FROM_COMMIT (a full 40-character SHA,
@@ -76,10 +77,13 @@ BG_FILES="$WORK/background.files"
 TARBALL="$WORK/test-session-out.tgz"
 SESSION_LOG="${SESSION_LOG:-$WORK/test-session.log}"
 PULLED="$WORK/PULLED"
+HOLDING="$WORK/HOLDING"
+HOLD_RELEASED="$WORK/HOLD_RELEASED"
 BACKGROUND_PIDS="$WORK/background.pids"
 DRY_RUN="${DRY_RUN:-0}"
 SESSION_CAP="${SESSION_CAP:-15h}"
 STOP_GRACE_MIN="${STOP_GRACE_MIN:-0}"
+KEEP_HOLD_MIN="${KEEP_HOLD_MIN:-120}"
 PULL_POLL_S="${PULL_POLL_S:-10}"
 STOP_RETRY_S="${STOP_RETRY_S:-30}"
 REST_V2="https://api.runpod.io/v2"
@@ -104,6 +108,8 @@ VERDICT=""
 
 # shellcheck source=stage_pack35.sh
 . "$HERE/stage_pack35.sh"
+# shellcheck source=keep_hold35.sh
+. "$HERE/keep_hold35.sh"
 # shellcheck source=offsite35.sh
 . "$HERE/offsite35.sh"
 
@@ -176,6 +182,7 @@ precheck() {
   cap="$(seconds "$SESSION_CAP")" || refuse "SESSION_CAP $SESSION_CAP is not a time (for example 15h)"
   DEADLINE=$(($(date +%s) + cap))
   case "$STOP_GRACE_MIN" in '' | *[!0-9]*) refuse "STOP_GRACE_MIN is not a whole number" ;; esac
+  case "$KEEP_HOLD_MIN" in '' | *[!0-9]*) refuse "KEEP_HOLD_MIN is not a whole number" ;; esac
   case "$PULL_POLL_S" in '' | 0 | *[!0-9]*) refuse "PULL_POLL_S is not a number above 0" ;; esac
   check_stages
   if [ "$DRY_RUN" = 1 ]; then
@@ -437,6 +444,7 @@ finish() {
     why="stopped by a signal"
     [ "${#FAILED[@]}" -eq 0 ] || why="failed stages: ${FAILED[*]}"
     log "POD_KEPT: $why; fix, then relaunch with RESUME=1, or delete the pod from the Mac"
+    hold_for_mac
     return 0
   fi
   # The Mac writes its verdict (ok, hash-mismatch, pull-failed or none) into PULLED. Only
@@ -447,6 +455,7 @@ finish() {
     if [ "$verdict" != ok ]; then
       KEPT=1
       log "POD_KEPT: the Mac's copy is not verified ($verdict); fix, then delete the pod from the Mac"
+      hold_for_mac
       return 0
     fi
   fi
@@ -469,7 +478,7 @@ main() {
   export SESSION_PID=$$
   if [ "$DRY_RUN" != 1 ]; then
     mkdir -p "$WORK" "$OUT_DIR" "$STAGE_OUT"
-    rm -f "$PULLED" "$BACKGROUND_PIDS"
+    rm -f "$PULLED" "$BACKGROUND_PIDS" "$HOLDING" "$HOLD_RELEASED" # no marker of an earlier run
     [ "$RESUME" = 1 ] || rm -f "$BG_FILES" "$OFFSITE_PENDING"
   fi
   offsite_setup

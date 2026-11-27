@@ -78,6 +78,24 @@ def inputs_match_cmd(inputs: str, shas: Mapping[str, str]) -> str:
     )
 
 
+HOLD_WAIT_S = 60  # the held chain polls every PULL_POLL_S (10 s): room for several polls
+
+
+def release_hold_cmd(work: str, session: str) -> str:
+    """Return the pod command that ends a chain held after ``POD_KEPT`` (keep_hold35.sh).
+
+    A relaunch needs the held chain gone: the launch refuses while the tmux session lives, and
+    ``git checkout`` must not rewrite the script a running bash still reads. The command does
+    nothing when the chain does not hold (no ``HOLDING`` file). It always ends with status 0:
+    a session that stays makes the launch refuse, as it did before.
+    """
+    return (
+        f"if [ -e {work}/HOLDING ]; then touch {work}/HOLD_RELEASED; "
+        f"for _ in $(seq {HOLD_WAIT_S}); do "
+        f"tmux has-session -t {session} 2>/dev/null || break; sleep 1; done; fi"
+    )
+
+
 def stale_cmd(paths: Sequence[str]) -> str:
     """Return the pod command that clears the files of the earlier try (a resume launch)."""
     return "rm -f " + " ".join(shlex.quote(p) for p in paths)
