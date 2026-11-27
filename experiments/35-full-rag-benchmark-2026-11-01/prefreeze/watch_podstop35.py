@@ -96,10 +96,12 @@ def finish(
     """Return the pod-stop verdict: ``mac-api``, else what the pod's own stop did.
 
     *clean* is true for a ``done`` end with ``outputs == "ok"`` and no hold. The Mac stops
-    the pod only then, and not when the chain kept it (``POD_KEPT``) or, with
-    ``--keep-pod-on-fail``, when a stage failed: the chain keeps the pod in that case.
+    the pod only then, and not when the chain kept it (``POD_KEPT``) or when a stage failed:
+    the chain then stops or holds the pod itself. *keep* is not used for this decision.
     """
-    own = w.done and not w.kept and not w.stop_failed and not (keep and w.failed_stages)
+    # Any failed stage is left to the chain: it stops the pod or holds it (KEEP_POD_ON_FAIL),
+    # so an --attach without the chain's keep flag cannot stop a pod the chain keeps.
+    own = w.done and not w.kept and not w.stop_failed and not w.failed_stages
     if clean and own and stop(pod_id, say=say, now=now, pause=pause):
         return "mac-api"
     seen: bool | None = True

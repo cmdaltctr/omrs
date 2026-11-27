@@ -202,6 +202,15 @@ def test_a_kept_pod_after_a_failed_stage_sends_no_stop(tmp_path: Path) -> None:
     _no_stop(s, result)
 
 
+def test_a_failed_stage_is_left_to_the_chain_whatever_the_keep_flag(tmp_path: Path) -> None:
+    # An --attach without --keep-pod-on-fail on a chain that keeps: the Mac must not stop it.
+    s = Session(tmp_path, [START, FINISH.format("a b"), "done"])
+    (s.pod / "keeps").touch()  # the chain logs POD_KEPT after PULLED
+    result = _run(s)
+    assert not _posts(s), result.stdout
+    assert "pod-stop=mac-api" not in result.stdout
+
+
 def test_an_abnormal_end_sends_no_stop(tmp_path: Path) -> None:
     s = Session(tmp_path, ["+[00:00:01] == setup: start"])
     result = _run(s)
