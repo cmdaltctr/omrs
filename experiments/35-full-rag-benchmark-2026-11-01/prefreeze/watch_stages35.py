@@ -40,8 +40,10 @@ def list_cmd(stage_dir: str) -> str:
 
 
 def flag_values(plan: Any) -> list[str]:
-    """Return the session.env lines of the keep, resume and resume-from-commit flags."""
-    values = ["KEEP_POD_ON_FAIL=1"] * plan.keep + ["RESUME=1"] * plan.resume
+    """Return the session.env lines of the keep, resume (or seed) and resume-from-commit flags."""
+    values = ["KEEP_POD_ON_FAIL=1"] * plan.keep + ["RESUME=1"] * (
+        plan.resume or bool(plan.seed_from)
+    )
     return values + [f"RESUME_FROM_COMMIT={plan.resume_from}"] * bool(plan.resume_from)
 
 

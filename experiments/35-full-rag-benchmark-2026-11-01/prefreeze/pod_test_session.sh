@@ -71,6 +71,7 @@ STAGE_OUT="$WORK/stage-out"
 STAGE_MARK="$WORK/.stage-start"
 BG_FILES="$WORK/background.files"
 TARBALL="$WORK/test-session-out.tgz"
+SESSION_LOG="${SESSION_LOG:-$WORK/test-session.log}"
 PULLED="$WORK/PULLED"
 BACKGROUND_PIDS="$WORK/background.pids"
 DRY_RUN="${DRY_RUN:-0}"
@@ -367,6 +368,24 @@ stop_pod() {
   fi
 }
 
+# spare_final: copy the outputs tarball, a snapshot of the chain log, then the .sha256 to
+# SPARE_DIR, before the wait for the Mac: a pod stop clears the container disk. A failure is
+# logged only.
+spare_final() {
+  [ -n "$SPARE_DIR" ] || return 0
+  if [ "$DRY_RUN" = 1 ]; then
+    log "  [dry-run] copy $TARBALL, $SESSION_LOG (as test-session.log) and $TARBALL.sha256 to $SPARE_DIR"
+    return 0
+  fi
+  if mkdir -p "$SPARE_DIR" && cp "$TARBALL" "$SPARE_DIR/" \
+    && { [ ! -f "$SESSION_LOG" ] || cp "$SESSION_LOG" "$SPARE_DIR/test-session.log"; } \
+    && cp "$TARBALL.sha256" "$SPARE_DIR/"; then
+    log "== finish: spare copy of the final outputs in $SPARE_DIR"
+  else
+    log "== finish: spare copy of the final outputs FAILED (they stay on the container disk only)"
+  fi
+}
+
 finish() {
   local why
   [ "$FINISHED" = 1 ] && return 0
@@ -384,6 +403,7 @@ finish() {
   run tar -czf "$TARBALL" --exclude=stores -C "$(dirname "$OUT_DIR")" "$(basename "$OUT_DIR")" \
     || log "tarball FAILED; the outputs stay in $OUT_DIR"
   [ "$DRY_RUN" = 1 ] || checksum "$TARBALL" >"$TARBALL.sha256"
+  spare_final
   log "TEST_SESSION_DONE: copy $TARBALL (+ .sha256) to the Mac, touch $PULLED, then delete the pod"
   wait_for_pull
   if [ "$KEEP_POD_ON_FAIL" = 1 ] && { [ "${#FAILED[@]}" -gt 0 ] || [ "$SIGNALLED" = 1 ]; }; then

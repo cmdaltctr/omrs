@@ -23,6 +23,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import runpod_ssh35
+import watch_modes35
 import watch_zai35
 
 HERE = Path(__file__).resolve().parent
@@ -88,10 +89,19 @@ class Plan:
     keep: bool = False  # --keep-pod-on-fail
     resume: bool = False  # --resume: reuse the folder and the stage tarballs of an earlier try
     resume_from: str = ""  # --resume-from-commit: the old commit whose finished stages stay valid
+    attach: bool = False  # --attach: join the chain that still runs; reuse the folder
+    seed_from: str = (
+        ""  # --seed-from: an earlier results folder whose stage tarballs seed a new pod
+    )
     repo_url: str = ""
     root: Path = Path()
     folder: Path = Path()
     rels: list[str] = field(default_factory=list)
+
+    @property
+    def reuse(self) -> bool:
+        """Whether the session reuses the results folder of an earlier try."""
+        return self.resume or self.attach
 
     def sent(self) -> list[str]:
         """Name the inputs that go to the pod and have their SHA-256 checked there."""
@@ -126,9 +136,10 @@ def prepare(args: argparse.Namespace) -> tuple[list[str], Plan]:
         args.resume,
         args.resume_from_commit,
     )
-    problems = []
-    if plan.resume_from and not plan.resume:
-        problems.append("--resume-from-commit needs --resume")
+    plan.attach, plan.seed_from = args.attach, args.seed_from
+    problems = watch_modes35.problems(plan.attach, plan.resume, plan.seed_from)
+    if plan.resume_from and not (plan.resume or plan.seed_from):
+        problems.append("--resume-from-commit needs --resume (or --seed-from)")
     if plan.resume_from and not re.fullmatch(r"[0-9a-f]{40}", plan.resume_from):
         problems.append(
             "--resume-from-commit must be the full 40-character commit SHA (lower-case)"
@@ -157,18 +168,19 @@ def prepare(args: argparse.Namespace) -> tuple[list[str], Plan]:
         plan.root, plan.rels = inputs()
         stem = plan.stages.removesuffix("_stages.txt").replace("_", "-")
         plan.folder = plan.root / "experiments" / EXP.name / f"{stem}-{datetime.now(UTC):%Y-%m-%d}"
-        if plan.resume:
+        if plan.reuse:
             plan.folder = resume_folder(plan.root, EXP.name, stem) or plan.folder
     except Exception as error:  # noqa: BLE001 - any failure here is a refusal with its reason
         return [*problems, f"cannot list the inputs: {type(error).__name__}: {error}"], plan
     missing = [n for n in plan.sent() if not (plan.folder / "inputs" / n).is_file()]
-    if plan.resume and missing:
+    flag = "--attach" if plan.attach else "--resume"
+    if plan.reuse and missing:
         problems.append(
-            f"--resume: no earlier {stem} folder with the inputs {missing} ({plan.folder})"
+            f"{flag}: no earlier {stem} folder with the inputs {missing} ({plan.folder})"
         )
-    elif plan.resume and (why := pod_mismatch(plan.folder, args.pod_id)):
-        problems.append(f"--resume: {why}")
-    elif plan.folder.exists() and not plan.resume:
+    elif plan.reuse and (why := pod_mismatch(plan.folder, args.pod_id)):
+        problems.append(f"{flag}: {why}")
+    elif plan.folder.exists() and not plan.reuse:
         problems.append(f"results folder {plan.folder} already exists; it is never overwritten")
     problems += [f"input {rel} {why}" for rel in plan.rels if (why := unsafe(rel, plan.root))]
     problems += watch_zai35.problems()
@@ -178,10 +190,10 @@ def prepare(args: argparse.Namespace) -> tuple[list[str], Plan]:
 def build_inputs(plan: Plan, say: Callable[[str], None]) -> dict[str, str]:
     """Write the inputs folder (tarball, .sha256, examples, extra); return SHA-256 by name.
 
-    A resumed session writes nothing: it returns the hashes of the earlier inputs folder.
+    A resumed or attached session writes nothing: it returns the hashes of the earlier inputs.
     """
     folder = plan.folder / "inputs"
-    if plan.resume:
+    if plan.reuse:
         return {name: sha256(folder / name) for name in plan.sent()}
     folder.mkdir()
     tgz = folder / INPUTS_TGZ

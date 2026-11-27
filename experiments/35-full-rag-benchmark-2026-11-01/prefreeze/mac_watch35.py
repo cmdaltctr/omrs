@@ -15,15 +15,14 @@ import os
 import re
 import shlex
 import signal
-import subprocess
 import sys
 import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from pathlib import Path
 
 import runpod_ssh35
+import watch_modes35
 import watch_stages35
 import watch_zai35
 from watch_inputs35 import (
@@ -37,6 +36,7 @@ from watch_inputs35 import (
     sha256,
     unsafe,
 )
+from watch_pod35 import Pod, say
 from watch_stop35 import stop_chain
 
 HERE = Path(__file__).resolve().parent
@@ -64,9 +64,6 @@ EXIT = {"done": 0, "internal": 1, "refused": 2, "stop-failed": 3, "no-ssh": 4, "
         "stop-line": 6, "session-ended": 7, "idle": 8, "wall-cap": 9, "ssh-lost": 10,
         "pull": 11, "interrupted": 12, "no-address": 13, "kept": 14}  # fmt: skip
 _SIGNALS = (signal.SIGTERM, signal.SIGINT, signal.SIGHUP)
-_SSH_OPTIONS = ("BatchMode=yes", "StrictHostKeyChecking=no", "UserKnownHostsFile=/dev/null",
-                "ConnectTimeout=20", "ServerAliveInterval=15", "LogLevel=ERROR")  # fmt: skip
-
 LAUNCH_CMD = (
     "command -v tmux >/dev/null || { echo 'tmux is not on the pod'; exit 1; }; "
     f"if tmux has-session -t {SESSION} 2>/dev/null; then "
@@ -118,10 +115,6 @@ def pause(seconds: float) -> None:
         time.sleep(seconds)
 
 
-def say(text: str) -> None:
-    print(f"[{datetime.now(UTC):%H:%M:%S}] {text}", flush=True)
-
-
 def setup_cmds(plan: Plan, shas: dict[str, str]) -> list[str]:
     """Step 5: check the inputs, place the repository, write session.env, start the chain."""
     pairs = " ".join(f"{sha} {shlex.quote(name)}" for name, sha in shas.items())
@@ -143,44 +136,6 @@ def setup_cmds(plan: Plan, shas: dict[str, str]) -> list[str]:
 def poll_cmd(offset: int) -> str:
     alive = f's=0; tmux has-session -t {SESSION} 2>/dev/null && s=1; echo "ALIVE $s"'
     return f"{alive}; tail -c +{offset + 1} {LOG} 2>/dev/null; true"
-
-
-def _call(args: list[str], timeout: float) -> subprocess.CompletedProcess[bytes] | None:
-    try:
-        kw = {"capture_output": True, "stdin": subprocess.DEVNULL, "timeout": timeout}
-        return subprocess.run(args, check=False, **kw)  # noqa: S603 - fixed argument lists
-    except subprocess.TimeoutExpired:
-        return None
-
-
-def _good(result: subprocess.CompletedProcess[bytes] | None, what: str) -> bool:
-    if result is None or result.returncode != 0:
-        text = "" if result is None else (result.stdout + result.stderr).decode("utf-8", "replace")
-        status = "timed out" if result is None else f"exit {result.returncode}"
-        say(f"  {what} failed ({status}) {text.strip()[-400:]}".rstrip())
-    return result is not None and result.returncode == 0
-
-
-class Pod:
-    """SSH and scp to the pod as root; the key goes to ssh by path only."""
-
-    def __init__(self, host: str, port: int | str, key: Path) -> None:
-        options = [part for option in _SSH_OPTIONS for part in ("-o", option)]
-        self.host, self.port, self.login = host, port, f"root@{host}"
-        self.ssh_base = ["ssh", "-i", str(key), "-p", str(port), *options, self.login]
-        self.scp_base = ["scp", "-q", "-i", str(key), "-P", str(port), *options]
-
-    def remote(self, path: str) -> str:
-        return f"{self.login}:{path}"
-
-    def ssh(self, command: str, timeout: float = 120) -> subprocess.CompletedProcess[bytes] | None:
-        return _call([*self.ssh_base, command], timeout)
-
-    def ok(self, command: str, timeout: float = 300) -> bool:
-        return _good(self.ssh(command, timeout), "remote step")
-
-    def copy(self, sources: Sequence[str], dest: str, timeout: float = 3600) -> bool:
-        return _good(_call([*self.scp_base, *sources, dest], timeout), "scp")
 
 
 @dataclass
@@ -240,6 +195,13 @@ def setup(pod: Pod, plan: Plan, shas: dict[str, str]) -> str | None:
             say(f"no SSH after {SSH_WAIT_S // 60} min")
             return "no-ssh"
         pause(SSH_POLL_S)
+    if plan.attach:
+        if why := watch_modes35.attach_refusal(pod, SESSION):
+            say(f"REFUSED: {why}")
+            _hold.append(why)  # the pod may hold stage tarballs: no delete line
+            return "refused"
+        say("steps 4 and 5: --attach: the chain runs; no inputs copy, no session.env, no launch")
+        return None
     check = pod.ssh(watch_stages35.inputs_match_cmd(INPUTS, shas)) if plan.resume else None
     held = check is not None and check.returncode == 0
     if held:
@@ -251,6 +213,8 @@ def setup(pod: Pod, plan: Plan, shas: dict[str, str]) -> str | None:
     if not held and not (
         pod.ok(f"mkdir -p {INPUTS}") and (pod.copy(files, dest) or pod.copy(files, dest))
     ):
+        return "setup"
+    if plan.seed_from and not watch_modes35.seed(pod, plan, STAGE_OUT, say):
         return "setup"
     say(f"step 5: check the SHA-256 on the pod; {REMOTE_REPO} at {plan.commit}; launch")
     commands = setup_cmds(plan, shas)
@@ -365,9 +329,12 @@ def end_session(
 def dry_run(args: argparse.Namespace, plan: Plan, problems: list[str]) -> int:
     pod = Pod(args.ssh_host or "<publicIp>", args.ssh_port or "<port>", plan.key)
     say(f"DRY RUN: no ssh, scp or tmux call, no file written. Key {plan.key} is not read.")
-    verb = "reuse (--resume: old files move aside)" if plan.resume else "create"
+    verb = "reuse (--resume or --attach: old files move aside)" if plan.reuse else "create"
     say(f"step 1: {verb} {plan.folder}")
-    for line in watch_stages35.dry_lines(WORK, STAGE_OUT):
+    for line in [
+        *watch_stages35.dry_lines(WORK, STAGE_OUT),
+        *watch_modes35.dry_lines(plan.attach, plan.seed_from),
+    ]:
         say(f"  {line}")
     say(f"step 2: build {plan.folder / 'inputs' / INPUTS_TGZ} from {plan.root} (no Legal, D1):")
     sizes = {r: (plan.root / r).stat().st_size for r in plan.rels if not unsafe(r, plan.root)}
@@ -386,6 +353,8 @@ def dry_run(args: argparse.Namespace, plan: Plan, problems: list[str]) -> int:
         f"7 ssh {shlex.quote(WHICH_CMD)}; on 'out': ssh {shlex.quote(PACK_CMD)}",
         f"7 scp {LOG} and the tarball with its .sha256; check; ssh 'printf <verdict> > {PULLED}'",
     ]
+    if plan.attach:  # no inputs copy, no session.env, no launch
+        remote = [x for x in remote if not x.startswith(("4 ", "5 "))]
     for step in remote:
         say(f"step {step}")
     for problem in problems:
@@ -405,9 +374,10 @@ def run(args: argparse.Namespace) -> int:
         return EXIT["refused"]
     for sig in _SIGNALS:
         signal.signal(sig, _interrupt)
-    if plan.resume:
+    if plan.reuse:
         say(
-            f"steps 1 and 2: --resume: reuse {plan.folder} and its inputs; move the old files aside"
+            f"steps 1 and 2: --resume or --attach: reuse {plan.folder} and its inputs;"
+            " move the old files aside"
         )
         for name in watch_stages35.aside(plan.folder):
             say(f"  moved aside: {name}")
@@ -468,6 +438,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--resume", action="store_true", help="re-launch; skip stages done in stage-out"
     )
+    watch_modes35.add_arguments(parser)
     parser.add_argument("--resume-from-commit", default="", help="with --resume: trust this commit")
     parser.add_argument("--dry-run", action="store_true", help="print every step, run nothing")
     _hold.clear()

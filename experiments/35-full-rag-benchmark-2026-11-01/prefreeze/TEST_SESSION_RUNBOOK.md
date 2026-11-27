@@ -364,7 +364,40 @@ Use this when a stage failed, the cause is fixable, and the pod must keep its fi
    Read the `resumed:` names in the `finish` line at the end.
    `resume-record.jsonl` in the outputs holds one line for each stage kept from the old commit. It is the deviation record for the report (prereg section 20).
 10. If a tarball hash does not match, the chain logs `tarball hash mismatch` and runs the stage again.
-11. If the pod was deleted, its spare copy is gone. Start a new pod and a fresh run.
+11. If the pod was deleted, its spare copy is gone. Start a new pod and use `--seed-from` (see "When the Mac goes away").
 12. A fresh launch refuses to start when `stage-out/` holds tarballs. Move the folder aside, or use `--resume`.
 13. Delete the pod yourself when the run is done or you give up. The watcher never deletes a pod.
 14. The layout test `freeze_layout_stages.txt` proves this procedure. It stops once on purpose at `resume-probe` and resumes. About 45 min and $0.70.
+
+### When the Mac goes away
+
+The chain keeps running when the Mac is off. Each finished stage stays on the pod as a tarball. The chain stops the pod after `STOP_GRACE_MIN` minutes without a pull.
+
+1. When the chain ends, it copies three files to the spare folder `/workspace/exp35-stage-out`: `test-session-out.tgz`, `test-session.log` and `test-session-out.tgz.sha256`. The `.sha256` file is last. The spare folder exists only when `/workspace` is a mount.
+2. The chain log path is `SESSION_LOG`. The default is `$WORK/test-session.log`.
+
+The pod still runs and the chain still runs:
+
+1. Start the watcher with the same `--pod-id`, `--commit` and `--stages`. Add `--attach`.
+2. The watcher uses the earlier results folder. It refuses when `pod-id.txt` names another pod or is missing.
+3. The watcher refuses when no tmux session `exp35` runs on the pod. It then prints `KEEP_POD`. The pod and its stage tarballs stay as they are.
+4. The watcher does not copy the inputs. It does not write `session.env`. It does not launch the chain.
+5. The watcher pulls only the stage tarballs that the results folder does not hold. It then ends as in a normal run.
+6. Do not use `--attach` with `--resume` or `--seed-from`.
+
+The pod is stopped, not deleted:
+
+1. Restart the pod from the RunPod console.
+2. Start the watcher with `--resume` and the same arguments. Follow "Resume after a failure".
+
+The pod or its volume is lost, and the Mac holds the stage tarballs:
+
+1. Create a new pod. Use its id as `--pod-id`.
+2. Rename the old results folder, because the watcher never overwrites a folder. Example: `mv test-session-<date> old-test-session-<date>`.
+3. Start the watcher with the new `--pod-id`, the same `--commit` and `--stages`. Add `--seed-from <absolute path of the old results folder>`.
+4. The watcher checks the SHA-256 of each stage tarball in the old `stage-out/`. A mismatch is a `PROBLEM` and nothing starts.
+5. The watcher copies the inputs. It then copies each `<tag>.tgz`, `<tag>.tgz.commit` and `<tag>.tgz.sha256` to the new pod and to the new results folder.
+6. The watcher writes `RESUME=1` into `session.env`. It writes `seed-from.txt` into the new results folder. The file names the old folder and lists each seeded tag with its SHA-256 and commit.
+7. The chain runs the `!` stages again. For each stage that it skips, it unpacks the tarball first and logs `== <stage>: unpacked <tag>.tgz (seeded)`.
+8. To use a newer `--commit`, add `--resume-from-commit <old sha>` only for stages the fix does not touch.
+9. Do not use `--seed-from` with `--resume` or `--attach`.
