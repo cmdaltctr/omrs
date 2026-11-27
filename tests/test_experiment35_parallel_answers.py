@@ -80,6 +80,9 @@ class Engine:
             return {"status": "error", "answer": None, "rate_limited": dict(LIMITED)}
         if step == "error":
             return {"status": "error", "answer": None, "error": "Generation failed: timeout"}
+        if step == "billed_error":
+            usage = {"input_tokens": 40, "output_tokens": 5, "cost_usd": 0.25}
+            return {"status": "error", "answer": None, "error": "bad reply", "usage": usage}
         if step == "empty_reply":
             return {"status": "error", "answer": None, "error": EMPTY_REPLY_ERROR}
         if isinstance(step, Exception):
@@ -346,3 +349,17 @@ def test_each_row_records_the_returned_provider_and_model(tmp_path: Path) -> Non
     row = _lines(ctx.run_dir / "answer.jsonl")[0]
     assert row["provider_returned"] == "h1"
     assert row["model_returned"] == "deepseek/deepseek-v4.1-flash-1017"
+
+
+def test_a_billed_failed_attempt_keeps_its_usage_in_the_error_line(tmp_path: Path) -> None:
+    engine = Engine(script={"question 2?": ["billed_error", "error"]})
+    with pytest.raises(stages35.StageIncomplete):
+        _run(_ctx(tmp_path, engine))
+    ctx = _ctx(tmp_path, engine, resume=True)
+    with pytest.raises(stages35.StageIncomplete):
+        _run(ctx)
+    lines = _lines(ctx.run_dir / "answer.errors.jsonl")
+    assert [line.get("usage") for line in lines] == [
+        {"input_tokens": 40, "output_tokens": 5, "cost_usd": 0.25},
+        None,  # no usage reported: the line carries none
+    ]

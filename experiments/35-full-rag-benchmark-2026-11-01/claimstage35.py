@@ -248,6 +248,9 @@ async def claimkinds_stage(
                         "version": version,
                         "model_returned": getattr(reply, "model_returned", None),
                         "provider_returned": getattr(reply, "provider_returned", None),
+                        "input_tokens": getattr(reply, "input_tokens", None),
+                        "output_tokens": getattr(reply, "output_tokens", None),
+                        "cost_usd": getattr(reply, "cost_usd", None),
                     },
                 )
 

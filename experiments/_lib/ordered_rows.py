@@ -173,7 +173,13 @@ class OrderedRows:
         self._pending[item] = entry
         self.commit()
 
-    def fail(self, item: str, error: str, trace: Mapping[str, Any] | None = None) -> bool:
+    def fail(
+        self,
+        item: str,
+        error: str,
+        trace: Mapping[str, Any] | None = None,
+        usage: Mapping[str, Any] | None = None,
+    ) -> bool:
         """Record an error with no content; close *item* as missing at the cap.
 
         Call it only for an error that is not a rate limit and not out of
@@ -186,7 +192,13 @@ class OrderedRows:
         """
         append_line(
             self._errors_path,
-            {"id": item, "error": error, **({} if trace is None else {"trace": dict(trace)})},
+            {
+                "id": item,
+                "error": error,
+                **({} if trace is None else {"trace": dict(trace)}),
+                # A billed failed attempt keeps its tokens and cost (Exp 35 task 16.20).
+                **({} if not usage else {"usage": dict(usage)}),
+            },
         )
         errors = self._errors.setdefault(item, [])
         errors.append(error)

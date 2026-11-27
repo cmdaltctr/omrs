@@ -62,7 +62,30 @@ def _tree(out: Path) -> None:
         ],
     )
     _json(run / "judge-chat-summary.json", {"resent_calls": 1, "closed_missing": []})
-    _rows(run / "claim-kinds.jsonl", [{"claim_key": "a", "kind": "factual"}])
+    _rows(
+        run / "claim-kinds.jsonl",
+        [
+            {
+                "claim_key": "a",
+                "kind": "factual",
+                "input_tokens": 9,
+                "output_tokens": 1,
+                "cost_usd": 0.02,
+            }
+        ],
+    )
+    _json(run / "claimkinds-summary.json", {"resent_calls": 0, "closed_missing": []})
+    _rows(
+        run / "answer.errors.jsonl",
+        [
+            {
+                "id": "3",
+                "error": "bad reply",
+                "usage": {"input_tokens": 40, "output_tokens": 5, "cost_usd": 0.25},
+            },
+            {"id": "3", "error": "timeout"},
+        ],
+    )
     cb = _run(out, kind="closedbook-own")
     _rows(cb / "answer.jsonl", [{"qid": "1", "status": "ok", "input_tokens": 4, "cost_usd": 0.01}])
 
@@ -75,7 +98,9 @@ def test_answer_and_ragas_tokens_and_cost_come_from_the_rows(tmp_path: Path) -> 
     _tree(tmp_path)
     table = hostedusage35.hosted_usage(tmp_path)
     answer = _role(table, "answer", "answer")
-    assert (answer["rows"], answer["input_tokens"], answer["cost_usd"]) == (2, 150, 0.75)
+    # Saved rows 150 tokens and $0.75, plus the billed failed attempt (40 tokens, $0.25).
+    assert (answer["rows"], answer["input_tokens"], answer["cost_usd"]) == (2, 190, 1.0)
+    assert answer["failed_attempts"] == 2 and answer["failed_attempts_without_usage"] == 1
     # One row reported no output tokens: the sum is not defined, never a silent undercount.
     assert answer["output_tokens"] == ND
     assert answer["source"] == "rows"
@@ -86,14 +111,16 @@ def test_answer_and_ragas_tokens_and_cost_come_from_the_rows(tmp_path: Path) -> 
     assert (closed["rows"], closed["input_tokens"], closed["cost_usd"]) == (1, 4, 0.01)
 
 
-def test_glm_and_classifier_tokens_and_cost_come_from_the_billing_export(tmp_path: Path) -> None:
+def test_glm_cost_comes_from_billing_and_the_classifier_from_its_rows(tmp_path: Path) -> None:
     _tree(tmp_path)
     table = hostedusage35.hosted_usage(tmp_path)
-    for role in ("judge-glm", "claim-classifier"):
-        row = _role(table, "answer", role)
-        assert row["source"] == "billing export"
-        assert row["input_tokens"] == row["output_tokens"] == row["cost_usd"] == ND
-    assert _role(table, "answer", "judge-glm")["calls"] == 3
+    glm = _role(table, "answer", "judge-glm")
+    assert glm["source"] == "billing export (Z.ai)"
+    assert glm["input_tokens"] == glm["output_tokens"] == glm["cost_usd"] == ND
+    assert glm["calls"] == 3
+    kinds = _role(table, "answer", "claim-classifier")
+    assert kinds["source"] == "rows"
+    assert (kinds["input_tokens"], kinds["output_tokens"], kinds["cost_usd"]) == (9, 1, 0.02)
 
 
 def test_error_rows_resends_and_closed_calls_per_stage_and_role(tmp_path: Path) -> None:
@@ -103,6 +130,7 @@ def test_error_rows_resends_and_closed_calls_per_stage_and_role(tmp_path: Path) 
     assert _role(table, "answer", "ragas-judge")["error_rows"] == 1
     assert _role(table, "answer", "judge-glm")["error_rows"] == 1
     assert _role(table, "answer", "claim-classifier")["error_rows"] == 0
+    assert _role(table, "answer", "claim-classifier")["closed_missing"] == 0
     assert _role(table, "answer", "answer")["resent_calls"] == 2
     assert _role(table, "answer", "answer")["closed_missing"] == 1
     assert _role(table, "answer", "judge-glm")["resent_calls"] == 1
@@ -171,12 +199,6 @@ def test_closed_calls_are_not_defined_when_a_summary_is_missing(tmp_path: Path) 
     table = hostedusage35.hosted_usage(tmp_path)
     assert _role(table, "answer", "ragas-judge")["closed_missing"] == ND
     assert _role(table, "answer", "judge-glm")["closed_missing"] == 0  # measured zero
-
-
-def test_row_cost_is_labelled_as_saved_rows_only(tmp_path: Path) -> None:
-    _tree(tmp_path)
-    answer = _role(hostedusage35.hosted_usage(tmp_path), "answer", "answer")
-    assert answer["cost_scope"] == "saved rows; billed total in billing_by_provider"
 
 
 def test_non_finite_billing_amounts_are_refused(tmp_path: Path) -> None:

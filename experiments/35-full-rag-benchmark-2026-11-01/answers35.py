@@ -291,6 +291,13 @@ def answer_row(
     }
 
 
+def failed_usage(result: Mapping[str, Any]) -> dict[str, Any] | None:
+    """Return the tokens and cost a failed answer call reported, else ``None`` (task 16.20)."""
+    usage = result.get("usage") or {}
+    kept = {k: usage[k] for k in ("input_tokens", "output_tokens", "cost_usd") if k in usage}
+    return kept or None
+
+
 def _trace(
     ctx: stages35.Ctx,
     qid: str,
@@ -365,7 +372,7 @@ async def answer_stage(ctx: stages35.Ctx) -> int:
 
         async def one(qid: str) -> None:
             question = by_id[qid]
-            error = None
+            error, usage = None, None
             try:
                 async with searching:
                     found, line = await stagekit35.ranked(ctx, question.text)
@@ -388,12 +395,13 @@ async def answer_stage(ctx: stages35.Ctx) -> int:
                     result = {**result, "answer": ""}
                 elif result.get("answer") is None:
                     error = ctx.redact(str(result.get("error") or "no answer text"))[:500]
+                    usage = failed_usage(result)
             except (stagekit35.RerankFailed, RateLimitStop):
                 raise
             except Exception as exc:  # noqa: BLE001 - an error is not a result (section 12)
                 error = stages35._error(ctx, exc)
             if error is not None:
-                kept.fail(qid, error, _trace(ctx, qid, None, error))
+                kept.fail(qid, error, _trace(ctx, qid, None, error), usage=usage)
                 say(f"[answer] {qid}: ERROR {error}")
                 return
             cut = frozenset(str(r["chunk_id"]) for r in rows if r.get("truncated"))

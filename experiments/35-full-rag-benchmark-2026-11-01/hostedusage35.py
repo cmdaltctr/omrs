@@ -6,10 +6,13 @@ Each function reads saved files only; a value that is not defined reads
 - :func:`hosted_usage`: per stage (the output kind, for example ``answer`` or
   ``closedbook-own``) and role, the rows, calls, error rows, harness resends
   (``resent_calls``), calls closed as missing after the resend cap, and the
-  tokens and cost. The answer and Ragas rows record tokens and cost per call.
-  The GLM-5.3 claim checks and the claim classifier record none, so their
-  tokens and cost come from the provider billing exports (amendment A18 item 35).
-  A sum is defined only when every call reported the figure.
+  tokens and cost. The answer, Ragas and claim-classifier rows record tokens
+  and cost per call; a billed failed answer or classifier attempt keeps its
+  figures in the stage's ``<stage>.errors.jsonl`` line and is added (an error
+  line with no figures is counted in ``failed_attempts_without_usage``). The
+  GLM-5.3 claim checks record none; GLM-5.3 is the only Z.ai role, so its
+  tokens and cost are the Z.ai billing export (amendment A18 item 35).
+  A sum is defined only when every saved call reported the figure.
 - :func:`billing_by_provider`: the ``usd`` of the billing rows per provider.
 - :func:`energy_estimate`: closed GPU pod hours times the board power of the
   RTX 4090 (450 W), in kWh (Strubell et al. 2019; Lacoste et al. 2019).
@@ -30,15 +33,21 @@ from typing import Any
 from outputs35 import read_rows
 
 NOT_DEFINED = "not defined"
-COST_SCOPE = "saved rows; billed total in billing_by_provider"
 #: RTX 4090 board power in watts (NVIDIA specification), the only GPU type (protocol 9.3).
 BOARD_WATTS = 450
-#: Row file, its role, its summary file, and where its tokens and cost come from.
+GLM_SOURCE = "billing export (Z.ai)"
+#: Row file, role, summary file, error file of failed attempts, and the figures' source.
 ROLES = (
-    ("answer.jsonl", "answer", "answer-summary.json", "rows"),
-    ("ragas.jsonl", "ragas-judge", "ragas-summary.json", "rows"),
-    ("judge-chat.jsonl", "judge-glm", "judge-chat-summary.json", "billing export"),
-    ("claim-kinds.jsonl", "claim-classifier", "claimkinds-summary.json", "billing export"),
+    ("answer.jsonl", "answer", "answer-summary.json", "answer.errors.jsonl", "rows"),
+    ("ragas.jsonl", "ragas-judge", "ragas-summary.json", None, "rows"),
+    ("judge-chat.jsonl", "judge-glm", "judge-chat-summary.json", None, GLM_SOURCE),
+    (
+        "claim-kinds.jsonl",
+        "claim-classifier",
+        "claimkinds-summary.json",
+        "claimkinds.errors.jsonl",
+        "rows",
+    ),
 )
 
 
@@ -77,13 +86,15 @@ def _empty(stage: str, role: str, source: str) -> dict[str, Any]:
         "resent_calls": 0,
         "closed_missing": 0,
         "summaries_missing": 0,
+        "failed_attempts": 0,
+        "failed_attempts_without_usage": 0,
     }
 
 
 def hosted_usage(out: Path) -> dict[str, Any]:
     """Return per stage and role the hosted calls, errors, resends, tokens and cost."""
     found: dict[tuple[str, str], dict[str, Any]] = {}
-    for name, role, summary_name, source in ROLES:
+    for name, role, summary_name, errors_name, source in ROLES:
         for path in sorted(out.glob(f"*/*/*/run*/{name}")):
             stage = path.parts[-4]
             per = found.setdefault((stage, role), _empty(stage, role, source))
@@ -94,6 +105,12 @@ def hosted_usage(out: Path) -> dict[str, Any]:
                 per["rows"] += 1
                 per["calls"].extend(calls)
                 per["error_rows"] += any(_is_error(c) for c in calls)
+            for line in read_rows(path.parent / errors_name) if errors_name else []:
+                per["failed_attempts"] += 1
+                if line.get("usage"):
+                    per["calls"].append(line["usage"])
+                else:
+                    per["failed_attempts_without_usage"] += 1
             summary_path = path.parent / summary_name
             if summary_path.is_file():
                 summary = json.loads(summary_path.read_text(encoding="utf-8"))
@@ -118,8 +135,6 @@ def hosted_usage(out: Path) -> dict[str, Any]:
                 "cost_usd": _total(calls, "cost_usd", "reported_cost_usd")
                 if by_rows
                 else NOT_DEFINED,
-                # A failed attempt saves no cost, so row cost can miss billed failures.
-                "cost_scope": COST_SCOPE if by_rows else "billing export",
             }
         )
     return {"roles": rows}
